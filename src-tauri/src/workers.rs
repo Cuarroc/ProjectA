@@ -5964,6 +5964,14 @@ mod tests {
         assert!(err.contains("coordinator"), "{err}");
         assert_eq!(agents.spawn_count(), 0);
         assert!(!fx._dir.path().join(worktree::WORKTREES_DIR).exists());
+        assert!(
+            fx.store
+                .get_worker(&launch.worker_id)
+                .await
+                .unwrap()
+                .is_none(),
+            "the refusal must not leave a worker row behind"
+        );
     }
 
     /// [`log_message`] writes on Tauri's runtime, so the row lands a moment
