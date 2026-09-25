@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // W5-28: the automatic runtime proof. Starts the real app twice in a
-// sandbox — its own PROJECTA_APP_DATA, the queue switched off with
+// sandbox — its own PROJECTA_APP_DATA, its own WebView2 profile
+// (WEBVIEW2_USER_DATA_FOLDER), the queue switched off with
 // PROJECTA_QUEUE=off — and proves the M1 acceptance: the app starts, and
 // old queued tasks dispatch no agents. No provider CLI is ever called:
 // the dispatcher never starts, and the seeded tasks stay `ready`.
@@ -21,7 +22,11 @@
 // distinct bundle identifier, e.g.
 //   TAURI_CONFIG='{"identifier":"com.projecta.proof"}' cargo build
 // Such a proof binary owns no shared state with production (own mutex, own
-// PROJECTA_APP_DATA, ephemeral ports), so the refusal would protect nothing.
+// PROJECTA_APP_DATA, own WebView2 profile, ephemeral ports), so the refusal
+// would protect nothing. The WebView2 override matters most for a
+// default-identifier binary: without it WebView2 keys the profile by the
+// bundle identifier alone and the proof would read, write and force-kill
+// the production profile (grok G1).
 // Note: a plain `cargo build` exe loads devUrl in its window (tauri's `dev`
 // cfg is on unless the `tauri/custom-protocol` feature is enabled — the
 // tauri CLI adds it). For a screenshot of the real UI build with
@@ -34,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 import {
   KEEP_RUNS,
   evaluateProof,
+  proofEnv,
   proofLayout,
   runStamp,
   selectRunsToDelete,
@@ -114,7 +120,7 @@ function startApp(exe, layout, phase) {
   const out = openSync(join(layout.runDir, `app-${phase}.stdout.log`), 'w');
   const err = openSync(join(layout.runDir, `app-${phase}.stderr.log`), 'w');
   const child = spawn(exe, [], {
-    env: { ...process.env, PROJECTA_APP_DATA: layout.appData, PROJECTA_QUEUE: 'off' },
+    env: { ...process.env, ...proofEnv(layout) },
     stdio: ['ignore', out, err],
   });
   closeSync(out);

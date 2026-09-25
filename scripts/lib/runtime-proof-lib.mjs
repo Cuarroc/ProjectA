@@ -26,10 +26,28 @@ export function proofLayout(root, stamp) {
     runDir,
     appData: join(runDir, 'appdata'),
     scratchRepo: join(runDir, 'scratch-repo'),
+    webview: join(runDir, 'webview-profile'),
     descriptor: join(runDir, 'appdata', 'projecta-api.json'),
     proofJson: join(runDir, 'proof.json'),
     appLog: join(runDir, 'projecta.log'),
     screenshot: join(runDir, 'window.png'),
+  };
+}
+
+// The environment one sandboxed app start needs. Besides the queue switch
+// and the app-data redirect this pins the WebView2 user data folder into
+// the run directory (grok G1): wry passes no user-data-folder when
+// tauri.conf.json has no dataDirectory, so without this override WebView2
+// falls back to a profile keyed only by the bundle identifier — a
+// default-identifier proof binary would read and write the production
+// profile (localStorage) and taskkill /F would be an unclean exit against
+// it. WEBVIEW2_USER_DATA_FOLDER applies exactly when no folder is passed,
+// which is this app's case.
+export function proofEnv(layout) {
+  return {
+    PROJECTA_APP_DATA: layout.appData,
+    PROJECTA_QUEUE: 'off',
+    WEBVIEW2_USER_DATA_FOLDER: layout.webview,
   };
 }
 
