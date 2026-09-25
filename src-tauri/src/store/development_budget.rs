@@ -90,6 +90,9 @@ pub struct TokenBalance {
 pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<(), String> {
     sqlx::query("CREATE TABLE development_token_reservations(id TEXT PRIMARY KEY, root_goal_id TEXT NOT NULL, goal_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, purpose TEXT NOT NULL CHECK(purpose IN ('planning','context','discovery','implementation','review','verification')), run_id TEXT, reserved_tokens INTEGER NOT NULL CHECK(reserved_tokens > 0), state TEXT NOT NULL CHECK(state IN ('reserved','started','settled','cancelled')), actual_tokens INTEGER CHECK(actual_tokens >= 0), source TEXT, observed_at INTEGER, created_at INTEGER NOT NULL, started_at INTEGER, settled_at INTEGER, UNIQUE(root_goal_id,idempotency_key))")
         .execute(&mut **tx).await.map_err(db)?;
+    // DF-15b: a reservation cancelled by the undelivered-exit release frees
+    // this index slot for the same run_id. That is safe: a retry never reuses
+    // a terminal run's id, so no second live reservation can appear for it.
     sqlx::query("CREATE UNIQUE INDEX development_implementation_budget ON development_token_reservations(run_id) WHERE purpose = 'implementation' AND state != 'cancelled'")
         .execute(&mut **tx).await.map_err(db)?;
     Ok(())

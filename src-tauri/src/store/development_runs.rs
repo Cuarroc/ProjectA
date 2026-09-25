@@ -326,12 +326,13 @@ impl Store {
         // proven undelivered exit is derived here, not rewritten.
         let delivery = delivery
             .map(|delivery| {
+                let released = delivery.state == "started"
+                    && launch
+                        .as_ref()
+                        .is_some_and(|launch| launch.state == "exited_undelivered");
                 let mut value = serde_json::to_value(&delivery)
                     .map_err(|error| format!("project delivery intent: {error}"))?;
-                if launch
-                    .as_ref()
-                    .is_some_and(|launch| launch.state == "exited_undelivered")
-                {
+                if released {
                     value["effectiveState"] = "released_undelivered".into();
                 }
                 Ok::<serde_json::Value, String>(value)
