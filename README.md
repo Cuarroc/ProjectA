@@ -1,100 +1,170 @@
+# ProjectA
+
 <div align="center">
-  <img src="assets/banner.svg" alt="ProjectA — The Agentic Terminal" width="100%" />
+  <img src="assets/banner.svg" alt="ProjectA" width="100%" />
   <br />
-  <p><strong>One task is one agent in one git worktree — ProjectA runs a whole fleet of them, side by side.</strong></p>
-  <p>
-    <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v1.4.1-22d3ee?style=flat-square&labelColor=0d1117" alt="Version v1.4.1" /></a>
-    <img src="https://img.shields.io/badge/platform-Windows-8b949e?style=flat-square&labelColor=0d1117&logo=windows&logoColor=white" alt="Platform: Windows" />
-    <img src="https://img.shields.io/badge/Tauri-2-34d399?style=flat-square&labelColor=0d1117&logo=tauri&logoColor=white" alt="Tauri 2" />
-    <img src="https://img.shields.io/badge/Rust-core-a78bfa?style=flat-square&labelColor=0d1117&logo=rust&logoColor=white" alt="Rust core" />
-    <img src="https://img.shields.io/badge/React_18_·_TypeScript-frontend-22d3ee?style=flat-square&labelColor=0d1117&logo=react&logoColor=white" alt="React 18 + TypeScript" />
-  </p>
+  <p><strong>A Windows desktop app that runs several AI coding agents in parallel, each in its own terminal and its own git worktree.</strong></p>
 </div>
 
 ---
 
-## About this repository
+## At a glance
 
-ProjectA was built by one developer working together with AI coding agents (Claude Code, Codex, Kimi, OpenCode and others), which also wrote most of the code, tests and documentation under human review. This public repository is a cleaned snapshot of the private working repository, published without its commit history; internal working notes, agent reports and third-party skill packs without a license file were left out. Status: personal project, Windows-only, actively developed; much of the documentation is in German. No license has been chosen yet, so all rights are reserved for now.
-
-## What is ProjectA?
-
-ProjectA is an **agentic terminal**: a Tauri 2 desktop app that runs a fleet of parallel CLI coding agents — `claude`, `kimi`, `codex`, `opencode`, `ollama` — side by side. Every task gets its own agent in its own git worktree, with its own PTY session, and every delivery into that session is verified before it counts. A live kanban board shows who is working, who is stuck and who is waiting on you; diffs are reviewed in the app and line comments land back in the agent's terminal. Coordinating agents drive the whole fleet through a token-guarded API and their own bridge CLI, `pa`.
-
-## The fleet today — v1.4.1
-
-| Area | What you get |
+| | |
 | --- | --- |
-| **Terminals & fleet** | PTY sessions with xterm.js tabs and splits, git-worktree isolation per task, SQLite persistence, echo-verified task delivery |
-| **Delivery guard** | Tasks, questions and `worker send` pass a delivery guard: it waits for a readiness marker, verifies the echo in the scrollback and retries Enter; only a proven delivery appears in the history, and failure leaves a system note with the next step. Folder-trust dialogs are answered automatically — for Codex, the staged start chain (hooks review) gets Enter only once the selector visibly sits on the safe option |
-| **Orchestration** | Task queue with dispatcher, orchestrator and scout agents, conversation-first UI with the board as a rail, blocking decisions via `pa ask` — agents ask, you answer straight into their terminal |
-| **Review & merge** | Unified diff view with line comments, merge/push pipeline with test gates, pull requests via `gh`. Pre-merge tests run in a disposable merge-candidate tree; approval binds the object IDs, the merge tree and the diff it actually saw |
-| **Dev-HQ** | Machine interface HQ v1 inside the app — `pa hq runtime`, `pa hq context --project <id>` — plus the Dev-HQ website at `npm run hq:live` (port 4173): static pages generated from STAND.md and the specs (Now, Map with the package DAG, Proof with the evidence matrix, Next, Sources, Lessons) plus the Live view on the running app |
-| **Prompting & learning** | Dialogic prompt sharpening — vague tasks produce questions, not guesses — skill packs per project, and a learning loop whose playbook entries require a human verdict |
-| **Providers & cost** | Provider registry with encrypted key vault (DPAPI), optional OmniRoute routing with quota telemetry, per-profile budget stops |
-| **Packaging & updates** | Signed NSIS installer (plus MSI) for Windows; the release builder requires signed host manifests, and auto-updates arrive over the public mirror at [Cuarroc/ProjectA-updates](https://github.com/Cuarroc/ProjectA-updates) |
-| **Operations** | Runtime logs with visible panic reporting, data retention, per-project statistics, daily digests, and a read-only board you can open on your phone |
+| **Platform** | Windows (the only packaged and released target). The Rust code also compiles and its tests run on Linux in CI; no Linux or macOS builds are shipped. |
+| **Stack** | Tauri 2 · Rust core · SQLite (sqlx) · React 18 + TypeScript · xterm.js |
+| **Status** | Personal project, in active development. Latest release: v1.4.1. Work merged to `main` since then is not released yet. Much of the internal documentation is in German. |
+| **License** | None yet — all rights reserved (see [License](#license)) |
 
-The full release history lives in the [changelog](CHANGELOG.md); what deliberately stays open is documented, with a reason per line, in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+## What it is
 
-## The vision
+ProjectA is a desktop "agentic terminal". You give it tasks; it starts coding-agent command-line tools (Claude Code, Codex CLI, Kimi CLI, OpenCode, Ollama) in pseudo-terminals, each on its own git branch in its own worktree. From one window you watch them, answer their questions, and review and merge their work.
 
-**You steer the fleet — you don't type in it.** ProjectA is built toward a workflow where the conversation with the orchestrator is the main surface and the human spends their time on decisions, reviews and direction, while the agents handle the typing.
+ProjectA has no model of its own. The agents are the vendors' command-line tools, installed and logged in on your machine. Helper features such as prompt sharpening also run through a headless agent CLI (`oneshot.rs`). Optional profiles route some CLIs through a local OmniRoute router (`resources/agents-omniroute.json`, `omniroute.rs`); this is opt-in.
 
-Continuous mode — the fleet dispatching follow-up work on its own — exists in the codebase but stays switched off, fail-closed, until its acceptance gates are proven. It is not a feature yet; it is a promise with a checklist.
+## Honest status
 
-## Quick start
+"Works" means implemented **and** covered by at least one automated test named in parentheses. It does not mean polished or proven in long-running use.
 
-**Requirements:** Node.js 24+, the Rust toolchain (1.89+, for crash-released journal locks) and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/). Optional, each degrading gracefully when absent: `gh` for pull-request status, a local OmniRoute on `:20128` for routing and quota telemetry.
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Terminal sessions (ConPTY on Windows) | works | `pty.rs` (`spawns_a_path_resolved_exe_in_a_pty`, Windows-only test) |
+| Agent profiles for Claude Code, Codex, Kimi, OpenCode, Ollama | works | `resources/agent-defaults.json`, `profiles.rs` (`claude_and_kimi_defaults_carry_their_capabilities`) |
+| One git worktree and branch per worker | works | `worktree.rs` (`adds_and_removes_a_worktree`) |
+| Task delivery into an agent's terminal (waits for readiness, checks the echo) | works | `submit_guard.rs` (`a_marker_appearing_late_still_beats_the_silence_heuristic`) |
+| Task queue with dispatcher and per-project worker limit | works | `queue.rs` (`priority_wins_and_capacity_never_exceeds_the_limit`) |
+| SQLite persistence, backup/restore, session restore after a crash | works | `store.rs`, `db_restore.rs`, `sessionpersist.rs` (`a_crash_restores_buffers_without_a_live_session`) |
+| Agents ask the human a question (`pa ask`) and get the answer in their terminal | works | `questions.rs` (`asking_records_the_question_and_raises_the_card`) |
+| Diff view and merge with a test gate | works | `diff.rs` (`parses_a_multi_file_diff_with_line_numbers`), `testgate.rs` (`the_verdict_follows_the_exit_code_and_recognises_a_timeout`) |
+| Local control API, localhost only, token required | works | `api.rs` (`a_request_without_the_token_is_refused`) |
+| `pa` command-line bridge for agents, including `pa hq runtime` / `pa hq context` | works | `bin/pa.rs` (`hq_changes_require_auth_project_and_valid_cursor`) |
+| Skill packs copied into each worktree | works | `skills.rs` (`installing_puts_every_enabled_pack_where_the_cli_looks_for_it`) |
+| Token usage, budgets and cost receipts | works | `budget.rs`, `store/development_usage_receipt_tests.rs` (`every_run_cost_receipt_names_its_state_and_provenance`) |
+| Learnings and role variants, applied only after human approval | works | `learnings.rs`, `roles.rs` (`two_approved_learnings_are_not_enough_and_three_are`) |
+| Provider key vault | partial | Encrypted with DPAPI on Windows (`a_written_vault_is_encrypted_for_this_user_and_round_trips`); on other systems it is a plaintext file with mode 0600 |
+| Dev-HQ website (development cockpit) | partial | `scripts/hq-live.mjs` with tests in `scripts/lib/*.test.mjs`; a development tool that runs from the repository, not a product feature |
+| Team roles (coordinator, implementer, reviewer, integrator) | partial | `store/team_assignments.rs`, `workers.rs` (`dispatch_role_decides_who_may_submit_an_integration_candidate`); only reachable through continuous mode, which is off |
+| Native process-output capture (`projecta_capture`, `pa-capture-host`) | partial | Windows-only; activation in the app is still gated in code |
+| Human approval of risky steps | partial | A human verdict token is required to resume (`hq_control_requires_api_auth_and_resume_refuses_without_human_token`); graded approval levels do not exist yet |
+| Continuous mode (agents pick up follow-up work on their own) | planned — **locked off** | `development_policy.rs` rejects `continuous.enabled = true` (`default_policy_is_bounded_and_continuous_is_disabled`) |
+| Cancelling a task that is already dispatched | planned | Returns 409; the safe cancel rule is open work (package W1-05b in [docs/PLAN.md](docs/PLAN.md)) |
+
+Paths are relative to `src-tauri/src/` unless they start with `scripts/` or `resources/` (the latter is `src-tauri/resources/`).
+
+## Vision
+
+- **One surface.** The desktop app is the core. The Dev-HQ becomes the place where you plan, watch and decide; later it should run from the installed app without Node or a repository checkout (planned, HQ2-08).
+- **Agent teams with roles and approval levels.** A task moves through stations such as plan, implement, review and test. Each station has a role, and each risky step has a permission level that the human sets and agents cannot raise themselves (planned, DF-11 to DF-18).
+- **Independent review built in.** A change may not be approved by a model from the same family that wrote it (planned as a hard gate, DF-12).
+- **Continuous operation only after acceptance.** Continuous mode stays switched off until every row of its acceptance matrix has runtime evidence and the human explicitly turns it on (W4-02, W4-03).
+
+None of this vision is shipped yet beyond what the status table lists.
+
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph App["ProjectA desktop app (Tauri 2)"]
+        UI["React UI<br/>board, chat, terminals, diffs"]
+        Core["Rust core<br/>queue, workers, policy, budgets"]
+        DB[("SQLite")]
+        UI <-->|Tauri IPC| Core
+        Core <--> DB
+    end
+    Core -->|PTY / ConPTY| Agents["Agent CLIs<br/>claude, codex, kimi, opencode, ollama"]
+    Agents -->|one each| WT["git worktrees<br/>branch per worker"]
+    Core <-->|"HTTP on 127.0.0.1<br/>token required"| API["local control API"]
+    API <--> PA["pa CLI<br/>used by agents"]
+    API <--> HQ["Dev-HQ website<br/>npm run hq:live"]
+```
+
+- The **Rust core** owns all runtime state in SQLite. The UI, the `pa` CLI and the Dev-HQ are clients of the same core; none of them schedules work on its own.
+- Each **worker** is an agent CLI running in a pseudo-terminal, started in its own git worktree on its own branch. Tasks are typed into that terminal and only count once the echo is seen.
+- The **local API** listens on `127.0.0.1` on a random port and rejects requests without a per-process token. Agents use it through `pa`; the Dev-HQ proxies to it.
+
+## How it is built
+
+ProjectA is built by a beginner without programming training, working with several AI coding agents from different vendors (Claude Code, Codex CLI, Kimi CLI, OpenCode). The agents write almost all of the code, tests and documentation. Because the human cannot check the code line by line, the project relies on rules that produce checkable evidence:
+
+- **Red first.** A bug fix needs a failing regression test before the fix. Commits carry a `Test-First`, `Regression-For` or `No-Test` trailer, and CI checks this (`scripts/ci/red-first.sh`).
+- **One gate list.** All checks are defined once in `scripts/ci/gates.sh`; git hooks and CI call the same lanes. Every run ends with a "NOT COVERED" block, because no single machine tests both the Windows and the Linux half.
+- **Cross-vendor review.** Changes are reviewed by a model from a different vendor than the author. Larger changes and the four serial "seam" files need two reviews.
+- **Merge queue.** `main` is merged only through a Mergify merge queue ([docs/setup/mergify.md](docs/setup/mergify.md)).
+- **One task, one agent, one worktree.** The shared rules for all agents are in [AGENTS.md](AGENTS.md).
+
+What is still hard:
+
+- Coordinating several agents takes a lot of process. The rules and plans are long, mostly in German, and have drifted out of sync more than once.
+- Some checks are flaky under load. Open cases are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+- Rules produce evidence, not correctness. Reviews by other models catch a lot, but they are not a human code review.
+
+## Getting started
+
+Windows only; build from source. Signed installers are built for the maintainer's own machine; they are not offered or supported for other users.
+
+Requirements:
+
+- Node.js 24 or newer
+- Rust, stable, 1.89 or newer
+- The [Tauri 2 prerequisites for Windows](https://v2.tauri.app/start/prerequisites/) (Microsoft C++ Build Tools, WebView2)
+- git
+- At least one agent CLI you are logged in to, for example Claude Code or Codex CLI
 
 ```sh
 npm ci
-npm run dev:setup   # clone-local hooks (.githooks) + .pa/HQ-START.md — without it dev:doctor stays red
-npm run tauri dev   # the desktop app — this is the real thing
+npm run dev:setup   # installs git hooks into this clone, writes .pa/HQ-START.md
+npm run tauri dev   # start the desktop app in development mode
 ```
 
-`npm run dev` serves the UI alone on `http://localhost:1420` for styling work; the IPC commands only exist inside the Tauri runtime.
+- `npm run dev` serves only the UI on `http://localhost:1420`. Without the Tauri runtime, IPC calls do not work.
+- `npm run hq:live` starts the Dev-HQ website on `http://localhost:4173`.
+- `npm run dev:doctor` diagnoses the setup without changing anything.
+- `npm run tauri build` is configured to produce updater artifacts. It expects the project's updater signing key, so outside builders will have to adjust `src-tauri/tauri.conf.json`.
+- Checks: `bash scripts/ci/gates.sh --list` shows the gates; `bash scripts/ci/gates.sh lane prepush` runs the full local lane. Details: [docs/ci-lokal.md](docs/ci-lokal.md).
 
-Checks: the gate list lives in exactly one place, `scripts/ci/gates.sh`. Run `bash scripts/ci/gates.sh --list` to see it and `bash scripts/ci/gates.sh lane prepush` before pushing (`lane precommit` is the fast loop the git hook runs). CI runs the same lanes on pushes to `main` and on pull requests; details in [docs/ci-lokal.md](docs/ci-lokal.md).
+The app starts real agent processes from its queue. Start it only when you mean to.
 
-## For agents and Dev-HQ
+## Roadmap
 
-Agents coordinate through the machine interface, not the HTML:
+The only plan is [docs/PLAN.md](docs/PLAN.md) (German). It is organised in waves and work streams, not in numbered milestones:
 
-```sh
-pa hq runtime                    # what the running app exposes
-pa hq context --project <id>     # project context for this worktree
-npm run dev:doctor -- --json     # read-only setup diagnosis
-npm run dev:setup                # installs clone-local hooks (.githooks), writes .pa/HQ-START.md
-npm run dev:agent-check          # is this machine ready for an agent? (--json available)
-```
+1. **W1 – foundations.** Finish task delivery (F-CORE-3 rest), add a safe cancel rule for dispatched tasks, and finish accessibility and styling work on the Dev-HQ.
+2. **W2 and DEVFLOW – runtime and workflow.** Usage and billing collectors per provider, supervisor, and resource limits. Persistent workflow stages, the independence gate, the permission policy, hand-over between stations, and a decision inbox (DF-11 to DF-18).
+3. **W3 – delivery and installation.** Database maintenance lock, Windows recovery helper, crash and power-loss drills, and updater states in the app.
+4. **W4 – acceptance and switch-on.** A 20-task benchmark, then the final acceptance matrix for continuous mode, then activation. Activation happens only with the human's explicit decision.
 
-The human cockpit is the Dev-HQ website: `npm run hq:live`, then `http://localhost:4173`. One implementation task, one agent, one git worktree — the coordination protocol is [AGENTS.md](AGENTS.md); how each provider (Claude Code, Codex, OpenCode, Kimi Code, the Ollama reviewers) is set up is in [docs/setup/](docs/setup/README.md).
+In parallel: **HQ2** (one shared Dev-HQ and app, with design tokens and an installable host) and **W5** (a "projects" system with a coordinator that cannot write code and a trust ramp). There are no dates; the plan explicitly avoids promising any before throughput has been measured.
 
-Pull requests: one PR per package, opened at the end and kept as a draft until report, review disposition and the `NICHT ABGEDECKT` block are in. `main` is merged through the Mergify merge queue (`.mergify.yml`, [docs/setup/mergify.md](docs/setup/mergify.md)); only the coordinator may merge by hand, as an emergency exception when the queue hangs or Mergify is down.
+## Known limitations
+
+- **Windows only** for anything beyond compiling and running tests. The DPAPI vault and native capture exist only on Windows.
+- **It drives subscription CLIs.** ProjectA starts and types into the command-line tools of AI vendors on your account. Check each vendor's terms of use for automated or parallel use before you run it.
+- **Continuous mode is off** and cannot be switched on by configuration.
+- **Dispatched tasks cannot be cancelled** safely yet (W1-05b).
+- **Documentation gaps in this snapshot.** This public repository is a cleaned copy of a private working repository, published without history. Some documents refer to files that are not included, for example `docs/MASTERPLAN.md`, `docs/ERLEDIGT.md` and `.pa/report_*.md`.
+- **Mostly German internal docs.** Plans, rules and the changelog are largely in German.
+- **Open findings and flaky tests** are listed, each with a reason, in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+- **No support.** This is a personal project; issues may go unanswered.
 
 ## Documentation
 
-| File | What it carries |
+| File | Contents |
 | --- | --- |
-| [CHANGELOG.md](CHANGELOG.md) | Every release, newest first |
-| [AGENTS.md](AGENTS.md) | The protocol agent instances coordinate through |
-| [CLAUDE.md](CLAUDE.md) | Repo guidance for Claude Code sessions |
-| [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Known limitations, each with its reason |
-| [STAND.md](STAND.md) | Current hand-off state and operational notes |
-| [PRODUCT.md](PRODUCT.md) | Product schema of the Dev-HQ (users, purpose, principles) for design work |
-| [docs/development/WORKFLOW.md](docs/development/WORKFLOW.md) | The full operating reference: architecture, releases, environment gotchas |
-| [docs/dev-hq/](docs/dev-hq/) | Dev-HQ: design, bugs, lessons and the live site |
-| [docs/PLAN.md](docs/PLAN.md) | Source and archive of the plan: waves, packages, decisions |
-| [docs/hilfe/](docs/hilfe/glossar.md) | Beginner help in German: glossary of 30 terms, cheat sheet of 20 commands, the `frag-mich` skill |
-| [docs/setup/](docs/setup/README.md) | Agent setup per provider, reviewers, Mergify, permission proposal |
-| [docs/ci-lokal.md](docs/ci-lokal.md) | Running the gate lanes locally (Windows, WSL2) |
-| [docs/decisions.md](docs/decisions.md) | Dependency and architecture decisions: what, why, when to reverse |
-| [docs/plugin-matrix.md](docs/plugin-matrix.md) | Tauri plugins and capabilities the app uses, and why |
-| [docs/agents-json.md](docs/agents-json.md) | The `agents.json` profile format |
+| [AGENTS.md](AGENTS.md) | Rules for every agent working on the repository |
+| [STAND.md](STAND.md) | Current state and next steps (German) |
+| [docs/PLAN.md](docs/PLAN.md) | The plan: waves, packages, decisions (German) |
+| [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Open findings, each with its reason (German) |
+| [CHANGELOG.md](CHANGELOG.md) | Released changes (German) |
+| [docs/setup/](docs/setup/README.md) | Agent setup per vendor, reviewers, merge queue (German) |
+| [docs/development/WORKFLOW.md](docs/development/WORKFLOW.md) | Detailed operating reference |
+| [docs/decisions.md](docs/decisions.md) | Architecture and dependency decisions |
+| [docs/hilfe/glossar.md](docs/hilfe/glossar.md) | Beginner glossary (German) |
 
----
+## License
 
-<div align="center">
-  <sub>Built with Tauri 2 · Rust · React · xterm.js — and a fleet of agents.</sub>
-</div>
+There is no license yet, so all rights are reserved. You may read the code, but you may not reuse, modify or redistribute it. Whether and under which license the project will be opened is still to be decided.
+
+## Kurz auf Deutsch
+
+ProjectA ist eine Windows-Desktop-App (Tauri 2, Rust, React), die mehrere KI-Coding-Agenten parallel steuert. Jeder Agent läuft in einem eigenen Terminal und in einem eigenen git-Worktree. Terminals, Worktrees, Warteschlange, lokale API, der `pa`-Befehl und das Zusammenführen mit Testprüfung funktionieren und sind durch Tests belegt. Agenten-Teams mit Rollen, abgestufte Freigaben und der Dauerbetrieb (Continuous Mode) sind geplant; der Dauerbetrieb ist im Code gesperrt, bis seine Abnahme belegt ist und der Nutzer ihn freigibt. Gebaut wird das Projekt von einem Einsteiger ohne Programmierausbildung zusammen mit KI-Agenten mehrerer Anbieter, abgesichert durch Red-first-Tests, Reviews durch Modelle anderer Anbieter und eine Merge-Queue. Die App steuert die Abo-CLIs der Anbieter; deren Nutzungsbedingungen sind zu beachten. Eine Lizenz gibt es noch nicht, alle Rechte sind vorbehalten.
