@@ -1,0 +1,88 @@
+// W5-28: pins the pure decisions of scripts/runtime-proof.mjs — sandbox
+// layout, the pass/fail verdict, and the retention limit on proof runs.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
+import {
+  DISPATCH_DISABLED_LOG,
+  KEEP_RUNS,
+  evaluateProof,
+  proofLayout,
+  runStamp,
+  selectRunsToDelete,
+} from './runtime-proof-lib.mjs';
+
+const goodFacts = () => ({
+  phase1: { descriptorSeen: true, seeded: 2 },
+  phase2: {
+    descriptorSeen: true,
+    entries: [
+      { id: 'tq-1', status: 'ready' },
+      { id: 'tq-2', status: 'ready' },
+    ],
+    workers: [],
+  },
+  logText: `line\nprojecta ${DISPATCH_DISABLED_LOG} (PROJECTA_QUEUE=off)\nline`,
+  screenshot: { ok: true, path: 'shot.png' },
+  requireScreenshot: true,
+});
+
+test('layout keeps every artifact of a run inside its run directory', () => {
+  const stamp = '2026-09-25T10-00-00.000Z';
+  const layout = proofLayout('/proofs', stamp);
+  const runDir = join('/proofs', stamp);
+  assert.equal(layout.runDir, runDir);
+  for (const value of Object.values(layout)) {
+    assert.ok(value.startsWith(runDir), `${value} escapes the run directory`);
+  }
+  assert.equal(new Set(Object.values(layout)).size, Object.values(layout).length);
+});
+
+test('run stamp sorts lexicographically like time and is filename-safe', () => {
+  const a = runStamp(new Date('2026-09-25T10:00:00.000Z'));
+  const b = runStamp(new Date('2026-09-25T10:00:01.000Z'));
+  assert.ok(a < b);
+  assert.match(a, /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z$/);
+});
+
+test('verdict passes only when the app started twice, nothing dispatched and the log proves the switch', () => {
+  const verdict = evaluateProof(goodFacts());
+  assert.equal(verdict.ok, true);
+  assert.deepEqual(verdict.failures, []);
+});
+
+test('verdict fails when a queued entry left ready or a worker exists', () => {
+  const dispatched = goodFacts();
+  dispatched.phase2.entries[0].status = 'dispatched';
+  assert.equal(evaluateProof(dispatched).ok, false);
+  const spawned = goodFacts();
+  spawned.phase2.workers = [{ id: 'wk-1' }];
+  assert.equal(evaluateProof(spawned).ok, false);
+  const unseeded = goodFacts();
+  unseeded.phase1.seeded = 0;
+  assert.equal(evaluateProof(unseeded).ok, false);
+});
+
+test('verdict fails without the disabled log line, a start, or a required screenshot', () => {
+  const noLog = goodFacts();
+  noLog.logText = 'nothing relevant';
+  assert.equal(evaluateProof(noLog).ok, false);
+  const noRestart = goodFacts();
+  noRestart.phase2.descriptorSeen = false;
+  assert.equal(evaluateProof(noRestart).ok, false);
+  const noShot = goodFacts();
+  noShot.screenshot = { ok: false, reason: 'window not foreground' };
+  assert.equal(evaluateProof(noShot).ok, false);
+  const optionalShot = goodFacts();
+  optionalShot.screenshot = { ok: false, reason: 'window not foreground' };
+  optionalShot.requireScreenshot = false;
+  assert.equal(evaluateProof(optionalShot).ok, true);
+});
+
+test('retention keeps the newest runs and deletes the rest', () => {
+  const names = ['2026-09-20T00-00-00.000Z', '2026-09-25T09-00-00.000Z', '2026-09-25T10-00-00.000Z'];
+  assert.deepEqual(selectRunsToDelete(names, 2), ['2026-09-20T00-00-00.000Z']);
+  assert.deepEqual(selectRunsToDelete(names, KEEP_RUNS), []);
+  assert.deepEqual(selectRunsToDelete([], KEEP_RUNS), []);
+  assert.throws(() => selectRunsToDelete(names, 0), /keep/);
+});
