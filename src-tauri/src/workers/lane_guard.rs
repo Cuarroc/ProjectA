@@ -422,6 +422,80 @@ mod tests {
     }
 
     #[test]
+    fn the_store_directory_itself_is_on_the_store_lane() {
+        // Review grok G1: a scope naming the directory (admission accepts it
+        // after stripping the trailing slash) must land on the store lane and
+        // collide with the sibling seam file store.rs.
+        for dir in [
+            "src-tauri/src/store",
+            "src-tauri/src/store/",
+            r"SRC-TAURI\SRC\STORE",
+        ] {
+            assert_eq!(Seam::of_path(dir), Some(Seam::Store), "{dir}");
+        }
+        assert_eq!(Seam::of_path("src-tauri/src/storefront.rs"), None);
+        let verdict = evaluate(
+            "candidate",
+            &["src-tauri/src/store.rs".to_string()],
+            &[open("run-a", "holder", &["src-tauri/src/store"])],
+        );
+        assert_eq!(verdict.blocks.len(), 1, "{verdict:?}");
+        assert_eq!(verdict.blocks[0].kind, ConflictKind::Lane(Seam::Store));
+    }
+
+    #[test]
+    fn dot_segments_do_not_hide_or_fake_a_seam() {
+        // Review grok G2: classification runs on the resolved path.
+        assert_eq!(
+            normalize_path("src-tauri/src/./store.rs"),
+            "src-tauri/src/store.rs"
+        );
+        assert_eq!(Seam::of_path("src-tauri/src/./store.rs"), Some(Seam::Store));
+        assert_eq!(
+            Seam::of_path("src-tauri/src/store/../api.rs"),
+            Some(Seam::Api)
+        );
+        assert_eq!(Seam::of_path("src-tauri/src/store/../queue.rs"), None);
+        assert!(paths_overlap(
+            "src-tauri/src/store/../api.rs",
+            "src-tauri/src/api.rs"
+        ));
+    }
+
+    #[test]
+    fn the_forecast_serializes_packages_on_one_seam_lane() {
+        // Review grok G1 (forecast half): different files of one seam lane, or
+        // a directory scope against store.rs, share no path but must still be
+        // serial, exactly as the guard treats them. Discriminating like the
+        // shared-file control: by dependencies and priorities alone the order
+        // would be [Y, Z, X]; only the lane edge X -> Y yields [Z, X, Y].
+        let pkg = |id: &str, priority: u32, file: &str, deps: &[&str]| PlannedPackage {
+            id: id.into(),
+            priority,
+            files: vec![file.to_string()],
+            depends_on: deps.iter().map(|d| d.to_string()).collect(),
+        };
+        for (x_file, y_file) in [
+            (
+                "src-tauri/src/store/continuous.rs",
+                "src-tauri/src/store/discovery.rs",
+            ),
+            ("src-tauri/src/store.rs", "src-tauri/src/store"),
+        ] {
+            let packages = vec![
+                pkg("X", 10, x_file, &["Z"]),
+                pkg("Y", 20, y_file, &[]),
+                pkg("Z", 30, "src-tauri/src/queue.rs", &[]),
+            ];
+            assert_eq!(
+                dispatch_order(&packages).unwrap(),
+                vec!["Z", "X", "Y"],
+                "{x_file} vs {y_file}"
+            );
+        }
+    }
+
+    #[test]
     fn a_second_package_on_an_occupied_seam_lane_is_blocked() {
         // The gap scope locks cannot see: different files, same lane.
         let verdict = evaluate(
@@ -878,6 +952,30 @@ mod tests {
         // Completing the task releases it.
         store
             .checkpoint_continuous_task("task-a", "owner", 1, Some("completed"), None)
+            .await
+            .unwrap();
+        let run_b = store.get_development_run(&run_b).await.unwrap().unwrap();
+        let warnings = refuse_lane_conflicts(&store, &run_b).await.unwrap();
+        assert!(warnings.is_empty(), "{warnings:?}");
+    }
+
+    #[tokio::test]
+    async fn a_retry_checkpoint_releases_the_claim_and_with_it_the_lane() {
+        // Review grok G4: pin the other release path. `retry` needs the
+        // failed run, clears the claim and reopens the task, so a second
+        // package may start on the lane; the retried package is then judged
+        // by the guard again at its own relaunch.
+        let (_dir, store, run_a, run_b) = store_with_two_runs(
+            "[\"src-tauri/src/store/continuous.rs\"]",
+            "[\"src-tauri/src/store/discovery.rs\"]",
+        )
+        .await;
+        store
+            .fail_development_run(&run_a, "owner", 1, "aborted")
+            .await
+            .unwrap();
+        store
+            .checkpoint_continuous_task("task-a", "owner", 1, Some("retry"), None)
             .await
             .unwrap();
         let run_b = store.get_development_run(&run_b).await.unwrap().unwrap();
