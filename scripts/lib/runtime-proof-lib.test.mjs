@@ -63,6 +63,21 @@ test('verdict fails when a queued entry left ready or a worker exists', () => {
   assert.equal(evaluateProof(unseeded).ok, false);
 });
 
+test('verdict fails when fewer entries come back than were seeded', () => {
+  const vanished = goodFacts();
+  vanished.phase2.entries = [];
+  assert.equal(evaluateProof(vanished).ok, false);
+  const garbage = goodFacts();
+  garbage.phase2.entries = null;
+  assert.equal(evaluateProof(garbage).ok, false);
+});
+
+test('retention ignores directories that are not proof runs', () => {
+  const names = ['keepme', '2026-09-20T00-00-00.000Z', '2026-09-25T09-00-00.000Z'];
+  assert.deepEqual(selectRunsToDelete(names, 1), ['2026-09-20T00-00-00.000Z']);
+  assert.deepEqual(selectRunsToDelete(['keepme', 'other'], 1), []);
+});
+
 test('verdict fails without the disabled log line or a start or a required screenshot', () => {
   const noLog = goodFacts();
   noLog.logText = 'nothing relevant';
