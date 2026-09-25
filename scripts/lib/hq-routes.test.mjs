@@ -4,8 +4,8 @@
 // missing at the merge-base.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,10 +15,10 @@ let hqProcess;
 let hqPort;
 let agentsDir;
 
-function get(path, headers = {}) {
+function get(path, headers = {}, port = hqPort) {
   return new Promise((resolve, reject) => {
     const req = request(
-      { hostname: "127.0.0.1", port: hqPort, path, method: "GET", headers },
+      { hostname: "127.0.0.1", port, path, method: "GET", headers },
       (res) => {
         const chunks = [];
         res.on("data", (chunk) => chunks.push(chunk));
@@ -31,44 +31,77 @@ function get(path, headers = {}) {
 }
 
 function startHq() {
-  return new Promise((resolve, reject) => {
-    agentsDir = mkdtempSync(join(tmpdir(), "hq-routes-"));
-    hqProcess = spawn(process.execPath, [join("scripts", "hq-live.mjs")], {
+  agentsDir = mkdtempSync(join(tmpdir(), "hq-routes-"));
+  const started = spawnHq(agentsDir);
+  hqProcess = started.child;
+  return started.port;
+}
+
+function spawnHq(dir, extraEnv = {}) {
+  let child;
+  const port = new Promise((resolve, reject) => {
+    child = spawn(process.execPath, [join("scripts", "hq-live.mjs")], {
       env: {
         ...process.env,
+        ...extraEnv,
         HQ_PORT: "0",
         // Ohne das regeneriert hq-live docs/dev-hq/data.json und data.js im
         // ECHTEN Baum — ein Test, der getrackte Dateien anfasst, macht den
         // Arbeitsbaum bei jedem `prepush` dreckig. Geprueft werden hier
         // Routen bzw. Absicherung, nicht die Erzeugung des Snapshots.
         HQ_SKIP_SNAPSHOT: "1",
-        PROJECTA_API_DESCRIPTOR: join(agentsDir, "descriptor.json"),
-        PROJECTA_AGENTS_FILE: join(agentsDir, "agents.json"),
-        HQ_LESSONS_FILE: join(agentsDir, "lessons.json"),
+        PROJECTA_API_DESCRIPTOR: join(dir, "descriptor.json"),
+        PROJECTA_AGENTS_FILE: join(dir, "agents.json"),
+        HQ_LESSONS_FILE: join(dir, "lessons.json"),
         // The insights estimate reads the agent journal `.pa/ACTIVITY.md`,
-        // which is deliberately untracked (instance-local append log). A clean
-        // clone therefore has no journal and the time estimate collapses to a
-        // single git sitting — hermetic fixture instead of host state.
-        HQ_ACTIVITY_FILE: join(agentsDir, "ACTIVITY.md"),
+        // which is deliberately untracked (instance-local append log) and
+        // counts into the time estimate (max of git sittings and journal
+        // sessions). Pin it to a per-instance empty fixture so the estimate
+        // is hermetic — a host journal would shift it on developer machines.
+        HQ_ACTIVITY_FILE: join(dir, "ACTIVITY.md"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
-    writeFileSync(join(agentsDir, "ACTIVITY.md"), [
-      "# Activity",
-      "## 2026-09-21 10:00 — routes-test-a (fixture)",
-      "## 2026-09-22 11:00 — routes-test-b (fixture)",
-      "## 2026-09-23 12:00 — routes-test-c (fixture)",
-      "",
-    ].join("\n"));
-    writeFileSync(join(agentsDir, "descriptor.json"), JSON.stringify({ port: 1, token: "unused" }));
+    writeFileSync(join(dir, "ACTIVITY.md"), "# Activity\n");
+    writeFileSync(join(dir, "descriptor.json"), JSON.stringify({ port: 1, token: "unused" }));
     let stderr = "";
-    hqProcess.stderr.on("data", (chunk) => { stderr += chunk; });
-    hqProcess.stdout.on("data", (chunk) => {
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.stdout.on("data", (chunk) => {
       const match = /127\.0\.0\.1:(\d+)\/live\.html/.exec(chunk.toString());
       if (match) resolve(Number(match[1]));
     });
-    hqProcess.on("exit", () => reject(new Error(`hq-live exited: ${stderr}`)));
+    child.on("exit", () => reject(new Error(`hq-live exited: ${stderr}`)));
   });
+  return { child, port };
+}
+
+// Synthetic history for /__hq/insights: the public repository starts from a
+// single squashed commit, so its real history says nothing about effort.
+// One sitting of four commits within 90 minutes (80 min + 30 min lead =
+// 1.83 h) and 2,000 changed lines (2,000 × 10 × 6 = 120,000 tokens).
+function syntheticRepo(dir) {
+  const repo = join(dir, "repo");
+  mkdirSync(repo);
+  // A git hook (pre-push) exports GIT_DIR; it would point these commands at
+  // the real repository instead of the temp one.
+  const { GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, ...cleanEnv } = process.env;
+  const git = (args, env = {}) => {
+    const result = spawnSync("git", ["-c", "user.name=HQ Test", "-c", "user.email=hq-test@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], {
+      cwd: repo,
+      encoding: "utf8",
+      env: { ...cleanEnv, ...env },
+    });
+    assert.equal(result.status, 0, `git ${args.join(" ")}: ${result.stderr}`);
+  };
+  git(["init", "-q"]);
+  const start = Math.floor(Date.now() / 1000) - 2 * 86400;
+  [0, 30, 60, 80].forEach((minutes, index) => {
+    writeFileSync(join(repo, `part-${index}.txt`), Array.from({ length: 500 }, (_, line) => `line ${line}`).join("\n") + "\n");
+    git(["add", "."]);
+    const date = `@${start + minutes * 60} +0000`;
+    git(["commit", "-q", "-m", `part ${index}`], { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date });
+  });
+  return repo;
 }
 
 before(async () => { hqPort = await startHq(); });
@@ -77,16 +110,16 @@ after(async () => {
   if (agentsDir) rmSync(agentsDir, { recursive: true, force: true });
 });
 
-async function session() {
-  const html = (await get("/live.html")).body;
+async function session(port = hqPort) {
+  const html = (await get("/live.html", {}, port)).body;
   return /name="hq-session" content="([0-9a-f]+)"/.exec(html)[1];
 }
 
-function post(path, body, headers = {}) {
+function post(path, body, headers = {}, port = hqPort) {
   return new Promise((resolve, reject) => {
     const text = JSON.stringify(body);
     const req = request(
-      { hostname: "127.0.0.1", port: hqPort, path, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(text), ...headers } },
+      { hostname: "127.0.0.1", port, path, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(text), ...headers } },
       (res) => {
         const chunks = [];
         res.on("data", (chunk) => chunks.push(chunk));
@@ -231,27 +264,36 @@ test("/__hq/lessons learns: feedback changes confidence, refine keeps history, r
   assert.equal(sorted[0].id, added.id, "confidence sort puts the voted lesson first");
 });
 
-test("/__hq/insights estimates whole-project time and tokens with a stated basis and ranks live signals", async () => {
-  const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
+test("/__hq/insights estimates whole-project time and tokens with a stated basis and ranks live signals", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-insights-"));
+  const repo = syntheticRepo(dir);
+  const hq = spawnHq(dir, { GIT_DIR: join(repo, ".git"), GIT_WORK_TREE: repo });
+  t.after(() => {
+    hq.child.kill();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const port = await hq.port;
+  const headers = { host: `127.0.0.1:${port}`, "x-hq-session": await session(port) };
   const reply = await post("/__hq/insights", {
     board: [{ worker: { id: "wk-9", task: "Port the fix" }, column: "needs_you", attentionReason: "merge conflict" }],
     usage: { total: { tokensIn: 9_000_000, tokensOut: 2_000_000 }, reportedCostUsd: 4.21 },
-  }, headers);
+  }, headers, port);
   assert.equal(reply.status, 200);
   const insights = JSON.parse(reply.body);
-  assert.ok(insights.effort.time.hours > 1, `time estimate from this repository's history: ${insights.effort.time.hours} h`);
+  assert.equal(insights.sittings.commits, 4, "hq-live reads the synthetic history, not this repository's");
+  assert.equal(insights.sittings.count, 1);
+  assert.equal(insights.effort.time.hours, 1.8, `time estimate from the synthetic history: ${insights.effort.time.hours} h`);
   assert.match(insights.effort.time.basis, /git sittings/);
   // The ledger is a floor: whichever is larger wins, and the basis says which.
   assert.ok(["ledger", "heuristic+ledger"].includes(insights.effort.tokens.source));
   assert.ok(insights.effort.tokens.value >= 11_000_000);
   assert.match(insights.effort.tokens.basis, /ledger/);
   assert.equal(insights.effort.costUsd, 4.21);
-  assert.ok(insights.sittings.count >= 1);
   assert.equal(insights.heat.grid.length, 7);
   assert.equal(insights.signals[0].level, "act");
   assert.match(insights.signals[0].title, /Port the fix needs a human/);
-  const noLedger = JSON.parse((await post("/__hq/insights", {}, headers)).body);
+  const noLedger = JSON.parse((await post("/__hq/insights", {}, headers, port)).body);
   assert.equal(noLedger.effort.tokens.source, "heuristic");
-  assert.match(noLedger.effort.tokens.basis, /changed lines × 10 tokens × 6/);
-  assert.ok(noLedger.effort.tokens.value > 100000, "a real repository yields a six-figure token estimate at least");
+  assert.match(noLedger.effort.tokens.basis, /2,000 changed lines × 10 tokens × 6/);
+  assert.equal(noLedger.effort.tokens.value, 120_000);
 });

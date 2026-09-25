@@ -28,6 +28,13 @@
 //! the local network so a phone can read the board. Binding beyond loopback
 //! without a token is legal and logged as the warning it is.
 //!
+//! The Host header is checked before anything else: a browser page on an
+//! attacker domain whose DNS answers 127.0.0.1 keeps that domain in its Host
+//! header (browsers do not rewrite it), so only `localhost` and IP literals
+//! are accepted - loopback is how the app probes itself, and a LAN literal is
+//! what the phone uses. Every other DNS name gets a 403, which is what keeps
+//! DNS rebinding from reading the board through the victim's own browser.
+//!
 //! The board routes only exist when the backend can supply board data; the
 //! store alone cannot, since deriving columns is the status engine's job. Such
 //! a backend answers 404 there rather than pretending the board is empty.
@@ -47,7 +54,7 @@
 //! difference between a scanner and a memory leak.
 
 use std::io::Write;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener, TcpStream};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
@@ -461,6 +468,9 @@ fn serve(mut stream: TcpStream, backend: &dyn LandingPages, token: Option<&str>)
     let _ = stream.set_write_timeout(Some(IO_TIMEOUT));
 
     let page = match crate::hooks::read_request(&mut stream) {
+        // The Host gate runs before the token gate: a rebinded request must
+        // not even learn whether a token is configured.
+        Some((head, _body)) if !host_allowed(&head) => Page::plain(403, "forbidden host"),
         Some((head, _body)) => match parse_head(&head) {
             // The gate sees the raw target, query included; the router only
             // gets the path. Splitting before decoding keeps a `%3F` inside an
@@ -529,10 +539,44 @@ fn reason(status: u16) -> &'static str {
         200 => "OK",
         400 => "Bad Request",
         401 => "Unauthorized",
+        403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
         _ => "Internal Server Error",
     }
+}
+
+/// DNS rebinding check: the Host header, when present, must name this
+/// machine. A browser page on an attacker domain whose DNS answers
+/// 127.0.0.1 keeps that domain in its Host header - browsers do not rewrite
+/// it - so every DNS name but `localhost` is refused. IP literals pass:
+/// loopback is how the app probes itself, and a LAN literal is exactly what
+/// the phone on the local network uses when the listener binds `0.0.0.0`.
+///
+/// A request without a Host line (HTTP/1.0 style) is let through on purpose:
+/// the attack needs a browser, and browsers always send Host.
+fn host_allowed(head: &str) -> bool {
+    let Some(host) = head.lines().skip(1).find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.trim()
+            .eq_ignore_ascii_case("host")
+            .then(|| value.trim())
+    }) else {
+        return true;
+    };
+    let name = match host.strip_prefix('[') {
+        // [::1]:8080 - the closing bracket ends the address, the port follows.
+        Some(rest) => rest.split(']').next().unwrap_or(rest),
+        None => match host.rsplit_once(':') {
+            // A single colon separates an IPv4 address or a name from its
+            // port; several colons make it a bare IPv6 literal without one.
+            Some((name, _)) if !name.contains(':') => name,
+            _ => host,
+        },
+    };
+    // A trailing dot is the DNS root marker, not a different name.
+    let name = name.strip_suffix('.').unwrap_or(name);
+    name.eq_ignore_ascii_case("localhost") || name.parse::<IpAddr>().is_ok()
 }
 
 /// Split the first head line into method and the raw request target.
@@ -1558,6 +1602,101 @@ mod tests {
         assert_eq!(status, 200, "the probe stays open");
 
         stop_web_interface(&mut state).expect("stop");
+    }
+
+    // -- DNS rebinding: the Host header has to name this machine ------------
+
+    /// Like [`get`], but the caller picks the Host header; `None` sends the
+    /// request without any Host line, HTTP/1.0 style.
+    fn get_with_host(port: u16, target: &str, host: Option<&str>) -> (u16, String, String) {
+        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port));
+        let mut stream = TcpStream::connect(addr).expect("connect");
+        stream.set_read_timeout(Some(IO_TIMEOUT)).expect("timeout");
+        let host_line = host.map(|h| format!("Host: {h}\r\n")).unwrap_or_default();
+        let request = format!("GET {target} HTTP/1.1\r\n{host_line}Connection: close\r\n\r\n");
+        stream.write_all(request.as_bytes()).expect("write");
+        let mut raw = String::new();
+        stream.read_to_string(&mut raw).expect("read");
+        let (head, body) = raw.split_once("\r\n\r\n").expect("response body");
+        let status: u16 = head
+            .lines()
+            .next()
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|code| code.parse().ok())
+            .expect("status code");
+        (status, String::new(), body.to_string())
+    }
+
+    /// A browser page on an attacker domain whose DNS answers 127.0.0.1 still
+    /// sends that domain as the Host header - browsers do not rewrite it - so
+    /// any Host that is not `localhost` or an IP literal is refused before the
+    /// token gate ever runs.
+    #[test]
+    fn the_live_server_refuses_foreign_host_headers() {
+        let dir = TempDir::new("web-interface-host");
+        let store = tauri::async_runtime::block_on(async {
+            Store::open(&dir.path().join("projecta.db"))
+                .await
+                .expect("open store")
+        });
+        let mut state = start_web_interface(Arc::new(store), engine(), 0).expect("start");
+        let port = state.port();
+
+        for foreign in [
+            "evil.example.com",
+            "attacker.test:8080",
+            "localhost.evil.com",
+        ] {
+            let (status, _, _) = get_with_host(port, "/health", Some(foreign));
+            assert_eq!(status, 403, "{foreign}");
+        }
+
+        for local in [
+            format!("127.0.0.1:{port}"),
+            format!("localhost:{port}"),
+            "192.168.0.10:8080".to_string(),
+            "[::1]:8080".to_string(),
+        ] {
+            let (status, _, _) = get_with_host(port, "/health", Some(&local));
+            assert_eq!(status, 200, "{local}");
+        }
+
+        // HTTP/1.0 probes without a Host line keep working: rebinding always
+        // comes from a browser, and browsers always send Host.
+        let (status, _, _) = get_with_host(port, "/health", None);
+        assert_eq!(status, 200, "no Host header");
+
+        stop_web_interface(&mut state).expect("stop");
+    }
+
+    #[test]
+    fn the_host_gate_reads_the_header_case_insensitively() {
+        let allowed =
+            |host_line: &str| host_allowed(&format!("GET / HTTP/1.1\r\n{host_line}\r\n\r\n"));
+
+        // localhost in every spelling, with and without port and root dot.
+        assert!(allowed("Host: localhost"));
+        assert!(allowed("Host: localhost:8080"));
+        assert!(allowed("Host: LOCALHOST."));
+        // IP literals, loopback or LAN, v4 and v6, with and without port.
+        assert!(allowed("Host: 127.0.0.1"));
+        assert!(allowed("Host: 192.168.0.10:8080"));
+        assert!(allowed("Host: [::1]:8080"));
+        assert!(allowed("Host: ::1"));
+        // The header name is case-insensitive too.
+        assert!(allowed("hOsT: 127.0.0.1:8080"));
+
+        // DNS names are the rebinding shape - all of them, including the
+        // ones that merely start with an allowed word.
+        assert!(!allowed("Host: evil.example.com"));
+        assert!(!allowed("Host: attacker.test:8080"));
+        assert!(!allowed("Host: localhost.evil.com"));
+        assert!(!allowed("Host: 127.0.0.1.evil.com"));
+    }
+
+    #[test]
+    fn a_request_without_a_host_line_is_not_the_attack() {
+        assert!(host_allowed("GET /health HTTP/1.0\r\n\r\n"));
     }
 
     // -- board and learnings routes ----------------------------------------
