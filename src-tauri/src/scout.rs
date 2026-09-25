@@ -344,7 +344,9 @@ fn parse_recommendation_line(project_id: &str, line: &str) -> Option<Recommendat
         id: recommendation_id(project_id, line),
         project_id: project_id.to_string(),
         title,
-        url: trimmed_field(&value, "url"),
+        // A scout file cannot be argued with: the finding stays, the link no
+        // renderer may show does not.
+        url: http_url(trimmed_field(&value, "url")).unwrap_or_default(),
         rationale,
         effort: trimmed_field(&value, "effort"),
         status: REC_NEW.to_string(),
@@ -360,6 +362,26 @@ fn trimmed_field(value: &Value, key: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
+}
+
+/// The url of a recommendation, or `None` when there is none worth keeping.
+/// Only `http(s)` survives: any other scheme is one click from script
+/// execution in whatever renders the link, so the caller either refuses the
+/// whole request ([`add_recommendation`]) or drops just the url (ingest).
+fn http_url(url: Option<String>) -> Result<Option<String>, String> {
+    let Some(url) = url
+        .map(|url| url.trim().to_string())
+        .filter(|url| !url.is_empty())
+    else {
+        return Ok(None);
+    };
+    // The scheme is case-insensitive (RFC 3986 §3.1), so the check has to be.
+    let lower = url.to_ascii_lowercase();
+    if lower.starts_with("https://") || lower.starts_with("http://") {
+        Ok(Some(url))
+    } else {
+        Err(format!("url must be an http(s) url, got: {url}"))
+    }
 }
 
 /// An id derived from the line itself, which is what makes re-reading the file
@@ -462,6 +484,7 @@ pub async fn add_recommendation(
     if store.get_project(project_id).await?.is_none() {
         return Err(format!("{ERR_UNKNOWN}project: {project_id}"));
     }
+    let url = http_url(url)?;
 
     // Hashing the same canonical line an ingested finding would produce keeps
     // the two doors on one id scheme.
@@ -470,9 +493,7 @@ pub async fn add_recommendation(
         id: recommendation_id(project_id, &line),
         project_id: project_id.to_string(),
         title: title.to_string(),
-        url: url
-            .map(|url| url.trim().to_string())
-            .filter(|url| !url.is_empty()),
+        url,
         rationale: rationale.to_string(),
         effort: effort
             .map(|effort| effort.trim().to_string())
@@ -1202,5 +1223,66 @@ mod tests {
                 .status,
             REC_ACCEPTED
         );
+    }
+
+    // -- recommendation urls: only http(s) reaches the store ----------------
+
+    /// A `javascript:` or `file:` link in a recommendation is one click away
+    /// from script execution in the HQ board, so the API door refuses it
+    /// outright instead of storing it for a renderer to find.
+    #[tokio::test]
+    async fn add_recommendation_refuses_non_http_urls() {
+        let fx = fixture("scout-url-scheme").await;
+        for bad in [
+            "javascript:alert(1)",
+            "JavaScript:alert(1)",
+            "file:///etc/passwd",
+            "data:text/html,<script>alert(1)</script>",
+            "ftp://example.com/x",
+        ] {
+            let err = add_recommendation(
+                &fx.store,
+                &fx.project.id,
+                "a finding",
+                "why it helps",
+                Some(bad.to_string()),
+                None,
+            )
+            .await
+            .expect_err("non-http url must be refused");
+            assert!(err.contains("http"), "{err}");
+        }
+
+        for good in ["https://example.com/spec", "http://example.com/lan"] {
+            let rec = add_recommendation(
+                &fx.store,
+                &fx.project.id,
+                "a finding",
+                "why it helps",
+                Some(good.to_string()),
+                None,
+            )
+            .await
+            .expect("http(s) url");
+            assert_eq!(rec.url.as_deref(), Some(good));
+        }
+    }
+
+    /// The scout-file door cannot answer with an error - the agent that wrote
+    /// the line is long gone - so ingest keeps the finding but drops the link
+    /// no renderer may show.
+    #[tokio::test]
+    async fn ingest_drops_non_http_urls_but_keeps_the_finding() {
+        let fx = fixture("scout-url-ingest").await;
+        fx.write_scout_file(&[
+            r#"{"title":"shady","url":"javascript:alert(1)","rationale":"looks useful"}"#,
+        ]);
+
+        let added = ingest_project(&fx.store, &fx.project).await.unwrap();
+        assert_eq!(added, 1);
+        let recs = fx.store.list_recommendations(None).await.unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].title, "shady");
+        assert_eq!(recs[0].url, None, "a non-http url must not be stored");
     }
 }

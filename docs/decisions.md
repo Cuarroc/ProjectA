@@ -1352,3 +1352,20 @@ minutes are billed twice on private repos, so Windows alone was ~2850 of
   `scripts/test-red-first-landed.sh` (gate `selftest-red-first`). Reverse
   when: trailers on main stop being gated by red-first (then a trailer there
   would no longer prove anything).
+
+## 2026-09-25 - W5-28: PROJECTA_QUEUE=off und der automatische Laufzeit-Beleg
+
+- `PROJECTA_QUEUE=off` (auch `0`/`false`) laesst `queue::start` vor dem
+  Dispatcher-Thread aussteigen; die App startet sonst vollstaendig — W5-28
+  braucht einen Lauf, in dem alte Queue-Eintraege nachweislich keinen Agenten
+  erreichen, und ein per Sweep gelesener Schalter liesse den Thread
+  weiterlaufen (Beleg im Log statt im Prozessbild) — Zurücknehmen: wenn der
+  Dispatcher selbst einen persistierten Not-Aus bekommt (W5-31b), der Schalter
+  ist bewusst prozesslokal und ohne DB-Zustand.
+- `scripts/runtime-proof.mjs` (npm run proof:runtime) faehrt den Beleg lokal:
+  eigener `PROJECTA_APP_DATA`-Sandbox, zwei Starts, zwei alte Queue-Eintraege,
+  Verdikt aus API-Auskunft (Eintraege `ready`, keine Worker) plus Logzeile und
+  Screenshot, Aufbewahrung der zehn juengsten Laeufe — die M1-Abnahme war
+  manuell und damit nicht wiederholbar — Zurücknehmen: nie das Verdikt als
+  Funktion; der Treiber darf durch einen `pa`-Unterbefehl ersetzt werden,
+  sobald der Daemon (W5-31b) die Sandboxes selbst verwaltet.
