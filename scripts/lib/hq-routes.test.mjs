@@ -227,7 +227,9 @@ test("/__hq/insights estimates whole-project time and tokens with a stated basis
   }, headers);
   assert.equal(reply.status, 200);
   const insights = JSON.parse(reply.body);
-  assert.ok(insights.effort.time.hours > 1, `time estimate from this repository's history: ${insights.effort.time.hours} h`);
+  // Reads the live clone's history, which may be a single squashed commit
+  // (one sitting = 1 h); the arithmetic itself is pinned in hq-insights.test.mjs.
+  assert.ok(insights.effort.time.hours > 0, `time estimate from this repository's history: ${insights.effort.time.hours} h`);
   assert.match(insights.effort.time.basis, /git sittings/);
   // The ledger is a floor: whichever is larger wins, and the basis says which.
   assert.ok(["ledger", "heuristic+ledger"].includes(insights.effort.tokens.source));
