@@ -59,7 +59,10 @@ c60f267), `02e6101` (visueller Beleg), `ae41907` (Review-Nacharbeit F1/F2).
 - `HQ_SHOT_DIR=… npm run test:hq:visual` → **Exit 0** (12 Tests; Screenshots
   `goals-teams-ownership.png`, `goals-teams-keyboard-g.png` erzeugt und
   **angesehen**: Ownership-Zeile lesbar und inert; nach `g` ist das
-  Agenten-Teams-Panel aktiv und die Karte fokussiert).
+  Agenten-Teams-Panel aktiv und die Karte fokussiert). Die PNGs sind
+  reproduzierbar (visueller Harness gegen Mock-API); das öffentliche Repo
+  ignoriert `.pa/*`-Binärdateien bewusst (`.gitignore`), darum Beleg als
+  reproduzierbarer Testlauf plus inspizierte Aufnahme, nicht als Commit.
 - `bash scripts/ci/gates.sh lane prepush` (CARGO_TARGET_DIR Slot projecta-c,
   CARGO_BUILD_JOBS=1) → **Exit 0**: fmt 2 s, typecheck 7 s, lint 31 s,
   fe-test 48 s, hq-test 9 s, clippy 167 s, rust-suite 388 s.
