@@ -86,6 +86,32 @@ test('refresh with unchanged data preserves open details, focus and form drafts'
   assert.equal(f.document.activeElement, assigneeAgain, 'focus stays on the drafted field');
 });
 
+test('changed-data rebuild restores focus to a submit button', async (t) => {
+  let attempts = 0;
+  const f = continuousFixture(async () => ({
+    ...CONTEXT,
+    snapshot: {
+      ...CONTEXT.snapshot,
+      tasks: CONTEXT.snapshot.tasks.map((task) => task.id === 'task-2' ? { ...task, attempts } : task),
+    },
+  }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const details = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Review the view'));
+  details.open = true;
+  const submit = details.querySelector('button[type=submit]');
+  assert.equal(submit.disabled, false, 'unlocked task has an enabled submit button');
+  submit.focus();
+  assert.equal(f.document.activeElement, submit);
+  attempts = 1; // changed data forces a rebuild
+  await f.controller.refresh();
+  const again = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Review the view'));
+  assert.ok(again.open, 'open details stay open across a changed-data rebuild');
+  assert.equal(f.document.activeElement, again.querySelector('button[type=submit]'), 'submit button focus is restored');
+});
+
 function liveFixture() {
   const dom = new JSDOM(source('docs/dev-hq/live.html'), { url: 'http://localhost/live.html', runScripts: 'outside-only' });
   const { window } = dom;
@@ -104,6 +130,7 @@ test('g key reveals and focuses the goals and teams card', async (t) => {
   t.after(() => f.dom.window.close());
   const { document: d } = f;
   assert.equal(d.querySelector('#panel-teams').hidden, true, 'teams panel starts hidden on the overview tab');
+  assert.equal(d.querySelector('#live-keys-enabled').checked, true, 'single-key shortcuts default to on (the g flow depends on it)');
   d.dispatchEvent(new f.window.KeyboardEvent('keydown', { key: 'g', bubbles: true }));
   const card = d.querySelector('#hq-goals-live');
   assert.ok(card, 'goals/teams card carries the stable id hq-goals-live');

@@ -118,7 +118,8 @@
       let focus = null;
       if (active && list.contains(active)) {
         const host = active.closest('details[data-task-id]');
-        focus = { taskId: host?.dataset.taskId || null, part: active.name || active.tagName.toLowerCase() };
+        const part = active.name || (active.tagName === 'BUTTON' ? 'submit' : active.tagName.toLowerCase());
+        focus = { taskId: host?.dataset.taskId || null, part };
       }
       return { openTasks, drafts, focus };
     }
@@ -136,7 +137,9 @@
       }
       if (saved.focus?.taskId) {
         const host = list.querySelector(`details[data-task-id="${saved.focus.taskId}"]`);
-        const target = host?.querySelector(`[name="${saved.focus.part}"]`) || (saved.focus.part === 'summary' ? host?.querySelector('summary') : null);
+        const target = host?.querySelector(`[name="${saved.focus.part}"]`)
+          || (saved.focus.part === 'summary' ? host?.querySelector('summary') : null)
+          || (saved.focus.part === 'submit' ? host?.querySelector('button[type="submit"]') : null);
         target?.focus();
       }
     }
