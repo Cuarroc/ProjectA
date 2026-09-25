@@ -365,6 +365,21 @@ impl Store {
             sqlx::query("INSERT INTO continuous_events(project_id,kind,detail,created_at) SELECT project_id,'development_capture_exited_undelivered',json_object('version',1,'runId',run_id,'exitCode',?,'reason',?),unixepoch() FROM development_launches WHERE run_id=?")
                 .bind(exit_code).bind(reason).bind(&owner.binding.run_id).execute(&mut *tx).await.map_err(db)?;
         }
+        // DF-15b / KI-27: the proof above (checkpoint ledger, process
+        // identity, exit code) also releases the unused reservation and
+        // journals the delivery release, atomically with the exit. The
+        // release is guarded and idempotent, so the replay branch frees rows
+        // committed before the release existed. Without a commit nothing is
+        // freed: a crash before it keeps the reservation held (fail-closed).
+        if crate::store::development_budget::release_undelivered_run_tokens(
+            &mut tx,
+            &owner.binding.run_id,
+        )
+        .await?
+        {
+            sqlx::query("INSERT INTO continuous_events(project_id,kind,detail,created_at) SELECT project_id,'development_delivery_released',json_object('version',1,'runId',run_id,'exitCode',?,'reason',?),unixepoch() FROM development_launches WHERE run_id=?")
+                .bind(exit_code).bind(reason).bind(&owner.binding.run_id).execute(&mut *tx).await.map_err(db)?;
+        }
         tx.commit().await.map_err(db)
     }
 }
@@ -1330,6 +1345,31 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(delivery, "started");
+        // A row committed before the release existed (DF-15a era: exit
+        // committed, reservation still held) is freed on the next validated
+        // replay - again exactly once.
+        sqlx::query(
+            "UPDATE development_token_reservations SET state='started',settled_at=NULL WHERE id=?",
+        )
+        .bind(&reservation)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        sqlx::query("DELETE FROM continuous_events WHERE kind='development_delivery_released'")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        let (state, events): (String, i64) = sqlx::query_as(
+            "SELECT (SELECT state FROM development_token_reservations WHERE id=?),(SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released')",
+        )
+        .bind(&reservation)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(state, "cancelled", "the replay frees the legacy row");
+        assert_eq!(events, 1, "the legacy release is journaled exactly once");
         let after = {
             let mut tx = store.pool.begin().await.unwrap();
             let balance = crate::store::development_budget::balance(&mut tx, "goal")

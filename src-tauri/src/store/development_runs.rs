@@ -321,6 +321,22 @@ impl Store {
                 .fetch_optional(&mut *tx)
                 .await
                 .map_err(db("read delivery intent"))?;
+        // DF-15b / KI-27: the raw row stays as recorded (the intent began,
+        // the transport never confirmed an enqueue); the release after a
+        // proven undelivered exit is derived here, not rewritten.
+        let delivery = delivery
+            .map(|delivery| {
+                let mut value = serde_json::to_value(&delivery)
+                    .map_err(|error| format!("project delivery intent: {error}"))?;
+                if launch
+                    .as_ref()
+                    .is_some_and(|launch| launch.state == "exited_undelivered")
+                {
+                    value["effectiveState"] = "released_undelivered".into();
+                }
+                Ok::<serde_json::Value, String>(value)
+            })
+            .transpose()?;
         let checkpoint = checkpoints::latest(&mut tx, &run.task_id).await?;
         let assignment = super::team_assignments::read(&mut tx, &run.task_id).await?;
         let dispatch = match super::development_launches::run_role(&mut tx, run_id).await {
