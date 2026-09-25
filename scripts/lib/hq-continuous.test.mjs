@@ -101,7 +101,7 @@ test('run panel keeps candidate, evidence and delivery authority explicit', asyn
     if (path.includes('/runs')) return {
       executionEnabled: false,
       approvalAuthority: { state: 'unavailable' },
-      runs: [{ run: { id: 'run-1', taskId: 't1', status: 'reconciling', claimOwner: 'worker-1', claimFence: 2 }, launch: { routeJson: JSON.stringify({ selection: { resolved: { provider: 'ollama', profileId: 'ollama-local', resolvedModel: { value: 'qwen2.5-coder' }, effort: { reason: 'unavailable' } } }, executionObservation: { reason: 'execution unobserved' } }) }, tokens: { availableTokens: 1200, usageState: 'partial' }, candidate: null, evidence: [], reviews: [] }],
+      runs: [{ run: { id: 'run-1', taskId: 't1', status: 'reconciling', claimOwner: 'worker-1', claimFence: 2 }, launch: { routeJson: JSON.stringify({ selection: { resolved: { provider: 'ollama', profileId: 'ollama-local', resolvedModel: { measured: { value: 'qwen2.5-coder' } }, effort: { unavailable: { reason: 'no effort was requested' } } } }, executionObservation: { reason: 'execution unobserved' } }) }, tokens: { availableTokens: 1200, usageState: 'partial' }, candidate: null, evidence: [], reviews: [] }],
     };
     return { snapshot: { goals: [], tasks: [], control: { status: 'paused' } } };
   }); t.after(() => f.dom.window.close());

@@ -45,7 +45,7 @@ function startMockApi() {
       run: { id: "run-1", taskId: "task-1", status: "completed", claimOwner: "worker-1", claimFence: 2 },
       candidate: { candidateCommit: "def5678", source: "worker-push" },
       launch: { routeJson: JSON.stringify({
-        selection: { resolved: { provider: "kimi", profileId: "kimi", resolvedModel: { value: "kimi-k3" }, effort: { value: "high" } } },
+        selection: { resolved: { provider: "kimi", profileId: "kimi", resolvedModel: { measured: { value: "kimi-k3" } }, effort: { requested: { value: "high" } } } },
         executionObservation: { reason: "exit 0 observed" } }) },
       evidence: [], reviews: [],
       tokens: { availableTokens: 145000, usageState: "partial" },

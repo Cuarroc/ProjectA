@@ -12,8 +12,13 @@ import { JSDOM } from 'jsdom';
 
 const source = (path) => readFileSync(path, 'utf8');
 
+// The route receipt uses the externally tagged Observation<T> shape the HQ
+// v1 API really emits (src-tauri/src/development_policy.rs: enum Observation
+// → {measured|configured|requested|estimated:{value}} or {unavailable:
+// {reason}}). A fixture in the shorthand {value: ...} shape would pin a
+// contract the API never sends.
 const ROUTE_RECEIPT = JSON.stringify({
-  selection: { resolved: { provider: 'kimi', profileId: 'kimi', resolvedModel: { value: 'kimi-k3' }, effort: { value: 'high' } } },
+  selection: { resolved: { provider: 'kimi', profileId: 'kimi', resolvedModel: { measured: { value: 'kimi-k3' } }, effort: { requested: { value: 'high' } } } },
   executionObservation: { reason: 'exit 0 observed' },
 });
 
@@ -186,6 +191,77 @@ test('usage receipts show provenance; missing receipts name their reason', async
   assert.match(text, /43210/, 'measured receipt tokens are visible');
   assert.match(text, /codex-exec-json-v1/, 'collector provenance is visible');
   assert.match(text, /no trusted collector/, 'a missing receipt names its reason');
+});
+
+test('the reservation-kept suffix appears only where the reservation is really held', async (t) => {
+  const runs = JSON.parse(JSON.stringify(RUNS));
+  runs.runs = [
+    { run: { id: 'run-free', taskId: 'task-1', status: 'completed' }, launch: null, usage: { state: 'not_reserved', reason: 'run holds no implementation token reservation' } },
+    { run: { id: 'run-cancelled', taskId: 'task-1', status: 'cancelled' }, launch: null, usage: { state: 'cancelled', reason: 'reservation cancelled before work started' } },
+    { run: { id: 'run-unclassified', taskId: 'task-1', status: 'completed' }, launch: null, usage: { state: 'unclassified', reason: 'settled ledger row lacks its tokens or source' } },
+    { run: { id: 'run-held', taskId: 'task-1', status: 'failed' }, launch: null, usage: { state: 'not_reported', reason: 'no trusted collector', reservation: 'retained' } },
+  ];
+  const f = continuousFixture(apiFor({ runs }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const lines = [...f.document.querySelectorAll('[data-budget] p')].map((p) => p.textContent);
+  const line = (id) => lines.find((l) => l.includes(id)) || '';
+  assert.doesNotMatch(line('run-free'), /Reservierung bleibt bestehen/, 'a run without a reservation must not claim one remains');
+  assert.doesNotMatch(line('run-cancelled'), /Reservierung bleibt bestehen/, 'a cancelled reservation does not remain');
+  assert.doesNotMatch(line('run-unclassified'), /Reservierung bleibt bestehen/, 'a settled reservation is no longer held');
+  assert.match(line('run-held'), /Reservierung bleibt bestehen/, 'a retained reservation keeps the suffix');
+});
+
+test('a failed runs fetch is named as unavailable, never as an empty receipt list', async (t) => {
+  const f = continuousFixture(async (path) => {
+    if (path.startsWith('/api/hq/v1/context')) return CONTEXT;
+    if (path.startsWith('/api/hq/v1/runs')) throw new Error('runs endpoint down');
+    if (path.startsWith('/api/hq/v1/runtime')) return { apiVersion: 1 };
+    throw new Error(`unexpected api path ${path}`);
+  });
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const text = f.document.querySelector('[data-budget]').textContent;
+  assert.match(text, /Run- und Kostenbelege nicht verfügbar/, 'a failed fetch is named as unavailable');
+  assert.doesNotMatch(text, /Keine Routing-Belege vorhanden/, 'a failure must not be presented as an empty list');
+});
+
+test('switching projects clears the previous project runs from the card', async (t) => {
+  let current = 'p1';
+  const dom = new JSDOM('<main></main>', { runScripts: 'outside-only' });
+  t.after(() => dom.window.close());
+  dom.window.eval(source('docs/dev-hq/continuous.js'));
+  const controller = dom.window.createHQContinuous({
+    container: dom.window.document.querySelector('main'),
+    api: async (path) => {
+      if (path.startsWith('/api/hq/v1/context') && path.includes('p2')) throw new Error('context endpoint down');
+      if (path.startsWith('/api/hq/v1/context')) return CONTEXT;
+      if (path.startsWith('/api/hq/v1/runs')) return RUNS;
+      if (path.startsWith('/api/hq/v1/runtime')) return { apiVersion: 1 };
+      throw new Error(`unexpected api path ${path}`);
+    },
+    project: () => current,
+  });
+  await controller.refresh();
+  assert.match(dom.window.document.querySelector('[data-runs]').textContent, /run-1/, 'project p1 shows its runs');
+  current = 'p2';
+  await controller.refresh();
+  assert.doesNotMatch(
+    dom.window.document.querySelector('[data-runs]').textContent,
+    /run-1/,
+    'a failed load for the new project must not leave the previous project’s runs on the card',
+  );
+});
+
+test('unresolved operations use the German plural for counts above one', async (t) => {
+  const two = JSON.parse(JSON.stringify(CONTEXT));
+  two.snapshot.effectiveLimits.rootPolicies[0].tokens.unresolvedOperations = 2;
+  const f = continuousFixture(apiFor({ context: two }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const text = f.document.querySelector('[data-budget]').textContent;
+  assert.match(text, /2 offene Vorgänge/, 'two open operations use the plural');
+  assert.doesNotMatch(text, /2 offener Vorgang/, 'the singular adjective must not pair with a plural count');
 });
 
 test('unchanged refresh leaves the budget DOM alone; changed balances rebuild it', async (t) => {
