@@ -31,3 +31,10 @@ kleiner Probe nicht (HTTP 500 bzw. keine Antwort in 120 s).
 Nach den Fix-Commits liegt kein offener Befund vor. Der Endkandidat wurde
 per Release-Build (`com.projecta.proof`, custom-protocol) erneut live
 belegt: Lauf 2026-09-25T14-20-58Z, Exit 0.
+
+## Weiteres Review (Stufe B, PR #11)
+
+Ein dritter, unabhängiger Reviewer (grok, xAI) prüfte den Endkandidaten
+`cae91c0` vollständig: Befund G1 (mittel, WebView2-Profil des Proofs war
+nicht sandboxed) — angenommen und umgesetzt. Review, Disposition und
+Laufzeit-Beleg: `.pa/review_pr11_disposition.md`.

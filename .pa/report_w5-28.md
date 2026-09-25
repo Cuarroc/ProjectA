@@ -38,7 +38,9 @@ laut Auftrag nur lokal/Test. Kein Provider-CLI wird je aufgerufen.
 - `cargo test queue_dispatch_disabled`: rot Exit 101 (E0425, Funktion
   fehlte) → grün Exit 0, 2/2.
 - `node --test scripts/lib/runtime-proof-lib.test.mjs`: rot Exit 1 (Modul
-  fehlte) → grün Exit 0; nach Review-Tests rot Exit 1 (7/9) → grün 9/9.
+  fehlte) → grün Exit 0; nach Review-Tests rot Exit 1 (7/9) → grün 9/9;
+  nach grok-G1-Test rot Exit 1 (Export `proofEnv` fehlte, `1507870`) →
+  grün 10/10, Exit 0 (`71ea7f9`).
 - Red-first-Trailer auf jedem Code-Commit; Reihenfolge Test vor Impl.
 
 ## Gates
@@ -77,6 +79,18 @@ Low). Advisor-Paar nicht erreichbar (Codex-Kontingent bis 30.09.,
 Claude-Subagent HTTP 402); deepseek-v4-flash:cloud bei Ollama gelöscht
 (410), qwen3.8:latest nicht antwortend (500). Zweitreview daher durch
 qwen2.5-coder:7b lokal.
+
+Stufe B auf dem Endkandidaten `cae91c0` (voller Diff): grok (xAI), siehe
+`.pa/review_pr11_disposition.md`. Bestätigte die bisherigen Fixes und fand
+G1 (mittel): der Proof lenkte zwar DB/Log/Deskriptor um, nicht aber das
+WebView2-Profil — ein Binary mit Default-Bundle-ID hätte bei
+geschlossener Produktiv-App deren Profil beschrieben (localStorage,
+`taskkill /F`). Angenommen: `proofEnv()` setzt
+`WEBVIEW2_USER_DATA_FOLDER` ins Run-Verzeichnis. Rot `1507870` → Fix
+`71ea7f9` (node-Tests 10/10, Exit 0). Live-Re-Lauf 2026-09-25T18-06-42Z
+(Release `com.projecta.proof`, custom-protocol, `--parallel-ok`): Exit 0,
+PASS; `webview-profile\EBWebView` im Run-Verzeichnis, die Profile unter
+`%LOCALAPPDATA%` unberührt (mtime), Screenshot inspiziert.
 
 ## Offene Punkte / Folgearbeit
 
