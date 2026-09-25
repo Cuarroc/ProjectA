@@ -745,4 +745,195 @@ mod tests {
             .unwrap();
         assert!(balance(&mut tx, &root).await.unwrap().allowance.is_none());
     }
+
+    /// W2-04d fixture: a run whose task carries a migration-14 team assignment
+    /// for `role`, claimed by the assignee. The default policy team
+    /// "development" permits all four dispatch roles.
+    pub(super) async fn role_run(store: &Store, root: &str, role: &str) -> (String, i64) {
+        let task = store
+            .create_continuous_task(root, "role task", None, vec!["src/role.rs".into()], vec![])
+            .await
+            .unwrap();
+        store
+            .assign_continuous_task(
+                &task.id,
+                crate::store::team_assignments::AssignmentRequest {
+                    team_id: "development".into(),
+                    role: role.into(),
+                    assignee: "owner".into(),
+                    expected_revision: 0,
+                },
+            )
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "owner", false)
+            .await
+            .unwrap();
+        let run = store
+            .record_development_run_intent(&task.id, "owner", claim.fence)
+            .await
+            .unwrap();
+        (run.id, claim.fence)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn reviewer_run_reserves_review_budget_and_the_launch_consumes_it() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (run, fence) = role_run(&store, &root, "reviewer").await;
+        let launch = store
+            .reserve_development_launch(&run, "owner", fence, "codex")
+            .await
+            .unwrap();
+        store.bind_development_launch_route(&run,"owner",fence,&serde_json::json!({"selection":{"resolved":{"profileId":"codex"}},"expiresAt":now_unix_secs()+600})).await.unwrap();
+        store
+            .bind_development_launch_baseline(&run, "owner", fence, &"a".repeat(40))
+            .await
+            .unwrap();
+        let reservation = store
+            .reserve_development_tokens(&root, "review", BudgetPurpose::Review, 10_000, Some(&run))
+            .await
+            .unwrap();
+        assert!(
+            store.start_development_tokens(&reservation.id).await.is_err(),
+            "worker budget starts with its launch, never by hand"
+        );
+        store
+            .consume_development_launch(&run, "owner", fence, &launch.worker_id, "session")
+            .await
+            .unwrap();
+        assert_eq!(totals(&store, &root).await.unresolved_operations, 1);
+        store
+            .record_development_process_exit(&launch.worker_id, "session", Some(0))
+            .await
+            .unwrap();
+        store
+            .settle_development_run_tokens(
+                &reservation.id,
+                RunUsageBinding {
+                    run_id: &run,
+                    session_id: "session",
+                },
+                500,
+                "final-receipt",
+                now_unix_secs(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(totals(&store, &root).await.measured_tokens, 500);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn run_budget_purpose_must_match_the_dispatch_role() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (reviewer, _fence) = role_run(&store, &root, "reviewer").await;
+        for purpose in [
+            BudgetPurpose::Planning,
+            BudgetPurpose::Context,
+            BudgetPurpose::Discovery,
+            BudgetPurpose::Implementation,
+            BudgetPurpose::Verification,
+        ] {
+            assert!(
+                store
+                    .reserve_development_tokens(
+                        &root,
+                        &format!("mismatch-{}", purpose.name()),
+                        purpose,
+                        1000,
+                        Some(&reviewer)
+                    )
+                    .await
+                    .is_err(),
+                "a reviewer run must not reserve {purpose:?} budget"
+            );
+        }
+        let (implementer, _fence) = role_run(&store, &root, "implementer").await;
+        assert!(store
+            .reserve_development_tokens(
+                &root,
+                "wrong-review",
+                BudgetPurpose::Review,
+                1000,
+                Some(&implementer)
+            )
+            .await
+            .is_err());
+        assert!(store
+            .reserve_development_tokens(
+                &root,
+                "right",
+                BudgetPurpose::Implementation,
+                1000,
+                Some(&implementer)
+            )
+            .await
+            .is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn coordinator_and_integrator_runs_bind_planning_and_verification() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (coordinator, _fence) = role_run(&store, &root, "coordinator").await;
+        store
+            .reserve_development_tokens(
+                &root,
+                "planning",
+                BudgetPurpose::Planning,
+                50_000,
+                Some(&coordinator),
+            )
+            .await
+            .unwrap();
+        let (integrator, _fence) = role_run(&store, &root, "integrator").await;
+        store
+            .reserve_development_tokens(
+                &root,
+                "verification",
+                BudgetPurpose::Verification,
+                10_000,
+                Some(&integrator),
+            )
+            .await
+            .unwrap();
+        let balance = totals(&store, &root).await;
+        assert_eq!(balance.reserved_tokens, 60_000);
+        assert_eq!(balance.verification_remaining, 30_000);
+        assert_eq!(balance.implementation_available, 110_000);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_run_holds_exactly_one_token_reservation() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (run, _fence) = role_run(&store, &root, "reviewer").await;
+        let first = store
+            .reserve_development_tokens(&root, "review", BudgetPurpose::Review, 1000, Some(&run))
+            .await
+            .unwrap();
+        assert_eq!(
+            first.id,
+            store
+                .reserve_development_tokens(
+                    &root,
+                    "review",
+                    BudgetPurpose::Review,
+                    1000,
+                    Some(&run)
+                )
+                .await
+                .unwrap()
+                .id,
+            "idempotent replay returns the existing row"
+        );
+        assert!(store
+            .reserve_development_tokens(
+                &root,
+                "review-again",
+                BudgetPurpose::Review,
+                1000,
+                Some(&run)
+            )
+            .await
+            .is_err());
+    }
 }

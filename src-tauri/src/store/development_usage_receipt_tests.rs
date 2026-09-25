@@ -375,3 +375,60 @@ async fn run_records_carry_a_cost_receipt_instead_of_unavailable() {
     assert_eq!(usage["provenance"]["observedAt"], observed);
     assert_eq!(snapshot["runs"][0]["tokens"]["usageState"], "measured");
 }
+
+/// W2-04d: a reviewer run's receipt shows its review reservation, not
+/// "not_reserved" — the ledger lookup is bound to the run, not to the
+/// implementation purpose.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn reviewer_run_receipt_shows_its_review_reservation() {
+    let (_dir, store, project, root) = super::super::tests::fixture().await;
+    let (run, fence) = super::super::tests::role_run(&store, &root, "reviewer").await;
+    let launch = store
+        .reserve_development_launch(&run, "owner", fence, "codex")
+        .await
+        .unwrap();
+    store.bind_development_launch_route(&run,"owner",fence,&serde_json::json!({"selection":{"resolved":{"profileId":"codex"}},"expiresAt":now_unix_secs()+600})).await.unwrap();
+    store
+        .bind_development_launch_baseline(&run, "owner", fence, &"a".repeat(40))
+        .await
+        .unwrap();
+    let reservation = store
+        .reserve_development_tokens(
+            &root,
+            "review",
+            crate::store::development_budget::BudgetPurpose::Review,
+            1000,
+            Some(&run),
+        )
+        .await
+        .unwrap();
+    store
+        .consume_development_launch(&run, "owner", fence, &launch.worker_id, "session")
+        .await
+        .unwrap();
+    store
+        .record_development_process_exit(&launch.worker_id, "session", Some(0))
+        .await
+        .unwrap();
+    let observed = now_unix_secs();
+    store
+        .settle_development_run_tokens(
+            &reservation.id,
+            RunUsageBinding {
+                run_id: &run,
+                session_id: "session",
+            },
+            200,
+            "trusted-provider-receipt",
+            observed,
+        )
+        .await
+        .unwrap();
+    let snapshot = store.development_records_snapshot(&project).await.unwrap();
+    let usage = &snapshot["runs"][0]["usage"];
+    assert_eq!(usage["state"], "measured", "{usage}");
+    assert_eq!(usage["tokens"], 200);
+    assert_eq!(usage["reservedTokens"], 1000);
+    assert_eq!(usage["ledgerState"], "settled");
+    assert_never_unavailable(usage);
+}
