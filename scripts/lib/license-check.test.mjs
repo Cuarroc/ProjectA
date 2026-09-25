@@ -53,20 +53,62 @@ test("lic-01: OR with one allowed alternative passes while AND requires all", ()
 
 // The mjs allowlist and src-tauri/deny.toml claim to mirror each other; pin
 // that so editing one without the other fails loudly. (Review lic-01,
-// kimi-k3 F3.)
+// kimi-k3 F3; section scoping: kimi-k3 delta F4.)
 test("lic-01: deny.toml allow list mirrors ALLOWED_LICENSES", () => {
   const toml = readFileSync(new URL("../../src-tauri/deny.toml", import.meta.url), "utf8");
-  const block = toml.match(/^allow = \[\n([\s\S]*?)\]/m);
+  const start = toml.indexOf("[licenses]\n");
+  assert.ok(start !== -1, "deny.toml has a [licenses] section");
+  const rest = toml.slice(start + "[licenses]\n".length);
+  const nextSection = rest.search(/^\[/m);
+  const sectionText = nextSection === -1 ? rest : rest.slice(0, nextSection);
+  const block = sectionText.match(/^allow = \[\n([\s\S]*?)\]/m);
   assert.ok(block, "deny.toml has an [licenses] allow array");
   const fromToml = [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(fromToml, ALLOWED_LICENSES);
 });
 
 // license-checker sometimes reports licenses as an array instead of a
-// string. (Review lic-01, glm-5.2 F3.)
+// string. (Review lic-01, glm-5.2 F3; empty array + GPL element:
+// glm-5.2 delta F2, kimi-k3 delta F5.)
 test("lic-01: array-valued licenses are evaluated element-wise", () => {
   const report = { "arr@1.0.0": { licenses: ["MIT", "Apache-2.0"] } };
   assert.deepEqual(evaluateLicenses(report, "projecta"), []);
+  const bad = {
+    "arr-bad@1.0.0": { licenses: ["MIT", "GPL-3.0-only"] },
+    "arr-empty@1.0.0": { licenses: [] },
+  };
+  assert.deepEqual(evaluateLicenses(bad, "projecta"), [
+    "arr-bad@1.0.0: GPL-3.0-only",
+    "arr-empty@1.0.0: UNKNOWN",
+  ]);
+});
+
+// Parenthesized SPDX expressions must keep real precedence: flattening
+// "(MIT OR Apache-2.0) AND GPL-3.0-only" would wrongly pass via "MIT".
+// (Review lic-01 delta, kimi-k3 F1 / glm-5.2 F1.)
+test("lic-01: parentheses preserve SPDX precedence", () => {
+  const report = {
+    "smuggle@1.0.0": { licenses: "(MIT OR Apache-2.0) AND GPL-3.0-only" },
+    "grouped-ok@1.0.0": { licenses: "(MIT OR Apache-2.0) AND Zlib" },
+    "with-exc@1.0.0": { licenses: "Apache-2.0 WITH LLVM-exception" },
+    "grouped-with@1.0.0": { licenses: "(BSD-2-Clause OR Apache-2.0 WITH LLVM-exception) OR MIT" },
+  };
+  assert.deepEqual(evaluateLicenses(report, "projecta"), [
+    "smuggle@1.0.0: (MIT OR Apache-2.0) AND GPL-3.0-only",
+  ]);
+});
+
+// The `*` marker means license-checker inferred the license from a file.
+// It never changes the verdict: "MIT*" is MIT, "GPL-3.0-only*" stays
+// disallowed. (Review lic-01, kimi-k3 F8 / delta F5.)
+test("lic-01: inferred-license marker never changes the verdict", () => {
+  const report = {
+    "inferred-ok@1.0.0": { licenses: "MIT*" },
+    "inferred-bad@1.0.0": { licenses: "GPL-3.0-only*" },
+  };
+  assert.deepEqual(evaluateLicenses(report, "projecta"), [
+    "inferred-bad@1.0.0: GPL-3.0-only*",
+  ]);
 });
 
 test("lic-01: rejects a license outside the allowlist", () => {
