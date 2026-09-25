@@ -30,7 +30,8 @@
     "test:hq:visual": "node --test scripts/lib/hq-visual.browser.mjs",
     "tauri": "tauri",
     "hq:lesson": "node scripts/hq-lesson.mjs",
-    "hq:queue-open-points": "node scripts/hq-queue-open-points.mjs"
+    "hq:queue-open-points": "node scripts/hq-queue-open-points.mjs",
+    "proof:runtime": "node scripts/runtime-proof.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
