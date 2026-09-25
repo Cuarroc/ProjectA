@@ -53,6 +53,12 @@ function spawnHq(dir, extraEnv = {}) {
         PROJECTA_API_DESCRIPTOR: join(dir, "descriptor.json"),
         PROJECTA_AGENTS_FILE: join(dir, "agents.json"),
         HQ_LESSONS_FILE: join(dir, "lessons.json"),
+        // The insights estimate reads the agent journal `.pa/ACTIVITY.md`,
+        // which is deliberately untracked (instance-local append log). Point
+        // it into the temp dir (no fixture written: journal stays empty) so
+        // a host journal can never leak into a test — hermetic instead of
+        // host state.
+        HQ_ACTIVITY_FILE: join(dir, "ACTIVITY.md"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -260,18 +266,7 @@ test("/__hq/lessons learns: feedback changes confidence, refine keeps history, r
 test("/__hq/insights estimates whole-project time and tokens with a stated basis and ranks live signals", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "hq-insights-"));
   const repo = syntheticRepo(dir);
-  // The journal belongs to the measured repository, not to the caller's
-  // cwd: HQ_ACTIVITY_FILE points at the synthetic repo's (absent) journal,
-  // so a .pa/ACTIVITY.md in the worktree this test runs from must not leak
-  // into the estimate. Without the seam, hq-live reads
-  // join(process.cwd(), ".pa", "ACTIVITY.md") — a worktree whose journal has
-  // ≥3 entries adds 3 × 45 min and turns this assertion red (observed
-  // 2026-09-25 on wt/lic-01: 2.3 h instead of 1.8 h, prepush blocked).
-  const hq = spawnHq(dir, {
-    GIT_DIR: join(repo, ".git"),
-    GIT_WORK_TREE: repo,
-    HQ_ACTIVITY_FILE: join(repo, ".pa", "ACTIVITY.md"),
-  });
+  const hq = spawnHq(dir, { GIT_DIR: join(repo, ".git"), GIT_WORK_TREE: repo });
   t.after(() => {
     hq.child.kill();
     rmSync(dir, { recursive: true, force: true });

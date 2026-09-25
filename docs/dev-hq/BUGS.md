@@ -1,13 +1,5 @@
 # Dev-HQ Bug Log
 
-## 2026-09-25 · /__hq/insights las das ACTIVITY-Journal aus dem cwd statt aus dem gemessenen Repo
-- **Wo:** `scripts/hq-live.mjs`, `repositoryInsights()`.
-- **Was:** Die Commit-Historie der Insights-Schätzung folgt `GIT_DIR`/`GIT_WORK_TREE` (im Test das Synthetic-Repo, in Hooks der Export von git), das Journal `.pa/ACTIVITY.md` wurde dagegen aus `process.cwd()` gelesen. In einem Worktree mit ≥3 Journal-Einträgen (3 × 45 min = 2,3 h > 1,8 h Git-Sitzungen) schlug der Test `/__hq/insights estimates whole-project time …` fehl und blockierte die prepush-Bahn (Gate `hq-test`, Exit 1).
-- **Repro:** Worktree mit drei Journal-Einträgen, `node --test scripts/lib/hq-routes.test.mjs` → Exit 1, „time estimate from the synthetic history: 2.3 h" (erwartet 1.8).
-- **Fix:** Journal-Pfad folgt `GIT_WORK_TREE` (Fallback cwd) und ist über die neue Test-Naht `HQ_ACTIVITY_FILE` (Muster wie `HQ_LESSONS_FILE`) explizit setzbar; der Test zeigt damit auf das (fehlende) Journal des Synthetic-Repos. Rot→Grün in `claude/lic-01-license-audit` (Rot: Exit 1, 2.3 h; Grün: 8/8, Exit 0).
-- **Queue:** Kein Queue-Eintrag; Fix direkt in PR #10 (blockierte dessen Push).
-- **Status:** gefixt.
-
 ## 2026-09-23 · Studio-Dichte verändert zu wenig und ist nur in Analyse erreichbar
 - **Wo:** concepts/studio-workspace.js, studio-workspace.css, hq2-studio.html.
 - **Was:** Nutzerbefund: Komfortabel/Kompakt ändert fast nichts; Desktop-Inspektion bestätigt nur geringe Abstandsänderungen.
