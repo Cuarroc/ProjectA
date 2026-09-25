@@ -869,158 +869,6 @@ pub async fn send_to_orchestrator(
     Ok(worker)
 }
 
-/// Create a queen: a coordinator for one domain of the project.
-///
-/// A queen is shaped exactly like an orchestrator - a row, no worktree, an
-/// agent in the repository root whose whole role arrives as a system prompt -
-/// but her reach is narrower: she may only start employees for her own domain,
-/// booked under her own id, and she escalates anything beyond it to the
-/// orchestrator. Same as an orchestrator, a failed spawn has only the row to
-/// roll back.
-///
-/// Public paths refuse with [`ERR_QUEEN_RETIRED`]. This stays for in-crate
-/// tests and historical fixtures.
-#[cfg_attr(not(test), allow(dead_code))]
-pub async fn create_queen(
-    store: &Store,
-    agents: &dyn AgentControl,
-    project_id: &str,
-    domain_task: &str,
-    profile_id: Option<&str>,
-    spawned_by: Option<&str>,
-) -> Result<Worker, String> {
-    create_queen_as_role(
-        store,
-        agents,
-        project_id,
-        domain_task,
-        profile_id,
-        spawned_by,
-        None,
-    )
-    .await
-}
-
-/// [`create_queen`], run as one of her profile's role variants.
-///
-/// A queen already owns her profile's prompt channel, so her role addition is
-/// not a second injection but a block inside the prompt she is spawned with:
-/// her marching orders first, then the curated role, then the raw playbook. A
-/// second file would be written over the very prompt that makes her a queen.
-#[allow(clippy::too_many_arguments)]
-#[cfg_attr(not(test), allow(dead_code))]
-pub async fn create_queen_as_role(
-    store: &Store,
-    agents: &dyn AgentControl,
-    project_id: &str,
-    domain_task: &str,
-    profile_id: Option<&str>,
-    spawned_by: Option<&str>,
-    role_variant_id: Option<&str>,
-) -> Result<Worker, String> {
-    let project = store
-        .get_project(project_id)
-        .await?
-        .ok_or_else(|| format!("{ERR_UNKNOWN}project: {project_id}"))?;
-    let profile_id = profile_id.unwrap_or(ORCHESTRATOR_PROFILE);
-    let profile = profiles::find_profile(profile_id)
-        .ok_or_else(|| format!("{ERR_UNKNOWN}agent profile: {profile_id}"))?;
-    learnings::ensure_profile_enabled(store, profile_id).await?;
-    crate::routing::ensure_spawnable(store).await?;
-    let variant = resolve_role_variant(store, profile_id, role_variant_id).await?;
-    let variant_name = variant.as_ref().map(|variant| variant.name.as_str());
-
-    let worker_id = store::new_id("wk");
-    // A queen is handed no task text either - her domain arrives as a data
-    // block at the top of her system prompt - so the playbook is appended to
-    // that prompt as its own block rather than interpolated into the domain,
-    // and it carries no `--- TASK ---` marker because no task follows it. The
-    // row and `queen_domain` keep the raw domain, so a respawn rebuilds the
-    // prompt from the assignment rather than from a playbook that has moved on.
-    let playbook =
-        learnings::inject_prompt(store, &project.id, &project.repo_path, profile_id, "queen").await;
-    let profile = queen_profile(
-        &profile,
-        &project,
-        domain_task,
-        &worker_id,
-        variant
-            .as_ref()
-            .map(|variant| variant.system_prompt_addition.as_str()),
-        playbook.as_deref(),
-    )?;
-
-    let row = WorkerRow {
-        id: worker_id.clone(),
-        project_id: project.id.clone(),
-        task: role_task(variant_name, &queen_task(domain_task)),
-        profile_id: profile.id.clone(),
-        // No branch, for the same reason as the orchestrator: a queen never
-        // writes code, so there is nothing to open a pull request from.
-        branch: String::new(),
-        worktree_path: project.repo_path.clone(),
-        status: STATUS_RUNNING.to_string(),
-        kind: KIND_QUEEN.to_string(),
-        pr_url: None,
-        spawned_by: spawned_by.map(str::to_string),
-        test_status: None,
-        tested_at: None,
-        // Same reason as on a worker: her respawn rebuilds the prompt from the
-        // row, so the row has to say which variant she was.
-        role_variant_id: variant.as_ref().map(|variant| variant.id.clone()),
-        paused_reason: None,
-        created_at: store::now_unix_secs(),
-    };
-    store.insert_worker(&row).await?;
-
-    let routed = crate::routing::spawn_routing(
-        store,
-        &profile,
-        Some(Path::new(&project.repo_path)),
-        &worker_id,
-    )
-    .await?;
-    let profile = routed.profile;
-    let env = routed.env;
-    crate::routing::prepare_codex_home(&profile, Path::new(&project.repo_path));
-    log_message(store, &worker_id, MSG_SYSTEM, &routed.attribution);
-    // Bound before the child starts, like every spawn path: an agent that
-    // exits at once must still be found by the exit hook.
-    let session_id = match agents.spawn_bound(
-        &worker_id,
-        &profile,
-        Path::new(&project.repo_path),
-        &env,
-        &|session_id| store.bind_session_in_memory(&worker_id, session_id),
-    ) {
-        Ok(session_id) => session_id,
-        Err(err) => {
-            let _ = store.take_session(&worker_id);
-            crate::hooks::remove_worker_files(&worker_id);
-            let _ = store.delete_worker(&worker_id).await;
-            return Err(err);
-        }
-    };
-
-    store.record_session_start(&worker_id, &session_id).await;
-    log_message(
-        store,
-        &worker_id,
-        MSG_SYSTEM,
-        &format!("Queen created for project {}: {domain_task}", project.name),
-    );
-    if let Some(name) = variant_name {
-        log_message(store, &worker_id, MSG_SYSTEM, &format!("Rolle: {name}"));
-    }
-    Ok(row.into_worker(Some(session_id)))
-}
-
-/// The task text a queen carries on the board.
-#[cfg_attr(not(test), allow(dead_code))]
-pub fn queen_task(domain_task: &str) -> String {
-    format!("Queen: {domain_task}")
-}
-
 /// The domain part of a queen's task text. A respawn needs it to put the role
 /// prompt back on; a task without the prefix is taken whole.
 fn queen_domain(task: &str) -> &str {
@@ -2629,8 +2477,8 @@ pub async fn respawn_worker(
             }
             // A queen is handed no task text, so both her role and her
             // playbook ride inside the prompt that makes her a queen, in the
-            // order `create_queen_as_role` builds them: marching orders, then
-            // the curated role, then the raw playbook.
+            // order the retired creation path built them: marching orders,
+            // then the curated role, then the raw playbook.
             Some(project) if worker.kind == KIND_QUEEN => {
                 let playbook = learnings::inject_prompt(
                     store,
@@ -6123,180 +5971,51 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_queen_gets_no_worktree_and_her_own_kind() {
-        let fx = fixture("create-queen").await;
-        let agents = FakeAgents::default();
-
-        let worker = create_queen(
-            &fx.store,
-            &agents,
-            &fx.project_id,
-            "Backend-API",
-            None,
-            Some("wk-orch"),
-        )
-        .await
-        .expect("create queen");
-
-        assert_eq!(worker.kind, KIND_QUEEN);
-        assert_eq!(worker.task, "Queen: Backend-API");
-        assert_eq!(worker.profile_id, ORCHESTRATOR_PROFILE);
-        assert_eq!(worker.status, STATUS_RUNNING);
-        assert_eq!(worker.session_id.as_deref(), Some("pty-fake-1"));
-        assert_eq!(worker.spawned_by.as_deref(), Some("wk-orch"));
-
-        // Like the orchestrator: no branch, no checkout, the repository itself.
-        assert!(worker.branch.is_empty(), "{}", worker.branch);
-        assert_eq!(worker.worktree_path, fx.repo);
-        assert_eq!(agents.spawned.lock().unwrap()[0].1, fx.repo);
-        let worktrees = fx._dir.path().join(worktree::WORKTREES_DIR);
-        assert!(
-            !worktrees.exists(),
-            "{} should not exist",
-            worktrees.display()
-        );
-
-        // Persisted like any other worker, hierarchy bookkeeping included.
-        let stored = fx.store.get_worker(&worker.id).await.unwrap().unwrap();
-        assert_eq!(stored, worker);
-        assert_eq!(stored.kind, KIND_QUEEN);
-        assert_eq!(stored.spawned_by.as_deref(), Some("wk-orch"));
-    }
-
-    #[tokio::test]
-    async fn a_queen_is_launched_with_her_marching_orders() {
-        let fx = fixture("queen-prompt").await;
-        let agents = FakeAgents::default();
-
-        let queen = create_queen(
-            &fx.store,
-            &agents,
-            &fx.project_id,
-            "Backend-API",
-            None,
-            None,
-        )
-        .await
-        .unwrap();
-
-        let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the queen carries a system prompt");
-        let prompt = &args[flag + 1];
-
-        assert!(prompt.contains("Queen"), "{prompt}");
-        assert!(prompt.contains("Backend-API"), "{prompt}");
-        assert!(prompt.contains(&fx.project_id), "{prompt}");
-        assert!(prompt.contains(&queen.id), "{prompt}");
-        assert!(prompt.contains("NIEMALS selbst Code"), "{prompt}");
-        assert!(prompt.contains("Lies zu Beginn einer Sitzung"), "{prompt}");
-        // Her own id is baked into the spawn command she is told to use.
-        assert!(
-            prompt.contains(&format!("--on-behalf-of {}", queen.id)),
-            "{prompt}"
-        );
-        // Every subcommand a queen may use is spelled out for her.
-        for usage in [
-            "worker spawn --project",
-            "worker list",
-            "worker status",
-            "worker send",
-            "queue add",
-            "queue list",
-            "queue cancel",
-            "board",
-            "quota",
-        ] {
-            assert!(prompt.contains(usage), "{usage} missing from: {prompt}");
-        }
-        // Her world is narrower than the orchestrator's: no queens of her own,
-        // no scout, no recommendations, no providers.
-        for absent in [
-            "queen spawn",
-            "scout triage",
-            "recommendations",
-            "providers",
-        ] {
-            assert!(
-                !prompt.contains(absent),
-                "{absent} should not be in: {prompt}"
-            );
-        }
-    }
-
-    #[tokio::test]
     async fn a_respawned_queen_keeps_her_marching_orders() {
         let fx = fixture("queen-respawn").await;
         let agents = FakeAgents::default();
-        let queen = create_queen(
-            &fx.store,
-            &agents,
-            &fx.project_id,
-            "Backend-API",
-            None,
-            None,
-        )
-        .await
-        .unwrap();
+        // Queen creation is retired (410 / ERR_QUEEN_RETIRED), but a
+        // historical row still respawns - so the fixture inserts one directly.
+        let row = WorkerRow {
+            id: "wk-queen".to_string(),
+            project_id: fx.project_id.clone(),
+            task: "Queen: Backend-API".to_string(),
+            profile_id: ORCHESTRATOR_PROFILE.to_string(),
+            branch: String::new(),
+            worktree_path: fx.repo.clone(),
+            status: STATUS_RUNNING.to_string(),
+            kind: KIND_QUEEN.to_string(),
+            pr_url: None,
+            spawned_by: None,
+            test_status: None,
+            tested_at: None,
+            role_variant_id: None,
+            paused_reason: None,
+            created_at: store::now_unix_secs(),
+        };
+        fx.store.insert_worker(&row).await.unwrap();
 
-        archive_worker(&fx.store, &agents, &queen.id).await.unwrap();
-        let respawned = respawn_worker(&fx.store, &agents, &queen.id).await.unwrap();
+        archive_worker(&fx.store, &agents, "wk-queen")
+            .await
+            .unwrap();
+        let respawned = respawn_worker(&fx.store, &agents, "wk-queen")
+            .await
+            .unwrap();
 
         assert_eq!(respawned.kind, KIND_QUEEN);
         assert_eq!(respawned.status, STATUS_RUNNING);
-        let args = agents.args.lock().unwrap()[1].clone();
+        let args = agents.args.lock().unwrap()[0].clone();
         let flag = args
             .iter()
             .position(|arg| arg == "--append-system-prompt")
             .expect("the respawned queen carries a system prompt");
         // The domain survives the round trip through the task text.
         assert!(args[flag + 1].contains("Backend-API"), "{}", args[flag + 1]);
-        assert!(args[flag + 1].contains(&queen.id), "{}", args[flag + 1]);
-    }
-
-    #[tokio::test]
-    async fn a_queen_needs_a_project_and_a_real_profile() {
-        let fx = fixture("queen-unknown").await;
-        let agents = FakeAgents::default();
-
-        let err = create_queen(&fx.store, &agents, "pj-nope", "Backend", None, None)
-            .await
-            .expect_err("unknown project");
-        assert!(err.contains("unknown project"), "{err}");
-
-        let err = create_queen(
-            &fx.store,
-            &agents,
-            &fx.project_id,
-            "Backend",
-            Some("nope"),
-            None,
-        )
-        .await
-        .expect_err("unknown profile");
-        assert!(err.contains("unknown agent profile"), "{err}");
-
-        assert_eq!(agents.spawn_count(), 0);
-        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
-    }
-
-    #[tokio::test]
-    async fn a_failed_queen_spawn_leaves_no_row_behind() {
-        let fx = fixture("queen-rollback").await;
-        let agents = FakeAgents::failing();
-
-        let err = create_queen(&fx.store, &agents, &fx.project_id, "Backend", None, None)
-            .await
-            .expect_err("spawn must fail");
-        assert!(err.contains("failed to spawn"), "{err}");
-        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
+        assert!(args[flag + 1].contains("wk-queen"), "{}", args[flag + 1]);
     }
 
     #[test]
-    fn the_queen_task_prefix_round_trips() {
-        assert_eq!(queen_task("Backend-API"), "Queen: Backend-API");
+    fn the_queen_domain_prefix_round_trips() {
         assert_eq!(queen_domain("Queen: Backend-API"), "Backend-API");
         // A task without the prefix is taken whole rather than dropped.
         assert_eq!(queen_domain("something else"), "something else");
@@ -9412,7 +9131,7 @@ mod tests {
         assert_eq!(strip_role_prefix("[Test-Fixer] fix it"), "fix it");
         // A queen keeps her domain even when a role is in front of it.
         assert_eq!(
-            queen_domain(&role_task(Some("Test-Fixer"), &queen_task("Backend-API"))),
+            queen_domain(&role_task(Some("Test-Fixer"), "Queen: Backend-API")),
             "Backend-API"
         );
         // Nothing that is not our own marker is touched.
