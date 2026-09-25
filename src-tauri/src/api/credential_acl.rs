@@ -9,13 +9,30 @@
 //! overridden data directory possibly `Users` or `Everyone`. So the writers
 //! replace the DACL with a protected one holding a single ACE for the token
 //! user, read it back through the same handle and refuse to write the token
-//! unless the read-back is exactly that narrow and the file belongs to this
-//! process's owner identity (fail closed). A generous DACL on a file owned by
-//! another account is refused the same way: somebody else planted it.
+//! unless the read-back is exactly that narrow and the file belongs to one of
+//! this process's owner identities (fail closed). A generous DACL on a file
+//! owned by another account is refused the same way: somebody else planted it.
 //!
-//! The handle is opened with share mode 0, so between `CreateFileW` and the
-//! new DACL no other process can open the still-empty file and keep a handle
-//! whose access was checked against the inherited ACL.
+//! The accepted owner identities are the token user, the token's default
+//! owner, and the Administrators group: whatever SID a file this process
+//! created can legitimately carry, elevated (Administrators) or not (the
+//! user), in any order of runs. A foreign non-admin account can assign none
+//! of them, so the threat model - other local users, who as owner hold
+//! implicit WRITE_DAC - is unchanged. Note the trade-off: an
+//! Administrators-owned file is readable by every elevated local admin, so
+//! "user-only" then means "user plus local admins" - defensible, because an
+//! admin can take ownership anyway. The owner is checked before the content
+//! is truncated, so a refused object is left untouched instead of destroyed.
+//!
+//! The handle is opened with share mode 0 (with a bounded retry on sharing
+//! violations: a scanner or a parallel issuance holds the object for
+//! milliseconds, and failing the launch on the first conflict would trade
+//! availability for nothing), so between `CreateFileW` and the new DACL no
+//! other process can open the still-empty file and keep a handle whose access
+//! was checked against the inherited ACL. Reparse points (symlinks,
+//! junctions) and files reachable through a second hard link are refused:
+//! `CreateFileW` would otherwise follow a planted link and truncate and
+//! re-ACL the target.
 //!
 //! [`restrict_directory_to_current_user`] applies the same rule to the
 //! `agent-access/` directory: the directory decides who may list it, plant
@@ -31,15 +48,16 @@ use std::path::Path;
 
 use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HANDLE, TRUE};
 use windows_sys::Win32::Security::{
-    AclSizeInformation, AddAccessAllowedAce, EqualSid, GetAce, GetAclInformation,
-    GetKernelObjectSecurity, GetLengthSid, GetSecurityDescriptorControl, GetSecurityDescriptorDacl,
-    GetSecurityDescriptorOwner, GetTokenInformation, InitializeAcl, InitializeSecurityDescriptor,
-    IsValidSid, SetKernelObjectSecurity, SetSecurityDescriptorControl, SetSecurityDescriptorDacl,
-    TokenOwner, TokenUser, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_REVISION, ACL_SIZE_INFORMATION,
-    CONTAINER_INHERIT_ACE, DACL_SECURITY_INFORMATION, INHERITED_ACE, OBJECT_INHERIT_ACE,
-    OWNER_SECURITY_INFORMATION, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
-    SECURITY_DESCRIPTOR, SE_DACL_PROTECTED, TOKEN_INFORMATION_CLASS, TOKEN_OWNER, TOKEN_QUERY,
-    TOKEN_USER,
+    AclSizeInformation, AddAccessAllowedAce, CreateWellKnownSid, EqualSid, GetAce,
+    GetAclInformation, GetKernelObjectSecurity, GetLengthSid, GetSecurityDescriptorControl,
+    GetSecurityDescriptorDacl, GetSecurityDescriptorOwner, GetTokenInformation, InitializeAcl,
+    InitializeSecurityDescriptor, IsValidSid, SetKernelObjectSecurity,
+    SetSecurityDescriptorControl, SetSecurityDescriptorDacl, TokenOwner, TokenUser,
+    WinBuiltinAdministratorsSid, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_REVISION,
+    ACL_SIZE_INFORMATION, CONTAINER_INHERIT_ACE, DACL_SECURITY_INFORMATION, INHERITED_ACE,
+    OBJECT_INHERIT_ACE, OWNER_SECURITY_INFORMATION, PROTECTED_DACL_SECURITY_INFORMATION,
+    PSECURITY_DESCRIPTOR, SECURITY_DESCRIPTOR, SECURITY_MAX_SID_SIZE, SE_DACL_PROTECTED,
+    TOKEN_INFORMATION_CLASS, TOKEN_OWNER, TOKEN_QUERY, TOKEN_USER,
 };
 use windows_sys::Win32::Storage::FileSystem::{FILE_ALL_ACCESS, FILE_GENERIC_READ};
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
@@ -48,7 +66,13 @@ use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken}
 thread_local! {
     /// Test seam: make the next `restrict_to_current_user` on this thread
     /// fail after the DACL was applied, to prove the issuer's cleanup path.
+    /// The file and the directory have separate seams: the directory step
+    /// runs first at issuance and must not consume the file's flag (review
+    /// round, sonnet F6).
     pub(super) static FAIL_NEXT_RESTRICT: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+    /// Test seam: same injection for `restrict_directory_to_current_user`.
+    pub(super) static FAIL_NEXT_DIRECTORY_RESTRICT: std::cell::Cell<bool> =
         const { std::cell::Cell::new(false) };
 }
 
@@ -119,6 +143,96 @@ fn token_owner_sid() -> Result<Vec<u32>, String> {
     token_sid(TokenOwner, "read token owner")
 }
 
+/// The well-known SID of BUILTIN\Administrators: the owner of every object an
+/// elevated run creates. No non-admin account can assign it, so accepting it
+/// does not widen the threat model (review round: grok F1 / sonnet F1).
+fn administrators_sid() -> Result<Vec<u32>, String> {
+    unsafe {
+        let mut buffer = vec![0u32; (SECURITY_MAX_SID_SIZE as usize).div_ceil(4)];
+        let mut size = SECURITY_MAX_SID_SIZE;
+        if CreateWellKnownSid(
+            WinBuiltinAdministratorsSid,
+            std::ptr::null_mut(),
+            buffer.as_mut_ptr().cast(),
+            &mut size,
+        ) == 0
+        {
+            return Err(os_error("build administrators SID"));
+        }
+        Ok(buffer)
+    }
+}
+
+/// The owner identities this process may legitimately find on its own
+/// credential files, in any order of elevated and unelevated runs: the token
+/// user, the token's default owner, and the Administrators group (an earlier
+/// elevated run's files re-read by an unelevated one). A foreign non-admin
+/// account can own none of them.
+fn owner_accepted(owner: *mut core::ffi::c_void) -> Result<bool, String> {
+    let mut user = current_user_sid()?;
+    let mut token_owner = token_owner_sid()?;
+    let mut admins = administrators_sid()?;
+    unsafe {
+        Ok(EqualSid(owner, user.as_mut_ptr().cast()) != 0
+            || EqualSid(owner, token_owner.as_mut_ptr().cast()) != 0
+            || EqualSid(owner, admins.as_mut_ptr().cast()) != 0)
+    }
+}
+
+/// ERROR_SHARING_VIOLATION: another process holds the object with a
+/// conflicting share mode.
+const ERROR_SHARING_VIOLATION: i32 = 32;
+
+/// Open with a bounded retry on sharing violations: an AV scanner, an
+/// indexer or a parallel issuance holds the object for milliseconds, and
+/// failing the launch on the first conflict would trade availability for
+/// nothing. After about a second the open still fails closed (review round:
+/// grok F6 / sonnet F3).
+pub(super) fn open_with_sharing_retry(
+    what: &str,
+    mut open: impl FnMut() -> std::io::Result<File>,
+) -> Result<File, String> {
+    let mut attempts = 0u32;
+    loop {
+        match open() {
+            Ok(file) => return Ok(file),
+            Err(error) => {
+                if error.raw_os_error() == Some(ERROR_SHARING_VIOLATION) && attempts < 25 {
+                    attempts += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(40));
+                    continue;
+                }
+                return Err(format!("{what}: {error}"));
+            }
+        }
+    }
+}
+
+/// Refuse an object that is not what its path claims: a reparse point
+/// (symlink or junction - opened as itself thanks to
+/// `FILE_FLAG_OPEN_REPARSE_POINT`) or a file reachable through a second hard
+/// link. Otherwise a planted link would have the writer truncate and re-ACL
+/// the link's target (review round: grok F2 / sonnet F4).
+pub(super) fn refuse_links(file: &File, what: &str) -> Result<(), String> {
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT,
+    };
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle() as HANDLE, &mut info) } == 0 {
+        return Err(os_error("inspect credential object"));
+    }
+    if info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        return Err(format!("{what} is a link (reparse point), refusing"));
+    }
+    if info.nNumberOfLinks > 1 {
+        return Err(format!(
+            "{what} is reachable through {} hard links, refusing",
+            info.nNumberOfLinks
+        ));
+    }
+    Ok(())
+}
+
 /// Replace the DACL on `file` with one protected ACE granting the current
 /// user full access, then verify the result. The handle must carry
 /// `WRITE_DAC | READ_CONTROL`. `inherit_children` marks the ACE so objects
@@ -166,10 +280,6 @@ fn restrict_handle(file: &File, inherit_children: bool) -> Result<(), String> {
             return Err(os_error("restrict credential ACL"));
         }
     }
-    #[cfg(test)]
-    if FAIL_NEXT_RESTRICT.with(|fail| fail.replace(false)) {
-        return Err("injected credential ACL failure".into());
-    }
     verify_owner_only(file)
 }
 
@@ -177,7 +287,12 @@ fn restrict_handle(file: &File, inherit_children: bool) -> Result<(), String> {
 /// user full access, then verify the result. The handle must carry
 /// `WRITE_DAC | READ_CONTROL`.
 pub(super) fn restrict_to_current_user(file: &File) -> Result<(), String> {
-    restrict_handle(file, false)
+    restrict_handle(file, false)?;
+    #[cfg(test)]
+    if FAIL_NEXT_RESTRICT.with(|fail| fail.replace(false)) {
+        return Err("injected credential ACL failure".into());
+    }
+    Ok(())
 }
 
 /// W2-07b: narrow the `agent-access/` directory itself. The directory decides
@@ -186,16 +301,26 @@ pub(super) fn restrict_to_current_user(file: &File) -> Result<(), String> {
 pub(super) fn restrict_directory_to_current_user(dir: &Path) -> Result<(), String> {
     use std::os::windows::fs::OpenOptionsExt;
     use windows_sys::Win32::Storage::FileSystem::{
-        FILE_FLAG_BACKUP_SEMANTICS, READ_CONTROL, WRITE_DAC,
+        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, READ_CONTROL, WRITE_DAC,
     };
-    // FILE_FLAG_BACKUP_SEMANTICS is what lets CreateFile open a directory.
-    let file = std::fs::OpenOptions::new()
-        .access_mode(WRITE_DAC | READ_CONTROL)
-        .share_mode(0)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
-        .open(dir)
-        .map_err(|e| format!("open credential directory: {e}"))?;
-    restrict_handle(&file, true)
+    // FILE_FLAG_BACKUP_SEMANTICS is what lets CreateFile open a directory;
+    // FILE_FLAG_OPEN_REPARSE_POINT opens a junction as itself so
+    // `refuse_links` can refuse it instead of re-ACLing its target.
+    let what = format!("open credential directory {}", dir.display());
+    let file = open_with_sharing_retry(&what, || {
+        std::fs::OpenOptions::new()
+            .access_mode(WRITE_DAC | READ_CONTROL)
+            .share_mode(0)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
+            .open(dir)
+    })?;
+    refuse_links(&file, &what)?;
+    restrict_handle(&file, true)?;
+    #[cfg(test)]
+    if FAIL_NEXT_DIRECTORY_RESTRICT.with(|fail| fail.replace(false)) {
+        return Err("injected credential directory ACL failure".into());
+    }
+    Ok(())
 }
 
 /// One ACE as the read-back saw it.
@@ -208,23 +333,33 @@ struct AceRead {
 
 /// What the read-back saw on a file: ownership, control bits, DACL.
 struct SecurityRead {
-    owner_is_token_owner: bool,
+    owner_accepted: bool,
     control: u16,
     dacl_present: bool,
     aces: Vec<AceRead>,
 }
 
-/// Fail closed unless `file` is owned by this process's owner identity and
-/// its DACL is protected, non-null, carries no inherited ACE, and consists of
-/// at least one allow ACE, each for the current user and each granting read.
-/// Any deny or other ACE type is refused.
+/// Fail closed unless `file` is owned by one of this process's owner
+/// identities and its DACL is protected, non-null, carries no inherited ACE,
+/// and consists of at least one allow ACE, each for the current user and each
+/// granting read. Any deny or other ACE type is refused.
 pub(super) fn verify_owner_only(file: &File) -> Result<(), String> {
     validate_owner_only(&read_security(file)?)
 }
 
+/// Owner pre-check without touching the DACL or the content: a foreign-owned
+/// object is refused before anything about it changes (review round: grok
+/// F1 - the truncate-first order used to destroy a rejected descriptor before
+/// the refusal).
+pub(super) fn verify_owned(file: &File) -> Result<(), String> {
+    if !read_security(file)?.owner_accepted {
+        return Err("credential file is owned by another account".into());
+    }
+    Ok(())
+}
+
 fn read_security(file: &File) -> Result<SecurityRead, String> {
     let mut user = current_user_sid()?;
-    let mut owner = token_owner_sid()?;
     let psid = user.as_mut_ptr().cast::<core::ffi::c_void>();
     let handle = file.as_raw_handle() as HANDLE;
     unsafe {
@@ -259,8 +394,7 @@ fn read_security(file: &File) -> Result<SecurityRead, String> {
         if owner_sid.is_null() {
             return Err("credential file has no owner".into());
         }
-        let owner_is_token_owner =
-            EqualSid(owner_sid, owner.as_mut_ptr().cast::<core::ffi::c_void>()) != 0;
+        let owner_accepted = owner_accepted(owner_sid)?;
         let mut control = 0u16;
         let mut revision = 0u32;
         if GetSecurityDescriptorControl(descriptor, &mut control, &mut revision) == 0 {
@@ -312,7 +446,7 @@ fn read_security(file: &File) -> Result<SecurityRead, String> {
             }
         }
         Ok(SecurityRead {
-            owner_is_token_owner,
+            owner_accepted,
             control,
             dacl_present,
             aces,
@@ -321,7 +455,7 @@ fn read_security(file: &File) -> Result<SecurityRead, String> {
 }
 
 fn validate_owner_only(read: &SecurityRead) -> Result<(), String> {
-    if !read.owner_is_token_owner {
+    if !read.owner_accepted {
         return Err("credential file is owned by another account".into());
     }
     if read.control & SE_DACL_PROTECTED == 0 {
@@ -509,12 +643,13 @@ mod tests {
         verify_owner_only(&file).unwrap();
     }
 
-    /// A crafted read-back: an otherwise perfect ACL on a file owned by
-    /// another account. Building this on disk would need SeTakeOwnership, so
-    /// the validation runs on the parsed snapshot directly.
-    fn crafted(owner_is_token_owner: bool) -> SecurityRead {
+    /// A crafted read-back: an otherwise perfect ACL on a file whose owner
+    /// is or is not one of the accepted identities. Building this on disk
+    /// would need SeTakeOwnership, so the validation runs on the parsed
+    /// snapshot directly.
+    fn crafted(owner_accepted: bool) -> SecurityRead {
         SecurityRead {
-            owner_is_token_owner,
+            owner_accepted,
             control: SE_DACL_PROTECTED,
             dacl_present: true,
             aces: vec![AceRead {
@@ -533,8 +668,47 @@ mod tests {
     }
 
     #[test]
-    fn the_token_owner_passes_the_owner_check() {
+    fn an_accepted_owner_passes_the_owner_check() {
         validate_owner_only(&crafted(true)).unwrap();
+    }
+
+    /// Review round (grok F1 / sonnet F1): the owner set is the token user,
+    /// the token's default owner, and the Administrators group - the three
+    /// identities this process's files can legitimately carry, in any order
+    /// of elevated and unelevated runs.
+    #[test]
+    fn the_token_user_and_token_owner_are_accepted_owners() {
+        let mut user = current_user_sid().unwrap();
+        assert!(owner_accepted(user.as_mut_ptr().cast::<core::ffi::c_void>()).unwrap());
+        let mut owner = token_owner_sid().unwrap();
+        assert!(owner_accepted(owner.as_mut_ptr().cast::<core::ffi::c_void>()).unwrap());
+    }
+
+    #[test]
+    fn the_administrators_group_is_an_accepted_owner() {
+        // A file an earlier elevated run created, re-read by an unelevated
+        // one, is owned by BUILTIN\Administrators; no non-admin can assign
+        // that owner, so accepting it lets no foreign user through.
+        let mut admins = administrators_sid().unwrap();
+        assert!(owner_accepted(admins.as_mut_ptr().cast::<core::ffi::c_void>()).unwrap());
+    }
+
+    #[test]
+    fn a_world_sid_is_not_an_accepted_owner() {
+        let mut world = vec![0u32; (SECURITY_MAX_SID_SIZE as usize).div_ceil(4)];
+        let mut size = SECURITY_MAX_SID_SIZE;
+        unsafe {
+            assert_ne!(
+                CreateWellKnownSid(
+                    WinWorldSid,
+                    std::ptr::null_mut(),
+                    world.as_mut_ptr().cast(),
+                    &mut size
+                ),
+                0
+            );
+        }
+        assert!(!owner_accepted(world.as_mut_ptr().cast::<core::ffi::c_void>()).unwrap());
     }
 
     #[test]
@@ -614,5 +788,21 @@ mod tests {
         let file = open(&inner.join("child.json"));
         let error = restrict_to_current_user(&file).unwrap_err();
         assert!(error.contains("injected"), "{error}");
+    }
+
+    /// W2-07b review round (sonnet F6): the directory step has its own
+    /// injection seam, so a failing directory restriction stays testable
+    /// without touching the file flag.
+    #[test]
+    fn the_directory_injection_flag_is_separate_from_the_file_flag() {
+        let dir = crate::testutil::TempDir::new("api-w207b-dirfail");
+        let inner = dir.path().join("agent-access");
+        std::fs::create_dir(&inner).unwrap();
+        FAIL_NEXT_DIRECTORY_RESTRICT.with(|fail| fail.set(true));
+        let error = restrict_directory_to_current_user(&inner).unwrap_err();
+        assert!(error.contains("injected credential directory"), "{error}");
+        // The file flag was never armed: the next file restrict works.
+        let file = open(&inner.join("child.json"));
+        restrict_to_current_user(&file).unwrap();
     }
 }

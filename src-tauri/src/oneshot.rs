@@ -99,6 +99,17 @@ pub fn make_private(path: &Path) {
     let _ = path;
 }
 
+/// The fail-closed sibling of [`make_private`] for credential directories
+/// (W2-07b review round, grok F4): a key directory whose mode cannot be set
+/// must abort the issuance, not sail on group-readable.
+#[cfg(unix)]
+pub fn make_private_checked(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = if path.is_dir() { 0o700 } else { 0o600 };
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+        .map_err(|e| format!("failed to narrow {}: {e}", path.display()))
+}
+
 /// Put `command`'s child in a process group of its own, so that a later
 /// [`ProcessTree::kill`] can end the group instead of only its leader.
 ///
@@ -895,5 +906,25 @@ mod tests {
         )
         .expect_err("a missing skill source must fail");
         assert!(err.contains("failed to read"), "{err}");
+    }
+
+    /// W2-07b review round (grok F4): the fail-closed sibling of
+    /// `make_private` narrows a credential directory to 0o700 and reports a
+    /// path it cannot narrow instead of sailing on.
+    #[cfg(unix)]
+    #[test]
+    fn make_private_checked_narrows_a_directory_and_fails_closed() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = TempDir::new("oneshot-private");
+        let inner = dir.path().join("agent-access");
+        std::fs::create_dir(&inner).unwrap();
+        std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o755)).unwrap();
+        make_private_checked(&inner).unwrap();
+        assert_eq!(
+            std::fs::metadata(&inner).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        let error = make_private_checked(&dir.path().join("missing")).unwrap_err();
+        assert!(error.contains("failed to narrow"), "{error}");
     }
 }

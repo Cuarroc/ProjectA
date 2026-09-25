@@ -194,8 +194,11 @@ impl RunCredentialIssuer {
             // three open. Fail closed like the file restriction below.
             #[cfg(windows)]
             super::credential_acl::restrict_directory_to_current_user(&directory)?;
+            // Unix parity (0o700), fail closed like the Windows branch: an
+            // unchanged, still-group-readable directory must abort the
+            // issuance, not sail on (W2-07b review round, grok F4).
             #[cfg(unix)]
-            crate::oneshot::make_private(&directory);
+            crate::oneshot::make_private_checked(&directory)?;
             let path = directory.join(format!("{}.json", new_token()?));
             let mut options = std::fs::OpenOptions::new();
             options.write(true).create_new(true);

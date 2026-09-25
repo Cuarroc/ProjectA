@@ -1036,24 +1036,36 @@ fn write_descriptor(dir: &Path, port: u16, token: &str) -> Result<PathBuf, Strin
 
 /// Windows: the broad descriptor holds the same key to the app as a scoped
 /// one, so it gets the same treatment (W2-07b). The file is opened with share
-/// mode 0 and its DACL is narrowed to the current user before the token
-/// touches the disk; a file that cannot be narrowed or that belongs to
-/// another account fails startup closed instead of being trusted.
+/// mode 0 (with a bounded retry on sharing violations), planted links and a
+/// foreign owner are refused before a byte changes, and its DACL is narrowed
+/// to the current user before the token touches the disk; a file that cannot
+/// be narrowed fails startup closed instead of being trusted.
 #[cfg(windows)]
 fn write_descriptor_body(path: &Path, body: &[u8]) -> Result<(), String> {
     use std::os::windows::fs::OpenOptionsExt;
     use windows_sys::Win32::Foundation::GENERIC_WRITE;
-    use windows_sys::Win32::Storage::FileSystem::{READ_CONTROL, WRITE_DAC};
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .access_mode(GENERIC_WRITE | WRITE_DAC | READ_CONTROL)
-        .share_mode(0)
-        .open(path)
-        .map_err(|e| format!("failed to open {}: {e}", path.display()))?;
+    use windows_sys::Win32::Storage::FileSystem::{
+        FILE_FLAG_OPEN_REPARSE_POINT, READ_CONTROL, WRITE_DAC,
+    };
+    let mut file = credential_acl::open_with_sharing_retry(
+        &format!("failed to open {}", path.display()),
+        || {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .access_mode(GENERIC_WRITE | WRITE_DAC | READ_CONTROL)
+                .share_mode(0)
+                .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+                .open(path)
+        },
+    )?;
+    // No truncate at open: a refused file keeps its previous content (the
+    // running instance's descriptor), and only a verified file is emptied.
+    credential_acl::refuse_links(&file, &path.display().to_string())?;
+    credential_acl::verify_owned(&file)?;
     credential_acl::restrict_to_current_user(&file)?;
-    file.write_all(body)
+    file.set_len(0)
+        .and_then(|()| file.write_all(body))
         .and_then(|()| file.sync_all())
         .map_err(|e| format!("failed to write {}: {e}", path.display()))
 }
