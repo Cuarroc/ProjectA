@@ -4035,7 +4035,16 @@ mod tests {
         assert_eq!(result["exitCode"], 2);
         assert!(result.get("usage").is_none() && result.get("receipt").is_none());
         assert_eq!(delivery, "started", "delivery must not be recorded");
-        assert_eq!(budget, "started", "no usage may be settled");
+        // DF-15b / KI-27: after the proven exit the unused reservation is
+        // released (never settled - there is no usage receipt).
+        assert_eq!(budget, "cancelled", "no usage may be settled");
+        let released: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(released, 1, "the delivery release is journaled");
         // Credentials revoked and session/worker closed like a normal finalize.
         assert_eq!(crate::api::tests::native_context_status(&descriptor), 401);
         assert_eq!(

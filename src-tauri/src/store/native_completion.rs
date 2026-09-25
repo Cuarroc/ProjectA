@@ -1275,6 +1275,104 @@ mod tests {
         assert_eq!(status, crate::store::STATUS_EXITED);
     }
 
+    // DF-15b / KI-27: the proven undelivered exit releases the run's token
+    // reservation (unused: the input never reached the provider) and journals
+    // the delivery release - atomically, in the same transaction as the exit.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn undelivered_exit_releases_its_reservation_and_delivery_exactly_once() {
+        let (_dir, store, owner, exit, now) =
+            undelivered_fixture(&[Stage::Launch, Stage::Process]).await;
+        let run = owner.binding.run_id.clone();
+        let reservation: String =
+            sqlx::query_scalar("SELECT id FROM development_token_reservations WHERE run_id=?")
+                .bind(&run)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        let before = {
+            let mut tx = store.pool.begin().await.unwrap();
+            let balance = crate::store::development_budget::balance(&mut tx, "goal")
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            balance
+        };
+        assert_eq!(before.reserved_tokens, 1000);
+        assert_eq!(before.unresolved_operations, 1);
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        undeliver(&store, &owner, &exit, now).await.unwrap(); // crash-safe replay
+        let (state, settled_at): (String, Option<i64>) = sqlx::query_as(
+            "SELECT state,settled_at FROM development_token_reservations WHERE id=?",
+        )
+        .bind(&reservation)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            state, "cancelled",
+            "the unused reservation is released after the proven exit"
+        );
+        assert!(settled_at.is_some());
+        let events: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released'",
+        )
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(events, 1, "the delivery release is journaled exactly once");
+        // The raw delivery row stays truthful: the intent began and the
+        // transport never confirmed an enqueue; the release lives in the
+        // journal and the terminal launch state, not in rewritten history.
+        let delivery: String =
+            sqlx::query_scalar("SELECT state FROM development_deliveries WHERE run_id=?")
+                .bind(&run)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(delivery, "started");
+        let after = {
+            let mut tx = store.pool.begin().await.unwrap();
+            let balance = crate::store::development_budget::balance(&mut tx, "goal")
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            balance
+        };
+        assert_eq!(
+            after.reserved_tokens, 0,
+            "the released budget is free again"
+        );
+        assert_eq!(after.unresolved_operations, 0);
+        assert_eq!(after.available_tokens, before.available_tokens + 1000);
+        // The cost receipt names the release instead of the generic
+        // "cancelled before work started", and the briefing carries the
+        // derived delivery release.
+        let launch = store.development_launch(&run).await.unwrap().unwrap();
+        let receipt = {
+            let mut tx = store.pool.begin().await.unwrap();
+            let receipt = crate::store::development_budget::usage_receipt::for_run(
+                &mut tx,
+                &run,
+                Some(&launch),
+            )
+            .await
+            .unwrap();
+            tx.commit().await.unwrap();
+            receipt
+        };
+        assert_eq!(receipt["state"], "cancelled");
+        assert!(receipt["reason"]
+            .as_str()
+            .unwrap()
+            .contains("before its input was delivered"));
+        let context = store.agent_run_context(&run, "owner", 1).await.unwrap();
+        assert_eq!(context["delivery"]["state"], "started");
+        assert_eq!(
+            context["delivery"]["effectiveState"],
+            "released_undelivered"
+        );
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn undelivered_exit_without_exact_ledger_process_or_fence_stays_unresolved() {
         let both = [Stage::Launch, Stage::Process];
