@@ -647,6 +647,27 @@ mod tests {
         (dir, store, project.id)
     }
 
+    #[test]
+    fn queue_dispatch_disabled_recognizes_the_off_switches() {
+        for value in ["off", "OFF", " off ", "0", "false", "False"] {
+            assert!(
+                queue_dispatch_disabled(Some(value)),
+                "{value:?} must switch the dispatcher off"
+            );
+        }
+    }
+
+    #[test]
+    fn queue_dispatch_disabled_keeps_the_historical_default() {
+        assert!(!queue_dispatch_disabled(None));
+        for value in ["", "on", "1", "true", "yes", "later"] {
+            assert!(
+                !queue_dispatch_disabled(Some(value)),
+                "{value:?} must keep the dispatcher running"
+            );
+        }
+    }
+
     #[tokio::test]
     async fn enqueue_supports_plain_and_mocked_sharpened_tasks() {
         let (_dir, store, project) = fixture().await;
