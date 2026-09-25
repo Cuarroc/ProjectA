@@ -9,8 +9,9 @@ fails=0
 
 # --- Rust: cargo-deny -------------------------------------------------------
 DENY_VERSION="0.20.2"
-if ! cargo deny --version >/dev/null 2>&1; then
-  echo "license-check: cargo-deny fehlt — installiere cargo-deny $DENY_VERSION (kann Minuten dauern)"
+installed="$(cargo deny --version 2>/dev/null | awk '{print $NF}')"
+if [ "$installed" != "$DENY_VERSION" ]; then
+  echo "license-check: cargo-deny $DENY_VERSION noetig (gefunden: ${installed:-nichts}) — installiere (kann Minuten dauern)"
   cargo install cargo-deny --locked --version "$DENY_VERSION" || {
     echo "license-check: cargo-deny konnte nicht installiert werden"
     exit 1
@@ -19,9 +20,12 @@ fi
 ( cd "$ROOT/src-tauri" && cargo deny check licenses ) || fails=1
 
 # --- npm production dependencies --------------------------------------------
+# Pinned tool version: a compliance gate must not depend on whatever the
+# registry serves as "latest" that day (review lic-01, kimi-k3 F2).
+CHECKER_VERSION="5.0.1"
 report="$(mktemp)"
 trap 'rm -f "$report"' EXIT
-( cd "$ROOT" && npx --yes license-checker-rseidelsohn --production --json ) > "$report" || {
+( cd "$ROOT" && npx --yes "license-checker-rseidelsohn@$CHECKER_VERSION" --production --json ) > "$report" || {
   echo "license-check: license-checker-rseidelsohn fehlgeschlagen"
   exit 1
 }

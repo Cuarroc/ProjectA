@@ -31,14 +31,28 @@ export const ALLOWED_LICENSES = [
 
 const ALLOWED = new Set(ALLOWED_LICENSES.map((l) => l.toUpperCase()));
 
-function licenseAllowed(expression) {
-  const parts = String(expression)
-    .replace(/[()]/g, " ")
-    .replace(/\*$/, "")
-    .split(/\s+(?:OR|AND)\s+/i)
-    .map((p) => p.trim().replace(/\*$/, ""))
-    .filter(Boolean);
-  return parts.length > 0 && parts.every((p) => ALLOWED.has(p.toUpperCase()));
+function tokenAllowed(token) {
+  return ALLOWED.has(token.toUpperCase());
+}
+
+// SPDX choice semantics, matching cargo-deny: an OR expression passes when
+// one alternative is fully on the list; an AND conjunct passes only when
+// every part is. Parentheses are flattened (npm metadata expressions are
+// simple in practice); a trailing `*` is license-checker's "inferred from
+// file" marker, not part of the license id — stripped, but logged.
+function licenseAllowed(expression, pkg) {
+  const cleaned = String(expression).replace(/[()]/g, " ");
+  if (/\*/.test(cleaned)) {
+    console.error(`license-check: ${pkg}: "${expression}" was inferred from a file (* marker), verify by hand`);
+  }
+  const alternatives = cleaned.split(/\s+OR\s+/i);
+  return alternatives.some((alt) => {
+    const parts = alt
+      .split(/\s+AND\s+/i)
+      .map((p) => p.trim().replace(/\*$/, ""))
+      .filter(Boolean);
+    return parts.length > 0 && parts.every(tokenAllowed);
+  });
 }
 
 // report: license-checker JSON object { "name@version": { licenses: "..." } }.
@@ -48,8 +62,13 @@ export function evaluateLicenses(report, rootName) {
   const violations = [];
   for (const [pkg, info] of Object.entries(report)) {
     if (rootName && pkg.startsWith(`${rootName}@`)) continue;
-    const expression = String(info.licenses ?? "UNKNOWN");
-    if (!licenseAllowed(expression)) violations.push(`${pkg}: ${expression}`);
+    // license-checker may report an array (multiple license files found):
+    // conservatively every entry must be on the list.
+    const expressions = Array.isArray(info.licenses) ? info.licenses : [info.licenses ?? "UNKNOWN"];
+    for (const expression of expressions) {
+      const text = String(expression);
+      if (!licenseAllowed(text, pkg)) violations.push(`${pkg}: ${text}`);
+    }
   }
   return violations;
 }
