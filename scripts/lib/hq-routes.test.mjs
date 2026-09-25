@@ -227,7 +227,9 @@ test("/__hq/insights estimates whole-project time and tokens with a stated basis
   }, headers);
   assert.equal(reply.status, 200);
   const insights = JSON.parse(reply.body);
-  assert.ok(insights.effort.time.hours > 1, `time estimate from this repository's history: ${insights.effort.time.hours} h`);
+  // > 0, not a fixed floor: the public repo starts from a single squashed commit,
+  // so its history is one short sitting (measured 1 h on 2026-09-25).
+  assert.ok(insights.effort.time.hours > 0, `time estimate from this repository's history: ${insights.effort.time.hours} h`);
   assert.match(insights.effort.time.basis, /git sittings/);
   // The ledger is a floor: whichever is larger wins, and the basis says which.
   assert.ok(["ledger", "heuristic+ledger"].includes(insights.effort.tokens.source));
