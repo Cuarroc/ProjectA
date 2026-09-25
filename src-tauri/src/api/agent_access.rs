@@ -189,6 +189,13 @@ impl RunCredentialIssuer {
                 .join(ACCESS_DIR);
             std::fs::create_dir_all(&directory)
                 .map_err(|e| format!("create scoped descriptor directory: {e}"))?;
+            // W2-07b: the directory decides who may list it, plant files in
+            // it or delete from it - narrowing only the files leaves all
+            // three open. Fail closed like the file restriction below.
+            #[cfg(windows)]
+            super::credential_acl::restrict_directory_to_current_user(&directory)?;
+            #[cfg(unix)]
+            crate::oneshot::make_private(&directory);
             let path = directory.join(format!("{}.json", new_token()?));
             let mut options = std::fs::OpenOptions::new();
             options.write(true).create_new(true);

@@ -1025,12 +1025,42 @@ fn write_descriptor(dir: &Path, port: u16, token: &str) -> Result<PathBuf, Strin
         token: token.to_string(),
     })
     .map_err(|e| format!("failed to render the api descriptor: {e}"))?;
-    std::fs::write(&path, body).map_err(|e| format!("failed to write {}: {e}", path.display()))?;
+    write_descriptor_body(&path, body.as_bytes())?;
 
-    // The token is a key to this app; on unix the file says so.
+    // The token is a key to this app; on unix the file says so. On Windows
+    // `write_descriptor_body` already narrowed the DACL fail-closed.
     crate::oneshot::make_private(&path);
 
     Ok(path)
+}
+
+/// Windows: the broad descriptor holds the same key to the app as a scoped
+/// one, so it gets the same treatment (W2-07b). The file is opened with share
+/// mode 0 and its DACL is narrowed to the current user before the token
+/// touches the disk; a file that cannot be narrowed or that belongs to
+/// another account fails startup closed instead of being trusted.
+#[cfg(windows)]
+fn write_descriptor_body(path: &Path, body: &[u8]) -> Result<(), String> {
+    use std::os::windows::fs::OpenOptionsExt;
+    use windows_sys::Win32::Foundation::GENERIC_WRITE;
+    use windows_sys::Win32::Storage::FileSystem::{READ_CONTROL, WRITE_DAC};
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .access_mode(GENERIC_WRITE | WRITE_DAC | READ_CONTROL)
+        .share_mode(0)
+        .open(path)
+        .map_err(|e| format!("failed to open {}: {e}", path.display()))?;
+    credential_acl::restrict_to_current_user(&file)?;
+    file.write_all(body)
+        .and_then(|()| file.sync_all())
+        .map_err(|e| format!("failed to write {}: {e}", path.display()))
+}
+
+#[cfg(not(windows))]
+fn write_descriptor_body(path: &Path, body: &[u8]) -> Result<(), String> {
+    std::fs::write(path, body).map_err(|e| format!("failed to write {}: {e}", path.display()))
 }
 
 /// A 128 bit hex token, drawn from the operating system's random source.
@@ -4392,6 +4422,17 @@ pub(crate) mod tests {
             assert_eq!(
                 std::fs::metadata(&first).unwrap().permissions().mode() & 0o777,
                 0o600
+            );
+            // W2-07b parity with the Windows directory ACL.
+            let access = fx
+                .server
+                .descriptor_path()
+                .parent()
+                .unwrap()
+                .join("agent-access");
+            assert_eq!(
+                std::fs::metadata(&access).unwrap().permissions().mode() & 0o777,
+                0o700
             );
         }
         fx.server.revoke_run_credentials("run-a").unwrap();
