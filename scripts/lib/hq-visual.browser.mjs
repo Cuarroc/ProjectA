@@ -243,8 +243,15 @@ test("worker detail opens on click, shows messages, sends a reply", async () => 
   await page.click('[data-live-action="detail:wk-1"]');
   await page.waitForSelector("#worker-detail:not([hidden])", { timeout: 5000 });
   // The panel opens with "Loading…" and fills in once the messages arrive.
+  // Wait for the expected content, not for the placeholder to vanish: a
+  // missing or hidden panel is not done.
   await page.waitForFunction(
-    () => !document.querySelector("#worker-detail")?.textContent?.includes("Loading…"),
+    () => {
+      const el = document.querySelector("#worker-detail");
+      if (!el || el.hidden) return false;
+      const text = el.textContent ?? "";
+      return text.includes("Inspecting queue.rs") && text.includes("wk-dispatcher");
+    },
     { timeout: 5000 },
   );
   assert.match(await page.textContent("#worker-detail"), /Inspecting queue\.rs/);
