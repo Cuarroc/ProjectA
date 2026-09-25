@@ -1,6 +1,7 @@
 //! Root-wide token accounting. Only trusted services call the writers; agents
 //! cannot settle their own usage or manufacture an allowance through HTTP.
 //! Unknown usage retains the entire reservation across exits and restarts.
+use super::development_launches::{run_role, DispatchRole};
 use super::{new_id, now_unix_secs, Store};
 use crate::development_policy::{DevelopmentPolicy, TokenPolicy};
 use serde::{Deserialize, Serialize};
@@ -34,6 +35,17 @@ impl BudgetPurpose {
     }
     fn protected(self) -> bool {
         matches!(self, Self::Review | Self::Verification)
+    }
+    /// W2-04d: the one budget purpose a run dispatched in this role may hold.
+    /// Review and integration draw from the protected verification reserve;
+    /// coordination and implementation share the unprotected remainder.
+    pub fn for_dispatch_role(role: DispatchRole) -> Self {
+        match role {
+            DispatchRole::Coordinator => Self::Planning,
+            DispatchRole::Implementer => Self::Implementation,
+            DispatchRole::Reviewer => Self::Review,
+            DispatchRole::Integrator => Self::Verification,
+        }
     }
 }
 
@@ -150,6 +162,10 @@ async fn event(tx: &mut Transaction<'_, Sqlite>, root: &str, detail: &str) -> Re
 
 impl Store {
     /// An allocation estimate is held, never reported as measured consumption.
+    /// A run-bound reservation is allowed only for the purpose the run's
+    /// dispatch role maps to (W2-04d, `BudgetPurpose::for_dispatch_role`), and
+    /// a run holds at most one non-cancelled reservation; implementation work
+    /// is never unbound.
     pub async fn reserve_development_tokens(
         &self,
         goal: &str,
@@ -161,7 +177,7 @@ impl Store {
         if key.trim().is_empty() || key.len() > 128 || !(1..=200_000).contains(&tokens) {
             return Err("invalid token reservation key or amount".into());
         }
-        if (purpose == BudgetPurpose::Implementation) != run.is_some() {
+        if purpose == BudgetPurpose::Implementation && run.is_none() {
             return Err("implementation token reservations require exactly one run binding".into());
         }
         let mut tx = self.pool.begin().await.map_err(db)?;
@@ -200,6 +216,24 @@ impl Store {
                 .bind(run).bind(goal).fetch_one(&mut *tx).await.map_err(db)?;
             if !valid {
                 return Err("token reservation run is stale or belongs to another goal".into());
+            }
+            // The role is resolved inside this writer transaction, like the
+            // launch boundary does; the budget purpose must be the one the
+            // role maps to, never a caller-chosen one.
+            let role = run_role(&mut tx, run).await?;
+            let required = BudgetPurpose::for_dispatch_role(role);
+            if purpose != required {
+                return Err(format!(
+                    "run dispatches as {}, which holds {} budget, not {}",
+                    role.as_str(),
+                    required.name(),
+                    purpose.name()
+                ));
+            }
+            let (taken,): (bool,) = sqlx::query_as("SELECT EXISTS(SELECT 1 FROM development_token_reservations WHERE run_id=? AND state != 'cancelled')")
+                .bind(run).fetch_one(&mut *tx).await.map_err(db)?;
+            if taken {
+                return Err("development run already holds a token reservation".into());
             }
         }
         let totals = balance(&mut tx, &root).await?;
@@ -393,12 +427,21 @@ async fn start(tx: &mut Transaction<'_, Sqlite>, id: &str) -> Result<(), String>
     event(tx, &row.root_goal_id, id).await
 }
 
+/// A run holds at most one non-cancelled reservation (enforced in
+/// `reserve_development_tokens`), so the run-bound row is unique whatever
+/// purpose its dispatch role maps to.
 pub(super) async fn consume_worker(
     tx: &mut Transaction<'_, Sqlite>,
     run: &str,
 ) -> Result<(), String> {
-    let (id,): (String,) = sqlx::query_as("SELECT id FROM development_token_reservations WHERE run_id=? AND purpose='implementation' AND state='reserved'")
-        .bind(run).fetch_optional(&mut **tx).await.map_err(db)?.ok_or("development launch has no reserved token budget")?;
+    let (id,): (String,) = sqlx::query_as(
+        "SELECT id FROM development_token_reservations WHERE run_id=? AND state='reserved'",
+    )
+    .bind(run)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(db)?
+    .ok_or("development launch has no reserved token budget")?;
     start(tx, &id).await
 }
 
@@ -748,10 +791,17 @@ mod tests {
 
     /// W2-04d fixture: a run whose task carries a migration-14 team assignment
     /// for `role`, claimed by the assignee. The default policy team
-    /// "development" permits all four dispatch roles.
+    /// "development" permits all four dispatch roles. The owned path is
+    /// unique per role so several role runs can coexist under one root.
     pub(super) async fn role_run(store: &Store, root: &str, role: &str) -> (String, i64) {
         let task = store
-            .create_continuous_task(root, "role task", None, vec!["src/role.rs".into()], vec![])
+            .create_continuous_task(
+                root,
+                "role task",
+                None,
+                vec![format!("src/{role}.rs")],
+                vec![],
+            )
             .await
             .unwrap();
         store

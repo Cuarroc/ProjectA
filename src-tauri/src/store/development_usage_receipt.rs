@@ -224,13 +224,14 @@ fn started_receipt(launch: Option<&DevelopmentLaunch>, capture_usage: Option<Val
     }
 }
 
-/// Reads the run's implementation reservation and stored capture receipt.
+/// Reads the run's token reservation (exactly one per run, whatever purpose
+/// its dispatch role maps to) and stored capture receipt.
 pub(in crate::store) async fn for_run(
     tx: &mut Transaction<'_, Sqlite>,
     run_id: &str,
     launch: Option<&DevelopmentLaunch>,
 ) -> Result<Value, String> {
-    let reservation: Option<TokenReservation> = sqlx::query_as("SELECT * FROM development_token_reservations WHERE run_id=? AND purpose='implementation' ORDER BY state='cancelled', created_at DESC, id DESC LIMIT 1")
+    let reservation: Option<TokenReservation> = sqlx::query_as("SELECT * FROM development_token_reservations WHERE run_id=? ORDER BY state='cancelled', created_at DESC, id DESC LIMIT 1")
         .bind(run_id).fetch_optional(&mut **tx).await.map_err(super::db)?;
     let usage: Option<Option<String>> = sqlx::query_scalar(
         "SELECT json_extract(result_json,'$.usage') FROM development_capture_results WHERE run_id=?",
