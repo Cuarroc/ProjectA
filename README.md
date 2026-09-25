@@ -159,6 +159,7 @@ In parallel: **HQ2** (one shared Dev-HQ and app, with design tokens and an insta
 | [docs/setup/](docs/setup/README.md) | Agent setup per vendor, reviewers, merge queue (German) |
 | [docs/development/WORKFLOW.md](docs/development/WORKFLOW.md) | Detailed operating reference |
 | [docs/decisions.md](docs/decisions.md) | Architecture and dependency decisions |
+| [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md) | Third-party software and its licenses |
 | [docs/hilfe/glossar.md](docs/hilfe/glossar.md) | Beginner glossary (German) |
 
 ## License

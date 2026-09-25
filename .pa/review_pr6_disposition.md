@@ -20,3 +20,11 @@ Keine abgelehnten Befunde. Nach den Fixes: Docs-Commit plus Test-Commit;
 kein Delta-Review nötig, da nur Wortlaut/Diagramm und die vom Reviewer
 vorgeschlagene Wartebedingung umgesetzt wurden (Umsetzung 1:1 aus dem
 Review).
+
+Nachtrag nach dem Merge von `main` (`ed4662b`): `main` enthielt inzwischen
+dieselbe Korrektur der Wartebedingung in `scripts/lib/hq-visual.browser.mjs`
+(wartet auf „Inspecting queue.rs“, Timeout 10 s). Der Konflikt wurde mit der
+Fassung von `main` gelöst; die eigene Teständerung (Befund 5) fällt damit aus
+dem PR-Diff, der Befund ist durch `main` abgedeckt. Zusätzlich verlinkt das
+README `docs/THIRD_PARTY_NOTICES.md` (neu durch LIC-01).
+
