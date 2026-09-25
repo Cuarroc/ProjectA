@@ -142,6 +142,7 @@ test('recommendation links render only for http(s) urls', async (t) => {
   const f = liveFixture({
     recommendations: [
       { id: 'rc-evil', title: 'shady', rationale: 'xss attempt', status: 'new', url: 'javascript:alert(1)' },
+      { id: 'rc-data', title: 'inline', rationale: 'data url attempt', status: 'new', url: 'data:text/html,<script>alert(1)</script>' },
       { id: 'rc-good', title: 'useful', rationale: 'worth a look', status: 'new', url: 'https://example.com/spec' },
     ],
   });
@@ -150,8 +151,10 @@ test('recommendation links render only for http(s) urls', async (t) => {
   await waitFor(() => host.innerHTML.includes('shady'));
   assert.ok(!host.innerHTML.includes('javascript:'), host.innerHTML);
   const rows = [...host.querySelectorAll('article')];
-  const evilRow = rows.find((a) => a.textContent.includes('shady'));
-  assert.equal(evilRow.querySelector('a'), null, 'a non-http url gets no link');
+  for (const title of ['shady', 'inline']) {
+    const evilRow = rows.find((a) => a.textContent.includes(title));
+    assert.equal(evilRow.querySelector('a'), null, `a non-http url gets no link (${title})`);
+  }
   const goodRow = rows.find((a) => a.textContent.includes('useful'));
   const link = goodRow.querySelector('a');
   assert.equal(link.getAttribute('href'), 'https://example.com/spec');
