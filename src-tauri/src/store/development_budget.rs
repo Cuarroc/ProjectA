@@ -1,6 +1,8 @@
 //! Root-wide token accounting. Only trusted services call the writers; agents
 //! cannot settle their own usage or manufacture an allowance through HTTP.
-//! Unknown usage retains the entire reservation across exits and restarts.
+//! Unknown usage retains the entire reservation across exits and restarts; the
+//! one known-zero case, a proven `exited_undelivered` exit before input
+//! delivery (DF-15b / KI-27), releases the reservation unused instead.
 use super::development_launches::{run_role, DispatchRole};
 use super::{new_id, now_unix_secs, Store};
 use crate::development_policy::{DevelopmentPolicy, TokenPolicy};
@@ -100,6 +102,11 @@ pub struct TokenBalance {
 pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<(), String> {
     sqlx::query("CREATE TABLE development_token_reservations(id TEXT PRIMARY KEY, root_goal_id TEXT NOT NULL, goal_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, purpose TEXT NOT NULL CHECK(purpose IN ('planning','context','discovery','implementation','review','verification')), run_id TEXT, reserved_tokens INTEGER NOT NULL CHECK(reserved_tokens > 0), state TEXT NOT NULL CHECK(state IN ('reserved','started','settled','cancelled')), actual_tokens INTEGER CHECK(actual_tokens >= 0), source TEXT, observed_at INTEGER, created_at INTEGER NOT NULL, started_at INTEGER, settled_at INTEGER, UNIQUE(root_goal_id,idempotency_key))")
         .execute(&mut **tx).await.map_err(db)?;
+    // DF-15b: a reservation cancelled by the undelivered-exit release frees
+    // this index slot for the same run_id. That is safe: a new reservation
+    // needs `development_runs.status='intent'` (`reserve_development_tokens`),
+    // and a run whose launch reached `exited_undelivered` is `reconciling`,
+    // so no second live reservation can appear for it.
     sqlx::query("CREATE UNIQUE INDEX development_implementation_budget ON development_token_reservations(run_id) WHERE purpose = 'implementation' AND state != 'cancelled'")
         .execute(&mut **tx).await.map_err(db)?;
     Ok(())
@@ -445,6 +452,54 @@ pub(super) async fn consume_worker(
     start(tx, &id).await
 }
 
+/// DF-15b / KI-27: releases the implementation reservation of a run whose
+/// provider demonstrably exited before its input was delivered. The
+/// reservation was consumed with the launch, but no token ever reached the
+/// provider, so it is cancelled unused and the budget is freed. The guard
+/// repeats the proof inside the writer transaction: only an
+/// `exited_undelivered` launch with a recorded exit code whose delivery
+/// intent never left `started` qualifies; anything else changes nothing and
+/// keeps the reservation retained. The release is journaled here
+/// (`development_delivery_released`), so every caller writes it exactly once.
+/// Returns true when this call released.
+pub(super) async fn release_undelivered_run_tokens(
+    tx: &mut Transaction<'_, Sqlite>,
+    run: &str,
+) -> Result<bool, String> {
+    let row: Option<(String, String)> = sqlx::query_as("SELECT id,root_goal_id FROM development_token_reservations WHERE run_id=? AND purpose='implementation' AND state='started'")
+        .bind(run).fetch_optional(&mut **tx).await.map_err(db)?;
+    let Some((id, root)) = row else {
+        return Ok(false);
+    };
+    let changed = sqlx::query("UPDATE development_token_reservations SET state='cancelled',settled_at=? WHERE id=? AND state='started' AND EXISTS(SELECT 1 FROM development_launches l JOIN development_deliveries d ON d.run_id=l.run_id WHERE l.run_id=? AND l.state='exited_undelivered' AND l.exit_code IS NOT NULL AND d.state='started')")
+        .bind(now_unix_secs()).bind(&id).bind(run).execute(&mut **tx).await.map_err(db)?;
+    if changed.rows_affected() != 1 {
+        return Ok(false);
+    }
+    event(tx, &root, &id).await?;
+    sqlx::query("INSERT INTO continuous_events(project_id,kind,detail,created_at) SELECT project_id,'development_delivery_released',json_object('version',1,'runId',run_id,'exitCode',exit_code,'reason',exit_reason),unixepoch() FROM development_launches WHERE run_id=?")
+        .bind(run).execute(&mut **tx).await.map_err(db)?;
+    Ok(true)
+}
+
+/// Startup counterpart of the writer above for rows committed before it
+/// existed (DF-15a era: exit committed, reservation still held). The same
+/// guard applies to every candidate, so it frees exactly the proven rows and
+/// is idempotent. Returns the number of released reservations.
+pub(super) async fn release_undelivered_runs(
+    tx: &mut Transaction<'_, Sqlite>,
+) -> Result<u64, String> {
+    let runs: Vec<(String,)> = sqlx::query_as("SELECT l.run_id FROM development_launches l JOIN development_token_reservations t ON t.run_id=l.run_id WHERE l.state='exited_undelivered' AND t.purpose='implementation' AND t.state='started'")
+        .fetch_all(&mut **tx).await.map_err(db)?;
+    let mut released = 0;
+    for (run,) in runs {
+        if release_undelivered_run_tokens(tx, &run).await? {
+            released += 1;
+        }
+    }
+    Ok(released)
+}
+
 #[cfg(test)]
 #[path = "development_usage_binding_tests.rs"]
 mod usage_binding_tests;
@@ -755,6 +810,111 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(totals(&store, &root).await.measured_tokens, 500);
+    }
+
+    /// DF-15b / KI-27: the release guard itself. Without the proven
+    /// `exited_undelivered` constellation nothing is freed; with it, exactly
+    /// once.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn undelivered_release_requires_the_proven_terminal_exit() {
+        let (_dir, store, _project, root) = fixture().await;
+        let task = store
+            .create_continuous_task(
+                &root,
+                "implementation",
+                None,
+                vec!["src/budget.rs".into()],
+                vec![],
+            )
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "owner", false)
+            .await
+            .unwrap();
+        let run = store
+            .record_development_run_intent(&task.id, "owner", claim.fence)
+            .await
+            .unwrap();
+        let launch = store
+            .reserve_development_launch(&run.id, "owner", claim.fence, "codex")
+            .await
+            .unwrap();
+        store.bind_development_launch_route(&run.id,"owner",claim.fence,&serde_json::json!({"selection":{"resolved":{"profileId":"codex"}},"expiresAt":now_unix_secs()+600})).await.unwrap();
+        store
+            .bind_development_launch_baseline(&run.id, "owner", claim.fence, &"a".repeat(40))
+            .await
+            .unwrap();
+        store
+            .reserve_development_tokens(
+                &root,
+                "implementation",
+                BudgetPurpose::Implementation,
+                10_000,
+                Some(&run.id),
+            )
+            .await
+            .unwrap();
+        store
+            .consume_development_launch(&run.id, "owner", claim.fence, &launch.worker_id, "session")
+            .await
+            .unwrap();
+        // Started reservation, but the launch is still `spawning` and no
+        // delivery intent exists: nothing qualifies, nothing changes.
+        let mut tx = store.pool.begin().await.unwrap();
+        assert!(!release_undelivered_run_tokens(&mut tx, &run.id)
+            .await
+            .unwrap());
+        assert!(!release_undelivered_run_tokens(&mut tx, "no-such-run")
+            .await
+            .unwrap());
+        tx.commit().await.unwrap();
+        assert_eq!(totals(&store, &root).await.unresolved_operations, 1);
+        // A plain `exited` launch (delivered path) does not qualify either.
+        sqlx::query(
+            "UPDATE development_launches SET state='exited',exit_code=0,exited_at=1 WHERE run_id=?",
+        )
+        .bind(&run.id)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        let mut tx = store.pool.begin().await.unwrap();
+        assert!(!release_undelivered_run_tokens(&mut tx, &run.id)
+            .await
+            .unwrap());
+        tx.commit().await.unwrap();
+        assert_eq!(totals(&store, &root).await.unresolved_operations, 1);
+        // The proven constellation: terminal undelivered exit with an exit
+        // code and a delivery intent that never left `started`.
+        sqlx::query("INSERT INTO development_deliveries(run_id,session_id,process_instance,route_sha256,input_sha256,input_bytes,state,started_at) SELECT run_id,session_id,process_instance,'r','i',4,'started',1 FROM development_launches WHERE run_id=?")
+            .bind(&run.id)
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE development_launches SET state='exited_undelivered',exit_code=2,exit_reason='provider_exited_before_input_delivery' WHERE run_id=?")
+            .bind(&run.id)
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        let mut tx = store.pool.begin().await.unwrap();
+        assert!(release_undelivered_run_tokens(&mut tx, &run.id)
+            .await
+            .unwrap());
+        // Replay inside the same or a later transaction releases nothing twice.
+        assert!(!release_undelivered_run_tokens(&mut tx, &run.id)
+            .await
+            .unwrap());
+        tx.commit().await.unwrap();
+        let balance = totals(&store, &root).await;
+        assert_eq!(balance.reserved_tokens, 0);
+        assert_eq!(balance.unresolved_operations, 0);
+        let state: String =
+            sqlx::query_scalar("SELECT state FROM development_token_reservations WHERE run_id=?")
+                .bind(&run.id)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(state, "cancelled");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -321,6 +321,31 @@ impl Store {
                 .fetch_optional(&mut *tx)
                 .await
                 .map_err(db("read delivery intent"))?;
+        // DF-15b / KI-27: the raw row stays as recorded (the intent began,
+        // the transport never confirmed an enqueue); the release after a
+        // proven undelivered exit is derived here, not rewritten - and only
+        // once the run's implementation reservation is actually cancelled, so
+        // a row still held (not yet released) is never reported as released.
+        let reservation_released: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM development_token_reservations WHERE run_id=? AND purpose='implementation' AND state='cancelled')")
+            .bind(run_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db("read reservation release"))?;
+        let delivery = delivery
+            .map(|delivery| {
+                let released = delivery.state == "started"
+                    && reservation_released
+                    && launch
+                        .as_ref()
+                        .is_some_and(|launch| launch.state == "exited_undelivered");
+                let mut value = serde_json::to_value(&delivery)
+                    .map_err(|error| format!("project delivery intent: {error}"))?;
+                if released {
+                    value["effectiveState"] = "released_undelivered".into();
+                }
+                Ok::<serde_json::Value, String>(value)
+            })
+            .transpose()?;
         let checkpoint = checkpoints::latest(&mut tx, &run.task_id).await?;
         let assignment = super::team_assignments::read(&mut tx, &run.task_id).await?;
         let dispatch = match super::development_launches::run_role(&mut tx, run_id).await {

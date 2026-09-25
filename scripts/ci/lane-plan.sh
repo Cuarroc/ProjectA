@@ -259,6 +259,12 @@ NOT_A_READ=(
   # assert auf das Praefix eines Quellenfelds; die Quellen sind die
   # report_f0*-Berichte, die HEAVY_DOCS ohnehin fuehrt.
   ".pa/report_|scripts/lib/hq-pages.test.mjs"
+  # Dateilisten der Rueckrechnungs-Fixture in wave_two(): die Pfade sind
+  # Testdaten (gemergte PR-Dateilisten), kein Lesezugriff auf die Doku.
+  # Beleg: CI-Lauf 36165998301, selftest-lane-plan rot an docs/decisions.md.
+  "docs/decisions.md|src-tauri/src/workers/lane_guard.rs"
+  "docs/ci-lokal.md|src-tauri/src/workers/lane_guard.rs"
+  "KNOWN_ISSUES.md|src-tauri/src/workers/lane_guard.rs"
 )
 
 # Literale Doku-Verweise: `irgendwas.md` und `docs/...` bzw. `.pa/...`.

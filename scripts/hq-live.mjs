@@ -289,7 +289,7 @@ function repositoryInsights() {
   if (Date.now() - insightsCache.at < 60000 && insightsCache.value) return insightsCache.value;
   const timestamps = tryGit(["log", "--format=%at"]).split(/\r?\n/).filter(Boolean).map(Number);
   const git = workSessions(timestamps);
-  const activityPath = join(root, ".pa", "ACTIVITY.md");
+  const activityPath = process.env.HQ_ACTIVITY_FILE || join(root, ".pa", "ACTIVITY.md");
   const activity = existsSync(activityPath) ? activitySessions(readFileSync(activityPath, "utf8")) : [];
   const volume = diffVolume(tryGit(["log", "--numstat", "--format="]));
   insightsCache = { at: Date.now(), value: { timestamps, git, activity, volume, heat: heatmap(timestamps) } };

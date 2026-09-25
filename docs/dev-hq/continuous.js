@@ -3,11 +3,14 @@
   window.createHQContinuous = function ({ container, api, project }) {
     const card = document.createElement('section');
     card.className = 'live-card continuous-card';
+    card.id = 'hq-goals-live';
+    card.tabIndex = -1;
     card.innerHTML = `
       <h2>Ziele & kontinuierliche Entwicklung</h2>
       <p data-state role="status" aria-live="polite">Projekt auswählen.</p>
       <p data-runtime role="status" aria-live="polite" class="muted">Runtime-Identität wird geprüft.</p>
       <p data-source class="muted"></p>
+      <div data-ownership class="continuous-ownership" aria-label="Besetzung laufender Ziele"></div>
       <section data-budget><h2>Budget & Routing</h2></section>
       <p class="muted">Diese Steuerung betrifft die HQ-Planung. Bestehende Worker und der bisherige Dispatcher laufen unabhängig weiter. Automatisches Starten und Ausliefern sind noch nicht freigegeben.</p>
       <div class="continuous-actions">
@@ -44,6 +47,7 @@
     const budgetList = card.querySelector('[data-budget]');
     const errorBox = card.querySelector('[data-error]');
     const list = card.querySelector('[data-goals]');
+    const ownership = card.querySelector('[data-ownership]');
     const runsList = card.querySelector('[data-runs]');
     const select = card.querySelector('[name=goalId]');
     let sequence = 0;
@@ -51,6 +55,7 @@
     let online = false;
     let busy = false;
     let teams = [];
+    let lastSignature = null;
     function error(value) { errorBox.hidden = !value; errorBox.textContent = value?.message || ''; }
     function enable(available) {
       card.querySelectorAll('button').forEach(button => { button.disabled = !available || busy || button.dataset.locked === 'true'; });
@@ -75,11 +80,91 @@
         return 'Routingbeleg unlesbar; kein Modell oder Preis wird angenommen.';
       }
     }
+    function renderOwnership(goals, tasks) {
+      ownership.replaceChildren();
+      const closed = new Set(['closed', 'completed', 'done', 'cancelled']);
+      const running = goals.filter(goal => !closed.has(String(goal.status || '').toLowerCase()));
+      if (!running.length) { text(ownership, 'p', 'Keine laufenden Ziele.', 'muted'); return; }
+      for (const goal of running) {
+        const ownTasks = tasks.filter(task => task.goalId === goal.id);
+        const owners = [...new Set(ownTasks.map(task => task.claim?.owner || task.assignment?.assignee).filter(Boolean))];
+        const seats = [...new Set(ownTasks.map(task => task.assignment ? `${task.assignment.teamId}/${task.assignment.role}` : null).filter(Boolean))];
+        const paths = [...new Set(ownTasks.flatMap(task => task.ownedPaths || []))];
+        const line = document.createElement('p');
+        line.className = 'continuous-ownership-line';
+        line.textContent = `${goal.status || 'unbekannt'} · ${goal.objective} · ${ownTasks.length} Arbeitspakete`
+          + ` · ${owners.length ? `Besetzt: ${owners.join(', ')}` : 'unbesetzt'}`
+          + `${seats.length ? ` · ${seats.join(', ')}` : ''}`
+          + `${paths.length ? ` · Bereiche: ${paths.join(', ')}` : ''}`;
+        ownership.append(line);
+      }
+    }
+    // The 5 s tick must not throw the operator out of the card: capture the
+    // interactive state before a rebuild, hand it back afterwards. Focus is
+    // separate on purpose: enable(false) blurs a focused button in real
+    // browsers, so focus must be captured before the network wait starts.
+    function captureFocus() {
+      const active = document.activeElement;
+      if (!active || !card.contains(active)) return null;
+      const host = active.closest('details[data-task-id]');
+      const part = active.name || (active.tagName === 'BUTTON' ? 'submit' : active.tagName.toLowerCase());
+      return { taskId: host?.dataset.taskId || null, part, element: active };
+    }
+    function restoreFocus(savedFocus) {
+      if (!savedFocus) return;
+      // Only take focus back when the tick itself took it (blur to body);
+      // if the operator moved focus somewhere else, leave it alone.
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      let target = null;
+      if (savedFocus.taskId) {
+        const host = list.querySelector(`details[data-task-id="${savedFocus.taskId}"]`);
+        target = host?.querySelector(`[name="${savedFocus.part}"]`)
+          || (savedFocus.part === 'summary' ? host?.querySelector('summary') : null)
+          || (savedFocus.part === 'submit' ? host?.querySelector('button[type="submit"]') : null);
+      }
+      // Buttons outside the task list survive a rebuild; use the node itself.
+      if (!target && savedFocus.element?.isConnected) target = savedFocus.element;
+      target?.focus();
+    }
+    function captureListState() {
+      const openTasks = new Set([...list.querySelectorAll('details[data-task-id][open]')].map(node => node.dataset.taskId));
+      const drafts = new Map();
+      for (const form of list.querySelectorAll('form.continuous-assignment')) {
+        const draft = {};
+        const assignee = form.elements.assignee;
+        if (assignee && assignee.value !== assignee.defaultValue) draft.assignee = assignee.value;
+        for (const name of ['teamId', 'role']) {
+          const field = form.elements[name];
+          if (field && [...field.options].some(option => option.selected !== option.defaultSelected)) draft[name] = field.value;
+        }
+        if (Object.keys(draft).length) drafts.set(form.dataset.taskId, draft);
+      }
+      return { openTasks, drafts };
+    }
+    function restoreListState(saved) {
+      for (const node of list.querySelectorAll('details[data-task-id]')) {
+        if (saved.openTasks.has(node.dataset.taskId)) node.open = true;
+      }
+      for (const form of list.querySelectorAll('form.continuous-assignment')) {
+        const draft = saved.drafts.get(form.dataset.taskId);
+        if (!draft) continue;
+        for (const [name, value] of Object.entries(draft)) {
+          const field = form.elements[name];
+          if (!field) continue;
+          field.value = value;
+          // A restored team draft must refill the role list for that team;
+          // setting .value alone fires no change event.
+          if (name === 'teamId') field.dispatchEvent(new Event('change'));
+        }
+      }
+    }
     async function refresh() {
       const current = project();
       const generation = ++sequence;
+      const savedFocus = captureFocus();
       online = false; enable(false);
-      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); loadedProject = null; }
+      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); loadedProject = null; lastSignature = null; }
       if (!current) { state.textContent = 'Projekt auswählen, um Ziele und Arbeitspakete zu sehen.'; source.textContent = ''; enable(false); return; }
       try {
         const [value, runtimeValue, records] = await Promise.all([
@@ -105,9 +190,15 @@
         state.textContent = `Zustand: ${control.status || 'unbekannt'} · ${goals.length} Ziele · ${tasks.length} Arbeitspakete`;
         source.textContent = `Quelle: Rust/SQLite · ${snapshot.sourceTimestamp || value.observedAt || 'Zeitpunkt unbekannt'} · Cursor ${value.cursor ?? 'unbekannt'}. ${snapshot.commit ? `Commit ${snapshot.commit}` : 'Commit nicht gemessen.'}`;
         error(null);
+        const signature = JSON.stringify({ goals, tasks, teams, controlStatus: control.status || null });
+        const rebuildGoals = signature !== lastSignature;
+        const saved = rebuildGoals ? captureListState() : null;
         const previous = select.value;
-        select.replaceChildren();
-        list.replaceChildren();
+        if (rebuildGoals) {
+          select.replaceChildren();
+          list.replaceChildren();
+          renderOwnership(goals, tasks);
+        }
         budgetList.replaceChildren();
         text(budgetList, 'h2', 'Budget & Routing');
         const policies = Array.isArray(effectiveLimits.rootPolicies) ? effectiveLimits.rootPolicies : [];
@@ -130,7 +221,7 @@
         }
         runsList.replaceChildren();
         text(runsList, 'h2', 'Runs, Evidenz & Lieferung');
-        for (const goal of goals) {
+        if (rebuildGoals) for (const goal of goals) {
           const option = document.createElement('option'); option.value = goal.id; option.textContent = goal.objective; select.append(option);
           const section = document.createElement('article'); section.className = 'continuous-goal'; list.append(section);
           text(section, 'h3', goal.objective);
@@ -140,6 +231,7 @@
           if (!ownTasks.length) text(section, 'p', 'Noch keine Arbeitspakete.', 'muted');
           for (const task of ownTasks) {
             const details = document.createElement('details'); section.append(details);
+            details.dataset.taskId = task.id;
             text(details, 'summary', `${task.status} · ${task.objective}`);
             text(details, 'p', `ID ${task.id} · Profil ${task.profileId || 'nicht zugewiesen'} · Versuche ${task.attempts ?? 0}`);
             text(details, 'p', `Bereiche: ${(task.ownedPaths || []).join(', ') || 'keine'} · Abhängigkeiten: ${(task.dependencies || []).join(', ') || 'keine'}`);
@@ -147,6 +239,7 @@
             if (task.assignment) text(details, 'p', `Team ${task.assignment.teamId} · Rolle ${task.assignment.role} · ${task.assignment.assignee} · Revision ${task.assignment.revision}`, 'muted');
             const assignmentForm = document.createElement('form');
             assignmentForm.className = 'continuous-assignment';
+            assignmentForm.dataset.taskId = task.id;
             const teamLabel = document.createElement('label'); teamLabel.textContent = 'Team';
             const teamSelect = document.createElement('select'); teamSelect.name = 'teamId'; teamSelect.required = true;
             const roleLabel = document.createElement('label'); roleLabel.textContent = 'Rolle';
@@ -158,14 +251,18 @@
             for (const team of allowedTeams) { const option = document.createElement('option'); option.value = team.id; option.textContent = team.id; teamSelect.append(option); }
             const currentTeam = task.assignment?.teamId || allowedTeams[0]?.id;
             if (currentTeam) teamSelect.value = currentTeam;
-            const fillRoles = () => {
+            // Draft detection compares against the defaults, so the defaults
+            // must be the server values, not the initial markup state.
+            for (const option of teamSelect.options) option.defaultSelected = option.selected;
+            const fillRoles = (syncDefaults = false) => {
               roleSelect.replaceChildren();
               const team = allowedTeams.find(item => item.id === teamSelect.value);
               for (const role of team?.roles || []) { const option = document.createElement('option'); option.value = role; option.textContent = role; roleSelect.append(option); }
               if (task.assignment?.role && [...roleSelect.options].some(option => option.value === task.assignment.role)) roleSelect.value = task.assignment.role;
+              if (syncDefaults) for (const option of roleSelect.options) option.defaultSelected = option.selected;
             };
-            teamSelect.addEventListener('change', fillRoles); fillRoles();
-            if (task.assignment?.assignee) assignee.value = task.assignment.assignee;
+            teamSelect.addEventListener('change', () => fillRoles()); fillRoles(true);
+            if (task.assignment?.assignee) assignee.value = assignee.defaultValue = task.assignment.assignee;
             const revision = task.assignment?.revision || 0;
             teamLabel.append(teamSelect); roleLabel.append(roleSelect); assigneeLabel.append(assignee);
             assignmentForm.append(teamLabel, roleLabel, assigneeLabel, assignButton);
@@ -183,8 +280,12 @@
             if (task.detail || task.checkpoint) text(details, 'pre', task.detail || task.checkpoint);
           }
         }
-        if ([...select.options].some(option => option.value === previous)) select.value = previous;
-        if (!goals.length) text(list, 'p', 'Noch keine Ziele. Ein Ziel beschreibt Ergebnis und überprüfbare Abnahme.', 'muted');
+        if (rebuildGoals) {
+          if ([...select.options].some(option => option.value === previous)) select.value = previous;
+          if (!goals.length) text(list, 'p', 'Noch keine Ziele. Ein Ziel beschreibt Ergebnis und überprüfbare Abnahme.', 'muted');
+          restoreListState(saved);
+          lastSignature = signature;
+        }
         if (!records) {
           text(runsList, 'p', 'Run- und Lieferstatus nicht verfügbar; keine Evidenz wird angenommen.', 'muted');
         } else if (!Array.isArray(records.runs) || !records.runs.length) {
@@ -209,6 +310,7 @@
           }
         }
         enable(true);
+        restoreFocus(savedFocus);
       } catch (failure) {
         if (generation !== sequence || current !== project()) return;
         runtime.textContent = 'Runtime-Identität nicht verfügbar; angezeigte Fähigkeiten sind nicht bestätigt.';
@@ -219,12 +321,14 @@
     async function mutate(path, body, form) {
       if (busy || !online || loadedProject !== project()) return;
       const current = project();
+      const savedFocus = captureFocus();
       busy = true; enable(false); error(null);
       try {
         await api(path, { method: 'POST', body: JSON.stringify(body) });
         if (current === project()) form?.reset();
-      } catch (failure) { if (current === project()) error(failure); busy = false; enable(online && loadedProject === project()); return; }
+      } catch (failure) { if (current === project()) error(failure); busy = false; enable(online && loadedProject === project()); restoreFocus(savedFocus); return; }
       busy = false; await refresh();
+      restoreFocus(savedFocus);
     }
     const confirmations = {
       cancel: 'Kontinuierlichen Lauf wirklich beenden? Laufende Arbeit wird nicht mehr fortgesetzt.',

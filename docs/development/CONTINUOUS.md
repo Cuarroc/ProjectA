@@ -516,7 +516,9 @@ with the reservation's run and exact exited session. Identity checks share the
 settlement transaction and also apply to idempotent replay. A mismatched or
 absent binding cannot release a worker reservation. Missing
 receipts remain reserved indefinitely for reconciliation. Neither a timeout nor
-a process exit implies zero consumption. Measured exhaustion or overdrawn
+a process exit implies zero consumption. The one exception is a proven
+`exited_undelivered` exit (DF-15b): the provider ended before its input was
+delivered, so its reservation is cancelled unused and the budget is freed. Measured exhaustion or overdrawn
 allocations block the root; actual overruns are recorded without hiding usage.
 These writers are not exposed to agent credentials. Provider receipt collection,
 supervisor integration and the unconnected streaming path still gate autonomous
@@ -548,7 +550,8 @@ receipt. It never says a bare `unavailable`; each state names its provenance:
 
 Each receipt also carries `ledgerState` and `reservedTokens` (`null` and `0`
 without a reservation). Only `measured`
-settles; any other state keeps the entire reservation, as above.
+settles; any other state keeps the entire reservation, as above - except the
+proven `exited_undelivered` release (DF-15b), which frees it unused.
 
 Collectors per adapter (W2-03a):
 

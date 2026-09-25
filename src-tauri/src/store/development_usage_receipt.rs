@@ -2,7 +2,9 @@
 //! collector and source it came from, when it was observed and whether it is
 //! a live provider report. A run without a trusted collector carries a named
 //! `not_reported` provenance, never a silent gap. Only `measured` receipts
-//! settle the ledger; every other state keeps the whole reservation.
+//! settle the ledger; every other state keeps the whole reservation - except
+//! the proven `exited_undelivered` exit (DF-15b / KI-27), whose reservation
+//! is released unused because no token ever reached the provider.
 use super::TokenReservation;
 use crate::store::development_launches::DevelopmentLaunch;
 use serde_json::{json, Value};
@@ -159,8 +161,16 @@ pub(in crate::store) fn run_receipt(
     };
     let mut receipt = match reservation.state.as_str() {
         "settled" => settled_receipt(reservation),
-        "cancelled" => json!({"state":"cancelled",
-            "reason":"reservation cancelled before work started"}),
+        "cancelled" => match launch {
+            // DF-15b / KI-27: released because the provider exited before its
+            // input was delivered - known-zero usage, not a pre-work cancel.
+            Some(launch) if launch.state == "exited_undelivered" => {
+                json!({"state":"cancelled",
+                    "reason":"provider exited before its input was delivered; reservation released unused"})
+            }
+            _ => json!({"state":"cancelled",
+                "reason":"reservation cancelled before work started"}),
+        },
         "reserved" => json!({"state":"pending",
             "reason":"run has not launched; reservation held"}),
         _ => started_receipt(launch, capture_usage),
@@ -203,6 +213,9 @@ fn started_receipt(launch: Option<&DevelopmentLaunch>, capture_usage: Option<Val
         .unwrap_or(Value::Null);
     let (provider, transport) = route_adapter(&route);
     match launch {
+        // Reached only while the DF-15b release has not happened yet (a
+        // DF-15a-era row before startup reconciliation, or a reservation that
+        // was never `started`); afterwards the reservation is `cancelled`.
         Some(launch) if launch.state == "exited_undelivered" => json!({"state":"not_reported",
             "reason":"not reported by adapter: provider exited before its input was delivered",
             "reservation":"retained",

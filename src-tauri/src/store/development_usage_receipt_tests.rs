@@ -266,6 +266,33 @@ fn every_run_cost_receipt_names_its_state_and_provenance() {
     }
 }
 
+/// DF-15b / KI-27: a reservation released because the provider exited before
+/// its input was delivered is named as exactly that - never misread as a
+/// cancellation before work started.
+#[test]
+fn a_released_undelivered_reservation_is_named_not_misread_as_unstarted() {
+    let released = run_receipt(
+        Some(&reservation("cancelled")),
+        Some(&launch("exited_undelivered", "codex")),
+        None,
+    );
+    assert_eq!(released["state"], "cancelled");
+    assert_eq!(released["ledgerState"], "cancelled");
+    let reason = released["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("exited before its input was delivered"),
+        "{reason}"
+    );
+    assert!(!reason.contains("before work started"), "{reason}");
+    assert_never_unavailable(&released);
+    // A plain pre-work cancellation keeps its own reason.
+    let plain = run_receipt(Some(&reservation("cancelled")), None, None);
+    assert!(plain["reason"]
+        .as_str()
+        .unwrap()
+        .contains("before work started"));
+}
+
 /// Review round 1 (kimi-k3 K1/K2/K4, glm-5.2 G1-G3): provenance is never
 /// stated stronger than the stored evidence.
 #[test]
