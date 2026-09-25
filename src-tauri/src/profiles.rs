@@ -511,6 +511,40 @@ mod tests {
         }
     }
 
+    /// W1-18b (probe 2026-09-25, `.pa/evidence_w1-18b_2026-09-25.json`): the
+    /// installed OpenCode 1.18.32 lists a canary living in the probe
+    /// workspace's `.agents/skills` from `debug skill --pure` - an
+    /// observation, not a configuration guess - so both opencode profiles
+    /// declare `ConventionAt`. The model flag does not change discovery, so
+    /// the glm variant is covered by the same probe. Codex stays
+    /// `Unsupported`: its re-probe waits out the rate limit (2026-09-30),
+    /// and this assert keeps anyone from lifting it along by accident.
+    #[test]
+    fn opencode_profiles_read_repo_skills_at_agents_skills() {
+        for id in ["opencode", "opencode-glm-53-flash"] {
+            let profile = default_profiles()
+                .into_iter()
+                .find(|profile| profile.id == id)
+                .expect(id);
+            assert_eq!(
+                profile.caps.skills,
+                SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
+                },
+                "{id}"
+            );
+        }
+        let codex = default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "codex")
+            .expect("codex");
+        assert_eq!(
+            codex.caps.skills,
+            SkillsDiscovery::Unsupported,
+            "codex is not re-probed yet (W1-18b, rate limit until 2026-09-30)"
+        );
+    }
+
     /// The codex composer prompt "Ask Codex to do anything" and its echo of
     /// typed input were captured on a real TUI on 2026-09-14; its startup
     /// dialog chain (trust, hooks review) swallows blind writes, so the
@@ -593,10 +627,14 @@ mod tests {
             .expect("opencode-glm-53-flash profile exists");
         assert_eq!(profile.command, "opencode");
         assert_eq!(profile.args, vec!["-m", "opencode-go/glm-5.3-flash"]);
-        // Cautious defaults except the readiness marker (NT-17).
+        // Cautious defaults except the readiness marker (NT-17) and the
+        // probed skill discovery (W1-18b, same binary as `opencode`).
         assert_eq!(
             profile.caps,
             AgentCapabilities {
+                skills: SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
+                },
                 readiness_marker: Some("Ask anything".into()),
                 ..AgentCapabilities::default()
             }
@@ -943,10 +981,13 @@ mod tests {
         assert_eq!(
             glm.caps,
             AgentCapabilities {
+                skills: SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
+                },
                 readiness_marker: Some("Ask anything".into()),
                 ..AgentCapabilities::default()
             },
-            "an opencode-* variant inherits the base's readiness marker"
+            "an opencode-* variant inherits the base's readiness marker and its probed skill discovery"
         );
     }
 
