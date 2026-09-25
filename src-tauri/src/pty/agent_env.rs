@@ -1001,4 +1001,60 @@ mod tests {
             );
         }
     }
+
+    /// W5-02b5: the user decision from the W5-02b review (K6) - a signing
+    /// key is no push or write right, so `strict` does not touch the signing
+    /// configuration; forcing `commit.gpgsign=false` would override a
+    /// signing mandate of the user's. Pinned here: no strict config key
+    /// names signing, and a configured mandate is still honored - a commit
+    /// whose signer fails fails loudly instead of hanging or landing
+    /// unsigned. `git` itself serves as the stand-in signer: it is
+    /// guaranteed present (this test just ran it) and rejects the gpg
+    /// arguments at once, on every platform, without a pinentry.
+    #[test]
+    fn strict_agent_env_keeps_the_users_signing_mandate() {
+        for (key, _) in STRICT_GIT_CONFIG {
+            assert!(
+                !key.contains("gpg") && !key.contains("sign"),
+                "strict touches the signing configuration: {key}"
+            );
+        }
+
+        let root = TempDir::new("w5-02b5-gpg");
+        let repo = init_repo(&root.path().join("repo"));
+        git_config_set(&repo, "commit.gpgsign", "true");
+        git_config_set(&repo, "user.signingkey", "w5-02b5");
+        git_config_set(&repo, "gpg.program", "git");
+
+        let gh = TempDir::new("w5-02b5-gh");
+        let strict = environment(&profile(EnvIsolation::Strict, &[]), gh.path());
+        let repo_arg = repo.to_string_lossy().into_owned();
+        let head = || {
+            let (ok, stdout, stderr) =
+                run("git", &["-C", &repo_arg, "rev-parse", "HEAD"], &strict, "");
+            assert!(ok, "rev-parse HEAD: {stderr}");
+            stdout.trim().to_string()
+        };
+        std::fs::write(repo.join("w5.txt"), "w5-02b5\n").expect("write file");
+        let (ok, _, stderr) = run("git", &["-C", &repo_arg, "add", "w5.txt"], &strict, "");
+        assert!(ok, "strict: git add failed: {stderr}");
+
+        let before = head();
+        let (ok, _, stderr) = run(
+            "git",
+            &["-C", &repo_arg, "commit", "-m", "w5-02b5"],
+            &strict,
+            "",
+        );
+        assert!(
+            !ok,
+            "strict: a commit signed by a stand-in gpg succeeded - the mandate was dropped"
+        );
+        let lower = stderr.to_lowercase();
+        assert!(
+            lower.contains("gpg") || lower.contains("sign"),
+            "strict: the commit failed for an unrelated reason: {stderr}"
+        );
+        assert_eq!(before, head(), "strict: the failed signing left a commit");
+    }
 }
