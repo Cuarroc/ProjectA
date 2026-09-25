@@ -25,8 +25,10 @@ regexes = [
   '''ghp_B{16,}''',
   # logging.rs und .pa-Reviews w1-22: der AWS-Kanarienvogel "CANARY", in den
   # realen Varianten mit 10 und 12 Ziffern (logging.rs nutzt die 10-stellige —
-  # {12} allein deckte sie nicht, Beleg .pa/review_sec-gitleaks_disposition.md)
-  '''AKIACANARY[0-9A-Z]{10,12}''',
+  # {12} allein deckte sie nicht, Beleg .pa/review_sec-gitleaks_disposition.md).
+  # Nur Ziffern: ein echter Schluessel mit Buchstaben hinter CANARY darf nicht
+  # durchrutschen (Beleg .pa/review_pr20_disposition.md, N-1).
+  '''AKIACANARY[0-9]{10,12}''',
   # routing.rs: Canary, der nie in einem argv landen darf
   '''sk-ant-canary-must-not-land-in-argv''',
   # src/lib/attentionInbox.test.ts: OpenAI-Form zum Testen der Redaktion

@@ -146,7 +146,7 @@ for lane in precommit prepush linux windows release audit; do
   ids_csv=",$(printf '%s' "$ids" | tr '\n' ','),"
   case "$ids_csv" in *,rust-suite,*) [ "$nextest_ok" -eq 1 ] || urteil="BLOCKIERT (nextest fehlt: cargo install cargo-nextest --locked)" ;; esac
   case "$ids_csv" in *,audit-rust,*) [ "$audit_ok" -eq 1 ] || urteil="BLOCKIERT (cargo-audit fehlt: cargo install cargo-audit)" ;; esac
-  case "$ids_csv" in *,secrets,* | *,selftest-secrets,*) [ "$gitleaks_ok" -eq 1 ] || urteil="BLOCKIERT (gitleaks fehlt: winget install Gitleaks.Gitleaks)" ;; esac
+  case "$ids_csv" in *,secrets,* | *,selftest-secrets,*) [ "$gitleaks_ok" -eq 1 ] || urteil="BLOCKIERT (gitleaks fehlt: winget install Gitleaks.Gitleaks | brew install gitleaks | https://github.com/gitleaks/gitleaks#installing)" ;; esac
   printf ' %-10s %2d Gates  %s\n' "$lane" "$n" "$urteil"
 done
 
