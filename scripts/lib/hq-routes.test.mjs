@@ -45,9 +45,21 @@ function startHq() {
         PROJECTA_API_DESCRIPTOR: join(agentsDir, "descriptor.json"),
         PROJECTA_AGENTS_FILE: join(agentsDir, "agents.json"),
         HQ_LESSONS_FILE: join(agentsDir, "lessons.json"),
+        // The insights estimate reads the agent journal `.pa/ACTIVITY.md`,
+        // which is deliberately untracked (instance-local append log). A clean
+        // clone therefore has no journal and the time estimate collapses to a
+        // single git sitting — hermetic fixture instead of host state.
+        HQ_ACTIVITY_FILE: join(agentsDir, "ACTIVITY.md"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
+    writeFileSync(join(agentsDir, "ACTIVITY.md"), [
+      "# Activity",
+      "## 2026-09-21 10:00 — routes-test-a (fixture)",
+      "## 2026-09-22 11:00 — routes-test-b (fixture)",
+      "## 2026-09-23 12:00 — routes-test-c (fixture)",
+      "",
+    ].join("\n"));
     writeFileSync(join(agentsDir, "descriptor.json"), JSON.stringify({ port: 1, token: "unused" }));
     let stderr = "";
     hqProcess.stderr.on("data", (chunk) => { stderr += chunk; });
