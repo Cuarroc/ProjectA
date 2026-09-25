@@ -90,7 +90,7 @@ function validateStoredProfile(profile) {
   if (profile.caps != null) {
     const caps = profile.caps;
     if (!obj(caps)) invalid();
-    for (const [key, modes] of Object.entries({ systemPrompt: { unsupported: [], arg: ['flag'], file: ['flag', 'ext'] }, skills: { unsupported: [], convention: [], flag: ['flag'] }, lifecycle: { heuristic: [], settingsHooks: ['flag'] } })) {
+    for (const [key, modes] of Object.entries({ systemPrompt: { unsupported: [], arg: ['flag'], file: ['flag', 'ext'] }, skills: { unsupported: [], convention: [], flag: ['flag'], conventionAt: ['dir'] }, lifecycle: { heuristic: [], settingsHooks: ['flag'] } })) {
       if (caps[key] === undefined) continue;
       const value = caps[key];
       if (!obj(value) || !Object.hasOwn(modes, value.mode) || modes[value.mode].some(field => typeof value[field] !== 'string')) invalid();
