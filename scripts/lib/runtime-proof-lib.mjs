@@ -42,10 +42,24 @@ export function evaluateProof({ phase1, phase2, logText, screenshot, requireScre
   if (!phase1?.descriptorSeen) failures.push('phase 1: the app never published its api descriptor');
   if (!phase2?.descriptorSeen) failures.push('phase 2: the restart never published its api descriptor');
   if (!phase1?.seeded) failures.push('phase 1: no old queue entries were seeded, the proof is empty');
-  for (const entry of phase2?.entries ?? []) {
-    if (entry.status !== 'ready') failures.push(`queue entry ${entry.id} left ready: ${entry.status}`);
+  // glm-5.2 F1: a non-array or short answer must never pass — with zero
+  // entries the loop below would find nothing to complain about, which is
+  // exactly the "old jobs vanished into an agent" case the proof excludes.
+  if (!Array.isArray(phase2?.entries)) {
+    failures.push('phase 2: the queue answer was not an array — the proof read garbage');
+  } else {
+    if (phase2.entries.length < (phase1?.seeded ?? 0)) {
+      failures.push(`phase 2: ${phase2.entries.length} entries came back, ${phase1?.seeded ?? 0} were seeded — old jobs are missing`);
+    }
+    for (const entry of phase2.entries) {
+      if (entry.status !== 'ready') failures.push(`queue entry ${entry.id} left ready: ${entry.status}`);
+    }
   }
-  if ((phase2?.workers ?? []).length > 0) failures.push(`${phase2.workers.length} worker(s) exist after the restart`);
+  if (!Array.isArray(phase2?.workers)) {
+    failures.push('phase 2: the workers answer was not an array — the proof read garbage');
+  } else if (phase2.workers.length > 0) {
+    failures.push(`${phase2.workers.length} worker(s) exist after the restart`);
+  }
   if (!(logText ?? '').includes(DISPATCH_DISABLED_LOG)) {
     failures.push(`the app log lacks "${DISPATCH_DISABLED_LOG}" — the queue-off switch is unproven`);
   }
@@ -55,9 +69,14 @@ export function evaluateProof({ phase1, phase2, logText, screenshot, requireScre
   return { ok: failures.length === 0, failures };
 }
 
+// A run directory is named by runStamp; anything else under the proof root
+// is not ours and retention must not touch it (glm-5.2 F2).
+export const RUN_NAME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z$/;
+
 // Retention: names sort like time (runStamp), so the newest `keep` survive
 // and the rest are returned for deletion.
 export function selectRunsToDelete(runNames, keep = KEEP_RUNS) {
   if (!Number.isSafeInteger(keep) || keep < 1) throw new Error(`keep must be a positive integer, got ${keep}`);
-  return [...runNames].sort().reverse().slice(keep);
+  const runs = runNames.filter((name) => RUN_NAME_PATTERN.test(name));
+  return [...runs].sort().reverse().slice(keep);
 }

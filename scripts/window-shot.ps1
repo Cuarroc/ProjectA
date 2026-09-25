@@ -45,7 +45,14 @@ public class WinShot {
 $candidates = @(Get-Process | Where-Object { $_.MainWindowTitle -and $_.MainWindowTitle -like "*$Title*" })
 if ($ProcessName) { $candidates = @($candidates | Where-Object { $_.ProcessName -eq $ProcessName }) }
 $proc = $null
-if ($TargetPid -gt 0) { $proc = @($candidates | Where-Object { $_.Id -eq $TargetPid }) | Select-Object -First 1 }
+if ($TargetPid -gt 0) {
+    $proc = @($candidates | Where-Object { $_.Id -eq $TargetPid }) | Select-Object -First 1
+    # glm-5.2 F3: mit -TargetPid ist der Titel-Fallback verboten - ein
+    # gleich betiteltes Fenster der Produktiv-Instanz waere ein falscher Beleg.
+    if (-not $proc) {
+        Write-Error "Kein Fenster mit PID $TargetPid und Titel *$Title* gefunden - Abbruch statt Titel-Fallback auf eine fremde Instanz."
+    }
+}
 if (-not $proc) { $proc = $candidates | Where-Object { $_.MainWindowTitle -eq $Title } | Select-Object -First 1 }
 if (-not $proc) { $proc = $candidates | Select-Object -First 1 }
 if (-not $proc) {

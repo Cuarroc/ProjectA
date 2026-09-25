@@ -218,8 +218,10 @@ async function main() {
     await sleep(options.settle * 1000);
     const entries = await api(second.descriptor, 'GET', `/api/queue?projectId=${encodeURIComponent(projectId)}`);
     const workers = await api(second.descriptor, 'GET', `/api/workers?projectId=${encodeURIComponent(projectId)}`);
-    proof.phase2.entries = (Array.isArray(entries) ? entries : []).map((entry) => ({ id: entry.id, status: entry.status }));
-    proof.phase2.workers = Array.isArray(workers) ? workers : [];
+    // A non-array answer stays visible as null: coercing it to [] would let
+    // the verdict pass on garbage (glm-5.2 F1).
+    proof.phase2.entries = Array.isArray(entries) ? entries.map((entry) => ({ id: entry.id, status: entry.status })) : null;
+    proof.phase2.workers = Array.isArray(workers) ? workers : null;
     proof.screenshot = options.screenshot ? takeScreenshot(layout, child.pid) : { ok: false, reason: '--no-screenshot' };
     killProjectA(child.pid);
     await waitGone(child.pid);
