@@ -40,7 +40,9 @@ function startMockApi() {
           usageState: "partial", exceeded: false, exhausted: false } }] },
       tasks: [{ id: "task-1", goalId: "goal-1", objective: "Check ownership", profileId: "codex", status: "pending", attempts: 0, ownedPaths: ["src-tauri/src/queue.rs"], dependencies: [],
         claim: { owner: "worker-1", fence: 2 },
-        assignment: { teamId: "development", role: "implementer", assignee: "worker-1", revision: 1 } }] } },
+        assignment: { teamId: "development", role: "implementer", assignee: "worker-1", revision: 1 } },
+      { id: "task-2", goalId: "goal-1", objective: "Open follow-up", profileId: "kimi", status: "open", attempts: 0, ownedPaths: [], dependencies: [],
+        assignment: { teamId: "development", role: "reviewer", assignee: "worker-2", revision: 1 } }] } },
     "/api/hq/v1/runs": { executionEnabled: false, approvalAuthority: { state: "unavailable" }, runs: [{
       run: { id: "run-1", taskId: "task-1", status: "completed", claimOwner: "worker-1", claimFence: 2 },
       candidate: { candidateCommit: "def5678", source: "worker-push" },
@@ -247,8 +249,8 @@ test("continuous goals use the selected project and show blocked runtime honestl
   await page.click('#tab-teams');
   await page.waitForFunction(() => document.querySelector('[data-goals]')?.textContent.includes('Verify continuous development'));
   assert.match(await page.textContent('[data-goals]'), /Check ownership/);
-  assert.deepEqual(await page.locator('.continuous-assignment select[name="role"] option').allTextContents(), ['coordinator', 'implementer', 'reviewer', 'integrator']);
-  assert.equal(await page.locator('.continuous-assignment button[type="submit"]').isDisabled(), true);
+  assert.deepEqual(await page.locator('details[data-task-id="task-1"] .continuous-assignment select[name="role"] option').allTextContents(), ['coordinator', 'implementer', 'reviewer', 'integrator']);
+  assert.equal(await page.locator('details[data-task-id="task-1"] .continuous-assignment button[type="submit"]').isDisabled(), true);
   await page.locator('[data-action=resume]').click();
   await page.waitForFunction(() => document.querySelector('[data-error]')?.textContent.includes('not attested'));
   assert.match(await page.textContent('[data-state]'), /paused/);
@@ -306,6 +308,35 @@ test("budget live view renders balances and routing receipts, the b key jumps to
   await page.waitForSelector('#panel-teams:not([hidden])', { timeout: 5000 });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'hq-budget-live');
   await page.screenshot({ path: join(shotDir, 'budget-routing-keyboard-b.png'), fullPage: false });
+  await page.close();
+});
+
+test("an unchanged refresh tick keeps focus on the submit button", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.goto(`http://127.0.0.1:${hqPort}/live.html`);
+  await page.waitForSelector('.live-status.ok', { timeout: 20000 });
+  await page.selectOption('#live-project', 'pj-1');
+  await page.click('#tab-teams');
+  await page.waitForFunction(() => document.querySelector('[data-goals]')?.textContent.includes('Open follow-up'), { timeout: 10000 });
+  // Count the continuous card's ticks: the source line is rewritten on every refresh.
+  await page.evaluate(() => {
+    window.__ticks = 0;
+    new MutationObserver(() => window.__ticks++).observe(document.querySelector('[data-source]'), { childList: true, characterData: true, subtree: true });
+  });
+  const submit = page.locator('details[data-task-id="task-2"] button[type="submit"]');
+  assert.equal(await submit.isDisabled(), false, 'open, unclaimed task has an enabled submit button');
+  await page.locator('details[data-task-id="task-2"] summary').click();
+  await submit.evaluate((node) => node.focus());
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Zuweisung aktualisieren');
+  const ticks = await page.evaluate(() => window.__ticks);
+  await page.waitForFunction((n) => window.__ticks > n, ticks, { timeout: 15000 });
+  const focused = await page.evaluate(() => {
+    const active = document.activeElement;
+    return { tag: active?.tagName, text: active?.textContent, task: active?.closest('details')?.dataset.taskId || null };
+  });
+  assert.equal(focused.task, 'task-2', 'an unchanged tick must not blur the focused submit button');
+  assert.match(focused.text, /Zuweisung aktualisieren/);
+  await page.locator('#hq-goals-live').screenshot({ path: join(shotDir, 'goals-teams-focus-tick.png') });
   await page.close();
 });
 

@@ -54,15 +54,14 @@ function spawnHq(dir, extraEnv = {}) {
         PROJECTA_AGENTS_FILE: join(dir, "agents.json"),
         HQ_LESSONS_FILE: join(dir, "lessons.json"),
         // The insights estimate reads the agent journal `.pa/ACTIVITY.md`,
-        // which is deliberately untracked (instance-local append log) and
-        // counts into the time estimate (max of git sittings and journal
-        // sessions). Pin it to a per-instance empty fixture so the estimate
-        // is hermetic — a host journal would shift it on developer machines.
+        // which is deliberately untracked (instance-local append log). Point
+        // it into the temp dir (no fixture written: journal stays empty) so
+        // a host journal can never leak into a test — hermetic instead of
+        // host state.
         HQ_ACTIVITY_FILE: join(dir, "ACTIVITY.md"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
-    writeFileSync(join(dir, "ACTIVITY.md"), "# Activity\n");
     writeFileSync(join(dir, "descriptor.json"), JSON.stringify({ port: 1, token: "unused" }));
     let stderr = "";
     child.stderr.on("data", (chunk) => { stderr += chunk; });

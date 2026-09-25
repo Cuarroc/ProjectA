@@ -166,7 +166,33 @@
       }
     }
     // The 5 s tick must not throw the operator out of the card: capture the
-    // interactive state before a rebuild, hand it back afterwards.
+    // interactive state before a rebuild, hand it back afterwards. Focus is
+    // separate on purpose: enable(false) blurs a focused button in real
+    // browsers, so focus must be captured before the network wait starts.
+    function captureFocus() {
+      const active = document.activeElement;
+      if (!active || !card.contains(active)) return null;
+      const host = active.closest('details[data-task-id]');
+      const part = active.name || (active.tagName === 'BUTTON' ? 'submit' : active.tagName.toLowerCase());
+      return { taskId: host?.dataset.taskId || null, part, element: active };
+    }
+    function restoreFocus(savedFocus) {
+      if (!savedFocus) return;
+      // Only take focus back when the tick itself took it (blur to body);
+      // if the operator moved focus somewhere else, leave it alone.
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      let target = null;
+      if (savedFocus.taskId) {
+        const host = list.querySelector(`details[data-task-id="${savedFocus.taskId}"]`);
+        target = host?.querySelector(`[name="${savedFocus.part}"]`)
+          || (savedFocus.part === 'summary' ? host?.querySelector('summary') : null)
+          || (savedFocus.part === 'submit' ? host?.querySelector('button[type="submit"]') : null);
+      }
+      // Buttons outside the task list survive a rebuild; use the node itself.
+      if (!target && savedFocus.element?.isConnected) target = savedFocus.element;
+      target?.focus();
+    }
     function captureListState() {
       const openTasks = new Set([...list.querySelectorAll('details[data-task-id][open]')].map(node => node.dataset.taskId));
       const drafts = new Map();
@@ -180,14 +206,7 @@
         }
         if (Object.keys(draft).length) drafts.set(form.dataset.taskId, draft);
       }
-      const active = document.activeElement;
-      let focus = null;
-      if (active && list.contains(active)) {
-        const host = active.closest('details[data-task-id]');
-        const part = active.name || (active.tagName === 'BUTTON' ? 'submit' : active.tagName.toLowerCase());
-        focus = { taskId: host?.dataset.taskId || null, part };
-      }
-      return { openTasks, drafts, focus };
+      return { openTasks, drafts };
     }
     function restoreListState(saved) {
       for (const node of list.querySelectorAll('details[data-task-id]')) {
@@ -198,25 +217,18 @@
         if (!draft) continue;
         for (const [name, value] of Object.entries(draft)) {
           const field = form.elements[name];
-          if (field) field.value = value;
+          if (!field) continue;
+          field.value = value;
+          // A restored team draft must refill the role list for that team;
+          // setting .value alone fires no change event.
+          if (name === 'teamId') field.dispatchEvent(new Event('change'));
         }
-      }
-      if (saved.focus?.taskId) {
-        const host = list.querySelector(`details[data-task-id="${saved.focus.taskId}"]`);
-        const target = host?.querySelector(`[name="${saved.focus.part}"]`)
-          || (saved.focus.part === 'summary' ? host?.querySelector('summary') : null)
-          || (saved.focus.part === 'submit' ? host?.querySelector('button[type="submit"]') : null);
-        target?.focus();
       }
     }
     async function refresh() {
       const current = project();
       const generation = ++sequence;
-      // Browsers blur a control the moment it is disabled — before the fetch
-      // finishes and captureListState() could still see it. Capture the focus
-      // identity before the disable, restore it after the re-enable.
-      const focusBefore = captureListState().focus;
-      const activeBefore = document.activeElement;
+      const savedFocus = captureFocus();
       online = false; enable(false);
       if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); budgetList.replaceChildren(); runsList.replaceChildren(); loadedProject = null; lastSignature = null; lastBudgetSignature = null; }
       if (!current) { state.textContent = 'Projekt auswählen, um Ziele und Arbeitspakete zu sehen.'; source.textContent = ''; enable(false); return; }
@@ -300,14 +312,18 @@
             for (const team of allowedTeams) { const option = document.createElement('option'); option.value = team.id; option.textContent = team.id; teamSelect.append(option); }
             const currentTeam = task.assignment?.teamId || allowedTeams[0]?.id;
             if (currentTeam) teamSelect.value = currentTeam;
-            const fillRoles = () => {
+            // Draft detection compares against the defaults, so the defaults
+            // must be the server values, not the initial markup state.
+            for (const option of teamSelect.options) option.defaultSelected = option.selected;
+            const fillRoles = (syncDefaults = false) => {
               roleSelect.replaceChildren();
               const team = allowedTeams.find(item => item.id === teamSelect.value);
               for (const role of team?.roles || []) { const option = document.createElement('option'); option.value = role; option.textContent = role; roleSelect.append(option); }
               if (task.assignment?.role && [...roleSelect.options].some(option => option.value === task.assignment.role)) roleSelect.value = task.assignment.role;
+              if (syncDefaults) for (const option of roleSelect.options) option.defaultSelected = option.selected;
             };
-            teamSelect.addEventListener('change', fillRoles); fillRoles();
-            if (task.assignment?.assignee) assignee.value = task.assignment.assignee;
+            teamSelect.addEventListener('change', () => fillRoles()); fillRoles(true);
+            if (task.assignment?.assignee) assignee.value = assignee.defaultValue = task.assignment.assignee;
             const revision = task.assignment?.revision || 0;
             teamLabel.append(teamSelect); roleLabel.append(roleSelect); assigneeLabel.append(assignee);
             assignmentForm.append(teamLabel, roleLabel, assigneeLabel, assignButton);
@@ -355,14 +371,7 @@
           }
         }
         enable(true);
-        // The disable above blurred the focused control in a real browser;
-        // give the focus back, but only when it was actually lost (never
-        // steal it from a control the operator moved to during the fetch).
-        const focusLost = !document.activeElement || document.activeElement === document.body;
-        if (focusLost) {
-          if (focusBefore?.taskId) restoreListState({ openTasks: new Set(), drafts: new Map(), focus: focusBefore });
-          else if (activeBefore && card.contains(activeBefore)) activeBefore.focus();
-        }
+        restoreFocus(savedFocus);
       } catch (failure) {
         if (generation !== sequence || current !== project()) return;
         runtime.textContent = 'Runtime-Identität nicht verfügbar; angezeigte Fähigkeiten sind nicht bestätigt.';
@@ -373,12 +382,14 @@
     async function mutate(path, body, form) {
       if (busy || !online || loadedProject !== project()) return;
       const current = project();
+      const savedFocus = captureFocus();
       busy = true; enable(false); error(null);
       try {
         await api(path, { method: 'POST', body: JSON.stringify(body) });
         if (current === project()) form?.reset();
-      } catch (failure) { if (current === project()) error(failure); busy = false; enable(online && loadedProject === project()); return; }
+      } catch (failure) { if (current === project()) error(failure); busy = false; enable(online && loadedProject === project()); restoreFocus(savedFocus); return; }
       busy = false; await refresh();
+      restoreFocus(savedFocus);
     }
     const confirmations = {
       cancel: 'Kontinuierlichen Lauf wirklich beenden? Laufende Arbeit wird nicht mehr fortgesetzt.',
