@@ -147,9 +147,9 @@ function takeScreenshot(layout, pid) {
   const helper = join(REPO, 'scripts', 'window-shot.ps1');
   if (process.platform !== 'win32' || !existsSync(helper)) return { ok: false, reason: 'screenshot helper is Windows-only' };
   try {
-    // -Pid first: with a proof binary next to production the title alone is
+    // -TargetPid first: with a proof binary next to production the title alone is
     // ambiguous, and a photo of the production window is worse than none.
-    execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper, '-Title', 'ProjectA', '-ProcessName', 'projecta', '-Pid', String(pid), '-Out', layout.screenshot], { stdio: 'pipe' });
+    execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper, '-Title', 'ProjectA', '-ProcessName', 'projecta', '-TargetPid', String(pid), '-Out', layout.screenshot], { stdio: 'pipe' });
     return { ok: existsSync(layout.screenshot), path: layout.screenshot };
   } catch (error) {
     return { ok: false, reason: String(error.stderr ?? error.message).trim().slice(0, 300) };
