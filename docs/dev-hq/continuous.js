@@ -11,7 +11,7 @@
       <p data-runtime role="status" aria-live="polite" class="muted">Runtime-Identität wird geprüft.</p>
       <p data-source class="muted"></p>
       <div data-ownership class="continuous-ownership" aria-label="Besetzung laufender Ziele"></div>
-      <section data-budget><h2>Budget & Routing</h2></section>
+      <section data-budget id="hq-budget-live" tabindex="-1" aria-label="Budget und Routing"></section>
       <p class="muted">Diese Steuerung betrifft die HQ-Planung. Bestehende Worker und der bisherige Dispatcher laufen unabhängig weiter. Automatisches Starten und Ausliefern sind noch nicht freigegeben.</p>
       <div class="continuous-actions">
         <button type="button" data-action="pause">Aufnahme pausieren</button>
@@ -56,6 +56,7 @@
     let busy = false;
     let teams = [];
     let lastSignature = null;
+    let lastBudgetSignature = null;
     function error(value) { errorBox.hidden = !value; errorBox.textContent = value?.message || ''; }
     function enable(available) {
       card.querySelectorAll('button').forEach(button => { button.disabled = !available || busy || button.dataset.locked === 'true'; });
@@ -78,6 +79,61 @@
         return `Routing ${resolved.provider || 'unbekannt'} · Profil ${resolved.profileId || 'unbekannt'} · Modell ${observation(resolved.resolvedModel)} · Aufwand ${observation(resolved.effort)} · ${reason}`;
       } catch {
         return 'Routingbeleg unlesbar; kein Modell oder Preis wird angenommen.';
+      }
+    }
+    const USAGE_STATE_LABELS = {
+      measured: 'gemessen',
+      partial: 'teilweise belegt',
+      no_receipts: 'keine Belege erfasst',
+      no_allowance: 'kein Budget eingeräumt',
+    };
+    function renderBudget(policies, records) {
+      budgetList.replaceChildren();
+      text(budgetList, 'h2', 'Budget & Routing');
+      if (!policies.length) {
+        text(budgetList, 'p', 'Budget- und Routingstatus nicht verfügbar; keine Kosten- oder Modellfähigkeit wird angenommen.', 'muted');
+        return;
+      }
+      for (const item of policies) {
+        const tokens = item.tokens;
+        const article = document.createElement('article'); article.className = 'continuous-budget'; budgetList.append(article);
+        text(article, 'h3', `Root ${item.rootGoalId || 'unbekannt'}`);
+        if (!tokens) {
+          text(article, 'p', 'Tokenbudget nicht verfügbar; keine Nutzung wird angenommen.', 'muted');
+        } else {
+          const allowance = tokens.allowance?.maxPerGoal;
+          const limit = Number.isFinite(allowance) ? allowance : 'unbekannt';
+          text(article, 'p', `Limit ${limit} · gemessen ${tokens.measuredTokens ?? 'unbekannt'} · reserviert ${tokens.reservedTokens ?? 'unbekannt'}`);
+          const alarm = tokens.exceeded === true || tokens.exhausted === true;
+          const flags = `${tokens.exceeded === true ? ' · Überschritten' : ''}${tokens.exhausted === true ? ' · erschöpft' : ''}`;
+          text(article, 'p', `Verfügbar ${tokens.availableTokens ?? 'unbekannt'} · Umsetzung ${tokens.implementationAvailable ?? 'unbekannt'} · Prüfungsschutz ${tokens.verificationRemaining ?? 'unbekannt'} · Status ${USAGE_STATE_LABELS[tokens.usageState] || tokens.usageState || 'unbekannt'}${flags}`, alarm ? undefined : 'muted');
+          if (tokens.unresolvedOperations > 0) text(article, 'p', `${tokens.unresolvedOperations} offener Vorgang${tokens.unresolvedOperations === 1 ? '' : 'e'} ohne Beleg; die Reservierung bleibt vollständig bestehen.`, 'muted');
+        }
+      }
+      const routingRegion = document.createElement('div');
+      routingRegion.dataset.routing = '';
+      budgetList.append(routingRegion);
+      text(routingRegion, 'h3', 'Routing- & Kostenbelege');
+      for (const item of policies) {
+        const routing = item.policy?.routing;
+        if (!routing) continue;
+        const billing = Array.isArray(routing.billing) && routing.billing.length ? routing.billing.join(', ') : 'keine';
+        text(routingRegion, 'p', `Root ${item.rootGoalId || 'unbekannt'} erlaubt: ${billing} · Quota-Reserve ${routing.quotaReservePercent ?? 'unbekannt'} % · Zusätzliche kostenpflichtige API: ${routing.additionalPaidApi ? 'ja' : 'nein'}`, 'muted');
+      }
+      const runs = Array.isArray(records?.runs) ? records.runs : [];
+      if (!records || !runs.length) {
+        text(routingRegion, 'p', 'Keine Routing-Belege vorhanden; kein Modell oder Preis wird angenommen.', 'muted');
+        return;
+      }
+      for (const record of runs) {
+        const runId = record.run?.id || 'unbekannt';
+        text(routingRegion, 'p', `${runId}: ${routingSummary(record.launch)}`);
+        const usage = record.usage;
+        if (usage?.state === 'measured') {
+          text(routingRegion, 'p', `${runId}: Kostenbeleg ${usage.tokens ?? 'unbekannt'} Token · ${usage.provenance?.collector || 'Collector unbekannt'} (${usage.provenance?.measurement || 'Messung unbekannt'})`, 'muted');
+        } else if (usage) {
+          text(routingRegion, 'p', `${runId}: kein Kostenbeleg (${usage.state || 'unbekannt'})${usage.reason ? ` — ${usage.reason}` : ''}; die Reservierung bleibt bestehen.`, 'muted');
+        }
       }
     }
     function renderOwnership(goals, tasks) {
@@ -147,7 +203,7 @@
       const current = project();
       const generation = ++sequence;
       online = false; enable(false);
-      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); loadedProject = null; lastSignature = null; }
+      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); budgetList.replaceChildren(); loadedProject = null; lastSignature = null; lastBudgetSignature = null; }
       if (!current) { state.textContent = 'Projekt auswählen, um Ziele und Arbeitspakete zu sehen.'; source.textContent = ''; enable(false); return; }
       try {
         const [value, runtimeValue, records] = await Promise.all([
@@ -182,25 +238,16 @@
           list.replaceChildren();
           renderOwnership(goals, tasks);
         }
-        budgetList.replaceChildren();
-        text(budgetList, 'h2', 'Budget & Routing');
         const policies = Array.isArray(effectiveLimits.rootPolicies) ? effectiveLimits.rootPolicies : [];
-        if (!policies.length) {
-          text(budgetList, 'p', 'Budget- und Routingstatus nicht verfügbar; keine Kosten- oder Modellfähigkeit wird angenommen.', 'muted');
-        } else {
-          for (const item of policies) {
-            const tokens = item.tokens;
-            const article = document.createElement('article'); article.className = 'continuous-budget'; budgetList.append(article);
-            text(article, 'h3', `Root ${item.rootGoalId || 'unbekannt'}`);
-            if (!tokens) {
-              text(article, 'p', 'Tokenbudget nicht verfügbar; keine Nutzung wird angenommen.', 'muted');
-              continue;
-            }
-            const allowance = tokens.allowance?.maxPerGoal;
-            const limit = Number.isFinite(allowance) ? allowance : 'unbekannt';
-            text(article, 'p', `Limit ${limit} · gemessen ${tokens.measuredTokens ?? 'unbekannt'} · reserviert ${tokens.reservedTokens ?? 'unbekannt'}`);
-            text(article, 'p', `Verfügbar ${tokens.availableTokens ?? 'unbekannt'} · Prüfungsschutz ${tokens.verificationRemaining ?? 'unbekannt'} · Status ${tokens.usageState || 'unbekannt'}`, 'muted');
-          }
+        const budgetSignature = JSON.stringify({
+          policies,
+          receipts: (Array.isArray(records?.runs) ? records.runs : []).map(record => ({
+            id: record.run?.id, route: record.launch?.routeJson || null, usage: record.usage || null,
+          })),
+        });
+        if (budgetSignature !== lastBudgetSignature) {
+          renderBudget(policies, records);
+          lastBudgetSignature = budgetSignature;
         }
         runsList.replaceChildren();
         text(runsList, 'h2', 'Runs, Evidenz & Lieferung');
