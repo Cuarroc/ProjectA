@@ -1413,6 +1413,78 @@ mod tests {
         );
     }
 
+    // Review PR #16 (grok G1, sonnet R2): a DF-15a-era row (exit committed,
+    // reservation still held) is neither reported as released nor left held
+    // forever: startup reconciliation frees it with the same guard.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_legacy_undelivered_row_is_not_reported_released_and_startup_frees_it() {
+        let (_dir, store, owner, exit, now) =
+            undelivered_fixture(&[Stage::Launch, Stage::Process]).await;
+        let run = owner.binding.run_id.clone();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        let hold = || async {
+            sqlx::query("UPDATE development_token_reservations SET state='started',settled_at=NULL WHERE run_id=?")
+                .bind(&run)
+                .execute(&store.pool)
+                .await
+                .unwrap();
+            sqlx::query("DELETE FROM continuous_events WHERE kind='development_delivery_released'")
+                .execute(&store.pool)
+                .await
+                .unwrap();
+        };
+        hold().await;
+        let context = store.agent_run_context(&run, "owner", 1).await.unwrap();
+        assert!(
+            context["delivery"].get("effectiveState").is_none(),
+            "a still-held reservation is not reported as released"
+        );
+        store
+            .reconcile_interrupted_development_launches()
+            .await
+            .unwrap();
+        store
+            .reconcile_interrupted_development_launches()
+            .await
+            .unwrap();
+        let (state, events): (String, i64) = sqlx::query_as(
+            "SELECT (SELECT state FROM development_token_reservations WHERE run_id=?),(SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released')",
+        )
+        .bind(&run)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(state, "cancelled", "startup frees the legacy row");
+        assert_eq!(events, 1, "the startup release is journaled exactly once");
+        let context = store.agent_run_context(&run, "owner", 1).await.unwrap();
+        assert_eq!(
+            context["delivery"]["effectiveState"],
+            "released_undelivered"
+        );
+    }
+
+    // Review PR #16 (sonnet R4): the transport cannot confirm an enqueue
+    // after the proven undelivered exit released the reservation.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_late_enqueue_after_an_undelivered_exit_is_rejected() {
+        let (_dir, store, owner, exit, now) =
+            undelivered_fixture(&[Stage::Launch, Stage::Process]).await;
+        let run = owner.binding.run_id.clone();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        let receipt = store.development_delivery(&run).await.unwrap().unwrap();
+        assert!(store
+            .record_development_delivery_enqueued(&receipt)
+            .await
+            .is_err());
+        let delivery: String =
+            sqlx::query_scalar("SELECT state FROM development_deliveries WHERE run_id=?")
+                .bind(&run)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(delivery, "started");
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn undelivered_exit_without_exact_ledger_process_or_fence_stays_unresolved() {
         let both = [Stage::Launch, Stage::Process];
