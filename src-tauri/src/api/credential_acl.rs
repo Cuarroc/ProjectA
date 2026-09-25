@@ -548,4 +548,71 @@ mod tests {
         let file = open(&inner.join("child.json"));
         restrict_to_current_user(&file).unwrap();
     }
+
+    /// W2-07b review round (grok F2 / sonnet F4): a planted second hard link
+    /// at the descriptor path must be refused before anything is truncated or
+    /// re-ACL'd, and the original file must stay byte-identical.
+    #[test]
+    fn a_second_hard_link_to_the_descriptor_is_refused_and_the_target_untouched() {
+        let dir = crate::testutil::TempDir::new("api-w207b-hardlink");
+        let victim = dir.path().join("victim.json");
+        std::fs::write(&victim, b"precious").unwrap();
+        let planted = dir.path().join("projecta-api.json");
+        std::fs::hard_link(&victim, &planted).unwrap();
+        let error = crate::api::write_descriptor_body(&planted, b"new-token").unwrap_err();
+        assert!(error.contains("hard link"), "{error}");
+        assert_eq!(std::fs::read(&victim).unwrap(), b"precious");
+    }
+
+    /// W2-07b review round (grok F1): when the restriction fails, the previous
+    /// descriptor content must survive - the owner and the fresh DACL are
+    /// verified before any truncation, so a refused write never destroys the
+    /// running instance's descriptor.
+    #[test]
+    fn a_failed_restriction_preserves_the_existing_descriptor() {
+        let dir = crate::testutil::TempDir::new("api-w207b-keep");
+        let path = dir.path().join("projecta-api.json");
+        std::fs::write(&path, b"old-token").unwrap();
+        FAIL_NEXT_RESTRICT.with(|fail| fail.set(true));
+        let error = crate::api::write_descriptor_body(&path, b"new-token").unwrap_err();
+        assert!(error.contains("injected"), "{error}");
+        assert_eq!(std::fs::read(&path).unwrap(), b"old-token");
+    }
+
+    /// W2-07b review round (grok F6 / sonnet F3): an AV scan or a parallel
+    /// issuance holding the descriptor for a few hundred milliseconds must not
+    /// fail the launch; the open retries a bounded time before failing closed.
+    #[test]
+    fn a_briefly_held_descriptor_handle_is_waited_out() {
+        let dir = crate::testutil::TempDir::new("api-w207b-busy");
+        let path = dir.path().join("projecta-api.json");
+        std::fs::write(&path, b"old-token").unwrap();
+        let blocker = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path)
+            .unwrap();
+        let release = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            drop(blocker);
+        });
+        crate::api::write_descriptor_body(&path, b"new-token").unwrap();
+        release.join().unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"new-token");
+    }
+
+    /// W2-07b review round (sonnet F6): the failure-injection seam for the
+    /// credential FILE must survive a directory restriction - the directory
+    /// step runs first at issuance and must not consume the file's flag.
+    #[test]
+    fn the_directory_restrict_does_not_consume_the_file_injection_flag() {
+        let dir = crate::testutil::TempDir::new("api-w207b-seam");
+        let inner = dir.path().join("agent-access");
+        std::fs::create_dir(&inner).unwrap();
+        FAIL_NEXT_RESTRICT.with(|fail| fail.set(true));
+        restrict_directory_to_current_user(&inner).unwrap();
+        let file = open(&inner.join("child.json"));
+        let error = restrict_to_current_user(&file).unwrap_err();
+        assert!(error.contains("injected"), "{error}");
+    }
 }

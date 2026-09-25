@@ -7,11 +7,13 @@ use std::path::Path;
 
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 use windows_sys::Win32::Security::{
-    AclSizeInformation, EqualSid, GetAce, GetAclInformation, GetFileSecurityW,
-    GetSecurityDescriptorControl, GetSecurityDescriptorDacl, GetSecurityDescriptorOwner,
-    GetTokenInformation, TokenUser, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_SIZE_INFORMATION,
-    DACL_SECURITY_INFORMATION, INHERITED_ACE, OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
-    SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
+    AclSizeInformation, CreateWellKnownSid, EqualSid, GetAce, GetAclInformation, GetFileSecurityW,
+    GetLengthSid, GetSecurityDescriptorControl, GetSecurityDescriptorDacl,
+    GetSecurityDescriptorOwner, GetTokenInformation, TokenOwner, TokenUser,
+    WinBuiltinAdministratorsSid, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_SIZE_INFORMATION,
+    CONTAINER_INHERIT_ACE, DACL_SECURITY_INFORMATION, INHERITED_ACE, OBJECT_INHERIT_ACE,
+    OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SECURITY_MAX_SID_SIZE, SE_DACL_PROTECTED,
+    TOKEN_INFORMATION_CLASS, TOKEN_OWNER, TOKEN_QUERY, TOKEN_USER,
 };
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
@@ -26,12 +28,14 @@ struct Dacl {
     protected: bool,
     /// (ace type, ace flags, SID equals the current user)
     aces: Vec<(u8, u8, bool)>,
-    /// The owner SID equals the current user.
-    owner_is_user: bool,
+    /// The owner SID is one of the identities this process may legitimately
+    /// own files as (token user, token default owner, Administrators).
+    owner_accepted: bool,
 }
 
-/// DWORD-aligned, as a SID must be.
-fn current_user_sid() -> Vec<u32> {
+/// DWORD-aligned, as a SID must be: `TokenUser` or `TokenOwner` of this
+/// process's token.
+fn token_sid(class: TOKEN_INFORMATION_CLASS) -> Vec<u32> {
     unsafe {
         let mut token: HANDLE = std::ptr::null_mut();
         assert_ne!(
@@ -39,27 +43,58 @@ fn current_user_sid() -> Vec<u32> {
             0
         );
         let mut needed = 0u32;
-        GetTokenInformation(token, TokenUser, std::ptr::null_mut(), 0, &mut needed);
+        GetTokenInformation(token, class, std::ptr::null_mut(), 0, &mut needed);
         let mut buffer = vec![0u64; (needed as usize).div_ceil(8)];
         let ok = GetTokenInformation(
             token,
-            TokenUser,
+            class,
             buffer.as_mut_ptr().cast(),
             needed,
             &mut needed,
         );
         CloseHandle(token);
         assert_ne!(ok, 0, "{}", std::io::Error::last_os_error());
-        let user = &*(buffer.as_ptr() as *const TOKEN_USER);
-        let length = windows_sys::Win32::Security::GetLengthSid(user.User.Sid) as usize;
+        let sid = if class == TokenOwner {
+            (*(buffer.as_ptr() as *const TOKEN_OWNER)).Owner
+        } else {
+            (*(buffer.as_ptr() as *const TOKEN_USER)).User.Sid
+        };
+        let length = GetLengthSid(sid) as usize;
         let mut owned = vec![0u32; length.div_ceil(4)];
-        std::ptr::copy_nonoverlapping(
-            user.User.Sid as *const u8,
-            owned.as_mut_ptr().cast::<u8>(),
-            length,
-        );
+        std::ptr::copy_nonoverlapping(sid as *const u8, owned.as_mut_ptr().cast::<u8>(), length);
         owned
     }
+}
+
+/// The well-known SID of BUILTIN\Administrators: every object an elevated run
+/// creates is owned by this group, and no non-admin can assign it.
+fn administrators_sid() -> Vec<u32> {
+    unsafe {
+        let mut buffer = vec![0u32; (SECURITY_MAX_SID_SIZE as usize).div_ceil(4)];
+        let mut size = SECURITY_MAX_SID_SIZE;
+        assert_ne!(
+            CreateWellKnownSid(
+                WinBuiltinAdministratorsSid,
+                std::ptr::null_mut(),
+                buffer.as_mut_ptr().cast(),
+                &mut size
+            ),
+            0
+        );
+        buffer
+    }
+}
+
+/// The owner identities the production check accepts (W2-07b review round,
+/// grok F1 / sonnet F2): the token user, the token's default owner and the
+/// Administrators group. The oracle must mirror that set exactly, or an
+/// elevated run would fail the oracle while production behaves as designed.
+fn accepted_owner_sids() -> Vec<Vec<u32>> {
+    vec![
+        token_sid(TokenUser),
+        token_sid(TokenOwner),
+        administrators_sid(),
+    ]
 }
 
 fn read_dacl(path: &Path) -> Dacl {
@@ -68,7 +103,8 @@ fn read_dacl(path: &Path) -> Dacl {
         .encode_wide()
         .chain(std::iter::once(0))
         .collect();
-    let mut user = current_user_sid();
+    let mut user = token_sid(TokenUser);
+    let mut owners: Vec<Vec<u32>> = accepted_owner_sids();
     unsafe {
         let mut needed = 0u32;
         GetFileSecurityW(
@@ -100,7 +136,9 @@ fn read_dacl(path: &Path) -> Dacl {
             0
         );
         assert!(!owner.is_null(), "a descriptor without an owner is foreign");
-        let owner_is_user = EqualSid(owner, user.as_mut_ptr().cast()) != 0;
+        let owner_accepted = owners
+            .iter_mut()
+            .any(|accepted| EqualSid(owner, accepted.as_mut_ptr().cast()) != 0);
         let mut control = 0u16;
         let mut revision = 0u32;
         assert_ne!(
@@ -146,13 +184,14 @@ fn read_dacl(path: &Path) -> Dacl {
         Dacl {
             protected: control & SE_DACL_PROTECTED != 0,
             aces,
-            owner_is_user,
+            owner_accepted,
         }
     }
 }
 
 /// W2-07/W2-07b shape: protected against inheritance, every ACE decided here
-/// grants only the current user, and the file belongs to that user.
+/// grants only the current user, and the file belongs to one of the owner
+/// identities of this process (user, token default owner, Administrators).
 fn assert_owner_only(dacl: &Dacl) {
     assert!(
         dacl.protected,
@@ -172,8 +211,9 @@ fn assert_owner_only(dacl: &Dacl) {
         "the agent runs as the current user and must still read it: {dacl:?}"
     );
     assert!(
-        dacl.owner_is_user,
-        "the file must belong to the current user: {dacl:?}"
+        dacl.owner_accepted,
+        "the file must belong to an owner identity of this process \
+         (token user, token default owner, or Administrators): {dacl:?}"
     );
 }
 
@@ -216,6 +256,33 @@ fn agent_access_directory_grants_only_the_current_user() {
         .issue_run_descriptor_file("run-acl", "owner", 1, 60)
         .unwrap();
     let dacl = read_dacl(&dir.path().join("agent-access"));
+    assert_owner_only(&dacl);
+    // W2-07b review round (grok F5 / sonnet F7): the user ACE on the
+    // directory must be inheritable, or files created inside would re-inherit
+    // SYSTEM/Administrators from the creator's default DACL.
+    assert!(
+        dacl.aces
+            .iter()
+            .any(|&(kind, flags, is_user)| kind == ALLOWED
+                && is_user
+                && u32::from(flags) & (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE)
+                    == (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE)),
+        "the user ACE on the directory must be inheritable: {dacl:?}"
+    );
+}
+
+/// W2-07b review round (sonnet F7): a broad descriptor left behind with a
+/// wide, inherited ACL is narrowed on the next boot (self-healing pin).
+#[test]
+fn an_existing_wide_open_descriptor_is_narrowed_on_boot() {
+    let dir = TempDir::new("api-w207b-heal");
+    std::fs::write(
+        dir.path().join(crate::api::DESCRIPTOR_FILE),
+        b"{\"port\":1,\"token\":\"old\"}",
+    )
+    .unwrap();
+    let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
+    let dacl = read_dacl(server.descriptor_path());
     assert_owner_only(&dacl);
 }
 
