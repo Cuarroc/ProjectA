@@ -45,7 +45,7 @@ test('run stamp sorts lexicographically like time and is filename-safe', () => {
   assert.match(a, /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z$/);
 });
 
-test('verdict passes only when the app started twice, nothing dispatched and the log proves the switch', () => {
+test('verdict passes only when the app started twice and nothing dispatched and the log proves the switch', () => {
   const verdict = evaluateProof(goodFacts());
   assert.equal(verdict.ok, true);
   assert.deepEqual(verdict.failures, []);
@@ -63,7 +63,7 @@ test('verdict fails when a queued entry left ready or a worker exists', () => {
   assert.equal(evaluateProof(unseeded).ok, false);
 });
 
-test('verdict fails without the disabled log line, a start, or a required screenshot', () => {
+test('verdict fails without the disabled log line or a start or a required screenshot', () => {
   const noLog = goodFacts();
   noLog.logText = 'nothing relevant';
   assert.equal(evaluateProof(noLog).ok, false);
@@ -85,4 +85,16 @@ test('retention keeps the newest runs and deletes the rest', () => {
   assert.deepEqual(selectRunsToDelete(names, KEEP_RUNS), []);
   assert.deepEqual(selectRunsToDelete([], KEEP_RUNS), []);
   assert.throws(() => selectRunsToDelete(names, 0), /keep/);
+});
+
+test('driver parses its flags and rejects unknown ones and bad values', async () => {
+  const { parseArgs } = await import('../runtime-proof.mjs');
+  const options = parseArgs(['--exe', 'app.exe', '--settle', '5', '--no-screenshot']);
+  assert.equal(options.exe, 'app.exe');
+  assert.equal(options.settle, 5);
+  assert.equal(options.screenshot, false);
+  assert.equal(parseArgs([]).screenshot, true);
+  assert.throws(() => parseArgs(['--bogus']), /unknown option/);
+  assert.throws(() => parseArgs(['--settle', '0']), /settle/);
+  assert.throws(() => parseArgs(['--keep', '0']), /keep/);
 });
