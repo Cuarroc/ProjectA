@@ -50,7 +50,7 @@ if ($TargetPid -gt 0) {
     # glm-5.2 F3: mit -TargetPid ist der Titel-Fallback verboten - ein
     # gleich betiteltes Fenster der Produktiv-Instanz waere ein falscher Beleg.
     if (-not $proc) {
-        Write-Error "Kein Fenster mit PID $TargetPid und Titel *$Title* gefunden - Abbruch statt Titel-Fallback auf eine fremde Instanz."
+        throw "Kein Fenster mit PID $TargetPid und Titel *$Title* gefunden - Abbruch statt Titel-Fallback auf eine fremde Instanz."
     }
 }
 if (-not $proc) { $proc = $candidates | Where-Object { $_.MainWindowTitle -eq $Title } | Select-Object -First 1 }

@@ -22,6 +22,10 @@
 //   TAURI_CONFIG='{"identifier":"com.projecta.proof"}' cargo build
 // Such a proof binary owns no shared state with production (own mutex, own
 // PROJECTA_APP_DATA, ephemeral ports), so the refusal would protect nothing.
+// Note: a plain `cargo build` exe loads devUrl in its window (tauri's `dev`
+// cfg is on unless the `tauri/custom-protocol` feature is enabled — the
+// tauri CLI adds it). For a screenshot of the real UI build with
+// `--features tauri/custom-protocol` or pass any `tauri build` artifact.
 import { spawn, execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, openSync, closeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -219,8 +223,9 @@ async function main() {
     const entries = await api(second.descriptor, 'GET', `/api/queue?projectId=${encodeURIComponent(projectId)}`);
     const workers = await api(second.descriptor, 'GET', `/api/workers?projectId=${encodeURIComponent(projectId)}`);
     // A non-array answer stays visible as null: coercing it to [] would let
-    // the verdict pass on garbage (glm-5.2 F1).
-    proof.phase2.entries = Array.isArray(entries) ? entries.map((entry) => ({ id: entry.id, status: entry.status })) : null;
+    // the verdict pass on garbage (glm-5.2 F1). Malformed elements map to a
+    // non-ready status instead of crashing the driver (glm-5.2 r2).
+    proof.phase2.entries = Array.isArray(entries) ? entries.map((entry) => ({ id: entry?.id ?? '?', status: entry?.status ?? 'malformed' })) : null;
     proof.phase2.workers = Array.isArray(workers) ? workers : null;
     proof.screenshot = options.screenshot ? takeScreenshot(layout, child.pid) : { ok: false, reason: '--no-screenshot' };
     killProjectA(child.pid);
