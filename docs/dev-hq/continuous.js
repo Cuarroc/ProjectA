@@ -259,7 +259,6 @@
         const signature = JSON.stringify({ goals, tasks, teams, controlStatus: control.status || null });
         const rebuildGoals = signature !== lastSignature;
         const saved = rebuildGoals ? captureListState() : null;
-        if (saved && !saved.focus) saved.focus = focusBefore;
         const previous = select.value;
         if (rebuildGoals) {
           select.replaceChildren();
