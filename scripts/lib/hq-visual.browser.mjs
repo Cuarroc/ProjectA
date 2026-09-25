@@ -125,7 +125,13 @@ function startMockApi() {
       });
       return;
     }
-    if (routes[path]) return reply(200, routes[path]);
+    if (routes[path]) {
+      // The worker detail panel opens at once and fills after these two fetches;
+      // a fixed latency reproduces a loaded CI runner deterministically.
+      if (/^\/api\/workers\/wk-1(\/messages)?$/.test(path)) setTimeout(() => reply(200, routes[path]), 400);
+      else reply(200, routes[path]);
+      return;
+    }
     reply(404, { error: `mock has no route for ${path}` });
   });
 }
