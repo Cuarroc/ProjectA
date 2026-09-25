@@ -289,7 +289,14 @@ function repositoryInsights() {
   if (Date.now() - insightsCache.at < 60000 && insightsCache.value) return insightsCache.value;
   const timestamps = tryGit(["log", "--format=%at"]).split(/\r?\n/).filter(Boolean).map(Number);
   const git = workSessions(timestamps);
-  const activityPath = join(root, ".pa", "ACTIVITY.md");
+  // The commit history above comes from GIT_DIR/GIT_WORK_TREE when the
+  // caller exports them (a git hook does); the journal belongs to that same
+  // tree. Reading it from cwd instead leaks the caller's worktree journal
+  // into the estimate (observed 2026-09-25: a worktree with three journal
+  // entries turned hq-test red, 2.3 h instead of 1.8 h). HQ_ACTIVITY_FILE
+  // overrides the path entirely — the same test seam as HQ_LESSONS_FILE.
+  const activityRoot = process.env.GIT_WORK_TREE || root;
+  const activityPath = process.env.HQ_ACTIVITY_FILE || join(activityRoot, ".pa", "ACTIVITY.md");
   const activity = existsSync(activityPath) ? activitySessions(readFileSync(activityPath, "utf8")) : [];
   const volume = diffVolume(tryGit(["log", "--numstat", "--format="]));
   insightsCache = { at: Date.now(), value: { timestamps, git, activity, volume, heat: heatmap(timestamps) } };
