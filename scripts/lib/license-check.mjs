@@ -41,10 +41,11 @@ function tokenAllowed(token) {
 // Apache-2.0) AND GPL-3.0-only" would let the GPL conjunct slip through the
 // MIT alternative (review lic-01 delta, kimi-k3 F1 / glm-5.2 F1). Malformed
 // input fails closed (violation). A trailing `*` is license-checker's
-// "inferred from file" marker, not part of the license id — stripped, but
-// logged (kimi-k3 F8).
+// "inferred from file" marker, not part of the license id — tokenized
+// separately and skipped after a token or group, but logged (kimi-k3 F8;
+// group case: review pr10, grok F6).
 function tokenize(expression) {
-  const spaced = String(expression).replace(/([()])/g, " $1 ").trim();
+  const spaced = String(expression).replace(/([()*])/g, " $1 ").trim();
   if (!spaced) return [];
   const words = spaced.split(/\s+/);
   const tokens = [];
@@ -74,13 +75,15 @@ function licenseAllowed(expression, pkg) {
       const value = parseOr();
       if (tokens[pos] !== ")") throw new Error("unbalanced parentheses");
       pos += 1;
+      if (tokens[pos] === "*") pos += 1;
       return value;
     }
     if (token === undefined || token === ")" || /^(OR|AND)$/i.test(token)) {
       throw new Error(`unexpected token: ${token}`);
     }
     pos += 1;
-    return tokenAllowed(token.replace(/\*$/, ""));
+    if (tokens[pos] === "*") pos += 1;
+    return tokenAllowed(token);
   };
   const parseAnd = () => {
     let value = parsePrimary();
@@ -107,12 +110,15 @@ function licenseAllowed(expression, pkg) {
 }
 
 // report: license-checker JSON object { "name@version": { licenses: "..." } }.
-// rootName: the project's own package name; its entry is skipped because the
-// repo license decision is tracked separately (LIC-01 "Needs decision").
-export function evaluateLicenses(report, rootName) {
+// rootKey: the project's own exact "name@version"; its entry is skipped
+// because the repo license decision is tracked separately (LIC-01 "Needs
+// decision"). The skip is exact, not a name prefix: a production dependency
+// that shares the root name at any other version is third-party code and
+// must be evaluated (review pr10, grok F5).
+export function evaluateLicenses(report, rootKey) {
   const violations = [];
   for (const [pkg, info] of Object.entries(report)) {
-    if (rootName && pkg.startsWith(`${rootName}@`)) continue;
+    if (rootKey && pkg === rootKey) continue;
     // license-checker may report an array (multiple license files found):
     // conservatively every entry must be on the list. An empty array is
     // treated like a missing license (fail-closed, glm-5.2 delta F2).
@@ -127,6 +133,33 @@ export function evaluateLicenses(report, rootName) {
   return violations;
 }
 
+// The drift test pins the [licenses] allow array against ALLOWED_LICENSES,
+// but cargo-deny honors more policy in the same file: [licenses].exceptions
+// re-allows a named crate, [[licenses.clarify]] rewrites an expression, and
+// a single-quoted allow entry silently drops out of the mirror comparison
+// (the pin matches double quotes only). All three would let the Rust half
+// pass what the npm half rejects — exceptions are orchestrator decisions,
+// never worker additions (review pr10, grok F1). Returns one line per
+// problem; an empty array means the file carries no bypass.
+export function denyTomlPolicyProblems(toml) {
+  const problems = [];
+  const start = toml.indexOf("[licenses]\n");
+  const rest = start === -1 ? "" : toml.slice(start + "[licenses]\n".length);
+  const nextSection = rest.search(/^\[/m);
+  const sectionText = nextSection === -1 ? rest : rest.slice(0, nextSection);
+  if (/^exceptions\s*=/m.test(sectionText)) {
+    problems.push("[licenses].exceptions re-allows crates outside the allowlist");
+  }
+  if (/^\[\[licenses\.clarify\]\]/m.test(toml)) {
+    problems.push("[[licenses.clarify]] rewrites license expressions");
+  }
+  const block = sectionText.match(/^allow = \[\n([\s\S]*?)\]/m);
+  if (block && /'/.test(block[1])) {
+    problems.push("single-quoted allow entries drop out of the mirror pin");
+  }
+  return problems;
+}
+
 function main() {
   const file = process.argv[2];
   if (!file) {
@@ -134,14 +167,23 @@ function main() {
     process.exit(2);
   }
   const report = JSON.parse(readFileSync(file, "utf8"));
-  const rootName = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).name;
-  const violations = evaluateLicenses(report, rootName);
+  const rootPkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  const rootKey = `${rootPkg.name}@${rootPkg.version}`;
+  // Fail closed on an empty or root-only scan: the checker can exit 0 with
+  // `{}` when node_modules is incomplete, and "0 packages, all allowed"
+  // would be a green gate over nothing (review pr10, grok F3).
+  const thirdParty = Object.keys(report).filter((key) => key !== rootKey);
+  if (thirdParty.length === 0) {
+    console.error("license-check: report contains no third-party packages — incomplete scan (empty node_modules?), failing closed");
+    process.exit(1);
+  }
+  const violations = evaluateLicenses(report, rootKey);
   if (violations.length > 0) {
     console.error("license-check: licenses outside the allowlist:");
     for (const v of violations) console.error(`  ${v}`);
     process.exit(1);
   }
-  console.log(`license-check: ${Object.keys(report).length} production packages, all on the allowlist`);
+  console.log(`license-check: ${thirdParty.length} production packages, all on the allowlist`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
