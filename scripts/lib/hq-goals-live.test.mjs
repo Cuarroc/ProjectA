@@ -115,6 +115,49 @@ test('changed-data rebuild restores focus to a submit button', async (t) => {
   assert.equal(f.document.activeElement, again.querySelector('button[type=submit]'), 'submit button focus is restored');
 });
 
+test('browser blur-on-disable is undone: submit focus survives every 5 s tick', async (t) => {
+  let attempts = 0;
+  const f = continuousFixture(async () => ({
+    ...CONTEXT,
+    snapshot: {
+      ...CONTEXT.snapshot,
+      tasks: CONTEXT.snapshot.tasks.map((task) => task.id === 'task-2' ? { ...task, attempts } : task),
+    },
+  }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const details = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Review the view'));
+  details.open = true;
+  const submit = details.querySelector('button[type=submit]');
+  submit.focus();
+  assert.equal(f.document.activeElement, submit);
+  // Real browsers move focus to the document the moment the focused control
+  // is disabled (refresh() disables every button while it fetches); JSDOM
+  // does not, and once disabled a blur() is a no-op there. Patch the setter
+  // so the blur happens at disable time, like the browser focus fixup —
+  // this test pins browser behavior, not the JSDOM quirk that hid the bug.
+  let proto = submit, descriptor;
+  while (proto && !(descriptor = Object.getOwnPropertyDescriptor(proto, 'disabled'))) proto = Object.getPrototypeOf(proto);
+  Object.defineProperty(submit, 'disabled', {
+    configurable: true,
+    get() { return descriptor.get.call(this); },
+    set(value) {
+      if (value && f.document.activeElement === this) this.blur();
+      descriptor.set.call(this, value);
+    },
+  });
+  await f.controller.refresh(); // unchanged data: no rebuild, focus must still return
+  let again = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Review the view'));
+  assert.equal(f.document.activeElement, again.querySelector('button[type=submit]'), 'submit focus survives an unchanged tick');
+  attempts = 1; // changed data forces a rebuild; focus must land on the new button
+  await f.controller.refresh();
+  again = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Review the view'));
+  assert.equal(f.document.activeElement, again.querySelector('button[type=submit]'), 'submit focus survives a rebuild');
+});
+
 test('rebuild after a server-side seat change shows the new seat, not a phantom draft', async (t) => {
   let seat = { teamId: 'development', role: 'implementer', assignee: 'worker-1', revision: 2 };
   const f = continuousFixture(async () => ({
