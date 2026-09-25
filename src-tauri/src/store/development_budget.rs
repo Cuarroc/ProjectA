@@ -795,7 +795,10 @@ mod tests {
             .await
             .unwrap();
         assert!(
-            store.start_development_tokens(&reservation.id).await.is_err(),
+            store
+                .start_development_tokens(&reservation.id)
+                .await
+                .is_err(),
             "worker budget starts with its launch, never by hand"
         );
         store
