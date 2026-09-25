@@ -41,6 +41,14 @@ npx --yes license-checker-rseidelsohn@5.0.1 --production --json   # npm section
 - **MPL-2.0 crates** (cssparser, cssparser-macros, dtoa-short, option-ext,
   selectors): used unmodified as compiled dependencies; their source is
   available on crates.io as required by MPL-2.0 §3.2.
+- **webpki-root-certs** (crate `webpki-root-certs@1.0.9`, Mozilla root
+  certificate data, via rustls-platform-verifier ← reqwest ← tauri):
+  Community Data License Agreement – Permissive – Version 2.0
+  (CDLA-Permissive-2.0). §2.1 requires making the license text available
+  with the shared data; the full text is in the "License texts" appendix
+  below. Allowed by a narrow `[[licenses.exceptions]]` entry in
+  `src-tauri/deny.toml` (orchestrator decision 2026-09-25), not by the
+  global allowlist.
 - **Project-owned artwork**: `assets/banner.svg`, `src-tauri/icons/*` and the
   diagrams under `docs/dev-hq/concepts/` are original ProjectA artwork, not
   third-party material.
@@ -80,9 +88,13 @@ the allowlist for the gate to pass. `LGPL-2.1-or-later` (r-efi), `MIT-0`
 (dunce) and `Unlicense` (aho-corasick and others) below are such
 alternatives of expressions that also offer an allowed license
 (MIT/Apache-2.0/CC0-1.0) — ProjectA relies on the allowed alternative.
-`CDLA-Permissive-2.0` (webpki-root-certs) is **not** on the allowlist and is
-a LIC-01 "Needs decision" finding; the `licenses` gate fails until the
-orchestrator decides.
+`CDLA-Permissive-2.0` (webpki-root-certs, the Mozilla root certificate data
+pulled in via rustls-platform-verifier ← reqwest ← tauri) is not on the
+allowlist; the orchestrator decided on 2026-09-25 to allow it as a narrow
+`[[licenses.exceptions]]` entry for exactly this crate in
+`src-tauri/deny.toml`. The full license text ships in the
+"License texts" appendix below (CDLA-Permissive-2.0 §2.1 requires making
+the text available with the data).
 
 ```text
 0BSD (1): adler2@2.0.1
@@ -101,4 +113,72 @@ MPL-2.0 (5): cssparser@0.36.0, cssparser-macros@0.6.1, dtoa-short@0.3.5, option-
 Unicode-3.0 (19): icu_collections@2.3.0, icu_locale_core@2.3.0, icu_normalizer@2.3.0, icu_normalizer_data@2.3.0, icu_properties@2.3.0, icu_properties_data@2.3.0, icu_provider@2.3.1, litemap@0.8.3, potential_utf@0.1.6, tinystr@0.8.4, unicode-ident@1.0.24, writeable@0.6.4, yoke@0.8.3, yoke-derive@0.8.2, zerofrom@0.1.8, zerofrom-derive@0.1.7, zerotrie@0.2.5, zerovec@0.11.8, zerovec-derive@0.11.6
 Unlicense (6): aho-corasick@1.1.5, byteorder@1.5.0, memchr@2.8.3, same-file@1.0.6, walkdir@2.5.0, winapi-util@0.1.11
 Zlib (21): bytemuck@1.25.2, dispatch2@0.3.1, foldhash@0.1.5, foldhash@0.2.0, miniz_oxide@0.8.9, miniz_oxide@0.9.1, objc2-app-kit@0.3.2, objc2-cloud-kit@0.3.2, objc2-core-data@0.3.2, objc2-core-foundation@0.3.2, objc2-core-graphics@0.3.2, objc2-core-image@0.3.2, objc2-core-location@0.3.2, objc2-core-text@0.3.2, objc2-exception-helper@0.1.1, objc2-osa-kit@0.3.2, objc2-quartz-core@0.3.2, objc2-ui-kit@0.3.2, objc2-user-notifications@0.3.2, objc2-web-kit@0.3.2, raw-window-handle@0.6.2
+```
+
+## License texts
+
+### Community Data License Agreement – Permissive – Version 2.0
+
+Full text of the license covering the `webpki-root-certs` data (see "Required
+notices" above). Source: https://cdla.dev/permissive-2-0/ — shipped here
+because §2.1 requires making the text available with the shared Data.
+
+```text
+Community Data License Agreement – Permissive – Version 2.0
+
+This is the Community Data License Agreement – Permissive, Version 2.0 (the
+"agreement"). Data Provider(s) and Data Recipient(s) agree as follows:
+
+1. Provision of the Data
+
+1.1. A Data Recipient may use, modify, and share the Data made available by
+Data Provider(s) under this agreement if that Data Recipient follows the
+terms of this agreement.
+
+1.2. This agreement does not impose any restriction on a Data Recipient's
+use, modification, or sharing of any portions of the Data that are in the
+public domain or that may be used, modified, or shared under any other
+legal exception or limitation.
+
+2. Conditions for Sharing Data
+
+2.1. A Data Recipient may share Data, with or without modifications, so
+long as the Data Recipient makes available the text of this agreement with
+the shared Data.
+
+3. No Restrictions on Results
+
+3.1. This agreement does not impose any restriction or obligations with
+respect to the use, modification, or sharing of Results.
+
+4. No Warranty; Limitation of Liability
+
+4.1. All Data Recipients receive the Data subject to the following terms:
+
+THE DATA IS PROVIDED ON AN "AS IS" BASIS, WITHOUT REPRESENTATIONS,
+WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING,
+WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT,
+MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+NO DATA PROVIDER SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT
+LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE DATA OR RESULTS, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGES.
+
+5. Definitions
+
+5.1. "Data" means the material received by a Data Recipient under this
+agreement.
+
+5.2. "Data Provider" means any person who is the source of Data provided
+under this agreement and in reliance on a Data Recipient's agreement to its
+terms.
+
+5.3. "Data Recipient" means any person who receives Data directly or
+indirectly from a Data Provider and agrees to the terms of this agreement.
+
+5.4. "Results" means any outcome obtained by computational analysis of
+Data, including for example machine learning models and models' insights.
 ```

@@ -141,6 +141,14 @@ export function evaluateLicenses(report, rootKey) {
 // pass what the npm half rejects — exceptions are orchestrator decisions,
 // never worker additions (review pr10, grok F1). Returns one line per
 // problem; an empty array means the file carries no bypass.
+//
+// One exception is orchestrator-approved (decision 2026-09-25):
+// webpki-root-certs (Mozilla root certificate data, via
+// rustls-platform-verifier <- reqwest <- tauri) may carry
+// CDLA-Permissive-2.0, a permissive data license. The pin below accepts
+// exactly that (name, allow) pair and flags any other
+// [[licenses.exceptions]] entry, so the exception cannot be widened
+// silently.
 export function denyTomlPolicyProblems(toml) {
   const problems = [];
   const start = toml.indexOf("[licenses]\n");
@@ -149,6 +157,19 @@ export function denyTomlPolicyProblems(toml) {
   const sectionText = nextSection === -1 ? rest : rest.slice(0, nextSection);
   if (/^exceptions\s*=/m.test(sectionText)) {
     problems.push("[licenses].exceptions re-allows crates outside the allowlist");
+  }
+  for (const section of toml.split(/^(?=\[)/m)) {
+    if (!section.startsWith("[[licenses.exceptions]]")) continue;
+    const name = section.match(/^name\s*=\s*"([^"]+)"/m)?.[1] ?? "";
+    const allowMatch = section.match(/^allow\s*=\s*\[([\s\S]*?)\]/m);
+    const allow = allowMatch
+      ? [...allowMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1])
+      : [];
+    if (name !== "webpki-root-certs" || allow.length !== 1 || allow[0] !== "CDLA-Permissive-2.0") {
+      problems.push(
+        `[[licenses.exceptions]] for "${name || "(unnamed)"}" is not the approved webpki-root-certs / CDLA-Permissive-2.0 exception`,
+      );
+    }
   }
   if (/^\[\[licenses\.clarify\]\]/m.test(toml)) {
     problems.push("[[licenses.clarify]] rewrites license expressions");
