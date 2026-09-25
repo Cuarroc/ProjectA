@@ -60,10 +60,33 @@ printf 'token = "%s"\n' "$fake" > app.config
 git add app.config
 bash scripts/ci/secret-scan.sh > "$tmp/leak.log" 2>&1
 rc=$?
-if [ "$rc" -ne 0 ]; then
+# Exit 1 heisst "Fund"; jeder andere Wert (etwa 2 = gitleaks-Fehler oder
+# fehlendes Werkzeug) ist kein Fund und darf hier nicht als solcher zaehlen
+# (Befund N-4, .pa/review_pr20_disposition.md).
+if [ "$rc" -eq 1 ]; then
   ok "Test-Geheimnis wird gefunden (Exit $rc)"
 else
-  bad "Test-Geheimnis blieb unentdeckt (Exit $rc)"; sed 's/^/    /' "$tmp/leak.log"
+  bad "Test-Geheimnis blieb unentdeckt oder der Scan scheiterte anders (Exit $rc, erwartet 1)"; sed 's/^/    /' "$tmp/leak.log"
+fi
+git reset -q
+rm -f app.config
+
+# --------------------------------------------------------------------------
+# Fall 1b: ein AWS-Schluessel, der nur das Wort CANARY enthaelt, aber kein
+# Kanarienvogel aus dem Repo ist (Buchstaben statt Ziffern), MUSS gefunden
+# werden. Die Allowlist fuer AKIACANARY darf nur die Ziffern-Varianten
+# decken (Befund N-1, .pa/review_pr20_disposition.md). Zusammengebaut, damit
+# das Literal nicht in diesem Skript steht.
+# --------------------------------------------------------------------------
+fake_aws="AKIA""CANARY""ABCDEFGHIJ"
+printf 'aws_key = "%s"\n' "$fake_aws" > app.config
+git add app.config
+bash scripts/ci/secret-scan.sh > "$tmp/canary-letters.log" 2>&1
+rc=$?
+if [ "$rc" -eq 1 ]; then
+  ok "AKIACANARY mit Buchstaben-Suffix wird gefunden (Exit $rc)"
+else
+  bad "AKIACANARY mit Buchstaben-Suffix wurde von der Allowlist verschluckt (Exit $rc, erwartet 1)"; sed 's/^/    /' "$tmp/canary-letters.log"
 fi
 git reset -q
 rm -f app.config
