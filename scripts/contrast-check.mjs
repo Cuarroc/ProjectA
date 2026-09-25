@@ -101,6 +101,10 @@ for (const [mode, vars] of [["hell  ", light], ["dunkel", dark]]) {
     over(c("color-accent-tint"), surfaces.Inhalt),
   );
   check(mode, "focus-ring / Fenster (Nicht-Text)", c("color-focus-ring"), surfaces.Fenster, 3);
+  // Zustands-Ring der gedrückten Such-Schalter (.terminal-search-toggle):
+  // WCAG 1.4.11 verlangt 3:1 für die Zustandsanzeige — der accent-tint
+  // komponiert über der Karte nur auf ~1,2:1, der Ring trägt den Zustand.
+  check(mode, "accent-text / Karte (Nicht-Text, Such-Schalter)", c("color-accent-text"), surfaces.Karte, 3);
 
   for (const st of ["working", "needs", "review", "merge", "done", "paused", "danger"]) {
     const fg = c(`state-${st}-fg`);
