@@ -9,13 +9,23 @@ fails=0
 
 # --- Rust: cargo-deny -------------------------------------------------------
 DENY_VERSION="0.20.2"
-installed="$(cargo deny --version 2>/dev/null | awk '{print $NF}')"
+# `cargo deny --version` prints "cargo-deny <version>"; the version is the
+# last field. The probe may fail (tool missing) without aborting the script —
+# this file intentionally runs without `set -e` (kimi-k3 delta F2).
+installed="$(cargo deny --version 2>/dev/null | awk '{print $NF}' || true)"
 if [ "$installed" != "$DENY_VERSION" ]; then
   echo "license-check: cargo-deny $DENY_VERSION noetig (gefunden: ${installed:-nichts}) — installiere (kann Minuten dauern)"
   cargo install cargo-deny --locked --version "$DENY_VERSION" || {
     echo "license-check: cargo-deny konnte nicht installiert werden"
     exit 1
   }
+  # Re-verify: a shadowing cargo-deny earlier in PATH must not silently win
+  # (kimi-k3 delta F3).
+  installed="$(cargo deny --version 2>/dev/null | awk '{print $NF}' || true)"
+  if [ "$installed" != "$DENY_VERSION" ]; then
+    echo "license-check: nach der Installation meldet cargo deny: ${installed:-nichts} — falsches Binary im PATH?"
+    exit 1
+  fi
 fi
 ( cd "$ROOT/src-tauri" && cargo deny check licenses ) || fails=1
 
