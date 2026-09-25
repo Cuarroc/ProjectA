@@ -89,6 +89,12 @@ on:
 #     (scripts/ci/red-first-verdict.sh), so the required check keeps its name.
 #   - scripts/ci/ci-shape.sh pins this structure (gate `ci-shape`).
 #
+# CI-04 (25.09.2026): der Job `main-red` (unten) reagiert auf das
+# Gesamtergebnis NUR auf main: rot -> Issue (Label ci-red, Run-ID) plus
+# Queue-Freeze ueber die Mergify-API, bewiesen gruen -> Freeze weg, Issue
+# zu. Er ist kein Required Check und faellt nie auf einem PR. Details im
+# Job-Kommentar und scripts/ci/main-red-guard.sh.
+#
 # Entwuerfe: jeder Job ueberspringt Draft-PRs - AUSSER den Queue-PRs von
 # Mergify (Kopf-Branch mergify/merge-queue/*): die sind technisch Entwuerfe
 # und muessen genau dann laufen. Ein Nicht-Entwurf-PR bekommt alle drei
@@ -169,10 +175,13 @@ jobs:
     timeout-minutes: 55
     # CI-03: the red-first outcome for the job `red-first` (fail-closed
     # evaluation in scripts/ci/red-first-verdict.sh).
+    # CI-04: lane_run feeds the job `main-red` (below): only a run whose
+    # lane REALLY ran counts as green proof for lifting the queue freeze.
     outputs:
       rf_plan: ${{ steps.rf_plan.outcome }}
       rf_count: ${{ steps.rf_plan.outputs.count }}
       rf_run: ${{ steps.rf_run.outcome }}
+      lane_run: ${{ steps.plan.outputs.run }}
     env:
       # Nur "true"/"false", nie das Secret selbst: so sieht kein Gate-Schritt
       # den Token, und der Upload-Schritt kann sich selbst abschalten, solange
@@ -381,6 +390,10 @@ jobs:
     # einen kalten Cache, beenden aber einen Haenger nach einem Neuntel der
     # 6 h, die GitHub sonst zulaesst.
     timeout-minutes: 35
+    # CI-04: wie im Job linux - ob die Bahn wirklich lief, entscheidet, ob
+    # ein gruener Lauf den Queue-Freeze aufheben darf (Job main-red unten).
+    outputs:
+      lane_run: ${{ steps.plan.outputs.run }}
     env:
       MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
     steps:
@@ -540,3 +553,69 @@ jobs:
           RF_COUNT: ${{ needs.linux.outputs.rf_count }}
           RF_RUN: ${{ needs.linux.outputs.rf_run }}
         run: bash scripts/ci/red-first-verdict.sh
+
+  # CI-04 (docs/PLAN.md): ein roter Lauf auf main stoppt die Queue.
+  # main wird ueber die Mergify-Queue gemergt, die jeden Batch vor dem Merge
+  # testet - rot wird main trotzdem, wenn der WOCHENLAUF mit neuem rustc oder
+  # geaendertem Runner-Image scheitert. Solange main rot ist, wuerde jede
+  # weitere Merge ungetesteten Code auf eine kaputte Basis setzen. Dieser Job
+  # legt dann ein Issue an (Label ci-red, Run-ID, Run-URL, SHA) und friert
+  # die Queue ueber die Mergify-Scheduled-Freeze-API ein (Marker "ci-red:",
+  # Scope base=main, Ausnahme label=hotfix, damit der Fix mergen kann). Ein
+  # gruener Lauf, dessen Bahnen WIRKLICH gelaufen sind (lane_run der Jobs
+  # linux/windows - ein leichter Push mit uebersprungenen Bahnen ist kein
+  # Gruen-Beweis), loescht den Freeze und schliesst das Issue. Logik und
+  # Nebenbedingungen: scripts/ci/main-red-guard.sh, festgenagelt in
+  # scripts/test-main-red-guard.sh; Struktur gepinnt in ci-shape.sh (Check 5).
+  #
+  # Nicht als eigener workflow_run-Workflow: der saehe die lane-plan-
+  # Entscheidung nicht und koennte ein leichtes Gruen als Beweis missdeuten.
+  # Kein Required Check: er faellt NUR nach den Gates, nie auf einem PR.
+  main-red:
+    name: main-red-guard
+    needs: [linux, windows]
+    # always(): auch nach roten Gates laufen (genau dann gibt es etwas zu
+    # tun). Nur main, nie PRs und nie Queue-Branches - das Skript selbst
+    # prueft den Ref zusaetzlich (doppelte Absicherung).
+    if: ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    # Main runs do not cancel each other (SHA-scoped group above), so two
+    # guards could interleave freeze/unfreeze (review predecessor PR, S-5/O-5).
+    # Serialize them; never cancel a RUNNING guard. GitHub still drops an
+    # older PENDING guard when a newer one queues behind it - harmless: the
+    # newer run judges the newer main head.
+    concurrency:
+      group: main-red-guard
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Eigenstaendige, minimale Rechte: Issue anlegen/kommentieren/schliessen,
+    # mehr braucht der Job nicht (der Freeze laeuft ueber die Mergify-API mit
+    # MERGIFY_TOKEN, nicht ueber das GitHub-Token).
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # Only the guard script is needed - no history, no toolchain. Node for
+      # the JSON parsing comes with the runner image (repo requires 24).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts/ci
+
+      - name: red main -> issue + queue freeze, proven green -> unfreeze
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Nie als "!= ''"-Wahrheitswert: das Skript braucht den Token selbst
+          # fuer die Mergify-API und degradiert ohne ihn laut, aber gruen
+          # (Issue ist der Fallback - Muster wie MERGIFY_UPLOAD oben).
+          MERGIFY_TOKEN: ${{ secrets.MERGIFY_TOKEN }}
+          GIT_REF: ${{ github.ref }}
+          LINUX_RESULT: ${{ needs.linux.result }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
+          LINUX_RAN: ${{ needs.linux.outputs.lane_run }}
+          WINDOWS_RAN: ${{ needs.windows.outputs.lane_run }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: bash scripts/ci/main-red-guard.sh

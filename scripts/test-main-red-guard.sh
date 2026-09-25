@@ -7,23 +7,23 @@
 # contract - including the failure modes that must NOT silently pass:
 #   - a "light" green push (lanes skipped by lane-plan.sh) is no green
 #     proof and must not unfreeze - and neither is a push where only ONE
-#     lane really ran (review PR #182, sonnet S-6 / opus O-1);
+#     lane really ran (review predecessor PR, sonnet S-6 / opus O-1);
 #   - a light/partial push with an open ci-red freeze/issue must point at
 #     the manual full run (`gh workflow run ci.yml`) - the merge push after
-#     the hotfix is light by design (review PR #182, S-1 / O-3);
+#     the hotfix is light by design (review predecessor PR, S-1 / O-3);
 #   - the issue text must carry the ACTUAL freeze state, never claim a
-#     freeze that was skipped or failed (review PR #182, S-3);
+#     freeze that was skipped or failed (review predecessor PR, S-3);
 #   - a stale red run (its SHA is no longer the main head) must comment,
-#     not freeze (review PR #182, S-5 / O-5);
+#     not freeze (review predecessor PR, S-5 / O-5);
 #   - a freeze whose reason does not start with the marker must survive
-#     the green sweep (review PR #182, S-4);
-#   - the freeze is deleted BEFORE the issue is closed (review PR #182,
+#     the green sweep (review predecessor PR, S-4);
+#   - the freeze is deleted BEFORE the issue is closed (review predecessor PR,
 #     S-7 / O-6);
 #   - without MERGIFY_TOKEN the issue is still opened and the freeze is
 #     skipped with a warning (degraded, not red - the same pattern as the
 #     Test-Insights upload in ci.yml);
 #   - a failing freeze API call WITH a token is loud (exit 1) - for the
-#     list, the create AND the delete path (review PR #182, S-4 / O-9);
+#     list, the create AND the delete path (review predecessor PR, S-4 / O-9);
 #   - any ref that is not main is a no-op (double guard next to the job `if`).
 #
 # `curl` and `gh` are replaced by PATH shims that log every call to $MOCK_LOG

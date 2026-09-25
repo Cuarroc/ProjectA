@@ -133,15 +133,15 @@ case_m main-red-if-without-main ci "s#github\\.ref == 'refs/heads/main'#github.r
 # ... or the lane_run output is gone - a light green push could unfreeze.
 case_m main-red-without-lane-run ci '/^  linux:/,/^  windows:/ s/^      lane_run: .*$//' \
   "linux.*lane_run"
-# ... same for the windows job (review PR #182, sonnet S-9).
+# ... same for the windows job (review predecessor PR, sonnet S-9).
 case_m main-red-without-lane-run-windows ci '/^  windows:/,/^  red-first:/ s/^      lane_run: .*$//' \
   "windows.*lane_run"
 # ... or inverted: != instead of == would fire on EVERY ref but main
-# (review PR #182, S-9/O-10: a substring check lets this through).
+# (review predecessor PR, S-9/O-10: a substring check lets this through).
 case_m main-red-if-inverted ci "s#github\\.ref == 'refs/heads/main'#github.ref != 'refs/heads/main'#" \
   "main-red.*refs/heads/main"
 # ... or the guard no longer reads the lane outputs - a light push would
-# look like a full one (review PR #182, S-9).
+# look like a full one (review predecessor PR, S-9).
 case_m main-red-without-ran-wiring ci 's#\$\{\{ needs\.linux\.outputs\.lane_run \}\}#"true"#' \
   "main-red.*needs.linux.outputs.lane_run"
 # ... or the guards race: without a job-level concurrency group a stale red
