@@ -85,9 +85,8 @@ fn administrators_sid() -> Vec<u32> {
     }
 }
 
-/// The owner identities the production check accepts (W2-07b review round,
-/// grok F1 / sonnet F2): the token user, the token's default owner and the
-/// Administrators group. The oracle must mirror that set exactly, or an
+/// The owner identities the production check accepts: the token user, the
+/// token's default owner and the Administrators group. The oracle must mirror that set exactly, or an
 /// elevated run would fail the oracle while production behaves as designed.
 fn accepted_owner_sids() -> Vec<Vec<u32>> {
     vec![
@@ -257,7 +256,7 @@ fn agent_access_directory_grants_only_the_current_user() {
         .unwrap();
     let dacl = read_dacl(&dir.path().join("agent-access"));
     assert_owner_only(&dacl);
-    // W2-07b review round (grok F5 / sonnet F7): the user ACE on the
+    // the user ACE on the
     // directory must be inheritable, or files created inside would re-inherit
     // SYSTEM/Administrators from the creator's default DACL.
     assert!(
@@ -271,7 +270,7 @@ fn agent_access_directory_grants_only_the_current_user() {
     );
 }
 
-/// W2-07b review round (sonnet F7): a broad descriptor left behind with a
+/// A broad descriptor left behind with a
 /// wide, inherited ACL is narrowed on the next boot (self-healing pin).
 #[test]
 fn an_existing_wide_open_descriptor_is_narrowed_on_boot() {
@@ -284,6 +283,50 @@ fn an_existing_wide_open_descriptor_is_narrowed_on_boot() {
     let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
     let dacl = read_dacl(server.descriptor_path());
     assert_owner_only(&dacl);
+}
+
+/// A file created inside the narrowed directory
+/// inherits exactly the user grant - nothing from the creator's default DACL
+/// (which would re-add SYSTEM and Administrators).
+#[test]
+fn a_child_inherits_only_the_user_grant_from_the_narrowed_directory() {
+    let dir = TempDir::new("api-w207b-inherit");
+    let inner = dir.path().join("agent-access");
+    std::fs::create_dir(&inner).unwrap();
+    crate::api::credential_acl::restrict_directory_to_current_user(&inner).unwrap();
+    std::fs::write(inner.join("child.json"), b"x").unwrap();
+    let dacl = read_dacl(&inner.join("child.json"));
+    // The kernel does not flag the inherited ACE INHERITED_ACE (that needs the
+    // auto-inherit APIs), so the pin is the ACE list itself: one allow ACE for
+    // the user, nothing from the creator's default DACL.
+    assert!(
+        matches!(dacl.aces.as_slice(), [(ALLOWED, _, true)]),
+        "only the inherited user grant is expected: {dacl:?}"
+    );
+}
+
+/// A failing directory restriction aborts the
+/// issuance and leaves neither a file nor a grant behind (issuer-level proof
+/// for the split injection seam).
+#[test]
+fn a_failed_directory_restriction_aborts_the_issuance() {
+    let dir = TempDir::new("api-w207b-dirfail-issue");
+    let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
+    crate::api::credential_acl::FAIL_NEXT_DIRECTORY_RESTRICT.with(|fail| fail.set(true));
+    let error = server
+        .issue_run_descriptor_file("run-acl", "owner", 1, 60)
+        .unwrap_err();
+    assert!(error.contains("injected credential directory"), "{error}");
+    let left: Vec<_> = std::fs::read_dir(dir.path().join("agent-access"))
+        .unwrap()
+        .flatten()
+        .map(|entry| entry.path())
+        .collect();
+    assert!(left.is_empty(), "{left:?}");
+    assert!(server
+        .run_credential_issuer()
+        .bind_session("run-acl", "session")
+        .is_err());
 }
 
 /// A failed restriction refuses the launch and leaves neither the file nor

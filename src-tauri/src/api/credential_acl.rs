@@ -805,4 +805,65 @@ mod tests {
         let file = open(&inner.join("child.json"));
         restrict_to_current_user(&file).unwrap();
     }
+
+    /// A subdirectory inside agent-access raises the
+    /// NTFS link count (1 + subdirectories) without being a hard link - it
+    /// must not wedge every later issuance.
+    #[test]
+    fn a_subdirectory_inside_the_credential_directory_is_not_a_hard_link() {
+        let dir = crate::testutil::TempDir::new("api-w207b-subdir");
+        let inner = dir.path().join("agent-access");
+        std::fs::create_dir(&inner).unwrap();
+        std::fs::create_dir(inner.join("nested")).unwrap();
+        restrict_directory_to_current_user(&inner).unwrap();
+    }
+
+    /// A descriptor this call created is
+    /// removed again when the narrow fails - no empty file left behind.
+    #[test]
+    fn a_failed_first_write_leaves_no_empty_descriptor() {
+        let dir = crate::testutil::TempDir::new("api-w207b-noempty");
+        let path = dir.path().join("projecta-api.json");
+        FAIL_NEXT_RESTRICT.with(|fail| fail.set(true));
+        let error = crate::api::write_descriptor_body(&path, b"new-token").unwrap_err();
+        assert!(error.contains("injected"), "{error}");
+        assert!(!path.exists(), "an empty descriptor was left behind");
+    }
+
+    /// A junction at agent-access is
+    /// refused (its reparse tag is a name surrogate) instead of the target
+    /// being re-ACL'd. Junctions need no privilege, unlike symlinks.
+    #[test]
+    fn a_junction_at_the_credential_directory_is_refused() {
+        let dir = crate::testutil::TempDir::new("api-w207b-junction");
+        let target = dir.path().join("real");
+        std::fs::create_dir(&target).unwrap();
+        let junction = dir.path().join("agent-access");
+        let status = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/j"])
+            .arg(&junction)
+            .arg(&target)
+            .output()
+            .unwrap();
+        assert!(status.status.success(), "mklink /j: {status:?}");
+        let error = restrict_directory_to_current_user(&junction).unwrap_err();
+        assert!(error.contains("reparse point"), "{error}");
+    }
+
+    /// Pin the well-known SID bytes, so a wrong
+    /// constant cannot pass the self-feeding owner test.
+    #[test]
+    fn the_administrators_sid_is_s_1_5_32_544() {
+        // Revision 1, two sub-authorities, NT authority (5), then 32 and 544.
+        let bytes: [u8; 16] = [1, 2, 0, 0, 0, 0, 0, 5, 32, 0, 0, 0, 0x20, 0x02, 0, 0];
+        let mut expected = [0u32; 4];
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), expected.as_mut_ptr().cast::<u8>(), 16);
+            let mut actual = administrators_sid().unwrap();
+            assert_ne!(
+                EqualSid(expected.as_mut_ptr().cast(), actual.as_mut_ptr().cast()),
+                0
+            );
+        }
+    }
 }
