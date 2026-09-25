@@ -102,6 +102,10 @@ GATES=(
   # Browser-Smoke des HQ. Kam am 12.09. auf main dazu.
   "hq-visual|linux,release|.|npm run test:hq:visual"
   "fe-build|linux,release|.|npm run build"
+  # LIC-01: Lizenzen aller Abhaengigkeiten (Rust + npm-Produktion) gegen die
+  # vom Nutzer freigegebene Positivliste. Nur linux: plattformunabhaengig,
+  # und cargo-deny braeuchte auf dem Windows-Job eine eigene Installation.
+  "licenses|linux,release|.|bash scripts/ci/license-check.sh"
   "e2e|linux,release|.|npm run test:e2e"
 
   # --- teuer: der Rust-Kern -----------------------------------------------
