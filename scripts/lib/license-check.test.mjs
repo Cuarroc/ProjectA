@@ -6,7 +6,7 @@ import { writeFileSync, readFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ALLOWED_LICENSES, evaluateLicenses } from "./license-check.mjs";
+import { ALLOWED_LICENSES, denyTomlPolicyProblems, evaluateLicenses } from "./license-check.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -111,6 +111,32 @@ test("lic-01: inferred-license marker never changes the verdict", () => {
   ]);
 });
 
+// The drift pin guards the allow array, but cargo-deny honors more policy in
+// the same file: [licenses].exceptions re-allows a named crate,
+// [[licenses.clarify]] rewrites an expression, and a single-quoted allow
+// entry silently drops out of the mirror comparison (the pin matches double
+// quotes only). All three would let the Rust half pass what the npm half
+// rejects, so the real deny.toml must stay free of them and the detector is
+// pinned against fixtures. (Review pr10, grok F1.)
+test("lic-01: deny.toml policy bypasses are rejected", () => {
+  const base = '[licenses]\nallow = [\n  "MIT",\n]\n';
+  assert.deepEqual(denyTomlPolicyProblems(base), []);
+  assert.ok(
+    denyTomlPolicyProblems(`${base}exceptions = [{ allow = ["GPL-3.0-only"], name = "x", version = "*" }]\n`).length > 0,
+    "[licenses].exceptions must be flagged",
+  );
+  assert.ok(
+    denyTomlPolicyProblems(`${base}[[licenses.clarify]]\nname = "x"\nexpression = "MIT"\nlicense-files = []\n`).length > 0,
+    "[[licenses.clarify]] must be flagged",
+  );
+  assert.ok(
+    denyTomlPolicyProblems("[licenses]\nallow = [\n  'MIT',\n]\n").length > 0,
+    "single-quoted allow entries must be flagged",
+  );
+  const toml = readFileSync(new URL("../../src-tauri/deny.toml", import.meta.url), "utf8");
+  assert.deepEqual(denyTomlPolicyProblems(toml), []);
+});
+
 test("lic-01: rejects a license outside the allowlist", () => {
   const report = {
     "ok@1.0.0": { licenses: "MIT" },
@@ -126,7 +152,17 @@ test("lic-01: rejects a license outside the allowlist", () => {
 
 test("lic-01: the project's own unlicensed root package is skipped", () => {
   const report = { "projecta@1.4.1": { licenses: "UNLICENSED" } };
-  assert.deepEqual(evaluateLicenses(report, "projecta"), []);
+  assert.deepEqual(evaluateLicenses(report, "projecta@1.4.1"), []);
+});
+
+// The skip is tied to the exact root "name@version", not the name prefix:
+// a production dependency that happens to share the root name at any other
+// version is third-party code and must be evaluated. (Review pr10, grok F5.)
+test("lic-01: the root skip is tied to the exact root name@version", () => {
+  const report = { "projecta@9.9.9": { licenses: "GPL-3.0-only" } };
+  assert.deepEqual(evaluateLicenses(report, "projecta@1.4.1"), [
+    "projecta@9.9.9: GPL-3.0-only",
+  ]);
 });
 
 test("lic-01: cli exits 1 and names the offending package", () => {
@@ -148,6 +184,33 @@ test("lic-01: cli exits 1 and names the offending package", () => {
   assert.match(out, /bad@1\.0\.0: AGPL-3\.0-only/);
 });
 
+// An empty or root-only scan must never be green: the checker can exit 0
+// with `{}` when node_modules is incomplete, and "0 packages, all allowed"
+// would be a green gate over nothing. (Review pr10, grok F3.)
+test("lic-01: cli fails closed on an empty or root-only report", () => {
+  const dir = mkdtempSync(join(tmpdir(), "lic-check-"));
+  for (const [label, report] of [
+    ["empty", {}],
+    ["root-only", { "projecta@1.4.1": { licenses: "UNLICENSED" } }],
+  ]) {
+    const file = join(dir, `${label}.json`);
+    writeFileSync(file, JSON.stringify(report));
+    let code = 0;
+    let out = "";
+    try {
+      out = execFileSync(process.execPath, [join(HERE, "license-check.mjs"), file], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (err) {
+      code = err.status;
+      out = `${err.stdout}${err.stderr}`;
+    }
+    assert.equal(code, 1, `${label} report must fail closed`);
+    assert.match(out, /no third-party packages/);
+  }
+});
+
 // Malformed expressions must fail closed, not crash green or pass by
 // accident. (Review lic-01 delta2, kimi-k3 F3.)
 test("lic-01: malformed expressions are violations", () => {
@@ -165,4 +228,18 @@ test("lic-01: malformed expressions are violations", () => {
       `${pkg}: ${expression}`,
     ]);
   }
+});
+
+// license-checker also puts the inference marker on a whole parenthesized
+// expression: "(MIT OR Apache-2.0)*" must behave like "(MIT OR Apache-2.0)"
+// — strip the marker, keep the verdict — not become a violation. A group
+// that is disallowed stays disallowed with the marker. (Review pr10, grok F6.)
+test("lic-01: inference marker on a parenthesized group is stripped", () => {
+  const report = {
+    "grouped-inferred@1.0.0": { licenses: "(MIT OR Apache-2.0)*" },
+    "grouped-inferred-bad@1.0.0": { licenses: "(MIT AND GPL-3.0-only)*" },
+  };
+  assert.deepEqual(evaluateLicenses(report, "projecta"), [
+    "grouped-inferred-bad@1.0.0: (MIT AND GPL-3.0-only)*",
+  ]);
 });
