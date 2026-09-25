@@ -89,11 +89,13 @@ test('retention keeps the newest runs and deletes the rest', () => {
 
 test('driver parses its flags and rejects unknown ones and bad values', async () => {
   const { parseArgs } = await import('../runtime-proof.mjs');
-  const options = parseArgs(['--exe', 'app.exe', '--settle', '5', '--no-screenshot']);
+  const options = parseArgs(['--exe', 'app.exe', '--settle', '5', '--no-screenshot', '--parallel-ok']);
   assert.equal(options.exe, 'app.exe');
   assert.equal(options.settle, 5);
   assert.equal(options.screenshot, false);
+  assert.equal(options.parallelOk, true);
   assert.equal(parseArgs([]).screenshot, true);
+  assert.equal(parseArgs([]).parallelOk, false);
   assert.throws(() => parseArgs(['--bogus']), /unknown option/);
   assert.throws(() => parseArgs(['--settle', '0']), /settle/);
   assert.throws(() => parseArgs(['--keep', '0']), /keep/);
