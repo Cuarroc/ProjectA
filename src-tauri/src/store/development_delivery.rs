@@ -91,12 +91,15 @@ impl Store {
 
     /// Transport accepted an enqueue request, not provider delivery or task
     /// acceptance. Late evidence may be recorded after claim expiry/exit, but
-    /// must still match the exact previously committed process attempt.
+    /// must still match the exact previously committed process attempt. It is
+    /// refused after a proven `exited_undelivered` exit: that state asserts
+    /// the input never reached the provider, and the reservation was released
+    /// on that basis (DF-15b).
     pub async fn record_development_delivery_enqueued(
         &self,
         receipt: &DevelopmentDelivery,
     ) -> Result<(), String> {
-        let changed=sqlx::query("UPDATE development_deliveries SET state='enqueued',enqueued_at=? WHERE run_id=? AND session_id=? AND process_instance=? AND input_sha256=? AND input_bytes=? AND route_sha256=? AND state='started'")
+        let changed=sqlx::query("UPDATE development_deliveries SET state='enqueued',enqueued_at=? WHERE run_id=? AND session_id=? AND process_instance=? AND input_sha256=? AND input_bytes=? AND route_sha256=? AND state='started' AND NOT EXISTS(SELECT 1 FROM development_launches l WHERE l.run_id=development_deliveries.run_id AND l.state='exited_undelivered')")
             .bind(now_unix_secs()).bind(&receipt.run_id).bind(&receipt.session_id).bind(&receipt.process_instance)
             .bind(&receipt.input_sha256).bind(receipt.input_bytes).bind(&receipt.route_sha256)
             .execute(&self.pool).await.map_err(db)?;
