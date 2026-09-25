@@ -13,11 +13,17 @@
 //!   `passthrough`. A name that is not UTF-8 is dropped, never guessed at.
 //! * `strict`: `allowlist`, then [`lock_credentials`]: `gh` looks at an empty
 //!   app-owned config directory, git has no credential helper, no askpass
-//!   program, no terminal prompt and no ssh transport. Commits in the
-//!   worker's own worktree keep working; a push or a `gh` call fails at once
-//!   instead of asking. Not the default: task texts tell workers to push
-//!   their own branches and open their own pull requests, and `strict`
-//!   would break that silently.
+//!   program, no terminal prompt, no ssh transport and no generic extra
+//!   headers from configuration files (`http.extraHeader=`, test-backed in
+//!   W5-02b5). Commits in the worker's own worktree keep working; a push or
+//!   a `gh` call fails at once instead of asking. Signing is deliberately
+//!   untouched (user decision, W5-02b review K6): a signing key is no push
+//!   right, and forcing `commit.gpgsign=false` would override a mandate of
+//!   the user's - a `commit.gpgsign=true` the worker inherits still invokes
+//!   gpg, whose pinentry can block the session; unsigned commits are
+//!   unaffected. Not the default: task texts tell workers to push their own
+//!   branches and open their own pull requests, and `strict` would break
+//!   that silently.
 //!
 //! # The boundary
 //!
@@ -27,8 +33,11 @@
 //! `%APPDATA%\GitHub CLI`, `~/.ssh`, the Windows Credential Manager, or run
 //! `git -c credential.helper=manager push`. It only filters variable *names*;
 //! a secret inside an allowed value (a proxy URL with a password in it) goes
-//! through. The hard boundary is a separate OS user for agent processes
-//! (W5-02e).
+//! through. And the extra-header reset has a hole, test-pinned in W5-02b5:
+//! when a config file scopes the header to the remote's URL
+//! (`http.<url>.extraHeader`), git's urlmatch best-match layer drops the
+//! generic reset and both headers go out. The hard boundary is a separate
+//! OS user for agent processes (W5-02e).
 
 use std::path::{Path, PathBuf};
 
@@ -174,9 +183,13 @@ const STRICT_REMOVED: &[&str] = &[
 /// Git configuration that wins over every file. An empty `credential.helper`
 /// empties the helper list, URL-scoped `credential.<url>.helper` included, so
 /// the Git Credential Manager is never asked; an empty `http.extraHeader`
-/// likewise drops an `AUTHORIZATION` header a checkout left in a config file.
+/// likewise drops an `AUTHORIZATION` header a checkout left in a config file -
+/// but only while no `http.<url>.extraHeader` in the file matches the remote:
+/// git's urlmatch best-match layer then drops this generic reset and both
+/// headers go out (test-pinned boundary, see the module doc).
 /// Set twice: `GIT_CONFIG_COUNT` (git >= 2.31) and `GIT_CONFIG_PARAMETERS`,
-/// which older git reads too.
+/// which older git reads too. No signing key is named here on purpose: a
+/// signing mandate is the user's (W5-02b review K6).
 const STRICT_GIT_CONFIG: &[(&str, &str)] = &[
     ("credential.helper", ""),
     ("http.extraHeader", ""),
