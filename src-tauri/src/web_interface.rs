@@ -1560,6 +1560,71 @@ mod tests {
         stop_web_interface(&mut state).expect("stop");
     }
 
+    // -- DNS rebinding: the Host header has to name this machine ------------
+
+    /// Like [`get`], but the caller picks the Host header; `None` sends the
+    /// request without any Host line, HTTP/1.0 style.
+    fn get_with_host(port: u16, target: &str, host: Option<&str>) -> (u16, String, String) {
+        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port));
+        let mut stream = TcpStream::connect(addr).expect("connect");
+        stream.set_read_timeout(Some(IO_TIMEOUT)).expect("timeout");
+        let host_line = host.map(|h| format!("Host: {h}\r\n")).unwrap_or_default();
+        let request = format!("GET {target} HTTP/1.1\r\n{host_line}Connection: close\r\n\r\n");
+        stream.write_all(request.as_bytes()).expect("write");
+        let mut raw = String::new();
+        stream.read_to_string(&mut raw).expect("read");
+        let (head, body) = raw.split_once("\r\n\r\n").expect("response body");
+        let status: u16 = head
+            .lines()
+            .next()
+            .and_then(|line| line.split_whitespace().nth(1))
+            .and_then(|code| code.parse().ok())
+            .expect("status code");
+        (status, String::new(), body.to_string())
+    }
+
+    /// A browser page on an attacker domain whose DNS answers 127.0.0.1 still
+    /// sends that domain as the Host header - browsers do not rewrite it - so
+    /// any Host that is not `localhost` or an IP literal is refused before the
+    /// token gate ever runs.
+    #[test]
+    fn the_live_server_refuses_foreign_host_headers() {
+        let dir = TempDir::new("web-interface-host");
+        let store = tauri::async_runtime::block_on(async {
+            Store::open(&dir.path().join("projecta.db"))
+                .await
+                .expect("open store")
+        });
+        let mut state = start_web_interface(Arc::new(store), engine(), 0).expect("start");
+        let port = state.port();
+
+        for foreign in [
+            "evil.example.com",
+            "attacker.test:8080",
+            "localhost.evil.com",
+        ] {
+            let (status, _, _) = get_with_host(port, "/health", Some(foreign));
+            assert_eq!(status, 403, "{foreign}");
+        }
+
+        for local in [
+            format!("127.0.0.1:{port}"),
+            format!("localhost:{port}"),
+            "192.168.0.10:8080".to_string(),
+            "[::1]:8080".to_string(),
+        ] {
+            let (status, _, _) = get_with_host(port, "/health", Some(&local));
+            assert_eq!(status, 200, "{local}");
+        }
+
+        // HTTP/1.0 probes without a Host line keep working: rebinding always
+        // comes from a browser, and browsers always send Host.
+        let (status, _, _) = get_with_host(port, "/health", None);
+        assert_eq!(status, 200, "no Host header");
+
+        stop_web_interface(&mut state).expect("stop");
+    }
+
     // -- board and learnings routes ----------------------------------------
 
     /// A backend that has board data, so the fern routes exist for it.

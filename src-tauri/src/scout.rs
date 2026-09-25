@@ -1203,4 +1203,65 @@ mod tests {
             REC_ACCEPTED
         );
     }
+
+    // -- recommendation urls: only http(s) reaches the store ----------------
+
+    /// A `javascript:` or `file:` link in a recommendation is one click away
+    /// from script execution in the HQ board, so the API door refuses it
+    /// outright instead of storing it for a renderer to find.
+    #[tokio::test]
+    async fn add_recommendation_refuses_non_http_urls() {
+        let fx = fixture("scout-url-scheme").await;
+        for bad in [
+            "javascript:alert(1)",
+            "JavaScript:alert(1)",
+            "file:///etc/passwd",
+            "data:text/html,<script>alert(1)</script>",
+            "ftp://example.com/x",
+        ] {
+            let err = add_recommendation(
+                &fx.store,
+                &fx.project.id,
+                "a finding",
+                "why it helps",
+                Some(bad.to_string()),
+                None,
+            )
+            .await
+            .expect_err("non-http url must be refused");
+            assert!(err.contains("http"), "{err}");
+        }
+
+        for good in ["https://example.com/spec", "http://example.com/lan"] {
+            let rec = add_recommendation(
+                &fx.store,
+                &fx.project.id,
+                "a finding",
+                "why it helps",
+                Some(good.to_string()),
+                None,
+            )
+            .await
+            .expect("http(s) url");
+            assert_eq!(rec.url.as_deref(), Some(good));
+        }
+    }
+
+    /// The scout-file door cannot answer with an error - the agent that wrote
+    /// the line is long gone - so ingest keeps the finding but drops the link
+    /// no renderer may show.
+    #[tokio::test]
+    async fn ingest_drops_non_http_urls_but_keeps_the_finding() {
+        let fx = fixture("scout-url-ingest").await;
+        fx.write_scout_file(&[
+            r#"{"title":"shady","url":"javascript:alert(1)","rationale":"looks useful"}"#,
+        ]);
+
+        let added = ingest_project(&fx.store, &fx.project).await.unwrap();
+        assert_eq!(added, 1);
+        let recs = fx.store.list_recommendations(None).await.unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].title, "shady");
+        assert_eq!(recs[0].url, None, "a non-http url must not be stored");
+    }
 }

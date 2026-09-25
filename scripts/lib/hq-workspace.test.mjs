@@ -77,3 +77,83 @@ test('briefing persists with profile without dropping caps and rejects invalid f
   assert.deepEqual(doc.profiles[0].caps, { dialect: 'claude' });
   assert.match(validateProfile({ ...profile, briefing: { ...briefing, role: 42 } }), /briefing.role/);
 });
+
+// The live page boots fully against a fetch stub, so renderRecommendations
+// runs on data of the test's choosing. Every endpoint the boot sequence does
+// not care about answers with an empty array; its local catch keeps the
+// recommendations card untouched.
+function liveFixture({ recommendations = [] } = {}) {
+  const dom = new JSDOM(source('docs/dev-hq/live.html'), { url: 'http://localhost/live.html', runScripts: 'outside-only' });
+  const { window } = dom;
+  window.HQ_DATA = JSON.parse(source('docs/dev-hq/data.json'));
+  const payloads = {
+    '/api/projects': [],
+    '/api/recommendations': recommendations,
+    '/profiles': { profiles: [] },
+    '/lessons': { lessons: [], stats: { tags: [], count: 0, hits: 0 } },
+    '/stats': {
+      commitsPerDay: [],
+      snapshot: { findings: { total: 0 }, specs: { total: 0, startable: 0, locked: 0, serial: 0, parallel: 0 } },
+      tests: { rustTests: 0, frontendTestFiles: 0, rustFiles: 0 },
+      lessons: { count: 0, hits: 0, tags: [] },
+      authors: [],
+      branch: 'main',
+      head: 'test',
+      dirtyFiles: 0,
+    },
+    '/insights': {
+      effort: {
+        time: { hours: 0, low: 0, high: 0, basis: '' },
+        tokens: { value: 0, low: 0, high: 0, basis: '', source: 'estimate' },
+        costUsd: null,
+      },
+      firstCommit: null,
+      lastCommit: null,
+      sittings: { count: 0, journalSessions: 0, instances: 0 },
+      volume: { insertions: 0, deletions: 0 },
+      heat: { grid: Array.from({ length: 7 }, () => Array(24).fill(0)), max: 0 },
+      signals: [],
+    },
+  };
+  window.fetch = (url) => {
+    const path = String(url).replace(/^https?:\/\/[^/]+/, '').replace(/^\/__hq/, '').split('?')[0];
+    const body = Object.prototype.hasOwnProperty.call(payloads, path) ? payloads[path] : [];
+    return Promise.resolve({ ok: true, status: 200, json: async () => body });
+  };
+  window.matchMedia = () => ({ matches: true });
+  window.HTMLElement.prototype.scrollIntoView = function () {};
+  window.eval(source('docs/dev-hq/workspace.js'));
+  window.eval(source('docs/dev-hq/hq.js'));
+  return { dom, window, document: window.document };
+}
+
+async function waitFor(check, tries = 100) {
+  for (let i = 0; i < tries; i++) {
+    if (check()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.ok(check(), 'condition never became true');
+}
+
+// A recommendation whose url is a javascript: (or any non-http(s)) link is a
+// stored XSS one click away: escape() protects the markup, not the scheme.
+// Only http(s) urls may become links; everything else renders without one.
+test('recommendation links render only for http(s) urls', async (t) => {
+  const f = liveFixture({
+    recommendations: [
+      { id: 'rc-evil', title: 'shady', rationale: 'xss attempt', status: 'new', url: 'javascript:alert(1)' },
+      { id: 'rc-good', title: 'useful', rationale: 'worth a look', status: 'new', url: 'https://example.com/spec' },
+    ],
+  });
+  t.after(() => f.dom.window.close());
+  const host = f.document.querySelector('#live-recommendations');
+  await waitFor(() => host.innerHTML.includes('shady'));
+  assert.ok(!host.innerHTML.includes('javascript:'), host.innerHTML);
+  const rows = [...host.querySelectorAll('article')];
+  const evilRow = rows.find((a) => a.textContent.includes('shady'));
+  assert.equal(evilRow.querySelector('a'), null, 'a non-http url gets no link');
+  const goodRow = rows.find((a) => a.textContent.includes('useful'));
+  const link = goodRow.querySelector('a');
+  assert.equal(link.getAttribute('href'), 'https://example.com/spec');
+  assert.equal(link.getAttribute('rel'), 'noopener');
+});
