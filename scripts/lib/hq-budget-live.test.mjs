@@ -205,7 +205,7 @@ test('the reservation-kept suffix appears only where the reservation is really h
   t.after(() => f.dom.window.close());
   await f.controller.refresh();
   const lines = [...f.document.querySelectorAll('[data-budget] p')].map((p) => p.textContent);
-  const line = (id) => lines.find((l) => l.includes(id)) || '';
+  const line = (id) => lines.find((l) => l.includes(id) && l.includes('Kostenbeleg')) || '';
   assert.doesNotMatch(line('run-free'), /Reservierung bleibt bestehen/, 'a run without a reservation must not claim one remains');
   assert.doesNotMatch(line('run-cancelled'), /Reservierung bleibt bestehen/, 'a cancelled reservation does not remain');
   assert.doesNotMatch(line('run-unclassified'), /Reservierung bleibt bestehen/, 'a settled reservation is no longer held');

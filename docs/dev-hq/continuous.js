@@ -74,7 +74,10 @@
         const receipt = JSON.parse(launch.routeJson);
         const resolved = receipt.selection?.resolved;
         if (!resolved) return 'Routingstatus nicht verfügbar; kein Modell oder Preis wird angenommen.';
-        const observation = value => value?.value ?? value?.reason ?? 'unbekannt';
+        // The HQ v1 API serializes Observation<T> externally tagged:
+        // {measured|configured|requested|estimated: {value}} or
+        // {unavailable: {reason}} (src-tauri/src/development_policy.rs).
+        const observation = value => value?.measured?.value ?? value?.configured?.value ?? value?.requested?.value ?? value?.estimated?.value ?? value?.unavailable?.reason ?? 'unbekannt';
         const reason = receipt.executionObservation?.reason || 'Ausführungsbeleg nicht bestätigt.';
         return `Routing ${resolved.provider || 'unbekannt'} · Profil ${resolved.profileId || 'unbekannt'} · Modell ${observation(resolved.resolvedModel)} · Aufwand ${observation(resolved.effort)} · ${reason}`;
       } catch {
@@ -107,7 +110,7 @@
           const alarm = tokens.exceeded === true || tokens.exhausted === true;
           const flags = `${tokens.exceeded === true ? ' · Überschritten' : ''}${tokens.exhausted === true ? ' · erschöpft' : ''}`;
           text(article, 'p', `Verfügbar ${tokens.availableTokens ?? 'unbekannt'} · Umsetzung ${tokens.implementationAvailable ?? 'unbekannt'} · Prüfungsschutz ${tokens.verificationRemaining ?? 'unbekannt'} · Status ${USAGE_STATE_LABELS[tokens.usageState] || tokens.usageState || 'unbekannt'}${flags}`, alarm ? undefined : 'muted');
-          if (tokens.unresolvedOperations > 0) text(article, 'p', `${tokens.unresolvedOperations} offener Vorgang${tokens.unresolvedOperations === 1 ? '' : 'e'} ohne Beleg; die Reservierung bleibt vollständig bestehen.`, 'muted');
+          if (tokens.unresolvedOperations > 0) text(article, 'p', `${tokens.unresolvedOperations} ${tokens.unresolvedOperations === 1 ? 'offener Vorgang' : 'offene Vorgänge'} ohne Beleg; die Reservierung bleibt vollständig bestehen.`, 'muted');
         }
       }
       const routingRegion = document.createElement('div');
@@ -120,8 +123,12 @@
         const billing = Array.isArray(routing.billing) && routing.billing.length ? routing.billing.join(', ') : 'keine';
         text(routingRegion, 'p', `Root ${item.rootGoalId || 'unbekannt'} erlaubt: ${billing} · Quota-Reserve ${routing.quotaReservePercent ?? 'unbekannt'} % · Zusätzliche kostenpflichtige API: ${routing.additionalPaidApi ? 'ja' : 'nein'}`, 'muted');
       }
-      const runs = Array.isArray(records?.runs) ? records.runs : [];
-      if (!records || !runs.length) {
+      const runs = Array.isArray(records?.runs) ? records.runs : null;
+      if (!runs) {
+        text(routingRegion, 'p', 'Run- und Kostenbelege nicht verfügbar; kein Modell oder Preis wird angenommen.', 'muted');
+        return;
+      }
+      if (!runs.length) {
         text(routingRegion, 'p', 'Keine Routing-Belege vorhanden; kein Modell oder Preis wird angenommen.', 'muted');
         return;
       }
@@ -132,7 +139,10 @@
         if (usage?.state === 'measured') {
           text(routingRegion, 'p', `${runId}: Kostenbeleg ${usage.tokens ?? 'unbekannt'} Token · ${usage.provenance?.collector || 'Collector unbekannt'} (${usage.provenance?.measurement || 'Messung unbekannt'})`, 'muted');
         } else if (usage) {
-          text(routingRegion, 'p', `${runId}: kein Kostenbeleg (${usage.state || 'unbekannt'})${usage.reason ? ` — ${usage.reason}` : ''}; die Reservierung bleibt bestehen.`, 'muted');
+          // Only these states still hold the reservation (development_usage_receipt.rs);
+          // not_reserved, cancelled and unclassified must not claim it remains.
+          const retained = ['pending', 'rejected', 'not_reported'].includes(usage.state);
+          text(routingRegion, 'p', `${runId}: kein Kostenbeleg (${usage.state || 'unbekannt'})${usage.reason ? ` — ${usage.reason}` : ''}${retained ? '; die Reservierung bleibt bestehen' : ''}`, 'muted');
         }
       }
     }
@@ -202,8 +212,13 @@
     async function refresh() {
       const current = project();
       const generation = ++sequence;
+      // Browsers blur a control the moment it is disabled — before the fetch
+      // finishes and captureListState() could still see it. Capture the focus
+      // identity before the disable, restore it after the re-enable.
+      const focusBefore = captureListState().focus;
+      const activeBefore = document.activeElement;
       online = false; enable(false);
-      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); budgetList.replaceChildren(); loadedProject = null; lastSignature = null; lastBudgetSignature = null; }
+      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); budgetList.replaceChildren(); runsList.replaceChildren(); loadedProject = null; lastSignature = null; lastBudgetSignature = null; }
       if (!current) { state.textContent = 'Projekt auswählen, um Ziele und Arbeitspakete zu sehen.'; source.textContent = ''; enable(false); return; }
       try {
         const [value, runtimeValue, records] = await Promise.all([
@@ -232,6 +247,7 @@
         const signature = JSON.stringify({ goals, tasks, teams, controlStatus: control.status || null });
         const rebuildGoals = signature !== lastSignature;
         const saved = rebuildGoals ? captureListState() : null;
+        if (saved && !saved.focus) saved.focus = focusBefore;
         const previous = select.value;
         if (rebuildGoals) {
           select.replaceChildren();
@@ -239,11 +255,14 @@
           renderOwnership(goals, tasks);
         }
         const policies = Array.isArray(effectiveLimits.rootPolicies) ? effectiveLimits.rootPolicies : [];
+        // null (fetch failed) and [] (no runs) render differently, so they
+        // must not collapse into the same signature.
+        const runReceipts = Array.isArray(records?.runs) ? records.runs : null;
         const budgetSignature = JSON.stringify({
           policies,
-          receipts: (Array.isArray(records?.runs) ? records.runs : []).map(record => ({
+          receipts: runReceipts?.map(record => ({
             id: record.run?.id, route: record.launch?.routeJson || null, usage: record.usage || null,
-          })),
+          })) ?? null,
         });
         if (budgetSignature !== lastBudgetSignature) {
           renderBudget(policies, records);
@@ -336,6 +355,14 @@
           }
         }
         enable(true);
+        // The disable above blurred the focused control in a real browser;
+        // give the focus back, but only when it was actually lost (never
+        // steal it from a control the operator moved to during the fetch).
+        const focusLost = !document.activeElement || document.activeElement === document.body;
+        if (focusLost) {
+          if (focusBefore?.taskId) restoreListState({ openTasks: new Set(), drafts: new Map(), focus: focusBefore });
+          else if (activeBefore && card.contains(activeBefore)) activeBefore.focus();
+        }
       } catch (failure) {
         if (generation !== sequence || current !== project()) return;
         runtime.textContent = 'Runtime-Identität nicht verfügbar; angezeigte Fähigkeiten sind nicht bestätigt.';
