@@ -43,19 +43,20 @@ Nur Abos, kein OpenRouter, keine zusätzlichen bezahlten API-Ausgaben.
 | Harness | `AGENTS.md` | Repo-Skills |
 |---|---|---|
 | Claude Code | über den Import `@AGENTS.md` in der ersten Zeile von `CLAUDE.md` (nicht von selbst) | `.claude/skills/` |
-| Codex CLI | automatisch (Konvention, Projektwurzel) | `.agents/skills/` laut Codex-Konvention; auf diesem PC nicht geprobt (W1-18b) |
-| OpenCode | automatisch (Projektwurzel) | nicht belegt — Probe W1-18b offen |
+| Codex CLI | automatisch (Konvention, Projektwurzel) | `.agents/skills/` laut Codex-Konvention; auf diesem PC nicht geprobt (W1-18b, Codex-Probe nach dem Rate-Limit am 30.09.) |
+| OpenCode | automatisch (Projektwurzel) | `.agents/skills/`, geprobt 25.09. mit OpenCode 1.18.32 (W1-18b, Beleg im PR-Text) |
 | Kimi Code CLI | automatisch | `--skills-dir <dir>` (so startet die App Kimi-Worker) |
 | Ollama-Reviewer | **nie** — sie sehen nur die Prompt-Datei | — |
 
-Die App stellt Skill-Packs heute nur Claude (Konvention) und Kimi (`--skills-dir`)
-bereit; für Codex und OpenCode stehen die eingebauten Profile auf
-`unsupported` (`src-tauri/resources/agent-defaults.json`). Der Modus
-`ConventionAt` (PR #57) existiert, wird aber nur per `agents.json` gesetzt.
+Die App stellt Skill-Packs für Claude (Konvention), Kimi (`--skills-dir`) und
+OpenCode (`conventionAt` `.agents/skills`, eingebautes Profil seit W1-18b)
+bereit; für Codex steht das eingebaute Profil weiter auf `unsupported`
+(`src-tauri/resources/agent-defaults.json`), bis die Probe nachgeholt ist. Der
+Modus `ConventionAt` (PR #57) lässt sich zusätzlich per `agents.json` setzen.
 
 Der Repo-Skill `projecta-workflow` ist die Kurzfassung der Arbeitsweise als
 Checkliste. Er liegt zweimal im Repo, byte-gleich bis auf Zeilenenden:
-`.agents/skills/projecta-workflow/SKILL.md` (Codex; weitere Harnesses nach W1-18b) und
+`.agents/skills/projecta-workflow/SKILL.md` (Codex-Konvention; liest OpenCode seit der W1-18b-Probe ebenfalls) und
 `.claude/skills/projecta-workflow/SKILL.md` (Claude Code). Geändert wird die
 `.agents`-Fassung, dann kopiert; `dev:agent-check` schlägt bei Abweichung an.
 

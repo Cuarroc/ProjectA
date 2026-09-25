@@ -511,7 +511,7 @@ mod tests {
         }
     }
 
-    /// W1-18b (probe 2026-09-25, `.pa/evidence_w1-18b_2026-09-25.json`): the
+    /// W1-18b (probe 2026-09-25): the
     /// installed OpenCode 1.18.32 lists a canary living in the probe
     /// workspace's `.agents/skills` from `debug skill --pure` - an
     /// observation, not a configuration guess - so both opencode profiles
