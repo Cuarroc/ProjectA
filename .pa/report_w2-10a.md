@@ -89,7 +89,44 @@ GLM 5.2 (nicht die Autorenfamilie; Autor Kimi K3): Gesamtdiff **approve**
 F3/F4 begründet abgelehnt. Protokoll: `.pa/review_w2-10a_glm-5.2.md`.
 Diff-Umfang 242+/10−, keine Nahtstelle → ein Review ausreichend (AGENTS.md).
 
+### Stufe B nach dem Merge mit main (Basis-Fix #4), grok (xAI)
+
+Merge-Kopf `b4222f4` (Konflikt in `scripts/lib/hq-routes.test.mjs` gelöst:
+mains Helfer behalten, `HQ_ACTIVITY_FILE` ins Temp-Verzeichnis ohne
+Journal-Fixtur). Prepush-Lane auf dem Merge-Kandidaten erneut gefahren:
+`bash scripts/ci/gates.sh lane prepush` → **Exit 0** (fmt 6 s, typecheck
+11 s, lint 22 s, fe-test 115 s, hq-test 20 s, clippy 153 s, rust-suite
+365 s, 1608/1608).
+
+grok-Review des finalen Kandidaten (`.pa/review_pr13_grok.md`): **drei
+Funde** (1 high, 2 medium), alle nach Zeilenprüfung **angenommen** und
+red-first umgesetzt — Disposition: `.pa/review_pr13_disposition.md`.
+
+- F1 (high): der 5-s-Tick deaktivierte alle Buttons vor dem Netzwerk-Await;
+  reale Browser bluren dabei den fokussierten Button, die Fokus-Erfassung
+  lief erst nach dem Await — Submit-Fokus ging bei jedem Tick verloren
+  (jsdom sieht das nicht). Fix: `captureFocus` vor `enable(false)`,
+  `restoreFocus` nach `enable(true)`, in `refresh()` und `mutate()`.
+  Beleg: Browser-Test gegen den alten Stand rot (`null !== 'task-2'`,
+  Exit 1), nach dem Fix grün; Fokus-Screenshot inspiziert.
+- F2 (medium): Formular-Defaults nie auf Serverwerte synchronisiert —
+  Phantom-Entwürfe übermalten neuere Serverdaten, ein geleerter Agent ging
+  verloren. Fix: `defaultValue`/`defaultSelected` beim Bau synchronisieren.
+- F3 (medium): wiederhergestellter Team-Entwurf ohne `change`-Event —
+  Rollenliste gehörte zum alten Team. Fix: `change` beim Restore dispatchen.
+
+Commits: `191d61c` (rot, Regression-For: `ea6ecf9`), `9899641` (Fix).
+Grün: `node --test scripts/lib/hq-goals-live.test.mjs` → **Exit 0** (7/7);
+`node --test scripts/lib/hq-visual.browser.mjs` → **Exit 0** (13/13).
+Delta-Review des Fixes durch grok: **blockiert** — `402 Payment Required:
+Grok Build usage balance exhausted` mitten im Lauf (siehe Disposition);
+nachzuholen, sobald das Kontingent wieder steht.
+
 ## Offene Punkte / Folgearbeit
+
+- **Delta-Review der Fix-Commits `191d61c`/`9899641` durch grok nachholen**
+  (Kontingent erschöpft, 402); bis dahin tragen die roten→grünen Tests den
+  Fix-Beleg.
 
 - W2-10b (Routing/Budget) und W2-10c (Review/Delivery) als eigene Pakete; die
   Abschnitte sind in der Karte markiert und bewusst unberührt.
