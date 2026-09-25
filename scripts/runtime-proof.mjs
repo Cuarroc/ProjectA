@@ -16,7 +16,12 @@
 // under the proof root; only the newest KEEP_RUNS runs survive.
 //
 // Local/test only. The single-instance mutex is shared with production, so
-// the proof refuses to run while any projecta.exe is alive.
+// the proof refuses to run while any projecta.exe is alive — unless
+// `--parallel-ok` is passed, which is only valid for a binary built with a
+// distinct bundle identifier, e.g.
+//   TAURI_CONFIG='{"identifier":"com.projecta.proof"}' cargo build
+// Such a proof binary owns no shared state with production (own mutex, own
+// PROJECTA_APP_DATA, ephemeral ports), so the refusal would protect nothing.
 import { spawn, execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, openSync, closeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -35,11 +40,12 @@ const DESCRIPTOR_TIMEOUT_MS = 60_000;
 const DEFAULT_SETTLE_S = 70;
 
 export function parseArgs(argv = []) {
-  const options = { exe: null, root: null, settle: DEFAULT_SETTLE_S, keep: KEEP_RUNS, screenshot: true, help: false };
+  const options = { exe: null, root: null, settle: DEFAULT_SETTLE_S, keep: KEEP_RUNS, screenshot: true, parallelOk: false, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') options.help = true;
     else if (arg === '--no-screenshot') options.screenshot = false;
+    else if (arg === '--parallel-ok') options.parallelOk = true;
     else if (arg === '--exe') options.exe = argv[++i];
     else if (arg === '--root') options.root = argv[++i];
     else if (arg === '--settle') options.settle = Number(argv[++i]);
@@ -53,7 +59,7 @@ export function parseArgs(argv = []) {
 }
 
 export function usage() {
-  return 'usage: node scripts/runtime-proof.mjs [--exe path] [--root dir] [--settle seconds] [--keep n] [--no-screenshot]';
+  return 'usage: node scripts/runtime-proof.mjs [--exe path] [--root dir] [--settle seconds] [--keep n] [--no-screenshot] [--parallel-ok]';
 }
 
 const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
@@ -137,11 +143,13 @@ async function api(descriptor, method, path, body) {
   return parsed;
 }
 
-function takeScreenshot(layout) {
+function takeScreenshot(layout, pid) {
   const helper = join(REPO, 'scripts', 'window-shot.ps1');
   if (process.platform !== 'win32' || !existsSync(helper)) return { ok: false, reason: 'screenshot helper is Windows-only' };
   try {
-    execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper, '-Title', 'ProjectA', '-ProcessName', 'projecta', '-Out', layout.screenshot], { stdio: 'pipe' });
+    // -Pid first: with a proof binary next to production the title alone is
+    // ambiguous, and a photo of the production window is worse than none.
+    execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper, '-Title', 'ProjectA', '-ProcessName', 'projecta', '-Pid', String(pid), '-Out', layout.screenshot], { stdio: 'pipe' });
     return { ok: existsSync(layout.screenshot), path: layout.screenshot };
   } catch (error) {
     return { ok: false, reason: String(error.stderr ?? error.message).trim().slice(0, 300) };
@@ -155,7 +163,9 @@ async function main() {
     return;
   }
   const running = projectaPids();
-  if (running.length > 0) throw new Error(`projecta already running (pids ${running.join(',')}); the single-instance mutex is shared — close it first`);
+  if (running.length > 0 && !options.parallelOk) {
+    throw new Error(`projecta already running (pids ${running.join(',')}); the single-instance mutex is shared — close it first (or use --parallel-ok with a proof binary built under a distinct bundle identifier)`);
+  }
 
   const exe = resolveExe(options.exe);
   const root = options.root ?? process.env.PROJECTA_PROOF_DIR ?? join(tmpdir(), 'projecta-runtime-proof');
@@ -210,7 +220,7 @@ async function main() {
     const workers = await api(second.descriptor, 'GET', `/api/workers?projectId=${encodeURIComponent(projectId)}`);
     proof.phase2.entries = (Array.isArray(entries) ? entries : []).map((entry) => ({ id: entry.id, status: entry.status }));
     proof.phase2.workers = Array.isArray(workers) ? workers : [];
-    proof.screenshot = options.screenshot ? takeScreenshot(layout) : { ok: false, reason: '--no-screenshot' };
+    proof.screenshot = options.screenshot ? takeScreenshot(layout, child.pid) : { ok: false, reason: '--no-screenshot' };
     killProjectA(child.pid);
     await waitGone(child.pid);
     child = null;

@@ -16,6 +16,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Title,
     [string]$ProcessName,
+    [int]$Pid = 0,
     [string]$Out = "window-shot.png"
 )
 $ErrorActionPreference = 'Stop'
@@ -36,9 +37,14 @@ public class WinShot {
 # Exakter Titel schlaegt Teiltreffer. Ohne das gewinnt ein Browser-Tab, der
 # den gesuchten Namen zufaellig im Titel fuehrt - genau so ist dieses Skript
 # beim Installer-Test in einem Chrome-Fenster statt in der App gelandet.
+# -Pid schlaegt Titel und Prozessname: zwei gleich betitelte Fenster (etwa
+# Produktiv-App und Proof-Instanz nebeneinander) waeren sonst eine
+# Glueckssache, und das Foto kaeme vom falschen Fenster.
 $candidates = @(Get-Process | Where-Object { $_.MainWindowTitle -and $_.MainWindowTitle -like "*$Title*" })
 if ($ProcessName) { $candidates = @($candidates | Where-Object { $_.ProcessName -eq $ProcessName }) }
-$proc = $candidates | Where-Object { $_.MainWindowTitle -eq $Title } | Select-Object -First 1
+$proc = $null
+if ($Pid -gt 0) { $proc = @($candidates | Where-Object { $_.Id -eq $Pid }) | Select-Object -First 1 }
+if (-not $proc) { $proc = $candidates | Where-Object { $_.MainWindowTitle -eq $Title } | Select-Object -First 1 }
 if (-not $proc) { $proc = $candidates | Select-Object -First 1 }
 if (-not $proc) {
     Write-Error "Kein Fenster mit Titel *$Title* gefunden. Offene Fenster: $((Get-Process | Where-Object MainWindowTitle | ForEach-Object MainWindowTitle) -join ' | ')"
