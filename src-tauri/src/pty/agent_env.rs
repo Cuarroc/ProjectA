@@ -767,4 +767,238 @@ mod tests {
             "strict: gh auth status succeeded - the agent is logged in"
         );
     }
+
+    /// W5-02b5: a recording HTTP server on loopback for the `http.extraHeader`
+    /// tests. No crate: a `std` listener is enough - git sends its extra
+    /// headers with the first request already, so any response (here an
+    /// empty 200) ends the exchange after the headers were captured.
+    struct HeaderServer {
+        port: u16,
+        requests: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        thread: Option<std::thread::JoinHandle<()>>,
+    }
+
+    impl HeaderServer {
+        fn start() -> Self {
+            use std::io::Read as _;
+            use std::sync::atomic::{AtomicBool, Ordering};
+            use std::sync::{Arc, Mutex};
+            use std::time::Duration;
+
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind local server");
+            listener
+                .set_nonblocking(true)
+                .expect("nonblocking listener");
+            let port = listener.local_addr().expect("local address").port();
+            let stop = Arc::new(AtomicBool::new(false));
+            let requests: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+            let thread = {
+                let stop = Arc::clone(&stop);
+                let requests = Arc::clone(&requests);
+                std::thread::spawn(move || {
+                    while !stop.load(Ordering::SeqCst) {
+                        let (mut stream, _) = match listener.accept() {
+                            Ok(accepted) => accepted,
+                            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                                std::thread::sleep(Duration::from_millis(10));
+                                continue;
+                            }
+                            Err(_) => break,
+                        };
+                        // Accepted sockets inherit the nonblocking mode on
+                        // Windows; the read below must wait, not spin.
+                        stream.set_nonblocking(false).expect("blocking stream");
+                        stream
+                            .set_read_timeout(Some(Duration::from_secs(5)))
+                            .expect("read timeout");
+                        // Request line and headers end at the first empty
+                        // line; a GET carries no body.
+                        let mut text = String::new();
+                        let mut chunk = [0u8; 4096];
+                        loop {
+                            match stream.read(&mut chunk) {
+                                Ok(0) => break,
+                                Ok(n) => {
+                                    text.push_str(&String::from_utf8_lossy(&chunk[..n]));
+                                    if text.contains("\r\n\r\n") {
+                                        break;
+                                    }
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                        requests.lock().expect("requests").push(text);
+                        let _ = stream.write_all(
+                            b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                        );
+                    }
+                })
+            };
+            Self {
+                port,
+                requests,
+                stop,
+                thread: Some(thread),
+            }
+        }
+
+        /// Run `ls-remote` against this server in `repo` and return the
+        /// requests that arrived. git fails or reports an empty remote on
+        /// the empty response either way; what matters is which headers the
+        /// requests carried.
+        fn probe(&self, repo: &Path, env: &BTreeMap<String, String>) -> Vec<String> {
+            use std::time::{Duration, Instant};
+
+            let repo_arg = repo.to_string_lossy().into_owned();
+            let url = format!("http://127.0.0.1:{}/w5.git", self.port);
+            self.requests.lock().expect("requests").clear();
+            let _ = run("git", &["-C", &repo_arg, "ls-remote", &url], env, "");
+            let deadline = Instant::now() + Duration::from_secs(2);
+            loop {
+                let captured = self.requests.lock().expect("requests").clone();
+                if !captured.is_empty() || Instant::now() >= deadline {
+                    return captured;
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
+    }
+
+    impl Drop for HeaderServer {
+        fn drop(&mut self) {
+            self.stop.store(true, std::sync::atomic::Ordering::SeqCst);
+            if let Some(thread) = self.thread.take() {
+                let _ = thread.join();
+            }
+        }
+    }
+
+    /// Strip proxy variables so a loopback URL always reaches the local
+    /// listener, even on a machine behind a proxy.
+    fn without_proxy(env: &BTreeMap<String, String>) -> BTreeMap<String, String> {
+        let mut env = env.clone();
+        for name in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"] {
+            env.remove(name);
+        }
+        env.insert("NO_PROXY".to_string(), "127.0.0.1,localhost".to_string());
+        env
+    }
+
+    /// Set `key=value` in the repo's config; shared by the header tests.
+    fn git_config_set(repo: &Path, key: &str, value: &str) {
+        let repo_arg = repo.to_string_lossy().into_owned();
+        let (ok, _, stderr) = run(
+            "git",
+            &["-C", &repo_arg, "config", key, value],
+            &std::env::vars().collect(),
+            "",
+        );
+        assert!(ok, "git config {key}: {stderr}");
+    }
+
+    /// W5-02b5: the empty `http.extraHeader` in [`STRICT_GIT_CONFIG`] really
+    /// resets a generic `http.extraHeader` a config file carries - proven
+    /// against a local HTTP server that records what arrives (W5-02b review
+    /// round 2, K-B2/G-2: the reset was untested). git sees the reset
+    /// entries in the command-line scope after the file entries, and the
+    /// empty value clears the accumulated list (`http.c` `http_options`).
+    #[test]
+    fn strict_agent_env_resets_a_generic_http_extra_header() {
+        const MARK: &str = "w5-02b5-generic-not-a-real-token";
+
+        let server = HeaderServer::start();
+        let root = TempDir::new("w5-02b5-http");
+        let repo = init_repo(&root.path().join("repo"));
+        git_config_set(
+            &repo,
+            "http.extraHeader",
+            &format!("Authorization: Bearer {MARK}"),
+        );
+
+        let gh = TempDir::new("w5-02b5-gh");
+        let inherit = without_proxy(&environment(
+            &profile(EnvIsolation::Inherit, &[]),
+            gh.path(),
+        ));
+        let strict = without_proxy(&environment(&profile(EnvIsolation::Strict, &[]), gh.path()));
+
+        let seen = server.probe(&repo, &inherit);
+        assert!(
+            seen.iter().any(|request| request.contains(MARK)),
+            "inherit: the configured extraHeader did not reach the server"
+        );
+
+        let seen = server.probe(&repo, &strict);
+        assert!(
+            !seen.is_empty(),
+            "strict: git never reached the local server"
+        );
+        assert!(
+            !seen.iter().any(|request| request.contains(MARK)),
+            "strict: a configured extraHeader reached the server"
+        );
+    }
+
+    /// W5-02b5 KNOWN BOUNDARY, pinned: when the config also carries a
+    /// `http.<url>.extraHeader` whose URL matches the remote, the reset no
+    /// longer holds - under `strict` BOTH the scoped and the generic header
+    /// reach the server (observed on git 2.55). Mechanism, from git's
+    /// `urlmatch.c` `urlmatch_config_entry`: per key only the best URL match
+    /// is kept (`string_list_insert` + `cmp_matches`), and the generic
+    /// command-line reset counts as the worse match than the file's scoped
+    /// entry, so it is dropped before `http.c` ever sees it. There is no
+    /// environment-level fix - the URL is part of the config key - so this
+    /// stays open until agents get their own OS user (W5-02e). If a git
+    /// upgrade turns this test red, re-check the boundary note in the module
+    /// doc: a fixed git lets the reset win again.
+    #[test]
+    fn strict_agent_env_url_scoped_extra_header_is_a_known_leak() {
+        const GENERIC_MARK: &str = "w5-02b5-generic-not-a-real-token";
+        const SCOPED_MARK: &str = "w5-02b5-scoped-not-a-real-token";
+
+        let server = HeaderServer::start();
+        let root = TempDir::new("w5-02b5-http-scoped");
+        let repo = init_repo(&root.path().join("repo"));
+        git_config_set(
+            &repo,
+            "http.extraHeader",
+            &format!("Authorization: Bearer {GENERIC_MARK}"),
+        );
+        git_config_set(
+            &repo,
+            &format!("http.http://127.0.0.1:{}.extraHeader", server.port),
+            &format!("X-W5-02b5: {SCOPED_MARK}"),
+        );
+
+        let gh = TempDir::new("w5-02b5-gh");
+        let inherit = without_proxy(&environment(
+            &profile(EnvIsolation::Inherit, &[]),
+            gh.path(),
+        ));
+        let strict = without_proxy(&environment(&profile(EnvIsolation::Strict, &[]), gh.path()));
+
+        let seen = server.probe(&repo, &inherit);
+        for mark in [GENERIC_MARK, SCOPED_MARK] {
+            assert!(
+                seen.iter().any(|request| request.contains(mark)),
+                "inherit: a configured extraHeader did not reach the server: {mark}"
+            );
+        }
+
+        // The pinned boundary: the scoped entry defeats the reset, and the
+        // generic header goes out with it.
+        let seen = server.probe(&repo, &strict);
+        assert!(
+            !seen.is_empty(),
+            "strict: git never reached the local server"
+        );
+        for mark in [GENERIC_MARK, SCOPED_MARK] {
+            assert!(
+                seen.iter().any(|request| request.contains(mark)),
+                "boundary changed: under strict {mark} no longer reaches the server - \
+                 see the comment above and the module doc"
+            );
+        }
+    }
 }
