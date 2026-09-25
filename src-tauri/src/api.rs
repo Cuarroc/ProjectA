@@ -1041,12 +1041,75 @@ fn write_descriptor(dir: &Path, port: u16, token: &str) -> Result<PathBuf, Strin
         token: token.to_string(),
     })
     .map_err(|e| format!("failed to render the api descriptor: {e}"))?;
-    std::fs::write(&path, body).map_err(|e| format!("failed to write {}: {e}", path.display()))?;
+    write_descriptor_body(&path, body.as_bytes())?;
 
-    // The token is a key to this app; on unix the file says so.
+    // The token is a key to this app; on unix the file says so. On Windows
+    // `write_descriptor_body` already narrowed the DACL fail-closed.
     crate::oneshot::make_private(&path);
 
     Ok(path)
+}
+
+/// Windows: the broad descriptor holds the same key to the app as a scoped
+/// one, so it gets the same treatment (W2-07b). The file is opened with share
+/// mode 0 (with a bounded retry on sharing violations), planted links and a
+/// foreign owner are refused before a byte changes, and its DACL is narrowed
+/// to the current user before the token touches the disk; a file that cannot
+/// be narrowed fails startup closed instead of being trusted.
+#[cfg(windows)]
+fn write_descriptor_body(path: &Path, body: &[u8]) -> Result<(), String> {
+    use std::os::windows::fs::OpenOptionsExt;
+    use windows_sys::Win32::Foundation::GENERIC_WRITE;
+    use windows_sys::Win32::Storage::FileSystem::{
+        FILE_FLAG_OPEN_REPARSE_POINT, READ_CONTROL, WRITE_DAC,
+    };
+    // `create_new` first tells a file this call brings into being (removed
+    // again on failure, so a refusal leaves no empty descriptor) from one that
+    // was already there (kept: it holds the running instance's descriptor).
+    let created = std::cell::Cell::new(false);
+    let mut file = credential_acl::open_with_sharing_retry(
+        &format!("failed to open {}", path.display()),
+        || {
+            let mut options = std::fs::OpenOptions::new();
+            options
+                .write(true)
+                .access_mode(GENERIC_WRITE | WRITE_DAC | READ_CONTROL)
+                .share_mode(0)
+                .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+            match options.create_new(true).open(path) {
+                Ok(file) => {
+                    created.set(true);
+                    Ok(file)
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    created.set(false);
+                    options.create_new(false).open(path)
+                }
+                Err(error) => Err(error),
+            }
+        },
+    )?;
+    // No truncate at open: a refused file keeps its previous content (the
+    // running instance's descriptor), and only a verified file is emptied.
+    let written = credential_acl::refuse_links(&file, &path.display().to_string())
+        .and_then(|()| credential_acl::verify_owned(&file))
+        .and_then(|()| credential_acl::restrict_to_current_user(&file))
+        .and_then(|()| {
+            file.set_len(0)
+                .and_then(|()| file.write_all(body))
+                .and_then(|()| file.sync_all())
+                .map_err(|e| format!("failed to write {}: {e}", path.display()))
+        });
+    if written.is_err() && created.get() {
+        drop(file);
+        let _ = std::fs::remove_file(path);
+    }
+    written
+}
+
+#[cfg(not(windows))]
+fn write_descriptor_body(path: &Path, body: &[u8]) -> Result<(), String> {
+    std::fs::write(path, body).map_err(|e| format!("failed to write {}: {e}", path.display()))
 }
 
 /// A 128 bit hex token, drawn from the operating system's random source.
@@ -4416,6 +4479,17 @@ pub(crate) mod tests {
             assert_eq!(
                 std::fs::metadata(&first).unwrap().permissions().mode() & 0o777,
                 0o600
+            );
+            // W2-07b parity with the Windows directory ACL.
+            let access = fx
+                .server
+                .descriptor_path()
+                .parent()
+                .unwrap()
+                .join("agent-access");
+            assert_eq!(
+                std::fs::metadata(&access).unwrap().permissions().mode() & 0o777,
+                0o700
             );
         }
         fx.server.revoke_run_credentials("run-a").unwrap();
