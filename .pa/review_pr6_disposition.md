@@ -20,3 +20,23 @@ Keine abgelehnten Befunde. Nach den Fixes: Docs-Commit plus Test-Commit;
 kein Delta-Review nötig, da nur Wortlaut/Diagramm und die vom Reviewer
 vorgeschlagene Wartebedingung umgesetzt wurden (Umsetzung 1:1 aus dem
 Review).
+
+## Delta nach dem Merge von `main` (Stufe C)
+
+Beim Merge von `main` (`d6dbea7`) kam W1-05b-api (PR #19) mit: Cancel einer
+`dispatched`-Aufgabe über HTTP ist jetzt belegt (`api.rs`
+`a_dispatched_task_is_cancelled_over_http_only_on_a_proven_process_end`), und
+W5-28 brachte `PROJECTA_QUEUE=off` (`queue.rs`). Das README führte Cancel noch
+als „planned“ und als Einschränkung; beides ist korrigiert, der Schalter steht
+in „Getting started“. Der Merge-Konflikt in `scripts/lib/hq-visual.browser.mjs`
+ist zugunsten von `main` gelöst (dort `c0a6cc7`, gleicher Fix); der PR ändert
+die Datei nicht mehr.
+
+Delta-Review: Kimi K3 (Ollama Cloud, beobachtetes Modell `kimi-k3`), Autor
+Claude. 0 BLOCKER, 0 MAJOR, 3 MINOR, alle angenommen:
+
+| # | Befund | Disposition |
+|---|---|---|
+| C1 | „works“ klingt nach Abbrechen laufender Arbeit; belegt ist nur das Entfernen nach bewiesenem Prozessende | angenommen: Zeile heißt „Removing a dispatched task from the queue“, Einschränkung „A running agent cannot be interrupted“ ergänzt |
+| C2 | „refused with 409“ unpräzise (zweiter Cancel → 404) | angenommen: „while it may still run, the request is refused (409)“ |
+| C3 | Roadmap verliert den Bezug zu W1-05b | angenommen: „(rest of W1-05b)“ |
