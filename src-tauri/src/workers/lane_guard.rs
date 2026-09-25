@@ -57,7 +57,10 @@ impl Seam {
     /// exactly as AGENTS.md declares them.
     pub fn of_path(path: &str) -> Option<Seam> {
         match normalize_path(path).as_str() {
-            "src-tauri/src/store.rs" => Some(Seam::Store),
+            // The directory itself: task admission strips the trailing slash,
+            // so a scope naming `store/` arrives as `store` and must not slip
+            // past its sibling seam file `store.rs`.
+            "src-tauri/src/store.rs" | "src-tauri/src/store" => Some(Seam::Store),
             "src-tauri/src/api.rs" => Some(Seam::Api),
             "src-tauri/src/main.rs" => Some(Seam::Main),
             "src-tauri/src/bin/pa.rs" => Some(Seam::Cli),
@@ -67,17 +70,31 @@ impl Seam {
     }
 }
 
-/// Normalize a declared workspace path for comparison: forward slashes, no
-/// leading `./`, no trailing `/`, case folded (NTFS is case-insensitive).
+/// Normalize a declared workspace path for comparison: forward slashes, `.`
+/// and resolvable `..` segments collapsed, no `./` prefix, no trailing `/`,
+/// case folded (NTFS is case-insensitive). Classification and overlap run on
+/// this form, so `store/../api.rs` is the api seam, not a store path. Task
+/// admission already rejects dot segments; the forecast input has no such
+/// gate. A `..` that would climb above the start is kept as is.
 pub fn normalize_path(raw: &str) -> String {
-    let mut value = raw.trim().replace('\\', "/");
-    while let Some(rest) = value.strip_prefix("./") {
-        value = rest.to_string();
+    let value = raw.trim().replace('\\', "/");
+    let mut parts: Vec<&str> = Vec::new();
+    for part in value.split('/') {
+        match part {
+            "" | "." => {}
+            ".." if parts.last().is_some_and(|last| *last != "..") => {
+                parts.pop();
+            }
+            other => parts.push(other),
+        }
     }
-    while value.ends_with('/') {
-        value.pop();
-    }
-    value.to_ascii_lowercase()
+    let joined = parts.join("/");
+    let normalized = if value.starts_with('/') {
+        format!("/{joined}")
+    } else {
+        joined
+    };
+    normalized.to_ascii_lowercase()
 }
 
 /// Whether two normalized paths overlap: identical, or one is a path-prefix
@@ -249,12 +266,16 @@ pub fn dispatch_order(packages: &[PlannedPackage]) -> Result<Vec<String>, String
             add_edge(&mut followers, &mut indegree, dep.as_str(), p.id.as_str());
         }
     }
+    let lanes: Vec<BTreeSet<Seam>> = packages.iter().map(|p| lanes_of(&p.files)).collect();
     for (i, a) in packages.iter().enumerate() {
-        for b in packages.iter().skip(i + 1) {
+        for (j, b) in packages.iter().enumerate().skip(i + 1) {
+            // Shared file, or shared seam lane (the guard's own rule): the
+            // lane is serial no matter which of its files each package names.
             let overlaps = a
                 .files
                 .iter()
-                .any(|fa| b.files.iter().any(|fb| paths_overlap(fa, fb)));
+                .any(|fa| b.files.iter().any(|fb| paths_overlap(fa, fb)))
+                || !lanes[i].is_disjoint(&lanes[j]);
             if !overlaps {
                 continue;
             }
