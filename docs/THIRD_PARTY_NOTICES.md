@@ -1,18 +1,23 @@
 # Third-Party Notices
 
-ProjectA bundles or depends on the third-party software listed below. Every
-entry carries a license from the allowlist approved for this public
-repository (`MIT, Apache-2.0 (WITH LLVM-exception), BSD-2/3-Clause, ISC,
-MPL-2.0, Zlib, Unicode-3.0/Unicode-DFS-2016, CC0-1.0, 0BSD, BSL-1.0`, plus
-`OFL-1.1` for fonts). The list is enforced in CI by the `licenses` gate
+ProjectA bundles or depends on the third-party software listed below. The
+allowlist approved for this public repository (`MIT, Apache-2.0 (WITH
+LLVM-exception), BSD-2/3-Clause, ISC, MPL-2.0, Zlib,
+Unicode-3.0/Unicode-DFS-2016, CC0-1.0, 0BSD, BSL-1.0`, plus `OFL-1.1` for
+fonts) is enforced in CI by the `licenses` gate
 (`scripts/ci/license-check.sh`, policy in `src-tauri/deny.toml` and
-`scripts/lib/license-check.mjs`).
+`scripts/lib/license-check.mjs`) over the two dependency trees it scans:
+the Rust crate graph and the npm production tree. The bundled assets under
+"Required notices" (fonts, skill packs) are attribution entries: their
+licenses are documented here, but they are data files, not packages in
+those trees, so the gate does not see them.
 
-Regenerate this file after dependency changes:
+Regenerate the two dependency sections after dependency changes, with the
+same tool versions the gate pins (`scripts/ci/license-check.sh`):
 
 ```sh
-cd src-tauri && cargo deny list          # Rust section
-npx --yes license-checker-rseidelsohn --production --json   # npm section
+cd src-tauri && cargo deny list          # cargo-deny 0.20.2 — Rust section
+npx --yes license-checker-rseidelsohn@5.0.1 --production --json   # npm section
 ```
 
 ## Required notices (Attribution)
