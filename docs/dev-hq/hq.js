@@ -28,6 +28,14 @@
       .replace(/"/g, "&quot;");
   }
 
+  // escape() protects the markup, not the scheme: only http(s) urls may
+  // become links, everything else (javascript:, data:, file:, …) renders
+  // as plain text without an href.
+  function safeUrl(u) {
+    const url = String(u || "").trim();
+    return /^https?:\/\//i.test(url) ? url : "";
+  }
+
   function basename(path) {
     const parts = String(path).replace(/\\/g, "/").split("/");
     return parts[parts.length - 1] || String(path);
@@ -656,7 +664,10 @@
 
     function renderRecommendations(recommendations) {
       const pending = (recommendations || []).filter((r) => r.status === "new" || !r.status);
-      const rows = pending.map((r) => `<article class="live-row"><div><strong>${escape(r.title || r.id)}</strong><span>${escape(r.rationale || "")}${r.effort ? ` · effort ${escape(r.effort)}` : ""}${r.url ? ` · <a href="${escape(r.url)}" target="_blank" rel="noopener">source</a>` : ""}</span></div><span><button class="hq-button" data-live-action="recAccept:${escape(r.id)}">Accept</button> <button class="hq-button subtle" data-live-action="recDismiss:${escape(r.id)}">Dismiss</button></span></article>`).join("");
+      const rows = pending.map((r) => {
+        const url = safeUrl(r.url);
+        return `<article class="live-row"><div><strong>${escape(r.title || r.id)}</strong><span>${escape(r.rationale || "")}${r.effort ? ` · effort ${escape(r.effort)}` : ""}${url ? ` · <a href="${escape(url)}" target="_blank" rel="noopener">source</a>` : ""}</span></div><span><button class="hq-button" data-live-action="recAccept:${escape(r.id)}">Accept</button> <button class="hq-button subtle" data-live-action="recDismiss:${escape(r.id)}">Dismiss</button></span></article>`;
+      }).join("");
       el.querySelector("#live-recommendations").innerHTML = rows || '<p class="muted">No open recommendations. Agents can file these as they discover follow-up work.</p>';
     }
 
