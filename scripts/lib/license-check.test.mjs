@@ -147,3 +147,22 @@ test("lic-01: cli exits 1 and names the offending package", () => {
   assert.equal(code, 1);
   assert.match(out, /bad@1\.0\.0: AGPL-3\.0-only/);
 });
+
+// Malformed expressions must fail closed, not crash green or pass by
+// accident. (Review lic-01 delta2, kimi-k3 F3.)
+test("lic-01: malformed expressions are violations", () => {
+  for (const [pkg, expression] of [
+    ["trailing-op@1.0.0", "MIT OR"],
+    ["leading-op@1.0.0", "OR MIT"],
+    ["trailing-and@1.0.0", "MIT AND"],
+    ["unbalanced-open@1.0.0", "(MIT"],
+    ["unbalanced-close@1.0.0", "MIT)"],
+    ["empty-group@1.0.0", "()"],
+    ["empty-string@1.0.0", ""],
+    ["double-star@1.0.0", "MIT**"],
+  ]) {
+    assert.deepEqual(evaluateLicenses({ [pkg]: { licenses: expression } }, "projecta"), [
+      `${pkg}: ${expression}`,
+    ]);
+  }
+});
