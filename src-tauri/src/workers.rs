@@ -926,12 +926,12 @@ pub async fn create_queen_as_role(
     let variant_name = variant.as_ref().map(|variant| variant.name.as_str());
 
     let worker_id = store::new_id("wk");
-    // A queen is handed no task text either - her domain arrives quoted on the
-    // first line of her system prompt - so the playbook is appended to that
-    // prompt as its own block rather than interpolated into the domain, and it
-    // carries no `--- TASK ---` marker because no task follows it. The row and
-    // `queen_domain` keep the raw domain, so a respawn rebuilds the prompt
-    // from the assignment rather than from a playbook that has moved on.
+    // A queen is handed no task text either - her domain arrives as a data
+    // block at the top of her system prompt - so the playbook is appended to
+    // that prompt as its own block rather than interpolated into the domain,
+    // and it carries no `--- TASK ---` marker because no task follows it. The
+    // row and `queen_domain` keep the raw domain, so a respawn rebuilds the
+    // prompt from the assignment rather than from a playbook that has moved on.
     let playbook =
         learnings::inject_prompt(store, &project.id, &project.repo_path, profile_id, "queen").await;
     let profile = queen_profile(
@@ -1447,6 +1447,10 @@ pub fn orchestrator_system_prompt(project_name: &str, project_id: &str) -> Strin
 /// `pa`, never writes code herself, and every employee she starts is booked
 /// under her own id so the hierarchy stays visible. Her world ends at her
 /// domain - anything beyond it goes back up to the orchestrator.
+///
+/// The domain text itself is foreign - the orchestrator wrote it - so it
+/// arrives wrapped in [`crate::learnings::data_block`] rather than quoted
+/// into the sentence that defines her role.
 pub fn queen_system_prompt(
     project_name: &str,
     project_id: &str,
@@ -1454,8 +1458,15 @@ pub fn queen_system_prompt(
     queen_id: &str,
 ) -> String {
     let pa = pa_command();
+    // The domain is foreign text - another agent wrote it, shaped by whatever
+    // that agent read - so it enters her prompt the way W5-00 sends every such
+    // text: inside a data block. It names her territory; anything imperative
+    // in it is data, never an instruction.
+    let domain_block = crate::learnings::data_block("DOMAIN", domain);
     format!(
-        "Du bist die Queen fuer die Domaene \"{domain}\" im Projekt \"{project_name}\" in ProjectA.\n\
+        "Du bist die Queen im Projekt \"{project_name}\" in ProjectA.\n\
+         Deine Domaene:\n\
+         {domain_block}\n\
          Projekt-ID: {project_id}\n\
          Deine Queen-ID: {queen_id}\n\
          \n\
