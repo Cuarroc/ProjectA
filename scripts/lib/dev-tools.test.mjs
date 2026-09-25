@@ -1,7 +1,7 @@
 // SETUP-08a (Review): shared plumbing — cleanEnv and makeRunner.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanEnv, makeRunner } from "./dev-tools.mjs";
+import { cleanEnv, ghJson, makeRunner } from "./dev-tools.mjs";
 
 test("cleanEnv strips git redirects and keeps the helpers non-interactive (M5)", () => {
   const env = cleanEnv({
@@ -42,4 +42,14 @@ test("makeRunner keeps 127 for a missing program", () => {
   const r = run("definitely-missing-cmd-projecta", ["--foo"]);
   assert.equal(r.code, 127);
   assert.match(r.stderr, /nicht gefunden/);
+});
+
+test("ghJson throws on a non-zero gh exit even when stdout happens to be JSON (review kilo K7)", () => {
+  const run = () => ({ code: 1, stdout: "[]", stderr: "GraphQL: partial failure" });
+  assert.throws(() => ghJson(run, ["pr", "list"]), /Exit 1.*partial failure/);
+});
+
+test("ghJson parses the JSON of a successful gh call", () => {
+  const run = () => ({ code: 0, stdout: '[{"number":1}]', stderr: "" });
+  assert.deepEqual(ghJson(run, ["pr", "list"]), [{ number: 1 }]);
 });
