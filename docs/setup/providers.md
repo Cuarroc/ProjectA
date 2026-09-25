@@ -16,7 +16,7 @@ ersten echten Paket einmal proben.
 
 ## Ziel der Verteilung
 
-1. **Claude spart.** Claude (Abo) ist Orchestrator und sonst nichts
+1. **Claude spart.** Claude (Pro-Abo) ist Orchestrator und sonst nichts
    Alltägliches. Claude-Worker nur für Nahtstellen oder Security, und nur wenn
    das Wochenlimit unter 70 % steht. Der Orchestrator prüft das Limit vor jedem
    Start (`get_usage` in der Claude-App, sonst die Nutzungsanzeige).
@@ -29,8 +29,9 @@ ersten echten Paket einmal proben.
    Autor selbst von Kimi oder GLM, ersetzt Codex oder Copilot den gleichnamigen
    Reviewer.
 4. **RAM ist die harte Grenze.** 16 GB, oft unter 2 GB frei. Höchstens
-   2–3 Worker gleichzeitig und nie mehr als ein `cargo`-Build zur selben Zeit;
-   vor jedem Start freien Speicher prüfen (unter 1,5 GB kein neuer Worker).
+   2–3 Worker gleichzeitig und höchstens drei `cargo`-Builds, bei knappem RAM
+   zwei (AGENTS.md, „Build slots“); vor jedem Start freien Speicher prüfen
+   (unter 1,5 GB kein neuer Worker, AGENTS.md Regel 9).
 
 ## Übersicht
 
@@ -58,6 +59,10 @@ ersten echten Paket einmal proben.
 | Alltagsreview (Paar) | Ollama `kimi-k3:cloud` + `glm-5.2:cloud` | — | Copilot `gpt-5.6-terra`, OpenCode `deepseek-v4-pro` |
 | Zweitmeinung zu einer Architekturfrage | Codex `gpt-6-astra` | `xhigh` | OpenCode `qwen3.8-max` |
 | Harte Entscheidung / Abschlussreview (Advisor-Paar) | Fable 5.1 + Codex `gpt-6-astra` | max / `high` | — (siehe README, Abschnitt Advisors) |
+
+Modellnamen in dieser Tabelle, die oben nicht als „geprüft“ stehen, sind nicht
+beobachtet (Prüfung C, F9): vor dem ersten Einsatz mit dem Startcheck bestätigen
+(AGENTS.md, Regel 9). Diese Tabelle ist die einzige Routing-Quelle.
 
 Die Zuordnung ist eine Empfehlung des Orchestrators, keine Messung. Wer einen
 Anbieter für eine Aufgabenart als besser oder schlechter belegt, trägt den

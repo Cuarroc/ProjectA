@@ -1,5 +1,8 @@
 # DEVFLOW — Ausführung
-Status: aktiv
+Status: historisch
+
+Geparkt bzw. gestrichen am 25.09.2026 (PLAN-01): der Status je DF-Paket steht in
+`docs/PLAN.md`, DEVFLOW-Tabelle.
 
 Nutzerauftrag 23.09.2026: Gesamtprompt in diesem Chat ausführen.
 Anforderung: `.pa/prompt_devflow.md`; einziger Plan: `docs/PLAN.md` DEVFLOW.

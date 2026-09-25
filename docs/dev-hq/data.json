@@ -1,109 +1,63 @@
 {
-  "generatedAt": "2026-09-24T21:57:52.543Z",
-  "commit": "5032d8a",
+  "generatedAt": "2026-09-25T23:13:27.754Z",
+  "commit": "a3698bf",
   "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "084fe007caf652eea3570da77e030ca241274b1e73c301ccb9f43c169168bb54"
+      "sha256": "07925642c01297b262b8639adee6897571a6aa7564f8f27f0c0bf58a065a7f97"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "eab5a76a32240f3b48540e5847039492bba40aae58bd050501f2d23fe7dedb62"
-    },
-    {
-      "path": ".pa/task_f_core3_delivery.md",
-      "sha256": "5f8b67e3368c2011872aa4548530a5e503d0ed21cc820e8cd191e9ad176c40f3"
+      "sha256": "8613937a215ec904f61c6b5d72d60574a1208cfafcfa388de0b669e084f861be"
     },
     {
       "path": ".pa/task_w1-05.md",
       "sha256": "45ebb9aaee6612a77ad9c5a63d094aa1d62ab19239e231685934bf761060e9b3"
     },
     {
-      "path": ".pa/task_w1-10.md",
-      "sha256": "330e1b89c7b490cec769cc3f559730d36fa5b5205c02000370a3e91aadf4a758"
-    },
-    {
-      "path": ".pa/task_w1-12.md",
-      "sha256": "85ccea99e558d04153bb05964ba0c1712c974da020ca251e708a8ca5366c1fe2"
-    },
-    {
-      "path": ".pa/task_w1-17.md",
-      "sha256": "82385478c94ddf5bf8f14a399c4a06d027adcd865a04645b533b14965e4750f9"
+      "path": ".pa/task_f_core3_delivery.md",
+      "sha256": "5f8b67e3368c2011872aa4548530a5e503d0ed21cc820e8cd191e9ad176c40f3"
     },
     {
       "path": ".pa/task_w1-20.md",
       "sha256": "f69367fc49f659b82a655830a7647f03e119c3bf51918132b04def25ba2ac46c"
     },
     {
-      "path": ".pa/task_ollama_worker_adapter.md",
-      "sha256": "9f29d94ba3884c5eed7fc72af9b43bb6da657e4eb43ce9e14e2d76da143a3287"
-    },
-    {
-      "path": ".pa/task_hq2-02.md",
-      "sha256": "5eac3339f7e21f87d1547c800d7e2e672a36837d31d542368c86fda4abc20b35"
+      "path": ".pa/task_w1-17.md",
+      "sha256": "82385478c94ddf5bf8f14a399c4a06d027adcd865a04645b533b14965e4750f9"
     }
   ],
   "warnings": [],
   "nextGrip": [
     {
-      "text": "Die laufenden Pakete abschließen (Tabelle oben); die Queue mergt fertige PRs selbst. Danach die Reihenfolge je Lane aus `docs/MASTERPLAN.md` („Worker-Struktur\") ziehen; DF-07d (visueller PASS) braucht keinen Build-Slot.",
+      "text": "Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.",
       "source": "STAND.md#Nächster Griff"
     },
     {
-      "text": "W1-05b: sichere Cancel-Regel für `dispatched` implementieren und testen, Prozessende verifizieren, doppelte Neueinreihung verhindern; die produktive Queue bis dahin nicht durch einen App-Start dispatchen.",
+      "text": "W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.",
       "source": "STAND.md#Nächster Griff"
     },
     {
-      "text": "Nutzerentscheidungen einholen, die Pakete blockieren: Schnitt W4-03a (Journal-Teil ohne Aktivierung, Voraussetzung für W5-03), Grenzwerte für W2-08b, Secrets aus der Repo-Ebene in geschützte Environments, Release-Frage für die Arbeit nach v1.4.1 (Liste in `docs/PLAN.md` §5).",
+      "text": "Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "source": "STAND.md#Nächster Griff"
     }
   ],
   "specs": [
     {
-      "file": ".pa/task_f_core3_delivery.md",
-      "title": "W1-03e/f: F-CORE-3 Rest B.3/C (C-3 selbst erledigt, PR #72)",
-      "packet": "W1-03e/f: F-CORE-3 Rest B.3/C (C-3 selbst erledigt, PR #72)",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
       "file": ".pa/task_w1-05.md",
       "title": "W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched`",
       "packet": "W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched`",
-      "lane": "parallel",
-      "serialOwner": null,
+      "lane": "serial",
+      "serialOwner": "store.rs",
       "status": "aktiv",
       "source": "STAND.md#Aktive Specs",
       "startable": true
     },
     {
-      "file": ".pa/task_w1-10.md",
-      "title": "W1-10: HQ-Stylesheet",
-      "packet": "W1-10: HQ-Stylesheet",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w1-12.md",
-      "title": "W1-12: Design-Reste",
-      "packet": "W1-12: Design-Reste",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w1-17.md",
-      "title": "W1-17: HQ-Parser auf diesen Plan umstellen",
-      "packet": "W1-17: HQ-Parser auf diesen Plan umstellen",
+      "file": ".pa/task_f_core3_delivery.md",
+      "title": "W1-03e/f: F-CORE-3 Rest B.3/C",
+      "packet": "W1-03e/f: F-CORE-3 Rest B.3/C",
       "lane": "parallel",
       "serialOwner": null,
       "status": "aktiv",
@@ -121,19 +75,9 @@
       "startable": true
     },
     {
-      "file": ".pa/task_ollama_worker_adapter.md",
-      "title": "W2-09b: DeepSeek V4 Flash Cloud ueber OpenCode; CLI-Probe belegt, TUI/Worker offen",
-      "packet": "W2-09b: DeepSeek V4 Flash Cloud ueber OpenCode; CLI-Probe belegt, TUI/Worker offen",
-      "lane": "serial",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_hq2-02.md",
-      "title": "HQ2-02: Konzeptdemo, Inhalt über #70 auf main; Nutzer- und visuelle Abnahme offen",
-      "packet": "HQ2-02: Konzeptdemo, Inhalt über #70 auf main; Nutzer- und visuelle Abnahme offen",
+      "file": ".pa/task_w1-17.md",
+      "title": "W1-17: HQ-Parser prüfen",
+      "packet": "W1-17: HQ-Parser prüfen",
       "lane": "parallel",
       "serialOwner": null,
       "status": "aktiv",
@@ -144,23 +88,7 @@
   "findings": [
     {
       "id": "KI-24",
-      "text": "SQLite-Lastklasse (`database is locked` / `pool timed out`), mit #77/#85 bearbeitet, beobachten.",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-25",
-      "text": "Linux-Prozessgruppen-Test in `testgate.rs`, einmal rot, Ursache offen (W1-29).",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-26",
-      "text": "Windows-PTY-Argumenttest, Kaltstart-Fix seit PR #104, beobachten.",
+      "text": "SQLite-Lastklasse (`database is locked`), beobachten.",
       "klass": "CLAIM",
       "source": "STAND.md",
       "packet": null,
@@ -168,23 +96,7 @@
     },
     {
       "id": "KI-27",
-      "text": "`exited_undelivered` lässt Token-Reservierung und Delivery `started` (DF-15b, Produktfrage).",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-28",
-      "text": "Capture-Host bleibt Windows-only (Entscheidung 16.09.).",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-29",
-      "text": "F-SEC-4-Restrisiko des OmniRoute-Key-Syncs bei eingeschaltetem Opt-in.",
+      "text": "`exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.",
       "klass": "CLAIM",
       "source": "STAND.md",
       "packet": null,
@@ -192,7 +104,7 @@
     },
     {
       "id": "KI-20",
-      "text": "doppelte Antwort auf `ESC[6n`, braucht eine Entscheidung (W1-27).",
+      "text": "doppelte Antwort auf `ESC[6n`, Behebung W1-27 in M3.",
       "klass": "CLAIM",
       "source": "STAND.md",
       "packet": null,
@@ -204,7 +116,7 @@
       "id": "F0",
       "dependsOn": [],
       "lane": "serial",
-      "current": "done",
+      "current": "waiting",
       "source": "docs/PLAN.md"
     },
     {
@@ -293,30 +205,30 @@
   ],
   "next": [
     {
-      "packet": "Die laufenden Pakete abschließen (Tabelle oben);",
-      "why": "Die laufenden Pakete abschließen (Tabelle oben); die Queue mergt fertige PRs selbst. Danach die Reihenfolge je Lane aus `docs/MASTERPLAN.md` („Worker-Struktur\") ziehen; DF-07d (visueller PASS) braucht keinen Build-Slot.",
+      "packet": "Die offenen M1-PRs landen lassen; die Queue merg",
+      "why": "Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "Die laufenden Pakete abschließen (Tabelle oben); die Queue mergt fertige PRs selbst. Danach die Reihenfolge je Lane aus `docs/MASTERPLAN.md` („Worker-Struktur\") ziehen; DF-07d (visueller PASS) braucht keinen Build-Slot.",
+      "doneWhen": "Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.",
       "startable": true
     },
     {
-      "packet": "W1-05b: sichere Cancel-Regel für `dispatched` im",
-      "why": "W1-05b: sichere Cancel-Regel für `dispatched` implementieren und testen, Prozessende verifizieren, doppelte Neueinreihung verhindern; die produktive Queue bis dahin nicht durch einen App-Start dispatchen.",
+      "packet": "W1-05b abschließen: erst das st-Kind (PR #157), ",
+      "why": "W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "W1-05b: sichere Cancel-Regel für `dispatched` implementieren und testen, Prozessende verifizieren, doppelte Neueinreihung verhindern; die produktive Queue bis dahin nicht durch einen App-Start dispatchen.",
+      "doneWhen": "W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.",
       "startable": true
     },
     {
-      "packet": "Nutzerentscheidungen einholen, die Pakete blocki",
-      "why": "Nutzerentscheidungen einholen, die Pakete blockieren: Schnitt W4-03a (Journal-Teil ohne Aktivierung, Voraussetzung für W5-03), Grenzwerte für W2-08b, Secrets aus der Repo-Ebene in geschützte Environments, Release-Frage für die Arbeit nach v1.4.1 (Liste in `docs/PLAN.md` §5).",
+      "packet": "Danach M2 nach PLAN.md. Fragen an den Nutzer geh",
+      "why": "Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "Nutzerentscheidungen einholen, die Pakete blockieren: Schnitt W4-03a (Journal-Teil ohne Aktivierung, Voraussetzung für W5-03), Grenzwerte für W2-08b, Secrets aus der Repo-Ebene in geschützte Environments, Release-Frage für die Arbeit nach v1.4.1 (Liste in `docs/PLAN.md` §5).",
+      "doneWhen": "Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "startable": true
     }
   ],
@@ -338,7 +250,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -359,7 +271,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -380,7 +292,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -400,7 +312,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -421,7 +333,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -442,7 +354,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -462,7 +374,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -483,7 +395,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -504,7 +416,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -524,7 +436,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -545,7 +457,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -566,7 +478,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -586,7 +498,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -607,7 +519,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -628,7 +540,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -650,7 +562,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -671,7 +583,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 15,
         "votes": 0
       }
     },
@@ -692,7 +604,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 15,
         "votes": 0
       }
     },
@@ -714,7 +626,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -735,7 +647,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -756,7 +668,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -777,7 +689,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -798,7 +710,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -826,7 +738,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -847,7 +759,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -868,7 +780,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -889,7 +801,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -910,7 +822,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -932,7 +844,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -954,7 +866,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -975,7 +887,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -996,7 +908,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1017,7 +929,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1038,7 +950,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1059,7 +971,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1080,7 +992,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 11,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1101,7 +1013,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 11,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1124,7 +1036,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 8,
+        "ageDays": 9,
         "votes": 0
       }
     },
@@ -1145,7 +1057,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 2,
+        "ageDays": 3,
         "votes": 0
       }
     },
@@ -1166,7 +1078,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 1,
+        "ageDays": 2,
         "votes": 0
       }
     }

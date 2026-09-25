@@ -1,6 +1,8 @@
 # W1-12: Design-Reste
 
-Status: aktiv
+Status: entwurf
+
+Geparkt am 25.09.2026 (PLAN-01, `docs/PLAN.md` „Gestrichen/Geparkt“): nicht ausführbar bis nach M4.
 
 Paket aus `docs/PLAN.md` (Welle W1). Angelegt 2026-09-17 als ausfuehrbare
 Spezifikation; der Plan ist die Quelle, diese Datei der Auftrag.

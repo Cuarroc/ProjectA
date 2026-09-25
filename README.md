@@ -13,10 +13,6 @@
 
 ---
 
-## About this repository
-
-ProjectA was built by one developer working together with AI coding agents (Claude Code, Codex, Kimi, OpenCode and others), which also wrote most of the code, tests and documentation under human review. This public repository is a cleaned snapshot of the private working repository, published without its commit history; internal working notes, agent reports and third-party skill packs without a license file were left out. Status: personal project, Windows-only, actively developed; much of the documentation is in German. No license has been chosen yet, so all rights are reserved for now.
-
 ## What is ProjectA?
 
 ProjectA is an **agentic terminal**: a Tauri 2 desktop app that runs a fleet of parallel CLI coding agents — `claude`, `kimi`, `codex`, `opencode`, `ollama` — side by side. Every task gets its own agent in its own git worktree, with its own PTY session, and every delivery into that session is verified before it counts. A live kanban board shows who is working, who is stuck and who is waiting on you; diffs are reviewed in the app and line comments land back in the agent's terminal. Coordinating agents drive the whole fleet through a token-guarded API and their own bridge CLI, `pa`.
@@ -45,7 +41,7 @@ Continuous mode — the fleet dispatching follow-up work on its own — exists i
 
 ## Quick start
 
-**Requirements:** Node.js 24+, the Rust toolchain (1.89+, for crash-released journal locks) and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/). Optional, each degrading gracefully when absent: `gh` for pull-request status, a local OmniRoute on `:20128` for routing and quota telemetry.
+**Requirements:** Node.js 24+, the Rust toolchain (1.89+, for crash-released journal locks) and the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/). Optional, each degrading gracefully when absent: `gh` for pull-request status, a local OmniRoute on `:<omniroute-port>` for routing and quota telemetry.
 
 ```sh
 npm ci
@@ -71,7 +67,7 @@ npm run dev:agent-check          # is this machine ready for an agent? (--json a
 
 The human cockpit is the Dev-HQ website: `npm run hq:live`, then `http://localhost:4173`. One implementation task, one agent, one git worktree — the coordination protocol is [AGENTS.md](AGENTS.md); how each provider (Claude Code, Codex, OpenCode, Kimi Code, the Ollama reviewers) is set up is in [docs/setup/](docs/setup/README.md).
 
-Pull requests: one PR per package, opened at the end and kept as a draft until report, review disposition and the `NICHT ABGEDECKT` block are in. `main` is merged through the Mergify merge queue (`.mergify.yml`, [docs/setup/mergify.md](docs/setup/mergify.md)); only the coordinator may merge by hand, as an emergency exception when the queue hangs or Mergify is down.
+Pull requests: one PR per package, opened early as a draft and pushed after every green step; it is marked ready once report, review disposition and the `NICHT ABGEDECKT` block are in. `main` is merged through the Mergify merge queue (`.mergify.yml`, [docs/setup/mergify.md](docs/setup/mergify.md)); only the coordinator may merge by hand, as an emergency exception when the queue hangs or Mergify is down.
 
 ## Documentation
 
@@ -81,11 +77,15 @@ Pull requests: one PR per package, opened at the end and kept as a draft until r
 | [AGENTS.md](AGENTS.md) | The protocol agent instances coordinate through |
 | [CLAUDE.md](CLAUDE.md) | Repo guidance for Claude Code sessions |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Known limitations, each with its reason |
-| [STAND.md](STAND.md) | Current hand-off state and operational notes |
+| [STAND.md](STAND.md) | Short: where we stand, next step, active specs |
+| [STATUS.md](STATUS.md) | History of the build up to v1.4.0 |
+| [TRIAGE.md](TRIAGE.md) | Closed triage of evidence findings (history) |
 | [PRODUCT.md](PRODUCT.md) | Product schema of the Dev-HQ (users, purpose, principles) for design work |
 | [docs/development/WORKFLOW.md](docs/development/WORKFLOW.md) | The full operating reference: architecture, releases, environment gotchas |
 | [docs/dev-hq/](docs/dev-hq/) | Dev-HQ: design, bugs, lessons and the live site |
-| [docs/PLAN.md](docs/PLAN.md) | Source and archive of the plan: waves, packages, decisions |
+| [docs/MASTERPLAN.md](docs/MASTERPLAN.md) | Pointer only: replaced by docs/PLAN.md |
+| [docs/ERLEDIGT.md](docs/ERLEDIGT.md) | Finished packages with PR and merge commit |
+| [docs/PLAN.md](docs/PLAN.md) | The only plan: milestones M1–M4, parked and cut work, decision inbox |
 | [docs/hilfe/](docs/hilfe/glossar.md) | Beginner help in German: glossary of 30 terms, cheat sheet of 20 commands, the `frag-mich` skill |
 | [docs/setup/](docs/setup/README.md) | Agent setup per provider, reviewers, Mergify, permission proposal |
 | [docs/ci-lokal.md](docs/ci-lokal.md) | Running the gate lanes locally (Windows, WSL2) |

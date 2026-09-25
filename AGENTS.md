@@ -1,15 +1,65 @@
 # AGENTS.md
 
 Shared instructions for every agent working on ProjectA. ProjectA is a Tauri 2
-agentic terminal: one implementation task, one agent, one git worktree.
+agentic terminal: one implementation task, one agent, one git worktree. The
+user is a beginner who cannot review code; the rules below exist so that green
+means something.
+
+## The ten core rules
+
+Everything else in this file and in `docs/development/WORKFLOW.md` is
+reference. Where a detail contradicts these ten, the ten win.
+
+1. **One package = one branch = one agent = one worktree = one PR.** At most
+   300 diff lines including tests (size M, `docs/PLAN.md` rule 7); bigger work
+   is split before dispatch.
+2. **Red test first for every bug** (red-first): a compiling, failing
+   regression test, then the fix. Only pure documentation is exempt. A visual
+   claim needs an inspected screenshot, a runtime claim a measurement.
+3. **Green means `prepush` in your own worktree.** The hook prints the path and
+   commit it checks; if they are not yours, nothing is verified. Never
+   `--no-verify`, never mask an exit code.
+4. **Push early, hand over early.** Commit *and push* after every green step;
+   nothing stays only local (WIP commits are fine, the shared stash is not).
+   Keep sessions short (well under ~150k tokens of context) and hand over with
+   a note instead of running long.
+5. **Reviews by risk, at most two rounds.** Tier A (seam, security,
+   concurrency, PTY, database): two reviewers from other vendors. Tier B (other
+   Rust/TS code): one reviewer who is not the author's model family. Tier C
+   (docs, tests, snapshots, config without runtime effect): no external review,
+   the gates suffice. After round two the user decides: merge, split or drop.
+6. **The four seams only serially:** `src-tauri/src/api.rs`, `main.rs`,
+   `store.rs` (with `store/`), `bin/pa.rs`. Never two agents on one at once.
+7. **The PR text is the report.** It opens with three German sentences for the
+   user, then a `## Report` section: what changed, evidence (command + exit
+   code), `NICHT ABGEDECKT`, review disposition. No mandatory report file, no
+   committed review prompts. Code, commits and the technical report are in
+   English; everything addressed to the user is in plain German.
+8. **Merge only through the Mergify queue. A red `main` stops the queue:** fix
+   `main` first, then continue with new work.
+9. **No claim without observation.** Status, model names and limits only with
+   date and command output; whoever takes a claim over re-checks it. Before
+   every worker start, run the start check: observed model, remaining limit,
+   free RAM, running cargo builds.
+10. **Safety stays with the user.** Secret scan before every commit; secrets
+    never go into files, logs or commits. Money, installs, releases and
+    deleting are the user's call, and every cleanup starts with a backup.
+    Questions for the user go into the decision inbox in `docs/PLAN.md`, not
+    into the chat one by one.
 
 ## Start with current evidence
 
-Read `STAND.md`, then `docs/PLAN.md` (waves, packages and open work),
-then run `bash scripts/sync.sh start`. Check branch, worktrees, working changes
-and `.pa/ACTIVITY.md`. Preserve unrelated work. Historical status is not live
-evidence. Never launch the desktop app just to inspect it: its queue can
-immediately dispatch real workers.
+Read `STAND.md`, then `docs/PLAN.md` (the only plan: milestones M1–M4, parked
+and cut work, decision inbox), then run `bash scripts/sync.sh start`. Check
+branch, worktrees and working changes. Preserve unrelated work. Historical
+status is not live evidence: take the live state from `gh pr list` and
+`git log origin/main`. Never launch the desktop app just to inspect it: its
+queue can immediately dispatch real workers.
+
+The start check (rule 9) before every worker: the model the harness actually
+reports, the provider limit, at least ~1.5 GB free RAM and at most two other
+cargo builds. Stop hard when one of them fails; the package OPS-02 automates
+this.
 
 Use the DevHQ website (`npm run hq:live`) for the human cockpit. Agents use the
 same backend through `pa hq runtime` and `pa hq context --project <id>`; do not
@@ -25,38 +75,38 @@ read-only; `npm run dev:setup` sets clone-local hooks and creates
 
 ## Ownership and proof
 
-Only one implementation lane may edit `src-tauri/src/api.rs`, `main.rs`,
-`store.rs` (with `store/`), or `bin/pa.rs` at a time. Declare file ownership
-before parallel work. There is no cap on the number of implementers; the
-limits are these serial lanes and the build slots below. Use `git -C <path>`
+Only one implementation lane may edit a seam at a time (rule 6). Declare file
+ownership before parallel work. There is no cap on the number of implementers;
+the limits are the serial lanes and the build slots below. Use `git -C <path>`
 for other worktrees. Never use the shared stash; make a WIP commit instead.
 
-A bug claim needs a compiling, failing regression test. A visual claim needs an
-inspected screenshot. Runtime claims need measured evidence. Investigate the
-first failure; never hide exit codes or bypass hooks. Check sibling cases after
+A bug claim needs a compiling, failing regression test. Investigate the first
+failure; never hide exit codes or bypass hooks. Check sibling cases after
 fixing a bug and consider a lint/gate for the error class.
 
 ## Reviews and advisors
 
-Plans and changes over 300 lines or touching a seam need two reviews by other
-AI vendors before merge; anything else needs one reviewer who is not the
-author. Never let the author's model family judge its own candidate. Record
-every finding and its disposition in `.pa/review_<label>_disposition.md`.
-Evidence is bound to the actual candidate; later changes invalidate the
-affected evidence, so review the delta again.
+The tier (rule 5) follows the changed files: any seam, security-relevant code,
+concurrency, PTY or database/migration change makes it tier A. Never let the
+author's model family judge its own candidate. Record every finding and its
+disposition (accepted with commit, rejected with reason, follow-up) in the PR
+text. A second round only when round one had a high-severity finding; after
+round two the user decides. Evidence is bound to the actual candidate; later
+changes invalidate the affected evidence, so review the delta again. A finding
+without `file:line` counts as unproven.
 
 - **Everyday pair:** Kimi K3 (`kimi-k3:cloud`) + GLM 5.2 (`glm-5.2:cloud`) on
   Ollama Cloud through `.pa/review_transport.py`. Setup, call and prompt rules:
-  `docs/setup/ollama-reviewers.md`. The reviewers read only the prompt file,
-  never this file.
+  `docs/setup/ollama-reviewers.md`. Keep review prompts out of the repo; they
+  are reproducible from the commit.
 - **Advisor pair** for hard decisions and final reviews: Fable 5.1 (Claude
   subagent) + GPT-6 Astra (Codex CLI, `-c model_reasoning_effort=high` per
   call; the global default stays `medium`). A worker may call the advisors
   itself for seam, security or architecture decisions, or when stuck for more
   than 30 minutes; otherwise it goes through the coordinator. Questions an
-  advisor raises go to the coordinator, who asks the user. Advisors do not
-  replace the required reviews above: when the author is a Claude model,
-  Fable 5.1 does not count as an independent reviewer.
+  advisor raises go to the coordinator, who puts them into the decision inbox.
+  Advisors do not replace the required reviews: when the author is a Claude
+  model, Fable 5.1 does not count as an independent reviewer.
 - Subscriptions only: no OpenRouter, no API keys, no extra paid spending.
 
 ## Development loop
@@ -68,10 +118,13 @@ Capability configuration is not capability evidence. Do not claim a provider,
 actual model, effort, billing source, or token measurement that has not been
 observed.
 
-Continuous mode remains disabled until its acceptance gates pass. Agents cannot
-expand their own approval, credential, budget, or release policy. Never treat an
-expired lease as proof that a worker process has stopped. Never reinstall over
-active sessions or restore an old database after new writes have been accepted.
+Continuous mode stays disabled and its code is frozen until milestone M4: no
+new migrations or features for it outside the M4 packages in `docs/PLAN.md`.
+New ideas go to "Später" in `docs/PLAN.md`, not into M1–M4. Agents cannot
+expand their own approval, credential, budget, or release policy. Never treat
+an expired lease as proof that a worker process has stopped. Never reinstall
+over active sessions or restore an old database after new writes have been
+accepted.
 
 ## Checks
 
@@ -94,17 +147,16 @@ step per lane, no list left in the YAML. Drift is not checked, it is impossible.
 Run the gates locally rather than waiting for CI; see `docs/ci-lokal.md`.
 
 Every run ends with a `NICHT ABGEDECKT` block, and that block belongs in the PR
-text or `.pa/ACTIVITY.md`: the `#[cfg(unix)]` tests do not compile on Windows,
-the `#[cfg(windows)]` tests do not compile on Linux (`KNOWN_ISSUES` KI-7) — no
-single machine covers both halves. "All gates green" without that block is a
-claim, not evidence. Since the server was removed the Linux half comes from WSL2
-with the clone on ext4.
+text: the `#[cfg(unix)]` tests do not compile on Windows, the `#[cfg(windows)]`
+tests do not compile on Linux (`KNOWN_ISSUES` KI-7) — no single machine covers
+both halves. "All gates green" without that block is a claim, not evidence.
+Since the server was removed the Linux half comes from WSL2 with the clone on
+ext4.
 
 Rust tests are inline modules. App/CLI tests remain in their binary targets;
 the shared native capture tests run once in the `projecta_capture` library.
-CI gates run on pushes to `main`, on non-draft PRs and on merge-queue runs;
-installer builds run on release tags. Use appropriate
-Test-First/Regression-For/No-Test trailers; never `--no-verify`.
+Use appropriate Test-First/Regression-For/No-Test trailers; never
+`--no-verify`.
 
 ### Build slots
 
@@ -118,15 +170,22 @@ every cargo or gate run and run at most three builds at once (two when memory is
 
 ## Pull requests and CI minutes
 
-Actions minutes are scarce: few runs, each one likely to pass.
+CI money target: 0 €. If CI becomes the bottleneck, at most 20 € a month, and
+only after the user approves it.
 
-- Run the full `bash scripts/ci/gates.sh lane prepush` locally once before
-  the PR, then push once at the end. Verify the push with `git ls-remote`, not
+- Run the full `bash scripts/ci/gates.sh lane prepush` locally before the PR.
+  Push after every green step (rule 4); verify a push with `git ls-remote`, not
   with the push exit code.
 - One PR per package, opened as a **draft** (`gh pr create --draft`). Drafts
-  get no CI. The coordinator marks it ready once report, review disposition
-  and the `NICHT ABGEDECKT` block are in; every later push to a ready PR costs
-  a full run.
+  get no CI; a push to a ready PR runs the linux lane and red-first (since
+  CI-03, PR #149, the Windows lane on a PR is a stub — its verdict comes from
+  the merge queue and the weekly run). The coordinator marks a PR ready once
+  the `## Report` section, the review disposition and the `NICHT ABGEDECKT`
+  block are in the PR text.
+- The PR template (`.github/pull_request_template.md`) gives the shape: three
+  German sentences for the user, then `## Report`.
+- A spec file (`.pa/task_<id>.md`) only for M packages from `docs/PLAN.md`;
+  for everything else the task lives in the PR text.
 - Do not merge `main` into your branch without a reason (see Merging); do not
   press "update branch".
 
@@ -142,13 +201,20 @@ branch only to resolve a real conflict (Mergify labels those `conflict`):
 merge, never rebase or force-push.
 
 - `do-not-merge` label: keeps a green PR out of the queue.
-- `priority` label (coordinator only) or a `hotfix/` branch: queued first.
-- Package branches must ship their report. A branch is a package branch when
-  it matches `^(claude|codex|kimi|opencode|glm)/(w<N>-|df<N>|ki-<N>|hq2-)`
-  (case-insensitive), e.g. `claude/w2-07-credential-acl`, `codex/df09a-...`,
-  `claude/ki-23-...`. Such a PR must add or change a `.pa/report_*.md`, or the
-  `Mergify Merge Protections` check stays red. Docs/infra branches
-  (`claude/masterplan`, `claude/ci-01-...`) are not packages.
+- `priority` label (coordinator only) or a `hotfix/` branch: queued first. A
+  hook or gate fix that protects everyone goes alone as a hotfix, never bundled
+  into a large PR.
+- **Package PRs carry their report in the PR text.** A branch is a package
+  branch when it matches `^(claude|codex|kimi|opencode|glm)/(w<N>-|df<N>|ki-<N>|hq2-)`
+  (case-insensitive), e.g. `claude/w2-07-credential-acl`. Its PR body must
+  contain a line starting with `## Report`, or the `Mergify Merge Protections`
+  check stays red. (The transition for pre-2026-09-25 PRs carrying a
+  `.pa/report_*.md` ended with PR #175; the only such open PR was #176.)
+  Docs/infra branches (`claude/plan-01-…`, `claude/ci-03-…`)
+  are not packages but use the same PR shape.
+- **Red `main`:** when a run on `main` fails, the queue stops. Until CI-04
+  automates it, the coordinator puts `do-not-merge` on queued PRs, records the
+  run ID in `KNOWN_ISSUES.md` and fixes `main` first.
 - Never rename a job in `ci.yml` without updating branch protection and
   `.mergify.yml` (`scripts/ci/ci-shape.sh` checks that the two agree).
 - Lane plan (`scripts/ci/lane-plan.sh`, CI-01/CI-02): the jobs always report,
@@ -197,10 +263,10 @@ merge, never rebase or force-push.
 
 ## Record and learn
 
-Every package ends with `.pa/report_<package>.md`: what changed, red→green
-commits with exit codes, gates and `NICHT ABGEDECKT`, reviews with
-disposition, follow-ups. A subagent whose harness may not write that file
-returns the complete report as its last message; the coordinator commits it.
+The PR text is the record of a package (rule 7). A subagent that cannot open
+the PR returns the complete report text as its last message; the coordinator
+puts it into the PR. Existing `.pa/report_*.md` files stay as history; old
+specs and review prompts live in `.pa/archiv/`.
 
 Before debugging: `npm run hq:lesson -- search "<symptom>"`. Report worked/failed
 outcomes with `--run <runId>` (required; never invent a new ID for a retry);
@@ -208,18 +274,16 @@ add a missing lesson with symptom, cause, fix and evidence. An HQ bug must be
 logged in `docs/dev-hq/BUGS.md` and queued; if offline, record the pending
 queue action explicitly. Do not fabricate the queue entry.
 
-Specs/reports belong in `.pa/`. Follow-up packages taken from a report need no
-spec of their own: the report is their source. Record dependency/architecture
-decisions in `docs/decisions.md` (what, why, when to reverse). At session end
-run `bash scripts/sync.sh note "<agent>" "<summary>"` and update status when
-justified. Keep secrets out of tracked files and reports.
+Record dependency/architecture decisions in `docs/decisions.md` (what, why,
+when to reverse). Hand over at session end with
+`bash scripts/sync.sh note "<agent>" "<summary>"`. Keep secrets out of tracked
+files, PR texts and logs; back up before deleting or switching anything off.
 
 ## Detailed operating reference
 
-`docs/development/WORKFLOW.md` preserves the full shared operational rules,
-architecture, release procedures, environment gotchas and documentation roles.
-All paths and commands there are relative to the repository root. Consult the
-relevant section when working on those systems; it remains authoritative for
-rules not summarized here. Its server/tunnel material and its provider table
-are historical (server removed 2026-09-09; current provider setup:
-`docs/setup/`). The local Node requirement is 24 or newer.
+`docs/development/WORKFLOW.md` is the reference for architecture, release
+procedures, provider properties and environment gotchas. It carries no rules of
+its own: where it disagrees with this file, this file wins. Its server/tunnel
+material and its provider table are historical (server removed 2026-09-09;
+current provider setup: `docs/setup/`). All paths and commands there are
+relative to the repository root. The local Node requirement is 24 or newer.

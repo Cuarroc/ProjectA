@@ -1,6 +1,11 @@
 # W2-09b: DeepSeek V4 Flash Cloud als OpenCode-Worker
 
-Status: aktiv
+Status: entwurf
+
+Geparkt am 25.09.2026 (Review PR #175, kimi-k3 F-7): M4-Paket; in der wk-Lane
+stehen W1-03e, CLEAN-02(wk), W5-02a, W5-00b, W2-04e und W1-18b davor
+(`docs/PLAN.md`, „Reihenfolge der seriellen Lanes"). Wird aktiv, wenn die Lane
+es erreicht.
 
 Revision 6, 22.09.2026. Nutzerauftrag: deepseek-v4-flash:cloud fuer Ollama-
 Worker pruefen. Ersetzt die Qwen-Richtung aus Revision5; historische Fassung

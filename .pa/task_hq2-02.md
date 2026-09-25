@@ -1,6 +1,11 @@
 # HQ2-02 — interaktive Dev-HQ-Konzeptdemo
 
-Status: aktiv
+Status: entwurf
+
+Geparkt am 25.09.2026 (Review PR #175, kimi-k3 F-7): M3-Paket, zusätzlich
+blockiert durch die offene Nutzerentscheidung E1 in `docs/PLAN.md`
+(„Entscheidungs-Inbox"). Wird aktiv, wenn E1 entschieden ist.
+
 Basis: ProjectA v1.4.1 (`3bcaed3`)
 Paketgröße: M, höchstens 300 Diff-Zeilen
 Dateien: `docs/dev-hq/concepts/hq2-demo.html`, dieser Auftrag und Bericht

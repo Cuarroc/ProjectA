@@ -1,6 +1,10 @@
 # W1-10: HQ-Stylesheet
 
-Status: aktiv
+Status: entwurf
+
+Geparkt am 25.09.2026 (Review PR #175, kimi-k3 F-7): M3-Paket; in der hqL-Lane
+steht W1-17 davor (`docs/PLAN.md`, „Reihenfolge der seriellen Lanes"). Wird
+aktiv, wenn die Lane es erreicht.
 
 Paket aus `docs/PLAN.md` (Welle W1). Angelegt 2026-09-17 als ausfuehrbare
 Spezifikation; der Plan ist die Quelle, diese Datei der Auftrag.
