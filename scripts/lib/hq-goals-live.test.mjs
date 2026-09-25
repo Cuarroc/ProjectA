@@ -33,7 +33,10 @@ const CONTEXT = {
       },
     ],
     effectiveLimits: {
-      rootPolicies: [{ policy: { teams: [{ id: 'development', roles: ['implementer', 'reviewer'] }] } }],
+      rootPolicies: [{ policy: { teams: [
+        { id: 'development', roles: ['implementer', 'reviewer'] },
+        { id: 'ops', roles: ['planner'] },
+      ] } }],
     },
   },
 };
@@ -110,6 +113,80 @@ test('changed-data rebuild restores focus to a submit button', async (t) => {
     .find((node) => node.textContent.includes('Review the view'));
   assert.ok(again.open, 'open details stay open across a changed-data rebuild');
   assert.equal(f.document.activeElement, again.querySelector('button[type=submit]'), 'submit button focus is restored');
+});
+
+test('rebuild after a server-side seat change shows the new seat, not a phantom draft', async (t) => {
+  let seat = { teamId: 'development', role: 'implementer', assignee: 'worker-1', revision: 2 };
+  const f = continuousFixture(async () => ({
+    ...CONTEXT,
+    snapshot: {
+      ...CONTEXT.snapshot,
+      tasks: CONTEXT.snapshot.tasks.map((task) => task.id === 'task-1' ? { ...task, assignment: seat } : task),
+    },
+  }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  // The operator never touches the assignment form, so nothing may be
+  // captured as a draft and painted over the next server state.
+  seat = { teamId: 'development', role: 'reviewer', assignee: 'worker-2', revision: 3 };
+  await f.controller.refresh();
+  const details = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Render ownership'));
+  const form = details.querySelector('form.continuous-assignment');
+  assert.equal(form.elements.assignee.value, 'worker-2', 'untouched assignee follows the server');
+  assert.equal(form.elements.role.value, 'reviewer', 'untouched role follows the server');
+  assert.equal(form.elements.teamId.value, 'development', 'untouched team follows the server');
+});
+
+test('a deliberately cleared assignee survives a rebuild as a draft', async (t) => {
+  let attempts = 0;
+  const f = continuousFixture(async () => ({
+    ...CONTEXT,
+    snapshot: {
+      ...CONTEXT.snapshot,
+      tasks: CONTEXT.snapshot.tasks.map((task) => task.id === 'task-2' ? { ...task, attempts } : task),
+    },
+  }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const details = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Render ownership'));
+  const assignee = details.querySelector('input[name=assignee]');
+  assert.equal(assignee.value, 'worker-1', 'assignee starts prefilled from the server');
+  assignee.value = ''; // the operator clears the field on purpose
+  attempts = 1; // changed data forces a rebuild
+  await f.controller.refresh();
+  const again = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Render ownership'));
+  assert.equal(again.querySelector('input[name=assignee]').value, '', 'the cleared field is a draft and survives the rebuild');
+});
+
+test('a drafted team switch keeps the matching role list across a rebuild', async (t) => {
+  let attempts = 0;
+  const f = continuousFixture(async () => ({
+    ...CONTEXT,
+    snapshot: {
+      ...CONTEXT.snapshot,
+      tasks: CONTEXT.snapshot.tasks.map((task) => task.id === 'task-2' ? { ...task, attempts } : task),
+    },
+  }));
+  t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const details = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Render ownership'));
+  const form = details.querySelector('form.continuous-assignment');
+  form.elements.teamId.value = 'ops';
+  form.elements.teamId.dispatchEvent(new f.window.Event('change'));
+  assert.equal(form.elements.role.value, 'planner', 'switching the team refills the role list');
+  attempts = 1; // changed data forces a rebuild
+  await f.controller.refresh();
+  const again = [...f.document.querySelectorAll('[data-goals] details')]
+    .find((node) => node.textContent.includes('Render ownership'));
+  const formAgain = again.querySelector('form.continuous-assignment');
+  assert.equal(formAgain.elements.teamId.value, 'ops', 'drafted team survives the rebuild');
+  assert.deepEqual([...formAgain.elements.role.options].map((option) => option.value), ['planner'],
+    'the role list matches the drafted team, not the server team');
+  assert.equal(formAgain.elements.role.value, 'planner', 'drafted role survives the rebuild');
 });
 
 function liveFixture() {
