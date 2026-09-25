@@ -248,6 +248,11 @@ test("worker detail opens on click, shows messages, sends a reply", async () => 
 
   await page.click('[data-live-action="detail:wk-1"]');
   await page.waitForSelector("#worker-detail:not([hidden])", { timeout: 5000 });
+  // The panel opens with "Loading…" and fills once both fetches resolve.
+  await page.waitForFunction(
+    () => /Inspecting queue\.rs/.test(document.querySelector("#worker-detail")?.textContent ?? ""),
+    { timeout: 10000 },
+  );
   assert.match(await page.textContent("#worker-detail"), /Inspecting queue\.rs/);
   assert.match(await page.textContent("#worker-detail"), /wk-dispatcher/);
   await page.screenshot({ path: join(shotDir, "worker-detail.png"), fullPage: true });
