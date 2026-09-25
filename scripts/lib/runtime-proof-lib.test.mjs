@@ -7,6 +7,7 @@ import {
   DISPATCH_DISABLED_LOG,
   KEEP_RUNS,
   evaluateProof,
+  proofEnv,
   proofLayout,
   runStamp,
   selectRunsToDelete,
@@ -43,6 +44,21 @@ test('run stamp sorts lexicographically like time and is filename-safe', () => {
   const b = runStamp(new Date('2026-09-25T10:00:01.000Z'));
   assert.ok(a < b);
   assert.match(a, /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z$/);
+});
+
+test('the sandbox env puts the WebView2 profile inside the run directory', () => {
+  const stamp = '2026-09-25T10-00-00.000Z';
+  const layout = proofLayout('/proofs', stamp);
+  const env = proofEnv(layout);
+  assert.equal(env.PROJECTA_APP_DATA, layout.appData);
+  assert.equal(env.PROJECTA_QUEUE, 'off');
+  // grok G1: wry passes no user-data-folder when tauri.conf.json has no
+  // dataDirectory, so WebView2 falls back to a profile keyed only by the
+  // bundle identifier — a default-identifier proof binary would share the
+  // production profile (localStorage writes, unclean taskkill). The env
+  // override applies exactly when no folder is passed, which is our case.
+  assert.equal(env.WEBVIEW2_USER_DATA_FOLDER, layout.webview);
+  assert.ok(env.WEBVIEW2_USER_DATA_FOLDER.startsWith(layout.runDir));
 });
 
 test('verdict passes only when the app started twice and nothing dispatched and the log proves the switch', () => {
