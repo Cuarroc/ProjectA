@@ -305,6 +305,10 @@ pub async fn refuse_lane_conflicts(
 ) -> Result<Vec<Conflict>, String> {
     // Which project this run belongs to: the run rows per project carry the
     // answer, and the scan stays a read over existing public store methods.
+    // O(projects x runs) per launch; launches are rare, and a direct
+    // run-to-project lookup would be a store-lane change (documented
+    // follow-up, together with moving the check into the reservation
+    // transaction).
     let mut found = None;
     for project in store.list_projects().await? {
         let runs = store.list_development_runs(&project.id).await?;
@@ -316,6 +320,9 @@ pub async fn refuse_lane_conflicts(
     let Some((project_id, runs)) = found else {
         return Err(format!("lane guard: unknown development run: {}", run.id));
     };
+    // 0 is the event journal cursor: the context is read from the beginning.
+    // The task list (with owned paths) is what the guard needs; the journal
+    // page itself is unused.
     let context = store.continuous_context(&project_id, 0).await?;
     let paths_of = |task_id: &str| -> Vec<String> {
         context
@@ -731,6 +738,26 @@ mod tests {
     }
 
     #[test]
+    fn conflict_edges_not_priorities_alone_serialize_shared_files() {
+        // Discriminating control: with only dependencies and priorities the
+        // order would be [B, C, A] (B is ready first); only the shared file
+        // between A and B places B after A, yielding [C, A, B]. This test
+        // goes red when the conflict-edge logic is removed.
+        let pkg = |id: &str, priority: u32, files: &[&str], deps: &[&str]| PlannedPackage {
+            id: id.into(),
+            priority,
+            files: files.iter().map(|f| f.to_string()).collect(),
+            depends_on: deps.iter().map(|d| d.to_string()).collect(),
+        };
+        let packages = vec![
+            pkg("A", 10, &["src/shared.rs"], &["C"]),
+            pkg("B", 20, &["src/shared.rs"], &[]),
+            pkg("C", 30, &["src/other.rs"], &[]),
+        ];
+        assert_eq!(dispatch_order(&packages).unwrap(), vec!["C", "A", "B"]);
+    }
+
+    #[test]
     fn unknown_dependencies_and_conflict_cycles_are_errors() {
         let mut packages = wave_two();
         packages[0].depends_on = vec!["NOPE-1".into()];
@@ -842,8 +869,13 @@ mod tests {
             .await
             .unwrap();
         // A failed run alone does not free the lane: the still-held claim
-        // keeps the package open (a retry may follow). Completing the task
-        // releases it.
+        // keeps the package open (a retry may follow).
+        let held_b = store.get_development_run(&run_b).await.unwrap().unwrap();
+        assert!(
+            refuse_lane_conflicts(&store, &held_b).await.is_err(),
+            "the held claim must keep the lane taken after the run failed"
+        );
+        // Completing the task releases it.
         store
             .checkpoint_continuous_task("task-a", "owner", 1, Some("completed"), None)
             .await

@@ -179,13 +179,21 @@ pub async fn launch_worker(
                     .map(super::lane_guard::Conflict::describe)
                     .collect::<Vec<_>>()
                     .join("; ");
-                let _ = store
+                // Best-effort like every system message, but never silent:
+                // a lost warning is exactly the surfacing this path exists for.
+                if let Err(error) = store
                     .insert_message(
                         &worker.id,
                         crate::store::MSG_SYSTEM,
                         &format!("lane guard warning: {detail}"),
                     )
-                    .await;
+                    .await
+                {
+                    eprintln!(
+                        "projecta: lane guard warning message for worker {} failed: {error}",
+                        worker.id
+                    );
+                }
             }
             Ok(worker)
         },

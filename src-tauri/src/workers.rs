@@ -60,7 +60,8 @@ pub mod development;
 pub mod development_route;
 
 #[path = "workers/lane_guard.rs"]
-#[allow(dead_code)] // Launch-lane wiring lands with the guard implementation.
+#[allow(dead_code)]
+// dispatch_order/PlannedPackage are test-only until a scheduler consumes them (W5-25).
 pub mod lane_guard;
 
 #[path = "workers/native_launch.rs"]
