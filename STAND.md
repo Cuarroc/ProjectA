@@ -104,7 +104,7 @@ der Verweis:
 - KI-24: SQLite-Lastklasse (`database is locked` / `pool timed out`), mit #77/#85 bearbeitet, beobachten.
 - KI-25: Linux-Prozessgruppen-Test in `testgate.rs`, einmal rot, Ursache offen (W1-29).
 - KI-26: Windows-PTY-Argumenttest, Kaltstart-Fix seit PR #104, beobachten.
-- KI-27: `exited_undelivered` lässt Token-Reservierung und Delivery `started` (DF-15b, Produktfrage).
+- KI-27: `exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.
 - KI-28: Capture-Host bleibt Windows-only (Entscheidung 16.09.).
 - KI-29: F-SEC-4-Restrisiko des OmniRoute-Key-Syncs bei eingeschaltetem Opt-in.
 - KI-20: doppelte Antwort auf `ESC[6n`, braucht eine Entscheidung (W1-27).

@@ -365,6 +365,17 @@ impl Store {
             sqlx::query("INSERT INTO continuous_events(project_id,kind,detail,created_at) SELECT project_id,'development_capture_exited_undelivered',json_object('version',1,'runId',run_id,'exitCode',?,'reason',?),unixepoch() FROM development_launches WHERE run_id=?")
                 .bind(exit_code).bind(reason).bind(&owner.binding.run_id).execute(&mut *tx).await.map_err(db)?;
         }
+        // DF-15b / KI-27: the proof above (checkpoint ledger, process
+        // identity, exit code) also releases the unused reservation and
+        // journals the delivery release, atomically with the exit. The
+        // release is guarded and idempotent, so the replay branch frees rows
+        // committed before the release existed. Without a commit nothing is
+        // freed: a crash before it keeps the reservation held (fail-closed).
+        crate::store::development_budget::release_undelivered_run_tokens(
+            &mut tx,
+            &owner.binding.run_id,
+        )
+        .await?;
         tx.commit().await.map_err(db)
     }
 }
@@ -1273,6 +1284,201 @@ mod tests {
         assert!(ended.is_some());
         assert_eq!(code, Some(2));
         assert_eq!(status, crate::store::STATUS_EXITED);
+    }
+
+    // DF-15b / KI-27: the proven undelivered exit releases the run's token
+    // reservation (unused: the input never reached the provider) and journals
+    // the delivery release - atomically, in the same transaction as the exit.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn undelivered_exit_releases_its_reservation_and_delivery_exactly_once() {
+        let (_dir, store, owner, exit, now) =
+            undelivered_fixture(&[Stage::Launch, Stage::Process]).await;
+        let run = owner.binding.run_id.clone();
+        let reservation: String =
+            sqlx::query_scalar("SELECT id FROM development_token_reservations WHERE run_id=?")
+                .bind(&run)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        let before = {
+            let mut tx = store.pool.begin().await.unwrap();
+            let balance = crate::store::development_budget::balance(&mut tx, "goal")
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            balance
+        };
+        assert_eq!(before.reserved_tokens, 1000);
+        assert_eq!(before.unresolved_operations, 1);
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        undeliver(&store, &owner, &exit, now).await.unwrap(); // crash-safe replay
+        let (state, settled_at): (String, Option<i64>) = sqlx::query_as(
+            "SELECT state,settled_at FROM development_token_reservations WHERE id=?",
+        )
+        .bind(&reservation)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            state, "cancelled",
+            "the unused reservation is released after the proven exit"
+        );
+        assert!(settled_at.is_some());
+        let events: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released'",
+        )
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(events, 1, "the delivery release is journaled exactly once");
+        // The raw delivery row stays truthful: the intent began and the
+        // transport never confirmed an enqueue; the release lives in the
+        // journal and the terminal launch state, not in rewritten history.
+        let delivery: String =
+            sqlx::query_scalar("SELECT state FROM development_deliveries WHERE run_id=?")
+                .bind(&run)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(delivery, "started");
+        // A row committed before the release existed (DF-15a era: exit
+        // committed, reservation still held) is freed on the next validated
+        // replay - again exactly once.
+        sqlx::query(
+            "UPDATE development_token_reservations SET state='started',settled_at=NULL WHERE id=?",
+        )
+        .bind(&reservation)
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        sqlx::query("DELETE FROM continuous_events WHERE kind='development_delivery_released'")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        let (state, events): (String, i64) = sqlx::query_as(
+            "SELECT (SELECT state FROM development_token_reservations WHERE id=?),(SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released')",
+        )
+        .bind(&reservation)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(state, "cancelled", "the replay frees the legacy row");
+        assert_eq!(events, 1, "the legacy release is journaled exactly once");
+        let after = {
+            let mut tx = store.pool.begin().await.unwrap();
+            let balance = crate::store::development_budget::balance(&mut tx, "goal")
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            balance
+        };
+        assert_eq!(
+            after.reserved_tokens, 0,
+            "the released budget is free again"
+        );
+        assert_eq!(after.unresolved_operations, 0);
+        assert_eq!(after.available_tokens, before.available_tokens + 1000);
+        // The cost receipt names the release instead of the generic
+        // "cancelled before work started", and the briefing carries the
+        // derived delivery release.
+        let launch = store.development_launch(&run).await.unwrap().unwrap();
+        let receipt = {
+            let mut tx = store.pool.begin().await.unwrap();
+            let receipt = crate::store::development_budget::usage_receipt::for_run(
+                &mut tx,
+                &run,
+                Some(&launch),
+            )
+            .await
+            .unwrap();
+            tx.commit().await.unwrap();
+            receipt
+        };
+        assert_eq!(receipt["state"], "cancelled");
+        assert!(receipt["reason"]
+            .as_str()
+            .unwrap()
+            .contains("before its input was delivered"));
+        let context = store.agent_run_context(&run, "owner", 1).await.unwrap();
+        assert_eq!(context["delivery"]["state"], "started");
+        assert_eq!(
+            context["delivery"]["effectiveState"],
+            "released_undelivered"
+        );
+    }
+
+    // Review PR #16 (grok G1, sonnet R2): a DF-15a-era row (exit committed,
+    // reservation still held) is neither reported as released nor left held
+    // forever: startup reconciliation frees it with the same guard.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_legacy_undelivered_row_is_not_reported_released_and_startup_frees_it() {
+        let (_dir, store, owner, exit, now) =
+            undelivered_fixture(&[Stage::Launch, Stage::Process]).await;
+        let run = owner.binding.run_id.clone();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        let hold = || async {
+            sqlx::query("UPDATE development_token_reservations SET state='started',settled_at=NULL WHERE run_id=?")
+                .bind(&run)
+                .execute(&store.pool)
+                .await
+                .unwrap();
+            sqlx::query("DELETE FROM continuous_events WHERE kind='development_delivery_released'")
+                .execute(&store.pool)
+                .await
+                .unwrap();
+        };
+        hold().await;
+        let context = store.agent_run_context(&run, "owner", 1).await.unwrap();
+        assert!(
+            context["delivery"].get("effectiveState").is_none(),
+            "a still-held reservation is not reported as released"
+        );
+        store
+            .reconcile_interrupted_development_launches()
+            .await
+            .unwrap();
+        store
+            .reconcile_interrupted_development_launches()
+            .await
+            .unwrap();
+        let (state, events): (String, i64) = sqlx::query_as(
+            "SELECT (SELECT state FROM development_token_reservations WHERE run_id=?),(SELECT count(*) FROM continuous_events WHERE kind='development_delivery_released')",
+        )
+        .bind(&run)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(state, "cancelled", "startup frees the legacy row");
+        assert_eq!(events, 1, "the startup release is journaled exactly once");
+        let context = store.agent_run_context(&run, "owner", 1).await.unwrap();
+        assert_eq!(
+            context["delivery"]["effectiveState"],
+            "released_undelivered"
+        );
+    }
+
+    // Review PR #16 (sonnet R4): the transport cannot confirm an enqueue
+    // after the proven undelivered exit released the reservation.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_late_enqueue_after_an_undelivered_exit_is_rejected() {
+        let (_dir, store, owner, exit, now) =
+            undelivered_fixture(&[Stage::Launch, Stage::Process]).await;
+        let run = owner.binding.run_id.clone();
+        undeliver(&store, &owner, &exit, now).await.unwrap();
+        let receipt = store.development_delivery(&run).await.unwrap().unwrap();
+        assert!(store
+            .record_development_delivery_enqueued(&receipt)
+            .await
+            .is_err());
+        let delivery: String =
+            sqlx::query_scalar("SELECT state FROM development_deliveries WHERE run_id=?")
+                .bind(&run)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(delivery, "started");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
