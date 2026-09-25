@@ -118,6 +118,14 @@ test("lic-01: inferred-license marker never changes the verdict", () => {
 // quotes only). All three would let the Rust half pass what the npm half
 // rejects, so the real deny.toml must stay free of them and the detector is
 // pinned against fixtures. (Review pr10, grok F1.)
+//
+// One [[licenses.exceptions]] entry is approved: the orchestrator decided on
+// 2026-09-25 that webpki-root-certs (Mozilla root certificate data, via
+// rustls-platform-verifier <- reqwest <- tauri) may carry CDLA-Permissive-2.0,
+// a permissive data license. The pin accepts exactly that pair and flags any
+// other exception, so no worker can widen the exception silently.
+const APPROVED_EXCEPTION =
+  '[[licenses.exceptions]]\nname = "webpki-root-certs"\nallow = ["CDLA-Permissive-2.0"]\n';
 test("lic-01: deny.toml policy bypasses are rejected", () => {
   const base = '[licenses]\nallow = [\n  "MIT",\n]\n';
   assert.deepEqual(denyTomlPolicyProblems(base), []);
@@ -125,6 +133,22 @@ test("lic-01: deny.toml policy bypasses are rejected", () => {
     denyTomlPolicyProblems(`${base}exceptions = [{ allow = ["GPL-3.0-only"], name = "x", version = "*" }]\n`).length > 0,
     "[licenses].exceptions must be flagged",
   );
+  assert.deepEqual(
+    denyTomlPolicyProblems(`${base}${APPROVED_EXCEPTION}`),
+    [],
+    "the approved webpki-root-certs / CDLA-Permissive-2.0 exception must pass",
+  );
+  for (const [label, block] of [
+    ["other crate", '[[licenses.exceptions]]\nname = "other-crate"\nallow = ["CDLA-Permissive-2.0"]\n'],
+    ["other license", '[[licenses.exceptions]]\nname = "webpki-root-certs"\nallow = ["GPL-3.0-only"]\n'],
+    ["extra license", '[[licenses.exceptions]]\nname = "webpki-root-certs"\nallow = ["CDLA-Permissive-2.0", "MIT-0"]\n'],
+    ["second exception", `${APPROVED_EXCEPTION}[[licenses.exceptions]]\nname = "x"\nallow = ["MIT-0"]\n`],
+  ]) {
+    assert.ok(
+      denyTomlPolicyProblems(`${base}${block}`).length > 0,
+      `unapproved [[licenses.exceptions]] (${label}) must be flagged`,
+    );
+  }
   assert.ok(
     denyTomlPolicyProblems(`${base}[[licenses.clarify]]\nname = "x"\nexpression = "MIT"\nlicense-files = []\n`).length > 0,
     "[[licenses.clarify]] must be flagged",
