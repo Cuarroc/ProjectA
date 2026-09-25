@@ -125,7 +125,13 @@ function startMockApi() {
       });
       return;
     }
-    if (routes[path]) return reply(200, routes[path]);
+    if (routes[path]) {
+      // The worker detail panel opens at once and fills after these two fetches;
+      // a fixed latency reproduces a loaded CI runner deterministically.
+      if (/^\/api\/workers\/wk-1(\/messages)?$/.test(path)) setTimeout(() => reply(200, routes[path]), 400);
+      else reply(200, routes[path]);
+      return;
+    }
     reply(404, { error: `mock has no route for ${path}` });
   });
 }
@@ -242,6 +248,11 @@ test("worker detail opens on click, shows messages, sends a reply", async () => 
 
   await page.click('[data-live-action="detail:wk-1"]');
   await page.waitForSelector("#worker-detail:not([hidden])", { timeout: 5000 });
+  // The panel opens with "Loading…" and fills once both fetches resolve.
+  await page.waitForFunction(
+    () => /Inspecting queue\.rs/.test(document.querySelector("#worker-detail")?.textContent ?? ""),
+    { timeout: 10000 },
+  );
   assert.match(await page.textContent("#worker-detail"), /Inspecting queue\.rs/);
   assert.match(await page.textContent("#worker-detail"), /wk-dispatcher/);
   await page.screenshot({ path: join(shotDir, "worker-detail.png"), fullPage: true });
