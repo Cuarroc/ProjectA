@@ -156,9 +156,46 @@ impl Verdict {
 /// Judge one candidate against the currently open packages. A package is
 /// never its own conflict (matched by task id).
 pub fn evaluate(candidate_task: &str, candidate_paths: &[String], open: &[OpenPackage]) -> Verdict {
-    let _ = (candidate_task, candidate_paths, open);
-    // W5-22 red: stub, implemented in the green commit.
-    Verdict::default()
+    let candidate_lanes = lanes_of(candidate_paths);
+    let mut verdict = Verdict::default();
+    for package in open {
+        if package.task_id == candidate_task {
+            continue;
+        }
+        let shared: BTreeSet<Seam> = candidate_lanes
+            .intersection(&lanes_of(&package.owned_paths))
+            .copied()
+            .collect();
+        for seam in &shared {
+            verdict.blocks.push(Conflict {
+                kind: ConflictKind::Lane(*seam),
+                holder_run: package.run_id.clone(),
+                holder_task: package.task_id.clone(),
+            });
+        }
+        let mut warned: BTreeSet<String> = BTreeSet::new();
+        for candidate in candidate_paths {
+            for held in &package.owned_paths {
+                if !paths_overlap(candidate, held) {
+                    continue;
+                }
+                // A path pair inside an already blocked seam adds nothing.
+                if let (Some(a), Some(b)) = (Seam::of_path(candidate), Seam::of_path(held)) {
+                    if a == b && shared.contains(&a) {
+                        continue;
+                    }
+                }
+                if warned.insert(normalize_path(candidate)) {
+                    verdict.warnings.push(Conflict {
+                        kind: ConflictKind::Path(normalize_path(candidate)),
+                        holder_run: package.run_id.clone(),
+                        holder_task: package.task_id.clone(),
+                    });
+                }
+            }
+        }
+    }
+    verdict
 }
 
 /// One package as the wave plan declares it for scheduling.
@@ -180,10 +217,78 @@ pub struct PlannedPackage {
 /// higher-priority package (then the lexicographically smaller id) goes
 /// first. Unknown dependencies and unsatisfiable constraint cycles are
 /// errors, not silently dropped packages.
+/// Edge `before -> after`: `before` must be placed first. Duplicate edges do
+/// not inflate the in-degree; a self edge keeps its node unplaceable forever,
+/// which the cycle check then reports.
+fn add_edge<'a>(
+    followers: &mut BTreeMap<&'a str, BTreeSet<&'a str>>,
+    indegree: &mut BTreeMap<&'a str, usize>,
+    before: &'a str,
+    after: &'a str,
+) {
+    if followers.entry(before).or_default().insert(after) {
+        *indegree.entry(after).or_insert(0) += 1;
+    }
+}
+
 pub fn dispatch_order(packages: &[PlannedPackage]) -> Result<Vec<String>, String> {
-    // W5-22 red: stub, implemented in the green commit.
-    let _ = BTreeMap::<String, String>::new();
-    Ok(packages.iter().map(|p| p.id.clone()).collect())
+    let mut by_id: BTreeMap<&str, &PlannedPackage> = BTreeMap::new();
+    for p in packages {
+        if by_id.insert(p.id.as_str(), p).is_some() {
+            return Err(format!("duplicate package id: {}", p.id));
+        }
+    }
+    // Edge a -> b: a must be placed before b.
+    let mut followers: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    let mut indegree: BTreeMap<&str, usize> = packages.iter().map(|p| (p.id.as_str(), 0)).collect();
+    for p in packages {
+        for dep in &p.depends_on {
+            if !by_id.contains_key(dep.as_str()) {
+                return Err(format!("unknown dependency {dep} of {}", p.id));
+            }
+            add_edge(&mut followers, &mut indegree, dep.as_str(), p.id.as_str());
+        }
+    }
+    for (i, a) in packages.iter().enumerate() {
+        for b in packages.iter().skip(i + 1) {
+            let overlaps = a
+                .files
+                .iter()
+                .any(|fa| b.files.iter().any(|fb| paths_overlap(fa, fb)));
+            if !overlaps {
+                continue;
+            }
+            // The wave plan's readiness decides a lane duel; the id only
+            // breaks an exact tie so the order stays deterministic.
+            let (first, second) = if (a.priority, &a.id) <= (b.priority, &b.id) {
+                (a.id.as_str(), b.id.as_str())
+            } else {
+                (b.id.as_str(), a.id.as_str())
+            };
+            add_edge(&mut followers, &mut indegree, first, second);
+        }
+    }
+    let mut ready: BTreeSet<(u32, &str)> = indegree
+        .iter()
+        .filter(|(_, degree)| **degree == 0)
+        .map(|(id, _)| (by_id[id].priority, *id))
+        .collect();
+    let mut order = Vec::with_capacity(packages.len());
+    while let Some(&(priority, id)) = ready.iter().next() {
+        ready.remove(&(priority, id));
+        order.push(id.to_string());
+        for next in followers.get(id).into_iter().flatten() {
+            let degree = indegree.get_mut(next).unwrap();
+            *degree -= 1;
+            if *degree == 0 {
+                ready.insert((by_id[next].priority, next));
+            }
+        }
+    }
+    if order.len() != packages.len() {
+        return Err("dependency or lane-conflict cycle in the planned packages".into());
+    }
+    Ok(order)
 }
 
 /// Refuse the start of `run` while another open package holds a seam lane the
@@ -198,11 +303,72 @@ pub async fn refuse_lane_conflicts(
     store: &Store,
     run: &DevelopmentRun,
 ) -> Result<Vec<Conflict>, String> {
-    let _ = (store, run);
-    let _ = (RUN_INTENT, RUN_LAUNCHED, RUN_RECONCILING);
-    let _ = BTreeSet::<Seam>::new();
-    // W5-22 red: stub, implemented in the green commit.
-    Ok(Vec::new())
+    // Which project this run belongs to: the run rows per project carry the
+    // answer, and the scan stays a read over existing public store methods.
+    let mut found = None;
+    for project in store.list_projects().await? {
+        let runs = store.list_development_runs(&project.id).await?;
+        if runs.iter().any(|r| r.id == run.id) {
+            found = Some((project.id, runs));
+            break;
+        }
+    }
+    let Some((project_id, runs)) = found else {
+        return Err(format!("lane guard: unknown development run: {}", run.id));
+    };
+    let context = store.continuous_context(&project_id, 0).await?;
+    let paths_of = |task_id: &str| -> Vec<String> {
+        context
+            .tasks
+            .iter()
+            .find(|t| t.id == task_id)
+            .map(|t| t.owned_paths.clone())
+            .unwrap_or_default()
+    };
+    let candidate_paths = paths_of(&run.task_id);
+    if candidate_paths.is_empty() {
+        // Nothing declared, nothing to guard (ownedPaths are required at
+        // admission; raw fixtures can bypass that).
+        return Ok(Vec::new());
+    }
+    let mut open = Vec::new();
+    let mut covered: BTreeSet<&str> = BTreeSet::new();
+    for other in &runs {
+        if other.id == run.id {
+            continue;
+        }
+        if matches!(
+            other.status.as_str(),
+            RUN_INTENT | RUN_LAUNCHED | RUN_RECONCILING
+        ) {
+            covered.insert(other.task_id.as_str());
+            open.push(OpenPackage {
+                run_id: other.id.clone(),
+                task_id: other.task_id.clone(),
+                owned_paths: paths_of(&other.task_id),
+            });
+        }
+    }
+    for task in &context.tasks {
+        // A claimed task reads "running" (the constant is store-private).
+        if task.status != "running" || task.id == run.task_id || covered.contains(task.id.as_str())
+        {
+            continue;
+        }
+        open.push(OpenPackage {
+            run_id: String::new(),
+            task_id: task.id.clone(),
+            owned_paths: task.owned_paths.clone(),
+        });
+    }
+    let verdict = evaluate(&run.task_id, &candidate_paths, &open);
+    if let Some(block) = verdict.blocks.first() {
+        return Err(format!(
+            "lane guard: {}; a second dispatch on this lane is refused while the first package is open",
+            block.describe()
+        ));
+    }
+    Ok(verdict.warnings)
 }
 
 #[cfg(test)]
@@ -673,6 +839,13 @@ mod tests {
         .await;
         store
             .fail_development_run(&run_a, "owner", 1, "aborted")
+            .await
+            .unwrap();
+        // A failed run alone does not free the lane: the still-held claim
+        // keeps the package open (a retry may follow). Completing the task
+        // releases it.
+        store
+            .checkpoint_continuous_task("task-a", "owner", 1, Some("completed"), None)
             .await
             .unwrap();
         let run_b = store.get_development_run(&run_b).await.unwrap().unwrap();

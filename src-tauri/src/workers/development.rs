@@ -116,6 +116,10 @@ pub async fn launch_worker(
     if profiles::find_profile(profile_id).is_none() {
         return Err(format!("{ERR_UNKNOWN}agent profile: {profile_id}"));
     }
+    // W5-22: a second package start on an occupied seam lane stops here,
+    // before any launch reservation exists. Advisory check, not transactional
+    // (see the module docs).
+    let lane_warnings = super::lane_guard::refuse_lane_conflicts(store, &run_record).await?;
     let launch = store
         .reserve_development_launch(run_id, owner, fence, profile_id)
         .await?;
@@ -168,6 +172,20 @@ pub async fn launch_worker(
                     .map_err(|error| {
                         format!("worker may be running; reconciliation required: {error}")
                     })?;
+            }
+            if !lane_warnings.is_empty() {
+                let detail = lane_warnings
+                    .iter()
+                    .map(super::lane_guard::Conflict::describe)
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                let _ = store
+                    .insert_message(
+                        &worker.id,
+                        crate::store::MSG_SYSTEM,
+                        &format!("lane guard warning: {detail}"),
+                    )
+                    .await;
             }
             Ok(worker)
         },
