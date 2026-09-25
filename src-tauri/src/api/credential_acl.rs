@@ -67,8 +67,7 @@ thread_local! {
     /// Test seam: make the next `restrict_to_current_user` on this thread
     /// fail after the DACL was applied, to prove the issuer's cleanup path.
     /// The file and the directory have separate seams: the directory step
-    /// runs first at issuance and must not consume the file's flag (review
-    /// round, sonnet F6).
+    /// runs first at issuance and must not consume the file's flag.
     pub(super) static FAIL_NEXT_RESTRICT: std::cell::Cell<bool> =
         const { std::cell::Cell::new(false) };
     /// Test seam: same injection for `restrict_directory_to_current_user`.
@@ -145,7 +144,7 @@ fn token_owner_sid() -> Result<Vec<u32>, String> {
 
 /// The well-known SID of BUILTIN\Administrators: the owner of every object an
 /// elevated run creates. No non-admin account can assign it, so accepting it
-/// does not widen the threat model (review round: grok F1 / sonnet F1).
+/// does not widen the threat model.
 fn administrators_sid() -> Result<Vec<u32>, String> {
     unsafe {
         let mut buffer = vec![0u32; (SECURITY_MAX_SID_SIZE as usize).div_ceil(4)];
@@ -186,8 +185,7 @@ const ERROR_SHARING_VIOLATION: i32 = 32;
 /// Open with a bounded retry on sharing violations: an AV scanner, an
 /// indexer or a parallel issuance holds the object for milliseconds, and
 /// failing the launch on the first conflict would trade availability for
-/// nothing. After about a second the open still fails closed (review round:
-/// grok F6 / sonnet F3).
+/// nothing. After about a second the open still fails closed.
 pub(super) fn open_with_sharing_retry(
     what: &str,
     mut open: impl FnMut() -> std::io::Result<File>,
@@ -208,21 +206,44 @@ pub(super) fn open_with_sharing_retry(
     }
 }
 
-/// Refuse an object that is not what its path claims: a reparse point
-/// (symlink or junction - opened as itself thanks to
-/// `FILE_FLAG_OPEN_REPARSE_POINT`) or a file reachable through a second hard
-/// link. Otherwise a planted link would have the writer truncate and re-ACL
-/// the link's target (review round: grok F2 / sonnet F4).
+/// `IsReparseTagNameSurrogate`: the tag bit shared by symlinks, junctions and
+/// the other link kinds (WSL symlinks, ...), as opposed to placeholders and
+/// filter reparse points (cloud files, compression, dedup) whose object is
+/// still the object itself.
+const REPARSE_TAG_NAME_SURROGATE: u32 = 0x2000_0000;
+
+/// Refuse an object that is not what its path claims: a link (symlink or
+/// junction - opened as itself thanks to `FILE_FLAG_OPEN_REPARSE_POINT`) or a
+/// file reachable through a second hard link. Otherwise a planted link would
+/// have the writer truncate and re-ACL the link's target. Other reparse
+/// points (cloud placeholders, compression) stay accepted: a redirected or
+/// cloud-synced data directory must not fail every launch.
 pub(super) fn refuse_links(file: &File, what: &str) -> Result<(), String> {
     use windows_sys::Win32::Storage::FileSystem::{
-        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT,
+        FileAttributeTagInfo, GetFileInformationByHandle, GetFileInformationByHandleEx,
+        BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO,
     };
+    let handle = file.as_raw_handle() as HANDLE;
     let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
-    if unsafe { GetFileInformationByHandle(file.as_raw_handle() as HANDLE, &mut info) } == 0 {
+    if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
         return Err(os_error("inspect credential object"));
     }
     if info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-        return Err(format!("{what} is a link (reparse point), refusing"));
+        let mut tag: FILE_ATTRIBUTE_TAG_INFO = unsafe { std::mem::zeroed() };
+        if unsafe {
+            GetFileInformationByHandleEx(
+                handle,
+                FileAttributeTagInfo,
+                (&mut tag as *mut FILE_ATTRIBUTE_TAG_INFO).cast(),
+                std::mem::size_of::<FILE_ATTRIBUTE_TAG_INFO>() as u32,
+            )
+        } == 0
+        {
+            return Err(os_error("inspect credential reparse tag"));
+        }
+        if tag.ReparseTag & REPARSE_TAG_NAME_SURROGATE != 0 {
+            return Err(format!("{what} is a link (reparse point), refusing"));
+        }
     }
     if info.nNumberOfLinks > 1 {
         return Err(format!(
@@ -301,7 +322,8 @@ pub(super) fn restrict_to_current_user(file: &File) -> Result<(), String> {
 pub(super) fn restrict_directory_to_current_user(dir: &Path) -> Result<(), String> {
     use std::os::windows::fs::OpenOptionsExt;
     use windows_sys::Win32::Storage::FileSystem::{
-        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, READ_CONTROL, WRITE_DAC,
+        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_READ_ATTRIBUTES,
+        READ_CONTROL, WRITE_DAC,
     };
     // FILE_FLAG_BACKUP_SEMANTICS is what lets CreateFile open a directory;
     // FILE_FLAG_OPEN_REPARSE_POINT opens a junction as itself so
@@ -309,12 +331,13 @@ pub(super) fn restrict_directory_to_current_user(dir: &Path) -> Result<(), Strin
     let what = format!("open credential directory {}", dir.display());
     let file = open_with_sharing_retry(&what, || {
         std::fs::OpenOptions::new()
-            .access_mode(WRITE_DAC | READ_CONTROL)
+            .access_mode(WRITE_DAC | READ_CONTROL | FILE_READ_ATTRIBUTES)
             .share_mode(0)
             .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
             .open(dir)
     })?;
     refuse_links(&file, &what)?;
+    verify_owned(&file)?;
     restrict_handle(&file, true)?;
     #[cfg(test)]
     if FAIL_NEXT_DIRECTORY_RESTRICT.with(|fail| fail.replace(false)) {
@@ -348,9 +371,7 @@ pub(super) fn verify_owner_only(file: &File) -> Result<(), String> {
 }
 
 /// Owner pre-check without touching the DACL or the content: a foreign-owned
-/// object is refused before anything about it changes (review round: grok
-/// F1 - the truncate-first order used to destroy a rejected descriptor before
-/// the refusal).
+/// object is refused before anything about it changes.
 pub(super) fn verify_owned(file: &File) -> Result<(), String> {
     if !read_security(file)?.owner_accepted {
         return Err("credential file is owned by another account".into());
@@ -672,7 +693,7 @@ mod tests {
         validate_owner_only(&crafted(true)).unwrap();
     }
 
-    /// Review round (grok F1 / sonnet F1): the owner set is the token user,
+    /// The owner set is the token user,
     /// the token's default owner, and the Administrators group - the three
     /// identities this process's files can legitimately carry, in any order
     /// of elevated and unelevated runs.
@@ -723,7 +744,7 @@ mod tests {
         restrict_to_current_user(&file).unwrap();
     }
 
-    /// W2-07b review round (grok F2 / sonnet F4): a planted second hard link
+    /// A planted second hard link
     /// at the descriptor path must be refused before anything is truncated or
     /// re-ACL'd, and the original file must stay byte-identical.
     #[test]
@@ -738,7 +759,7 @@ mod tests {
         assert_eq!(std::fs::read(&victim).unwrap(), b"precious");
     }
 
-    /// W2-07b review round (grok F1): when the restriction fails, the previous
+    /// When the restriction fails, the previous
     /// descriptor content must survive - the owner and the fresh DACL are
     /// verified before any truncation, so a refused write never destroys the
     /// running instance's descriptor.
@@ -753,7 +774,7 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"old-token");
     }
 
-    /// W2-07b review round (grok F6 / sonnet F3): an AV scan or a parallel
+    /// An AV scan or a parallel
     /// issuance holding the descriptor for a few hundred milliseconds must not
     /// fail the launch; the open retries a bounded time before failing closed.
     #[test]
@@ -775,7 +796,7 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"new-token");
     }
 
-    /// W2-07b review round (sonnet F6): the failure-injection seam for the
+    /// The failure-injection seam for the
     /// credential FILE must survive a directory restriction - the directory
     /// step runs first at issuance and must not consume the file's flag.
     #[test]
@@ -790,7 +811,7 @@ mod tests {
         assert!(error.contains("injected"), "{error}");
     }
 
-    /// W2-07b review round (sonnet F6): the directory step has its own
+    /// The directory step has its own
     /// injection seam, so a failing directory restriction stays testable
     /// without touching the file flag.
     #[test]
@@ -806,9 +827,8 @@ mod tests {
         restrict_to_current_user(&file).unwrap();
     }
 
-    /// A subdirectory inside agent-access raises the
-    /// NTFS link count (1 + subdirectories) without being a hard link - it
-    /// must not wedge every later issuance.
+    /// A subdirectory inside agent-access must not trip the hard-link check
+    /// (NTFS reports one link for a directory) or wedge later issuances.
     #[test]
     fn a_subdirectory_inside_the_credential_directory_is_not_a_hard_link() {
         let dir = crate::testutil::TempDir::new("api-w207b-subdir");

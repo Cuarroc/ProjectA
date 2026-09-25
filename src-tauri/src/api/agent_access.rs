@@ -196,7 +196,7 @@ impl RunCredentialIssuer {
             super::credential_acl::restrict_directory_to_current_user(&directory)?;
             // Unix parity (0o700), fail closed like the Windows branch: an
             // unchanged, still-group-readable directory must abort the
-            // issuance, not sail on (W2-07b review round, grok F4).
+            // issuance, not sail on.
             #[cfg(unix)]
             crate::oneshot::make_private_checked(&directory)?;
             let path = directory.join(format!("{}.json", new_token()?));

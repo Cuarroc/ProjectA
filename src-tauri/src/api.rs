@@ -1047,27 +1047,48 @@ fn write_descriptor_body(path: &Path, body: &[u8]) -> Result<(), String> {
     use windows_sys::Win32::Storage::FileSystem::{
         FILE_FLAG_OPEN_REPARSE_POINT, READ_CONTROL, WRITE_DAC,
     };
+    // `create_new` first tells a file this call brings into being (removed
+    // again on failure, so a refusal leaves no empty descriptor) from one that
+    // was already there (kept: it holds the running instance's descriptor).
+    let created = std::cell::Cell::new(false);
     let mut file = credential_acl::open_with_sharing_retry(
         &format!("failed to open {}", path.display()),
         || {
-            std::fs::OpenOptions::new()
+            let mut options = std::fs::OpenOptions::new();
+            options
                 .write(true)
-                .create(true)
                 .access_mode(GENERIC_WRITE | WRITE_DAC | READ_CONTROL)
                 .share_mode(0)
-                .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
-                .open(path)
+                .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+            match options.create_new(true).open(path) {
+                Ok(file) => {
+                    created.set(true);
+                    Ok(file)
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    created.set(false);
+                    options.create_new(false).open(path)
+                }
+                Err(error) => Err(error),
+            }
         },
     )?;
     // No truncate at open: a refused file keeps its previous content (the
     // running instance's descriptor), and only a verified file is emptied.
-    credential_acl::refuse_links(&file, &path.display().to_string())?;
-    credential_acl::verify_owned(&file)?;
-    credential_acl::restrict_to_current_user(&file)?;
-    file.set_len(0)
-        .and_then(|()| file.write_all(body))
-        .and_then(|()| file.sync_all())
-        .map_err(|e| format!("failed to write {}: {e}", path.display()))
+    let written = credential_acl::refuse_links(&file, &path.display().to_string())
+        .and_then(|()| credential_acl::verify_owned(&file))
+        .and_then(|()| credential_acl::restrict_to_current_user(&file))
+        .and_then(|()| {
+            file.set_len(0)
+                .and_then(|()| file.write_all(body))
+                .and_then(|()| file.sync_all())
+                .map_err(|e| format!("failed to write {}: {e}", path.display()))
+        });
+    if written.is_err() && created.get() {
+        drop(file);
+        let _ = std::fs::remove_file(path);
+    }
+    written
 }
 
 #[cfg(not(windows))]

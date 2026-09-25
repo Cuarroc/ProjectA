@@ -99,9 +99,9 @@ pub fn make_private(path: &Path) {
     let _ = path;
 }
 
-/// The fail-closed sibling of [`make_private`] for credential directories
-/// (W2-07b review round, grok F4): a key directory whose mode cannot be set
-/// must abort the issuance, not sail on group-readable.
+/// The fail-closed sibling of [`make_private`] for credential directories: a
+/// key directory whose mode cannot be set must abort the issuance, not sail
+/// on group-readable.
 #[cfg(unix)]
 pub fn make_private_checked(path: &Path) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
@@ -908,8 +908,7 @@ mod tests {
         assert!(err.contains("failed to read"), "{err}");
     }
 
-    /// W2-07b review round (grok F4): the fail-closed sibling of
-    /// `make_private` narrows a credential directory to 0o700 and reports a
+    /// The fail-closed sibling of `make_private`: it narrows a credential directory to 0o700 and reports a
     /// path it cannot narrow instead of sailing on.
     #[cfg(unix)]
     #[test]
