@@ -1384,7 +1384,10 @@ Nutzer-Regel (freigegeben 25.09.), Umsetzung aus JOB sec-gitleaks.
   `selftest-secrets`, Bahn `prepush`) belegt, dass der Scan scheitern kann -
   Warum: Pruefung E fand 36 gitleaks-Treffer, alle Testwerte; damit neue
   Commits diese Klasse sauber halten statt sie nachtraeglich auditieren zu
-  muessen. gitleaks ist ein reines Lokal-Werkzeug (CI faehrt kein
-  `precommit`) - Zuruecknehmen: nur wenn der Nutzer die Regel aufhebt; ein
+  muessen. Der Scan ist ein reines Lokal-Werkzeug (CI faehrt kein
+  `precommit`); nur der red-first-Beleg fuehrt den Selbsttest am Kopf in CI
+  aus, deshalb installiert `.github/actions/setup-linux` gitleaks 8.30.1
+  gepinnt mit SHA-256-Pruefung (PR #20: ohne das Werkzeug war der Beleg am
+  Kopf rot) - Zuruecknehmen: nur wenn der Nutzer die Regel aufhebt; ein
   Vollscan der Historie in CI waere ein eigener Auftrag, keine
   Aufweichung dieses Gates.

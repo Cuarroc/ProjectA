@@ -69,6 +69,24 @@ runs:
       with:
         tool: nextest
 
+    # gitleaks (MIT) fuer den Selbsttest scripts/test-secret-scan.sh: red-first
+    # fuehrt ihn als Test-First-Beleg am Kopf aus, und ohne das Werkzeug ist er
+    # rot (PR #20). Version gepinnt, SHA-256 aus gitleaks_8.30.1_checksums.txt
+    # der Release - kein Lauf mit einem unverifizierten Binary.
+    - name: gitleaks (gepinnt, Pruefsumme verifiziert)
+      shell: bash
+      run: |
+        set -euo pipefail
+        version=8.30.1
+        sha256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        archive="$RUNNER_TEMP/gitleaks.tar.gz"
+        curl -sSfL -o "$archive"           "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+        echo "${sha256}  ${archive}" | sha256sum --check --strict
+        mkdir -p "$RUNNER_TEMP/gitleaks-bin"
+        tar -xzf "$archive" -C "$RUNNER_TEMP/gitleaks-bin" gitleaks
+        echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/gitleaks-bin/gitleaks" version
+
     - shell: bash
       run: npm ci
 

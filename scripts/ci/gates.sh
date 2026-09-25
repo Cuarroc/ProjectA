@@ -97,8 +97,10 @@ GATES=(
   "secrets|precommit|.|bash scripts/ci/secret-scan.sh"
   # Der Selbsttest des Scans belegt, dass er scheitern KANN: Test-Geheimnis
   # rot, Kanarienvoegel gruen, fehlendes gitleaks laut. Er liegt in der
-  # lokalen prepush-Bahn statt bei den CI-Selbsttests (linux/release), weil
-  # gitleaks ein reines Lokal-Werkzeug ist und die CI-Runner es nicht haben.
+  # lokalen prepush-Bahn statt bei den CI-Selbsttests (linux/release): der
+  # Scan selbst ist ein reines Lokal-Werkzeug. Nur der red-first-Beleg fuehrt
+  # ihn in CI aus; dafuer installiert .github/actions/setup-linux gitleaks
+  # gepinnt und pruefsummen-verifiziert.
   "selftest-secrets|prepush|.|bash scripts/test-secret-scan.sh"
 
   # --- schnell: Form und Typen --------------------------------------------
