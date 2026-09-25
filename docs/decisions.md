@@ -1369,3 +1369,22 @@ minutes are billed twice on private repos, so Windows alone was ~2850 of
   manuell und damit nicht wiederholbar — Zurücknehmen: nie das Verdikt als
   Funktion; der Treiber darf durch einen `pa`-Unterbefehl ersetzt werden,
   sobald der Daemon (W5-31b) die Sandboxes selbst verwaltet.
+
+## 2026-09-25 - gitleaks als Pflicht-Gate vor jedem Commit
+
+Nutzer-Regel (freigegeben 25.09.), Umsetzung aus JOB sec-gitleaks.
+
+- **Geheimnis-Scan vor jedem Commit:** das Gate `secrets` in der Bahn
+  `precommit` (scripts/ci/secret-scan.sh) fuehrt `gitleaks git --staged` aus -
+  nur der Index, unter einer Sekunde. Die Allowlist in `.gitleaks.toml`
+  deckt genau die Test-Kanarienvoegel aus Pruefung E (Veroeffentlichungs-Pruefung vom 25.09.2026), jeder Eintrag mit Quelle.
+  Ohne gitleaks endet das Gate laut (Exit 2, Installationshinweis) - bewusst
+  kein stiller Rueckfall, denn ein Scanner, der bei Abwesenheit gruen wird,
+  schuetzt nicht. Der Selbsttest `scripts/test-secret-scan.sh` (Gate
+  `selftest-secrets`, Bahn `prepush`) belegt, dass der Scan scheitern kann -
+  Warum: Pruefung E fand 36 gitleaks-Treffer, alle Testwerte; damit neue
+  Commits diese Klasse sauber halten statt sie nachtraeglich auditieren zu
+  muessen. gitleaks ist ein reines Lokal-Werkzeug (CI faehrt kein
+  `precommit`) - Zuruecknehmen: nur wenn der Nutzer die Regel aufhebt; ein
+  Vollscan der Historie in CI waere ein eigener Auftrag, keine
+  Aufweichung dieses Gates.
