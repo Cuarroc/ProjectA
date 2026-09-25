@@ -515,8 +515,9 @@ mod tests {
     /// installed OpenCode 1.18.32 lists a canary living in the probe
     /// workspace's `.agents/skills` from `debug skill --pure` - an
     /// observation, not a configuration guess - so both opencode profiles
-    /// declare `ConventionAt`. The model flag does not change discovery, so
-    /// the glm variant is covered by the same probe. Codex stays
+    /// declare `ConventionAt`. Only the bare `opencode` invocation was probed;
+    /// that the glm variant (same binary, `-m` model flag) discovers the same
+    /// way is an assumption: `--pure` makes no model call. Codex stays
     /// `Unsupported`: its re-probe waits out the rate limit (2026-09-30),
     /// and this assert keeps anyone from lifting it along by accident.
     #[test]

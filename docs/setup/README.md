@@ -56,7 +56,7 @@ Modus `ConventionAt` (PR #57) lässt sich zusätzlich per `agents.json` setzen.
 
 Der Repo-Skill `projecta-workflow` ist die Kurzfassung der Arbeitsweise als
 Checkliste. Er liegt zweimal im Repo, byte-gleich bis auf Zeilenenden:
-`.agents/skills/projecta-workflow/SKILL.md` (Codex-Konvention; liest OpenCode seit der W1-18b-Probe ebenfalls) und
+`.agents/skills/projecta-workflow/SKILL.md` (Codex-Konvention; findet OpenCode seit der W1-18b-Probe ebenfalls) und
 `.claude/skills/projecta-workflow/SKILL.md` (Claude Code). Geändert wird die
 `.agents`-Fassung, dann kopiert; `dev:agent-check` schlägt bei Abweichung an.
 
