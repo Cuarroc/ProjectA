@@ -260,7 +260,18 @@ test("/__hq/lessons learns: feedback changes confidence, refine keeps history, r
 test("/__hq/insights estimates whole-project time and tokens with a stated basis and ranks live signals", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "hq-insights-"));
   const repo = syntheticRepo(dir);
-  const hq = spawnHq(dir, { GIT_DIR: join(repo, ".git"), GIT_WORK_TREE: repo });
+  // The journal belongs to the measured repository, not to the caller's
+  // cwd: HQ_ACTIVITY_FILE points at the synthetic repo's (absent) journal,
+  // so a .pa/ACTIVITY.md in the worktree this test runs from must not leak
+  // into the estimate. Without the seam, hq-live reads
+  // join(process.cwd(), ".pa", "ACTIVITY.md") — a worktree whose journal has
+  // ≥3 entries adds 3 × 45 min and turns this assertion red (observed
+  // 2026-09-25 on wt/lic-01: 2.3 h instead of 1.8 h, prepush blocked).
+  const hq = spawnHq(dir, {
+    GIT_DIR: join(repo, ".git"),
+    GIT_WORK_TREE: repo,
+    HQ_ACTIVITY_FILE: join(repo, ".pa", "ACTIVITY.md"),
+  });
   t.after(() => {
     hq.child.kill();
     rmSync(dir, { recursive: true, force: true });
