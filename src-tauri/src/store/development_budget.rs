@@ -956,6 +956,40 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn coordinator_and_integrator_runs_reject_every_other_purpose() {
+        let (_dir, store, _project, root) = fixture().await;
+        let all = [
+            BudgetPurpose::Planning,
+            BudgetPurpose::Context,
+            BudgetPurpose::Discovery,
+            BudgetPurpose::Implementation,
+            BudgetPurpose::Review,
+            BudgetPurpose::Verification,
+        ];
+        for (role, allowed) in [
+            ("coordinator", BudgetPurpose::Planning),
+            ("integrator", BudgetPurpose::Verification),
+        ] {
+            let (run, _fence) = role_run(&store, &root, role).await;
+            for purpose in all.into_iter().filter(|p| *p != allowed) {
+                assert!(
+                    store
+                        .reserve_development_tokens(
+                            &root,
+                            &format!("{role}-{}", purpose.name()),
+                            purpose,
+                            1000,
+                            Some(&run)
+                        )
+                        .await
+                        .is_err(),
+                    "a {role} run must not reserve {purpose:?} budget"
+                );
+            }
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_run_holds_exactly_one_token_reservation() {
         let (_dir, store, _project, root) = fixture().await;
         let (run, _fence) = role_run(&store, &root, "reviewer").await;
