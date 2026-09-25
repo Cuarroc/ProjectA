@@ -371,15 +371,11 @@ impl Store {
         // release is guarded and idempotent, so the replay branch frees rows
         // committed before the release existed. Without a commit nothing is
         // freed: a crash before it keeps the reservation held (fail-closed).
-        if crate::store::development_budget::release_undelivered_run_tokens(
+        crate::store::development_budget::release_undelivered_run_tokens(
             &mut tx,
             &owner.binding.run_id,
         )
-        .await?
-        {
-            sqlx::query("INSERT INTO continuous_events(project_id,kind,detail,created_at) SELECT project_id,'development_delivery_released',json_object('version',1,'runId',run_id,'exitCode',?,'reason',?),unixepoch() FROM development_launches WHERE run_id=?")
-                .bind(exit_code).bind(reason).bind(&owner.binding.run_id).execute(&mut *tx).await.map_err(db)?;
-        }
+        .await?;
         tx.commit().await.map_err(db)
     }
 }

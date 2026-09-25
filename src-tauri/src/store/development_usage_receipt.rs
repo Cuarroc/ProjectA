@@ -213,6 +213,9 @@ fn started_receipt(launch: Option<&DevelopmentLaunch>, capture_usage: Option<Val
         .unwrap_or(Value::Null);
     let (provider, transport) = route_adapter(&route);
     match launch {
+        // Reached only while the DF-15b release has not happened yet (a
+        // DF-15a-era row before startup reconciliation, or a reservation that
+        // was never `started`); afterwards the reservation is `cancelled`.
         Some(launch) if launch.state == "exited_undelivered" => json!({"state":"not_reported",
             "reason":"not reported by adapter: provider exited before its input was delivered",
             "reservation":"retained",

@@ -91,8 +91,10 @@ pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<
     sqlx::query("CREATE TABLE development_token_reservations(id TEXT PRIMARY KEY, root_goal_id TEXT NOT NULL, goal_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, purpose TEXT NOT NULL CHECK(purpose IN ('planning','context','discovery','implementation','review','verification')), run_id TEXT, reserved_tokens INTEGER NOT NULL CHECK(reserved_tokens > 0), state TEXT NOT NULL CHECK(state IN ('reserved','started','settled','cancelled')), actual_tokens INTEGER CHECK(actual_tokens >= 0), source TEXT, observed_at INTEGER, created_at INTEGER NOT NULL, started_at INTEGER, settled_at INTEGER, UNIQUE(root_goal_id,idempotency_key))")
         .execute(&mut **tx).await.map_err(db)?;
     // DF-15b: a reservation cancelled by the undelivered-exit release frees
-    // this index slot for the same run_id. That is safe: a retry never reuses
-    // a terminal run's id, so no second live reservation can appear for it.
+    // this index slot for the same run_id. That is safe: a new reservation
+    // needs `development_runs.status='intent'` (`reserve_development_tokens`),
+    // and a run whose launch reached `exited_undelivered` is `reconciling`,
+    // so no second live reservation can appear for it.
     sqlx::query("CREATE UNIQUE INDEX development_implementation_budget ON development_token_reservations(run_id) WHERE purpose = 'implementation' AND state != 'cancelled'")
         .execute(&mut **tx).await.map_err(db)?;
     Ok(())
@@ -414,7 +416,9 @@ pub(super) async fn consume_worker(
 /// repeats the proof inside the writer transaction: only an
 /// `exited_undelivered` launch with a recorded exit code whose delivery
 /// intent never left `started` qualifies; anything else changes nothing and
-/// keeps the reservation retained. Returns true when this call released.
+/// keeps the reservation retained. The release is journaled here
+/// (`development_delivery_released`), so every caller writes it exactly once.
+/// Returns true when this call released.
 pub(super) async fn release_undelivered_run_tokens(
     tx: &mut Transaction<'_, Sqlite>,
     run: &str,
@@ -430,7 +434,27 @@ pub(super) async fn release_undelivered_run_tokens(
         return Ok(false);
     }
     event(tx, &root, &id).await?;
+    sqlx::query("INSERT INTO continuous_events(project_id,kind,detail,created_at) SELECT project_id,'development_delivery_released',json_object('version',1,'runId',run_id,'exitCode',exit_code,'reason',exit_reason),unixepoch() FROM development_launches WHERE run_id=?")
+        .bind(run).execute(&mut **tx).await.map_err(db)?;
     Ok(true)
+}
+
+/// Startup counterpart of the writer above for rows committed before it
+/// existed (DF-15a era: exit committed, reservation still held). The same
+/// guard applies to every candidate, so it frees exactly the proven rows and
+/// is idempotent. Returns the number of released reservations.
+pub(super) async fn release_undelivered_runs(
+    tx: &mut Transaction<'_, Sqlite>,
+) -> Result<u64, String> {
+    let runs: Vec<(String,)> = sqlx::query_as("SELECT l.run_id FROM development_launches l JOIN development_token_reservations t ON t.run_id=l.run_id WHERE l.state='exited_undelivered' AND t.purpose='implementation' AND t.state='started'")
+        .fetch_all(&mut **tx).await.map_err(db)?;
+    let mut released = 0;
+    for (run,) in runs {
+        if release_undelivered_run_tokens(tx, &run).await? {
+            released += 1;
+        }
+    }
+    Ok(released)
 }
 
 #[cfg(test)]

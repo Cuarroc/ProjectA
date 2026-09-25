@@ -323,10 +323,18 @@ impl Store {
                 .map_err(db("read delivery intent"))?;
         // DF-15b / KI-27: the raw row stays as recorded (the intent began,
         // the transport never confirmed an enqueue); the release after a
-        // proven undelivered exit is derived here, not rewritten.
+        // proven undelivered exit is derived here, not rewritten - and only
+        // once the run's implementation reservation is actually cancelled, so
+        // a row still held (not yet released) is never reported as released.
+        let reservation_released: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM development_token_reservations WHERE run_id=? AND purpose='implementation' AND state='cancelled')")
+            .bind(run_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db("read reservation release"))?;
         let delivery = delivery
             .map(|delivery| {
                 let released = delivery.state == "started"
+                    && reservation_released
                     && launch
                         .as_ref()
                         .is_some_and(|launch| launch.state == "exited_undelivered");
