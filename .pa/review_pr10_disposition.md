@@ -76,6 +76,21 @@ means evaluating `package-lock.json` (which lists all platforms'
 optional dependencies) instead of the installed tree — a design change,
 out of scope for this review round. Follow-up recorded below.
 
+## R1-F1 — CDLA-Permissive-2.0 decided — ACCEPTED (ausnahme eng begrenzt)
+
+Round-1 finding R1-F1 (kimi-k3, tracked in `.pa/review_lic-01_disposition.md`
+and as follow-up 3 below): `webpki-root-certs` carries CDLA-Permissive-2.0 and
+kept the `licenses` gate deliberately red pending an orchestrator decision.
+Disposition: **angenommen: Ausnahme eng begrenzt** — the orchestrator decided
+on 2026-09-25 that CDLA-Permissive-2.0 (Linux Foundation permissive data
+license, not copyleft) is allowed ONLY for `webpki-root-certs` (Mozilla root
+certificate data, via rustls-platform-verifier ← reqwest ← tauri), as a
+`[[licenses.exceptions]]` entry in `src-tauri/deny.toml`; the global allowlist
+is unchanged. The full license text ships in the "License texts" appendix of
+`docs/THIRD_PARTY_NOTICES.md` (§2.1 obligation), and the drift pin in
+`scripts/lib/license-check.mjs` now flags any `[[licenses.exceptions]]` entry
+beyond this one, so the exception cannot be widened silently.
+
 ## Follow-ups (for the coordinator)
 
 1. F8: lockfile-based npm license evaluation so platform-specific
@@ -83,6 +98,6 @@ out of scope for this review round. Follow-up recorded below.
 2. F4 sub-point: a drift check that regenerates the dependency tables in
    `docs/THIRD_PARTY_NOTICES.md` and diffs them against the committed
    file.
-3. Unchanged from rounds 1–3: `webpki-root-certs` (CDLA-Permissive-2.0)
+3. ~~Unchanged from rounds 1–3: `webpki-root-certs` (CDLA-Permissive-2.0)
    keeps the gate red until the orchestrator decides — not part of this
-   review.
+   review.~~ **Decided 2026-09-25** — see R1-F1 above; the gate is green.

@@ -10,7 +10,7 @@ conditions" (Parser-Bug), R3 beide "approve".
 
 | ID | Quelle | Schwere | Befund | Disposition |
 |---|---|---|---|---|
-| R1-F1 | kimi-k3 F1 | medium | CDLA-Permissive-2.0 hält das Gate absichtlich rot; Merge erst nach Orchestrator-Entscheidung | angenommen — genau so im PR unter "Needs decision" (kein Code-Eingriff erlaubt) |
+| R1-F1 | kimi-k3 F1 | medium | CDLA-Permissive-2.0 hält das Gate absichtlich rot; Merge erst nach Orchestrator-Entscheidung | angenommen — genau so im PR unter "Needs decision" (kein Code-Eingriff erlaubt). **Erledigt 2026-09-25:** Orchestrator-Entscheidung — Ausnahme eng begrenzt auf `webpki-root-certs` via `[[licenses.exceptions]]` in deny.toml, Positivliste unverändert, Lizenztext im Notices-Anhang, Drift-Pin sperrt jede weitere Ausnahme |
 | R1-F2 | kimi-k3 F2 | medium | npx holt license-checker ungepinnt | angenommen — gepinnt auf 5.0.1 (860be7e) |
 | R1-F3 | kimi-k3 F3 | low | Positivliste in zwei Dateien ohne Drift-Schutz | angenommen — Drift-Test deny.toml ↔ ALLOWED_LICENSES (7bc68ef) |
 | R1-F4 | kimi-k3 F4 | low | THIRD_PARTY_NOTICES-Frische nicht CI-erzwungen | Folgearbeit — Regenerationsanleitung steht im Dokument; CI-Diff-Check als Folgepaket |

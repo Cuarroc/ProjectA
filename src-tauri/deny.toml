@@ -27,3 +27,17 @@ allow = [
 # third-party tree, so unpublished workspace crates are skipped.
 [licenses.private]
 ignore = true
+
+# Orchestrator decision 2026-09-25: CDLA-Permissive-2.0 (Linux Foundation
+# permissive data license, not copyleft) is allowed ONLY for the crate
+# webpki-root-certs (Mozilla root certificates, pulled in via
+# rustls-platform-verifier <- reqwest <- tauri / tauri-plugin-updater).
+# The global allowlist above stays unchanged; any other crate with a license
+# outside it remains a finding, and the drift pin in
+# scripts/lib/license-check.mjs flags any exception beyond this one.
+# CDLA-Permissive-2.0 §2.1 requires shipping the license text with the data:
+# the full text is in the "License texts" appendix of
+# docs/THIRD_PARTY_NOTICES.md.
+[[licenses.exceptions]]
+name = "webpki-root-certs"
+allow = ["CDLA-Permissive-2.0"]
