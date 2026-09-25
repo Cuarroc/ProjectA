@@ -34,6 +34,23 @@ pub const DEFAULT_MAX_CONCURRENT: usize = 4;
 /// The queue is deliberately a slow poller: it is a safety net, not a hot path.
 pub const POLL_INTERVAL: Duration = Duration::from_secs(30);
 
+/// Environment switch that keeps the dispatcher from ever starting
+/// (W5-28). A sandboxed proof run sets `PROJECTA_QUEUE=off` so that no
+/// queued task - above all one left over from an earlier session - can
+/// reach an agent, while the rest of the app starts normally.
+pub const ENV_QUEUE: &str = "PROJECTA_QUEUE";
+
+/// Evaluate [`ENV_QUEUE`]: `off`, `0` and `false` (any case, trimmed)
+/// disable the dispatcher; everything else, including unset, keeps the
+/// historical default of a running dispatcher. A free function so the
+/// switch is testable without a Tauri app.
+pub fn queue_dispatch_disabled(value: Option<&str>) -> bool {
+    matches!(
+        value.map(str::trim).map(str::to_ascii_lowercase).as_deref(),
+        Some("off" | "0" | "false")
+    )
+}
+
 /// How many hops of [`AgentProfile::fallback`] the dispatcher will take before
 /// it gives up and leaves the task queued.
 ///
@@ -480,6 +497,17 @@ pub fn start(
     engine: Arc<StatusEngine>,
     hook_port: u16,
 ) {
+    // W5-28: a proof run starts the app with the queue off. No sweep ever
+    // runs, so no queued task - however old - reaches a launcher. The
+    // startup reattach pass in `main.rs` still resolves interrupted claims;
+    // it only ever hands them back to `ready`, never to a worker.
+    if queue_dispatch_disabled(std::env::var(ENV_QUEUE).ok().as_deref()) {
+        crate::logf!(
+            "app",
+            "queue dispatcher disabled ({ENV_QUEUE}=off); queued tasks stay ready"
+        );
+        return;
+    }
     let launcher = LiveLauncher {
         app,
         store: store.clone(),
