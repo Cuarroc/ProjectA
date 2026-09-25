@@ -31,11 +31,26 @@ function startMockApi() {
   const routes = {
     "/api/hq/v1/context": { cursor: 1, snapshot: { sourceTimestamp: "2026-09-10T12:00:00Z", commit: null,
       control: { status: "paused" }, goals: [{ id: "goal-1", projectId: "pj-1", objective: "Verify continuous development", acceptanceCriteria: "Claims and restart tests pass", status: "open" }],
-      effectiveLimits: { rootPolicies: [{ policy: { teams: [{ id: "development", roles: ["coordinator", "implementer", "reviewer", "integrator"] }] } }] },
+      effectiveLimits: { rootPolicies: [{ rootGoalId: "goal-1", source: "projecta.dev.json", observedAt: 1758000000,
+        policy: { teams: [{ id: "development", roles: ["coordinator", "implementer", "reviewer", "integrator"] }],
+          routing: { additionalPaidApi: false, quotaReservePercent: 20, billing: ["subscription", "free", "local"] },
+          providers: ["claude", "kimi"] },
+        tokens: { allowance: { maxPerGoal: 200000, verificationReserve: 40000 }, measuredTokens: 45000, reservedTokens: 10000,
+          verificationRemaining: 40000, availableTokens: 145000, implementationAvailable: 105000, unresolvedOperations: 1,
+          usageState: "partial", exceeded: false, exhausted: false } }] },
       tasks: [{ id: "task-1", goalId: "goal-1", objective: "Check ownership", profileId: "codex", status: "pending", attempts: 0, ownedPaths: ["src-tauri/src/queue.rs"], dependencies: [],
         claim: { owner: "worker-1", fence: 2 },
         assignment: { teamId: "development", role: "implementer", assignee: "worker-1", revision: 1 } }] } },
-    "/api/hq/v1/runs": { executionEnabled: false, approvalAuthority: { state: "unavailable" }, runs: [] },
+    "/api/hq/v1/runs": { executionEnabled: false, approvalAuthority: { state: "unavailable" }, runs: [{
+      run: { id: "run-1", taskId: "task-1", status: "completed", claimOwner: "worker-1", claimFence: 2 },
+      candidate: { candidateCommit: "def5678", source: "worker-push" },
+      launch: { routeJson: JSON.stringify({
+        selection: { resolved: { provider: "kimi", profileId: "kimi", resolvedModel: { value: "kimi-k3" }, effort: { value: "high" } } },
+        executionObservation: { reason: "exit 0 observed" } }) },
+      evidence: [], reviews: [],
+      tokens: { availableTokens: 145000, usageState: "partial" },
+      usage: { state: "measured", tokens: 43210, reservation: "settled",
+        provenance: { collector: "codex-exec-json-v1", measurement: "live", source: "process-owned stdout", sourceSha256: "deadbeef", observedAt: 1758000100 } } }] },
     "/api/projects": [{ id: "pj-1", name: "ProjectA" }],
     "/api/board": [
       {
@@ -258,6 +273,33 @@ test("goals live view renders ownership and the g key jumps to the card", async 
   await page.waitForSelector('#panel-teams:not([hidden])', { timeout: 5000 });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'hq-goals-live');
   await page.screenshot({ path: join(shotDir, 'goals-teams-keyboard-g.png'), fullPage: false });
+  await page.close();
+});
+
+test("budget live view renders balances and routing receipts, the b key jumps to the section", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.goto(`http://127.0.0.1:${hqPort}/live.html`);
+  await page.waitForSelector('.live-status.ok', { timeout: 20000 });
+  await page.selectOption('#live-project', 'pj-1');
+  await page.waitForFunction(() => document.querySelector('[data-budget]')?.textContent.includes('Limit 200000'), { timeout: 10000 });
+  const budget = await page.textContent('[data-budget]');
+  assert.match(budget, /gemessen 45000/);
+  assert.match(budget, /teilweise belegt/);
+  assert.match(budget, /subscription/, 'policy billing sources are visible');
+  assert.match(budget, /kimi-k3/, 'resolved model is visible');
+  assert.match(budget, /43210/, 'measured usage receipt is visible');
+  assert.match(budget, /codex-exec-json-v1/, 'collector provenance is visible');
+  await page.click('#tab-teams');
+  await page.locator('#hq-budget-live').scrollIntoViewIfNeeded();
+  await page.locator('#hq-budget-live').screenshot({ path: join(shotDir, 'budget-routing-live.png') });
+  // Keyboard flow: from another tab, with focus outside any typing context,
+  // b reveals the teams panel and focuses the budget/routing section.
+  await page.click('#tab-overview');
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('b');
+  await page.waitForSelector('#panel-teams:not([hidden])', { timeout: 5000 });
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'hq-budget-live');
+  await page.screenshot({ path: join(shotDir, 'budget-routing-keyboard-b.png'), fullPage: false });
   await page.close();
 });
 
