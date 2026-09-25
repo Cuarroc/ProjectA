@@ -59,6 +59,11 @@ pub mod development;
 #[allow(dead_code)] // Trusted collector and scheduler activation remain gated.
 pub mod development_route;
 
+#[path = "workers/lane_guard.rs"]
+#[allow(dead_code)]
+// dispatch_order/PlannedPackage are test-only until a scheduler consumes them (W5-25).
+pub mod lane_guard;
+
 #[path = "workers/native_launch.rs"]
 #[allow(dead_code)] // Platform adapters must explicitly supply verified resources.
 pub mod native_launch;
