@@ -8,9 +8,10 @@ use std::path::Path;
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 use windows_sys::Win32::Security::{
     AclSizeInformation, EqualSid, GetAce, GetAclInformation, GetFileSecurityW,
-    GetSecurityDescriptorControl, GetSecurityDescriptorDacl, GetTokenInformation, TokenUser,
-    ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_SIZE_INFORMATION, DACL_SECURITY_INFORMATION,
-    INHERITED_ACE, PSECURITY_DESCRIPTOR, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
+    GetSecurityDescriptorControl, GetSecurityDescriptorDacl, GetSecurityDescriptorOwner,
+    GetTokenInformation, TokenUser, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL, ACL_SIZE_INFORMATION,
+    DACL_SECURITY_INFORMATION, INHERITED_ACE, OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
+    SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
 };
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
@@ -19,12 +20,14 @@ use crate::testutil::TempDir;
 const ALLOWED: u8 = 0;
 const DENIED: u8 = 1;
 
-/// What the oracle saw in a file's DACL.
+/// What the oracle saw in a file's security descriptor.
 #[derive(Debug)]
 struct Dacl {
     protected: bool,
     /// (ace type, ace flags, SID equals the current user)
     aces: Vec<(u8, u8, bool)>,
+    /// The owner SID equals the current user.
+    owner_is_user: bool,
 }
 
 /// DWORD-aligned, as a SID must be.
@@ -70,7 +73,7 @@ fn read_dacl(path: &Path) -> Dacl {
         let mut needed = 0u32;
         GetFileSecurityW(
             wide.as_ptr(),
-            DACL_SECURITY_INFORMATION,
+            DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION,
             std::ptr::null_mut(),
             0,
             &mut needed,
@@ -81,7 +84,7 @@ fn read_dacl(path: &Path) -> Dacl {
         assert_ne!(
             GetFileSecurityW(
                 wide.as_ptr(),
-                DACL_SECURITY_INFORMATION,
+                DACL_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION,
                 descriptor,
                 needed,
                 &mut needed
@@ -90,6 +93,14 @@ fn read_dacl(path: &Path) -> Dacl {
             "{}",
             std::io::Error::last_os_error()
         );
+        let mut owner: *mut core::ffi::c_void = std::ptr::null_mut();
+        let mut owner_defaulted = 0;
+        assert_ne!(
+            GetSecurityDescriptorOwner(descriptor, &mut owner, &mut owner_defaulted),
+            0
+        );
+        assert!(!owner.is_null(), "a descriptor without an owner is foreign");
+        let owner_is_user = EqualSid(owner, user.as_mut_ptr().cast()) != 0;
         let mut control = 0u16;
         let mut revision = 0u32;
         assert_ne!(
@@ -135,18 +146,14 @@ fn read_dacl(path: &Path) -> Dacl {
         Dacl {
             protected: control & SE_DACL_PROTECTED != 0,
             aces,
+            owner_is_user,
         }
     }
 }
 
-#[test]
-fn scoped_descriptor_file_grants_only_the_current_user() {
-    let dir = TempDir::new("api-w207-acl");
-    let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
-    let path = server
-        .issue_run_descriptor_file("run-acl", "owner", 1, 60)
-        .unwrap();
-    let dacl = read_dacl(&path);
+/// W2-07/W2-07b shape: protected against inheritance, every ACE decided here
+/// grants only the current user, and the file belongs to that user.
+fn assert_owner_only(dacl: &Dacl) {
     assert!(
         dacl.protected,
         "inheritance from the parent directory must be cut: {dacl:?}"
@@ -164,10 +171,52 @@ fn scoped_descriptor_file_grants_only_the_current_user() {
             .any(|&(kind, _, is_user)| kind == ALLOWED && is_user),
         "the agent runs as the current user and must still read it: {dacl:?}"
     );
+    assert!(
+        dacl.owner_is_user,
+        "the file must belong to the current user: {dacl:?}"
+    );
+}
+
+#[test]
+fn scoped_descriptor_file_grants_only_the_current_user() {
+    let dir = TempDir::new("api-w207-acl");
+    let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
+    let path = server
+        .issue_run_descriptor_file("run-acl", "owner", 1, 60)
+        .unwrap();
+    let dacl = read_dacl(&path);
+    assert_owner_only(&dacl);
     // The launcher still reads what it wrote.
     let descriptor: crate::api::Descriptor =
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(descriptor.port, server.port());
+}
+
+/// W2-07b: the broad descriptor holds the same key to the app as a scoped one
+/// and must be narrowed the same way.
+#[test]
+fn broad_descriptor_grants_only_the_current_user() {
+    let dir = TempDir::new("api-w207b-broad");
+    let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
+    let dacl = read_dacl(server.descriptor_path());
+    assert_owner_only(&dacl);
+    // The CLI still reads what the app wrote.
+    let descriptor: crate::api::Descriptor =
+        serde_json::from_slice(&std::fs::read(server.descriptor_path()).unwrap()).unwrap();
+    assert_eq!(descriptor.port, server.port());
+}
+
+/// W2-07b: the directory itself decides who may list it, plant files in it,
+/// or delete from it - a narrow DACL on the files alone leaves all three open.
+#[test]
+fn agent_access_directory_grants_only_the_current_user() {
+    let dir = TempDir::new("api-w207b-dir");
+    let server = crate::api::tests::native_server(dir.path(), "run-acl", "owner", 1);
+    server
+        .issue_run_descriptor_file("run-acl", "owner", 1, 60)
+        .unwrap();
+    let dacl = read_dacl(&dir.path().join("agent-access"));
+    assert_owner_only(&dacl);
 }
 
 /// A failed restriction refuses the launch and leaves neither the file nor
