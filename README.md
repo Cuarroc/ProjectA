@@ -25,7 +25,7 @@ ProjectA has no model of its own. The agents are the vendors' command-line tools
 
 ## Honest status
 
-"Works" means implemented **and** covered by at least one automated test named in parentheses. It does not mean polished or proven in long-running use.
+"Works" means implemented **and** covered by at least one automated test named in parentheses. It does not mean polished or proven in long-running use. "Partial" means implemented and tested, with the restriction stated in the row. "Planned — locked off" means the code exists but cannot be reached in normal use.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
@@ -38,13 +38,13 @@ ProjectA has no model of its own. The agents are the vendors' command-line tools
 | Agents ask the human a question (`pa ask`) and get the answer in their terminal | works | `questions.rs` (`asking_records_the_question_and_raises_the_card`) |
 | Diff view and merge with a test gate | works | `diff.rs` (`parses_a_multi_file_diff_with_line_numbers`), `testgate.rs` (`the_verdict_follows_the_exit_code_and_recognises_a_timeout`) |
 | Local control API, localhost only, token required | works | `api.rs` (`a_request_without_the_token_is_refused`) |
-| `pa` command-line bridge for agents, including `pa hq runtime` / `pa hq context` | works | `bin/pa.rs` (`hq_changes_require_auth_project_and_valid_cursor`) |
+| `pa` command-line bridge for agents, including `pa hq runtime` / `pa hq context` | partial | `bin/pa.rs` (`hq_parser_preserves_source_goal_and_refuses_unknown_settings` covers the parsing of both commands) and `api.rs` (`hq_changes_require_auth_project_and_valid_cursor` covers the HQ HTTP contract); no test runs `pa` against a live API |
 | Skill packs copied into each worktree | works | `skills.rs` (`installing_puts_every_enabled_pack_where_the_cli_looks_for_it`) |
 | Token usage, budgets and cost receipts | works | `budget.rs`, `store/development_usage_receipt_tests.rs` (`every_run_cost_receipt_names_its_state_and_provenance`) |
 | Learnings and role variants, applied only after human approval | works | `learnings.rs`, `roles.rs` (`two_approved_learnings_are_not_enough_and_three_are`) |
 | Provider key vault | partial | Encrypted with DPAPI on Windows (`a_written_vault_is_encrypted_for_this_user_and_round_trips`); on other systems it is a plaintext file with mode 0600 |
 | Dev-HQ website (development cockpit) | partial | `scripts/hq-live.mjs` with tests in `scripts/lib/*.test.mjs`; a development tool that runs from the repository, not a product feature |
-| Team roles (coordinator, implementer, reviewer, integrator) | partial | `store/team_assignments.rs`, `workers.rs` (`dispatch_role_decides_who_may_submit_an_integration_candidate`); only reachable through continuous mode, which is off |
+| Team roles (coordinator, implementer, reviewer, integrator) | planned — **locked off** | `store/team_assignments.rs`, `workers.rs` (`dispatch_role_decides_who_may_submit_an_integration_candidate`); the code exists but is only reachable through continuous mode, which is off |
 | Native process-output capture (`projecta_capture`, `pa-capture-host`) | partial | Windows-only; activation in the app is still gated in code |
 | Human approval of risky steps | partial | A human verdict token is required to resume (`hq_control_requires_api_auth_and_resume_refuses_without_human_token`); graded approval levels do not exist yet |
 | Continuous mode (agents pick up follow-up work on their own) | planned — **locked off** | `development_policy.rs` rejects `continuous.enabled = true` (`default_policy_is_bounded_and_continuous_is_disabled`) |
@@ -71,12 +71,12 @@ flowchart LR
         DB[("SQLite")]
         UI <-->|Tauri IPC| Core
         Core <--> DB
+        API["local control API"] <--> Core
     end
     Core -->|PTY / ConPTY| Agents["Agent CLIs<br/>claude, codex, kimi, opencode, ollama"]
     Agents -->|one each| WT["git worktrees<br/>branch per worker"]
-    Core <-->|"HTTP on 127.0.0.1<br/>token required"| API["local control API"]
-    API <--> PA["pa CLI<br/>used by agents"]
-    API <--> HQ["Dev-HQ website<br/>npm run hq:live"]
+    PA["pa CLI<br/>used by agents"] -->|"HTTP 127.0.0.1, token"| API
+    HQ["Dev-HQ website<br/>npm run hq:live"] -->|"HTTP 127.0.0.1, token"| API
 ```
 
 - The **Rust core** owns all runtime state in SQLite. The UI, the `pa` CLI and the Dev-HQ are clients of the same core; none of them schedules work on its own.
@@ -88,7 +88,7 @@ flowchart LR
 ProjectA is built by a beginner without programming training, working with several AI coding agents from different vendors (Claude Code, Codex CLI, Kimi CLI, OpenCode). The agents write almost all of the code, tests and documentation. Because the human cannot check the code line by line, the project relies on rules that produce checkable evidence:
 
 - **Red first.** A bug fix needs a failing regression test before the fix. Commits carry a `Test-First`, `Regression-For` or `No-Test` trailer, and CI checks this (`scripts/ci/red-first.sh`).
-- **One gate list.** All checks are defined once in `scripts/ci/gates.sh`; git hooks and CI call the same lanes. Every run ends with a "NOT COVERED" block, because no single machine tests both the Windows and the Linux half.
+- **One gate list.** All checks are defined once in `scripts/ci/gates.sh`; git hooks and CI call the same lanes. Every run ends with a "NICHT ABGEDECKT" block (German for "not covered"), because no single machine tests both the Windows and the Linux half.
 - **Cross-vendor review.** Changes are reviewed by a model from a different vendor than the author. Larger changes and the four serial "seam" files need two reviews.
 - **Merge queue.** `main` is merged only through a Mergify merge queue ([docs/setup/mergify.md](docs/setup/mergify.md)).
 - **One task, one agent, one worktree.** The shared rules for all agents are in [AGENTS.md](AGENTS.md).
@@ -101,7 +101,7 @@ What is still hard:
 
 ## Getting started
 
-Windows only; build from source. Signed installers are built for the maintainer's own machine; they are not offered or supported for other users.
+Windows only; build from source. On a version tag, CI builds signed Windows installers and mirrors them to the public [Cuarroc/ProjectA-updates](https://github.com/Cuarroc/ProjectA-updates) repository, which serves the app's auto-update channel. Installation is not supported for third parties; the intended path from this repository is building from source.
 
 Requirements:
 
@@ -167,4 +167,4 @@ There is no license yet, so all rights are reserved. You may read the code, but 
 
 ## Kurz auf Deutsch
 
-ProjectA ist eine Windows-Desktop-App (Tauri 2, Rust, React), die mehrere KI-Coding-Agenten parallel steuert. Jeder Agent läuft in einem eigenen Terminal und in einem eigenen git-Worktree. Terminals, Worktrees, Warteschlange, lokale API, der `pa`-Befehl und das Zusammenführen mit Testprüfung funktionieren und sind durch Tests belegt. Agenten-Teams mit Rollen, abgestufte Freigaben und der Dauerbetrieb (Continuous Mode) sind geplant; der Dauerbetrieb ist im Code gesperrt, bis seine Abnahme belegt ist und der Nutzer ihn freigibt. Gebaut wird das Projekt von einem Einsteiger ohne Programmierausbildung zusammen mit KI-Agenten mehrerer Anbieter, abgesichert durch Red-first-Tests, Reviews durch Modelle anderer Anbieter und eine Merge-Queue. Die App steuert die Abo-CLIs der Anbieter; deren Nutzungsbedingungen sind zu beachten. Eine Lizenz gibt es noch nicht, alle Rechte sind vorbehalten.
+ProjectA ist eine Windows-Desktop-App (Tauri 2, Rust, React), die mehrere KI-Coding-Agenten parallel steuert. Jeder Agent läuft in einem eigenen Terminal und in einem eigenen git-Worktree. Terminals, Worktrees, Warteschlange, lokale API, der `pa`-Befehl und das Zusammenführen mit Testprüfung funktionieren und sind durch Tests belegt. Die Rollen für Agenten-Teams sind im Code vorhanden, aber nur über den Dauerbetrieb (Continuous Mode) erreichbar, und der ist im Code gesperrt, bis seine Abnahme belegt ist und der Nutzer ihn freigibt. Abgestufte Freigaben gibt es noch nicht; sie sind geplant. Gebaut wird das Projekt von einem Einsteiger ohne Programmierausbildung zusammen mit KI-Agenten mehrerer Anbieter, abgesichert durch Red-first-Tests, Reviews durch Modelle anderer Anbieter und eine Merge-Queue. Die App steuert die Abo-CLIs der Anbieter; deren Nutzungsbedingungen sind zu beachten. Eine Lizenz gibt es noch nicht, alle Rechte sind vorbehalten.
