@@ -32,7 +32,11 @@ function startMockApi() {
     "/api/hq/v1/context": { cursor: 1, snapshot: { sourceTimestamp: "2026-09-10T12:00:00Z", commit: null,
       control: { status: "paused" }, goals: [{ id: "goal-1", projectId: "pj-1", objective: "Verify continuous development", acceptanceCriteria: "Claims and restart tests pass", status: "open" }],
       effectiveLimits: { rootPolicies: [{ policy: { teams: [{ id: "development", roles: ["coordinator", "implementer", "reviewer", "integrator"] }] } }] },
-      tasks: [{ id: "task-1", goalId: "goal-1", objective: "Check ownership", profileId: "codex", status: "pending", attempts: 0, ownedPaths: ["src-tauri/src/queue.rs"], dependencies: [] }] } },
+      tasks: [{ id: "task-1", goalId: "goal-1", objective: "Check ownership", profileId: "codex", status: "pending", attempts: 0, ownedPaths: ["src-tauri/src/queue.rs"], dependencies: [],
+        claim: { owner: "worker-1", fence: 2 },
+        assignment: { teamId: "development", role: "implementer", assignee: "worker-1", revision: 1 } },
+      { id: "task-2", goalId: "goal-1", objective: "Open follow-up", profileId: "kimi", status: "open", attempts: 0, ownedPaths: [], dependencies: [],
+        assignment: { teamId: "development", role: "reviewer", assignee: "worker-2", revision: 1 } }] } },
     "/api/hq/v1/runs": { executionEnabled: false, approvalAuthority: { state: "unavailable" }, runs: [] },
     "/api/projects": [{ id: "pj-1", name: "ProjectA" }],
     "/api/board": [
@@ -125,7 +129,13 @@ function startMockApi() {
       });
       return;
     }
-    if (routes[path]) return reply(200, routes[path]);
+    if (routes[path]) {
+      // The worker detail panel opens at once and fills after these two fetches;
+      // a fixed latency reproduces a loaded CI runner deterministically.
+      if (/^\/api\/workers\/wk-1(\/messages)?$/.test(path)) setTimeout(() => reply(200, routes[path]), 400);
+      else reply(200, routes[path]);
+      return;
+    }
     reply(404, { error: `mock has no route for ${path}` });
   });
 }
@@ -224,14 +234,67 @@ test("continuous goals use the selected project and show blocked runtime honestl
   await page.click('#tab-teams');
   await page.waitForFunction(() => document.querySelector('[data-goals]')?.textContent.includes('Verify continuous development'));
   assert.match(await page.textContent('[data-goals]'), /Check ownership/);
-  assert.deepEqual(await page.locator('.continuous-assignment select[name="role"] option').allTextContents(), ['coordinator', 'implementer', 'reviewer', 'integrator']);
-  assert.equal(await page.locator('.continuous-assignment button[type="submit"]').isDisabled(), true);
+  assert.deepEqual(await page.locator('details[data-task-id="task-1"] .continuous-assignment select[name="role"] option').allTextContents(), ['coordinator', 'implementer', 'reviewer', 'integrator']);
+  assert.equal(await page.locator('details[data-task-id="task-1"] .continuous-assignment button[type="submit"]').isDisabled(), true);
   await page.locator('[data-action=resume]').click();
   await page.waitForFunction(() => document.querySelector('[data-error]')?.textContent.includes('not attested'));
   assert.match(await page.textContent('[data-state]'), /paused/);
   await page.locator('.continuous-card').scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(shotDir, 'continuous-goals.png'), fullPage: false });
   assert.equal(await page.locator('.continuous-card').evaluate(n => n.scrollWidth > n.clientWidth + 1), false);
+  await page.close();
+});
+
+test("goals live view renders ownership and the g key jumps to the card", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.goto(`http://127.0.0.1:${hqPort}/live.html`);
+  await page.waitForSelector('.live-status.ok', { timeout: 20000 });
+  await page.selectOption('#live-project', 'pj-1');
+  await page.waitForFunction(() => document.querySelector('[data-ownership]')?.textContent.includes('Verify continuous development'), { timeout: 10000 });
+  const ownership = await page.textContent('[data-ownership]');
+  assert.match(ownership, /Besetzt: worker-1/);
+  assert.match(ownership, /development\/implementer/);
+  assert.match(ownership, /src-tauri\/src\/queue\.rs/);
+  await page.click('#tab-teams');
+  await page.locator('#hq-goals-live').scrollIntoViewIfNeeded();
+  await page.locator('#hq-goals-live').screenshot({ path: join(shotDir, 'goals-teams-ownership.png') });
+  // Keyboard flow: from another tab, with focus outside any typing context,
+  // g reveals the teams panel and focuses the goals/teams card.
+  await page.click('#tab-overview');
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('g');
+  await page.waitForSelector('#panel-teams:not([hidden])', { timeout: 5000 });
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'hq-goals-live');
+  await page.screenshot({ path: join(shotDir, 'goals-teams-keyboard-g.png'), fullPage: false });
+  await page.close();
+});
+
+test("an unchanged refresh tick keeps focus on the submit button", async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.goto(`http://127.0.0.1:${hqPort}/live.html`);
+  await page.waitForSelector('.live-status.ok', { timeout: 20000 });
+  await page.selectOption('#live-project', 'pj-1');
+  await page.click('#tab-teams');
+  await page.waitForFunction(() => document.querySelector('[data-goals]')?.textContent.includes('Open follow-up'), { timeout: 10000 });
+  // Count the continuous card's ticks: the source line is rewritten on every refresh.
+  await page.evaluate(() => {
+    window.__ticks = 0;
+    new MutationObserver(() => window.__ticks++).observe(document.querySelector('[data-source]'), { childList: true, characterData: true, subtree: true });
+  });
+  const submit = page.locator('details[data-task-id="task-2"] button[type="submit"]');
+  assert.equal(await submit.isDisabled(), false, 'open, unclaimed task has an enabled submit button');
+  await page.locator('details[data-task-id="task-2"] summary').click();
+  await submit.evaluate((node) => node.focus());
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Zuweisung aktualisieren');
+  const ticks = await page.evaluate(() => window.__ticks);
+  await page.waitForFunction((n) => window.__ticks > n, ticks, { timeout: 15000 });
+  const focused = await page.evaluate(() => {
+    const active = document.activeElement;
+    return { tag: active?.tagName, text: active?.textContent, task: active?.closest('details')?.dataset.taskId || null };
+  });
+  assert.equal(focused.task, 'task-2', 'an unchanged tick must not blur the focused submit button');
+  assert.match(focused.text, /Zuweisung aktualisieren/);
+  await page.locator('#hq-goals-live').screenshot({ path: join(shotDir, 'goals-teams-focus-tick.png') });
   await page.close();
 });
 
@@ -242,17 +305,10 @@ test("worker detail opens on click, shows messages, sends a reply", async () => 
 
   await page.click('[data-live-action="detail:wk-1"]');
   await page.waitForSelector("#worker-detail:not([hidden])", { timeout: 5000 });
-  // The panel opens with "Loading…" and fills in once the messages arrive.
-  // Wait for the expected content, not for the placeholder to vanish: a
-  // missing or hidden panel is not done.
+  // The panel opens with "Loading…" and fills once both fetches resolve.
   await page.waitForFunction(
-    () => {
-      const el = document.querySelector("#worker-detail");
-      if (!el || el.hidden) return false;
-      const text = el.textContent ?? "";
-      return text.includes("Inspecting queue.rs") && text.includes("wk-dispatcher");
-    },
-    { timeout: 5000 },
+    () => /Inspecting queue\.rs/.test(document.querySelector("#worker-detail")?.textContent ?? ""),
+    { timeout: 10000 },
   );
   assert.match(await page.textContent("#worker-detail"), /Inspecting queue\.rs/);
   assert.match(await page.textContent("#worker-detail"), /wk-dispatcher/);

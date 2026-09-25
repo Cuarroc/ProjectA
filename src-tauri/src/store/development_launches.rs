@@ -434,6 +434,12 @@ impl Store {
     pub async fn reconcile_interrupted_development_launches(&self) -> Result<u64, String> {
         let changed = sqlx::query("UPDATE development_runs SET status = 'reconciling', updated_at = ? WHERE status IN ('intent','launched') AND EXISTS (SELECT 1 FROM development_launches l WHERE l.run_id = development_runs.id)")
             .bind(now_unix_secs()).execute(&self.pool).await.map_err(db)?;
+        // DF-15b / KI-27: an `exited_undelivered` row committed before the
+        // release existed still holds its reservation; the same guarded
+        // release frees it (proven exit only, idempotent).
+        let mut tx = self.pool.begin().await.map_err(db)?;
+        super::development_budget::release_undelivered_runs(&mut tx).await?;
+        tx.commit().await.map_err(db)?;
         Ok(changed.rows_affected())
     }
 

@@ -28,6 +28,14 @@
       .replace(/"/g, "&quot;");
   }
 
+  // escape() protects the markup, not the scheme: only http(s) urls may
+  // become links, everything else (javascript:, data:, file:, …) renders
+  // as plain text without an href.
+  function safeUrl(u) {
+    const url = String(u || "").trim();
+    return /^https?:\/\//i.test(url) ? url : "";
+  }
+
   function basename(path) {
     const parts = String(path).replace(/\\/g, "/").split("/");
     return parts[parts.length - 1] || String(path);
@@ -262,7 +270,7 @@
         </div>
       </div>
       <div id="live-error" class="live-error" role="alert" hidden></div>
-      <div id="live-keys-help" class="keys-help" lang="en" hidden><b>Keys</b> <kbd>/</kbd> search memory · <kbd>f</kbd> filter fleet · <kbd>r</kbd> refresh · <kbd>?</kbd> this help · <kbd>Esc</kbd> close panels <label class="keys-toggle"><input type="checkbox" id="live-keys-enabled"> single-key shortcuts on</label></div>
+      <div id="live-keys-help" class="keys-help" lang="en" hidden><b>Keys</b> <kbd>/</kbd> search memory · <kbd>f</kbd> filter fleet · <kbd>g</kbd> goals &amp; teams · <kbd>r</kbd> refresh · <kbd>?</kbd> this help · <kbd>Esc</kbd> close panels <label class="keys-toggle"><input type="checkbox" id="live-keys-enabled"> single-key shortcuts on</label></div>
 
       ${section("01", "What matters now", "Ranked from the live fleet, capacity, questions, the lesson memory and the repository.", '<ol id="live-signals" class="signals" tabindex="0" aria-label="What matters now"><li class="muted">Reading the desk…</li></ol>', "live-signals-section", "paper")}
 
@@ -656,7 +664,10 @@
 
     function renderRecommendations(recommendations) {
       const pending = (recommendations || []).filter((r) => r.status === "new" || !r.status);
-      const rows = pending.map((r) => `<article class="live-row"><div><strong>${escape(r.title || r.id)}</strong><span>${escape(r.rationale || "")}${r.effort ? ` · effort ${escape(r.effort)}` : ""}${r.url ? ` · <a href="${escape(r.url)}" target="_blank" rel="noopener">source</a>` : ""}</span></div><span><button class="hq-button" data-live-action="recAccept:${escape(r.id)}">Accept</button> <button class="hq-button subtle" data-live-action="recDismiss:${escape(r.id)}">Dismiss</button></span></article>`).join("");
+      const rows = pending.map((r) => {
+        const url = safeUrl(r.url);
+        return `<article class="live-row"><div><strong>${escape(r.title || r.id)}</strong><span>${escape(r.rationale || "")}${r.effort ? ` · effort ${escape(r.effort)}` : ""}${url ? ` · <a href="${escape(url)}" target="_blank" rel="noopener">source</a>` : ""}</span></div><span><button class="hq-button" data-live-action="recAccept:${escape(r.id)}">Accept</button> <button class="hq-button subtle" data-live-action="recDismiss:${escape(r.id)}">Dismiss</button></span></article>`;
+      }).join("");
       el.querySelector("#live-recommendations").innerHTML = rows || '<p class="muted">No open recommendations. Agents can file these as they discover follow-up work.</p>';
     }
 
@@ -1018,6 +1029,7 @@
       if (typing || event.metaKey || event.ctrlKey || event.altKey || !keysToggle.checked) return;
       if (event.key === "/") { event.preventDefault(); workspace.reveal("#lesson-query"); el.querySelector("#lesson-query").focus(); }
       else if (event.key === "f") { event.preventDefault(); workspace.reveal("#live-fleet-filter"); el.querySelector("#live-fleet-filter").focus(); }
+      else if (event.key === "g") { event.preventDefault(); const goalsCard = el.querySelector("#hq-goals-live"); if (goalsCard) { workspace.reveal(goalsCard); goalsCard.focus(); } }
       else if (event.key === "r") { event.preventDefault(); refresh(); }
       else if (event.key === "?") { event.preventDefault(); keysHelp.hidden = !keysHelp.hidden; }
     });
