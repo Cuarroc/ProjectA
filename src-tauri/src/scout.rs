@@ -344,7 +344,9 @@ fn parse_recommendation_line(project_id: &str, line: &str) -> Option<Recommendat
         id: recommendation_id(project_id, line),
         project_id: project_id.to_string(),
         title,
-        url: trimmed_field(&value, "url"),
+        // A scout file cannot be argued with: the finding stays, the link no
+        // renderer may show does not.
+        url: http_url(trimmed_field(&value, "url")).unwrap_or_default(),
         rationale,
         effort: trimmed_field(&value, "effort"),
         status: REC_NEW.to_string(),
@@ -360,6 +362,26 @@ fn trimmed_field(value: &Value, key: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
+}
+
+/// The url of a recommendation, or `None` when there is none worth keeping.
+/// Only `http(s)` survives: any other scheme is one click from script
+/// execution in whatever renders the link, so the caller either refuses the
+/// whole request ([`add_recommendation`]) or drops just the url (ingest).
+fn http_url(url: Option<String>) -> Result<Option<String>, String> {
+    let Some(url) = url
+        .map(|url| url.trim().to_string())
+        .filter(|url| !url.is_empty())
+    else {
+        return Ok(None);
+    };
+    // The scheme is case-insensitive (RFC 3986 §3.1), so the check has to be.
+    let lower = url.to_ascii_lowercase();
+    if lower.starts_with("https://") || lower.starts_with("http://") {
+        Ok(Some(url))
+    } else {
+        Err(format!("url must be an http(s) url, got: {url}"))
+    }
 }
 
 /// An id derived from the line itself, which is what makes re-reading the file
@@ -462,6 +484,7 @@ pub async fn add_recommendation(
     if store.get_project(project_id).await?.is_none() {
         return Err(format!("{ERR_UNKNOWN}project: {project_id}"));
     }
+    let url = http_url(url)?;
 
     // Hashing the same canonical line an ingested finding would produce keeps
     // the two doors on one id scheme.
@@ -470,9 +493,7 @@ pub async fn add_recommendation(
         id: recommendation_id(project_id, &line),
         project_id: project_id.to_string(),
         title: title.to_string(),
-        url: url
-            .map(|url| url.trim().to_string())
-            .filter(|url| !url.is_empty()),
+        url,
         rationale: rationale.to_string(),
         effort: effort
             .map(|effort| effort.trim().to_string())
