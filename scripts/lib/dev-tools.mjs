@@ -72,7 +72,7 @@ export function gitIn(run, cwd) {
 // gh with JSON output; throws on failure or unparsable output.
 export function ghJson(run, args, { cwd } = {}) {
   const r = run("gh", args, { cwd });
-  if (r.code !== 0 && !r.stdout.trim().startsWith("[") && !r.stdout.trim().startsWith("{")) {
+  if (r.code !== 0) {
     throw new Error(`gh ${args.join(" ")} (Exit ${r.code}): ${(r.stderr || r.stdout).trim()}`);
   }
   try {
