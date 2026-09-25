@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEV-HQ · Messpult — Richtung B: Das Instrument</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   RICHTUNG B — DAS INSTRUMENT
+   Ein Messgerät, kein Dashboard. Jede Größe steht auf einer Skala mit
+   ihrem Bereich; nichts erscheint als nackte Zahl.
+
+   GESPERRTE PALETTE — sechs Mitglieder. Jeder Zwischenton ist eine
+   benannte, geordnete Mischung genau zweier Mitglieder. Kein Grau ohne
+   Herkunft.
+
+   TYPOGRAFIE — zwei Grade (13 px Legende, 11 px Skalenschrift). Rang
+   entsteht aus Gewicht, Versalien, Umkehrung und Linie, nicht aus Größe.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* ── die sechs Mitglieder ── */
+  --m-panel : #111619;   /* Emaille-Grund der Platte            */
+  --m-legend: #E9EBE4;   /* Siebdruck-Elfenbein, Hauptschrift   */
+  --m-groove: #05080A;   /* gravierte Nut, Vertiefung           */
+  --m-brass : #D2A950;   /* Indexmarke / Zeiger — Messing       */
+  --m-pass  : #63BBA6;   /* IN TOLERANZ (reserviert)            */
+  --m-fail  : #E0664C;   /* AUSSER TOLERANZ (reserviert)        */
+
+  /* ── geordnete Mischungen, je zwei Mitglieder ── */
+  --plate   : color-mix(in srgb, var(--m-legend)  7%, var(--m-panel));
+  --rail    : color-mix(in srgb, var(--m-legend) 14%, var(--m-panel));
+  --rule    : color-mix(in srgb, var(--m-legend) 22%, var(--m-panel));
+  --rule-hi : color-mix(in srgb, var(--m-legend) 34%, var(--m-panel));
+  --ink-2   : color-mix(in srgb, var(--m-legend) 66%, var(--m-panel));
+  --ink-off : color-mix(in srgb, var(--m-legend) 40%, var(--m-panel));
+  --band-ok : color-mix(in srgb, var(--m-pass)   20%, var(--m-panel));
+  --band-no : color-mix(in srgb, var(--m-fail)   24%, var(--m-panel));
+  --edge-no : color-mix(in srgb, var(--m-fail)   55%, var(--m-panel));
+  --edge-ok : color-mix(in srgb, var(--m-pass)   55%, var(--m-panel));
+  --brass-dim: color-mix(in srgb, var(--m-brass) 40%, var(--m-panel));
+
+  /* ── Schraffuren: gedruckte Konvention, harte Kanten ── */
+  --hatch-no: repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--m-fail) 34%, var(--m-panel)) 0 2px,
+      transparent 2px 6px);
+  --hatch-none: repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--m-legend) 13%, var(--m-panel)) 0 1px,
+      transparent 1px 6px);
+
+  --face-legend: "Bahnschrift","DIN Alternate","Roboto Condensed","Archivo Narrow","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --face-code  : "Cascadia Mono","Consolas",ui-monospace,"DejaVu Sans Mono",monospace;
+
+  --t-legend: 13px;
+  --t-micro : 11px;
+  color-scheme: dark;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html{
+  background:var(--m-groove);
+  scrollbar-color: var(--rule) var(--m-groove);
+  scrollbar-width: thin;
+}
+html::-webkit-scrollbar{ width:13px; height:13px; }
+html::-webkit-scrollbar-track{ background:var(--m-groove); }
+html::-webkit-scrollbar-thumb{ background:var(--rule); border:3px solid var(--m-groove); }
+html::-webkit-scrollbar-thumb:hover{ background:var(--rule-hi); }
+
+body{
+  margin:0;
+  background:var(--m-panel);
+  color:var(--m-legend);
+  font-family:var(--face-legend);
+  font-size:var(--t-legend);
+  line-height:16px;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-variation-settings:"wght" 400,"wdth" 87;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+::selection{ background:var(--m-brass); color:var(--m-groove); }
+
+:focus-visible{
+  outline:2px solid var(--m-brass);
+  outline-offset:2px;
+}
+
+/* ── Raster ───────────────────────────────────────────────────────── */
+.panel{ width:min(100%,1232px); margin-inline:auto; padding:0 24px 40px; }
+.row12{ display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; }
+.min0{ min-width:0; }
+
+/* ── Schrift-Rollen: zwei Grade, Rang über Gewicht/Versalien/Umkehr ── */
+.leg{
+  font-size:var(--t-legend); line-height:16px;
+  text-transform:uppercase; letter-spacing:.055em;
+  font-variation-settings:"wght" 700,"wdth" 82; font-weight:700;
+}
+.leg-b{ font-variation-settings:"wght" 900,"wdth" 80; font-weight:900; letter-spacing:.075em; }
+.mic{
+  font-size:var(--t-micro); line-height:14px;
+  text-transform:uppercase; letter-spacing:.09em;
+  font-variation-settings:"wght" 600,"wdth" 85; font-weight:600;
+  color:var(--ink-2);
+}
+.code{
+  font-family:var(--face-code); font-size:var(--t-micro); line-height:14px;
+  letter-spacing:0; text-transform:none; font-variation-settings:normal;
+  font-weight:400; overflow-wrap:anywhere;
+}
+.dim{ color:var(--ink-2); }
+.brass{ color:var(--m-brass); }
+.fail{ color:var(--m-fail); }
+.pass{ color:var(--m-pass); }
+
+/* ── Gravur: 1 px Nut mit Lichtkante darunter ── */
+.groove{ height:2px; background:linear-gradient(var(--m-groove) 0 1px, var(--rule) 1px 2px); }
+.hr{ height:1px; background:var(--rule); }
+
+/* ── Umgekehrte Marke (Rang durch Umkehrung, nicht durch Größe) ── */
+.rev{
+  display:inline-block; padding:2px 7px 1px;
+  background:var(--m-legend); color:var(--m-groove);
+  font-size:var(--t-micro); line-height:14px; text-transform:uppercase;
+  letter-spacing:.11em; font-variation-settings:"wght" 700,"wdth" 84; font-weight:700;
+  white-space:nowrap;
+}
+.rev-no{ background:var(--m-fail); color:var(--m-groove); }
+.rev-ok{ background:var(--m-pass); color:var(--m-groove); }
+.rev-brass{ background:var(--m-brass); color:var(--m-groove); }
+
+/* ══ SKALA — das Grundelement des ganzen Pults ══════════════════════ */
+.track{
+  position:relative; height:22px; background:var(--plate);
+  border-top:1px solid var(--m-groove); border-bottom:1px solid var(--rule);
+}
+.track > svg.ticks{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.ticks line{ stroke:var(--rule-hi); }
+.ticks .maj{ stroke:var(--ink-2); }
+
+.band{ position:absolute; top:0; bottom:0; pointer-events:none; }
+.band-ok{ background:var(--band-ok); box-shadow:inset 1px 0 0 var(--edge-ok), inset -1px 0 0 var(--edge-ok); }
+.band-no{ background:var(--band-no); box-shadow:inset 1px 0 0 var(--edge-no), inset -1px 0 0 var(--edge-no); }
+.band-no::after{ content:""; position:absolute; inset:0; background:var(--hatch-no); }
+.band-span{ background:var(--brass-dim); box-shadow:inset 1px 0 0 var(--m-brass), inset -1px 0 0 var(--m-brass); }
+
+/* Zeiger / Indexmarke */
+.needle{ position:absolute; left:var(--pos); top:-7px; width:11px; height:32px;
+         transform:translateX(-50%); pointer-events:none; }
+.needle svg{ display:block; width:11px; height:32px; overflow:visible; }
+.needle .head{ fill:var(--m-brass); stroke:none; }
+.needle .stem{ stroke:var(--m-brass); stroke-width:1; }
+/* geschätzt statt gemessen: hohle Marke */
+.needle.est .head{ fill:none; stroke:var(--m-brass); stroke-width:1; }
+.needle.est .stem{ stroke-dasharray:2 2; }
+.needle.no .head{ fill:var(--m-fail); }
+.needle.no .stem{ stroke:var(--m-fail); }
+
+/* keine Messung: die Bahn wird ausgeschlagen */
+.track.unmeasured{ background:var(--m-panel); }
+.track.unmeasured::after{ content:""; position:absolute; inset:0; background:var(--hatch-none); }
+.track.failed::after{ content:""; position:absolute; inset:0; background:var(--hatch-no); }
+
+.ticklabels{ position:relative; height:14px; margin-top:3px; }
+.ticklabels span{ position:absolute; transform:translateX(-50%); white-space:nowrap; }
+.ticklabels span:first-child{ transform:none; }
+.ticklabels span:last-child{ transform:translateX(-100%); }
+
+.limit{ position:absolute; top:-4px; bottom:-4px; width:1px; background:var(--m-legend); }
+.limit-no{ background:var(--m-fail); }
+
+/* Messwert-Feld — rechtsbündig, tabellarisch */
+.read{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
+       font-variation-settings:"wght" 700,"wdth" 86; font-weight:700; }
+.read-none{ color:var(--m-fail); }
+
+/* ══ Bauteile ═══════════════════════════════════════════════════════ */
+.nameplate{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:0 20px;
+  padding:12px 0 10px; border-bottom:1px solid var(--rule);
+}
+.nameplate .sp{ margin-left:auto; }
+
+section{ padding-top:16px; }
+.head{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding-bottom:6px; }
+.head .src{ margin-left:auto; }
+
+/* Übersprungenes Gate — die zwei großen Leerstellen */
+.skipped{
+  background:var(--m-panel); border:1px solid var(--edge-no);
+  padding:10px 12px 12px;
+}
+.skipped .bar{ display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+.blankreading{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  color:var(--m-fail); background:var(--m-panel); padding:0 8px;
+}
+
+/* Messreihe der bestandenen Gates */
+.series{ display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); }
+.series > div{ background:var(--plate); padding:6px 7px 5px; min-width:0; }
+.series .v{ font-variation-settings:"wght" 700,"wdth" 86; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.series .ok{ height:3px; background:var(--m-pass); margin-top:5px; }
+
+/* Griff-Platte — vertieft */
+.recessed{
+  background:var(--m-groove); border:1px solid var(--rule);
+  border-top-color:var(--m-groove); padding:12px 14px;
+}
+
+/* Signale */
+.sig{ display:grid; grid-template-columns:16px minmax(0,1fr); gap:0 10px; padding:7px 0; border-top:1px solid var(--rule); align-items:start; }
+.sig:first-of-type{ border-top:0; }
+.sig .mk{ margin-top:1px; }
+
+/* Tasten */
+.key{
+  font:inherit; font-size:var(--t-micro); line-height:14px; text-transform:uppercase;
+  letter-spacing:.09em; font-variation-settings:"wght" 700,"wdth" 84; font-weight:700;
+  color:var(--m-legend); background:var(--rail); border:1px solid var(--rule-hi);
+  padding:3px 9px 2px; cursor:pointer;
+}
+.key:hover{ background:var(--rule); border-color:var(--m-brass); color:var(--m-brass); }
+.key:active{ background:var(--m-brass); color:var(--m-groove); border-color:var(--m-brass); }
+.key[disabled]{ cursor:not-allowed; color:var(--ink-off); background:var(--m-panel); border-color:var(--rule); }
+.key[disabled]:hover{ color:var(--ink-off); border-color:var(--rule); background:var(--m-panel); }
+.key[aria-busy="true"]{ cursor:progress; color:var(--m-brass); border-color:var(--brass-dim); background:var(--m-panel); }
+
+/* Eingabeschlitz mit Messing-Schreibmarke */
+.slot{
+  font:inherit; font-size:var(--t-legend); line-height:16px;
+  font-variation-settings:"wght" 400,"wdth" 87;
+  color:var(--m-legend); background:var(--m-groove);
+  border:1px solid var(--rule); border-bottom-color:var(--rule-hi);
+  caret-color:var(--m-brass); padding:4px 8px; width:100%; min-width:0;
+}
+.slot::placeholder{ color:var(--ink-2); text-transform:uppercase; font-size:var(--t-micro); letter-spacing:.09em; }
+.slot:hover{ border-color:var(--rule-hi); }
+.slot:focus-visible{ outline:2px solid var(--m-brass); outline-offset:1px; border-color:var(--m-brass); }
+
+/* Flotte / Tabellen */
+.grid-head, .grid-row{ display:grid; gap:0 14px; align-items:center; }
+.fleet{ grid-template-columns: 52px minmax(90px,1.1fr) 62px minmax(84px,.9fr) 92px minmax(150px,1.5fr) 84px 92px; }
+.grid-head{ padding-bottom:5px; border-bottom:1px solid var(--rule-hi); }
+.grid-row{ padding:9px 0; border-bottom:1px solid var(--rule); }
+
+/* Bahnen / Kollisionsmodell */
+.lane{ display:grid; grid-template-columns:96px minmax(0,1fr) 18px minmax(0,.82fr); gap:0 10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--rule); }
+.slotbox{ position:relative; background:var(--m-groove); border:1px solid var(--rule); padding:5px 9px; min-width:0; }
+.slotbox.held{ border-color:var(--m-brass); box-shadow:inset 3px 0 0 var(--m-brass); }
+.slotbox.free{ border-style:dashed; border-color:var(--rule-hi); }
+.slotbox.locked{ border-color:var(--edge-no); }
+.slotbox.locked::before{ content:""; position:absolute; inset:0; background:var(--hatch-no); pointer-events:none; }
+.slotbox > *{ position:relative; }
+
+/* Belegtypen */
+.ev{ display:grid; grid-template-columns:14px 74px minmax(0,1fr) 74px; gap:0 10px; padding:6px 0; border-bottom:1px solid var(--rule); align-items:start; }
+.ev .mk{ margin-top:2px; }
+.claimtag{ border-bottom:1px solid var(--m-brass); }
+
+/* Fähigkeitsmatrix */
+.matrix{ display:grid; grid-template-columns:118px repeat(2,minmax(0,1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); }
+.matrix > *{ background:var(--m-panel); padding:6px 9px 5px; min-width:0; }
+.matrix .hd{ background:var(--rail); }
+.matrix .no{ background:var(--m-panel); position:relative; }
+.matrix .no::before{ content:""; position:absolute; inset:0; background:var(--hatch-no); }
+.matrix .no > *{ position:relative; }
+
+.provrow{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:1px; background:var(--rule); border:1px solid var(--rule); }
+.provrow > div{ background:var(--m-panel); padding:5px 8px 6px; }
+.provrow .st{ height:3px; margin-top:5px; }
+
+/* Drei Zustände */
+.states{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.statecell{ border:1px solid var(--rule); padding:9px 11px 11px; }
+
+a.src, a.cite{
+  color:var(--ink-2); text-decoration:none;
+  border-bottom:1px solid var(--rule-hi);
+}
+a.src:hover, a.cite:hover{ color:var(--m-brass); border-bottom-color:var(--m-brass); }
+
+.foot{ margin-top:24px; padding-top:14px; border-top:1px solid var(--rule-hi); }
+.keyline{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.keyitem{ display:grid; grid-template-columns:24px minmax(0,1fr); gap:0 8px; align-items:start; }
+
+@media (max-width:1100px){
+  .fleet{ grid-template-columns: 46px minmax(78px,1fr) 56px minmax(72px,.85fr) 84px minmax(120px,1.35fr) 76px 84px; }
+  .lane{ grid-template-columns:84px minmax(0,1fr) 16px minmax(0,.8fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- gemeinsame Zeichen-Bausteine: eine Strichstärke, überall dieselbe -->
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <g id="tickrow">
+      <line class="maj" x1="1"    y1="7"  x2="1"    y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="50"   y1="14" x2="50"   y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="100"  y1="14" x2="100"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="150"  y1="14" x2="150"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="200"  y1="14" x2="200"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line class="maj" x1="250"  y1="7"  x2="250"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="300"  y1="14" x2="300"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="350"  y1="14" x2="350"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="400"  y1="14" x2="400"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="450"  y1="14" x2="450"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line class="maj" x1="500"  y1="7"  x2="500"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="550"  y1="14" x2="550"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="600"  y1="14" x2="600"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="650"  y1="14" x2="650"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="700"  y1="14" x2="700"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line class="maj" x1="750"  y1="7"  x2="750"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="800"  y1="14" x2="800"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="850"  y1="14" x2="850"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="900"  y1="14" x2="900"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line          x1="950"  y1="14" x2="950"  y2="22" vector-effect="non-scaling-stroke"/>
+      <line class="maj" x1="999"  y1="7"  x2="999"  y2="22" vector-effect="non-scaling-stroke"/>
+    </g>
+    <g id="needleShape">
+      <path class="head" d="M0.5 0 H10.5 L5.5 7 Z"/>
+      <line class="stem" x1="5.5" y1="7" x2="5.5" y2="31" vector-effect="non-scaling-stroke"/>
+    </g>
+    <!-- Rangmarken: gefüllt = handeln, halb = beobachten, hohl = notieren -->
+    <g id="mkAct"><rect x="1.5" y="1.5" width="11" height="11" fill="currentColor" stroke="currentColor" stroke-width="1"/></g>
+    <g id="mkWatch"><rect x="1.5" y="1.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/><rect x="1.5" y="7" width="11" height="5.5" fill="currentColor" stroke="none"/></g>
+    <g id="mkNote"><rect x="1.5" y="1.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1"/></g>
+    <g id="mkLock"><rect x="1.5" y="6.5" width="11" height="7" fill="none" stroke="currentColor" stroke-width="1"/><path d="M4 6.5 V4.5 a3 3 0 0 1 6 0 V6.5" fill="none" stroke="currentColor" stroke-width="1"/></g>
+  </defs>
+</svg>
+
+<main class="panel">
+
+<!-- ══ Typenschild ══════════════════════════════════════════════════ -->
+<div class="nameplate">
+  <span class="leg leg-b">PROJECTA · DEV-HQ</span>
+  <span class="mic">MESSPULT DER FLOTTE — RICHTUNG B</span>
+  <span class="mic sp">GERÄT <span style="color:var(--m-legend)">127.0.0.1</span></span>
+  <span class="mic">ABLESUNG <span style="color:var(--m-legend)">2026-09-09 16:0X</span></span>
+  <span class="mic">QUELLE <a class="src code" href="#kalibrierung">STAND.md</a></span>
+</div>
+
+<!-- ══ 1 · RELEASE — der Ausschlag, der zuerst trifft ═══════════════ -->
+<section aria-labelledby="h-release">
+  <div class="head">
+    <h1 id="h-release" class="leg leg-b" style="margin:0">RELEASE v1.3.0</h1>
+    <span class="rev">GETAGGT UND GEPUSHT · 2026-09-09</span>
+    <span class="mic src">ABGELESEN AUS <a class="src code" href="#kalibrierung">STAND.md</a></span>
+  </div>
+  <div class="groove" style="margin-bottom:12px"></div>
+
+  <div class="row12">
+    <!-- Gate 1 -->
+    <div class="skipped min0" style="grid-column:span 6">
+      <div class="bar">
+        <span class="rev rev-no">NICHT GEMESSEN</span>
+        <span class="leg">INSTALLER-GATE</span>
+      </div>
+      <div class="track unmeasured" role="img" aria-label="Installer-Gate: keine Messung vorhanden">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="blankreading mic" style="font-size:11px">KEIN MESSWERT — KEIN ZEIGER</span>
+      </div>
+      <div class="ticklabels mic"><span>0</span><span style="left:50%">SOLL: NSIS ÜBER LIVE-1.2.4-DB</span><span style="left:100%">BESTANDEN</span></div>
+      <p style="margin:9px 0 0">Die NSIS des Kandidaten wurde <strong class="fail">nie</strong> über eine Kopie der Live-1.2.4-Datenbank installiert. <strong class="fail">Migration 3 ist auf echten Daten nie gelaufen.</strong></p>
+      <p class="mic" style="margin:5px 0 0">GRÖSSTES RESTRISIKO DIESES RELEASES</p>
+    </div>
+
+    <!-- Gate 2 -->
+    <div class="skipped min0" style="grid-column:span 6">
+      <div class="bar">
+        <span class="rev rev-no">NICHT GEMESSEN</span>
+        <span class="leg">UNIX-BELEG</span>
+      </div>
+      <div class="track unmeasured" role="img" aria-label="Unix-Beleg: keine Messung vorhanden">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="blankreading mic" style="font-size:11px">KEIN MESSWERT — KEIN ZEIGER</span>
+      </div>
+      <div class="ticklabels mic"><span>0</span><span style="left:50%">SOLL: WINDOWS <em style="font-style:normal;color:var(--m-legend)">UND</em> UNIX</span><span style="left:100%">BESTANDEN</span></div>
+      <p style="margin:9px 0 0">Die <span class="code">#[cfg(unix)]</span>-Tests liefen nicht — Linux-Server gelöscht, Actions-Kontingent erschöpft. Die Policy verlangt beide Plattformen; <strong class="fail">dieser Release hat nur Windows.</strong></p>
+      <p class="mic" style="margin:5px 0 0">ÜBERSPRUNGEN, NICHT BESTANDEN — AUF ANORDNUNG NACH BENENNUNG</p>
+    </div>
+  </div>
+
+  <!-- Messreihe: was gemessen wurde -->
+  <div class="head" style="padding:14px 0 5px">
+    <span class="mic">MESSREIHE — LOKALE GATES AUF GEMERGTEM <span class="code" style="color:var(--m-legend)">main</span>, EXIT-CODES UNGEMASKIERT</span>
+    <span class="mic src"><span class="rev rev-ok">8 VON 10 GEMESSEN</span></span>
+  </div>
+  <div class="series">
+    <div><div class="mic">cargo test</div><div class="v">975+73 · 0 F</div><div class="ok"></div></div>
+    <div><div class="mic">clippy -D</div><div class="v">0</div><div class="ok"></div></div>
+    <div><div class="mic">fmt</div><div class="v">0</div><div class="ok"></div></div>
+    <div><div class="mic">build</div><div class="v">0</div><div class="ok"></div></div>
+    <div><div class="mic">typecheck</div><div class="v">0</div><div class="ok"></div></div>
+    <div><div class="mic">lint</div><div class="v">0</div><div class="ok"></div></div>
+    <div><div class="mic">vitest</div><div class="v">52 DAT.</div><div class="ok"></div></div>
+    <div><div class="mic">npm build</div><div class="v">0</div><div class="ok"></div></div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;padding-top:10px">
+    <span class="rev rev-no">EXTERN BLOCKIERT</span>
+    <span class="leg">SIGNIERTER UPDATER</span>
+    <span class="dim">Private Key fehlt — <strong style="color:var(--m-legend)">v1.2.4-Installationen holen sich das Update nicht von selbst.</strong></span>
+  </div>
+</section>
+
+<!-- ══ 2 · DER GRIFF ═══════════════════════════════════════════════ -->
+<section aria-labelledby="h-griff" style="padding-top:14px">
+  <div class="hr" style="margin-bottom:12px"></div>
+  <div class="row12">
+    <div class="min0" style="grid-column:span 8">
+      <div class="head" style="padding-bottom:6px">
+        <h2 id="h-griff" class="leg leg-b" style="margin:0">DER NÄCHSTE GRIFF</h2>
+        <span class="mic src">EINE BEWEGUNG, KEINE LISTE</span>
+      </div>
+      <div class="recessed">
+        <p style="margin:0">„Signed-Updater-Relaunch sobald der Private Key steht, kein Cutover <span class="code">cheap</span>→Produktmodus (Spawn bleibt <span class="code">auto/cheap</span>).“</p>
+        <p class="mic" style="margin:8px 0 0">QUELLE <a class="src code" href="#kalibrierung">STAND.md#Nächster Griff</a></p>
+      </div>
+    </div>
+    <div class="min0" style="grid-column:span 4">
+      <div class="head" style="padding-bottom:6px">
+        <h2 class="leg leg-b" style="margin:0">WARTESCHLANGE</h2>
+        <span class="mic src">1 EINTRAG</span>
+      </div>
+      <div class="lane" style="grid-template-columns:minmax(0,1fr);border-bottom:0;padding-top:0">
+        <div class="slotbox held"><div class="leg" style="font-size:13px">Sharpen the plan</div><div class="mic" style="margin-top:3px">POSITION 1 VON 1 · NICHT GESTARTET</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 3 · SIGNALE ═════════════════════════════════════════════════ -->
+<section aria-labelledby="h-sig" style="padding-top:14px">
+  <div class="hr" style="margin-bottom:12px"></div>
+  <div class="head" style="padding-bottom:8px">
+    <h2 id="h-sig" class="leg leg-b" style="margin:0">SIGNALE</h2>
+    <span class="mic">RANG: HANDELN · BEOBACHTEN · NOTIEREN</span>
+  </div>
+  <div class="row12">
+
+    <!-- HANDELN -->
+    <div class="min0" style="grid-column:span 5">
+      <div style="display:flex;gap:8px;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--rule-hi)">
+        <svg width="14" height="14" class="brass" aria-hidden="true"><use href="#mkAct"/></svg>
+        <span class="leg">HANDELN</span><span class="mic">3</span>
+      </div>
+      <div class="sig">
+        <svg class="mk fail" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg>
+        <div class="min0">
+          <div><span class="code" style="color:var(--m-brass)">wk-1</span> braucht einen Menschen</div>
+          <div class="code fail" style="margin-top:3px">cargo check failed: Package gdk-3.0 was not found</div>
+        </div>
+      </div>
+      <div class="sig">
+        <svg class="mk pass" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg>
+        <div class="min0" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div class="min0"><span class="code" style="color:var(--m-brass)">wk-2</span> ist bereit zum Mergen<div class="mic pass" style="margin-top:3px">TESTS BESTANDEN</div></div>
+          <button class="key" style="margin-left:auto" type="button">ÜBERNEHMEN</button>
+        </div>
+      </div>
+      <div class="sig">
+        <svg class="mk brass" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg>
+        <div class="min0">
+          <div>Offene Frage aus <span class="code" style="color:var(--m-brass)">wk-1</span>: „Which database?“</div>
+          <label class="mic" for="antwort" style="display:block;margin:6px 0 3px">ENTSCHEIDUNG DES MENSCHEN — NOCH NICHT GEFRAGT BEANTWORTET</label>
+          <input class="slot" id="antwort" type="text" placeholder="Antwort eintragen">
+        </div>
+      </div>
+    </div>
+
+    <!-- BEOBACHTEN -->
+    <div class="min0" style="grid-column:span 4">
+      <div style="display:flex;gap:8px;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--rule-hi)">
+        <svg width="14" height="14" class="brass" aria-hidden="true"><use href="#mkWatch"/></svg>
+        <span class="leg">BEOBACHTEN</span><span class="mic">2</span>
+      </div>
+
+      <div class="sig">
+        <svg class="mk fail" width="14" height="14" aria-hidden="true"><use href="#mkWatch"/></svg>
+        <div class="min0">
+          <div style="display:flex;gap:8px;align-items:baseline"><span class="code" style="color:var(--m-brass)">claude</span><span class="dim">5-Stunden-Budget</span><span class="read fail" style="margin-left:auto">80 %</span></div>
+          <div class="track" style="margin-top:6px" role="img" aria-label="Budget 80 Prozent, Grenze 75 Prozent, außer Toleranz">
+            <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+            <span class="band band-ok" style="left:0;width:75%"></span>
+            <span class="band band-no" style="left:75%;right:0"></span>
+            <span class="limit limit-no" style="left:75%"></span>
+            <span class="needle no" data-settle style="--pos:80%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+          </div>
+          <div class="ticklabels mic"><span>0 %</span><span style="left:75%">GRENZE 75</span><span style="left:100%">100 %</span></div>
+        </div>
+      </div>
+
+      <div class="sig">
+        <svg class="mk fail" width="14" height="14" aria-hidden="true"><use href="#mkWatch"/></svg>
+        <div class="min0">
+          <div style="display:flex;gap:8px;align-items:baseline"><span class="code" style="color:var(--m-brass)">opencode</span><span class="dim">Kontingent</span><span class="read read-none" style="margin-left:auto">—</span></div>
+          <div class="track failed" style="margin-top:6px" role="img" aria-label="opencode: Messung fehlgeschlagen, Rate Limit">
+            <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+            <span class="blankreading mic" style="color:var(--m-fail)">MESSUNG FEHLGESCHLAGEN · RATE LIMIT</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <span class="mic">KEIN ZEIGER — NICHT DASSELBE WIE NULL</span>
+            <button class="key" type="button" aria-busy="true" style="margin-left:auto">MESSUNG LÄUFT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIEREN -->
+    <div class="min0" style="grid-column:span 3">
+      <div style="display:flex;gap:8px;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--rule-hi)">
+        <svg width="14" height="14" class="brass" aria-hidden="true"><use href="#mkNote"/></svg>
+        <span class="leg">NOTIEREN</span><span class="mic">1</span>
+      </div>
+      <div class="sig">
+        <svg class="mk dim" width="14" height="14" aria-hidden="true"><use href="#mkNote"/></svg>
+        <div class="min0">
+          <div>Häufigster Fehler, <span class="read" style="display:inline">3×</span> gesehen</div>
+          <div class="mic" style="margin-top:3px;text-transform:none;letter-spacing:0">GTK-Dev-Header fehlen im Pre-Commit</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 4 · FLOTTE ══════════════════════════════════════════════════ -->
+<section aria-labelledby="h-fleet" style="padding-top:18px">
+  <div class="groove" style="margin-bottom:12px"></div>
+  <div class="head">
+    <h2 id="h-fleet" class="leg leg-b" style="margin:0">FLOTTE</h2>
+    <span class="mic">2 ARBEITER · EIN AUFTRAG = EIN AGENT = EIN WORKTREE</span>
+  </div>
+  <div class="grid-head fleet mic">
+    <span>ID</span><span>AUFGABE</span><span>PROFIL</span><span>BRANCH</span><span>SPALTE</span><span>KONTEXT · 0 … 200 000</span><span style="text-align:right">MESSWERT</span><span style="text-align:right">GRIFF</span>
+  </div>
+
+  <div class="grid-row fleet">
+    <span class="code brass">wk-1</span>
+    <span class="min0">Fix the dispatcher</span>
+    <span class="code">claude</span>
+    <span class="code">wk-dispatcher</span>
+    <span class="mic" style="color:var(--m-legend)">WORKING</span>
+    <span class="min0">
+      <span class="track" style="display:block" role="img" aria-label="Kontext 42000 von 200000, Toleranzgrenze 160000">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="band band-ok" style="left:0;width:80%"></span>
+        <span class="band band-no" style="left:80%;right:0"></span>
+        <span class="limit" style="left:80%"></span>
+        <span class="needle" data-settle style="--pos:21%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      </span>
+      <span class="ticklabels mic" style="display:block"><span>0</span><span style="left:50%">100 000</span><span style="left:80%">160 000</span><span style="left:100%">200 000</span></span>
+    </span>
+    <span class="read">42 000</span>
+    <span style="text-align:right"><button class="key" type="button" disabled title="Braucht zuerst einen Menschen">ÜBERNEHMEN</button></span>
+    <span class="code fail" style="grid-column:2 / -1;padding-top:2px">cargo check failed: gdk-3.0 not found</span>
+  </div>
+
+  <div class="grid-row fleet">
+    <span class="code brass">wk-2</span>
+    <span class="min0">Review the review</span>
+    <span class="code">codex</span>
+    <span class="code">wk-review</span>
+    <span class="mic pass">READY_TO_MERGE</span>
+    <span class="min0">
+      <span class="track unmeasured" style="display:block" role="img" aria-label="Kontext: nicht gemessen">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="blankreading mic">NICHT GEMESSEN</span>
+      </span>
+      <span class="ticklabels mic" style="display:block"><span>0</span><span style="left:100%">200 000</span></span>
+    </span>
+    <span class="read read-none">—</span>
+    <span style="text-align:right"><button class="key" type="button">ÜBERNEHMEN</button></span>
+    <span class="code pass" style="grid-column:2 / -1;padding-top:2px">tests pass</span>
+  </div>
+</section>
+
+<!-- ══ 5 · BAHNEN UND SPERREN ══════════════════════════════════════ -->
+<section aria-labelledby="h-lanes" style="padding-top:18px">
+  <div class="groove" style="margin-bottom:12px"></div>
+  <div class="head">
+    <h2 id="h-lanes" class="leg leg-b" style="margin:0">BAHNEN UND SPERREN</h2>
+    <span class="mic">VIER NAHTSTELLEN · JE EINE BAHN · JE EIN BELEGER</span>
+  </div>
+
+  <div class="row12" style="align-items:end;padding-bottom:12px">
+    <div class="min0" style="grid-column:span 7">
+      <div class="track" role="img" aria-label="19 aktive Spezifikationen, 13 startbar, 6 gesperrt">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none">
+          <line class="maj" x1="1" y1="7" x2="1" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="52.6" y1="14" x2="52.6" y2="22" vector-effect="non-scaling-stroke"/><line x1="105.2" y1="14" x2="105.2" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="157.8" y1="14" x2="157.8" y2="22" vector-effect="non-scaling-stroke"/><line x1="210.5" y1="14" x2="210.5" y2="22" vector-effect="non-scaling-stroke"/>
+          <line class="maj" x1="263.1" y1="7" x2="263.1" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="315.7" y1="14" x2="315.7" y2="22" vector-effect="non-scaling-stroke"/><line x1="368.4" y1="14" x2="368.4" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="421" y1="14" x2="421" y2="22" vector-effect="non-scaling-stroke"/><line x1="473.6" y1="14" x2="473.6" y2="22" vector-effect="non-scaling-stroke"/>
+          <line class="maj" x1="526.3" y1="7" x2="526.3" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="578.9" y1="14" x2="578.9" y2="22" vector-effect="non-scaling-stroke"/><line x1="631.5" y1="14" x2="631.5" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="684.2" y1="14" x2="684.2" y2="22" vector-effect="non-scaling-stroke"/><line x1="736.8" y1="14" x2="736.8" y2="22" vector-effect="non-scaling-stroke"/>
+          <line class="maj" x1="789.4" y1="7" x2="789.4" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="842.1" y1="14" x2="842.1" y2="22" vector-effect="non-scaling-stroke"/><line x1="894.7" y1="14" x2="894.7" y2="22" vector-effect="non-scaling-stroke"/>
+          <line x1="947.3" y1="14" x2="947.3" y2="22" vector-effect="non-scaling-stroke"/>
+          <line class="maj" x1="999" y1="7" x2="999" y2="22" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <span class="band band-ok" style="left:0;width:68.42%"></span>
+        <span class="band band-no" style="left:68.42%;right:0"></span>
+        <span class="limit" style="left:68.42%"></span>
+        <span class="needle" data-settle style="--pos:68.42%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      </div>
+      <div class="ticklabels mic"><span>0</span><span style="left:26.3%">5</span><span style="left:52.6%">10</span><span style="left:68.42%;color:var(--m-legend)">13 STARTBAR</span><span style="left:100%">19 AKTIV</span></div>
+    </div>
+    <div class="min0" style="grid-column:span 5;display:flex;gap:20px;align-items:baseline">
+      <span><span class="read" style="display:inline">19</span> <span class="mic">AKTIVE SPEZIFIKATIONEN</span></span>
+      <span class="pass"><span class="read" style="display:inline">13</span> <span class="mic pass">STARTBAR</span></span>
+      <span class="fail"><span class="read" style="display:inline">6</span> <span class="mic fail">GESPERRT</span></span>
+    </div>
+  </div>
+
+  <div class="grid-head lane mic" style="border-bottom:1px solid var(--rule-hi);padding-bottom:5px">
+    <span>NAHTSTELLE</span><span>BELEGER — EINER, NIE ZWEI</span><span></span><span>DAHINTER GESPERRT</span>
+  </div>
+
+  <div class="lane">
+    <span class="code brass">main.rs</span>
+    <span class="slotbox held min0"><span class="leg" style="font-size:13px">F1: eine Flotte, ein Fenster</span><span class="code dim" style="display:block;margin-top:3px">task_f1_single_instance · seriell · startbar</span></span>
+    <span><svg width="14" height="16" class="fail" aria-hidden="true"><use href="#mkLock"/></svg></span>
+    <span class="slotbox locked min0"><span class="leg" style="font-size:13px">F1: P2-H Logpfad, Diagnosepaket, „Warum?“</span><span class="code dim" style="display:block;margin-top:3px">task_f1_diagnostics</span></span>
+  </div>
+  <div class="lane">
+    <span class="code brass">store.rs</span>
+    <span class="slotbox held min0"><span class="code" style="font-size:13px;color:var(--m-legend)">task_f4_persist</span></span>
+    <span><svg width="14" height="16" class="fail" aria-hidden="true"><use href="#mkLock"/></svg></span>
+    <span class="slotbox locked min0"><span class="code" style="font-size:13px;color:var(--m-legend)">task_f0_7</span></span>
+  </div>
+  <div class="lane">
+    <span class="code brass">api.rs</span>
+    <span class="slotbox held min0"><span class="code" style="font-size:13px;color:var(--m-legend)">task_f4_authority</span></span>
+    <span><svg width="14" height="16" class="fail" aria-hidden="true"><use href="#mkLock"/></svg></span>
+    <span class="slotbox locked min0"><span class="code" style="font-size:13px;color:var(--m-legend)">task_f2_kinds</span></span>
+  </div>
+  <div class="lane">
+    <span class="code brass">bin/pa.rs</span>
+    <span class="slotbox free min0"><span class="mic">BAHN FREI — KEIN BELEGER</span></span>
+    <span></span>
+    <span class="mic">NICHTS GESPERRT</span>
+  </div>
+
+  <div style="padding-top:12px">
+    <div class="mic" style="padding-bottom:7px">STARTBAR JETZT — PARALLELE BAHN, KEINE NAHTSTELLE BERÜHRT</div>
+    <div class="row12">
+      <div class="slotbox min0" style="grid-column:span 4;box-shadow:inset 3px 0 0 var(--m-pass);border-color:var(--edge-ok)">
+        <span class="code" style="color:var(--m-legend)">task_f0_db_fixtures</span>
+        <span style="display:block;margin-top:3px">F0-Abnahme: Alt-DBs öffnen ohne Datenverlust</span>
+      </div>
+      <div class="slotbox min0" style="grid-column:span 4;box-shadow:inset 3px 0 0 var(--m-pass);border-color:var(--edge-ok)">
+        <span class="code" style="color:var(--m-legend)">task_f1_attention</span>
+        <span style="display:block;margin-top:3px">F1: Reason-Codes, Fehlerkanal, Opener-Grenze</span>
+      </div>
+      <div class="slotbox min0" style="grid-column:span 4;box-shadow:inset 3px 0 0 var(--m-pass);border-color:var(--edge-ok)">
+        <span class="code" style="color:var(--m-legend)">task_f4_readiness</span>
+        <span style="display:block;margin-top:3px">F4: Lifecycle + <span class="code">blockers[]</span> als reine Rust-Logik</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 6 · BELEGE ══════════════════════════════════════════════════ -->
+<section aria-labelledby="h-ev" style="padding-top:18px">
+  <div class="groove" style="margin-bottom:12px"></div>
+  <div class="head">
+    <h2 id="h-ev" class="leg leg-b" style="margin:0">BELEGE</h2>
+    <span class="mic">8 BEFUNDE · TYPISIERT</span>
+    <span class="mic src" style="display:flex;gap:14px;align-items:center">
+      <span style="display:flex;gap:6px;align-items:center"><svg width="14" height="14" class="pass" aria-hidden="true"><use href="#mkAct"/></svg>BEFUND = GEMESSEN</span>
+      <span style="display:flex;gap:6px;align-items:center"><svg width="14" height="14" class="brass" aria-hidden="true"><use href="#mkNote"/></svg>BEHAUPTUNG = UNGEMESSEN</span>
+    </span>
+  </div>
+
+  <div class="ev mic" style="border-bottom:1px solid var(--rule-hi);padding-bottom:5px"><span></span><span>KENNUNG</span><span>WORTLAUT</span><span style="text-align:right">QUELLE</span></div>
+
+  <div class="ev"><svg class="mk pass" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg><span class="code" style="color:var(--m-legend)">F0-4</span><span class="min0">„Der Masterprompt umgeht die Playbook-Marker-Sperre.“ <span class="mic pass">BEFUND</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+  <div class="ev"><svg class="mk pass" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg><span class="code" style="color:var(--m-legend)">F0-5</span><span class="min0">„verdrahtet“ <span class="mic pass">BEFUND</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+  <div class="ev"><svg class="mk pass" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg><span class="code" style="color:var(--m-legend)">F0-6</span><span class="min0">„Landing-Page-Export.“ <span class="mic pass">BEFUND</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+  <div class="ev"><svg class="mk pass" width="14" height="14" aria-hidden="true"><use href="#mkAct"/></svg><span class="code" style="color:var(--m-legend)">F0-7</span><span class="min0">„Restore-Pfad steht.“ <span class="mic pass">BEFUND</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+
+  <div class="ev"><svg class="mk brass" width="14" height="14" aria-hidden="true"><use href="#mkNote"/></svg><span class="code claimtag" style="color:var(--m-brass)">NT-5/P2-D</span><span class="min0 dim">Nicht gemessen — als Behauptung geführt, bis ein Beleg sie deckt. <span class="mic brass">BEHAUPTUNG</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+  <div class="ev"><svg class="mk brass" width="14" height="14" aria-hidden="true"><use href="#mkNote"/></svg><span class="code claimtag" style="color:var(--m-brass)">P2-H</span><span class="min0 dim">Nicht gemessen — als Behauptung geführt, bis ein Beleg sie deckt. <span class="mic brass">BEHAUPTUNG</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+  <div class="ev"><svg class="mk brass" width="14" height="14" aria-hidden="true"><use href="#mkNote"/></svg><span class="code claimtag" style="color:var(--m-brass)">KI-8</span><span class="min0 dim">Nicht gemessen — als Behauptung geführt, bis ein Beleg sie deckt. <span class="mic brass">BEHAUPTUNG</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+  <div class="ev"><svg class="mk brass" width="14" height="14" aria-hidden="true"><use href="#mkNote"/></svg><span class="code claimtag" style="color:var(--m-brass)">NT-7/NT-11</span><span class="min0 dim">Nicht gemessen — als Behauptung geführt, bis ein Beleg sie deckt. <span class="mic brass">BEHAUPTUNG</span></span><span class="mic" style="text-align:right"><a class="cite code" href="#kalibrierung">STAND.md</a></span></div>
+</section>
+
+<!-- ══ 7 · AUFWAND ═════════════════════════════════════════════════ -->
+<section aria-labelledby="h-eff" style="padding-top:18px">
+  <div class="groove" style="margin-bottom:12px"></div>
+  <div class="head">
+    <h2 id="h-eff" class="leg leg-b" style="margin:0">AUFWAND</h2>
+    <span class="mic">KEINE ZAHL OHNE ERREICHBARE GRUNDLAGE</span>
+  </div>
+
+  <!-- Zeitspanne: zwei Grundlagen, beide Enden beschriftet, keine Mitte -->
+  <div style="padding-bottom:14px">
+    <div style="display:flex;gap:12px;align-items:baseline;padding-bottom:7px;flex-wrap:wrap">
+      <span class="leg">PROJEKTZEIT — SPANNE, KEIN MITTELWERT</span>
+      <span class="mic">UNTERE GRENZE = KLEINERE GRUNDLAGE · OBERE GRENZE = SUMME BEIDER GRUNDLAGEN</span>
+    </div>
+    <div class="track" style="height:26px" role="img" aria-label="Projektzeit-Spanne von 104,3 Stunden bis 219,0 Stunden">
+      <svg class="ticks" viewBox="0 0 1000 26" preserveAspectRatio="none">
+        <line class="maj" x1="1" y1="9" x2="1" y2="26" vector-effect="non-scaling-stroke"/>
+        <line x1="125" y1="17" x2="125" y2="26" vector-effect="non-scaling-stroke"/>
+        <line class="maj" x1="250" y1="9" x2="250" y2="26" vector-effect="non-scaling-stroke"/>
+        <line x1="375" y1="17" x2="375" y2="26" vector-effect="non-scaling-stroke"/>
+        <line class="maj" x1="500" y1="9" x2="500" y2="26" vector-effect="non-scaling-stroke"/>
+        <line x1="625" y1="17" x2="625" y2="26" vector-effect="non-scaling-stroke"/>
+        <line class="maj" x1="750" y1="9" x2="750" y2="26" vector-effect="non-scaling-stroke"/>
+        <line x1="875" y1="17" x2="875" y2="26" vector-effect="non-scaling-stroke"/>
+        <line class="maj" x1="999" y1="9" x2="999" y2="26" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <span class="band band-span" style="left:43.46%;width:47.79%"></span>
+      <span class="needle" data-settle style="--pos:43.46%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      <span class="needle" data-settle style="--pos:47.79%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      <span class="needle" data-settle style="--pos:91.25%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+    </div>
+    <div class="ticklabels mic" style="height:16px">
+      <span>0 h</span><span style="left:25%">60 h</span><span style="left:50%">120 h</span><span style="left:75%">180 h</span><span style="left:100%">240 h</span>
+    </div>
+    <div class="row12" style="padding-top:8px">
+      <div class="min0" style="grid-column:span 4">
+        <div class="rev rev-brass">UNTERES ENDE · 104,3 h</div>
+        <div class="mic" style="margin-top:5px;text-transform:none;letter-spacing:0">Grundlage B — Journal: <span style="color:var(--m-legend)">139 Sitzungen × 45 min</span> aus <span class="code">.pa/ACTIVITY.md</span></div>
+      </div>
+      <div class="min0" style="grid-column:span 4">
+        <div class="mic">ZWEITE GRUNDLAGE · 114,7 h — LIEGT INNERHALB DER SPANNE</div>
+        <div class="mic" style="margin-top:5px;text-transform:none;letter-spacing:0">Grundlage A — git: <span style="color:var(--m-legend)">39 Sitzungen aus 518 Commit-Zeitstempeln</span>, Abstand ≤ 90 min, + 30 min Vorlauf je Sitzung</div>
+      </div>
+      <div class="min0" style="grid-column:span 4">
+        <div class="rev rev-brass">OBERES ENDE · 219,0 h</div>
+        <div class="mic" style="margin-top:5px;text-transform:none;letter-spacing:0">Summe A + B. Es wird <span style="color:var(--m-legend)">kein</span> Mittelwert gebildet und keiner angezeigt.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr" style="margin-bottom:12px"></div>
+
+  <div class="row12">
+    <!-- Tokens: gemessen -->
+    <div class="min0" style="grid-column:span 7">
+      <div style="display:flex;gap:10px;align-items:baseline;padding-bottom:7px;flex-wrap:wrap">
+        <span class="leg">TOKEN HEUTE</span>
+        <svg width="14" height="14" class="brass" aria-hidden="true" style="align-self:center"><use href="#mkAct"/></svg>
+        <span class="mic">GEMESSEN · VOLLE INDEXMARKE</span>
+        <span class="read" style="margin-left:auto">430 000</span>
+      </div>
+      <div class="track" role="img" aria-label="340000 Token ein, 90000 aus, Summe 430000 von 500000">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="band band-span" style="left:0;width:86%"></span>
+        <span class="needle" data-settle style="--pos:68%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+        <span class="needle" data-settle style="--pos:86%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      </div>
+      <div class="ticklabels mic"><span>0</span><span style="left:68%;color:var(--m-legend)">340 000 EIN</span><span style="left:86%;color:var(--m-legend)">430 000 SUMME</span><span style="left:100%">500 000</span></div>
+      <div class="mic" style="margin-top:8px;text-transform:none;letter-spacing:0">
+        340 000 ein / 90 000 aus über <span style="color:var(--m-legend)">12 Anfragen</span>. Grundlage: OmniRoute-Ledger.
+        Gemeldete Ledger-Kosten <span class="read" style="display:inline;color:var(--m-legend)">$4.21</span> — abgeleitet aus genau dieser Messung, nicht separat geschätzt.
+      </div>
+    </div>
+
+    <!-- Heuristik: ungemessen -->
+    <div class="min0" style="grid-column:span 5">
+      <div style="display:flex;gap:10px;align-items:baseline;padding-bottom:7px;flex-wrap:wrap">
+        <span class="leg">RÜCKFALL-HEURISTIK</span>
+        <svg width="14" height="14" class="brass" aria-hidden="true" style="align-self:center"><use href="#mkNote"/></svg>
+        <span class="mic">GESCHÄTZT · HOHLE INDEXMARKE</span>
+      </div>
+      <div class="track" role="img" aria-label="Heuristik-Band 0,5-fach bis 2-fach um den Schätzwert">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="band" style="left:25%;width:75%;background:var(--hatch-none);box-shadow:inset 1px 0 0 var(--brass-dim),inset -1px 0 0 var(--brass-dim)"></span>
+        <span class="needle est" data-settle style="--pos:50%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      </div>
+      <div class="ticklabels mic"><span>0</span><span style="left:25%">0,5×</span><span style="left:50%;color:var(--m-brass)">1×</span><span style="left:100%">2×</span></div>
+      <div class="mic" style="margin-top:8px;text-transform:none;letter-spacing:0">
+        Regel: <span style="color:var(--m-legend)">geänderte Zeilen × 10 Token × 6 Lese-/Schreib-Verhältnis</span>, Band 0,5× bis 2×.
+        <span class="brass">Zurzeit nicht angewandt</span> — der Ledger ist größer und schlägt die Schätzung.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 8 · AGENTEN-TEAMS ═══════════════════════════════════════════ -->
+<section aria-labelledby="h-teams" style="padding-top:18px">
+  <div class="groove" style="margin-bottom:12px"></div>
+  <div class="head">
+    <h2 id="h-teams" class="leg leg-b" style="margin:0">AGENTEN-TEAMS</h2>
+    <span class="mic">BENANNTE ABTEILUNGEN MIT VORLAGE — WAS DER ANBIETER WIRKLICH KANN</span>
+  </div>
+
+  <div class="row12">
+    <div class="min0" style="grid-column:span 7">
+      <div class="mic" style="padding-bottom:6px">VORLAGE <span class="leg" style="font-size:13px;letter-spacing:.06em">REVIEW</span> — ZWEI BESETZUNGEN NEBENEINANDER</div>
+      <div class="matrix">
+        <div class="hd mic">EIGENSCHAFT</div>
+        <div class="hd"><span class="code" style="color:var(--m-legend)">claude</span> <span class="mic pass">UNTERSTÜTZT</span></div>
+        <div class="hd"><span class="code" style="color:var(--m-legend)">codex</span> <span class="mic fail">EINGESCHRÄNKT</span></div>
+
+        <div class="mic">MODELLE</div>
+        <div><span class="code">opus · sonnet</span></div>
+        <div><span class="code">gpt-5-codex</span></div>
+
+        <div class="mic">EFFORT</div>
+        <div><span class="code">high</span></div>
+        <div><span class="code">high</span></div>
+
+        <div class="mic">SKILLS</div>
+        <div><span class="code">review · verify</span><div class="mic pass" style="margin-top:3px">GEMESSEN VERFÜGBAR</div></div>
+        <div class="no"><span class="mic fail" style="font-size:11px">NICHT UNTERSTÜTZT</span><div class="mic" style="margin-top:3px;text-transform:none;letter-spacing:0">Die Vorlage verspricht hier nichts.</div></div>
+
+        <div class="mic">HOOKS</div>
+        <div><span class="code">pre-commit</span></div>
+        <div><span class="code">pre-commit</span></div>
+
+        <div class="mic">TOOLS</div>
+        <div><span class="code">read · grep · bash</span></div>
+        <div><span class="code">read · grep · bash</span></div>
+      </div>
+    </div>
+
+    <div class="min0" style="grid-column:span 5">
+      <div class="mic" style="padding-bottom:6px">SKILL-FÄHIGKEIT JE ANBIETER — DIE HARTE WAHRHEIT</div>
+      <div class="provrow">
+        <div><span class="code" style="color:var(--m-legend)">claude</span><div class="mic pass">JA</div><div class="st" style="background:var(--m-pass)"></div></div>
+        <div><span class="code" style="color:var(--m-legend)">kimi</span><div class="mic pass">JA</div><div class="st" style="background:var(--m-pass)"></div></div>
+        <div><span class="code" style="color:var(--m-legend)">codex</span><div class="mic fail">NEIN</div><div class="st" style="background:var(--hatch-no);background-color:var(--band-no)"></div></div>
+        <div><span class="code" style="color:var(--m-legend)">opencode</span><div class="mic fail">NEIN</div><div class="st" style="background:var(--hatch-no);background-color:var(--band-no)"></div></div>
+        <div><span class="code" style="color:var(--m-legend)">ollama</span><div class="mic fail">NEIN</div><div class="st" style="background:var(--hatch-no);background-color:var(--band-no)"></div></div>
+      </div>
+      <div class="mic" style="margin-top:8px;text-transform:none;letter-spacing:0">Skills laufen ausschließlich auf <span class="code" style="color:var(--m-legend)">claude</span> und <span class="code" style="color:var(--m-legend)">kimi</span>. Jede Vorlage, die sie anderswo anbietet, wäre eine Behauptung ohne Beleg.</div>
+      <div class="mic" style="margin-top:8px">WEITERE ABTEILUNGEN: DEBUG · CODING · TESTING · UI/UX · ORCHESTRATOR · ADVISOR</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 9 · DREI ZUSTÄNDE ═══════════════════════════════════════════ -->
+<section aria-labelledby="h-states" style="padding-top:18px">
+  <div class="groove" style="margin-bottom:12px"></div>
+  <div class="head">
+    <h2 id="h-states" class="leg leg-b" style="margin:0">DREI ZUSTÄNDE, DIE NICHT GLEICH AUSSEHEN DÜRFEN</h2>
+    <span class="mic">NOCH NICHT GEFRAGT · GEFRAGT UND LEER · MESSUNG FEHLGESCHLAGEN</span>
+  </div>
+
+  <div class="states">
+    <div class="statecell">
+      <div class="mic" style="padding-bottom:6px">NOCH NICHT GEFRAGT</div>
+      <div class="track" style="background:var(--m-panel);border-color:var(--rule)" role="img" aria-label="Noch keine Messung angefordert">
+        <span class="blankreading mic" style="background:var(--m-panel)">KEINE MESSUNG ANGEFORDERT</span>
+      </div>
+      <div class="ticklabels mic"><span>KEINE SKALA GEZEICHNET</span></div>
+      <p class="mic" style="margin:8px 0 0;text-transform:none;letter-spacing:0">Kein Zeiger, keine Teilung, kein Band. Das Gerät wurde nicht eingeschaltet.</p>
+    </div>
+
+    <div class="statecell">
+      <div class="mic" style="padding-bottom:6px">GEFRAGT UND LEER</div>
+      <div class="track" role="img" aria-label="Gemessen, Wert null">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="band band-ok" style="left:0;width:80%"></span>
+        <span class="needle" data-settle style="--pos:0%"><svg viewBox="0 0 11 32"><use href="#needleShape"/></svg></span>
+      </div>
+      <div class="ticklabels mic"><span style="color:var(--m-brass)">0 — ZEIGER AM ANSCHLAG</span><span style="left:100%">MAX</span></div>
+      <p class="mic" style="margin:8px 0 0;text-transform:none;letter-spacing:0">Skala vollständig, Zeiger vorhanden, Ausschlag null. Das ist ein Messwert.</p>
+    </div>
+
+    <div class="statecell">
+      <div class="mic" style="padding-bottom:6px">MESSUNG FEHLGESCHLAGEN</div>
+      <div class="track failed" role="img" aria-label="Messung fehlgeschlagen">
+        <svg class="ticks" viewBox="0 0 1000 22" preserveAspectRatio="none"><use href="#tickrow"/></svg>
+        <span class="blankreading mic" style="color:var(--m-fail)">ABGEBROCHEN</span>
+      </div>
+      <div class="ticklabels mic"><span class="fail">SKALA DA, ZEIGER FEHLT</span><span style="left:100%">MAX</span></div>
+      <p class="mic" style="margin:8px 0 0;text-transform:none;letter-spacing:0">Die Anfrage lief und scheiterte. Grund wird mitgeführt, nie zu null geglättet.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Kalibrierschild ═════════════════════════════════════════════ -->
+<footer class="foot" id="kalibrierung">
+  <div class="head" style="padding-bottom:10px">
+    <span class="leg leg-b">KALIBRIERUNG UND ZEICHENSCHLÜSSEL</span>
+    <span class="mic src">JEDE ANGABE OBEN LIEST SICH AUS <span class="code" style="color:var(--m-legend)">STAND.md</span>, <span class="code" style="color:var(--m-legend)">.pa/ACTIVITY.md</span> UND <span class="code" style="color:var(--m-legend)">git log</span></span>
+  </div>
+  <div class="keyline">
+    <div class="keyitem">
+      <svg width="16" height="26" aria-hidden="true" style="overflow:visible"><g class="needle" style="position:static"><path d="M2 2 H14 L8 10 Z" fill="var(--m-brass)"/><line x1="8" y1="10" x2="8" y2="26" stroke="var(--m-brass)" stroke-width="1"/></g></svg>
+      <div><span class="leg" style="font-size:11px">VOLLE MARKE</span><div class="mic" style="text-transform:none;letter-spacing:0;margin-top:2px">Gemessen. Ein Gerät oder ein Ledger hat den Wert geliefert.</div></div>
+    </div>
+    <div class="keyitem">
+      <svg width="16" height="26" aria-hidden="true" style="overflow:visible"><path d="M2 2 H14 L8 10 Z" fill="none" stroke="var(--m-brass)" stroke-width="1"/><line x1="8" y1="10" x2="8" y2="26" stroke="var(--m-brass)" stroke-width="1" stroke-dasharray="2 2"/></svg>
+      <div><span class="leg" style="font-size:11px">HOHLE MARKE</span><div class="mic" style="text-transform:none;letter-spacing:0;margin-top:2px">Geschätzt. Eine Heuristik mit angeschriebenem Band, nie eine Messung.</div></div>
+    </div>
+    <div class="keyitem">
+      <svg width="16" height="26" aria-hidden="true"><rect x="1" y="6" width="14" height="14" fill="var(--band-no)" stroke="var(--edge-no)" stroke-width="1"/></svg>
+      <div><span class="leg" style="font-size:11px">SCHRAFFUR</span><div class="mic" style="text-transform:none;letter-spacing:0;margin-top:2px">Außer Toleranz oder ausgeschlagene Bahn. Trägt auch in Graustufen.</div></div>
+    </div>
+    <div class="keyitem">
+      <svg width="16" height="26" aria-hidden="true"><rect x="1" y="6" width="14" height="14" fill="none" stroke="var(--rule-hi)" stroke-width="1"/></svg>
+      <div><span class="leg" style="font-size:11px">LEERE BAHN</span><div class="mic" style="text-transform:none;letter-spacing:0;margin-top:2px">Kein Zeiger. Nicht gemessen — ausdrücklich nicht „null“.</div></div>
+    </div>
+  </div>
+  <div class="hr" style="margin:14px 0 10px"></div>
+  <div class="mic" style="text-transform:none;letter-spacing:0;max-width:96ch">
+    Gesperrte Palette, sechs Mitglieder: Platte, Elfenbein, Nut, Messing, In-Toleranz, Außer-Toleranz. Jeder Zwischenton ist eine geordnete Mischung genau zweier Mitglieder — kein Grau ohne Herkunft.
+    Zwei Schriftgrade, 13 px und 11 px; Rang entsteht aus Gewicht, Versalien, Umkehrung und Linie. Eine einzige Bewegung: die Zeiger legen sich beim Laden einmal ein. Zahlen, Zeiten und Logzeilen bewegen sich nie.
+  </div>
+</footer>
+
+</main>
+
+<script>
+/* ══ Die eine gestaltete Bewegung ═══════════════════════════════════
+   Ein gedämpftes Messgerät: der Zeiger läuft einmal vom Nullanschlag
+   auf seinen Wert und legt sich exponentiell ein. Ohne Skript und bei
+   prefers-reduced-motion steht bereits alles auf dem Endwert — nichts
+   ist je unsichtbar. Zahlen werden nicht angefasst. */
+(function () {
+  "use strict";
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var marks = document.querySelectorAll(".needle[data-settle]");
+    if (!marks.length) return;
+    var plan = [];
+    for (var i = 0; i < marks.length; i++) {
+      var el = marks[i];
+      var track = el.parentElement;
+      if (!track) continue;
+      var t = track.getBoundingClientRect();
+      var s = el.getBoundingClientRect();
+      if (!t.width || !s.width) continue;
+      var dx = -(s.left + s.width / 2 - t.left); // zurück an den Nullanschlag
+      if (Math.abs(dx) < 1) continue;
+      plan.push({ el: el, dx: dx });
+    }
+    if (!plan.length) return;
+    for (var j = 0; j < plan.length; j++) {
+      plan[j].el.style.transition = "none";
+      plan[j].el.style.transform = "translateX(-50%) translateX(" + plan[j].dx + "px)";
+    }
+    void document.body.offsetWidth; // Umbruch erzwingen
+    requestAnimationFrame(function () {
+      for (var k = 0; k < plan.length; k++) {
+        var m = plan[k];
+        var delay = Math.min(k, 9) * 26;
+        m.el.style.transition = "transform 820ms cubic-bezier(.16,1,.3,1) " + delay + "ms";
+        m.el.style.transform = "";
+        m.el.addEventListener("transitionend", function () {
+          this.style.transition = "";
+        }, { once: true });
+      }
+    });
+  } catch (e) {
+    var all = document.querySelectorAll(".needle[data-settle]");
+    for (var n = 0; n < all.length; n++) { all[n].style.transition = ""; all[n].style.transform = ""; }
+  }
+})();
+</script>
+</body>
+</html>

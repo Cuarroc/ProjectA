@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "claude", "name": "Claude Code", "command": "claude", "args": [],
+      "caps": {
+        "systemPrompt": { "mode": "arg", "flag": "--append-system-prompt" },
+        "skills": { "mode": "convention" },
+        "lifecycle": { "mode": "settingsHooks", "flag": "--settings" },
+        "dialect": {
+          "permission": ["do you want to make this edit", "do you want to create", "❯ 1. yes", "1. yes, and don", "allow this tool"],
+          "quota": ["credit balance", "usage limit", "weekly limit"],
+          "contextLabels": []
+        },
+        "readinessMarker": "❯ Try \""
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": ["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] }
+    },
+    {
+      "id": "kimi", "name": "Kimi CLI", "command": "kimi", "args": ["--auto"],
+      "caps": {
+        "systemPrompt": { "mode": "file", "flag": "--agent-file", "ext": "md" },
+        "skills": { "mode": "flag", "flag": "--skills-dir" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": {
+          "permission": ["ready to build with this plan?", "write this file?", "approve once", "approve for this session"],
+          "quota": [], "contextLabels": []
+        },
+        "readinessMarker": null
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": ["USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA"] }
+    },
+    {
+      "id": "codex", "name": "Codex CLI", "command": "codex", "args": [],
+      "caps": {
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask Codex to do anything"
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+    },
+    {
+      "id": "opencode", "name": "OpenCode", "command": "opencode", "args": [],
+      "caps": {
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+    },
+    {
+      "id": "opencode-glm-53-flash", "name": "OpenCode GLM 5.3 Flash", "command": "opencode", "args": ["-m", "opencode-go/glm-5.3-flash"],
+      "caps": {
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+    },
+    {
+      "id": "ollama", "name": "Ollama", "command": "ollama", "args": ["run", "llama3.2"],
+      "caps": {
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": null
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+    },
+    {
+      "id": "ollama-coder", "name": "Ollama Cloud Coder (deepseek-v4-flash)", "command": "ollama", "args": ["run", "deepseek-v4-flash:cloud"],
+      "caps": {
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": null
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+    }
+  ]
+}

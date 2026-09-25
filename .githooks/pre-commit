@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit — die schnelle Bahn vor jedem Commit.
+#
+# Der Hook fuehrt keine eigene Gate-Liste mehr. Bis zum 09.09. tat er es, und
+# sie wich von allen anderen ab: hier `cargo check`, in pre-push `cargo test`,
+# in CI `cargo nextest run --profile ci`, in AGENTS.md wieder etwas anderes.
+# Die Liste steht jetzt einmal in scripts/ci/gates.sh; was hier laeuft, ist
+# genau die Bahn `precommit` daraus.
+#
+# Nachsehen, was das ist:  bash scripts/ci/gates.sh --list precommit
+# Aktivierung: git config core.hooksPath .githooks (scripts/install-hooks.sh)
+set -e
+
+# ROOT ist der Arbeitsbaum, der committet/pusht - nicht der Ort dieser Datei.
+# core.hooksPath kann absolut auf die Hooks des Hauptcheckouts zeigen; dann
+# laege "$(dirname "$0")/.." dort, und jeder Worktree pruefte den falschen
+# Baum. git startet Hooks mit cwd = Toplevel des Arbeitsbaums. Kein Rueckfall:
+# scheitert rev-parse, bricht der Hook ab (Selbsttest scripts/test-hook-root.sh).
+ROOT="$(git rev-parse --show-toplevel)"
+exec bash "$ROOT/scripts/ci/gates.sh" lane precommit

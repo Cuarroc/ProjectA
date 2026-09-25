@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Merge-Treiber fuer die HQ-Momentaufnahme (docs/dev-hq/data.js|.json).
+#
+# Warum es diesen Treiber gibt: die beiden Dateien sind Erzeugnisse von
+# scripts/dev-hq.mjs, werden aber eingecheckt, weil die statischen Seiten sie
+# per <script src="./data.js"> laden. Jeder Branch, auf dem jemand `npm run hq`
+# laufen liess, traegt deshalb eine andere Momentaufnahme -- und kollidiert mit
+# jedem anderen. Am 21.09.2026 war das in sieben von zehn offenen PRs der
+# einzige Konflikt.
+#
+# Ein Erzeugnis wird nicht ausgehandelt. Der Treiber behaelt eine Seite, ohne
+# einen Konflikt zu melden; richtig wird die Datei danach wieder durch
+# Neuerzeugung -- das erledigt .githooks/post-merge.
+#
+# Warum hier NICHT regeneriert wird: ein Merge-Treiber laeuft, waehrend der
+# Baum noch mitten im Zusammenfuehren steht. STAND.md, aus dem die Hashes in
+# der Momentaufnahme stammen, kann in diesem Moment noch die unvereinigte
+# Fassung sein. Eine hier erzeugte Datei waere also nicht "frisch", sondern
+# falsch mit Zeitstempel.
+#
+# Aufruf: merge-hqdata %O %A %B %P   (Ergebnis gehoert nach %A)
+set -euo pipefail
+
+current="${2:-}"
+pathname="${4:-die HQ-Momentaufnahme}"
+
+if [ -z "$current" ] || [ ! -f "$current" ]; then
+  # Ohne unsere Seite kann der Treiber nichts behalten - dann soll git den
+  # Konflikt ganz normal melden, statt dass hier etwas geraten wird.
+  echo "merge-hqdata: keine lesbare Fassung fuer $pathname - Konflikt bleibt" >&2
+  exit 1
+fi
+
+# %A traegt bereits unsere Seite. Nichts zu tun ausser: nicht kollidieren.
+echo "merge-hqdata: $pathname ist ein Erzeugnis - eine Seite behalten, danach neu erzeugen (npm run hq)" >&2
+exit 0

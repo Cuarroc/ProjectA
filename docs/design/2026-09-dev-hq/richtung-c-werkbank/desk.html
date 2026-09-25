@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProjectA · dev-hq · live desk</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIE WERKBANK — ProjectA dev-hq operator desk
+   ───────────────────────────────────────────────────────────────────────────
+   LOCKED PALETTE — sixteen named members. Nothing in this document uses a
+   colour outside this list. Every intermediate tone is an ordered mix of
+   exactly two named members via color-mix(in oklab, A n%, B). No alpha,
+   no arbitrary greys, no blends of three.
+
+     01 ink    #0A0C0E  page ground
+     02 pitch  #12161A  pane ground
+     03 slate  #1B2127  raised ground / ledger
+     04 iron   #2E363D  structural rule, rails
+     05 ash    #4A545B  hairline rule
+     06 smoke  #7E8A90  dim text            5.2:1 on pitch
+     07 bone   #B7C0C5  secondary text      9.9:1 on pitch
+     08 paper  #E7ECEE  primary text       14.8:1 on pitch
+     09 alarm  #FF5B4D  skipped · needs human · failed
+     10 ember  #FFA23A  watch · externally blocked · unsupported
+     11 mint   #57C99A  passed · ready · startable · FACT
+     12 cyan   #3FBFD4  source, path, focus
+     13 iris   #8C8CF0  CLAIM
+     14 gold   #D9C27A  human decision, open question
+     15 clay   #C97B5E  locked behind another spec
+     16 chalk  #FFFFFF  reversal maximum
+
+   ONE TYPE SIZE — 13px / 20px, everywhere, no exception. Rank is carried by
+   weight, case, reversal, rule weight and background step. Never by scale.
+
+   FONT — Recursive (variable, wght axis), self-hosted, referenced by relative
+   path ../../../dev-hq/fonts/recursive-latin-wght.woff2. No network requests.
+   Code, paths, identifiers and measurements are set in the system mono stack.
+
+   MOTION — exactly one authored moment: the four Nahtstellen rails of the lane
+   graph draw downward, column by column. Nothing else on this page moves.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face{
+  font-family:"Recursive";
+  src:url("../../../dev-hq/fonts/recursive-latin-wght.woff2") format("woff2");
+  font-weight:300 1000;
+  font-style:normal;
+  font-display:swap;
+}
+
+:root{
+  --ink:#0A0C0E;  --pitch:#12161A; --slate:#1B2127; --iron:#2E363D;
+  --ash:#4A545B;  --smoke:#7E8A90; --bone:#B7C0C5;  --paper:#E7ECEE;
+  --alarm:#FF5B4D;--ember:#FFA23A; --mint:#57C99A;  --cyan:#3FBFD4;
+  --iris:#8C8CF0; --gold:#D9C27A;  --clay:#C97B5E;  --chalk:#FFFFFF;
+
+  /* ordered two-member mixes — the only permitted intermediate tones */
+  --row-alt:   color-mix(in oklab, var(--pitch) 90%, var(--slate));
+  --row-hover: color-mix(in oklab, var(--pitch) 72%, var(--iron));
+  --track:     color-mix(in oklab, var(--slate) 55%, var(--iron));
+  --dead:      color-mix(in oklab, var(--smoke) 58%, var(--pitch));
+  --thumb:     color-mix(in oklab, var(--iron) 62%, var(--ash));
+  --thumb-hi:  color-mix(in oklab, var(--ash) 70%, var(--smoke));
+
+  --cell:16px;  --row:20px;  --u:8px;
+  --mono:ui-monospace,"Cascadia Mono","Cascadia Code","SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  --face:"Recursive",ui-sans-serif,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;min-width:0}
+
+html{background:var(--ink);color-scheme:dark}
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:var(--face);
+  font-size:13px;
+  line-height:20px;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1,"zero" 1;
+  -webkit-font-smoothing:antialiased;
+  padding:12px 16px 40px;
+}
+@media (max-width:1100px){ body{padding:10px 12px 32px} }
+
+::selection{background:var(--cyan);color:var(--ink)}
+:root{caret-color:var(--cyan)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--ink);border-left:1px solid var(--iron)}
+::-webkit-scrollbar-thumb{background:var(--thumb);border:2px solid var(--ink)}
+::-webkit-scrollbar-thumb:hover{background:var(--thumb-hi)}
+::-webkit-scrollbar-corner{background:var(--ink)}
+*{scrollbar-width:thin;scrollbar-color:var(--thumb) var(--ink)}
+
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+section:focus-visible{outline-offset:-2px}
+
+.desk{max-width:1248px;margin:0 auto}
+
+/* ── shared cell grammar ────────────────────────────────────────────────── */
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.lbl{
+  font-family:var(--mono);font-weight:700;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--smoke);
+}
+.dim{color:var(--smoke)}
+.sec{color:var(--bone)}
+.brk{overflow-wrap:anywhere}
+
+/* state mark: a fixed cell that is always present, filled or not */
+.m{width:12px;height:12px;flex:0 0 12px;display:block}
+.mc{width:16px;height:20px;display:flex;align-items:center;justify-content:flex-start}
+.m-fact{color:var(--mint)} .m-claim{color:var(--iris)}
+.m-skip{color:var(--alarm)} .m-fail{color:var(--alarm)}
+.m-block{color:var(--ember)} .m-ask{color:var(--gold)}
+.m-empty{color:var(--smoke)} .m-load{color:var(--cyan)}
+.m-lock{color:var(--clay)} .m-hold{color:var(--paper)}
+
+/* key notation — part of the typographic system, never an ornament */
+.k{
+  font-family:var(--mono);font-weight:700;font-size:13px;line-height:16px;
+  display:inline-block;min-width:18px;height:18px;padding:0 4px;
+  text-align:center;color:var(--bone);
+  border:1px solid var(--iron);background:var(--ink);
+}
+.k-on{color:var(--cyan);border-color:var(--cyan)}
+
+/* reversal chip — the loudest mark available at one type size */
+.chip{
+  font-family:var(--mono);font-weight:700;text-transform:uppercase;
+  letter-spacing:.08em;display:inline-block;padding:0 6px;line-height:18px;
+  color:var(--ink);background:var(--smoke);white-space:nowrap;
+}
+.chip.skip{background:var(--alarm)} .chip.block{background:var(--ember)}
+.chip.ok{background:var(--mint)} .chip.hold{background:var(--paper)}
+.chip.lock{background:var(--clay)} .chip.ask{background:var(--gold)}
+.chip.claim{background:var(--ink);color:var(--iris);border:1px solid var(--iris);line-height:16px}
+.chip.fact{background:var(--ink);color:var(--mint);border:1px solid var(--mint);line-height:16px}
+
+/* source citation — every claim carries its path */
+.src{
+  font-family:var(--mono);color:var(--cyan);text-decoration:none;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+  border-bottom:1px solid var(--iron);
+}
+.src:hover{border-bottom-color:var(--cyan);background:var(--row-hover)}
+.src .m{color:var(--cyan)}
+
+/* pane */
+.pane{background:var(--pitch);border:1px solid var(--iron);display:flex;flex-direction:column}
+.ph{
+  display:flex;align-items:center;gap:8px;height:24px;padding:0 10px;
+  background:var(--slate);border-bottom:1px solid var(--iron);
+}
+.ph h2{font:inherit;font-family:var(--mono);font-weight:700;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--paper)}
+.ph .meta{margin-left:auto;font-family:var(--mono);color:var(--smoke);white-space:nowrap}
+.pb{padding:8px 10px 10px}
+
+.rule{height:1px;background:var(--iron);border:0}
+.rule-hair{height:1px;background:var(--ash);border:0}
+
+/* ── top bar ────────────────────────────────────────────────────────────── */
+.bar{
+  display:flex;align-items:center;gap:0;height:28px;
+  border:1px solid var(--iron);border-bottom:0;background:var(--slate);
+  font-family:var(--mono);
+}
+.bar > span,.bar > button{
+  padding:0 10px;line-height:26px;border-right:1px solid var(--iron);white-space:nowrap;
+}
+.bar .brand{font-weight:700;color:var(--paper);letter-spacing:.09em}
+.bar .push{margin-left:auto;border-right:0;border-left:1px solid var(--iron);color:var(--bone)}
+.bar button{
+  font:inherit;font-family:var(--mono);background:var(--slate);color:var(--bone);
+  border:0;border-right:1px solid var(--iron);cursor:pointer;display:flex;align-items:center;gap:6px;
+}
+.bar button:hover{background:var(--row-hover);color:var(--paper)}
+
+.keys{
+  display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--iron);border-bottom:0;
+  background:var(--pitch);
+}
+.keys span{padding:4px 10px;border-right:1px solid var(--iron);display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);color:var(--bone)}
+.keys[hidden]{display:none}
+
+/* ── release band — the lead ────────────────────────────────────────────── */
+.release{border:1px solid var(--iron);border-top:3px solid var(--alarm);background:var(--slate)}
+.verdict{
+  background:var(--alarm);color:var(--ink);
+  font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  display:flex;align-items:center;gap:12px;padding:0 10px;line-height:28px;
+}
+.verdict .r{margin-left:auto;font-weight:700}
+.relfacts{
+  display:flex;flex-wrap:wrap;align-items:center;gap:0;
+  border-bottom:1px solid var(--iron);
+}
+.relfacts > div{padding:3px 10px;border-right:1px solid var(--iron);font-family:var(--mono);white-space:nowrap}
+.relfacts .v{color:var(--paper);font-weight:700}
+.relfacts .n{color:var(--smoke)}
+.relfacts .last{border-right:0;margin-left:auto;border-left:1px solid var(--iron)}
+
+.gate{
+  display:grid;
+  grid-template-columns:16px 92px 128px minmax(0,1fr) auto;
+  column-gap:10px;align-items:start;
+  padding:7px 10px;border-bottom:1px solid var(--iron);
+}
+.gate:last-child{border-bottom:0}
+.gate:hover{background:var(--row-hover)}
+.gate .nm{font-family:var(--mono);font-weight:700;color:var(--paper);text-transform:uppercase;letter-spacing:.06em}
+.gate .st{color:var(--bone)}
+.gate .st b{color:var(--paper);font-weight:700}
+.gate .st em{font-style:normal;color:var(--alarm);font-weight:700}
+.gate .sw{padding-top:1px}
+
+/* ── grip ───────────────────────────────────────────────────────────────── */
+.grip{
+  display:grid;grid-template-columns:92px minmax(0,1fr) auto;column-gap:10px;
+  border:1px solid var(--iron);border-top:0;background:var(--pitch);padding:8px 10px;align-items:start;
+}
+.grip q{quotes:none;color:var(--paper);font-weight:500}
+.grip code{font-family:var(--mono);color:var(--bone)}
+
+/* ── pane rows ──────────────────────────────────────────────────────────── */
+.row3{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,4fr) minmax(0,5fr);
+  gap:0;margin-top:12px}
+.row3 > .pane + .pane{border-left:0}
+.row2{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:0;margin-top:12px}
+.row2 > .pane + .pane{border-left:0}
+
+/* signals */
+.grp{margin-top:6px}
+.grp:first-child{margin-top:0}
+.grp > .gl{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.grp > .gl::after{content:"";flex:1;height:1px;background:var(--iron)}
+.sig{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:8px;
+  padding:4px 0;border-bottom:1px solid var(--ash);align-items:start}
+.sig:last-child{border-bottom:0}
+.sig:hover{background:var(--row-hover)}
+.sig .t{color:var(--paper);font-weight:600}
+.sig .d{color:var(--bone)}
+.sig .o{color:var(--smoke);font-family:var(--mono)}
+
+/* meter — 1px track, no rings, no radius */
+.meter{display:block;height:6px;background:var(--track);border:1px solid var(--iron);margin-top:4px}
+.meter i{display:block;height:100%;background:var(--ember)}
+.meter.ctx i{background:var(--cyan)}
+
+/* fleet */
+.wk{border-bottom:1px solid var(--iron);padding:6px 0}
+.wk:last-of-type{border-bottom:0}
+.wk:hover{background:var(--row-hover)}
+.wkh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wkh .id{font-family:var(--mono);font-weight:700;color:var(--paper)}
+.wkh .tk{color:var(--paper);font-weight:600}
+.kv{display:grid;grid-template-columns:76px minmax(0,1fr);column-gap:8px;margin-top:2px}
+.kv dt{font-family:var(--mono);color:var(--smoke);text-transform:uppercase;letter-spacing:.06em;font-size:13px}
+.kv dd{font-family:var(--mono);color:var(--bone)}
+.kv dd b{color:var(--paper);font-weight:700}
+
+/* ── the lane graph — signature ─────────────────────────────────────────── */
+.graph{position:relative}
+.wipes{position:absolute;left:0;top:0;width:calc(var(--cell)*4);height:100%;
+  display:grid;grid-template-columns:repeat(4,var(--cell));z-index:3;pointer-events:none}
+.wipe{background:var(--pitch);transform:scaleY(0);transform-origin:bottom}
+@media (prefers-reduced-motion:no-preference){
+  .wipe{animation:railfill 340ms cubic-bezier(.16,1,.3,1) both;
+    animation-delay:calc(var(--i) * 70ms)}
+}
+@keyframes railfill{from{transform:scaleY(1)} to{transform:scaleY(0)}}
+
+.grow{display:grid;grid-template-columns:calc(var(--cell)*4) minmax(0,1fr);
+  column-gap:10px;align-items:stretch}
+.grow:hover .gb{background:var(--row-hover)}
+.gut{display:grid;grid-template-columns:repeat(4,var(--cell));position:relative}
+.rc{position:relative}
+.rc::before{content:"";position:absolute;left:calc(50% - .5px);top:0;bottom:0;width:1px;background:var(--iron)}
+.rc.lk::before{background:var(--clay)}
+.rc.lkfrom::before{background:linear-gradient(to bottom,var(--iron) 9px,var(--clay) 9px)}
+.rc .m{position:absolute;left:calc(50% - 6px);top:4px}
+.gb{padding:4px 0 5px;border-bottom:1px solid var(--ash)}
+.grow:last-of-type .gb{border-bottom:0}
+.gb .l1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gb .id{font-family:var(--mono);font-weight:700;color:var(--paper);overflow-wrap:anywhere}
+.gb .l2{display:block;color:var(--bone);margin-top:1px;overflow-wrap:anywhere}
+.gb .l3{display:block;font-family:var(--mono);color:var(--smoke);margin-top:1px;overflow-wrap:anywhere}
+.lanehdr{display:grid;grid-template-columns:calc(var(--cell)*4) minmax(0,1fr);column-gap:10px;
+  align-items:center;padding-bottom:3px;border-bottom:1px solid var(--iron);margin-bottom:2px}
+.railid{display:grid;grid-template-columns:repeat(4,var(--cell))}
+.railid b{font-family:var(--mono);font-weight:700;color:var(--bone);
+  width:13px;height:17px;line-height:15px;text-align:center;border:1px solid var(--iron);
+  background:var(--ink);justify-self:center;font-size:13px}
+.lanelegend{display:flex;flex-wrap:wrap;gap:0 12px;font-family:var(--mono);color:var(--smoke);
+  border-top:1px solid var(--iron);margin-top:6px;padding-top:5px}
+.lanelegend b{color:var(--bone);font-weight:700}
+.lanebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;
+  border-top:1px solid var(--iron);padding-top:6px}
+
+button.act{
+  font:inherit;font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  background:var(--ink);color:var(--bone);border:1px solid var(--iron);
+  padding:0 8px;line-height:18px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+button.act:hover{background:var(--row-hover);color:var(--paper);border-color:var(--ash)}
+button.act:active{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+button.act[disabled]{color:var(--dead);border-style:dashed;border-color:var(--ash);
+  background:var(--pitch);cursor:not-allowed}
+button.act[disabled]:hover{background:var(--pitch);color:var(--dead)}
+
+/* ── evidence ───────────────────────────────────────────────────────────── */
+.find{display:grid;grid-template-columns:16px 104px 58px minmax(0,1fr) auto;column-gap:10px;
+  align-items:start;padding:5px 0}
+.find:hover{background:var(--row-hover)}
+.find.fact{border-bottom:1px solid var(--ash)}
+.find.claim{border-bottom:1px dashed var(--ash)}
+.find:last-of-type{border-bottom:0}
+.find .id{font-family:var(--mono);font-weight:700;color:var(--paper)}
+.find.claim .id{color:var(--bone);font-weight:500}
+.find .tx{color:var(--paper)}
+.find.claim .tx{color:var(--bone)}
+.evnote{display:flex;gap:8px;align-items:center;border-top:1px solid var(--iron);margin-top:6px;padding-top:5px;
+  font-family:var(--mono);color:var(--smoke);flex-wrap:wrap}
+
+/* ── cost ───────────────────────────────────────────────────────────────── */
+.fig{padding:6px 0;border-bottom:1px solid var(--ash)}
+.fig:last-of-type{border-bottom:0}
+.fig:hover{background:var(--row-hover)}
+.fig .v{font-family:var(--mono);font-weight:700;color:var(--paper);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fig .b{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:8px;margin-top:2px}
+.fig .b .bt{font-family:var(--mono);color:var(--smoke)}
+.fig .b .bt b{color:var(--bone);font-weight:700}
+.costnote{border-top:1px solid var(--iron);margin-top:6px;padding-top:5px;
+  font-family:var(--mono);color:var(--bone);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ── teams ──────────────────────────────────────────────────────────────── */
+.depts{display:flex;flex-wrap:wrap;border:1px solid var(--iron);margin-bottom:8px}
+.depts span{padding:1px 10px;border-right:1px solid var(--iron);font-family:var(--mono);
+  text-transform:uppercase;letter-spacing:.08em;color:var(--bone);font-weight:700}
+.depts span:last-child{border-right:0}
+.tmpls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;border:1px solid var(--iron)}
+.tmpl{padding:7px 10px}
+.tmpl + .tmpl{border-left:1px solid var(--iron)}
+.tmplh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--iron);margin-bottom:4px}
+.tmplh .nm{font-family:var(--mono);font-weight:700;color:var(--paper);text-transform:uppercase;letter-spacing:.08em}
+.cap{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--iron);margin-top:8px}
+.cap > div{padding:4px 10px;border-right:1px solid var(--iron);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cap > div:last-child{border-right:0}
+.cap .pv{font-family:var(--mono);font-weight:700;color:var(--paper)}
+.cap .sv{font-family:var(--mono);color:var(--bone)}
+.caphdr{font-family:var(--mono);color:var(--smoke);padding:4px 0 0}
+
+/* ── state vocabulary ───────────────────────────────────────────────────── */
+.vocab{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--iron)}
+.vv{padding:6px 10px;border-right:1px solid var(--iron);border-bottom:1px solid var(--iron)}
+.vv:nth-child(4n){border-right:0}
+.vv:nth-child(n+5){border-bottom:0}
+.vv:hover{background:var(--row-hover)}
+.vvh{display:flex;align-items:center;gap:8px}
+.vvh .n{font-family:var(--mono);font-weight:700;color:var(--paper);text-transform:uppercase;letter-spacing:.07em}
+.vv .d{color:var(--bone);margin-top:1px}
+.vv .i{font-family:var(--mono);color:var(--smoke);margin-top:1px;overflow-wrap:anywhere}
+
+/* ── colophon ───────────────────────────────────────────────────────────── */
+.colo{border:1px solid var(--iron);margin-top:12px;background:var(--pitch)}
+.swatches{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));border-bottom:1px solid var(--iron)}
+.sw{padding:4px 8px;border-right:1px solid var(--iron);font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.sw:nth-child(8n){border-right:0}
+.sw:nth-child(n+9){border-top:1px solid var(--iron)}
+.sw i{width:12px;height:12px;flex:0 0 12px;border:1px solid var(--iron);display:block}
+.sw b{color:var(--bone);font-weight:700}
+.sw u{color:var(--smoke);text-decoration:none}
+.colotext{padding:6px 10px;color:var(--smoke);font-family:var(--mono);display:grid;gap:2px}
+.colotext b{color:var(--bone);font-weight:700}
+
+@media (max-width:1100px){
+  .swatches{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .sw:nth-child(8n){border-right:1px solid var(--iron)}
+  .sw:nth-child(4n){border-right:0}
+  .sw:nth-child(n+5){border-top:1px solid var(--iron)}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="m-fact" viewBox="0 0 12 12"><rect x="3" y="3" width="6" height="6" fill="currentColor"/></symbol>
+    <symbol id="m-claim" viewBox="0 0 12 12"><rect x="3.25" y="3.25" width="5.5" height="5.5" fill="none" stroke="currentColor" stroke-width="1.25"/></symbol>
+    <symbol id="m-skip" viewBox="0 0 12 12"><path d="M2.5 2.5 9.5 9.5M9.5 2.5 2.5 9.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square"/></symbol>
+    <symbol id="m-fail" viewBox="0 0 12 12"><rect x="1.25" y="1.25" width="9.5" height="9.5" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M4 4 8 8M8 4 4 8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square"/></symbol>
+    <symbol id="m-block" viewBox="0 0 12 12"><rect x="1.25" y="1.25" width="9.5" height="9.5" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M3.5 8.5 8.5 3.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square"/></symbol>
+    <symbol id="m-ask" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.25"/></symbol>
+    <symbol id="m-empty" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M2.6 6h6.8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square"/></symbol>
+    <symbol id="m-load" viewBox="0 0 12 12"><rect x="1.25" y="1.25" width="9.5" height="9.5" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M3.6 6h.1M6 6h.1M8.3 6h.1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="m-lock" viewBox="0 0 12 12"><rect x="3.25" y="3.25" width="5.5" height="5.5" fill="none" stroke="currentColor" stroke-width="1.25"/><path d="M6 3.25V.8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square"/></symbol>
+    <symbol id="m-src" viewBox="0 0 12 12"><path d="M3 9 9 3M5.4 3H9v3.6" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square" stroke-linejoin="miter"/></symbol>
+    <symbol id="m-ok" viewBox="0 0 12 12"><path d="M2.4 6.3 4.9 8.8 9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></symbol>
+    <symbol id="m-key" viewBox="0 0 12 12"><rect x="1.25" y="2.75" width="9.5" height="6.5" fill="none" stroke="currentColor" stroke-width="1.25"/></symbol>
+  </defs>
+</svg>
+
+<div class="desk">
+
+  <!-- ── top bar ──────────────────────────────────────────────────────── -->
+  <div class="bar" role="banner">
+    <span class="brand">PROJECTA</span>
+    <span class="dim">dev-hq</span>
+    <span class="dim">127.0.0.1</span>
+    <span class="sec">local only</span>
+    <button type="button" id="keytoggle" aria-expanded="false" aria-controls="keyrow">
+      <svg class="m" aria-hidden="true"><use href="#m-key"/></svg>keys <span class="k">?</span>
+    </button>
+    <span class="push">source of record <a class="src" href="#" aria-label="STAND.md, source of record">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a></span>
+  </div>
+
+  <div class="keys" id="keyrow" hidden>
+    <span><span class="k">R</span> release</span>
+    <span><span class="k">G</span> grip</span>
+    <span><span class="k">S</span> signals</span>
+    <span><span class="k">F</span> fleet</span>
+    <span><span class="k">L</span> lanes</span>
+    <span><span class="k">E</span> evidence</span>
+    <span><span class="k">C</span> cost</span>
+    <span><span class="k">T</span> teams</span>
+    <span><span class="k">V</span> state vocabulary</span>
+    <span><span class="k">N</span> start next startable spec</span>
+  </div>
+
+  <!-- ── 1. the state of the release ──────────────────────────────────── -->
+  <section class="release" id="release" tabindex="-1" aria-labelledby="release-verdict">
+    <p class="verdict" id="release-verdict">
+      Two gates were deliberately skipped &mdash; not passed
+      <span class="r">v1.3.0</span>
+    </p>
+
+    <div class="relfacts">
+      <div><span class="n">release</span> <span class="v">v1.3.0</span></div>
+      <div><span class="n">tagged and pushed</span> <span class="v">2026-09-09</span></div>
+      <div><span class="n">platform evidence</span> <span class="v">Windows only</span></div>
+      <div><span class="n">gates skipped</span> <span class="v">2</span> <span class="n">of 3 checked</span></div>
+      <div class="last"><span class="n">all rows below cite</span> <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a></div>
+    </div>
+
+    <div class="gate">
+      <span class="mc sw m-skip"><svg class="m" aria-hidden="true"><use href="#m-skip"/></svg></span>
+      <span class="chip skip">skipped</span>
+      <span class="nm">installer gate</span>
+      <span class="st">The candidate&rsquo;s NSIS was never installed over a copy of the live 1.2.4 database.
+        <b>Migration 3 has never run on real data.</b> <em>Largest residual risk of the release.</em></span>
+      <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+    </div>
+
+    <div class="gate">
+      <span class="mc sw m-skip"><svg class="m" aria-hidden="true"><use href="#m-skip"/></svg></span>
+      <span class="chip skip">skipped</span>
+      <span class="nm">unix evidence</span>
+      <span class="st">The <code class="mono">#[cfg(unix)]</code> tests did not run &mdash; Linux server deleted, Actions quota exhausted.
+        Policy requires both platforms; <b>this release has Windows only.</b></span>
+      <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+    </div>
+
+    <div class="gate">
+      <span class="mc sw m-block"><svg class="m" aria-hidden="true"><use href="#m-block"/></svg></span>
+      <span class="chip block">blocked</span>
+      <span class="nm">signed updater</span>
+      <span class="st">Externally blocked &mdash; private key. <b>v1.2.4 installations will not self-update.</b></span>
+      <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+    </div>
+  </section>
+
+  <!-- ── 2. the grip ──────────────────────────────────────────────────── -->
+  <section class="grip" id="grip" tabindex="-1" aria-labelledby="grip-l">
+    <span class="lbl" id="grip-l">the grip <span class="k">G</span></span>
+    <q>Signed-Updater-Relaunch sobald der Private Key steht, kein Cutover
+      <code>cheap</code>&rarr;Produktmodus (Spawn bleibt <code>auto/cheap</code>).</q>
+    <a class="src" href="#">STAND.md#N&auml;chster&nbsp;Griff<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+  </section>
+
+  <!-- ── panes: signals · fleet · lanes ───────────────────────────────── -->
+  <div class="row3">
+
+    <!-- 3. signals -->
+    <section class="pane" id="signals" tabindex="-1" aria-labelledby="signals-h">
+      <div class="ph"><h2 id="signals-h">signals</h2><span class="k">S</span>
+        <span class="meta">act &middot; watch &middot; note</span></div>
+      <div class="pb">
+
+        <div class="grp">
+          <div class="gl"><span class="lbl">act</span></div>
+          <div class="sig">
+            <span class="mc m-skip"><svg class="m" aria-hidden="true"><use href="#m-fail"/></svg></span>
+            <span><span class="t">wk-1 needs a human</span><br>
+              <span class="d mono brk">cargo check failed: Package gdk-3.0 was not found</span></span>
+          </div>
+          <div class="sig">
+            <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-ok"/></svg></span>
+            <span><span class="t">wk-2 is ready to merge</span><br>
+              <span class="d">tests pass</span></span>
+          </div>
+          <div class="sig">
+            <span class="mc m-ask"><svg class="m" aria-hidden="true"><use href="#m-ask"/></svg></span>
+            <span><span class="t">Open question &mdash; &ldquo;Which database?&rdquo;</span><br>
+              <span class="o">raised by wk-1 &middot; waiting on the operator</span></span>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gl"><span class="lbl">watch</span></div>
+          <div class="sig">
+            <span class="mc m-block"><svg class="m" aria-hidden="true"><use href="#m-block"/></svg></span>
+            <span><span class="t">opencode is quota-blocked</span><br>
+              <span class="d">rate limit</span></span>
+          </div>
+          <div class="sig">
+            <span class="mc m-block"><svg class="m" aria-hidden="true"><use href="#m-load"/></svg></span>
+            <span><span class="t">claude 5-hour budget at 80&nbsp;%</span>
+              <span class="meter" role="img" aria-label="claude 5-hour budget, 80 percent consumed"><i style="width:80%"></i></span></span>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gl"><span class="lbl">note</span></div>
+          <div class="sig">
+            <span class="mc m-empty"><svg class="m" aria-hidden="true"><use href="#m-empty"/></svg></span>
+            <span><span class="t sec">Most recurring error, seen 3&times;</span><br>
+              <span class="d">GTK dev headers missing in pre-commit</span></span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4. fleet -->
+    <section class="pane" id="fleet" tabindex="-1" aria-labelledby="fleet-h">
+      <div class="ph"><h2 id="fleet-h">fleet</h2><span class="k">F</span>
+        <span class="meta">2 workers &middot; 1 queued</span></div>
+      <div class="pb">
+
+        <div class="wk">
+          <div class="wkh">
+            <span class="mc m-skip"><svg class="m" aria-hidden="true"><use href="#m-fail"/></svg></span>
+            <span class="id">wk-1</span>
+            <span class="tk">Fix the dispatcher</span>
+            <span class="chip skip">needs human</span>
+          </div>
+          <dl class="kv">
+            <dt>profile</dt><dd><b>claude</b></dd>
+            <dt>branch</dt><dd>wk-dispatcher</dd>
+            <dt>column</dt><dd>working</dd>
+            <dt>context</dt><dd><b>42&thinsp;000</b> / 200&thinsp;000
+              <span class="meter ctx" role="img" aria-label="context 42000 of 200000, 21 percent"><i style="width:21%"></i></span></dd>
+            <dt>note</dt><dd class="brk" style="color:var(--alarm)">cargo check failed: gdk-3.0 not found</dd>
+          </dl>
+        </div>
+
+        <div class="wk">
+          <div class="wkh">
+            <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-ok"/></svg></span>
+            <span class="id">wk-2</span>
+            <span class="tk">Review the review</span>
+            <span class="chip ok">ready to merge</span>
+          </div>
+          <dl class="kv">
+            <dt>profile</dt><dd><b>codex</b></dd>
+            <dt>branch</dt><dd>wk-review</dd>
+            <dt>column</dt><dd>ready_to_merge</dd>
+            <dt>context</dt><dd><span class="dim">&mdash;&ensp;not reported</span></dd>
+            <dt>note</dt><dd style="color:var(--mint)">tests pass</dd>
+          </dl>
+        </div>
+
+        <div class="lanebar" style="margin-top:8px">
+          <span class="lbl">queue</span>
+          <span class="mono sec">1 entry</span>
+          <span class="mono" style="color:var(--paper)">&ldquo;Sharpen the plan&rdquo;</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. locks and lanes — the signature -->
+    <section class="pane" id="lanes" tabindex="-1" aria-labelledby="lanes-h">
+      <div class="ph"><h2 id="lanes-h">lanes</h2><span class="k">L</span>
+        <span class="meta mono">19 active &middot; 13 startable &middot; <b style="color:var(--clay)">6 locked</b></span></div>
+      <div class="pb">
+
+        <div class="lanehdr">
+          <div class="railid"><b>a</b><b>m</b><b>s</b><b>b</b></div>
+          <span class="lbl">nahtstellen &mdash; one worker at a time</span>
+        </div>
+
+        <div class="graph">
+          <div class="wipes" aria-hidden="true">
+            <span class="wipe" style="--i:0"></span>
+            <span class="wipe" style="--i:1"></span>
+            <span class="wipe" style="--i:2"></span>
+            <span class="wipe" style="--i:3"></span>
+          </div>
+
+          <div class="grow">
+            <div class="gut">
+              <span class="rc lkfrom"><svg class="m m-hold" aria-hidden="true"><use href="#m-fact"/></svg></span>
+              <span class="rc"></span><span class="rc"></span><span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f4_authority</span><span class="chip hold">holds api.rs</span></span>
+              <span class="l3">seam held &middot; nothing else may enter</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut">
+              <span class="rc lk"><svg class="m m-lock" aria-hidden="true"><use href="#m-lock"/></svg></span>
+              <span class="rc"></span><span class="rc"></span><span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f2_kinds</span><span class="chip lock">locked</span>
+                <button class="act" type="button" disabled>start</button></span>
+              <span class="l3">behind <b style="color:var(--bone)">task_f4_authority</b> on api.rs</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut">
+              <span class="rc"></span>
+              <span class="rc lkfrom"><svg class="m m-hold" aria-hidden="true"><use href="#m-fact"/></svg></span>
+              <span class="rc"></span><span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f1_single_instance</span><span class="chip hold">holds main.rs</span></span>
+              <span class="l2">F1: eine Flotte, ein Fenster</span>
+              <span class="l3">serial &middot; startable</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut">
+              <span class="rc"></span>
+              <span class="rc lk"><svg class="m m-lock" aria-hidden="true"><use href="#m-lock"/></svg></span>
+              <span class="rc"></span><span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f1_diagnostics</span><span class="chip lock">locked</span>
+                <button class="act" type="button" disabled>start</button></span>
+              <span class="l2">F1: P2-H Logpfad, Diagnosepaket, &bdquo;Warum?&ldquo;</span>
+              <span class="l3">behind <b style="color:var(--bone)">task_f1_single_instance</b> on main.rs</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut">
+              <span class="rc"></span><span class="rc"></span>
+              <span class="rc lkfrom"><svg class="m m-hold" aria-hidden="true"><use href="#m-fact"/></svg></span>
+              <span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f4_persist</span><span class="chip hold">holds store.rs</span></span>
+              <span class="l3">seam held &middot; nothing else may enter</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut">
+              <span class="rc"></span><span class="rc"></span>
+              <span class="rc lk"><svg class="m m-lock" aria-hidden="true"><use href="#m-lock"/></svg></span>
+              <span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f0_7</span><span class="chip lock">locked</span>
+                <button class="act" type="button" disabled>start</button></span>
+              <span class="l3">behind <b style="color:var(--bone)">task_f4_persist</b> on store.rs</span>
+            </div>
+          </div>
+
+          <div class="grow" id="startable">
+            <div class="gut">
+              <span class="rc"></span><span class="rc"></span><span class="rc"></span><span class="rc"></span>
+            </div>
+            <div class="gb">
+              <span class="l1"><span class="lbl" style="color:var(--mint)">parallel lane</span>
+                <span class="l3" style="margin:0">touches no Nahtstelle &mdash; startable now</span></span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut"><span class="rc"></span><span class="rc"></span><span class="rc"></span><span class="rc"></span></div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f0_db_fixtures</span><span class="chip ok">startable</span>
+                <button class="act" type="button">start <span class="k k-on">N</span></button></span>
+              <span class="l2">F0-Abnahme: Alt-DBs &ouml;ffnen ohne Datenverlust</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut"><span class="rc"></span><span class="rc"></span><span class="rc"></span><span class="rc"></span></div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f1_attention</span><span class="chip ok">startable</span>
+                <button class="act" type="button">start</button></span>
+              <span class="l2">F1: Reason-Codes, Fehlerkanal, Opener-Grenze</span>
+            </div>
+          </div>
+
+          <div class="grow">
+            <div class="gut"><span class="rc"></span><span class="rc"></span><span class="rc"></span><span class="rc"></span></div>
+            <div class="gb">
+              <span class="l1"><span class="id">task_f4_readiness</span><span class="chip ok">startable</span>
+                <button class="act" type="button">start</button></span>
+              <span class="l2">F4: Lifecycle + <code class="mono">blockers[]</code> als reine Rust-Logik</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lanelegend">
+          <span><b>a</b> api.rs</span>
+          <span><b>m</b> main.rs</span>
+          <span><b>s</b> store.rs</span>
+          <span><b>p</b> bin/pa.rs <span class="dim">&mdash; no holder recorded</span></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── evidence · cost ──────────────────────────────────────────────── -->
+  <div class="row2">
+
+    <!-- 6. evidence -->
+    <section class="pane" id="evidence" tabindex="-1" aria-labelledby="ev-h">
+      <div class="ph"><h2 id="ev-h">evidence</h2><span class="k">E</span>
+        <span class="meta mono">8 findings &middot; 4 fact &middot; 4 claim</span></div>
+      <div class="pb">
+
+        <div class="find fact">
+          <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+          <span class="id">F0-4 <span class="chip fact">fact</span></span>
+          <span class="tx">&bdquo;Der Masterprompt umgeht die Playbook-Marker-Sperre.&ldquo;</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+        <div class="find fact">
+          <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+          <span class="id">F0-5 <span class="chip fact">fact</span></span>
+          <span class="tx">&bdquo;verdrahtet&ldquo;</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+        <div class="find fact">
+          <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+          <span class="id">F0-6 <span class="chip fact">fact</span></span>
+          <span class="tx">&bdquo;Landing-Page-Export.&ldquo;</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+        <div class="find fact">
+          <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+          <span class="id">F0-7 <span class="chip fact">fact</span></span>
+          <span class="tx">&bdquo;Restore-Pfad steht.&ldquo;</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+
+        <div class="find claim">
+          <span class="mc m-claim"><svg class="m" aria-hidden="true"><use href="#m-claim"/></svg></span>
+          <span class="id">NT-5/P2-D <span class="chip claim">claim</span></span>
+          <span class="tx">asserted, not verified &mdash; statement recorded in the source</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+        <div class="find claim">
+          <span class="mc m-claim"><svg class="m" aria-hidden="true"><use href="#m-claim"/></svg></span>
+          <span class="id">P2-H <span class="chip claim">claim</span></span>
+          <span class="tx">asserted, not verified &mdash; statement recorded in the source</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+        <div class="find claim">
+          <span class="mc m-claim"><svg class="m" aria-hidden="true"><use href="#m-claim"/></svg></span>
+          <span class="id">KI-8 <span class="chip claim">claim</span></span>
+          <span class="tx">asserted, not verified &mdash; statement recorded in the source</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+        <div class="find claim">
+          <span class="mc m-claim"><svg class="m" aria-hidden="true"><use href="#m-claim"/></svg></span>
+          <span class="id">NT-7/NT-11 <span class="chip claim">claim</span></span>
+          <span class="tx">asserted, not verified &mdash; statement recorded in the source</span>
+          <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a>
+        </div>
+
+        <p class="evnote">
+          <svg class="m m-claim" aria-hidden="true"><use href="#m-claim"/></svg>
+          A claim must not look like a fact &mdash; hollow mark, dashed rule, dimmed text, and the word itself.
+          The distinction survives with colour switched off.
+        </p>
+      </div>
+    </section>
+
+    <!-- 7. cost -->
+    <section class="pane" id="cost" tabindex="-1" aria-labelledby="cost-h">
+      <div class="ph"><h2 id="cost-h">cost</h2><span class="k">C</span>
+        <span class="meta">no figure without its basis</span></div>
+      <div class="pb">
+
+        <div class="fig">
+          <span class="v">$4.21 <span class="chip ok">measured</span></span>
+          <span class="b"><span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+            <span class="bt">basis &mdash; <b>reported ledger cost</b> &middot;
+              <a class="src" href="#">STAND.md<svg class="m" aria-hidden="true"><use href="#m-src"/></svg></a></span></span>
+        </div>
+
+        <div class="fig">
+          <span class="v">340&thinsp;000 in / 90&thinsp;000 out <span class="dim">&middot; 12 requests</span></span>
+          <span class="b"><span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+            <span class="bt">basis &mdash; <b>ledger, today</b></span></span>
+        </div>
+
+        <div class="fig">
+          <span class="v"><span class="dim">changed lines &times; 10 tokens &times; 6 read/write</span>
+            <span class="chip claim">heuristic</span></span>
+          <span class="b"><span class="mc m-claim"><svg class="m" aria-hidden="true"><use href="#m-claim"/></svg></span>
+            <span class="bt">used <b>only when the ledger is smaller</b> than the estimate &middot; stated range <b>0.5&times; &ndash; 2&times;</b></span></span>
+        </div>
+
+        <div class="fig">
+          <span class="v"><span class="dim">min &hellip; sum</span> <span class="chip">not asked</span></span>
+          <span class="b"><span class="mc m-ask"><svg class="m" aria-hidden="true"><use href="#m-ask"/></svg></span>
+            <span class="bt">whole-project time &mdash; two bases, never one number:<br>
+              <b>A</b> git sittings &middot; commits &le;90&nbsp;min apart, +30&nbsp;min lead-in<br>
+              <b>B</b> journal sessions &times; 45&nbsp;min</span></span>
+          <span class="b" style="margin-top:4px"><span class="mc"></span>
+            <span class="bt">this snapshot has <b>not asked</b> for either basis &mdash;
+              <button class="act" type="button">compute <span class="k k-on">&crarr;</span></button></span></span>
+        </div>
+
+        <p class="costnote">
+          <svg class="m m-fact" aria-hidden="true"><use href="#m-fact"/></svg>
+          Rule &mdash; no figure appears here without its basis reachable in the same cell.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── 8. agent teams ───────────────────────────────────────────────── -->
+  <div class="row2" style="grid-template-columns:minmax(0,1fr)">
+    <section class="pane" id="teams" tabindex="-1" aria-labelledby="teams-h">
+      <div class="ph"><h2 id="teams-h">agent teams</h2><span class="k">T</span>
+        <span class="meta">departments, each with a template &mdash; capability shown, never promised</span></div>
+      <div class="pb">
+
+        <div class="depts">
+          <span>review</span><span>debug</span><span>coding</span><span>testing</span>
+          <span>ui/ux</span><span>orchestrator</span><span>advisor</span>
+        </div>
+
+        <div class="tmpls">
+          <div class="tmpl">
+            <div class="tmplh">
+              <span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-ok"/></svg></span>
+              <span class="nm">review &middot; claude</span>
+              <span class="chip ok">skills supported</span>
+            </div>
+            <dl class="kv" style="grid-template-columns:88px minmax(0,1fr)">
+              <dt>models</dt><dd><b>claude</b></dd>
+              <dt>effort</dt><dd>high</dd>
+              <dt>skills</dt><dd style="color:var(--mint)">enabled &mdash; loaded from the team template</dd>
+              <dt>hooks</dt><dd>pre-commit, post-review</dd>
+              <dt>tools</dt><dd>read, grep, git</dd>
+            </dl>
+          </div>
+          <div class="tmpl">
+            <div class="tmplh">
+              <span class="mc m-block"><svg class="m" aria-hidden="true"><use href="#m-block"/></svg></span>
+              <span class="nm">review &middot; codex</span>
+              <span class="chip block">skills unsupported</span>
+            </div>
+            <dl class="kv" style="grid-template-columns:88px minmax(0,1fr)">
+              <dt>models</dt><dd><b>codex</b></dd>
+              <dt>effort</dt><dd>high</dd>
+              <dt>skills</dt><dd style="color:var(--ember)">unsupported on this provider &mdash; the template silently drops them</dd>
+              <dt>hooks</dt><dd>pre-commit, post-review</dd>
+              <dt>tools</dt><dd>read, grep, git</dd>
+            </dl>
+          </div>
+        </div>
+
+        <p class="caphdr">skill capability by provider &mdash; the same team template does not mean the same team</p>
+        <div class="cap">
+          <div><span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-ok"/></svg></span>
+            <span class="pv">claude</span><span class="sv" style="color:var(--mint)">supported</span></div>
+          <div><span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-ok"/></svg></span>
+            <span class="pv">kimi</span><span class="sv" style="color:var(--mint)">supported</span></div>
+          <div><span class="mc m-block"><svg class="m" aria-hidden="true"><use href="#m-block"/></svg></span>
+            <span class="pv">codex</span><span class="sv" style="color:var(--ember)">unsupported</span></div>
+          <div><span class="mc m-block"><svg class="m" aria-hidden="true"><use href="#m-block"/></svg></span>
+            <span class="pv">opencode</span><span class="sv" style="color:var(--ember)">unsupported</span></div>
+          <div><span class="mc m-block"><svg class="m" aria-hidden="true"><use href="#m-block"/></svg></span>
+            <span class="pv">ollama</span><span class="sv" style="color:var(--ember)">unsupported</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── 9. state vocabulary ──────────────────────────────────────────── -->
+  <div class="row2" style="grid-template-columns:minmax(0,1fr)">
+    <section class="pane" id="vocab" tabindex="-1" aria-labelledby="voc-h">
+      <div class="ph"><h2 id="voc-h">state vocabulary</h2><span class="k">V</span>
+        <span class="meta">the cell is always there &mdash; filled or not, nothing reflows</span></div>
+      <div class="pb">
+        <div class="vocab">
+
+          <div class="vv"><div class="vvh"><span class="mc m-fact"><svg class="m" aria-hidden="true"><use href="#m-fact"/></svg></span>
+            <span class="n">fact / held</span></div>
+            <div class="d">Verified, or a seam currently held by one worker.</div>
+            <div class="i">now &mdash; main.rs held by task_f1_single_instance</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-claim"><svg class="m" aria-hidden="true"><use href="#m-claim"/></svg></span>
+            <span class="n">claim</span></div>
+            <div class="d">Asserted and not yet verified. Never dressed as a fact.</div>
+            <div class="i">now &mdash; P2-H, KI-8, NT-5/P2-D, NT-7/NT-11</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-lock"><svg class="m" aria-hidden="true"><use href="#m-lock"/></svg></span>
+            <span class="n">locked</span></div>
+            <div class="d">Startable except that another spec holds its seam.</div>
+            <div class="i">now &mdash; 6 specs, behind 3 named holders</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-skip"><svg class="m" aria-hidden="true"><use href="#m-skip"/></svg></span>
+            <span class="n">skipped</span></div>
+            <div class="d">Deliberately not run. Never rendered as a pass.</div>
+            <div class="i">now &mdash; installer gate, unix evidence</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-ask"><svg class="m" aria-hidden="true"><use href="#m-ask"/></svg></span>
+            <span class="n">not asked</span></div>
+            <div class="d">The desk has not run this query yet. Absence of a number, not a zero.</div>
+            <div class="i">now &mdash; whole-project time range</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-empty"><svg class="m" aria-hidden="true"><use href="#m-empty"/></svg></span>
+            <span class="n">empty</span></div>
+            <div class="d">Asked, answered, and the answer was nothing.</div>
+            <div class="i">now &mdash; no failed worker in the last sitting</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-fail"><svg class="m" aria-hidden="true"><use href="#m-fail"/></svg></span>
+            <span class="n">failed</span></div>
+            <div class="d">Asked and the request itself broke. Carries the error verbatim.</div>
+            <div class="i brk">now &mdash; wk-1: cargo check failed: Package gdk-3.0 was not found</div></div>
+
+          <div class="vv"><div class="vvh"><span class="mc m-load"><svg class="m" aria-hidden="true"><use href="#m-load"/></svg></span>
+            <span class="n">probing</span></div>
+            <div class="d">A query is in flight. Shown determinate wherever a bound is known.</div>
+            <div class="i">now &mdash; <span style="color:var(--smoke)">none in flight</span> <span class="dim">(this cell is itself empty, not failed)</span></div></div>
+
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── colophon ─────────────────────────────────────────────────────── -->
+  <div class="colo">
+    <div class="swatches">
+      <span class="sw"><i style="background:var(--ink)"></i><b>ink</b><u>#0A0C0E</u></span>
+      <span class="sw"><i style="background:var(--pitch)"></i><b>pitch</b><u>#12161A</u></span>
+      <span class="sw"><i style="background:var(--slate)"></i><b>slate</b><u>#1B2127</u></span>
+      <span class="sw"><i style="background:var(--iron)"></i><b>iron</b><u>#2E363D</u></span>
+      <span class="sw"><i style="background:var(--ash)"></i><b>ash</b><u>#4A545B</u></span>
+      <span class="sw"><i style="background:var(--smoke)"></i><b>smoke</b><u>#7E8A90</u></span>
+      <span class="sw"><i style="background:var(--bone)"></i><b>bone</b><u>#B7C0C5</u></span>
+      <span class="sw"><i style="background:var(--paper)"></i><b>paper</b><u>#E7ECEE</u></span>
+      <span class="sw"><i style="background:var(--alarm)"></i><b>alarm</b><u>#FF5B4D</u></span>
+      <span class="sw"><i style="background:var(--ember)"></i><b>ember</b><u>#FFA23A</u></span>
+      <span class="sw"><i style="background:var(--mint)"></i><b>mint</b><u>#57C99A</u></span>
+      <span class="sw"><i style="background:var(--cyan)"></i><b>cyan</b><u>#3FBFD4</u></span>
+      <span class="sw"><i style="background:var(--iris)"></i><b>iris</b><u>#8C8CF0</u></span>
+      <span class="sw"><i style="background:var(--gold)"></i><b>gold</b><u>#D9C27A</u></span>
+      <span class="sw"><i style="background:var(--clay)"></i><b>clay</b><u>#C97B5E</u></span>
+      <span class="sw"><i style="background:var(--chalk)"></i><b>chalk</b><u>#FFFFFF</u></span>
+    </div>
+    <div class="colotext">
+      <span><b>palette</b> &mdash; sixteen named members, locked. Every other tone on this page is an ordered
+        <b>color-mix()</b> of exactly two of them. No alpha, no arbitrary greys.</span>
+      <span><b>type</b> &mdash; one size only, 13&thinsp;px / 20&thinsp;px. Rank by weight, case, reversal, rule weight
+        and background step. Prose in Recursive (self-hosted,
+        <b>../../../dev-hq/fonts/recursive-latin-wght.woff2</b>); code, paths, identifiers and measurements in the system mono stack.</span>
+      <span><b>motion</b> &mdash; one authored moment: the four Nahtstellen rails draw downward, column by column, on load.
+        Nothing else moves. Numbers, times and log lines never move.</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var map = {r:"release",g:"grip",s:"signals",f:"fleet",l:"lanes",
+             e:"evidence",c:"cost",t:"teams",v:"vocab",n:"startable"};
+  var keyrow = document.getElementById("keyrow");
+  var toggle = document.getElementById("keytoggle");
+
+  function setKeys(open){
+    keyrow.hidden = !open;
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.querySelector("span.k").classList.toggle("k-on", open);
+  }
+  toggle.addEventListener("click", function(){ setKeys(keyrow.hidden); });
+
+  document.addEventListener("keydown", function(ev){
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    var t = ev.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+
+    if (ev.key === "?") { setKeys(keyrow.hidden); ev.preventDefault(); return; }
+    if (ev.key === "Escape") { setKeys(false); return; }
+
+    var id = map[String(ev.key).toLowerCase()];
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (!el) return;
+    ev.preventDefault();
+    if (id === "startable") {
+      var b = el.parentNode.querySelector(".grow + .grow button.act:not([disabled])");
+      var target = b || el;
+      if (target.focus) target.focus({preventScroll:true});
+      el.scrollIntoView({block:"center"});
+    } else {
+      el.focus({preventScroll:true});
+      el.scrollIntoView({block:"start"});
+    }
+  });
+})();
+</script>
+</body>
+</html>

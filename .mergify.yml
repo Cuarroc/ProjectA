@@ -1,0 +1,176 @@
+# Mergify: Merge-Queue fuer main (CI-01, Nutzer-Entscheidung 24.09.2026).
+#
+# Warum es diese Datei gibt: Bis zum 24.09. verlangte die Branch Protection
+# "strict" (Branch muss auf dem Stand von main sein). 39 % aller PR-Laeufe
+# waren dadurch reine "merge main"-Aktualisierungen - jede davon ein voller
+# Windows-Lauf. "strict" ist jetzt AUS; die Garantie "main bleibt gruen"
+# uebernimmt diese Queue: sie testet PRs (gebuendelt) gegen den aktuellen
+# main, bevor sie mergt. Begruendung und Messwerte: docs/decisions.md
+# (2026-09-24).
+#
+# Jeder Schluessel ist gegen das offizielle JSON-Schema geprueft
+# (https://docs.mergify.com/mergify-configuration-schema.json), nicht aus dem
+# Gedaechtnis geschrieben. `autoqueue` ist veraltet und wird zusammen mit
+# `auto_merge_conditions` sogar abgelehnt - daher unten
+# merge_protections_settings.auto_merge_conditions.
+#
+# Die drei Required Checks heissen exakt so, wie ci.yml sie meldet:
+#   gates (linux), gates (windows), red-first
+# Eine Umbenennung dort muss HIER nachgezogen werden, sonst wartet die Queue
+# auf einen Check, der nie kommt.
+# Since CI-03 scripts/ci/ci-shape.sh (gate `ci-shape`) checks exactly that,
+# and that queue_conditions == auto_merge_conditions.
+#
+# CI-03: on an ordinary PR `gates (windows)` reports success from a
+# ubuntu-latest runner without running the lane (ci.yml); its real verdict
+# comes from the queue run below (merge_conditions are evaluated on the
+# queue's draft PR, where the full Windows lane runs). The conditions stay
+# `check-success` on purpose: a job-level `if` would report "skipped", which
+# `check-success` does not match (`check-skipped` is its own attribute in
+# the configuration schema).
+
+queue_rules:
+  - name: default
+    # Merge-Commits bleiben: die red->green-Commits mit Test-First-Trailern
+    # muessen in der Historie von main sichtbar bleiben (red-first,
+    # AGENTS.md). squash/rebase wuerden sie einebnen bzw. neu schreiben.
+    merge_method: merge
+    # Nur relevant, wenn Mergify einen PR selbst aktualisiert: Merge statt
+    # Rebase, damit die Commit-SHAs (und ihre Belege) stabil bleiben.
+    update_method: merge
+    # Dynamische Buendel: bei leerer Queue einzeln (schnelles Feedback), bei
+    # Stau bis zu vier PRs in EINEM CI-Lauf - das ist die eigentliche
+    # Minuten-Ersparnis gegenueber "jeder PR einzeln gegen main".
+    # CI-03: "Stau" means more PRs than max_parallel_checks (merge_queue
+    # below) - with 1 check, the second queued PR already joins a batch.
+    # batch_max_wait_time only applies while a batch is below `min`; with
+    # min 1 no batch ever waits.
+    batch_size:
+      min: 1
+      max: 4
+    batch_max_wait_time: 10 min
+    # Fester Wert statt `auto`: `auto` greift erst nach ~20 Laeufen
+    # Historie, eine neue Queue haette bis dahin GAR kein Timeout
+    # (docs.mergify.com/merge-queue/lifecycle#checks-timeout). Der langsamste
+    # Job hat timeout-minutes 35 (ci.yml); 60 min lassen Platz fuer
+    # Runner-Wartezeit.
+    checks_timeout: 60 min
+    # Wird ein PR aufgenommen, wenn ...
+    queue_conditions:
+      - base = main
+      - -draft
+      - -conflict
+      - label != do-not-merge
+      - check-success = gates (linux)
+      - check-success = gates (windows)
+      - check-success = red-first
+    # ... und gemergt, wenn der Queue-Lauf (Draft-PR auf
+    # mergify/merge-queue/*) dieselben drei Checks gruen meldet. Fuer die
+    # Checks wertet Mergify hier den temporaeren Draft-PR aus, nicht den
+    # Original-PR (Schema-Beschreibung von merge_conditions).
+    merge_conditions:
+      - label != do-not-merge
+      - check-success = gates (linux)
+      - check-success = gates (windows)
+      - check-success = red-first
+
+merge_queue:
+  # serial: PRs werden kumulativ getestet (Buendel n enthaelt alles davor),
+  # gemergt wird in Queue-Reihenfolge. `parallel` (Stub aus #105) verlangt
+  # Scopes und testet unabhaengige PRs NICHT gegeneinander - fuer ein Repo,
+  # dessen Nahtstellen (api.rs, store.rs, ...) fast jeder PR beruehrt, die
+  # falsche Wahl.
+  mode: serial
+  # CI-03 (25.09.2026): ONE queue run at a time, was 2. Two reasons, both
+  # from the Mergify docs (merge-queue/batches, "Dynamic Batch Sizing"):
+  #   - with batch_size min 1, Mergify keeps batches at `min` as long as the
+  #     queued PRs fit into the parallel checks. With 2 checks, two queued
+  #     PRs became two separate runs - two full Windows lanes. With 1 check
+  #     they become one batch of two: one Windows lane.
+  #   - in serial mode the second parallel run is speculative (it contains
+  #     the first batch); when the first fails, its minutes are thrown away.
+  #     Since CI-03 the queue is the FIRST place a PR meets Windows, so
+  #     Windows-only failures surface here - more speculative waste with 2.
+  # Safety is unchanged: serial mode tests every batch on top of everything
+  # queued before it, and a failing batch is split and retested until the
+  # culprit is out (docs: "Handling Batch Failure or Timeout"). The cost is
+  # latency: roughly one Windows lane (~16-18 min) per batch of up to 4 PRs.
+  max_parallel_checks: 1
+  # Nur Endergebnisse kommentieren (gemergt / mit Grund entfernt), nicht jeden
+  # Zwischenschritt.
+  status_comments: outcomes
+  queued_label: queued
+
+merge_protections_settings:
+  # Automatisch einreihen: jeder PR auf main, der kein Entwurf ist, keinen
+  # Konflikt hat, kein `do-not-merge` traegt und dessen drei Checks gruen
+  # sind. Das ersetzt das veraltete `queue_rules[].autoqueue`
+  # (docs.mergify.com/merge-protections/auto-merge). Die aktiven
+  # merge_protections unten muessen zusaetzlich erfuellt sein.
+  #
+  # ACHTUNG: diese Liste ist absichtlich identisch mit queue_conditions oben.
+  # Wer die eine aendert, aendert die andere mit (Befund kimi-k3, Review
+  # CI-01) - sonst wird ein PR eingereiht, den die Queue nicht nimmt, oder
+  # umgekehrt nie automatisch eingereiht.
+  auto_merge_conditions:
+    - base = main
+    - -draft
+    - -conflict
+    - label != do-not-merge
+    - check-success = gates (linux)
+    - check-success = gates (windows)
+    - check-success = red-first
+
+merge_protections:
+  # Ein Arbeitspaket ist erst fertig, wenn sein Bericht im Repo liegt
+  # (.pa/report_<paket>.md). Paket-Branches erkennt die Regel am Namen:
+  # Anbieter-Praefix plus Paket-ID aus docs/PLAN.md - w<N>-, df<N>, ki-<N>,
+  # hq2-. Gross-/Kleinschreibung egal.
+  #
+  # Bewusst NICHT erfasst (kein Paket, kein Bericht verlangt):
+  #   - Doku-/Infra-Branches desselben Anbieters, z. B. claude/masterplan,
+  #     claude/ci-01-..., kimi/release-141
+  #   - mergify/merge-queue/* (Queue-Laeufe) und mergify/* (Konfig-PRs)
+  #   - dependabot/*
+  # Die Regel steht auch in AGENTS.md, damit Worker sie kennen.
+  - name: Paket-PR bringt seinen Bericht mit
+    description: >-
+      Package branches (w<N>-, df<N>, ki-<N>, hq2-) must add or change
+      .pa/report_*.md before merging.
+    if:
+      - base = main
+      - head ~= (?i)^(claude|codex|kimi|opencode|glm)/(w\d+-|df\d+|ki-\d+|hq2-)
+    success_conditions:
+      - files ~= ^\.pa/report_.*\.md$
+
+priority_rules:
+  - name: Dringend (Label priority oder hotfix-Branch)
+    conditions:
+      - or:
+          - label = priority
+          - head ~= ^hotfix/
+    priority: high
+
+    allow_checks_interruption: true
+pull_request_rules:
+  # Konflikt sichtbar machen. `toggle` setzt das Label, solange die
+  # Bedingungen gelten, und nimmt es wieder ab, sobald der Konflikt geloest
+  # ist. Den Kommentar postet Mergify, wenn die Regel zu greifen beginnt;
+  # ob er bei spaeteren Pushes ohne Loesung erneut kommt, ist nicht
+  # dokumentiert - beim ersten echten Konflikt beobachten (Befund kimi-k3
+  # F6, Review CI-01, offen).
+  - name: Konflikt markieren
+    conditions:
+      - base = main
+      - -closed
+      - conflict
+    actions:
+      label:
+        toggle:
+          - conflict
+      comment:
+        message: >-
+          @{{author}} Dieser PR hat einen Konflikt mit main und kann nicht in
+          die Merge-Queue. Bitte main hineinmergen (kein Rebase, kein
+          Force-Push) und den Konflikt loesen; das Label `conflict`
+          verschwindet danach von selbst.

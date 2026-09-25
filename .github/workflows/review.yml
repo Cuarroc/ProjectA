@@ -1,0 +1,227 @@
+# RUHEND (seit 24.09.2026, SETUP-A): Reviews laufen lokal ueber das
+# Ollama-Cloud-Paar kimi-k3 + glm-5.2 (docs/setup/ollama-reviewers.md).
+# Nutzerentscheidung "nur Abos, kein OpenRouter": dieser Workflow braucht
+# OPENROUTER_KEY und wird nicht mehr gestartet. Nicht loeschen, nicht auf
+# Ollama umbauen (der Runner hat keine bei Ollama Cloud angemeldete Instanz). Gilt ebenso fuer
+# scripts/review/resolve_models.py.
+#
+# Externe Plan-/Diff-Reviews durch Nicht-Anthropic-Modelle (Regel aus docs/PLAN.md §0; historisch SANIERUNGSPLAN §0.3, §4.4).
+#
+# ACHTUNG, die wichtigste Zeile dieser Datei: es gibt KEINEN `push`-Trigger mehr.
+#
+# Der externe Dual-Review zu PR #29 hat den Grund dafuer konvergent gefunden
+# (Protokolle `.pa/review_pr29_sonnet.md`, `.pa/review_pr29_grok.md`):
+# `on: push` mit `paths:` startet den Workflow AUS DEM GEPUSHTEN COMMIT. Wer auf
+# irgendeinen Branch pushen darf, konnte im selben Commit `review_transport.py`
+# aendern - also genau die Datei, die `$OPENROUTER_KEY` in den Haenden haelt -
+# und sich per Auftragsdatei selbst ausloesen. Der Key ging an einen fremden
+# Endpunkt, `GITHUB_TOKEN` mit `contents: write` sass daneben im selben Prozess.
+# Kein Fork noetig, kein Zugriff auf die Repo-Secrets noetig: Push-Recht genuegte.
+# Das ist eine Rechte-Eskalation, kein Kostenthema.
+#
+# Drei Konsequenzen, alle hier umgesetzt:
+#   1. Nur noch `workflow_dispatch`. Ein Lauf ist jetzt eine bewusste Handlung
+#      einer Person mit Schreibrecht, kein Nebeneffekt eines Pushes. Damit sind
+#      auch die beiden Selbstausloeser-Fallen vom 05./06.09. strukturell weg:
+#      weder das Mitbringen noch das Entfernen einer Datei startet noch etwas.
+#   2. `permissions: contents: read`. Der Job committet nichts mehr; die
+#      Protokolle kommen als Artifact und im Job-Log zurueck. Das entfernt
+#      zugleich zwei Folgebefunde: das unquotierte `git add .pa/review_${LABEL}_*`
+#      (Word-Split staged beliebige Dateien) und das Rennen zwischen
+#      Shallow-Checkout und `git pull --rebase` bei langen Laeufen.
+#   3. `environment: review`. Wirksam wird das erst, wenn jemand in
+#      `Settings > Environments > review` Required Reviewers eintraegt UND
+#      OPENROUTER_KEY ausschliesslich als Environment-Secret speichert.
+#      Eine Repository-Kopie waere fuer geaenderte Workflows ohne environment
+#      weiter erreichbar. Der Eintrag allein erzwingt keine Freigabe.
+#
+# Der Schluessel heisst OPENROUTER_KEY. Die sichere Migration vom Repository
+# ins geschuetzte Environment ist noch offen. Anleitung: `.pa/review_ANLEITUNG.md`.
+name: review
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: "Label - Dateiname wird .pa/review_<label>_<modell>.md (nur A-Z a-z 0-9 . _ -)"
+        default: rev9
+        type: string
+      prompt:
+        description: "Prompt-Datei (Auftrag + Artefakt), Pfad im Repo"
+        default: .pa/review_prompt_rev9.md
+        type: string
+      model1:
+        description: "Reviewer 1 - Regex-Liste (;-getrennt), juengster Treffer der Live-Liste gewinnt"
+        default: ""
+        type: string
+      model2:
+        description: "Reviewer 2 - Regex-Liste"
+        default: ""
+        type: string
+      model3:
+        description: "Reviewer 3 - Regex-Liste"
+        default: ""
+        type: string
+      author:
+        description: "Autor-Instanz des Artefakts (M2-Metadaten)"
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-${{ github.ref }}
+  cancel-in-progress: false
+
+# `run:`-Schritte laufen ohne diese Zeilen als `bash -e {0}` — OHNE `pipefail`.
+# Der Status einer Pipe ist dann der ihres LETZTEN Glieds, und ein
+# `cargo clippy 2>&1 | tail` meldet Erfolg, waehrend clippy scheitert. Genau so
+# ging am 05.09. in review.yml der Exit 1 des Modell-Resolvers verloren und am
+# 04.09. lokal der Status von clippy.
+#
+# Mit explizitem `shell: bash` startet GitHub den Schritt als
+# `bash --noprofile --norc -eo pipefail {0}` — die Fehlerklasse ist damit
+# strukturell dicht, nicht nur an den Stellen, die jemand einzeln gehaertet hat.
+# scripts/ci/no-masked-output.sh bleibt trotzdem: es faengt die Schreibvorgaenge
+# nach $GITHUB_OUTPUT/$GITHUB_ENV, die auch mit pipefail noch falsch waeren,
+# weil dort der Exit-Code gar nicht erst geprueft wird.
+#
+# Gilt auch auf windows-latest: dort ist `bash` die mitgelieferte Git-Bash.
+# Schritte mit eigenem `shell:` (pwsh in release.yml) sind unberuehrt.
+# Alle `uses:` sind auf einen Commit-SHA gepinnt, nicht auf einen Tag oder
+# Branch. Begruendung: docs/decisions.md (09.09.). Dependabot hebt sie ueber
+# den Versionskommentar an; der Kommentar ist die lesbare Fassung des SHA,
+# nicht die autorisierende.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: review
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Auftrag lesen (Inputs vor Datei vor Defaults)
+        id: req
+        env:
+          I_LABEL: ${{ inputs.label }}
+          I_PROMPT: ${{ inputs.prompt }}
+          I_AUTHOR: ${{ inputs.author }}
+          I_M1: ${{ inputs.model1 }}
+          I_M2: ${{ inputs.model2 }}
+          I_M3: ${{ inputs.model3 }}
+        run: |
+          set -eu
+          REQ=.pa/review_request.md
+          get() { [ -f "$REQ" ] && sed -n "s/^$1:[[:space:]]*//p" "$REQ" | head -1 || true; }
+          pick() { v="$1"; [ -n "$v" ] || v="$(get "$2")"; [ -n "$v" ] || v="$3"; printf '%s' "$v"; }
+          LABEL="$(pick "$I_LABEL" label rev9)"
+          # Das Label landet in Dateinamen, Globs und im Artifact-Namen. Frueher
+          # ging es unquotiert in `git add .pa/review_${LABEL}_*.md`; ein Label
+          # mit Leerzeichen staged damit beliebige Dateien. Der Commit-Schritt
+          # ist weg, die Pruefung bleibt - ein Label ist ein Name, kein Ausdruck.
+          case "$LABEL" in
+            '' | *[!A-Za-z0-9._-]*)
+              echo "::error::Label darf nur A-Z a-z 0-9 . _ - enthalten, war: '$LABEL'"
+              exit 1
+              ;;
+          esac
+          PROMPT="$(pick "$I_PROMPT" prompt .pa/review_prompt_rev9.md)"
+          # Pfad muss im Repo liegen: kein `..`, kein absoluter Pfad.
+          case "$PROMPT" in
+            /* | *..*)
+              echo "::error::Prompt-Pfad muss relativ und ohne '..' sein, war: '$PROMPT'"
+              exit 1
+              ;;
+          esac
+          {
+            echo "label=$LABEL"
+            echo "prompt=$PROMPT"
+            echo "author=$(pick "$I_AUTHOR" author "unbekannt")"
+            echo "p1=$(pick "$I_M1" model1 '^google/gemini-3\.\d+-pro$;^google/gemini-3\.\d+-pro;^google/gemini-2\.5-pro')"
+            echo "p2=$(pick "$I_M2" model2 '^deepseek/deepseek-v4-pro;^deepseek/deepseek-v4;^deepseek/deepseek-r1')"
+            echo "p3=$(pick "$I_M3" model3 '^moonshotai/kimi-k2\.\d+-code;^moonshotai/kimi-k2\.\d+;^z-ai/glm-5;^moonshotai/kimi-k2')"
+            echo "allow_free=$(pick "" allow_free 0)"
+          } > "$RUNNER_TEMP/req.out"
+          # Kein `| tee`: GitHub startet `run:` als `bash -e {0}` OHNE pipefail,
+          # der Status einer Pipe ist der des LETZTEN Glieds. Erst schreiben,
+          # dann spiegeln.
+          cat "$RUNNER_TEMP/req.out"
+          cat "$RUNNER_TEMP/req.out" >> "$GITHUB_OUTPUT"
+
+      - name: Modell-Muster gegen die Live-Liste aufloesen
+        id: resolve
+        env:
+          P1: ${{ steps.req.outputs.p1 }}
+          P2: ${{ steps.req.outputs.p2 }}
+          P3: ${{ steps.req.outputs.p3 }}
+          RESOLVE_ALLOW_FREE: ${{ steps.req.outputs.allow_free }}
+        run: |
+          set -eu
+          python3 scripts/review/resolve_models.py "$P1" "$P2" "$P3" > "$RUNNER_TEMP/models.out"
+          cat "$RUNNER_TEMP/models.out"
+          cat "$RUNNER_TEMP/models.out" >> "$GITHUB_OUTPUT"
+
+      - name: Reviews einholen
+        env:
+          OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
+          URL: https://openrouter.ai/api/v1/chat/completions
+          M1: ${{ steps.resolve.outputs.m1 }}
+          M2: ${{ steps.resolve.outputs.m2 }}
+          M3: ${{ steps.resolve.outputs.m3 }}
+          LABEL: ${{ steps.req.outputs.label }}
+          PROMPT: ${{ steps.req.outputs.prompt }}
+          AUTHOR: ${{ steps.req.outputs.author }}
+        run: |
+          set -eu
+          if [ -z "$OPENROUTER_KEY" ]; then
+            echo "::error::OPENROUTER_KEY fehlt: als Secret im geschuetzten Environment review setzen (Settings > Environments > review), keine Repository-Kopie anlegen."
+            exit 1
+          fi
+          # Die Nachbedingung haengt nicht allein am Exit-Code des Resolvers:
+          # zwei Reviews sind kein Dual-Review, sie sehen nur so aus.
+          for m in "$M1" "$M2" "$M3"; do
+            if [ -z "$m" ]; then
+              echo "::error::Nicht alle drei Modelle aufgeloest (M1='$M1' M2='$M2' M3='$M3') - ein stiller Zwei-von-drei-Lauf ist kein Review."
+              exit 1
+            fi
+          done
+          if [ ! -f "$PROMPT" ]; then
+            echo "::error::Prompt-Datei $PROMPT fehlt. Der Auftrag muss sie mitbringen (siehe .pa/review_ANLEITUNG.md)."
+            exit 1
+          fi
+          slug() { printf '%s' "$1" | sed 's#.*/##; s/[^A-Za-z0-9._-]/-/g'; }
+          export REVIEWER_1_NAME="$(slug "$M1")" REVIEWER_1_URL="$URL" REVIEWER_1_MODEL="$M1" REVIEWER_1_KEY="$OPENROUTER_KEY"
+          export REVIEWER_2_NAME="$(slug "$M2")" REVIEWER_2_URL="$URL" REVIEWER_2_MODEL="$M2" REVIEWER_2_KEY="$OPENROUTER_KEY"
+          export REVIEWER_3_NAME="$(slug "$M3")" REVIEWER_3_URL="$URL" REVIEWER_3_MODEL="$M3" REVIEWER_3_KEY="$OPENROUTER_KEY"
+          echo "Reviewer: $M1 | $M2 | $M3 - Prompt $PROMPT - Label $LABEL"
+          python3 .pa/review_transport.py "$PROMPT" .pa "$LABEL" --author "$AUTHOR"
+
+      # Die Protokolle kommen als Artifact und im Log zurueck, nicht mehr als
+      # Commit. Wer sie im Repo haben will, laedt sie herunter und committet sie
+      # selbst - das ist der Schritt, an dem ein Mensch draufsieht.
+      - name: Ergebnis ins Log
+        if: always()
+        env:
+          LABEL: ${{ steps.req.outputs.label }}
+        run: |
+          for f in ".pa/review_${LABEL}"_*.md; do
+            [ -f "$f" ] || continue
+            echo "===== $f"; cat "$f"; echo
+          done
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: reviews-${{ steps.req.outputs.label }}
+          path: .pa/review_${{ steps.req.outputs.label }}_*.md
+          if-no-files-found: warn
+          include-hidden-files: true

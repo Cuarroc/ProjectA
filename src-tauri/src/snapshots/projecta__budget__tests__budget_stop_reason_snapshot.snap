@@ -1,0 +1,8 @@
+---
+source: src/budget.rs
+expression: "vec![claude.reason(), kimi.reason()]"
+---
+[
+    "Budget: 5-Stunden-Fenster bei 92 % (Limit 90 %)",
+    "Budget: 7-Tage-Fenster bei 100 % (Limit 80 %)",
+]

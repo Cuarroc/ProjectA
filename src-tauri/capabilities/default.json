@@ -1,0 +1,15 @@
+{
+  "identifier": "default",
+  "description": "Core permissions for the main ProjectA window.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "updater:allow-check",
+    "updater:allow-download",
+    "process:allow-restart",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+/* Shared foundation for the three UI variants.
+   Tokens are lifted verbatim from src/styles.css so the variants differ in
+   layout and priority only, never in colour world. Anything below the token
+   block is mockup scaffolding, not app code. */
+
+:root {
+  --bg: #1e1e1e;
+  --bg-elevated: #252526;
+  --bg-chrome: #333333;
+  --border: #3c3c3c;
+  --fg: #cccccc;
+  --fg-muted: #8a8a8a;
+  --accent: #0e639c;
+  --accent-hover: #1177bb;
+  --status-bg: #007acc;
+  --status-fg: #ffffff;
+  --danger: #f14c4c;
+  --warn: #cca700;
+
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+/* ---- mockup banner ---------------------------------------------------- */
+
+.mock-banner {
+  background: var(--warn);
+  color: #1e1e1e;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.mock-banner a { color: #1e1e1e; }
+.mock-banner .spacer { flex: 1; }
+
+/* ---- primitives shared by all three ----------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  background: var(--bg-chrome);
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+.chip-working   { background: #0e639c33; color: #6cb6ff; }
+.chip-needs_you { background: #cca70033; color: #e2c04a; }
+.chip-review    { background: #a371f733; color: #c9a5ff; }
+.chip-merge     { background: #2ea04333; color: #6ddb8b; }
+.chip-done      { background: #3c3c3c;   color: #8a8a8a; }
+.chip-danger    { background: #f14c4c33; color: #ff8a8a; }
+
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+.card-attention { border-left-color: var(--warn); }
+.card-name { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.card-task { color: var(--fg-muted); font-size: 12px; line-height: 1.45; }
+.card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.card-reason {
+  color: #e2c04a;
+  font-size: 11.5px;
+  line-height: 1.4;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 3px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+.btn:hover { background: var(--accent-hover); }
+.btn-ghost { background: var(--bg-chrome); color: var(--fg); }
+.btn-ghost:hover { background: #444; }
+
+.statusbar {
+  background: var(--status-bg);
+  color: var(--status-fg);
+  font-size: 11.5px;
+  padding: 3px 12px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .warnpill {
+  background: rgba(0,0,0,.28);
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-weight: 600;
+}
+
+.term {
+  background: #101010;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #b9b9b9;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+.term .u { color: #6cb6ff; }
+.term .s { color: #8a8a8a; }
+.term .a { color: #cccccc; }

@@ -1,0 +1,14 @@
+# cargo-audit Konfiguration (Sanierungsplan Phase A.6).
+# Dokumentierte, begruendete Ausnahmen - keine stillen Ignores.
+
+[advisories]
+ignore = [
+    # RUSTSEC-2024-0429 / GHSA-wrw7-89jp-8q8g — glib < 0.20, unsound
+    # Iterator-Impls fuer VariantStrIter. Transitiv ueber gtk (Tauri-
+    # Linux-Stack). Fuer ProjectA niedriges Risiko: Windows-first-App,
+    # der Linux-Build laeuft nur fuer Tests auf dem Server; VariantStrIter
+    # wird vom eigenen Code nicht benutzt. Fix erfordert eine Hebung des
+    # gtk/tauri-Stacks — als eigene Aufgabe eingeplant (Dependencies).
+    # Geprueft 31.08.2026. Bei gtk/tauri-Bump: Zeile entfernen.
+    "RUSTSEC-2024-0429",
+]

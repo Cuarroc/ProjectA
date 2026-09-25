@@ -1,0 +1,72 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo test)",
+      "Bash(cargo test *)",
+      "Bash(cargo check)",
+      "Bash(cargo check *)",
+      "Bash(cargo clippy *)",
+      "Bash(cargo fmt --check)",
+      "Bash(cargo build)",
+      "Bash(cargo build *)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run build)",
+      "Bash(npm install)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch)",
+      "Bash(git branch -a)",
+      "Bash(git worktree list)",
+      "Bash(bash scripts/sync.sh start)",
+      "Bash(bash scripts/sync.sh note *)",
+      "PowerShell(cargo test)",
+      "PowerShell(cargo test *)",
+      "PowerShell(cargo check)",
+      "PowerShell(cargo check *)",
+      "PowerShell(cargo clippy *)",
+      "PowerShell(cargo fmt --check)",
+      "PowerShell(cargo build)",
+      "PowerShell(cargo build *)",
+      "PowerShell(npm run typecheck)",
+      "PowerShell(npm run build)",
+      "PowerShell(npm install)",
+      "PowerShell(git status)",
+      "PowerShell(git status *)",
+      "PowerShell(git log)",
+      "PowerShell(git log *)",
+      "PowerShell(git diff)",
+      "PowerShell(git diff *)",
+      "PowerShell(git show *)",
+      "PowerShell(git branch)",
+      "PowerShell(git worktree list)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/install-hooks.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/red-first.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

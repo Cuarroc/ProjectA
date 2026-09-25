@@ -1,0 +1,161 @@
+<svg width="1600" height="520" viewBox="0 0 1600 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b0e14"/>
+      <stop offset="0.55" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#10141d"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.55" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <linearGradient id="neonSoft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0.9"/>
+    </linearGradient>
+    <radialGradient id="glowL" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(300 260) rotate(90) scale(320 420)">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowR" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1230 240) rotate(90) scale(300 460)">
+      <stop offset="0" stop-color="#a78bfa" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="1.2" cy="1.2" r="1.2" fill="#1c2330"/>
+    </pattern>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="520" fill="url(#bg)"/>
+  <rect width="1600" height="520" fill="url(#grid)" opacity="0.55"/>
+  <rect width="1600" height="520" fill="url(#glowL)"/>
+  <rect width="1600" height="520" fill="url(#glowR)"/>
+
+  <!-- Circuit accents -->
+  <g stroke="url(#neonSoft)" stroke-width="1.5" opacity="0.35" fill="none">
+    <path d="M0 452 H180 L220 412 H320"/>
+    <path d="M0 470 H140 L175 435"/>
+    <path d="M1600 88 H1440 L1405 123 H1320"/>
+    <path d="M1600 64 H1470"/>
+  </g>
+  <g fill="#22d3ee" opacity="0.55">
+    <circle cx="180" cy="452" r="3"/><circle cx="320" cy="412" r="3"/><circle cx="175" cy="435" r="3"/>
+  </g>
+  <g fill="#a78bfa" opacity="0.55">
+    <circle cx="1440" cy="88" r="3"/><circle cx="1320" cy="123" r="3"/><circle cx="1470" cy="64" r="3"/>
+  </g>
+
+  <!-- Hexagon logo -->
+  <g transform="translate(120,168)">
+    <polygon points="100,0 187,50 187,150 100,200 13,150 13,50" fill="#0d1117" stroke="url(#neon)" stroke-width="4"/>
+    <polygon points="100,14 175,57 175,143 100,186 25,143 25,57" fill="none" stroke="#22d3ee" stroke-opacity="0.25" stroke-width="1.5"/>
+    <text x="100" y="128" text-anchor="middle" font-family="ui-monospace, 'Cascadia Code', Menlo, monospace" font-size="72" font-weight="700" fill="#f0f6fc">&gt;_</text>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="370" y="252" font-family="ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="110" font-weight="800" letter-spacing="-2" fill="#f0f6fc">ProjectA</text>
+  <text x="376" y="318" font-family="ui-monospace, 'Cascadia Code', Menlo, monospace" font-size="32" letter-spacing="8" fill="#8b949e">THE AGENTIC TERMINAL</text>
+  <rect x="378" y="348" width="330" height="3" rx="1.5" fill="url(#neonSoft)"/>
+  <text x="376" y="402" font-family="ui-monospace, 'Cascadia Code', Menlo, monospace" font-size="21" fill="#6e7681">one task · one agent · one git worktree</text>
+
+  <!-- Kanban silhouette -->
+  <g transform="translate(1044,42)" opacity="0.9">
+    <rect x="0" y="0" width="470" height="118" rx="10" fill="#10141c" stroke="#262d3a" stroke-width="1.5"/>
+    <text x="20" y="30" font-family="ui-monospace, Menlo, monospace" font-size="15" fill="#7d8590">board</text>
+    <g font-family="ui-monospace, Menlo, monospace" font-size="12.5">
+      <rect x="18" y="44" width="132" height="58" rx="6" fill="#161b26" stroke="#262d3a"/>
+      <text x="30" y="68" fill="#8b949e">working</text>
+      <rect x="30" y="80" width="84" height="8" rx="4" fill="#34d399" opacity="0.5"/>
+      <rect x="168" y="44" width="132" height="58" rx="6" fill="#161b26" stroke="#262d3a"/>
+      <text x="180" y="68" fill="#8b949e">review</text>
+      <rect x="180" y="80" width="70" height="8" rx="4" fill="#f0b429" opacity="0.5"/>
+      <rect x="318" y="44" width="132" height="58" rx="6" fill="#161b26" stroke="#262d3a"/>
+      <text x="330" y="68" fill="#8b949e">done</text>
+      <rect x="330" y="80" width="96" height="8" rx="4" fill="#22d3ee" opacity="0.5"/>
+    </g>
+  </g>
+
+  <!-- App window -->
+  <g transform="translate(928,180)">
+    <rect x="-6" y="-6" width="628" height="318" rx="16" fill="#22d3ee" opacity="0.10" filter="url(#soft)"/>
+    <rect x="0" y="0" width="616" height="306" rx="12" fill="#0f141c" stroke="#2b3342" stroke-width="1.5"/>
+    <!-- title bar -->
+    <circle cx="26" cy="24" r="6" fill="#f87171"/>
+    <circle cx="48" cy="24" r="6" fill="#fbbf24"/>
+    <circle cx="70" cy="24" r="6" fill="#34d399"/>
+    <text x="92" y="29" font-family="ui-monospace, Menlo, monospace" font-size="15" fill="#7d8590">&gt;_ ProjectA</text>
+    <line x1="0" y1="44" x2="616" y2="44" stroke="#2b3342" stroke-width="1.5"/>
+
+    <!-- pane 1: claude -->
+    <g transform="translate(16,58)">
+      <rect width="188" height="232" rx="8" fill="#121826" stroke="#273042"/>
+      <circle cx="16" cy="20" r="4" fill="#22d3ee"/>
+      <text x="28" y="25" font-family="ui-monospace, Menlo, monospace" font-size="13" fill="#22d3ee">claude</text>
+      <g fill="#3b4457">
+        <rect x="14" y="42" width="120" height="7" rx="3.5"/>
+        <rect x="14" y="58" width="150" height="7" rx="3.5"/>
+        <rect x="14" y="74" width="96" height="7" rx="3.5"/>
+      </g>
+      <g fill="#34d399" opacity="0.75">
+        <rect x="14" y="98" width="138" height="7" rx="3.5"/>
+        <rect x="14" y="114" width="104" height="7" rx="3.5"/>
+        <rect x="14" y="130" width="146" height="7" rx="3.5"/>
+      </g>
+      <g fill="#3b4457">
+        <rect x="14" y="154" width="128" height="7" rx="3.5"/>
+        <rect x="14" y="170" width="86" height="7" rx="3.5"/>
+      </g>
+      <rect x="14" y="196" width="12" height="14" rx="2" fill="#22d3ee"/>
+    </g>
+
+    <!-- pane 2: kimi -->
+    <g transform="translate(214,58)">
+      <rect width="188" height="232" rx="8" fill="#121826" stroke="#273042"/>
+      <circle cx="16" cy="20" r="4" fill="#34d399"/>
+      <text x="28" y="25" font-family="ui-monospace, Menlo, monospace" font-size="13" fill="#34d399">kimi</text>
+      <g fill="#3b4457">
+        <rect x="14" y="42" width="140" height="7" rx="3.5"/>
+        <rect x="14" y="58" width="104" height="7" rx="3.5"/>
+      </g>
+      <g fill="#22d3ee" opacity="0.75">
+        <rect x="14" y="82" width="150" height="7" rx="3.5"/>
+        <rect x="14" y="98" width="118" height="7" rx="3.5"/>
+        <rect x="14" y="114" width="136" height="7" rx="3.5"/>
+        <rect x="14" y="130" width="92" height="7" rx="3.5"/>
+      </g>
+      <g fill="#3b4457">
+        <rect x="14" y="154" width="112" height="7" rx="3.5"/>
+        <rect x="14" y="170" width="142" height="7" rx="3.5"/>
+        <rect x="14" y="186" width="98" height="7" rx="3.5"/>
+      </g>
+      <rect x="14" y="206" width="12" height="14" rx="2" fill="#34d399"/>
+    </g>
+
+    <!-- pane 3: codex -->
+    <g transform="translate(412,58)">
+      <rect width="188" height="232" rx="8" fill="#121826" stroke="#273042"/>
+      <circle cx="16" cy="20" r="4" fill="#a78bfa"/>
+      <text x="28" y="25" font-family="ui-monospace, Menlo, monospace" font-size="13" fill="#a78bfa">codex</text>
+      <g fill="#3b4457">
+        <rect x="14" y="42" width="100" height="7" rx="3.5"/>
+        <rect x="14" y="58" width="144" height="7" rx="3.5"/>
+        <rect x="14" y="74" width="122" height="7" rx="3.5"/>
+      </g>
+      <g fill="#f0b429" opacity="0.7">
+        <rect x="14" y="98" width="134" height="7" rx="3.5"/>
+        <rect x="14" y="114" width="108" height="7" rx="3.5"/>
+      </g>
+      <g fill="#3b4457">
+        <rect x="14" y="138" width="148" height="7" rx="3.5"/>
+        <rect x="14" y="154" width="90" height="7" rx="3.5"/>
+        <rect x="14" y="170" width="126" height="7" rx="3.5"/>
+      </g>
+      <rect x="14" y="196" width="12" height="14" rx="2" fill="#a78bfa"/>
+    </g>
+  </g>
+</svg>

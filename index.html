@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Wortgleich mit app.security.csp in src-tauri/tauri.conf.json;
+         src/csp-config.test.ts erzwingt das. Begruendung je Direktive:
+         docs/plugin-matrix.md. Abhaengigkeit (Review P2-F, GLM-B1): im Dev
+         muss @vitejs/plugin-react seine React-Refresh-Preamble VOR dieser
+         Meta injizieren (steht in <head> ganz oben, gemessen 02.09.) —
+         eine Meta wirkt erst ab ihrem Parse-Zeitpunkt. Injiziert ein
+         Vite-Upgrade die Preamble hinter die Meta, bricht der Dev-Server
+         still (script-src 'self' blockt das Inline-Skript). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 ws://localhost:1421; worker-src 'self'; object-src 'none'; base-uri 'self'"
+    />
+    <title>ProjectA</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

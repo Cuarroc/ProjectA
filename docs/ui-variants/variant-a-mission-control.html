@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variante A — Mission Control</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .shell { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 0; }
+
+  .sidebar { background: var(--bg-elevated); border-right: 1px solid var(--border);
+             display: flex; flex-direction: column; min-height: 0; }
+  .sidebar-brand { padding: 12px 14px; font-size: 12px; font-weight: 600;
+                   letter-spacing: .04em; color: var(--fg-muted); }
+  .proj { padding: 8px 14px; display: grid; gap: 2px; cursor: pointer; border-left: 2px solid transparent; }
+  .proj:hover { background: #2a2d2e; }
+  .proj-active { background: #37373d; border-left-color: var(--status-bg); }
+  .proj-name { font-size: 12.5px; }
+  .proj-sub { font-size: 11px; color: var(--fg-muted); }
+  .side-sec { margin-top: 14px; padding: 0 14px 6px; font-size: 11px; letter-spacing: .05em;
+              text-transform: uppercase; color: var(--fg-muted); }
+
+  .main { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; }
+  .viewbar { height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+             background: var(--bg-chrome); border-bottom: 1px solid var(--border); }
+  .viewbar-project { font-weight: 600; }
+  .viewbar-count { color: var(--fg-muted); font-size: 11.5px; }
+  .spacer { flex: 1; }
+  .segmented { display: flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .segment { padding: 3px 10px; font-size: 12px; color: var(--fg-muted); }
+  .segment + .segment { border-left: 1px solid var(--border); }
+  .segment:hover { background: #3f3f3f; }
+  .segment-active { background: var(--accent); color: #fff; }
+  .seg-badge { background: var(--warn); color: #1e1e1e; border-radius: 8px;
+               padding: 0 5px; font-size: 10px; font-weight: 700; margin-left: 5px; }
+
+  .content { display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
+
+  .board-area { overflow: auto; padding: 12px; min-width: 0; }
+  .banner { background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 4px; padding: 8px 10px; margin-bottom: 12px;
+            display: flex; gap: 10px; align-items: center; font-size: 12px; }
+  .columns { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 10px; }
+  .column { background: #202020; border: 1px solid var(--border); border-radius: 4px;
+            display: grid; grid-template-rows: auto 1fr; min-height: 240px; }
+  .column-head { display: flex; align-items: center; gap: 6px; padding: 7px 9px;
+                 border-bottom: 1px solid var(--border); font-size: 11.5px;
+                 text-transform: uppercase; letter-spacing: .04em; color: var(--fg-muted); }
+  .column-needs .column-head { color: #e2c04a; }
+  .column-count { margin-left: auto; }
+  .column-body { padding: 8px; display: grid; gap: 8px; align-content: start; }
+
+  .dock { border-left: 1px solid var(--border); background: var(--bg-elevated);
+          display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .dock-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .dock-tab { flex: 1; padding: 8px 6px; font-size: 12px; color: var(--fg-muted);
+              border-bottom: 2px solid transparent; }
+  .dock-tab:hover { background: #2a2d2e; }
+  .dock-tab-active { color: var(--fg); border-bottom-color: var(--status-bg); background: #2a2d2e; }
+  .dock-body { overflow: auto; padding: 10px; }
+  .pane { display: none; gap: 10px; }
+  .pane-active { display: grid; align-content: start; }
+
+  .q { background: #202020; border: 1px solid var(--border); border-left: 2px solid var(--warn);
+       border-radius: 4px; padding: 9px 10px; display: grid; gap: 7px; }
+  .q-head { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--fg-muted); }
+  .q-text { font-size: 12.5px; line-height: 1.5; }
+  .q-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .q-opt { border: 1px solid var(--border); border-radius: 3px; padding: 4px 9px; font-size: 11.5px; }
+  .q-opt:hover { border-color: var(--accent-hover); background: #2a2d2e; }
+  .q-opt-picked { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .q-free { display: flex; gap: 6px; }
+  .q-free input { flex: 1; background: #1a1a1a; border: 1px solid var(--border);
+                  border-radius: 3px; color: var(--fg); padding: 5px 8px; font: inherit; font-size: 12px; }
+  .q-answered { border-left-color: #2ea043; opacity: .72; }
+  .q-answer { font-size: 11.5px; color: #6ddb8b; }
+  .dock-note { color: #6a6a6a; font-size: 11.5px; line-height: 1.5; padding: 4px 2px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="mock-banner">
+    <span>Mockup A — Mission Control</span>
+    <span class="spacer"></span>
+    <a href="index.html">&larr; alle Varianten</a>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-brand">PROJECTA</div>
+      <div class="proj proj-active"><span class="proj-name">ProjectA</span><span class="proj-sub">6 Worker &middot; 2 Entscheidungen</span></div>
+      <div class="proj"><span class="proj-name">OmniRoute-Fork</span><span class="proj-sub">2 Worker</span></div>
+      <div class="proj"><span class="proj-name">Landing Meyer</span><span class="proj-sub">leer</span></div>
+      <div class="side-sec">Queue</div>
+      <div class="proj"><span class="proj-name">3 wartend &middot; 1 sharpening</span><span class="proj-sub">Limit 3 Worker/Projekt erreicht</span></div>
+    </aside>
+
+    <div class="main">
+      <header class="viewbar">
+        <span class="viewbar-project">ProjectA</span>
+        <span class="viewbar-count">6 workers</span>
+        <span class="spacer"></span>
+        <div class="segmented">
+          <button class="segment segment-active">Board</button>
+          <button class="segment">Workers</button>
+          <button class="segment">Design</button>
+          <button class="segment">Usage</button>
+          <button class="segment">Aktivit&auml;t</button>
+          <button class="segment">Settings</button>
+        </div>
+        <button class="btn">New worker</button>
+      </header>
+
+      <div class="content">
+        <div class="board-area">
+          <div class="banner">
+            <span class="chip">&#9819; queen</span>
+            <span>orca-queen koordiniert 4 Worker</span>
+            <span class="spacer"></span>
+            <span class="chip chip-needs_you">2 brauchen dich</span>
+          </div>
+
+          <div class="columns">
+            <div class="column">
+              <div class="column-head">Working <span class="column-count chip chip-working">2</span></div>
+              <div class="column-body">
+                <div class="card">
+                  <div class="card-name">phase-18-budget</div>
+                  <div class="card-task">budget.rs + Schwellen-Settings, Thread alle 60 s</div>
+                  <div class="card-meta"><span class="chip">claude</span><span class="chip">12 min</span></div>
+                </div>
+                <div class="card">
+                  <div class="card-name">stats-core</div>
+                  <div class="card-task">sessions-Tabelle + stats.rs-Aggregation</div>
+                  <div class="card-meta"><span class="chip">codex</span><span class="chip">4 min</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column column-needs">
+              <div class="column-head">Needs you <span class="column-count chip chip-needs_you">2</span></div>
+              <div class="column-body">
+                <div class="card card-attention">
+                  <div class="card-name">omni-ledger</div>
+                  <div class="card-task">usage_events + Poller gegen /api/usage/logs</div>
+                  <div class="card-meta"><span class="chip">kimi</span><span class="chip">6 min</span></div>
+                  <div class="card-reason">Entscheidung wartet: claude-omni &mdash; Caps erben oder Defaults?</div>
+                </div>
+                <div class="card card-attention">
+                  <div class="card-name">fern-board-ui</div>
+                  <div class="card-task">Board-Routen phone-tauglich stylen</div>
+                  <div class="card-meta"><span class="chip">claude</span><span class="chip">31 min</span></div>
+                  <div class="card-reason">kein Output und keine Dateiänderung seit 14 min &mdash; vermutlich festgefahren</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column">
+              <div class="column-head">In review <span class="column-count chip chip-review">1</span></div>
+              <div class="column-body">
+                <div class="card">
+                  <div class="card-name">activity-feed</div>
+                  <div class="card-task">get_activity UNION &uuml;ber sieben Tabellen</div>
+                  <div class="card-meta"><span class="chip">kimi</span><span class="chip">3 Kommentare</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column">
+              <div class="column-head">Ready to merge <span class="column-count chip chip-merge">1</span></div>
+              <div class="column-body">
+                <div class="card">
+                  <div class="card-name">p16-fix-3</div>
+                  <div class="card-task">max_workers hat einen Schreiber</div>
+                  <div class="card-meta"><span class="chip chip-merge">Tests gr&uuml;n</span><span class="chip">claude</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column">
+              <div class="column-head">Done <span class="column-count chip chip-done">2</span></div>
+              <div class="column-body">
+                <div class="card"><div class="card-name">p16-fix-2</div><div class="card-task">build_tree schluckt keine Zyklen mehr</div></div>
+                <div class="card"><div class="card-name">p16-fix-1</div><div class="card-task">Respawn stellt Playbook + Rollenvariante wieder her</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="dock">
+          <div class="dock-tabs">
+            <button class="dock-tab dock-tab-active" data-pane="fragen">Fragen <span class="seg-badge">2</span></button>
+            <button class="dock-tab" data-pane="chat">Chat</button>
+            <button class="dock-tab" data-pane="verlauf">Verlauf</button>
+          </div>
+          <div class="dock-body">
+            <div class="pane pane-active" id="pane-fragen">
+              <div class="q">
+                <div class="q-head"><span class="chip chip-needs_you">omni-ledger</span><span>vor 6 min</span></div>
+                <div class="q-text">claude-omni ist eine neue Profil-id. Soll sie die Capabilities von <code>claude</code> erben (Hooks, Skills, Systemprompt-Flag) oder die vorsichtigen Defaults bekommen?</div>
+                <div class="q-opts">
+                  <button class="q-opt">Von claude erben</button>
+                  <button class="q-opt">Vorsichtige Defaults</button>
+                  <button class="q-opt">caps voll ausschreiben</button>
+                </div>
+              </div>
+
+              <div class="q">
+                <div class="q-head"><span class="chip">preflight</span><span>vor 2 min</span></div>
+                <div class="q-text">Die Aufgabe &bdquo;bau was mit API&ldquo; ist zu vage. Welche Richtung ist gemeint?</div>
+                <div class="q-opts">
+                  <button class="q-opt">REST-Endpunkte</button>
+                  <button class="q-opt">GraphQL</button>
+                  <button class="q-opt">nur Client-SDK</button>
+                </div>
+                <div class="q-free"><input placeholder="oder frei antworten…"><button class="btn">Senden</button></div>
+              </div>
+
+              <div class="q q-answered">
+                <div class="q-head"><span class="chip">preflight</span><span>vor 1 h</span></div>
+                <div class="q-text">Digest-Dateien nach UTC oder Lokalzeit datieren?</div>
+                <div class="q-answer">beantwortet: UTC</div>
+              </div>
+
+              <div class="dock-note">Leitplanken: max. 3 offene Fragen pro Worker, Verfall nach 4 h mit &bdquo;entscheide selbst&ldquo;.</div>
+            </div>
+
+            <div class="pane" id="pane-chat">
+              <div class="term"><span class="s">&#9656; an orca-queen</span>
+<span class="u">du:</span> <span class="a">Wie weit ist phase-18-budget?</span>
+<span class="u">queen:</span> <span class="a">budget.rs steht, Schwellen lesen aus settings. Offen ist
+das Pausieren laufender Worker: take_session + kill, ohne zu archivieren.</span>
+<span class="s">&#9656; Antwort geht als MSG_USER ins Worker-Log</span></div>
+              <div class="q-free"><input placeholder="an den Orchestrator…"><button class="btn">Senden</button></div>
+            </div>
+
+            <div class="pane" id="pane-verlauf">
+              <div class="term"><span class="s">01:12</span> <span class="a">merge: Activity-Feed nach main</span>
+<span class="s">01:02</span> <span class="a">Phase 16 fix 3 committed</span>
+<span class="s">00:54</span> <span class="a">omni-ledger &rarr; needs_you (Frage gestellt)</span>
+<span class="s">00:41</span> <span class="a">fern-board-ui &rarr; needs_you (stuck, 14 min still)</span>
+<span class="s">00:38</span> <span class="a">Budget-Stop: claude bei 98 % (5 h)</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span>3 Worker aktiv</span>
+    <span>Claude 98 % &middot; reset 03:40</span>
+    <span>Codex 41 %</span>
+    <span>OmniRoute online</span>
+    <span class="spacer"></span>
+    <span class="warnpill">2 Entscheidungen offen</span>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".dock-tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      document.querySelectorAll(".dock-tab").forEach(function (t) { t.classList.remove("dock-tab-active"); });
+      document.querySelectorAll(".pane").forEach(function (p) { p.classList.remove("pane-active"); });
+      tab.classList.add("dock-tab-active");
+      document.getElementById("pane-" + tab.dataset.pane).classList.add("pane-active");
+    });
+  });
+  document.querySelectorAll(".q-opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      opt.parentElement.querySelectorAll(".q-opt").forEach(function (o) { o.classList.remove("q-opt-picked"); });
+      opt.classList.add("q-opt-picked");
+    });
+  });
+</script>
+</body>
+</html>

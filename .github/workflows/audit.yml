@@ -1,0 +1,65 @@
+# Woechentlicher Audit-Job (Sanierungsplan Phase A.4): prueft Cargo.lock und
+# package-lock.json auf bekannte Sicherheitsluecken. Bei einem Fund auf Stufe
+# >= moderate schlaegt der Job fehl (cargo audit / npm audit enden dann mit
+# Exit-Code != 0). Zusaetzlich manuell per workflow_dispatch ausloesbar.
+# Laeuft auf ubuntu-latest: Lockfile-Audits sind plattformunabhaengig und
+# Windows-Minuten kosten doppelt.
+name: audit
+
+on:
+  schedule:
+    - cron: "37 4 * * 1" # montags 04:37 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# `run:`-Schritte laufen ohne diese Zeilen als `bash -e {0}` — OHNE `pipefail`.
+# Der Status einer Pipe ist dann der ihres LETZTEN Glieds, und ein
+# `cargo clippy 2>&1 | tail` meldet Erfolg, waehrend clippy scheitert. Genau so
+# ging am 05.09. in review.yml der Exit 1 des Modell-Resolvers verloren und am
+# 04.09. lokal der Status von clippy.
+#
+# Mit explizitem `shell: bash` startet GitHub den Schritt als
+# `bash --noprofile --norc -eo pipefail {0}` — die Fehlerklasse ist damit
+# strukturell dicht, nicht nur an den Stellen, die jemand einzeln gehaertet hat.
+# scripts/ci/no-masked-output.sh bleibt trotzdem: es faengt die Schreibvorgaenge
+# nach $GITHUB_OUTPUT/$GITHUB_ENV, die auch mit pipefail noch falsch waeren,
+# weil dort der Exit-Code gar nicht erst geprueft wird.
+#
+# Gilt auch auf windows-latest: dort ist `bash` die mitgelieferte Git-Bash.
+# Schritte mit eigenem `shell:` (pwsh in release.yml) sind unberuehrt.
+# Alle `uses:` sind auf einen Commit-SHA gepinnt, nicht auf einen Tag oder
+# Branch. Begruendung: docs/decisions.md (09.09.). Dependabot hebt sie ueber
+# den Versionskommentar an; der Kommentar ist die lesbare Fassung des SHA,
+# nicht die autorisierende.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # `@stable` war ein BRANCH, kein Tag - er aenderte sich ohne Commit im
+      # Repo. Gepinnt auf master; die Toolchain steht jetzt sichtbar hier.
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+
+      - name: cargo-audit installieren
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+        with:
+          tool: cargo-audit
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      # Beide Audits ueber dieselbe Quelle wie alle anderen Gates
+      # (scripts/ci/gates.sh) — lokal identisch aufrufbar:
+      #   bash scripts/ci/gates.sh lane audit
+      - name: Audits
+        run: bash scripts/ci/gates.sh lane audit

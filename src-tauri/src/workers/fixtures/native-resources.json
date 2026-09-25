@@ -1,0 +1,65 @@
+{
+  "publicKey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc2QjdDNUVENEVBNzFFRDIKUldUU0hxZE83Y1czZHN0Z1A5UXNWSWdBSmQ3YmdUMjVnc2xOWGtueUZZVWhVbnpvR3VxUmFlaGQK",
+  "cases": [
+    {
+      "name": "valid",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZG43RE94MHRwaHdxdzFBR2g5ZlFMS0xRUkhwY3J2STNYZUdYcDFPK2g3N0V0OUFPOFJ5YlIvSzZRMDBRRGxxRDNNckFtdXBMUE04WTV3SnFqN00yYkFBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgwCWZpbGU6dmFsaWQuanNvbgpvVDB3bU9rUmp3amVVdUpycU04d2Z0aDNwR1hJLzNtQjY1ZC9vVWYxdHRjSmt2NitERU9JelUxM1JFZFNlbU1HemppWlVnTlJGWm1kemtXT0ptdUFEdz09Cg=="
+    },
+    {
+      "name": "schema",
+      "message": "{\"schemaVersion\":2,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZHMrMFN0eFV1NElWOU9aT2tiaHdHTGUrUXNZMWtsQ1FSQzZ0YVVOTEtjTUpsaFIwQWZ3Tlkxek5rQnRXYkI4a2lOTFRxUklkcWRKclN3VW53VGlNTVE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgwCWZpbGU6c2NoZW1hLmpzb24KL0w3cjkzOVdLejlWNkg0d0tyeVJTcDdDeWZFaGUzRmZDMHZ4cUhlcHArSk5PUGo3dkhWemUvT3U4OElRTjdvTURMbGdoQ0xHMk15ZjduQml6TW9KRFE9PQo="
+    },
+    {
+      "name": "purpose",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-update-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZG9Gd01MSFZweW1xdmlzU3hrZ2hWNGZaTWZBZTE1dFNyRnp1Qmx2emxTcFRmcFpIdGQ2ckdPVnZPOHpZOGczYzZzbVlZZ1IwRU5DSU9qU0syMm9XaGdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgwCWZpbGU6cHVycG9zZS5qc29uCjE0RGF1ZWM0NGRtcmlrMFJ3RjdpSTlBSVd1NmFUVWMxaUlFQVUwc3lMNVpzL21McXBocEN1MG84dlFESzBsdS9JZ0UzMmRoYmxXU2liRFFTMTVRY0J3PT0K"
+    },
+    {
+      "name": "host",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"../pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZHYrRThlaGM3TEdGVU1XclgwS1AzWTYwWkcyTUtMa2hMMHlOZm1QUGxvbG9rL0pic3lzYlVTbUU4NTRrRGdUdjB6d2tVWkU2UURlNVRDQWJmcW84VHdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgxCWZpbGU6aG9zdC5qc29uCldVYnc0Q1Z4ejRmSmxJenhUUVcvZEI0OTVNK2cvYkZMVGRkQVltcndaa0ZHOE9WOTZCZ01CQVArS0ZEQ3dsWU13TkFIUUwzeFJlenZ3V2N5YmtHR0J3PT0K"
+    },
+    {
+      "name": "hash",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZGpQTlpYcmxYUG1oTXlhYUdwUUlVNTZSZGI0TXlubGVVaG04SGJpTllXMzh3UTBFZVYzTG5hTjAwKzhGekpFL0tKdDNwUDQyNnBRTnlLU0dPcjRmV2dvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgxCWZpbGU6aGFzaC5qc29uCnEzL3pkVW5TTGc1TGlDOXdXWElaSTZlUWZBNXBoOElXcWJlNTh5aktxV2l5TzhLY2Z3alZ6NGk5VWJzeWUyWGJmTi9EQXB6bkJHMmhVSzRrQjZ1REJRPT0K"
+    },
+    {
+      "name": "unknown",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"extra\":1}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZG80VmJHRFJpUlNNV1NYKzhiUmp0SjhrTGJwRGZETDR2SVRveVQ5S0txeTQweHdDaE56bG5pVlJzZDF2WEdHZnREOENDYUN4TERpcWlicWl0OHU2a3dZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgxCWZpbGU6dW5rbm93bi5qc29uCmg5U21hb0RYcEpQUlhLak95bTRNUGNNdVpFeHNJV1BNa0hUY2tWT3R2THNNM0QyVUs2V2xiOHhQUDYwOWJqWlhMS0Z0RmNKRkZlVmQxeFlHSklDbERRPT0K"
+    },
+    {
+      "name": "old_version",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.2.9\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZGtORnRSKzA5ZjZJQnJINDQxdkRHTGVqMU96bjJRdFg5UVBheHlGek5wcmxtWUg2NjJwUXZJWkEvMEYrSGx0WjNoK1dmSHFncFFxNHVJT3N4WnkveXdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgxCWZpbGU6b2xkX3ZlcnNpb24uanNvbgowdUdObVBIaU15d0dqSVA1Zm51emMyQnRqbE9Db0JwSzYwaXpSeWRTckJaQW5FRGl5ME9mYUJvNlJIN2pETkF3U0h5aE5sK2taZCtpdHZUcnVRN3VEdz09Cg=="
+    },
+    {
+      "name": "commit",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"cccccccccccccccccccccccccccccccccccccccc\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZHNidDJFRUVHamVPMXR3d1pybS9kSUgwTWlsdXkvY0RhRmo5M0lHcmRaTEdUcW8vT1o1NE96UFFJcEJHTmoydE4xc1FIVGlJbmJYWXhTWko2SlM0Q3djPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgyCWZpbGU6Y29tbWl0Lmpzb24KcG1PTXJyQ091Z0dvUU50SmQ5SGJIdUYwdURacmh2L0IzNU4yMFhlQTVabUdYVk5jVlFTdVdpNzdxdEdJRDBqYkUyZG1zMFRubk9UQmdJcE5sY3hBQnc9PQo="
+    },
+    {
+      "name": "target",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"aarch64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZG9QcjZyaTVhaFBXRWxKdmZYbjFIVHlYR0dXQTFDSWZOaTZxRmRzMVBMZmgvbDZoSFFPd05qSlZubWJxMnVjU1dIL2dqc3lSdW5UbUxSc3BjOXJJdVFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgyCWZpbGU6dGFyZ2V0Lmpzb24KZlNIa0had09iREl3blVuSFc3UFA0bWJ5UDBvYjZlWE0yUTJwNWYxOGxueCt2T0w2WTlCK2lHaHIydlREemNSc0YyRFRUeS81aEsvYVlOY0hHdkMvRFE9PQo="
+    },
+    {
+      "name": "protocol",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":2,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZGhZMnkvczVaT1NDRzFCMmU3cG4wSnI3WjJzK1hDL3FSbUlLQ2tDNnRJbmsrZFVGQmFKeTRvcnplS2VXdnFWaFhzVEhWU2VZeUNneUZaYm94dFhWc1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgyCWZpbGU6cHJvdG9jb2wuanNvbgpiQ1hBNmJ0MDhwZk1pbk9xOHVXWml0RDVyaHpIeFVYU0liSW94T1hTdkdWWG1DaE84ay9TUjhzaVg0M3JCazNVeTZRYUxDYmxqMXM2T0tkZVQyaFNDUT09Cg=="
+    },
+    {
+      "name": "duplicate",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"schemaVersion\":1}",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZGc4anZpaXJ2VGVRMU9jV3pqK2p1dnBkTjFKTGh0Q0hKY0thSklMWTkram9UV1g0ZkZRbzQxSVFlUTc0eG9xeWtxTkdxNjdpM0gwTThTSDdCbG12TVFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgyCWZpbGU6ZHVwbGljYXRlLmpzb24KLzNQYnJvaXY2OXZLYldnaWNoQW9rdytUUm93bkVSaXZYYzRsMGtmQk5BUWVmOGtDVDBhSm1Uc3l4WDV1RUlxVEt3Q29kVFcvVUtYVklqYVJJRlB6QkE9PQo="
+    },
+    {
+      "name": "trailing",
+      "message": "{\"schemaVersion\":1,\"purpose\":\"projecta-native-host-v1\",\"appVersion\":\"1.3.0\",\"buildCommit\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"target\":\"x86_64-pc-windows-msvc\",\"protocolVersion\":1,\"hostName\":\"pa-capture-host.exe\",\"hostSha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"} trailing",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUU0hxZE83Y1czZG9kL1hiUFVPOHhFdE5wOHIrS08yakF5SzVMT1plMEpWZVBIb0JuNkV2TGtDUHg5cElEWHJXL3NVY2pOWVNuemh6QXhTMCtHOWUwTHFaTENtZkNnZ1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5MjU2OTgzCWZpbGU6dHJhaWxpbmcuanNvbgo2SHhGWGJUYTdjUERQeVUvemh6c3NpMXIrL3VleGZSMTU0L1EyZWxJUWc1Y05kTnREVXlzQzBGQkNDMVlrZFJxOSs4Yjc1bXpldXY0b3dYOUJjWFpBdz09Cg=="
+    }
+  ]
+}

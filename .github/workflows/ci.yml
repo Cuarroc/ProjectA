@@ -1,0 +1,542 @@
+# Zwei Jobs, aufgeteilt nach dem, was jede Plattform wirklich beitragen kann
+# (Sanierungsplan G-1, Nutzer-Entscheidung Q5):
+#
+#   linux   - alles Plattformneutrale: fmt, clippy, die ganze Rust-Suite und
+#             saemtliche Frontend-Gates. Schnell und billig, faengt die
+#             Unix-Regressionen, die vorher erst auf dem Server auffielen.
+#   windows - was nur Windows beantworten kann: die cfg(windows)-Arme
+#             kompilieren (clippy) und die ganze Suite auf der Zielplattform.
+#
+# Warum die Windows-Suite NICHT gefiltert wird: die 8 echten
+# cfg(windows)-Tests heissen `run_in_pty`, `npm_shim`,
+# `spawns_a_cmd_shim_through_comspec`, ... - ein Namensfilter wie
+# `test(/windows|conpty|dpapi/)` haette am 03.09. gemessen fast keinen davon
+# getroffen und der Job waere gruen durch Abwesenheit gewesen. Gespart wird
+# stattdessen an den Gates, die auf Windows nichts beweisen (fmt, Frontend,
+# npm ci): die laufen nur auf Linux. Windows-Minuten kosten doppelt.
+#
+# Das Bundle bleibt dem Release-Workflow (release.yml, nur Tags).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    # CI-01 (24.09.): Entwuerfe laufen nicht (Job-`if` unten). Damit ein
+    # Entwurf beim "Ready for review" seine Checks bekommt, muss dieses
+    # Ereignis ausdruecklich dabei sein - die ersten drei sind GitHubs
+    # Standardmenge.
+    types: [opened, synchronize, reopened, ready_for_review]
+  # CI-02 (Nutzer-Entscheidung 24.09.): der Push auf main ist nur noch leicht
+  # (Plan-Schritt, s. u.). Einmal pro Woche und auf Knopfdruck faehrt main
+  # dafuer beide Bahnen VOLL - das faengt, was die Queue nicht sehen kann
+  # (neues stabiles rustc, Drift der Runner-Images), und schreibt die Caches
+  # neu. Montags nach audit.yml (04:37).
+  schedule:
+    - cron: "17 5 * * 1" # montags 05:17 UTC
+  workflow_dispatch:
+
+# Kein `paths-ignore` mehr. Es war am 03.09. als Ersparnis gedacht und hat in
+# diesem PR zweimal ein Gate blind gemacht: `**.md` und `.pa/**` sind die
+# Eingaben von `spec-status-check.mjs`, und `red-first` aus #31 waere bei einem
+# doku-only-PR stillschweigend uebersprungen worden - ein Gate, das ein anderer
+# Agent gerade erst eingezogen hat. "Gruen durch Abwesenheit" ist im selben PR
+# der Grund, warum die Windows-Suite ungefiltert laeuft; dieselbe Begruendung
+# gilt hier. Gespart wird stattdessen ueber `concurrency` (der ueberholte Lauf
+# wird abgebrochen) und ueber die Arbeitsteilung Linux/Windows.
+#
+# Required Checks auf main (W0-06 am 22.09. gesetzt, Stand 24.09.):
+# `gates (linux)`, `gates (windows)`, `red-first` - alle drei aus DIESER
+# Datei - und `Mergify Merge Protections` (von Mergify, .mergify.yml). Auch
+# fuer Admins, keine Force-Pushes; "strict" ist seit 24.09. AUS, die
+# Aktualitaet gegen main garantiert die Mergify-Queue. Die Job-NAMEN
+# (`name:`) sind die Check-Namen: nicht umbenennen, ohne Branch Protection
+# und .mergify.yml mitzuziehen. Und jeder dieser Checks muss auf JEDEM
+# Nicht-Entwurf-PR einen Abschluss melden - keine Pfadfilter, die einen davon
+# dauerhaft pending lassen.
+#
+# CI-01/CI-02 (Nutzer-Entscheidungen 24.09., docs/decisions.md): Die Bahnen
+# linux und windows entscheiden per PLAN-SCHRITT (scripts/ci/lane-plan.sh), ob
+# sie laufen muessen - kein paths-ignore, kein Job-`if`. Die Jobs melden
+# deshalb immer success/failure, nie "pending":
+#   - PR, Bahn windows: never since CI-03 (below) - only the queue runs it;
+#   - PR, Bahn linux: aus nur bei reiner Doku, die kein Gate liest
+#     (Docs-only fast-success; STAND.md, .pa/task_*, docs/PLAN.md,
+#     docs/dev-hq/* und jede im Testcode genannte Doku bleiben voll);
+#   - Merge-Queue (mergify/merge-queue/*), schedule, workflow_dispatch: voll;
+#   - Push auf main: voll nur, wenn eine Cache-Eingabe (Cargo.toml/.lock,
+#     Toolchain, .cargo/, bei linux package-lock.json) geaendert ist - der Code
+#     wurde Minuten vorher im Queue-Lauf voll geprueft, der Push-Lauf haelt
+#     nur den Cache fuer die PRs aktuell.
+# red-first hat seinen eigenen Plan (red-first.sh --plan) und laeuft nur auf
+# PRs.
+#
+# CI-03 (user decision 25.09.2026, docs/decisions.md) - GitHub Actions cost:
+#   - `gates (windows)` never runs its lane on an ordinary PR. On such a PR
+#     the job runs on ubuntu-latest (1 Linux minute instead of 2 billed
+#     Windows minutes just to say "not needed") and reports success; the
+#     full Windows lane runs in the merge queue, weekly and on
+#     workflow_dispatch. A guard step fails the job if run=true ever reaches
+#     a non-Windows runner. Why not a job-level `if` (0 minutes): GitHub
+#     counts a skipped job as success for the branch protection, but
+#     Mergify's `check-success` does not match a skipped check
+#     (`check-skipped` is a separate attribute), and how Mergify injects the
+#     branch protection's required checks is not documented - a PR could sit
+#     unqueued forever.
+#   - red-first runs as two steps inside `gates (linux)` (one setup instead
+#     of two). The job `red-first` only evaluates their outcome
+#     (scripts/ci/red-first-verdict.sh), so the required check keeps its name.
+#   - scripts/ci/ci-shape.sh pins this structure (gate `ci-shape`).
+#
+# Entwuerfe: jeder Job ueberspringt Draft-PRs - AUSSER den Queue-PRs von
+# Mergify (Kopf-Branch mergify/merge-queue/*): die sind technisch Entwuerfe
+# und muessen genau dann laufen. Ein Nicht-Entwurf-PR bekommt alle drei
+# Checks; der Wechsel Entwurf -> bereit loest `ready_for_review` aus.
+
+permissions:
+  contents: read
+  # red-first resolves immutable Regression-For workflow-run IDs through the
+  # Actions API when the reference is not a Git object.
+  actions: read
+
+# Ein zweiter Push auf denselben PR macht den ersten Lauf wertlos - Windows-
+# Minuten kosten doppelt, also abbrechen. Die Gruppe ist `github.ref`, bei
+# pull_request also refs/pull/<N>/merge: je PR eine Gruppe.
+#
+# Nie abgebrochen wird:
+#   - ein Push auf main, der Wochenlauf und ein Handlauf: jeder ist der Beleg
+#     fuer genau einen Stand (bzw. schreibt den Cache fuer genau einen Stand);
+#   - ein Queue-Lauf von Mergify (mergify/merge-queue/*): einen abgebrochenen
+#     Check wertet die Queue als "checks-interrupted" und wirft den PR hinaus
+#     (docs.mergify.com/merge-queue/lifecycle#interrupted-checks).
+#
+# Diese Laeufe und die Queue-Laeufe bekommen zusaetzlich Ereignis und
+# Commit-SHA in die Gruppe. Ohne das wartet ein neuer Lauf auf demselben Ref
+# und wird, sobald ein DRITTER kommt, als "pending" still verworfen - so gingen
+# am 24.09. zwei main-Laeufe als "cancelled" verloren, und ein Wochenlauf, der
+# hinter einem Push wartet, koennte genauso verschwinden (CI-02). Fuer die
+# Queue gilt zusaetzlich: ohne den SHA
+# WARTET ein neuer Lauf auf demselben Queue-Ref, bis der alte fertig ist
+# (so arbeitet `concurrency` ohne cancel), und alter Lauf + neuer Lauf koennen
+# zusammen ueber das checks_timeout von 60 min laufen - der Batch floege
+# dann trotz gruener CI aus der Queue (Befund kimi-k3 F3, Review CI-01).
+# Preis: ein von Mergify ueberholter Queue-Lauf laeuft zu Ende, Minuten ohne
+# Nutzen. Bewusst: lieber das als ein Rauswurf aus der Queue.
+concurrency:
+  group: ci-${{ github.ref }}${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'mergify/merge-queue/')) && format('-{0}-{1}', github.event_name, github.sha) || '' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'mergify/merge-queue/') }}
+
+# `run:`-Schritte laufen ohne diese Zeilen als `bash -e {0}` — OHNE `pipefail`.
+# Der Status einer Pipe ist dann der ihres LETZTEN Glieds, und ein
+# `cargo clippy 2>&1 | tail` meldet Erfolg, waehrend clippy scheitert. Genau so
+# ging am 05.09. in review.yml der Exit 1 des Modell-Resolvers verloren und am
+# 04.09. lokal der Status von clippy.
+#
+# Mit explizitem `shell: bash` startet GitHub den Schritt als
+# `bash --noprofile --norc -eo pipefail {0}` — die Fehlerklasse ist damit
+# strukturell dicht, nicht nur an den Stellen, die jemand einzeln gehaertet hat.
+# scripts/ci/no-masked-output.sh bleibt trotzdem: es faengt die Schreibvorgaenge
+# nach $GITHUB_OUTPUT/$GITHUB_ENV, die auch mit pipefail noch falsch waeren,
+# weil dort der Exit-Code gar nicht erst geprueft wird.
+#
+# Gilt auch auf windows-latest: dort ist `bash` die mitgelieferte Git-Bash.
+# Schritte mit eigenem `shell:` (pwsh in release.yml) sind unberuehrt.
+# Alle `uses:` sind auf einen Commit-SHA gepinnt, nicht auf einen Tag oder
+# Branch. Begruendung: docs/decisions.md (09.09.). Dependabot hebt sie ueber
+# den Versionskommentar an; der Kommentar ist die lesbare Fassung des SHA,
+# nicht die autorisierende.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  linux:
+    name: gates (linux)
+    # Entwurf -> aus; Queue-Entwurf von Mergify -> an (Kopfkommentar).
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')
+    runs-on: ubuntu-latest
+    # Gruener Lauf im Median 7,0 min (Messung 24.09.). Ohne Grenze liefe ein
+    # haengender Job bis zum GitHub-Maximum von 6 h - zwei Laeufe mit
+    # "607 Minuten" gab es schon (dort ein Spending-Limit, kein Haenger, aber
+    # die Grenze fehlte trotzdem).
+    # CI-03: 20 min for the gates plus the 25 min red-first had as its own
+    # job (it builds the merge base, and the head again after the gates),
+    # plus 10 min margin for a cold rust-cache AND a cold merge-base build in
+    # the same run (review PR #149, kimi-k3 F3). A limit costs nothing -
+    # only used minutes are billed. A timeout here turns red-first red too
+    # (empty outputs), so treat one as a signal to split the job again.
+    timeout-minutes: 55
+    # CI-03: the red-first outcome for the job `red-first` (fail-closed
+    # evaluation in scripts/ci/red-first-verdict.sh).
+    outputs:
+      rf_plan: ${{ steps.rf_plan.outcome }}
+      rf_count: ${{ steps.rf_plan.outputs.count }}
+      rf_run: ${{ steps.rf_run.outcome }}
+    env:
+      # Nur "true"/"false", nie das Secret selbst: so sieht kein Gate-Schritt
+      # den Token, und der Upload-Schritt kann sich selbst abschalten, solange
+      # der Nutzer MERGIFY_TOKEN noch nicht angelegt hat (auch in Dependabot-
+      # PRs, die keine Actions-Secrets bekommen).
+      MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
+      # vitest.config.ts schreibt damit zusaetzlich .junit/vitest.xml
+      # (gitignored), fuer den Test-Insights-Upload unten.
+      PA_JUNIT: "1"
+    steps:
+      # fetch-depth 2: im pull_request-Checkout ist HEAD der Merge-Commit
+      # refs/pull/<N>/merge, sein erster Elternteil die Spitze von main - mehr
+      # braucht der Plan-Schritt nicht. Bei einem Push holt er den
+      # Vorgaenger-Commit selbst (PLAN_FETCH).
+      # CI-03: on a pull_request the full history, because red-first (steps
+      # below) needs the merge base and the PR's commits - the same
+      # fetch-depth 0 the former red-first job used. The string '0' is
+      # deliberate: a number 0 is falsy in an expression and would fall
+      # through to 2.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '2' }}
+
+      # CI-02: Braucht dieser Lauf die Linux-Bahn? Aus nur bei reiner Doku,
+      # die kein Gate liest, und bei einem main-Push ohne Cache-Eingabe.
+      # Entscheidung und ausloesender Pfad stehen im Log; Liste und
+      # Sicherheitsnetz im Skript, festgenagelt in scripts/test-lane-plan.sh.
+      # Die Schritte danach laufen bei `run != 'false'`: fehlt die Ausgabe,
+      # laeuft die volle Bahn statt keiner; scheitert der Plan selbst, ist der
+      # Job rot.
+      - name: Plan - muss die Linux-Bahn laufen?
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          GIT_REF: ${{ github.ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PLAN_FETCH: "1"
+        run: |
+          # Erst in eine Datei, dann anhaengen - eine Pipe nach $GITHUB_OUTPUT
+          # verschluckt den Exit-Code links davon (scripts/ci/no-masked-output.sh).
+          bash scripts/ci/lane-plan.sh linux > "$RUNNER_TEMP/lane-plan.out"
+          cat "$RUNNER_TEMP/lane-plan.out"
+          grep -E '^run=(true|false)$' "$RUNNER_TEMP/lane-plan.out" > "$RUNNER_TEMP/lane-plan.kv"
+          cat "$RUNNER_TEMP/lane-plan.kv" >> "$GITHUB_OUTPUT"
+
+      - name: Linux-Bahn nicht noetig
+        if: steps.plan.outputs.run == 'false'
+        run: |
+          echo "::notice title=gates (linux)::Linux-Bahn nicht gelaufen - Grund im Plan-Schritt. Die Merge-Queue und der Wochenlauf fahren sie voll."
+          {
+            echo "### gates (linux): Bahn nicht noetig"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/lane-plan.out"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # CI-03: red-first, formerly its own job, step 1 of 2. Look first,
+      # install later: `--plan` only reads `git log` (milliseconds) and also
+      # runs the trailer form check - a commit that changes source without a
+      # trailer is red here, never a silent "count=0". continue-on-error: its
+      # verdict belongs to the check `red-first`, not to `gates (linux)`; the
+      # job `red-first` below reads the outcome (fail-closed). Pinned in
+      # scripts/test-red-first.sh and scripts/test-red-first-verdict.sh.
+      - name: red-first - plan
+        id: rf_plan
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Base and head explicitly: the checkout above is refs/pull/N/merge,
+          # base.sha may no longer be reachable from it once main moved.
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          # Erst in eine Datei, dann anhaengen - eine Pipe nach $GITHUB_OUTPUT
+          # verschluckt den Exit-Code links davon (scripts/ci/no-masked-output.sh).
+          bash scripts/ci/red-first.sh --plan > "$RUNNER_TEMP/rf-plan.out"
+          cat "$RUNNER_TEMP/rf-plan.out"
+          # Only the key lines: `--plan` also prints `red-first: BASE=...`,
+          # which is no valid name=value line (external review 21.09.,
+          # kimi-k2.7-code R-5).
+          grep -E '^(count|specs)=[0-9]+$' "$RUNNER_TEMP/rf-plan.out" > "$RUNNER_TEMP/rf-plan.kv"
+          cat "$RUNNER_TEMP/rf-plan.kv" >> "$GITHUB_OUTPUT"
+
+      # Sieben Bootstrap-Schritte standen bis zum 09.09. woertlich zweimal in
+      # dieser Datei — hier und im Job `red-first`. Zwei Kopien heisst: eine
+      # wird angefasst und die andere nicht, und genau so hatte red-first als
+      # einziger Job keinen rust-cache. Jetzt eine Stelle:
+      # .github/actions/setup-linux/action.yml
+      # CI-03: and one CALL - also when only red-first needs it (a docs-only
+      # PR whose PR text carries a Test-First trailer).
+      - uses: ./.github/actions/setup-linux
+        id: setup
+        if: steps.plan.outputs.run != 'false' || (steps.rf_plan.outcome == 'success' && steps.rf_plan.outputs.count != '0' && steps.rf_plan.outputs.count != '')
+
+      # Die Gate-Liste steht nicht mehr hier, sondern in scripts/ci/gates.sh.
+      #
+      # Sie stand bis zum 09.09. fuenffach da (hier, im Windows-Job, in
+      # release.yml, in beiden Git-Hooks) und driftete: pre-push fuhr
+      # `cargo test`, dieser Job `cargo nextest run --profile ci` — geteilter
+      # Prozess statt Prozess pro Test, kein slow-timeout. Was lokal vor dem
+      # Push gruen war, war also nicht das, was hier gemessen wurde. Zwei
+      # Gates liefen ueberhaupt nirgends: `npm run test:hq` (12
+      # node:test-Dateien) und die Selbsttests der Gates, auf die sich der
+      # Kommentar dieses Jobs zur Begruendung berief.
+      #
+      # Ein Schritt je BAHN statt je Gate ist Absicht: so gibt es keine Liste
+      # im YAML mehr, die von der lokalen abweichen KOENNTE. Drift ist nicht
+      # geprueft, sondern unmoeglich. Die Aufschluesselung je Gate steht im
+      # Log (::group::) und als Tabelle in der Job-Summary; die Reihenfolge
+      # billig -> teuer ist in gates.sh dieselbe wie vorher hier.
+      #
+      # Derselbe Befehl laeuft auf dem Entwickler-PC: bash scripts/ci/gates.sh lane linux
+      #
+      # Der rust-cache kann einen JUnit-Bericht aus einem frueheren Lauf
+      # mitbringen. Weg damit, sonst laede der Upload unten bei einem Lauf,
+      # der vor rust-suite abbricht, alte Ergebnisse als neue hoch.
+      - name: Alte JUnit-Berichte entfernen
+        if: steps.plan.outputs.run != 'false'
+        run: rm -f src-tauri/target/nextest/ci/junit.xml .junit/vitest.xml
+
+      - name: Gates (linux)
+        if: steps.plan.outputs.run != 'false'
+        run: bash scripts/ci/gates.sh lane linux
+
+      # Test Insights (CI-01): die JUnit-Berichte DIESES Laufs an Mergify -
+      # kein zusaetzlicher Lauf, nur ein Upload. `!cancelled()`, damit auch
+      # rote Laeufe gemeldet werden (genau die braucht die Flaky-Erkennung).
+      # `continue-on-error`: ein nicht erreichbares Mergify oder ein
+      # abgelehnter Upload darf den Job nie rot faerben - das Urteil ueber den
+      # Lauf faellt oben in gates.sh, nicht hier. Ohne Secret (Nutzer hat es
+      # noch nicht angelegt, Dependabot-PR) laeuft der Schritt gar nicht.
+      # Bei uebersprungener Bahn (run=false) gibt es keine frischen Berichte -
+      # der Schritt wird wie im Windows-Job gar nicht erst betreten (Review
+      # CI-02, kimi-k3 F4; der hashFiles-Guard allein liess ihn nur
+      # auslassen, die Bedingung macht das uebersprungene Gate sichtbar).
+      - name: Test Insights - nextest
+        if: ${{ !cancelled() && steps.plan.outputs.run != 'false' && env.MERGIFY_UPLOAD == 'true' && hashFiles('src-tauri/target/nextest/ci/junit.xml') != '' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: src-tauri/target/nextest/ci/junit.xml
+
+      - name: Test Insights - vitest
+        if: ${{ !cancelled() && steps.plan.outputs.run != 'false' && env.MERGIFY_UPLOAD == 'true' && hashFiles('.junit/vitest.xml') != '' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: .junit/vitest.xml
+
+      # CI-03: red-first step 2 of 2 - the proof against the merge base. Last
+      # in the job on purpose: it switches the checkout from the merge commit
+      # to the PR head, so the head builds into the warm src-tauri/target
+      # (red-first.sh uses it only when the checkout IS the head; otherwise
+      # it builds a separate, cold head tree). Same-path checkout switches are
+      # safe for cargo: files that differ get a new mtime and are rebuilt -
+      # the artefact mix-up red-first.sh guards against needs two trees at
+      # two paths. `--force`: the CI checkout is disposable, and the proof
+      # must see the pristine head.
+      # Runs also after red gates (`!cancelled()`): two separate checks. Not
+      # without a successful setup - then the verdict says "did not run"
+      # instead of blaming a test. Not on an empty count either ('' != '0'
+      # is true): the verdict is red then anyway, the run would only burn
+      # minutes (review PR #149, glm-5.2 F2).
+      - name: red-first - proof against merge base
+        id: rf_run
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && steps.rf_plan.outcome == 'success' && steps.rf_plan.outputs.count != '0' && steps.rf_plan.outputs.count != '' }}
+        continue-on-error: true
+        timeout-minutes: 25
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          merge_sha="$(git rev-parse HEAD)"
+          git checkout --quiet --force --detach "$HEAD_SHA"
+          # node_modules came from `npm ci` on the merge commit. If the PR's
+          # own lockfile differs, reinstall - the former red-first job ran
+          # npm ci on the head.
+          if ! git diff --quiet "$merge_sha" "$HEAD_SHA" -- package.json package-lock.json; then
+            npm ci
+          fi
+          bash scripts/ci/red-first.sh
+
+  windows:
+    name: gates (windows)
+    # Entwurf -> aus; Queue-Entwurf von Mergify -> an (Kopfkommentar). Das ist
+    # die EINZIGE Job-Bedingung hier - ob die Bahn fachlich laufen muss,
+    # entscheidet der Plan-Schritt unten, damit der Required Check immer
+    # success/failure meldet.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')
+    # CI-03: an ordinary PR never runs the Windows lane (lane-plan.sh), so it
+    # only needs a runner to report success - the cheapest one. Merge queue,
+    # weekly run and workflow_dispatch get windows-latest. The guard step
+    # below makes a plan bug loud instead of green-on-Linux.
+    runs-on: ${{ (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'mergify/merge-queue/')) && 'ubuntu-latest' || 'windows-latest' }}
+    # Gruener PR-Lauf im Median 15,3 min (Messung 24.09.); 35 lassen Luft fuer
+    # einen kalten Cache, beenden aber einen Haenger nach einem Neuntel der
+    # 6 h, die GitHub sonst zulaesst.
+    timeout-minutes: 35
+    env:
+      MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
+    steps:
+      # fetch-depth 2: im pull_request-Checkout ist HEAD der Merge-Commit
+      # refs/pull/<N>/merge, und sein erster Elternteil ist die Spitze von
+      # main. Mehr Historie braucht der Plan-Schritt nicht.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+
+      # Braucht dieser Lauf die Windows-Bahn? Entscheidung und ausloesender
+      # Pfad stehen im Log; die Eingabeliste und das Sicherheitsnetz (Queue,
+      # Wochenlauf, unklare Aenderungsmenge -> immer voll; main-Push nur bei
+      # Cache-Eingaben) stehen im Skript und sind in scripts/test-lane-plan.sh
+      # festgenagelt.
+      #
+      # Die folgenden Schritte laufen bei `run != 'false'`, nicht bei
+      # `run == 'true'`: fehlt die Ausgabe, laeuft die volle Bahn statt
+      # keiner. Scheitert der Plan-Schritt selbst (Exit != 0), ist der Job
+      # rot - auch das ist nie ein stilles Gruen.
+      - name: Plan - muss die Windows-Bahn laufen?
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          GIT_REF: ${{ github.ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PLAN_FETCH: "1"
+        run: |
+          # Erst in eine Datei, dann anhaengen - eine Pipe nach $GITHUB_OUTPUT
+          # verschluckt den Exit-Code links davon (scripts/ci/no-masked-output.sh).
+          bash scripts/ci/lane-plan.sh windows > "$RUNNER_TEMP/lane-plan.out"
+          cat "$RUNNER_TEMP/lane-plan.out"
+          grep -E '^run=(true|false)$' "$RUNNER_TEMP/lane-plan.out" > "$RUNNER_TEMP/lane-plan.kv"
+          cat "$RUNNER_TEMP/lane-plan.kv" >> "$GITHUB_OUTPUT"
+
+      # CI-03: `gates (windows)` must never be green with Linux results. If
+      # the plan wants the lane (or its output is missing) on a non-Windows
+      # runner, the job is red. Pinned in scripts/ci/ci-shape.sh.
+      - name: Guard - the Windows lane only runs on Windows
+        if: steps.plan.outputs.run != 'false' && runner.os != 'Windows'
+        run: |
+          echo "::error title=gates (windows)::the plan wants the Windows lane, but this job runs on $RUNNER_OS - runs-on in ci.yml and lane-plan.sh disagree."
+          exit 1
+
+      - name: Windows-Bahn nicht noetig
+        if: steps.plan.outputs.run == 'false'
+        run: |
+          echo "::notice title=gates (windows)::Windows-Bahn nicht gelaufen - Grund im Plan-Schritt. Die Merge-Queue und der Wochenlauf fahren sie voll."
+          {
+            echo "### gates (windows): Bahn nicht noetig"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/lane-plan.out"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The native ConPTY argv fixture launches node. Pin the same Node major
+      # required by the repo and used by the Linux job instead of inheriting
+      # the runner image's currently installed version.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.plan.outputs.run != 'false'
+        with:
+          node-version: 24
+
+      # `@stable` war ein BRANCH, kein Tag - er aenderte sich ohne Commit im
+      # Repo. Gepinnt auf master; die Toolchain steht jetzt sichtbar hier.
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        if: steps.plan.outputs.run != 'false'
+        with:
+          toolchain: stable
+
+      # save-if: nur main schreibt den Cache (CI-01). Der Cache-Speicher lag
+      # am 24.09. bei 10,34 von 10 GB; Eintraege aus PR-Laeufen verdraengten
+      # die von main, die jeder PR tatsaechlich wiederherstellt.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: steps.plan.outputs.run != 'false'
+        with:
+          workspaces: src-tauri
+          shared-key: windows-gates
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      # `@nextest` war ein wandernder Tag. Gepinnt auf v2 mit `tool:` -
+      # dieselbe Schreibweise wie in audit.yml, statt zweier Muster.
+      - uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+        if: steps.plan.outputs.run != 'false'
+        with:
+          tool: nextest
+
+      - name: Alte JUnit-Berichte entfernen
+        if: steps.plan.outputs.run != 'false'
+        run: rm -f src-tauri/target/nextest/ci/junit.xml
+
+      # Uebersteuert bewusst Spec-Entscheidung 4 aus release.yml (nur Tags):
+      # die cfg(windows)-Arme kompilieren sonst erst am Release-Tag
+      # (Sanierungsplan Phase A.4).
+      #
+      # Bahn `windows` = fmt, clippy, Rust-Suite, native-tests (W3-06). Die
+      # Frontend-Gates fehlen hier weiterhin bewusst: sie beweisen auf
+      # Windows nichts, was sie auf Linux nicht auch beweisen, und
+      # Windows-Minuten kosten doppelt. Die Suite selbst bleibt UNGEFILTERT
+      # (Kopfkommentar dieser Datei).
+      #
+      # Der fruehere eigene pwsh-Schritt "Gate - native Parent-Host-
+      # Prozessgrenze" (baute pa-capture-host, prüfte die sieben
+      # `real_native_*`-Tests per Namensliste und führte sie aus) ist jetzt
+      # das Gate `native-tests` in scripts/ci/gates.sh und laeuft mit in der
+      # Bahn windows - dieselbe Drift-Klasse (Gate-Liste ausserhalb von
+      # gates.sh), die diese Datei laut ihrem Kopfkommentar vermeiden soll.
+      - name: Gates (windows)
+        if: steps.plan.outputs.run != 'false'
+        run: bash scripts/ci/gates.sh lane windows
+
+      # Wie im Job linux: Upload der Ergebnisse DIESES Laufs, nie ein Grund
+      # fuer Rot.
+      - name: Test Insights - nextest
+        if: ${{ !cancelled() && steps.plan.outputs.run != 'false' && env.MERGIFY_UPLOAD == 'true' && hashFiles('src-tauri/target/nextest/ci/junit.xml') != '' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: src-tauri/target/nextest/ci/junit.xml
+
+  # Aus #31 uebernommen (main, 13db97b). Der Job prueft die Test-First-
+  # Trailer gegen die Merge-Base. Dependabot-Commits, die nur Manifeste
+  # aendern, brauchen seit W1-19b/CI-02 keinen Trailer (red-first.sh,
+  # is_dependabot_manifest_commit) - vorher war jeder Dependabot-PR hier rot.
+  #
+  # CI-03: the work runs as the steps "red-first - plan" and "red-first -
+  # proof against merge base" in `gates (linux)`; this job only turns their
+  # outcome into the required check `red-first` (the name the branch
+  # protection and .mergify.yml wait for). Measured on 25.09. (W2-03a, run
+  # 36075581077): the own job spent 1:21 of 3:17 min on setup-linux alone.
+  # Fail-closed:
+  # missing, skipped or cancelled outcomes are red (red-first-verdict.sh).
+  red-first:
+    name: red-first
+    needs: linux
+    # CI-01: wie die anderen Jobs keine Entwuerfe, ausser Mergify-Queue-PRs.
+    # `!cancelled()`: also after a red `gates (linux)` - the gates verdict
+    # and the red-first verdict are separate checks.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (!github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Only the verdict script is needed - no history, no toolchain.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts/ci
+
+      - name: red-first verdict (from gates (linux))
+        env:
+          LINUX_RESULT: ${{ needs.linux.result }}
+          RF_PLAN: ${{ needs.linux.outputs.rf_plan }}
+          RF_COUNT: ${{ needs.linux.outputs.rf_count }}
+          RF_RUN: ${{ needs.linux.outputs.rf_run }}
+        run: bash scripts/ci/red-first-verdict.sh

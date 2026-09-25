@@ -1,0 +1,78 @@
+---
+source: src/status.rs
+expression: cases
+---
+[
+    (
+        0.0,
+        Some(
+            "0 Tokens",
+        ),
+    ),
+    (
+        1.0,
+        Some(
+            "1 Tokens",
+        ),
+    ),
+    (
+        999.0,
+        Some(
+            "999 Tokens",
+        ),
+    ),
+    (
+        1000.0,
+        Some(
+            "1,0 k Tokens",
+        ),
+    ),
+    (
+        1234.0,
+        Some(
+            "1,2 k Tokens",
+        ),
+    ),
+    (
+        999999.0,
+        Some(
+            "1,0 M Tokens",
+        ),
+    ),
+    (
+        1000000.0,
+        Some(
+            "1,0 M Tokens",
+        ),
+    ),
+    (
+        1234567.0,
+        Some(
+            "1,2 M Tokens",
+        ),
+    ),
+    (
+        1000000000.0,
+        Some(
+            "1,0 G Tokens",
+        ),
+    ),
+    (
+        2500000000.0,
+        Some(
+            "2,5 G Tokens",
+        ),
+    ),
+    (
+        -1.0,
+        None,
+    ),
+    (
+        NaN,
+        None,
+    ),
+    (
+        inf,
+        None,
+    ),
+]

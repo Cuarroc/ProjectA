@@ -1,0 +1,18 @@
+# Profil fuer CI. Absichtlich ohne Retries: ein Test, der beim zweiten Versuch
+# gruen wird, ist kaputt und nicht gruen (Sanierungsplan §0.1, G-2).
+[profile.ci]
+retries = 0
+fail-fast = false
+# Ein haengender Test soll die Pipeline nicht bis zum Job-Timeout blockieren.
+# 60 s ist weit oberhalb des langsamsten Tests (Vollauf Linux 6 s, laengster
+# Einzeltest ~5 s Deadline), 2x60 s heisst: danach wird er abgeschossen.
+slow-timeout = { period = "60s", terminate-after = 2 }
+failure-output = "immediate-final"
+final-status-level = "flaky"
+
+# JUnit-Bericht fuer Mergify Test Insights (CI-01, 24.09.). Landet unter
+# <target>/nextest/ci/junit.xml - im ignorierten target/, also kein
+# Seiteneffekt auf den Arbeitsbaum (gates.sh prueft das). ci.yml laedt ihn
+# nach der Bahn hoch; lokal bleibt er einfach liegen.
+[profile.ci.junit]
+path = "junit.xml"

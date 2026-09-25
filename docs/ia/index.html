@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F2 — Informationsarchitektur (sechs Ziele)</title>
+<link rel="stylesheet" href="../ui-variants/tokens.css">
+<style>
+  html, body { overflow: auto; }
+  body { min-height: 100%; }
+  .app { min-height: 100vh; display: grid; grid-template-rows: auto auto 1fr auto; }
+  .banner { background: var(--warn); color: #1e1e1e; font-size: 11px; font-weight: 600;
+            padding: 6px 16px; }
+  .top { display: flex; align-items: center; gap: 12px; padding: 8px 16px;
+         background: var(--bg-chrome); border-bottom: 1px solid var(--border); }
+  .brand { font-weight: 600; letter-spacing: .02em; }
+  .project { color: var(--fg-muted); font-size: 12.5px; }
+  .project strong { color: var(--fg); font-weight: 600; }
+  nav { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+  nav a { text-decoration: none; color: var(--fg-muted); padding: 6px 10px; border-radius: 4px;
+          font-size: 13px; }
+  nav a:hover, nav a:focus-visible { color: var(--fg); background: var(--bg-elevated); outline: none; }
+  nav a[aria-current="page"] { color: var(--fg); background: var(--bg-elevated);
+                                box-shadow: inset 0 -2px 0 var(--accent); }
+  .stage { display: grid; grid-template-columns: 220px 1fr; min-height: 0; }
+  .rail { border-right: 1px solid var(--border); background: var(--bg-elevated); padding: 14px 12px; }
+  .rail h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--fg-muted); margin: 0 0 10px; }
+  .card { display: block; width: 100%; text-align: left; padding: 8px 10px; margin: 0 0 6px;
+          border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }
+  .card[aria-current="true"] { border-color: var(--accent); }
+  .card small { display: block; color: var(--fg-muted); font-size: 11px; margin-top: 2px; }
+  main { padding: 22px 28px 48px; max-width: 820px; }
+  main h1 { font-size: 20px; margin: 0 0 6px; }
+  .lede { color: var(--fg-muted); margin: 0 0 18px; line-height: 1.55; }
+  .panel { border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin: 0 0 14px;
+           background: var(--bg-elevated); }
+  .panel h2 { font-size: 14px; margin: 0 0 8px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border);
+          color: var(--fg-muted); }
+  .chip-on { border-color: var(--accent); color: var(--fg); }
+  .empty, .loading, .error { padding: 18px; border-radius: 6px; border: 1px dashed var(--border);
+                             color: var(--fg-muted); }
+  .error { border-style: solid; border-color: var(--danger); color: var(--fg); }
+  .row { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px; align-items: center;
+         padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .row:last-child { border-bottom: 0; }
+  .grade-blocking { color: var(--danger); }
+  .grade-attention { color: var(--warn); }
+  footer { border-top: 1px solid var(--border); padding: 8px 16px; font-size: 12px;
+           color: var(--fg-muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  a.deep { color: var(--accent-hover); }
+  @media (max-width: 1280px) {
+    .stage { grid-template-columns: 180px 1fr; }
+    main { padding: 18px 18px 40px; }
+  }
+  @media (max-width: 720px) {
+    .stage { grid-template-columns: 1fr; }
+    .rail { border-right: 0; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="banner">F2-Entwurf — statisch und klickbar. Kein App.tsx-Umbau. Stand 04.09.2026.</div>
+  <header class="top">
+    <span class="brand">ProjectA</span>
+    <span class="project">Projekt <strong id="project-label">alpha</strong>
+      · Task <strong id="task-label">wk-pr</strong></span>
+    <nav aria-label="Hauptziele">
+      <a href="#work" data-goal="work">Work</a>
+      <a href="#attention" data-goal="attention">Attention</a>
+      <a href="#agents" data-goal="agents">Agents</a>
+      <a href="#review" data-goal="review">Review</a>
+      <a href="#insights" data-goal="insights">Insights</a>
+      <a href="#settings" data-goal="settings">Settings</a>
+    </nav>
+  </header>
+  <div class="stage">
+    <aside class="rail" aria-label="Board-Leiste">
+      <h2>Board-Leiste</h2>
+      <p style="font-size:12px;color:var(--fg-muted);margin:0 0 10px">Kompakte Navigation, kein zweites Board. Queue ist Backlog.</p>
+      <button class="card" type="button" data-task="wk-pr" aria-current="true">wk-pr <small>ready · PR #7</small></button>
+      <button class="card" type="button" data-task="wk-quota">wk-quota <small>needs you · quota_blocked</small></button>
+      <button class="card" type="button" data-task="backlog">Backlog: Tests nachziehen <small>queued</small></button>
+    </aside>
+    <main id="main">
+      <!-- filled by script -->
+    </main>
+  </div>
+  <footer>
+    <span>Auswahl: Projekt + Task bleiben beim Zielwechsel.</span>
+    <span>Attention startet flottenweit; der Projektfilter ist sichtbar und optional.</span>
+    <span>Scout = Research-Preset. Queen historisch. Employee nicht in der Nav.</span>
+  </footer>
+</div>
+<script>
+const GOALS = {
+  work: {
+    title: "Work",
+    lede: "Orchestrator-Dialog, aktive Tasks, Board und Queue/Backlog. Eine Task-Wahrheit.",
+    truth: "selectedTask + Board-Projektion",
+    actions: "Delegieren, Queue, Dialog",
+    body: `
+      <div class="meta">
+        <span class="chip chip-on">Primär: Task</span>
+        <span class="chip">Quelle: Orchestrator + Board</span>
+        <span class="chip">Loading: Dialog-Skelett</span>
+      </div>
+      <div class="panel">
+        <h2>Dialog</h2>
+        <p>„Öffne den Pull Request“ — der Orchestrator plant, Worker arbeiten in Worktrees.</p>
+      </div>
+      <div class="panel">
+        <h2>Board / Backlog</h2>
+        <div class="row"><span>wk-pr</span><span>working</span><a class="deep" href="#review" data-task="wk-pr">Review</a></div>
+        <div class="row"><span>wk-quota</span><span>needs you</span><a class="deep" href="#attention" data-task="wk-quota">Attention</a></div>
+        <div class="row"><span>Backlog</span><span>queued</span><span>kein eigenes Panel</span></div>
+      </div>
+      <p class="empty">Empty: kein Projekt — Bootstrap, nicht diese Fläche.</p>`
+  },
+  attention: {
+    title: "Attention",
+    lede: "Fragen, Fehler, Quota-Blocks, Zustellprobleme, Empfehlungen und Merge-Blocker. Ein Kanal, die F1-Reason-Codes.",
+    truth: "status.rs ReasonCode + Grade",
+    actions: "Öffnen, beantworten, nicht dismissen",
+    body: `
+      <div class="meta">
+        <span class="chip chip-on">Primär: Attention-Eintrag</span>
+        <span class="chip">Start: flottenweit</span>
+        <span class="chip">Filter: Projekt sichtbar, optional</span>
+      </div>
+      <div class="panel">
+        <h2>Inbox</h2>
+        <div class="row"><span class="grade-blocking">blocking</span><span><code>quota_blocked</code> · wk-quota · alpha</span><a class="deep" href="#agents" data-task="wk-quota">Terminal</a></div>
+        <div class="row"><span class="grade-blocking">blocking</span><span><code>decision_pending</code> · wk-pr</span><a class="deep" href="#work" data-task="wk-pr">Work</a></div>
+        <div class="row"><span class="grade-attention">attention</span><span><code>review_pending</code> · wk-pr</span><a class="deep" href="#review" data-task="wk-pr">Review</a></div>
+      </div>
+      <p class="empty">Empty: nichts wartet — ein Satz, keine zweite Oberfläche.</p>
+      <p class="error">Error: Kern nicht erreichbar — derselbe Eintrag, nicht ein zweiter Kanal.</p>`
+  },
+  agents: {
+    title: "Agents",
+    lede: "Laufende Terminals, Sessionzustand, agentenbezogene Historie. Orchestrator und Worker aktiv; Scout als Research-Preset.",
+    truth: "PTY-Session + Worker-Zeile",
+    actions: "Fokus, respawn, archivieren",
+    body: `
+      <div class="meta">
+        <span class="chip chip-on">Primär: Session</span>
+        <span class="chip">Deep link aus Attention hält selectedTask</span>
+      </div>
+      <div class="panel">
+        <h2>Terminal · <span id="agent-task">wk-pr</span></h2>
+        <p>Session überlebt keinen Neustart (F5). Drafts und Scrollback: Policy in F5, nicht hier.</p>
+      </div>
+      <p class="loading">Loading: PTY hängt noch — Platzhalter, kein Fake-Output.</p>`
+  },
+  review: {
+    title: "Review",
+    lede: "Diff, Kommentare, Tests, Readiness, Konflikte, Merge. F4 liefert blockers[] — diese Fläche zeigt sie, sie erfindet sie nicht.",
+    truth: "Readiness-Projektion (F4)",
+    actions: "Kommentieren, Tests, Merge (menschlich)",
+    body: `
+      <div class="meta">
+        <span class="chip chip-on">Primär: Task / PR</span>
+        <span class="chip">Lifecycle ≠ Readiness</span>
+      </div>
+      <div class="panel">
+        <h2>Readiness</h2>
+        <p>blocked · <code>tests_stale</code>, <code>review_stale</code></p>
+        <p><a class="deep" href="#attention" data-task="wk-pr">Attention zeigt denselben Blocker</a></p>
+      </div>
+      <p class="empty">Empty: kein Diff — die Task hat noch nichts geändert.</p>`
+  },
+  insights: {
+    title: "Insights",
+    lede: "Kosten, Usage, Aktivität, wenige entscheidungsrelevante Statistiken. Scope steht ausdrücklich auf der Fläche.",
+    truth: "Quota + Usage-Ledger + Activity-Feed",
+    actions: "Filtern, nicht steuern",
+    body: `
+      <div class="meta">
+        <span class="chip chip-on">Scope: Projekt alpha</span>
+        <span class="chip">Unterfilter: Usage · Aktivität · Stats</span>
+      </div>
+      <div class="panel">
+        <h2>Heute</h2>
+        <p>Quota claude: ok. OmniRoute: nicht dieser Entwurf (F6 braucht den Router).</p>
+      </div>`
+  },
+  settings: {
+    title: "Settings",
+    lede: "Presets, Routing &amp; Costs, Diagnostics, App-Einstellungen. Web-Interface, Skill-Packs und Provider sind Unterseiten hier — keine Hauptziele.",
+    truth: "settings + KeyVault + Diagnose-Allowlist",
+    actions: "Presets, Keys, Diagnose exportieren",
+    body: `
+      <div class="meta">
+        <span class="chip chip-on">App-Werte vs. Projektwerte getrennt</span>
+      </div>
+      <div class="panel">
+        <h2>Unterseiten</h2>
+        <div class="row"><span>Presets</span><span>Orchestrator / Worker / Research (Scout)</span><span></span></div>
+        <div class="row"><span>Routing</span><span>reliable · cheap · review</span><span>F6</span></div>
+        <div class="row"><span>Diagnostics</span><span>Logpfad, Paket, Warum?</span><span>F1</span></div>
+        <div class="row"><span>Remote-Board</span><span>read-only, eingefroren</span><span></span></div>
+      </div>
+      <p class="empty">Design Studio ist kein Ziel: gespeichertes Markdown bleibt exportierbar, der Editor geht.</p>`
+  }
+};
+
+function render() {
+  const goal = (location.hash || "#work").slice(1);
+  const spec = GOALS[goal] || GOALS.work;
+  document.querySelectorAll("nav a").forEach((a) => {
+    a.setAttribute("aria-current", a.dataset.goal === spec.title.toLowerCase() || a.dataset.goal === goal ? "page" : "false");
+  });
+  document.getElementById("main").innerHTML = `
+    <h1>${spec.title}</h1>
+    <p class="lede">${spec.lede}</p>
+    <p class="lede"><strong>Quelle der Wahrheit:</strong> ${spec.truth}. <strong>Aktionen:</strong> ${spec.actions}.</p>
+    ${spec.body}`;
+  document.getElementById("agent-task") && (document.getElementById("agent-task").textContent = document.getElementById("task-label").textContent);
+}
+
+document.querySelector(".rail").addEventListener("click", (event) => {
+  const el = event.target.closest("[data-task]");
+  const id = el && el.getAttribute("data-task");
+  if (id) document.getElementById("task-label").textContent = id;
+});
+document.getElementById("main").addEventListener("click", (event) => {
+  const el = event.target.closest("[data-task]");
+  const id = el && el.getAttribute("data-task");
+  if (id) document.getElementById("task-label").textContent = id;
+});
+window.addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>

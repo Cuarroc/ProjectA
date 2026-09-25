@@ -1,0 +1,94 @@
+# Preisblatt F8-Konkurrenz-Benchmark (KB-1-Geruest, vorbefuellt 2026-09-09)
+#
+# Regeln aus dem Design (.pa/report_benchmark_design_2026-09-09.md §4):
+# 1. Preise werden am Tag vor Lauf 1 von den OFFIZIELLEN Preisseiten erneut
+#    abgezogen (KB-2: "Preisblatt befuellen"). Diese Vorbefuellung stammt von
+#    den offiziellen Seiten, Abruf 2026-09-09 — KB-2 verifiziert/friert ein.
+# 2. Abo-Flatrates: doppelt gefuehrt — (a) Grenzkosten 0 $ + Vermerk,
+#    (b) Referenzkosten nach API-Listenpreis. Nie mischen.
+# 3. Free-Tier (OmniRoute): 0 $ + ToS-Vermerk, Tokenzahlen bleiben sichtbar.
+# 4. Dieselbe Tabelle gilt fuer beide Seiten.
+# 5. Kosten je gemergter Task = alle Tokens im Task-Lebensfenster x Preis;
+#    verworfene Tasks separat als "Kosten je verworfenem Ergebnis".
+#
+# usd_per_m_cached = Preis je Mio Cache-Read-Tokens (Cache-Hit), nicht Write.
+
+preise:
+  - provider: anthropic
+    model: claude-sonnet-4-6
+    usd_per_m_in: 3.00
+    usd_per_m_out: 15.00
+    usd_per_m_cached: 0.30
+    quelle: https://platform.claude.com/docs/en/about-claude/pricing
+    abgerufen_am: 2026-09-09
+
+  - provider: anthropic
+    model: claude-sonnet-4-5
+    usd_per_m_in: 3.00
+    usd_per_m_out: 15.00
+    usd_per_m_cached: 0.30
+    quelle: https://platform.claude.com/docs/en/about-claude/pricing
+    abgerufen_am: 2026-09-09
+
+  - provider: anthropic
+    model: claude-opus-4-5
+    usd_per_m_in: 5.00
+    usd_per_m_out: 25.00
+    usd_per_m_cached: 0.50
+    quelle: https://platform.claude.com/docs/en/about-claude/pricing
+    abgerufen_am: 2026-09-09
+
+  - provider: anthropic
+    model: claude-haiku-4-5
+    usd_per_m_in: 1.00
+    usd_per_m_out: 5.00
+    usd_per_m_cached: 0.10
+    quelle: https://platform.claude.com/docs/en/about-claude/pricing
+    abgerufen_am: 2026-09-09
+
+  - provider: openai
+    model: gpt-5.3-codex
+    usd_per_m_in: 1.75
+    usd_per_m_out: 14.00
+    usd_per_m_cached: 0.175
+    quelle: https://platform.openai.com/docs/pricing
+    abgerufen_am: 2026-09-09
+
+  # --- Abo-Flatrates (Regel 2): Grenzkosten 0 $ + Vermerk -----------------
+  - provider: anthropic
+    model: claude-max-abo
+    usd_per_m_in: 0.00
+    usd_per_m_out: 0.00
+    usd_per_m_cached: 0.00
+    quelle: abo-flatrate
+    abgerufen_am: 2026-09-09
+    vermerk: "Abo, Kontingentverbrauch nicht in USD bepreisbar. Referenzkosten
+      werden zusaetzlich nach API-Listenpreis des tatsaechlich gefahrenen
+      Modells (Zeile oben, wie im Ledger/CLI-Output) gerechnet; der Report
+      zeigt beide Zahlen, nie eine Mischung."
+
+  - provider: openai
+    model: chatgpt-plus-codex-abo
+    usd_per_m_in: 0.00
+    usd_per_m_out: 0.00
+    usd_per_m_cached: 0.00
+    quelle: abo-flatrate
+    abgerufen_am: 2026-09-09
+    vermerk: "Abo, Kontingentverbrauch nicht in USD bepreisbar. Referenzkosten
+      nach API-Listenpreis von gpt-5.3-codex (Zeile oben)."
+
+  # --- Free-Tier (Regel 3) -------------------------------------------------
+  - provider: omniroute
+    model: free-tier-route
+    usd_per_m_in: 0.00
+    usd_per_m_out: 0.00
+    usd_per_m_cached: 0.00
+    quelle: free-tier
+    abgerufen_am: 2026-09-09
+    vermerk: "Free-Tier-Route, 0 $ + ToS-Whitelist-Vermerk; Tokenzahlen
+      bleiben im Report sichtbar."
+
+# Exakte Modellbezeichnung, wie sie im Ledger/CLI-Output steht, wird nach der
+# Agenten-CLI-Festlegung im KB-2-Trockenlauf hier endgueltig eingefroren
+# (Design §2: "exakte Modellbezeichnung"; §8-Entscheidung: Claude Code primaer,
+# Codex CLI Reserve).

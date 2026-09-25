@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variante B — Konversation</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .shell { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+  .app { display: grid; grid-template-columns: 210px 236px 1fr; min-height: 0; }
+
+  .sidebar { background: var(--bg-elevated); border-right: 1px solid var(--border);
+             display: flex; flex-direction: column; min-height: 0; }
+  .sidebar-brand { padding: 12px 14px; font-size: 12px; font-weight: 600;
+                   letter-spacing: .04em; color: var(--fg-muted); }
+  .proj { padding: 8px 14px; display: grid; gap: 2px; cursor: pointer; border-left: 2px solid transparent; }
+  .proj:hover { background: #2a2d2e; }
+  .proj-active { background: #37373d; border-left-color: var(--status-bg); }
+  .proj-name { font-size: 12.5px; }
+  .proj-sub { font-size: 11px; color: var(--fg-muted); }
+
+  /* ---- board reduced to a rail ---------------------------------------- */
+  .rail { background: #202020; border-right: 1px solid var(--border);
+          display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .rail-head { padding: 9px 12px; border-bottom: 1px solid var(--border);
+               font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+               color: var(--fg-muted); display: flex; align-items: center; gap: 6px; }
+  .rail-body { overflow: auto; padding: 8px; display: grid; gap: 12px; align-content: start; }
+  .rail-group { display: grid; gap: 6px; }
+  .rail-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+                color: var(--fg-muted); display: flex; align-items: center; gap: 6px; }
+  .rail-label-needs { color: #e2c04a; }
+  .mini { background: var(--bg-elevated); border: 1px solid var(--border);
+          border-left: 2px solid transparent; border-radius: 3px; padding: 6px 8px;
+          display: grid; gap: 3px; cursor: pointer; }
+  .mini:hover { background: #2a2d2e; }
+  .mini-attention { border-left-color: var(--warn); }
+  .mini-name { font-size: 12px; font-weight: 600; }
+  .mini-sub { font-size: 10.5px; color: var(--fg-muted); overflow: hidden;
+              text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---- conversation is the main surface -------------------------------- */
+  .convo { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; min-height: 0; }
+  .convo-head { height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 14px;
+                background: var(--bg-chrome); border-bottom: 1px solid var(--border); }
+  .convo-title { font-weight: 600; }
+  .spacer { flex: 1; }
+  .tabs { display: flex; gap: 2px; }
+  .tab { padding: 4px 11px; font-size: 12px; color: var(--fg-muted); border-radius: 3px; }
+  .tab:hover { background: #3f3f3f; }
+  .tab-active { background: var(--accent); color: #fff; }
+  .tab-badge { background: var(--warn); color: #1e1e1e; border-radius: 8px;
+               padding: 0 5px; font-size: 10px; font-weight: 700; margin-left: 5px; }
+
+  .stream { overflow: auto; padding: 16px 18px; display: grid; gap: 14px;
+            align-content: start; max-width: 860px; width: 100%; }
+  .msg { display: grid; gap: 5px; }
+  .msg-who { font-size: 11px; color: var(--fg-muted); display: flex; gap: 6px; align-items: center; }
+  .msg-body { font-size: 13px; line-height: 1.55; }
+  .msg-agent .msg-body { background: var(--bg-elevated); border: 1px solid var(--border);
+                         border-radius: 4px; padding: 9px 11px; }
+  .msg-user .msg-body { background: #10344d; border: 1px solid #17527d;
+                        border-radius: 4px; padding: 9px 11px; justify-self: end;
+                        max-width: 78%; }
+  .msg-user .msg-who { justify-content: flex-end; }
+
+  .ask { border: 1px solid var(--border); border-left: 2px solid var(--warn);
+         background: var(--bg-elevated); border-radius: 4px; padding: 12px 14px; display: grid; gap: 9px; }
+  .ask-head { display: flex; gap: 7px; align-items: center; font-size: 11px; color: var(--fg-muted); }
+  .ask-q { font-size: 13.5px; line-height: 1.5; }
+  .ask-opts { display: flex; gap: 7px; flex-wrap: wrap; }
+  .ask-opt { border: 1px solid var(--border); border-radius: 3px; padding: 6px 12px; font-size: 12px; }
+  .ask-opt:hover { border-color: var(--accent-hover); background: #2a2d2e; }
+  .ask-opt-picked { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ask-note { font-size: 11px; color: var(--fg-muted); }
+  .ask-done { border-left-color: #2ea043; opacity: .7; }
+  .ask-answer { font-size: 12px; color: #6ddb8b; }
+
+  .composer { border-top: 1px solid var(--border); background: var(--bg-elevated);
+              padding: 10px 14px; display: grid; gap: 8px; }
+  .composer-row { display: flex; gap: 8px; }
+  .composer input { flex: 1; background: #1a1a1a; border: 1px solid var(--border);
+                    border-radius: 3px; color: var(--fg); padding: 8px 10px; font: inherit; }
+  .composer-hint { font-size: 11px; color: var(--fg-muted); }
+  .pane { display: none; }
+  .pane-active { display: grid; gap: 14px; align-content: start; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="mock-banner">
+    <span>Mockup B — Konversation</span>
+    <span class="spacer"></span>
+    <a href="index.html">&larr; alle Varianten</a>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-brand">PROJECTA</div>
+      <div class="proj proj-active"><span class="proj-name">ProjectA</span><span class="proj-sub">6 Worker &middot; 2 Fragen</span></div>
+      <div class="proj"><span class="proj-name">OmniRoute-Fork</span><span class="proj-sub">2 Worker</span></div>
+      <div class="proj"><span class="proj-name">Landing Meyer</span><span class="proj-sub">leer</span></div>
+    </aside>
+
+    <aside class="rail">
+      <div class="rail-head">Board <span class="chip chip-needs_you">2</span></div>
+      <div class="rail-body">
+        <div class="rail-group">
+          <div class="rail-label rail-label-needs">Needs you &middot; 2</div>
+          <div class="mini mini-attention">
+            <span class="mini-name">omni-ledger</span>
+            <span class="mini-sub">Entscheidung wartet</span>
+          </div>
+          <div class="mini mini-attention">
+            <span class="mini-name">fern-board-ui</span>
+            <span class="mini-sub">14 min ohne Output</span>
+          </div>
+        </div>
+        <div class="rail-group">
+          <div class="rail-label">Working &middot; 2</div>
+          <div class="mini"><span class="mini-name">phase-18-budget</span><span class="mini-sub">budget.rs, 12 min</span></div>
+          <div class="mini"><span class="mini-name">stats-core</span><span class="mini-sub">stats.rs, 4 min</span></div>
+        </div>
+        <div class="rail-group">
+          <div class="rail-label">In review &middot; 1</div>
+          <div class="mini"><span class="mini-name">activity-feed</span><span class="mini-sub">3 Kommentare</span></div>
+        </div>
+        <div class="rail-group">
+          <div class="rail-label">Ready to merge &middot; 1</div>
+          <div class="mini"><span class="mini-name">p16-fix-3</span><span class="mini-sub">Tests gr&uuml;n</span></div>
+        </div>
+        <div class="rail-group">
+          <div class="rail-label">Done &middot; 2</div>
+          <div class="mini"><span class="mini-name">p16-fix-2</span><span class="mini-sub">build_tree-Zyklen</span></div>
+          <div class="mini"><span class="mini-name">p16-fix-1</span><span class="mini-sub">Respawn-Konsistenz</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="convo">
+      <header class="convo-head">
+        <span class="convo-title">&#9819; orca-queen</span>
+        <span class="spacer"></span>
+        <div class="tabs">
+          <button class="tab tab-active" data-pane="dialog">Dialog <span class="tab-badge">2</span></button>
+          <button class="tab" data-pane="fragen">Nur Fragen</button>
+          <button class="tab" data-pane="verlauf">Verlauf</button>
+        </div>
+      </header>
+
+      <div class="stream">
+        <div class="pane pane-active" id="pane-dialog">
+          <div class="msg msg-user">
+            <div class="msg-who">du &middot; 01:04</div>
+            <div class="msg-body">Fang mit Phase 18 an, Budget zuerst.</div>
+          </div>
+
+          <div class="msg msg-agent">
+            <div class="msg-who"><span class="chip">&#9819; queen</span> 01:04</div>
+            <div class="msg-body">Verstanden. Ich habe <strong>phase-18-budget</strong> (claude) auf budget.rs
+              angesetzt und <strong>stats-core</strong> (codex) auf die sessions-Tabelle, weil die
+              unabh&auml;ngig ist. Das Dritte-Worker-Limit ist damit erreicht &mdash; die Queue h&auml;lt
+              drei Aufgaben zur&uuml;ck.</div>
+          </div>
+
+          <div class="ask">
+            <div class="ask-head"><span class="chip chip-needs_you">omni-ledger</span> fragt &middot; vor 6 min &middot; blockiert</div>
+            <div class="ask-q">claude-omni ist eine neue Profil-id. Soll sie die Capabilities von <code>claude</code>
+              erben (Hooks, Skills, Systemprompt-Flag) oder die vorsichtigen Defaults bekommen?</div>
+            <div class="ask-opts">
+              <button class="ask-opt">Von claude erben</button>
+              <button class="ask-opt">Vorsichtige Defaults</button>
+              <button class="ask-opt">caps voll ausschreiben</button>
+            </div>
+            <div class="ask-note">Antwort geht direkt ins Worker-Terminal. Verf&auml;llt in 3 h 54 min mit &bdquo;entscheide selbst&ldquo;.</div>
+          </div>
+
+          <div class="msg msg-agent">
+            <div class="msg-who"><span class="chip">system</span> vor 4 min</div>
+            <div class="msg-body">fern-board-ui: kein Output und keine Datei&auml;nderung seit 14 min &mdash;
+              vermutlich festgefahren. Letzte Zeile: <code>waiting for tsc…</code></div>
+          </div>
+
+          <div class="ask">
+            <div class="ask-head"><span class="chip">preflight</span> &middot; vor 2 min &middot; vor dem Start</div>
+            <div class="ask-q">Die Aufgabe &bdquo;bau was mit API&ldquo; ist zu vage. Welche Richtung ist gemeint?</div>
+            <div class="ask-opts">
+              <button class="ask-opt">REST-Endpunkte</button>
+              <button class="ask-opt">GraphQL</button>
+              <button class="ask-opt">nur Client-SDK</button>
+            </div>
+            <div class="ask-note">Danach l&auml;uft die Sch&auml;rfung erneut &mdash; erst dann startet der Worker.</div>
+          </div>
+
+          <div class="ask ask-done">
+            <div class="ask-head"><span class="chip">preflight</span> &middot; vor 1 h</div>
+            <div class="ask-q">Digest-Dateien nach UTC oder Lokalzeit datieren?</div>
+            <div class="ask-answer">beantwortet: UTC</div>
+          </div>
+        </div>
+
+        <div class="pane" id="pane-fragen">
+          <div class="ask">
+            <div class="ask-head"><span class="chip chip-needs_you">omni-ledger</span> &middot; vor 6 min</div>
+            <div class="ask-q">claude-omni: Caps von <code>claude</code> erben oder vorsichtige Defaults?</div>
+            <div class="ask-opts">
+              <button class="ask-opt">Von claude erben</button>
+              <button class="ask-opt">Vorsichtige Defaults</button>
+              <button class="ask-opt">caps voll ausschreiben</button>
+            </div>
+          </div>
+          <div class="ask">
+            <div class="ask-head"><span class="chip">preflight</span> &middot; vor 2 min</div>
+            <div class="ask-q">&bdquo;bau was mit API&ldquo; &mdash; welche Richtung?</div>
+            <div class="ask-opts">
+              <button class="ask-opt">REST-Endpunkte</button>
+              <button class="ask-opt">GraphQL</button>
+              <button class="ask-opt">nur Client-SDK</button>
+            </div>
+          </div>
+          <div class="ask-note">2 offen &middot; 1 beantwortet &middot; 0 abgelaufen</div>
+        </div>
+
+        <div class="pane" id="pane-verlauf">
+          <div class="term"><span class="s">01:12</span> <span class="a">merge: Activity-Feed nach main</span>
+<span class="s">01:02</span> <span class="a">Phase 16 fix 3 committed</span>
+<span class="s">00:54</span> <span class="a">omni-ledger &rarr; needs_you (Frage gestellt)</span>
+<span class="s">00:41</span> <span class="a">fern-board-ui &rarr; needs_you (stuck, 14 min still)</span>
+<span class="s">00:38</span> <span class="a">Budget-Stop: claude bei 98 % (5 h)</span></div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="composer-row">
+          <input placeholder="An orca-queen: sag, was als N&auml;chstes passieren soll…">
+          <button class="btn-ghost btn">Sch&auml;rfen</button>
+          <button class="btn">Senden</button>
+        </div>
+        <div class="composer-hint">Enter sendet &middot; &bdquo;Sch&auml;rfen&ldquo; fragt bei vager Aufgabe bis zu 3 R&uuml;ckfragen, bevor ein Worker startet</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="statusbar">
+    <span>3 Worker aktiv</span>
+    <span>Claude 98 % &middot; reset 03:40</span>
+    <span>Codex 41 %</span>
+    <span>OmniRoute online</span>
+    <span class="spacer"></span>
+    <span class="warnpill">2 Entscheidungen offen</span>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("tab-active"); });
+      document.querySelectorAll(".pane").forEach(function (p) { p.classList.remove("pane-active"); });
+      tab.classList.add("tab-active");
+      document.getElementById("pane-" + tab.dataset.pane).classList.add("pane-active");
+    });
+  });
+  document.querySelectorAll(".ask-opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      opt.parentElement.querySelectorAll(".ask-opt").forEach(function (o) { o.classList.remove("ask-opt-picked"); });
+      opt.classList.add("ask-opt-picked");
+    });
+  });
+</script>
+</body>
+</html>

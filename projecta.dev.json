@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "tokens": { "maxPerGoal": 200000, "verificationReserve": 40000 },
+  "continuous": {
+    "enabled": false,
+    "maxWorkers": 2,
+    "maxIntegration": 1,
+    "goalMinutes": 90,
+    "maxTasksPerGoal": 8,
+    "maxAttemptsPerTask": 3,
+    "maxEscalations": 1,
+    "discoveryRunsPerDay": 2,
+    "maxAutonomousGoals": 1
+  },
+  "routing": {
+    "additionalPaidApi": false,
+    "quotaReservePercent": 20,
+    "billing": ["subscription", "free", "local"]
+  },
+  "providers": ["claude", "codex", "kimi", "opencode", "ollama"],
+  "teams": [{ "id": "development", "roles": ["coordinator", "implementer", "reviewer", "integrator"] }]
+}

@@ -1,0 +1,31 @@
+[
+  {
+    "id": "claude-omni",
+    "name": "Claude via OmniRoute (auto/coding)",
+    "command": "claude",
+    "args": ["--model", "auto/coding"],
+    "env": {
+      "ANTHROPIC_BASE_URL": "http://127.0.0.1:20128",
+      "ANTHROPIC_AUTH_TOKEN": "projecta-local"
+    },
+    "fallback": "opencode-free"
+  },
+  {
+    "id": "codex-omni",
+    "name": "Codex via OmniRoute (auto/cheap)",
+    "command": "codex",
+    "env": {
+      "CODEX_HOME": ".pa/codex-home",
+      "OMNIROUTE_BASE_URL": "http://127.0.0.1:20128/v1",
+      "OMNIROUTE_MODEL": "auto/cheap",
+      "OMNIROUTE_API_KEY": "projecta-local"
+    },
+    "fallback": "opencode-free"
+  },
+  {
+    "id": "opencode-free",
+    "name": "OpenCode free (keyless)",
+    "command": "opencode",
+    "args": ["-m", "opencode/big-pickle"]
+  }
+]

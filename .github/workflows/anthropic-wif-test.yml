@@ -1,0 +1,88 @@
+# Anthropic Workload Identity Federation (WIF) - Test-Workflow.
+# Tauscht das GitHub-OIDC-Token des Runners gegen ein Anthropic-Access-Token.
+# Kein statisches Secret im Repo: die Identifikatoren (federation rule, org,
+# service account, workspace) sind keine Credentials - autorisierend ist allein
+# das OIDC-Token, das nur GitHub fuer dieses Repo ausstellen kann.
+# Härte-Regel (Repo-Regel 2): ein Austausch, der scheitern kann, muss auch
+# scheitern koennen - curl --fail-with-body + pipefail, und die JWT-Claims
+# (sub/aud/iss) werden dekodiert geloggt, damit der Abgleich mit der
+# Federation-Rule im Anthropic-Console-Setup belegbar ist. Der Token selbst
+# wird nie gedruckt (core.setSecret + jq-Redaction).
+name: anthropic-wif-test
+
+# Nur auf Knopfdruck: als `push`-Workflow lief er auf jedem Commit und war 8x
+# rot, weil die Federation-Rule noch nicht passte - roter Lärm, der echte
+# Fehlschlaege verdeckt (Sanierungsplan G-0). Re-Verify nach Aenderungen an der
+# Rule in der Anthropic-Console: gh workflow run anthropic-wif-test.yml
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# `run:`-Schritte laufen ohne diese Zeilen als `bash -e {0}` — OHNE `pipefail`.
+# Der Status einer Pipe ist dann der ihres LETZTEN Glieds, und ein
+# `cargo clippy 2>&1 | tail` meldet Erfolg, waehrend clippy scheitert. Genau so
+# ging am 05.09. in review.yml der Exit 1 des Modell-Resolvers verloren und am
+# 04.09. lokal der Status von clippy.
+#
+# Mit explizitem `shell: bash` startet GitHub den Schritt als
+# `bash --noprofile --norc -eo pipefail {0}` — die Fehlerklasse ist damit
+# strukturell dicht, nicht nur an den Stellen, die jemand einzeln gehaertet hat.
+# scripts/ci/no-masked-output.sh bleibt trotzdem: es faengt die Schreibvorgaenge
+# nach $GITHUB_OUTPUT/$GITHUB_ENV, die auch mit pipefail noch falsch waeren,
+# weil dort der Exit-Code gar nicht erst geprueft wird.
+#
+# Gilt auch auf windows-latest: dort ist `bash` die mitgelieferte Git-Bash.
+# Schritte mit eigenem `shell:` (pwsh in release.yml) sind unberuehrt.
+# Alle `uses:` sind auf einen Commit-SHA gepinnt, nicht auf einen Tag oder
+# Branch. Begruendung: docs/decisions.md (09.09.). Dependabot hebt sie ueber
+# den Versionskommentar an; der Kommentar ist die lesbare Fassung des SHA,
+# nicht die autorisierende.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  call-claude:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch GitHub OIDC token
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('https://api.anthropic.com');
+            core.setSecret(token);
+            core.exportVariable('JWT', token);
+
+      - name: Show JWT claims (sub/aud - diagnose federation rule match)
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, os
+          payload = os.environ['JWT'].split('.')[1]
+          payload += '=' * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          keep = ('iss', 'aud', 'sub', 'repository', 'repository_owner', 'ref')
+          print(json.dumps({k: claims.get(k) for k in keep}, indent=2))
+          PY
+
+      - name: Exchange for an Anthropic access token
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl -sS --fail-with-body https://api.anthropic.com/v1/oauth/token \
+            -H "content-type: application/json" \
+            --data @- <<JSON
+          {
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "assertion": "$JWT",
+            "federation_rule_id": "fdrl_01R4fytnbmy1shnvwaDFT1pi",
+            "organization_id": "3f533e4d-bfd0-44d5-9425-907e7afd15a9",
+            "service_account_id": "svac_0173UHPCS4v5BAgQvs59vkM6",
+            "workspace_id": "wrkspc_017Md8ncvm73PKT2xqAiGsZH"
+          }
+          JSON
+          )
+          echo "$RESPONSE" | jq 'with_entries(if (.key | test("token$")) then .value = "<redacted>" else . end)'
+          echo "OK: Token-Austausch erfolgreich (sk-ant-oat01 redacted)."

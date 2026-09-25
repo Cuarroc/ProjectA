@@ -1,0 +1,1 @@
+{"providers":[{"name":"user@example.com","provider":"codex","connectionId":"00000000-0000-4000-8000-000000000002","quotaUsed":0,"quotaTotal":null,"percentRemaining":100,"resetAt":null,"tokenStatus":"valid"}],"meta":{"generatedAt":"2026-08-30T21:28:38.254Z","filters":{"provider":null,"connectionId":null},"totalProviders":1}}

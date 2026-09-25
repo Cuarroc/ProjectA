@@ -1,0 +1,78 @@
+name: setup-linux
+description: >
+  Linux-Bootstrap fuer die Gates: Tauri-Systembibliotheken, Node, Rust,
+  Cache, nextest, npm ci und optional Chromium.
+
+# Warum diese Datei existiert: dieselben sieben Schritte standen bis zum 09.09.
+# zweimal woertlich in ci.yml — einmal im Job `linux` (Zeilen 55-85) und einmal
+# im Job `red-first` (169-194). Zwei Kopien heisst: eine wird irgendwann
+# angefasst und die andere nicht. Genau so hatte `red-first` als einziger Job
+# KEINEN rust-cache, obwohl er am meisten kompiliert.
+#
+# Der `shared-key` bindet beide Jobs an denselben Cache-Eintrag. Ohne ihn
+# schluesselt rust-cache nach Job-Namen; es entstuenden zwei Caches, und die
+# 10-GB-Eviction fraesse irgendwann den Windows-Cache.
+#
+# Job-Namen (`gates (linux)`, `gates (windows)`) bleiben unveraendert: an
+# ihnen haengen die Cache-Schluessel, eine Umbenennung hat schon einmal
+# 17 Minuten gekostet (docs/decisions.md).
+
+inputs:
+  playwright:
+    description: "Chromium fuer den Browser-Smoke mitinstallieren"
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # Tauri 2 braucht WebKitGTK und Freunde, sonst scheitert schon
+    # `cargo clippy` am fehlenden gdk-3.0/webkit2gtk-4.1 (am 03.09. im
+    # Web-Container genau so gemessen, am 09.09. erneut bestaetigt).
+    - name: Tauri-Systemabhaengigkeiten
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev \
+          libjavascriptcoregtk-4.1-dev librsvg2-dev patchelf
+
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 24
+        cache: npm
+
+    - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master
+      with:
+        toolchain: stable
+
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      with:
+        workspaces: src-tauri
+        shared-key: linux-gates
+        # Nur main schreibt den Cache (CI-01, 24.09.): der Speicher lag bei
+        # 10,34 von 10 GB, und Eintraege aus PR-Laeufen verdraengten die von
+        # main, die jeder PR tatsaechlich wiederherstellt. Preis: red-first
+        # laeuft nie auf main, seine beiden Baum-Verzeichnisse unten werden
+        # also nicht mehr gespeichert und bauen kalt, WENN ein PR Test-First-
+        # Belege hat (docs/decisions.md 2026-09-24).
+        save-if: ${{ github.ref == 'refs/heads/main' }}
+        # red-first baut den Merge-Base-Baum in ein eigenes, stabiles
+        # Verzeichnis (scripts/ci/red-first.sh: ein GETEILTES target/ liesse
+        # den Kopf-Lauf das Binary der Merge-Base ausfuehren). Ohne diese
+        # Zeile faengt es bei jedem Lauf bei null an.
+        cache-directories: |
+          src-tauri/target-red-first-base
+          src-tauri/target-red-first-head
+
+    - uses: taiki-e/install-action@c3ec0de9ae7f1019cea21aa96aa0a895b9552063 # v2.87.9
+      with:
+        tool: nextest
+
+    - shell: bash
+      run: npm ci
+
+    # Der Browser-Smoke braucht Chromium; auf Linux mit Systembibliotheken.
+    - if: inputs.playwright == 'true'
+      shell: bash
+      run: npx playwright install --with-deps chromium

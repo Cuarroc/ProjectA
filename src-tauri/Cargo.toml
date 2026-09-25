@@ -1,0 +1,98 @@
+[package]
+name = "projecta"
+version = "1.4.1"
+description = "ProjectA - agentic terminal for running parallel CLI coding agents"
+default-run = "projecta"
+edition = "2021"
+rust-version = "1.89"
+
+# Explicit targets keep Tauri's bundle inventory complete when there is more
+# than one src/bin tool. The MSI inventory gate verifies the resulting package.
+[[bin]]
+name = "projecta"
+path = "src/main.rs"
+
+[[bin]]
+name = "pa"
+path = "src/bin/pa.rs"
+
+[[bin]]
+name = "pa-capture-host"
+path = "src/bin/pa-capture-host.rs"
+
+[lib]
+name = "projecta_capture"
+path = "src/capture_core.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+sha2 = "=0.10.9"
+# Already used by tauri-plugin-updater; reuse its signature verification format.
+minisign-verify = "=0.2.5"
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+portable-pty = "0.9"
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "macros",
+] }
+# The web interface signals shutdown through oneshot; the journal observer owns
+# a cancellable runtime task and bounded waits in production, not only tests.
+tokio = { version = "1", default-features = false, features = ["sync", "rt", "time"] }
+# The control API token has to come from a CSPRNG (see `api::new_token`).
+# Nothing new gets compiled for it: tauri already depends on this exact
+# version, so naming it here only makes the existing crate reachable.
+getrandom = "0.3"
+# The DPAPI-encrypted provider vault is base64 on disk (see `providers`). The
+# crate is already in the tree at this exact version (tauri uses it), so naming
+# it here compiles nothing new.
+base64 = "0.22"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-opener = "2"
+# W1-22: file logging. Redaction sits in its formatter (`logging::format_line`);
+# no `log:` permission is granted, so the webview has no path into the file.
+tauri-plugin-log = "2.9"
+
+# One ProjectA per machine. There is one `projecta.db` and one 30-second
+# dispatcher, so a second process is not a second window - it is a second
+# dispatcher sweeping the same queue, a second PTY fleet reattaching the same
+# `running` workers into the same git worktrees, and a second
+# `projecta-api.json` under the `pa` CLI of the first. The guard is the plugin,
+# nothing hand-rolled beside it; see the registration in `main.rs` for why a
+# guard of our own would be the thing that breaks the updater relaunch.
+#
+# The plugin does not exist for android/ios (its own crate is `cfg`-ed out
+# there), so the dependency carries the desktop filter the Tauri documentation
+# asks for rather than being an unconditional one.
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
+
+[target.'cfg(windows)'.dependencies]
+# Job objects make a timeout own the whole Windows process tree. The crate is
+# already present transitively; spelling it here exposes the small API surface
+# ProjectA needs without adding another runtime. `Win32_Security_Cryptography`
+# is the provider vault's DPAPI (`CryptProtectData`), `Win32_Storage_FileSystem`
+# its atomic replace (`MoveFileExW`).
+windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Pipes", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Nonblocking, no-follow opens keep repository guidance FIFOs from hanging reads.
+libc = "0.2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+# Snapshot tests for pure parsers/formatters (W1-23). MSRV 1.66, well under
+# this crate's rust-version = "1.89" and the 1.94 toolchain in use here.
+# Default features only (colors/console for readable local diffs); no
+# `json`/`csv`/`redactions` extras pulled in.
+insta = "1.48"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

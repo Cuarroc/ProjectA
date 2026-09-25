@@ -1,0 +1,38 @@
+---
+source: src/status.rs
+expression: usage
+---
+StatusLineUsage {
+    percent: Some(
+        87,
+    ),
+    used: None,
+    limit: Some(
+        "1,0 M Tokens",
+    ),
+    window_label: "5-Stunden-Fenster",
+    resets_at: Some(
+        1787793000,
+    ),
+    five_hour: Some(
+        RateWindowUsage {
+            percent: Some(
+                87,
+            ),
+            resets_at: Some(
+                1787793000,
+            ),
+        },
+    ),
+    seven_day: Some(
+        RateWindowUsage {
+            percent: Some(
+                21,
+            ),
+            resets_at: Some(
+                1788336000,
+            ),
+        },
+    ),
+    observed_at: 42,
+}

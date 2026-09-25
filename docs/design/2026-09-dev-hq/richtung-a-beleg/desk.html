@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEV-HQ · Beleg</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   DER BELEG — apparatus criticus for a running project.
+   One type size. One lit plane. A locked palette of five named members;
+   every intermediate tone below is an ordered mix of exactly two of them.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@font-face{
+  font-family:"Recursive";
+  src:url("../../../dev-hq/fonts/recursive-latin-wght.woff2") format("woff2-variations");
+  font-weight:300 1000;
+  font-display:swap;
+}
+
+:root{
+  /* ── the five members. nothing else is a colour. ───────────────────── */
+  --ground:#05070B;   /* the dark room                       */
+  --plane :#141A22;   /* the sheet under the lamp            */
+  --ink   :#E4EAF0;   /* marks on the sheet                  */
+  --rule  :#5D7183;   /* the desaturated rule                */
+  --signal:#E6C356;   /* reserved: an UNRESOLVED CLAIM. only */
+
+  /* ── named mixes. two members, stated order, no mystery greys. ─────── */
+  --ink-2      :color-mix(in oklab, var(--ink)    78%, var(--plane));
+  --ink-3      :color-mix(in oklab, var(--ink)    60%, var(--plane));
+  --rule-ghost :color-mix(in oklab, var(--rule)   30%, var(--plane));
+  --rule-hair  :color-mix(in oklab, var(--rule)   66%, var(--plane));
+  --rule-struct:color-mix(in oklab, var(--rule)   94%, var(--plane));
+  --plane-lit  :color-mix(in oklab, var(--plane)  92%, var(--ink));
+  --plane-deep :color-mix(in oklab, var(--plane)  64%, var(--ground));
+  --plane-sel  :color-mix(in oklab, var(--rule)   40%, var(--plane));
+  --signal-hair:color-mix(in oklab, var(--signal) 40%, var(--plane));
+  --signal-dim :color-mix(in oklab, var(--signal) 86%, var(--plane));
+
+  /* ── one size. rank is weight, case, reversal and rule. ────────────── */
+  --size:14px;
+  --lh:1.55;
+  --gut:15.5rem;
+  --gap:2rem;
+  --pad:2rem;
+  --ease:cubic-bezier(.23,1,.32,1);
+
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--ground)}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Recursive",ui-sans-serif,"Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:var(--size);
+  line-height:var(--lh);
+  font-weight:400;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  caret-color:var(--signal);
+  scrollbar-color:var(--rule-struct) var(--ground);
+  scrollbar-width:thin;
+  overflow-x:clip;            /* clip, not hidden — hidden breaks the sticky head */
+}
+::selection{background:var(--plane-sel);color:var(--ink)}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--ground)}
+::-webkit-scrollbar-thumb{background:var(--rule-struct);border:3px solid var(--ground)}
+::-webkit-scrollbar-thumb:hover{background:var(--rule)}
+
+:where(a,button,[tabindex]):focus-visible{
+  outline:2px solid var(--ink);
+  outline-offset:2px;
+}
+
+/* ── the lit plane ─────────────────────────────────────────────────────── */
+.sheet{
+  max-width:74rem;
+  margin:0 auto;
+  min-height:100vh;
+  background:
+    radial-gradient(130% 48% at 50% -12%, var(--plane-lit), rgba(0,0,0,0) 68%),
+    linear-gradient(var(--plane), var(--plane-deep));
+  border-inline:1px solid var(--rule-hair);
+  border-top:1px solid color-mix(in oklab, var(--rule) 90%, var(--plane));
+  padding:0 var(--pad) 5rem;
+}
+
+/* ── running head ──────────────────────────────────────────────────────── */
+.head{
+  position:sticky; top:0; z-index:5;
+  display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap;
+  margin:0 calc(var(--pad) * -1);
+  padding:.85rem var(--pad) .7rem;
+  background:linear-gradient(var(--plane-lit) 62%, color-mix(in oklab, var(--plane) 86%, var(--ink)));
+  border-bottom:1px solid var(--rule-struct);
+  text-transform:uppercase;
+  letter-spacing:.13em;
+  font-weight:800;
+}
+.head .folio{margin-left:auto;font-weight:500;color:var(--ink-2);letter-spacing:.1em}
+.head .sig{font-weight:400;color:var(--ink-2);letter-spacing:.08em;text-transform:none}
+
+/* ── the record: one continuous column with its citation gutter ────────── */
+.rec{
+  display:grid;
+  grid-template-columns:var(--gut) minmax(0,1fr);
+  column-gap:var(--gap);
+  padding-top:1rem;
+  padding-bottom:1.6rem;
+}
+.rec > *{min-width:0}
+.rule{
+  grid-column:1 / -1;
+  height:1px;
+  background:var(--rule-struct);
+  transform-origin:0 50%;
+  margin-bottom:1.15rem;
+}
+.rule.thin{background:var(--rule-hair)}
+
+/* apparatus column */
+.app{
+  font-weight:300;
+  color:var(--ink-2);
+  letter-spacing:.005em;
+}
+.note{
+  display:grid;
+  grid-template-columns:2.1rem minmax(0,1fr);
+  margin-bottom:.55rem;
+  overflow-wrap:anywhere;
+}
+.note .m{font-weight:700;color:var(--ink-3);letter-spacing:.04em}
+.note.on{color:var(--ink)}
+.note.on .m{color:var(--ink)}
+.note.on .src{background:var(--ink);color:var(--plane);padding:0 .28em;margin:0 -.28em}
+.src{font-weight:500;color:var(--ink-2)}
+.app .lead{
+  text-transform:uppercase;letter-spacing:.13em;font-weight:800;
+  color:var(--ink-3);margin-bottom:.7rem;
+}
+
+/* record column */
+.body{overflow-wrap:anywhere}
+h2,h3{font-size:inherit;line-height:inherit;margin:0;font-weight:400}
+h2{
+  text-transform:uppercase;letter-spacing:.15em;font-weight:900;
+  margin-bottom:.9rem;
+}
+h3{
+  text-transform:uppercase;letter-spacing:.11em;font-weight:800;
+  color:var(--ink-2);margin:1.35rem 0 .5rem;
+}
+p{margin:0 0 .6rem;max-width:66ch}
+.dim{color:var(--ink-2);font-weight:300}
+.strong{font-weight:800}
+.up{text-transform:uppercase;letter-spacing:.1em;font-weight:800}
+.num{font-variant-numeric:tabular-nums;font-weight:700}
+
+/* reference mark — a siglum, not a superscript. one size, always. */
+.m{
+  font:inherit;background:none;border:0;padding:0 .12em;margin:0;
+  color:var(--ink);font-weight:750;letter-spacing:.03em;cursor:pointer;
+  white-space:nowrap;
+}
+button.m:hover{background:var(--ink);color:var(--plane)}
+button.m:active{background:var(--ink-2);color:var(--plane)}
+
+/* reversal — the loudest device available at one type size */
+.band{
+  display:block;background:var(--ink);color:var(--plane);
+  font-weight:900;text-transform:uppercase;letter-spacing:.16em;
+  padding:.42rem .7rem;margin:.15rem 0 1.1rem;
+}
+.band .q{font-weight:500;letter-spacing:.06em;text-transform:none}
+
+/* ── sigla (drawn, one stroke weight) ──────────────────────────────────── */
+.sg{width:11px;height:11px;flex:0 0 11px;vertical-align:-1px;
+    color:var(--ink);stroke:currentColor;fill:none;
+    stroke-width:1.25;stroke-linecap:square}
+.sg.dimmed{color:var(--ink-2)}
+.sg.claim{color:var(--signal)}
+
+/* ── entries ───────────────────────────────────────────────────────────── */
+.entry{
+  display:grid;grid-template-columns:1.5rem minmax(0,1fr);
+  column-gap:.55rem;margin-bottom:1rem;
+}
+.entry > svg{margin-top:.34rem}
+.entry .t{font-weight:800;text-transform:uppercase;letter-spacing:.11em}
+.entry .d{color:var(--ink-2);font-weight:300;max-width:64ch}
+
+/* key/value under a worker or a figure */
+.kv{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));
+  gap:.1rem 1.25rem;margin:.35rem 0 .1rem;
+}
+.kv div{position:relative;display:flex;gap:.5rem;align-items:baseline;padding-top:.16rem}
+.kv .k{text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--ink-3)}
+.kv .v{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:500}
+
+/* ── ranked signals ────────────────────────────────────────────────────── */
+.rank{margin:0 0 1.1rem}
+.rank dt{
+  position:relative;
+  text-transform:uppercase;letter-spacing:.16em;font-weight:900;
+  padding-bottom:.15rem;margin-bottom:.4rem;
+}
+.rank dd{margin:0 0 .28rem;display:grid;grid-template-columns:1.5rem minmax(0,1fr);column-gap:.55rem}
+.rank dd > svg{margin-top:.34rem}
+.rank.watch dt,.rank.note dt{font-weight:700;color:var(--ink-2)}
+.rank.watch dt::after,.rank.note dt::after{background:var(--rule-hair)}
+.rank.note dd{color:var(--ink-2);font-weight:300}
+
+/* ── lock chains ───────────────────────────────────────────────────────── */
+.chain{position:relative;display:grid;grid-template-columns:6.5rem minmax(0,1fr);
+       column-gap:.9rem;padding:.42rem 0 .5rem}
+.chain .f{font-weight:800;letter-spacing:.02em}
+.chain .l{display:grid;grid-template-columns:1.5rem minmax(0,1fr);column-gap:.55rem;margin-bottom:.18rem}
+.chain .l > svg{margin-top:.34rem}
+.chain .l .r{text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--ink-3)}
+.chain .l.locked .r{color:var(--ink-2)}
+.id{font-weight:500;color:var(--ink-2)}
+
+/* ── the FACT / CLAIM apparatus. incommensurable by construction. ──────── */
+.facts{position:relative;padding-top:.55rem}
+
+/* every hairline in the apparatus is a drawable rule, not a border */
+.chain::before,.kv div::before,.facts::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:1px;
+  background:var(--rule-hair);transform-origin:0 50%;
+}
+.facts::before{background:var(--rule-struct)}
+.rank dt::after{
+  content:"";position:absolute;inset:auto 0 0 0;height:1px;
+  background:var(--rule-struct);transform-origin:0 50%;
+}
+.fact{display:grid;grid-template-columns:1.5rem minmax(0,1fr);column-gap:.55rem;margin-bottom:.34rem}
+.fact > svg{margin-top:.34rem}
+.fact .k{
+  display:inline-block;background:var(--ink);color:var(--plane);
+  font-weight:900;text-transform:uppercase;letter-spacing:.14em;padding:0 .42em;margin-right:.5em;
+}
+.claims{
+  margin-top:1rem;padding:.6rem 0 .1rem .95rem;
+  border-top:1px dashed var(--signal-hair);
+  border-left:1px solid var(--signal-hair);
+}
+.claim{display:grid;grid-template-columns:1.5rem minmax(0,1fr);column-gap:.55rem;margin-bottom:.34rem}
+.claim > svg{margin-top:.34rem}
+.claim .k{
+  display:inline-block;color:var(--signal);
+  border:1px solid var(--signal);
+  font-weight:400;font-style:italic;text-transform:uppercase;letter-spacing:.14em;
+  padding:0 .42em;margin-right:.5em;
+}
+.claim .txt{color:var(--signal-dim);font-style:italic;font-weight:300}
+
+/* ── three states: not asked · empty · failed ──────────────────────────── */
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:1rem;margin-top:.4rem}
+.state{padding:.6rem .7rem;min-height:6.2rem;display:flex;flex-direction:column;gap:.3rem}
+.state .st{text-transform:uppercase;letter-spacing:.12em;font-weight:800;display:flex;gap:.5rem;align-items:center}
+.state .val{font-weight:300;color:var(--ink-2);margin-top:auto}
+.state.unasked{border:1px dashed var(--rule-hair);color:var(--ink-2)}
+.state.unasked .st{font-weight:500;color:var(--ink-2)}
+.state.empty{border:1px solid var(--rule-struct)}
+.state.failed{
+  border:1px solid var(--rule-struct);
+  background:repeating-linear-gradient(-45deg,rgba(0,0,0,0) 0 6px,var(--rule-ghost) 6px 7px);
+}
+.state.failed .st{font-weight:900}
+
+/* ── tables ────────────────────────────────────────────────────────────── */
+.scrollx{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;vertical-align:top;padding:.34rem .8rem .34rem 0;border-top:1px solid var(--rule-hair)}
+thead th{
+  border-top:0;border-bottom:1px solid var(--rule-struct);
+  text-transform:uppercase;letter-spacing:.11em;font-weight:800;color:var(--ink-3);
+}
+td.sup{white-space:nowrap}
+td .no{color:var(--ink-2);font-weight:300;font-style:italic}
+
+/* ── controls ──────────────────────────────────────────────────────────── */
+.act{
+  font:inherit;font-weight:800;text-transform:uppercase;letter-spacing:.13em;
+  color:var(--ink);background:none;border:1px solid var(--rule-struct);
+  padding:.3rem .8rem;cursor:pointer;
+}
+.act:hover{background:var(--ink);color:var(--plane);border-color:var(--ink)}
+.act:disabled{
+  cursor:not-allowed;color:var(--ink-3);border-color:var(--rule-hair);
+  border-style:dashed;background:none;
+}
+.why{color:var(--ink-2);font-weight:300}
+
+/* ── grip ──────────────────────────────────────────────────────────────── */
+blockquote{
+  margin:0;padding:0 0 0 1rem;border-left:1px solid var(--rule);
+  font-weight:500;max-width:60ch;
+}
+blockquote .att{display:block;margin-top:.3rem;font-weight:300;color:var(--ink-2)}
+
+/* ── ONE authored moment: the apparatus rules draw themselves, once. ───── */
+/* Only the rules themselves move — never a box that carries text, never a
+   number, a time or a log line. Default state is drawn; the animation is the
+   exception, so reduced motion lands on the finished sheet. */
+@media (prefers-reduced-motion:no-preference){
+  .rule,
+  .chain::before,.kv div::before,.facts::before,.rank dt::after{
+    animation:draw 560ms var(--ease) both;
+    animation-delay:calc(var(--d,0) * 40ms);
+  }
+}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ── 1024 and down ─────────────────────────────────────────────────────── */
+@media (max-width:1120px){
+  :root{--gut:11.5rem;--gap:1.5rem;--pad:1.25rem}
+  .chain{grid-template-columns:5.5rem minmax(0,1fr);column-gap:.7rem}
+}
+@media (max-width:760px){
+  :root{--gut:0;--gap:0}
+  .rec{grid-template-columns:minmax(0,1fr)}
+  .app{order:2;border-top:1px solid var(--rule-hair);margin-top:1rem;padding-top:.7rem}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-working" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9"/><path d="M1.5 1.5h4.5v9H1.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-ready" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="currentColor"/></symbol>
+    <symbol id="i-queued" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" stroke-dasharray="2 1.6"/></symbol>
+    <symbol id="i-failed" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9"/><path d="M1.5 10.5 10.5 1.5"/></symbol>
+    <symbol id="i-locked" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9"/><path d="M1.5 6h9"/></symbol>
+    <symbol id="i-held" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9"/><path d="M3.8 6h4.4M6 3.8v4.4"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 12 12"><path d="M6 1.2 11 10.5H1z"/><path d="M6 4.6v2.4M6 8.6v.6"/></symbol>
+    <symbol id="i-fact" viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" fill="currentColor"/></symbol>
+    <symbol id="i-claim" viewBox="0 0 12 12"><path d="M6 1.7 10.3 6 6 10.3 1.7 6z"/></symbol>
+    <symbol id="i-dash" viewBox="0 0 12 12"><path d="M2 6h8"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 12 12"><path d="M1.5 6h9M7 2.5 10.5 6 7 9.5"/></symbol>
+  </defs>
+</svg>
+
+<main class="sheet">
+
+  <header class="head">
+    <span>DEV-HQ</span>
+    <span class="sig">der Beleg · 127.0.0.1 · local</span>
+    <span class="folio">v1.3.0 · 2026-09-09 · Windows only</span>
+  </header>
+
+  <!-- ═══ 1 · THE STATE OF THE RELEASE ═══════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:0"></div>
+
+    <aside class="app">
+      <p class="lead">Apparatus</p>
+      <div class="note" id="n-a"><span class="m">[a]</span><span><span class="src">STAND.md</span> — release state, gate log, updater block. Sole source for every assertion in this section.</span></div>
+      <div class="note" id="n-b"><span class="m">[b]</span><span><span class="src">be55335</span> — <span class="dim">docs(release): v1.3.0 wird getaggt — übersprungene Gates offen dokumentiert.</span></span></div>
+      <div class="note" id="n-c"><span class="m">[c]</span><span><span class="src">011f298</span> — <span class="dim">chore(release): Version, Changelog, Stand, Journal.</span></span></div>
+      <div class="note" id="n-d"><span class="m">[d]</span><span>Policy requires evidence on both platforms. This release carries one.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Release &nbsp;·&nbsp; v1.3.0 tagged and pushed 2026-09-09 <button class="m" data-ref="n-b">[b]</button><button class="m" data-ref="n-c">[c]</button></h2>
+
+      <span class="band">Two gates were deliberately skipped, not passed <span class="q">— they did not run, and nothing here reports them as green.</span></span>
+
+      <div class="entry">
+        <svg class="sg" aria-hidden="true"><use href="#i-skip"/></svg>
+        <div>
+          <div class="t">Installer gate — not run <button class="m" data-ref="n-a">[a]</button></div>
+          <p class="d">The candidate&rsquo;s NSIS was never installed over a copy of the live 1.2.4 database.</p>
+          <p class="strong up">Migration 3 has never run on real data.</p>
+          <p class="d">This is the largest residual risk of the release.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <svg class="sg" aria-hidden="true"><use href="#i-skip"/></svg>
+        <div>
+          <div class="t">Unix evidence — not run <button class="m" data-ref="n-d">[d]</button></div>
+          <p class="d">The <span class="strong">#[cfg(unix)]</span> tests did not run: Linux server deleted, Actions quota exhausted. Policy requires both platforms; this release has <span class="strong">Windows only</span>.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <svg class="sg" aria-hidden="true"><use href="#i-locked"/></svg>
+        <div>
+          <div class="t">Signed updater — externally blocked <button class="m" data-ref="n-a">[a]</button></div>
+          <p class="d">Private key missing. <span class="strong">v1.2.4 installations will not self-update.</span></p>
+          <p><button class="act" disabled>Relaunch signed updater</button>
+            <span class="why">&nbsp; disabled — no private key; the block is outside this repo.</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · THE GRIP ═══════════════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:1"></div>
+
+    <aside class="app">
+      <div class="note" id="n-e"><span class="m">[e]</span><span><span class="src">STAND.md#Nächster Griff</span> — verbatim, untranslated. The desk does not paraphrase a decision it did not make.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>The grip &nbsp;·&nbsp; one next move <button class="m" data-ref="n-e">[e]</button></h2>
+      <blockquote>
+        &bdquo;Signed-Updater-Relaunch sobald der Private Key steht, kein Cutover
+        <span class="strong">cheap</span>&rarr;Produktmodus (Spawn bleibt <span class="strong">auto/cheap</span>).&ldquo;
+        <span class="att">— STAND.md#Nächster Griff</span>
+      </blockquote>
+    </div>
+  </section>
+
+  <!-- ═══ 3 · SIGNALS ════════════════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:2"></div>
+
+    <aside class="app">
+      <div class="note" id="n-f"><span class="m">[f]</span><span><span class="src">wk-1 · stderr</span> — <span class="dim">cargo check failed: Package gdk-3.0 was not found in the pkg-config search path.</span></span></div>
+      <div class="note" id="n-g"><span class="m">[g]</span><span><span class="src">wk-2 · test run</span> — pass, no assertion of review quality.</span></div>
+      <div class="note" id="n-h"><span class="m">[h]</span><span><span class="src">provider ledger</span> — rate limit and budget window, read at page load.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Signals &nbsp;·&nbsp; act &rarr; watch &rarr; note</h2>
+
+      <dl class="rank" style="--d:2">
+        <dt>Act</dt>
+        <dd><svg class="sg" aria-hidden="true"><use href="#i-failed"/></svg>
+          <span><span class="strong">wk-1</span> needs a human <button class="m" data-ref="n-f">[f]</button> — <span class="dim">cargo check failed: Package gdk-3.0 was not found</span></span></dd>
+        <dd><svg class="sg" aria-hidden="true"><use href="#i-ready"/></svg>
+          <span><span class="strong">wk-2</span> is ready to merge <button class="m" data-ref="n-g">[g]</button> — <span class="dim">tests pass</span></span></dd>
+        <dd><svg class="sg" aria-hidden="true"><use href="#i-claim"/></svg>
+          <span>Open question: <span class="strong">&ldquo;Which database?&rdquo;</span> <span class="dim">(from wk-1)</span></span></dd>
+      </dl>
+
+      <dl class="rank watch" style="--d:3">
+        <dt>Watch</dt>
+        <dd><svg class="sg dimmed" aria-hidden="true"><use href="#i-locked"/></svg>
+          <span><span class="strong">opencode</span> is quota-blocked <button class="m" data-ref="n-h">[h]</button> — <span class="dim">rate limit</span></span></dd>
+        <dd><svg class="sg dimmed" aria-hidden="true"><use href="#i-working"/></svg>
+          <span><span class="strong">claude</span> 5-hour budget at <span class="num">80&thinsp;%</span> <button class="m" data-ref="n-h">[h]</button></span></dd>
+      </dl>
+
+      <dl class="rank note" style="--d:4">
+        <dt>Note</dt>
+        <dd><svg class="sg dimmed" aria-hidden="true"><use href="#i-dash"/></svg>
+          <span>Most recurring error seen <span class="num">3&times;</span> — GTK dev headers missing in pre-commit</span></dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · THE FLEET ══════════════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:3"></div>
+
+    <aside class="app">
+      <div class="note" id="n-i"><span class="m">[i]</span><span>One task = one agent = one git worktree. The branch is the worker&rsquo;s whole address.</span></div>
+      <div class="note"><span class="m">[j]</span><span><span class="src">context</span> — used / window, as reported by the provider. Not an estimate.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>The fleet &nbsp;·&nbsp; <span class="num">2</span> workers <button class="m" data-ref="n-i">[i]</button></h2>
+
+      <div class="entry">
+        <svg class="sg" aria-hidden="true"><use href="#i-working"/></svg>
+        <div>
+          <div class="t">wk-1 &nbsp;·&nbsp; Fix the dispatcher</div>
+          <div class="kv" style="--d:4">
+            <div><span class="k">Profile</span><span class="v">claude</span></div>
+            <div><span class="k">Branch</span><span class="v">wk-dispatcher</span></div>
+            <div><span class="k">Column</span><span class="v">working</span></div>
+            <div><span class="k">Context</span><span class="v">42&thinsp;000 / 200&thinsp;000</span></div>
+          </div>
+          <p class="d">cargo check failed: gdk-3.0 not found <button class="m" data-ref="n-f">[f]</button></p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <svg class="sg" aria-hidden="true"><use href="#i-ready"/></svg>
+        <div>
+          <div class="t">wk-2 &nbsp;·&nbsp; Review the review</div>
+          <div class="kv" style="--d:5">
+            <div><span class="k">Profile</span><span class="v">codex</span></div>
+            <div><span class="k">Branch</span><span class="v">wk-review</span></div>
+            <div><span class="k">Column</span><span class="v">ready_to_merge</span></div>
+            <div><span class="k">Context</span><span class="v">—</span></div>
+          </div>
+          <p class="d">tests pass <button class="m" data-ref="n-g">[g]</button></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · LOCKS AND LANES ════════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:4"></div>
+
+    <aside class="app">
+      <div class="note" id="n-k"><span class="m">[k]</span><span><span class="src">AGENTS.md</span> — the four Nahtstellen: <span class="dim">api.rs · main.rs · store.rs · bin/pa.rs</span>. One worker at a time, each.</span></div>
+      <div class="note"><span class="m">[l]</span><span>Startable is derived, not declared: a spec is startable when none of its Nahtstellen is held.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Locks and lanes &nbsp;·&nbsp; <span class="num">19</span> active specs &nbsp;·&nbsp; <span class="num">13</span> startable &nbsp;·&nbsp; <span class="num">6</span> locked <button class="m" data-ref="n-k">[k]</button></h2>
+
+      <div class="chain" style="--d:5">
+        <span class="f">main.rs</span>
+        <div>
+          <div class="l"><svg class="sg" aria-hidden="true"><use href="#i-held"/></svg>
+            <span><span class="r">held</span> F1: eine Flotte, ein Fenster <span class="id">— task_f1_single_instance · serial · startable</span></span></div>
+          <div class="l locked"><svg class="sg dimmed" aria-hidden="true"><use href="#i-locked"/></svg>
+            <span><span class="r">locked behind it</span> F1: P2-H Logpfad, Diagnosepaket, &bdquo;Warum?&ldquo; <span class="id">— task_f1_diagnostics</span></span></div>
+        </div>
+      </div>
+
+      <div class="chain" style="--d:6">
+        <span class="f">store.rs</span>
+        <div>
+          <div class="l"><svg class="sg" aria-hidden="true"><use href="#i-held"/></svg>
+            <span><span class="r">held</span> <span class="id">task_f4_persist</span></span></div>
+          <div class="l locked"><svg class="sg dimmed" aria-hidden="true"><use href="#i-locked"/></svg>
+            <span><span class="r">locked behind it</span> <span class="id">task_f0_7</span></span></div>
+        </div>
+      </div>
+
+      <div class="chain" style="--d:7">
+        <span class="f">api.rs</span>
+        <div>
+          <div class="l"><svg class="sg" aria-hidden="true"><use href="#i-held"/></svg>
+            <span><span class="r">held</span> <span class="id">task_f4_authority</span></span></div>
+          <div class="l locked"><svg class="sg dimmed" aria-hidden="true"><use href="#i-locked"/></svg>
+            <span><span class="r">locked behind it</span> <span class="id">task_f2_kinds</span></span></div>
+        </div>
+      </div>
+
+      <div class="chain" style="--d:8">
+        <span class="f">free lane</span>
+        <div>
+          <div class="l"><svg class="sg" aria-hidden="true"><use href="#i-arrow"/></svg>
+            <span><span class="r">startable now, in parallel</span></span></div>
+          <div class="l"><svg class="sg dimmed" aria-hidden="true"><use href="#i-queued"/></svg>
+            <span>F0-Abnahme: Alt-DBs öffnen ohne Datenverlust <span class="id">— task_f0_db_fixtures</span></span></div>
+          <div class="l"><svg class="sg dimmed" aria-hidden="true"><use href="#i-queued"/></svg>
+            <span>F1: Reason-Codes, Fehlerkanal, Opener-Grenze <span class="id">— task_f1_attention</span></span></div>
+          <div class="l"><svg class="sg dimmed" aria-hidden="true"><use href="#i-queued"/></svg>
+            <span>F4: Lifecycle + <span class="strong">blockers[]</span> als reine Rust-Logik <span class="id">— task_f4_readiness</span></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 6 · EVIDENCE ═══════════════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:5"></div>
+
+    <aside class="app">
+      <div class="note" id="n-m"><span class="m">[m]</span><span>Every finding below cites <span class="src">STAND.md</span>. Reversal marks a fact; outline and slant mark a claim. The two are set so they cannot be confused, in colour or without it.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Evidence &nbsp;·&nbsp; <span class="num">8</span> findings, typed <button class="m" data-ref="n-m">[m]</button></h2>
+
+      <div class="facts" style="--d:6">
+        <div class="fact"><svg class="sg" aria-hidden="true"><use href="#i-fact"/></svg>
+          <span><span class="k">Fact</span><span class="strong">F0-4</span> &bdquo;Der Masterprompt umgeht die Playbook-Marker-Sperre.&ldquo; <span class="dim">— STAND.md</span></span></div>
+        <div class="fact"><svg class="sg" aria-hidden="true"><use href="#i-fact"/></svg>
+          <span><span class="k">Fact</span><span class="strong">F0-5</span> &bdquo;verdrahtet&ldquo; <span class="dim">— STAND.md</span></span></div>
+        <div class="fact"><svg class="sg" aria-hidden="true"><use href="#i-fact"/></svg>
+          <span><span class="k">Fact</span><span class="strong">F0-6</span> &bdquo;Landing-Page-Export.&ldquo; <span class="dim">— STAND.md</span></span></div>
+        <div class="fact"><svg class="sg" aria-hidden="true"><use href="#i-fact"/></svg>
+          <span><span class="k">Fact</span><span class="strong">F0-7</span> &bdquo;Restore-Pfad steht.&ldquo; <span class="dim">— STAND.md</span></span></div>
+      </div>
+
+      <div class="claims">
+        <div class="claim"><svg class="sg claim" aria-hidden="true"><use href="#i-claim"/></svg>
+          <span><span class="k">Claim</span><span class="txt"><span style="font-weight:500">NT-5 / P2-D</span> — asserted in STAND.md, unresolved.</span></span></div>
+        <div class="claim"><svg class="sg claim" aria-hidden="true"><use href="#i-claim"/></svg>
+          <span><span class="k">Claim</span><span class="txt"><span style="font-weight:500">P2-H</span> — asserted in STAND.md, unresolved.</span></span></div>
+        <div class="claim"><svg class="sg claim" aria-hidden="true"><use href="#i-claim"/></svg>
+          <span><span class="k">Claim</span><span class="txt"><span style="font-weight:500">KI-8</span> — asserted in STAND.md, unresolved.</span></span></div>
+        <div class="claim"><svg class="sg claim" aria-hidden="true"><use href="#i-claim"/></svg>
+          <span><span class="k">Claim</span><span class="txt"><span style="font-weight:500">NT-7 / NT-11</span> — asserted in STAND.md, unresolved.</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 7 · COST WITH ITS BASIS ════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:6"></div>
+
+    <aside class="app">
+      <div class="note" id="n-n"><span class="m">[n]</span><span><span class="src">provider ledger</span> — reported cost, as billed. Not derived.</span></div>
+      <div class="note" id="n-o"><span class="m">[o]</span><span><span class="src">token ledger</span> — <span class="dim">340&thinsp;000 in / 90&thinsp;000 out over 12 requests, today.</span></span></div>
+      <div class="note" id="n-p"><span class="m">[p]</span><span><span class="src">basis · git sittings</span> — commits ≤&thinsp;90 min apart form one sitting, +&thinsp;30 min lead-in.</span></div>
+      <div class="note" id="n-q"><span class="m">[q]</span><span><span class="src">basis · journal</span> — journal sessions &times; 45 min.</span></div>
+      <div class="note" id="n-r"><span class="m">[r]</span><span><span class="src">heuristic fallback</span> — changed lines &times; 10 tokens &times; 6 read/write ratio, stated range 0.5&times;&ndash;2&times;. Used only when the ledger is smaller than the heuristic.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Cost &nbsp;·&nbsp; no figure without its basis</h2>
+
+      <div class="kv" style="--d:7">
+        <div><span class="k">Ledger cost <button class="m" data-ref="n-n">[n]</button></span><span class="v">$4.21</span></div>
+        <div><span class="k">Tokens in <button class="m" data-ref="n-o">[o]</button></span><span class="v">340&thinsp;000</span></div>
+        <div><span class="k">Tokens out <button class="m" data-ref="n-o">[o]</button></span><span class="v">90&thinsp;000</span></div>
+        <div><span class="k">Requests <button class="m" data-ref="n-o">[o]</button></span><span class="v">12</span></div>
+      </div>
+
+      <h3>Whole-project time — a range, never a number</h3>
+      <p class="d">Reported as <span class="strong">min &hellip; sum</span> of two independent bases, and shown as both:
+        git sittings <button class="m" data-ref="n-p">[p]</button> and journal sessions <button class="m" data-ref="n-q">[q]</button>.
+        The desk does not average them, because averaging would hide which basis disagrees.</p>
+      <p class="d">Where the ledger falls below the heuristic, the token figure falls back to the stated heuristic
+        <button class="m" data-ref="n-r">[r]</button> and says so at the point of use — the number changes its label, not only its value.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 8 · QUEUE AND AGENT TEAMS ══════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:7"></div>
+
+    <aside class="app">
+      <div class="note" id="n-s"><span class="m">[s]</span><span><span class="src">capability matrix</span> — skills run on <span class="strong">claude</span> and <span class="strong">kimi</span>. On <span class="strong">codex</span>, <span class="strong">opencode</span> and <span class="strong">ollama</span> they are unsupported. The template shows the gap; it does not fill it.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Queue &nbsp;·&nbsp; <span class="num">1</span> entry</h2>
+      <div class="entry">
+        <svg class="sg dimmed" aria-hidden="true"><use href="#i-queued"/></svg>
+        <div><div class="t">Sharpen the plan</div><p class="d">queued · not started · no worker assigned</p></div>
+      </div>
+
+      <h3>Agent teams — a department, with its template</h3>
+      <p class="d">Named teams, composed like departments: Review, Debug, Coding, Testing, UI/UX, Orchestrator, Advisor.
+        Each carries recommended models, effort, skills, hooks and tools. What a provider cannot do is printed, not omitted <button class="m" data-ref="n-s">[s]</button>.</p>
+
+      <div class="scrollx">
+      <table>
+        <thead><tr><th>Team · provider</th><th>Models · effort</th><th>Skills</th><th>Hooks · tools</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="sup"><span class="strong">Review</span> · claude</td>
+            <td>opus · high</td>
+            <td><svg class="sg" aria-hidden="true"><use href="#i-ready"/></svg> supported — 4 loaded</td>
+            <td>pre-commit, post-merge · read, grep, git</td>
+          </tr>
+          <tr>
+            <td class="sup"><span class="strong">Review</span> · codex</td>
+            <td>gpt-code · high</td>
+            <td><svg class="sg dimmed" aria-hidden="true"><use href="#i-failed"/></svg> <span class="no">unsupported on this provider — the template will not load them</span></td>
+            <td>pre-commit · read, grep, git</td>
+          </tr>
+          <tr>
+            <td class="sup"><span class="strong">Debug</span> · kimi</td>
+            <td>k2-code · medium</td>
+            <td><svg class="sg" aria-hidden="true"><use href="#i-ready"/></svg> supported — 2 loaded</td>
+            <td>on-fail · read, bash</td>
+          </tr>
+          <tr>
+            <td class="sup"><span class="strong">Testing</span> · ollama</td>
+            <td>local · low</td>
+            <td><svg class="sg dimmed" aria-hidden="true"><use href="#i-failed"/></svg> <span class="no">unsupported on this provider</span></td>
+            <td>— · bash</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 9 · THREE STATES ═══════════════════════════════════════════════ -->
+  <section class="rec">
+    <div class="rule" style="--d:8"></div>
+
+    <aside class="app">
+      <div class="note"><span class="m">[t]</span><span>Not-yet-asked, empty and failed are three different states. A desk that renders them alike is lying about what it knows.</span></div>
+    </aside>
+
+    <div class="body">
+      <h2>Not asked &nbsp;·&nbsp; empty &nbsp;·&nbsp; failed</h2>
+      <p class="d">The same field, in its three honest conditions. The distinction is carried by frame and weight, so it survives greyscale and a bad monitor.</p>
+
+      <div class="states">
+        <div class="state unasked">
+          <span class="st"><svg class="sg dimmed" aria-hidden="true"><use href="#i-dash"/></svg> Not queried</span>
+          <span class="val">Unix evidence — the query was never issued. No value is claimed either way.</span>
+        </div>
+        <div class="state empty">
+          <span class="st"><svg class="sg" aria-hidden="true"><use href="#i-queued"/></svg> Queried · nothing returned</span>
+          <span class="val">wk-2 context window — the provider answered, and answered with nothing.</span>
+        </div>
+        <div class="state failed">
+          <span class="st"><svg class="sg" aria-hidden="true"><use href="#i-failed"/></svg> Request failed</span>
+          <span class="val">opencode quota — rate limit. The reason is the value.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rec">
+    <div class="rule thin" style="--d:9"></div>
+    <aside class="app"></aside>
+    <div class="body">
+      <p class="dim">Unreviewed and undocumented is unfinished. Every assertion on this sheet carries a mark; every mark has a note in the gutter beside it.</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  // The only interaction: a reference mark lights its own note in the gutter.
+  // No motion, no timing — a state change, instantly.
+  var marks = document.querySelectorAll('button.m[data-ref]');
+  function set(id, on){
+    var n = document.getElementById(id);
+    if (n) n.classList.toggle('on', on);
+  }
+  marks.forEach(function(b){
+    var id = b.getAttribute('data-ref');
+    b.setAttribute('aria-describedby', id);
+    b.addEventListener('mouseenter', function(){ set(id, true); });
+    b.addEventListener('mouseleave', function(){ set(id, false); });
+    b.addEventListener('focus',      function(){ set(id, true); });
+    b.addEventListener('blur',       function(){ set(id, false); });
+    b.addEventListener('click',      function(){
+      var n = document.getElementById(id);
+      if (n) n.scrollIntoView({block:'nearest'});
+    });
+  });
+})();
+</script>
+</body>
+</html>

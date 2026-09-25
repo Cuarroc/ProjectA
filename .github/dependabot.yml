@@ -1,0 +1,68 @@
+# Monatliche, je Oekosystem gebuendelte Dependency-Updates.
+#
+# Seit CI-01 (Nutzer-Entscheidung 24.09.2026, docs/decisions.md) MONATLICH
+# statt woechentlich und je Oekosystem EIN Sammel-PR: jeder Dependabot-PR
+# kostet einen vollen CI-Lauf inklusive Windows (Cargo.lock ist eine Eingabe
+# der Windows-Bahn), und drei woechentliche PRs waren zwoelf Laeufe im Monat
+# fuer Aenderungen, die niemand in der Woche braucht.
+#
+# Sicherheits-Updates bleiben SOFORT: sie sind in GitHub ein eigener
+# Mechanismus ("Dependabot security updates", Settings > Code security) und
+# richten sich nicht nach `schedule`. `groups` hier gilt nur fuer
+# Versions-Updates (applies-to: version-updates ist der Standard); ein
+# Security-Update kommt also weiterhin einzeln und ohne Wartezeit. Dazu
+# deckt das woechentliche audit.yml die CVEs ab.
+#
+# Bewusste Ausnahmen: glib/gtk (siehe src-tauri/audit.toml -
+# RUSTSEC-2024-0429, gtk-Bump als eigene Aufgabe).
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/src-tauri"
+    schedule:
+      interval: "monthly"
+    groups:
+      cargo:
+        applies-to: version-updates
+        patterns:
+          - "*"
+    ignore:
+      # Dokumentierte Ausnahme, analog audit.toml: gtk/glib-Stack erst mit der
+      # geplanten Dependency-Hebung anfassen.
+      - dependency-name: "glib*"
+      - dependency-name: "gtk*"
+      # Majors laufen nicht ueber Dependabot (Nutzer-Entscheidung 02.09.2026,
+      # docs/decisions.md): sie sind ein geplantes Paket (Phase 6), weil sie
+      # Build-Kette und Nahtstellen anfassen. 0.x-Spruenge zaehlen dazu.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      npm:
+        applies-to: version-updates
+        patterns:
+          - "*"
+    ignore:
+      # Siehe cargo: Majors (react, vite, typescript, eslint, ...) nur geplant.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # xterm-Paar nur gemeinsam heben: @xterm/addon-webgl 0.19 erwartet
+      # xterm-5.6-Interna und stuerzte mit xterm 5.5 ab (_isDisposed,
+      # docs/dev-hq/BUGS.md 2026-09-14). Addon ist in package.json hart auf
+      # 0.18.0 gepinnt; Ruecknahme siehe docs/decisions.md 2026-09-15.
+      - dependency-name: "@xterm/xterm"
+      - dependency-name: "@xterm/addon-webgl"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"

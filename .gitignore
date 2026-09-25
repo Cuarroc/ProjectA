@@ -1,0 +1,51 @@
+/node_modules
+/dist
+/coverage
+/playwright-report
+/test-results
+# JUnit-Berichte fuer Mergify Test Insights (CI-01, vitest.config.ts)
+/.junit
+/src-tauri/target
+/src-tauri/gen/schemas
+
+# agent runtime artifacts
+.claude-flow/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/*.sh
+# Repo-Skill fuer Claude Code; identische Kopie von .agents/skills/ (SETUP-A,
+# Gleichheit prueft `npm run dev:agent-check`).
+!.claude/skills/
+# Codex-Pendant zu .claude/hooks: bindet Codex an red-first. Bleibt lokal,
+# weil hooks.json einen absoluten Pfad dieser Maschine traegt.
+.codex/
+*.bak
+# insta writes these on a local snapshot mismatch/new-snapshot run; they are
+# a pending review artifact, never something to commit (W1-23).
+*.snap.new
+.pa/*
+!.pa/ACTIVITY.md
+!.pa/task_*.md
+!.pa/report_*.md
+!.pa/review_*.md
+!.pa/review_*.py
+!.pa/patches/
+!.pa/patches/*.diff
+!.pa/audit_*.md
+!.pa/plan_*.md
+.omc/
+.pa-scout.jsonl
+.playwright-cli/
+# Die Ausnahmen des Design-Detektors sind geteilt und gehoeren ins Repo,
+# sein Sitzungs-Cache nicht.
+.impeccable/hook.cache.json
+.impeccable/config.local.json
+deepseek-harness/
+benchmark/scratch-repo/
+
+# Python bytecode from the bundled skill packs (search.py leaves it behind)
+__pycache__/
+*.pyc
+/src-tauri/target-red-first-base
+/src-tauri/target-red-first-head

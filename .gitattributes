@@ -1,0 +1,29 @@
+# Shell-Skripte muessen LF behalten, sonst brechen sie unter Git Bash/sh.
+*.sh text eol=lf
+# Der Tauri-Build normalisiert Cargo-Manifeste auf LF; mit autocrlf-Checkout
+# (CRLF) gilt der Baum sonst als dirty und das Signatur-Gate bricht ab.
+*.toml text eol=lf
+Cargo.lock text eol=lf
+# Das Agenten-Manifest wird in die App kompiliert und gehasht; LF haelt den
+# Checkout-Hash mit dem Build-Hash deckungsgleich (Doctor-Befund 15.09.).
+src-tauri/resources/agent-defaults.json text eol=lf
+.pa/ACTIVITY.md merge=union
+# Rohe PTY-Mitschnitte (ANSI, CR/LF byte-genau): nie normalisieren.
+src-tauri/testdata/pty/*.raw binary
+# Die HQ-Momentaufnahme ist ein Erzeugnis von scripts/dev-hq.mjs, wird aber
+# eingecheckt, weil die statischen Seiten sie per <script src="./data.js">
+# laden. Zwei Branches, auf denen beide `npm run hq` lief, kollidieren
+# deshalb immer -- am 21.09.2026 war das in sieben von zehn offenen PRs der
+# einzige Konflikt. Ein Erzeugnis wird nicht ausgehandelt: der Treiber behaelt
+# eine Seite, .githooks/post-merge erzeugt danach neu. Der Treiber ist
+# clone-lokal und wird von scripts/install-hooks.sh registriert.
+docs/dev-hq/data.js merge=hqdata
+docs/dev-hq/data.json merge=hqdata
+# insta-Snapshots vergleichen Zeichen fuer Zeichen; mit autocrlf-Checkout
+# (CRLF) waeren sie unter Windows sonst alle "veraendert".
+*.snap text eol=lf
+# test-ci-shape.sh vergleicht Mutationen byte-genau mit der Quelle; GNU sed
+# schreibt LF, ein autocrlf-Checkout liefert CRLF, und jede "Mutation"
+# wiche dann von der Quelle ab (Harness-No-op-Check schlaegt fehl).
+.github/workflows/*.yml text eol=lf
+.mergify.yml text eol=lf

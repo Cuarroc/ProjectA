@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Regenerate after every merge: keeping our generated snapshot can leave no
+# ORIG_HEAD..HEAD output diff even when its source documents changed.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+files=(docs/dev-hq/data.js docs/dev-hq/data.json)
+if [ -n "$(git status --porcelain -- "${files[@]}")" ]; then
+  echo "post-merge: lokale HQ-Aenderungen bleiben erhalten; spaeter npm run hq ausfuehren." >&2
+  exit 0
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "post-merge: node fehlt; npm run hq nachholen." >&2
+  exit 0
+fi
+# Generate away from the worktree. Failure must not leave one half updated.
+OUT="$(mktemp -d)"
+trap 'rm -f "$OUT/data.js" "$OUT/data.json" "$OUT/lessons.json"; rmdir "$OUT"' EXIT
+# The generator reads lessons from its output directory as an input.
+if [ -f docs/dev-hq/lessons.json ]; then
+  cp docs/dev-hq/lessons.json "$OUT/lessons.json"
+fi
+if ! node scripts/dev-hq.mjs --out "$OUT"; then
+  echo "post-merge: Erzeugung fehlgeschlagen; vorhandene HQ-Dateien bleiben erhalten." >&2
+  exit 1
+fi
+node --input-type=module - "$OUT" <<'NODE'
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { isDeepStrictEqual } from 'node:util';
+const paths = ['docs/dev-hq/data.js', 'docs/dev-hq/data.json'];
+if (execFileSync('git', ['status', '--porcelain', '--', ...paths], {encoding: 'utf8'}).trim()) {
+  console.error('post-merge: lokale HQ-Aenderungen waehrend Erzeugung; Dateien bleiben erhalten.');
+  process.exit(0);
+}
+function content(text, js) {
+  const object = JSON.parse(js ? text.replace(/^window\.HQ_DATA = /, '').replace(/;\s*$/, '') : text);
+  delete object.generatedAt;
+  delete object.commit;
+  return object;
+}
+// Validate both artifacts before replacing either one. Ignore only top-level
+// generation metadata; nested commit fields remain meaningful content.
+const updates = paths.map(path => {
+  const generated = readFileSync(join(process.argv[2], path.split('/').at(-1)), 'utf8');
+  const indexed = execFileSync('git', ['show', ':' + path], {encoding: 'utf8'});
+  return {path, generated, changed: !isDeepStrictEqual(content(indexed, path.endsWith('.js')), content(generated, path.endsWith('.js')))};
+});
+for (const item of updates) if (item.changed) writeFileSync(item.path, item.generated);
+if (updates.some(item => item.changed)) console.log('post-merge: HQ-Momentaufnahme neu erzeugt; docs/dev-hq/data.js und data.json pruefen und mitcommitten.');
+NODE

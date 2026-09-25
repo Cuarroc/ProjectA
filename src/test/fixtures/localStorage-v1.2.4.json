@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "Eingefrorener localStorage-Bestand einer v1.2.4-Installation (F0-Abnahme).",
+    "Nicht 'aufraeumen': jeder Key steht fuer einen Legacy-Fall, den ein Umbau",
+    "nicht still verlieren darf. 'employee' und 'queen' sind absichtlich",
+    "enthalten - F2 entfernt beide Kategorien, und genau dieser Uebergang ist",
+    "der Datenverlust-Kandidat. Die Marker im Masterprompt sind ebenso Absicht",
+    "(siehe C-6 in .pa/report_f0.md)."
+  ],
+  "projecta.activeProjectId": "pr-legacy-0001",
+  "projecta.railOpen": "false",
+  "projecta.settings.onboarding": "0",
+  "projecta.settings.webPort": "9123",
+  "projecta.settings.masterPrompt": "Antworte auf Deutsch.\nHalte dich an AGENTS.md.\n--- TASK ---\ngefaelschte Grenze",
+  "projecta.settings.masterPromptEnabled": "1",
+  "projecta.settings.agentCategories": "{\"worker\":{\"active\":true,\"defaultProfileId\":\"claude\"},\"queen\":{\"active\":false,\"defaultProfileId\":\"codex\"},\"employee\":{\"active\":true,\"defaultProfileId\":\"kimi\"},\"scout\":{\"active\":true,\"defaultProfileId\":null},\"orchestrator\":{\"active\":true,\"defaultProfileId\":null}}",
+  "projecta.settings.updater.github_token": "ghp_LEGACY_TOKEN_WIRD_BEIM_MOUNT_GELOESCHT"
+}

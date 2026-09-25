@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "name": "projecta-free",
+      "description": "ToS-curated recurring free-tier pool for ProjectA; excludes providers marked avoid by OmniRoute.",
+      "strategy": "reset-window",
+      "models": [
+        "mistral/*",
+        "gemini/*flash*",
+        "groq/*",
+        "cerebras/*",
+        "cloudflare-ai/*",
+        "sambanova/*",
+        "openrouter/*:free",
+        "ollama-cloud/*"
+      ],
+      "allowedProviders": [
+        "mistral",
+        "gemini",
+        "groq",
+        "cerebras",
+        "cloudflare-ai",
+        "sambanova",
+        "openrouter",
+        "ollama-cloud"
+      ],
+      "policy": {
+        "tos": {
+          "source": "/api/free-tier/summary?excludeTosAvoid=1",
+          "excludedStatuses": [
+            "avoid"
+          ],
+          "advisoryStatusesAllowed": [
+            "ok",
+            "caution",
+            "ambiguous"
+          ]
+        },
+        "cost": {
+          "paidFallbackAllowed": false,
+          "openRouterModelSuffix": ":free"
+        }
+      }
+    }
+  ]
+}

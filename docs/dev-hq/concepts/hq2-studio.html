@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dev-HQ Studio</title><link rel="stylesheet" href="studio-density.css"><link rel="stylesheet" href="studio-workspace.css"><link rel="stylesheet" href="studio-roadmap.css">
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt</a>
+<header><a class="brand" href="#overview" aria-label="Dev-HQ Übersicht"><img src="dev-hq-mark-v1.png" alt="" width="40" height="40">DEV<span>·</span>HQ <small>Studio</small></a><label class="project-label" for="project">Projekt</label><select id="project" aria-label="Runtime-Projekt"><option value="">Runtime wird geprüft …</option></select><span id="connection" role="status">Verbinden …</span><button id="refresh" class="quiet">Aktualisieren</button><label class="project-label" for="density">Dichte</label><select id="density" aria-label="Dichte" title="Darstellung für alle Arbeitsbereiche"><option value="calm">Komfortabel</option><option value="compact">Kompakt</option></select><button id="theme" aria-label="Dunkles Farbschema einschalten">Dunkel</button></header>
+<div class="shell"><nav aria-label="Arbeitsbereiche"><p class="nav-label">Arbeitsbereich</p><button data-view="overview" aria-current="page">Übersicht</button><button data-view="roadmap">Roadmap</button><button data-view="chat">Code-Chat</button><button data-view="teams">Agententeams</button><button data-view="queue">Aufträge & Rückfragen</button><p class="nav-label">Wissen & Steuerung</p><button data-view="lessons">Lessons</button><button data-view="capacity">Kapazität & Routing</button><button data-view="stats">Statistiken</button><button data-view="analysis">Projektanalyse</button><button data-view="extensions">Skills & Plugins</button><button data-view="settings">Harness & Einstellungen</button><div class="nav-foot">Ein Auftrag. Ein Worktree.<br>Jede Aussage mit Quelle.<span id="last-read"></span></div></nav>
+<main id="main" tabindex="-1"><div id="notice" role="status" hidden></div><div id="page"></div></main></div>
+<dialog id="confirm" aria-labelledby="confirm-title"><form method="dialog"><h2 id="confirm-title">Aktion prüfen</h2><pre id="confirm-detail"></pre><p>Dieser Schritt wird an die echte Runtime gesendet. Bestehende Budget- und Freigaberegeln gelten weiter.</p><div class="actions"><button value="cancel">Abbrechen</button><button value="ok" class="primary">Bestätigen</button></div></form></dialog>
+<script src="studio-model.js"></script><script src="studio-roadmap.js"></script><script src="studio-workspace.js"></script>
+</body></html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI-Varianten — Auswahl</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { overflow: auto; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 34px 22px 60px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; letter-spacing: .005em; }
+  .lede { color: var(--fg-muted); font-size: 13.5px; line-height: 1.65; margin: 0 0 28px; max-width: 660px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+  .v { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px 17px 17px; display: grid; gap: 10px; align-content: start;
+      text-decoration: none; color: inherit; }
+  .v:hover { border-color: var(--accent-hover); background: #2a2d2e; }
+  .chosen { background: #16351f; border: 1px solid #2ea043; border-left: 3px solid #2ea043;
+            border-radius: 5px; padding: 11px 14px; margin: 0 0 22px; font-size: 13px; }
+  .v-chosen { border-color: #2ea043; box-shadow: 0 0 0 1px #2ea04355; }
+  .v-key { font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+           text-transform: uppercase; color: var(--fg-muted); }
+  .v-name { font-size: 16px; font-weight: 600; }
+  .v-desc { font-size: 12.5px; line-height: 1.6; color: var(--fg-muted); }
+  .v-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .sketch { border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+            display: grid; height: 72px; background: #1a1a1a; }
+  .sk-a { grid-template-columns: 20% 1fr 28%; }
+  .sk-b { grid-template-columns: 17% 20% 1fr; }
+  .sk-c { grid-template-columns: 20% 1fr; }
+  .sk { border-right: 1px solid var(--border); }
+  .sk:last-child { border-right: none; }
+  .sk-side { background: #252526; }
+  .sk-main { background: #202020; }
+  .sk-hot { background: #33290a; }
+  .sk-accent { background: #10344d; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+       color: #7f7f7f; margin: 34px 0 10px; }
+  p, li { font-size: 13px; line-height: 1.65; color: var(--fg); }
+  ul { margin: 0; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  code { background: #2a2a2a; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .note { border-left: 2px solid var(--border); padding-left: 13px; color: var(--fg-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Drei UI-Varianten</h1>
+  <div class="chosen">Gewählt am 2026-08-28: <strong>Variante B — Konversation</strong>. U2 baut darauf auf.</div>
+  <p class="lede">Task U1 aus dem Plan <code>2026-08-27-ux-und-entscheidungs-tab.md</code> (Phase 21).
+    Alle drei zeigen dieselben Beispieldaten und dieselbe Farbwelt (Tokens direkt aus
+    <code>src/styles.css</code>). Sie unterscheiden sich nur darin, <em>was in der Mitte steht</em>.
+    Jede enthält den Entscheidungs-Tab mit einer offenen, blockierenden Frage — daran
+    entscheidet sich das Gesamtbild.</p>
+
+  <div class="grid">
+    <a class="v" href="variant-a-mission-control.html">
+      <div class="sketch sk-a"><div class="sk sk-side"></div><div class="sk sk-main"></div><div class="sk sk-hot"></div></div>
+      <div class="v-key">Variante A</div>
+      <div class="v-name">Mission Control</div>
+      <div class="v-desc">Board bleibt die Mitte. Rechts ein fester Dock für Fragen, Chat und
+        Verlauf — du siehst beobachten und eingreifen gleichzeitig, ohne die Ansicht zu wechseln.</div>
+      <div class="v-meta"><span class="chip">Board zentral</span><span class="chip">Dock rechts</span><span class="chip">mittleres Risiko</span></div>
+    </a>
+
+    <a class="v v-chosen" href="variant-b-konversation.html">
+      <div class="sketch sk-b"><div class="sk sk-side"></div><div class="sk sk-main"></div><div class="sk sk-accent"></div></div>
+      <div class="v-key">Variante B &middot; gewählt</div>
+      <div class="v-name">Konversation</div>
+      <div class="v-desc">Der Dialog mit der Queen ist die Hauptfläche; Fragen erscheinen als
+        beantwortbare Karten mittendrin. Das Board schrumpft zur schmalen Leiste. Für Steuern
+        statt Beobachten.</div>
+      <div class="v-meta"><span class="chip">Dialog zentral</span><span class="chip">Board als Leiste</span><span class="chip chip-danger">größter Umbau</span></div>
+    </a>
+
+    <a class="v" href="variant-c-veredelung.html">
+      <div class="sketch sk-c"><div class="sk sk-side"></div><div class="sk sk-main"></div></div>
+      <div class="v-key">Variante C</div>
+      <div class="v-name">Veredelung</div>
+      <div class="v-desc">Heutiges Layout bleibt. Poliert werden Dichte, Typografie, Zustände,
+        Leerzustände und Fokus; „Fragen“ kommt als ganz normales Segment dazu. Geringstes
+        Risiko, wenigstens Neues zu lernen.</div>
+      <div class="v-meta"><span class="chip">Layout unverändert</span><span class="chip">Fragen als Segment</span><span class="chip chip-merge">kleinstes Risiko</span></div>
+    </a>
+  </div>
+
+  <h2>Was die Wahl kostet</h2>
+  <ul>
+    <li><strong>A — Mission Control:</strong> neues Dock-Grid in <code>App.tsx</code>, drei Panes,
+      Statusleiste um den Fragen-Zähler ergänzt. Board-Code bleibt wie er ist.</li>
+    <li><strong>B — Konversation:</strong> <code>App.tsx</code> wird umgebaut, das Board bekommt
+      eine zweite, kompakte Darstellung, der Command-Chat aus Phase 10 wird zur Hauptfläche.
+      Der größte Eingriff — und der einzige, der die bestehende Board-Ansicht nicht
+      unverändert weiterverwendet.</li>
+    <li><strong>C — Veredelung:</strong> im Wesentlichen <code>styles.css</code> plus ein
+      Segment in <code>ViewBar.tsx</code>. Kein Layout-Risiko, aber auch kein neuer Blick auf
+      die Flotte.</li>
+  </ul>
+
+  <h2>Danach</h2>
+  <p class="note">Deine Wahl schaltet U2 frei (Umbau entlang der Variante). Der Entscheidungs-Tab
+    selbst (Q1 Core, Q2 UI, P1 dialogische Schärfung) ist von der Wahl unabhängig und in jeder
+    Variante derselbe — nur sein Platz im Layout ändert sich.</p>
+</div>
+</body>
+</html>

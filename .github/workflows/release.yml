@@ -1,0 +1,350 @@
+# Builds the Windows installers when a v* tag is pushed and attaches them
+# to the GitHub release. Deliberately NOT run on push/PR: Windows minutes
+# count double and the gates run locally (spec decision 4,
+# docs/archive/plaene-2026-09/superpowers/specs/2026-08-28-v1-release-design.md).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+# `run:`-Schritte laufen ohne diese Zeilen als `bash -e {0}` — OHNE `pipefail`.
+# Der Status einer Pipe ist dann der ihres LETZTEN Glieds, und ein
+# `cargo clippy 2>&1 | tail` meldet Erfolg, waehrend clippy scheitert. Genau so
+# ging am 05.09. in review.yml der Exit 1 des Modell-Resolvers verloren und am
+# 04.09. lokal der Status von clippy.
+#
+# Mit explizitem `shell: bash` startet GitHub den Schritt als
+# `bash --noprofile --norc -eo pipefail {0}` — die Fehlerklasse ist damit
+# strukturell dicht, nicht nur an den Stellen, die jemand einzeln gehaertet hat.
+# scripts/ci/no-masked-output.sh bleibt trotzdem: es faengt die Schreibvorgaenge
+# nach $GITHUB_OUTPUT/$GITHUB_ENV, die auch mit pipefail noch falsch waeren,
+# weil dort der Exit-Code gar nicht erst geprueft wird.
+#
+# Gilt auch auf windows-latest: dort ist `bash` die mitgelieferte Git-Bash.
+# Schritte mit eigenem `shell:` (pwsh in release.yml) sind unberuehrt.
+# Alle `uses:` sind auf einen Commit-SHA gepinnt, nicht auf einen Tag oder
+# Branch. Begruendung: docs/decisions.md (09.09.). Dependabot hebt sie ueber
+# den Versionskommentar an; der Kommentar ist die lesbare Fassung des SHA,
+# nicht die autorisierende.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    # Dieser Job haelt den Tauri-Signing-Key UND den Mirror-PAT, und er wird
+    # von einem Tag-Push ausgeloest — den jeder mit Push-Recht machen kann.
+    # Dieselbe Klasse wie der review.yml-Befund vom 06.09.
+    #
+    # Schutz setzt Required Reviewers UND ausschliesslich im Environment
+    # gespeicherte Secrets voraus. Repository-Secrets bleiben fuer geaenderte
+    # Workflows ohne environment erreichbar; ihre Kopien muessen nach sicherer
+    # Migration entfernt werden. Der Eintrag allein erzwingt keine Freigabe.
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      # `@stable` war ein BRANCH, kein Tag - er aenderte sich ohne Commit im
+      # Repo. Gepinnt auf master; die Toolchain steht jetzt sichtbar hier.
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: src-tauri
+          shared-key: windows-gates
+
+      # Die Bahn `release` faehrt die Rust-Suite ueber nextest (wie ci.yml).
+      # Vorher stand hier `cargo test`, deshalb brauchte dieser Job das
+      # Werkzeug nie — ohne diesen Schritt waere der Tag-Build sofort rot.
+      - uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+        with:
+          tool: nextest
+
+      - run: npm ci
+
+      # Der Browser-Smoke gehoert zur Bahn `release` und braucht Chromium.
+      - name: Playwright Chromium installieren
+        run: npx playwright install chromium
+
+      # Bis zum 09.09. stand hier eine eigene Gate-Liste — und sie war die
+      # SCHWAECHSTE im Repo: kein `lint`, kein `test:e2e`, kein
+      # `no-masked-output`, und `cargo test` statt `cargo nextest run
+      # --profile ci`, also MIT Retries und OHNE slow-timeout. Der Tag-Build,
+      # der die signierten Installer erzeugt, war damit schlechter gegatet als
+      # ein beliebiger PR.
+      #
+      # Jetzt dieselbe Quelle wie ueberall: scripts/ci/gates.sh. Die Bahn
+      # `release` enthaelt die Linux-Liste; was hier zusaetzlich laeuft, ist
+      # der Bundle-Build darunter.
+      #
+      # Lokal identisch: bash scripts/ci/gates.sh lane release
+      - name: Gates (release)
+        run: bash scripts/ci/gates.sh lane release
+
+      # `npx tauri build` runs `npm run build` (tsc + vite) through
+      # beforeBuildCommand and is the release-profile cargo build -
+      # together with the steps above that covers every README gate.
+      - name: Build installers
+        run: node scripts/build-signed-windows.mjs
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      # Read-only MSI inventory, not NSIS payload or installed-app acceptance.
+      - name: Verify MSI app, CLI and capture-host inventory
+        shell: pwsh
+        run: |
+          $version = ${env:GITHUB_REF_NAME} -replace '^[vV]',''
+          $packages = @(Get-ChildItem -LiteralPath src-tauri/target/release/bundle/msi -Filter *.msi -File)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one MSI candidate' }
+          & ./scripts/verify-windows-package.ps1 -Package $packages[0].FullName -ExpectedVersion $version -RequireNativeResources
+
+      # Der Updater auf Windows nutzt die .exe selbst als Update-Bundle
+      # (kein .nsis.zip in Tauri v2). Das Hauptrepo-Release bleibt die
+      # private, vollstaendige Ablage; der oeffentliche Update-Kanal laeuft
+      # ueber das Mirror-Repo (naechster Schritt).
+      - name: Attach installers to the private GitHub release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.exe.sig
+            src-tauri/target/release/bundle/msi/*.msi
+          body: "Details: CHANGELOG.md und KNOWN_ISSUES.md im Repo."
+
+      # Das Hauptrepo ist PRIVAT — rohe URLs und api-Asset-URLs liefern
+      # anonym 404 (Befund 31.08.: Updater-Fehler "Could not fetch a valid
+      # release JSON"). Deshalb: Manifest + Installer ins OEFFENTLICHE
+      # Mirror-Repo Cuarroc/ProjectA-updates spiegeln. Zuerst liegt der
+      # Kandidat unter einem Prerelease-Tag; dadurch bleibt releases/latest
+      # unveraendert, bis anonyme Byte-/Manifest-/Signaturpruefungen bestanden.
+      - name: Stage and verify updater candidate anonymously
+        shell: pwsh
+        env:
+          MIRROR_TOKEN: ${{ secrets.UPDATES_MIRROR_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $version = ${env:GITHUB_REF_NAME} -replace '^[vV]',''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Ungueltiges Tag-Format: ${env:GITHUB_REF_NAME}" }
+          if (-not $env:MIRROR_TOKEN) { throw "Secret UPDATES_MIRROR_TOKEN fehlt" }
+          $exe = "src-tauri/target/release/bundle/nsis/ProjectA_${version}_x64-setup.exe"
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Installer fehlt: $exe" }
+          $sig = (Get-Content "$exe.sig" -Raw).Trim()
+          $expectedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
+          $env:GH_TOKEN = $env:MIRROR_TOKEN
+          $stagingTag = "v$version-staging"
+          $stagingCreated = $false
+          try {
+            gh release view $stagingTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { throw "Staging-Release $stagingTag existiert bereits; kein Clobber" }
+            gh release create $stagingTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version (staging)" --notes "Unveroeffentlichter Update-Kandidat; wird erst nach anonymem Verify stabil." --prerelease
+            if ($LASTEXITCODE -ne 0) { throw "gh release create staging fehlgeschlagen (exit $LASTEXITCODE)" }
+            $stagingCreated = $true
+            gh release upload $stagingTag $exe "$exe.sig" --repo Cuarroc/ProjectA-updates --clobber
+            if ($LASTEXITCODE -ne 0) { throw "gh release upload staging installer fehlgeschlagen (exit $LASTEXITCODE)" }
+            $assetUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stagingTag/ProjectA_${version}_x64-setup.exe"
+            $manifest = @{
+              version = $version
+              notes = "Staging-Kandidat; noch nicht fuer automatische Updates freigegeben."
+              pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+              platforms = @{ "windows-x86_64" = @{ signature = $sig; url = $assetUrl } }
+            } | ConvertTo-Json -Depth 4 -Compress
+            New-Item -ItemType Directory -Force mirror-tmp | Out-Null
+            Set-Content "mirror-tmp/latest-staging.json" $manifest -NoNewline -Encoding utf8NoBOM
+            gh release upload $stagingTag mirror-tmp/latest-staging.json --repo Cuarroc/ProjectA-updates --clobber
+            if ($LASTEXITCODE -ne 0) { throw "gh release upload staging manifest fehlgeschlagen (exit $LASTEXITCODE)" }
+            $manifestUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stagingTag/latest-staging.json"
+            $raw = (Invoke-WebRequest -Uri $manifestUrl -UseBasicParsing).Content
+            $m = if ($raw -is [byte[]]) { ([System.Text.Encoding]::UTF8.GetString($raw) | ConvertFrom-Json) } else { ([string]$raw | ConvertFrom-Json) }
+            if ($m.version -ne $version -or $m.platforms.'windows-x86_64'.url -ne $assetUrl) { throw "Staging-Manifest ist nicht an diesen Kandidaten gebunden" }
+            $tmpExe = Join-Path $env:RUNNER_TEMP "pa-staging-$version.exe"
+            Invoke-WebRequest -Uri $assetUrl -OutFile $tmpExe -UseBasicParsing
+            try {
+              $observedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmpExe).Hash.ToLowerInvariant()
+              if ($observedHash -ne $expectedHash) { throw "Staging-Bytes weichen ab: $observedHash statt $expectedHash" }
+              if ((Get-Item -LiteralPath $tmpExe).Length -lt 1MB) { throw "Staging-Asset ist zu klein" }
+            } finally { Remove-Item -LiteralPath $tmpExe -Force -ErrorAction SilentlyContinue }
+            $sigUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stagingTag/ProjectA_${version}_x64-setup.exe.sig"
+            $sigRaw = (Invoke-WebRequest -Uri $sigUrl -UseBasicParsing).Content
+            $observedSig = if ($sigRaw -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($sigRaw) } else { [string]$sigRaw }
+            if ($observedSig.Trim() -ne $sig) { throw "Staging-Signatur weicht vom signierten Build ab" }
+            Write-Host "OK: Staging-Manifest, Installer-Bytes und Signatur anonym verifiziert; stable Latest unveraendert"
+          } catch {
+            if ($stagingCreated) {
+              gh release delete $stagingTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+              $cleanup = if ($LASTEXITCODE -eq 0) { "Staging-Release entfernt" } else { "Staging-Cleanup fehlgeschlagen (gh exit $LASTEXITCODE)" }
+            } else { $cleanup = "kein Staging-Release erstellt" }
+            throw "Staging-Verify fehlgeschlagen ($cleanup): $($_.Exception.Message)"
+          }
+
+      # Nach bestandenem Staging wird derselbe Build unter dem stabilen Tag
+      # hochgeladen, bleibt aber bis zum direkten Verify selbst Prerelease.
+      - name: Promote validated updater bytes to the public ProjectA-updates mirror
+        shell: pwsh
+        env:
+          MIRROR_TOKEN: ${{ secrets.UPDATES_MIRROR_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $version = ${env:GITHUB_REF_NAME} -replace '^[vV]',''
+          if (-not $env:MIRROR_TOKEN) {
+            Write-Error "Secret UPDATES_MIRROR_TOKEN fehlt: fine-grained PAT auf Cuarroc/ProjectA-updates (contents: read+write) als Secret im geschuetzten Environment release setzen, keine Repository-Kopie anlegen."
+            exit 1
+          }
+          $exe = "src-tauri/target/release/bundle/nsis/ProjectA_${version}_x64-setup.exe"
+          $sig = (Get-Content "$exe.sig" -Raw).Trim()
+          $env:GH_TOKEN = $env:MIRROR_TOKEN
+          $stableTag = "v$version"
+          $stableCreated = $false
+          trap {
+            $failure = $_
+            if ($stableCreated) {
+              gh release delete $stableTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+            }
+            throw $failure
+          }
+          # Native gh-Aufrufe stoppen pwsh NICHT bei Fehlern — jeder Exit-Code
+          # wird explizit geprueft (Review-Befund 31.08.). Ein vorhandener
+          # stabiler Tag wird nicht ueberschrieben.
+          gh release view $stableTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) { throw "stabiler Release $stableTag existiert bereits; kein Clobber" }
+          gh release create $stableTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version" --notes "Auto-Update-Kanal (Spiegel). Quellcode: github.com/Cuarroc/ProjectA (privat)." --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "gh release create fehlgeschlagen (exit $LASTEXITCODE)" }
+          $stableCreated = $true
+          gh release upload $stableTag $exe "$exe.sig" --repo Cuarroc/ProjectA-updates --clobber
+          if ($LASTEXITCODE -ne 0) { throw "gh release upload installer fehlgeschlagen (exit $LASTEXITCODE)" }
+          $assetUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stableTag/ProjectA_${version}_x64-setup.exe"
+          # Kein jq in pwsh (v1.2.0 daran gescheitert): JSON nativ bauen.
+          $manifest = @{
+            version = $version
+            notes = "Details: CHANGELOG.md im Hauptrepo."
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $sig
+                url = $assetUrl
+              }
+            }
+          } | ConvertTo-Json -Depth 4 -Compress
+          New-Item -ItemType Directory -Force mirror-tmp | Out-Null
+          Set-Content "mirror-tmp/latest.json" $manifest -NoNewline -Encoding utf8NoBOM
+          gh release upload $stableTag mirror-tmp/latest.json --repo Cuarroc/ProjectA-updates --clobber
+          if ($LASTEXITCODE -ne 0) { throw "gh release upload latest.json fehlgeschlagen (exit $LASTEXITCODE)" }
+
+          # Verifye den direkten Prerelease-Assetpfad, bevor der Release in
+          # Latest auftauchen darf. Der Download wird gegen denselben lokalen
+          # Build gehasht; damit wird die Byte-Identitaet der Promotion belegt.
+          $directRaw = (Invoke-WebRequest -Uri "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stableTag/latest.json" -UseBasicParsing).Content
+          $direct = if ($directRaw -is [byte[]]) { ([System.Text.Encoding]::UTF8.GetString($directRaw) | ConvertFrom-Json) } else { ([string]$directRaw | ConvertFrom-Json) }
+          if ($direct.version -ne $version -or $direct.platforms.'windows-x86_64'.url -ne $assetUrl) { throw "stabiler Prerelease-Manifest ist nicht an diesen Kandidaten gebunden" }
+          $tmpExe = Join-Path $env:RUNNER_TEMP "pa-promote-$version.exe"
+          Invoke-WebRequest -Uri $assetUrl -OutFile $tmpExe -UseBasicParsing
+          try {
+            $localHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
+            $remoteHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmpExe).Hash.ToLowerInvariant()
+            if ($localHash -ne $remoteHash) { throw "Promotions-Bytes weichen ab: $remoteHash statt $localHash" }
+          } finally { Remove-Item -LiteralPath $tmpExe -Force -ErrorAction SilentlyContinue }
+          # Ohne --latest bleibt releases/latest auf dem Vorgaenger stehen:
+          # die Release entstand als Prerelease und war damit nie
+          # latest-faehig; prerelease=false allein markiert nicht nach.
+          gh release edit $stableTag --repo Cuarroc/ProjectA-updates --prerelease=false --latest
+          if ($LASTEXITCODE -ne 0) { throw "stabiler Release konnte nicht promoted werden (exit $LASTEXITCODE)" }
+          $stableCreated = $false
+
+      # Anonymes Verify-Gate: exakt die Requests, die die App stellt — OHNE
+      # jeden Auth-Header. Repo-Regel: Endpoint-Verifikation nie mit
+      # Credentials, die das Produkt nicht hat. Faengt den 31.08.-Befund.
+      # MIRROR_TOKEN nur fuer den Rollback-Pfad (delete-asset bei Fehlschlag).
+      - name: Verify updater channel anonymously (app-identical requests)
+        shell: pwsh
+        env:
+          MIRROR_TOKEN: ${{ secrets.UPDATES_MIRROR_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $version = ${env:GITHUB_REF_NAME} -replace '^[vV]',''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { Write-Error "Ungueltiges Tag-Format: ${env:GITHUB_REF_NAME}"; exit 1 }
+          try {
+            $manifestUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/latest/download/latest.json"
+            # Invoke-WebRequest + ConvertFrom-Json statt Invoke-RestMethod:
+            # Release-Assets kommen als application/octet-stream, da parst
+            # IRM nicht zuverlaessig.
+            # Version-Check IM Loop: releases/latest kann kurz nach dem Upload
+            # noch das alte Release liefern (stale 200) — darf nicht sofort rot.
+            $m = $null
+            foreach ($i in 1..6) {
+              try {
+                $resp = Invoke-WebRequest -Uri $manifestUrl -UseBasicParsing
+                # .Content ist je nach PowerShell-Version String ODER byte[] —
+                # byte-sicher dekodieren (Assets kommen als octet-stream).
+                $raw = if ($resp.Content -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($resp.Content) } else { [string]$resp.Content }
+                $m = $raw | ConvertFrom-Json
+                if ($m.version -eq $version) { break }
+                Write-Host "Versuch ${i}: stale version=$($m.version), erwartet $version — retry 20s"
+                $m = $null
+                Start-Sleep -Seconds 20
+              } catch {
+                Write-Host "Manifest-Versuch ${i} fehlgeschlagen: $($_.Exception.Message)"
+                Start-Sleep -Seconds 20
+              }
+            }
+            if (-not $m) { throw "latest.json anonym nicht erreichbar oder Version != $version" }
+            $assetUrl = $m.platforms.'windows-x86_64'.url
+            # Exakter URL-Abgleich: sonst kaeme auch ein aelteres Release im
+            # Mirror durch den Schema-Check (falsches Bundle fuer Clients).
+            $expectedUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/v$version/ProjectA_${version}_x64-setup.exe"
+            if ($assetUrl -ne $expectedUrl) {
+              throw "Asset-URL weicht ab: $assetUrl (erwartet: $expectedUrl)"
+            }
+            # App-identisch heisst: echter GET-Download (der Updater laedt das
+            # Bundle herunter), KEIN HEAD — Release-Downloads leiten auf S3-
+            # Presigned-URLs um, die sich bei HEAD anders verhalten koennen.
+            $tmpExe = Join-Path $env:RUNNER_TEMP "pa-verify-$version.exe"
+            $ok = $false
+            foreach ($i in 1..3) {
+              try { Invoke-WebRequest -Uri $assetUrl -OutFile $tmpExe -UseBasicParsing; $ok = $true; break }
+              catch { Write-Host "Asset-Versuch ${i} fehlgeschlagen: $($_.Exception.Message)"; Start-Sleep -Seconds 10 }
+            }
+            if (-not $ok -or (Get-Item $tmpExe).Length -lt 1MB) { throw "Asset-Download anonym fehlgeschlagen/zu klein" }
+            Remove-Item $tmpExe -Force
+            # Auch die Signatur gehoert zur oeffentlichen Ablage — und das
+            # signature-Feld im Manifest muss EXAKT dem Inhalt der .sig-Datei
+            # entsprechen (der Updater prueft dieses Feld).
+            $sigUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/v$version/ProjectA_${version}_x64-setup.exe.sig"
+            $sigText = $null
+            foreach ($i in 1..3) {
+              try {
+                $sigResp = Invoke-WebRequest -Uri $sigUrl -UseBasicParsing
+                $sigText = if ($sigResp.Content -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($sigResp.Content) } else { [string]$sigResp.Content }
+                break
+              } catch { Write-Host "Sig-Versuch ${i} fehlgeschlagen: $($_.Exception.Message)"; Start-Sleep -Seconds 10 }
+            }
+            if (-not $sigText -or $sigText.Trim().Length -lt 100) { throw "Signatur-Datei anonym nicht erreichbar/zu kurz" }
+            $mSig = [string]$m.platforms.'windows-x86_64'.signature
+            if ($mSig.Trim().Length -lt 100) { throw "signature-Feld im Manifest leer/zu kurz" }
+            if ($mSig.Trim() -ne $sigText.Trim()) { throw "signature-Feld im Manifest != Inhalt der .sig-Datei" }
+            Write-Host "OK: Manifest + Asset (GET) + Signatur (identisch) anonym erreichbar, version=$version"
+          } catch {
+            # Rollback: ein kaputtes Manifest darf NICHT live bleiben — Clients
+            # wuerden sonst ein scheiterndes Update starten. Ohne Manifest
+            # sehen Clients nur "kein Update gefunden".
+            Write-Host "VERIFY FEHLGESCHLAGEN: $($_.Exception.Message)"
+            Write-Host "Rollback: latest.json vom Mirror-Release entfernen"
+            $env:GH_TOKEN = $env:MIRROR_TOKEN
+            gh release delete-asset "v$version" latest.json --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+            $rollback = if ($LASTEXITCODE -eq 0) { "latest.json entfernt" } else { "Rollback fehlgeschlagen (gh exit $LASTEXITCODE)" }
+            throw "Anonymes Verify-Gate fehlgeschlagen ($rollback): $($_.Exception.Message)"
+          }

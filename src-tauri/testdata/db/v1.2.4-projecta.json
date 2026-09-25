@@ -1,0 +1,36 @@
+{
+  "counts": {
+    "diff_comments": 0,
+    "messages": 0,
+    "projects": 2,
+    "questions": 1,
+    "recommendations": 1,
+    "sessions": 1,
+    "status_events": 0,
+    "task_queue": 2,
+    "usage_events": 0,
+    "workers": 3
+  },
+  "expect_backup": true,
+  "landing_page_markdown": "# Übersicht — nächster Schritt\n\nÄgypten, Österreich und eine Straße.\n",
+  "landing_page_project_id": "pj-1a06a31e0bb-2",
+  "tag": "v1.2.4",
+  "user_version_on_disk": 2,
+  "worker": {
+    "branch": "pa/wk-pr",
+    "created_at": 1704067200,
+    "id": "wk-pr",
+    "kind": "worker",
+    "paused_reason": null,
+    "pr_url": "https://github.com/example/alpha/pull/7",
+    "profile_id": "claude",
+    "project_id": "pj-1a06a31e0bb-2",
+    "role_variant_id": null,
+    "spawned_by": null,
+    "status": "exited",
+    "task": "Öffne den Pull Request",
+    "test_status": null,
+    "tested_at": null,
+    "worktree_path": "C:/fixtures/alpha/.projecta-worktrees/wk-pr"
+  }
+}

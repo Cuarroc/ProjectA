@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# .githooks/pre-push — die volle lokale Bahn vor jedem Push.
+#
+# Wie pre-commit: keine eigene Liste mehr, sondern die Bahn `prepush` aus
+# scripts/ci/gates.sh. Zwei Aenderungen gegenueber der alten Fassung, beide
+# beabsichtigt:
+#
+#   - `cargo test` wird zu `cargo nextest run --profile ci`. Das ist, was CI
+#     misst: eigener Prozess je Test, keine Retries, harter slow-timeout.
+#     Vorher belegte ein gruener Push etwas anderes als ein gruener CI-Lauf.
+#     Fehlt nextest: `cargo install cargo-nextest --locked` (gates.sh sagt es
+#     im Fehlerfall selbst). KEIN stiller Rueckfall auf `cargo test` — das
+#     waere genau die Drift zurueck.
+#   - `npm run test:hq` kommt dazu (12 node:test-Dateien unter scripts/lib/),
+#     das lief bis zum 09.09. in keinem Hook und in keinem Workflow.
+#
+# Das Unset von GIT_DIR & Co. steht jetzt in gates.sh, nicht mehr hier: von
+# dort aus starten die Tests, und der naechste Aufrufer soll nicht erneut
+# darueber stolpern (AGENTS.md, Regel 5).
+#
+# CI-02: `PA_PREPUSH=light git push` faehrt fuer Branch-Pushes die Bahn
+# `branchpush` (ohne clippy und Rust-Suite); ein Push nach main bleibt immer
+# voll. Ohne den Schalter aendert sich nichts. Vor dem Oeffnen/Bereitmelden
+# eines PRs gilt weiter: bash scripts/ci/gates.sh lane prepush
+# Entscheidung und Selbsttest: scripts/ci/prepush-lane.sh.
+#
+# Nachsehen, was das ist:  bash scripts/ci/gates.sh --list prepush
+set -e
+
+# ROOT ist der Arbeitsbaum, der committet/pusht - nicht der Ort dieser Datei.
+# core.hooksPath kann absolut auf die Hooks des Hauptcheckouts zeigen; dann
+# laege "$(dirname "$0")/.." dort, und jeder Worktree pruefte den falschen
+# Baum. git startet Hooks mit cwd = Toplevel des Arbeitsbaums. Kein Rueckfall:
+# scheitert rev-parse, bricht der Hook ab (Selbsttest scripts/test-hook-root.sh).
+ROOT="$(git rev-parse --show-toplevel)"
+# stdin des Hooks (die gepushten Refs) geht an prepush-lane.sh.
+lane="$(bash "$ROOT/scripts/ci/prepush-lane.sh")"
+exec bash "$ROOT/scripts/ci/gates.sh" lane "$lane"

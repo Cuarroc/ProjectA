@@ -1,0 +1,27 @@
+---
+source: src/status.rs
+expression: usage
+---
+StatusLineUsage {
+    percent: Some(
+        33,
+    ),
+    used: None,
+    limit: None,
+    window_label: "7-Tage-Fenster",
+    resets_at: Some(
+        1788336000,
+    ),
+    five_hour: None,
+    seven_day: Some(
+        RateWindowUsage {
+            percent: Some(
+                33,
+            ),
+            resets_at: Some(
+                1788336000,
+            ),
+        },
+    ),
+    observed_at: 42,
+}

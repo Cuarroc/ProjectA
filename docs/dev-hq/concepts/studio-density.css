@@ -1,0 +1,46 @@
+/* Shared desktop density scale. Typography stays readable in both modes.
+   Height tokens are minimums: wrapped content may always grow. */
+:root {
+  --studio-body-size: 14px;
+  --studio-utility-size: 12px;
+  --studio-control-height: 40px;
+  --studio-row-height: 44px;
+  --studio-row-padding: 10px;
+  --studio-row-heading-gap: 6px;
+  --studio-row-text-gap: 5px;
+  --studio-row-source-gap: 8px;
+  --studio-row-badge-padding: 3px;
+  --studio-cell-padding: 12px;
+  --studio-panel-padding: 22px;
+  --studio-gap: 20px;
+  --studio-action-gap: 9px;
+  --studio-header-height: 64px;
+  --studio-header-padding: 10px;
+  --studio-page-padding: 28px;
+  --studio-section-gap: 24px;
+  --studio-field-gap: 16px;
+  --studio-heading-gap: 16px;
+  --studio-nav-gap: 3px;
+}
+
+/* Existing workspace preference toggles this class on body. */
+.compact {
+  --studio-control-height: 32px;
+  --studio-row-height: 32px;
+  --studio-row-padding: 4px;
+  --studio-row-heading-gap: 2px;
+  --studio-row-text-gap: 2px;
+  --studio-row-source-gap: 2px;
+  --studio-row-badge-padding: 2px;
+  --studio-cell-padding: 6px;
+  --studio-panel-padding: 14px;
+  --studio-gap: 12px;
+  --studio-action-gap: 6px;
+  --studio-header-height: 52px;
+  --studio-header-padding: 8px;
+  --studio-page-padding: 20px;
+  --studio-section-gap: 16px;
+  --studio-field-gap: 10px;
+  --studio-heading-gap: 12px;
+  --studio-nav-gap: 2px;
+}

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# commit-msg — Schicht b (Plan T-1): nur Anwesenheit eines Trailers, kein Testlauf.
+set -euo pipefail
+
+MSG_FILE="${1:-}"
+if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ]; then
+  echo "commit-msg: Nachrichtendatei fehlt" >&2
+  exit 1
+fi
+
+# ROOT ist der Arbeitsbaum, der committet/pusht - nicht der Ort dieser Datei.
+# core.hooksPath kann absolut auf die Hooks des Hauptcheckouts zeigen; dann
+# laege "$(dirname "$0")/.." dort, und jeder Worktree pruefte den falschen
+# Baum. git startet Hooks mit cwd = Toplevel des Arbeitsbaums. Kein Rueckfall:
+# scheitert rev-parse, bricht der Hook ab (Selbsttest scripts/test-hook-root.sh).
+ROOT="$(git rev-parse --show-toplevel)"
+# shellcheck source=scripts/lib/test-first.sh
+. "$ROOT/scripts/lib/test-first.sh"
+
+if [ -f "$ROOT/.git/MERGE_HEAD" ]; then
+  exit 0
+fi
+
+MSG="$(cat "$MSG_FILE")"
+SUBJECT="$(printf '%s\n' "$MSG" | tr -d '\r' | head -n 1)"
+if tf_subject_skips_hook "$SUBJECT"; then
+  exit 0
+fi
+
+FILES=()
+while IFS= read -r _tf_file; do
+  [ -n "$_tf_file" ] && FILES+=("$_tf_file")
+done < <(git diff --cached --name-only)
+if ! tf_file_list_needs_trailer "${FILES[@]+"${FILES[@]}"}"; then
+  exit 0
+fi
+
+if ! tf_message_has_required_trailer "$MSG"; then
+  echo "commit-msg: dieser Commit aendert Nicht-Test-Quellcode und braucht genau einen Trailer:" >&2
+  echo "  Test-First: <pfad>" >&2
+  echo "  Test-First: <pfad>::<testname>" >&2
+  echo "  Regression-For: <sha>" >&2
+  echo "  No-Test: <Grund>" >&2
+  echo "Mehrere Belege = mehrere Zeilen. Kein Testlauf in diesem Hook." >&2
+  exit 1
+fi
+
+if ! tf_trailer_is_well_formed "$MSG"; then
+  echo "commit-msg: Trailer-Format ungueltig (siehe §7 in docs/SANIERUNGSPLAN.md)." >&2
+  exit 1
+fi
+
+exit 0

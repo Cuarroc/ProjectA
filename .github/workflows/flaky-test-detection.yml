@@ -1,0 +1,167 @@
+# Mergify Flaky-Test-Erkennung (Nutzer-Entscheidung 24.09., Variante
+# "sparsam"). Mergify erkennt einen flaky Test, wenn derselbe Test auf
+# DEMSELBEN Commit-SHA mal gruen, mal rot ist. Dafuer laeuft hier jede Suite
+# mehrfach parallel (Matrix, keine Schleife) auf dem Stand von main und laedt
+# jeden Lauf als JUnit hoch.
+#
+# Minuten (Hauptziel des Nutzers: Actions-Minuten sparen):
+#   - Vitest + HQ (node:test): je 5 Laeufe, einmal taeglich Mo-Fr,
+#     ca. 125 Linux-Minuten pro Woche.
+#   - Rust (nextest): 3 Laeufe, einmal pro Woche (Montag), ca. 30 min.
+#   - Kein Windows (Minuten doppelt), kein Playwright-E2E (nicht gewaehlt).
+# Die Vorlage von Mergify (5 Laeufe je Suite alle 12 h) laege bei ca. 750
+# Minuten pro Woche.
+#
+# Abweichung von der Mergify-Vorlage: `mergifyio/gha-mergify-ci` bleibt auf
+# dem SHA von v25 (wie in ci.yml), nicht `@v14`. Grund: das Gate
+# `actions-pinned` verlangt SHA-Pins (docs/decisions.md 09.09.), und v14 waere
+# ein Downgrade. In v25 gibt es den Eingang `flaky_test_detection` nicht mehr -
+# die Erkennung laeuft serverseitig ueber die wiederholten Laeufe auf einem SHA.
+#
+# MERGIFY_TEST_JOB_NAME ist der Name des PR-CI-Jobs, mit dem die Ergebnisse
+# verglichen werden: alle drei Suiten laufen im PR in `gates (linux)`. Er
+# steht auf Job-Ebene, also auch in der Umgebung des Upload-Schritts.
+#
+# Ohne Secret MERGIFY_TOKEN laeuft kein Upload (Schritt-`if`), der Job bleibt
+# trotzdem gruen - dieser Workflow ist nie ein Merge-Gate.
+name: flaky-test-detection
+
+on:
+  schedule:
+    # 04:17 UTC Mo-Fr: Vitest + HQ.
+    - cron: '17 4 * * 1-5'
+    # 04:37 UTC Montag: Rust. Eigener Eintrag, damit an den anderen Tagen
+    # gar kein Rust-Runner startet (auch ein sofort endender Job kostet eine
+    # angefangene Minute je Matrix-Lauf).
+    - cron: '37 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      rust:
+        description: "Rust-Suite auch ausserhalb des Montags laufen lassen"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Ein zweiter geplanter/manueller Lauf wartet, statt parallel denselben SHA
+# zu vermessen.
+concurrency:
+  group: flaky-test-detection
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  flaky-detection-unit:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 4 * * 1-5'
+    name: Vitest Flaky Detection (Run ${{ matrix.run_number }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        run_number: [1, 2, 3, 4, 5]
+    env:
+      MERGIFY_TEST_JOB_NAME: gates (linux)
+      MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npx vitest run --reporter=junit --outputFile=junit-unit-${{ matrix.run_number }}.xml || true
+
+      - name: Upload to Mergify
+        if: (success() || failure()) && env.MERGIFY_UPLOAD == 'true'
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: "junit-unit-*.xml"
+
+  flaky-detection-hq:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 4 * * 1-5'
+    name: HQ node:test Flaky Detection (Run ${{ matrix.run_number }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        run_number: [1, 2, 3, 4, 5]
+    env:
+      MERGIFY_TEST_JOB_NAME: gates (linux)
+      MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Dieselbe Dateiauswahl wie `npm run test:hq`, nur mit JUnit-Reporter.
+      - name: Run tests
+        run: node --test --test-reporter=junit --test-reporter-destination=junit-hq-${{ matrix.run_number }}.xml scripts/lib/*.test.mjs || true
+
+      - name: Upload to Mergify
+        if: (success() || failure()) && env.MERGIFY_UPLOAD == 'true'
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: "junit-hq-*.xml"
+
+  flaky-detection-rust:
+    name: Rust nextest Flaky Detection (Run ${{ matrix.run_number }})
+    # Nur der Montags-Eintrag bzw. manuell mit rust=true.
+    if: github.event.schedule == '37 4 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.rust)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run_number: [1, 2, 3]
+    env:
+      MERGIFY_TEST_JOB_NAME: gates (linux)
+      MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Dieselbe Linux-Einrichtung wie ci.yml (Tauri-Libs, Node, Rust,
+      # rust-cache `linux-gates`, nextest, npm ci), ohne Chromium.
+      - uses: ./.github/actions/setup-linux
+        with:
+          playwright: "false"
+
+      - name: Alte JUnit-Berichte entfernen
+        run: rm -f src-tauri/target/nextest/ci/junit.xml
+
+      # Profil `ci` schreibt target/nextest/ci/junit.xml (.config/nextest.toml).
+      - name: Run tests
+        run: |
+          (cd src-tauri && cargo nextest run --profile ci) || true
+          if [ -f src-tauri/target/nextest/ci/junit.xml ]; then
+            cp src-tauri/target/nextest/ci/junit.xml junit-rust-${{ matrix.run_number }}.xml
+          fi
+
+      - name: Upload to Mergify
+        if: (success() || failure()) && env.MERGIFY_UPLOAD == 'true' && hashFiles('junit-rust-*.xml') != ''
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          report_path: "junit-rust-*.xml"

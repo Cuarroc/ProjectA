@@ -1,0 +1,31 @@
+---
+source: src/budget.rs
+expression: limits_from_settings(&settings)
+---
+[
+    BudgetLimits {
+        profile_id: "claude",
+        five_hour_pct: Some(
+            95,
+        ),
+        seven_day_pct: Some(
+            80,
+        ),
+    },
+    BudgetLimits {
+        profile_id: "gpt-5",
+        five_hour_pct: Some(
+            1,
+        ),
+        seven_day_pct: Some(
+            100,
+        ),
+    },
+    BudgetLimits {
+        profile_id: "kimi",
+        five_hour_pct: None,
+        seven_day_pct: Some(
+            70,
+        ),
+    },
+]
