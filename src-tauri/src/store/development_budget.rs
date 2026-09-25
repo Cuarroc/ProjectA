@@ -989,4 +989,52 @@ mod tests {
             .await
             .is_err());
     }
+
+    /// W2-04d review (glm-5.2 Befund 2, qwen ID 5): a cancelled reservation
+    /// frees the run; the next reservation and every run-bound reader ignore
+    /// the cancelled row.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn cancelled_run_reservation_frees_the_run_for_a_new_one() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (run, _fence) = role_run(&store, &root, "reviewer").await;
+        let first = store
+            .reserve_development_tokens(&root, "review", BudgetPurpose::Review, 1000, Some(&run))
+            .await
+            .unwrap();
+        store.cancel_development_tokens(&first.id).await.unwrap();
+        let second = store
+            .reserve_development_tokens(
+                &root,
+                "review-new",
+                BudgetPurpose::Review,
+                2000,
+                Some(&run),
+            )
+            .await
+            .unwrap();
+        assert_ne!(first.id, second.id);
+        let mut tx = store.pool.begin().await.unwrap();
+        consume_worker(&mut tx, &run).await.unwrap();
+        tx.commit().await.unwrap();
+        let states: Vec<(String, String)> = sqlx::query_as(
+            "SELECT id, state FROM development_token_reservations WHERE run_id=? ORDER BY rowid",
+        )
+        .bind(&run)
+        .fetch_all(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            states,
+            vec![
+                (first.id.clone(), "cancelled".to_string()),
+                (second.id.clone(), "started".to_string())
+            ],
+            "the launch consumes the live reservation, never the cancelled one"
+        );
+        let mut tx = store.pool.begin().await.unwrap();
+        let receipt = usage_receipt::for_run(&mut tx, &run, None).await.unwrap();
+        tx.commit().await.unwrap();
+        assert_eq!(receipt["reservedTokens"], 2000);
+        assert_eq!(receipt["ledgerState"], "started");
+    }
 }
