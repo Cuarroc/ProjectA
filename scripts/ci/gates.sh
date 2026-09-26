@@ -87,6 +87,12 @@ GATES=(
   # beide Richtungen (Rust-Aenderung -> voll, gelesene Doku -> voll, freie
   # Doku -> aus, Queue/Wochenlauf -> voll, main-Push nur bei Cache-Eingaben).
   "selftest-lane-plan|linux,release|.|bash scripts/test-lane-plan.sh"
+  # CI-04: bei rotem main Issue + Queue-Freeze, bei bewiesen gruenem main
+  # wieder auf. Der Selbsttest belegt beide Richtungen und die leisen
+  # Fehlerklassen: leichtes Gruen (Bahnen uebersprungen) darf NICHT
+  # entfrieren, ohne MERGIFY_TOKEN bleibt das Issue der Fallback (gruen mit
+  # Warnung), ein scheiternder Freeze-API-Aufruf MIT Token ist laut rot.
+  "selftest-main-red|linux,release|.|bash scripts/test-main-red-guard.sh"
 
   # --- schnell: Form und Typen --------------------------------------------
   "fmt|precommit,prepush,branchpush,linux,windows,release|src-tauri|cargo fmt --check"
@@ -102,6 +108,10 @@ GATES=(
   # Browser-Smoke des HQ. Kam am 12.09. auf main dazu.
   "hq-visual|linux,release|.|npm run test:hq:visual"
   "fe-build|linux,release|.|npm run build"
+  # LIC-01: Lizenzen aller Abhaengigkeiten (Rust + npm-Produktion) gegen die
+  # vom Nutzer freigegebene Positivliste. Nur linux: plattformunabhaengig,
+  # und cargo-deny braeuchte auf dem Windows-Job eine eigene Installation.
+  "licenses|linux,release|.|bash scripts/ci/license-check.sh"
   "e2e|linux,release|.|npm run test:e2e"
 
   # --- teuer: der Rust-Kern -----------------------------------------------

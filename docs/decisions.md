@@ -1369,3 +1369,58 @@ minutes are billed twice on private repos, so Windows alone was ~2850 of
   manuell und damit nicht wiederholbar — Zurücknehmen: nie das Verdikt als
   Funktion; der Treiber darf durch einen `pa`-Unterbefehl ersetzt werden,
   sobald der Daemon (W5-31b) die Sandboxes selbst verwaltet.
+
+## 2026-09-25 - W5-02a: coordinators run without a write path
+
+- **Coordinator without a write path (W5-02a):** orchestrator and
+  queen start under the `strict` environment (applied to the *routed*
+  profile, so a failover cannot weaken it) in an empty directory
+  `<app data>/hooks-cwd/<worker id>` outside the repository and every
+  checkout, on create and on respawn; a continuous run dispatched in the
+  coordinator role is refused before a worktree exists. The orchestrator
+  prompt no longer tells it to append to `MEMORY.md` in the repository root -
+  that was a write path into the tree; reading stays. Why: I3 (the
+  coordinator delegates, it never commits). Limit: same OS user, so a
+  deliberate `git -C <repo> commit` still works locally (it cannot be pushed:
+  no token, no credential helper) - the hard boundary is W5-02e. Scouts are
+  not covered: their result channel is a file in the repository root
+  (`SCOUT_FILE`), so they need a store channel first. Reverse when: a
+  coordinator needs a repository-side memory again - then via a worker task,
+  not a coordinator write.
+
+## 2026-09-25 - CI-04: roter main friert die Mergify-Queue ein (scheduled freeze)
+
+Was: Der neue Job `main-red` in ci.yml (needs: linux + windows, nur
+refs/heads/main, immer nach den Gates) reagiert auf das Gesamtergebnis eines
+main-Laufs. Rot: Issue mit Label `ci-red` (Run-ID, Run-URL, SHA im Text;
+Kommentar statt Duplikat) plus Queue-Freeze ueber die Mergify-Scheduled-
+Freeze-API (`POST /v1/repos/<repo>/scheduled_freeze`, Marker `ci-red:` im
+Grund, Scope `base=main`, Ausnahme `label=hotfix`). Bewiesen gruen: Freeze
+geloescht, Issue geschlossen. Logik: scripts/ci/main-red-guard.sh, Selbsttest
+scripts/test-main-red-guard.sh (Gate `selftest-main-red`), Struktur gepinnt
+in ci-shape.sh (Check 5).
+
+Warum Mergify-Freeze statt eigener Sperre: der Freeze ist der eingebaute
+Mechanismus (docs.mergify.com/merge-queue/freeze) - die Queue haelt PRs
+zurueck und das Mergify-Check sagt den Grund. Eine eigene Bedingung in
+queue_conditions koennte nur je PR greifen, nicht global.
+
+Warum Job in ci.yml statt workflow_run-Workflow: nur im selben Lauf ist
+bekannt, ob die Bahnen wirklich liefen (lane-plan.sh-Output `run`, jetzt als
+Job-Output `lane_run`). Ein leichter Push, dessen Bahnen uebersprungen
+wurden, ist kein Gruen-Beweis und darf nicht entfrieren.
+
+Warum `label=hotfix`-Ausnahme: sonst koennte der Fix-PR selbst nie durch die
+eingefrorene Queue. `hotfix/` kennt .mergify.yml bereits (priority_rules).
+
+Kein neuer Dienst, kein Geld: das vorhandene Secret MERGIFY_TOKEN (seit CI-01
+fuer Test Insights) authentifiziert auch die Freeze-API. Ohne Token degradiert
+der Job laut, aber gruen: das Issue bleibt der Fallback (Muster wie
+MERGIFY_UPLOAD). Ein scheiternder API-Aufruf MIT Token ist rot (exit 1) - ein
+Guard, der nicht einfrieren kann, darf nicht gruen durch Abwesenheit sein.
+
+Reverse when: die Queue laeuft nicht mehr ueber Mergify, oder das Secret
+MERGIFY_TOKEN bekommt keinen Scope fuer scheduled_freeze (dann Nutzer:
+Application Key im Mergify-Dashboard mit Freeze-Recht anlegen). Offen bis zum
+ersten echten Ereignis: ob das bestehende Token den Freeze-Scope hat, ist
+erst an einem echten roten/gruenen main-Lauf beobachtbar.

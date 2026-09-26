@@ -121,6 +121,33 @@ case_m auto-merge-drift mg '/^  auto_merge_conditions:/,/^[a-z]/ { /check-succes
 # .mergify.yml: a required check missing from merge_conditions.
 case_m merge-condition-missing mg '/^    merge_conditions:/,/^[a-z]/ { /check-success = gates \(windows\)/d }' \
   "merge_conditions lacks 'check-success = gates \\(windows\\)'"
+# ci.yml (CI-04): the main-red job no longer waits for both gate jobs.
+case_m main-red-without-needs ci '/^  main-red:/,$ s/^    needs: \[linux, windows\]$/    needs: []/' \
+  "main-red.*needs"
+# ... or fires without always(), so a red gates job would skip the guard.
+case_m main-red-without-always ci 's/if: \$\{\{ always\(\) &&/if: ${{/' \
+  "main-red.*always"
+# ... or is no longer bound to main (would fire on any ref).
+case_m main-red-if-without-main ci "s#github\\.ref == 'refs/heads/main'#github.ref == 'refs/heads/qa'#" \
+  "main-red.*refs/heads/main"
+# ... or the lane_run output is gone - a light green push could unfreeze.
+case_m main-red-without-lane-run ci '/^  linux:/,/^  windows:/ s/^      lane_run: .*$//' \
+  "linux.*lane_run"
+# ... same for the windows job (review predecessor PR, sonnet S-9).
+case_m main-red-without-lane-run-windows ci '/^  windows:/,/^  red-first:/ s/^      lane_run: .*$//' \
+  "windows.*lane_run"
+# ... or inverted: != instead of == would fire on EVERY ref but main
+# (review predecessor PR, S-9/O-10: a substring check lets this through).
+case_m main-red-if-inverted ci "s#github\\.ref == 'refs/heads/main'#github.ref != 'refs/heads/main'#" \
+  "main-red.*refs/heads/main"
+# ... or the guard no longer reads the lane outputs - a light push would
+# look like a full one (review predecessor PR, S-9).
+case_m main-red-without-ran-wiring ci 's#\$\{\{ needs\.linux\.outputs\.lane_run \}\}#"true"#' \
+  "main-red.*needs.linux.outputs.lane_run"
+# ... or the guards race: without a job-level concurrency group a stale red
+# run can freeze again after a newer green run lifted it (S-5/O-5).
+case_m main-red-without-concurrency ci '/^  main-red:/,$ s/^      group: main-red-guard$//' \
+  "main-red.*concurrency"
 
 # Call errors are errors, not a silent pass.
 check missing-file fail "$tmp/does-not-exist.yml" "$MG" "not found"

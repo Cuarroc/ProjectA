@@ -54,12 +54,12 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | W1-21c | xterm-`pageerror` beim Mount | S | fe | ✓ #151 |
 | SETUP-04 | AGENTS.md: Mergify, Reviews, Build-Slots | M | doc | ✓ #132 |
 | HOOK-01 | Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.) | S | ci | ✓ #156 |
-| W1-05b | Sichere Cancel-Regel für `dispatched`, Dedup der toten Tasks; erst st-Kind, dann api-Kind; Zahl der toten Einträge read-only nachzählen | M | st → api | PR #157 (st) |
+| W1-05b | Sichere Cancel-Regel für `dispatched`, Dedup der toten Tasks; erst st-Kind, dann api-Kind; Zahl der toten Einträge read-only nachzählen | M | st → api | ✓ #19 |
 | W1-03e | `MSG_USER` erst nach bewiesener Zustellung (F-CORE-3 B.3) | S | wk | PR #171 |
 | W1-20 | Zweites Setup reproduzieren (Node 24, `npm ci`, `dev:setup`, `dev:doctor`) | S | N | PR #166 |
 | CI-02 | Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b) | S | ci | PR #133 |
 | CI-03 | Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 % | M | ci | PR #149 |
-| SETUP-08 | Git-/PR- und Plan-Helfer unter `scripts/dev` (08a + 08b) | M | doc | PR #153 |
+| SETUP-08 | Git-/PR- und Plan-Helfer unter `scripts/dev` (08a + 08b) | M | doc | ✓ #22 |
 | SEC-01 | Geheimnis-Scan (gitleaks) als precommit-Gate | S | ci | PR #170 |
 
 ### M2 — Überblick und Setup
@@ -70,7 +70,7 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | dieses Paket |
 | OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | PR #164 |
 | OPS-02 | Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps | S | doc | offen |
-| CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | offen |
+| CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | ✓ #28 |
 | W1-30 | Flake `omniroute::…management_failures_keep_their_http_and_network_classes` (100-ms-Timeout) | S | fR | offen |
 | CLEAN-01 | Toten Code löschen: npm `@tauri-apps/plugin-process`, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6) | S | fe | offen |
 | CLEAN-02 | Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs) | S | api → mn → wk | offen |
@@ -92,12 +92,12 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
 | HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
 | W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | offen |
-| W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | offen |
+| W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c offen |
 | W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | offen |
-| W5-02a | Koordinator ohne Schreibpfad | M | wk | offen |
-| W5-22 | Konfliktvorhersage und Lane-Guard | M | fR | erledigt (PR #9) |
-| W5-28 | Automatischer Laufzeitbeleg (Sandbox, Queue aus) | M | fR | erledigt (PR #11) |
-| W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | erledigt (PR #18) |
+| W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
+| W5-22 | Konfliktvorhersage und Lane-Guard | M | fR | ✓ #9 |
+| W5-28 | Automatischer Laufzeitbeleg (Sandbox, Queue aus) | M | fR | ✓ #11 |
+| W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | ✓ #18 |
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | offen |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | offen |
@@ -116,16 +116,16 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-04c | Not-Aus in `pa` | S | pa | offen |
 | W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat | M | st | offen |
 | W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | offen |
-| W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | offen |
+| W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | ✓ #15 |
 | W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
-| DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | erledigt (PR #16) |
-| W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | erledigt (PR #12) |
+| DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
+| W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
 | W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | offen |
 | W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | offen |
 | HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt | M | fR + N | offen |
 | W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe) | M | st → api → fe | offen |
 | W5-02b4 | Push aus dem Worker über den Runner-Host, danach `strict` als Voreinstellung | M | pty + wk | offen |
-| W5-02b5 | Test für den `http.extraHeader`-Reset; GPG unter `strict` | S | fR | erledigt (PR #17) |
+| W5-02b5 | Test für den `http.extraHeader`-Reset; GPG unter `strict` | S | fR | ✓ #17 |
 | W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | offen |
 | W3-01 | Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind) | M | st → mn | offen |
 | W3-02 | Windows-Recovery-Helper | M | fR + N | offen |

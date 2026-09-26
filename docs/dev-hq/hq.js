@@ -270,7 +270,7 @@
         </div>
       </div>
       <div id="live-error" class="live-error" role="alert" hidden></div>
-      <div id="live-keys-help" class="keys-help" lang="en" hidden><b>Keys</b> <kbd>/</kbd> search memory · <kbd>f</kbd> filter fleet · <kbd>g</kbd> goals &amp; teams · <kbd>r</kbd> refresh · <kbd>?</kbd> this help · <kbd>Esc</kbd> close panels <label class="keys-toggle"><input type="checkbox" id="live-keys-enabled"> single-key shortcuts on</label></div>
+      <div id="live-keys-help" class="keys-help" lang="en" hidden><b>Keys</b> <kbd>/</kbd> search memory · <kbd>f</kbd> filter fleet · <kbd>g</kbd> goals &amp; teams · <kbd>b</kbd> budget &amp; routing · <kbd>r</kbd> refresh · <kbd>?</kbd> this help · <kbd>Esc</kbd> close panels <label class="keys-toggle"><input type="checkbox" id="live-keys-enabled"> single-key shortcuts on</label></div>
 
       ${section("01", "What matters now", "Ranked from the live fleet, capacity, questions, the lesson memory and the repository.", '<ol id="live-signals" class="signals" tabindex="0" aria-label="What matters now"><li class="muted">Reading the desk…</li></ol>', "live-signals-section", "paper")}
 
@@ -1030,6 +1030,7 @@
       if (event.key === "/") { event.preventDefault(); workspace.reveal("#lesson-query"); el.querySelector("#lesson-query").focus(); }
       else if (event.key === "f") { event.preventDefault(); workspace.reveal("#live-fleet-filter"); el.querySelector("#live-fleet-filter").focus(); }
       else if (event.key === "g") { event.preventDefault(); const goalsCard = el.querySelector("#hq-goals-live"); if (goalsCard) { workspace.reveal(goalsCard); goalsCard.focus(); } }
+      else if (event.key === "b") { event.preventDefault(); const budgetSection = el.querySelector("#hq-budget-live"); if (budgetSection) { workspace.reveal(budgetSection); budgetSection.focus(); } }
       else if (event.key === "r") { event.preventDefault(); refresh(); }
       else if (event.key === "?") { event.preventDefault(); keysHelp.hidden = !keysHelp.hidden; }
     });

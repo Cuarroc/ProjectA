@@ -2837,6 +2837,9 @@ a {
   align-self: flex-end;
   display: flex;
   align-items: center;
+  /* The bar grew (two toggles + error hint); without wrap it overflows the
+     right edge of narrow terminal panels. */
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin: var(--space-6) var(--space-7) 0 0;
   padding: var(--space-4) var(--space-5);
@@ -2865,6 +2868,24 @@ a {
 
 .terminal-search-btn.button-ghost {
   padding: 3px var(--space-4);
+}
+
+/* "Pressed" look for the case/regex toggles: the same accent-tint /
+accent-text pairing .convo-msg-user already uses, so the contrast gate
+covers the text. The tint alone composes over --color-elevated to only
+~1.2:1 — below the 3:1 WCAG 1.4.11 asks of a state indicator — so the
+inset ring carries the pressed state; its pairing is gated in
+scripts/contrast-check.mjs. */
+.terminal-search-toggle.button-ghost[aria-pressed="true"] {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-text);
+  box-shadow: inset 0 0 0 1px var(--color-accent-text);
+}
+
+.terminal-search-error {
+  color: var(--state-danger-fg);
+  font-size: var(--text-sm);
+  white-space: nowrap;
 }
 
 .empty-state {

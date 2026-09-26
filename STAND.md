@@ -7,10 +7,12 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 - **Release:** v1.4.1 (22.09.) ist der jüngste; alles danach liegt nur auf `main`.
   Nächster Release: v1.5.0-beta als Abschluss von M3.
-- **Meilenstein M1** „Alles Laufende gelandet, App startbar“: offen sind W1-05b,
-  W1-03e, W1-20, CI-02, CI-03, SETUP-08 und SEC-01 (PLAN.md, Tabelle M1).
+- **Meilenstein M1** „Alles Laufende gelandet, App startbar“: offen sind W1-03e,
+  W1-20, CI-02, CI-03 und SEC-01 (PLAN.md, Tabelle M1). Gelandet: W1-05b (PR #19),
+  SETUP-08 (PR #22).
 - **App nicht starten:** Die Queue hat tote `dispatched`-Einträge, die echte
-  Worker auslösen können. Erst nach W1-05b.
+  Worker auslösen können. W1-05b ist gelandet (PR #19);
+  die toten Einträge vorher read-only nachzählen und gezielt verwerfen.
 - **Continuous Mode:** aus und bis M4 eingefroren; `development_policy.rs` lehnt ihn ab.
 - **Merge** nur über die Mergify-Queue. CI kostet Minuten, Ziel 0 €.
 - **Live-Stand** kommt aus `gh pr list` und `git log origin/main`, bald aus OPS-01.
@@ -18,7 +20,7 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 ## Nächster Griff
 
 1. Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.
-2. W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.
+2. Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).
 3. Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.
 
 ## Offene Befunde (Details: `KNOWN_ISSUES.md`)

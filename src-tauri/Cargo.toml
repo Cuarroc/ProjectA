@@ -5,6 +5,8 @@ description = "ProjectA - agentic terminal for running parallel CLI coding agent
 default-run = "projecta"
 edition = "2021"
 rust-version = "1.89"
+# Never published to crates.io; lets cargo-deny treat it as a private crate.
+publish = false
 
 # Explicit targets keep Tauri's bundle inventory complete when there is more
 # than one src/bin tool. The MSI inventory gate verifies the resulting package.
