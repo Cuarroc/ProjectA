@@ -310,11 +310,3 @@ export function parseFindings(standText, opts = {}) {
   }
   return findings.map((f) => (f.source ? f : { ...f, klass: "UNPROVEN" }));
 }
-
-export function assertCitations(findings) {
-  for (const f of findings) {
-    if (f.klass !== "UNPROVEN" && !f.source) {
-      throw new Error(`citation missing for ${f.id ?? "finding"}`);
-    }
-  }
-}

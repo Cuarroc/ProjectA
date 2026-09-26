@@ -1370,6 +1370,28 @@ minutes are billed twice on private repos, so Windows alone was ~2850 of
   Funktion; der Treiber darf durch einen `pa`-Unterbefehl ersetzt werden,
   sobald der Daemon (W5-31b) die Sandboxes selbst verwaltet.
 
+## 2026-09-25 - gitleaks als Pflicht-Gate vor jedem Commit
+
+Nutzer-Regel (freigegeben 25.09.), Umsetzung aus JOB sec-gitleaks.
+
+- **Geheimnis-Scan vor jedem Commit:** das Gate `secrets` in der Bahn
+  `precommit` (scripts/ci/secret-scan.sh) fuehrt `gitleaks git --staged` aus -
+  nur der Index, unter einer Sekunde. Die Allowlist in `.gitleaks.toml`
+  deckt genau die Test-Kanarienvoegel aus Pruefung E (Veroeffentlichungs-Pruefung vom 25.09.2026), jeder Eintrag mit Quelle.
+  Ohne gitleaks endet das Gate laut (Exit 2, Installationshinweis) - bewusst
+  kein stiller Rueckfall, denn ein Scanner, der bei Abwesenheit gruen wird,
+  schuetzt nicht. Der Selbsttest `scripts/test-secret-scan.sh` (Gate
+  `selftest-secrets`, Bahn `prepush`) belegt, dass der Scan scheitern kann -
+  Warum: Pruefung E fand 36 gitleaks-Treffer, alle Testwerte; damit neue
+  Commits diese Klasse sauber halten statt sie nachtraeglich auditieren zu
+  muessen. Der Scan ist ein reines Lokal-Werkzeug (CI faehrt kein
+  `precommit`); nur der red-first-Beleg fuehrt den Selbsttest am Kopf in CI
+  aus, deshalb installiert `.github/actions/setup-linux` gitleaks 8.30.1
+  gepinnt mit SHA-256-Pruefung (PR #20: ohne das Werkzeug war der Beleg am
+  Kopf rot) - Zuruecknehmen: nur wenn der Nutzer die Regel aufhebt; ein
+  Vollscan der Historie in CI waere ein eigener Auftrag, keine
+  Aufweichung dieses Gates.
+
 ## 2026-09-25 - W5-02a: coordinators run without a write path
 
 - **Coordinator without a write path (W5-02a):** orchestrator and

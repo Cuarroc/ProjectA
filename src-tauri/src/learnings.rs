@@ -350,8 +350,8 @@ fn one_line(content: &str) -> String {
 ///
 /// A global rather than a parameter because the alternative is threading a
 /// path through [`inject`], [`inject_prompt`] and [`approve_learning`] - and
-/// from there through `create_worker_as_role`, `create_queen_as_role`,
-/// `respawn_worker` and the API backend trait, none of which have anything to
+/// from there through `create_worker_as_role`, `respawn_worker` and the API
+/// backend trait, none of which have anything to
 /// do with where a file lives. The key vault reached its directory the same
 /// way, from the same `app_data_dir` in `main`.
 static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();

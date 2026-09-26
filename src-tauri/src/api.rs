@@ -439,21 +439,6 @@ pub trait ControlBackend: Send + Sync {
         spawned_by: Option<String>,
     ) -> Result<Worker, String>;
 
-    /// Start a queen: a domain coordinator without a worktree. Same
-    /// `spawned_by` bookkeeping as [`ControlBackend::create_worker`].
-    ///
-    /// Retired as a public write: HTTP answers 410 and must not call this.
-    /// The method stays so a direct trait caller still hits a typed refusal
-    /// on the app backend.
-    #[allow(dead_code)]
-    fn create_queen(
-        &self,
-        project_id: &str,
-        task: &str,
-        profile_id: Option<String>,
-        spawned_by: Option<String>,
-    ) -> Result<Worker, String>;
-
     fn list_workers(&self, project_id: Option<&str>) -> Result<Vec<Worker>, String>;
 
     /// One worker with the column the status engine puts it in, or `None` when
@@ -2826,9 +2811,6 @@ pub(crate) mod tests {
     /// readable where it is matched on.
     type SpawnRecord = (String, String, String, Option<String>);
     type PlanImportRecord = (String, String, i64, Option<String>);
-    /// The same for a queen spawn, whose profile is optional:
-    /// `(projectId, domain, profileId, spawnedBy)`.
-    type QueenRecord = (String, String, Option<String>, Option<String>);
 
     /// A backend that answers from canned data and records what it was asked.
     #[derive(Default)]
@@ -2844,7 +2826,6 @@ pub(crate) mod tests {
         checkpoints: Mutex<HashMap<String, Value>>,
         reject_agent_run: std::sync::atomic::AtomicBool,
         created: Mutex<Vec<SpawnRecord>>,
-        queened: Mutex<Vec<QueenRecord>>,
         sent: Mutex<Vec<(String, String)>>,
         /// `(workerId, removeWorktree)` of every merge the API asked for.
         merged: Mutex<Vec<(String, bool)>>,
@@ -3315,23 +3296,6 @@ pub(crate) mod tests {
                 spawned_by,
             ));
             Ok(worker("wk-new"))
-        }
-
-        fn create_queen(
-            &self,
-            project_id: &str,
-            task: &str,
-            profile_id: Option<String>,
-            spawned_by: Option<String>,
-        ) -> Result<Worker, String> {
-            core_verdict(project_id)?;
-            self.queened.lock().unwrap().push((
-                project_id.to_string(),
-                task.to_string(),
-                profile_id,
-                spawned_by,
-            ));
-            Ok(queen("wk-queen"))
         }
 
         fn list_workers(&self, project_id: Option<&str>) -> Result<Vec<Worker>, String> {
@@ -5842,7 +5806,6 @@ pub(crate) mod tests {
                 .contains("queen creation is retired"),
             "{body}"
         );
-        assert!(fx.backend.queened.lock().unwrap().is_empty());
 
         let (status, _) = call(
             port,
@@ -5852,7 +5815,6 @@ pub(crate) mod tests {
             r#"{"projectId":"pj-1","task":"Frontend","profileId":"kimi"}"#,
         );
         assert_eq!(status, 410);
-        assert!(fx.backend.queened.lock().unwrap().is_empty());
 
         // The route is gone as a write target; missing fields are not a 400.
         for payload in [r#"{"task":"t"}"#, r#"{"projectId":"pj-1"}"#, "not json"] {
@@ -5862,17 +5824,6 @@ pub(crate) mod tests {
 
         let (status, _) = call(port, "GET", "/api/queens", token, "");
         assert_eq!(status, 405);
-    }
-
-    #[test]
-    fn in_crate_fixtures_may_still_call_create_queen() {
-        let fx = fixture("api-queen-fixture");
-        let queen = fx
-            .backend
-            .create_queen("pj-1", "Backend-API", None, None)
-            .expect("fixtures keep the in-crate spawn");
-        assert_eq!(queen.kind, KIND_QUEEN);
-        assert_eq!(fx.backend.queened.lock().unwrap().len(), 1);
     }
 
     #[test]
@@ -7854,7 +7805,6 @@ pub(crate) mod tests {
         // Nothing was created along the way - a refused route must not leave a
         // row behind, or the status would be the only honest part of the reply.
         assert!(fx.backend.created.lock().unwrap().is_empty());
-        assert!(fx.backend.queened.lock().unwrap().is_empty());
         assert!(fx.backend.scouted.lock().unwrap().is_empty());
         assert!(fx.backend.told.lock().unwrap().is_empty());
         assert!(fx.backend.repos.lock().unwrap().is_empty());

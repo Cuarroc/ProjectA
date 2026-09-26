@@ -63,7 +63,6 @@ why the pack is absent and ships no third-party content.
 | Package | License |
 |---|---|
 | @tauri-apps/api@2.11.1 | Apache-2.0 OR MIT |
-| @tauri-apps/plugin-process@2.3.1 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-updater@2.11.0 | MIT OR Apache-2.0 |
 | @xterm/addon-canvas@0.7.0 | MIT |
 | @xterm/addon-fit@0.10.0 | MIT |

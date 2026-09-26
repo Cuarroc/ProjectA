@@ -123,13 +123,15 @@ groups profiles visually while the Rust core ignores it.
 
 **Known constraints on that ambition:**
 
-- The app delivers skill packs only to 2 of 5 built-in providers
+- The app delivers skill packs only to 3 of 5 built-in providers
   (`src-tauri/resources/agent-defaults.json`: `claude` → Convention, `kimi` →
-  Flag `--skills-dir`; `codex`, `opencode`, `ollama` → `unsupported`). The
-  `ConventionAt` mode (PR #57, e.g. `.agents/skills`) exists but is only set
-  through an `agents.json` override; whether Codex/OpenCode pick up
-  `.agents/skills` on their own is the open probe W1-18b. A team template
-  promising "skills" cannot yet deliver them on three providers.
+  Flag `--skills-dir`, `opencode` → ConventionAt `.agents/skills` (probe
+  W1-18b, 2026-09-25: `opencode debug skill --pure` lists a canary from
+  `.agents/skills`, evidence in the W1-18b PR text);
+  `codex`, `ollama` → `unsupported`. Whether Codex picks up `.agents/skills`
+  on its own stays open: its re-probe is deferred until the CLI rate limit
+  ends (after 2026-09-30). A team template promising "skills" cannot yet
+  deliver them on two providers.
 - Harness properties are a Rust enum, not data. Making them configurable is
   already an accepted roadmap item (`docs/decisions.md`, 2026-09-09,
   Multi-Harness) with a spec at `.pa/task_multi_harness.md` (status

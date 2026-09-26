@@ -7,9 +7,10 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 - **Release:** v1.4.1 (22.09.) ist der jüngste; alles danach liegt nur auf `main`.
   Nächster Release: v1.5.0-beta als Abschluss von M3.
-- **Meilenstein M1** „Alles Laufende gelandet, App startbar“: offen sind W1-03e,
-  W1-20, CI-02, CI-03 und SEC-01 (PLAN.md, Tabelle M1). Gelandet: W1-05b (PR #19),
-  SETUP-08 (PR #22).
+- **Meilenstein M1** „Alles Laufende gelandet, App startbar“: erreicht
+  (26.09.2026, PLAN.md, Tabelle M1). Zuletzt gelandet: SEC-01 (PR #20),
+  CLEAN-02 (PR #25), W1-21d (PR #27), CI-04 (PR #28), W1-18b (PR #30),
+  CLEAN-01 (PR #31), W1-30 (PR #32), W1-10 (PR #33).
 - **App nicht starten:** Die Queue hat tote `dispatched`-Einträge, die echte
   Worker auslösen können. W1-05b ist gelandet (PR #19);
   die toten Einträge vorher read-only nachzählen und gezielt verwerfen.
@@ -19,9 +20,9 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 ## Nächster Griff
 
-1. Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.
+1. M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.
 2. Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).
-3. Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.
+3. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.
 
 ## Offene Befunde (Details: `KNOWN_ISSUES.md`)
 

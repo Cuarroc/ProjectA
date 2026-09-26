@@ -117,8 +117,8 @@ act -n                         # Trockenlauf: parst Workflows + Composite Action
 | | |
 |---|---|
 | `windows-latest` | **gar nicht.** Es gibt keine Windows-Container. Die Jobs `gates (windows)` und der ganze `release`-Workflow sind für act unerreichbar. |
-| `environment:` | wird ignoriert. Die Härtung von `release.yml` hinge lokal an einer Klartextdatei `.secrets` auf dem PC — **die Secret-Härtung wäre lokal ausgehebelt.** Reviews laufen direkt über `.pa/review_transport.py`. |
-| OIDC / WIF | `ACTIONS_ID_TOKEN_REQUEST_URL` existiert nicht; Workflows mit OIDC sind prinzipiell nicht lokal lauffähig. |
+| `environment:` | wird ignoriert. Die Härtung von `release.yml` hinge lokal an einer Klartextdatei `.secrets` auf dem PC — **die Secret-Härtung wäre lokal ausgehebelt.** (Der frühere `review.yml`-Workflow mit `OPENROUTER_KEY` ist entfernt; `.pa/review_transport.py` ist direkt aufrufbar.) |
+| OIDC / WIF | `ACTIONS_ID_TOKEN_REQUEST_URL` existiert nicht; ein Workflow mit OIDC-Token wäre prinzipiell nicht lokal lauffähig (der frühere `anthropic-wif-test.yml` ist entfernt). |
 | `concurrency`, `permissions`, `timeout-minutes` | werden ignoriert — ihre Wirkung ist lokal nicht belegbar. |
 | `github.event.pull_request.*` | nur mit handgeschriebener `-e event.json`. `red-first.sh` nimmt `BASE_SHA`/`HEAD_SHA` per Env; direkt aufrufen ist einfacher. |
 | Tauri-Systemdeps | das `act-latest`-Image bringt kein `libwebkit2gtk-4.1-dev` mit; die Composite Action installiert sie bei **jedem** Lauf neu (~1–2 min), außer mit `--reuse`. |

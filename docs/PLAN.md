@@ -8,8 +8,9 @@ unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
 
 ## Für den Nutzer
 
-1. **Nächster Meilenstein:** M1 „Alles Laufende gelandet, App startbar“. Was
-   noch offen ist, steht in der Tabelle M1 (Spalte „Stand“).
+1. **Nächster Meilenstein:** M2 „Überblick und Setup“ (M1 „Alles Laufende
+   gelandet, App startbar“ ist erreicht, 26.09.2026). Was noch offen ist, steht
+   in der Tabelle M2 (Spalte „Stand“).
 2. **Was du entscheiden musst:** die Entscheidungs-Inbox unten. Fragen kommen
    gebündelt dorthin, nicht einzeln in den Chat.
 3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
@@ -55,12 +56,12 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | SETUP-04 | AGENTS.md: Mergify, Reviews, Build-Slots | M | doc | ✓ #132 |
 | HOOK-01 | Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.) | S | ci | ✓ #156 |
 | W1-05b | Sichere Cancel-Regel für `dispatched`, Dedup der toten Tasks; erst st-Kind, dann api-Kind; Zahl der toten Einträge read-only nachzählen | M | st → api | ✓ #19 |
-| W1-03e | `MSG_USER` erst nach bewiesener Zustellung (F-CORE-3 B.3) | S | wk | PR #171 |
-| W1-20 | Zweites Setup reproduzieren (Node 24, `npm ci`, `dev:setup`, `dev:doctor`) | S | N | PR #166 |
-| CI-02 | Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b) | S | ci | PR #133 |
-| CI-03 | Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 % | M | ci | PR #149 |
+| W1-03e | `MSG_USER` erst nach bewiesener Zustellung (F-CORE-3 B.3) | S | wk | ✓ #171 |
+| W1-20 | Zweites Setup reproduzieren (Node 24, `npm ci`, `dev:setup`, `dev:doctor`) | S | N | ✓ #166 |
+| CI-02 | Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b) | S | ci | ✓ #133 |
+| CI-03 | Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 % | M | ci | ✓ #149 |
 | SETUP-08 | Git-/PR- und Plan-Helfer unter `scripts/dev` (08a + 08b) | M | doc | ✓ #22 |
-| SEC-01 | Geheimnis-Scan (gitleaks) als precommit-Gate | S | ci | PR #170 |
+| SEC-01 | Geheimnis-Scan (gitleaks) als precommit-Gate | S | ci | ✓ #20 |
 
 ### M2 — Überblick und Setup
 
@@ -71,9 +72,10 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | PR #164 |
 | OPS-02 | Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps | S | doc | offen |
 | CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | ✓ #28 |
-| W1-30 | Flake `omniroute::…management_failures_keep_their_http_and_network_classes` (100-ms-Timeout) | S | fR | offen |
-| CLEAN-01 | Toten Code löschen: npm `@tauri-apps/plugin-process`, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6) | S | fe | offen |
-| CLEAN-02 | Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs) | S | api → mn → wk | offen |
+| W1-21d | Suchschalter im Scrollback (Groß-/Kleinschreibung, Regex) | S | fe | ✓ #27 |
+| W1-30 | Flake `omniroute::…management_failures_keep_their_http_and_network_classes` (100-ms-Timeout) | S | fR | ✓ #32 |
+| CLEAN-01 | Toten Code löschen: npm `@tauri-apps/plugin-process`, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6) | S | fe | ✓ #31 |
+| CLEAN-02 | Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs) | S | api → mn → wk | ✓ #25 |
 | W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | offen |
 | SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | offen |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
@@ -91,7 +93,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 |---|---|---|---|---|
 | HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
 | HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
-| W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | offen |
+| W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
 | W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c offen |
 | W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | offen |
 | W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
@@ -100,7 +102,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | ✓ #18 |
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | offen |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
-| W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | offen |
+| W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | offen |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | offen |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
@@ -210,7 +212,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | **DEVFLOW-Motor:** DF-11, DF-13–17, DF-06b, DF-08d | zweite Steuerung neben dem fertigen Continuous-Kern | nach M4 als Erweiterung des Continuous-Runtime neu schneiden |
 | **DEVFLOW-Ausbau:** DF-09b, DF-10, DF-21–25, DF-27–34 | hilft dem Ziel nicht; DF-09b wäre ein Doppelbau | nach M4 |
 | **HQ2-04, HQ2-06 bis HQ2-10** | große Pakete, jedes ein eigenes Projekt | nach der Oberflächen-Entscheidung (HQ2-02) neu planen |
-| W1-09c (KI-1 editierbar), W1-12 (Design-Reste), W1-21d (Suchschalter) | Komfort, niedriger Nutzen | nach M4 |
+| W1-09c (KI-1 editierbar), W1-12 (Design-Reste) | Komfort, niedriger Nutzen | nach M4 |
 | W4-03a (Journal-Teil ohne Aktivierung) | nur für das geparkte W5-03 nötig (Nutzer 25.09.: später) | mit W5-03 |
 | W3-09 (Struktur-Split) | inaktiv, nur wenn W0-05 = zerlegen | bei Bedarf |
 

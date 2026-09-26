@@ -45,7 +45,7 @@
     {
       "id": "opencode", "name": "OpenCode", "command": "opencode", "args": [],
       "caps": {
-        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "conventionAt", "dir": ".agents/skills" },
         "lifecycle": { "mode": "heuristic" },
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
       },
@@ -55,7 +55,7 @@
     {
       "id": "opencode-glm-53-flash", "name": "OpenCode GLM 5.3 Flash", "command": "opencode", "args": ["-m", "opencode-go/glm-5.3-flash"],
       "caps": {
-        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "conventionAt", "dir": ".agents/skills" },
         "lifecycle": { "mode": "heuristic" },
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
       },

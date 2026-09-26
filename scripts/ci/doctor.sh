@@ -77,6 +77,8 @@ pruefe pflicht "cargo" cargo --version
 pruefe pflicht "rustc" rustc --version
 nextest_ok=0
 if pruefe pflicht "nextest" cargo nextest --version; then nextest_ok=1; fi
+gitleaks_ok=0
+if pruefe pflicht "gitleaks" gitleaks version; then gitleaks_ok=1; fi
 audit_ok=0
 if pruefe kann "cargo-audit" cargo audit --version; then audit_ok=1; fi
 
@@ -144,6 +146,7 @@ for lane in precommit prepush linux windows release audit; do
   ids_csv=",$(printf '%s' "$ids" | tr '\n' ','),"
   case "$ids_csv" in *,rust-suite,*) [ "$nextest_ok" -eq 1 ] || urteil="BLOCKIERT (nextest fehlt: cargo install cargo-nextest --locked)" ;; esac
   case "$ids_csv" in *,audit-rust,*) [ "$audit_ok" -eq 1 ] || urteil="BLOCKIERT (cargo-audit fehlt: cargo install cargo-audit)" ;; esac
+  case "$ids_csv" in *,secrets,* | *,selftest-secrets,*) [ "$gitleaks_ok" -eq 1 ] || urteil="BLOCKIERT (gitleaks fehlt: winget install Gitleaks.Gitleaks | brew install gitleaks | https://github.com/gitleaks/gitleaks#installing)" ;; esac
   printf ' %-10s %2d Gates  %s\n' "$lane" "$n" "$urteil"
 done
 
