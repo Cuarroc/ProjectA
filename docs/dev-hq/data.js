@@ -1,15 +1,15 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-09-26T03:38:56.455Z",
-  "commit": "a115c3c",
+  "generatedAt": "2026-09-26T14:51:38.610Z",
+  "commit": "a5b9dbd",
   "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "b5837e86db8b33cf31314e1a5ba28630659ebe1733a9b55c06e379a37258b73c"
+      "sha256": "842a7b5c517082e215b761b42dc8c90a41734de3e241c098a21cb760a3616aca"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "429840b8289ca5386dfab9c3a58b531ac168caed9b30cd8f9e332bfb9d9e13b3"
+      "sha256": "1b8a5749905e926920e6c97b6e6b2398f450ad8d02d3cda41c41c554f40f2650"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -111,96 +111,788 @@ window.HQ_DATA = {
       "serialOwner": null
     }
   ],
-  "packages": [
+  "milestones": [
     {
-      "id": "F0",
-      "dependsOn": [],
-      "lane": "serial",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
-    },
-    {
-      "id": "F1",
-      "dependsOn": [
-        "F0"
+      "id": "M1",
+      "title": "Alles Laufende gelandet, App startbar",
+      "packages": [
+        {
+          "id": "W2-03",
+          "title": "Usage-/Billing-Collectors je Adapter",
+          "size": "M",
+          "lane": "st",
+          "stand": "✓ #140",
+          "state": "done",
+          "prNumbers": [
+            140
+          ]
+        },
+        {
+          "id": "W2-06",
+          "title": "Supervisor: Producer-Audit und Runtime-Notifications",
+          "size": "M",
+          "lane": "mn + sup",
+          "stand": "✓ #152",
+          "state": "done",
+          "prNumbers": [
+            152
+          ]
+        },
+        {
+          "id": "W2-08a",
+          "title": "Ressourcendruck- und Streaming-Enforcement",
+          "size": "M",
+          "lane": "fR",
+          "stand": "✓ #134",
+          "state": "done",
+          "prNumbers": [
+            134
+          ]
+        },
+        {
+          "id": "W2-04f",
+          "title": "Planungsendpunkte nur für den Koordinator",
+          "size": "S",
+          "lane": "api",
+          "stand": "✓ #135",
+          "state": "done",
+          "prNumbers": [
+            135
+          ]
+        },
+        {
+          "id": "W2-01b",
+          "title": "Review-Route nimmt reviewerRunId aus dem Credential",
+          "size": "S",
+          "lane": "api",
+          "stand": "✓ #124",
+          "state": "done",
+          "prNumbers": [
+            124
+          ]
+        },
+        {
+          "id": "W2-01c",
+          "title": "approvalAuthority in agent_access.rs angleichen",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #150",
+          "state": "done",
+          "prNumbers": [
+            150
+          ]
+        },
+        {
+          "id": "W1-15c",
+          "title": "Übrige Mutex-Stellen in pty.rs",
+          "size": "S",
+          "lane": "pty",
+          "stand": "✓ #137",
+          "state": "done",
+          "prNumbers": [
+            137
+          ]
+        },
+        {
+          "id": "W1-23c",
+          "title": "„-0 Tokens“-Anzeige, MSRV gemessen",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #136",
+          "state": "done",
+          "prNumbers": [
+            136
+          ]
+        },
+        {
+          "id": "W1-29",
+          "title": "Linux-Flake im Prozessgruppen-Test",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #138",
+          "state": "done",
+          "prNumbers": [
+            138
+          ]
+        },
+        {
+          "id": "W1-21c",
+          "title": "xterm-pageerror beim Mount",
+          "size": "S",
+          "lane": "fe",
+          "stand": "✓ #151",
+          "state": "done",
+          "prNumbers": [
+            151
+          ]
+        },
+        {
+          "id": "SETUP-04",
+          "title": "AGENTS.md: Mergify, Reviews, Build-Slots",
+          "size": "M",
+          "lane": "doc",
+          "stand": "✓ #132",
+          "state": "done",
+          "prNumbers": [
+            132
+          ]
+        },
+        {
+          "id": "HOOK-01",
+          "title": "Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.)",
+          "size": "S",
+          "lane": "ci",
+          "stand": "✓ #156",
+          "state": "done",
+          "prNumbers": [
+            156
+          ]
+        },
+        {
+          "id": "W1-05b",
+          "title": "Sichere Cancel-Regel für dispatched, Dedup der toten Tasks; erst st-Kind, dann api-Kind; Zahl der toten Einträge read-only nachzählen",
+          "size": "M",
+          "lane": "st → api",
+          "stand": "✓ #19",
+          "state": "done",
+          "prNumbers": [
+            19
+          ]
+        },
+        {
+          "id": "W1-03e",
+          "title": "MSG_USER erst nach bewiesener Zustellung (F-CORE-3 B.3)",
+          "size": "S",
+          "lane": "wk",
+          "stand": "✓ #171",
+          "state": "done",
+          "prNumbers": [
+            171
+          ]
+        },
+        {
+          "id": "W1-20",
+          "title": "Zweites Setup reproduzieren (Node 24, npm ci, dev:setup, dev:doctor)",
+          "size": "S",
+          "lane": "N",
+          "stand": "✓ #166",
+          "state": "done",
+          "prNumbers": [
+            166
+          ]
+        },
+        {
+          "id": "CI-02",
+          "title": "Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b)",
+          "size": "S",
+          "lane": "ci",
+          "stand": "✓ #133",
+          "state": "done",
+          "prNumbers": [
+            133
+          ]
+        },
+        {
+          "id": "CI-03",
+          "title": "Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 %",
+          "size": "M",
+          "lane": "ci",
+          "stand": "✓ #149",
+          "state": "done",
+          "prNumbers": [
+            149
+          ]
+        },
+        {
+          "id": "SETUP-08",
+          "title": "Git-/PR- und Plan-Helfer unter scripts/dev (08a + 08b)",
+          "size": "M",
+          "lane": "doc",
+          "stand": "✓ #22",
+          "state": "done",
+          "prNumbers": [
+            22
+          ]
+        },
+        {
+          "id": "SEC-01",
+          "title": "Geheimnis-Scan (gitleaks) als precommit-Gate",
+          "size": "S",
+          "lane": "ci",
+          "stand": "✓ #20",
+          "state": "done",
+          "prNumbers": [
+            20
+          ]
+        }
       ],
-      "lane": "serial",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
+      "done": 19,
+      "total": 19
     },
     {
-      "id": "F2",
-      "dependsOn": [
-        "F0"
+      "id": "M2",
+      "title": "Überblick und Setup",
+      "packages": [
+        {
+          "id": "M2-FRAG",
+          "title": "Frag-mich-Skill für Einsteiger-Erklärungen",
+          "size": "S",
+          "lane": "doc",
+          "stand": "✓ #161",
+          "state": "done",
+          "prNumbers": [
+            161
+          ]
+        },
+        {
+          "id": "PLAN-01",
+          "title": "Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv",
+          "size": "M",
+          "lane": "doc",
+          "stand": "dieses Paket",
+          "state": "in_progress",
+          "prNumbers": []
+        },
+        {
+          "id": "OPS-01",
+          "title": "Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest)",
+          "size": "M",
+          "lane": "doc",
+          "stand": "PR #164",
+          "state": "pr",
+          "prNumbers": [
+            164
+          ]
+        },
+        {
+          "id": "OPS-02",
+          "title": "Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps",
+          "size": "S",
+          "lane": "doc",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "CI-04",
+          "title": "Roter main stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause",
+          "size": "S",
+          "lane": "ci",
+          "stand": "✓ #28",
+          "state": "done",
+          "prNumbers": [
+            28
+          ]
+        },
+        {
+          "id": "W1-21d",
+          "title": "Suchschalter im Scrollback (Groß-/Kleinschreibung, Regex)",
+          "size": "S",
+          "lane": "fe",
+          "stand": "✓ #27",
+          "state": "done",
+          "prNumbers": [
+            27
+          ]
+        },
+        {
+          "id": "W1-30",
+          "title": "Flake omniroute::…management_failures_keep_their_http_and_network_classes (100-ms-Timeout)",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #32",
+          "state": "done",
+          "prNumbers": [
+            32
+          ]
+        },
+        {
+          "id": "CLEAN-01",
+          "title": "Toten Code löschen: npm @tauri-apps/plugin-process, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6)",
+          "size": "S",
+          "lane": "fe",
+          "stand": "✓ #31",
+          "state": "done",
+          "prNumbers": [
+            31
+          ]
+        },
+        {
+          "id": "CLEAN-02",
+          "title": "Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs)",
+          "size": "S",
+          "lane": "api → mn → wk",
+          "stand": "✓ #25",
+          "state": "done",
+          "prNumbers": [
+            25
+          ]
+        },
+        {
+          "id": "W1-17",
+          "title": "HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (docs/dev-hq/data.js/data.json) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler",
+          "size": "S",
+          "lane": "hqL",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "SETUP-09",
+          "title": "Lokaler Review-Lauf scripts/review/run-local.sh",
+          "size": "S",
+          "lane": "doc",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "SETUP-12",
+          "title": "Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken",
+          "size": "S",
+          "lane": "ci",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "SETUP-14",
+          "title": "Nutzer: tote Keys, OpenCode-Modelle, ollama signin, Permission-Regeln",
+          "size": "S",
+          "lane": "N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "SETUP-15",
+          "title": "Abschlussreview der Setup-Doku, verkleinert",
+          "size": "S",
+          "lane": "doc",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        }
       ],
-      "lane": "parallel",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
+      "done": 6,
+      "total": 14
     },
     {
-      "id": "F3",
-      "dependsOn": [
-        "F1",
-        "F2"
+      "id": "M3",
+      "title": "App im Alltag + Zwischenrelease v1.5.0-beta",
+      "packages": [
+        {
+          "id": "HQ2-02",
+          "title": "Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest",
+          "size": "M",
+          "lane": "hqS + N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "HQ2-03",
+          "title": "Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02",
+          "size": "M",
+          "lane": "hqS",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W1-10",
+          "title": "HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, prefers-contrast",
+          "size": "M",
+          "lane": "hqL",
+          "stand": "✓ #33",
+          "state": "done",
+          "prNumbers": [
+            33
+          ]
+        },
+        {
+          "id": "W2-10",
+          "title": "Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery)",
+          "size": "M",
+          "lane": "hqL",
+          "stand": "10a ✓ #13, 10b ✓ #21, 10c offen",
+          "state": "in_progress",
+          "prNumbers": [
+            13,
+            21
+          ]
+        },
+        {
+          "id": "W5-02b7",
+          "title": "HQ-Profilansicht zeigt envPolicy",
+          "size": "S",
+          "lane": "hqL",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-02a",
+          "title": "Koordinator ohne Schreibpfad",
+          "size": "M",
+          "lane": "wk",
+          "stand": "✓ #24",
+          "state": "done",
+          "prNumbers": [
+            24
+          ]
+        },
+        {
+          "id": "W5-22",
+          "title": "Konfliktvorhersage und Lane-Guard",
+          "size": "M",
+          "lane": "fR",
+          "stand": "✓ #9",
+          "state": "done",
+          "prNumbers": [
+            9
+          ]
+        },
+        {
+          "id": "W5-28",
+          "title": "Automatischer Laufzeitbeleg (Sandbox, Queue aus)",
+          "size": "M",
+          "lane": "fR",
+          "stand": "✓ #11",
+          "state": "done",
+          "prNumbers": [
+            11
+          ]
+        },
+        {
+          "id": "W5-00b",
+          "title": "Fremden Text in workers.rs-Prompts suchen und einhüllen",
+          "size": "S",
+          "lane": "wk",
+          "stand": "✓ #18",
+          "state": "done",
+          "prNumbers": [
+            18
+          ]
+        },
+        {
+          "id": "W2-04e",
+          "title": "dispatch.role ins Agenten-Briefing",
+          "size": "S",
+          "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W2-01d",
+          "title": "CLI-Befehl pa hq agent review",
+          "size": "S",
+          "lane": "pa",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W1-18b",
+          "title": "Probe, ob Codex/OpenCode .agents/skills lesen",
+          "size": "S",
+          "lane": "wk + N",
+          "stand": "OpenCode ✓ #30, Codex offen",
+          "state": "in_progress",
+          "prNumbers": [
+            30
+          ]
+        },
+        {
+          "id": "W1-01b",
+          "title": "Kimi-Re-Smoke mit PROJECTA_PTY_TRACE_DIR",
+          "size": "S",
+          "lane": "pty",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W1-27",
+          "title": "KI-20, doppelte ESC[6n-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.)",
+          "size": "S",
+          "lane": "pty + fe",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W3-08",
+          "title": "Paketierter HQ-v1-Beleg",
+          "size": "S",
+          "lane": "N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "R-1",
+          "title": "Zwischenrelease v1.5.0-beta als Abschluss von M3",
+          "size": "S",
+          "lane": "N + doc",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        }
       ],
-      "lane": "parallel",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
+      "done": 5,
+      "total": 16
     },
     {
-      "id": "F4",
-      "dependsOn": [
-        "F1"
+      "id": "M4",
+      "title": "Dauerbetrieb abgenommen, v1.5.0",
+      "packages": [
+        {
+          "id": "W5-05",
+          "title": "Prüfpfad (append-only, Trigger gegen UPDATE/DELETE)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-04a",
+          "title": "Not-Aus im Store, global ohne Projektrahmen (Schnitt 25.09., W5-01a bleibt geparkt)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-04b",
+          "title": "Not-Aus in der App (10 s Frist)",
+          "size": "S",
+          "lane": "mn",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-04c",
+          "title": "Not-Aus in pa",
+          "size": "S",
+          "lane": "pa",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W2-02b",
+          "title": "Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat",
+          "size": "M",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W2-04c",
+          "title": "Rollenbewusste Routen und Credentials beim Launch",
+          "size": "M",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W2-04d",
+          "title": "Rollen auf Budget-Zwecke abbilden",
+          "size": "S",
+          "lane": "st",
+          "stand": "✓ #15",
+          "state": "done",
+          "prNumbers": [
+            15
+          ]
+        },
+        {
+          "id": "W2-04g",
+          "title": "Optional: Versionsspalte für die Attestierungsregel",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "DF-15b",
+          "title": "Reservierung und Delivery bei exited_undelivered freigeben (KI-27; Nutzer 25.09.: ja)",
+          "size": "S",
+          "lane": "st",
+          "stand": "✓ #16",
+          "state": "done",
+          "prNumbers": [
+            16
+          ]
+        },
+        {
+          "id": "W2-07b",
+          "title": "Windows-ACL für projecta-api.json und agent-access/",
+          "size": "S",
+          "lane": "api",
+          "stand": "✓ #12",
+          "state": "done",
+          "prNumbers": [
+            12
+          ]
+        },
+        {
+          "id": "W2-08b",
+          "title": "Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min)",
+          "size": "M",
+          "lane": "fR",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W2-09b",
+          "title": "DeepSeek-V4-Flash-Worker über OpenCode",
+          "size": "M",
+          "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "HQ2-05b",
+          "title": "Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt",
+          "size": "M",
+          "lane": "fR + N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-02b3",
+          "title": "Env-Stufe als globale Einstellung (st → api → fe)",
+          "size": "M",
+          "lane": "st → api → fe",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-02b4",
+          "title": "Push aus dem Worker über den Runner-Host, danach strict als Voreinstellung",
+          "size": "M",
+          "lane": "pty + wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W5-02b5",
+          "title": "Test für den http.extraHeader-Reset; GPG unter strict",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #17",
+          "state": "done",
+          "prNumbers": [
+            17
+          ]
+        },
+        {
+          "id": "W1-03f",
+          "title": "F-CORE-3 Baustein C: Zustell-Queue, pa worker done/blocked (braucht das Z-1-Protokoll am PC)",
+          "size": "M",
+          "lane": "wk + pa",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W3-01",
+          "title": "Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind)",
+          "size": "M",
+          "lane": "st → mn",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W3-02",
+          "title": "Windows-Recovery-Helper",
+          "size": "M",
+          "lane": "fR + N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W3-03",
+          "title": "Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S)",
+          "size": "S",
+          "lane": "N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W3-04",
+          "title": "Updater-Zustände in App und HQ",
+          "size": "S",
+          "lane": "fe + hqL",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W3-07",
+          "title": "Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später)",
+          "size": "S",
+          "lane": "N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W4-01",
+          "title": "Benchmark, verkleinert (Vorschlag: 5 Aufgaben statt 20)",
+          "size": "M",
+          "lane": "fR",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W4-02",
+          "title": "Abnahmematrix final (27 Zeilen)",
+          "size": "S",
+          "lane": "doc",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W4-03",
+          "title": "Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers",
+          "size": "S",
+          "lane": "mn",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "W4-04",
+          "title": "Release v1.5.0",
+          "size": "S",
+          "lane": "N",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        }
       ],
-      "lane": "serial",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
-    },
-    {
-      "id": "F5",
-      "dependsOn": [
-        "F4"
-      ],
-      "lane": "serial",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
-    },
-    {
-      "id": "F6-UI",
-      "dependsOn": [
-        "F2"
-      ],
-      "lane": "parallel",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
-    },
-    {
-      "id": "F6-Attribution",
-      "dependsOn": [
-        "F4"
-      ],
-      "lane": "serial",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
-    },
-    {
-      "id": "F7",
-      "dependsOn": [],
-      "lane": "incremental",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
-    },
-    {
-      "id": "F8",
-      "dependsOn": [
-        "F5",
-        "F6-UI",
-        "F3",
-        "F6-Attribution"
-      ],
-      "lane": "parallel",
-      "current": "waiting",
-      "source": "docs/PLAN.md"
+      "done": 4,
+      "total": 26
     }
   ],
   "next": [
@@ -626,7 +1318,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 15,
         "votes": 0
       }
     },
@@ -647,7 +1339,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 15,
         "votes": 0
       }
     },
@@ -844,7 +1536,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -866,7 +1558,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },
@@ -887,7 +1579,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 14,
         "votes": 0
       }
     },

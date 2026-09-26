@@ -39,15 +39,15 @@ export function testSurface(files, rustTestCount = 0) {
 }
 
 /// What the snapshot already knows: findings by class, specs by lane/lock,
-/// packages by state.
+/// milestone packages (docs/PLAN.md) by state.
 export function snapshotStats(snapshot) {
   const findings = snapshot?.findings || [];
   const specs = snapshot?.specs || [];
-  const packages = snapshot?.packages || [];
+  const packages = (snapshot?.milestones || []).flatMap((m) => m.packages);
   const byKlass = {};
   for (const f of findings) byKlass[f.klass || "UNKNOWN"] = (byKlass[f.klass || "UNKNOWN"] || 0) + 1;
   const byState = {};
-  for (const p of packages) byState[p.current || "unknown"] = (byState[p.current || "unknown"] || 0) + 1;
+  for (const p of packages) byState[p.state || "unknown"] = (byState[p.state || "unknown"] || 0) + 1;
   return {
     findings: { total: findings.length, ...byKlass },
     specs: {

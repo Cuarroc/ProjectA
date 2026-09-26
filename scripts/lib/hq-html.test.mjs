@@ -40,10 +40,9 @@ test("self-hosted Recursive face, no Google Fonts in CSS", () => {
   assert.ok(woff.length > 1000);
 });
 
-test("motion: DAG stroke key, reduced-motion instant", () => {
+test("motion: reduced-motion instant", () => {
   const css = readFileSync(join(DIR, "hq.css"), "utf8");
   const js = readFileSync(join(DIR, "hq.js"), "utf8");
-  assert.match(js, /hq-dag-drawn/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /animation:\s*none\s*!important/);
   assert.match(css, /@keyframes\s+hq-in/);
