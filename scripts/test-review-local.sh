@@ -290,11 +290,17 @@ IFS=':' read -ra parts <<< "$PATH"
 for p in "${parts[@]}"; do
   [ -x "$p/kilo" ] || [ -x "$p/kilo.cmd" ] || nokilo="${nokilo:+$nokilo:}$p"
 done
+# Liegt kilo im selben Verzeichnis wie git/python (z. B. /usr/local/bin), fehlen
+# die mit: dann waere der Test nicht hermetisch, also ueberspringen statt raten.
+if ! PATH="$nokilo" command -v git > /dev/null 2>&1 || ! PATH="$nokilo" command -v "$PY" > /dev/null 2>&1; then
+  echo "skip kilo fehlt: kilo liegt im selben PATH-Verzeichnis wie git/python"
+else
 run env PATH="$nokilo" bash "$RUN" --via kilo --models stepfun/step-3.7-flash:free --out-dir "$tmp/k5"
 if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "kilo" && printf '%s' "$out" | grep -qi "nicht gefunden"; then
   ok "kilo fehlt: Exit 2 mit deutscher Meldung"
 else
   bad "kilo fehlt: rc=$rc"; echo "$out"
+fi
 fi
 
 # 10. Zeitlimit und Diff-Grenze: beides ist ein Fehler, kein stilles Abschneiden.
@@ -364,6 +370,15 @@ if grep -q -- "--agent ask" "$KILO_STUB_LOG"; then
   ok "kilo laeuft mit --agent ask (kein Schreiben, keine Auto-Freigaben)"
 else
   bad "kilo ohne --agent ask: $(cat "$KILO_STUB_LOG")"
+fi
+
+# 12. Standard-Ausgabeverzeichnis: relative Pfade. Protokolle landen im Repo und
+#     dort darf kein absoluter Arbeitsbaum-Pfad (Nutzername!) stehen.
+run bash "$RUN" --models fake-a:cloud
+if [ "$rc" -eq 0 ] && [ -f "$REPO/.pa/review_${label}_fake-a.md" ]   && grep -q "^- Prompt: .pa/review_prompt_${label}.md " "$REPO/.pa/review_${label}_fake-a.md"   && ! grep -rqF "$(basename "$tmp")" "$REPO/.pa" && ! printf '%s' "$out" | grep -qF "$(basename "$tmp")"; then
+  ok "Standard-Ausgabe .pa/: relative Pfade in Protokoll und Konsole, kein absoluter Pfad"
+else
+  bad "Standardverzeichnis: rc=$rc"; echo "$out"; cat "$REPO/.pa/review_${label}_fake-a.md" 2>&1 | head -12
 fi
 
 echo

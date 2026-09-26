@@ -96,7 +96,18 @@ done
 [ -n "$PY" ] || die 2 "kein lauffaehiges Python 3 gefunden (python3 / python / py geprueft). Installieren und PATH pruefen."
 command -v git > /dev/null 2>&1 || die 2 "git nicht gefunden."
 TOP="$(git rev-parse --show-toplevel 2> /dev/null)" || die 2 "kein git-Repository im aktuellen Verzeichnis."
-[ -n "$out_dir" ] || out_dir="$TOP/.pa"
+# Standard-Ausgabe: .pa/ relativ zum Repo. Die Protokolle und Konsolenzeilen
+# tragen den Pfad, und ein absoluter Arbeitsbaum-Pfad hat in einem
+# eingecheckten Protokoll nichts verloren (Nutzername). Ein selbst gewaehlter
+# --out-dir gilt relativ zum aktuellen Verzeichnis, der Standard relativ zum Repo.
+if [ -n "$out_dir" ]; then
+  case "$out_dir" in
+    /* | ?:*) ;;
+    *) out_dir="$PWD/$out_dir" ;;
+  esac
+fi
+cd "$TOP" || die 2 "kann nicht nach $TOP wechseln."
+[ -n "$out_dir" ] || out_dir=".pa"
 
 # --- Modelle ---------------------------------------------------------------
 # Die Standardpaare stehen an genau einer Stelle: REVIEWER_MODELS in
