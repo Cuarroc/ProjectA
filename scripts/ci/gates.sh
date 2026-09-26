@@ -74,7 +74,7 @@ GATES=(
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
   # CI-02 (W1-19b): Dependabot-Manifest-Commits brauchen keinen Trailer -
   # und nur die. Der Selbsttest belegt die Ausnahme UND ihre Grenzen.
-  "selftest-red-first|linux,release|.|bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh"
+  "selftest-red-first|linux,release|.|bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh"
   # Der Review-Transport ist der Weg, auf dem die Dual-Review-Pflicht
   # (AGENTS.md) ueberhaupt eingeloest wird. Am 09.09. starb er an einer
   # Antwort ohne Inhalt und schrieb fuer KEINEN Reviewer ein Protokoll.
@@ -117,6 +117,10 @@ GATES=(
   # Browser-Smoke des HQ. Kam am 12.09. auf main dazu.
   "hq-visual|linux,release|.|npm run test:hq:visual"
   "fe-build|linux,release|.|npm run build"
+  # LIC-01: Lizenzen aller Abhaengigkeiten (Rust + npm-Produktion) gegen die
+  # vom Nutzer freigegebene Positivliste. Nur linux: plattformunabhaengig,
+  # und cargo-deny braeuchte auf dem Windows-Job eine eigene Installation.
+  "licenses|linux,release|.|bash scripts/ci/license-check.sh"
   "e2e|linux,release|.|npm run test:e2e"
 
   # --- teuer: der Rust-Kern -----------------------------------------------

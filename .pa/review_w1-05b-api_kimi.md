@@ -1,0 +1,39 @@
+• Ich prüfe jetzt die Route, `core_status` und die Test-Helfer in `api.rs`.
+
+• Noch drei Detailprüfungen: `Response::error`-Body-Form, `TempDir`/`Fixture`-Drop-Reihenfolge, `mark_queue_dispatched`.
+
+• Alle Prüfpunkte sind verifiziert. Hier der Review-Text:
+
+  ---
+
+  # Review: W1-05b (api): Cancel-Route über die `dispatched`-Regel, Ende-zu-Ende bewiesen
+
+  Geprüft gegen den tatsächlichen Stand dieses Worktrees (`src-tauri/src/api.rs`, `src-tauri/src/store/queue_cancel.rs`, `src-tauri/src/store.rs`, `src-tauri/src/main.rs`, `src-tauri/src/workers.rs`, `src-tauri/src/testutil.rs`). Der Diff entspricht dem Dateistand.
+
+  ## Befunde
+
+  **X1 — niedrig — `a_dispatched_task_is_cancelled_over_http_only_on_a_proven_process_end` (api.rs:7440): drei Regel-Zweige fehlen an der Naht**
+
+  Über HTTP werden nur vier der sieben Ausgänge von `proven_process_end` (`queue_cancel.rs:50-83`) geübt: `bound_in_memory`, `open_sessions > 0`, `sessions == 0`, `Ok`. Nicht über HTTP abgedeckt: `worker is still running` (running ohne Bindung — der einzige Zweig, der rein auf der Statusspalte beruht), `Unnamed` und `Missing`. Der Briefing-Punkt 5 fragt genau danach. Das ist keine Verhaltenslücke: die Route mappt ausschließlich präfixbasiert (`core_response` → `core_status`, api.rs:1808/2400/2381), und dieser eine Mapping-Pfad ist durch drei verschiedene 409-Begründungen plus den `failed to`→500-Fall im `core_status`-Test belegt. Der Store selbst deckt alle Zweige ab (`queue_cancel.rs:315-413`). Es ist also reine Vollständigkeit an der Naht, kein falscher Beweis.
+  Fix-Vorschlag (optional): einen fünften Task `tq-running` ins Setup (Worker `running`, kein `bind_session`, keine Session) mit Erwartung `409 / "worker wk-running is still running"`. Das wäre die billigste Ergänzung, weil sie den Zweig trifft, den die vier vorhandenen Zustände strukturell nicht erreichen können. `Unnamed`/`Missing` brauchen SQL-Eingriffe wie im Store-Test und sind an der Naht entbehrlich.
+
+  **X2 — niedrig — api.rs:7472-7474: nach dem 200 wird nur `tq-live` erneut geprüft**
+
+  Der Kommentar sagt "Only that row went: the refused ones are untouched by the success", verifiziert wird aber nur eine der drei verweigerten Zeilen. Eine Regel, die beim erfolgreichen Cancel von `tq-proven` zusätzlich `tq-crashed`/`tq-bare` löschte, bliebe grün. Praktisch unmöglich, weil der Delete auf `id + status + worker_id` gepinnt ist (`queue_cancel.rs:157`), und alle drei Zeilen standen schon einmal nach ihrer eigenen Verweigerung geprüft im Test.
+  Fix-Vorschlag (optional): die zwei Zeilen `assert_eq!(route.queue_status("tq-crashed").as_deref(), Some("dispatched"));` und analog für `tq-bare` nach dem 200 ergänzen — oder den Kommentar auf das abschwächen, was tatsächlich behauptet wird.
+
+  ## Geprüft und verworfen
+
+  - **Tautologie-Gefahr (Punkt 1): verworfen.** Der Test ist nicht tautologisch. Er fährt einen echten HTTP-Server über einer echten SQLite-DB, der Fake delegiert an die echte Regel (api.rs:3560-3562, identisch zu `main.rs:2852-2854`), und die Assertions prüfen drei unabhängige Ebenen: HTTP-Status, Wortlaut der Store-Begründung im Body, und DB-Zustand danach (`queue_status` über `list_queue` auf dem Original-Store). Driften Route und Regel auseinander (der dokumentierte Rot-Fall: Fake antwortet 200), schlagen die drei 409-Assertions fehl. Ändert der Store seinen Wortlaut, schlägt `contains(why)` fehl — diese Kopplung ist ausdrücklich gewollt und im Modulkopf begründet (die Route soll den Store-Satz durchreichen, nicht eigenständig klassifizieren).
+  - **Setup-Zustände (Punkt 2): verworfen, alle vier verifiziert.** `wk-proven`: `bind_session` + `mark_session_exited` schreibt `ended_at`, löst die In-Memory-Bindung (`take_session` in `mark_session_exited`, store.rs:3573) und setzt den Status `running`→`exited` (store.rs:3590) → alle drei Beweisbedingungen erfüllt → 200 korrekt. `wk-crashed`: `take_session` löst nur den Speicher, die Session-Zeile bleibt ohne `ended_at`, Status `exited` → `open_sessions = 1` → "never reported an exit" korrekt. `wk-live`: nur `bind_session` → `bound_in_memory` feuert vor der Status-Prüfung → "still has a live session" korrekt (und weil `Store::clone` Pool und Session-Map teilt, store.rs:961-966, sieht die Regel über die Fake-Kopie dieselbe Bindung). `wk-bare`: Status `exited`, keine Session → "has no recorded session" korrekt. Die vier Zustände sind also jeweils genau das, was der Kommentar behauptet, und die Erwartungen stimmen mit der Reihenfolge der Regel-Arme überein.
+  - **Determinismus (Punkt 3): verworfen.** Der Test ist ein synchroner `#[test]`; `tauri::async_runtime::block_on` läuft auf einem Thread ohne ambientes Runtime und ist exakt das Produktionsmuster aus `main.rs`. Ports sind ephemeral (`bind` auf Port 0, api.rs:974). TempDirs sind pro Test eindeutig (PID + `new_id`, testutil.rs:17-21). Drop-Reihenfolge: Felder fallen in Deklarationsreihenfolge — `server`, `store`, `_dir` — der Kommentar "Last, so the directory outlives the server and the pool on drop" stimmt; selbst wenn ein Handler-Thread die Backend-`Arc` (und damit eine Store-Kopie) über den Server-Drop hinaus hielte, ist `TempDir::drop` best-effort (`let _ = remove_dir_all`, testutil.rs:31-35) und kann nicht fehlschlagen. Kein Flake-Vektor gefunden.
+  - **Doku-Übereinstimmung (Punkt 4): verworfen.** Jede Behauptung des neuen Modulkopfs und der Trait-Doku ist im Code belegt: `{ok: true}` (api.rs:1811), 409 mit durchgereichter Store-Begründung (`core_response`), verweigerte Zeile bleibt (Verweigerung vor dem Delete, `queue_cancel.rs:152-155`), zweiter Cancel → 404 (`ERR_UNKNOWN`-Pfad), Delete-Anomalie behält `failed to` und wird 500 (`queue_cancel.rs:169-172`, plus exakt dieser String im `core_status`-Test, api.rs:7799). Die drei im Modulkopf zitierten Beispielsätze (`still has a live session`, `1 session(s) ... never reported an exit`, `has no recorded session`) stimmen wörtlich mit `proven_process_end` überein. Die Trait-Doku ("claimed, failed, or `dispatched` without a proven process end … anything else for a store that fell over") beschreibt das Verhalten korrekt.
+  - **Pinned-Delete-Anomalie nur im Unit-Test, nicht über HTTP (Punkt 5): verworfen.** Der 500-Pfad ist generisch (`else`-Zweig von `core_status`), mit dem exakten Store-String belegt und durch denselben `core_response`-Pfad bedient wie die 409er; ein HTTP-Vollzug der Anomalie bräuchte einen Trigger in der Test-DB für keinen zusätzlichen Beweis an der Naht.
+  - **Fake-Parität mit `main.rs` (Punkt 6): verworfen.** `FakeBackend::cancel_queued_task` mit `queue_store` ist Zeile für Zeile das, was `AppBackend` in `main.rs:2852-2854` tut: `tauri::async_runtime::block_on(store.cancel_queue_entry(id))`, nichts dazwischen. Die canned answers darunter bleiben für die übrigen Tests unverändert erreichbar (`queue_store: None` via `Default`).
+  - **Wortlaut-Hardcoding in den Assertions:** bewusstes Design (die Route reicht Store-Sätze durch, der Test nagelt sie fest), steht so auch im Modulkopf. Kein Befund.
+  - **Report-Behauptungen (Rot-Commit Exit 101, Mutationscheck macht 7 Tests rot):** aus dem Code heraus plausibel und konsistent mit dem, was der Test beweist; die Exit-Codes selbst liegen außerhalb dieses Diffs und wurden nicht nachgespielt.
+
+  ## Gesamturteil
+
+  **Mergebar: ja.** Das Paket ändert keinen Produktcode und liefert genau den behaupteten Beweis: Route und echte Store-Regel laufen nicht auseinander, nachweislich an vier realistischen `dispatched`-Zuständen über einen echten HTTP-Server auf einer echten DB. Assertions sind korrekt und nicht tautologisch, Setup-Zustände und Erwartungen stimmen mit der Regel überein, Doku ist akkurat, kein Flake-Risiko erkennbar. X1 und X2 sind optionale Vollständigkeitsverbesserungen (der `is still running`-Zweig wäre der wertvollste fünfte Fall) und kein Merge-Hindernis.
+

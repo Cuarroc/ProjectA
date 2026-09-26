@@ -53,6 +53,12 @@ function spawnHq(dir, extraEnv = {}) {
         PROJECTA_API_DESCRIPTOR: join(dir, "descriptor.json"),
         PROJECTA_AGENTS_FILE: join(dir, "agents.json"),
         HQ_LESSONS_FILE: join(dir, "lessons.json"),
+        // The insights estimate reads the agent journal `.pa/ACTIVITY.md`,
+        // which is deliberately untracked (instance-local append log). Point
+        // it into the temp dir (no fixture written: journal stays empty) so
+        // a host journal can never leak into a test — hermetic instead of
+        // host state.
+        HQ_ACTIVITY_FILE: join(dir, "ACTIVITY.md"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

@@ -703,6 +703,25 @@ pub fn write_worker_file(
     Ok(path)
 }
 
+/// The working directory of one coordinator (W5-02a): an empty, private
+/// directory `<app data>/hooks-cwd/<worker_id>`, next to the hooks directory
+/// but not in it - that one holds every worker's hook secret. It is outside
+/// the project's repository and every worktree by construction; the caller
+/// still checks that before the agent starts. The same id gets the same
+/// directory back on a respawn.
+pub fn coordinator_dir(worker_id: &str) -> Result<PathBuf, String> {
+    let hooks = settings_dir();
+    let name = hooks
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "hooks".to_string());
+    let root = hooks.with_file_name(format!("{name}-cwd"));
+    ensure_private_dir(&root)?;
+    let dir = root.join(worker_id);
+    ensure_private_dir(&dir)?;
+    Ok(dir)
+}
+
 /// Delete every generated file of one worker. Best effort - leftovers are
 /// harmless, but a respawn must never inherit a previous generation's files,
 /// so this runs on archive AND before each respawn.

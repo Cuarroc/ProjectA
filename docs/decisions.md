@@ -1391,3 +1391,21 @@ Nutzer-Regel (freigegeben 25.09.), Umsetzung aus JOB sec-gitleaks.
   Kopf rot) - Zuruecknehmen: nur wenn der Nutzer die Regel aufhebt; ein
   Vollscan der Historie in CI waere ein eigener Auftrag, keine
   Aufweichung dieses Gates.
+
+## 2026-09-25 - W5-02a: coordinators run without a write path
+
+- **Coordinator without a write path (W5-02a):** orchestrator and
+  queen start under the `strict` environment (applied to the *routed*
+  profile, so a failover cannot weaken it) in an empty directory
+  `<app data>/hooks-cwd/<worker id>` outside the repository and every
+  checkout, on create and on respawn; a continuous run dispatched in the
+  coordinator role is refused before a worktree exists. The orchestrator
+  prompt no longer tells it to append to `MEMORY.md` in the repository root -
+  that was a write path into the tree; reading stays. Why: I3 (the
+  coordinator delegates, it never commits). Limit: same OS user, so a
+  deliberate `git -C <repo> commit` still works locally (it cannot be pushed:
+  no token, no credential helper) - the hard boundary is W5-02e. Scouts are
+  not covered: their result channel is a file in the repository root
+  (`SCOUT_FILE`), so they need a store channel first. Reverse when: a
+  coordinator needs a repository-side memory again - then via a worker task,
+  not a coordinator write.

@@ -53,6 +53,19 @@ pub struct AgentProfile {
     pub env_policy: EnvPolicy,
 }
 
+impl AgentProfile {
+    /// This profile as a coordinator runs it (W5-02a): whatever isolation the
+    /// profile or `agents.json` asked for, the coordinator gets `strict` - no
+    /// token, no credential helper, no ssh. It plans and dispatches through
+    /// `pa`; a `git push` or `gh` call from it must fail instead of asking.
+    /// Applied after routing, because a failover may swap the profile.
+    pub fn for_coordinator(&self) -> AgentProfile {
+        let mut profile = self.clone();
+        profile.env_policy.isolation = EnvIsolation::Strict;
+        profile
+    }
+}
+
 /// How much of the app's environment reaches an agent process (W5-02b).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvPolicy {
@@ -678,6 +691,25 @@ mod tests {
         let stored: AgentProfile =
             serde_json::from_str(r#"{ "id": "x", "name": "x", "command": "x" }"#).expect("parse");
         assert_eq!(stored.env_policy.isolation, EnvIsolation::Allowlist);
+    }
+
+    /// W5-02a: a coordinator is strict whatever its profile asked for - even
+    /// a profile the user put back to `inherit` - and only the level changes.
+    #[test]
+    fn a_coordinator_profile_is_strict_whatever_it_asked_for() {
+        let mut profile = default_profiles()
+            .into_iter()
+            .find(|p| p.id == "claude")
+            .expect("claude");
+        profile.env_policy = EnvPolicy {
+            isolation: EnvIsolation::Inherit,
+            passthrough: vec!["MOONSHOT_API_KEY".into()],
+        };
+        let coordinator = profile.for_coordinator();
+        assert_eq!(coordinator.env_policy.isolation, EnvIsolation::Strict);
+        assert_eq!(coordinator.env_policy.passthrough, ["MOONSHOT_API_KEY"]);
+        assert_eq!(coordinator.command, profile.command);
+        assert_eq!(profile.env_policy.isolation, EnvIsolation::Inherit);
     }
 
     /// W5-02b6: `envPolicy` is how an entry goes back to `inherit` now that

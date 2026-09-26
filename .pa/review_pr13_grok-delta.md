@@ -1,0 +1,1 @@
+I'll verify the three accepted fixes against the current `continuous.js` and the new tests, including focus restore on both refresh paths and whether the delta adds a new edge-case bug.

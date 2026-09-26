@@ -31,7 +31,16 @@
     "tauri": "tauri",
     "hq:lesson": "node scripts/hq-lesson.mjs",
     "hq:queue-open-points": "node scripts/hq-queue-open-points.mjs",
-    "proof:runtime": "node scripts/runtime-proof.mjs"
+    "proof:runtime": "node scripts/runtime-proof.mjs",
+    "dev:report-commit": "node scripts/dev/report-commit.mjs",
+    "dev:push-verified": "node scripts/dev/push-verified.mjs",
+    "dev:prune-worktrees": "node scripts/dev/prune-worktrees.mjs",
+    "dev:build-slot": "node scripts/dev/build-slot.mjs",
+    "dev:ci-watch": "node scripts/dev/ci-watch.mjs",
+    "dev:pr-status": "node scripts/dev/pr-status.mjs",
+    "dev:erledigt-row": "node scripts/dev/erledigt-row.mjs",
+    "dev:spec-close": "node scripts/dev/spec-close.mjs",
+    "dev:hygiene": "node scripts/dev/hygiene.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
