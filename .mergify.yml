@@ -142,10 +142,9 @@ merge_protections:
     if:
       - base = main
       - head ~= (?i)^(claude|codex|kimi|opencode|glm)/(w\d+-|df\d+|ki-\d+|hq2-)
-    # Der Uebergang fuer PRs, die vor dem 25.09. mit einer .pa/report_*.md
-    # eroeffnet wurden, endete mit PR #175 (Review kimi-k3 F-6: ein Uebergang
-    # ohne Ende ist ein permanenter Bypass). Einzig betroffener offener
-    # Bestands-PR: #176 (Draft) — er traegt den Abschnitt im PR-Text nach.
+    # Kein Uebergang: eine .pa/report_*.md erfuellt die Regel nicht mehr
+    # (Review kimi-k3 F-6: ein Uebergang ohne Ende ist ein permanenter
+    # Bypass). Jeder offene Paket-PR muss den Abschnitt im PR-Text tragen.
     success_conditions:
       - "body ~= (?m)^## Report"
 

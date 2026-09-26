@@ -58,8 +58,8 @@ queue can immediately dispatch real workers.
 
 The start check (rule 9) before every worker: the model the harness actually
 reports, the provider limit, at least ~1.5 GB free RAM and at most two other
-cargo builds. Stop hard when one of them fails; the package OPS-02 automates
-this.
+cargo builds. Stop hard when one of them fails; until the package OPS-02
+(open) automates it, it is a manual check.
 
 Use the DevHQ website (`npm run hq:live`) for the human cockpit. Agents use the
 same backend through `pa hq runtime` and `pa hq context --project <id>`; do not
@@ -208,8 +208,8 @@ merge, never rebase or force-push.
   branch when it matches `^(claude|codex|kimi|opencode|glm)/(w<N>-|df<N>|ki-<N>|hq2-)`
   (case-insensitive), e.g. `claude/w2-07-credential-acl`. Its PR body must
   contain a line starting with `## Report`, or the `Mergify Merge Protections`
-  check stays red. (The transition for pre-2026-09-25 PRs carrying a
-  `.pa/report_*.md` ended with PR #175; the only such open PR was #176.)
+  check stays red. There is no transition: a `.pa/report_*.md` file no longer
+  satisfies the check, so an open package PR must add the section.
   Docs/infra branches (`claude/plan-01-…`, `claude/ci-03-…`)
   are not packages but use the same PR shape.
 - **Red `main`:** when a run on `main` fails, the queue stops. Until CI-04

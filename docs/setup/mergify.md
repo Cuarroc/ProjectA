@@ -64,9 +64,9 @@ Groß-/Kleinschreibung), z. B. `claude/w2-07-credential-acl`. Ein solcher PR
 muss im PR-Text einen Abschnitt tragen, der mit `## Report` beginnt
 (Vorlage: `.github/pull_request_template.md`), sonst bleibt der Check
 `Mergify Merge Protections` rot. Eine Berichtsdatei in `.pa/` ist seit
-25.09.2026 nicht mehr Pflicht: der PR-Text ist der Bericht. Der Übergang für
-Bestands-PRs mit `.pa/report_*.md` endete mit PR #175; der einzig betroffene
-offene PR war #176 (Draft), der den Abschnitt im PR-Text nachreicht.
+25.09.2026 nicht mehr Pflicht: der PR-Text ist der Bericht. Einen Übergang
+gibt es nicht: eine `.pa/report_*.md` erfüllt die Regel nicht mehr, ein offener
+Paket-PR muss den Abschnitt im PR-Text tragen.
 Doku-/Infra-Branches (`claude/masterplan`,
 `claude/ci-01-…`, `claude/setup-a-…`) sind keine Pakete. Die
 Review-Disposition prüft Mergify **nicht** — sie gehört nach `AGENTS.md`
