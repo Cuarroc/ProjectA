@@ -1,15 +1,15 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-09-26T01:51:17.741Z",
-  "commit": "3091f71",
+  "generatedAt": "2026-09-26T03:38:56.455Z",
+  "commit": "a115c3c",
   "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "f23a479a139e05a84937b2cb5d21002b3da794df1a38aee5c12708ef7f0d9c75"
+      "sha256": "b5837e86db8b33cf31314e1a5ba28630659ebe1733a9b55c06e379a37258b73c"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "011aa5fefa11bf074b100dca92cbb83a152c935f5706a2b383bcd7fb28cd405a"
+      "sha256": "429840b8289ca5386dfab9c3a58b531ac168caed9b30cd8f9e332bfb9d9e13b3"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -31,7 +31,7 @@ window.HQ_DATA = {
   "warnings": [],
   "nextGrip": [
     {
-      "text": "Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.",
+      "text": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
       "source": "STAND.md#Nächster Griff"
     },
     {
@@ -39,7 +39,7 @@ window.HQ_DATA = {
       "source": "STAND.md#Nächster Griff"
     },
     {
-      "text": "Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
+      "text": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "source": "STAND.md#Nächster Griff"
     }
   ],
@@ -205,12 +205,12 @@ window.HQ_DATA = {
   ],
   "next": [
     {
-      "packet": "Die offenen M1-PRs landen lassen; die Queue merg",
-      "why": "Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.",
+      "packet": "M2 nach PLAN.md abarbeiten; die Queue mergt grün",
+      "why": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "Die offenen M1-PRs landen lassen; die Queue mergt grüne PRs selbst.",
+      "doneWhen": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
       "startable": true
     },
     {
@@ -223,12 +223,12 @@ window.HQ_DATA = {
       "startable": true
     },
     {
-      "packet": "Danach M2 nach PLAN.md. Fragen an den Nutzer geh",
-      "why": "Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
+      "packet": "Fragen an den Nutzer gehen in die Entscheidungs-",
+      "why": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "Danach M2 nach PLAN.md. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
+      "doneWhen": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "startable": true
     }
   ],
