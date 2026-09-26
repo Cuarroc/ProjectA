@@ -4,7 +4,7 @@ Candidate reviewed: `ba6248c` (author: Claude Sonnet 5). Reviewers: kimi-k3 and
 glm-5.2 via Ollama Cloud (`.pa/review_transport.py`, both exit 0). Raw answers:
 `.pa/review_w1-17_kimi-k3.md`, `.pa/review_w1-17_glm-5.2.md`. Verdict of both:
 approve with conditions (condition: K1). Fixes are in the commit that follows
-the review commit; the delta is small (parser guards, three tests) and covered
+the review commit; the delta is small (parser guards, two new tests) and covered
 by the tests named below.
 
 | ID | Source | Severity | Finding | Disposition |
