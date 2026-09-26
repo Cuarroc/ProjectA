@@ -27,10 +27,11 @@ Zurück zur Übersicht: [README.md](README.md).
 
 - `AGENTS.md` liest OpenCode selbst aus der Projektwurzel. Ein Repo-`.opencode/`
   ist nicht nötig.
-- Repo-Skills: ob OpenCode `.agents/skills/` von selbst findet, ist nicht
-  belegt (Probe W1-18b offen). Die App stellt OpenCode-Workern keine Packs
-  bereit (eingebautes Profil: `skills` = `unsupported`); per `agents.json`
-  ließe sich `ConventionAt` setzen (PR #57). Globale Skills unter
+- Repo-Skills: OpenCode 1.18.32 findet `.agents/skills/` von selbst — geprobt
+  am 25.09. (W1-18b) mit `opencode debug skill --pure` in einem isolierten
+  Canary-Workspace, kein Modellaufruf (Beleg: PR-Text von W1-18b).
+  Das eingebaute Profil steht seitdem auf `conventionAt` `.agents/skills`,
+  die App stellt OpenCode-Workern also Packs bereit. Globale Skills unter
   `~/.config/opencode/`.
 
 ## Belegte Eigenschaften
