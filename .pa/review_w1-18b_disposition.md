@@ -17,3 +17,22 @@ red tests, fix, docs). Author: Claude Sonnet 5. Reviewers: Kimi K3
 
 Result: no blocker; the one condition (P-1) is met by the wording change in the
 docs commit that follows the review.
+
+## Stage B (head `ebd96f2`, one reviewer)
+
+Reviewer: Nemotron 3 Ultra 550B (`kilo/nvidia/nemotron-3-ultra-550b-a55b:free`,
+Kilo CLI, read-only, free model), a different vendor than the author. Prompt:
+`.pa/review_prompt_pr30.md`; answer stored unchanged in
+`.pa/review_pr30_nemotron-3-ultra.md`. Verdict: freigeben mit Auflagen. The
+`file:line` references in the answer do not match the files (e.g.
+`hq-profile-contract.test.mjs` has 106 lines, cited `:177`; `opencode.md` has 44
+lines, cited `:94-98`), so each finding was checked against the actual text.
+No code change results, so no red test is due.
+
+| ID | Source | Severity | Finding | Disposition |
+|---|---|---|---|---|
+| N-1 | nemotron | minor | The glm variant inherits `ConventionAt` by assumption; re-probe later and revert to `Unsupported` if negative. | Already handled by P-1: the assumption is named in the test comment (`profiles.rs` ~l.520) and in the PR text. Follow-up stays: probe `opencode -m opencode-go/glm-5.3-flash debug skill --pure`; on a negative result revert that profile. No change now. |
+| N-2 | nemotron | minor | The mirror test evaluates the validator's mode table with `new Function()`. | Rejected. Test-only code; the input is a slice of a tracked repo file, never external data. The table is an inline literal inside `validateStoredProfile`, so it cannot be imported without changing production code for a test's sake. |
+| N-3 | nemotron | info | The docs cite the PR text as evidence rather than an artifact in the repo. | Accepted as is, no change. Verified: the PR text has a "Beleg (Probe 2026-09-25)" section with tool version, command, exit code and what is not claimed; `.pa/evidence_*.json` is gitignored, as the PR text states. |
+
+Result: no blocker, no new condition beyond the existing P-1 follow-up.
