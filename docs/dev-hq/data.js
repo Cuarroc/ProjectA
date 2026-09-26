@@ -1,15 +1,15 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-09-25T23:13:27.754Z",
-  "commit": "a3698bf",
+  "generatedAt": "2026-09-26T01:51:17.741Z",
+  "commit": "3091f71",
   "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "07925642c01297b262b8639adee6897571a6aa7564f8f27f0c0bf58a065a7f97"
+      "sha256": "f23a479a139e05a84937b2cb5d21002b3da794df1a38aee5c12708ef7f0d9c75"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "8613937a215ec904f61c6b5d72d60574a1208cfafcfa388de0b669e084f861be"
+      "sha256": "011aa5fefa11bf074b100dca92cbb83a152c935f5706a2b383bcd7fb28cd405a"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -35,7 +35,7 @@ window.HQ_DATA = {
       "source": "STAND.md#Nächster Griff"
     },
     {
-      "text": "W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.",
+      "text": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
       "source": "STAND.md#Nächster Griff"
     },
     {
@@ -214,12 +214,12 @@ window.HQ_DATA = {
       "startable": true
     },
     {
-      "packet": "W1-05b abschließen: erst das st-Kind (PR #157), ",
-      "why": "W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.",
+      "packet": "Die toten Queue-Einträge read-only nachzählen un",
+      "why": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "W1-05b abschließen: erst das st-Kind (PR #157), dann das api-Kind; die toten Queue-Einträge vorher read-only nachzählen.",
+      "doneWhen": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
       "startable": true
     },
     {
@@ -1057,7 +1057,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 3,
+        "ageDays": 4,
         "votes": 0
       }
     },
