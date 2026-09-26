@@ -1137,21 +1137,31 @@ mod tests {
         addr
     }
 
+    /// Reads the request and then says nothing until the client hangs up.
+    ///
+    /// Not a fixed sleep: a client that is descheduled past the sleep would
+    /// find a closed socket (EOF, `Unreadable`) instead of silence. The read
+    /// timeout only keeps the thread from outliving a test that never
+    /// connects or never hangs up.
     fn serve_stalled() -> SocketAddr {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind");
         let addr = listener.local_addr().expect("addr");
         std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept");
-            let mut request = [0u8; 2048];
-            let _ = stream.read(&mut request);
-            std::thread::sleep(Duration::from_millis(200));
+            let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
+            let mut buffer = [0u8; 2048];
+            while matches!(stream.read(&mut buffer), Ok(n) if n > 0) {}
         });
         addr
     }
 
     /// The budget for cases where the server DOES answer and the test is about
-    /// the status class of that answer.
-    const STATUS_BUDGET: Duration = Duration::from_millis(100);
+    /// the status class of that answer. The answer normally takes well under a
+    /// millisecond; the budget only has to outlast a starved fixture thread
+    /// (W1-30: 24+ busy threads on 12 cores exhausted 100 ms on every run).
+    /// It costs nothing when the answer comes, and the `Timeout` and `Offline`
+    /// cases keep their own tight budgets because silence is what they test.
+    const STATUS_BUDGET: Duration = Duration::from_secs(5);
 
     fn fetch_usage_from(addr: SocketAddr, budget: Duration) -> Result<Vec<UsageRow>, UsageError> {
         let response = get_authorized_classified(
