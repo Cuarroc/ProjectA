@@ -146,3 +146,15 @@ test("Sources: table plus outbound STAND / Sanierungsplan / ui-variants", () => 
   assert.match(HQ_JS, /\.\.\/\.\.\/STAND\.md/);
   assert.match(HQ_JS, /\.\.\/ui-variants\/index\.html/);
 });
+
+test("live snapshot lists the PLAN.md milestones with consistent progress", () => {
+  const ids = DATA.milestones.map((m) => m.id);
+  assert.deepEqual(ids, ["M1", "M2", "M3", "M4"]);
+  for (const m of DATA.milestones) {
+    assert.ok(m.title && m.packages.length > 0, `${m.id} has a title and packages`);
+    assert.equal(m.total, m.packages.length);
+    assert.equal(m.done, m.packages.filter((p) => p.state === "done").length);
+    for (const p of m.packages) assert.ok(["done", "open", "in_progress", "pr"].includes(p.state), `${p.id}: ${p.state}`);
+  }
+  assert.equal(DATA.packages, undefined, "the retired F0-F8 packages are not part of the snapshot");
+});

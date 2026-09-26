@@ -13,6 +13,7 @@ import {
   buildPackages,
   applySpecStartable,
 } from "./hq-parse.mjs";
+import * as parseAll from "./hq-parse.mjs";
 
 const FIXTURE = `
 ## 3. Nächster Griff
@@ -380,4 +381,91 @@ test("missing STAND → exit 1 and no data.json", () => {
   assert.notEqual(r.status, 0);
   assert.equal(JSON.parse(readFileSync(stale, "utf8")).keep, true);
   assert.equal(existsSync(join(root, "docs", "dev-hq", "data.js")), false);
+});
+
+// Excerpt of the real docs/PLAN.md structure: the M overview table (header "M",
+// not "ID"), the lane legend, one table per "### M<n> — title" section, prose
+// after a table, mixed Stand cells, and a later section with a table that must
+// not be read.
+const PLAN_FIXTURE = `
+## Meilensteine
+
+| M | Titel | Abnahme in Alltagssprache |
+|---|---|---|
+| M1 | Alles Laufende gelandet, App startbar | Keine offenen Paket-PRs. |
+
+### M1 — Alles Laufende gelandet, App startbar
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| W2-03 | Usage-/Billing-Collectors je Adapter | M | st | ✓ #140 |
+| W1-05b | Sichere Cancel-Regel; erst st-Kind, dann api-Kind | M | st → api | ✓ #19 |
+
+### M2 — Überblick und Setup
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| PLAN-01 | Ein Plan, zehn Regeln | M | doc | dieses Paket |
+| OPS-01 | Status und Tagesbericht per Skript | M | doc | PR #164 |
+| CLEAN-02 | Stillgelegten Pfad löschen (a \| b) | S | api → mn → wk | ✓ #25 |
+| SETUP-14 | Nutzer: tote Keys | S | N | offen |
+
+PC-Setup außerhalb des Repos: Backup mit Kopia.
+
+### M3 — App im Alltag + Zwischenrelease v1.5.0-beta
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| W2-10 | Live-HQ-Views | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c offen |
+| W1-18b | Probe Codex/OpenCode | S | wk + N | in Arbeit |
+| R-1 | Zwischenrelease | S | N + doc | offen |
+
+### Reihenfolge der seriellen Lanes (nach Meilensteinen)
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| X-1 | not a milestone package | S | ci | offen |
+`;
+
+test("parseMilestones reads the M1-M3 tables of the real PLAN.md structure", () => {
+  const ms = parseAll.parseMilestones(PLAN_FIXTURE);
+  assert.deepEqual(ms.map((m) => m.id), ["M1", "M2", "M3"]);
+  assert.equal(ms[0].title, "Alles Laufende gelandet, App startbar");
+  assert.equal(ms[2].title, "App im Alltag + Zwischenrelease v1.5.0-beta");
+  assert.deepEqual(ms.map((m) => [m.done, m.total]), [[2, 2], [1, 4], [0, 3]]);
+  const row = (mid, id) => ms.find((m) => m.id === mid).packages.find((p) => p.id === id);
+  assert.deepEqual(row("M1", "W1-05b"), {
+    id: "W1-05b", title: "Sichere Cancel-Regel; erst st-Kind, dann api-Kind",
+    size: "M", lane: "st → api", stand: "✓ #19", state: "done", prNumbers: [19],
+  });
+  assert.equal(row("M2", "PLAN-01").state, "in_progress");
+  assert.equal(row("M2", "OPS-01").state, "pr");
+  assert.deepEqual(row("M2", "OPS-01").prNumbers, [164]);
+  assert.equal(row("M2", "CLEAN-02").state, "done");
+  assert.equal(row("M2", "CLEAN-02").title, "Stillgelegten Pfad löschen (a | b)");
+  assert.equal(row("M2", "SETUP-14").state, "open");
+  assert.equal(row("M3", "W2-10").state, "in_progress", "some sub-packages merged, some open");
+  assert.deepEqual(row("M3", "W2-10").prNumbers, [13, 21]);
+  assert.equal(row("M3", "W1-18b").state, "in_progress");
+  assert.equal(row("M3", "R-1").state, "open");
+  assert.ok(!ms.some((m) => m.packages.some((p) => p.id === "X-1")), "later tables are not read");
+});
+
+test("parseMilestones yields nothing when PLAN.md has no milestone sections", () => {
+  assert.deepEqual(parseAll.parseMilestones("# Plan\n\n| ID | Paket |\n|---|---|\n| A | b |\n"), []);
+});
+
+test("dev-hq snapshot carries the PLAN.md milestones and no F-package DAG", () => {
+  const root = mkdtempSync(join(tmpdir(), "hq-ms-"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  writeFileSync(join(root, "STAND.md"), "# STAND\n\n## Aktive Specs\n\n| Spec | Paket | Lane |\n|---|---|---|\n");
+  writeFileSync(join(root, "docs", "PLAN.md"), PLAN_FIXTURE);
+  const out = join(root, "docs", "dev-hq");
+  const r = spawnSync(process.execPath, ["scripts/dev-hq.mjs", "--root", root, "--out", out], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  const data = JSON.parse(readFileSync(join(out, "data.json"), "utf8"));
+  assert.deepEqual(data.milestones.map((m) => m.id), ["M1", "M2", "M3"]);
+  assert.equal(data.milestones[1].done, 1);
+  assert.equal(data.packages, undefined, "the F0-F8 DAG is no longer emitted");
+  assert.match(readFileSync(join(out, "data.js"), "utf8"), /"milestones"/);
 });
