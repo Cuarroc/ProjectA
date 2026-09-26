@@ -4,6 +4,14 @@
   --steel: #9acbd8; --forest: #82d5b4; --ember: #f59185; --ochre: #e4bd74;
   --ink-2: #acbabd; --ink-3: #acbabd; --hair: #35464d; --hair-strong: #527079;
   --line: #35464d; --surface: #131b20; --raised: #1b272d;
+  /* W1-10 tokens pinned as well: hq.css flips :root with the OS scheme, but
+     the workspace stays dark in every mode, so the text roles must not
+     follow the flip. The deep accents collapse onto the light workspace
+     accents; --chip-ink is dark because the chips here are light. */
+  --bright: var(--paper); --chip-ink: #0b1013; --link: var(--steel);
+  --ochre-text: var(--ochre); --ember-text: var(--ember); --forest-text: var(--forest);
+  --ember-deep: var(--ember); --ochre-deep: var(--ochre);
+  --ok-text: var(--forest); --err-text: var(--ember);
   height: 100dvh; overflow: hidden; font: 14px/1.5 'Segoe UI', system-ui, sans-serif;
   font-variant-numeric: tabular-nums; color-scheme: dark;
 }
