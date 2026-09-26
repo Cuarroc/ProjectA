@@ -244,6 +244,10 @@ merge, never rebase or force-push.
     runs in full. It runs in full also when a cache key input changed
     (`Cargo.toml`, `Cargo.lock`, toolchain files, `.cargo/`; for linux also
     `package-lock.json`), to refresh the cache PRs restore.
+  - A push to `main` that changes only light docs (same classifier as for
+    PRs) is light whatever its origin — manual merge, direct commit or
+    several merges — because the code is unchanged (SETUP-12). One file a
+    gate reads, one non-doc file or a cache input brings the full lane back.
 - `red-first` is computed inside `gates (linux)` (steps `red-first - plan`
   and `red-first - proof against merge base`); the `red-first` job only
   reports their outcome. Look there for details (CI-03).

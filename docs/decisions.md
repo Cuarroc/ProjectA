@@ -1446,3 +1446,38 @@ MERGIFY_TOKEN bekommt keinen Scope fuer scheduled_freeze (dann Nutzer:
 Application Key im Mergify-Dashboard mit Freeze-Recht anlegen). Offen bis zum
 ersten echten Ereignis: ob das bestehende Token den Freeze-Scope hat, ist
 erst an einem echten roten/gruenen main-Lauf beobachtbar.
+
+## 2026-09-26 - SETUP-12: docs-only pushes to main are light whatever their origin
+
+Audit of every workflow against a docs-only change (`*.md`, `docs/**`,
+`.pa/**`): `audit`, `flaky-test-detection` (schedule/dispatch) and `release`
+(`v*` tags) have no push/PR trigger, so a docs change never starts them.
+`ci` on a pull request is already light (CI-02 linux plan, CI-03 windows
+stub, red-first inside the linux job). One rest was left: a **push to
+main**. The light push (CI-02) needs proof of a Mergify queue merge (HEAD =
+one merge commit from `mergify[bot]`); every merge so far was a manual
+GitHub merge (0 queue PRs among the last 40, merges by the repo owner), so
+even a docs-only merge ran both lanes in full - run 36216250335 (PLAN-01,
+#26): `run=true - Merge auf main stammt nicht von mergify[bot]`, ~12 min
+wall clock, linux + windows.
+
+- **Decision:** in `scripts/ci/lane-plan.sh`, a push to main whose changed
+  files are ALL light docs (`is_light_doc`, the classifier the PR run
+  already trusts) is light for both lanes, before the provenance checks.
+  Why: the tree is byte-identical for every gate, so no gate outcome can
+  change; the queue-provenance proof exists for code. Unknown predecessor,
+  push to another ref, a failing or empty diff, a doc a gate reads
+  (`HEAVY_DOCS`, `include_str!` targets, literal references), any non-doc
+  file and any cache input still fall through to the old checks (full unless
+  behind a proven queue merge). Every case, both directions, is pinned in
+  `scripts/test-lane-plan.sh`.
+- **Not changed on purpose:** merge-queue runs stay full even for a
+  docs-only batch. The classifier is a heuristic with known blind spots
+  (paths built at runtime); the queue run is the net that catches such a
+  miss before main, and it costs one run per docs PR. `main-red-guard`
+  already treats a skipped lane as no proof of green.
+- **Reverse when:** a docs-only push turns main red (a gate read a doc the
+  classifier calls light) - then add the file to `HEAVY_DOCS`, do not
+  remove the shortcut. Reconsider the queue rule once queue runs of
+  docs-only PRs show up in the minute measurement.
+

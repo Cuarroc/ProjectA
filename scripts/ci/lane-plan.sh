@@ -27,6 +27,10 @@
 #   2. push:
 #        - nicht auf refs/heads/main, oder Vorgaenger-Commit unbekannt,
 #          nicht holbar, Diff leer oder nicht bestimmbar -> volle Bahn;
+#        - leicht, egal woher der Push kommt, wenn JEDE geaenderte Datei
+#          "leichte Doku" ist (is_light_doc, wie unter 6.): der Code ist dann
+#          unveraendert (SETUP-12). Handmerge, direkter Commit und mehrere
+#          Merges eines Pushes fuhren vorher voll;
 #        - leicht nur hinter einem BELEGTEN Queue-Merge (Review CI-02,
 #          kimi-k3 F3): HEAD muss genau EIN Merge-Commit von mergify[bot]
 #          (Committer GitHub) unmittelbar auf PUSH_BEFORE sein. Ein direkter
@@ -459,6 +463,32 @@ case "$EVENT_NAME" in
     fi
     git cat-file -e "${before}^{commit}" 2> /dev/null ||
       decide true "Vorgaenger-Commit $before nicht verfuegbar - volle Bahn"
+    # SETUP-12: a push that changes ONLY light docs (is_light_doc: no gate
+    # reads them) needs no provenance evidence. The code is byte-identical to
+    # the predecessor, so no gate outcome can change - the same classifier
+    # already lets the PR run skip the linux lane. Without this a manual
+    # merge, a direct commit or a multi-merge push of a README edit ran both
+    # lanes in full (measured: run 36216250335, PLAN-01, "Merge auf main
+    # stammt nicht von mergify[bot]"). Any doubt (diff fails, empty diff,
+    # one file that is not light) falls through to the provenance checks
+    # below - which stay exactly as they were.
+    if changed_files "$before" "${PLAN_HEAD:-HEAD}" && [ -n "$CHANGED" ]; then
+      load_dynamic
+      load_refs
+      docs_only=1
+      docs_count=0
+      while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        docs_count=$((docs_count + 1))
+        if ! is_light_doc "$f"; then
+          docs_only=0
+          break
+        fi
+      done <<< "$CHANGED"
+      if [ "$docs_only" = 1 ]; then
+        decide false "Push auf main aendert nur Doku ohne Leser unter den Gates ($docs_count Datei(en)) - der Code ist unveraendert, Herkunft des Merges egal"
+      fi
+    fi
     # Herkunft des Push-Kopfes (Review CI-02, kimi-k3 F3): der leichte Lauf
     # beruht darauf, dass genau dieser Stand Minuten vorher im Queue-Lauf
     # voll geprueft wurde. Belegt ist das nur, wenn HEAD genau EIN
