@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
-    "@tauri-apps/plugin-updater": "^2.10.1",
+    "@tauri-apps/plugin-updater": "^2.12.0",
     "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "~0.10.0",
     "@xterm/addon-search": "~0.15.0",
@@ -56,19 +56,19 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.1",
-    "@tauri-apps/cli": "^2.11.4",
+    "@tauri-apps/cli": "^2.11.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.13.6",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "jsdom": "^30.1.0",
+    "jsdom": "^30.1.1",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.68.0",
+    "typescript-eslint": "^8.70.1",
     "vite": "^6.0.5",
     "vitest": "^4.1.11"
   }
