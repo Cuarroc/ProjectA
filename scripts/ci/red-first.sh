@@ -323,6 +323,14 @@ run_spec() {
             '
         )
         if [ "${#cargo_tests[@]}" -eq 0 ]; then
+          # A test that is #[cfg]-gated to the other OS does not exist for
+          # `cargo test --list` here (PR #12: Windows-only tests on the
+          # Linux runner). Only a provable gate is skipped; the other OS's
+          # run (the queue's Windows lane) is where it is proven.
+          if tf_rust_test_gated_off_platform "$tree" "$path" "$name"; then
+            echo "red-first: $path plattformbedingt uebersprungen ($name ist auf dieser Plattform per #[cfg] nicht kompiliert)"
+            return 0
+          fi
           echo "Kein Rust-Test passt exakt auf: $name"
           return 1
         fi

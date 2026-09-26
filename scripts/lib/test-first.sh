@@ -127,3 +127,64 @@ tf_subject_skips_hook() {
   esac
   return 1
 }
+
+# The OS whose #[cfg] gates cannot be compiled on this host: a Windows host
+# never compiles `cfg(unix)` code, every other host never compiles
+# `cfg(windows)` code. TF_HOST_OS (windows|unix) overrides the detection for
+# the self-test.
+tf_other_os_cfg() {
+  local host="${TF_HOST_OS:-}"
+  if [ -z "$host" ]; then
+    case "$(uname -s 2>/dev/null)" in
+      MINGW*|MSYS*|CYGWIN*) host=windows ;;
+      *) host=unix ;;
+    esac
+  fi
+  if [ "$host" = windows ]; then echo unix; else echo windows; fi
+}
+
+# 0 when the Rust test `name` (a `fn` in `path` below `tree`) is provably not
+# compiled on this host because it is #[cfg]-gated to the other OS: either the
+# fn carries the attribute itself, or the module that includes the file
+# (`#[cfg(..)] #[path = "..."] mod ..;`) does. Anything else - an ungated test
+# that is merely not listed, a name that is not in the source, a gate this
+# cannot read - returns 1, so the spec stays red at the merge base and must
+# be green at the head (fail closed). `not(<os>)` and `any(..)` gates are never
+# treated as gated off. Found on PR #12: its Windows-only tests do not exist
+# for `cargo test -- --list` on the Linux runner.
+tf_rust_test_gated_off_platform() {
+  local tree="$1" path="$2" name="${3##*::}" other file base
+  other="$(tf_other_os_cfg)"
+  file="$tree/$path"
+  [ -f "$file" ] || return 1
+  base="$(basename "$path")"
+  # Does the source define this test at all?
+  grep -Eq "fn[[:space:]]+${name}[[:space:]]*\(" "$file" || return 1
+  local gate="^[[:space:]]*#\[cfg\(.*\b${other}\b"
+  # (a) the attribute lines directly above the fn, or a file-level gate.
+  # Patterns travel through the environment: `awk -v` would eat backslashes.
+  if TF_FN="fn[[:space:]]+${name}[[:space:]]*[(]" awk '
+      $0 ~ /^[[:space:]]*#!?\[/ { attrs = attrs "\n" $0; next }
+      $0 ~ ENVIRON["TF_FN"] { found = attrs; exit }
+      { attrs = "" }
+      END { print found }
+    ' "$file" | grep -E "$gate" | grep -Ev 'not\(|any\(' >/dev/null; then
+    return 0
+  fi
+  if grep -E "^[[:space:]]*#!\[cfg\(.*\b${other}\b" "$file" | grep -Ev 'not\(|any\(' >/dev/null; then
+    return 0
+  fi
+  # (b) the mod declaration that includes this file through #[path].
+  local decl
+  while IFS= read -r decl; do
+    [ -f "$decl" ] || continue
+    if TF_PATH="#\[path[[:space:]]*=[[:space:]]*\"([^\"]*/)?${base}\"\]" awk '
+        $0 ~ /^[[:space:]]*#\[/ { attrs = attrs "\n" $0; if ($0 ~ ENVIRON["TF_PATH"]) { hit = attrs; exit } next }
+        { attrs = "" }
+        END { print hit }
+      ' "$decl" | grep -E "$gate" | grep -Ev 'not\(|any\(' >/dev/null; then
+      return 0
+    fi
+  done < <(grep -rlF "$base" "$tree/src-tauri/src" --include='*.rs' 2>/dev/null)
+  return 1
+}
