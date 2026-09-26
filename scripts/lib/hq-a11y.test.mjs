@@ -173,6 +173,34 @@ test("HQ-13: the Now page milestone list is plain text plus one link, no tab sto
   dom.window.close();
 });
 
+test("W1-17 milestone views escape PLAN.md text and label every state", () => {
+  const milestones = [{
+    id: "M9", title: "<img src=x onerror=alert(1)>", done: 1, total: 4,
+    packages: ["done", "pr", "in_progress", "open"].map((state, n) => ({
+      id: `A-${n}`, title: "<b>bold</b>", size: "S", lane: "<i>doc</i>", stand: "<u>stand</u>", state, prNumbers: [],
+    })),
+  }];
+  const open = (page) => {
+    const dom = new JSDOM(source(`docs/dev-hq/${page}.html`), { url: `http://localhost/${page}.html`, runScripts: "outside-only" });
+    dom.window.HQ_DATA = { ...JSON.parse(source("docs/dev-hq/data.json")), milestones };
+    dom.window.matchMedia = () => ({ matches: true });
+    dom.window.eval(HQ_JS);
+    return dom;
+  };
+  const map = open("map");
+  const doc = map.window.document;
+  assert.equal(doc.querySelector("img, b, i, u"), null, "PLAN.md text is escaped, not parsed as HTML");
+  assert.equal(doc.querySelector(".section-title h2").textContent, "M9 — <img src=x onerror=alert(1)>");
+  assert.equal(doc.querySelector(".section-title p").textContent, "1/4 packages done");
+  assert.deepEqual([...doc.querySelectorAll(".package-state")].map((el) => el.textContent), ["done", "PR open", "in progress", "open"]);
+  map.window.close();
+  const now = open("index");
+  assert.equal(now.window.document.querySelector("img, b, i, u"), null);
+  const item = [...now.window.document.querySelectorAll(".signal-list li")].find((li) => li.querySelector("strong")?.textContent === "M9");
+  assert.equal(item.querySelector("em").textContent, "1/4");
+  now.window.close();
+});
+
 test("HQ-19 / HQ-20: no hover-only hint on the map legend and no dormant number animation", () => {
   assert.doesNotMatch(HQ_JS, /Hover nodes/);
   assert.doesNotMatch(HQ_JS, /animateNumbers|data-count=|data-suffix=/);

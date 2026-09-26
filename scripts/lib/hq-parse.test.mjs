@@ -452,6 +452,27 @@ test("parseMilestones reads the M1-M3 tables of the real PLAN.md structure", () 
   assert.ok(!ms.some((m) => m.packages.some((p) => p.id === "X-1")), "later tables are not read");
 });
 
+test("parseMilestones handles Stand edge cases and adjacent tables", () => {
+  const head = ["| ID | Paket | Gr. | Lane | Stand |", "|---|---|---|---|---|"];
+  const plan = [
+    "### M1 — Edge", "", ...head,
+    "| A-1 | leer | S | doc |  |",
+    "| A-2 | nur Haken | S | doc | ✓ |",
+    "| A-3 | klein geschrieben | S | doc | pr #7 |",
+    ...head,
+    "| A-4 | angrenzende Tabelle | S | doc | offen |",
+    "", "#### Unterabschnitt", "", ...head,
+    "| B-1 | nicht gelesen | S | doc | offen |", "",
+  ].join("\n");
+  const [m] = parseAll.parseMilestones(plan);
+  assert.deepEqual(
+    m.packages.map((p) => [p.id, p.state]),
+    [["A-1", "open"], ["A-2", "done"], ["A-3", "pr"], ["A-4", "open"]],
+    "no header/separator pseudo-packages, no double reading, sub-heading ends the section",
+  );
+  assert.deepEqual([m.done, m.total], [1, 4]);
+});
+
 test("parseMilestones yields nothing when PLAN.md has no milestone sections", () => {
   assert.deepEqual(parseAll.parseMilestones("# Plan\n\n| ID | Paket |\n|---|---|\n| A | b |\n"), []);
 });

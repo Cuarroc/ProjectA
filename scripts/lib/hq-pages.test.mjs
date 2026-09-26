@@ -101,7 +101,8 @@ test("Sources: table plus outbound STAND / Sanierungsplan / ui-variants", () => 
 
 test("live snapshot lists the PLAN.md milestones with consistent progress", () => {
   const ids = DATA.milestones.map((m) => m.id);
-  assert.deepEqual(ids, ["M1", "M2", "M3", "M4"]);
+  assert.ok(ids.length > 0 && ids.every((id) => /^M\d+$/.test(id)), `milestone ids: ${ids}`);
+  assert.equal(new Set(ids).size, ids.length, "milestone ids are unique");
   for (const m of DATA.milestones) {
     assert.ok(m.title && m.packages.length > 0, `${m.id} has a title and packages`);
     assert.equal(m.total, m.packages.length);
