@@ -3,6 +3,7 @@
 //! Unknown usage retains the entire reservation across exits and restarts; the
 //! one known-zero case, a proven `exited_undelivered` exit before input
 //! delivery (DF-15b / KI-27), releases the reservation unused instead.
+use super::development_launches::{run_role, DispatchRole};
 use super::{new_id, now_unix_secs, Store};
 use crate::development_policy::{DevelopmentPolicy, TokenPolicy};
 use serde::{Deserialize, Serialize};
@@ -36,6 +37,17 @@ impl BudgetPurpose {
     }
     fn protected(self) -> bool {
         matches!(self, Self::Review | Self::Verification)
+    }
+    /// W2-04d: the one budget purpose a run dispatched in this role may hold.
+    /// Review and integration draw from the protected verification reserve;
+    /// coordination and implementation share the unprotected remainder.
+    pub fn for_dispatch_role(role: DispatchRole) -> Self {
+        match role {
+            DispatchRole::Coordinator => Self::Planning,
+            DispatchRole::Implementer => Self::Implementation,
+            DispatchRole::Reviewer => Self::Review,
+            DispatchRole::Integrator => Self::Verification,
+        }
     }
 }
 
@@ -157,6 +169,10 @@ async fn event(tx: &mut Transaction<'_, Sqlite>, root: &str, detail: &str) -> Re
 
 impl Store {
     /// An allocation estimate is held, never reported as measured consumption.
+    /// A run-bound reservation is allowed only for the purpose the run's
+    /// dispatch role maps to (W2-04d, `BudgetPurpose::for_dispatch_role`), and
+    /// a run holds at most one non-cancelled reservation; implementation work
+    /// is never unbound.
     pub async fn reserve_development_tokens(
         &self,
         goal: &str,
@@ -168,7 +184,7 @@ impl Store {
         if key.trim().is_empty() || key.len() > 128 || !(1..=200_000).contains(&tokens) {
             return Err("invalid token reservation key or amount".into());
         }
-        if (purpose == BudgetPurpose::Implementation) != run.is_some() {
+        if purpose == BudgetPurpose::Implementation && run.is_none() {
             return Err("implementation token reservations require exactly one run binding".into());
         }
         let mut tx = self.pool.begin().await.map_err(db)?;
@@ -207,6 +223,24 @@ impl Store {
                 .bind(run).bind(goal).fetch_one(&mut *tx).await.map_err(db)?;
             if !valid {
                 return Err("token reservation run is stale or belongs to another goal".into());
+            }
+            // The role is resolved inside this writer transaction, like the
+            // launch boundary does; the budget purpose must be the one the
+            // role maps to, never a caller-chosen one.
+            let role = run_role(&mut tx, run).await?;
+            let required = BudgetPurpose::for_dispatch_role(role);
+            if purpose != required {
+                return Err(format!(
+                    "run dispatches as {}, which holds {} budget, not {}",
+                    role.as_str(),
+                    required.name(),
+                    purpose.name()
+                ));
+            }
+            let (taken,): (bool,) = sqlx::query_as("SELECT EXISTS(SELECT 1 FROM development_token_reservations WHERE run_id=? AND state != 'cancelled')")
+                .bind(run).fetch_one(&mut *tx).await.map_err(db)?;
+            if taken {
+                return Err("development run already holds a token reservation".into());
             }
         }
         let totals = balance(&mut tx, &root).await?;
@@ -400,12 +434,21 @@ async fn start(tx: &mut Transaction<'_, Sqlite>, id: &str) -> Result<(), String>
     event(tx, &row.root_goal_id, id).await
 }
 
+/// A run holds at most one non-cancelled reservation (enforced in
+/// `reserve_development_tokens`), so the run-bound row is unique whatever
+/// purpose its dispatch role maps to.
 pub(super) async fn consume_worker(
     tx: &mut Transaction<'_, Sqlite>,
     run: &str,
 ) -> Result<(), String> {
-    let (id,): (String,) = sqlx::query_as("SELECT id FROM development_token_reservations WHERE run_id=? AND purpose='implementation' AND state='reserved'")
-        .bind(run).fetch_optional(&mut **tx).await.map_err(db)?.ok_or("development launch has no reserved token budget")?;
+    let (id,): (String,) = sqlx::query_as(
+        "SELECT id FROM development_token_reservations WHERE run_id=? AND state='reserved'",
+    )
+    .bind(run)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(db)?
+    .ok_or("development launch has no reserved token budget")?;
     start(tx, &id).await
 }
 
@@ -904,5 +947,288 @@ mod tests {
             .await
             .unwrap();
         assert!(balance(&mut tx, &root).await.unwrap().allowance.is_none());
+    }
+
+    /// W2-04d fixture: a run whose task carries a migration-14 team assignment
+    /// for `role`, claimed by the assignee. The default policy team
+    /// "development" permits all four dispatch roles. The owned path is
+    /// unique per role so several role runs can coexist under one root.
+    pub(super) async fn role_run(store: &Store, root: &str, role: &str) -> (String, i64) {
+        let task = store
+            .create_continuous_task(
+                root,
+                "role task",
+                None,
+                vec![format!("src/{role}.rs")],
+                vec![],
+            )
+            .await
+            .unwrap();
+        store
+            .assign_continuous_task(
+                &task.id,
+                crate::store::team_assignments::AssignmentRequest {
+                    team_id: "development".into(),
+                    role: role.into(),
+                    assignee: "owner".into(),
+                    expected_revision: 0,
+                },
+            )
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "owner", false)
+            .await
+            .unwrap();
+        let run = store
+            .record_development_run_intent(&task.id, "owner", claim.fence)
+            .await
+            .unwrap();
+        (run.id, claim.fence)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn reviewer_run_reserves_review_budget_and_the_launch_consumes_it() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (run, fence) = role_run(&store, &root, "reviewer").await;
+        let launch = store
+            .reserve_development_launch(&run, "owner", fence, "codex")
+            .await
+            .unwrap();
+        store.bind_development_launch_route(&run,"owner",fence,&serde_json::json!({"selection":{"resolved":{"profileId":"codex"}},"expiresAt":now_unix_secs()+600})).await.unwrap();
+        store
+            .bind_development_launch_baseline(&run, "owner", fence, &"a".repeat(40))
+            .await
+            .unwrap();
+        let reservation = store
+            .reserve_development_tokens(&root, "review", BudgetPurpose::Review, 10_000, Some(&run))
+            .await
+            .unwrap();
+        assert!(
+            store
+                .start_development_tokens(&reservation.id)
+                .await
+                .is_err(),
+            "worker budget starts with its launch, never by hand"
+        );
+        store
+            .consume_development_launch(&run, "owner", fence, &launch.worker_id, "session")
+            .await
+            .unwrap();
+        assert_eq!(totals(&store, &root).await.unresolved_operations, 1);
+        store
+            .record_development_process_exit(&launch.worker_id, "session", Some(0))
+            .await
+            .unwrap();
+        store
+            .settle_development_run_tokens(
+                &reservation.id,
+                RunUsageBinding {
+                    run_id: &run,
+                    session_id: "session",
+                },
+                500,
+                "final-receipt",
+                now_unix_secs(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(totals(&store, &root).await.measured_tokens, 500);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn run_budget_purpose_must_match_the_dispatch_role() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (reviewer, _fence) = role_run(&store, &root, "reviewer").await;
+        for purpose in [
+            BudgetPurpose::Planning,
+            BudgetPurpose::Context,
+            BudgetPurpose::Discovery,
+            BudgetPurpose::Implementation,
+            BudgetPurpose::Verification,
+        ] {
+            assert!(
+                store
+                    .reserve_development_tokens(
+                        &root,
+                        &format!("mismatch-{}", purpose.name()),
+                        purpose,
+                        1000,
+                        Some(&reviewer)
+                    )
+                    .await
+                    .is_err(),
+                "a reviewer run must not reserve {purpose:?} budget"
+            );
+        }
+        let (implementer, _fence) = role_run(&store, &root, "implementer").await;
+        assert!(store
+            .reserve_development_tokens(
+                &root,
+                "wrong-review",
+                BudgetPurpose::Review,
+                1000,
+                Some(&implementer)
+            )
+            .await
+            .is_err());
+        assert!(store
+            .reserve_development_tokens(
+                &root,
+                "right",
+                BudgetPurpose::Implementation,
+                1000,
+                Some(&implementer)
+            )
+            .await
+            .is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn coordinator_and_integrator_runs_bind_planning_and_verification() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (coordinator, _fence) = role_run(&store, &root, "coordinator").await;
+        store
+            .reserve_development_tokens(
+                &root,
+                "planning",
+                BudgetPurpose::Planning,
+                50_000,
+                Some(&coordinator),
+            )
+            .await
+            .unwrap();
+        let (integrator, _fence) = role_run(&store, &root, "integrator").await;
+        store
+            .reserve_development_tokens(
+                &root,
+                "verification",
+                BudgetPurpose::Verification,
+                10_000,
+                Some(&integrator),
+            )
+            .await
+            .unwrap();
+        let balance = totals(&store, &root).await;
+        assert_eq!(balance.reserved_tokens, 60_000);
+        assert_eq!(balance.verification_remaining, 30_000);
+        assert_eq!(balance.implementation_available, 110_000);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn coordinator_and_integrator_runs_reject_every_other_purpose() {
+        let (_dir, store, _project, root) = fixture().await;
+        let all = [
+            BudgetPurpose::Planning,
+            BudgetPurpose::Context,
+            BudgetPurpose::Discovery,
+            BudgetPurpose::Implementation,
+            BudgetPurpose::Review,
+            BudgetPurpose::Verification,
+        ];
+        for (role, allowed) in [
+            ("coordinator", BudgetPurpose::Planning),
+            ("integrator", BudgetPurpose::Verification),
+        ] {
+            let (run, _fence) = role_run(&store, &root, role).await;
+            for purpose in all.into_iter().filter(|p| *p != allowed) {
+                assert!(
+                    store
+                        .reserve_development_tokens(
+                            &root,
+                            &format!("{role}-{}", purpose.name()),
+                            purpose,
+                            1000,
+                            Some(&run)
+                        )
+                        .await
+                        .is_err(),
+                    "a {role} run must not reserve {purpose:?} budget"
+                );
+            }
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_run_holds_exactly_one_token_reservation() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (run, _fence) = role_run(&store, &root, "reviewer").await;
+        let first = store
+            .reserve_development_tokens(&root, "review", BudgetPurpose::Review, 1000, Some(&run))
+            .await
+            .unwrap();
+        assert_eq!(
+            first.id,
+            store
+                .reserve_development_tokens(
+                    &root,
+                    "review",
+                    BudgetPurpose::Review,
+                    1000,
+                    Some(&run)
+                )
+                .await
+                .unwrap()
+                .id,
+            "idempotent replay returns the existing row"
+        );
+        assert!(store
+            .reserve_development_tokens(
+                &root,
+                "review-again",
+                BudgetPurpose::Review,
+                1000,
+                Some(&run)
+            )
+            .await
+            .is_err());
+    }
+
+    /// W2-04d review (glm-5.2 Befund 2, qwen ID 5): a cancelled reservation
+    /// frees the run; the next reservation and every run-bound reader ignore
+    /// the cancelled row.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn cancelled_run_reservation_frees_the_run_for_a_new_one() {
+        let (_dir, store, _project, root) = fixture().await;
+        let (run, _fence) = role_run(&store, &root, "reviewer").await;
+        let first = store
+            .reserve_development_tokens(&root, "review", BudgetPurpose::Review, 1000, Some(&run))
+            .await
+            .unwrap();
+        store.cancel_development_tokens(&first.id).await.unwrap();
+        let second = store
+            .reserve_development_tokens(
+                &root,
+                "review-new",
+                BudgetPurpose::Review,
+                2000,
+                Some(&run),
+            )
+            .await
+            .unwrap();
+        assert_ne!(first.id, second.id);
+        let mut tx = store.pool.begin().await.unwrap();
+        consume_worker(&mut tx, &run).await.unwrap();
+        tx.commit().await.unwrap();
+        let states: Vec<(String, String)> = sqlx::query_as(
+            "SELECT id, state FROM development_token_reservations WHERE run_id=? ORDER BY rowid",
+        )
+        .bind(&run)
+        .fetch_all(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            states,
+            vec![
+                (first.id.clone(), "cancelled".to_string()),
+                (second.id.clone(), "started".to_string())
+            ],
+            "the launch consumes the live reservation, never the cancelled one"
+        );
+        let mut tx = store.pool.begin().await.unwrap();
+        let receipt = usage_receipt::for_run(&mut tx, &run, None).await.unwrap();
+        tx.commit().await.unwrap();
+        assert_eq!(receipt["reservedTokens"], 2000);
+        assert_eq!(receipt["ledgerState"], "started");
     }
 }
