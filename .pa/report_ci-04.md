@@ -134,8 +134,22 @@ gilt als failure und SOLL feuern, Kosten vernachlaessigbar).
   Gates laufen in der Bahn linux im CI-Lauf dieses PRs.
 - **Live-Wirkung gegen Mergify** bleibt offen (s. oben): Token-Scope erst
   beim ersten echten Lauf beweisbar.
-- **Review-Regel erledigt**: zwei AI-Reviewer (claude sonnet + opus),
-  Disposition `.pa/review_pr182_disposition.md` im PR.
+- **Review-Regel**: die zwei Claude-Reviews des Vorgaengers
+  (`.pa/review_pr182_*`) zaehlen hier nicht als unabhaengig (Autor ist ein
+  Claude-Modell). Stufe B in diesem Repo: Kilo (`nemotron-3-ultra-550b-a55b:free`),
+  Rohantwort `.pa/review_pr28_kilo.md`, Disposition
+  `.pa/review_pr28_disposition.md` (K4/K5/K6 angenommen, Rest begruendet
+  abgelehnt). Ein Reviewer, weil Ollama/OpenCode wegen des Wochenlimits
+  ausfielen.
+
+## Review Stufe B (dieses Repo, Kilo)
+
+- Rot: `f29c6a5`, `bash scripts/test-main-red-guard.sh` -> **Exit 1** (3 FEHLER).
+- Fix: Schliess-Kommentar ohne `MERGIFY_TOKEN` behauptet keinen aufgehobenen
+  Freeze mehr (K4/K5); `summary()` schreibt ein Argument pro Zeile (K6).
+- Gruen: `bash scripts/test-main-red-guard.sh` -> **Exit 0** (63 ok),
+  `bash scripts/test-ci-shape.sh` -> **Exit 0**, `bash scripts/ci/ci-shape.sh`
+  -> **Exit 0**.
 
 ## Folgepunkte
 

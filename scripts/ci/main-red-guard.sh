@@ -65,7 +65,7 @@ warn() { echo "::warning title=main-red-guard::$*"; }
 fail() { echo "::error title=main-red-guard::$*"; exit 1; }
 
 summary() {
-  [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n' "$*" >> "$GITHUB_STEP_SUMMARY"
+  [ -n "${GITHUB_STEP_SUMMARY:-}" ] && printf '%s\n' "$@" >> "$GITHUB_STEP_SUMMARY"
   return 0
 }
 
@@ -237,7 +237,9 @@ fi
 # the issue must stay open - a closed issue with a live freeze would look
 # resolved while the queue is still frozen.
 del_failed=0
+lift_note="Freeze aufgehoben (CI-04)."
 if [ -z "$MERGIFY_TOKEN" ]; then
+  lift_note="Freeze-Status nicht geprueft (MERGIFY_TOKEN fehlt) - falls einer aktiv ist, manuell im Mergify-Dashboard loeschen (CI-04)."
   warn "MERGIFY_TOKEN ist nicht gesetzt - kann keinen Freeze loeschen. Falls einer aktiv ist: manuell im Mergify-Dashboard loeschen."
 else
   ids="$(freeze_ids)" || fail "Mergify: Freeze-Liste nicht lesbar"
@@ -258,7 +260,7 @@ closed=""
 existing="$(open_ci_red_issues)" || fail "gh issue list fehlgeschlagen"
 for n in $existing; do
   gh issue close "$n" --repo "$REPO" \
-    --comment "Gruen bewiesen: Run $RUN_ID ($RUN_URL), Commit $SHA - beide Bahnen gelaufen. Freeze aufgehoben (CI-04)." ||
+    --comment "Gruen bewiesen: Run $RUN_ID ($RUN_URL), Commit $SHA - beide Bahnen gelaufen. $lift_note" ||
     fail "gh issue close #$n fehlgeschlagen"
   closed="$closed #$n"
 done
