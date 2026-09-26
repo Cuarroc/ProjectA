@@ -677,3 +677,102 @@ test("the desk: ranked signals in the paper well, whole-project estimates with b
   await page.screenshot({ path: join(shotDir, "desk-v3.png"), fullPage: true });
   await page.close();
 });
+
+test("W1-10 color schemes flip the tokens for dark and light and prefers-contrast", async () => {
+  const schemes = [
+    ["dark", { colorScheme: "dark" }],
+    ["light", { colorScheme: "light" }],
+    ["dark-more-contrast", { colorScheme: "dark", contrast: "more" }],
+    ["light-more-contrast", { colorScheme: "light", contrast: "more" }],
+  ];
+  const seen = {};
+  for (const [name, media] of schemes) {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, ...media });
+    // live.html carries the .hq-workspace palette (own scope, dark-only), so
+    // the hq.css scheme evidence comes from the static pages.
+    await page.goto(`http://127.0.0.1:${hqPort}/index.html`);
+    await page.waitForSelector(".hq-bar h1", { timeout: 10000 });
+    seen[name] = await page.evaluate(() => {
+      const body = getComputedStyle(document.body);
+      const root = getComputedStyle(document.documentElement);
+      return {
+        bg: body.backgroundColor,
+        fg: body.color,
+        paper: root.getPropertyValue("--paper").trim(),
+        bright: root.getPropertyValue("--bright").trim(),
+        link: root.getPropertyValue("--link").trim(),
+        ink2: root.getPropertyValue("--ink-2").trim(),
+      };
+    });
+    // Focus ring on the paper well: --bright equals --paper in dark mode, so
+    // the ring of a control inside .grip must come from --ink instead
+    // (review finding, PR #184). A probe link stands in for any control.
+    await page.waitForSelector(".grip", { timeout: 10000 });
+    await page.keyboard.press("Shift");
+    seen[name].ring = await page.evaluate(() => {
+      const probe = document.createElement("a");
+      probe.id = "probe";
+      probe.href = "#probe";
+      probe.textContent = "probe";
+      document.querySelector(".grip").append(probe);
+      probe.focus();
+      return { visible: probe.matches(":focus-visible"), ring: getComputedStyle(probe).outlineColor, paper: getComputedStyle(document.querySelector(".grip")).backgroundColor };
+    });
+    await (await page.$(".grip")).screenshot({ path: join(shotDir, `scheme-${name}-grip-focus.png`) });
+    await page.evaluate(() => document.getElementById("probe")?.remove());
+    await page.screenshot({ path: join(shotDir, `scheme-${name}-now.png`), fullPage: true });
+    await page.goto(`http://127.0.0.1:${hqPort}/lessons.html`);
+    await page.waitForSelector(".lesson-row", { timeout: 10000 });
+    seen[name].hair = await page.$eval(".lesson-row", (n) => getComputedStyle(n).borderTopColor);
+    await page.screenshot({ path: join(shotDir, `scheme-${name}-lessons.png`), fullPage: false });
+    await page.close();
+  }
+
+  // The token flip lands in the rendered page: dark ground/body ink …
+  assert.equal(seen["dark"].bg, "rgb(28, 34, 40)");
+  assert.equal(seen["dark"].fg, "rgb(197, 206, 212)");
+  // … light ground/body ink …
+  assert.equal(seen["light"].bg, "rgb(232, 236, 238)");
+  assert.equal(seen["light"].fg, "rgb(43, 57, 68)");
+  // … the well surface and the accent flip at the token layer …
+  assert.equal(seen["dark"].paper, "#dfe6ea");
+  assert.equal(seen["light"].paper, "#ffffff");
+  assert.equal(seen["dark"].link, "#7ba5c0");
+  assert.equal(seen["light"].link, "#3d6d8c");
+  // … the focus ring inside the paper well never collapses onto the paper …
+  for (const name of Object.keys(seen)) {
+    assert.ok(seen[name].ring.visible, `${name}: probe must match :focus-visible`);
+    assert.notEqual(seen[name].ring.ring, seen[name].ring.paper, `${name}: focus ring on paper`);
+    assert.equal(seen[name].ring.ring, "rgb(18, 21, 26)", `${name}: ring is --ink`);
+  }
+  // … and forced contrast strengthens the hairline and the muted text level
+  // in both schemes.
+  assert.notEqual(seen["dark-more-contrast"].hair, seen["dark"].hair);
+  assert.notEqual(seen["light-more-contrast"].hair, seen["light"].hair);
+  assert.notEqual(seen["dark-more-contrast"].ink2, seen["dark"].ink2);
+  assert.notEqual(seen["light-more-contrast"].ink2, seen["light"].ink2);
+  assert.equal(seen["dark-more-contrast"].bg, seen["dark"].bg);
+  assert.equal(seen["light-more-contrast"].bg, seen["light"].bg);
+
+  // The live desk keeps its own dark palette in every OS scheme: the
+  // .hq-workspace scope pins the W1-10 tokens as well (review finding:
+  // otherwise the light flip leaks dark text onto the dark workspace).
+  const wsPage = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
+  await wsPage.goto(`http://127.0.0.1:${hqPort}/live.html`);
+  await wsPage.waitForSelector(".live-status.ok", { timeout: 20000 });
+  const ws = await wsPage.evaluate(() => {
+    const s = getComputedStyle(document.body);
+    return {
+      bg: s.backgroundColor,
+      bright: s.getPropertyValue("--bright").trim(),
+      emberDeep: s.getPropertyValue("--ember-deep").trim(),
+      chipInk: s.getPropertyValue("--chip-ink").trim(),
+    };
+  });
+  assert.equal(ws.bg, "rgb(11, 16, 19)");
+  assert.equal(ws.bright, "#e6ece9");
+  assert.equal(ws.emberDeep, "#f59185");
+  assert.equal(ws.chipInk, "#0b1013");
+  await wsPage.screenshot({ path: join(shotDir, "scheme-light-live-workspace-pinned.png"), fullPage: false });
+  await wsPage.close();
+});
