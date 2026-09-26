@@ -4,7 +4,7 @@
 //   1. open PRs without activity for more than 24 h
 //   2. remote branches without any PR (merged ones are deletable)
 //   3. specs under STAND.md "Aktive Specs" whose package already has a merged PR
-//   4. MASTERPLAN rows "in Arbeit" without an open PR
+//   4. PLAN.md milestone rows in progress (Stand "PR #n") without an open PR
 //   5. untracked files in the main checkout
 //
 // Nothing is changed. The only write is `git fetch --prune origin`, which
@@ -32,9 +32,9 @@ Prueft:
   1. offene PRs aelter als 24 h ohne Aktivitaet
   2. Remote-Branches ohne PR (gemergt = loeschbar, sonst pruefen)
   3. aktive Specs (STAND.md) zu Paketen mit gemergtem PR
-  4. MASTERPLAN-Pakete "in Arbeit" ohne offenen PR
+  4. Pakete in Arbeit (docs/PLAN.md, Stand "PR #n") ohne offenen PR
   5. ungetrackte Dateien im Hauptcheckout
-  + "Nicht geprueft": fehlende/unlesbare Eingaben (STAND.md, MASTERPLAN.md,
+  + "Nicht geprueft": fehlende/unlesbare Eingaben (STAND.md, docs/PLAN.md,
     ERLEDIGT.md) und gh-Listen am Limit; zaehlt als Befund fuer --strict
 
 Optionen:
@@ -60,12 +60,15 @@ export function prMatchesId(pr, id) {
   return new RegExp(`(^|[^a-z0-9-])${i}([^a-z0-9]|$)`).test(lower(pr.title));
 }
 
-// Column index of "Status" when lines[i] is the header of a MASTERPLAN status
-// table (first column "ID", separator row below), else -1.
+// Column index of "Status" (old MASTERPLAN tables) or "Stand" (the milestone
+// tables of docs/PLAN.md) when lines[i] is the header of such a table (first
+// column "ID", separator row below), else -1.
 function statusColumn(lines, i) {
   if (!lines[i].startsWith("|") || !/^\|[-|: ]+\|\s*$/.test(lines[i + 1] || "")) return -1;
   const head = cells(lines[i]);
-  return head[0] === "ID" ? head.indexOf("Status") : -1;
+  if (head[0] !== "ID") return -1;
+  const status = head.indexOf("Status");
+  return status !== -1 ? status : head.indexOf("Stand");
 }
 
 export function hasStatusTable(md) {
@@ -82,7 +85,7 @@ export function inProgressPackages(md) {
     for (let j = i + 2; j < lines.length && lines[j].startsWith("|"); j++) {
       const c = cells(lines[j]);
       const status = c[statusIdx] || "";
-      if (!/^in Arbeit/.test(status)) continue;
+      if (!/^(in Arbeit|PR #\d)/.test(status)) continue;
       out.push({ id: c[0], title: c[1] || "", status, prNumbers: [...status.matchAll(/PR #(\d+)/g)].map((m) => Number(m[1])) });
     }
   }
@@ -120,8 +123,8 @@ function erledigtRows(md) {
     });
 }
 
-export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText: standIn, masterplanText: masterplanIn, erledigtText: erledigtIn, untracked, limits = [] }) {
-  const [standText, masterplanText, erledigtText] = [standIn ?? "", masterplanIn ?? "", erledigtIn ?? ""];
+export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText: standIn, planText: planIn, erledigtText: erledigtIn, untracked, limits = [] }) {
+  const [standText, planText, erledigtText] = [standIn ?? "", planIn ?? "", erledigtIn ?? ""];
   const humanOpen = prsOpen.filter((p) => !MACHINE_BRANCH.test(p.headRefName));
   const stalePrs = humanOpen
     .filter((p) => now - Date.parse(p.updatedAt) > STALE_MS)
@@ -144,7 +147,7 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
   }
 
   const openNumbers = new Set(humanOpen.map((p) => p.number));
-  const inProgressWithoutPr = inProgressPackages(masterplanText).filter(
+  const inProgressWithoutPr = inProgressPackages(planText).filter(
     (r) => !humanOpen.some((p) => prMatchesId(p, r.id)) && !r.prNumbers.some((n) => openNumbers.has(n)),
   );
   // A missing input or one that no longer parses makes checks 3/4 silently
@@ -152,8 +155,8 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
   const notChecked = [...limits];
   if (standIn == null) notChecked.push("STAND.md fehlt — aktive Specs nicht geprüft");
   else if (!standText.split(/\r?\n/).some((l) => SECTION.test(l))) notChecked.push('STAND.md: Abschnitt "Aktive Specs" nicht gefunden — aktive Specs nicht geprüft');
-  if (masterplanIn == null) notChecked.push('docs/MASTERPLAN.md fehlt — Pakete „in Arbeit“ nicht geprüft');
-  else if (!hasStatusTable(masterplanText)) notChecked.push('docs/MASTERPLAN.md: keine Tabelle mit den Spalten ID und Status — Pakete „in Arbeit“ nicht geprüft');
+  if (planIn == null) notChecked.push('docs/PLAN.md fehlt — Pakete „in Arbeit“ nicht geprüft');
+  else if (!hasStatusTable(planText)) notChecked.push('docs/PLAN.md: keine Tabelle mit den Spalten ID und Stand — Pakete „in Arbeit“ nicht geprüft');
   if (erledigtIn == null) notChecked.push("docs/ERLEDIGT.md fehlt — Specs zu erledigten Paketen nur über PRs geprüft");
   else if (!/^\|\s*Datum\s*\|\s*ID\s*\|/m.test(erledigtText)) notChecked.push('docs/ERLEDIGT.md: keine Tabelle „| Datum | ID |“ — Specs zu erledigten Paketen nur über PRs geprüft');
   return { stalePrs, branchesWithoutPr, specsOfMergedPrs, inProgressWithoutPr, untracked, notChecked };
@@ -176,7 +179,7 @@ export function formatHygiene(f, { now = Date.now() } = {}) {
   const openB = f.branchesWithoutPr.filter((b) => !b.merged);
   section("Branches ohne PR", [...openB, ...mergedB], (b) => `\`${b.name}\` — ${b.merged ? "in main enthalten, löschbar" : "nicht in main, prüfen"}`);
   section("Aktive Specs zu gemergten PRs", f.specsOfMergedPrs, (s) => `\`.pa/${s.spec}\` (${s.id}) — ${s.via}; ggf. \`npm run dev:spec-close -- ${s.spec.replace(/^task_|\.md$/g, "")}\``);
-  section("MASTERPLAN-Pakete „in Arbeit“ ohne offenen PR", f.inProgressWithoutPr, (r) => `${r.id} — ${r.status}`);
+  section("Pakete „in Arbeit“ ohne offenen PR (docs/PLAN.md)", f.inProgressWithoutPr, (r) => `${r.id} — ${r.status}`);
   section("Ungetrackte Dateien im Hauptcheckout", f.untracked, (p) => `\`${p}\``);
   section("Nicht geprüft", f.notChecked || [], (n) => n);
   return out.join("\n");
@@ -225,7 +228,7 @@ export function gather({ run, cwd, now = Date.now() }) {
     untracked,
     limits,
     standText: readOrNull(join(root, "STAND.md")),
-    masterplanText: readOrNull(join(root, "docs", "MASTERPLAN.md")),
+    planText: readOrNull(join(root, "docs", "PLAN.md")),
     erledigtText: readOrNull(join(root, "docs", "ERLEDIGT.md")),
   };
 }

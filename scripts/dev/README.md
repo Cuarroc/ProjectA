@@ -111,9 +111,9 @@ calls (`gh pr list` twice, `gh run list` once) and spends no money. The test is
 | `dev:pr-status` | offene PRs als Kompakttabelle: Draft, Queue-Zustand (in Queue / bereit / wartet auf CI / rot / Konflikt / gesperrt / Draft), Labels, die drei Required Checks | nein |
 | `dev:erledigt-row` | aus PR-Nummer und Paket-ID die `docs/ERLEDIGT.md`-Zeile bauen (Datum = `mergedAt` UTC, 7-stelliger Merge-SHA, vom PR berührte `.pa/report_*.md`) und oben einfügen; idempotent, nur für gemergte PRs | nur mit `--apply` |
 | `dev:spec-close` | `.pa/task_<id>.md` auf `Status: historisch` setzen und die Zeile unter „Aktive Specs“ in `STAND.md` entfernen; danach `npm run hq` (oder `--hq`) | nur mit `--apply` |
-| `dev:hygiene` | read-only Bericht als Markdown: offene PRs > 24 h ohne Aktivität, Remote-Branches ohne PR, aktive Specs zu gemergten PRs, MASTERPLAN-Pakete „in Arbeit“ ohne offenen PR, ungetrackte Dateien im Hauptcheckout; `--strict` → Exit 1 bei Befunden | nein (nur `git fetch --prune`, abschaltbar mit `--no-fetch`) |
+| `dev:hygiene` | read-only Bericht als Markdown: offene PRs > 24 h ohne Aktivität, Remote-Branches ohne PR, aktive Specs zu gemergten PRs, Pakete „in Arbeit“ (Spalte „Stand“ = `PR #n` in den Meilenstein-Tabellen von `docs/PLAN.md`) ohne offenen PR, ungetrackte Dateien im Hauptcheckout; `--strict` → Exit 1 bei Befunden | nein (nur `git fetch --prune`, abschaltbar mit `--no-fetch`) |
 
-`docs/PLAN.md`, `STAND.md`, `MASTERPLAN.md` und `ERLEDIGT.md` schreibt nur der
+`docs/PLAN.md`, `STAND.md` und `ERLEDIGT.md` schreibt nur der
 Koordinator; `erledigt-row` und `spec-close` sind seine Werkzeuge dafür.
 Die Paket-Zuordnung in `hygiene` vergleicht IDs mit Branch-Namen
 (`…/w1-22-…`) und PR-Titeln als ganzes Wort (W1-22 trifft nie W1-22b) —
@@ -134,7 +134,7 @@ Verhalten an den Rändern (Review SETUP-08b):
   steht im `git diff`).
 - `hygiene` bricht mit Exit 3 ab, wenn `git fetch --prune origin` scheitert
   (`--no-fetch` wertet dann bewusst nur den lokalen Stand aus). Fehlende oder
-  nicht mehr lesbare Eingaben (`STAND.md`, `docs/MASTERPLAN.md`,
+  nicht mehr lesbare Eingaben (`STAND.md`, `docs/PLAN.md`,
   `docs/ERLEDIGT.md`) und `gh`-Listen am Limit stehen unter „Nicht geprüft“
   und zählen für `--strict` als Befund — ein leerer Bericht heißt „geprüft und
   sauber“, nie „nicht geprüft“.
