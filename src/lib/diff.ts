@@ -21,10 +21,6 @@ export function summarizeDiff(diff: WorkerDiff): DiffSummary {
   return { baseBranch: diff.baseBranch, files: diff.files.length, additions, deletions };
 }
 
-export function isEmptySummary(summary: DiffSummary): boolean {
-  return summary.files === 0;
-}
-
 interface CacheEntry {
   summary: DiffSummary;
   at: number;

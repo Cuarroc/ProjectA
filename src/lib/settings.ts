@@ -48,10 +48,6 @@ export function loadOnboardingHints(): boolean {
   return readString(KEYS.onboarding) !== "0";
 }
 
-export function saveOnboardingHints(show: boolean): void {
-  writeString(KEYS.onboarding, show ? null : "0");
-}
-
 /**
  * The default port for the web interface, or `null` when none was stored.
  * Anything that does not parse stays unstored rather than lying about.
