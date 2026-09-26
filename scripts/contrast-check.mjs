@@ -335,17 +335,6 @@ for (const m of hqPlain.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
   fails.push(`hq: opacity ${o[1]} auf "${sel}" mischt den Text zur Seite hin — Kontrast unmessbar`);
 }
 
-// The HQ accent is the desaturated steel blue; the generic #0066CC is
-// explicitly banned as an accent (W1-10).
-const bannedAccent = "#0066cc";
-for (const token of ["steel", "link"]) {
-  const c = color(hqDarkVars, token);
-  const hex = (v) => v.toString(16).padStart(2, "0");
-  if (`#${hex(Math.round(c.r))}${hex(Math.round(c.g))}${hex(Math.round(c.b))}` === bannedAccent) {
-    fails.push(`hq: --${token} ist #0066CC — als Akzent verboten (W1-10)`);
-  }
-}
-
 const hqModes = [["hq dunkel", hqDarkVars]];
 if (hqLightVars) {
   const hqLight = { ...hqDarkVars, ...hqLightVars };
@@ -360,6 +349,20 @@ if (hqContrastVars) {
   hqModes.push(["hq dunkel+", { ...hqDarkVars, ...hqContrastVars }]);
 } else {
   fails.push("hq: kein @media (prefers-contrast: more)-Block gefunden");
+}
+
+// The HQ accent is the desaturated steel blue; the generic #0066CC is
+// explicitly banned as an accent (W1-10). Checked per mode: a light or
+// prefers-contrast block can redefine the accent tokens on its own.
+const bannedAccent = "#0066cc";
+const hexByte = (v) => Math.round(v).toString(16).padStart(2, "0");
+for (const [mode, vars] of hqModes) {
+  for (const token of ["steel", "link"]) {
+    const c = color(vars, token);
+    if (`#${hexByte(c.r)}${hexByte(c.g)}${hexByte(c.b)}` === bannedAccent) {
+      fails.push(`${mode.trim()}: --${token} ist #0066CC — als Akzent verboten (W1-10)`);
+    }
+  }
 }
 
 for (const [mode, vars] of hqModes) {
