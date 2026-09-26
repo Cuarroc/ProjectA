@@ -162,14 +162,14 @@ test("HQ-10/HQ-22: setup rows state their status as text, the dot is decorative 
   assert.equal(f.document.querySelector("[onmouseover]"), null, "state value is escaped");
 });
 
-test("HQ-13: the Now page thumbnail DAG has no tab stops inside its link", () => {
+test("HQ-13: the Now page milestone list is plain text plus one link, no tab stops inside", () => {
   const dom = new JSDOM(source("docs/dev-hq/index.html"), { url: "http://localhost/index.html", runScripts: "outside-only" });
   dom.window.HQ_DATA = JSON.parse(source("docs/dev-hq/data.json"));
   dom.window.matchMedia = () => ({ matches: true });
   dom.window.eval(HQ_JS);
-  const mini = dom.window.document.querySelector("#mini-dag");
-  assert.ok(mini && mini.querySelector("g"), "mini DAG drawn");
-  assert.equal(mini.querySelectorAll("[tabindex]").length, 0);
+  const items = dom.window.document.querySelectorAll(".signal-list li");
+  assert.ok([...items].some((li) => /^M\d/.test(li.querySelector("strong")?.textContent ?? "")), "milestone list drawn");
+  assert.equal(dom.window.document.querySelectorAll("li [tabindex]").length, 0);
   dom.window.close();
 });
 
@@ -357,18 +357,16 @@ test("HQ-11: the control fields carry visible labels", (t) => {
   }
 });
 
-test("HQ-9: charts are followed by a table with the same numbers; DAG nodes are named images", () => {
+test("HQ-9: charts are followed by a table with the same numbers; the milestone tables have column headers", () => {
   assert.match(HQ_JS, /chart-table.*Commits per day/);
   assert.match(HQ_JS, /chart-table.*Commits by weekday and hour/);
   const dom = new JSDOM(source("docs/dev-hq/map.html"), { url: "http://localhost/map.html", runScripts: "outside-only" });
   dom.window.HQ_DATA = JSON.parse(source("docs/dev-hq/data.json"));
   dom.window.matchMedia = () => ({ matches: true });
   dom.window.eval(HQ_JS);
-  const svg = dom.window.document.querySelector("#dag");
-  assert.equal(svg.getAttribute("role"), "group", "the full DAG is a group, so its children are exposed");
-  const nodes = [...svg.querySelectorAll("g[tabindex]")];
-  assert.ok(nodes.length > 0);
-  assert.ok(nodes.every((g) => g.getAttribute("role") === "img" && g.getAttribute("aria-label")));
+  const tables = [...dom.window.document.querySelectorAll(".package-table")];
+  assert.ok(tables.length > 0, "one table per milestone");
+  assert.ok(tables.every((t) => t.querySelectorAll('thead th[scope="col"]').length === 5));
   dom.window.close();
 });
 

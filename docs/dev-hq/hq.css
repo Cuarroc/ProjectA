@@ -1306,6 +1306,13 @@ code {
   max-width: 680px;
 }
 
+/* Milestone tables: ids and states stay on one line; only the title wraps. */
+.package-table th:first-child,
+.package-table td:first-child,
+.package-state {
+  white-space: nowrap;
+}
+
 .package-state {
   color: var(--fog);
   font-size: 10px;

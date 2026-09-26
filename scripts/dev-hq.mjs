@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { listedInStand, readSpecStatuses, reconcile } from "./lib/active-specs.mjs";
-import { parseNextGrip, parseSpecTable, buildNext, parseFindings, buildPackages, applySpecStartable } from "./lib/hq-parse.mjs";
+import { parseNextGrip, parseSpecTable, buildNext, parseFindings, buildPackages, parseMilestones, applySpecStartable } from "./lib/hq-parse.mjs";
 import { lessonBadges, lessonStats, readLessonsFile } from "./lib/hq-lessons.mjs";
 
 function arg(flag, fallback) {
@@ -47,7 +47,10 @@ const reportFiles = existsSync(specDir)
   : [];
 const reportF0 = reportFiles.map((f) => f.text).join("\n");
 const warnings = [...rec.warnings];
-const packages = buildPackages(standText, specs);
+const packages = buildPackages(standText, specs); // only gates buildNext; not part of the snapshot
+const planPath = join(root, "docs", "PLAN.md");
+const milestones = existsSync(planPath) ? parseMilestones(readFileSync(planPath, "utf8")) : [];
+if (!milestones.length) warnings.push("docs/PLAN.md: no milestone tables (### M<n> — …) found");
 const findings = parseFindings(standText, { reportF0, reportFiles, warnings });
 const lessons = readLessonsFile(join(out, "lessons.json"));
 const citedReports = [...new Set(findings.map((f) => f.source).filter((s) => s.startsWith(".pa/")))];
@@ -65,7 +68,7 @@ const data = {
   nextGrip,
   specs,
   findings,
-  packages,
+  milestones,
   next: buildNext(nextGrip, specs, packages),
   lessons: lessons.map((l) => ({ ...l, badges: lessonBadges(l) })),
   lessonStats: lessonStats(lessons),

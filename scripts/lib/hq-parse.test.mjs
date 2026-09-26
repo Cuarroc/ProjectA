@@ -398,7 +398,7 @@ const PLAN_FIXTURE = `
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| W2-03 | Usage-/Billing-Collectors je Adapter | M | st | ✓ #140 |
+| W2-03 | Usage-/Billing-Collectors je **\`Adapter\`** | M | st | ✓ #140 |
 | W1-05b | Sichere Cancel-Regel; erst st-Kind, dann api-Kind | M | st → api | ✓ #19 |
 
 ### M2 — Überblick und Setup
@@ -407,7 +407,7 @@ const PLAN_FIXTURE = `
 |---|---|---|---|---|
 | PLAN-01 | Ein Plan, zehn Regeln | M | doc | dieses Paket |
 | OPS-01 | Status und Tagesbericht per Skript | M | doc | PR #164 |
-| CLEAN-02 | Stillgelegten Pfad löschen (a \| b) | S | api → mn → wk | ✓ #25 |
+| CLEAN-02 | Stillgelegten Pfad löschen (a \\| b) | S | api → mn → wk | ✓ #25 |
 | SETUP-14 | Nutzer: tote Keys | S | N | offen |
 
 PC-Setup außerhalb des Repos: Backup mit Kopia.
@@ -438,6 +438,7 @@ test("parseMilestones reads the M1-M3 tables of the real PLAN.md structure", () 
     id: "W1-05b", title: "Sichere Cancel-Regel; erst st-Kind, dann api-Kind",
     size: "M", lane: "st → api", stand: "✓ #19", state: "done", prNumbers: [19],
   });
+  assert.equal(row("M1", "W2-03").title, "Usage-/Billing-Collectors je Adapter", "inline markup (code ticks, bold) is dropped");
   assert.equal(row("M2", "PLAN-01").state, "in_progress");
   assert.equal(row("M2", "OPS-01").state, "pr");
   assert.deepEqual(row("M2", "OPS-01").prNumbers, [164]);

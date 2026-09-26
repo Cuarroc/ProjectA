@@ -18,6 +18,7 @@ import {
   parseBuiltinProfiles,
   readAgentsFile,
   resolveAgentsFile,
+  snapshotProgress,
   upsertProfile,
   validateProfile,
   writeAgentsFile,
@@ -140,8 +141,6 @@ function analysis() {
   }, 0);
   const dataPath = join(docs, "data.json");
   const snapshot = existsSync(dataPath) ? JSON.parse(readFileSync(dataPath, "utf8")) : {};
-  const packages = snapshot.packages || [];
-  const donePackages = packages.filter((item) => item.current === "done").length;
   const remainingSpecs = (snapshot.specs || []).filter((item) => item.startable !== false).length;
   const commits = git(["log", "--since=30 days ago", "--format=%h"]).split(/\r?\n/).filter(Boolean).length;
   const estimatedHours = Math.max(remainingSpecs * 4, 2);
@@ -152,9 +151,7 @@ function analysis() {
     lines: { source: countLines(source), code: countLines(code) },
     commitsLast30Days: commits,
     progress: {
-      packagesDone: donePackages,
-      packagesTotal: packages.length,
-      percent: packages.length ? Math.round((donePackages / packages.length) * 100) : 0,
+      ...snapshotProgress(snapshot),
       activeSpecs: remainingSpecs,
     },
     estimate: {
