@@ -56,6 +56,12 @@ updates:
       # 0.18.0 gepinnt; Ruecknahme siehe docs/decisions.md 2026-09-15.
       - dependency-name: "@xterm/xterm"
       - dependency-name: "@xterm/addon-webgl"
+      # addon-fit >= 0.11 und addon-search >= 0.16 sind die Begleit-Addons von
+      # xterm 6 (docs/decisions.md 2026-09-23, W1-21/W1-21b); gegen xterm 5.5 zieht
+      # fit 0.11 die falsche Scrollbarbreite ab (xtermFitCompat.test.ts rot).
+      # Nur im Gleichschritt mit dem xterm-6-Sprung heben.
+      - dependency-name: "@xterm/addon-fit"
+      - dependency-name: "@xterm/addon-search"
 
   - package-ecosystem: "github-actions"
     directory: "/"
