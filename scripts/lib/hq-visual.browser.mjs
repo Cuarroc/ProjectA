@@ -757,22 +757,32 @@ test("W1-10 color schemes flip the tokens for dark and light and prefers-contras
   // The live desk keeps its own dark palette in every OS scheme: the
   // .hq-workspace scope pins the W1-10 tokens as well (review finding:
   // otherwise the light flip leaks dark text onto the dark workspace).
-  const wsPage = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
-  await wsPage.goto(`http://127.0.0.1:${hqPort}/live.html`);
-  await wsPage.waitForSelector(".live-status.ok", { timeout: 20000 });
-  const ws = await wsPage.evaluate(() => {
-    const s = getComputedStyle(document.body);
-    return {
-      bg: s.backgroundColor,
-      bright: s.getPropertyValue("--bright").trim(),
-      emberDeep: s.getPropertyValue("--ember-deep").trim(),
-      chipInk: s.getPropertyValue("--chip-ink").trim(),
-    };
-  });
-  assert.equal(ws.bg, "rgb(11, 16, 19)");
-  assert.equal(ws.bright, "#e6ece9");
-  assert.equal(ws.emberDeep, "#f59185");
-  assert.equal(ws.chipInk, "#0b1013");
-  await wsPage.screenshot({ path: join(shotDir, "scheme-light-live-workspace-pinned.png"), fullPage: false });
-  await wsPage.close();
+  // Every scheme is checked, including forced contrast: the prefers-contrast
+  // block overrides --ink-2/--hair/--line on :root and must not reach the desk.
+  for (const [name, media] of schemes) {
+    const wsPage = await browser.newPage({ viewport: { width: 1440, height: 900 }, ...media });
+    await wsPage.goto(`http://127.0.0.1:${hqPort}/live.html`);
+    await wsPage.waitForSelector(".live-status.ok", { timeout: 20000 });
+    const ws = await wsPage.evaluate(() => {
+      const s = getComputedStyle(document.body);
+      return {
+        bg: s.backgroundColor,
+        bright: s.getPropertyValue("--bright").trim(),
+        emberDeep: s.getPropertyValue("--ember-deep").trim(),
+        chipInk: s.getPropertyValue("--chip-ink").trim(),
+        ink2: s.getPropertyValue("--ink-2").trim(),
+        hairStrong: s.getPropertyValue("--hair-strong").trim(),
+        line: s.getPropertyValue("--line").trim(),
+      };
+    });
+    assert.equal(ws.bg, "rgb(11, 16, 19)", `${name}: workspace ground`);
+    assert.equal(ws.bright, "#e6ece9", `${name}: --bright`);
+    assert.equal(ws.emberDeep, "#f59185", `${name}: --ember-deep`);
+    assert.equal(ws.chipInk, "#0b1013", `${name}: --chip-ink`);
+    assert.equal(ws.ink2, "#acbabd", `${name}: --ink-2`);
+    assert.equal(ws.hairStrong, "#527079", `${name}: --hair-strong`);
+    assert.equal(ws.line, "#35464d", `${name}: --line`);
+    if (name === "light") await wsPage.screenshot({ path: join(shotDir, "scheme-light-live-workspace-pinned.png"), fullPage: false });
+    await wsPage.close();
+  }
 });
