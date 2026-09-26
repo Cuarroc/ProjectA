@@ -286,6 +286,25 @@ log_lacks green-delete-fails-no-close 'gh issue close'
 expect_ok green-no-token refs/heads/main success success true true "" 0
 log_has green-no-token-closes 'gh issue close 7'
 out_has green-no-token-warns 'warning|MERGIFY_TOKEN'
+# The closing comment must not claim a lifted freeze that was never checked
+# (review kilo K4/K5, PR #28).
+log_has green-no-token-comment-honest 'gh issue close 7 .*nicht geprueft'
+log_lacks green-no-token-no-false-claim 'Freeze aufgehoben'
+
+# --- 7g. green with token: comment says the freeze is lifted; step summary
+# keeps one argument per line (review kilo K6, PR #28) ------------------------
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[{"number":7}]' > "$tmp/issues.json"
+: > "$tmp/summary"
+GITHUB_STEP_SUMMARY="$tmp/summary" expect_ok green-summary "${GREEN_MAIN[@]}" 0
+log_has green-token-comment-claims-lift 'gh issue close 7 .*Freeze aufgehoben'
+if grep -qxF '### main-red-guard: GRUEN' "$tmp/summary"; then
+  echo "ok   green-summary-one-arg-per-line"
+else
+  echo "FEHLER green-summary-one-arg-per-line: Ueberschrift nicht allein in einer Zeile:"
+  sed 's/^/    /' "$tmp/summary"
+  fails=$((fails + 1))
+fi
 
 # --- 8. not main: no-op even when red ---------------------------------------
 echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
