@@ -122,8 +122,10 @@ merge_protections_settings:
     - check-success = red-first
 
 merge_protections:
-  # Ein Arbeitspaket ist erst fertig, wenn sein Bericht im Repo liegt
-  # (.pa/report_<paket>.md). Paket-Branches erkennt die Regel am Namen:
+  # Ein Arbeitspaket ist erst fertig, wenn sein Bericht im PR-Text steht:
+  # ein Abschnitt, der mit "## Report" beginnt (Nutzerentscheidung 25.09.:
+  # der PR-Text ist der Bericht, keine Pflicht-Berichtsdatei mehr; Vorlage
+  # .github/pull_request_template.md). Paket-Branches erkennt die Regel am Namen:
   # Anbieter-Praefix plus Paket-ID aus docs/PLAN.md - w<N>-, df<N>, ki-<N>,
   # hq2-. Gross-/Kleinschreibung egal.
   #
@@ -135,13 +137,16 @@ merge_protections:
   # Die Regel steht auch in AGENTS.md, damit Worker sie kennen.
   - name: Paket-PR bringt seinen Bericht mit
     description: >-
-      Package branches (w<N>-, df<N>, ki-<N>, hq2-) must add or change
-      .pa/report_*.md before merging.
+      Package branches (w<N>-, df<N>, ki-<N>, hq2-) must carry their report
+      in the PR body, in a section that starts with "## Report".
     if:
       - base = main
       - head ~= (?i)^(claude|codex|kimi|opencode|glm)/(w\d+-|df\d+|ki-\d+|hq2-)
+    # Kein Uebergang: eine .pa/report_*.md erfuellt die Regel nicht mehr
+    # (Review kimi-k3 F-6: ein Uebergang ohne Ende ist ein permanenter
+    # Bypass). Jeder offene Paket-PR muss den Abschnitt im PR-Text tragen.
     success_conditions:
-      - files ~= ^\.pa/report_.*\.md$
+      - "body ~= (?m)^## Report"
 
 priority_rules:
   - name: Dringend (Label priority oder hotfix-Branch)

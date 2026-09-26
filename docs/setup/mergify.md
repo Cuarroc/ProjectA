@@ -61,11 +61,16 @@ Die Merge-Protection „Paket-PR bringt seinen Bericht mit" greift auf
 **Paket-Branches**: Name passt auf
 `^(claude|codex|kimi|opencode|glm)/(w<N>-|df<N>|ki-<N>|hq2-)` (ohne
 Groß-/Kleinschreibung), z. B. `claude/w2-07-credential-acl`. Ein solcher PR
-muss eine `.pa/report_*.md` hinzufügen oder ändern, sonst bleibt der Check
-`Mergify Merge Protections` rot. Doku-/Infra-Branches (`claude/masterplan`,
+muss im PR-Text einen Abschnitt tragen, der mit `## Report` beginnt
+(Vorlage: `.github/pull_request_template.md`), sonst bleibt der Check
+`Mergify Merge Protections` rot. Eine Berichtsdatei in `.pa/` ist seit
+25.09.2026 nicht mehr Pflicht: der PR-Text ist der Bericht. Einen Übergang
+gibt es nicht: eine `.pa/report_*.md` erfüllt die Regel nicht mehr, ein offener
+Paket-PR muss den Abschnitt im PR-Text tragen.
+Doku-/Infra-Branches (`claude/masterplan`,
 `claude/ci-01-…`, `claude/setup-a-…`) sind keine Pakete. Die
-Review-Disposition prüft Mergify **nicht** — sie bleibt Pflicht nach
-`AGENTS.md` (Nahtstelle oder mehr als 300 Zeilen).
+Review-Disposition prüft Mergify **nicht** — sie gehört nach `AGENTS.md`
+(Regel 5, Stufen A/B) in denselben PR-Text.
 
 ## Freeze, Retry
 
@@ -101,6 +106,7 @@ siehe [permissions-proposal.md](permissions-proposal.md).
 1. Er ist ein Draft → `gh pr ready <n>`.
 2. Er trägt `do-not-merge`.
 3. Ein Pflicht-Check ist rot oder fehlt (`gh pr checks <n>`).
-4. Paket-Branch ohne `.pa/report_*.md` → `Mergify Merge Protections` rot.
+4. Paket-Branch ohne `## Report` im PR-Text → `Mergify Merge Protections` rot
+   (PR-Text ergänzen genügt, kein neuer Push nötig).
 5. Er trägt `conflict` → `main` hineinmergen, Konflikt lösen, pushen.
 6. Die Queue ist eingefroren (Release) — warten.

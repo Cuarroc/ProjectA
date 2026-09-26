@@ -34,6 +34,8 @@
 !.pa/patches/*.diff
 !.pa/audit_*.md
 !.pa/plan_*.md
+# Archiv alter Plan-, Stand-, Spec- und Review-Prompt-Dateien (PLAN-01, 25.09.).
+!.pa/archiv/
 .omc/
 .pa-scout.jsonl
 .playwright-cli/

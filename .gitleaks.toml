@@ -35,4 +35,9 @@ regexes = [
   '''sk-abcdefghijklmnopqrst''',
   # .pa/review_prompt_w1-24b.md: ausdrueckliche Platzhalter
   '''sk-(or|test)-test-placeholder''',
+  # scripts/contrast-check.mjs (Kommentar "the tokens: body/heading/muted text")
+  # und .pa/review_prompt_pr29.md, das ihn zitiert: Prosa, kein Schluessel; die
+  # generic-Regel liest "tokens:" als Schluesselwort. Beide Aenderungen landeten
+  # unabhaengig voneinander (PR #20, PR #33) und trafen sich erst im Merge.
+  '''body/heading/muted''',
 ]

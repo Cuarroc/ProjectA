@@ -61,6 +61,5 @@ der Kandidat danach, wird das Delta erneut geprüft.
 
 Das Ollama-Paar prüft Diffs und Pläne im Alltag. Für harte Entscheidungen und
 Abschlussreviews gilt das Advisor-Paar Fable 5.1 + GPT-6 Astra (siehe
-[README.md](README.md#advisors)). Der frühere Workflow `review.yml`
-(OpenRouter) ist entfernt — der Runner hat keine angemeldete Ollama-Instanz,
-OpenRouter wird nicht mehr benutzt.
+[README.md](README.md#advisors)). Der frühere Workflow `.github/workflows/review.yml` (OpenRouter) ist am
+25.09.2026 gelöscht (PLAN-01); OpenRouter wird nicht mehr benutzt.

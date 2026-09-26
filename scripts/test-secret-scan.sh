@@ -114,6 +114,7 @@ api_key = "sk-ant-canary-must-not-land-in-argv"
 api_key = "sk-abcdefghijklmnopqrst"
 key = "sk-or-test-placeholder"
 key = "sk-test-test-placeholder"
+tokens = "body/heading/muted"
 EOF
 git add kanarien.txt
 bash scripts/ci/secret-scan.sh > "$tmp/kanarien.log" 2>&1

@@ -61,7 +61,7 @@ const input = {
     { name: "mergify/merge-queue/abc", merged: false },
   ],
   standText: STAND,
-  masterplanText: MASTERPLAN,
+  planText: MASTERPLAN,
   erledigtText: ERLEDIGT,
   untracked: ["MEMORY.md", "$OUT"],
 };
@@ -72,10 +72,29 @@ test("inProgressPackages reads the Status column of every MASTERPLAN table", () 
   assert.deepEqual(rows[0].prNumbers, [107]);
 });
 
-test("inProgressPackages parses the real docs/MASTERPLAN.md", () => {
-  const rows = inProgressPackages(readFileSync(join(root, "docs/MASTERPLAN.md"), "utf8"));
+test("inProgressPackages reads the Stand column of the milestone tables in docs/PLAN.md", () => {
+  const plan = [
+    "### M1 — Alles Laufende gelandet",
+    "",
+    "| ID | Paket | Gr. | Lane | Stand |",
+    "|---|---|---|---|---|",
+    "| W1-05b | Cancel-Regel | M | st → api | ✓ #19 |",
+    "| W1-03e | MSG_USER erst nach Zustellung | S | wk | PR #171 |",
+    "| W1-20 | Zweites Setup | S | N | PR #166, in Review |",
+    "| CI-02 | Leichter main-Push | S | ci | offen |",
+    "| W2-10 | Live-HQ-Views | M | hqL | 10a ✓ #13, 10c offen |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(rows.map((r) => r.id), ["W1-03e", "W1-20"]);
+  assert.deepEqual(rows.map((r) => r.prNumbers), [[171], [166]]);
+});
+
+test("inProgressPackages parses the real docs/PLAN.md", () => {
+  const rows = inProgressPackages(readFileSync(join(root, "docs/PLAN.md"), "utf8"));
+  assert.ok(rows.length > 0, "the milestone tables list packages that are in progress");
   for (const r of rows) {
-    assert.match(r.status, /^in Arbeit/);
+    assert.match(r.status, /^(in Arbeit|PR #\d)/);
     assert.match(r.id, /^[A-Z]/);
   }
 });
@@ -202,12 +221,12 @@ test("MACHINE_BRANCH only excludes the exact machine branches (kimi #5)", () => 
 test("hygiene reports missing or unrecognisable inputs as not checked and --strict fails (kimi #2)", () => {
   const ok = collect({});
   assert.deepEqual(ok.notChecked, []);
-  const missing = collect({ standText: null, masterplanText: null, erledigtText: null });
+  const missing = collect({ standText: null, planText: null, erledigtText: null });
   assert.equal(missing.notChecked.length, 3);
   assert.match(missing.notChecked.join("\n"), /STAND\.md/);
-  assert.match(missing.notChecked.join("\n"), /MASTERPLAN\.md/);
+  assert.match(missing.notChecked.join("\n"), /docs\/PLAN\.md/);
   assert.match(missing.notChecked.join("\n"), /ERLEDIGT\.md/);
-  const drifted = collect({ standText: "# ohne Abschnitt\n", masterplanText: "| Foo | Bar |\n|---|---|\n", erledigtText: "keine Tabelle\n" });
+  const drifted = collect({ standText: "# ohne Abschnitt\n", planText: "| Foo | Bar |\n|---|---|\n", erledigtText: "keine Tabelle\n" });
   assert.equal(drifted.notChecked.length, 3);
   assert.ok(countFindings(missing) >= 3);
   assert.match(formatHygiene(missing), /Nicht geprüft/);
@@ -215,7 +234,7 @@ test("hygiene reports missing or unrecognisable inputs as not checked and --stri
 
 test("hygiene notChecked stays empty for the real repo files (kimi #2)", () => {
   const read = (p) => readFileSync(join(root, p), "utf8");
-  const f = collect({ standText: read("STAND.md"), masterplanText: read("docs/MASTERPLAN.md"), erledigtText: read("docs/ERLEDIGT.md") });
+  const f = collect({ standText: read("STAND.md"), planText: read("docs/PLAN.md"), erledigtText: read("docs/ERLEDIGT.md") });
   assert.deepEqual(f.notChecked, []);
 });
 
@@ -224,7 +243,7 @@ test("gather returns null for an input file that does not exist (kimi #2)", () =
   try {
     const data = gather({ run: fakeRun({ "rev-parse": { code: 0, stdout: `${dir}\n`, stderr: "" } }), cwd: dir, now: NOW });
     assert.equal(data.standText, null);
-    assert.equal(data.masterplanText, null);
+    assert.equal(data.planText, null);
     assert.equal(data.erledigtText, null);
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -127,14 +127,14 @@ The app starts real agent processes from its queue. Start it only when you mean 
 
 ## Roadmap
 
-The only plan is [docs/PLAN.md](docs/PLAN.md) (German). It is organised in waves and work streams, not in numbered milestones:
+The only plan is [docs/PLAN.md](docs/PLAN.md) (German). It has four milestones, one table per milestone with one row per package, plus the cut and parked work with reasons:
 
-1. **W1 – foundations.** Finish task delivery (F-CORE-3 rest), clean up old dispatched queue entries (rest of W1-05b), and finish accessibility and styling work on the Dev-HQ.
-2. **W2 and DEVFLOW – runtime and workflow.** Usage and billing collectors per provider, supervisor, and resource limits. Persistent workflow stages, the independence gate, the permission policy, hand-over between stations, and a decision inbox (DF-11 to DF-18).
-3. **W3 – delivery and installation.** Database maintenance lock, Windows recovery helper, crash and power-loss drills, and updater states in the app.
-4. **W4 – acceptance and switch-on.** A 20-task benchmark, then the final acceptance matrix for continuous mode, then activation. Activation happens only with the human's explicit decision.
+1. **M1 – everything running has landed, the app can start.** Open package PRs are merged and `main` is green; dead queue entries can be discarded on purpose (W1-05b).
+2. **M2 – overview and setup.** One plan, ten rules and tiered reviews; a status and daily report from a script; a red `main` pauses the merge queue; limits and free RAM are checked before every worker start.
+3. **M3 – the app in daily use, plus the interim release v1.5.0-beta.** Three real small tasks run through the installed app and land through the queue; the HQ is readable in light and dark mode.
+4. **M4 – continuous operation accepted, v1.5.0.** An emergency stop that halts everything within 10 seconds, and every row of the acceptance matrix backed by evidence or a user gate. Continuous mode is switched on only by the human's explicit decision.
 
-In parallel: **HQ2** (one shared Dev-HQ and app, with design tokens and an installable host) and **W5** (a "projects" system with a coordinator that cannot write code and a trust ramp). There are no dates; the plan explicitly avoids promising any before throughput has been measured.
+There are no dates; the plan explicitly avoids promising any before throughput has been measured. Merged packages are recorded in [docs/ERLEDIGT.md](docs/ERLEDIGT.md).
 
 ## Known limitations
 
@@ -142,7 +142,7 @@ In parallel: **HQ2** (one shared Dev-HQ and app, with design tokens and an insta
 - **It drives subscription CLIs.** ProjectA starts and types into the command-line tools of AI vendors on your account. Check each vendor's terms of use for automated or parallel use before you run it.
 - **Continuous mode is off** and cannot be switched on by configuration.
 - **A running agent cannot be interrupted** from the queue. Its dispatched entry can only be removed after the process has provably ended.
-- **Documentation gaps in this snapshot.** This public repository is a cleaned copy of a private working repository, published without history. Some documents refer to files that are not included, for example `docs/MASTERPLAN.md`, `docs/ERLEDIGT.md` and `.pa/report_*.md`.
+- **Documentation gaps in this snapshot.** This public repository is a cleaned copy of a private working repository, published without history. Some documents refer to files that are not included, for example older `.pa/report_*.md` reports. `docs/MASTERPLAN.md` is only a pointer to `docs/PLAN.md`; its former content is archived under `.pa/archiv/`.
 - **Mostly German internal docs.** Plans, rules and the changelog are largely in German.
 - **Open findings and flaky tests** are listed, each with a reason, in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 - **No support.** This is a personal project; issues may go unanswered.
@@ -152,8 +152,10 @@ In parallel: **HQ2** (one shared Dev-HQ and app, with design tokens and an insta
 | File | Contents |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Rules for every agent working on the repository |
-| [STAND.md](STAND.md) | Current state and next steps (German) |
-| [docs/PLAN.md](docs/PLAN.md) | The plan: waves, packages, decisions (German) |
+| [STAND.md](STAND.md) | Short: where we stand, next step, active specs (German) |
+| [docs/PLAN.md](docs/PLAN.md) | The only plan: milestones M1–M4, parked and cut work, decision inbox (German) |
+| [docs/ERLEDIGT.md](docs/ERLEDIGT.md) | Finished packages with PR and merge commit (German) |
+| [docs/MASTERPLAN.md](docs/MASTERPLAN.md) | Pointer only: replaced by docs/PLAN.md |
 | [KNOWN_ISSUES.md](KNOWN_ISSUES.md) | Open findings, each with its reason (German) |
 | [CHANGELOG.md](CHANGELOG.md) | Released changes (German) |
 | [docs/setup/](docs/setup/README.md) | Agent setup per vendor, reviewers, merge queue (German) |

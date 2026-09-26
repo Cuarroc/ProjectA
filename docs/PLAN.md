@@ -1,128 +1,279 @@
-# PLAN — der eine Arbeitsplan für ProjectA und das DevHQ
+# PLAN — der einzige Plan für ProjectA
 
-Stand: 24.09.2026. Dieses Dokument ersetzt den Sanierungsplan Rev 9 und alle
-früheren Plan-, Spec- und Entscheidungspapiere; die liegen unter
-`docs/archive/plaene-2026-09/` und sind nur noch Beleg.
-Wer hier nichts findet, arbeitet an nichts.
+Stand: 25.09.2026 (Paket PLAN-01, Nutzerentscheidungen vom 25.09.).
+Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
+Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
+unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
+`docs/archive/plaene-2026-09/`. Wer hier nichts findet, arbeitet an nichts.
 
-**Drei Dokumente, drei Aufgaben:**
+## Für den Nutzer
 
-- **Dieses Dokument** hält die Paketdefinitionen der offenen Arbeit, die
-  Regeln und das Entscheidungsregister. Neue Pakete entstehen nur hier (oder im
-  W5-Plan, siehe unten).
-- **Die geordnete Übersicht** aller offenen Pakete mit Status, Lane, Modell
-  und Fortschritt steht in [`docs/MASTERPLAN.md`](MASTERPLAN.md).
-- **Erledigtes** steht in [`docs/ERLEDIGT.md`](ERLEDIGT.md), neueste zuerst,
-  mit PR, Merge-SHA und Report. Ein gemergtes Paket wird hier gestrichen und
-  dort eingetragen. Ausnahme: die DEVFLOW-Tabelle behält alle 38 Zeilen, weil
-  der Planimport (DF-04) sie liest; erledigte Zeilen tragen dort „Erledigt".
+1. **Nächster Meilenstein:** M2 „Überblick und Setup“ (M1 „Alles Laufende
+   gelandet, App startbar“ ist erreicht, 26.09.2026). Was noch offen ist, steht
+   in der Tabelle M2 (Spalte „Stand“).
+2. **Was du entscheiden musst:** die Entscheidungs-Inbox unten. Fragen kommen
+   gebündelt dorthin, nicht einzeln in den Chat.
+3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
+   W3-03, W3-07 und die Abnahme jedes Meilensteins.
 
-**Baseline:** v1.4.1 ist der jüngste veröffentlichte Release (22.09.2026,
-`3bcaed3`). Alles danach liegt auf `main`, ist aber nicht ausgeliefert.
+**Ziel:** ProjectA und das DevHQ sind auf dem PC des Nutzers voll benutzbar und
+werden zum Entwickeln von ProjectA selbst eingesetzt; danach wird der Continuous
+Mode abgenommen und mit v1.5.0 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
+`3bcaed3`) ist der jüngste Release; alles danach liegt nur auf `main`.
 
-## HQ2 — gemeinsames Dev-HQ und ProjectA (Entscheidung 23.09.2026)
+## Meilensteine
 
-Die Nutzervorgabe ersetzt die bisherige Zurückstellung von Multi-Harness.
-Technische Reihenfolge bleibt **F-CORE-3 → F6 → Multi-Harness**; W4-03 wird
-dadurch nicht vorgezogen. Rust/SQLite bleibt einzige Autorität für Ausführung,
-Policy, Budget und Freigabe. HQ und App verwenden denselben versionierten
-Vertrag. Abos sind getrennte, belegte Kapazitäten in einer gemeinsamen
-Routing-Oberfläche, keine gemeinsame Token-Währung.
+| M | Titel | Abnahme in Alltagssprache |
+|---|---|---|
+| M1 | Alles Laufende gelandet, App startbar | Keine offenen Paket-PRs aus M1, `main` grün. Die App startet vom aktuellen `main`, ohne dass alte Queue-Einträge Agenten losschicken; tote Einträge lassen sich gezielt verwerfen (W1-05b). |
+| M2 | Überblick und Setup | Du fragst Claude „Was heißt das?“ und bekommst eine einfache Antwort. Ein Skript schreibt Status und Tagesbericht. Ein Plan, zehn Regeln, gestufte Reviews. Ein roter `main` hält die Queue an. Limits und RAM werden vor jedem Worker-Start geprüft. Backup läuft. |
+| M3 | App im Alltag + Zwischenrelease v1.5.0-beta | Du installierst v1.5.0-beta über den Updater. In der installierten App gibst du drei echte kleine Aufgaben an Agenten, verfolgst sie im HQ, prüfst den Diff in der App, und der PR landet über die Queue. Das HQ ist hell und dunkel lesbar (Screenshots angesehen, auch die DF-07-Dichte). |
+| M4 | Dauerbetrieb abgenommen, v1.5.0 | Du schaltest den Continuous Mode selbst ein. Ein Not-Aus stoppt alles in 10 Sekunden. Alle 27 Zeilen der Abnahmematrix haben einen Beleg oder ein Nutzer-Gate. Update-Drills sind am PC durchgespielt. Du installierst v1.5.0. |
 
-Erledigt (→ `docs/ERLEDIGT.md`): HQ2-00, HQ2-01, HQ2-05a und HQ2-11, alle über
-PR #70.
+Lane-Schlüssel: `st` store.rs + store/ · `api` api.rs · `mn` main.rs · `pa`
+bin/pa.rs (diese vier sind Nahtstellen, je ein aktives Paket) · `pty` pty.rs ·
+`wk` workers.rs/profiles.rs · `sup` supervisor.rs · `ci` .github/ + scripts/ci/ ·
+`hqL` Legacy-HQ (hq.js, hq.css, hq-parse.mjs, hq-live.mjs) · `hqS`
+docs/dev-hq/concepts/ · `fe` src/ · `fR` nahtstellenfreies Rust · `doc` Doku und
+scripts/dev · `N` Nutzer/PC. Welches Modell welches Paket nimmt:
+`docs/setup/providers.md`. Stand-Spalte: `✓ #n` = gemergt, sonst offener PR
+oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 
-| ID | Paket und Abnahme | Größe / Eigentum | Voraussetzung |
+### M1 — Alles Laufende gelandet, App startbar
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| W2-03 | Usage-/Billing-Collectors je Adapter | M | st | ✓ #140 |
+| W2-06 | Supervisor: Producer-Audit und Runtime-Notifications | M | mn + sup | ✓ #152 |
+| W2-08a | Ressourcendruck- und Streaming-Enforcement | M | fR | ✓ #134 |
+| W2-04f | Planungsendpunkte nur für den Koordinator | S | api | ✓ #135 |
+| W2-01b | Review-Route nimmt `reviewerRunId` aus dem Credential | S | api | ✓ #124 |
+| W2-01c | `approvalAuthority` in agent_access.rs angleichen | S | fR | ✓ #150 |
+| W1-15c | Übrige Mutex-Stellen in pty.rs | S | pty | ✓ #137 |
+| W1-23c | „-0 Tokens“-Anzeige, MSRV gemessen | S | fR | ✓ #136 |
+| W1-29 | Linux-Flake im Prozessgruppen-Test | S | fR | ✓ #138 |
+| W1-21c | xterm-`pageerror` beim Mount | S | fe | ✓ #151 |
+| SETUP-04 | AGENTS.md: Mergify, Reviews, Build-Slots | M | doc | ✓ #132 |
+| HOOK-01 | Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.) | S | ci | ✓ #156 |
+| W1-05b | Sichere Cancel-Regel für `dispatched`, Dedup der toten Tasks; erst st-Kind, dann api-Kind; Zahl der toten Einträge read-only nachzählen | M | st → api | ✓ #19 |
+| W1-03e | `MSG_USER` erst nach bewiesener Zustellung (F-CORE-3 B.3) | S | wk | ✓ #171 |
+| W1-20 | Zweites Setup reproduzieren (Node 24, `npm ci`, `dev:setup`, `dev:doctor`) | S | N | ✓ #166 |
+| CI-02 | Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b) | S | ci | ✓ #133 |
+| CI-03 | Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 % | M | ci | ✓ #149 |
+| SETUP-08 | Git-/PR- und Plan-Helfer unter `scripts/dev` (08a + 08b) | M | doc | ✓ #22 |
+| SEC-01 | Geheimnis-Scan (gitleaks) als precommit-Gate | S | ci | ✓ #20 |
+
+### M2 — Überblick und Setup
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| M2-FRAG | Frag-mich-Skill für Einsteiger-Erklärungen | S | doc | ✓ #161 |
+| PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | dieses Paket |
+| OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | PR #164 |
+| OPS-02 | Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps | S | doc | offen |
+| CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | ✓ #28 |
+| W1-21d | Suchschalter im Scrollback (Groß-/Kleinschreibung, Regex) | S | fe | ✓ #27 |
+| W1-30 | Flake `omniroute::…management_failures_keep_their_http_and_network_classes` (100-ms-Timeout) | S | fR | ✓ #32 |
+| CLEAN-01 | Toten Code löschen: npm `@tauri-apps/plugin-process`, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6) | S | fe | ✓ #31 |
+| CLEAN-02 | Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs) | S | api → mn → wk | ✓ #25 |
+| W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | offen |
+| SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | offen |
+| SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
+| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | offen |
+| SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | offen |
+
+PC-Setup außerhalb des Repos (Orchestrator, Nutzerentscheidungen 25.09.):
+Backup mit Kopia nach Google Drive, TypeScript-Sprachserver und PowerShell-Profil,
+Statuszeile mit Limits, Lernpfad in Häppchen, ruflo/oh-my-claudecode aus,
+Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
+
+### M3 — App im Alltag + Zwischenrelease v1.5.0-beta
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
+| HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
+| W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
+| W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c offen |
+| W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | offen |
+| W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
+| W5-22 | Konfliktvorhersage und Lane-Guard | M | fR | ✓ #9 |
+| W5-28 | Automatischer Laufzeitbeleg (Sandbox, Queue aus) | M | fR | ✓ #11 |
+| W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | ✓ #18 |
+| W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | offen |
+| W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
+| W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
+| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | offen |
+| W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | offen |
+| W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
+| R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3 | S | N + doc | offen |
+
+### M4 — Dauerbetrieb abgenommen, v1.5.0
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| W5-05 | Prüfpfad (append-only, Trigger gegen UPDATE/DELETE) | S | st | offen |
+| W5-04a | Not-Aus im Store, **global ohne Projektrahmen** (Schnitt 25.09., W5-01a bleibt geparkt) | S | st | offen |
+| W5-04b | Not-Aus in der App (10 s Frist) | S | mn | offen |
+| W5-04c | Not-Aus in `pa` | S | pa | offen |
+| W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat | M | st | offen |
+| W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | offen |
+| W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | ✓ #15 |
+| W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
+| DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
+| W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
+| W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | offen |
+| W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | offen |
+| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt | M | fR + N | offen |
+| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe) | M | st → api → fe | offen |
+| W5-02b4 | Push aus dem Worker über den Runner-Host, danach `strict` als Voreinstellung | M | pty + wk | offen |
+| W5-02b5 | Test für den `http.extraHeader`-Reset; GPG unter `strict` | S | fR | ✓ #17 |
+| W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | offen |
+| W3-01 | Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind) | M | st → mn | offen |
+| W3-02 | Windows-Recovery-Helper | M | fR + N | offen |
+| W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
+| W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | offen |
+| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später) | S | N | offen |
+| W4-01 | Benchmark, verkleinert (Vorschlag: 5 Aufgaben statt 20) | M | fR | offen |
+| W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | offen |
+| W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers | S | mn | offen |
+| W4-04 | Release v1.5.0 | S | N | offen |
+
+### Reihenfolge der seriellen Lanes (nach Meilensteinen)
+
+Ein Paket aus einem späteren Meilenstein startet nur, wenn seine Lane im
+früheren nichts mehr hat.
+
+- **st:** W1-05b(st) → W5-05 → W5-04a → W2-02b → W2-04c → W2-04d → W3-01(st) → W5-02b3(st) → W2-04g.
+- **api:** W1-05b(api) → CLEAN-02(api) → W5-02b3(api).
+- **mn:** CLEAN-02(mn) → W5-04b → W3-01(mn) → W4-03.
+- **pa:** W2-01d → W5-04c → W1-03f(pa).
+- **pty:** W1-01b → W1-27 → W5-02b4(pty).
+- **wk:** W1-03e → CLEAN-02(wk) → W5-02a → W2-04e → W1-18b → W2-09b → W5-02b4(wk) → W1-03f.
+- **hqL:** W1-17 → W1-10 → W5-02b7 → W2-10 → W3-04(hqL). **hqS:** HQ2-02 → HQ2-03.
+- **ci:** CI-02/CI-03 → SEC-01 → CI-04 → SETUP-12.
+- **Migrationen:** Nummern vergibt der Koordinator erst beim Dispatch.
+
+## Regeln für diesen Plan
+
+1. **Ein Plan.** Jedes Paket steht als eine Zeile in genau einer
+   Meilenstein-Tabelle. Neue Pakete entstehen nur hier.
+2. **Neue Ideen bis M4 auf „Später“.** Sie kommen in den Abschnitt unten, nicht
+   in M1–M4, außer der Nutzer entscheidet es.
+3. **Continuous-Code bis M4 eingefroren.** Keine neuen Migrationen und keine
+   neuen Funktionen für den Continuous Mode außerhalb der M4-Pakete.
+4. **Nichts doppelt bauen.** Neues entsteht an einer Stelle, HQ oder App, nicht
+   in beiden.
+5. **Status per Skript.** Die Stand-Spalte ist eine Momentaufnahme. Den
+   Live-Stand und den Tagesbericht erzeugt OPS-01 aus GitHub und git. Nach dem
+   Merge: `✓ #PR` hier, Zeile in `docs/ERLEDIGT.md` (`npm run dev:erledigt-row`).
+   Über die eigene Stand-Zeile hinaus schreiben `docs/PLAN.md`, `STAND.md` und
+   `docs/ERLEDIGT.md` nur der Koordinator oder ein Paket mit ausdrücklicher
+   Zuweisung.
+6. **Spec nur für M-Pakete.** Ein M-Paket bekommt beim Start
+   `.pa/task_<id>.md` (`Status: aktiv`) und eine Zeile unter „Aktive Specs“ in
+   `STAND.md`; `npm run specs` prüft beides. S-Pakete und Folgepakete aus einem
+   PR: der Auftrag steht im PR-Text.
+7. **Größen:** S ≤ 150, M ≤ 300 Diffzeilen einschließlich Tests. Was größer
+   wird, teilt der Koordinator vor dem Dispatch in Kinder.
+8. **CI-Geld:** Ziel 0 €. Wird die CI der Engpass, sind höchstens 20 € im Monat
+   erlaubt, und erst nach Freigabe des Nutzers.
+
+## Vision (Nutzer 25.09.)
+
+- **Eine Oberfläche:** Das Dev-HQ wird nach M3 der Hauptbereich im App-Fenster.
+  Ein Kern, ein Fenster. HQ2-02 legt die Richtung fest.
+- **Orca als Brücke:** Bis M3 wird mit Orca, Claude Code und Codex gearbeitet,
+  danach schrittweise mit ProjectA selbst.
+- **Agenten-Abteilungen mit Leitern:** Die erste Abteilung ist Prüfung/Reviews.
+  Sie startet klein nach M1, mit eigenem Budget.
+
+## Gestrichen/Geparkt (25.09.)
+
+„Gestrichen“ heißt: fällt weg, bei Bedarf neu einplanen. „Geparkt“ heißt: die
+ID bleibt, wird nicht gezählt und nicht dispatcht, und kommt erst nach M4
+zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten.
+
+### Gestrichen
+
+| Was | Grund |
+|---|---|
+| W5 Phase H: W5-26 Angriffs-Reviewer, W5-27 Mutationstest-Gate, W5-29 Anbieter-Wettbewerb | vervielfachen den Abo-Verbrauch und helfen dem Ziel nicht |
+| DF-12, DF-18, DF-19, DF-20, DF-26, DF-35, DF-36, DF-37 | DEVFLOW-Doppelungen: schon anderswo geplant oder gebaut (Gründe je Zeile in der DEVFLOW-Tabelle) |
+| Aliase auf gestrichene DF-Pakete | W5-08a/08b (Alias von DF-18) werden wieder eigene, geparkte W5-Pakete; HQ2-10 (Alias von DF-35–37) ist mit HQ2-06–10 geparkt |
+| `.github/workflows/review.yml`, `anthropic-wif-test.yml` | tote Workflows, in PLAN-01 gelöscht (git behält sie) |
+| Pflicht-Berichtsdatei, eingecheckte Review-Prompts, Spec für S-Pakete | ersetzt durch den PR-Text (AGENTS.md, Regel 7) |
+
+### Geparkt
+
+| Was | Grund | Wann wieder |
+|---|---|---|
+| **W5 außerhalb des Kerns:** W5-01a/b/c, 02c, 02d, 02e, 03, 06, 06b, 07, 08a, 08b, 09a/b/c, 10, 11, 12–16, 17–21, 23–25, 30a/b, 31a–c, 32–34, 35a–f, 36a/b, 37–39 | Das Projekt-System hilft dem Ziel nicht. Kern in M3/M4: W5-02a, W5-22, W5-28, W5-00b, W5-02b3–b5/b7, Not-Aus W5-04a–c, Prüfpfad W5-05 | nach M4; zuerst W5-31 (App zu, Worker laufen weiter); Phase J (autonomer Merge) erst nach vier Wochen Continuous ohne Rückschlag. Konzept: `.pa/plan_projects_w5.md` |
+| **DEVFLOW-Motor:** DF-11, DF-13–17, DF-06b, DF-08d | zweite Steuerung neben dem fertigen Continuous-Kern | nach M4 als Erweiterung des Continuous-Runtime neu schneiden |
+| **DEVFLOW-Ausbau:** DF-09b, DF-10, DF-21–25, DF-27–34 | hilft dem Ziel nicht; DF-09b wäre ein Doppelbau | nach M4 |
+| **HQ2-04, HQ2-06 bis HQ2-10** | große Pakete, jedes ein eigenes Projekt | nach der Oberflächen-Entscheidung (HQ2-02) neu planen |
+| W1-09c (KI-1 editierbar), W1-12 (Design-Reste) | Komfort, niedriger Nutzen | nach M4 |
+| W4-03a (Journal-Teil ohne Aktivierung) | nur für das geparkte W5-03 nötig (Nutzer 25.09.: später) | mit W5-03 |
+| W3-09 (Struktur-Split) | inaktiv, nur wenn W0-05 = zerlegen | bei Bedarf |
+
+### Später (neue Ideen und zurückgestellte Themen)
+
+| Thema | Wann wieder |
+|---|---|
+| Agenten per Protokoll statt Tippen steuern (strukturierte Schnittstellen der Anbieter) | nach M4 (Nutzer 25.09.: später) |
+| ADR, die die st-Lane für unabhängige `store/`-Module teilt | nach M1 (Nutzer 25.09.: später) |
+| Öffentlicher Neustart des Repos ohne Historie (Prüfung E) | nach M1; vorher Scan-Bericht, der Nutzer gibt frei (nicht umkehrbar) |
+| Vorzeige-README für die Bewerbung | später |
+| Prompt-Kompression, MCP-Injektion | wenn ein Worker nachweislich am Kontextlimit scheitert |
+| Command Palette, globale FTS-Suche, Fokusmodus | wenn der Nutzer sie im Alltag vermisst |
+| Remote-Board, Multi-Prozess-Deskriptor | bei Neuanschaffung eines Servers |
+| Ideen-Pipeline, Zeitachse, Vorschlags-Tab | nach M4, mit Kostenschätzung |
+| hermes-agent, Multi-Harness | nach M4 (HQ2-06 ist geparkt) |
+| Dependabot-Majors (Vite 8 → eslint 10 → TS 7 → React 19 → sqlx 0.9) | einzeln, nach M4 |
+| Tauri-Plugins `dialog`, `notification`, `window-state` | wenn ein Paket sie braucht |
+| OmniRoute-Cutover in den Produktmodus | erst mit gemessenem Kostensieg |
+| Design Studio, Queen/Employee-Neuanlage | nie (gestrichen; der Anlegepfad fällt mit CLEAN-02) |
+
+## Entscheidungs-Inbox
+
+Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Agenten
+unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
+(AGENTS.md, Regel 10).
+
+| # | Frage | Empfehlung | Status |
 |---|---|---|---|
-| HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante (Inhalt über PR #70 auf `main`): Nutzer- und visuelle Browserprüfung vor Übernahme; simulierte Zustände markiert | getrennte Demodateien und Reviewbericht | HQ2-01 ✓ |
-| HQ2-03 | Gemeinsame Design-Tokens für Hell/Dunkel, Typografie, Dichte, Fokus und reduzierte Bewegung; App/HQ erhalten jeweils passende Layouts | M, neue Token-Dateien | HQ2-02-Review |
-| HQ2-04 | **Alias → DF-10** (Nutzerentscheidung 24.09.: bei Überschneidung gewinnt die DF-ID). Inhalt: Code-Chat-Oberfläche, beratende und aktive Worktree-Sitzung sichtbar trennen; manueller Providerwechsel mit expliziter Übergabe | 0 Punkte, kein Dispatch | — |
-| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter, danach Kapazitätsanbindung | getrennte S/M-Pakete | HQ2-05a ✓ |
-| HQ2-06 | Harness-Schema und Validierung, geführte Vorlagen plus Expertenfelder | M, Profile/Capabilities-Lane | F-CORE-3-Rest (W1-03e/f) und F6 |
-| HQ2-07 | Gemeinsame Session-Bridge und Routing-Policy, erst manuell, dann Auto innerhalb bestehender Budgets | je M, getrennte Rust-Lanes | DF-10 (statt HQ2-04), HQ2-05b, HQ2-06 |
-| HQ2-08 | Dev-HQ als installierbarer lokaler App-Host ohne Node/Repo; bisheriges App-Webinterface ablösen, bestehende HQ-Funktionen erhalten, kein LAN-Zugang | serielle M-Pakete für Host, API und UI | HQ2-03/07 |
-| HQ2-09 | Projektstart/-koordination, GitHub/Linear-Sync, belegbare Statistiken (Statistik-Anteil bei DF-29–31) und knappe Agenten-Briefings | getrennte M-Pakete nach Integrationsgrenze | HQ2-07/08 |
-| HQ2-10 | **Alias → DF-35/36/37** (Nutzerentscheidung 24.09.). Inhalt: Anbieter-Smokes (→ DF-35), UI-/A11y-Abnahme (→ DF-36), Review-Dispositionen und Release-Gates (→ DF-37); der installierte Offline-/Recovery-Build gehört zu HQ2-08 | 0 Punkte, kein Dispatch | — |
+| E1 | HQ2-02: Demo und Studio ansehen, Richtung für die eine Oberfläche festlegen | ja, in M3 | offen (Nutzer) |
+| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | offen |
+| E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja (Nutzer 25.09.); einmal im Browser klicken | offen (Nutzer) |
+| E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | später (Nutzer 25.09.) |
+| E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | offen |
+| E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | später (Nutzer 25.09.) |
+| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | offen (Nutzer) |
+| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | offen (Nutzer) |
 
-Ein Paket, ein Implementer, ein Worktree. HQ2-06 erst nach seinen Gates.
-Gleiche Datei und die vier Nahtstellen bleiben seriell. S/M-Grenzen und
-Reviewerpflicht aus Abschnitt 0 gelten auch hier. Wie viele gleichzeitig laufen,
-regelt `docs/MASTERPLAN.md` („Worker-Struktur"). Keine Demo-Interaktion löst
-reale Worker, Ausgaben oder externe Schreibzugriffe aus. Der Nutzer und ein
-unabhängiger AI-Reviewer prüfen die tatsächliche Demo; erst danach wird die
-visuelle Richtung in App und HQ umgesetzt.
+Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
+PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
+Zwischenrelease v1.5.0-beta als Abschluss von M3; DF-07d erledigt; DF-15b ja;
+W2-08b ja; W1-27 entscheidet der Advisor; Spec nur für M-Pakete; gestufte
+Reviews; PR-Text ist der Bericht; CI nur bei „ready“ und in der Queue.
+Frühere Entscheidungen (Nr. 1–17): `.pa/archiv/PLAN_2026-09-24.md` §5 und
+`docs/decisions.md`.
 
-## DEVFLOW — grafischer Entwicklungsablauf (in Ausführung seit 23.09.2026)
+## Belege und Verträge, die weiter gelten
 
-Nutzerauftrag: „Starte in diesem Chat mit dem Gesamtprompt“. Anforderung und
-Startprompt: [`.pa/prompt_devflow.md`](../.pa/prompt_devflow.md). Keine
-Aktivierung von Continuous, keine implizite Release- oder Kostenfreigabe.
-Ausführungsstand und Policy: `.pa/report_devflow_execution.md`.
+- `.pa/task_continuous_devhq.md` — Vertrag für den Continuous Mode (10.09.).
+- `.pa/continuous_acceptance_matrix.md` — Abnahmematrix, 27 Zeilen.
+- `.pa/plan_projects_w5.md` — Konzept der Welle W5 (Pakete außerhalb des Kerns geparkt).
+- `docs/development/HQ2_CONTRACT.md` — Verträge von HQ, App und CLI (DF-03).
+- `docs/ERLEDIGT.md` — erledigte Pakete mit PR, Merge-SHA und Bericht.
+- `.pa/archiv/` — alte Plan- und Standfassungen, historische Specs, Review-Prompts.
 
-**Erledigt** (→ `docs/ERLEDIGT.md`): DF-00 bis DF-05 vollständig, DF-06a,
-DF-07a–c, DF-08a–c (alle über PR #70), DF-09a (PR #100) und DF-15a
-(PR #103). Offen sind DF-06b, DF-07d (der Code ist über PR #70 gemergt, der
-visuelle PASS fehlt; DF-07 bleibt bis dahin offen, Nutzerentscheidung 24.09.),
-DF-08d, der Rest von DF-09 und DF-15 sowie DF-10 bis DF-37.
+## DEVFLOW-Tabelle (Quelle des Planimports DF-04)
 
-### Anschluss an HQ2 und die Wellen
-
-DEVFLOW konkretisiert und erweitert HQ2, ersetzt aber keine offenen Gates:
-Darstellung → HQ2-03; Chat → HQ2-04 (Alias, liegt bei DF-10); Kapazität → HQ2-05b/07;
-Profile → HQ2-06; gemeinsamer Host → HQ2-08; Analyse → HQ2-09 (Statistik-Anteil
-bei DF-29–31); Abnahme → HQ2-10 (Alias, liegt bei DF-35/36/37). F-CORE-3 → F6 → Multi-Harness und W2-09b bleiben
-Voraussetzungen echter Provider-Ausführung. W4-01 liefert Benchmark-Evidenz;
-W4-02/03 bleiben Abnahme und menschliche Continuous-Aktivierung.
-Überschneidungen mit HQ2 und W5 sind einem einzigen Paket zugeordnet
-(Nutzerentscheidung 24.09.): **bei Überschneidung gewinnt die DF-ID**, die
-überlappende HQ2- oder W5-Zeile wird ein Alias ohne Punkte (HQ2-04 → DF-10,
-HQ2-10 → DF-35/36/37, W5-08a/08b → DF-18, W5-14 → DF-30). Liste und
-Begründung, auch für die geprüften Paare ohne Alias: `docs/MASTERPLAN.md`,
-„Aliase". Keine Doppelarbeit.
-
-### Verträge und Zuständigkeiten
-
-Rust/SQLite besitzt Laufzeit, Rechte, Routingentscheidung und Übergänge.
-HQ, App und CLI sind Clients desselben versionierten Vertrags. Plan-Markdown
-ist die Quelle der geplanten Arbeit; der Runtime-Status referenziert Planrevision
-und stabile Paket-ID. Änderungen am Plan benötigen einen nachvollziehbaren Diff;
-kein zweiter widersprüchlicher Browserplan und kein Node-Scheduler.
-
-DF-03 hat diese Verträge fixiert (`docs/development/HQ2_CONTRACT.md`):
-
-| Vertrag | Erforderliche Felder / Verhalten |
-|---|---|
-| PlanPackage | stabile ID, Eltern-ID, Quelle mit Revision, Abhängigkeiten, Priorität mit Begründung, Abnahmekriterien; Zyklen/fehlende IDs als Fehler |
-| Run / Stage / Event | Projekt, Paket, Kandidat-Hash, Versuch, Status, Version, Claim/Fence, Idempotency-Key, Zeit und Quelle; optimistische Konflikterkennung |
-| ExecutionIdentity | angefordertes und beobachtetes Modell/Familie getrennt, Provider, ausführender Adapter, UI-Profil, Capability-Beleg und Aktualität |
-| ReviewEvidence | exakter Kandidat, Autor-Familienmenge, Reviewer-/Tester-Identität, Umfang und Urteil; Änderungen invalidieren betroffene Belege |
-| Decision / Policy | Typ, Optionen, benötigte menschliche Entscheidung, Geltungsbereich, Ablauf, Policyrevision, Entscheider, Auditspur |
-| Measurement | Einheit, Stichprobe, Zeitraum, Taskklasse, Quelle, Unsicherheit; unbekannt/veraltet/konfiguriert/beobachtet getrennt |
-| Capability / Template | Quelle, feste Version, Kompatibilität, Rechte, Installationsscope, Auswahlgrund, tatsächliche Nutzung und Ergebnis |
-
-Die folgenden Eigentumsbereiche sind **Scopes, keine Behauptung bestehender
-Dateien**. Jedes Dispatch-Briefing trägt exakte existierende Pfade und geplante
-neue Dateien ein. Ein Paket ohne präzise Write-Allowlist startet nicht.
-
-| Scope | Eigentum und Grenze |
-|---|---|
-| DOC | `docs/PLAN.md`, `.pa/`-Briefings/Berichte; Vertragsänderungen in `docs/development/HQ2_CONTRACT.md`, ADR in `docs/decisions.md` |
-| CORE | bestehende Rust-Domainmodule unter `src-tauri/src/`; neue Module nur nach Bestandsabgleich, Tests inline |
-| SEAM | `api.rs`, `main.rs`, `store.rs`/Store-Module, `bin/pa.rs`: ein Integrator, seriell; keine parallelen Agenten an diesen Dateien |
-| HQ | `docs/dev-hq/concepts/`; vorhandene `studio-workspace.js`, `studio-model.js`, CSS und HTML nur durch jeweiligen Integrator; Fachansichten möglichst getrennte Module |
-| HOST | `scripts/hq-live.mjs`, `scripts/lib/hq-studio.mjs` und zugehörige Tests; ausschließlich Host/Proxy/Präferenzen |
-| APP | bestehende React-Chat-, Projekt-, Statistik- und Einstellungsflächen unter `src/`; exakte Komponenten vor Dispatch |
-
-### Agentenpakete und Abnahme
-
-Die Tabelle ist die Quelle des Planimports (DF-04) und behält deshalb alle
-38 Zeilen; erledigte Zeilen beginnen mit „Erledigt". Jedes Paket hat genau
-einen Implementer und einen Worktree. Zielgröße S ≤150, M ≤300 Diffzeilen
-einschließlich Tests. Übersteigt ein Paket das Limit, teilt der Koordinator es
-**vor Dispatch** in nummerierte Kinder mit eigenem Ergebnis und Abnahme auf;
-die Elternzeile wird dann nur Sammelpunkt. Die unten angegebenen M sind
-Budgets, keine Behauptung, dass ein ganzes Subsystem in 300 Zeilen fertig wird.
-Jede Abnahme gilt zusätzlich zum gemeinsamen Abschlussprotokoll weiter unten.
+Der Planimport (`src-tauri/src/development_plan.rs`) liest genau diese Tabelle
+und erwartet alle 38 Zeilen DF-00 bis DF-37. Deshalb bleibt sie vollständig;
+der Status steht am Anfang der letzten Spalte. Die Zeilen sind nicht Teil der
+Meilensteine (DF-15b ist erledigt, PR #16).
 
 | ID | Paket / Agent / Scope | Nach | Konkretes Ergebnis und Abnahme |
 |---|---|---|---|
@@ -132,361 +283,38 @@ Jede Abnahme gilt zusätzlich zum gemeinsamen Abschlussprotokoll weiter unten.
 | DF-03 | Domain-/Eventvertrag · Architekt · DOC · M | DF-00 | Erledigt (PR #70). Obige Verträge mit vorhandenen APIs abgleichen; Übergangstabelle, Fehlerfälle, Migration/Versionsstrategie und App/HQ-Parität festlegen; zwei unabhängige Reviews vor Integration der gemeinsamen Nahtstelle. |
 | DF-04 | Planimport · Backend · CORE · M | DF-03 | Erledigt (PR #70, DF-04a/b/c). Markdown-Pakete mit stabilen IDs und Quellenrevision projizieren; Tests für fehlende IDs, Zyklen, geänderte Quelle, Wiederimport ohne Duplikate. |
 | DF-05 | Plan-Lesezugriff · Integrator · SEAM/HOST · M | DF-04 | Erledigt (PR #70, DF-05a/b). Gemeinsamen lesenden App/HQ/CLI-Vertrag anbinden; identische Paketdaten und explizite Fehler statt leeren Erfolgs prüfen. |
-| DF-06 | Grafische Roadmap · Frontend · HQ · M | DF-02, DF-05 | DF-06a erledigt (PR #70). Offen DF-06b: Ausführungszustände bereit/aktiv/erledigt nach DF-11/DF-16 mit belegter Paket-/Run-Bindung; bis dahin bleibt der Ausführungsstatus unbekannt. Hierarchie, Abhängigkeiten, kritischer Pfad, Quellenklick und Prioritätsgrund mit echtem Plan und leeren/fehlerhaften Daten prüfen. |
-| DF-07 | Desktop-Dichte · Frontend · HQ/APP · M | DF-02 | DF-07a–c erledigt (PR #70). Offen DF-07d: visueller PASS der React-Dichte (Code über PR #70 gemergt, `.pa/report_df07d_native_density.md`); DF-07 ist erst danach abgenommen. Komfortabel/Kompakt ändern messbar Zeilenhöhe, Abstand, Paneelgrößen und sichtbare Informationsmenge; Screenshots bei 1280×800 und 1920×1080, Tastatur und Zoom prüfen. |
-| DF-08 | Ausführungsidentität · Backend · CORE · M | DF-03 | DF-08a–c erledigt (PR #70). Offen DF-08d: native Modellbeobachtung, Adapter-/Profilbelege, Workflow-Anbindung nach DF-11. Provider, Modell/Familie, Adapter und Erscheinungsprofil getrennt führen; konfiguriert ist nicht beobachtet; Alias-/Unbekannt-Fälle testen. |
-| DF-09 | Profilwahl im Chat · Frontend · HQ/APP · M | DF-02, DF-08 | DF-09a erledigt (PR #100, lokale Chat-Erscheinungen). Offen DF-09b: React-Parität und Admission-Kompatibilität. UI-Profil Codex/Claude/DeepSeek unabhängig vom belegten Modell wählen; unterstützte native Kombinationen von reiner Darstellung unterscheiden, inkompatible Starts verweigern. |
-| DF-10 | Chat-Modi und Interview · Integrator · CORE/SEAM/HQ/APP · M | DF-01, DF-03, DF-09 | Übernimmt HQ2-04 (beratende und aktive Sitzung getrennt sichtbar, manueller Providerwechsel mit Übergabe). Plan/Interview/aktive Ausführung mit konkreten Rückfragen und Projektkontext; Planmodus darf keine Schreibbefugnis erzeugen. Reale Sitzung mit Antwort belegen; Integration bei Bedarf in Kinder teilen. |
-| DF-11 | Workflow-Zustand · Backend · CORE · M | DF-03 | Persistente Stage-Zustände und append-only Übergangsereignisse auf vorhandener Queue; ungültige Übergänge und Neustart testen. |
-| DF-12 | Unabhängigkeitsgate · Backend · CORE · M | DF-08, DF-11 | Kandidatenweite Autor-Familienmenge sperrt eigene Review-/Testbewertung, auch nach Handoff/Alias/Review-Fix; unbekannte Identität blockiert Attestation. Negativtests zwingend. |
-| DF-13 | Berechtigungsteam · Backend · CORE · M | DF-01, DF-11 | Versionierte, vom Nutzer festgelegte Policy auswerten; erlauben/ablehnen/eskalieren mit Gründen. Keine Selbst-Erweiterung, kein gefälschter Human-Verdict; Replay und Scopewechsel testen. |
-| DF-14 | Stationsübergabe · Backend · CORE · M | DF-12, DF-13 | Bestehende Admission/Claims für nächste Station nutzen; atomare Übergabe, Idempotenz, Fencing, Budget aller Nachfahren. Doppelzustellung und Crash vor/nach Spawn testen. |
-| DF-15 | Rücklauf und Recovery · Backend · CORE · M | DF-14 | Review→Fix→neuer Review, Pause/Cancel, Quota/Auth-Ausfall, begrenzte Wiederholung und Wiederaufnahme; Leaseablauf nie als Prozessende werten. Der frühe Provider-Exit vor dem Lesen des Task-Inputs ist als DF-15a erledigt (PR #103, Endzustand `exited_undelivered`, Migration 22); die dabei offen gebliebene Freigabe von Reservierung und Delivery ist als DF-15b erledigt (KNOWN_ISSUES KI-27: Reservierung `cancelled` und Delivery-Freigabe journalisiert, atomar im bewiesenen Exit-Commit, ohne neue Migration). |
-| DF-16 | Workflow-API · Integrator · SEAM/HOST · M | DF-15 | Start/Pause/Status/Decision über denselben Kern für App/HQ/CLI; Autorisierung, Konflikt und Event-Replay prüfen, kein Scheduler im Host. |
-| DF-17 | Team-/Stationsgraph · Frontend · HQ · M | DF-02, DF-16 | Ideen→Interview→Plan→Koordination→Architektur→Code/Design→Review→Test→Kritik mit konfigurierbaren Stationen, Rollen, Zuständen und Übergabegründen; native Teams/Lessons erhalten. |
-| DF-18 | Entscheidungs-Inbox · Frontend · HQ/APP · M | DF-16 | Nur echte Nutzerfragen/Freigaben, Kontext/Optionen/Auswirkung, Zielprojekt und Version sichtbar; doppelte/veraltete Entscheidung abweisen und auflösen. |
-| DF-19 | Prioritäten und Advisor · Backend · CORE · M | DF-08, DF-12, DF-03 | Taskklasse, Abhängigkeiten, Evidenz, Benchmark/Erfahrung, Quota und Policy in erklärbare Empfehlungen für Priorität/Modell/Effort übersetzen; fehlende Daten und manuelle Overrides testen. |
-| DF-20 | Routing-Editor · Frontend · HQ/APP · M | DF-19 | Anbieterreihenfolge, Regeln, Taskklassen, Reserven, Ausschlüsse, Fallbacks und Override editieren; Simulation erklärt Auswahl/Ablehnung, Revision verhindert verlorene Änderungen. |
-| DF-21 | Erweiterungskatalog · Backend · CORE · M | DF-03 | GitHub-Quellen zu Plugins/Skills auf feste Revision auflösen, Quelle/Kompatibilität/Rechte/Scope anzeigen; bestehende Installer wiederverwenden, untrusted Metadaten nicht ausführen. |
-| DF-22 | Installation und Rücknahme · Backend · CORE · M | DF-13, DF-21 | Kontrollierte Installation, Update, Deaktivierung und Rollback über geprüften Pfad; Traversal/Symlink, abgebrochenen Download und Versionswechsel testen; globale Änderungen nach Policy. |
-| DF-23 | Katalog-Bedienung · Frontend · HQ/APP · M | DF-22 | GitHub-Link hinzufügen und ein Klick installieren, soweit Policy erlaubt; sonst begründete Entscheidung. Realer Installationszustand statt bloßer Prompt-Auswahl. |
-| DF-24 | Task-Preflight · Backend · CORE · M | DF-14, DF-22 | Vor Task und Scopewechsel erforderliche/hilfreiche Skills/Plugins auswählen; nur relevante laden, Auswahlgrund/Version/tatsächliche Verwendung protokollieren; fehlende Pflichtfähigkeit blockiert. |
-| DF-25 | Schneller Entwurfsbereich · Backend · CORE · M | DF-13, DF-03 | Worktree, isolierte Projektdaten und Live-Preview-Lebenszyklus; Start/Stop/Recovery, keine fremden Prozesse beenden. Klar als Arbeitsisolation kennzeichnen. |
-| DF-26 | Stärkere Sandbox · Backend · CORE · M | DF-25 | Einen belegbar verfügbaren Container- oder VM-Adapter mit Filesystem-/Netzwerk-/Ressourcengrenzen integrieren; fehlende Voraussetzungen anzeigen, kein stiller schwacher Fallback. |
-| DF-27 | Architekturansicht · Frontend · HQ · M | DF-05, DF-25 | Reale Modul-/Abhängigkeitsdaten mit Quellen und Abdeckung visualisieren; Änderungsvorschlag→Diff→Test→Übernahme, unbekannte Analysebereiche sichtbar. |
-| DF-28 | Gemeinsames Design-Livebild · Frontend · HQ/APP · M | DF-17, DF-25 | Laufende echte App/Website, gewählter Schritt, Agentendelta und Feedback nebeneinander; Änderungen fortlaufend nachvollziehbar, Wiederverbindung/Fehler testen. |
-| DF-29 | Messereignisse · Backend · CORE · M | DF-11, DF-08 | Zyklus-/Wartezeit, Rework, Review/Test, Recovery, Routing und beobachtete Usage mit Quelle erfassen; Deduplikation, Einheit, fehlende Werte, Retention/Redaktion prüfen. |
-| DF-30 | Statistikprojektionen · Backend · CORE · M | DF-29, DF-24 | Filterbare Task-/Modell-/Provider-/Skill-Vergleiche, Stichproben und Qualitätsmetriken, API/Export; keine Gleichsetzung von Korrelation und Ursache oder Abo-Quoten. |
-| DF-31 | Statistik-Cockpit · Frontend · HQ/APP · M | DF-02, DF-30 | Große Analysefläche mit Trends, Verteilungen, Engpässen, Rework, Teststabilität, Kapazität, Quellen-Drilldown und Einstellungen; echte Daten plus kenntliche Fixture-Tests. |
-| DF-32 | Releaseprognose · Backend/Frontend · CORE/HQ · M | DF-06, DF-30 | Kritischen Pfad und beobachteten Durchsatz mit Unsicherheitsintervall verbinden; ohne ausreichende Daten kein Datum. Readiness separat aus offenen Gates, Reviews/Tests und Blockern anzeigen. |
-| DF-33 | Vorlagenkatalog · Backend · CORE · M | DF-03 | Versionierte editierbare Templates für Idee/Projekt/Plan/Team/Harness/Review/Test/Policy/Release; Kontextvorschlag mit Vorschau, kein stilles Überschreiben. |
-| DF-34 | Vorlagen im Arbeitsfluss · Frontend · HQ/APP · M | DF-10, DF-18, DF-23, DF-33 | Passende Vorlagen an Eingabestellen anbieten; übernehmen/anpassen/verwerfen, Entwürfe bei Navigation erhalten und gleiche Semantik in App/HQ prüfen. |
-| DF-35 | Durchgängiger Runtime-Nachweis · Tester · DOC/Tests · M | DF-20, DF-24, DF-26, DF-27, DF-28, DF-31, DF-32, DF-34 | Isoliertes Projekt vom Plan bis zu modellunabhängigem Review/Test; reale Modellantwort, Übergaben, Rückfrage, Neustart und Datenparität messen; negative Gates mitprüfen. |
-| DF-36 | PC-Politur und Designabnahme · design-director · HQ/APP · M | DF-35, DF-07 | Impeccable-Kritik anhand echter Screenshots; leere/ladende/fehlerhafte/dichte Ansichten, Fokus, Zoom, Kontrast und Hell/Dunkel prüfen; Befunde nachvollziehbar schließen. |
-| DF-37 | Abschluss und Releaseentscheidung · Integrator/Reviewer · DOC · S | DF-36 | Zwei unabhängige Reviews für große/Shared-Seam-Änderungen, Dispositionen, aktuelle Gates und NICHT ABGEDECKT; Readinessbericht. Merge/Release/Continuous nur mit geltender menschlicher Freigabe. |
-
-### Offene Zuschnitte
-
-**DF-06b:** Ausführungszustände bereit/aktiv/erledigt nach DF-11/DF-16 mit
-belegter Paket-/Run-Bindung ergänzen. Bis dahin bleibt der Ausführungsstatus
-unbekannt; reine Markdown-Abhängigkeiten belegen keine Admission. DF-06 ist
-erst nach 06a und 06b abgenommen.
-
-**DF-08d:** Das produktive Register ist leer; konfigurierte Modellnamen sind
-keine beobachtete Ausführungsidentität. DF-08c bindet die Herkunft bestätigter
-nativer Capture-Abschlüsse an, weiterhin UNKNOWN ohne erfundene
-Provider-/Modellbehauptung. Offen: native Modellbeobachtung, Adapter-/Profilbelege
-und operative Workflow-Anbindung (nach DF-11). Berichte:
-`.pa/report_df08a_identity.md`, `.pa/report_df08b_identity_store.md`,
-`.pa/report_df08c_native_observation.md`.
-
-**DF-09b:** React-Parität der Chat-Erscheinungen und Admission-Kompatibilität;
-der echte Provider-Rücklauf bleibt Teil der Abnahme von DF-10/DF-36
-(`.pa/report_df09a_chat_appearance.md`, „NICHT ABGEDECKT").
-
-### Reihenfolge
-
-Vorbereitung (DF-00 bis DF-03) und das erste sichtbare Ergebnis (DF-04,
-DF-05, DF-06a, DF-07a–c, DF-08a–c) sind erledigt; DF-07d wartet auf den
-visuellen PASS. Weiter:
-
-1. **Erste echte Kette:** DF-11, dann DF-12→13→14→15→16, dann DF-17/18; eine
-   kleine vorhandene Planaufgabe mit echter Antwort, unabhängiger Abnahme und
-   Recovery.
-2. **Ausbau:** Katalog DF-21→24, Routing DF-19/20, Sandboxes DF-25→28,
-   Messung DF-29→32, Vorlagen DF-33/34. Jeweils Abhängigkeiten beachten.
-3. **Abnahme:** DF-35→36→37; Funktionalität pro Inkrement liefern, keine
-   monatelange Sammeldemo. Keine Kalenderzusage vor Durchsatzmessung.
-
-Gemeinsame HTML-/JS-/React-Einstiegspunkte und SEAM werden auch bei
-unabhängigen Fachmodulen seriell integriert. Reviewer brauchen freie Slots.
-
-### Planreview-Disposition (23.09.2026)
-
-Kimi-Dokumentreview: `.pa/review_devflow_plan_kimi.md` (keine Codeabnahme).
-HQ-Einstiegspunkte haben eine FIFO-Integrationslane; unabhängige neue Module
-dürfen vorarbeiten.
-DF-01 wird als unveränderlicher menschlicher Policy-Snapshot mit Digest an
-DF-13/22 gebunden. Paketaufteilung/-Zusammenführung braucht explizite Herkunft;
-historische Runs/Belege behalten ihre ursprünglichen Paket- und Revisions-IDs.
-DF-19 darf vor DF-29 nur belegte importierte Messwerte verwenden oder fehlende
-Daten ausweisen; DF-20 muss diesen Zustand in der Simulation sichtbar machen.
-
-Fehlende globale Sandbox-Infrastruktur oder unabhängige Modellfähigkeit wird
-als echte Decision-/Capability-Abhängigkeit geführt. Das jeweilige Gate bleibt
-offen; andere Pakete dürfen weiterlaufen. „Nicht verfügbar“ ist kein bestandener
-Sandbox-/Runtime-Test. Kein Evidenzersatz, keine zusätzlichen API-Kosten und
-keine globale Installation zur Umgehung dieser Blocker.
-
-### Dispatch- und Abschlussprotokoll für subagent-driven-development
-
-Vor Start den Skill lesen; seine Hilfsskripte aus dem tatsächlichen Skillpfad
-auflösen, nicht als vorhandene Repo-Skripte voraussetzen. Ledger an diesen
-Planabschnitt und seine Revision binden; erledigte Kandidaten nicht erneut
-dispatchen. Konflikttabelle für gemeinsame Dateien/Verträge vor der ersten
-Implementierung erstellen. Kein Agent erhält unbeschränkte Schreibrechte.
-
-Jedes Briefing enthält: Paket-ID und Ziel; Nicht-Ziele; exakte Write-Allowlist;
-Abhängigkeiten/Commits; vorhandene Symbole und Quellen; Vertrag/Fixtures;
-Abnahmefälle; erforderliche Skills; Budget/Policy; beobachtete Modellfamilie;
-Testkommandos; Berichtspfad. Neue Agenten erhalten diesen begrenzten Kontext.
-Sie sind nicht allein im Repo und dürfen fremde Änderungen nicht zurücksetzen.
-
-Zyklus: Implementer → unabhängiger Spec-/Code-Reviewer → unabhängige
-Testbewertung → Fix bei Befunden → betroffene Nachprüfung → Integrator.
-Deterministische Tests darf der Implementer ausführen; das ersetzt keine
-unabhängige Testgestaltung/Bewertung. Keine Autor-Modellfamilie darf den eigenen
-Kandidaten abnehmen, auch nicht in anderer Sitzung oder anderem Harness.
-Ein Reviewer, der Code ändert, wird Autor des neuen Kandidaten. Fehlt ein
-nachweislich unabhängiges verfügbares Modell, bleibt das Gate blockiert;
-keine zusätzlichen API-Kosten und keine erfundene Unabhängigkeit.
-
-Fertig bedeutet: geprüfter Diff, passende Tests, tatsächliche Runtime-Belege
-bei Runtime-Änderungen, inspizierte Screenshots bei visuellen Änderungen,
-Reviewdisposition, Commit-/Kandidatenbindung und dokumentierte Restgrenzen.
-Die Gate-Liste wird aus `scripts/ci/gates.sh` bezogen, nicht hier dupliziert.
-Fehler zuerst untersuchen; Fix-/Retrybudget aus bestehender Policy übernehmen.
-Nicht behobene Sicherheits-/Korrektheitsblocker werden nicht als fertig erklärt.
-Berichte und Freigabeevidenz dauerhaft in `.pa/` sichern; temporäre
-SDD-Artefakte nicht mit produktiven Daten oder fremdem WIP löschen.
-
-**NICHT ABGEDECKT (Planungsstand):** Tatsächliche Modellkombinationen und
-Sandboxfähigkeit brauchen Laufzeitbelege; Windows- und Unix-Gates werden je
-Paket getrennt belegt.
-
-## W5 — ProjectA-Projekte (freigegeben 24.09.2026)
-
-Welle W5 macht aus ProjectA ein Projekt-System nach dem Vorbild von Cursor
-„Projects“: ein Koordinator ohne Schreibpfad, Abonnements, ein
-Entscheidungs-Postfach, eine messbare und technisch erzwungene Vertrauensrampe.
-Der vollständige Plan mit Invarianten, Paketschnitt (Phasen A–J, W5-00 bis
-W5-39) und Nutzerentscheidungen steht in
-[`.pa/plan_projects_w5.md`](../.pa/plan_projects_w5.md) (Revision 3, vom Nutzer
-am 24.09.2026 freigegeben). Er wird hier nicht kopiert; seine Paket-IDs sind
-stabil und gelten wie die Pakete dieses Plans. Aufgenommen am 24.09.2026, nach
-dem Merge von PR #70, wie es der W5-Plan vorsah.
-
-- **Kritischer Pfad:** W2-01 ✓ → W2-02 ✓ → W2-04 ✓ → Journal-Teil von W4-03
-  (Vorschlag W4-03a, siehe W4 und §5) → Phase A → B → C → D → G → H → J.
-- **Erledigt:** W5-00 (PR #95), W5-02b (PR #93), W5-02b2 (PR #102); dazu das
-  Folgepaket W5-02b6 (PR #121).
-- **Folgepakete aus Reports** (W5-00b, W5-02b3 bis W5-02b5, W5-02b7) und die
-  Einordnung aller W5-Pakete in die Lanes: `docs/MASTERPLAN.md`.
-- **Überschneidungen mit DEVFLOW** (Nutzerentscheidung 24.09.: die DF-ID
-  gewinnt): W5-08a/08b sind Aliase von DF-18, W5-14 ist Alias von DF-30.
-  W5-06/06b, W5-12, W5-30b/33 und W5-02d bleiben eigene Pakete, weil ihr
-  Inhalt verschieden ist (Begründung: `docs/MASTERPLAN.md`, „Aliase").
-
----
-
-**Ziel in einem Satz:** ProjectA und das DevHQ sind auf dem PC des Nutzers
-voll benutzbar und werden zum Entwickeln von ProjectA selbst eingesetzt;
-danach wird der Continuous Mode abgenommen und freigeschaltet.
-
----
-
-## 0. Regeln
-
-1. **Beweismaßstab** (AGENTS.md): Bug = kompilierender roter Regressionstest,
-   dann grün. Gestaltung = angesehener Screenshot. Laufzeit = Messung.
-   Provider-/Modell-/Billing-Aussagen nur mit Beobachtung.
-2. **Ein Paket = ein Agent = ein Worktree.** Kein Agent bekommt zwei Pakete.
-3. **Nahtstellen** (`src-tauri/src/api.rs`, `main.rs`, `store.rs` samt
-   `store/`, `bin/pa.rs`): pro Lane ein aktives Paket. Gleiche Datei =
-   gleiche Lane, auch außerhalb der Nahtstellen.
-4. **Reviews:** Nahtstelle oder Diff > 300 Zeilen = zwei unabhängige
-   Reviews; sonst ein Reviewer ≠ Autor. Nur Abos, kein API-Geld. Alltagspaar:
-   Kimi K3 (`kimi-k3:cloud`) + GLM 5.2 (`glm-5.2:cloud`) über Ollama Cloud
-   mit `.pa/review_transport.py`, ersatzweise `deepseek-v4-flash:cloud`; nie
-   die Modellfamilie des Autors. Harte Entscheidungen und Abschlussreviews:
-   Advisor-Paar Fable 5.1 + GPT-6 Astra (Regeln in `AGENTS.md`).
-5. **Größen:** S = eine Sitzung, ≤ 150 Diff-Zeilen. M = ≤ 300 Diff-Zeilen.
-   Kein L; was größer wird, wird geteilt (Teilungsvorschlag steht am Paket).
-6. **Mechanik eines Pakets:**
-   - Start: `.pa/task_<id>.md` anlegen (`Status: aktiv` in den ersten acht
-     Zeilen; Ziel, Dateien, Abnahme aus diesem Plan übernehmen) **und** in
-     STAND.md unter „Aktive Specs" eintragen. `npm run specs` erzwingt beides.
-     **Folgepakete aus Reports** (die „neu"-Pakete im MASTERPLAN) brauchen
-     keine eigene Spec; ihr Report ist die Quelle (Nutzerentscheidung 24.09.).
-   - Abschluss: `.pa/report_<id>.md` mit Belegen und Review-Disposition,
-     Spec (falls vorhanden) auf `Status: historisch` und aus STAND.md austragen, Paket hier
-     und in `docs/MASTERPLAN.md` streichen, Zeile in `docs/ERLEDIGT.md`,
-     `scripts/sync.sh note`.
-   - Paket-IDs sind stabil. Neue Pakete nur hier oder im W5-Plan, nie in
-     einem dritten Plan.
-7. **Nicht vergessen:** keine App nur zur Sichtprüfung starten (Queue kann
-   Worker auslösen); niemals über eine aktive Sitzung installieren; Exit-Codes
-   ungemaskiert; `--no-verify` verboten.
-
----
-
-## 1. Ausführungswege
-
-| Weg | Belegter Stand | Geeignet für |
-|---|---|---|
-| **Claude Code** (Abo, CLI-Login) | Claude-Adapter-Smoke vollautomatisch (W2-09, PR #49); kein API-Guthaben (KNOWN_ISSUES KI-22) | Nahtstellen, Sicherheit, Koordination |
-| **Codex** (PTY-Launch-Pfad) | vollautomatische Zustellung belegt (`.pa/report_provider_adapter_smoke_codex.md`); Billing-Dialog bleibt manuell | mittelgroßes Rust ohne Nahtstelle |
-| **OpenCode** | Zustellung im ProjectA-Worker belegt (W1-02, PR #66), $0,00-Anzeige | Docs, Scripts, HQ-JS |
-| **Kimi** (K3) | im ProjectA-Worker vollautomatisch, null Assists (W1-01, PR #50) | Frontend, HQ-UI, Reviews |
-| **Ollama Cloud** | Reviewer-Pool (kimi-k3, glm-5.2, deepseek-v4-flash); Helper `ollama-coder`. DeepSeek als Worker erst nach W2-09b | Reviews, Helper |
-| **Orca** (Agenten-Steuerprogramm des Nutzers) | steuert Agenten außerhalb von ProjectA | Koordination mehrerer Pakete |
-
-Welcher Weg welches Paket nimmt, steht als Modellregel in `docs/MASTERPLAN.md`.
-Nahtstellen-Pakete nur über einen Weg mit belegter automatischer Zustellung
-oder unter Aufsicht eines Menschen. Jede Aussage „Weg X hat Paket Y erledigt"
-braucht den Report.
-
----
-
-## 2. Wellen
-
-Lesart einer Zeile: **ID · Titel** · Größe · Dateien/Lane · Abnahme · Weg ·
-Abhängigkeit. Hier stehen nur offene Pakete; Erledigtes steht in
-`docs/ERLEDIGT.md`, die Folgepakete aus Reports („neu") in
-`docs/MASTERPLAN.md`.
-
-### W0 — Nutzer, sofort, ohne Agent
-
-Vollständig erledigt (W0-01 bis W0-07, → `docs/ERLEDIGT.md`).
-
-### W1 — parallel, ohne gegenseitige Abhängigkeit
-
-Erledigt (→ `docs/ERLEDIGT.md`): W1-01, W1-01a, W1-02, W1-03 (C-3), W1-03c/d,
-W1-04, W1-05 (Doku-Teil), W1-06, W1-07, W1-08, W1-09, W1-09b, W1-11, W1-13,
-W1-14, W1-15, W1-15b, W1-16, W1-18, W1-19 (Kern, PR #39), W1-21, W1-21b,
-W1-22, W1-23, W1-23b, W1-24, W1-24b, W1-25, W1-25b, W1-26, W1-26b, W1-26c.
-W1-19b ist in CI-02 aufgegangen (Nutzerentscheidung 24.09., `docs/MASTERPLAN.md`).
-
-**Zustellung (NT-17)**
-
-- [ ] **W1-03e F-CORE-3 B.3** · S · `workers.rs:549` · `MSG_USER` erst nach bewiesener Zustellung · Spec `.pa/task_f_core3_delivery.md` · Beleg `.pa/report_w1-03_c3.md`.
-- [ ] **W1-03f F-CORE-3 Baustein C** · M · `workers.rs` + `bin/pa.rs` · Zustell-Queue, `pa worker done/blocked`, Antwort-Marker-Verdrahtung · braucht das Z-1-Protokoll am PC · nach W1-03e.
-
-**Dokumentation und Hygiene**
-
-- [ ] **W1-05b Queue-Abnahmerest** · M, in st- und api-Kind teilen · Runtime/Queue/Worker read-only prüfen, sichere Cancel-Regel für `dispatched` (seit W1-16/PR #82 antwortet `cancel` mit 404/409/500, für `dispatched` also 409; die Regel selbst fehlt), danach nur nach bestätigtem Prozessende gezielt bereinigen. Acht bestehende Tasks deduplizieren, kein pauschales erneutes `--apply`. Offline keinen Appstart mit ungeprüfter Queue · Spec `.pa/task_w1-05.md`.
-
-**Frontend, HQ, Accessibility**
-
-- [ ] **W1-10 HQ-Stylesheet** · M · `scripts/contrast-check.mjs` auf `docs/dev-hq/hq.css` ausweiten, Light Mode, `prefers-contrast` · Abnahme: Gate rot → grün, Screenshots hell/dunkel angesehen · Weg: Kimi/OpenCode.
-- [ ] **W1-12 Design-Reste** · S · `DiffView.tsx` (Hellmodus rendern und ansehen), Board-Karte (Zustandsformen), `TerminalView.tsx` (xterm-Farben aus der Tokenschicht), Tab-Hover-Beleg · Weg: Kimi · wartet auf die Design-Sitzung.
-- [ ] **W1-17 HQ-Parser auf diesen Plan umstellen** · M · `scripts/lib/hq-parse.mjs` (Paket-DAG aus `docs/PLAN.md`-Wellen und IDs statt hartem F0–F8), `docs/dev-hq/hq.js`, Tests; M13 (`Next` zeigt einzige Zeile als `waits`) mit lösen · erst prüfen, ob DF-06a ihn überholt hat · Abnahme: `npm run test:hq`, Screenshot Map/Next · Weg: OpenCode/Kimi.
-
-**Nahtstellen und Übernahme**
-
-- [ ] **W1-20 Zweites Setup reproduzieren** · S · Nutzer + Agent · Node 24, `npm ci`, `npm run dev:setup`, `npm run dev:doctor` grün auf einer zweiten Maschine oder WSL; Report · schließt Matrix-Zeile 1.
-
-### W2 — Continuous Phase 3/4 (Runtime)
-
-Erledigt (→ `docs/ERLEDIGT.md`): W2-01, W2-02, W2-04 (erster Schnitt), W2-04b,
-W2-05, W2-07, W2-09. Die Folgepakete aus den Reports (W2-01b bis W2-01d,
-W2-02b, W2-04c bis W2-04g, W2-07b) stehen in `docs/MASTERPLAN.md`.
-
-Store-Lane seriell: W2-03 zuerst. W2-06 teilt sich die main.rs-Lane; W2-08a/b,
-W2-09b und W2-10 laufen parallel.
-
-- [ ] **W2-03 Usage-/Billing-Collectors je Adapter** · M · Lane store.rs · `store/development_codex_usage.rs`, `budget.rs`; Codex-JSON, Kimi/OpenCode-Statuszeilen; Live-Quota-Provenienz · Abnahme: kein „unavailable" mehr im Kostenbeleg · in Arbeit.
-- [ ] **W2-06 Supervisor: Producer-Audit und Runtime-Notifications** · M · `supervisor.rs`, Lane **main.rs** · `startsWorkers` bleibt hinter dem Gate · in Arbeit.
-- [ ] **W2-08 Ressourcendruck- und Streaming-Enforcement** · M, geteilt (Koordinator 24.09.) · `pressure`, `process_capture` · **W2-08a** Ressourcendruck- und Streaming-Enforcement, in Arbeit · **W2-08b** Speicher-/CPU-Grenzen je Job und Druck bei der Admission, wartet auf die Nutzerentscheidung zu den Grenzwerten.
-- [ ] **W2-09b DeepSeek-V4-Flash-Worker über OpenCode** · M · hooks/capabilities/profile; main.rs nur seriell für die fallible Spawn-Integration · CLI-Probe belegt, PTY-Zustellung und Per-Worker-Config offen · Spec `.pa/task_ollama_worker_adapter.md`.
-- [ ] **W2-10 Live-HQ-Views** · M, teilbar in 10a Goals/Teams/Ownership, 10b Routing/Budget, 10c Review/Delivery · `docs/dev-hq/hq.js`, `scripts/hq-live.mjs` · Abnahme: Keyboard- und Screenshot-Belege je Flow · Weg: Kimi/OpenCode.
-
-### W3 — Continuous Phase 5 (Delivery und Installation), PC-nah
-
-Erledigt (→ `docs/ERLEDIGT.md`): W3-05 (Entscheidung Windows-only), W3-06
-(native Tests im Gate `native-tests`, PR #75).
-
-- [ ] **W3-01 Globaler DB-Wartungs-/Write-Lock + Drain** · M, zwei Teilpakete · Lane store.rs (Lock) und Lane main.rs (Drain aller interaktiven Sitzungen).
-- [ ] **W3-02 Windows-Recovery-Helper** · M · Installer-Transitionen, Journal angebunden („recovery journal module is not yet connected to an installer helper") · Weg: Codex, PC.
-- [ ] **W3-03 Paketierte Drills** · S je Drill · Singleton-Handshake (alte Instanz scheitert, Nutzersitzungen überleben), Crash/Power-Loss an jeder Transition, kohärentes Backup vor Installer · Nutzer-PC + Agent-Protokoll.
-- [ ] **W3-04 Updater-Zustände in App und HQ** · S · Frontend + `hq.js` an den Helper anschließen; unbefristetes Warten bei aktiven Sitzungen sichtbar.
-- [ ] **W3-07 Produktionsschlüssel-Build + Signed-Updater-Relaunch-Beleg** · Nutzer · `scripts/f8-signed-updater.ps1` lokal (Key liegt nur als GitHub-Secret).
-- [ ] **W3-08 Paketierter HQ-v1-Beleg** · S · installierter Build antwortet auf `/api/hq/v1/runtime`, Manifest-Digest stimmt.
-- [ ] **W3-09 Struktur** (nur wenn W0-05 = zerlegen; inaktiv) · `lib.rs`, `store`-Split in Scheiben ≤ 300 Zeilen · Lanes store.rs/main.rs seriell.
-
-### W4 — Rollout und Freischaltung
-
-- [ ] **W4-01 20-Task-Benchmark** · M · `benchmark/`, `scripts/dev-benchmark.mjs` · Token, Zeit, Rejection, Rework, Regression, Recovery; Ziel −20 % Tokens / −15 % Zeit erst nach dem Qualitätsgate.
-- [ ] **W4-02 Abnahmematrix final** · S · jede der 27 Zeilen mit Laufzeitbeleg oder ausdrücklichem Nutzer-Gate.
-- [ ] **W4-03a Journal-Teil von W4-03 ohne Aktivierung** (Vorschlag, Schnitt vom Nutzer zu bestätigen, §5) · S · Lane main.rs · die Ereignisquelle (`store/journal_watch.rs`) läuft, ohne dass `continuous.enabled` fällt · Voraussetzung für W5-03.
-- [ ] **W4-03 Continuous-Aktivierung** · S · Lane main.rs · `development_policy.rs:224` hinter die Abnahmebelege legen, `continuousExecutionEnabled` als Nutzerentscheidung, Capability-Wahrheit in `main.rs` · **nur nach W4-02 und Freigabe des Nutzers**.
-- [ ] **W4-04 Release v1.5.0** · Vertrag: Nutzererweiterung vom 11.09.
-
----
-
-## 3. Bewusst zurückgestellt (kein Paket)
-
-Wieder aufnehmen nur mit belegtem Bedarf und neuem Eintrag hier.
-
-| Thema | Wann wieder |
-|---|---|
-| Prompt-Kompression, MCP-Injektion | wenn ein Worker nachweislich am Kontextlimit scheitert |
-| Command Palette, globale FTS-Suche, Fokusmodus | wenn Nutzer sie im Alltag vermisst |
-| Remote-Board, Multi-Prozess-Deskriptor | bei Neuanschaffung eines Servers |
-| Design Studio, Queen/Employee-Neuanlage | nie (gestrichen) |
-| Ideen-Pipeline, Zeitachse, Vorschlags-Tab | nach W4, mit Kostenschätzung gegen den Budgetdeckel |
-| hermes-agent | nach W3-09 bzw. bei belegtem Bedarf; Multi-Harness ist oben als HQ2-06 aufgenommen |
-| Dependabot-Majors (Vite 8 → eslint 10 → TS 7 → React 19 → sqlx 0.9) | einzeln, nach W3-09 |
-| Maßnahmen M1–M11 (Arbeitsweise, Archiv `pa/plan_arbeitsweise_optimierung.md`) | nur auf gesondertes Kommando |
-| Tauri-Plugins `dialog`, `notification`, `window-state` | wenn ein Paket sie braucht |
-| OmniRoute-Cutover cheap → Produktmodus | erst mit gemessenem Kostensieg |
-
----
-
-## 4. Parallelität
-
-- Wie viele Pakete gleichzeitig laufen, bestimmen die Build-Slots und die
-  seriellen Lanes; beides steht in `docs/MASTERPLAN.md` („Worker-Struktur").
-  Die frühere Angabe „W1 bis zu 22 gleichzeitige Agenten" ist überholt.
-- Nahtstellen-Lanes st, api, mn, pa: je ein aktives Paket.
-- W2: Store-Lane seriell (W2-03 zuerst); W2-06 in der main.rs-Lane; W2-08a/b,
-  W2-09b, W2-10 parallel.
-- Die Zahl der Implementer ist nicht begrenzt (Nutzerentscheidung 24.09.);
-  begrenzt sind Cargo-Builds (höchstens drei, RAM) und die seriellen Lanes.
-- Ein Paket pro Agent. M-Pakete tragen einen Teilungsvorschlag; teilen ist
-  erlaubt, zusammenlegen nicht.
-- Review-Pool nach §0.4.
-
----
-
-## 5. Nutzerentscheidungen (Register)
-
-Entschieden und umgesetzt: Nr. 1–9 (W0-01 bis W0-07, W2-09 Ollama bleibt
-Helper, W3-05 Capture-Host Windows-only; Einzelheiten in `docs/ERLEDIGT.md`
-und `docs/decisions.md`) und Nr. 13 (F-SEC-4: Opt-in, W1-24/W1-24b, PR #62
-und #98; Restrisiko KNOWN_ISSUES KI-29). Branch-Protection auf `main` ist
-seit 22.09. gesetzt; `strict` ist seit 24.09. zugunsten der Mergify-Queue aus
-(CI-01, PR #108).
-
-Entschieden am 24.09. (umgesetzt in `AGENTS.md` und `docs/MASTERPLAN.md`):
-`main` wird über die Mergify-Queue gemergt, Hand-Merge nur durch den
-Koordinator als Notfall-Ausnahme, gebunden an den Head-SHA; keine Obergrenze
-für die Zahl der Implementer; bei Überschneidung DF/HQ2/W5 gewinnt die DF-ID
-(Aliase); DF-07 bleibt offen bis zum visuellen PASS von DF-07d; SETUP-A deckt
-SETUP-01/02/03/06/07 (laut PR-Text auch SETUP-10/13); Folgepakete aus Reports ohne eigene Spec; W1-19b ist in
-CI-02 aufgegangen.
-
-| # | Entscheidung | Status |
-|---|---|---|
-| 10 | W3-07 Produktionsschlüssel-Build | offen |
-| 11 | W4-03 Continuous-Aktivierung | offen (erst nach W4-02) |
-| 12 | Kostendeckel Ideen-Pipeline, M1–M11 | zurückgestellt |
-| 14 | Secrets aus der Repo-Ebene in geschützte Environments verlegen; Required Reviewers für `release`/`review` eintragen | offen (Nutzer, Browser) |
-| 15 | Release der Arbeit nach v1.4.1 | offen |
-| 16 | Schnitt W4-03a: Journal-Teil von W4-03 ohne Aktivierung vorziehen (Voraussetzung W5-03) | offen, Vorschlag |
-| 17 | ADR, die die st-Lane für unabhängige `store/`-Module teilt | offen, Vorschlag aus `docs/MASTERPLAN.md` |
-
----
-
-## 6. Belege und Verträge, die weiter gelten
-
-- `.pa/task_continuous_devhq.md` — vom Nutzer am 10.09. genehmigter Vertrag
-  für den Continuous Mode (sechs Phasengates, kein zusätzliches API-Geld).
-- `.pa/continuous_acceptance_matrix.md` — Abnahmematrix, 27 Zeilen.
-- `.pa/plan_projects_w5.md` — Plan der Welle W5 (freigegeben 24.09.).
-- `.pa/report_*.md` — Belege je Paket; `.pa/review_*.md` — Reviews.
-- `docs/development/CONTINUOUS.md`, `docs/development/WORKFLOW.md`,
-  `docs/development/HQ2_CONTRACT.md` — Verträge und Betriebsregeln.
-- Archiv: `docs/archive/plaene-2026-09/` (Sanierungsplan Rev 9, alle
-  Superpowers-Pläne und -Specs, `.pa/plan_*`, Design-Brief und -Vertrag,
-  STAND.md-Vollfassung vom 15.09.).
+| DF-06 | Grafische Roadmap · Frontend · HQ · M | DF-02, DF-05 | **Geparkt (25.09.)** DF-06b hängt am Workflow-Motor (DF-11/16). DF-06a erledigt (PR #70). Ursprünglich: DF-06a erledigt (PR #70). Offen DF-06b: Ausführungszustände bereit/aktiv/erledigt nach DF-11/DF-16 mit belegter Paket-/Run-Bindung; bis dahin bleibt der Ausführungsstatus unbekannt. Hierarchie, Abhängigkeiten, kritischer Pfad, Quellenklick und Prioritätsgrund mit echtem Plan und leeren/fehlerhaften Daten prüfen. |
+| DF-07 | Desktop-Dichte · Frontend · HQ/APP · M | DF-02 | **Erledigt.** DF-07a–c über PR #70; DF-07d hat der Nutzer am 25.09. als erledigt bestätigt, die Sichtprüfung gehört zur M3-Abnahme. Ursprünglich: DF-07a–c erledigt (PR #70). Offen DF-07d: visueller PASS der React-Dichte (Code über PR #70 gemergt, `.pa/report_df07d_native_density.md`); DF-07 ist erst danach abgenommen. Komfortabel/Kompakt ändern messbar Zeilenhöhe, Abstand, Paneelgrößen und sichtbare Informationsmenge; Screenshots bei 1280×800 und 1920×1080, Tastatur und Zoom prüfen. |
+| DF-08 | Ausführungsidentität · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DF-08d hängt an DF-11. DF-08a–c erledigt (PR #70). Ursprünglich: DF-08a–c erledigt (PR #70). Offen DF-08d: native Modellbeobachtung, Adapter-/Profilbelege, Workflow-Anbindung nach DF-11. Provider, Modell/Familie, Adapter und Erscheinungsprofil getrennt führen; konfiguriert ist nicht beobachtet; Alias-/Unbekannt-Fälle testen. |
+| DF-09 | Profilwahl im Chat · Frontend · HQ/APP · M | DF-02, DF-08 | **Geparkt (25.09.)** DF-09b wäre ein Doppelbau (React neben HQ); erst nach der Entscheidung „HQ als Hauptbereich der App“. DF-09a erledigt (PR #100). Ursprünglich: DF-09a erledigt (PR #100, lokale Chat-Erscheinungen). Offen DF-09b: React-Parität und Admission-Kompatibilität. UI-Profil Codex/Claude/DeepSeek unabhängig vom belegten Modell wählen; unterstützte native Kombinationen von reiner Darstellung unterscheiden, inkompatible Starts verweigern. |
+| DF-10 | Chat-Modi und Interview · Integrator · CORE/SEAM/HQ/APP · M | DF-01, DF-03, DF-09 | **Geparkt (25.09.)** Zusammen mit HQ2-04; kommt mit der einen Oberfläche nach M4 zurück. Ursprünglich: Übernimmt HQ2-04 (beratende und aktive Sitzung getrennt sichtbar, manueller Providerwechsel mit Übergabe). Plan/Interview/aktive Ausführung mit konkreten Rückfragen und Projektkontext; Planmodus darf keine Schreibbefugnis erzeugen. Reale Sitzung mit Antwort belegen; Integration bei Bedarf in Kinder teilen. |
+| DF-11 | Workflow-Zustand · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** Workflow-Motor: zweite Steuerung neben dem fertigen Continuous-Kern. Ursprünglich: Persistente Stage-Zustände und append-only Übergangsereignisse auf vorhandener Queue; ungültige Übergänge und Neustart testen. |
+| DF-12 | Unabhängigkeitsgate · Backend · CORE · M | DF-08, DF-11 | **Gestrichen (25.09.)** Doppelung: die Autor-Familiensperre steckt in W2-01 ✓ und W5-02d. Ursprünglich: Kandidatenweite Autor-Familienmenge sperrt eigene Review-/Testbewertung, auch nach Handoff/Alias/Review-Fix; unbekannte Identität blockiert Attestation. Negativtests zwingend. |
+| DF-13 | Berechtigungsteam · Backend · CORE · M | DF-01, DF-11 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Versionierte, vom Nutzer festgelegte Policy auswerten; erlauben/ablehnen/eskalieren mit Gründen. Keine Selbst-Erweiterung, kein gefälschter Human-Verdict; Replay und Scopewechsel testen. |
+| DF-14 | Stationsübergabe · Backend · CORE · M | DF-12, DF-13 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Bestehende Admission/Claims für nächste Station nutzen; atomare Übergabe, Idempotenz, Fencing, Budget aller Nachfahren. Doppelzustellung und Crash vor/nach Spawn testen. |
+| DF-15 | Rücklauf und Recovery · Backend · CORE · M | DF-14 | **Geparkt (25.09.)** Workflow-Motor; DF-15a erledigt (PR #103), DF-15b erledigt (PR #16). Ursprünglich: Review→Fix→neuer Review, Pause/Cancel, Quota/Auth-Ausfall, begrenzte Wiederholung und Wiederaufnahme; Leaseablauf nie als Prozessende werten. Der frühe Provider-Exit vor dem Lesen des Task-Inputs ist als DF-15a erledigt (PR #103, Endzustand `exited_undelivered`, Migration 22); die dabei offen gebliebene Freigabe von Reservierung und Delivery ist als DF-15b erledigt (KNOWN_ISSUES KI-27: Reservierung `cancelled` und Delivery-Freigabe journalisiert, atomar im bewiesenen Exit-Commit, ohne neue Migration). |
+| DF-16 | Workflow-API · Integrator · SEAM/HOST · M | DF-15 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Start/Pause/Status/Decision über denselben Kern für App/HQ/CLI; Autorisierung, Konflikt und Event-Replay prüfen, kein Scheduler im Host. |
+| DF-17 | Team-/Stationsgraph · Frontend · HQ · M | DF-02, DF-16 | **Geparkt (25.09.)** hängt an DF-16. Ursprünglich: Ideen→Interview→Plan→Koordination→Architektur→Code/Design→Review→Test→Kritik mit konfigurierbaren Stationen, Rollen, Zuständen und Übergabegründen; native Teams/Lessons erhalten. |
+| DF-18 | Entscheidungs-Inbox · Frontend · HQ/APP · M | DF-16 | **Gestrichen (25.09.)** Doppelung mit W5-06/06b/08a/08b (die selbst geparkt sind). Ursprünglich: Nur echte Nutzerfragen/Freigaben, Kontext/Optionen/Auswirkung, Zielprojekt und Version sichtbar; doppelte/veraltete Entscheidung abweisen und auflösen. |
+| DF-19 | Prioritäten und Advisor · Backend · CORE · M | DF-08, DF-12, DF-03 | **Gestrichen (25.09.)** Routing ist dreifach geplant (DF-19/20, W5-30b/33, HQ2-07); später eine gemeinsame Fassung. Ursprünglich: Taskklasse, Abhängigkeiten, Evidenz, Benchmark/Erfahrung, Quota und Policy in erklärbare Empfehlungen für Priorität/Modell/Effort übersetzen; fehlende Daten und manuelle Overrides testen. |
+| DF-20 | Routing-Editor · Frontend · HQ/APP · M | DF-19 | **Gestrichen (25.09.)** wie DF-19. Ursprünglich: Anbieterreihenfolge, Regeln, Taskklassen, Reserven, Ausschlüsse, Fallbacks und Override editieren; Simulation erklärt Auswahl/Ablehnung, Revision verhindert verlorene Änderungen. |
+| DF-21 | Erweiterungskatalog · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: GitHub-Quellen zu Plugins/Skills auf feste Revision auflösen, Quelle/Kompatibilität/Rechte/Scope anzeigen; bestehende Installer wiederverwenden, untrusted Metadaten nicht ausführen. |
+| DF-22 | Installation und Rücknahme · Backend · CORE · M | DF-13, DF-21 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Kontrollierte Installation, Update, Deaktivierung und Rollback über geprüften Pfad; Traversal/Symlink, abgebrochenen Download und Versionswechsel testen; globale Änderungen nach Policy. |
+| DF-23 | Katalog-Bedienung · Frontend · HQ/APP · M | DF-22 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: GitHub-Link hinzufügen und ein Klick installieren, soweit Policy erlaubt; sonst begründete Entscheidung. Realer Installationszustand statt bloßer Prompt-Auswahl. |
+| DF-24 | Task-Preflight · Backend · CORE · M | DF-14, DF-22 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Vor Task und Scopewechsel erforderliche/hilfreiche Skills/Plugins auswählen; nur relevante laden, Auswahlgrund/Version/tatsächliche Verwendung protokollieren; fehlende Pflichtfähigkeit blockiert. |
+| DF-25 | Schneller Entwurfsbereich · Backend · CORE · M | DF-13, DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Worktree, isolierte Projektdaten und Live-Preview-Lebenszyklus; Start/Stop/Recovery, keine fremden Prozesse beenden. Klar als Arbeitsisolation kennzeichnen. |
+| DF-26 | Stärkere Sandbox · Backend · CORE · M | DF-25 | **Gestrichen (25.09.)** Container/VM ist auf 16 GB RAM unter Windows fraglich. Ursprünglich: Einen belegbar verfügbaren Container- oder VM-Adapter mit Filesystem-/Netzwerk-/Ressourcengrenzen integrieren; fehlende Voraussetzungen anzeigen, kein stiller schwacher Fallback. |
+| DF-27 | Architekturansicht · Frontend · HQ · M | DF-05, DF-25 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Reale Modul-/Abhängigkeitsdaten mit Quellen und Abdeckung visualisieren; Änderungsvorschlag→Diff→Test→Übernahme, unbekannte Analysebereiche sichtbar. |
+| DF-28 | Gemeinsames Design-Livebild · Frontend · HQ/APP · M | DF-17, DF-25 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Laufende echte App/Website, gewählter Schritt, Agentendelta und Feedback nebeneinander; Änderungen fortlaufend nachvollziehbar, Wiederverbindung/Fehler testen. |
+| DF-29 | Messereignisse · Backend · CORE · M | DF-11, DF-08 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Zyklus-/Wartezeit, Rework, Review/Test, Recovery, Routing und beobachtete Usage mit Quelle erfassen; Deduplikation, Einheit, fehlende Werte, Retention/Redaktion prüfen. |
+| DF-30 | Statistikprojektionen · Backend · CORE · M | DF-29, DF-24 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Filterbare Task-/Modell-/Provider-/Skill-Vergleiche, Stichproben und Qualitätsmetriken, API/Export; keine Gleichsetzung von Korrelation und Ursache oder Abo-Quoten. |
+| DF-31 | Statistik-Cockpit · Frontend · HQ/APP · M | DF-02, DF-30 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Große Analysefläche mit Trends, Verteilungen, Engpässen, Rework, Teststabilität, Kapazität, Quellen-Drilldown und Einstellungen; echte Daten plus kenntliche Fixture-Tests. |
+| DF-32 | Releaseprognose · Backend/Frontend · CORE/HQ · M | DF-06, DF-30 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Kritischen Pfad und beobachteten Durchsatz mit Unsicherheitsintervall verbinden; ohne ausreichende Daten kein Datum. Readiness separat aus offenen Gates, Reviews/Tests und Blockern anzeigen. |
+| DF-33 | Vorlagenkatalog · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Versionierte editierbare Templates für Idee/Projekt/Plan/Team/Harness/Review/Test/Policy/Release; Kontextvorschlag mit Vorschau, kein stilles Überschreiben. |
+| DF-34 | Vorlagen im Arbeitsfluss · Frontend · HQ/APP · M | DF-10, DF-18, DF-23, DF-33 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Passende Vorlagen an Eingabestellen anbieten; übernehmen/anpassen/verwerfen, Entwürfe bei Navigation erhalten und gleiche Semantik in App/HQ prüfen. |
+| DF-35 | Durchgängiger Runtime-Nachweis · Tester · DOC/Tests · M | DF-20, DF-24, DF-26, DF-27, DF-28, DF-31, DF-32, DF-34 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Isoliertes Projekt vom Plan bis zu modellunabhängigem Review/Test; reale Modellantwort, Übergaben, Rückfrage, Neustart und Datenparität messen; negative Gates mitprüfen. |
+| DF-36 | PC-Politur und Designabnahme · design-director · HQ/APP · M | DF-35, DF-07 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Impeccable-Kritik anhand echter Screenshots; leere/ladende/fehlerhafte/dichte Ansichten, Fokus, Zoom, Kontrast und Hell/Dunkel prüfen; Befunde nachvollziehbar schließen. |
+| DF-37 | Abschluss und Releaseentscheidung · Integrator/Reviewer · DOC · S | DF-36 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Zwei unabhängige Reviews für große/Shared-Seam-Änderungen, Dispositionen, aktuelle Gates und NICHT ABGEDECKT; Readinessbericht. Merge/Release/Continuous nur mit geltender menschlicher Freigabe. |
+
+Größen und Abschlussprotokoll der DEVFLOW-Pakete, Verträge und Scopes stehen in
+`.pa/archiv/PLAN_2026-09-24.md` (Abschnitt DEVFLOW).

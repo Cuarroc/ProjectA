@@ -1,109 +1,63 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-09-25T21:53:09.957Z",
-  "commit": "8176fce",
+  "generatedAt": "2026-09-26T03:38:56.455Z",
+  "commit": "a115c3c",
   "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "8fbbe66f235dc01e28f247fb7e71948dd3ec705d76ec7037ab78eefd5a7c3dd2"
+      "sha256": "b5837e86db8b33cf31314e1a5ba28630659ebe1733a9b55c06e379a37258b73c"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "6648efce1cafd7ab3639c83ae4009fc5e7ddb20942671254af42cf5053013f17"
-    },
-    {
-      "path": ".pa/task_f_core3_delivery.md",
-      "sha256": "5f8b67e3368c2011872aa4548530a5e503d0ed21cc820e8cd191e9ad176c40f3"
+      "sha256": "429840b8289ca5386dfab9c3a58b531ac168caed9b30cd8f9e332bfb9d9e13b3"
     },
     {
       "path": ".pa/task_w1-05.md",
       "sha256": "45ebb9aaee6612a77ad9c5a63d094aa1d62ab19239e231685934bf761060e9b3"
     },
     {
-      "path": ".pa/task_w1-10.md",
-      "sha256": "330e1b89c7b490cec769cc3f559730d36fa5b5205c02000370a3e91aadf4a758"
-    },
-    {
-      "path": ".pa/task_w1-12.md",
-      "sha256": "85ccea99e558d04153bb05964ba0c1712c974da020ca251e708a8ca5366c1fe2"
-    },
-    {
-      "path": ".pa/task_w1-17.md",
-      "sha256": "82385478c94ddf5bf8f14a399c4a06d027adcd865a04645b533b14965e4750f9"
+      "path": ".pa/task_f_core3_delivery.md",
+      "sha256": "5f8b67e3368c2011872aa4548530a5e503d0ed21cc820e8cd191e9ad176c40f3"
     },
     {
       "path": ".pa/task_w1-20.md",
       "sha256": "f69367fc49f659b82a655830a7647f03e119c3bf51918132b04def25ba2ac46c"
     },
     {
-      "path": ".pa/task_ollama_worker_adapter.md",
-      "sha256": "9f29d94ba3884c5eed7fc72af9b43bb6da657e4eb43ce9e14e2d76da143a3287"
-    },
-    {
-      "path": ".pa/task_hq2-02.md",
-      "sha256": "5eac3339f7e21f87d1547c800d7e2e672a36837d31d542368c86fda4abc20b35"
+      "path": ".pa/task_w1-17.md",
+      "sha256": "82385478c94ddf5bf8f14a399c4a06d027adcd865a04645b533b14965e4750f9"
     }
   ],
   "warnings": [],
   "nextGrip": [
     {
-      "text": "Die laufenden Pakete abschließen (Tabelle oben); die Queue mergt fertige PRs selbst. Danach die Reihenfolge je Lane aus `docs/MASTERPLAN.md` („Worker-Struktur\") ziehen; DF-07d (visueller PASS) braucht keinen Build-Slot.",
+      "text": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
       "source": "STAND.md#Nächster Griff"
     },
     {
-      "text": "W1-05b: sichere Cancel-Regel für `dispatched` implementieren und testen, Prozessende verifizieren, doppelte Neueinreihung verhindern; die produktive Queue bis dahin nicht durch einen App-Start dispatchen.",
+      "text": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
       "source": "STAND.md#Nächster Griff"
     },
     {
-      "text": "Nutzerentscheidungen einholen, die Pakete blockieren: Schnitt W4-03a (Journal-Teil ohne Aktivierung, Voraussetzung für W5-03), Grenzwerte für W2-08b, Secrets aus der Repo-Ebene in geschützte Environments, Release-Frage für die Arbeit nach v1.4.1 (Liste in `docs/PLAN.md` §5).",
+      "text": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "source": "STAND.md#Nächster Griff"
     }
   ],
   "specs": [
     {
-      "file": ".pa/task_f_core3_delivery.md",
-      "title": "W1-03e/f: F-CORE-3 Rest B.3/C (C-3 selbst erledigt, PR #72)",
-      "packet": "W1-03e/f: F-CORE-3 Rest B.3/C (C-3 selbst erledigt, PR #72)",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
       "file": ".pa/task_w1-05.md",
       "title": "W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched`",
       "packet": "W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched`",
-      "lane": "parallel",
-      "serialOwner": null,
+      "lane": "serial",
+      "serialOwner": "store.rs",
       "status": "aktiv",
       "source": "STAND.md#Aktive Specs",
       "startable": true
     },
     {
-      "file": ".pa/task_w1-10.md",
-      "title": "W1-10: HQ-Stylesheet",
-      "packet": "W1-10: HQ-Stylesheet",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w1-12.md",
-      "title": "W1-12: Design-Reste",
-      "packet": "W1-12: Design-Reste",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w1-17.md",
-      "title": "W1-17: HQ-Parser auf diesen Plan umstellen",
-      "packet": "W1-17: HQ-Parser auf diesen Plan umstellen",
+      "file": ".pa/task_f_core3_delivery.md",
+      "title": "W1-03e/f: F-CORE-3 Rest B.3/C",
+      "packet": "W1-03e/f: F-CORE-3 Rest B.3/C",
       "lane": "parallel",
       "serialOwner": null,
       "status": "aktiv",
@@ -121,19 +75,9 @@ window.HQ_DATA = {
       "startable": true
     },
     {
-      "file": ".pa/task_ollama_worker_adapter.md",
-      "title": "W2-09b: DeepSeek V4 Flash Cloud ueber OpenCode; CLI-Probe belegt, TUI/Worker offen",
-      "packet": "W2-09b: DeepSeek V4 Flash Cloud ueber OpenCode; CLI-Probe belegt, TUI/Worker offen",
-      "lane": "serial",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_hq2-02.md",
-      "title": "HQ2-02: Konzeptdemo, Inhalt über #70 auf main; Nutzer- und visuelle Abnahme offen",
-      "packet": "HQ2-02: Konzeptdemo, Inhalt über #70 auf main; Nutzer- und visuelle Abnahme offen",
+      "file": ".pa/task_w1-17.md",
+      "title": "W1-17: HQ-Parser prüfen",
+      "packet": "W1-17: HQ-Parser prüfen",
       "lane": "parallel",
       "serialOwner": null,
       "status": "aktiv",
@@ -144,23 +88,7 @@ window.HQ_DATA = {
   "findings": [
     {
       "id": "KI-24",
-      "text": "SQLite-Lastklasse (`database is locked` / `pool timed out`), mit #77/#85 bearbeitet, beobachten.",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-25",
-      "text": "Linux-Prozessgruppen-Test in `testgate.rs`, einmal rot, Ursache offen (W1-29).",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-26",
-      "text": "Windows-PTY-Argumenttest, Kaltstart-Fix seit PR #104, beobachten.",
+      "text": "SQLite-Lastklasse (`database is locked`), beobachten.",
       "klass": "CLAIM",
       "source": "STAND.md",
       "packet": null,
@@ -175,24 +103,8 @@ window.HQ_DATA = {
       "serialOwner": null
     },
     {
-      "id": "KI-28",
-      "text": "Capture-Host bleibt Windows-only (Entscheidung 16.09.).",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
-      "id": "KI-29",
-      "text": "F-SEC-4-Restrisiko des OmniRoute-Key-Syncs bei eingeschaltetem Opt-in.",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
-    },
-    {
       "id": "KI-20",
-      "text": "doppelte Antwort auf `ESC[6n`, braucht eine Entscheidung (W1-27).",
+      "text": "doppelte Antwort auf `ESC[6n`, Behebung W1-27 in M3.",
       "klass": "CLAIM",
       "source": "STAND.md",
       "packet": null,
@@ -204,7 +116,7 @@ window.HQ_DATA = {
       "id": "F0",
       "dependsOn": [],
       "lane": "serial",
-      "current": "done",
+      "current": "waiting",
       "source": "docs/PLAN.md"
     },
     {
@@ -293,30 +205,30 @@ window.HQ_DATA = {
   ],
   "next": [
     {
-      "packet": "Die laufenden Pakete abschließen (Tabelle oben);",
-      "why": "Die laufenden Pakete abschließen (Tabelle oben); die Queue mergt fertige PRs selbst. Danach die Reihenfolge je Lane aus `docs/MASTERPLAN.md` („Worker-Struktur\") ziehen; DF-07d (visueller PASS) braucht keinen Build-Slot.",
+      "packet": "M2 nach PLAN.md abarbeiten; die Queue mergt grün",
+      "why": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "Die laufenden Pakete abschließen (Tabelle oben); die Queue mergt fertige PRs selbst. Danach die Reihenfolge je Lane aus `docs/MASTERPLAN.md` („Worker-Struktur\") ziehen; DF-07d (visueller PASS) braucht keinen Build-Slot.",
+      "doneWhen": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
       "startable": true
     },
     {
-      "packet": "W1-05b: sichere Cancel-Regel für `dispatched` im",
-      "why": "W1-05b: sichere Cancel-Regel für `dispatched` implementieren und testen, Prozessende verifizieren, doppelte Neueinreihung verhindern; die produktive Queue bis dahin nicht durch einen App-Start dispatchen.",
+      "packet": "Die toten Queue-Einträge read-only nachzählen un",
+      "why": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "W1-05b: sichere Cancel-Regel für `dispatched` implementieren und testen, Prozessende verifizieren, doppelte Neueinreihung verhindern; die produktive Queue bis dahin nicht durch einen App-Start dispatchen.",
+      "doneWhen": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
       "startable": true
     },
     {
-      "packet": "Nutzerentscheidungen einholen, die Pakete blocki",
-      "why": "Nutzerentscheidungen einholen, die Pakete blockieren: Schnitt W4-03a (Journal-Teil ohne Aktivierung, Voraussetzung für W5-03), Grenzwerte für W2-08b, Secrets aus der Repo-Ebene in geschützte Environments, Release-Frage für die Arbeit nach v1.4.1 (Liste in `docs/PLAN.md` §5).",
+      "packet": "Fragen an den Nutzer gehen in die Entscheidungs-",
+      "why": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "Nutzerentscheidungen einholen, die Pakete blockieren: Schnitt W4-03a (Journal-Teil ohne Aktivierung, Voraussetzung für W5-03), Grenzwerte für W2-08b, Secrets aus der Repo-Ebene in geschützte Environments, Release-Frage für die Arbeit nach v1.4.1 (Liste in `docs/PLAN.md` §5).",
+      "doneWhen": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
       "startable": true
     }
   ],
@@ -338,7 +250,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -359,7 +271,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -380,7 +292,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -400,7 +312,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -421,7 +333,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -442,7 +354,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -462,7 +374,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -483,7 +395,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -504,7 +416,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -524,7 +436,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -545,7 +457,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -566,7 +478,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -586,7 +498,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -607,7 +519,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -628,7 +540,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -650,7 +562,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -692,7 +604,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 15,
         "votes": 0
       }
     },
@@ -1080,7 +992,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1101,7 +1013,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 13,
         "votes": 0
       }
     },
@@ -1145,7 +1057,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 3,
+        "ageDays": 4,
         "votes": 0
       }
     },

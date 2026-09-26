@@ -1,29 +1,25 @@
-# AGENTS.md
+# WORKFLOW — Nachschlagewerk
 
-Diese Datei gilt für **jeden** Agenten, der an diesem Repo arbeitet — Claude,
-Codex, Kimi, OpenCode, Orca-Worker. Sie ist die gemeinsame Grundlage;
-anbieterspezifische Dateien wie `CLAUDE.md` verweisen hierher, statt eigene
-Fassungen derselben Wahrheit zu führen.
+**Diese Datei ist ein Nachschlagewerk, keine Regelquelle.** Die Regeln stehen
+in [`AGENTS.md`](../../AGENTS.md) (zehn Kernregeln oben); bei jedem Widerspruch
+gewinnt AGENTS.md. Hier stehen Architektur, Befehle, Anbieter-Eigenschaften und
+hart erlernte Betriebs-Gotchas. Bis 2026-09-24 hieß diese Datei selbst
+„AGENTS.md“; Abschnitte, die noch wie Regeln klingen, sind Begründung und
+Hintergrund der zehn Kernregeln.
 
 ProjectA ist ein „agentic terminal": eine Tauri-2-Desktop-App, die eine Flotte
 paralleler CLI-Coding-Agenten nebeneinander betreibt. Grundprinzip: **eine
-Aufgabe = ein Agent = ein git-Worktree.** Aktuelle Version und offene Arbeiten
-stehen in `STAND.md` — nicht hier.
+Aufgabe = ein Agent = ein git-Worktree.** Wo wir stehen, steht in `STAND.md`,
+der Plan in `docs/PLAN.md` — nicht hier.
 
 ---
 
-## ZUERST LESEN: `STAND.md`
+## Zuerst lesen
 
-Egal ob du neu anfängst oder mitten in laufender Arbeit übernimmst —
-`STAND.md` im Projektwurzelverzeichnis ist dein erster Griff. Sie beantwortet:
-
-1. **Was sofort zu prüfen ist** — laufende Worker, Kontingente.
-2. **Wo wir stehen** — welche Branches welche Beweise tragen, was auf Review wartet.
-3. **Welcher Agent wofür taugt** — mit Belegstelle statt Behauptung.
-4. **Fallen, in die schon jemand getreten ist** — mit der Lösung daneben.
-
-Ist die Zeitangabe dort mehrere Stunden alt, gilt ihr eigener Rat: erst die
-drei Prüfbefehle, dann glauben.
+`STAND.md` (kurz: wo wir stehen), dann `docs/PLAN.md` (Meilensteine, Geparktes,
+Entscheidungs-Inbox), dann `AGENTS.md`. Den Live-Stand liefern `gh pr list` und
+`git log origin/main`, nicht ein handgepflegtes Dokument: eine Statusaussage
+ohne Datum und Befehl gilt als ungeprüft (AGENTS.md, Regel 9).
 
 ---
 
@@ -84,9 +80,10 @@ src-tauri/src/store.rs    src-tauri/src/bin/pa.rs
 hinzufügt, läuft durch alle vier — deshalb kollidieren dort parallele Arbeiten
 zuerst. Diese Regel hat an einem einzigen Tag dreimal Arbeit gerettet.
 
-Braucht dein Fund einen Test in einer dieser Dateien und du arbeitest parallel
-zu anderen: liefere ein Reproduktionsrezept statt eines Tests und vermerke
-„Naht — für den Menschen".
+Braucht dein Fund einen Test in einer dieser Dateien und die Lane gehört gerade
+einem anderen Paket: schreib den roten Test nicht nebenbei, sondern lass ihn
+als eigenes Paket in dieser Lane einplanen (Eintrag in `docs/PLAN.md` über den
+Koordinator). Ein Fund ohne roten Test bleibt bis dahin eine Behauptung.
 
 ### 2. Der Beweismaßstab
 
@@ -158,14 +155,16 @@ Aufzählung lädt dazu ein, die Lücke zu finden.
 
 ---
 
-## Dual-Review-Regel
+## Reviews nach Risiko
 
-Pläne und große Diffs — **über 300 Zeilen oder mit Änderung an einer der vier
-Nahtstellen** — werden vor dem Merge von **zwei anderen KIs** reviewt, nicht
-vom Autor und nicht von einer einzigen. Annahme oder Ablehnung wird mit
-Begründung protokolliert (im Report bzw. `.pa/`), damit die Entscheidung
-später nachvollziehbar bleibt. Eine zweite Meinung, die nie widerspricht, ist
-keine Prüfung.
+Seit 25.09.2026 gestuft (AGENTS.md, Regel 5): Stufe A (Nahtstelle, Sicherheit,
+Nebenläufigkeit, PTY, Datenbank) zwei Reviewer anderer Anbieter, Stufe B
+(übriger Rust-/TS-Code) einer, Stufe C (Doku, Tests, Snapshots, Konfiguration
+ohne Laufzeitwirkung) keiner; höchstens zwei Runden, danach entscheidet der
+Nutzer. Hintergrund (Prüfung C, 25.09.): alle zehn nachgewiesenen echten
+Review-Treffer lagen in Stufe-A-Code; F4 lief 27 Runden. Annahme oder Ablehnung
+jedes Befunds steht mit Begründung im PR-Text. Eine zweite Meinung, die nie
+widerspricht, ist keine Prüfung.
 
 ---
 
@@ -298,7 +297,7 @@ Zwei Hälften, verbunden über Tauris IPC (Command-Tabelle und Events: `README.m
     30-s-Dispatcher (Default max. 4 pro Projekt; **`0` schaltet den Dispatcher
     für das Projekt aus**), Status-Engine mit Rangfolge Hooks > Terminal-Heuristik > `gh`.
   - `routing.rs` / `omniroute.rs` / `quota.rs` / `freetier.rs` / `budget.rs` —
-    Spawn-Umgebung, OmniRoute-Routing (Daemon auf `:20128`, Probe `/healthz`),
+    Spawn-Umgebung, OmniRoute-Routing (Daemon auf `:<omniroute-port>`, Probe `/healthz`),
     Quota-/Budget-Blocks, Free-Tier-Failover mit ToS-Whitelist.
   - `api.rs` (token-geschützte lokale Control-API) und `web_interface.rs`
     (read-only Remote-Board) — **beide HTTP-Server sind handgerollt auf
@@ -343,11 +342,11 @@ Kontingent an einer Wand.
 kurze, gehaltvolle Aufrufe, alles mit Bildern. OpenCode ist *die Hand* — lange
 agentische Arbeit, Sicherheitsthemen, alles, was Kontingent schonen soll.
 
-**Cursor als Orchestrator, Claude als Hand:** Wenn die Sitzung in Cursor
-läuft und Worker das Claude-Abo verbrauchen sollen, spawnt der Orchestrator
-mit `--profile claude` (Abo).
-`claude-omni` und Cursor-Task-Subagents verlassen das Abo bzw. zählen gegen
-Cursor. Die Codex/OpenCode-Teilung oben bleibt für Läufe über OmniRoute.
+**Historisch:** Der Skill `.cursor/skills/claude-max-orchestration/`
+beschreibt den am 09.09.2026 gelöschten Server und das frühere Abo-Modell; er
+gilt nicht mehr. Welches Abo und Modell heute wofür läuft, steht in
+`docs/setup/providers.md`. Das Claude-Abo läuft nie über einen Router wie
+OmniRoute (Nutzerentscheidung 25.09.).
 
 Weitere harte Eigenschaften:
 
@@ -406,8 +405,10 @@ Werkzeugaufrufen, obwohl es einfache Fragen beantwortet.
 - **Screenshots der App:** aus nicht-interaktiven Shells `.pa/ui-shot.ps1`
   (PrintWindow, braucht keinen Vordergrund). `scripts/window-shot.ps1` scheitert
   aus nicht-interaktiven Shells.
-- **`KNOWN_ISSUES.md` ist eingefroren:** die dort gelisteten Befunde sind bewusst
-  offen, mit Begründung pro Zeile — nicht nebenbei „mitfixen".
+- **`KNOWN_ISSUES.md` nicht nebenbei „mitfixen“:** die dort gelisteten Befunde
+  sind bewusst offen, mit Begründung pro Zeile; behoben werden sie nur über ein
+  Paket aus `docs/PLAN.md`. Neue Befunde (auch ein roter `main`-Lauf mit Run-ID)
+  werden dort eingetragen.
 - **Ein Daemon, den eine geplante Aufgabe gestartet hat, überlebt
   `Stop-ScheduledTask`.** Er koppelt sich ab und läuft mit alter PID weiter. Den
   Prozess direkt beenden — und danach nachmessen, nicht annehmen.
@@ -466,7 +467,7 @@ auf. Was für diese Umgebung belegt gilt:
 
 ## Ressourcen-Nutzung (RAM sparen)
 
-ProjectA und OmniRoute (lokaler Daemon auf `:20128`,
+ProjectA und OmniRoute (lokaler Daemon auf `:<omniroute-port>`,
 `scripts/omniroute-serve.cmd`) dürfen jederzeit benutzt werden — ihre Nutzung
 ist sogar **bevorzugt**, um auf der lokalen Maschine RAM zu sparen:
 Auslagerbare Arbeit (Agenten-Läufe, Routing) läuft bevorzugt über OmniRoute
@@ -492,14 +493,17 @@ bash scripts/sync.sh start
 
 Das Briefing zeigt Branch, `git status`, alle Worktrees, die letzten Commits
 über alle Branches und die letzten Journal-Einträge. Ohne Script (manuell):
-`STATUS.md` (oberste Einträge) und `STAND.md` lesen, `git status --short`,
+`STAND.md` und `docs/PLAN.md` lesen, `git status --short`,
 `git log --all --oneline -12`, `git worktree list`, Ende von `.pa/ACTIVITY.md`.
+`STATUS.md` endet bei v1.4.0 und ist nur noch Chronik.
 
 ### Während der Arbeit
 
 - Wer eine neue Top-Level-Datei oder einen neuen Ordner anlegt, nennt sie/ihn im
   späteren Aktivitäts-Eintrag namentlich.
-- Task-Specs und Reports gehören als `task_*.md` / `report_*.md` nach `.pa/`.
+- Der Bericht eines Pakets ist der PR-Text (`## Report`). Specs gibt es nur
+  für M-Pakete (`.pa/task_<id>.md`); alte Specs und Review-Prompts liegen in
+  `.pa/archiv/`.
 - Keine Laufzeit-Artefakte im Repo-Root; was nicht ins Repo gehört, kommt in die
   `.gitignore`.
 - Vor größeren Eingriffen `git status` + `.pa/ACTIVITY.md` prüfen, ob eine
@@ -513,9 +517,10 @@ bash scripts/sync.sh note "<instanz>" "<zusammenfassung>" [commits]
 
 Der Eintrag landet append-only in `.pa/ACTIVITY.md`; Zeitstempel, Branch und
 Uncommitted-Liste ermittelt das Script selbst aus git. Nie uncommittete
-Änderungen ohne Eintrag mit Begründung hinterlassen. `STATUS.md` und
-`STAND.md` aktualisieren, wenn eine Phase abgeschlossen oder der
-Betriebszustand geändert wurde.
+Änderungen ohne Eintrag mit Begründung hinterlassen; Zwischenstände werden
+ohnehin sofort gepusht (AGENTS.md, Regel 4). `STAND.md` und die Stand-Spalte in
+`docs/PLAN.md` nur anpassen, wenn sich ein Meilenstein oder der
+Betriebszustand ändert.
 
 Als Sicherheitsnetz schreibt ein Session-Ende-Hook
 (`scripts/session-end-hook.sh`) automatisch einen Skelett-Eintrag mit dem
@@ -528,13 +533,15 @@ ersetzt die manuelle Zusammenfassung nicht.
 
 | Datei | Rolle |
 |---|---|
-| `AGENTS.md` | **diese Datei** — die gemeinsame Grundlage für alle Anbieter |
-| `STAND.md` | Momentaufnahme: wo genau stehen wir, was ist der nächste Griff |
-| `TRIAGE.md` | die offenen Beweise, sortiert nach Schwere, mit Empfehlung |
+| `AGENTS.md` | die Regeln für alle Anbieter (zehn Kernregeln oben) |
+| `docs/development/WORKFLOW.md` | **diese Datei** — Nachschlagewerk ohne eigene Regeln |
+| `STAND.md` | kurz: wo wir stehen, nächster Griff, aktive Specs |
+| `docs/PLAN.md` | der einzige Plan: Meilensteine M1–M4, Gestrichenes/Geparktes, Entscheidungs-Inbox; alte Fassungen unter `.pa/archiv/` und `docs/archive/plaene-2026-09/` |
+| `docs/MASTERPLAN.md` | nur ein Verweis auf `docs/PLAN.md` |
+| `docs/ERLEDIGT.md` | erledigte Pakete mit PR und Merge-SHA |
 | `README.md` | Feature-Referenz (Profile, Routing, Ledger, IPC-Contract, `pa`) |
-| `STATUS.md` | Chronik abgeschlossener Arbeit auf main (neueste oben) |
-| `KNOWN_ISSUES.md` | bewusst offene v1.0.0-Befunde, mit Begründung je Zeile |
-| `docs/PLAN.md` | der eine Arbeitsplan (Wellen, Pakete, Entscheidungen); alte Pläne unter `docs/archive/plaene-2026-09/` |
+| `STATUS.md`, `TRIAGE.md` | Chronik bis v1.4.0 bzw. abgeschlossene Triage (nur Geschichte) |
+| `KNOWN_ISSUES.md` | bewusst offene Befunde und Flakes, mit Begründung je Zeile |
 | `.pa/ACTIVITY.md` | versioniertes, append-only Sitzungsjournal (`merge=union`) |
 | `docs/dev-hq/README.md` | wie das Live-Dev-HQ gestartet und benutzt wird |
 | `docs/dev-hq/BUGS.md` | append-only Bug-Log für Funde im HQ selbst — vor dem Queue-Eintrag ausfüllen |

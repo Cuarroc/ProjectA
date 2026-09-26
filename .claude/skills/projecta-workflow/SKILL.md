@@ -1,6 +1,6 @@
 ---
 name: projecta-workflow
-description: Working playbook for one implementation package in the ProjectA repo (Tauri 2 agentic terminal) — gates, red-first commit trailers, cross-vendor reviews with disposition, report file, PR and Mergify rules, cargo build slots, advisors. Use when starting, committing, reviewing or opening a PR for any ProjectA package.
+description: Working playbook for one implementation package in the ProjectA repo (Tauri 2 agentic terminal) — gates, red-first commit trailers, risk-tiered cross-vendor reviews, the PR text as report, Mergify rules, cargo build slots, advisors. Use when starting, committing, reviewing or opening a PR for any ProjectA package.
 ---
 
 # ProjectA workflow (short playbook)
@@ -12,7 +12,9 @@ per provider: `docs/setup/README.md`. Check your machine with
 
 ## 1. Start
 
-1. Read `STAND.md`, then `AGENTS.md`, then run `bash scripts/sync.sh start`.
+1. Read `STAND.md`, `docs/PLAN.md` (the only plan) and the ten core rules at
+   the top of `AGENTS.md`, then run `bash scripts/sync.sh start`. Start check:
+   observed model, provider limit, free RAM, running cargo builds.
 2. Work in your own worktree and branch, created from the newest `origin/main`.
    Use `git -C <path>` for other worktrees.
 3. Never `git stash` (the stash stack is shared by all worktrees) — use a WIP
@@ -28,7 +30,7 @@ per provider: `docs/setup/README.md`. Check your machine with
 - Every gate run ends with a `NICHT ABGEDECKT` block; put it in the PR text.
 - Worktrees under `.claude/worktrees/` have no `target/`. Point cargo at a
   build slot: `export CARGO_TARGET_DIR=$HOME/cargo-targets/projecta-<a|b|c>`
-  and `CARGO_BUILD_JOBS=1` or `2` (on the dev PC `$HOME` is `C:/Users/<user>`;
+  and `CARGO_BUILD_JOBS=1` or `2` (on the dev PC `$HOME` is `%USERPROFILE%`;
   slots elsewhere: point `CARGO_TARGET_DIR` there and set
   `PROJECTA_BUILD_SLOTS_ROOT` so `dev:agent-check` finds them). At most 2–3
   builds at once; check free RAM first. **Never set `CARGO_PROFILE_*`** — it invalidates the whole cache.
@@ -53,15 +55,17 @@ Every commit that changes source (`src/`, `src-tauri/`, `scripts/`,
 Several pieces of evidence = several lines, never a list. Commit the failing
 test first, then the fix.
 
-## 4. Reviews and disposition
+## 4. Reviews by risk (at most two rounds)
 
-- Plans and changes over 300 lines or touching a seam need two reviews from
-  other vendors before merge. Everyday pair: `kimi-k3:cloud` + `glm-5.2:cloud`
-  via Ollama Cloud and `.pa/review_transport.py` (setup and command:
-  `docs/setup/ollama-reviewers.md`).
-- Output: `.pa/review_<label>_<model>.md`. Record every finding in
-  `.pa/review_<label>_disposition.md` (ID, source, severity, finding,
-  disposition: accepted with commit / rejected with reason / follow-up).
+- Tier A (seam, security, concurrency, PTY, database): two reviewers from other
+  vendors. Tier B (other Rust/TS): one reviewer outside the author's model
+  family. Tier C (docs, tests, snapshots, config without runtime effect): none.
+  After round two the user decides. Everyday pair: `kimi-k3:cloud` +
+  `glm-5.2:cloud` via Ollama Cloud and `.pa/review_transport.py` (setup and
+  command: `docs/setup/ollama-reviewers.md`).
+- Keep review prompts out of the repo. Record every finding in the PR text
+  (ID, source, severity, finding, disposition: accepted with commit / rejected
+  with reason / follow-up).
 - Evidence is bound to the candidate commit; a later change invalidates the
   affected evidence — re-run the review on the delta.
 
@@ -77,17 +81,18 @@ who asks the user.
 
 ## 6. Report, PR, merge
 
-1. Write the report `.pa/report_<id>.md`: what changed per file, evidence
-   (test names, gate lanes, `NICHT ABGEDECKT`), reviews + disposition, open
-   points. If your harness blocks writes to `.pa/report_*`, return the report
-   as text to the coordinator — do not work around the block.
-2. Push once and open **one PR per package at the end**. Open it as **draft**
-   while report, disposition or the `NICHT ABGEDECKT` block is missing (drafts
-   get no CI); mark it ready (`gh pr ready <n>`) only when all are in. Every
-   push to a ready PR costs a CI run (the Windows lane only for Windows-relevant changes). Verify a push with `git ls-remote`,
-   not with the push exit code. Package branches
-   (`<vendor>/w<N>-…`, `df<N>`, `ki-<N>`, `hq2-`) must add or change a `.pa/report_*.md`
-   or Mergify's merge protection stays red.
+1. The PR text is the report (`.github/pull_request_template.md`): three
+   German sentences for the user, then `## Report` with what changed, evidence
+   (command + exit code, gate lanes, `NICHT ABGEDECKT`), reviews + disposition,
+   open points. If your harness cannot open the PR, return the report as text
+   to the coordinator.
+2. Commit and push after every green step. Open **one PR per package** as
+   **draft** (drafts get no CI); it is marked ready (`gh pr ready <n>`) only
+   when the report, disposition and `NICHT ABGEDECKT` are in. Every push to a
+   ready PR costs a CI run. Verify a push with `git ls-remote`, not with the
+   push exit code. Package branches (`<vendor>/w<N>-…`, `df<N>`, `ki-<N>`,
+   `hq2-`) need a `## Report` section in the PR body, or Mergify's merge
+   protection stays red. A red `main` stops the queue.
 3. `main` is merged by the **Mergify** merge queue (`.mergify.yml`,
    `AGENTS.md` "Merging"). Do not merge `main` into your branch just to
    refresh it; only to resolve a real conflict — merge, never rebase or
