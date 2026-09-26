@@ -48,7 +48,7 @@ ProjectA has no model of its own. The agents are the vendors' command-line tools
 | Native process-output capture (`projecta_capture`, `pa-capture-host`) | partial | Windows-only; activation in the app is still gated in code |
 | Human approval of risky steps | partial | A human verdict token is required to resume (`hq_control_requires_api_auth_and_resume_refuses_without_human_token`); graded approval levels do not exist yet |
 | Continuous mode (agents pick up follow-up work on their own) | planned — **locked off** | `development_policy.rs` rejects `continuous.enabled = true` (`default_policy_is_bounded_and_continuous_is_disabled`) |
-| Cancelling a task that is already dispatched | planned | Returns 409; the safe cancel rule is open work (package W1-05b in [docs/PLAN.md](docs/PLAN.md)) |
+| Removing a dispatched task from the queue | works | Allowed only after the agent process has provably ended; while it may still run, the request is refused (409) (`api.rs`: `a_dispatched_task_is_cancelled_over_http_only_on_a_proven_process_end`) |
 
 Paths are relative to `src-tauri/src/` unless they start with `scripts/` or `resources/` (the latter is `src-tauri/resources/`).
 
@@ -123,13 +123,13 @@ npm run tauri dev   # start the desktop app in development mode
 - `npm run tauri build` is configured to produce updater artifacts. It expects the project's updater signing key, so outside builders will have to adjust `src-tauri/tauri.conf.json`.
 - Checks: `bash scripts/ci/gates.sh --list` shows the gates; `bash scripts/ci/gates.sh lane prepush` runs the full local lane. Details: [docs/ci-lokal.md](docs/ci-lokal.md).
 
-The app starts real agent processes from its queue. Start it only when you mean to.
+The app starts real agent processes from its queue. Start it only when you mean to, or set `PROJECTA_QUEUE=off` to keep the dispatcher from starting any queued task (`queue.rs`: `queue_dispatch_disabled_recognizes_the_off_switches`).
 
 ## Roadmap
 
 The only plan is [docs/PLAN.md](docs/PLAN.md) (German). It is organised in waves and work streams, not in numbered milestones:
 
-1. **W1 – foundations.** Finish task delivery (F-CORE-3 rest), add a safe cancel rule for dispatched tasks, and finish accessibility and styling work on the Dev-HQ.
+1. **W1 – foundations.** Finish task delivery (F-CORE-3 rest), clean up old dispatched queue entries (rest of W1-05b), and finish accessibility and styling work on the Dev-HQ.
 2. **W2 and DEVFLOW – runtime and workflow.** Usage and billing collectors per provider, supervisor, and resource limits. Persistent workflow stages, the independence gate, the permission policy, hand-over between stations, and a decision inbox (DF-11 to DF-18).
 3. **W3 – delivery and installation.** Database maintenance lock, Windows recovery helper, crash and power-loss drills, and updater states in the app.
 4. **W4 – acceptance and switch-on.** A 20-task benchmark, then the final acceptance matrix for continuous mode, then activation. Activation happens only with the human's explicit decision.
@@ -141,7 +141,7 @@ In parallel: **HQ2** (one shared Dev-HQ and app, with design tokens and an insta
 - **Windows only** for anything beyond compiling and running tests. The DPAPI vault and native capture exist only on Windows.
 - **It drives subscription CLIs.** ProjectA starts and types into the command-line tools of AI vendors on your account. Check each vendor's terms of use for automated or parallel use before you run it.
 - **Continuous mode is off** and cannot be switched on by configuration.
-- **Dispatched tasks cannot be cancelled** safely yet (W1-05b).
+- **A running agent cannot be interrupted** from the queue. Its dispatched entry can only be removed after the process has provably ended.
 - **Documentation gaps in this snapshot.** This public repository is a cleaned copy of a private working repository, published without history. Some documents refer to files that are not included, for example `docs/MASTERPLAN.md`, `docs/ERLEDIGT.md` and `.pa/report_*.md`.
 - **Mostly German internal docs.** Plans, rules and the changelog are largely in German.
 - **Open findings and flaky tests** are listed, each with a reason, in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
