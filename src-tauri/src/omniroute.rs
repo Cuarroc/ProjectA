@@ -1113,12 +1113,20 @@ mod tests {
     }
 
     fn serve_status(status: u16, body: &'static str) -> SocketAddr {
+        serve_status_after(Duration::ZERO, status, body)
+    }
+
+    /// [`serve_status`], but the answer comes `delay` after the request. That
+    /// is what a starved test thread looks like from the client's side, made
+    /// deterministic instead of depending on how busy the machine is.
+    fn serve_status_after(delay: Duration, status: u16, body: &'static str) -> SocketAddr {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind");
         let addr = listener.local_addr().expect("addr");
         std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept");
             let mut request = [0u8; 2048];
             let _ = stream.read(&mut request);
+            std::thread::sleep(delay);
             let response = format!(
                 "HTTP/1.1 {status} Test\r\nContent-Type: application/json\r\n\
                  Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -1129,17 +1137,31 @@ mod tests {
         addr
     }
 
+    /// Reads the request and then says nothing until the client hangs up.
+    ///
+    /// Not a fixed sleep: a client that is descheduled past the sleep would
+    /// find a closed socket (EOF, `Unreadable`) instead of silence. The read
+    /// timeout only keeps the thread from outliving a test that never
+    /// connects or never hangs up.
     fn serve_stalled() -> SocketAddr {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("bind");
         let addr = listener.local_addr().expect("addr");
         std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept");
-            let mut request = [0u8; 2048];
-            let _ = stream.read(&mut request);
-            std::thread::sleep(Duration::from_millis(200));
+            let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
+            let mut buffer = [0u8; 2048];
+            while matches!(stream.read(&mut buffer), Ok(n) if n > 0) {}
         });
         addr
     }
+
+    /// The budget for cases where the server DOES answer and the test is about
+    /// the status class of that answer. The answer normally takes well under a
+    /// millisecond; the budget only has to outlast a starved fixture thread
+    /// (W1-30: 24+ busy threads on 12 cores exhausted 100 ms on every run).
+    /// It costs nothing when the answer comes, and the `Timeout` and `Offline`
+    /// cases keep their own tight budgets because silence is what they test.
+    const STATUS_BUDGET: Duration = Duration::from_secs(5);
 
     fn fetch_usage_from(addr: SocketAddr, budget: Duration) -> Result<Vec<UsageRow>, UsageError> {
         let response = get_authorized_classified(
@@ -1632,14 +1654,14 @@ mod tests {
         for status in [401, 403] {
             let addr = serve_status(status, ERROR_401_FIXTURE);
             assert_eq!(
-                fetch_usage_from(addr, Duration::from_millis(100)),
+                fetch_usage_from(addr, STATUS_BUDGET),
                 Err(UsageError::Unauthorized)
             );
         }
         for status in [429, 503] {
             let addr = serve_status(status, "{}");
             assert_eq!(
-                fetch_usage_from(addr, Duration::from_millis(100)),
+                fetch_usage_from(addr, STATUS_BUDGET),
                 Err(UsageError::BusyRateLimited)
             );
         }
@@ -1652,6 +1674,51 @@ mod tests {
         assert_eq!(
             fetch_usage_from(dead_addr(), Duration::from_millis(20)),
             Err(UsageError::Offline)
+        );
+    }
+
+    /// W1-30. On a machine with more runnable threads than cores the server
+    /// thread of a fixture can need well over 100 ms to answer. The class of an
+    /// answer that DID arrive must not depend on how long it took, so the
+    /// status cases get a budget that a loaded machine cannot exhaust. The
+    /// 300 ms delay stands in for that load.
+    #[test]
+    fn a_slow_answer_keeps_its_http_class() {
+        for (status, expected) in [
+            (401, UsageError::Unauthorized),
+            (403, UsageError::Unauthorized),
+            (429, UsageError::BusyRateLimited),
+            (503, UsageError::BusyRateLimited),
+        ] {
+            let addr = serve_status_after(Duration::from_millis(300), status, "{}");
+            assert_eq!(
+                fetch_usage_from(addr, STATUS_BUDGET),
+                Err(expected),
+                "status {status}"
+            );
+        }
+    }
+
+    /// W1-30. `Timeout` needs a server that says nothing for as long as the
+    /// client listens. A fixture that closes after a fixed sleep turns a
+    /// client that was descheduled past that sleep into an EOF (`Unreadable`).
+    #[test]
+    fn a_stalled_server_stays_silent_until_the_client_hangs_up() {
+        let addr = serve_stalled();
+        let mut stream = TcpStream::connect(addr).expect("connect");
+        stream
+            .write_all(b"GET / HTTP/1.1\r\n\r\n")
+            .expect("request");
+        // The client is "descheduled" for longer than any fixed hold-open.
+        std::thread::sleep(Duration::from_millis(600));
+        stream
+            .set_read_timeout(Some(Duration::from_millis(50)))
+            .expect("timeout");
+        let mut byte = [0u8; 1];
+        let outcome = stream.read(&mut byte);
+        assert!(
+            matches!(&outcome, Err(error) if is_timeout(error)),
+            "expected silence, got {outcome:?}"
         );
     }
 
