@@ -18,6 +18,14 @@
 #   4. red-first runs inside the linux job (plan and proof) and the job
 #      `red-first` only evaluates it: `needs: linux`, the verdict script, and
 #      no setup-linux of its own.
+#   5. CI-04: the job `main-red` exists, waits for BOTH gate jobs, fires
+#      only on refs/heads/main (exact `==`, with always(), or a red gates
+#      job would skip it), calls scripts/ci/main-red-guard.sh, reads the
+#      lane outputs instead of hardcoded values and serializes its runs
+#      (job-level concurrency) - and both gate jobs export the lane_run
+#      output from a step `id: plan`, without which a light green push
+#      (lanes skipped) would count as green proof and lift the queue
+#      freeze.
 #
 # The YAML is read line-wise (awk), like the other workflow gates here: no
 # YAML library is guaranteed on the runner, the Git-Bash or WSL. Limit
@@ -134,6 +142,47 @@ has "$redfirst" "setup-linux" && err "job red-first: has its own setup-linux aga
 # The proof never starts on an empty count (review PR #149, glm-5.2 F2).
 proof_if="$(step "red-first - proof against merge base" <<< "$linux" | grep -E '^        if:')"
 has "$proof_if" "steps.rf_plan.outputs.count != ''" || err "job linux: proof step 'if' lacks steps.rf_plan.outputs.count != '': $proof_if"
+
+# 5. CI-04: the main-red guard job - a red main opens an issue and freezes
+# the Mergify queue, a proven-green main lifts both.
+mainred="$(job main-red)"
+if [ -z "$mainred" ]; then
+  err "job main-red missing (CI-04: red main must freeze the queue)"
+else
+  has "$mainred" "name: main-red-guard" || err "job main-red: does not report 'main-red-guard'"
+  mainred_needs="$(grep -E '^    needs:' <<< "$mainred")"
+  has "$mainred_needs" "linux" || err "job main-red: 'needs' lacks linux - the guard could run without the linux verdict"
+  has "$mainred_needs" "windows" || err "job main-red: 'needs' lacks windows - the guard could run without the windows verdict"
+  mainred_if="$(grep -E '^    if:' <<< "$mainred")"
+  has "$mainred_if" "always()" || err "job main-red: 'if' lacks always() - a red gates job would skip the guard itself: $mainred_if"
+  # Exact operator: a substring check would also let != through, and then
+  # the guard would fire on every ref EXCEPT main (review predecessor PR, S-9/O-10).
+  grep -qE "github\.ref == 'refs/heads/main'" <<< "$mainred_if" ||
+    err "job main-red: 'if' must pin github.ref == 'refs/heads/main' exactly: $mainred_if"
+  has "$mainred" "main-red-guard.sh" || err "job main-red: does not call scripts/ci/main-red-guard.sh"
+  # The env wiring decides what the script believes about the lanes: a
+  # hardcoded "true" would make a light push look like a full run, a
+  # hardcoded failure would freeze a green main (review predecessor PR, S-9).
+  has "$mainred" 'LINUX_RAN: ${{ needs.linux.outputs.lane_run }}' ||
+    err "job main-red: LINUX_RAN must read needs.linux.outputs.lane_run"
+  has "$mainred" 'WINDOWS_RAN: ${{ needs.windows.outputs.lane_run }}' ||
+    err "job main-red: WINDOWS_RAN must read needs.windows.outputs.lane_run"
+  # Serialized guards: main runs do not cancel each other, and a stale red
+  # run must not interleave freeze/unfreeze with a newer green one (S-5/O-5).
+  has "$mainred" "group: main-red-guard" ||
+    err "job main-red: no job-level concurrency group - stale runs could interleave freeze/unfreeze"
+fi
+# Without the lane_run outputs a light green push (lanes skipped by
+# lane-plan.sh) would count as green proof and lift the freeze. Anchored:
+# the output line itself, not just the words somewhere in the job block
+# (full-line comments are already stripped by job()). And without a step
+# `id: plan` the output would silently be empty - the freeze could never
+# lift (review predecessor PR, S-9/O-10).
+lane_out_re='^      lane_run: \$\{\{ steps\.plan\.outputs\.run \}\}$'
+grep -qE "$lane_out_re" <<< "$linux" || err "job linux: output 'lane_run' missing - main-red cannot tell a real lane from a skipped one"
+grep -qE "$lane_out_re" <<< "$windows" || err "job windows: output 'lane_run' missing - main-red cannot tell a real lane from a skipped one"
+has "$linux" "id: plan" || err "job linux: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
+has "$windows" "id: plan" || err "job windows: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
 
 if [ "$errors" -gt 0 ]; then
   echo "ci-shape: $errors problem(s)"

@@ -573,24 +573,6 @@ export interface WorkerStatusEvent {
 }
 
 /**
- * Legacy main-area ids. F2 routes through `AppGoal` in `lib/goals.ts`;
- * these names remain only for older comments and tests that have not moved.
- */
-export type MainView =
-  | "dialog"
-  | "board"
-  /** The decisions the fleet is waiting on; see {@link Question}. */
-  | "fragen"
-  | "workers"
-  | "usage"
-  | "statistik"
-  | "design"
-  | "activity"
-  | "settings"
-  /** P2-H: log path, diagnosis pack, Warum-view. */
-  | "diagnose";
-
-/**
  * The fixed set of agent categories the settings manage. A category is a role
  * an agent can take; the profile is just how one of them gets started.
  */
@@ -606,11 +588,6 @@ export interface AgentCategoryConfig {
    * preference has been set (the dispatcher or user picks).
    */
   defaultProfileId: string | null;
-}
-
-/** Payload of `get_landing_page`; the markdown behind the design studio. */
-export interface LandingPage {
-  markdown: string | null;
 }
 
 /** Usage information for one provider, as reported by `get_provider_overview`. */

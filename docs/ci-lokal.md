@@ -117,8 +117,8 @@ act -n                         # Trockenlauf: parst Workflows + Composite Action
 | | |
 |---|---|
 | `windows-latest` | **gar nicht.** Es gibt keine Windows-Container. Die Jobs `gates (windows)` und der ganze `release`-Workflow sind für act unerreichbar. |
-| `environment:` | wird ignoriert. Die Härtung von `review.yml` (und seit 09.09. `release.yml`) hinge lokal an einer Klartextdatei `.secrets` auf dem PC — **die Secret-Härtung wäre lokal ausgehebelt.** `review.yml` deshalb nie unter act fahren; `.pa/review_transport.py` ist direkt aufrufbar. |
-| OIDC / WIF | `ACTIONS_ID_TOKEN_REQUEST_URL` existiert nicht. `anthropic-wif-test.yml` ist prinzipiell nicht lokal lauffähig. |
+| `environment:` | wird ignoriert. Die Härtung von `release.yml` hinge lokal an einer Klartextdatei `.secrets` auf dem PC — **die Secret-Härtung wäre lokal ausgehebelt.** (Der frühere `review.yml`-Workflow mit `OPENROUTER_KEY` ist entfernt; `.pa/review_transport.py` ist direkt aufrufbar.) |
+| OIDC / WIF | `ACTIONS_ID_TOKEN_REQUEST_URL` existiert nicht; ein Workflow mit OIDC-Token wäre prinzipiell nicht lokal lauffähig (der frühere `anthropic-wif-test.yml` ist entfernt). |
 | `concurrency`, `permissions`, `timeout-minutes` | werden ignoriert — ihre Wirkung ist lokal nicht belegbar. |
 | `github.event.pull_request.*` | nur mit handgeschriebener `-e event.json`. `red-first.sh` nimmt `BASE_SHA`/`HEAD_SHA` per Env; direkt aufrufen ist einfacher. |
 | Tauri-Systemdeps | das `act-latest`-Image bringt kein `libwebkit2gtk-4.1-dev` mit; die Composite Action installiert sie bei **jedem** Lauf neu (~1–2 min), außer mit `--reuse`. |
@@ -130,8 +130,6 @@ Belegpfad. Und `--bind` bitte nicht — es schreibt mit Container-UID in das ech
 ## Was gar nicht lokal gehört
 
 - **`release.yml`** hält den Tauri-Signing-Key und den Mirror-PAT.
-- **`review.yml`** hält den `OPENROUTER_KEY`.
-- **`anthropic-wif-test.yml`** braucht ein echtes GitHub-OIDC-Token.
 
 Der Release-*Build* selbst ist lokal machbar (`npx tauri build`,
 `scripts/release.cmd`). Das anonyme Verify-Gate steht noch inline in

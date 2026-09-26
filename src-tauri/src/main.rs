@@ -2682,16 +2682,6 @@ impl ControlBackend for ApiBackend {
         Ok(worker)
     }
 
-    fn create_queen(
-        &self,
-        _project_id: &str,
-        _task: &str,
-        _profile_id: Option<String>,
-        _spawned_by: Option<String>,
-    ) -> Result<Worker, String> {
-        Err(workers::ERR_QUEEN_RETIRED.to_string())
-    }
-
     fn list_workers(&self, project_id: Option<&str>) -> Result<Vec<Worker>, String> {
         tauri::async_runtime::block_on(self.store.list_workers(project_id))
     }

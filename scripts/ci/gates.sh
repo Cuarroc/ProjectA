@@ -102,6 +102,12 @@ GATES=(
   # ihn in CI aus; dafuer installiert .github/actions/setup-linux gitleaks
   # gepinnt und pruefsummen-verifiziert.
   "selftest-secrets|prepush|.|bash scripts/test-secret-scan.sh"
+  # CI-04: bei rotem main Issue + Queue-Freeze, bei bewiesen gruenem main
+  # wieder auf. Der Selbsttest belegt beide Richtungen und die leisen
+  # Fehlerklassen: leichtes Gruen (Bahnen uebersprungen) darf NICHT
+  # entfrieren, ohne MERGIFY_TOKEN bleibt das Issue der Fallback (gruen mit
+  # Warnung), ein scheiternder Freeze-API-Aufruf MIT Token ist laut rot.
+  "selftest-main-red|linux,release|.|bash scripts/test-main-red-guard.sh"
 
   # --- schnell: Form und Typen --------------------------------------------
   "fmt|precommit,prepush,branchpush,linux,windows,release|src-tauri|cargo fmt --check"
