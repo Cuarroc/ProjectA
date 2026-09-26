@@ -465,8 +465,9 @@ pub(crate) fn worker_label(worker: &Worker) -> String {
         // A project has exactly one orchestrator, and its task text is the whole
         // role prompt - the role is the only name worth showing.
         KIND_ORCHESTRATOR => "Orchestrator".to_string(),
-        // A queen is known by its domain. `workers::queen_task` writes the
-        // prefix; a task without one predates it and is taken whole.
+        // A queen is known by its domain. The prefix dates from when queens
+        // could still be created; a task without one predates it and is taken
+        // whole.
         KIND_QUEEN => short_label(worker.task.strip_prefix("Queen: ").unwrap_or(&worker.task)),
         // Scouts and everything else have no role name to fall back on.
         _ => short_label(&worker.task),
