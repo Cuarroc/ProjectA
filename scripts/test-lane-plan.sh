@@ -17,6 +17,10 @@
 #   - jede Nicht-.md-Datei und .md ausserhalb von Wurzel/docs/.pa loest sie aus,
 #   beide Bahnen
 #   - Merge-Queue, schedule und workflow_dispatch fahren IMMER voll,
+#   - SETUP-12: ein Push auf main, der NUR leichte Doku aendert, ist leicht,
+#     auch ohne Queue-Merge (Handmerge, direkter Commit, mehrere Merges);
+#     eine gelesene Doku, eine Nicht-Doku-Datei oder eine Cache-Eingabe im
+#     selben Push bringt die volle Bahn zurueck,
 #   - ein Push auf main faehrt voll genau dann, wenn eine Cache-Eingabe der
 #     Bahn geaendert ist (Cargo.lock beide, package-lock.json nur linux), und
 #     voll, wenn der Vorgaenger-Commit fehlt oder der Push nicht auf main geht,
@@ -278,6 +282,27 @@ for lane in linux windows; do
   PUSH_KIND=direkt push_case "$lane" direkter-commit true src/App.tsx
   PUSH_KIND=mensch push_case "$lane" merge-ohne-queue true src/App.tsx
   PUSH_KIND=zwei   push_case "$lane" zwei-merges      true src/App.tsx
+  # SETUP-12: a push that only changes light docs (no gate reads them) is
+  # light whatever its origin - the code is identical to the predecessor, so
+  # no gate outcome can change. Manual merges, direct commits and several
+  # merges in one push used to run the full lane for a README edit.
+  PUSH_KIND=mensch push_case "$lane" doku-merge-ohne-queue false docs/frei.md
+  PUSH_KIND=direkt push_case "$lane" doku-direkter-commit  false docs/frei.md
+  PUSH_KIND=zwei   push_case "$lane" doku-zwei-merges      false docs/frei.md
+  PUSH_KIND=mensch push_case "$lane" doku-wurzel-md        false NOTIZ.md
+  PUSH_KIND=mensch push_case "$lane" doku-pa-md            false .pa/notiz.md
+  # ... but one file a gate reads, or one non-doc file, brings the full lane
+  # back: without the queue evidence there is nothing else to vouch for it.
+  PUSH_KIND=mensch push_case "$lane" doku-plan-md          true  docs/PLAN.md
+  PUSH_KIND=mensch push_case "$lane" doku-task-spec        true  .pa/task_x.md
+  PUSH_KIND=mensch push_case "$lane" doku-eingebunden      true  docs/EINGEBUNDEN.md
+  PUSH_KIND=mensch push_case "$lane" doku-leser-literal    true  docs/GELESEN.md
+  PUSH_KIND=mensch push_case "$lane" doku-bild             true  docs/bild.png
+  PUSH_KIND=mensch push_case "$lane" doku-plus-code        true  docs/frei.md src/App.tsx
+  PUSH_KIND=mensch push_case "$lane" doku-plus-lock        true  docs/frei.md src-tauri/Cargo.lock
+  PUSH_KIND=direkt push_case "$lane" doku-plus-code-direkt true  docs/frei.md src/App.tsx
+  # The evidence guards of a docs-only push stay: unknown predecessor or a
+  # push to another ref is full even for a README edit (cases above).
 done
 # Der npm-Cache haengt nur an der Linux-Bahn (setup-linux).
 push_case linux   npm-lock true  package-lock.json
