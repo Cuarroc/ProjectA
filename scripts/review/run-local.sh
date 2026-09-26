@@ -211,8 +211,8 @@ diff_chars="${#diff_text}"
 if [ "$diff_chars" -gt "$max_chars" ]; then
   die 2 "der Diff hat $diff_chars Zeichen (Grenze $max_chars, REVIEW_MAX_DIFF_CHARS). Ein abgeschnittener Diff waere kein Review: den PR teilen oder die Grenze bewusst anheben."
 fi
-stat_text="$(git -C "$TOP" -c core.quotepath=off diff --no-color --stat "$base...$head_ref" "${pathspec[@]}")"
-log_text="$(git -C "$TOP" log --no-color --format='%h %s' -n 30 "$base..$head_ref")"
+stat_text="$(git -C "$TOP" -c core.quotepath=off diff --no-color --stat "$base...$head_ref" "${pathspec[@]}")"   || die 2 "git diff --stat $base...$head_ref schlug fehl."
+log_text="$(git -C "$TOP" log --no-color --format='%h %s' -n 30 "$base..$head_ref")"   || die 2 "git log $base..$head_ref schlug fehl."
 
 mkdir -p "$out_dir" || die 2 "kann $out_dir nicht anlegen."
 prompt_file="$out_dir/review_prompt_$label.md"
@@ -305,10 +305,16 @@ fi
 # Format wie das des Transports.
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp "$prompt_file" "$work/prompt.md"
+cp "$prompt_file" "$work/prompt.md" || die 2 "kann den Prompt nicht nach $work kopieren."
 timeout_s="${REVIEW_KILO_TIMEOUT_S:-900}"
 timeout_cmd=()
-command -v timeout > /dev/null 2>&1 && timeout_cmd=(timeout "$timeout_s")
+for t in timeout gtimeout; do # gtimeout: coreutils auf macOS
+  if command -v "$t" > /dev/null 2>&1; then
+    timeout_cmd=("$t" "$timeout_s")
+    break
+  fi
+done
+[ "${#timeout_cmd[@]}" -gt 0 ]   || echo "run-local: Warnung: kein timeout/gtimeout gefunden - kilo laeuft ohne Zeitlimit (REVIEW_KILO_TIMEOUT_S greift nicht)." >&2
 digest="$("$PY" -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:16])' "$prompt_file")"
 prompt_chars="$(wc -m < "$prompt_file" | tr -d ' ')"
 failed=0

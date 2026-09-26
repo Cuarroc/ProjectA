@@ -297,6 +297,29 @@ else
   bad "kilo fehlt: rc=$rc"; echo "$out"
 fi
 
+# 10. Zeitlimit und Diff-Grenze: beides ist ein Fehler, kein stilles Abschneiden.
+if command -v timeout > /dev/null 2>&1 || command -v gtimeout > /dev/null 2>&1; then
+  mkdir -p "$tmp/bin-slow"
+  printf '#!/usr/bin/env bash
+exec sleep 30
+' > "$tmp/bin-slow/kilo"
+  chmod +x "$tmp/bin-slow/kilo"
+  run env PATH="$tmp/bin-slow:$PATH" REVIEW_KILO_TIMEOUT_S=1 bash "$RUN" --via kilo --models stepfun/step-3.7-flash:free --out-dir "$tmp/k6"
+  if [ "$rc" -ne 0 ] && grep -q "Status: failed" "$tmp/k6/review_${label}_step-3.7-flash.md" 2>/dev/null     && grep -q "no answer within 1 s" "$tmp/k6/review_${label}_step-3.7-flash.md"; then
+    ok "kilo ohne Antwort im Zeitlimit: Exit $rc, Protokoll 'failed' mit Grund"
+  else
+    bad "kilo Zeitlimit: rc=$rc"; echo "$out"
+  fi
+else
+  echo "skip kilo-Zeitlimit: weder timeout noch gtimeout im PATH"
+fi
+run env REVIEW_MAX_DIFF_CHARS=10 bash "$RUN" --models fake-a:cloud --out-dir "$tmp/o9"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Grenze 10" && [ ! -e "$tmp/o9/review_${label}_fake-a.md" ]   && [ ! -e "$tmp/o9/review_prompt_${label}.md" ]; then
+  ok "Diff ueber REVIEW_MAX_DIFF_CHARS: Exit 2, kein Prompt, kein Protokoll"
+else
+  bad "Diff-Grenze: rc=$rc"; echo "$out"
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."
