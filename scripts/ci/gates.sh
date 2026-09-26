@@ -87,6 +87,21 @@ GATES=(
   # beide Richtungen (Rust-Aenderung -> voll, gelesene Doku -> voll, freie
   # Doku -> aus, Queue/Wochenlauf -> voll, main-Push nur bei Cache-Eingaben).
   "selftest-lane-plan|linux,release|.|bash scripts/test-lane-plan.sh"
+  # Nutzer-Regel (freigegeben 25.09.2026): Geheimnis-Scan vor jedem Commit.
+  # gitleaks ueber den Index (nur das, was der Commit einfuehren wuerde,
+  # unter einer Sekunde). Die Allowlist fuer die Test-Kanarienvoegel aus
+  # Pruefung E steht in .gitleaks.toml. Kein stiller Rueckfall:
+  # ohne gitleaks endet das Gate laut mit Installationshinweis. Nur die
+  # lokale Bahn: CI faehrt kein `precommit`, ein Vollscan der Historie waere
+  # ein eigener Auftrag (Pruefung E macht ihn bereits punktuell).
+  "secrets|precommit|.|bash scripts/ci/secret-scan.sh"
+  # Der Selbsttest des Scans belegt, dass er scheitern KANN: Test-Geheimnis
+  # rot, Kanarienvoegel gruen, fehlendes gitleaks laut. Er liegt in der
+  # lokalen prepush-Bahn statt bei den CI-Selbsttests (linux/release): der
+  # Scan selbst ist ein reines Lokal-Werkzeug. Nur der red-first-Beleg fuehrt
+  # ihn in CI aus; dafuer installiert .github/actions/setup-linux gitleaks
+  # gepinnt und pruefsummen-verifiziert.
+  "selftest-secrets|prepush|.|bash scripts/test-secret-scan.sh"
   # CI-04: bei rotem main Issue + Queue-Freeze, bei bewiesen gruenem main
   # wieder auf. Der Selbsttest belegt beide Richtungen und die leisen
   # Fehlerklassen: leichtes Gruen (Bahnen uebersprungen) darf NICHT
@@ -209,6 +224,7 @@ print_header() { # bahn
   printf ' %-14s %s\n' "npm" "$(version_of npm --version)"
   printf ' %-14s %s\n' "rustc" "$(version_of rustc --version)"
   printf ' %-14s %s\n' "nextest" "$(version_of cargo nextest --version)"
+  printf ' %-14s %s\n' "gitleaks" "$(version_of gitleaks version)"
   printf ' %-14s %s\n' "HEAD" "$(git rev-parse --short HEAD 2>/dev/null || echo '-')$([ -n "$dirty" ] && echo ' (uncommitted Aenderungen im Baum)')"
   echo
 }
@@ -320,6 +336,15 @@ run_gate() { # id
 # frischen Maschine ist ein fehlendes Werkzeug, nicht ein echter Fehlschlag.
 hint_for() {
   case "$1" in
+    secrets)
+      command -v gitleaks > /dev/null 2>&1 || {
+        echo "    Hinweis: gitleaks fehlt. Installation (Windows):"
+        echo "      winget install Gitleaks.Gitleaks   (oder: choco install gitleaks)"
+        echo "    macOS: brew install gitleaks — Linux: https://github.com/gitleaks/gitleaks#installing"
+        echo "    Kein Rueckfall auf 'ungeprueft committen': der Scan ist Pflicht"
+        echo "    (Nutzer-Regel vom 25.09.2026). Frisch installiert? Shell neu starten."
+      }
+      ;;
     rust-suite)
       command -v cargo-nextest > /dev/null 2>&1 || cargo nextest --version > /dev/null 2>&1 || {
         echo "    Hinweis: cargo-nextest fehlt. Installation:"

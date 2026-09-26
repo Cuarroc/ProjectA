@@ -1,0 +1,38 @@
+title = "ProjectA gitleaks"
+
+[extend]
+useDefault = true
+
+# Allowlist: nur die bekannten Test-Kanarienvoegel aus Pruefung E (Veroeffentlichungs-Pruefung vom 25.09.2026) und ausdrueckliche
+# Platzhalter. Bewusst eng gefasst: ein echter neuer Fund soll feuern, nicht
+# versehentlich von einer grosszuegigen Regel erlaubt werden. Jeder Eintrag
+# nennt seine Quelle; die Werte stehen dort als Testmaterial, hier nur als
+# Muster. Wer einen neuen Testwert einfuehrt, traegt ihn hier mit Quelle nach.
+[allowlist]
+description = "Test-Kanarienvoegel (Pruefung E) und Platzhalter"
+regexes = [
+  # Redact-/Token-Tests: fester 32-Hex-Testwert (src-tauri/src/redact.rs,
+  # bin/pa.rs, hooks.rs — und .pa-Reviews, die daraus zitieren)
+  '''0123456789abcdef0123456789abcdef''',
+  # diagnosis.rs: Testwert derselben Klasse
+  '''deadbeefcafebabe0123456789abcdef''',
+  # Queue-Aufgaben-Schluessel (scripts/hq-queue-open-points.mjs und der Test
+  # dazu) — kein Token; feuert die generic-Regel ueber das Wort "key"
+  '''(kimi|opencode)-delivery-nt17''',
+  # digest.rs: Canary-Werte fuer die Bereinigung des Boards
+  '''AKIAC{16}''',
+  '''sk-ant-api03-A{16,}''',
+  '''ghp_B{16,}''',
+  # logging.rs und .pa-Reviews w1-22: der AWS-Kanarienvogel "CANARY", in den
+  # realen Varianten mit 10 und 12 Ziffern (logging.rs nutzt die 10-stellige —
+  # {12} allein deckte sie nicht, Beleg .pa/review_sec-gitleaks_disposition.md).
+  # Nur Ziffern: ein echter Schluessel mit Buchstaben hinter CANARY darf nicht
+  # durchrutschen (Beleg .pa/review_pr20_disposition.md, N-1).
+  '''AKIACANARY[0-9]{10,12}''',
+  # routing.rs: Canary, der nie in einem argv landen darf
+  '''sk-ant-canary-must-not-land-in-argv''',
+  # src/lib/attentionInbox.test.ts: OpenAI-Form zum Testen der Redaktion
+  '''sk-abcdefghijklmnopqrst''',
+  # .pa/review_prompt_w1-24b.md: ausdrueckliche Platzhalter
+  '''sk-(or|test)-test-placeholder''',
+]
