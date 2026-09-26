@@ -478,7 +478,7 @@ jobs:
 
       # `@nextest` war ein wandernder Tag. Gepinnt auf v2 mit `tool:` -
       # dieselbe Schreibweise wie in audit.yml, statt zweier Muster.
-      - uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+      - uses: taiki-e/install-action@dfae9bf3d6f6c6f20ef4ebb3486c01a51341ff12 # v2.87.18
         if: steps.plan.outputs.run != 'false'
         with:
           tool: nextest
