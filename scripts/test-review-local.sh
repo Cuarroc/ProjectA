@@ -320,6 +320,52 @@ else
   bad "Diff-Grenze: rc=$rc"; echo "$out"
 fi
 
+# 11. Review kimi-k3 (r2): Namenskollision, Host mit Port, nur Lockfiles, kein
+#     Zeitlimit, kilo ohne Schreibrechte.
+run bash "$RUN" --models llama3:8b,llama3:70b --out-dir "$tmp/o10"
+if [ "$rc" -eq 0 ] && [ -f "$tmp/o10/review_${label}_llama3-8b.md" ] && [ -f "$tmp/o10/review_${label}_llama3-70b.md" ]; then
+  ok "Zwei Tags desselben Modells ueberschreiben sich nicht (llama3-8b, llama3-70b)"
+else
+  bad "Tags eines Modells: rc=$rc"; echo "$out"; ls "$tmp/o10" 2>&1
+fi
+run bash "$RUN" --models fake-a:cloud,fake-a:cloud --out-dir "$tmp/o11"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "doppelt"; then
+  ok "Dasselbe Modell zweimal: Exit 2 (kein Dual-Review)"
+else
+  bad "Doppeltes Modell: rc=$rc"; echo "$out"
+fi
+run env OLLAMA_HOST=https://ollama.com:443 bash "$RUN" --models fake-a --out-dir "$tmp/o12"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "OLLAMA_API_KEY"; then
+  ok "ollama.com mit Port ohne Key: Hinweis auf OLLAMA_API_KEY statt 'nicht erreichbar'"
+else
+  bad "ollama.com:443 ohne Key: rc=$rc"; echo "$out"
+fi
+(
+  cd "$REPO" || exit 1
+  git checkout -q -b claude/only-lock main
+  echo '{}' > package-lock.json
+  git add package-lock.json && git commit -q -m lock
+)
+run bash "$RUN" --models fake-a:cloud --out-dir "$tmp/o13"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -qi "lockfile" && ! printf '%s' "$out" | grep -q "keine Aenderungen"; then
+  ok "Nur Lockfiles geaendert: Exit 2 mit ehrlicher Meldung (nicht 'keine Aenderungen')"
+else
+  bad "Nur Lockfiles: rc=$rc"; echo "$out"
+fi
+git -C "$REPO" checkout -q claude/demo-branch
+: > "$KILO_STUB_LOG"
+run env PATH="$tmp/bin-ok:$PATH" REVIEW_KILO_TIMEOUT_S=0 bash "$RUN" --via kilo --models stepfun/step-3.7-flash:free --out-dir "$tmp/k7"
+if [ "$rc" -eq 0 ] && grep -q "Status: ok" "$tmp/k7/review_${label}_step-3.7-flash.md" 2>/dev/null   && ! printf '%s' "$out" | grep -qi "unbound"; then
+  ok "kilo ohne Zeitlimit (REVIEW_KILO_TIMEOUT_S=0): Exit 0, kein Abbruch durch leeres Array"
+else
+  bad "kilo ohne Zeitlimit: rc=$rc"; echo "$out"
+fi
+if grep -q -- "--agent ask" "$KILO_STUB_LOG"; then
+  ok "kilo laeuft mit --agent ask (kein Schreiben, keine Auto-Freigaben)"
+else
+  bad "kilo ohne --agent ask: $(cat "$KILO_STUB_LOG")"
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."

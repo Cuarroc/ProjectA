@@ -72,8 +72,14 @@ bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nic
   andere lehnt das Skript ab). Standard: `stepfun/step-3.7-flash:free` und
   `nvidia/nemotron-3-super-120b-a12b:free`; die Liste der kostenlosen Modelle
   aendert sich (`kilo models kilo | grep ':free'`), ueberschreiben mit
-  `--models` oder `REVIEW_KILO_MODELS`. kilo laeuft in einem leeren
-  Wegwerfverzeichnis und bekommt den Prompt als Anhang.
+  `--models` oder `REVIEW_KILO_MODELS`. Beide Standardmodelle standen am
+  26.09.2026 in `kilo models kilo`; veraltet ein Name, endet der Lauf mit
+  `failed`, dann `--models` setzen. kilo laeuft als `--agent ask` (Schreiben
+  verboten, keine Auto-Freigaben) in einem leeren Wegwerfverzeichnis und
+  bekommt den Prompt als Anhang; Zeitlimit `REVIEW_KILO_TIMEOUT_S`
+  (Standard 900 s, 0 = keins). Der Diff ist Eingabe eines Agenten mit
+  Lesewerkzeugen: PRs unbekannter Herkunft nicht ueber `--via kilo` pruefen,
+  dort ist der Ollama-Weg (reine Textanfrage, keine Werkzeuge) der sichere.
 - Ergebnis: `.pa/review_prompt_<label>.md` und `.pa/review_<label>_<modell>.md`,
   `<label>` = `pr<N>` oder der Branchname (`/` wird `-`). Mit `--out-dir` und
   `--label` umlenkbar.

@@ -14,8 +14,9 @@
 #                 scripts/dev/agent-setup-check.mjs (Ueberschreiben:
 #                 REVIEW_OLLAMA_MODELS oder --models). Der Versand laeuft
 #                 ueber .pa/review_transport.py - der gehaertete Transport.
-#   --via kilo    kilo run -m kilo/<modell>:free. Nur :free-Modelle; alles
-#                 andere wird abgelehnt, damit kein Geld fliesst.
+#   --via kilo    kilo run --agent ask -m kilo/<modell>:free. Nur :free-Modelle;
+#                 alles andere wird abgelehnt, damit kein Geld fliesst.
+#                 REVIEW_KILO_TIMEOUT_S: Zeitlimit je Modell (900 s, 0 = keins).
 #
 # Ergebnis: <out-dir>/review_<label>_<modell>.md, <label> = pr<N> oder der
 # Branchname (/ -> -). out-dir ist standardmaessig .pa/ des Repos.
@@ -123,6 +124,7 @@ for m in "${raw_models[@]}"; do
 done
 [ "${#models[@]}" -ge 1 ] || die 2 "keine Modelle angegeben."
 [ "${#models[@]}" -le 2 ] || die 2 "hoechstens zwei Reviewer je Lauf (bekommen: ${#models[@]})."
+[ "${#models[@]}" -lt 2 ] || [ "${models[0]}" != "${models[1]}" ]   || die 2 "Modell ${models[0]} doppelt angegeben - ein Dual-Review braucht zwei verschiedene Reviewer."
 
 if [ "$via" = kilo ]; then
   for i in "${!models[@]}"; do
@@ -148,8 +150,11 @@ if [ "$dry_run" -eq 0 ]; then
       *) ollama_host="http://$ollama_host" ;;
     esac
     ollama_host="${ollama_host%/}"
-    case "$ollama_host" in
-      *://ollama.com | *://ollama.com/* | *://*.ollama.com | *://*.ollama.com/*)
+    host_only="${ollama_host#*://}"
+    host_only="${host_only%%/*}"
+    host_only="${host_only%%:*}"
+    case "$host_only" in
+      ollama.com | *.ollama.com)
         [ -n "${OLLAMA_API_KEY:-}" ] \
           || die 2 "OLLAMA_API_KEY fehlt. Fuer $ollama_host wird ein Ollama-Key gebraucht (Umgebungsvariable setzen, nie einchecken) - oder lokal arbeiten: ollama signin, OLLAMA_HOST weglassen."
         ;;
@@ -181,7 +186,8 @@ git -C "$TOP" rev-parse --verify --quiet "$base^{commit}" > /dev/null \
 if [ -n "$pr" ]; then
   git -C "$TOP" fetch --quiet origin "pull/$pr/head" 2> /dev/null \
     || die 2 "PR $pr nicht gefunden: 'git fetch origin pull/$pr/head' schlug fehl (Nummer falsch, origin nicht erreichbar oder kein Zugriff)."
-  head_ref="$(git -C "$TOP" rev-parse FETCH_HEAD)"
+  head_ref="$(git -C "$TOP" rev-parse FETCH_HEAD)" || die 2 "PR $pr: FETCH_HEAD nicht lesbar."
+  [ -n "$head_ref" ] || die 2 "PR $pr: FETCH_HEAD ist leer."
   [ -n "$label" ] || label="pr$pr"
   subject="PR #$pr"
 else
@@ -205,7 +211,12 @@ fi
 # Lockfiles sind Rauschen fuer Reviewer und sprengen die Prompt-Groesse.
 pathspec=(-- . ':(exclude)package-lock.json' ':(exclude)Cargo.lock' ':(exclude)src-tauri/Cargo.lock')
 diff_text="$(git -C "$TOP" -c core.quotepath=off diff --no-color --no-ext-diff -U10 "$base...$head_ref" "${pathspec[@]}")" || die 2 "git diff $base...$head_ref schlug fehl."
-[ -n "$diff_text" ] || die 2 "keine Aenderungen gegen $base - es gibt nichts zu pruefen."
+if [ -z "$diff_text" ]; then
+  if git -C "$TOP" diff --quiet "$base...$head_ref"; then
+    die 2 "keine Aenderungen gegen $base - es gibt nichts zu pruefen."
+  fi
+  die 2 "gegen $base haben sich nur Lockfiles geaendert (package-lock.json, Cargo.lock; bewusst ausgeschlossen) - es gibt nichts zu pruefen."
+fi
 max_chars="${REVIEW_MAX_DIFF_CHARS:-250000}"
 diff_chars="${#diff_text}"
 if [ "$diff_chars" -gt "$max_chars" ]; then
@@ -255,7 +266,7 @@ $log_text
 
 $stat_text
 
-## Diff (git diff -U10 $base...; lockfiles omitted)
+## Diff (three-dot diff against $base with 10 lines of context; lockfiles omitted)
 
 \`\`\`diff
 EOF
@@ -290,7 +301,10 @@ if [ "$via" = ollama ]; then
   n=0
   for m in "${models[@]}"; do
     n=$((n + 1))
-    export "REVIEWER_${n}_NAME=${m%%:*}" "REVIEWER_${n}_KIND=ollama" \
+    # Name fuer die Protokolldatei: ":cloud" faellt weg (kimi-k3), jeder andere
+    # Tag bleibt (llama3:8b -> llama3-8b), damit zwei Tags nicht kollidieren.
+    rname="${m%:cloud}"
+    export "REVIEWER_${n}_NAME=${rname//:/-}" "REVIEWER_${n}_KIND=ollama" \
       "REVIEWER_${n}_URL=$ollama_host/api/generate" "REVIEWER_${n}_MODEL=$m"
     if [ -n "${OLLAMA_API_KEY:-}" ]; then
       export "REVIEWER_${n}_KEY=$OLLAMA_API_KEY"
@@ -306,15 +320,29 @@ fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cp "$prompt_file" "$work/prompt.md" || die 2 "kann den Prompt nicht nach $work kopieren."
+# Zeitlimit: REVIEW_KILO_TIMEOUT_S (Sekunden, 0 = keins). Ohne timeout/gtimeout
+# (gtimeout: coreutils auf macOS) laeuft kilo ohne Limit - mit Warnung. Bewusst
+# kein Array: "${leeres_array[@]}" ist unter set -u in Bash < 4.4 ein Fehler.
 timeout_s="${REVIEW_KILO_TIMEOUT_S:-900}"
-timeout_cmd=()
-for t in timeout gtimeout; do # gtimeout: coreutils auf macOS
-  if command -v "$t" > /dev/null 2>&1; then
-    timeout_cmd=("$t" "$timeout_s")
-    break
+timeout_bin=""
+if [ "$timeout_s" != 0 ]; then
+  for t in timeout gtimeout; do
+    if command -v "$t" > /dev/null 2>&1; then
+      timeout_bin="$t"
+      break
+    fi
+  done
+  [ -n "$timeout_bin" ]     || echo "run-local: Warnung: kein timeout/gtimeout gefunden - kilo laeuft ohne Zeitlimit (REVIEW_KILO_TIMEOUT_S greift nicht)." >&2
+fi
+# --agent ask: der schreibgeschuetzte Agent von kilo (edit/write verboten, Rueckfragen
+# werden im nicht-interaktiven Lauf abgelehnt, kein --auto).
+kilo_review() { # modell
+  if [ -n "$timeout_bin" ]; then
+    "$timeout_bin" "$timeout_s" kilo run --agent ask -m "kilo/$1" "Follow the instructions in the attached file." -f prompt.md
+  else
+    kilo run --agent ask -m "kilo/$1" "Follow the instructions in the attached file." -f prompt.md
   fi
-done
-[ "${#timeout_cmd[@]}" -gt 0 ]   || echo "run-local: Warnung: kein timeout/gtimeout gefunden - kilo laeuft ohne Zeitlimit (REVIEW_KILO_TIMEOUT_S greift nicht)." >&2
+}
 digest="$("$PY" -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:16])' "$prompt_file")"
 prompt_chars="$(wc -m < "$prompt_file" | tr -d ' ')"
 failed=0
@@ -322,7 +350,7 @@ for m in "${models[@]}"; do
   name="${m##*/}"
   name="${name%:free}"
   path="$out_dir/review_${label}_${name}.md"
-  ( cd "$work" && "${timeout_cmd[@]}" kilo run -m "kilo/$m" "Follow the instructions in the attached file." -f prompt.md < /dev/null > out.txt 2> err.txt )
+  ( cd "$work" && kilo_review "$m" < /dev/null > out.txt 2> err.txt )
   rc=$?
   # ANSI-Farben und Wagenruecklaeufe der Windows-Konsole entfernen.
   verdict="$(sed 's/\x1b\[[0-9;]*[A-Za-z]//g; s/\r$//' "$work/out.txt" 2> /dev/null)"
