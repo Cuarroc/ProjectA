@@ -444,6 +444,8 @@ describe("TerminalView", () => {
     expect(mocks.searchAddon.findNext).toHaveBeenCalledWith("fehler", {
       decorations: SEARCH_DECORATIONS,
       incremental: true,
+      caseSensitive: false,
+      regex: false,
     });
   });
 
@@ -482,6 +484,226 @@ describe("TerminalView", () => {
 
     expect(mocks.searchAddon.dispose).toHaveBeenCalledOnce();
     expect(mocks.searchResultsSubDispose).toHaveBeenCalledOnce();
+  });
+
+  describe("Schalter für die Suchoptionen", () => {
+    /** Mounts the view and opens the search bar; returns the search input. */
+    function openSearch() {
+      render(<TerminalView sessionId="session-a" onError={vi.fn()} />);
+      pressCustomKey({ key: "F", code: "KeyF", ctrlKey: true, shiftKey: true });
+      return screen.getByRole("textbox", { name: /suche/i });
+    }
+
+    it("der Schalter für Groß- und Kleinschreibung reicht caseSensitive an die Suche durch", () => {
+      const input = openSearch();
+      fireEvent.change(input, { target: { value: "Fehler" } });
+      mocks.searchAddon.findNext.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: /groß- und kleinschreibung/i }));
+
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "Fehler",
+        expect.objectContaining({ caseSensitive: true }),
+      );
+    });
+
+    it("der Regex-Schalter reicht die Regex-Option an die Suche durch", () => {
+      const input = openSearch();
+      fireEvent.change(input, { target: { value: "feh+er" } });
+      mocks.searchAddon.findNext.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "feh+er",
+        expect.objectContaining({ regex: true }),
+      );
+    });
+
+    it("umschalten bei vorhandenem Begriff sucht inkrementell erneut", () => {
+      const input = openSearch();
+      fireEvent.change(input, { target: { value: "fehler" } });
+      mocks.searchAddon.findNext.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: /groß- und kleinschreibung/i }));
+
+      // Incremental like typing: the active match must not skip ahead just
+      // because an option changed.
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "fehler",
+        expect.objectContaining({ incremental: true }),
+      );
+    });
+
+    it("die Schalter behalten ihren Zustand beim Wiederöffnen", () => {
+      const input = openSearch();
+      fireEvent.click(screen.getByRole("button", { name: /groß- und kleinschreibung/i }));
+      fireEvent.change(input, { target: { value: "Fehler" } });
+      fireEvent.keyDown(input, { key: "Escape" });
+      mocks.searchAddon.findNext.mockClear();
+
+      pressCustomKey({ key: "F", code: "KeyF", ctrlKey: true, shiftKey: true });
+
+      // Same convention as the kept search term (browser find bars): the
+      // toggles survive close/reopen, and the repaint search uses them.
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "Fehler",
+        expect.objectContaining({ caseSensitive: true, regex: false }),
+      );
+    });
+
+    it("ein ungültiger Regex löst keine Suche aus und meldet den Fehler", () => {
+      const input = openSearch();
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+      mocks.searchAddon.findNext.mockClear();
+
+      // "[" never compiles; handing it to the addon would throw inside
+      // xterm. The bar must refuse the search and say why instead.
+      fireEvent.change(input, { target: { value: "[" } });
+
+      expect(mocks.searchAddon.findNext).not.toHaveBeenCalled();
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByRole("status")).toHaveTextContent(/ungültig/i);
+
+      fireEvent.change(input, { target: { value: "[a]" } });
+
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "[a]",
+        expect.objectContaining({ regex: true }),
+      );
+      expect(input).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("Alt C und Alt R schalten die Suchoptionen per Tastatur um", () => {
+      const input = openSearch();
+      const caseToggle = screen.getByRole("button", { name: /groß- und kleinschreibung/i });
+      const regexToggle = screen.getByRole("button", { name: /regulärer ausdruck/i });
+
+      fireEvent.keyDown(input, { key: "c", code: "KeyC", altKey: true });
+      expect(caseToggle).toHaveAttribute("aria-pressed", "true");
+      expect(regexToggle).toHaveAttribute("aria-pressed", "false");
+
+      // Works from a button's focus too, not only from the input — handled
+      // on the role="search" container, same as Escape.
+      fireEvent.keyDown(caseToggle, { key: "r", code: "KeyR", altKey: true });
+      expect(regexToggle).toHaveAttribute("aria-pressed", "true");
+
+      fireEvent.keyDown(input, { key: "c", code: "KeyC", altKey: true });
+      expect(caseToggle).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("Alt C und Alt R wirken layoutunabhängig über event.code", () => {
+      const input = openSearch();
+      const caseToggle = screen.getByRole("button", { name: /groß- und kleinschreibung/i });
+      const regexToggle = screen.getByRole("button", { name: /regulärer ausdruck/i });
+
+      // macOS types "ç" for Option+C and "®" for Option+R; non-Latin
+      // layouts map the letters elsewhere too. Only event.code names the
+      // physical key on every platform the app ships to.
+      fireEvent.keyDown(input, { key: "ç", code: "KeyC", altKey: true });
+      expect(caseToggle).toHaveAttribute("aria-pressed", "true");
+
+      fireEvent.keyDown(input, { key: "®", code: "KeyR", altKey: true });
+      expect(regexToggle).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("Regex abschalten bei ungültigem Muster nimmt den Fehler und sucht literal", () => {
+      const input = openSearch();
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+      fireEvent.change(input, { target: { value: "[" } });
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      mocks.searchAddon.findNext.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+
+      // "[" is a fine literal term: the hint goes and the kept term
+      // re-searches with regex off.
+      expect(input).not.toHaveAttribute("aria-invalid", "true");
+      expect(document.querySelector(".terminal-search-error")).toBeNull();
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "[",
+        expect.objectContaining({ regex: false }),
+      );
+    });
+
+    it("Enter und Pfeil-Buttons suchen bei ungültigem Regex nicht", () => {
+      const input = openSearch();
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+      fireEvent.change(input, { target: { value: "[" } });
+      mocks.searchAddon.findNext.mockClear();
+      mocks.searchAddon.findPrevious.mockClear();
+
+      fireEvent.keyDown(input, { key: "Enter" });
+      fireEvent.click(screen.getByRole("button", { name: /nächster treffer/i }));
+      fireEvent.click(screen.getByRole("button", { name: /vorheriger treffer/i }));
+
+      // Every path into the addon must refuse the pattern — the addon would
+      // throw inside xterm — and the hint stays up to say why nothing moves.
+      expect(mocks.searchAddon.findNext).not.toHaveBeenCalled();
+      expect(mocks.searchAddon.findPrevious).not.toHaveBeenCalled();
+      expect(document.querySelector(".terminal-search-error")).not.toBeNull();
+    });
+
+    it("ungültiger Regex leert Dekorationen und Zähler", () => {
+      const input = openSearch();
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+      fireEvent.change(input, { target: { value: "fehler" } });
+      act(() => {
+        mocks.searchResultsCallback!({ resultIndex: 0, resultCount: 2 });
+      });
+      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("1/2");
+      mocks.searchAddon.clearDecorations.mockClear();
+
+      fireEvent.change(input, { target: { value: "[" } });
+
+      // Stale highlights next to an error hint would claim matches the
+      // current term never produced.
+      expect(mocks.searchAddon.clearDecorations).toHaveBeenCalled();
+      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+    });
+
+    it("verspätetes Ergebnis bei ungültigem Regex stellt den Zähler nicht wieder her", () => {
+      const input = openSearch();
+      fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
+      fireEvent.change(input, { target: { value: "[" } });
+      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+
+      // The addon reports asynchronously; a result for a search issued
+      // while the pattern still compiled must not resurrect a counter next
+      // to the error hint (observed in a real browser: stale "0/0").
+      act(() => {
+        mocks.searchResultsCallback!({ resultIndex: -1, resultCount: 0 });
+      });
+
+      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+    });
+
+    it("verspätetes Ergebnis bei geleertem Begriff stellt den Zähler nicht wieder her", () => {
+      const input = openSearch();
+      fireEvent.change(input, { target: { value: "fehler" } });
+      fireEvent.change(input, { target: { value: "" } });
+      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+
+      act(() => {
+        mocks.searchResultsCallback!({ resultIndex: 0, resultCount: 3 });
+      });
+
+      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+    });
+
+    it("Enter nach dem Umschalten nutzt die neuen Optionen", () => {
+      const input = openSearch();
+      fireEvent.change(input, { target: { value: "Fehler" } });
+      fireEvent.click(screen.getByRole("button", { name: /groß- und kleinschreibung/i }));
+      mocks.searchAddon.findNext.mockClear();
+
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
+        "Fehler",
+        expect.objectContaining({ caseSensitive: true, regex: false }),
+      );
+    });
   });
 
   describe("Kontrast der Treffer-Hervorhebung", () => {

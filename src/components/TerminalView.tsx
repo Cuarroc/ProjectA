@@ -112,6 +112,22 @@ export const SEARCH_DECORATIONS = {
 type SearchDirection = "next" | "previous";
 
 /**
+ * Whether the addon accepts `query` under the current options. With the
+ * regex toggle on, an uncompilable pattern must never reach
+ * `findNext`/`findPrevious` — the addon would throw inside xterm (a
+ * pageerror), so the bar refuses the search and flags the input instead.
+ */
+function queryCompiles(query: string, regex: boolean): boolean {
+  if (!regex || query === "") return true;
+  try {
+    new RegExp(query);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Renders one PTY session. The component is mounted only while its tab is
  * active; on every (re)mount it re-attaches by replaying `get_scrollback`
  * before any live output, so switching tabs never loses terminal history.
@@ -133,14 +149,31 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
   const [searchResult, setSearchResult] = useState<{ resultIndex: number; resultCount: number } | null>(
     null,
   );
+  // Case-sensitivity/regex toggles. They survive close/reopen on purpose,
+  // same convention as the kept search term (browser find bars).
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [useRegex, setUseRegex] = useState(false);
+  const [regexInvalid, setRegexInvalid] = useState(false);
+
+  // Read by `runSearch` and the reopen effect without closing over stale
+  // values; the toggle handlers keep them in sync with the state above.
+  const caseSensitiveRef = useRef(caseSensitive);
+  const useRegexRef = useRef(useRegex);
 
   const runSearch = useCallback(
     (direction: SearchDirection, query: string = searchQuery, incremental = false) => {
       const addon = searchAddonRef.current;
       if (!addon || query === "") return;
+      const regex = useRegexRef.current;
+      if (!queryCompiles(query, regex)) return;
       // `incremental` only affects `findNext` (addon-search's own doc
       // comment); passing it to `findPrevious` is a harmless no-op.
-      const options = { decorations: SEARCH_DECORATIONS, incremental };
+      const options = {
+        decorations: SEARCH_DECORATIONS,
+        incremental,
+        caseSensitive: caseSensitiveRef.current,
+        regex,
+      };
       if (direction === "next") addon.findNext(query, options);
       else addon.findPrevious(query, options);
     },
@@ -151,6 +184,38 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
 
+  // After an option toggle (or an edit): re-run the current term with the
+  // current options, or refuse and flag it when it does not compile.
+  const reSearch = useCallback(() => {
+    const query = searchQueryRef.current;
+    if (query === "") {
+      setRegexInvalid(false);
+      return;
+    }
+    if (!queryCompiles(query, useRegexRef.current)) {
+      setRegexInvalid(true);
+      searchAddonRef.current?.clearDecorations();
+      setSearchResult(null);
+      return;
+    }
+    setRegexInvalid(false);
+    runSearch("next", query, true);
+  }, [runSearch]);
+
+  const toggleCaseSensitive = useCallback(() => {
+    const next = !caseSensitiveRef.current;
+    caseSensitiveRef.current = next;
+    setCaseSensitive(next);
+    reSearch();
+  }, [reSearch]);
+
+  const toggleRegex = useCallback(() => {
+    const next = !useRegexRef.current;
+    useRegexRef.current = next;
+    setUseRegex(next);
+    reSearch();
+  }, [reSearch]);
+
   useEffect(() => {
     if (!searchOpen) return;
     searchInputRef.current?.focus();
@@ -160,7 +225,13 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
     // stays where it was instead of skipping ahead.
     const addon = searchAddonRef.current;
     const query = searchQueryRef.current;
-    if (addon && query !== "") addon.findNext(query, { decorations: SEARCH_DECORATIONS, incremental: true });
+    if (addon && query !== "" && queryCompiles(query, useRegexRef.current))
+      addon.findNext(query, {
+        decorations: SEARCH_DECORATIONS,
+        incremental: true,
+        caseSensitive: caseSensitiveRef.current,
+        regex: useRegexRef.current,
+      });
   }, [searchOpen]);
 
   const closeSearch = useCallback(() => {
@@ -195,7 +266,14 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
     const searchAddon = new SearchAddon();
     term.loadAddon(searchAddon);
     searchAddonRef.current = searchAddon;
-    const searchResultsSub = searchAddon.onDidChangeResults((result) => setSearchResult(result));
+    const searchResultsSub = searchAddon.onDidChangeResults((result) => {
+      // Reports arrive asynchronously — the term may have been cleared or
+      // stopped compiling since the search went out. A late report must not
+      // resurrect a stale counter next to the error hint.
+      const query = searchQueryRef.current;
+      if (query === "" || !queryCompiles(query, useRegexRef.current)) return;
+      setSearchResult(result);
+    });
 
     // Ctrl+Shift+F opens scrollback search, via xterm's own key handler
     // (fires before the PTY sees anything — a `window` listener is too
@@ -377,6 +455,22 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
             if (event.key === "Escape") {
               event.preventDefault();
               closeSearch();
+              return;
+            }
+            // Alt+C / Alt+R toggle the search options (VS Code's find
+            // widget convention). Alt combos produce no PTY control byte,
+            // and handling them on the container makes them work from any
+            // control in the bar, same as Escape. Match on event.code, not
+            // event.key: macOS types "ç"/"®" for Option+C/R and non-Latin
+            // layouts move the letters; the physical key is stable.
+            if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+              if (event.code === "KeyC") {
+                event.preventDefault();
+                toggleCaseSensitive();
+              } else if (event.code === "KeyR") {
+                event.preventDefault();
+                toggleRegex();
+              }
             }
           }}
         >
@@ -385,15 +479,24 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
             type="text"
             className="terminal-search-input"
             aria-label="Suche im Terminal-Scrollback"
+            aria-invalid={regexInvalid || undefined}
             placeholder="Suchen…"
             value={searchQuery}
             onChange={(event) => {
               const value = event.target.value;
               setSearchQuery(value);
               if (value === "") {
+                setRegexInvalid(false);
+                searchAddonRef.current?.clearDecorations();
+                setSearchResult(null);
+              } else if (!queryCompiles(value, useRegexRef.current)) {
+                // Refuse instead of letting the addon throw on a pattern
+                // that does not compile; the hint below says why.
+                setRegexInvalid(true);
                 searchAddonRef.current?.clearDecorations();
                 setSearchResult(null);
               } else {
+                setRegexInvalid(false);
                 // Incremental: expands/moves the selection as the user
                 // keeps typing a still-matching term, instead of the
                 // cursor jumping to a fresh match on every keystroke.
@@ -407,9 +510,34 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
               }
             }}
           />
+          <button
+            type="button"
+            className="button-ghost terminal-search-btn terminal-search-toggle"
+            aria-label="Groß- und Kleinschreibung beachten"
+            aria-pressed={caseSensitive}
+            title="Groß- und Kleinschreibung beachten (Alt+C)"
+            onClick={toggleCaseSensitive}
+          >
+            Aa
+          </button>
+          <button
+            type="button"
+            className="button-ghost terminal-search-btn terminal-search-toggle"
+            aria-label="Regulärer Ausdruck"
+            aria-pressed={useRegex}
+            title="Regulärer Ausdruck (Alt+R)"
+            onClick={toggleRegex}
+          >
+            .*
+          </button>
           <span className="terminal-search-count" aria-live="polite">
             {counterText}
           </span>
+          {regexInvalid ? (
+            <span className="terminal-search-error" role="status">
+              Ungültiger regulärer Ausdruck
+            </span>
+          ) : null}
           <button
             type="button"
             className="button-ghost terminal-search-btn"
