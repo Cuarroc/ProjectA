@@ -50,6 +50,43 @@ Hook-Ausgabe-Überschreiben hat schon einmal einen 238-Zeichen-Prompt erzeugt
 (`.pa/review_w2-02_disposition.md`). Antworten wie „keine Frage erkannt" sind
 kein Review.
 
+## Lokal reviewen
+
+`scripts/review/run-local.sh` ist der Ein-Befehl-Weg ohne GitHub Actions
+(keine CI-Minuten): Es baut den Prompt aus dem Diff und ruft den oben
+beschriebenen `.pa/review_transport.py` auf, statt ihn nachzubauen.
+
+```sh
+bash scripts/review/run-local.sh 42                  # PR #42 (origin pull/42/head) gegen origin/main
+bash scripts/review/run-local.sh                     # aktueller Branch gegen origin/main
+bash scripts/review/run-local.sh 42 --via kilo       # kostenlose Modelle ueber die kilo-CLI
+bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nichts senden
+```
+
+- `--via ollama` (Standard): die Modelle stehen in `REVIEWER_MODELS` in
+  `scripts/dev/agent-setup-check.mjs` (`kimi-k3:cloud`, `glm-5.2:cloud`);
+  ueberschreiben mit `--models a,b` oder `REVIEW_OLLAMA_MODELS`. Endpunkt ist
+  `OLLAMA_HOST` (Standard: lokaler Ollama, kein Key). Nur wer direkt gegen
+  `https://ollama.com` spricht, setzt `OLLAMA_API_KEY` in der Umgebung.
+- `--via kilo`: `kilo run -m kilo/<modell>:free`, nur `:free`-Modelle (alles
+  andere lehnt das Skript ab). Standard: `stepfun/step-3.7-flash:free` und
+  `nvidia/nemotron-3-super-120b-a12b:free`; die Liste der kostenlosen Modelle
+  aendert sich (`kilo models kilo | grep ':free'`), ueberschreiben mit
+  `--models` oder `REVIEW_KILO_MODELS`. kilo laeuft in einem leeren
+  Wegwerfverzeichnis und bekommt den Prompt als Anhang.
+- Ergebnis: `.pa/review_prompt_<label>.md` und `.pa/review_<label>_<modell>.md`,
+  `<label>` = `pr<N>` oder der Branchname (`/` wird `-`). Mit `--out-dir` und
+  `--label` umlenkbar.
+- Exit 0 nur, wenn jeder Reviewer Text geliefert hat; Exit 1 bei leerer oder
+  fehlerhafter Antwort (Protokoll `Status: failed`, nochmals laufen lassen);
+  Exit 2 bei Aufruf- oder Voraussetzungsfehlern (fehlendes Ollama, kilo oder
+  Key, unbekannter PR, kein Diff, Diff ueber `REVIEW_MAX_DIFF_CHARS`).
+  Ein abgeschnittener Diff waere kein Review; deshalb wird nichts gekuerzt.
+- Geprueft werden nur **committete** Aenderungen. Der Diff geht an den
+  gewaehlten Dienst: nichts Vertrauliches im Branch.
+- Selbsttest ohne Netz: `bash scripts/test-review-local.sh` (Fake-Ollama,
+  kilo-Stub, Wegwerf-Repo).
+
 ## Disposition
 
 Jeder Befund bekommt eine Zeile in `.pa/review_<label>_disposition.md`:

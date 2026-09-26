@@ -64,8 +64,10 @@ class H(BaseHTTPRequestHandler):
         # Modelle mit "leer" antworten ohne Text: kein Urteil.
         text = "" if "leer" in model else "Urteil: freigeben (fake %s). Prompt %d Zeichen." % (model, len(req.get("prompt", "")))
         auth = self.headers.get("Authorization") or ""
+        # "auth" nur fuer einen echten Bearer-Kopf mit Wert, nicht fuer irgendeinen.
+        bearer = auth.startswith("Bearer ") and len(auth) > len("Bearer ")
         with open(sys.argv[2], "a") as log:
-            log.write("%s|%s|%s\n" % (model, "auth" if auth else "noauth", req.get("prompt", "").count("MARKER_LINE")))
+            log.write("%s|%s|%s\n" % (model, "auth" if bearer else "noauth", req.get("prompt", "").count("MARKER_LINE")))
         self._send({"model": model, "response": text})
     def log_message(self, *a):
         pass
@@ -141,8 +143,9 @@ if grep -q "MARKER_LINE one" "$tmp/o1/review_prompt_${label}.md" 2>/dev/null \
 else
   bad "Prompt-Datei review_prompt_${label}.md fehlt oder hat den falschen Diff"
 fi
-if [ "$(grep -c 'MARKER_LINE\|^fake' "$tmp/requests.log")" -ge 1 ] && [ "$(wc -l < "$tmp/requests.log" | tr -d ' ')" = "2" ] \
-  && ! grep -q "|auth|" "$tmp/requests.log"; then
+# Spalten: modell|auth-oder-noauth|Zahl der MARKER_LINE-Zeilen im Prompt (je 2).
+if [ "$(awk -F'|' '$3 == 2 && $2 == "noauth"' "$tmp/requests.log" | wc -l | tr -d ' ')" = "2" ] \
+  && [ "$(wc -l < "$tmp/requests.log" | tr -d ' ')" = "2" ]; then
   ok "Genau zwei Anfragen, ohne Authorization-Kopf (lokaler Ollama braucht keinen Key)"
 else
   bad "Anfragen: $(cat "$tmp/requests.log")"
@@ -193,8 +196,8 @@ fi
 # meldet der Geheimnis-Scan (gitleaks generic-api-key) zu Recht.
 canary="canary-$(date +%s)-$$"
 run env "OLLAMA_API_KEY=$canary" bash "$RUN" --models fake-a:cloud --out-dir "$tmp/o6"
-if [ "$rc" -eq 0 ] && grep -q "|auth|" "$tmp/requests.log" && ! grep -rq "geheim-canary-123" "$tmp/o6" \
-  && ! printf '%s' "$out" | grep -q "geheim-canary-123"; then
+if [ "$rc" -eq 0 ] && grep -q "|auth|" "$tmp/requests.log" && ! grep -rq "$canary" "$tmp/o6" \
+  && ! printf '%s' "$out" | grep -q "$canary"; then
   ok "OLLAMA_API_KEY wird gesendet, steht aber weder im Protokoll noch im Prompt noch in der Ausgabe"
 else
   bad "Key-Behandlung: rc=$rc"; echo "$out"
