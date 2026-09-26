@@ -40,7 +40,8 @@
     "dev:pr-status": "node scripts/dev/pr-status.mjs",
     "dev:erledigt-row": "node scripts/dev/erledigt-row.mjs",
     "dev:spec-close": "node scripts/dev/spec-close.mjs",
-    "dev:hygiene": "node scripts/dev/hygiene.mjs"
+    "dev:hygiene": "node scripts/dev/hygiene.mjs",
+    "dev:start-check": "node scripts/dev/start-check.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
