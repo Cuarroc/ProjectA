@@ -6434,6 +6434,33 @@ mod tests {
         );
     }
 
+    /// KI-15: built-in adapters must use a prompt file whenever their CLI
+    /// supports one, so the coordinator's instructions never appear in argv.
+    #[test]
+    fn claude_coordinator_prompt_is_not_exposed_in_argv() {
+        let claude = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "claude")
+            .expect("built-in Claude profile");
+        let prompt = orchestrator_system_prompt("ProjectA", "pj-1");
+        let profile = with_system_prompt(&claude, "wk-ki15", prompt.clone())
+            .expect("Claude accepts a coordinator prompt");
+
+        assert!(
+            profile.args.iter().all(|arg| !arg.contains(&prompt)),
+            "the prompt must not appear in argv: {:?}",
+            profile.args
+        );
+        let flag = profile
+            .args
+            .iter()
+            .position(|arg| arg == "--append-system-prompt-file")
+            .expect("Claude receives its prompt through the documented file flag");
+        let path = std::path::PathBuf::from(&profile.args[flag + 1]);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), prompt);
+        crate::hooks::remove_worker_files("wk-ki15");
+    }
+
     #[test]
     fn file_system_prompt_writes_the_prompt_and_passes_the_path() {
         let caps = crate::capabilities::AgentCapabilities {
