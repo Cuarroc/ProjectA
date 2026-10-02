@@ -81,6 +81,8 @@ pub struct DevelopmentEvidence {
     pub run_id: String,
     pub idempotency_key: String,
     pub source: String,
+    /// Set only by ProjectA's internal test service, never from agent input.
+    pub trusted_test_source: bool,
     pub observed_at: i64,
     pub candidate_commit: String,
     pub measurement: EvidenceMeasurement,
@@ -160,6 +162,7 @@ struct EvidenceRow {
     run_id: String,
     idempotency_key: String,
     source: String,
+    trusted_test_source: bool,
     observed_at: i64,
     candidate_commit: String,
     measurement_json: String,
@@ -180,6 +183,7 @@ impl EvidenceRow {
             run_id: self.run_id,
             idempotency_key: self.idempotency_key,
             source: self.source,
+            trusted_test_source: self.trusted_test_source,
             observed_at: self.observed_at,
             candidate_commit: self.candidate_commit,
             measurement,
@@ -211,6 +215,27 @@ pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<
     Ok(())
 }
 
+/// Migration 25. Existing and agent-submitted evidence stays untrusted.
+pub(super) async fn apply_trusted_test_source_migration(
+    tx: &mut Transaction<'_, Sqlite>,
+) -> Result<(), String> {
+    let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('development_run_evidence') WHERE name = 'trusted_test_source'")
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|error| format!("failed to inspect trusted test source marker: {error}"))?;
+    if exists == 0 {
+        sqlx::query("ALTER TABLE development_run_evidence ADD COLUMN trusted_test_source INTEGER NOT NULL DEFAULT 0 CHECK(trusted_test_source IN (0,1))")
+            .execute(&mut **tx)
+            .await
+            .map_err(|error| format!("failed to add trusted test source marker: {error}"))?;
+    }
+    sqlx::query("UPDATE development_run_reviews SET status = 'invalidated', invalidated_at = unixepoch() WHERE status = 'valid'")
+        .execute(&mut **tx)
+        .await
+        .map_err(|error| format!("failed to invalidate reviews without trusted test evidence: {error}"))?;
+    Ok(())
+}
+
 impl Store {
     pub async fn agent_evidence(
         &self,
@@ -225,7 +250,7 @@ impl Store {
             .await
             .map_err(db("begin agent evidence read"))?;
         require_run_authority(&mut tx, run_id, owner, fence).await?;
-        let row: Option<EvidenceRow> = sqlx::query_as("SELECT id, run_id, idempotency_key, source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE id = ? AND run_id = ?")
+        let row: Option<EvidenceRow> = sqlx::query_as("SELECT id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE id = ? AND run_id = ?")
             .bind(id).bind(run_id).fetch_optional(&mut *tx).await.map_err(db("read scoped evidence"))?;
         let evidence = row.ok_or("unknown evidence in this run")?.into_evidence()?;
         tx.commit()
@@ -288,9 +313,9 @@ impl Store {
         }).collect();
         let dependency_state = serde_json::json!({"source":"rust/sqlite","satisfied":satisfied,
             "total":dependencies.len(),"limit":64,"truncated":dependencies.len()>64,"items":dependency_items});
-        let evidence: Vec<(String, String, i64, String, Option<i64>)> = sqlx::query_as("SELECT id, source, observed_at, candidate_commit, invalidated_at FROM development_run_evidence WHERE run_id = ? ORDER BY observed_at DESC, id DESC LIMIT 32")
+        let evidence: Vec<(String, String, bool, i64, String, Option<i64>)> = sqlx::query_as("SELECT id, source, trusted_test_source, observed_at, candidate_commit, invalidated_at FROM development_run_evidence WHERE run_id = ? ORDER BY observed_at DESC, id DESC LIMIT 32")
             .bind(run_id).fetch_all(&mut *tx).await.map_err(db("read briefing evidence references"))?;
-        let evidence: Vec<Value> = evidence.into_iter().map(|(id, source, observed_at, candidate_commit, invalidated_at)| serde_json::json!({"id":id,"source":source,"observedAt":observed_at,"candidateCommit":candidate_commit,"invalidatedAt":invalidated_at})).collect();
+        let evidence: Vec<Value> = evidence.into_iter().map(|(id, source, trusted_test_source, observed_at, candidate_commit, invalidated_at)| serde_json::json!({"id":id,"source":source,"trustedTestSource":trusted_test_source,"observedAt":observed_at,"candidateCommit":candidate_commit,"invalidatedAt":invalidated_at})).collect();
         let (evidence_count,): (i64,) =
             sqlx::query_as("SELECT COUNT(*) FROM development_run_evidence WHERE run_id = ?")
                 .bind(run_id)
@@ -577,7 +602,7 @@ impl Store {
         &self,
         run_id: &str,
     ) -> Result<Vec<DevelopmentEvidence>, String> {
-        let rows: Vec<EvidenceRow> = sqlx::query_as("SELECT id, run_id, idempotency_key, source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE run_id = ?1 ORDER BY observed_at, id")
+        let rows: Vec<EvidenceRow> = sqlx::query_as("SELECT id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE run_id = ?1 ORDER BY observed_at, id")
             .bind(run_id).fetch_all(&self.pool).await.map_err(db("list development evidence"))?;
         rows.into_iter().map(EvidenceRow::into_evidence).collect()
     }
@@ -706,6 +731,32 @@ impl Store {
         fence: i64,
         input: EvidenceInput,
     ) -> Result<DevelopmentEvidence, String> {
+        self.record_development_evidence_inner(run_id, owner, fence, input, false)
+            .await
+    }
+
+    /// Store evidence produced by ProjectA's own test service. Keeping this
+    /// path separate prevents a scoped agent credential from attesting its
+    /// caller-supplied `source` as a trusted test result.
+    pub(crate) async fn record_trusted_development_test_evidence(
+        &self,
+        run_id: &str,
+        owner: &str,
+        fence: i64,
+        input: EvidenceInput,
+    ) -> Result<DevelopmentEvidence, String> {
+        self.record_development_evidence_inner(run_id, owner, fence, input, true)
+            .await
+    }
+
+    async fn record_development_evidence_inner(
+        &self,
+        run_id: &str,
+        owner: &str,
+        fence: i64,
+        input: EvidenceInput,
+        trusted_test_source: bool,
+    ) -> Result<DevelopmentEvidence, String> {
         let run_id = required(run_id, "runId")?;
         let owner = required(owner, "owner")?;
         if fence < 1 {
@@ -724,14 +775,15 @@ impl Store {
         require_active_run_authority(&mut tx, &run_id, &owner, fence).await?;
         require_bound_candidate(&mut tx, &run_id, &input.candidate_commit).await?;
         let id = new_id("dre");
-        sqlx::query("INSERT OR IGNORE INTO development_run_evidence(id, run_id, idempotency_key, source, observed_at, candidate_commit, measurement_json, payload_json) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")
-            .bind(&id).bind(&run_id).bind(&input.idempotency_key).bind(&input.source).bind(input.observed_at).bind(&input.candidate_commit).bind(&measurement_json).bind(&payload_json)
+        sqlx::query("INSERT OR IGNORE INTO development_run_evidence(id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)")
+            .bind(&id).bind(&run_id).bind(&input.idempotency_key).bind(&input.source).bind(trusted_test_source).bind(input.observed_at).bind(&input.candidate_commit).bind(&measurement_json).bind(&payload_json)
             .execute(&mut *tx).await.map_err(db("write development evidence"))?;
         let stored = evidence_by_key(&mut tx, &input.idempotency_key)
             .await?
             .ok_or_else(|| "development evidence idempotency row disappeared".to_string())?;
         if stored.run_id != run_id
             || stored.source != input.source
+            || stored.trusted_test_source != trusted_test_source
             || stored.observed_at != input.observed_at
             || stored.candidate_commit != input.candidate_commit
             || stored.measurement_json != measurement_json
@@ -774,7 +826,7 @@ impl Store {
             .await
             .map_err(db("begin development review"))?;
         require_run_authority(&mut tx, &reviewer_run, &owner, fence).await?;
-        let evidence: EvidenceRow = sqlx::query_as("SELECT id, run_id, idempotency_key, source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE id = ?1")
+        let evidence: EvidenceRow = sqlx::query_as("SELECT id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE id = ?1")
             .bind(&input.evidence_id).fetch_optional(&mut *tx).await.map_err(db("read review evidence"))?
             .ok_or_else(|| "review evidence does not exist".to_string())?;
         let run_id = evidence.run_id.clone();
@@ -800,7 +852,12 @@ impl Store {
         // the run owner's, not permitted by the frozen root policy)
         // authorizes no review at all.
         let reviewer_role = run_role(&mut tx, &reviewer_run).await?;
-        let attestation = attest_reviewer(&reviewer, &implementer, reviewer_role)?;
+        let reviewer_attestation = attest_reviewer(&reviewer, &implementer, reviewer_role)?;
+        let attestation = if evidence.trusted_test_source {
+            reviewer_attestation
+        } else {
+            "unverified: test evidence source is agent supplied".to_string()
+        };
         let id = new_id("drr");
         sqlx::query("INSERT OR IGNORE INTO development_run_reviews(id, run_id, evidence_id, idempotency_key, candidate_commit, disposition, reviewer_identity, implementer_identity, source, observed_at, reviewer_attestation, approval_eligible, status) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12)")
             .bind(&id).bind(&run_id).bind(&input.evidence_id).bind(&input.idempotency_key).bind(&input.candidate_commit).bind(input.disposition.as_str()).bind(reviewer.label()).bind(implementer.label()).bind(&input.source).bind(input.observed_at).bind(&attestation).bind(VALID_REVIEW)
@@ -995,7 +1052,7 @@ async fn evidence_by_key(
     tx: &mut Transaction<'_, Sqlite>,
     key: &str,
 ) -> Result<Option<EvidenceRow>, String> {
-    sqlx::query_as("SELECT id, run_id, idempotency_key, source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE idempotency_key = ?1")
+    sqlx::query_as("SELECT id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE idempotency_key = ?1")
         .bind(key).fetch_optional(&mut **tx).await.map_err(db("read development evidence"))
 }
 
@@ -1003,7 +1060,7 @@ async fn evidence_for_run(
     tx: &mut Transaction<'_, Sqlite>,
     run_id: &str,
 ) -> Result<Vec<DevelopmentEvidence>, String> {
-    let rows: Vec<EvidenceRow> = sqlx::query_as("SELECT id, run_id, idempotency_key, source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE run_id = ?1 ORDER BY observed_at, id")
+    let rows: Vec<EvidenceRow> = sqlx::query_as("SELECT id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE run_id = ?1 ORDER BY observed_at, id")
         .bind(run_id).fetch_all(&mut **tx).await.map_err(db("snapshot development evidence"))?;
     rows.into_iter().map(EvidenceRow::into_evidence).collect()
 }
@@ -1716,18 +1773,18 @@ mod tests {
             .await
             .unwrap();
         let saved = store
-            .record_development_evidence(&run.id, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(&run.id, "worker-a", 7, evidence(COMMIT_A))
             .await
             .unwrap();
         assert_eq!(saved.candidate_commit, COMMIT_A);
         assert!(store
-            .record_development_evidence(&run.id, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(&run.id, "worker-a", 7, evidence(COMMIT_A))
             .await
             .is_ok());
         let mut mismatch = evidence(COMMIT_A);
         mismatch.payload = serde_json::json!({"command": "other"});
         assert!(store
-            .record_development_evidence(&run.id, "worker-a", 7, mismatch)
+            .record_trusted_development_test_evidence(&run.id, "worker-a", 7, mismatch)
             .await
             .is_err());
         let review = ReviewInput {
@@ -1774,6 +1831,56 @@ mod tests {
             .unwrap();
         assert_eq!(briefing["reviews"][0]["status"], "invalidated");
         assert_eq!(briefing["reviews"][0]["invalidatedByCommit"], COMMIT_B);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn reviews_require_store_attested_test_evidence() {
+        let (_dir, store, _root, task) = fixture().await;
+        let implementer = launched_run(&store, &task, "worker-a", 7, Some("claude")).await;
+        store
+            .bind_development_run_candidate(&implementer, "worker-a", 7, COMMIT_A, "git", 6)
+            .await
+            .unwrap();
+        let mut claimed = evidence(COMMIT_A);
+        claimed.source = "projecta-test-runner".into();
+        let claimed = store
+            .record_development_evidence(&implementer, "worker-a", 7, claimed)
+            .await
+            .unwrap();
+        assert!(!claimed.trusted_test_source);
+        let reviewer = launched_run(&store, "task-r", "worker-r", 3, Some("codex")).await;
+        assign(&store, "task-r", "reviewer", "worker-r").await;
+        let claimed_review = store
+            .record_development_review(
+                &reviewer,
+                "worker-r",
+                3,
+                review_input("untrusted-test-source", &claimed.id),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            claimed_review.reviewer_attestation,
+            "unverified: test evidence source is agent supplied"
+        );
+
+        let mut trusted = evidence(COMMIT_A);
+        trusted.idempotency_key = "trusted-test".into();
+        let trusted = store
+            .record_trusted_development_test_evidence(&implementer, "worker-a", 7, trusted)
+            .await
+            .unwrap();
+        assert!(trusted.trusted_test_source);
+        let trusted_review = store
+            .record_development_review(
+                &reviewer,
+                "worker-r",
+                3,
+                review_input("trusted-test-source", &trusted.id),
+            )
+            .await
+            .unwrap();
+        assert!(trusted_review.reviewer_attestation.starts_with("verified:"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -2035,7 +2142,7 @@ mod tests {
             .await
             .unwrap();
         let saved = store
-            .record_development_evidence(&run.id, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(&run.id, "worker-a", 7, evidence(COMMIT_A))
             .await
             .unwrap();
         let reviewer = launched_run(&store, "task-r", "worker-r", 3, None).await;
@@ -2075,6 +2182,7 @@ mod tests {
             "DROP TABLE continuous_supervisor",
             "DROP TABLE continuous_team_assignments",
             "DROP TABLE continuous_discovery",
+            "ALTER TABLE development_run_evidence DROP COLUMN trusted_test_source",
             "PRAGMA user_version=10",
         ] {
             sqlx::query(statement).execute(&store.pool).await.unwrap();
@@ -2087,7 +2195,13 @@ mod tests {
             .unwrap();
         assert_eq!(page["total"], 40);
         assert_eq!(page["items"][0]["approvalEligible"], false);
-        assert_eq!(page["items"][0]["status"], "valid");
+        assert_eq!(page["items"][0]["status"], "invalidated");
+        assert!(store
+            .list_development_evidence(&run.id)
+            .await
+            .unwrap()
+            .iter()
+            .all(|evidence| !evidence.trusted_test_source));
         let cursor = page["nextCursor"].as_str().unwrap().to_string();
         sqlx::query("VACUUM").execute(&store.pool).await.unwrap();
         store.pool.close().await;
@@ -2102,14 +2216,11 @@ mod tests {
             .unwrap();
         assert_eq!(tail["items"].as_array().unwrap().len(), 8);
         assert!(tail["nextCursor"].is_null());
-        assert!(
-            tail["items"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|item| item["status"] == "invalidated"
-                    && item["invalidatedByCommit"] == COMMIT_B)
-        );
+        assert!(tail["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|item| item["status"] == "invalidated"));
         let ids: std::collections::BTreeSet<_> = page["items"]
             .as_array()
             .unwrap()
@@ -2299,7 +2410,12 @@ mod tests {
             .await
             .unwrap();
         let saved = store
-            .record_development_evidence(&implementer, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(
+                &implementer,
+                "worker-a",
+                7,
+                evidence(COMMIT_A),
+            )
             .await
             .unwrap();
         // The implementer's own credential cannot record a review of itself,
@@ -2389,7 +2505,12 @@ mod tests {
             .await
             .unwrap();
         let saved = store
-            .record_development_evidence(&implementer, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(
+                &implementer,
+                "worker-a",
+                7,
+                evidence(COMMIT_A),
+            )
             .await
             .unwrap();
         let reviewer = launched_run(&store, "task-r", "worker-r", 3, Some("codex")).await;
@@ -2503,7 +2624,7 @@ mod tests {
             .await
             .unwrap();
         let test = store
-            .record_development_evidence(&run, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(&run, "worker-a", 7, evidence(COMMIT_A))
             .await
             .unwrap();
         let reviewer = launched_run(&store, "task-r", "worker-r", 3, Some("codex")).await;
@@ -2642,7 +2763,12 @@ mod tests {
             .await
             .unwrap();
         let saved = store
-            .record_development_evidence(&implementer, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(
+                &implementer,
+                "worker-a",
+                7,
+                evidence(COMMIT_A),
+            )
             .await
             .unwrap();
         // Unassigned runs dispatch as implementers; a coordinator is no
@@ -2747,7 +2873,12 @@ mod tests {
             .await
             .unwrap();
         let saved = store
-            .record_development_evidence(&implementer, "worker-a", 7, evidence(COMMIT_A))
+            .record_trusted_development_test_evidence(
+                &implementer,
+                "worker-a",
+                7,
+                evidence(COMMIT_A),
+            )
             .await
             .unwrap();
         let unassigned = launched_run(&store, "task-u", "worker-u", 3, Some("codex")).await;

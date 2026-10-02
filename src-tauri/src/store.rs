@@ -905,6 +905,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     ),
     (23, "append-only audit trail"),
     (24, "global persistent emergency stop"),
+    (25, "trusted development test evidence source"),
 ];
 
 /// The schema version [`Store::migrate`] brings a database to: the highest
@@ -1262,6 +1263,7 @@ impl Store {
             22 => development_launches::apply_undelivered_exit_migration(tx).await,
             23 => audit::apply_migration(tx).await,
             24 => emergency_stop::apply_migration(tx).await,
+            25 => development_runs::apply_trusted_test_source_migration(tx).await,
             // A MIGRATIONS entry without its arm - a build error, not data.
             _ => Err(format!("no migration defined for version {version}")),
         }
