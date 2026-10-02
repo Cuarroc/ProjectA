@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { join, normalize, extname, dirname, sep, isAbsolute } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { join, resolve, extname, dirname, sep, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { request as httpRequest } from "node:http";
@@ -435,13 +435,30 @@ function serveFile(req, res) {
     sendJson(res, 403, { error: "forbidden host", code: "hq_forbidden_host" });
     return;
   }
-  const requested = req.url === "/" ? "/index.html" : req.url.split("?")[0];
-  const file = normalize(join(docs, requested));
-  const staticRoot = normalize(docs);
-  // Compare with the platform separator, not a hardcoded "\\": on Linux/macOS
-  // normalize() never inserts backslashes, so appending "\\" here rejected
-  // every request and made `npm run hq:live` 404 on non-Windows checkouts.
-  if ((file !== staticRoot && !file.startsWith(staticRoot + sep)) || !existsSync(file) || !statSync(file).isFile()) {
+  const encodedPath = req.url === "/" ? "/index.html" : req.url.split("?")[0];
+  let requested;
+  try {
+    requested = decodeURIComponent(encodedPath);
+  } catch {
+    sendJson(res, 404, { error: "not found" });
+    return;
+  }
+  const staticRoot = realpathSync(docs);
+  // Prefixing the request with "." ensures an absolute-looking request cannot
+  // replace the root. Check both the lexical result and its canonical path:
+  // the latter prevents a symlink beneath docs from serving a file outside it.
+  const candidate = resolve(staticRoot, `.${requested}`);
+  const insideStaticRoot = (path) => path !== staticRoot && path.startsWith(staticRoot + sep);
+  if (!insideStaticRoot(candidate) || !existsSync(candidate)) {
+    sendJson(res, 404, { error: "not found" });
+    return;
+  }
+  let file;
+  try { file = realpathSync(candidate); } catch {
+    sendJson(res, 404, { error: "not found" });
+    return;
+  }
+  if (!insideStaticRoot(file) || !statSync(file).isFile()) {
     sendJson(res, 404, { error: "not found" });
     return;
   }
