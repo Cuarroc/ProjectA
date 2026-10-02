@@ -101,6 +101,13 @@ test("checkUsage stops on a non-numeric value instead of passing it", () => {
   assert.equal(c.status, "stopp");
 });
 
+test("checkUsage stops when a provider limit field is missing", () => {
+  const weekMissing = checkUsage({ usage: { a: { session: 1 } }, cap: 85, sessionCap: 85 });
+  const sessionMissing = checkUsage({ usage: { a: { woche: 1 } }, cap: 85, sessionCap: 85 });
+  assert.equal(weekMissing.status, "stopp");
+  assert.equal(sessionMissing.status, "stopp");
+});
+
 test("checkUsage warns when there is no usage file or no path was given", () => {
   assert.equal(checkUsage({ usage: null, cap: 85, sessionCap: 85, file: "usage.json" }).status, "warn");
   assert.equal(checkUsage({ usage: undefined, cap: 85, sessionCap: 85 }).status, "warn");
@@ -115,6 +122,7 @@ test("checkObserve reports silent for a missing, empty or stale log", () => {
   const cases = [
     { exists: false },
     { exists: true, size: 0, mtimeMs: NOW - 1000 },
+    { exists: true, size: 50, mtimeMs: NOW - 300_000 },
     { exists: true, size: 50, mtimeMs: NOW - 301_000 },
   ];
   for (const s of cases) {
