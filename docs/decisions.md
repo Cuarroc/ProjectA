@@ -3,6 +3,27 @@
 Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 (Log, keine zweite AGENTS.md — M12, Rev-8-SANIERUNGSPLAN §9/8.31.)
 
+## 2026-10-03
+
+- **CodeQL SEC-02e: fünf `rust/cleartext-logging`-Warnungen in `store.rs` sind
+  Fehlalarme, eine JS-Warnung wurde behoben, eine Windows-Testwarnung bleibt
+  offen zu schliessen.** Warum: die geloggten Werte sind PTY-Session-IDs
+  (`pty-<millis hex>-<seq>`, `pty.rs:685-691`, nur Korrelations-Label) und
+  Worker-IDs (Suchschlüssel), keine Zugangsdaten; Hook-Authentifizierung nutzt
+  getrennt `random_hex()` (`hooks.rs:116`). Geschlossen wird auf GitHub nur
+  vom Orchestrator. Zurücknehmen: wenn eine Session-ID je als Berechtigung
+  dient — dann sind diese Meldungen echt.
+
+  | Alert | Ort | Begründung |
+  |---|---|---|
+  | #27 | `store.rs:3597` | `mark_session_exited`: Hinweis „pending-exit map is poisoned; session {session_id} may stay open“. Nur die PTY-Session-ID als Label, keine Geheimnisse. |
+  | #28 | `store.rs:3787` | `record_session_start`: gleicher Text, gleiche ID. |
+  | #29 | `store.rs:3847` | `take_session`: loggt `worker_id` (Datenfluss über `.clone()` der gebundenen Strings); eine Worker-ID ist ein Suchschlüssel. |
+  | #30 | `store.rs:3859` | `session_for_worker`: loggt `worker_id`, siehe #29. |
+  | #31 | `store.rs:3871` | `worker_for_session`: loggt die Session-ID, siehe #27. |
+  | #9 | `api/credential_acl_tests.rs:177` | Nur `#[cfg(windows)]`-Test. `GetAce` ist zuvor auf Erfolg (`!= 0`) und `ace.is_null()` geprüft (Zeilen 175-176); der Zeiger zeigt in die noch lebende DACL. Fehlalarm, nicht auf Linux prüfbar. |
+  | #7 | `scripts/lib/dev-pr-status.test.mjs:91` | Echt (harmlos, nur Test): `replace(/[()]/g, …)` maskierte `\` nicht. Behoben: `/[\\()]/g`. |
+
 ## 2026-09-21
 
 - Der pwsh-Detektor in `scripts/ci/workflow-shell.sh` erkennt PowerShell am
