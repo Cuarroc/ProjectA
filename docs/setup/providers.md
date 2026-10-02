@@ -3,7 +3,8 @@
 Welche Agenten der Orchestrator einsetzen kann, mit welchem Modell und welchem
 Effort, für welche Art Arbeit. Stand **25.09.2026**, geprüft auf dem
 Entwicklungsrechner; Nachtrag **02.10.2026**: Kimi-Code-Abo abgelaufen,
-Codex-Modellnamen aus `~/.codex/models_cache.json` korrigiert. Die Einrichtung je Harness steht in den Nachbarseiten
+Codex-Modellnamen aus `~/.codex/models_cache.json` korrigiert. Die Einrichtung
+je Harness steht in den Nachbarseiten
 ([codex.md](codex.md), [kimi.md](kimi.md), [opencode.md](opencode.md),
 [ollama-reviewers.md](ollama-reviewers.md), [claude-code.md](claude-code.md)).
 
@@ -43,7 +44,6 @@ ersten echten Paket einmal proben.
 | OpenCode Go (Abo) | OpenCode CLI | geprüft (Orca-Worker, GLM-5.3-Flash) | `opencode-go/glm-5.3`, `opencode-go/deepseek-v4-pro`, `opencode-go/qwen3.8-max` | `opencode-go/glm-5.3` | `opencode-go/glm-5.3-flash` |
 | Ollama Cloud (Abo) | `.pa/review_transport.py`, HTTP `localhost:11434` | geprüft | `kimi-k3:cloud` | `glm-5.2:cloud` | `deepseek-v4-flash:cloud` |
 | GitHub Copilot (Abo) | OpenCode, Provider `github-copilot` | ungeprüft | `github-copilot/gpt-5.6-terra`, `github-copilot/claude-sonnet-5` | `github-copilot/gpt-5.4` | `github-copilot/gpt-5-mini` |
-| Cursor (Abo) | `cursor-agent` | **Login fehlt** (`cursor-agent login`) | — | — | — |
 | Google (Antigravity / Gemini) | Antigravity IDE | ungeprüft, kein Agent-CLI im PATH | — | — | — |
 | xAI (SuperGrok Lite) | Grok CLI 1.0.41 (`~/.grok/bin/grok`) | installiert, **Login fehlt** (`grok` startet den Browser-Login); ob Lite für die CLI reicht, ist ungeprüft | `grok-4.7` | `grok-4.7` | — |
 | Anthropic (Claude Pro) | Claude Code (Desktop-App) | geprüft | Fable 5.1 (Advisor) | Opus 5.5 (Orchestrator) | — |
@@ -101,7 +101,7 @@ orca orchestration worker-start --spec "<Auftrag>" --worktree branch:<branch> --
 Befunde aus dem Orca-Pilot am 25.09. (Orca 1.4.210):
 
 - OpenCode: startet in etwa 10 s und arbeitet den Auftrag ab.
-- `--model`/`--effort` gelten nur für Claude, Codex, Cursor und Antigravity;
+- `--model`/`--effort` gelten nur für Claude, Codex und Antigravity;
   bei OpenCode greift das Modell aus dessen Konfiguration (Standard
   `glm-5.3-flash`).
 - Orca selbst belegt rund 0,75 GB RAM, ein OpenCode-TUI knapp 1 GB.
@@ -121,9 +121,8 @@ ist (`AGENTS.md`, Development loop).
 
 ## Offen
 
-- Cursor: `cursor-agent login` durch den Nutzer, dann ein Probelauf `cursor-agent -p`.
 - Antigravity / Gemini: Agent-CLI finden oder installieren, dann proben.
 - Grok: Nutzer meldet sich einmal mit `grok` an; dann Probelauf `grok -p`. Hinweis:
   der Installer legt auch `~/.grok/bin/agent.exe` an und steht vorn im PATH —
-  `agent` startet damit Grok, nicht Cursor; für Cursor `cursor-agent` benutzen.
+  `agent` startet damit Grok.
 - Copilot über OpenCode: Login und Premium-Kontingent einmal belegen.

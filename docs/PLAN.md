@@ -81,7 +81,7 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | ✓ #39 |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
 | SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln |
-| SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | offen |
+| SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | PR #51 |
 
 PC-Setup außerhalb des Repos (Orchestrator, Nutzerentscheidungen 25.09.):
 Backup mit Kopia nach Google Drive, TypeScript-Sprachserver und PowerShell-Profil,
@@ -101,7 +101,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-22 | Konfliktvorhersage und Lane-Guard | M | fR | ✓ #9 |
 | W5-28 | Automatischer Laufzeitbeleg (Sandbox, Queue aus) | M | fR | ✓ #11 |
 | W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | ✓ #18 |
-| W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | offen |
+| W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | PR #50 |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |

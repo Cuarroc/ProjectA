@@ -117,6 +117,8 @@ npm run dev:setup   # installs git hooks into this clone, writes .pa/HQ-START.md
 npm run tauri dev   # start the desktop app in development mode
 ```
 
+- For the complete per-provider setup and the read-only machine check, see
+  [docs/setup/](docs/setup/README.md) and run `npm run dev:agent-check`.
 - `npm run dev` serves only the UI on `http://localhost:1420`. Without the Tauri runtime, IPC calls do not work.
 - `npm run hq:live` starts the Dev-HQ website on `http://localhost:4173`.
 - `npm run dev:doctor` diagnoses the setup without changing anything.

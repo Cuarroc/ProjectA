@@ -5,7 +5,7 @@
 > Das Review-Modell `kimi-k3:cloud` läuft über Ollama Cloud und ist davon nicht
 > betroffen ([ollama-reviewers.md](ollama-reviewers.md)).
 
-Rolle: Frontend-/HQ-Worker, Reviews. Zurück zur Übersicht: [README.md](README.md).
+Rolle: früherer Frontend-/HQ-Worker. Zurück zur Übersicht: [README.md](README.md).
 
 ## Welche Harness
 
