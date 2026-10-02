@@ -41,6 +41,19 @@ for entry in 'src/example.test.ts|No test files found' 'scripts/example.test.mjs
     exit 1
   fi
 done
+shell_output=$'ok   linux/other-case (run=false)\nok   linux/named-case (run=false)'
+if ! classify_run "$shell_output" 0 'scripts/example.sh::linux/named-case'; then
+  echo 'FAIL: named shell assertion was rejected' >&2
+  exit 1
+fi
+if classify_run "$shell_output" 0 'scripts/example.sh::linux/missing-case'; then
+  echo 'FAIL: missing named shell assertion was accepted from a green suite' >&2
+  exit 1
+fi
+if ! classify_run 'suite passed' 0 scripts/example.sh; then
+  echo 'FAIL: unnamed shell suite success was rejected' >&2
+  exit 1
+fi
 bash "$ROOT/scripts/test-red-first-vitest-filter.sh"
 bash "$ROOT/scripts/test-red-first-mjs-filter.sh"
 echo 'red-first output classification: passed'
