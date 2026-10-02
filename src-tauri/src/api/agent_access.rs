@@ -532,6 +532,7 @@ fn agent_error(error: String) -> Response {
         || error.contains("candidate does not match")
         || error.contains("candidate must be bound")
         || error.starts_with("candidate scope check failed:")
+        || error.starts_with("ambiguous candidate observation:")
     {
         Response::error(409, error)
     } else if error.contains("cannot be in the future")
