@@ -853,6 +853,24 @@ mod tests {
         assert!(fx.store.list_workers(None).await.unwrap().is_empty());
     }
 
+    #[tokio::test]
+    async fn routing_failure_after_insert_rolls_back_scout() {
+        let fx = fixture("scout-routing-rollback").await;
+        let agents = FakeAgents::default();
+        crate::routing::set_review_availability(crate::routing::ReviewAvailability::Unresolved {
+            detail: "review unavailable".to_string(),
+        });
+        fx.store
+            .set_setting(crate::routing::TEST_FORCE_REVIEW_AFTER_PRECHECK, "true")
+            .await
+            .unwrap();
+
+        create_scout(&fx.store, &agents, &fx.project.id, None)
+            .await
+            .expect_err("routing must reject review mode");
+        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
+    }
+
     // -- ingest ------------------------------------------------------------
 
     #[tokio::test]
