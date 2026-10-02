@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Project } from "../types";
@@ -54,6 +54,59 @@ describe("Sidebar", () => {
     expect(start).toBeDisabled();
     fireEvent.click(start);
     expect(onOpenOrchestrator).not.toHaveBeenCalled();
+  });
+
+  it("creates a project from trimmed form values and closes the form", async () => {
+    const onCreate = vi.fn(async () => true);
+    render(
+      <Sidebar
+        projects={[]}
+        activeProjectId={null}
+        loading={false}
+        error={null}
+        onCreate={onCreate}
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onOpenOrchestrator={vi.fn()}
+        liveOrchestratorProjectIds={[]}
+        busyOrchestratorProjectId={null}
+        onRefreshProjects={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add project" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  Demo  " } });
+    fireEvent.change(screen.getByLabelText("Repo path"), {
+      target: { value: "  /repos/demo  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add project" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith("Demo", "/repos/demo"));
+    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+  });
+
+  it("requires confirmation before removing a project", () => {
+    const onRemove = vi.fn();
+    render(
+      <Sidebar
+        projects={[project]}
+        activeProjectId="project-a"
+        loading={false}
+        error={null}
+        onCreate={vi.fn()}
+        onSelect={vi.fn()}
+        onRemove={onRemove}
+        onOpenOrchestrator={vi.fn()}
+        liveOrchestratorProjectIds={[]}
+        busyOrchestratorProjectId={null}
+        onRefreshProjects={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Project A" }));
+    expect(onRemove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "remove" }));
+    expect(onRemove).toHaveBeenCalledWith("project-a");
   });
 });
 
