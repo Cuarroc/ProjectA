@@ -163,6 +163,12 @@ mod tests {
             .append_audit("a", "act", "s", &json!({}))
             .await
             .unwrap();
+        let before: (i64, String, String, String, String) =
+            sqlx::query_as("SELECT ts,actor,action,subject,detail_json FROM audit_log WHERE id=?")
+                .bind(id)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
         let result = sqlx::query(
             "INSERT OR REPLACE INTO audit_log(id,ts,actor,action,subject,detail_json) VALUES(?,1,'mallory','rewrite','s','{}')",
         )
@@ -170,6 +176,13 @@ mod tests {
         .execute(&store.pool)
         .await;
         assert!(result.is_err(), "REPLACE rewrote an append-only row");
+        let after =
+            sqlx::query_as("SELECT ts,actor,action,subject,detail_json FROM audit_log WHERE id=?")
+                .bind(id)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(before, after);
     }
 
     #[tokio::test]
@@ -183,11 +196,24 @@ mod tests {
             .execute(&store.pool)
             .await
             .unwrap();
+        sqlx::query("INSERT INTO audit_log VALUES(7,'sentinel')")
+            .execute(&store.pool)
+            .await
+            .unwrap();
         sqlx::query("PRAGMA user_version = 22")
             .execute(&store.pool)
             .await
             .unwrap();
-        store.pool.close().await;
         assert!(Store::open(&dir.path().join("projecta.db")).await.is_err());
+        let row: (i64, String) = sqlx::query_as("SELECT id,actor FROM audit_log")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        let (version,): (i64,) = sqlx::query_as("PRAGMA user_version")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(row, (7, "sentinel".into()));
+        assert_eq!(version, 22);
     }
 }
