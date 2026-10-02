@@ -17,8 +17,9 @@ Zurück zur Übersicht: [README.md](README.md).
 - Das App-Profil `opencode-ollama-deepseek-v4-flash` wählt
   `ollama/deepseek-v4-flash:cloud` explizit. Das Manifest belegt weder Login
   noch Modellverfügbarkeit; ein modellgenauer interaktiver Capture fehlt.
-  Deshalb behauptet das Profil keinen Readiness-Marker und HQ zeigt die
-  Verfügbarkeit ohne Laufzeitbeleg als unbekannt.
+  Das Profil trägt den Readiness-Marker `Ask anything` des OpenCode-TUI
+  (NT-17, nicht modellabhängig); HQ zeigt die Verfügbarkeit ohne
+  Laufzeitbeleg als unbekannt.
 - Das App-Profil `opencode-glm-53-flash` ruft `opencode -m
   opencode-go/glm-5.3-flash`. Ob das Modell über den OpenCode-Go-Login
   erreichbar ist, zeigt `opencode models` — auf diesem PC nicht belegt.

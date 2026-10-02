@@ -67,7 +67,7 @@
       "caps": {
         "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "conventionAt", "dir": ".agents/skills" },
         "lifecycle": { "mode": "heuristic" },
-        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": null
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
       },
       "env": {}, "fallback": null, "enabled": true,
       "envPolicy": { "isolation": "allowlist", "passthrough": [] }
