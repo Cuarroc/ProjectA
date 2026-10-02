@@ -1377,7 +1377,7 @@ fn execute_prepared_outcome(
             .collect(),
         no_progress: crate::stream_guard::NO_PROGRESS_LIMIT,
         structured_progress: true,
-        enforce_resource_limits: true,
+        enforce_resource_limits: std::env::var_os("PROJECTA_NATIVE_JOB_LIMITS").is_some(),
     };
     let outcome = execute_with_observer_outcome(
         &command,
@@ -2064,6 +2064,7 @@ fn execute_host_checkpointed(
         observer,
         checkpoints,
         &AtomicBool::new(false),
+        false,
     )? {
         HostSettlement::Completed(host, reply) => Ok((host, reply)),
         HostSettlement::ExitedUndelivered(..) => Err(INPUT_NOT_CONFIRMED.into()),
@@ -2095,6 +2096,7 @@ pub fn execute_owned_host(
         None,
         Some(checkpoints),
         cancelled,
+        true,
     )
 }
 
@@ -2105,12 +2107,18 @@ fn execute_host_inner(
     observer: Option<&std::sync::mpsc::SyncSender<OutputEvent>>,
     checkpoints: Option<std::sync::mpsc::SyncSender<crate::checkpoints::Request>>,
     cancelled: &AtomicBool,
+    enforce_resource_limits: bool,
 ) -> Result<HostSettlement, String> {
     let (binding, launch, input) = prepared.into_parts();
     let (control, pending_input) =
         crate::protocol::launch_parts(binding.clone(), launch.clone(), &input)?;
     let mut command = Command::diagnostic(host_path);
     command.args.push("--protocol-duplex".into());
+    if enforce_resource_limits {
+        command
+            .environment
+            .push(("PROJECTA_NATIVE_JOB_LIMITS".into(), "1".into()));
+    }
     // The host enforces the provider's no-progress window itself and then
     // reports its failure; the parent waits the same grace as for the deadline
     // so it never races the host's own, more precise stall result.
