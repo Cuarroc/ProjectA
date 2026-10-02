@@ -35,7 +35,7 @@ describe("useOrchestratorChat project switch", () => {
   });
 
   it("does not load the previous project's history after a switch", async () => {
-    vi.mocked(ipc.listWorkerMessages).mockResolvedValue([]);
+    vi.mocked(ipc.listWorkerMessages).mockReturnValue(new Promise(() => undefined));
     const { result, rerender } = renderHook(
       ({ project }) => useOrchestratorChat(project),
       { initialProps: { project: "project-a" } },
@@ -43,6 +43,7 @@ describe("useOrchestratorChat project switch", () => {
     await act(async () => {
       await result.current.send("Status?");
     });
+    expect(result.current.loading).toBe(true);
     vi.mocked(ipc.listWorkerMessages).mockClear();
 
     await act(async () => {
@@ -51,5 +52,6 @@ describe("useOrchestratorChat project switch", () => {
 
     expect(ipc.listWorkerMessages).not.toHaveBeenCalled();
     expect(result.current.orchestratorId).toBeNull();
+    expect(result.current.loading).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import LearningsPanel from "./LearningsPanel";
@@ -53,5 +53,23 @@ describe("LearningsPanel project switch", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(screen.queryByDisplayValue("Learning of project A")).toBeNull();
+  });
+
+  it("does not show an old project's approval receipt after the switch", async () => {
+    let resolveApproval: () => void = () => undefined;
+    vi.mocked(ipc.approveLearning).mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveApproval = resolve;
+      }),
+    );
+    vi.mocked(ipc.listRoleVariants).mockResolvedValue([]);
+    vi.mocked(ipc.listLearnings).mockResolvedValueOnce([learningA]).mockResolvedValue([]);
+    const { rerender } = render(<LearningsPanel projectId="project-a" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Annehmen" }));
+
+    rerender(<LearningsPanel projectId="project-b" />);
+    await act(async () => resolveApproval());
+
+    expect(screen.queryByText("Ins Playbook übernommen.")).toBeNull();
   });
 });
