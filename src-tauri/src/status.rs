@@ -1472,7 +1472,9 @@ impl StatusEngine {
         if let Some(tracker) = tracker {
             match reason {
                 Some(reason) => tracker.note_blocked(&profile_id, &reason, None),
-                None => tracker.note_ok(&profile_id),
+                None => {
+                    tracker.note_ok_unless_reason_prefix(&profile_id, crate::budget::REASON_PREFIX)
+                }
             }
         }
     }
