@@ -2,25 +2,19 @@
 
 Status: historisch
 
-Package from `docs/PLAN.md`, size M, lane fR. This specification was active
-while the package was dispatched; the plan remains the source of truth.
+Package from `docs/PLAN.md`, size M, lane fR; active while dispatched, now historical.
 
 ## Contract
 
-- Apply a 4 GiB aggregate memory ceiling and a 40% system CPU hard cap to each
-  Windows native provider job before its suspended process can run. Keep the
-  parent host uncapped so nested CPU rates do not multiply.
+- Apply a 4 GiB aggregate memory ceiling and a 40% system CPU hard cap to each Windows
+  native provider job before resume; keep the parent host uncapped.
 - Keep the 15-minute no-progress deadline, but reset it only for complete,
-  structured Codex JSON events that demonstrate thinking or task progress.
-  Arbitrary stdout/stderr bytes must not keep a stalled worker alive.
-- Limits remain compile-time native-runner policy. They do not enable
-  continuous mode, add a scheduler, or change PTY workers.
+  structured Codex progress events; arbitrary output must not keep a stall alive.
+- Limits do not enable continuous mode, add a scheduler, or change PTY workers.
 
 ## Acceptance
 
-- Compiling red-first tests prove both absent Job Object caps and the current
-  false-progress behavior; the same tests pass after the implementation.
+- Compiling red-first tests prove absent caps and false progress, then pass.
 - Windows native tests and the full prepush lane pass in this worktree.
-- Tier-A review by two models outside the author's family has no unresolved
-  high-severity finding; all findings are dispositioned in the PR report.
+- Tier-A review by two outside-family models has no unresolved high finding.
 - Diff stays at or below 300 lines and does not touch a serial seam.

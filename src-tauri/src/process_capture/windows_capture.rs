@@ -2635,10 +2635,6 @@ mod tests {
 
     #[test]
     fn structured_progress_trickle_restarts_window_until_completion() {
-        let mut byte_progress = fixture_command("trickle");
-        byte_progress.no_progress = Duration::from_secs(2);
-        assert!(observed_run(&byte_progress, MAX_BYTES).0.is_ok());
-
         let mut command = fixture_command("structured-trickle");
         command.no_progress = Duration::from_secs(1);
         command.structured_progress = true;

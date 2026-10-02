@@ -25,6 +25,7 @@ pub const NO_PROGRESS_LIMIT: Duration = Duration::from_secs(15 * 60);
 #[derive(Default)]
 pub struct ProgressSignals {
     pending: Vec<u8>,
+    discarding: bool,
 }
 
 impl ProgressSignals {
@@ -34,34 +35,43 @@ impl ProgressSignals {
 
     pub fn observe(&mut self, bytes: &[u8]) -> bool {
         const MAX_PENDING: usize = crate::protocol::MAX_INPUT;
-        if self.pending.len().saturating_add(bytes.len()) > MAX_PENDING {
-            self.pending.clear();
-            let Some(end) = bytes.iter().position(|byte| *byte == b'\n') else {
-                return false;
-            };
-            return self.observe(&bytes[end + 1..]);
-        }
-        self.pending.extend_from_slice(bytes);
         let mut progress = false;
-        while let Some(end) = self.pending.iter().position(|byte| *byte == b'\n') {
-            let line: Vec<_> = self.pending.drain(..=end).collect();
-            let Ok(value) = serde_json::from_slice::<serde_json::Value>(&line) else {
+        for segment in bytes.split_inclusive(|byte| *byte == b'\n') {
+            let complete = segment.ends_with(b"\n");
+            if self.discarding {
+                self.discarding = !complete;
                 continue;
-            };
-            progress |= value
-                .get("type")
-                .and_then(|kind| kind.as_str())
-                .is_some_and(|kind| {
-                    matches!(
-                        kind,
-                        "thread.started"
-                            | "turn.started"
-                            | "item.started"
-                            | "item.updated"
-                            | "item.completed"
-                            | "turn.completed"
-                    )
-                });
+            }
+            if self.pending.len().saturating_add(segment.len()) > MAX_PENDING {
+                self.pending.clear();
+                self.discarding = !complete;
+                continue;
+            }
+            self.pending.extend_from_slice(segment);
+            if !complete {
+                continue;
+            }
+            let event = serde_json::from_slice::<serde_json::Value>(&self.pending)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("type")
+                        .and_then(|kind| kind.as_str())
+                        .map(|kind| {
+                            matches!(
+                                kind,
+                                "thread.started"
+                                    | "turn.started"
+                                    | "item.started"
+                                    | "item.updated"
+                                    | "item.completed"
+                                    | "turn.completed"
+                            )
+                        })
+                })
+                .unwrap_or(false);
+            self.pending.clear();
+            progress |= event;
         }
         progress
     }
