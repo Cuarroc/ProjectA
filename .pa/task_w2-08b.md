@@ -2,8 +2,8 @@
 
 Status: historisch
 
-Package from `docs/PLAN.md`, size M, lane fR. This specification is active
-for the dispatched package; the plan remains the source of truth.
+Package from `docs/PLAN.md`, size M, lane fR. This specification was active
+while the package was dispatched; the plan remains the source of truth.
 
 ## Contract
 
@@ -21,6 +21,6 @@ for the dispatched package; the plan remains the source of truth.
 - Compiling red-first tests prove both absent Job Object caps and the current
   false-progress behavior; the same tests pass after the implementation.
 - Windows native tests and the full prepush lane pass in this worktree.
-- Tier-B review by a model outside the author's family has no unresolved
+- Tier-A review by two models outside the author's family has no unresolved
   high-severity finding; all findings are dispositioned in the PR report.
 - Diff stays at or below 300 lines and does not touch a serial seam.

@@ -36,7 +36,10 @@ impl ProgressSignals {
         const MAX_PENDING: usize = crate::protocol::MAX_INPUT;
         if self.pending.len().saturating_add(bytes.len()) > MAX_PENDING {
             self.pending.clear();
-            return false;
+            let Some(end) = bytes.iter().position(|byte| *byte == b'\n') else {
+                return false;
+            };
+            return self.observe(&bytes[end + 1..]);
         }
         self.pending.extend_from_slice(bytes);
         let mut progress = false;
