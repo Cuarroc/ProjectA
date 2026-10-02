@@ -46,6 +46,9 @@ pub mod development_plan;
 pub mod development_runs;
 #[path = "store/discovery.rs"]
 pub mod discovery;
+#[cfg(test)]
+#[path = "store/emergency_stop_tests.rs"]
+mod emergency_stop_tests;
 #[path = "store/journal_watch.rs"]
 mod journal_watch;
 #[path = "store/queue_cancel.rs"]
