@@ -507,11 +507,17 @@ mod tests {
         assert_eq!(kimi.caps.readiness_marker, None);
     }
 
-    /// NT-17: OpenCode's TUI flushes input written before its loop runs. Only
-    /// profiles whose exact route has a captured marker may opt into it.
+    /// NT-17: OpenCode's TUI flushes input written before its loop runs. The
+    /// marker is the TUI's own prompt text, not model-specific, so every
+    /// profile that launches the OpenCode TUI carries it; without it the
+    /// submit guard falls back to the silence heuristic and the task is lost.
     #[test]
     fn opencode_profiles_carry_the_readiness_marker() {
-        for id in ["opencode", "opencode-glm-53-flash"] {
+        for id in [
+            "opencode",
+            "opencode-glm-53-flash",
+            "opencode-ollama-deepseek-v4-flash",
+        ] {
             let profile = default_profiles()
                 .into_iter()
                 .find(|profile| profile.id == id)
@@ -687,6 +693,7 @@ mod tests {
                 skills: SkillsDiscovery::ConventionAt {
                     dir: ".agents/skills".into()
                 },
+                readiness_marker: Some("Ask anything".into()),
                 ..AgentCapabilities::default()
             }
         );

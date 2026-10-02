@@ -8,7 +8,7 @@ test('HQ builtins contain only the eight shipped profiles, with runtime capabili
   assert.deepEqual(profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'opencode-ollama-deepseek-v4-flash', 'ollama', 'ollama-coder']);
   assert.equal(profiles[0].caps.lifecycle.mode, 'settingsHooks');
   assert.equal(profiles[3].caps.readinessMarker, 'Ask anything');
-  assert.equal(profiles[5].caps.readinessMarker, null);
+  assert.equal(profiles[5].caps.readinessMarker, 'Ask anything');
 });
 
 test('HQ applies Rust replacement defaults and longest-prefix capability inheritance', () => {
