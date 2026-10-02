@@ -1604,6 +1604,16 @@ impl CursorReportScanner {
         }
         found
     }
+
+    /// STUB (red-first): returns the input unchanged.
+    pub(crate) fn strip(&mut self, bytes: &[u8]) -> (usize, Vec<u8>) {
+        (0, bytes.to_vec())
+    }
+
+    /// STUB (red-first).
+    pub(crate) fn flush(&mut self) -> Vec<u8> {
+        Vec::new()
+    }
 }
 
 /// Set after the first poisoned lock taken over by [`recover`].
@@ -4391,6 +4401,26 @@ mod tests {
         assert_eq!(scanner.feed(b"plain output\x1b[?25h"), 0);
         assert_eq!(scanner.feed(b"\x1b[6"), 0);
         assert_eq!(scanner.feed(b"n"), 1);
+    }
+
+    /// KI-20 (W1-27): the backend answers `ESC[6n` alone, so the answered
+    /// query must never reach scrollback or the UI - otherwise a terminal tab
+    /// opened later replays it into xterm.js, which answers a second time.
+    #[test]
+    fn a_cursor_position_query_never_reaches_the_terminal_view() {
+        let mut scanner = CursorReportScanner::default();
+        assert_eq!(
+            scanner.strip(b"\x1b[6n\x1b[?9001h"),
+            (1, b"\x1b[?9001h".to_vec())
+        );
+        assert_eq!(scanner.strip(b"\x1b["), (0, Vec::new()));
+        assert_eq!(scanner.strip(b"6n"), (1, Vec::new()));
+        assert_eq!(scanner.strip(b"\x1b["), (0, Vec::new()));
+        assert_eq!(scanner.strip(b"?996n"), (0, b"\x1b[?996n".to_vec()));
+        assert_eq!(scanner.strip(b"\x1b\x1b[6n"), (1, b"\x1b".to_vec()));
+        assert_eq!(scanner.strip(b"\x1b["), (0, Vec::new()));
+        assert_eq!(scanner.flush(), b"\x1b[".to_vec());
+        assert_eq!(scanner.flush(), Vec::<u8>::new(), "flush empties the hold");
     }
 
     /// npm-installed agents (`claude`, `codex`, ...) are `.cmd` shims on Windows,
