@@ -1201,6 +1201,22 @@ mod tests {
         std::fs::read_to_string(playbook_path(project_id).expect("data dir")).ok()
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn rewriting_the_authoritative_playbook_replaces_the_file_atomically() {
+        use std::os::unix::fs::MetadataExt;
+
+        let dir = TempDir::new("learnings-playbook-atomic");
+        let path = dir.path().join("playbook.md");
+        std::fs::write(&path, "old content").unwrap();
+        let old_inode = std::fs::metadata(&path).unwrap().ino();
+
+        write_playbook(&path, "new content").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "new content");
+        assert_ne!(std::fs::metadata(&path).unwrap().ino(), old_inode);
+    }
+
     #[test]
     fn appending_creates_the_playbook_and_files_by_profile() {
         let dir = TempDir::new("learnings-playbook");
