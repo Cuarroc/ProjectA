@@ -658,6 +658,21 @@ mod tests {
         );
     }
 
+    /// NT-17: the DeepSeek route launches the same OpenCode TUI, which drops
+    /// input written before its loop runs; without the marker the submit
+    /// guard would write on silence and lose the task.
+    #[test]
+    fn opencode_deepseek_profile_carries_the_tui_readiness_marker() {
+        let profile = default_profiles()
+            .into_iter()
+            .find(|p| p.id == "opencode-ollama-deepseek-v4-flash")
+            .expect("opencode-ollama-deepseek-v4-flash profile exists");
+        assert_eq!(
+            profile.caps.readiness_marker.as_deref(),
+            Some("Ask anything")
+        );
+    }
+
     #[test]
     fn opencode_deepseek_v4_flash_profile_is_available_and_cautious() {
         let profile = default_profiles()
