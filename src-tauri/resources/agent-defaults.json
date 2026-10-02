@@ -63,6 +63,16 @@
       "envPolicy": { "isolation": "strict", "passthrough": [] }
     },
     {
+      "id": "opencode-ollama-deepseek-v4-flash", "name": "OpenCode DeepSeek V4 Flash (Ollama Cloud)", "command": "opencode", "args": ["-m", "ollama/deepseek-v4-flash:cloud"],
+      "caps": {
+        "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "conventionAt", "dir": ".agents/skills" },
+        "lifecycle": { "mode": "heuristic" },
+        "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
+      },
+      "env": {}, "fallback": null, "enabled": true,
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
+    },
+    {
       "id": "ollama", "name": "Ollama", "command": "ollama", "args": ["run", "llama3.2"],
       "caps": {
         "systemPrompt": { "mode": "unsupported" }, "skills": { "mode": "unsupported" },

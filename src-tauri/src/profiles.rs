@@ -505,11 +505,17 @@ mod tests {
         assert_eq!(kimi.caps.readiness_marker, None);
     }
 
-    /// NT-17: OpenCode's TUI flushes input written before its loop runs, so
-    /// its profiles are the ones that carry the readiness marker.
+    /// NT-17: OpenCode's TUI flushes input written before its loop runs. The
+    /// marker is the TUI's own prompt text, not model-specific, so every
+    /// profile that launches the OpenCode TUI carries it; without it the
+    /// submit guard falls back to the silence heuristic and the task is lost.
     #[test]
     fn opencode_profiles_carry_the_readiness_marker() {
-        for id in ["opencode", "opencode-glm-53-flash"] {
+        for id in [
+            "opencode",
+            "opencode-glm-53-flash",
+            "opencode-ollama-deepseek-v4-flash",
+        ] {
             let profile = default_profiles()
                 .into_iter()
                 .find(|profile| profile.id == id)
@@ -525,15 +531,18 @@ mod tests {
     /// W1-18b (probe 2026-09-25): the
     /// installed OpenCode 1.18.32 lists a canary living in the probe
     /// workspace's `.agents/skills` from `debug skill --pure` - an
-    /// observation, not a configuration guess - so both opencode profiles
-    /// declare `ConventionAt`. Only the bare `opencode` invocation was probed;
-    /// that the glm variant (same binary, `-m` model flag) discovers the same
-    /// way is an assumption: `--pure` makes no model call. Codex stays
+    /// observation, not a configuration guess - so OpenCode profiles declare
+    /// `ConventionAt`. Only the bare `opencode` invocation was probed; routed
+    /// variants use the same binary and `--pure` makes no model call. Codex stays
     /// `Unsupported`: its re-probe waits out the rate limit (2026-09-30),
     /// and this assert keeps anyone from lifting it along by accident.
     #[test]
     fn opencode_profiles_read_repo_skills_at_agents_skills() {
-        for id in ["opencode", "opencode-glm-53-flash"] {
+        for id in [
+            "opencode",
+            "opencode-glm-53-flash",
+            "opencode-ollama-deepseek-v4-flash",
+        ] {
             let profile = default_profiles()
                 .into_iter()
                 .find(|profile| profile.id == id)
@@ -655,6 +664,41 @@ mod tests {
 
     /// W5-02b4: every built-in runs under `strict`; ProjectA's runner host
     /// pushes committed worker branches. The CLIs keep their login in files under the
+    /// NT-17: the DeepSeek route launches the same OpenCode TUI, which drops
+    /// input written before its loop runs; without the marker the submit
+    /// guard would write on silence and lose the task.
+    #[test]
+    fn opencode_deepseek_profile_carries_the_tui_readiness_marker() {
+        let profile = default_profiles()
+            .into_iter()
+            .find(|p| p.id == "opencode-ollama-deepseek-v4-flash")
+            .expect("opencode-ollama-deepseek-v4-flash profile exists");
+        assert_eq!(
+            profile.caps.readiness_marker.as_deref(),
+            Some("Ask anything")
+        );
+    }
+
+    #[test]
+    fn opencode_deepseek_v4_flash_profile_is_available_and_cautious() {
+        let profile = default_profiles()
+            .into_iter()
+            .find(|p| p.id == "opencode-ollama-deepseek-v4-flash")
+            .expect("opencode-ollama-deepseek-v4-flash profile exists");
+        assert_eq!(profile.command, "opencode");
+        assert_eq!(profile.args, vec!["-m", "ollama/deepseek-v4-flash:cloud"]);
+        assert_eq!(
+            profile.caps,
+            AgentCapabilities {
+                skills: SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
+                },
+                readiness_marker: Some("Ask anything".into()),
+                ..AgentCapabilities::default()
+            }
+        );
+    }
+
     /// user's home, so no built-in passes a secret through. Claude keeps
     /// `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, a non-secret CLI setting the user
     /// sets machine-wide that the `TOKEN` marker would otherwise drop. Kimi

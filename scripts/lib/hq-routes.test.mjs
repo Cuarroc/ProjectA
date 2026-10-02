@@ -204,7 +204,7 @@ test('HQ labels compiled-default agreement separately from a runtime profile pat
       assert.equal(profiles.source, 'runtime');
       assert.equal(profiles.defaultsSource, source);
       assert.equal(profiles.builtinManifestSha256, digest);
-      assert.deepEqual(profiles.profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'ollama', 'ollama-coder']);
+      assert.deepEqual(profiles.profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'opencode-ollama-deepseek-v4-flash', 'ollama', 'ollama-coder']);
       assert.equal(profiles.profiles[0].caps.lifecycle.mode, 'settingsHooks');
       if (source === 'checkout-preview') assert.match(profiles.warnings.join(' '), /not verified/);
     }

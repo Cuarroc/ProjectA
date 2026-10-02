@@ -36,7 +36,7 @@ Exit-Codes: 0 ok (auch: Zeile schon vorhanden), 2 Aufruffehler,
 Daten kommen aus: gh pr view <nr> --json number,title,state,mergedAt,mergeCommit,files
 `;
 
-const esc = (s) => String(s).replace(/\r?\n/g, " ").replace(/\|/g, "\\|").trim();
+const esc = (s) => String(s).replace(/\r?\n/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").trim();
 
 // "feat(api): W2-07: Text (W2-07)" -> "Text": the ID has its own column.
 export function cleanTitle(title, id = "") {

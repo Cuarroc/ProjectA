@@ -38,7 +38,8 @@
         </form>
       </details>
       <div data-goals></div>
-      <section data-runs><h2>Runs, Evidenz & Lieferung</h2></section>`;
+      <section data-review-delivery id="hq-review-delivery-live" tabindex="-1" aria-label="Review und Delivery"></section>
+      <section data-runs><h2>Run-Details & Evidenz</h2></section>`;
     container.append(card);
     card.querySelectorAll('button').forEach(button => button.classList.add('hq-button'));
     const state = card.querySelector('[data-state]');
@@ -48,6 +49,7 @@
     const errorBox = card.querySelector('[data-error]');
     const list = card.querySelector('[data-goals]');
     const ownership = card.querySelector('[data-ownership]');
+    const reviewDelivery = card.querySelector('[data-review-delivery]');
     const runsList = card.querySelector('[data-runs]');
     const select = card.querySelector('[name=goalId]');
     let sequence = 0;
@@ -57,6 +59,7 @@
     let teams = [];
     let lastSignature = null;
     let lastBudgetSignature = null;
+    let lastReviewSignature = null;
     function error(value) { errorBox.hidden = !value; errorBox.textContent = value?.message || ''; }
     function enable(available) {
       card.querySelectorAll('button').forEach(button => { button.disabled = !available || busy || button.dataset.locked === 'true'; });
@@ -165,6 +168,59 @@
         ownership.append(line);
       }
     }
+    function renderReviewDelivery(records, board) {
+      reviewDelivery.replaceChildren();
+      text(reviewDelivery, 'h2', 'Review & Delivery');
+      if (!records || !Array.isArray(records.runs)) {
+        text(reviewDelivery, 'p', 'Review- und Delivery-Status nicht verfügbar; keine Freigabe wird angenommen.', 'muted');
+        return;
+      }
+      const rows = records.runs.map(record => {
+        const candidate = record.candidate;
+        const reviews = Array.isArray(record.reviews) ? record.reviews : [];
+        const current = candidate
+          ? reviews.filter(review => review.candidateCommit === candidate.candidateCommit && review.status === 'valid')
+          : [];
+        const changes = current.some(review => review.disposition === 'changes_requested');
+        const approved = !changes && current.some(review => review.disposition === 'approved');
+        return { record, candidate, reviews, current, state: changes ? 'rework' : approved ? 'valid' : candidate ? 'open' : 'waiting' };
+      });
+      const count = state => rows.filter(row => row.state === state).length;
+      text(reviewDelivery, 'p', `Offene Reviews ${count('open')} · Nacharbeit ${count('rework')} · Gültig ${count('valid')}`, 'muted');
+      if (!rows.length) {
+        text(reviewDelivery, 'p', 'Noch keine Runs mit Review- oder Delivery-Status.', 'muted');
+        return;
+      }
+      const deliveries = Array.isArray(board) ? board : null;
+      for (const row of rows) {
+        const run = row.record.run || {};
+        const label = row.state === 'rework' ? 'Nacharbeit angefordert'
+          : row.state === 'valid' ? 'Review gültig'
+            : row.state === 'open' ? 'Review offen' : 'Review wartet auf Candidate';
+        const article = document.createElement('article'); article.className = 'continuous-run'; reviewDelivery.append(article);
+        text(article, 'h3', `${run.id || 'Run ohne ID'} · ${label}`);
+        text(article, 'p', row.candidate
+          ? `Candidate ${row.candidate.candidateCommit} · Quelle ${row.candidate.source || 'unbekannt'}`
+          : 'Candidate nicht gebunden.', row.candidate ? undefined : 'muted');
+        for (const review of row.current) {
+          const authority = review.approvalEligible === true ? 'freigabeberechtigt' : 'nicht freigabeberechtigt';
+          text(article, 'p', `Reviewer ${review.reviewerIdentity || 'unbekannt'} · ${review.disposition || 'unbekannt'} · ${review.status || 'unbekannt'} · ${authority}`);
+        }
+        const invalidated = row.reviews.filter(review => review.status === 'invalidated').length;
+        if (invalidated) text(article, 'p', `${invalidated} veraltete Review-Aussage${invalidated === 1 ? '' : 'n'}`, 'muted');
+        if (!deliveries) {
+          text(article, 'p', 'Delivery-/PR-Stand nicht verfügbar.', 'muted');
+          continue;
+        }
+        const workerId = run.workerId || run.claimOwner;
+        const delivery = deliveries.find(item => item.worker?.id === workerId);
+        if (!delivery) {
+          text(article, 'p', `Delivery ${workerId || 'unbekannt'} · nicht im Worker-Board erfasst · PR nicht erfasst`, 'muted');
+          continue;
+        }
+        text(article, 'p', `Delivery ${delivery.column || 'unbekannt'} · Tests ${delivery.testStatus || 'unbekannt'} · ${delivery.prUrl ? `PR ${delivery.prUrl}` : 'PR nicht erfasst'}`);
+      }
+    }
     // The 5 s tick must not throw the operator out of the card: capture the
     // interactive state before a rebuild, hand it back afterwards. Focus is
     // separate on purpose: enable(false) blurs a focused button in real
@@ -230,13 +286,14 @@
       const generation = ++sequence;
       const savedFocus = captureFocus();
       online = false; enable(false);
-      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); budgetList.replaceChildren(); runsList.replaceChildren(); loadedProject = null; lastSignature = null; lastBudgetSignature = null; }
+      if (current !== loadedProject) { list.replaceChildren(); select.replaceChildren(); ownership.replaceChildren(); budgetList.replaceChildren(); reviewDelivery.replaceChildren(); runsList.replaceChildren(); loadedProject = null; lastSignature = null; lastBudgetSignature = null; lastReviewSignature = null; }
       if (!current) { state.textContent = 'Projekt auswählen, um Ziele und Arbeitspakete zu sehen.'; source.textContent = ''; enable(false); return; }
       try {
-        const [value, runtimeValue, records] = await Promise.all([
+        const [value, runtimeValue, records, board] = await Promise.all([
           api(`/api/hq/v1/context?projectId=${encodeURIComponent(current)}`),
           api('/api/hq/v1/runtime').catch(() => null),
           api(`/api/hq/v1/runs?projectId=${encodeURIComponent(current)}`).catch(() => null),
+          api(`/api/board?projectId=${encodeURIComponent(current)}`).catch(() => null),
         ]);
         if (generation !== sequence || current !== project()) return;
         const manifest = runtimeValue?.manifest || runtimeValue?.provenance?.manifest;
@@ -279,8 +336,13 @@
           renderBudget(policies, records);
           lastBudgetSignature = budgetSignature;
         }
+        const reviewSignature = JSON.stringify({ runs: runReceipts, board: Array.isArray(board) ? board : null });
+        if (reviewSignature !== lastReviewSignature) {
+          renderReviewDelivery(records, board);
+          lastReviewSignature = reviewSignature;
+        }
         runsList.replaceChildren();
-        text(runsList, 'h2', 'Runs, Evidenz & Lieferung');
+        text(runsList, 'h2', 'Run-Details & Evidenz');
         if (rebuildGoals) for (const goal of goals) {
           const option = document.createElement('option'); option.value = goal.id; option.textContent = goal.objective; select.append(option);
           const section = document.createElement('article'); section.className = 'continuous-goal'; list.append(section);

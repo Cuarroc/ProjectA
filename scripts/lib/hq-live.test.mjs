@@ -119,6 +119,14 @@ test("mergeProfileViews: override replaces builtin by id, customs are grouped", 
   assert.equal(merged[1].team, "Review crew");
 });
 
+test("profile cards show each profile's environment policy", () => {
+  const hq = readFileSync(join("docs", "dev-hq", "hq.js"), "utf8");
+  assert.match(hq, /const envPolicy = p\.envPolicy \?\? p\.env_policy \?\? \{ isolation: "allowlist", passthrough: \[\] \};/);
+  assert.match(hq, /const isolation = envPolicy\.isolation \?\? "allowlist";/);
+  assert.match(hq, /const passthrough = Array\.isArray\(envPolicy\.passthrough\) \? envPolicy\.passthrough : \[\];/);
+  assert.match(hq, /envPolicy: \$\{escape\(isolation\)\}.*\$\{escape\(passthrough\.join\(", "\) \|\| "none"\)\}/);
+});
+
 test("resolveAgentsFile honors the explicit env override", () => {
   assert.equal(resolveAgentsFile(".", { PROJECTA_AGENTS_FILE: "C:/x/agents.json" }), "C:/x/agents.json");
 });
