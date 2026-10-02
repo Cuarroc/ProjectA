@@ -80,13 +80,11 @@ pub struct EnvPolicy {
     pub passthrough: Vec<String>,
 }
 
-/// The three isolation levels. The default is `allowlist` (W5-02b6, user
-/// decision 2026-09-24): an `agents.json` entry - or an `envPolicy` in it -
-/// that names no level runs under `allowlist`, whether it adds a new id or
-/// replaces a built-in. `inherit` must be asked for explicitly. `strict` is
-/// not the default because workers push their own branches today; see
-/// `.pa/report_w5-02b.md`. The built-ins in `resources/agent-defaults.json`
-/// name `allowlist` explicitly anyway (W5-02b2), Kimi included since W5-02b6.
+/// The three isolation levels. The default is `strict` (W5-02b4): an
+/// `agents.json` entry - or an `envPolicy` in it - that names no level runs
+/// without GitHub credentials, whether it adds a new id or replaces a built-in.
+/// `inherit` and `allowlist` must be asked for explicitly. ProjectA's runner
+/// host pushes committed worker branches instead.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EnvIsolation {
@@ -94,11 +92,11 @@ pub enum EnvIsolation {
     Inherit,
     /// Only allowlisted variables, secrets and `SSH_AUTH_SOCK` removed. Git
     /// and `gh` still find the user's stored credentials.
-    #[default]
     Allowlist,
     /// `allowlist`, plus `gh` pointed at an empty config and git's
     /// credential helpers, prompts and ssh transport switched off. Local
     /// commits keep working; pushes and `gh` calls fail without asking.
+    #[default]
     Strict,
 }
 
@@ -750,8 +748,8 @@ mod tests {
         assert_eq!(profile.env_policy.isolation, EnvIsolation::Inherit);
     }
 
-    /// W5-02b6: `envPolicy` is how an entry goes back to `inherit` now that
-    /// the default is `allowlist`, so the diagnostics must not call it an
+    /// `envPolicy` is how an entry goes back to `inherit` now that the default
+    /// is `strict`, so the diagnostics must not call it an
     /// ignored field. A really unknown key still warns.
     #[test]
     fn diagnostics_accept_env_policy_as_a_runtime_field() {

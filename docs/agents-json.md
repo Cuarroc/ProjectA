@@ -56,7 +56,7 @@ Stand: 24.09.2026 (W5-02b, W5-02b2, W5-02b6). Quelle der Wahrheit sind
                  "passthrough": ["USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA"] } }
 ```
 
-- **`isolation`**: `allowlist` (Voreinstellung), `inherit` oder `strict`.
+- **`isolation`**: `strict` (Voreinstellung), `allowlist` oder `inherit`.
   - `allowlist`: Der Agent bekommt nur die Namen aus `ALLOWED` und die Familien
     aus `ALLOWED_PREFIXES`. Davon fällt alles weg, was nach Geheimnis aussieht
     (`TOKEN`, `SECRET`, `KEY`, `PASSWORD`, … im Namen, `_PAT`/`_AUTH` am Ende).
@@ -66,8 +66,7 @@ Stand: 24.09.2026 (W5-02b, W5-02b2, W5-02b6). Quelle der Wahrheit sind
   - `inherit`: die volle App-Umgebung wie vor W5-02b. Gilt nur noch, wenn sie
     ausdrücklich gesetzt ist.
   - `strict`: `allowlist` plus gesperrte git- und `gh`-Anmeldung. Lokale
-    Commits gehen, Push und `gh` nicht. Nicht Voreinstellung, solange Worker
-    selbst pushen.
+    Commits gehen; Push und PR-Erstellung übernimmt der ProjectA Runner-Host.
 - **`passthrough`**: geerbte Namen, die das Profil trotz Allowlist oder
   Geheimnisfilter braucht. Der Wert kommt immer aus der App-Umgebung.
 
@@ -79,7 +78,7 @@ opencode). Dazu kommen die Präfixe der Anbieter- und Build-Werkzeuge
 (`ANTHROPIC_`, `KIMI_`, `MOONSHOT_`, `CARGO_`, `NODE_`, …), jeweils ohne
 Geheimnis-Namen.
 
-**Eingebaute Profile:** Alle stehen auf `allowlist`. `claude` reicht
+**Eingebaute Profile:** Alle stehen auf `strict`. `claude` reicht
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` durch, eine nicht geheime Einstellung, die
 der Filter wegen `TOKEN` sonst verwerfen würde. `kimi` (Kimi Code v2, Anmeldung
 per OAuth-Datei unter `~/.kimi-code`, **nicht** über `MOONSHOT_API_KEY`) nennt
@@ -88,8 +87,8 @@ ausdrücklich. Heute stehen sie ohnehin auf der Basis-Allowlist. Der Eintrag
 im Profil sorgt dafür, dass Kimi seine Login-Datei auch dann findet, wenn
 diese Liste einmal schrumpft.
 
-**Verhaltensänderung (W5-02b6):** Ein Eintrag ohne `envPolicy` oder ohne
-`isolation` läuft jetzt unter `allowlist`, vorher war es `inherit`. Das gilt
+**Verhaltensänderung (W5-02b4):** Ein Eintrag ohne `envPolicy` oder ohne
+`isolation` läuft jetzt unter `strict`, vorher war es `allowlist`. Das gilt
 für neue ids und für den Ersatz eines Built-ins, also auch für die Profile aus
 `src-tauri/resources/agents-omniroute.json`. Die tragen ihre Router-Variablen
 selbst in `env`, und explizite Werte gehen immer durch. Wer ein Profil hat,

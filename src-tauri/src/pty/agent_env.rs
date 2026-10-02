@@ -5,7 +5,7 @@
 //! one of three levels:
 //!
 //! * `inherit`: exactly that, unchanged. Opt-in only since W5-02b6.
-//! * `allowlist` (default since W5-02b6, and what every built-in names):
+//! * `allowlist`:
 //!   the child gets only [`ALLOWED`] names and [`ALLOWED_PREFIXES`]
 //!   families, and of those nothing that [`looks_secret`]; `SSH_AUTH_SOCK` is
 //!   not on the list. What the app and the profile set explicitly is added
@@ -21,9 +21,8 @@
 //!   right, and forcing `commit.gpgsign=false` would override a mandate of
 //!   the user's - a `commit.gpgsign=true` the worker inherits still invokes
 //!   gpg, whose pinentry can block the session; unsigned commits are
-//!   unaffected. Not the default: task texts tell workers to push their own
-//!   branches and open their own pull requests, and `strict` would break
-//!   that silently.
+//!   unaffected. This is the default since W5-02b4: workers commit locally,
+//!   while ProjectA's runner host pushes the branch and opens the pull request.
 //!
 //! # The boundary
 //!
