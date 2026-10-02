@@ -43,7 +43,7 @@ Nur Abos, kein OpenRouter, keine zusätzlichen bezahlten API-Ausgaben.
 | Harness | `AGENTS.md` | Repo-Skills |
 |---|---|---|
 | Claude Code | über den Import `@AGENTS.md` in der ersten Zeile von `CLAUDE.md` (nicht von selbst) | `.claude/skills/` |
-| Codex CLI | automatisch (Konvention, Projektwurzel) | `.agents/skills/` laut Codex-Konvention; auf diesem PC nicht geprobt (W1-18b, Codex-Probe nach dem Rate-Limit am 30.09.) |
+| Codex CLI | automatisch (Konvention, Projektwurzel) | `.agents/skills/`, headless am 02.10.2026 mit Codex CLI 0.154.0 eingeschränkt geprobt: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert (W1-18b) |
 | OpenCode | automatisch (Projektwurzel) | `.agents/skills/`, geprobt 25.09. mit OpenCode 1.18.32 (W1-18b, Beleg im PR-Text) |
 | Kimi Code CLI | automatisch | `--skills-dir <dir>` (so startet die App Kimi-Worker) |
 | Ollama-Reviewer | **nie** — sie sehen nur die Prompt-Datei | — |
