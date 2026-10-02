@@ -88,4 +88,3 @@ und keine Abweichung ohne Erklärung. Die 17 Warnungen vom 2026-08-29 sind auf 2
 gesunken (Withdrawals der advisory-db und der `urlpattern`-Bump). Unbelegt
 bleibt: der Windows-Graph wurde nicht neu gezogen; `cargo tree --target
 x86_64-pc-windows-msvc -i glib` liefert weiterhin nichts (2026-10-02).
-
