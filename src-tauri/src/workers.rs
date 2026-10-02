@@ -5184,6 +5184,47 @@ mod tests {
             .map(|entries| entries.count())
             .unwrap_or(0);
         assert_eq!(leftovers, 0, "{} should be empty", worktrees.display());
+        let branches = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&fx.repo)
+            .args(["branch", "--list", "pa/*"])
+            .output()
+            .expect("list worker branches");
+        assert!(branches.status.success());
+        assert!(
+            branches.stdout.is_empty(),
+            "failed spawn left branches: {}",
+            String::from_utf8_lossy(&branches.stdout)
+        );
+    }
+
+    #[tokio::test]
+    async fn routing_failure_after_insert_rolls_back_rows_and_checkout() {
+        let fx = fixture("worker-routing-rollback").await;
+        let agents = FakeAgents::default();
+        crate::routing::set_review_availability(crate::routing::ReviewAvailability::Unresolved {
+            detail: "review unavailable".to_string(),
+        });
+        fx.store
+            .set_setting(crate::routing::TEST_FORCE_REVIEW_AFTER_PRECHECK, "true")
+            .await
+            .unwrap();
+
+        create_worker(&fx.store, &agents, &fx.project_id, "task", "claude", None)
+            .await
+            .expect_err("routing must reject review mode");
+        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
+        let worktrees = fx._dir.path().join(worktree::WORKTREES_DIR);
+        assert_eq!(std::fs::read_dir(worktrees).unwrap().count(), 0);
+
+        fx.store
+            .set_setting(crate::routing::SETTING_PRODUCT_MODE, "cheap")
+            .await
+            .unwrap();
+        create_orchestrator(&fx.store, &agents, &fx.project_id, None)
+            .await
+            .expect_err("routing must reject review mode");
+        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
     }
 
     #[tokio::test]
