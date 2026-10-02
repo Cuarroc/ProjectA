@@ -41,7 +41,10 @@ export function useOrchestratorChat(
   projectId: string | null,
   knownOrchestratorId: string | null = null,
 ): OrchestratorChat {
-  const [orchestratorId, setOrchestratorId] = useState<string | null>(null);
+  // Tagged with its project: the reset effect below only runs after the render
+  // that first sees the new project, and that render must not read another
+  // project's thread with the old id.
+  const [adopted, setAdopted] = useState<{ id: string; projectId: string } | null>(null);
   const [messages, setMessages] = useState<WorkerMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -85,7 +88,7 @@ export function useOrchestratorChat(
   // send that is still in flight included, hence `sending` and the ref.
   useEffect(() => {
     shownProjectId.current = projectId;
-    setOrchestratorId(null);
+    setAdopted(null);
     setMessages([]);
     setError(null);
     setSending(false);
@@ -93,6 +96,7 @@ export function useOrchestratorChat(
 
   // The id the send adopted wins; before the first send, the one the caller
   // already knows about is enough to read the history with.
+  const orchestratorId = adopted !== null && adopted.projectId === projectId ? adopted.id : null;
   const activeOrchestratorId = orchestratorId ?? knownOrchestratorId;
 
   // The history exists before the first message of this session: read it as
@@ -126,7 +130,7 @@ export function useOrchestratorChat(
         // history under the current project's name, and the poll would hold it
         // there until the next send. The prompt did go out, so it is a `true`.
         if (shownProjectId.current !== target) return true;
-        setOrchestratorId(orchestrator.id);
+        setAdopted({ id: orchestrator.id, projectId: target });
         setError(null);
         // The adopted id re-fires the read effect above, so the prompt shows
         // up in the history without waiting out the poll interval.

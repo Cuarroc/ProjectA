@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { cancelQueuedTask, describeError, enqueueTask, listQueue } from "../lib/ipc";
 import { composeWithMasterPrompt, isMasterPromptEnabled, loadMasterPrompt } from "../lib/settings";
@@ -57,14 +57,21 @@ export default function QueuePanel({
     setSharpen(false);
   });
 
+  // Which project is on screen now: a read that started for another one must
+  // not write its rows (or its failure) under this one's name.
+  const shownProjectId = useRef(projectId);
+  shownProjectId.current = projectId;
+
   const refresh = useCallback(async () => {
     if (projectId === null) return;
     try {
       const next = await listQueue(projectId);
+      if (shownProjectId.current !== projectId) return;
       setEntries(Array.isArray(next) ? next : []);
       setLoaded(true);
       setError(null);
     } catch (cause) {
+      if (shownProjectId.current !== projectId) return;
       setError(describeError(cause));
     }
   }, [projectId]);
@@ -78,7 +85,14 @@ export default function QueuePanel({
       setError(null);
       return;
     }
+    // The old project's rows carry live cancel buttons, and the draft would be
+    // queued into the new project: nothing carries over (same class as KI-3).
+    setEntries([]);
+    setTask("");
+    setProfileId("");
+    setSharpen(false);
     setLoaded(false);
+    setError(null);
     void refresh();
     const interval = window.setInterval(() => void refresh(), 10_000);
     return () => window.clearInterval(interval);
