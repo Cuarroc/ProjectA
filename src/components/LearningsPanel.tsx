@@ -67,18 +67,12 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
    */
   const [verdictToken, setVerdictToken] = useState<string | null>(null);
 
-  // Which project is on screen now: a read that started for another one must
-  // not write its items (or its failure) under this one's name.
-  const shownProjectId = useRef(projectId);
-  shownProjectId.current = projectId;
-
   const refresh = useCallback(async () => {
     if (projectId === null) return;
     try {
       const next = (await listLearnings(projectId)).filter(
         (entry) => entry.status === "pending",
       );
-      if (shownProjectId.current !== projectId) return;
       setEntries(next);
       setDrafts((current) => {
         const merged = new Map<string, string>();
@@ -92,7 +86,6 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setError(null);
       setLearningsLoaded(true);
     } catch (cause) {
-      if (shownProjectId.current !== projectId) return;
       setError(describeError(cause));
     }
   }, [projectId]);
@@ -103,7 +96,6 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       const next = (await listRoleVariants(projectId)).filter(
         (variant) => variant.status === "pending",
       );
-      if (shownProjectId.current !== projectId) return;
       setVariants(next);
       // A proposal that is gone must not keep its fold state alive.
       setCollapsedPrompts((current) => {
@@ -114,7 +106,6 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setRoleError(null);
       setRolesLoaded(true);
     } catch (cause) {
-      if (shownProjectId.current !== projectId) return;
       setRoleError(describeError(cause));
     }
   }, [projectId]);
@@ -131,20 +122,8 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setError(null);
       setRoleError(null);
       setVerdictToken(null);
-      setBusyId(null);
       return;
     }
-    // Pending items of the old project carry live approve buttons: clear them
-    // before the new project's reads are out, as RecommendationsPanel does.
-    setEntries([]);
-    setVariants([]);
-    setDrafts(new Map());
-    setCollapsedPrompts(new Set());
-    setVerdictToken(null);
-    setNotice(null);
-    setError(null);
-    setRoleError(null);
-    setBusyId(null);
     setLearningsLoaded(false);
     setRolesLoaded(false);
     void refresh();
@@ -186,15 +165,12 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setVerdictToken(null);
       return;
     }
-    const targetProjectId = projectId;
     void (async () => {
       try {
-        const token = await getVerdictToken();
-        if (shownProjectId.current !== targetProjectId) return;
-        setVerdictToken(token);
+        setVerdictToken(await getVerdictToken());
         setNotice(null);
       } catch (cause) {
-        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
+        setError(describeError(cause));
       }
     })();
   };
@@ -202,73 +178,65 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
   const handleApprove = (entry: Learning) => {
     const text = (drafts.get(entry.id) ?? entry.content).trim();
     if (text === "") return;
-    const targetProjectId = projectId;
     void (async () => {
       setBusyId(entry.id);
       setError(null);
       try {
         await approveLearning(entry.id, text);
-        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Ins Playbook übernommen.");
         await refresh();
       } catch (cause) {
-        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
+        setError(describeError(cause));
       } finally {
-        if (shownProjectId.current === targetProjectId) setBusyId(null);
+        setBusyId(null);
       }
     })();
   };
 
   const handleReject = (entry: Learning) => {
-    const targetProjectId = projectId;
     void (async () => {
       setBusyId(entry.id);
       setError(null);
       try {
         await rejectLearning(entry.id);
-        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Verworfen.");
         await refresh();
       } catch (cause) {
-        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
+        setError(describeError(cause));
       } finally {
-        if (shownProjectId.current === targetProjectId) setBusyId(null);
+        setBusyId(null);
       }
     })();
   };
 
   const handleApproveVariant = (variant: RoleVariant) => {
-    const targetProjectId = projectId;
     void (async () => {
       setBusyId(variant.id);
       setRoleError(null);
       try {
         await approveRoleVariant(variant.id);
-        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Rolle angenommen.");
         await refreshRoles();
       } catch (cause) {
-        if (shownProjectId.current === targetProjectId) setRoleError(describeError(cause));
+        setRoleError(describeError(cause));
       } finally {
-        if (shownProjectId.current === targetProjectId) setBusyId(null);
+        setBusyId(null);
       }
     })();
   };
 
   const handleRejectVariant = (variant: RoleVariant) => {
-    const targetProjectId = projectId;
     void (async () => {
       setBusyId(variant.id);
       setRoleError(null);
       try {
         await rejectRoleVariant(variant.id);
-        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Verworfen.");
         await refreshRoles();
       } catch (cause) {
-        if (shownProjectId.current === targetProjectId) setRoleError(describeError(cause));
+        setRoleError(describeError(cause));
       } finally {
-        if (shownProjectId.current === targetProjectId) setBusyId(null);
+        setBusyId(null);
       }
     })();
   };
