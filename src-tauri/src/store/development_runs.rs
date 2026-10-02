@@ -219,10 +219,16 @@ pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<
 pub(super) async fn apply_trusted_test_source_migration(
     tx: &mut Transaction<'_, Sqlite>,
 ) -> Result<(), String> {
-    sqlx::query("ALTER TABLE development_run_evidence ADD COLUMN trusted_test_source INTEGER NOT NULL DEFAULT 0 CHECK(trusted_test_source IN (0,1))")
-        .execute(&mut **tx)
+    let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('development_run_evidence') WHERE name = 'trusted_test_source'")
+        .fetch_one(&mut **tx)
         .await
-        .map_err(|error| format!("failed to add trusted test source marker: {error}"))?;
+        .map_err(|error| format!("failed to inspect trusted test source marker: {error}"))?;
+    if exists == 0 {
+        sqlx::query("ALTER TABLE development_run_evidence ADD COLUMN trusted_test_source INTEGER NOT NULL DEFAULT 0 CHECK(trusted_test_source IN (0,1))")
+            .execute(&mut **tx)
+            .await
+            .map_err(|error| format!("failed to add trusted test source marker: {error}"))?;
+    }
     sqlx::query("UPDATE development_run_reviews SET status = 'invalidated', invalidated_at = unixepoch() WHERE status = 'valid'")
         .execute(&mut **tx)
         .await
@@ -837,11 +843,6 @@ impl Store {
                 "review evidence is not valid for the reviewed run and candidate".to_string(),
             );
         }
-        if !evidence.trusted_test_source {
-            return Err(
-                "review evidence is not valid for the reviewed run and candidate".to_string(),
-            );
-        }
         let reviewer = RunPrincipal::read(&mut tx, &reviewer_run).await?;
         let implementer = RunPrincipal::read(&mut tx, &run_id).await?;
         if reviewer.project_id != implementer.project_id {
@@ -851,7 +852,12 @@ impl Store {
         // the run owner's, not permitted by the frozen root policy)
         // authorizes no review at all.
         let reviewer_role = run_role(&mut tx, &reviewer_run).await?;
-        let attestation = attest_reviewer(&reviewer, &implementer, reviewer_role)?;
+        let reviewer_attestation = attest_reviewer(&reviewer, &implementer, reviewer_role)?;
+        let attestation = if evidence.trusted_test_source {
+            reviewer_attestation
+        } else {
+            "unverified: test evidence source is agent supplied".to_string()
+        };
         let id = new_id("drr");
         sqlx::query("INSERT OR IGNORE INTO development_run_reviews(id, run_id, evidence_id, idempotency_key, candidate_commit, disposition, reviewer_identity, implementer_identity, source, observed_at, reviewer_attestation, approval_eligible, status) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12)")
             .bind(&id).bind(&run_id).bind(&input.evidence_id).bind(&input.idempotency_key).bind(&input.candidate_commit).bind(input.disposition.as_str()).bind(reviewer.label()).bind(implementer.label()).bind(&input.source).bind(input.observed_at).bind(&attestation).bind(VALID_REVIEW)
@@ -1843,7 +1849,8 @@ mod tests {
             .unwrap();
         assert!(!claimed.trusted_test_source);
         let reviewer = launched_run(&store, "task-r", "worker-r", 3, Some("codex")).await;
-        let error = store
+        assign(&store, "task-r", "reviewer", "worker-r").await;
+        let claimed_review = store
             .record_development_review(
                 &reviewer,
                 "worker-r",
@@ -1851,10 +1858,10 @@ mod tests {
                 review_input("untrusted-test-source", &claimed.id),
             )
             .await
-            .unwrap_err();
+            .unwrap();
         assert_eq!(
-            error,
-            "review evidence is not valid for the reviewed run and candidate"
+            claimed_review.reviewer_attestation,
+            "unverified: test evidence source is agent supplied"
         );
 
         let mut trusted = evidence(COMMIT_A);
@@ -1864,7 +1871,7 @@ mod tests {
             .await
             .unwrap();
         assert!(trusted.trusted_test_source);
-        assert!(store
+        let trusted_review = store
             .record_development_review(
                 &reviewer,
                 "worker-r",
@@ -1872,7 +1879,8 @@ mod tests {
                 review_input("trusted-test-source", &trusted.id),
             )
             .await
-            .is_ok());
+            .unwrap();
+        assert!(trusted_review.reviewer_attestation.starts_with("verified:"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
