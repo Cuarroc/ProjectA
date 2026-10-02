@@ -2425,6 +2425,52 @@ mod tests {
             .contains("idempotency"));
     }
 
+    /// Two different commits observed in the same second have no known order:
+    /// the tie is refused and the bound candidate and its evidence stay.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn same_second_candidate_tie_is_refused() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, Some("claude")).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 10)
+            .await
+            .unwrap();
+        store
+            .record_development_evidence(&run, "worker-a", 7, evidence(COMMIT_A))
+            .await
+            .unwrap();
+        assert!(store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_B, "git", 10)
+            .await
+            .unwrap_err()
+            .contains("ambiguous"));
+        assert!(store
+            .invalidate_development_run_evidence_for_candidate(
+                &run,
+                "worker-a",
+                7,
+                COMMIT_B,
+                "integrator",
+                10
+            )
+            .await
+            .unwrap_err()
+            .contains("ambiguous"));
+        let context = store.agent_run_context(&run, "worker-a", 7).await.unwrap();
+        assert_eq!(context["candidate"]["candidateCommit"], COMMIT_A);
+        assert!(store
+            .list_development_evidence(&run)
+            .await
+            .unwrap()
+            .iter()
+            .any(|e| e.candidate_commit == COMMIT_A && e.invalidated_at.is_none()));
+        // A replay of the bound commit stays idempotent.
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 10)
+            .await
+            .unwrap();
+    }
+
     /// W2-02: review and test dispositions count only for the exact candidate
     /// they name. A name that can move without a rebind (a ref, an
     /// abbreviation) would keep them valid for changed code, and a stale
