@@ -96,6 +96,10 @@ das von einem geerbten Schlüssel lebt (etwa `OPENROUTER_API_KEY` für ein
 opencode-Profil), nennt ihn unter `passthrough`, oder, als Notausgang, setzt
 `"envPolicy": { "isolation": "inherit" }`.
 
+Die Voreinstellung gilt für jedes Agent-Profil, auch für ein Agent-Terminal,
+in dem du selbst bedienst. Wer dort von Hand `git push` oder `gh` braucht, setzt
+für dieses Profil `"envPolicy": { "isolation": "allowlist" }` (oder `inherit`).
+
 **Kimi von Hand prüfen:** Die Unit-Tests belegen die gebaute Umgebung
 (`agent_env.rs::builtin_kimi_env_keeps_its_home_and_drops_foreign_secrets`).
 Ob Kimi damit startet und seine Konfiguration findet, prüft auf einer Maschine
