@@ -228,9 +228,10 @@ const USAGE_LIMIT_MAX: u32 = 500;
 const IO_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// The updater result already observed by the app's updater plugin.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(tag = "phase", rename_all = "kebab-case")]
 pub enum UpdaterState {
+    #[default]
     Idle,
     Checking,
     UpToDate {
@@ -251,12 +252,6 @@ pub enum UpdaterState {
     Error {
         message: String,
     },
-}
-
-impl Default for UpdaterState {
-    fn default() -> Self {
-        Self::Idle
-    }
 }
 
 /// Everything the API can ask the app to do.
