@@ -116,13 +116,11 @@ export function lessonStats(lessons) {
 }
 
 export function readLessonsFile(path) {
-  try {
-    if (!existsSync(path)) return [];
-    const parsed = JSON.parse(readFileSync(path, "utf8"));
-    return Array.isArray(parsed?.lessons) ? parsed.lessons : Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  if (!existsSync(path)) return [];
+  const parsed = JSON.parse(readFileSync(path, "utf8"));
+  if (Array.isArray(parsed?.lessons)) return parsed.lessons;
+  if (Array.isArray(parsed)) return parsed;
+  throw new Error(`${path}: expected a "lessons" array; refusing to treat it as empty`);
 }
 
 export function writeLessonsFile(path, lessons) {
