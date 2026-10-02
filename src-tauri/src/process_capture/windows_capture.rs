@@ -1377,6 +1377,7 @@ fn execute_prepared_outcome(
             .collect(),
         no_progress: crate::stream_guard::NO_PROGRESS_LIMIT,
         structured_progress: true,
+        enforce_resource_limits: true,
     };
     let outcome = execute_with_observer_outcome(
         &command,

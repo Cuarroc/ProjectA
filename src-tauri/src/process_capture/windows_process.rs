@@ -407,7 +407,30 @@ mod tests {
     #[test]
     fn native_job_enforces_memory_and_cpu_caps_before_resume() {
         let root = PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32");
-        let command = Command::diagnostic(&root.join("whoami.exe"));
+        let host =
+            SuspendedProcess::create(&Command::diagnostic(&root.join("whoami.exe")), None).unwrap();
+        unsafe {
+            let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();
+            assert_ne!(
+                QueryInformationJobObject(
+                    host._job.as_raw_handle(),
+                    JobObjectExtendedLimitInformation,
+                    (&mut limits as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                    size_of_val(&limits) as u32,
+                    null_mut(),
+                ),
+                0
+            );
+            assert_eq!(
+                limits.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_JOB_MEMORY,
+                0,
+                "the parent host must not multiply the nested provider limit"
+            );
+        }
+        host.terminate().unwrap();
+
+        let mut command = Command::diagnostic(&root.join("whoami.exe"));
+        command.enforce_resource_limits = true;
         let child = SuspendedProcess::create(&command, None).unwrap();
         unsafe {
             let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();

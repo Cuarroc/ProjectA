@@ -13,6 +13,8 @@ pub(super) struct Command {
     /// Codex JSONL must prove progress; trusted host/diagnostic transports keep
     /// byte progress because the nested provider capture enforces this itself.
     pub structured_progress: bool,
+    /// Apply worker memory/CPU limits to the provider job, not its parent host.
+    pub enforce_resource_limits: bool,
 }
 
 pub(super) struct Encoded {
@@ -62,6 +64,7 @@ impl Command {
             environment: Vec::new(),
             no_progress: crate::stream_guard::NO_PROGRESS_LIMIT,
             structured_progress: false,
+            enforce_resource_limits: false,
         }
     }
 

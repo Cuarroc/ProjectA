@@ -202,4 +202,14 @@ mod tests {
         assert!(!signals.observe(br#"{"type":"turn."#));
         assert!(signals.observe(b"completed\"}\n"));
     }
+
+    #[test]
+    fn large_structured_event_is_not_dropped_at_an_internal_buffer_boundary() {
+        let mut event = br#"{"type":"item.updated","item":"#.to_vec();
+        event.extend(std::iter::repeat_n(b'x', 70 * 1024));
+        event.extend_from_slice(b"\"}\n");
+        let mut signals = ProgressSignals::new();
+        assert!(!signals.observe(&event[..40 * 1024]));
+        assert!(signals.observe(&event[40 * 1024..]));
+    }
 }
