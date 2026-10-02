@@ -279,7 +279,7 @@ export function formatProviderResetsAt(resetsAt: number | null): string | null {
   if (seconds < 60) return `Reset in ${seconds} s`;
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `Reset in ${minutes} min`;
-  const hours = Math.round(minutes / 60);
+  const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   if (hours < 24) {
     return remainingMinutes > 0 ? `Reset in ${hours} h ${remainingMinutes} min` : `Reset in ${hours} h`;
