@@ -81,7 +81,7 @@ export function buildRows(prs) {
     .sort((a, b) => a.number - b.number);
 }
 
-const cell = (s) => String(s).replace(/\|/g, "\\|");
+const cell = (s) => String(s).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 export function formatTable(rows) {
   const out = [

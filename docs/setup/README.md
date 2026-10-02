@@ -2,7 +2,7 @@
 
 Wie die KI-Werkzeuge auf dem Entwicklungsrechner für ProjectA eingerichtet
 sind, was jedes davon liest und wie man prüft, ob alles da ist. Stand
-24.09.2026 (Audit SETUP-A). Diese Seiten nennen für Zugangsdaten **nur
+02.10.2026 (Audit SETUP-15). Diese Seiten nennen für Zugangsdaten **nur
 Dateinamen und Namen von Umgebungsvariablen, nie Werte**; Einstellungswerte
 ohne Geheimnis (Modellname, Effort) stehen dabei.
 

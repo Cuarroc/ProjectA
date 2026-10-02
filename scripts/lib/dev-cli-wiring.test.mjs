@@ -10,7 +10,7 @@ const root = resolve(import.meta.dirname, "../..");
 const scripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
 // The SETUP-B tools; other scripts/dev entries (e.g. agent-setup-check) have
 // their own tests and help format.
-const TOOLS = ["report-commit", "push-verified", "prune-worktrees", "build-slot", "ci-watch", "pr-status", "erledigt-row", "spec-close", "hygiene"];
+const TOOLS = ["report-commit", "push-verified", "prune-worktrees", "build-slot", "ci-watch", "pr-status", "erledigt-row", "spec-close", "hygiene", "start-check"];
 
 test("package.json wires the scripts/dev helpers", () => {
   for (const t of TOOLS) assert.equal(scripts[`dev:${t}`], `node scripts/dev/${t}.mjs`, `dev:${t} fehlt in package.json`);

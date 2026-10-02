@@ -40,6 +40,9 @@ defaults:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    # Standard waeren 360 Minuten; ein Lauf dauert unter einer Minute
+    # (28.09.: 14 s). 20 Minuten lassen Luft fuer eine kalte cargo-audit-Installation.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

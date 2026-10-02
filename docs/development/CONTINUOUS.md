@@ -135,7 +135,7 @@ run/owner/fence-bound descriptor with `ApiServer::issue_run_descriptor`; no HTTP
 credential-minting route exists. Set `PROJECTA_API_FILE` to that descriptor and
 use `pa hq agent context`, `pa hq agent lessons`, `pa hq agent release`,
 `pa hq agent candidate --input candidate.json`, `pa hq agent evidence --input
-evidence.json`, or
+evidence.json`, `pa hq agent review --input review.json`, or
 `pa hq agent read-evidence --id <id>`. The trusted launch lane provisions a unique
 descriptor outside the worktree; it never overwrites an earlier launch's file.
 Credentials expire, are revocable by the launcher, and die on API restart.
@@ -172,7 +172,8 @@ receipts for both runs the vendor cannot be compared: the review is stored with 
 principals and that attestation; it grants no approval authority
 (`approvalEligible` stays false). Which runs may give a `verified` review (the
 reviewer dispatch role) is decided by the store, not by this route. There is no
-`pa` command for this route yet.
+separate identity flag: `pa hq agent review --input review.json` uses the scoped
+descriptor as the reviewer principal.
 
 A missing or invalid projecta.dev.json refuses new goal roots; existing roots
 retain their frozen policy. `pa hq tasks checkpoint <id> --status retry --owner
@@ -654,17 +655,24 @@ the pure `stream_guard` module, the output byte limit and, since W2-08a, a
 no-progress window.
 Output exactly at the byte limit is admitted; one byte more aborts with
 `capture output exceeded byte limit`, and an overflowing total counts as over
-the limit. A live process that emits no stdout/stderr byte for 15 minutes
-(`NO_PROGRESS_LIMIT`; silence reaching the window exactly aborts) ends with
-`capture stalled without output progress`. The parent's window over the host
-is longer by `HOST_GRACE_MS`, so the host reports the provider's stall itself.
+the limit. A native Codex job that emits no complete structured
+thinking/progress event for 15 minutes (`NO_PROGRESS_LIMIT`; the boundary
+aborts exactly) ends with `capture stalled without output progress`.
+Recognized JSONL events are `thread.started`, `turn.started`, `item.started`,
+`item.updated`, `item.completed` and `turn.completed`; arbitrary stdout/stderr
+noise does not reset the window. The parent's trusted event transport retains
+byte-progress tracking and a window longer by `HOST_GRACE_MS`, so the host
+reports the provider's more precise stall itself.
 Each abort retires the whole kill-on-close job and the input writer before the
 error returns, the same confirmed cleanup as the deadline; an unconfirmed
 cleanup stays a reconciliation error. Output events already handed to the
 observer and checkpoints already acknowledged are never withdrawn, but an
 aborted capture is never a completed or delivered one. Native tests drive a
 real silent fixture (stall reason, partial output observed, PID retired), a
-steady trickle longer than the window (completes) and a flood over the byte
-limit. The window is a code constant, not a policy or launch-protocol field;
-TUI/PTY sessions are unaffected. CPU, job-memory and container limits for the
-provider job are not enforced yet (W2-08b).
+meaningless output trickle (still stalls) and a flood over the byte limit. The
+window is a code constant, not a policy or launch-protocol field. Every Windows
+native provider job is configured before process creation with a 4 GiB
+aggregate-memory limit and a 40% system CPU hard cap; nested provider processes
+remain inside it. The parent host keeps only kill-on-close containment so nested
+CPU rates do not multiply. TUI/PTY sessions are unaffected. Container limits
+remain out of scope.
