@@ -50,6 +50,11 @@ test("pr-status prints a markdown table with one row per PR", () => {
   assert.match(table, /\| #119 \| claude\/b \|.*do-not-merge/);
 });
 
+test("pr-status escapes a backslash before a Markdown pipe", () => {
+  const table = formatTable(buildRows([{ ...PRS[0], headRefName: String.raw`codex\|injected`, labels: [] }]));
+  assert.ok(table.includes(String.raw`codex\\\|injected`));
+});
+
 test("pr-status CLI calls gh pr list once and exits 0", async () => {
   const calls = [];
   const fake = (cmd, args) => {
