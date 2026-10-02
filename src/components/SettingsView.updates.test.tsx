@@ -24,6 +24,7 @@ vi.mock("../lib/ipc", async () => {
     describeError: (e: unknown) => String(e),
     listLiveSessions: vi.fn(() => Promise.resolve([])),
     installUpdateWhenIdle: vi.fn(() => Promise.resolve()),
+    setUpdaterState: vi.fn(() => Promise.resolve()),
     getVersion: vi.fn(() => Promise.resolve("1.2.3")),
     getRoutingStatus: vi.fn(() =>
       Promise.resolve({
@@ -48,7 +49,12 @@ vi.mock("../lib/settings", async () => {
 // -- The check() mock from the updater plugin ----------------------------------
 
 const { check } = await import("@tauri-apps/plugin-updater");
-const { listLiveSessions, installUpdateWhenIdle } = await import("../lib/ipc");
+const ipc = await import("../lib/ipc");
+const { listLiveSessions, installUpdateWhenIdle } = ipc;
+const setUpdaterState = vi.mocked(
+  (ipc as typeof ipc & { setUpdaterState: (state: { phase: string }) => Promise<void> })
+    .setUpdaterState,
+);
 const mocks = { check: vi.mocked(check) };
 
 interface TestProps {
@@ -67,6 +73,7 @@ describe("SettingsView updates tab", () => {
     mocks.check.mockResolvedValue(null);
     vi.mocked(listLiveSessions).mockReset().mockResolvedValue([]);
     vi.mocked(installUpdateWhenIdle).mockReset().mockResolvedValue();
+    setUpdaterState.mockClear();
   });
 
   const defaultProps: TestProps = {
@@ -84,6 +91,22 @@ describe("SettingsView updates tab", () => {
   function renderSettings(props?: Partial<TestProps>) {
     return render(<SettingsView {...defaultProps} {...props} />);
   }
+
+  it("publishes updater transitions for the shared HQ state", async () => {
+    mocks.check.mockResolvedValue({
+      rid: 42, available: true, version: "1.3.1", body: "Fixture update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    await screen.findByText(/Version 1.3.1 is available/);
+    fireEvent.click(screen.getByRole("button", { name: "Download and install" }));
+    await screen.findByRole("button", { name: "Restart to apply" });
+
+    expect(setUpdaterState.mock.calls.map(([state]) => state.phase)).toEqual([
+      "checking", "available", "installing", "ready",
+    ]);
+  });
 
   it.each(["check", "install"] as const)("refuses update when session inventory fails during %s", async (stage) => {
     const install = vi.fn();

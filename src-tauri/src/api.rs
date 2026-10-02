@@ -5322,6 +5322,10 @@ pub(crate) mod tests {
         let (status, body) = call(port, "GET", "/api/quota", token, "");
         assert_eq!(status, 200, "{body}");
         assert_eq!(body.as_array().expect("array").len(), 0);
+
+        let (status, body) = call(port, "GET", "/api/updater", token, "");
+        assert_eq!(status, 200, "{body}");
+        assert_eq!(body["phase"], "idle");
     }
 
     #[test]
