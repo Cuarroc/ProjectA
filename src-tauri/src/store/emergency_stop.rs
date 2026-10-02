@@ -117,6 +117,9 @@ mod tests {
         let path = dir.path().join("projecta.db");
         let store = Store::open(&path).await.unwrap();
         assert!(!store.emergency_stop_active().await.unwrap());
+        let triggers: i64 = sqlx::query_scalar("SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND name LIKE 'emergency_stop_%'")
+            .fetch_one(&store.pool).await.unwrap();
+        assert_eq!(triggers, 10);
         execute(&store, "INSERT INTO task_queue(id,project_id,raw_text,profile_id,status,priority,created_at) VALUES('q','p','task','codex','dispatching',0,1)").await;
         execute(
             &store,
@@ -125,7 +128,7 @@ mod tests {
         .await;
         execute(
             &store,
-            "INSERT INTO continuous_projects VALUES('p','enabled',1)",
+            "INSERT INTO continuous_projects VALUES('p','enabled',1),('off','disabled',1)",
         )
         .await;
         store.set_emergency_stop(true, "human").await.unwrap();
@@ -152,6 +155,12 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(status, "paused");
+        let status: String =
+            sqlx::query_scalar("SELECT status FROM continuous_projects WHERE project_id='off'")
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(status, "disabled");
         execute(&store, "UPDATE task_queue SET status='ready' WHERE id='q'").await;
         let (stop, _claim) = tokio::join!(
             store.set_emergency_stop(true, "human"),
@@ -186,5 +195,8 @@ mod tests {
         execute(&store, "DELETE FROM emergency_stop").await;
         assert!(store.emergency_stop_active().await.is_err());
         assert!(store.set_emergency_stop(false, "human").await.is_err());
+        execute(&store, "DROP TRIGGER reject_audit").await;
+        store.set_emergency_stop(true, "human").await.unwrap();
+        assert!(store.emergency_stop_active().await.unwrap());
     }
 }
