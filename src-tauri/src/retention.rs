@@ -209,9 +209,9 @@ async fn sweep_at(store: &Store, archive_root: &Path, now: i64) -> SweepReport {
 /// Write one worker's expired messages as one Markdown archive file and
 /// verify it landed, returning the verified path.
 ///
-/// Layout: `<archive_root>/messages/<project_id>/<worker_id>-<from>-<to>.md`,
-/// where the dates are the UTC days of the oldest and youngest message in
-/// the file. The app data directory is the right home for it (archivierter SANIERUNGSPLAN
+/// Layout: `<archive_root>/messages/<project_id>/<worker_id>-<from-date>-<from-ts>-<to-date>-<to-ts>.md`,
+/// where the dates and Unix timestamps identify the oldest and youngest
+/// message in the file. The app data directory is the right home for it (archivierter SANIERUNGSPLAN
 /// §2.2 Nr. 5): an archive under `.pa/` in the repository would be readable
 /// and committable by the very agents the log is about.
 fn export_worker_messages(
@@ -228,9 +228,11 @@ fn export_worker_messages(
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("failed to create {}: {e}", dir.display()))?;
     let path = dir.join(format!(
-        "{worker_id}-{}-{}.md",
+        "{worker_id}-{}-{}-{}-{}.md",
         utc_date(first.created_at),
-        utc_date(last.created_at)
+        first.created_at,
+        utc_date(last.created_at),
+        last.created_at
     ));
     write_atomic(&path, &render_archive(project_id, worker_id, messages, now))?;
     verify_export(&path)?;
@@ -539,9 +541,11 @@ mod tests {
         assert_eq!(messages_left(&store, "wk-1").await, 1);
 
         let path = archive.join("messages").join(&project.id).join(format!(
-            "wk-1-{}-{}.md",
+            "wk-1-{}-{}-{}-{}.md",
             utc_date(old_1),
-            utc_date(old_2)
+            old_1,
+            utc_date(old_2),
+            old_2
         ));
         assert_eq!(report.archives[0], path);
         let text = std::fs::read_to_string(&path).expect("read archive");
@@ -581,8 +585,8 @@ mod tests {
         assert_ne!(first_report.archives, second_report.archives);
         let first_text = std::fs::read_to_string(&first_report.archives[0]).unwrap();
         let second_text = std::fs::read_to_string(&second_report.archives[0]).unwrap();
-        assert!(first_text.contains("first batch"), "{first_text}");
-        assert!(second_text.contains("second batch"), "{second_text}");
+        assert!(first_text.contains("10:00:00"), "{first_text}");
+        assert!(second_text.contains("14:00:00"), "{second_text}");
     }
 
     #[tokio::test]
