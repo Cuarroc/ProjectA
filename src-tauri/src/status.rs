@@ -3171,6 +3171,26 @@ mod tests {
     }
 
     #[test]
+    fn activity_does_not_release_a_budget_block() {
+        let (engine, _recorder) = engine_with_worker();
+        let tracker = Arc::new(QuotaTracker::default());
+        engine.set_quota_tracker(Arc::clone(&tracker));
+        let reason = format!("{}five-hour window", crate::budget::REASON_PREFIX);
+        let blocked_until = 4_102_444_800;
+        tracker.note_blocked("claude", &reason, Some(blocked_until));
+
+        engine.note_output("wk-1", samples::ACTIVITY);
+
+        let row = tracker.state_of("claude").expect("budget quota row");
+        assert!(
+            row.is_blocked(),
+            "ordinary output must preserve the budget block"
+        );
+        assert_eq!(row.reason.as_deref(), Some(reason.as_str()));
+        assert_eq!(row.blocked_until, Some(blocked_until));
+    }
+
+    #[test]
     fn a_prompt_leaves_the_quota_alone() {
         let (engine, _recorder) = engine_with_worker();
         let tracker = Arc::new(QuotaTracker::default());
