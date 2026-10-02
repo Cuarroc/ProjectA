@@ -662,8 +662,6 @@ mod tests {
         );
     }
 
-    /// W5-02b4: every built-in runs under `strict`; ProjectA's runner host
-    /// pushes committed worker branches. The CLIs keep their login in files under the
     /// NT-17: the DeepSeek route launches the same OpenCode TUI, which drops
     /// input written before its loop runs; without the marker the submit
     /// guard would write on silence and lose the task.
@@ -699,6 +697,8 @@ mod tests {
         );
     }
 
+    /// W5-02b4: every built-in runs under `strict`; ProjectA's runner host
+    /// pushes committed worker branches. The CLIs keep their login in files under the
     /// user's home, so no built-in passes a secret through. Claude keeps
     /// `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, a non-secret CLI setting the user
     /// sets machine-wide that the `TOKEN` marker would otherwise drop. Kimi

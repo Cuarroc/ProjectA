@@ -3677,6 +3677,7 @@ mod tests {
             "{}",
             deliveries[0].2
         );
+        assert!(deliveries[0].2.contains(GIT_HANDOFF), "{}", deliveries[0].2);
     }
 
     #[tokio::test]
