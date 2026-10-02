@@ -86,6 +86,7 @@ function startMockApi() {
       { profileId: "claude", state: "ok", blockedUntil: null, reason: null, omniRouteOnline: true },
       { profileId: "opencode", state: "blocked", blockedUntil: 1757600000, reason: "rate limit", omniRouteOnline: true },
     ],
+    "/api/updater": { phase: "ready", version: "1.5.0-beta" },
     "/api/budgets": [{ profileId: "claude", fiveHourPct: 80, sevenDayPct: null }],
     "/api/usage": {
       online: true,
@@ -229,6 +230,7 @@ test("live HQ renders fleet, teams and telemetry from the mock API", async () =>
   assert.match(await page.textContent("#live-analysis"), /lines of code/);
   assert.match(await page.textContent("#live-capacity"), /claude/);
   assert.match(await page.textContent("#live-capacity"), /blocked/);
+  assert.match(await page.textContent("#live-updater"), /1\.5\.0-beta/);
   assert.match(await page.textContent("#live-usage"), /4\.21/);
   assert.match(await page.textContent("#live-providers"), /claude/);
   assert.match(await page.textContent("#live-providers"), /not set/);
