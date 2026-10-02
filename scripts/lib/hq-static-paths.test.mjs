@@ -52,7 +52,7 @@ after(() => {
   if (fixture) rmSync(fixture, { recursive: true, force: true });
 });
 
-test("static requests cannot escape through encoded traversal, absolute-looking paths, or symlinks", async () => {
+test("static requests cannot escape encoded traversal absolute-looking paths or symlinks", async () => {
   const safe = await get("/");
   assert.equal(safe.status, 200);
   assert.match(safe.body, /safe/);
