@@ -1,23 +1,40 @@
 //! Append-only audit trail (W5-05). Rows are written once and never changed:
-//! triggers abort every UPDATE and DELETE, so the trail survives a buggy or
-//! compromised writer. Nothing here grants or checks authority.
+//! triggers abort ordinary attempts to rewrite existing ids, UPDATE, or DELETE.
+//! Schema and database-file access are outside this protection boundary.
 use super::{now_unix_secs, Store};
 use serde_json::Value;
 use sqlx::{Sqlite, Transaction};
+
+const TABLE: &str = "CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, actor TEXT NOT NULL CHECK(actor <> ''), action TEXT NOT NULL CHECK(action <> ''), subject TEXT NOT NULL, detail_json TEXT NOT NULL CHECK(json_valid(detail_json)))";
+const NO_ID_REUSE: &str = "CREATE TRIGGER IF NOT EXISTS audit_log_no_id_reuse BEFORE INSERT ON audit_log WHEN NEW.id > 0 AND EXISTS(SELECT 1 FROM audit_log WHERE id = NEW.id) BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END";
+const NO_UPDATE: &str = "CREATE TRIGGER IF NOT EXISTS audit_log_no_update BEFORE UPDATE ON audit_log BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END";
+const NO_DELETE: &str = "CREATE TRIGGER IF NOT EXISTS audit_log_no_delete BEFORE DELETE ON audit_log BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END";
 
 /// Creates the trail. Triggers make every row write-once: the only way to
 /// change the trail is to add to it. `IF NOT EXISTS` lets a fixture that
 /// restamps `user_version` below 23 re-enter without losing the trail.
 pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<(), String> {
-    for statement in [
-        "CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, actor TEXT NOT NULL CHECK(actor <> ''), action TEXT NOT NULL CHECK(action <> ''), subject TEXT NOT NULL, detail_json TEXT NOT NULL CHECK(json_valid(detail_json)))",
-        "CREATE TRIGGER IF NOT EXISTS audit_log_no_update BEFORE UPDATE ON audit_log BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END",
-        "CREATE TRIGGER IF NOT EXISTS audit_log_no_delete BEFORE DELETE ON audit_log BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END",
-    ] {
+    for statement in [TABLE, NO_ID_REUSE, NO_UPDATE, NO_DELETE] {
         sqlx::query(statement)
             .execute(&mut **tx)
             .await
             .map_err(|e| format!("failed to create the audit trail: {e}"))?;
+    }
+    for (name, expected) in [
+        ("audit_log", TABLE),
+        ("audit_log_no_id_reuse", NO_ID_REUSE),
+        ("audit_log_no_update", NO_UPDATE),
+        ("audit_log_no_delete", NO_DELETE),
+    ] {
+        let (actual,): (String,) = sqlx::query_as("SELECT sql FROM sqlite_schema WHERE name = ?")
+            .bind(name)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|e| format!("failed to verify audit object {name}: {e}"))?;
+        let unguarded = expected.replacen(" IF NOT EXISTS", "", 1);
+        if actual != expected && actual != unguarded {
+            return Err(format!("audit object {name} has an unexpected definition"));
+        }
     }
     Ok(())
 }
