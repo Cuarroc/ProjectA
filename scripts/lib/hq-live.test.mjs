@@ -122,6 +122,8 @@ test("mergeProfileViews: override replaces builtin by id, customs are grouped", 
 test("profile cards show each profile's environment policy", () => {
   const hq = readFileSync(join("docs", "dev-hq", "hq.js"), "utf8");
   assert.match(hq, /const envPolicy = p\.envPolicy \?\? p\.env_policy \?\? \{ isolation: "allowlist", passthrough: \[\] \};/);
+  assert.match(hq, /const isolation = envPolicy\.isolation \?\? "allowlist";/);
+  assert.match(hq, /const passthrough = Array\.isArray\(envPolicy\.passthrough\) \? envPolicy\.passthrough : \[\];/);
   assert.match(hq, /envPolicy: \$\{escape\(envPolicy\.isolation\)\}.*\$\{escape\(envPolicy\.passthrough\.join\(", "\) \|\| "none"\)\}/);
 });
 
