@@ -3611,6 +3611,58 @@ mod tests {
         assert_eq!(binding.candidate_commit, commit);
     }
 
+    /// W2-04e: the run's store-resolved dispatch role is part of the task
+    /// briefing, so the agent knows which authority boundary applies.
+    #[tokio::test]
+    async fn development_agent_briefing_names_the_dispatched_role() {
+        let fx = fixture("briefing-dispatch-role").await;
+        let launch = reserved_launch(&fx).await;
+        let pool = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            fx._dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('task','development','reviewer','owner',1,1,1)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        pool.close().await;
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+        let descriptor = fx._dir.path().join("descriptor.json");
+        let context = development::LaunchContext {
+            run_id: &launch.run_id,
+            owner: "owner",
+            fence: 1,
+            worker_id: &launch.worker_id,
+            descriptor: &descriptor,
+            bind_credentials: &|_| Ok(()),
+            route: &route,
+        };
+        let agents = FakeAgents::default();
+
+        create_worker_impl(
+            &fx.store,
+            &agents,
+            &fx.project_id,
+            "inspect the candidate",
+            "claude",
+            None,
+            None,
+            Some(&context),
+        )
+        .await
+        .unwrap();
+
+        let deliveries = agents.task_deliveries.lock().unwrap();
+        assert_eq!(deliveries.len(), 1);
+        assert!(
+            deliveries[0].2.contains("Dispatch role: reviewer"),
+            "{}",
+            deliveries[0].2
+        );
+    }
+
     #[tokio::test]
     async fn development_candidate_requires_backend_observed_worktree() {
         let fx = fixture("candidate-unlaunched").await;
