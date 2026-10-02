@@ -22,7 +22,7 @@ function flag(name) {
 const lessons = readLessonsFile(file);
 
 if (command === "search") {
-  const query = rest.filter((a) => !a.startsWith("--")).join(" ");
+  const query = rest.filter((a, index) => !a.startsWith("--") && rest[index - 1] !== "--limit").join(" ");
   const hits = searchLessons(lessons, query, Number(flag("limit") || 10));
   if (!hits.length) {
     console.log(`no lesson matches "${query}" — if you solve this, add it: npm run hq:lesson -- add --symptom ... --cause ... --fix ...`);

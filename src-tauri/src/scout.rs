@@ -666,9 +666,10 @@ mod tests {
     }
 
     struct Fixture {
-        _dir: TempDir,
         store: Store,
         project: Project,
+        /// Last, so SQLite closes before the temporary directory is removed.
+        _dir: TempDir,
     }
 
     impl Fixture {
@@ -697,9 +698,9 @@ mod tests {
             .await
             .expect("create project");
         Fixture {
-            _dir: dir,
             store,
             project,
+            _dir: dir,
         }
     }
 
