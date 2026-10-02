@@ -525,6 +525,17 @@ mod tests {
         }
         let explicit_names: Vec<String> = explicit().into_iter().map(|(k, _)| k).collect();
         for key in env.keys() {
+            let strict_lock = matches!(
+                key.as_str(),
+                "GH_CONFIG_DIR"
+                    | "GH_PROMPT_DISABLED"
+                    | "GIT_TERMINAL_PROMPT"
+                    | "GIT_ASKPASS"
+                    | "GCM_INTERACTIVE"
+                    | "GIT_CONFIG_COUNT"
+                    | "GIT_CONFIG_PARAMETERS"
+            ) || key.starts_with("GIT_CONFIG_KEY_")
+                || key.starts_with("GIT_CONFIG_VALUE_");
             let accounted = (is_allowed(key) && !looks_secret(key))
                 || kimi
                     .env_policy
@@ -532,7 +543,8 @@ mod tests {
                     .iter()
                     .any(|name| name.eq_ignore_ascii_case(key))
                 || key == "TERM"
-                || explicit_names.iter().any(|name| name == key);
+                || explicit_names.iter().any(|name| name == key)
+                || strict_lock;
             assert!(accounted, "kimi got {key}, which nothing lets through");
         }
     }

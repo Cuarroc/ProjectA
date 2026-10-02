@@ -5721,8 +5721,8 @@ mod tests {
         assert_eq!(stored.worktree_path, fx.repo);
     }
 
-    /// An ordinary worker is not a coordinator: it keeps its worktree and the
-    /// environment its profile names.
+    /// An ordinary worker keeps its worktree, while the default strict
+    /// environment leaves pushing to the runner host.
     #[tokio::test]
     async fn an_ordinary_worker_keeps_its_checkout_and_environment() {
         use crate::profiles::EnvIsolation;
@@ -5735,10 +5735,10 @@ mod tests {
 
         let cwd = agents.spawned.lock().unwrap()[0].1.clone();
         assert_eq!(cwd, worker.worktree_path);
-        assert_ne!(
+        assert_eq!(
             agents.isolations.lock().unwrap()[0],
             EnvIsolation::Strict,
-            "strict would break a worker's own push"
+            "the worker should commit locally under the default strict policy"
         );
     }
 
