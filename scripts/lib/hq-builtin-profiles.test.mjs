@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseBuiltinProfiles, mergeProfileViews } from './hq-live-lib.mjs';
 
-test('HQ builtins contain only the seven shipped profiles, with runtime capabilities', () => {
+test('HQ builtins contain only the eight shipped profiles, with runtime capabilities', () => {
   const profiles = parseBuiltinProfiles(readFileSync('src-tauri/resources/agent-defaults.json', 'utf8'));
-  assert.deepEqual(profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'ollama', 'ollama-coder']);
+  assert.deepEqual(profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'opencode-ollama-deepseek-v4-flash', 'ollama', 'ollama-coder']);
   assert.equal(profiles[0].caps.lifecycle.mode, 'settingsHooks');
   assert.equal(profiles[3].caps.readinessMarker, 'Ask anything');
+  assert.equal(profiles[5].caps.readinessMarker, 'Ask anything');
 });
 
 test('HQ applies Rust replacement defaults and longest-prefix capability inheritance', () => {

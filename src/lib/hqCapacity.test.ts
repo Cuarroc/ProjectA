@@ -115,6 +115,13 @@ describe("provider-separated HQ capacity", () => {
       .toEqual(["opencode-glm-53-flash"]);
   });
 
+  it("includes both Ollama Cloud worker profiles without claiming availability", () => {
+    const row = project([])[4];
+    expect(row.profiles.map(({ profileId }) => profileId))
+      .toEqual(["ollama-coder", "opencode-ollama-deepseek-v4-flash"]);
+    expect(row.status).toBe("unknown");
+  });
+
   it("keeps an explicit quota block and profile budget separate", () => {
     const [row] = projectCapacity({
       bindings: SUBSCRIPTION_BINDINGS.slice(0, 1),
