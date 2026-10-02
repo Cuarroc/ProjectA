@@ -1,5 +1,6 @@
 //! Global dispatch barrier. Process termination/its deadline belong to W5-04b;
 //! never fabricate exit evidence or release live workers' scope/budget locks.
+//! Direct database/schema access is outside the trusted control API boundary.
 use super::{now_unix_secs, Store};
 use sqlx::{Sqlite, Transaction};
 
@@ -64,7 +65,12 @@ impl Store {
             return Err("emergency stop actor is required".into());
         }
         let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await.map_err(db)?;
-        let changed = sqlx::query("UPDATE emergency_stop SET active=? WHERE id=1")
+        let statement = if active {
+            "INSERT INTO emergency_stop(id,active) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET active=1"
+        } else {
+            "UPDATE emergency_stop SET active=? WHERE id=1"
+        };
+        let changed = sqlx::query(statement)
             .bind(active)
             .execute(&mut *tx)
             .await
@@ -75,7 +81,7 @@ impl Store {
         if active {
             sqlx::query("UPDATE task_queue SET status='failed', error='global emergency stop: dispatch revoked' WHERE status='dispatching'")
                 .execute(&mut *tx).await.map_err(db)?;
-            sqlx::query("UPDATE continuous_projects SET status='paused', updated_at=?")
+            sqlx::query("UPDATE continuous_projects SET status='paused', updated_at=? WHERE status IN ('enabled','draining')")
                 .bind(now_unix_secs())
                 .execute(&mut *tx)
                 .await
@@ -85,7 +91,7 @@ impl Store {
         }
         // Same transaction: audit failure must not produce an unaudited clear.
         sqlx::query("INSERT INTO audit_log(ts,actor,action,subject,detail_json) VALUES(?,?,'kill_switch','global',?)")
-            .bind(now_unix_secs()).bind(actor).bind(serde_json::json!({"on":active}).to_string())
+            .bind(now_unix_secs()).bind(actor.trim()).bind(serde_json::json!({"on":active}).to_string())
             .execute(&mut *tx).await.map_err(db)?;
         tx.commit().await.map_err(db)
     }

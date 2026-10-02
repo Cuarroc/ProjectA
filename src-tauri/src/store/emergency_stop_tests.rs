@@ -27,7 +27,15 @@ async fn emergency_stop_blocks_dispatch_across_projects() {
         .await
         .unwrap();
     for id in ["a", "b"] {
-        assert!(!store.claim_queue_entry(id).await.unwrap_or(false));
+        assert!(store
+            .claim_queue_entry(id)
+            .await
+            .unwrap_err()
+            .contains("global emergency stop"));
+        assert_eq!(
+            store.get_queue_entry(id).await.unwrap().unwrap().status,
+            QUEUE_READY
+        );
     }
 }
 
@@ -49,7 +57,11 @@ async fn emergency_stop_missing_state_fails_closed() {
         .execute(&store.pool)
         .await
         .unwrap();
-    assert!(!store.claim_queue_entry("a").await.unwrap_or(false));
+    assert!(store
+        .claim_queue_entry("a")
+        .await
+        .unwrap_err()
+        .contains("global emergency stop"));
     sqlx::query("DROP TABLE emergency_stop")
         .execute(&store.pool)
         .await
