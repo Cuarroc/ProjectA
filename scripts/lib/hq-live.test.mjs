@@ -124,7 +124,7 @@ test("profile cards show each profile's environment policy", () => {
   assert.match(hq, /const envPolicy = p\.envPolicy \?\? p\.env_policy \?\? \{ isolation: "allowlist", passthrough: \[\] \};/);
   assert.match(hq, /const isolation = envPolicy\.isolation \?\? "allowlist";/);
   assert.match(hq, /const passthrough = Array\.isArray\(envPolicy\.passthrough\) \? envPolicy\.passthrough : \[\];/);
-  assert.match(hq, /envPolicy: \$\{escape\(envPolicy\.isolation\)\}.*\$\{escape\(envPolicy\.passthrough\.join\(", "\) \|\| "none"\)\}/);
+  assert.match(hq, /envPolicy: \$\{escape\(isolation\)\}.*\$\{escape\(passthrough\.join\(", "\) \|\| "none"\)\}/);
 });
 
 test("resolveAgentsFile honors the explicit env override", () => {

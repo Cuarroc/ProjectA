@@ -480,11 +480,13 @@
           <h3>${escape(team)}</h3>
           ${profiles.map((p) => {
             const envPolicy = p.envPolicy ?? p.env_policy ?? { isolation: "allowlist", passthrough: [] };
+            const isolation = envPolicy.isolation ?? "allowlist";
+            const passthrough = Array.isArray(envPolicy.passthrough) ? envPolicy.passthrough : [];
             return `<article class="live-row">
             <div>
               <strong>${escape(p.name)}</strong>
               <span>${escape(p.id)} · ${escape(p.command)}${(p.args || []).length ? ` ${escape(p.args.join(" "))}` : ""}${p.fallback ? ` → ${escape(p.fallback)}` : ""}${p.builtin ? "" : " · custom"}</span>
-              <span>envPolicy: ${escape(envPolicy.isolation)} · passthrough: ${escape(envPolicy.passthrough.join(", ") || "none")}</span>
+              <span>envPolicy: ${escape(isolation)} · passthrough: ${escape(passthrough.join(", ") || "none")}</span>
               ${p.briefing ? `<p class="team-briefing"><strong>${escape(p.briefing.role || "Rolle offen")}</strong> ${escape(p.briefing.purpose || "Auftrag offen")}<br>Effort: ${escape(p.briefing.effort || "nicht festgelegt")} · Prüfmittel: ${escape(p.briefing.tools || "nicht festgelegt")}</p>` : ""}
             </div>
             <span>
