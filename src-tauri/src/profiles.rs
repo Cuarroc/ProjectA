@@ -655,6 +655,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn opencode_deepseek_v4_flash_profile_is_available_and_cautious() {
+        let profile = default_profiles()
+            .into_iter()
+            .find(|p| p.id == "opencode-ollama-deepseek-v4-flash")
+            .expect("opencode-ollama-deepseek-v4-flash profile exists");
+        assert_eq!(profile.command, "opencode");
+        assert_eq!(profile.args, vec!["-m", "ollama/deepseek-v4-flash:cloud"]);
+        assert_eq!(
+            profile.caps,
+            AgentCapabilities {
+                skills: SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
+                },
+                ..AgentCapabilities::default()
+            }
+        );
+    }
+
     /// W5-02b2 and W5-02b6 (user decisions 2026-09-24): every built-in runs
     /// under `allowlist`; `strict` is not a default yet, workers still push
     /// their own branches. The CLIs keep their login in files under the
