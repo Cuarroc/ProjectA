@@ -41,6 +41,11 @@ test("erledigt-row escapes pipes and falls back to a dash without report", () =>
   assert.match(row, /\| — \|$/);
 });
 
+test("erledigt-row escapes a backslash before a Markdown pipe", () => {
+  const row = makeRow({ pr: { ...PR, title: String.raw`a\|b`, files: [] }, id: "X-1" });
+  assert.ok(row.includes(String.raw`a\\\|b`));
+});
+
 test("erledigt-row matches the column count of the real docs/ERLEDIGT.md header", () => {
   const text = readFileSync(join(root, "docs/ERLEDIGT.md"), "utf8");
   const header = text.split(/\r?\n/).find((l) => l.startsWith("| Datum |"));
