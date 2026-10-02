@@ -81,7 +81,7 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | ✓ #39 |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
 | SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln |
-| SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | offen |
+| SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | PR #51 |
 
 PC-Setup außerhalb des Repos (Orchestrator, Nutzerentscheidungen 25.09.):
 Backup mit Kopia nach Google Drive, TypeScript-Sprachserver und PowerShell-Profil,
