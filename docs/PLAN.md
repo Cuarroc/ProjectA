@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 25.09.2026 (Paket PLAN-01, Nutzerentscheidungen vom 25.09.).
+Stand: 02.10.2026 (Paket PLAN-SYNC, Live-Abgleich der gemergten PRs).
 Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
 Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
@@ -39,7 +39,7 @@ scripts/dev · `N` Nutzer/PC. Welches Modell welches Paket nimmt:
 `docs/setup/providers.md`. Stand-Spalte: `✓ #n` = gemergt, sonst offener PR
 oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 
-### M1 — Alles Laufende gelandet, App startbar
+### M1 — Alles Laufende gelandet, App startbar ✓ erreicht
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
@@ -68,7 +68,8 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
 | M2-FRAG | Frag-mich-Skill für Einsteiger-Erklärungen | S | doc | ✓ #161 |
-| PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | dieses Paket |
+| PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | ✓ #26 |
+| PLAN-SYNC | Gemergte Pakete seit 25.09.2026 und M1-Status im Plan nachführen | S | doc | PR #45 |
 | OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | PR #164 |
 | OPS-02 | Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps | S | doc | offen |
 | CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | ✓ #28 |
@@ -76,10 +77,10 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | W1-30 | Flake `omniroute::…management_failures_keep_their_http_and_network_classes` (100-ms-Timeout) | S | fR | ✓ #32 |
 | CLEAN-01 | Toten Code löschen: npm `@tauri-apps/plugin-process`, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6) | S | fe | ✓ #31 |
 | CLEAN-02 | Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs) | S | api → mn → wk | ✓ #25 |
-| W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | offen |
-| SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | offen |
+| W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | ✓ #38 |
+| SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | ✓ #39 |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
-| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | offen |
+| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln |
 | SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | offen |
 
 PC-Setup außerhalb des Repos (Orchestrator, Nutzerentscheidungen 25.09.):
@@ -103,7 +104,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | offen |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
-| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | offen |
+| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | offen |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
 | R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3 | S | N + doc | offen |
@@ -112,7 +113,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| W5-05 | Prüfpfad (append-only, Trigger gegen UPDATE/DELETE) | S | st | offen |
+| W5-05 | Prüfpfad (append-only, Trigger gegen UPDATE/DELETE) | S | st | PR #44 |
 | W5-04a | Not-Aus im Store, **global ohne Projektrahmen** (Schnitt 25.09., W5-01a bleibt geparkt) | S | st | offen |
 | W5-04b | Not-Aus in der App (10 s Frist) | S | mn | offen |
 | W5-04c | Not-Aus in `pa` | S | pa | offen |
@@ -134,8 +135,8 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | offen |
 | W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später) | S | N | offen |
-| W4-01 | Benchmark, verkleinert (Vorschlag: 5 Aufgaben statt 20) | M | fR | offen |
-| W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | PR #48 |
+| W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | offen |
+| W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | offen |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers | S | mn | offen |
 | W4-04 | Release v1.5.0 | S | N | offen |
 
@@ -226,7 +227,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Vorzeige-README für die Bewerbung | später |
 | Prompt-Kompression, MCP-Injektion | wenn ein Worker nachweislich am Kontextlimit scheitert |
 | Command Palette, globale FTS-Suche, Fokusmodus | wenn der Nutzer sie im Alltag vermisst |
-| Remote-Board, Multi-Prozess-Deskriptor | bei Neuanschaffung eines Servers |
+| Remote-Board, Multi-Prozess-Deskriptor | wenn ein zweiter Rechner dazukommt |
 | Ideen-Pipeline, Zeitachse, Vorschlags-Tab | nach M4, mit Kostenschätzung |
 | hermes-agent, Multi-Harness | nach M4 (HQ2-06 ist geparkt) |
 | Dependabot-Majors (Vite 8 → eslint 10 → TS 7 → React 19 → sqlx 0.9) | einzeln, nach M4 |
@@ -243,13 +244,13 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | # | Frage | Empfehlung | Status |
 |---|---|---|---|
 | E1 | HQ2-02: Demo und Studio ansehen, Richtung für die eine Oberfläche festlegen | ja, in M3 | offen (Nutzer) |
-| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | offen |
+| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
 | E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja (Nutzer 25.09.); einmal im Browser klicken | offen (Nutzer) |
 | E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | später (Nutzer 25.09.) |
 | E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | offen |
 | E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | später (Nutzer 25.09.) |
-| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | offen (Nutzer) |
-| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | offen (Nutzer) |
+| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | ✓ bestätigt (Nutzer 02.10.) |
+| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | ✓ bestätigt (Nutzer 02.10.) |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;

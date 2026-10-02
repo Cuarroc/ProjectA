@@ -112,16 +112,14 @@ Ein Fehler mit einem eigenen Code (`chat_admission_busy`, `invalid_api_key`) ist
 eine dokumentierte Bedingung, kein Rauschen. *„retry shortly"* ist eine
 Anweisung. Wer sie ignoriert und blind wiederholt, automatisiert das Wegsehen.
 Der billigste Moment zur Untersuchung ist das erste Auftreten.
-→ Werkzeug war `worker-why <name>` auf dem Server (gelöscht 09.09.2026);
-die Regel gilt weiter: erst Ursache benennen, dann wiederholen.
+→ Erst Ursache benennen, dann wiederholen.
 
 **2. Eine Prüfung, die nicht scheitern kann, prüft nichts.**
 Eine frühere Erreichbarkeitsprüfung fragte *„Antworte mit BEREIT"* und suchte
 dann „BEREIT" — Codex spiegelt den Prompt zurück, also bestand sie auch bei
 totem Dienst. Frag nach etwas, dessen Antwort **nicht in der Frage steht**, und
 lass die Prüfung einmal absichtlich scheitern, bevor du ihr traust.
-→ Werkzeug war `preflight --selftest` auf dem Server (gelöscht 09.09.2026);
-die Regel gilt für jede neue Erreichbarkeitsprüfung.
+→ Das gilt für jede neue Erreichbarkeitsprüfung.
 
 **2a. Verifikation mit Credentials, die das Produkt nicht hat, ist keine
 Verifikation.**
@@ -261,8 +259,8 @@ existiert weiterhin nur im Release-Workflow (`v*`-Tags).
 PR-Text bzw. `.pa/ACTIVITY.md`: die `#[cfg(unix)]`-Tests (Dateirechte,
 Prozessgruppen-Kill) kompilieren unter Windows nicht, die
 `#[cfg(windows)]`-Tests nicht unter Linux (`KNOWN_ISSUES` KI-7) — **kein
-einzelner Rechner deckt beide Hälften ab.** Die Linux-Hälfte kommt seit der
-Server-Löschung aus WSL2 (Clone auf ext4): `docs/ci-lokal.md`. „Vollgates
+einzelner Rechner deckt beide Hälften ab.** Die Linux-Hälfte kommt aus WSL2
+(Clone auf ext4): `docs/ci-lokal.md`. „Vollgates
 grün" ohne diesen Block ist nach dem Beweismaßstab eine Behauptung.
 
 ### Rust-Testablage und gemeinsamer Capture-Kern
@@ -335,16 +333,13 @@ Kontingent an einer Wand.
 | Sicherheitsthemen | **verweigert** („flagged for possible cybersecurity risk") | ja | ja |
 | Kosten | eigenes Kontingent | Free-Tier | eigenes Kontingent |
 
-> **Archiv:** Server am 09.09.2026 gelöscht; Prozeduren in der Versionshistorie
-> (Tag `v1.4.0`) und in `docs/archive/plaene-2026-09/STAND-2026-09-15.md` §5.
-
 **Daraus folgt die Arbeitsteilung:** Codex ist *das Auge und der Entscheider* —
 kurze, gehaltvolle Aufrufe, alles mit Bildern. OpenCode ist *die Hand* — lange
 agentische Arbeit, Sicherheitsthemen, alles, was Kontingent schonen soll.
 
 **Historisch:** Der Skill `.cursor/skills/claude-max-orchestration/`
-beschreibt den am 09.09.2026 gelöschten Server und das frühere Abo-Modell; er
-gilt nicht mehr. Welches Abo und Modell heute wofür läuft, steht in
+beschreibt ein früheres Setup und Abo-Modell; er gilt
+nicht mehr. Welches Abo und Modell heute wofür läuft, steht in
 `docs/setup/providers.md`. Das Claude-Abo läuft nie über einen Router wie
 OmniRoute (Nutzerentscheidung 25.09.).
 
@@ -472,10 +467,6 @@ ProjectA und OmniRoute (lokaler Daemon auf `:<omniroute-port>`,
 ist sogar **bevorzugt**, um auf der lokalen Maschine RAM zu sparen:
 Auslagerbare Arbeit (Agenten-Läufe, Routing) läuft bevorzugt über OmniRoute
 statt in zusätzlichen lokalen Prozessen.
-
-> **Archiv (Server-Worker, SSH-Rücktunnel, `scripts/server/`):** Server am
-> 09.09.2026 gelöscht; Prozeduren in der Versionshistorie (Tag `v1.4.0`) und
-> in `docs/archive/plaene-2026-09/STAND-2026-09-15.md` §5.
 
 ---
 

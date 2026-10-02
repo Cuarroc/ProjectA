@@ -28,7 +28,7 @@ Konfig-Dateien) ist eine Warnung.
 |---|---|---|---|
 | Claude (Opus / Fable 5.1) | Claude Code | Koordinator; Fable 5.1 als Advisor; Nahtstellen/Security nur als Ausweichen (Routing: [providers.md](providers.md)) | [claude-code.md](claude-code.md) |
 | OpenAI GPT-6 Astra | Codex CLI | Advisor (Effort `high` je Aufruf), Worker | [codex.md](codex.md) |
-| Kimi K3 | Kimi Code CLI | Frontend/HQ-Worker, Reviews | [kimi.md](kimi.md) |
+| Kimi K3 | Kimi Code CLI | **Abo abgelaufen 02.10.2026** — nicht einplanen | [kimi.md](kimi.md) |
 | GLM (DeepSeek offen, W2-09b) | OpenCode | Docs, Skripte, Zweitreview | [opencode.md](opencode.md) |
 | kimi-k3 + glm-5.2 (Ollama Cloud) | `.pa/review_transport.py` | Alltags-Reviewerpaar | [ollama-reviewers.md](ollama-reviewers.md) |
 | — | Mergify | Merge-Queue für `main` (`.mergify.yml`) | [mergify.md](mergify.md) |
