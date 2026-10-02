@@ -1109,6 +1109,29 @@ async fn install_update_when_idle(
     .map_err(|error| format!("Installer interrupted: {error}; restart before retrying"))?
 }
 
+/// Restore the updater plugin result shared with the read-only Control API.
+#[tauri::command]
+fn get_updater_state(
+    updater: State<'_, Arc<Mutex<api::UpdaterState>>>,
+) -> Result<api::UpdaterState, String> {
+    updater
+        .lock()
+        .map(|state| state.clone())
+        .map_err(|_| "updater state unavailable".to_string())
+}
+
+/// Mirror the updater plugin's observed result for the read-only Control API.
+#[tauri::command]
+fn set_updater_state(
+    updater: State<'_, Arc<Mutex<api::UpdaterState>>>,
+    state: api::UpdaterState,
+) -> Result<(), String> {
+    *updater
+        .lock()
+        .map_err(|_| "updater state unavailable".to_string())? = state;
+    Ok(())
+}
+
 // -- task queue (Phase 7) -------------------------------------------------
 
 #[tauri::command]
@@ -2307,6 +2330,7 @@ struct ApiBackend {
     quota: Arc<QuotaTracker>,
     vault: Arc<KeyVault>,
     hook_port: u16,
+    updater: Arc<Mutex<api::UpdaterState>>,
 }
 
 impl ApiBackend {
@@ -2755,6 +2779,13 @@ impl ControlBackend for ApiBackend {
             .map(|profile| profile.id)
             .collect();
         Ok(self.quota.snapshot(&profile_ids))
+    }
+
+    fn updater_state(&self) -> Result<api::UpdaterState, String> {
+        self.updater
+            .lock()
+            .map(|state| state.clone())
+            .map_err(|_| "updater state unavailable".to_string())
     }
 
     fn providers(&self) -> Result<Vec<ProviderOverview>, String> {
@@ -3492,6 +3523,7 @@ fn main() {
             // The control API is what makes the app scriptable. A port that
             // will not bind costs the `pa` CLI and the orchestrators, not the
             // window, so it is reported and stepped over.
+            let updater_state = Arc::new(Mutex::new(api::UpdaterState::default()));
             let backend = Arc::new(ApiBackend {
                 app: handle.clone(),
                 store: store.clone(),
@@ -3499,7 +3531,9 @@ fn main() {
                 quota: Arc::clone(&quota),
                 vault: Arc::clone(&vault),
                 hook_port: receiver.port(),
+                updater: Arc::clone(&updater_state),
             });
+            app.manage(updater_state);
             match api::start(backend, &dir) {
                 Ok(server) => {
                     println!(
@@ -3664,6 +3698,8 @@ fn main() {
             list_workers,
             list_live_sessions,
             install_update_when_idle,
+            get_updater_state,
+            set_updater_state,
             enqueue_task,
             list_queue,
             cancel_queued_task,
@@ -4347,6 +4383,7 @@ mod tests {
             ("Arc<KeyVault>", "app.manage(vault)"),
             ("Arc<QuotaTracker>", "app.manage(quota)"),
             ("Arc<StatusEngine>", "app.manage(engine)"),
+            ("Arc<Mutex<api::UpdaterState>>", "app.manage(updater_state)"),
             ("HookReceiver", "app.manage(receiver)"),
             (
                 "Mutex<WebInterfaceState>",

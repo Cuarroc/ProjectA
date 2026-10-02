@@ -323,6 +323,25 @@ export async function installUpdateWhenIdle(updateRid: number): Promise<void> {
   await invoke("install_update_when_idle", { updateRid });
 }
 
+export type UpdaterState =
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "up-to-date"; version: string | null }
+  | { phase: "available"; version: string; notes: string | null; activeWorkers: number }
+  | { phase: "installing"; version: string }
+  | { phase: "ready"; version: string }
+  | { phase: "error"; message: string };
+
+/** Restore the updater result shared with the read-only Control API. */
+export async function getUpdaterState(): Promise<UpdaterState> {
+  return invoke<UpdaterState>("get_updater_state");
+}
+
+/** Share only updater results the plugin has already observed. */
+export async function setUpdaterState(state: UpdaterState): Promise<void> {
+  await invoke("set_updater_state", { state });
+}
+
 /**
  * Owned session ids, including reserved and starting processes. Unavailable or
  * malformed inventory must reject: it cannot authorize an idle update.

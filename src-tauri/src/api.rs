@@ -50,6 +50,7 @@
 //! | POST   | `/api/workers/<id>/merge` | `{removeWorktree?}`   | `Worker`          |
 //! | GET    | `/api/board`              | `?projectId=`         | `[board state]`   |
 //! | GET    | `/api/quota`              |                       | `[quota row]`     |
+//! | GET    | `/api/updater`            |                       | updater state     |
 //! | GET    | `/api/budgets`            |                       | `[budget row]`    |
 //! | PUT    | `/api/budgets`            | `{profileId, fiveHourPct?, sevenDayPct?}` | `budget row` |
 //! | GET    | `/api/providers`          |                       | `[provider row]`  |
@@ -225,6 +226,33 @@ const USAGE_LIMIT_MAX: u32 = 500;
 
 /// A slow or wedged client must not tie up a thread forever.
 const IO_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// The updater result already observed by the app's updater plugin.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "phase", rename_all = "kebab-case")]
+pub enum UpdaterState {
+    #[default]
+    Idle,
+    Checking,
+    UpToDate {
+        version: Option<String>,
+    },
+    Available {
+        version: String,
+        notes: Option<String>,
+        #[serde(rename = "activeWorkers")]
+        active_workers: usize,
+    },
+    Installing {
+        version: String,
+    },
+    Ready {
+        version: String,
+    },
+    Error {
+        message: String,
+    },
+}
 
 /// Everything the API can ask the app to do.
 ///
@@ -471,6 +499,8 @@ pub trait ControlBackend: Send + Sync {
     fn board(&self, project_id: Option<&str>) -> Result<Vec<WorkerBoardState>, String>;
 
     fn quota(&self) -> Result<Vec<QuotaStateRow>, String>;
+
+    fn updater_state(&self) -> Result<UpdaterState, String>;
 
     /// Which providers this machine can reach, and what the quota tracker
     /// knows about each - the read-only half of the Phase 7.2 vault.
@@ -1751,6 +1781,8 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
 
         ("GET", ["api", "quota"]) => into_response(backend.quota()),
 
+        ("GET", ["api", "updater"]) => into_response(backend.updater_state()),
+
         // Not `/api/projects/<id>/usage`: OmniRoute's log is keyed by provider
         // account and carries nothing that could be narrowed to one project,
         // so a per-project route would answer every project identically.
@@ -2300,6 +2332,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
         | (_, ["api", "queens"])
         | (_, ["api", "board"])
         | (_, ["api", "quota"])
+        | (_, ["api", "updater"])
         | (_, ["api", "budgets"])
         | (_, ["api", "providers"])
         | (_, ["api", "queue"])
@@ -3388,6 +3421,10 @@ pub(crate) mod tests {
 
         fn quota(&self) -> Result<Vec<QuotaStateRow>, String> {
             Ok(Vec::new())
+        }
+
+        fn updater_state(&self) -> Result<UpdaterState, String> {
+            Ok(UpdaterState::default())
         }
 
         fn providers(&self) -> Result<Vec<ProviderOverview>, String> {
@@ -5323,6 +5360,40 @@ pub(crate) mod tests {
         let (status, body) = call(port, "GET", "/api/quota", token, "");
         assert_eq!(status, 200, "{body}");
         assert_eq!(body.as_array().expect("array").len(), 0);
+    }
+
+    #[test]
+    fn updater_state_is_available_from_the_control_api() {
+        let fx = fixture("api-updater-state");
+        let stored = fx.token();
+
+        let (status, body) = call(
+            fx.server.port(),
+            "GET",
+            "/api/updater",
+            Some(stored.as_str()),
+            "",
+        );
+        assert_eq!(status, 200, "{body}");
+        assert_eq!(body["phase"], "idle");
+    }
+
+    #[test]
+    fn updater_state_keeps_the_wire_shape_the_frontend_sends() {
+        let wire = [
+            json!({ "phase": "idle" }),
+            json!({ "phase": "checking" }),
+            json!({ "phase": "up-to-date", "version": "1.2.3" }),
+            json!({ "phase": "available", "version": "2.0.0", "notes": null, "activeWorkers": 3 }),
+            json!({ "phase": "installing", "version": "2.0.0" }),
+            json!({ "phase": "ready", "version": "2.0.0" }),
+            json!({ "phase": "error", "message": "offline" }),
+        ];
+        for value in wire {
+            let state: UpdaterState =
+                serde_json::from_value(value.clone()).expect("frontend payload deserializes");
+            assert_eq!(serde_json::to_value(&state).expect("serializes"), value);
+        }
     }
 
     #[test]

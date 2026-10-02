@@ -50,3 +50,10 @@ test("motion: reduced-motion instant", () => {
   assert.match(css, /animation:\s*hq-in\s+180ms/);
   assert.match(css, /\.dag-node[\s\S]*120ms/);
 });
+
+test("live desk renders the updater state from the control API", () => {
+  const js = readFileSync(join(DIR, "hq.js"), "utf8");
+  assert.match(js, /id="live-updater"/);
+  assert.match(js, /liveApi\("\/api\/updater"\)/);
+  assert.match(js, /function renderUpdater\s*\(/);
+});
