@@ -1090,6 +1090,26 @@ No deletion/backfill of historical identities is introduced. Future retention mu
   (echtes Paket, rot mit 0.11, gruen mit 0.10). Lockfile per `npm install`.
   Zuruecknehmen: beim geschlossenen Sprung auf `@xterm/xterm` 6.x, wie oben.
 
+## 2026-09-26 - npm-Sammel-Update ohne xterm-6-Addons (deps-npm)
+
+- Dependabot-PR #2 (npm-Gruppe) hob `@xterm/addon-fit` 0.10 -> 0.11 und
+  `@xterm/addon-search` 0.15 -> 0.16. Beides sind die Begleit-Addons von
+  `@xterm/xterm` 6 (siehe die zwei Eintraege vom 2026-09-23); installiert ist
+  xterm 5.5. `xtermFitCompat.test.ts` schlug in CI mit "expected 100 to be
+  99" fehl - genau der dort beschriebene Fall (fit 0.11 zieht fest 14px
+  Scrollbar ab, statt der gemessenen 17px). Der Test ist korrekt und bleibt
+  unveraendert; die beiden Addons bleiben auf `~0.10.0` / `~0.15.0`, die
+  uebrigen fuenf Spruenge (plugin-updater, tauri-cli, @types/node, jsdom,
+  typescript-eslint) sind uebernommen. `.github/dependabot.yml` ignoriert
+  die beiden Addons jetzt wie `@xterm/xterm`, damit der naechste Monatslauf
+  denselben roten PR nicht wieder erzeugt. Zuruecknehmen: beim geschlossenen
+  Sprung auf xterm 6.x, dann alle `@xterm/addon-*` im Gleichschritt.
+- `@tauri-apps/plugin-updater` 2.12.0: Breaking Change ist das Entfernen von
+  `allowDowngrades` aus `check()`. Das Repo nutzt die Option weder in JS
+  noch in `tauri.conf.json`; Default ist `false` (Downgrades bleiben
+  verboten). `src-tauri/Cargo.lock` steht bereits auf `tauri-plugin-updater
+  2.12.0`, JS und Crate passen also zusammen - keine Rust-Aenderung.
+
 ## 2026-09-24 - CI-01: Mergify-Queue und Actions-Minuten (Nutzer-Entscheidung)
 
 Messbasis (Analyse 24.09.): ~3000 Windows-gewichtete Actions-Minuten/Tag;
