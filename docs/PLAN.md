@@ -96,7 +96,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
 | W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
 | W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c offen |
-| W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | offen |
+| W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | PR #58 |
 | W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
 | W5-22 | Konfliktvorhersage und Lane-Guard | M | fR | ✓ #9 |
 | W5-28 | Automatischer Laufzeitbeleg (Sandbox, Queue aus) | M | fR | ✓ #11 |
