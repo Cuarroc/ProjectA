@@ -135,7 +135,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | offen |
 | W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später) | S | N | offen |
 | W4-01 | Benchmark, verkleinert (Vorschlag: 5 Aufgaben statt 20) | M | fR | offen |
-| W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | offen |
+| W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | PR #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers | S | mn | offen |
 | W4-04 | Release v1.5.0 | S | N | offen |
 
