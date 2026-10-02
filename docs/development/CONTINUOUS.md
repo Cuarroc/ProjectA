@@ -654,17 +654,23 @@ the pure `stream_guard` module, the output byte limit and, since W2-08a, a
 no-progress window.
 Output exactly at the byte limit is admitted; one byte more aborts with
 `capture output exceeded byte limit`, and an overflowing total counts as over
-the limit. A live process that emits no stdout/stderr byte for 15 minutes
-(`NO_PROGRESS_LIMIT`; silence reaching the window exactly aborts) ends with
-`capture stalled without output progress`. The parent's window over the host
-is longer by `HOST_GRACE_MS`, so the host reports the provider's stall itself.
+the limit. A native Codex job that emits no complete structured
+thinking/progress event for 15 minutes (`NO_PROGRESS_LIMIT`; the boundary
+aborts exactly) ends with `capture stalled without output progress`.
+Recognized JSONL events are `thread.started`, `turn.started`, `item.started`,
+`item.updated`, `item.completed` and `turn.completed`; arbitrary stdout/stderr
+noise does not reset the window. The parent's trusted event transport retains
+byte-progress tracking and a window longer by `HOST_GRACE_MS`, so the host
+reports the provider's more precise stall itself.
 Each abort retires the whole kill-on-close job and the input writer before the
 error returns, the same confirmed cleanup as the deadline; an unconfirmed
 cleanup stays a reconciliation error. Output events already handed to the
 observer and checkpoints already acknowledged are never withdrawn, but an
 aborted capture is never a completed or delivered one. Native tests drive a
 real silent fixture (stall reason, partial output observed, PID retired), a
-steady trickle longer than the window (completes) and a flood over the byte
-limit. The window is a code constant, not a policy or launch-protocol field;
-TUI/PTY sessions are unaffected. CPU, job-memory and container limits for the
-provider job are not enforced yet (W2-08b).
+meaningless output trickle (still stalls) and a flood over the byte limit. The
+window is a code constant, not a policy or launch-protocol field. Every owned
+Windows native job is configured before process creation with a 4 GiB
+aggregate-memory limit and a 40% CPU hard cap; nested provider processes remain
+inside the job. TUI/PTY sessions are unaffected. Container limits remain out
+of scope.

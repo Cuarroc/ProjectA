@@ -19,17 +19,47 @@ pub const BYTE_LIMIT: &str = "capture output exceeded byte limit";
 /// which otherwise holds its claim until the 90-minute launch deadline.
 pub const NO_PROGRESS_LIMIT: Duration = Duration::from_secs(15 * 60);
 
-/// Incremental classifier for structured provider progress. The red-first
-/// implementation deliberately treats every non-empty chunk as progress.
-pub struct ProgressSignals;
+/// Incremental classifier for complete Codex JSONL progress events. Keeping
+/// this separate from output accounting prevents log noise from extending a
+/// stalled job indefinitely.
+#[derive(Default)]
+pub struct ProgressSignals {
+    pending: Vec<u8>,
+}
 
 impl ProgressSignals {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
     pub fn observe(&mut self, bytes: &[u8]) -> bool {
-        !bytes.is_empty()
+        const MAX_PENDING: usize = 64 * 1024;
+        if self.pending.len().saturating_add(bytes.len()) > MAX_PENDING {
+            self.pending.clear();
+        }
+        self.pending.extend_from_slice(bytes);
+        let mut progress = false;
+        while let Some(end) = self.pending.iter().position(|byte| *byte == b'\n') {
+            let line: Vec<_> = self.pending.drain(..=end).collect();
+            let Ok(value) = serde_json::from_slice::<serde_json::Value>(&line) else {
+                continue;
+            };
+            progress |= value
+                .get("type")
+                .and_then(|kind| kind.as_str())
+                .is_some_and(|kind| {
+                    matches!(
+                        kind,
+                        "thread.started"
+                            | "turn.started"
+                            | "item.started"
+                            | "item.updated"
+                            | "item.completed"
+                            | "turn.completed"
+                    )
+                });
+        }
+        progress
     }
 }
 

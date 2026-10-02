@@ -10,6 +10,9 @@ pub(super) struct Command {
     pub environment: Vec<(String, OsString)>,
     /// Silence after which a live capture is aborted (`stream_guard`).
     pub no_progress: std::time::Duration,
+    /// Codex JSONL must prove progress; trusted host/diagnostic transports keep
+    /// byte progress because the nested provider capture enforces this itself.
+    pub structured_progress: bool,
 }
 
 pub(super) struct Encoded {
@@ -58,6 +61,7 @@ impl Command {
             cwd: path.parent().unwrap_or(path).to_owned(),
             environment: Vec::new(),
             no_progress: crate::stream_guard::NO_PROGRESS_LIMIT,
+            structured_progress: false,
         }
     }
 
