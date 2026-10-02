@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 25.09.2026 (Paket PLAN-01, Nutzerentscheidungen vom 25.09.).
+Stand: 02.10.2026 (Paket PLAN-SYNC, Live-Abgleich der gemergten PRs).
 Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
 Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
@@ -39,7 +39,7 @@ scripts/dev · `N` Nutzer/PC. Welches Modell welches Paket nimmt:
 `docs/setup/providers.md`. Stand-Spalte: `✓ #n` = gemergt, sonst offener PR
 oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 
-### M1 — Alles Laufende gelandet, App startbar
+### M1 — Alles Laufende gelandet, App startbar ✓ erreicht
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
@@ -68,7 +68,8 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
 | M2-FRAG | Frag-mich-Skill für Einsteiger-Erklärungen | S | doc | ✓ #161 |
-| PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | dieses Paket |
+| PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | ✓ #26 |
+| PLAN-SYNC | Gemergte Pakete seit 25.09.2026 und M1-Status im Plan nachführen | S | doc | PR #45 |
 | OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | PR #164 |
 | OPS-02 | Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps | S | doc | offen |
 | CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | ✓ #28 |
@@ -76,8 +77,8 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | W1-30 | Flake `omniroute::…management_failures_keep_their_http_and_network_classes` (100-ms-Timeout) | S | fR | ✓ #32 |
 | CLEAN-01 | Toten Code löschen: npm `@tauri-apps/plugin-process`, drei ungenutzte TS-Funktionen und Exporte (Prüfung B, S6) | S | fe | ✓ #31 |
 | CLEAN-02 | Stillgelegten Queen-Anlegepfad löschen (Trait-Methode in api.rs, Umsetzung in main.rs, drei Funktionen in workers.rs) | S | api → mn → wk | ✓ #25 |
-| W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | offen |
-| SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | offen |
+| W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | ✓ #38 |
+| SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | ✓ #39 |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
 | SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | offen |
 | SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | offen |
