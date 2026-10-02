@@ -19,6 +19,20 @@ pub const BYTE_LIMIT: &str = "capture output exceeded byte limit";
 /// which otherwise holds its claim until the 90-minute launch deadline.
 pub const NO_PROGRESS_LIMIT: Duration = Duration::from_secs(15 * 60);
 
+/// Incremental classifier for structured provider progress. The red-first
+/// implementation deliberately treats every non-empty chunk as progress.
+pub struct ProgressSignals;
+
+impl ProgressSignals {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn observe(&mut self, bytes: &[u8]) -> bool {
+        !bytes.is_empty()
+    }
+}
+
 /// Output-progress watch. Any byte on stdout or stderr counts as progress;
 /// silence reaching the window exactly aborts (like the deadline, `>=`).
 #[derive(Debug, Clone, Copy)]
@@ -138,5 +152,24 @@ mod tests {
         assert_eq!(admit_output(11, 0, 10), Err(BYTE_LIMIT));
         // Overflow is over the limit, never a wrapped small total.
         assert_eq!(admit_output(usize::MAX, 1, usize::MAX), Err(BYTE_LIMIT));
+    }
+
+    #[test]
+    fn only_structured_thinking_or_progress_events_reset_the_stall_window() {
+        let mut signals = ProgressSignals::new();
+        assert!(!signals.observe(b"...\n"));
+        assert!(!signals.observe(b"ordinary diagnostic noise\n"));
+        assert!(!signals.observe(br#"{"type":"turn.started"}"#));
+        assert!(signals.observe(b"\n"));
+        assert!(signals.observe(b"{\"type\":\"item.started\",\"item\":{\"type\":\"reasoning\"}}\n"));
+        assert!(signals
+            .observe(b"{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\"}}\n"));
+    }
+
+    #[test]
+    fn progress_event_split_across_chunks_is_recognized_once_complete() {
+        let mut signals = ProgressSignals::new();
+        assert!(!signals.observe(br#"{"type":"turn."#));
+        assert!(signals.observe(b"completed\"}\n"));
     }
 }

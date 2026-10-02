@@ -384,6 +384,49 @@ mod tests {
     use sha2::{Digest, Sha256};
 
     #[test]
+    fn native_job_enforces_memory_and_cpu_caps_before_resume() {
+        let root = PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32");
+        let command = Command::diagnostic(&root.join("whoami.exe"));
+        let child = SuspendedProcess::create(&command, None).unwrap();
+        unsafe {
+            let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();
+            assert_ne!(
+                QueryInformationJobObject(
+                    child._job.as_raw_handle(),
+                    JobObjectExtendedLimitInformation,
+                    (&mut limits as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                    size_of_val(&limits) as u32,
+                    null_mut(),
+                ),
+                0
+            );
+            assert_ne!(
+                limits.BasicLimitInformation.LimitFlags & JOB_OBJECT_LIMIT_JOB_MEMORY,
+                0
+            );
+            assert_eq!(limits.JobMemoryLimit, 4 * 1024 * 1024 * 1024usize);
+
+            let mut cpu: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION = zeroed();
+            assert_ne!(
+                QueryInformationJobObject(
+                    child._job.as_raw_handle(),
+                    JobObjectCpuRateControlInformation,
+                    (&mut cpu as *mut JOBOBJECT_CPU_RATE_CONTROL_INFORMATION).cast(),
+                    size_of_val(&cpu) as u32,
+                    null_mut(),
+                ),
+                0
+            );
+            assert_eq!(
+                cpu.ControlFlags,
+                JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP
+            );
+            assert_eq!(cpu.Anonymous.CpuRate, 4_000);
+        }
+        child.terminate().unwrap();
+    }
+
+    #[test]
     fn native_suspended_image_is_bound_and_mismatches_are_terminated() {
         let root = PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32");
         let path = root.join("whoami.exe");
