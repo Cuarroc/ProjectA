@@ -52,6 +52,7 @@ impl Drop for TempDir {
     }
 }
 
+#[cfg(windows)]
 fn remove_temp_dir(path: &Path) -> std::io::Result<()> {
     const RETRIES: usize = 10;
 
@@ -73,6 +74,7 @@ fn remove_temp_dir(path: &Path) -> std::io::Result<()> {
     unreachable!("the retry loop returns on its final attempt")
 }
 
+#[cfg(windows)]
 fn report_remove_failure(path: &Path) {
     if let Err(err) = remove_temp_dir(path) {
         report_remove_error(path, err);
