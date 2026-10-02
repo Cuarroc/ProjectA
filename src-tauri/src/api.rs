@@ -5325,6 +5325,22 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn updater_state_is_available_from_the_control_api() {
+        let fx = fixture("api-updater-state");
+        let stored = fx.token();
+
+        let (status, body) = call(
+            fx.server.port(),
+            "GET",
+            "/api/updater",
+            Some(stored.as_str()),
+            "",
+        );
+        assert_eq!(status, 200, "{body}");
+        assert_eq!(body["phase"], "idle");
+    }
+
+    #[test]
     fn the_usage_ledger_is_served_fleet_wide_with_a_capped_limit() {
         let fx = fixture("api-usage");
         let stored = fx.token();
