@@ -91,6 +91,8 @@ export default function QueuePanel({
     setTask("");
     setProfileId("");
     setSharpen(false);
+    setSubmitting(false);
+    setCancellingId(null);
     setLoaded(false);
     setError(null);
     void refresh();
@@ -108,38 +110,42 @@ export default function QueuePanel({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!canEnqueue) return;
+    const targetProjectId = projectId;
     void (async () => {
       setSubmitting(true);
       setError(null);
       try {
         const entry = await enqueueTask({
-          projectId,
+          projectId: targetProjectId,
           rawText: attachMaster ? composeWithMasterPrompt(task.trim()) : task.trim(),
           profileId: profileId === "" ? undefined : profileId,
           sharpen,
         });
+        if (shownProjectId.current !== targetProjectId) return;
         setEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)]);
         setTask("");
         setSharpen(false);
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
-        setSubmitting(false);
+        if (shownProjectId.current === targetProjectId) setSubmitting(false);
       }
     })();
   };
 
   const handleCancel = (id: string) => {
+    const targetProjectId = projectId;
     void (async () => {
       setCancellingId(id);
       setError(null);
       try {
         await cancelQueuedTask(id);
+        if (shownProjectId.current !== targetProjectId) return;
         setEntries((current) => current.filter((entry) => entry.id !== id));
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
-        setCancellingId(null);
+        if (shownProjectId.current === targetProjectId) setCancellingId(null);
       }
     })();
   };

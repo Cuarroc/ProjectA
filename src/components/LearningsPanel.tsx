@@ -131,6 +131,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setError(null);
       setRoleError(null);
       setVerdictToken(null);
+      setBusyId(null);
       return;
     }
     // Pending items of the old project carry live approve buttons: clear them
@@ -143,6 +144,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
     setNotice(null);
     setError(null);
     setRoleError(null);
+    setBusyId(null);
     setLearningsLoaded(false);
     setRolesLoaded(false);
     void refresh();
@@ -184,12 +186,15 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setVerdictToken(null);
       return;
     }
+    const targetProjectId = projectId;
     void (async () => {
       try {
-        setVerdictToken(await getVerdictToken());
+        const token = await getVerdictToken();
+        if (shownProjectId.current !== targetProjectId) return;
+        setVerdictToken(token);
         setNotice(null);
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       }
     })();
   };
@@ -197,65 +202,73 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
   const handleApprove = (entry: Learning) => {
     const text = (drafts.get(entry.id) ?? entry.content).trim();
     if (text === "") return;
+    const targetProjectId = projectId;
     void (async () => {
       setBusyId(entry.id);
       setError(null);
       try {
         await approveLearning(entry.id, text);
+        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Ins Playbook übernommen.");
         await refresh();
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
-        setBusyId(null);
+        if (shownProjectId.current === targetProjectId) setBusyId(null);
       }
     })();
   };
 
   const handleReject = (entry: Learning) => {
+    const targetProjectId = projectId;
     void (async () => {
       setBusyId(entry.id);
       setError(null);
       try {
         await rejectLearning(entry.id);
+        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Verworfen.");
         await refresh();
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
-        setBusyId(null);
+        if (shownProjectId.current === targetProjectId) setBusyId(null);
       }
     })();
   };
 
   const handleApproveVariant = (variant: RoleVariant) => {
+    const targetProjectId = projectId;
     void (async () => {
       setBusyId(variant.id);
       setRoleError(null);
       try {
         await approveRoleVariant(variant.id);
+        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Rolle angenommen.");
         await refreshRoles();
       } catch (cause) {
-        setRoleError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setRoleError(describeError(cause));
       } finally {
-        setBusyId(null);
+        if (shownProjectId.current === targetProjectId) setBusyId(null);
       }
     })();
   };
 
   const handleRejectVariant = (variant: RoleVariant) => {
+    const targetProjectId = projectId;
     void (async () => {
       setBusyId(variant.id);
       setRoleError(null);
       try {
         await rejectRoleVariant(variant.id);
+        if (shownProjectId.current !== targetProjectId) return;
         setNotice("Verworfen.");
         await refreshRoles();
       } catch (cause) {
-        setRoleError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setRoleError(describeError(cause));
       } finally {
-        setBusyId(null);
+        if (shownProjectId.current === targetProjectId) setBusyId(null);
       }
     })();
   };
