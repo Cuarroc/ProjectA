@@ -1562,7 +1562,11 @@ fn await_reader_retirement(
 /// The terminal's answer to a cursor-position report (`ESC[6n`): row 1,
 /// column 1. Any plausible position does - the TUIs that ask use the reply
 /// to find out *whether* a terminal is listening, and lay out a full screen
-/// of their own right after.
+/// of their own right after. It stays `1;1` on purpose: the real position is
+/// unknown to the backend (no screen model lives here), and a TUI that asks
+/// later (after a resize) lays out afresh anyway. The query itself is removed
+/// from scrollback and UI ([`CursorReportScanner::strip`]), so xterm.js never
+/// answers a second time (KI-20).
 const CURSOR_POSITION_REPLY: &[u8] = b"\x1b[1;1R";
 
 /// Finds cursor-position reports (`ESC[6n`) in a byte stream, across read
@@ -1586,7 +1590,10 @@ pub(crate) struct CursorReportScanner {
 impl CursorReportScanner {
     const QUERY: &'static [u8] = b"\x1b[6n";
 
-    /// Feed one chunk; returns how many complete queries it contained.
+    /// Feed one chunk; returns how many complete queries it contained. The
+    /// reader uses [`strip`](Self::strip); this count-only form stays as the
+    /// reference the tests pin.
+    #[cfg(test)]
     pub(crate) fn feed(&mut self, bytes: &[u8]) -> usize {
         let mut found = 0;
         for &byte in bytes {
@@ -1605,14 +1612,43 @@ impl CursorReportScanner {
         found
     }
 
-    /// STUB (red-first): returns the input unchanged.
+    /// Like [`feed`](Self::feed), but also removes every complete query from
+    /// the chunk (KI-20): the backend answers it, so scrollback and the UI
+    /// must never see it. Returns the query count and the remaining bytes.
+    /// A trailing partial match (at most three bytes) is held back until the
+    /// next chunk decides it - and handed out unchanged if it was not a query,
+    /// the way the UTF-8 decoder holds an incomplete character.
     pub(crate) fn strip(&mut self, bytes: &[u8]) -> (usize, Vec<u8>) {
-        (0, bytes.to_vec())
+        let mut found = 0;
+        let mut visible = Vec::with_capacity(bytes.len());
+        for &byte in bytes {
+            if byte == Self::QUERY[self.matched] {
+                self.matched += 1;
+                if self.matched == Self::QUERY.len() {
+                    found += 1;
+                    self.matched = 0;
+                }
+            } else {
+                // The held prefix was not a query after all; the byte may
+                // itself start one (`ESC ESC [6n`).
+                visible.extend_from_slice(&Self::QUERY[..self.matched]);
+                self.matched = 0;
+                if byte == Self::QUERY[0] {
+                    self.matched = 1;
+                } else {
+                    visible.push(byte);
+                }
+            }
+        }
+        (found, visible)
     }
 
-    /// STUB (red-first).
+    /// End of stream: hand out the held partial match, which can no longer
+    /// become a query.
     pub(crate) fn flush(&mut self) -> Vec<u8> {
-        Vec::new()
+        let held = Self::QUERY[..self.matched].to_vec();
+        self.matched = 0;
+        held
     }
 }
 
@@ -1688,10 +1724,24 @@ fn spawn_reader_thread(
 
         loop {
             match reader.read(&mut buf) {
-                Ok(0) | Err(_) => break,
+                Ok(0) | Err(_) => {
+                    // A held partial query can no longer complete: it is
+                    // ordinary output after all.
+                    let tail = cursor_reports.flush();
+                    if !tail.is_empty() {
+                        record_output(&scrollback, &tail);
+                        let chunk = decoder.push(&tail);
+                        if !chunk.is_empty() {
+                            if let Some(hook) = stamp_output(&last_output, &on_output) {
+                                hook(&session_id, &chunk);
+                            }
+                            let _ = app.emit(&event, chunk);
+                        }
+                    }
+                    break;
+                }
                 Ok(n) => {
                     let bytes = &buf[..n];
-                    record_output(&scrollback, bytes);
                     if let Some(session) = replier.upgrade() {
                         if let Some(trace) = &session.trace {
                             trace.note("out", bytes);
@@ -1700,7 +1750,9 @@ fn spawn_reader_thread(
                     // Answer the terminal query before anything else sees the
                     // chunk: a TUI blocked on it produces nothing further,
                     // and the guard's silence heuristic must not meet that.
-                    let queries = cursor_reports.feed(bytes);
+                    // The answered query is then dropped from what scrollback
+                    // and the UI get (KI-20).
+                    let (queries, visible) = cursor_reports.strip(bytes);
                     if queries > 0 {
                         if let Some(session) = replier.upgrade() {
                             for _ in 0..queries {
@@ -1714,7 +1766,8 @@ fn spawn_reader_thread(
                             }
                         }
                     }
-                    let chunk = decoder.push(bytes);
+                    record_output(&scrollback, &visible);
+                    let chunk = decoder.push(&visible);
                     if chunk.is_empty() {
                         continue;
                     }
