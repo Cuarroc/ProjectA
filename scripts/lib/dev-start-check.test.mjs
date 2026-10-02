@@ -118,7 +118,7 @@ test("checkObserve passes for a fresh non-empty log", () => {
   assert.equal(checkObserve({ stat, file: "w.log", sinceSec: 300, now: NOW }).status, "ok");
 });
 
-test("checkObserve reports silent for a missing, empty or stale log", () => {
+test("checkObserve reports silent for missing empty or stale logs", () => {
   const cases = [
     { exists: false },
     { exists: true, size: 0, mtimeMs: NOW - 1000 },

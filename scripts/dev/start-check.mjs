@@ -95,8 +95,8 @@ export function checkUsage({ usage, cap, sessionCap, file }) {
   for (const [name, u] of Object.entries(usage)) {
     for (const [key, limit] of [["woche", cap], ["session", sessionCap]]) {
       const v = u?.[key];
-      if (v === undefined) continue;
-      if (!isPercent(v)) over.push(`${name}: ${key} ungueltig (${JSON.stringify(v)})`);
+      if (v === undefined) over.push(`${name}: ${key} fehlt`);
+      else if (!isPercent(v)) over.push(`${name}: ${key} ungueltig (${JSON.stringify(v)})`);
       else if (v >= limit) over.push(`${name}: ${key} ${v} % >= ${limit} %`);
     }
   }
@@ -110,8 +110,9 @@ export function checkObserve({ stat, file, sinceSec, now }) {
   const s = stat(file);
   if (!s.exists) return check("beobachtung", "Beobachtung", "stumm", `stumm, wahrscheinlich haengt: ${file} existiert nicht`);
   if (!(s.size > 0)) return check("beobachtung", "Beobachtung", "stumm", `stumm, wahrscheinlich haengt: ${file} ist leer`);
-  const ageSec = Math.round((now - s.mtimeMs) / 1000);
-  if (ageSec > sinceSec) {
+  const ageMs = now - s.mtimeMs;
+  const ageSec = Math.round(ageMs / 1000);
+  if (ageMs >= sinceSec * 1000) {
     return check("beobachtung", "Beobachtung", "stumm", `stumm, wahrscheinlich haengt: letzte Ausgabe vor ${ageSec} s (Grenze ${sinceSec} s)`);
   }
   return check("beobachtung", "Beobachtung", "ok", `Ausgabe vor ${Math.max(0, ageSec)} s (Grenze ${sinceSec} s)`);
