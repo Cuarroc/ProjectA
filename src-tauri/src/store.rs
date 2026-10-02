@@ -46,6 +46,11 @@ pub mod development_plan;
 pub mod development_runs;
 #[path = "store/discovery.rs"]
 pub mod discovery;
+#[allow(dead_code)] // App control and process termination follow in W5-04b.
+mod emergency_stop;
+#[cfg(test)]
+#[path = "store/emergency_stop_tests.rs"]
+mod emergency_stop_tests;
 #[path = "store/journal_watch.rs"]
 mod journal_watch;
 #[path = "store/queue_cancel.rs"]
@@ -899,6 +904,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         "exited_undelivered launch state for providers that exit before input delivery",
     ),
     (23, "append-only audit trail"),
+    (24, "global persistent emergency stop"),
 ];
 
 /// The schema version [`Store::migrate`] brings a database to: the highest
@@ -1255,6 +1261,7 @@ impl Store {
             21 => development_identity::apply_migration(tx).await,
             22 => development_launches::apply_undelivered_exit_migration(tx).await,
             23 => audit::apply_migration(tx).await,
+            24 => emergency_stop::apply_migration(tx).await,
             // A MIGRATIONS entry without its arm - a build error, not data.
             _ => Err(format!("no migration defined for version {version}")),
         }
@@ -4164,6 +4171,12 @@ pub(crate) mod tests {
                 .execute(&pool)
                 .await
                 .expect("create stub workers table");
+            // Migration 24 guards queue transitions; this baseline table
+            // exists in field databases too, without re-running baseline.
+            sqlx::query("CREATE TABLE task_queue (id TEXT PRIMARY KEY, status TEXT)")
+                .execute(&pool)
+                .await
+                .expect("create stub queue table");
             sqlx::query("INSERT INTO projects (id, payload) VALUES ('pj-1', 'keep me')")
                 .execute(&pool)
                 .await
