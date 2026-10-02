@@ -80,7 +80,7 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 | W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | ✓ #38 |
 | SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | ✓ #39 |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | offen |
-| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | offen |
+| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln |
 | SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | offen |
 
 PC-Setup außerhalb des Repos (Orchestrator, Nutzerentscheidungen 25.09.):
@@ -135,7 +135,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | offen |
 | W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später) | S | N | offen |
-| W4-01 | Benchmark, verkleinert (Vorschlag: 5 Aufgaben statt 20) | M | fR | offen |
+| W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | offen |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | offen |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers | S | mn | offen |
 | W4-04 | Release v1.5.0 | S | N | offen |
@@ -244,13 +244,13 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | # | Frage | Empfehlung | Status |
 |---|---|---|---|
 | E1 | HQ2-02: Demo und Studio ansehen, Richtung für die eine Oberfläche festlegen | ja, in M3 | offen (Nutzer) |
-| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | offen |
+| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
 | E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja (Nutzer 25.09.); einmal im Browser klicken | offen (Nutzer) |
 | E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | später (Nutzer 25.09.) |
 | E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | offen |
 | E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | später (Nutzer 25.09.) |
-| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | offen (Nutzer) |
-| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | offen (Nutzer) |
+| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | ✓ bestätigt (Nutzer 02.10.) |
+| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | ✓ bestätigt (Nutzer 02.10.) |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
