@@ -80,13 +80,11 @@ pub struct EnvPolicy {
     pub passthrough: Vec<String>,
 }
 
-/// The three isolation levels. The default is `allowlist` (W5-02b6, user
-/// decision 2026-09-24): an `agents.json` entry - or an `envPolicy` in it -
-/// that names no level runs under `allowlist`, whether it adds a new id or
-/// replaces a built-in. `inherit` must be asked for explicitly. `strict` is
-/// not the default because workers push their own branches today; see
-/// `.pa/report_w5-02b.md`. The built-ins in `resources/agent-defaults.json`
-/// name `allowlist` explicitly anyway (W5-02b2), Kimi included since W5-02b6.
+/// The three isolation levels. The default is `strict` (W5-02b4): an
+/// `agents.json` entry - or an `envPolicy` in it - that names no level runs
+/// without GitHub credentials, whether it adds a new id or replaces a built-in.
+/// `inherit` and `allowlist` must be asked for explicitly. ProjectA's runner
+/// host pushes committed worker branches instead.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EnvIsolation {
@@ -94,11 +92,11 @@ pub enum EnvIsolation {
     Inherit,
     /// Only allowlisted variables, secrets and `SSH_AUTH_SOCK` removed. Git
     /// and `gh` still find the user's stored credentials.
-    #[default]
     Allowlist,
     /// `allowlist`, plus `gh` pointed at an empty config and git's
     /// credential helpers, prompts and ssh transport switched off. Local
     /// commits keep working; pushes and `gh` calls fail without asking.
+    #[default]
     Strict,
 }
 
@@ -699,9 +697,8 @@ mod tests {
         );
     }
 
-    /// W5-02b2 and W5-02b6 (user decisions 2026-09-24): every built-in runs
-    /// under `allowlist`; `strict` is not a default yet, workers still push
-    /// their own branches. The CLIs keep their login in files under the
+    /// W5-02b4: every built-in runs under `strict`; ProjectA's runner host
+    /// pushes committed worker branches. The CLIs keep their login in files under the
     /// user's home, so no built-in passes a secret through. Claude keeps
     /// `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, a non-secret CLI setting the user
     /// sets machine-wide that the `TOKEN` marker would otherwise drop. Kimi
@@ -709,13 +706,13 @@ mod tests {
     /// the four variables it finds that home through: they are on the base
     /// allowlist today, and the profile keeps them even if that list shrinks.
     #[test]
-    fn builtin_profiles_all_default_to_allowlist() {
+    fn builtin_profiles_all_default_to_strict() {
         let profiles = default_profiles();
         assert!(profiles.iter().any(|p| p.id == "kimi"), "kimi built-in");
         for profile in &profiles {
             assert_eq!(
                 profile.env_policy.isolation,
-                EnvIsolation::Allowlist,
+                EnvIsolation::Strict,
                 "built-in {} has the wrong isolation",
                 profile.id
             );
@@ -740,7 +737,7 @@ mod tests {
             .into_iter()
             .find(|p| p.id == "claude")
             .expect("claude");
-        assert_eq!(builtin.env_policy.isolation, EnvIsolation::Allowlist);
+        assert_eq!(builtin.env_policy.isolation, EnvIsolation::Strict);
         let raw = r#"[{ "id": "claude", "name": "Claude Code", "command": "claude",
                         "envPolicy": { "isolation": "inherit" } }]"#;
         let overrides: ProfilesFile = serde_json::from_str(raw).expect("parse");
@@ -749,13 +746,13 @@ mod tests {
         assert_eq!(claude.env_policy.isolation, EnvIsolation::Inherit);
     }
 
-    /// W5-02b6 (user decision 2026-09-24): an `agents.json` entry that does
-    /// not name a level runs under `allowlist`, not `inherit` - a new id, a
+    /// W5-02b4: an `agents.json` entry that does not name a level runs under
+    /// `strict`, not `inherit` - a new id, a
     /// same-id replacement of a built-in, and an `envPolicy` that only lists
     /// `passthrough` alike. Going back to `inherit` takes an explicit entry.
     #[test]
-    fn agents_json_entry_without_env_policy_reads_as_allowlist() {
-        assert_eq!(EnvPolicy::default().isolation, EnvIsolation::Allowlist);
+    fn agents_json_entry_without_env_policy_reads_as_strict() {
+        assert_eq!(EnvPolicy::default().isolation, EnvIsolation::Strict);
         let raw = r#"[{ "id": "my-agent", "name": "Mine", "command": "mine" },
                       { "id": "claude", "name": "Claude Code", "command": "claude" },
                       { "id": "kimi", "name": "Kimi", "command": "kimi",
@@ -766,14 +763,14 @@ mod tests {
             let profile = merged.iter().find(|p| p.id == id).expect(id);
             assert_eq!(
                 profile.env_policy.isolation,
-                EnvIsolation::Allowlist,
+                EnvIsolation::Strict,
                 "{id} without an isolation level"
             );
         }
         // The profile as a whole, e.g. a stored one without the field.
         let stored: AgentProfile =
             serde_json::from_str(r#"{ "id": "x", "name": "x", "command": "x" }"#).expect("parse");
-        assert_eq!(stored.env_policy.isolation, EnvIsolation::Allowlist);
+        assert_eq!(stored.env_policy.isolation, EnvIsolation::Strict);
     }
 
     /// W5-02a: a coordinator is strict whatever its profile asked for - even
@@ -795,8 +792,8 @@ mod tests {
         assert_eq!(profile.env_policy.isolation, EnvIsolation::Inherit);
     }
 
-    /// W5-02b6: `envPolicy` is how an entry goes back to `inherit` now that
-    /// the default is `allowlist`, so the diagnostics must not call it an
+    /// `envPolicy` is how an entry goes back to `inherit` now that the default
+    /// is `strict`, so the diagnostics must not call it an
     /// ignored field. A really unknown key still warns.
     #[test]
     fn diagnostics_accept_env_policy_as_a_runtime_field() {
