@@ -84,6 +84,25 @@ fn os_error(what: &str) -> String {
     format!("{what}: {}", std::io::Error::last_os_error())
 }
 
+/// The ACE at `index` of `acl`, never null. `GetAce` hands back a pointer
+/// into the ACL's own buffer (no allocation, nothing to free), so it stays
+/// valid as long as `acl` does; callers keep the ACL buffer alive for the
+/// whole use.
+///
+/// # Safety
+/// `acl` must point to a valid, live ACL.
+unsafe fn ace_at(
+    acl: *mut ACL,
+    index: u32,
+    what: &str,
+) -> Result<std::ptr::NonNull<core::ffi::c_void>, String> {
+    let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
+    if GetAce(acl, index, &mut ace) == 0 {
+        return Err(os_error(what));
+    }
+    std::ptr::NonNull::new(ace).ok_or_else(|| format!("{what}: ACE pointer is null"))
+}
+
 /// Read `class` (`TokenUser` or `TokenOwner`) of this process's token into a
 /// DWORD-aligned buffer holding just the SID.
 fn token_sid(class: TOKEN_INFORMATION_CLASS, label: &str) -> Result<Vec<u32>, String> {
@@ -274,11 +293,8 @@ fn restrict_handle(file: &File, inherit_children: bool) -> Result<(), String> {
             return Err(os_error("add owner ACE"));
         }
         if inherit_children {
-            let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
-            if GetAce(acl, 0, &mut ace) == 0 || ace.is_null() {
-                return Err(os_error("mark owner ACE inheritable"));
-            }
-            (*(ace as *mut ACE_HEADER)).AceFlags =
+            let ace = ace_at(acl, 0, "mark owner ACE inheritable")?;
+            (*ace.as_ptr().cast::<ACE_HEADER>()).AceFlags =
                 (OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE) as u8;
         }
         let mut descriptor: SECURITY_DESCRIPTOR = std::mem::zeroed();
@@ -441,10 +457,7 @@ fn read_security(file: &File) -> Result<SecurityRead, String> {
                 return Err(os_error("read credential ACL entries"));
             }
             for index in 0..size.AceCount {
-                let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
-                if GetAce(acl, index, &mut ace) == 0 || ace.is_null() {
-                    return Err(os_error("read credential ACE"));
-                }
+                let ace = ace_at(acl, index, "read credential ACE")?.as_ptr();
                 let header = *(ace as *const ACE_HEADER);
                 let inherited = u32::from(header.AceFlags) & INHERITED_ACE != 0;
                 if header.AceType == ACCESS_ALLOWED_ACE_TYPE {

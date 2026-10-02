@@ -173,6 +173,7 @@ fn read_dacl(path: &Path) -> Dacl {
         for index in 0..size.AceCount {
             let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
             assert_ne!(GetAce(acl, index, &mut ace), 0);
+            assert!(!ace.is_null(), "GetAce reported success without an ACE");
             let header = &*(ace as *const ACE_HEADER);
             let is_user = matches!(header.AceType, ALLOWED | DENIED) && {
                 let sid = std::ptr::addr_of!((*(ace as *const ACCESS_ALLOWED_ACE)).SidStart);
