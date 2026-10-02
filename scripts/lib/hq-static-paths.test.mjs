@@ -30,7 +30,10 @@ before(async () => {
   mkdirSync(docs, { recursive: true });
   writeFileSync(join(docs, "index.html"), "<h1>safe</h1>");
   writeFileSync(join(fixture, "secret.txt"), "outside static root");
-  symlinkSync(join(fixture, "secret.txt"), join(docs, "leak.txt"));
+  const outside = join(fixture, "outside");
+  mkdirSync(outside);
+  writeFileSync(join(outside, "secret.txt"), "outside static root");
+  symlinkSync(outside, join(docs, "leak"), process.platform === "win32" ? "junction" : "dir");
   hqPort = await new Promise((resolve, reject) => {
     hqProcess = spawn(process.execPath, [script], {
       cwd: fixture,
@@ -47,8 +50,11 @@ before(async () => {
   });
 });
 
-after(() => {
-  hqProcess?.kill();
+after(async () => {
+  if (hqProcess && hqProcess.exitCode === null) {
+    hqProcess.kill();
+    await new Promise((resolve) => hqProcess.once("exit", resolve));
+  }
   if (fixture) rmSync(fixture, { recursive: true, force: true });
 });
 
@@ -57,7 +63,7 @@ async function assertStaticRequestsStayContained() {
   assert.equal(safe.status, 200);
   assert.match(safe.body, /safe/);
 
-  for (const path of ["/%2e%2e/secret.txt", "/%2e%2e%2fsecret.txt", "/tmp/secret.txt", "/leak.txt"]) {
+  for (const path of ["/%2e%2e/secret.txt", "/%2e%2e%2fsecret.txt", "/tmp/secret.txt", "/leak/secret.txt"]) {
     const response = await get(path);
     assert.equal(response.status, 404, `${path} must stay outside the static root`);
     assert.doesNotMatch(response.body, /outside static root/);
