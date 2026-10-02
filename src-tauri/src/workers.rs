@@ -73,8 +73,8 @@ pub mod native_launch;
 #[allow(dead_code)] // Activation still requires verified provider/resource policy.
 pub mod native_runner;
 
-/// The agent an orchestrator runs. `--append-system-prompt` is a Claude Code
-/// flag, so the role only makes sense for that profile.
+/// The agent an orchestrator runs. Its prompt and tool vocabulary are written
+/// for Claude Code, so the role only makes sense for that profile.
 pub const ORCHESTRATOR_PROFILE: &str = "claude";
 
 /// Opens every error where the caller named something that does not exist.
@@ -1036,6 +1036,17 @@ fn with_role_prompt(
             profile.args.push(flag.clone());
             profile.args.push(path.to_string_lossy().into_owned());
         }
+        SystemPrompt::ConfigFile { flag, key, ext } => {
+            let path = crate::hooks::write_worker_file(worker_id, "role", ext, addition)?;
+            let quoted = serde_json::to_string(&path.to_string_lossy()).map_err(|error| {
+                format!(
+                    "cannot encode role prompt path for '{}': {error}",
+                    profile.id
+                )
+            })?;
+            profile.args.push(flag.clone());
+            profile.args.push(format!("{key}={quoted}"));
+        }
         SystemPrompt::Unsupported => {
             return Err(format!(
                 "{ERR_REFUSED}profile '{}' has no channel for a system prompt, so it cannot carry a role variant",
@@ -1222,6 +1233,17 @@ fn with_system_prompt(
             let path = crate::hooks::write_worker_file(worker_id, "agent", ext, &prompt)?;
             profile.args.push(flag.clone());
             profile.args.push(path.to_string_lossy().into_owned());
+        }
+        SystemPrompt::ConfigFile { flag, key, ext } => {
+            let path = crate::hooks::write_worker_file(worker_id, "agent", ext, &prompt)?;
+            let quoted = serde_json::to_string(&path.to_string_lossy()).map_err(|error| {
+                format!(
+                    "cannot encode system prompt path for '{}': {error}",
+                    profile.id
+                )
+            })?;
+            profile.args.push(flag.clone());
+            profile.args.push(format!("{key}={quoted}"));
         }
         SystemPrompt::Unsupported => {
             return Err(format!(
@@ -5581,15 +5603,8 @@ mod tests {
             .expect("respawn");
 
         let args = agents.args.lock().unwrap()[1].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the respawned worker carries its role again");
-        assert!(
-            args[flag + 1].contains("Schreibe den Test"),
-            "{}",
-            args[flag + 1]
-        );
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
+        assert!(prompt.contains("Schreibe den Test"), "{prompt}");
         assert_eq!(
             wait_for_system_message(&fx.store, &worker.id, "Rolle: Test-Fixer").await,
             "Rolle: Test-Fixer"
@@ -6255,11 +6270,7 @@ mod tests {
             .unwrap();
 
         let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the orchestrator carries a system prompt");
-        let prompt = &args[flag + 1];
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
 
         assert!(prompt.contains("Orchestrator"), "{prompt}");
         assert!(prompt.contains(&fx.project_id), "{prompt}");
@@ -6304,7 +6315,7 @@ mod tests {
 
         assert_eq!(respawned.kind, KIND_ORCHESTRATOR);
         assert_eq!(respawned.status, STATUS_RUNNING);
-        assert!(agents.args.lock().unwrap()[1].contains(&"--append-system-prompt".to_string()));
+        assert!(agents.args.lock().unwrap()[1].contains(&"--append-system-prompt-file".to_string()));
 
         // An ordinary worker is respawned without one.
         let plain = create_worker(&fx.store, &agents, &fx.project_id, "task", "claude", None)
@@ -6313,7 +6324,7 @@ mod tests {
         let plain = respawn_worker(&fx.store, &agents, &plain.id).await.unwrap();
         assert_eq!(plain.kind, KIND_WORKER);
         let args = agents.args.lock().unwrap();
-        assert!(!args[args.len() - 1].contains(&"--append-system-prompt".to_string()));
+        assert!(!args[args.len() - 1].contains(&"--append-system-prompt-file".to_string()));
     }
 
     #[tokio::test]
@@ -6376,13 +6387,10 @@ mod tests {
         assert_eq!(respawned.kind, KIND_QUEEN);
         assert_eq!(respawned.status, STATUS_RUNNING);
         let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the respawned queen carries a system prompt");
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
         // The domain survives the round trip through the task text.
-        assert!(args[flag + 1].contains("Backend-API"), "{}", args[flag + 1]);
-        assert!(args[flag + 1].contains("wk-queen"), "{}", args[flag + 1]);
+        assert!(prompt.contains("Backend-API"), "{prompt}");
+        assert!(prompt.contains("wk-queen"), "{prompt}");
     }
 
     #[test]
@@ -6404,6 +6412,14 @@ mod tests {
             enabled: true,
             env_policy: Default::default(),
         }
+    }
+
+    fn prompt_file_contents(args: &[String], flag: &str) -> String {
+        let position = args
+            .iter()
+            .position(|arg| arg == flag)
+            .unwrap_or_else(|| panic!("missing {flag} in {args:?}"));
+        std::fs::read_to_string(&args[position + 1]).expect("read generated prompt file")
     }
 
     fn demo_project() -> Project {
@@ -6433,6 +6449,59 @@ mod tests {
             p.args[1].contains("Orchestrator"),
             "prompt text is the second arg"
         );
+    }
+
+    /// KI-15: built-in adapters must use a prompt file whenever their CLI
+    /// supports one, so the coordinator's instructions never appear in argv.
+    #[test]
+    fn claude_coordinator_prompt_is_not_exposed_in_argv() {
+        let claude = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "claude")
+            .expect("built-in Claude profile");
+        let prompt = orchestrator_system_prompt("ProjectA", "pj-1");
+        let profile = with_system_prompt(&claude, "wk-ki15", prompt.clone())
+            .expect("Claude accepts a coordinator prompt");
+
+        assert!(
+            profile.args.iter().all(|arg| !arg.contains(&prompt)),
+            "the prompt must not appear in argv: {:?}",
+            profile.args
+        );
+        let flag = profile
+            .args
+            .iter()
+            .position(|arg| arg == "--append-system-prompt-file")
+            .expect("Claude receives its prompt through the documented file flag");
+        let path = std::path::PathBuf::from(&profile.args[flag + 1]);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), prompt);
+        crate::hooks::remove_worker_files("wk-ki15");
+    }
+
+    /// KI-15: Codex exposes `model_instructions_file` through its config
+    /// override, so ProjectA must pass a path instead of prompt text.
+    #[test]
+    fn codex_coordinator_prompt_is_not_exposed_in_argv() {
+        let codex = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "codex")
+            .expect("built-in Codex profile");
+        let prompt = orchestrator_system_prompt("ProjectA", "pj-1");
+        let profile = with_system_prompt(&codex, "wk-ki15-codex", prompt.clone())
+            .expect("Codex accepts a coordinator prompt");
+
+        assert!(profile.args.iter().all(|arg| !arg.contains(&prompt)));
+        let flag = profile
+            .args
+            .iter()
+            .position(|arg| arg == "--config")
+            .expect("Codex receives a config override");
+        let path = profile.args[flag + 1]
+            .strip_prefix("model_instructions_file=")
+            .expect("override points model_instructions_file at the prompt")
+            .trim_matches('"');
+        assert_eq!(std::fs::read_to_string(path).unwrap(), prompt);
+        crate::hooks::remove_worker_files("wk-ki15-codex");
     }
 
     #[test]
@@ -9350,15 +9419,8 @@ mod tests {
             worker.worktree_path
         );
         let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the worker carries its role");
-        assert!(
-            args[flag + 1].contains("Schreibe den Test"),
-            "{}",
-            args[flag + 1]
-        );
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
+        assert!(prompt.contains("Schreibe den Test"), "{prompt}");
         // The board row is what a respawn and a pull request read.
         let stored = fx.store.get_worker(&worker.id).await.unwrap().unwrap();
         assert_eq!(stored.task, "[Test-Fixer] make the tests pass");

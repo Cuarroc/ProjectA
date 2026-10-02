@@ -300,7 +300,17 @@ Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 
 - Arg-mode `--append-system-prompt` bleibt argv (Claude/Scout/Orchestrator);
   File-mode nur wo das CLI ein Prompt-File-Flag hat — Claude hat keines, ein
-  Fake-File wäre eine Lüge — Zurücknehmen: sobald Claude ein offizielles Flag hat.
+  Fake-File wäre eine Lüge — **zurückgenommen 03.10.2026:** `claude --help`
+  nennt `--append-system-prompt-file`, und `claude --append-system-prompt-file`
+  bestätigt den Dateiparameter ohne Modellaufruf. Das eingebaute Claude-Profil
+  nutzt deshalb den privaten Prompt-Dateipfad wie Kimi. Codex 0.160.0 nimmt
+  laut `codex --help` Konfigurationswerte über `--config`; die offizielle
+  Konfigurationsreferenz dokumentiert `model_instructions_file`, daher erhält
+  das Built-in einen dateibasierten `configFile`-Kanal. `opencode --help`
+  (1.18.34) zeigt keinen entsprechenden Systemprompt-Dateikanal und bleibt
+  `unsupported`. Die Ollama-CLI war auf der Prüfmaschine nicht installiert;
+  ihr bestehendes `unsupported` wurde daher nicht zu einer unbelegten
+  Fähigkeitsbehauptung aufgewertet.
 
 ## 2026-09-04
 
