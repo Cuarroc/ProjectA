@@ -1496,4 +1496,3 @@ wall clock, linux + windows.
 - **Reverse when:** only after a closed, machine-checked allowlist can prove
   that every skipped file is absent from every gate input. Reconsider the
   queue rule once queue runs of docs-only PRs show up in the minute measurement.
-

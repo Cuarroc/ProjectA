@@ -15,7 +15,7 @@
         "readinessMarker": "❯ Try \""
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": ["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] }
+      "envPolicy": { "isolation": "strict", "passthrough": ["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] }
     },
     {
       "id": "kimi", "name": "Kimi CLI", "command": "kimi", "args": ["--auto"],
@@ -30,7 +30,7 @@
         "readinessMarker": null
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": ["USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA"] }
+      "envPolicy": { "isolation": "strict", "passthrough": ["USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA"] }
     },
     {
       "id": "codex", "name": "Codex CLI", "command": "codex", "args": [],
@@ -40,7 +40,7 @@
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask Codex to do anything"
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
     },
     {
       "id": "opencode", "name": "OpenCode", "command": "opencode", "args": [],
@@ -50,7 +50,7 @@
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
     },
     {
       "id": "opencode-glm-53-flash", "name": "OpenCode GLM 5.3 Flash", "command": "opencode", "args": ["-m", "opencode-go/glm-5.3-flash"],
@@ -60,7 +60,7 @@
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
     },
     {
       "id": "opencode-ollama-deepseek-v4-flash", "name": "OpenCode DeepSeek V4 Flash (Ollama Cloud)", "command": "opencode", "args": ["-m", "ollama/deepseek-v4-flash:cloud"],
@@ -70,7 +70,7 @@
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask anything"
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
     },
     {
       "id": "ollama", "name": "Ollama", "command": "ollama", "args": ["run", "llama3.2"],
@@ -80,7 +80,7 @@
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": null
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
     },
     {
       "id": "ollama-coder", "name": "Ollama Cloud Coder (deepseek-v4-flash)", "command": "ollama", "args": ["run", "deepseek-v4-flash:cloud"],
@@ -90,7 +90,7 @@
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": null
       },
       "env": {}, "fallback": null, "enabled": true,
-      "envPolicy": { "isolation": "allowlist", "passthrough": [] }
+      "envPolicy": { "isolation": "strict", "passthrough": [] }
     }
   ]
 }
