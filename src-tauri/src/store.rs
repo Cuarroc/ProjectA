@@ -21,6 +21,8 @@ use serde::Serialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::{FromRow, Sqlite, SqlitePool, Transaction};
 
+#[allow(dead_code)] // The first writers (kill switch, W5-04a) land in later packages.
+pub mod audit;
 #[path = "store/continuous.rs"]
 mod continuous;
 #[allow(dead_code)]
@@ -896,6 +898,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         22,
         "exited_undelivered launch state for providers that exit before input delivery",
     ),
+    (23, "append-only audit trail"),
 ];
 
 /// The schema version [`Store::migrate`] brings a database to: the highest
@@ -1251,6 +1254,7 @@ impl Store {
             20 => development_plan::apply_migration(tx).await,
             21 => development_identity::apply_migration(tx).await,
             22 => development_launches::apply_undelivered_exit_migration(tx).await,
+            23 => audit::apply_migration(tx).await,
             // A MIGRATIONS entry without its arm - a build error, not data.
             _ => Err(format!("no migration defined for version {version}")),
         }

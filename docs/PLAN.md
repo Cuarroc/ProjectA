@@ -113,7 +113,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| W5-05 | Prüfpfad (append-only, Trigger gegen UPDATE/DELETE) | S | st | offen |
+| W5-05 | Prüfpfad (append-only, Trigger gegen UPDATE/DELETE) | S | st | PR #44 |
 | W5-04a | Not-Aus im Store, **global ohne Projektrahmen** (Schnitt 25.09., W5-01a bleibt geparkt) | S | st | offen |
 | W5-04b | Not-Aus in der App (10 s Frist) | S | mn | offen |
 | W5-04c | Not-Aus in `pa` | S | pa | offen |
