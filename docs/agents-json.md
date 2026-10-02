@@ -46,7 +46,7 @@ umleitet.
 
 ## `envPolicy` — welche Umgebung der Agent erbt
 
-Stand: 24.09.2026 (W5-02b, W5-02b2, W5-02b6). Quelle der Wahrheit sind
+Stand: 24.09.2026 (W5-02b, W5-02b2, W5-02b4, W5-02b6). Quelle der Wahrheit sind
 `profiles.rs` (`EnvPolicy`, `EnvIsolation`) und `pty/agent_env.rs` (`ALLOWED`,
 `ALLOWED_PREFIXES`, `looks_secret`).
 

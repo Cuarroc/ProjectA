@@ -1046,6 +1046,14 @@ fn with_role_prompt(
     Ok(profile)
 }
 
+/// The Git handoff every worker is told: commit locally, never push or call
+/// `gh`. Under the strict environment default a push would fail anyway; the
+/// Runner host pushes the branch and opens the pull request ([`crate::gh::create_pr`]).
+pub const GIT_HANDOFF: &str = "\
+GIT-HANDOFF\n\
+- Aenderungen lokal committen, aber nicht pushen; kein `gh` aufrufen.\n\
+- Der ProjectA Runner-Host pusht den Branch und oeffnet den Pull Request.";
+
 /// The one rule about `pa ask` that every agent in the fleet is given
 /// (Phase 21).
 ///
@@ -1057,11 +1065,6 @@ fn with_role_prompt(
 ///
 /// Deliberately short, and identical for workers and coordinators: a rule that
 /// is worded differently per role is a rule that gets read as advice.
-pub const GIT_HANDOFF: &str = "\
-GIT-HANDOFF\n\
-- Aenderungen lokal committen, aber nicht pushen; kein `gh` aufrufen.\n\
-- Der ProjectA Runner-Host pusht den Branch und oeffnet den Pull Request.";
-
 pub const ASK_GUIDANCE: &str = "\
 ENTSCHEIDUNGEN\n\
 - Bei wichtigen, blockierenden Entscheidungen frag den Menschen:\n\
@@ -6527,6 +6530,14 @@ mod tests {
         assert!(prompt.contains("Lies zu Beginn einer Sitzung"), "{prompt}");
         assert!(prompt.contains("`MEMORY.md`"), "{prompt}");
         assert_eq!(orchestrator_task("ProjectA"), "Orchestrator for ProjectA");
+    }
+
+    /// W5-02b4: a plain worker's assignment ends with the Git handoff.
+    #[test]
+    fn plain_worker_guidance_carries_the_git_handoff() {
+        let guidance = ask_guidance("pj-1", "wk-1");
+        assert!(guidance.starts_with(GIT_HANDOFF), "{guidance}");
+        assert!(guidance.contains("Runner-Host pusht"), "{guidance}");
     }
 
     /// W5-02b4: coordinators must not hand the runner host's GitHub
