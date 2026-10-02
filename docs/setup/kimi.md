@@ -1,6 +1,11 @@
 # Kimi Code CLI (Kimi K3)
 
-Rolle: Frontend-/HQ-Worker, Reviews. Zurück zur Übersicht: [README.md](README.md).
+> **Stand 02.10.2026: Das Kimi-Code-Abo ist abgelaufen.** Kimi ist kein Worker
+> mehr; diese Seite gilt erst wieder, wenn der Nutzer ein neues Abo abschließt.
+> Das Review-Modell `kimi-k3:cloud` läuft über Ollama Cloud und ist davon nicht
+> betroffen ([ollama-reviewers.md](ollama-reviewers.md)).
+
+Rolle: früherer Frontend-/HQ-Worker. Zurück zur Übersicht: [README.md](README.md).
 
 ## Welche Harness
 
