@@ -532,6 +532,7 @@ fn agent_error(error: String) -> Response {
         || error.contains("candidate does not match")
         || error.contains("candidate must be bound")
         || error.starts_with("candidate scope check failed:")
+        || error.starts_with("ambiguous candidate observation:")
     {
         Response::error(409, error)
     } else if error.contains("cannot be in the future")
@@ -592,6 +593,17 @@ mod tests {
             assert_eq!(agent_error(error.into()).status, 409);
         }
         assert_eq!(agent_error("database pool unavailable".into()).status, 500);
+    }
+    #[test]
+    fn ambiguous_candidate_observations_are_conflicts() {
+        assert_eq!(
+            agent_error(
+                "ambiguous candidate observation: observedAt 10 ties with the bound candidate; the order within one second is unknown"
+                    .into()
+            )
+            .status,
+            409
+        );
     }
     /// The store's review refusals, verbatim from `record_development_review`.
     #[test]
