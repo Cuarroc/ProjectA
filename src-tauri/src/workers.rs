@@ -6455,6 +6455,32 @@ mod tests {
         crate::hooks::remove_worker_files("wk-ki15");
     }
 
+    /// KI-15: Codex exposes `model_instructions_file` through its config
+    /// override, so ProjectA must pass a path instead of prompt text.
+    #[test]
+    fn codex_coordinator_prompt_is_not_exposed_in_argv() {
+        let codex = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "codex")
+            .expect("built-in Codex profile");
+        let prompt = orchestrator_system_prompt("ProjectA", "pj-1");
+        let profile = with_system_prompt(&codex, "wk-ki15-codex", prompt.clone())
+            .expect("Codex accepts a coordinator prompt");
+
+        assert!(profile.args.iter().all(|arg| !arg.contains(&prompt)));
+        let flag = profile
+            .args
+            .iter()
+            .position(|arg| arg == "--config")
+            .expect("Codex receives a config override");
+        let path = profile.args[flag + 1]
+            .strip_prefix("model_instructions_file=")
+            .expect("override points model_instructions_file at the prompt")
+            .trim_matches('"');
+        assert_eq!(std::fs::read_to_string(path).unwrap(), prompt);
+        crate::hooks::remove_worker_files("wk-ki15-codex");
+    }
+
     #[test]
     fn file_system_prompt_writes_the_prompt_and_passes_the_path() {
         let caps = crate::capabilities::AgentCapabilities {
