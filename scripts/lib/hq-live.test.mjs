@@ -11,6 +11,7 @@ import {
   mergeProfileViews,
   resolveAgentsFile,
 } from "./hq-live-lib.mjs";
+import * as lib from "./hq-live-lib.mjs";
 
 // The proxy resolves the API descriptor like Tauri does: APPDATA (Roaming)
 // before LOCALAPPDATA on Windows. Asserted against the script source so a
@@ -138,4 +139,12 @@ test("resolveAgentsFile picks the most recently built binary, debug or release",
 test("resolveAgentsFile falls back to debug when nothing was built yet", () => {
   const fs = { existsSync: () => false, statSync: () => ({ mtimeMs: 0 }) };
   assert.equal(resolveAgentsFile("root", {}, fs), join("root", "src-tauri", "target", "debug", "agents.json"));
+});
+
+// The live cockpit's progress figure counts milestone packages (PLAN.md
+// tables), not the retired F0-F8 packages that showed as "waiting".
+test("snapshotProgress counts done packages over all milestone packages", () => {
+  const snapshot = { milestones: [{ id: "M1", done: 2, total: 2 }, { id: "M2", done: 1, total: 4 }, { id: "M3", done: 0, total: 3 }] };
+  assert.deepEqual(lib.snapshotProgress(snapshot), { packagesDone: 3, packagesTotal: 9, percent: 33 });
+  assert.deepEqual(lib.snapshotProgress({}), { packagesDone: 0, packagesTotal: 0, percent: 0 });
 });

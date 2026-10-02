@@ -22,11 +22,11 @@ test("snapshotStats and fleetStats aggregate what the pages show", () => {
   const snap = snapshotStats({
     findings: [{ klass: "FACT" }, { klass: "FACT" }, { klass: "CLAIM" }],
     specs: [{ lane: "serial", startable: true }, { lane: "serial", startable: false }, { lane: "parallel" }],
-    packages: [{ current: "done" }, { current: "active" }],
+    milestones: [{ packages: [{ state: "done" }, { state: "open" }] }, { packages: [{ state: "done" }] }],
   });
   assert.equal(snap.findings.FACT, 2);
   assert.deepEqual(snap.specs, { total: 3, serial: 2, parallel: 1, startable: 2, locked: 1 });
-  assert.equal(snap.packages.done, 1);
+  assert.deepEqual(snap.packages, { total: 3, done: 2, open: 1 });
   const fleet = fleetStats([{ column: "working", contextUsage: { used: 50, total: 100 } }, { column: "working" }, { column: "done" }]);
   assert.deepEqual(fleet, { workers: 3, columns: { working: 2, done: 1 }, contextPercent: 50 });
 });

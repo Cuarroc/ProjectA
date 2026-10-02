@@ -30,7 +30,7 @@ class Node {
 }
 
 function renderNowLanes(data) {
-  const byId = { mount: new Node("div"), lane: new Node("div"), "mini-dag": new Node("svg") };
+  const byId = { mount: new Node("div"), lane: new Node("div") };
   const document = {
     getElementById: (id) => byId[id] || null,
     querySelector: () => null,
