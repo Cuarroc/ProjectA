@@ -63,8 +63,15 @@ updates:
       - dependency-name: "@xterm/addon-fit"
       - dependency-name: "@xterm/addon-search"
 
+  # "/" deckt nur .github/workflows/ ab. Die Composite Action unter
+  # .github/actions/ hat eigene `uses:`-Pins; ohne den zweiten Eintrag sah
+  # Dependabot sie nie, und ihre Pins blieben hinter denen der Workflows
+  # zurueck (install-action v2.87.9 statt v2.87.18, 02.10.2026).
+  # red-first.sh erkennt action.yml dort schon als Dependabot-Manifest.
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "monthly"
     groups:

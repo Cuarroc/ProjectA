@@ -46,6 +46,11 @@ jobs:
     # Workflows ohne environment erreichbar; ihre Kopien muessen nach sicherer
     # Migration entfernt werden. Der Eintrag allein erzwingt keine Freigabe.
     environment: release
+    # Ohne Angabe gilt GitHubs Standard von 360 Minuten - auf Windows-Minuten,
+    # die doppelt zaehlen. Ein haengender Installer-Build waere so bis zu
+    # 12 Stunden Kontingent. 90 Minuten sind ein Vielfaches eines normalen
+    # Release-Baus (ci.yml: Windows-Bahn 35 Minuten).
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
