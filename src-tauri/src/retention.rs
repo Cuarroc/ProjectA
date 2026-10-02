@@ -556,6 +556,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn later_sweep_does_not_replace_an_archive_from_the_same_day() {
+        let (dir, store) = fixture().await;
+        let project = store.create_project("one", "/tmp/one").await.unwrap();
+        add_worker(&store, &project.id, "wk-1").await;
+        store.set_setting(SETTING_MESSAGES_DAYS, "1").await.unwrap();
+        let first = NOW - DAY_SECS - 2 * 3600;
+        let second = NOW - DAY_SECS + 2 * 3600;
+        store
+            .insert_message_at("wk-1", "first batch", "user", first)
+            .await
+            .unwrap();
+        store
+            .insert_message_at("wk-1", "second batch", "agent", second)
+            .await
+            .unwrap();
+
+        let archive = dir.path().join("archive");
+        let first_report = sweep_at(&store, &archive, NOW).await;
+        let second_report = sweep_at(&store, &archive, NOW + DAY_SECS).await;
+
+        assert_eq!(first_report.messages_deleted, 1);
+        assert_eq!(second_report.messages_deleted, 1);
+        assert_ne!(first_report.archives, second_report.archives);
+        let first_text = std::fs::read_to_string(&first_report.archives[0]).unwrap();
+        let second_text = std::fs::read_to_string(&second_report.archives[0]).unwrap();
+        assert!(first_text.contains("first batch"), "{first_text}");
+        assert!(second_text.contains("second batch"), "{second_text}");
+    }
+
+    #[tokio::test]
     async fn a_failed_export_deletes_nothing() {
         let (dir, store) = fixture().await;
         let project = store.create_project("one", "/tmp/one").await.unwrap();
