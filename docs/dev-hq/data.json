@@ -1,31 +1,31 @@
 {
-  "generatedAt": "2026-10-02T11:53:16.621Z",
-  "commit": "9b51e43",
-  "dirty": true,
+  "generatedAt": "2026-10-02T23:03:44.670Z",
+  "commit": "d11f4f0",
+  "dirty": false,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "842a7b5c517082e215b761b42dc8c90a41734de3e241c098a21cb760a3616aca"
+      "sha256": "b5837e86db8b33cf31314e1a5ba28630659ebe1733a9b55c06e379a37258b73c"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "ce3794a025cd5d30799109cd1401519542900f4e8faf7ae045ffdd380a83c063"
+      "sha256": "f0e58b6d5228f1ba55e9c9a529eb785817680346875d8c3c935a567bd208c933"
     },
     {
       "path": ".pa/task_w1-05.md",
-      "sha256": "45ebb9aaee6612a77ad9c5a63d094aa1d62ab19239e231685934bf761060e9b3"
+      "sha256": "74c2c04f6de62573d2dfbd8b7679ff65c1d3f6e461776bdd6a757763fa893c62"
     },
     {
       "path": ".pa/task_f_core3_delivery.md",
-      "sha256": "5f8b67e3368c2011872aa4548530a5e503d0ed21cc820e8cd191e9ad176c40f3"
+      "sha256": "dc4e7ffdf3ec813b13dcdf7e42553f2aa35daa869a059090908ccdd5fd12425e"
     },
     {
       "path": ".pa/task_w1-20.md",
-      "sha256": "f69367fc49f659b82a655830a7647f03e119c3bf51918132b04def25ba2ac46c"
+      "sha256": "ad531d9cb054ca633dd58c61d37f95b9fb0748397edd676fbd1007cab87a1401"
     },
     {
       "path": ".pa/task_w1-17.md",
-      "sha256": "82385478c94ddf5bf8f14a399c4a06d027adcd865a04645b533b14965e4750f9"
+      "sha256": "23d73f19ae91ff4a79ed6cc4704a3cdeb097bbbd5cc225df5659c48cd8048bd7"
     }
   ],
   "warnings": [],
@@ -114,7 +114,7 @@
   "milestones": [
     {
       "id": "M1",
-      "title": "Alles Laufende gelandet, App startbar",
+      "title": "Alles Laufende gelandet, App startbar ✓ erreicht",
       "packages": [
         {
           "id": "W2-03",
@@ -349,9 +349,22 @@
           "title": "Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv",
           "size": "M",
           "lane": "doc",
-          "stand": "dieses Paket",
-          "state": "in_progress",
-          "prNumbers": []
+          "stand": "✓ #26",
+          "state": "done",
+          "prNumbers": [
+            26
+          ]
+        },
+        {
+          "id": "PLAN-SYNC",
+          "title": "Gemergte Pakete seit 25.09.2026 und M1-Status im Plan nachführen",
+          "size": "S",
+          "lane": "doc",
+          "stand": "PR #45",
+          "state": "pr",
+          "prNumbers": [
+            45
+          ]
         },
         {
           "id": "OPS-01",
@@ -433,18 +446,22 @@
           "title": "HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (docs/dev-hq/data.js/data.json) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler",
           "size": "S",
           "lane": "hqL",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #38",
+          "state": "done",
+          "prNumbers": [
+            38
+          ]
         },
         {
           "id": "SETUP-09",
           "title": "Lokaler Review-Lauf scripts/review/run-local.sh",
           "size": "S",
           "lane": "doc",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #39",
+          "state": "done",
+          "prNumbers": [
+            39
+          ]
         },
         {
           "id": "SETUP-12",
@@ -460,7 +477,7 @@
           "title": "Nutzer: tote Keys, OpenCode-Modelle, ollama signin, Permission-Regeln",
           "size": "S",
           "lane": "N",
-          "stand": "offen",
+          "stand": "teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln",
           "state": "open",
           "prNumbers": []
         },
@@ -469,13 +486,15 @@
           "title": "Abschlussreview der Setup-Doku, verkleinert",
           "size": "S",
           "lane": "doc",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "PR #51",
+          "state": "pr",
+          "prNumbers": [
+            51
+          ]
         }
       ],
-      "done": 6,
-      "total": 14
+      "done": 9,
+      "total": 15
     },
     {
       "id": "M3",
@@ -527,9 +546,11 @@
           "title": "HQ-Profilansicht zeigt envPolicy",
           "size": "S",
           "lane": "hqL",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "PR #58",
+          "state": "pr",
+          "prNumbers": [
+            58
+          ]
         },
         {
           "id": "W5-02a",
@@ -580,26 +601,30 @@
           "title": "dispatch.role ins Agenten-Briefing",
           "size": "S",
           "lane": "wk",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "PR #50",
+          "state": "pr",
+          "prNumbers": [
+            50
+          ]
         },
         {
           "id": "W2-01d",
           "title": "CLI-Befehl pa hq agent review",
           "size": "S",
           "lane": "pa",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "PR #46",
+          "state": "pr",
+          "prNumbers": [
+            46
+          ]
         },
         {
           "id": "W1-18b",
           "title": "Probe, ob Codex/OpenCode .agents/skills lesen",
           "size": "S",
           "lane": "wk + N",
-          "stand": "OpenCode ✓ #30, Codex offen",
-          "state": "in_progress",
+          "stand": "OpenCode ✓ #30, Codex △ headless-Probe 02.10.2026: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert",
+          "state": "done",
           "prNumbers": [
             30
           ]
@@ -641,7 +666,7 @@
           "prNumbers": []
         }
       ],
-      "done": 5,
+      "done": 6,
       "total": 16
     },
     {
@@ -653,9 +678,11 @@
           "title": "Prüfpfad (append-only, Trigger gegen UPDATE/DELETE)",
           "size": "S",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "PR #44",
+          "state": "pr",
+          "prNumbers": [
+            44
+          ]
         },
         {
           "id": "W5-04a",
@@ -749,9 +776,11 @@
           "title": "Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min)",
           "size": "M",
           "lane": "fR",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "PR #53",
+          "state": "pr",
+          "prNumbers": [
+            53
+          ]
         },
         {
           "id": "W2-09b",
@@ -856,7 +885,7 @@
         },
         {
           "id": "W4-01",
-          "title": "Benchmark, verkleinert (Vorschlag: 5 Aufgaben statt 20)",
+          "title": "Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.)",
           "size": "M",
           "lane": "fR",
           "stand": "offen",
@@ -942,7 +971,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -963,7 +992,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -984,7 +1013,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1004,7 +1033,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1025,7 +1054,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1046,7 +1075,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1066,7 +1095,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1087,7 +1116,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1108,7 +1137,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1128,7 +1157,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1149,7 +1178,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1170,7 +1199,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1190,7 +1219,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1211,7 +1240,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1232,15 +1261,15 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
     {
       "id": "L-242f649538",
       "createdAt": "2026-09-08T22:37:49.091Z",
-      "lastSeen": "2026-09-08T22:37:49.091Z",
-      "hits": 1,
+      "lastSeen": "2026-10-02T22:21:26.585Z",
+      "hits": 2,
       "symptom": "CI red-first: '<file> war an der Merge-Base GRUEN — das ist kein Test-First-Beleg'",
       "cause": "The Test-First: trailer named an existing test file that only gained new cases; red-first runs the whole file at the merge-base and it passed there",
       "fix": "Put new test cases for an existing suite into a new *.test.mjs file (missing at base = red) and name that file in the Test-First: trailer; a trailer already pushed must be amended on your own branch",
@@ -1251,11 +1280,20 @@
         "test-first"
       ],
       "source": ".pa/report_devhq_v2.md",
+      "worked": 1,
+      "failed": 0,
+      "feedbackRuns": [
+        {
+          "runId": "pl-104-cifix-07e542f",
+          "outcome": "worked",
+          "observedAt": "2026-10-02T22:21:26.585Z"
+        }
+      ],
       "badges": {
         "label": "new",
-        "confidence": null,
-        "ageDays": 23,
-        "votes": 0
+        "confidence": 100,
+        "ageDays": 0,
+        "votes": 1
       }
     },
     {
@@ -1275,7 +1313,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1296,7 +1334,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1360,7 +1398,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1381,7 +1419,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1402,7 +1440,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1430,7 +1468,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1451,7 +1489,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1472,7 +1510,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1493,7 +1531,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1514,7 +1552,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1579,7 +1617,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1600,7 +1638,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1621,7 +1659,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1642,7 +1680,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1663,7 +1701,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1684,7 +1722,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1728,7 +1766,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 16,
         "votes": 0
       }
     },
@@ -1770,14 +1808,14 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 8,
+        "ageDays": 9,
         "votes": 0
       }
     }
   ],
   "lessonStats": {
     "count": 40,
-    "hits": 40,
+    "hits": 41,
     "tags": [
       {
         "tag": "concurrency",
@@ -2073,11 +2111,11 @@
       }
     ],
     "recent": [
+      "L-242f649538",
       "L-8b092b4358",
       "L-1102db326f",
       "L-021c8e1116",
-      "L-0ae4de6822",
-      "L-9a2196f42f"
+      "L-0ae4de6822"
     ]
   }
 }
