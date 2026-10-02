@@ -162,6 +162,27 @@ test('review and delivery view shows open reviews, verdict validity and PR deliv
     'delivery status comes from the existing HQ backend');
 });
 
+test('review view ignores reviews bound to an older candidate and labels a missing board', async t => {
+  const f = fixture(async path => {
+    if (path.includes('/runtime')) return { apiVersion: 1 };
+    if (path.includes('/runs')) return {
+      approvalAuthority: { state: 'unavailable' }, executionEnabled: false,
+      runs: [{
+        run: { id: 'run-stale', taskId: 't1', workerId: 'wk-1', status: 'completed' },
+        candidate: { candidateCommit: 'new111', source: 'worker-push' }, evidence: [],
+        reviews: [{ candidateCommit: 'old000', disposition: 'approved', status: 'valid', reviewerIdentity: 'codex:gpt', approvalEligible: true }],
+      }],
+    };
+    if (path.includes('/board')) throw new Error('board down');
+    return { snapshot: { goals: [], tasks: [], control: { status: 'paused' } } };
+  }); t.after(() => f.dom.window.close());
+  await f.controller.refresh();
+  const panel = f.document.querySelector('#hq-review-delivery-live');
+  assert.match(panel.textContent, /Offene Reviews 1 · Nacharbeit 0 · Gültig 0/);
+  assert.doesNotMatch(panel.textContent, /Review gültig/);
+  assert.match(panel.textContent, /Delivery-\/PR-Stand nicht verfügbar/);
+});
+
 test('budget panel labels missing policy data without inventing routing capability', async t => {
   const f = fixture(async () => ({ snapshot: { goals: [], tasks: [], control: { status: 'paused' }, effectiveLimits: { rootPolicies: [] } } }));
   t.after(() => f.dom.window.close());
