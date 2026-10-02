@@ -67,12 +67,18 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
    */
   const [verdictToken, setVerdictToken] = useState<string | null>(null);
 
+  // Which project is on screen now: a read that started for another one must
+  // not write its items (or its failure) under this one's name.
+  const shownProjectId = useRef(projectId);
+  shownProjectId.current = projectId;
+
   const refresh = useCallback(async () => {
     if (projectId === null) return;
     try {
       const next = (await listLearnings(projectId)).filter(
         (entry) => entry.status === "pending",
       );
+      if (shownProjectId.current !== projectId) return;
       setEntries(next);
       setDrafts((current) => {
         const merged = new Map<string, string>();
@@ -86,6 +92,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setError(null);
       setLearningsLoaded(true);
     } catch (cause) {
+      if (shownProjectId.current !== projectId) return;
       setError(describeError(cause));
     }
   }, [projectId]);
@@ -96,6 +103,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       const next = (await listRoleVariants(projectId)).filter(
         (variant) => variant.status === "pending",
       );
+      if (shownProjectId.current !== projectId) return;
       setVariants(next);
       // A proposal that is gone must not keep its fold state alive.
       setCollapsedPrompts((current) => {
@@ -106,6 +114,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setRoleError(null);
       setRolesLoaded(true);
     } catch (cause) {
+      if (shownProjectId.current !== projectId) return;
       setRoleError(describeError(cause));
     }
   }, [projectId]);
@@ -124,6 +133,16 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setVerdictToken(null);
       return;
     }
+    // Pending items of the old project carry live approve buttons: clear them
+    // before the new project's reads are out, as RecommendationsPanel does.
+    setEntries([]);
+    setVariants([]);
+    setDrafts(new Map());
+    setCollapsedPrompts(new Set());
+    setVerdictToken(null);
+    setNotice(null);
+    setError(null);
+    setRoleError(null);
     setLearningsLoaded(false);
     setRolesLoaded(false);
     void refresh();
