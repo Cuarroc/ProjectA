@@ -74,6 +74,19 @@ test("readLessonsFile refuses malformed JSON before a write can replace it", () 
   }
 });
 
+test("readLessonsFile refuses valid JSON of the wrong shape", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-lessons-"));
+  try {
+    const path = join(dir, "lessons.json");
+    for (const body of ['{}', 'null', '{"schema":1,"lessons":"x"}']) {
+      writeFileSync(path, body);
+      assert.throws(() => readLessonsFile(path), /lessons/, body);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("tokenize drops stop words and keeps paths and error codes", () => {
   assert.deepEqual(tokenize("Package gdk-3.0 was not found in the path"), ["package", "gdk-3.0", "was", "not", "found", "path"]);
 });
