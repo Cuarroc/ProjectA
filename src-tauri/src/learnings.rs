@@ -492,11 +492,46 @@ fn adopt_repo_playbook(path: &Path, repo_path: &str) -> Result<(), String> {
 
 /// Write the authoritative document, creating the directory on the way.
 fn write_playbook(path: &Path, content: &str) -> Result<(), String> {
+    use std::io::Write;
+
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)
             .map_err(|e| format!("failed to create {}: {e}", dir.display()))?;
     }
-    std::fs::write(path, content).map_err(|e| format!("failed to write {}: {e}", path.display()))
+
+    for attempt in 0..2 {
+        let tmp = path.with_file_name(format!(
+            ".{PLAYBOOK_FILE}.tmp-{}",
+            crate::hooks::unique_file_tag()
+        ));
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let written = options
+            .open(&tmp)
+            .and_then(|mut file| file.write_all(content.as_bytes()));
+        match written {
+            Ok(()) => {
+                if let Err(err) = std::fs::rename(&tmp, path) {
+                    let _ = std::fs::remove_file(&tmp);
+                    return Err(format!("failed to replace {}: {err}", path.display()));
+                }
+                return Ok(());
+            }
+            Err(err) if attempt == 0 && err.kind() == std::io::ErrorKind::AlreadyExists => {
+                let _ = std::fs::remove_file(&tmp);
+            }
+            Err(err) => {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(format!("failed to write {}: {err}", tmp.display()));
+            }
+        }
+    }
+    unreachable!("the retry loop returns on success and on every error but the first AlreadyExists")
 }
 
 /// Write the repository mirror: a tmp file renamed over the old path.
