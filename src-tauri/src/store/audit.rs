@@ -138,4 +138,39 @@ mod tests {
         .to_string();
         assert!(err.contains("CHECK") || err.contains("constraint"), "{err}");
     }
+
+    #[tokio::test]
+    async fn replace_cannot_rewrite_an_existing_audit_id() {
+        let (_dir, store) = fixture().await;
+        let id = store
+            .append_audit("a", "act", "s", &json!({}))
+            .await
+            .unwrap();
+        let result = sqlx::query(
+            "INSERT OR REPLACE INTO audit_log(id,ts,actor,action,subject,detail_json) VALUES(?,1,'mallory','rewrite','s','{}')",
+        )
+        .bind(id)
+        .execute(&store.pool)
+        .await;
+        assert!(result.is_err(), "REPLACE rewrote an append-only row");
+    }
+
+    #[tokio::test]
+    async fn migration_rejects_preexisting_objects_with_the_wrong_shape() {
+        let (dir, store) = fixture().await;
+        sqlx::query("DROP TABLE audit_log")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE audit_log (id INTEGER PRIMARY KEY, actor TEXT)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        sqlx::query("PRAGMA user_version = 22")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+        assert!(Store::open(&dir.path().join("projecta.db")).await.is_err());
+    }
 }
