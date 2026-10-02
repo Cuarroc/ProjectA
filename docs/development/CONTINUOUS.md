@@ -135,7 +135,7 @@ run/owner/fence-bound descriptor with `ApiServer::issue_run_descriptor`; no HTTP
 credential-minting route exists. Set `PROJECTA_API_FILE` to that descriptor and
 use `pa hq agent context`, `pa hq agent lessons`, `pa hq agent release`,
 `pa hq agent candidate --input candidate.json`, `pa hq agent evidence --input
-evidence.json`, or
+evidence.json`, `pa hq agent review --input review.json`, or
 `pa hq agent read-evidence --id <id>`. The trusted launch lane provisions a unique
 descriptor outside the worktree; it never overwrites an earlier launch's file.
 Credentials expire, are revocable by the launcher, and die on API restart.
@@ -172,7 +172,8 @@ receipts for both runs the vendor cannot be compared: the review is stored with 
 principals and that attestation; it grants no approval authority
 (`approvalEligible` stays false). Which runs may give a `verified` review (the
 reviewer dispatch role) is decided by the store, not by this route. There is no
-`pa` command for this route yet.
+separate identity flag: `pa hq agent review --input review.json` uses the scoped
+descriptor as the reviewer principal.
 
 A missing or invalid projecta.dev.json refuses new goal roots; existing roots
 retain their frozen policy. `pa hq tasks checkpoint <id> --status retry --owner

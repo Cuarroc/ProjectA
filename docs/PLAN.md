@@ -102,7 +102,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-28 | Automatischer Laufzeitbeleg (Sandbox, Queue aus) | M | fR | ✓ #11 |
 | W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | ✓ #18 |
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | PR #50 |
-| W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
+| W2-01d | CLI-Befehl `pa hq agent review` | S | pa | PR #46 |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | offen |
