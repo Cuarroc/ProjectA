@@ -17,6 +17,23 @@ use tauri::{AppHandle, Emitter};
 use crate::profiles::AgentProfile;
 use crate::submit_guard::{Observation, SubmitAction, SubmitGuard};
 
+/// Run blocking spawn work (`openpty`, process creation) without stalling
+/// the async runtime that may be calling us.
+///
+/// On a multi-thread Tokio runtime the worker is handed over via
+/// `block_in_place`, so its queued tasks move to another thread; the work
+/// itself still runs on the caller's thread, in the caller's order, with the
+/// caller's error handling. Without a multi-thread runtime (sync commands,
+/// current-thread test runtimes) there is nothing to hand over: run inline.
+fn off_runtime_thread<R>(work: impl FnOnce() -> R) -> R {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
+            tokio::task::block_in_place(work)
+        }
+        _ => work(),
+    }
+}
+
 /// Scrollback kept per session, in bytes.
 const SCROLLBACK_CAPACITY: usize = 1024 * 1024;
 
@@ -785,6 +802,24 @@ impl PtyManager {
     /// inventory cannot authorize an update or a duplicate spawn.
     #[allow(clippy::too_many_arguments)]
     pub fn spawn_with_id(
+        &self,
+        app: &AppHandle,
+        profile: &AgentProfile,
+        cwd: Option<String>,
+        cols: u16,
+        rows: u16,
+        env: &[(String, String)],
+        session_id: &str,
+    ) -> Result<String, String> {
+        // `openpty` and process creation block (ConPTY startup is slow); the
+        // callers are async worker paths, so keep them off the runtime worker.
+        off_runtime_thread(|| {
+            self.spawn_with_id_blocking(app, profile, cwd, cols, rows, env, session_id)
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn spawn_with_id_blocking(
         &self,
         app: &AppHandle,
         profile: &AgentProfile,
@@ -2037,12 +2072,6 @@ pub(crate) fn resolve_windows_program(program: &str) -> Option<std::path::PathBu
         }
     }
     None
-}
-
-/// Run blocking spawn work (`openpty`, process creation) without stalling
-/// the async runtime that may be calling us.
-fn off_runtime_thread<R>(work: impl FnOnce() -> R) -> R {
-    work()
 }
 
 #[cfg(test)]
