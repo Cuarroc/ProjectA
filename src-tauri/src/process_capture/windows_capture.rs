@@ -2634,6 +2634,16 @@ mod tests {
     }
 
     #[test]
+    fn structured_progress_trickle_restarts_window_until_completion() {
+        let mut command = fixture_command("structured-trickle");
+        command.no_progress = Duration::from_secs(1);
+        command.structured_progress = true;
+        let (captured, _, elapsed) = observed_run(&command, MAX_BYTES);
+        assert_eq!(captured.unwrap().exit_code, 0);
+        assert!(elapsed >= Duration::from_secs(2), "{elapsed:?}");
+    }
+
+    #[test]
     fn output_over_the_byte_limit_is_aborted_with_its_reason_and_retired() {
         let marker = unique_temp("pa-capture-flood");
         let mut command = fixture_command("flood");
@@ -2757,6 +2767,12 @@ mod tests {
                     std::thread::sleep(Duration::from_millis(100));
                 }
                 println!("PA_TRICKLE_DONE");
+            }
+            Ok("structured-trickle") => {
+                for _ in 0..30 {
+                    println!(r#"{{"type":"item.updated","item":{{"type":"reasoning"}}}}"#);
+                    std::thread::sleep(Duration::from_millis(100));
+                }
             }
             // W2-08a: far more output than the capture's byte limit, then held.
             Ok("flood") => {

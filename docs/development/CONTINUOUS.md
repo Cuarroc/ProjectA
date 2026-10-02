@@ -669,8 +669,9 @@ observer and checkpoints already acknowledged are never withdrawn, but an
 aborted capture is never a completed or delivered one. Native tests drive a
 real silent fixture (stall reason, partial output observed, PID retired), a
 meaningless output trickle (still stalls) and a flood over the byte limit. The
-window is a code constant, not a policy or launch-protocol field. Every owned
-Windows native job is configured before process creation with a 4 GiB
-aggregate-memory limit and a 40% CPU hard cap; nested provider processes remain
-inside the job. TUI/PTY sessions are unaffected. Container limits remain out
-of scope.
+window is a code constant, not a policy or launch-protocol field. Every Windows
+native provider job is configured before process creation with a 4 GiB
+aggregate-memory limit and a 40% system CPU hard cap; nested provider processes
+remain inside it. The parent host keeps only kill-on-close containment so nested
+CPU rates do not multiply. TUI/PTY sessions are unaffected. Container limits
+remain out of scope.

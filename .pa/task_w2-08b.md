@@ -7,8 +7,9 @@ for the dispatched package; the plan remains the source of truth.
 
 ## Contract
 
-- Apply a 4 GiB aggregate memory ceiling and a 40% CPU hard cap to every
-  owned Windows native worker job before its suspended process can run.
+- Apply a 4 GiB aggregate memory ceiling and a 40% system CPU hard cap to each
+  Windows native provider job before its suspended process can run. Keep the
+  parent host uncapped so nested CPU rates do not multiply.
 - Keep the 15-minute no-progress deadline, but reset it only for complete,
   structured Codex JSON events that demonstrate thinking or task progress.
   Arbitrary stdout/stderr bytes must not keep a stalled worker alive.
@@ -23,4 +24,3 @@ for the dispatched package; the plan remains the source of truth.
 - Tier-B review by a model outside the author's family has no unresolved
   high-severity finding; all findings are dispositioned in the PR report.
 - Diff stays at or below 300 lines and does not touch a serial seam.
-

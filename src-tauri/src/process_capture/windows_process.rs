@@ -179,9 +179,11 @@ impl SuspendedProcess {
             }
             let job = OwnedHandle::from_raw_handle(raw_job);
             let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = zeroed();
-            limits.BasicLimitInformation.LimitFlags =
-                JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_JOB_MEMORY;
-            limits.JobMemoryLimit = JOB_MEMORY_LIMIT_BYTES;
+            limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            if command.enforce_resource_limits {
+                limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_MEMORY;
+                limits.JobMemoryLimit = JOB_MEMORY_LIMIT_BYTES;
+            }
             if SetInformationJobObject(
                 job.as_raw_handle(),
                 JobObjectExtendedLimitInformation,
@@ -191,21 +193,23 @@ impl SuspendedProcess {
             {
                 return Err(os_error("configure containment job"));
             }
-            let cpu = JOBOBJECT_CPU_RATE_CONTROL_INFORMATION {
-                ControlFlags: JOB_OBJECT_CPU_RATE_CONTROL_ENABLE
-                    | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
-                Anonymous: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_0 {
-                    CpuRate: JOB_CPU_RATE,
-                },
-            };
-            if SetInformationJobObject(
-                job.as_raw_handle(),
-                JobObjectCpuRateControlInformation,
-                (&cpu as *const JOBOBJECT_CPU_RATE_CONTROL_INFORMATION).cast(),
-                size_of_val(&cpu) as u32,
-            ) == 0
-            {
-                return Err(os_error("configure containment CPU cap"));
+            if command.enforce_resource_limits {
+                let cpu = JOBOBJECT_CPU_RATE_CONTROL_INFORMATION {
+                    ControlFlags: JOB_OBJECT_CPU_RATE_CONTROL_ENABLE
+                        | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
+                    Anonymous: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION_0 {
+                        CpuRate: JOB_CPU_RATE,
+                    },
+                };
+                if SetInformationJobObject(
+                    job.as_raw_handle(),
+                    JobObjectCpuRateControlInformation,
+                    (&cpu as *const JOBOBJECT_CPU_RATE_CONTROL_INFORMATION).cast(),
+                    size_of_val(&cpu) as u32,
+                ) == 0
+                {
+                    return Err(os_error("configure containment CPU cap"));
+                }
             }
             let mut bytes = 0;
             let attribute_count = if pipes.is_some() { 2 } else { 1 };

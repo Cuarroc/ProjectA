@@ -33,9 +33,10 @@ impl ProgressSignals {
     }
 
     pub fn observe(&mut self, bytes: &[u8]) -> bool {
-        const MAX_PENDING: usize = 64 * 1024;
+        const MAX_PENDING: usize = crate::protocol::MAX_INPUT;
         if self.pending.len().saturating_add(bytes.len()) > MAX_PENDING {
             self.pending.clear();
+            return false;
         }
         self.pending.extend_from_slice(bytes);
         let mut progress = false;
@@ -63,8 +64,9 @@ impl ProgressSignals {
     }
 }
 
-/// Output-progress watch. Any byte on stdout or stderr counts as progress;
-/// silence reaching the window exactly aborts (like the deadline, `>=`).
+/// Progress watch for a caller-classified signal. Native providers classify
+/// structured JSONL; trusted host/diagnostic captures classify output bytes.
+/// Reaching the window exactly aborts (like the deadline, `>=`).
 #[derive(Debug, Clone, Copy)]
 pub struct ProgressWatch {
     window: Duration,
@@ -205,7 +207,7 @@ mod tests {
 
     #[test]
     fn large_structured_event_is_not_dropped_at_an_internal_buffer_boundary() {
-        let mut event = br#"{"type":"item.updated","item":"#.to_vec();
+        let mut event = b"{\"type\":\"item.updated\",\"item\":\"".to_vec();
         event.extend(std::iter::repeat_n(b'x', 70 * 1024));
         event.extend_from_slice(b"\"}\n");
         let mut signals = ProgressSignals::new();
