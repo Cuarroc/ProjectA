@@ -131,6 +131,11 @@ test("checkObserve reports silent for missing empty or stale logs", () => {
   }
 });
 
+test("checkObserve reports silent for a missing, empty or stale log", () => {
+  const atLimit = { exists: true, size: 50, mtimeMs: NOW - 300_000 };
+  assert.equal(checkObserve({ stat: () => atLimit, file: "w.log", sinceSec: 300, now: NOW }).status, "stumm");
+});
+
 test("parseWindowsProcesses reads parent ids and accepts one object or an array", () => {
   const one = parseWindowsProcesses('{"ProcessId":5,"ParentProcessId":2,"Name":"rustc.exe","CommandLine":"x"}');
   assert.deepEqual(one, [{ pid: 5, ppid: 2, name: "rustc.exe", cmd: "x" }]);
