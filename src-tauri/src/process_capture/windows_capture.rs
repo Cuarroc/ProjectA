@@ -555,6 +555,7 @@ fn execute_with_observer_outcome(
     let mut err = Vec::new();
     // The window starts when the verified process resumes, not at validation.
     let mut progress = progress.restarted(Instant::now());
+    let mut progress_signals = crate::stream_guard::ProgressSignals::new();
     let result = (|| {
         let (mut out_eof, mut err_eof) = (false, false);
         let mut delivery_reported = false;
@@ -585,6 +586,7 @@ fn execute_with_observer_outcome(
                 }
             }
             let captured_before = out.len() + err.len();
+            let stdout_before = out.len();
             if !out_eof {
                 let remaining = limit - out.len() - err.len();
                 out_eof = drain(
@@ -626,10 +628,17 @@ fn execute_with_observer_outcome(
                     Exit::Undelivered(code)
                 });
             }
-            // A live process that produced no byte for the whole window is
-            // aborted; the job is retired below before the reason returns.
+            // Only structured stdout progress resets the window. Arbitrary
+            // stdout/stderr noise cannot keep a stalled provider alive.
             let now = Instant::now();
-            progress.record(out.len() + err.len() - captured_before, now);
+            let progress_seen = if command.structured_progress {
+                progress_signals.observe(&out[stdout_before..])
+            } else {
+                out.len() + err.len() > captured_before
+            };
+            if progress_seen {
+                progress.record(1, now);
+            }
             progress.check(now)?;
             if live_control
                 && writer.is_finished()
@@ -1367,6 +1376,8 @@ fn execute_prepared_outcome(
             .map(|entry| (entry.key, OsString::from(entry.value)))
             .collect(),
         no_progress: crate::stream_guard::NO_PROGRESS_LIMIT,
+        structured_progress: true,
+        enforce_resource_limits: std::env::var_os("PROJECTA_NATIVE_JOB_LIMITS").is_some(),
     };
     let outcome = execute_with_observer_outcome(
         &command,
@@ -2053,6 +2064,7 @@ fn execute_host_checkpointed(
         observer,
         checkpoints,
         &AtomicBool::new(false),
+        false,
     )? {
         HostSettlement::Completed(host, reply) => Ok((host, reply)),
         HostSettlement::ExitedUndelivered(..) => Err(INPUT_NOT_CONFIRMED.into()),
@@ -2084,6 +2096,7 @@ pub fn execute_owned_host(
         None,
         Some(checkpoints),
         cancelled,
+        true,
     )
 }
 
@@ -2094,12 +2107,18 @@ fn execute_host_inner(
     observer: Option<&std::sync::mpsc::SyncSender<OutputEvent>>,
     checkpoints: Option<std::sync::mpsc::SyncSender<crate::checkpoints::Request>>,
     cancelled: &AtomicBool,
+    enforce_resource_limits: bool,
 ) -> Result<HostSettlement, String> {
     let (binding, launch, input) = prepared.into_parts();
     let (control, pending_input) =
         crate::protocol::launch_parts(binding.clone(), launch.clone(), &input)?;
     let mut command = Command::diagnostic(host_path);
     command.args.push("--protocol-duplex".into());
+    if enforce_resource_limits {
+        command
+            .environment
+            .push(("PROJECTA_NATIVE_JOB_LIMITS".into(), "1".into()));
+    }
     // The host enforces the provider's no-progress window itself and then
     // reports its failure; the parent waits the same grace as for the deadline
     // so it never races the host's own, more precise stall result.
@@ -2581,6 +2600,7 @@ mod tests {
             marker.as_os_str().to_owned(),
         ));
         command.no_progress = Duration::from_secs(1);
+        command.structured_progress = true;
         let (captured, events, elapsed) = observed_run(&command, MAX_BYTES);
         assert_eq!(
             captured.err().as_deref(),
@@ -2603,15 +2623,32 @@ mod tests {
     }
 
     #[test]
-    fn steady_output_below_the_window_is_never_a_stall() {
+    fn meaningless_output_trickle_does_not_hide_a_stall() {
+        let marker = unique_temp("pa-capture-trickle-stall");
         let mut command = fixture_command("trickle");
-        // Shorter than the fixture's 3 s runtime, far longer than its gaps.
-        command.no_progress = Duration::from_secs(2);
+        command.environment.push((
+            "PA_CAPTURE_READY_FILE".into(),
+            marker.as_os_str().to_owned(),
+        ));
+        command.no_progress = Duration::from_secs(1);
+        command.structured_progress = true;
         let (captured, _, elapsed) = observed_run(&command, MAX_BYTES);
-        let captured = captured.unwrap_or_else(|error| panic!("{error} after {elapsed:?}"));
-        assert_eq!(captured.exit_code, 0);
+        assert_eq!(
+            captured.err().as_deref(),
+            Some(crate::stream_guard::STALLED)
+        );
+        assert!(elapsed < Duration::from_secs(10), "{elapsed:?}");
+        assert_fixture_retired(&marker);
+    }
+
+    #[test]
+    fn structured_progress_trickle_restarts_window_until_completion() {
+        let mut command = fixture_command("structured-trickle");
+        command.no_progress = Duration::from_secs(1);
+        command.structured_progress = true;
+        let (captured, _, elapsed) = observed_run(&command, MAX_BYTES);
+        assert_eq!(captured.unwrap().exit_code, 0);
         assert!(elapsed >= Duration::from_secs(2), "{elapsed:?}");
-        assert!(String::from_utf8_lossy(&captured.stdout).contains("PA_TRICKLE_DONE"));
     }
 
     #[test]
@@ -2729,14 +2766,21 @@ mod tests {
                 std::io::stdout().flush().unwrap();
                 std::thread::sleep(Duration::from_secs(30));
             }
-            // W2-08a: steady output, never silent for long, then a clean exit.
+            // W2-08b: meaningless output cannot impersonate provider progress.
             Ok("trickle") => {
+                write_fixture_pid();
                 for _ in 0..30 {
                     print!(".");
                     std::io::stdout().flush().unwrap();
                     std::thread::sleep(Duration::from_millis(100));
                 }
                 println!("PA_TRICKLE_DONE");
+            }
+            Ok("structured-trickle") => {
+                for _ in 0..30 {
+                    println!(r#"{{"type":"item.updated","item":{{"type":"reasoning"}}}}"#);
+                    std::thread::sleep(Duration::from_millis(100));
+                }
             }
             // W2-08a: far more output than the capture's byte limit, then held.
             Ok("flood") => {
