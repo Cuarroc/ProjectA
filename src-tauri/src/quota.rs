@@ -132,6 +132,25 @@ impl QuotaTracker {
         });
     }
 
+    /// Record recovery unless the current block belongs to another subsystem.
+    ///
+    /// The prefix check and update share the row lock, so a protected block
+    /// cannot land between a caller's check and this write.
+    pub fn note_ok_unless_reason_prefix(&self, profile_id: &str, protected_prefix: &str) {
+        self.write(profile_id, |row| {
+            if row
+                .reason
+                .as_deref()
+                .is_some_and(|reason| reason.starts_with(protected_prefix))
+            {
+                return;
+            }
+            row.state = QUOTA_OK.to_string();
+            row.reason = None;
+            row.blocked_until = None;
+        });
+    }
+
     /// Apply `edit` and persist, but only if it actually changed something.
     fn write<F>(&self, profile_id: &str, edit: F)
     where
