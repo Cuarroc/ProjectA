@@ -103,7 +103,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-00b | Fremden Text in workers.rs-Prompts suchen und einhüllen | S | wk | ✓ #18 |
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | PR #50 |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | PR #46 |
-| W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
+| W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex △ headless-Probe 02.10.2026: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert |
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | offen |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
@@ -123,7 +123,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
 | DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
 | W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
-| W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | offen |
+| W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | PR #53 |
 | W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | offen |
 | HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt | M | fR + N | offen |
 | W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe) | M | st → api → fe | offen |

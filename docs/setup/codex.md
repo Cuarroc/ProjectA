@@ -33,9 +33,18 @@ schreiben.
 - `AGENTS.md` liest Codex selbst (Konvention, von der Projektwurzel aus).
 - `~/.codex/AGENTS.md` ist privat und projektfremd (persönliches
   Verhaltensmodell) — gehört dem Nutzer, nicht dem Repo.
-- Repo-Skills: `.agents/skills/` (Codex-Konvention; hier `projecta-workflow`).
-  Dass Codex den Repo-Skill in diesem Repo wirklich lädt, ist nicht geprobt
-  (W1-18b).
+- Repo-Skills: `.agents/skills/` (Codex-Konvention; hier
+  `projecta-workflow`). Eine headless Probe am 02.10.2026 mit Codex CLI
+  0.154.0 (`codex exec --ephemeral --sandbox read-only --cd <worktree> -`,
+  Prompt über stdin, Exit-Code 0) meldete `projecta-workflow` als tatsächlich
+  entdeckt und nannte keinen weiteren Skill. Der Lauf beobachtete
+  `gpt-5.6-sol` beim Provider `openai`.
+
+  Der Nachweis ist eingeschränkt: Die vom Probe-Agenten gestarteten direkten
+  Dateisystemabfragen wurden von der Read-only-Ausführungsrichtlinie blockiert;
+  seine abschließende Skill-Liste stützte sich deshalb auf das anwendbare
+  Repository-Inventar. Damit ist die Repo-Konvention dokumentiert, aber kein
+  vollständiger unabhängiger Dateisystem-Nachweis erbracht (W1-18b).
   Globale Skills: `~/.codex/skills`, `~/.agents/skills`. Von der App
   gestartete Codex-Worker bekommen keine Packs (eingebautes Profil: `skills`
   = `unsupported`; `ConventionAt` nur per `agents.json`, PR #57).
