@@ -118,7 +118,7 @@ describe("time-dependent formatting", () => {
     expect(formatProviderResetsAt(at(20))).toBe("Reset in 20 s");
     expect(formatProviderResetsAt(at(15 * 60))).toBe("Reset in 15 min");
     expect(formatProviderResetsAt(at(2 * 3600))).toBe("Reset in 2 h");
-    expect(formatProviderResetsAt(at(2 * 3600 + 30 * 60))).toMatch(/^Reset in [23] h/);
+    expect(formatProviderResetsAt(at(2 * 3600 + 30 * 60))).toBe("Reset in 2 h 30 min");
     expect(formatProviderResetsAt(at(3 * 86400))).toBe("Reset in 3 T.");
   });
 
