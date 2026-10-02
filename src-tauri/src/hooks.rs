@@ -312,7 +312,18 @@ fn answer(mut stream: TcpStream, status_line: &str) {
 /// it a client dripping one byte just inside every read window would hold its
 /// connection slot for days.
 pub fn read_request(stream: &mut TcpStream) -> Option<(String, String)> {
-    let deadline = std::time::Instant::now() + REQUEST_DEADLINE;
+    read_request_within(stream, REQUEST_DEADLINE, IO_TIMEOUT)
+}
+
+/// [`read_request`] with the two time limits passed in, so a test can prove
+/// the deadline logic with a short deadline instead of waiting out the real
+/// one. Production code only ever calls it through [`read_request`].
+fn read_request_within(
+    stream: &mut TcpStream,
+    request_deadline: Duration,
+    io_timeout: Duration,
+) -> Option<(String, String)> {
+    let deadline = std::time::Instant::now() + request_deadline;
     let mut buf: Vec<u8> = Vec::with_capacity(1024);
     let mut chunk = [0u8; 1024];
     let mut header_end: Option<usize> = None;
@@ -343,7 +354,7 @@ pub fn read_request(stream: &mut TcpStream) -> Option<(String, String)> {
         }
 
         // The next read gets whichever ends sooner: the per-read timeout, or
-        // the time this request has left. `IO_TIMEOUT` standing in for "the
+        // the time this request has left. `io_timeout` standing in for "the
         // caller's timeout" is sound because all three servers set exactly
         // IO_TIMEOUT before calling in today - a future caller with a shorter
         // per-read timeout would be widened here and must then pass its own
@@ -352,7 +363,7 @@ pub fn read_request(stream: &mut TcpStream) -> Option<(String, String)> {
         if remaining.is_zero() {
             return None;
         }
-        let _ = stream.set_read_timeout(Some(remaining.min(IO_TIMEOUT)));
+        let _ = stream.set_read_timeout(Some(remaining.min(io_timeout)));
         match stream.read(&mut chunk) {
             Ok(0) | Err(_) => return None,
             Ok(n) => buf.extend_from_slice(&chunk[..n]),
@@ -1127,19 +1138,21 @@ mod tests {
     }
 
     /// F-SEC-1: the per-read timeout bounds one read, not the request. A
-    /// client that answers every read well inside the window - one byte a
-    /// second here - must still lose its slot once the request as a whole is
-    /// past its total deadline.
+    /// client that answers every read well inside the window - one byte every
+    /// 100 ms against a 1 s read timeout here - must still lose its slot once
+    /// the request as a whole is past its total deadline (2 s here; the
+    /// production limits are the same logic with 5 s and 30 s).
     #[test]
     fn a_request_outliving_the_total_deadline_is_refused() {
+        const DEADLINE: Duration = Duration::from_secs(2);
+        const READ_TIMEOUT: Duration = Duration::from_secs(1);
         let listener = TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0)))
             .expect("bind");
         let addr = listener.local_addr().expect("local addr");
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept");
-            let _ = stream.set_read_timeout(Some(IO_TIMEOUT));
             let began = std::time::Instant::now();
-            let refused = read_request(&mut stream).is_none();
+            let refused = read_request_within(&mut stream, DEADLINE, READ_TIMEOUT).is_none();
             (refused, began.elapsed())
         });
 
@@ -1147,11 +1160,11 @@ mod tests {
         client
             .write_all(b"POST /hook/wk-1 HTTP/1.1\r\nContent-Length: 65536\r\n\r\n")
             .expect("write head");
-        // One byte a second: every single read is answered far inside
-        // IO_TIMEOUT, so no per-read timeout can ever fire on this request.
-        // Only a total deadline can end it.
-        for _ in 0..40 {
-            std::thread::sleep(Duration::from_secs(1));
+        // Every single read is answered far inside READ_TIMEOUT, so no
+        // per-read timeout can ever fire on this request. Only a total
+        // deadline can end it. The loop outlasts the deadline several times.
+        for _ in 0..100 {
+            std::thread::sleep(Duration::from_millis(100));
             if client.write_all(b"x").is_err() {
                 break; // the server hung up - the total deadline fired
             }
@@ -1159,7 +1172,11 @@ mod tests {
         let (refused, elapsed) = server.join().expect("join");
         assert!(refused, "a request dripped past its deadline was answered");
         assert!(
-            elapsed < Duration::from_secs(35),
+            elapsed >= DEADLINE - Duration::from_millis(500),
+            "refused at {elapsed:?}, before the total deadline could have fired"
+        );
+        assert!(
+            elapsed < DEADLINE + Duration::from_secs(2),
             "a drip client held the slot for {elapsed:?} - there is no total deadline"
         );
     }
