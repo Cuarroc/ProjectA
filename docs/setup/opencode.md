@@ -14,11 +14,11 @@ Zurück zur Übersicht: [README.md](README.md).
 
 **Lücken (Nutzeraufgabe, prüfen):**
 
-- `deepseek-v4-flash:cloud` steht **nicht** im `ollama`-Provider dieser
-  Konfiguration, ist also in OpenCode nicht wählbar. Das Modell selbst ist in
-  Ollama vorhanden (`ollama list`); das App-Profil `ollama-coder` startet es
-  direkt über `ollama run`, nicht über OpenCode. Wer DeepSeek als
-  OpenCode-Worker will (W2-09b), trägt es unter `provider.ollama.models` ein.
+- Das App-Profil `opencode-ollama-deepseek-v4-flash` wählt
+  `ollama/deepseek-v4-flash:cloud` explizit. Das Manifest belegt weder Login
+  noch Modellverfügbarkeit; ein modellgenauer interaktiver Capture fehlt.
+  Deshalb behauptet das Profil keinen Readiness-Marker und HQ zeigt die
+  Verfügbarkeit ohne Laufzeitbeleg als unbekannt.
 - Das App-Profil `opencode-glm-53-flash` ruft `opencode -m
   opencode-go/glm-5.3-flash`. Ob das Modell über den OpenCode-Go-Login
   erreichbar ist, zeigt `opencode models` — auf diesem PC nicht belegt.

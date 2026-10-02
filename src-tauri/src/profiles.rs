@@ -507,8 +507,8 @@ mod tests {
         assert_eq!(kimi.caps.readiness_marker, None);
     }
 
-    /// NT-17: OpenCode's TUI flushes input written before its loop runs, so
-    /// its profiles are the ones that carry the readiness marker.
+    /// NT-17: OpenCode's TUI flushes input written before its loop runs. Only
+    /// profiles whose exact route has a captured marker may opt into it.
     #[test]
     fn opencode_profiles_carry_the_readiness_marker() {
         for id in ["opencode", "opencode-glm-53-flash"] {
@@ -527,15 +527,18 @@ mod tests {
     /// W1-18b (probe 2026-09-25): the
     /// installed OpenCode 1.18.32 lists a canary living in the probe
     /// workspace's `.agents/skills` from `debug skill --pure` - an
-    /// observation, not a configuration guess - so both opencode profiles
-    /// declare `ConventionAt`. Only the bare `opencode` invocation was probed;
-    /// that the glm variant (same binary, `-m` model flag) discovers the same
-    /// way is an assumption: `--pure` makes no model call. Codex stays
+    /// observation, not a configuration guess - so OpenCode profiles declare
+    /// `ConventionAt`. Only the bare `opencode` invocation was probed; routed
+    /// variants use the same binary and `--pure` makes no model call. Codex stays
     /// `Unsupported`: its re-probe waits out the rate limit (2026-09-30),
     /// and this assert keeps anyone from lifting it along by accident.
     #[test]
     fn opencode_profiles_read_repo_skills_at_agents_skills() {
-        for id in ["opencode", "opencode-glm-53-flash"] {
+        for id in [
+            "opencode",
+            "opencode-glm-53-flash",
+            "opencode-ollama-deepseek-v4-flash",
+        ] {
             let profile = default_profiles()
                 .into_iter()
                 .find(|profile| profile.id == id)
