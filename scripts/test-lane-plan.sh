@@ -17,10 +17,9 @@
 #   - jede Nicht-.md-Datei und .md ausserhalb von Wurzel/docs/.pa loest sie aus,
 #   beide Bahnen
 #   - Merge-Queue, schedule und workflow_dispatch fahren IMMER voll,
-#   - SETUP-12: ein Push auf main, der NUR leichte Doku aendert, ist leicht,
-#     auch ohne Queue-Merge (Handmerge, direkter Commit, mehrere Merges);
-#     eine gelesene Doku, eine Nicht-Doku-Datei oder eine Cache-Eingabe im
-#     selben Push bringt die volle Bahn zurueck,
+#   - SETUP-12: ein Push auf main ohne Queue-Beleg bleibt auch bei scheinbar
+#     leichter Doku voll; ein dynamisch zusammengesetzter Leser belegt, warum
+#     der heuristische PR-Filter hier kein ausreichender Nachweis ist,
 #   - ein Push auf main faehrt voll genau dann, wenn eine Cache-Eingabe der
 #     Bahn geaendert ist (Cargo.lock beide, package-lock.json nur linux), und
 #     voll, wenn der Vorgaenger-Commit fehlt oder der Push nicht auf main geht,
@@ -82,10 +81,21 @@ import { readFileSync } from "node:fs";
 const a = readFileSync("docs/GELESEN.md", "utf8");
 const b = (n) => readFileSync(`.pa/tpl_${n}.md`, "utf8");
 EOF
+mkdir -p docs/runtime
+# A directory walk is intentionally outside the literal-reference heuristic:
+# it proves that an unqueued main push may not trust that heuristic as a gate.
+cat > scripts/lib/runtime-reader.test.mjs <<'EOF'
+import { readdirSync, readFileSync } from "node:fs";
+const root = ["docs", "runtime"].join("/");
+for (const name of readdirSync(root)) {
+  readFileSync(root + "/" + name, "utf8");
+}
+EOF
 for f in docs/frei.md docs/GELESEN.md docs/KOMMENTAR.md docs/PLAN.md docs/dev-hq/NOTIZ.md \
          .pa/report_x.md .pa/task_x.md .pa/report_f0_x.md .pa/tpl_a.md STAND.md CLAUDE.md; do
   printf '# %s\n' "$f" > "$f"
 done
+printf '# runtime input\n' > docs/runtime/input.md
 printf '{}\n' > docs/dev-hq/data.json
 printf 'export {};\n' > src/App.tsx
 printf 'name: ci\n' > .github/workflows/ci.yml
@@ -282,15 +292,15 @@ for lane in linux windows; do
   PUSH_KIND=direkt push_case "$lane" direkter-commit true src/App.tsx
   PUSH_KIND=mensch push_case "$lane" merge-ohne-queue true src/App.tsx
   PUSH_KIND=zwei   push_case "$lane" zwei-merges      true src/App.tsx
-  # SETUP-12: a push that only changes light docs (no gate reads them) is
-  # light whatever its origin - the code is identical to the predecessor, so
-  # no gate outcome can change. Manual merges, direct commits and several
-  # merges in one push used to run the full lane for a README edit.
-  PUSH_KIND=mensch push_case "$lane" doku-merge-ohne-queue false docs/frei.md
-  PUSH_KIND=direkt push_case "$lane" doku-direkter-commit  false docs/frei.md
-  PUSH_KIND=zwei   push_case "$lane" doku-zwei-merges      false docs/frei.md
-  PUSH_KIND=mensch push_case "$lane" doku-wurzel-md        false NOTIZ.md
-  PUSH_KIND=mensch push_case "$lane" doku-pa-md            false .pa/notiz.md
+  # SETUP-12: without queue provenance even apparently light docs stay full.
+  PUSH_KIND=mensch push_case "$lane" doku-merge-ohne-queue true docs/frei.md
+  PUSH_KIND=direkt push_case "$lane" doku-direkter-commit  true docs/frei.md
+  PUSH_KIND=zwei   push_case "$lane" doku-zwei-merges      true docs/frei.md
+  PUSH_KIND=mensch push_case "$lane" doku-wurzel-md        true NOTIZ.md
+  PUSH_KIND=mensch push_case "$lane" doku-pa-md            true .pa/notiz.md
+  # A dynamic directory reader is a known blind spot of is_light_doc. Without
+  # queue provenance the push must stay full instead of trusting the heuristic.
+  PUSH_KIND=mensch push_case "$lane" doku-dynamischer-leser true docs/runtime/input.md
   # ... but one file a gate reads, or one non-doc file, brings the full lane
   # back: without the queue evidence there is nothing else to vouch for it.
   PUSH_KIND=mensch push_case "$lane" doku-plan-md          true  docs/PLAN.md

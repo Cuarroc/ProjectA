@@ -1447,7 +1447,7 @@ Application Key im Mergify-Dashboard mit Freeze-Recht anlegen). Offen bis zum
 ersten echten Ereignis: ob das bestehende Token den Freeze-Scope hat, ist
 erst an einem echten roten/gruenen main-Lauf beobachtbar.
 
-## 2026-09-26 - SETUP-12: docs-only pushes to main are light whatever their origin
+## 2026-09-26 - SETUP-12: unqueued docs-only pushes to main stay full
 
 Audit of every workflow against a docs-only change (`*.md`, `docs/**`,
 `.pa/**`): `audit`, `flaky-test-detection` (schedule/dispatch) and `release`
@@ -1461,23 +1461,19 @@ even a docs-only merge ran both lanes in full - run 36216250335 (PLAN-01,
 #26): `run=true - Merge auf main stammt nicht von mergify[bot]`, ~12 min
 wall clock, linux + windows.
 
-- **Decision:** in `scripts/ci/lane-plan.sh`, a push to main whose changed
-  files are ALL light docs (`is_light_doc`, the classifier the PR run
-  already trusts) is light for both lanes, before the provenance checks.
-  Why: the tree is byte-identical for every gate, so no gate outcome can
-  change; the queue-provenance proof exists for code. Unknown predecessor,
-  push to another ref, a failing or empty diff, a doc a gate reads
-  (`HEAVY_DOCS`, `include_str!` targets, literal references), any non-doc
-  file and any cache input still fall through to the old checks (full unless
-  behind a proven queue merge). Every case, both directions, is pinned in
-  `scripts/test-lane-plan.sh`.
+- **Decision:** an unqueued push to `main` stays full even when the changed
+  files look like light docs. `is_light_doc` intentionally detects known
+  literal readers, but cannot prove that a gate does not discover a Markdown
+  file through a directory walk, glob or runtime-built path. The merge queue
+  is the full-run evidence that makes the existing light post-queue push safe;
+  a manual merge, direct commit or multi-merge push has no equivalent proof.
+  `scripts/test-lane-plan.sh` pins this with a runtime-built directory reader.
 - **Not changed on purpose:** merge-queue runs stay full even for a
   docs-only batch. The classifier is a heuristic with known blind spots
   (paths built at runtime); the queue run is the net that catches such a
   miss before main, and it costs one run per docs PR. `main-red-guard`
   already treats a skipped lane as no proof of green.
-- **Reverse when:** a docs-only push turns main red (a gate read a doc the
-  classifier calls light) - then add the file to `HEAVY_DOCS`, do not
-  remove the shortcut. Reconsider the queue rule once queue runs of
-  docs-only PRs show up in the minute measurement.
+- **Reverse when:** only after a closed, machine-checked allowlist can prove
+  that every skipped file is absent from every gate input. Reconsider the
+  queue rule once queue runs of docs-only PRs show up in the minute measurement.
 

@@ -432,10 +432,17 @@ classify_run() {
         # an assertion; accepting only the suite's exit code made a newly
         # added case look green at a base where that case did not exist.
         printf '%s\n' "$out" | awk -v expected="${spec#*::}" '
-          $1 == "ok" {
+          {
             line = $0
+            sub(/\r$/, "", line)
+            if (line ~ /[[:cntrl:]]/ || line !~ /^ok[[:space:]]+/) next
             sub(/^ok[[:space:]]+/, "", line)
-            if (line == expected || index(line, expected " (") == 1) found = 1
+            if (line == expected) {
+              found = 1
+            } else if (index(line, expected " (") == 1) {
+              suffix = substr(line, length(expected) + 1)
+              if (suffix ~ /^ \([^()[:cntrl:]]+\)$/) found = 1
+            }
           }
           END { exit(found ? 0 : 1) }
         '

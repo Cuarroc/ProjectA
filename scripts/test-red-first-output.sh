@@ -50,6 +50,20 @@ if classify_run "$shell_output" 0 'scripts/example.sh::linux/missing-case'; then
   echo 'FAIL: missing named shell assertion was accepted from a green suite' >&2
   exit 1
 fi
+if ! classify_run $'ok   literal[case].*\r' 0 'scripts/example.sh::literal[case].*'; then
+  echo 'FAIL: literal shell assertion with CRLF was rejected' >&2
+  exit 1
+fi
+for malformed in \
+  'ok   linux/named-case (' \
+  $'ok   linux/named-case (run=false)\rFAIL' \
+  $'ok   linux/named-case (run=false\033[31m)'; do
+  if classify_run "$malformed" 0 'scripts/example.sh::linux/named-case'; then
+    echo "FAIL: malformed named shell assertion was accepted: $(printf %q "$malformed")" >&2
+    exit 1
+  fi
+done
+echo 'ok   shell-named-record-validation (strict records)'
 if ! classify_run 'suite passed' 0 scripts/example.sh; then
   echo 'FAIL: unnamed shell suite success was rejected' >&2
   exit 1
