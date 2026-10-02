@@ -197,19 +197,22 @@ export async function getSessionRestore(workerId: string): Promise<SessionRestor
 // -- projects (Phase 2) ------------------------------------------------------
 
 /** A project as it comes off the wire, before the test gate is settled. */
-type RawProject = Omit<Project, "testCommand" | "maxWorkers"> & {
+type RawProject = Omit<Project, "githubRemote" | "testCommand" | "maxWorkers"> & {
+  githubRemote?: boolean | null;
   testCommand?: string | null;
   maxWorkers?: number | null;
 };
 
 /**
- * A project from a core that knows nothing about test gates simply has none —
- * the board must not grow a Tests button on a guess. A missing worker cap is
- * read the same way: absent means "no project-owned limit", never zero.
+ * A project from a core that predates GitHub linking has no remote, and a core
+ * that knows nothing about test gates simply has none — the board must not
+ * grow a Tests button on a guess. A missing worker cap is read the same way:
+ * absent means "no project-owned limit", never zero.
  */
 function toProject(raw: RawProject): Project {
   return {
     ...raw,
+    githubRemote: raw.githubRemote === true,
     maxWorkers: raw.maxWorkers ?? null,
     testCommand: nonEmpty(raw.testCommand),
   };
