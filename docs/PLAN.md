@@ -122,7 +122,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
 | DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
 | W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
-| W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | offen |
+| W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | PR #53 |
 | W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | offen |
 | HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt | M | fR + N | offen |
 | W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe) | M | st → api → fe | offen |

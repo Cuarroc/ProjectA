@@ -1,6 +1,6 @@
 # W2-08b: Per-job resource limits and early stall detection
 
-Status: aktiv
+Status: historisch
 
 Package from `docs/PLAN.md`, size M, lane fR. This specification is active
 for the dispatched package; the plan remains the source of truth.
