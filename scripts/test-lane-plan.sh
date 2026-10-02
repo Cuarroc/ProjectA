@@ -102,6 +102,18 @@ printf 'name: ci\n' > .github/workflows/ci.yml
 git add -A
 git commit -q -m "basis"
 
+# The fixture must really demonstrate the heuristic's blind spot. Otherwise
+# the later unqueued-push case would only restate the provenance rule without
+# proving why trusting is_light_doc there would be unsafe.
+if [ "$(bash scripts/ci/lane-plan.sh --classify docs/runtime/input.md)" = \
+     "light docs/runtime/input.md" ]; then
+  echo 'ok   dynamic-reader-remains-a-classifier-blind-spot (light)'
+else
+  echo 'FEHLER dynamic-reader-remains-a-classifier-blind-spot: expected light'
+  bash scripts/ci/lane-plan.sh --classify docs/runtime/input.md | sed 's/^/    /'
+  fails=$((fails + 1))
+fi
+
 # Legt einen PR-Branch an, der die genannten Dateien aendert, und baut daraus
 # einen Merge-Commit wie GitHubs refs/pull/N/merge (erster Elternteil = main).
 pr_merge() { # name datei...
