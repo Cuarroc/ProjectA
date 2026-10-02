@@ -161,13 +161,20 @@ async fn spawn_scout(
     let launch = scout_profile(&profile, project);
     // Through the same funnel as every other spawn, so a routed scout profile
     // reaches the router too instead of silently landing at the vendor.
-    let routed = crate::routing::spawn_routing(
+    let routed = match crate::routing::spawn_routing(
         store,
         &profile,
         Some(Path::new(&project.repo_path)),
         &worker_id,
     )
-    .await?;
+    .await
+    {
+        Ok(routed) => routed,
+        Err(err) => {
+            let _ = store.delete_worker(&worker_id).await;
+            return Err(err);
+        }
+    };
     let env = routed.env;
     // Bound before the child starts, like every spawn path: an agent that
     // exits at once must still be found by the exit hook.
