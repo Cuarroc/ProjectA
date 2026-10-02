@@ -1,7 +1,7 @@
 // scripts/lib/hq-lessons.test.mjs — known-error memory contracts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -50,7 +50,7 @@ test("touchLesson counts a repeat and lessonStats aggregates tags", () => {
   assert.deepEqual(stats.tags[0], { tag: "cargo", count: 1 });
 });
 
-test("lessons file round-trips and tolerates a missing or broken file", () => {
+test("lessons file round-trips and treats a missing file as empty", () => {
   const dir = mkdtempSync(join(tmpdir(), "hq-lessons-"));
   try {
     const path = join(dir, "lessons.json");
@@ -58,6 +58,30 @@ test("lessons file round-trips and tolerates a missing or broken file", () => {
     writeLessonsFile(path, addLesson([], gdk).lessons);
     assert.equal(readLessonsFile(path)[0].fix, gdk.fix);
     assert.equal(JSON.parse(readFileSync(path, "utf8")).schema, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readLessonsFile refuses malformed JSON before a write can replace it", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-lessons-"));
+  try {
+    const path = join(dir, "lessons.json");
+    writeFileSync(path, "{\n<<<<<<< HEAD\n");
+    assert.throws(() => readLessonsFile(path), SyntaxError);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("readLessonsFile refuses valid JSON of the wrong shape", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-lessons-"));
+  try {
+    const path = join(dir, "lessons.json");
+    for (const body of ['{}', 'null', '{"schema":1,"lessons":"x"}']) {
+      writeFileSync(path, body);
+      assert.throws(() => readLessonsFile(path), /lessons/, body);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

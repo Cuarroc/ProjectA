@@ -1070,10 +1070,14 @@ async fn bind_candidate(
         Some((bound, _)) if bound == candidate_commit => Ok(0),
         // An older observation of another commit must not move the binding
         // back to a candidate that was already replaced. Times are seconds:
-        // within the same second the order is unknown and the later writer
-        // wins, so a fast amend is not refused.
+        // within the same second the order of two different commits is
+        // unknown, so a tie is refused (fail closed) and the caller observes
+        // again with a later time.
         Some((_, bound_at)) if observed_at < bound_at => Err(format!(
             "stale candidate observation: observedAt {observed_at} is older than the bound candidate ({bound_at})"
+        )),
+        Some((_, bound_at)) if observed_at == bound_at => Err(format!(
+            "ambiguous candidate observation: observedAt {observed_at} ties with the bound candidate; the order within one second is unknown"
         )),
         Some(_) => {
             sqlx::query("UPDATE development_run_candidates SET candidate_commit = ?1, source = ?2, observed_at = ?3 WHERE run_id = ?4")
@@ -2425,6 +2429,52 @@ mod tests {
             .contains("idempotency"));
     }
 
+    /// Two different commits observed in the same second have no known order:
+    /// the tie is refused and the bound candidate and its evidence stay.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn same_second_candidate_tie_is_refused() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, Some("claude")).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 10)
+            .await
+            .unwrap();
+        store
+            .record_development_evidence(&run, "worker-a", 7, evidence(COMMIT_A))
+            .await
+            .unwrap();
+        assert!(store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_B, "git", 10)
+            .await
+            .unwrap_err()
+            .contains("ambiguous"));
+        assert!(store
+            .invalidate_development_run_evidence_for_candidate(
+                &run,
+                "worker-a",
+                7,
+                COMMIT_B,
+                "integrator",
+                10
+            )
+            .await
+            .unwrap_err()
+            .contains("ambiguous"));
+        let context = store.agent_run_context(&run, "worker-a", 7).await.unwrap();
+        assert_eq!(context["candidate"]["candidateCommit"], COMMIT_A);
+        assert!(store
+            .list_development_evidence(&run)
+            .await
+            .unwrap()
+            .iter()
+            .any(|e| e.candidate_commit == COMMIT_A && e.invalidated_at.is_none()));
+        // A replay of the bound commit stays idempotent.
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 10)
+            .await
+            .unwrap();
+    }
+
     /// W2-02: review and test dispositions count only for the exact candidate
     /// they name. A name that can move without a rebind (a ref, an
     /// abbreviation) would keep them valid for changed code, and a stale
@@ -2536,10 +2586,38 @@ mod tests {
             .await
             .unwrap();
         assert_eq!((replay.observed_at, replay.invalidated_records), (10, 0));
-        // Within the same second the later writer wins (a fast amend).
+        // Within the same second the order of two different commits is
+        // unknown: the observation is refused instead of letting the later
+        // writer win, and the bound candidate and its evidence stay as they were.
+        assert!(store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_B, "git", 10)
+            .await
+            .unwrap_err()
+            .contains("ambiguous"));
+        assert!(store
+            .invalidate_development_run_evidence_for_candidate(
+                &run,
+                "worker-a",
+                7,
+                COMMIT_B,
+                "integrator",
+                10
+            )
+            .await
+            .unwrap_err()
+            .contains("ambiguous"));
+        let context = store.agent_run_context(&run, "worker-a", 7).await.unwrap();
+        assert_eq!(context["candidate"]["candidateCommit"], COMMIT_A);
+        assert!(store
+            .list_development_evidence(&run)
+            .await
+            .unwrap()
+            .iter()
+            .any(|e| e.candidate_commit == COMMIT_A && e.invalidated_at.is_none()));
+        // A strictly later observation moves the binding.
         assert_eq!(
             store
-                .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_B, "git", 10)
+                .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_B, "git", 11)
                 .await
                 .unwrap()
                 .invalidated_records,
@@ -2547,7 +2625,7 @@ mod tests {
         );
         // SHA-256 repositories name commits with 64 digits.
         store
-            .bind_development_run_candidate(&run, "worker-a", 7, &"c".repeat(64), "git", 11)
+            .bind_development_run_candidate(&run, "worker-a", 7, &"c".repeat(64), "git", 12)
             .await
             .unwrap();
     }

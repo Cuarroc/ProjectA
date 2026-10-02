@@ -176,6 +176,24 @@ test("/__hq/lessons: add, search, merge duplicates, count repeats — and refuse
   assert.equal((await post("/__hq/lessons/L-nope/hit", {}, headers)).status, 404);
 });
 
+test("/__hq/lessons refuses malformed storage without replacing it", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-routes-broken-lessons-"));
+  const started = spawnHq(dir);
+  try {
+    const port = await started.port;
+    const file = join(dir, "lessons.json");
+    const broken = "{\n<<<<<<< HEAD\n";
+    writeFileSync(file, broken);
+    const headers = { host: `127.0.0.1:${port}`, "x-hq-session": await session(port) };
+    const reply = await post("/__hq/lessons", { symptom: "cargo check fails", cause: "fixture has malformed storage", fix: "repair the lessons JSON first" }, headers, port);
+    assert.equal(reply.status, 500);
+    assert.equal(readFileSync(file, "utf8"), broken);
+  } finally {
+    started.child.kill();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("the new /__hq routes stay behind host + session checks", async () => {
   for (const path of ["/__hq/setup", "/__hq/stats", "/__hq/lessons"]) {
     assert.equal((await get(path, { host: "evil.example" })).status, 403, path);
@@ -204,7 +222,7 @@ test('HQ labels compiled-default agreement separately from a runtime profile pat
       assert.equal(profiles.source, 'runtime');
       assert.equal(profiles.defaultsSource, source);
       assert.equal(profiles.builtinManifestSha256, digest);
-      assert.deepEqual(profiles.profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'ollama', 'ollama-coder']);
+      assert.deepEqual(profiles.profiles.map(profile => profile.id), ['claude', 'kimi', 'codex', 'opencode', 'opencode-glm-53-flash', 'opencode-ollama-deepseek-v4-flash', 'ollama', 'ollama-coder']);
       assert.equal(profiles.profiles[0].caps.lifecycle.mode, 'settingsHooks');
       if (source === 'checkout-preview') assert.match(profiles.warnings.join(' '), /not verified/);
     }

@@ -129,6 +129,7 @@ export function formatBlockedUntil(blockedUntil: number | null): string | null {
   if (Number.isNaN(at.getTime())) return null;
 
   const now = new Date();
+  if (at.getTime() <= now.getTime()) return null;
   const sameDay =
     at.getFullYear() === now.getFullYear() &&
     at.getMonth() === now.getMonth() &&

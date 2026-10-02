@@ -7,6 +7,7 @@ import {
   getOmniRouteUsage,
   getSetupTrustView,
   importDevelopmentPlan,
+  listProjects,
   listLiveSessions,
   onSupervisorNotification,
   openExternal,
@@ -39,6 +40,25 @@ describe("IPC audit regressions", () => {
     await expect(listLiveSessions()).resolves.toEqual(["starting-1"]);
     vi.mocked(invoke).mockRejectedValue(new Error("registry poisoned"));
     await expect(listLiveSessions()).rejects.toThrow("registry poisoned");
+  });
+
+  it("KI-2 defaults a missing GitHub remote flag from an older core to false", async () => {
+    vi.mocked(invoke).mockResolvedValue([{
+      id: "project-1",
+      name: "Older project",
+      repoPath: "/repo",
+      createdAt: 1,
+    }]);
+
+    await expect(listProjects()).resolves.toEqual([{
+      id: "project-1",
+      name: "Older project",
+      repoPath: "/repo",
+      createdAt: 1,
+      githubRemote: false,
+      maxWorkers: null,
+      testCommand: null,
+    }]);
   });
 
   it("does not pass an unsafe recommendation URL to the webview fallback", async () => {

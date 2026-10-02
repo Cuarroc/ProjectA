@@ -16,8 +16,15 @@ pub(super) fn translate(
     // the interactive submit guard only, and `codex exec --json` starts no
     // TUI, so the marker is inert here. It stays on the profile (preserved,
     // not discarded); settings that would change the invocation still refuse.
+    let supported_prompt_channel = match &profile.caps.system_prompt {
+        SystemPrompt::Unsupported => true,
+        SystemPrompt::ConfigFile { flag, key, ext } => {
+            flag == "--config" && key == "model_instructions_file" && ext == "md"
+        }
+        _ => false,
+    };
     if profile.fallback.is_some()
-        || !matches!(profile.caps.system_prompt, SystemPrompt::Unsupported)
+        || !supported_prompt_channel
         || !matches!(profile.caps.lifecycle, Lifecycle::Heuristic)
         || matches!(profile.caps.skills, SkillsDiscovery::Flag { .. })
     {

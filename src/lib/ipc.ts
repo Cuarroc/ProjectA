@@ -197,19 +197,22 @@ export async function getSessionRestore(workerId: string): Promise<SessionRestor
 // -- projects (Phase 2) ------------------------------------------------------
 
 /** A project as it comes off the wire, before the test gate is settled. */
-type RawProject = Omit<Project, "testCommand" | "maxWorkers"> & {
+type RawProject = Omit<Project, "githubRemote" | "testCommand" | "maxWorkers"> & {
+  githubRemote?: boolean | null;
   testCommand?: string | null;
   maxWorkers?: number | null;
 };
 
 /**
- * A project from a core that knows nothing about test gates simply has none —
- * the board must not grow a Tests button on a guess. A missing worker cap is
- * read the same way: absent means "no project-owned limit", never zero.
+ * A project from a core that predates GitHub linking has no remote, and a core
+ * that knows nothing about test gates simply has none — the board must not
+ * grow a Tests button on a guess. A missing worker cap is read the same way:
+ * absent means "no project-owned limit", never zero.
  */
 function toProject(raw: RawProject): Project {
   return {
     ...raw,
+    githubRemote: raw.githubRemote === true,
     maxWorkers: raw.maxWorkers ?? null,
     testCommand: nonEmpty(raw.testCommand),
   };
@@ -318,6 +321,25 @@ export async function listWorkers(projectId?: string): Promise<Worker[]> {
 /** Verified download followed by the backend's atomic session admission gate. */
 export async function installUpdateWhenIdle(updateRid: number): Promise<void> {
   await invoke("install_update_when_idle", { updateRid });
+}
+
+export type UpdaterState =
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "up-to-date"; version: string | null }
+  | { phase: "available"; version: string; notes: string | null; activeWorkers: number }
+  | { phase: "installing"; version: string }
+  | { phase: "ready"; version: string }
+  | { phase: "error"; message: string };
+
+/** Restore the updater result shared with the read-only Control API. */
+export async function getUpdaterState(): Promise<UpdaterState> {
+  return invoke<UpdaterState>("get_updater_state");
+}
+
+/** Share only updater results the plugin has already observed. */
+export async function setUpdaterState(state: UpdaterState): Promise<void> {
+  await invoke("set_updater_state", { state });
 }
 
 /**

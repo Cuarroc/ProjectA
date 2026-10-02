@@ -15,7 +15,7 @@ export const SUBSCRIPTION_BINDINGS: readonly CapacityBinding[] = [
   { id: "codex-max", label: "Codex Max", providerId: "codex", profileIds: ["codex"] },
   { id: "kimi-max", label: "Kimi Max", providerId: "kimi", profileIds: ["kimi"] },
   { id: "opencode-go", label: "OpenCode Go", providerId: "opencode", profileIds: ["opencode-glm-53-flash"] },
-  { id: "ollama-pro", label: "Ollama Pro", providerId: "ollama", profileIds: ["ollama-coder"] },
+  { id: "ollama-pro", label: "Ollama Pro", providerId: "ollama", profileIds: ["ollama-coder", "opencode-ollama-deepseek-v4-flash"] },
 ];
 
 export type CapacityStatus = "available" | "blocked" | "stale" | "unknown";

@@ -3,6 +3,27 @@
 Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 (Log, keine zweite AGENTS.md — M12, Rev-8-SANIERUNGSPLAN §9/8.31.)
 
+## 2026-10-03
+
+- **CodeQL SEC-02e: fünf `rust/cleartext-logging`-Warnungen in `store.rs` sind
+  Fehlalarme, eine JS-Warnung wurde behoben, eine Windows-Testwarnung bleibt
+  offen zu schliessen.** Warum: die geloggten Werte sind PTY-Session-IDs
+  (`pty-<millis hex>-<seq>`, `pty.rs:685-691`, nur Korrelations-Label) und
+  Worker-IDs (Suchschlüssel), keine Zugangsdaten; Hook-Authentifizierung nutzt
+  getrennt `random_hex()` (`hooks.rs:116`). Geschlossen wird auf GitHub nur
+  vom Orchestrator. Zurücknehmen: wenn eine Session-ID je als Berechtigung
+  dient — dann sind diese Meldungen echt.
+
+  | Alert | Ort | Begründung |
+  |---|---|---|
+  | #27 | `store.rs:3597` | `mark_session_exited`: Hinweis „pending-exit map is poisoned; session {session_id} may stay open“. Nur die PTY-Session-ID als Label, keine Geheimnisse. |
+  | #28 | `store.rs:3787` | `record_session_start`: gleicher Text, gleiche ID. |
+  | #29 | `store.rs:3847` | `take_session`: loggt `worker_id` (Datenfluss über `.clone()` der gebundenen Strings); eine Worker-ID ist ein Suchschlüssel. |
+  | #30 | `store.rs:3859` | `session_for_worker`: loggt `worker_id`, siehe #29. |
+  | #31 | `store.rs:3871` | `worker_for_session`: loggt die Session-ID, siehe #27. |
+  | #9 | `api/credential_acl_tests.rs:177` | Nur `#[cfg(windows)]`-Test. `GetAce` ist zuvor auf Erfolg (`!= 0`) und `ace.is_null()` geprüft (Zeilen 175-176); der Zeiger zeigt in die noch lebende DACL. Fehlalarm, nicht auf Linux prüfbar. |
+  | #7 | `scripts/lib/dev-pr-status.test.mjs:91` | Echt (harmlos, nur Test): `replace(/[()]/g, …)` maskierte `\` nicht. Behoben: `/[\\()]/g`. |
+
 ## 2026-09-21
 
 - Der pwsh-Detektor in `scripts/ci/workflow-shell.sh` erkennt PowerShell am
@@ -300,7 +321,17 @@ Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 
 - Arg-mode `--append-system-prompt` bleibt argv (Claude/Scout/Orchestrator);
   File-mode nur wo das CLI ein Prompt-File-Flag hat — Claude hat keines, ein
-  Fake-File wäre eine Lüge — Zurücknehmen: sobald Claude ein offizielles Flag hat.
+  Fake-File wäre eine Lüge — **zurückgenommen 03.10.2026:** `claude --help`
+  nennt `--append-system-prompt-file`, und `claude --append-system-prompt-file`
+  bestätigt den Dateiparameter ohne Modellaufruf. Das eingebaute Claude-Profil
+  nutzt deshalb den privaten Prompt-Dateipfad wie Kimi. Codex 0.160.0 nimmt
+  laut `codex --help` Konfigurationswerte über `--config`; die offizielle
+  Konfigurationsreferenz dokumentiert `model_instructions_file`, daher erhält
+  das Built-in einen dateibasierten `configFile`-Kanal. `opencode --help`
+  (1.18.34) zeigt keinen entsprechenden Systemprompt-Dateikanal und bleibt
+  `unsupported`. Die Ollama-CLI war auf der Prüfmaschine nicht installiert;
+  ihr bestehendes `unsupported` wurde daher nicht zu einer unbelegten
+  Fähigkeitsbehauptung aufgewertet.
 
 ## 2026-09-04
 
@@ -1466,3 +1497,33 @@ MERGIFY_TOKEN bekommt keinen Scope fuer scheduled_freeze (dann Nutzer:
 Application Key im Mergify-Dashboard mit Freeze-Recht anlegen). Offen bis zum
 ersten echten Ereignis: ob das bestehende Token den Freeze-Scope hat, ist
 erst an einem echten roten/gruenen main-Lauf beobachtbar.
+
+## 2026-09-26 - SETUP-12: unqueued docs-only pushes to main stay full
+
+Audit of every workflow against a docs-only change (`*.md`, `docs/**`,
+`.pa/**`): `audit`, `flaky-test-detection` (schedule/dispatch) and `release`
+(`v*` tags) have no push/PR trigger, so a docs change never starts them.
+`ci` on a pull request is already light (CI-02 linux plan, CI-03 windows
+stub, red-first inside the linux job). One rest was left: a **push to
+main**. The light push (CI-02) needs proof of a Mergify queue merge (HEAD =
+one merge commit from `mergify[bot]`); every merge so far was a manual
+GitHub merge (0 queue PRs among the last 40, merges by the repo owner), so
+even a docs-only merge ran both lanes in full - run 36216250335 (PLAN-01,
+#26): `run=true - Merge auf main stammt nicht von mergify[bot]`, ~12 min
+wall clock, linux + windows.
+
+- **Decision:** an unqueued push to `main` stays full even when the changed
+  files look like light docs. `is_light_doc` intentionally detects known
+  literal readers, but cannot prove that a gate does not discover a Markdown
+  file through a directory walk, glob or runtime-built path. The merge queue
+  is the full-run evidence that makes the existing light post-queue push safe;
+  a manual merge, direct commit or multi-merge push has no equivalent proof.
+  `scripts/test-lane-plan.sh` pins this with a runtime-built directory reader.
+- **Not changed on purpose:** merge-queue runs stay full even for a
+  docs-only batch. The classifier is a heuristic with known blind spots
+  (paths built at runtime); the queue run is the net that catches such a
+  miss before main, and it costs one run per docs PR. `main-red-guard`
+  already treats a skipped lane as no proof of green.
+- **Reverse when:** only after a closed, machine-checked allowlist can prove
+  that every skipped file is absent from every gate input. Reconsider the
+  queue rule once queue runs of docs-only PRs show up in the minute measurement.

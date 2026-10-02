@@ -17,6 +17,9 @@
 #   - jede Nicht-.md-Datei und .md ausserhalb von Wurzel/docs/.pa loest sie aus,
 #   beide Bahnen
 #   - Merge-Queue, schedule und workflow_dispatch fahren IMMER voll,
+#   - SETUP-12: ein Push auf main ohne Queue-Beleg bleibt auch bei scheinbar
+#     leichter Doku voll; ein dynamisch zusammengesetzter Leser belegt, warum
+#     der heuristische PR-Filter hier kein ausreichender Nachweis ist,
 #   - ein Push auf main faehrt voll genau dann, wenn eine Cache-Eingabe der
 #     Bahn geaendert ist (Cargo.lock beide, package-lock.json nur linux), und
 #     voll, wenn der Vorgaenger-Commit fehlt oder der Push nicht auf main geht,
@@ -78,15 +81,38 @@ import { readFileSync } from "node:fs";
 const a = readFileSync("docs/GELESEN.md", "utf8");
 const b = (n) => readFileSync(`.pa/tpl_${n}.md`, "utf8");
 EOF
+mkdir -p docs/runtime
+# A directory walk is intentionally outside the literal-reference heuristic:
+# it proves that an unqueued main push may not trust that heuristic as a gate.
+cat > scripts/lib/runtime-reader.test.mjs <<'EOF'
+import { readdirSync, readFileSync } from "node:fs";
+const root = ["docs", "runtime"].join("/");
+for (const name of readdirSync(root)) {
+  readFileSync(root + "/" + name, "utf8");
+}
+EOF
 for f in docs/frei.md docs/GELESEN.md docs/KOMMENTAR.md docs/PLAN.md docs/dev-hq/NOTIZ.md \
          .pa/report_x.md .pa/task_x.md .pa/report_f0_x.md .pa/tpl_a.md STAND.md CLAUDE.md; do
   printf '# %s\n' "$f" > "$f"
 done
+printf '# runtime input\n' > docs/runtime/input.md
 printf '{}\n' > docs/dev-hq/data.json
 printf 'export {};\n' > src/App.tsx
 printf 'name: ci\n' > .github/workflows/ci.yml
 git add -A
 git commit -q -m "basis"
+
+# The fixture must really demonstrate the heuristic's blind spot. Otherwise
+# the later unqueued-push case would only restate the provenance rule without
+# proving why trusting is_light_doc there would be unsafe.
+if [ "$(bash scripts/ci/lane-plan.sh --classify docs/runtime/input.md)" = \
+     "light docs/runtime/input.md" ]; then
+  echo 'ok   dynamic-reader-remains-a-classifier-blind-spot (light)'
+else
+  echo 'FEHLER dynamic-reader-remains-a-classifier-blind-spot: expected light'
+  bash scripts/ci/lane-plan.sh --classify docs/runtime/input.md | sed 's/^/    /'
+  fails=$((fails + 1))
+fi
 
 # Legt einen PR-Branch an, der die genannten Dateien aendert, und baut daraus
 # einen Merge-Commit wie GitHubs refs/pull/N/merge (erster Elternteil = main).
@@ -278,6 +304,27 @@ for lane in linux windows; do
   PUSH_KIND=direkt push_case "$lane" direkter-commit true src/App.tsx
   PUSH_KIND=mensch push_case "$lane" merge-ohne-queue true src/App.tsx
   PUSH_KIND=zwei   push_case "$lane" zwei-merges      true src/App.tsx
+  # SETUP-12: without queue provenance even apparently light docs stay full.
+  PUSH_KIND=mensch push_case "$lane" doku-merge-ohne-queue true docs/frei.md
+  PUSH_KIND=direkt push_case "$lane" doku-direkter-commit  true docs/frei.md
+  PUSH_KIND=zwei   push_case "$lane" doku-zwei-merges      true docs/frei.md
+  PUSH_KIND=mensch push_case "$lane" doku-wurzel-md        true NOTIZ.md
+  PUSH_KIND=mensch push_case "$lane" doku-pa-md            true .pa/notiz.md
+  # A dynamic directory reader is a known blind spot of is_light_doc. Without
+  # queue provenance the push must stay full instead of trusting the heuristic.
+  PUSH_KIND=mensch push_case "$lane" doku-dynamischer-leser true docs/runtime/input.md
+  # ... but one file a gate reads, or one non-doc file, brings the full lane
+  # back: without the queue evidence there is nothing else to vouch for it.
+  PUSH_KIND=mensch push_case "$lane" doku-plan-md          true  docs/PLAN.md
+  PUSH_KIND=mensch push_case "$lane" doku-task-spec        true  .pa/task_x.md
+  PUSH_KIND=mensch push_case "$lane" doku-eingebunden      true  docs/EINGEBUNDEN.md
+  PUSH_KIND=mensch push_case "$lane" doku-leser-literal    true  docs/GELESEN.md
+  PUSH_KIND=mensch push_case "$lane" doku-bild             true  docs/bild.png
+  PUSH_KIND=mensch push_case "$lane" doku-plus-code        true  docs/frei.md src/App.tsx
+  PUSH_KIND=mensch push_case "$lane" doku-plus-lock        true  docs/frei.md src-tauri/Cargo.lock
+  PUSH_KIND=direkt push_case "$lane" doku-plus-code-direkt true  docs/frei.md src/App.tsx
+  # The evidence guards of a docs-only push stay: unknown predecessor or a
+  # push to another ref is full even for a README edit (cases above).
 done
 # Der npm-Cache haengt nur an der Linux-Bahn (setup-linux).
 push_case linux   npm-lock true  package-lock.json

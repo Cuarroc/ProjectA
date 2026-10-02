@@ -1472,7 +1472,9 @@ impl StatusEngine {
         if let Some(tracker) = tracker {
             match reason {
                 Some(reason) => tracker.note_blocked(&profile_id, &reason, None),
-                None => tracker.note_ok(&profile_id),
+                None => {
+                    tracker.note_ok_unless_reason_prefix(&profile_id, crate::budget::REASON_PREFIX)
+                }
             }
         }
     }
@@ -3168,6 +3170,26 @@ mod tests {
         engine.note_output("wk-1", &samples::ACTIVITY.repeat(40));
         assert!(!tracker.is_blocked("claude"));
         assert!(tracker.state_of("claude").unwrap().reason.is_none());
+    }
+
+    #[test]
+    fn activity_does_not_release_a_budget_block() {
+        let (engine, _recorder) = engine_with_worker();
+        let tracker = Arc::new(QuotaTracker::default());
+        engine.set_quota_tracker(Arc::clone(&tracker));
+        let reason = format!("{}five-hour window", crate::budget::REASON_PREFIX);
+        let blocked_until = 4_102_444_800;
+        tracker.note_blocked("claude", &reason, Some(blocked_until));
+
+        engine.note_output("wk-1", samples::ACTIVITY);
+
+        let row = tracker.state_of("claude").expect("budget quota row");
+        assert!(
+            row.is_blocked(),
+            "ordinary output must preserve the budget block"
+        );
+        assert_eq!(row.reason.as_deref(), Some(reason.as_str()));
+        assert_eq!(row.blocked_until, Some(blocked_until));
     }
 
     #[test]
