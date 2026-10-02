@@ -4,7 +4,7 @@
     {
       "id": "claude", "name": "Claude Code", "command": "claude", "args": [],
       "caps": {
-        "systemPrompt": { "mode": "arg", "flag": "--append-system-prompt" },
+        "systemPrompt": { "mode": "file", "flag": "--append-system-prompt-file", "ext": "md" },
         "skills": { "mode": "convention" },
         "lifecycle": { "mode": "settingsHooks", "flag": "--settings" },
         "dialect": {

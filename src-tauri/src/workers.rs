@@ -73,8 +73,8 @@ pub mod native_launch;
 #[allow(dead_code)] // Activation still requires verified provider/resource policy.
 pub mod native_runner;
 
-/// The agent an orchestrator runs. `--append-system-prompt` is a Claude Code
-/// flag, so the role only makes sense for that profile.
+/// The agent an orchestrator runs. Its prompt and tool vocabulary are written
+/// for Claude Code, so the role only makes sense for that profile.
 pub const ORCHESTRATOR_PROFILE: &str = "claude";
 
 /// Opens every error where the caller named something that does not exist.
@@ -5580,15 +5580,8 @@ mod tests {
             .expect("respawn");
 
         let args = agents.args.lock().unwrap()[1].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the respawned worker carries its role again");
-        assert!(
-            args[flag + 1].contains("Schreibe den Test"),
-            "{}",
-            args[flag + 1]
-        );
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
+        assert!(prompt.contains("Schreibe den Test"), "{prompt}");
         assert_eq!(
             wait_for_system_message(&fx.store, &worker.id, "Rolle: Test-Fixer").await,
             "Rolle: Test-Fixer"
@@ -6254,11 +6247,7 @@ mod tests {
             .unwrap();
 
         let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the orchestrator carries a system prompt");
-        let prompt = &args[flag + 1];
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
 
         assert!(prompt.contains("Orchestrator"), "{prompt}");
         assert!(prompt.contains(&fx.project_id), "{prompt}");
@@ -6303,7 +6292,7 @@ mod tests {
 
         assert_eq!(respawned.kind, KIND_ORCHESTRATOR);
         assert_eq!(respawned.status, STATUS_RUNNING);
-        assert!(agents.args.lock().unwrap()[1].contains(&"--append-system-prompt".to_string()));
+        assert!(agents.args.lock().unwrap()[1].contains(&"--append-system-prompt-file".to_string()));
 
         // An ordinary worker is respawned without one.
         let plain = create_worker(&fx.store, &agents, &fx.project_id, "task", "claude", None)
@@ -6312,7 +6301,7 @@ mod tests {
         let plain = respawn_worker(&fx.store, &agents, &plain.id).await.unwrap();
         assert_eq!(plain.kind, KIND_WORKER);
         let args = agents.args.lock().unwrap();
-        assert!(!args[args.len() - 1].contains(&"--append-system-prompt".to_string()));
+        assert!(!args[args.len() - 1].contains(&"--append-system-prompt-file".to_string()));
     }
 
     #[tokio::test]
@@ -6375,13 +6364,10 @@ mod tests {
         assert_eq!(respawned.kind, KIND_QUEEN);
         assert_eq!(respawned.status, STATUS_RUNNING);
         let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the respawned queen carries a system prompt");
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
         // The domain survives the round trip through the task text.
-        assert!(args[flag + 1].contains("Backend-API"), "{}", args[flag + 1]);
-        assert!(args[flag + 1].contains("wk-queen"), "{}", args[flag + 1]);
+        assert!(prompt.contains("Backend-API"), "{prompt}");
+        assert!(prompt.contains("wk-queen"), "{prompt}");
     }
 
     #[test]
@@ -6403,6 +6389,14 @@ mod tests {
             enabled: true,
             env_policy: Default::default(),
         }
+    }
+
+    fn prompt_file_contents(args: &[String], flag: &str) -> String {
+        let position = args
+            .iter()
+            .position(|arg| arg == flag)
+            .unwrap_or_else(|| panic!("missing {flag} in {args:?}"));
+        std::fs::read_to_string(&args[position + 1]).expect("read generated prompt file")
     }
 
     fn demo_project() -> Project {
@@ -9376,15 +9370,8 @@ mod tests {
             worker.worktree_path
         );
         let args = agents.args.lock().unwrap()[0].clone();
-        let flag = args
-            .iter()
-            .position(|arg| arg == "--append-system-prompt")
-            .expect("the worker carries its role");
-        assert!(
-            args[flag + 1].contains("Schreibe den Test"),
-            "{}",
-            args[flag + 1]
-        );
+        let prompt = prompt_file_contents(&args, "--append-system-prompt-file");
+        assert!(prompt.contains("Schreibe den Test"), "{prompt}");
         // The board row is what a respawn and a pull request read.
         let stored = fx.store.get_worker(&worker.id).await.unwrap().unwrap();
         assert_eq!(stored.task, "[Test-Fixer] make the tests pass");

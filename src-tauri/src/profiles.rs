@@ -425,8 +425,9 @@ mod tests {
         let claude = profiles.iter().find(|p| p.id == "claude").expect("claude");
         assert_eq!(
             claude.caps.system_prompt,
-            SystemPrompt::Arg {
-                flag: "--append-system-prompt".into()
+            SystemPrompt::File {
+                flag: "--append-system-prompt-file".into(),
+                ext: "md".into()
             }
         );
         assert_eq!(claude.caps.skills, SkillsDiscovery::Convention);

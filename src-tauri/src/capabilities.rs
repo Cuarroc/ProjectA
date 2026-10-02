@@ -1,10 +1,9 @@
 //! Capability descriptors: what a CLI agent can do and how to ask it.
 //!
-//! Phase 7.x taught ProjectA that "an agent" is not one shape: Claude Code
-//! takes a system prompt as an argument, Kimi wants a file; Claude finds
-//! skills by convention, Kimi needs a flag; only Claude reports its own
-//! lifecycle. These types make that variance data, so no module has to know
-//! an agent by name.
+//! Phase 7.x taught ProjectA that "an agent" is not one shape: Claude Code and
+//! Kimi take system-prompt files under different flags; Claude finds skills by
+//! convention, Kimi needs a flag; only Claude reports its own lifecycle. These
+//! types make that variance data, so no module has to know an agent by name.
 
 use serde::{Deserialize, Serialize};
 
