@@ -214,4 +214,11 @@ mod tests {
         assert!(!signals.observe(&event[..40 * 1024]));
         assert!(signals.observe(&event[40 * 1024..]));
     }
+
+    #[test]
+    fn a_line_over_the_buffer_limit_recovers_at_the_next_newline() {
+        let mut signals = ProgressSignals::new();
+        assert!(!signals.observe(&vec![b'x'; crate::protocol::MAX_INPUT - 1]));
+        assert!(signals.observe(b"x\n{\"type\":\"turn.completed\"}\n"));
+    }
 }
