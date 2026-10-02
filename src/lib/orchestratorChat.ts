@@ -90,6 +90,7 @@ export function useOrchestratorChat(
     shownProjectId.current = projectId;
     setAdopted(null);
     setMessages([]);
+    setLoading(false);
     setError(null);
     setSending(false);
   }, [projectId]);
