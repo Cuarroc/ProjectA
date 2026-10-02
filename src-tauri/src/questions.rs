@@ -634,6 +634,21 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn store_fixture_removes_its_temp_dir_on_drop() {
+        let fixture = fixture("questions-temp-cleanup").await;
+        let path = fixture._dir.path().to_path_buf();
+
+        drop(fixture);
+
+        assert!(
+            !path.exists(),
+            "fixture left its temporary directory behind: {}",
+            path.display()
+        );
+    }
+
     impl Fixture {
         /// A running worker with a live session, which is what an agent that
         /// can be answered looks like.
