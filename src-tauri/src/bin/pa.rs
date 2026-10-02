@@ -3833,6 +3833,17 @@ mod tests {
     }
 
     #[test]
+    fn hq_agent_review_accepts_only_scoped_input() {
+        assert!(matches!(
+            parse("hq agent review --input review.json").unwrap(),
+            Command::HqAgent { operation, input: Some(file) }
+                if operation == "review" && file == "review.json"
+        ));
+        assert!(parse("hq agent review").is_err());
+        assert!(parse("hq agent review --run foreign --input review.json").is_err());
+    }
+
+    #[test]
     fn merge_takes_a_worker_id_and_an_optional_switch() {
         assert_eq!(
             parse("worker merge wk-1"),
