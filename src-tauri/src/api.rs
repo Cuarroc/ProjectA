@@ -4448,6 +4448,28 @@ pub(crate) mod tests {
         assert!(fx.server.descriptor_path().ends_with(DESCRIPTOR_FILE));
     }
 
+    /// KI-19: the broad descriptor holds the key to the whole API, so on unix
+    /// it is owner-only, also when a looser file was left behind by an older
+    /// build or a crashed run.
+    #[cfg(unix)]
+    #[test]
+    fn the_api_descriptor_is_owner_only_even_over_a_stale_loose_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+
+        let fx = fixture("api-descriptor-mode");
+        assert_eq!(mode(fx.server.descriptor_path()), 0o600);
+
+        let dir = TempDir::new("api-descriptor-stale");
+        let stale = dir.path().join(DESCRIPTOR_FILE);
+        std::fs::write(&stale, "{}").unwrap();
+        std::fs::set_permissions(&stale, std::fs::Permissions::from_mode(0o666)).unwrap();
+        let backend = Arc::new(FakeBackend::default());
+        let server =
+            start(Arc::clone(&backend) as Arc<dyn ControlBackend>, dir.path()).expect("start api");
+        assert_eq!(mode(server.descriptor_path()), 0o600);
+    }
+
     #[test]
     fn scoped_descriptor_files_are_unique_and_removed_on_revocation() {
         let fx = fixture("api-run-files");

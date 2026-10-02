@@ -1891,6 +1891,32 @@ mod tests {
         assert_eq!(mode & 0o777, 0o600, "{mode:o}");
     }
 
+    /// KI-19: rewriting and deleting keys goes through the same atomic
+    /// replace, and a looser vault from an older build must not survive it.
+    #[cfg(unix)]
+    #[test]
+    fn a_rewritten_vault_stays_private_and_leaves_no_temp_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+
+        let dir = TempDir::new("vault-perms-rewrite");
+        let vault = vault(&dir);
+        vault.set("openrouter", "sk-one").expect("set");
+        std::fs::set_permissions(vault.path(), std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        vault.set("openrouter", "sk-two").expect("overwrite");
+        assert_eq!(mode(vault.path()), 0o600);
+        vault.delete("openrouter").expect("delete");
+        assert_eq!(mode(vault.path()), 0o600);
+
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .filter(|n| n.to_string_lossy().contains(".tmp-"))
+            .collect();
+        assert!(leftovers.is_empty(), "{leftovers:?}");
+    }
+
     // -- the overview ------------------------------------------------------
 
     #[test]
