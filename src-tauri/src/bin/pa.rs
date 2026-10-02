@@ -31,7 +31,7 @@
 //! pa providers
 //! pa usage [--limit 50]
 //! pa hq runtime
-//! pa hq agent context|candidate|evidence|read-evidence
+//! pa hq agent context|candidate|evidence|review|read-evidence
 //! pa hq changes --project <projectId> [--cursor <n>] [--wait-ms <0..25000>]
 //! pa hq runs --project pj-1
 //! pa hq plan --project pj-1 --plan main [--revision 1]
@@ -200,7 +200,7 @@ USAGE
   pa hq agent read-evidence --id <evidence-id>
   pa hq agent list-evidence [--cursor <nextCursor>]
   pa hq agent list-reviews [--cursor <nextCursor>]
-  pa hq agent candidate|evidence --input <json-file>
+  pa hq agent candidate|evidence|review --input <json-file>
   pa hq runs --project <projectId>
   pa hq plan --project <projectId> --plan <planId> [--revision <positive-integer>]
   pa hq plan-import --project <projectId> --plan <planId> --expected-revision <non-negative-integer> [--rollback-reason <text>]
@@ -2045,7 +2045,7 @@ fn parse_hq(rest: &[&str]) -> Result<Command, String> {
         "agent" => {
             let (operation, flags) = rest
                 .split_first()
-                .ok_or("hq agent needs context, lessons, release, candidate or evidence")?;
+                .ok_or("hq agent needs context, lessons, release, candidate, evidence or review")?;
             match *operation {
                 "lessons" | "release" if flags.is_empty() => Ok(Command::HqAgent {
                     operation: operation.to_string(),
@@ -2095,14 +2095,14 @@ fn parse_hq(rest: &[&str]) -> Result<Command, String> {
                     operation: operation.to_string(),
                     input: None,
                 }),
-                "candidate" | "evidence" | "checkpoint" => {
+                "candidate" | "evidence" | "checkpoint" | "review" => {
                     let flags = parse_flags(flags, &["--input"])?;
                     Ok(Command::HqAgent {
                         operation: operation.to_string(),
                         input: Some(required(&flags, "--input")?),
                     })
                 }
-                _ => Err("hq agent needs context, lessons, release, candidate --input or evidence --input".into()),
+                _ => Err("hq agent needs context, lessons, release, candidate --input, evidence --input or review --input".into()),
             }
         }
         "runs" => {
@@ -3834,6 +3834,7 @@ mod tests {
 
     #[test]
     fn hq_agent_review_accepts_only_scoped_input() {
+        assert!(USAGE.contains("pa hq agent candidate|evidence|review --input <json-file>"));
         assert!(matches!(
             parse("hq agent review --input review.json").unwrap(),
             Command::HqAgent { operation, input: Some(file) }
