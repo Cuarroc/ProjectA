@@ -103,9 +103,9 @@ describe("SettingsView updates tab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Download and install" }));
     await screen.findByRole("button", { name: "Restart to apply" });
 
-    expect(setUpdaterState.mock.calls.map(([state]) => state.phase)).toEqual([
+    await waitFor(() => expect(setUpdaterState.mock.calls.map(([state]) => state.phase)).toEqual([
       "checking", "available", "installing", "ready",
-    ]);
+    ]));
   });
 
   it.each(["check", "install"] as const)("refuses update when session inventory fails during %s", async (stage) => {

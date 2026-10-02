@@ -15,6 +15,7 @@ import {
   listAgentProfiles,
   listLiveSessions,
   installUpdateWhenIdle,
+  setUpdaterState,
   setBudget,
   setCategoryLearning,
   setDigestEnabled,
@@ -24,6 +25,7 @@ import {
   setStuckAfterMinutes,
   type ProductMode,
   type RoutingStatus,
+  type UpdaterState,
 } from "../lib/ipc";
 import {
   agentCategoryDescription,
@@ -105,16 +107,6 @@ const LEARNING_CATEGORIES: ReadonlySet<AgentCategoryConfig["id"]> = new Set([
  * of the old private-release model.
  */
 const LEGACY_UPDATER_TOKEN_KEY = "projecta.settings.updater.github_token";
-
-/** The update flow as the Updates tab renders it. */
-type UpdateState =
-  | { phase: "idle" }
-  | { phase: "checking" }
-  | { phase: "up-to-date"; version: string | null }
-  | { phase: "available"; version: string; notes: string | null; activeWorkers: number }
-  | { phase: "installing"; version: string }
-  | { phase: "ready"; version: string }
-  | { phase: "error"; message: string };
 
 interface SettingsViewProps {
   density: UiDensity;
@@ -473,13 +465,20 @@ export default function SettingsView({
     }
   }, []);
 
-  const [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle" });
+  const [updateState, setUpdateState] = useState<UpdaterState>({ phase: "idle" });
+  const updaterPublish = useRef(Promise.resolve());
+  const publishUpdateState = (state: UpdaterState) => {
+    setUpdateState(state);
+    updaterPublish.current = updaterPublish.current
+      .then(() => setUpdaterState(state))
+      .catch(() => undefined);
+  };
   // The update object is the core's download handle, not something to render.
   const pendingUpdate = useRef<Update | null>(null);
   const [relaunchFailed, setRelaunchFailed] = useState(false);
 
   const handleCheckUpdates = () => {
-    setUpdateState({ phase: "checking" });
+    publishUpdateState({ phase: "checking" });
     void (async () => {
       try {
         // The update feed is the public mirror repo Cuarroc/ProjectA-updates —
@@ -487,7 +486,7 @@ export default function SettingsView({
         const update = await check();
         if (update === null || !update.available) {
           pendingUpdate.current = null;
-          setUpdateState({ phase: "up-to-date", version: update?.currentVersion ?? appVersion });
+          publishUpdateState({ phase: "up-to-date", version: update?.currentVersion ?? appVersion });
           return;
         }
         pendingUpdate.current = update;
@@ -497,7 +496,7 @@ export default function SettingsView({
         // sessions (processes), not worker status: after a restart a worker
         // can claim "running" without any process behind it.
         const liveSessions = await listLiveSessions();
-        setUpdateState({
+        publishUpdateState({
           phase: "available",
           version: update.version,
           notes: update.body !== undefined && update.body.trim() !== "" ? update.body : null,
@@ -505,7 +504,7 @@ export default function SettingsView({
         });
       } catch (cause: unknown) {
         pendingUpdate.current = null;
-        setUpdateState({ phase: "error", message: describeError(cause) });
+        publishUpdateState({ phase: "error", message: describeError(cause) });
       }
     })();
   };
@@ -514,7 +513,7 @@ export default function SettingsView({
     const update = pendingUpdate.current;
     if (update === null || updateState.phase !== "available") return;
     const version = updateState.version;
-    setUpdateState({ phase: "installing", version });
+    publishUpdateState({ phase: "installing", version });
     void (async () => {
       try {
         // Last-moment re-check: a session may have started between the update
@@ -522,7 +521,7 @@ export default function SettingsView({
         // running fleet either.
         const liveSessions = await listLiveSessions();
         if (liveSessions.length > 0) {
-          setUpdateState({
+          publishUpdateState({
             phase: "available",
             version,
             notes: update.body !== undefined && update.body.trim() !== "" ? update.body : null,
@@ -533,9 +532,9 @@ export default function SettingsView({
         await installUpdateWhenIdle(update.rid);
         pendingUpdate.current = null;
         setRelaunchFailed(false);
-        setUpdateState({ phase: "ready", version });
+        publishUpdateState({ phase: "ready", version });
       } catch (cause: unknown) {
-        setUpdateState({ phase: "error", message: describeError(cause) });
+        publishUpdateState({ phase: "error", message: describeError(cause) });
       }
     })();
   };

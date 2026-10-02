@@ -291,6 +291,7 @@
           <aside class="desk-rail">
             ${liveCard("Attention", '<div id="live-questions" class="live-list"><p class="muted">Loading questions…</p></div>')}
             ${liveCard("Capacity", '<div id="live-capacity" class="live-list"><p class="muted">Loading quota…</p></div>')}
+            ${liveCard("Updater", '<div id="live-updater" class="live-list"><p class="muted">Loading updater state…</p></div>')}
             ${liveCard("Providers", '<div id="live-providers" class="live-list"><p class="muted">Loading providers…</p></div>')}
             ${liveCard("Usage", '<div id="live-usage" class="live-list"><p class="muted">Loading usage…</p></div>')}
             ${liveCard("Activity", '<div id="live-activity" class="live-list"><p class="muted">Loading activity…</p></div>')}
@@ -636,6 +637,20 @@
         (online !== undefined ? `<p class="muted team-note">OmniRoute router: ${online ? "online" : "offline"}</p>` : "");
     }
 
+    function renderUpdater(state) {
+      const phase = state?.phase || "unavailable";
+      const detail = phase === "idle" ? "Not checked since app start."
+        : phase === "checking" ? "Checking for updates…"
+        : phase === "up-to-date" ? `ProjectA is up to date${state.version ? ` (${state.version})` : ""}.`
+        : phase === "available" ? `Version ${state.version} is available.`
+        : phase === "installing" ? `Downloading and installing ${state.version}…`
+        : phase === "ready" ? `Version ${state.version} is ready; restart to apply.`
+        : phase === "error" ? state.message
+        : "Updater state unavailable.";
+      const badge = phase === "up-to-date" ? "done" : phase === "error" || phase === "unavailable" ? "needs_you" : "in_review";
+      el.querySelector("#live-updater").innerHTML = `<article class="live-row"><div><strong>${escape(detail)}</strong></div><span class="live-badge ${badge}">${escape(phase)}</span></article>`;
+    }
+
     function renderUsage(report) {
       if (!report || !report.today) {
         el.querySelector("#live-usage").innerHTML = '<p class="muted">No usage report.</p>';
@@ -948,7 +963,7 @@
         refreshLessons(),
       ]);
       try {
-        const [projects, board, queue, questions, learnings, roles, activity, quota, budgets, usage, providers, recommendations] = await Promise.all([
+        const [projects, board, queue, questions, learnings, roles, activity, quota, budgets, usage, providers, recommendations, updater] = await Promise.all([
           liveApi("/api/projects"),
           liveApi(query("/api/board")),
           liveApi(query("/api/queue")),
@@ -961,6 +976,7 @@
           liveApi("/api/usage?limit=20").catch(() => null),
           liveApi("/api/providers").catch(() => []),
           liveApi(query("/api/recommendations")).catch(() => []),
+          liveApi("/api/updater").catch(() => null),
         ]);
         const current = projectSelect.value;
         if (current !== requestedProject) { refreshPending = true; return; }
@@ -980,6 +996,7 @@
         renderItems("#live-review", reviewItems, (item) => `<article class="live-row"><div><strong>${escape(item.label)}</strong><span>${escape(item.kind)} · ${escape(item.id)}</span></div><span><button class="hq-button" data-live-action="${item.kind}Approve:${escape(item.id)}" data-live-text="${escape(item.label)}">Approve</button> <button class="hq-button" data-live-action="${item.kind}Reject:${escape(item.id)}">Reject</button></span></article>`, "No pending verdicts.");
         renderItems("#live-activity", activity, (item) => `<article class="activity-row"><time title="${escape(item.createdAt || item.timestamp || "")}">${escape(shortTime(item.createdAt || item.timestamp || ""))}</time><span>${escape(item.text || item.message || item.kind || JSON.stringify(item))}</span></article>`, "No recent activity.");
         renderCapacity(quota, budgets);
+        renderUpdater(updater);
         renderUsage(usage);
         renderProviders(providers);
         renderRecommendations(recommendations);
@@ -992,7 +1009,7 @@
         el.querySelector("#live-error").hidden = true;
       } catch (error) {
         showError(error);
-        for (const id of ['live-board', 'live-queue', 'live-questions', 'live-review', 'live-activity', 'live-capacity', 'live-usage', 'live-providers', 'live-recommendations', 'live-signals', 'live-effort']) {
+        for (const id of ['live-board', 'live-queue', 'live-questions', 'live-review', 'live-activity', 'live-capacity', 'live-updater', 'live-usage', 'live-providers', 'live-recommendations', 'live-signals', 'live-effort']) {
           el.querySelector(`#${id}`).textContent = 'Live-Daten nicht verfügbar. Verbindung zur Control-API prüfen.';
         }
         await refreshStats(null);

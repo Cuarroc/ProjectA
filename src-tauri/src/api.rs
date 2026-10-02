@@ -50,6 +50,7 @@
 //! | POST   | `/api/workers/<id>/merge` | `{removeWorktree?}`   | `Worker`          |
 //! | GET    | `/api/board`              | `?projectId=`         | `[board state]`   |
 //! | GET    | `/api/quota`              |                       | `[quota row]`     |
+//! | GET    | `/api/updater`            |                       | updater state     |
 //! | GET    | `/api/budgets`            |                       | `[budget row]`    |
 //! | PUT    | `/api/budgets`            | `{profileId, fiveHourPct?, sevenDayPct?}` | `budget row` |
 //! | GET    | `/api/providers`          |                       | `[provider row]`  |
@@ -225,6 +226,38 @@ const USAGE_LIMIT_MAX: u32 = 500;
 
 /// A slow or wedged client must not tie up a thread forever.
 const IO_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// The updater result already observed by the app's updater plugin.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "phase", rename_all = "kebab-case")]
+pub enum UpdaterState {
+    Idle,
+    Checking,
+    UpToDate {
+        version: Option<String>,
+    },
+    Available {
+        version: String,
+        notes: Option<String>,
+        #[serde(rename = "activeWorkers")]
+        active_workers: usize,
+    },
+    Installing {
+        version: String,
+    },
+    Ready {
+        version: String,
+    },
+    Error {
+        message: String,
+    },
+}
+
+impl Default for UpdaterState {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
 
 /// Everything the API can ask the app to do.
 ///
@@ -471,6 +504,8 @@ pub trait ControlBackend: Send + Sync {
     fn board(&self, project_id: Option<&str>) -> Result<Vec<WorkerBoardState>, String>;
 
     fn quota(&self) -> Result<Vec<QuotaStateRow>, String>;
+
+    fn updater_state(&self) -> Result<UpdaterState, String>;
 
     /// Which providers this machine can reach, and what the quota tracker
     /// knows about each - the read-only half of the Phase 7.2 vault.
@@ -1751,6 +1786,8 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
 
         ("GET", ["api", "quota"]) => into_response(backend.quota()),
 
+        ("GET", ["api", "updater"]) => into_response(backend.updater_state()),
+
         // Not `/api/projects/<id>/usage`: OmniRoute's log is keyed by provider
         // account and carries nothing that could be narrowed to one project,
         // so a per-project route would answer every project identically.
@@ -2300,6 +2337,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
         | (_, ["api", "queens"])
         | (_, ["api", "board"])
         | (_, ["api", "quota"])
+        | (_, ["api", "updater"])
         | (_, ["api", "budgets"])
         | (_, ["api", "providers"])
         | (_, ["api", "queue"])
@@ -3388,6 +3426,10 @@ pub(crate) mod tests {
 
         fn quota(&self) -> Result<Vec<QuotaStateRow>, String> {
             Ok(Vec::new())
+        }
+
+        fn updater_state(&self) -> Result<UpdaterState, String> {
+            Ok(UpdaterState::default())
         }
 
         fn providers(&self) -> Result<Vec<ProviderOverview>, String> {
