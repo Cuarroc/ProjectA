@@ -611,10 +611,11 @@ mod tests {
     }
 
     struct Fixture {
-        _dir: TempDir,
         store: Store,
         engine: StatusEngine,
         project_id: String,
+        /// Last, so SQLite closes before the temporary directory is removed.
+        _dir: TempDir,
     }
 
     async fn fixture(label: &str) -> Fixture {
@@ -627,10 +628,10 @@ mod tests {
             .await
             .expect("create project");
         Fixture {
-            _dir: dir,
             store,
             engine: StatusEngine::default(),
             project_id: project.id,
+            _dir: dir,
         }
     }
 
@@ -641,6 +642,11 @@ mod tests {
         let path = fixture._dir.path().to_path_buf();
 
         drop(fixture);
+
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(1);
+        while path.exists() && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
 
         assert!(
             !path.exists(),
