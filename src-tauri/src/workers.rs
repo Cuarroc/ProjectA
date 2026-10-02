@@ -6464,6 +6464,21 @@ mod tests {
         assert_eq!(orchestrator_task("ProjectA"), "Orchestrator for ProjectA");
     }
 
+    /// W5-02b4: coordinators must not hand the runner host's GitHub
+    /// credentials back to workers through task instructions. Workers commit
+    /// locally; the trusted host performs the eventual push.
+    #[test]
+    fn coordinator_prompts_route_worker_pushes_through_the_runner_host() {
+        for prompt in [
+            orchestrator_system_prompt("ProjectA", "pj-1"),
+            queen_system_prompt("ProjectA", "pj-1", "Backend", "wk-queen"),
+        ] {
+            assert!(prompt.contains("committen, aber nicht pushen"), "{prompt}");
+            assert!(prompt.contains("Runner-Host pusht"), "{prompt}");
+            assert!(prompt.contains("kein `gh`"), "{prompt}");
+        }
+    }
+
     /// Phase 21: the rule and the command have to reach every agent that can
     /// run one, and the coordinators are the two that read a closed command
     /// list - "anything not on this list is not your job". `ask` is on it.
