@@ -104,6 +104,45 @@ calls (`gh pr list` twice, `gh run list` once) and spends no money. The test is
   also keine lokalisierte Zahl („3,25") geparst. `PA_BUILD_SLOTS="pfad;pfad"`
   ersetzt die Slotliste.
 
+## Startcheck vor jedem Worker (OPS-02)
+
+| Script | Command | What it answers |
+|---|---|---|
+| `start-check.mjs` | `npm run dev:start-check [-- --usage <datei> --observe-log <datei>]` | Darf jetzt noch ein Agenten-Worker starten? (read-only, kein Geld, kein Netz) |
+
+Vier Prüfungen, je eine deutsche Zeile (`OK` / `WARNUNG` / `STOPP`), bei einer
+verletzten Grenze Exit != 0:
+
+| Prüfung | Regel | Schalter |
+|---|---|---|
+| RAM | freier RAM (`os.freemem()`) unter der Schwelle → STOPP | `--min-free-gb` (Standard 1,5) |
+| cargo | laufende cargo-Builds `>=` Grenze → STOPP: bei Standard 2 startet kein dritter | `--max-cargo` (Standard 2) |
+| Limit | Nutzungsdatei `{"<anbieter>":{"woche":<zahl>,"session":<zahl>}}`: `woche >= --cap` oder `session >= --session-cap` → STOPP; Datei fehlt → nur WARNUNG; Datei kaputt oder Wert keine Zahl → STOPP | `--usage`, `--cap` (85), `--session-cap` (85) |
+| Beobachtung | ein schon gestarteter Worker hat in den letzten N s Ausgabe geschrieben (Log existiert, Größe > 0, mtime jünger als N s); sonst „stumm, wahrscheinlich hängt“ | `--observe-log`, `--since-sec` (300) |
+
+Ohne `--usage` bzw. `--observe-log` bleibt die Prüfung aus (Zeile `WARNUNG`
+bzw. `AUS`). Exit-Codes: `0` alles frei, `1` Grenze verletzt (RAM, cargo, Limit),
+`2` Aufruffehler, `3` Worker stumm; sind zugleich eine Grenze verletzt und der
+Worker stumm, gilt `1`. `--json` liefert `{ok, exit, checks[]}` für Maschinen.
+
+Gezählt werden Builds, nicht Prozesse: Ein `cargo` (der rustup-Proxy und sein
+echtes cargo-Kind), seine `rustc`-/`build-script-build`-Kinder und ein
+`cargo-nextest` mit seinem cargo zählen je als **ein** Build. Unter Windows
+liest das Skript die Prozessliste über `Get-CimInstance Win32_Process`, unter
+Linux über `/proc`; ist sie nicht lesbar (oder ist die Plattform eine andere),
+warnt der cargo-Check nur, statt zu stoppen. Die Nutzungsprozente liefert
+niemand automatisch; wer sie hat (z. B. der Koordinator aus den
+Anbieter-Anzeigen), legt die Datei an. Der Selbsttest
+`scripts/lib/dev-start-check.test.mjs` läuft in `npm run test:hq` mit
+eingespeistem RAM, eingespeisten Prozessen, Dateien und Uhrzeit — es wird kein
+echter Prozess gestartet.
+
+```sh
+npm run dev:start-check
+npm run dev:start-check -- --usage .pa/usage.json --cap 80
+npm run dev:start-check -- --observe-log .pa/worker-w2-03.log --since-sec 300
+```
+
 ## Plan- und Spec-Helfer (SETUP-08b)
 
 | npm-Skript | Zweck | ändert etwas? |
