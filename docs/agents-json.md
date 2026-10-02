@@ -153,8 +153,9 @@ Aus dem Quelltext von `openinterpreter/openinterpreter` (Codex-Fork, Rust):
 
 ### Was bewusst leer bleibt
 
-Alles außer `skills` steht auf `AgentCapabilities::default()` — dieselbe
-Ausgangslage, die das Built-in `codex` hat. Das ist kein Versehen:
+Alles außer `skills` steht auf `AgentCapabilities::default()`. Das ist kein
+Versehen; das Built-in `codex` ergänzt dagegen seinen belegten
+`model_instructions_file`-Kanal ausdrücklich:
 
 - **`dialect`** (Permission- und Quota-Phrasen) und **`readinessMarker`** sind
   Strings, die im **Terminalstrom** vorkommen müssen. Sie aus Quelltext zu
@@ -164,7 +165,7 @@ Ausgangslage, die das Built-in `codex` hat. Das ist kein Versehen:
 - **`lifecycle`** bleibt `heuristic`: der Fork bringt keine Hooks-Datei mit,
   die auf ProjectA zurückzeigt. Das Board rät bei diesem Agenten also, wie es
   bei Codex und OpenCode auch rät.
-- **`systemPrompt`** bleibt `unsupported`, bis der passende Schalter gemessen
+- **`systemPrompt`** bleibt `unsupported`, bis ein passender Dateikanal belegt
   ist. Orchestratoren verweigern ein Profil ohne System-Prompt — das ist die
   gewollte Bremse, nicht ein Mangel.
 - **`env`** bleibt leer. `INTERPRETER_HOME` (Standard `~/.openinterpreter`,
