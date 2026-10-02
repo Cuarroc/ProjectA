@@ -1,6 +1,6 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-09-26T14:51:38.610Z",
-  "commit": "a5b9dbd",
+  "generatedAt": "2026-10-02T11:53:16.621Z",
+  "commit": "9b51e43",
   "dirty": true,
   "sources": [
     {
@@ -9,7 +9,7 @@ window.HQ_DATA = {
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "1b8a5749905e926920e6c97b6e6b2398f450ad8d02d3cda41c41c554f40f2650"
+      "sha256": "ce3794a025cd5d30799109cd1401519542900f4e8faf7ae045ffdd380a83c063"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -609,7 +609,7 @@ window.HQ_DATA = {
           "title": "Kimi-Re-Smoke mit PROJECTA_PTY_TRACE_DIR",
           "size": "S",
           "lane": "pty",
-          "stand": "offen",
+          "stand": "blockiert (Kimi-Abo abgelaufen 02.10.)",
           "state": "open",
           "prNumbers": []
         },
@@ -942,7 +942,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -963,7 +963,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -984,7 +984,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1004,7 +1004,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1025,7 +1025,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1046,7 +1046,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1066,7 +1066,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1087,7 +1087,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1108,7 +1108,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1128,7 +1128,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1149,7 +1149,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1170,7 +1170,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1190,7 +1190,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1211,7 +1211,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1232,7 +1232,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1254,7 +1254,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1275,7 +1275,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1296,7 +1296,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1318,7 +1318,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1339,7 +1339,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 15,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1360,7 +1360,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1381,7 +1381,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1402,7 +1402,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1430,7 +1430,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1451,7 +1451,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1472,7 +1472,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1493,7 +1493,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1514,7 +1514,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1536,7 +1536,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1558,7 +1558,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 20,
         "votes": 0
       }
     },
@@ -1579,7 +1579,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 14,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1600,7 +1600,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1621,7 +1621,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1642,7 +1642,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1663,7 +1663,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1684,7 +1684,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1705,7 +1705,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 13,
+        "ageDays": 19,
         "votes": 0
       }
     },
@@ -1728,7 +1728,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 9,
+        "ageDays": 15,
         "votes": 0
       }
     },
@@ -1749,7 +1749,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 4,
+        "ageDays": 10,
         "votes": 0
       }
     },
@@ -1770,7 +1770,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 2,
+        "ageDays": 8,
         "votes": 0
       }
     }

@@ -24,8 +24,8 @@ Zwei Dinge fielen am 09.09. zusammen:
   Korrektur auf `main` vom 09.09.: es liefen die ganze Zeit Workflows durch,
   niemand hatte `gh run list` aufgerufen. Der Grund für lokale Gates ist
   schlichter und hält auch ohne Notlage: schneller und billiger.)*
-- **Der Linux-Server ist gelöscht** (`STAND.md` §5). Damit ist der Ort weg, an
-  dem die `#[cfg(unix)]`-Tests je liefen.
+- **Es gibt keinen eigenen Linux-Rechner.** Die `#[cfg(unix)]`-Tests brauchen
+  deshalb WSL2 (unten) oder GitHub CI.
 
 Dazu kam ein Befund: die Gate-Liste stand **fünffach** da — in beiden Hooks, in
 `ci.yml`, in `release.yml` und als Prosa in `AGENTS.md` — und sie driftete.
@@ -79,7 +79,7 @@ Nicht gleich sind:
 
 ## Die Linux-Hälfte: WSL2, nicht Docker
 
-Seit der Server weg ist, ist WSL2 der Linux-Belegpfad.
+WSL2 ist der lokale Linux-Belegpfad.
 
 ```powershell
 wsl --install          # einmalig
