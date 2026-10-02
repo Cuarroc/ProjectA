@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { QueueEntry } from "../types";
@@ -79,6 +79,25 @@ describe("QueuePanel project switch", () => {
     rerender(<QueuePanel {...props} projectId="project-b" />);
     resolveA([rowA]);
     await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(screen.queryByText("Task of project A")).toBeNull();
+  });
+
+  it("does not publish an enqueue that completes after the project switch", async () => {
+    vi.mocked(ipc.listQueue).mockResolvedValue([]);
+    let resolveEnqueue: (row: QueueEntry) => void = () => undefined;
+    vi.mocked(ipc.enqueueTask).mockReturnValue(
+      new Promise<QueueEntry>((resolve) => {
+        resolveEnqueue = resolve;
+      }),
+    );
+    const { rerender } = render(<QueuePanel {...props} projectId="project-a" />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Task of project A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Einreihen" }));
+    await waitFor(() => expect(ipc.enqueueTask).toHaveBeenCalled());
+
+    rerender(<QueuePanel {...props} projectId="project-b" />);
+    await act(async () => resolveEnqueue(rowA));
 
     expect(screen.queryByText("Task of project A")).toBeNull();
   });
