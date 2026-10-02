@@ -6,6 +6,14 @@ import { join, dirname } from "node:path";
 
 const PROFILE_ID = /^[a-z0-9][a-z0-9-]*$/;
 
+/// Progress over the milestone packages of docs/PLAN.md (done / all).
+export function snapshotProgress(snapshot) {
+  const milestones = snapshot?.milestones || [];
+  const packagesDone = milestones.reduce((sum, m) => sum + m.done, 0);
+  const packagesTotal = milestones.reduce((sum, m) => sum + m.total, 0);
+  return { packagesDone, packagesTotal, percent: packagesTotal ? Math.round((packagesDone / packagesTotal) * 100) : 0 };
+}
+
 /// Validate one custom profile coming from the HQ UI.
 /// Returns an error string, or null when the profile is acceptable.
 export function validateProfile(profile) {

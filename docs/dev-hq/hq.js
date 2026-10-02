@@ -47,13 +47,13 @@
 
   function summary(data) {
     const specs = data.specs || [];
-    const packages = data.packages || [];
+    const packages = (data.milestones || []).flatMap((m) => m.packages);
     const findings = data.findings || [];
     return {
       specs: specs.length,
       ready: countWhere(specs, (s) => s.startable !== false),
       locked: countWhere(specs, (s) => s.startable === false),
-      active: countWhere(packages, (p) => p.current === "active"),
+      active: countWhere(packages, (p) => p.state === "in_progress" || p.state === "pr"),
       facts: countWhere(findings, (f) => f.klass === "FACT"),
       claims: countWhere(findings, (f) => f.klass === "CLAIM"),
       warnings: (data.warnings || []).length,
@@ -147,7 +147,7 @@
       live: ["Live", "Operate the fleet from the same desk your agents use."],
       now: ["Now", "The operator desk for cited development truth."],
       proof: ["Proof", "Separate what is proven from what is only claimed."],
-      map: ["Map", "See the package dependencies before choosing a lane."],
+      map: ["Map", "Where each milestone of docs/PLAN.md stands, package by package."],
       next: ["Next", "Read the ordered work without guessing at the lock."],
       sources: ["Sources", "Audit every generated claim back to its source."],
       lessons: ["Lessons", "What broke before, why, and the fix that worked — the memory every agent reads first."],
@@ -1268,149 +1268,49 @@
         ? `<p class="empty-specs">no executable specs — STAND and Status: aktiv disagree or both empty</p>`
         : specTable(data.specs)
     }
-    <a class="mini-dag-link" href="./map.html" aria-label="Open package map"><svg id="mini-dag" role="img" aria-label="Package DAG thumbnail"></svg></a>
+    ${milestoneProgress(data)}
   `;
     drawLanes(document.getElementById("lane"), data);
-    drawDag(document.getElementById("mini-dag"), data.packages, { mini: true });
   }
 
-  const DAG_POS = {
-    F0: [40, 80],
-    F1: [180, 80],
-    F4: [320, 80],
-    F5: [460, 80],
-    F8: [600, 140],
-    F2: [180, 200],
-    "F6-UI": [320, 200],
-    F3: [320, 140],
-    "F6-Attribution": [460, 200],
-    F7: [40, 200],
+  const MILESTONE_STATE = {
+    done: ["done", "done"],
+    in_progress: ["active", "in progress"],
+    pr: ["active", "PR open"],
+    open: ["waiting", "open"],
   };
 
-  function dagClass(p) {
-    if (p.current === "done") return "dag-node done";
-    if (p.current === "active") {
-      return p.lane === "serial" ? "dag-node active serial" : "dag-node active parallel";
-    }
-    return "dag-node waiting";
+  function milestoneProgress(data) {
+    const milestones = data.milestones || [];
+    if (!milestones.length) return "";
+    return `${sectionTitle("Milestones", "Progress per milestone of docs/PLAN.md.")}
+    <ul class="signal-list">
+      ${milestones.map((m) => `<li><span class="signal-mark parallel"></span><div><strong>${escape(m.id)}</strong><span>${escape(m.title)}</span></div><em>${m.done}/${m.total}</em></li>`).join("")}
+    </ul>
+    <a class="text-link" href="./map.html">Open the milestone map →</a>`;
+  }
+
+  function milestoneTable(m) {
+    const rows = m.packages
+      .map((p) => {
+        const [cls, label] = MILESTONE_STATE[p.state] || MILESTONE_STATE.open;
+        return `<tr><td class="path">${escape(p.id)}</td><td>${escape(p.title)}</td><td><span class="package-state ${cls}">${label}</span></td><td>${escape(p.lane)}</td><td class="cite">${escape(p.stand)}</td></tr>`;
+      })
+      .join("");
+    return `${sectionTitle(`${escape(m.id)} — ${escape(m.title)}`, `${m.done}/${m.total} packages done`)}
+      <div class="table-wrap"><table class="spec-table package-table">
+        <thead><tr><th scope="col">package</th><th scope="col">title</th><th scope="col">state</th><th scope="col">lane</th><th scope="col">stand</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
   }
 
   function renderMap(data, el) {
+    const milestones = data.milestones || [];
     el.innerHTML = `
       <p class="meta">from docs/PLAN.md · ${escape(data.generatedAt)} · ${escape(data.commit || "no git")}</p>
       ${summaryStrip(data)}
-      <figure class="dag-figure">
-        <figcaption>Package DAG · Source: docs/PLAN.md</figcaption>
-        <svg id="dag"></svg>
-      </figure>
-      <div class="legend" aria-label="Package state legend">
-        <span><i class="legend-dot done"></i>done</span>
-        <span><i class="legend-dot active"></i>active</span>
-        <span><i class="legend-dot waiting"></i>waiting</span>
-        <span class="legend-note">Dependencies and sources are listed in the table below.</span>
-      </div>
-      <div class="table-wrap package-table-wrap">
-        <table class="spec-table package-table">
-          <thead><tr><th scope="col">package</th><th scope="col">state</th><th scope="col">lane</th><th scope="col">depends on</th></tr></thead>
-          <tbody>${(data.packages || []).map((p) => `<tr><td class="path">${escape(p.id)}</td><td><span class="package-state ${escape(p.current)}">${escape(p.current)}</span></td><td>${escape(p.lane)}</td><td class="cite">${escape((p.dependsOn || []).join(" · ") || "—")}</td></tr>`).join("")}</tbody>
-        </table>
-      </div>
+      ${milestones.length ? milestones.map(milestoneTable).join("") : `<p class="empty-specs">no milestone tables found in docs/PLAN.md</p>`}
     `;
-    drawDag(document.getElementById("dag"), data.packages, { mini: false });
-    strokeMapOnce(document.getElementById("dag"));
-  }
-
-  function prefersReducedMotion() {
-    return (
-      typeof matchMedia === "function" &&
-      matchMedia("(prefers-reduced-motion: reduce)").matches
-    );
-  }
-
-  function strokeMapOnce(svg) {
-    if (!svg || prefersReducedMotion()) return;
-    try {
-      if (sessionStorage.getItem("hq-dag-drawn")) return;
-      sessionStorage.setItem("hq-dag-drawn", "1");
-    } catch (_err) {
-      return;
-    }
-    svg.classList.add("dag-stroke");
-  }
-
-  function drawDag(svg, packages, opts) {
-    if (!svg) return;
-    const mini = opts && opts.mini;
-    const NS = "http://www.w3.org/2000/svg";
-    const r = mini ? 8 : 14;
-    svg.setAttribute("viewBox", "0 0 680 260");
-    svg.setAttribute("class", mini ? "dag-svg mini" : "dag-svg");
-    svg.setAttribute("role", mini ? "img" : "group");
-    svg.setAttribute("aria-label", "Package DAG from docs/PLAN.md");
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-    const defs = document.createElementNS(NS, "defs");
-    const marker = document.createElementNS(NS, "marker");
-    marker.setAttribute("id", "dag-arrow");
-    marker.setAttribute("viewBox", "0 0 10 10");
-    marker.setAttribute("refX", "9");
-    marker.setAttribute("refY", "5");
-    marker.setAttribute("markerWidth", "5");
-    marker.setAttribute("markerHeight", "5");
-    marker.setAttribute("orient", "auto-start-reverse");
-    const arrow = document.createElementNS(NS, "path");
-    arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
-    arrow.setAttribute("fill", "currentColor");
-    marker.appendChild(arrow);
-    defs.appendChild(marker);
-    svg.appendChild(defs);
-
-    for (const p of packages || []) {
-      const to = DAG_POS[p.id];
-      if (!to) continue;
-      for (const dep of p.dependsOn || []) {
-        const from = DAG_POS[dep];
-        if (!from) continue;
-        const line = document.createElementNS(NS, "line");
-        line.setAttribute("x1", String(from[0]));
-        line.setAttribute("y1", String(from[1]));
-        line.setAttribute("x2", String(to[0]));
-        line.setAttribute("y2", String(to[1]));
-        line.setAttribute("class", "dag-edge");
-        svg.appendChild(line);
-      }
-    }
-
-    for (const p of packages || []) {
-      const pos = DAG_POS[p.id];
-      if (!pos) continue;
-      const g = document.createElementNS(NS, "g");
-      g.setAttribute("class", dagClass(p));
-      if (!mini) {
-        g.setAttribute("tabindex", "0");
-        g.setAttribute("role", "img");
-      }
-      g.setAttribute("aria-label", `${p.id} ${p.current} package`);
-      const circle = document.createElementNS(NS, "circle");
-      circle.setAttribute("cx", String(pos[0]));
-      circle.setAttribute("cy", String(pos[1]));
-      circle.setAttribute("r", String(r));
-      g.appendChild(circle);
-      const title = document.createElementNS(NS, "title");
-      const deps = (p.dependsOn || []).join(", ");
-      title.textContent = deps
-        ? `${p.id} · ${p.lane} · ${p.source} · dependsOn ${deps}`
-        : `${p.id} · ${p.lane} · ${p.source}`;
-      g.appendChild(title);
-      const text = document.createElementNS(NS, "text");
-      text.setAttribute("x", String(pos[0]));
-      text.setAttribute("y", String(pos[1] + (mini ? 18 : 26)));
-      text.setAttribute("text-anchor", "middle");
-      text.setAttribute("class", "dag-label");
-      text.textContent = p.id;
-      g.appendChild(text);
-      svg.appendChild(g);
-    }
   }
 
   const KLASS_ORDER = ["FACT", "CLAIM", "UNPROVEN"];

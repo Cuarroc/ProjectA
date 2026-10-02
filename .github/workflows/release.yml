@@ -68,7 +68,7 @@ jobs:
       # Die Bahn `release` faehrt die Rust-Suite ueber nextest (wie ci.yml).
       # Vorher stand hier `cargo test`, deshalb brauchte dieser Job das
       # Werkzeug nie — ohne diesen Schritt waere der Tag-Build sofort rot.
-      - uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+      - uses: taiki-e/install-action@dfae9bf3d6f6c6f20ef4ebb3486c01a51341ff12 # v2.87.18
         with:
           tool: nextest
 

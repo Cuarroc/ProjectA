@@ -80,7 +80,7 @@ GATES=(
   # Antwort ohne Inhalt und schrieb fuer KEINEN Reviewer ein Protokoll.
   # Laeuft gegen einen lokalen Server: kein Netz, kein Secret, keine
   # Modellminute.
-  "selftest-review|linux,release|.|bash scripts/test-review-transport.sh"
+  "selftest-review|linux,release|.|bash scripts/test-review-transport.sh && bash scripts/test-review-local.sh"
   # CI-01/CI-02: der Plan-Schritt der Jobs linux und windows entscheidet, ob
   # die Bahn laufen muss (scripts/ci/lane-plan.sh). Ein falsches "false" waere
   # ein Gate, das gruen durch Abwesenheit ist - deshalb belegt der Selbsttest

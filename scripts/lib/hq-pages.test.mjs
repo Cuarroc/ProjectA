@@ -1,4 +1,4 @@
-// scripts/lib/hq-pages.test.mjs — Map DAG / Proof / Next / Sources contracts
+// scripts/lib/hq-pages.test.mjs — Map milestones / Proof / Next / Sources contracts
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -7,49 +7,15 @@ import { join } from "node:path";
 const HQ_JS = readFileSync(join("docs", "dev-hq", "hq.js"), "utf8");
 const DATA = JSON.parse(readFileSync(join("docs", "dev-hq", "data.json"), "utf8"));
 
-test("drawDag: fixed Rev 9 coordinates and caption", () => {
-  assert.match(HQ_JS, /function drawDag\s*\(/);
-  assert.match(HQ_JS, /F0:\s*\[\s*40\s*,\s*80\s*\]/);
-  assert.match(HQ_JS, /F1:\s*\[\s*180\s*,\s*80\s*\]/);
-  assert.match(HQ_JS, /F4:\s*\[\s*320\s*,\s*80\s*\]/);
-  assert.match(HQ_JS, /F5:\s*\[\s*460\s*,\s*80\s*\]/);
-  assert.match(HQ_JS, /F8:\s*\[\s*600\s*,\s*140\s*\]/);
-  assert.match(HQ_JS, /F2:\s*\[\s*180\s*,\s*200\s*\]/);
-  assert.match(HQ_JS, /F6-UI"?:\s*\[\s*320\s*,\s*200\s*\]/);
-  assert.match(HQ_JS, /F3:\s*\[\s*320\s*,\s*140\s*\]/);
-  assert.match(HQ_JS, /F6-Attribution"?:\s*\[\s*460\s*,\s*200\s*\]/);
-  assert.match(HQ_JS, /F7:\s*\[\s*40\s*,\s*200\s*\]/);
-  assert.match(HQ_JS, /Package DAG · Source: docs\/PLAN\.md/);
-});
-
-test("drawDag: lines before circles; F3 title cites dependsOn", () => {
-  const fn = HQ_JS.slice(HQ_JS.indexOf("function drawDag"));
-  const lineAt = fn.indexOf('createElementNS(NS, "line")');
-  const circleAt = fn.indexOf('createElementNS(NS, "circle")');
-  assert.ok(lineAt >= 0 && circleAt > lineAt, "draw lines before circles");
-  assert.match(fn, /dependsOn/);
-  assert.match(fn, /id · lane · source|\$\{p\.id\} · \$\{p\.lane\} · \$\{p\.source\}/);
-});
-
-test("renderMap mounts #dag; Now fills #mini-dag", () => {
+test("Map renders the PLAN.md milestone tables; Now shows milestone progress", () => {
   assert.match(HQ_JS, /function renderMap\s*\(/);
-  assert.match(HQ_JS, /id="dag"/);
   assert.match(HQ_JS, /page === "map"/);
-  assert.match(HQ_JS, /drawDag\([^,]+,\s*data\.packages/);
-  assert.match(HQ_JS, /getElementById\("mini-dag"\)/);
-  const pos = HQ_JS.indexOf("const DAG_POS");
+  assert.match(HQ_JS, /milestones\.map\(milestoneTable\)/);
+  assert.match(HQ_JS, /\$\{milestoneProgress\(data\)\}/);
+  assert.doesNotMatch(HQ_JS, /drawDag|DAG_POS|mini-dag/, "the F0-F8 package DAG is gone");
+  const pos = HQ_JS.indexOf("const MILESTONE_STATE");
   const dispatch = HQ_JS.lastIndexOf('page === "now"');
-  assert.ok(pos >= 0 && dispatch > pos, "dispatch after DAG_POS to avoid TDZ");
-});
-
-test("live packages encode F3 → F1 and F2 (Rev 9)", () => {
-  const f3 = DATA.packages.find((p) => p.id === "F3");
-  assert.deepEqual(f3.dependsOn, ["F1", "F2"]);
-  const f8 = DATA.packages.find((p) => p.id === "F8");
-  assert.ok(f8.dependsOn.includes("F5"));
-  assert.ok(f8.dependsOn.includes("F6-UI"));
-  assert.ok(f8.dependsOn.includes("F3"));
-  assert.ok(f8.dependsOn.includes("F6-Attribution"));
+  assert.ok(pos >= 0 && dispatch > pos, "dispatch after MILESTONE_STATE to avoid TDZ");
 });
 
 test("Proof: matrix by packet, no pie, omit empty klass columns", () => {
@@ -65,20 +31,6 @@ test("Proof: matrix by packet, no pie, omit empty klass columns", () => {
   const klasses = new Set(DATA.findings.map((f) => f.klass));
   if (!klasses.has("UNPROVEN")) {
     assert.match(HQ_JS, /empty columns omitted|omitEmpty|counts\[k\] > 0|col\.count > 0/);
-  }
-});
-
-test("live packages: active only with an executable spec, F0 done per STAND", () => {
-  // Bound to the contract, not to one STAND revision: a package is "active"
-  // only while an executable spec names it; F0 is "done" once STAND says so.
-  for (const p of DATA.packages) {
-    if (p.current === "active") {
-      assert.ok(DATA.specs.some((s) => s.packet.startsWith(p.id.replace(/-.*$/, ""))), `${p.id} active without spec`);
-    }
-  }
-  const stand = readFileSync("STAND.md", "utf8");
-  if (/F0 ist abgeschlossen/i.test(stand)) {
-    assert.equal(DATA.packages.find((p) => p.id === "F0").current, "done");
   }
 });
 
@@ -145,4 +97,17 @@ test("Sources: table plus outbound STAND / Sanierungsplan / ui-variants", () => 
   assert.match(HQ_JS, /\.\.\/PLAN\.md/);
   assert.match(HQ_JS, /\.\.\/\.\.\/STAND\.md/);
   assert.match(HQ_JS, /\.\.\/ui-variants\/index\.html/);
+});
+
+test("live snapshot lists the PLAN.md milestones with consistent progress", () => {
+  const ids = DATA.milestones.map((m) => m.id);
+  assert.ok(ids.length > 0 && ids.every((id) => /^M\d+$/.test(id)), `milestone ids: ${ids}`);
+  assert.equal(new Set(ids).size, ids.length, "milestone ids are unique");
+  for (const m of DATA.milestones) {
+    assert.ok(m.title && m.packages.length > 0, `${m.id} has a title and packages`);
+    assert.equal(m.total, m.packages.length);
+    assert.equal(m.done, m.packages.filter((p) => p.state === "done").length);
+    for (const p of m.packages) assert.ok(["done", "open", "in_progress", "pr"].includes(p.state), `${p.id}: ${p.state}`);
+  }
+  assert.equal(DATA.packages, undefined, "the retired F0-F8 packages are not part of the snapshot");
 });
