@@ -4171,6 +4171,12 @@ pub(crate) mod tests {
                 .execute(&pool)
                 .await
                 .expect("create stub workers table");
+            // Migration 24 guards queue transitions; this baseline table
+            // exists in field databases too, without re-running baseline.
+            sqlx::query("CREATE TABLE task_queue (id TEXT PRIMARY KEY, status TEXT)")
+                .execute(&pool)
+                .await
+                .expect("create stub queue table");
             sqlx::query("INSERT INTO projects (id, payload) VALUES ('pj-1', 'keep me')")
                 .execute(&pool)
                 .await

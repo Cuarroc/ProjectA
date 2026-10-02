@@ -25,7 +25,7 @@ pub const LOG_TAIL_LINES: usize = 200;
 /// cannot widen `store.rs`. After `Store::open` the live database is always
 /// at the migration target; a source scan in the tests pins this number to
 /// the highest `MIGRATIONS` step.
-pub const SCHEMA_USER_VERSION: i64 = 23;
+pub const SCHEMA_USER_VERSION: i64 = 24;
 
 /// Panic markers collected at startup, before rotation, so both generations
 /// reach the window.
