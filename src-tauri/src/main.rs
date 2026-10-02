@@ -72,6 +72,7 @@ mod diagnosis;
 mod diff;
 mod digest;
 mod enhance;
+mod estop;
 mod freetier;
 mod gh;
 mod hooks;
@@ -1130,6 +1131,38 @@ fn set_updater_state(
         .lock()
         .map_err(|_| "updater state unavailable".to_string())? = state;
     Ok(())
+}
+
+// -- emergency stop (W5-04b) ----------------------------------------------
+
+/// The persistent barrier. An unreadable state is an error, which the UI
+/// shows as "stopped" - never as permission to dispatch.
+#[tauri::command]
+async fn get_emergency_stop(store: State<'_, Store>) -> Result<bool, String> {
+    store.emergency_stop_active().await
+}
+
+/// Raise or clear the global emergency stop. Raising writes the barrier first
+/// (new dispatches are refused from that moment, `set_emergency_stop` also
+/// revokes claims in flight), then ends every agent session within
+/// `estop::DEADLINE`; an `Err` means the end was not observed and the barrier
+/// stays up. Clearing only lifts the barrier - nothing is revived.
+#[tauri::command]
+async fn set_emergency_stop(
+    store: State<'_, Store>,
+    manager: State<'_, PtyManager>,
+    active: bool,
+) -> Result<(), String> {
+    store.set_emergency_stop(active, "app").await?;
+    if !active {
+        return Ok(());
+    }
+    let manager = manager.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        estop::enforce(&manager, &estop::SystemClock, estop::DEADLINE)
+    })
+    .await
+    .map_err(|error| format!("emergency stop: {error}"))?
 }
 
 // -- task queue (Phase 7) -------------------------------------------------
@@ -3671,6 +3704,8 @@ fn main() {
             write_pty,
             resize_pty,
             kill_pty,
+            get_emergency_stop,
+            set_emergency_stop,
             get_scrollback,
             get_session_restore,
             list_agent_profiles,

@@ -41,6 +41,7 @@ import {
   setMasterPromptEnabled,
   type UiDensity,
 } from "../lib/settings";
+import EmergencyStop from "./EmergencyStop";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -797,6 +798,8 @@ export default function SettingsView({
       >
         {tab === "allgemein" ? (
           <>
+            <EmergencyStop />
+
             <fieldset className="settings-field settings-density">
               <legend className="field-label">Darstellungsdichte</legend>
               <div className="settings-density-options">
