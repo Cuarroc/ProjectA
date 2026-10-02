@@ -116,13 +116,9 @@ export function lessonStats(lessons) {
 }
 
 export function readLessonsFile(path) {
-  try {
-    if (!existsSync(path)) return [];
-    const parsed = JSON.parse(readFileSync(path, "utf8"));
-    return Array.isArray(parsed?.lessons) ? parsed.lessons : Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  if (!existsSync(path)) return [];
+  const parsed = JSON.parse(readFileSync(path, "utf8"));
+  return Array.isArray(parsed?.lessons) ? parsed.lessons : Array.isArray(parsed) ? parsed : [];
 }
 
 export function writeLessonsFile(path, lessons) {
