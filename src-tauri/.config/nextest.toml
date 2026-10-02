@@ -4,8 +4,10 @@
 retries = 0
 fail-fast = false
 # Ein haengender Test soll die Pipeline nicht bis zum Job-Timeout blockieren.
-# 60 s ist weit oberhalb des langsamsten Tests (Vollauf Linux 6 s, laengster
-# Einzeltest ~5 s Deadline), 2x60 s heisst: danach wird er abgeschossen.
+# 60 s liegen weit ueber dem langsamsten Test (gemessen 02.10.2026, Linux,
+# `cargo nextest run --profile ci`: Vollauf ~38 s, laengster Einzeltest ~6 s;
+# die Tests ueber 5 s warten absichtlich auf reale 5-s-Timeouts), 2x60 s
+# heisst: danach wird er abgeschossen.
 slow-timeout = { period = "60s", terminate-after = 2 }
 failure-output = "immediate-final"
 final-status-level = "flaky"
