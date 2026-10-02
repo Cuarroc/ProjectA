@@ -426,7 +426,7 @@ async fn create_worker_impl(
         let enabled = match store.get_project_skill_packs(project_id).await {
             Ok(enabled) => enabled,
             Err(err) => {
-                let _ = worktree::remove_worktree(&project.repo_path, &path);
+                let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
                 crate::hooks::remove_worker_files(&worker_id);
                 return Err(err);
             }
@@ -434,7 +434,7 @@ async fn create_worker_impl(
         let skills_dir = match agents.skill_packs_dir() {
             Ok(dir) => dir,
             Err(err) => {
-                let _ = worktree::remove_worktree(&project.repo_path, &path);
+                let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
                 crate::hooks::remove_worker_files(&worker_id);
                 return Err(err);
             }
@@ -449,7 +449,7 @@ async fn create_worker_impl(
         .map_err(|e| format!("installing the skill packs did not finish: {e}"))
         .and_then(|installed| installed);
         if let Err(err) = installed {
-            let _ = worktree::remove_worktree(&project.repo_path, &path);
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
             crate::hooks::remove_worker_files(&worker_id);
             return Err(err);
         }
@@ -475,7 +475,7 @@ async fn create_worker_impl(
         created_at: store::now_unix_secs(),
     };
     if let Err(err) = store.insert_worker(&row).await {
-        let _ = worktree::remove_worktree(&project.repo_path, &path);
+        let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
         crate::hooks::remove_worker_files(&worker_id);
         return Err(err);
     }
@@ -492,13 +492,22 @@ async fn create_worker_impl(
                 .into(),
         }
     } else {
-        crate::routing::spawn_routing(
+        match crate::routing::spawn_routing(
             store,
             &profile,
             Some(Path::new(&project.repo_path)),
             &worker_id,
         )
-        .await?
+        .await
+        {
+            Ok(routed) => routed,
+            Err(err) => {
+                let _ = store.delete_worker(&worker_id).await;
+                let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
+                crate::hooks::remove_worker_files(&worker_id);
+                return Err(err);
+            }
+        }
     };
     let profile = routed.profile;
     let mut env = routed.env;
@@ -590,7 +599,7 @@ async fn create_worker_impl(
             }
             let _ = store.take_session(&worker_id);
             let _ = store.delete_worker(&worker_id).await;
-            let _ = worktree::remove_worktree(&project.repo_path, &path);
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
             crate::hooks::remove_worker_files(&worker_id);
             return Err(err);
         }
@@ -672,7 +681,7 @@ async fn create_worker_impl(
             let _ = store.take_session(&worker_id);
             agents.kill(&session_id);
             let _ = store.delete_worker(&worker_id).await;
-            let _ = worktree::remove_worktree(&project.repo_path, &path);
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
             crate::hooks::remove_worker_files(&worker_id);
             return Err(err);
         }
@@ -756,13 +765,20 @@ pub async fn create_orchestrator(
     };
     store.insert_worker(&row).await?;
 
-    let routed = crate::routing::spawn_routing(
+    let routed = match crate::routing::spawn_routing(
         store,
         &profile,
         Some(Path::new(&project.repo_path)),
         &worker_id,
     )
-    .await?;
+    .await
+    {
+        Ok(routed) => routed,
+        Err(err) => {
+            let _ = store.delete_worker(&worker_id).await;
+            return Err(err);
+        }
+    };
     // W5-02a: strict environment, applied to the *routed* profile (a failover
     // may have swapped it), and a working directory outside every checkout.
     let profile = routed.profile.for_coordinator();
