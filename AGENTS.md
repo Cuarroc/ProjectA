@@ -150,8 +150,7 @@ Every run ends with a `NICHT ABGEDECKT` block, and that block belongs in the PR
 text: the `#[cfg(unix)]` tests do not compile on Windows, the `#[cfg(windows)]`
 tests do not compile on Linux (`KNOWN_ISSUES` KI-7) — no single machine covers
 both halves. "All gates green" without that block is a claim, not evidence.
-Since the server was removed the Linux half comes from WSL2 with the clone on
-ext4.
+The Linux half comes from WSL2 with the clone on ext4.
 
 Rust tests are inline modules. App/CLI tests remain in their binary targets;
 the shared native capture tests run once in the `projecta_capture` library.
@@ -283,7 +282,6 @@ files, PR texts and logs; back up before deleting or switching anything off.
 
 `docs/development/WORKFLOW.md` is the reference for architecture, release
 procedures, provider properties and environment gotchas. It carries no rules of
-its own: where it disagrees with this file, this file wins. Its server/tunnel
-material and its provider table are historical (server removed 2026-09-09;
-current provider setup: `docs/setup/`). All paths and commands there are
+its own: where it disagrees with this file, this file wins. Its provider table
+is historical (current provider setup: `docs/setup/`). All paths and commands there are
 relative to the repository root. The local Node requirement is 24 or newer.

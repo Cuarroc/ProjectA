@@ -104,7 +104,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | offen |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | offen |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex offen |
-| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | offen |
+| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | offen |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
 | R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3 | S | N + doc | offen |
@@ -227,7 +227,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Vorzeige-README für die Bewerbung | später |
 | Prompt-Kompression, MCP-Injektion | wenn ein Worker nachweislich am Kontextlimit scheitert |
 | Command Palette, globale FTS-Suche, Fokusmodus | wenn der Nutzer sie im Alltag vermisst |
-| Remote-Board, Multi-Prozess-Deskriptor | bei Neuanschaffung eines Servers |
+| Remote-Board, Multi-Prozess-Deskriptor | wenn ein zweiter Rechner dazukommt |
 | Ideen-Pipeline, Zeitachse, Vorschlags-Tab | nach M4, mit Kostenschätzung |
 | hermes-agent, Multi-Harness | nach M4 (HQ2-06 ist geparkt) |
 | Dependabot-Majors (Vite 8 → eslint 10 → TS 7 → React 19 → sqlx 0.9) | einzeln, nach M4 |
