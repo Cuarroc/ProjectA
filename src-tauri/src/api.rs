@@ -4040,9 +4040,10 @@ pub(crate) mod tests {
     }
 
     struct Fixture {
-        _dir: TempDir,
         server: ApiServer,
         backend: Arc<FakeBackend>,
+        /// Last, so the server closes before its temporary directory is removed.
+        _dir: TempDir,
     }
 
     impl Fixture {
@@ -4073,9 +4074,9 @@ pub(crate) mod tests {
         )
         .expect("start api");
         Fixture {
-            _dir: dir,
             server,
             backend,
+            _dir: dir,
         }
     }
 

@@ -6,6 +6,8 @@ use std::process::Command;
 
 use crate::pty::CursorReportScanner;
 use crate::store::new_id;
+#[cfg(windows)]
+use windows_sys::Win32::Foundation::ERROR_SHARING_VIOLATION;
 
 /// A directory under the system temp dir, deleted when the guard drops.
 pub struct TempDir {
@@ -30,9 +32,60 @@ impl TempDir {
 
 impl Drop for TempDir {
     fn drop(&mut self) {
-        // Best effort: a still-open sqlite or git handle must not fail a test.
-        let _ = std::fs::remove_dir_all(&self.path);
+        match std::fs::remove_dir_all(&self.path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            #[cfg(windows)]
+            Err(err) if err.raw_os_error() == Some(ERROR_SHARING_VIOLATION as i32) => {
+                let path = self.path.clone();
+                if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                    // A current-thread runtime cannot finish SQLx's connection-return
+                    // tasks while Drop is blocking it. Runtime shutdown waits for
+                    // spawn_blocking jobs, so cleanup still finishes before the test exits.
+                    drop(runtime.spawn_blocking(move || report_remove_failure(&path)));
+                } else {
+                    report_remove_failure(&path);
+                }
+            }
+            Err(err) => report_remove_error(&self.path, err),
+        }
     }
+}
+
+#[cfg(windows)]
+fn remove_temp_dir(path: &Path) -> std::io::Result<()> {
+    const RETRIES: usize = 10;
+
+    for _attempt in 0..=RETRIES {
+        match std::fs::remove_dir_all(path) {
+            Ok(()) => return Ok(()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            #[cfg(windows)]
+            Err(err)
+                if err.raw_os_error() == Some(ERROR_SHARING_VIOLATION as i32)
+                    && _attempt < RETRIES =>
+            {
+                // SQLite can release its WAL/SHM handles just after the pool drops.
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(err) => return Err(err),
+        }
+    }
+    unreachable!("the retry loop returns on its final attempt")
+}
+
+#[cfg(windows)]
+fn report_remove_failure(path: &Path) {
+    if let Err(err) = remove_temp_dir(path) {
+        report_remove_error(path, err);
+    }
+}
+
+fn report_remove_error(path: &Path, err: std::io::Error) {
+    eprintln!(
+        "failed to remove test temp directory {}: {err}",
+        path.display()
+    );
 }
 
 /// Copy a checked-in SQLite fixture (and its WAL sidecars, if any) into
