@@ -44,7 +44,7 @@ function startMockApi() {
       { id: "task-2", goalId: "goal-1", objective: "Open follow-up", profileId: "kimi", status: "open", attempts: 0, ownedPaths: [], dependencies: [],
         assignment: { teamId: "development", role: "reviewer", assignee: "worker-2", revision: 1 } }] } },
     "/api/hq/v1/runs": { executionEnabled: false, approvalAuthority: { state: "unavailable" }, runs: [{
-      run: { id: "run-1", taskId: "task-1", status: "completed", claimOwner: "worker-1", claimFence: 2 },
+      run: { id: "run-1", taskId: "task-1", workerId: "wk-2", status: "completed", claimOwner: "worker-1", claimFence: 2 },
       candidate: { candidateCommit: "def5678", source: "worker-push" },
       launch: { routeJson: JSON.stringify({
         selection: { resolved: { provider: "kimi", profileId: "kimi", resolvedModel: { measured: { value: "kimi-k3" } }, effort: { requested: { value: "high" } } } },
@@ -65,6 +65,7 @@ function startMockApi() {
         worker: { id: "wk-2", task: "Review the review", status: "exited", profileId: "codex", branch: "wk-review" },
         column: "ready_to_merge",
         testStatus: "pass",
+        prUrl: "https://github.com/example/project/pull/8",
       },
     ],
     "/api/workers/wk-1": {
@@ -309,6 +310,32 @@ test("budget live view renders balances and routing receipts, the b key jumps to
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'hq-budget-live');
   await page.screenshot({ path: join(shotDir, 'budget-routing-keyboard-b.png'), fullPage: false });
   await page.close();
+});
+
+test("review delivery live view shows open reviews and PR state in dark and light schemes", async () => {
+  for (const scheme of ["dark", "light"]) {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
+    await page.goto(`http://127.0.0.1:${hqPort}/live.html`);
+    await page.waitForSelector('.live-status.ok', { timeout: 20000 });
+    await page.selectOption('#live-project', 'pj-1');
+    await page.waitForFunction(() => document.querySelector('#hq-review-delivery-live')?.textContent.includes('pull/8'), { timeout: 10000 });
+    const review = await page.textContent('#hq-review-delivery-live');
+    assert.match(review, /Offene Reviews 1/);
+    assert.match(review, /Review offen/);
+    assert.match(review, /Delivery ready_to_merge/);
+    assert.match(review, /Tests pass/);
+    await page.click('#tab-teams');
+    await page.locator('#hq-review-delivery-live').scrollIntoViewIfNeeded();
+    await page.locator('#hq-review-delivery-live').screenshot({ path: join(shotDir, `review-delivery-${scheme}.png`) });
+    if (scheme === 'dark') {
+      await page.click('#tab-overview');
+      await page.evaluate(() => document.activeElement?.blur());
+      await page.keyboard.press('v');
+      await page.waitForSelector('#panel-teams:not([hidden])', { timeout: 5000 });
+      assert.equal(await page.evaluate(() => document.activeElement?.id), 'hq-review-delivery-live');
+    }
+    await page.close();
+  }
 });
 
 test("an unchanged refresh tick keeps focus on the submit button", async () => {
