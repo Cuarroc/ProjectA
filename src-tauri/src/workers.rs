@@ -1036,6 +1036,17 @@ fn with_role_prompt(
             profile.args.push(flag.clone());
             profile.args.push(path.to_string_lossy().into_owned());
         }
+        SystemPrompt::ConfigFile { flag, key, ext } => {
+            let path = crate::hooks::write_worker_file(worker_id, "role", ext, addition)?;
+            let quoted = serde_json::to_string(&path.to_string_lossy()).map_err(|error| {
+                format!(
+                    "cannot encode role prompt path for '{}': {error}",
+                    profile.id
+                )
+            })?;
+            profile.args.push(flag.clone());
+            profile.args.push(format!("{key}={quoted}"));
+        }
         SystemPrompt::Unsupported => {
             return Err(format!(
                 "{ERR_REFUSED}profile '{}' has no channel for a system prompt, so it cannot carry a role variant",
@@ -1222,6 +1233,17 @@ fn with_system_prompt(
             let path = crate::hooks::write_worker_file(worker_id, "agent", ext, &prompt)?;
             profile.args.push(flag.clone());
             profile.args.push(path.to_string_lossy().into_owned());
+        }
+        SystemPrompt::ConfigFile { flag, key, ext } => {
+            let path = crate::hooks::write_worker_file(worker_id, "agent", ext, &prompt)?;
+            let quoted = serde_json::to_string(&path.to_string_lossy()).map_err(|error| {
+                format!(
+                    "cannot encode system prompt path for '{}': {error}",
+                    profile.id
+                )
+            })?;
+            profile.args.push(flag.clone());
+            profile.args.push(format!("{key}={quoted}"));
         }
         SystemPrompt::Unsupported => {
             return Err(format!(

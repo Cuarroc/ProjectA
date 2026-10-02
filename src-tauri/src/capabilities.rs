@@ -18,6 +18,13 @@ pub enum SystemPrompt {
     Arg { flag: String },
     /// The prompt is written to a per-worker file: `<flag> <path>`.
     File { flag: String, ext: String },
+    /// The prompt is written to a per-worker file and referenced through a
+    /// CLI config override: `<flag> <key>=<quoted-path>`.
+    ConfigFile {
+        flag: String,
+        key: String,
+        ext: String,
+    },
 }
 
 /// How the CLI discovers the skill packs installed into a worktree.

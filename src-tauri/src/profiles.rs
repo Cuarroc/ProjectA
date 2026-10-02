@@ -472,8 +472,8 @@ mod tests {
             .find(|profile| profile.id == "ollama")
             .expect("ollama");
         assert_eq!(ollama.caps, AgentCapabilities::default());
-        // Codex carries a captured readiness marker; everything else about
-        // it stays the cautious default.
+        // Codex carries a captured readiness marker and the documented
+        // model-instructions file setting; other capabilities stay cautious.
         let codex = default_profiles()
             .into_iter()
             .find(|profile| profile.id == "codex")
@@ -481,6 +481,11 @@ mod tests {
         assert_eq!(
             codex.caps,
             AgentCapabilities {
+                system_prompt: SystemPrompt::ConfigFile {
+                    flag: "--config".into(),
+                    key: "model_instructions_file".into(),
+                    ext: "md".into(),
+                },
                 readiness_marker: Some("Ask Codex to do anything".into()),
                 ..AgentCapabilities::default()
             }
