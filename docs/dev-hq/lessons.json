@@ -225,8 +225,8 @@
     {
       "id": "L-242f649538",
       "createdAt": "2026-09-08T22:37:49.091Z",
-      "lastSeen": "2026-09-08T22:37:49.091Z",
-      "hits": 1,
+      "lastSeen": "2026-10-02T22:21:26.585Z",
+      "hits": 2,
       "symptom": "CI red-first: '<file> war an der Merge-Base GRUEN — das ist kein Test-First-Beleg'",
       "cause": "The Test-First: trailer named an existing test file that only gained new cases; red-first runs the whole file at the merge-base and it passed there",
       "fix": "Put new test cases for an existing suite into a new *.test.mjs file (missing at base = red) and name that file in the Test-First: trailer; a trailer already pushed must be amended on your own branch",
@@ -236,7 +236,16 @@
         "red-first",
         "test-first"
       ],
-      "source": ".pa/report_devhq_v2.md"
+      "source": ".pa/report_devhq_v2.md",
+      "worked": 1,
+      "failed": 0,
+      "feedbackRuns": [
+        {
+          "runId": "pl-104-cifix-07e542f",
+          "outcome": "worked",
+          "observedAt": "2026-10-02T22:21:26.585Z"
+        }
+      ]
     },
     {
       "id": "L-9c3141fa5f",
