@@ -88,7 +88,7 @@ test("REQUIRED lists exactly the checks Mergify requires and the jobs ci.yml def
   const ci = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
   const required = [...new Set([...mergify.matchAll(/check-success = (.+)$/gm)].map((m) => m[1].trim()))].sort();
   assert.deepEqual(REQUIRED.map(([, name]) => name).sort(), required);
-  for (const [, name] of REQUIRED) assert.match(ci, new RegExp(`^\\s+name: ${name.replace(/[()]/g, "\\$&")}\\s*$`, "m"), `ci.yml job "${name}"`);
+  for (const [, name] of REQUIRED) assert.match(ci, new RegExp(`^\\s+name: ${name.replace(/[\\()]/g, "\\$&")}\\s*$`, "m"), `ci.yml job "${name}"`);
 });
 
 test("pr-status warns when gh returns as many PRs as the limit (kimi #6)", async () => {
