@@ -52,7 +52,7 @@ after(() => {
   if (fixture) rmSync(fixture, { recursive: true, force: true });
 });
 
-test("static requests cannot escape encoded traversal absolute-looking paths or symlinks", async () => {
+async function assertStaticRequestsStayContained() {
   const safe = await get("/");
   assert.equal(safe.status, 200);
   assert.match(safe.body, /safe/);
@@ -62,4 +62,14 @@ test("static requests cannot escape encoded traversal absolute-looking paths or 
     assert.equal(response.status, 404, `${path} must stay outside the static root`);
     assert.doesNotMatch(response.body, /outside static root/);
   }
+}
+
+test("static requests cannot escape encoded traversal absolute-looking paths or symlinks", async () => {
+  await assertStaticRequestsStayContained();
+});
+
+// Keep the exact name recorded by the red-first test commit. The subsequent
+// fix commit accidentally used a shortened spelling in its own trailer.
+test("static requests cannot escape through encoded traversal, absolute-looking paths, or symlinks", async () => {
+  await assertStaticRequestsStayContained();
 });
