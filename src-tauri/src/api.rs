@@ -50,6 +50,8 @@
 //! | POST   | `/api/workers/<id>/merge` | `{removeWorktree?}`   | `Worker`          |
 //! | GET    | `/api/board`              | `?projectId=`         | `[board state]`   |
 //! | GET    | `/api/quota`              |                       | `[quota row]`     |
+//! | GET    | `/api/emergency-stop`     |                       | `{active}`        |
+//! | POST   | `/api/emergency-stop`     | `{active: bool}`      | `{active}`        |
 //! | GET    | `/api/budgets`            |                       | `[budget row]`    |
 //! | PUT    | `/api/budgets`            | `{profileId, fiveHourPct?, sevenDayPct?}` | `budget row` |
 //! | GET    | `/api/providers`          |                       | `[provider row]`  |
@@ -471,6 +473,16 @@ pub trait ControlBackend: Send + Sync {
     fn board(&self, project_id: Option<&str>) -> Result<Vec<WorkerBoardState>, String>;
 
     fn quota(&self) -> Result<Vec<QuotaStateRow>, String>;
+
+    // -- global emergency stop (W5-04c) ------------------------------------
+    // The defaults refuse: a backend that does not implement the stop must
+    // never report "not stopped" or pretend to have set it.
+    fn emergency_stop_active(&self) -> Result<bool, String> {
+        Err("emergency stop unavailable".into())
+    }
+    fn set_emergency_stop(&self, _active: bool, _actor: &str) -> Result<(), String> {
+        Err("emergency stop unavailable".into())
+    }
 
     /// Which providers this machine can reach, and what the quota tracker
     /// knows about each - the read-only half of the Phase 7.2 vault.
@@ -1751,6 +1763,34 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
 
         ("GET", ["api", "quota"]) => into_response(backend.quota()),
 
+        // Fail closed: an unreadable state is an error, never `active: false`.
+        ("GET", ["api", "emergency-stop"]) => into_response(
+            backend
+                .emergency_stop_active()
+                .map(|a| json!({ "active": a })),
+        ),
+        ("POST", ["api", "emergency-stop"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(error) => return Response::error(400, error),
+            };
+            if let Err(error) = only_keys(&body, &["active"]) {
+                return Response::error(400, error);
+            }
+            let Some(active) = body.get("active").and_then(Value::as_bool) else {
+                return Response::error(400, "active must be a boolean");
+            };
+            if let Err(error) = backend.set_emergency_stop(active, "pa") {
+                return Response::error(500, error);
+            }
+            // Report what the store holds, not what was asked for.
+            into_response(
+                backend
+                    .emergency_stop_active()
+                    .map(|a| json!({ "active": a })),
+            )
+        }
+
         // Not `/api/projects/<id>/usage`: OmniRoute's log is keyed by provider
         // account and carries nothing that could be narrowed to one project,
         // so a per-project route would answer every project identically.
@@ -2300,6 +2340,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
         | (_, ["api", "queens"])
         | (_, ["api", "board"])
         | (_, ["api", "quota"])
+        | (_, ["api", "emergency-stop"])
         | (_, ["api", "budgets"])
         | (_, ["api", "providers"])
         | (_, ["api", "queue"])
@@ -2825,6 +2866,8 @@ pub(crate) mod tests {
         queue_store: Option<crate::store::Store>,
         checkpoints: Mutex<HashMap<String, Value>>,
         reject_agent_run: std::sync::atomic::AtomicBool,
+        stop_state: Mutex<(bool, String)>,
+        stop_broken: std::sync::atomic::AtomicBool,
         created: Mutex<Vec<SpawnRecord>>,
         sent: Mutex<Vec<(String, String)>>,
         /// `(workerId, removeWorktree)` of every merge the API asked for.
@@ -3388,6 +3431,18 @@ pub(crate) mod tests {
 
         fn quota(&self) -> Result<Vec<QuotaStateRow>, String> {
             Ok(Vec::new())
+        }
+
+        fn emergency_stop_active(&self) -> Result<bool, String> {
+            if self.stop_broken.load(std::sync::atomic::Ordering::SeqCst) {
+                return Err("emergency stop state unreadable".into());
+            }
+            Ok(self.stop_state.lock().unwrap().0)
+        }
+
+        fn set_emergency_stop(&self, active: bool, actor: &str) -> Result<(), String> {
+            *self.stop_state.lock().unwrap() = (active, actor.to_string());
+            Ok(())
         }
 
         fn providers(&self) -> Result<Vec<ProviderOverview>, String> {
@@ -5212,6 +5267,63 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn emergency_stop_route_sets_clears_and_reads_back() {
+        let fx = fixture("api-emergency-stop");
+        let token = fx.token();
+        let port = fx.server.port();
+        let (status, body) = call(port, "GET", "/api/emergency-stop", Some(&token), "");
+        assert_eq!((status, &body["active"]), (200, &json!(false)), "{body}");
+        let (status, body) = call(
+            port,
+            "POST",
+            "/api/emergency-stop",
+            Some(&token),
+            r#"{"active":true}"#,
+        );
+        assert_eq!((status, &body["active"]), (200, &json!(true)), "{body}");
+        assert_eq!(fx.backend.stop_state.lock().unwrap().1, "pa");
+        let (_, body) = call(port, "GET", "/api/emergency-stop", Some(&token), "");
+        assert_eq!(body["active"], true);
+        let (status, body) = call(
+            port,
+            "POST",
+            "/api/emergency-stop",
+            Some(&token),
+            r#"{"active":false}"#,
+        );
+        assert_eq!((status, &body["active"]), (200, &json!(false)), "{body}");
+    }
+
+    #[test]
+    fn emergency_stop_route_rejects_bad_input_and_fails_closed() {
+        let fx = fixture("api-emergency-stop-guard");
+        let token = fx.token();
+        let port = fx.server.port();
+        let (status, _) = call(port, "GET", "/api/emergency-stop", None, "");
+        assert_eq!(status, 401);
+        let (status, _) = call(
+            port,
+            "POST",
+            "/api/emergency-stop",
+            None,
+            r#"{"active":true}"#,
+        );
+        assert_eq!(status, 401);
+        assert!(!fx.backend.stop_state.lock().unwrap().0);
+        for bad in [r#"{}"#, r#"{"active":"yes"}"#, r#"{"active":true,"x":1}"#] {
+            let (status, body) = call(port, "POST", "/api/emergency-stop", Some(&token), bad);
+            assert_eq!(status, 400, "{bad}: {body}");
+        }
+        assert!(!fx.backend.stop_state.lock().unwrap().0);
+        fx.backend
+            .stop_broken
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        let (status, body) = call(port, "GET", "/api/emergency-stop", Some(&token), "");
+        assert_eq!(status, 500, "{body}");
+        assert!(body.get("active").is_none());
+    }
+
+    #[test]
     fn an_unauthenticated_request_never_reaches_the_backend() {
         let fx = fixture("api-token-guard");
         let body = r#"{"projectId":"pj-1","task":"boom"}"#;
@@ -7000,6 +7112,7 @@ pub(crate) mod tests {
             ("DELETE", "/api/board"),
             ("POST", "/api/health"),
             ("POST", "/api/diagnosis"),
+            ("DELETE", "/api/emergency-stop"),
             ("GET", "/api/workers/wk-1/send"),
             ("DELETE", "/api/workers/wk-1"),
             ("DELETE", "/api/workers/wk-1/messages"),

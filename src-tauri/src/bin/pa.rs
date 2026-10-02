@@ -22,6 +22,7 @@
 //! pa activity [--project pj-1] [--limit 50]
 //! pa quota
 //! pa quota list
+//! pa estop [status|on|off]
 //! pa diagnosis
 //! pa budget list
 //! pa budget set --profile claude [--five-hour 90] [--seven-day off]
@@ -182,6 +183,7 @@ USAGE
   pa activity [--project <projectId>] [--limit <n>]
   pa quota
   pa quota list
+  pa estop [status|on|off]
   pa diagnosis
   pa budget list
   pa budget set --profile <profileId> [--five-hour <1-100|off>] [--seven-day <1-100|off>]
@@ -864,6 +866,18 @@ fn run(args: &[String]) -> Result<(), String> {
             print!("{}", render_quota(&quota));
         }
 
+        Command::EmergencyStop { action } => {
+            // Fail closed: a failed read is an error, never "not active".
+            let body = match action {
+                StopAction::Status => api.get("/api/emergency-stop", None)?,
+                StopAction::On | StopAction::Off => api.post(
+                    "/api/emergency-stop",
+                    json!({ "active": action == StopAction::On }),
+                )?,
+            };
+            print!("{}", render_emergency_stop(&body)?);
+        }
+
         Command::Diagnosis => {
             let body = api.get("/api/diagnosis", None)?;
             print!("{}", render_diagnosis(&body));
@@ -1204,6 +1218,9 @@ enum Command {
         project_id: Option<String>,
     },
     Quota,
+    EmergencyStop {
+        action: StopAction,
+    },
     DigestList {
         project_id: String,
     },
@@ -1870,6 +1887,19 @@ fn parse_args(args: &[String]) -> Result<Command, String> {
                 project_id: flags.value("--project"),
             })
         }
+
+        "estop" => match rest.as_slice() {
+            [] | ["status"] => Ok(Command::EmergencyStop {
+                action: StopAction::Status,
+            }),
+            ["on"] => Ok(Command::EmergencyStop {
+                action: StopAction::On,
+            }),
+            ["off"] => Ok(Command::EmergencyStop {
+                action: StopAction::Off,
+            }),
+            [other, ..] => Err(format!("estop takes on, off or status, got {other}")),
+        },
 
         "quota" => match rest.as_slice() {
             [] => Ok(Command::Quota),
@@ -3201,6 +3231,24 @@ fn render_budgets(budgets: &Value) -> String {
     out
 }
 
+/// What `pa estop` can do. `Status` is the default and changes nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StopAction {
+    Status,
+    On,
+    Off,
+}
+
+/// The reply must carry a boolean `active`; anything else is an error, so an
+/// odd reply can never read as "not stopped".
+fn render_emergency_stop(body: &Value) -> Result<String, String> {
+    match body.get("active").and_then(Value::as_bool) {
+        Some(true) => Ok("emergency stop: ACTIVE (no new dispatch)\n".to_string()),
+        Some(false) => Ok("emergency stop: off\n".to_string()),
+        None => Err("emergency stop: reply has no boolean `active`".to_string()),
+    }
+}
+
 fn render_quota(quota: &Value) -> String {
     let Some(rows) = quota.as_array() else {
         return "no quota information\n".to_string();
@@ -4042,6 +4090,36 @@ mod tests {
                 project_id: Some("pj-1".to_string())
             })
         );
+        assert_eq!(
+            parse("estop"),
+            Ok(Command::EmergencyStop {
+                action: StopAction::Status
+            })
+        );
+        assert_eq!(
+            parse("estop on"),
+            Ok(Command::EmergencyStop {
+                action: StopAction::On
+            })
+        );
+        assert_eq!(
+            parse("estop off"),
+            Ok(Command::EmergencyStop {
+                action: StopAction::Off
+            })
+        );
+        assert_eq!(
+            parse("estop maybe"),
+            Err("estop takes on, off or status, got maybe".to_string())
+        );
+        assert!(render_emergency_stop(&json!({"active": true}))
+            .unwrap()
+            .contains("ACTIVE"));
+        assert!(render_emergency_stop(&json!({"active": false}))
+            .unwrap()
+            .contains("off"));
+        assert!(render_emergency_stop(&json!({})).is_err());
+        assert!(render_emergency_stop(&json!({"active": "no"})).is_err());
         assert_eq!(parse("quota"), Ok(Command::Quota));
         assert_eq!(parse("quota list"), Ok(Command::Quota));
         assert_eq!(
