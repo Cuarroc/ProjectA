@@ -5378,6 +5378,24 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn updater_state_keeps_the_wire_shape_the_frontend_sends() {
+        let wire = [
+            json!({ "phase": "idle" }),
+            json!({ "phase": "checking" }),
+            json!({ "phase": "up-to-date", "version": "1.2.3" }),
+            json!({ "phase": "available", "version": "2.0.0", "notes": null, "activeWorkers": 3 }),
+            json!({ "phase": "installing", "version": "2.0.0" }),
+            json!({ "phase": "ready", "version": "2.0.0" }),
+            json!({ "phase": "error", "message": "offline" }),
+        ];
+        for value in wire {
+            let state: UpdaterState =
+                serde_json::from_value(value.clone()).expect("frontend payload deserializes");
+            assert_eq!(serde_json::to_value(&state).expect("serializes"), value);
+        }
+    }
+
+    #[test]
     fn the_usage_ledger_is_served_fleet_wide_with_a_capped_limit() {
         let fx = fixture("api-usage");
         let stored = fx.token();
