@@ -1777,6 +1777,33 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn reviews_require_store_attested_test_evidence() {
+        let (_dir, store, _root, task) = fixture().await;
+        let implementer = launched_run(&store, &task, "worker-a", 7, Some("claude")).await;
+        store
+            .bind_development_run_candidate(&implementer, "worker-a", 7, COMMIT_A, "git", 6)
+            .await
+            .unwrap();
+        let mut claimed = evidence(COMMIT_A);
+        claimed.source = "projecta-test-runner".into();
+        let claimed = store
+            .record_development_evidence(&implementer, "worker-a", 7, claimed)
+            .await
+            .unwrap();
+        let reviewer = launched_run(&store, "task-r", "worker-r", 3, Some("codex")).await;
+        let error = store
+            .record_development_review(
+                &reviewer,
+                "worker-r",
+                3,
+                review_input("untrusted-test-source", &claimed.id),
+            )
+            .await
+            .unwrap_err();
+        assert!(error.contains("trusted test source"), "{error}");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn snapshot_distinguishes_bound_candidate_without_evidence() {
         let (_dir, store, _root, task) = fixture().await;
         let run = store
