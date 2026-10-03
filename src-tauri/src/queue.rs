@@ -245,6 +245,9 @@ pub async fn dispatch_project(
         .collect();
 
     let now = now_unix_secs();
+    // A block that names its own end must not outlive it: a blocked profile
+    // starts no worker, so no output would ever clear it.
+    quota.release_expired(now);
     for entry in candidates {
         let facts = gather_facts(store, quota, profiles, &entry.profile_id).await;
         let report = preflight.report(&facts, now);

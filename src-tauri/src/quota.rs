@@ -151,6 +151,34 @@ impl QuotaTracker {
         });
     }
 
+    /// Lift every block whose `blocked_until` has passed, and say which.
+    ///
+    /// A block is otherwise cleared only by ordinary output from a worker of
+    /// that profile - and a blocked profile starts no worker, so a block the
+    /// queue is waiting on would never end by itself. Open-ended blocks
+    /// (`blocked_until` of `None`) are left alone: nothing says when they end.
+    pub fn release_expired(&self, now: i64) -> Vec<String> {
+        let expired: Vec<String> = self
+            .rows
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .values()
+            .filter(|row| row.state == QUOTA_BLOCKED && row.blocked_until.is_some_and(|t| now >= t))
+            .map(|row| row.profile_id.clone())
+            .collect();
+        for profile_id in &expired {
+            self.write(profile_id, |row| {
+                // Re-check under the row lock: a fresh block may have landed.
+                if row.blocked_until.is_some_and(|t| now >= t) {
+                    row.state = QUOTA_OK.to_string();
+                    row.reason = None;
+                    row.blocked_until = None;
+                }
+            });
+        }
+        expired
+    }
+
     /// Apply `edit` and persist, but only if it actually changed something.
     fn write<F>(&self, profile_id: &str, edit: F)
     where
