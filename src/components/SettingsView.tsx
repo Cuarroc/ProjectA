@@ -28,7 +28,6 @@ import {
   type UpdaterState,
 } from "../lib/ipc";
 import {
-  agentCategoryDescription,
   isMasterPromptEnabled,
   loadAgentCategories,
   loadMasterPrompt,
@@ -43,6 +42,7 @@ import {
 import GeneralTab from "./settings/GeneralTab";
 import MasterPromptTab from "./settings/MasterPromptTab";
 import UpdatesTab from "./settings/UpdatesTab";
+import CategoriesPanel from "./settings/CategoriesPanel";
 import ProfileBudgetFields from "./settings/ProfileBudgetFields";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
@@ -55,14 +55,6 @@ const TABS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
   { id: "agenten", label: "Agent-Kategorien" },
   { id: "updates", label: "Updates" },
 ];
-
-const CATEGORY_LABELS: Record<AgentCategoryConfig["id"], string> = {
-  worker: "Worker",
-  queen: "Queen",
-  employee: "Employee",
-  scout: "Scout",
-  orchestrator: "Orchestrator",
-};
 
 /**
  * The worker cap as the field shows it: an empty field is `null`, "no
@@ -92,17 +84,6 @@ function parsePercent(raw: string): number | null | "invalid" {
   const percent = Number.parseInt(trimmed, 10);
   return percent >= 1 && percent <= 100 ? percent : "invalid";
 }
-
-/**
- * The categories the core runs a learning critic for. `employee` is absent on
- * purpose: it has no critic, so it gets no switch to promise one.
- */
-const LEARNING_CATEGORIES: ReadonlySet<AgentCategoryConfig["id"]> = new Set([
-  "worker",
-  "queen",
-  "orchestrator",
-  "scout",
-]);
 
 /**
  * Legacy updater token (pre-mirror): clean up old key from localStorage on mount.
@@ -863,80 +844,14 @@ export default function SettingsView({
           />
         ) : (
           <>
-          {learningError ? <span className="settings-error">{learningError}</span> : null}
-          <ul className="category-list">
-            {categories
-              .filter((category) => category.id !== "employee")
-              .map((category) => {
-                const historical = category.id === "queen";
-                return (
-              <li
-                key={category.id}
-                className={`category-row${
-                  historical ? "" : category.active ? "" : " category-row-off"
-                }`}
-              >
-                <div className="category-main">
-                  <span className="category-name">{CATEGORY_LABELS[category.id]}</span>
-                  <span className="category-desc">{agentCategoryDescription(category.id)}</span>
-                </div>
-                {historical ? (
-                  <span
-                    className="settings-check category-toggle"
-                    aria-label="Queen historisch"
-                  >
-                    Historisch
-                  </span>
-                ) : (
-                  <label className="settings-check category-toggle">
-                    <input
-                      type="checkbox"
-                      checked={category.active}
-                      onChange={(event) =>
-                        handleCategoryChange(category.id, { active: event.target.checked })
-                      }
-                    />
-                    <span>Aktiv</span>
-                  </label>
-                )}
-                {/* A category without a critic keeps the column empty rather
-                    than offering a switch that would control nothing. */}
-                {LEARNING_CATEGORIES.has(category.id) ? (
-                  <label className="settings-check category-toggle category-learning">
-                    <input
-                      type="checkbox"
-                      checked={learning[category.id] ?? true}
-                      onChange={(event) =>
-                        handleToggleLearning(category.id, event.target.checked)
-                      }
-                    />
-                    <span>Lernen</span>
-                  </label>
-                ) : (
-                  <span className="category-learning category-learning-none" aria-hidden="true" />
-                )}
-                <select
-                  className="field category-profile"
-                  aria-label={`Default Profile für ${CATEGORY_LABELS[category.id]}`}
-                  value={category.defaultProfileId ?? ""}
-                  disabled={historical || !category.active || profiles.length === 0}
-                  onChange={(event) =>
-                    handleCategoryChange(category.id, {
-                      defaultProfileId: event.target.value === "" ? null : event.target.value,
-                    })
-                  }
-                >
-                  <option value="">Default Profile …</option>
-                  {profiles.map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.name}
-                    </option>
-                  ))}
-                </select>
-              </li>
-                );
-              })}
-          </ul>
+          <CategoriesPanel
+            categories={categories}
+            profiles={profiles}
+            learning={learning}
+            learningError={learningError}
+            handleCategoryChange={handleCategoryChange}
+            handleToggleLearning={handleToggleLearning}
+          />
 
           <div className="settings-field profile-field">
             <span className="field-label">Profile</span>
