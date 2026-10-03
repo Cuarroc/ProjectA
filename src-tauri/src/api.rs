@@ -5352,6 +5352,49 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn emergency_stop_release_requires_verdict_authority() {
+        let fx = fixture("api-emergency-stop-release-authority");
+        let token = fx.token();
+        let port = fx.server.port();
+
+        let (status, body) = call(
+            port,
+            "POST",
+            "/api/emergency-stop",
+            Some(&token),
+            r#"{"active":true}"#,
+        );
+        assert_eq!((status, &body["active"]), (200, &json!(true)), "{body}");
+
+        let (status, body) = call(
+            port,
+            "POST",
+            "/api/emergency-stop",
+            Some(&token),
+            r#"{"active":false}"#,
+        );
+        assert_eq!(status, 403, "{body}");
+        assert!(
+            body["error"]
+                .as_str()
+                .is_some_and(|error| error.contains("verdict")),
+            "{body}"
+        );
+        assert!(fx.backend.stop_state.lock().unwrap().0);
+
+        let verdict = fx.verdict_token();
+        let (status, body) = call_with(
+            port,
+            "POST",
+            "/api/emergency-stop",
+            Some(&token),
+            Some(&verdict),
+            r#"{"active":false}"#,
+        );
+        assert_eq!((status, &body["active"]), (200, &json!(false)), "{body}");
+    }
+
+    #[test]
     fn emergency_stop_route_rejects_bad_input_and_fails_closed() {
         let fx = fixture("api-emergency-stop-guard");
         let token = fx.token();
