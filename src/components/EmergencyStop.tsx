@@ -8,6 +8,7 @@ import { describeError, getEmergencyStop, setEmergencyStop } from "../lib/ipc";
  */
 export default function EmergencyStop() {
   const [active, setActive] = useState<boolean | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +28,10 @@ export default function EmergencyStop() {
     try {
       await setEmergencyStop(next);
       setActive(next);
+      setConfirmed(next);
     } catch (e) {
       setError(describeError(e));
+      setConfirmed(false);
       // The barrier is written before the processes are ended: after a
       // failure raising it, it is up even though the end is unconfirmed.
       if (next) setActive(true);
@@ -53,10 +56,12 @@ export default function EmergencyStop() {
       </div>
       <p className="settings-hint" role="status">
         {active
-          ? "Not-Aus ist aktiv: keine neuen Aufgaben, alle Agenten sind beendet."
+          ? confirmed
+            ? "Not-Aus ist aktiv: keine neuen Aufgaben, alle Agenten sind beendet."
+            : "Not-Aus ist aktiv: neue Aufgaben sind gesperrt; der Stillstand ist nicht bestätigt."
           : "Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben."}
       </p>
-      {error ? <span className="settings-error">{error}</span> : null}
+      {error ? <span className="settings-error" role="alert">{error}</span> : null}
     </div>
   );
 }
