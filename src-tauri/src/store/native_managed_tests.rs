@@ -446,7 +446,16 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
         assert_eq!(count, 0, "closed admission launched a process");
         let mut drained = runner.drain(std::time::Duration::from_secs(40)).unwrap();
         assert!(drained.running.is_empty());
-        assert!(drained.unresolved.is_empty());
+        assert!(
+            drained.unresolved.is_empty(),
+            "unresolved sessions: {:?}; completions: {:?}",
+            drained.unresolved,
+            drained
+                .completions
+                .iter()
+                .map(|entry| (&entry.session_id, &entry.result))
+                .collect::<Vec<_>>()
+        );
         assert_eq!(drained.completions.len(), 1);
         let first = drained.completions.remove(0);
         assert_eq!(first.session_id, observations[0].2);
