@@ -72,6 +72,7 @@ mod diagnosis;
 mod diff;
 mod digest;
 mod enhance;
+mod errors;
 mod estop;
 mod freetier;
 mod gh;

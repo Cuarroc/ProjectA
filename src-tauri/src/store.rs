@@ -800,12 +800,6 @@ pub struct DayCount {
     pub count: i64,
 }
 
-/// The agent reported this event through its hooks.
-#[allow(dead_code)]
-pub const SRC_HOOK: &str = "hook";
-/// The event was inferred from terminal output by the status engine.
-#[allow(dead_code)]
-pub const SRC_HEURISTIC: &str = "heuristic";
 /// The event came from a `gh` or `git` poll.
 #[allow(dead_code)]
 pub const SRC_GIT: &str = "git";
@@ -2764,8 +2758,8 @@ impl Store {
     /// and what counts as proof live in `store/queue_cancel.rs`).
     ///
     /// Three outcomes: `Ok(())` once the row is gone, an error opening with
-    /// [`crate::workers::ERR_UNKNOWN`] when no such entry exists, and one
-    /// opening with [`crate::workers::ERR_REFUSED`] when it exists but cannot
+    /// [`crate::errors::ERR_UNKNOWN`] when no such entry exists, and one
+    /// opening with [`crate::errors::ERR_REFUSED`] when it exists but cannot
     /// go - claimed, failed, or dispatched without that proof, the refusal
     /// then naming what is missing. A store failure keeps its `failed to`
     /// opening and reaches the caller as is.
@@ -2798,13 +2792,13 @@ impl Store {
                     .await
                     .map_err(|e| format!("failed to read queued task: {e}"))?;
             match status {
-                None => Err(format!("{}queued task: {id}", crate::workers::ERR_UNKNOWN)),
+                None => Err(format!("{}queued task: {id}", crate::errors::ERR_UNKNOWN)),
                 Some((status, worker_id)) if status == QUEUE_DISPATCHED => {
                     self.cancel_dispatched_in(&mut tx, id, worker_id).await?
                 }
                 Some((status, _)) => Err(format!(
                     "{}task {id} is {status}, not queued or ready",
-                    crate::workers::ERR_REFUSED
+                    crate::errors::ERR_REFUSED
                 )),
             }
         } else {
@@ -6977,14 +6971,14 @@ pub(crate) mod tests {
         // A claim has the entry, so the cancel is refused and the row stays.
         assert!(store.claim_queue_entry("tq-1").await.unwrap());
         let err = store.cancel_queue_entry("tq-1").await.unwrap_err();
-        assert!(err.starts_with(crate::workers::ERR_REFUSED), "{err}");
+        assert!(err.starts_with(crate::errors::ERR_REFUSED), "{err}");
         assert_eq!(
             store.list_queue(Some(&project.id)).await.unwrap()[0].status,
             QUEUE_DISPATCHING
         );
 
         let err = store.cancel_queue_entry("tq-nope").await.unwrap_err();
-        assert!(err.starts_with(crate::workers::ERR_UNKNOWN), "{err}");
+        assert!(err.starts_with(crate::errors::ERR_UNKNOWN), "{err}");
 
         // A ready entry goes; a second cancel finds no row left to name.
         store
@@ -6996,6 +6990,6 @@ pub(crate) mod tests {
             .unwrap();
         store.cancel_queue_entry("tq-2").await.unwrap();
         let err = store.cancel_queue_entry("tq-2").await.unwrap_err();
-        assert!(err.starts_with(crate::workers::ERR_UNKNOWN), "{err}");
+        assert!(err.starts_with(crate::errors::ERR_UNKNOWN), "{err}");
     }
 }
