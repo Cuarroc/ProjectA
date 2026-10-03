@@ -108,6 +108,10 @@ GATES=(
   # entfrieren, ohne MERGIFY_TOKEN bleibt das Issue der Fallback (gruen mit
   # Warnung), ein scheiternder Freeze-API-Aufruf MIT Token ist laut rot.
   "selftest-main-red|linux,release|.|bash scripts/test-main-red-guard.sh"
+  # All tracked shell scripts must remain executable so hooks and local gates
+  # can invoke them directly after checkout.
+  "script-modes|prepush,linux,release|.|bash scripts/ci/script-modes.sh"
+  "selftest-script-modes|prepush,linux,release|.|bash scripts/test-script-modes.sh"
 
   # --- schnell: Form und Typen --------------------------------------------
   "fmt|precommit,prepush,branchpush,linux,windows,release|src-tauri|cargo fmt --check"
