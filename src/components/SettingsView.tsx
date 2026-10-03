@@ -41,6 +41,7 @@ import {
   type UiDensity,
 } from "../lib/settings";
 import GeneralTab from "./settings/GeneralTab";
+import MasterPromptTab from "./settings/MasterPromptTab";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -841,44 +842,13 @@ export default function SettingsView({
             maxWorkersError={maxWorkersError}
           />
         ) : tab === "masterprompt" ? (
-          <>
-            <label className="settings-check">
-              <input
-                type="checkbox"
-                checked={masterEnabled}
-                onChange={(event) => handleToggleMaster(event.target.checked)}
-              />
-              <span>Masterprompt für alle Agenten verwenden</span>
-            </label>
-
-            <div className="settings-field">
-              <label className="field-label" htmlFor="settings-masterprompt">
-                Globaler Masterprompt
-              </label>
-              <textarea
-                id="settings-masterprompt"
-                className="field field-textarea"
-                rows={10}
-                placeholder="Gemeinsame Regeln und Kontext für alle Agenten…"
-                value={masterPrompt}
-                onChange={(event) => setMasterPrompt(event.target.value)}
-              />
-              <div>
-                <button type="button" className="button-primary" onClick={handleSaveMasterPrompt}>
-                  Speichern
-                </button>
-              </div>
-            </div>
-
-            <div className="settings-field">
-              <span className="field-label">Vorschau</span>
-              <pre className="masterprompt-preview">
-                {masterPrompt.trim() === ""
-                  ? "(kein Masterprompt gesetzt)"
-                  : `${masterPrompt}\n\n---\n\n<Aufgabe des Agenten>`}
-              </pre>
-            </div>
-          </>
+          <MasterPromptTab
+            masterPrompt={masterPrompt}
+            setMasterPrompt={setMasterPrompt}
+            masterEnabled={masterEnabled}
+            handleToggleMaster={handleToggleMaster}
+            handleSaveMasterPrompt={handleSaveMasterPrompt}
+          />
         ) : tab === "updates" ? (
           <>
             <div className="settings-field">
