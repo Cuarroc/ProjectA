@@ -104,9 +104,14 @@ pub fn make_private(path: &Path) {
 /// on group-readable.
 #[cfg(unix)]
 pub fn make_private_checked(path: &Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
-    let mode = if path.is_dir() { 0o700 } else { 0o600 };
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_CLOEXEC | libc::O_DIRECTORY | libc::O_NOFOLLOW)
+        .open(path)
+        .map_err(|e| format!("failed to narrow {}: {e}", path.display()))?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o700))
         .map_err(|e| format!("failed to narrow {}: {e}", path.display()))
 }
 
@@ -925,5 +930,26 @@ mod tests {
         );
         let error = make_private_checked(&dir.path().join("missing")).unwrap_err();
         assert!(error.contains("failed to narrow"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn make_private_checked_refuses_a_link_without_changing_its_target() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+
+        let dir = TempDir::new("oneshot-private-link");
+        let outside = dir.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::set_permissions(&outside, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let planted = dir.path().join("agent-access");
+        symlink(&outside, &planted).unwrap();
+
+        let error = make_private_checked(&planted).expect_err("a credential link must fail closed");
+        assert!(error.contains("failed to narrow"), "{error}");
+        assert_eq!(
+            std::fs::metadata(&outside).unwrap().permissions().mode() & 0o777,
+            0o755,
+            "the rejected link must not chmod its target"
+        );
     }
 }
