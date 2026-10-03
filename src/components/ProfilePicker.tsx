@@ -59,14 +59,14 @@ export default function ProfilePicker({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Choose an agent profile"
+        aria-label="Agent-Profil wählen"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="modal-title">New session</div>
-        {loading ? <div className="modal-note">Loading profiles…</div> : null}
+        <div className="modal-title">Neue Sitzung</div>
+        {loading ? <div className="modal-note">Profile werden geladen …</div> : null}
         {error ? <div className="modal-note modal-error">{error}</div> : null}
         {!loading && !error && profiles.length === 0 ? (
-          <div className="modal-note">No agent profiles configured.</div>
+          <div className="modal-note">Keine Agent-Profile eingerichtet.</div>
         ) : null}
         <ul className="profile-list">
           {profiles.map((profile, index) => {

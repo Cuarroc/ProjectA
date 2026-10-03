@@ -75,11 +75,11 @@ export default function ViewBar({
         ▤
       </button>
       <span className="viewbar-project" title={projectName ?? undefined}>
-        {projectName ?? "No project"}
+        {projectName ?? "Kein Projekt"}
       </span>
       {projectName && !countStale ? (
         <span className="viewbar-count">
-          {workerCount} worker{workerCount === 1 ? "" : "s"}
+          {workerCount} Worker
         </span>
       ) : null}
       <span className="viewbar-spacer" />
@@ -126,14 +126,14 @@ export default function ViewBar({
         title={
           newWorkerDisabled
             ? projectName === null
-              ? "Select a project first"
-              : "Worker category is off"
-            : "New worker"
+              ? "Wähle zuerst ein Projekt"
+              : "Die Kategorie Worker ist ausgeschaltet"
+            : "Neuer Worker"
         }
         disabled={newWorkerDisabled}
         onClick={onNewWorker}
       >
-        New worker
+        Neuer Worker
       </button>
     </header>
   );
