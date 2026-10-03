@@ -1779,6 +1779,32 @@ fn stamp_output(
     recover(on_output).clone()
 }
 
+/// What the reader loop does with one `read` result.
+#[derive(Debug, PartialEq, Eq)]
+enum ReadStep {
+    Data(usize),
+    /// Transient (`Interrupted`): read again.
+    Retry,
+    Eof,
+    /// Real read failure: log once, then end like EOF.
+    Fatal(std::io::ErrorKind),
+}
+
+fn read_step(result: std::io::Result<usize>) -> ReadStep {
+    match result {
+        Ok(0) => ReadStep::Eof,
+        Ok(n) => ReadStep::Data(n),
+        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => ReadStep::Retry,
+        Err(e) => ReadStep::Fatal(e.kind()),
+    }
+}
+
+/// Whether the reader keeps draining after an emit to the UI. Always: if the
+/// reader stopped, the pipe would fill and the child would block on write.
+fn keep_draining_after_emit<E>(_result: &Result<(), E>) -> bool {
+    true
+}
+
 fn spawn_reader_thread(
     app: AppHandle,
     session_id: String,
@@ -1795,10 +1821,16 @@ fn spawn_reader_thread(
         let mut decoder = Utf8Stream::new();
         let mut buf = vec![0u8; READ_CHUNK];
         let mut cursor_reports = CursorReportScanner::default();
+        let mut emit_failure_logged = false;
 
         loop {
-            match reader.read(&mut buf) {
-                Ok(0) | Err(_) => {
+            let step = read_step(reader.read(&mut buf));
+            if let ReadStep::Fatal(kind) = &step {
+                let _ = writeln!(std::io::stderr(), "projecta: pty read failed: {kind:?}");
+            }
+            match step {
+                ReadStep::Retry => continue,
+                ReadStep::Eof | ReadStep::Fatal(_) => {
                     // A held partial query can no longer complete: it is
                     // ordinary output after all.
                     let tail = cursor_reports.flush();
@@ -1814,7 +1846,7 @@ fn spawn_reader_thread(
                     }
                     break;
                 }
-                Ok(n) => {
+                ReadStep::Data(n) => {
                     let bytes = &buf[..n];
                     if let Some(session) = replier.upgrade() {
                         if let Some(trace) = &session.trace {
@@ -1833,7 +1865,8 @@ fn spawn_reader_thread(
                                 if let Err(err) =
                                     write_session_bytes(&session, CURSOR_POSITION_REPLY)
                                 {
-                                    eprintln!(
+                                    let _ = writeln!(
+                                        std::io::stderr(),
                                         "projecta: cursor-position reply failed ({session_id}): {err}"
                                     );
                                 }
@@ -1848,7 +1881,14 @@ fn spawn_reader_thread(
                     if let Some(hook) = stamp_output(&last_output, &on_output) {
                         hook(&session_id, &chunk);
                     }
-                    if app.emit(&event, chunk).is_err() {
+                    let emitted = app.emit(&event, chunk);
+                    if let Err(err) = &emitted {
+                        if !emit_failure_logged {
+                            emit_failure_logged = true;
+                            let _ = writeln!(std::io::stderr(), "projecta: pty emit failed: {err}");
+                        }
+                    }
+                    if !keep_draining_after_emit(&emitted) {
                         break;
                     }
                 }
@@ -2179,6 +2219,46 @@ pub(crate) fn resolve_windows_program(program: &str) -> Option<std::path::PathBu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_step_retries_on_interrupted() {
+        let err = std::io::Error::from(std::io::ErrorKind::Interrupted);
+        assert_eq!(read_step(Err(err)), ReadStep::Retry);
+    }
+
+    #[test]
+    fn read_step_reports_other_errors_as_fatal() {
+        let err = std::io::Error::from(std::io::ErrorKind::BrokenPipe);
+        assert_eq!(
+            read_step(Err(err)),
+            ReadStep::Fatal(std::io::ErrorKind::BrokenPipe)
+        );
+    }
+
+    #[test]
+    fn read_step_keeps_eof_and_data() {
+        assert_eq!(read_step(Ok(0)), ReadStep::Eof);
+        assert_eq!(read_step(Ok(7)), ReadStep::Data(7));
+    }
+
+    #[test]
+    fn failed_emit_does_not_stop_draining() {
+        assert!(keep_draining_after_emit(&Err::<(), _>("ui gone")));
+        assert!(keep_draining_after_emit(&Ok::<(), &str>(())));
+    }
+
+    #[test]
+    fn reader_thread_logs_errors_without_panicking_macros() {
+        let source = include_str!("pty.rs");
+        let reader = source
+            .split_once("fn spawn_reader_thread(")
+            .unwrap()
+            .1
+            .split_once("fn build_command(")
+            .unwrap()
+            .0;
+        assert!(!reader.contains("eprintln!"));
+    }
 
     #[test]
     fn blocking_spawn_work_leaves_the_runtime_worker_free() {
