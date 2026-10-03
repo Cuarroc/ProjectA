@@ -6671,6 +6671,25 @@ scripts/contrast-check.mjs. */
   --ui-panel-pad: 14px;
 }
 
+/* UI text size: only the type tokens move; "normal" is the :root default. */
+.app[data-ui-font-size="small"] {
+  --text-xs: 9.5px;
+  --text-sm: 10px;
+  --text-md: 11px;
+  --text-base: 12px;
+  --text-lg: 14px;
+  font-size: var(--text-base);
+}
+
+.app[data-ui-font-size="large"] {
+  --text-xs: 12px;
+  --text-sm: 12.5px;
+  --text-md: 14px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  font-size: var(--text-base);
+}
+
 .app .field,
 .app .button-primary,
 .app .button-ghost,

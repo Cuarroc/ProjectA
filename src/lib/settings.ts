@@ -11,6 +11,9 @@ const KEYS = {
   masterPromptEnabled: "projecta.settings.masterPromptEnabled",
   agentCategories: "projecta.settings.agentCategories",
   density: "projecta.settings.density",
+  uiFontSize: "projecta.settings.uiFontSize",
+  terminalFont: "projecta.settings.terminalFont",
+  terminalFontSize: "projecta.settings.terminalFontSize",
 } as const;
 
 function readString(key: string): string | null {
@@ -30,6 +33,59 @@ export function loadUiDensity(): UiDensity {
 
 export function saveUiDensity(density: UiDensity): void {
   writeString(KEYS.density, density === "compact" ? "compact" : null);
+}
+
+export type UiFontSize = "small" | "normal" | "large";
+
+/** Text size of the app chrome (the `--text-*` tokens); unknown values mean normal. */
+export function loadUiFontSize(): UiFontSize {
+  const raw = readString(KEYS.uiFontSize);
+  return raw === "small" || raw === "large" ? raw : "normal";
+}
+
+export function saveUiFontSize(size: UiFontSize): void {
+  writeString(KEYS.uiFontSize, size === "normal" ? null : size);
+}
+
+export type TerminalFontId = "cascadia" | "consolas" | "jetbrains" | "monospace";
+
+/** Font stacks per choice. JetBrains Mono is not bundled: without it the stack falls back. */
+export const TERMINAL_FONTS: Record<TerminalFontId, { label: string; stack: string }> = {
+  cascadia: {
+    label: "Cascadia Mono",
+    stack: '"Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace',
+  },
+  consolas: { label: "Consolas", stack: 'Consolas, "Courier New", monospace' },
+  jetbrains: {
+    label: "JetBrains Mono (falls installiert)",
+    stack: '"JetBrains Mono", "Cascadia Mono", Consolas, monospace',
+  },
+  monospace: { label: "Systemschrift (monospace)", stack: "monospace" },
+};
+
+export const TERMINAL_FONT_SIZE_MIN = 11;
+export const TERMINAL_FONT_SIZE_MAX = 18;
+export const TERMINAL_FONT_SIZE_DEFAULT = 13;
+
+export function loadTerminalFont(): TerminalFontId {
+  const raw = readString(KEYS.terminalFont);
+  return raw !== null && Object.hasOwn(TERMINAL_FONTS, raw) ? (raw as TerminalFontId) : "cascadia";
+}
+
+export function saveTerminalFont(font: TerminalFontId): void {
+  writeString(KEYS.terminalFont, font === "cascadia" ? null : font);
+}
+
+export function loadTerminalFontSize(): number {
+  const raw = readString(KEYS.terminalFontSize);
+  const size = raw === null ? Number.NaN : Number.parseInt(raw, 10);
+  return Number.isInteger(size) && size >= TERMINAL_FONT_SIZE_MIN && size <= TERMINAL_FONT_SIZE_MAX
+    ? size
+    : TERMINAL_FONT_SIZE_DEFAULT;
+}
+
+export function saveTerminalFontSize(size: number): void {
+  writeString(KEYS.terminalFontSize, size === TERMINAL_FONT_SIZE_DEFAULT ? null : String(size));
 }
 
 function writeString(key: string, value: string | null): void {
@@ -222,4 +278,19 @@ export function pickSpawnProfile(
   const preferred = defaultProfileIdFor(category);
   if (preferred !== null && usable(preferred)) return preferred;
   return profiles.find((profile) => usable(profile.id))?.id ?? null;
+}
+
+/** The three font choices travel together from the settings to the app shell. */
+export interface FontSettings {
+  uiFontSize: UiFontSize;
+  terminalFont: TerminalFontId;
+  terminalFontSize: number;
+}
+
+export function loadFontSettings(): FontSettings {
+  return {
+    uiFontSize: loadUiFontSize(),
+    terminalFont: loadTerminalFont(),
+    terminalFontSize: loadTerminalFontSize(),
+  };
 }

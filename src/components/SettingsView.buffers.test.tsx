@@ -46,6 +46,8 @@ describe("SettingsView session buffers", () => {
       <SettingsView
         density="comfortable"
         onDensityChange={vi.fn()}
+        fonts={{ uiFontSize: "normal", terminalFont: "cascadia", terminalFontSize: 13 }}
+        onFontsChange={vi.fn()}
         profiles={[]}
         project={null}
         onSaveTestCommand={vi.fn(async () => undefined)}
