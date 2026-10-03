@@ -160,13 +160,28 @@ vi.mock("./components/ViewBar", () => ({
       <button type="button" onClick={() => props.onChange("attention")}>
         open attention
       </button>
+      <button type="button" onClick={() => props.onChange("agents")}>
+        open agents
+      </button>
     </>
   ),
 }));
 
 vi.mock("./components/WorkerPanel", () => ({
-  default: (props: { workers: Worker[] }) => (
-    <div data-testid="workers">{props.workers.map((entry) => entry.id).join(",")}</div>
+  default: (props: {
+    workers: Worker[];
+    error: string | null;
+    onRespawn: (worker: Worker) => void;
+  }) => (
+    <div>
+      <div data-testid="workers">{props.workers.map((entry) => entry.id).join(",")}</div>
+      {props.error ? <div>{props.error}</div> : null}
+      {props.workers.map((entry) => (
+        <button type="button" key={entry.id} onClick={() => props.onRespawn(entry)}>
+          respawn {entry.id}
+        </button>
+      ))}
+    </div>
   ),
 }));
 
@@ -265,6 +280,24 @@ describe("App audit regressions", () => {
     act(() => exit({ code: 0 }));
 
     expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a failed respawn message when the retry succeeds", async () => {
+    const exited = worker("worker-a", "project-a");
+    vi.mocked(ipc.listWorkers).mockResolvedValue([exited]);
+    vi.mocked(ipc.respawnWorker)
+      .mockRejectedValueOnce(new Error("respawn refused"))
+      .mockResolvedValueOnce({ ...exited, status: "running", sessionId: "session-new" });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "open agents" }));
+    const retry = await screen.findByRole("button", { name: "respawn worker-a" });
+    fireEvent.click(retry);
+    expect(await screen.findByText("respawn refused")).toBeTruthy();
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(ipc.respawnWorker).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText("respawn refused")).toBeNull());
   });
 
   it("does not offer disabled profiles when creating a worker", async () => {
