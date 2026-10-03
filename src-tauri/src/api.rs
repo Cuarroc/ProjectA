@@ -1381,54 +1381,11 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
     let project_id = request.query.get("projectId").map(String::as_str);
     let status = request.query.get("status").map(String::as_str);
 
-    if let Some(reply) = hq_routes::route(backend, request, method, path.as_slice(), project_id) {
+    if let Some(reply) = hq_routes::route(inner, request, method, path.as_slice(), project_id) {
         return reply;
     }
 
     match (method, path.as_slice()) {
-        ("GET", ["api", "hq", "v1", resource]) if matches!(*resource, "context" | "changes") => {
-            let project_id = match project_id {
-                Some(value) if !value.is_empty() => value,
-                _ => return Response::error(400, "projectId is required"),
-            };
-            let cursor = match request.query.get("cursor") {
-                Some(value) => match value.parse::<i64>() {
-                    Ok(value) if value >= 0 => value,
-                    _ => return Response::error(400, "cursor must be a non-negative integer"),
-                },
-                None => 0,
-            };
-            if *resource == "changes" {
-                let wait_ms = match request.query.get("waitMs") {
-                    Some(value) => match value.parse::<u64>() {
-                        Ok(value) if value <= 25_000 => value,
-                        _ => return Response::error(400, "waitMs must be between 0 and 25000"),
-                    },
-                    None => 0,
-                };
-                if let Some(reply) = unknown_project(backend, Some(project_id)) {
-                    return reply;
-                }
-                if wait_ms == 0 {
-                    continuous_response(backend.continuous_changes(project_id, cursor))
-                } else {
-                    let Some(_permit) = try_acquire_connection(&inner.journal_waits) else {
-                        return Response::error(
-                            503,
-                            "continuous journal waiting capacity exhausted",
-                        );
-                    };
-                    continuous_response(
-                        backend.wait_continuous_changes(project_id, cursor, wait_ms),
-                    )
-                }
-            } else {
-                if request.query.contains_key("waitMs") {
-                    return Response::error(400, "waitMs is supported only by changes");
-                }
-                continuous_response(backend.continuous_context(project_id, cursor))
-            }
-        }
         ("GET", ["api", "hq", "v1", "goals"]) => {
             let project_id = match project_id {
                 Some(value) if !value.is_empty() => value,
