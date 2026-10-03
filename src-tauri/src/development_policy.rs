@@ -106,6 +106,7 @@ impl DevelopmentPolicy {
         parse(raw)
     }
 
+    #[allow(dead_code)] // W4-03
     pub fn load(project_root: &Path) -> Result<LoadedPolicy, String> {
         load(project_root)
     }
@@ -457,6 +458,7 @@ pub struct ExecutionIdentity {
 }
 
 impl ExecutionIdentity {
+    #[allow(dead_code)] // W4-03
     pub fn validate_shape(&self) -> Result<(), &'static str> {
         if self.id.trim().is_empty() || self.run_id.trim().is_empty() {
             return Err("identity and run ids are required");
@@ -698,6 +700,7 @@ pub struct RouteFailure {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // W4-03
 pub enum RouteFailureClass {
     Policy,
     Authentication,
@@ -979,6 +982,7 @@ fn resolved_with_registry(
 /// implementation/reasoning failures can consume the single escalation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // W4-03
 pub enum ExecutionFailureClass {
     Authentication,
     Quota,
@@ -990,6 +994,7 @@ pub enum ExecutionFailureClass {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[allow(dead_code)] // W4-03
 pub struct ExecutionFailure {
     pub class: ExecutionFailureClass,
     pub verified: bool,
@@ -998,11 +1003,13 @@ pub struct ExecutionFailure {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // W4-03
 pub enum EscalationDecision {
     Allowed { next_escalation: u8 },
     Denied { reason: String },
 }
 
+#[allow(dead_code)] // W4-03
 pub fn decide_escalation(
     policy: &DevelopmentPolicy,
     previous_escalations: u8,
