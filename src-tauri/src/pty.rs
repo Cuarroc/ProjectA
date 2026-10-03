@@ -1606,6 +1606,17 @@ fn await_reader_retirement(
         .map_err(|error| format!("PTY reader retirement unconfirmed: {error}"))
 }
 
+/// Placeholder: the late confirmation is not honoured yet.
+#[allow(dead_code)]
+fn complete_late_retirement(
+    _sessions: &Mutex<HashMap<String, SessionEntry>>,
+    _session_id: &str,
+    _finished: &std::sync::mpsc::Receiver<()>,
+    _timeout: Duration,
+) -> Result<(), String> {
+    Err("late retirement not implemented".into())
+}
+
 /// The terminal's answer to a cursor-position report (`ESC[6n`): row 1,
 /// column 1. Any plausible position does - the TUIs that ask use the reply
 /// to find out *whether* a terminal is listening, and lay out a full screen
@@ -2717,6 +2728,49 @@ mod tests {
         release_tx.send(()).unwrap();
         await_reader_retirement(&finished, Duration::from_secs(5)).unwrap();
         assert!(dropped.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn late_reader_confirmation_retires_session() {
+        let manager = PtyManager::default();
+        let id = manager.reserve_session().unwrap();
+        let (release_tx, release_rx) = std::sync::mpsc::sync_channel(1);
+        let finished = track_reader_retirement(move || {
+            let _ = release_rx.recv_timeout(Duration::from_secs(5));
+        });
+        assert!(
+            remove_exited_session_after_reader(&manager.sessions, &id, Ok(()), || {
+                await_reader_retirement(&finished, Duration::from_millis(20))
+            })
+            .is_err()
+        );
+        assert_eq!(manager.live_session_ids().unwrap(), vec![id.clone()]);
+        release_tx.send(()).unwrap();
+        complete_late_retirement(&manager.sessions, &id, &finished, Duration::from_secs(5))
+            .unwrap();
+        assert!(manager.live_session_ids().unwrap().is_empty());
+        assert!(manager.install_when_idle(|| Ok(())).is_ok());
+    }
+
+    #[test]
+    fn late_wait_does_not_retire_after_reader_panic() {
+        let manager = PtyManager::default();
+        let id = manager.reserve_session().unwrap();
+        let finished = track_reader_retirement(|| panic!("reader fixture"));
+        assert!(
+            remove_exited_session_after_reader(&manager.sessions, &id, Ok(()), || Err(
+                "timed out".into()
+            ))
+            .is_err()
+        );
+        assert!(complete_late_retirement(
+            &manager.sessions,
+            &id,
+            &finished,
+            Duration::from_secs(5)
+        )
+        .is_err());
+        assert_eq!(manager.live_session_ids().unwrap(), vec![id]);
     }
 
     #[test]
