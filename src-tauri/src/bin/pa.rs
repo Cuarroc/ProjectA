@@ -183,7 +183,7 @@ USAGE
   pa activity [--project <projectId>] [--limit <n>]
   pa quota
   pa quota list
-  pa estop [status|on|off]
+  pa estop [status|on|off] [--verdict-token <token> with off]
   pa diagnosis
   pa budget list
   pa budget set --profile <profileId> [--five-hour <1-100|off>] [--seven-day <1-100|off>]
@@ -866,15 +866,12 @@ fn run(args: &[String]) -> Result<(), String> {
             print!("{}", render_quota(&quota));
         }
 
-        Command::EmergencyStop { action } => {
+        Command::EmergencyStop {
+            action,
+            verdict_token: token,
+        } => {
             // Fail closed: a failed read is an error, never "not active".
-            let body = match action {
-                StopAction::Status => api.get("/api/emergency-stop", None)?,
-                StopAction::On | StopAction::Off => api.post(
-                    "/api/emergency-stop",
-                    json!({ "active": action == StopAction::On }),
-                )?,
-            };
+            let body = request_emergency_stop(&api, action, token)?;
             print!("{}", render_emergency_stop(&body)?);
         }
 
@@ -1220,6 +1217,7 @@ enum Command {
     Quota,
     EmergencyStop {
         action: StopAction,
+        verdict_token: Option<String>,
     },
     DigestList {
         project_id: String,
@@ -1888,18 +1886,25 @@ fn parse_args(args: &[String]) -> Result<Command, String> {
             })
         }
 
-        "estop" => match rest.as_slice() {
-            [] | ["status"] => Ok(Command::EmergencyStop {
-                action: StopAction::Status,
-            }),
-            ["on"] => Ok(Command::EmergencyStop {
-                action: StopAction::On,
-            }),
-            ["off"] => Ok(Command::EmergencyStop {
-                action: StopAction::Off,
-            }),
-            [other, ..] => Err(format!("estop takes on, off or status, got {other}")),
-        },
+        "estop" => {
+            let (rest, token) = take_verdict_token(rest.to_vec())?;
+            match rest.as_slice() {
+                [] | ["status"] if token.is_none() => Ok(Command::EmergencyStop {
+                    action: StopAction::Status,
+                    verdict_token: None,
+                }),
+                ["on"] if token.is_none() => Ok(Command::EmergencyStop {
+                    action: StopAction::On,
+                    verdict_token: None,
+                }),
+                ["off"] => Ok(Command::EmergencyStop {
+                    action: StopAction::Off,
+                    verdict_token: token,
+                }),
+                [other, ..] => Err(format!("estop takes on, off or status, got {other}")),
+                _ => Err("--verdict-token is only valid with estop off".to_string()),
+            }
+        }
 
         "quota" => match rest.as_slice() {
             [] => Ok(Command::Quota),
@@ -3239,6 +3244,22 @@ enum StopAction {
     Off,
 }
 
+fn request_emergency_stop(
+    api: &Api,
+    action: StopAction,
+    token: Option<String>,
+) -> Result<Value, String> {
+    match action {
+        StopAction::Status => api.get("/api/emergency-stop", None),
+        StopAction::On => api.post("/api/emergency-stop", json!({ "active": true })),
+        StopAction::Off => api.post_verdict(
+            "/api/emergency-stop",
+            json!({ "active": false }),
+            verdict_token(token)?,
+        ),
+    }
+}
+
 /// The reply must carry a boolean `active`; anything else is an error, so an
 /// odd reply can never read as "not stopped".
 fn render_emergency_stop(body: &Value) -> Result<String, String> {
@@ -4093,21 +4114,32 @@ mod tests {
         assert_eq!(
             parse("estop"),
             Ok(Command::EmergencyStop {
-                action: StopAction::Status
+                action: StopAction::Status,
+                verdict_token: None,
             })
         );
         assert_eq!(
             parse("estop on"),
             Ok(Command::EmergencyStop {
-                action: StopAction::On
+                action: StopAction::On,
+                verdict_token: None,
             })
         );
         assert_eq!(
             parse("estop off"),
             Ok(Command::EmergencyStop {
-                action: StopAction::Off
+                action: StopAction::Off,
+                verdict_token: None,
             })
         );
+        assert_eq!(
+            parse("estop off --verdict-token vt-1"),
+            Ok(Command::EmergencyStop {
+                action: StopAction::Off,
+                verdict_token: Some("vt-1".to_string()),
+            })
+        );
+        assert!(parse("estop on --verdict-token vt-1").is_err());
         assert_eq!(
             parse("estop maybe"),
             Err("estop takes on, off or status, got maybe".to_string())
