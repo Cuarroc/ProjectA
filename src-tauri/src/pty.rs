@@ -950,14 +950,9 @@ impl PtyManager {
                 // that happens would stall every other pty command.
                 if let Err(error) =
                     remove_exited_session_after_reader(&sessions, &exit_id, persistence, || {
-                        let waited =
-                            await_reader_retirement(&reader_finished, READER_RETIREMENT_TIMEOUT);
-                        // Timeout (sender alive) differs from a panic (disconnected).
-                        reader_timed_out = waited.is_err()
-                            && matches!(
-                                reader_finished.try_recv(),
-                                Err(std::sync::mpsc::TryRecvError::Empty)
-                            );
+                        let (waited, timed_out) =
+                            wait_for_reader(&reader_finished, READER_RETIREMENT_TIMEOUT, || {});
+                        reader_timed_out = timed_out;
                         waited
                     })
                 {
@@ -1633,6 +1628,26 @@ fn await_reader_retirement(
     finished
         .recv_timeout(timeout)
         .map_err(|error| format!("PTY reader retirement unconfirmed: {error}"))
+}
+
+/// Waits for the reader and reports whether the wait *timed out* (sender
+/// alive, so a late confirmation may still come) as opposed to a panic
+/// (disconnected). `on_timeout` runs right after the wait gave up.
+fn wait_for_reader(
+    finished: &std::sync::mpsc::Receiver<()>,
+    timeout: Duration,
+    on_timeout: impl FnOnce(),
+) -> (Result<(), String>, bool) {
+    let waited = await_reader_retirement(finished, timeout);
+    if waited.is_err() {
+        on_timeout();
+    }
+    let timed_out = waited.is_err()
+        && matches!(
+            finished.try_recv(),
+            Err(std::sync::mpsc::TryRecvError::Empty)
+        );
+    (waited, timed_out)
 }
 
 /// A reader confirmation that arrives after [`READER_RETIREMENT_TIMEOUT`]
@@ -2787,6 +2802,15 @@ mod tests {
             .unwrap();
         assert!(manager.live_session_ids().unwrap().is_empty());
         assert!(manager.install_when_idle(|| Ok(())).is_ok());
+    }
+
+    #[test]
+    fn ack_between_timeout_and_poll_still_counts_as_timeout() {
+        let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        let (waited, timed_out) =
+            wait_for_reader(&rx, Duration::from_millis(20), || tx.send(()).unwrap());
+        assert!(waited.is_err());
+        assert!(timed_out, "ack in the window must keep the late path armed");
     }
 
     #[test]
