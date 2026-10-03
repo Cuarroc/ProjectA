@@ -165,6 +165,77 @@ pub struct SpawnPtyResponse {
     pub session_id: String,
 }
 
+/// The three spawn shapes both `AgentControl` adapters share: hook settings
+/// first, then the session starts on the shared `PtyManager`.
+#[derive(Clone, Copy)]
+struct HookedSpawn<'a> {
+    app: &'a AppHandle,
+    manager: &'a PtyManager,
+    /// Loopback port the agent's status hooks report to; 0 disables them.
+    hook_port: u16,
+}
+
+impl HookedSpawn<'_> {
+    fn spawn_with_id(
+        self,
+        worker_id: &str,
+        profile: &AgentProfile,
+        cwd: &Path,
+        env: &[(String, String)],
+        session_id: &str,
+    ) -> Result<String, String> {
+        // Agents that understand hooks are handed a generated settings file so
+        // they report their own lifecycle straight back to the board.
+        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
+        self.manager.spawn_with_id(
+            self.app,
+            &profile,
+            Some(cwd.to_string_lossy().into_owned()),
+            DEFAULT_COLS,
+            DEFAULT_ROWS,
+            env,
+            session_id,
+        )
+    }
+
+    fn spawn(
+        self,
+        worker_id: &str,
+        profile: &AgentProfile,
+        cwd: &Path,
+        env: &[(String, String)],
+    ) -> Result<String, String> {
+        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
+        self.manager.spawn(
+            self.app,
+            &profile,
+            Some(cwd.to_string_lossy().into_owned()),
+            DEFAULT_COLS,
+            DEFAULT_ROWS,
+            env,
+        )
+    }
+
+    fn spawn_bound(
+        self,
+        worker_id: &str,
+        profile: &AgentProfile,
+        cwd: &Path,
+        env: &[(String, String)],
+        bind: &dyn Fn(&str) -> Result<(), String>,
+    ) -> Result<String, String> {
+        // Reserved, then bound, then spawned: the binding is older than the
+        // process, so the exit hook finds the worker even when the agent
+        // exits milliseconds into its life.
+        let session_id = self.manager.reserve_session()?;
+        if let Err(error) = bind(&session_id) {
+            self.manager.cancel_reservation(&session_id);
+            return Err(error);
+        }
+        self.spawn_with_id(worker_id, profile, cwd, env, &session_id)
+    }
+}
+
 /// Adapts the Phase 1 `PtyManager` to the worker lifecycle.
 struct PtyAgents<'a> {
     app: &'a AppHandle,
@@ -201,6 +272,14 @@ impl<'a> PtyAgents<'a> {
             hook_port,
             store,
             engine,
+        }
+    }
+
+    fn spawner(&self) -> HookedSpawn<'a> {
+        HookedSpawn {
+            app: self.app,
+            manager: self.manager,
+            hook_port: self.hook_port,
         }
     }
 }
@@ -293,6 +372,17 @@ struct AppAgentControl {
     hook_port: u16,
 }
 
+impl AppAgentControl {
+    fn with_spawner<R>(&self, f: impl FnOnce(HookedSpawn<'_>) -> R) -> R {
+        let manager = self.app.state::<PtyManager>();
+        f(HookedSpawn {
+            app: &self.app,
+            manager: &manager,
+            hook_port: self.hook_port,
+        })
+    }
+}
+
 // No `write` override: this control only exists for the startup reattach pass,
 // which respawns agents and never types into one.
 impl AgentControl for AppAgentControl {
@@ -312,16 +402,7 @@ impl AgentControl for AppAgentControl {
         env: &[(String, String)],
         session_id: &str,
     ) -> Result<String, String> {
-        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
-        self.app.state::<PtyManager>().spawn_with_id(
-            &self.app,
-            &profile,
-            Some(cwd.to_string_lossy().into_owned()),
-            DEFAULT_COLS,
-            DEFAULT_ROWS,
-            env,
-            session_id,
-        )
+        self.with_spawner(|s| s.spawn_with_id(worker_id, profile, cwd, env, session_id))
     }
     fn spawn(
         &self,
@@ -330,15 +411,7 @@ impl AgentControl for AppAgentControl {
         cwd: &Path,
         env: &[(String, String)],
     ) -> Result<String, String> {
-        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
-        self.app.state::<PtyManager>().spawn(
-            &self.app,
-            &profile,
-            Some(cwd.to_string_lossy().into_owned()),
-            DEFAULT_COLS,
-            DEFAULT_ROWS,
-            env,
-        )
+        self.with_spawner(|s| s.spawn(worker_id, profile, cwd, env))
     }
 
     fn spawn_bound(
@@ -349,26 +422,7 @@ impl AgentControl for AppAgentControl {
         env: &[(String, String)],
         bind: &dyn Fn(&str) -> Result<(), String>,
     ) -> Result<String, String> {
-        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
-        // Reserved, then bound, then spawned: the binding is older than the
-        // process, so the exit hook finds the worker even when the agent
-        // exits milliseconds into its life.
-        let session_id = self.app.state::<PtyManager>().reserve_session()?;
-        if let Err(error) = bind(&session_id) {
-            self.app
-                .state::<PtyManager>()
-                .cancel_reservation(&session_id);
-            return Err(error);
-        }
-        self.app.state::<PtyManager>().spawn_with_id(
-            &self.app,
-            &profile,
-            Some(cwd.to_string_lossy().into_owned()),
-            DEFAULT_COLS,
-            DEFAULT_ROWS,
-            env,
-            &session_id,
-        )
+        self.with_spawner(|s| s.spawn_bound(worker_id, profile, cwd, env, bind))
     }
 
     fn kill(&self, session_id: &str) {
@@ -566,16 +620,8 @@ impl AgentControl for PtyAgents<'_> {
         env: &[(String, String)],
         session_id: &str,
     ) -> Result<String, String> {
-        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
-        self.manager.spawn_with_id(
-            self.app,
-            &profile,
-            Some(cwd.to_string_lossy().into_owned()),
-            DEFAULT_COLS,
-            DEFAULT_ROWS,
-            env,
-            session_id,
-        )
+        self.spawner()
+            .spawn_with_id(worker_id, profile, cwd, env, session_id)
     }
     fn spawn(
         &self,
@@ -584,17 +630,7 @@ impl AgentControl for PtyAgents<'_> {
         cwd: &Path,
         env: &[(String, String)],
     ) -> Result<String, String> {
-        // Agents that understand hooks are handed a generated settings file so
-        // they report their own lifecycle straight back to the board.
-        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
-        self.manager.spawn(
-            self.app,
-            &profile,
-            Some(cwd.to_string_lossy().into_owned()),
-            DEFAULT_COLS,
-            DEFAULT_ROWS,
-            env,
-        )
+        self.spawner().spawn(worker_id, profile, cwd, env)
     }
 
     fn spawn_bound(
@@ -605,26 +641,8 @@ impl AgentControl for PtyAgents<'_> {
         env: &[(String, String)],
         bind: &dyn Fn(&str) -> Result<(), String>,
     ) -> Result<String, String> {
-        // Agents that understand hooks are handed a generated settings file so
-        // they report their own lifecycle straight back to the board.
-        let profile = hooks::with_hook_settings(profile, worker_id, self.hook_port);
-        // Reserved, then bound, then spawned: the binding is older than the
-        // process, so the exit hook finds the worker even when the agent
-        // exits milliseconds into its life.
-        let session_id = self.manager.reserve_session()?;
-        if let Err(error) = bind(&session_id) {
-            self.manager.cancel_reservation(&session_id);
-            return Err(error);
-        }
-        self.manager.spawn_with_id(
-            self.app,
-            &profile,
-            Some(cwd.to_string_lossy().into_owned()),
-            DEFAULT_COLS,
-            DEFAULT_ROWS,
-            env,
-            &session_id,
-        )
+        self.spawner()
+            .spawn_bound(worker_id, profile, cwd, env, bind)
     }
 
     fn write(&self, session_id: &str, text: &str) -> Result<(), String> {
@@ -2392,6 +2410,18 @@ impl ApiBackend {
             .map(|project| project.repo_path)
             .ok_or_else(|| format!("{}project: {project_id}", workers::ERR_UNKNOWN))
     }
+
+    /// The worker lifecycle's view of the shared `PtyManager`; the caller keeps
+    /// the managed state alive for as long as it uses the result.
+    fn agents<'a>(&'a self, manager: &'a PtyManager) -> PtyAgents<'a> {
+        PtyAgents::with_port(
+            &self.app,
+            manager,
+            self.hook_port,
+            self.store.clone(),
+            Arc::clone(&self.engine),
+        )
+    }
 }
 
 /// F-CORE-3 B.2: `send_to_worker` delivers through the submit guard
@@ -2738,13 +2768,7 @@ impl ControlBackend for ApiBackend {
         spawned_by: Option<String>,
     ) -> Result<Worker, String> {
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         let worker = tauri::async_runtime::block_on(workers::create_worker(
             &self.store,
             &agents,
@@ -2783,13 +2807,7 @@ impl ControlBackend for ApiBackend {
             .and_then(|worker| profiles::find_profile(&worker.profile_id))
             .and_then(|profile| profile.caps.readiness_marker);
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         deliver_to_worker(
             &agents,
             &self.store,
@@ -2802,13 +2820,7 @@ impl ControlBackend for ApiBackend {
 
     fn send_to_orchestrator(&self, project_id: &str, text: &str) -> Result<Worker, String> {
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         let worker = tauri::async_runtime::block_on(workers::send_to_orchestrator(
             &self.store,
             &agents,
@@ -2943,13 +2955,7 @@ impl ControlBackend for ApiBackend {
 
     fn create_scout(&self, project_id: &str) -> Result<Worker, String> {
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         // A scout is started by the UI or by a human at the API, never by a
         // coordinator, so there is nobody to book it under.
         let worker = tauri::async_runtime::block_on(scout::create_scout(
@@ -2964,13 +2970,7 @@ impl ControlBackend for ApiBackend {
 
     fn triage_repos(&self, project_id: &str, urls: &[String]) -> Result<Worker, String> {
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         // Same as `create_scout`: triage is ordered by a human, not by a
         // coordinator, so there is no spawner to record.
         let worker = tauri::async_runtime::block_on(scout::triage_repos(
@@ -3059,13 +3059,7 @@ impl ControlBackend for ApiBackend {
         answered_by: &str,
     ) -> Result<store::Question, String> {
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         tauri::async_runtime::block_on(questions::answer(
             &self.store,
             &agents,
@@ -3149,13 +3143,7 @@ impl ControlBackend for ApiBackend {
 
     fn merge_worker(&self, worker_id: &str, remove_worktree: bool) -> Result<Worker, String> {
         let manager = self.app.state::<PtyManager>();
-        let agents = PtyAgents::with_port(
-            &self.app,
-            &manager,
-            self.hook_port,
-            self.store.clone(),
-            Arc::clone(&self.engine),
-        );
+        let agents = self.agents(&manager);
         tauri::async_runtime::block_on(workers::merge_worker(
             &self.store,
             &agents,
