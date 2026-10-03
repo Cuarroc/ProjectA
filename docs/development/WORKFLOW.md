@@ -397,6 +397,19 @@ Werkzeugaufrufen, obwohl es einfache Fragen beantwortet.
   Timing des Launch-Pfads (W1-01: das verschluckte Enter war nur hier
   sichtbar). TUIs wie Kimi und Claude Code fragen als Erstes `ESC[6n` und
   blockieren ohne Antwort; der Reader-Thread antwortet seit W1-01 selbst.
+  Der kleine W1-01b-Smoke braucht keinen App-Start und hinterlässt die beiden
+  Artefakte in einem neuen temporären Verzeichnis (PowerShell):
+
+  ```powershell
+  $traceDir = Join-Path ([IO.Path]::GetTempPath()) ("projecta-pty-smoke-" + [guid]::NewGuid())
+  $env:PROJECTA_PTY_TRACE_DIR = $traceDir
+  $env:CARGO_BUILD_JOBS = "1"
+  cargo test --manifest-path src-tauri/Cargo.toml pty::native_tests::projecta_pty_trace_dir_smoke_writes_expected_artifacts -- --exact
+  Get-ChildItem -LiteralPath $traceDir
+  ```
+
+  Erwartet werden `w1-01b-smoke.io.log` und `w1-01b-smoke.out.raw`. Der Smoke
+  startet nur das Test-Binary als Kindprozess, keinen Anbieter und keine App.
 - **Screenshots der App:** aus nicht-interaktiven Shells `.pa/ui-shot.ps1`
   (PrintWindow, braucht keinen Vordergrund). `scripts/window-shot.ps1` scheitert
   aus nicht-interaktiven Shells.
