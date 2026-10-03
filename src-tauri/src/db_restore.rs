@@ -5,11 +5,14 @@
 //! and writes more backups — that is not restore. Restore copies bytes onto
 //! the destination and never opens SQLite.
 //!
-//! This module is std-only so `pa` can `#[path]` it without pulling sqlx.
+//! This module avoids sqlx so `pa` can `#[path]` it; its only sibling is the
+//! leaf `fs_replace` (std plus `windows-sys`).
 #![allow(dead_code)] // pa calls these; the app binary only tests them
 
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use crate::fs_replace::replace_file;
 
 /// Newest last. The timestamp sorts lexicographically with the current width.
 #[allow(dead_code)] // pa uses this via #[path]; the app binary only tests it
@@ -79,7 +82,7 @@ pub fn restore_from_pre_migration_backup(backup: &Path, dest: &Path) -> Result<P
     let (tmp, mut output) = create_restore_temp(parent, &dest_name.to_string_lossy())
         .map_err(|e| format!("failed to create restore temporary file: {e}"))?;
     let copied = std::io::copy(&mut source, &mut output).and_then(|_| output.sync_all());
-    // Close handles before the Windows rename. Only `tmp` was created by us;
+    // Close handles before the replace. Only `tmp` was created by us;
     // preexisting files, including leftovers from interrupted runs, are untouched.
     drop(output);
     drop(source);
@@ -132,12 +135,6 @@ fn unlink_sidecar(dest: &Path, suffix: &str) {
     if let Some(parent) = dest.parent() {
         let _ = fs::remove_file(parent.join(format!("{name}{suffix}")));
     }
-}
-
-fn replace_file(tmp: &Path, dest: &Path) -> std::io::Result<()> {
-    // rename replaces an existing file on Unix and Windows. Deleting first
-    // destroys the original even when the subsequent rename cannot succeed.
-    fs::rename(tmp, dest)
 }
 
 fn create_restore_temp(parent: &Path, name: &str) -> std::io::Result<(PathBuf, fs::File)> {

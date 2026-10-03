@@ -115,6 +115,8 @@ use serde_json::{json, Value};
 
 #[path = "../db_restore.rs"]
 mod db_restore;
+#[path = "../fs_replace.rs"]
+mod fs_replace;
 
 /// Descriptor written by the app on startup.
 const DESCRIPTOR_FILE: &str = "projecta-api.json";
