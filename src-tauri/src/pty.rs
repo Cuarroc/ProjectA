@@ -44,6 +44,13 @@ const READER_RETIREMENT_TIMEOUT: Duration = Duration::from_secs(5);
 /// [`READER_RETIREMENT_TIMEOUT`] before the session is left for reconciliation.
 const READER_LATE_RETIREMENT_TIMEOUT: Duration = Duration::from_secs(300);
 
+/// Most deliveries one session may have queued (running one included). Each
+/// queued delivery parks a thread and a copy of its task, and an agent that
+/// stops answering holds the front guard for up to eleven minutes, so without
+/// a bound the queue grows as fast as callers enqueue. 32 is far above any
+/// real burst (one task per worker launch or question answer); beyond it
+/// `start_submit_guard` refuses the new delivery with an error.
+const MAX_QUEUED_DELIVERIES: usize = 32;
 /// How much of the scrollback tail the submit guard inspects per tick. The
 /// task echo and blocking dialogs live near the end of the stream; 32 KiB
 /// covers several screenfuls without copying the whole ring.
@@ -283,6 +290,9 @@ struct DeliveryTurns {
 #[derive(Default)]
 struct TurnState {
     queue: VecDeque<u64>,
+    /// Set after the first refusal at the bound, so a flood logs once; reset
+    /// by the next delivery that is accepted.
+    overflow_logged: bool,
     next_id: u64,
     /// Set when a turn leaves the queue while its task may still sit in the
     /// input line; cleared by user input into this session.
@@ -305,18 +315,34 @@ impl DeliveryTurns {
             .unwrap_or_else(|poison| poison.into_inner())
     }
 
-    fn join(self: &Arc<Self>) -> DeliveryTurn {
+    /// Join the queue, or refuse when [`MAX_QUEUED_DELIVERIES`] are already
+    /// waiting. The newest delivery is the one refused: queued ones keep
+    /// their order and their promise, and the caller hears the refusal as an
+    /// error instead of a task that silently never arrives.
+    fn join(self: &Arc<Self>) -> Result<DeliveryTurn, String> {
         let mut state = self.lock();
+        if state.queue.len() >= MAX_QUEUED_DELIVERIES {
+            if !state.overflow_logged {
+                state.overflow_logged = true;
+                eprintln!(
+                    "projecta: submit guard queue full ({MAX_QUEUED_DELIVERIES} deliveries waiting); refusing further deliveries until it drains"
+                );
+            }
+            return Err(format!(
+                "submit guard queue is full ({MAX_QUEUED_DELIVERIES} deliveries waiting); delivery refused"
+            ));
+        }
+        state.overflow_logged = false;
         let id = state.next_id;
         state.next_id += 1;
         let ahead = state.queue.len();
         state.queue.push_back(id);
-        DeliveryTurn {
+        Ok(DeliveryTurn {
             turns: Arc::clone(self),
             id,
             ahead,
             pending_epoch: AtomicU64::new(NOT_PENDING),
-        }
+        })
     }
 
     /// The user emptied or sent the line: clear the dirty flag, and void the
@@ -1055,7 +1081,7 @@ impl PtyManager {
 
         // C-3: join the session's delivery queue here, on the caller's
         // thread, so two deliveries keep the order they were started in.
-        let turn = session.delivery_turns.join();
+        let turn = session.delivery_turns.join()?;
 
         let session_id = session_id.to_string();
         let sessions = Arc::clone(&self.sessions);
@@ -3137,6 +3163,7 @@ mod tests {
         let queued = session.delivery_turns.lock().queue.len();
         manager.kill("guard-bound").unwrap();
         assert!(refused > 0, "{queued} deliveries queued, none refused");
+        assert_eq!(queued, MAX_QUEUED_DELIVERIES, "the bound is exact");
         assert_eq!(
             queued + refused,
             attempts,
@@ -3623,7 +3650,7 @@ mod tests {
     fn only_line_clearing_user_input_clears_the_dirty_line() {
         let manager = PtyManager::default();
         let (session, _writer) = resting_guard_session(&manager, "c3-user-keys");
-        let turn = session.delivery_turns.join();
+        let turn = session.delivery_turns.join().unwrap();
         turn.set_input_pending(true);
         drop(turn);
         assert!(session.delivery_turns.input_dirty());
@@ -3636,7 +3663,7 @@ mod tests {
             );
         }
         for keys in ["\r", "\u{15}", "\u{3}"] {
-            let turn = session.delivery_turns.join();
+            let turn = session.delivery_turns.join().unwrap();
             turn.set_input_pending(true);
             drop(turn);
             manager.write_user_input("c3-user-keys", keys).unwrap();
@@ -3697,7 +3724,7 @@ mod tests {
     #[test]
     fn a_clear_right_after_the_task_write_wins() {
         let turns = Arc::new(DeliveryTurns::default());
-        let turn = turns.join();
+        let turn = turns.join().unwrap();
         let pty: Mutex<PtyWriter> = Mutex::new(Box::new(Vec::<u8>::new()));
         let mut writer = pty.lock().unwrap();
         std::thread::scope(|scope| {
@@ -3722,7 +3749,7 @@ mod tests {
     fn a_paste_split_across_chunks_does_not_clear_the_line() {
         let manager = PtyManager::default();
         let (session, _writer) = resting_guard_session(&manager, "c3-split-paste");
-        let turn = session.delivery_turns.join();
+        let turn = session.delivery_turns.join().unwrap();
         turn.set_input_pending(true);
         drop(turn);
         manager
@@ -3775,7 +3802,7 @@ mod tests {
     fn tab_and_line_feed_do_not_empty_the_line() {
         let manager = PtyManager::default();
         let (session, _writer) = resting_guard_session(&manager, "c3-tab-lf");
-        let turn = session.delivery_turns.join();
+        let turn = session.delivery_turns.join().unwrap();
         turn.set_input_pending(true);
         drop(turn);
         for keys in ["\u{15}\t", "more\n"] {
@@ -3796,7 +3823,7 @@ mod tests {
         let manager = PtyManager::default();
         let (session, _writer) = resting_guard_session(&manager, "c3-paste");
         let dirty = || {
-            let turn = session.delivery_turns.join();
+            let turn = session.delivery_turns.join().unwrap();
             turn.set_input_pending(true);
             drop(turn);
             assert!(session.delivery_turns.input_dirty());
