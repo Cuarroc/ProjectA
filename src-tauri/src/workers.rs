@@ -5971,6 +5971,51 @@ mod tests {
         );
     }
 
+    /// W2-04c part 2: a coordinator-role run is refused by the launcher before
+    /// it reserves a launch or mints a credential, not after both exist.
+    #[tokio::test]
+    async fn a_coordinator_run_launch_mints_no_credential() {
+        let fx = fixture("coordinator-launch-no-credential").await;
+        let run_id = prepared_development_run(&fx).await;
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+        let pool = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            fx._dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('task','development','coordinator','owner',1,1,1)")
+            .execute(&pool).await.unwrap();
+        pool.close().await;
+        let server =
+            crate::api::tests::native_store_server(&fx._dir.path().join("api"), fx.store.clone());
+        let agents = FakeAgents::default();
+
+        let err = development::launch_worker(
+            &fx.store,
+            &agents,
+            server.run_credential_issuer(),
+            &run_id,
+            "owner",
+            1,
+            &route,
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.contains("coordinator"), "{err}");
+        assert!(fx
+            .store
+            .development_launch(&run_id)
+            .await
+            .unwrap()
+            .is_none());
+        let issued = std::fs::read_dir(fx._dir.path().join("api/agent-access"))
+            .map(|dir| dir.count())
+            .unwrap_or(0);
+        assert_eq!(issued, 0, "a refused role must not leave a descriptor");
+    }
+
     /// [`log_message`] writes on Tauri's runtime, so the row lands a moment
     /// after the call returns. Poll for it rather than guess at a sleep.
     async fn wait_for_user_message(store: &Store, worker_id: &str) -> String {

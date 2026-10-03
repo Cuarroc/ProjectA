@@ -4189,7 +4189,6 @@ pub(crate) mod tests {
         boot(Arc::new(backend), dir, false).unwrap()
     }
 
-    #[cfg(windows)]
     pub(crate) fn native_store_server(dir: &Path, store: crate::store::Store) -> ApiServer {
         let backend = FakeBackend {
             native_store: Some(store),
