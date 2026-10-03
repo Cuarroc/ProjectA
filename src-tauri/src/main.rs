@@ -64,10 +64,11 @@ mod budget;
 mod capabilities;
 mod critic;
 mod db_restore;
-pub mod delivery_recovery;
-pub mod development_plan;
+#[allow(dead_code)] // W3-02
+mod delivery_recovery;
+mod development_plan;
 mod development_plan_access;
-pub mod development_policy;
+mod development_policy;
 mod diagnosis;
 mod diff;
 mod digest;
