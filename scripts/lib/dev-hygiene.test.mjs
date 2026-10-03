@@ -170,14 +170,17 @@ test("hygiene --help exits 0", async () => {
 
 function fakeRun(over = {}) {
   return (cmd, args) => {
-    const a = args.join(" ");
-    for (const [needle, res] of Object.entries(over)) if (a.includes(needle)) return typeof res === "function" ? res(cmd, args) : res;
+    let rest = args;
+    // git: drop global "-C <path>" / "-c <key=value>" so only the subcommand and its args are matched.
+    if (cmd === "git") while (rest[0] === "-C" || rest[0] === "-c") rest = rest.slice(2);
+    const a = rest.join(" ");
+    for (const [needle, res] of Object.entries(over)) if (cmd === "git" ? a.startsWith(needle) : a.includes(needle)) return typeof res === "function" ? res(cmd, args) : res;
     if (cmd === "gh" && a.includes("--state open")) return { code: 0, stdout: JSON.stringify(input.prsOpen), stderr: "" };
     if (cmd === "gh" && a.includes("--state all")) return { code: 0, stdout: JSON.stringify(input.prsAll), stderr: "" };
-    if (a.includes("rev-parse")) return { code: 0, stdout: `${root}\n`, stderr: "" };
-    if (a.includes("worktree list")) return { code: 0, stdout: `worktree ${root}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
-    if (a.includes("for-each-ref")) return { code: 0, stdout: "origin/main\n", stderr: "" };
-    if (a.includes("status")) return { code: 0, stdout: "", stderr: "" };
+    if (a.startsWith("rev-parse")) return { code: 0, stdout: `${root}\n`, stderr: "" };
+    if (a.startsWith("worktree list")) return { code: 0, stdout: `worktree ${root}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
+    if (a.startsWith("for-each-ref")) return { code: 0, stdout: "origin/main\n", stderr: "" };
+    if (a.startsWith("status")) return { code: 0, stdout: "", stderr: "" };
     return { code: 0, stdout: "", stderr: "" };
   };
 }
