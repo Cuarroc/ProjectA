@@ -70,16 +70,22 @@ export default function RecommendationsPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A response for the project the user just left must not repopulate this
+  // project's actionable recommendations. Polls use the same guard so an
+  // older, slower poll cannot overwrite a newer snapshot either.
+  const loadToken = useRef(0);
 
   const refresh = useCallback(async () => {
     if (projectId === null) return;
+    const mine = ++loadToken.current;
     try {
       const next = await listRecommendations(projectId);
+      if (loadToken.current !== mine) return;
       setEntries(next);
       setLoaded(true);
       setError(null);
     } catch (cause) {
-      setError(describeError(cause));
+      if (loadToken.current === mine) setError(describeError(cause));
     }
   }, [projectId]);
 
@@ -100,7 +106,10 @@ export default function RecommendationsPanel({
     setError(null);
     void refresh();
     const interval = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(interval);
+    return () => {
+      loadToken.current += 1;
+      window.clearInterval(interval);
+    };
   }, [projectId, refresh]);
 
   // A confirmation is only worth the space for as long as it is still recent.
