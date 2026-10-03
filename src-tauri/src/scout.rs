@@ -161,13 +161,20 @@ async fn spawn_scout(
     let launch = scout_profile(&profile, project);
     // Through the same funnel as every other spawn, so a routed scout profile
     // reaches the router too instead of silently landing at the vendor.
-    let routed = crate::routing::spawn_routing(
+    let routed = match crate::routing::spawn_routing(
         store,
         &profile,
         Some(Path::new(&project.repo_path)),
         &worker_id,
     )
-    .await?;
+    .await
+    {
+        Ok(routed) => routed,
+        Err(err) => {
+            let _ = store.delete_worker(&worker_id).await;
+            return Err(err);
+        }
+    };
     let env = routed.env;
     // Bound before the child starts, like every spawn path: an agent that
     // exits at once must still be found by the exit hook.
@@ -850,6 +857,24 @@ mod tests {
             .await
             .expect_err("spawn must fail");
         assert!(err.contains("failed to spawn"), "{err}");
+        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn routing_failure_after_insert_rolls_back_scout() {
+        let fx = fixture("scout-routing-rollback").await;
+        let agents = FakeAgents::default();
+        crate::routing::set_review_availability(crate::routing::ReviewAvailability::Unresolved {
+            detail: "review unavailable".to_string(),
+        });
+        fx.store
+            .set_setting(crate::routing::TEST_FORCE_REVIEW_AFTER_PRECHECK, "true")
+            .await
+            .unwrap();
+
+        create_scout(&fx.store, &agents, &fx.project.id, None)
+            .await
+            .expect_err("routing must reject review mode");
         assert!(fx.store.list_workers(None).await.unwrap().is_empty());
     }
 

@@ -426,7 +426,7 @@ async fn create_worker_impl(
         let enabled = match store.get_project_skill_packs(project_id).await {
             Ok(enabled) => enabled,
             Err(err) => {
-                let _ = worktree::remove_worktree(&project.repo_path, &path);
+                let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
                 crate::hooks::remove_worker_files(&worker_id);
                 return Err(err);
             }
@@ -434,7 +434,7 @@ async fn create_worker_impl(
         let skills_dir = match agents.skill_packs_dir() {
             Ok(dir) => dir,
             Err(err) => {
-                let _ = worktree::remove_worktree(&project.repo_path, &path);
+                let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
                 crate::hooks::remove_worker_files(&worker_id);
                 return Err(err);
             }
@@ -449,7 +449,7 @@ async fn create_worker_impl(
         .map_err(|e| format!("installing the skill packs did not finish: {e}"))
         .and_then(|installed| installed);
         if let Err(err) = installed {
-            let _ = worktree::remove_worktree(&project.repo_path, &path);
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
             crate::hooks::remove_worker_files(&worker_id);
             return Err(err);
         }
@@ -475,7 +475,7 @@ async fn create_worker_impl(
         created_at: store::now_unix_secs(),
     };
     if let Err(err) = store.insert_worker(&row).await {
-        let _ = worktree::remove_worktree(&project.repo_path, &path);
+        let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
         crate::hooks::remove_worker_files(&worker_id);
         return Err(err);
     }
@@ -492,13 +492,22 @@ async fn create_worker_impl(
                 .into(),
         }
     } else {
-        crate::routing::spawn_routing(
+        match crate::routing::spawn_routing(
             store,
             &profile,
             Some(Path::new(&project.repo_path)),
             &worker_id,
         )
-        .await?
+        .await
+        {
+            Ok(routed) => routed,
+            Err(err) => {
+                let _ = store.delete_worker(&worker_id).await;
+                let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
+                crate::hooks::remove_worker_files(&worker_id);
+                return Err(err);
+            }
+        }
     };
     let profile = routed.profile;
     let mut env = routed.env;
@@ -590,7 +599,7 @@ async fn create_worker_impl(
             }
             let _ = store.take_session(&worker_id);
             let _ = store.delete_worker(&worker_id).await;
-            let _ = worktree::remove_worktree(&project.repo_path, &path);
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
             crate::hooks::remove_worker_files(&worker_id);
             return Err(err);
         }
@@ -672,7 +681,7 @@ async fn create_worker_impl(
             let _ = store.take_session(&worker_id);
             agents.kill(&session_id);
             let _ = store.delete_worker(&worker_id).await;
-            let _ = worktree::remove_worktree(&project.repo_path, &path);
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
             crate::hooks::remove_worker_files(&worker_id);
             return Err(err);
         }
@@ -756,13 +765,20 @@ pub async fn create_orchestrator(
     };
     store.insert_worker(&row).await?;
 
-    let routed = crate::routing::spawn_routing(
+    let routed = match crate::routing::spawn_routing(
         store,
         &profile,
         Some(Path::new(&project.repo_path)),
         &worker_id,
     )
-    .await?;
+    .await
+    {
+        Ok(routed) => routed,
+        Err(err) => {
+            let _ = store.delete_worker(&worker_id).await;
+            return Err(err);
+        }
+    };
     // W5-02a: strict environment, applied to the *routed* profile (a failover
     // may have swapped it), and a working directory outside every checkout.
     let profile = routed.profile.for_coordinator();
@@ -5207,6 +5223,47 @@ mod tests {
             .map(|entries| entries.count())
             .unwrap_or(0);
         assert_eq!(leftovers, 0, "{} should be empty", worktrees.display());
+        let branches = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&fx.repo)
+            .args(["branch", "--list", "pa/*"])
+            .output()
+            .expect("list worker branches");
+        assert!(branches.status.success());
+        assert!(
+            branches.stdout.is_empty(),
+            "failed spawn left branches: {}",
+            String::from_utf8_lossy(&branches.stdout)
+        );
+    }
+
+    #[tokio::test]
+    async fn routing_failure_after_insert_rolls_back_rows_and_checkout() {
+        let fx = fixture("worker-routing-rollback").await;
+        let agents = FakeAgents::default();
+        crate::routing::set_review_availability(crate::routing::ReviewAvailability::Unresolved {
+            detail: "review unavailable".to_string(),
+        });
+        fx.store
+            .set_setting(crate::routing::TEST_FORCE_REVIEW_AFTER_PRECHECK, "true")
+            .await
+            .unwrap();
+
+        create_worker(&fx.store, &agents, &fx.project_id, "task", "claude", None)
+            .await
+            .expect_err("routing must reject review mode");
+        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
+        let worktrees = fx._dir.path().join(worktree::WORKTREES_DIR);
+        assert_eq!(std::fs::read_dir(worktrees).unwrap().count(), 0);
+
+        fx.store
+            .set_setting(crate::routing::SETTING_PRODUCT_MODE, "cheap")
+            .await
+            .unwrap();
+        create_orchestrator(&fx.store, &agents, &fx.project_id, None)
+            .await
+            .expect_err("routing must reject review mode");
+        assert!(fx.store.list_workers(None).await.unwrap().is_empty());
     }
 
     #[tokio::test]
