@@ -203,6 +203,19 @@ test("hygiene lists untracked files with non-ASCII names unescaped (glm #3, kimi
   assert.ok(calls[0].join(" ").includes("core.quotePath=false"), calls[0].join(" "));
 });
 
+test("fakeRun matches the git subcommand and ignores -C path and -c values", () => {
+  const hit = { code: 99, stdout: "", stderr: "override" };
+  const run = fakeRun({ status: hit, fetch: hit });
+  const wt = "/work/plan-status-03-fetch";
+  const rev = run("git", ["-C", wt, "rev-parse", "--show-toplevel"]);
+  assert.equal(rev.code, 0, "a -C path containing 'status' or 'fetch' must not hit an override");
+  assert.equal(rev.stdout, `${root}
+`);
+  assert.equal(run("git", ["-C", wt, "-c", "core.status=x", "worktree", "list"]).code, 0);
+  assert.equal(run("git", ["-C", wt, "-c", "core.quotePath=false", "status", "--porcelain"]).code, 99);
+  assert.equal(run("git", ["-C", wt, "fetch", "--prune"]).code, 99);
+});
+
 test("MACHINE_BRANCH only excludes the exact machine branches (kimi #5)", () => {
   const f = collect({
     remoteBranches: [
