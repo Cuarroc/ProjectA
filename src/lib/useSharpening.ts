@@ -245,11 +245,17 @@ export function useSharpening(
               question: question.question,
               options: question.options ?? undefined,
             });
-            if (round.current !== mine) return;
             // A preflight question is never refused - the budget rule counts
             // worker questions only - but a row that came back unreadable is
             // one this round cannot wait for.
             if (row !== null && row.status === "open") asked.push(row);
+            // Abandoned while this row was being filed: the abandonment paths
+            // only see `questionsRef`, which is still empty, so the rows filed
+            // so far are closed here or they stay open as ghost decisions.
+            if (round.current !== mine) {
+              closeAbandoned(asked);
+              return;
+            }
           }
           if (asked.length === 0) throw new Error(ERR_NOT_FILED);
           setOpen(asked);
