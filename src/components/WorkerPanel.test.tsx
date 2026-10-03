@@ -24,7 +24,7 @@ function worker(status: Worker["status"], kind: Worker["kind"] = "worker"): Work
 }
 
 function renderPanel(w: Worker, handlers = { onRespawn: vi.fn(), onArchive: vi.fn() }, error: string | null = null) {
-  render(
+  const view = render(
     <WorkerPanel
       workers={[w]}
       profiles={[] as AgentProfile[]}
@@ -38,7 +38,7 @@ function renderPanel(w: Worker, handlers = { onRespawn: vi.fn(), onArchive: vi.f
       {...handlers}
     />,
   );
-  return handlers;
+  return { ...handlers, rerender: view.rerender };
 }
 
 describe("WorkerPanel archive and respawn", () => {
@@ -64,6 +64,45 @@ describe("WorkerPanel archive and respawn", () => {
     fireEvent.click(screen.getByRole("button", { name: "Archivieren" }));
     fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
     expect(onArchive).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks again after the confirmed worker leaves and returns to the list", () => {
+    const handlers = { onRespawn: vi.fn(), onArchive: vi.fn() };
+    const { rerender } = renderPanel(worker("running"), handlers);
+    fireEvent.click(screen.getByRole("button", { name: "Archivieren" }));
+    expect(screen.getByRole("button", { name: "Ja, endgültig archivieren" })).toBeTruthy();
+
+    rerender(
+      <WorkerPanel
+        workers={[{ ...worker("running"), id: "wk-2" }]}
+        profiles={[]}
+        activeWorkerId={null}
+        hasProject
+        loading={false}
+        error={null}
+        busyWorkerId={null}
+        onNew={vi.fn()}
+        onOpen={vi.fn()}
+        {...handlers}
+      />,
+    );
+    rerender(
+      <WorkerPanel
+        workers={[worker("running")]}
+        profiles={[]}
+        activeWorkerId={null}
+        hasProject
+        loading={false}
+        error={null}
+        busyWorkerId={null}
+        onNew={vi.fn()}
+        onOpen={vi.fn()}
+        {...handlers}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Ja, endgültig archivieren" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Archivieren" })).toBeTruthy();
   });
 
   it("keeps a failed attempt's error visible", () => {
