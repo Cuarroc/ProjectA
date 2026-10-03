@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { workerStatusLabel } from "../lib/plainText";
 import { shortTask } from "../lib/text";
 import type { AgentProfile, Worker } from "../types";
@@ -38,6 +39,16 @@ export default function WorkerPanel({
   // Coordinators - the orchestrator and the scout - are reached from their own
   // sidebar sections, not from the list of a project's actual work.
   const workers = allWorkers.filter((worker) => worker.kind === "worker");
+  // Archiving cannot be undone, so it takes a second click on this worker.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  useEffect(() => {
+    if (
+      confirmingId !== null &&
+      !allWorkers.some((worker) => worker.id === confirmingId && worker.status === "running")
+    ) {
+      setConfirmingId(null);
+    }
+  }, [allWorkers, confirmingId]);
 
   const profileName = (profileId: string) =>
     profiles.find((profile) => profile.id === profileId)?.name ?? profileId;
@@ -84,7 +95,7 @@ export default function WorkerPanel({
                 title={
                   attached
                     ? worker.task
-                    : "Kein Live-PTY — Puffer ansehen oder respawnen"
+                    : "Kein Live-PTY — Puffer ansehen oder neu starten"
                 }
                 onClick={() => onOpen(worker)}
               >
@@ -95,25 +106,56 @@ export default function WorkerPanel({
                 </span>
               </button>
               <div className="worker-actions">
-                {worker.status === "running" ? (
+                {worker.status === "running" && confirmingId === worker.id ? (
+                  <>
+                    <span className="worker-note">
+                      Endgültig: der Agent wird beendet und kommt nicht zurück. Der Arbeitsbaum
+                      bleibt.
+                    </span>
+                    <button
+                      type="button"
+                      className="worker-action"
+                      disabled={busy}
+                      onClick={() => {
+                        setConfirmingId(null);
+                        onArchive(worker);
+                      }}
+                    >
+                      Ja, endgültig archivieren
+                    </button>
+                    <button
+                      type="button"
+                      className="worker-action"
+                      onClick={() => setConfirmingId(null)}
+                    >
+                      Abbrechen
+                    </button>
+                  </>
+                ) : worker.status === "running" ? (
                   <button
                     type="button"
                     className="worker-action"
                     disabled={busy}
-                    title="Stop the agent, keep the worktree"
-                    onClick={() => onArchive(worker)}
+                    title="Beendet den Agenten endgültig, der Arbeitsbaum bleibt"
+                    onClick={() => setConfirmingId(worker.id)}
                   >
-                    {busy ? "…" : "Archive"}
+                    {busy ? "…" : "Archivieren"}
                   </button>
+                ) : worker.status === "archived" ? (
+                  // Same rule as the core: an archived ordinary worker is never
+                  // respawned (every row in this list is an ordinary worker).
+                  <span className="worker-note">
+                    Archiviert – endgültig gestoppt, Arbeitsbaum bleibt
+                  </span>
                 ) : (
                   <button
                     type="button"
                     className="worker-action"
                     disabled={busy}
-                    title="Attach a fresh agent to this worktree"
+                    title="Startet einen neuen Agenten im selben Arbeitsbaum"
                     onClick={() => onRespawn(worker)}
                   >
-                    {busy ? "…" : "Respawn"}
+                    {busy ? "…" : "Neu starten"}
                   </button>
                 )}
               </div>

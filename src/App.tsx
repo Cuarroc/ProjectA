@@ -686,6 +686,7 @@ function AppContent() {
     (worker: Worker) => {
       void (async () => {
         setBusyWorkerId(worker.id);
+        setWorkersError(null);
         try {
           const updated = await respawnWorker(worker.id);
           setWorkers((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
@@ -697,7 +698,10 @@ function AppContent() {
           refreshBoardRef.current();
           openWorkerTab(updated);
         } catch (cause) {
-          setError(describeError(cause));
+          const message = describeError(cause);
+          setError(message);
+          // The sidebar list shows it too, next to the button that failed.
+          setWorkersError(message);
         } finally {
           setBusyWorkerId(null);
         }
