@@ -75,6 +75,7 @@ mod enhance;
 mod errors;
 mod estop;
 mod freetier;
+mod fsutil;
 mod gh;
 mod hooks;
 mod http_util;
