@@ -21,6 +21,8 @@ pub(super) fn route(
             | ("GET", ["api", "hq", "v1", "runtime" | "plan" | "runs"])
             | ("GET", ["api", "hq", "v1", "context" | "changes"])
             | ("POST", ["api", "hq", "v1", "plan", "import"])
+            | ("GET" | "POST", ["api", "hq", "v1", "goals"])
+            | ("POST", ["api", "hq", "v1", "goals", _, "tasks"])
     );
     owned.then(|| handle(inner, request, method, path, project_id))
 }
@@ -172,6 +174,84 @@ fn handle(
                 return reply;
             }
             continuous_response(backend.development_records(project_id))
+        }
+        ("GET", ["api", "hq", "v1", "goals"]) => {
+            let project_id = match project_id {
+                Some(value) if !value.is_empty() => value,
+                _ => return Response::error(400, "projectId is required"),
+            };
+            match backend.list_continuous_goals(project_id) {
+                Ok(goals) => Response::ok(json!({ "goals": goals })),
+                Err(err) => continuous_error(err),
+            }
+        }
+        ("POST", ["api", "hq", "v1", "goals"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(err) => return Response::error(400, err),
+            };
+            if let Err(err) = only_keys(
+                &body,
+                &[
+                    "projectId",
+                    "objective",
+                    "acceptanceCriteria",
+                    "sourceGoalId",
+                    "admit",
+                ],
+            ) {
+                return Response::error(400, err);
+            }
+            let project_id = match required_str(&body, "projectId") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let objective = match required_str(&body, "objective") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let admit = match optional_bool(&body, "admit") {
+                Ok(value) => value.unwrap_or(false),
+                Err(err) => return Response::error(400, err),
+            };
+            match backend.create_continuous_goal(
+                &project_id,
+                &objective,
+                optional_str(&body, "acceptanceCriteria"),
+                optional_str(&body, "sourceGoalId"),
+                admit,
+            ) {
+                Ok(goal) => Response::ok(json!({ "goal": goal })),
+                Err(err) => continuous_error(err),
+            }
+        }
+        ("POST", ["api", "hq", "v1", "goals", goal_id, "tasks"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(err) => return Response::error(400, err),
+            };
+            let objective = match required_str(&body, "objective") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let owned_paths = match string_array(&body, "ownedPaths") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let dependencies = match string_array(&body, "dependencies") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            match backend.create_continuous_task(
+                goal_id,
+                &objective,
+                optional_str(&body, "profileId"),
+                owned_paths,
+                dependencies,
+            ) {
+                Ok(task) => Response::ok(json!({ "task": task })),
+                Err(err) => continuous_error(err),
+            }
         }
         _ => unreachable!("route() only hands over owned arms"),
     }
