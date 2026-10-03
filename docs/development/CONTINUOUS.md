@@ -69,20 +69,17 @@ the run reference; feedback without one is rejected. Historical counts remain.
 Cross-process file writers are not serialized;
 durable run-attested learning still requires the core evidence service.
 
-`npm run dev:benchmark` lists the fixed twenty-case evaluation contract.
-Supply two JSON arrays to compare measured runs:
+`npm run dev:benchmark` lists the five fixed W4-01 tasks and their exact expected
+JSON results. Run them sequentially through a local worker-adapter module:
 
 ```text
-npm run dev:benchmark -- baseline.json candidate.json
+npm run dev:benchmark -- --adapter ./adapter.mjs --output benchmark-result.json
 ```
 
-Every case needs a unique run ID, evidence reference, measured token count,
-elapsed milliseconds, acceptance, review rejections, rework and escaped
-regressions. Unknown telemetry is rejected. Fixtures test the comparator only;
-they do not count as task performance or provider attestation. No performance
-improvement has been measured on this branch.
-The comparator always retains the previous policy. A target-met result is
-explicitly unverified until the core can validate run and evidence provenance.
+The adapter exports `runTask(task)` (or a default function) and returns JSON.
+The runner writes exact-match pass/fail results plus per-task and total duration.
+Tests use only the local fixture adapter; fixture results are not provider or
+performance attestations. No provider is contacted by the runner itself.
 
 ## Pending activation gates
 
