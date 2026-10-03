@@ -816,7 +816,7 @@ impl KeyVault {
         let encoded = encode_body(&body)?;
         #[cfg(not(windows))]
         let encoded = body.as_str();
-        write_atomic(&self.path, encoded.as_bytes())?;
+        crate::fsutil::write_atomic(&self.path, encoded.as_bytes())?;
 
         // Belt over the create-with-0600 suspenders in `write_atomic`: the
         // rename keeps the temp file's mode, and this narrows the result
@@ -855,107 +855,6 @@ fn unprotect_vault(_blob: &[u8], path: &Path) -> Result<Vec<u8>, VaultReadError>
         "{}: the vault is encrypted with Windows DPAPI, which this platform does not have",
         path.display()
     )))
-}
-
-/// Write `body` to `path` so a crash mid-write can never leave half a vault
-/// behind: the bytes land in a sibling temp file first, are flushed to disk,
-/// and are then renamed over the target in one atomic replace. The temp file
-/// is created private on unix, so the vault is 0600 from birth rather than
-/// for the window between `create` and a later chmod. Windows has no
-/// portable create-with-mode in std; there the app data directory's per-user
-/// ACL is inherited at creation, which is the best std can do.
-fn write_atomic(path: &Path, body: &[u8]) -> Result<(), String> {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static SEQ: AtomicU64 = AtomicU64::new(0);
-
-    let base = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(VAULT_FILE);
-    // `create_new` (O_EXCL) refuses an existing file and never follows a
-    // symlink, so a pre-planted name fails instead of redirecting the write.
-    // The name carries a clock reading and a counter besides the pid so it
-    // cannot be computed ahead of time; a collision just picks the next one.
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut attempt = 0;
-    let (tmp, mut file) = loop {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.subsec_nanos());
-        let tmp = path.with_file_name(format!(
-            "{base}.tmp-{}-{nanos:08x}-{}",
-            std::process::id(),
-            SEQ.fetch_add(1, Ordering::Relaxed)
-        ));
-        match options.open(&tmp) {
-            Ok(file) => break (tmp, file),
-            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists && attempt < 16 => {
-                attempt += 1;
-            }
-            Err(err) => return Err(format!("failed to create {}: {err}", tmp.display())),
-        }
-    };
-    let written = file.write_all(body).and_then(|()| file.sync_all());
-    drop(file);
-    if let Err(err) = written {
-        let _ = std::fs::remove_file(&tmp);
-        return Err(format!("failed to write {}: {err}", tmp.display()));
-    }
-    if let Err(err) = replace_file(&tmp, path) {
-        let _ = std::fs::remove_file(&tmp);
-        return Err(format!(
-            "failed to replace {} with {}: {err}",
-            path.display(),
-            tmp.display()
-        ));
-    }
-    Ok(())
-}
-
-/// Rename `tmp` over `target`, replacing it atomically.
-///
-/// Windows needs `MoveFileExW` with REPLACE_EXISTING called directly: the
-/// replacement guarantee of std's `rename` there is toolchain-dependent, and
-/// this crate's MSRV (1.77) predates it. On unix `rename(2)` has always
-/// replaced.
-#[cfg(windows)]
-fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-
-    let wide = |path: &Path| -> Vec<u16> {
-        path.as_os_str()
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect()
-    };
-    let from = wide(tmp);
-    let to = wide(target);
-    let ok = unsafe {
-        MoveFileExW(
-            from.as_ptr(),
-            to.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-        )
-    };
-    if ok == 0 {
-        return Err(std::io::Error::last_os_error());
-    }
-    Ok(())
-}
-
-/// The unix counterpart: `rename(2)` replaces atomically by definition.
-#[cfg(not(windows))]
-fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
-    std::fs::rename(tmp, target)
 }
 
 /// Windows DPAPI: encryption scoped to the current user account. The blob it
@@ -1408,6 +1307,7 @@ mod tests {
     use std::net::TcpListener;
     use std::sync::mpsc::{channel, Receiver, Sender};
 
+    use crate::fsutil::write_atomic;
     use crate::store::{QUOTA_BLOCKED, QUOTA_OK};
     use crate::testutil::TempDir;
 
