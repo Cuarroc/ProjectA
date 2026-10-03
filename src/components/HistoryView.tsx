@@ -34,12 +34,16 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
   // must not steal the viewport.
   const userScrolledUp = useRef(false);
 
+  // A reply may only land while its worker is still the shown one.
+  const activeWorkerRef = useRef(workerId);
+  activeWorkerRef.current = workerId;
+
   const refresh = useCallback(async () => {
     if (pendingWorkersRef.current.has(workerId)) return;
     pendingWorkersRef.current.add(workerId);
     try {
       const next = await listWorkerMessages(workerId, MESSAGE_LIMIT);
-      setMessages(next);
+      if (activeWorkerRef.current === workerId) setMessages(next);
     } catch {
       // The command may still be missing on the Rust side. Keep the previous
       // messages (if any) or stay in the quiet empty state.
