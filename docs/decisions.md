@@ -925,6 +925,13 @@ Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
   Frontend-Seite für jede Session ein unsichtbares xterm hält oder ein
   Adapter nachweislich auf die Doppelantwort reagiert; dann Reply nur ohne
   gemountete Ansicht.
+  **Aufgelöst 2026-10-02 (KI-20, W1-27, Advisor Fable 5.1, vom Nutzer am
+  25.09. delegiert):** Das Backend antwortet allein; der Reader entfernt die
+  beantwortete Anfrage (`CursorReportScanner::strip`) aus den Bytes für
+  Scrollback und UI, damit xterm.js sie weder live noch beim Replay sieht.
+  Frontend unverändert. Die Antwort bleibt `1;1`: das Backend hat kein
+  Bildschirmmodell, und eine TUI, die später (Resize) fragt, zeichnet ohnehin
+  neu.
 - 2026-09-16: Claudes Trust-Dialog wird zweistufig beantwortet
   (`ClaudeTrustMove` = Down, `ClaudeTrust` = Enter nur bei sichtbarem
   Selektor auf „Yes, I trust this folder"), wie die Codex-Hooks-Review —
