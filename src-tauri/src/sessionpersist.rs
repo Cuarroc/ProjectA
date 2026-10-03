@@ -71,6 +71,7 @@ pub const MAX_BYTES: usize = 2 * 1024 * 1024;
 /// Directory name under the app data dir, next to the vault, never in a worktree.
 pub const DIR_NAME: &str = "session-buffers";
 
+#[cfg(test)]
 const CANARY_FIELD: &str = "scrollback";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -392,6 +393,7 @@ pub fn restore(
 
 /// Diagnosis must not grow a scrollback field. The allowlist is empty on
 /// purpose: returning the name would be the leak.
+#[cfg(test)]
 pub fn diagnosis_fields() -> &'static [&'static str] {
     const NONE: &[&str] = &[];
     let _ = CANARY_FIELD;
