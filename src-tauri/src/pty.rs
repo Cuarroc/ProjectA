@@ -1826,7 +1826,7 @@ fn spawn_reader_thread(
         loop {
             let step = read_step(reader.read(&mut buf));
             if let ReadStep::Fatal(kind) = &step {
-                eprintln!("projecta: pty read failed: {kind:?}");
+                let _ = writeln!(std::io::stderr(), "projecta: pty read failed: {kind:?}");
             }
             match step {
                 ReadStep::Retry => continue,
@@ -1865,7 +1865,8 @@ fn spawn_reader_thread(
                                 if let Err(err) =
                                     write_session_bytes(&session, CURSOR_POSITION_REPLY)
                                 {
-                                    eprintln!(
+                                    let _ = writeln!(
+                                        std::io::stderr(),
                                         "projecta: cursor-position reply failed ({session_id}): {err}"
                                     );
                                 }
@@ -1884,7 +1885,7 @@ fn spawn_reader_thread(
                     if let Err(err) = &emitted {
                         if !emit_failure_logged {
                             emit_failure_logged = true;
-                            eprintln!("projecta: pty emit failed: {err}");
+                            let _ = writeln!(std::io::stderr(), "projecta: pty emit failed: {err}");
                         }
                     }
                     if !keep_draining_after_emit(&emitted) {
