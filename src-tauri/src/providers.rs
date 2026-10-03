@@ -724,15 +724,45 @@ impl KeyVault {
         }
     }
 
-    /// Move an unreadable vault aside, keeping its bytes as evidence.
+    /// Move an unreadable vault aside, keeping its bytes as evidence. The
+    /// archive name is second+pid, so it can repeat (two heals in one second)
+    /// or be planted ahead of time: a plain `rename` would silently replace
+    /// that file. The name is claimed with `create_new` first (never follows a
+    /// symlink, never reuses a file) and a taken name just picks the next one.
     fn archive_corrupt(&self, err: &VaultReadError) -> Result<(), String> {
-        let archive = self.path.with_file_name(format!(
+        let stem = format!(
             "{}.broken-{}-{}",
             VAULT_FILE,
             now_unix_secs(),
             std::process::id()
-        ));
+        );
+        let mut attempt = 0u32;
+        let archive = loop {
+            let name = if attempt == 0 {
+                stem.clone()
+            } else {
+                format!("{stem}-{attempt}")
+            };
+            let candidate = self.path.with_file_name(name);
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&candidate)
+            {
+                Ok(_) => break candidate,
+                Err(io) if io.kind() == std::io::ErrorKind::AlreadyExists && attempt < 64 => {
+                    attempt += 1;
+                }
+                Err(io) => {
+                    return Err(format!(
+                        "failed to archive the corrupt vault to {}: {io}",
+                        candidate.display()
+                    ));
+                }
+            }
+        };
         std::fs::rename(&self.path, &archive).map_err(|io| {
+            let _ = std::fs::remove_file(&archive);
             format!(
                 "failed to archive the corrupt vault to {}: {io}",
                 archive.display()
@@ -1699,6 +1729,44 @@ mod tests {
         assert_eq!(archives.len(), 1, "the corrupt file is kept as evidence");
         let archived = std::fs::read_to_string(archives[0].path()).expect("read archive");
         assert_eq!(archived, "{ not json at all", "the evidence is untouched");
+    }
+
+    #[test]
+    fn archiving_a_corrupt_vault_never_overwrites_an_existing_archive() {
+        let dir = TempDir::new("vault-corrupt-collision");
+        let vault = vault(&dir);
+        std::fs::write(vault.path(), "{ not json at all").expect("write");
+        // Plant the predictable names (second + pid) for a window around now,
+        // as an earlier heal in the same second or an attacker would.
+        let now = now_unix_secs();
+        let planted: Vec<_> = (now.saturating_sub(2)..=now + 3)
+            .map(|sec| {
+                let path = dir
+                    .path()
+                    .join(format!("{VAULT_FILE}.broken-{sec}-{}", std::process::id()));
+                std::fs::write(&path, "earlier evidence").expect("plant");
+                path
+            })
+            .collect();
+
+        vault.set("openrouter", "sk-secret").expect("set heals");
+
+        for path in &planted {
+            assert_eq!(
+                std::fs::read_to_string(path).expect("planted archive survives"),
+                "earlier evidence",
+                "{} was overwritten",
+                path.display()
+            );
+        }
+        let kept = std::fs::read_dir(dir.path())
+            .expect("read_dir")
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                std::fs::read_to_string(entry.path()).is_ok_and(|c| c == "{ not json at all")
+            })
+            .count();
+        assert_eq!(kept, 1, "the corrupt vault is archived exactly once");
     }
 
     #[test]
