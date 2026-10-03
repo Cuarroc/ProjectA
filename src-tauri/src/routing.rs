@@ -288,12 +288,28 @@ pub struct SpawnRouting {
     pub attribution: String,
 }
 
+#[cfg(test)]
+pub const TEST_FORCE_REVIEW_AFTER_PRECHECK: &str = "test.force_review_after_precheck";
+
 pub async fn spawn_routing(
     store: &crate::store::Store,
     profile: &AgentProfile,
     repo_path: Option<&Path>,
     worker_id: &str,
 ) -> Result<SpawnRouting, String> {
+    #[cfg(test)]
+    if store
+        .get_setting(TEST_FORCE_REVIEW_AFTER_PRECHECK)
+        .await
+        .unwrap()
+        .as_deref()
+        == Some("true")
+    {
+        store
+            .set_setting(SETTING_PRODUCT_MODE, "review")
+            .await
+            .unwrap();
+    }
     let requested = current_product_mode(store).await;
     let (mode, failover) = spawn_mode_after_failover(requested);
     ensure_mode_spawnable(mode)?;
