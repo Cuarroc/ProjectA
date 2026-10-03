@@ -72,6 +72,42 @@ fn two_temporary_allocations_never_share_a_file() {
 
 #[cfg(windows)]
 #[test]
+fn restore_succeeds_when_the_destination_lock_is_released_during_the_retry_window() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = tests::scratch("transient-lock");
+    let dest = dir.join("projecta.db");
+    let backup = dir.join("projecta.db.pre-migration-1.bak");
+    fs::write(&dest, b"original").unwrap();
+    fs::write(&backup, b"snapshot").unwrap();
+    fs::write(dir.join("projecta.db-wal"), b"stale-wal").unwrap();
+    fs::write(dir.join("projecta.db-shm"), b"stale-shm").unwrap();
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&dest)
+        .unwrap();
+    let releaser = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        drop(held);
+    });
+    let result = restore_from_pre_migration_backup(&backup, &dest);
+    releaser.join().unwrap();
+    result.expect("a lock released inside the retry window must not fail the restore");
+    assert_eq!(fs::read(&dest).unwrap(), b"snapshot");
+    assert_eq!(fs::read(&backup).unwrap(), b"snapshot");
+    assert!(!dir.join("projecta.db-wal").exists());
+    assert!(!dir.join("projecta.db-shm").exists());
+    let mut names: Vec<_> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["projecta.db", "projecta.db.pre-migration-1.bak"]);
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[cfg(windows)]
+#[test]
 fn locked_destination_refuses_restore_without_deleting_the_original() {
     use std::os::windows::fs::OpenOptionsExt;
     let dir = tests::scratch("locked-destination");
@@ -79,6 +115,9 @@ fn locked_destination_refuses_restore_without_deleting_the_original() {
     let backup = dir.join("projecta.db.pre-migration-1.bak");
     fs::write(&dest, b"original").unwrap();
     fs::write(&backup, b"snapshot").unwrap();
+    fs::write(dir.join("projecta.db-wal"), b"live-wal").unwrap();
+    fs::write(dir.join("projecta.db-shm"), b"live-shm").unwrap();
+    fs::write(dir.join("projecta.db.unrelated.tmp"), b"unrelated").unwrap();
     let held = fs::OpenOptions::new()
         .read(true)
         .share_mode(0)
@@ -89,9 +128,15 @@ fn locked_destination_refuses_restore_without_deleting_the_original() {
     assert!(result.is_err());
     assert_eq!(fs::read(&dest).unwrap(), b"original");
     assert_eq!(fs::read(&backup).unwrap(), b"snapshot");
+    assert_eq!(fs::read(dir.join("projecta.db-wal")).unwrap(), b"live-wal");
+    assert_eq!(fs::read(dir.join("projecta.db-shm")).unwrap(), b"live-shm");
+    assert_eq!(
+        fs::read(dir.join("projecta.db.unrelated.tmp")).unwrap(),
+        b"unrelated"
+    );
     assert_eq!(
         fs::read_dir(&dir).unwrap().count(),
-        2,
+        5,
         "only owned temp is cleaned"
     );
     fs::remove_dir_all(dir).unwrap();
