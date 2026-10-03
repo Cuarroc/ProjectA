@@ -23,6 +23,15 @@ pub(super) fn route(
             | ("POST", ["api", "hq", "v1", "plan", "import"])
             | ("GET" | "POST", ["api", "hq", "v1", "goals"])
             | ("POST", ["api", "hq", "v1", "goals", _, "tasks"])
+            | (
+                "GET" | "POST",
+                ["api", "hq", "v1", "tasks", _, "assignment"]
+            )
+            | (
+                "POST",
+                ["api", "hq", "v1", "tasks", _, "claim" | "checkpoint"]
+            )
+            | ("POST", ["api", "hq", "v1", "control"])
     );
     owned.then(|| handle(inner, request, method, path, project_id))
 }
@@ -252,6 +261,89 @@ fn handle(
                 Ok(task) => Response::ok(json!({ "task": task })),
                 Err(err) => continuous_error(err),
             }
+        }
+        ("GET", ["api", "hq", "v1", "tasks", task_id, "assignment"]) => {
+            match backend.continuous_task_assignment(task_id) {
+                Ok(assignment) => Response::ok(
+                    json!({"apiVersion":1,"source":"rust/sqlite","assignment":assignment,"approvalAuthority":false}),
+                ),
+                Err(error) => continuous_error(error),
+            }
+        }
+        ("POST", ["api", "hq", "v1", "tasks", task_id, "assignment"]) => {
+            let body = match serde_json::from_str::<crate::store::team_assignments::AssignmentRequest>(
+                &request.body,
+            ) {
+                Ok(body) => body,
+                Err(error) => {
+                    return Response::error(400, format!("invalid team assignment: {error}"))
+                }
+            };
+            match backend.assign_continuous_task(task_id, body) {
+                Ok(assignment) => Response::ok(
+                    json!({"apiVersion":1,"source":"rust/sqlite","assignment":assignment,"approvalAuthority":false}),
+                ),
+                Err(error) => continuous_error(error),
+            }
+        }
+        ("POST", ["api", "hq", "v1", "tasks", task_id, "claim"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(err) => return Response::error(400, err),
+            };
+            let owner = match required_str(&body, "owner") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let escalation = body
+                .get("escalation")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            match backend.claim_continuous_task(task_id, &owner, escalation) {
+                Ok(claim) => Response::ok(json!({ "claim": claim })),
+                Err(err) => continuous_error(err),
+            }
+        }
+        ("POST", ["api", "hq", "v1", "tasks", task_id, "checkpoint"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(err) => return Response::error(400, err),
+            };
+            let owner = match required_str(&body, "owner") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let fence = match body.get("fence").and_then(Value::as_i64) {
+                Some(value) if value > 0 => value,
+                _ => return Response::error(400, "fence must be a positive integer"),
+            };
+            let status = body
+                .get("status")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            let detail = body
+                .get("detail")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            match backend.checkpoint_continuous_task(task_id, &owner, fence, status, detail) {
+                Ok(task) => Response::ok(json!({ "task": task })),
+                Err(err) => continuous_error(err),
+            }
+        }
+        ("POST", ["api", "hq", "v1", "control"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(err) => return Response::error(400, err),
+            };
+            let project_id = match required_str(&body, "projectId") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            let action = match required_str(&body, "action") {
+                Ok(value) => value,
+                Err(err) => return Response::error(400, err),
+            };
+            continuous_response(backend.control_continuous(&project_id, &action))
         }
         _ => unreachable!("route() only hands over owned arms"),
     }
