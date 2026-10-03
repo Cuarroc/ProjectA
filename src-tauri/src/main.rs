@@ -72,6 +72,7 @@ mod diagnosis;
 mod diff;
 mod digest;
 mod enhance;
+mod estop;
 mod freetier;
 mod gh;
 mod hooks;
@@ -1130,6 +1131,42 @@ fn set_updater_state(
         .lock()
         .map_err(|_| "updater state unavailable".to_string())? = state;
     Ok(())
+}
+
+// -- emergency stop (W5-04b) ----------------------------------------------
+
+/// The persistent barrier. An unreadable state is an error, which the UI
+/// shows as "stopped" - never as permission to dispatch.
+#[tauri::command]
+async fn get_emergency_stop(store: State<'_, Store>) -> Result<bool, String> {
+    store.emergency_stop_active().await
+}
+
+/// Raise or clear the global emergency stop. Raising writes the barrier first
+/// (new dispatches are refused from that moment, `set_emergency_stop` also
+/// revokes claims in flight), then ends every agent session within
+/// `estop::DEADLINE`; an `Err` means the end was not observed and the barrier
+/// stays up. Clearing only lifts the barrier - nothing is revived.
+#[tauri::command]
+async fn set_emergency_stop(
+    store: State<'_, Store>,
+    manager: State<'_, PtyManager>,
+    gate: State<'_, tokio::sync::Mutex<()>>,
+    active: bool,
+) -> Result<(), String> {
+    let _guard = gate.lock().await;
+    store.set_emergency_stop(active, "app").await?;
+    if !active {
+        manager.set_emergency_stop_active(false);
+        return Ok(());
+    }
+    manager.set_emergency_stop_active(true);
+    let manager = manager.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        estop::enforce(&manager, &estop::SystemClock, estop::DEADLINE)
+    })
+    .await
+    .map_err(|error| format!("emergency stop: {error}"))?
 }
 
 // -- task queue (Phase 7) -------------------------------------------------
@@ -3440,6 +3477,7 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(PtyManager::default())
+        .manage(tokio::sync::Mutex::new(()))
         // The web interface starts on demand; its state only exists so the
         // frontend can ask for status or stop it later.
         .manage(Mutex::new(WebInterfaceState::default()))
@@ -3481,6 +3519,14 @@ fn main() {
             // would fail, which is why it is the first thing done with `dir`.
             learnings::set_data_dir(&dir);
             let store = init_store(&handle, &dir)?;
+            let stopped = tauri::async_runtime::block_on(store.emergency_stop_active())
+                .unwrap_or_else(|error| {
+                    eprintln!("projecta: emergency stop state unavailable at startup: {error}");
+                    true
+                });
+            handle
+                .state::<PtyManager>()
+                .set_emergency_stop_active(stopped);
             // W2-06: committed supervisor changes reach the window as runtime
             // notifications; the payload holds ids and reason codes only.
             let notice_app = handle.clone();
@@ -3671,6 +3717,8 @@ fn main() {
             write_pty,
             resize_pty,
             kill_pty,
+            get_emergency_stop,
+            set_emergency_stop,
             get_scrollback,
             get_session_restore,
             list_agent_profiles,
@@ -4390,6 +4438,10 @@ mod tests {
                 ".manage(Mutex::new(WebInterfaceState::default()))",
             ),
             ("PtyManager", ".manage(PtyManager::default())"),
+            (
+                "tokio::sync::Mutex<()>",
+                ".manage(tokio::sync::Mutex::new(()))",
+            ),
             ("Store", "app.manage(store)"),
             ("PanicNotice", "app.manage(panic_notice)"),
         ];
@@ -4448,5 +4500,21 @@ mod tests {
                  commands taking it will fail at runtime with 'state not managed'"
             );
         }
+    }
+
+    #[test]
+    fn emergency_stop_changes_are_serialized() {
+        const SOURCE: &str = include_str!("main.rs");
+        let command = SOURCE
+            .split("async fn set_emergency_stop")
+            .nth(1)
+            .expect("set command")
+            .split("// -- task queue")
+            .next()
+            .expect("command boundary");
+        assert!(
+            command.contains("gate.lock().await"),
+            "raising and clearing the stop must not overlap"
+        );
     }
 }

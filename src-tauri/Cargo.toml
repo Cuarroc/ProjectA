@@ -45,7 +45,7 @@ sqlx = { version = "0.8", default-features = false, features = [
 ] }
 # The web interface signals shutdown through oneshot; the journal observer owns
 # a cancellable runtime task and bounded waits in production, not only tests.
-tokio = { version = "1", default-features = false, features = ["sync", "rt", "time"] }
+tokio = { version = "1", default-features = false, features = ["sync", "rt", "rt-multi-thread", "time"] }
 # The control API token has to come from a CSPRNG (see `api::new_token`).
 # Nothing new gets compiled for it: tauri already depends on this exact
 # version, so naming it here only makes the existing crate reachable.

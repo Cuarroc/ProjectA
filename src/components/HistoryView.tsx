@@ -29,17 +29,22 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
   const [loading, setLoading] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const pendingWorkersRef = useRef(new Set<string>());
   // Track whether the user has deliberately scrolled up; if so, new messages
   // must not steal the viewport.
   const userScrolledUp = useRef(false);
 
   const refresh = useCallback(async () => {
+    if (pendingWorkersRef.current.has(workerId)) return;
+    pendingWorkersRef.current.add(workerId);
     try {
       const next = await listWorkerMessages(workerId, MESSAGE_LIMIT);
       setMessages(next);
     } catch {
       // The command may still be missing on the Rust side. Keep the previous
       // messages (if any) or stay in the quiet empty state.
+    } finally {
+      pendingWorkersRef.current.delete(workerId);
     }
   }, [workerId]);
 

@@ -342,6 +342,16 @@ export async function setUpdaterState(state: UpdaterState): Promise<void> {
   await invoke("set_updater_state", { state });
 }
 
+/** Global emergency stop. A rejection means "unknown", shown as stopped. */
+export async function getEmergencyStop(): Promise<boolean> {
+  return invoke<boolean>("get_emergency_stop");
+}
+
+/** Raise (ends every agent within 10 s, rejects if not observed) or clear it. */
+export async function setEmergencyStop(active: boolean): Promise<void> {
+  await invoke("set_emergency_stop", { active });
+}
+
 /**
  * Owned session ids, including reserved and starting processes. Unavailable or
  * malformed inventory must reject: it cannot authorize an idle update.
