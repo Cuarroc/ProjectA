@@ -62,6 +62,31 @@ readiness marker). An unrelated id gets the cautious defaults. The optional
 fields. Enable/disable stays with the desktop app's settings — the HQ proxy
 deliberately does not write the live database.
 
+## What the agent-facing HQ queries do and do not prove
+
+Consumers are `pa hq runtime`, `pa hq context --project <id>` and the
+changes-only cursor pages (`pa hq changes --project <id>`). Read their output
+within these limits:
+
+- **`pa hq runtime`** reports the profiles and capabilities as *configured*.
+  Its compiled-default `manifestFingerprint` is a valid, limited byte
+  fingerprint of the shipped `agent-defaults.json` (LF-normalised SHA-256). It
+  is not proof of the whole Git SHA, the model, the effort or any credential,
+  and not a provider attestation. Comparing it with the local checkout is the
+  `manifest` row of `npm run dev:doctor -- --json`; the full installed-build
+  proof path is in `docs/ci-lokal.md` (W3-08).
+- **`pa hq context --project <id>`** and the cursor pages answer a
+  project-filtered query. Do not infer credential scope from the project
+  filter; this document makes no claim about a RunCredential context
+  permission (`agent_access` was not read).
+- **Freshness.** `snapshot.commit` and `snapshot.run` may be `null`.
+  `snapshot.sourceTimestamp` can be the journal or read time (a fallback), so
+  a timestamp alone does not prove a fresh checkout.
+- **Cursors.** A future cursor, or an empty page with `hasMore: false`, does
+  not by itself prove the journal head or epoch.
+- **Host numbers.** `HostAdmission.activeClaims` and the memory figures are
+  host-wide, not per project.
+
 ## Setup helper
 
 The Live view opens with a **Setup helper** that checks this machine: Node,
