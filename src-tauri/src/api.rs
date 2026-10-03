@@ -51,7 +51,7 @@
 //! | GET    | `/api/board`              | `?projectId=`         | `[board state]`   |
 //! | GET    | `/api/quota`              |                       | `[quota row]`     |
 //! | GET    | `/api/emergency-stop`     |                       | `{active}`        |
-//! | POST   | `/api/emergency-stop`     | `{active: bool}`      | `{active}`        |
+//! | POST   | `/api/emergency-stop`     | `{active: bool}` + verdict to deactivate | `{active}` |
 //! | GET    | `/api/updater`            |                       | updater state     |
 //! | GET    | `/api/budgets`            |                       | `[budget row]`    |
 //! | PUT    | `/api/budgets`            | `{profileId, fiveHourPct?, sevenDayPct?}` | `budget row` |
@@ -214,7 +214,7 @@ mod planning_access;
 pub const TOKEN_HEADER: &str = "x-projecta-token";
 
 /// Header carrying the verdict token, required on top of [`TOKEN_HEADER`] by
-/// the four routes that give a human verdict on a learning or a role.
+/// routes that make a human decision or release the emergency stop.
 pub const VERDICT_TOKEN_HEADER: &str = "x-verdict-token";
 
 /// Profile used when a caller does not name one.
@@ -1280,7 +1280,7 @@ fn handle(inner: &Inner, request: &Request) -> Response {
         Some(_) => VerdictProof::Wrong,
     };
 
-    if is_verdict(request) {
+    if let Some(decision) = verdict_decision(request) {
         match proof {
             VerdictProof::Proven => {}
             VerdictProof::Wrong => return Response::error(403, "invalid verdict token"),
@@ -1288,9 +1288,9 @@ fn handle(inner: &Inner, request: &Request) -> Response {
                 return Response::error(
                     403,
                     format!(
-                        "missing {VERDICT_TOKEN_HEADER} header: approving or rejecting is a \
-                         human decision, and the token for it is held by the window and by \
-                         `pa --verdict-token` alone"
+                        "missing {VERDICT_TOKEN_HEADER} header: {decision} is a human or \
+                         coordinator decision, and the token for it is held by the window and \
+                         by `pa --verdict-token` alone"
                     ),
                 )
             }
@@ -1303,8 +1303,8 @@ fn handle(inner: &Inner, request: &Request) -> Response {
 /// Whether a request carried the verdict token, and whether it was the right
 /// one.
 ///
-/// Two routes care, for two different reasons. The four verdict routes *need*
-/// it and are refused without it. `POST /api/questions/<id>/answer` only
+/// Protected decision routes *need* it and are refused without it.
+/// `POST /api/questions/<id>/answer` only
 /// *records* it: answering is not a privilege - the answer reaches one agent's
 /// own terminal and nothing else - but "a person decided this" is a claim, and
 /// this header is the only thing that can back it.
@@ -1320,23 +1320,34 @@ enum VerdictProof {
     Wrong,
 }
 
-/// Whether this request is one of the four human verdicts.
+/// Name the protected decision made by this request, if any.
 ///
 /// Only the POSTs. A GET on the same path is a caller who used the wrong verb,
 /// and [`route`] tells them that - answering 403 there would send them looking
 /// for a token they do not need.
-fn is_verdict(request: &Request) -> bool {
+fn verdict_decision(request: &Request) -> Option<&'static str> {
     if request.method != "POST" {
-        return false;
+        return None;
     }
     let segments = request.segments();
     let path: Vec<&str> = segments.iter().map(String::as_str).collect();
-    matches!(
+    if matches!(
         path.as_slice(),
         ["api", "learnings", _, "approve" | "reject"]
             | ["api", "roles", _, "approve" | "reject"]
             | ["api", "workers", _, "merge"]
-    )
+    ) {
+        return Some("approving, rejecting or merging");
+    }
+    if path.as_slice() == ["api", "emergency-stop"]
+        && serde_json::from_str::<Value>(&request.body)
+            .ok()
+            .and_then(|body| body.get("active").and_then(Value::as_bool))
+            == Some(false)
+    {
+        return Some("releasing the emergency stop");
+    }
+    None
 }
 
 /// `POST /api/projects` is a human write, but isolated F8 must be able to
@@ -5341,13 +5352,41 @@ pub(crate) mod tests {
         assert_eq!(fx.backend.stop_state.lock().unwrap().1, "pa");
         let (_, body) = call(port, "GET", "/api/emergency-stop", Some(&token), "");
         assert_eq!(body["active"], true);
-        let (status, body) = call(
+        let verdict = fx.verdict_token();
+        let (status, body) = call_with(
             port,
             "POST",
             "/api/emergency-stop",
             Some(&token),
+            Some(&verdict),
             r#"{"active":false}"#,
         );
+        assert_eq!((status, &body["active"]), (200, &json!(false)), "{body}");
+    }
+
+    #[test]
+    fn emergency_stop_release_requires_verdict_authority() {
+        let fx = fixture("api-emergency-stop-release-authority");
+        let token = fx.token();
+        let port = fx.server.port();
+        let target = "/api/emergency-stop";
+        let release = r#"{"active":false}"#;
+        assert_eq!(
+            call(port, "POST", target, Some(&token), r#"{"active":true}"#).0,
+            200
+        );
+        let (status, body) = call(port, "POST", target, Some(&token), release);
+        assert_eq!(status, 403, "{body}");
+        assert!(
+            body["error"]
+                .as_str()
+                .is_some_and(|error| error.contains("releasing the emergency stop")),
+            "{body}"
+        );
+        assert!(fx.backend.stop_state.lock().unwrap().0);
+
+        let verdict = fx.verdict_token();
+        let (status, body) = call_with(port, "POST", target, Some(&token), Some(&verdict), release);
         assert_eq!((status, &body["active"]), (200, &json!(false)), "{body}");
     }
 
