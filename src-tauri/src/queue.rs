@@ -77,6 +77,48 @@ pub trait TaskLauncher: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + 'a>>;
 }
 
+/// Validate and persist a new queue entry: the one insert path shared by the
+/// production [`enqueue`] and the test-only `enqueue_with_enhancer`. The entry
+/// starts in `sharpening` when `sharpen` is set, otherwise `ready`.
+// The queue row simply has this many independent columns; bundling them
+// into a params struct would only move the same list one level away.
+#[allow(clippy::too_many_arguments)]
+async fn insert_entry(
+    store: &Store,
+    project_id: &str,
+    raw_text: &str,
+    profile_id: Option<String>,
+    sharpen: bool,
+    priority: Option<i32>,
+    spawned_by: Option<String>,
+) -> Result<QueueEntry, String> {
+    if raw_text.trim().is_empty() {
+        return Err("task is required".to_string());
+    }
+    if store.get_project(project_id).await?.is_none() {
+        return Err(format!("{}project: {project_id}", workers::ERR_UNKNOWN));
+    }
+    let entry = QueueEntry {
+        id: new_id("tq"),
+        project_id: project_id.to_string(),
+        raw_text: raw_text.to_string(),
+        sharpened_text: None,
+        profile_id: profile_id.unwrap_or_else(|| "claude".to_string()),
+        status: if sharpen {
+            QUEUE_SHARPENING.to_string()
+        } else {
+            QUEUE_READY.to_string()
+        },
+        priority: priority.unwrap_or(0),
+        worker_id: None,
+        error: None,
+        spawned_by,
+        created_at: now_unix_secs(),
+    };
+    store.insert_queue_entry(&entry).await?;
+    Ok(entry)
+}
+
 /// Insert a queue entry and, when requested, run the supplied enhancer before
 /// returning it. Enhancement failures deliberately leave the task dispatchable
 /// with its original text: a missing optional convenience must not lose work.
@@ -97,31 +139,10 @@ pub async fn enqueue_with_enhancer<F>(
 where
     F: FnOnce(&str, &str) -> Result<String, String>,
 {
-    if raw_text.trim().is_empty() {
-        return Err("task is required".to_string());
-    }
-    if store.get_project(project_id).await?.is_none() {
-        return Err(format!("{}project: {project_id}", workers::ERR_UNKNOWN));
-    }
-
-    let mut entry = QueueEntry {
-        id: new_id("tq"),
-        project_id: project_id.to_string(),
-        raw_text: raw_text.to_string(),
-        sharpened_text: None,
-        profile_id: profile_id.unwrap_or_else(|| "claude".to_string()),
-        status: if sharpen {
-            QUEUE_SHARPENING.to_string()
-        } else {
-            QUEUE_READY.to_string()
-        },
-        priority: priority.unwrap_or(0),
-        worker_id: None,
-        error: None,
-        spawned_by,
-        created_at: now_unix_secs(),
-    };
-    store.insert_queue_entry(&entry).await?;
+    let mut entry = insert_entry(
+        store, project_id, raw_text, profile_id, sharpen, priority, spawned_by,
+    )
+    .await?;
 
     if sharpen {
         // An enhancer error is intentionally not persisted as a task failure:
@@ -566,31 +587,16 @@ pub async fn enqueue(
     priority: Option<i32>,
     spawned_by: Option<String>,
 ) -> Result<QueueEntry, String> {
-    if raw_text.trim().is_empty() {
-        return Err("task is required".to_string());
-    }
-    if store.get_project(&project_id).await?.is_none() {
-        return Err(format!("{}project: {project_id}", workers::ERR_UNKNOWN));
-    }
-    let profile_id = profile_id.unwrap_or_else(|| "claude".to_string());
-    let entry = QueueEntry {
-        id: new_id("tq"),
-        project_id,
-        raw_text,
-        sharpened_text: None,
+    let entry = insert_entry(
+        &store,
+        &project_id,
+        &raw_text,
         profile_id,
-        status: if sharpen {
-            QUEUE_SHARPENING.into()
-        } else {
-            QUEUE_READY.into()
-        },
-        priority: priority.unwrap_or(0),
-        worker_id: None,
-        error: None,
+        sharpen,
+        priority,
         spawned_by,
-        created_at: now_unix_secs(),
-    };
-    store.insert_queue_entry(&entry).await?;
+    )
+    .await?;
     if !sharpen {
         return Ok(entry);
     }
