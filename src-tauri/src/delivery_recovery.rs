@@ -8,17 +8,13 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
+use std::fs::{File, OpenOptions};
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Bump this when a serialized journal becomes incompatible.
 #[allow(dead_code)] // W3-02
 pub const JOURNAL_FORMAT_VERSION: u32 = 1;
-
-#[allow(dead_code)] // W3-02
-static JOURNAL_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// An immutable identity of one file involved in an update.
 ///
@@ -1015,11 +1011,8 @@ fn paths_equal(left: &Path, right: &Path) -> bool {
     left == right
 }
 
-/// Write and flush before replacement.  Windows uses `MoveFileExW` with
-/// WRITE_THROUGH; Unix uses its atomic rename.  This mirrors the provider-vault
-/// pattern, but has a per-process sequence suffix. `create_new` and the retry
-/// prevent a stale temp file from blocking a later writer after PID reuse.
-#[allow(dead_code)] // W3-02
+/// Validate the journal location, then hand the write to the shared atomic
+/// path (`crate::fsutil`).
 fn write_atomic(path: &Path, body: &[u8]) -> Result<()> {
     let parent = path
         .parent()
@@ -1030,124 +1023,10 @@ fn write_atomic(path: &Path, body: &[u8]) -> Result<()> {
             parent.display()
         )));
     }
-    let file_name = path
-        .file_name()
+    path.file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| RecoveryError::InvalidJournalLocation(path.to_path_buf()))?;
-    let mut tmp = None;
-    for _ in 0..64 {
-        let sequence = JOURNAL_TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-        let candidate =
-            path.with_file_name(format!("{file_name}.tmp-{}-{sequence}", std::process::id()));
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&candidate)
-        {
-            Ok(mut file) => {
-                if let Err(error) = file.write_all(body).and_then(|_| file.sync_all()) {
-                    let _ = fs::remove_file(&candidate);
-                    return Err(RecoveryError::Io(format!(
-                        "write {}: {error}",
-                        candidate.display()
-                    )));
-                }
-                tmp = Some(candidate);
-                break;
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => {
-                return Err(RecoveryError::Io(format!(
-                    "create journal temp {}: {error}",
-                    candidate.display()
-                )));
-            }
-        }
-    }
-    let tmp = tmp.ok_or_else(|| {
-        RecoveryError::Io(format!(
-            "could not allocate a journal temp beside {}",
-            path.display()
-        ))
-    })?;
-    if let Err(error) = replace_file(&tmp, path) {
-        let _ = fs::remove_file(&tmp);
-        return Err(RecoveryError::Io(format!(
-            "replace {}: {error}",
-            path.display()
-        )));
-    }
-    sync_parent(parent)?;
-    Ok(())
-}
-
-#[cfg(windows)]
-#[allow(dead_code)] // W3-02
-fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-    let wide = |path: &Path| -> Vec<u16> {
-        path.as_os_str()
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect()
-    };
-    let from = wide(tmp);
-    let to = wide(target);
-    // Freshly written temp files are briefly scanned by indexers/AV on
-    // Windows; the move then fails transiently with access/sharing errors
-    // (seen three times on 2026-09-14 in delivery_recovery tests under
-    // parallel load, always os error 5 on this exact replace). Retry within
-    // a small bounded budget; any other error is returned at once.
-    const RETRYABLE: [i32; 2] = [5, 32]; // ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION
-    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
-    loop {
-        if unsafe {
-            MoveFileExW(
-                from.as_ptr(),
-                to.as_ptr(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-            )
-        } != 0
-        {
-            return Ok(());
-        }
-        let error = std::io::Error::last_os_error();
-        let raw = error.raw_os_error();
-        if !raw.is_some_and(|code| RETRYABLE.contains(&code))
-            || std::time::Instant::now() >= deadline
-        {
-            return Err(error);
-        }
-        std::thread::sleep(std::time::Duration::from_millis(25));
-    }
-}
-
-#[cfg(not(windows))]
-#[allow(dead_code)] // W3-02
-fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
-    fs::rename(tmp, target)
-}
-
-#[cfg(unix)]
-#[allow(dead_code)] // W3-02
-fn sync_parent(parent: &Path) -> Result<()> {
-    File::open(parent)
-        .and_then(|file| file.sync_all())
-        .map_err(|error| {
-            RecoveryError::Io(format!(
-                "sync journal directory {}: {error}",
-                parent.display()
-            ))
-        })
-}
-
-#[cfg(not(unix))]
-#[allow(dead_code)] // W3-02
-fn sync_parent(_: &Path) -> Result<()> {
-    Ok(())
+    crate::fsutil::write_atomic(path, body).map_err(RecoveryError::Io)
 }
 
 #[cfg(test)]
