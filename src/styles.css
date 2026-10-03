@@ -105,6 +105,9 @@
   --text-base: 13px;
   --text-lg: 15px;
 
+  /* Monospace for code, paths and ids. The terminal has its own setting. */
+  --font-mono: "Cascadia Mono", Consolas, monospace;
+
   /* ---- radii -----------------------------------------------------------
      The platform-native sequence: the larger the surface, the softer the
      corner. The three old names stay and move to their role in it. */
@@ -1099,7 +1102,7 @@ a {
 }
 
 .project-path {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1163,7 +1166,7 @@ a {
 }
 
 .gh-url-field {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-md);
 }
 
@@ -1187,7 +1190,7 @@ a {
 }
 
 .gh-url {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   color: var(--fg);
 }
 
@@ -1735,7 +1738,7 @@ a {
 .provider-key-input {
   flex: 1;
   min-width: 0;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .provider-key-refresh {
@@ -1787,7 +1790,7 @@ a {
 
 .provider-usage-label {
   flex: 0 0 auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--fg);
   white-space: nowrap;
@@ -2399,7 +2402,7 @@ a {
 }
 
 .board-card-branch {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--fg-muted);
   overflow: hidden;
@@ -2512,7 +2515,7 @@ a {
 
 .board-card-usage-label {
   flex: 0 0 auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: 1;
   color: var(--fg-muted);
@@ -2980,7 +2983,7 @@ scripts/contrast-check.mjs. */
 }
 
 .status-session {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   max-width: 280px;
 }
 
@@ -3230,7 +3233,7 @@ scripts/contrast-check.mjs. */
 }
 
 .profile-command {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--fg-muted);
   overflow: hidden;
@@ -3432,7 +3435,7 @@ scripts/contrast-check.mjs. */
 
 .usage-context-label {
   flex: 0 0 auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--fg-muted);
   white-space: nowrap;
@@ -3656,7 +3659,7 @@ scripts/contrast-check.mjs. */
 }
 
 .detailbar-branch {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--fg-muted);
   overflow: hidden;
@@ -3689,7 +3692,7 @@ scripts/contrast-check.mjs. */
   align-items: baseline;
   gap: 6px;
   min-width: 0;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
 }
 
@@ -3711,12 +3714,12 @@ scripts/contrast-check.mjs. */
 
 .diff-add-count {
   color: var(--state-merge-fg);
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .diff-del-count {
   color: var(--danger);
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 .diff-file-count,
@@ -3815,7 +3818,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diff-ahead-behind {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--fg-muted);
 }
@@ -3858,7 +3861,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diff-readiness-code {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   color: var(--color-accent-text);
 }
 
@@ -3930,7 +3933,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diff-file-path {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -3976,7 +3979,7 @@ scripts/contrast-check.mjs. */
   background: var(--state-working-bg);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--state-working-fg);
   white-space: pre;
@@ -3985,7 +3988,7 @@ scripts/contrast-check.mjs. */
 .diff-line {
   display: flex;
   align-items: flex-start;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-md);
   line-height: 1.45;
   color: var(--fg-muted);
@@ -4157,7 +4160,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diff-comment-where {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--fg-muted);
   overflow: hidden;
@@ -4520,7 +4523,7 @@ scripts/contrast-check.mjs. */
 }
 
 .learn-verdict-value {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--fg-muted);
   user-select: all;
@@ -4740,7 +4743,7 @@ scripts/contrast-check.mjs. */
   padding: 10px 12px;
   background: var(--bg);
   color: var(--fg);
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-md);
   line-height: 1.55;
   scrollbar-width: thin;
@@ -5134,7 +5137,7 @@ scripts/contrast-check.mjs. */
 }
 
 .profile-id {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--fg-muted);
   overflow-wrap: anywhere;
@@ -5364,7 +5367,7 @@ scripts/contrast-check.mjs. */
 }
 
 .merge-branch {
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
 }
 
@@ -5379,7 +5382,7 @@ scripts/contrast-check.mjs. */
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.5;
 }
@@ -5482,7 +5485,7 @@ scripts/contrast-check.mjs. */
   background: var(--bg-elevated);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--fg);
@@ -5700,7 +5703,7 @@ scripts/contrast-check.mjs. */
 .free-tier-percent,
 .free-tier-remaining {
   flex: 0 0 auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
 
@@ -5816,7 +5819,7 @@ scripts/contrast-check.mjs. */
 
 .stats-bar-label {
   flex: 0 0 auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--fg-muted);
 }
@@ -6463,7 +6466,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diagnose-path {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-family: ui-monospace, var(--font-mono);
   font-size: var(--text-md);
   word-break: break-all;
   margin: 0 0 12px;
@@ -6575,7 +6578,7 @@ scripts/contrast-check.mjs. */
   padding: var(--space-5);
   max-height: 50vh;
   overflow: auto;
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-md);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
