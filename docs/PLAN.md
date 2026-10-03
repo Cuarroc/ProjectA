@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 03.10.2026 (Paket PLAN-SYNTHESIS-03 auf `origin/main` 1b38596; davor PLAN-SYNC, 02.10.2026).
+Stand: 03.10.2026 (Paket PLAN-STATUS-03 auf `origin/main` 6598890, abgeglichen mit `gh pr view`; davor PLAN-SYNTHESIS-03 auf 1b38596 und PLAN-SYNC, 02.10.2026).
 Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
 Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
@@ -108,8 +108,8 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | ✓ #50 |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | ✓ #46 |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex △ headless-Probe 02.10.2026: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert |
-| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |
-| W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | PR #140 (offen, ersetzt das geschlossene #112; `do-not-merge` bis Stufe-A-Prüfung und eigener `prepush`) |
+| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | Smoke-Test ✓ #192; Kimi-Re-Smoke blockiert (Kimi-Abo abgelaufen 02.10.) |
+| W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
 | R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3 | S | N + doc | offen |
 
@@ -121,8 +121,8 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-04a | Not-Aus im Store, **global ohne Projektrahmen** (Schnitt 25.09., W5-01a bleibt geparkt) | S | st | ✓ #69 |
 | W5-04b | Not-Aus in der App (10 s Frist) | S | mn | ✓ #125 (Backend W5-04d ✓ #157, Release-Auth W5-04e ✓ #158) |
 | W5-04c | Not-Aus in `pa` | S | pa | ✓ #124 |
-| W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat | M | st | teilweise: Gleichstand ✓ #82, Testquelle ✓ #122; „Merge-Ergebnis als Kandidat“ nicht belegt |
-| W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | Teil 1: PR #178 (Entwurf, ersetzt #147; Prüfung läuft) |
+| W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat | M | st | teilweise: Gleichstand ✓ #82, Testquelle ✓ #122; „Merge-Ergebnis als Kandidat“ nicht belegt; der Vertrag der vertrauenswürdigen Upstream-Quelle ist ungeklärt, daher weder erledigt noch zur Umsetzung freigegeben (nur lesend geprüft am Kopf d1fce9c, kein Regressionstest ausgeführt) |
+| W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | ✓ #222 (Teil 2, gemergt 03.10.); Teil 1 ✓ #178 (ersetzt #147; gemergt 03.10.) |
 | W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | ✓ #15 |
 | W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
 | DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
@@ -238,6 +238,10 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Tauri-Plugins `dialog`, `notification`, `window-state` | wenn ein Paket sie braucht |
 | OmniRoute-Cutover in den Produktmodus | erst mit gemessenem Kostensieg |
 | Design Studio, Queen/Employee-Neuanlage | nie (gestrichen; der Anlegepfad fällt mit CLEAN-02) |
+| Vorschlag: Abschlussvertrag für Headless-Läufe: Gates und Push synchron im Vordergrund; „fertig“ nur mit Gate-Exit, Kandidaten-SHA, `ls-remote` und PR, nicht mit `JOBEXIT0` (echte Abbrüche beobachtet) | nach M4; Vorschlag, keine Freigabe |
+| Vorschlag: Startcheck-Doku an die Wahrheit anpassen und nur lesend Abhängigkeits-Drift prüfen (nicht optionale installierte Pakete gegen die Kandidaten-Lock); OPS-02 #35 und SETUP-09 #56 bleiben gemergt, dies ist ein begrenzter Folgeschritt | nach M4; Vorschlag, kein Duplikat |
+| Vorschlag: PTY-Read/Emit-Diagnose erst nach eingespeistem Beweis; Drain und panikfreie Senke bewahren, den `eprintln`-Rückfall in `logging::log` nicht blind nutzen; Stderr-Verlust im Release ungemessen | nach M4, mit Laufzeitbeleg; ohne Graph-/Windows-Beleg |
+| Vorschlag: M4-W2-Merge-Vertrag: frische geschützte Upstream-Bestätigung, gebunden an Kandidat/Lauf/Fence/Scope; lokale Refs und Start-Pin genügen später nicht; Scope-Prüfung Basis → Kandidat auf dem End-Baum nach Merge oder Rebase (Quelle `6fb08b0`, `workers/candidate_scope.rs:56-112`); Continuous nicht aktivieren | nach M4; ohne Graph-/Laufzeit-/Windows-Beleg |
 
 ### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
 
@@ -270,12 +274,16 @@ Performanceaussage eine Messung. Nichts davon ist in M1–M4 aufgenommen. Die
 Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
 `gh pr view` auf `origin/main` 1b38596.
 
-**Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen; die
-Umsetzung von ARCH-02/03/06/07/09/10/12 (und die Rest-Aufteilung von ARCH-08)
-ist offen. Ersetzt: #152 → #172 (gemergt), #147 → #178 (Entwurf), #130 → #183
-(offen, in der Queue). Gemergt über die Queue: #154, #157, #158, #160, #73,
-#169 (ARCH-04), #170 (CI-06), #172, #175. Offen: #140 (PTY, `do-not-merge`),
-#178, #181 (ARCH-08a), #182 (ARCH-05, Entwurf), #183, #186 (UX-03, Entwurf).
+**Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
+Stand 03.10.2026, gelesen mit `gh pr view` (Kopf 6598890). Gemergt:
+ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
+überschritt die 300-Zeilen-Grenze), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
+ARCH-07 #202, ARCH-08a #181, 08b #221 und 08c #229, ARCH-10a #220 und 10b #236,
+W1-27 #140, W2-04c Teil 2 #222, PTY-READ-01 #206, PTY-RETIRE-01 #215,
+PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189 und
+UX-03 als #199 (#186 ist geschlossen). Ersetzt: #152 → #172, #147 → #178,
+#130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 bleibt
+offen und betrifft den nächsten Start über den Server-Starter.
 Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
 
 **Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
@@ -283,11 +291,11 @@ Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
 
 | Lane | Reihenfolge |
 |---|---|
-| `mn` | ARCH-05 (#182; #157 ist gelandet) → ARCH-06. ARCH-03 braucht zusätzlich freie `mn`-Lane, ARCH-05 **und** ARCH-04 (#169, gelandet) und vorher die Bewertung der Vault-Quellenbefunde unten, damit die Konsolidierung deren Muster nicht verbreitet. |
-| `fR` queue | ARCH-02 erst nach #160 (gelandet) **und** #183. |
-| `pty` | #140 → PTY-READ-01 → PTY-RETIRE-01 → PTY-GUARD-01; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
-| `st` / `api` | ARCH-07 nach #178 und gemäß st-Reihenfolge; `api` nach #158 (gelandet), ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
-| `fe` | ARCH-08 nach #154 (gelandet; #181 ist Scheibe a); M3-02 und UX-03 nach #172 (gelandet), UX-03 liegt als #186 vor. ARCH-09 nach ARCH-08. |
+| `mn` | ARCH-05 (#182) → ARCH-06 (#219) → ARCH-03: alle gelandet; die Vault-Quellenbefunde unten sind bewertet und behoben (#200, #225). |
+| `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
+| `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
+| `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
+| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229; M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. ARCH-09 nach ARCH-08. |
 
 ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
 roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
@@ -307,8 +315,8 @@ Tier-A-Paket. Beobachtet am Kopf 90676c5 und am aktuellen Stand erneut gelesen
 
 | Kandidat | Quellenbefund | Voraussetzung |
 |---|---|---|
-| INV-SEC-VAULT-TEMP | `providers.rs:867` `write_atomic`: vorhersehbarer Tempname `provider-keys.json.tmp-<pid>`, `create(true).truncate(true)`; ein untergeschobener Symlink könnte den Schreibvorgang umleiten (Hypothese, nicht belegt). | Roter Symlink-Test; **vor ARCH-03** |
-| INV-SEC-VAULT-ARCHIVE | `providers.rs:728` `archive_corrupt`: Name aus Sekunde + PID; zwei Reparaturen in einer Sekunde könnten kollidieren. | Roter Zwei-Reparaturen-Test; vor ARCH-03 |
+| INV-SEC-VAULT-TEMP | `providers.rs:867` `write_atomic`: vorhersehbarer Tempname `provider-keys.json.tmp-<pid>`, `create(true).truncate(true)`; ein untergeschobener Symlink könnte den Schreibvorgang umleiten (Hypothese, nicht belegt). | ✓ #200 gemergt (03.10.); vorher roter Symlink-Test |
+| INV-SEC-VAULT-ARCHIVE | `providers.rs:728` `archive_corrupt`: Name aus Sekunde + PID; zwei Reparaturen in einer Sekunde könnten kollidieren. | ✓ #225 gemergt (03.10.); vorher roter Zwei-Reparaturen-Test |
 | INV-SEC-CSP-SPLIT | `tauri.conf.json:28`: die Release-CSP enthält `ws://localhost:1420/1421`. | Test, der die Release-Form prüft; Entwicklungs- und Release-CSP trennen |
 | INV-SEC-CREDENTIAL-EXPIRY / -CLEANUP | `api/agent_access.rs:312/361`: abgelaufene Grants bleiben als Datei liegen, Löschfehler werden verschluckt (niedrig). | nach #158 (gelandet) neu lesen |
 | API-Descriptor | Private Erstellung/Ersetzung der Descriptor-Datei unter Unix prüfen. | nach #158 prüfen |
@@ -359,7 +367,7 @@ SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 ## Entscheidungs-Inbox
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Offen sind
-E1, E10, E11, E12, F1, F3 und F6; F2, F4 und F5 sind entschieden und werden nicht
+E1, E10, E11, E12, E13, F1, F3 und F6; F2, F4 und F5 sind entschieden und werden nicht
 neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
@@ -385,6 +393,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
 | F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | offen |
 | E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | offen |
+| E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | offen |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
