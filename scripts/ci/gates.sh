@@ -68,7 +68,7 @@ GATES=(
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh"
+  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-native-tests.sh"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
