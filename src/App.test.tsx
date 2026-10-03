@@ -58,6 +58,7 @@ describe("App bootstrap", () => {
   it("applies the stored UI text size to the app root", async () => {
     localStorage.setItem("projecta.settings.uiFontSize", "large");
     const { container } = render(<App />);
+    expect(container.querySelector(".app")).toHaveAttribute("data-ui-font-size", "large");
     await waitFor(() => expect(container.querySelector(".app")).toHaveAttribute("data-ui-font-size", "large"));
   });
 
