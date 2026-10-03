@@ -33,7 +33,8 @@
 //! message is left exactly where it is.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
@@ -64,6 +65,19 @@ pub const EVENT_PAUSED: &str = "budget_paused";
 
 const FIVE_HOUR_SECS: i64 = 5 * 60 * 60;
 const SEVEN_DAY_SECS: i64 = 7 * 24 * 60 * 60;
+
+static STOP_OBSERVATION_POISON_LOGGED: AtomicBool = AtomicBool::new(false);
+
+fn stop_observations(mutex: &Mutex<HashMap<String, i64>>) -> MutexGuard<'_, HashMap<String, i64>> {
+    mutex.lock().unwrap_or_else(|poison| {
+        if !STOP_OBSERVATION_POISON_LOGGED.swap(true, Ordering::Relaxed) {
+            eprintln!(
+                "projecta: budget stop observations were poisoned; recovering (further occurrences are not logged)"
+            );
+        }
+        poison.into_inner()
+    })
+}
 
 /// Which rate-limit window a threshold is about.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -443,11 +457,9 @@ impl BudgetWatcher {
             let Some(usage) = usage else { continue };
             // See `last_stop_observation`: the same reading may not stop the
             // same profile twice.
-            let seen = self
-                .last_stop_observation
-                .lock()
-                .ok()
-                .and_then(|map| map.get(&limits.profile_id).copied());
+            let seen = stop_observations(&self.last_stop_observation)
+                .get(&limits.profile_id)
+                .copied();
             if seen.is_some_and(|seen| usage.observed_at <= seen) {
                 continue;
             }
@@ -458,9 +470,8 @@ impl BudgetWatcher {
             let reason = stop.reason();
             self.quota
                 .note_blocked(&stop.profile_id, &reason, Some(stop.blocked_until));
-            if let Ok(mut map) = self.last_stop_observation.lock() {
-                map.insert(stop.profile_id.clone(), usage.observed_at);
-            }
+            stop_observations(&self.last_stop_observation)
+                .insert(stop.profile_id.clone(), usage.observed_at);
             self.pause_workers(agents, &stop.profile_id, &reason).await;
             actions.push(BudgetAction::Stopped(stop));
         }
@@ -940,6 +951,48 @@ mod tests {
             matches!(actions.as_slice(), [BudgetAction::Stopped(_)]),
             "{actions:?}"
         );
+    }
+
+    #[tokio::test]
+    async fn poisoned_stop_observation_does_not_repeat_the_same_budget_stop() {
+        let (_dir, store, _project) = fixture().await;
+        set_limit(&store, "claude", Window::FiveHour, Some(90))
+            .await
+            .unwrap();
+        let (watcher, engine, quota) = watcher(&store);
+        engine.note_statusline_at(
+            "wk-1",
+            r#"{"rate_limits":{"five_hour":{"used_percentage":93,"resets_at":9000}}}"#,
+            500,
+        );
+        engine.set_profile_for_test("wk-1", "claude");
+
+        std::thread::scope(|scope| {
+            assert!(scope
+                .spawn(|| {
+                    let _guard = watcher.last_stop_observation.lock().unwrap();
+                    panic!("poison the budget observation lock");
+                })
+                .join()
+                .is_err());
+        });
+
+        let agents = FakeAgents::default();
+        assert!(matches!(
+            watcher.check_once(&agents, 1_000).await.as_slice(),
+            [BudgetAction::Stopped(_)]
+        ));
+        assert!(matches!(
+            watcher.check_once(&agents, 9_000).await.as_slice(),
+            [BudgetAction::Released { .. }]
+        ));
+
+        let actions = watcher.check_once(&agents, 9_060).await;
+        assert!(
+            actions.is_empty(),
+            "same observation stopped twice: {actions:?}"
+        );
+        assert!(!quota.is_blocked("claude"));
     }
 
     #[tokio::test]

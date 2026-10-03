@@ -7,7 +7,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
@@ -147,21 +148,33 @@ pub struct PreflightCache {
     reports: Mutex<HashMap<String, Report>>,
 }
 
+static PREFLIGHT_CACHE_POISON_LOGGED: AtomicBool = AtomicBool::new(false);
+
+fn preflight_reports(
+    mutex: &Mutex<HashMap<String, Report>>,
+) -> MutexGuard<'_, HashMap<String, Report>> {
+    mutex.lock().unwrap_or_else(|poison| {
+        if !PREFLIGHT_CACHE_POISON_LOGGED.swap(true, Ordering::Relaxed) {
+            eprintln!(
+                "projecta: preflight cache was poisoned; recovering (further occurrences are not logged)"
+            );
+        }
+        poison.into_inner()
+    })
+}
+
 impl PreflightCache {
     /// The current verdict for these facts, from the cache when it still
     /// holds and freshly evaluated when it does not.
     pub fn report(&self, facts: &Facts, now: i64) -> Report {
-        if let Ok(reports) = self.reports.lock() {
-            if let Some(cached) = reports.get(&facts.profile_id) {
-                if cached.is_valid_for(facts, now) {
-                    return cached.clone();
-                }
+        let mut reports = preflight_reports(&self.reports);
+        if let Some(cached) = reports.get(&facts.profile_id) {
+            if cached.is_valid_for(facts, now) {
+                return cached.clone();
             }
         }
         let report = preflight::evaluate(facts, now);
-        if let Ok(mut reports) = self.reports.lock() {
-            reports.insert(facts.profile_id.clone(), report.clone());
-        }
+        reports.insert(facts.profile_id.clone(), report.clone());
         report
     }
 }
@@ -2102,6 +2115,34 @@ mod tests {
             "{}",
             report.summary()
         );
+    }
+
+    #[test]
+    fn poisoned_preflight_cache_reuses_the_sweep_verdict() {
+        let preflight = PreflightCache::default();
+        let facts = Facts {
+            profile_id: "claude".to_string(),
+            known: true,
+            enabled: true,
+            quota_state: crate::store::QUOTA_OK.to_string(),
+            quota_reason: None,
+            blocked_until: None,
+            budget: None,
+        };
+        let first = preflight.report(&facts, 1_000);
+
+        std::thread::scope(|scope| {
+            assert!(scope
+                .spawn(|| {
+                    let _guard = preflight.reports.lock().unwrap();
+                    panic!("poison the preflight cache lock");
+                })
+                .join()
+                .is_err());
+        });
+
+        let same_sweep = preflight.report(&facts, 1_001);
+        assert_eq!(same_sweep, first, "cached verdict was silently discarded");
     }
 
     // -- quota failover (phase 19 T4) --------------------------------------
