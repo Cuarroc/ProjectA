@@ -442,6 +442,37 @@ mod tests {
             .len()
     }
 
+    #[tokio::test]
+    async fn run_once_sweeps_expired_session_buffers() {
+        let (dir, store) = fixture().await;
+        crate::sessionpersist::put(
+            dir.path(),
+            "wk-old",
+            "pty-old",
+            crate::sessionpersist::Kind::Scrollback,
+            "old",
+            None,
+            NOW - crate::sessionpersist::MAX_AGE_SECS - 1,
+        )
+        .unwrap();
+        crate::sessionpersist::put(
+            dir.path(),
+            "wk-new",
+            "pty-new",
+            crate::sessionpersist::Kind::Scrollback,
+            "new",
+            None,
+            NOW - crate::sessionpersist::MAX_AGE_SECS,
+        )
+        .unwrap();
+
+        run_once(&store, dir.path()).await;
+
+        let buffers = dir.path().join(crate::sessionpersist::DIR_NAME);
+        assert!(!buffers.join("wk-old.scrollback").exists());
+        assert!(buffers.join("wk-new.scrollback").exists());
+    }
+
     async fn messages_left(store: &Store, worker_id: &str) -> usize {
         store
             .list_messages(worker_id, None)
