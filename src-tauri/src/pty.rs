@@ -4572,6 +4572,15 @@ mod tests {
         assert_eq!(scanner.flush(), Vec::<u8>::new(), "flush empties the hold");
     }
 
+    /// A removed nested query must not join the interrupted prefix and suffix
+    /// into a new query that xterm.js would answer a second time.
+    #[test]
+    fn a_nested_cursor_position_query_does_not_synthesize_another_query() {
+        let mut scanner = CursorReportScanner::default();
+        assert_eq!(scanner.strip(b"\x1b[\x1b[6n6n"), (1, Vec::new()));
+        assert_eq!(scanner.flush(), Vec::<u8>::new());
+    }
+
     /// npm-installed agents (`claude`, `codex`, ...) are `.cmd` shims on Windows,
     /// which `CreateProcess` refuses to run directly.
     #[cfg(windows)]
