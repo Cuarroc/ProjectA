@@ -176,3 +176,13 @@ Die Queue hat #252 um 21:54 UTC entlassen; der Koordinator reiht ihn genau einma
 unverändert neu ein (Queue-PR #257). **Nicht als gelöst vermerkt**: erst ein
 frischer Lauf am gleichen Quellstand sagt etwas, und auch ein grüner Lauf belegt
 die Ursache nicht.
+
+**Stand 2026-10-03 23:26 UTC (beobachtet; Quellstand `origin/main` cc95a57, Merge #260 um 23:16:34 UTC).** Die Ursache bleibt **unbekannt**; es gibt keine
+Behebung und keinen Beleg für „Flake“ oder „echter Fehler“. Der erste Queue-Lauf
+37154872281 von #252 scheiterte mit `native_managed_tests.rs:449`; der
+kontrollierte einmalige Neulauf 37157889878 am gleichen Quellstand war grün.
+Das widerlegt die Ursache nicht. PR #262 (Kopf `14e1532`) gibt nur
+`unresolved`-IDs und Abschlussergebnisse in der Assertion-Meldung aus: er
+ändert weder Bedingungen noch Timing noch Produktionscode. Die Änderung liegt
+in Windows-Tests und wurde auf Linux nicht kompiliert; den Beleg liefert die
+Windows-Bahn in der Queue.

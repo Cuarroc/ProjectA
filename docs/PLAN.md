@@ -275,24 +275,32 @@ Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
 `gh pr view` auf `origin/main` 1b38596; der Paketstand darunter ist am 04.10.2026 nachgeführt.
 
 **Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
-Stand 04.10.2026, gelesen mit `gh pr list`/`gh pr view` auf `origin/main` dfe459f. Gemergt:
+Status beobachtet 03.10.2026 23:26 UTC (04.10. 01:26 Berlin), gelesen mit `gh pr list`/`gh pr view` auf `origin/main` cc95a57 (Quellstand: Merge #260 um 23:16:34 UTC, `ci`-Lauf 37161245790 grün). Gemergt:
 ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
-überschritt die 300-Zeilen-Grenze), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
-ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244 und 08e #247,
-ARCH-10a #220, 10b #236, 10c #246 und 10d #250 (Merge `dfe459f`, 03.10. 21:49:18 UTC),
+überschritt die 300-Zeilen-Grenze), ARCH-03c #256 (`08faff8`, 23:04 UTC), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
+ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244, 08e #247 und 08f #252 (`f1a33de`, 22:31 UTC),
+ARCH-09a #260 (`cc95a57`), ARCH-10a #220, 10b #236, 10c #246 und 10d #250,
 W1-27 #140, W2-04c Teil 2 #222, PTY-READ-01 #206, PTY-RETIRE-01 #215,
-PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189 und
+PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189, PLAN-sync-04 #258 (`070a1d5`, 22:49 UTC) und
 UX-03 als #199 (#186 ist geschlossen). Ersetzt: #152 → #172, #147 → #178,
 #130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 ist
 am 03.10. vom Nutzer freigegeben und der installationsfreie Starter auf dem Server
 eingespielt; Worker-Läufe über ihn haben seitdem PRs geliefert (siehe E13).
-**Offen:** ARCH-08f #252 (in der Merge-Queue, nicht gemergt) und ARCH-03c #256
-(Entwurf, `do-not-merge`; die Windows-Bahn war per `workflow_dispatch` rot am
-Test-First-Commit `2b9fd1c`, Lauf 37155715659, und grün am Kopf `7af0aa5`, Lauf
-37156526153; es fehlen die zwei Stufe-A-Reviews). ARCH-08 gilt erst mit dem
-Merge von #252 als vollständig. Für ARCH-10 (14 Arme) zählt nur, was gemergt ist:
-a #220, b #236, c #246, d #250; ob damit alle 14 Arme verschoben sind, ist hier
-nicht belegt.
+**ARCH-03c** #256: die Windows-Bahn war per `workflow_dispatch` echt rot am
+Test-First-Commit `2b9fd1c` (Lauf 37155715659) und grün am Kopf `7af0aa5` (Lauf
+37156526153); danach gemergt. **ARCH-08** ist mit #252 vollständig.
+**ARCH-09:** 09a (Projekt-Wrapper in `ipc/projects.ts`) ist mit #260 gemergt;
+ARCH-09b (Worker-IPC) ist beauftragt (Server-Auftrag `srv-arch09b-ipc-workers`,
+Spec-Stand `d1ee1327`), aber hier **nicht** als gemergt belegt. **ARCH-10** ist
+vollständig: `src-tauri/src/api.rs:1384` delegiert nur noch an `hq_routes::route`,
+in `api.rs` steht kein `"hq", "v1"`-Arm mehr (`grep` leer); `api/hq_routes.rs:20-34`
+listet den Besitztest mit 15 Methode/Pfad-Kombinationen, `handle` hat 14 Arme
+(≥ 14 geplant). Die Produktions-Routenarme sind verschoben, die bestehenden
+Testpfade bleiben. Eine Aufschlüsselung der Servertests je Arm ist nicht geprüft.
+**#262** (nur Diagnose, Kopf `14e1532`, Ready, Label `priority`): `gates (linux)`,
+`gates (windows)` (Stub), `red-first` und CodeQL grün, Merge-Zustand `CLEAN`, nicht gemergt. Stufe A: Codex
+gpt6.1 medium + GLM 5.2 (nicht Claude), Runde 1 PASS, Befunde übernommen. Der
+Stand von Queue und CI ist neu zu lesen; er kann sich schon geändert haben.
 Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
 
 **Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
@@ -304,7 +312,7 @@ Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
 | `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
 | `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
 | `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220, 10c ✓ #246, 10d ✓ #250; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
-| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f offen (#252, Queue); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. ARCH-09 nach ARCH-08. |
+| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b beauftragt (nicht gemergt); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
 
 ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
 roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
