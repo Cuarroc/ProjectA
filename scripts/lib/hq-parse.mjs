@@ -240,8 +240,9 @@ const tableCells = (line) =>
 function milestoneState(stand) {
   if (/^in Arbeit|^dieses Paket/i.test(stand)) return "in_progress";
   if (/^PR #\d/i.test(stand)) return "pr";
-  if (!stand.includes("✓")) return "open";
-  return /\boffen\b|PR #\d|in Arbeit/i.test(stand) ? "in_progress" : "done";
+  if (!stand.includes("✓")) return /^teilweise/i.test(stand) ? "in_progress" : "open";
+  // "△" marks a partly proven sub-package, "blockiert" a stuck one.
+  return /\boffen\b|PR #\d|in Arbeit|△|\bblockiert\b/i.test(stand) ? "in_progress" : "done";
 }
 
 /// The milestone sections "### M<n> — title" of docs/PLAN.md with their tables
