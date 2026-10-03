@@ -42,6 +42,7 @@ import {
 } from "../lib/settings";
 import GeneralTab from "./settings/GeneralTab";
 import MasterPromptTab from "./settings/MasterPromptTab";
+import ProfileBudgetFields from "./settings/ProfileBudgetFields";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -1057,38 +1058,13 @@ export default function SettingsView({
                       />
                       <span>Aktiv</span>
                     </label>
-                    <div className="profile-budget">
-                      <label htmlFor={`budget-5h-${profile.id}`}>5 h</label>
-                      <input
-                        id={`budget-5h-${profile.id}`}
-                        className="field profile-budget-input"
-                        inputMode="numeric"
-                        placeholder="—"
-                        value={budgetOf(profile.id).five}
-                        onChange={(event) =>
-                          handleBudgetChange(profile.id, { five: event.target.value })
-                        }
-                      />
-                      <label htmlFor={`budget-7d-${profile.id}`}>7 T.</label>
-                      <input
-                        id={`budget-7d-${profile.id}`}
-                        className="field profile-budget-input"
-                        inputMode="numeric"
-                        placeholder="—"
-                        value={budgetOf(profile.id).seven}
-                        onChange={(event) =>
-                          handleBudgetChange(profile.id, { seven: event.target.value })
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="button-primary"
-                        disabled={budgetBusyId === profile.id}
-                        onClick={() => handleSaveBudget(profile)}
-                      >
-                        {budgetBusyId === profile.id ? "…" : "Budget"}
-                      </button>
-                    </div>
+                    <ProfileBudgetFields
+                      profile={profile}
+                      budget={budgetOf(profile.id)}
+                      busy={budgetBusyId === profile.id}
+                      onChange={handleBudgetChange}
+                      onSave={handleSaveBudget}
+                    />
                   </li>
                 ))}
               </ul>
