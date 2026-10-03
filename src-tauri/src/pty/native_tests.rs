@@ -1,5 +1,56 @@
 use super::*;
 
+const TRACE_SMOKE_CHILD_ENV: &str = "PROJECTA_PTY_TRACE_SMOKE_CHILD";
+
+#[test]
+fn projecta_pty_trace_dir_smoke_child() {
+    if std::env::var_os(TRACE_SMOKE_CHILD_ENV).is_none() {
+        return;
+    }
+
+    let trace = SessionTrace::open("w1-01b-smoke")
+        .expect("PROJECTA_PTY_TRACE_DIR should open the trace files");
+    trace.note("in", b"\x1b[A\r");
+    trace.note("out", b"ready\r\n");
+}
+
+#[test]
+fn projecta_pty_trace_dir_smoke_writes_expected_artifacts() {
+    let configured_dir = std::env::var_os(SessionTrace::ENV_DIR).map(std::path::PathBuf::from);
+    let owns_dir = configured_dir.is_none();
+    let trace_dir = configured_dir.unwrap_or_else(|| {
+        std::env::temp_dir().join(format!("projecta-w1-01b-smoke-{}", std::process::id()))
+    });
+
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .env(SessionTrace::ENV_DIR, &trace_dir)
+        .env(TRACE_SMOKE_CHILD_ENV, "1")
+        .arg("--exact")
+        .arg("pty::native_tests::projecta_pty_trace_dir_smoke_child")
+        .arg("--nocapture")
+        .status()
+        .expect("trace smoke child should start");
+    assert!(status.success(), "trace smoke child failed: {status}");
+
+    let log_path = trace_dir.join("w1-01b-smoke.io.log");
+    let raw_path = trace_dir.join("w1-01b-smoke.out.raw");
+    let log = std::fs::read_to_string(&log_path).unwrap();
+    let raw = std::fs::read(&raw_path).unwrap();
+    assert!(
+        log.contains(r"in 4 bytes: \x1b[A\r"),
+        "trace log missed the input bytes: {log:?}"
+    );
+    assert!(
+        log.contains(r"out 7 bytes: ready\r\n"),
+        "trace log missed the output bytes: {log:?}"
+    );
+    assert_eq!(raw, b"ready\r\n", "raw trace missed the output bytes");
+
+    if owns_dir {
+        std::fs::remove_dir_all(trace_dir).unwrap();
+    }
+}
+
 #[test]
 fn owned_manager_handle_shares_identifiers_inventory_and_installation_latch() {
     let original = PtyManager::default();
