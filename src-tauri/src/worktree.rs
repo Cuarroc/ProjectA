@@ -104,6 +104,23 @@ pub fn remove_worktree(repo_path: &str, worktree_path: &Path) -> Result<(), Stri
     Ok(())
 }
 
+/// Undo a failed [`add_worktree`], including the branch it created.
+pub fn rollback_worktree(
+    repo_path: &str,
+    worktree_path: &Path,
+    checkout_id: &str,
+) -> Result<(), String> {
+    remove_worktree(repo_path, worktree_path)?;
+    git([
+        OsStr::new("-C"),
+        OsStr::new(repo_path),
+        OsStr::new("branch"),
+        OsStr::new("-D"),
+        OsStr::new(&branch_for(checkout_id)),
+    ])?;
+    Ok(())
+}
+
 /// Run `git` and return its stdout, or its stderr verbatim as the error.
 fn git<I, S>(args: I) -> Result<String, String>
 where

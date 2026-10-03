@@ -17,6 +17,23 @@ use tauri::{AppHandle, Emitter};
 use crate::profiles::AgentProfile;
 use crate::submit_guard::{Observation, SubmitAction, SubmitGuard};
 
+/// Run blocking spawn work (`openpty`, process creation) without stalling
+/// the async runtime that may be calling us.
+///
+/// On a multi-thread Tokio runtime the worker is handed over via
+/// `block_in_place`, so its queued tasks move to another thread; the work
+/// itself still runs on the caller's thread, in the caller's order, with the
+/// caller's error handling. Without a multi-thread runtime (sync commands,
+/// current-thread test runtimes) there is nothing to hand over: run inline.
+fn off_runtime_thread<R>(work: impl FnOnce() -> R) -> R {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
+            tokio::task::block_in_place(work)
+        }
+        _ => work(),
+    }
+}
+
 /// Scrollback kept per session, in bytes.
 const SCROLLBACK_CAPACITY: usize = 1024 * 1024;
 
@@ -572,6 +589,7 @@ impl Drop for StartingSession {
 pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, SessionEntry>>>,
     installation_started: Arc<AtomicBool>,
+    emergency_stop_active: Arc<AtomicBool>,
     next_id: Arc<AtomicU64>,
     on_exit: Arc<Mutex<Option<ExitHook>>>,
     on_output: Arc<Mutex<Option<OutputHook>>>,
@@ -582,6 +600,7 @@ impl Default for PtyManager {
         Self {
             sessions: Arc::new(Mutex::new(HashMap::new())),
             installation_started: Arc::new(AtomicBool::new(false)),
+            emergency_stop_active: Arc::new(AtomicBool::new(false)),
             next_id: Arc::new(AtomicU64::new(1)),
             on_exit: Arc::new(Mutex::new(None)),
             on_output: Arc::new(Mutex::new(None)),
@@ -734,8 +753,17 @@ impl PtyManager {
         if self.installation_started.load(Ordering::Relaxed) {
             return Err("Installation has started; restart before starting sessions".into());
         }
+        if self.emergency_stop_active.load(Ordering::Acquire) {
+            return Err(
+                "Global emergency stop is active; clear it before starting sessions".into(),
+            );
+        }
         registry.insert(session_id.clone(), SessionEntry::Reserved);
         Ok(session_id)
+    }
+
+    pub fn set_emergency_stop_active(&self, active: bool) {
+        self.emergency_stop_active.store(active, Ordering::Release);
     }
 
     /// Cancel only a not-yet-consumed reservation; never touches a live child.
@@ -785,6 +813,24 @@ impl PtyManager {
     /// inventory cannot authorize an update or a duplicate spawn.
     #[allow(clippy::too_many_arguments)]
     pub fn spawn_with_id(
+        &self,
+        app: &AppHandle,
+        profile: &AgentProfile,
+        cwd: Option<String>,
+        cols: u16,
+        rows: u16,
+        env: &[(String, String)],
+        session_id: &str,
+    ) -> Result<String, String> {
+        // `openpty` and process creation block (ConPTY startup is slow); the
+        // callers are async worker paths, so keep them off the runtime worker.
+        off_runtime_thread(|| {
+            self.spawn_with_id_blocking(app, profile, cwd, cols, rows, env, session_id)
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn spawn_with_id_blocking(
         &self,
         app: &AppHandle,
         profile: &AgentProfile,
@@ -1230,6 +1276,7 @@ impl PtyManager {
 
     /// Kill every session, so app shutdown never orphans an agent process.
     pub fn kill_all(&self) {
+        self.set_emergency_stop_active(true);
         // Shutdown recovers a poisoned registry (W1-15b): returning here
         // left every agent process running after the app was gone. The loop
         // only flags and collects, so a recovered map is safe to walk.
@@ -2044,6 +2091,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn blocking_spawn_work_leaves_the_runtime_worker_free() {
+        use std::sync::atomic::AtomicUsize;
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_time()
+            .build()
+            .unwrap();
+        let ticks = Arc::new(AtomicUsize::new(0));
+        let ticker = Arc::clone(&ticks);
+        rt.spawn(async move {
+            loop {
+                ticker.fetch_add(1, Ordering::SeqCst);
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        });
+        while ticks.load(Ordering::SeqCst) == 0 {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let seen = Arc::clone(&ticks);
+        rt.spawn(async move {
+            let before = seen.load(Ordering::SeqCst);
+            off_runtime_thread(|| std::thread::sleep(Duration::from_millis(400)));
+            done_tx.send(seen.load(Ordering::SeqCst) - before).unwrap();
+        });
+        let during = done_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert!(during >= 5, "runtime worker was blocked: {during} ticks");
+    }
+
+    #[test]
+    fn off_runtime_thread_runs_inline_without_a_multi_thread_runtime() {
+        assert_eq!(off_runtime_thread(|| 7), 7);
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        assert_eq!(rt.block_on(async { off_runtime_thread(|| 8) }), 8);
+    }
+
+    #[test]
     fn installation_does_not_start_while_a_session_is_owned() {
         let manager = PtyManager::default();
         let id = manager.reserve_session().unwrap();
@@ -2057,6 +2143,16 @@ mod tests {
         manager.cancel_reservation(&id);
         assert!(manager.install_when_idle(|| Ok(())).is_ok());
         assert!(manager.reserve_session().is_err());
+    }
+
+    #[test]
+    fn kill_all_blocks_new_sessions_until_the_stop_is_cleared() {
+        let manager = PtyManager::default();
+        manager.kill_all();
+        assert!(manager.reserve_session().is_err());
+        manager.set_emergency_stop_active(false);
+        let id = manager.reserve_session().unwrap();
+        manager.cancel_reservation(&id);
     }
 
     /// Shutdown under poison used to return before touching a single session,
