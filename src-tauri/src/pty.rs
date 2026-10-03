@@ -40,6 +40,9 @@ const SCROLLBACK_CAPACITY: usize = 1024 * 1024;
 /// Read chunk size for the PTY reader thread.
 const READ_CHUNK: usize = 8 * 1024;
 const READER_RETIREMENT_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long a detached follow-up waits for a reader that missed
+/// [`READER_RETIREMENT_TIMEOUT`] before the session is left for reconciliation.
+const READER_LATE_RETIREMENT_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// How much of the scrollback tail the submit guard inspects per tick. The
 /// task echo and blocking dialogs live near the end of the stream; 32 KiB
@@ -939,13 +942,23 @@ impl PtyManager {
                 // about it. The hook is cloned out of the lock so a slow hook never
                 // blocks `set_exit_hook`.
                 let persistence = complete_exit_hook(&on_exit, &exit_id, code);
+                let persisted = persistence.is_ok();
+                let mut reader_timed_out = false;
 
                 // Take the session out under the lock, but drop it outside: closing
                 // the pseudoconsole can block, and holding the registry lock while
                 // that happens would stall every other pty command.
                 if let Err(error) =
                     remove_exited_session_after_reader(&sessions, &exit_id, persistence, || {
-                        await_reader_retirement(&reader_finished, READER_RETIREMENT_TIMEOUT)
+                        let waited =
+                            await_reader_retirement(&reader_finished, READER_RETIREMENT_TIMEOUT);
+                        // Timeout (sender alive) differs from a panic (disconnected).
+                        reader_timed_out = waited.is_err()
+                            && matches!(
+                                reader_finished.try_recv(),
+                                Err(std::sync::mpsc::TryRecvError::Empty)
+                            );
+                        waited
                     })
                 {
                     eprintln!(
@@ -953,6 +966,22 @@ impl PtyManager {
                     );
                 }
                 let _ = exit_app.emit(&format!("pty:exit:{exit_id}"), ExitPayload { code });
+                // A slow reader is not a dead one: keep the entry `Retiring`
+                // and finish the removal when its confirmation arrives late.
+                if reader_timed_out && persisted {
+                    let sessions = Arc::clone(&sessions);
+                    let late_id = exit_id.clone();
+                    std::thread::spawn(move || {
+                        if let Err(error) = complete_late_retirement(
+                            &sessions,
+                            &late_id,
+                            &reader_finished,
+                            READER_LATE_RETIREMENT_TIMEOUT,
+                        ) {
+                            eprintln!("projecta: late retirement requires reconciliation: {error}");
+                        }
+                    });
+                }
             });
             if let Err(error) = result {
                 exit_guard_cancelled.store(true, Ordering::Release);
@@ -1606,15 +1635,23 @@ fn await_reader_retirement(
         .map_err(|error| format!("PTY reader retirement unconfirmed: {error}"))
 }
 
-/// Placeholder: the late confirmation is not honoured yet.
-#[allow(dead_code)]
+/// A reader confirmation that arrives after [`READER_RETIREMENT_TIMEOUT`]
+/// still retires the session: the entry stays `Retiring` until then, so the
+/// follow-up wait only completes the removal. A panicked reader disconnects
+/// the channel and stays unconfirmed.
 fn complete_late_retirement(
-    _sessions: &Mutex<HashMap<String, SessionEntry>>,
-    _session_id: &str,
-    _finished: &std::sync::mpsc::Receiver<()>,
-    _timeout: Duration,
+    sessions: &Mutex<HashMap<String, SessionEntry>>,
+    session_id: &str,
+    finished: &std::sync::mpsc::Receiver<()>,
+    timeout: Duration,
 ) -> Result<(), String> {
-    Err("late retirement not implemented".into())
+    await_reader_retirement(finished, timeout)?;
+    let mut registry = sessions.lock().unwrap_or_else(|poison| poison.into_inner());
+    if !matches!(registry.get(session_id), Some(SessionEntry::Retiring)) {
+        return Err("session retirement identity changed".into());
+    }
+    registry.remove(session_id);
+    Ok(())
 }
 
 /// The terminal's answer to a cursor-position report (`ESC[6n`): row 1,
