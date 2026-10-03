@@ -943,6 +943,48 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn poisoned_stop_observation_does_not_repeat_the_same_budget_stop() {
+        let (_dir, store, _project) = fixture().await;
+        set_limit(&store, "claude", Window::FiveHour, Some(90))
+            .await
+            .unwrap();
+        let (watcher, engine, quota) = watcher(&store);
+        engine.note_statusline_at(
+            "wk-1",
+            r#"{"rate_limits":{"five_hour":{"used_percentage":93,"resets_at":9000}}}"#,
+            500,
+        );
+        engine.set_profile_for_test("wk-1", "claude");
+
+        std::thread::scope(|scope| {
+            assert!(scope
+                .spawn(|| {
+                    let _guard = watcher.last_stop_observation.lock().unwrap();
+                    panic!("poison the budget observation lock");
+                })
+                .join()
+                .is_err());
+        });
+
+        let agents = FakeAgents::default();
+        assert!(matches!(
+            watcher.check_once(&agents, 1_000).await.as_slice(),
+            [BudgetAction::Stopped(_)]
+        ));
+        assert!(matches!(
+            watcher.check_once(&agents, 9_000).await.as_slice(),
+            [BudgetAction::Released { .. }]
+        ));
+
+        let actions = watcher.check_once(&agents, 9_060).await;
+        assert!(
+            actions.is_empty(),
+            "same observation stopped twice: {actions:?}"
+        );
+        assert!(!quota.is_blocked("claude"));
+    }
+
+    #[tokio::test]
     async fn a_providers_own_refusal_is_never_released_here() {
         let (_dir, store, _project) = fixture().await;
         set_limit(&store, "claude", Window::FiveHour, Some(90))

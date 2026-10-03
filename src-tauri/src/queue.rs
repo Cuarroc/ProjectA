@@ -2104,6 +2104,34 @@ mod tests {
         );
     }
 
+    #[test]
+    fn poisoned_preflight_cache_reuses_the_sweep_verdict() {
+        let preflight = PreflightCache::default();
+        let facts = Facts {
+            profile_id: "claude".to_string(),
+            known: true,
+            enabled: true,
+            quota_state: crate::store::QUOTA_OK.to_string(),
+            quota_reason: None,
+            blocked_until: None,
+            budget: None,
+        };
+        let first = preflight.report(&facts, 1_000);
+
+        std::thread::scope(|scope| {
+            assert!(scope
+                .spawn(|| {
+                    let _guard = preflight.reports.lock().unwrap();
+                    panic!("poison the preflight cache lock");
+                })
+                .join()
+                .is_err());
+        });
+
+        let same_sweep = preflight.report(&facts, 1_001);
+        assert_eq!(same_sweep, first, "cached verdict was silently discarded");
+    }
+
     // -- quota failover (phase 19 T4) --------------------------------------
 
     /// A registry built for one chain: `profile(&[("a", Some("b")), ...])`.
