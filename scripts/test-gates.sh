@@ -68,10 +68,10 @@ fi
 # SIGPIPE (141), und der Status der Pipe ist nicht der von grep. Erst in eine
 # Variable, dann pruefen.
 pflicht_precommit="fmt cargo-check typecheck"
-pflicht_prepush="fmt typecheck lint fe-test hq-test clippy rust-suite"
+pflicht_prepush="red-first-plan fmt typecheck lint fe-test hq-test clippy rust-suite"
 # CI-02: die leichte Bahn fuer Branch-Pushes (PA_PREPUSH=light) - alles aus
 # prepush ausser dem Rust-Kern.
-pflicht_branchpush="fmt typecheck lint fe-test hq-test"
+pflicht_branchpush="red-first-plan fmt typecheck lint fe-test hq-test"
 pflicht_linux="no-masked wf-shell wf-pinned ci-shape selftest-gates selftest-red-first selftest-review selftest-lane-plan fmt typecheck lint fe-test hq-test hq-visual fe-build e2e clippy rust-suite"
 pflicht_windows="fmt clippy rust-suite native-tests"
 pflicht_release="no-masked wf-shell wf-pinned ci-shape selftest-gates selftest-red-first selftest-review selftest-lane-plan fmt typecheck lint fe-test hq-test hq-visual fe-build e2e clippy rust-suite"
