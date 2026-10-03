@@ -20,6 +20,10 @@ chmod 644 "$tmp/scripts/lib/bad.sh"
 printf '#!/usr/bin/env bash\n' > "$tmp/scripts/top.sh"
 chmod 644 "$tmp/scripts/top.sh"
 git -C "$tmp" add scripts
+# Git for Windows defaults to core.filemode=false and ignores the chmod calls
+# above; set the index modes explicitly so the fixture is the same everywhere.
+git -C "$tmp" update-index --chmod=+x scripts/ci/script-modes.sh scripts/ci/ok.sh
+git -C "$tmp" update-index --chmod=-x scripts/lib/bad.sh scripts/top.sh
 
 if bash "$tmp/scripts/ci/script-modes.sh" > "$tmp/bad.log" 2>&1; then
   echo "FEHLER: ein 100644-Skript blieb gruen"
