@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { cancelQueuedTask, describeError, enqueueTask, listQueue } from "../lib/ipc";
 import { composeWithMasterPrompt, isMasterPromptEnabled, loadMasterPrompt } from "../lib/settings";
@@ -57,14 +57,21 @@ export default function QueuePanel({
     setSharpen(false);
   });
 
+  // Which project is on screen now: a read that started for another one must
+  // not write its rows (or its failure) under this one's name.
+  const shownProjectId = useRef(projectId);
+  shownProjectId.current = projectId;
+
   const refresh = useCallback(async () => {
     if (projectId === null) return;
     try {
       const next = await listQueue(projectId);
+      if (shownProjectId.current !== projectId) return;
       setEntries(Array.isArray(next) ? next : []);
       setLoaded(true);
       setError(null);
     } catch (cause) {
+      if (shownProjectId.current !== projectId) return;
       setError(describeError(cause));
     }
   }, [projectId]);
@@ -78,7 +85,16 @@ export default function QueuePanel({
       setError(null);
       return;
     }
+    // The old project's rows carry live cancel buttons, and the draft would be
+    // queued into the new project: nothing carries over (same class as KI-3).
+    setEntries([]);
+    setTask("");
+    setProfileId("");
+    setSharpen(false);
+    setSubmitting(false);
+    setCancellingId(null);
     setLoaded(false);
+    setError(null);
     void refresh();
     const interval = window.setInterval(() => void refresh(), 10_000);
     return () => window.clearInterval(interval);
@@ -94,38 +110,42 @@ export default function QueuePanel({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!canEnqueue) return;
+    const targetProjectId = projectId;
     void (async () => {
       setSubmitting(true);
       setError(null);
       try {
         const entry = await enqueueTask({
-          projectId,
+          projectId: targetProjectId,
           rawText: attachMaster ? composeWithMasterPrompt(task.trim()) : task.trim(),
           profileId: profileId === "" ? undefined : profileId,
           sharpen,
         });
+        if (shownProjectId.current !== targetProjectId) return;
         setEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)]);
         setTask("");
         setSharpen(false);
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
-        setSubmitting(false);
+        if (shownProjectId.current === targetProjectId) setSubmitting(false);
       }
     })();
   };
 
   const handleCancel = (id: string) => {
+    const targetProjectId = projectId;
     void (async () => {
       setCancellingId(id);
       setError(null);
       try {
         await cancelQueuedTask(id);
+        if (shownProjectId.current !== targetProjectId) return;
         setEntries((current) => current.filter((entry) => entry.id !== id));
       } catch (cause) {
-        setError(describeError(cause));
+        if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
-        setCancellingId(null);
+        if (shownProjectId.current === targetProjectId) setCancellingId(null);
       }
     })();
   };
