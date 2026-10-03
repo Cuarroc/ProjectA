@@ -29,7 +29,6 @@
 //! whole file under a full lock). Until somebody schedules one, the file
 //! reuses the freed space internally.
 
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
@@ -239,7 +238,10 @@ fn export_worker_messages(
         utc_date(last.created_at),
         last.created_at
     ));
-    write_atomic(&path, &render_archive(project_id, worker_id, messages, now))?;
+    crate::fsutil::write_atomic(
+        &path,
+        render_archive(project_id, worker_id, messages, now).as_bytes(),
+    )?;
     verify_export(&path)?;
     Ok(path)
 }
@@ -286,49 +288,6 @@ fn utc_time(unix: i64) -> String {
         (secs % 3600) / 60,
         secs % 60
     )
-}
-
-/// Write `contents` to `path` atomically: a temporary file beside it, then a
-/// rename - the pattern [`crate::digest::write_digest`] established, so a
-/// reader (or the verification below) either sees the whole archive or no
-/// file at all. Mode 0600 where permissions exist: the archive is a chat
-/// log, not a shared document.
-fn write_atomic(path: &Path, contents: &str) -> Result<(), String> {
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or_else(|| format!("bad archive path {}", path.display()))?;
-    // The process id keeps two instances on the same app data directory from
-    // writing the same temporary file at the same moment.
-    let tmp = path.with_file_name(format!(".{file_name}.{}.tmp", std::process::id()));
-    let _ = std::fs::remove_file(&tmp); // left over from a crashed sweep
-    let written = (|| {
-        let mut options = std::fs::OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let mut file = options
-            .open(&tmp)
-            .map_err(|e| format!("failed to create {}: {e}", tmp.display()))?;
-        file.write_all(contents.as_bytes())
-            .and_then(|()| file.sync_all())
-            .map_err(|e| format!("failed to write {}: {e}", tmp.display()))?;
-        Ok::<(), String>(())
-    })();
-    if let Err(err) = written {
-        let _ = std::fs::remove_file(&tmp);
-        return Err(err);
-    }
-    match std::fs::rename(&tmp, path) {
-        Ok(()) => Ok(()),
-        Err(err) => {
-            let _ = std::fs::remove_file(&tmp);
-            Err(format!("failed to place {}: {err}", path.display()))
-        }
-    }
 }
 
 /// The gate between export and delete: the file is there and it has lines.
