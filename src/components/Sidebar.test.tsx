@@ -74,12 +74,12 @@ describe("Sidebar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Add project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Projekt hinzufügen" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  Demo  " } });
-    fireEvent.change(screen.getByLabelText("Repo path"), {
+    fireEvent.change(screen.getByLabelText("Repo-Pfad"), {
       target: { value: "  /repos/demo  " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Add project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Projekt hinzufügen" }));
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith("Demo", "/repos/demo"));
     expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
@@ -103,10 +103,48 @@ describe("Sidebar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove Project A" }));
+    fireEvent.click(screen.getByRole("button", { name: "Projekt Project A entfernen" }));
     expect(onRemove).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "remove" }));
+    fireEvent.click(screen.getByRole("button", { name: "Entfernen" }));
     expect(onRemove).toHaveBeenCalledWith("project-a");
+  });
+
+  it("keeps the project list states and controls in German", () => {
+    const { rerender } = render(
+      <Sidebar
+        projects={[]}
+        activeProjectId={null}
+        loading={false}
+        error={null}
+        onCreate={vi.fn()}
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onOpenOrchestrator={vi.fn()}
+        liveOrchestratorProjectIds={[]}
+        busyOrchestratorProjectId={null}
+        onRefreshProjects={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Noch keine Projekte.")).toBeInTheDocument();
+
+    rerender(
+      <Sidebar
+        projects={[project]}
+        activeProjectId="project-a"
+        loading={false}
+        error={null}
+        onCreate={vi.fn()}
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onOpenOrchestrator={vi.fn()}
+        liveOrchestratorProjectIds={[]}
+        busyOrchestratorProjectId="project-a"
+        onRefreshProjects={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "GitHub mit Project A verknüpfen" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skill-Packs von Project A bearbeiten" })).toBeInTheDocument();
+    expect(screen.getByText("Wird gestartet …")).toBeInTheDocument();
   });
 });
 
@@ -127,10 +165,10 @@ describe("Sidebar accessibility (ui-ux-pro-max audit)", () => {
 
   it("APP-4 / APP-6: the add-project control and its fields carry real names", () => {
     render(<Sidebar {...base} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add project" }));
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Projekt hinzufügen" }));
+    expect(screen.getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
-    expect(screen.getByLabelText("Repo path")).toBeInTheDocument();
+    expect(screen.getByLabelText("Repo-Pfad")).toBeInTheDocument();
   });
 
   it("APP-19: the sidebar landmark is distinguishable from the board rail", () => {
@@ -162,6 +200,6 @@ describe("Sidebar heading outline (APP-15)", () => {
       />,
     );
     expect(screen.getByRole("heading", { level: 1, name: "ProjectA" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Projects" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Projekte" })).toBeInTheDocument();
   });
 });

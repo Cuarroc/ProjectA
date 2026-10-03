@@ -53,6 +53,36 @@ describe("TabBar", () => {
     fireEvent.click(tabs[1]);
     expect(onSelect).toHaveBeenCalledWith("worker-1");
   });
+
+  it("labels an ended session in German", () => {
+    const sessions: TerminalSession[] = [
+      {
+        sessionId: "worker-1",
+        profileId: "codex",
+        profileName: "Codex",
+        workerId: "worker-1",
+        projectId: "project-1",
+        kind: "worker",
+        title: "Build tests",
+        exited: true,
+        exitCode: 0,
+      },
+    ];
+    render(
+      <TabBar
+        sessions={sessions}
+        activeSessionId="worker-1"
+        splitOpen={false}
+        splitEnabled={false}
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+        onToggleSplit={vi.fn()}
+        onNew={vi.fn()}
+        newDisabled={false}
+      />,
+    );
+    expect(screen.getByText("beendet")).toBeInTheDocument();
+  });
 });
 
 describe("TabBar keyboard pattern (APP-5 / APP-9)", () => {
@@ -76,7 +106,7 @@ describe("TabBar keyboard pattern (APP-5 / APP-9)", () => {
     render(<TabBar {...props} onSelect={vi.fn()} onClose={onClose} />);
     const tabs = screen.getAllByRole("tab");
     expect(tabs.every((tab) => tab.tagName === "BUTTON")).toBe(true);
-    const close = screen.getByRole("button", { name: "Detach Build tests" });
+    const close = screen.getByRole("button", { name: "Tab lösen: Build tests" });
     expect(tabs.some((tab) => tab.contains(close))).toBe(false);
     expect(close.tabIndex).toBe(-1);
     expect(close.parentElement).toHaveAttribute("role", "presentation");
