@@ -40,6 +40,9 @@ const SCROLLBACK_CAPACITY: usize = 1024 * 1024;
 /// Read chunk size for the PTY reader thread.
 const READ_CHUNK: usize = 8 * 1024;
 const READER_RETIREMENT_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long a detached follow-up waits for a reader that missed
+/// [`READER_RETIREMENT_TIMEOUT`] before the session is left for reconciliation.
+const READER_LATE_RETIREMENT_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// How much of the scrollback tail the submit guard inspects per tick. The
 /// task echo and blocking dialogs live near the end of the stream; 32 KiB
@@ -939,13 +942,18 @@ impl PtyManager {
                 // about it. The hook is cloned out of the lock so a slow hook never
                 // blocks `set_exit_hook`.
                 let persistence = complete_exit_hook(&on_exit, &exit_id, code);
+                let persisted = persistence.is_ok();
+                let mut reader_timed_out = false;
 
                 // Take the session out under the lock, but drop it outside: closing
                 // the pseudoconsole can block, and holding the registry lock while
                 // that happens would stall every other pty command.
                 if let Err(error) =
                     remove_exited_session_after_reader(&sessions, &exit_id, persistence, || {
-                        await_reader_retirement(&reader_finished, READER_RETIREMENT_TIMEOUT)
+                        let (waited, timed_out) =
+                            wait_for_reader(&reader_finished, READER_RETIREMENT_TIMEOUT, || {});
+                        reader_timed_out = timed_out;
+                        waited
                     })
                 {
                     eprintln!(
@@ -953,6 +961,22 @@ impl PtyManager {
                     );
                 }
                 let _ = exit_app.emit(&format!("pty:exit:{exit_id}"), ExitPayload { code });
+                // A slow reader is not a dead one: keep the entry `Retiring`
+                // and finish the removal when its confirmation arrives late.
+                if reader_timed_out && persisted {
+                    let sessions = Arc::clone(&sessions);
+                    let late_id = exit_id.clone();
+                    std::thread::spawn(move || {
+                        if let Err(error) = complete_late_retirement(
+                            &sessions,
+                            &late_id,
+                            &reader_finished,
+                            READER_LATE_RETIREMENT_TIMEOUT,
+                        ) {
+                            eprintln!("projecta: late retirement requires reconciliation: {error}");
+                        }
+                    });
+                }
             });
             if let Err(error) = result {
                 exit_guard_cancelled.store(true, Ordering::Release);
@@ -1604,6 +1628,44 @@ fn await_reader_retirement(
     finished
         .recv_timeout(timeout)
         .map_err(|error| format!("PTY reader retirement unconfirmed: {error}"))
+}
+
+/// Waits for the reader and reports whether the wait *timed out* (sender
+/// alive, so a late confirmation may still come) as opposed to a panic
+/// (disconnected). `on_timeout` runs right after the wait gave up.
+fn wait_for_reader(
+    finished: &std::sync::mpsc::Receiver<()>,
+    timeout: Duration,
+    on_timeout: impl FnOnce(),
+) -> (Result<(), String>, bool) {
+    let waited = finished.recv_timeout(timeout);
+    let timed_out = matches!(waited, Err(std::sync::mpsc::RecvTimeoutError::Timeout));
+    if waited.is_err() {
+        on_timeout();
+    }
+    (
+        waited.map_err(|error| format!("PTY reader retirement unconfirmed: {error}")),
+        timed_out,
+    )
+}
+
+/// A reader confirmation that arrives after [`READER_RETIREMENT_TIMEOUT`]
+/// still retires the session: the entry stays `Retiring` until then, so the
+/// follow-up wait only completes the removal. A panicked reader disconnects
+/// the channel and stays unconfirmed.
+fn complete_late_retirement(
+    sessions: &Mutex<HashMap<String, SessionEntry>>,
+    session_id: &str,
+    finished: &std::sync::mpsc::Receiver<()>,
+    timeout: Duration,
+) -> Result<(), String> {
+    await_reader_retirement(finished, timeout)?;
+    let mut registry = sessions.lock().unwrap_or_else(|poison| poison.into_inner());
+    if !matches!(registry.get(session_id), Some(SessionEntry::Retiring)) {
+        return Err("session retirement identity changed".into());
+    }
+    registry.remove(session_id);
+    Ok(())
 }
 
 /// The terminal's answer to a cursor-position report (`ESC[6n`): row 1,
@@ -2717,6 +2779,58 @@ mod tests {
         release_tx.send(()).unwrap();
         await_reader_retirement(&finished, Duration::from_secs(5)).unwrap();
         assert!(dropped.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn late_reader_confirmation_retires_session() {
+        let manager = PtyManager::default();
+        let id = manager.reserve_session().unwrap();
+        let (release_tx, release_rx) = std::sync::mpsc::sync_channel(1);
+        let finished = track_reader_retirement(move || {
+            let _ = release_rx.recv_timeout(Duration::from_secs(5));
+        });
+        assert!(
+            remove_exited_session_after_reader(&manager.sessions, &id, Ok(()), || {
+                await_reader_retirement(&finished, Duration::from_millis(20))
+            })
+            .is_err()
+        );
+        assert_eq!(manager.live_session_ids().unwrap(), vec![id.clone()]);
+        release_tx.send(()).unwrap();
+        complete_late_retirement(&manager.sessions, &id, &finished, Duration::from_secs(5))
+            .unwrap();
+        assert!(manager.live_session_ids().unwrap().is_empty());
+        assert!(manager.install_when_idle(|| Ok(())).is_ok());
+    }
+
+    #[test]
+    fn ack_between_timeout_and_poll_still_counts_as_timeout() {
+        let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        let (waited, timed_out) =
+            wait_for_reader(&rx, Duration::from_millis(20), || tx.send(()).unwrap());
+        assert!(waited.is_err());
+        assert!(timed_out, "ack in the window must keep the late path armed");
+    }
+
+    #[test]
+    fn late_wait_does_not_retire_after_reader_panic() {
+        let manager = PtyManager::default();
+        let id = manager.reserve_session().unwrap();
+        let finished = track_reader_retirement(|| panic!("reader fixture"));
+        assert!(
+            remove_exited_session_after_reader(&manager.sessions, &id, Ok(()), || Err(
+                "timed out".into()
+            ))
+            .is_err()
+        );
+        assert!(complete_late_retirement(
+            &manager.sessions,
+            &id,
+            &finished,
+            Duration::from_secs(5)
+        )
+        .is_err());
+        assert_eq!(manager.live_session_ids().unwrap(), vec![id]);
     }
 
     #[test]
