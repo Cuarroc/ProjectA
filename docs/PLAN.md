@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 02.10.2026 (Paket PLAN-SYNC, Live-Abgleich der gemergten PRs).
+Stand: 03.10.2026 (Paket PLAN-SYNTHESIS-03 auf `origin/main` 1b38596; davor PLAN-SYNC, 02.10.2026).
 Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
 Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
@@ -37,29 +37,32 @@ bin/pa.rs (diese vier sind Nahtstellen, je ein aktives Paket) · `pty` pty.rs ·
 docs/dev-hq/concepts/ · `fe` src/ · `fR` nahtstellenfreies Rust · `doc` Doku und
 scripts/dev · `N` Nutzer/PC. Welches Modell welches Paket nimmt:
 `docs/setup/providers.md`. Stand-Spalte: `✓ #n` = gemergt, sonst offener PR
-oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
+oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01). **`alt-#n`** ist
+eine Nummer aus der Zählung vor dem öffentlichen Import; sie ist nicht prüfbar und
+kollidiert mit heutigen PRs (Beispiel: alt-#124 in W2-01b, heute #124 = W5-04c).
+Nummern ohne Präfix in den Zeilen ab alt-#128 abwärts sind nicht einzeln nachgeprüft.
 
 ### M1 — Alles Laufende gelandet, App startbar ✓ erreicht
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| W2-03 | Usage-/Billing-Collectors je Adapter | M | st | ✓ #140 |
-| W2-06 | Supervisor: Producer-Audit und Runtime-Notifications | M | mn + sup | ✓ #152 |
-| W2-08a | Ressourcendruck- und Streaming-Enforcement | M | fR | ✓ #134 |
-| W2-04f | Planungsendpunkte nur für den Koordinator | S | api | ✓ #135 |
-| W2-01b | Review-Route nimmt `reviewerRunId` aus dem Credential | S | api | ✓ #124 |
-| W2-01c | `approvalAuthority` in agent_access.rs angleichen | S | fR | ✓ #150 |
-| W1-15c | Übrige Mutex-Stellen in pty.rs | S | pty | ✓ #137 |
-| W1-23c | „-0 Tokens“-Anzeige, MSRV gemessen | S | fR | ✓ #136 |
-| W1-29 | Linux-Flake im Prozessgruppen-Test | S | fR | ✓ #138 |
-| W1-21c | xterm-`pageerror` beim Mount | S | fe | ✓ #151 |
-| SETUP-04 | AGENTS.md: Mergify, Reviews, Build-Slots | M | doc | ✓ #132 |
-| HOOK-01 | Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.) | S | ci | ✓ #156 |
+| W2-03 | Usage-/Billing-Collectors je Adapter | M | st | ✓ alt-#140 |
+| W2-06 | Supervisor: Producer-Audit und Runtime-Notifications | M | mn + sup | ✓ alt-#152 |
+| W2-08a | Ressourcendruck- und Streaming-Enforcement | M | fR | ✓ alt-#134 |
+| W2-04f | Planungsendpunkte nur für den Koordinator | S | api | ✓ alt-#135 |
+| W2-01b | Review-Route nimmt `reviewerRunId` aus dem Credential | S | api | ✓ alt-#124 |
+| W2-01c | `approvalAuthority` in agent_access.rs angleichen | S | fR | ✓ alt-#150 |
+| W1-15c | Übrige Mutex-Stellen in pty.rs | S | pty | ✓ alt-#137 |
+| W1-23c | „-0 Tokens“-Anzeige, MSRV gemessen | S | fR | ✓ alt-#136 |
+| W1-29 | Linux-Flake im Prozessgruppen-Test | S | fR | ✓ alt-#138 |
+| W1-21c | xterm-`pageerror` beim Mount | S | fe | ✓ alt-#151 |
+| SETUP-04 | AGENTS.md: Mergify, Reviews, Build-Slots | M | doc | ✓ alt-#132 |
+| HOOK-01 | Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.) | S | ci | ✓ alt-#156 |
 | W1-05b | Sichere Cancel-Regel für `dispatched`, Dedup der toten Tasks; erst st-Kind, dann api-Kind; Zahl der toten Einträge read-only nachzählen | M | st → api | ✓ #19 |
-| W1-03e | `MSG_USER` erst nach bewiesener Zustellung (F-CORE-3 B.3) | S | wk | ✓ #171 |
-| W1-20 | Zweites Setup reproduzieren (Node 24, `npm ci`, `dev:setup`, `dev:doctor`) | S | N | ✓ #166 |
-| CI-02 | Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b) | S | ci | ✓ #133 |
-| CI-03 | Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 % | M | ci | ✓ #149 |
+| W1-03e | `MSG_USER` erst nach bewiesener Zustellung (F-CORE-3 B.3) | S | wk | ✓ alt-#171 |
+| W1-20 | Zweites Setup reproduzieren (Node 24, `npm ci`, `dev:setup`, `dev:doctor`) | S | N | ✓ alt-#166 |
+| CI-02 | Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b) | S | ci | ✓ alt-#133 |
+| CI-03 | Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 % | M | ci | ✓ alt-#149 |
 | SETUP-08 | Git-/PR- und Plan-Helfer unter `scripts/dev` (08a + 08b) | M | doc | ✓ #22 |
 | SEC-01 | Geheimnis-Scan (gitleaks) als precommit-Gate | S | ci | ✓ #20 |
 
@@ -67,10 +70,10 @@ oder „offen“ (Momentaufnahme; den Live-Stand liefert OPS-01).
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| M2-FRAG | Frag-mich-Skill für Einsteiger-Erklärungen | S | doc | ✓ #161 |
+| M2-FRAG | Frag-mich-Skill für Einsteiger-Erklärungen | S | doc | ✓ alt-#161 |
 | PLAN-01 | Ein Plan, zehn Regeln, gestufte Reviews, PR-Text ist der Bericht, Archiv | M | doc | ✓ #26 |
 | PLAN-SYNC | Gemergte Pakete seit 25.09.2026 und M1-Status im Plan nachführen | S | doc | ✓ #45 |
-| OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | ✓ #164 |
+| OPS-01 | Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest) | M | doc | ✓ alt-#164 |
 | OPS-02 | Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps | S | doc | ✓ #35 |
 | CI-04 | Roter `main` stoppt die Queue: Issue mit Run-ID, Label, Queue-Pause | S | ci | ✓ #28 |
 | W1-21d | Suchschalter im Scrollback (Groß-/Kleinschreibung, Regex) | S | fe | ✓ #27 |
@@ -95,7 +98,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
 | HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
 | W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
-| M3-01 | Drei deutschsprachige Aufgaben-Vorlagen mit eingebautem Abnahmekriterium (nur Doku) | S | doc | PR #144 |
+| M3-01 | Drei deutschsprachige Aufgaben-Vorlagen mit eingebautem Abnahmekriterium (nur Doku) | S | doc | ✓ #144 |
 | W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c ✓ #62 |
 | W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | ✓ #58 |
 | W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
@@ -106,7 +109,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | ✓ #46 |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex △ headless-Probe 02.10.2026: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert |
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | blockiert (Kimi-Abo abgelaufen 02.10.) |
-| W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | PR #112 (offen) |
+| W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | PR #140 (offen, ersetzt das geschlossene #112; `do-not-merge` bis Stufe-A-Prüfung und eigener `prepush`) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
 | R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3 | S | N + doc | offen |
 
@@ -116,10 +119,10 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 |---|---|---|---|---|
 | W5-05 | Prüfpfad (append-only, Trigger gegen UPDATE/DELETE) | S | st | ✓ #44 |
 | W5-04a | Not-Aus im Store, **global ohne Projektrahmen** (Schnitt 25.09., W5-01a bleibt geparkt) | S | st | ✓ #69 |
-| W5-04b | Not-Aus in der App (10 s Frist) | S | mn | PR #125 (offen) |
+| W5-04b | Not-Aus in der App (10 s Frist) | S | mn | ✓ #125 (Backend W5-04d ✓ #157, Release-Auth W5-04e ✓ #158) |
 | W5-04c | Not-Aus in `pa` | S | pa | ✓ #124 |
 | W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat | M | st | teilweise: Gleichstand ✓ #82, Testquelle ✓ #122; „Merge-Ergebnis als Kandidat“ nicht belegt |
-| W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | offen |
+| W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | Teil 1: PR #178 (Entwurf, ersetzt #147; Prüfung läuft) |
 | W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | ✓ #15 |
 | W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
 | DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
@@ -136,7 +139,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | ✓ #119 |
 | W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später) | S | N | offen |
-| W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | PR #73 (offen) |
+| W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | ✓ #73 |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers | S | mn | offen |
 | W4-04 | Release v1.5.0 | S | N | offen |
@@ -257,9 +260,107 @@ M3-Abnahme-Tabelle zu ändern.
 | ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | als M3-Kandidat aufnehmen; Windows-Lauf nötig |
 | ARCH-12 | `impl ControlBackend for ApiBackend` aus `main.rs` auslagern. Das Paket bleibt gesperrt, weil der Trait-Block als reine Verschiebung mehr als 300 Diffzeilen erzeugt. | `main.rs`, `api/backend.rs`, ~715 Z. | mn + api | ja | A | No-Test: mechanische Verschiebung erst nach ADR A1 | nach ADR A1; gesperrt |
 
+### Synthese der Bestandsaufnahmen INV-01..08 und des Architektur-Rats (03.10.2026)
+
+Quelle der Bestandsaufnahmen sind die PR-Texte (Abschnitt „Bestandsaufnahme“);
+sie liegen nicht als Dateien im Repo. Der Architektur-Rat ist die Tabelle oben.
+Alles hier ist **Quellenbefund oder Hypothese, kein reproduzierter Fehler**: ein
+Bugpaket braucht zuerst einen kompilierenden roten Test, eine Laufzeit- oder
+Performanceaussage eine Messung. Nichts davon ist in M1–M4 aufgenommen. Die
+Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
+`gh pr view` auf `origin/main` 1b38596.
+
+**Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen; die
+Umsetzung von ARCH-02/03/06/07/09/10/12 (und die Rest-Aufteilung von ARCH-08)
+ist offen. Ersetzt: #152 → #172 (gemergt), #147 → #178 (Entwurf), #130 → #183
+(offen, in der Queue). Gemergt über die Queue: #154, #157, #158, #160, #73,
+#169 (ARCH-04), #170 (CI-06), #172, #175. Offen: #140 (PTY, `do-not-merge`),
+#178, #181 (ARCH-08a), #182 (ARCH-05, Entwurf), #183, #186 (UX-03, Entwurf).
+Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
+
+**Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
+Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
+
+| Lane | Reihenfolge |
+|---|---|
+| `mn` | ARCH-05 (#182; #157 ist gelandet) → ARCH-06. ARCH-03 braucht zusätzlich freie `mn`-Lane, ARCH-05 **und** ARCH-04 (#169, gelandet) und vorher die Bewertung der Vault-Quellenbefunde unten, damit die Konsolidierung deren Muster nicht verbreitet. |
+| `fR` queue | ARCH-02 erst nach #160 (gelandet) **und** #183. |
+| `pty` | #140 → PTY-READ-01 → PTY-RETIRE-01 → PTY-GUARD-01; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
+| `st` / `api` | ARCH-07 nach #178 und gemäß st-Reihenfolge; `api` nach #158 (gelandet), ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
+| `fe` | ARCH-08 nach #154 (gelandet; #181 ist Scheibe a); M3-02 und UX-03 nach #172 (gelandet), UX-03 liegt als #186 vor. ARCH-09 nach ARCH-08. |
+
+ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
+roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
+Kandidat**; die Aufnahme in M3 bleibt Nutzerentscheidung F6. ARCH-12 bleibt
+gesperrt (> 300 Diffzeilen, F1). Abgelehnt bleibt: Rust↔TS-Codegen ohne
+belegten Vertragsbruch, ein neuer lib/store/`CoreError`-Split, der Review-Lock
+bleibt in-process, `delivery_recovery.rs` wird nicht gelöscht (W3-02).
+
+**Korrektur:** Die Behauptung „Vault- und CSP-Vorschläge durch #138 erledigt“ ist
+falsch. #138 hat nur `oneshot.rs` geändert (Unix-Verzeichnisprüfung).
+
+#### Später: getrennte Security-Kandidaten (neu zu prüfen, kein M4-Code)
+
+Je Kandidat zuerst Quelle neu bestätigen, dann ein roter Test, dann ein kleines
+Tier-A-Paket. Beobachtet am Kopf 90676c5 und am aktuellen Stand erneut gelesen
+(`providers.rs:867/728`, `tauri.conf.json:28`).
+
+| Kandidat | Quellenbefund | Voraussetzung |
+|---|---|---|
+| INV-SEC-VAULT-TEMP | `providers.rs:867` `write_atomic`: vorhersehbarer Tempname `provider-keys.json.tmp-<pid>`, `create(true).truncate(true)`; ein untergeschobener Symlink könnte den Schreibvorgang umleiten (Hypothese, nicht belegt). | Roter Symlink-Test; **vor ARCH-03** |
+| INV-SEC-VAULT-ARCHIVE | `providers.rs:728` `archive_corrupt`: Name aus Sekunde + PID; zwei Reparaturen in einer Sekunde könnten kollidieren. | Roter Zwei-Reparaturen-Test; vor ARCH-03 |
+| INV-SEC-CSP-SPLIT | `tauri.conf.json:28`: die Release-CSP enthält `ws://localhost:1420/1421`. | Test, der die Release-Form prüft; Entwicklungs- und Release-CSP trennen |
+| INV-SEC-CREDENTIAL-EXPIRY / -CLEANUP | `api/agent_access.rs:312/361`: abgelaufene Grants bleiben als Datei liegen, Löschfehler werden verschluckt (niedrig). | nach #158 (gelandet) neu lesen |
+| API-Descriptor | Private Erstellung/Ersetzung der Descriptor-Datei unter Unix prüfen. | nach #158 prüfen |
+| INV-SEC-PRIVATE-PATHS | Einheitliche no-follow-Erstellung privater Dateien (Idee). | nach M4 |
+
+**M4-Blocker** (siehe Inbox): `planning_access` ohne Projektrahmen und die
+TOCTOU-Lücke dort. Der eingefrorene Continuous-Code wird jetzt nicht erweitert.
+
+#### Später: weitere Quellenbefunde nach Bereich
+
+- **Frontend (stale Antworten):** `AttentionInbox.tsx:63`, `ActivityView.tsx:48`
+  (Digest), `HistoryView.tsx:36` (Worker-Wechsel), `HistoryView.tsx:25`
+  (verschluckter IPC-Fehler), `SessionRestorePanel.tsx:67` (Sprachmix),
+  überlappende Poll-Antworten. Zuerst gegen schon gelandete ähnliche Fixes
+  ausschließen: #133 (Empfehlungen), #134/#135 (Projektwechsel), #149
+  (History-Polling serialisiert). Dann ein roter Wechseltest je Fund; kein
+  allgemeiner Event-/Polling-Neubau.
+- **Queue (`queue.rs`):** unbegrenzt blockierter Eintrag ohne Zeit
+  (`status.rs:1474`), Dispatcher-Panik beendet den Thread, `launch` ohne
+  Zeitlimit, ungültige/negative Worker-Limits (`set_project_max_workers`),
+  30-s-Sweep. Änderungen am eingefrorenen Runtime nur in bestehenden M4-Paketen.
+- **HQ:** die Restzeitschätzung in `hq-live.mjs` (4 h je Spec) ist unbelegt;
+  fehlender `blocked`-Zustand (`hq-parse.mjs:240`); veraltete Abhängigkeitskanten
+  (`PACKAGE_EDGES`); Tages-/UTC-Grenzen (`hq-stats.mjs:6-22`); keine
+  Request-Body-Grenze. Konfiguration ist kein Beleg tatsächlicher Fähigkeiten.
+- **Tests/Plattform:** feste 4096-Byte-Seite (`resources.rs:128`), unlesbare
+  Unterordner zählen 0 (`resources.rs:38-56`), Linux-`None` bei Platte/CPU,
+  fehlende Gegenfälle in `native_launch`/`native_supervisor`/`native_runner`.
+  Timing-Flakes sind Hypothesen bis zur Messung.
+- **Performance (erst messen, dann ändern):** `useQuestions` ohne SQL-Limit,
+  Digest lädt alle Nachrichten, überlappende Attention-Batches.
+- **Ops-Prozess:** Mutex-/Budget-Recovery wird als Tier B statt A eingestuft;
+  eine Überschrift „Review disposition“ gilt schon als Reviewabschluss; ein
+  stiller Worker-/Watchdog-Neustart belegt nicht, dass der alte Prozess
+  gestoppt ist. Eine Pipeline-Änderung wäre ein eigenes, red-first getestetes
+  Ops-Paket, nicht Teil dieser Synthese.
+- **Wartezeit:** CI-06 (#170) prüft lokal nur `--plan` (Form und Referenzen),
+  **nicht** semantisch einen roten Test auf der Merge-Base. Folgeideen: engere
+  `pfad::testname`-Form, echte parallele unabhängige Reviews, Konfliktvorhersage.
+  Flake-Auswertung nur aus vorhandenen Logs; zusätzliche Actions-Läufe sind E11.
+- **Doku:** Link-Prüfer, README/KNOWN_ISSUES-Linkcheck, W2-02b-Teil „Merge-Ergebnis
+  als Kandidat“ nachweisen oder als eigenes Paket abtrennen.
+
+Nicht erfasst: Die Bestandsaufnahme in #132 (CI) enthält nur den dort behobenen
+SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
+#129–#133, #138, #142 und #149 gelesen.
+
 ## Entscheidungs-Inbox
 
-Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Agenten
+Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Offen sind
+E1, E10, E11, E12, F1, F3 und F6; F2, F4 und F5 sind entschieden und werden nicht
+neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
 
@@ -283,7 +384,8 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | F4 | Doppelte PRs schließen. | Ja; #112, #113, #115, #91 und #146 sind geschlossen. | Orchestrator | ✓ entschieden (03.10.) |
 | F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
 | F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | offen |
-| M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4. | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
+| E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | offen |
+| M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
