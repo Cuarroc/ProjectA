@@ -572,6 +572,7 @@ impl Drop for StartingSession {
 pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, SessionEntry>>>,
     installation_started: Arc<AtomicBool>,
+    emergency_stop_active: Arc<AtomicBool>,
     next_id: Arc<AtomicU64>,
     on_exit: Arc<Mutex<Option<ExitHook>>>,
     on_output: Arc<Mutex<Option<OutputHook>>>,
@@ -582,6 +583,7 @@ impl Default for PtyManager {
         Self {
             sessions: Arc::new(Mutex::new(HashMap::new())),
             installation_started: Arc::new(AtomicBool::new(false)),
+            emergency_stop_active: Arc::new(AtomicBool::new(false)),
             next_id: Arc::new(AtomicU64::new(1)),
             on_exit: Arc::new(Mutex::new(None)),
             on_output: Arc::new(Mutex::new(None)),
@@ -734,8 +736,17 @@ impl PtyManager {
         if self.installation_started.load(Ordering::Relaxed) {
             return Err("Installation has started; restart before starting sessions".into());
         }
+        if self.emergency_stop_active.load(Ordering::Acquire) {
+            return Err(
+                "Global emergency stop is active; clear it before starting sessions".into(),
+            );
+        }
         registry.insert(session_id.clone(), SessionEntry::Reserved);
         Ok(session_id)
+    }
+
+    pub fn set_emergency_stop_active(&self, active: bool) {
+        self.emergency_stop_active.store(active, Ordering::Release);
     }
 
     /// Cancel only a not-yet-consumed reservation; never touches a live child.
@@ -1230,6 +1241,7 @@ impl PtyManager {
 
     /// Kill every session, so app shutdown never orphans an agent process.
     pub fn kill_all(&self) {
+        self.set_emergency_stop_active(true);
         // Shutdown recovers a poisoned registry (W1-15b): returning here
         // left every agent process running after the app was gone. The loop
         // only flags and collects, so a recovered map is safe to walk.
@@ -2057,6 +2069,16 @@ mod tests {
         manager.cancel_reservation(&id);
         assert!(manager.install_when_idle(|| Ok(())).is_ok());
         assert!(manager.reserve_session().is_err());
+    }
+
+    #[test]
+    fn kill_all_blocks_new_sessions_until_the_stop_is_cleared() {
+        let manager = PtyManager::default();
+        manager.kill_all();
+        assert!(manager.reserve_session().is_err());
+        manager.set_emergency_stop_active(false);
+        let id = manager.reserve_session().unwrap();
+        manager.cancel_reservation(&id);
     }
 
     /// Shutdown under poison used to return before touching a single session,
