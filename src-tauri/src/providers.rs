@@ -724,15 +724,45 @@ impl KeyVault {
         }
     }
 
-    /// Move an unreadable vault aside, keeping its bytes as evidence.
+    /// Move an unreadable vault aside, keeping its bytes as evidence. The
+    /// archive name is second+pid, so it can repeat (two heals in one second)
+    /// or be planted ahead of time: a plain `rename` would silently replace
+    /// that file. The name is claimed with `create_new` first (never follows a
+    /// symlink, never reuses a file) and a taken name just picks the next one.
     fn archive_corrupt(&self, err: &VaultReadError) -> Result<(), String> {
-        let archive = self.path.with_file_name(format!(
+        let stem = format!(
             "{}.broken-{}-{}",
             VAULT_FILE,
             now_unix_secs(),
             std::process::id()
-        ));
+        );
+        let mut attempt = 0u32;
+        let archive = loop {
+            let name = if attempt == 0 {
+                stem.clone()
+            } else {
+                format!("{stem}-{attempt}")
+            };
+            let candidate = self.path.with_file_name(name);
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&candidate)
+            {
+                Ok(_) => break candidate,
+                Err(io) if io.kind() == std::io::ErrorKind::AlreadyExists && attempt < 64 => {
+                    attempt += 1;
+                }
+                Err(io) => {
+                    return Err(format!(
+                        "failed to archive the corrupt vault to {}: {io}",
+                        candidate.display()
+                    ));
+                }
+            }
+        };
         std::fs::rename(&self.path, &archive).map_err(|io| {
+            let _ = std::fs::remove_file(&archive);
             format!(
                 "failed to archive the corrupt vault to {}: {io}",
                 archive.display()
