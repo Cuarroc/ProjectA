@@ -4,7 +4,7 @@
  * changes the tiers, change them here and nowhere else.
  *
  *   A  seam (`api.rs`, `main.rs`, `store.rs`, `store/`, `bin/pa.rs`), PTY,
- *      migrations, security / credential / agent_access code
+ *      migrations / databases, concurrency, security / credential code
  *   C  only documentation, tests, snapshots
  *   B  other Rust/TS code
  *   unknown  no rule matches with certainty; treat like A
@@ -22,8 +22,8 @@ const SEAM_FILES = [
   "src-tauri/src/pty.rs",
   "src-tauri/src/bin/pa.rs",
 ];
-const A_PREFIXES = ["src-tauri/src/store/", "src-tauri/src/pty/", "src-tauri/capabilities/"];
-const A_NAME = /(credential|agent_access|security|secret|redact|setupgate|estop|emergency_stop)/;
+const A_PREFIXES = ["src-tauri/src/store/", "src-tauri/src/pty/", "src-tauri/src/process_capture/", "src-tauri/capabilities/"];
+const A_NAME = /(capabilit|credential|agent_access|security|secret|redact|setupgate|estop|emergency_stop|db_restore|supervisor|concurren|mutex|lock)/;
 const A_DIR = /(^|\/)migrations\//;
 
 const TEST_NAME = /(\.test\.[jt]sx?|_tests?\.rs|\.snap)$/;
@@ -45,7 +45,7 @@ export function classifyPath(rawPath: string): ReviewClass {
   if (path.endsWith(".md")) {
     return CODE_DIRS.some((dir) => path.startsWith(dir)) ? "unknown" : "C";
   }
-  if (/^src-tauri\/src\/.+\.rs$/.test(path) || /^src\/.+\.(ts|tsx|css)$/.test(path)) return "B";
+  if (/^src-tauri\/src\/.+\.rs$/.test(path) || /^src\/.+\.(ts|tsx)$/.test(path)) return "B";
   return "unknown";
 }
 
@@ -71,7 +71,7 @@ const INFO: Record<ReviewClass, ReviewClassInfo> = {
     label: "A",
     explanation: "braucht zwei Prüfer anderer Anbieter (Nahtstelle, Sicherheit, PTY oder Datenbank).",
   },
-  B: { label: "B", explanation: "braucht einen Prüfer eines anderen Anbieters (übriger Code)." },
+  B: { label: "B", explanation: "braucht einen Prüfer aus einer anderen Modellfamilie (übriger Rust-/TypeScript-Code)." },
   C: {
     label: "C",
     explanation: "braucht keinen externen Prüfer; die automatischen Prüfungen genügen (nur Doku oder Tests).",
