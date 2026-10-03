@@ -35,6 +35,15 @@ import {
   loadMasterPrompt,
   loadWebPort,
   saveUiDensity,
+  saveTerminalFont,
+  saveTerminalFontSize,
+  saveUiFontSize,
+  TERMINAL_FONT_SIZE_MAX,
+  TERMINAL_FONT_SIZE_MIN,
+  TERMINAL_FONTS,
+  type FontSettings,
+  type TerminalFontId,
+  type UiFontSize,
   saveAgentCategories,
   saveMasterPrompt,
   saveWebPort,
@@ -117,6 +126,8 @@ let latestUpdaterViewGeneration = 0;
 interface SettingsViewProps {
   density: UiDensity;
   onDensityChange: (density: UiDensity) => void;
+  fonts: FontSettings;
+  onFontsChange: (fonts: FontSettings) => void;
   /** What `list_agent_profiles` offers; the categories pick their default from it. */
   profiles: AgentProfile[];
   /**
@@ -138,6 +149,8 @@ interface SettingsViewProps {
 export default function SettingsView({
   density,
   onDensityChange,
+  fonts,
+  onFontsChange,
   profiles,
   project,
   onSaveTestCommand,
@@ -821,6 +834,66 @@ export default function SettingsView({
               </div>
               <p className="settings-hint">Passt Abstände und Bedienelemente in der App an.</p>
             </fieldset>
+            <fieldset className="settings-field settings-density">
+              <legend className="field-label">Schriftgröße der App</legend>
+              <div className="settings-density-options">
+                {(["small", "normal", "large"] as const).map((value) => (
+                  <label className="settings-check" key={value}>
+                    <input
+                      type="radio"
+                      name="settings-ui-font-size"
+                      value={value}
+                      checked={fonts.uiFontSize === value}
+                      onChange={() => {
+                        saveUiFontSize(value);
+                        onFontsChange({ ...fonts, uiFontSize: value as UiFontSize });
+                      }}
+                    />
+                    <span>{value === "small" ? "Klein" : value === "normal" ? "Normal" : "Groß"}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className="settings-field">
+              <label className="field-label" htmlFor="settings-terminal-font">
+                Terminal-Schrift
+              </label>
+              <select
+                id="settings-terminal-font"
+                className="field"
+                value={fonts.terminalFont}
+                onChange={(event) => {
+                  const value = event.target.value as TerminalFontId;
+                  saveTerminalFont(value);
+                  onFontsChange({ ...fonts, terminalFont: value });
+                }}
+              >
+                {(Object.keys(TERMINAL_FONTS) as TerminalFontId[]).map((id) => (
+                  <option key={id} value={id}>
+                    {TERMINAL_FONTS[id].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="settings-field">
+              <label className="field-label" htmlFor="settings-terminal-font-size">
+                Terminal-Schriftgröße: {fonts.terminalFontSize}
+              </label>
+              <input
+                id="settings-terminal-font-size"
+                type="range"
+                min={TERMINAL_FONT_SIZE_MIN}
+                max={TERMINAL_FONT_SIZE_MAX}
+                step={1}
+                value={fonts.terminalFontSize}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  saveTerminalFontSize(value);
+                  onFontsChange({ ...fonts, terminalFontSize: value });
+                }}
+              />
+              <p className="settings-hint">Gilt sofort in allen offenen Terminals.</p>
+            </div>
             <div className="settings-field">
               <label className="field-label" htmlFor="settings-web-port">
                 Default Port Web-Interface

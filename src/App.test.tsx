@@ -55,6 +55,13 @@ describe("App bootstrap", () => {
     await waitFor(() => expect(container.querySelector(".app")).toHaveAttribute("data-density", "compact"));
   });
 
+  it("applies the stored UI text size to the app root", async () => {
+    localStorage.setItem("projecta.settings.uiFontSize", "large");
+    const { container } = render(<App />);
+    expect(container.querySelector(".app")).toHaveAttribute("data-ui-font-size", "large");
+    await waitFor(() => expect(container.querySelector(".app")).toHaveAttribute("data-ui-font-size", "large"));
+  });
+
   it("holds dependent reads behind the project bootstrap", async () => {
     let resolveProjects: (projects: []) => void = () => undefined;
     const projects = new Promise<[]>(resolve => {
