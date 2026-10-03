@@ -1702,6 +1702,44 @@ mod tests {
     }
 
     #[test]
+    fn archiving_a_corrupt_vault_never_overwrites_an_existing_archive() {
+        let dir = TempDir::new("vault-corrupt-collision");
+        let vault = vault(&dir);
+        std::fs::write(vault.path(), "{ not json at all").expect("write");
+        // Plant the predictable names (second + pid) for a window around now,
+        // as an earlier heal in the same second or an attacker would.
+        let now = now_unix_secs();
+        let planted: Vec<_> = (now.saturating_sub(2)..=now + 3)
+            .map(|sec| {
+                let path = dir
+                    .path()
+                    .join(format!("{VAULT_FILE}.broken-{sec}-{}", std::process::id()));
+                std::fs::write(&path, "earlier evidence").expect("plant");
+                path
+            })
+            .collect();
+
+        vault.set("openrouter", "sk-secret").expect("set heals");
+
+        for path in &planted {
+            assert_eq!(
+                std::fs::read_to_string(path).expect("planted archive survives"),
+                "earlier evidence",
+                "{} was overwritten",
+                path.display()
+            );
+        }
+        let kept = std::fs::read_dir(dir.path())
+            .expect("read_dir")
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                std::fs::read_to_string(entry.path()).is_ok_and(|c| c == "{ not json at all")
+            })
+            .count();
+        assert_eq!(kept, 1, "the corrupt vault is archived exactly once");
+    }
+
+    #[test]
     fn an_undecryptable_vault_is_named_and_never_clobbered() {
         let dir = TempDir::new("vault-foreign");
         let vault = vault(&dir);
