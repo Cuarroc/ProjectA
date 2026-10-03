@@ -697,7 +697,10 @@ function AppContent() {
           refreshBoardRef.current();
           openWorkerTab(updated);
         } catch (cause) {
-          setError(describeError(cause));
+          const message = describeError(cause);
+          setError(message);
+          // The sidebar list shows it too, next to the button that failed.
+          setWorkersError(message);
         } finally {
           setBusyWorkerId(null);
         }

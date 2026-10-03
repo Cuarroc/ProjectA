@@ -1371,6 +1371,11 @@ a {
   color: var(--fg);
 }
 
+.worker-note {
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+}
+
 /* ---- task queue -------------------------------------------------------- */
 
 /* This stays compact above the worker list while still allowing a busy queue
