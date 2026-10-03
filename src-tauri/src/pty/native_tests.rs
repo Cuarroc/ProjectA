@@ -22,7 +22,7 @@ fn projecta_pty_trace_dir_smoke_writes_expected_artifacts() {
         std::env::temp_dir().join(format!("projecta-w1-01b-smoke-{}", std::process::id()))
     });
 
-    let status = std::process::Command::new(std::env::current_exe().unwrap())
+    let status = crate::proc::command(std::env::current_exe().unwrap())
         .env(SessionTrace::ENV_DIR, &trace_dir)
         .env(TRACE_SMOKE_CHILD_ENV, "1")
         .arg("--exact")
