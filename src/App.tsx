@@ -54,7 +54,7 @@ import {
   spawnPty,
 } from "./lib/ipc";
 import { isCoordinatorKind } from "./lib/board";
-import { isCategoryActive, loadUiDensity, type UiDensity } from "./lib/settings";
+import { isCategoryActive, loadFontSettings, loadUiDensity, type UiDensity } from "./lib/settings";
 import { GOAL_LABELS, type AppGoal } from "./lib/goals";
 import type { InboxEntry } from "./lib/attentionInbox";
 import { shortTask } from "./lib/text";
@@ -151,6 +151,7 @@ function writeStoredProjectId(projectId: string | null): void {
 
 function AppContent() {
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
+  const [fonts, setFonts] = useState(loadFontSettings);
   // Variant B opens on the conversation: the first question the app answers is
   // "what is going on", not "which cards exist".
   const [goal, setGoal] = useState<AppGoal>("work");
@@ -1092,7 +1093,7 @@ function AppContent() {
   }
 
   return (
-    <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density}>
+    <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density} data-ui-font-size={fonts.uiFontSize}>
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
@@ -1259,6 +1260,8 @@ function AppContent() {
               <SettingsView
                 density={density}
                 onDensityChange={setDensity}
+                fonts={fonts}
+                onFontsChange={setFonts}
                 profiles={profiles}
                 project={activeProject}
                 onSaveTestCommand={(command) =>
@@ -1392,6 +1395,8 @@ function AppContent() {
                           key={pane.sessionId}
                           sessionId={pane.sessionId}
                           onError={setError}
+                          font={fonts.terminalFont}
+                          fontSize={fonts.terminalFontSize}
                         />
                       ) : null}
                     </div>
@@ -1401,6 +1406,8 @@ function AppContent() {
                     key={activeSession.sessionId}
                     sessionId={activeSession.sessionId}
                     onError={setError}
+                    font={fonts.terminalFont}
+                    fontSize={fonts.terminalFontSize}
                   />
                 ) : restoreWorker && restoreWorker.sessionId === null ? (
                   <SessionRestorePanel

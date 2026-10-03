@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import SettingsView from "./SettingsView";
+import type { FontSettings } from "../lib/settings";
 
 type MockUpdaterState =
   | { phase: "idle" }
@@ -69,6 +70,8 @@ const mocks = { check: vi.mocked(check) };
 interface TestProps {
   density: "comfortable";
   onDensityChange: (density: "comfortable" | "compact") => void;
+  fonts: FontSettings;
+  onFontsChange: (fonts: FontSettings) => void;
   profiles: [];
   project: null;
   onSaveTestCommand: (command: string | null) => Promise<void>;
@@ -89,6 +92,8 @@ describe("SettingsView updates tab", () => {
   const defaultProps: TestProps = {
     density: "comfortable",
     onDensityChange: vi.fn(),
+    fonts: { uiFontSize: "normal", terminalFont: "cascadia", terminalFontSize: 13 },
+    onFontsChange: vi.fn(),
     profiles: [],
     project: null,
     onSaveTestCommand: vi.fn(() => Promise.resolve()),
@@ -255,6 +260,8 @@ describe("SettingsView routing radiogroup", () => {
       <SettingsView
         density="comfortable"
         onDensityChange={vi.fn()}
+        fonts={{ uiFontSize: "normal", terminalFont: "cascadia", terminalFontSize: 13 }}
+        onFontsChange={vi.fn()}
         profiles={[]}
         project={null}
         onSaveTestCommand={async () => undefined}
