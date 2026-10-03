@@ -3882,6 +3882,40 @@ fn main() {
 mod tests {
     use std::path::PathBuf;
 
+    #[test]
+    fn deferred_modules_are_private_without_blanket_dead_code_suppression() {
+        const SOURCE: &str = include_str!("main.rs");
+        let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
+        let lines: Vec<&str> = code.lines().collect();
+
+        for module in [
+            "delivery_recovery",
+            "development_plan",
+            "development_policy",
+        ] {
+            let suffix = format!("mod {module};");
+            let declaration = lines
+                .iter()
+                .position(|line| line.trim_end().ends_with(&suffix))
+                .unwrap_or_else(|| panic!("{module} module declaration exists"));
+            assert_eq!(
+                lines[declaration].trim(),
+                suffix,
+                "{module} must stay private so dead_code analysis reaches it"
+            );
+            let preceding = lines[..declaration]
+                .iter()
+                .rev()
+                .find(|line| !line.trim().is_empty())
+                .expect("module declaration has a preceding line")
+                .trim();
+            assert!(
+                !preceding.contains("allow(dead_code)"),
+                "{module} has a module-wide dead_code suppression; annotate only the known deferred items"
+            );
+        }
+    }
+
     /// The stats-range refusal names every window it accepts, aliases
     /// included - and the aliases it names are really accepted. Third and
     /// last sibling of the same lie: `pa.rs:157/978/1607` and `api.rs:1618`
