@@ -104,9 +104,14 @@ pub fn make_private(path: &Path) {
 /// on group-readable.
 #[cfg(unix)]
 pub fn make_private_checked(path: &Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
-    let mode = if path.is_dir() { 0o700 } else { 0o600 };
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_CLOEXEC | libc::O_DIRECTORY | libc::O_NOFOLLOW)
+        .open(path)
+        .map_err(|e| format!("failed to narrow {}: {e}", path.display()))?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o700))
         .map_err(|e| format!("failed to narrow {}: {e}", path.display()))
 }
 
