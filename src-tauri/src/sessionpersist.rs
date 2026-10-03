@@ -9,12 +9,10 @@
 //! `projecta.db`, and diagnosis export must not grow a field for it.
 //!
 //! `restore` / `sweep` / the Restore shape are the policy API. Production
-//! wiring today is put/purge/confirm/persist_end; `persist_draft` is the
+//! wiring today is put/purge/confirm/persist_end/sweep; `persist_draft` is the
 //! production draft writer and waits on its IPC command (the `main.rs`
 //! lane); the rest is kept for the recovery matrix and must not be deleted
 //! as dead.
-
-#![allow(dead_code)]
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -262,6 +260,7 @@ pub fn persist_end(worker_id: &str, session_id: &str, body: &str, last_confirmed
 /// restart must not resurrect a message the user already sent or discarded.
 /// A draft never carries `last_confirmed`: an unsent thought confirms no
 /// step.
+#[allow(dead_code)] // W1-03f
 pub fn persist_draft(worker_id: &str, session_id: &str, body: &str) {
     let Some(root) = root() else {
         return;
@@ -332,8 +331,15 @@ pub fn sweep(root: &Path, now: i64) -> Result<usize, String> {
             continue;
         };
         if now.saturating_sub(record.written_at) > MAX_AGE_SECS {
-            let _ = fs::remove_file(&path);
-            dropped += 1;
+            match fs::remove_file(&path) {
+                Ok(()) => dropped += 1,
+                Err(err) => {
+                    eprintln!(
+                        "projecta: session buffer sweep: failed to delete {}: {err}",
+                        path.display()
+                    );
+                }
+            }
         }
     }
     Ok(dropped)

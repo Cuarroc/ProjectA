@@ -104,9 +104,14 @@ async fn retention_days(store: &Store, key: &str, default: u64) -> u64 {
         .unwrap_or(default)
 }
 
-/// One sweep against the current wall clock.
-pub async fn run_once(store: &Store, archive_root: &Path) -> SweepReport {
-    sweep_at(store, archive_root, now_unix_secs()).await
+/// One sweep against the current wall clock and app-data root.
+pub async fn run_once(store: &Store, root: &Path) -> SweepReport {
+    let now = now_unix_secs();
+    let mut report = sweep_at(store, &root.join("archive"), now).await;
+    if let Err(err) = crate::sessionpersist::sweep(root, now) {
+        report.errors.push(err);
+    }
+    report
 }
 
 /// One sweep as of `now`: delete expired events, archive then delete
@@ -347,8 +352,16 @@ fn verify_export(path: &Path) -> Result<(), String> {
 /// [`crate::stuck::start`], and like it the loop never exits on an error -
 /// the report carries them instead.
 pub fn start(store: Store, archive_root: PathBuf) {
+    let Some(root) = archive_root
+        .parent()
+        .filter(|root| !root.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+    else {
+        eprintln!("projecta: retention sweep: archive root has no app-data parent");
+        return;
+    };
     thread::spawn(move || loop {
-        let report = tauri::async_runtime::block_on(run_once(&store, &archive_root));
+        let report = tauri::async_runtime::block_on(run_once(&store, &root));
         for err in &report.errors {
             eprintln!("projecta: retention sweep: {err}");
         }
@@ -445,6 +458,9 @@ mod tests {
     #[tokio::test]
     async fn run_once_sweeps_expired_session_buffers() {
         let (dir, store) = fixture().await;
+        let now = now_unix_secs();
+        let unrelated = dir.path().join("keep-me");
+        std::fs::write(&unrelated, "outside session buffers").unwrap();
         crate::sessionpersist::put(
             dir.path(),
             "wk-old",
@@ -452,7 +468,7 @@ mod tests {
             crate::sessionpersist::Kind::Scrollback,
             "old",
             None,
-            NOW - crate::sessionpersist::MAX_AGE_SECS - 1,
+            now - crate::sessionpersist::MAX_AGE_SECS - 1,
         )
         .unwrap();
         crate::sessionpersist::put(
@@ -462,7 +478,7 @@ mod tests {
             crate::sessionpersist::Kind::Scrollback,
             "new",
             None,
-            NOW - crate::sessionpersist::MAX_AGE_SECS,
+            now,
         )
         .unwrap();
 
@@ -471,6 +487,7 @@ mod tests {
         let buffers = dir.path().join(crate::sessionpersist::DIR_NAME);
         assert!(!buffers.join("wk-old.scrollback").exists());
         assert!(buffers.join("wk-new.scrollback").exists());
+        assert!(unrelated.exists());
     }
 
     async fn messages_left(store: &Store, worker_id: &str) -> usize {
