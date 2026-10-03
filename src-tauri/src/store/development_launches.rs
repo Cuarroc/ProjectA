@@ -280,6 +280,14 @@ impl Store {
             return Err("route receipt too large".into());
         }
         let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await.map_err(db)?;
+        // A receipt that names its dispatch role binds only to a run
+        // dispatched in that role; any non-string claim fails closed.
+        if let Some(claimed) = receipt.get("dispatchRole") {
+            let actual = run_role(&mut tx, run_id).await?;
+            if claimed.as_str() != Some(actual.as_str()) {
+                return Err("route receipt was resolved for another dispatch role".into());
+            }
+        }
         let changed = sqlx::query("UPDATE development_launches SET route_json = ?, route_expires_at = ? WHERE run_id = ? AND profile_id = ? AND state = 'reserved' AND route_json IS NULL AND EXISTS (SELECT 1 FROM development_runs r JOIN continuous_tasks t ON t.id = r.task_id WHERE r.id = development_launches.run_id AND r.status = 'intent' AND r.claim_owner = ? AND r.claim_fence = ? AND t.claim_owner = ? AND t.claim_fence = ? AND t.status = 'running')")
             .bind(&body).bind(expires).bind(run_id).bind(profile).bind(owner).bind(fence).bind(owner).bind(fence).execute(&mut *tx).await.map_err(db)?;
         if changed.rows_affected() != 1 {
