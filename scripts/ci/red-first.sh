@@ -141,6 +141,12 @@ fail_source_without_trailer() {
       [ -n "$_f" ] && files+=("$_f")
     done < <(git -c core.quotepath=false diff-tree --no-commit-id --name-only -r "$sha")
     msg="$(git log -1 --format=%B "$sha")"
+    if grep -q '^Test-First:' <<< "$msg"; then
+      if ! tf_trailer_is_well_formed "$msg"; then
+        echo "red-first: Commit $sha hat einen missgebildeten Test-First-Trailer" >&2
+        return 1
+      fi
+    fi
     if is_dependabot_manifest_commit "$sha" "${files[@]+"${files[@]}"}"; then
       echo "red-first: Commit $(git rev-parse --short "$sha") ist ein Dependabot-Manifest-Update - kein Trailer verlangt"
       continue
@@ -184,6 +190,26 @@ done < <(
 )
 
 fail_source_without_trailer
+
+validate_test_first_paths_at_head() {
+  local spec path
+  for spec in "${SPECS[@]+"${SPECS[@]}"}"; do
+    if [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]]; then
+      path="src-tauri/src/main.rs"
+    elif [[ "$spec" == *::* ]]; then
+      path="${spec%%::*}"
+    else
+      path="$spec"
+    fi
+    path="${path#./}"
+    if ! git cat-file -e "${HEAD_SHA}:${path}" 2>/dev/null; then
+      echo "red-first: Test-First-Pfad existiert am HEAD nicht: $path (Beleg: $spec)" >&2
+      return 1
+    fi
+  done
+}
+
+validate_test_first_paths_at_head
 
 if [ "$PLAN_ONLY" -eq 1 ]; then
   # Erst nach fail_source_without_trailer: ein Commit, der Quellcode ohne
