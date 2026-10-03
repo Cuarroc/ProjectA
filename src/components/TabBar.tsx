@@ -72,7 +72,7 @@ export default function TabBar({
               }}
             >
               <span className="tab-label">{session.title}</span>
-              {session.exited ? <span className="tab-badge">exited</span> : null}
+              {session.exited ? <span className="tab-badge">beendet</span> : null}
             </button>
             <button
               type="button"

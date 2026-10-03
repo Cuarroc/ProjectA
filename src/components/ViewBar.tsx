@@ -79,7 +79,7 @@ export default function ViewBar({
       </span>
       {projectName && !countStale ? (
         <span className="viewbar-count">
-          {workerCount} worker{workerCount === 1 ? "" : "s"}
+          {workerCount} Worker
         </span>
       ) : null}
       <span className="viewbar-spacer" />

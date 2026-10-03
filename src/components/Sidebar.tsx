@@ -239,7 +239,7 @@ export default function Sidebar({
         {loading ? <div className="sidebar-note">Wird geladen …</div> : null}
         {error ? <div className="sidebar-note sidebar-error" role="alert">{error}</div> : null}
         {!loading && projects.length === 0 ? (
-          <div className="sidebar-note">No projects yet.</div>
+          <div className="sidebar-note">Noch keine Projekte.</div>
         ) : null}
 
         <ul className="project-list">
@@ -270,7 +270,7 @@ export default function Sidebar({
                     <button
                       type="button"
                       className="project-github"
-                      aria-label={`GitHub of ${project.name}`}
+                      aria-label={`GitHub mit ${project.name} verknüpfen`}
                       title="Mit GitHub verknüpfen"
                       onClick={() => setGithubId(project.id)}
                     >
@@ -280,7 +280,7 @@ export default function Sidebar({
                   <button
                     type="button"
                     className="project-gear"
-                    aria-label={`Skill-Packs of ${project.name}`}
+                    aria-label={`Skill-Packs von ${project.name} bearbeiten`}
                     title="Skill-Packs"
                     onClick={() => setSettingsId(project.id)}
                   >
@@ -296,21 +296,21 @@ export default function Sidebar({
                           onRemove(project.id);
                         }}
                       >
-                        remove
+                        Entfernen
                       </button>
                       <button
                         type="button"
                         className="confirm-no"
                         onClick={() => setConfirmingId(null)}
                       >
-                        keep
+                        Behalten
                       </button>
                     </span>
                   ) : (
                     <button
                       type="button"
                       className="project-remove"
-                      aria-label={`Remove ${project.name}`}
+                      aria-label={`Projekt ${project.name} entfernen`}
                       title="Projekt entfernen"
                       onClick={() => setConfirmingId(project.id)}
                     >
@@ -339,9 +339,9 @@ export default function Sidebar({
                     </span>
                     <span className="orchestrator-label">Orchestrator</span>
                     {orchestratorBusy ? (
-                      <span className="orchestrator-note">starting…</span>
+                      <span className="orchestrator-note">Wird gestartet …</span>
                     ) : orchestratorStopping ? (
-                      <span className="orchestrator-note">stopping…</span>
+                      <span className="orchestrator-note">Wird gestoppt …</span>
                     ) : null}
                   </button>
                 </li>
