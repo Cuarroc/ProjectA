@@ -17,6 +17,10 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 - **Continuous Mode:** aus und bis M4 eingefroren; `development_policy.rs` lehnt ihn ab.
 - **Merge** nur über die Mergify-Queue. CI kostet Minuten, Ziel 0 €.
 - **Live-Stand** kommt aus `gh pr list` und `git log origin/main`, bald aus OPS-01.
+- **Pakete Architektur-Rat (04.10., `origin/main` dfe459f):** ARCH-08a–e und
+  ARCH-10a–d sind gemergt; ARCH-08f (#252) steht in der Merge-Queue, ARCH-03c
+  (#256, Entwurf) wartet auf zwei Stufe-A-Reviews. Einzelheiten und Nachweise:
+  `docs/PLAN.md`. Das ist ein Schnappschuss, kein Live-Stand.
 
 ## Nächster Griff
 
