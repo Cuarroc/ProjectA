@@ -275,7 +275,7 @@ Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
 `gh pr view` auf `origin/main` 1b38596; der Paketstand darunter ist am 04.10.2026 nachgeführt.
 
 **Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
-Stand 03.10.2026 23:16 UTC (04.10. 01:16 Berlin), gelesen mit `gh pr list`/`gh pr view` auf `origin/main` cc95a57 (Merge #260, `ci`-Lauf 37161245790 grün). Gemergt:
+Status beobachtet 03.10.2026 23:26 UTC (04.10. 01:26 Berlin), gelesen mit `gh pr list`/`gh pr view` auf `origin/main` cc95a57 (Quellstand: Merge #260 um 23:16:34 UTC, `ci`-Lauf 37161245790 grün). Gemergt:
 ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
 überschritt die 300-Zeilen-Grenze), ARCH-03c #256 (`08faff8`, 23:04 UTC), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
 ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244, 08e #247 und 08f #252 (`f1a33de`, 22:31 UTC),

@@ -17,7 +17,7 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 - **Continuous Mode:** aus und bis M4 eingefroren; `development_policy.rs` lehnt ihn ab.
 - **Merge** nur über die Mergify-Queue. CI kostet Minuten, Ziel 0 €.
 - **Live-Stand** kommt aus `gh pr list` und `git log origin/main`, bald aus OPS-01.
-- **Pakete Architektur-Rat (03.10. 23:16 UTC = 04.10. 01:16 Berlin, `origin/main` cc95a57):**
+- **Pakete Architektur-Rat (Status beobachtet 03.10. 23:26 UTC = 04.10. 01:26 Berlin; Quellstand `origin/main` cc95a57, Merge #260 um 23:16:34 UTC):**
   ARCH-08 (a–f), ARCH-03c (#256), ARCH-09a (#260) und ARCH-10 (14 Arme in
   `api/hq_routes.rs`) sind gemergt. ARCH-09b läuft als Server-Auftrag, nicht
   gemergt. #262 (reine Diagnose zu KI-30, Ready) ist offen. Einzelheiten und

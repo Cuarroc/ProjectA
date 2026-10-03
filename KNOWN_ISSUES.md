@@ -177,7 +177,7 @@ unverändert neu ein (Queue-PR #257). **Nicht als gelöst vermerkt**: erst ein
 frischer Lauf am gleichen Quellstand sagt etwas, und auch ein grüner Lauf belegt
 die Ursache nicht.
 
-**Stand 2026-10-03 23:16 UTC.** Die Ursache bleibt **unbekannt**; es gibt keine
+**Stand 2026-10-03 23:26 UTC (beobachtet; Quellstand `origin/main` cc95a57, Merge #260 um 23:16:34 UTC).** Die Ursache bleibt **unbekannt**; es gibt keine
 Behebung und keinen Beleg für „Flake“ oder „echter Fehler“. Der erste Queue-Lauf
 37154872281 von #252 scheiterte mit `native_managed_tests.rs:449`; der
 kontrollierte einmalige Neulauf 37157889878 am gleichen Quellstand war grün.
