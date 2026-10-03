@@ -95,6 +95,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
 | HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
 | W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
+| M3-01 | Drei deutschsprachige Aufgaben-Vorlagen mit eingebautem Abnahmekriterium (nur Doku) | S | doc | PR #144 |
 | W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c ✓ #62 |
 | W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | ✓ #58 |
 | W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
@@ -235,22 +236,54 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | OmniRoute-Cutover in den Produktmodus | erst mit gemessenem Kostensieg |
 | Design Studio, Queen/Employee-Neuanlage | nie (gestrichen; der Anlegepfad fällt mit CLEAN-02) |
 
+### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
+
+Die folgenden Pakete sind neue Ideen und bleiben nach AGENTS.md unter „Später“.
+ARCH-11 ist die Ausnahme: Es ist als M3-Kandidat vorgemerkt, ohne die
+M3-Abnahme-Tabelle zu ändern.
+
+| ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Reihenfolge |
+|---|---|---|---|---|---|---|---|
+| ARCH-01 | Toten Kleinkram in FE/HQ entfernen: `hqCapacity.ts` samt Test löschen, `setLandingPage`-Wrapper und Design-Studio-Mock entfernen; `hq-live.mjs` akzeptiert zusätzlich `PROJECTA_API_FILE`. | 4–5 Dateien, ~150 Diff | fe + hqL | nein | B | Test-First: `descriptorCandidates({PROJECTA_API_FILE})` liefert genau diesen Pfad; Löschungen No-Test | jetzt; Löschung mit Nutzer-Ja (F5) |
+| ARCH-02 | `queue.rs`: `enqueue` und `enqueue_with_enhancer` über gemeinsamen `insert_entry()`-Pfad führen; Test-Kopie entfernen. | `queue.rs`, Δ−35 | fR | nein | B | No-Test: mechanische Deduplizierung; 17 `queue::tests` decken Verhalten ab | nach Merge von PR #130 |
+| ARCH-03 | Einen atomaren `write_atomic`/`replace_file`-Pfad in `fsutil.rs` bündeln und in Retention, Provider und Delivery-Recovery verwenden; alten MSRV-Kommentar entfernen. `db_restore.rs:137` bleibt Folgepaket der pa-Lane. | 4 Dateien, ~220 Diff | fR | nein | A (Vault) | No-Test: Konsolidierung; bestehende Provider-, Retention- und Recovery-Tests | jetzt |
+| ARCH-04 | `retention::run_once` soll alte Sitzungsdateien über `sessionpersist::sweep(root, now)` löschen; globales Dead-Code-Allow entfernen, Item-Allow nur für `persist_draft` behalten. | `retention.rs`, `sessionpersist.rs`, ~120 Diff | fR | nein | B | Test-First: alte Sitzungsdatei verschwindet nach `run_once` | nach Inbox-Antwort F2 |
+| ARCH-05 | Binärmodule von `pub mod` auf `mod` umstellen und die dadurch sichtbaren Dead-Code-Warnungen einzeln mit Paket-ID erlauben. | `main.rs` + 2–3 Module, ~30 Diff | mn | ja | A (Naht) | No-Test: Sichtbarkeits-Lint; Force-Warn-Lauf vorher/nachher und Clippy | jetzt |
+| ARCH-06 | `AppAgentControl` und `PtyAgents` auf freie Funktionen umstellen; `ApiBackend::agents()` statt sieben `with_port`-Aufrufen verwenden. | `main.rs`, Δ−90 | mn | ja | A | No-Test: mechanische Deduplizierung; bestehende Worker-, API- und Main-Tests | nach ARCH-05, vor W5-04b |
+| ARCH-07 | Store-Kleinkram verschieben: `SRC_HOOK`/`SRC_HEURISTIC` löschen, Fehlercodes in neues `errors.rs` legen und die Rückkante store→workers entfernen. | `store.rs`, `store/queue_cancel.rs`, `workers.rs`, `errors.rs`, ~40 Diff | st | ja | A | No-Test: mechanische Verschiebung; bestehende Store-, Queue-Cancel- und API-Tests | nach #147/#44, gemäß st-Reihenfolge |
+| ARCH-08 | `SettingsView.tsx` je Tab in eigene Komponenten aufteilen. | `src/components/Settings*/`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; vorhandene Settings-Tests | nach PR #154 |
+| ARCH-09 | `ipc.ts` als Barrel behalten und PTY-, Projekt- und Worker-Domänenmodule auslagern. | `src/lib/ipc/*.ts`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; IPC- und Komponententests | nach ARCH-08, niedrige Priorität |
+| ARCH-10 | `/api/hq/v1/*` als Unter-Router mit 14 Armen aus `route()` in `api/hq_routes.rs` auslagern. | `api.rs`, `api/hq_routes.rs` | api | ja | A | No-Test: mechanische Verschiebung; FakeBackend-Servertests behalten Status, Body und Auth | vor W5-02b3 (api) |
+| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | als M3-Kandidat aufnehmen; Windows-Lauf nötig |
+| ARCH-12 | `impl ControlBackend for ApiBackend` aus `main.rs` auslagern. Das Paket bleibt gesperrt, weil der Trait-Block als reine Verschiebung mehr als 300 Diffzeilen erzeugt. | `main.rs`, `api/backend.rs`, ~715 Z. | mn + api | ja | A | No-Test: mechanische Verschiebung erst nach ADR A1 | nach ADR A1; gesperrt |
+
 ## Entscheidungs-Inbox
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
 
-| # | Frage | Empfehlung | Status |
-|---|---|---|---|
-| E1 | HQ2-02: Demo und Studio ansehen, Richtung für die eine Oberfläche festlegen | ja, in M3 | offen (Nutzer) |
-| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
-| E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja (Nutzer 25.09.); einmal im Browser klicken | offen (Nutzer) |
-| E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | später (Nutzer 25.09.) |
-| E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | offen |
-| E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | später (Nutzer 25.09.) |
-| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | ✓ bestätigt (Nutzer 02.10.) |
-| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | ✓ bestätigt (Nutzer 02.10.) |
+| # | Frage | Empfehlung | Wer entscheidet? | Status |
+|---|---|---|---|---|
+| E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | offen |
+| E1-Hinweis | HQ2-02/03 blockiert die Farbthemen T2–T5. | Erst HQ2-02 festlegen, dann die Farbthemen in HQ2-03 bearbeiten. | Nutzer | Hinweis |
+| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | Nutzer | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
+| E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja; einmal im Browser klicken | Nutzer | offen (Nutzer) |
+| E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | Nutzer | später (Nutzer 25.09.) |
+| E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | Nutzer | offen |
+| E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | Nutzer | später (Nutzer 25.09.) |
+| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 und den Prüfpfad W5-05 in M3/M4 eingeordnet | erweiterten Kern bestätigen | Nutzer | ✓ bestätigt (Nutzer 02.10.) |
+| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel ist damit ersetzt | Routing bestätigen | Nutzer | ✓ bestätigt (Nutzer 02.10.) |
+| E9 | M3-01 und M3-02 wurden im Auftrag des Orchestrators in M3 vorgezogen. | Nur als bereits getroffene Reihenfolge vermerken. | Orchestrator | ✓ entschieden (03.10.) |
+| E10 | Soll der Landing-Page-/DesignStudio-Abschnitt in `src/App.tsx` (etwa Zeilen 1277–1280) entfernt werden? | Ja, Abschnitt löschen. | Nutzer | offen |
+| E11 | Soll die Windows-Flake-Erkennung weiterlaufen, obwohl sie Actions-Minuten kostet? | Kosten und Nutzen abwägen; Empfehlung: nur mit belegtem Nutzen behalten. | Nutzer | offen |
+| F1 | Soll die große Verbindungsschicht `ApiBackend` mit etwa 715 Zeilen bis nach M4 in `main.rs` bleiben? | Ja; danach das Trait in Domänenports teilen. | Nutzer | offen |
+| F2 | Alte verschlüsselte Sitzungsdateien sollen mit derselben Frist wie die übrige Aufräumfunktion gelöscht werden. | Ja; Umsetzung als ARCH-04. | Nutzer | ✓ entschieden (03.10.) |
+| F3 | Die Audit-Tabelle bleibt bis zum Not-Aus in M4 leer. Ist das in Ordnung? | Ja, solange M4 die Audit-Abnahme enthält. | Nutzer | offen |
+| F4 | Doppelte PRs schließen. | Ja; #112, #113, #115, #91 und #146 sind geschlossen. | Orchestrator | ✓ entschieden (03.10.) |
+| F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
+| F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | offen |
+| M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4. | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;

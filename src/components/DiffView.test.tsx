@@ -148,6 +148,15 @@ describe("DiffView", { timeout: 15000 }, () => {
     });
   });
 
+  it("explains each verdict button in plain words and keeps the technical text as detail", async () => {
+    getWorkerReadiness.mockResolvedValue(readiness);
+    render(<DiffView workerId="wk-1" branch="nacht/wk-1" />);
+    await screen.findByRole("button", { name: "Review freigeben" });
+    expect(screen.getByText(/Du sagst: Das sieht gut aus/)).toBeInTheDocument();
+    expect(screen.getByText(/Du sagst: Das muss noch überarbeitet werden/)).toBeInTheDocument();
+    expect(screen.getByText("Freigabe an den angezeigten Merge-Tree binden")).toBeInTheDocument();
+  });
+
   it("stamps the desktop approval from the readiness panel", async () => {
     getWorkerReadiness.mockClear();
     getWorkerReadiness.mockResolvedValue(readiness);

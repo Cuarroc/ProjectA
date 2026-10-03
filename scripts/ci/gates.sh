@@ -68,13 +68,13 @@ GATES=(
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh"
+  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-native-tests.sh"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
   # CI-02 (W1-19b): Dependabot-Manifest-Commits brauchen keinen Trailer -
   # und nur die. Der Selbsttest belegt die Ausnahme UND ihre Grenzen.
-  "selftest-red-first|linux,release|.|bash scripts/test-red-first-plan.sh && bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh"
+  "selftest-red-first|linux,release|.|bash scripts/test-red-first-plan.sh && bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh && bash scripts/test-red-first-local.sh"
   # Der Review-Transport ist der Weg, auf dem die Dual-Review-Pflicht
   # (AGENTS.md) ueberhaupt eingeloest wird. Am 09.09. starb er an einer
   # Antwort ohne Inhalt und schrieb fuer KEINEN Reviewer ein Protokoll.
@@ -112,6 +112,13 @@ GATES=(
   # can invoke them directly after checkout.
   "script-modes|prepush,linux,release|.|bash scripts/ci/script-modes.sh"
   "selftest-script-modes|prepush,linux,release|.|bash scripts/test-script-modes.sh"
+
+  # CI-06: the trailers of the new commits against origin/main, with the very
+  # same red-first.sh --plan the PR CI runs (no second implementation, no
+  # build, no network beyond local git). A wrong trailer used to surface
+  # minutes after the push and cost a replacement PR. Needs a current
+  # origin/main (git fetch); without one the gate fails loudly.
+  "red-first-plan|prepush,branchpush|.|BASE_SHA=\"$(git merge-base origin/main HEAD)\" && HEAD_SHA=\"$(git rev-parse HEAD)\" && export BASE_SHA HEAD_SHA && bash scripts/ci/red-first.sh --plan"
 
   # --- schnell: Form und Typen --------------------------------------------
   "fmt|precommit,prepush,branchpush,linux,windows,release|src-tauri|cargo fmt --check"

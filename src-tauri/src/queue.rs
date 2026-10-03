@@ -7,7 +7,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
@@ -147,21 +148,33 @@ pub struct PreflightCache {
     reports: Mutex<HashMap<String, Report>>,
 }
 
+static PREFLIGHT_CACHE_POISON_LOGGED: AtomicBool = AtomicBool::new(false);
+
+fn preflight_reports(
+    mutex: &Mutex<HashMap<String, Report>>,
+) -> MutexGuard<'_, HashMap<String, Report>> {
+    mutex.lock().unwrap_or_else(|poison| {
+        if !PREFLIGHT_CACHE_POISON_LOGGED.swap(true, Ordering::Relaxed) {
+            eprintln!(
+                "projecta: preflight cache was poisoned; recovering (further occurrences are not logged)"
+            );
+        }
+        poison.into_inner()
+    })
+}
+
 impl PreflightCache {
     /// The current verdict for these facts, from the cache when it still
     /// holds and freshly evaluated when it does not.
     pub fn report(&self, facts: &Facts, now: i64) -> Report {
-        if let Ok(reports) = self.reports.lock() {
-            if let Some(cached) = reports.get(&facts.profile_id) {
-                if cached.is_valid_for(facts, now) {
-                    return cached.clone();
-                }
+        let mut reports = preflight_reports(&self.reports);
+        if let Some(cached) = reports.get(&facts.profile_id) {
+            if cached.is_valid_for(facts, now) {
+                return cached.clone();
             }
         }
         let report = preflight::evaluate(facts, now);
-        if let Ok(mut reports) = self.reports.lock() {
-            reports.insert(facts.profile_id.clone(), report.clone());
-        }
+        reports.insert(facts.profile_id.clone(), report.clone());
         report
     }
 }
@@ -245,6 +258,9 @@ pub async fn dispatch_project(
         .collect();
 
     let now = now_unix_secs();
+    // A block that names its own end must not outlive it: a blocked profile
+    // starts no worker, so no output would ever clear it.
+    quota.release_expired(now);
     for entry in candidates {
         let facts = gather_facts(store, quota, profiles, &entry.profile_id).await;
         let report = preflight.report(&facts, now);
@@ -2102,6 +2118,71 @@ mod tests {
             "{}",
             report.summary()
         );
+    }
+
+    #[test]
+    fn poisoned_preflight_cache_reuses_the_sweep_verdict() {
+        let preflight = PreflightCache::default();
+        let facts = Facts {
+            profile_id: "claude".to_string(),
+            known: true,
+            enabled: true,
+            quota_state: crate::store::QUOTA_OK.to_string(),
+            quota_reason: None,
+            blocked_until: None,
+            budget: None,
+        };
+        let first = preflight.report(&facts, 1_000);
+
+        std::thread::scope(|scope| {
+            assert!(scope
+                .spawn(|| {
+                    let _guard = preflight.reports.lock().unwrap();
+                    panic!("poison the preflight cache lock");
+                })
+                .join()
+                .is_err());
+        });
+
+        let same_sweep = preflight.report(&facts, 1_001);
+        assert_eq!(same_sweep, first, "cached verdict was silently discarded");
+    }
+
+    /// A block whose `blocked_until` has passed must not hold the queue: the
+    /// blocked profile starts no worker, so nothing else would ever clear it.
+    #[tokio::test]
+    async fn an_elapsed_block_no_longer_holds_its_task() {
+        let (_dir, store, project) = fixture().await;
+        let entry = enqueue_with_enhancer(
+            &store,
+            &project,
+            "work",
+            Some("claude".into()),
+            false,
+            None,
+            None,
+            |_, _| unreachable!(),
+        )
+        .await
+        .unwrap();
+        let quota = QuotaTracker::default();
+        quota.note_blocked("claude", "limit", Some(now_unix_secs() - 60));
+        let launcher = FakeLauncher::new();
+        let profiles = chain(&[("claude", None)]);
+
+        let dispatched = dispatch_project(
+            &store,
+            &quota,
+            &PreflightCache::default(),
+            &profiles,
+            &project,
+            &launcher,
+        )
+        .await
+        .unwrap()
+        .expect("the elapsed block is lifted and the task starts");
+        assert_eq!(dispatched.id, entry.id);
+        assert!(!quota.is_blocked("claude"));
     }
 
     // -- quota failover (phase 19 T4) --------------------------------------

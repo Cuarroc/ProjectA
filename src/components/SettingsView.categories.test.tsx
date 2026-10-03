@@ -61,6 +61,8 @@ describe("SettingsView agent categories", () => {
       <SettingsView
         density="comfortable"
         onDensityChange={vi.fn()}
+        fonts={{ uiFontSize: "normal", terminalFont: "cascadia", terminalFontSize: 13 }}
+        onFontsChange={vi.fn()}
         profiles={[claude]}
         project={null}
         onSaveTestCommand={vi.fn(async () => undefined)}

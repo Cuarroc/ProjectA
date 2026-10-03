@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
+import { workerStatusLabel } from "../lib/plainText";
 import { shortTask } from "../lib/text";
 import type { AgentProfile, Worker } from "../types";
+import ErrorNote from "./ErrorNote";
 
 interface WorkerPanelProps {
   /** Every worker of the project; orchestrators are filtered out here. */
@@ -36,6 +39,16 @@ export default function WorkerPanel({
   // Coordinators - the orchestrator and the scout - are reached from their own
   // sidebar sections, not from the list of a project's actual work.
   const workers = allWorkers.filter((worker) => worker.kind === "worker");
+  // Archiving cannot be undone, so it takes a second click on this worker.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  useEffect(() => {
+    if (
+      confirmingId !== null &&
+      !allWorkers.some((worker) => worker.id === confirmingId && worker.status === "running")
+    ) {
+      setConfirmingId(null);
+    }
+  }, [allWorkers, confirmingId]);
 
   const profileName = (profileId: string) =>
     profiles.find((profile) => profile.id === profileId)?.name ?? profileId;
@@ -58,7 +71,11 @@ export default function WorkerPanel({
 
       {!hasProject ? <div className="sidebar-note">No project selected.</div> : null}
       {hasProject && loading ? <div className="sidebar-note">Loading…</div> : null}
-      {error ? <div className="sidebar-note sidebar-error">{error}</div> : null}
+      {error ? (
+        <div className="sidebar-note sidebar-error">
+          <ErrorNote message={error} />
+        </div>
+      ) : null}
       {hasProject && !loading && workers.length === 0 ? (
         <div className="sidebar-note">No workers yet.</div>
       ) : null}
@@ -78,36 +95,67 @@ export default function WorkerPanel({
                 title={
                   attached
                     ? worker.task
-                    : "Kein Live-PTY — Puffer ansehen oder respawnen"
+                    : "Kein Live-PTY — Puffer ansehen oder neu starten"
                 }
                 onClick={() => onOpen(worker)}
               >
                 <span className="worker-task">{shortTask(worker.task, 40)}</span>
                 <span className="worker-meta">
                   <span className="badge badge-profile">{profileName(worker.profileId)}</span>
-                  <span className={`badge badge-${worker.status}`}>{worker.status}</span>
+                  <span className={`badge badge-${worker.status}`}>{workerStatusLabel(worker.status)}</span>
                 </span>
               </button>
               <div className="worker-actions">
-                {worker.status === "running" ? (
+                {worker.status === "running" && confirmingId === worker.id ? (
+                  <>
+                    <span className="worker-note">
+                      Endgültig: der Agent wird beendet und kommt nicht zurück. Der Arbeitsbaum
+                      bleibt.
+                    </span>
+                    <button
+                      type="button"
+                      className="worker-action"
+                      disabled={busy}
+                      onClick={() => {
+                        setConfirmingId(null);
+                        onArchive(worker);
+                      }}
+                    >
+                      Ja, endgültig archivieren
+                    </button>
+                    <button
+                      type="button"
+                      className="worker-action"
+                      onClick={() => setConfirmingId(null)}
+                    >
+                      Abbrechen
+                    </button>
+                  </>
+                ) : worker.status === "running" ? (
                   <button
                     type="button"
                     className="worker-action"
                     disabled={busy}
-                    title="Stop the agent, keep the worktree"
-                    onClick={() => onArchive(worker)}
+                    title="Beendet den Agenten endgültig, der Arbeitsbaum bleibt"
+                    onClick={() => setConfirmingId(worker.id)}
                   >
-                    {busy ? "…" : "Archive"}
+                    {busy ? "…" : "Archivieren"}
                   </button>
+                ) : worker.status === "archived" ? (
+                  // Same rule as the core: an archived ordinary worker is never
+                  // respawned (every row in this list is an ordinary worker).
+                  <span className="worker-note">
+                    Archiviert – endgültig gestoppt, Arbeitsbaum bleibt
+                  </span>
                 ) : (
                   <button
                     type="button"
                     className="worker-action"
                     disabled={busy}
-                    title="Attach a fresh agent to this worktree"
+                    title="Startet einen neuen Agenten im selben Arbeitsbaum"
                     onClick={() => onRespawn(worker)}
                   >
-                    {busy ? "…" : "Respawn"}
+                    {busy ? "…" : "Neu starten"}
                   </button>
                 )}
               </div>

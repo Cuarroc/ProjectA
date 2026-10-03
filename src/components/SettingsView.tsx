@@ -5,7 +5,6 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 
 import {
   describeError,
-  deleteSessionBuffers,
   getBudgets,
   getDigestEnabled,
   getLearningSettings,
@@ -34,14 +33,14 @@ import {
   loadAgentCategories,
   loadMasterPrompt,
   loadWebPort,
-  saveUiDensity,
+  type FontSettings,
   saveAgentCategories,
   saveMasterPrompt,
   saveWebPort,
   setMasterPromptEnabled,
   type UiDensity,
 } from "../lib/settings";
-import EmergencyStop from "./EmergencyStop";
+import GeneralTab from "./settings/GeneralTab";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -117,6 +116,8 @@ let latestUpdaterViewGeneration = 0;
 interface SettingsViewProps {
   density: UiDensity;
   onDensityChange: (density: UiDensity) => void;
+  fonts: FontSettings;
+  onFontsChange: (fonts: FontSettings) => void;
   /** What `list_agent_profiles` offers; the categories pick their default from it. */
   profiles: AgentProfile[];
   /**
@@ -138,6 +139,8 @@ interface SettingsViewProps {
 export default function SettingsView({
   density,
   onDensityChange,
+  fonts,
+  onFontsChange,
   profiles,
   project,
   onSaveTestCommand,
@@ -797,283 +800,46 @@ export default function SettingsView({
         aria-labelledby={`settings-tab-${tab}`}
       >
         {tab === "allgemein" ? (
-          <>
-            <EmergencyStop />
-
-            <fieldset className="settings-field settings-density">
-              <legend className="field-label">Darstellungsdichte</legend>
-              <div className="settings-density-options">
-                {(["comfortable", "compact"] as const).map((value) => (
-                  <label className="settings-check" key={value}>
-                    <input
-                      type="radio"
-                      name="settings-density"
-                      value={value}
-                      checked={density === value}
-                      onChange={() => {
-                        saveUiDensity(value);
-                        onDensityChange(value);
-                      }}
-                    />
-                    <span>{value === "comfortable" ? "Komfortabel" : "Kompakt"}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="settings-hint">Passt Abstände und Bedienelemente in der App an.</p>
-            </fieldset>
-            <div className="settings-field">
-              <label className="field-label" htmlFor="settings-web-port">
-                Default Port Web-Interface
-              </label>
-              <div className="settings-port-row">
-                <input
-                  id="settings-web-port"
-                  className="field"
-                  inputMode="numeric"
-                  placeholder="z. B. 8787"
-                  value={portInput}
-                  onChange={(event) => setPortInput(event.target.value)}
-                />
-                <button type="button" className="button-primary" onClick={handleSavePort}>
-                  Speichern
-                </button>
-              </div>
-              {portError ? <span className="settings-error">{portError}</span> : null}
-            </div>
-
-            <label className="settings-check">
-              <input
-                type="checkbox"
-                checked={digestEnabled}
-                onChange={(event) => handleToggleDigest(event.target.checked)}
-              />
-              <span>Tages-Digest schreiben</span>
-            </label>
-            <p className="settings-hint">
-              Schreibt einmal pro Stunde für den Tag, der bereits vorbei ist, eine
-              Markdown-Seite nach <code>&lt;repo&gt;/.pa/memory/digests/</code> — Board-Stand,
-              Tagesverlauf, Worker-Aktivität, Quota und Budget. Kein Agent, keine Tokens:
-              alles kommt aus Daten, die ProjectA ohnehin hat. <code>.pa/</code> ist
-              gitignored, die Seiten sind Lesestoff für den Vault.
-            </p>
-              {digestError ? <span className="settings-error">{digestError}</span> : null}
-
-            <SessionBufferDelete />
-
-            <div className="settings-field">
-              <label className="field-label" htmlFor="settings-stuck-minutes">
-                Stuck-Diagnose (Minuten)
-              </label>
-              <div className="settings-port-row">
-                <input
-                  id="settings-stuck-minutes"
-                  className="field"
-                  inputMode="numeric"
-                  placeholder="Standard: 10"
-                  value={stuckInput}
-                  onChange={(event) => setStuckInput(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="button-primary"
-                  disabled={savingStuck}
-                  onClick={handleSaveStuck}
-                >
-                  {savingStuck ? "…" : "Speichern"}
-                </button>
-              </div>
-              <p className="settings-hint">
-                Wie lange ein laufender Worker <em>gleichzeitig</em> ohne Terminal-Ausgabe
-                und ohne Änderung in seinem Worktree bleiben darf, bevor die Karte als
-                „vermutlich festgefahren“ auf needs_you landet. Beides zusammen ist der
-                Punkt: wer liest und denkt, schreibt nichts ins Terminal; wer kompiliert,
-                schreibt keine Dateien. Ein leeres Feld nimmt den Standard.
-              </p>
-              {stuckError ? <span className="settings-error">{stuckError}</span> : null}
-            </div>
-
-            <fieldset className="settings-field" disabled={savingRouting}>
-              <legend className="field-label" id="settings-product-mode-label">
-                Produktmodus (OmniRoute)
-              </legend>
-              <div
-                className="settings-mode-row"
-                role="radiogroup"
-                aria-labelledby="settings-product-mode-label"
-                aria-describedby={
-                  routing && !routing.reviewIndependent
-                    ? "settings-review-block"
-                    : undefined
-                }
-              >
-                {(
-                  [
-                    ["reliable", "Reliable"],
-                    ["cheap", "Cheap"],
-                    ["review", "Review"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <label className="settings-check" key={value}>
-                    <input
-                      type="radio"
-                      name="settings-product-mode"
-                      value={value}
-                      checked={(routing?.mode ?? "cheap") === value}
-                      onChange={() => handleProductMode(value)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="settings-hint">
-                Reliable zielt auf die kompatible Erfolgsrate, Cheap auf geringere
-                Kosten, Review auf eine unabhängige Prüfer-Familie. Review fällt
-                nie still auf das Autoren-Modell zurück.
-              </p>
-              {routing && !routing.reviewIndependent ? (
-                <p
-                  id="settings-review-block"
-                  className="settings-error"
-                  role="status"
-                  aria-live="polite"
-                  aria-label="Review-Blockade"
-                >
-                  Review ist blockiert: {routing.reviewDetail || "keine unabhängige Prüfer-Familie."}
-                  {routing.mode === "review"
-                    ? " Spawn und Respawn werden verweigert, bis ein unabhängiges Combo verfügbar ist."
-                    : " Der Modus bleibt wählbar; ein Spawn als Review wird verweigert."}
-                </p>
-              ) : null}
-              {routingError ? <span className="settings-error">{routingError}</span> : null}
-            </fieldset>
-
-            <div className="settings-field">
-              <label className="field-label" htmlFor="settings-test-command">
-                Test-Kommando{project === null ? "" : ` — ${project.name}`}
-              </label>
-              <div className="settings-command-row">
-                <input
-                  id="settings-test-command"
-                  className="field"
-                  placeholder="z. B. npm test"
-                  disabled={project === null}
-                  value={testCommandInput}
-                  onChange={(event) => setTestCommandInput(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="button-primary"
-                  disabled={project === null || savingTestCommand}
-                  onClick={handleSaveTestCommand}
-                >
-                  {savingTestCommand ? "…" : "Speichern"}
-                </button>
-              </div>
-              <p className="settings-hint">
-                Das Kommando läuft im Worktree eines Workers, sobald du auf seiner
-                Board-Karte „Tests“ drückst; das Ergebnis erscheint dort als Badge. Beim
-                Anlegen eines Projekts wird es automatisch erkannt. Ein leeres Feld
-                entfernt das Gate — dann gibt es weder Button noch Badge.
-              </p>
-              {project === null ? (
-                <span className="settings-hint">Kein Projekt ausgewählt.</span>
-              ) : null}
-              {testCommandError ? (
-                <span className="settings-error">{testCommandError}</span>
-              ) : null}
-            </div>
-
-            <div className="settings-field">
-              <label className="field-label" htmlFor="settings-setup-command">
-                Setup-Kommando{project === null ? "" : ` — ${project.name}`}
-              </label>
-              <div className="settings-command-row">
-                <input
-                  id="settings-setup-command"
-                  className="field"
-                  placeholder="z. B. npm ci"
-                  disabled={project === null || setupCommandLoadedFor !== project.id}
-                  value={setupCommandInput}
-                  onChange={(event) => setSetupCommandInput(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="button-primary"
-                  disabled={
-                    project === null ||
-                    savingSetupCommand ||
-                    setupCommandLoadedFor !== project.id
-                  }
-                  onClick={handleSaveSetupCommand}
-                >
-                  {savingSetupCommand ? "…" : "Speichern"}
-                </button>
-              </div>
-              <p className="settings-hint">
-                Das Kommando bereitet den wegwerfbaren Merge-Kandidaten vor, bevor das
-                Test-Gate dort läuft. Es startet erst, nachdem du Befehl, Basis und
-                deklarierte Inputs in der Review-Ansicht freigegeben hast — die Freigabe
-                gilt für genau diesen Merge-Kandidaten, jede Änderung am Kommando oder am
-                Baum lässt sie verfallen. Ein leeres Feld schaltet das Setup ab. Achtung: Das
-                Kommando darf diese deklarierten Inputs nicht umschreiben (daher{" "}
-                <code>npm ci</code> statt <code>npm install</code>) — sonst verwirft die
-                Validierung jeden Lauf, weil der getestete Baum nicht mehr der
-                Merge-Tree ist.
-              </p>
-              {setupCommandError ? (
-                <span className="settings-error">
-                  {setupCommandError}{" "}
-                  {project !== null && setupCommandLoadedFor !== project.id ? (
-                    <button
-                      type="button"
-                      className="worker-action"
-                      onClick={() => setSetupLoadAttempt((n) => n + 1)}
-                    >
-                      Erneut versuchen
-                    </button>
-                  ) : null}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="settings-field">
-              <label className="field-label" htmlFor="settings-max-workers">
-                Maximale Worker{project === null ? "" : ` — ${project.name}`}
-              </label>
-              <div className="settings-command-row">
-                <input
-                  id="settings-max-workers"
-                  className="field"
-                  inputMode="numeric"
-                  placeholder="leer = Standard, 0 = aus"
-                  disabled={project === null || savingMaxWorkers}
-                  value={maxWorkersInput}
-                  onChange={(event) => setMaxWorkersInput(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="button-primary"
-                  disabled={project === null || savingMaxWorkers}
-                  onClick={handleSaveMaxWorkers}
-                >
-                  {savingMaxWorkers ? "…" : "Speichern"}
-                </button>
-              </div>
-              <p className="settings-hint">
-                Wie viele Worker dieses Projekts gleichzeitig laufen dürfen. Orchestrator,
-                Queen und Scout zählen nicht mit. Ein leeres Feld verwendet den Standard der
-                Warteschlange. <strong>0</strong> hält den Dispatcher für dieses Projekt an;
-                eingereihte Aufgaben bleiben bereit, bis das Limit wieder erhöht oder geleert
-                wird. Negative Zahlen sind nicht erlaubt.
-              </p>
-              {project === null ? (
-                <span className="settings-hint">Kein Projekt ausgewählt.</span>
-              ) : null}
-              {maxWorkersError ? (
-                <span className="settings-error">{maxWorkersError}</span>
-              ) : null}
-            </div>
-          </>
+          <GeneralTab
+            density={density}
+            onDensityChange={onDensityChange}
+            fonts={fonts}
+            onFontsChange={onFontsChange}
+            project={project}
+            portInput={portInput}
+            setPortInput={setPortInput}
+            portError={portError}
+            handleSavePort={handleSavePort}
+            digestEnabled={digestEnabled}
+            handleToggleDigest={handleToggleDigest}
+            digestError={digestError}
+            stuckInput={stuckInput}
+            setStuckInput={setStuckInput}
+            savingStuck={savingStuck}
+            handleSaveStuck={handleSaveStuck}
+            stuckError={stuckError}
+            routing={routing}
+            savingRouting={savingRouting}
+            routingError={routingError}
+            handleProductMode={handleProductMode}
+            testCommandInput={testCommandInput}
+            setTestCommandInput={setTestCommandInput}
+            savingTestCommand={savingTestCommand}
+            handleSaveTestCommand={handleSaveTestCommand}
+            testCommandError={testCommandError}
+            setupCommandInput={setupCommandInput}
+            setSetupCommandInput={setSetupCommandInput}
+            setupCommandLoadedFor={setupCommandLoadedFor}
+            savingSetupCommand={savingSetupCommand}
+            handleSaveSetupCommand={handleSaveSetupCommand}
+            setupCommandError={setupCommandError}
+            setSetupLoadAttempt={setSetupLoadAttempt}
+            maxWorkersInput={maxWorkersInput}
+            setMaxWorkersInput={setMaxWorkersInput}
+            savingMaxWorkers={savingMaxWorkers}
+            handleSaveMaxWorkers={handleSaveMaxWorkers}
+            maxWorkersError={maxWorkersError}
+          />
         ) : tab === "masterprompt" ? (
           <>
             <label className="settings-check">
@@ -1361,67 +1127,6 @@ export default function SettingsView({
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function SessionBufferDelete() {
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
-
-  const handleDelete = () => {
-    if (!confirming) {
-      setConfirming(true);
-      setError(null);
-      setNote(null);
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    void deleteSessionBuffers()
-      .then((dropped) => {
-        setNote(
-          dropped === 0
-            ? "Keine Sitzungspuffer vorhanden."
-            : `${dropped} Sitzungspuffer gelöscht.`,
-        );
-        setConfirming(false);
-      })
-      .catch((cause: unknown) => setError(describeError(cause)))
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <div className="settings-field">
-      <p className="field-label">Sitzungspuffer</p>
-      <p className="settings-hint">
-        Scrollback und Composer-Drafts, höchstens sieben Tage oder 2&nbsp;MB je
-        Session. Archive und Merge löschen sie automatisch; hier ist der
-        manuelle DSAR-Pfad. Laufende Sitzungen schreiben ihren Puffer beim
-        Beenden erneut — sie erst beenden, dann löschen.
-      </p>
-      <div className="settings-port-row">
-        <button
-          type="button"
-          className="button-primary"
-          disabled={busy}
-          onClick={handleDelete}
-        >
-          {busy
-            ? "…"
-            : confirming
-              ? "Wirklich alle Sitzungspuffer löschen"
-              : "Sitzungspuffer löschen"}
-        </button>
-      </div>
-      {note ? (
-        <span className="settings-saved" role="status">
-          {note}
-        </span>
-      ) : null}
-      {error ? <span className="settings-error">{error}</span> : null}
     </div>
   );
 }

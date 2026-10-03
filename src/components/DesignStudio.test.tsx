@@ -4,11 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import DesignStudio from "./DesignStudio";
 
 const getLandingPage = vi.fn();
-const setLandingPage = vi.fn();
 
 vi.mock("../lib/ipc", () => ({
   getLandingPage: (...args: unknown[]) => getLandingPage(...args),
-  setLandingPage: (...args: unknown[]) => setLandingPage(...args),
   describeError: (cause: unknown) => String(cause),
 }));
 
@@ -22,7 +20,7 @@ describe("DesignStudio", () => {
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
   });
 
-  it("F2 has no editor and never calls setLandingPage", async () => {
+  it("F2 has no editor", async () => {
     getLandingPage.mockResolvedValue("# A");
     const { rerender } = render(<DesignStudio projectId="project-a" />);
     expect(await screen.findByRole("heading", { name: "A" })).toBeInTheDocument();
@@ -32,7 +30,6 @@ describe("DesignStudio", () => {
     expect(screen.queryByLabelText("Markdown-Editor")).not.toBeInTheDocument();
 
     rerender(<DesignStudio projectId="project-b" />);
-    expect(setLandingPage).not.toHaveBeenCalled();
   });
 
   it("F0-6 copy action uses markdown, not the HTML projection", async () => {
@@ -47,6 +44,5 @@ describe("DesignStudio", () => {
     await waitFor(() => expect(button).toBeEnabled());
     button.click();
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("[extern](https://example.com)"));
-    expect(setLandingPage).not.toHaveBeenCalled();
   });
 });
