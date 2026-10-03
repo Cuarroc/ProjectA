@@ -112,6 +112,15 @@ pub async fn launch_worker(
     let profile = profiles::find_profile(profile_id).ok_or("unknown selected profile")?;
     route.validate(&policy, &profile)?;
     store.agent_run_context(run_id, owner, fence).await?;
+    // W2-04c: the dispatched role is known before anything is reserved or
+    // minted. A coordinator has no write path, so it gets neither a launch row
+    // nor a credential; `create_worker_impl` keeps its own check as backstop.
+    let role = store.development_run_role(run_id).await?;
+    if role == crate::store::development_launches::DispatchRole::Coordinator {
+        return Err(format!(
+            "{ERR_REFUSED}a coordinator run gets no launch: the coordinator has no write path"
+        ));
+    }
     learnings::ensure_profile_enabled(store, profile_id).await?;
     if profiles::find_profile(profile_id).is_none() {
         return Err(format!("{ERR_UNKNOWN}agent profile: {profile_id}"));
@@ -131,7 +140,7 @@ pub async fn launch_worker(
         &|| api.revoke_run_credentials(run_id),
         async {
             store
-                .bind_development_launch_route(run_id, owner, fence, &route.receipt())
+                .bind_development_launch_route(run_id, owner, fence, &route.receipt_for_role(role))
                 .await?;
             let context = store.agent_run_context(run_id, owner, fence).await?;
             let run = run_id.to_string();

@@ -260,8 +260,24 @@ impl PreparedRoute {
             "executionObservation":{"state":"unavailable","reason":"selection uses prior provider evidence; this run has not attested its model or effort"}})
     }
 
+    /// The receipt as bound at launch: the route plus the role the run was
+    /// dispatched in, which the store checks against the run (W2-04c).
+    pub fn receipt_for_role(
+        &self,
+        role: crate::store::development_launches::DispatchRole,
+    ) -> Value {
+        let mut receipt = self.receipt();
+        receipt["dispatchRole"] = json!(role.as_str());
+        receipt
+    }
+
     pub fn validate_bound_receipt(&self, receipt: &Value) -> Result<(), String> {
-        if receipt != &self.receipt() {
+        // The role claim is the launcher's, not part of the prepared route.
+        let mut receipt = receipt.clone();
+        if let Some(object) = receipt.as_object_mut() {
+            object.remove("dispatchRole");
+        }
+        if receipt != self.receipt() {
             return Err("prepared development route differs from its durable binding; reconcile without launch".into());
         }
         Ok(())
@@ -534,6 +550,22 @@ mod tests {
             route.receipt().pointer("/selection/resolved/provider"),
             Some(&json!("codex"))
         );
+    }
+
+    #[test]
+    fn role_claim_is_bound_and_does_not_break_route_validation() {
+        let (profile, candidate, request) = fixture(Provider::Claude);
+        let route = PreparedRoute::select(
+            &DevelopmentPolicy::defaults(),
+            request,
+            std::slice::from_ref(&candidate),
+            std::slice::from_ref(&profile),
+        )
+        .unwrap();
+        let bound =
+            route.receipt_for_role(crate::store::development_launches::DispatchRole::Reviewer);
+        assert_eq!(bound["dispatchRole"], "reviewer");
+        route.validate_bound_receipt(&bound).unwrap();
     }
 
     #[test]
