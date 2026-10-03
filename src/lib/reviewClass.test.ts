@@ -12,6 +12,9 @@ describe("classifyPath", () => {
     "src-tauri/src/pty.rs",
     "src-tauri/src/api/agent_access.rs",
     "src-tauri/src/api/credential_acl.rs",
+    "src-tauri/src/db_restore.rs",
+    "src-tauri/src/supervisor.rs",
+    "src-tauri/src/capabilities.rs",
   ])("treats %s as class A", (path) => {
     expect(classifyPath(path)).toBe("A");
   });
@@ -43,7 +46,7 @@ describe("classifyPath", () => {
     },
   );
 
-  it.each(["Cargo.lock", "package.json", ".github/workflows/ci.yml", "src/notes.md", "LICENSE"])(
+  it.each(["Cargo.lock", "package.json", ".github/workflows/ci.yml", "src/styles.css", "src/notes.md", "LICENSE"])(
     "does not guess for %s",
     (path) => {
       expect(classifyPath(path)).toBe("unknown");
@@ -80,6 +83,7 @@ describe("reviewClassInfo", () => {
       expect(`${info.label} ${info.explanation}`).not.toMatch(/\bsicher\b|grün/i);
     }
     expect(reviewClassInfo("A").explanation).toMatch(/zwei Prüfer/);
+    expect(reviewClassInfo("B").explanation).toMatch(/anderen Modellfamilie/);
     expect(reviewClassInfo("unknown").explanation).toMatch(/wie A/);
   });
 });
