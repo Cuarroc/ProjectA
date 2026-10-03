@@ -686,6 +686,7 @@ function AppContent() {
     (worker: Worker) => {
       void (async () => {
         setBusyWorkerId(worker.id);
+        setWorkersError(null);
         try {
           const updated = await respawnWorker(worker.id);
           setWorkers((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));

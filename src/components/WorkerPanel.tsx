@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { shortTask } from "../lib/text";
 import type { AgentProfile, Worker } from "../types";
@@ -40,6 +40,14 @@ export default function WorkerPanel({
   const workers = allWorkers.filter((worker) => worker.kind === "worker");
   // Archiving cannot be undone, so it takes a second click on this worker.
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  useEffect(() => {
+    if (
+      confirmingId !== null &&
+      !allWorkers.some((worker) => worker.id === confirmingId && worker.status === "running")
+    ) {
+      setConfirmingId(null);
+    }
+  }, [allWorkers, confirmingId]);
 
   const profileName = (profileId: string) =>
     profiles.find((profile) => profile.id === profileId)?.name ?? profileId;
