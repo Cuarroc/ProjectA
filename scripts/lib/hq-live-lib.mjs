@@ -3,8 +3,26 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, renameSync, unlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join, dirname } from "node:path";
+import { homedir } from "node:os";
 
 const PROFILE_ID = /^[a-z0-9][a-z0-9-]*$/;
+
+/// Resolve the control API descriptor using the same explicit override as `pa`.
+export function descriptorCandidates(env = process.env) {
+  if (env.PROJECTA_API_FILE) return [env.PROJECTA_API_FILE];
+  const candidates = [];
+  if (env.PROJECTA_API_DESCRIPTOR) return [env.PROJECTA_API_DESCRIPTOR];
+  if (env.PROJECTA_APP_DATA) return [join(env.PROJECTA_APP_DATA, "projecta-api.json")];
+  // Tauri's app_data_dir on Windows is %APPDATA% (Roaming) — checked before
+  // LOCALAPPDATA, which never holds the descriptor.
+  if (env.APPDATA) candidates.push(join(env.APPDATA, "com.projecta.app", "projecta-api.json"));
+  if (env.LOCALAPPDATA) candidates.push(join(env.LOCALAPPDATA, "com.projecta.app", "projecta-api.json"));
+  const xdgDataHome = env.XDG_DATA_HOME || (env.HOME ? join(env.HOME, ".local", "share") : null);
+  if (xdgDataHome) candidates.push(join(xdgDataHome, "com.projecta.app", "projecta-api.json"));
+  const home = env.HOME || homedir();
+  if (home) candidates.push(join(home, "Library", "Application Support", "com.projecta.app", "projecta-api.json"));
+  return candidates;
+}
 
 /// Progress over the milestone packages of docs/PLAN.md (done / all).
 export function snapshotProgress(snapshot) {

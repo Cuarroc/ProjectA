@@ -5,6 +5,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal, type ITerminalAddon } from "@xterm/xterm";
 
+import { loadTerminalFont, loadTerminalFontSize, TERMINAL_FONTS, type TerminalFontId } from "../lib/settings";
 import { describeError, getScrollback, onPtyOutput, resizePty, writePty } from "../lib/ipc";
 import "@xterm/xterm/css/xterm.css";
 
@@ -62,6 +63,9 @@ interface TerminalViewProps {
   sessionId: string;
   /** Reported to the status bar / error banner when IPC fails. */
   onError: (message: string) => void;
+  /** Defaults to the saved settings; the app passes them so changes apply live. */
+  font?: TerminalFontId;
+  fontSize?: number;
 }
 
 /** sRGB relative luminance (WCAG), used by {@link contrastRatio}. */
@@ -132,7 +136,12 @@ function queryCompiles(query: string, regex: boolean): boolean {
  * active; on every (re)mount it re-attaches by replaying `get_scrollback`
  * before any live output, so switching tabs never loses terminal history.
  */
-export default function TerminalView({ sessionId, onError }: TerminalViewProps) {
+export default function TerminalView({
+  sessionId,
+  onError,
+  font = loadTerminalFont(),
+  fontSize = loadTerminalFontSize(),
+}: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep the latest callback without re-running the (expensive) mount effect.
   const onErrorRef = useRef(onError);
@@ -141,6 +150,10 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
   // Set once by the mount effect below; read by the search bar, which lives
   // outside that effect so it can be plain React state.
   const termRef = useRef<Terminal | null>(null);
+  // Latest font, read at mount; the effect further down applies later changes.
+  const fontRef = useRef({ font, fontSize });
+  fontRef.current = { font, fontSize };
+  const refitRef = useRef<() => void>(() => undefined);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -252,8 +265,8 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
 
     const term = new Terminal({
       theme: THEME,
-      fontFamily: '"Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace',
-      fontSize: 13,
+      fontFamily: TERMINAL_FONTS[fontRef.current.font].stack,
+      fontSize: fontRef.current.fontSize,
       lineHeight: 1.2,
       cursorBlink: true,
       scrollback: 10_000,
@@ -318,6 +331,10 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
     };
     const repaint = () => {
       if (!disposed) term.refresh(0, Math.max(0, term.rows - 1));
+    };
+    refitRef.current = () => {
+      applyFit();
+      repaint();
     };
 
     term.open(container);
@@ -396,6 +413,7 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
       searchResultsSub.dispose();
       searchAddon.dispose();
       termRef.current = null;
+      refitRef.current = () => undefined;
       searchAddonRef.current = null;
       // xterm 5.5's `open()` queues `setTimeout(() => viewport.syncScrollArea())`
       // and never cancels it; once the Terminal is disposed that callback
@@ -428,6 +446,18 @@ export default function TerminalView({ sessionId, onError }: TerminalViewProps) 
       });
     };
   }, [sessionId]);
+
+  // Font changes from the settings reach a running terminal: new options,
+  // then a fit, because the cell size (and so cols/rows) changed.
+  useEffect(() => {
+    const term = termRef.current;
+    const stack = TERMINAL_FONTS[font].stack;
+    // Nothing to do right after mount: the terminal was built with these.
+    if (!term || (term.options.fontFamily === stack && term.options.fontSize === fontSize)) return;
+    term.options.fontFamily = stack;
+    term.options.fontSize = fontSize;
+    refitRef.current();
+  }, [font, fontSize]);
 
   // "1"-based for people, "?" once the addon stops indexing past its
   // highlight limit (`resultIndex === -1`, see the addon's own typings).

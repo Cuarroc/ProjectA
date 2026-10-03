@@ -696,6 +696,7 @@ a {
 /* The first rendered state has no project context yet. Keep it calm and
    precise: activity is real, but a percentage would only invent progress. */
 .bootstrap-screen {
+  grid-column: 1 / -1;
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -1372,6 +1373,11 @@ a {
 .worker-action:hover:not(:disabled) {
   background: var(--color-pressed);
   color: var(--fg);
+}
+
+.worker-note {
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
 }
 
 /* ---- task queue -------------------------------------------------------- */
@@ -4862,7 +4868,7 @@ scripts/contrast-check.mjs. */
 
 .insights-heading {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: calc(var(--text-base) + 1px);
   font-weight: 600;
 }
 
@@ -6454,14 +6460,14 @@ scripts/contrast-check.mjs. */
 
 .diagnose-panel h2 {
   margin: 0 0 8px;
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
 .diagnose-lede {
   margin: 0 0 12px;
   color: var(--fg-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.55;
 }
 
@@ -6523,7 +6529,7 @@ scripts/contrast-check.mjs. */
 .diagnose-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .diagnose-table th,
@@ -6669,6 +6675,25 @@ scripts/contrast-check.mjs. */
   --ui-control-min: 32px;
   --ui-row-min: 32px;
   --ui-panel-pad: 14px;
+}
+
+/* UI text size: only the type tokens move; "normal" is the :root default. */
+.app[data-ui-font-size="small"] {
+  --text-xs: 9.5px;
+  --text-sm: 10px;
+  --text-md: 11px;
+  --text-base: 12px;
+  --text-lg: 14px;
+  font-size: var(--text-base);
+}
+
+.app[data-ui-font-size="large"] {
+  --text-xs: 12px;
+  --text-sm: 12.5px;
+  --text-md: 14px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  font-size: var(--text-base);
 }
 
 .app .field,
