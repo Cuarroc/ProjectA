@@ -1,46 +1,71 @@
-// Acceptance compares measured runs only. Missing telemetry never becomes zero.
-export const CASES = Object.freeze([
-  'config-validation', 'profile-roundtrip', 'profile-path', 'provider-unavailable',
-  'routine-ui-edit', 'ui-accessibility', 'ui-project-race', 'rust-regression',
-  'dependency-order', 'claim-race', 'stale-fence', 'crash-before-spawn',
-  'crash-after-spawn', 'budget-exhaustion', 'model-escalation', 'review-invalidation',
-  'lesson-reuse', 'offline-hq', 'update-candidate', 'update-recovery',
+import { performance } from 'node:perf_hooks';
+import { isDeepStrictEqual } from 'node:util';
+
+export const TASKS = Object.freeze([
+  {
+    id: 'config-validation',
+    prompt: 'Decide whether unattended mode may start.',
+    input: { mode: 'continuous', userApproved: false },
+    expected: { accepted: false, reason: 'user-approval-required' },
+  },
+  {
+    id: 'dependency-order',
+    prompt: 'Return a valid execution order for these dependent tasks.',
+    input: { tasks: [{ id: 'review', after: ['implement'] }, { id: 'plan', after: [] }, { id: 'implement', after: ['plan'] }] },
+    expected: ['plan', 'implement', 'review'],
+  },
+  {
+    id: 'budget-exhaustion',
+    prompt: 'Decide whether the task fits the remaining token budget.',
+    input: { remainingTokens: 120, estimatedTokens: 180 },
+    expected: { decision: 'block' },
+  },
+  {
+    id: 'review-invalidation',
+    prompt: 'Decide whether this review still applies to the candidate.',
+    input: { reviewedCommit: 'abc123', candidateCommit: 'def456' },
+    expected: { valid: false },
+  },
+  {
+    id: 'provider-unavailable',
+    prompt: 'Classify a temporary provider outage.',
+    input: { providerState: 'unavailable', attempts: 1, maxAttempts: 2 },
+    expected: { terminal: 'blocked', retryable: true },
+  },
 ]);
 
-function measure(rows, name) {
-  if (!Array.isArray(rows) || rows.length !== CASES.length) throw new Error(`${name}: exactly 20 measured cases required`);
-  const ids = new Set(); const runs = new Set();
-  for (const row of rows) {
-    if (!CASES.includes(row.caseId) || ids.has(row.caseId)) throw new Error(`${name}: invalid or duplicate case`);
-    ids.add(row.caseId);
-    if (row.source !== 'measured' || typeof row.runId !== 'string' || !row.runId || runs.has(row.runId) || typeof row.evidence !== 'string' || !row.evidence.trim()) throw new Error(`${name}: unique runs and measured evidence required`);
-    runs.add(row.runId);
-    for (const field of ['tokens', 'elapsedMs', 'reviewRejections', 'rework', 'escapedRegressions']) {
-      if (!Number.isSafeInteger(row[field]) || row[field] < 0) throw new Error(`${name}: ${field} is missing or invalid`);
-    }
-    if (!row.elapsedMs || typeof row.accepted !== 'boolean') throw new Error(`${name}: elapsed time and acceptance are required`);
-  }
-  const accepted = rows.filter(row => row.accepted).length;
-  if (!accepted) throw new Error(`${name}: no accepted tasks`);
-  const total = field => rows.reduce((sum, row) => sum + row[field], 0);
-  const elapsed = rows.map(row => row.elapsedMs).sort((a, b) => a - b);
-  return { accepted, tokensPerAcceptedTask: total('tokens') / accepted,
-    medianElapsedMs: (elapsed[9] + elapsed[10]) / 2,
-    reviewRejections: total('reviewRejections'), rework: total('rework'), escapedRegressions: total('escapedRegressions') };
-}
+export const CASES = Object.freeze(TASKS.map(({ id }) => id));
 
-export function compareDevelopmentRuns(baselineRows, candidateRows) {
-  const baseline = measure(baselineRows, 'baseline');
-  const candidate = measure(candidateRows, 'candidate');
-  const baselineRuns = new Set(baselineRows.map(row => row.runId));
-  if (candidateRows.some(row => baselineRuns.has(row.runId))) throw new Error('Baseline and candidate must be separate observed runs');
-  if (!baseline.tokensPerAcceptedTask) throw new Error('Zero-token baseline cannot establish token reduction');
-  const tokenReduction = 1 - candidate.tokensPerAcceptedTask / baseline.tokensPerAcceptedTask;
-  const elapsedReduction = 1 - candidate.medianElapsedMs / baseline.medianElapsedMs;
-  const acceptancePreserved = baselineRows.every(row => !row.accepted || candidateRows.find(c => c.caseId === row.caseId).accepted);
-  const qualityPreserved = acceptancePreserved && candidate.escapedRegressions <= baseline.escapedRegressions;
-  return { schemaVersion: 1, baseline, candidate, tokenReduction, elapsedReduction, qualityPreserved,
-    evidenceVerified: false,
-    targetAssessment: qualityPreserved && tokenReduction >= 0.20 - Number.EPSILON && elapsedReduction >= 0.15 - Number.EPSILON ? 'targets-met-unverified' : 'targets-not-met',
-    recommendation: 'retain-previous-policy' };
+export async function runDevelopmentBenchmark(runTask, adapter = 'worker-adapter') {
+  if (typeof runTask !== 'function') throw new TypeError('Worker adapter must export a function');
+  const results = [];
+  const benchmarkStarted = performance.now();
+  for (const task of TASKS) {
+    const started = performance.now();
+    let actual = null;
+    let error = null;
+    try {
+      actual = await runTask(structuredClone({ id: task.id, prompt: task.prompt, input: task.input }));
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+    results.push({
+      id: task.id,
+      passed: error === null && isDeepStrictEqual(actual, task.expected),
+      durationMs: Number((performance.now() - started).toFixed(3)),
+      expected: task.expected,
+      actual,
+      ...(error === null ? {} : { error }),
+    });
+  }
+  return {
+    schemaVersion: 1,
+    adapter,
+    tasks: results,
+    summary: {
+      passed: results.filter(({ passed }) => passed).length,
+      total: TASKS.length,
+      durationMs: Number((performance.now() - benchmarkStarted).toFixed(3)),
+    },
+  };
 }
