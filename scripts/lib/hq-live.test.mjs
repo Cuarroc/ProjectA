@@ -10,18 +10,37 @@ import {
   parseBuiltinProfiles,
   mergeProfileViews,
   resolveAgentsFile,
+  descriptorCandidates,
 } from "./hq-live-lib.mjs";
 import * as lib from "./hq-live-lib.mjs";
+
+test("descriptor candidates prefer PROJECTA_API_FILE when explicitly set", () => {
+  const descriptor = "/tmp/projecta-api.json";
+  assert.deepEqual(descriptorCandidates({ PROJECTA_API_FILE: descriptor, HOME: "/tmp/home" }), [descriptor]);
+});
+
+test("PROJECTA_API_FILE wins over every other descriptor source", () => {
+  const env = {
+    PROJECTA_API_FILE: "/tmp/file.json",
+    PROJECTA_API_DESCRIPTOR: "/tmp/descriptor.json",
+    PROJECTA_APP_DATA: "/tmp/appdata",
+    HOME: "/tmp/home",
+  };
+  assert.deepEqual(descriptorCandidates(env), ["/tmp/file.json"]);
+  delete env.PROJECTA_API_FILE;
+  assert.deepEqual(descriptorCandidates(env), ["/tmp/descriptor.json"]);
+});
 
 // The proxy resolves the API descriptor like Tauri does: APPDATA (Roaming)
 // before LOCALAPPDATA on Windows. Asserted against the script source so a
 // reorder shows up red here instead of as a 503 in the user's browser.
 test("descriptor candidates prefer APPDATA over LOCALAPPDATA", () => {
-  const source = readFileSync(join("scripts", "hq-live.mjs"), "utf8");
+  const source = readFileSync(join("scripts", "lib", "hq-live-lib.mjs"), "utf8");
+  const proxySource = readFileSync(join("scripts", "hq-live.mjs"), "utf8");
   const appdataAt = source.indexOf('env.APPDATA, "com.projecta.app"');
   const localAt = source.indexOf('env.LOCALAPPDATA, "com.projecta.app"');
   assert.ok(appdataAt > 0 && localAt > appdataAt, "APPDATA must be searched before LOCALAPPDATA");
-  assert.match(source, /Control API is not running — start the app/);
+  assert.match(proxySource, /Control API is not running — start the app/);
   assert.ok(existsSync(join("scripts", "hq-live.mjs")));
 });
 
@@ -29,7 +48,7 @@ test("descriptor candidates prefer APPDATA over LOCALAPPDATA", () => {
 // — without these, `npm run hq:live` always reported hq_api_unavailable on
 // those platforms even with the app running.
 test("descriptor candidates cover the Linux and macOS Tauri app-data directories", () => {
-  const source = readFileSync(join("scripts", "hq-live.mjs"), "utf8");
+  const source = readFileSync(join("scripts", "lib", "hq-live-lib.mjs"), "utf8");
   assert.match(source, /XDG_DATA_HOME/);
   assert.match(source, /"Library", "Application Support", "com\.projecta\.app"/);
 });
