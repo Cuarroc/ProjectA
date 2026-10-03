@@ -136,6 +136,49 @@ Der Release-*Build* selbst ist lokal machbar (`npx tauri build`,
 `release.yml`; es nach `scripts/` auszulagern ist ein offener Punkt (in dieser
 Umgebung stand kein pwsh zur Verfügung, um die Auslagerung zu belegen).
 
+## Was „grün" für W3-08 nicht belegt: der installierte HQ-v1-Stand
+
+Die Gates oben belegen den **Quelltext**. Ob die *tatsächlich laufende,
+installierte* App HQ v1 spricht, ist eine andere Frage (Paket W3-08 in
+`docs/PLAN.md`, Stand: offen). Quelle, Installer-Inhalt oder Konfiguration
+allein schließen sie nicht — W3-08 gilt aus diesen Quellen nie als erledigt.
+
+Der spätere Beleg braucht alle vier Teile zugleich:
+
+1. **Welche Datei läuft wirklich?** Die tatsächlich laufende, installierte
+   ausführbare Datei, samt Bindung an das Artefakt bzw. den Build-Commit.
+2. **HQ v1 antwortet.** Das Control-API der laufenden App ist erreichbar und
+   spricht HQ v1.
+3. **`manifest.state == matched`**, ausdrücklich — gegen den Checkout *an
+   diesem Build-Commit*. Der Befehl vergleicht den SHA-256 der eingebetteten
+   `agent-defaults.json` (LF-normalisiert) mit dem der Laufzeit.
+4. Alle drei beziehen sich auf **denselben** Build.
+
+Befehle für diesen späteren Beleg (nur lesend; hier **nicht** ausgeführt, die
+App wird dafür nicht gestartet — das sind Anweisungen, keine Beobachtungen):
+
+```sh
+npm run dev:doctor -- --json    # ohne --apply; Zeile "runtime" lesen
+pa hq runtime                   # profilesPath, capabilities, provenance.builtinManifestSha256
+```
+
+Fallstricke, jeweils belegt durch den Quelltext:
+
+- `runtime.state: ok` kann mit `manifest.state: unavailable` zusammen
+  auftreten (kein Vergleichswert). Erreichbarkeit („runtime bereit") ist daher
+  **kein** Beleg; verlangt wird `matched`, nicht bloß „ok".
+- Das Manifest ist ein Fingerabdruck der *ausgelieferten Standardprofile*. Es
+  ist keine Anbieter-Bestätigung und sagt nichts über Modell, Effort oder
+  Zugangsdaten.
+- Das Manifest des `native-package` ist etwas anderes: die signierte
+  Nutzlast-Identität von `native-capture`, nicht die HQ-`agent-defaults`.
+- Eine MSI-Inventur mit `installed: false` / `payloadBytesVerified: false`
+  belegt nur die Dateitabelle. MSI-Hash und Exe-Hash sind verschiedene Objekte;
+  dass beide existieren (oder eine Reparatur lief), ist keine Bindung.
+- Die Bahn öffnet keine neue Voraussetzung: kein Produktions-Signing (R-1).
+  Der Produktionsschlüssel (W3-07) bleibt eine spätere Entscheidung des
+  Nutzers; Installieren und Release sind je eine eigene Nutzerentscheidung.
+
 ## Wenn ein Gate rot ist
 
 `gates.sh` bricht wie ein CI-Schritt beim ersten roten Gate ab, nennt den
