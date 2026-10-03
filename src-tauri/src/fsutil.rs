@@ -13,6 +13,8 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::fs_replace::replace_file;
+
 /// Write `body` to `path` so a crash mid-write never leaves half a file: the
 /// bytes land in a sibling temp file, are flushed, then replace the target in
 /// one atomic step. The temp file is removed again on every failure.
@@ -67,55 +69,6 @@ pub fn write_atomic(path: &Path, body: &[u8]) -> Result<(), String> {
         ));
     }
     sync_parent(path)
-}
-
-/// Windows needs `MoveFileExW` with REPLACE_EXISTING called directly (std's
-/// `rename` guarantee there is toolchain-dependent). Freshly written files are
-/// briefly scanned by indexers/AV, which makes the move fail transiently with
-/// access/sharing errors; retry within a small bounded budget, return any
-/// other error at once.
-#[cfg(windows)]
-fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-
-    let wide = |path: &Path| -> Vec<u16> {
-        path.as_os_str()
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect()
-    };
-    let from = wide(tmp);
-    let to = wide(target);
-    const RETRYABLE: [i32; 2] = [5, 32]; // ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION
-    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
-    loop {
-        let ok = unsafe {
-            MoveFileExW(
-                from.as_ptr(),
-                to.as_ptr(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-            )
-        };
-        if ok != 0 {
-            return Ok(());
-        }
-        let error = std::io::Error::last_os_error();
-        if !error.raw_os_error().is_some_and(|c| RETRYABLE.contains(&c))
-            || std::time::Instant::now() >= deadline
-        {
-            return Err(error);
-        }
-        std::thread::sleep(std::time::Duration::from_millis(25));
-    }
-}
-
-/// The unix counterpart: `rename(2)` replaces atomically by definition.
-#[cfg(not(windows))]
-fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
-    fs::rename(tmp, target)
 }
 
 /// fsync the directory so the rename itself survives a crash (unix only;
