@@ -60,20 +60,29 @@ export default function AttentionInbox({
   const prevInbox = useRef<InboxEntry[]>([]);
   const sink = useMemo(() => webviewNotifySink(), []);
 
+  // A reply may only land while its project is still the active one.
+  const activeProject = useRef(projectId);
+  activeProject.current = projectId;
+
   const refreshRecos = useCallback(async () => {
     if (projectId === null) {
       setRecos([]);
       return;
     }
     try {
-      setRecos(await listRecommendations(projectId));
+      const next = await listRecommendations(projectId);
+      if (activeProject.current !== projectId) return;
+      setRecos(next);
       setError(null);
     } catch (cause) {
+      if (activeProject.current !== projectId) return;
       setError(describeError(cause));
     }
   }, [projectId]);
 
   useEffect(() => {
+    setRecos([]);
+    setError(null);
     void refreshRecos();
     if (projectId === null) return;
     const timer = window.setInterval(() => void refreshRecos(), POLL_MS);
