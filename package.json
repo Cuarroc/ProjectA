@@ -45,8 +45,8 @@
     "dev:start-check": "node scripts/dev/start-check.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.1.1",
-    "@tauri-apps/plugin-updater": "^2.12.0",
+    "@tauri-apps/api": "^2.12.0",
+    "@tauri-apps/plugin-updater": "^2.13.0",
     "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "~0.10.0",
     "@xterm/addon-search": "~0.15.0",
@@ -58,10 +58,10 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.62.1",
-    "@tauri-apps/cli": "^2.11.5",
+    "@tauri-apps/cli": "^2.12.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^24.13.6",
+    "@types/node": "^24.19.0",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
@@ -70,7 +70,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^30.1.1",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.70.1",
+    "typescript-eslint": "^8.71.0",
     "vite": "^6.0.5",
     "vitest": "^4.1.11"
   }
