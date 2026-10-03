@@ -6743,3 +6743,24 @@ scripts/contrast-check.mjs. */
 .settings-density-options .settings-check {
   min-height: var(--ui-control-min);
 }
+
+.diff-verdict-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diff-verdict-detail {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+}
+
+.error-note p {
+  margin: 0 0 4px;
+}
+
+.error-note-raw {
+  white-space: pre-wrap;
+  margin: 4px 0 0;
+}

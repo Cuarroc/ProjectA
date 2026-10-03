@@ -2,7 +2,6 @@
 import { createServer } from "node:http";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, resolve, extname, dirname, sep, isAbsolute } from "node:path";
-import { homedir } from "node:os";
 import { randomBytes, createHash } from "node:crypto";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -15,6 +14,7 @@ import { addLesson, feedbackLesson, lessonBadges, lessonBrief, lessonStats, matc
 import { evaluateContinuousReadiness } from "./lib/continuous-readiness.mjs";
 import {
   mergeProfileViews,
+  descriptorCandidates,
   parseBuiltinProfiles,
   readAgentsFile,
   resolveAgentsFile,
@@ -28,27 +28,6 @@ const root = process.cwd();
 const docs = join(root, "docs", "dev-hq");
 const port = Number(process.env.HQ_PORT || 4173);
 const lessonsFile = process.env.HQ_LESSONS_FILE || join(docs, "lessons.json");
-function descriptorCandidates(env = process.env) {
-  const candidates = [];
-  if (env.PROJECTA_API_DESCRIPTOR) return [env.PROJECTA_API_DESCRIPTOR];
-  if (env.PROJECTA_APP_DATA) return [join(env.PROJECTA_APP_DATA, "projecta-api.json")];
-  // Tauris app_data_dir on Windows is %APPDATA% (Roaming) — checked before
-  // LOCALAPPDATA, which never holds the descriptor.
-  if (env.APPDATA) candidates.push(join(env.APPDATA, "com.projecta.app", "projecta-api.json"));
-  if (env.LOCALAPPDATA) candidates.push(join(env.LOCALAPPDATA, "com.projecta.app", "projecta-api.json"));
-  // Tauri's app_data_dir on Linux is $XDG_DATA_HOME (falling back to
-  // ~/.local/share) and on macOS ~/Library/Application Support — neither was
-  // covered, so a default `npm run hq:live` on those platforms always missed
-  // the descriptor even with the app running.
-  const xdgDataHome = env.XDG_DATA_HOME || (env.HOME ? join(env.HOME, ".local", "share") : null);
-  if (xdgDataHome) candidates.push(join(xdgDataHome, "com.projecta.app", "projecta-api.json"));
-  const home = env.HOME || homedir();
-  if (home) {
-    candidates.push(join(home, "Library", "Application Support", "com.projecta.app", "projecta-api.json"));
-  }
-  return candidates;
-}
-
 // Der Server erzeugt den Snapshot beim Start neu — im Betrieb richtig, im
 // Test ein Seiteneffekt auf getrackte Dateien: hq-routes/hq-security starten
 // hq-live mit dem Repo als cwd, und dev-hq.mjs schreibt daraufhin

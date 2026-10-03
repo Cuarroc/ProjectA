@@ -621,26 +621,34 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
           </div>
         )}
         <div className="diff-verdict">
-          <button
-            type="button"
-            className="worker-action"
-            disabled={busy || loading || !diff?.code}
-            aria-label="Review freigeben"
-            title="Freigabe an den angezeigten Merge-Tree binden"
-            onClick={() => submitVerdict("approved")}
-          >
-            Freigeben
-          </button>
-          <button
-            type="button"
-            className="worker-action"
-            disabled={busy || loading || !diff?.code}
-            aria-label="Änderungen anfordern"
-            title="Änderungsgesuch an den angezeigten Merge-Tree binden"
-            onClick={() => submitVerdict("changes_requested")}
-          >
-            Änderungen anfordern
-          </button>
+          <div className="diff-verdict-choice">
+            <button
+              type="button"
+              className="worker-action"
+              disabled={busy || loading || !diff?.code}
+              aria-label="Review freigeben"
+              title="Freigabe an den angezeigten Merge-Tree binden"
+              onClick={() => submitVerdict("approved")}
+            >
+              Freigeben
+            </button>
+            <p className="diff-setup-note">Du sagst: Das sieht gut aus, es darf übernommen werden.</p>
+            <p className="diff-verdict-detail">Freigabe an den angezeigten Merge-Tree binden</p>
+          </div>
+          <div className="diff-verdict-choice">
+            <button
+              type="button"
+              className="worker-action"
+              disabled={busy || loading || !diff?.code}
+              aria-label="Änderungen anfordern"
+              title="Änderungsgesuch an den angezeigten Merge-Tree binden"
+              onClick={() => submitVerdict("changes_requested")}
+            >
+              Änderungen anfordern
+            </button>
+            <p className="diff-setup-note">Du sagst: Das muss noch überarbeitet werden.</p>
+            <p className="diff-verdict-detail">Änderungsgesuch an den angezeigten Merge-Tree binden</p>
+          </div>
         </div>
       </section>
 
