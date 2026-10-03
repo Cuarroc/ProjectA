@@ -1,5 +1,7 @@
 # ARCH-03c: share the replace primitive with DB restore
 
+Status: entwurf
+
 Goal: `pa db restore` replaces the database through the same replace primitive
 as `fsutil::write_atomic`, so a transient scanner lock on Windows is retried
 instead of failing the restore on the first attempt.
