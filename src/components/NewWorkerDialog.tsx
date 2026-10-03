@@ -256,11 +256,11 @@ export default function NewWorkerDialog({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="New worker"
+        aria-label="Neuer Worker"
         onMouseDown={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <div className="modal-title">New worker — {projectName}</div>
+        <div className="modal-title">Neuer Worker — {projectName}</div>
         <div className="modal-body">
           <div className="field-header">
             <label className="field-label" htmlFor="worker-task">
@@ -281,7 +281,7 @@ export default function NewWorkerDialog({
             className="field field-textarea"
             rows={4}
             autoFocus
-            placeholder="What should this agent do?"
+            placeholder="Was soll dieser Agent tun?"
             value={task}
             disabled={locked}
             onChange={(event) => setTask(event.target.value)}
@@ -366,7 +366,7 @@ export default function NewWorkerDialog({
           ) : null}
 
           <label className="field-label" htmlFor="worker-profile">
-            Agent profile
+            Agent-Profil
           </label>
           <select
             id="worker-profile"
@@ -375,9 +375,9 @@ export default function NewWorkerDialog({
             disabled={locked || profilesLoading || profiles.length === 0}
             onChange={(event) => handleSelectProfile(event.target.value)}
           >
-            {profilesLoading ? <option value="">Loading profiles…</option> : null}
+            {profilesLoading ? <option value="">Profile werden geladen …</option> : null}
             {!profilesLoading && profiles.length === 0 ? (
-              <option value="">No agent profiles configured</option>
+              <option value="">Keine Agent-Profile eingerichtet</option>
             ) : null}
             {profiles.map((profile) => {
               const entry = quotaFor(profile.id);
@@ -450,10 +450,10 @@ export default function NewWorkerDialog({
         </div>
         <div className="modal-actions">
           <button type="button" className="button-ghost" onClick={handleCancel} disabled={busy}>
-            {sharpening.active ? "Schärfung abbrechen" : "Cancel"}
+            {sharpening.active ? "Schärfung abbrechen" : "Abbrechen"}
           </button>
           <button type="submit" className="button-primary" disabled={!canSubmit}>
-            {busy ? "Creating…" : "Create worker"}
+            {busy ? "Wird angelegt …" : "Worker anlegen"}
           </button>
         </div>
       </form>

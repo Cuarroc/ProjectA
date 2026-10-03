@@ -200,13 +200,13 @@ export default function Sidebar({
 
       <section className="sidebar-section">
         <div className="section-head">
-          <h2 className="section-title">Projects</h2>
+          <h2 className="section-title">Projekte</h2>
           <button
             type="button"
             className="section-action"
             aria-expanded={formOpen}
-            title={formOpen ? "Cancel" : "Add project"}
-            aria-label={formOpen ? "Cancel" : "Add project"}
+            title={formOpen ? "Abbrechen" : "Projekt hinzufügen"}
+            aria-label={formOpen ? "Abbrechen" : "Projekt hinzufügen"}
             onClick={() => setFormOpen((open) => !open)}
           >
             {formOpen ? "×" : "+"}
@@ -225,21 +225,21 @@ export default function Sidebar({
             />
             <input
               className="field"
-              placeholder="Repo path"
-              aria-label="Repo path"
+              placeholder="Repo-Pfad"
+              aria-label="Repo-Pfad"
               value={repoPath}
               onChange={(event) => setRepoPath(event.target.value)}
             />
             <button type="submit" className="button-primary" disabled={!canSubmit}>
-              {submitting ? "Adding…" : "Add project"}
+              {submitting ? "Wird hinzugefügt …" : "Projekt hinzufügen"}
             </button>
           </form>
         ) : null}
 
-        {loading ? <div className="sidebar-note">Loading…</div> : null}
+        {loading ? <div className="sidebar-note">Wird geladen …</div> : null}
         {error ? <div className="sidebar-note sidebar-error" role="alert">{error}</div> : null}
         {!loading && projects.length === 0 ? (
-          <div className="sidebar-note">No projects yet.</div>
+          <div className="sidebar-note">Noch keine Projekte.</div>
         ) : null}
 
         <ul className="project-list">
@@ -270,7 +270,7 @@ export default function Sidebar({
                     <button
                       type="button"
                       className="project-github"
-                      aria-label={`GitHub of ${project.name}`}
+                      aria-label={`GitHub mit ${project.name} verknüpfen`}
                       title="Mit GitHub verknüpfen"
                       onClick={() => setGithubId(project.id)}
                     >
@@ -280,7 +280,7 @@ export default function Sidebar({
                   <button
                     type="button"
                     className="project-gear"
-                    aria-label={`Skill-Packs of ${project.name}`}
+                    aria-label={`Skill-Packs von ${project.name} bearbeiten`}
                     title="Skill-Packs"
                     onClick={() => setSettingsId(project.id)}
                   >
@@ -296,22 +296,22 @@ export default function Sidebar({
                           onRemove(project.id);
                         }}
                       >
-                        remove
+                        Entfernen
                       </button>
                       <button
                         type="button"
                         className="confirm-no"
                         onClick={() => setConfirmingId(null)}
                       >
-                        keep
+                        Behalten
                       </button>
                     </span>
                   ) : (
                     <button
                       type="button"
                       className="project-remove"
-                      aria-label={`Remove ${project.name}`}
-                      title="Remove project"
+                      aria-label={`Projekt ${project.name} entfernen`}
+                      title="Projekt entfernen"
                       onClick={() => setConfirmingId(project.id)}
                     >
                       ×
@@ -328,8 +328,8 @@ export default function Sidebar({
                     }`}
                     title={
                       orchestratorLive
-                        ? `Stop the ${project.name} orchestrator`
-                        : `Start the ${project.name} orchestrator`
+                        ? `Orchestrator von ${project.name} stoppen`
+                        : `Orchestrator von ${project.name} starten`
                     }
                     disabled={orchestratorBusy || orchestratorStopping}
                     onClick={() => handleOrchestratorToggle(project.id, orchestratorLive)}
@@ -339,9 +339,9 @@ export default function Sidebar({
                     </span>
                     <span className="orchestrator-label">Orchestrator</span>
                     {orchestratorBusy ? (
-                      <span className="orchestrator-note">starting…</span>
+                      <span className="orchestrator-note">Wird gestartet …</span>
                     ) : orchestratorStopping ? (
-                      <span className="orchestrator-note">stopping…</span>
+                      <span className="orchestrator-note">Wird gestoppt …</span>
                     ) : null}
                   </button>
                 </li>

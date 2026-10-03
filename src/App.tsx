@@ -1428,12 +1428,12 @@ function AppContent() {
                     ) : goal === "review" && !activeWorker ? (
                       <p>Kein Diff — eine Task aus der Board-Leiste oder Attention wählen.</p>
                     ) : (
-                      <p>No terminal sessions.</p>
+                      <p>Keine Terminal-Sitzungen.</p>
                     )}
                     <div className="empty-actions">
                       {activeProject ? (
                         <button type="button" className="empty-action" onClick={openWorkerDialog}>
-                          New worker
+                          Neuer Worker
                         </button>
                       ) : null}
                       <button type="button" className="empty-action-ghost" onClick={openPicker}>

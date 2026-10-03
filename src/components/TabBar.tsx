@@ -72,14 +72,14 @@ export default function TabBar({
               }}
             >
               <span className="tab-label">{session.title}</span>
-              {session.exited ? <span className="tab-badge">exited</span> : null}
+              {session.exited ? <span className="tab-badge">beendet</span> : null}
             </button>
             <button
               type="button"
               className="tab-close"
               tabIndex={-1}
-              aria-label={`${session.workerId ? "Detach" : "Close"} ${session.title}`}
-              title={session.workerId ? "Detach tab (the agent keeps running)" : "Close session"}
+              aria-label={`${session.workerId ? "Tab lösen" : "Sitzung schließen"}: ${session.title}`}
+              title={session.workerId ? "Tab lösen (der Agent läuft weiter)" : "Sitzung schließen"}
               onClick={() => onClose(session.sessionId)}
             >
               ×
@@ -107,8 +107,8 @@ export default function TabBar({
       <button
         type="button"
         className="tab-new"
-        aria-label="New session"
-        title="New session"
+        aria-label="Neue Sitzung"
+        title="Neue Sitzung"
         disabled={newDisabled}
         onClick={onNew}
       >
