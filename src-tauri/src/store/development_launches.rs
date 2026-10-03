@@ -280,6 +280,14 @@ impl Store {
             return Err("route receipt too large".into());
         }
         let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await.map_err(db)?;
+        // A receipt that names its dispatch role binds only to a run
+        // dispatched in that role; any non-string claim fails closed.
+        if let Some(claimed) = receipt.get("dispatchRole") {
+            let actual = run_role(&mut tx, run_id).await?;
+            if claimed.as_str() != Some(actual.as_str()) {
+                return Err("route receipt was resolved for another dispatch role".into());
+            }
+        }
         let changed = sqlx::query("UPDATE development_launches SET route_json = ?, route_expires_at = ? WHERE run_id = ? AND profile_id = ? AND state = 'reserved' AND route_json IS NULL AND EXISTS (SELECT 1 FROM development_runs r JOIN continuous_tasks t ON t.id = r.task_id WHERE r.id = development_launches.run_id AND r.status = 'intent' AND r.claim_owner = ? AND r.claim_fence = ? AND t.claim_owner = ? AND t.claim_fence = ? AND t.status = 'running')")
             .bind(&body).bind(expires).bind(run_id).bind(profile).bind(owner).bind(fence).bind(owner).bind(fence).execute(&mut *tx).await.map_err(db)?;
         if changed.rows_affected() != 1 {
@@ -1379,6 +1387,43 @@ pub(super) mod tests {
         .unwrap();
         store
             .reserve_development_launch(&run, "owner", 1, "codex")
+            .await
+            .unwrap();
+    }
+
+    /// W2-04c: a route receipt that names the role it was resolved for binds
+    /// only to a run dispatched in that role; a malformed claim binds nothing.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn route_receipt_bound_for_another_role_is_refused() {
+        let (_dir, store, run) = fixture().await;
+        store
+            .reserve_development_launch(&run, "owner", 1, "codex")
+            .await
+            .unwrap();
+        let receipt = |role: serde_json::Value| serde_json::json!({"dispatchRole":role,"selection":{"resolved":{"profileId":"codex"}},"expiresAt":now_unix_secs()+60});
+        for wrong in [serde_json::json!("reviewer"), serde_json::json!(7)] {
+            let refused = store
+                .bind_development_launch_route(&run, "owner", 1, &receipt(wrong))
+                .await;
+            assert!(
+                refused.as_ref().is_err_and(|error| error.contains("role")),
+                "a route for another role must not bind: {refused:?}"
+            );
+        }
+        assert!(store
+            .development_launch(&run)
+            .await
+            .unwrap()
+            .unwrap()
+            .route_json
+            .is_none());
+        store
+            .bind_development_launch_route(
+                &run,
+                "owner",
+                1,
+                &receipt(serde_json::json!("implementer")),
+            )
             .await
             .unwrap();
     }
