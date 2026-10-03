@@ -77,13 +77,9 @@ pub mod native_runner;
 /// for Claude Code, so the role only makes sense for that profile.
 pub const ORCHESTRATOR_PROFILE: &str = "claude";
 
-/// Opens every error where the caller named something that does not exist.
-/// See the module documentation for the whole vocabulary.
-pub const ERR_UNKNOWN: &str = "unknown ";
-
-/// Opens every error where what the caller named exists but may not be used
-/// the way it was asked for.
-pub const ERR_REFUSED: &str = "refused: ";
+/// Defined in [`crate::errors`] so `store` need not import this module; see
+/// the module documentation for the whole vocabulary.
+pub use crate::errors::{ERR_REFUSED, ERR_UNKNOWN};
 
 /// Rev 9: queens stay readable; nothing public may mint a new one.
 pub const ERR_QUEEN_RETIRED: &str =

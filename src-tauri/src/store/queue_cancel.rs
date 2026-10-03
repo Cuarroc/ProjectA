@@ -19,7 +19,7 @@
 //! missing. In particular a session row left open by a crash or a kill -9 is
 //! "ended, we do not know how", and a status column or an expired lease is
 //! bookkeeping, not evidence that a process has stopped. Refusals open with
-//! [`crate::workers::ERR_REFUSED`], like every other refused cancel.
+//! [`crate::errors::ERR_REFUSED`], like every other refused cancel.
 //!
 //! The rule assumes worker ids are never reused: they come from `new_id`, and
 //! `sessions` has no foreign key, so a reused id would inherit the closed
@@ -46,13 +46,13 @@ enum DispatchedWorker {
 }
 
 /// The rule itself: `Ok(worker id)` when the process end is proven, otherwise
-/// the refusal, already prefixed with [`crate::workers::ERR_REFUSED`].
+/// the refusal, already prefixed with [`crate::errors::ERR_REFUSED`].
 fn proven_process_end(task: &str, worker: &DispatchedWorker) -> Result<String, String> {
     let refuse = |why: String| {
         Err(format!(
             "{}task {task} is dispatched and {why}; it can be cancelled only once its \
              process end is proven",
-            crate::workers::ERR_REFUSED
+            crate::errors::ERR_REFUSED
         ))
     };
     match worker {
@@ -240,7 +240,7 @@ mod tests {
     }
 
     fn assert_refused(err: &str, reason: &str) {
-        assert!(err.starts_with(crate::workers::ERR_REFUSED), "{err}");
+        assert!(err.starts_with(crate::errors::ERR_REFUSED), "{err}");
         assert!(err.contains(reason), "expected {reason:?} in {err:?}");
     }
 
@@ -279,7 +279,7 @@ mod tests {
                 .unwrap();
         assert_eq!(sessions, 2);
         let err = store.cancel_queue_entry("tq-done").await.unwrap_err();
-        assert!(err.starts_with(crate::workers::ERR_UNKNOWN), "{err}");
+        assert!(err.starts_with(crate::errors::ERR_UNKNOWN), "{err}");
     }
 
     /// An archive kills the session, and the kill's own exit report closes the
@@ -482,7 +482,7 @@ mod tests {
 
         let err = store.cancel_queue_entry("tq-ghost").await.unwrap_err();
         assert!(err.starts_with("failed to "), "{err}");
-        assert!(!err.starts_with(crate::workers::ERR_REFUSED), "{err}");
+        assert!(!err.starts_with(crate::errors::ERR_REFUSED), "{err}");
         assert_eq!(
             status_of(&store, "tq-ghost").await.as_deref(),
             Some(QUEUE_DISPATCHED)
