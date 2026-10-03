@@ -14,3 +14,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: CI-05 implemented and pushed at a963b4c; draft PR #137; prepush exit 0; Tier B review and Windows merge-queue lane pending.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-03 06:50 — codex (codex/w1-01b-pty-smoke, w1-01b-pty-smoke)
+- Zusammenfassung: W1-01b complete: test-only PROJECTA_PTY_TRACE_DIR smoke and documented PowerShell command; prepush green; pushed 65b790b; draft PR #192.
+- Commits: keine
+- Uncommitted: keine
