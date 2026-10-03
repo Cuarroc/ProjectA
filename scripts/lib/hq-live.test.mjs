@@ -10,8 +10,14 @@ import {
   parseBuiltinProfiles,
   mergeProfileViews,
   resolveAgentsFile,
+  descriptorCandidates,
 } from "./hq-live-lib.mjs";
 import * as lib from "./hq-live-lib.mjs";
+
+test("descriptor candidates prefer PROJECTA_API_FILE when explicitly set", () => {
+  const descriptor = "/tmp/projecta-api.json";
+  assert.deepEqual(descriptorCandidates({ PROJECTA_API_FILE: descriptor, HOME: "/tmp/home" }), [descriptor]);
+});
 
 // The proxy resolves the API descriptor like Tauri does: APPDATA (Roaming)
 // before LOCALAPPDATA on Windows. Asserted against the script source so a
