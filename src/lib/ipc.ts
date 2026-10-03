@@ -1605,14 +1605,6 @@ export function getLandingPage(projectId: string): Promise<string | null> {
   return invoke<string | null>("get_landing_page", { projectId });
 }
 
-/** Replaces the landing page; `null` clears it. */
-export function setLandingPage(
-  projectId: string,
-  markdown: string | null,
-): Promise<void> {
-  return invoke<void>("set_landing_page", { projectId, markdown });
-}
-
 // -- learnings (Phase 14) ---------------------------------------------------
 
 interface RawLearning {
