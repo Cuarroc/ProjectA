@@ -206,6 +206,8 @@ mod credential_acl;
 #[cfg(all(test, windows))]
 #[path = "api/credential_acl_tests.rs"]
 mod credential_acl_tests;
+#[path = "api/hq_routes.rs"]
+mod hq_routes;
 #[path = "api/planning_access.rs"]
 mod planning_access;
 
@@ -1379,103 +1381,11 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
     let project_id = request.query.get("projectId").map(String::as_str);
     let status = request.query.get("status").map(String::as_str);
 
+    if let Some(reply) = hq_routes::route(backend, request, method, path.as_slice(), project_id) {
+        return reply;
+    }
+
     match (method, path.as_slice()) {
-        (_, ["api", "hq", "v1", "agent", ..]) => {
-            Response::error(403, "this route requires a scoped run credential")
-        }
-        ("GET", ["api", "hq", "v1", "runtime"]) => {
-            continuous_response(backend.continuous_runtime())
-        }
-        ("GET", ["api", "hq", "v1", "plan"]) => {
-            if request
-                .query
-                .keys()
-                .any(|key| !matches!(key.as_str(), "projectId" | "planId" | "revision"))
-            {
-                return Response::error(400, "unknown plan query field");
-            }
-            let project_id = match project_id.map(str::trim).filter(|value| !value.is_empty()) {
-                Some(value) => value,
-                None => return Response::error(400, "projectId is required"),
-            };
-            let plan_id = match request
-                .query
-                .get("planId")
-                .map(String::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-            {
-                Some(value) => value,
-                None => return Response::error(400, "planId is required"),
-            };
-            let revision = match request.query.get("revision") {
-                Some(raw) => match raw.parse::<i64>() {
-                    Ok(value) if value > 0 => Some(value),
-                    _ => return Response::error(400, "revision must be a positive integer"),
-                },
-                None => None,
-            };
-            plan_response(backend.development_plan(project_id, plan_id, revision))
-        }
-        ("POST", ["api", "hq", "v1", "plan", "import"]) => {
-            if !request.query.is_empty() {
-                return Response::error(400, "plan import does not accept query fields");
-            }
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(error) => return Response::error(400, error),
-            };
-            if let Err(error) = only_keys(
-                &body,
-                &[
-                    "projectId",
-                    "planId",
-                    "expectedProjectionRevision",
-                    "rollbackReason",
-                ],
-            ) {
-                return Response::error(400, error);
-            }
-            let project_id = match required_str(&body, "projectId") {
-                Ok(value) => value,
-                Err(error) => return Response::error(400, error),
-            };
-            let plan_id = match required_str(&body, "planId") {
-                Ok(value) => value,
-                Err(error) => return Response::error(400, error),
-            };
-            let expected = match body
-                .get("expectedProjectionRevision")
-                .and_then(Value::as_i64)
-            {
-                Some(value) if (0..i64::MAX).contains(&value) => value,
-                _ => return Response::error(
-                    400,
-                    "expectedProjectionRevision must be non-negative and below the maximum integer",
-                ),
-            };
-            let rollback_reason = match body.get("rollbackReason") {
-                None => None,
-                Some(Value::String(value)) => Some(value.as_str()),
-                Some(_) => return Response::error(400, "rollbackReason must be a string"),
-            };
-            plan_response(backend.import_development_plan(
-                &project_id,
-                &plan_id,
-                expected,
-                rollback_reason,
-            ))
-        }
-        ("GET", ["api", "hq", "v1", "runs"]) => {
-            let project_id = match project_id {
-                Some(value) if !value.is_empty() => value,
-                _ => return Response::error(400, "projectId is required"),
-            };
-            if let Some(reply) = unknown_project(backend, Some(project_id)) {
-                return reply;
-            }
-            continuous_response(backend.development_records(project_id))
-        }
         ("GET", ["api", "hq", "v1", resource]) if matches!(*resource, "context" | "changes") => {
             let project_id = match project_id {
                 Some(value) if !value.is_empty() => value,
