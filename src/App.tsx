@@ -1085,10 +1085,12 @@ function AppContent() {
 
   if (!bootstrapReady) {
     return (
-      <BootstrapScreen
-        error={bootstrapState === "error"}
-        onRetry={() => void loadProjects("bootstrap")}
-      />
+      <div className="app" data-density={density} data-ui-font-size={fonts.uiFontSize}>
+        <BootstrapScreen
+          error={bootstrapState === "error"}
+          onRetry={() => void loadProjects("bootstrap")}
+        />
+      </div>
     );
   }
 

@@ -696,6 +696,7 @@ a {
 /* The first rendered state has no project context yet. Keep it calm and
    precise: activity is real, but a percentage would only invent progress. */
 .bootstrap-screen {
+  grid-column: 1 / -1;
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -4862,7 +4863,7 @@ scripts/contrast-check.mjs. */
 
 .insights-heading {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: calc(var(--text-base) + 1px);
   font-weight: 600;
 }
 
@@ -6454,14 +6455,14 @@ scripts/contrast-check.mjs. */
 
 .diagnose-panel h2 {
   margin: 0 0 8px;
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
 .diagnose-lede {
   margin: 0 0 12px;
   color: var(--fg-muted);
-  font-size: 13px;
+  font-size: var(--text-base);
   line-height: 1.55;
 }
 
@@ -6523,7 +6524,7 @@ scripts/contrast-check.mjs. */
 .diagnose-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .diagnose-table th,
