@@ -43,7 +43,7 @@ import GeneralTab from "./settings/GeneralTab";
 import MasterPromptTab from "./settings/MasterPromptTab";
 import UpdatesTab from "./settings/UpdatesTab";
 import CategoriesPanel from "./settings/CategoriesPanel";
-import ProfileBudgetFields from "./settings/ProfileBudgetFields";
+import ProfilesPanel from "./settings/ProfilesPanel";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -853,55 +853,17 @@ export default function SettingsView({
             handleToggleLearning={handleToggleLearning}
           />
 
-          <div className="settings-field profile-field">
-            <span className="field-label">Profile</span>
-            <p className="settings-hint">
-              Ein deaktiviertes Profil bleibt gespeichert, wird aber keinem neuen
-              Agenten mehr zugeteilt.
-            </p>
-            <p className="settings-hint">
-              Budget: ab welchem Prozentsatz des 5-Stunden- bzw. 7-Tage-Fensters
-              dieses Profil pausiert wird. Erreicht ein Fenster seine Schwelle,
-              überspringt der Dispatcher das Profil und laufende Agenten werden
-              gestoppt — die Worktrees bleiben liegen, ein Respawn holt sie
-              zurück. Leeres Feld heißt „keine Schwelle“.
-            </p>
-            {profileError ? <span className="settings-error">{profileError}</span> : null}
-            {budgetError ? <span className="settings-error">{budgetError}</span> : null}
-            {profileList.length === 0 ? (
-              <span className="settings-hint">Keine Profile vorhanden.</span>
-            ) : (
-              <ul className="profile-list">
-                {profileList.map((profile) => (
-                  <li
-                    key={profile.id}
-                    className={`profile-row${profile.enabled ? "" : " profile-row-off"}`}
-                  >
-                    <div className="profile-main">
-                      <span className="profile-name">{profile.name}</span>
-                      <span className="profile-id">{profile.id}</span>
-                    </div>
-                    <label className="settings-check profile-toggle">
-                      <input
-                        type="checkbox"
-                        checked={profile.enabled}
-                        disabled={profileBusyId === profile.id}
-                        onChange={(event) => handleToggleProfile(profile, event.target.checked)}
-                      />
-                      <span>Aktiv</span>
-                    </label>
-                    <ProfileBudgetFields
-                      profile={profile}
-                      budget={budgetOf(profile.id)}
-                      busy={budgetBusyId === profile.id}
-                      onChange={handleBudgetChange}
-                      onSave={handleSaveBudget}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <ProfilesPanel
+            profileList={profileList}
+            profileError={profileError}
+            budgetError={budgetError}
+            profileBusyId={profileBusyId}
+            budgetBusyId={budgetBusyId}
+            budgetOf={budgetOf}
+            handleToggleProfile={handleToggleProfile}
+            handleBudgetChange={handleBudgetChange}
+            handleSaveBudget={handleSaveBudget}
+          />
           </>
         )}
       </div>
