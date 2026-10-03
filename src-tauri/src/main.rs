@@ -4484,4 +4484,20 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn emergency_stop_changes_are_serialized() {
+        const SOURCE: &str = include_str!("main.rs");
+        let command = SOURCE
+            .split("async fn set_emergency_stop")
+            .nth(1)
+            .expect("set command")
+            .split("// -- task queue")
+            .next()
+            .expect("command boundary");
+        assert!(
+            command.contains("gate.lock().await"),
+            "raising and clearing the stop must not overlap"
+        );
+    }
 }

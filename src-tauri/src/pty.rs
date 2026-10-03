@@ -2059,6 +2059,13 @@ mod tests {
         assert!(manager.reserve_session().is_err());
     }
 
+    #[test]
+    fn kill_all_blocks_new_sessions_until_the_stop_is_cleared() {
+        let manager = PtyManager::default();
+        manager.kill_all();
+        assert!(manager.reserve_session().is_err());
+    }
+
     /// Shutdown under poison used to return before touching a single session,
     /// leaving every agent process running after the app was gone. A
     /// reservation is the one entry a test can check without a real child:

@@ -35,7 +35,9 @@ describe("EmergencyStop", () => {
     ipc.setEmergencyStop.mockRejectedValue("1 agent session(s) still alive after 10s");
     render(<EmergencyStop />);
     fireEvent.click(await screen.findByRole("button", { name: "Not-Aus auslösen" }));
-    await waitFor(() => expect(screen.getByText(/still alive after 10s/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/still alive after 10s/));
     expect(screen.getByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
+    expect(screen.getByRole("status")).toHaveTextContent(/Stillstand ist nicht bestätigt/);
+    expect(screen.queryByText(/alle Agenten sind beendet/)).toBeNull();
   });
 });
