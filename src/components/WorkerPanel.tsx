@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-
+import { workerStatusLabel } from "../lib/plainText";
 import { shortTask } from "../lib/text";
 import type { AgentProfile, Worker } from "../types";
+import ErrorNote from "./ErrorNote";
 
 interface WorkerPanelProps {
   /** Every worker of the project; orchestrators are filtered out here. */
@@ -70,7 +71,11 @@ export default function WorkerPanel({
 
       {!hasProject ? <div className="sidebar-note">No project selected.</div> : null}
       {hasProject && loading ? <div className="sidebar-note">Loading…</div> : null}
-      {error ? <div className="sidebar-note sidebar-error">{error}</div> : null}
+      {error ? (
+        <div className="sidebar-note sidebar-error">
+          <ErrorNote message={error} />
+        </div>
+      ) : null}
       {hasProject && !loading && workers.length === 0 ? (
         <div className="sidebar-note">No workers yet.</div>
       ) : null}
@@ -97,7 +102,7 @@ export default function WorkerPanel({
                 <span className="worker-task">{shortTask(worker.task, 40)}</span>
                 <span className="worker-meta">
                   <span className="badge badge-profile">{profileName(worker.profileId)}</span>
-                  <span className={`badge badge-${worker.status}`}>{worker.status}</span>
+                  <span className={`badge badge-${worker.status}`}>{workerStatusLabel(worker.status)}</span>
                 </span>
               </button>
               <div className="worker-actions">
