@@ -865,25 +865,44 @@ fn unprotect_vault(_blob: &[u8], path: &Path) -> Result<Vec<u8>, VaultReadError>
 /// portable create-with-mode in std; there the app data directory's per-user
 /// ACL is inherited at creation, which is the best std can do.
 fn write_atomic(path: &Path, body: &[u8]) -> Result<(), String> {
-    let tmp = path.with_file_name(format!(
-        "{}.tmp-{}",
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or(VAULT_FILE),
-        std::process::id()
-    ));
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+
+    let base = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(VAULT_FILE);
+    // `create_new` (O_EXCL) refuses an existing file and never follows a
+    // symlink, so a pre-planted name fails instead of redirecting the write.
+    // The name carries a clock reading and a counter besides the pid so it
+    // cannot be computed ahead of time; a collision just picks the next one.
     let mut options = std::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
+    options.write(true).create_new(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
         options.mode(0o600);
     }
-    let written = (|| -> std::io::Result<()> {
-        let mut file = options.open(&tmp)?;
-        file.write_all(body)?;
-        file.sync_all()
-    })();
+    let mut attempt = 0;
+    let (tmp, mut file) = loop {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.subsec_nanos());
+        let tmp = path.with_file_name(format!(
+            "{base}.tmp-{}-{nanos:08x}-{}",
+            std::process::id(),
+            SEQ.fetch_add(1, Ordering::Relaxed)
+        ));
+        match options.open(&tmp) {
+            Ok(file) => break (tmp, file),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists && attempt < 16 => {
+                attempt += 1;
+            }
+            Err(err) => return Err(format!("failed to create {}: {err}", tmp.display())),
+        }
+    };
+    let written = file.write_all(body).and_then(|()| file.sync_all());
+    drop(file);
     if let Err(err) = written {
         let _ = std::fs::remove_file(&tmp);
         return Err(format!("failed to write {}: {err}", tmp.display()));
@@ -1391,6 +1410,41 @@ mod tests {
 
     use crate::store::{QUOTA_BLOCKED, QUOTA_OK};
     use crate::testutil::TempDir;
+
+    /// A temp name an attacker can compute (`<file>.tmp-<pid>`) must not let
+    /// them redirect the vault write: with a symlink planted there, the old
+    /// create+truncate open followed it and clobbered the victim file.
+    #[cfg(unix)]
+    #[test]
+    fn write_atomic_ignores_a_symlink_planted_at_the_predictable_temp_name() {
+        let dir = TempDir::new("write-atomic-symlink");
+        let victim = dir.path().join("victim.txt");
+        std::fs::write(&victim, b"precious").unwrap();
+        let target = dir.path().join(VAULT_FILE);
+        let planted = dir
+            .path()
+            .join(format!("{VAULT_FILE}.tmp-{}", std::process::id()));
+        std::os::unix::fs::symlink(&victim, &planted).unwrap();
+
+        write_atomic(&target, b"vault-bytes").unwrap();
+
+        assert_eq!(std::fs::read(&victim).unwrap(), b"precious");
+        assert_eq!(std::fs::read(&target).unwrap(), b"vault-bytes");
+    }
+
+    #[test]
+    fn write_atomic_leaves_no_temp_file_behind() {
+        let dir = TempDir::new("write-atomic-clean");
+        let target = dir.path().join(VAULT_FILE);
+        write_atomic(&target, b"one").unwrap();
+        write_atomic(&target, b"two").unwrap();
+        let names: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(names, vec![std::ffi::OsString::from(VAULT_FILE)]);
+        assert_eq!(std::fs::read(&target).unwrap(), b"two");
+    }
 
     /// A probe that answers from a table. Anything not in it is missing, which
     /// is the honest default for a machine with nothing installed.
