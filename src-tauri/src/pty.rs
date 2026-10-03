@@ -1632,6 +1632,9 @@ pub(crate) struct CursorReportScanner {
     /// How many bytes of the query were matched at the end of the previous
     /// chunk (0..=3): the four-byte sequence may straddle two reads.
     matched: usize,
+    /// Query prefix held from otherwise visible output. Removing a real
+    /// query must not join surrounding bytes into another one.
+    visible_matched: usize,
 }
 
 impl CursorReportScanner {
@@ -1678,23 +1681,47 @@ impl CursorReportScanner {
             } else {
                 // The held prefix was not a query after all; the byte may
                 // itself start one (`ESC ESC [6n`).
-                visible.extend_from_slice(&Self::QUERY[..self.matched]);
+                for held in Self::QUERY[..self.matched].iter().copied() {
+                    self.push_visible(held, &mut visible);
+                }
                 self.matched = 0;
                 if byte == Self::QUERY[0] {
                     self.matched = 1;
                 } else {
-                    visible.push(byte);
+                    self.push_visible(byte, &mut visible);
                 }
             }
         }
         (found, visible)
     }
 
+    fn push_visible(&mut self, byte: u8, visible: &mut Vec<u8>) {
+        if byte == Self::QUERY[self.visible_matched] {
+            self.visible_matched += 1;
+            if self.visible_matched == Self::QUERY.len() {
+                self.visible_matched = 0;
+            }
+        } else {
+            visible.extend_from_slice(&Self::QUERY[..self.visible_matched]);
+            self.visible_matched = 0;
+            if byte == Self::QUERY[0] {
+                self.visible_matched = 1;
+            } else {
+                visible.push(byte);
+            }
+        }
+    }
+
     /// End of stream: hand out the held partial match, which can no longer
     /// become a query.
     pub(crate) fn flush(&mut self) -> Vec<u8> {
-        let held = Self::QUERY[..self.matched].to_vec();
+        let mut held = Vec::with_capacity(self.matched + self.visible_matched);
+        for byte in Self::QUERY[..self.matched].iter().copied() {
+            self.push_visible(byte, &mut held);
+        }
         self.matched = 0;
+        held.extend_from_slice(&Self::QUERY[..self.visible_matched]);
+        self.visible_matched = 0;
         held
     }
 }
@@ -4566,7 +4593,8 @@ mod tests {
         assert_eq!(scanner.strip(b"6n"), (1, Vec::new()));
         assert_eq!(scanner.strip(b"\x1b["), (0, Vec::new()));
         assert_eq!(scanner.strip(b"?996n"), (0, b"\x1b[?996n".to_vec()));
-        assert_eq!(scanner.strip(b"\x1b\x1b[6n"), (1, b"\x1b".to_vec()));
+        assert_eq!(scanner.strip(b"\x1b\x1b[6n"), (1, Vec::new()));
+        assert_eq!(scanner.flush(), b"\x1b".to_vec());
         assert_eq!(scanner.strip(b"\x1b["), (0, Vec::new()));
         assert_eq!(scanner.flush(), b"\x1b[".to_vec());
         assert_eq!(scanner.flush(), Vec::<u8>::new(), "flush empties the hold");
