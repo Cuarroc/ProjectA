@@ -89,6 +89,10 @@ tf_trailer_is_well_formed() {
                 return 1
                 ;;
             esac
+            if [[ "$rest" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+              echo "Test-First: ein Rust-Testname braucht einen Pfad: pfad::name (nicht: $rest)" >&2
+              return 1
+            fi
             path="${rest%%::*}"
             case "$path" in
               *[[:space:]]*)
