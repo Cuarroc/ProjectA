@@ -4242,6 +4242,20 @@ scripts/contrast-check.mjs. */
   color: var(--fg-muted);
 }
 
+/* Review class (AGENTS.md rule 5): neutral on purpose, no colour says "safe". */
+.diff-review-class {
+  margin: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-border, currentColor);
+  color: var(--fg-muted);
+}
+.diff-file-class {
+  padding: 0 5px;
+  border-radius: 8px;
+  border: 1px solid var(--fg-muted);
+  color: var(--fg-muted);
+}
+
 /* ---- skill packs (Phase 6) --------------------------------------------- */
 
 /* Sits beside the remove button, one notch quieter than it. */
