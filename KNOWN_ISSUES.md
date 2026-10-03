@@ -53,6 +53,7 @@ Ziel haben.
 
 | # | Befund | Behoben | Beleg |
 |---|---|---|---|
+| KI-31 | `main-red-guard` auf `main` rot, obwohl Linux und Windows grün waren (Lauf 37156370787, Kopf `dfe459f`) | 2026-10-04, kein Codefehler: der Schritt „red main -> issue + queue freeze“ bekam von GitHub bei `gh issue list` ein `503 Service Unavailable` mit leerem JSON (`SyntaxError: Unexpected end of JSON input`, Exit 1); `gates (linux)` und `gates (windows)` desselben Laufs waren `success`. | `gh run view 37156370787 --attempt 1 --log-failed` zeigt den 503; Versuch 2 desselben Laufs (nur der fehlgeschlagene Job neu gestartet) ist `success` auf demselben SHA `dfe459f`. Kein Code und keine Gate-Logik geändert. |
 | KI-20 | Doppelte Antwort auf die Cursor-Abfrage `ESC[6n`: der Reader-Thread antwortete mit `ESC[1;1R`, und xterm.js antwortete beim Scrollback-Replay ein zweites Mal | 2026-10-02, W1-27 (Advisor-Entscheidung: nur das Backend antwortet) | `CursorReportScanner::strip` entfernt die beantwortete Anfrage aus Scrollback und UI; Test `a_cursor_position_query_never_reaches_the_terminal_view`; `docs/decisions.md` (16.09., Auflösung). Die Antwort bleibt fest `1;1` (Kommentar an `CURSOR_POSITION_REPLY`). Kein Live-Kimi-Re-Smoke (W1-01b blockiert). |
 | KI-19 | Unix-Modus-Tests (0600) für Vault und API-Deskriptor fehlten | 2026-10-03, Linux-Server (Paket KI-19): Tests `providers::tests::a_vault_file_is_private_from_the_moment_it_exists` und `a_rewritten_vault_stays_private_and_leaves_no_temp_file`, `api::tests::the_api_descriptor_is_owner_only_even_over_a_stale_loose_file` sowie der Run-Deskriptor-Test (0600, `agent-access/` 0700) laufen grün; die Rechte waren schon richtig, kein Produktivcode geändert | `cargo test --bin projecta` (Filter auf die drei Tests), Exit 0 |
 | B-2 | Submit-Guard hielt drei Sekunden Stille für Bereitschaft und schickte Eingaben in eine TUI, die noch nicht zuhörte | 2026-09-01, `6165a53`, released in **v1.2.3** (Echo-Verifikation statt Stille-Schwelle) | `STATUS.md` 2026-09-01 Abend; `.pa/report_nt3.md` |
@@ -165,3 +166,13 @@ assertiert wird. (4) Eigenes Paket mit rotem Regressionstest; die vier
 Assertionen liegen in Nahtstellen-Nähe (`store/`, `workers.rs`), also
 seriell und mit Prüfung der Stufe A. Auf Linux nicht nachstellbar: das Gate
 verlangt ein echtes Windows (`native-tests.sh` bricht sonst ab).
+
+**Neue Beobachtung 2026-10-03 (PR #252, ARCH-08f).** Queue-Lauf 37154872281
+(Queue-Kopf `5a79d6a`): `rust-suite` 1749 von 1749 grün, `native-tests` 7
+grün, 1 rot: `real_native_runner_bounds_capacity_and_accepts_out_of_order_completion`,
+`src-tauri/src/store/native_managed_tests.rs:449` (`drained.unresolved.is_empty()`),
+Folgefehler `:478`. Dasselbe Muster wie oben; #252 ändert nur Frontend-Dateien.
+Die Queue hat #252 um 21:54 UTC entlassen; der Koordinator reiht ihn genau einmal
+unverändert neu ein (Queue-PR #257). **Nicht als gelöst vermerkt**: erst ein
+frischer Lauf am gleichen Quellstand sagt etwas, und auch ein grüner Lauf belegt
+die Ursache nicht.

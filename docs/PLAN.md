@@ -272,19 +272,27 @@ Alles hier ist **Quellenbefund oder Hypothese, kein reproduzierter Fehler**: ein
 Bugpaket braucht zuerst einen kompilierenden roten Test, eine Laufzeit- oder
 Performanceaussage eine Messung. Nichts davon ist in M1–M4 aufgenommen. Die
 Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
-`gh pr view` auf `origin/main` 1b38596.
+`gh pr view` auf `origin/main` 1b38596; der Paketstand darunter ist am 04.10.2026 nachgeführt.
 
 **Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
-Stand 03.10.2026, gelesen mit `gh pr view` (Kopf 6598890). Gemergt:
+Stand 04.10.2026, gelesen mit `gh pr list`/`gh pr view` auf `origin/main` dfe459f. Gemergt:
 ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
 überschritt die 300-Zeilen-Grenze), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
-ARCH-07 #202, ARCH-08a #181, 08b #221 und 08c #229, ARCH-10a #220 und 10b #236,
+ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244 und 08e #247,
+ARCH-10a #220, 10b #236, 10c #246 und 10d #250 (Merge `dfe459f`, 03.10. 21:49:18 UTC),
 W1-27 #140, W2-04c Teil 2 #222, PTY-READ-01 #206, PTY-RETIRE-01 #215,
 PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189 und
 UX-03 als #199 (#186 ist geschlossen). Ersetzt: #152 → #172, #147 → #178,
 #130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 ist
 am 03.10. vom Nutzer freigegeben und der installationsfreie Starter auf dem Server
-eingespielt; das Ergebnis eines echten Starts steht noch aus.
+eingespielt; Worker-Läufe über ihn haben seitdem PRs geliefert (siehe E13).
+**Offen:** ARCH-08f #252 (in der Merge-Queue, nicht gemergt) und ARCH-03c #256
+(Entwurf, `do-not-merge`; die Windows-Bahn war per `workflow_dispatch` rot am
+Test-First-Commit `2b9fd1c`, Lauf 37155715659, und grün am Kopf `7af0aa5`, Lauf
+37156526153; es fehlen die zwei Stufe-A-Reviews). ARCH-08 gilt erst mit dem
+Merge von #252 als vollständig. Für ARCH-10 (14 Arme) zählt nur, was gemergt ist:
+a #220, b #236, c #246, d #250; ob damit alle 14 Arme verschoben sind, ist hier
+nicht belegt.
 Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
 
 **Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
@@ -295,8 +303,8 @@ Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
 | `mn` | ARCH-05 (#182) → ARCH-06 (#219) → ARCH-03: alle gelandet; die Vault-Quellenbefunde unten sind bewertet und behoben (#200, #225). |
 | `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
 | `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
-| `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
-| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229; M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. ARCH-09 nach ARCH-08. |
+| `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220, 10c ✓ #246, 10d ✓ #250; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
+| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f offen (#252, Queue); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. ARCH-09 nach ARCH-08. |
 
 ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
 roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
@@ -369,7 +377,7 @@ SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Offen sind
 E1, E10, E11, E12, F1, F3 und F6; F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
-echter Start noch ungeprüft) sind entschieden und werden nicht neu gefragt. Agenten
+Nachweis siehe E13) sind entschieden und werden nicht neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
 
@@ -394,7 +402,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
 | F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | offen |
 | E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | offen |
-| E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | freigegeben 03.10. (17:30 UTC, Nutzerantwort „ja er soll ersetzt werden“); Starter am 03.10. 19:38 auf dem Server eingespielt (SHA-Prüfung, `bash -n`, Backup des Originals). Offen: Ergebnis eines echten Starts (Worker-Lauf) und die Pflicht-Gates des Pakets. |
+| E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | freigegeben 03.10. (17:30 UTC, Nutzerantwort „ja er soll ersetzt werden“); Starter am 03.10. 19:38 auf dem Server eingespielt (SHA-Prüfung, `bash -n`, Backup des Originals). Beobachtet 04.10.: Worker-Läufe über den Starter haben PRs #244, #246, #247, #250 und #251 geliefert, alle über die Queue gemergt; PR #256 nennt im Text einen vollen `prepush`-Lauf (Exit 0) auf dem Server. Diese Sitzung (Sonnet 5.5) lief selbst über den Starter. Das Kontingent ist von hier nicht beobachtbar; die Angabe dazu liefert der Koordinator. Nicht belegt: je Modell eine Aufschlüsselung (Fable) der Läufe. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
