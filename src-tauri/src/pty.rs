@@ -1638,16 +1638,15 @@ fn wait_for_reader(
     timeout: Duration,
     on_timeout: impl FnOnce(),
 ) -> (Result<(), String>, bool) {
-    let waited = await_reader_retirement(finished, timeout);
+    let waited = finished.recv_timeout(timeout);
+    let timed_out = matches!(waited, Err(std::sync::mpsc::RecvTimeoutError::Timeout));
     if waited.is_err() {
         on_timeout();
     }
-    let timed_out = waited.is_err()
-        && matches!(
-            finished.try_recv(),
-            Err(std::sync::mpsc::TryRecvError::Empty)
-        );
-    (waited, timed_out)
+    (
+        waited.map_err(|error| format!("PTY reader retirement unconfirmed: {error}")),
+        timed_out,
+    )
 }
 
 /// A reader confirmation that arrives after [`READER_RETIREMENT_TIMEOUT`]
