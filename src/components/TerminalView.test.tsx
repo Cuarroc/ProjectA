@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   // Collected instead of thrown so every test sees it, not just the one
   // whose timer happened to fire.
   viewportErrors: [] as string[],
-  terminals: [] as Array<{ disposed: number }>,
+  terminals: [] as Array<{ disposed: number; options: { fontFamily?: string; fontSize?: number } }>,
   // Makes the next `dispose()` of the WebGL renderer / the Terminal throw,
   // for the deferred-dispose containment tests (PR #151 review K1/G1).
   disposeThrows: { renderer: false, terminal: false },
@@ -46,9 +46,12 @@ vi.mock("@xterm/xterm", () => ({
     cols = 80;
     rows = 24;
     element: HTMLElement | undefined;
-    private tracker = { disposed: 0 };
+    options: { fontFamily?: string; fontSize?: number };
+    private tracker: { disposed: number; options: { fontFamily?: string; fontSize?: number } };
 
-    constructor() {
+    constructor(options: { fontFamily?: string; fontSize?: number } = {}) {
+      this.options = { ...options };
+      this.tracker = { disposed: 0, options: this.options };
       mocks.terminals.push(this.tracker);
     }
     loadAddon() {}
@@ -173,6 +176,28 @@ describe("TerminalView", () => {
     });
     return consumed;
   }
+
+  it("starts with the terminal font size saved in the settings", () => {
+    localStorage.setItem("projecta.settings.terminalFontSize", "16");
+    localStorage.setItem("projecta.settings.terminalFont", "consolas");
+    render(<TerminalView sessionId="session-a" onError={vi.fn()} />);
+
+    expect(mocks.terminals[0].options.fontSize).toBe(16);
+    expect(mocks.terminals[0].options.fontFamily).toMatch(/^Consolas/);
+    localStorage.clear();
+  });
+
+  it("applies a changed font live and fits again", () => {
+    const { rerender } = render(<TerminalView sessionId="session-a" onError={vi.fn()} font="cascadia" fontSize={13} />);
+    expect(mocks.fit).toHaveBeenCalledOnce();
+
+    rerender(<TerminalView sessionId="session-a" onError={vi.fn()} font="monospace" fontSize={18} />);
+
+    expect(mocks.terminals).toHaveLength(1);
+    expect(mocks.terminals[0].options.fontSize).toBe(18);
+    expect(mocks.terminals[0].options.fontFamily).toBe("monospace");
+    expect(mocks.fit).toHaveBeenCalledTimes(2);
+  });
 
   it("fits and repaints immediately instead of waiting for scrollback", () => {
     render(<TerminalView sessionId="session-a" onError={vi.fn()} />);
