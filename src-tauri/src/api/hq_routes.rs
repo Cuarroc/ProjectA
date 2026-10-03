@@ -7,30 +7,32 @@
 use super::*;
 
 pub(super) fn route(
-    backend: &dyn ControlBackend,
+    inner: &Inner,
     request: &Request,
     method: &str,
     path: &[&str],
     project_id: Option<&str>,
 ) -> Option<Response> {
-    // Ownership test for this slice only: it goes away with ARCH-10b, when
-    // every hq arm lives here and the fallback is the final 404.
+    // Ownership test for the arms moved so far: it goes away once every hq
+    // arm lives here and the fallback is the final 404.
     let owned = matches!(
         (method, path),
         (_, ["api", "hq", "v1", "agent", ..])
             | ("GET", ["api", "hq", "v1", "runtime" | "plan" | "runs"])
+            | ("GET", ["api", "hq", "v1", "context" | "changes"])
             | ("POST", ["api", "hq", "v1", "plan", "import"])
     );
-    owned.then(|| handle(backend, request, method, path, project_id))
+    owned.then(|| handle(inner, request, method, path, project_id))
 }
 
 fn handle(
-    backend: &dyn ControlBackend,
+    inner: &Inner,
     request: &Request,
     method: &str,
     path: &[&str],
     project_id: Option<&str>,
 ) -> Response {
+    let backend = inner.backend.as_ref();
     match (method, path) {
         (_, ["api", "hq", "v1", "agent", ..]) => {
             Response::error(403, "this route requires a scoped run credential")
@@ -117,6 +119,49 @@ fn handle(
                 expected,
                 rollback_reason,
             ))
+        }
+        ("GET", ["api", "hq", "v1", resource]) if matches!(*resource, "context" | "changes") => {
+            let project_id = match project_id {
+                Some(value) if !value.is_empty() => value,
+                _ => return Response::error(400, "projectId is required"),
+            };
+            let cursor = match request.query.get("cursor") {
+                Some(value) => match value.parse::<i64>() {
+                    Ok(value) if value >= 0 => value,
+                    _ => return Response::error(400, "cursor must be a non-negative integer"),
+                },
+                None => 0,
+            };
+            if *resource == "changes" {
+                let wait_ms = match request.query.get("waitMs") {
+                    Some(value) => match value.parse::<u64>() {
+                        Ok(value) if value <= 25_000 => value,
+                        _ => return Response::error(400, "waitMs must be between 0 and 25000"),
+                    },
+                    None => 0,
+                };
+                if let Some(reply) = unknown_project(backend, Some(project_id)) {
+                    return reply;
+                }
+                if wait_ms == 0 {
+                    continuous_response(backend.continuous_changes(project_id, cursor))
+                } else {
+                    let Some(_permit) = try_acquire_connection(&inner.journal_waits) else {
+                        return Response::error(
+                            503,
+                            "continuous journal waiting capacity exhausted",
+                        );
+                    };
+                    continuous_response(
+                        backend.wait_continuous_changes(project_id, cursor, wait_ms),
+                    )
+                }
+            } else {
+                if request.query.contains_key("waitMs") {
+                    return Response::error(400, "waitMs is supported only by changes");
+                }
+                continuous_response(backend.continuous_context(project_id, cursor))
+            }
         }
         ("GET", ["api", "hq", "v1", "runs"]) => {
             let project_id = match project_id {
