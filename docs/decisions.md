@@ -5,6 +5,16 @@ Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 
 ## 2026-10-03
 
+### ADR-Vorschläge (offen)
+
+- **A1 ApiBackend-Adapter und `main.rs`: Vorschlag (offen).** Die große Verbindungsschicht bleibt bis nach M4 liegen; danach wird das Trait in Domänenports geteilt, weil der Block nicht sinnvoll in ein Paket mit höchstens 300 Diffzeilen passt. Umkehren, wenn OPS-01 belegt, dass zwei M4-Pakete länger als eine Woche auf der mn-Lane warten.
+- **A2 Dead-Code-Sichtbarkeit: Vorschlag (offen).** Binärmodule verwenden `mod` statt `pub mod`, eingefrorener M4-Code erhält Item-`allow` mit Paket-ID, und die M4-Abnahme löscht den verbleibenden Rest. Umkehren: nie; das ist Lint-Hygiene.
+- **A3 Ein atomarer Schreibpfad: Vorschlag (offen).** `fsutil::replace_file` nutzt auf Windows `MoveFileExW(REPLACE_EXISTING|WRITE_THROUGH)` und auf Unix `rename(2)`; lokale Kopien entfallen. Umkehren, wenn eine Messung `WRITE_THROUGH` als Engpass zeigt; dann das Flag je Aufrufer prüfen, nicht wieder Kopien einführen.
+- **A4 Fehlercodes: Vorschlag (offen).** Präfix-Strings für `ERR_UNKNOWN` und `ERR_REFUSED` bleiben bis M4 bestehen; `CoreError` kommt erst mit einem dritten Transport. Umkehren mit diesem Paket, falls der dritte Transport früher verbindlich wird.
+- **A5 Review-Evidence-Lock: Vorschlag (offen).** Der Lock bleibt In-Process, solange nur die App die Datenbank öffnet. Umkehren, sobald ein zweiter Prozess direkt auf SQLite schreibt, etwa `pa`.
+- **A6 Kein Rust↔TS-Codegen: Vorschlag (offen).** Beim nächsten echten Drift wird zuerst ein Serialisierungs-Vertragstest mit Rust-JSON-Fixture gegen den TS-Typ gebaut, nicht Codegen eingeführt. Umkehren nach einem zweiten belegten Drift-Bug.
+- **A7 st-Lane: Vorschlag (offen).** Die st-Lane bleibt eine Lane, bis OPS-01 vier Wochen Wartezeiten je Paket gemessen hat; danach gibt es eine neue ADR zur Teilung. Umkehren mit dieser Messung.
+
 - **CodeQL SEC-02e: fünf `rust/cleartext-logging`-Warnungen in `store.rs` sind
   Fehlalarme, eine JS-Warnung wurde behoben, eine Windows-Testwarnung bleibt
   offen zu schliessen.** Warum: die geloggten Werte sind PTY-Session-IDs
