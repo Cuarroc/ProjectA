@@ -95,6 +95,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
 | HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
 | W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
+| M3-01 | Drei deutschsprachige Aufgaben-Vorlagen mit eingebautem Abnahmekriterium (nur Doku) | S | doc | PR #<neu> |
 | W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c offen |
 | W5-02b7 | HQ-Profilansicht zeigt `envPolicy` | S | hqL | PR #58 |
 | W5-02a | Koordinator ohne Schreibpfad | M | wk | ✓ #24 |
@@ -251,6 +252,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | später (Nutzer 25.09.) |
 | E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 (Report-Folgearbeiten aus den W5-02-Reviews) und den Prüfpfad W5-05 in M3/M4 eingeordnet | ja, erweiterten Kern bestätigen (Review PR #175, kimi-k3 F-3) | ✓ bestätigt (Nutzer 02.10.) |
 | E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel (Claude implementiert Nahtstellen/Security) ist damit ersetzt | ja, Routing bestätigen (Review PR #175, kimi-k3 F-4) | ✓ bestätigt (Nutzer 02.10.) |
+| E9 | Vorziehen in M3: Aufgaben-Vorlagen (nur Doku) und Diff-Prüfklasse (S) | — | ✓ entschieden vom Orchestrator im Auftrag des Nutzers, 03.10. |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
