@@ -81,7 +81,10 @@ rc=$?
 
 missing=0
 for name in "${EXPECTED[@]}"; do
-  if ! printf '%s\n' "$listed" | grep -q "::${name}: test\$"; then
+  # Feed grep through a here-string instead of a pipe. With pipefail, grep -q
+  # exits after the first match and a long listing can make printf die with
+  # SIGPIPE, falsely reporting an existing test as missing.
+  if ! grep -q "::${name}: test\$" <<< "$listed"; then
     echo "::error::erwarteter nativer Test fehlt oder wurde umbenannt: $name" >&2
     missing=1
   fi
