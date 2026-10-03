@@ -7,3 +7,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted:
     ?? .pa/ACTIVITY.md
+
+## 2026-10-03 02:36 — codex (codex/ci-05-redfirst-plan, srv-ci-05-redfirst-plan)
+- Zusammenfassung: CI-05 implemented and pushed at a963b4c; draft PR #137; prepush exit 0; Tier B review and Windows merge-queue lane pending.
+- Commits: keine
+- Uncommitted: keine
