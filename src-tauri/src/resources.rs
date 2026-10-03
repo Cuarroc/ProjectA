@@ -226,4 +226,55 @@ mod tests {
             snap.disk_app_bytes
         );
     }
+
+    #[test]
+    fn dir_size_sums_nested_files() {
+        let dir = TempDir::new("resource-nested");
+        std::fs::create_dir_all(dir.path().join("a/b")).unwrap();
+        std::fs::write(dir.path().join("top.bin"), vec![0u8; 10]).unwrap();
+        std::fs::write(dir.path().join("a/mid.bin"), vec![0u8; 20]).unwrap();
+        std::fs::write(dir.path().join("a/b/deep.bin"), vec![0u8; 30]).unwrap();
+        assert_eq!(dir_size(dir.path()), Some(60));
+    }
+
+    #[test]
+    fn dir_size_of_empty_dir_is_zero_and_of_missing_path_is_none() {
+        let dir = TempDir::new("resource-empty");
+        assert_eq!(dir_size(dir.path()), Some(0));
+        // Missing data is honest: None, not a fake zero.
+        assert_eq!(dir_size(&dir.path().join("does-not-exist")), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dir_size_does_not_follow_symlinks() {
+        let outside = TempDir::new("resource-outside");
+        std::fs::write(outside.path().join("big.bin"), vec![0u8; 4096]).unwrap();
+        let dir = TempDir::new("resource-link");
+        std::fs::write(dir.path().join("own.bin"), vec![0u8; 5]).unwrap();
+        std::os::unix::fs::symlink(outside.path(), dir.path().join("dir-link")).unwrap();
+        std::os::unix::fs::symlink(outside.path().join("big.bin"), dir.path().join("file-link"))
+            .unwrap();
+        assert_eq!(dir_size(dir.path()), Some(5));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_probes_report_plausible_memory_figures() {
+        let total = system_ram_bytes().expect("MemTotal");
+        let process = process_ram_bytes().expect("statm");
+        assert!(total > 0);
+        assert!(process > 0 && process < total, "{process} vs {total}");
+    }
+
+    #[test]
+    fn snapshot_of_missing_app_data_keeps_tokens_and_reports_no_size() {
+        let dir = TempDir::new("resource-missing");
+        let snap = snapshot(&dir.path().join("gone"), -1, 7, 42);
+        assert_eq!(snap.disk_app_bytes, None);
+        assert_eq!(
+            (snap.tokens_in, snap.tokens_out, snap.observed_at),
+            (-1, 7, 42)
+        );
+    }
 }
