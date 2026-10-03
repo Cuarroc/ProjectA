@@ -306,8 +306,8 @@ export default function BoardView({
   if (!hasProject) {
     return (
       <div className="empty-state">
-        <p>No project selected.</p>
-        <p className="empty-hint">Pick a project in the sidebar, or add one.</p>
+        <p>Kein Projekt ausgewählt.</p>
+        <p className="empty-hint">Wähle ein Projekt in der Seitenleiste oder füge eins hinzu.</p>
       </div>
     );
   }
@@ -316,7 +316,7 @@ export default function BoardView({
     return (
       <div className="empty-state">
         <p className="board-error">{error}</p>
-        <p className="empty-hint">Retrying every few seconds.</p>
+        <p className="empty-hint">Es wird alle paar Sekunden neu versucht.</p>
       </div>
     );
   }
@@ -324,7 +324,7 @@ export default function BoardView({
   if (loading && cards.length === 0) {
     return (
       <div className="empty-state">
-        <p>Loading board…</p>
+        <p>Board wird geladen …</p>
       </div>
     );
   }
@@ -332,10 +332,10 @@ export default function BoardView({
   if (cards.length === 0) {
     return (
       <div className="empty-state">
-        <p>No workers in this project yet.</p>
+        <p>In diesem Projekt gibt es noch keine Worker.</p>
         <div className="empty-actions">
           <button type="button" className="empty-action" onClick={onNew}>
-            New worker
+            Neuer Worker
           </button>
         </div>
       </div>
@@ -432,7 +432,7 @@ export default function BoardView({
                         <button
                           type="button"
                           className="board-card-main"
-                          title={attached ? worker.task : "No live session — respawn to attach"}
+                          title={attached ? worker.task : "Keine laufende Sitzung — starte den Agent neu, um ihn anzubinden"}
                           disabled={!attached}
                           onClick={() => onOpen(worker)}
                         >
@@ -519,10 +519,10 @@ export default function BoardView({
                               type="button"
                               className="worker-action"
                               disabled={busy}
-                              title="Attach a fresh agent to this worktree"
+                              title="Einen frischen Agenten an diesen Worktree anbinden"
                               onClick={() => onRespawn(worker)}
                             >
-                              {busy ? "…" : "Respawn"}
+                              {busy ? "…" : "Agent neu starten"}
                             </button>
                           )}
                           {column === "ready_to_merge" ? (
@@ -563,8 +563,8 @@ export default function BoardView({
                             className="board-card-menu-button"
                             aria-haspopup="menu"
                             aria-expanded={menuWorkerId === worker.id}
-                            title="Move to column…"
-                            aria-label="Move to column"
+                            title="In Spalte verschieben …"
+                            aria-label="In Spalte verschieben"
                             onMouseDown={(event) => event.stopPropagation()}
                             onClick={(event) => {
                               menuOpenerRef.current = event.currentTarget;
@@ -612,14 +612,14 @@ export default function BoardView({
                             ref={menuRef}
                             className="card-menu"
                             role="menu"
-                            aria-label="Move to column"
+                            aria-label="In Spalte verschieben"
                             onMouseDown={(event) => event.stopPropagation()}
                             onKeyDown={onMenuKeyDown}
                           >
                             {/* Only menuitems may be children of a menu; the
                                 caption is decoration, the name sits on the menu. */}
                             <div className="card-menu-title" role="presentation">
-                              Move to column
+                              In Spalte verschieben
                             </div>
                             {BOARD_COLUMNS.map((target) => (
                               <button
@@ -641,13 +641,13 @@ export default function BoardView({
                               type="button"
                               role="menuitem"
                               className="card-menu-item card-menu-clear"
-                              title="Let the core decide again"
+                              title="Den Kern wieder selbst entscheiden lassen"
                               onClick={() => {
                                 closeMenu();
                                 onMove(worker, null);
                               }}
                             >
-                              Clear override
+                              Zuordnung aufheben
                             </button>
                           </div>
                         ) : null}
@@ -726,7 +726,7 @@ function MergeDialog({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Merge worker"
+        aria-label="Worker mergen"
         onMouseDown={(event) => event.stopPropagation()}
         onSubmit={handleSubmit}
       >
@@ -887,13 +887,13 @@ function ContextUsageMeter({ usage }: { usage: ContextUsage | null }) {
   return (
     <div
       className={`board-card-usage board-card-usage-${level}`}
-      title={`Context: ${label} (${percent}%)`}
+      title={`Kontext: ${label} (${percent}%)`}
     >
       <span className="board-card-usage-label">{label}</span>
       <span
         className="board-card-usage-track"
         role="progressbar"
-        aria-label="Context usage"
+        aria-label="Kontext-Auslastung"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent}
