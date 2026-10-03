@@ -3112,6 +3112,38 @@ mod tests {
         );
     }
 
+    /// PTY-GUARD-01: the delivery queue of one session is bounded. An agent
+    /// that never answers keeps the front guard busy; every further delivery
+    /// used to queue (and park a thread) without limit. Past the bound a new
+    /// delivery must be refused with an error, not queued and not dropped
+    /// silently.
+    #[test]
+    fn the_delivery_queue_of_one_session_is_bounded() {
+        let manager = PtyManager::default();
+        let (session, _writer) = resting_guard_session(&manager, "guard-bound");
+        let attempts = 500;
+        let refused = (0..attempts)
+            .filter(|n| {
+                manager
+                    .start_submit_guard(
+                        "guard-bound",
+                        format!("task {n}"),
+                        Some(GUARD_TEST_MARKER),
+                        |_| {},
+                    )
+                    .is_err()
+            })
+            .count();
+        let queued = session.delivery_turns.lock().queue.len();
+        manager.kill("guard-bound").unwrap();
+        assert!(refused > 0, "{queued} deliveries queued, none refused");
+        assert_eq!(
+            queued + refused,
+            attempts,
+            "every delivery is queued or refused"
+        );
+    }
+
     /// W1-03 / C-3: two deliveries to the same session must not type into
     /// each other. Before the fix every `start_submit_guard` ran its own
     /// thread with nothing ordering them, so the second task was written
