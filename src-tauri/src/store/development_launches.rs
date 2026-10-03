@@ -1383,6 +1383,43 @@ pub(super) mod tests {
             .unwrap();
     }
 
+    /// W2-04c: a route receipt that names the role it was resolved for binds
+    /// only to a run dispatched in that role; a malformed claim binds nothing.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn route_receipt_bound_for_another_role_is_refused() {
+        let (_dir, store, run) = fixture().await;
+        store
+            .reserve_development_launch(&run, "owner", 1, "codex")
+            .await
+            .unwrap();
+        let receipt = |role: serde_json::Value| serde_json::json!({"dispatchRole":role,"selection":{"resolved":{"profileId":"codex"}},"expiresAt":now_unix_secs()+60});
+        for wrong in [serde_json::json!("reviewer"), serde_json::json!(7)] {
+            let refused = store
+                .bind_development_launch_route(&run, "owner", 1, &receipt(wrong))
+                .await;
+            assert!(
+                refused.as_ref().is_err_and(|error| error.contains("role")),
+                "a route for another role must not bind: {refused:?}"
+            );
+        }
+        assert!(store
+            .development_launch(&run)
+            .await
+            .unwrap()
+            .unwrap()
+            .route_json
+            .is_none());
+        store
+            .bind_development_launch_route(
+                &run,
+                "owner",
+                1,
+                &receipt(serde_json::json!("implementer")),
+            )
+            .await
+            .unwrap();
+    }
+
     /// W2-04 review delta: the implicit implementer role of an unassigned task
     /// is still a role the frozen root policy must permit, and the pre-spawn
     /// consumption re-checks it like the reservation does.
