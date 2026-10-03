@@ -3171,6 +3171,59 @@ mod tests {
         );
     }
 
+    /// PTY-GUARD-01 recovery: a queue at the bound is not a wedged queue.
+    /// Accepted turns stay queued in order while deliveries are refused;
+    /// every turn that leaves (drop) frees exactly one place; once all have
+    /// left the session accepts a full bound again and a second flood is
+    /// refused and logged again. Direct on `DeliveryTurns`, no threads and no
+    /// timing.
+    #[test]
+    fn a_full_delivery_queue_recovers_when_turns_leave() {
+        let turns = Arc::new(DeliveryTurns::default());
+        let mut held: VecDeque<DeliveryTurn> = (0..MAX_QUEUED_DELIVERIES)
+            .map(|_| turns.join().expect("below the bound"))
+            .collect();
+        let queued_ids = |turns: &Arc<DeliveryTurns>| -> Vec<u64> {
+            turns.lock().queue.iter().copied().collect()
+        };
+        let accepted: Vec<u64> = held.iter().map(|turn| turn.id).collect();
+        assert_eq!(
+            queued_ids(&turns),
+            accepted,
+            "every accepted turn is queued"
+        );
+
+        for _ in 0..3 {
+            assert!(turns.join().is_err(), "the next join is refused");
+        }
+        assert!(turns.lock().overflow_logged, "the first refusal is logged");
+        assert_eq!(queued_ids(&turns), accepted, "refusals lose no turn");
+
+        // One turn leaves: exactly one place frees up, the oldest ones keep
+        // their order, and the accepted join re-arms the overflow log.
+        drop(held.pop_front());
+        let newest = turns.join().expect("one place freed by the leaving turn");
+        assert!(!turns.lock().overflow_logged, "an accepted join re-arms");
+        assert!(turns.join().is_err(), "the queue is full again");
+        let mut expected = accepted[1..].to_vec();
+        expected.push(newest.id);
+        assert_eq!(queued_ids(&turns), expected, "order and members intact");
+        held.push_back(newest);
+
+        // All turns leave (completion, kill, panic all run the same drop).
+        held.clear();
+        assert!(queued_ids(&turns).is_empty(), "a drained queue is empty");
+        let again: Vec<DeliveryTurn> = (0..MAX_QUEUED_DELIVERIES)
+            .map(|_| turns.join().expect("a drained queue takes a full bound"))
+            .collect();
+        assert!(
+            turns.join().is_err(),
+            "the bound still holds after recovery"
+        );
+        assert!(turns.lock().overflow_logged, "a second flood logs again");
+        assert_eq!(again.len(), MAX_QUEUED_DELIVERIES);
+    }
+
     /// W1-03 / C-3: two deliveries to the same session must not type into
     /// each other. Before the fix every `start_submit_guard` ran its own
     /// thread with nothing ordering them, so the second task was written
