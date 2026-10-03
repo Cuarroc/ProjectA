@@ -69,7 +69,7 @@ changes-only cursor pages (`pa hq changes --project <id>`). Read their output
 within these limits:
 
 - **`pa hq runtime`** reports the profiles and capabilities as *configured*.
-  Its compiled-default `manifestFingerprint` is a valid, limited byte
+  Its compiled-default `provenance.builtinManifestSha256` is a valid, limited byte
   fingerprint of the shipped `agent-defaults.json` (LF-normalised SHA-256). It
   is not proof of the whole Git SHA, the model, the effort or any credential,
   and not a provider attestation. Comparing it with the local checkout is the

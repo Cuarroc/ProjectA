@@ -159,7 +159,7 @@ App wird dafür nicht gestartet — das sind Anweisungen, keine Beobachtungen):
 
 ```sh
 npm run dev:doctor -- --json    # ohne --apply; Zeile "runtime" lesen
-pa hq runtime                   # profilesPath, capabilities, manifestFingerprint
+pa hq runtime                   # profilesPath, capabilities, provenance.builtinManifestSha256
 ```
 
 Fallstricke, jeweils belegt durch den Quelltext:
