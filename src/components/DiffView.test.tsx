@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DiffComment, SetupTrustView, WorkerReadiness } from "../types";
@@ -276,8 +276,16 @@ describe("DiffView", { timeout: 15000 }, () => {
     // loadReadiness would null it again (the alert blinks away). allSettled
     // waits for BOTH before the error is shown.
     getWorkerReadiness.mockClear();
-    getWorkerReadiness.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve(readiness), 20)),
+    // Mount resolves at once; once the verdict is clicked, readiness is held
+    // until the test releases it, so "late" is a barrier, not a timer.
+    let hold = false;
+    let releaseReadiness: (() => void) | null = null;
+    getWorkerReadiness.mockImplementation(() =>
+      hold
+        ? new Promise((resolve) => {
+            releaseReadiness = () => resolve(readiness);
+          })
+        : Promise.resolve(readiness),
     );
     getSetupTrustView.mockClear();
     getSetupTrustView.mockResolvedValue(null);
@@ -286,9 +294,17 @@ describe("DiffView", { timeout: 15000 }, () => {
     refresh.mockRejectedValueOnce(new Error("invoke down"));
     render(<DiffView workerId="wk-1" branch="nacht/wk-1" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Review freigeben" }));
-    // Let every resync promise settle (the delayed readiness lands at 20 ms).
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    const approve = await screen.findByRole("button", { name: "Review freigeben" });
+    hold = true;
+    fireEvent.click(approve);
+    // The refresh has already rejected; the held readiness keeps the resync
+    // open, so the refusal must not be shown yet.
+    await waitFor(() => expect(releaseReadiness).not.toBeNull());
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    releaseReadiness!();
+    // Let every resync promise settle, then the refusal must be on screen.
+    expect(await screen.findByRole("alert")).toHaveTextContent(/the diff moved/);
+    await act(async () => {});
     expect(screen.getByRole("alert")).toHaveTextContent(/the diff moved/);
   });
 
