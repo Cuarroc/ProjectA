@@ -64,7 +64,6 @@ mod budget;
 mod capabilities;
 mod critic;
 mod db_restore;
-#[allow(dead_code)] // W3-02
 mod delivery_recovery;
 mod development_plan;
 mod development_plan_access;
