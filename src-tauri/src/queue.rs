@@ -258,6 +258,9 @@ pub async fn dispatch_project(
         .collect();
 
     let now = now_unix_secs();
+    // A block that names its own end must not outlive it: a blocked profile
+    // starts no worker, so no output would ever clear it.
+    quota.release_expired(now);
     for entry in candidates {
         let facts = gather_facts(store, quota, profiles, &entry.profile_id).await;
         let report = preflight.report(&facts, now);
@@ -2143,6 +2146,43 @@ mod tests {
 
         let same_sweep = preflight.report(&facts, 1_001);
         assert_eq!(same_sweep, first, "cached verdict was silently discarded");
+    }
+
+    /// A block whose `blocked_until` has passed must not hold the queue: the
+    /// blocked profile starts no worker, so nothing else would ever clear it.
+    #[tokio::test]
+    async fn an_elapsed_block_no_longer_holds_its_task() {
+        let (_dir, store, project) = fixture().await;
+        let entry = enqueue_with_enhancer(
+            &store,
+            &project,
+            "work",
+            Some("claude".into()),
+            false,
+            None,
+            None,
+            |_, _| unreachable!(),
+        )
+        .await
+        .unwrap();
+        let quota = QuotaTracker::default();
+        quota.note_blocked("claude", "limit", Some(now_unix_secs() - 60));
+        let launcher = FakeLauncher::new();
+        let profiles = chain(&[("claude", None)]);
+
+        let dispatched = dispatch_project(
+            &store,
+            &quota,
+            &PreflightCache::default(),
+            &profiles,
+            &project,
+            &launcher,
+        )
+        .await
+        .unwrap()
+        .expect("the elapsed block is lifted and the task starts");
+        assert_eq!(dispatched.id, entry.id);
+        assert!(!quota.is_blocked("claude"));
     }
 
     // -- quota failover (phase 19 T4) --------------------------------------
