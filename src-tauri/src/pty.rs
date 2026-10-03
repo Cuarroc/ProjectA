@@ -2247,6 +2247,19 @@ mod tests {
     }
 
     #[test]
+    fn reader_thread_logs_errors_without_panicking_macros() {
+        let source = include_str!("pty.rs");
+        let reader = source
+            .split_once("fn spawn_reader_thread(")
+            .unwrap()
+            .1
+            .split_once("fn build_command(")
+            .unwrap()
+            .0;
+        assert!(!reader.contains("eprintln!"));
+    }
+
+    #[test]
     fn blocking_spawn_work_leaves_the_runtime_worker_free() {
         use std::sync::atomic::AtomicUsize;
         let rt = tokio::runtime::Builder::new_multi_thread()
