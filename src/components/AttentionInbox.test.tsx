@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { listRecommendations } from "../lib/ipc";
-import type { BoardCard, Worker } from "../types";
+import type { BoardCard, Recommendation, Worker } from "../types";
 import AttentionInbox from "./AttentionInbox";
 
 vi.mock("../lib/ipc", () => ({
@@ -130,6 +130,38 @@ describe("AttentionInbox", () => {
     );
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Kontingent");
+  });
+
+  it("ignores a late recommendation reply for the previous project", async () => {
+    let lateReply!: (value: Recommendation[]) => void;
+    vi.mocked(listRecommendations).mockImplementation(((id: string) =>
+      id === "pj-1"
+        ? new Promise<Recommendation[]>((resolve) => {
+            lateReply = resolve;
+          })
+        : Promise.resolve([])) as typeof listRecommendations);
+
+    const view = render(<AttentionInbox cards={[]} projectId="pj-1" onOpen={vi.fn()} />);
+    view.rerender(<AttentionInbox cards={[]} projectId="pj-2" onOpen={vi.fn()} />);
+    await waitFor(() => expect(listRecommendations).toHaveBeenCalledWith("pj-2"));
+
+    await act(async () => {
+      lateReply([
+        {
+          id: "r1",
+          projectId: "pj-1",
+          title: "Stale tip",
+          url: null,
+          rationale: "",
+          effort: null,
+          status: "new",
+          createdAt: 1,
+        },
+      ]);
+    });
+
+    expect(screen.queryByText(/Stale tip/)).toBeNull();
+    expect(screen.getByText(/Nichts wartet/)).toBeTruthy();
   });
 });
 
