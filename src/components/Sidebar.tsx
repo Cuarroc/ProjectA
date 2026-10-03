@@ -200,13 +200,13 @@ export default function Sidebar({
 
       <section className="sidebar-section">
         <div className="section-head">
-          <h2 className="section-title">Projects</h2>
+          <h2 className="section-title">Projekte</h2>
           <button
             type="button"
             className="section-action"
             aria-expanded={formOpen}
-            title={formOpen ? "Cancel" : "Add project"}
-            aria-label={formOpen ? "Cancel" : "Add project"}
+            title={formOpen ? "Abbrechen" : "Projekt hinzufügen"}
+            aria-label={formOpen ? "Abbrechen" : "Projekt hinzufügen"}
             onClick={() => setFormOpen((open) => !open)}
           >
             {formOpen ? "×" : "+"}
@@ -225,18 +225,18 @@ export default function Sidebar({
             />
             <input
               className="field"
-              placeholder="Repo path"
-              aria-label="Repo path"
+              placeholder="Repo-Pfad"
+              aria-label="Repo-Pfad"
               value={repoPath}
               onChange={(event) => setRepoPath(event.target.value)}
             />
             <button type="submit" className="button-primary" disabled={!canSubmit}>
-              {submitting ? "Adding…" : "Add project"}
+              {submitting ? "Wird hinzugefügt …" : "Projekt hinzufügen"}
             </button>
           </form>
         ) : null}
 
-        {loading ? <div className="sidebar-note">Loading…</div> : null}
+        {loading ? <div className="sidebar-note">Wird geladen …</div> : null}
         {error ? <div className="sidebar-note sidebar-error" role="alert">{error}</div> : null}
         {!loading && projects.length === 0 ? (
           <div className="sidebar-note">No projects yet.</div>
@@ -311,7 +311,7 @@ export default function Sidebar({
                       type="button"
                       className="project-remove"
                       aria-label={`Remove ${project.name}`}
-                      title="Remove project"
+                      title="Projekt entfernen"
                       onClick={() => setConfirmingId(project.id)}
                     >
                       ×
@@ -328,8 +328,8 @@ export default function Sidebar({
                     }`}
                     title={
                       orchestratorLive
-                        ? `Stop the ${project.name} orchestrator`
-                        : `Start the ${project.name} orchestrator`
+                        ? `Orchestrator von ${project.name} stoppen`
+                        : `Orchestrator von ${project.name} starten`
                     }
                     disabled={orchestratorBusy || orchestratorStopping}
                     onClick={() => handleOrchestratorToggle(project.id, orchestratorLive)}

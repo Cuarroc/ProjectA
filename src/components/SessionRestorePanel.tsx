@@ -59,12 +59,12 @@ export default function SessionRestorePanel({
       <p className="session-restore-status" role="status" aria-live="polite">
         {live
           ? "Unerwartet: Restore behauptet eine Live-Session."
-          : "Kein Live-PTY. Der Puffer liegt auf der Platte; Respawn startet eine neue Sitzung."}
+          : "Kein Live-PTY. Der Puffer liegt auf der Platte; „Agent neu starten“ öffnet eine neue Sitzung."}
       </p>
       {confirmed ? <p className="session-restore-confirmed">Zuletzt bestätigt: {confirmed}</p> : null}
       {workspaceMissing ? (
         <p className="session-restore-missing" role="alert">
-          Worktree fehlt — Respawn legt ihn nicht still neu an.
+          Worktree fehlt — „Agent neu starten“ legt ihn nicht still neu an.
         </p>
       ) : null}
       {error ? (
@@ -81,7 +81,7 @@ export default function SessionRestorePanel({
       )}
       {restore?.draft ? (
         <div className="session-restore-draft">
-          <h2 className="session-restore-draft-label">Unsent draft</h2>
+          <h2 className="session-restore-draft-label">Nicht gesendeter Entwurf</h2>
           <pre tabIndex={0} aria-label="Gespeicherter Entwurf">
             {restore.draft}
           </pre>
@@ -94,7 +94,7 @@ export default function SessionRestorePanel({
           disabled={!canRespawn}
           onClick={onRespawn}
         >
-          {busy ? "…" : "Respawn"}
+          {busy ? "…" : "Agent neu starten"}
         </button>
       </div>
     </section>

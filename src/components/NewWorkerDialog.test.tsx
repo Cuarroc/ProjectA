@@ -110,7 +110,7 @@ describe("NewWorkerDialog F0-5 spawn overlays", () => {
     );
     renderDialog();
     await waitFor(() => {
-      expect(screen.getByLabelText("Agent profile")).toHaveValue("codex");
+      expect(screen.getByLabelText("Agent-Profil")).toHaveValue("codex");
     });
   });
 
@@ -123,6 +123,6 @@ describe("NewWorkerDialog F0-5 spawn overlays", () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText("Task"), { target: { value: "do the thing" } });
     expect(await screen.findByText(/Worker-Kategorie ist aus/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create worker" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Worker anlegen" })).toBeDisabled();
   });
 });

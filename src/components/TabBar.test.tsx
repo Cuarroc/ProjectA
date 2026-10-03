@@ -76,7 +76,7 @@ describe("TabBar keyboard pattern (APP-5 / APP-9)", () => {
     render(<TabBar {...props} onSelect={vi.fn()} onClose={onClose} />);
     const tabs = screen.getAllByRole("tab");
     expect(tabs.every((tab) => tab.tagName === "BUTTON")).toBe(true);
-    const close = screen.getByRole("button", { name: "Detach Build tests" });
+    const close = screen.getByRole("button", { name: "Tab lösen: Build tests" });
     expect(tabs.some((tab) => tab.contains(close))).toBe(false);
     expect(close.tabIndex).toBe(-1);
     expect(close.parentElement).toHaveAttribute("role", "presentation");
