@@ -103,10 +103,48 @@ describe("Sidebar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove Project A" }));
+    fireEvent.click(screen.getByRole("button", { name: "Projekt Project A entfernen" }));
     expect(onRemove).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "remove" }));
+    fireEvent.click(screen.getByRole("button", { name: "Entfernen" }));
     expect(onRemove).toHaveBeenCalledWith("project-a");
+  });
+
+  it("keeps the project list states and controls in German", () => {
+    const { rerender } = render(
+      <Sidebar
+        projects={[]}
+        activeProjectId={null}
+        loading={false}
+        error={null}
+        onCreate={vi.fn()}
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onOpenOrchestrator={vi.fn()}
+        liveOrchestratorProjectIds={[]}
+        busyOrchestratorProjectId={null}
+        onRefreshProjects={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Noch keine Projekte.")).toBeInTheDocument();
+
+    rerender(
+      <Sidebar
+        projects={[project]}
+        activeProjectId="project-a"
+        loading={false}
+        error={null}
+        onCreate={vi.fn()}
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        onOpenOrchestrator={vi.fn()}
+        liveOrchestratorProjectIds={[]}
+        busyOrchestratorProjectId="project-a"
+        onRefreshProjects={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "GitHub mit Project A verknüpfen" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skill-Packs von Project A bearbeiten" })).toBeInTheDocument();
+    expect(screen.getByText("Wird gestartet …")).toBeInTheDocument();
   });
 });
 

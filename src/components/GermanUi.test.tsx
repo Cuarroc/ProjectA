@@ -43,6 +43,25 @@ describe("German UI wording", () => {
     expect(screen.getByText("Kein Projekt")).toBeInTheDocument();
   });
 
+  it("labels the worker count in German", () => {
+    render(
+      <ViewBar
+        goal="work"
+        workSurface="dialog"
+        onChange={vi.fn()}
+        questionCount={0}
+        questionsFleetWide={false}
+        onNewWorker={vi.fn()}
+        newWorkerDisabled={false}
+        railOpen={false}
+        onToggleRail={vi.fn()}
+        projectName="Project A"
+        workerCount={2}
+      />,
+    );
+    expect(screen.getByText("2 Worker")).toBeInTheDocument();
+  });
+
   it("words the ProfilePicker in German", () => {
     render(
       <ProfilePicker
