@@ -19,6 +19,18 @@ test("descriptor candidates prefer PROJECTA_API_FILE when explicitly set", () =>
   assert.deepEqual(descriptorCandidates({ PROJECTA_API_FILE: descriptor, HOME: "/tmp/home" }), [descriptor]);
 });
 
+test("PROJECTA_API_FILE wins over every other descriptor source", () => {
+  const env = {
+    PROJECTA_API_FILE: "/tmp/file.json",
+    PROJECTA_API_DESCRIPTOR: "/tmp/descriptor.json",
+    PROJECTA_APP_DATA: "/tmp/appdata",
+    HOME: "/tmp/home",
+  };
+  assert.deepEqual(descriptorCandidates(env), ["/tmp/file.json"]);
+  delete env.PROJECTA_API_FILE;
+  assert.deepEqual(descriptorCandidates(env), ["/tmp/descriptor.json"]);
+});
+
 // The proxy resolves the API descriptor like Tauri does: APPDATA (Roaming)
 // before LOCALAPPDATA on Windows. Asserted against the script source so a
 // reorder shows up red here instead of as a 503 in the user's browser.
