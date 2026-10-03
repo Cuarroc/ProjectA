@@ -473,6 +473,22 @@ test("parseMilestones handles Stand edge cases and adjacent tables", () => {
   assert.deepEqual([m.done, m.total], [1, 4]);
 });
 
+test("parseMilestones does not count a half-finished Stand cell as done", () => {
+  const head = ["| ID | Paket | Gr. | Lane | Stand |", "|---|---|---|---|---|"];
+  const plan = [
+    "### M1 — Partial", "", ...head,
+    "| P-1 | gemischt | S | wk + N | OpenCode ✓ #30, Codex △ Probe blockiert |",
+    "| P-2 | teilweise | S | N | teilweise: Modelle geprüft; offen: Keys |",
+    "| P-3 | fertig | S | doc | ✓ #31 |", "",
+  ].join("\n");
+  const [m] = parseAll.parseMilestones(plan);
+  assert.deepEqual(
+    m.packages.map((p) => [p.id, p.state]),
+    [["P-1", "in_progress"], ["P-2", "in_progress"], ["P-3", "done"]],
+  );
+  assert.deepEqual([m.done, m.total], [1, 3]);
+});
+
 test("parseMilestones yields nothing when PLAN.md has no milestone sections", () => {
   assert.deepEqual(parseAll.parseMilestones("# Plan\n\n| ID | Paket |\n|---|---|\n| A | b |\n"), []);
 });
