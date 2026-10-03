@@ -30,8 +30,10 @@ API. It reads the API descriptor locally, so the API token is not sent to the
 browser. The verdict token is requested only for explicit human verdict
 actions such as merging a ready worker and is held in memory by the tab.
 
-Set `HQ_PORT` to use another local port or `PROJECTA_API_DESCRIPTOR` when
-ProjectA uses a non-default app-data directory.
+Set `HQ_PORT` to use another local port. The control API descriptor can be
+selected explicitly with `PROJECTA_API_FILE` (the same override used by `pa`),
+or with `PROJECTA_API_DESCRIPTOR` when ProjectA uses a non-default app-data
+directory.
 
 ## Every agent uses this, not just the human
 
