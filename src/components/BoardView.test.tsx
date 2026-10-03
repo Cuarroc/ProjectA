@@ -118,16 +118,16 @@ describe("BoardView accessibility (ui-ux-pro-max audit)", () => {
   it("APP-4: the column menu trigger has a name a screen reader can say", () => {
     const active: BoardCard = { ...card, column: "working", worker: { ...worker, status: "running" } };
     render(<BoardView {...props} cards={[active]} />);
-    expect(screen.getByRole("button", { name: "Move to column" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "In Spalte verschieben" })).toBeInTheDocument();
   });
 
   it("APP-13 column menu takes focus and walks with the arrows and gives focus back", () => {
     const active: BoardCard = { ...card, column: "working", worker: { ...worker, status: "running" } };
     render(<BoardView {...props} cards={[active]} />);
-    const trigger = screen.getByRole("button", { name: "Move to column" });
+    const trigger = screen.getByRole("button", { name: "In Spalte verschieben" });
     trigger.focus();
     fireEvent.click(trigger);
-    const menu = screen.getByRole("menu", { name: "Move to column" });
+    const menu = screen.getByRole("menu", { name: "In Spalte verschieben" });
     const items = screen.getAllByRole("menuitem");
     expect(document.activeElement).toBe(items[0]);
     expect(menu.querySelector(".card-menu-title")).toHaveAttribute("role", "presentation");
