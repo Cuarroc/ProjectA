@@ -28,7 +28,7 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 - KI-24: SQLite-Lastklasse (`database is locked`), beobachten.
 - KI-27: `exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.
-- KI-20: doppelte Antwort auf `ESC[6n`, Behebung W1-27 in M3.
+- KI-20: doppelte Antwort auf `ESC[6n` behoben (W1-27): das Backend antwortet allein, die Anfrage wird aus Scrollback und UI entfernt.
 
 ## Aktive Specs
 
