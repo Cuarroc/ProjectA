@@ -1154,14 +1154,26 @@ async fn set_emergency_stop(
     gate: State<'_, tokio::sync::Mutex<()>>,
     active: bool,
 ) -> Result<(), String> {
+    apply_emergency_stop(&store, &manager, &gate, active, "app").await
+}
+
+/// The one emergency-stop path, shared by the app command (`actor` "app") and
+/// the control API (`pa`, HTTP). `actor` goes into the `kill_switch` audit row.
+async fn apply_emergency_stop(
+    store: &Store,
+    manager: &PtyManager,
+    gate: &tokio::sync::Mutex<()>,
+    active: bool,
+    actor: &str,
+) -> Result<(), String> {
     let _guard = gate.lock().await;
-    store.set_emergency_stop(active, "app").await?;
+    store.set_emergency_stop(active, actor).await?;
     if !active {
         manager.set_emergency_stop_active(false);
         return Ok(());
     }
     manager.set_emergency_stop_active(true);
-    let manager = manager.inner().clone();
+    let manager = manager.clone();
     tauri::async_runtime::spawn_blocking(move || {
         estop::enforce(&manager, &estop::SystemClock, estop::DEADLINE)
     })
@@ -2816,6 +2828,22 @@ impl ControlBackend for ApiBackend {
             .map(|profile| profile.id)
             .collect();
         Ok(self.quota.snapshot(&profile_ids))
+    }
+
+    fn emergency_stop_active(&self) -> Result<bool, String> {
+        tauri::async_runtime::block_on(self.store.emergency_stop_active())
+    }
+
+    fn set_emergency_stop(&self, active: bool, actor: &str) -> Result<(), String> {
+        let manager = self.app.state::<PtyManager>();
+        let gate = self.app.state::<tokio::sync::Mutex<()>>();
+        tauri::async_runtime::block_on(apply_emergency_stop(
+            &self.store,
+            &manager,
+            &gate,
+            active,
+            actor,
+        ))
     }
 
     fn updater_state(&self) -> Result<api::UpdaterState, String> {
@@ -4502,11 +4530,51 @@ mod tests {
         }
     }
 
+    /// W5-04d: the trait defaults of `ControlBackend` refuse, so a real
+    /// backend that does not override them answers `POST/GET
+    /// /api/emergency-stop` with 500 and leaves `pa` without a stop.
+    #[test]
+    fn api_backend_implements_the_emergency_stop() {
+        const SOURCE: &str = include_str!("main.rs");
+        let body = SOURCE
+            .split("impl ControlBackend for ApiBackend")
+            .nth(1)
+            .expect("backend impl")
+            .split("\n}\n")
+            .next()
+            .expect("impl boundary");
+        for method in [
+            "fn emergency_stop_active(",
+            "fn set_emergency_stop(",
+            "apply_emergency_stop(",
+        ] {
+            assert!(
+                body.contains(method),
+                "ApiBackend must implement `{method}` (trait default refuses)"
+            );
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn shared_emergency_stop_path_sets_and_clears() {
+        let (_dir, store) = seam_fixture("estop-shared").await;
+        let manager = super::PtyManager::default();
+        let gate = tokio::sync::Mutex::new(());
+        super::apply_emergency_stop(&store, &manager, &gate, true, "pa")
+            .await
+            .expect("raise");
+        assert!(store.emergency_stop_active().await.expect("state"));
+        super::apply_emergency_stop(&store, &manager, &gate, false, "pa")
+            .await
+            .expect("clear");
+        assert!(!store.emergency_stop_active().await.expect("state"));
+    }
+
     #[test]
     fn emergency_stop_changes_are_serialized() {
         const SOURCE: &str = include_str!("main.rs");
         let command = SOURCE
-            .split("async fn set_emergency_stop")
+            .split("async fn apply_emergency_stop")
             .nth(1)
             .expect("set command")
             .split("// -- task queue")
