@@ -90,13 +90,35 @@ test("inProgressPackages reads the Stand column of the milestone tables in docs/
   assert.deepEqual(rows.map((r) => r.prNumbers), [[171], [166]]);
 });
 
-test("inProgressPackages parses the real docs/PLAN.md", () => {
-  const rows = inProgressPackages(readFileSync(join(root, "docs/PLAN.md"), "utf8"));
-  assert.ok(rows.length > 0, "the milestone tables list packages that are in progress");
+function assertInProgressRows(rows) {
   for (const r of rows) {
     assert.match(r.status, /^(in Arbeit|PR #\d)/);
     assert.match(r.id, /^[A-Z]/);
   }
+}
+
+test("inProgressPackages parses the real docs/PLAN.md", () => {
+  assertInProgressRows(inProgressPackages(readFileSync(join(root, "docs/PLAN.md"), "utf8")));
+});
+
+test("inProgressPackages accepts a milestone table with no running rows", () => {
+  const plan = [
+    "### M1 — Alles Laufende gelandet",
+    "",
+    "| ID | Paket | Gr. | Lane | Stand |",
+    "|---|---|---|---|---|",
+    "| W1-05b | Cancel-Regel | M | st → api | ✓ #19 |",
+    "| CI-02 | Leichter main-Push | S | ci | offen |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(rows, []);
+  assertInProgressRows(rows);
+});
+
+test("the in-progress row validator still rejects malformed rows", () => {
+  assert.throws(() => assertInProgressRows([{ id: "W1-01", status: "offen" }]));
+  assert.throws(() => assertInProgressRows([{ id: "w1-01", status: "in Arbeit" }]));
 });
 
 test("activeSpecIds prefers the package column over the file name", () => {
