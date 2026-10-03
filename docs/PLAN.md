@@ -282,8 +282,9 @@ ARCH-07 #202, ARCH-08a #181, 08b #221 und 08c #229, ARCH-10a #220 und 10b #236,
 W1-27 #140, W2-04c Teil 2 #222, PTY-READ-01 #206, PTY-RETIRE-01 #215,
 PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189 und
 UX-03 als #199 (#186 ist geschlossen). Ersetzt: #152 → #172, #147 → #178,
-#130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 bleibt
-offen und betrifft den nächsten Start über den Server-Starter.
+#130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 ist
+am 03.10. vom Nutzer freigegeben und der installationsfreie Starter auf dem Server
+eingespielt; das Ergebnis eines echten Starts steht noch aus.
 Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
 
 **Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
@@ -367,8 +368,8 @@ SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 ## Entscheidungs-Inbox
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Offen sind
-E1, E10, E11, E12, E13, F1, F3 und F6; F2, F4 und F5 sind entschieden und werden nicht
-neu gefragt. Agenten
+E1, E10, E11, E12, F1, F3 und F6; F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
+echter Start noch ungeprüft) sind entschieden und werden nicht neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
 
@@ -393,7 +394,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
 | F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | offen |
 | E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | offen |
-| E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | offen |
+| E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | freigegeben 03.10. (17:30 UTC, Nutzerantwort „ja er soll ersetzt werden“); Starter am 03.10. 19:38 auf dem Server eingespielt (SHA-Prüfung, `bash -n`, Backup des Originals). Offen: Ergebnis eines echten Starts (Worker-Lauf) und die Pflicht-Gates des Pakets. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
