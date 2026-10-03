@@ -37,7 +37,11 @@ vi.mock("../lib/ipc", () => ({
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(() => new Promise(() => {})) }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn(() => new Promise(() => {})) }));
-vi.mock("../lib/settings", () => ({
+vi.mock("../lib/settings", async (importActual) => ({
+  ...(await importActual<typeof import("../lib/settings")>()),
+  saveUiFontSize: vi.fn(),
+  saveTerminalFont: vi.fn(),
+  saveTerminalFontSize: vi.fn(),
   agentCategoryDescription: () => "",
   isMasterPromptEnabled: () => false,
   loadAgentCategories: () => ({}),
@@ -65,6 +69,8 @@ function project(id: string): Project {
 
 const PROPS = {
   density: "comfortable" as const,
+  fonts: { uiFontSize: "normal" as const, terminalFont: "cascadia" as const, terminalFontSize: 13 },
+  onFontsChange: vi.fn(),
   onDensityChange: vi.fn(),
   profiles: [],
   onSaveTestCommand: vi.fn(async () => {}),
@@ -283,6 +289,17 @@ describe("SettingsView tabs (APP-5)", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Kompakt" }));
     expect(saveUiDensity).toHaveBeenCalledWith("compact");
     expect(onDensityChange).toHaveBeenCalledWith("compact");
+  });
+
+  it("offers UI text size, terminal font and terminal size and reports each change", () => {
+    const onFontsChange = vi.fn();
+    render(<SettingsView {...PROPS} project={project("pj-a")} onFontsChange={onFontsChange} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Groß" }));
+    expect(onFontsChange).toHaveBeenLastCalledWith({ ...PROPS.fonts, uiFontSize: "large" });
+    fireEvent.change(screen.getByLabelText("Terminal-Schrift"), { target: { value: "consolas" } });
+    expect(onFontsChange).toHaveBeenLastCalledWith({ ...PROPS.fonts, terminalFont: "consolas" });
+    fireEvent.change(screen.getByLabelText(/Terminal-Schriftgröße/), { target: { value: "16" } });
+    expect(onFontsChange).toHaveBeenLastCalledWith({ ...PROPS.fonts, terminalFontSize: 16 });
   });
 
   it("arrow keys switch the section and focus follows and the panel names its tab", () => {

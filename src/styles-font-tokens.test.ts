@@ -23,4 +23,7 @@ describe("UX-02: the monospace font is one token", () => {
       .filter((line) => line.includes("Cascadia Mono"));
     expect(hits).toEqual([]);
   });
+  it("routes scalable app copy through the text tokens", () => {
+    expect(css).not.toMatch(/(?:\.insights-heading|\.diagnose-panel h2|\.diagnose-lede|\.diagnose-table)\s*\{[^}]*font-size:\s*\d/);
+  });
 });
