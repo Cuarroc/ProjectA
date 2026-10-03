@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { commentLineOf, fileLabel, useWorkerDiff } from "../lib/diff";
+import { classifyDiff, reviewClassInfo } from "../lib/reviewClass";
 import {
   addDiffComment,
   approveSetupTrust,
@@ -34,6 +35,11 @@ function statSummary(stat: string): string | null {
     .map((line) => line.trim())
     .filter((line) => line !== "");
   return lines.length === 0 ? null : lines[lines.length - 1];
+}
+
+function fileClassInfo(file: DiffFile) {
+  const cls = classifyDiff(file.oldPath ? [file.path, file.oldPath] : [file.path]);
+  return reviewClassInfo(cls ?? "unknown");
 }
 
 function lineKey(file: string, line: number): string {
@@ -422,6 +428,11 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
     { additions: 0, deletions: 0 },
   );
   const summaryLine = diff ? statSummary(diff.stat) : null;
+  // A rename counts with both ends: moving a file out of a seam is still a seam change.
+  const overallClass = classifyDiff(
+    files.flatMap((file) => (file.oldPath ? [file.path, file.oldPath] : [file.path])),
+  );
+  const overallInfo = overallClass ? reviewClassInfo(overallClass) : null;
 
   return (
     <div className="diff-view">
@@ -458,6 +469,11 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
           {loading ? "…" : "Aktualisieren"}
         </button>
       </header>
+      {overallClass && overallInfo ? (
+        <p className="diff-review-class" role="status" data-review-class={overallClass}>
+          <strong>Prüfstufe {overallInfo.label}:</strong> {overallInfo.explanation}
+        </p>
+      ) : null}
 
       <section className="diff-readiness" aria-label="Review-Readiness">
         <header className="diff-readiness-head">
@@ -675,6 +691,12 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
                 >
                   <span className="diff-file-path">{fileLabel(file.path, file.oldPath)}</span>
                   <span className="diff-file-counts">
+                    <span
+                      className="diff-file-class"
+                      title={`Prüfstufe ${fileClassInfo(file).label}: ${fileClassInfo(file).explanation}`}
+                    >
+                      {fileClassInfo(file).label}
+                    </span>
                     <span className="diff-add-count">+{file.additions}</span>
                     <span className="diff-del-count">-{file.deletions}</span>
                     {file.binary ? <span className="diff-file-binary">bin</span> : null}
