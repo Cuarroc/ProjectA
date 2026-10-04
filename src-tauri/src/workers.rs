@@ -3493,6 +3493,8 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_once_refuses_truncated_dependency_set() {
+        // Scheduler-level regression for
+        // store::continuous::tests::claim_refuses_more_than_64_completed_dependencies.
         let fx = fixture("dispatch-once-truncated-dependencies").await;
         let pool = sqlx::SqlitePool::connect(&format!(
             "sqlite:{}",
