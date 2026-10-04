@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { runBackupDrill, snapshotSet } from './backup-drill.mjs';
 
@@ -44,4 +46,30 @@ test('an empty required table fails the probe', () => {
   con.close();
   assert.equal(m.result, 'fail');
   assert.match(m.steps.at(-2).detail, /count\(messages\)/);
+});
+
+test('backup artifacts are explicitly marked as sensitive', () => {
+  const { appDir, con, outDir } = fixture();
+  const m = runBackupDrill({ appDir, outDir });
+  con.close();
+  assert.deepEqual(m.sensitiveFiles.map((f) => f.name).sort(), [
+    'backup/projecta.db', 'backup/projecta.db-shm', 'backup/projecta.db-wal',
+  ]);
+});
+
+test('backup drill refuses a reused non-empty output folder', () => {
+  const { appDir, con, outDir } = fixture();
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, 'stale.txt'), 'old run');
+  assert.throws(() => runBackupDrill({ appDir, outDir }), /not empty/);
+  con.close();
+});
+
+test('CLI binds the evidence manifest to the repository commit', () => {
+  const { appDir, con, outDir } = fixture();
+  const cli = fileURLToPath(new URL('../drills/backup-drill.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [cli, '--app-dir', appDir, '--out', outDir], { encoding: 'utf8' });
+  con.close();
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(JSON.parse(readFileSync(join(outDir, 'manifest.json'))).commit, execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
 });
