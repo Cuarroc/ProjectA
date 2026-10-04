@@ -25,6 +25,12 @@ if [ "${1:-}" = "--plan" ]; then
   shift
 fi
 
+COMMIT_MSG_FILE=""
+if [ "${1:-}" = "--commit-msg" ]; then
+  COMMIT_MSG_FILE="${2:?--commit-msg needs a message file}"
+  PLAN_ONLY=1
+fi
+
 ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/lib/test-first.sh
 . "$ROOT/scripts/lib/test-first.sh"
@@ -78,12 +84,23 @@ as_native_path() {
   fi
 }
 
+if [ -n "$COMMIT_MSG_FILE" ]; then
+  # No network in a hook: without a local origin/main or HEAD say so and leave
+  # the verdict to the prepush lane (red-first-plan), which fails loudly.
+  if ! git rev-parse --verify -q origin/main > /dev/null || ! git rev-parse --verify -q HEAD > /dev/null; then
+    echo "red-first: commit-msg check skipped (no local origin/main or HEAD); prepush re-checks" >&2
+    exit 0
+  fi
+  HEAD_SHA="$(git rev-parse HEAD)"
+  BASE_SHA="$(git merge-base HEAD origin/main)"
+else
 HEAD_SHA="${HEAD_SHA:-$(git rev-parse HEAD)}"
 BASE_REF="${BASE_SHA:-origin/main}"
 if [ -z "${BASE_SHA:-}" ]; then
   git rev-parse --verify origin/main >/dev/null 2>&1 || git fetch --depth=1 origin main
 fi
 BASE_SHA="$(git merge-base "$HEAD_SHA" "$BASE_REF")"
+fi
 
 echo "red-first: BASE=$BASE_SHA"
 echo "red-first: HEAD=$HEAD_SHA"
@@ -128,8 +145,34 @@ is_dependabot_manifest_commit() { # sha datei...
   return 0
 }
 
+# The #351 guard: a bare path trailer for a file that already exists at the
+# merge base, or a malformed Test-First line. Shared by the commit-msg hook
+# (--commit-msg) and the per-commit loop below - one implementation.
+check_trailer_forms() { # msg
+  local msg="$1" trailer spec path
+  while IFS= read -r trailer; do
+    [ -n "$trailer" ] || continue
+    spec="${trailer#*:}"
+    spec="${spec# }"
+    spec="${spec#	}"
+    [[ "$spec" == *::* ]] && continue
+    path="${spec#./}"
+    if git cat-file -e "${BASE_SHA}:${path}" 2>/dev/null; then
+      echo "red-first: use Test-First: <path>::<exact test name> for each NEW test" >&2
+      return 1
+    fi
+  done < <(printf '%s\n' "$msg" | tr -d '\r' | grep -E '^(Test-First|Regression-For):[[:space:]]+' || true)
+  if grep -q '^Test-First:' <<< "$msg"; then
+    if ! tf_trailer_is_well_formed "$msg"; then
+      echo "red-first: malformed Test-First trailer" >&2
+      return 1
+    fi
+  fi
+  return 0
+}
+
 fail_source_without_trailer() {
-  local sha msg trailer spec path
+  local sha msg
   local files=()
   while IFS= read -r sha; do
     [ -n "$sha" ] || continue
@@ -141,24 +184,7 @@ fail_source_without_trailer() {
       [ -n "$_f" ] && files+=("$_f")
     done < <(git -c core.quotepath=false diff-tree --no-commit-id --name-only -r "$sha")
     msg="$(git log -1 --format=%B "$sha")"
-    while IFS= read -r trailer; do
-      [ -n "$trailer" ] || continue
-      spec="${trailer#*:}"
-      spec="${spec# }"
-      spec="${spec#	}"
-      [[ "$spec" == *::* ]] && continue
-      path="${spec#./}"
-      if git cat-file -e "${BASE_SHA}:${path}" 2>/dev/null; then
-        echo "red-first: use Test-First: <path>::<exact test name> for each NEW test" >&2
-        return 1
-      fi
-    done < <(printf '%s\n' "$msg" | tr -d '\r' | grep -E '^(Test-First|Regression-For):[[:space:]]+' || true)
-    if grep -q '^Test-First:' <<< "$msg"; then
-      if ! tf_trailer_is_well_formed "$msg"; then
-        echo "red-first: Commit $sha hat einen missgebildeten Test-First-Trailer" >&2
-        return 1
-      fi
-    fi
+    check_trailer_forms "$msg" || return 1
     if is_dependabot_manifest_commit "$sha" "${files[@]+"${files[@]}"}"; then
       echo "red-first: Commit $(git rev-parse --short "$sha") ist ein Dependabot-Manifest-Update - kein Trailer verlangt"
       continue
@@ -178,6 +204,36 @@ fail_source_without_trailer() {
   done < <(git log --no-merges --format='%H' "${BASE_SHA}..${HEAD_SHA}")
   return 0
 }
+
+if [ -n "$COMMIT_MSG_FILE" ]; then
+  # Check the message being committed against the STAGED files, no build.
+  # Called by .githooks/commit-msg. Same rules as the CI plan, minus history.
+  msg="$(cat "$COMMIT_MSG_FILE")"
+  staged=()
+  while IFS= read -r _f; do [ -n "$_f" ] && staged+=("$_f"); done < <(git -c core.quotepath=false diff --cached --name-only)
+  check_trailer_forms "$msg" || exit 1
+  if tf_file_list_needs_trailer "${staged[@]+"${staged[@]}"}"; then
+    tf_message_has_required_trailer "$msg" || { echo "red-first: staged source change needs Test-First:/Regression-For:/No-Test:" >&2; exit 1; }
+    tf_trailer_is_well_formed "$msg" || { echo "red-first: malformed trailer" >&2; exit 1; }
+  fi
+  # A Test-First spec must name a file in the index and, with ::name, a test
+  # whose name occurs in that file (cheap grep, no cargo).
+  while IFS= read -r spec; do
+    [ -n "$spec" ] || continue
+    path="${spec%%::*}"; path="${path#./}"
+    [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]] && path="src-tauri/src/main.rs"
+    if ! git cat-file -e ":${path}" 2>/dev/null && ! git cat-file -e "HEAD:${path}" 2>/dev/null; then
+      echo "red-first: Test-First path not in the index or HEAD: $path ($spec)" >&2; exit 1
+    fi
+    if [[ "$spec" == *::* ]]; then
+      name="${spec##*::}"
+      if ! { git show ":${path}" 2>/dev/null || git show "HEAD:${path}"; } | grep -qF -- "$name"; then
+        echo "red-first: test '$name' does not occur in $path ($spec)" >&2; exit 1
+      fi
+    fi
+  done < <(printf '%s\n' "$msg" | tr -d '\r' | grep -E '^Test-First:[[:space:]]+' | sed -E 's/^Test-First:[[:space:]]+//')
+  exit 0
+fi
 
 SPECS=()
 while IFS= read -r spec; do

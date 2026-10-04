@@ -68,7 +68,7 @@ GATES=(
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-native-tests.sh"
+  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
@@ -311,8 +311,38 @@ RESULT_IDS=()
 RESULT_STATES=()
 RESULT_SECONDS=()
 
+# CI-HARDEN-01: the precommit lane runs fmt and cargo-check only when the
+# staged diff touches a Rust input. The classification is lane-plan.sh
+# --touches-rust (RUST_CACHE_INPUTS + src-tauri/ + include_str! targets), not a
+# second list. An empty index (manual run) skips nothing. prepush, linux,
+# windows and release are unchanged.
+CURRENT_LANE=""
+precommit_skip_reason() { # id -> reason on stdout, exit 0 = skip
+  [ "$CURRENT_LANE" = precommit ] || return 1
+  case "$1" in fmt | cargo-check) ;; *) return 1 ;; esac
+  local staged hit
+  staged=()
+  while IFS= read -r hit; do [ -n "$hit" ] && staged+=("$hit"); done < <(git -c core.quotepath=false diff --cached --name-only)
+  [ "${#staged[@]}" -gt 0 ] || return 1
+  if hit="$(bash "$ROOT/scripts/ci/lane-plan.sh" --touches-rust "${staged[@]}")"; then
+    return 1
+  fi
+  echo "staged diff (${#staged[@]} file(s)) touches no Rust input (src-tauri/, Cargo.*, rust-toolchain*, .cargo/); see lane-plan.sh --touches-rust"
+}
+
+CARGO_HINT_DONE=0
+cargo_target_hint() { # befehl
+  case "$1" in cargo*) ;; *) return 0 ;; esac
+  [ "$CARGO_HINT_DONE" -eq 0 ] || return 0
+  CARGO_HINT_DONE=1
+  [ -z "${CARGO_TARGET_DIR:-}" ] || return 0
+  [ -d "$ROOT/target" ] || [ -d "$ROOT/src-tauri/target" ] || \
+    echo "HINWEIS: kein target/ und CARGO_TARGET_DIR nicht gesetzt - cargo baut kalt (Minuten). Siehe AGENTS.md, Abschnitt \"Build slots\": CARGO_TARGET_DIR auf einen warmen Slot setzen."
+  return 0
+}
+
 run_gate() { # id
-  local line workdir cmd start dur rc
+  local line workdir cmd start dur rc why
   if ! line="$(gate_line_by_id "$1")"; then
     local known
     known="$(for g in "${GATES[@]}"; do gate_field "$g" 1; done | tr '\n' ' ')"
@@ -321,6 +351,18 @@ run_gate() { # id
   fi
   workdir="$(gate_field "$line" 3)"
   cmd="$(gate_cmd "$line")"
+
+  if why="$(precommit_skip_reason "$1")"; then
+    echo ">>> Gate $1: uebersprungen - $why"
+    RESULT_IDS+=("$1"); RESULT_STATES+=("uebersprungen"); RESULT_SECONDS+=(0)
+    return 0
+  fi
+  if [ "$CURRENT_LANE" = precommit ] && [ "$1" = typecheck ] && [ ! -d "$ROOT/node_modules" ]; then
+    echo ">>> Gate $1: node_modules fehlt - run npm ci (einmal pro Arbeitsbaum), dann erneut committen."
+    RESULT_IDS+=("$1"); RESULT_STATES+=("ROT(1)"); RESULT_SECONDS+=(0)
+    return 1
+  fi
+  cargo_target_hint "$cmd"
 
   in_actions && echo "::group::Gate $1 — $cmd"
   echo ">>> Gate $1: (cd $workdir && $cmd)"
@@ -516,6 +558,7 @@ while [ $# -gt 0 ]; do
         [ "${#rest[@]}" -gt 0 ] || { echo "--from: '$FROM' liegt nicht in der Bahn '$lane'" >&2; exit 2; }
         ids=("${rest[@]}")
       fi
+      CURRENT_LANE="$lane"
       print_header "$lane"
       tree_before="$(tree_snapshot)"
       status=0
