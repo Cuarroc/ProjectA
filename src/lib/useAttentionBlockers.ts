@@ -25,19 +25,22 @@ export function useAttentionBlockers(
   const [error, setError] = useState<string | null>(null);
   const token = useRef(0);
 
-  const workerIds = useMemo(
+  const workerIdsKey = useMemo(
     () =>
-      workers
-        .filter(
-          (worker) =>
-            worker.kind === "worker" &&
-            worker.projectId === projectId &&
-            worker.status !== "archived",
-        )
-        .map((worker) => worker.id)
-        .sort(),
+      JSON.stringify(
+        workers
+          .filter(
+            (worker) =>
+              worker.kind === "worker" &&
+              worker.projectId === projectId &&
+              worker.status !== "archived",
+          )
+          .map((worker) => worker.id)
+          .sort(),
+      ),
     [projectId, workers],
   );
+  const workerIds = useMemo(() => JSON.parse(workerIdsKey) as string[], [workerIdsKey]);
   const load = useCallback(async () => {
     const mine = ++token.current;
     if (projectId === null || workerIds.length === 0) {
