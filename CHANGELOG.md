@@ -1,5 +1,105 @@
 # Changelog
 
+## v1.5.0-beta — (Datum folgt)
+<!-- Entwurf, wird bei R-1 aktualisiert -->
+
+> **Updater-Hinweis:** v1.4.1 aktualisiert automatisch auf v1.5.0 —
+> derselbe Minisign-Signierschluessel, kein manueller Schritt noetig.
+
+Dieser Entwurf fasst die seit dem Neustart des oeffentlichen Repos am
+25.09.2026 gemergten, nutzer- oder sicherheitsrelevanten Aenderungen zusammen.
+Der finale Umfang und das Datum folgen mit R-1.
+
+**Diese Version migriert die Datenbank bis Schema 25.** Beim ersten Start
+wird migriert; davor entsteht automatisch ein Backup
+(`.pre-migration-*.bak`). Ein Rueckweg auf v1.4.1 braucht dieses Backup.
+
+**Sicherheit:**
+
+- **Globaler Not-Aus** (PR #69, #125, #124, #157, #158): Ein Schalter in
+  den allgemeinen Einstellungen beendet binnen zehn Sekunden alle laufenden
+  Agenten und stoppt neue Aufgaben, auch ueber Neustarts. Aufheben ist nur
+  mit Verdict-Nachweis moeglich.
+- **Web-Oberflaeche gegen fremde Seiten** (PR #8): Empfehlungs-Links sind nur
+  bei HTTP(S) klickbar; der lokale Server lehnt fremde Host-Header vor dem
+  Token-Gate ab.
+- **Rollen trennen Rechte und Budget** (PR #24, #178, #222, #15, #50): Der
+  Koordinator laeuft ohne Schreibpfad; Start, Beleg und Briefing folgen der
+  Dispatch-Rolle und ihrem Budget-Zweck.
+- **Zugangsdaten und Planung enger begrenzt** (PR #12, #138, #303, #306):
+  Private Dateien erhalten geschuetzte Rechte und folgen keinen Symlinks;
+  uebergrosse Verdict-Token-Dateien werden abgelehnt; Koordinator-Laeufe
+  duerfen nur im eigenen Projekt planen.
+- **Prompts, Release und Tresor gehaertet** (PR #18, #116, #288, #200,
+  #225, #90): Fremder Text bleibt als Daten markiert, Systemprompts stehen
+  nicht in Prozessargumenten, Release-Websockets sind gesperrt und atomare
+  Tresor-/HQ-Dateipfade sind eingegrenzt.
+
+**Datenbank/Wiederherstellung:**
+
+- **Append-only-Pruefpfad** (PR #44): `audit_log` lehnt UPDATE, DELETE und
+  ID-Wiederverwendung ab; erster Schreiber ist der Not-Aus.
+- **Wartungs-Lock und Recovery-Treiber** (PR #285, #291): Die Datenbank kann
+  fuer Wartung reserviert werden; ein Neustart nach Absturz installiert nie
+  denselben Schritt doppelt.
+- **Update-Artefakte gebunden** (PR #321): Manifest, Installer, Programmdatei
+  und Datenbank werden vor dem Installationsschritt erneut gegen Laenge und
+  SHA-256 geprueft. Der echte Windows-Installationspfad folgt separat.
+- **Blockierte Budgets loesen sich ehrlich** (PR #16, #183, #107, #160):
+  Bewiesene Abbrueche geben Reservierung und Zustellung atomar frei;
+  abgelaufene oder vergiftete Sperren halten keine Aufgabe still fest.
+- **Retention und Verlauf** (PR #108, #169, #104, #106, #149): Archive und
+  Sitzungspuffer werden gefristet behandelt, beschaedigte Lesson-Dateien
+  bleiben sichtbar und Verlaufsabfragen laufen seriell.
+
+**Agenten/Zustellung:**
+
+- **Zustell-Welle aus v1.4.1 ausgeliefert:** Die dort unter „Noch nicht auf
+  `main`“ beschriebenen Verbesserungen sind erstmals Teil eines Releases.
+- **Push ueber den Runner-Host** (PR #65): Worker committen lokal; der
+  vertrauenswuerdige Host pusht und oeffnet den PR.
+- **Queue und Abschlussmeldungen belastbarer** (PR #19, #151, #82, #301,
+  #319): Abbruch braucht ein bewiesenes Prozessende, fehlgeschlagene Starts
+  rollen zurueck, Abschlussmeldungen sind gegen Lauf und Fence gebunden, und
+  ein Panic beim Start stoppt nicht die weitere Zustellung.
+- **Terminal stabiler** (PR #230, #206, #215, #141, #53): Zustellstaus sind
+  begrenzt, unterbrochene Reads werden wiederholt, spaetes Aufraeumen blockiert
+  nicht den Runtime-Thread und native Windows-Jobs haben Ressourcenlimits.
+- **Cursor-Abfragen einmal beantwortet** (PR #140, KI-20): Das Backend
+  antwortet allein; beantwortete Queries verschwinden aus der Ansicht.
+
+**HQ/Oberflaeche:**
+
+- **Klartext auf Deutsch** (PR #172, #199, #139): Status, Fehler, Dialoge und
+  Board sind verstaendlicher; archivierte Worker zeigen keinen Respawn-Knopf.
+- **Einstellungen und Suche** (PR #154, #153, #27): Oberflaechen- und
+  Terminalschrift sind waehbar; die Suche bietet Gross-/Kleinschreibung und
+  regulaere Ausdruecke.
+- **Diff-Freigabe mit Pruefstufe** (PR #189): Dateien tragen eine kurze
+  Erklaerung und die pfadbasierte Stufe A, B, C oder unbekannt.
+- **Updater, Ziele und Zustellung live** (PR #119, #13, #21, #62): App und
+  Dev-HQ teilen den Updater-Zustand; Ziele, Teams, Budget, Routing, Reviews
+  und Delivery haben Live-Ansichten.
+- **Meilensteine und Kontrast** (PR #38, #131, #274, #33, #58): Das HQ zeigt
+  M1–M4, zaehlt „teilweise“ nicht als fertig und bietet geprueften Hell-/
+  Dunkel-Kontrast sowie die wirksame Profil-Policy.
+- **Aktuelle Daten nach Wechseln und Polls** (PR #134, #135, #133, #194,
+  #308, #312): Spaete Antworten alter Ansichten werden verworfen; neu vom
+  Board entdeckte Worker erscheinen automatisch in der Seitenleiste.
+- **Fehlerhafte Digest-Quellen sichtbar** (PR #313): Lesefehler erscheinen
+  als unvollstaendig statt wie vollstaendige Tages-Daten.
+
+**Entwicklung/CI** (intern, kurz): ein Plan mit zehn Regeln und gestuften
+Reviews (PR #26); Geheimnis- und Lizenzpruefung (PR #20, #23, #52); roter
+`main` stoppt die Merge-Queue (PR #28); Test-First-Trailer und neue
+Architekturverstoesse werden lokal und in CI geprueft (PR #137, #170, #304,
+#316); Start-Check vor jedem Worker (PR #35); Lauf-, Benchmark- und
+Testabdeckung ausgebaut (PR #11, #73, #92–#94, #129, #145, #262);
+Dependencies, README und Projektstatus aktualisiert.
+
+Quelle: alle seit dem oeffentlichen Neustart gemergten PRs, am 04.10.2026 mit
+`gh pr list --state merged --limit 300` gegen `origin/main` geprueft.
+
 ## v1.4.1 — 2026-09-22
 
 > **Updater-Hinweis:** Der Minisign-Signierschluessel der v1.x-Reihe war nicht
