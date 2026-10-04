@@ -29,7 +29,9 @@ describe("MaintenancePanel", () => {
   it("enters maintenance only after confirmation and shows the badge", async () => {
     ipc.enterMaintenance.mockResolvedValue(undefined);
     render(<MaintenancePanel />);
-    fireEvent.click(screen.getByRole("button", { name: "Wartungsmodus starten" }));
+    const start = screen.getByRole("button", { name: "Wartungsmodus starten" });
+    await waitFor(() => expect(start).toBeEnabled());
+    fireEvent.click(start);
     expect(ipc.enterMaintenance).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Ja, Wartungsmodus starten" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Aktiv");
@@ -40,7 +42,9 @@ describe("MaintenancePanel", () => {
     ipc.enterMaintenance.mockResolvedValue(undefined);
     ipc.leaveMaintenance.mockResolvedValue(undefined);
     render(<MaintenancePanel />);
-    fireEvent.click(screen.getByRole("button", { name: "Wartungsmodus starten" }));
+    const start = screen.getByRole("button", { name: "Wartungsmodus starten" });
+    await waitFor(() => expect(start).toBeEnabled());
+    fireEvent.click(start);
     fireEvent.click(screen.getByRole("button", { name: "Ja, Wartungsmodus starten" }));
     fireEvent.click(await screen.findByRole("button", { name: "Wartungsmodus beenden" }));
     await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
@@ -50,7 +54,9 @@ describe("MaintenancePanel", () => {
   it("shows an IPC error and keeps the badge off", async () => {
     ipc.enterMaintenance.mockRejectedValue("1 session(s) still active");
     render(<MaintenancePanel />);
-    fireEvent.click(screen.getByRole("button", { name: "Wartungsmodus starten" }));
+    const start = screen.getByRole("button", { name: "Wartungsmodus starten" });
+    await waitFor(() => expect(start).toBeEnabled());
+    fireEvent.click(start);
     fireEvent.click(screen.getByRole("button", { name: "Ja, Wartungsmodus starten" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/still active/);
     expect(screen.queryByRole("status")).toBeNull();

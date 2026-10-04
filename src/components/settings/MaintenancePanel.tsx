@@ -1,16 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { describeError, enterMaintenance, leaveMaintenance } from "../../lib/ipc";
+import {
+  describeError,
+  enterMaintenance,
+  getMaintenance,
+  leaveMaintenance,
+} from "../../lib/ipc";
 
-/**
- * Wartungsmodus for the backup drill. The backend has no getter, so the badge
- * follows the last successful command of this window, never a failed one.
- */
+/** Wartungsmodus controls for the backup drill. Rust owns the displayed state. */
 export default function MaintenancePanel() {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState<boolean | null>(null);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getMaintenance()
+      .then((value) => {
+        if (!cancelled) setActive(value);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(describeError(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const change = async (next: boolean) => {
     setBusy(true);
@@ -36,7 +52,7 @@ export default function MaintenancePanel() {
         Hält neue Arbeit an und sperrt Schreibzugriffe, damit ein Backup sicher ist.
       </p>
       <div>
-        {active ? (
+        {active === true ? (
           <button type="button" disabled={busy} onClick={() => void change(false)}>
             Wartungsmodus beenden
           </button>
@@ -50,7 +66,7 @@ export default function MaintenancePanel() {
             </button>
           </>
         ) : (
-          <button type="button" onClick={() => setAsking(true)}>
+          <button type="button" disabled={busy || active === null} onClick={() => setAsking(true)}>
             Wartungsmodus starten
           </button>
         )}
