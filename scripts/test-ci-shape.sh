@@ -118,6 +118,14 @@ case_m check-renamed-in-ci ci 's/^    name: gates \(windows\)$/    name: gates (
 # .mergify.yml: auto_merge_conditions drift from queue_conditions.
 case_m auto-merge-drift mg '/^  auto_merge_conditions:/,/^[a-z]/ { /check-success = red-first/d }' \
   "queue_conditions and auto_merge_conditions differ"
+# .mergify.yml (CI-HARDEN-02): the review-ok label on only one entry list.
+case_m review-ok-missing-in-auto-merge mg '/^  auto_merge_conditions:/,/^[a-z]/ { /label = review-ok/d }' \
+  "queue_conditions and auto_merge_conditions differ"
+case_m review-ok-missing-in-queue mg '/^    queue_conditions:/,/^    # \.\.\./ { /label = review-ok/d }' \
+  "queue_conditions and auto_merge_conditions differ"
+# ... and on neither list: equal lists must still fail.
+case_m review-ok-missing-in-both mg '/label = review-ok/d' \
+  "queue_conditions lacks 'label = review-ok'"
 # .mergify.yml: a required check missing from merge_conditions.
 case_m merge-condition-missing mg '/^    merge_conditions:/,/^[a-z]/ { /check-success = gates \(windows\)/d }' \
   "merge_conditions lacks 'check-success = gates \\(windows\\)'"

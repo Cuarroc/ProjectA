@@ -61,6 +61,11 @@ queue_rules:
       - -draft
       - -conflict
       - label != do-not-merge
+      # CI-HARDEN-02: fail-closed. The orchestrator pipeline sets `review-ok`
+      # only once the review disposition is complete and no high finding is
+      # open. No exemptions: neither package nor docs/infra nor dependabot
+      # branches are treated specially anywhere in this file.
+      - label = review-ok
       - check-success = gates (linux)
       - check-success = gates (windows)
       - check-success = red-first
@@ -117,6 +122,7 @@ merge_protections_settings:
     - -draft
     - -conflict
     - label != do-not-merge
+    - label = review-ok
     - check-success = gates (linux)
     - check-success = gates (windows)
     - check-success = red-first
