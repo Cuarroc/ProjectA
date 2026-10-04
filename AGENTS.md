@@ -295,3 +295,7 @@ procedures, provider properties and environment gotchas. It carries no rules of
 its own: where it disagrees with this file, this file wins. Its provider table
 is historical (current provider setup: `docs/setup/`). All paths and commands there are
 relative to the repository root. The local Node requirement is 24 or newer.
+The canonical architecture patterns live in
+[`docs/architecture-rules.md`](docs/architecture-rules.md); reviews check them
+and the drift gate `scripts/ci/architecture-drift.mjs` (package ARCH-G2, may
+not exist yet) enforces them.
