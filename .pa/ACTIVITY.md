@@ -41,3 +41,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
 - Commits: 13d5357
 - Uncommitted: keine
+
+## 2026-10-04 21:06 — Codex GPT-5 (codex/w3-02c-restore, srv-w3-02c-restore)
+- Zusammenfassung: W3-02c complete: journal-bound restore adapter rejects foreign, modified, or post-resume snapshots; verified bytes flow through db_restore; draft PR #357; Tier A review and Windows queue lane pending.
+- Commits: df5c145 5979c8e ff2ab84
+- Uncommitted: keine
