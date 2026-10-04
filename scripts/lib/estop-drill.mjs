@@ -38,6 +38,7 @@ export function parseProcessRows(text) {
 }
 
 const fmt = (list) => list.map((p) => `${p.name} pid=${p.pid} parent=${p.ppid}`);
+const processKey = (process) => `${process.pid}\0${process.name.toLowerCase()}`;
 
 // deps: { getState(): Promise<{active}>, listProcesses(): Promise<row[]>, sleep(ms), now(): ms, notify(msg) }
 export async function runEstopDrill({ outDir, appVersion, commit, rootName, deps, waitTriggerMs = 120000 }) {
@@ -51,20 +52,26 @@ export async function runEstopDrill({ outDir, appVersion, commit, rootName, deps
   bundle.addFile('processes-before.txt', fmt(baseline).join('\n'));
   if (before.active) return fail('check stop is off before the drill', 'Not-Aus is already active; release it first');
   if (baseline.length === 0) return fail('check workers are running', 'no worker process under the app: start several workers first');
+  const affected = new Set(baseline.map(processKey));
   bundle.step('snapshot before (API state, worker inventory)', { command: 'pa estop status', detail: `active=false, ${baseline.length} worker process(es)` });
   notify('Jetzt Not-Aus ausloesen (Knopf in der App oder `pa estop on`).');
-  let t0 = null;
-  for (const start = now(); t0 === null && now() - start < waitTriggerMs;) {
-    if ((await getState()).active) t0 = now(); else await sleep(POLL_MS);
+  let t0 = now();
+  let active = false;
+  for (const start = t0; !active && now() - start < waitTriggerMs;) {
+    const pollStartedAt = now();
+    active = (await getState()).active;
+    if (!active) { t0 = pollStartedAt; await sleep(POLL_MS); }
   }
-  if (t0 === null) return fail('wait for trigger acknowledgement', `no active=true within ${waitTriggerMs / 1000}s`);
+  if (!active) return fail('wait for trigger acknowledgement', `no active=true within ${waitTriggerMs / 1000}s`);
   const triggerAt = new Date().toISOString();
   bundle.step('Not-Aus acknowledged by API', { command: 'pa estop status', detail: `active=true at ${triggerAt}` });
   let left = baseline;
   let elapsed = 0;
   const samples = [];
   for (;;) {
-    left = workerInventory(await listProcesses(), rootName);
+    const rows = await listProcesses();
+    for (const process of workerInventory(rows, rootName)) affected.add(processKey(process));
+    left = rows.filter((process) => affected.has(processKey(process)));
     elapsed = now() - t0;
     samples.push({ ms: elapsed, workers: left.length });
     if (left.length === 0 || elapsed >= LIMIT_MS) break;
@@ -88,6 +95,6 @@ export async function runEstopDrill({ outDir, appVersion, commit, rootName, deps
 
 export const NOT_COVERED = [
   'The drill reads the process table only; it does not prove agents ended cleanly or that no work was lost.',
-  'Timing starts at the first poll that sees active=true (up to 250 ms after the trigger); the stop writes the barrier before it ends processes.',
+  'Timing starts at the beginning of the last status poll before active=true; it can conservatively overstate the duration by one poll plus status-call latency.',
   'Linux/macOS and the Tauri GUI are not exercised by tests; the Windows run is done by the user with the installed app.',
 ];

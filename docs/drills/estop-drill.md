@@ -15,8 +15,9 @@ ProjectA-App, PowerShell 7, Node 24, `pa` im PATH und dieses Repository.
 4. **Not-Aus auslösen** (du hast 2 Minuten), auf einem von zwei Wegen:
    - in der App den Knopf „Not-Aus auslösen" (Einstellungen), oder
    - in einem zweiten Fenster: `pa estop on`.
-5. **Warten.** Das Skript misst ab dem Moment, in dem die API „aktiv" meldet,
-   bis keine Worker-Prozesse mehr laufen (Abfrage alle 250 ms, höchstens 15 s).
+5. **Warten.** Das Skript misst konservativ ab dem letzten Status-Poll vor
+   „aktiv" bis keine betroffenen Worker-Prozesse mehr laufen (Abfrage alle
+   250 ms, höchstens 15 s).
    Bestanden: leer innerhalb von 10 Sekunden. Übrig gebliebene Prozesse
    stehen mit Name, PID und Eltern-PID im Ergebnis.
 6. **Not-Aus aufheben** (erneut 2 Minuten): Knopf „Not-Aus aufheben" oder
