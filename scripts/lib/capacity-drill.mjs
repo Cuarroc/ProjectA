@@ -42,14 +42,15 @@ export function evaluate(samples, continuous) {
   }
   const claims = seen.map((r) => r.snap.activeClaims);
   const critical = seen.filter((r) => r.snap.limit === 0).map((r) => r.snap.activeClaims);
+  const apiErrors = rows.length - seen.length;
   if (continuous) {
     if (claims.length && claims[0] < 1) problems.push('no admitted work at start: nothing to observe');
     if (claims.length && claims.at(-1) < claims[0]) problems.push(`claims fell from ${claims[0]} to ${claims.at(-1)}: existing work was reclaimed`);
     if (critical.length && Math.max(...critical) > critical[0]) problems.push(`claim count rose at critical (${critical[0]} -> ${Math.max(...critical)})`);
     for (const st of ['normal', 'limited', 'critical']) if (!stages.has(st)) problems.push(`stage not reached: ${st}`);
   }
-  if (!seen.length) problems.push('no capacity snapshot could be read');
-  return { problems, stages: [...stages], samples: samples.length, apiErrors: rows.length - seen.length,
+  if (apiErrors) problems.push(seen.length ? `${apiErrors} capacity snapshot(s) could not be read` : 'no capacity snapshot could be read');
+  return { problems, stages: [...stages], samples: samples.length, apiErrors,
     claimsFirst: claims[0] ?? null, claimsLast: claims.at(-1) ?? null, minOsAvailableBytes: Math.min(...samples.map((s) => s.os.availableBytes)) };
 }
 export async function runCapacityDrill({ outDir, appVersion, commit, projects, continuous = false, durationSec = 600, intervalMs = 2000,
@@ -69,6 +70,6 @@ export async function runCapacityDrill({ outDir, appVersion, commit, projects, c
   const verdict = evaluate(samples, continuous);
   bundle.addFile('verdict.json', JSON.stringify({ continuous, ...verdict }, null, 2));
   bundle.step(continuous ? 'admission limits 2/1/0, no new claim at critical, no reclaim' : 'observation only (Continuous OFF): no admission verdict',
-    { exitCode: continuous && verdict.problems.length ? 1 : 0, detail: verdict.problems.join('; ') || `stages: ${verdict.stages.join(',')}` });
+    { exitCode: verdict.apiErrors || (continuous && verdict.problems.length) ? 1 : 0, detail: verdict.problems.join('; ') || `stages: ${verdict.stages.join(',')}` });
   return bundle.finish(continuous ? NOT_COVERED.slice(1) : NOT_COVERED);
 }

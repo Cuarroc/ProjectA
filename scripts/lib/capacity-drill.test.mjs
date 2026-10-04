@@ -42,6 +42,13 @@ test('with Continuous off the run is observation only and never fails on admissi
   assert.equal(m.result, 'pass'); assert.match(m.steps[1].name, /observation only/);
   assert.ok(m.notCovered.some((n) => /Continuous ON/.test(n)));
 });
+test('with Continuous off a missing capacity snapshot still fails the observation', async () => {
+  const outDir = join(mkdtempSync(join(tmpdir(), 'cap-')), 'b');
+  const m = await runCapacityDrill({ outDir, projects: ['a'], continuous: false, durationSec: 1, intervalMs: 5000,
+    readOs: () => ({ totalBytes: TOTAL, availableBytes: 8000 * MIB }), fetchSnapshot: async () => { throw new Error('offline'); } });
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps[1].detail, /no capacity snapshot/);
+});
 test('API errors are not a pass and bundle text carries no token', async () => {
   const outDir = join(mkdtempSync(join(tmpdir(), 'cap-')), 'b');
   const m = await runCapacityDrill({ outDir, projects: ['a'], continuous: true, durationSec: 1, intervalMs: 5000,
