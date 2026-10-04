@@ -2799,6 +2799,10 @@ fn render_worker(worker: &Value) -> String {
     out
 }
 
+fn render_worker_delivery(_delivery: &Value) -> String {
+    String::new()
+}
+
 fn render_worker_list(workers: &Value) -> String {
     let Some(workers) = workers.as_array() else {
         return "no workers\n".to_string();
@@ -4643,6 +4647,92 @@ mod tests {
         drop(stream);
         client.join().expect("client");
         String::from_utf8_lossy(&raw).into_owned()
+    }
+
+    fn reply(
+        status: u16,
+        body: &'static str,
+        request: impl FnOnce(Api) -> Result<Value, String> + Send + 'static,
+    ) -> (String, Result<Value, String>) {
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let client = std::thread::spawn(move || {
+            request(Api {
+                port,
+                token: "run-token".to_string(),
+            })
+        });
+
+        let (mut stream, _) = listener.accept().expect("accept");
+        let mut raw = Vec::new();
+        let mut buffer = [0u8; 1024];
+        loop {
+            let read = stream.read(&mut buffer).expect("read");
+            raw.extend_from_slice(&buffer[..read]);
+            let Some(head_end) = raw.windows(4).position(|window| window == b"\r\n\r\n") else {
+                continue;
+            };
+            let head = String::from_utf8_lossy(&raw[..head_end]);
+            let length = head
+                .lines()
+                .find_map(|line| line.strip_prefix("Content-Length: ")?.parse::<usize>().ok())
+                .expect("content length");
+            if raw.len() >= head_end + 4 + length {
+                break;
+            }
+        }
+        let response = format!(
+            "HTTP/1.1 {status} TEST\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream.write_all(response.as_bytes()).expect("write");
+        drop(stream);
+        (
+            String::from_utf8_lossy(&raw).into_owned(),
+            client.join().expect("client"),
+        )
+    }
+
+    #[test]
+    fn wrong_run_or_fence_is_refused_by_worker_delivery() {
+        for refusal in ["unknown development run", "stale development run fence"] {
+            let body = Box::leak(format!(r#"{{"error":"{refusal}"}}"#).into_boxed_str());
+            let (request, result) = reply(409, body, |api| {
+                api.post("/api/hq/v1/agent/delivery", json!({ "outcome": "done" }))
+            });
+            assert_eq!(result, Err(refusal.to_string()));
+            assert!(
+                request.starts_with("POST /api/hq/v1/agent/delivery HTTP/1.1"),
+                "{request}"
+            );
+            let (_, body) = request.split_once("\r\n\r\n").unwrap();
+            assert_eq!(
+                serde_json::from_str::<Value>(body).unwrap(),
+                json!({ "outcome": "done" })
+            );
+        }
+    }
+
+    #[test]
+    fn repeated_worker_done_renders_as_a_noop() {
+        assert_eq!(format!("{:?}", parse("worker done")), "Ok(WorkerDone)");
+        let rendered = render_worker_delivery(&json!({
+            "apiVersion": 1,
+            "runId": "run-1",
+            "status": "completed",
+            "repeated": true,
+        }));
+        assert_eq!(rendered, "delivery already recorded: done (run run-1)\n");
+    }
+
+    #[test]
+    fn worker_blocked_without_reason_is_a_usage_error() {
+        assert_eq!(
+            parse("worker blocked"),
+            Err("usage: pa worker blocked --reason <text>".to_string())
+        );
     }
 
     #[test]
