@@ -25,6 +25,7 @@ export function evaluatePhase(phase, snap, base) {
   if (!snap.descriptor) problems.push('projecta-api.json missing');
   else if (!ports.includes(snap.descriptor.port)) problems.push('API descriptor port is not a listening port of the app');
   if (snap.api.error) problems.push(`API call failed: ${snap.api.error}`);
+  if (phase === 'baseline' && snap.api.workers.length === 0) problems.push('expected at least one session in the baseline');
   if (base && phase === 'second-start') {
     if (app[0] && base.processes.app[0] && app[0].pid !== base.processes.app[0].pid) problems.push('the first process was replaced');
     if (JSON.stringify(ports) !== JSON.stringify(base.processes.ports)) problems.push('listening ports changed after the second start');
