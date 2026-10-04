@@ -49,6 +49,22 @@ test('drill fails and lists the residual process when a worker stays alive', asy
   assert.equal(m.result, 'fail');
   assert.match(readFileSync(join(w.outDir, 'processes-after.txt'), 'utf8'), /claude\.exe pid=2 parent=1/);
 });
+test('drill keeps tracking an affected descendant after its parent exits', async () => {
+  let t = 0;
+  const root = rows[0];
+  const orphan = rows[2];
+  const w = {
+    outDir: join(mkdtempSync(join(tmpdir(), 'estop-')), 'out'), appVersion: '1.4.1', commit: 'abc',
+    deps: {
+      now: () => t, sleep: async (ms) => { t += ms; }, notify: () => {},
+      getState: async () => ({ active: t >= 500 && t < 12500 }),
+      listProcesses: async () => (t < 500 ? [root, rows[1], orphan] : [root, orphan]),
+    },
+  };
+  const m = await runEstopDrill(w);
+  assert.equal(m.result, 'fail');
+  assert.match(readFileSync(join(w.outDir, 'processes-after.txt'), 'utf8'), /node\.exe pid=3 parent=2/);
+});
 test('drill fails when workers need longer than 10 s', async () => {
   const m = await runEstopDrill(world({ dieAfter: 11000 }));
   assert.equal(m.result, 'fail');
