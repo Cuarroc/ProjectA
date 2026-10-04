@@ -1584,7 +1584,7 @@ async fn project_repo_path(store: &Store, project_id: &str) -> Result<String, St
 #[tauri::command]
 async fn list_digests(store: State<'_, Store>, project_id: String) -> Result<Vec<String>, String> {
     let repo_path = project_repo_path(&store, &project_id).await?;
-    Ok(digest::list_digests(&repo_path))
+    digest::list_digests(&repo_path)
 }
 
 /// One day's digest as Markdown, or `null` when that day has no page.
@@ -1595,7 +1595,7 @@ async fn get_digest(
     date: String,
 ) -> Result<Option<String>, String> {
     let repo_path = project_repo_path(&store, &project_id).await?;
-    Ok(digest::read_digest(&repo_path, &date))
+    digest::read_digest(&repo_path, &date)
 }
 
 #[tauri::command]
@@ -2899,11 +2899,11 @@ impl ControlBackend for ApiBackend {
     }
 
     fn list_digests(&self, project_id: &str) -> Result<Vec<String>, String> {
-        Ok(digest::list_digests(&self.repo_path(project_id)?))
+        digest::list_digests(&self.repo_path(project_id)?)
     }
 
     fn read_digest(&self, project_id: &str, date: &str) -> Result<Option<String>, String> {
-        Ok(digest::read_digest(&self.repo_path(project_id)?, date))
+        digest::read_digest(&self.repo_path(project_id)?, date)
     }
 
     fn project_stats(
