@@ -36,3 +36,8 @@ test('a failing step or an empty drill is a failed result', () => {
 test('default output folder is timestamped under the given directory', () => {
   assert.equal(defaultOutDir('backup-drill', '/w', new Date('2026-10-04T10:00:00.000Z')), join('/w', 'backup-drill-2026-10-04T10-00-00-000Z'));
 });
+test('redact keeps numeric token counts but still masks token secrets', () => {
+  assert.equal(redact('{"reservedTokens": 500, "tokens": null}'), '{"reservedTokens": 500, "tokens": null}');
+  assert.match(redact(`{"tokens":"${'abcd'}${'efgh1234'}"}`), /\[REDACTED\]/);
+  assert.match(redact('{"token": 123456789}'), /\[REDACTED\]/);
+});

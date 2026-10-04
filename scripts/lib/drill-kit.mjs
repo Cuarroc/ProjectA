@@ -12,7 +12,8 @@ export function redact(text) {
     .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/g, `$1 ${MASK}`)
     .replace(
       /("?(?:[\w-]*(?:token|secret|password|api[_-]?key|authorization)[\w-]*)"?\s*[:=]\s*)("[^"]*"|[^\s,}]+)/gi,
-      (_m, key, value) => `${key}${value.startsWith('"') ? `"${MASK}"` : MASK}`,
+      (_m, key, value) => (/tokens"?\s*[:=]\s*$/i.test(key) && /^(\d+|null)$/.test(value) ? `${key}${value}`
+        : `${key}${value.startsWith('"') ? `"${MASK}"` : MASK}`), // a token COUNT is not a secret
     )
     .replace(/[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"']+/gi, '%USERPROFILE%')
     .replace(/\/home\/[^/\s"']+/g, '~');
