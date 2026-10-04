@@ -16,11 +16,13 @@ Voraussetzung: ProjectA, PowerShell 7, Node 24 und dieses Repository sind da.
 4. **Skript starten.** Öffne PowerShell 7 im Repository-Ordner und tippe:
    `pwsh scripts/drills/backup-drill.ps1 -AppVersion 1.4.1 -OutDir C:\Belege\backup-drill`
    (ohne `-OutDir` entsteht ein neuer Ordner mit Zeitstempel im aktuellen Ordner).
+   Jeder Lauf braucht einen neuen oder leeren Zielordner, damit keine alten Dateien in den Beleg geraten.
 5. **Ausgabe lesen.** Erwartet: fünf Zeilen mit `OK` und am Ende `Ergebnis: pass`.
    Bei `FEHLER` den Ordner nicht löschen und mir melden.
 6. **Beleg prüfen.** Im Ordner liegt `manifest.json` (Schritte, Exit-Codes,
-   Hashes, Ergebnis, Nicht-abgedeckt) und die Prüfdateien. Tokens sind
-   geschwärzt; schau trotzdem kurz hinein, bevor du den Ordner weitergibst.
+   Hashes, Ergebnis, Nicht-abgedeckt) und die Prüfdateien. Die Textbelege sind
+   geschwärzt. **Der Unterordner `backup` enthält die vollständige, ungeschwärzte
+   Datenbank mit privaten Inhalten und Tokens: nie weitergeben.** Textbelege erst prüfen.
 7. **ProjectA wieder starten**; alles soll wie vorher aussehen.
 
 Nicht abgedeckt: Wartungs-Drain per App (kein Auslöser), Sicherung bei laufender

@@ -1,6 +1,8 @@
 // CLI entry of the backup drill (see docs/drills/backup-drill.md).
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { defaultOutDir } from '../lib/drill-kit.mjs';
 import { runBackupDrill } from '../lib/backup-drill.mjs';
 
@@ -12,8 +14,10 @@ const { values: v } = parseArgs({
 });
 if (!v['app-dir']) { console.error('FEHLER: --app-dir fehlt'); process.exit(2); }
 const outDir = v.out ?? defaultOutDir('backup-drill');
+const commit = v.commit ?? execFileSync('git', ['rev-parse', 'HEAD'], {
+  cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8' }).trim();
 const manifest = runBackupDrill({
-  appDir: v['app-dir'], outDir, appVersion: v['app-version'], commit: v.commit, allowRunning: v['allow-running'],
+  appDir: v['app-dir'], outDir, appVersion: v['app-version'], commit, allowRunning: v['allow-running'],
   processList: v['process-list'] ? readFileSync(v['process-list'], 'utf8') : '',
 });
 for (const s of manifest.steps) console.log(`${s.exitCode === 0 ? 'OK    ' : 'FEHLER'} ${s.n}. ${s.name}${s.detail ? ` - ${s.detail}` : ''}`);
