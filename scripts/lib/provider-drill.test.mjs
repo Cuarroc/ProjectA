@@ -11,9 +11,14 @@ const route = (provider, transport) => JSON.stringify({
   selection: { resolved: { provider } }, invocationModel: 'm-1', preparedInvocation: { transport },
   executionObservation: { state: 'unavailable' },
 });
-const record = (id, { provider = 'codex', identity = 'recorded', usage } = {}) => ({
+const record = (id, {
+  provider = 'codex', identity = 'recorded', assessment = 'observed',
+  observedProvider = provider, observedModel = 'm-1', usage,
+} = {}) => ({
   run: { id }, launch: { routeJson: route(provider, 'native_json') },
-  executionIdentity: { state: identity, assessment: 'verified', identity: { observed: { model: 'm-1' } } },
+  executionIdentity: { state: identity, assessment, identity: { observed: {
+    status: assessment, identity: { provider: observedProvider, model: observedModel, family: 'openai' },
+  } } },
   usage: usage ?? { state: 'measured', tokens: 120, ledgerState: 'settled', reservedTokens: 500,
     provenance: { collector: 'codex_native_json', source: 'codex_native_json:sha256:ab', observedAt: 1700000000 } },
 });
@@ -28,7 +33,7 @@ test('only runs absent from the before capture count as the drill run', () => {
 test('summary keeps route and observed identity and reservation and collector source apart', () => {
   const s = summarizeRun(record('r1'));
   assert.deepEqual(s.configured, { provider: 'codex', model: 'm-1', transport: 'native_json' });
-  assert.equal(s.identity.observed.model, 'm-1');
+  assert.equal(s.identity.observed.identity.model, 'm-1');
   assert.deepEqual(s.reservation, { ledgerState: 'settled', reservedTokens: 500 });
   assert.equal(s.usage.source, 'codex_native_json:sha256:ab');
   assert.equal(s.usage.observedAt, 1700000000);
@@ -46,6 +51,12 @@ test('not_reported without tokens passes and tokens are never filled in', () => 
 test('unobserved identity or wrong provider or invented tokens fail', () => {
   for (const r of [record('r1', { identity: 'unavailable' }), record('r1', { provider: 'claude' }),
     record('r1', { usage: { state: 'measured', tokens: 9, provenance: {} } })]) {
+    assert.equal(runProviderDrill({ adapter: 'codex', outDir: out(), before: [], after: [r], ...snap }).result, 'fail');
+  }
+});
+test('recorded identity without an observed provider and model fails', () => {
+  for (const r of [record('r1', { assessment: 'unknown' }), record('r1', { observedProvider: 'claude' }),
+    record('r1', { observedModel: null })]) {
     assert.equal(runProviderDrill({ adapter: 'codex', outDir: out(), before: [], after: [r], ...snap }).result, 'fail');
   }
 });

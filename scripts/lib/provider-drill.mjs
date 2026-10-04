@@ -39,6 +39,12 @@ export function judge(adapter, s) {
   if (s.configured.provider !== adapter) p.push(`route provider is ${s.configured.provider}, not ${adapter}`);
   if (s.configured.transport === 'unknown') p.push('route has no transport');
   if (s.identity.state !== 'recorded') p.push(`execution identity is ${s.identity.state} (no observed identity)`);
+  else if (s.identity.assessment !== 'observed') p.push(`execution identity assessment is ${s.identity.assessment ?? 'unknown'}, not observed`);
+  else {
+    const observed = s.identity.observed?.identity;
+    if (observed?.provider !== adapter) p.push(`observed provider is ${observed?.provider ?? 'unknown'}, not ${adapter}`);
+    if (!observed?.model) p.push('observed identity has no model');
+  }
   if (s.usage.state === 'measured') {
     if (!s.usage.source || s.usage.observedAt == null) p.push('measured usage lacks source or observedAt');
   } else if (s.usage.state === 'not_reported') {
