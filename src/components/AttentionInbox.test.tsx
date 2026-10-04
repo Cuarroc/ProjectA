@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { listRecommendations } from "../lib/ipc";
 import type { BoardCard, Recommendation, Worker } from "../types";
@@ -162,6 +162,67 @@ describe("AttentionInbox", () => {
 
     expect(screen.queryByText(/Stale tip/)).toBeNull();
     expect(screen.getByText(/Nichts wartet/)).toBeTruthy();
+  });
+});
+
+function reco(id: string, title: string): Recommendation {
+  return {
+    id,
+    projectId: "pj-1",
+    title,
+    url: null,
+    rationale: "",
+    effort: null,
+    status: "new",
+    createdAt: 1,
+  };
+}
+
+describe("AttentionInbox request ordering", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps the newer poll reply when an older one for the same project lands last", async () => {
+    vi.useFakeTimers();
+    const replies: Array<(value: Recommendation[]) => void> = [];
+    vi.mocked(listRecommendations).mockImplementation((() =>
+      new Promise<Recommendation[]>((resolve) => {
+        replies.push(resolve);
+      })) as typeof listRecommendations);
+
+    render(<AttentionInbox cards={[]} projectId="pj-1" onOpen={vi.fn()} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(replies).toHaveLength(2);
+
+    await act(async () => {
+      replies[1]([reco("r2", "Fresh tip")]);
+    });
+    await act(async () => {
+      replies[0]([reco("r1", "Stale tip")]);
+    });
+
+    expect(screen.queryByText(/Stale tip/)).toBeNull();
+    expect(screen.getByText(/Fresh tip/)).toBeTruthy();
+  });
+
+  it("ignores a reply that arrives after unmount", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    let late!: (value: Recommendation[]) => void;
+    vi.mocked(listRecommendations).mockImplementation((() =>
+      new Promise<Recommendation[]>((resolve) => {
+        late = resolve;
+      })) as typeof listRecommendations);
+
+    const view = render(<AttentionInbox cards={[]} projectId="pj-1" onOpen={vi.fn()} />);
+    view.unmount();
+    await act(async () => {
+      late([reco("r1", "Orphan tip")]);
+    });
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
   });
 });
 

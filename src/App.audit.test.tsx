@@ -11,6 +11,10 @@ const attentionBlockers = vi.hoisted(() => ({
   current: [] as AttentionSource[],
 }));
 
+const boardWorkerSeen = vi.hoisted(() => ({
+  current: null as ((workerId: string) => void) | null,
+}));
+
 const projectA: Project = {
   id: "project-a",
   name: "Project A",
@@ -89,14 +93,21 @@ vi.mock("./lib/ipc", () => ({
 }));
 
 vi.mock("./lib/useBoard", () => ({
-  useBoard: () => ({
-    cards: [],
-    coordinators: [],
-    attentionByWorker: {},
-    loading: false,
-    error: null,
-    refresh: vi.fn(),
-  }),
+  useBoard: (
+    _projectId: string | null,
+    _enabled: boolean,
+    onWorkerSeen?: (workerId: string) => void,
+  ) => {
+    boardWorkerSeen.current = onWorkerSeen ?? null;
+    return {
+      cards: [],
+      coordinators: [],
+      attentionByWorker: {},
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("./lib/useQuestions", () => ({
@@ -198,7 +209,6 @@ vi.mock("./components/BoardRail", () => ({ default: () => null }));
 vi.mock("./components/BoardView", () => ({ default: () => null }));
 vi.mock("./components/CommandChat", () => ({ default: () => null }));
 vi.mock("./components/ConversationView", () => ({ default: () => null }));
-vi.mock("./components/DesignStudio", () => ({ default: () => null }));
 vi.mock("./components/DiffView", () => ({ default: () => null }));
 vi.mock("./components/HistoryView", () => ({ default: () => null }));
 vi.mock("./components/InsightsView", () => ({ default: () => null }));
@@ -221,7 +231,11 @@ vi.mock("./components/SessionRestorePanel", () => ({ default: () => null }));
 vi.mock("./components/SettingsView", () => ({ default: () => null }));
 vi.mock("./components/StatisticsView", () => ({ default: () => null }));
 vi.mock("./components/StatusBar", () => ({ default: () => null }));
-vi.mock("./components/TabBar", () => ({ default: () => null }));
+vi.mock("./components/TabBar", () => ({
+  default: (props: { sessions: Array<{ workerId: string | null }> }) => (
+    <div data-testid="tabs">{props.sessions.map((entry) => entry.workerId).join(",")}</div>
+  ),
+}));
 vi.mock("./components/TerminalView", () => ({ default: () => null }));
 vi.mock("./components/UsageView", () => ({ default: () => null }));
 vi.mock("./components/WebInterfacePanel", () => ({ default: () => null }));
@@ -230,6 +244,7 @@ describe("App audit regressions", () => {
   beforeEach(() => {
     localStorage.clear();
     attentionBlockers.current = [];
+    boardWorkerSeen.current = null;
     vi.clearAllMocks();
     vi.mocked(ipc.listProjects).mockResolvedValue([projectA, projectB]);
     vi.mocked(ipc.listAgentProfiles).mockResolvedValue(profiles);
@@ -251,7 +266,13 @@ describe("App audit regressions", () => {
 
     render(<App />);
     await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-a"));
-    fireEvent.click(screen.getByRole("button", { name: "focus queued worker" }));
+    fireEvent.click(screen.getByRole("button", { name: "open agents" }));
+    act(() => boardWorkerSeen.current?.("worker-a"));
+    await waitFor(() =>
+      expect(
+        vi.mocked(ipc.listWorkers).mock.calls.filter(([id]) => id === "project-a"),
+      ).toHaveLength(2),
+    );
     fireEvent.click(screen.getByRole("button", { name: "select project b" }));
     await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-b"));
 
@@ -262,6 +283,31 @@ describe("App audit regressions", () => {
 
     await waitFor(() => expect(screen.getByTestId("workers")).toHaveTextContent("worker-b"));
     expect(screen.getByTestId("workers")).not.toHaveTextContent("worker-a");
+  });
+
+  it("opens a queued worker's tab once the reload brings it in", async () => {
+    render(<App />);
+    await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-a"));
+
+    vi.mocked(ipc.listWorkers).mockResolvedValue([worker("worker-a", "project-a", "session-a")]);
+    fireEvent.click(screen.getByRole("button", { name: "focus queued worker" }));
+
+    await waitFor(() => expect(screen.getByTestId("tabs")).toHaveTextContent("worker-a"));
+  });
+
+  it("reloads sidebar workers when the board sees an unknown worker", async () => {
+    render(<App />);
+    await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-a"));
+    fireEvent.click(screen.getByRole("button", { name: "open agents" }));
+
+    vi.mocked(ipc.listWorkers).mockResolvedValue([
+      worker("worker-from-queue", "project-a", "session-from-queue"),
+    ]);
+    act(() => boardWorkerSeen.current?.("worker-from-queue"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("workers")).toHaveTextContent("worker-from-queue"),
+    );
   });
 
   it("unsubscribes a PTY exit listener when the session exits normally", async () => {

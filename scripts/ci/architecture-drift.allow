@@ -1,0 +1,230 @@
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(apply_emergency_stop(&self.store,&manager,&gate,active,actor,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(async{self.store.agent_run_context(run,owner,fence).await?;self.store.development_run_role(run).await})
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(budget::list_limits(&self.store))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(budget::update_limits(&self.store,profile_id,five_hour_pct,seven_day_pct,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(development_plan_access::import(&self.store,project_id,plan_id,expected_projection_revision,rollback_reason,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(development_plan_access::read(&self.store,project_id,plan_id,revision,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(learnings::approve_learning(&self.store,id,text))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(learnings::profiles_with_enabled(&self.store),)
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(learnings::reject_learning(&self.store,id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(questions::answer(&self.store,&agents,&self.engine,id,answer,answered_by,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(questions::ask(&self.store,&self.engine,project_id,worker_id,question,options,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(queue::enqueue(self.app.clone(),self.store.clone(),project_id.to_string(),raw_text.to_string(),profile_id,sharpen,priority,spawned_by,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(roles::approve_variant(&self.store,id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(roles::reject_variant(&self.store,id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::accept_recommendation(&self.store,id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::add_recommendation(&self.store,project_id,title,rationale,url,effort,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::create_scout(&self.store,&agents,project_id,None,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::list_recommendations(&self.store,project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::set_recommendation_status(&self.store,id,status))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::triage_repos(&self.store,&agents,project_id,urls,None,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_checkpoint_at(run,owner,fence,revision))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_evidence(run,owner,fence,id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_record_page(run,owner,fence,collection,cursor),)
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_run_context(run,owner,fence))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.assign_continuous_task(task_id,request))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.cancel_queue_entry(id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.checkpoint_continuous_task(task_id,owner,fence,status.as_deref(),detail.as_deref(),))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.claim_continuous_task(task_id,owner,escalation))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.continuous_changes(project_id,cursor))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.continuous_context(project_id,cursor))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.continuous_task_assignment(task_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.control_continuous(project_id,action))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_continuous_goal(project_id,objective,acceptance_criteria,source_goal_id,admit,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_continuous_task(goal_id,objective,profile_id,owned_paths,dependencies,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_project(name,repo_path))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.development_records_snapshot(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.emergency_stop_active())
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_activity(project_id,i64::from(limit)))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_landing_page(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_project(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_project(project_id))	#2
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_project(project_id))	#3
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_worker(worker_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_worker(worker_id))	#2
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_continuous_goals(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_learnings(project_id,status))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_messages(worker_id,limit))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_projects())
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_questions(project_id,status))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_queue(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_role_variants(project_id,status))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_workers(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_workers(project_id))	#2
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.record_agent_checkpoint(run,owner,fence,input))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.record_development_evidence(run,owner,fence,input),)
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.record_development_review(reviewer_run,owner,fence,input,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.set_landing_page(project_id,markdown))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.wait_continuous_changes(project_id,cursor,wait_ms),)
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(stats::project_stats(&self.store,&self.engine,project_id,range,now_unix_secs(),))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::create_worker(&self.store,&agents,project_id,task,profile_id,spawned_by.as_deref(),))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::development::bind_candidate(&self.store,run,owner,fence,input,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::merge_worker(&self.store,&agents,&self.engine,worker_id,remove_worktree,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::send_to_orchestrator(&self.store,&agents,project_id,text,))
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store.rs	begin_with("BEGINIMMEDIATE"
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/continuous.rs	begin_with("BEGINIMMEDIATE"
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_launches.rs	begin_with("BEGINIMMEDIATE"
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#2
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#3
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#4
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#5
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#6
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#7
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/emergency_stop.rs	begin_with("BEGINIMMEDIATE"
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.contains("hasnorunningagent")=>Response::error(409,err),
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with("unknownproject")=>Response::error(404,err),
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with("unknownproject")=>Response::error(404,err),	#2
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{	#2
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{	#3
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	iferr.starts_with("unknownworker"){
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	iferr.starts_with(crate::workers::ERR_REFUSED){
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	iferr.starts_with(crate::workers::ERR_UNKNOWN){
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	letstatus=iferr.starts_with("unknown"){
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("alreadyclaimed")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("budgetexhausted")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("capacityexhausted")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("conflicts")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("cross-project")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("deadline")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("dependencyisnotcompleted")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("disabledbyitsrootpolicy")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("draining")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("fail-closed")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("lostrace")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("mergeblocked")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("mustbe")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("notadmitted")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("notbeenadmitted")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("notopen")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("paused")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("retryrequires")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("stillhasarunningagent")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.contains("unresolved")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.starts_with("continuoustaskisassigned")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.starts_with("teamassignmentislocked")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.starts_with("teamassignmentrevisionconflict")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	||err.starts_with("thetestgatefor")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	}elseiferr.contains("isrequired")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	}elseiferr.contains("sitsin")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	}elseiferr.contains("stale")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	}elseiferr.starts_with(crate::workers::ERR_REFUSED){
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	Err(error)iferror.contains("unauthorized")=>{
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	iferror.contains("idempotencykeywasreused")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	iferror.starts_with("reviewermustbeindependent")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.contains("candidatedoesnotmatch")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.contains("candidatemustbebound")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.contains("cannotuseanullvalue")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.contains("developmentrunisnotactive")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("ambiguouscandidateobservation:")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("candidatescopecheckfailed:")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("checkpointevidenceismissing")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("checkpointexceeds")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("checkpointidempotencykeyreused")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("checkpointrevisionchanged")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("invalidormismatchedrecordcursor")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	||error.starts_with("invalidrecordcursor")
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/agent_access.rs	}elseiferror.contains("cannotbeinthefuture")
+HQ_DIRECT_DB	docs/dev-hq/data.js	"symptom":"SQLxrowcolumnmetadatapanicsaftermultipleALTERTABLEmigrations",
+HQ_RAW_AUTH_FETCH	scripts/hq-queue-open-points.mjs	fetch(`http://127.0.0.1:${descriptor.port}${path}`,{method,headers:{'x-projecta-token':descriptor.token,...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,redirect:'error',signal:AbortSignal.timeout(5000),})
+HQ_RAW_AUTH_FETCH	scripts/runtime-proof.mjs	fetch(`http://127.0.0.1:${descriptor.port}${path}`,{method,headers:{'x-projecta-token':descriptor.token,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),})
+RAW_APP_LOG	src-tauri/src/budget.rs	BudgetAction::Stopped(stop)=>eprintln!(
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetblockon{profile_id}lifted")
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotlistworkers:{err}");
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotreaditssettings:{err}");
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotrecordthepause:{err}");
+RAW_APP_LOG	src-tauri/src/digest.rs	Err(err)=>eprintln!("projecta:digestfor{}notwritten:{err}",project.id),
+RAW_APP_LOG	src-tauri/src/digest.rs	eprintln!("projecta:digestfor{}failed:{err}",project.id);
+RAW_APP_LOG	src-tauri/src/digest.rs	println!("projecta:digestwrittento{}",path.display());
+RAW_APP_LOG	src-tauri/src/hooks.rs	eprintln!("projecta:workersecretmapwaspoisonedwhileissuingasecretfor{worker_id};recovering");
+RAW_APP_LOG	src-tauri/src/hooks.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/hooks.rs	eprintln!("projecta:{err}");	#2
+RAW_APP_LOG	src-tauri/src/learnings.rs	eprintln!("projecta:couldnotadopttherepositoryplaybook:{err}");
+RAW_APP_LOG	src-tauri/src/learnings.rs	eprintln!("projecta:roleproposalfor{learning_id}:{err}");
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotclearstaletestgates:{err}"),
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotresolvequeueclaims:{err}"),
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotretireworker{}:{err}",worker.id),
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotretireworker{}:{err}",worker.id),	#2
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:fileloggingunavailable,stderronly:{err}"),
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:{err}"),
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:{err};thepaCLIwillnotbeabletoconnect"),
+RAW_APP_LOG	src-tauri/src/main.rs	Ok(())=>eprintln!(
+RAW_APP_LOG	src-tauri/src/main.rs	Ok(())=>eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/main.rs	Ok(done)=>eprintln!("projecta:resolved{done}interruptedqueueclaim(s)"),
+RAW_APP_LOG	src-tauri/src/main.rs	Ok(freed)=>eprintln!("projecta:freed{freed}interruptedtestgate(s)"),
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:agentstatushooksareoff;theboardwillrelyontheterminalheuristicsalone");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:cannotinventorysessionsforpersistence:{error}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:continuouslaunchreconciliationunavailable:{error}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:emergencystopstateunavailableatstartup:{error}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:previousruncrashed:{notice}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:questionsweepguard({worker_id}):{event:?}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:reattachfailedtolistworkers:{err}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:reconcileexitedruncredentials/state:{error}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:webinterfacestatewaspoisoned;reportingitsrecoveredstatus");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#2
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#3
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#4
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#5
+RAW_APP_LOG	src-tauri/src/main.rs	println!(
+RAW_APP_LOG	src-tauri/src/main.rs	workers::Reattach::SkipDisabledProfile=>eprintln!(
+RAW_APP_LOG	src-tauri/src/main.rs	workers::Reattach::SkipPaused=>eprintln!(
+RAW_APP_LOG	src-tauri/src/omniroute.rs	Err(err)=>eprintln!("projecta:{err}"),
+RAW_APP_LOG	src-tauri/src/omniroute.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/omniroute.rs	eprintln!("projecta:omnirouteusageledgerisopen");
+RAW_APP_LOG	src-tauri/src/omniroute.rs	eprintln!("projecta:{stored}newomnirouteusageevent(s)");
+RAW_APP_LOG	src-tauri/src/profiles.rs	eprintln!("projecta:ignoring{}:{err}",path.display());
+RAW_APP_LOG	src-tauri/src/providers.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/providers.rs	eprintln!("projecta:omniroutetooknoneoftheproviderconfigroutes;keyswerenotpushed");
+RAW_APP_LOG	src-tauri/src/providers.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#3
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#4
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#5
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#6
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#7
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:cannotconfirmsessionshutdown:{error}");
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:failedtokillahalf-startedptychild:{err}");
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:failedtoreapahalf-startedptychild:{err}");
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:lateretirementrequiresreconciliation:{error}");
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:ptysessionregistrywaspoisonedduringshutdown;killingsessionsanyway");
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:session{exit_id}exitrequiresreconciliation:{error}");
+RAW_APP_LOG	src-tauri/src/questions.rs	Err(err)=>eprintln!("projecta:{err}"),
+RAW_APP_LOG	src-tauri/src/questions.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/questions.rs	eprintln!("projecta:{err}");	#2
+RAW_APP_LOG	src-tauri/src/questions.rs	eprintln!("projecta:{err}");	#3
+RAW_APP_LOG	src-tauri/src/queue.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/quota.rs	eprintln!("projecta:quotarowmapwaspoisoned;recovering(furtheroccurrencesarenotlogged)");
+RAW_APP_LOG	src-tauri/src/retention.rs	eprintln!("projecta:retentionsweep:archiveroothasnoapp-dataparent");
+RAW_APP_LOG	src-tauri/src/retention.rs	eprintln!("projecta:retentionsweep:exportfailed,messageskept:{err}");
+RAW_APP_LOG	src-tauri/src/retention.rs	eprintln!("projecta:retentionsweep:{err}");
+RAW_APP_LOG	src-tauri/src/retention.rs	println!(
+RAW_APP_LOG	src-tauri/src/scout.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/scout.rs	eprintln!("projecta:{rollback}");
+RAW_APP_LOG	src-tauri/src/sessionpersist.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/status.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/status.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/status.rs	eprintln!("projecta:learningcriticfor{worker_id}:{err}");
+RAW_APP_LOG	src-tauri/src/status.rs	eprintln!("projecta:testgatefor{worker_id}:{err}");
+RAW_APP_LOG	src-tauri/src/store.rs	Err(_)=>eprintln!(
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(	#3
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(	#4
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!("projecta:failedtorecordsessionstart:{err}");
+RAW_APP_LOG	src-tauri/src/stuck.rs	eprintln!("projecta:couldnotrecordtheexitnotefor{worker_id}:{err}");
+RAW_APP_LOG	src-tauri/src/stuck.rs	eprintln!("projecta:stuckprobecouldnotlistworkers:{err}");
+RAW_APP_LOG	src-tauri/src/testgate.rs	eprintln!("projecta:couldnotclearthetestflagof{worker_id}:{err}");
+RAW_APP_LOG	src-tauri/src/testgate/candidate.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/web_interface.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/web_interface.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!("projecta:worker{worker_id}:noskillpacksinstalled:{err}");
+RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/workers/development.rs	eprintln!(
+RAW_EVENT_EMIT	src-tauri/src/main.rs	let_=notice_app.emit("supervisor:notification",notice);
+RAW_TAURI_TRANSPORT	src/components/SettingsView.tsx	voidinvoke("plugin:process|restart").catch(()=>setRelaunchFailed(true));

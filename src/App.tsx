@@ -7,7 +7,6 @@ import BoardView from "./components/BoardView";
 import BootstrapScreen from "./components/BootstrapScreen";
 import CommandChat from "./components/CommandChat";
 import ConversationView from "./components/ConversationView";
-import DesignStudio from "./components/DesignStudio";
 import DiagnosticsPanel from "./components/DiagnosticsPanel";
 import DiffView from "./components/DiffView";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -202,6 +201,34 @@ function AppContent() {
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const workersRef = useRef<Worker[]>(workers);
+  workersRef.current = workers;
+  const activeProjectIdRef = useRef(activeProjectId);
+  activeProjectIdRef.current = activeProjectId;
+  const loadWorkersRef = useRef<(projectId: string | null) => Promise<void>>(async () => {});
+  const workerReloadTimer = useRef<number | null>(null);
+  const handleBoardWorkerSeen = useCallback((workerId: string) => {
+    const projectId = activeProjectIdRef.current;
+    if (
+      projectId === null ||
+      workersRef.current.some((worker) => worker.id === workerId) ||
+      workerReloadTimer.current !== null
+    ) {
+      return;
+    }
+    workerReloadTimer.current = window.setTimeout(() => {
+      workerReloadTimer.current = null;
+      if (activeProjectIdRef.current === projectId) void loadWorkersRef.current(projectId);
+    }, 50);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (workerReloadTimer.current !== null) window.clearTimeout(workerReloadTimer.current);
+    },
+    [],
+  );
+
   // The rail shows the board beside every other view, so the full board no
   // longer needs one of its own — and hiding it there keeps the two from
   // saying the same thing twice in one window.
@@ -213,7 +240,7 @@ function AppContent() {
   // that says nobody is waiting because the board stopped looking would be
   // worse than no number at all.
   const bootstrapReady = bootstrapState === "ready";
-  const board = useBoard(activeProjectId, bootstrapReady);
+  const board = useBoard(activeProjectId, bootstrapReady, handleBoardWorkerSeen);
   const attentionBlockers = useAttentionBlockers(activeProjectId, workers);
 
   // Owned here for the same reason the board is: the number of open questions
@@ -277,12 +304,8 @@ function AppContent() {
   profilesRef.current = profiles;
   const projectsRef = useRef<Project[]>(projects);
   projectsRef.current = projects;
-  const workersRef = useRef<Worker[]>(workers);
-  workersRef.current = workers;
   // Which project is on screen *now*: an answer read after its await must not
   // write under a project the user has already switched away from.
-  const activeProjectIdRef = useRef(activeProjectId);
-  activeProjectIdRef.current = activeProjectId;
   const refreshBoardRef = useRef(board.refresh);
   refreshBoardRef.current = board.refresh;
 
@@ -532,6 +555,7 @@ function AppContent() {
     },
     [subscribeExit],
   );
+  loadWorkersRef.current = loadWorkers;
 
   useEffect(() => {
     if (!bootstrapReady) return;
@@ -797,76 +821,44 @@ function AppContent() {
     [handleOpenCard, handleOpenCardDiff],
   );
 
-  /**
-   * A banner chip carries a worker id, not a worker, and `openWorkerTab` needs
-   * the real thing. `list_workers` returns every worker of a project with no
-   * filter on `kind`, so a coordinator is in the snapshot like any other one —
-   * a miss only means the snapshot predates it, and a reload settles that.
-   */
-  const handleOpenCoordinator = useCallback(
-    (coordinator: CoordinatorInfo) => {
-      const known = workersRef.current.find((entry) => entry.id === coordinator.workerId);
+  // A click can name a worker the snapshot has not caught up with yet (a queue
+  // entry that was just dispatched). The reload is requested through the same
+  // debounced path as board discovery; the tab opens once the worker arrives.
+  const pendingFocusRef = useRef<string | null>(null);
+  const focusWorker = useCallback(
+    (workerId: string) => {
+      setDetailView("terminal");
+      setGoal("agents");
+      const known = workersRef.current.find((entry) => entry.id === workerId);
       if (known) {
         openWorkerTab(known);
-        setDetailView("terminal");
-        setGoal("agents");
         return;
       }
-      const projectId = activeProjectId;
-      if (projectId === null) return;
-      // The click is a navigation wish either way: the workers view comes up
-      // now, and the tab follows once the reload proves the worker exists.
-      setDetailView("terminal");
-      setGoal("agents");
-      void (async () => {
-        try {
-          const loaded = await listWorkers(projectId);
-          // A slow answer must not land under the project the user switched
-          // to while it was in flight — same guard as `loadWorkers`.
-          if (activeProjectIdRef.current !== projectId) return;
-          const worker = loaded.find((entry) => entry.id === coordinator.workerId);
-          if (!worker) {
-            setError(`${coordinator.label} ist nicht mehr verfügbar.`);
-            return;
-          }
-          setWorkers(loaded);
-          openWorkerTab(worker);
-        } catch (cause) {
-          if (activeProjectIdRef.current !== projectId) return;
-          setError(describeError(cause));
-        }
-      })();
+      pendingFocusRef.current = workerId;
+      handleBoardWorkerSeen(workerId);
     },
-    [activeProjectId, openWorkerTab],
+    [handleBoardWorkerSeen, openWorkerTab],
   );
 
-  /** A dispatched queue entry names its worker, but it may not be in the
-   * active worker snapshot yet. Reload before opening its terminal tab. */
-  const handleFocusQueuedWorker = useCallback(
-    (workerId: string) => {
-      const projectId = activeProjectId;
-      if (projectId === null) return;
-      setDetailView("terminal");
-      setGoal("agents");
-      void (async () => {
-        try {
-          const loaded = await listWorkers(projectId);
-          if (activeProjectIdRef.current !== projectId) return;
-          const worker = loaded.find((entry) => entry.id === workerId);
-          if (!worker) {
-            setError("Der zugeordnete Worker ist noch nicht verfügbar.");
-            return;
-          }
-          setWorkers(loaded);
-          openWorkerTab(worker);
-        } catch (cause) {
-          if (activeProjectIdRef.current !== projectId) return;
-          setError(describeError(cause));
-        }
-      })();
-    },
-    [activeProjectId, openWorkerTab],
+  useEffect(() => {
+    const pending = pendingFocusRef.current;
+    if (pending === null) return;
+    const arrived = workers.find((entry) => entry.id === pending);
+    if (!arrived) return;
+    pendingFocusRef.current = null;
+    openWorkerTab(arrived);
+  }, [workers, openWorkerTab]);
+
+  useEffect(() => {
+    pendingFocusRef.current = null;
+  }, [activeProjectId]);
+
+  const handleOpenCoordinator = useCallback(
+    (coordinator: CoordinatorInfo) => focusWorker(coordinator.workerId),
+    [focusWorker],
   );
+
+  const handleFocusQueuedWorker = focusWorker;
 
   /**
    * A scout the recommendations panel just started is not in the worker
@@ -1283,10 +1275,6 @@ function AppContent() {
                     : handleSetMaxWorkers(activeProject.id, maxWorkers)
                 }
               />
-              <section className="settings-landing" aria-label="Landing Page">
-                <h2 className="section-title">Landing Page</h2>
-                <DesignStudio projectId={activeProjectId} />
-              </section>
               <section className="settings-diagnose" aria-label="Diagnose">
                 <DiagnosticsPanel />
               </section>

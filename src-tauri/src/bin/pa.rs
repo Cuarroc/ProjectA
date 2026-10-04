@@ -1429,22 +1429,25 @@ fn read_verdict_token(
 
 /// The first line of a token file, with the two checks a secret file deserves.
 ///
-/// Rejects non-regular files and files reported larger than the limit before
-/// reading. This metadata check does not fence later file growth or replacement.
+/// Rejects non-regular files and files larger than the limit.
 /// First line only: the rest of the file cannot reach the request head.
 fn read_token_file(path: &str) -> Result<String, String> {
     const MAX_TOKEN_FILE: u64 = 4096;
 
-    let meta = std::fs::metadata(path)
+    // Refuse by name before opening: opening a FIFO would block. The handle's
+    // metadata below stays authoritative against a swap after this check.
+    let early = std::fs::metadata(path)
+        .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
+    if !early.is_file() {
+        return Err(format!("the verdict token file {path} is not a file"));
+    }
+    let file = std::fs::File::open(path)
+        .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
+    let meta = file
+        .metadata()
         .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
     if !meta.is_file() {
         return Err(format!("the verdict token file {path} is not a file"));
-    }
-    if meta.len() > MAX_TOKEN_FILE {
-        return Err(format!(
-            "the verdict token file {path} is {} bytes; a token is 32",
-            meta.len()
-        ));
     }
     // The file is what the documentation recommends as the safe place, so the
     // recommendation is enforced instead of hoped for: a token file other users
@@ -1461,7 +1464,17 @@ fn read_token_file(path: &str) -> Result<String, String> {
             ));
         }
     }
-    let contents = std::fs::read_to_string(path)
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    file.take(MAX_TOKEN_FILE + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
+    if bytes.len() as u64 > MAX_TOKEN_FILE {
+        return Err(format!(
+            "the verdict token file {path} exceeds the {MAX_TOKEN_FILE}-byte limit"
+        ));
+    }
+    let contents = String::from_utf8(bytes)
         .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
     Ok(contents.lines().next().unwrap_or_default().to_string())
 }
@@ -4811,6 +4824,68 @@ mod tests {
         let err = verdict_token(Some("vt-1 x".to_string())).expect_err("whitespace");
         assert!(err.contains("32 hex"), "{err}");
         assert!(!err.contains("vt-1"), "{err}");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_oversized_verdict_token_file_has_a_named_error() {
+        let dir = std::env::temp_dir().join(format!(
+            "pa-verdict-token-large-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("token");
+        write_private(&path, &"x".repeat(4097));
+
+        let err = read_token_file(path.to_str().expect("utf-8 path")).expect_err("too large");
+        assert!(err.contains("exceeds the 4096-byte limit"), "{err}");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A path that is not a regular file is refused by name before it is opened:
+    /// opening a FIFO would block, and opening a directory fails differently per OS.
+    #[test]
+    fn a_non_regular_verdict_token_path_is_refused_by_name() {
+        let dir = std::env::temp_dir().join(format!(
+            "pa-verdict-token-dir-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+
+        let err = read_token_file(dir.to_str().expect("utf-8 path")).expect_err("a directory");
+        assert!(err.contains("is not a file"), "{err}");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_normal_verdict_token_file_trims_its_trailing_newline() {
+        let dir = std::env::temp_dir().join(format!(
+            "pa-verdict-token-normal-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("token");
+        write_private(&path, "0123456789abcdef0123456789abcdef\n");
+
+        assert_eq!(
+            read_token_file(path.to_str().expect("utf-8 path")).expect("read"),
+            "0123456789abcdef0123456789abcdef"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
