@@ -193,11 +193,17 @@ only after the user approves it.
 `main` is merged through the Mergify merge queue (`.mergify.yml`); the long
 form is `docs/setup/mergify.md`. Required checks are `gates (linux)`,
 `gates (windows)`, `red-first` and `Mergify Merge Protections`; "strict
-up-to-date" is off. Every non-draft PR to `main` with those checks green, no
-conflict and no `do-not-merge` label is queued automatically, tested on top of
-the current `main` and merged with a merge commit. Merge `main` into your
-branch only to resolve a real conflict (Mergify labels those `conflict`):
-merge, never rebase or force-push.
+up-to-date" is off. A non-draft PR to `main` with those checks green, no
+conflict and no `do-not-merge` label is *eligible* for the queue; the queue
+tests it on top of the current `main` and merges it with a merge commit.
+**Enqueue explicitly:** observed on 2026-10-04, eligible PRs were not picked
+up on their own - each of the last 14 merged PRs (#240-#266) and the open
+#274/#275 carry an explicit `@Mergifyio queue` comment. So once
+`gh pr checks <n>` is green, the coordinator comments `@Mergifyio queue` on
+the PR. Why automatic enqueueing does not take effect is unresolved (only
+hypotheses); the queue run on `main` is still checked by Mergify. Merge
+`main` into your branch only to resolve a real conflict (Mergify labels
+those `conflict`): merge, never rebase or force-push.
 
 - `do-not-merge` label: keeps a green PR out of the queue.
 - `priority` label (coordinator only) or a `hotfix/` branch: queued first. A
