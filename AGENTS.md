@@ -56,10 +56,14 @@ status is not live evidence: take the live state from `gh pr list` and
 `git log origin/main`. Never launch the desktop app just to inspect it: its
 queue can immediately dispatch real workers.
 
-The start check (rule 9) before every worker: the model the harness actually
-reports, the provider limit, at least ~1.5 GB free RAM and at most two other
-cargo builds. Stop hard when one of them fails; until the package OPS-02
-(open) automates it, it is a manual check.
+The start check (rule 9) before every worker: run
+`npm run dev:start-check` (read-only, no money, no network). It prints one line
+each for free RAM (`--min-free-gb`, default 1.5), running cargo builds
+(`--max-cargo`, default 2), the provider limit (`--usage <file>`) and whether an
+already started worker still writes output (`--observe-log <file>`). Exit 1 (a
+limit violated), 3 (worker silent) or 2 (call error) is a hard stop: do not start
+the worker. The model the harness actually reports stays a human observation, the
+command cannot see it. Details: `scripts/dev/README.md`.
 
 Use the DevHQ website (`npm run hq:live`) for the human cockpit. Agents use the
 same backend through `pa hq runtime` and `pa hq context --project <id>`; do not
