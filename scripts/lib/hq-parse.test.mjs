@@ -489,6 +489,28 @@ test("parseMilestones does not count a half-finished Stand cell as done", () => 
   assert.deepEqual([m.done, m.total], [1, 3]);
 });
 
+// Excerpt of the real "### M4" table in docs/PLAN.md: W2-02b names two merged
+// sub-parts but marks itself "teilweise" and says what is not proven, so it must
+// not count as done. The neighbouring merged row proves the check is narrow.
+test("parseMilestones keeps a real 'teilweise:' Stand cell with merged parts at in_progress", () => {
+  const head = ["| ID | Paket | Gr. | Lane | Stand |", "|---|---|---|---|---|"];
+  const plan = [
+    "### M4 — Dauerbetrieb abgenommen, v1.5.0", "", ...head,
+    "| W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle | M | st | teilweise: Gleichstand ✓ #82, Testquelle ✓ #122; „Merge-Ergebnis als Kandidat“ nicht belegt; daher weder erledigt noch zur Umsetzung freigegeben |",
+    "| W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | ✓ #15 |",
+    "| W2-04g | Optional: Versionsspalte | S | st | offen |", "",
+  ].join("\n");
+  const [m] = parseAll.parseMilestones(plan);
+  assert.equal(m.title, "Dauerbetrieb abgenommen, v1.5.0");
+  assert.deepEqual(
+    m.packages.map((p) => [p.id, p.state]),
+    [["W2-02b", "in_progress"], ["W2-04d", "done"], ["W2-04g", "open"]],
+    "a 'teilweise:' cell is in progress even when it names merged sub-parts",
+  );
+  assert.deepEqual(m.packages[0].prNumbers, [82, 122], "the merged sub-parts are still named");
+  assert.deepEqual([m.done, m.total], [1, 3]);
+});
+
 test("parseMilestones yields nothing when PLAN.md has no milestone sections", () => {
   assert.deepEqual(parseAll.parseMilestones("# Plan\n\n| ID | Paket |\n|---|---|\n| A | b |\n"), []);
 });
