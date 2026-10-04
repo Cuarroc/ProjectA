@@ -1562,3 +1562,22 @@ wall clock, linux + windows.
   PRs can become two runs (two Windows lanes) instead of one batch.
 - **Reverse when:** runner limits become a problem or the feature is no longer
   included in the repository's plan.
+
+## 2026-10-05 - CI-HARDEN-02: review disposition gates queue admission
+
+- **What:** every pull request now needs the `review-ok` label in both
+  `queue_conditions` and `auto_merge_conditions`. The orchestrator pipeline
+  owns the label and sets it only after the required review disposition is
+  complete with no open high-severity finding. Reviewers do not enqueue their
+  own candidate, and no branch class is exempt.
+- **Why:** green checks alone do not prove that the risk-tiered review from
+  `AGENTS.md` happened. A fail-closed queue condition makes the review decision
+  explicit before Mergify can admit a pull request. Mergify continuously
+  re-evaluates `queue_conditions`, so removing the label also removes an
+  already queued pull request.
+- **Guard:** `scripts/ci/ci-shape.sh` requires the label condition in both
+  admission lists and keeps those lists identical; `scripts/test-ci-shape.sh`
+  proves the guard fails when either or both conditions are absent.
+- **Reverse when:** the repository replaces Mergify or the orchestrator
+  pipeline with another merge authority that enforces the same completed-review
+  invariant directly.
