@@ -16,6 +16,7 @@ git init -q -b main
 git config user.email "probe@example.test"
 git config user.name "red-first plan probe"
 printf '# baseline\n' > README.md
+printf '#!/usr/bin/env bash\nexit 0\n' > scripts/existing-test.sh
 git add .
 git commit -q -m "docs: baseline"
 BASE="$(git rev-parse HEAD)"
@@ -36,6 +37,38 @@ expect_plan_failure() {
   fi
   git reset -q --hard "$BASE"
 }
+
+expect_plan_success() {
+  local label="$1" head
+  head="$(git rev-parse HEAD)"
+  if ! BASE_SHA="$BASE" HEAD_SHA="$head" PR_BODY="" \
+    bash scripts/ci/red-first.sh --plan >"$TMP/out" 2>&1; then
+    sed 's/^/    /' "$TMP/out" >&2
+    echo "FAIL: $label was rejected by --plan" >&2
+    exit 1
+  fi
+  echo "ok   $label"
+  git reset -q --hard "$BASE"
+}
+
+printf '# path only\n' >> README.md
+git add README.md
+git commit -q -m "docs: path-only existing test" \
+  -m "Test-First: scripts/existing-test.sh"
+expect_plan_failure "path-only trailer on existing test file" \
+  "use Test-First: <path>::<exact test name> for each NEW test"
+
+printf '# named test\n' >> README.md
+git add README.md
+git commit -q -m "docs: named existing test" \
+  -m "Test-First: scripts/existing-test.sh::exact test name"
+expect_plan_success "named trailer on existing test file"
+
+printf '#!/usr/bin/env bash\nexit 0\n' > scripts/new-test.sh
+git add scripts/new-test.sh
+git commit -q -m "test: add new test file" \
+  -m "Test-First: scripts/new-test.sh"
+expect_plan_success "path-only trailer on new test file"
 
 printf '# malformed\n' >> README.md
 git add README.md
