@@ -42,7 +42,7 @@ pub enum StepOutcome {
     /// Nothing to execute (`NoAction` / `WaitForIdle`).
     Idle,
     /// The one action that was executed.
-    Executed(RecoveryAction),
+    Executed(Box<RecoveryAction>),
 }
 
 #[allow(dead_code)] // W3-02
@@ -62,16 +62,61 @@ impl<E: RecoveryEffects> RecoveryDriver<E> {
         &self.journal
     }
 
+    /// Reads the one next action from the durable journal and executes it.
+    /// A failed effect leaves the journal as persisted, so the next step
+    /// derives the same (or the safer) action again.
     #[allow(dead_code)] // W3-02
     pub fn step(&mut self) -> Result<StepOutcome> {
-        let _ = (
-            &mut self.journal,
-            &mut self.effects,
-            RecoveryError::Effect(String::new()),
-        );
-        let _ = UpdatePhase::Installing;
-        todo!("journal driver")
+        let action = self.journal.next_action();
+        match &action {
+            RecoveryAction::NoAction | RecoveryAction::WaitForIdle => return Ok(StepOutcome::Idle),
+            RecoveryAction::VerifyCoherentBackup => {
+                let backup = self.effects.verify_backup().map_err(effect_error)?;
+                self.journal.verify_backup(backup)?;
+            }
+            RecoveryAction::InstallCandidate {
+                candidate,
+                staged_manifest,
+            } => {
+                // Persist first: from here on a restart only validates.
+                self.journal.begin_install()?;
+                self.effects
+                    .install(candidate, staged_manifest)
+                    .map_err(effect_error)?;
+            }
+            RecoveryAction::ValidateCandidate { candidate, nonce } => {
+                if self.journal.journal().phase() == UpdatePhase::Installing {
+                    self.journal.begin_validation()?;
+                }
+                match self.effects.validate(candidate, nonce) {
+                    Ok(handshake) => self.journal.accept_handshake(&handshake)?,
+                    Err(reason) => self.journal.record_health_failure(reason)?,
+                }
+            }
+            RecoveryAction::ResumeWrites => {
+                let proof = self.effects.resume_writes().map_err(effect_error)?;
+                self.journal.resume_writes(proof)?;
+            }
+            RecoveryAction::PromoteSameSignedBytes { candidate_id, .. } => {
+                let receipt = self.effects.promote(candidate_id).map_err(effect_error)?;
+                self.journal.promote(&receipt)?;
+            }
+            RecoveryAction::RestorePreviousRuntime {
+                previous, snapshot, ..
+            } => self
+                .effects
+                .restore(previous, snapshot)
+                .map_err(effect_error)?,
+            RecoveryAction::QuarantineCurrentState { reason } => {
+                self.effects.quarantine(reason).map_err(effect_error)?
+            }
+        }
+        Ok(StepOutcome::Executed(Box::new(action)))
     }
+}
+
+fn effect_error(reason: String) -> RecoveryError {
+    RecoveryError::Effect(reason)
 }
 
 #[cfg(test)]
@@ -178,7 +223,7 @@ mod tests {
         let outcome = second.step().unwrap();
         assert!(matches!(
             outcome,
-            StepOutcome::Executed(RecoveryAction::ValidateCandidate { .. })
+            StepOutcome::Executed(ref a) if matches!(**a, RecoveryAction::ValidateCandidate { .. })
         ));
         assert_eq!(second.effects.calls, vec!["validate"]);
         assert_eq!(second.journal.journal().phase(), UpdatePhase::Installed);
