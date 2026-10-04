@@ -60,8 +60,10 @@ test('a missing session fails the drill', async () => {
   assert.match(none.m.steps.at(-1).detail, /no worker record/);
 });
 test('worker evidence does not claim that an inactive row is a live session', async () => {
-  const none = await run('fail', [{ phase: 'error', message: 'x' }], {}, []);
-  assert.match(none.m.steps.at(-1).detail, /no worker record/);
+  const inactive = [{ id: 'w1', status: 'exited', sessionId: null }];
+  const { m } = await run('fail', [{ phase: 'error', message: 'x' }], {}, inactive);
+  assert.equal(m.result, 'pass', JSON.stringify(m.steps));
+  assert.ok(!JSON.stringify(m).includes('active session'));
 });
 test('an unreachable app fails before any step', async () => {
   const fx = fixture();
