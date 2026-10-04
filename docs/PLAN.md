@@ -16,6 +16,12 @@ unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
 3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
    W3-03, W3-07 und die Abnahme jedes Meilensteins.
 
+4. **Bis v1.5.0 keine neuen Funktionen** (Nutzer 04.10.): neue Ideen kommen nur
+   in den Abschnitt „Später“; danach folgt M5.
+
+**Ziel ab 04.10.: v1.5.0 releasefähig** (Tag und Veröffentlichung macht der
+Orchestrator, sobald alle Gates und die 27 Matrixzeilen belegt sind).
+
 **Ziel:** ProjectA und das DevHQ sind auf dem PC des Nutzers voll benutzbar und
 werden zum Entwickeln von ProjectA selbst eingesetzt; danach wird der Continuous
 Mode abgenommen und mit v1.5.0 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
@@ -29,6 +35,7 @@ Mode abgenommen und mit v1.5.0 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
 | M2 | Überblick und Setup | Du fragst Claude „Was heißt das?“ und bekommst eine einfache Antwort. Ein Skript schreibt Status und Tagesbericht. Ein Plan, zehn Regeln, gestufte Reviews. Ein roter `main` hält die Queue an. Limits und RAM werden vor jedem Worker-Start geprüft. Backup läuft. |
 | M3 | App im Alltag + Zwischenrelease v1.5.0-beta | Du installierst v1.5.0-beta über den Updater. In der installierten App gibst du drei echte kleine Aufgaben an Agenten, verfolgst sie im HQ, prüfst den Diff in der App, und der PR landet über die Queue. Das HQ ist hell und dunkel lesbar (Screenshots angesehen, auch die DF-07-Dichte). |
 | M4 | Dauerbetrieb abgenommen, v1.5.0 | Du schaltest den Continuous Mode selbst ein. Ein Not-Aus stoppt alles in 10 Sekunden. Alle 27 Zeilen der Abnahmematrix haben einen Beleg oder ein Nutzer-Gate. Update-Drills sind am PC durchgespielt. Du installierst v1.5.0. |
+| M5 | Aufräumen und erste Tester (nach v1.5.0) | 3–5 externe Tester haben v1.5.0 benutzt, ihre Rückmeldungen sind festgehalten. Die Architektur-Befunde sind abgearbeitet, `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI. Die vier Nahtstellen sind kleiner als bei v1.5.0. ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt. |
 
 Lane-Schlüssel: `st` store.rs + store/ · `api` api.rs · `mn` main.rs · `pa`
 bin/pa.rs (diese vier sind Nahtstellen, je ein aktives Paket) · `pty` pty.rs ·
@@ -95,8 +102,8 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | offen |
-| HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | offen |
+| HQ2-02 | Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest | M | hqS + N | ✓ entschieden (Nutzer 04.10., E1: Mix) |
+| HQ2-03 | Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02 | M | hqS | freigegeben (Nutzer 04.10.); offen |
 | W1-10 | HQ-Stylesheet: Kontrast-Gate auf hq.css, Light Mode, `prefers-contrast` | M | hqL | ✓ #33 |
 | M3-01 | Drei deutschsprachige Aufgaben-Vorlagen mit eingebautem Abnahmekriterium (nur Doku) | S | doc | ✓ #144 |
 | W2-10 | Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery) | M | hqL | 10a ✓ #13, 10b ✓ #21, 10c ✓ #62 |
@@ -108,10 +115,11 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-04e | `dispatch.role` ins Agenten-Briefing | S | wk | ✓ #50 |
 | W2-01d | CLI-Befehl `pa hq agent review` | S | pa | ✓ #46 |
 | W1-18b | Probe, ob Codex/OpenCode `.agents/skills` lesen | S | wk + N | OpenCode ✓ #30, Codex △ headless-Probe 02.10.2026: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert |
-| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | Smoke-Test ✓ #192; Kimi-Re-Smoke blockiert (Kimi-Abo abgelaufen 02.10.) |
+| W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | gestrichen (Nutzer 04.10.: Kimi-Abo abgelaufen; Smoke ✓ #192) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
-| R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3 | S | N + doc | offen |
+| ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
+| R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen belegt sind (Nutzer 04.10.) | S | N + doc | offen |
 
 ### M4 — Dauerbetrieb abgenommen, v1.5.0
 
@@ -121,16 +129,16 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W5-04a | Not-Aus im Store, **global ohne Projektrahmen** (Schnitt 25.09., W5-01a bleibt geparkt) | S | st | ✓ #69 |
 | W5-04b | Not-Aus in der App (10 s Frist) | S | mn | ✓ #125 (Backend W5-04d ✓ #157, Release-Auth W5-04e ✓ #158) |
 | W5-04c | Not-Aus in `pa` | S | pa | ✓ #124 |
-| W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat | M | st | teilweise: Gleichstand ✓ #82, Testquelle ✓ #122; „Merge-Ergebnis als Kandidat“ nicht belegt; der Vertrag der vertrauenswürdigen Upstream-Quelle ist ungeklärt, daher weder erledigt noch zur Umsetzung freigegeben (nur lesend geprüft am Kopf d1fce9c, kein Regressionstest ausgeführt) |
+| W2-02b | Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle (Rest „Merge-Ergebnis als Kandidat“ siehe „Später“) | M | st | Gleichstand ✓ #82, Testquelle ✓ #122; Rest „Merge-Ergebnis als Kandidat“ auf später verschoben (Nutzer 04.10.) |
 | W2-04c | Rollenbewusste Routen und Credentials beim Launch | M | st | ✓ #222 (Teil 2, gemergt 03.10.); Teil 1 ✓ #178 (ersetzt #147; gemergt 03.10.) |
 | W2-04d | Rollen auf Budget-Zwecke abbilden | S | st | ✓ #15 |
-| W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | offen |
+| W2-04g | Optional: Versionsspalte für die Attestierungsregel | S | st | gestrichen (Nutzer 04.10.) |
 | DF-15b | Reservierung und Delivery bei `exited_undelivered` freigeben (KI-27; Nutzer 25.09.: ja) | S | st | ✓ #16 |
 | W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
 | W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | ✓ #53 |
 | W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | ✓ #78 |
-| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt | M | fR + N | offen |
-| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe) | M | st → api → fe | offen |
+| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt; echte Proben mit Claude/Codex/OpenCode dürfen Abo-Kontingent verbrauchen (Nutzer 04.10.) | M | fR + N | offen |
+| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe); Produktfrage entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten, Koordinatoren bleiben immer `strict`, profilspezifisches `passthrough` bleibt | M | st → api → fe | offen |
 | W5-02b4 | Push aus dem Worker über den Runner-Host, danach `strict` als Voreinstellung | M | pty + wk | ✓ #65 |
 | W5-02b5 | Test für den `http.extraHeader`-Reset; GPG unter `strict` | S | fR | ✓ #17 |
 | W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | offen |
@@ -138,11 +146,44 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-02 | Windows-Recovery-Helper | M | fR + N | offen |
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | ✓ #119 |
-| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später) | S | N | offen |
+| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4) | S | N | offen |
 | W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | ✓ #73 |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
-| W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers | S | mn | offen |
+| W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5) | S | mn | offen |
 | W4-04 | Release v1.5.0 | S | N | offen |
+
+### M5 — Aufräumen und erste Tester (nach v1.5.0)
+
+Nutzerentscheidung 04.10. (Empfehlungen des Orchestrators angenommen). Abnahme in
+Alltagssprache:
+
+- 3–5 externe Tester haben v1.5.0 benutzt und ihre Rückmeldungen sind festgehalten.
+- Die Architektur-Befunde (Pakete ARCH-D*/STATE-* aus der Drift-Karte und dem
+  Zustands-Audit; die STATE-Zeilen kommen dazu, sobald sie existieren) sind
+  abgearbeitet.
+- `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI.
+- Die vier Nahtstellen sind kleiner als bei v1.5.0 (Zeilen messen und vergleichen).
+- ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt
+  (Dogfooding, laut Vision).
+
+Die ARCH-D-Pakete ändern kein Verhalten. Sie laufen erst nach v1.5.0, weil sie die
+seriellen Nahtstellen des Release-Wegs belegen; jedes nutzt den Prompt „ProjectA
+refactoring package“.
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | offen, nach v1.5.0 |
+| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | offen, nach v1.5.0 |
+| M5-03 | ARCH-G1 Regeldokument `docs/architecture-rules.md` + ARCH-G2 Drift-Gate in der CI (noch nicht gemergt; sonst hier ✓ mit PR-Nummer) | M | ci + doc | offen |
+| M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | offen, nach v1.5.0 |
+| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.0 |
+| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.0 |
+| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.0 |
+| ARCH-D4 | Restlicher API-Router mit 51 Zweigen | M | api | offen, nach v1.5.0 |
+| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.0 |
+| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.0 |
+| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.0 |
+| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.0 |
 
 ### Reihenfolge der seriellen Lanes (nach Meilensteinen)
 
@@ -238,6 +279,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Tauri-Plugins `dialog`, `notification`, `window-state` | wenn ein Paket sie braucht |
 | OmniRoute-Cutover in den Produktmodus | erst mit gemessenem Kostensieg |
 | Design Studio, Queen/Employee-Neuanlage | nie (gestrichen; der Anlegepfad fällt mit CLEAN-02) |
+| W2-02b-Rest „Merge-Ergebnis als Kandidat“ (der Vertrag der vertrauenswürdigen Upstream-Quelle ist ungeklärt; nur lesend geprüft am Kopf d1fce9c, kein Regressionstest ausgeführt) | nach M4 (Nutzer 04.10.: auf später verschoben) |
 | Vorschlag: Abschlussvertrag für Headless-Läufe: Gates und Push synchron im Vordergrund; „fertig“ nur mit Gate-Exit, Kandidaten-SHA, `ls-remote` und PR, nicht mit `JOBEXIT0` (echte Abbrüche beobachtet) | nach M4; Vorschlag, keine Freigabe |
 | Vorschlag: Startcheck-Doku an die Wahrheit anpassen und nur lesend Abhängigkeits-Drift prüfen (nicht optionale installierte Pakete gegen die Kandidaten-Lock); OPS-02 #35 und SETUP-09 #56 bleiben gemergt, dies ist ein begrenzter Folgeschritt | nach M4; Vorschlag, kein Duplikat |
 | Vorschlag: PTY-Read/Emit-Diagnose erst nach eingespeistem Beweis; Drain und panikfreie Senke bewahren, den `eprintln`-Rückfall in `logging::log` nicht blind nutzen; Stderr-Verlust im Release ungemessen | nach M4, mit Laufzeitbeleg; ohne Graph-/Windows-Beleg |
@@ -246,8 +288,8 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 ### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
 
 Die folgenden Pakete sind neue Ideen und bleiben nach AGENTS.md unter „Später“.
-ARCH-11 ist die Ausnahme: Es ist als M3-Kandidat vorgemerkt, ohne die
-M3-Abnahme-Tabelle zu ändern.
+ARCH-11 ist die Ausnahme: Es ist ein angenommener M3-Kandidat (Nutzer 04.10., F6
+und Zeile in der M3-Tabelle), ohne die M3-Abnahme-Tabelle zu ändern.
 
 | ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Reihenfolge |
 |---|---|---|---|---|---|---|---|
@@ -261,7 +303,7 @@ M3-Abnahme-Tabelle zu ändern.
 | ARCH-08 | `SettingsView.tsx` je Tab in eigene Komponenten aufteilen. | `src/components/Settings*/`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; vorhandene Settings-Tests | nach PR #154 |
 | ARCH-09 | `ipc.ts` als Barrel behalten und PTY-, Projekt- und Worker-Domänenmodule auslagern. | `src/lib/ipc/*.ts`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; IPC- und Komponententests | nach ARCH-08, niedrige Priorität |
 | ARCH-10 | `/api/hq/v1/*` als Unter-Router mit 14 Armen aus `route()` in `api/hq_routes.rs` auslagern. | `api.rs`, `api/hq_routes.rs` | api | ja | A | No-Test: mechanische Verschiebung; FakeBackend-Servertests behalten Status, Body und Auth | vor W5-02b3 (api) |
-| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | als M3-Kandidat aufnehmen; Windows-Lauf nötig |
+| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | M3-Kandidat angenommen (Nutzer 04.10.); Windows-Lauf nötig, der PC des Nutzers darf dafür genutzt werden |
 | ARCH-12 | `impl ControlBackend for ApiBackend` aus `main.rs` auslagern. Das Paket bleibt gesperrt, weil der Trait-Block als reine Verschiebung mehr als 300 Diffzeilen erzeugt. | `main.rs`, `api/backend.rs`, ~715 Z. | mn + api | ja | A | No-Test: mechanische Verschiebung erst nach ADR A1 | nach ADR A1; gesperrt |
 
 ### Synthese der Bestandsaufnahmen INV-01..08 und des Architektur-Rats (03.10.2026)
@@ -324,7 +366,7 @@ Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
 
 ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
 roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
-Kandidat**; die Aufnahme in M3 bleibt Nutzerentscheidung F6. ARCH-12 bleibt
+Kandidat** und mit F6 am 04.10. in M3 aufgenommen. ARCH-12 bleibt
 gesperrt (> 300 Diffzeilen, F1). Abgelehnt bleibt: Rust↔TS-Codegen ohne
 belegten Vertragsbruch, ein neuer lib/store/`CoreError`-Split, der Review-Lock
 bleibt in-process, `delivery_recovery.rs` wird nicht gelöscht (W3-02).
@@ -391,35 +433,41 @@ SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 
 ## Entscheidungs-Inbox
 
-Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Offen sind
-E1, E10, E11, E12, F1, F3 und F6; F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
+Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Am 04.10. hat der Nutzer E1, E4, E5, E10, E11, E12, F1, F3 und F6 beantwortet (zwei
+neue Zeilen halten die Freigaben fest). Offen sind E3, der M4-Blocker, E14 (dringend), E15 und E16 (beide nach v1.5.0); F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
 Nachweis siehe E13) sind entschieden und werden nicht neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
 
 | # | Frage | Empfehlung | Wer entscheidet? | Status |
 |---|---|---|---|---|
-| E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | offen |
+| E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | ✓ entschieden (Nutzer 04.10.): Mix. Das Studio-Layout (`hq2-concept`/`hq2-studio`) ist die Richtung für „HQ als Hauptbereich der App“, dazu die Einleitungsleiste und die Entscheidungsbox „Dein Urteil ist gefragt“ aus der Demo (zweite Antwort ~17:15). HQ2-03 ist freigegeben und baut darauf auf. |
 | E1-Hinweis | HQ2-02/03 blockiert die Farbthemen T2–T5. | Erst HQ2-02 festlegen, dann die Farbthemen in HQ2-03 bearbeiten. | Nutzer | Hinweis |
 | E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | Nutzer | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
 | E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja; einmal im Browser klicken | Nutzer | offen (Nutzer) |
-| E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | Nutzer | später (Nutzer 25.09.) |
-| E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | Nutzer | offen |
+| E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | Nutzer | ✓ entschieden (Nutzer 04.10.): der bestehende Updater-Schlüssel bleibt (passt zum Public Key in `src-tauri/tauri.conf.json`). Am 04.10. hat der Orchestrator die Environment-Secrets `TAURI_SIGNING_PRIVATE_KEY` und `UPDATES_MIRROR_TOKEN` aus dem früheren privaten Repository in das `release`-Environment dieses Repos kopiert (einmaliger Workflow, Werte nie angezeigt, temporärer Token und Branch danach entfernt). Damit kann v1.4.1 auf v1.5.0 automatisch aktualisieren. Beleg (nur Namen): `gh api repos/Cuarroc/ProjectA/environments/release/secrets --jq '.secrets[].name'` liefert beide Namen (04.10.). |
+| E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | Nutzer | ✓ entschieden (Nutzer 04.10.): der Aktivierungsschalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); der Nutzer schaltet selbst am Ende ein (Zeile 2). Das löst den Zirkel zwischen Matrixzeile 2 und der Entscheidungsregel von W4-03. |
 | E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | Nutzer | später (Nutzer 25.09.) |
 | E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 und den Prüfpfad W5-05 in M3/M4 eingeordnet | erweiterten Kern bestätigen | Nutzer | ✓ bestätigt (Nutzer 02.10.) |
 | E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel ist damit ersetzt | Routing bestätigen | Nutzer | ✓ bestätigt (Nutzer 02.10.) |
 | E9 | M3-01 und M3-02 wurden im Auftrag des Orchestrators in M3 vorgezogen. | Nur als bereits getroffene Reihenfolge vermerken. | Orchestrator | ✓ entschieden (03.10.) |
-| E10 | Soll der Landing-Page-/DesignStudio-Abschnitt in `src/App.tsx` (etwa Zeilen 1277–1280) entfernt werden? | Ja, Abschnitt löschen. | Nutzer | offen |
-| E11 | Soll die Windows-Flake-Erkennung weiterlaufen, obwohl sie Actions-Minuten kostet? | Kosten und Nutzen abwägen; Empfehlung: nur mit belegtem Nutzen behalten. | Nutzer | offen |
-| F1 | Soll die große Verbindungsschicht `ApiBackend` mit etwa 715 Zeilen bis nach M4 in `main.rs` bleiben? | Ja; danach das Trait in Domänenports teilen. | Nutzer | offen |
+| E10 | Soll der Landing-Page-/DesignStudio-Abschnitt in `src/App.tsx` (etwa Zeilen 1277–1280) entfernt werden? | Ja, Abschnitt löschen. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, entfernen, als eigenes `fe`-Paket. |
+| E11 | Soll die Windows-Flake-Erkennung weiterlaufen, obwohl sie Actions-Minuten kostet? | Kosten und Nutzen abwägen; Empfehlung: nur mit belegtem Nutzen behalten. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, behalten (öffentliches Repo, Actions-Minuten kosten nichts). |
+| F1 | Soll die große Verbindungsschicht `ApiBackend` mit etwa 715 Zeilen bis nach M4 in `main.rs` bleiben? | Ja; danach das Trait in Domänenports teilen. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, `ApiBackend` bleibt bis nach M4 in `main.rs`. |
 | F2 | Alte verschlüsselte Sitzungsdateien sollen mit derselben Frist wie die übrige Aufräumfunktion gelöscht werden. | Ja; Umsetzung als ARCH-04. | Nutzer | ✓ entschieden (03.10.) |
-| F3 | Die Audit-Tabelle bleibt bis zum Not-Aus in M4 leer. Ist das in Ordnung? | Ja, solange M4 die Audit-Abnahme enthält. | Nutzer | offen |
+| F3 | Die Audit-Tabelle bleibt bis zum Not-Aus in M4 leer. Ist das in Ordnung? | Ja, solange M4 die Audit-Abnahme enthält. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, leere Audit-Tabelle bis zum Not-Aus ist in Ordnung, solange M4 die Audit-Abnahme hat. |
 | F4 | Doppelte PRs schließen. | Ja; #112, #113, #115, #91 und #146 sind geschlossen. | Orchestrator | ✓ entschieden (03.10.) |
 | F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
-| F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | offen |
-| E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | offen |
+| F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, ARCH-11 (KI-24b) kommt in M3, mit Windows-Lauf (der PC des Nutzers darf genutzt werden). |
+| E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, in beiden abschalten im Claude-Start der Projekt-Agenten (vom Orchestrator außerhalb des Repos erledigt). |
 | E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | freigegeben 03.10. (17:30 UTC, Nutzerantwort „ja er soll ersetzt werden“); Starter am 03.10. 19:38 auf dem Server eingespielt (SHA-Prüfung, `bash -n`, Backup des Originals). Beobachtet 04.10.: Worker-Läufe über den Starter haben PRs #244, #246, #247, #250 und #251 geliefert, alle über die Queue gemergt; PR #256 nennt im Text einen vollen `prepush`-Lauf (Exit 0) auf dem Server. Diese Sitzung (Sonnet 5.5) lief selbst über den Starter. Das Kontingent ist von hier nicht beobachtbar; die Angabe dazu liefert der Koordinator. Nicht belegt: je Modell eine Aufschlüsselung (Fable) der Läufe. |
+| N1 | Darf der Orchestrator v1.5.0-beta und v1.5.0 selbst taggen und veröffentlichen? | Ja, sobald alle Gates und die 27 Matrixzeilen belegt sind. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja (R-1, W4-04). |
+| N2 | Echte Proben und Tests am PC | Erlauben. | Nutzer | ✓ entschieden (Nutzer 04.10.): echte Proben mit Claude/Codex/OpenCode sind erlaubt und dürfen Abo-Kontingent verbrauchen (HQ2-05b, P0); Agenten dürfen den PC des Nutzers für Tests nutzen und die ProjectA-App öffnen, bedienen und schließen. |
+| W5-02b3 | Produktfrage: Verhältnis der globalen Env-Stufe zur Isolation je Profil | Globale Stufe ersetzt die Profil-Isolation. | Nutzer | ✓ entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten; Koordinatoren bleiben immer `strict`; profilspezifisches `passthrough` bleibt. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
+| E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | offen, Nutzer, dringend |
+| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.5.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.5.0 |
+| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor M5-01 entscheiden. | Nutzer | offen, nach v1.5.0 |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;

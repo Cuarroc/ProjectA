@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ActivityEntry } from "../types";
@@ -66,5 +66,30 @@ describe("ActivityView", () => {
 
     expect(screen.queryByText("Altes Projekt")).not.toBeInTheDocument();
     expect(screen.getByText("Neues Projekt")).toBeInTheDocument();
+  });
+
+  it("shows the newest digest page when an older page request resolves last", async () => {
+    mocks.getActivity.mockResolvedValue([]);
+    mocks.listDigests.mockResolvedValue(["2026-10-02", "2026-10-03"]);
+    const first = deferred<string>();
+    const second = deferred<string>();
+    mocks.getDigest.mockImplementation((_project: string, date: string) =>
+      date === "2026-10-02" ? first.promise : second.promise,
+    );
+
+    render(<ActivityView projectId="p1" />);
+    fireEvent.click(screen.getByRole("button", { name: /Tages-Digest/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "2026-10-02" }));
+    fireEvent.click(screen.getByRole("button", { name: "2026-10-03" }));
+
+    await act(async () => {
+      second.resolve("neue Seite");
+    });
+    await act(async () => {
+      first.resolve("alte Seite");
+    });
+
+    expect(screen.getByText("neue Seite")).toBeInTheDocument();
+    expect(screen.queryByText("alte Seite")).not.toBeInTheDocument();
   });
 });

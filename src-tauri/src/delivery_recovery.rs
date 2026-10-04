@@ -913,6 +913,8 @@ impl DurableJournal {
     }
 }
 
+mod driver;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(dead_code)] // W3-02
 pub enum RecoveryError {
@@ -932,6 +934,8 @@ pub enum RecoveryError {
     },
     Io(String),
     Serialization(String),
+    /// An effect adapter reported a failure; the journal was left unchanged.
+    Effect(String),
 }
 
 impl fmt::Display for RecoveryError {
@@ -960,7 +964,9 @@ impl fmt::Display for RecoveryError {
                 f,
                 "stale journal writer expected revision {expected}, found {actual}"
             ),
-            Self::Io(error) | Self::Serialization(error) => f.write_str(error),
+            Self::Io(error) | Self::Serialization(error) | Self::Effect(error) => {
+                f.write_str(error)
+            }
         }
     }
 }
@@ -1118,7 +1124,7 @@ mod tests {
         assert!(journal.validate_loaded().is_err());
     }
 
-    fn file(name: &str, version: &str, hash: &str) -> FileIdentity {
+    pub(super) fn file(name: &str, version: &str, hash: &str) -> FileIdentity {
         FileIdentity {
             path: PathBuf::from(name),
             version: version.into(),
@@ -1126,7 +1132,7 @@ mod tests {
         }
     }
 
-    fn offer() -> UpdateOffer {
+    pub(super) fn offer() -> UpdateOffer {
         UpdateOffer {
             records: ImmutableRecords {
                 policy_id: "policy-7".into(),
@@ -1150,7 +1156,7 @@ mod tests {
         }
     }
 
-    fn store(dir: &TempDir) -> JournalStore {
+    pub(super) fn store(dir: &TempDir) -> JournalStore {
         JournalStore::new(
             dir.path().join("update-recovery.json"),
             &dir.path().join("projecta.db"),
@@ -1158,7 +1164,7 @@ mod tests {
         .expect("store")
     }
 
-    fn proof() -> DrainProof {
+    pub(super) fn proof() -> DrainProof {
         DrainProof {
             queue_drain: QueueDrain::Confirmed,
             pty_drain: PtyDrain::Confirmed,
@@ -1169,7 +1175,7 @@ mod tests {
         }
     }
 
-    fn backup() -> VerifiedBackup {
+    pub(super) fn backup() -> VerifiedBackup {
         VerifiedBackup {
             snapshot: file("backup.db", "4", "old-db"),
             source_database_sha256: "old-db".into(),
@@ -1178,7 +1184,7 @@ mod tests {
         }
     }
 
-    fn handshake() -> InstanceHandshake {
+    pub(super) fn handshake() -> InstanceHandshake {
         InstanceHandshake {
             binary: file("new.exe", "1.4.0", "new-bin"),
             database: file("projecta.db", "4", "new-db"),
@@ -1196,7 +1202,7 @@ mod tests {
         }
     }
 
-    fn receipt() -> PromotionReceipt {
+    pub(super) fn receipt() -> PromotionReceipt {
         PromotionReceipt {
             manifest_sha256: "manifest-a".into(),
             signed_artifact_sha256: "signed-installer-a".into(),

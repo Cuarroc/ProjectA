@@ -1478,12 +1478,6 @@ export async function listWorkerMessages(workerId: string, limit = 200): Promise
   return raw.map(toWorkerMessage).filter((entry): entry is WorkerMessage => entry !== null);
 }
 
-// -- landing page (design studio) --------------------------------------------
-
-/** The project's landing-page markdown, or `null` when none was saved yet. */
-export function getLandingPage(projectId: string): Promise<string | null> {
-  return invoke<string | null>("get_landing_page", { projectId });
-}
 
 // -- learnings (Phase 14) ---------------------------------------------------
 

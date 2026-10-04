@@ -1,12 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { devCsp } from "./src/dev-csp";
 
 // `TAURI_DEV_HOST` is set by the Tauri CLI when developing against a device on
 // the local network. Everything else is a plain Vite setup.
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), devCsp()],
   // Tauri's CLI owns the terminal output during `tauri dev`.
   clearScreen: false,
   server: {
