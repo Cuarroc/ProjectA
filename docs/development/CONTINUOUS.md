@@ -99,7 +99,11 @@ eligibility result is false, so it can be used as a fail-closed CI/preflight
 gate; `--help` prints the invocation without probing the machine. Each phase is
 `ready`, `blocked`, or `unavailable`; missing provider, scheduler, review,
 recovery, or benchmark attestations keep both `continuousEligible` and
-`releaseEligible` false. The report also includes every blocked or unavailable
+`continuousReleaseEligible` false (`releaseEligible` is a deprecated alias of
+it for one release; it does not mean the app release is ok). The separate
+`appReleaseEligible` (schema version 2) needs only setup and the machine
+interface plus the user's `appReleaseAttested`; it never enables continuous
+mode. The report also includes every blocked or unavailable
 phase and attestation in `blockers`, with stable labels and duplicate reasons
 removed, so a downstream agent does not mistake one early gate for the
 complete diagnosis. The audit never starts ProjectA or a provider and never
