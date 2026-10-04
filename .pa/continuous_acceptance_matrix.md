@@ -26,7 +26,7 @@ oder das ausdrücklich benannte Nutzer-/PC-Gate.
 | 16 | Reviews sind unabhängig vom Implementierer und an denselben Candidate gebunden. | Review-Lauf mit anderer Modellfamilie; Self-review und unverified Providervergleich bleiben nicht abnahmefähig. | Nutzer-Gate | offen |
 | 17 | Jede relevante Candidate-Änderung invalidiert alte Evidence und Reviews. | Candidate-Delta nach Review; alte Freigabe ist sichtbar ungültig und kann keinen Release mehr autorisieren. | Laufzeit | offen |
 | 18 | Delivery ist gestuft und darf nur nach gültiger Review-/Testkette integrieren. | Dry-run und echter kontrollierter Delivery-Lauf mit verweigerter und freigegebener Stufe; keine direkte Umgehung. | Nutzer-Gate | offen |
-| 19 | Fachliche Übergänge und Fehler sind append-only nachvollziehbar. | Journalabnahme mit Event-ID, Projekt, Akteur, Run, Ergebnis und Quellenreferenz; UPDATE/DELETE-Bypass wird abgewiesen. | Laufzeit | offen |
+| 19 | Fachliche Übergänge und Fehler sind append-only nachvollziehbar; für v1.5.0 auf die sicherheitskritischen Pfade verengt (Nutzer 04.10.). | Typisierter Audit-Envelope weist Einträge ohne project/run/result/sourceRef ab (M4-R19-01); vollständige Envelopes für Not-Aus an/aus und Barrier-/Store-Fehler (M4-R19-06), für Delivery-Start/-Enqueue und W1-03f done/blocked mit Erfolg und Ablehnung (M4-R19-05) und für Planungs-Autorisierungsablehnungen und Planungs-Schreibvorgänge (M4-R19-08); je Eintrag Event-ID, Projekt, Akteur, Run, Ergebnis und Quellenreferenz; UPDATE/DELETE-Bypass wird abgewiesen. | Laufzeit | offen |
 | 20 | Der globale Not-Aus stoppt die gesamte Ausführung innerhalb von 10 Sekunden. | PC-Drill misst den Zeitraum vom Auslösen bis zum bestätigten Stillstand aller betroffenen Worker und dokumentiert Restprozesse. | Nutzer-Gate | offen |
 | 21 | Crash und Power-Loss lassen keine unklaren Claims oder stillen Zustandswechsel zurück. | Wiederanlauf-Drill an jeder kritischen Transition; Recovery bleibt blockiert, bis Prozess- und DB-Zustand reconciled sind. | Nutzer-Gate | offen |
 | 22 | Backup und Wartung bilden einen kohärenten, wiederherstellbaren SQLite-Zustand. | Backup-Drill einschließlich WAL, Restore und Integritätsprüfung vor Wartung; Snapshot und Ergebnis sind referenziert. | Nutzer-Gate | offen |
@@ -35,6 +35,8 @@ oder das ausdrücklich benannte Nutzer-/PC-Gate.
 | 25 | Singleton, Mehrfachstart und Recovery sind als installierte PC-Drills bestanden. | Nutzer führt die drei Drills aus; alte Instanz scheitert kontrolliert, Nutzersitzungen bleiben erhalten, Ergebnis wird abgelegt. | Nutzer-Gate | offen |
 | 26 | Die vollständige Abnahme ist auf den vorgesehenen Plattformen und Gates reproduziert. | `prepush`, Linux-/Windows-Lane sowie dokumentierte Windows-/Linux-Einschränkungen sind mit Commit und Exit-Code festgehalten. | Nutzer-Gate | offen |
 | 27 | Der Nutzer nimmt M4 ab und autorisiert erst danach Release v1.5.0. | Nutzer bestätigt alle 26 vorherigen Zeilen, den Not-Aus, die PC-Drills und die Releaseentscheidung; Audit zeigt danach `releaseEligible: true`. | Nutzer-Gate | offen |
+
+Weitere Pfade (Ziel/Task/Claim/Checkpoint, Intent/Launch, Kandidat/Evidence/Review, Wartung) folgen in M5 (Nutzerentscheidung 04.10.).
 
 ## Entscheidungsregel
 
