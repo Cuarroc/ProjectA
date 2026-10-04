@@ -52,6 +52,9 @@ use crate::worktree;
 #[allow(unused_imports)] // App registration remains gated.
 pub use projecta_capture::native_resources;
 
+#[path = "workers/delivery_state.rs"]
+#[allow(dead_code)] // The CLI adapter is added by W1-03f slice b.
+pub mod delivery_state;
 #[path = "workers/development.rs"]
 #[allow(dead_code)] // Scheduler/provider activation remains gated.
 pub mod development;
@@ -3419,6 +3422,99 @@ mod tests {
 
     async fn prepared_development_run(fx: &Fixture) -> String {
         prepared_development_run_with_objective(fx, "task").await
+    }
+
+    async fn launched_development_run(fx: &Fixture) -> String {
+        let run = prepared_development_run(fx).await;
+        sqlx::query("UPDATE development_runs SET status='launched' WHERE id=?")
+            .bind(&run)
+            .execute(fx.store.pool_for_test())
+            .await
+            .unwrap();
+        run
+    }
+
+    #[tokio::test]
+    async fn repeated_worker_delivery_done_is_idempotent() {
+        let fx = fixture("worker-delivery-done-replay").await;
+        let run = launched_development_run(&fx).await;
+
+        let first = delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .unwrap();
+        let repeated = delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .expect("repeating done must be a no-op");
+
+        assert_eq!(repeated, first);
+    }
+
+    #[tokio::test]
+    async fn wrong_run_or_fence_cannot_complete_worker_delivery() {
+        let fx = fixture("worker-delivery-fence").await;
+        let run = launched_development_run(&fx).await;
+
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            "another-run",
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .expect_err("another run must be rejected");
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            2,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .expect_err("a stale fence must be rejected");
+
+        assert_eq!(
+            fx.store
+                .get_development_run(&run)
+                .await
+                .unwrap()
+                .unwrap()
+                .status,
+            crate::store::development_runs::RUN_LAUNCHED
+        );
+    }
+
+    #[tokio::test]
+    async fn worker_blocked_persists_its_reason() {
+        let fx = fixture("worker-delivery-blocked").await;
+        let run = launched_development_run(&fx).await;
+
+        let blocked = delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Blocked {
+                reason: "missing approval".into(),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(blocked.status, crate::store::development_runs::RUN_FAILED);
+        assert_eq!(blocked.terminal_detail.as_deref(), Some("missing approval"));
     }
 
     /// Same fixture as `prepared_development_run`, with the task objective text
