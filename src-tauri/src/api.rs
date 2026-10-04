@@ -442,6 +442,16 @@ pub trait ControlBackend: Send + Sync {
     ) -> Result<crate::store::development_launches::DispatchRole, String> {
         Err("dispatch role service unavailable".into())
     }
+    fn agent_planning_scope(
+        &self,
+        _run: &str,
+        _owner: &str,
+        _fence: i64,
+        _kind: &str,
+        _target: &str,
+    ) -> Result<(), String> {
+        Err("planning scope service unavailable".into())
+    }
     fn checkpoint_continuous_task(
         &self,
         _task_id: &str,
@@ -2843,6 +2853,21 @@ pub(crate) mod tests {
             self.dispatch_role
                 .clone()
                 .unwrap_or_else(|| Err("no dispatch role configured".into()))
+        }
+        fn agent_planning_scope(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            _kind: &str,
+            target: &str,
+        ) -> Result<(), String> {
+            self.agent_run_context(run, owner, fence)?;
+            if target.contains("foreign") {
+                Err("planning target is outside the run project".into())
+            } else {
+                Ok(())
+            }
         }
         fn create_continuous_goal(
             &self,

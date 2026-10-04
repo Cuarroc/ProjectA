@@ -106,6 +106,48 @@ fn coordinator_run_credential_may_use_every_planning_route() {
 }
 
 #[test]
+fn coordinator_cannot_plan_for_a_foreign_project_without_leaking_targets() {
+    let (fx, descriptor) = role_fixture(
+        "planning-project-scope",
+        Some(Ok(DispatchRole::Coordinator)),
+    );
+    let attempts = [
+        (
+            "/api/hq/v1/plan/import",
+            r#"{"projectId":"pj-foreign","planId":"secret-plan","expectedProjectionRevision":0}"#,
+        ),
+        (
+            "/api/hq/v1/goals",
+            r#"{"projectId":"pj-foreign","objective":"foreign"}"#,
+        ),
+        (
+            "/api/hq/v1/goals/foreign-goal/tasks",
+            r#"{"objective":"foreign","ownedPaths":[],"dependencies":[]}"#,
+        ),
+        (
+            "/api/hq/v1/tasks/foreign-task/assignment",
+            r#"{"teamId":"development","role":"implementer","assignee":"worker-b","expectedRevision":0}"#,
+        ),
+    ];
+    let mut errors = Vec::new();
+    for (path, body) in attempts {
+        let (status, reply) = call(descriptor.port, "POST", path, Some(&descriptor.token), body);
+        assert_eq!(status, 403, "{path}: {reply}");
+        let error = reply["error"].as_str().unwrap_or_default();
+        assert!(
+            !error.contains("foreign"),
+            "target leaked through {path}: {error}"
+        );
+        errors.push(error.to_string());
+    }
+    assert!(
+        errors.windows(2).all(|pair| pair[0] == pair[1]),
+        "scope denials must be indistinguishable: {errors:?}"
+    );
+    assert_eq!(planned(&fx), Vec::<String>::new());
+}
+
+#[test]
 fn implementer_run_credential_is_refused_on_every_planning_route() {
     assert_refused_everywhere(
         "w2-04f-implementer",
