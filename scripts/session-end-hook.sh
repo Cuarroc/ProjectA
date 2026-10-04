@@ -20,7 +20,7 @@ instanz="${1:-agent}"
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -f "$root/scripts/sync.sh" ] || exit 0
 
-act="$root/.pa/ACTIVITY.md"
+act="$(bash "$root/scripts/sync.sh" where 2>/dev/null)" || exit 0
 if [ -f "$act" ]; then
   alter=$(( $(date +%s) - $(stat -c %Y "$act" 2>/dev/null || echo 0) ))
   [ "$alter" -lt 1800 ] && exit 0

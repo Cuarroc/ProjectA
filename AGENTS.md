@@ -145,6 +145,14 @@ bash scripts/ci/gates.sh lane prepush  # the full local lane
 bash scripts/ci/gates.sh --from clippy lane linux   # resume after a failure
 ```
 
+Generated and shared files are written on `main` only: a branch must not
+commit `docs/dev-hq/data.js|json` or `.pa/ACTIVITY.md` (gate `hotspot-guard`;
+PRs merge without our local merge driver, so each such change conflicts with
+every other PR). `sync.sh note` writes to the untracked `.pa/ACTIVITY.local.md`
+on a branch (summary goes into the PR text), `post-merge` regenerates the
+snapshot on `main` only, and the coordinator refreshes it in one small PR from a
+`<vendor>/hq-snapshot-*` branch (`npm run hq`, commit just the two files).
+
 Lanes: `precommit`, `prepush`, `linux`, `windows`, `release`, `audit`. `ci.yml`,
 `release.yml`, `audit.yml` and both git hooks call exactly these lanes — one
 step per lane, no list left in the YAML. Drift is not checked, it is impossible.
