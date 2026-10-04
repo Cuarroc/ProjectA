@@ -99,6 +99,26 @@ printf '# runtime input\n' > docs/runtime/input.md
 printf '{}\n' > docs/dev-hq/data.json
 printf 'export {};\n' > src/App.tsx
 printf 'name: ci\n' > .github/workflows/ci.yml
+# SETUP-12 (Rest): .githooks/ und .github/ fuehren ebenfalls Gate-Code aus -
+# commit-msg/pre-commit/pre-push rufen gates.sh, die Workflows und die
+# Composite-Actions ebenso. Ein Doku-Leser dort muss fuer is_light_doc sichtbar
+# sein, sonst ueberspringt der Docs-only-Weg genau diesen Leser.
+mkdir -p .githooks
+cat > .githooks/commit-msg <<'EOF'
+#!/usr/bin/env bash
+cat docs/GELEBEN-HOOK.md > /dev/null
+EOF
+cat > .github/workflows/leser.yml <<'EOF'
+name: leser
+on: workflow_dispatch
+jobs:
+  l:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cat docs/GELEBEN-AKTION.md
+EOF
+printf '# hook\n' > docs/GELESEN-HOOK.md
+printf '# aktion\n' > docs/GELEBEN-AKTION.md
 git add -A
 git commit -q -m "basis"
 
@@ -113,6 +133,20 @@ else
   bash scripts/ci/lane-plan.sh --classify docs/runtime/input.md | sed 's/^/    /'
   fails=$((fails + 1))
 fi
+
+# Ein Doku-Leser in .githooks/ oder .github/ macht die Datei schwer. Beide
+# Baeume fuehren Gate-Code aus, beide wurden aber nicht nach Literalen
+# durchsucht - der Docs-only-Weg haette den Leser uebersprungen (SETUP-12).
+for f in docs/GELEBEN-HOOK.md docs/GELEBEN-AKTION.md; do
+  got="$(bash scripts/ci/lane-plan.sh --classify "$f")"
+  case "$got" in
+    heavy*) echo "ok   gate-tree-leser-ist-sichtbar ($f)" ;;
+    *)
+      echo "FEHLER gate-tree-leser-ist-sichtbar: '$got', erwartet heavy fuer $f"
+      fails=$((fails + 1))
+      ;;
+  esac
+done
 
 # Legt einen PR-Branch an, der die genannten Dateien aendert, und baut daraus
 # einen Merge-Commit wie GitHubs refs/pull/N/merge (erster Elternteil = main).
@@ -420,7 +454,12 @@ real_spec="$(cd "$HERE" && ls .pa/task_*.md 2> /dev/null | head -1)"
 real_heavy=(STAND.md docs/PLAN.md docs/agents-json.md docs/dev-hq/BUGS.md docs/dev-hq/data.json
             AGENTS.md CLAUDE.md README.md .pa/HQ-START.md
             .pa/report_f0.md ${real_spec:+"$real_spec"})
-real_light=(.pa/report_ci-01.md docs/decisions.md)
+real_light=(.pa/report_ci-01.md docs/decisions.md
+            # SETUP-12 (Rest): die drei nennen nur eine Datei, statt sie zu
+            # lesen - eine Release-Beschreibung, der NICHT-ABGEDECKT-Block von
+            # gates.sh und der Werkzeugreport von doctor.sh. Sie muessen leicht
+            # bleiben, sonst kostet eine reine Textkorrektur dort eine volle Bahn.
+            CHANGELOG.md KNOWN_ISSUES.md docs/ci-lokal.md)
 (cd "$HERE" && bash "$PLAN" --classify "${real_heavy[@]}" "${real_light[@]}") > "$tmp/classify" 2>&1
 real_expect() { # erwartet datei
   if grep -qxF "$1 $2" "$tmp/classify" || grep -qF "$1 $2 - " "$tmp/classify"; then
