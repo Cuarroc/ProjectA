@@ -409,7 +409,10 @@
   $('.brand')?.addEventListener('click', e => { e.preventDefault(); show('overview'); });
   on('project', async e => { rememberDraft(); clearTimeout(state.timer); state.project = e.target.value; state.skills.clear(); state.plugins.clear(); notice(''); const pid = state.project; const loading = loadProject(); render(); await loading; if (pid === state.project) { rememberDraft(); render(); } }, 'change');
   on('refresh', refresh);
-  on('theme', () => { const dark = document.documentElement.dataset.theme !== 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; $('#theme').textContent = dark ? 'Hell' : 'Dunkel'; $('#theme').setAttribute('aria-label', dark ? 'Helles Farbschema einschalten' : 'Dunkles Farbschema einschalten'); try { localStorage.setItem('studio-theme', dark ? 'dark' : 'light'); } catch { /* Optional preference. */ } });
+  const isDark = () => (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  const labelTheme = () => { const dark = isDark(); $('#theme').textContent = dark ? 'Hell' : 'Dunkel'; $('#theme').setAttribute('aria-label', dark ? 'Helles Farbschema einschalten' : 'Dunkles Farbschema einschalten'); };
+  on('theme', () => { const dark = !isDark(); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; labelTheme(); try { localStorage.setItem('studio-theme', dark ? 'dark' : 'light'); } catch { /* Optional preference. */ } });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', labelTheme);
   function applyChatAppearance(value, save = false) {
     const next = ['codex', 'claude', 'deepseek'].includes(value) ? value : 'deepseek';
     const log = $('#chat-log');
@@ -433,7 +436,8 @@
   on('density', e => { applyDensity(e.target.value); if (state.view === 'roadmap') drawRoadmapEdges(); try { localStorage.setItem('studio-density', e.target.value); } catch { /* Optional preference. */ } }, 'change');
   try { applyDensity(localStorage.getItem('studio-density')); } catch { applyDensity('calm'); }
   try { applyChatAppearance(localStorage.getItem('studio-chat-appearance')); } catch { applyChatAppearance('deepseek'); }
-  try { if (localStorage.getItem('studio-theme') === 'dark') $('#theme').click(); } catch { /* Storage may be disabled. */ }
+  try { const saved = localStorage.getItem('studio-theme'); if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved; } catch { /* Storage may be disabled. */ }
+  labelTheme();
   window.addEventListener('pagehide', () => clearTimeout(state.timer));
   window.addEventListener('resize', () => { if (state.view === 'roadmap') drawRoadmapEdges(); });
   window.Studio = { state, show, refresh, ready: refresh() };

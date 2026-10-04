@@ -389,6 +389,66 @@ for (const [mode, vars] of hqModes) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Studio concept tokens (docs/dev-hq/concepts/studio-tokens.css), HQ2-03a
+// ---------------------------------------------------------------------------
+// One token file serves both Studio concept pages. Colours are declared once
+// as light-dark(light, dark); the gate splits them into the two schemes and
+// applies the prefers-contrast: more block on top. No other concept file may
+// carry a colour literal, otherwise the pairings below would not see it.
+
+const conceptDir = join(here, "..", "docs", "dev-hq", "concepts");
+const conceptFiles = ["hq2-concept.html", "hq2-studio.html", "studio-density.css", "studio-premium.css", "studio-roadmap.css", "studio-workspace.css", "studio-workspace.js", "studio-roadmap.js", "studio-analysis.js", "studio-model.js"];
+let tokenCss = "";
+try {
+  tokenCss = readFileSync(join(conceptDir, "studio-tokens.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+} catch {
+  fails.push("studio: docs/dev-hq/concepts/studio-tokens.css fehlt");
+}
+for (const f of conceptFiles) {
+  const src = readFileSync(join(conceptDir, f), "utf8");
+  const literal = src.match(/(?<![\w&-])(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![\w-])|(?:rgba?|hsla?)\()/);
+  if (literal) fails.push(`studio: Farbliteral ${literal[0]} in ${f} — gehört in studio-tokens.css`);
+}
+if (tokenCss) {
+  const light = {};
+  const dark = {};
+  const declare = (block, lightOut, darkOut) => {
+    for (const m of block.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) {
+      const ld = m[2].trim().match(/^light-dark\((.*)\)$/s);
+      const parts = ld ? splitTopLevel(ld[1]) : null;
+      lightOut[m[1]] = parts ? parts[0] : m[2].trim();
+      darkOut[m[1]] = parts ? parts[1] : m[2].trim();
+    }
+  };
+  const [moreFrom, moreTo] = mediaSpan(tokenCss, Math.max(0, tokenCss.indexOf("@media (prefers-contrast: more)")));
+  const hasMore = tokenCss.includes("@media (prefers-contrast: more)");
+  declare(hasMore ? tokenCss.slice(0, moreFrom) + tokenCss.slice(moreTo) : tokenCss, light, dark);
+  const lightMore = { ...light };
+  const darkMore = { ...dark };
+  if (hasMore) declare(tokenCss.slice(moreFrom, moreTo), lightMore, darkMore);
+  else fails.push("studio: kein @media (prefers-contrast: more)-Block in studio-tokens.css");
+  const pairs = [
+    ["ink / bg", "ink", "bg"], ["ink / surface", "ink", "surface"], ["ink / surface2", "ink", "surface2"],
+    ["muted / bg", "muted", "bg"], ["muted / surface", "muted", "surface"], ["muted / surface2", "muted", "surface2"],
+    ["accent / bg", "accent", "bg"], ["accent / surface", "accent", "surface"], ["accent / wash", "accent", "wash"],
+    ["teal-ink / teal-wash", "teal-ink", "teal-wash"], ["on-accent / accent", "on-accent", "accent"],
+    ["amber / amber-wash", "amber", "amber-wash"], ["red / red-wash", "red", "red-wash"],
+    ["error / surface", "error", "surface"], ["warn / surface", "warn", "surface"],
+    ["control-edge / surface (Nicht-Text)", "control-edge", "surface", 3], ["control-edge / bg (Nicht-Text)", "control-edge", "bg", 3],
+    ["focus-ring / bg (Nicht-Text)", "focus-ring", "bg", 3], ["focus-ring / surface (Nicht-Text)", "focus-ring", "surface", 3],
+  ];
+  for (const [mode, vars] of [["studio hell  ", light], ["studio dunkel", dark], ["studio hell+ ", lightMore], ["studio dunkel+", darkMore]]) {
+    for (const [label, fg, bg, min] of pairs) {
+      try {
+        check(mode, label, color(vars, fg), color(vars, bg), min);
+      } catch (err) {
+        fails.push(`${mode.trim()}: ${label}: ${err.message}`);
+      }
+    }
+  }
+}
+
 console.log(rows.join("\n"));
 if (fails.length) {
   console.log(`\nNICHT BESTANDEN — ${fails.length} Paarung(en):`);
