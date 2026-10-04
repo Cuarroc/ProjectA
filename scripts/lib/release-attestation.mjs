@@ -15,6 +15,8 @@ const no = reason => ({ attested: false, reason });
 /** Returns `{ attested, reason? }`; never throws. */
 export function loadReleaseAttestation(file, root = process.cwd()) {
   try {
+    const rel = path.relative(root, path.resolve(root, file)).split(path.sep).join('/');
+    if (!rel || rel === '..' || rel.startsWith('../')) return no('attestation path must be inside the repository');
     let data;
     try {
       data = JSON.parse(readFileSync(path.resolve(root, file), 'utf8'));
@@ -35,18 +37,26 @@ export function loadReleaseAttestation(file, root = process.cwd()) {
     let head;
     try {
       head = git(root, ['rev-parse', 'HEAD']).trim();
+      const tracked = git(root, ['ls-files', '--stage', '--', rel]).trim();
+      if (!/^100(?:644|755) [0-9a-f]+ 0\t/.test(tracked)) {
+        return no('attestation file unreadable: it must be a committed regular file');
+      }
       if (git(root, ['status', '--porcelain']).trim() !== '') return no('work tree is not clean');
     } catch {
       return no('git state unavailable (not a repository or no commit)');
     }
     if (data.commit !== head) {
+      try {
+        git(root, ['merge-base', '--is-ancestor', data.commit, head]);
+      } catch {
+        return no('commit does not match HEAD: it must be an ancestor');
+      }
       // Committing the attestation itself moves HEAD by one commit; accept
       // exactly the commits that touch nothing but the attestation file.
       let changed = null;
       try {
         changed = git(root, ['diff', '--name-only', `${data.commit}..${head}`]).split('\n').filter(Boolean);
       } catch { /* unknown commit: falls through to the mismatch */ }
-      const rel = path.relative(root, path.resolve(root, file)).split(path.sep).join('/');
       if (!changed || changed.length === 0 || changed.some(name => name !== rel)) {
         return no('commit does not match HEAD');
       }
