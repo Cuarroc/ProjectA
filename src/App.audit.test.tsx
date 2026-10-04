@@ -11,6 +11,10 @@ const attentionBlockers = vi.hoisted(() => ({
   current: [] as AttentionSource[],
 }));
 
+const boardWorkerSeen = vi.hoisted(() => ({
+  current: null as ((workerId: string) => void) | null,
+}));
+
 const projectA: Project = {
   id: "project-a",
   name: "Project A",
@@ -89,14 +93,21 @@ vi.mock("./lib/ipc", () => ({
 }));
 
 vi.mock("./lib/useBoard", () => ({
-  useBoard: () => ({
-    cards: [],
-    coordinators: [],
-    attentionByWorker: {},
-    loading: false,
-    error: null,
-    refresh: vi.fn(),
-  }),
+  useBoard: (
+    _projectId: string | null,
+    _enabled: boolean,
+    onWorkerSeen?: (workerId: string) => void,
+  ) => {
+    boardWorkerSeen.current = onWorkerSeen ?? null;
+    return {
+      cards: [],
+      coordinators: [],
+      attentionByWorker: {},
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("./lib/useQuestions", () => ({
@@ -230,6 +241,7 @@ describe("App audit regressions", () => {
   beforeEach(() => {
     localStorage.clear();
     attentionBlockers.current = [];
+    boardWorkerSeen.current = null;
     vi.clearAllMocks();
     vi.mocked(ipc.listProjects).mockResolvedValue([projectA, projectB]);
     vi.mocked(ipc.listAgentProfiles).mockResolvedValue(profiles);
@@ -262,6 +274,21 @@ describe("App audit regressions", () => {
 
     await waitFor(() => expect(screen.getByTestId("workers")).toHaveTextContent("worker-b"));
     expect(screen.getByTestId("workers")).not.toHaveTextContent("worker-a");
+  });
+
+  it("reloads sidebar workers when the board sees an unknown worker", async () => {
+    render(<App />);
+    await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-a"));
+    fireEvent.click(screen.getByRole("button", { name: "open agents" }));
+
+    vi.mocked(ipc.listWorkers).mockResolvedValue([
+      worker("worker-from-queue", "project-a", "session-from-queue"),
+    ]);
+    act(() => boardWorkerSeen.current?.("worker-from-queue"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("workers")).toHaveTextContent("worker-from-queue"),
+    );
   });
 
   it("unsubscribes a PTY exit listener when the session exits normally", async () => {
