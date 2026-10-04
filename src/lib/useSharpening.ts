@@ -25,12 +25,13 @@ const CANCEL_ANSWER = "abgebrochen — die Prompt-Schärfung wurde beendet";
 const ERR_NOT_FILED = "Die Rückfragen konnten nicht gestellt werden.";
 
 /**
- * Best effort and deliberately unawaited: the round is over either way, and a
- * row that refuses to close is one the clock will get to.
+ * Deliberately unawaited: the round is over either way, and a row that refuses
+ * to close is one the clock will get to. The caller still reports the failed
+ * write on its surviving surface (or to the console during unmount).
  */
-function closeAbandoned(abandoned: Question[]): void {
+function closeAbandoned(abandoned: Question[], reportError: (cause: unknown) => void): void {
   for (const question of abandoned) {
-    void answerQuestion(question.id, CANCEL_ANSWER).catch(() => undefined);
+    void answerQuestion(question.id, CANCEL_ANSWER).catch(reportError);
   }
 }
 
@@ -127,7 +128,7 @@ export function useSharpening(
   // old project's tab as ghost decisions.
   useEffect(() => {
     round.current += 1;
-    closeAbandoned(questionsRef.current);
+    closeAbandoned(questionsRef.current, (cause) => setError(describeError(cause)));
     questionsRef.current = [];
     setQuestions([]);
     setPhase("idle");
@@ -140,7 +141,9 @@ export function useSharpening(
   useEffect(() => {
     return () => {
       round.current += 1;
-      closeAbandoned(questionsRef.current);
+      closeAbandoned(questionsRef.current, (cause) => {
+        console.error("Failed to close an abandoned sharpening question", describeError(cause));
+      });
       questionsRef.current = [];
     };
   }, []);
@@ -253,7 +256,7 @@ export function useSharpening(
             // only see `questionsRef`, which is still empty, so the rows filed
             // so far are closed here or they stay open as ghost decisions.
             if (round.current !== mine) {
-              closeAbandoned(asked);
+              closeAbandoned(asked, (cause) => setError(describeError(cause)));
               return;
             }
           }
@@ -261,7 +264,7 @@ export function useSharpening(
           setOpen(asked);
           setPhase("waiting");
         } catch (cause) {
-          closeAbandoned(asked);
+          closeAbandoned(asked, (closeCause) => setError(describeError(closeCause)));
           if (round.current !== mine) return;
           setError(describeError(cause));
           setPhase("idle");
@@ -274,7 +277,7 @@ export function useSharpening(
   const cancel = useCallback(() => {
     const abandoned = questionsRef.current;
     stop();
-    closeAbandoned(abandoned);
+    closeAbandoned(abandoned, (cause) => setError(describeError(cause)));
   }, [stop]);
 
   const answer = useCallback(

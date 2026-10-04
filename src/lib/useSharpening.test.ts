@@ -51,4 +51,15 @@ describe("useSharpening audit regressions", () => {
       "abgebrochen — die Prompt-Schärfung wurde beendet",
     );
   });
+
+  it("reports a failed abandoned-question write after cancellation", async () => {
+    const { result } = renderHook(() => useSharpening("project-a", vi.fn()));
+    act(() => result.current.start("Unklarer Auftrag"));
+    await waitFor(() => expect(result.current.phase).toBe("waiting"));
+    vi.mocked(ipc.answerQuestion).mockRejectedValueOnce(new Error("question store unavailable"));
+
+    act(() => result.current.cancel());
+
+    await waitFor(() => expect(result.current.error).toBe("question store unavailable"));
+  });
 });

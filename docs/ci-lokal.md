@@ -56,6 +56,9 @@ bash scripts/ci/gates.sh --from clippy lane linux   # nach einem Fehlschlag weit
 | `release` | `release.yml` | wie `linux`, vor dem Bundle-Build |
 | `audit` | `audit.yml` | `cargo audit`, `npm audit` |
 
+Für eine Testdatei, die an der Merge-Base schon existiert, muss jeder neue Test
+als `Test-First: <path>::<exact test name>` einzeln benannt werden.
+
 Jeder Lauf beginnt mit einem Umgebungskopf (OS, node, rustc, nextest, HEAD,
 dirty) und endet mit einer Tabelle plus dem Block **NICHT ABGEDECKT**. Dieser
 Block gehört in den PR-Text bzw. `.pa/ACTIVITY.md`: „Vollgates grün" ohne ihn

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { getProjectStats } from "../lib/ipc";
+import { describeError, getProjectStats } from "../lib/ipc";
 import type { ProjectStats, StatsLabelCount, StatsRange } from "../types";
 
 interface StatisticsViewProps {
@@ -119,7 +119,7 @@ export default function StatisticsView({ projectId }: StatisticsViewProps) {
         setError(null);
       } catch (err) {
         if (tokenRef.current !== mine) return;
-        setError(String(err));
+        setError(describeError(err));
       } finally {
         if (tokenRef.current === mine) setLoading(false);
       }
