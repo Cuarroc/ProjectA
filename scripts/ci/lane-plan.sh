@@ -431,6 +431,22 @@ case "${1:-}" in
     printf '%s\n' "${WINDOWS_INPUTS[@]}" "${DYNAMIC[@]+"${DYNAMIC[@]}"}"
     exit 0
     ;;
+  --touches-rust)
+    # CI-HARDEN-01: does this file list touch an input of the Rust build?
+    # gates.sh (lane precommit) uses it to skip fmt/cargo-check for docs-only
+    # commits - the classification lives here, not in a second list there.
+    # Prints the first matching file; exit 0 = touches, 1 = does not.
+    shift
+    load_dynamic
+    for f in "$@"; do
+      if matches_any "$f" "src-tauri/*" "rustfmt.toml" ".rustfmt.toml" \
+           "${RUST_CACHE_INPUTS[@]}" "${DYNAMIC[@]+"${DYNAMIC[@]}"}"; then
+        echo "$f"
+        exit 0
+      fi
+    done
+    exit 1
+    ;;
   --classify)
     shift
     load_dynamic

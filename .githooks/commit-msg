@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# commit-msg — Schicht b (Plan T-1): nur Anwesenheit eines Trailers, kein Testlauf.
+# commit-msg — Schicht b (Plan T-1): Trailer vorhanden und gueltig, kein Testlauf.
 set -euo pipefail
 
 MSG_FILE="${1:-}"
@@ -30,24 +30,28 @@ fi
 FILES=()
 while IFS= read -r _tf_file; do
   [ -n "$_tf_file" ] && FILES+=("$_tf_file")
-done < <(git diff --cached --name-only)
-if ! tf_file_list_needs_trailer "${FILES[@]+"${FILES[@]}"}"; then
-  exit 0
+done < <(git diff --cached --name-only --no-renames)
+if tf_file_list_needs_trailer "${FILES[@]+"${FILES[@]}"}"; then
+  if ! tf_message_has_required_trailer "$MSG"; then
+    echo "commit-msg: dieser Commit aendert Nicht-Test-Quellcode und braucht genau einen Trailer:" >&2
+    echo "  Test-First: <pfad>::<testname>   (ein neuer Test je Zeile)" >&2
+    echo "  Regression-For: <sha>" >&2
+    echo "  No-Test: <Grund>" >&2
+    echo "Mehrere Belege = mehrere Zeilen. Kein Testlauf in diesem Hook." >&2
+    exit 1
+  fi
+
+  if ! tf_trailer_is_well_formed "$MSG"; then
+    echo "commit-msg: Trailer-Format ungueltig (siehe §7 in docs/SANIERUNGSPLAN.md)." >&2
+    exit 1
+  fi
 fi
 
-if ! tf_message_has_required_trailer "$MSG"; then
-  echo "commit-msg: dieser Commit aendert Nicht-Test-Quellcode und braucht genau einen Trailer:" >&2
-  echo "  Test-First: <pfad>" >&2
-  echo "  Test-First: <pfad>::<testname>" >&2
-  echo "  Regression-For: <sha>" >&2
-  echo "  No-Test: <Grund>" >&2
-  echo "Mehrere Belege = mehrere Zeilen. Kein Testlauf in diesem Hook." >&2
-  exit 1
-fi
-
-if ! tf_trailer_is_well_formed "$MSG"; then
-  echo "commit-msg: Trailer-Format ungueltig (siehe §7 in docs/SANIERUNGSPLAN.md)." >&2
-  exit 1
-fi
-
+# CI-HARDEN-01: dieselbe Trailer-Pruefung wie der CI-Job red-first (Plan-Modus,
+# scripts/ci/red-first.sh --commit-msg): ein Pfad-Trailer fuer eine Datei, die
+# an der Merge-Base schon Tests hat (#351), ein Test-First-Pfad ohne Datei oder
+# ein Testname, der in der Datei nicht vorkommt, scheitert jetzt beim Commit
+# statt erst im PR. Auch fuer reine Doku-Commits, denn CI prueft jede Zeile.
+# Kein cargo, kein Netz.
+bash "$ROOT/scripts/ci/red-first.sh" --commit-msg "$MSG_FILE" || exit 1
 exit 0
