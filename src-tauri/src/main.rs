@@ -1168,6 +1168,11 @@ async fn enter_maintenance(
 }
 
 #[tauri::command]
+fn get_maintenance(store: State<'_, Store>) -> bool {
+    store.is_maintenance_active()
+}
+
+#[tauri::command]
 async fn leave_maintenance(
     pty: State<'_, PtyManager>,
     store: State<'_, Store>,
@@ -3878,6 +3883,7 @@ fn main() {
             list_live_sessions,
             install_update_when_idle,
             enter_maintenance,
+            get_maintenance,
             leave_maintenance,
             get_updater_state,
             set_updater_state,
