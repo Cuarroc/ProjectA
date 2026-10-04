@@ -1421,4 +1421,72 @@ mod tests {
             EscalationDecision::Denied { .. }
         ));
     }
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ContinuousAudit {
+        continuous_eligible: bool,
+        activation_requested: bool,
+        effective_enabled: bool,
+        reasons: Vec<String>,
+    }
+
+    fn audit_continuous_raw(_raw: &str) -> ContinuousAudit {
+        unimplemented!("M4 row 1")
+    }
+
+    fn audit_continuous(_project_root: &Path) -> ContinuousAudit {
+        unimplemented!("M4 row 1")
+    }
+
+    fn policy_json_with_enabled(enabled: bool) -> String {
+        let mut value = serde_json::to_value(DevelopmentPolicy::defaults()).unwrap();
+        value["continuous"]["enabled"] = serde_json::Value::Bool(enabled);
+        value.to_string()
+    }
+
+    #[test]
+    fn audit_reports_not_eligible_without_acceptance() {
+        let audit = audit_continuous_raw(&policy_json_with_enabled(false));
+        assert!(!audit.continuous_eligible);
+        assert!(!audit.activation_requested);
+        assert!(!audit.effective_enabled);
+        assert!(audit.reasons.iter().any(|r| r.contains("acceptance")));
+        let json = serde_json::to_value(&audit).unwrap();
+        assert_eq!(json["continuousEligible"], serde_json::Value::Bool(false));
+    }
+
+    #[test]
+    fn audit_of_shipped_policy_file_is_not_eligible() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let audit = audit_continuous(&root);
+        assert!(!audit.continuous_eligible && !audit.effective_enabled);
+    }
+
+    #[test]
+    fn audit_of_unreadable_policy_is_not_eligible() {
+        let root = std::env::temp_dir().join(format!("projecta-audit-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let audit = audit_continuous(&root);
+        assert!(!audit.continuous_eligible && !audit.effective_enabled);
+        assert!(audit.reasons.iter().any(|r| r.contains("cannot read")));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn enabling_continuous_via_config_is_rejected_and_stays_off() {
+        let raw = policy_json_with_enabled(true);
+        assert!(parse(&raw).unwrap_err().contains("continuous.enabled"));
+        let root = std::env::temp_dir().join(format!("projecta-enable-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join(POLICY_FILE), &raw).unwrap();
+        assert!(load(&root).unwrap_err().contains("continuous.enabled"));
+        let audit = audit_continuous(&root);
+        assert!(audit.activation_requested);
+        assert!(!audit.continuous_eligible && !audit.effective_enabled);
+        assert!(audit.reasons.iter().any(|r| r.contains("rejected")));
+        let _ = fs::remove_dir_all(root);
+    }
 }
