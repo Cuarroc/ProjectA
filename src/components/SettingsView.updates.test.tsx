@@ -154,6 +154,15 @@ describe("SettingsView updates tab", () => {
     ]));
   });
 
+  it("shows a failed updater state write instead of swallowing it", async () => {
+    setUpdaterState.mockRejectedValue(new Error("state store unavailable"));
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+
+    expect(await screen.findByText(/state store unavailable/)).toBeInTheDocument();
+  });
+
   it.each(["check", "install"] as const)("refuses update when session inventory fails during %s", async (stage) => {
     const install = vi.fn();
     mocks.check.mockResolvedValue({

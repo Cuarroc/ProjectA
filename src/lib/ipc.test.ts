@@ -215,6 +215,18 @@ describe("IPC audit regressions", () => {
     );
   });
 
+  it("strips both Rust routing prefixes before a message reaches the UI", () => {
+    expect(describeError(new Error("refused: worker is archived"))).toBe(
+      "worker is archived",
+    );
+    expect(describeError(new Error("unknown project: project-a"))).toBe(
+      "project: project-a",
+    );
+    expect(describeError("worker reported unknown project state")).toBe(
+      "worker reported unknown project state",
+    );
+  });
+
   // Review W1-09 Runde 3 (deepseek-v4-flash P3): a message that is nothing but
   // the prefix was stripped down to an empty string, and the panel showed an
   // error with no text at all. The routing tag is still better than nothing.
