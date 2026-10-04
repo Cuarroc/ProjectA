@@ -95,6 +95,11 @@ bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nic
   lehnt das Skript ab (`llama3:8b` neben `llama3-8b`, `a/x:free` neben
   `b/x:free`): sie wuerden einander das Protokoll ueberschreiben, und der Lauf
   meldete trotzdem zweimal „ok“ — ein Dual-Review, den es als Datei nicht gibt.
+  Groß-/Kleinschreibung zählt mit (NTFS und APFS sind nicht case-sensitiv),
+  und ein Modellname außerhalb `A-Za-z0-9 . _ : / -` wird ebenfalls abgelehnt:
+  die Umschreibung ins Dateinamenschema ist sonst byteweise (tr) gegenüber
+  zeichenweise (slug im Transport) und damit nicht eindeutig. Die Prüfung gilt
+  auch für `--dry-run` — ein Aufruf, der so nicht sendbar wäre, wird auch beim Prompt-Bauen abgelehnt.
 - Geprueft werden nur **committete** Aenderungen. Der Diff geht an den
   gewaehlten Dienst: nichts Vertrauliches im Branch.
 - Selbsttest ohne Netz: `bash scripts/test-review-local.sh` (Fake-Ollama,

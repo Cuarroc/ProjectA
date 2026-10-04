@@ -402,6 +402,32 @@ if [ "$rc" -eq 0 ] && [ -f "$tmp/o15/review_${label}_library-llama3-8b.md" ]   &
 else
   bad "Ollama-Anbieterpraefix: rc=$rc"; echo "$out"; ls "$tmp/o15" 2>&1
 fi
+# Geschwisterfaelle desselben Codepfads: das Wegfallen von ":cloud" (der im
+# Kommentar genannte Normalfall) und der Trockenlauf, der den Fehler ebenfalls
+# sehen soll, bevor ein Prompt gebaut wird.
+run bash "$RUN" --models kimi-k3:cloud,kimi-k3 --out-dir "$tmp/o16"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ ! -e "$tmp/o16/review_${label}_kimi-k3.md" ] && [ ! -e "$tmp/o16/review_prompt_${label}.md" ]; then
+  ok "kimi-k3:cloud und kimi-k3 teilen sich den Protokollnamen (':cloud' faellt weg) - Exit 2"
+else
+  bad "':cloud'-Kollision: rc=$rc"; echo "$out"; ls "$tmp/o16" 2>&1
+fi
+run bash "$RUN" --dry-run --models llama3:8b,llama3-8b --out-dir "$tmp/o17"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" && [ ! -e "$tmp/o17/review_prompt_${label}.md" ]; then
+  ok "Trockenlauf mit kollidierenden Namen: Exit 2, kein Prompt (der Aufruf waere so nicht sendbar)"
+else
+  bad "Trockenlauf-Kollision: rc=$rc"; echo "$out"; ls "$tmp/o17" 2>&1
+fi
+# Fremder Zeichensatz: umschreiben und raten ist hier zwei Definitionen von
+# "derselbe Name" (tr byteweise, slug() im Transport zeichenweise) - abgelehnt.
+# Der Test nimmt ein Leerzeichen, damit die Datei ASCII bleibt; Umlaute und
+# andere Nicht-ASCII-Zeichen laufen in denselben Zweig.
+run bash "$RUN" --models "fake-a:cloud,bad name:8b" --out-dir "$tmp/o18"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Zeichen" && [ ! -e "$tmp/o18/review_prompt_${label}.md" ]; then
+  ok "Modellname mit Leerzeichen: Exit 2 mit deutscher Meldung, kein Prompt"
+else
+  bad "Modellname mit Leerzeichen: rc=$rc"; echo "$out"; ls "$tmp/o18" 2>&1
+fi
 : > "$KILO_STUB_LOG"
 run env PATH="$tmp/bin-ok:$PATH" bash "$RUN" --via kilo --models a/step-3.7-flash:free,b/step-3.7-flash:free --out-dir "$tmp/k8"
 if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \

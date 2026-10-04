@@ -151,11 +151,34 @@ if [ "$via" = kilo ]; then
   done
 fi
 
+# Der Protokollname entsteht aus dem Modell, also muss er eindeutig sein.
+# Zwei Modelle mit demselben Namen schrieben in dieselbe Datei: das zweite
+# Urteil ueberschrieb das erste, und der Lauf meldete trotzdem zweimal "ok"
+# mit Exit 0. Das widerspricht der Zusage dieses Skripts ("Exit 0 nur, wenn
+# JEDER Reviewer einen Text geliefert hat") und behauptet ein Dual-Review,
+# den es als Protokoll nicht gibt. Lieber zwei Laeufe als eine Datei, in der
+# ein Befund fehlt.
+#
+# Fail-closed bei zwei Sorten von Mehrdeutigkeit:
+#   - fremder Zeichensatz: die Umschreibung unten arbeitet byteweise (tr),
+#     slug() im Transport zeichenweise - bei "ü" entstuenden verschiedene
+#     Namen. Also wird ein Name mit anderen Zeichen abgelehnt, nicht geraten.
+#   - Gross-/Kleinschreibung: NTFS und APFS sind per Voreinstellung nicht
+#     case-sensitiv, dort sind Llama3-8b und llama3-8b dieselbe Datei.
+for m in "${models[@]}"; do
+  case "$m" in
+    *[!A-Za-z0-9._:/-]*)
+      die 2 "Modellname '$m' enthaelt andere Zeichen als Buchstaben, Ziffern und '. _ : / -'. Solche Namen werden fuer die Protokolldatei umgeschrieben und koennten einander verdecken - ein Name aus A-Za-z0-9._:- waehlen."
+      ;;
+  esac
+done
+
 # Protokollname je Modell - genau das, was in <out-dir>/review_<label>_<name>.md
 # landet. Ollama: ":cloud" faellt weg, jeder andere Tag wird zum Bindestrich
 # (kimi-k3:cloud -> kimi-k3, llama3:8b -> llama3-8b); kilo nimmt nur das letzte
-# Pfadelement ohne ":free". Alles andere wird zu '-' - dieselbe Form, die
-# slug() im Transport anwendet, damit der Name hier der Dateiname ist.
+# Pfadelement ohne ":free". Der Rest wird zu '-' - bei dem Zeichensatz von
+# oben dieselbe Regel wie slug() im Transport, damit der hier gepruefte Name
+# der Dateiname IST (der Transport sluggt den fertigen Namen nicht mehr).
 proto_name() { # modell
   local n="$1"
   if [ "$via" = kilo ]; then
@@ -167,12 +190,8 @@ proto_name() { # modell
   printf '%s' "${n//:/-}" | tr -c 'A-Za-z0-9._-' '-'
 }
 
-# Zwei Modelle mit demselben Protokollnamen schrieben in dieselbe Datei: das
-# zweite Urteil ueberschrieb das erste, und der Lauf meldete trotzdem zweimal
-# "ok" mit Exit 0. Das widerspricht der Zusage dieses Skripts ("Exit 0 nur,
-# wenn JEDER Reviewer einen Text geliefert hat") und behauptet ein
-# Dual-Review, den es als Protokoll nicht gibt. Lieber zwei Laeufe als eine
-# Datei, in der ein Befund fehlt.
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
 proto_names=()
 for m in "${models[@]}"; do
   proto_names+=("$(proto_name "$m")")
@@ -180,7 +199,7 @@ done
 for i in "${!proto_names[@]}"; do
   j=$((i + 1))
   while [ "$j" -lt "${#proto_names[@]}" ]; do
-    [ "${proto_names[$i]}" != "${proto_names[$j]}" ] \
+    [ "$(lower "${proto_names[$i]}")" != "$(lower "${proto_names[$j]}")" ] \
       || die 2 "die Modelle '${models[$i]}' und '${models[$j]}' schreiben in dieselbe Protokolldatei (review_<label>_${proto_names[$i]}.md) - ein Urteil ginge verloren. Modelle mit eindeutigem Namen waehlen (--models) oder je Lauf ein Modell reviewen."
     j=$((j + 1))
   done
