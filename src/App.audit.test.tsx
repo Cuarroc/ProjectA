@@ -144,10 +144,13 @@ vi.mock("./lib/orchestratorChat", () => ({
 }));
 
 vi.mock("./components/Sidebar", () => ({
-  default: (props: { children: ReactNode; onSelect: (id: string) => void }) => (
+  default: (props: { children: ReactNode; onSelect: (id: string) => void; onOpenOrchestrator: (id: string) => void }) => (
     <aside>
       <button type="button" onClick={() => props.onSelect("project-b")}>
         select project b
+      </button>
+      <button type="button" onClick={() => props.onOpenOrchestrator("project-a")}>
+        open project a orchestrator
       </button>
       {props.children}
     </aside>
@@ -283,6 +286,29 @@ describe("App audit regressions", () => {
 
     await waitFor(() => expect(screen.getByTestId("workers")).toHaveTextContent("worker-b"));
     expect(screen.getByTestId("workers")).not.toHaveTextContent("worker-a");
+  });
+
+  it("does not attach a late orchestrator response after the project changes", async () => {
+    let resolveOrchestrator: (value: Worker) => void = () => undefined;
+    const lateOrchestrator = new Promise<Worker>((resolve) => {
+      resolveOrchestrator = resolve;
+    });
+    vi.mocked(ipc.createOrchestrator).mockReturnValue(lateOrchestrator);
+    render(<App />);
+    await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-a"));
+    fireEvent.click(screen.getByRole("button", { name: "open project a orchestrator" }));
+    await waitFor(() => expect(ipc.createOrchestrator).toHaveBeenCalledWith("project-a"));
+    fireEvent.click(screen.getByRole("button", { name: "select project b" }));
+    await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-b"));
+    await act(async () => {
+      resolveOrchestrator({
+        ...worker("orchestrator-a", "project-a", "session-orchestrator-a"),
+        kind: "orchestrator",
+      });
+      await lateOrchestrator;
+    });
+    expect(screen.getByTestId("workers")).not.toHaveTextContent("orchestrator-a");
+    expect(screen.getByTestId("tabs")).not.toHaveTextContent("orchestrator-a");
   });
 
   it("opens a queued worker's tab once the reload brings it in", async () => {
