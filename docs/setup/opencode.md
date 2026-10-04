@@ -5,12 +5,16 @@ Zurück zur Übersicht: [README.md](README.md).
 
 ## Konfiguration `~/.config/opencode/opencode.jsonc` (nur Struktur)
 
+Geprüft am 04.10.2026 auf diesem PC; weiterhin nur Namen, keine Werte.
+
 - MCP-Server `codebase-memory-mcp`.
+- `model` = `opencode-go/glm-5.3`, `small_model` = `opencode-go/glm-5.3-flash`.
 - Provider `ollama` (lokaler Endpunkt `127.0.0.1:11434/v1`) mit den Modellen
-  `kimi-k2.7-code:cloud`, `glm-5.2:cloud`, `qwen3.8:latest`.
+  `kimi-k3:cloud`, `glm-5.2:cloud`, `deepseek-v4-flash:cloud`,
+  `kimi-k2.7-code:cloud`, `qwen3.8:latest`.
 - Login-Zustand für den OpenCode-eigenen Weg (Zen / „OpenCode Go"):
   `~/.local/share/opencode/auth.json` (nur Präsenz prüfen, nie Inhalt zeigen).
-- Kein `model`-Default, keine `instructions`, keine projektspezifischen Agents.
+- Keine `instructions`, keine projektspezifischen Agents.
 
 **Lücken (Nutzeraufgabe, prüfen):**
 

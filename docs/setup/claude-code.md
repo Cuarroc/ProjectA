@@ -1,6 +1,8 @@
 # Claude Code
 
-Rolle: Koordinator, Nahtstellen-Lanes, Security; Fable 5.1 als Advisor.
+Rolle: Koordinator; Fable 5.1 als Advisor. Nahtstellen und Security routet
+[providers.md](providers.md) zuerst auf Codex `gpt-6-astra`, Claude-Worker nur
+als Ausweichen (E8 in `docs/PLAN.md`, bestätigt 02.10.2026).
 Zurück zur Übersicht: [README.md](README.md).
 
 ## Pflichtdateien im Repo

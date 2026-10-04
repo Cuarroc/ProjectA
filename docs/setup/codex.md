@@ -68,6 +68,9 @@ Worktree, in dem Codex gerade arbeitet (geprüft 24.09.2026).
 - **Bilder:** `codex -i <datei>` — Codex kann Screenshots ansehen.
 - **Security-Themen:** Codex hat Sicherheitsaufgaben früher verweigert
   („flagged for possible cybersecurity risk", `docs/development/WORKFLOW.md`).
-  Für GPT-6 Astra nicht neu belegt — Security-Lanes weiter an Claude.
+  Für GPT-6 Astra nicht neu belegt. Das Routing steht in
+  [providers.md](providers.md) — Nahtstelle und Security zuerst an Codex
+  `gpt-6-astra`, Claude-Worker nur als Ausweichen (E8 in `docs/PLAN.md`, vom
+  Nutzer am 02.10.2026 bestätigt).
 - **Prozessgruppe:** Codex räumt beim Befehlsende seine Prozessgruppe ab; per
   `&` gestartete Hintergrundprozesse sterben mit. Abhilfe: `setsid`.
