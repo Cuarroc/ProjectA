@@ -263,7 +263,13 @@ describe("App audit regressions", () => {
 
     render(<App />);
     await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-a"));
-    fireEvent.click(screen.getByRole("button", { name: "focus queued worker" }));
+    fireEvent.click(screen.getByRole("button", { name: "open agents" }));
+    act(() => boardWorkerSeen.current?.("worker-a"));
+    await waitFor(() =>
+      expect(
+        vi.mocked(ipc.listWorkers).mock.calls.filter(([id]) => id === "project-a"),
+      ).toHaveLength(2),
+    );
     fireEvent.click(screen.getByRole("button", { name: "select project b" }));
     await waitFor(() => expect(ipc.listWorkers).toHaveBeenCalledWith("project-b"));
 
