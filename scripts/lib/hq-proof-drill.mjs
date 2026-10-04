@@ -21,7 +21,15 @@ export function extractIds(text) {
       walk(x);
     }
   };
-  try { walk(JSON.parse(text)); } catch { /* plain text: only PR URLs */ }
+  try {
+    const parsed = JSON.parse(text);
+    // The production context contract serializes ContinuousTask.id as
+    // tasks[].id. Do not collect every generic `id` (goal/team IDs differ).
+    for (const task of Array.isArray(parsed.tasks) ? parsed.tasks : []) {
+      if (typeof task?.id === 'string' && task.id) ids.taskIds.add(task.id);
+    }
+    walk(parsed);
+  } catch { /* plain text: only PR URLs */ }
   return Object.fromEntries(Object.entries(ids).map(([k, s]) => [k, [...s].sort()]));
 }
 export const mergeIds = (list) => Object.fromEntries(['runIds', 'taskIds', 'prUrls']
@@ -31,7 +39,16 @@ export function defaultExec(bin, args) {
   const r = spawnSync(bin, args, { encoding: 'utf8', shell: false });
   return { status: r.error ? 127 : r.status ?? 1, stdout: r.stdout ?? '', stderr: r.error ? String(r.error.message) : r.stderr ?? '' };
 }
-export function runHqProof({ phase, outDir, projectId, paBin = 'pa', beforeDir, screenshotsDir, prUrls = [], appVersion, commit, processList = '', exec = defaultExec }) {
+function runtimeVerdict(text, expectedManifestSha256) {
+  let runtime;
+  try { runtime = JSON.parse(text); } catch { return { ok: false, detail: 'HQ v1 runtime did not return JSON' }; }
+  if (runtime.apiVersion !== 1) return { ok: false, detail: 'HQ v1 runtime apiVersion is not 1' };
+  const actual = runtime.provenance?.builtinManifestSha256;
+  if (typeof expectedManifestSha256 !== 'string' || !expectedManifestSha256) return { ok: false, detail: 'local built-in manifest digest is unavailable' };
+  if (actual !== expectedManifestSha256) return { ok: false, detail: 'runtime built-in manifest does not match this checkout' };
+  return { ok: true, detail: 'HQ v1 and built-in manifest matched' };
+}
+export function runHqProof({ phase, outDir, projectId, paBin = 'pa', beforeDir, screenshotsDir, prUrls = [], appVersion, commit, processList = '', expectedManifestSha256, exec = defaultExec }) {
   const bundle = createBundle({ outDir, drill: `hq-proof-${phase}`, appVersion, commit });
   if (processList) bundle.addFile('processes.txt', processList);
   const seen = [{ prUrls }];
@@ -39,7 +56,12 @@ export function runHqProof({ phase, outDir, projectId, paBin = 'pa', beforeDir, 
     const r = exec(paBin, args);
     bundle.addFile(`pa-hq-${name}.json`, r.stdout);
     if (r.stderr) bundle.addFile(`pa-hq-${name}.stderr.txt`, r.stderr);
-    bundle.step(`pa hq ${name} (read-only)`, { command: `pa ${args.join(' ')}`, exitCode: r.status, detail: r.status ? 'pa failed; is the app running?' : '' });
+    const runtimeCheck = name === 'runtime' && r.status === 0 ? runtimeVerdict(r.stdout, expectedManifestSha256) : null;
+    bundle.step(`pa hq ${name} (read-only)`, {
+      command: `pa ${args.join(' ')}`,
+      exitCode: r.status || (runtimeCheck && !runtimeCheck.ok ? 1 : 0),
+      detail: r.status ? 'pa failed; is the app running?' : runtimeCheck?.detail ?? '',
+    });
     seen.push(extractIds(r.stdout));
   }
   const ids = mergeIds(seen);

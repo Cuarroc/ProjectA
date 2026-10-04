@@ -3,7 +3,8 @@
 Du gibst der **installierten** App drei echte kleine Aufgaben, folgst ihnen im
 HQ, prüfst den Diff in der App und siehst die PRs über die Queue landen. Das
 Skript sammelt dabei nur Belege (lesend über `pa hq runtime` und
-`pa hq context`; keine Datenbank, kein HTML). Dauer: je nach Aufgaben 1–3 Stunden,
+`pa hq context`; keine Datenbank, kein HTML) und verlangt HQ v1 sowie den zum
+Checkout passenden eingebauten Profil-Manifest-Digest. Dauer: je nach Aufgaben 1–3 Stunden,
 das Skript selbst braucht je Lauf unter einer Minute.
 
 Voraussetzung: ProjectA (installierte Version), PowerShell 7, Node 24, dieses

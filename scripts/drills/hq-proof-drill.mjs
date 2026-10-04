@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { defaultOutDir } from '../lib/drill-kit.mjs';
+import { defaultOutDir, sha256File } from '../lib/drill-kit.mjs';
 import { runHqProof } from '../lib/hq-proof-drill.mjs';
 
 const { values: v } = parseArgs({
@@ -16,10 +16,12 @@ const { values: v } = parseArgs({
 if (!['before', 'after'].includes(v.phase) || !v.project) { console.error('FEHLER: --phase before|after und --project <id> sind Pflicht'); process.exit(2); }
 const commit = v.commit ?? execFileSync('git', ['rev-parse', 'HEAD'], {
   cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8' }).trim();
+const expectedManifestSha256 = sha256File(fileURLToPath(new URL('../../src-tauri/resources/agent-defaults.json', import.meta.url)));
 const outDir = v.out ?? defaultOutDir(`hq-proof-${v.phase}`);
 const manifest = runHqProof({
   phase: v.phase, outDir, projectId: v.project, paBin: v.pa ?? 'pa', beforeDir: v.before, screenshotsDir: v.screenshots,
   prUrls: v.pr ?? [], appVersion: v['app-version'], commit,
+  expectedManifestSha256,
   processList: v['process-list'] ? readFileSync(v['process-list'], 'utf8') : '',
 });
 for (const s of manifest.steps) console.log(`${s.exitCode === 0 ? 'OK    ' : 'FEHLER'} ${s.n}. ${s.name}${s.detail ? ` - ${s.detail}` : ''}`);
