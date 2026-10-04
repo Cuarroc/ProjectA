@@ -55,8 +55,6 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: 13d5357
 - Uncommitted: keine
 
-## 2026-10-04 21:05 — Codex GPT-5 (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
-- Zusammenfassung: STATE-2 completed at eb90981: desktop set_budget preserves explicit null, IPC regression red then green, full prepush exit 0, draft PR #356; Tier A review and Windows queue lane pending.
 ## 2026-10-04 21:06 — Codex GPT-5 (codex/w3-02c-restore, srv-w3-02c-restore)
 - Zusammenfassung: W3-02c complete: journal-bound restore adapter rejects foreign, modified, or post-resume snapshots; verified bytes flow through db_restore; draft PR #357; Tier A review and Windows queue lane pending.
 - Commits: df5c145 5979c8e ff2ab84
@@ -86,13 +84,6 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
-## 2026-10-04 22:34 — codex/state-2-set-budget-null (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
-- Zusammenfassung: Merged origin/main and the advanced PR branch without rewriting history; final prepush exit 0; pushed e700674; PR 356 report updated; queue intentionally not requested because conflict resolution changed code structure.
-- Commits: keine
-- Uncommitted: keine
-
-## 2026-10-04 23:21 — codex/state-2-set-budget-null (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
-- Zusammenfassung: PR #356 conflict resolved with git merge origin/main; generated HQ snapshots committed as b324b10; prepush exit 0 twice; pushed and verified b324b108; report updated; @Mergifyio queue requested; reviews and Windows queue lane pending.
 ## 2026-10-04 23:02 — codex/w3-02c-restore (codex/w3-02c-restore, srv-w3-02c-restore)
 - Zusammenfassung: Merged current origin/main in 28d1d37; prepush and push hook exit 0; remote verified; PR #357 report updated and @Mergifyio queue requested. Pre-existing HQ snapshot edits remain uncommitted.
 - Commits: keine
