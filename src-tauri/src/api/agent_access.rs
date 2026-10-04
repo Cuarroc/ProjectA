@@ -2,6 +2,7 @@
 //! Only trusted in-process launch code can mint them. Restart revokes all grants;
 //! a launcher must reconcile the durable run before obtaining a replacement.
 use super::*;
+use crate::workers::delivery_state::WorkerDelivery;
 use std::sync::Mutex;
 
 #[derive(Clone)]
@@ -372,6 +373,39 @@ pub struct CandidateInput {
     pub observed_at: i64,
 }
 
+/// Body of `POST /api/hq/v1/agent/delivery` (W1-03f-api). The run, owner and
+/// fence come from the credential only; any other field is refused with 400.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DeliveryInput {
+    outcome: String,
+    reason: Option<String>,
+}
+
+fn parse_delivery(body: &str) -> Result<WorkerDelivery, String> {
+    let input = serde_json::from_str::<DeliveryInput>(body)
+        .map_err(|_| "invalid delivery input".to_string())?;
+    match (input.outcome.as_str(), input.reason) {
+        ("done", None) => Ok(WorkerDelivery::Done),
+        ("done", Some(_)) => Err("a done delivery takes no reason".into()),
+        ("blocked", Some(reason)) if !reason.trim().is_empty() => {
+            Ok(WorkerDelivery::Blocked { reason })
+        }
+        ("blocked", _) => Err("a blocked delivery requires a non-empty reason".into()),
+        _ => Err("delivery outcome must be done or blocked".into()),
+    }
+}
+
+fn delivery_value((run, repeated): DeliveryReceipt) -> Value {
+    json!({
+        "apiVersion": 1,
+        "runId": run.id,
+        "status": run.status,
+        "repeated": repeated,
+        "run": run,
+    })
+}
+
 pub(super) fn handle_run(inner: &Inner, request: &Request, grant: RunGrant) -> Response {
     if request.headers.contains_key(VERDICT_TOKEN_HEADER) || !request.query.is_empty() {
         return Response::error(
@@ -477,6 +511,20 @@ pub(super) fn handle_run(inner: &Inner, request: &Request, grant: RunGrant) -> R
                 Err(_) => return Response::error(400, "invalid review input"),
             };
             backend.agent_submit_review(&grant.run_id, &grant.owner, grant.fence, input)
+        }
+        // The run is the credential's, never the body's: `DeliveryInput` denies
+        // unknown fields, like the other agent POST routes.
+        ("POST", ["api", "hq", "v1", "agent", "delivery"]) => {
+            let delivery = match parse_delivery(&request.body) {
+                Ok(delivery) => delivery,
+                Err(error) => return Response::error(400, error),
+            };
+            match backend.agent_record_delivery(&grant.run_id, &grant.owner, grant.fence, delivery)
+            {
+                Ok(receipt) => Ok(delivery_value(receipt)),
+                Err(DeliveryError::Conflict(error)) => return Response::error(409, error),
+                Err(DeliveryError::Failed(error)) => Err(error),
+            }
         }
         _ => return Response::error(403, "route is outside this run credential scope"),
     };

@@ -11,13 +11,21 @@ pub enum WorkerDelivery {
     Blocked { reason: String },
 }
 
+pub type WorkerDeliveryReceipt = (DevelopmentRun, bool);
+
+#[derive(Debug)]
+pub enum WorkerDeliveryError {
+    Conflict(String),
+    Failed(String),
+}
+
 pub async fn record_worker_delivery(
     store: &Store,
     run_id: &str,
     owner: &str,
     fence: i64,
     delivery: WorkerDelivery,
-) -> Result<DevelopmentRun, String> {
+) -> Result<WorkerDeliveryReceipt, WorkerDeliveryError> {
     let (result, terminal, detail) = match delivery {
         WorkerDelivery::Done => (
             store
@@ -38,7 +46,7 @@ pub async fn record_worker_delivery(
         }
     };
     let error = match result {
-        Ok(run) => return Ok(run),
+        Ok(run) => return Ok((run, false)),
         Err(error) => error,
     };
 
@@ -47,12 +55,19 @@ pub async fn record_worker_delivery(
     // can be an authorized replay; stale credentials and another run retain
     // their original refusal instead of being mistaken for idempotency.
     if error != format!("development run cannot transition from {terminal} to {terminal}") {
-        return Err(error);
+        return Err(
+            if error.starts_with("development run cannot transition from ") {
+                WorkerDeliveryError::Conflict(error)
+            } else {
+                WorkerDeliveryError::Failed(error)
+            },
+        );
     }
     let run = store
         .get_development_run(run_id)
-        .await?
-        .ok_or_else(|| format!("unknown development run: {run_id}"))?;
+        .await
+        .map_err(WorkerDeliveryError::Failed)?
+        .ok_or_else(|| WorkerDeliveryError::Failed(format!("unknown development run: {run_id}")))?;
     if run.claim_owner != owner
         || run.claim_fence != fence
         || run.status != terminal
@@ -60,7 +75,7 @@ pub async fn record_worker_delivery(
             .as_deref()
             .is_some_and(|value| run.terminal_detail.as_deref() != Some(value))
     {
-        return Err(error);
+        return Err(WorkerDeliveryError::Conflict(error));
     }
-    Ok(run)
+    Ok((run, true))
 }
