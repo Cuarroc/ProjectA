@@ -36,3 +36,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main at 2671a1e without conflict hunks; committed generated HQ snapshot 5937c6e; prepush green twice; pushed and verified remote; PR #321 report updated and @Mergifyio queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 20:36 — Codex reviewB (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
+- Zusammenfassung: PR #348 reviewed at eb68a36: local prepush and PR checks exit 0; high finding on NSIS updater/UAC launch contract and medium held-image architecture drift remain open; PR report updated; not queued.
+- Commits: keine
+- Uncommitted: keine
