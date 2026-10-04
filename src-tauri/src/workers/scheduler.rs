@@ -70,16 +70,26 @@ pub async fn dispatch_once(
         .record_development_run_intent(&task.id, owner, claim.fence)
         .await
         .map_err(DispatchRefusal::Intent)?;
-    let purpose = crate::store::development_budget::BudgetPurpose::for_dispatch_role(
+    let reserved = async {
+        let role = store.development_run_role(&run.id).await?;
+        let purpose = crate::store::development_budget::BudgetPurpose::for_dispatch_role(role);
         store
-            .development_run_role(&run.id)
+            .reserve_development_tokens(&task.goal_id, &run.id, purpose, tokens, Some(&run.id))
             .await
-            .map_err(DispatchRefusal::Intent)?,
-    );
-    store
-        .reserve_development_tokens(&task.goal_id, &run.id, purpose, tokens, Some(&run.id))
-        .await
-        .map_err(DispatchRefusal::Admission)?;
+    }
+    .await;
+    if let Err(error) = reserved {
+        // The claim and intent are durable; keep them visible for
+        // reconciliation instead of leaving an unlaunched `intent` orphan.
+        let detail = match store
+            .mark_development_run_reconciling(&run.id, owner, claim.fence)
+            .await
+        {
+            Ok(_) => error,
+            Err(mark) => format!("{error}; failed to record reconciliation: {mark}"),
+        };
+        return Err(DispatchRefusal::Admission(detail));
+    }
     development::launch_worker(store, agents, api, &run.id, owner, claim.fence, route)
         .await
         .map_err(DispatchRefusal::Launch)?;

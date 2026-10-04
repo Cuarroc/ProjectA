@@ -3446,6 +3446,57 @@ mod tests {
         assert_eq!(runs[0].status, crate::store::development_runs::RUN_LAUNCHED);
     }
 
+    #[tokio::test]
+    async fn dispatch_once_retains_intent_for_reconciliation_when_token_reservation_fails() {
+        let fx = fixture("dispatch-once-budget").await;
+        let pool = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            fx._dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        let mut policy = crate::development_policy::DevelopmentPolicy::defaults();
+        policy.tokens = Some(crate::development_policy::TokenPolicy {
+            max_per_goal: 500,
+            verification_reserve: 100,
+        });
+        let policy = serde_json::to_string(&policy).unwrap();
+        sqlx::query("INSERT INTO continuous_goals(id, project_id, root_goal_id, objective, status, deadline_at, admitted, created_at, updated_at) VALUES('due-goal', ?, 'due-goal', 'goal', 'open', 9999999999, 1, 1, 1)").bind(&fx.project_id).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_root_policies(root_goal_id, policy_json, source, observed_at) VALUES('due-goal', ?, 'test', 1)").bind(policy).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, profile_id, owned_paths_json, dependencies_json, status, created_at, updated_at) VALUES('due-task', 'due-goal', 'implement it', 'claude', '[\"src\"]', '[]', 'open', 1, 1)").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_projects(project_id, status, updated_at) VALUES(?, 'enabled', 1)").bind(&fx.project_id).execute(&pool).await.unwrap();
+        pool.close().await;
+        let server =
+            crate::api::tests::native_store_server(&fx._dir.path().join("api"), fx.store.clone());
+        let agents = FakeAgents::default();
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+
+        let refusal = scheduler::dispatch_once(
+            &scheduler::test_permit(),
+            &fx.store,
+            &agents,
+            server.run_credential_issuer(),
+            &fx.project_id,
+            "scheduler",
+            &route,
+        )
+        .await
+        .unwrap_err();
+
+        assert!(matches!(refusal, scheduler::DispatchRefusal::Admission(_)));
+        assert_eq!(agents.spawn_count(), 0);
+        let runs = fx
+            .store
+            .list_development_runs(&fx.project_id)
+            .await
+            .unwrap();
+        assert_eq!(runs.len(), 1);
+        assert_eq!(
+            runs[0].status,
+            crate::store::development_runs::RUN_RECONCILING
+        );
+    }
+
     async fn reserved_launch(
         fx: &Fixture,
     ) -> crate::store::development_launches::DevelopmentLaunch {
