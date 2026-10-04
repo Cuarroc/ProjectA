@@ -101,3 +101,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main into PR #348, refreshed generated HQ snapshot, prepush green, pushed e6e5c9c, updated report, requested Mergify queue.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 23:49 — codex/w3-02c-restore (codex/w3-02c-restore, srv-w3-02c-restore)
+- Zusammenfassung: Resolved PR #357 conflict by merging origin/main; retained installer and restore module declarations without package logic changes; prepush and push-hook green; remote ba27fcb verified; report updated and Mergify queue requested; review pending Tier A.
+- Commits: keine
+- Uncommitted: keine
