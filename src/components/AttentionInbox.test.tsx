@@ -207,6 +207,23 @@ describe("AttentionInbox request ordering", () => {
     expect(screen.queryByText(/Stale tip/)).toBeNull();
     expect(screen.getByText(/Fresh tip/)).toBeTruthy();
   });
+
+  it("ignores a reply that arrives after unmount", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    let late!: (value: Recommendation[]) => void;
+    vi.mocked(listRecommendations).mockImplementation((() =>
+      new Promise<Recommendation[]>((resolve) => {
+        late = resolve;
+      })) as typeof listRecommendations);
+
+    const view = render(<AttentionInbox cards={[]} projectId="pj-1" onOpen={vi.fn()} />);
+    view.unmount();
+    await act(async () => {
+      late([reco("r1", "Orphan tip")]);
+    });
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
 });
 
 describe("AttentionInbox listbox wiring (APP-8)", () => {
