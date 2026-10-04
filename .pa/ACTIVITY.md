@@ -74,8 +74,6 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
-## 2026-10-04 23:51 — codex (claude/st-claim-deps-fail-closed, pl-373)
-- Zusammenfassung: PR #373 Stufe-A-Review abgeschlossen: Codex-Befund ERR_REFUSED/HTTP-409 red-first behoben in 23569d8; GLM 5.2 gegenpruefte zwei niedrige Hinweise, beide abgelehnt; prepush und CI gruen; Mergify-Queue angefordert.
 ## 2026-10-04 23:03 — claude/w3-02d-installer-adapter (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
 - Zusammenfassung: Merged origin/main into PR #348, refreshed generated HQ snapshot, prepush green, pushed e6e5c9c, updated report, requested Mergify queue.
 - Commits: keine
