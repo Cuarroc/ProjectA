@@ -37,6 +37,10 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
+## 2026-10-04 20:36 — Codex reviewB (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
+- Zusammenfassung: PR #348 reviewed at eb68a36: local prepush and PR checks exit 0; high finding on NSIS updater/UAC launch contract and medium held-image architecture drift remain open; PR report updated; not queued.
+## 2026-10-04 19:48 — Codex GPT-5 (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
+- Zusammenfassung: STATE-4 completed at 74b550b; red-first and prepush exit 0; draft PR #345; Tier B review and Windows merge-queue lane pending.
 ## 2026-10-04 19:39 — Codex GPT-5 (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
 - Zusammenfassung: HQ2-05b package 4 updates collector documentation and not-reported reasons from merged real probes; implementation commit e511615 pushed; draft PR #341; Tier B review pending coordinator.
 - Commits: e511615
@@ -51,6 +55,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: 13d5357
 - Uncommitted: keine
 
+## 2026-10-04 21:32 — codex/state-4-guard-gaps (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
+- Zusammenfassung: PR #345 conflict resolved by merging origin/main; generated HQ snapshot committed as 06ea729; prepush and GitHub checks green; queued with Mergify.
 ## 2026-10-04 20:28 — codex/hq2-05b-p4-docs-r (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
 - Zusammenfassung: Merged origin/main without manual conflict hunks; refreshed HQ snapshots in 1b64032; prepush and push verification green; PR 341 report updated; review pending Tier B; queue after final verification.
 - Commits: keine
@@ -71,4 +77,7 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 ## 2026-10-04 23:40 — Codex (claude/w3-03g-drill-providers, srv-w3-03g-drill-providers)
 - Zusammenfassung: PR #384 tier-B review complete: medium identity-verdict finding fixed in 017c2b4 with red-first test; prepush, push verification and CI green; report updated and Mergify queue requested.
 - Commits: 017c2b4
+## 2026-10-04 23:03 — claude/w3-02d-installer-adapter (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
+- Zusammenfassung: Merged origin/main into PR #348, refreshed generated HQ snapshot, prepush green, pushed e6e5c9c, updated report, requested Mergify queue.
+- Commits: keine
 - Uncommitted: keine

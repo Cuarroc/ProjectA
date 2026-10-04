@@ -1,7 +1,7 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-10-04T20:11:27.380Z",
-  "commit": "a3b5be1",
-  "dirty": true,
+  "generatedAt": "2026-10-04T21:07:52.617Z",
+  "commit": "a0672d2",
+  "dirty": false,
   "sources": [
     {
       "path": "STAND.md",
@@ -9,7 +9,7 @@ window.HQ_DATA = {
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "83ac353a7dad7a99bc9ae7854310587818d00b55aa45b73cc9e9e7cf658c2995"
+      "sha256": "2af4ad3a6e5a5bc01e751a5dca8df84d8d45d1f253712e81684733fb8061ecca"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -1029,28 +1029,19 @@ window.HQ_DATA = {
           "prNumbers": []
         },
         {
-          "id": "M4-R15-01",
-          "title": "Stabile Policy-Revision aus der unveränderlichen Laufpolicy, an Kandidat- und Evidenzzeilen gespeichert, alte Zeilen fail-closed (Matrixzeile 15)",
+          "id": "M4-ROW15-PROOF",
+          "title": "HTTP-Beleg Zeile 15 (eingeengt): Bindung/Idempotenz Kandidat und Evidenz, Lesen nur im eigenen Run, fremde/stale Evidenz abgewiesen, veränderte Root-Policy ändert policy_json nicht und meldet fail-closed",
           "size": "S",
-          "lane": "st",
+          "lane": "api-Tests",
           "stand": "offen",
           "state": "open",
           "prNumbers": []
         },
         {
-          "id": "M4-R15-02",
-          "title": "Revision bei Schreiben, Replay, Lesen, Kontext und Seiten erzwingen; fremde Revision abgewiesen ohne Schreiben (Zeile 15)",
+          "id": "M4-ROW17-PROOF",
+          "title": "HTTP-Beleg Zeile 17 (eingeengt): Kandidat-Delta macht Evidenz und Reviews sichtbar ungültig, auch nach Neustart; Freigabe bleibt per Schema unmöglich",
           "size": "S",
-          "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
-        },
-        {
-          "id": "M4-R17-01",
-          "title": "Store-eigene Release-Bereitschaft, an aktuellen Kandidaten/Evidenz/Reviews gebunden (Zeile 17); wartet auf E19",
-          "size": "S",
-          "lane": "st",
+          "lane": "api-Tests",
           "stand": "offen",
           "state": "open",
           "prNumbers": []
@@ -1058,24 +1049,6 @@ window.HQ_DATA = {
         {
           "id": "M4-E2E-14",
           "title": "Echter HTTP-Router + Store + Fake-Agentenprozess: Checkpoint -> Abbruch -> Fortsetzen (Zeile 14)",
-          "size": "S",
-          "lane": "api",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
-        },
-        {
-          "id": "M4-E2E-15",
-          "title": "HTTP-Matrix Kandidat/Evidenz mit Policy-Revision (Zeile 15)",
-          "size": "S",
-          "lane": "api",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
-        },
-        {
-          "id": "M4-E2E-17",
-          "title": "Kandidat-Delta macht frühere Freigabekette über HTTP ungültig (Zeile 17)",
           "size": "S",
           "lane": "api",
           "stand": "offen",
@@ -1120,7 +1093,7 @@ window.HQ_DATA = {
         }
       ],
       "done": 16,
-      "total": 38
+      "total": 35
     },
     {
       "id": "M5",
@@ -1912,7 +1885,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
