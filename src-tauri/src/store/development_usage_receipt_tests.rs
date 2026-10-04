@@ -246,6 +246,7 @@ fn every_run_cost_receipt_names_its_state_and_provenance() {
     let rejected = UsageReceipt::Rejected {
         reason: "capture is empty",
         source_sha256: "ff".into(),
+        collector: CODEX_COLLECTOR,
     }
     .to_json(Some(40));
     let stored = run_receipt(
