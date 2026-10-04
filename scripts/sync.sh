@@ -9,6 +9,10 @@
 #       Hängt einen Aktivitäts-Eintrag an .pa/ACTIVITY.md an. Zeitstempel,
 #       Branch und Uncommitted-Liste werden automatisch aus git ermittelt.
 #       Neue Top-Level-Dateien/Ordner in der Zusammenfassung namentlich nennen.
+#       Nur auf main (und hq-snapshot-Zweigen) landet der Eintrag in der
+#       getrackten Datei; auf jedem anderen Branch in .pa/ACTIVITY.local.md
+#       (ungetrackt) - die getrackte Datei ist ein Konfliktherd (CI-CONFLICT-01).
+#       Die Zusammenfassung gehoert dort in den PR-Text.
 
 set -u
 
@@ -17,12 +21,17 @@ if [ -z "$ROOT" ]; then
   echo "sync.sh: nicht in einem git-Repository" >&2
   exit 1
 fi
-ACTIVITY="$ROOT/.pa/ACTIVITY.md"
+# shellcheck source=scripts/lib/hotspots.sh
+. "$ROOT/scripts/lib/hotspots.sh"
+TRACKED="$ROOT/.pa/ACTIVITY.md"
+ACTIVITY="$TRACKED"
+branch="$(hs_branch "$ROOT")"
+hs_may_touch "$branch" || ACTIVITY="$ROOT/.pa/ACTIVITY.local.md"
 
 print_activity_tail() {
-  if [ -f "$ACTIVITY" ]; then
+  if [ -f "$TRACKED" ]; then
     echo "== .pa/ACTIVITY.md (letzte Einträge) =="
-    tail -n 40 "$ACTIVITY"
+    tail -n 40 "$TRACKED"
   else
     echo "== .pa/ACTIVITY.md existiert noch nicht =="
   fi
@@ -109,10 +118,18 @@ case "$cmd" in
       fi
     } >> "$ACTIVITY"
     echo "Eintrag an $ACTIVITY angehängt."
+    if [ "$ACTIVITY" != "$TRACKED" ]; then
+      echo "Hinweis: Branch '${branch:-detached}' darf .pa/ACTIVITY.md nicht committen (Konfliktherd)."
+      echo "  Der Eintrag liegt in der ungetrackten Datei .pa/ACTIVITY.local.md; die Zusammenfassung gehört in den PR-Text."
+    fi
+    ;;
+
+  where)
+    echo "$ACTIVITY"
     ;;
 
   *)
-    echo "Aufruf: bash scripts/sync.sh start|note" >&2
+    echo "Aufruf: bash scripts/sync.sh start|note|where" >&2
     exit 1
     ;;
 esac
