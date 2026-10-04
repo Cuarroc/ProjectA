@@ -51,7 +51,8 @@ pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<
 }
 
 impl Store {
-    /// Appends a domain event only when all acceptance-matrix references exist.
+    /// Appends a domain event only when project, run, result and source reference
+    /// are all non-blank. It checks presence, not that the references resolve.
     pub async fn append_domain_audit(
         &self,
         actor: &str,
