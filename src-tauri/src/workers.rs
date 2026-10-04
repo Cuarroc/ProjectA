@@ -3531,6 +3531,55 @@ mod tests {
         assert_eq!(blocked.terminal_detail.as_deref(), Some("missing approval"));
     }
 
+    #[tokio::test]
+    async fn worker_delivery_replay_never_changes_a_different_terminal_result() {
+        let fx = fixture("worker-delivery-replay-mismatch").await;
+        let run = launched_development_run(&fx).await;
+        let blocked = |reason: &str| delivery_state::WorkerDelivery::Blocked {
+            reason: reason.into(),
+        };
+
+        let first = delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            blocked("missing approval"),
+        )
+        .await
+        .unwrap();
+        let replay = delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            blocked("  missing approval "),
+        )
+        .await
+        .expect("an identical blocked report is a no-op");
+        assert_eq!(replay, first);
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            blocked("another reason"),
+        )
+        .await
+        .expect_err("a different reason must not pass as a replay");
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .expect_err("done must not overwrite a blocked run");
+        let kept = fx.store.get_development_run(&run).await.unwrap().unwrap();
+        assert_eq!(kept.terminal_detail.as_deref(), Some("missing approval"));
+    }
+
     /// Same fixture as `prepared_development_run`, with the task objective text
     /// as a parameter so a test can inflate the serialized agent briefing (used
     /// to reproduce a briefing larger than the native capture pipe buffer).
