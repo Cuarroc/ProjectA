@@ -3562,17 +3562,26 @@ impl Store {
         Ok(())
     }
 
-    /// The global environment isolation stage for ordinary agents.
+    /// The global environment isolation stage for ordinary agents. Missing
+    /// settings fail closed so an older database starts at `strict`.
+    #[allow(dead_code)] // API and frontend consumers land in the next package slices.
     pub async fn agent_env_isolation(&self) -> Result<crate::profiles::EnvIsolation, String> {
-        Err("agent environment isolation is not implemented".to_string())
+        let Some(value) = self.get_setting("agent.env_isolation").await? else {
+            return Ok(crate::profiles::EnvIsolation::Strict);
+        };
+        value
+            .parse::<crate::profiles::EnvIsolation>()
+            .map_err(|error| error.to_string())
     }
 
     /// Persist the global environment isolation stage for ordinary agents.
+    #[allow(dead_code)] // API and frontend consumers land in the next package slices.
     pub async fn set_agent_env_isolation(
         &self,
-        _isolation: crate::profiles::EnvIsolation,
+        isolation: crate::profiles::EnvIsolation,
     ) -> Result<(), String> {
-        Err("agent environment isolation is not implemented".to_string())
+        self.set_setting("agent.env_isolation", isolation.as_str())
+            .await
     }
 
     /// Every setting whose key starts with `prefix`, sorted by key.
