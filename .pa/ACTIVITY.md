@@ -24,3 +24,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: SETUP-09: scripts/review/run-local.sh lehnt jetzt zwei Modelle ab, die in dieselbe Protokolldatei schreiben wuerden (vorher: zweimal ok, Exit 0, ein Urteil weg). Fail-closed bei Zeichensatz und Gross-/Kleinschreibung. Commits ae5a66b (rot) 1cbe02b 0fe87ff c4f7d3b; Review kimi-k3 + glm-5.2 (6x low, alle angenommen); Draft-PR #273. Neue Dateien: .pa/review_setup-09-protocol-collision_{kimi-k3,glm-5.2,disposition}.md
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 16:36 — codex (codex/hq2-05b-p2-claude-probe, srv-hq2-05b-p2-claude-probe)
+- Zusammenfassung: HQ2-05b package 2: real Claude 2.1.287 JSON probe, scrubbed fixture and pure fail-closed UsageReceipt parser; red-first commits ee4a010/5a3a94c; prepush and push hook green; draft PR #299; Tier B review and later route/store wiring pending.
+- Commits: keine
+- Uncommitted: keine
