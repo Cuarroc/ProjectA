@@ -102,4 +102,26 @@ describe("RecommendationsPanel project switch race", () => {
     expect(screen.getByText("Only for project-b")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ablehnen" })).toBeEnabled();
   });
+
+  it("keeps a second recommendation action from invalidating a pending accept", async () => {
+    const acceptance = deferred<void>();
+    mocks.acceptRecommendation.mockReturnValue(acceptance.promise);
+    mocks.listRecommendations.mockResolvedValue([
+      recommendation("project-a", "First card", "first"),
+      recommendation("project-a", "Second card", "second"),
+    ]);
+    render(<RecommendationsPanel projectId="project-a" onOpenWorker={vi.fn()} />);
+    await screen.findByText("First card");
+
+    const [firstAccept, secondAccept] = screen.getAllByRole("button", { name: /Übernehmen|…/ });
+    fireEvent.click(firstAccept);
+    fireEvent.click(secondAccept);
+
+    await act(async () => {
+      acceptance.resolve();
+    });
+
+    expect(mocks.acceptRecommendation).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText("übernommen")).toHaveLength(1);
+  });
 });

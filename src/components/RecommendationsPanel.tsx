@@ -190,7 +190,7 @@ export default function RecommendationsPanel({
 
   const handleAccept = (entry: Recommendation) => {
     void (async () => {
-      const request = beginMutation(true);
+      const request = beginMutation();
       if (request === null) return;
       setBusyId(entry.id);
       setError(null);
@@ -214,7 +214,7 @@ export default function RecommendationsPanel({
 
   const handleDismiss = (entry: Recommendation) => {
     void (async () => {
-      const request = beginMutation(true);
+      const request = beginMutation();
       if (request === null) return;
       setBusyId(entry.id);
       setError(null);
@@ -351,7 +351,7 @@ export default function RecommendationsPanel({
                         <button
                           type="button"
                           className="worker-action reco-accept"
-                          disabled={pending}
+                          disabled={busyId !== null}
                           title="Als Task einreihen"
                           onClick={() => handleAccept(entry)}
                         >
@@ -360,7 +360,7 @@ export default function RecommendationsPanel({
                         <button
                           type="button"
                           className="worker-action reco-dismiss"
-                          disabled={pending}
+                          disabled={busyId !== null}
                           title="Empfehlung verwerfen"
                           onClick={() => handleDismiss(entry)}
                         >
