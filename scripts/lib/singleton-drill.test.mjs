@@ -34,6 +34,10 @@ test('after a crash the sessions must still be listed and the PID must differ', 
   assert.match(evaluatePhase('crash', after, base).join(), /wk-2/);
   assert.match(evaluatePhase('crash', base, base).join(), /not ended/);
 });
+test('a baseline without sessions fails closed', () => {
+  const baseline = { processes: summarizeProcesses(scanOf([5])), descriptor: { port: 4001 }, api: { workers: [], error: '' } };
+  assert.match(evaluatePhase('baseline', baseline, null).join(), /at least one session/);
+});
 test('a full pass writes a bundle that never contains the token or task text', async () => {
   const d = drill([scanOf([5]), scanOf([5]), scanOf([8]), scanOf([9])]);
   const m = await d.run();
