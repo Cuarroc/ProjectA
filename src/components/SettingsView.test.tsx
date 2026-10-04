@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AgentProfile, Project } from "../types";
@@ -14,6 +14,7 @@ const stateReads = vi.hoisted(() => ({
   getDigestEnabled: vi.fn(() => new Promise(() => {})),
   getRoutingStatus: vi.fn(() => new Promise(() => {})),
   getStuckAfterMinutes: vi.fn(() => new Promise(() => {})),
+  setBudget: vi.fn(),
 }));
 
 // Everything the view loads besides the setup command stays in flight forever:
@@ -32,7 +33,7 @@ vi.mock("../lib/ipc", () => ({
   getUpdaterState: vi.fn(() => new Promise(() => {})),
   listAgentProfiles: vi.fn(() => new Promise(() => {})),
   listLiveSessions: vi.fn(() => new Promise(() => {})),
-  setBudget: vi.fn(),
+  setBudget: stateReads.setBudget,
   setCategoryLearning: vi.fn(),
   setDigestEnabled: vi.fn(),
   setProductMode: vi.fn(),
@@ -325,13 +326,7 @@ describe("SettingsView tabs (APP-5)", () => {
 describe("SettingsView global state resync", () => {
   it("shows values changed by a second writer after window focus", async () => {
     const profile: AgentProfile = {
-      id: "codex",
-      name: "Codex",
-      command: "codex",
-      args: [],
-      env: {},
-      fallback: null,
-      enabled: true,
+      id: "codex", name: "Codex", command: "codex", args: [], env: {}, fallback: null, enabled: true,
     };
     stateReads.getDigestEnabled.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     stateReads.getStuckAfterMinutes.mockResolvedValueOnce(10).mockResolvedValueOnce(20);
@@ -360,6 +355,15 @@ describe("SettingsView global state resync", () => {
     const callsBeforeFocus = stateReads.getBudgets.mock.calls.length;
     fireEvent.focus(window);
     await waitFor(() => expect(stateReads.getBudgets).toHaveBeenCalledTimes(callsBeforeFocus + 1));
+    expect(screen.getByLabelText("5 h")).toHaveValue("65");
+
+    let resolveStale: (rows: [{ profileId: string; fiveHourPct: number; sevenDayPct: number }]) => void = () => {};
+    stateReads.getBudgets.mockImplementationOnce(() => new Promise((resolve) => { resolveStale = resolve; }));
+    stateReads.setBudget.mockResolvedValue({ profileId: "codex", fiveHourPct: 65, sevenDayPct: 90 });
+    fireEvent.focus(window);
+    fireEvent.click(screen.getByRole("button", { name: "Budget" }));
+    await waitFor(() => expect(stateReads.setBudget).toHaveBeenCalled());
+    await act(async () => resolveStale([{ profileId: "codex", fiveHourPct: 70, sevenDayPct: 90 }]));
     expect(screen.getByLabelText("5 h")).toHaveValue("65");
   });
 });

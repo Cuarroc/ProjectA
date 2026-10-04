@@ -1,5 +1,5 @@
 import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 
 import EmergencyStop from "./EmergencyStop";
 
@@ -10,6 +10,7 @@ const ipc = vi.hoisted(() => ({
 vi.mock("../lib/ipc", () => ({ ...ipc, describeError: (e: unknown) => String(e) }));
 
 describe("EmergencyStop", () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     ipc.getEmergencyStop.mockReset();
     ipc.setEmergencyStop.mockReset();
@@ -67,5 +68,15 @@ describe("EmergencyStop", () => {
     await act(async () => resolveRefresh(false));
 
     expect(screen.getByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
+  });
+
+  it("polls the safety state every five seconds while visible", async () => {
+    vi.useFakeTimers();
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    await act(async () => undefined);
+    expect(ipc.getEmergencyStop).toHaveBeenCalledOnce();
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(ipc.getEmergencyStop).toHaveBeenCalledTimes(2);
   });
 });
