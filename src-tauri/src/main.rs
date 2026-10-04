@@ -4182,6 +4182,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn set_budget_command_null_removes_existing_ceiling() {
+        let (_dir, store) = seam_fixture("set-budget-null").await;
+        let profile_id = crate::profiles::load_profiles()
+            .into_iter()
+            .next()
+            .expect("at least one bundled profile")
+            .id;
+        crate::budget::update_limits(&store, &profile_id, Some(Some(80)), None)
+            .await
+            .expect("seed five-hour ceiling");
+
+        let app = tauri::test::mock_builder()
+            .manage(store.clone())
+            .invoke_handler(tauri::generate_handler![super::set_budget])
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .expect("build mock app");
+        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .expect("build mock webview");
+        tauri::test::get_ipc_response(
+            &webview,
+            tauri::webview::InvokeRequest {
+                cmd: "set_budget".into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: "tauri://localhost".parse().unwrap(),
+                body: tauri::ipc::InvokeBody::Json(serde_json::json!({
+                    "profileId": profile_id,
+                    "fiveHourPct": null,
+                })),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.to_string(),
+            },
+        )
+        .expect("set_budget command succeeds");
+
+        assert_eq!(
+            store
+                .get_setting(&format!("budget.{profile_id}.five_hour_pct"))
+                .await
+                .expect("read five-hour ceiling"),
+            None,
+            "an explicit JSON null must remove the stored ceiling"
+        );
+    }
+
+    #[tokio::test]
     async fn maintenance_is_refused_while_a_session_is_active() {
         let (_dir, store) = seam_fixture("maintenance-busy").await;
         let pty = PtyManager::default();
