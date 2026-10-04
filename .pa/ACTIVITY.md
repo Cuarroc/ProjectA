@@ -36,3 +36,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main at 2671a1e without conflict hunks; committed generated HQ snapshot 5937c6e; prepush green twice; pushed and verified remote; PR #321 report updated and @Mergifyio queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 19:37 — Codex GPT-5 (codex/m4-r7-01-dispatch-once, srv-m4-r7-01-dispatch-once)
+- Zusammenfassung: M4-R7-01 completed: one-shot scheduler core, red-first success proof, full prepush green, draft PR #340; Tier A reviews and M4-R7-02 remain with the coordinator.
+- Commits: 35caaee,d9e0b85
+- Uncommitted: keine
