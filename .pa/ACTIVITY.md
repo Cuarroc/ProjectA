@@ -39,6 +39,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 19:48 — Codex GPT-5 (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
 - Zusammenfassung: STATE-4 completed at 74b550b; red-first and prepush exit 0; draft PR #345; Tier B review and Windows merge-queue lane pending.
+## 2026-10-04 19:42 — Codex GPT-5 (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: STATE-7 completed: red-first tests, visible frontend error contract, prepush exit 0, pushed SHA 63effdd, draft PR #342; tier B review and Windows queue lane pending.
 - Commits: keine
 ## 2026-10-04 19:37 — Codex GPT-5 (codex/m4-r7-01-dispatch-once, srv-m4-r7-01-dispatch-once)
 - Zusammenfassung: M4-R7-01 completed: one-shot scheduler core, red-first success proof, full prepush green, draft PR #340; Tier A reviews and M4-R7-02 remain with the coordinator.
@@ -50,5 +52,12 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 21:32 — codex/state-4-guard-gaps (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
 - Zusammenfassung: PR #345 conflict resolved by merging origin/main; generated HQ snapshot committed as 06ea729; prepush and GitHub checks green; queued with Mergify.
+## 2026-10-04 20:32 — codex/state-7-error-contract (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: PR #342 conflict resolved by merging origin/main; HQ snapshots refreshed; prepush exit 0; pushed 353f49f and verified remote; report updated and Mergify queue requested.
+- Commits: keine
+- Uncommitted: keine
+
+## 2026-10-04 21:17 — codex/state-7-error-contract (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: Merged origin/main for PR #342 conflict resolution; no textual conflict hunks or runtime logic changes; generated HQ snapshot refreshed in b8713fd; prepush green; pushed and verified; PR report updated and Mergify queue requested.
 - Commits: keine
 - Uncommitted: keine

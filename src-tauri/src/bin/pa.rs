@@ -11,6 +11,8 @@
 //! pa worker list [--project pj-1]
 //! pa worker status wk-1
 //! pa worker send wk-1 "ja, weiter"
+//! pa worker done
+//! pa worker blocked --reason "tests fail on Windows"
 //! pa worker merge wk-1 [--remove-worktree]
 //! pa tell --project pj-1 "bau mir das Login"
 //! pa queen spawn --project pj-1 --task "Backend-API"   (retired, Rev 9)
@@ -156,6 +158,8 @@ USAGE
   pa worker list [--project <projectId>]
   pa worker status <workerId>
   pa worker send <workerId> <text>
+  pa worker done
+  pa worker blocked --reason <text>
   pa worker merge <workerId> [--remove-worktree] [--verdict-token <token>]
   pa tell --project <projectId> <text>
   pa queen spawn --project <projectId> --task <domain>   (retired, Rev 9)
@@ -534,6 +538,19 @@ fn run(args: &[String]) -> Result<(), String> {
             let path = format!("/api/workers/{}/send", encode(&worker_id));
             api.post(&path, json!({ "text": text }))?;
             println!("sent to {worker_id}");
+        }
+
+        Command::WorkerDone => {
+            let delivery = api.post("/api/hq/v1/agent/delivery", json!({ "outcome": "done" }))?;
+            print!("{}", render_worker_delivery(&delivery));
+        }
+
+        Command::WorkerBlocked { reason } => {
+            let delivery = api.post(
+                "/api/hq/v1/agent/delivery",
+                json!({ "outcome": "blocked", "reason": reason }),
+            )?;
+            print!("{}", render_worker_delivery(&delivery));
         }
 
         Command::WorkerMerge {
@@ -1099,6 +1116,10 @@ enum Command {
         worker_id: String,
         text: String,
     },
+    WorkerDone,
+    WorkerBlocked {
+        reason: String,
+    },
     WorkerMerge {
         worker_id: String,
         remove_worktree: bool,
@@ -1495,9 +1516,9 @@ fn parse_args(args: &[String]) -> Result<Command, String> {
         "hq" => parse_hq(&rest),
 
         "worker" => {
-            let (sub, rest) = rest
-                .split_first()
-                .ok_or("worker needs a subcommand: spawn, list, status, send or merge")?;
+            let (sub, rest) = rest.split_first().ok_or(
+                "worker needs a subcommand: spawn, list, status, send, done, blocked or merge",
+            )?;
             match *sub {
                 "spawn" => {
                     let flags = parse_flags(
@@ -1536,6 +1557,20 @@ fn parse_args(args: &[String]) -> Result<Command, String> {
                         // rejoining them is friendlier than insisting on quotes.
                         text: text.join(" "),
                     })
+                }
+                "done" => {
+                    if !rest.is_empty() {
+                        return Err("usage: pa worker done".to_string());
+                    }
+                    Ok(Command::WorkerDone)
+                }
+                "blocked" => {
+                    let flags = parse_flags(rest, &["--reason"])?;
+                    let reason = flags
+                        .value("--reason")
+                        .filter(|reason| !reason.trim().is_empty())
+                        .ok_or("usage: pa worker blocked --reason <text>")?;
+                    Ok(Command::WorkerBlocked { reason })
                 }
                 "merge" => {
                     // `--remove-worktree` is a switch; `--verdict-token` is the
@@ -2797,6 +2832,25 @@ fn render_worker(worker: &Value) -> String {
         ));
     }
     out
+}
+
+fn render_worker_delivery(delivery: &Value) -> String {
+    let outcome = match delivery.get("status").and_then(Value::as_str) {
+        Some("completed") => "done",
+        Some("failed") => "blocked",
+        Some(status) => status,
+        None => "unknown",
+    };
+    let prefix = if delivery
+        .get("repeated")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
+        "delivery already recorded"
+    } else {
+        "delivery recorded"
+    };
+    format!("{prefix}: {outcome} (run {})\n", text(delivery, "runId"))
 }
 
 fn render_worker_list(workers: &Value) -> String {
@@ -4643,6 +4697,98 @@ mod tests {
         drop(stream);
         client.join().expect("client");
         String::from_utf8_lossy(&raw).into_owned()
+    }
+
+    fn reply(
+        status: u16,
+        body: &'static str,
+        request: impl FnOnce(Api) -> Result<Value, String> + Send + 'static,
+    ) -> (String, Result<Value, String>) {
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let client = std::thread::spawn(move || {
+            request(Api {
+                port,
+                token: "run-token".to_string(),
+            })
+        });
+
+        let (mut stream, _) = listener.accept().expect("accept");
+        let mut raw = Vec::new();
+        let mut buffer = [0u8; 1024];
+        loop {
+            let read = stream.read(&mut buffer).expect("read");
+            raw.extend_from_slice(&buffer[..read]);
+            let Some(head_end) = raw.windows(4).position(|window| window == b"\r\n\r\n") else {
+                continue;
+            };
+            let head = String::from_utf8_lossy(&raw[..head_end]);
+            let length = head
+                .lines()
+                .find_map(|line| line.strip_prefix("Content-Length: ")?.parse::<usize>().ok())
+                .expect("content length");
+            if raw.len() >= head_end + 4 + length {
+                break;
+            }
+        }
+        let response = format!(
+            "HTTP/1.1 {status} TEST\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream.write_all(response.as_bytes()).expect("write");
+        drop(stream);
+        (
+            String::from_utf8_lossy(&raw).into_owned(),
+            client.join().expect("client"),
+        )
+    }
+
+    #[test]
+    fn wrong_run_or_fence_is_refused_by_worker_delivery() {
+        for refusal in ["unknown development run", "stale development run fence"] {
+            let body = Box::leak(format!(r#"{{"error":"{refusal}"}}"#).into_boxed_str());
+            let (request, result) = reply(409, body, |api| {
+                api.post("/api/hq/v1/agent/delivery", json!({ "outcome": "done" }))
+            });
+            assert_eq!(result, Err(refusal.to_string()));
+            assert!(
+                request.starts_with("POST /api/hq/v1/agent/delivery HTTP/1.1"),
+                "{request}"
+            );
+            let (_, body) = request.split_once("\r\n\r\n").unwrap();
+            assert_eq!(
+                serde_json::from_str::<Value>(body).unwrap(),
+                json!({ "outcome": "done" })
+            );
+        }
+    }
+
+    #[test]
+    fn repeated_worker_done_renders_as_a_noop() {
+        assert_eq!(format!("{:?}", parse("worker done")), "Ok(WorkerDone)");
+        let rendered = render_worker_delivery(&json!({
+            "apiVersion": 1,
+            "runId": "run-1",
+            "status": "completed",
+            "repeated": true,
+        }));
+        assert_eq!(rendered, "delivery already recorded: done (run run-1)\n");
+    }
+
+    #[test]
+    fn worker_blocked_without_reason_is_a_usage_error() {
+        assert_eq!(
+            parse("worker blocked --reason tests-fail"),
+            Ok(Command::WorkerBlocked {
+                reason: "tests-fail".to_string()
+            })
+        );
+        assert_eq!(
+            parse("worker blocked"),
+            Err("usage: pa worker blocked --reason <text>".to_string())
+        );
     }
 
     #[test]
