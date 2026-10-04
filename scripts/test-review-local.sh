@@ -381,6 +381,75 @@ else
   bad "Standardverzeichnis: rc=$rc"; echo "$out"; cat "$REPO/.pa/review_${label}_fake-a.md" 2>&1 | head -12
 fi
 
+# 13. Protokolldatei je Reviewer. Der Name entsteht aus dem Modell
+#     ("llama3:8b" -> llama3-8b, kilo: nur das letzte Pfadelement). Zwei Modelle
+#     mit demselben Namen schreiben in dieselbe Datei: das zweite Urteil
+#     ueberschreibt das erste, der Lauf meldet trotzdem "beide ok". Das ist
+#     eine falsche Zusage ("jeder Reviewer hat geliefert") und wird abgelehnt,
+#     bevor etwas gesendet wird.
+run bash "$RUN" --models llama3:8b,llama3-8b --out-dir "$tmp/o14"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ ! -e "$tmp/o14/review_${label}_llama3-8b.md" ] && [ ! -e "$tmp/o14/review_prompt_${label}.md" ]; then
+  ok "Ollama: llama3:8b und llama3-8b teilen sich den Protokollnamen - Exit 2, kein Prompt, kein Protokoll"
+else
+  bad "Ollama-Protokollname kollidiert: rc=$rc"; echo "$out"; ls "$tmp/o14" 2>&1
+fi
+# Der gepruefte Name muss der Dateiname sein, den der Transport schreibt:
+# ein Anbieterpraefix wird zum Bindestrich, zwei solche Namen bleiben getrennt.
+run bash "$RUN" --models library/llama3:8b,other/llama3:8b --out-dir "$tmp/o15"
+if [ "$rc" -eq 0 ] && [ -f "$tmp/o15/review_${label}_library-llama3-8b.md" ]   && [ -f "$tmp/o15/review_${label}_other-llama3-8b.md" ]; then
+  ok "Ollama mit Anbieterpraefix: zwei Protokolle (library-llama3-8b, other-llama3-8b)"
+else
+  bad "Ollama-Anbieterpraefix: rc=$rc"; echo "$out"; ls "$tmp/o15" 2>&1
+fi
+# Geschwisterfaelle desselben Codepfads: das Wegfallen von ":cloud" (der im
+# Kommentar genannte Normalfall) und der Trockenlauf, der den Fehler ebenfalls
+# sehen soll, bevor ein Prompt gebaut wird.
+run bash "$RUN" --models kimi-k3:cloud,kimi-k3 --out-dir "$tmp/o16"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ ! -e "$tmp/o16/review_${label}_kimi-k3.md" ] && [ ! -e "$tmp/o16/review_prompt_${label}.md" ]; then
+  ok "kimi-k3:cloud und kimi-k3 teilen sich den Protokollnamen (':cloud' faellt weg) - Exit 2"
+else
+  bad "':cloud'-Kollision: rc=$rc"; echo "$out"; ls "$tmp/o16" 2>&1
+fi
+run bash "$RUN" --dry-run --models llama3:8b,llama3-8b --out-dir "$tmp/o17"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" && [ ! -e "$tmp/o17/review_prompt_${label}.md" ]; then
+  ok "Trockenlauf mit kollidierenden Namen: Exit 2, kein Prompt (der Aufruf waere so nicht sendbar)"
+else
+  bad "Trockenlauf-Kollision: rc=$rc"; echo "$out"; ls "$tmp/o17" 2>&1
+fi
+# Fremder Zeichensatz: umschreiben und raten ist hier zwei Definitionen von
+# "derselbe Name" (tr byteweise, slug() im Transport zeichenweise) - abgelehnt.
+# Der Test nimmt ein Leerzeichen, damit die Datei ASCII bleibt; Umlaute und
+# andere Nicht-ASCII-Zeichen laufen in denselben Zweig.
+run bash "$RUN" --models "fake-a:cloud,bad name:8b" --out-dir "$tmp/o18"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Zeichen" && [ ! -e "$tmp/o18/review_prompt_${label}.md" ]; then
+  ok "Modellname mit Leerzeichen: Exit 2 mit deutscher Meldung, kein Prompt"
+else
+  bad "Modellname mit Leerzeichen: rc=$rc"; echo "$out"; ls "$tmp/o18" 2>&1
+fi
+# Gross-/Kleinschreibung (Review-Befund Kimi F1 zu 0fe87ff): NTFS und APFS
+# unterscheiden "Llama3-8b" und "llama3-8b" nicht - eine Datei, ein Protokoll
+# ueberschreibt das andere. Erwartet: Exit 2 vor Prompt und Versand.
+sent_before="$(grep -ci '^llama3:8b|' "$tmp/requests.log" 2>/dev/null)"
+run bash "$RUN" --models Llama3:8b,llama3:8b --out-dir "$tmp/o19"
+sent_after="$(grep -ci '^llama3:8b|' "$tmp/requests.log" 2>/dev/null)"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ "$sent_before" = "$sent_after" ] && [ ! -e "$tmp/o19/review_prompt_${label}.md" ] \
+  && ! ls "$tmp/o19"/review_"${label}"_*lama3-8b.md > /dev/null 2>&1; then
+  ok "Llama3:8b und llama3:8b kollidieren auf NTFS/APFS: Exit 2, kein Prompt, kein Versand, kein Protokoll"
+else
+  bad "Gross-/Kleinschreibungs-Kollision: rc=$rc gesendet $sent_before->$sent_after"; echo "$out"; ls "$tmp/o19" 2>&1
+fi
+: > "$KILO_STUB_LOG"
+run env PATH="$tmp/bin-ok:$PATH" bash "$RUN" --via kilo --models a/step-3.7-flash:free,b/step-3.7-flash:free --out-dir "$tmp/k8"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ ! -s "$KILO_STUB_LOG" ] && [ ! -e "$tmp/k8/review_${label}_step-3.7-flash.md" ]; then
+  ok "kilo: zwei Anbieter, gleicher Modellname - Exit 2, kilo nie aufgerufen, kein Protokoll"
+else
+  bad "kilo-Protokollname kollidiert: rc=$rc"; echo "$out"; ls "$tmp/k8" 2>&1
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."
