@@ -2608,6 +2608,8 @@ pub(crate) mod tests {
     mod planning_access_tests;
     // W1-03f-api: the delivery route, on a real store.
     mod delivery_route_tests;
+    // M4-E2E-14: checkpoint -> abort -> resume over HTTP, store and a child.
+    mod continuous_e2e_tests;
 
     /// The five ways a merge can fail, copied verbatim from
     /// `workers::merge_worker` (and from `gh` for the last one). They are here
@@ -3015,6 +3017,11 @@ pub(crate) mod tests {
             fence: i64,
             revision: i64,
         ) -> Result<Value, String> {
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(
+                    store.agent_checkpoint_at(run, owner, fence, revision),
+                );
+            }
             self.agent_run_context(run, owner, fence)?;
             Ok(json!({"runId":run,"revision":revision}))
         }
@@ -3025,6 +3032,11 @@ pub(crate) mod tests {
             fence: i64,
             input: crate::store::development_runs::CheckpointInput,
         ) -> Result<Value, String> {
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(
+                    store.record_agent_checkpoint(run, owner, fence, input),
+                );
+            }
             self.agent_run_context(run, owner, fence)?;
             let mut saved = self.checkpoints.lock().unwrap();
             let raw = json!(input);
