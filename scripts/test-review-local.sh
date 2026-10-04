@@ -394,6 +394,14 @@ if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
 else
   bad "Ollama-Protokollname kollidiert: rc=$rc"; echo "$out"; ls "$tmp/o14" 2>&1
 fi
+# Der gepruefte Name muss der Dateiname sein, den der Transport schreibt:
+# ein Anbieterpraefix wird zum Bindestrich, zwei solche Namen bleiben getrennt.
+run bash "$RUN" --models library/llama3:8b,other/llama3:8b --out-dir "$tmp/o15"
+if [ "$rc" -eq 0 ] && [ -f "$tmp/o15/review_${label}_library-llama3-8b.md" ]   && [ -f "$tmp/o15/review_${label}_other-llama3-8b.md" ]; then
+  ok "Ollama mit Anbieterpraefix: zwei Protokolle (library-llama3-8b, other-llama3-8b)"
+else
+  bad "Ollama-Anbieterpraefix: rc=$rc"; echo "$out"; ls "$tmp/o15" 2>&1
+fi
 : > "$KILO_STUB_LOG"
 run env PATH="$tmp/bin-ok:$PATH" bash "$RUN" --via kilo --models a/step-3.7-flash:free,b/step-3.7-flash:free --out-dir "$tmp/k8"
 if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \

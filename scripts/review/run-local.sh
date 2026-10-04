@@ -14,6 +14,9 @@
 #                 scripts/dev/agent-setup-check.mjs (Ueberschreiben:
 #                 REVIEW_OLLAMA_MODELS oder --models). Der Versand laeuft
 #                 ueber .pa/review_transport.py - der gehaertete Transport.
+#                 Zwei Modelle mit demselben Protokollnamen (llama3:8b und
+#                 llama3-8b) werden abgelehnt: sie wuerden einander das
+#                 Protokoll wegschreiben und der Lauf meldete trotzdem Erfolg.
 #   --via kilo    kilo run --agent ask -m kilo/<modell>:free. Nur :free-Modelle;
 #                 alles andere wird abgelehnt, damit kein Geld fliesst.
 #                 REVIEW_KILO_TIMEOUT_S: Zeitlimit je Modell (900 s, 0 = keins).
@@ -147,6 +150,41 @@ if [ "$via" = kilo ]; then
     models[i]="$m"
   done
 fi
+
+# Protokollname je Modell - genau das, was in <out-dir>/review_<label>_<name>.md
+# landet. Ollama: ":cloud" faellt weg, jeder andere Tag wird zum Bindestrich
+# (kimi-k3:cloud -> kimi-k3, llama3:8b -> llama3-8b); kilo nimmt nur das letzte
+# Pfadelement ohne ":free". Alles andere wird zu '-' - dieselbe Form, die
+# slug() im Transport anwendet, damit der Name hier der Dateiname ist.
+proto_name() { # modell
+  local n="$1"
+  if [ "$via" = kilo ]; then
+    n="${n##*/}"
+    n="${n%:free}"
+  else
+    n="${n%:cloud}"
+  fi
+  printf '%s' "${n//:/-}" | tr -c 'A-Za-z0-9._-' '-'
+}
+
+# Zwei Modelle mit demselben Protokollnamen schrieben in dieselbe Datei: das
+# zweite Urteil ueberschrieb das erste, und der Lauf meldete trotzdem zweimal
+# "ok" mit Exit 0. Das widerspricht der Zusage dieses Skripts ("Exit 0 nur,
+# wenn JEDER Reviewer einen Text geliefert hat") und behauptet ein
+# Dual-Review, den es als Protokoll nicht gibt. Lieber zwei Laeufe als eine
+# Datei, in der ein Befund fehlt.
+proto_names=()
+for m in "${models[@]}"; do
+  proto_names+=("$(proto_name "$m")")
+done
+for i in "${!proto_names[@]}"; do
+  j=$((i + 1))
+  while [ "$j" -lt "${#proto_names[@]}" ]; do
+    [ "${proto_names[$i]}" != "${proto_names[$j]}" ] \
+      || die 2 "die Modelle '${models[$i]}' und '${models[$j]}' schreiben in dieselbe Protokolldatei (review_<label>_${proto_names[$i]}.md) - ein Urteil ginge verloren. Modelle mit eindeutigem Namen waehlen (--models) oder je Lauf ein Modell reviewen."
+    j=$((j + 1))
+  done
+done
 
 # --- Voraussetzungen des Weges (nur beim echten Versand) -------------------
 ollama_host=""
@@ -310,13 +348,11 @@ if [ "$via" = ollama ]; then
     unset "REVIEWER_${n}_NAME" "REVIEWER_${n}_KIND" "REVIEWER_${n}_URL" "REVIEWER_${n}_MODEL" "REVIEWER_${n}_KEY"
   done
   n=0
-  for m in "${models[@]}"; do
+  for i in "${!models[@]}"; do
     n=$((n + 1))
-    # Name fuer die Protokolldatei: ":cloud" faellt weg (kimi-k3), jeder andere
-    # Tag bleibt (llama3:8b -> llama3-8b), damit zwei Tags nicht kollidieren.
-    rname="${m%:cloud}"
-    export "REVIEWER_${n}_NAME=${rname//:/-}" "REVIEWER_${n}_KIND=ollama" \
-      "REVIEWER_${n}_URL=$ollama_host/api/generate" "REVIEWER_${n}_MODEL=$m"
+    # Der Name ist der Protokolldateiname (s.o.) und damit eindeutig geprueft.
+    export "REVIEWER_${n}_NAME=${proto_names[$i]}" "REVIEWER_${n}_KIND=ollama" \
+      "REVIEWER_${n}_URL=$ollama_host/api/generate" "REVIEWER_${n}_MODEL=${models[$i]}"
     if [ -n "${OLLAMA_API_KEY:-}" ]; then
       export "REVIEWER_${n}_KEY=$OLLAMA_API_KEY"
     fi
@@ -357,9 +393,9 @@ kilo_review() { # modell
 digest="$("$PY" -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest()[:16])' "$prompt_file")"
 prompt_chars="$(wc -m < "$prompt_file" | tr -d ' ')"
 failed=0
-for m in "${models[@]}"; do
-  name="${m##*/}"
-  name="${name%:free}"
+for i in "${!models[@]}"; do
+  m="${models[$i]}"
+  name="${proto_names[$i]}"
   path="$out_dir/review_${label}_${name}.md"
   ( cd "$work" && kilo_review "$m" < /dev/null > out.txt 2> err.txt )
   rc=$?
