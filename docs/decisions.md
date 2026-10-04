@@ -1555,11 +1555,10 @@ wall clock, linux + windows.
   schema (docs.mergify.com/mergify-configuration-schema.json) documents
   `max_parallel_checks` as integer 1-128, default 5, without a plan
   restriction; the pricing page lists Parallel Checks under the Open Source
-  plan (public repos) and the parallel-checks docs name no paid tier. Public
-  repo GitHub-hosted standard runners cost 0 EUR, so the 0 EUR CI target
-  (AGENTS.md) holds.
+  plan, and the parallel-checks docs describe the setting without a separate
+  availability restriction. The repository's runner eligibility is unchanged.
 - **Trade-off:** in serial mode the second run is speculative; when the first
   batch fails its minutes are lost, and with `batch_size.min: 1` two queued
   PRs can become two runs (two Windows lanes) instead of one batch.
-- **Reverse when:** Actions minutes or runner limits become a problem, or a
-  paid plan would be needed.
+- **Reverse when:** runner limits become a problem or the feature is no longer
+  included in the repository's plan.
