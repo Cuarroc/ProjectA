@@ -57,3 +57,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main for PR #342 conflict resolution; no textual conflict hunks or runtime logic changes; generated HQ snapshot refreshed in b8713fd; prepush green; pushed and verified; PR report updated and Mergify queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 23:51 — codex (claude/st-claim-deps-fail-closed, pl-373)
+- Zusammenfassung: PR #373 Stufe-A-Review abgeschlossen: Codex-Befund ERR_REFUSED/HTTP-409 red-first behoben in 23569d8; GLM 5.2 gegenpruefte zwei niedrige Hinweise, beide abgelehnt; prepush und CI gruen; Mergify-Queue angefordert.
+- Commits: keine
+- Uncommitted: keine
