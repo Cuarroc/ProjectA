@@ -1429,22 +1429,18 @@ fn read_verdict_token(
 
 /// The first line of a token file, with the two checks a secret file deserves.
 ///
-/// Rejects non-regular files and files reported larger than the limit before
-/// reading. This metadata check does not fence later file growth or replacement.
+/// Rejects non-regular files and files larger than the limit.
 /// First line only: the rest of the file cannot reach the request head.
 fn read_token_file(path: &str) -> Result<String, String> {
     const MAX_TOKEN_FILE: u64 = 4096;
 
-    let meta = std::fs::metadata(path)
+    let file = std::fs::File::open(path)
+        .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
+    let meta = file
+        .metadata()
         .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
     if !meta.is_file() {
         return Err(format!("the verdict token file {path} is not a file"));
-    }
-    if meta.len() > MAX_TOKEN_FILE {
-        return Err(format!(
-            "the verdict token file {path} is {} bytes; a token is 32",
-            meta.len()
-        ));
     }
     // The file is what the documentation recommends as the safe place, so the
     // recommendation is enforced instead of hoped for: a token file other users
@@ -1461,7 +1457,17 @@ fn read_token_file(path: &str) -> Result<String, String> {
             ));
         }
     }
-    let contents = std::fs::read_to_string(path)
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    file.take(MAX_TOKEN_FILE + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
+    if bytes.len() as u64 > MAX_TOKEN_FILE {
+        return Err(format!(
+            "the verdict token file {path} exceeds the {MAX_TOKEN_FILE}-byte limit"
+        ));
+    }
+    let contents = String::from_utf8(bytes)
         .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
     Ok(contents.lines().next().unwrap_or_default().to_string())
 }
