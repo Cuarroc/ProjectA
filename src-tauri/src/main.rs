@@ -2510,6 +2510,19 @@ impl ControlBackend for ApiBackend {
             self.store.development_run_role(run).await
         })
     }
+    fn agent_planning_scope(
+        &self,
+        run: &str,
+        owner: &str,
+        fence: i64,
+        kind: &str,
+        target: &str,
+    ) -> Result<(), String> {
+        tauri::async_runtime::block_on(
+            self.store
+                .agent_planning_scope(run, owner, fence, kind, target),
+        )
+    }
     fn agent_checkpoint_at(
         &self,
         run: &str,
