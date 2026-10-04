@@ -124,7 +124,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -1627,14 +1627,43 @@ async fn get_budgets(store: State<'_, Store>) -> Result<Vec<budget::BudgetLimits
 /// had: `undefined` leaves it alone, `null` removes the ceiling, a number sets
 /// one. The frontend sends both whenever the user presses save, so the round
 /// trip is exactly what is on screen.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetBudgetArgs {
+    profile_id: String,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    five_hour_pct: Option<Option<u8>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    seven_day_pct: Option<Option<u8>>,
+}
+
+fn deserialize_double_option<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::deserialize(deserializer).map(Some)
+}
+
 #[tauri::command]
 async fn set_budget(
     store: State<'_, Store>,
-    profile_id: String,
-    five_hour_pct: Option<Option<u8>>,
-    seven_day_pct: Option<Option<u8>>,
+    request: tauri::ipc::Request<'_>,
 ) -> Result<budget::BudgetLimits, String> {
-    budget::update_limits(&store, &profile_id, five_hour_pct, seven_day_pct).await
+    let args: SetBudgetArgs = match request.body() {
+        tauri::ipc::InvokeBody::Json(body) => serde_json::from_value(body.clone())
+            .map_err(|err| format!("invalid set_budget arguments: {err}"))?,
+        tauri::ipc::InvokeBody::Raw(_) => {
+            return Err("set_budget requires JSON arguments".to_string());
+        }
+    };
+    budget::update_limits(
+        &store,
+        &args.profile_id,
+        args.five_hour_pct,
+        args.seven_day_pct,
+    )
+    .await
 }
 
 // -- digest commands (Phase 18) --------------------------------------------
@@ -4189,7 +4218,7 @@ mod tests {
             .next()
             .expect("at least one bundled profile")
             .id;
-        crate::budget::update_limits(&store, &profile_id, Some(Some(80)), None)
+        crate::budget::update_limits(&store, &profile_id, Some(Some(80)), Some(Some(70)))
             .await
             .expect("seed five-hour ceiling");
 
@@ -4225,6 +4254,14 @@ mod tests {
                 .expect("read five-hour ceiling"),
             None,
             "an explicit JSON null must remove the stored ceiling"
+        );
+        assert_eq!(
+            store
+                .get_setting(&format!("budget.{profile_id}.seven_day_pct"))
+                .await
+                .expect("read seven-day ceiling"),
+            Some("70".to_string()),
+            "an omitted field must leave its stored ceiling unchanged"
         );
     }
 
