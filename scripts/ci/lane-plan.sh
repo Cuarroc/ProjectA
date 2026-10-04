@@ -108,13 +108,17 @@
 #   b) jeder Datei, die ein include_str!/include_bytes! einbindet (s. o.);
 #   c) jeder Datei, die im Code, den die Gates ausfuehren, als LITERAL
 #      vorkommt (doc_refs): Rust, TS/TSX, e2e, scripts/**, Test-/Build-
-#      Konfiguration. Ein Token `STAND.md` macht jede Datei mit diesem Namen
-#      schwer, `docs/dev-hq` jede Datei darunter, `.pa/task_` (aus einem
-#      Template-String) jede mit diesem Praefix. Das ist bewusst grob: lieber
-#      eine Datei zu viel schwer als eine gelesene leicht. Kommentarzeilen
-#      zaehlen nicht mit, sonst waere jede in einem Kommentar zitierte Doku
-#      schwer. Die Suche laeuft bei jedem PR frisch - ein neuer Test, der eine
-#      Doku liest, braucht keine Pflege dieser Liste.
+#      Konfiguration, die Hooks (.githooks/**) und die Workflows samt
+#      Composite-Actions (.github/**, SETUP-12-Rest) - die vier Baeume sind
+#      die einzigen, in denen Gate-Code laeuft. Ein Token `STAND.md` macht
+#      jede Datei mit diesem Namen schwer, `docs/dev-hq` jede Datei darunter,
+#      `.pa/task_` (aus einem Template-String) jede mit diesem Praefix. Das ist
+#      bewusst grob: lieber eine Datei zu viel schwer als eine gelesene leicht.
+#      Kommentarzeilen zaehlen nicht mit, sonst waere jede in einem Kommentar
+#      zitierte Doku schwer. Ein bloss GEDRUCKTER Pfad (Release-Beschreibung,
+#      NICHT-ABGEDECKT-Block, Werkzeugreport) ist kein Lesezugriff und steht
+#      deshalb in NOT_A_READ. Die Suche laeuft bei jedem PR frisch - ein neuer
+#      Test, der eine Doku liest, braucht keine Pflege dieser Liste.
 #   Nicht-.md-Dateien unter docs/ und .pa/ (HQ-Code, review_transport.py,
 #   JSON) sind nie leicht.
 #
@@ -240,12 +244,20 @@ dynamic_inputs() {
 
 # Code, den die Gates ausfuehren: dort gesuchte Literale machen Doku schwer.
 # Ohne dieses Skript und seinen Selbsttest - die zitieren Doku-Pfade als
-# Beispiele und machten sie sonst selbst schwer.
+# Beispiele und machten sie sonst selbst schwer. `.githooks/` (commit-msg,
+# pre-commit, pre-push rufen gates.sh) und `.github/` (Workflows und
+# Composite-Actions) sind mit aufgenommen: sie sind Gate-Code wie scripts/
+# und wurden vorher nicht durchsucht, wodurch ein Doku-Leser dort fuer
+# is_light_doc unsichtbar blieb (SETUP-12).
 doc_ref_sources() {
-  find src-tauri src e2e scripts -type d \( -name 'target*' -o -name node_modules \) -prune -o \
+  find src-tauri src e2e scripts .github -type d \( -name 'target*' -o -name node_modules \) -prune -o \
     -type f \( -name '*.rs' -o -name '*.ts' -o -name '*.tsx' -o -name '*.mjs' -o -name '*.js' \
-    -o -name '*.cjs' -o -name '*.sh' -o -name '*.py' \) -print 2>/dev/null |
+    -o -name '*.cjs' -o -name '*.sh' -o -name '*.py' -o -name '*.yml' -o -name '*.yaml' \) -print 2>/dev/null |
     grep -vE '^scripts/ci/lane-plan\.sh$|^scripts/test-lane-plan\.sh$'
+  # Die Hooks tragen keine Endung (commit-msg, pre-push, post-merge, ...) und
+  # fallen am Namensfilter oben vorbei. Der ganze Baum ist fuenf Dateien, also
+  # unabhaengig von einer Liste, die man pflegen muesste.
+  find .githooks -type f -print 2>/dev/null
   for f in package.json vite.config.ts vitest.config.ts playwright.config.ts tsconfig.json eslint.config.*; do
     [ -f "$f" ] && echo "$f"
   done
@@ -271,6 +283,19 @@ NOT_A_READ=(
   "docs/decisions.md|src-tauri/src/workers/lane_guard.rs"
   "docs/ci-lokal.md|src-tauri/src/workers/lane_guard.rs"
   "KNOWN_ISSUES.md|src-tauri/src/workers/lane_guard.rs"
+  # SETUP-12-Rest: nur genannt, nicht gelesen. Mit .github/ in der
+  # Literal-Suche (siehe doc_ref_sources) wuerde jeder gedruckte Dateipfad
+  # eine schwere Datei machen - also je Zeile ein Beleg:
+  #   release.yml Z130/Z238 bauen den Text der GitHub-Release-Beschreibung
+  #   ("Details: CHANGELOG.md und KNOWN_ISSUES.md im Repo."). Kein Gate
+  #   oeffnet die Datei; sie enthaelt den Verlauf fuer Menschen.
+  "CHANGELOG.md|.github/workflows/release.yml"
+  "KNOWN_ISSUES.md|.github/workflows/release.yml"
+  #   gates.sh Z258 (NICHT-ABGEDECKT-Block) und doctor.sh Z202/Z212 nennen
+  #   docs/ci-lokal.md als Ort des lokalen Fahrens. Beides ist eine
+  #   Ausgabezeile, kein Lesezugriff - CI-Lokal.md wird sonst nie gelesen.
+  "docs/ci-lokal.md|scripts/ci/gates.sh"
+  "docs/ci-lokal.md|scripts/ci/doctor.sh"
 )
 
 # Literale Doku-Verweise: `irgendwas.md` und `docs/...` bzw. `.pa/...`.
