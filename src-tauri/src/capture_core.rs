@@ -8,6 +8,8 @@ pub mod host_events;
 pub mod host_reply;
 #[path = "workers/native_resources.rs"]
 pub mod native_resources;
+#[path = "process_capture/opencode_usage.rs"]
+pub mod opencode_usage;
 #[path = "process_capture/protocol.rs"]
 pub mod protocol;
 #[path = "process_capture/stream_guard.rs"]
