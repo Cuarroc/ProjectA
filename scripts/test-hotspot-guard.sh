@@ -61,6 +61,9 @@ d="$(repo mainc)"
 d="$(branch_change snap claude/hq-snapshot-refresh docs/dev-hq/data.json)"
 guard "$d" && pass "guard accepts a dedicated hq-snapshot branch" || fail "guard accepts a dedicated hq-snapshot branch"
 
+d="$(branch_change queue mergify/merge-queue/0123456789 docs/dev-hq/data.json)"
+guard "$d" && pass "guard accepts a Mergify merge queue branch" || fail "guard accepts a Mergify merge queue branch"
+
 d="$(branch_change nobase claude/some-work docs/dev-hq/data.js)"
 (cd "$d" && env -u HOTSPOT_BASE -u GITHUB_ACTIONS -u GITHUB_HEAD_REF bash scripts/ci/hotspot-guard.sh > out 2>&1) &&
   fail "guard fails closed without a base" || pass "guard fails closed without a base"
