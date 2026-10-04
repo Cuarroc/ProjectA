@@ -1,6 +1,6 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-10-04T19:10:04.531Z",
-  "commit": "8c57b07",
+  "generatedAt": "2026-10-04T19:28:39.509Z",
+  "commit": "779e480",
   "dirty": false,
   "sources": [
     {
@@ -9,7 +9,7 @@ window.HQ_DATA = {
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "5f7c455c8d0bd024809ea67407876fc2a725f76b40a485dda1a5afe38cb52964"
+      "sha256": "83ac353a7dad7a99bc9ae7854310587818d00b55aa45b73cc9e9e7cf658c2995"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -1021,9 +1021,63 @@ window.HQ_DATA = {
         },
         {
           "id": "M4-R7-02",
-          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen",
+          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige dispatch_once auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall",
           "size": "S",
           "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R15-01",
+          "title": "Stabile Policy-Revision aus der unveränderlichen Laufpolicy, an Kandidat- und Evidenzzeilen gespeichert, alte Zeilen fail-closed (Matrixzeile 15)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R15-02",
+          "title": "Revision bei Schreiben, Replay, Lesen, Kontext und Seiten erzwingen; fremde Revision abgewiesen ohne Schreiben (Zeile 15)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R17-01",
+          "title": "Store-eigene Release-Bereitschaft, an aktuellen Kandidaten/Evidenz/Reviews gebunden (Zeile 17); wartet auf E19",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-14",
+          "title": "Echter HTTP-Router + Store + Fake-Agentenprozess: Checkpoint -> Abbruch -> Fortsetzen (Zeile 14)",
+          "size": "S",
+          "lane": "api",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-15",
+          "title": "HTTP-Matrix Kandidat/Evidenz mit Policy-Revision (Zeile 15)",
+          "size": "S",
+          "lane": "api",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-17",
+          "title": "Kandidat-Delta macht frühere Freigabekette über HTTP ungültig (Zeile 17)",
+          "size": "S",
+          "lane": "api",
           "stand": "offen",
           "state": "open",
           "prNumbers": []
@@ -1066,7 +1120,7 @@ window.HQ_DATA = {
         }
       ],
       "done": 16,
-      "total": 32
+      "total": 38
     },
     {
       "id": "M5",
@@ -1816,7 +1870,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
