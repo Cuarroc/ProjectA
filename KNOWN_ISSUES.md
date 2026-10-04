@@ -44,7 +44,7 @@ vorkommen — die Einstufung „nur Linux" heißt genau das und ist per
 | KI-24 | SQLite-Lastklasse: einzelne Store-Tests scheiterten unter paralleler Last mit `database is locked (code: 5)` bzw. `pool timed out` — `store::continuous::tests::stale_fence_cannot_complete_claim_and_expiry_does_not_reclaim` (Linux, Run 35288206709 auf `main` @ `4e409d9`, 17.09.) und `workers::tests::an_agent_that_exits_during_respawn_is_not_revived_as_running` (Linux, Run 35025975338, 15.09.) | niedrig (bearbeitet, beobachten) | Aus `STAND.md` übernommen 2026-09-24. **Bearbeitet** mit W1-25 (PR #77: Transaktionen schließen, Pool-Frist) und W1-25b (PR #85: Store-Schreiber gegen fremde Schreiber). Nicht reproduziert ist der ursprüngliche Drop-Wettlauf (`.pa/report_w1-25.md`, „Nicht abgedeckt"). Der frühere `delivery_recovery`-Fall ist mit W1-04 (PR #55, 20/20 unter Last) abgenommen. Tritt einer der Tests wieder auf, ist das ein neuer Befund mit Run-ID, kein „Flake". **Nachgeführt 2026-10-02 (KI-OBS): tritt wieder auf, offen.** Suche über 301 abgeschlossene CI-Läufe vom 25.09. bis 02.10. (50 rot, alle per `gh run view --log-failed` auf `database is locked` / `pool timed out` und die Testnamen geprüft): die beiden in diesem Eintrag genannten Tests scheiterten nicht erneut, aber die Lastklasse trat zweimal auf der Windows-Bahn von `main` auf, mit anderen Tests: Run 36165944208 (25.09., `main` @ `a18dcd6`; `api::tests::review_route_maps_store_refusals_and_replays_at_the_seam` und `review_route_takes_the_reviewer_run_from_the_credential_not_the_body`, `api.rs:4775`: „failed to reopen migrated database … (code: 5) database is locked“, in beiden Versuchen) und Run 36215024767 (26.09., `main` @ `da20f22`; `store::development_launches::tests::schema15_upgrade_keeps_old_launch_identity_without_inventing_baseline`, `development_launches.rs:705`: „failed to open …projecta.db … (code: 5) database is locked“, in beiden Versuchen). Beide Stellen öffnen eine Test-DB erneut, die kurz vorher geschlossen wurde; das sieht nach dem Windows-Dateisperr-Fenster aus, ist aber nicht gemessen. Neuer Befund mit Run-ID, wie oben vorgesehen; Paketkandidat für die Store-Lane. |
 | KI-28 | Der Capture-Host (`bin/pa-capture-host.rs`) läuft nur unter Windows | — (dokumentierte Grenze) | Entscheidung 16.09. (W3-05, `docs/decisions.md`; `pa-capture-host.rs:142`). Aus `STAND.md` übernommen 2026-09-24. Die frühere Einschränkung „acht native Tests laufen in CI nie" gilt nicht mehr: W3-06 (PR #75) fährt sie im Gate `native-tests` der Windows-Bahn. Linux-CI prüft nur die Kompilation. |
 | KI-29 | F-SEC-4, Restrisiko des OmniRoute-Schlüssel-Syncs: wer den Opt-in einschaltet, schickt die Vault-Schlüssel an den Listener auf dem OmniRoute-Port, ohne dessen Identität zu prüfen | niedrig (bewusst in Kauf genommen) | Default ist seit W1-24 (PR #62) „kein Push"; W1-24b (PR #98) hat daraus ein ausdrückliches Opt-in-Setting gemacht, das im UI das Restrisiko benennt (`.pa/report_w1-24b.md`, „Hinweise und Folgearbeiten"). Eine Listener-Identität gibt es nicht: `/api/version` bräche Builds, die es weglassen, und ein Management-Token als Bearer gäbe es einem Horcher mit (PLAN, frühere Entscheidung Nr. 13). Solange der Sync aus bleibt, besteht kein Risiko. Paket W1-24c. |
-| KI-30 | Windows-Gate `native-tests`: vier der acht `real_native_*`-Tests scheitern sporadisch in Merge-Queue-Läufen, jedes Mal nach grüner `rust-suite` | mittel (Flake, blockiert die Queue) | Beobachtet 2026-10-02/03: 7 von 58 Queue-Läufen. Ursache nicht belegt, Vermutung und nächster Schritt im Abschnitt „KI-30“ unten. Kein Code geändert. |
+| KI-30 | Windows-Gate `native-tests`: vier der acht `real_native_*`-Tests scheitern sporadisch in Merge-Queue-Läufen, jedes Mal nach grüner `rust-suite` | mittel (Flake, blockiert die Queue) | Forschungsstand 2026-10-04: 8 von 42 untersuchten Queue-Läufen. Die Ursache ist nicht behoben; serielle Ausführung ist nur eine temporäre Minderung. Details im Abschnitt „KI-30“ unten. |
 
 ## Behoben
 
@@ -93,7 +93,7 @@ x86_64-pc-windows-msvc -i glib` liefert weiterhin nichts (2026-10-02).
 | KI-26 | Windows-PTY-Argumenttest `pty::tests::a_quote_and_a_variable_reach_the_process_unchanged` scheiterte sporadisch (Run 35266952403, 17.09.; Run 35917374303, 23.09.) | 2026-10-02 (KI-OBS): seit dem Node-Vorstart im Test (24.09.) kein erneutes Auftreten | Beleg: 301 abgeschlossene Läufe vom 25.09. bis 02.10., darunter die Windows-Bahn; in den fünf roten Windows-Läufen dieses Zeitraums steht der Test als PASS (0,3–0,5 s), nie als FAIL. Die Kaltstart-Erklärung ist damit nicht widerlegt (`.pa/report_ci_native_pty_marker.md`); wird der Test wieder rot, gilt sie als widerlegt. |
 | KI-27 | Ein nativer Provider, der vor dem Lesen seines Inputs endet (`exited_undelivered`), hielt Token-Reservierung und Delivery-Zeile auf `started` | 2026-10-02 (KI-OBS): mit DF-15a (PR #103) und DF-15b (PR #16, 25.09.) behoben; kein erneutes Auftreten | Beleg: 301 abgeschlossene Läufe vom 25.09. bis 02.10. (50 rot, alle durchsucht); die `exited_undelivered`-Tests in `store::development_launches::tests` stehen nie als FAIL. Der Mechanismus (Freigabe im Exit-Commit, abgeleiteter `effectiveState`, Start-Abgleich) steht im alten Eintrag und im Code; weiterhin fail-closed: ein Absturz zwischen Host-Ende und Store-Commit bleibt `spawning` mit gehaltener Reservierung. |
 
-### KI-30: `real_native_*`-Flake auf der Windows-Bahn (Stand 2026-10-03)
+### KI-30: `real_native_*`-Flake auf der Windows-Bahn (Stand 2026-10-04)
 
 **Symptom.** Im Merge-Queue-Lauf scheitert das Gate `native-tests`
 (`scripts/ci/native-tests.sh`, `cargo test --bin projecta real_native_ --
@@ -103,12 +103,12 @@ Beim selben Code laufen die acht Tests in anderen Queue-Läufen durch (40 bis
 49 s). Ein Fehlschlag wirft den PR aus der Queue, obwohl er den Code gar nicht
 berührt (Lauf 37104184524 gehörte zu PR #199, reinen UI-Texten).
 
-**Betroffene Tests** (Zeilen auf `main` @ `21d79f6`):
+**Betroffene Tests** (Zeilen auf `main` @ `f48af09`):
 
 | Test | Deklaration | Assertion, die auslöste |
 |---|---|---|
-| `workers::tests::real_native_provider_exit_before_input_delivery_reconciles_as_exited` | `src-tauri/src/workers.rs:3993` | `:4073` „native launch left unresolved instead of reconciled“ (in Lauf 37082745894 noch `:4057`, älterer Stand) |
-| `workers::tests::real_native_launch_service_owns_worktree_credentials_and_exit` | `src-tauri/src/workers.rs:3805` | `:3915` `drained.unresolved.is_empty()` ist `false` |
+| `workers::tests::real_native_provider_exit_before_input_delivery_reconciles_as_exited` | `src-tauri/src/workers.rs:4148` | `:4228` „native launch left unresolved instead of reconciled“ |
+| `workers::tests::real_native_launch_service_owns_worktree_credentials_and_exit` | `src-tauri/src/workers.rs:3960` | `:4070` `drained.unresolved.is_empty()` ist `false` |
 | `store::development_capture::managed_tests::real_native_runner_bounds_capacity_and_accepts_out_of_order_completion` | `src-tauri/src/store/native_managed_tests.rs:290` | `:449` `drained.unresolved.is_empty()` (der `unwrap` bei `:478` ist nur die Folge) |
 | `store::development_capture::managed_tests::real_native_job_revokes_credentials_before_retirement_or_reconciliation` | `src-tauri/src/store/native_managed_tests.rs:133` | `:173` Fall 0: „native host did not complete cleanly; checkpoint owner no longer waiting; launch retained for reconciliation“ |
 
@@ -157,10 +157,9 @@ nicht unterschieden.
 
 **Nächster Schritt.** (1) Kein Test wird abgeschwächt und kein Zeitlimit
 „einfach“ erhöht, bevor die Ursache eingegrenzt ist. (2) Das Gate
-`native-tests` einmal per `workflow_dispatch` auf einem Branch mit
-`-- --ignored --test-threads=1` laufen lassen und mit dem parallelen Lauf
-vergleichen (kostet Actions-Minuten: Entscheidung des Nutzers, Eintrag im
-Entscheidungsfach von `docs/PLAN.md`). (3) Bei Reproduktion im Test den
+`native-tests` führt die acht Tests vorübergehend mit `--test-threads=1` aus;
+das ist eine Minderung für parallele ConPTY-Kindprozesse, keine Behebung der
+Ursache. (3) Bei Reproduktion im Test den
 Zustand von `unresolved` und die noch lebenden Prozesse ausgeben, bevor
 assertiert wird. (4) Eigenes Paket mit rotem Regressionstest; die vier
 Assertionen liegen in Nahtstellen-Nähe (`store/`, `workers.rs`), also
@@ -196,3 +195,11 @@ nur `gates (windows)` rot, `native-tests` 7 grün, 1 rot:
 directory … os error 32“. Dasselbe Muster wie oben; #273 ändert nur
 Review-Skripte und Doku. Eine Ursache wird daraus nicht abgeleitet; #262
 (Diagnose) war da schon in `main`.
+
+**Forschungsstand 2026-10-04.** In 8 von 42 untersuchten Queue-Läufen trat
+KI-30 auf. Cluster B überschritt die Deadline um ungefähr 50 Sekunden; Cluster
+A endete mit „unknown error“ und zusätzlich `os error 32`. Das grenzt den
+Mechanismus ein, beweist aber weiterhin keine Ursache. Die serielle Ausführung
+des unveränderten Bestands von acht `real_native_*`-Tests bleibt deshalb eine
+als **TEMPORÄR** gekennzeichnete Minderung und wird mit der eigentlichen
+KI-30-Behebung wieder entfernt.

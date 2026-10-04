@@ -57,7 +57,7 @@ projecta::real_native_provider_exit_before_input_delivery_reconciles_as_exited: 
 LIST
     for _ in $(seq 1 20000); do echo filler; done
     ;;
-  test\ --bin\ projecta\ real_native_\ --\ --ignored) exit 0 ;;
+  test\ --bin\ projecta\ real_native_\ --\ --ignored\ --test-threads=1) exit 0 ;;
   *) echo "unexpected cargo invocation: $*" >&2; exit 1 ;;
 esac
 EOF
