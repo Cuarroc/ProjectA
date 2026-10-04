@@ -179,6 +179,7 @@ export default function SettingsView({
   // tick that reads it runs there. An empty field means "the core's default",
   // which is a value of its own and not the same as any number.
   const [stuckInput, setStuckInput] = useState("");
+  const stuckSynced = useRef("");
   const [stuckError, setStuckError] = useState<string | null>(null);
   const [savingStuck, setSavingStuck] = useState(false);
 
@@ -195,13 +196,14 @@ export default function SettingsView({
     setSavingStuck(true);
     setStuckError(null);
     void setStuckAfterMinutes(minutes)
-      .then(() =>
+      .then(() => {
+        stuckSynced.current = minutes === null ? "" : String(minutes);
         flashSaved(
           minutes === null
             ? "Stuck-Schwelle: Standard."
             : `Stuck-Schwelle: ${minutes} min.`,
-        ),
-      )
+        );
+      })
       .catch((cause: unknown) => setStuckError(describeError(cause)))
       .finally(() => setSavingStuck(false));
   };
@@ -658,6 +660,7 @@ export default function SettingsView({
   );
   const [budgetBusyId, setBudgetBusyId] = useState<string | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  const budgetsSynced = useRef<Record<string, { five: string; seven: string }>>({});
 
   const applyBudgets = useCallback((rows: Budget[]) => {
     const next: Record<string, { five: string; seven: string }> = {};
@@ -667,33 +670,35 @@ export default function SettingsView({
         seven: formatPercent(row.sevenDayPct),
       };
     }
-    setBudgetInputs(next);
+    const previous = budgetsSynced.current;
+    setBudgetInputs((current) => {
+      const merged = { ...next };
+      for (const [id, value] of Object.entries(current)) {
+        const before = previous[id] ?? { five: "", seven: "" };
+        if (value.five !== before.five || value.seven !== before.seven) merged[id] = value;
+      }
+      return merged;
+    });
+    budgetsSynced.current = next;
   }, []);
 
   const refreshGlobalSettings = useCallback(() => {
     void getDigestEnabled()
-      .then((enabled) => {
-        setDigestEnabledState(enabled);
-        setDigestError(null);
-      })
+      .then(setDigestEnabledState)
       .catch((cause: unknown) => setDigestError(describeError(cause)));
     void getStuckAfterMinutes()
       .then((minutes) => {
-        setStuckInput(minutes === null ? "" : String(minutes));
-        setStuckError(null);
+        const next = minutes === null ? "" : String(minutes);
+        const previous = stuckSynced.current;
+        setStuckInput((current) => current === previous ? next : current);
+        stuckSynced.current = next;
       })
       .catch((cause: unknown) => setStuckError(describeError(cause)));
     void getRoutingStatus()
-      .then((next) => {
-        setRouting(next);
-        setRoutingError(null);
-      })
+      .then(setRouting)
       .catch((cause: unknown) => setRoutingError(describeError(cause)));
     void getBudgets()
-      .then((rows) => {
-        applyBudgets(rows);
-        setBudgetError(null);
-      })
+      .then(applyBudgets)
       .catch((cause: unknown) => setBudgetError(describeError(cause)));
   }, [applyBudgets]);
 
@@ -725,10 +730,12 @@ export default function SettingsView({
       .then((stored) => {
         // Read back what the core stored rather than trusting the field: this
         // is the value the watcher will act on.
-        handleBudgetChange(stored.profileId, {
+        const saved = {
           five: formatPercent(stored.fiveHourPct),
           seven: formatPercent(stored.sevenDayPct),
-        });
+        };
+        budgetsSynced.current = { ...budgetsSynced.current, [stored.profileId]: saved };
+        handleBudgetChange(stored.profileId, saved);
         flashSaved(
           stored.fiveHourPct === null && stored.sevenDayPct === null
             ? `${profile.name}: kein Budget mehr.`

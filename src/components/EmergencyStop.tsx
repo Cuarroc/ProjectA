@@ -46,9 +46,11 @@ export default function EmergencyStop() {
     setError(null);
     try {
       await setEmergencyStop(next);
+      request.current += 1;
       setActive(next);
       setConfirmed(next);
     } catch (e) {
+      request.current += 1;
       setError(describeError(e));
       setConfirmed(false);
       // The barrier is written before the processes are ended: after a

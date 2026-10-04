@@ -101,9 +101,9 @@ export default function UsageView({ profiles, cards, workers }: UsageViewProps) 
       try {
         // Both on the same beat: a ceiling the user just changed and the block
         // it caused belong on screen together, and neither read is expensive.
-        // Each read settles on its own: a failing one must not cost the rows
-        // the others brought in — and its failure is kept as a failure, not
-        // smoothed into empty data.
+        // Each read settles on its own: a failing one must not cost the last
+        // good rows the others brought in. Quota and usage expose their read
+        // errors; budgets remain visibly stale instead of becoming "none".
         const [quotaRead, budgetRead, usageRead] = await Promise.all([
           settle(getQuotaState()),
           settle(getBudgets()),

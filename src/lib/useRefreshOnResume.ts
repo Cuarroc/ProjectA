@@ -1,12 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 /** Initial read plus a heal when this webview becomes active again. */
 export function useRefreshOnResume(refresh: () => void): void {
-  const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
-
   useEffect(() => {
-    const run = () => refreshRef.current();
+    const run = () => refresh();
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") run();
     };
@@ -18,5 +15,5 @@ export function useRefreshOnResume(refresh: () => void): void {
       window.removeEventListener("focus", run);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, []);
+  }, [refresh]);
 }
