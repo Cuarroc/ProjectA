@@ -822,26 +822,44 @@ function AppContent() {
     [handleOpenCard, handleOpenCardDiff],
   );
 
-  const handleOpenCoordinator = useCallback(
-    (coordinator: CoordinatorInfo) => {
-      const known = workersRef.current.find((entry) => entry.id === coordinator.workerId);
-      if (!known) return;
-      openWorkerTab(known);
-      setDetailView("terminal");
-      setGoal("agents");
-    },
-    [openWorkerTab],
-  );
-
-  const handleFocusQueuedWorker = useCallback(
+  // A click can name a worker the snapshot has not caught up with yet (a queue
+  // entry that was just dispatched). The reload is requested through the same
+  // debounced path as board discovery; the tab opens once the worker arrives.
+  const pendingFocusRef = useRef<string | null>(null);
+  const focusWorker = useCallback(
     (workerId: string) => {
       setDetailView("terminal");
       setGoal("agents");
-      const worker = workersRef.current.find((entry) => entry.id === workerId);
-      if (worker) openWorkerTab(worker);
+      const known = workersRef.current.find((entry) => entry.id === workerId);
+      if (known) {
+        openWorkerTab(known);
+        return;
+      }
+      pendingFocusRef.current = workerId;
+      handleBoardWorkerSeen(workerId);
     },
-    [openWorkerTab],
+    [handleBoardWorkerSeen, openWorkerTab],
   );
+
+  useEffect(() => {
+    const pending = pendingFocusRef.current;
+    if (pending === null) return;
+    const arrived = workers.find((entry) => entry.id === pending);
+    if (!arrived) return;
+    pendingFocusRef.current = null;
+    openWorkerTab(arrived);
+  }, [workers, openWorkerTab]);
+
+  useEffect(() => {
+    pendingFocusRef.current = null;
+  }, [activeProjectId]);
+
+  const handleOpenCoordinator = useCallback(
+    (coordinator: CoordinatorInfo) => focusWorker(coordinator.workerId),
+    [focusWorker],
+  );
+
+  const handleFocusQueuedWorker = focusWorker;
 
   /**
    * A scout the recommendations panel just started is not in the worker
