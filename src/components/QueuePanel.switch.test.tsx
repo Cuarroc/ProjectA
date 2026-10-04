@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { QueueEntry } from "../types";
 import * as ipc from "../lib/ipc";
@@ -44,6 +44,13 @@ const rowA: QueueEntry = {
   createdAt: 1,
 };
 
+const rowB: QueueEntry = {
+  ...rowA,
+  id: "entry-b",
+  rawText: "Newer task of project A",
+  createdAt: 2,
+};
+
 const props = {
   profiles: [],
   profilesLoading: false,
@@ -52,6 +59,35 @@ const props = {
 };
 
 describe("QueuePanel project switch", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps the newer same-project poll when an older request lands last", async () => {
+    vi.useFakeTimers();
+    let resolveOlder: (rows: QueueEntry[]) => void = () => undefined;
+    let resolveNewer: (rows: QueueEntry[]) => void = () => undefined;
+    vi.mocked(ipc.listQueue)
+      .mockReturnValueOnce(
+        new Promise<QueueEntry[]>((resolve) => {
+          resolveOlder = resolve;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise<QueueEntry[]>((resolve) => {
+          resolveNewer = resolve;
+        }),
+      );
+
+    render(<QueuePanel {...props} projectId="project-a" />);
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    await act(async () => resolveNewer([rowB]));
+    expect(screen.getByText("Newer task of project A")).toBeTruthy();
+
+    await act(async () => resolveOlder([rowA]));
+    expect(screen.getByText("Newer task of project A")).toBeTruthy();
+  });
+
   it("drops the previous project's rows and draft when the read for the new one fails", async () => {
     vi.mocked(ipc.listQueue).mockResolvedValueOnce([rowA]);
     const { rerender } = render(<QueuePanel {...props} projectId="project-a" />);
