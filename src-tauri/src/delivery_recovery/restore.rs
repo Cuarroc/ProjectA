@@ -135,4 +135,24 @@ mod tests {
         assert!(restore_previous_runtime(&journal, &journal.next_action()).is_err());
         assert_eq!(fs::read(database).unwrap(), b"candidate-db");
     }
+
+    #[test]
+    fn journal_bound_backup_restores_before_write_resume() {
+        let dir = TempDir::new("restore-bound");
+        let (journal, database, _) = recovery_journal(dir.path());
+
+        restore_previous_runtime(&journal, &journal.next_action()).unwrap();
+        assert_eq!(fs::read(database).unwrap(), b"original-db");
+    }
+
+    #[test]
+    fn restore_is_refused_after_writes_resumed() {
+        let dir = TempDir::new("restore-after-resume");
+        let (mut journal, database, _) = recovery_journal(dir.path());
+        let action = journal.next_action();
+        journal.writes_resumed = true;
+
+        assert!(restore_previous_runtime(&journal, &action).is_err());
+        assert_eq!(fs::read(database).unwrap(), b"candidate-db");
+    }
 }
