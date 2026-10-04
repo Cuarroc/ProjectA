@@ -27,5 +27,7 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 17:51 — Codex GPT-5 (codex/w3-02b-staging-identity, srv-w3-02b-staging-identity)
 - Zusammenfassung: W3-02b completed at 37d2a34; prepush exit 0; draft PR #321; tier A review pending coordinator
+## 2026-10-04 16:36 — codex (codex/hq2-05b-p2-claude-probe, srv-hq2-05b-p2-claude-probe)
+- Zusammenfassung: HQ2-05b package 2: real Claude 2.1.287 JSON probe, scrubbed fixture and pure fail-closed UsageReceipt parser; red-first commits ee4a010/5a3a94c; prepush and push hook green; draft PR #299; Tier B review and later route/store wiring pending.
 - Commits: keine
 - Uncommitted: keine
