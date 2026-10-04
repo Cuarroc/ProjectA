@@ -2377,6 +2377,10 @@ fn plan_response(result: Result<Value, String>) -> Response {
 }
 
 fn continuous_error(err: String) -> Response {
+    let vocabulary_status = core_status(&err);
+    if vocabulary_status != 500 {
+        return Response::error(vocabulary_status, err);
+    }
     let status = if err.starts_with("unknown ") {
         404
     } else if err.contains("stale")
@@ -2417,6 +2421,14 @@ fn retry_before_reconciliation_is_a_conflict() {
     assert_eq!(
         continuous_error("retry requires a resolved failed run for the current claim".into())
             .status,
+        409
+    );
+}
+
+#[test]
+fn continuous_refusal_prefix_is_a_conflict() {
+    assert_eq!(
+        continuous_error("refused: dependency set exceeds limit 64".into()).status,
         409
     );
 }

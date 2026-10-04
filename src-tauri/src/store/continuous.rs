@@ -995,7 +995,8 @@ async fn check_claim_dependencies(
 ) -> Result<(), String> {
     if deps.len() > MAX_DEPENDENCIES {
         return Err(format!(
-            "dependency set exceeds limit {MAX_DEPENDENCIES}: {} dependencies",
+            "{}dependency set exceeds limit {MAX_DEPENDENCIES}: {} dependencies",
+            crate::errors::ERR_REFUSED,
             deps.len()
         ));
     }
@@ -1694,6 +1695,7 @@ mod tests {
             .claim_continuous_task(&task, "owner", false)
             .await
             .unwrap_err();
+        assert!(err.starts_with(crate::errors::ERR_REFUSED), "{err}");
         assert!(err.contains("dependency set exceeds limit 64"), "{err}");
         assert_claim_untouched(&store, &task).await;
     }
