@@ -42,6 +42,10 @@ export function loadReleaseAttestation(file, root = process.cwd()) {
         return no('attestation file unreadable: it must be a committed regular file');
       }
       if (git(root, ['status', '--porcelain']).trim() !== '') return no('work tree is not clean');
+      const committed = JSON.parse(git(root, ['show', `HEAD:${rel}`]));
+      if (JSON.stringify(data) !== JSON.stringify(committed)) {
+        return no('attestation file does not match its committed content');
+      }
     } catch {
       return no('git state unavailable (not a repository or no commit)');
     }
