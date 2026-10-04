@@ -1,6 +1,8 @@
 //! Database restore bound to one journal recovery decision.
 
 use super::{RecoveryAction, UpdateJournal};
+use sha2::{Digest, Sha256};
+use std::fs;
 
 /// Restore the database named by a recovery action.
 ///
@@ -8,16 +10,36 @@ use super::{RecoveryAction, UpdateJournal};
 /// adapter here makes the journal, rather than a free-form path, its authority.
 #[allow(dead_code)] // W3-02
 pub fn restore_previous_runtime(
-    _journal: &UpdateJournal,
+    journal: &UpdateJournal,
     action: &RecoveryAction,
 ) -> Result<(), String> {
+    if journal.writes_resumed {
+        return Err("refused: writes already resumed".into());
+    }
+    if journal.next_action() != *action {
+        return Err("refused: restore is not bound to this journal".into());
+    }
     let RecoveryAction::RestorePreviousRuntime {
         previous, snapshot, ..
     } = action
     else {
         return Err("refused: journal did not request restore".into());
     };
-    crate::db_restore::restore_from_pre_migration_backup(&snapshot.path, &previous.database.path)?;
+    if snapshot.version != previous.database.version || snapshot.sha256 != previous.database.sha256
+    {
+        return Err("refused: snapshot and database identities differ".into());
+    }
+    let bytes = fs::read(&snapshot.path)
+        .map_err(|error| format!("failed to read recovery snapshot: {error}"))?;
+    let actual = format!("{:x}", Sha256::digest(&bytes));
+    if !actual.eq_ignore_ascii_case(&snapshot.sha256) {
+        return Err("refused: recovery snapshot changed after verification".into());
+    }
+    crate::db_restore::restore_verified_snapshot_bytes(
+        &snapshot.path,
+        &previous.database.path,
+        &bytes,
+    )?;
     Ok(())
 }
 

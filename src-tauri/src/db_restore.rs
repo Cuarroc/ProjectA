@@ -10,6 +10,7 @@
 #![allow(dead_code)] // pa calls these; the app binary only tests them
 
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use crate::fs_replace::replace_file;
@@ -50,6 +51,26 @@ pub fn restore_from_pre_migration_backup(backup: &Path, dest: &Path) -> Result<P
     if !backup.is_file() {
         return Err(format!("backup is not a file: {}", backup.display()));
     }
+    let mut source = fs::File::open(backup)
+        .map_err(|e| format!("failed to open backup {}: {e}", backup.display()))?;
+    restore_from_reader(backup, dest, &mut source)
+}
+
+/// Restore bytes already verified by the recovery journal adapter. The
+/// identity path is still checked, but it is never reopened as the byte source.
+pub(crate) fn restore_verified_snapshot_bytes(
+    backup: &Path,
+    dest: &Path,
+    bytes: &[u8],
+) -> Result<PathBuf, String> {
+    restore_from_reader(backup, dest, &mut &*bytes)
+}
+
+fn restore_from_reader(
+    backup: &Path,
+    dest: &Path,
+    source: &mut impl Read,
+) -> Result<PathBuf, String> {
     let dest_name = dest
         .file_name()
         .ok_or_else(|| format!("{} has no file name", dest.display()))?;
@@ -77,15 +98,12 @@ pub fn restore_from_pre_migration_backup(backup: &Path, dest: &Path) -> Result<P
     fs::create_dir_all(parent)
         .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
 
-    let mut source = fs::File::open(backup)
-        .map_err(|e| format!("failed to open backup {}: {e}", backup.display()))?;
     let (tmp, mut output) = create_restore_temp(parent, &dest_name.to_string_lossy())
         .map_err(|e| format!("failed to create restore temporary file: {e}"))?;
-    let copied = std::io::copy(&mut source, &mut output).and_then(|_| output.sync_all());
+    let copied = std::io::copy(source, &mut output).and_then(|_| output.sync_all());
     // Close handles before the replace. Only `tmp` was created by us;
     // preexisting files, including leftovers from interrupted runs, are untouched.
     drop(output);
-    drop(source);
     if let Err(err) = copied {
         let _ = fs::remove_file(&tmp);
         return Err(format!(
