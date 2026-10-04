@@ -37,6 +37,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
+## 2026-10-04 20:36 — Codex reviewB (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
+- Zusammenfassung: PR #348 reviewed at eb68a36: local prepush and PR checks exit 0; high finding on NSIS updater/UAC launch contract and medium held-image architecture drift remain open; PR report updated; not queued.
 ## 2026-10-04 19:48 — Codex GPT-5 (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
 - Zusammenfassung: STATE-4 completed at 74b550b; red-first and prepush exit 0; draft PR #345; Tier B review and Windows merge-queue lane pending.
 ## 2026-10-04 19:39 — Codex GPT-5 (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
@@ -69,5 +71,10 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 21:17 — codex/state-7-error-contract (codex/state-7-error-contract, srv-state-7-error-contract)
 - Zusammenfassung: Merged origin/main for PR #342 conflict resolution; no textual conflict hunks or runtime logic changes; generated HQ snapshot refreshed in b8713fd; prepush green; pushed and verified; PR report updated and Mergify queue requested.
+- Commits: keine
+- Uncommitted: keine
+
+## 2026-10-04 23:03 — claude/w3-02d-installer-adapter (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
+- Zusammenfassung: Merged origin/main into PR #348, refreshed generated HQ snapshot, prepush green, pushed e6e5c9c, updated report, requested Mergify queue.
 - Commits: keine
 - Uncommitted: keine
