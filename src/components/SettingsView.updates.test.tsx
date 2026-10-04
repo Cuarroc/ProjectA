@@ -86,7 +86,7 @@ describe("SettingsView updates tab", () => {
     vi.mocked(listLiveSessions).mockReset().mockResolvedValue([]);
     vi.mocked(installUpdateWhenIdle).mockReset().mockResolvedValue();
     getUpdaterState.mockReset().mockResolvedValue({ phase: "idle" });
-    setUpdaterState.mockClear();
+    setUpdaterState.mockReset().mockResolvedValue();
   });
 
   const defaultProps: TestProps = {
@@ -152,6 +152,15 @@ describe("SettingsView updates tab", () => {
     await waitFor(() => expect(setUpdaterState.mock.calls.map(([state]) => state.phase)).toEqual([
       "checking", "available", "installing", "ready",
     ]));
+  });
+
+  it("shows a failed updater state write instead of swallowing it", async () => {
+    setUpdaterState.mockRejectedValue(new Error("state store unavailable"));
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+
+    expect(await screen.findByText(/state store unavailable/)).toBeInTheDocument();
   });
 
   it.each(["check", "install"] as const)("refuses update when session inventory fails during %s", async (stage) => {

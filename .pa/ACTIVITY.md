@@ -37,6 +37,12 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
+## 2026-10-04 19:42 — Codex GPT-5 (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: STATE-7 completed: red-first tests, visible frontend error contract, prepush exit 0, pushed SHA 63effdd, draft PR #342; tier B review and Windows queue lane pending.
+- Commits: keine
+## 2026-10-04 19:37 — Codex GPT-5 (codex/m4-r7-01-dispatch-once, srv-m4-r7-01-dispatch-once)
+- Zusammenfassung: M4-R7-01 completed: one-shot scheduler core, red-first success proof, full prepush green, draft PR #340; Tier A reviews and M4-R7-02 remain with the coordinator.
+- Commits: 35caaee,d9e0b85
 ## 2026-10-04 19:30 — codex (codex/changelog-150-draft-r, srv-changelog-150-draft)
 - Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
 - Commits: 13d5357
@@ -44,5 +50,12 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 21:05 — Codex GPT-5 (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
 - Zusammenfassung: STATE-2 completed at eb90981: desktop set_budget preserves explicit null, IPC regression red then green, full prepush exit 0, draft PR #356; Tier A review and Windows queue lane pending.
+## 2026-10-04 20:32 — codex/state-7-error-contract (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: PR #342 conflict resolved by merging origin/main; HQ snapshots refreshed; prepush exit 0; pushed 353f49f and verified remote; report updated and Mergify queue requested.
+- Commits: keine
+- Uncommitted: keine
+
+## 2026-10-04 21:17 — codex/state-7-error-contract (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: Merged origin/main for PR #342 conflict resolution; no textual conflict hunks or runtime logic changes; generated HQ snapshot refreshed in b8713fd; prepush green; pushed and verified; PR report updated and Mergify queue requested.
 - Commits: keine
 - Uncommitted: keine
