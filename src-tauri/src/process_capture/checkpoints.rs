@@ -91,9 +91,13 @@ impl Gate {
                 self.pending.pop_front();
                 Ok(Some(stage))
             }
-            Ok(Err(_)) | Err(TryRecvError::Disconnected) => {
+            Ok(Err(reason)) => {
                 self.failed = true;
-                Err("checkpoint persistence unconfirmed".into())
+                Err(format!("checkpoint persistence unconfirmed: {reason}"))
+            }
+            Err(TryRecvError::Disconnected) => {
+                self.failed = true;
+                Err("checkpoint persistence unconfirmed: channel disconnected".into())
             }
             Err(TryRecvError::Empty) => Ok(None),
         }
