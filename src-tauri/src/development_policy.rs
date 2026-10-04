@@ -349,6 +349,66 @@ pub fn load(project_root: &Path) -> Result<LoadedPolicy, String> {
     }
 }
 
+/// Runtime audit of continuous-mode eligibility (acceptance matrix row 1).
+/// There is no acceptance evidence input yet, so `continuous_eligible` is
+/// never true; the audit only explains why.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // M4 row 1: evidence only, no runtime caller yet
+pub struct ContinuousAudit {
+    pub continuous_eligible: bool,
+    /// True when the inspected configuration asked for `continuous.enabled`.
+    pub activation_requested: bool,
+    /// The mode as it would run after this audit: always off.
+    pub effective_enabled: bool,
+    pub reasons: Vec<String>,
+}
+
+/// Audit a raw policy document without touching the filesystem.
+#[allow(dead_code)] // M4 row 1: evidence only, no runtime caller yet
+pub fn audit_continuous_raw(raw: &str) -> ContinuousAudit {
+    let mut reasons = vec![
+        "no runtime acceptance evidence is recorded; continuous mode stays disabled".to_string(),
+    ];
+    let activation_requested = serde_json::from_str::<serde_json::Value>(raw)
+        .ok()
+        .and_then(|value| value.pointer("/continuous/enabled")?.as_bool())
+        .unwrap_or(false);
+    if activation_requested {
+        reasons.push(
+            "activation via configuration rejected: continuous.enabled must remain false"
+                .to_string(),
+        );
+    }
+    if let Err(error) = parse(raw) {
+        reasons.push(format!("policy invalid: {error}"));
+    }
+    ContinuousAudit {
+        continuous_eligible: false,
+        activation_requested,
+        effective_enabled: false,
+        reasons,
+    }
+}
+
+/// Audit the repository-local policy file; an unreadable file is ineligible.
+#[allow(dead_code)] // M4 row 1: evidence only, no runtime caller yet
+pub fn audit_continuous(project_root: &Path) -> ContinuousAudit {
+    match fs::read_to_string(project_root.join(POLICY_FILE)) {
+        Ok(raw) => audit_continuous_raw(&raw),
+        Err(error) => ContinuousAudit {
+            continuous_eligible: false,
+            activation_requested: false,
+            effective_enabled: false,
+            reasons: vec![
+                "no runtime acceptance evidence is recorded; continuous mode stays disabled"
+                    .to_string(),
+                format!("cannot read {POLICY_FILE}: {error}"),
+            ],
+        },
+    }
+}
+
 /// Runtime evidence for one existing `AgentProfile`. `profile_id` is passed
 /// through unchanged so selection feeds the existing spawn path instead of a
 /// second profile system.
@@ -1420,23 +1480,6 @@ mod tests {
             decide_escalation(&policy, 1, &reasoning),
             EscalationDecision::Denied { .. }
         ));
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct ContinuousAudit {
-        continuous_eligible: bool,
-        activation_requested: bool,
-        effective_enabled: bool,
-        reasons: Vec<String>,
-    }
-
-    fn audit_continuous_raw(_raw: &str) -> ContinuousAudit {
-        unimplemented!("M4 row 1")
-    }
-
-    fn audit_continuous(_project_root: &Path) -> ContinuousAudit {
-        unimplemented!("M4 row 1")
     }
 
     fn policy_json_with_enabled(enabled: bool) -> String {
