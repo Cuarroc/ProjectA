@@ -57,7 +57,7 @@ test('cancelled update must return to a resting phase without relaunch', async (
 test('a missing session fails the drill', async () => {
   const none = await run('fail', [{ phase: 'error', message: 'x' }], {}, []);
   assert.equal(none.m.result, 'fail');
-  assert.match(none.m.steps.at(-1).detail, /no active session/);
+  assert.match(none.m.steps.at(-1).detail, /no worker record/);
 });
 test('worker evidence does not claim that an inactive row is a live session', async () => {
   const none = await run('fail', [{ phase: 'error', message: 'x' }], {}, []);

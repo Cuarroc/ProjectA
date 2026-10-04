@@ -2,24 +2,25 @@
 
 Du prüfst drei Fälle des Updates an der **installierten Beta** auf deinem
 Windows-PC: Update klappt, Update abbrechen, Update scheitert. Bei jedem Fall
-läuft eine Sitzung (ein Worker). Das Skript liest nur (API, Journal-Datei) und
+bleibt eine gespeicherte Worker-Zeile erhalten. Das Skript liest nur (API, Journal-Datei) und
 schreibt einen Beleg-Ordner. Dauer: je Fall etwa 10 Minuten.
 
 Voraussetzung: ProjectA-Beta installiert, mit einer neueren Beta als Update
-bereit; PowerShell 7, Node 24 und dieses Repository sind da.
+bereit; PowerShell 7, Node 24 und dieses Repository sind da. Alle Live-Sitzungen
+müssen beendet sein: Der Updater verweigert Installationen, solange ein Worker läuft.
 
 **Für jeden der drei Fälle** (`success`, `cancel`, `fail`):
 
 1. **Alte Version notieren.** Öffne „Info" in ProjectA, merke die Versionsnummer.
-2. **Sitzung starten.** Starte einen Worker und lass ihn laufen. Ohne Sitzung
-   meldet das Skript `FEHLER` (Sitzungen vorher: 0).
+2. **Worker-Zeile vorbereiten.** Lege einen Worker an und beende seine Live-Sitzung,
+   ohne den Worker zu löschen. Ohne gespeicherte Worker-Zeile meldet das Skript `FEHLER`.
 3. **Skript starten** (zweites Fenster, PowerShell 7 im Repository-Ordner):
    `pwsh scripts/drills/updater-drill.ps1 -Scenario success -OldVersion 0.9.0 -NewVersion 0.9.1 -OutDir C:\Belege\updater-success`
    Nimm `cancel` oder `fail` statt `success`. Jeder Lauf braucht einen neuen
    oder leeren Zielordner. Das Skript wartet höchstens 10 Minuten (`-TimeoutMin`).
 4. **Jetzt in ProjectA handeln** (das Skript beobachtet mit):
    - `success`: „Update installieren" klicken, Neustart abwarten. Erwartet: die App
-     schließt und kommt von selbst wieder; die Sitzung steht danach in der Liste.
+     schließt und kommt von selbst wieder; die Worker-Zeile steht danach in der Liste.
    - `cancel`: „Update installieren" klicken und den Download **abbrechen**.
      Erwartet: die App bleibt offen und zeigt wieder „Update verfügbar".
    - `fail`: Flugmodus an, dann „Update installieren". Erwartet: ProjectA zeigt
@@ -29,7 +30,7 @@ bereit; PowerShell 7, Node 24 und dieses Repository sind da.
 6. **Ausgabe lesen.** Erwartet: vier `OK`-Zeilen und `Ergebnis: pass`. Bei
    `FEHLER` den Ordner nicht löschen und mir melden.
 7. **Beleg prüfen.** `manifest.json` (Schritte, Exit-Codes, Ergebnis, Nicht-abgedeckt),
-   `before.json`/`after.json` (Sitzungen, Journal-Zusammenfassung),
+   `before.json`/`after.json` (Worker-Zeilen, Journal-Zusammenfassung),
    `updater-phases.json` (Phasen mit Zeit), `processes.txt`. Alles ist geschwärzt;
    die Zugangsdaten aus `projecta-api.json` werden nie gespeichert.
 

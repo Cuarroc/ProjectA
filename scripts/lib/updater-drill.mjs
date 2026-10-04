@@ -1,6 +1,6 @@
 // W3-03e: updater drill (success / cancel / failure with an active session).
 // Polls GET /api/updater (W3-04 wire states), tolerates the app going away for
-// the relaunch, and compares the session list and the recovery journal
+// the relaunch, and compares persisted worker rows and the recovery journal
 // (update-recovery.json, W3-02) before and after. Read-only towards the data.
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -30,7 +30,7 @@ export function summarizeJournal(appDir) {
   return { present: true, bytes: raw.length, sha256: sha256(raw), parsed: parsed !== null,
     phase: typeof parsed?.phase === 'string' ? parsed.phase : null, keys: parsed ? Object.keys(parsed).sort() : [] };
 }
-export const sessionIds = (workers) => (Array.isArray(workers) ? workers : []).map((w) => String(w.id)).sort();
+export const workerIds = (workers) => (Array.isArray(workers) ? workers : []).map((w) => String(w.id)).sort();
 const key = (s) => `${s.phase}|${s.version ?? ''}|${s.message ?? ''}`;
 // One poll loop; `down` marks the gap in which the app was unreachable.
 export async function watchUpdater({ read, scenario, timeoutMs, intervalMs = 2000, sleep, now = Date.now }) {
@@ -63,6 +63,7 @@ export function judge(scenario, w, { before, after }) {
   if (scenario === 'success') {
     if (!seen.includes('installing') && !seen.includes('ready')) problems.push('no installing/ready phase seen');
     if (!w.relaunched) problems.push('app never came back (no relaunch)');
+    if (!['idle', 'up-to-date'].includes(w.last?.phase)) problems.push(`unexpected post-update state (last: ${w.last?.phase})`);
   } else {
     if (w.relaunched) problems.push('app relaunched, but this scenario must not install');
     if (scenario === 'fail' && !w.transitions.some((t) => t.phase === 'error' && t.message)) problems.push('no error phase with a message');
@@ -71,8 +72,8 @@ export function judge(scenario, w, { before, after }) {
   }
   if (w.timedOut) problems.push('time limit reached');
   const lost = before.filter((id) => !after.includes(id));
-  if (before.length === 0) problems.push('no active session before the drill');
-  if (lost.length) problems.push(`sessions missing afterwards: ${lost.join(', ')}`);
+  if (before.length === 0) problems.push('no worker record before the drill');
+  if (lost.length) problems.push(`worker records missing afterwards: ${lost.join(', ')}`);
   return problems;
 }
 export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, newVersion = 'unknown', commit, observedUi = '', processList = '',
@@ -83,18 +84,18 @@ export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, ne
   const fail = (name, detail) => { bundle.step(name, { exitCode: 1, detail }); return bundle.finish(NOT_COVERED); };
   if (processList) bundle.addFile('processes.txt', processList);
   let before;
-  try { before = sessionIds(await get('/api/workers')); } catch (e) { return fail('list sessions before', `${e.message} (is the app running?)`); }
+  try { before = workerIds(await get('/api/workers')); } catch (e) { return fail('list workers before', `${e.message} (is the app running?)`); }
   const journalBefore = summarizeJournal(appDir);
-  bundle.addFile('before.json', JSON.stringify({ appVersion, sessions: before, journal: journalBefore }, null, 2));
-  bundle.step('snapshot before (read-only API + journal)', { command: 'GET /api/workers', detail: `${before.length} session(s), journal ${journalBefore.present ? 'present' : 'absent'}` });
+  bundle.addFile('before.json', JSON.stringify({ appVersion, workers: before, journal: journalBefore }, null, 2));
+  bundle.step('snapshot before (read-only API + journal)', { command: 'GET /api/workers', detail: `${before.length} worker record(s), journal ${journalBefore.present ? 'present' : 'absent'}` });
   const w = await watchUpdater({ read: () => get('/api/updater'), scenario, timeoutMs, intervalMs, sleep, now });
   w.timedOut = w.elapsedMs >= timeoutMs;
   bundle.addFile('updater-phases.json', JSON.stringify(w, null, 2));
   bundle.step('watch updater phases', { command: 'GET /api/updater (polling)', detail: w.transitions.map((t) => t.phase).join(' > ') || 'nothing seen' });
   let after = [];
-  try { after = sessionIds(await get('/api/workers')); } catch (e) { bundle.step('list sessions after', { exitCode: 1, detail: e.message }); }
+  try { after = workerIds(await get('/api/workers')); } catch (e) { bundle.step('list workers after', { exitCode: 1, detail: e.message }); }
   const journalAfter = summarizeJournal(appDir);
-  bundle.addFile('after.json', JSON.stringify({ newVersion, observedUi, sessions: after, journal: journalAfter }, null, 2));
+  bundle.addFile('after.json', JSON.stringify({ newVersion, observedUi, workers: after, journal: journalAfter }, null, 2));
   const problems = judge(scenario, w, { before, after });
   bundle.step(`judge ${scenario}`, { exitCode: problems.length ? 1 : 0, detail: problems.join('; ') || `ok in ${Math.round(w.elapsedMs / 1000)} s, relaunch ${w.relaunched}` });
   return bundle.finish(NOT_COVERED);
