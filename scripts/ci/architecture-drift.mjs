@@ -107,7 +107,14 @@ function callHits(source, startPattern, required) {
 
 function scan() {
   const rows = [];
-  const add = (rule, path, hits) => hits.forEach((hit) => rows.push(`${rule}\t${path}\t${hit}`));
+  const add = (rule, path, hits) => {
+    const seen = new Map();
+    for (const hit of hits) {
+      const n = (seen.get(hit) ?? 0) + 1;
+      seen.set(hit, n);
+      rows.push(`${rule}\t${path}\t${hit}${n > 1 ? `\t#${n}` : ""}`);
+    }
+  };
   for (const file of files()) {
     const path = relative(root, file).replaceAll("\\", "/");
     if (path === "scripts/ci/architecture-drift.mjs" || testOnly(path)) continue;

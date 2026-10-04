@@ -64,7 +64,7 @@ test("rejects a second identical occurrence in an allowlisted file", () => {
   const root = fixture({ [path]: "fn a() { Command::new(\"git\"); }\n" });
   const snapshot = run(root, "snapshot");
   writeFileSync(join(root, "scripts/ci/architecture-drift.allow"), snapshot.stdout);
-  writeFileSync(join(root, path), "fn a() { Command::new(\"git\"); }\nfn b() { Command::new(\"git\"); }\n");
+  writeFileSync(join(root, path), "fn a() { Command::new(\"git\"); }\nfn a() { Command::new(\"git\"); }\n");
   const result = run(root, "check");
   assert.equal(result.status, 1);
   assert.match(result.stderr, /RAW_PROCESS_SPAWN/);

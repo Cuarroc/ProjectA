@@ -38,7 +38,10 @@ API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.sto
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_activity(project_id,i64::from(limit)))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_landing_page(project_id))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_project(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_project(project_id))	#2
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_project(project_id))	#3
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_worker(worker_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.get_worker(worker_id))	#2
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_continuous_goals(project_id))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_learnings(project_id,status))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_messages(worker_id,limit))
@@ -47,6 +50,7 @@ API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.sto
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_queue(project_id))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_role_variants(project_id,status))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_workers(project_id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.list_workers(project_id))	#2
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.record_agent_checkpoint(run,owner,fence,input))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.record_development_evidence(run,owner,fence,input),)
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.record_development_review(reviewer_run,owner,fence,input,))
@@ -61,10 +65,19 @@ DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store.rs	begin_with("BEGINIMMEDIATE"
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/continuous.rs	begin_with("BEGINIMMEDIATE"
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_launches.rs	begin_with("BEGINIMMEDIATE"
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#2
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#3
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#4
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#5
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#6
+DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#7
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/emergency_stop.rs	begin_with("BEGINIMMEDIATE"
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.contains("hasnorunningagent")=>Response::error(409,err),
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with("unknownproject")=>Response::error(404,err),
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with("unknownproject")=>Response::error(404,err),	#2
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{	#2
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{	#3
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	iferr.starts_with("unknownworker"){
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	iferr.starts_with(crate::workers::ERR_REFUSED){
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	iferr.starts_with(crate::workers::ERR_UNKNOWN){
@@ -118,6 +131,7 @@ HQ_RAW_AUTH_FETCH	scripts/hq-queue-open-points.mjs	fetch(`http://127.0.0.1:${des
 HQ_RAW_AUTH_FETCH	scripts/runtime-proof.mjs	fetch(`http://127.0.0.1:${descriptor.port}${path}`,{method,headers:{'x-projecta-token':descriptor.token,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),})
 RAW_APP_LOG	src-tauri/src/budget.rs	BudgetAction::Stopped(stop)=>eprintln!(
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!(	#2
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetblockon{profile_id}lifted")
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotlistworkers:{err}");
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotreaditssettings:{err}");
@@ -127,15 +141,18 @@ RAW_APP_LOG	src-tauri/src/digest.rs	eprintln!("projecta:digestfor{}failed:{err}"
 RAW_APP_LOG	src-tauri/src/digest.rs	println!("projecta:digestwrittento{}",path.display());
 RAW_APP_LOG	src-tauri/src/hooks.rs	eprintln!("projecta:workersecretmapwaspoisonedwhileissuingasecretfor{worker_id};recovering");
 RAW_APP_LOG	src-tauri/src/hooks.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/hooks.rs	eprintln!("projecta:{err}");	#2
 RAW_APP_LOG	src-tauri/src/learnings.rs	eprintln!("projecta:couldnotadopttherepositoryplaybook:{err}");
 RAW_APP_LOG	src-tauri/src/learnings.rs	eprintln!("projecta:roleproposalfor{learning_id}:{err}");
 RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotclearstaletestgates:{err}"),
 RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotresolvequeueclaims:{err}"),
 RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotretireworker{}:{err}",worker.id),
+RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:couldnotretireworker{}:{err}",worker.id),	#2
 RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:fileloggingunavailable,stderronly:{err}"),
 RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:{err}"),
 RAW_APP_LOG	src-tauri/src/main.rs	Err(err)=>eprintln!("projecta:{err};thepaCLIwillnotbeabletoconnect"),
 RAW_APP_LOG	src-tauri/src/main.rs	Ok(())=>eprintln!(
+RAW_APP_LOG	src-tauri/src/main.rs	Ok(())=>eprintln!(	#2
 RAW_APP_LOG	src-tauri/src/main.rs	Ok(done)=>eprintln!("projecta:resolved{done}interruptedqueueclaim(s)"),
 RAW_APP_LOG	src-tauri/src/main.rs	Ok(freed)=>eprintln!("projecta:freed{freed}interruptedtestgate(s)"),
 RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:agentstatushooksareoff;theboardwillrelyontheterminalheuristicsalone");
@@ -148,6 +165,10 @@ RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:reattachfailedtolistworker
 RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:reconcileexitedruncredentials/state:{error}");
 RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:webinterfacestatewaspoisoned;reportingitsrecoveredstatus");
 RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#2
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#3
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#4
+RAW_APP_LOG	src-tauri/src/main.rs	eprintln!("projecta:{err}");	#5
 RAW_APP_LOG	src-tauri/src/main.rs	println!(
 RAW_APP_LOG	src-tauri/src/main.rs	workers::Reattach::SkipDisabledProfile=>eprintln!(
 RAW_APP_LOG	src-tauri/src/main.rs	workers::Reattach::SkipPaused=>eprintln!(
@@ -160,6 +181,12 @@ RAW_APP_LOG	src-tauri/src/providers.rs	eprintln!(
 RAW_APP_LOG	src-tauri/src/providers.rs	eprintln!("projecta:omniroutetooknoneoftheproviderconfigroutes;keyswerenotpushed");
 RAW_APP_LOG	src-tauri/src/providers.rs	eprintln!("projecta:{err}");
 RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#3
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#4
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#5
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#6
+RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!(	#7
 RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:cannotconfirmsessionshutdown:{error}");
 RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:failedtokillahalf-startedptychild:{err}");
 RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:failedtoreapahalf-startedptychild:{err}");
@@ -168,6 +195,8 @@ RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:ptysessionregistrywaspoison
 RAW_APP_LOG	src-tauri/src/pty.rs	eprintln!("projecta:session{exit_id}exitrequiresreconciliation:{error}");
 RAW_APP_LOG	src-tauri/src/questions.rs	Err(err)=>eprintln!("projecta:{err}"),
 RAW_APP_LOG	src-tauri/src/questions.rs	eprintln!("projecta:{err}");
+RAW_APP_LOG	src-tauri/src/questions.rs	eprintln!("projecta:{err}");	#2
+RAW_APP_LOG	src-tauri/src/questions.rs	eprintln!("projecta:{err}");	#3
 RAW_APP_LOG	src-tauri/src/queue.rs	eprintln!(
 RAW_APP_LOG	src-tauri/src/quota.rs	eprintln!("projecta:quotarowmapwaspoisoned;recovering(furtheroccurrencesarenotlogged)");
 RAW_APP_LOG	src-tauri/src/retention.rs	eprintln!("projecta:retentionsweep:archiveroothasnoapp-dataparent");
@@ -178,16 +207,21 @@ RAW_APP_LOG	src-tauri/src/scout.rs	eprintln!("projecta:{err}");
 RAW_APP_LOG	src-tauri/src/scout.rs	eprintln!("projecta:{rollback}");
 RAW_APP_LOG	src-tauri/src/sessionpersist.rs	eprintln!(
 RAW_APP_LOG	src-tauri/src/status.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/status.rs	eprintln!(	#2
 RAW_APP_LOG	src-tauri/src/status.rs	eprintln!("projecta:learningcriticfor{worker_id}:{err}");
 RAW_APP_LOG	src-tauri/src/status.rs	eprintln!("projecta:testgatefor{worker_id}:{err}");
 RAW_APP_LOG	src-tauri/src/store.rs	Err(_)=>eprintln!(
 RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(	#2
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(	#3
+RAW_APP_LOG	src-tauri/src/store.rs	eprintln!(	#4
 RAW_APP_LOG	src-tauri/src/store.rs	eprintln!("projecta:failedtorecordsessionstart:{err}");
 RAW_APP_LOG	src-tauri/src/stuck.rs	eprintln!("projecta:couldnotrecordtheexitnotefor{worker_id}:{err}");
 RAW_APP_LOG	src-tauri/src/stuck.rs	eprintln!("projecta:stuckprobecouldnotlistworkers:{err}");
 RAW_APP_LOG	src-tauri/src/testgate.rs	eprintln!("projecta:couldnotclearthetestflagof{worker_id}:{err}");
 RAW_APP_LOG	src-tauri/src/testgate/candidate.rs	eprintln!("projecta:{err}");
 RAW_APP_LOG	src-tauri/src/web_interface.rs	eprintln!(
+RAW_APP_LOG	src-tauri/src/web_interface.rs	eprintln!(	#2
 RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!(
 RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!("projecta:worker{worker_id}:noskillpacksinstalled:{err}");
 RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!("projecta:{err}");
