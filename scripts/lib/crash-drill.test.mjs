@@ -14,6 +14,10 @@ test('an open run left open or completed silently fails', () => {
   assert.equal(judgeRestart(state([run('r1', 'intent')]), state([run('r1', 'launched')])).length, 1);
   assert.equal(judgeRestart(state([run('r1', 'launched')]), state([run('r1', 'completed')])).length, 1);
 });
+test('a failed run cannot pass because it releases the redispatch block', () => {
+  const after = state([run('r1', 'failed', { terminal_detail: 'startup gave up' }), run('r2', 'intent')]);
+  assert.match(judgeRestart(state([run('r1', 'launched')]), after).join(), /expected reconciling/);
+});
 test('a new run for a task with a reconciling run is a redispatch', () => {
   const p = judgeRestart(state([run('r1', 'launched')]), state([run('r1', 'reconciling'), run('r2', 'intent')]));
   assert.match(p.join(), /redispatch: new run r2/);
