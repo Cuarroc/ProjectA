@@ -37,6 +37,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
+## 2026-10-04 19:48 — Codex GPT-5 (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
+- Zusammenfassung: STATE-4 completed at 74b550b; red-first and prepush exit 0; draft PR #345; Tier B review and Windows merge-queue lane pending.
 ## 2026-10-04 19:39 — Codex GPT-5 (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
 - Zusammenfassung: HQ2-05b package 4 updates collector documentation and not-reported reasons from merged real probes; implementation commit e511615 pushed; draft PR #341; Tier B review pending coordinator.
 - Commits: e511615
@@ -53,6 +55,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 21:05 — Codex GPT-5 (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
 - Zusammenfassung: STATE-2 completed at eb90981: desktop set_budget preserves explicit null, IPC regression red then green, full prepush exit 0, draft PR #356; Tier A review and Windows queue lane pending.
+## 2026-10-04 21:32 — codex/state-4-guard-gaps (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
+- Zusammenfassung: PR #345 conflict resolved by merging origin/main; generated HQ snapshot committed as 06ea729; prepush and GitHub checks green; queued with Mergify.
 ## 2026-10-04 20:28 — codex/hq2-05b-p4-docs-r (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
 - Zusammenfassung: Merged origin/main without manual conflict hunks; refreshed HQ snapshots in 1b64032; prepush and push verification green; PR 341 report updated; review pending Tier B; queue after final verification.
 - Commits: keine
