@@ -325,7 +325,7 @@ jobs:
         if: ${{ !cancelled() && steps.plan.outputs.run != 'false' && env.MERGIFY_UPLOAD == 'true' && hashFiles('src-tauri/target/nextest/ci/junit.xml') != '' }}
         continue-on-error: true
         timeout-minutes: 5
-        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           report_path: src-tauri/target/nextest/ci/junit.xml
@@ -334,7 +334,7 @@ jobs:
         if: ${{ !cancelled() && steps.plan.outputs.run != 'false' && env.MERGIFY_UPLOAD == 'true' && hashFiles('.junit/vitest.xml') != '' }}
         continue-on-error: true
         timeout-minutes: 5
-        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           report_path: .junit/vitest.xml
@@ -461,7 +461,7 @@ jobs:
 
       # `@stable` war ein BRANCH, kein Tag - er aenderte sich ohne Commit im
       # Repo. Gepinnt auf master; die Toolchain steht jetzt sichtbar hier.
-      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
         if: steps.plan.outputs.run != 'false'
         with:
           toolchain: stable
@@ -478,7 +478,7 @@ jobs:
 
       # `@nextest` war ein wandernder Tag. Gepinnt auf v2 mit `tool:` -
       # dieselbe Schreibweise wie in audit.yml, statt zweier Muster.
-      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
         if: steps.plan.outputs.run != 'false'
         with:
           tool: nextest
@@ -513,7 +513,7 @@ jobs:
         if: ${{ !cancelled() && steps.plan.outputs.run != 'false' && env.MERGIFY_UPLOAD == 'true' && hashFiles('src-tauri/target/nextest/ci/junit.xml') != '' }}
         continue-on-error: true
         timeout-minutes: 5
-        uses: mergifyio/gha-mergify-ci@5e8176734bc525c7fd8b2e812f0fa47246f601b7 # v25
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           report_path: src-tauri/target/nextest/ci/junit.xml
