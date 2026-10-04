@@ -12,6 +12,10 @@ async fn maintenance_refuses_writes_without_losing_data() {
     store.enter_maintenance().await.unwrap();
     assert!(store.is_maintenance_active());
     assert!(clone.is_maintenance_active());
+    assert_eq!(
+        clone.enter_maintenance().await,
+        Err(MaintenanceError::AlreadyActive)
+    );
 
     let refused = tokio::time::timeout(
         Duration::from_secs(7),
@@ -25,6 +29,10 @@ async fn maintenance_refuses_writes_without_losing_data() {
 
     clone.leave_maintenance().await.unwrap();
     assert!(!store.is_maintenance_active());
+    assert_eq!(
+        store.leave_maintenance().await,
+        Err(MaintenanceError::NotActive)
+    );
     store.create_project("after", "/after").await.unwrap();
     assert_eq!(store.list_projects().await.unwrap().len(), 2);
 }
