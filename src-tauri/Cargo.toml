@@ -88,6 +88,7 @@ windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Secu
 libc = "0.2"
 
 [dev-dependencies]
+tauri = { version = "2", features = ["test"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 # Snapshot tests for pure parsers/formatters (W1-23). MSRV 1.66, well under
 # this crate's rust-version = "1.89" and the 1.94 toolchain in use here.
