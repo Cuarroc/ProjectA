@@ -551,16 +551,16 @@ without a reservation). Only `measured`
 settles; any other state keeps the entire reservation, as above - except the
 proven `exited_undelivered` release (DF-15b), which frees it unused.
 
-Collectors per adapter (W2-03a):
+Collectors per adapter (W2-03a, updated by the HQ2-05b probes):
 
 | Adapter | Source | Collector |
 |---|---|---|
-| Codex, native `codex exec --json` | final `turn.completed` usage from process-owned stdout | `codex-exec-json-v1`, input plus output; cached and reasoning counts are checked subsets; nonzero cache-write counts are rejected |
-| Codex over the interactive PTY | none | `not_reported` |
-| Kimi | the PTY status line shows `context: N% (X/1M)`, i.e. context-window occupancy, not billed usage | `not_reported` |
-| OpenCode | no recorded status-line bytes exist yet (only a prose smoke note) | `not_reported`; needs a `PROJECTA_PTY_TRACE_DIR` probe |
-| Claude | the `statusLine` hook reports account-wide rate windows (live quota), not per-run tokens | `not_reported` |
-| Ollama | no per-run collector | `not_reported` |
+| Codex, native `codex exec --json` | final `turn.completed` usage from process-owned stdout; confirmed by the real `codex-cli 0.160.0` fixture in #289 | `codex-exec-json-v1`, input plus output; cached and reasoning counts are checked subsets; nonzero cache-write counts are rejected |
+| Codex over the interactive PTY | the real probe exposed usage only on the native JSON route | `not_reported` |
+| Claude, `claude -p --output-format json` | one final JSON result with separate input, cache-creation, cache-read, and output counters; confirmed by the real Claude Code 2.1.287 fixture in #299 | `claude-print-json-v1` parser exists; trusted capture, route, and store settlement are not wired yet |
+| OpenCode, `opencode run --format json` | each `step_finish` event reports per-call counters; confirmed by the real OpenCode 1.18.34 fixture in #318 | parser exists and sums every step; trusted route and store settlement are not wired yet |
+| Kimi | no current probe: the subscription expired before HQ2-05b could run it | `not_reported` |
+| Ollama | no per-run usage route | `not_reported`; collector work is deferred until after M4 |
 
 The native capture result stores the same receipt under `usage`, and the
 `development_capture_completed` event carries its `usageState`. A capture

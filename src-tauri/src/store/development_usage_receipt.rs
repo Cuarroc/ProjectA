@@ -143,19 +143,21 @@ fn not_reported_reason(provider: &str, transport: &str) -> String {
         "codex" => format!(
             "Codex reports usage only through native `codex exec --json`; this run used {transport}"
         ),
-        "kimi" => "Kimi's PTY status line shows context-window occupancy \
-            (`context: N% (X/1M)`), not billed usage"
-            .into(),
-        "opencode" => "no recorded OpenCode status-line bytes exist to parse; \
-            a PTY trace probe is missing"
-            .into(),
+        "kimi" => "Kimi per-run usage was not probed because the subscription expired".into(),
+        "opencode" => format!(
+            "`opencode run --format json` reports per-run tokens and has a parser, \
+            but this run used {transport} without trusted route and store integration"
+        ),
         "claude" if transport == super::claude_usage::CLAUDE_TRANSPORT => {
             "Claude JSON result did not include a usage object".into()
         }
-        "claude" => "Claude's statusLine hook reports account-wide rate windows \
-            (live quota), not per-run tokens"
-            .into(),
-        "ollama" => "no per-run usage collector exists for local Ollama".into(),
+        "claude" => format!(
+            "`claude -p --output-format json` reports per-run tokens and has a parser, \
+            but this run used {transport} without trusted route and store integration"
+        ),
+        "ollama" => {
+            "Ollama has no per-run usage route; collector work is deferred until after M4".into()
+        }
         _ => format!("no trusted usage collector for provider {provider} over {transport}"),
     };
     format!("not reported by adapter: {detail}")

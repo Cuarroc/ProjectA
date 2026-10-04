@@ -136,14 +136,18 @@ fn rejected_and_partial_codex_captures_fail_closed_with_a_named_reason() {
 #[test]
 fn adapters_without_a_collector_report_a_named_provenance() {
     let cases = [
-        ("kimi", "interactive_pty", "context-window occupancy"),
+        ("kimi", "interactive_pty", "subscription expired"),
         (
             "opencode",
             "interactive_pty",
-            "no recorded OpenCode status-line bytes",
+            "`opencode run --format json` reports per-run tokens",
         ),
-        ("claude", "interactive_pty", "account-wide rate windows"),
-        ("ollama", "interactive_pty", "local Ollama"),
+        (
+            "claude",
+            "interactive_pty",
+            "`claude -p --output-format json` reports per-run tokens",
+        ),
+        ("ollama", "interactive_pty", "deferred until after M4"),
         ("codex", "interactive_pty", "native `codex exec --json`"),
         ("unknown", "unknown", "no trusted usage collector"),
     ];
@@ -238,7 +242,7 @@ fn every_run_cost_receipt_names_its_state_and_provenance() {
     assert!(pty["reason"]
         .as_str()
         .unwrap()
-        .contains("context-window occupancy"));
+        .contains("subscription expired"));
     assert_eq!(pty["ledgerState"], "started");
     assert_eq!(pty["reservedTokens"], 1000);
     assert_eq!(pty["provenance"]["observedAt"], 33);
@@ -415,7 +419,7 @@ async fn run_records_carry_a_cost_receipt_instead_of_unavailable() {
     assert!(usage["reason"]
         .as_str()
         .unwrap()
-        .contains("context-window occupancy"));
+        .contains("subscription expired"));
     assert_eq!(usage["reservedTokens"], 1000);
     assert_eq!(usage["ledgerState"], "started");
     assert_never_unavailable(usage);
