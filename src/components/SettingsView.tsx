@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -44,6 +44,7 @@ import MasterPromptTab from "./settings/MasterPromptTab";
 import UpdatesTab from "./settings/UpdatesTab";
 import CategoriesPanel from "./settings/CategoriesPanel";
 import ProfilesPanel from "./settings/ProfilesPanel";
+import { useRefreshOnResume } from "../lib/useRefreshOnResume";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -160,12 +161,6 @@ export default function SettingsView({
   const [digestEnabled, setDigestEnabledState] = useState(true);
   const [digestError, setDigestError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void getDigestEnabled()
-      .then(setDigestEnabledState)
-      .catch((cause: unknown) => setDigestError(describeError(cause)));
-  }, []);
-
   const handleToggleDigest = (enabled: boolean) => {
     const previous = digestEnabled;
     // Optimistic, like the learning switches: only a failing write takes the
@@ -186,12 +181,6 @@ export default function SettingsView({
   const [stuckInput, setStuckInput] = useState("");
   const [stuckError, setStuckError] = useState<string | null>(null);
   const [savingStuck, setSavingStuck] = useState(false);
-
-  useEffect(() => {
-    void getStuckAfterMinutes()
-      .then((minutes) => setStuckInput(minutes === null ? "" : String(minutes)))
-      .catch((cause: unknown) => setStuckError(describeError(cause)));
-  }, []);
 
   const handleSaveStuck = () => {
     const raw = stuckInput.trim();
@@ -220,12 +209,6 @@ export default function SettingsView({
   const [routing, setRouting] = useState<RoutingStatus | null>(null);
   const [routingError, setRoutingError] = useState<string | null>(null);
   const [savingRouting, setSavingRouting] = useState(false);
-
-  useEffect(() => {
-    void getRoutingStatus()
-      .then(setRouting)
-      .catch((cause: unknown) => setRoutingError(describeError(cause)));
-  }, []);
 
   const handleProductMode = (mode: ProductMode) => {
     const previous = routing;
@@ -676,7 +659,7 @@ export default function SettingsView({
   const [budgetBusyId, setBudgetBusyId] = useState<string | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
 
-  const applyBudgets = (rows: Budget[]) => {
+  const applyBudgets = useCallback((rows: Budget[]) => {
     const next: Record<string, { five: string; seven: string }> = {};
     for (const row of rows) {
       next[row.profileId] = {
@@ -685,13 +668,36 @@ export default function SettingsView({
       };
     }
     setBudgetInputs(next);
-  };
-
-  useEffect(() => {
-    void getBudgets()
-      .then(applyBudgets)
-      .catch((cause: unknown) => setBudgetError(describeError(cause)));
   }, []);
+
+  const refreshGlobalSettings = useCallback(() => {
+    void getDigestEnabled()
+      .then((enabled) => {
+        setDigestEnabledState(enabled);
+        setDigestError(null);
+      })
+      .catch((cause: unknown) => setDigestError(describeError(cause)));
+    void getStuckAfterMinutes()
+      .then((minutes) => {
+        setStuckInput(minutes === null ? "" : String(minutes));
+        setStuckError(null);
+      })
+      .catch((cause: unknown) => setStuckError(describeError(cause)));
+    void getRoutingStatus()
+      .then((next) => {
+        setRouting(next);
+        setRoutingError(null);
+      })
+      .catch((cause: unknown) => setRoutingError(describeError(cause)));
+    void getBudgets()
+      .then((rows) => {
+        applyBudgets(rows);
+        setBudgetError(null);
+      })
+      .catch((cause: unknown) => setBudgetError(describeError(cause)));
+  }, [applyBudgets]);
+
+  useRefreshOnResume(refreshGlobalSettings);
 
   const budgetOf = (profileId: string) =>
     budgetInputs[profileId] ?? { five: "", seven: "" };

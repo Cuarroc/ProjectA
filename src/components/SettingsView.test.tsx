@@ -50,7 +50,7 @@ vi.mock("../lib/settings", async (importActual) => ({
   saveTerminalFontSize: vi.fn(),
   agentCategoryDescription: () => "",
   isMasterPromptEnabled: () => false,
-  loadAgentCategories: () => ({}),
+  loadAgentCategories: () => [],
   loadMasterPrompt: () => "",
   loadWebPort: () => null,
   loadUiDensity: () => "comfortable",
@@ -350,7 +350,7 @@ describe("SettingsView global state resync", () => {
     expect(screen.getByRole("checkbox", { name: "Tages-Digest schreiben" })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: "Reliable" })).toBeChecked();
     fireEvent.click(screen.getByRole("tab", { name: "Agent-Kategorien" }));
-    expect(screen.getByLabelText("budget-5h-codex")).toHaveValue("60");
-    expect(screen.getByLabelText("budget-7d-codex")).toHaveValue("90");
+    expect(screen.getByLabelText("5 h")).toHaveValue("60");
+    expect(screen.getByLabelText("7 T.")).toHaveValue("90");
   });
 });

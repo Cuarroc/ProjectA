@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { describeError, getEmergencyStop, setEmergencyStop } from "../lib/ipc";
+import { useRefreshOnResume } from "../lib/useRefreshOnResume";
+
+const POLL_INTERVAL_MS = 5000;
 
 /**
  * Not-Aus: stops every running agent (within 10 s) and blocks new dispatches
@@ -11,16 +14,32 @@ export default function EmergencyStop() {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const request = useRef(0);
+
+  const refresh = useCallback(() => {
+    const mine = ++request.current;
+    void getEmergencyStop()
+      .then((value) => {
+        if (request.current !== mine) return;
+        setActive(value === true);
+        if (!value) setConfirmed(false);
+      })
+      .catch(() => {
+        if (request.current === mine) setActive(true);
+      });
+  }, []);
+
+  useRefreshOnResume(refresh);
 
   useEffect(() => {
-    let alive = true;
-    getEmergencyStop()
-      .then((value) => alive && setActive(value === true))
-      .catch(() => alive && setActive(true));
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, POLL_INTERVAL_MS);
     return () => {
-      alive = false;
+      request.current += 1;
+      window.clearInterval(timer);
     };
-  }, []);
+  }, [refresh]);
 
   async function change(next: boolean) {
     setBusy(true);
