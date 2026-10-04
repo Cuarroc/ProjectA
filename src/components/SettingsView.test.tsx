@@ -29,6 +29,7 @@ vi.mock("../lib/ipc", () => ({
   getRoutingStatus: stateReads.getRoutingStatus,
   getStuckAfterMinutes: stateReads.getStuckAfterMinutes,
   getEmergencyStop: vi.fn(() => new Promise(() => {})),
+  getMaintenance: vi.fn(() => Promise.resolve(false)),
   setEmergencyStop: vi.fn(() => Promise.resolve()),
   getUpdaterState: vi.fn(() => new Promise(() => {})),
   listAgentProfiles: vi.fn(() => new Promise(() => {})),
