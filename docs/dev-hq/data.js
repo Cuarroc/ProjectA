@@ -1,39 +1,39 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-10-04T18:22:47.629Z",
-  "commit": "38b554d",
+  "generatedAt": "2026-10-04T19:56:27.669Z",
+  "commit": "bb18b3c",
   "dirty": false,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "fa22957e0347bafab76a153fd56a1a1378024ae290de5e10d29a1c6a4d099be7"
+      "sha256": "f917cdd2818643a4eeb3d1565ee85d67b3e94ab6910ba8677dd4cc50e98767d5"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "5f7c455c8d0bd024809ea67407876fc2a725f76b40a485dda1a5afe38cb52964"
+      "sha256": "62de98936e89a9602775d387f38960e43e3f18af0ced21fb7741b962febfe723"
     },
     {
       "path": ".pa/task_w1-05.md",
-      "sha256": "74c2c04f6de62573d2dfbd8b7679ff65c1d3f6e461776bdd6a757763fa893c62"
+      "sha256": "45ebb9aaee6612a77ad9c5a63d094aa1d62ab19239e231685934bf761060e9b3"
     },
     {
       "path": ".pa/task_f_core3_delivery.md",
-      "sha256": "dc4e7ffdf3ec813b13dcdf7e42553f2aa35daa869a059090908ccdd5fd12425e"
+      "sha256": "5f8b67e3368c2011872aa4548530a5e503d0ed21cc820e8cd191e9ad176c40f3"
     },
     {
       "path": ".pa/task_w1-20.md",
-      "sha256": "ad531d9cb054ca633dd58c61d37f95b9fb0748397edd676fbd1007cab87a1401"
+      "sha256": "f69367fc49f659b82a655830a7647f03e119c3bf51918132b04def25ba2ac46c"
     },
     {
       "path": ".pa/task_w1-17.md",
-      "sha256": "23d73f19ae91ff4a79ed6cc4704a3cdeb097bbbd5cc225df5659c48cd8048bd7"
+      "sha256": "82385478c94ddf5bf8f14a399c4a06d027adcd865a04645b533b14965e4750f9"
     },
     {
       "path": ".pa/task_w4-01.md",
-      "sha256": "382f0c97b75cb38726135e5a2386e2fc4e9094def56365fda972c895b6194b39"
+      "sha256": "e3967fcfe91a4c07e5653191dc54b33226046f5040c7db0b46a4cd30ea0c7e30"
     },
     {
       "path": ".pa/task_w3-01.md",
-      "sha256": "396a946652205d3e29af0403aa75f64478107a315299ea059c9cf8fff2ee659e"
+      "sha256": "2b3df6cc9898bf544799d5d10f2f1edd5fab23f788e3fb35cc03ff77c28bfa36"
     }
   ],
   "warnings": [],
@@ -1021,9 +1021,63 @@ window.HQ_DATA = {
         },
         {
           "id": "M4-R7-02",
-          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen",
+          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige dispatch_once auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall",
           "size": "S",
           "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R15-01",
+          "title": "Stabile Policy-Revision aus der unveränderlichen Laufpolicy, an Kandidat- und Evidenzzeilen gespeichert, alte Zeilen fail-closed (Matrixzeile 15)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R15-02",
+          "title": "Revision bei Schreiben, Replay, Lesen, Kontext und Seiten erzwingen; fremde Revision abgewiesen ohne Schreiben (Zeile 15)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R17-01",
+          "title": "Store-eigene Release-Bereitschaft, an aktuellen Kandidaten/Evidenz/Reviews gebunden (Zeile 17); wartet auf E19",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-14",
+          "title": "Echter HTTP-Router + Store + Fake-Agentenprozess: Checkpoint -> Abbruch -> Fortsetzen (Zeile 14)",
+          "size": "S",
+          "lane": "api",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-15",
+          "title": "HTTP-Matrix Kandidat/Evidenz mit Policy-Revision (Zeile 15)",
+          "size": "S",
+          "lane": "api",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-17",
+          "title": "Kandidat-Delta macht frühere Freigabekette über HTTP ungültig (Zeile 17)",
+          "size": "S",
+          "lane": "api",
           "stand": "offen",
           "state": "open",
           "prNumbers": []
@@ -1066,7 +1120,7 @@ window.HQ_DATA = {
         }
       ],
       "done": 16,
-      "total": 32
+      "total": 38
     },
     {
       "id": "M5",
@@ -1795,7 +1849,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1816,7 +1870,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -2072,7 +2126,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 18,
         "votes": 0
       }
     },

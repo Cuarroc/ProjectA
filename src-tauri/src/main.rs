@@ -1645,18 +1645,20 @@ where
     Option::deserialize(deserializer).map(Some)
 }
 
+fn parse_set_budget_args(body: &tauri::ipc::InvokeBody) -> Result<SetBudgetArgs, String> {
+    match body {
+        tauri::ipc::InvokeBody::Json(body) => serde_json::from_value(body.clone())
+            .map_err(|err| format!("invalid set_budget arguments: {err}")),
+        tauri::ipc::InvokeBody::Raw(_) => Err("set_budget requires JSON arguments".to_string()),
+    }
+}
+
 #[tauri::command]
 async fn set_budget(
     store: State<'_, Store>,
     request: tauri::ipc::Request<'_>,
 ) -> Result<budget::BudgetLimits, String> {
-    let args: SetBudgetArgs = match request.body() {
-        tauri::ipc::InvokeBody::Json(body) => serde_json::from_value(body.clone())
-            .map_err(|err| format!("invalid set_budget arguments: {err}"))?,
-        tauri::ipc::InvokeBody::Raw(_) => {
-            return Err("set_budget requires JSON arguments".to_string());
-        }
-    };
+    let args = parse_set_budget_args(request.body())?;
     budget::update_limits(
         &store,
         &args.profile_id,
@@ -4222,30 +4224,23 @@ mod tests {
             .await
             .expect("seed five-hour ceiling");
 
-        let app = tauri::test::mock_builder()
-            .manage(store.clone())
-            .invoke_handler(tauri::generate_handler![super::set_budget])
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .expect("build mock app");
-        let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .expect("build mock webview");
-        tauri::test::get_ipc_response(
-            &webview,
-            tauri::webview::InvokeRequest {
-                cmd: "set_budget".into(),
-                callback: tauri::ipc::CallbackFn(0),
-                error: tauri::ipc::CallbackFn(1),
-                url: "tauri://localhost".parse().unwrap(),
-                body: tauri::ipc::InvokeBody::Json(serde_json::json!({
-                    "profileId": profile_id,
-                    "fiveHourPct": null,
-                })),
-                headers: Default::default(),
-                invoke_key: tauri::test::INVOKE_KEY.to_string(),
-            },
+        // Parse the exact wire body the desktop command receives. The Tauri mock
+        // IPC applies the capability ACL, which rejects the command on Windows
+        // ("set_budget not allowed. Plugin not found"), so the command's parse
+        // step is exercised directly on every platform.
+        let args = super::parse_set_budget_args(&tauri::ipc::InvokeBody::Json(serde_json::json!({
+            "profileId": profile_id,
+            "fiveHourPct": null,
+        })))
+        .expect("set_budget arguments parse");
+        crate::budget::update_limits(
+            &store,
+            &args.profile_id,
+            args.five_hour_pct,
+            args.seven_day_pct,
         )
-        .expect("set_budget command succeeds");
+        .await
+        .expect("set_budget update succeeds");
 
         assert_eq!(
             store
