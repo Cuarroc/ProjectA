@@ -112,6 +112,11 @@ GATES=(
   # can invoke them directly after checkout.
   "script-modes|prepush,linux,release|.|bash scripts/ci/script-modes.sh"
   "selftest-script-modes|prepush,linux,release|.|bash scripts/test-script-modes.sh"
+  # CI-CONFLICT-01: branches must not commit the generated HQ snapshot or
+  # .pa/ACTIVITY.md - GitHub/Mergify merge without our merge driver, so each
+  # such PR conflicts with every other one. The self-test proves it can fail.
+  "hotspot-guard|prepush,branchpush,linux|.|bash scripts/ci/hotspot-guard.sh"
+  "selftest-hotspot-guard|prepush,linux,release|.|bash scripts/test-hotspot-guard.sh"
   "architecture-drift|precommit,prepush,linux|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
 
   # CI-06: the trailers of the new commits against origin/main, with the very

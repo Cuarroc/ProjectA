@@ -27,6 +27,8 @@ function fixture(t) {
   mkdirSync(join(dir, 'docs/dev-hq'), { recursive: true });
   copyFileSync(join(root, '.githooks/post-merge'), join(dir, '.githooks/post-merge'));
   copyFileSync(join(root, '.githooks/merge-hqdata'), join(dir, '.githooks/merge-hqdata'));
+  mkdirSync(join(dir, 'scripts/lib'));
+  copyFileSync(join(root, 'scripts/lib/hotspots.sh'), join(dir, 'scripts/lib/hotspots.sh'));
   writeFileSync(join(dir, 'STAND.md'), 'base');
   writeFileSync(join(dir, 'scripts/dev-hq.mjs'), `
     import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -134,4 +136,15 @@ test('post-merge retains lessons with the real HQ generator', t => {
   const source = JSON.parse(readFileSync(join(root, 'docs/dev-hq/lessons.json'), 'utf8'));
   assert.ok(actual.lessons.length > 0);
   assert.equal(actual.lessons.length, Array.isArray(source) ? source.length : source.lessons.length);
+});
+
+test('post-merge leaves the snapshot alone on a non-main branch', t => {
+  const f = fixture(t);
+  f.git('checkout', '-qb', 'claude/some-work');
+  writeFileSync(join(f.dir, 'STAND.md'), 'changed source');
+  f.git('commit', '-qam', 'change source');
+  const before = readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8');
+  f.hook();
+  assert.equal(readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8'), before);
+  assert.equal(f.git('status', '--porcelain').trim(), '');
 });

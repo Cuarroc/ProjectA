@@ -5,6 +5,15 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 files=(docs/dev-hq/data.js docs/dev-hq/data.json)
+# A branch must not carry a regenerated snapshot: it conflicts with every other
+# PR (CI-CONFLICT-01). Only main and hq-snapshot branches regenerate.
+# shellcheck source=scripts/lib/hotspots.sh
+. "$ROOT/scripts/lib/hotspots.sh"
+branch="$(hs_branch "$ROOT")"
+if ! hs_may_touch "$branch"; then
+  echo "post-merge: Branch '${branch:-detached}' erzeugt die HQ-Momentaufnahme nicht neu (Konfliktherd); das tut main." >&2
+  exit 0
+fi
 if [ -n "$(git status --porcelain -- "${files[@]}")" ]; then
   echo "post-merge: lokale HQ-Aenderungen bleiben erhalten; spaeter npm run hq ausfuehren." >&2
   exit 0
