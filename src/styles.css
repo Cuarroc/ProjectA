@@ -4903,7 +4903,6 @@ scripts/contrast-check.mjs. */
   font-variant-numeric: tabular-nums;
 }
 
-.settings-landing,
 .settings-diagnose {
   padding: 12px 16px 20px;
   border-top: 1px solid var(--border);
