@@ -68,7 +68,7 @@ d="$(branch_change nobase claude/some-work docs/dev-hq/data.js)"
 # sync.sh note: on a branch the tracked journal stays untouched.
 d="$(repo note-branch)"
 (cd "$d" && git checkout -q -b claude/some-work)
-out="$(cd "$d" && env -u HOTSPOT_BRANCH bash scripts/sync.sh note test "summary" 2>&1)"
+out="$(cd "$d" && env -u HOTSPOT_BRANCH -u GITHUB_ACTIONS -u GITHUB_HEAD_REF bash scripts/sync.sh note test "summary" 2>&1)"
 if [ -z "$(git -C "$d" diff --name-only -- .pa/ACTIVITY.md)" ] && grep -q summary "$d/.pa/ACTIVITY.local.md" 2> /dev/null &&
   printf '%s' "$out" | grep -q "ACTIVITY.local.md"; then
   pass "sync note on a package branch leaves the tracked ACTIVITY.md alone"
@@ -77,7 +77,7 @@ else
 fi
 
 d="$(repo note-main)"
-(cd "$d" && env -u HOTSPOT_BRANCH bash scripts/sync.sh note test "summary" > /dev/null 2>&1)
+(cd "$d" && env -u HOTSPOT_BRANCH -u GITHUB_ACTIONS -u GITHUB_HEAD_REF bash scripts/sync.sh note test "summary" > /dev/null 2>&1)
 grep -q summary "$d/.pa/ACTIVITY.md" && pass "sync note on main appends to the tracked ACTIVITY.md" ||
   fail "sync note on main appends to the tracked ACTIVITY.md"
 
