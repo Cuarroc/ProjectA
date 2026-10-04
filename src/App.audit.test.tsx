@@ -198,7 +198,6 @@ vi.mock("./components/BoardRail", () => ({ default: () => null }));
 vi.mock("./components/BoardView", () => ({ default: () => null }));
 vi.mock("./components/CommandChat", () => ({ default: () => null }));
 vi.mock("./components/ConversationView", () => ({ default: () => null }));
-vi.mock("./components/DesignStudio", () => ({ default: () => null }));
 vi.mock("./components/DiffView", () => ({ default: () => null }));
 vi.mock("./components/HistoryView", () => ({ default: () => null }));
 vi.mock("./components/InsightsView", () => ({ default: () => null }));

@@ -7,7 +7,6 @@ import BoardView from "./components/BoardView";
 import BootstrapScreen from "./components/BootstrapScreen";
 import CommandChat from "./components/CommandChat";
 import ConversationView from "./components/ConversationView";
-import DesignStudio from "./components/DesignStudio";
 import DiagnosticsPanel from "./components/DiagnosticsPanel";
 import DiffView from "./components/DiffView";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -1283,10 +1282,6 @@ function AppContent() {
                     : handleSetMaxWorkers(activeProject.id, maxWorkers)
                 }
               />
-              <section className="settings-landing" aria-label="Landing Page">
-                <h2 className="section-title">Landing Page</h2>
-                <DesignStudio projectId={activeProjectId} />
-              </section>
               <section className="settings-diagnose" aria-label="Diagnose">
                 <DiagnosticsPanel />
               </section>
