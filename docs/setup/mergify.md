@@ -9,9 +9,18 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 
 - **Branch-Schutz:** Pflicht-Checks `gates (linux)`, `gates (windows)`,
   `red-first`; „strict up-to-date" ist **aus**.
-- **Automatisch eingereiht** wird jeder PR auf `main`, der kein Draft ist,
-  keinen Konflikt hat, kein `do-not-merge` trägt und dessen drei Checks grün
-  sind. Die Queue (`mode: serial`, Bündel bis zu vier PRs) testet die
+- **Aufnahmefähig** ist jeder PR auf `main`, der kein Draft ist, keinen
+  Konflikt hat, kein `do-not-merge` trägt und dessen drei Checks grün sind.
+- **Einreihen ist ein eigener Schritt** (beobachtet 04.10.2026): Aufnahmefähige
+  PRs kamen nicht von selbst in die Queue. Die letzten 14 gemergten PRs
+  (#240–#266) und die offenen #274/#275 tragen je einen Kommentar
+  `@Mergifyio queue` (bzw. `requeue`) vom Koordinator. Ablauf:
+  `gh pr checks <n>` prüfen; sind alle Pflicht-Checks grün, kommentiert der
+  Koordinator `@Mergifyio queue` auf dem PR
+  (`gh pr comment <n> --body "@Mergifyio queue"`). Warum die automatische
+  Aufnahme nicht greift, ist **ungeklärt** — es gibt nur Hypothesen, keinen
+  Beleg. Der Queue-Lauf auf `main` wird weiterhin von Mergify geprüft.
+- Die Queue (`mode: serial`, Bündel bis zu vier PRs) testet die
   Kandidaten gegen den aktuellen `main` und merged mit Merge-Commit — die
   Test-First-Commits bleiben in der Historie sichtbar.
 - **`main` nicht hineinmergen, nur um aufzufrischen** (das waren 39 % aller
@@ -110,3 +119,5 @@ siehe [permissions-proposal.md](permissions-proposal.md).
    (PR-Text ergänzen genügt, kein neuer Push nötig).
 5. Er trägt `conflict` → `main` hineinmergen, Konflikt lösen, pushen.
 6. Die Queue ist eingefroren (Release) — warten.
+7. Niemand hat `@Mergifyio queue` kommentiert — siehe „Einreihen ist ein
+   eigener Schritt" oben.
