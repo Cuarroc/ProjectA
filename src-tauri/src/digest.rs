@@ -532,46 +532,43 @@ pub fn write_digest(repo_path: &str, date: &str, markdown: &str) -> Result<PathB
     }
 }
 
-/// The dates a project has digests for, newest first.
-pub fn list_digests(repo_path: &str) -> Vec<String> {
+/// The dates a project has digests for, newest first. A directory that does
+/// not exist yet is the normal empty state; any other read failure is an
+/// `Err`, never a shorter list that looks complete.
+pub fn list_digests(repo_path: &str) -> Result<Vec<String>, String> {
     let entries = match std::fs::read_dir(digest_dir(repo_path)) {
         Ok(entries) => entries,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
-        Err(err) => return vec![incomplete("failed to read digest directory", &err)],
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(err) => return Err(incomplete("failed to read digest directory", &err)),
     };
     let mut dates = Vec::new();
     for entry in entries {
-        match entry {
-            Ok(entry) => {
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if let Some(date) = name.strip_suffix(".md").filter(|date| is_valid_date(date)) {
-                    dates.push(date.to_string());
-                }
-            }
-            Err(err) => dates.push(incomplete("failed to read digest directory entry", &err)),
+        let entry =
+            entry.map_err(|err| incomplete("failed to read digest directory entry", &err))?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if let Some(date) = name.strip_suffix(".md").filter(|date| is_valid_date(date)) {
+            dates.push(date.to_string());
         }
     }
     // Lexical order is chronological order for `YYYY-MM-DD`.
     dates.sort_unstable_by(|a, b| b.cmp(a));
-    dates
+    Ok(dates)
 }
 
 fn incomplete(action: &str, err: &std::io::Error) -> String {
     format!("incomplete: {action}: {}", cell(&err.to_string(), 160))
 }
 
-/// One project's digest for one date, or `None` when there is none.
-pub fn read_digest(repo_path: &str, date: &str) -> Option<String> {
+/// One project's digest for one date, or `Ok(None)` when there is none. A
+/// file that exists but cannot be read is an `Err`, not a page.
+pub fn read_digest(repo_path: &str, date: &str) -> Result<Option<String>, String> {
     if !is_valid_date(date) {
-        return None;
+        return Ok(None);
     }
     match std::fs::read_to_string(digest_path(repo_path, date)) {
-        Ok(markdown) => Some(markdown),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
-        Err(err) => Some(format!(
-            "# Digest incomplete\n\n{}\n",
-            incomplete("failed to read digest", &err)
-        )),
+        Ok(markdown) => Ok(Some(markdown)),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(err) => Err(incomplete("failed to read digest", &err)),
     }
 }
 
@@ -858,18 +855,21 @@ mod tests {
     fn writing_is_atomic_and_leaves_no_temporary_file_behind() {
         let dir = TempDir::new("digest-write");
         let repo = dir.path().to_string_lossy().into_owned();
-        assert!(list_digests(&repo).is_empty());
-        assert_eq!(read_digest(&repo, "2026-08-27"), None);
+        assert!(list_digests(&repo).unwrap().is_empty());
+        assert_eq!(read_digest(&repo, "2026-08-27"), Ok(None));
 
         let path = write_digest(&repo, "2026-08-27", "# hello\n").expect("write");
         assert!(path.ends_with("2026-08-27.md"));
         assert_eq!(
-            read_digest(&repo, "2026-08-27").as_deref(),
+            read_digest(&repo, "2026-08-27").unwrap().as_deref(),
             Some("# hello\n")
         );
 
         write_digest(&repo, "2026-08-26", "# older\n").expect("write");
-        assert_eq!(list_digests(&repo), vec!["2026-08-27", "2026-08-26"]);
+        assert_eq!(
+            list_digests(&repo).unwrap(),
+            vec!["2026-08-27", "2026-08-26"]
+        );
 
         // Nothing but the two pages: the temporary files are renamed, never left.
         let files: Vec<String> = std::fs::read_dir(digest_dir(&repo))
@@ -882,8 +882,11 @@ mod tests {
         // A file that is not a digest is not listed as one.
         std::fs::write(digest_dir(&repo).join("notes.md"), "x").expect("write");
         std::fs::write(digest_dir(&repo).join("2026-13-01.md"), "x").expect("write");
-        assert_eq!(list_digests(&repo), vec!["2026-08-27", "2026-08-26"]);
-        assert_eq!(read_digest(&repo, "../../etc/passwd"), None);
+        assert_eq!(
+            list_digests(&repo).unwrap(),
+            vec!["2026-08-27", "2026-08-26"]
+        );
+        assert_eq!(read_digest(&repo, "../../etc/passwd"), Ok(None));
     }
 
     #[test]
@@ -893,8 +896,8 @@ mod tests {
         let path = digest_path(&repo, "2026-08-27");
         std::fs::create_dir_all(&path).expect("create broken digest source");
 
-        let page = read_digest(&repo, "2026-08-27").expect("visible failure");
-        assert!(page.contains("incomplete: failed to read digest"), "{page}");
+        let err = read_digest(&repo, "2026-08-27").expect_err("visible failure");
+        assert!(err.contains("incomplete: failed to read digest"), "{err}");
 
         let dir = TempDir::new("digest-broken-directory");
         let repo = dir.path().to_string_lossy().into_owned();
@@ -903,11 +906,10 @@ mod tests {
             .expect("create digest parent");
         std::fs::write(&digest_dir, "not a directory").expect("create broken digest directory");
 
-        let dates = list_digests(&repo);
-        assert_eq!(dates.len(), 1, "{dates:?}");
+        let err = list_digests(&repo).expect_err("visible failure");
         assert!(
-            dates[0].contains("incomplete: failed to read digest directory"),
-            "{dates:?}"
+            err.contains("incomplete: failed to read digest directory"),
+            "{err}"
         );
     }
 
@@ -958,7 +960,9 @@ mod tests {
         // timestamp, which is what the activity feed reads.
         let written = write_due(&store, &engine, &quota, now).await;
         assert_eq!(written, vec![project.id.clone()]);
-        let page = read_digest(&project.repo_path, "2026-08-27").expect("page");
+        let page = read_digest(&project.repo_path, "2026-08-27")
+            .unwrap()
+            .expect("page");
         assert!(page.contains("# 2026-08-27 - one"), "{page}");
 
         // A second sweep in the same hour writes nothing: the file is its own
@@ -972,7 +976,7 @@ mod tests {
         std::fs::remove_file(digest_path(&project.repo_path, "2026-08-27")).unwrap();
         set_enabled(&store, false).await.unwrap();
         assert!(write_due(&store, &engine, &quota, now).await.is_empty());
-        assert_eq!(read_digest(&project.repo_path, "2026-08-27"), None);
+        assert_eq!(read_digest(&project.repo_path, "2026-08-27"), Ok(None));
 
         set_enabled(&store, true).await.unwrap();
         assert_eq!(
