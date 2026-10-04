@@ -1,7 +1,10 @@
 # Ollama-Reviewerpaar (kimi-k3 + glm-5.2)
 
-Rolle: das Alltags-Reviewerpaar für Pläne und Diffs (Regel in `AGENTS.md`:
-über 300 Zeilen oder Nahtstelle → zwei Reviews anderer Anbieter vor dem Merge).
+Rolle: das Alltags-Reviewerpaar für Pläne und Diffs. Die Stufen stehen in
+`AGENTS.md`, Regel 5: Nahtstelle, Security, Nebenläufigkeit, PTY oder Datenbank
+→ zwei Reviewer anderer Anbieter; andere Rust-/TS-Pakete → ein Reviewer, der
+nicht die Modellfamilie des Autors ist; Doku, Tests, Snapshots und Konfiguration
+→ die Gates genügen.
 Zurück zur Übersicht: [README.md](README.md).
 
 ## Voraussetzungen
@@ -47,8 +50,8 @@ enthalten:
 
 Den Prompt mit einem Skript zusammensetzen, nicht per Shell-Umleitung: ein
 Hook-Ausgabe-Überschreiben hat schon einmal einen 238-Zeichen-Prompt erzeugt
-(`.pa/review_w2-02_disposition.md`). Antworten wie „keine Frage erkannt" sind
-kein Review.
+(dieselbe Fehlerklasse wie `KI-21` in `KNOWN_ISSUES.md`). Antworten wie „keine
+Frage erkannt" sind kein Review.
 
 ## Lokal reviewen
 
@@ -97,7 +100,7 @@ bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nic
 
 Jeder Befund bekommt eine Zeile in `.pa/review_<label>_disposition.md`:
 ID, Quelle, Schwere, Befund, Disposition (angenommen mit Commit / abgelehnt mit
-Grund / Folgearbeit). Vorlage: `.pa/review_w2-02_disposition.md`. Ändert sich
+Grund / Folgearbeit). Vorlage: `.pa/review_setup-09_disposition.md`. Ändert sich
 der Kandidat danach, wird das Delta erneut geprüft.
 
 ## Reviewer oder Advisor?
