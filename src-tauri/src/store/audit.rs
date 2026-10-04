@@ -2,6 +2,7 @@
 //! triggers abort ordinary attempts to rewrite existing ids, UPDATE, or DELETE.
 //! Schema and database-file access are outside this protection boundary.
 use super::{now_unix_secs, Store};
+use serde::Serialize;
 use serde_json::Value;
 use sqlx::{Sqlite, Transaction};
 
@@ -9,6 +10,15 @@ const TABLE: &str = "CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KE
 const NO_ID_REUSE: &str = "CREATE TRIGGER IF NOT EXISTS audit_log_no_id_reuse BEFORE INSERT ON audit_log WHEN NEW.id > 0 AND EXISTS(SELECT 1 FROM audit_log WHERE id = NEW.id) BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END";
 const NO_UPDATE: &str = "CREATE TRIGGER IF NOT EXISTS audit_log_no_update BEFORE UPDATE ON audit_log BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END";
 const NO_DELETE: &str = "CREATE TRIGGER IF NOT EXISTS audit_log_no_delete BEFORE DELETE ON audit_log BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditEnvelope<'a> {
+    pub project: &'a str,
+    pub run: &'a str,
+    pub result: &'a str,
+    pub source_ref: &'a str,
+}
 
 /// Creates the trail. Triggers make every row write-once: the only way to
 /// change the trail is to add to it. `IF NOT EXISTS` lets a fixture that
@@ -40,6 +50,18 @@ pub(super) async fn apply_migration(tx: &mut Transaction<'_, Sqlite>) -> Result<
 }
 
 impl Store {
+    /// Appends a domain event only when all acceptance-matrix references exist.
+    pub async fn append_domain_audit(
+        &self,
+        actor: &str,
+        action: &str,
+        subject: &str,
+        _envelope: &AuditEnvelope<'_>,
+    ) -> Result<i64, String> {
+        let _ = (actor, action, subject);
+        Err("audit domain append is not implemented".into())
+    }
+
     /// Appends one audit row and returns its monotonically increasing id.
     pub async fn append_audit(
         &self,
@@ -73,6 +95,118 @@ mod tests {
         let dir = TempDir::new("audit-trail");
         let store = Store::open(&dir.path().join("projecta.db")).await.unwrap();
         (dir, store)
+    }
+
+    fn envelope<'a>(
+        project: &'a str,
+        run: &'a str,
+        result: &'a str,
+        source_ref: &'a str,
+    ) -> AuditEnvelope<'a> {
+        AuditEnvelope {
+            project,
+            run,
+            result,
+            source_ref,
+        }
+    }
+
+    async fn assert_incomplete_is_rejected(
+        store: &Store,
+        field: &str,
+        envelope: AuditEnvelope<'_>,
+    ) {
+        let error = store
+            .append_domain_audit("worker", "delivery", "candidate", &envelope)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error,
+            format!(
+                "{}audit envelope missing {field}",
+                crate::errors::ERR_REFUSED
+            )
+        );
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn domain_audit_without_project_is_rejected_without_row() {
+        let (_dir, store) = fixture().await;
+        assert_incomplete_is_rejected(
+            &store,
+            "project",
+            envelope("", "run-1", "accepted", "queue:1"),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn domain_audit_without_source_ref_is_rejected_without_row() {
+        let (_dir, store) = fixture().await;
+        assert_incomplete_is_rejected(
+            &store,
+            "sourceRef",
+            envelope("project-1", "run-1", "accepted", ""),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn domain_audit_without_run_is_rejected_without_row() {
+        let (_dir, store) = fixture().await;
+        assert_incomplete_is_rejected(
+            &store,
+            "run",
+            envelope("project-1", "", "accepted", "queue:1"),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn domain_audit_without_result_is_rejected_without_row() {
+        let (_dir, store) = fixture().await;
+        assert_incomplete_is_rejected(
+            &store,
+            "result",
+            envelope("project-1", "run-1", "", "queue:1"),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn complete_domain_audit_appends_one_immutable_row() {
+        let (_dir, store) = fixture().await;
+        let id = store
+            .append_domain_audit(
+                "worker",
+                "delivery",
+                "candidate",
+                &envelope("project-1", "run-1", "accepted", "queue:1"),
+            )
+            .await
+            .unwrap();
+        let rows: Vec<(i64, String)> = sqlx::query_as("SELECT id,detail_json FROM audit_log")
+            .fetch_all(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(rows, vec![(id, r#"{"project":"project-1","run":"run-1","result":"accepted","sourceRef":"queue:1"}"#.into())]);
+        assert!(
+            sqlx::query("UPDATE audit_log SET actor='changed' WHERE id=?")
+                .bind(id)
+                .execute(&store.pool)
+                .await
+                .is_err()
+        );
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[tokio::test]
