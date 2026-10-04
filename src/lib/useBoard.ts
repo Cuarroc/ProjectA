@@ -37,7 +37,11 @@ export interface BoardState {
  * read the cards from every view, so the board no longer sleeps on any single
  * view.
  */
-export function useBoard(projectId: string | null, enabled: boolean): BoardState {
+export function useBoard(
+  projectId: string | null,
+  enabled: boolean,
+  onWorkerSeen?: (workerId: string) => void,
+): BoardState {
   const [cards, setCards] = useState<BoardCard[]>([]);
   const [coordinators, setCoordinators] = useState<CoordinatorInfo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +78,7 @@ export function useBoard(projectId: string | null, enabled: boolean): BoardState
         if (token.current !== mine) return;
         setCards(next.cards);
         setCoordinators(next.coordinators);
+        for (const card of next.cards) onWorkerSeen?.(card.worker.id);
         setError(null);
       } catch (cause) {
         if (token.current === mine) setError(describeError(cause));
@@ -83,7 +88,7 @@ export function useBoard(projectId: string | null, enabled: boolean): BoardState
         if (token.current === mine) setLoading(false);
       }
     },
-    [projectId],
+    [onWorkerSeen, projectId],
   );
 
   const refresh = useCallback(() => {
@@ -106,6 +111,7 @@ export function useBoard(projectId: string | null, enabled: boolean): BoardState
     let stale = false;
 
     void onWorkerStatus((payload) => {
+      onWorkerSeen?.(payload.workerId);
       const known = cardsRef.current.some((card) => card.worker.id === payload.workerId);
       if (!known) {
         // A worker we have never seen — freshly created, or from another
@@ -142,7 +148,7 @@ export function useBoard(projectId: string | null, enabled: boolean): BoardState
       unlisten?.();
       unlisten = null;
     };
-  }, [enabled, load, projectId]);
+  }, [enabled, load, onWorkerSeen, projectId]);
 
   return { cards, coordinators, attentionByWorker, loading, error, refresh };
 }
