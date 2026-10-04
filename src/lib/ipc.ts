@@ -2229,7 +2229,9 @@ export async function openExternal(url: string): Promise<void> {
  * error text passes through, keeps that vocabulary intact for the mapping
  * while a reviewer sees the reason instead of the routing tag it rides on
  * (KI-6). Only the exact, leading prefix: a message that merely mentions the
- * word mid-sentence is left as the core wrote it.
+ * word mid-sentence is left as the core wrote it. The `unknown ` prefix
+ * (`workers::ERR_UNKNOWN`) stays: it is the reason itself ("unknown project:
+ * x"), and without it the message no longer says the entity does not exist.
  */
 const REFUSED_PREFIX = "refused: ";
 
