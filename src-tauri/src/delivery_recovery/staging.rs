@@ -47,6 +47,7 @@ pub enum RejectionReason {
     Missing(ArtifactKind),
     Truncated(ArtifactKind),
     HashMismatch(ArtifactKind),
+    InvalidSha256(ArtifactKind),
     Changed(ArtifactKind),
 }
 
@@ -66,7 +67,10 @@ pub struct VerifiedStaging {
 impl StagingIdentity {
     #[allow(dead_code)] // W3-02
     pub fn verify(self) -> Result<VerifiedStaging, RejectionReason> {
-        // Red-first stub: W3-02b implements the four identity checks next.
+        read_expected(&self.manifest, ArtifactKind::Manifest, false)?;
+        read_expected(&self.installer, ArtifactKind::Installer, false)?;
+        read_expected(&self.binary, ArtifactKind::Binary, false)?;
+        read_expected(&self.database, ArtifactKind::Database, false)?;
         Ok(VerifiedStaging { identity: self })
     }
 }
@@ -78,13 +82,47 @@ impl VerifiedStaging {
         install: impl FnOnce(InstallPayload) -> T,
     ) -> Result<T, RejectionReason> {
         let payload = InstallPayload {
-            manifest: fs::read(&self.identity.manifest.path).unwrap_or_default(),
-            installer: fs::read(&self.identity.installer.path).unwrap_or_default(),
-            binary: fs::read(&self.identity.binary.path).unwrap_or_default(),
-            database: fs::read(&self.identity.database.path).unwrap_or_default(),
+            manifest: read_expected(&self.identity.manifest, ArtifactKind::Manifest, true)?,
+            installer: read_expected(&self.identity.installer, ArtifactKind::Installer, true)?,
+            binary: read_expected(&self.identity.binary, ArtifactKind::Binary, true)?,
+            database: read_expected(&self.identity.database, ArtifactKind::Database, true)?,
         };
         Ok(install(payload))
     }
+}
+
+fn read_expected(
+    expected: &ExpectedFile,
+    kind: ArtifactKind,
+    changed: bool,
+) -> Result<Vec<u8>, RejectionReason> {
+    if expected.sha256.len() != 64 || !expected.sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err(RejectionReason::InvalidSha256(kind));
+    }
+    let bytes = fs::read(&expected.path).map_err(|_| {
+        if changed {
+            RejectionReason::Changed(kind)
+        } else {
+            RejectionReason::Missing(kind)
+        }
+    })?;
+    let actual_len = bytes.len() as u64;
+    if actual_len < expected.byte_len {
+        return Err(if changed {
+            RejectionReason::Changed(kind)
+        } else {
+            RejectionReason::Truncated(kind)
+        });
+    }
+    if actual_len != expected.byte_len || !digest(&bytes).eq_ignore_ascii_case(&expected.sha256) {
+        return Err(if changed {
+            RejectionReason::Changed(kind)
+        } else {
+            RejectionReason::HashMismatch(kind)
+        });
+    }
+    Ok(bytes)
 }
 
 fn digest(bytes: &[u8]) -> String {
