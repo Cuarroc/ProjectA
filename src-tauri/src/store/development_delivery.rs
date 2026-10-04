@@ -1,6 +1,6 @@
 //! Single-use delivery intent in the authoritative SQLite ledger.
 //! PTY enqueue is deliberately weaker than native input-write/EOF evidence.
-use super::{now_unix_secs, Store};
+use super::{audit::AuditEnvelope, now_unix_secs, Store};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use sqlx::{FromRow, Sqlite, Transaction};
@@ -62,8 +62,8 @@ impl Store {
             .execute(&mut *tx)
             .await
             .map_err(db)?;
-        let route: String = sqlx::query_scalar(
-            "SELECT route_json FROM development_launches WHERE run_id=? AND route_json IS NOT NULL",
+        let (route, project): (String, String) = sqlx::query_as(
+            "SELECT l.route_json,g.project_id FROM development_launches l JOIN development_runs r ON r.id=l.run_id JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE l.run_id=? AND l.route_json IS NOT NULL",
         )
         .bind(run)
         .fetch_optional(&mut *tx)
@@ -85,6 +85,20 @@ impl Store {
             .fetch_one(&mut *tx)
             .await
             .map_err(db)?;
+        let source_ref = format!("delivery:{run}:start");
+        super::audit::append_domain_audit_tx(
+            &mut tx,
+            owner,
+            "delivery_start",
+            run,
+            &AuditEnvelope {
+                project: &project,
+                run,
+                result: "accepted",
+                source_ref: &source_ref,
+            },
+        )
+        .await?;
         tx.commit().await.map_err(db)?;
         Ok(receipt)
     }
@@ -99,13 +113,33 @@ impl Store {
         &self,
         receipt: &DevelopmentDelivery,
     ) -> Result<(), String> {
+        let mut tx =
+            super::continuous::begin_write(&self.pool, "begin development delivery enqueue")
+                .await?;
         let changed=sqlx::query("UPDATE development_deliveries SET state='enqueued',enqueued_at=? WHERE run_id=? AND session_id=? AND process_instance=? AND input_sha256=? AND input_bytes=? AND route_sha256=? AND state='started' AND NOT EXISTS(SELECT 1 FROM development_launches l WHERE l.run_id=development_deliveries.run_id AND l.state='exited_undelivered')")
             .bind(now_unix_secs()).bind(&receipt.run_id).bind(&receipt.session_id).bind(&receipt.process_instance)
             .bind(&receipt.input_sha256).bind(receipt.input_bytes).bind(&receipt.route_sha256)
-            .execute(&self.pool).await.map_err(db)?;
+            .execute(&mut *tx).await.map_err(db)?;
         if changed.rows_affected() != 1 {
             return Err("delivery enqueue observation stale or duplicate".into());
         }
+        let project: String = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
+            .bind(&receipt.run_id).fetch_one(&mut *tx).await.map_err(db)?;
+        let source_ref = format!("delivery:{}:enqueue", receipt.run_id);
+        super::audit::append_domain_audit_tx(
+            &mut tx,
+            "transport",
+            "delivery_enqueue",
+            &receipt.run_id,
+            &AuditEnvelope {
+                project: &project,
+                run: &receipt.run_id,
+                result: "accepted",
+                source_ref: &source_ref,
+            },
+        )
+        .await?;
+        tx.commit().await.map_err(db)?;
         Ok(())
     }
 

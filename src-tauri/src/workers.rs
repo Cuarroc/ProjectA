@@ -3542,7 +3542,6 @@ mod tests {
         run: &str,
         result: &str,
         source_ref: &str,
-        project: &str,
     ) {
         let rows: Vec<String> = sqlx::query_scalar(
             "SELECT detail_json FROM audit_log WHERE id>? AND action=? ORDER BY id",
@@ -3556,7 +3555,8 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(&rows[0]).unwrap(),
             serde_json::json!({
-                "project": project, "run": run, "result": result, "sourceRef": source_ref
+                "project": if run == "another-run" { "unresolved" } else { &fx.project_id },
+                "run": run, "result": result, "sourceRef": source_ref
             })
         );
     }
@@ -3597,7 +3597,6 @@ mod tests {
             &run,
             "replayed",
             "worker:owner:fence:1",
-            &fx.project_id,
         )
         .await;
 
@@ -3637,7 +3636,6 @@ mod tests {
             "another-run",
             "rejected",
             "worker:owner:fence:1",
-            "unresolved",
         )
         .await;
     }
@@ -3662,7 +3660,6 @@ mod tests {
             &run,
             "rejected",
             "worker:owner:fence:2",
-            &fx.project_id,
         )
         .await;
     }
@@ -3694,7 +3691,6 @@ mod tests {
             &run,
             "blocked",
             "worker:owner:fence:1",
-            &fx.project_id,
         )
         .await;
     }
@@ -3719,7 +3715,6 @@ mod tests {
             &run,
             "completed",
             "worker:owner:fence:1",
-            &fx.project_id,
         )
         .await;
     }
@@ -3744,7 +3739,6 @@ mod tests {
             &run,
             "rejected",
             "worker:owner:fence:1",
-            &fx.project_id,
         )
         .await;
     }
@@ -4664,7 +4658,6 @@ mod tests {
             &reserved.run_id,
             "accepted",
             &format!("delivery:{}:start", reserved.run_id),
-            &fx.project_id,
         )
         .await;
         assert_eq!(
@@ -4906,7 +4899,6 @@ mod tests {
             &reserved.run_id,
             "accepted",
             &format!("delivery:{}:enqueue", reserved.run_id),
-            &fx.project_id,
         )
         .await;
         let delivered = agents.task_deliveries.lock().unwrap()[0].2.clone();
