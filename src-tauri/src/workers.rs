@@ -3458,7 +3458,7 @@ mod tests {
         .await
         .expect("repeating done must be a no-op");
 
-        assert_eq!(repeated, first);
+        assert_eq!(repeated.0, first.0);
 
         sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='task'")
             .execute(fx.store.pool_for_test())
@@ -3526,6 +3526,7 @@ mod tests {
         )
         .await
         .unwrap();
+        let blocked = blocked.0;
 
         assert_eq!(blocked.status, crate::store::development_runs::RUN_FAILED);
         assert_eq!(blocked.terminal_detail.as_deref(), Some("missing approval"));
@@ -3557,7 +3558,7 @@ mod tests {
         )
         .await
         .expect("an identical blocked report is a no-op");
-        assert_eq!(replay, first);
+        assert_eq!(replay.0, first.0);
         delivery_state::record_worker_delivery(
             &fx.store,
             &run,

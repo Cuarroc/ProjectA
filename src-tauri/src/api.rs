@@ -200,9 +200,12 @@ pub const DESCRIPTOR_FILE: &str = "projecta-api.json";
 #[path = "api/agent_access.rs"]
 mod agent_access;
 #[allow(unused_imports)]
-pub use agent_access::{
-    record_delivery_receipt, CandidateInput, DeliveryError, DeliveryReceipt, RunCredentialIssuer,
+pub use crate::workers::delivery_state::{
+    record_worker_delivery as record_delivery_receipt, WorkerDeliveryError as DeliveryError,
+    WorkerDeliveryReceipt as DeliveryReceipt,
 };
+#[allow(unused_imports)]
+pub use agent_access::{CandidateInput, RunCredentialIssuer};
 #[cfg(windows)]
 #[path = "api/credential_acl.rs"]
 mod credential_acl;
