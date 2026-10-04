@@ -463,7 +463,11 @@ export default function SettingsView({
       .then(() => generation === latestUpdaterViewGeneration
         ? setUpdaterState(state)
         : undefined)
-      .catch(() => undefined);
+      .catch((cause: unknown) => {
+        if (generation === latestUpdaterViewGeneration) {
+          setUpdateState({ phase: "error", message: describeError(cause) });
+        }
+      });
   };
   useEffect(() => {
     const generation = ++latestUpdaterViewGeneration;
@@ -474,7 +478,11 @@ export default function SettingsView({
           setUpdateState(state);
         }
       })
-      .catch(() => undefined);
+      .catch((cause: unknown) => {
+        if (generation === latestUpdaterViewGeneration) {
+          setUpdateState({ phase: "error", message: describeError(cause) });
+        }
+      });
     return () => {
       if (generation === latestUpdaterViewGeneration) latestUpdaterViewGeneration += 1;
     };
