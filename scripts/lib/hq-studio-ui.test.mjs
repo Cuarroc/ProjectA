@@ -21,7 +21,7 @@ test('intro bar and design decision preserve the approved accessible token contr
   }
 
   for (const selector of ['.guidance', '.design-decision']) {
-    const rule = css.match(new RegExp(`${selector.replace('.', '\\\\.')}\\{([^}]*)\\}`))?.[1];
+    const rule = css.match(new RegExp(`${selector.replace('.', '\\.')}\\{([^}]*)\\}`))?.[1];
     assert.ok(rule, `${selector} has a shared Studio rule`);
     assert.match(rule, /var\(--/);
     assert.doesNotMatch(rule, /#[0-9a-f]{3,8}\b/i);
