@@ -74,9 +74,6 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Commits: keine
 - Uncommitted: keine
 
-## 2026-10-04 23:40 — Codex (claude/w3-03g-drill-providers, srv-w3-03g-drill-providers)
-- Zusammenfassung: PR #384 tier-B review complete: medium identity-verdict finding fixed in 017c2b4 with red-first test; prepush, push verification and CI green; report updated and Mergify queue requested.
-- Commits: 017c2b4
 ## 2026-10-04 23:03 — claude/w3-02d-installer-adapter (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
 - Zusammenfassung: Merged origin/main into PR #348, refreshed generated HQ snapshot, prepush green, pushed e6e5c9c, updated report, requested Mergify queue.
 - Commits: keine
