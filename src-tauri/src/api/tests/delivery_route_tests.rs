@@ -7,6 +7,7 @@ const PATH: &str = "/api/hq/v1/agent/delivery";
 struct Route {
     server: ApiServer,
     run: String,
+    store: crate::store::Store,
     pool: sqlx::SqlitePool,
     _dir: TempDir, // last: outlives the server and pool
 }
@@ -45,17 +46,65 @@ fn route(label: &str) -> Route {
             .await
             .unwrap();
         let backend = FakeBackend {
-            native_store: Some(store),
+            native_store: Some(store.clone()),
             ..Default::default()
         };
         let server = boot(Arc::new(backend), &dir.path().join("api"), false).unwrap();
         Route {
             server,
             run,
+            store,
             pool,
             _dir: dir,
         }
     })
+}
+
+#[test]
+fn concurrent_identical_deliveries_mark_exactly_one_as_repeated() {
+    let fx = route("delivery-route-concurrent-repeat");
+    let mut writer = tauri::async_runtime::block_on(fx.pool.acquire()).unwrap();
+    tauri::async_runtime::block_on(sqlx::query("BEGIN IMMEDIATE").execute(&mut *writer)).unwrap();
+    let first_store = fx.store.clone();
+    let second_store = fx.store.clone();
+    let run = fx.run.clone();
+    let first_run = run.clone();
+    let (first, second, ()) = tauri::async_runtime::block_on(async move {
+        tokio::join!(
+            record_delivery_receipt(
+                &first_store,
+                &first_run,
+                "worker-a",
+                1,
+                crate::workers::delivery_state::WorkerDelivery::Done
+            ),
+            record_delivery_receipt(
+                &second_store,
+                &run,
+                "worker-a",
+                1,
+                crate::workers::delivery_state::WorkerDelivery::Done
+            ),
+            async move {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                sqlx::query("COMMIT").execute(&mut *writer).await.unwrap();
+            }
+        )
+    });
+    let first = match first {
+        Ok(receipt) => receipt,
+        Err(_) => panic!("first delivery failed"),
+    };
+    let second = match second {
+        Ok(receipt) => receipt,
+        Err(_) => panic!("second delivery failed"),
+    };
+    let repeats = [first.repeated, second.repeated];
+    assert_eq!(
+        repeats.iter().filter(|&&repeated| repeated).count(),
+        1,
+        "{repeats:?}"
+    );
 }
 
 impl Route {
