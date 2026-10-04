@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 03.10.2026 (Paket PLAN-STATUS-03 auf `origin/main` 6598890, abgeglichen mit `gh pr view`; davor PLAN-SYNTHESIS-03 auf 1b38596 und PLAN-SYNC, 02.10.2026).
+Stand: 04.10.2026 (Paket PLAN-SYNC-06 auf `origin/main` effef1a, abgeglichen mit `gh pr list`/`gh pr view`; davor PLAN-STATUS-03 auf 6598890, PLAN-SYNTHESIS-03 auf 1b38596 und PLAN-SYNC, 02.10.2026).
 Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
 Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
@@ -275,7 +275,7 @@ Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
 `gh pr view` auf `origin/main` 1b38596; der Paketstand darunter ist am 04.10.2026 nachgeführt.
 
 **Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
-Status beobachtet 03.10.2026 23:26 UTC (04.10. 01:26 Berlin), gelesen mit `gh pr list`/`gh pr view` auf `origin/main` cc95a57 (Quellstand: Merge #260 um 23:16:34 UTC, `ci`-Lauf 37161245790 grün). Gemergt:
+Status beobachtet 04.10.2026 13:50 UTC (15:50 Berlin), gelesen mit `gh pr list --state all`/`gh pr view <n>` auf `origin/main` effef1a (Merge #279 um 10:03:23 UTC, `ci`-Lauf 37194125481 grün). Gemergt (bis `cc95a57` Stand 03.10. 23:26 UTC, danach die Nachträge unten):
 ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
 überschritt die 300-Zeilen-Grenze), ARCH-03c #256 (`08faff8`, 23:04 UTC), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
 ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244, 08e #247 und 08f #252 (`f1a33de`, 22:31 UTC),
@@ -290,17 +290,25 @@ eingespielt; Worker-Läufe über ihn haben seitdem PRs geliefert (siehe E13).
 Test-First-Commit `2b9fd1c` (Lauf 37155715659) und grün am Kopf `7af0aa5` (Lauf
 37156526153); danach gemergt. **ARCH-08** ist mit #252 vollständig.
 **ARCH-09:** 09a (Projekt-Wrapper in `ipc/projects.ts`) ist mit #260 gemergt;
-ARCH-09b (Worker-IPC) ist beauftragt (Server-Auftrag `srv-arch09b-ipc-workers`,
-Spec-Stand `d1ee1327`), aber hier **nicht** als gemergt belegt. **ARCH-10** ist
+ARCH-09b (Worker-IPC) ist mit #264 gemergt (`db76682`, 03.10. 23:57:09 UTC);
+ARCH-09c (PTY-Wrapper, #269) ist Draft mit Label `do-not-merge`, nicht gemergt
+(`gh pr view 269`, 04.10. 13:50 UTC). **ARCH-10** ist
 vollständig: `src-tauri/src/api.rs:1384` delegiert nur noch an `hq_routes::route`,
 in `api.rs` steht kein `"hq", "v1"`-Arm mehr (`grep` leer); `api/hq_routes.rs:20-34`
 listet den Besitztest mit 15 Methode/Pfad-Kombinationen, `handle` hat 14 Arme
 (≥ 14 geplant). Die Produktions-Routenarme sind verschoben, die bestehenden
 Testpfade bleiben. Eine Aufschlüsselung der Servertests je Arm ist nicht geprüft.
-**#262** (nur Diagnose, Kopf `14e1532`, Ready, Label `priority`): `gates (linux)`,
-`gates (windows)` (Stub), `red-first` und CodeQL grün, Merge-Zustand `CLEAN`, nicht gemergt. Stufe A: Codex
-gpt6.1 medium + GLM 5.2 (nicht Claude), Runde 1 PASS, Befunde übernommen. Der
-Stand von Queue und CI ist neu zu lesen; er kann sich schon geändert haben.
+**Nachträge seit `cc95a57`** (`gh pr view <n>`, Merge-Zeit UTC): #262 (nur
+Diagnose zu KI-30) `e87b17e`, 03.10. 23:39:47; #264 ARCH-09b `db76682`, 23:57:09;
+#266 PLAN-sync-05 `7ea73b2`, 04.10. 00:08:49; #274 W1-17-Folgefix (`teilweise:`
+in der Stand-Zelle) `4846c84`, 09:21:50; #275 SETUP-15-Folgekorrektur `f33f40d`,
+09:47:29; #279 Mergify-Doku „explizit einreihen“ `effef1a`, 10:03:23.
+**Offen** (`gh pr list`, 04.10. 13:50 UTC): #269 ARCH-09c (Draft, `do-not-merge`);
+#270 OPS-02-Doku und #273 SETUP-09-Fix (beide Label `queued`, laufen als
+Queue-PR #283 zusammen); #282 SETUP-12-Rest (Draft). Queue-Lauf 37196272431 (#273
+allein, Queue-PR #281) scheiterte nur an einem KI-30-Test auf Windows, siehe
+`KNOWN_ISSUES.md`. Der Stand von Queue und CI ist neu zu lesen; er kann sich
+schon geändert haben.
 Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
 
 **Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
@@ -312,7 +320,7 @@ Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
 | `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
 | `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
 | `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220, 10c ✓ #246, 10d ✓ #250; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
-| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b beauftragt (nicht gemergt); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
+| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b ✓ #264, c Draft #269 (nicht gemergt); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
 
 ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
 roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
