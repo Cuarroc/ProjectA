@@ -34,6 +34,7 @@
 !.pa/patches/*.diff
 !.pa/audit_*.md
 !.pa/plan_*.md
+!.pa/release_attestation_v1.5.0.json
 # Archiv alter Plan-, Stand-, Spec- und Review-Prompt-Dateien (PLAN-01, 25.09.).
 !.pa/archiv/
 .omc/
