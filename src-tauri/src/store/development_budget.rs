@@ -9,6 +9,8 @@ use crate::development_policy::{DevelopmentPolicy, TokenPolicy};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Sqlite, Transaction};
 
+#[path = "development_claude_usage.rs"]
+pub(super) mod claude_usage;
 #[path = "development_codex_usage.rs"]
 pub(super) mod codex_usage;
 #[path = "development_usage_receipt.rs"]
