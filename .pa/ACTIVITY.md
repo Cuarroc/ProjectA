@@ -19,3 +19,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: W1-01b complete: test-only PROJECTA_PTY_TRACE_DIR smoke and documented PowerShell command; prepush green; pushed 65b790b; draft PR #192.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 09:32 — officer/setup-09-protocol-collision (officer/setup-09-protocol-collision, setup-09-protocol-collision)
+- Zusammenfassung: SETUP-09: scripts/review/run-local.sh lehnt jetzt zwei Modelle ab, die in dieselbe Protokolldatei schreiben wuerden (vorher: zweimal ok, Exit 0, ein Urteil weg). Fail-closed bei Zeichensatz und Gross-/Kleinschreibung. Commits ae5a66b (rot) 1cbe02b 0fe87ff c4f7d3b; Review kimi-k3 + glm-5.2 (6x low, alle angenommen); Draft-PR #273. Neue Dateien: .pa/review_setup-09-protocol-collision_{kimi-k3,glm-5.2,disposition}.md
+- Commits: keine
+- Uncommitted: keine
