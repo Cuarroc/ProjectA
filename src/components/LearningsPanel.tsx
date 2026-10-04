@@ -11,6 +11,7 @@ import {
   rejectRoleVariant,
 } from "../lib/ipc";
 import { handleTablistKey, tabStop } from "../lib/tabs";
+import { usePolledResource } from "../lib/usePolledResource";
 import type { Learning, RoleVariant } from "../types";
 
 interface LearningsPanelProps {
@@ -71,14 +72,18 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
   // not write its items (or its failure) under this one's name.
   const shownProjectId = useRef(projectId);
   shownProjectId.current = projectId;
+  const beginLearningsRequest = usePolledResource(projectId);
+  const beginRolesRequest = usePolledResource(projectId);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (replace = false) => {
     if (projectId === null) return;
+    const request = beginLearningsRequest(replace);
+    if (request === null) return;
     try {
       const next = (await listLearnings(projectId)).filter(
         (entry) => entry.status === "pending",
       );
-      if (shownProjectId.current !== projectId) return;
+      if (!request.current()) return;
       setEntries(next);
       setDrafts((current) => {
         const merged = new Map<string, string>();
@@ -92,18 +97,22 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setError(null);
       setLearningsLoaded(true);
     } catch (cause) {
-      if (shownProjectId.current !== projectId) return;
+      if (!request.current()) return;
       setError(describeError(cause));
+    } finally {
+      request.finish();
     }
-  }, [projectId]);
+  }, [beginLearningsRequest, projectId]);
 
-  const refreshRoles = useCallback(async () => {
+  const refreshRoles = useCallback(async (replace = false) => {
     if (projectId === null) return;
+    const request = beginRolesRequest(replace);
+    if (request === null) return;
     try {
       const next = (await listRoleVariants(projectId)).filter(
         (variant) => variant.status === "pending",
       );
-      if (shownProjectId.current !== projectId) return;
+      if (!request.current()) return;
       setVariants(next);
       // A proposal that is gone must not keep its fold state alive.
       setCollapsedPrompts((current) => {
@@ -114,10 +123,12 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
       setRoleError(null);
       setRolesLoaded(true);
     } catch (cause) {
-      if (shownProjectId.current !== projectId) return;
+      if (!request.current()) return;
       setRoleError(describeError(cause));
+    } finally {
+      request.finish();
     }
-  }, [projectId]);
+  }, [beginRolesRequest, projectId]);
 
   useEffect(() => {
     if (projectId === null) {
@@ -210,7 +221,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
         await approveLearning(entry.id, text);
         if (shownProjectId.current !== targetProjectId) return;
         setNotice("Ins Playbook übernommen.");
-        await refresh();
+        await refresh(true);
       } catch (cause) {
         if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
@@ -228,7 +239,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
         await rejectLearning(entry.id);
         if (shownProjectId.current !== targetProjectId) return;
         setNotice("Verworfen.");
-        await refresh();
+        await refresh(true);
       } catch (cause) {
         if (shownProjectId.current === targetProjectId) setError(describeError(cause));
       } finally {
@@ -246,7 +257,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
         await approveRoleVariant(variant.id);
         if (shownProjectId.current !== targetProjectId) return;
         setNotice("Rolle angenommen.");
-        await refreshRoles();
+        await refreshRoles(true);
       } catch (cause) {
         if (shownProjectId.current === targetProjectId) setRoleError(describeError(cause));
       } finally {
@@ -264,7 +275,7 @@ export default function LearningsPanel({ projectId }: LearningsPanelProps) {
         await rejectRoleVariant(variant.id);
         if (shownProjectId.current !== targetProjectId) return;
         setNotice("Verworfen.");
-        await refreshRoles();
+        await refreshRoles(true);
       } catch (cause) {
         if (shownProjectId.current === targetProjectId) setRoleError(describeError(cause));
       } finally {

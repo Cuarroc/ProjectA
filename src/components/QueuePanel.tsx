@@ -4,6 +4,7 @@ import { cancelQueuedTask, describeError, enqueueTask, listQueue } from "../lib/
 import { composeWithMasterPrompt, isMasterPromptEnabled, loadMasterPrompt } from "../lib/settings";
 import { shortTask } from "../lib/text";
 import { useSharpening } from "../lib/useSharpening";
+import { usePolledResource } from "../lib/usePolledResource";
 import type { AgentProfile, QueueEntry } from "../types";
 import InfoLine from "./InfoLine";
 
@@ -61,20 +62,25 @@ export default function QueuePanel({
   // not write its rows (or its failure) under this one's name.
   const shownProjectId = useRef(projectId);
   shownProjectId.current = projectId;
+  const beginRequest = usePolledResource(projectId);
 
   const refresh = useCallback(async () => {
     if (projectId === null) return;
+    const request = beginRequest();
+    if (request === null) return;
     try {
       const next = await listQueue(projectId);
-      if (shownProjectId.current !== projectId) return;
+      if (!request.current()) return;
       setEntries(Array.isArray(next) ? next : []);
       setLoaded(true);
       setError(null);
     } catch (cause) {
-      if (shownProjectId.current !== projectId) return;
+      if (!request.current()) return;
       setError(describeError(cause));
+    } finally {
+      request.finish();
     }
-  }, [projectId]);
+  }, [beginRequest, projectId]);
 
   // The queue changes independently of this webview, so reconcile it on a
   // quiet 10-second cadence as well as after every action below.
