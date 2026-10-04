@@ -566,17 +566,7 @@ impl Store {
                 .map_err(db("read continuous dependencies"))?;
         let deps: Vec<String> = serde_json::from_str(&deps_json.0)
             .map_err(|e| format!("continuous dependencies are corrupt: {e}"))?;
-        for dependency in deps {
-            let status: Option<(String,)> =
-                sqlx::query_as("SELECT status FROM continuous_tasks WHERE id = ?1")
-                    .bind(&dependency)
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(db("check continuous dependency"))?;
-            if status.as_ref().map(|row| row.0.as_str()) != Some(TASK_COMPLETED) {
-                return Err(format!("dependency is not completed: {dependency}"));
-            }
-        }
+        check_claim_dependencies(tx, &project_id, &deps).await?;
         let now = now_unix_secs();
         let fence = prior_fence + 1;
         let lease_expires_at = now + CLAIM_LEASE_SECONDS;
@@ -992,6 +982,43 @@ pub(super) async fn read_event_page(
     Ok((events, has_more))
 }
 
+/// Dependency limit shared with the run briefing projection, which reports
+/// `truncated` beyond it. The claim gate must never be looser than the briefing.
+pub(super) const MAX_DEPENDENCIES: usize = 64;
+
+/// Strict claim-time dependency gate: bounded set, own project only, every
+/// dependency completed. Reads only; a refusal leaves the claim untouched.
+async fn check_claim_dependencies(
+    tx: &mut SqliteConnection,
+    project_id: &str,
+    deps: &[String],
+) -> Result<(), String> {
+    if deps.len() > MAX_DEPENDENCIES {
+        return Err(format!(
+            "{}dependency set exceeds limit {MAX_DEPENDENCIES}: {} dependencies",
+            crate::errors::ERR_REFUSED,
+            deps.len()
+        ));
+    }
+    for dependency in deps {
+        let found: Option<(String, String)> = sqlx::query_as("SELECT t.status, g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id = t.goal_id WHERE t.id = ?1")
+            .bind(dependency).fetch_optional(&mut *tx).await.map_err(db("check continuous dependency"))?;
+        match found {
+            Some((status, dep_project)) if dep_project == project_id => {
+                if status != TASK_COMPLETED {
+                    return Err(format!("dependency is not completed: {dependency}"));
+                }
+            }
+            Some(_) => {
+                return Err(format!(
+                    "dependency is not completed: {dependency} (belongs to another project)"
+                ))
+            }
+            None => return Err(format!("dependency is not completed: {dependency}")),
+        }
+    }
+    Ok(())
+}
 fn normalize_ids(values: Vec<String>, field: &str) -> Result<Vec<String>, String> {
     let mut out = Vec::new();
     for value in values {
@@ -1609,6 +1636,87 @@ mod tests {
              transaction is still unsettled, committed or not: {result:?}"
         );
     }
+    /// Claim fixture: a goal with one open dependent task and `n` completed
+    /// dependency rows inserted in `dep_project` (dependencies_json set directly).
+    async fn claim_fixture(store: &Store, project: &str, dep_project: &str, n: usize) -> String {
+        let goal = store
+            .create_continuous_goal(project, "ship", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "dependent", None, vec!["dep/x".into()], vec![])
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO continuous_goals(id, project_id, root_goal_id, objective, status, admitted, deadline_at, created_at, updated_at) SELECT 'dep-goal', ?1, root_goal_id, 'deps', 'open', admitted, deadline_at, created_at, updated_at FROM continuous_goals WHERE id = ?2")
+            .bind(dep_project).bind(&goal.id).execute(&store.pool).await.unwrap();
+        let ids: Vec<String> = (0..n).map(|i| format!("dep-{i}")).collect();
+        for id in &ids {
+            sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, owned_paths_json, dependencies_json, status, created_at, updated_at) VALUES(?1, 'dep-goal', 'd', '[]', '[]', 'completed', 0, 0)")
+                .bind(id).execute(&store.pool).await.unwrap();
+        }
+        sqlx::query("UPDATE continuous_tasks SET dependencies_json = ?1 WHERE id = ?2")
+            .bind(serde_json::to_string(&ids).unwrap())
+            .bind(&task.id)
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        task.id
+    }
+
+    async fn assert_claim_untouched(store: &Store, task_id: &str) {
+        let (status, owner, fence, attempts): (String, Option<String>, i64, i64) = sqlx::query_as(
+            "SELECT status, claim_owner, claim_fence, attempts FROM continuous_tasks WHERE id = ?",
+        )
+        .bind(task_id)
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            (status.as_str(), owner, fence, attempts),
+            (TASK_OPEN, None, 0, 0)
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn claim_accepts_exactly_64_completed_dependencies() {
+        let (_dir, store, project) = store().await;
+        let task = claim_fixture(&store, &project, &project, 64).await;
+        store
+            .claim_continuous_task(&task, "owner", false)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn claim_refuses_more_than_64_completed_dependencies() {
+        let (_dir, store, project) = store().await;
+        let task = claim_fixture(&store, &project, &project, 65).await;
+        let err = store
+            .claim_continuous_task(&task, "owner", false)
+            .await
+            .unwrap_err();
+        assert!(err.starts_with(crate::errors::ERR_REFUSED), "{err}");
+        assert!(err.contains("dependency set exceeds limit 64"), "{err}");
+        assert_claim_untouched(&store, &task).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn claim_refuses_completed_dependency_from_another_project() {
+        let (dir, store, project) = store().await;
+        let other = store
+            .create_project("other", dir.path().to_str().unwrap())
+            .await
+            .unwrap();
+        let task = claim_fixture(&store, &project, &other.id, 1).await;
+        let err = store
+            .claim_continuous_task(&task, "owner", false)
+            .await
+            .unwrap_err();
+        assert!(err.contains("dependency is not completed: dep-0"), "{err}");
+        assert!(err.contains("another project"), "{err}");
+        assert_claim_untouched(&store, &task).await;
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn dependency_and_recreated_goal_budgets_are_refused() {
         let (_dir, store, project) = store().await;

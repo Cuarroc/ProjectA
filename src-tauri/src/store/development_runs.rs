@@ -348,7 +348,7 @@ impl Store {
             }
         }).collect();
         let dependency_state = serde_json::json!({"source":"rust/sqlite","satisfied":satisfied,
-            "total":dependencies.len(),"limit":64,"truncated":dependencies.len()>64,"items":dependency_items});
+            "total":dependencies.len(),"limit":super::continuous::MAX_DEPENDENCIES,"truncated":dependencies.len()>super::continuous::MAX_DEPENDENCIES,"items":dependency_items});
         let evidence: Vec<(String, String, bool, i64, String, Option<i64>)> = sqlx::query_as("SELECT id, source, trusted_test_source, observed_at, candidate_commit, invalidated_at FROM development_run_evidence WHERE run_id = ? ORDER BY observed_at DESC, id DESC LIMIT 32")
             .bind(run_id).fetch_all(&mut *tx).await.map_err(db("read briefing evidence references"))?;
         let evidence: Vec<Value> = evidence.into_iter().map(|(id, source, trusted_test_source, observed_at, candidate_commit, invalidated_at)| serde_json::json!({"id":id,"source":source,"trustedTestSource":trusted_test_source,"observedAt":observed_at,"candidateCommit":candidate_commit,"invalidatedAt":invalidated_at})).collect();
