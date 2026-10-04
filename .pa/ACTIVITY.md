@@ -65,6 +65,13 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 
 ## 2026-10-04 21:21 — codex/hq2-05b-p4-docs-r (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
 - Zusammenfassung: PR #341 conflict resolved by merging origin/main; regenerated HQ snapshots in f4254b8; prepush green; pushed and verified; report updated and Mergify queue requested.
+
+## 2026-10-04 22:30 — codex/w3-02c-restore (codex/w3-02c-restore, srv-w3-02c-restore)
+- Zusammenfassung: Merged origin/main at 615f58f without conflict hunks; preserved unrelated HQ snapshot edits; prepush and push hook exit 0; verified remote SHA; PR #357 report updated and Mergify queue requested.
+- Commits: keine
+- Uncommitted:
+     M docs/dev-hq/data.js
+     M docs/dev-hq/data.json
 ## 2026-10-04 20:32 — codex/state-7-error-contract (codex/state-7-error-contract, srv-state-7-error-contract)
 - Zusammenfassung: PR #342 conflict resolved by merging origin/main; HQ snapshots refreshed; prepush exit 0; pushed 353f49f and verified remote; report updated and Mergify queue requested.
 - Commits: keine
@@ -74,3 +81,17 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main for PR #342 conflict resolution; no textual conflict hunks or runtime logic changes; generated HQ snapshot refreshed in b8713fd; prepush green; pushed and verified; PR report updated and Mergify queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 23:02 — codex/w3-02c-restore (codex/w3-02c-restore, srv-w3-02c-restore)
+- Zusammenfassung: Merged current origin/main in 28d1d37; prepush and push hook exit 0; remote verified; PR #357 report updated and @Mergifyio queue requested. Pre-existing HQ snapshot edits remain uncommitted.
+- Commits: keine
+- Uncommitted:
+     M .pa/ACTIVITY.md
+     M docs/dev-hq/data.js
+     M docs/dev-hq/data.json
+
+## 2026-10-04 23:38 — codex/w3-02c-restore (codex/w3-02c-restore, srv-w3-02c-restore)
+- Zusammenfassung: Merged origin/main for PR #357; prepush and push hook green; remote 6e3d5c3 verified; PR report updated; checks green; Mergify queue comment sent; .pa/ACTIVITY.md remains uncommitted.
+- Commits: keine
+- Uncommitted:
+     M .pa/ACTIVITY.md
