@@ -50,3 +50,4 @@ Specs aus M3/M4 (`task_w1-10.md`, `task_hq2-02.md`, `task_ollama_worker_adapter.
 | `.pa/task_w1-20.md` | W1-20: Zweites Setup reproduzieren | parallel (keine Nahtstelle) |
 | `.pa/task_w1-17.md` | W1-17: HQ-Parser prüfen | parallel (keine Nahtstelle) |
 | `.pa/task_w4-01.md` | W4-01: Fünf reproduzierbare Benchmark-Aufgaben | parallel (keine Nahtstelle) |
+| `.pa/task_w3-01.md` | W3-01a: Globaler DB-Wartungs-/Write-Lock | seriell: `store.rs` + `store/` |
