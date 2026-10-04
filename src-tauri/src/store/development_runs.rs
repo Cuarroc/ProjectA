@@ -237,6 +237,38 @@ pub(super) async fn apply_trusted_test_source_migration(
 }
 
 impl Store {
+    pub async fn agent_planning_scope(
+        &self,
+        run: &str,
+        owner: &str,
+        fence: i64,
+        kind: &str,
+        target: &str,
+    ) -> Result<(), String> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(db("begin planning scope"))?;
+        require_run_authority(&mut tx, run, owner, fence).await?;
+        let run_project: Option<String> = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
+            .bind(run).fetch_optional(&mut *tx).await.map_err(db("read planning run project"))?;
+        let target_project: Option<String> = match kind {
+            "project" => sqlx::query_scalar("SELECT id FROM projects WHERE id=?"),
+            "goal" => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?"),
+            "task" => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?"),
+            _ => return Err("planning target is outside the run project".into()),
+        }
+        .bind(target)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db("read planning target project"))?;
+        if run_project.is_none() || run_project != target_project {
+            return Err("planning target is outside the run project".into());
+        }
+        Ok(())
+    }
+
     pub async fn agent_evidence(
         &self,
         run_id: &str,
@@ -1349,6 +1381,30 @@ mod tests {
                 value: serde_json::json!({"passed": true}),
             },
             payload: serde_json::json!({"command": "cargo test"}),
+        }
+    }
+
+    #[tokio::test]
+    async fn planning_scope_hides_foreign_and_missing_targets() {
+        let (_dir, store, root, task) = fixture().await;
+        let run = store
+            .record_development_run_intent(&task, "worker-a", 7)
+            .await
+            .unwrap();
+        assert!(store
+            .agent_planning_scope(&run.id, "worker-a", 7, "goal", &root)
+            .await
+            .is_ok());
+        sqlx::query("INSERT INTO continuous_goals(id,project_id,root_goal_id,objective,status,deadline_at,admitted,created_at,updated_at) VALUES('foreign','other','foreign','secret','open',0,0,1,1)")
+            .execute(&store.pool).await.unwrap();
+        for target in ["foreign", "missing"] {
+            assert_eq!(
+                store
+                    .agent_planning_scope(&run.id, "worker-a", 7, "goal", target)
+                    .await
+                    .unwrap_err(),
+                "planning target is outside the run project"
+            );
         }
     }
 
