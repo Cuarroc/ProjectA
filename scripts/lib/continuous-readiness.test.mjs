@@ -15,12 +15,15 @@ const ready = {
   benchmarkAccepted: true,
   continuousExecutionEnabled: true,
   stablePromotionAuthorized: true,
+  appReleaseAttested: true,
 };
 
 test('readiness remains fail-closed when observations are missing', () => {
   const report = evaluateContinuousReadiness({ setup: {}, runtime: {}, evidence: {} });
   assert.equal(report.continuousEligible, false);
+  assert.equal(report.continuousReleaseEligible, false);
   assert.equal(report.releaseEligible, false);
+  assert.equal(report.appReleaseEligible, false);
   assert.equal(report.phases[0].state, 'unavailable');
   assert.equal(report.attestations.providers.state, 'unavailable');
   assert.ok(report.blockers.some(blocker => blocker.id === 'configuration'));
@@ -45,9 +48,47 @@ test('a reachable runtime does not bypass provider, review or recovery gates', (
 test('all attested gates still require explicit enable and promotion decisions', () => {
   const report = evaluateContinuousReadiness({ setup: ready, runtime: { runtimeReady: true }, evidence: ready });
   assert.equal(report.continuousEligible, true);
-  assert.equal(report.releaseEligible, true);
+  assert.equal(report.continuousReleaseEligible, true);
+  assert.equal(report.releaseEligible, report.continuousReleaseEligible);
+  assert.equal(report.appReleaseEligible, true);
   assert.equal(report.continuousMode, 'eligible-but-disabled-until-explicit-enable');
   assert.deepEqual(report.blockers, []);
+});
+
+const appOnly = {
+  setup: { setupReady: true },
+  runtime: { runtimeReady: true },
+};
+
+test('app release is blocked without the user attestation', () => {
+  const report = evaluateContinuousReadiness({ ...appOnly, evidence: {} });
+  assert.equal(report.appReleaseEligible, false);
+  assert.equal(report.appRelease, 'blocked');
+  assert.ok(report.blockers.some(blocker => blocker.id === 'attestation:appRelease'));
+  const denied = evaluateContinuousReadiness({ ...appOnly, evidence: { appReleaseAttested: false } });
+  assert.equal(denied.appReleaseEligible, false);
+});
+
+test('app release attestation does not make continuous mode release-eligible', () => {
+  const report = evaluateContinuousReadiness({ ...appOnly, evidence: { appReleaseAttested: true } });
+  assert.equal(report.appReleaseEligible, true);
+  assert.equal(report.appRelease, 'eligible-after-explicit-release');
+  assert.equal(report.continuousReleaseEligible, false);
+  assert.equal(report.releaseEligible, false);
+  assert.equal(report.continuousEligible, false);
+  assert.equal(report.continuousMode, 'blocked');
+  assert.ok(!report.blockers.some(blocker => blocker.id === 'attestation:appRelease'));
+});
+
+test('app release still needs configuration and machine interface', () => {
+  const report = evaluateContinuousReadiness({
+    setup: { setupReady: false }, runtime: { runtimeReady: true }, evidence: { appReleaseAttested: true },
+  });
+  assert.equal(report.appReleaseEligible, false);
+});
+
+test('readiness report is schema version 2', () => {
+  assert.equal(evaluateContinuousReadiness().schemaVersion, 2);
 });
 
 test('continuous audit accepts explicit output flags and rejects accidental execution flags', () => {

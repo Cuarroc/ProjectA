@@ -142,7 +142,8 @@ test("/__hq/setup runs the checklist and names the stale descriptor as the block
   assert.equal(setup.ready, false);
   assert.ok(setup.checks.find((c) => c.id === "specs").state === "ok", "spec gate runs from the repo root");
   assert.equal(setup.continuousReadiness.continuousEligible, false);
-  assert.equal(setup.continuousReadiness.releaseEligible, false);
+  assert.equal(setup.continuousReadiness.continuousReleaseEligible, false);
+  assert.equal(setup.continuousReadiness.appReleaseEligible, false);
   assert.ok(setup.continuousReadiness.blockers.some((blocker) => blocker.id === "attestation:providers"));
 });
 
