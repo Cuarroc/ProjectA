@@ -11,6 +11,7 @@ import {
 import { openExternalSafely } from "../lib/openExternalSafely";
 import { isCategoryActive } from "../lib/settings";
 import { shortTask } from "../lib/text";
+import { usePolledResource } from "../lib/usePolledResource";
 import type { Recommendation, Worker } from "../types";
 
 interface RecommendationsPanelProps {
@@ -74,6 +75,7 @@ export default function RecommendationsPanel({
   // project's actionable recommendations. Polls use the same guard so an
   // older, slower poll cannot overwrite a newer snapshot either.
   const loadToken = useRef(0);
+  const beginMutation = usePolledResource(projectId);
 
   const refresh = useCallback(async () => {
     if (projectId === null) return;
@@ -103,6 +105,8 @@ export default function RecommendationsPanel({
     // project's name while its read is still out.
     setEntries([]);
     setLoaded(false);
+    setBusyId(null);
+    setNotice(null);
     setError(null);
     void refresh();
     const interval = window.setInterval(() => void refresh(), POLL_MS);
@@ -186,10 +190,13 @@ export default function RecommendationsPanel({
 
   const handleAccept = (entry: Recommendation) => {
     void (async () => {
+      const request = beginMutation(true);
+      if (request === null) return;
       setBusyId(entry.id);
       setError(null);
       try {
         await acceptRecommendation(entry.id);
+        if (!request.current()) return;
         setEntries((current) =>
           current.map((item) =>
             item.id === entry.id ? { ...item, status: "accepted" as const } : item,
@@ -197,24 +204,29 @@ export default function RecommendationsPanel({
         );
         setNotice(`„${shortTask(entry.title, 32)}“ ist in der Warteschlange.`);
       } catch (cause) {
-        setError(describeError(cause));
+        if (request.current()) setError(describeError(cause));
       } finally {
-        setBusyId(null);
+        if (request.current()) setBusyId(null);
+        request.finish();
       }
     })();
   };
 
   const handleDismiss = (entry: Recommendation) => {
     void (async () => {
+      const request = beginMutation(true);
+      if (request === null) return;
       setBusyId(entry.id);
       setError(null);
       try {
         await setRecommendationStatus(entry.id, "dismissed");
+        if (!request.current()) return;
         setEntries((current) => current.filter((item) => item.id !== entry.id));
       } catch (cause) {
-        setError(describeError(cause));
+        if (request.current()) setError(describeError(cause));
       } finally {
-        setBusyId(null);
+        if (request.current()) setBusyId(null);
+        request.finish();
       }
     })();
   };
