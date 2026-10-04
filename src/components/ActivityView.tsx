@@ -37,19 +37,35 @@ function DigestPanel({ projectId }: { projectId: string | null }) {
   const [page, setPage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Request tokens: only the newest list / page request may write, and
+  // nothing after a project switch or unmount.
+  const datesToken = useRef(0);
+  const pageToken = useRef(0);
+
   // A project switch drops everything: the pages belong to the repository.
   useEffect(() => {
+    datesToken.current += 1;
+    pageToken.current += 1;
     setDates([]);
     setSelected(null);
     setPage(null);
     setError(null);
+    return () => {
+      datesToken.current += 1;
+      pageToken.current += 1;
+    };
   }, [projectId]);
 
   useEffect(() => {
     if (!open || projectId === null) return;
+    const mine = ++datesToken.current;
     void listDigests(projectId)
-      .then(setDates)
-      .catch((cause: unknown) => setError(describeError(cause)));
+      .then((next) => {
+        if (datesToken.current === mine) setDates(next);
+      })
+      .catch((cause: unknown) => {
+        if (datesToken.current === mine) setError(describeError(cause));
+      });
   }, [open, projectId]);
 
   const show = (date: string) => {
@@ -57,9 +73,14 @@ function DigestPanel({ projectId }: { projectId: string | null }) {
     setSelected(date);
     setPage(null);
     setError(null);
+    const mine = ++pageToken.current;
     void getDigest(projectId, date)
-      .then(setPage)
-      .catch((cause: unknown) => setError(describeError(cause)));
+      .then((next) => {
+        if (pageToken.current === mine) setPage(next);
+      })
+      .catch((cause: unknown) => {
+        if (pageToken.current === mine) setError(describeError(cause));
+      });
   };
 
   return (
