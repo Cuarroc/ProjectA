@@ -41,3 +41,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
 - Commits: 13d5357
 - Uncommitted: keine
+
+## 2026-10-04 21:05 — Codex GPT-5 (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
+- Zusammenfassung: STATE-2 completed at eb90981: desktop set_budget preserves explicit null, IPC regression red then green, full prepush exit 0, draft PR #356; Tier A review and Windows queue lane pending.
+- Commits: keine
+- Uncommitted: keine
