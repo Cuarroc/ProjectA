@@ -381,6 +381,28 @@ else
   bad "Standardverzeichnis: rc=$rc"; echo "$out"; cat "$REPO/.pa/review_${label}_fake-a.md" 2>&1 | head -12
 fi
 
+# 13. Protokolldatei je Reviewer. Der Name entsteht aus dem Modell
+#     ("llama3:8b" -> llama3-8b, kilo: nur das letzte Pfadelement). Zwei Modelle
+#     mit demselben Namen schreiben in dieselbe Datei: das zweite Urteil
+#     ueberschreibt das erste, der Lauf meldet trotzdem "beide ok". Das ist
+#     eine falsche Zusage ("jeder Reviewer hat geliefert") und wird abgelehnt,
+#     bevor etwas gesendet wird.
+run bash "$RUN" --models llama3:8b,llama3-8b --out-dir "$tmp/o14"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ ! -e "$tmp/o14/review_${label}_llama3-8b.md" ] && [ ! -e "$tmp/o14/review_prompt_${label}.md" ]; then
+  ok "Ollama: llama3:8b und llama3-8b teilen sich den Protokollnamen - Exit 2, kein Prompt, kein Protokoll"
+else
+  bad "Ollama-Protokollname kollidiert: rc=$rc"; echo "$out"; ls "$tmp/o14" 2>&1
+fi
+: > "$KILO_STUB_LOG"
+run env PATH="$tmp/bin-ok:$PATH" bash "$RUN" --via kilo --models a/step-3.7-flash:free,b/step-3.7-flash:free --out-dir "$tmp/k8"
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
+  && [ ! -s "$KILO_STUB_LOG" ] && [ ! -e "$tmp/k8/review_${label}_step-3.7-flash.md" ]; then
+  ok "kilo: zwei Anbieter, gleicher Modellname - Exit 2, kilo nie aufgerufen, kein Protokoll"
+else
+  bad "kilo-Protokollname kollidiert: rc=$rc"; echo "$out"; ls "$tmp/k8" 2>&1
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."
