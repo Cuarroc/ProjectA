@@ -598,6 +598,306 @@ fn agent_error(error: String) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::development_runs::{EvidenceInput, ReviewInput};
+    use crate::testutil::TempDir;
+    use std::io::{Read, Write};
+    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    macro_rules! unavailable {
+        ($(fn $name:ident($($arg:ident: $ty:ty),*) -> $result:ty;)*) => {$(
+            fn $name(&self $(, $arg: $ty)*) -> $result { unreachable!("unused test backend method") }
+        )*};
+    }
+    const COMMIT_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const COMMIT_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    struct StoreBackend(crate::store::Store);
+
+    impl ControlBackend for StoreBackend {
+        fn agent_evidence(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            id: &str,
+        ) -> Result<Value, String> {
+            tauri::async_runtime::block_on(self.0.agent_evidence(run, owner, fence, id))
+        }
+        fn agent_run_context(&self, run: &str, owner: &str, fence: i64) -> Result<Value, String> {
+            tauri::async_runtime::block_on(self.0.agent_run_context(run, owner, fence))
+        }
+        fn agent_bind_candidate(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            input: CandidateInput,
+        ) -> Result<Value, String> {
+            let binding = tauri::async_runtime::block_on(self.0.bind_development_run_candidate(
+                run,
+                owner,
+                fence,
+                &input.candidate_commit,
+                &input.source,
+                input.observed_at,
+            ))?;
+            serde_json::to_value(binding).map_err(|error| error.to_string())
+        }
+        fn agent_submit_evidence(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            input: EvidenceInput,
+        ) -> Result<Value, String> {
+            let evidence = tauri::async_runtime::block_on(
+                self.0.record_development_evidence(run, owner, fence, input),
+            )?;
+            serde_json::to_value(evidence).map_err(|error| error.to_string())
+        }
+        fn agent_submit_review(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            input: ReviewInput,
+        ) -> Result<Value, String> {
+            let review = tauri::async_runtime::block_on(
+                self.0.record_development_review(run, owner, fence, input),
+            )?;
+            serde_json::to_value(review).map_err(|error| error.to_string())
+        }
+        unavailable! {
+            fn project_exists(_project_id: &str) -> Result<bool, String>; fn create_worker(_project_id: &str, _task: &str, _profile_id: &str, _spawned_by: Option<String>) -> Result<Worker, String>; fn list_workers(_project_id: Option<&str>) -> Result<Vec<Worker>, String>; fn worker_state(_worker_id: &str) -> Result<Option<WorkerBoardState>, String>; fn send_to_worker(_worker_id: &str, _text: &str) -> Result<(), String>; fn merge_worker(_worker_id: &str, _remove: bool) -> Result<Worker, String>; fn send_to_orchestrator(_project_id: &str, _text: &str) -> Result<Worker, String>; fn list_worker_messages(_worker_id: &str, _limit: Option<usize>) -> Result<Vec<Message>, String>; fn board(_project_id: Option<&str>) -> Result<Vec<WorkerBoardState>, String>; fn quota() -> Result<Vec<QuotaStateRow>, String>; fn updater_state() -> Result<UpdaterState, String>; fn providers() -> Result<Vec<ProviderOverview>, String>; fn usage(_limit: u32) -> Result<UsageReport, String>; fn list_budgets() -> Result<Vec<BudgetLimits>, String>; fn set_budget(_profile_id: &str, _five: Option<Option<u8>>, _seven: Option<Option<u8>>) -> Result<BudgetLimits, String>; fn enqueue_task(_project_id: &str, _text: &str, _profile: Option<String>, _sharpen: bool, _priority: Option<i32>, _spawned_by: Option<String>) -> Result<QueueEntry, String>; fn list_queue(_project_id: Option<&str>) -> Result<Vec<QueueEntry>, String>; fn cancel_queued_task(_id: &str) -> Result<(), String>; fn create_scout(_project_id: &str) -> Result<Worker, String>; fn triage_repos(_project_id: &str, _urls: &[String]) -> Result<Worker, String>; fn list_recommendations(_project_id: Option<&str>) -> Result<Vec<Recommendation>, String>; fn add_recommendation(_project_id: &str, _title: &str, _rationale: &str, _url: Option<String>, _effort: Option<String>) -> Result<Recommendation, String>; fn set_recommendation_status(_id: &str, _status: &str) -> Result<(), String>; fn accept_recommendation(_id: &str) -> Result<QueueEntry, String>; fn list_learnings(_project_id: Option<&str>, _status: Option<&str>) -> Result<Vec<Learning>, String>; fn approve_learning(_id: &str, _text: &str) -> Result<(), String>; fn reject_learning(_id: &str) -> Result<(), String>; fn ask_question(_project_id: &str, _worker_id: Option<&str>, _question: &str, _options: Option<&str>) -> Result<Question, String>; fn answer_question(_id: &str, _answer: &str, _by: &str) -> Result<Question, String>; fn list_questions(_project_id: Option<&str>, _status: Option<&str>) -> Result<Vec<Question>, String>; fn list_role_variants(_project_id: Option<&str>, _status: Option<&str>) -> Result<Vec<RoleVariant>, String>; fn approve_role_variant(_id: &str) -> Result<(), String>; fn reject_role_variant(_id: &str) -> Result<(), String>; fn get_activity(_project_id: Option<&str>, _limit: u32) -> Result<Vec<ActivityEntry>, String>; fn list_projects() -> Result<Vec<ProjectOverview>, String>; fn create_project(_name: &str, _repo: &str) -> Result<ProjectOverview, String>; fn create_github_repo(_project_id: &str, _name: &str, _private: bool) -> Result<String, String>; fn link_github_remote(_project_id: &str, _url: &str) -> Result<(), String>; fn get_landing_page(_project_id: &str) -> Result<Option<String>, String>; fn set_landing_page(_project_id: &str, _markdown: Option<&str>) -> Result<(), String>; fn list_digests(_project_id: &str) -> Result<Vec<String>, String>; fn read_digest(_project_id: &str, _date: &str) -> Result<Option<String>, String>; fn project_stats(_project_id: &str, _range: crate::stats::StatsRange) -> Result<crate::stats::ProjectStats, String>;
+        }
+    }
+    struct Route {
+        server: ApiServer,
+        pool: sqlx::SqlitePool,
+        implementer: String,
+        peer: String,
+        reviewer: String,
+        foreign_reviewer: String,
+        _dir: TempDir,
+    }
+    async fn create_run(
+        store: &crate::store::Store,
+        task: &str,
+        owner: &str,
+        fence: i64,
+    ) -> String {
+        store
+            .record_development_run_intent(task, owner, fence)
+            .await
+            .unwrap()
+            .id
+    }
+
+    fn route(label: &str) -> Route {
+        let dir = TempDir::new(label);
+        let db = dir.path().join("projecta.db");
+        let store = tauri::async_runtime::block_on(crate::store::Store::open(&db)).unwrap();
+        let pool = tauri::async_runtime::block_on(sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            db.display()
+        )))
+        .unwrap();
+        let (implementer, peer, reviewer, foreign_reviewer) = tauri::async_runtime::block_on(
+            async {
+                let policy = serde_json::to_string(
+                    &crate::development_policy::DevelopmentPolicy::defaults(),
+                )
+                .unwrap();
+                for (root, project) in [("root-a", "project-a"), ("root-b", "project-b")] {
+                    sqlx::query("INSERT INTO continuous_goals(id,project_id,root_goal_id,objective,status,deadline_at,admitted,created_at,updated_at) VALUES(?,?,?,'goal','open',9999999999,1,1,1)")
+                        .bind(root).bind(project).bind(root).execute(&pool).await.unwrap();
+                    sqlx::query("INSERT INTO continuous_root_policies(root_goal_id,policy_json,source,observed_at) VALUES(?,?,'test',1)")
+                        .bind(root).bind(&policy).execute(&pool).await.unwrap();
+                }
+                for (task, root, owner, fence) in [
+                    ("task-a", "root-a", "worker-a", 7),
+                    ("task-b", "root-a", "worker-b", 8),
+                    ("task-r", "root-a", "worker-r", 3),
+                    ("task-f", "root-b", "worker-f", 4),
+                ] {
+                    sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES(?,?,'task','[]','[]','running',?,?,1,1)")
+                        .bind(task).bind(root).bind(owner).bind(fence).execute(&pool).await.unwrap();
+                }
+                for (task, owner) in [("task-r", "worker-r"), ("task-f", "worker-f")] {
+                    sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES(?,'development','reviewer',?,1,1,1)")
+                        .bind(task).bind(owner).execute(&pool).await.unwrap();
+                }
+                let a = create_run(&store, "task-a", "worker-a", 7).await;
+                let b = create_run(&store, "task-b", "worker-b", 8).await;
+                let r = create_run(&store, "task-r", "worker-r", 3).await;
+                let f = create_run(&store, "task-f", "worker-f", 4).await;
+                (a, b, r, f)
+            },
+        );
+        let server = boot(
+            Arc::new(StoreBackend(store.clone())),
+            &dir.path().join("api"),
+            false,
+        )
+        .unwrap();
+        Route {
+            server,
+            pool,
+            implementer,
+            peer,
+            reviewer,
+            foreign_reviewer,
+            _dir: dir,
+        }
+    }
+
+    impl Route {
+        fn call(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            method: &str,
+            path: &str,
+            body: &str,
+        ) -> (u16, Value) {
+            let token = self
+                .server
+                .issue_run_descriptor(run, owner, fence, 60)
+                .unwrap()
+                .token;
+            let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, self.server.port()));
+            let mut stream = TcpStream::connect(addr).unwrap();
+            stream.set_read_timeout(Some(IO_TIMEOUT)).unwrap();
+            write!(stream, "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n{TOKEN_HEADER}: {token}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
+            let mut raw = String::new();
+            stream.read_to_string(&mut raw).unwrap();
+            let status = raw[9..12].parse().unwrap();
+            let body = raw.split_once("\r\n\r\n").unwrap().1;
+            (status, serde_json::from_str(body).unwrap())
+        }
+
+        fn candidate(&self, commit: &str, observed_at: i64) -> (u16, Value) {
+            let body = json!({"candidateCommit":commit,"source":"git","observedAt":observed_at})
+                .to_string();
+            self.call(
+                &self.implementer,
+                "worker-a",
+                7,
+                "POST",
+                "/api/hq/v1/agent/candidate",
+                &body,
+            )
+        }
+
+        fn evidence(&self) -> (u16, Value) {
+            let body = json!({"idempotencyKey":"evidence-key","source":"cargo","observedAt":7,"candidateCommit":COMMIT_A,"measurement":{"state":"measured","value":{"passed":true}},"payload":{"command":"cargo test"}}).to_string();
+            self.call(
+                &self.implementer,
+                "worker-a",
+                7,
+                "POST",
+                "/api/hq/v1/agent/evidence",
+                &body,
+            )
+        }
+
+        fn review(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            evidence: &str,
+            key: &str,
+        ) -> (u16, Value) {
+            let body = json!({"idempotencyKey":key,"evidenceId":evidence,"candidateCommit":COMMIT_A,"disposition":"approved","source":"review","observedAt":11}).to_string();
+            self.call(run, owner, fence, "POST", "/api/hq/v1/agent/review", &body)
+        }
+    }
+
+    #[test]
+    fn candidate_and_evidence_bind_to_commit_and_run_and_replay_idempotently() {
+        let fx = route("agent-http-bind-replay");
+        assert_eq!(fx.candidate(COMMIT_A, 6).0, 200);
+        let (status, first) = fx.evidence();
+        assert_eq!(status, 200, "{first}");
+        let (status, replay) = fx.evidence();
+        assert_eq!(status, 200, "{replay}");
+        assert_eq!(replay, first);
+        assert_eq!(first["runId"], fx.implementer);
+        assert_eq!(first["candidateCommit"], COMMIT_A);
+    }
+
+    #[test]
+    fn evidence_is_readable_only_inside_its_own_run() {
+        let fx = route("agent-http-evidence-scope");
+        assert_eq!(fx.candidate(COMMIT_A, 6).0, 200);
+        let evidence = fx.evidence().1;
+        let path = format!(
+            "/api/hq/v1/agent/evidence/{}",
+            evidence["id"].as_str().unwrap()
+        );
+        let (status, reply) = fx.call(&fx.peer, "worker-b", 8, "GET", &path, "");
+        assert_eq!(status, 404, "{reply}");
+        assert_eq!(reply["error"], "unknown evidence in this run");
+    }
+
+    #[test]
+    fn foreign_and_stale_evidence_are_refused() {
+        let fx = route("agent-http-review-scope");
+        assert_eq!(fx.candidate(COMMIT_A, 6).0, 200);
+        let evidence = fx.evidence().1["id"].as_str().unwrap().to_string();
+        let (status, reply) = fx.review(&fx.foreign_reviewer, "worker-f", 4, &evidence, "foreign");
+        assert_eq!(status, 403, "{reply}");
+        assert_eq!(reply["error"], "reviewer run belongs to another project");
+        assert_eq!(fx.candidate(COMMIT_B, 9).0, 200);
+        assert_eq!(fx.candidate(COMMIT_A, 10).0, 200);
+        let (status, reply) = fx.review(&fx.reviewer, "worker-r", 3, &evidence, "stale");
+        assert_eq!(status, 409, "{reply}");
+        assert_eq!(
+            reply["error"],
+            "review evidence is not valid for the reviewed run and candidate"
+        );
+    }
+
+    #[test]
+    fn rewritten_root_policy_leaves_run_policy_unchanged_and_fails_closed() {
+        let fx = route("agent-http-frozen-policy");
+        let context = fx
+            .call(
+                &fx.implementer,
+                "worker-a",
+                7,
+                "GET",
+                "/api/hq/v1/agent/context",
+                "",
+            )
+            .1;
+        let frozen = context["run"]["policyJson"].clone();
+        let mut rewritten = crate::development_policy::DevelopmentPolicy::defaults();
+        rewritten.teams[0].roles = vec!["reviewer".into()];
+        tauri::async_runtime::block_on(
+            sqlx::query(
+                "UPDATE continuous_root_policies SET policy_json=? WHERE root_goal_id='root-a'",
+            )
+            .bind(serde_json::to_string(&rewritten).unwrap())
+            .execute(&fx.pool),
+        )
+        .unwrap();
+        let (status, context) = fx.call(
+            &fx.implementer,
+            "worker-a",
+            7,
+            "GET",
+            "/api/hq/v1/agent/context",
+            "",
+        );
+        assert_eq!(status, 200, "{context}");
+        assert_eq!(context["run"]["policyJson"], frozen);
+        assert_eq!(context["dispatch"]["role"], Value::Null);
+        assert!(context["dispatch"]["unresolved"]
+            .as_str()
+            .unwrap()
+            .contains("frozen root policy"));
+    }
     #[test]
     fn checkpoint_input_and_conflicts_have_actionable_http_status() {
         assert_eq!(agent_error("invalid record cursor".into()).status, 400);
