@@ -682,6 +682,7 @@ impl PtyManager {
         Ok(())
     }
 
+    #[allow(dead_code)] // the command uses `install_in_maintenance` since W3-02e
     pub fn install_when_idle(
         &self,
         install: impl FnOnce() -> Result<(), String>,
