@@ -652,6 +652,7 @@ function AppContent() {
         setBusyOrchestratorProjectId(projectId);
         try {
           const loaded = await listWorkers(projectId).catch(() => null);
+          if (activeProjectIdRef.current !== projectId) return;
           const live =
             loaded?.find(
               (worker) =>
@@ -660,6 +661,7 @@ function AppContent() {
                 worker.sessionId !== null,
             ) ?? null;
           const orchestrator = live ?? (await createOrchestrator(projectId));
+          if (activeProjectIdRef.current !== projectId) return;
           setWorkers((prev) =>
             prev.some((entry) => entry.id === orchestrator.id)
               ? prev.map((entry) => (entry.id === orchestrator.id ? orchestrator : entry))
@@ -667,9 +669,9 @@ function AppContent() {
           );
           openWorkerTab(orchestrator);
         } catch (cause) {
-          setError(describeError(cause));
+          if (activeProjectIdRef.current === projectId) setError(describeError(cause));
         } finally {
-          setBusyOrchestratorProjectId(null);
+          setBusyOrchestratorProjectId((current) => (current === projectId ? null : current));
         }
       })();
     },

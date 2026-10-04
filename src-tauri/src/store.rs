@@ -1010,6 +1010,16 @@ pub struct Store {
 }
 
 impl Store {
+    #[cfg(test)]
+    pub(crate) fn test_pool_is_closed(&self) -> bool {
+        self.pool.is_closed()
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn close_test_pool(&self) {
+        self.pool.close().await;
+    }
+
     /// Reserve the database for maintenance after current writes drain.
     #[allow(dead_code)] // W3-01b wires this store API into the application seam.
     pub async fn enter_maintenance(&self) -> Result<(), MaintenanceError> {

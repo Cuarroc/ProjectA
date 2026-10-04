@@ -1,7 +1,7 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-10-04T19:09:51.784Z",
-  "commit": "d2dcb45",
-  "dirty": true,
+  "generatedAt": "2026-10-04T21:07:52.617Z",
+  "commit": "a0672d2",
+  "dirty": false,
   "sources": [
     {
       "path": "STAND.md",
@@ -9,7 +9,7 @@ window.HQ_DATA = {
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "5f7c455c8d0bd024809ea67407876fc2a725f76b40a485dda1a5afe38cb52964"
+      "sha256": "2af4ad3a6e5a5bc01e751a5dca8df84d8d45d1f253712e81684733fb8061ecca"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -1021,9 +1021,36 @@ window.HQ_DATA = {
         },
         {
           "id": "M4-R7-02",
-          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen",
+          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige dispatch_once auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall",
           "size": "S",
           "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-ROW15-PROOF",
+          "title": "HTTP-Beleg Zeile 15 (eingeengt): Bindung/Idempotenz Kandidat und Evidenz, Lesen nur im eigenen Run, fremde/stale Evidenz abgewiesen, veränderte Root-Policy ändert policy_json nicht und meldet fail-closed",
+          "size": "S",
+          "lane": "api-Tests",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-ROW17-PROOF",
+          "title": "HTTP-Beleg Zeile 17 (eingeengt): Kandidat-Delta macht Evidenz und Reviews sichtbar ungültig, auch nach Neustart; Freigabe bleibt per Schema unmöglich",
+          "size": "S",
+          "lane": "api-Tests",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-E2E-14",
+          "title": "Echter HTTP-Router + Store + Fake-Agentenprozess: Checkpoint -> Abbruch -> Fortsetzen (Zeile 14)",
+          "size": "S",
+          "lane": "api",
           "stand": "offen",
           "state": "open",
           "prNumbers": []
@@ -1066,7 +1093,7 @@ window.HQ_DATA = {
         }
       ],
       "done": 16,
-      "total": 32
+      "total": 35
     },
     {
       "id": "M5",
@@ -1816,7 +1843,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1837,7 +1864,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1858,7 +1885,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },

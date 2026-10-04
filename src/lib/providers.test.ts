@@ -260,6 +260,24 @@ describe("hooks", () => {
     expect(result.current.present).toBe(false);
   });
 
+  it("useProviderKey ignores a late presence response for the previous provider", async () => {
+    let resolveOld: (value: boolean) => void = () => undefined;
+    const oldProvider = new Promise<boolean>((resolve) => {
+      resolveOld = resolve;
+    });
+    vi.mocked(ipc.hasProviderKey).mockImplementation((providerId) =>
+      providerId === "old" ? oldProvider : Promise.resolve(false),
+    );
+    const { result, rerender } = renderHook(
+      ({ providerId }) => useProviderKey(providerId),
+      { initialProps: { providerId: "old" } },
+    );
+    rerender({ providerId: "new" });
+    await waitFor(() => expect(ipc.hasProviderKey).toHaveBeenCalledWith("new"));
+    await act(async () => resolveOld(true));
+    expect(result.current.present).toBe(false);
+  });
+
   it("useFreeTierSummary keeps an unavailable summary as data and a failure as an error", async () => {
     vi.mocked(ipc.getFreeTierSummary).mockResolvedValueOnce({
       available: false,

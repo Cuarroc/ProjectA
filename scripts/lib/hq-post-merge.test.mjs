@@ -7,13 +7,17 @@ import { spawnSync } from 'node:child_process';
 
 const root = resolve(import.meta.dirname, '../..');
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash';
+// The hook judges the branch from CI refs first; the fixture repo must not see them.
+function cleanEnv() {
+  const env = { ...process.env };
+  for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR', 'HOTSPOT_BRANCH', 'GITHUB_ACTIONS', 'GITHUB_HEAD_REF', 'GITHUB_REF_NAME']) delete env[name];
+  return env;
+}
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), 'hq-post-merge-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   function run(exe, args) {
-    const env = { ...process.env };
-    for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR']) delete env[name];
-    const result = spawnSync(exe, args, { cwd: dir, env, encoding: 'utf8' });
+    const result = spawnSync(exe, args, { cwd: dir, env: cleanEnv(), encoding: 'utf8' });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     return result.stdout + result.stderr;
   }
@@ -27,6 +31,8 @@ function fixture(t) {
   mkdirSync(join(dir, 'docs/dev-hq'), { recursive: true });
   copyFileSync(join(root, '.githooks/post-merge'), join(dir, '.githooks/post-merge'));
   copyFileSync(join(root, '.githooks/merge-hqdata'), join(dir, '.githooks/merge-hqdata'));
+  mkdirSync(join(dir, 'scripts/lib'));
+  copyFileSync(join(root, 'scripts/lib/hotspots.sh'), join(dir, 'scripts/lib/hotspots.sh'));
   writeFileSync(join(dir, 'STAND.md'), 'base');
   writeFileSync(join(dir, 'scripts/dev-hq.mjs'), `
     import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -115,7 +121,7 @@ test('post-merge generator failure cannot publish a partial pair', t => {
     writeFileSync(join(process.argv[process.argv.indexOf('--out') + 1], 'data.json'), 'partial');
     process.exit(1);
   `);
-  const result = spawnSync(bash, ['.githooks/post-merge'], {cwd: f.dir, encoding: 'utf8'});
+  const result = spawnSync(bash, ['.githooks/post-merge'], {cwd: f.dir, env: cleanEnv(), encoding: 'utf8'});
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.equal(readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8'), before);
 });
@@ -134,4 +140,15 @@ test('post-merge retains lessons with the real HQ generator', t => {
   const source = JSON.parse(readFileSync(join(root, 'docs/dev-hq/lessons.json'), 'utf8'));
   assert.ok(actual.lessons.length > 0);
   assert.equal(actual.lessons.length, Array.isArray(source) ? source.length : source.lessons.length);
+});
+
+test('post-merge leaves the snapshot alone on a non-main branch', t => {
+  const f = fixture(t);
+  f.git('checkout', '-qb', 'claude/some-work');
+  writeFileSync(join(f.dir, 'STAND.md'), 'changed source');
+  f.git('commit', '-qam', 'change source');
+  const before = readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8');
+  f.hook();
+  assert.equal(readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8'), before);
+  assert.equal(f.git('status', '--porcelain').trim(), '');
 });

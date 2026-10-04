@@ -145,6 +145,14 @@ bash scripts/ci/gates.sh lane prepush  # the full local lane
 bash scripts/ci/gates.sh --from clippy lane linux   # resume after a failure
 ```
 
+Generated and shared files are written on `main` only: a branch must not
+commit `docs/dev-hq/data.js|json` or `.pa/ACTIVITY.md` (gate `hotspot-guard`;
+PRs merge without our local merge driver, so each such change conflicts with
+every other PR). `sync.sh note` writes to the untracked `.pa/ACTIVITY.local.md`
+on a branch (summary goes into the PR text), `post-merge` regenerates the
+snapshot on `main` only, and the coordinator refreshes it in one small PR from a
+`<vendor>/hq-snapshot-*` branch (`npm run hq`, commit just the two files).
+
 Lanes: `precommit`, `prepush`, `linux`, `windows`, `release`, `audit`. `ci.yml`,
 `release.yml`, `audit.yml` and both git hooks call exactly these lanes — one
 step per lane, no list left in the YAML. Drift is not checked, it is impossible.
@@ -256,8 +264,8 @@ those `conflict`): merge, never rebase or force-push.
 - `red-first` is computed inside `gates (linux)` (steps `red-first - plan`
   and `red-first - proof against merge base`); the `red-first` job only
   reports their outcome. Look there for details (CI-03).
-- The queue tests one batch at a time (`max_parallel_checks: 1`); two or
-  more waiting PRs are tested together (up to 4).
+- The queue tests up to two batches at once (`max_parallel_checks: 2`,
+  CI-QUEUE-02); more waiting PRs are tested together (up to 4 per batch).
 - Dependabot commits that only touch dependency manifests need no
   Test-First/No-Test trailer (`red-first.sh`); anything else they touch does.
 - Local: `PA_PREPUSH=light git push` runs the `branchpush` lane (no clippy,

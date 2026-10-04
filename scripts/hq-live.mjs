@@ -228,6 +228,7 @@ async function setup() {
       benchmarkAccepted: false,
       continuousExecutionEnabled: false,
       stablePromotionAuthorized: false,
+      appReleaseAttested: false,
     },
   });
   return { generatedAt: new Date().toISOString(), probes, ...checks, continuousReadiness };
