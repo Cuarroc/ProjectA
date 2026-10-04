@@ -534,20 +534,30 @@ pub fn write_digest(repo_path: &str, date: &str, markdown: &str) -> Result<PathB
 
 /// The dates a project has digests for, newest first.
 pub fn list_digests(repo_path: &str) -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(digest_dir(repo_path)) else {
-        return Vec::new();
+    let entries = match std::fs::read_dir(digest_dir(repo_path)) {
+        Ok(entries) => entries,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Vec::new(),
+        Err(err) => return vec![incomplete("failed to read digest directory", &err)],
     };
-    let mut dates: Vec<String> = entries
-        .flatten()
-        .filter_map(|entry| {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            let date = name.strip_suffix(".md")?.to_string();
-            is_valid_date(&date).then_some(date)
-        })
-        .collect();
+    let mut dates = Vec::new();
+    for entry in entries {
+        match entry {
+            Ok(entry) => {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if let Some(date) = name.strip_suffix(".md").filter(|date| is_valid_date(date)) {
+                    dates.push(date.to_string());
+                }
+            }
+            Err(err) => dates.push(incomplete("failed to read digest directory entry", &err)),
+        }
+    }
     // Lexical order is chronological order for `YYYY-MM-DD`.
     dates.sort_unstable_by(|a, b| b.cmp(a));
     dates
+}
+
+fn incomplete(action: &str, err: &std::io::Error) -> String {
+    format!("incomplete: {action}: {}", cell(&err.to_string(), 160))
 }
 
 /// One project's digest for one date, or `None` when there is none.
@@ -555,7 +565,14 @@ pub fn read_digest(repo_path: &str, date: &str) -> Option<String> {
     if !is_valid_date(date) {
         return None;
     }
-    std::fs::read_to_string(digest_path(repo_path, date)).ok()
+    match std::fs::read_to_string(digest_path(repo_path, date)) {
+        Ok(markdown) => Some(markdown),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
+        Err(err) => Some(format!(
+            "# Digest incomplete\n\n{}\n",
+            incomplete("failed to read digest", &err)
+        )),
+    }
 }
 
 /// One sweep: write yesterday's page for every project that needs one.
@@ -878,6 +895,20 @@ mod tests {
 
         let page = read_digest(&repo, "2026-08-27").expect("visible failure");
         assert!(page.contains("incomplete: failed to read digest"), "{page}");
+
+        let dir = TempDir::new("digest-broken-directory");
+        let repo = dir.path().to_string_lossy().into_owned();
+        let digest_dir = digest_dir(&repo);
+        std::fs::create_dir_all(digest_dir.parent().expect("digest parent"))
+            .expect("create digest parent");
+        std::fs::write(&digest_dir, "not a directory").expect("create broken digest directory");
+
+        let dates = list_digests(&repo);
+        assert_eq!(dates.len(), 1, "{dates:?}");
+        assert!(
+            dates[0].contains("incomplete: failed to read digest directory"),
+            "{dates:?}"
+        );
     }
 
     async fn fixture() -> (TempDir, Store, Project) {
