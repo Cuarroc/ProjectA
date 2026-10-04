@@ -100,6 +100,40 @@ pub enum EnvIsolation {
     Strict,
 }
 
+impl EnvIsolation {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Inherit => "inherit",
+            Self::Allowlist => "allowlist",
+            Self::Strict => "strict",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InvalidEnvIsolationValue(pub String);
+
+impl std::fmt::Display for InvalidEnvIsolationValue {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "invalid environment isolation value: {}", self.0)
+    }
+}
+
+impl std::error::Error for InvalidEnvIsolationValue {}
+
+impl std::str::FromStr for EnvIsolation {
+    type Err = InvalidEnvIsolationValue;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "inherit" => Ok(Self::Inherit),
+            "allowlist" => Ok(Self::Allowlist),
+            "strict" => Ok(Self::Strict),
+            _ => Err(InvalidEnvIsolationValue(value.to_owned())),
+        }
+    }
+}
+
 /// A profile nobody has switched off is on.
 fn default_enabled() -> bool {
     true

@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { QueueEntry } from "../types";
 import * as ipc from "../lib/ipc";
+import { usePolledResource } from "../lib/usePolledResource";
 import QueuePanel from "./QueuePanel";
 
 vi.mock("../lib/ipc", () => ({
@@ -52,6 +53,47 @@ const props = {
 };
 
 describe("QueuePanel project switch", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps the newer same-project poll when an older request lands last", async () => {
+    let resolveOlder: (rows: string[]) => void = () => undefined;
+    let resolveNewer: (rows: string[]) => void = () => undefined;
+    const load = vi
+      .fn<() => Promise<string[]>>()
+      .mockReturnValueOnce(
+        new Promise<string[]>((resolve) => {
+          resolveOlder = resolve;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise<string[]>((resolve) => {
+          resolveNewer = resolve;
+        }),
+      );
+    const publish = vi.fn();
+    const { result } = renderHook(() => usePolledResource("project-a"));
+    const older = result.current();
+    void load().then((rows) => {
+      if (older?.current()) publish(rows);
+      older?.finish();
+    });
+
+    act(() => {
+      const newer = result.current(true);
+      void load().then((rows) => {
+        if (newer?.current()) publish(rows);
+        newer?.finish();
+      });
+    });
+    await act(async () => resolveNewer(["newer"]));
+    expect(publish).toHaveBeenLastCalledWith(["newer"]);
+
+    await act(async () => resolveOlder(["older"]));
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
   it("drops the previous project's rows and draft when the read for the new one fails", async () => {
     vi.mocked(ipc.listQueue).mockResolvedValueOnce([rowA]);
     const { rerender } = render(<QueuePanel {...props} projectId="project-a" />);

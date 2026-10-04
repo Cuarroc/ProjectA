@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 
 import {
   describeError,
@@ -8,6 +8,7 @@ import {
 } from "../lib/ipc";
 import { openExternalSafely } from "../lib/openExternalSafely";
 import { loadWebPort } from "../lib/settings";
+import { useRefreshOnResume } from "../lib/useRefreshOnResume";
 
 /** Fallback when nothing is stored and nothing is running. */
 const FALLBACK_PORT = "8787";
@@ -42,10 +43,8 @@ export default function WebInterfacePanel() {
     }
   }, []);
 
-  // The core may have started or stopped it on its own between sessions.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  // The core or HQ may have changed it while this webview was inactive.
+  useRefreshOnResume(refresh);
 
   const handleStart = (event: FormEvent) => {
     event.preventDefault();

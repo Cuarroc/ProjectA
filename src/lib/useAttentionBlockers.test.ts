@@ -66,4 +66,19 @@ describe("useAttentionBlockers", () => {
     );
     expect(ipc.getWorkerReadiness).toHaveBeenCalledWith("worker-a");
   });
+
+  it("does not reload readiness when a new workers array has the same ids", async () => {
+    vi.mocked(ipc.getWorkerReadiness).mockResolvedValue(readiness);
+
+    const { rerender } = renderHook(
+      ({ workers }) => useAttentionBlockers("project-a", workers),
+      { initialProps: { workers: [worker] } },
+    );
+
+    await waitFor(() => expect(ipc.getWorkerReadiness).toHaveBeenCalledTimes(1));
+
+    rerender({ workers: [{ ...worker }] });
+
+    await waitFor(() => expect(ipc.getWorkerReadiness).toHaveBeenCalledTimes(1));
+  });
 });

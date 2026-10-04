@@ -29,7 +29,19 @@ describe("useBoard", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("does not starve a slow response behind overlapping polls", async () => {
+    vi.useFakeTimers();
+    const slow = deferred<Awaited<ReturnType<typeof ipc.getBoardState>>>();
+    vi.mocked(ipc.getBoardState).mockReturnValue(slow.promise);
+
+    renderHook(() => useBoard("project-a", true));
+    await act(async () => vi.advanceTimersByTimeAsync(15_000));
+
+    expect(ipc.getBoardState).toHaveBeenCalledTimes(1);
   });
 
   it("clears the initial spinner when a silent refresh supersedes it", async () => {

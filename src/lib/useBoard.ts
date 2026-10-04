@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 import { describeError, getBoardState, onWorkerStatus } from "./ipc";
+import { usePolledResource } from "./usePolledResource";
 import type { BoardCard, CoordinatorInfo } from "../types";
 
 /**
@@ -47,8 +48,7 @@ export function useBoard(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Guards against a slow response for a project the user already left.
-  const token = useRef(0);
+  const beginRequest = usePolledResource(enabled ? projectId : null);
   // Mirror for the event handler, which must not re-bind on every update.
   const cardsRef = useRef<BoardCard[]>(cards);
   cardsRef.current = cards;
@@ -63,8 +63,7 @@ export function useBoard(
   );
 
   const load = useCallback(
-    async (showSpinner: boolean) => {
-      const mine = ++token.current;
+    async (showSpinner: boolean, replace = false) => {
       if (!projectId) {
         setCards([]);
         setCoordinators([]);
@@ -72,27 +71,30 @@ export function useBoard(
         setLoading(false);
         return;
       }
+      const request = beginRequest(replace);
+      if (request === null) return;
       if (showSpinner) setLoading(true);
       try {
         const next = await getBoardState(projectId);
-        if (token.current !== mine) return;
+        if (!request.current()) return;
         setCards(next.cards);
         setCoordinators(next.coordinators);
         for (const card of next.cards) onWorkerSeen?.(card.worker.id);
         setError(null);
       } catch (cause) {
-        if (token.current === mine) setError(describeError(cause));
+        if (request.current()) setError(describeError(cause));
       } finally {
         // A silent refresh can supersede the initial spinner load. The last
         // request standing must clear that spinner even if it did not raise it.
-        if (token.current === mine) setLoading(false);
+        if (request.current()) setLoading(false);
+        request.finish();
       }
     },
-    [onWorkerSeen, projectId],
+    [beginRequest, onWorkerSeen, projectId],
   );
 
   const refresh = useCallback(() => {
-    void load(false);
+    void load(false, true);
   }, [load]);
 
   // Initial load + polling fallback.

@@ -91,9 +91,13 @@ impl Gate {
                 self.pending.pop_front();
                 Ok(Some(stage))
             }
-            Ok(Err(_)) | Err(TryRecvError::Disconnected) => {
+            Ok(Err(reason)) => {
                 self.failed = true;
-                Err("checkpoint persistence unconfirmed".into())
+                Err(format!("checkpoint persistence unconfirmed: {reason}"))
+            }
+            Err(TryRecvError::Disconnected) => {
+                self.failed = true;
+                Err("checkpoint persistence unconfirmed: channel disconnected".into())
             }
             Err(TryRecvError::Empty) => Ok(None),
         }
@@ -129,6 +133,17 @@ mod tests {
         assert_eq!(gate.poll().unwrap(), Some(Stage::Launch));
         assert_eq!(gate.poll().unwrap(), Some(Stage::Process));
         assert_eq!(gate.poll().unwrap(), None);
+    }
+    #[test]
+    fn a_rejected_acknowledgement_keeps_its_reason() {
+        let (tx, rx) = mpsc::sync_channel(1);
+        let mut gate = Gate::new(binding(), Some(tx));
+        gate.submit(Stage::Launch, Value::Null).unwrap();
+        rx.recv().unwrap().acknowledge(Err("x".into())).unwrap();
+
+        let error = gate.poll().unwrap_err();
+        assert!(error.starts_with("checkpoint persistence unconfirmed"));
+        assert!(error.contains('x'));
     }
     #[test]
     fn failed_or_lost_checkpoint_cannot_be_replaced_by_later_success() {

@@ -40,4 +40,7 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 ## 2026-10-04 19:39 — Codex GPT-5 (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
 - Zusammenfassung: HQ2-05b package 4 updates collector documentation and not-reported reasons from merged real probes; implementation commit e511615 pushed; draft PR #341; Tier B review pending coordinator.
 - Commits: e511615
+## 2026-10-04 19:30 — codex (codex/changelog-150-draft-r, srv-changelog-150-draft)
+- Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
+- Commits: 13d5357
 - Uncommitted: keine

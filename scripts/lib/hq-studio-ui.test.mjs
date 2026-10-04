@@ -4,6 +4,38 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 const base = new URL('../../docs/dev-hq/concepts/', import.meta.url);
 const tick = () => new Promise(resolve => setImmediate(resolve));
+
+test('intro bar and design decision preserve the approved accessible token contract', async t => {
+  const studioHtml = readFileSync(new URL('hq2-studio.html', base), 'utf8');
+  const conceptHtml = readFileSync(new URL('hq2-concept.html', base), 'utf8');
+  const css = readFileSync(new URL('studio-workspace.css', base), 'utf8');
+  const intro = 'Wähle links einen Bereich. „Quelle ansehen“ ersetzt rechts die Assistenz. Im Code-Chat bleiben Beratung und aktive Arbeit getrennt.';
+  const decision = 'Die Demo bestimmt die visuelle Richtung, bevor sie in die installierte App übernommen wird.';
+
+  for (const html of [studioHtml, conceptHtml]) {
+    assert.match(html, new RegExp(intro.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(html, /<button[^>]+id="hide-guide"[^>]*>Ausblenden<\/button>/);
+    assert.match(html, /<strong>Dein Urteil ist gefragt<\/strong>/);
+    assert.match(html, new RegExp(decision));
+    assert.match(html, /<button[^>]+id="review"[^>]*>Design prüfen<\/button>/);
+  }
+
+  for (const selector of ['.guidance', '.design-decision']) {
+    const rule = css.match(new RegExp(`${selector.replace('.', '\\.')}\\{([^}]*)\\}`))?.[1];
+    assert.ok(rule, `${selector} has a shared Studio rule`);
+    assert.match(rule, /var\(--/);
+    assert.doesNotMatch(rule, /#[0-9a-f]{3,8}\b/i);
+  }
+
+  const f = await fixture();
+  t.after(() => f.w.close());
+  assert.equal(f.q('#hide-guide').tagName, 'BUTTON');
+  assert.equal(f.q('#review').tagName, 'BUTTON');
+  assert.equal(f.q('#design-decision').hidden, false);
+  f.q('#hide-guide').click();
+  assert.equal(f.q('#guidance').hidden, true);
+});
+
 async function fixture({ density, appearance, storageUnavailable = false } = {}) {
   const html = readFileSync(new URL('hq2-studio.html', base), 'utf8').replace('<head>', '<head><meta name="hq-session" content="test-session">');
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'http://127.0.0.1:4187/concepts/hq2-studio.html' });
