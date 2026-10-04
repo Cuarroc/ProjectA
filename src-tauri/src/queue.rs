@@ -4,11 +4,13 @@
 //! capacity.  That keeps the expensive pieces (a worktree and a PTY) in the
 //! existing worker lifecycle, while making delayed dispatch restart-safe.
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::task::{Context, Poll};
 use std::thread;
 use std::time::Duration;
 
@@ -75,6 +77,53 @@ pub trait TaskLauncher: Send + Sync {
         &'a self,
         entry: &'a QueueEntry,
     ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + 'a>>;
+}
+
+/// One launch, guarded against a panicking launcher (FJ-2).
+///
+/// The launcher is arbitrary code inside a boxed future, and every sweep
+/// hangs on a single plain thread below a single `block_on` (see [`start`]).
+/// A panic in there used to unwind straight out of the thread closure: the
+/// dispatcher died silently, no further project was dispatched until the
+/// app restarted, and the panicking entry stayed stuck in its claim. The
+/// guard is the `catch_unwind(AssertUnwindSafe(..))` this codebase isolates
+/// panicking steps with elsewhere (`workers::native_supervisor`,
+/// `workers::native_launch`), placed at the future boundary - the one seam a
+/// per-entry step has inside that single big await. A caught panic becomes
+/// the launcher's own `Err`, so the entry fails with a reason exactly like
+/// an ordinary launch failure and the sweep goes on.
+struct GuardedLaunch<'a> {
+    inner: Pin<Box<dyn Future<Output = Result<String, String>> + Send + 'a>>,
+}
+
+impl Future for GuardedLaunch<'_> {
+    type Output = Result<String, String>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // Match the task-isolation pattern in `native_supervisor`: after an
+        // unwind the failed future is abandoned rather than polled again.
+        let this = self.get_mut();
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            this.inner.as_mut().poll(cx)
+        })) {
+            Ok(outcome) => outcome,
+            Err(panic) => Poll::Ready(Err(panic_reason(panic))),
+        }
+    }
+}
+
+/// The reason a panicking launcher leaves on its queue entry: the payload
+/// when the panic carried one (`panic!("..")`), the bare fact otherwise -
+/// the app-wide panic hook (`logging::install_panic_hook`) has the detail,
+/// in the log and in the marker the next start shows.
+fn panic_reason(panic: Box<dyn Any + Send>) -> String {
+    match panic.downcast::<String>() {
+        Ok(text) => format!("launch panicked: {text}"),
+        Err(panic) => match panic.downcast::<&'static str>() {
+            Ok(text) => format!("launch panicked: {text}"),
+            Err(_) => "launch panicked".to_string(),
+        },
+    }
 }
 
 /// Validate and persist a new queue entry: the one insert path shared by the
@@ -340,7 +389,19 @@ pub async fn dispatch_project(
             profile_id: launch_as,
             ..entry.clone()
         };
-        return match launcher.launch(&launched).await {
+        // Guarded (FJ-2): a panic while starting one entry's worker must
+        // fail that entry, not the dispatcher thread every sweep hangs on.
+        // The guard turns the unwind into the same `Err` an ordinary launch
+        // failure is, so the entry fails visibly below instead of dying
+        // with the thread.
+        return match (GuardedLaunch {
+            // Keep construction inside the guarded future too. Production
+            // launchers return an async block, but the trait permits a fake
+            // or future launcher to panic before it returns that block.
+            inner: Box::pin(async { launcher.launch(&launched).await }),
+        })
+        .await
+        {
             Ok(worker_id) => {
                 // Say the redirect on the worker's own log, first thing. A
                 // worker that quietly runs on an agent nobody chose is the
