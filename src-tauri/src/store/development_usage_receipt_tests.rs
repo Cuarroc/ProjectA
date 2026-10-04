@@ -46,6 +46,47 @@ fn codex_json_receipt_names_its_live_provenance() {
     assert_never_unavailable(&json);
 }
 
+/// Real output of `echo "Reply with OK" | codex exec --json --ephemeral
+/// --ignore-user-config --sandbox workspace-write --skip-git-repo-check -`
+/// (codex-cli 0.160.0, 2026-10-04). Only `thread_id` is replaced by a
+/// placeholder; the event order and every count are as observed.
+const CODEX_REAL: &[u8] = include_bytes!("fixtures/codex-exec-json-0.160.0.jsonl");
+
+#[test]
+fn real_codex_0_160_output_is_measured_as_input_plus_output() {
+    let receipt = UsageReceipt::collect(&route("codex", CODEX_TRANSPORT), CODEX_REAL, Some(0));
+    // 14324 input (12288 cached, a subset) + 5 output (0 reasoning, a subset).
+    assert_eq!(receipt.tokens(), Some(14_329));
+    assert_eq!(receipt.state(), "measured");
+}
+
+#[test]
+fn real_codex_output_with_drift_is_still_rejected_with_a_named_reason() {
+    let text = std::str::from_utf8(CODEX_REAL).unwrap();
+    let mut extra = CODEX_REAL.to_vec();
+    extra.extend_from_slice(b"{\"type\":\"turn.started\"}\n");
+    let cached_over_input = text.replace(
+        "\"cached_input_tokens\":12288",
+        "\"cached_input_tokens\":14325",
+    );
+    let cases: [(Vec<u8>, &str); 3] = [
+        (extra, "unexpected or out-of-order event"),
+        (
+            cached_over_input.into_bytes(),
+            "cached or reasoning count is invalid or exceeds its total",
+        ),
+        (
+            CODEX_REAL[..CODEX_REAL.len() - 1].to_vec(),
+            "capture is truncated before a final newline",
+        ),
+    ];
+    for (stdout, reason) in cases {
+        let receipt = UsageReceipt::collect(&route("codex", CODEX_TRANSPORT), &stdout, Some(0));
+        assert_eq!(receipt.state(), "rejected", "{reason}");
+        assert_eq!(receipt.to_json(Some(5))["reason"], reason);
+    }
+}
+
 #[test]
 fn rejected_and_partial_codex_captures_fail_closed_with_a_named_reason() {
     let truncated = &CODEX_SMOKE[..CODEX_SMOKE.len() - 1];
