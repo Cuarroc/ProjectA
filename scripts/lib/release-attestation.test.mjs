@@ -60,6 +60,35 @@ test('attestation: bad decidedAt is refused', () => refusal(d => { d.decidedAt =
 test('attestation: empty decidedBy is refused', () => refusal(d => { d.decidedBy = ' '; }, /decidedBy/));
 test('attestation: continuousEnabled true is refused', () => refusal(d => { d.continuousEnabled = true; }, /continuousEnabled/));
 test('attestation: commit mismatch is refused', () => refusal(d => { d.commit = 'a'.repeat(40); }, /does not match HEAD/, { commit: true }));
+test('attestation: an ignored untracked file is refused', () => {
+  const root = fixture();
+  try {
+    writeFileSync(path.join(root, '.gitignore'), '.pa/*\n');
+    git(root, 'add', '.gitignore');
+    git(root, 'commit', '-q', '-m', 'ignore attestations');
+    write(root, valid(root));
+    assert.equal(git(root, 'status', '--porcelain'), '');
+    const result = loadReleaseAttestation(FILE, root);
+    assert.equal(result.attested, false);
+    assert.match(result.reason, /committed regular file/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+test('attestation: a non-ancestor commit is refused', () => {
+  const root = fixture();
+  try {
+    const base = git(root, 'rev-parse', 'HEAD');
+    git(root, 'checkout', '-q', '-b', 'sibling');
+    git(root, 'commit', '-q', '--allow-empty', '-m', 'sibling');
+    const sibling = git(root, 'rev-parse', 'HEAD');
+    git(root, 'checkout', '-q', '--detach', base);
+    write(root, { ...valid(root), commit: sibling });
+    git(root, 'add', '.');
+    git(root, 'commit', '-q', '-m', 'attest');
+    const result = loadReleaseAttestation(FILE, root);
+    assert.equal(result.attested, false);
+    assert.match(result.reason, /ancestor/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 test('attestation: dirty work tree is refused', () => {
   const root = fixture();
   try {
