@@ -35,8 +35,7 @@ export function judgeRestart(before, after) {
     const a = now.get(r.id);
     if (!a) problems.push(`run ${r.id} vanished`);
     else if (a.status === 'reconciling') continue;
-    else if (a.status === 'failed' && a.terminal_detail) continue;
-    else problems.push(`run ${r.id}: ${r.status} -> ${a.status}; expected reconciling (or failed with a reason)`);
+    else problems.push(`run ${r.id}: ${r.status} -> ${a.status}; expected reconciling`);
   }
   const blocked = new Set(after.runs.filter((r) => r.status === 'reconciling').map((r) => r.task_id));
   const known = new Set(before.runs.map((r) => r.id));
