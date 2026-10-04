@@ -215,12 +215,12 @@ describe("IPC audit regressions", () => {
     );
   });
 
-  it("strips both Rust routing prefixes before a message reaches the UI", () => {
+  it("strips only the refused routing prefix and keeps unknown-entity errors readable", () => {
     expect(describeError(new Error("refused: worker is archived"))).toBe(
       "worker is archived",
     );
     expect(describeError(new Error("unknown project: project-a"))).toBe(
-      "project: project-a",
+      "unknown project: project-a",
     );
     expect(describeError("worker reported unknown project state")).toBe(
       "worker reported unknown project state",
