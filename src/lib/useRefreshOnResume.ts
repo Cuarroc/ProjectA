@@ -4,10 +4,7 @@ import { useEffect } from "react";
 export function useRefreshOnResume(refresh: () => void): void {
   useEffect(() => {
     const run = () => refresh();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") run();
-    };
-
+    const onVisibilityChange = () => document.visibilityState === "visible" && run();
     run();
     window.addEventListener("focus", run);
     document.addEventListener("visibilitychange", onVisibilityChange);

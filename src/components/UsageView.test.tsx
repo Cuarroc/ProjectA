@@ -3,13 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import UsageView from "./UsageView";
 import type { AgentProfile, Budget, QuotaState, UsageReport } from "../types";
-
 const reads = vi.hoisted(() => ({
   getQuotaState: vi.fn<() => Promise<QuotaState[]>>(() => new Promise(() => undefined)),
   getBudgets: vi.fn<() => Promise<Budget[]>>(() => Promise.resolve([])),
-  getOmniRouteUsage: vi.fn<() => Promise<UsageReport>>(() =>
-    Promise.reject(new Error("usage unavailable")),
-  ),
+  getOmniRouteUsage: vi.fn<() => Promise<UsageReport>>(() => Promise.reject(new Error("usage unavailable"))),
 }));
 
 vi.mock("../lib/ipc", () => ({
@@ -42,27 +39,18 @@ describe("UsageView", () => {
 
   it("keeps the last good budgets and usage when a refresh fails", async () => {
     vi.useFakeTimers();
-    const profile: AgentProfile = {
-      id: "codex", name: "Codex", command: "codex", args: [], env: {}, fallback: null, enabled: true,
-    };
+    const profile: AgentProfile = { id: "codex", name: "Codex", command: "codex", args: [], env: {}, fallback: null, enabled: true };
     const totals = { requests: 2, tokensIn: 100, tokensOut: 50, costUsd: 0, priced: 0 };
-    const usage: UsageReport = {
-      online: true, authorized: true, events: [], today: totals, total: totals, reportedCostUsd: 1.25,
-    };
+    const usage: UsageReport = { online: true, authorized: true, events: [], today: totals, total: totals, reportedCostUsd: 1.25 };
     reads.getQuotaState.mockResolvedValue([]);
-    reads.getBudgets
-      .mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 50, sevenDayPct: 80 }])
+    reads.getBudgets.mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 50, sevenDayPct: 80 }])
       .mockRejectedValueOnce(new Error("budget unavailable"));
     reads.getOmniRouteUsage.mockResolvedValueOnce(usage).mockRejectedValueOnce(new Error("usage unavailable"));
     render(<UsageView profiles={[profile]} cards={[]} workers={[]} />);
     await act(async () => undefined);
     expect(screen.getByText("Budget 5h 50 % · 7d 80 %")).toBeInTheDocument();
     expect(screen.getByText("1.2500 $ seit Beginn")).toBeInTheDocument();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
     expect(screen.getByText("Budget 5h 50 % · 7d 80 %")).toBeInTheDocument();
     expect(screen.getByText("1.2500 $ seit Beginn")).toBeInTheDocument();
   });

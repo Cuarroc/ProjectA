@@ -132,6 +132,7 @@ export default function SettingsView({
   onSaveMaxWorkers,
 }: SettingsViewProps) {
   const [tab, setTab] = useState<SettingsTab>("allgemein");
+  const globalRead = useRef(0);
 
   // -- Allgemein -------------------------------------------------------------
   const [portInput, setPortInput] = useState(() => {
@@ -168,7 +169,11 @@ export default function SettingsView({
     setDigestEnabledState(enabled);
     setDigestError(null);
     void setDigestEnabled(enabled)
-      .then(() => flashSaved(enabled ? "Digest an." : "Digest aus."))
+      .then(() => {
+        globalRead.current += 1;
+        setDigestEnabledState(enabled);
+        flashSaved(enabled ? "Digest an." : "Digest aus.");
+      })
       .catch((cause: unknown) => {
         setDigestEnabledState(previous);
         setDigestError(describeError(cause));
@@ -197,6 +202,7 @@ export default function SettingsView({
     setStuckError(null);
     void setStuckAfterMinutes(minutes)
       .then(() => {
+        globalRead.current += 1;
         stuckSynced.current = minutes === null ? "" : String(minutes);
         flashSaved(
           minutes === null
@@ -220,6 +226,7 @@ export default function SettingsView({
     void setProductMode(mode)
       .then(() => getRoutingStatus())
       .then((next) => {
+        globalRead.current += 1;
         setRouting(next);
         flashSaved(`Routing: ${mode}.`);
       })
@@ -683,11 +690,13 @@ export default function SettingsView({
   }, []);
 
   const refreshGlobalSettings = useCallback(() => {
+    const mine = ++globalRead.current;
     void getDigestEnabled()
-      .then(setDigestEnabledState)
+      .then((enabled) => globalRead.current === mine && setDigestEnabledState(enabled))
       .catch((cause: unknown) => setDigestError(describeError(cause)));
     void getStuckAfterMinutes()
       .then((minutes) => {
+        if (globalRead.current !== mine) return;
         const next = minutes === null ? "" : String(minutes);
         const previous = stuckSynced.current;
         setStuckInput((current) => current === previous ? next : current);
@@ -695,10 +704,10 @@ export default function SettingsView({
       })
       .catch((cause: unknown) => setStuckError(describeError(cause)));
     void getRoutingStatus()
-      .then(setRouting)
+      .then((next) => globalRead.current === mine && setRouting(next))
       .catch((cause: unknown) => setRoutingError(describeError(cause)));
     void getBudgets()
-      .then(applyBudgets)
+      .then((rows) => globalRead.current === mine && applyBudgets(rows))
       .catch((cause: unknown) => setBudgetError(describeError(cause)));
   }, [applyBudgets]);
 
@@ -728,6 +737,7 @@ export default function SettingsView({
     setBudgetError(null);
     void setBudget(profile.id, fiveHour, sevenDay)
       .then((stored) => {
+        globalRead.current += 1;
         // Read back what the core stored rather than trusting the field: this
         // is the value the watcher will act on.
         const saved = {

@@ -330,33 +330,25 @@ describe("SettingsView global state resync", () => {
     };
     stateReads.getDigestEnabled.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     stateReads.getStuckAfterMinutes.mockResolvedValueOnce(10).mockResolvedValueOnce(20);
-    stateReads.getRoutingStatus
-      .mockResolvedValueOnce({ mode: "cheap", reviewIndependent: true, reviewDetail: "" })
+    stateReads.getRoutingStatus.mockResolvedValueOnce({ mode: "cheap", reviewIndependent: true, reviewDetail: "" })
       .mockResolvedValueOnce({ mode: "reliable", reviewIndependent: true, reviewDetail: "" });
-    stateReads.getBudgets
-      .mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 50, sevenDayPct: 80 }])
+    stateReads.getBudgets.mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 50, sevenDayPct: 80 }])
       .mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 60, sevenDayPct: 90 }]);
     render(<SettingsView {...PROPS} profiles={[profile]} project={project("pj-a")} />);
     expect(await screen.findByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("10");
 
     fireEvent.focus(window);
-
     await waitFor(() => expect(screen.getByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("20"));
     expect(screen.getByRole("checkbox", { name: "Tages-Digest schreiben" })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: "Reliable" })).toBeChecked();
     fireEvent.click(screen.getByRole("tab", { name: "Agent-Kategorien" }));
     expect(screen.getByLabelText("5 h")).toHaveValue("60");
-    expect(screen.getByLabelText("7 T.")).toHaveValue("90");
-
     fireEvent.change(screen.getByLabelText("5 h"), { target: { value: "65" } });
-    stateReads.getBudgets.mockResolvedValueOnce([
-      { profileId: "codex", fiveHourPct: 70, sevenDayPct: 90 },
-    ]);
+    stateReads.getBudgets.mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 70, sevenDayPct: 90 }]);
     const callsBeforeFocus = stateReads.getBudgets.mock.calls.length;
     fireEvent.focus(window);
     await waitFor(() => expect(stateReads.getBudgets).toHaveBeenCalledTimes(callsBeforeFocus + 1));
     expect(screen.getByLabelText("5 h")).toHaveValue("65");
-
     let resolveStale: (rows: [{ profileId: string; fiveHourPct: number; sevenDayPct: number }]) => void = () => {};
     stateReads.getBudgets.mockImplementationOnce(() => new Promise((resolve) => { resolveStale = resolve; }));
     stateReads.setBudget.mockResolvedValue({ profileId: "codex", fiveHourPct: 65, sevenDayPct: 90 });

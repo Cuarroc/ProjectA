@@ -42,6 +42,7 @@ export default function EmergencyStop() {
   }, [refresh]);
 
   async function change(next: boolean) {
+    request.current += 1;
     setBusy(true);
     setError(null);
     try {

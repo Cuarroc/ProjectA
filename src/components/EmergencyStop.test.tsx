@@ -46,9 +46,7 @@ describe("EmergencyStop", () => {
     ipc.getEmergencyStop.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     render(<EmergencyStop />);
     expect(await screen.findByRole("button", { name: "Not-Aus auslösen" })).toBeTruthy();
-
     fireEvent.focus(window);
-
     expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
   });
 
@@ -64,9 +62,7 @@ describe("EmergencyStop", () => {
     fireEvent.focus(window);
     fireEvent.click(raise);
     expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
-
     await act(async () => resolveRefresh(false));
-
     expect(screen.getByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
   });
 

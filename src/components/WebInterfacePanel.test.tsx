@@ -80,9 +80,7 @@ describe("WebInterfacePanel", () => {
     vi.mocked(getWebInterfaceStatus).mockResolvedValueOnce(null).mockResolvedValueOnce(9123);
     render(<WebInterfacePanel />);
     await screen.findByText("aus");
-
     fireEvent(document, new Event("visibilitychange"));
-
     expect(await screen.findByText("http://localhost:9123")).toBeInTheDocument();
   });
 });
