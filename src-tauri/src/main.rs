@@ -1133,7 +1133,8 @@ async fn enter_database_maintenance(
         if tokio::time::Instant::now() >= deadline {
             pty.end_maintenance();
             return Err(format!(
-                "Maintenance refused: {} session(s) still active after {}s ({})",
+                "{}database maintenance: {} session(s) still active after {}s ({})",
+                crate::errors::ERR_REFUSED,
                 live.len(),
                 wait.as_secs(),
                 live.join(", ")
