@@ -10,8 +10,17 @@ use super::staging::{RejectionReason, VerifiedStaging};
 
 /// `ERROR_SHARING_VIOLATION` and `ERROR_LOCK_VIOLATION`.
 const SHARING_VIOLATION: [i32; 2] = [32, 33];
-/// `ERROR_ELEVATION_REQUIRED` and `ERROR_CANCELLED` (UAC prompt declined).
-const UAC_REFUSED: [i32; 2] = [740, 1223];
+/// `ERROR_CANCELLED`: the UAC prompt was declined.
+const UAC_REFUSED: [i32; 1] = [1223];
+/// `ERROR_ELEVATION_REQUIRED`: the direct launch needs elevation.  This path
+/// does not use `ShellExecute`, so no prompt was shown and nobody refused.
+const ELEVATION_REQUIRED: i32 = 740;
+/// Passive NSIS install, as `tauri-plugin-updater` 2.13 builds it for
+/// `installMode: "passive"` (`/P`, then `/UPDATE`; `src/updater.rs`
+/// `updater_parameters`, `src/config.rs` `nsis_args`; `tauri.conf.json`
+/// `plugins.updater.windows.installMode`).  No `/R`/`/ARGS` relaunch: recovery
+/// validates the candidate itself.
+pub const NSIS_PASSIVE_ARGS: [&str; 2] = ["/P", "/UPDATE"];
 
 /// What the launcher observed; it carries no judgement.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -29,7 +38,7 @@ pub enum LaunchResult {
 /// most once per `run_installer`.
 #[allow(dead_code)] // W3-02
 pub trait InstallerLauncher {
-    fn launch(&mut self, installer: &[u8]) -> LaunchResult;
+    fn launch(&mut self, installer: &[u8], args: &[&str]) -> LaunchResult;
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -37,6 +46,8 @@ pub trait InstallerLauncher {
 pub enum InstallerOutcome {
     Succeeded,
     UacRefused,
+    /// Windows error 740: elevation is required but was not requested.
+    ElevationRequired,
     SharingViolation,
     /// Started, but ended with a code that is not proven success.
     Failed(i32),
@@ -53,6 +64,7 @@ pub fn classify(result: LaunchResult) -> InstallerOutcome {
         LaunchResult::StartFailed(Some(code)) if UAC_REFUSED.contains(&code) => {
             InstallerOutcome::UacRefused
         }
+        LaunchResult::StartFailed(Some(ELEVATION_REQUIRED)) => InstallerOutcome::ElevationRequired,
         LaunchResult::StartFailed(Some(code)) if SHARING_VIOLATION.contains(&code) => {
             InstallerOutcome::SharingViolation
         }
@@ -69,18 +81,22 @@ pub fn run_installer(
     launcher: &mut impl InstallerLauncher,
 ) -> Result<(), String> {
     let outcome = staging
-        .install(|payload| classify(launcher.launch(&payload.installer)))
+        .install(|payload| classify(launcher.launch(&payload.installer, &NSIS_PASSIVE_ARGS)))
         .map_err(|reason: RejectionReason| format!("staged files changed: {reason:?}"))?;
     match outcome {
         InstallerOutcome::Succeeded => Ok(()),
         InstallerOutcome::UacRefused => Err("installer elevation was refused".into()),
+        InstallerOutcome::ElevationRequired => {
+            Err("installer needs elevation (error 740); not requested".into())
+        }
         InstallerOutcome::SharingViolation => Err("installer file is in use".into()),
         InstallerOutcome::Failed(code) => Err(format!("installer exited with code {code}")),
         InstallerOutcome::Unclear => Err("installer outcome is unclear".into()),
     }
 }
 
-/// Windows glue: writes the verified bytes to a new private file and runs it.
+/// Windows glue: writes the verified bytes to a new private file, holds that
+/// file against writes and deletion, and runs it.
 #[cfg(windows)]
 #[allow(dead_code)] // W3-02
 pub struct ProcessLauncher {
@@ -89,22 +105,36 @@ pub struct ProcessLauncher {
 
 #[cfg(windows)]
 impl InstallerLauncher for ProcessLauncher {
-    fn launch(&mut self, installer: &[u8]) -> LaunchResult {
+    fn launch(&mut self, installer: &[u8], args: &[&str]) -> LaunchResult {
         use std::io::Write;
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_SHARE_READ: u32 = 1;
         let written = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
+            .share_mode(FILE_SHARE_READ)
             .open(&self.target)
             .and_then(|mut file| file.write_all(installer).and_then(|()| file.sync_all()));
         if let Err(error) = written {
             return LaunchResult::StartFailed(error.raw_os_error());
         }
-        match crate::proc::command(&self.target).status() {
+        // Held until the process has started: the bytes cannot be swapped
+        // between this digest check and the launch.
+        let held = match projecta_capture::windows_image::VerifiedImage::open(
+            &self.target,
+            &super::staging::digest(installer),
+        ) {
+            Ok(held) => held,
+            Err(_) => return LaunchResult::StartFailed(None),
+        };
+        let result = match crate::proc::command(&self.target).args(args).status() {
             Ok(status) => status
                 .code()
                 .map_or(LaunchResult::NoExitCode, LaunchResult::Exited),
             Err(error) => LaunchResult::StartFailed(error.raw_os_error()),
-        }
+        };
+        drop(held);
+        result
     }
 }
 
@@ -124,12 +154,14 @@ mod tests {
     struct FakeProcess {
         result: LaunchResult,
         launched: Vec<Vec<u8>>,
+        args: Vec<Vec<String>>,
         launches: Rc<Cell<u32>>,
     }
 
     impl InstallerLauncher for FakeProcess {
-        fn launch(&mut self, installer: &[u8]) -> LaunchResult {
+        fn launch(&mut self, installer: &[u8], args: &[&str]) -> LaunchResult {
             self.launched.push(installer.to_vec());
+            self.args.push(args.iter().map(|a| a.to_string()).collect());
             self.launches.set(self.launches.get() + 1);
             self.result
         }
@@ -139,6 +171,7 @@ mod tests {
         FakeProcess {
             result,
             launched: Vec::new(),
+            args: Vec::new(),
             launches: Rc::default(),
         }
     }
@@ -172,11 +205,32 @@ mod tests {
         assert_eq!(classify(Exited(0)), Succeeded);
         assert_eq!(classify(Exited(1602)), Failed(1602));
         assert_eq!(classify(StartFailed(Some(1223))), UacRefused);
-        assert_eq!(classify(StartFailed(Some(740))), UacRefused);
+        assert_eq!(classify(StartFailed(Some(740))), ElevationRequired);
         assert_eq!(classify(StartFailed(Some(32))), SharingViolation);
         assert_eq!(classify(StartFailed(Some(5))), Unclear);
         assert_eq!(classify(StartFailed(None)), Unclear);
         assert_eq!(classify(NoExitCode), Unclear);
+    }
+
+    #[test]
+    fn launcher_receives_the_updater_passive_nsis_arguments() {
+        let dir = TempDir::new("installer-args");
+        let mut process = fake(LaunchResult::Exited(0));
+        run_installer(staged(&dir), &mut process).unwrap();
+        assert_eq!(
+            process.args,
+            vec![vec!["/P".to_string(), "/UPDATE".to_string()]]
+        );
+    }
+
+    #[test]
+    fn elevation_required_is_named_and_not_reported_as_a_refusal() {
+        let dir = TempDir::new("installer-740");
+        let mut process = fake(LaunchResult::StartFailed(Some(740)));
+        let error = run_installer(staged(&dir), &mut process).unwrap_err();
+        assert!(error.contains("740"), "{error}");
+        assert!(!error.contains("refused"), "{error}");
+        assert_eq!(process.args.len(), 1);
     }
 
     #[test]
