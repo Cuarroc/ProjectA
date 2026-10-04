@@ -2,9 +2,9 @@
 
 Wie die KI-Werkzeuge auf dem Entwicklungsrechner für ProjectA eingerichtet
 sind, was jedes davon liest und wie man prüft, ob alles da ist. Stand
-02.10.2026 (Audit SETUP-15). Diese Seiten nennen für Zugangsdaten **nur
-Dateinamen und Namen von Umgebungsvariablen, nie Werte**; Einstellungswerte
-ohne Geheimnis (Modellname, Effort) stehen dabei.
+02.10.2026 (Audit SETUP-15), Korrekturdurchgang 04.10.2026. Diese Seiten nennen
+für Zugangsdaten **nur Dateinamen und Namen von Umgebungsvariablen, nie
+Werte**; Einstellungswerte ohne Geheimnis (Modellname, Effort) stehen dabei.
 
 Die Arbeitsregeln selbst stehen in [`AGENTS.md`](../../AGENTS.md); diese Seiten
 beschreiben nur die Einrichtung.
@@ -51,7 +51,8 @@ Nur Abos, kein OpenRouter, keine zusätzlichen bezahlten API-Ausgaben.
 Die App stellt Skill-Packs für Claude (Konvention), Kimi (`--skills-dir`) und
 OpenCode (`conventionAt` `.agents/skills`, eingebautes Profil seit W1-18b)
 bereit; für Codex steht das eingebaute Profil weiter auf `unsupported`
-(`src-tauri/resources/agent-defaults.json`), bis die Probe nachgeholt ist. Der
+(`src-tauri/resources/agent-defaults.json`) — die Sonde vom 02.10.2026 war
+eingeschränkt, ein unabhängiger Dateisystem-Nachweis steht aus (W1-18b). Der
 Modus `ConventionAt` (PR #57) lässt sich zusätzlich per `agents.json` setzen.
 
 Der Repo-Skill `projecta-workflow` ist die Kurzfassung der Arbeitsweise als

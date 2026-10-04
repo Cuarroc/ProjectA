@@ -9,8 +9,9 @@ Rolle: früherer Frontend-/HQ-Worker. Zurück zur Übersicht: [README.md](README
 
 ## Welche Harness
 
-Die Harness ist **Kimi Code CLI 2.0** — `~/.kimi-code/bin/kimi.EXE`,
-Konfiguration `~/.kimi-code/config.toml`, Standardmodell `kimi-code/k3`.
+Die Harness ist **Kimi Code CLI 2.1** — `~/.kimi-code/bin/kimi.EXE`,
+Konfiguration `~/.kimi-code/config.toml`, Standardmodell `kimi-code/k3`
+(`kimi --version` → `2.1.1`, geprüft 04.10.2026).
 Andere Verzeichnisse `~/.kimi`, `~/.kimi-work`, `~/.kimi_openclaw`,
 `~/.kimi-webbridge` gehören zu anderen Produkten (Claw, OpenClaw,
 WebBridge-Daemon) und sind **nicht** die Harness.
@@ -44,7 +45,7 @@ Relevante Felder in `config.toml` (nur Namen): `default_model`,
 
 ## Provider-Keys: Stand und Nutzeraufgabe
 
-**Keine Env-Referenzen möglich.** Kimi Code CLI 2.0 kennt als
+**Keine Env-Referenzen möglich.** Kimi Code CLI 2.1 kennt als
 Provider-Zugangsdaten nur ein literales `api_key` oder `oauth`. Ein Feld
 `api_key_env` gibt es nicht (geprüft im Binary `~/.kimi-code/bin/kimi.EXE`).
 Der einzige Env-Fallback hängt am Provider-Typ und liest ausschließlich aus der

@@ -16,11 +16,11 @@ und npm-Befehle) und lassen die Hooks unverändert. Eine Änderung an
 
 ## Regeln
 
-Skripte, die in dieser Liste stehen, aber noch nicht existieren
-(`scripts/dev/prune-worktrees.sh`, `report-commit.sh`, `push-verified.sh`,
-`ci-watch.sh`, `pr-status.mjs`, `erledigt-row.mjs`, `spec-close.mjs`,
-`scripts/review/run-local.sh`), kommen aus den Paketen SETUP-08a/08b/09. Ihre
-Regeln erst eintragen, wenn das jeweilige Skript gemergt ist.
+Alle hier genannten Skripte sind gemergt (SETUP-08a/08b: PR #22, SETUP-09:
+PR #39) und heißen `scripts/dev/<name>.mjs` bzw.
+`scripts/review/run-local.sh`; der dokumentierte Einstieg ist
+`npm run dev:<name>` (`scripts/dev/README.md`). Ob die Regeln eingetragen
+werden, entscheidet der Nutzer (SETUP-14).
 
 ```jsonc
 {
@@ -31,10 +31,10 @@ Regeln erst eintragen, wenn das jeweilige Skript gemergt ist.
       "Bash(npm run dev:agent-check)", "Bash(npm run dev:agent-check *)",
       "Bash(bash scripts/ci/gates.sh *)",                  // Gates lokal
       "Bash(bash scripts/ci/doctor.sh)",
-      "Bash(bash scripts/dev/prune-worktrees.sh *)",      // siehe Hinweis 1
-      "Bash(bash scripts/dev/report-commit.sh *)",        // commit+push auf den genannten Branch, nie main
-      "Bash(bash scripts/dev/push-verified.sh *)",
-      "Bash(bash scripts/dev/ci-watch.sh *)",
+      "Bash(node scripts/dev/prune-worktrees.mjs *)",      // siehe Hinweis 1
+      "Bash(node scripts/dev/report-commit.mjs *)",        // commit+push auf den genannten Branch, nie main
+      "Bash(node scripts/dev/push-verified.mjs *)",
+      "Bash(node scripts/dev/ci-watch.mjs *)",
       "Bash(bash scripts/review/run-local.sh *)",         // nur lokaler Ollama-Endpunkt
       "Bash(node scripts/dev/pr-status.mjs *)",
       "Bash(node scripts/dev/erledigt-row.mjs *)",
