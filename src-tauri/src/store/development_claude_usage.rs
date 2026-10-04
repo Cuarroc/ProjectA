@@ -1,15 +1,67 @@
 //! Pure parser for one completed `claude -p --output-format json` capture.
 //! Runtime and ledger wiring belong to a later serial package.
 use super::usage_receipt::UsageReceipt;
+use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 pub(in crate::store) const CLAUDE_COLLECTOR: &str = "claude-print-json-v1";
 pub(in crate::store) const CLAUDE_TRANSPORT: &str = "native_claude_print_json";
 
 /// Classify one complete process-owned capture without touching the store.
-pub(in crate::store) fn complete_usage(_stdout: &[u8], _exit_code: Option<i32>) -> UsageReceipt {
-    UsageReceipt::NotReported {
-        provider: "claude".into(),
-        transport: CLAUDE_TRANSPORT.into(),
+pub(in crate::store) fn complete_usage(stdout: &[u8], exit_code: Option<i32>) -> UsageReceipt {
+    let source_sha256 = format!("{:x}", Sha256::digest(stdout));
+    let rejected = |reason| UsageReceipt::Rejected {
+        reason,
+        source_sha256: source_sha256.clone(),
+        collector: CLAUDE_COLLECTOR,
+    };
+    if exit_code != Some(0) {
+        return rejected("process exit code is not zero");
+    }
+    if stdout.is_empty() {
+        return rejected("capture is empty");
+    }
+    if stdout.len() > 1_048_576 {
+        return rejected("capture exceeds 1 MiB");
+    }
+    let result: Value = match serde_json::from_slice(stdout) {
+        Ok(value) => value,
+        Err(_) => return rejected("capture is not one JSON value"),
+    };
+    if result["type"] != "result" || result["subtype"] != "success" || result["is_error"] != false {
+        return rejected("provider reported an error result");
+    }
+    let Some(usage) = result.get("usage").filter(|value| value.is_object()) else {
+        return UsageReceipt::NotReported {
+            provider: "claude".into(),
+            transport: CLAUDE_TRANSPORT.into(),
+        };
+    };
+    // Claude reports these as separate categories. `modelUsage` and the cost
+    // fields have no counterpart in UsageReceipt, so this parser does not
+    // guess a model or turn a list-cost field into subscription billing.
+    let mut tokens = 0_i64;
+    for field in [
+        "input_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+        "output_tokens",
+    ] {
+        let Some(count) = usage.get(field).and_then(Value::as_i64).filter(|n| *n >= 0) else {
+            return rejected("usage count is missing, negative or not an integer");
+        };
+        let Some(total) = tokens
+            .checked_add(count)
+            .filter(|total| *total <= 1_000_000_000)
+        else {
+            return rejected("usage total exceeds the ledger limit");
+        };
+        tokens = total;
+    }
+    UsageReceipt::Measured {
+        tokens,
+        source_sha256,
+        collector: CLAUDE_COLLECTOR,
     }
 }
 
@@ -29,6 +81,10 @@ mod tests {
             .ledger_source()
             .unwrap()
             .starts_with("claude-print-json-v1:sha256:"));
+        assert_eq!(
+            receipt.to_json(Some(1))["provenance"]["collector"],
+            CLAUDE_COLLECTOR
+        );
     }
 
     #[test]

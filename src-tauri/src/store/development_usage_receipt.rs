@@ -19,11 +19,16 @@ pub(in crate::store) const CODEX_TRANSPORT: &str = "native_codex_exec_json";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::store) enum UsageReceipt {
     /// Final provider-reported usage, read live from process-owned stdout.
-    Measured { tokens: i64, source_sha256: String },
+    Measured {
+        tokens: i64,
+        source_sha256: String,
+        collector: &'static str,
+    },
     /// The collector refused the capture; the reservation is retained.
     Rejected {
         reason: &'static str,
         source_sha256: String,
+        collector: &'static str,
     },
     /// No trusted collector exists for this adapter and transport.
     NotReported { provider: String, transport: String },
@@ -45,10 +50,12 @@ impl UsageReceipt {
             Ok(tokens) => Self::Measured {
                 tokens,
                 source_sha256,
+                collector: CODEX_COLLECTOR,
             },
             Err(reason) => Self::Rejected {
                 reason,
                 source_sha256,
+                collector: CODEX_COLLECTOR,
             },
         }
     }
@@ -71,9 +78,11 @@ impl UsageReceipt {
     /// Ledger `source` for a measured receipt: collector plus capture digest.
     pub(in crate::store) fn ledger_source(&self) -> Option<String> {
         match self {
-            Self::Measured { source_sha256, .. } => {
-                Some(format!("{CODEX_COLLECTOR}:sha256:{source_sha256}"))
-            }
+            Self::Measured {
+                source_sha256,
+                collector,
+                ..
+            } => Some(format!("{collector}:sha256:{source_sha256}")),
             _ => None,
         }
     }
@@ -83,15 +92,17 @@ impl UsageReceipt {
             Self::Measured {
                 tokens,
                 source_sha256,
+                collector,
             } => json!({"state":"measured","tokens":tokens,"reservation":"settled",
-                "provenance":{"collector":CODEX_COLLECTOR,"measurement":"live",
+                "provenance":{"collector":collector,"measurement":"live",
                     "source":"process-owned stdout","sourceSha256":source_sha256,
                     "observedAt":observed_at}}),
             Self::Rejected {
                 reason,
                 source_sha256,
+                collector,
             } => json!({"state":"rejected","reason":reason,"reservation":"retained",
-                "provenance":{"collector":CODEX_COLLECTOR,"measurement":"none",
+                "provenance":{"collector":collector,"measurement":"none",
                     "source":"process-owned stdout","sourceSha256":source_sha256,
                     "observedAt":observed_at}}),
             Self::NotReported {
@@ -138,6 +149,9 @@ fn not_reported_reason(provider: &str, transport: &str) -> String {
         "opencode" => "no recorded OpenCode status-line bytes exist to parse; \
             a PTY trace probe is missing"
             .into(),
+        "claude" if transport == super::claude_usage::CLAUDE_TRANSPORT => {
+            "Claude JSON result did not include a usage object".into()
+        }
         "claude" => "Claude's statusLine hook reports account-wide rate windows \
             (live quota), not per-run tokens"
             .into(),
