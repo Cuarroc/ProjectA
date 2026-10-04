@@ -47,3 +47,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
 - Commits: 13d5357
 - Uncommitted: keine
+
+## 2026-10-04 21:32 — codex/state-4-guard-gaps (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
+- Zusammenfassung: PR #345 conflict resolved by merging origin/main; generated HQ snapshot committed as 06ea729; prepush and GitHub checks green; queued with Mergify.
+- Commits: keine
+- Uncommitted: keine
