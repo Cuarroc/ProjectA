@@ -156,6 +156,10 @@ fn checkpoint_survives_agent_abort_and_is_resumed_by_the_next_run() {
         "no zombie revision"
     );
 
+    tauri::async_runtime::block_on(async {
+        pool.close().await;
+        store.close_test_pool().await;
+    });
     drop(server);
     assert!(
         store.test_pool_is_closed(),
