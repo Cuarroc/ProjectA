@@ -186,3 +186,13 @@ Das widerlegt die Ursache nicht. PR #262 (Kopf `14e1532`) gibt nur
 ändert weder Bedingungen noch Timing noch Produktionscode. Die Änderung liegt
 in Windows-Tests und wurde auf Linux nicht kompiliert; den Beleg liefert die
 Windows-Bahn in der Queue.
+
+**Neue Beobachtung 2026-10-04 (Queue-PR #281, prüft #273 auf `effef1a`).**
+Queue-Lauf 37196272431 (Beginn 10:43 UTC; `gh run view 37196272431 --log-failed`):
+nur `gates (windows)` rot, `native-tests` 7 grün, 1 rot:
+`workers::tests::real_native_provider_exit_before_input_delivery_reconciles_as_exited`,
+`src\workers.rs:4069` „native launch left unresolved instead of reconciled:
+["pty-1a1068ef219-1"]“. Im selben Log steht „failed to remove test temp
+directory … os error 32“. Dasselbe Muster wie oben; #273 ändert nur
+Review-Skripte und Doku. Eine Ursache wird daraus nicht abgeleitet; #262
+(Diagnose) war da schon in `main`.
