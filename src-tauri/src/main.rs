@@ -4196,6 +4196,18 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn maintenance_refusal_uses_shared_error_vocabulary() {
+        let (_dir, store) = seam_fixture("maintenance-refusal-vocabulary").await;
+        let pty = PtyManager::default();
+        let id = pty.reserve_session().unwrap();
+        let error = super::enter_database_maintenance(&pty, &store, Duration::ZERO)
+            .await
+            .expect_err("an active session must refuse maintenance");
+        assert!(error.starts_with(crate::errors::ERR_REFUSED), "{error}");
+        pty.cancel_reservation(&id);
+    }
+
+    #[tokio::test]
     async fn drained_maintenance_freezes_launches_and_writes_until_leave() {
         let (_dir, store) = seam_fixture("maintenance-frozen").await;
         let pty = PtyManager::default();
