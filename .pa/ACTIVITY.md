@@ -36,3 +36,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main at 2671a1e without conflict hunks; committed generated HQ snapshot 5937c6e; prepush green twice; pushed and verified remote; PR #321 report updated and @Mergifyio queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 19:30 — codex (codex/changelog-150-draft-r, srv-changelog-150-draft)
+- Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
+- Commits: 13d5357
+- Uncommitted: keine
