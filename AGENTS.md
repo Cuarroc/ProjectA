@@ -256,8 +256,8 @@ those `conflict`): merge, never rebase or force-push.
 - `red-first` is computed inside `gates (linux)` (steps `red-first - plan`
   and `red-first - proof against merge base`); the `red-first` job only
   reports their outcome. Look there for details (CI-03).
-- The queue tests one batch at a time (`max_parallel_checks: 1`); two or
-  more waiting PRs are tested together (up to 4).
+- The queue tests up to two batches at once (`max_parallel_checks: 2`,
+  CI-QUEUE-02); more waiting PRs are tested together (up to 4 per batch).
 - Dependabot commits that only touch dependency manifests need no
   Test-First/No-Test trailer (`red-first.sh`); anything else they touch does.
 - Local: `PA_PREPUSH=light git push` runs the `branchpush` lane (no clippy,
