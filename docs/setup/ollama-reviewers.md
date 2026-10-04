@@ -89,8 +89,20 @@ bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nic
 - Exit 0 nur, wenn jeder Reviewer Text geliefert hat; Exit 1 bei leerer oder
   fehlerhafter Antwort (Protokoll `Status: failed`, nochmals laufen lassen);
   Exit 2 bei Aufruf- oder Voraussetzungsfehlern (fehlendes Ollama, kilo oder
-  Key, unbekannter PR, kein Diff, Diff ueber `REVIEW_MAX_DIFF_CHARS`).
-  Ein abgeschnittener Diff waere kein Review; deshalb wird nichts gekuerzt.
+  Key, unbekannter PR, kein Diff, Diff ueber `REVIEW_MAX_DIFF_CHARS`, zwei
+  Modelle mit demselben Protokollnamen). Ein abgeschnittener Diff waere kein
+  Review; deshalb wird nichts gekuerzt.
+- Der Protokollname kommt aus dem Modell: `:cloud` faellt weg, jeder andere Tag
+  wird zum Bindestrich (`llama3:8b` → `llama3-8b`), kilo nimmt nur das letzte
+  Pfadelement ohne `:free`. Zwei Modelle, die daraus denselben Namen machen,
+  lehnt das Skript ab (`llama3:8b` neben `llama3-8b`, `a/x:free` neben
+  `b/x:free`): sie wuerden einander das Protokoll ueberschreiben, und der Lauf
+  meldete trotzdem zweimal „ok“ — ein Dual-Review, den es als Datei nicht gibt.
+  Groß-/Kleinschreibung zählt mit (NTFS und APFS sind nicht case-sensitiv),
+  und ein Modellname außerhalb `A-Za-z0-9 . _ : / -` wird ebenfalls abgelehnt:
+  die Umschreibung ins Dateinamenschema ist sonst byteweise (tr) gegenüber
+  zeichenweise (slug im Transport) und damit nicht eindeutig. Die Prüfung gilt
+  auch für `--dry-run` — ein Aufruf, der so nicht sendbar wäre, wird auch beim Prompt-Bauen abgelehnt.
 - Geprueft werden nur **committete** Aenderungen. Der Diff geht an den
   gewaehlten Dienst: nichts Vertrauliches im Branch.
 - Selbsttest ohne Netz: `bash scripts/test-review-local.sh` (Fake-Ollama,
