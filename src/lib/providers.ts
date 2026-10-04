@@ -9,6 +9,7 @@ import {
   setProviderKey,
 } from "./ipc";
 import { formatBlockedUntil } from "./quota";
+import { usePolledResource } from "./usePolledResource";
 import type {
   AgentProfile,
   FreeTierPool,
@@ -154,65 +155,74 @@ export function useProviderKey(providerId: string): ProviderKeyPresence {
   const [present, setPresent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const aliveRef = useRef(true);
+  const beginRefresh = usePolledResource(providerId);
+  const beginMutation = usePolledResource(providerId);
 
   const refresh = useCallback(async () => {
+    const request = beginRefresh(true);
+    if (request === null) return;
     try {
       const next = await hasProviderKey(providerId);
-      if (!aliveRef.current) return;
+      if (!request.current()) return;
       setPresent(next);
       setError(null);
     } catch (err) {
-      if (!aliveRef.current) return;
-      setError(describeError(err));
+      if (request.current()) setError(describeError(err));
+    } finally {
+      request.finish();
     }
-  }, [providerId]);
+  }, [beginRefresh, providerId]);
 
   useEffect(() => {
-    aliveRef.current = true;
+    setPresent(false);
+    setBusy(false);
+    setError(null);
     void refresh();
-    return () => {
-      aliveRef.current = false;
-    };
   }, [refresh]);
 
   const save = useCallback(
     async (key: string) => {
       const trimmed = key.trim();
       if (trimmed === "" || busy) return;
+      const request = beginMutation(true);
+      if (request === null) return;
       setBusy(true);
       setError(null);
       try {
         await setProviderKey(providerId, trimmed);
-        if (aliveRef.current) {
+        if (request.current()) {
           setPresent(true);
           setError(null);
         }
       } catch (err) {
-        if (aliveRef.current) setError(describeError(err));
+        if (request.current()) setError(describeError(err));
       } finally {
-        if (aliveRef.current) setBusy(false);
+        if (request.current()) setBusy(false);
+        request.finish();
       }
     },
-    [providerId, busy],
+    [beginMutation, providerId, busy],
   );
 
   const remove = useCallback(async () => {
     if (busy) return;
+    const request = beginMutation(true);
+    if (request === null) return;
     setBusy(true);
     setError(null);
     try {
       await deleteProviderKey(providerId);
-      if (aliveRef.current) {
+      if (request.current()) {
         setPresent(false);
         setError(null);
       }
     } catch (err) {
-      if (aliveRef.current) setError(describeError(err));
+      if (request.current()) setError(describeError(err));
     } finally {
-      if (aliveRef.current) setBusy(false);
+      if (request.current()) setBusy(false);
+      request.finish();
     }
-  }, [providerId, busy]);
+  }, [beginMutation, providerId, busy]);
 
   return useMemo(
     () => ({ present, busy, error, save, remove, refresh }),

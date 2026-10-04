@@ -598,7 +598,9 @@ fn agent_error(error: String) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::development_runs::{EvidenceInput, ReviewInput};
+    use crate::store::development_runs::{
+        DevelopmentEvidence, EvidenceInput, EvidenceMeasurement, ReviewInput,
+    };
     use crate::testutil::TempDir;
     use std::io::{Read, Write};
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
@@ -671,6 +673,7 @@ mod tests {
     }
     struct Route {
         server: ApiServer,
+        store: crate::store::Store,
         pool: sqlx::SqlitePool,
         implementer: String,
         peer: String,
@@ -740,6 +743,7 @@ mod tests {
         .unwrap();
         Route {
             server,
+            store,
             pool,
             implementer,
             peer,
@@ -800,6 +804,30 @@ mod tests {
             )
         }
 
+        fn trusted_evidence(
+            &self,
+            commit: &str,
+            key: &str,
+            observed_at: i64,
+        ) -> DevelopmentEvidence {
+            tauri::async_runtime::block_on(self.store.record_trusted_development_test_evidence(
+                &self.implementer,
+                "worker-a",
+                7,
+                EvidenceInput {
+                    idempotency_key: key.into(),
+                    source: "projecta-test-runner".into(),
+                    observed_at,
+                    candidate_commit: commit.into(),
+                    measurement: EvidenceMeasurement::Measured {
+                        value: json!({"passed": true}),
+                    },
+                    payload: json!({"command": "cargo test"}),
+                },
+            ))
+            .unwrap()
+        }
+
         fn review(
             &self,
             run: &str,
@@ -856,6 +884,126 @@ mod tests {
             reply["error"],
             "review evidence is not valid for the reviewed run and candidate"
         );
+    }
+
+    #[test]
+    fn candidate_delta_invalidates_prior_chain_over_http() {
+        let fx = route("agent-http-candidate-delta");
+        assert_eq!(fx.candidate(COMMIT_A, 6).0, 200);
+        let evidence_a = fx.trusted_evidence(COMMIT_A, "trusted-a", 7);
+        let (status, review_a) = fx.review(&fx.reviewer, "worker-r", 3, &evidence_a.id, "review-a");
+        assert_eq!(status, 200, "{review_a}");
+        assert_eq!(review_a["status"], "valid");
+
+        let replay = fx.candidate(COMMIT_A, 8);
+        assert_eq!(replay.1["invalidatedRecords"], 0);
+        let (status, briefing) = fx.call(
+            &fx.implementer,
+            "worker-a",
+            7,
+            "GET",
+            "/api/hq/v1/agent/context",
+            "",
+        );
+        assert_eq!(status, 200, "{briefing}");
+        assert_eq!(briefing["reviews"][0]["status"], "valid");
+
+        let delta = fx.candidate(COMMIT_B, 9);
+        assert_eq!(delta.0, 200, "{}", delta.1);
+        let briefing = fx
+            .call(
+                &fx.implementer,
+                "worker-a",
+                7,
+                "GET",
+                "/api/hq/v1/agent/context",
+                "",
+            )
+            .1;
+        assert_eq!(briefing["candidate"]["candidateCommit"], COMMIT_B);
+        assert!(briefing["evidence"][0]["invalidatedAt"].as_i64().is_some());
+        assert_eq!(briefing["reviews"][0]["status"], "invalidated");
+        assert_eq!(briefing["reviews"][0]["candidateCommit"], COMMIT_A);
+        assert_eq!(briefing["reviews"][0]["invalidatedAt"], 9);
+        assert_eq!(briefing["reviews"][0]["invalidatedByCommit"], COMMIT_B);
+        assert_eq!(briefing["reviews"][0]["id"], review_a["id"]);
+        let evidence_path = format!("/api/hq/v1/agent/evidence/{}", evidence_a.id);
+        let evidence = fx
+            .call(&fx.implementer, "worker-a", 7, "GET", &evidence_path, "")
+            .1;
+        assert_eq!(evidence["candidateCommit"], COMMIT_A);
+        assert_eq!(evidence["invalidatedAt"], 9);
+        assert_eq!(evidence["invalidatedByCommit"], COMMIT_B);
+        let release = fx
+            .call(
+                &fx.implementer,
+                "worker-a",
+                7,
+                "GET",
+                "/api/hq/v1/agent/release",
+                "",
+            )
+            .1;
+        assert_eq!(release["candidate"]["candidateCommit"], COMMIT_B);
+        assert_eq!(release["approvalAuthority"]["state"], "unavailable");
+
+        let stale_review = fx.review(
+            &fx.reviewer,
+            "worker-r",
+            3,
+            &evidence_a.id,
+            "stale-review-a",
+        );
+        assert_eq!(stale_review.0, 409, "{}", stale_review.1);
+        assert_ne!(fx.candidate(COMMIT_A, 8).0, 200);
+        let replay_b = fx.candidate(COMMIT_B, 10).1;
+        assert_eq!(replay_b["candidateCommit"], COMMIT_B);
+        assert_eq!(replay_b["invalidatedRecords"], 0);
+
+        let evidence_b = fx.trusted_evidence(COMMIT_B, "trusted-b", 10);
+        let review_b_body = json!({"idempotencyKey":"review-b","evidenceId":evidence_b.id,"candidateCommit":COMMIT_B,"disposition":"approved","source":"review","observedAt":11}).to_string();
+        let review_b = fx.call(
+            &fx.reviewer,
+            "worker-r",
+            3,
+            "POST",
+            "/api/hq/v1/agent/review",
+            &review_b_body,
+        );
+        assert_eq!(review_b.0, 200, "{}", review_b.1);
+        assert_eq!(review_b.1["status"], "valid");
+        assert_eq!(review_b.1["approvalEligible"], false);
+
+        let reopened = tauri::async_runtime::block_on(crate::store::Store::open(
+            &fx._dir.path().join("projecta.db"),
+        ))
+        .unwrap();
+        let persisted = tauri::async_runtime::block_on(reopened.agent_run_context(
+            &fx.implementer,
+            "worker-a",
+            7,
+        ))
+        .unwrap();
+        assert_eq!(persisted["candidate"]["candidateCommit"], COMMIT_B);
+        let old = persisted["reviews"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|review| review["id"] == review_a["id"])
+            .unwrap();
+        assert_eq!(old["status"], "invalidated");
+        assert_eq!(old["candidateCommit"], COMMIT_A);
+        assert_eq!(old["invalidatedAt"], 9);
+        assert_eq!(old["invalidatedByCommit"], COMMIT_B);
+
+        let insert = tauri::async_runtime::block_on(sqlx::query("INSERT INTO development_run_reviews(id,run_id,evidence_id,idempotency_key,candidate_commit,disposition,reviewer_identity,implementer_identity,source,observed_at,reviewer_attestation,approval_eligible,status) SELECT 'forged',run_id,evidence_id,'forged',candidate_commit,disposition,reviewer_identity,implementer_identity,source,observed_at,reviewer_attestation,1,status FROM development_run_reviews LIMIT 1").execute(&fx.pool));
+        assert!(insert.is_err());
+        let update = tauri::async_runtime::block_on(
+            sqlx::query("UPDATE development_run_reviews SET approval_eligible=1 WHERE id=?")
+                .bind(review_b.1["id"].as_str().unwrap())
+                .execute(&fx.pool),
+        );
+        assert!(update.is_err());
     }
 
     #[test]
