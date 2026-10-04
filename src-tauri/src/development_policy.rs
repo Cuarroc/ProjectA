@@ -366,14 +366,47 @@ pub struct ContinuousAudit {
 
 /// Audit a raw policy document without touching the filesystem.
 #[allow(dead_code)] // M4 row 1: evidence only, no runtime caller yet
-pub fn audit_continuous_raw(_raw: &str) -> ContinuousAudit {
-    unimplemented!("M4 row 1")
+pub fn audit_continuous_raw(raw: &str) -> ContinuousAudit {
+    let mut reasons = vec![
+        "no runtime acceptance evidence is recorded; continuous mode stays disabled".to_string(),
+    ];
+    let activation_requested = serde_json::from_str::<serde_json::Value>(raw)
+        .ok()
+        .and_then(|value| value.pointer("/continuous/enabled")?.as_bool())
+        .unwrap_or(false);
+    if activation_requested {
+        reasons.push(
+            "activation via configuration rejected: continuous.enabled must remain false"
+                .to_string(),
+        );
+    }
+    if let Err(error) = parse(raw) {
+        reasons.push(format!("policy invalid: {error}"));
+    }
+    ContinuousAudit {
+        continuous_eligible: false,
+        activation_requested,
+        effective_enabled: false,
+        reasons,
+    }
 }
 
 /// Audit the repository-local policy file; an unreadable file is ineligible.
 #[allow(dead_code)] // M4 row 1: evidence only, no runtime caller yet
-pub fn audit_continuous(_project_root: &Path) -> ContinuousAudit {
-    unimplemented!("M4 row 1")
+pub fn audit_continuous(project_root: &Path) -> ContinuousAudit {
+    match fs::read_to_string(project_root.join(POLICY_FILE)) {
+        Ok(raw) => audit_continuous_raw(&raw),
+        Err(error) => ContinuousAudit {
+            continuous_eligible: false,
+            activation_requested: false,
+            effective_enabled: false,
+            reasons: vec![
+                "no runtime acceptance evidence is recorded; continuous mode stays disabled"
+                    .to_string(),
+                format!("cannot read {POLICY_FILE}: {error}"),
+            ],
+        },
+    }
 }
 
 /// Runtime evidence for one existing `AgentProfile`. `profile_id` is passed
