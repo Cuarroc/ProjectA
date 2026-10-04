@@ -121,6 +121,9 @@ impl Store {
             .bind(&receipt.input_sha256).bind(receipt.input_bytes).bind(&receipt.route_sha256)
             .execute(&mut *tx).await.map_err(db)?;
         if changed.rows_affected() != 1 {
+            // Settle now: a dropped transaction only queues its ROLLBACK and
+            // the writer lock lingers (see `continuous::settle`).
+            tx.rollback().await.map_err(db)?;
             return Err("delivery enqueue observation stale or duplicate".into());
         }
         let project: String = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
