@@ -914,6 +914,8 @@ impl DurableJournal {
 }
 
 mod driver;
+mod installer;
+mod restore;
 mod staging;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -16,6 +16,7 @@ const ATTESTATION_LABELS = Object.freeze({
   reviewAuthority: 'Review authority',
   recovery: 'Update recovery',
   benchmark: 'Benchmark comparison',
+  appRelease: 'App release attestation',
 });
 
 const state = (value, reason) => ({ state: value, ...(reason ? { reason } : {}) });
@@ -77,13 +78,21 @@ export function evaluateContinuousReadiness({ setup, runtime, evidence = {} } = 
 
   const allReady = Object.values(phases).every(phase => phase.state === 'ready');
   const continuousEligible = allReady && observed(evidence, 'continuousExecutionEnabled');
-  const releaseEligible = continuousEligible && observed(evidence, 'stablePromotionAuthorized');
+  const continuousReleaseEligible = continuousEligible && observed(evidence, 'stablePromotionAuthorized');
+  // App release (E20): needs only the `configuration` and `machineInterface`
+  // phases plus the user's own attestation; it never depends on the continuous
+  // phases (runtime, delivery, rollout) and never enables continuous mode.
+  const appReleaseState = explicitState(evidence, 'appReleaseAttested', 'app release');
+  const appReleaseEligible = phases.configuration.state === 'ready'
+    && phases.machineInterface.state === 'ready'
+    && appReleaseState.state === 'ready';
   const attestations = {
     providers: providerState,
     scheduler: schedulerState,
     reviewAuthority: reviewState,
     recovery: recoveryState,
     benchmark: benchmarkState,
+    appRelease: appReleaseState,
   };
   const blockers = [];
   const seenBlockers = new Set();
@@ -106,14 +115,19 @@ export function evaluateContinuousReadiness({ setup, runtime, evidence = {} } = 
     }
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     source: 'local-read-only-observations',
     phases: PHASES.map(([id, label]) => ({ id, label, ...phases[id] })),
     attestations,
     blockers,
     continuousEligible,
-    releaseEligible,
+    continuousReleaseEligible,
+    // Deprecated alias of `continuousReleaseEligible` (not the app release);
+    // kept for one release, then removed. Do not present it as "release ok".
+    releaseEligible: continuousReleaseEligible,
+    appReleaseEligible,
     continuousMode: continuousEligible ? 'eligible-but-disabled-until-explicit-enable' : 'blocked',
-    stableRelease: releaseEligible ? 'eligible-after-explicit-release' : 'blocked',
+    stableRelease: continuousReleaseEligible ? 'eligible-after-explicit-release' : 'blocked',
+    appRelease: appReleaseEligible ? 'eligible-after-explicit-release' : 'blocked',
   };
 }
