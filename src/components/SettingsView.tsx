@@ -41,6 +41,7 @@ import {
 } from "../lib/settings";
 import GeneralTab from "./settings/GeneralTab";
 import MasterPromptTab from "./settings/MasterPromptTab";
+import MaintenancePanel from "./settings/MaintenancePanel";
 import UpdatesTab from "./settings/UpdatesTab";
 import CategoriesPanel from "./settings/CategoriesPanel";
 import ProfilesPanel from "./settings/ProfilesPanel";
@@ -815,6 +816,7 @@ export default function SettingsView({
         aria-labelledby={`settings-tab-${tab}`}
       >
         {tab === "allgemein" ? (
+          <>
           <GeneralTab
             density={density}
             onDensityChange={onDensityChange}
@@ -855,6 +857,8 @@ export default function SettingsView({
             handleSaveMaxWorkers={handleSaveMaxWorkers}
             maxWorkersError={maxWorkersError}
           />
+          <MaintenancePanel />
+          </>
         ) : tab === "masterprompt" ? (
           <MasterPromptTab
             masterPrompt={masterPrompt}

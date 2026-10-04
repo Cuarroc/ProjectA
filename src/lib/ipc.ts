@@ -237,6 +237,21 @@ export async function setEmergencyStop(active: boolean): Promise<void> {
   await invoke("set_emergency_stop", { active });
 }
 
+/** Drain owned sessions, then block writes. Rejects by name if work is still running. */
+export async function enterMaintenance(): Promise<void> {
+  await invoke("enter_maintenance");
+}
+
+/** Authoritative database maintenance state owned by the Rust store. */
+export async function getMaintenance(): Promise<boolean> {
+  return invoke<boolean>("get_maintenance");
+}
+
+/** End maintenance: writes and launches are admitted again. */
+export async function leaveMaintenance(): Promise<void> {
+  await invoke("leave_maintenance");
+}
+
 /**
  * Owned session ids, including reserved and starting processes. Unavailable or
  * malformed inventory must reject: it cannot authorize an idle update.
