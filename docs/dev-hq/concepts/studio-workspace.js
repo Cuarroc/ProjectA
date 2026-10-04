@@ -409,10 +409,10 @@
   $('.brand')?.addEventListener('click', e => { e.preventDefault(); show('overview'); });
   on('project', async e => { rememberDraft(); clearTimeout(state.timer); state.project = e.target.value; state.skills.clear(); state.plugins.clear(); notice(''); const pid = state.project; const loading = loadProject(); render(); await loading; if (pid === state.project) { rememberDraft(); render(); } }, 'change');
   on('refresh', refresh);
-  const isDark = () => (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
+  const isDark = () => (document.documentElement.dataset.theme || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
   const labelTheme = () => { const dark = isDark(); $('#theme').textContent = dark ? 'Hell' : 'Dunkel'; $('#theme').setAttribute('aria-label', dark ? 'Helles Farbschema einschalten' : 'Dunkles Farbschema einschalten'); };
   on('theme', () => { const dark = !isDark(); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; labelTheme(); try { localStorage.setItem('studio-theme', dark ? 'dark' : 'light'); } catch { /* Optional preference. */ } });
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', labelTheme);
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', labelTheme);
   function applyChatAppearance(value, save = false) {
     const next = ['codex', 'claude', 'deepseek'].includes(value) ? value : 'deepseek';
     const log = $('#chat-log');
