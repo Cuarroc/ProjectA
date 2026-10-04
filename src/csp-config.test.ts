@@ -98,7 +98,7 @@ describe("content security policy (tauri.conf.json + index.html)", () => {
     expect(csp).not.toContain("blob:");
   });
 
-  it("keeps the dev server out of the release policy (config and index.html)", () => {
+  it("keeps the dev server out of the release policy config and index.html", () => {
     // The release bundle ships index.html as built, so a localhost entry in
     // either carrier would reach users (INV-SEC-CSP-SPLIT, 04.10.2026).
     for (const policy of [csp ?? "", metaCsp ?? ""]) {
