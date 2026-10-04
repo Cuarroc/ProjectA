@@ -1,5 +1,125 @@
 # Changelog
 
+## v1.5.0-beta — (Datum folgt)
+<!-- Entwurf, wird bei R-1 aktualisiert -->
+
+> **Updater-Hinweis:** v1.4.1 aktualisiert automatisch auf v1.5.0 —
+> derselbe Minisign-Signierschlüssel, kein manueller Schritt nötig.
+
+Zwischenrelease als Abschluss von M3 („App im Alltag“): alles seit dem
+Start des öffentlichen Repos am 25.09. auf `main` Gemergte (160 PRs, daraus
+die nutzer- und sicherheitsrelevanten) plus die Zustell-Welle aus v1.4.1.
+
+**Diese Version migriert die Datenbank bis Schema 25.** Beim ersten Start
+wird migriert; davor entsteht automatisch ein Backup
+(`.pre-migration-*.bak`). Ein Rückweg auf v1.4.1 braucht dieses Backup.
+
+**Sicherheit:**
+
+- **Globaler Not-Aus** (PR #69, #125, #124, #157, #158): ein Schalter in
+  den allgemeinen Einstellungen beendet binnen 10 Sekunden alle laufenden
+  Agenten und stoppt neue Aufgaben — dauerhaft, auch über Neustarts;
+  Queue-Ansprüche werden widerrufen, Aufheben nur mit Verdict-Nachweis.
+- **Web-Oberfläche gegen fremde Seiten** (PR #8): Empfehlungs-Links sind
+  nur bei http(s) klickbar (`javascript:`-Links führen keinen Code aus);
+  der lokale Server lehnt fremde Host-Header vor dem Token-Gate ab.
+- **Rollen trennen Rechte und Budget** (PR #24, #178, #222, #15, #50): der
+  Koordinator läuft ohne Schreibpfad; Start, Beleg und Briefing folgen der
+  Dispatch-Rolle — jede Rolle zieht nur ihren Budget-Zweck, ohne Credential.
+- **Zugangsdaten enger** (PR #12, #138): Windows setzt Nur-Benutzer-Rechte
+  fail-closed auf `projecta-api.json` und `agent-access/` samt
+  Eigentümer-Prüfung; unter Unix folgt die Öffnung keinem Symlink.
+- **Prompts widerstehen fremdem Text** (PR #18, #116): die Queen-Domäne
+  reist in einem Datenblock („Daten, keine Anweisungen“); Systemprompts
+  von Claude, Codex und Kimi stehen nicht mehr in der Prozessargumentliste.
+- **Release-CSP, Tresor und Live-HQ härter** (PR #288, #200, #225, #90):
+  die ausgelieferte Sicherheitsregel erlaubt keine localhost-Websockets
+  mehr; die Tresor-Temp-Datei heißt unvorhersehbar, das Notarchiv
+  überschreibt nichts; der Live-HQ-Server liefert Dateien nur aus seiner
+  Wurzel.
+
+**Datenbank/Wiederherstellung:**
+
+- **Append-only Prüfpfad** (PR #44): `audit_log` mit Triggern, die UPDATE,
+  DELETE und ID-Wiederverwendung auch über `INSERT OR REPLACE` ablehnen;
+  erster Schreiber ist der Not-Aus.
+- **Wartungs-Lock und Recovery-Treiber** (PR #285, #291): die Datenbank
+  lässt sich für Wartung reservieren (Schreiber warten höchstens fünf
+  Sekunden); ein Neustart nach Absturz installiert nie doppelt
+  („Installing“ wird vor der Installation gespeichert).
+- **Blockierte Budgets lösen sich ehrlich** (PR #16, #183, #107, #160): ein
+  bewiesener Exit vor der Zustellung gibt Reservierung und Delivery
+  atomar frei (KI-27); abgelaufene Quota-Sperren halten keine Aufgabe fest;
+  vergiftete Budget-/Preflight-Zustände gehen nicht still verloren.
+- **Retention und Verlauf** (PR #108, #169, #104, #106, #149): Archivnamen
+  tragen Zeitgrenzen; abgelaufene Sitzungspuffer werden gefristet entfernt;
+  beschädigte Lesson-Dateien bleiben sichtbar statt still überschrieben zu
+  werden; der Nachrichtenverlauf reiht keine endlosen Abfragen aneinander.
+
+**Agenten/Zustellung:**
+
+- **Zustell-Welle ausgeliefert:** die im v1.4.1-Abschnitt („Noch nicht auf
+  `main`“) beschriebenen Verbesserungen sind erstmals in einem Release.
+- **Push über den Runner-Host** (PR #65): Worker committen nur lokal; der
+  vertrauenswürdige Runner-Host pusht und öffnet den PR — GitHub-Zugriffe
+  aus dem Worker bleiben standardmäßig gesperrt.
+- **DeepSeek-V4-Flash-Worker über OpenCode** (PR #78): vorsichtiges Profil
+  auf ausdrücklicher Ollama-Cloud-Route; Laufzeitfähigkeiten unbelegt.
+- **Skill-Packs am gemessenen Ort** (PR #30, #60): OpenCode-Profile
+  bekommen ihre Packs unter `.agents/skills` (gemessen an 1.18.32); die
+  Codex-Probe bleibt eingeschränkt belegt.
+- **Queue ehrlicher** (PR #19, #151, #82): Abbrechen nur bei bewiesenem
+  Prozessende (sonst 409, der Task bleibt gestellt); fehlgeschlagene Starts
+  rollen Worktree und Branch zurück; Kandidaten-Kollision ist 409, nicht 500.
+- **Terminal stabiler** (PR #230, #206, #215, #141, #53): höchstens 32
+  wartende Zustellungen pro Sitzung; unterbrochene Reads werden
+  wiederholt, nach Ausgabefehlern wird weitergepumpt; spätes Aufräumen
+  läuft im Hintergrund (KI-16); native Windows-Jobs laufen mit festen
+  Speicher- und CPU-Grenzen.
+- **Cursor-Abfragen einmal beantwortet** (PR #140, KI-20): das Backend
+  antwortet allein, beantwortete Queries verschwinden aus der Ansicht.
+
+**HQ/Oberfläche:**
+
+- **Klartext auf Deutsch** (PR #172, #199, #139): statt „exited“ steht
+  „Beendet“, Fehler nennen „Was ist passiert / Was du tun kannst“;
+  Tab-Leiste, Dialoge und Board sind durchgehend deutsch, Fachbegriffe
+  bleiben; archivierte Worker zeigen keinen Respawn-Knopf.
+- **Einstellungen gewachsen** (PR #154, #153): Textgröße der Oberfläche,
+  Terminal-Schrift und Terminal-Größe sind wählbar.
+- **Terminal-Suche mit Schaltern** (PR #27): „Aa“ (Groß-/Kleinschreibung)
+  und „.*“ (reguläre Ausdrücke), Alt+C/Alt+R; ungültige Ausdrücke fängt
+  die Suchleiste ab.
+- **Diff-Freigabe mit Prüfstufe** (PR #189): pfadbasierte Prüfstufe A/B/C/?
+  mit kurzer Erklärung, je Datei ein Abzeichen.
+- **Updater-Zustand geteilt** (PR #119): App und Dev-HQ zeigen denselben
+  beobachteten Updater-Zustand.
+- **Dev-HQ live** (PR #13, #21, #62): laufende Ziele/Teams, Budget &
+  Routing sowie Reviews & Delivery als Live-Ansichten; der Refresh reißt
+  Fokus, Details und Entwürfe nicht mehr weg.
+- **Meilensteine im HQ** (PR #38, #131, #274): M1–M4 mit Fortschritt aus
+  `docs/PLAN.md`; „teilweise“ zählt nicht als fertig.
+- **Kontrast und Profil-Policy sichtbar** (PR #33, #58): alle 272
+  Farb-Paarungen bestehen WCAG AA in vier Modi, ein heller Modus folgt dem
+  System; Profilkarten zeigen die wirksame envPolicy.
+- **Keine Alt-Daten nach dem Wechsel** (PR #134, #135, #133, #194): nach
+  Projekt- oder Workerwechsel verwerfen Verlauf, Inbox und Empfehlungen
+  späte Antworten des alten Projekts.
+
+**Entwicklung/CI** (intern, kurz): ein Plan mit zehn Regeln und gestuften
+Reviews (PR #26); Geheimnis-Scan vor jedem Commit (PR #20); Lizenz-Inventur
+mit Positivlisten-Gate, Dritt-Notices und MIT (PR #23, #52); roter `main`
+stoppt die Merge-Queue (PR #28); Test-First-Trailer in der Bahn geprüft
+(PR #170, #137); Start-Check vor jedem Worker (PR #35); lokaler
+Review-Runner (PR #39, #46); Lauf- und Benchmark-Belege (PR #11, #73);
+Strukturwelle ARCH (PR #166–#264, Auswahl); Testabdeckung ausgebaut
+(PR #92–#94, #129, #145, #262); Dependencies und README aktuell (PR #1,
+#37, #40, #41, #57, #77, #6, #293); PLAN/STAND/KNOWN_ISSUES synchron.
+
+Seit dem Start des öffentlichen Repos am 25.09.2026 (Erstcommit `c60f267`)
+auf `main` gemergt; PR-Nummern am 04.10.2026 gegen `gh pr list --state
+merged --limit 300` verifiziert. Datum und finaler Umfang folgen mit R-1.
+
 ## v1.4.1 — 2026-09-22
 
 > **Updater-Hinweis:** Der Minisign-Signierschluessel der v1.x-Reihe war nicht
