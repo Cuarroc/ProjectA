@@ -60,22 +60,24 @@ export default function AttentionInbox({
   const prevInbox = useRef<InboxEntry[]>([]);
   const sink = useMemo(() => webviewNotifySink(), []);
 
-  // A reply may only land while its project is still the active one.
-  const activeProject = useRef(projectId);
-  activeProject.current = projectId;
+  // Every request takes a token and only the newest may write: an older poll
+  // for the same project must not overwrite a newer reply, and nothing may
+  // write after unmount. Same pattern as ActivityView.
+  const tokenRef = useRef(0);
 
   const refreshRecos = useCallback(async () => {
+    const mine = ++tokenRef.current;
     if (projectId === null) {
       setRecos([]);
       return;
     }
     try {
       const next = await listRecommendations(projectId);
-      if (activeProject.current !== projectId) return;
+      if (tokenRef.current !== mine) return;
       setRecos(next);
       setError(null);
     } catch (cause) {
-      if (activeProject.current !== projectId) return;
+      if (tokenRef.current !== mine) return;
       setError(describeError(cause));
     }
   }, [projectId]);
@@ -86,7 +88,10 @@ export default function AttentionInbox({
     void refreshRecos();
     if (projectId === null) return;
     const timer = window.setInterval(() => void refreshRecos(), POLL_MS);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      tokenRef.current += 1;
+    };
   }, [projectId, refreshRecos]);
 
   const entries = useMemo(() => {
