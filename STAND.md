@@ -17,10 +17,11 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 - **Continuous Mode:** aus und bis M4 eingefroren; `development_policy.rs` lehnt ihn ab.
 - **Merge** nur über die Mergify-Queue. CI kostet Minuten, Ziel 0 €.
 - **Live-Stand** kommt aus `gh pr list` und `git log origin/main`, bald aus OPS-01.
-- **Pakete Architektur-Rat (04.10., `origin/main` dfe459f):** ARCH-08a–e und
-  ARCH-10a–d sind gemergt; ARCH-08f (#252) steht in der Merge-Queue, ARCH-03c
-  (#256, Entwurf) wartet auf zwei Stufe-A-Reviews. Einzelheiten und Nachweise:
-  `docs/PLAN.md`. Das ist ein Schnappschuss, kein Live-Stand.
+- **Pakete Architektur-Rat (Status beobachtet 03.10. 23:26 UTC = 04.10. 01:26 Berlin; Quellstand `origin/main` cc95a57, Merge #260 um 23:16:34 UTC):**
+  ARCH-08 (a–f), ARCH-03c (#256), ARCH-09a (#260) und ARCH-10 (14 Arme in
+  `api/hq_routes.rs`) sind gemergt. ARCH-09b läuft als Server-Auftrag, nicht
+  gemergt. #262 (reine Diagnose zu KI-30, Ready) ist offen. Einzelheiten und
+  Nachweise: `docs/PLAN.md`. Das ist ein Schnappschuss, kein Live-Stand.
 
 ## Nächster Griff
 
@@ -30,6 +31,7 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 ## Offene Befunde (Details: `KNOWN_ISSUES.md`)
 
+- KI-30: sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 gibt nur Diagnose aus.
 - KI-24: SQLite-Lastklasse (`database is locked`), beobachten.
 - KI-27: `exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.
 - KI-20: doppelte Antwort auf `ESC[6n` behoben (W1-27): das Backend antwortet allein, die Anfrage wird aus Scrollback und UI entfernt.
