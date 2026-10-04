@@ -14,7 +14,8 @@ per provider: `docs/setup/README.md`. Check your machine with
 
 1. Read `STAND.md`, `docs/PLAN.md` (the only plan) and the ten core rules at
    the top of `AGENTS.md`, then run `bash scripts/sync.sh start`. Start check:
-   observed model, provider limit, free RAM, running cargo builds.
+   `npm run dev:start-check` — exit 1, 2 or 3 stops the start — plus the model
+   the harness actually reports, which the command cannot see.
 2. Work in your own worktree and branch, created from the newest `origin/main`.
    Use `git -C <path>` for other worktrees.
 3. Never `git stash` (the stash stack is shared by all worktrees) — use a WIP
