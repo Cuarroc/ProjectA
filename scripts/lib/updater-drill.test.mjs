@@ -37,6 +37,11 @@ test('successful update passes after phases and relaunch with surviving sessions
   assert.match(m.steps.find((s) => s.name === 'watch updater phases').detail, /installing > unreachable > up-to-date/);
   assert.ok(!readFileSync(join(outDir, 'manifest.json'), 'utf8').includes(TOKEN));
 });
+test('successful update rejects an error state after relaunch', async () => {
+  const { m } = await run('success', [{ phase: 'installing', version: '1.0.0' }, null, { phase: 'error', message: 'startup failed' }]);
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps.at(-1).detail, /post-update state/);
+});
 test('failed update needs an error phase with a message and no relaunch', async () => {
   const ok = await run('fail', [{ phase: 'installing', version: '1.0.0' }, { phase: 'error', message: 'offline' }]);
   assert.equal(ok.m.result, 'pass', JSON.stringify(ok.m.steps));
@@ -53,6 +58,10 @@ test('a missing session fails the drill', async () => {
   const none = await run('fail', [{ phase: 'error', message: 'x' }], {}, []);
   assert.equal(none.m.result, 'fail');
   assert.match(none.m.steps.at(-1).detail, /no active session/);
+});
+test('worker evidence does not claim that an inactive row is a live session', async () => {
+  const none = await run('fail', [{ phase: 'error', message: 'x' }], {}, []);
+  assert.match(none.m.steps.at(-1).detail, /no worker record/);
 });
 test('an unreachable app fails before any step', async () => {
   const fx = fixture();
