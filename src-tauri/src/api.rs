@@ -2909,9 +2909,14 @@ pub(crate) mod tests {
             run: &str,
             owner: &str,
             fence: i64,
-            _kind: &str,
+            kind: &str,
             target: &str,
         ) -> Result<(), String> {
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(
+                    store.agent_planning_scope(run, owner, fence, kind, target),
+                );
+            }
             self.agent_run_context(run, owner, fence)?;
             if target.contains("foreign") {
                 Err("planning target is outside the run project".into())

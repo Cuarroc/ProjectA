@@ -6,18 +6,13 @@ use super::*;
 
 const COMMIT_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const COMMIT_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-const SECRETS: [&str; 5] = [
-    "secret-goal-b",
-    "secret-task-b",
-    "run-b-id",
-    "evidence-b-id",
-    "project-b-id",
-];
+const SECRETS: [&str; 3] = ["secret-goal-b", "secret-task-b", "project-b-id"];
 
 struct Scope {
     server: ApiServer,
     pool: sqlx::SqlitePool,
     a: Descriptor,
+    run_b: String,
     evidence_a: String,
     evidence_b: String,
     _dir: TempDir,
@@ -41,6 +36,7 @@ fn seed(dir: &TempDir, store: &crate::store::Store, pool: &sqlx::SqlitePool, tag
             format!("INSERT INTO continuous_goals(id,project_id,root_goal_id,objective,status,deadline_at,admitted,created_at,updated_at) VALUES('goal-{tag}','{project}','goal-{tag}','{objective}','open',9999999999,1,1,1)"),
             format!("INSERT INTO continuous_root_policies VALUES('goal-{tag}','{policy}','test',1)"),
             format!("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('task-{tag}','goal-{tag}','{}','[]','[]','running','worker-{tag}',1,1,1)", if tag == "a" { "task-a" } else { "secret-task-b" }),
+            format!("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('task-{tag}','development','implementer','worker-{tag}',1,1,1)"),
         ] {
             sqlx::query(&sql).execute(pool).await.unwrap();
         }
@@ -105,6 +101,13 @@ fn scope() -> Scope {
     let (run_a, evidence_a) = run_with_evidence(&store, "a", COMMIT_A, "ra", "ea");
     let (run_b, evidence_b) = run_with_evidence(&store, "b", COMMIT_B, "rb", "eb");
     assert_ne!(run_a, run_b);
+    assert_eq!(
+        count(
+            &pool,
+            "UPDATE continuous_team_assignments SET role='coordinator' WHERE task_id='task-a' RETURNING 1",
+        ),
+        1
+    );
     let backend = FakeBackend {
         native_store: Some(store),
         ..Default::default()
@@ -117,6 +120,7 @@ fn scope() -> Scope {
         server,
         pool,
         a,
+        run_b,
         evidence_a,
         evidence_b,
         _dir: dir,
@@ -160,8 +164,8 @@ fn hq_context_changes_goals_records_of_a_foreign_project_leak_nothing() {
         "/api/hq/v1/runtime",
     ] {
         let (status, body) = get(path);
-        assert!(matches!(status, 403 | 404), "{path}: {status} {body}");
-        assert_no_leak(path, &body, &[]);
+        assert_eq!(status, 403, "{path}: {body}");
+        assert_no_leak(path, &body, &[&fx.run_b, &fx.evidence_b]);
     }
     // Every planning route must reach the real project-scope check, rather
     // than being refused earlier for an unrelated role or route reason.
@@ -189,7 +193,7 @@ fn hq_context_changes_goals_records_of_a_foreign_project_leak_nothing() {
             reply["error"], "planning target is outside the run project",
             "{path}: {reply}"
         );
-        assert_no_leak(path, &reply, &[]);
+        assert_no_leak(path, &reply, &[&fx.run_b, &fx.evidence_b]);
     }
     assert_eq!(
         count(&fx.pool, "SELECT COUNT(*) FROM continuous_goals"),
@@ -210,14 +214,14 @@ fn hq_context_changes_goals_records_of_a_foreign_project_leak_nothing() {
     // Run-scoped records: B's evidence is unknown to A, A's pages hold only A's.
     let (status, body) = get(&format!("/api/hq/v1/agent/evidence/{}", fx.evidence_b));
     assert_eq!(status, 404, "{body}");
-    assert_no_leak("foreign evidence", &body, &[&fx.evidence_b]);
+    assert_no_leak("foreign evidence", &body, &[&fx.run_b, &fx.evidence_b]);
     let (status, page) = get("/api/hq/v1/agent/records/evidence/start");
     assert_eq!(status, 200, "{page}");
-    assert_no_leak("evidence page", &page, &[&fx.evidence_b]);
+    assert_no_leak("evidence page", &page, &[&fx.run_b, &fx.evidence_b]);
     assert!(page.to_string().contains(&fx.evidence_a), "{page}");
     let (status, page) = get("/api/hq/v1/agent/records/reviews/start");
     assert_eq!(status, 200, "{page}");
-    assert_no_leak("review page", &page, &[&fx.evidence_b]);
+    assert_no_leak("review page", &page, &[&fx.run_b, &fx.evidence_b]);
 }
 
 #[test]
@@ -227,7 +231,7 @@ fn run_credential_reads_its_own_project_context_and_records() {
     let (status, context) = get("/api/hq/v1/agent/context");
     assert_eq!(status, 200, "{context}");
     assert!(context.to_string().contains("task-a"), "{context}");
-    assert_no_leak("own context", &context, &[&fx.evidence_b]);
+    assert_no_leak("own context", &context, &[&fx.run_b, &fx.evidence_b]);
     let (status, own) = get(&format!("/api/hq/v1/agent/evidence/{}", fx.evidence_a));
     assert_eq!(status, 200, "{own}");
     assert_eq!(own["id"], fx.evidence_a.as_str());
