@@ -86,7 +86,7 @@ describe("SettingsView updates tab", () => {
     vi.mocked(listLiveSessions).mockReset().mockResolvedValue([]);
     vi.mocked(installUpdateWhenIdle).mockReset().mockResolvedValue();
     getUpdaterState.mockReset().mockResolvedValue({ phase: "idle" });
-    setUpdaterState.mockClear();
+    setUpdaterState.mockReset().mockResolvedValue();
   });
 
   const defaultProps: TestProps = {

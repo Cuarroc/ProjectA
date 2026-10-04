@@ -2223,15 +2223,15 @@ export async function openExternal(url: string): Promise<void> {
 }
 
 /**
- * The core's shared `refused: ` prefix (see `workers::ERR_REFUSED`) is
- * routing vocabulary for `api.rs::core_status` to turn into a 409 — it names
- * no channel a human reads. Stripping it here, at the one place every panel's
- * error text passes through, keeps that vocabulary intact for the mapping
- * while a reviewer sees the reason instead of the routing tag it rides on
- * (KI-6). Only the exact, leading prefix: a message that merely mentions the
- * word mid-sentence is left as the core wrote it.
+ * The core's shared `refused: ` and `unknown ` prefixes (see
+ * `workers::{ERR_REFUSED, ERR_UNKNOWN}`) are routing vocabulary for
+ * `api.rs::core_status` — they name no channel a human reads. Stripping them
+ * here, at the one place every panel's error text passes through, keeps that
+ * vocabulary intact for the mapping while a reviewer sees the reason instead
+ * of the routing tag it rides on (KI-6). Only an exact, leading prefix is
+ * removed; a message that merely mentions either word stays unchanged.
  */
-const REFUSED_PREFIX = "refused: ";
+const ERROR_PREFIXES = ["refused: ", "unknown "] as const;
 
 /**
  * Errors coming back over IPC are plain strings as often as they are Errors.
@@ -2241,8 +2241,9 @@ const REFUSED_PREFIX = "refused: ";
  */
 export function describeError(error: unknown): string {
   const message = describeErrorRaw(error);
-  if (!message.startsWith(REFUSED_PREFIX)) return message;
-  const reason = message.slice(REFUSED_PREFIX.length);
+  const prefix = ERROR_PREFIXES.find((candidate) => message.startsWith(candidate));
+  if (prefix === undefined) return message;
+  const reason = message.slice(prefix.length);
   return reason.trim() === "" ? message : reason;
 }
 
