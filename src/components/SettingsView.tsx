@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -44,6 +44,7 @@ import MasterPromptTab from "./settings/MasterPromptTab";
 import UpdatesTab from "./settings/UpdatesTab";
 import CategoriesPanel from "./settings/CategoriesPanel";
 import ProfilesPanel from "./settings/ProfilesPanel";
+import { useRefreshOnResume } from "../lib/useRefreshOnResume";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
@@ -131,6 +132,7 @@ export default function SettingsView({
   onSaveMaxWorkers,
 }: SettingsViewProps) {
   const [tab, setTab] = useState<SettingsTab>("allgemein");
+  const globalRead = useRef(0);
 
   // -- Allgemein -------------------------------------------------------------
   const [portInput, setPortInput] = useState(() => {
@@ -160,12 +162,6 @@ export default function SettingsView({
   const [digestEnabled, setDigestEnabledState] = useState(true);
   const [digestError, setDigestError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void getDigestEnabled()
-      .then(setDigestEnabledState)
-      .catch((cause: unknown) => setDigestError(describeError(cause)));
-  }, []);
-
   const handleToggleDigest = (enabled: boolean) => {
     const previous = digestEnabled;
     // Optimistic, like the learning switches: only a failing write takes the
@@ -173,7 +169,11 @@ export default function SettingsView({
     setDigestEnabledState(enabled);
     setDigestError(null);
     void setDigestEnabled(enabled)
-      .then(() => flashSaved(enabled ? "Digest an." : "Digest aus."))
+      .then(() => {
+        globalRead.current += 1;
+        setDigestEnabledState(enabled);
+        flashSaved(enabled ? "Digest an." : "Digest aus.");
+      })
       .catch((cause: unknown) => {
         setDigestEnabledState(previous);
         setDigestError(describeError(cause));
@@ -184,14 +184,9 @@ export default function SettingsView({
   // tick that reads it runs there. An empty field means "the core's default",
   // which is a value of its own and not the same as any number.
   const [stuckInput, setStuckInput] = useState("");
+  const stuckSynced = useRef("");
   const [stuckError, setStuckError] = useState<string | null>(null);
   const [savingStuck, setSavingStuck] = useState(false);
-
-  useEffect(() => {
-    void getStuckAfterMinutes()
-      .then((minutes) => setStuckInput(minutes === null ? "" : String(minutes)))
-      .catch((cause: unknown) => setStuckError(describeError(cause)));
-  }, []);
 
   const handleSaveStuck = () => {
     const raw = stuckInput.trim();
@@ -206,13 +201,15 @@ export default function SettingsView({
     setSavingStuck(true);
     setStuckError(null);
     void setStuckAfterMinutes(minutes)
-      .then(() =>
+      .then(() => {
+        globalRead.current += 1;
+        stuckSynced.current = minutes === null ? "" : String(minutes);
         flashSaved(
           minutes === null
             ? "Stuck-Schwelle: Standard."
             : `Stuck-Schwelle: ${minutes} min.`,
-        ),
-      )
+        );
+      })
       .catch((cause: unknown) => setStuckError(describeError(cause)))
       .finally(() => setSavingStuck(false));
   };
@@ -220,12 +217,6 @@ export default function SettingsView({
   const [routing, setRouting] = useState<RoutingStatus | null>(null);
   const [routingError, setRoutingError] = useState<string | null>(null);
   const [savingRouting, setSavingRouting] = useState(false);
-
-  useEffect(() => {
-    void getRoutingStatus()
-      .then(setRouting)
-      .catch((cause: unknown) => setRoutingError(describeError(cause)));
-  }, []);
 
   const handleProductMode = (mode: ProductMode) => {
     const previous = routing;
@@ -235,6 +226,7 @@ export default function SettingsView({
     void setProductMode(mode)
       .then(() => getRoutingStatus())
       .then((next) => {
+        globalRead.current += 1;
         setRouting(next);
         flashSaved(`Routing: ${mode}.`);
       })
@@ -675,8 +667,9 @@ export default function SettingsView({
   );
   const [budgetBusyId, setBudgetBusyId] = useState<string | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  const budgetsSynced = useRef<Record<string, { five: string; seven: string }>>({});
 
-  const applyBudgets = (rows: Budget[]) => {
+  const applyBudgets = useCallback((rows: Budget[]) => {
     const next: Record<string, { five: string; seven: string }> = {};
     for (const row of rows) {
       next[row.profileId] = {
@@ -684,14 +677,41 @@ export default function SettingsView({
         seven: formatPercent(row.sevenDayPct),
       };
     }
-    setBudgetInputs(next);
-  };
-
-  useEffect(() => {
-    void getBudgets()
-      .then(applyBudgets)
-      .catch((cause: unknown) => setBudgetError(describeError(cause)));
+    const previous = budgetsSynced.current;
+    setBudgetInputs((current) => {
+      const merged = { ...next };
+      for (const [id, value] of Object.entries(current)) {
+        const before = previous[id] ?? { five: "", seven: "" };
+        if (value.five !== before.five || value.seven !== before.seven) merged[id] = value;
+      }
+      return merged;
+    });
+    budgetsSynced.current = next;
   }, []);
+
+  const refreshGlobalSettings = useCallback(() => {
+    const mine = ++globalRead.current;
+    void getDigestEnabled()
+      .then((enabled) => globalRead.current === mine && setDigestEnabledState(enabled))
+      .catch((cause: unknown) => setDigestError(describeError(cause)));
+    void getStuckAfterMinutes()
+      .then((minutes) => {
+        if (globalRead.current !== mine) return;
+        const next = minutes === null ? "" : String(minutes);
+        const previous = stuckSynced.current;
+        setStuckInput((current) => current === previous ? next : current);
+        stuckSynced.current = next;
+      })
+      .catch((cause: unknown) => setStuckError(describeError(cause)));
+    void getRoutingStatus()
+      .then((next) => globalRead.current === mine && setRouting(next))
+      .catch((cause: unknown) => setRoutingError(describeError(cause)));
+    void getBudgets()
+      .then((rows) => globalRead.current === mine && applyBudgets(rows))
+      .catch((cause: unknown) => setBudgetError(describeError(cause)));
+  }, [applyBudgets]);
+
+  useRefreshOnResume(refreshGlobalSettings);
 
   const budgetOf = (profileId: string) =>
     budgetInputs[profileId] ?? { five: "", seven: "" };
@@ -717,12 +737,15 @@ export default function SettingsView({
     setBudgetError(null);
     void setBudget(profile.id, fiveHour, sevenDay)
       .then((stored) => {
+        globalRead.current += 1;
         // Read back what the core stored rather than trusting the field: this
         // is the value the watcher will act on.
-        handleBudgetChange(stored.profileId, {
+        const saved = {
           five: formatPercent(stored.fiveHourPct),
           seven: formatPercent(stored.sevenDayPct),
-        });
+        };
+        budgetsSynced.current = { ...budgetsSynced.current, [stored.profileId]: saved };
+        handleBudgetChange(stored.profileId, saved);
         flashSaved(
           stored.fiveHourPct === null && stored.sevenDayPct === null
             ? `${profile.name}: kein Budget mehr.`
