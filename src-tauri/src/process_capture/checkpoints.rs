@@ -131,6 +131,17 @@ mod tests {
         assert_eq!(gate.poll().unwrap(), None);
     }
     #[test]
+    fn a_rejected_acknowledgement_keeps_its_reason() {
+        let (tx, rx) = mpsc::sync_channel(1);
+        let mut gate = Gate::new(binding(), Some(tx));
+        gate.submit(Stage::Launch, Value::Null).unwrap();
+        rx.recv().unwrap().acknowledge(Err("x".into())).unwrap();
+
+        let error = gate.poll().unwrap_err();
+        assert!(error.starts_with("checkpoint persistence unconfirmed"));
+        assert!(error.contains('x'));
+    }
+    #[test]
     fn failed_or_lost_checkpoint_cannot_be_replaced_by_later_success() {
         for failed in [false, true] {
             let (tx, rx) = mpsc::sync_channel(4);
