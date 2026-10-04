@@ -155,4 +155,10 @@ fn checkpoint_survives_agent_abort_and_is_resumed_by_the_next_run() {
         404,
         "no zombie revision"
     );
+
+    drop(server);
+    assert!(
+        store.test_pool_is_closed(),
+        "the E2E server must not leave its SQLite pool open"
+    );
 }
