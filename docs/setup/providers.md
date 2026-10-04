@@ -70,7 +70,8 @@ Anbieter für eine Aufgabenart als besser oder schlechter belegt, trägt den
 Beleg hier ein.
 
 Effort-Stufen: Codex kennt `low` bis `ultra` für `astra`/`sol`, bis `max` für
-`luna`; global stehen `gpt-5.6-sol` und `medium` in `~/.codex/config.toml`. Mehr als `high` nur
+`luna`; global stehen `gpt-6-astra` und `medium` in `~/.codex/config.toml`
+(geprüft 04.10.2026, wie in [codex.md](codex.md)). Mehr als `high` nur
 für Architektur- und Security-Fragen — `xhigh` und darüber brennen das
 Codex-Fenster schnell ab. OpenCode Go zeigt `high` in der Statuszeile; das
 Modell stellt man im TUI mit `/models` oder mit `-m` beim Start.
@@ -102,8 +103,9 @@ Befunde aus dem Orca-Pilot am 25.09. (Orca 1.4.210):
 
 - OpenCode: startet in etwa 10 s und arbeitet den Auftrag ab.
 - `--model`/`--effort` gelten nur für Claude, Codex und Antigravity;
-  bei OpenCode greift das Modell aus dessen Konfiguration (Standard
-  `glm-5.3-flash`).
+  bei OpenCode greift das Modell aus dessen Konfiguration: `model` =
+  `opencode-go/glm-5.3`, `small_model` = `opencode-go/glm-5.3-flash`
+  (`~/.config/opencode/opencode.jsonc`, geprüft 04.10.2026).
 - Orca selbst belegt rund 0,75 GB RAM, ein OpenCode-TUI knapp 1 GB.
 
 ## Wie voll ist welches Abo?
