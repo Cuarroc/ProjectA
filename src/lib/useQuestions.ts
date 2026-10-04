@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { answerQuestion, describeError, listQuestions } from "./ipc";
+import { usePolledResource } from "./usePolledResource";
 import type { Question } from "../types";
 
 /**
@@ -65,12 +66,11 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
   const [error, setError] = useState<string | null>(null);
   const [scope, setScope] = useState<QuestionsScope>("project");
 
-  // Guards against a slow response for a project the user already left.
-  const token = useRef(0);
+  const resourceKey = enabled ? `${scope}:${projectId ?? ""}` : null;
+  const beginRequest = usePolledResource(resourceKey);
 
   const load = useCallback(
-    async (showSpinner: boolean) => {
-      const mine = ++token.current;
+    async (showSpinner: boolean, replace = false) => {
       // The fleet read needs no project; the project read has nothing to ask
       // about without one.
       if (scope === "project" && !projectId) {
@@ -79,28 +79,31 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
         setLoading(false);
         return;
       }
+      const request = beginRequest(replace);
+      if (request === null) return;
       if (showSpinner) setLoading(true);
       try {
         const next = await listQuestions(
           scope === "all" || !projectId ? undefined : { projectId },
         );
-        if (token.current !== mine) return;
+        if (!request.current()) return;
         setQuestions(next);
         setError(null);
       } catch (cause) {
-        if (token.current === mine) setError(describeError(cause));
+        if (request.current()) setError(describeError(cause));
       } finally {
         // No `showSpinner` here: a run that is overtaken leaves through the
         // early return above without clearing anything, so the last run
         // standing has to clear it whether it raised it or not.
-        if (token.current === mine) setLoading(false);
+        if (request.current()) setLoading(false);
+        request.finish();
       }
     },
-    [projectId, scope],
+    [beginRequest, projectId, scope],
   );
 
   const refresh = useCallback(() => {
-    void load(false);
+    void load(false, true);
   }, [load]);
 
   const answer = useCallback(
