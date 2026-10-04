@@ -1,6 +1,6 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-10-04T20:36:55.572Z",
-  "commit": "bc9e943",
+  "generatedAt": "2026-10-04T21:11:06.784Z",
+  "commit": "9639bdb",
   "dirty": false,
   "sources": [
     {
@@ -1885,7 +1885,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
