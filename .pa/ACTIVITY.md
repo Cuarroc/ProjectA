@@ -36,3 +36,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main at 2671a1e without conflict hunks; committed generated HQ snapshot 5937c6e; prepush green twice; pushed and verified remote; PR #321 report updated and @Mergifyio queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 19:39 — Codex GPT-5 (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
+- Zusammenfassung: HQ2-05b package 4 updates collector documentation and not-reported reasons from merged real probes; implementation commit e511615 pushed; draft PR #341; Tier B review pending coordinator.
+- Commits: e511615
+- Uncommitted: keine
