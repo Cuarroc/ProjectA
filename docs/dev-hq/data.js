@@ -1,7 +1,7 @@
 window.HQ_DATA = {
-  "generatedAt": "2026-10-04T18:22:36.683Z",
-  "commit": "daa9e33",
-  "dirty": false,
+  "generatedAt": "2026-10-04T19:09:51.784Z",
+  "commit": "d2dcb45",
+  "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
@@ -1795,7 +1795,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -2072,7 +2072,7 @@ window.HQ_DATA = {
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 17,
+        "ageDays": 18,
         "votes": 0
       }
     },
