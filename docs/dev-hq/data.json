@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-04T15:59:51.881Z",
-  "commit": "2671a1e",
+  "generatedAt": "2026-10-04T18:21:28.657Z",
+  "commit": "8a222da",
   "dirty": false,
   "sources": [
     {
@@ -9,7 +9,7 @@
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "c4d849d79b5e353fc9ffbf2d50ecdd1ec965d9f76d82aa893c8a6c7da17fd287"
+      "sha256": "5f7c455c8d0bd024809ea67407876fc2a725f76b40a485dda1a5afe38cb52964"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -1009,10 +1009,64 @@
           "stand": "offen",
           "state": "open",
           "prNumbers": []
+        },
+        {
+          "id": "M4-R7-01",
+          "title": "Scheduler-dispatch_once hinter einem Nur-Test-Permit (Matrixzeile 7)",
+          "size": "S",
+          "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R7-02",
+          "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen",
+          "size": "S",
+          "lane": "wk",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-01",
+          "title": "Typisierter Audit-Envelope: Einträge ohne project/run/result/sourceRef werden abgewiesen (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-05",
+          "title": "Vollständige Audit-Envelopes für Delivery-Start/-Enqueue und W1-03f done/blocked mit Erfolg und Ablehnung (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-06",
+          "title": "Vollständige Audit-Envelopes für Not-Aus an/aus und Barrier-/Store-Fehler (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-08",
+          "title": "Vollständige Audit-Envelopes für Planungs-Autorisierungsablehnungen und Planungs-Schreibvorgänge (Matrixzeile 19)",
+          "size": "S",
+          "lane": "api",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
         }
       ],
       "done": 16,
-      "total": 26
+      "total": 32
     },
     {
       "id": "M5",
@@ -1125,10 +1179,55 @@
           "stand": "offen, nach v1.5.0",
           "state": "open",
           "prNumbers": []
+        },
+        {
+          "id": "M4-R19-02",
+          "title": "Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-03",
+          "title": "Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-04",
+          "title": "Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-07",
+          "title": "Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19)",
+          "size": "S",
+          "lane": "st",
+          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M4-R19-09",
+          "title": "Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19)",
+          "size": "S",
+          "lane": "mn",
+          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "state": "open",
+          "prNumbers": []
         }
       ],
       "done": 0,
-      "total": 12
+      "total": 17
     }
   ],
   "next": [
@@ -1626,7 +1725,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1647,7 +1746,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1675,7 +1774,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1866,7 +1965,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1887,7 +1986,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1908,7 +2007,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -2015,7 +2114,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 10,
+        "ageDays": 11,
         "votes": 0
       }
     }
