@@ -65,6 +65,20 @@ test('drill keeps tracking an affected descendant after its parent exits', async
   assert.equal(m.result, 'fail');
   assert.match(readFileSync(join(w.outDir, 'processes-after.txt'), 'utf8'), /node\.exe pid=3 parent=2/);
 });
+test('trigger polling cannot hide a stop that exceeds ten seconds', async () => {
+  let t = 0;
+  const w = {
+    outDir: join(mkdtempSync(join(tmpdir(), 'estop-')), 'out'), appVersion: '1.4.1', commit: 'abc',
+    deps: {
+      now: () => t, sleep: async (ms) => { t += ms; }, notify: () => {},
+      getState: async () => ({ active: t >= 501 && t < 12500 }),
+      listProcesses: async () => (t < 10501 ? rows.slice(0, 3) : [rows[0]]),
+    },
+  };
+  const m = await runEstopDrill(w);
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps.find((step) => step.name.includes('within 10 s')).detail, /10250 ms/);
+});
 test('drill fails when workers need longer than 10 s', async () => {
   const m = await runEstopDrill(world({ dieAfter: 11000 }));
   assert.equal(m.result, 'fail');
