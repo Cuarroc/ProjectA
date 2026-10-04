@@ -10,7 +10,15 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 - **Branch-Schutz:** Pflicht-Checks `gates (linux)`, `gates (windows)`,
   `red-first`; „strict up-to-date" ist **aus**.
 - **Aufnahmefähig** ist jeder PR auf `main`, der kein Draft ist, keinen
-  Konflikt hat, kein `do-not-merge` trägt und dessen drei Checks grün sind.
+  Konflikt hat, kein `do-not-merge` trägt, das Label `review-ok` trägt und
+  dessen drei Checks grün sind.
+- **`review-ok` ist Pflicht** (CI-HARDEN-02, fail-closed): Das Label setzt die
+  Orchestrator-Pipeline erst, wenn die Review-Entscheidung vollständig ist und
+  kein High-Befund offen steht. Reviewer reihen nie selbst ein. Wer das Label
+  entfernt (oder `do-not-merge` setzt), nimmt den PR aus der Queue. Keine
+  Ausnahme für Paket-, Doku-/Infra- oder Dependabot-Branches. In
+  `.mergify.yml` steht es in `queue_conditions` und
+  `auto_merge_conditions` (`ci-shape` prüft beides).
 - **Einreihen ist ein eigener Schritt** (beobachtet 04.10.2026): Aufnahmefähige
   PRs kamen nicht von selbst in die Queue. Die letzten 14 gemergten PRs
   (#240–#266) und die offenen #274/#275 tragen je einen Kommentar
@@ -55,6 +63,7 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 | `do-not-merge` | jeder | hält einen grünen PR aus der Queue („Nutzer soll erst draufsehen") |
 | `priority` | nur der Koordinator | reiht vorn ein (ebenso ein Branch `hotfix/…`) |
 | `conflict` | Mergify (setzt und entfernt es selbst) | PR merged nicht sauber mit `main` — `main` hineinmergen, Konflikt lösen, pushen |
+| `review-ok` | nur die Orchestrator-Pipeline | Voraussetzung fürs Einreihen (siehe oben) |
 | `queued` | Mergify | PR steht in der Queue |
 
 Setzen/Entfernen: `gh pr edit <n> --add-label do-not-merge`,

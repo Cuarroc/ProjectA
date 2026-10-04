@@ -217,6 +217,10 @@ hypotheses); the queue run on `main` is still checked by Mergify. Merge
 `main` into your branch only to resolve a real conflict (Mergify labels
 those `conflict`): merge, never rebase or force-push.
 
+- `review-ok` label: a PR enters the queue only with it. The orchestrator
+  pipeline sets it after the review disposition is complete and no high
+  finding is open; reviewers never queue themselves. Removing it (or adding
+  `do-not-merge`) takes a PR out. No branch type is exempt.
 - `do-not-merge` label: keeps a green PR out of the queue.
 - `priority` label (coordinator only) or a `hotfix/` branch: queued first. A
   hook or gate fix that protects everyone goes alone as a hotfix, never bundled
