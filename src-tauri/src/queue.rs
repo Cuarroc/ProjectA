@@ -629,7 +629,9 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
-    use crate::store::{WorkerRow, KIND_ORCHESTRATOR, KIND_QUEEN, KIND_SCOUT, KIND_WORKER};
+    use crate::store::{
+        WorkerRow, KIND_ORCHESTRATOR, KIND_QUEEN, KIND_SCOUT, KIND_WORKER, QUEUE_FAILED,
+    };
     use crate::testutil::TempDir;
 
     /// Records `(entry id, profile id)` per launch. The profile is what the
@@ -985,6 +987,120 @@ mod tests {
         assert_eq!(count, 1);
         assert_eq!(status, QUEUE_DISPATCHED);
         assert!(worker_id.is_some());
+    }
+
+    /// A launcher that blows up while "starting the worker" for one entry -
+    /// the FJ-2 shape. The panic sits inside the boxed future after a store
+    /// await, where a real launcher's worktree/PTY setup would die, so it
+    /// lands on a later poll, not the first. Every other entry launches
+    /// normally, which is what must still happen after the doomed one.
+    struct PanickingLauncher {
+        store: Store,
+        calls: Mutex<Vec<String>>,
+    }
+
+    impl TaskLauncher for PanickingLauncher {
+        fn launch<'a>(
+            &'a self,
+            entry: &'a QueueEntry,
+        ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + 'a>> {
+            Box::pin(async move {
+                // The await matters: the panic must arrive after the future
+                // has already suspended once, exactly like a launch that
+                // already did real work and then died.
+                self.store.list_queue(Some(&entry.project_id)).await?;
+                self.calls.lock().unwrap().push(entry.id.clone());
+                if entry.raw_text == "doomed" {
+                    panic!("worker start exploded");
+                }
+                Ok(format!("wk-{}", entry.id))
+            })
+        }
+    }
+
+    /// Regression (FJ-2): the dispatcher drives every sweep from one plain
+    /// thread with one `block_on`, and a panic in one entry's launch used to
+    /// unwind straight out of the thread closure - the dispatcher dead for
+    /// the rest of the session, no further project ever dispatched, and the
+    /// panicking entry stuck in its claim, silently. The dispatch of a
+    /// panicking entry must fail that entry with a reason, and the next
+    /// sweep must still dispatch the next entry.
+    #[test]
+    fn a_panicking_entry_fails_with_a_reason_and_the_sweep_survives() {
+        let handle = thread::spawn(|| {
+            tauri::async_runtime::block_on(async {
+                let (_dir, store, project) = fixture().await;
+                // The doomed entry outranks the fine one, so the sweep meets
+                // it first: the panic must not cost the second entry its turn.
+                let doomed = enqueue_with_enhancer(
+                    &store,
+                    &project,
+                    "doomed",
+                    None,
+                    false,
+                    Some(9),
+                    None,
+                    |_, _| unreachable!(),
+                )
+                .await
+                .unwrap();
+                let fine = enqueue_with_enhancer(
+                    &store,
+                    &project,
+                    "fine",
+                    None,
+                    false,
+                    Some(0),
+                    None,
+                    |_, _| unreachable!(),
+                )
+                .await
+                .unwrap();
+                let quota = QuotaTracker::default();
+                let launcher = PanickingLauncher {
+                    store: store.clone(),
+                    calls: Mutex::new(Vec::new()),
+                };
+                // Sweep one: meets the doomed entry and must survive it.
+                let first =
+                    dispatch_once(&store, &quota, &PreflightCache::default(), &launcher).await;
+                // Sweep two, the loop's next iteration: the fine entry goes out.
+                let second =
+                    dispatch_once(&store, &quota, &PreflightCache::default(), &launcher).await;
+                let rows = store.list_queue(Some(&project)).await.unwrap();
+                let calls = launcher.calls.lock().unwrap().clone();
+                (first, second, rows, calls, doomed.id, fine.id)
+            })
+        });
+        let (first, second, rows, calls, doomed_id, fine_id) = handle
+            .join()
+            .expect("the dispatcher thread must survive a panicking entry");
+        assert_eq!(
+            calls,
+            vec![doomed_id.clone(), fine_id.clone()],
+            "the doomed entry was met first, the fine one in the next sweep"
+        );
+        assert_eq!(first, 0, "the panicking entry must not count as dispatched");
+        assert_eq!(second, 1, "the next sweep dispatches the next entry");
+        let failed = rows
+            .iter()
+            .find(|row| row.id == doomed_id)
+            .expect("the doomed row is still there");
+        assert_eq!(failed.status, QUEUE_FAILED);
+        assert!(
+            failed
+                .error
+                .as_deref()
+                .is_some_and(|error| error.contains("panicked")),
+            "the panicking entry must fail with a reason, not silently: {:?}",
+            failed.error
+        );
+        let dispatched = rows
+            .iter()
+            .find(|row| row.id == fine_id)
+            .expect("the fine row is still there");
+        assert_eq!(dispatched.status, QUEUE_DISPATCHED);
+        assert!(dispatched.worker_id.is_some());
     }
 
     /// A launcher that tries to cancel the entry while it is "starting the
