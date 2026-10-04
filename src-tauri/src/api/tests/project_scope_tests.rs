@@ -163,8 +163,13 @@ fn hq_context_changes_goals_records_of_a_foreign_project_leak_nothing() {
         assert!(matches!(status, 403 | 404), "{path}: {status} {body}");
         assert_no_leak(path, &body, &[]);
     }
-    // Planning writes aimed at project B change nothing there.
+    // Every planning route must reach the real project-scope check, rather
+    // than being refused earlier for an unrelated role or route reason.
     for (path, body) in [
+        (
+            "/api/hq/v1/plan/import",
+            r#"{"projectId":"project-b-id","planId":"main","expectedProjectionRevision":0}"#,
+        ),
         (
             "/api/hq/v1/goals",
             r#"{"projectId":"project-b-id","objective":"x"}"#,
@@ -173,14 +178,17 @@ fn hq_context_changes_goals_records_of_a_foreign_project_leak_nothing() {
             "/api/hq/v1/goals/goal-b/tasks",
             r#"{"objective":"x","ownedPaths":[],"dependencies":[]}"#,
         ),
-        ("/api/hq/v1/tasks/task-b/claim", r#"{"owner":"worker-a"}"#),
         (
-            "/api/hq/v1/control",
-            r#"{"projectId":"project-b-id","action":"pause"}"#,
+            "/api/hq/v1/tasks/task-b/assignment",
+            r#"{"teamId":"development","role":"implementer","assignee":"worker-b","expectedRevision":0,"policyVersion":1}"#,
         ),
     ] {
         let (status, reply) = post(path, body);
         assert_eq!(status, 403, "{path}: {reply}");
+        assert_eq!(
+            reply["error"], "planning target is outside the run project",
+            "{path}: {reply}"
+        );
         assert_no_leak(path, &reply, &[]);
     }
     assert_eq!(
