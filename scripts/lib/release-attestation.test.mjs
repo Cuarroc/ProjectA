@@ -73,6 +73,20 @@ test('attestation: an ignored untracked file is refused', () => {
     assert.match(result.reason, /committed regular file/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+test('attestation: hidden working-copy content cannot replace the committed attestation', () => {
+  const root = fixture();
+  try {
+    write(root, valid(root));
+    git(root, 'add', '.');
+    git(root, 'commit', '-q', '-m', 'attest');
+    git(root, 'update-index', '--assume-unchanged', FILE);
+    write(root, { ...valid(root), commit: git(root, 'rev-parse', 'HEAD^'), decidedBy: 'replacement' });
+    assert.equal(git(root, 'status', '--porcelain'), '');
+    const result = loadReleaseAttestation(FILE, root);
+    assert.equal(result.attested, false);
+    assert.match(result.reason, /committed content/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 test('attestation: a non-ancestor commit is refused', () => {
   const root = fixture();
   try {
