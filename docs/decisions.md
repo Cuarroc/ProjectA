@@ -1550,8 +1550,8 @@ wall clock, linux + windows.
 - **What:** `.mergify.yml` `merge_queue.max_parallel_checks: 2` (was 1 since
   CI-03). Batch size (1-4), `mode: serial` and all conditions are unchanged.
 - **Why:** on 2026-10-04 the server sat at 0-2 of 8 cores for hours while 8
-  green PRs waited for the single queue run; one failed batch costs about 20
-  minutes of bisecting. Two runs overlap that wait. Cost check: the Mergify
+  green PRs waited for the single queue run; one failed batch requires about 20
+  minutes of bisecting. Two runs overlap that wait. Availability check: the Mergify
   schema (docs.mergify.com/mergify-configuration-schema.json) documents
   `max_parallel_checks` as integer 1-128, default 5, without a plan
   restriction; the pricing page lists Parallel Checks under the Open Source

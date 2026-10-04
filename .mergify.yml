@@ -86,7 +86,7 @@ merge_queue:
   # Windows lane) instead of two runs; in serial mode the second run is
   # speculative (it contains the first batch) and its minutes are lost when
   # the first batch fails. Evidence 04.10.: the server idled at 0-2/8 cores
-  # for hours while 8 green PRs waited, and one failed batch costs ~20 min of
+  # for hours while 8 green PRs waited, and one failed batch requires ~20 min of
   # bisecting. Parallel Checks are included in the Open Source plan.
   # Trade-off accepted: with batch_size min 1, up to two queued PRs may now
   # run as two separate runs (two Windows lanes).
