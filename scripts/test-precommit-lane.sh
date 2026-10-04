@@ -58,6 +58,12 @@ n="$(grep -c 'Build slots' <<< "$out")"
 out="$(cd "$G" && CARGO_TARGET_DIR=/x bash scripts/ci/gates.sh lane precommit 2>&1)"
 grep -q 'Build slots' <<< "$out" && bad "hint despite CARGO_TARGET_DIR" || ok "no hint when CARGO_TARGET_DIR is set"
 
+git -C "$G" commit -q -m rust-base
+mkdir -p "$G/docs" && git -C "$G" mv src-tauri/src/main.rs docs/main.md
+out="$(run_lane)"
+if grep -q 'FMT-RAN' <<< "$out" && grep -q 'CHECK-RAN' <<< "$out"; then ok "renamed Rust source still runs Rust gates"
+else bad "renamed Rust source skipped the Rust gates"; fi
+
 rmdir "$G/node_modules"
 out="$(run_lane)"; rc=$?
 if [ "$rc" -ne 0 ] && grep -q 'run npm ci' <<< "$out" && ! grep -q 'TC-RAN' <<< "$out"; then
@@ -80,5 +86,7 @@ msg "Test-First: tests/gone.rs::real_test" && bad "missing path accepted" || ok 
 msg "Test-First: tests/new.rs::real_test" && ok "existing new test is accepted" || { bad "valid trailer rejected"; sed 's/^/    /' "$TMP/hook.out"; }
 git -C "$C" reset -q && git -C "$C" add NOTES.md
 msg "No-Test: documentation only" && ok "No-Test on a docs-only commit is accepted" || { bad "docs-only No-Test rejected"; sed 's/^/    /' "$TMP/hook.out"; }
+git -C "$C" reset -q && git -C "$C" rm -q tests/old.rs
+msg "Test-First: tests/old.rs::existing_test" && bad "deleted Test-First path accepted" || ok "deleted Test-First path is rejected"
 
 [ "$fails" -eq 0 ] && echo "test-precommit-lane: OK" || { echo "test-precommit-lane: $fails Fehler"; exit 1; }
