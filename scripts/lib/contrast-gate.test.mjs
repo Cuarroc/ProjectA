@@ -75,7 +75,7 @@ test("gate rejects a Studio token pairing below 4.5:1 in dark mode", () => {
 
 test("gate rejects the primary hover text pairing below 4.5:1", () => {
   const r = runGate((css) => css, editConcept("studio-tokens.css", (css) => css.replace(/--teal: light-dark\([^,]+,/, "--teal: light-dark(#999999,")));
-  assert.match(r.out, /studio hell: primary hover \/ bg/);
+  assert.match(r.out, /studio hell\s*: primary hover \/ bg/);
   assert.notEqual(r.status, 0);
 });
 

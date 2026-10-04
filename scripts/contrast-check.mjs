@@ -432,6 +432,7 @@ if (tokenCss) {
     ["ink / bg", "ink", "bg"], ["ink / surface", "ink", "surface"], ["ink / surface2", "ink", "surface2"],
     ["muted / bg", "muted", "bg"], ["muted / surface", "muted", "surface"], ["muted / surface2", "muted", "surface2"],
     ["accent / bg", "accent", "bg"], ["accent / surface", "accent", "surface"], ["accent / wash", "accent", "wash"],
+    ["primary hover / bg", "teal", "bg"],
     ["teal-ink / teal-wash", "teal-ink", "teal-wash"], ["on-accent / accent", "on-accent", "accent"],
     ["amber / amber-wash", "amber", "amber-wash"], ["red / red-wash", "red", "red-wash"],
     ["error / surface", "error", "surface"], ["warn / surface", "warn", "surface"],

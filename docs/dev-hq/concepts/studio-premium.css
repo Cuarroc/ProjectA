@@ -185,5 +185,5 @@ html[data-density=compact] .data-table td { padding: 10px 12px; }
 }
 @media (prefers-reduced-transparency:reduce) {
   .top,.nav,.inspector { background: var(--surface); backdrop-filter: none; }
-  dialog::backdrop { background: var(--scrim); backdrop-filter: none; }
+  dialog::backdrop { background: var(--scrim-solid); backdrop-filter: none; }
 }

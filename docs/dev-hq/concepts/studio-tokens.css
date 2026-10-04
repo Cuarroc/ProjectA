@@ -16,7 +16,7 @@
   --control-edge: light-dark(#6f8791, #738e94);
 
   /* colour: accent, status, focus */
-  --teal: light-dark(#087d80, #7fdad2);
+  --teal: light-dark(#07787b, #7fdad2);
   --teal-ink: light-dark(#056367, #a0e8df);
   --teal-wash: light-dark(#e5f3f2, #204240);
   --amber: light-dark(#99601e, #f2c582);
@@ -37,6 +37,7 @@
   --hero-line: light-dark(#ffffffb8, #ffffff40);
   --shadow-color: light-dark(#17364410, #00000040);
   --scrim: light-dark(#091b2b78, #10212ce8);
+  --scrim-solid: light-dark(#091b2be8, #10212cf5);
 
   /* shape, space, type */
   --radius-s: 8px;
