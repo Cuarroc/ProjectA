@@ -40,6 +40,9 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 ## 2026-10-04 19:48 — Codex GPT-5 (codex/state-4-guard-gaps, srv-state-4-guard-gaps)
 - Zusammenfassung: STATE-4 completed at 74b550b; red-first and prepush exit 0; draft PR #345; Tier B review and Windows merge-queue lane pending.
 - Commits: keine
+## 2026-10-04 19:37 — Codex GPT-5 (codex/m4-r7-01-dispatch-once, srv-m4-r7-01-dispatch-once)
+- Zusammenfassung: M4-R7-01 completed: one-shot scheduler core, red-first success proof, full prepush green, draft PR #340; Tier A reviews and M4-R7-02 remain with the coordinator.
+- Commits: 35caaee,d9e0b85
 ## 2026-10-04 19:30 — codex (codex/changelog-150-draft-r, srv-changelog-150-draft)
 - Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
 - Commits: 13d5357
