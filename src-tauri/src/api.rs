@@ -199,6 +199,12 @@ pub const DESCRIPTOR_FILE: &str = "projecta-api.json";
 
 #[path = "api/agent_access.rs"]
 mod agent_access;
+#[allow(unused_imports)]
+pub use crate::workers::delivery_state::{
+    record_worker_delivery as record_delivery_receipt, WorkerDeliveryError as DeliveryError,
+    WorkerDeliveryReceipt as DeliveryReceipt,
+};
+#[allow(unused_imports)]
 pub use agent_access::{CandidateInput, RunCredentialIssuer};
 #[cfg(windows)]
 #[path = "api/credential_acl.rs"]
@@ -429,6 +435,17 @@ pub trait ControlBackend: Send + Sync {
         _task_id: &str,
     ) -> Result<Option<crate::store::team_assignments::TeamAssignment>, String> {
         Err("team assignment backend unavailable".into())
+    }
+    /// W1-03f-api: the terminal report of the run a scoped credential speaks
+    /// for; answer with `record_delivery_receipt`. Fails closed by default.
+    fn agent_record_delivery(
+        &self,
+        _run: &str,
+        _owner: &str,
+        _fence: i64,
+        _delivery: crate::workers::delivery_state::WorkerDelivery,
+    ) -> Result<DeliveryReceipt, DeliveryError> {
+        Err(DeliveryError::Failed("delivery service unavailable".into()))
     }
     /// The dispatch role of the run a scoped credential speaks for, under the
     /// same owner/fence authority as the agent routes (W2-04f). Never taken
@@ -2589,6 +2606,8 @@ pub(crate) mod tests {
     // W2-04f, in `api/tests/`: a child of this module so it can use the fake
     // backend and `call`.
     mod planning_access_tests;
+    // W1-03f-api: the delivery route, on a real store.
+    mod delivery_route_tests;
 
     /// The five ways a merge can fail, copied verbatim from
     /// `workers::merge_worker` (and from `gh` for the last one). They are here
@@ -2835,6 +2854,21 @@ pub(crate) mod tests {
                 policy_version: 1,
                 observed_at: 42,
             })
+        }
+        fn agent_record_delivery(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            delivery: crate::workers::delivery_state::WorkerDelivery,
+        ) -> Result<DeliveryReceipt, DeliveryError> {
+            let store = self
+                .native_store
+                .as_ref()
+                .ok_or_else(|| DeliveryError::Failed("delivery service unavailable".into()))?;
+            tauri::async_runtime::block_on(record_delivery_receipt(
+                store, run, owner, fence, delivery,
+            ))
         }
         fn agent_dispatch_role(
             &self,
