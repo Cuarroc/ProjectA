@@ -45,7 +45,7 @@ root="$(git rev-parse HEAD)"
 write_test() { # file
   # Relative to the test's own tree: red-first runs the base copy as
   # `bash <base-tree>/<path>` with the head checkout as cwd.
-  printf '#!/usr/bin/env bash\n[ -f "$(dirname "$0")/../src/fix.txt" ] || { echo "not fixed"; exit 1; }\necho ok\n' > "$1"
+  printf '#!/usr/bin/env bash\n[ -f "$(dirname "$0")/../src/fix.txt" ] || { echo "not fixed"; exit 1; }\necho "ok   landed behavior"\n' > "$1"
 }
 
 # commit file-to-add message trailer-line
@@ -60,7 +60,7 @@ write_test scripts/test-landed.sh
 commit "test: landed (red)" "No-Test: test only"
 printf 'fix\n' > src/fix.txt
 printf 'export const x = 1;\n' > src/App.tsx
-commit "fix: landed" "Test-First: scripts/test-landed.sh"
+commit "fix: landed" "Test-First: scripts/test-landed.sh::landed behavior"
 
 # main moves on: the same fix and test arrive as a hotfix of their own.
 port_to_main() { # trailer-line
@@ -98,7 +98,7 @@ run() { # name expected(pass|fail) [log-regex]
 }
 
 # 1. main carries the identical trailer -> already proven there, pass.
-port_to_main "Test-First: scripts/test-landed.sh"
+port_to_main "Test-First: scripts/test-landed.sh::landed behavior"
 run already-proven-on-main pass "already proven on main"
 
 # 2. main has the same test and fix but NO Test-First trailer -> still red.
@@ -107,7 +107,7 @@ port_to_main "No-Test: hotfix without evidence"
 run green-at-base-without-trailer fail "GRUEN"
 
 # 3. main carries a trailer for a DIFFERENT spec -> does not count.
-port_to_main "Test-First: scripts/test-other.sh"
+port_to_main "Test-First: scripts/test-landed.sh::other behavior"
 run trailer-for-other-spec fail "GRUEN"
 
 # 4. Nothing ported: red at the base, green at the head -> pass as before.
