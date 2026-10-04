@@ -129,8 +129,13 @@ fn count(pool: &sqlx::SqlitePool, sql: &str) -> i64 {
 
 fn assert_no_leak(what: &str, body: &Value, extra: &[&str]) {
     let text = body.to_string();
-    for secret in SECRETS.iter().chain(extra) {
-        assert!(!text.contains(secret), "{what} leaked {secret}: {text}");
+    // The failure message names the marker's position, never its value or the body.
+    for (index, secret) in SECRETS.iter().chain(extra).enumerate() {
+        assert!(
+            !text.contains(secret),
+            "{what} leaked foreign marker #{index} ({} bytes)",
+            secret.len()
+        );
     }
 }
 
