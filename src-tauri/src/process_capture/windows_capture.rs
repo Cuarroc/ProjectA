@@ -1831,7 +1831,7 @@ fn self_test_host_checkpoints(
             match (rejected, result) {
                 (None, Ok(_)) => Ok(()),
                 (Some(_), Err(error))
-                    if error == "checkpoint persistence unconfirmed"
+                    if error.starts_with("checkpoint persistence unconfirmed")
                         || error == "checkpoint consumer unavailable" =>
                 {
                     Ok(())
