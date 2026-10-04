@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import EmergencyStop from "./EmergencyStop";
@@ -49,5 +49,23 @@ describe("EmergencyStop", () => {
     fireEvent.focus(window);
 
     expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
+  });
+
+  it("does not let an older refresh undo a stop raised in this view", async () => {
+    let resolveRefresh: (active: boolean) => void = () => {};
+    ipc.getEmergencyStop
+      .mockResolvedValueOnce(false)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+    ipc.setEmergencyStop.mockResolvedValue(undefined);
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.focus(window);
+    fireEvent.click(raise);
+    expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
+
+    await act(async () => resolveRefresh(false));
+
+    expect(screen.getByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
   });
 });

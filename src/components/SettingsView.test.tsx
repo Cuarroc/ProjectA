@@ -352,5 +352,14 @@ describe("SettingsView global state resync", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Agent-Kategorien" }));
     expect(screen.getByLabelText("5 h")).toHaveValue("60");
     expect(screen.getByLabelText("7 T.")).toHaveValue("90");
+
+    fireEvent.change(screen.getByLabelText("5 h"), { target: { value: "65" } });
+    stateReads.getBudgets.mockResolvedValueOnce([
+      { profileId: "codex", fiveHourPct: 70, sevenDayPct: 90 },
+    ]);
+    const callsBeforeFocus = stateReads.getBudgets.mock.calls.length;
+    fireEvent.focus(window);
+    await waitFor(() => expect(stateReads.getBudgets).toHaveBeenCalledTimes(callsBeforeFocus + 1));
+    expect(screen.getByLabelText("5 h")).toHaveValue("65");
   });
 });
