@@ -1544,3 +1544,21 @@ wall clock, linux + windows.
 - **Reverse when:** only after a closed, machine-checked allowlist can prove
   that every skipped file is absent from every gate input. Reconsider the
   queue rule once queue runs of docs-only PRs show up in the minute measurement.
+
+## 2026-10-04 - CI-QUEUE-02: Mergify `max_parallel_checks` from 1 to 2
+
+- **What:** `.mergify.yml` `merge_queue.max_parallel_checks: 2` (was 1 since
+  CI-03). Batch size (1-4), `mode: serial` and all conditions are unchanged.
+- **Why:** on 2026-10-04 the server sat at 0-2 of 8 cores for hours while 8
+  green PRs waited for the single queue run; one failed batch requires about 20
+  minutes of bisecting. Two runs overlap that wait. Availability check: the Mergify
+  schema (docs.mergify.com/mergify-configuration-schema.json) documents
+  `max_parallel_checks` as integer 1-128, default 5, without a plan
+  restriction; the pricing page lists Parallel Checks under the Open Source
+  plan, and the parallel-checks docs describe the setting without a separate
+  availability restriction. The repository's runner eligibility is unchanged.
+- **Trade-off:** in serial mode the second run is speculative; when the first
+  batch fails its minutes are lost, and with `batch_size.min: 1` two queued
+  PRs can become two runs (two Windows lanes) instead of one batch.
+- **Reverse when:** runner limits become a problem or the feature is no longer
+  included in the repository's plan.

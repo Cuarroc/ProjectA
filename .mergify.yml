@@ -41,8 +41,8 @@ queue_rules:
     # Dynamische Buendel: bei leerer Queue einzeln (schnelles Feedback), bei
     # Stau bis zu vier PRs in EINEM CI-Lauf - das ist die eigentliche
     # Minuten-Ersparnis gegenueber "jeder PR einzeln gegen main".
-    # CI-03: "Stau" means more PRs than max_parallel_checks (merge_queue
-    # below) - with 1 check, the second queued PR already joins a batch.
+    # "Stau" means more PRs than max_parallel_checks (merge_queue below) -
+    # with 2 checks, the third queued PR already joins a batch.
     # batch_max_wait_time only applies while a batch is below `min`; with
     # min 1 no batch ever waits.
     batch_size:
@@ -81,21 +81,21 @@ merge_queue:
   # dessen Nahtstellen (api.rs, store.rs, ...) fast jeder PR beruehrt, die
   # falsche Wahl.
   mode: serial
-  # CI-03 (25.09.2026): ONE queue run at a time, was 2. Two reasons, both
-  # from the Mergify docs (merge-queue/batches, "Dynamic Batch Sizing"):
-  #   - with batch_size min 1, Mergify keeps batches at `min` as long as the
-  #     queued PRs fit into the parallel checks. With 2 checks, two queued
-  #     PRs became two separate runs - two full Windows lanes. With 1 check
-  #     they become one batch of two: one Windows lane.
-  #   - in serial mode the second parallel run is speculative (it contains
-  #     the first batch); when the first fails, its minutes are thrown away.
-  #     Since CI-03 the queue is the FIRST place a PR meets Windows, so
-  #     Windows-only failures surface here - more speculative waste with 2.
+  # CI-QUEUE-02 (04.10.2026): TWO queue runs at a time, was 1 (CI-03,
+  # 25.09.2026). CI-03 chose 1 so that two queued PRs form ONE batch (one
+  # Windows lane) instead of two runs; in serial mode the second run is
+  # speculative (it contains the first batch) and its minutes are lost when
+  # the first batch fails. Evidence 04.10.: the server idled at 0-2/8 cores
+  # for hours while 8 green PRs waited, and one failed batch requires ~20 min of
+  # bisecting. Parallel Checks are included in the Open Source plan.
+  # Trade-off accepted: with batch_size min 1, up to two queued PRs may now
+  # run as two separate runs (two Windows lanes).
   # Safety is unchanged: serial mode tests every batch on top of everything
   # queued before it, and a failing batch is split and retested until the
-  # culprit is out (docs: "Handling Batch Failure or Timeout"). The cost is
-  # latency: roughly one Windows lane (~16-18 min) per batch of up to 4 PRs.
-  max_parallel_checks: 1
+  # culprit is out (docs: "Handling Batch Failure or Timeout").
+  # Reverse when: runner limits become a problem or the feature is no longer
+  # included in the repository's plan (docs/decisions.md, 2026-10-04).
+  max_parallel_checks: 2
   # Nur Endergebnisse kommentieren (gemergt / mit Grund entfernt), nicht jeden
   # Zwischenschritt.
   status_comments: outcomes
