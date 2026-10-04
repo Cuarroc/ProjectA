@@ -914,6 +914,7 @@ impl DurableJournal {
 }
 
 mod driver;
+mod staging;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(dead_code)] // W3-02
