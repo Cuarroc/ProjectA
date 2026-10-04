@@ -2,6 +2,7 @@
 //! triggers abort ordinary attempts to rewrite existing ids, UPDATE, or DELETE.
 //! Schema and database-file access are outside this protection boundary.
 use super::{now_unix_secs, Store};
+use crate::errors::ERR_REFUSED;
 use serde::Serialize;
 use serde_json::Value;
 use sqlx::{Sqlite, Transaction};
@@ -56,10 +57,21 @@ impl Store {
         actor: &str,
         action: &str,
         subject: &str,
-        _envelope: &AuditEnvelope<'_>,
+        envelope: &AuditEnvelope<'_>,
     ) -> Result<i64, String> {
-        let _ = (actor, action, subject);
-        Err("audit domain append is not implemented".into())
+        for (field, value) in [
+            ("project", envelope.project),
+            ("run", envelope.run),
+            ("result", envelope.result),
+            ("sourceRef", envelope.source_ref),
+        ] {
+            if value.trim().is_empty() {
+                return Err(format!("{ERR_REFUSED}audit envelope missing {field}"));
+            }
+        }
+        let detail = serde_json::to_value(envelope)
+            .map_err(|error| format!("failed to serialize audit envelope: {error}"))?;
+        self.append_audit(actor, action, subject, &detail).await
     }
 
     /// Appends one audit row and returns its monotonically increasing id.
@@ -122,10 +134,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             error,
-            format!(
-                "{}audit envelope missing {field}",
-                crate::errors::ERR_REFUSED
-            )
+            format!("{ERR_REFUSED}audit envelope missing {field}")
         );
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log")
             .fetch_one(&store.pool)
@@ -194,7 +203,14 @@ mod tests {
             .fetch_all(&store.pool)
             .await
             .unwrap();
-        assert_eq!(rows, vec![(id, r#"{"project":"project-1","run":"run-1","result":"accepted","sourceRef":"queue:1"}"#.into())]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, id);
+        assert_eq!(
+            serde_json::from_str::<Value>(&rows[0].1).unwrap(),
+            json!({
+                "project": "project-1", "run": "run-1", "result": "accepted", "sourceRef": "queue:1"
+            })
+        );
         assert!(
             sqlx::query("UPDATE audit_log SET actor='changed' WHERE id=?")
                 .bind(id)
