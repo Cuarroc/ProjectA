@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-02T23:03:44.670Z",
-  "commit": "d11f4f0",
+  "generatedAt": "2026-10-04T15:33:07.814Z",
+  "commit": "02dc49c",
   "dirty": false,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "b5837e86db8b33cf31314e1a5ba28630659ebe1733a9b55c06e379a37258b73c"
+      "sha256": "fa22957e0347bafab76a153fd56a1a1378024ae290de5e10d29a1c6a4d099be7"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "f0e58b6d5228f1ba55e9c9a529eb785817680346875d8c3c935a567bd208c933"
+      "sha256": "c4d849d79b5e353fc9ffbf2d50ecdd1ec965d9f76d82aa893c8a6c7da17fd287"
     },
     {
       "path": ".pa/task_w1-05.md",
@@ -26,6 +26,14 @@
     {
       "path": ".pa/task_w1-17.md",
       "sha256": "23d73f19ae91ff4a79ed6cc4704a3cdeb097bbbd5cc225df5659c48cd8048bd7"
+    },
+    {
+      "path": ".pa/task_w4-01.md",
+      "sha256": "382f0c97b75cb38726135e5a2386e2fc4e9094def56365fda972c895b6194b39"
+    },
+    {
+      "path": ".pa/task_w3-01.md",
+      "sha256": "396a946652205d3e29af0403aa75f64478107a315299ea059c9cf8fff2ee659e"
     }
   ],
   "warnings": [],
@@ -83,9 +91,37 @@
       "status": "aktiv",
       "source": "STAND.md#Aktive Specs",
       "startable": true
+    },
+    {
+      "file": ".pa/task_w4-01.md",
+      "title": "W4-01: Fünf reproduzierbare Benchmark-Aufgaben",
+      "packet": "W4-01: Fünf reproduzierbare Benchmark-Aufgaben",
+      "lane": "parallel",
+      "serialOwner": null,
+      "status": "aktiv",
+      "source": "STAND.md#Aktive Specs",
+      "startable": true
+    },
+    {
+      "file": ".pa/task_w3-01.md",
+      "title": "W3-01a: Globaler DB-Wartungs-/Write-Lock",
+      "packet": "W3-01a: Globaler DB-Wartungs-/Write-Lock",
+      "lane": "serial",
+      "serialOwner": "store.rs",
+      "status": "aktiv",
+      "source": "STAND.md#Aktive Specs",
+      "startable": false
     }
   ],
   "findings": [
+    {
+      "id": "KI-30",
+      "text": "sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 (gemergt) gibt nur Diagnose aus; neue Beobachtung 04.10. (Queue-Lauf 37196272431).",
+      "klass": "CLAIM",
+      "source": "STAND.md",
+      "packet": null,
+      "serialOwner": null
+    },
     {
       "id": "KI-24",
       "text": "SQLite-Lastklasse (`database is locked`), beobachten.",
@@ -104,7 +140,7 @@
     },
     {
       "id": "KI-20",
-      "text": "doppelte Antwort auf `ESC[6n`, Behebung W1-27 in M3.",
+      "text": "doppelte Antwort auf `ESC[6n` behoben (W1-27): das Backend antwortet allein, die Anfrage wird aus Scrollback und UI entfernt.",
       "klass": "CLAIM",
       "source": "STAND.md",
       "packet": null,
@@ -121,7 +157,7 @@
           "title": "Usage-/Billing-Collectors je Adapter",
           "size": "M",
           "lane": "st",
-          "stand": "✓ #140",
+          "stand": "✓ alt-#140",
           "state": "done",
           "prNumbers": [
             140
@@ -132,7 +168,7 @@
           "title": "Supervisor: Producer-Audit und Runtime-Notifications",
           "size": "M",
           "lane": "mn + sup",
-          "stand": "✓ #152",
+          "stand": "✓ alt-#152",
           "state": "done",
           "prNumbers": [
             152
@@ -143,7 +179,7 @@
           "title": "Ressourcendruck- und Streaming-Enforcement",
           "size": "M",
           "lane": "fR",
-          "stand": "✓ #134",
+          "stand": "✓ alt-#134",
           "state": "done",
           "prNumbers": [
             134
@@ -154,7 +190,7 @@
           "title": "Planungsendpunkte nur für den Koordinator",
           "size": "S",
           "lane": "api",
-          "stand": "✓ #135",
+          "stand": "✓ alt-#135",
           "state": "done",
           "prNumbers": [
             135
@@ -165,7 +201,7 @@
           "title": "Review-Route nimmt reviewerRunId aus dem Credential",
           "size": "S",
           "lane": "api",
-          "stand": "✓ #124",
+          "stand": "✓ alt-#124",
           "state": "done",
           "prNumbers": [
             124
@@ -176,7 +212,7 @@
           "title": "approvalAuthority in agent_access.rs angleichen",
           "size": "S",
           "lane": "fR",
-          "stand": "✓ #150",
+          "stand": "✓ alt-#150",
           "state": "done",
           "prNumbers": [
             150
@@ -187,7 +223,7 @@
           "title": "Übrige Mutex-Stellen in pty.rs",
           "size": "S",
           "lane": "pty",
-          "stand": "✓ #137",
+          "stand": "✓ alt-#137",
           "state": "done",
           "prNumbers": [
             137
@@ -198,7 +234,7 @@
           "title": "„-0 Tokens“-Anzeige, MSRV gemessen",
           "size": "S",
           "lane": "fR",
-          "stand": "✓ #136",
+          "stand": "✓ alt-#136",
           "state": "done",
           "prNumbers": [
             136
@@ -209,7 +245,7 @@
           "title": "Linux-Flake im Prozessgruppen-Test",
           "size": "S",
           "lane": "fR",
-          "stand": "✓ #138",
+          "stand": "✓ alt-#138",
           "state": "done",
           "prNumbers": [
             138
@@ -220,7 +256,7 @@
           "title": "xterm-pageerror beim Mount",
           "size": "S",
           "lane": "fe",
-          "stand": "✓ #151",
+          "stand": "✓ alt-#151",
           "state": "done",
           "prNumbers": [
             151
@@ -231,7 +267,7 @@
           "title": "AGENTS.md: Mergify, Reviews, Build-Slots",
           "size": "M",
           "lane": "doc",
-          "stand": "✓ #132",
+          "stand": "✓ alt-#132",
           "state": "done",
           "prNumbers": [
             132
@@ -242,7 +278,7 @@
           "title": "Hook-ROOT-Fix einzeln vor CI-02 (Nutzer 25.09.)",
           "size": "S",
           "lane": "ci",
-          "stand": "✓ #156",
+          "stand": "✓ alt-#156",
           "state": "done",
           "prNumbers": [
             156
@@ -264,7 +300,7 @@
           "title": "MSG_USER erst nach bewiesener Zustellung (F-CORE-3 B.3)",
           "size": "S",
           "lane": "wk",
-          "stand": "✓ #171",
+          "stand": "✓ alt-#171",
           "state": "done",
           "prNumbers": [
             171
@@ -275,7 +311,7 @@
           "title": "Zweites Setup reproduzieren (Node 24, npm ci, dev:setup, dev:doctor)",
           "size": "S",
           "lane": "N",
-          "stand": "✓ #166",
+          "stand": "✓ alt-#166",
           "state": "done",
           "prNumbers": [
             166
@@ -286,7 +322,7 @@
           "title": "Leichter main-Push, Docs-only, Dependabot im red-first (enthält W1-19b)",
           "size": "S",
           "lane": "ci",
-          "stand": "✓ #133",
+          "stand": "✓ alt-#133",
           "state": "done",
           "prNumbers": [
             133
@@ -297,7 +333,7 @@
           "title": "Actions-Kosten senken: CI nur bei „ready“ und in der Queue, Windows nur in Queue und Wochenlauf, Budgetstopp ab 80 %",
           "size": "M",
           "lane": "ci",
-          "stand": "✓ #149",
+          "stand": "✓ alt-#149",
           "state": "done",
           "prNumbers": [
             149
@@ -338,7 +374,7 @@
           "title": "Frag-mich-Skill für Einsteiger-Erklärungen",
           "size": "S",
           "lane": "doc",
-          "stand": "✓ #161",
+          "stand": "✓ alt-#161",
           "state": "done",
           "prNumbers": [
             161
@@ -360,8 +396,8 @@
           "title": "Gemergte Pakete seit 25.09.2026 und M1-Status im Plan nachführen",
           "size": "S",
           "lane": "doc",
-          "stand": "PR #45",
-          "state": "pr",
+          "stand": "✓ #45",
+          "state": "done",
           "prNumbers": [
             45
           ]
@@ -371,8 +407,8 @@
           "title": "Status und Tagesbericht per Skript aus GitHub und git (was läuft, was fertig ist, was du entscheidest)",
           "size": "M",
           "lane": "doc",
-          "stand": "PR #164",
-          "state": "pr",
+          "stand": "✓ alt-#164",
+          "state": "done",
           "prNumbers": [
             164
           ]
@@ -382,9 +418,11 @@
           "title": "Startcheck vor jedem Worker: Modell beobachtet, Limit, freier RAM, laufende Cargo-Builds; harte Stopps",
           "size": "S",
           "lane": "doc",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #35",
+          "state": "done",
+          "prNumbers": [
+            35
+          ]
         },
         {
           "id": "CI-04",
@@ -468,9 +506,11 @@
           "title": "Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken",
           "size": "S",
           "lane": "ci",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #36",
+          "state": "done",
+          "prNumbers": [
+            36
+          ]
         },
         {
           "id": "SETUP-14",
@@ -478,7 +518,7 @@
           "size": "S",
           "lane": "N",
           "stand": "teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln",
-          "state": "open",
+          "state": "in_progress",
           "prNumbers": []
         },
         {
@@ -486,14 +526,14 @@
           "title": "Abschlussreview der Setup-Doku, verkleinert",
           "size": "S",
           "lane": "doc",
-          "stand": "PR #51",
-          "state": "pr",
+          "stand": "✓ #51",
+          "state": "done",
           "prNumbers": [
             51
           ]
         }
       ],
-      "done": 9,
+      "done": 14,
       "total": 15
     },
     {
@@ -505,8 +545,8 @@
           "title": "Abnahme der Konzeptdemo und Studio-Variante; legt die Richtung für „HQ als Hauptbereich der App“ fest",
           "size": "M",
           "lane": "hqS + N",
-          "stand": "offen",
-          "state": "open",
+          "stand": "✓ entschieden (Nutzer 04.10., E1: Mix)",
+          "state": "done",
           "prNumbers": []
         },
         {
@@ -514,7 +554,7 @@
           "title": "Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02",
           "size": "M",
           "lane": "hqS",
-          "stand": "offen",
+          "stand": "freigegeben (Nutzer 04.10.); offen",
           "state": "open",
           "prNumbers": []
         },
@@ -530,15 +570,27 @@
           ]
         },
         {
+          "id": "M3-01",
+          "title": "Drei deutschsprachige Aufgaben-Vorlagen mit eingebautem Abnahmekriterium (nur Doku)",
+          "size": "S",
+          "lane": "doc",
+          "stand": "✓ #144",
+          "state": "done",
+          "prNumbers": [
+            144
+          ]
+        },
+        {
           "id": "W2-10",
           "title": "Live-HQ-Views (vor Dispatch teilen: 10a Ziele/Teams, 10b Routing/Budget, 10c Review/Delivery)",
           "size": "M",
           "lane": "hqL",
-          "stand": "10a ✓ #13, 10b ✓ #21, 10c offen",
-          "state": "in_progress",
+          "stand": "10a ✓ #13, 10b ✓ #21, 10c ✓ #62",
+          "state": "done",
           "prNumbers": [
             13,
-            21
+            21,
+            62
           ]
         },
         {
@@ -546,8 +598,8 @@
           "title": "HQ-Profilansicht zeigt envPolicy",
           "size": "S",
           "lane": "hqL",
-          "stand": "PR #58",
-          "state": "pr",
+          "stand": "✓ #58",
+          "state": "done",
           "prNumbers": [
             58
           ]
@@ -601,8 +653,8 @@
           "title": "dispatch.role ins Agenten-Briefing",
           "size": "S",
           "lane": "wk",
-          "stand": "PR #50",
-          "state": "pr",
+          "stand": "✓ #50",
+          "state": "done",
           "prNumbers": [
             50
           ]
@@ -612,8 +664,8 @@
           "title": "CLI-Befehl pa hq agent review",
           "size": "S",
           "lane": "pa",
-          "stand": "PR #46",
-          "state": "pr",
+          "stand": "✓ #46",
+          "state": "done",
           "prNumbers": [
             46
           ]
@@ -624,7 +676,7 @@
           "size": "S",
           "lane": "wk + N",
           "stand": "OpenCode ✓ #30, Codex △ headless-Probe 02.10.2026: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert",
-          "state": "done",
+          "state": "in_progress",
           "prNumbers": [
             30
           ]
@@ -634,18 +686,23 @@
           "title": "Kimi-Re-Smoke mit PROJECTA_PTY_TRACE_DIR",
           "size": "S",
           "lane": "pty",
-          "stand": "blockiert (Kimi-Abo abgelaufen 02.10.)",
-          "state": "open",
-          "prNumbers": []
+          "stand": "gestrichen (Nutzer 04.10.: Kimi-Abo abgelaufen; Smoke ✓ #192)",
+          "state": "done",
+          "prNumbers": [
+            192
+          ]
         },
         {
           "id": "W1-27",
           "title": "KI-20, doppelte ESC[6n-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.)",
           "size": "S",
           "lane": "pty + fe",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.)",
+          "state": "done",
+          "prNumbers": [
+            140,
+            112
+          ]
         },
         {
           "id": "W3-08",
@@ -657,8 +714,17 @@
           "prNumbers": []
         },
         {
+          "id": "ARCH-11",
+          "title": "KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete)",
+          "size": "S",
+          "lane": "fR + N",
+          "stand": "angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
           "id": "R-1",
-          "title": "Zwischenrelease v1.5.0-beta als Abschluss von M3",
+          "title": "Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen belegt sind (Nutzer 04.10.)",
           "size": "S",
           "lane": "N + doc",
           "stand": "offen",
@@ -666,8 +732,8 @@
           "prNumbers": []
         }
       ],
-      "done": 6,
-      "total": 16
+      "done": 13,
+      "total": 18
     },
     {
       "id": "M4",
@@ -678,8 +744,8 @@
           "title": "Prüfpfad (append-only, Trigger gegen UPDATE/DELETE)",
           "size": "S",
           "lane": "st",
-          "stand": "PR #44",
-          "state": "pr",
+          "stand": "✓ #44",
+          "state": "done",
           "prNumbers": [
             44
           ]
@@ -689,45 +755,60 @@
           "title": "Not-Aus im Store, global ohne Projektrahmen (Schnitt 25.09., W5-01a bleibt geparkt)",
           "size": "S",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #69",
+          "state": "done",
+          "prNumbers": [
+            69
+          ]
         },
         {
           "id": "W5-04b",
           "title": "Not-Aus in der App (10 s Frist)",
           "size": "S",
           "lane": "mn",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #125 (Backend W5-04d ✓ #157, Release-Auth W5-04e ✓ #158)",
+          "state": "done",
+          "prNumbers": [
+            125,
+            157,
+            158
+          ]
         },
         {
           "id": "W5-04c",
           "title": "Not-Aus in pa",
           "size": "S",
           "lane": "pa",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #124",
+          "state": "done",
+          "prNumbers": [
+            124
+          ]
         },
         {
           "id": "W2-02b",
-          "title": "Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle, Merge-Ergebnis als Kandidat",
+          "title": "Gleichstand in derselben Sekunde, vertrauenswürdige Testquelle (Rest „Merge-Ergebnis als Kandidat“ siehe „Später“)",
           "size": "M",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "Gleichstand ✓ #82, Testquelle ✓ #122; Rest „Merge-Ergebnis als Kandidat“ auf später verschoben (Nutzer 04.10.)",
+          "state": "done",
+          "prNumbers": [
+            82,
+            122
+          ]
         },
         {
           "id": "W2-04c",
           "title": "Rollenbewusste Routen und Credentials beim Launch",
           "size": "M",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #222 (Teil 2, gemergt 03.10.); Teil 1 ✓ #178 (ersetzt #147; gemergt 03.10.)",
+          "state": "done",
+          "prNumbers": [
+            222,
+            178,
+            147
+          ]
         },
         {
           "id": "W2-04d",
@@ -745,7 +826,7 @@
           "title": "Optional: Versionsspalte für die Attestierungsregel",
           "size": "S",
           "lane": "st",
-          "stand": "offen",
+          "stand": "gestrichen (Nutzer 04.10.)",
           "state": "open",
           "prNumbers": []
         },
@@ -776,8 +857,8 @@
           "title": "Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min)",
           "size": "M",
           "lane": "fR",
-          "stand": "PR #53",
-          "state": "pr",
+          "stand": "✓ #53",
+          "state": "done",
           "prNumbers": [
             53
           ]
@@ -787,13 +868,15 @@
           "title": "DeepSeek-V4-Flash-Worker über OpenCode",
           "size": "M",
           "lane": "wk",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #78",
+          "state": "done",
+          "prNumbers": [
+            78
+          ]
         },
         {
           "id": "HQ2-05b",
-          "title": "Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt",
+          "title": "Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt; echte Proben mit Claude/Codex/OpenCode dürfen Abo-Kontingent verbrauchen (Nutzer 04.10.)",
           "size": "M",
           "lane": "fR + N",
           "stand": "offen",
@@ -802,7 +885,7 @@
         },
         {
           "id": "W5-02b3",
-          "title": "Env-Stufe als globale Einstellung (st → api → fe)",
+          "title": "Env-Stufe als globale Einstellung (st → api → fe); Produktfrage entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten, Koordinatoren bleiben immer strict, profilspezifisches passthrough bleibt",
           "size": "M",
           "lane": "st → api → fe",
           "stand": "offen",
@@ -814,9 +897,11 @@
           "title": "Push aus dem Worker über den Runner-Host, danach strict als Voreinstellung",
           "size": "M",
           "lane": "pty + wk",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #65",
+          "state": "done",
+          "prNumbers": [
+            65
+          ]
         },
         {
           "id": "W5-02b5",
@@ -870,13 +955,15 @@
           "title": "Updater-Zustände in App und HQ",
           "size": "S",
           "lane": "fe + hqL",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #119",
+          "state": "done",
+          "prNumbers": [
+            119
+          ]
         },
         {
           "id": "W3-07",
-          "title": "Produktionsschlüssel-Build + Signed-Updater-Relaunch (Nutzer: später)",
+          "title": "Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4)",
           "size": "S",
           "lane": "N",
           "stand": "offen",
@@ -888,22 +975,26 @@
           "title": "Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.)",
           "size": "M",
           "lane": "fR",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #73",
+          "state": "done",
+          "prNumbers": [
+            73
+          ]
         },
         {
           "id": "W4-02",
           "title": "Abnahmematrix final (27 Zeilen)",
           "size": "S",
           "lane": "doc",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #48",
+          "state": "done",
+          "prNumbers": [
+            48
+          ]
         },
         {
           "id": "W4-03",
-          "title": "Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers",
+          "title": "Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5)",
           "size": "S",
           "lane": "mn",
           "stand": "offen",
@@ -920,8 +1011,124 @@
           "prNumbers": []
         }
       ],
-      "done": 4,
+      "done": 16,
       "total": 26
+    },
+    {
+      "id": "M5",
+      "title": "Aufräumen und erste Tester (nach v1.5.0)",
+      "packages": [
+        {
+          "id": "M5-01",
+          "title": "Testerrunde mit 3–5 externen Testern (N = Zahl noch offen)",
+          "size": "S",
+          "lane": "N",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M5-02",
+          "title": "Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“",
+          "size": "S",
+          "lane": "doc",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M5-03",
+          "title": "ARCH-G1 Regeldokument docs/architecture-rules.md + ARCH-G2 Drift-Gate in der CI (noch nicht gemergt; sonst hier ✓ mit PR-Nummer)",
+          "size": "M",
+          "lane": "ci + doc",
+          "stand": "offen",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "M5-04",
+          "title": "Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen)",
+          "size": "M",
+          "lane": "später",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D1",
+          "title": "Vier HTTP-Fehlertext-Klassifizierer zu einem",
+          "size": "S",
+          "lane": "api",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D2",
+          "title": "Projektanlage ist in main.rs doppelt umgesetzt",
+          "size": "S",
+          "lane": "mn",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D3",
+          "title": "Elf direkte BEGIN IMMEDIATE zu einem Store-Helfer",
+          "size": "M",
+          "lane": "st",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D4",
+          "title": "Restlicher API-Router mit 51 Zweigen",
+          "size": "M",
+          "lane": "api",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D5",
+          "title": "Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in main.rs herauslösen",
+          "size": "M",
+          "lane": "mn",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D6",
+          "title": "pa::run vermischt Verteilung und Darstellung",
+          "size": "M",
+          "lane": "pa",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D7",
+          "title": "Einstellungs-Speicherung in ein Untermodul unter store/",
+          "size": "M",
+          "lane": "st",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        },
+        {
+          "id": "ARCH-D8",
+          "title": "Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript",
+          "size": "M",
+          "lane": "mn → pty → fe",
+          "stand": "offen, nach v1.5.0",
+          "state": "open",
+          "prNumbers": []
+        }
+      ],
+      "done": 0,
+      "total": 12
     }
   ],
   "next": [
@@ -971,7 +1178,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -992,7 +1199,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1013,7 +1220,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1033,7 +1240,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1054,7 +1261,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1075,7 +1282,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1095,7 +1302,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1116,7 +1323,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1137,7 +1344,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1157,7 +1364,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1178,7 +1385,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1199,7 +1406,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1219,7 +1426,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1240,7 +1447,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1261,7 +1468,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 25,
         "votes": 0
       }
     },
@@ -1292,7 +1499,7 @@
       "badges": {
         "label": "new",
         "confidence": 100,
-        "ageDays": 0,
+        "ageDays": 1,
         "votes": 1
       }
     },
@@ -1313,7 +1520,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 24,
         "votes": 0
       }
     },
@@ -1334,7 +1541,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1356,7 +1563,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1377,7 +1584,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1398,7 +1605,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -1419,7 +1626,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1440,7 +1647,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1468,7 +1675,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1489,7 +1696,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1510,7 +1717,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1531,7 +1738,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1552,7 +1759,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1574,7 +1781,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1596,7 +1803,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1617,7 +1824,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1638,7 +1845,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 22,
         "votes": 0
       }
     },
@@ -1659,7 +1866,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1680,7 +1887,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1701,7 +1908,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1722,7 +1929,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 20,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1743,7 +1950,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 19,
+        "ageDays": 21,
         "votes": 0
       }
     },
@@ -1766,7 +1973,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 16,
+        "ageDays": 17,
         "votes": 0
       }
     },
@@ -1787,7 +1994,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 10,
+        "ageDays": 12,
         "votes": 0
       }
     },
@@ -1808,7 +2015,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 9,
+        "ageDays": 10,
         "votes": 0
       }
     }
