@@ -53,6 +53,9 @@ mod emergency_stop;
 mod emergency_stop_tests;
 #[path = "store/journal_watch.rs"]
 mod journal_watch;
+#[cfg(test)]
+#[path = "store/maintenance_tests.rs"]
+mod maintenance_tests;
 #[path = "store/queue_cancel.rs"]
 mod queue_cancel;
 #[path = "store/supervisor.rs"]
@@ -958,6 +961,26 @@ impl SessionBindings {
 /// pending exit cannot need to.
 type PendingExits = Arc<Mutex<HashMap<String, (i64, Option<i32>)>>>;
 
+/// Why a database maintenance transition could not be completed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MaintenanceError {
+    AlreadyActive,
+    NotActive,
+    Database(String),
+}
+
+impl std::fmt::Display for MaintenanceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AlreadyActive => f.write_str("database maintenance is already active"),
+            Self::NotActive => f.write_str("database maintenance is not active"),
+            Self::Database(error) => write!(f, "database maintenance failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for MaintenanceError {}
+
 /// The database plus the in-memory worker to PTY session mapping.
 ///
 /// Cheap to clone: the pool and the session map are both reference counted, so
@@ -979,6 +1002,21 @@ pub struct Store {
 }
 
 impl Store {
+    /// Reserve the database for maintenance after current writes drain.
+    pub async fn enter_maintenance(&self) -> Result<(), MaintenanceError> {
+        Ok(())
+    }
+
+    /// Release a maintenance reservation and allow writes again.
+    pub async fn leave_maintenance(&self) -> Result<(), MaintenanceError> {
+        Ok(())
+    }
+
+    /// Whether this store has reserved the database for maintenance.
+    pub fn is_maintenance_active(&self) -> bool {
+        false
+    }
+
     /// Open (creating if needed) the database at `path` and migrate its
     /// schema to this build's version; see [`Store::migrate`].
     pub async fn open(path: &Path) -> Result<Self, String> {
