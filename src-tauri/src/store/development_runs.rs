@@ -254,15 +254,19 @@ impl Store {
         let run_project: Option<String> = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
             .bind(run).fetch_optional(&mut *tx).await.map_err(db("read planning run project"))?;
         let target_project: Option<String> = match kind {
-            "project" => sqlx::query_scalar("SELECT id FROM projects WHERE id=?"),
-            "goal" => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?"),
-            "task" => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?"),
+            "project" => Some(target.to_string()),
+            "goal" => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?")
+                .bind(target)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db("read planning target project"))?,
+            "task" => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?")
+                .bind(target)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db("read planning target project"))?,
             _ => return Err("planning target is outside the run project".into()),
-        }
-        .bind(target)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(db("read planning target project"))?;
+        };
         if run_project.is_none() || run_project != target_project {
             return Err("planning target is outside the run project".into());
         }
@@ -1404,6 +1408,44 @@ mod tests {
                     .await
                     .unwrap_err(),
                 "planning target is outside the run project"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn planning_scope_covers_project_and_task_targets() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = store
+            .record_development_run_intent(&task, "worker-a", 7)
+            .await
+            .unwrap();
+        for (kind, own) in [("project", "project"), ("task", task.as_str())] {
+            assert!(
+                store
+                    .agent_planning_scope(&run.id, "worker-a", 7, kind, own)
+                    .await
+                    .is_ok(),
+                "{kind}: own target must be allowed"
+            );
+        }
+        sqlx::query("INSERT INTO continuous_goals(id,project_id,root_goal_id,objective,status,deadline_at,admitted,created_at,updated_at) VALUES('foreign','other','foreign','secret','open',0,0,1,1)")
+            .execute(&store.pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,created_at,updated_at) VALUES('foreign-task','foreign','secret','[]','[]','open',1,1)")
+            .execute(&store.pool).await.unwrap();
+        for (kind, target) in [
+            ("project", "other"),
+            ("project", "missing"),
+            ("task", "foreign-task"),
+            ("task", "missing"),
+            ("unknown", "project"),
+        ] {
+            assert_eq!(
+                store
+                    .agent_planning_scope(&run.id, "worker-a", 7, kind, target)
+                    .await
+                    .unwrap_err(),
+                "planning target is outside the run project",
+                "{kind}/{target}"
             );
         }
     }
