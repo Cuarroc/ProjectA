@@ -869,6 +869,17 @@ mod tests {
         assert_eq!(read_digest(&repo, "../../etc/passwd"), None);
     }
 
+    #[test]
+    fn a_broken_digest_source_is_reported_as_incomplete() {
+        let dir = TempDir::new("digest-broken-source");
+        let repo = dir.path().to_string_lossy().into_owned();
+        let path = digest_path(&repo, "2026-08-27");
+        std::fs::create_dir_all(&path).expect("create broken digest source");
+
+        let page = read_digest(&repo, "2026-08-27").expect("visible failure");
+        assert!(page.contains("incomplete: failed to read digest"), "{page}");
+    }
+
     async fn fixture() -> (TempDir, Store, Project) {
         let dir = TempDir::new("digest");
         let store = Store::open(&dir.path().join("projecta.db")).await.unwrap();
