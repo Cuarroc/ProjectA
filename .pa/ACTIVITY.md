@@ -78,3 +78,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main and the advanced PR branch without rewriting history; final prepush exit 0; pushed e700674; PR 356 report updated; queue intentionally not requested because conflict resolution changed code structure.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 23:21 — codex/state-2-set-budget-null (codex/state-2-set-budget-null, srv-state-2-set-budget-null)
+- Zusammenfassung: PR #356 conflict resolved with git merge origin/main; generated HQ snapshots committed as b324b10; prepush exit 0 twice; pushed and verified b324b108; report updated; @Mergifyio queue requested; reviews and Windows queue lane pending.
+- Commits: keine
+- Uncommitted: keine
