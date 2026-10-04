@@ -1,4 +1,4 @@
-# Stand — 25.09.2026
+# Stand — 04.10.2026
 
 Wo wir stehen, in Kürze. Plan und Reihenfolge: [`docs/PLAN.md`](docs/PLAN.md).
 Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-09-24.md`.
@@ -17,11 +17,12 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 - **Continuous Mode:** aus und bis M4 eingefroren; `development_policy.rs` lehnt ihn ab.
 - **Merge** nur über die Mergify-Queue. CI kostet Minuten, Ziel 0 €.
 - **Live-Stand** kommt aus `gh pr list` und `git log origin/main`, bald aus OPS-01.
-- **Pakete Architektur-Rat (Status beobachtet 03.10. 23:26 UTC = 04.10. 01:26 Berlin; Quellstand `origin/main` cc95a57, Merge #260 um 23:16:34 UTC):**
-  ARCH-08 (a–f), ARCH-03c (#256), ARCH-09a (#260) und ARCH-10 (14 Arme in
-  `api/hq_routes.rs`) sind gemergt. ARCH-09b läuft als Server-Auftrag, nicht
-  gemergt. #262 (reine Diagnose zu KI-30, Ready) ist offen. Einzelheiten und
-  Nachweise: `docs/PLAN.md`. Das ist ein Schnappschuss, kein Live-Stand.
+- **Pakete Architektur-Rat (Status beobachtet 04.10.2026 13:50 UTC = 15:50 Berlin mit `gh pr list`/`gh pr view`; Quellstand `origin/main` effef1a, `ci`-Lauf 37194125481 grün):**
+  ARCH-08 (a–f), ARCH-03c (#256), ARCH-09a (#260), ARCH-09b (#264) und ARCH-10
+  sind gemergt, ebenso #262 (KI-30-Diagnose), #274, #275 und #279. Offen:
+  #269 ARCH-09c (Draft, `do-not-merge`), #270 OPS-02-Doku und #273 SETUP-09-Fix
+  (in der Queue), #282 SETUP-12-Rest (Draft). Einzelheiten und Nachweise:
+  `docs/PLAN.md`. Das ist ein Schnappschuss, kein Live-Stand.
 
 ## Nächster Griff
 
@@ -31,7 +32,7 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 ## Offene Befunde (Details: `KNOWN_ISSUES.md`)
 
-- KI-30: sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 gibt nur Diagnose aus.
+- KI-30: sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 (gemergt) gibt nur Diagnose aus; neue Beobachtung 04.10. (Queue-Lauf 37196272431).
 - KI-24: SQLite-Lastklasse (`database is locked`), beobachten.
 - KI-27: `exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.
 - KI-20: doppelte Antwort auf `ESC[6n` behoben (W1-27): das Backend antwortet allein, die Anfrage wird aus Scrollback und UI entfernt.
