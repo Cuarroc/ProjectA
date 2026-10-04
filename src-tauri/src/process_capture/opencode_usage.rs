@@ -32,10 +32,63 @@ impl OpenCodeUsage {
 }
 
 /// Classify one complete process-owned capture without touching application state.
-pub fn complete_usage(_stdout: &[u8], _exit_code: Option<i32>) -> OpenCodeUsage {
-    OpenCodeUsage::Rejected {
-        reason: "parser not implemented",
+pub fn complete_usage(stdout: &[u8], exit_code: Option<i32>) -> OpenCodeUsage {
+    if exit_code != Some(0) {
+        return OpenCodeUsage::Rejected {
+            reason: "process exit code is not zero",
+        };
     }
+
+    let mut finish = None;
+    for line in stdout
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+    {
+        let event: serde_json::Value = match serde_json::from_slice(line) {
+            Ok(event) => event,
+            Err(_) => {
+                return OpenCodeUsage::Rejected {
+                    reason: "output contains invalid JSON",
+                };
+            }
+        };
+        if event.get("type").and_then(serde_json::Value::as_str) == Some("step_finish") {
+            finish = Some(event);
+        }
+    }
+
+    let Some(tokens) = finish
+        .as_ref()
+        .and_then(|event| event.pointer("/part/tokens"))
+    else {
+        return OpenCodeUsage::Rejected {
+            reason: "final step is missing token usage",
+        };
+    };
+    let fields = [
+        tokens.get("total"),
+        tokens.get("input"),
+        tokens.get("output"),
+        tokens.get("reasoning"),
+        tokens.pointer("/cache/write"),
+        tokens.pointer("/cache/read"),
+    ];
+    let Some(total) = fields[0].and_then(serde_json::Value::as_i64) else {
+        return OpenCodeUsage::Rejected {
+            reason: "usage count is missing, negative or not an integer",
+        };
+    };
+    if fields.iter().any(|value| {
+        value
+            .and_then(serde_json::Value::as_i64)
+            .is_none_or(|count| count < 0)
+    }) {
+        return OpenCodeUsage::Rejected {
+            reason: "usage count is missing, negative or not an integer",
+        };
+    }
+
+    OpenCodeUsage::Measured { tokens: total }
 }
 
 #[cfg(test)]
