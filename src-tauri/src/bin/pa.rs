@@ -1434,6 +1434,13 @@ fn read_verdict_token(
 fn read_token_file(path: &str) -> Result<String, String> {
     const MAX_TOKEN_FILE: u64 = 4096;
 
+    // Refuse by name before opening: opening a FIFO would block. The handle's
+    // metadata below stays authoritative against a swap after this check.
+    let early = std::fs::metadata(path)
+        .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
+    if !early.is_file() {
+        return Err(format!("the verdict token file {path} is not a file"));
+    }
     let file = std::fs::File::open(path)
         .map_err(|e| format!("could not read the verdict token from {path}: {e}"))?;
     let meta = file
@@ -4837,6 +4844,26 @@ mod tests {
 
         let err = read_token_file(path.to_str().expect("utf-8 path")).expect_err("too large");
         assert!(err.contains("exceeds the 4096-byte limit"), "{err}");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A path that is not a regular file is refused by name before it is opened:
+    /// opening a FIFO would block, and opening a directory fails differently per OS.
+    #[test]
+    fn a_non_regular_verdict_token_path_is_refused_by_name() {
+        let dir = std::env::temp_dir().join(format!(
+            "pa-verdict-token-dir-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+
+        let err = read_token_file(dir.to_str().expect("utf-8 path")).expect_err("a directory");
+        assert!(err.contains("is not a file"), "{err}");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
