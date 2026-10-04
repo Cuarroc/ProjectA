@@ -1,23 +1,31 @@
 #!/usr/bin/env node
 import { evaluateContinuousReadiness } from './lib/continuous-readiness.mjs';
+import { loadReleaseAttestation } from './lib/release-attestation.mjs';
 import { doctor, inspectRuntime } from './dev-setup.mjs';
 import { fileURLToPath } from 'node:url';
 
 export function parseArgs(argv = []) {
-  const options = { json: false, help: false };
-  for (const arg of argv) {
+  const options = { json: false, help: false, attestation: null };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
     if (arg === '--json') options.json = true;
-    else if (arg === '--help' || arg === '-h') options.help = true;
+    else if (arg === '--attestation') {
+      options.attestation = argv[++i];
+      if (!options.attestation) throw new Error('--attestation needs a path');
+    } else if (arg === '--help' || arg === '-h') options.help = true;
     else throw new Error(`unknown option: ${arg}`);
   }
   return options;
 }
 
 export function usage() {
-  return 'usage: npm run dev:continuous-audit [-- --json|--help]';
+  return 'usage: npm run dev:continuous-audit [-- --json|--help|--attestation <path>]';
 }
 
-export async function buildReport(root = process.cwd()) {
+export async function buildReport(root = process.cwd(), { attestation = null } = {}) {
+  const appRelease = attestation
+    ? loadReleaseAttestation(attestation, root)
+    : { attested: false, reason: 'no --attestation given' };
   const setup = doctor(root);
   const runtime = await inspectRuntime();
   const readiness = evaluateContinuousReadiness({
@@ -38,9 +46,14 @@ export async function buildReport(root = process.cwd()) {
       continuousExecutionEnabled: false,
       stablePromotionAuthorized: false,
       // Written only by the user in .pa/release_attestation_v1.5.0.json (E20).
-      appReleaseAttested: false,
+      appReleaseAttested: appRelease.attested,
     },
   });
+  if (!appRelease.attested) {
+    const blocker = readiness.blockers.find(item => item.id === 'attestation:appRelease');
+    if (blocker) blocker.reason = appRelease.reason;
+    readiness.attestations.appRelease.reason = appRelease.reason;
+  }
   return {
     generatedAt: new Date().toISOString(),
     command: 'dev:continuous-audit',
@@ -56,9 +69,9 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(usage());
     return 0;
   }
-  const report = await buildReport();
+  const report = await buildReport(process.cwd(), options);
   console.log(JSON.stringify(report, null, options.json ? 2 : 0));
-  return report.continuousEligible && report.continuousReleaseEligible ? 0 : 1;
+  return report.appReleaseEligible ? 0 : 1;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

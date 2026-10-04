@@ -92,8 +92,10 @@ test('readiness report is schema version 2', () => {
 });
 
 test('continuous audit accepts explicit output flags and rejects accidental execution flags', () => {
-  assert.deepEqual(parseArgs(['--json']), { json: true, help: false });
-  assert.deepEqual(parseArgs(['--help']), { json: false, help: true });
+  assert.deepEqual(parseArgs(['--json']), { json: true, help: false, attestation: null });
+  assert.deepEqual(parseArgs(['--help']), { json: false, help: true, attestation: null });
   assert.match(usage(), /dev:continuous-audit/);
   assert.throws(() => parseArgs(['--evidence', 'observations.json']), /unknown option/);
+  assert.equal(parseArgs(['--attestation', 'a.json']).attestation, 'a.json');
+  assert.throws(() => parseArgs(['--attestation']), /needs a path/);
 });
