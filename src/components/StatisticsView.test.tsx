@@ -3,9 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectStats, StatsRange } from "../types";
 
-const mocks = vi.hoisted(() => ({ getProjectStats: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  describeError: vi.fn((cause: unknown) => `formatted: ${String(cause)}`),
+  getProjectStats: vi.fn(),
+}));
 
-vi.mock("../lib/ipc", () => ({ getProjectStats: mocks.getProjectStats }));
+vi.mock("../lib/ipc", () => ({
+  describeError: mocks.describeError,
+  getProjectStats: mocks.getProjectStats,
+}));
 
 import StatisticsView from "./StatisticsView";
 
@@ -67,6 +73,7 @@ const heading =
 
 describe("StatisticsView", () => {
   beforeEach(() => {
+    mocks.describeError.mockClear();
     mocks.getProjectStats.mockReset();
   });
 
@@ -107,6 +114,16 @@ describe("StatisticsView", () => {
 
     await waitFor(() => expect(mocks.getProjectStats).toHaveBeenCalledWith("p1", "week"));
     expect(await screen.findByText(heading("Projekt"))).toBeInTheDocument();
+  });
+
+  it("formats statistics failures through describeError", async () => {
+    const cause = new Error("unknown project: p1");
+    mocks.getProjectStats.mockRejectedValue(cause);
+
+    render(<StatisticsView projectId="p1" />);
+
+    expect(await screen.findByText(/formatted: Error: unknown project: p1/)).toBeInTheDocument();
+    expect(mocks.describeError).toHaveBeenCalledWith(cause);
   });
 });
 

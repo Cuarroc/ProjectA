@@ -215,6 +215,25 @@ describe("IPC audit regressions", () => {
     );
   });
 
+  it("strips only the refused routing prefix and keeps unknown-entity errors readable", () => {
+    expect(describeError(new Error("refused: worker is archived"))).toBe(
+      "worker is archived",
+    );
+    expect(describeError(new Error("unknown project: project-a"))).toBe(
+      "unknown project: project-a",
+    );
+  });
+
+  // The name is kept because commit c3d988e names it in its Test-First trailer
+  // and red-first resolves that trailer against the head. What it pins now:
+  // routing words inside a message never reach the UI altered.
+  it("strips both Rust routing prefixes before a message reaches the UI", () => {
+    expect(describeError("worker reported unknown project state")).toBe(
+      "worker reported unknown project state",
+    );
+    expect(describeError("note: refused: not a prefix")).toBe("note: refused: not a prefix");
+  });
+
   // Review W1-09 Runde 3 (deepseek-v4-flash P3): a message that is nothing but
   // the prefix was stripped down to an empty string, and the panel showed an
   // error with no text at all. The routing tag is still better than nothing.
