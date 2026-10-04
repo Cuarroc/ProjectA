@@ -16,6 +16,9 @@ unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
 3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
    W3-03, W3-07 und die Abnahme jedes Meilensteins.
 
+4. **Bis v1.5.0 keine neuen Funktionen** (Nutzer 04.10.): neue Ideen kommen nur
+   in den Abschnitt „Später“; danach folgt M5.
+
 **Ziel ab 04.10.: v1.5.0 releasefähig** (Tag und Veröffentlichung macht der
 Orchestrator, sobald alle Gates und die 27 Matrixzeilen belegt sind).
 
@@ -32,6 +35,7 @@ Mode abgenommen und mit v1.5.0 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
 | M2 | Überblick und Setup | Du fragst Claude „Was heißt das?“ und bekommst eine einfache Antwort. Ein Skript schreibt Status und Tagesbericht. Ein Plan, zehn Regeln, gestufte Reviews. Ein roter `main` hält die Queue an. Limits und RAM werden vor jedem Worker-Start geprüft. Backup läuft. |
 | M3 | App im Alltag + Zwischenrelease v1.5.0-beta | Du installierst v1.5.0-beta über den Updater. In der installierten App gibst du drei echte kleine Aufgaben an Agenten, verfolgst sie im HQ, prüfst den Diff in der App, und der PR landet über die Queue. Das HQ ist hell und dunkel lesbar (Screenshots angesehen, auch die DF-07-Dichte). |
 | M4 | Dauerbetrieb abgenommen, v1.5.0 | Du schaltest den Continuous Mode selbst ein. Ein Not-Aus stoppt alles in 10 Sekunden. Alle 27 Zeilen der Abnahmematrix haben einen Beleg oder ein Nutzer-Gate. Update-Drills sind am PC durchgespielt. Du installierst v1.5.0. |
+| M5 | Aufräumen und erste Tester (nach v1.5.0) | 3–5 externe Tester haben v1.5.0 benutzt, ihre Rückmeldungen sind festgehalten. Die Architektur-Befunde sind abgearbeitet, `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI. Die vier Nahtstellen sind kleiner als bei v1.5.0. ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt. |
 
 Lane-Schlüssel: `st` store.rs + store/ · `api` api.rs · `mn` main.rs · `pa`
 bin/pa.rs (diese vier sind Nahtstellen, je ein aktives Paket) · `pty` pty.rs ·
@@ -147,6 +151,39 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5) | S | mn | offen |
 | W4-04 | Release v1.5.0 | S | N | offen |
+
+### M5 — Aufräumen und erste Tester (nach v1.5.0)
+
+Nutzerentscheidung 04.10. (Empfehlungen des Orchestrators angenommen). Abnahme in
+Alltagssprache:
+
+- 3–5 externe Tester haben v1.5.0 benutzt und ihre Rückmeldungen sind festgehalten.
+- Die Architektur-Befunde (Pakete ARCH-D*/STATE-* aus der Drift-Karte und dem
+  Zustands-Audit; die STATE-Zeilen kommen dazu, sobald sie existieren) sind
+  abgearbeitet.
+- `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI.
+- Die vier Nahtstellen sind kleiner als bei v1.5.0 (Zeilen messen und vergleichen).
+- ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt
+  (Dogfooding, laut Vision).
+
+Die ARCH-D-Pakete ändern kein Verhalten. Sie laufen erst nach v1.5.0, weil sie die
+seriellen Nahtstellen des Release-Wegs belegen; jedes nutzt den Prompt „ProjectA
+refactoring package“.
+
+| ID | Paket | Gr. | Lane | Stand |
+|---|---|---|---|---|
+| M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | offen, nach v1.5.0 |
+| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | offen, nach v1.5.0 |
+| M5-03 | ARCH-G1 Regeldokument `docs/architecture-rules.md` + ARCH-G2 Drift-Gate in der CI (noch nicht gemergt; sonst hier ✓ mit PR-Nummer) | M | ci + doc | offen |
+| M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | offen, nach v1.5.0 |
+| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.0 |
+| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.0 |
+| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.0 |
+| ARCH-D4 | Restlicher API-Router mit 51 Zweigen | M | api | offen, nach v1.5.0 |
+| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.0 |
+| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.0 |
+| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.0 |
+| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.0 |
 
 ### Reihenfolge der seriellen Lanes (nach Meilensteinen)
 
@@ -397,7 +434,7 @@ SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 ## Entscheidungs-Inbox
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Am 04.10. hat der Nutzer E1, E4, E5, E10, E11, E12, F1, F3 und F6 beantwortet (zwei
-neue Zeilen halten die Freigaben fest). Offen sind E3 und der M4-Blocker; F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
+neue Zeilen halten die Freigaben fest). Offen sind E3, der M4-Blocker, E14 (dringend), E15 und E16 (beide nach v1.5.0); F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
 Nachweis siehe E13) sind entschieden und werden nicht neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
@@ -428,6 +465,9 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | N2 | Echte Proben und Tests am PC | Erlauben. | Nutzer | ✓ entschieden (Nutzer 04.10.): echte Proben mit Claude/Codex/OpenCode sind erlaubt und dürfen Abo-Kontingent verbrauchen (HQ2-05b, P0); Agenten dürfen den PC des Nutzers für Tests nutzen und die ProjectA-App öffnen, bedienen und schließen. |
 | W5-02b3 | Produktfrage: Verhältnis der globalen Env-Stufe zur Isolation je Profil | Globale Stufe ersetzt die Profil-Isolation. | Nutzer | ✓ entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten; Koordinatoren bleiben immer `strict`; profilspezifisches `passthrough` bleibt. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
+| E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | offen, Nutzer, dringend |
+| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.5.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.5.0 |
+| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor M5-01 entscheiden. | Nutzer | offen, nach v1.5.0 |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
