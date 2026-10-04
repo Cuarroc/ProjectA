@@ -322,7 +322,7 @@ precommit_skip_reason() { # id -> reason on stdout, exit 0 = skip
   case "$1" in fmt | cargo-check) ;; *) return 1 ;; esac
   local staged hit
   staged=()
-  while IFS= read -r hit; do [ -n "$hit" ] && staged+=("$hit"); done < <(git -c core.quotepath=false diff --cached --name-only)
+  while IFS= read -r hit; do [ -n "$hit" ] && staged+=("$hit"); done < <(git -c core.quotepath=false diff --cached --name-only --no-renames)
   [ "${#staged[@]}" -gt 0 ] || return 1
   if hit="$(bash "$ROOT/scripts/ci/lane-plan.sh" --touches-rust "${staged[@]}")"; then
     return 1

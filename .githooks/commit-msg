@@ -30,7 +30,7 @@ fi
 FILES=()
 while IFS= read -r _tf_file; do
   [ -n "$_tf_file" ] && FILES+=("$_tf_file")
-done < <(git diff --cached --name-only)
+done < <(git diff --cached --name-only --no-renames)
 if tf_file_list_needs_trailer "${FILES[@]+"${FILES[@]}"}"; then
   if ! tf_message_has_required_trailer "$MSG"; then
     echo "commit-msg: dieser Commit aendert Nicht-Test-Quellcode und braucht genau einen Trailer:" >&2

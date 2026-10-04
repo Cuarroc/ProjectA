@@ -210,7 +210,7 @@ if [ -n "$COMMIT_MSG_FILE" ]; then
   # Called by .githooks/commit-msg. Same rules as the CI plan, minus history.
   msg="$(cat "$COMMIT_MSG_FILE")"
   staged=()
-  while IFS= read -r _f; do [ -n "$_f" ] && staged+=("$_f"); done < <(git -c core.quotepath=false diff --cached --name-only)
+  while IFS= read -r _f; do [ -n "$_f" ] && staged+=("$_f"); done < <(git -c core.quotepath=false diff --cached --name-only --no-renames)
   check_trailer_forms "$msg" || exit 1
   if tf_file_list_needs_trailer "${staged[@]+"${staged[@]}"}"; then
     tf_message_has_required_trailer "$msg" || { echo "red-first: staged source change needs Test-First:/Regression-For:/No-Test:" >&2; exit 1; }
@@ -222,12 +222,12 @@ if [ -n "$COMMIT_MSG_FILE" ]; then
     [ -n "$spec" ] || continue
     path="${spec%%::*}"; path="${path#./}"
     [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]] && path="src-tauri/src/main.rs"
-    if ! git cat-file -e ":${path}" 2>/dev/null && ! git cat-file -e "HEAD:${path}" 2>/dev/null; then
-      echo "red-first: Test-First path not in the index or HEAD: $path ($spec)" >&2; exit 1
+    if ! git cat-file -e ":${path}" 2>/dev/null; then
+      echo "red-first: Test-First path not in the candidate index: $path ($spec)" >&2; exit 1
     fi
     if [[ "$spec" == *::* ]]; then
       name="${spec##*::}"
-      if ! { git show ":${path}" 2>/dev/null || git show "HEAD:${path}"; } | grep -qF -- "$name"; then
+      if ! git show ":${path}" 2>/dev/null | grep -qF -- "$name"; then
         echo "red-first: test '$name' does not occur in $path ($spec)" >&2; exit 1
       fi
     fi
