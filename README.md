@@ -22,8 +22,8 @@ angemeldet sein.
 - Windows ist das einzige paketierte Ziel. Plattformneutrale und
   Linux-spezifische Prüfungen laufen zusätzlich unter Linux beziehungsweise
   WSL2; ein Linux- oder macOS-Paket wird nicht ausgeliefert.
-- Der Continuous Mode ist absichtlich abgeschaltet, bis seine Abnahme
-  vollständig belegt und vom Nutzer freigegeben ist.
+- Der Dauerbetrieb (Continuous) ist in v1.5.0 ausgeschaltet und nicht
+  freigegeben.
 - Interne Projektunterlagen sind überwiegend auf Deutsch.
 
 ## Voraussetzungen

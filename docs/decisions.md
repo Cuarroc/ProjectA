@@ -3,6 +3,10 @@
 Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 (Log, keine zweite AGENTS.md — M12, Rev-8-SANIERUNGSPLAN §9/8.31.)
 
+## 2026-10-05
+
+- **Was?** v1.5.0 ist ein App-Release über den menschlich kontrollierten GitHub-Pfad; der Dauerbetrieb bleibt ausgeschaltet und nicht freigegeben. **Warum?** W5-02d ist nach M4 geparkt, E5 verlangt den ausgeschalteten Dauerbetrieb bis zur Abnahme, und Fable 5.1 sowie GPT-6 Astra empfahlen deshalb E20 Option A. **Wann zurücknehmen?** Sobald W5-02d gelandet ist, die ursprünglichen Matrixzeilen 18 und 27 in M5 wiederherstellen.
+
 ## 2026-10-03
 
 ### ADR-Vorschläge (offen)
