@@ -40,4 +40,14 @@ describe("EmergencyStop", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/Stillstand ist nicht bestätigt/);
     expect(screen.queryByText(/alle Agenten sind beendet/)).toBeNull();
   });
+
+  it("shows a stop raised through the API while settings stays open", async () => {
+    ipc.getEmergencyStop.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<EmergencyStop />);
+    expect(await screen.findByRole("button", { name: "Not-Aus auslösen" })).toBeTruthy();
+
+    fireEvent.focus(window);
+
+    expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
+  });
 });

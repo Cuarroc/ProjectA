@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Project } from "../types";
+import type { AgentProfile, Project } from "../types";
 import SettingsView from "./SettingsView";
 import { saveUiDensity } from "../lib/settings";
 
@@ -9,18 +9,24 @@ const getProjectSetupCommand = vi.fn();
 const setProjectSetupCommand = vi.fn(async (...args: unknown[]): Promise<void> => {
   void args;
 });
+const stateReads = vi.hoisted(() => ({
+  getBudgets: vi.fn(() => new Promise(() => {})),
+  getDigestEnabled: vi.fn(() => new Promise(() => {})),
+  getRoutingStatus: vi.fn(() => new Promise(() => {})),
+  getStuckAfterMinutes: vi.fn(() => new Promise(() => {})),
+}));
 
 // Everything the view loads besides the setup command stays in flight forever:
 // its shape is not what these tests exercise.
 vi.mock("../lib/ipc", () => ({
   describeError: (cause: unknown) => String(cause),
   deleteSessionBuffers: vi.fn(async () => {}),
-  getBudgets: vi.fn(() => new Promise(() => {})),
-  getDigestEnabled: vi.fn(() => new Promise(() => {})),
+  getBudgets: stateReads.getBudgets,
+  getDigestEnabled: stateReads.getDigestEnabled,
   getLearningSettings: vi.fn(() => new Promise(() => {})),
   getProjectSetupCommand: (...args: unknown[]) => getProjectSetupCommand(...args),
-  getRoutingStatus: vi.fn(() => new Promise(() => {})),
-  getStuckAfterMinutes: vi.fn(() => new Promise(() => {})),
+  getRoutingStatus: stateReads.getRoutingStatus,
+  getStuckAfterMinutes: stateReads.getStuckAfterMinutes,
   getEmergencyStop: vi.fn(() => new Promise(() => {})),
   setEmergencyStop: vi.fn(() => Promise.resolve()),
   getUpdaterState: vi.fn(() => new Promise(() => {})),
@@ -313,5 +319,38 @@ describe("SettingsView tabs (APP-5)", () => {
     const panel = screen.getByRole("tabpanel");
     expect(panel).toHaveAttribute("aria-labelledby", tabs[1].id);
     expect(tabs[1]).toHaveAttribute("aria-controls", panel.id);
+  });
+});
+
+describe("SettingsView global state resync", () => {
+  it("shows values changed by a second writer after window focus", async () => {
+    const profile: AgentProfile = {
+      id: "codex",
+      name: "Codex",
+      command: "codex",
+      args: [],
+      env: {},
+      fallback: null,
+      enabled: true,
+    };
+    stateReads.getDigestEnabled.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    stateReads.getStuckAfterMinutes.mockResolvedValueOnce(10).mockResolvedValueOnce(20);
+    stateReads.getRoutingStatus
+      .mockResolvedValueOnce({ mode: "cheap", reviewIndependent: true, reviewDetail: "" })
+      .mockResolvedValueOnce({ mode: "reliable", reviewIndependent: true, reviewDetail: "" });
+    stateReads.getBudgets
+      .mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 50, sevenDayPct: 80 }])
+      .mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 60, sevenDayPct: 90 }]);
+    render(<SettingsView {...PROPS} profiles={[profile]} project={project("pj-a")} />);
+    expect(await screen.findByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("10");
+
+    fireEvent.focus(window);
+
+    await waitFor(() => expect(screen.getByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("20"));
+    expect(screen.getByRole("checkbox", { name: "Tages-Digest schreiben" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Reliable" })).toBeChecked();
+    fireEvent.click(screen.getByRole("tab", { name: "Agent-Kategorien" }));
+    expect(screen.getByLabelText("budget-5h-codex")).toHaveValue("60");
+    expect(screen.getByLabelText("budget-7d-codex")).toHaveValue("90");
   });
 });

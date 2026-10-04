@@ -75,4 +75,14 @@ describe("WebInterfacePanel", () => {
     expect(await screen.findByRole("button", { name: "Starten" })).toBeInTheDocument();
     expect(screen.getByText(/Shows the board and learnings/)).toBeInTheDocument();
   });
+
+  it("refreshes a status changed by another writer when the document becomes visible", async () => {
+    vi.mocked(getWebInterfaceStatus).mockResolvedValueOnce(null).mockResolvedValueOnce(9123);
+    render(<WebInterfacePanel />);
+    await screen.findByText("aus");
+
+    fireEvent(document, new Event("visibilitychange"));
+
+    expect(await screen.findByText("http://localhost:9123")).toBeInTheDocument();
+  });
 });
