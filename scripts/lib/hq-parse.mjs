@@ -240,7 +240,10 @@ const tableCells = (line) =>
 function milestoneState(stand) {
   if (/^in Arbeit|^dieses Paket/i.test(stand)) return "in_progress";
   if (/^PR #\d/i.test(stand)) return "pr";
-  if (!stand.includes("✓")) return /^teilweise/i.test(stand) ? "in_progress" : "open";
+  // "teilweise:" opens the cell and names what is still missing, so it outranks
+  // a "✓" of a merged sub-part later in the same cell (W2-02b in PLAN.md).
+  if (/^teilweise/i.test(stand)) return "in_progress";
+  if (!stand.includes("✓")) return "open";
   // "△" marks a partly proven sub-package, "blockiert" a stuck one.
   return /\boffen\b|PR #\d|in Arbeit|△|\bblockiert\b/i.test(stand) ? "in_progress" : "done";
 }
