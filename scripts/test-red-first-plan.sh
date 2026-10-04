@@ -35,6 +35,7 @@ expect_plan_failure() {
     echo "FAIL: $label did not explain the expected error: $expected" >&2
     exit 1
   fi
+  echo "ok   $label"
   git reset -q --hard "$BASE"
 }
 
@@ -56,6 +57,13 @@ git add README.md
 git commit -q -m "docs: path-only existing test" \
   -m "Test-First: scripts/existing-test.sh"
 expect_plan_failure "path-only trailer on existing test file" \
+  "use Test-First: <path>::<exact test name> for each NEW test"
+
+printf '# regression path only\n' >> README.md
+git add README.md
+git commit -q -m "docs: path-only existing regression test" \
+  -m "Regression-For: scripts/existing-test.sh"
+expect_plan_failure "path-only Regression-For trailer on existing test file" \
   "use Test-First: <path>::<exact test name> for each NEW test"
 
 printf '# named test\n' >> README.md
