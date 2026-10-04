@@ -686,6 +686,24 @@ impl PtyManager {
         &self,
         install: impl FnOnce() -> Result<(), String>,
     ) -> Result<(), String> {
+        self.latch_install(false, install)
+    }
+
+    /// The journaled install: the drain froze new starts via
+    /// [`PtyManager::begin_maintenance`], so this requires that freeze and an
+    /// empty registry, then latches like [`PtyManager::install_when_idle`].
+    pub fn install_in_maintenance(
+        &self,
+        install: impl FnOnce() -> Result<(), String>,
+    ) -> Result<(), String> {
+        self.latch_install(true, install)
+    }
+
+    fn latch_install(
+        &self,
+        in_maintenance: bool,
+        install: impl FnOnce() -> Result<(), String>,
+    ) -> Result<(), String> {
         let registry = self
             .sessions
             .lock()
@@ -693,8 +711,19 @@ impl PtyManager {
         if self.installation_started.load(Ordering::Relaxed) {
             return Err("Installation already started; restart before starting sessions or another installation".into());
         }
-        if self.maintenance_active.load(Ordering::Acquire) {
-            return Err("Database maintenance is active; leave it before installing".into());
+        match (
+            in_maintenance,
+            self.maintenance_active.load(Ordering::Acquire),
+        ) {
+            (false, true) => {
+                return Err("Database maintenance is active; leave it before installing".into())
+            }
+            (true, false) => {
+                return Err(
+                    "Session starts are not frozen; enter maintenance before installing".into(),
+                )
+            }
+            _ => {}
         }
         if !registry.is_empty() {
             return Err("Sessions are active or starting; wait for idle before installing".into());
@@ -814,6 +843,11 @@ impl PtyManager {
             return Err("Database maintenance is already active".into());
         }
         Ok(())
+    }
+
+    /// Whether the maintenance session-start freeze is currently set.
+    pub fn is_maintenance_active(&self) -> bool {
+        self.maintenance_active.load(Ordering::Acquire)
     }
 
     /// Lift the session-start freeze set by [`PtyManager::begin_maintenance`].

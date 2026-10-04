@@ -1175,8 +1175,9 @@ async fn leave_maintenance(
     leave_database_maintenance(&pty, &store).await
 }
 
-/// Download and verify first, then atomically exclude new session starts before
-/// invoking the installer. This is not a database maintenance/recovery protocol.
+/// Download and verify first, then install through the recovery journal: the
+/// persisted drain and backup evidence, the live write block and the session
+/// freeze must all hold, else the installer is never invoked (W3-02e).
 #[tauri::command]
 async fn install_update_when_idle(
     webview: tauri::Webview,
@@ -1186,14 +1187,31 @@ async fn install_update_when_idle(
         .resources_table()
         .get::<tauri_plugin_updater::Update>(update_rid)
         .map_err(|error| error.to_string())?;
+    let app = webview.app_handle().clone();
+    let dir = app_data_dir(&app)?;
+    let journal = delivery_recovery::JournalStore::new(
+        dir.join("update-recovery.json"),
+        &dir.join("projecta.db"),
+    )
+    .and_then(delivery_recovery::DurableJournal::open)
+    .map_err(|error| format!("update journal unavailable: {error}"))?;
+    // Refuse before the download when the evidence is already missing.
+    delivery_recovery::require_install_evidence(
+        &app.state::<PtyManager>(),
+        app.state::<Store>().is_maintenance_active(),
+        &journal,
+    )?;
     let bytes = update
         .download(|_, _| {}, || {})
         .await
         .map_err(|error| error.to_string())?;
-    let app = webview.app_handle().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        app.state::<PtyManager>()
-            .install_when_idle(|| update.install(&bytes).map_err(|error| error.to_string()))
+        delivery_recovery::install_through_journal(
+            &app.state::<PtyManager>(),
+            app.state::<Store>().is_maintenance_active(),
+            journal,
+            || update.install(&bytes).map_err(|error| error.to_string()),
+        )
     })
     .await
     .map_err(|error| format!("Installer interrupted: {error}; restart before retrying"))?
