@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEV_HMR_SOURCES, withDevConnectSources } from "./dev-csp";
 import { describe, expect, it } from "vitest";
 
 // P2-F (Phase 2, 02.09.2026): `app.security.csp` in tauri.conf.json war `null`.
@@ -115,6 +116,25 @@ describe("content security policy (tauri.conf.json + index.html)", () => {
         "ws://localhost:1420",
         "ws://localhost:1421",
       ]),
+    );
+  });
+
+  it("adds the HMR websockets to the index.html policy only while serving", () => {
+    const served = directives(
+      /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(
+        withDevConnectSources(indexHtml),
+      )?.[1] ?? "",
+    );
+    expect(served.get("connect-src")).toEqual(
+      expect.arrayContaining([
+        ...(directives(metaCsp ?? "").get("connect-src") ?? []),
+        ...DEV_HMR_SOURCES,
+      ]),
+    );
+    expect(served.get("script-src")).toEqual(["'self'"]);
+    // Same sources as devCsp, so both dev paths agree.
+    expect([...(served.get("connect-src") ?? [])].sort()).toEqual(
+      [...(directives(devCsp ?? "").get("connect-src") ?? [])].sort(),
     );
   });
 });
