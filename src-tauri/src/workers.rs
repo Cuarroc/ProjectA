@@ -3459,6 +3459,20 @@ mod tests {
         .expect("repeating done must be a no-op");
 
         assert_eq!(repeated, first);
+
+        sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='task'")
+            .execute(fx.store.pool_for_test())
+            .await
+            .unwrap();
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .expect_err("an idempotent replay still requires the live fence");
     }
 
     #[tokio::test]
@@ -3497,7 +3511,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn worker_blocked_persists_its_reason() {
+    async fn worker_delivery_blocked_persists_its_reason() {
         let fx = fixture("worker-delivery-blocked").await;
         let run = launched_development_run(&fx).await;
 
