@@ -13,7 +13,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -53,6 +53,9 @@ mod emergency_stop;
 mod emergency_stop_tests;
 #[path = "store/journal_watch.rs"]
 mod journal_watch;
+#[cfg(test)]
+#[path = "store/maintenance_tests.rs"]
+mod maintenance_tests;
 #[path = "store/queue_cancel.rs"]
 mod queue_cancel;
 #[path = "store/supervisor.rs"]
@@ -958,6 +961,33 @@ impl SessionBindings {
 /// pending exit cannot need to.
 type PendingExits = Arc<Mutex<HashMap<String, (i64, Option<i32>)>>>;
 
+/// Why a database maintenance transition could not be completed.
+#[allow(dead_code)] // W3-01b wires this store API into the application seam.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MaintenanceError {
+    AlreadyActive,
+    NotActive,
+    Database(String),
+}
+
+impl std::fmt::Display for MaintenanceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AlreadyActive => f.write_str("database maintenance is already active"),
+            Self::NotActive => f.write_str("database maintenance is not active"),
+            Self::Database(error) => write!(f, "database maintenance failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for MaintenanceError {}
+
+#[derive(Default)]
+struct MaintenanceState {
+    active: AtomicBool,
+    connection: tokio::sync::Mutex<Option<sqlx::pool::PoolConnection<Sqlite>>>,
+}
+
 /// The database plus the in-memory worker to PTY session mapping.
 ///
 /// Cheap to clone: the pool and the session map are both reference counted, so
@@ -976,9 +1006,51 @@ pub struct Store {
     /// other's test or approval fields.
     review_evidence_lock: Arc<tokio::sync::Mutex<()>>,
     journal_watch: Arc<tokio::sync::OnceCell<journal_watch::JournalWatch>>,
+    maintenance: Arc<MaintenanceState>,
 }
 
 impl Store {
+    /// Reserve the database for maintenance after current writes drain.
+    #[allow(dead_code)] // W3-01b wires this store API into the application seam.
+    pub async fn enter_maintenance(&self) -> Result<(), MaintenanceError> {
+        let mut held = self.maintenance.connection.lock().await;
+        if held.is_some() {
+            return Err(MaintenanceError::AlreadyActive);
+        }
+        let mut connection = self
+            .pool
+            .acquire()
+            .await
+            .map_err(|error| MaintenanceError::Database(error.to_string()))?;
+        sqlx::query("BEGIN IMMEDIATE")
+            .execute(&mut *connection)
+            .await
+            .map_err(|error| MaintenanceError::Database(error.to_string()))?;
+        *held = Some(connection);
+        self.maintenance.active.store(true, Ordering::Release);
+        Ok(())
+    }
+
+    /// Release a maintenance reservation and allow writes again.
+    #[allow(dead_code)] // W3-01b wires this store API into the application seam.
+    pub async fn leave_maintenance(&self) -> Result<(), MaintenanceError> {
+        let mut held = self.maintenance.connection.lock().await;
+        let connection = held.as_mut().ok_or(MaintenanceError::NotActive)?;
+        sqlx::query("ROLLBACK")
+            .execute(&mut **connection)
+            .await
+            .map_err(|error| MaintenanceError::Database(error.to_string()))?;
+        held.take();
+        self.maintenance.active.store(false, Ordering::Release);
+        Ok(())
+    }
+
+    /// Whether this store has reserved the database for maintenance.
+    #[allow(dead_code)] // W3-01b wires this store API into the application seam.
+    pub fn is_maintenance_active(&self) -> bool {
+        self.maintenance.active.load(Ordering::Acquire)
+    }
+
     /// Open (creating if needed) the database at `path` and migrate its
     /// schema to this build's version; see [`Store::migrate`].
     pub async fn open(path: &Path) -> Result<Self, String> {
@@ -1009,6 +1081,7 @@ impl Store {
             pending_exits: Arc::new(Mutex::new(HashMap::new())),
             review_evidence_lock: Arc::new(tokio::sync::Mutex::new(())),
             journal_watch: Arc::new(tokio::sync::OnceCell::new()),
+            maintenance: Arc::new(MaintenanceState::default()),
         };
         let schema_changed = store.user_version().await? != target_schema_version();
         store.migrate(path).await?;
