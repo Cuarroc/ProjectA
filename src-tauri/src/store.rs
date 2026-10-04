@@ -3562,6 +3562,28 @@ impl Store {
         Ok(())
     }
 
+    /// The global environment isolation stage for ordinary agents. Missing
+    /// settings fail closed so an older database starts at `strict`.
+    #[allow(dead_code)] // API and frontend consumers land in the next package slices.
+    pub async fn agent_env_isolation(&self) -> Result<crate::profiles::EnvIsolation, String> {
+        let Some(value) = self.get_setting("agent.env_isolation").await? else {
+            return Ok(crate::profiles::EnvIsolation::Strict);
+        };
+        value
+            .parse::<crate::profiles::EnvIsolation>()
+            .map_err(|error| error.to_string())
+    }
+
+    /// Persist the global environment isolation stage for ordinary agents.
+    #[allow(dead_code)] // API and frontend consumers land in the next package slices.
+    pub async fn set_agent_env_isolation(
+        &self,
+        isolation: crate::profiles::EnvIsolation,
+    ) -> Result<(), String> {
+        self.set_setting("agent.env_isolation", isolation.as_str())
+            .await
+    }
+
     /// Every setting whose key starts with `prefix`, sorted by key.
     ///
     /// The settings table is a flat key-value store, so a family of keys -
@@ -6428,6 +6450,55 @@ pub(crate) mod tests {
         );
         // Keys are independent: writing one never invents another.
         assert_eq!(store.get_setting("learning.queen").await.unwrap(), None);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn missing_agent_env_isolation_defaults_to_strict() {
+        let (_dir, store) = store().await;
+        assert_eq!(
+            store.agent_env_isolation().await.unwrap(),
+            crate::profiles::EnvIsolation::Strict
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn agent_env_isolation_values_survive_database_reopen() {
+        use crate::profiles::EnvIsolation;
+
+        for isolation in [
+            EnvIsolation::Inherit,
+            EnvIsolation::Allowlist,
+            EnvIsolation::Strict,
+        ] {
+            let dir = TempDir::new("store-agent-env-isolation");
+            let path = dir.path().join("projecta.db");
+            let store = Store::open(&path).await.expect("open store");
+            store.set_agent_env_isolation(isolation).await.unwrap();
+            store.pool.close().await;
+
+            let reopened = Store::open(&path).await.expect("reopen store");
+            assert_eq!(reopened.agent_env_isolation().await.unwrap(), isolation);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn invalid_agent_env_isolation_is_rejected_without_overwriting_last_valid_value() {
+        use crate::profiles::{EnvIsolation, InvalidEnvIsolationValue};
+
+        let (_dir, store) = store().await;
+        store
+            .set_agent_env_isolation(EnvIsolation::Allowlist)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            "permissive".parse::<EnvIsolation>(),
+            Err(InvalidEnvIsolationValue("permissive".to_string()))
+        );
+        assert_eq!(
+            store.agent_env_isolation().await.unwrap(),
+            EnvIsolation::Allowlist
+        );
     }
 
     // -- recommendations (Phase 7.1) ---------------------------------------
