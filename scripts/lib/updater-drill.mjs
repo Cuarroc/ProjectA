@@ -1,4 +1,4 @@
-// W3-03e: updater drill (success / cancel / failure with an active session).
+// W3-03e: updater drill (success / cancel / failure with a persisted worker row).
 // Polls GET /api/updater (W3-04 wire states), tolerates the app going away for
 // the relaunch, and compares persisted worker rows and the recovery journal
 // (update-recovery.json, W3-02) before and after. Read-only towards the data.
