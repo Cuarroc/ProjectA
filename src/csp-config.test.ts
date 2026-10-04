@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEV_HMR_SOURCES, withDevConnectSources } from "./dev-csp";
 import { describe, expect, it } from "vitest";
 
 // P2-F (Phase 2, 02.09.2026): `app.security.csp` in tauri.conf.json war `null`.
@@ -25,11 +26,13 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const conf = JSON.parse(
   readFileSync(resolve(here, "..", "src-tauri", "tauri.conf.json"), "utf8"),
-) as { app?: { security?: { csp?: string | null } } };
+) as { app?: { security?: { csp?: string | null; devCsp?: string | null } } };
 const csp = conf.app?.security?.csp ?? null;
+const devCsp = conf.app?.security?.devCsp ?? null;
 
 const indexHtml = readFileSync(resolve(here, "..", "index.html"), "utf8");
-const metaMatch = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(indexHtml);
+const metaMatch =
+  /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(indexHtml);
 const metaCsp = metaMatch?.[1] ?? null;
 
 function directives(policy: string): Map<string, string[]> {
@@ -83,7 +86,9 @@ describe("content security policy (tauri.conf.json + index.html)", () => {
 
   it("lets Tauri IPC through on every platform", () => {
     const connect = directives(csp ?? "").get("connect-src") ?? [];
-    expect(connect).toEqual(expect.arrayContaining(["'self'", "ipc:", "http://ipc.localhost"]));
+    expect(connect).toEqual(
+      expect.arrayContaining(["'self'", "ipc:", "http://ipc.localhost"]),
+    );
   });
 
   it("allows only what the inventory found: local fonts, data images, no blob", () => {
@@ -91,5 +96,45 @@ describe("content security policy (tauri.conf.json + index.html)", () => {
     expect(d.get("font-src")).toEqual(["'self'"]);
     expect(d.get("img-src")).toEqual(["'self'", "data:"]);
     expect(csp).not.toContain("blob:");
+  });
+
+  it("keeps the dev server out of the release policy config and index.html", () => {
+    // The release bundle ships index.html as built, so a localhost entry in
+    // either carrier would reach users (INV-SEC-CSP-SPLIT, 04.10.2026).
+    for (const policy of [csp ?? "", metaCsp ?? ""]) {
+      expect(policy).not.toMatch(/(^|[\s/])localhost\b|127\.0\.0\.1|\bwss?:/);
+    }
+  });
+
+  it("gives `tauri dev` its own policy with the Vite HMR websockets", () => {
+    const connect = directives(devCsp ?? "").get("connect-src") ?? [];
+    expect(connect).toEqual(
+      expect.arrayContaining([
+        "'self'",
+        "ipc:",
+        "http://ipc.localhost",
+        "ws://localhost:1420",
+        "ws://localhost:1421",
+      ]),
+    );
+  });
+
+  it("adds the HMR websockets to the index.html policy only while serving", () => {
+    const served = directives(
+      /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(
+        withDevConnectSources(indexHtml),
+      )?.[1] ?? "",
+    );
+    expect(served.get("connect-src")).toEqual(
+      expect.arrayContaining([
+        ...(directives(metaCsp ?? "").get("connect-src") ?? []),
+        ...DEV_HMR_SOURCES,
+      ]),
+    );
+    expect(served.get("script-src")).toEqual(["'self'"]);
+    // Same sources as devCsp, so both dev paths agree.
+    expect([...(served.get("connect-src") ?? [])].sort()).toEqual(
+      [...(directives(devCsp ?? "").get("connect-src") ?? [])].sort(),
+    );
   });
 });

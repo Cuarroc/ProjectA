@@ -31,14 +31,18 @@ zusammenhält (Tauri prüft die `.plugin()`-Registrierung nicht).
 
 ## Content Security Policy
 
-Ein Wert, zwei Träger — und zwar mit Grund, live belegt am 02.09. (Dev-Build
-mit CDP-Anbindung, `.pa/report_p2f.md`):
+Eine Release-Policy mit zwei Trägern, dazu eine getrennte Dev-Policy. Das
+ursprüngliche Verhalten wurde am 02.09. im Dev-Build mit CDP-Anbindung belegt
+(`.pa/report_p2f.md`); die Trennung folgte mit INV-SEC-CSP-SPLIT:
 
 - **Dev (`tauri dev`, Webview lädt `http://localhost:1420` direkt von Vite):**
-  Tauri injiziert **nichts**. Es gilt ausschließlich die Meta in `index.html`.
-  Vites React-Refresh-Preamble (Inline-Skript) steht **vor** der Meta im
-  `<head>` und ist damit nicht von ihr erfasst — React-Refresh läuft
-  (`$RefreshReg$` vorhanden), HMR verbunden, IPC ok.
+  Das serve-only-Plugin `src/dev-csp.ts` ergänzt die statische Meta um die
+  HMR-WebSockets; `app.security.devCsp` trägt dieselben Quellen für Tauris
+  Entwicklungs-Policy. Vites React-Refresh-Preamble (Inline-Skript) steht
+  **vor** der Meta im `<head>` und ist damit nicht von ihr erfasst —
+  React-Refresh lief im Beleg (`$RefreshReg$` vorhanden), HMR war verbunden
+  und IPC funktionierte. Ob die aktuelle Tauri-Version `devCsp` zusätzlich
+  zur von Vite ausgelieferten Meta injiziert, ist noch nicht gemessen.
 - **Prod (Tauri serviert `dist/` über sein Protokoll):** Tauri **hängt** seine
   Config-CSP als zweites Meta an (`tauri-utils 2.9.3`, `html.rs::inject_csp`:
   `head.append(...)` — kein Ersetzen), ergänzt um Nonces/Hashes für
@@ -49,12 +53,14 @@ mit CDP-Anbindung, `.pa/report_p2f.md`):
   dürfen diese IPC-Quellen nicht aus der Meta entfernt werden** — sonst
   blockiert die statische Policy im Release die Tauri-IPC.
 
-`src/csp-config.test.ts` erzwingt Gleichheit der beiden Träger (geparst, nicht
-als String) und die Grenzen. Gleiche CSP in Dev und Prod — kein Config-Split.
-Prod-Messung steht weiter aus — nachgeführt 17.09.2026 (W1-06): die Marke war
-an v1.2.4 gebunden, aktuell ausgeliefert ist v1.4.0. Zu messen am
-installierten Build: App rendert, IPC ok, keine „Refused to …"-Meldung im Log.
-Bis dahin gilt die Prod-CSP als konfiguriert, nicht als gemessen.
+`src/csp-config.test.ts` erzwingt die geparste Gleichheit der beiden
+Release-Träger, dass beide Release-Träger keine Dev-Server-Quelle enthalten,
+und dass `devCsp` und die von Vite ausgelieferte Meta dieselben
+`connect-src`-Quellen besitzen. Die Prod-Messung steht weiter aus —
+nachgeführt 17.09.2026 (W1-06): die Marke war an v1.2.4 gebunden, aktuell
+ausgeliefert ist v1.4.0. Zu messen am installierten Build: App rendert, IPC
+ok, keine „Refused to …"-Meldung im Log. Bis dahin gilt die Prod-CSP als
+konfiguriert, nicht als gemessen.
 
 | Direktive | Wert | Warum genau das |
 |---|---|---|
@@ -63,7 +69,7 @@ Bis dahin gilt die Prod-CSP als konfiguriert, nicht als gemessen.
 | `style-src` | `'self' 'unsafe-inline'` | React setzt `style=`-Attribute (xterm, Layout-Maße). Hash-basiert wäre bei dynamischen Werten nicht machbar. |
 | `img-src` | `'self' data:` | Icons/Avatare als data-URIs; **kein `blob:`** mehr (Phase-1-Rest, im Inventar keine Verwendung). |
 | `font-src` | `'self'` | Inter liegt unter `/fonts/*.otf`; kein `data:`, kein CDN. |
-| `connect-src` | `'self' ipc: http://ipc.localhost ws://localhost:1420 ws://localhost:1421` | Tauri-IPC (Linux/macOS `ipc:`, Windows `http://ipc.localhost`); Vite-HMR im Dev (1420, mit `TAURI_DEV_HOST` 1421). Kein `fetch` in `src/` — der Updater und alle HTTP-Zugriffe laufen im Rust-Kern. |
+| `connect-src` | `'self' ipc: http://ipc.localhost` | Tauri-IPC (Linux/macOS `ipc:`, Windows `http://ipc.localhost`). Nur die Dev-Policy ergänzt `ws://localhost:1420 ws://localhost:1421` für Vite-HMR. Kein `fetch` in `src/` — der Updater und alle HTTP-Zugriffe laufen im Rust-Kern. |
 | `worker-src` | `'self'` | Explizit, obwohl es aus `script-src` fiele: xterm.js 5.5 + addon-webgl 0.18.0 (hart gepinnt, PR #43) brauchen keine Worker. Braucht ein künftiges Addon `blob:`-Worker, ist das eine bewusste CSP-Änderung, kein stilles Scheitern (Review P2-F, GLM-B8). |
 | `object-src` | `'none'` | Keine Plugins/Embeds. |
 | `base-uri` | `'self'` | Kein Umbiegen relativer URLs durch injiziertes Markup. |
@@ -98,8 +104,7 @@ und Signaturprüfung laufen per `reqwest` im Rust-Prozess. Die Webview-CSP
 (`connect-src`) betrifft nur `fetch`/`WebSocket`/`EventSource` aus der Webview
 und damit den Updater nicht (Review P2-F, GLM-B9; GLM-4 aus dem Phase-2-Plan).
 
-**Dev-only-Quellen in der Prod-CSP** (`ws://localhost:1420/1421`): bewusst
-drin, weil Dev und Prod dieselbe Policy tragen sollen (kein Config-Split, der
-im Dev anders scheitert als beim Nutzer). Im Release lauscht dort nichts; ein
-Angreifer, der die Direktive ausnutzen könnte, hätte bereits Code in der
-Webview (Review P2-F, Gemini-3, abgelehnt).
+**Dev-only-Quellen** (`ws://localhost:1420/1421`) stehen ausschließlich in
+`app.security.devCsp` und in der Meta, die das serve-only-Vite-Plugin
+ausliefert. Die Release-CSP und die statische Meta in `index.html` enthalten
+sie nicht.
