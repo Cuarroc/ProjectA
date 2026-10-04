@@ -72,3 +72,24 @@ test("gate rejects a Studio token pairing below 4.5:1 in dark mode", () => {
   assert.match(r.out, /studio dunkel: muted \/ bg/);
   assert.notEqual(r.status, 0);
 });
+
+test("gate rejects the primary hover text pairing below 4.5:1", () => {
+  const r = runGate((css) => css, editConcept("studio-tokens.css", (css) => css.replace(/--teal: light-dark\([^,]+,/, "--teal: light-dark(#999999,")));
+  assert.match(r.out, /studio hell: primary hover \/ bg/);
+  assert.notEqual(r.status, 0);
+});
+
+test("concept theme label follows operating-system scheme changes", () => {
+  const html = readFileSync(join(root, "docs", "dev-hq", "concepts", "hq2-concept.html"), "utf8");
+  assert.match(html, /themeMedia\?\.addEventListener\?\.\('change',themeLabel\)/);
+});
+
+test("reduced transparency uses an opaque Studio scrim", () => {
+  const dir = join(root, "docs", "dev-hq", "concepts");
+  const tokens = readFileSync(join(dir, "studio-tokens.css"), "utf8");
+  const premium = readFileSync(join(dir, "studio-premium.css"), "utf8");
+  const scrim = tokens.match(/--scrim-solid:\s*light-dark\(#[0-9a-f]{6}([0-9a-f]{2}),\s*#[0-9a-f]{6}([0-9a-f]{2})\)/i);
+  assert.ok(scrim, "solid light and dark scrim tokens exist");
+  assert.ok(scrim.slice(1).every((alpha) => Number.parseInt(alpha, 16) >= 0xe6));
+  assert.match(premium, /prefers-reduced-transparency:reduce[\s\S]*dialog::backdrop\s*\{\s*background:\s*var\(--scrim-solid\)/);
+});
