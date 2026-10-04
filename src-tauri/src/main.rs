@@ -1107,6 +1107,73 @@ fn list_live_sessions(pty: State<'_, PtyManager>) -> Result<Vec<String>, String>
     pty.live_session_ids()
 }
 
+/// How long a maintenance request waits for owned sessions to finish.
+const MAINTENANCE_DRAIN_WAIT: Duration = Duration::from_secs(10);
+
+/// Drain, then reserve the database. New launches are frozen first; a session
+/// that outlives `wait` refuses maintenance by name and changes nothing.
+async fn enter_database_maintenance(
+    pty: &PtyManager,
+    store: &Store,
+    wait: Duration,
+) -> Result<(), String> {
+    pty.begin_maintenance()?;
+    let deadline = tokio::time::Instant::now() + wait;
+    loop {
+        let live = match pty.live_session_ids() {
+            Ok(live) => live,
+            Err(error) => {
+                pty.end_maintenance();
+                return Err(error);
+            }
+        };
+        if live.is_empty() {
+            break;
+        }
+        if tokio::time::Instant::now() >= deadline {
+            pty.end_maintenance();
+            return Err(format!(
+                "Maintenance refused: {} session(s) still active after {}s ({})",
+                live.len(),
+                wait.as_secs(),
+                live.join(", ")
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    if let Err(error) = store.enter_maintenance().await {
+        pty.end_maintenance();
+        return Err(error.to_string());
+    }
+    Ok(())
+}
+
+/// Restore writes first; the launch freeze stays if the store cannot leave.
+async fn leave_database_maintenance(pty: &PtyManager, store: &Store) -> Result<(), String> {
+    store
+        .leave_maintenance()
+        .await
+        .map_err(|error| error.to_string())?;
+    pty.end_maintenance();
+    Ok(())
+}
+
+#[tauri::command]
+async fn enter_maintenance(
+    pty: State<'_, PtyManager>,
+    store: State<'_, Store>,
+) -> Result<(), String> {
+    enter_database_maintenance(&pty, &store, MAINTENANCE_DRAIN_WAIT).await
+}
+
+#[tauri::command]
+async fn leave_maintenance(
+    pty: State<'_, PtyManager>,
+    store: State<'_, Store>,
+) -> Result<(), String> {
+    leave_database_maintenance(&pty, &store).await
+}
+
 /// Download and verify first, then atomically exclude new session starts before
 /// invoking the installer. This is not a database maintenance/recovery protocol.
 #[tauri::command]
@@ -3778,6 +3845,8 @@ fn main() {
             list_workers,
             list_live_sessions,
             install_update_when_idle,
+            enter_maintenance,
+            leave_maintenance,
             get_updater_state,
             set_updater_state,
             enqueue_task,
@@ -3883,6 +3952,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use super::{Duration, PtyManager};
     use std::path::PathBuf;
 
     #[test]
@@ -4108,6 +4178,66 @@ mod tests {
             .await
             .expect("open store");
         (dir, store)
+    }
+
+    #[tokio::test]
+    async fn maintenance_is_refused_while_a_session_is_active() {
+        let (_dir, store) = seam_fixture("maintenance-busy").await;
+        let pty = PtyManager::default();
+        let id = pty.reserve_session().unwrap();
+        let error = super::enter_database_maintenance(&pty, &store, Duration::from_millis(120))
+            .await
+            .expect_err("an active session must refuse maintenance");
+        assert!(error.contains(&id), "{error}");
+        assert!(!store.is_maintenance_active());
+        store.create_project("still-writes", "/w").await.unwrap();
+        pty.cancel_reservation(&id);
+        assert!(pty.reserve_session().is_ok());
+    }
+
+    #[tokio::test]
+    async fn drained_maintenance_freezes_launches_and_writes_until_leave() {
+        let (_dir, store) = seam_fixture("maintenance-frozen").await;
+        let pty = PtyManager::default();
+        let id = pty.reserve_session().unwrap();
+        let finisher = pty.clone();
+        let finishing = id.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            finisher.cancel_reservation(&finishing);
+        });
+        super::enter_database_maintenance(&pty, &store, Duration::from_secs(5))
+            .await
+            .expect("the session drains in time");
+        assert!(store.is_maintenance_active());
+        assert!(pty.reserve_session().is_err());
+        assert!(pty.install_when_idle(|| Ok(())).is_err());
+        assert!(
+            super::enter_database_maintenance(&pty, &store, Duration::ZERO)
+                .await
+                .is_err()
+        );
+        tokio::time::timeout(Duration::from_secs(8), store.create_project("frozen", "/f"))
+            .await
+            .expect("bounded wait")
+            .expect_err("writes are refused during maintenance");
+    }
+
+    #[tokio::test]
+    async fn leaving_maintenance_restores_launches_and_writes() {
+        let (_dir, store) = seam_fixture("maintenance-leave").await;
+        let pty = PtyManager::default();
+        super::enter_database_maintenance(&pty, &store, Duration::from_secs(1))
+            .await
+            .unwrap();
+        super::leave_database_maintenance(&pty, &store)
+            .await
+            .unwrap();
+        assert!(!store.is_maintenance_active());
+        store.create_project("after", "/a").await.unwrap();
+        let id = pty.reserve_session().unwrap();
+        pty.cancel_reservation(&id);
+        assert!(pty.install_when_idle(|| Ok(())).is_ok());
     }
 
     /// B.2 behavior at the seam: the text travels through

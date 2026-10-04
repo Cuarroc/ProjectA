@@ -619,6 +619,7 @@ pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, SessionEntry>>>,
     installation_started: Arc<AtomicBool>,
     emergency_stop_active: Arc<AtomicBool>,
+    maintenance_active: Arc<AtomicBool>,
     next_id: Arc<AtomicU64>,
     on_exit: Arc<Mutex<Option<ExitHook>>>,
     on_output: Arc<Mutex<Option<OutputHook>>>,
@@ -630,6 +631,7 @@ impl Default for PtyManager {
             sessions: Arc::new(Mutex::new(HashMap::new())),
             installation_started: Arc::new(AtomicBool::new(false)),
             emergency_stop_active: Arc::new(AtomicBool::new(false)),
+            maintenance_active: Arc::new(AtomicBool::new(false)),
             next_id: Arc::new(AtomicU64::new(1)),
             on_exit: Arc::new(Mutex::new(None)),
             on_output: Arc::new(Mutex::new(None)),
@@ -690,6 +692,9 @@ impl PtyManager {
             .map_err(|_| "pty session registry is poisoned; restart ProjectA")?;
         if self.installation_started.load(Ordering::Relaxed) {
             return Err("Installation already started; restart before starting sessions or another installation".into());
+        }
+        if self.maintenance_active.load(Ordering::Acquire) {
+            return Err("Database maintenance is active; leave it before installing".into());
         }
         if !registry.is_empty() {
             return Err("Sessions are active or starting; wait for idle before installing".into());
@@ -787,8 +792,33 @@ impl PtyManager {
                 "Global emergency stop is active; clear it before starting sessions".into(),
             );
         }
+        if self.maintenance_active.load(Ordering::Acquire) {
+            return Err("Database maintenance is active; leave it before starting sessions".into());
+        }
         registry.insert(session_id.clone(), SessionEntry::Reserved);
         Ok(session_id)
+    }
+
+    /// Freeze new session starts for database maintenance. Existing sessions
+    /// keep running so the caller can drain them; serialized with
+    /// `reserve_session` and `install_when_idle` through the registry lock.
+    pub fn begin_maintenance(&self) -> Result<(), String> {
+        let _registry = self
+            .sessions
+            .lock()
+            .map_err(|_| "pty session registry is poisoned; restart ProjectA")?;
+        if self.installation_started.load(Ordering::Relaxed) {
+            return Err("Installation has started; restart before maintenance".into());
+        }
+        if self.maintenance_active.swap(true, Ordering::AcqRel) {
+            return Err("Database maintenance is already active".into());
+        }
+        Ok(())
+    }
+
+    /// Lift the session-start freeze set by [`PtyManager::begin_maintenance`].
+    pub fn end_maintenance(&self) {
+        self.maintenance_active.store(false, Ordering::Release);
     }
 
     pub fn set_emergency_stop_active(&self, active: bool) {
