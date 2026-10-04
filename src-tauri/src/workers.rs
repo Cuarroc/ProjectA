@@ -4168,7 +4168,17 @@ mod tests {
         .await
         .unwrap();
         assert!(drained.running.is_empty());
-        assert_eq!(drained.unresolved.is_empty(), !fail_finalization);
+        assert_eq!(
+            drained.unresolved.is_empty(),
+            !fail_finalization,
+            "unresolved sessions: {:?}; completions: {:?}",
+            drained.unresolved,
+            drained
+                .completions
+                .iter()
+                .map(|entry| (&entry.session_id, &entry.result))
+                .collect::<Vec<_>>()
+        );
         assert_eq!(
             manager.live_session_ids().unwrap().is_empty(),
             !fail_finalization
@@ -4328,8 +4338,13 @@ mod tests {
         // launch stuck forever in `spawning` / unresolved.
         assert!(
             drained.unresolved.is_empty(),
-            "native launch left unresolved instead of reconciled: {:?}",
-            drained.unresolved
+            "native launch left unresolved instead of reconciled: {:?}; completions: {:?}",
+            drained.unresolved,
+            drained
+                .completions
+                .iter()
+                .map(|entry| (&entry.session_id, &entry.result))
+                .collect::<Vec<_>>()
         );
         let launch = fx.store.development_launch(&run_id).await.unwrap().unwrap();
         // Owner decision: a distinct state, never `exited` (whose readers

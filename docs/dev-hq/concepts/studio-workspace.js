@@ -250,6 +250,7 @@
     state.renderedProject = state.project;
     const views = { overview, roadmap: () => StudioRoadmap.render(state.roadmap), chat, teams, queue: queueView, lessons: lessonsView, capacity, stats: statsView, analysis: analysisView, extensions, settings };
     $('#page').dataset.view = state.view;
+    $('#design-decision').hidden = state.view !== 'overview';
     $('#page').innerHTML = (views[state.view] || overview)();
     if (state.view === 'settings') $('#page').insertAdjacentHTML('beforeend', projectForm());
     document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => show(b.dataset.open));
@@ -407,6 +408,8 @@
   }
   document.querySelectorAll('nav [data-view]').forEach(b => b.onclick = () => show(b.dataset.view));
   $('.brand')?.addEventListener('click', e => { e.preventDefault(); show('overview'); });
+  on('hide-guide', () => { $('#guidance').hidden = true; });
+  on('review', () => notice('Prüfe Hell- und Dunkelmodus sowie Chat, Kapazität und die ausblendbare Anleitung.'));
   on('project', async e => { rememberDraft(); clearTimeout(state.timer); state.project = e.target.value; state.skills.clear(); state.plugins.clear(); notice(''); const pid = state.project; const loading = loadProject(); render(); await loading; if (pid === state.project) { rememberDraft(); render(); } }, 'change');
   on('refresh', refresh);
   const isDark = () => (document.documentElement.dataset.theme || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
