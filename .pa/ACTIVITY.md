@@ -52,3 +52,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main without manual conflict hunks; refreshed HQ snapshots in 1b64032; prepush and push verification green; PR 341 report updated; review pending Tier B; queue after final verification.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 21:21 — codex/hq2-05b-p4-docs-r (codex/hq2-05b-p4-docs-r, srv-hq2-05b-p4-docs)
+- Zusammenfassung: PR #341 conflict resolved by merging origin/main; regenerated HQ snapshots in f4254b8; prepush green; pushed and verified; report updated and Mergify queue requested.
+- Commits: keine
+- Uncommitted: keine
