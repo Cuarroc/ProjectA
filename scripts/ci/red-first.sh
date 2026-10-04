@@ -129,7 +129,7 @@ is_dependabot_manifest_commit() { # sha datei...
 }
 
 fail_source_without_trailer() {
-  local sha msg
+  local sha msg trailer spec path
   local files=()
   while IFS= read -r sha; do
     [ -n "$sha" ] || continue
@@ -141,6 +141,18 @@ fail_source_without_trailer() {
       [ -n "$_f" ] && files+=("$_f")
     done < <(git -c core.quotepath=false diff-tree --no-commit-id --name-only -r "$sha")
     msg="$(git log -1 --format=%B "$sha")"
+    while IFS= read -r trailer; do
+      [ -n "$trailer" ] || continue
+      spec="${trailer#*:}"
+      spec="${spec# }"
+      spec="${spec#	}"
+      [[ "$spec" == *::* ]] && continue
+      path="${spec#./}"
+      if git cat-file -e "${BASE_SHA}:${path}" 2>/dev/null; then
+        echo "red-first: use Test-First: <path>::<exact test name> for each NEW test" >&2
+        return 1
+      fi
+    done < <(printf '%s\n' "$msg" | tr -d '\r' | grep -E '^(Test-First|Regression-For):[[:space:]]+' || true)
     if grep -q '^Test-First:' <<< "$msg"; then
       if ! tf_trailer_is_well_formed "$msg"; then
         echo "red-first: Commit $sha hat einen missgebildeten Test-First-Trailer" >&2
