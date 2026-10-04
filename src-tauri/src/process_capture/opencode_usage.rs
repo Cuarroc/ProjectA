@@ -160,6 +160,28 @@ mod tests {
     }
 
     #[test]
+    fn multi_step_opencode_run_sums_every_step_finish() {
+        let step = |total: i64| {
+            finish(json!({"total":total,"input":total,"output":0,"reasoning":0,
+                "cache":{"write":0,"read":0}}))
+        };
+        let capture = [step(100), json!({"type":"text","part":{}}), step(250)]
+            .iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        let usage = complete_usage(capture.as_bytes(), Some(0));
+        assert_eq!(usage.tokens(), Some(350));
+
+        let bad = [step(100), finish(json!({"total":-1}))]
+            .iter()
+            .map(Value::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(complete_usage(bad.as_bytes(), Some(0)).state(), "rejected");
+    }
+
+    #[test]
     fn opencode_error_run_is_rejected_instead_of_zero() {
         let capture = capture_with_finish(finish(json!({"total":5,"input":1,
             "output":4,"reasoning":0,"cache":{"write":0,"read":0}})));
