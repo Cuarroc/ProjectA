@@ -34,8 +34,9 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
   auf und wirft den PR dort hinaus.
 - **`red-first`** läuft als Schritte im Job `gates (linux)`; der Job
   `red-first` meldet nur deren Ergebnis (Details im Linux-Job).
-- **Bündel:** Die Queue testet ein Bündel zur Zeit (`max_parallel_checks: 1`);
-  warten zwei oder mehr PRs, laufen sie gemeinsam (bis zu vier).
+- **Bündel:** Die Queue testet bis zu zwei Bündel gleichzeitig
+  (`max_parallel_checks: 2`, seit CI-QUEUE-02); warten mehr PRs, laufen sie
+  gemeinsam (bis zu vier je Bündel).
 
 ## Arbeitsweise im Paket
 
