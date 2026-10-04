@@ -11,9 +11,8 @@
 //!
 //! Two operator decisions stay out of a coordinator's reach: admitting a new
 //! autonomous root (its own budget) and assigning the coordinator role (which
-//! would multiply planning authority). Not checked here, and a follow-up of
-//! review pr135: whether the target project, goal or task belongs to the
-//! coordinator's own run.
+//! would multiply planning authority). Every target project, goal or task is
+//! confined to the coordinator run's project before routing.
 //!
 //! Role and authority are read before the write, in a separate transaction,
 //! like on every agent route. A fence that moves in between lets that one
@@ -77,6 +76,27 @@ pub(super) fn handle(
                 ),
             )
         }
+    }
+    let segments = request.segments();
+    let path: Vec<&str> = segments.iter().map(String::as_str).collect();
+    let target = match path.as_slice() {
+        [_, _, _, "plan", "import"] | [_, _, _, "goals"] => parse_body(&request.body)
+            .and_then(|body| required_str(&body, "projectId"))
+            .map(|project| ("project", project)),
+        [_, _, _, "goals", goal, "tasks"] => Ok(("goal", (*goal).to_string())),
+        [_, _, _, "tasks", task, "assignment"] => Ok(("task", (*task).to_string())),
+        _ => unreachable!("is_planning owns exactly four route shapes"),
+    };
+    let (kind, target) = match target {
+        Ok(target) => target,
+        Err(error) => return Response::error(400, error),
+    };
+    if inner
+        .backend
+        .agent_planning_scope(run, owner, fence, kind, &target)
+        .is_err()
+    {
+        return Response::error(403, "planning target is outside the run project");
     }
     if admits_new_root(request) {
         return Response::error(
