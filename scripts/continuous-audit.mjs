@@ -37,10 +37,11 @@ export async function buildReport(root = process.cwd()) {
       benchmarkAccepted: false,
       continuousExecutionEnabled: false,
       stablePromotionAuthorized: false,
+      // Written only by the user in .pa/release_attestation_v1.5.0.json (E20).
+      appReleaseAttested: false,
     },
   });
   return {
-    schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     command: 'dev:continuous-audit',
     ...readiness,
@@ -57,7 +58,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const report = await buildReport();
   console.log(JSON.stringify(report, null, options.json ? 2 : 0));
-  return report.continuousEligible && report.releaseEligible ? 0 : 1;
+  return report.continuousEligible && report.continuousReleaseEligible ? 0 : 1;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
