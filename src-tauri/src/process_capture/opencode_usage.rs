@@ -39,7 +39,10 @@ pub fn complete_usage(stdout: &[u8], exit_code: Option<i32>) -> OpenCodeUsage {
         };
     }
 
-    let mut finish = None;
+    const BAD_COUNT: &str = "usage count is missing, negative or not an integer";
+    // Every step_finish carries the usage of one model call, so a run with
+    // tool use has several; the run total is their sum.
+    let mut sum: Option<i64> = None;
     for line in stdout
         .split(|byte| *byte == b'\n')
         .filter(|line| !line.is_empty())
@@ -52,41 +55,41 @@ pub fn complete_usage(stdout: &[u8], exit_code: Option<i32>) -> OpenCodeUsage {
                 };
             }
         };
-        if event.get("type").and_then(serde_json::Value::as_str) == Some("step_finish") {
-            finish = Some(event);
+        if event.get("type").and_then(serde_json::Value::as_str) != Some("step_finish") {
+            continue;
         }
+        let Some(tokens) = event.pointer("/part/tokens") else {
+            return OpenCodeUsage::Rejected {
+                reason: "final step is missing token usage",
+            };
+        };
+        let fields = [
+            tokens.get("total"),
+            tokens.get("input"),
+            tokens.get("output"),
+            tokens.get("reasoning"),
+            tokens.pointer("/cache/write"),
+            tokens.pointer("/cache/read"),
+        ];
+        if fields.iter().any(|value| {
+            value
+                .and_then(serde_json::Value::as_i64)
+                .is_none_or(|count| count < 0)
+        }) {
+            return OpenCodeUsage::Rejected { reason: BAD_COUNT };
+        }
+        let step_total = fields[0].and_then(serde_json::Value::as_i64).unwrap_or(0);
+        let Some(next) = sum.unwrap_or(0).checked_add(step_total) else {
+            return OpenCodeUsage::Rejected { reason: BAD_COUNT };
+        };
+        sum = Some(next);
     }
 
-    let Some(tokens) = finish
-        .as_ref()
-        .and_then(|event| event.pointer("/part/tokens"))
-    else {
+    let Some(total) = sum else {
         return OpenCodeUsage::Rejected {
             reason: "final step is missing token usage",
         };
     };
-    let fields = [
-        tokens.get("total"),
-        tokens.get("input"),
-        tokens.get("output"),
-        tokens.get("reasoning"),
-        tokens.pointer("/cache/write"),
-        tokens.pointer("/cache/read"),
-    ];
-    let Some(total) = fields[0].and_then(serde_json::Value::as_i64) else {
-        return OpenCodeUsage::Rejected {
-            reason: "usage count is missing, negative or not an integer",
-        };
-    };
-    if fields.iter().any(|value| {
-        value
-            .and_then(serde_json::Value::as_i64)
-            .is_none_or(|count| count < 0)
-    }) {
-        return OpenCodeUsage::Rejected {
-            reason: "usage count is missing, negative or not an integer",
-        };
-    }
 
     OpenCodeUsage::Measured { tokens: total }
 }
