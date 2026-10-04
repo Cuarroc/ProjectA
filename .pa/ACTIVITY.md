@@ -40,6 +40,9 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 ## 2026-10-04 20:36 — Codex reviewB (claude/w3-02d-installer-adapter, srv-w3-02d-installer-adapter)
 - Zusammenfassung: PR #348 reviewed at eb68a36: local prepush and PR checks exit 0; high finding on NSIS updater/UAC launch contract and medium held-image architecture drift remain open; PR report updated; not queued.
 - Commits: keine
+## 2026-10-04 19:37 — Codex GPT-5 (codex/m4-r7-01-dispatch-once, srv-m4-r7-01-dispatch-once)
+- Zusammenfassung: M4-R7-01 completed: one-shot scheduler core, red-first success proof, full prepush green, draft PR #340; Tier A reviews and M4-R7-02 remain with the coordinator.
+- Commits: 35caaee,d9e0b85
 ## 2026-10-04 19:30 — codex (codex/changelog-150-draft-r, srv-changelog-150-draft)
 - Zusammenfassung: CHANGELOG-150: v1.5.0-beta draft added in 100 lines; full prepush green; draft PR #338 opened; Windows merge-queue lane and R-1 refresh remain.
 - Commits: 13d5357

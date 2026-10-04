@@ -184,6 +184,11 @@ impl PreparedRoute {
         &self.profile
     }
 
+    pub fn estimated_task_tokens(&self) -> Result<i64, String> {
+        i64::try_from(self.candidate.estimated_task_tokens.unwrap_or_default())
+            .map_err(|_| "development route token estimate is too large".into())
+    }
+
     pub fn transport(&self) -> Transport {
         self.transport
     }
