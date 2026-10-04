@@ -36,3 +36,8 @@ Append-only: neue Einträge am Ende. Regeln: AGENTS.md.
 - Zusammenfassung: Merged origin/main at 2671a1e without conflict hunks; committed generated HQ snapshot 5937c6e; prepush green twice; pushed and verified remote; PR #321 report updated and @Mergifyio queue requested.
 - Commits: keine
 - Uncommitted: keine
+
+## 2026-10-04 19:42 — Codex GPT-5 (codex/state-7-error-contract, srv-state-7-error-contract)
+- Zusammenfassung: STATE-7 completed: red-first tests, visible frontend error contract, prepush exit 0, pushed SHA 63effdd, draft PR #342; tier B review and Windows queue lane pending.
+- Commits: keine
+- Uncommitted: keine
