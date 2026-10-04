@@ -5,7 +5,8 @@
 # GitHub and Mergify compute mergeability without our local merge driver, so
 # every branch that commits one of these files re-conflicts with every other
 # one the moment the first lands. Only main and a dedicated snapshot branch
-# (`<vendor>/hq-snapshot...`, made by the coordinator) may commit them.
+# (`<vendor>/hq-snapshot...`, made by the coordinator) may commit them. Queue
+# branches may carry such a commit while Mergify validates it before merging.
 
 HS_FILES=(docs/dev-hq/data.js docs/dev-hq/data.json .pa/ACTIVITY.md)
 
@@ -25,7 +26,7 @@ hs_branch() { # [root]
 
 hs_may_touch() { # branch
   case "$1" in
-    main | master | gh-readonly-queue/* | hq-snapshot* | */hq-snapshot*) return 0 ;;
+    main | master | gh-readonly-queue/* | mergify/merge-queue/* | hq-snapshot* | */hq-snapshot*) return 0 ;;
   esac
   return 1
 }
