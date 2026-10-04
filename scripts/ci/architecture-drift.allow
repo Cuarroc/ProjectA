@@ -20,6 +20,7 @@ API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::s
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(scout::triage_repos(&self.store,&agents,project_id,urls,None,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_checkpoint_at(run,owner,fence,revision))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_evidence(run,owner,fence,id))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_planning_scope(run,owner,fence,kind,target),)
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_record_page(run,owner,fence,collection,cursor),)
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_run_context(run,owner,fence))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.assign_continuous_task(task_id,request))
