@@ -4815,6 +4815,48 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    #[test]
+    fn an_oversized_verdict_token_file_has_a_named_error() {
+        let dir = std::env::temp_dir().join(format!(
+            "pa-verdict-token-large-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("token");
+        write_private(&path, &"x".repeat(4097));
+
+        let err = read_token_file(path.to_str().expect("utf-8 path")).expect_err("too large");
+        assert!(err.contains("exceeds the 4096-byte limit"), "{err}");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_normal_verdict_token_file_trims_its_trailing_newline() {
+        let dir = std::env::temp_dir().join(format!(
+            "pa-verdict-token-normal-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("token");
+        write_private(&path, "0123456789abcdef0123456789abcdef\n");
+
+        assert_eq!(
+            read_token_file(path.to_str().expect("utf-8 path")).expect("read"),
+            "0123456789abcdef0123456789abcdef"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// The other half of what F-SEC-5 asks for: the token read from a source
     /// outside argv really does reach the request as the header, and it is
     /// nowhere in this process's own command line.
