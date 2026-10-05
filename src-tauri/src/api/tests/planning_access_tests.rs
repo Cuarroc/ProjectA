@@ -471,3 +471,132 @@ fn store_resolved_roles_decide_planning_access() {
     );
     assert_eq!(backend.planned.lock().unwrap().len(), 2);
 }
+
+/// M4-R19-08: a foreign-project write is refused with one refusal envelope
+/// for the run's project and nothing is planned; an own-project write
+/// answers with one success envelope that names the route as `sourceRef`.
+#[test]
+fn planning_refusal_and_write_each_append_one_scoped_envelope() {
+    let dir = TempDir::new("planning-audit");
+    let db = dir.path().join("projecta.db");
+    let (store, pool, run, project_id) = tauri::async_runtime::block_on(async {
+        let store = crate::store::Store::open(&db).await.unwrap();
+        let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display()))
+            .await
+            .unwrap();
+        let project = store
+            .create_project("plan", &dir.path().join("plan").to_string_lossy())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO continuous_projects VALUES(?, 'enabled', 1)")
+            .bind(&project.id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        for (goal, project) in [("goal", project.id.as_str()), ("foreign", "other")] {
+            sqlx::query("INSERT INTO continuous_goals(id,project_id,root_goal_id,objective,status,deadline_at,admitted,created_at,updated_at) VALUES(?1,?2,?1,'goal','open',9999999999,1,1,1)")
+                .bind(goal).bind(project).execute(&pool).await.unwrap();
+        }
+        sqlx::query("INSERT INTO continuous_root_policies VALUES('goal',?,'test',1)")
+            .bind(
+                serde_json::to_string(&crate::development_policy::DevelopmentPolicy::defaults())
+                    .unwrap(),
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator','goal','c','[]','[]','running','coordinator',1,1,1)")
+            .execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+            .execute(&pool).await.unwrap();
+        let run = store
+            .record_development_run_intent("coordinator", "coordinator", 1)
+            .await
+            .unwrap()
+            .id;
+        (store, pool, run, project.id)
+    });
+    let backend = Arc::new(FakeBackend {
+        native_store: Some(store),
+        ..Default::default()
+    });
+    let server = boot(
+        Arc::clone(&backend) as Arc<dyn ControlBackend>,
+        dir.path(),
+        false,
+    )
+    .expect("start api");
+    let descriptor = server
+        .issue_run_descriptor(&run, "coordinator", 1, 60)
+        .expect("scoped credential");
+    let task = r#"{"objective":"step","ownedPaths":[],"dependencies":[]}"#;
+    let rows = || -> Vec<(String, Value)> {
+        tauri::async_runtime::block_on(async {
+            sqlx::query_as::<_, (String, String)>(
+                "SELECT action, detail_json FROM audit_log ORDER BY id",
+            )
+            .fetch_all(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|(action, detail)| (action, serde_json::from_str(&detail).unwrap()))
+            .collect()
+        })
+    };
+    let (status, _) = call(
+        descriptor.port,
+        "POST",
+        "/api/hq/v1/goals/foreign/tasks",
+        Some(&descriptor.token),
+        task,
+    );
+    assert_eq!(status, 403);
+    assert!(backend.planned.lock().unwrap().is_empty());
+    let refused = rows();
+    assert_eq!(refused.len(), 1, "{refused:?}");
+    assert_eq!(refused[0].0, "planning");
+    assert_eq!(refused[0].1["project"], project_id.as_str());
+    assert_eq!(refused[0].1["run"], run.as_str());
+    assert_eq!(
+        refused[0].1["sourceRef"],
+        "POST /api/hq/v1/goals/foreign/tasks"
+    );
+    assert!(refused[0].1["result"]
+        .as_str()
+        .unwrap()
+        .starts_with("refused"));
+    let (status, _) = call(
+        descriptor.port,
+        "POST",
+        "/api/hq/v1/goals/goal/tasks",
+        Some(&descriptor.token),
+        task,
+    );
+    assert_eq!(status, 200);
+    let all = rows();
+    assert_eq!(all.len(), 2, "{all:?}");
+    assert_eq!(all[1].1["project"], project_id.as_str());
+    assert_eq!(all[1].1["result"], "accepted");
+    assert_eq!(all[1].1["sourceRef"], "POST /api/hq/v1/goals/goal/tasks");
+}
+
+/// M4-R19-08: a role refusal is audited too, and an operator-token write is
+/// not a run credential, so it appends nothing.
+#[test]
+fn role_refusal_is_audited_and_operator_planning_is_not() {
+    let (fx, descriptor) = role_fixture("planning-audit-role", Some(Ok(DispatchRole::Reviewer)));
+    let (path, body, _) = PLANNING[1];
+    let (status, _) = call(descriptor.port, "POST", path, Some(&descriptor.token), body);
+    assert_eq!(status, 403);
+    let audited = fx.backend.audited.lock().unwrap().clone();
+    assert_eq!(audited.len(), 1, "{audited:?}");
+    assert_eq!(audited[0].0, "run-a");
+    assert!(
+        audited[0].1.contains("dispatches as reviewer"),
+        "{audited:?}"
+    );
+    assert_eq!(audited[0].2, format!("POST {path}"));
+    let (status, _) = call(fx.server.port(), "POST", path, Some(&fx.token()), body);
+    assert_eq!(status, 200);
+    assert_eq!(fx.backend.audited.lock().unwrap().len(), 1);
+}
