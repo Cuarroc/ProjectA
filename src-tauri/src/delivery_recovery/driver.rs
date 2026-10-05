@@ -88,8 +88,17 @@ impl<E: RecoveryEffects> RecoveryDriver<E> {
                 if self.journal.journal().phase() == UpdatePhase::Installing {
                     self.journal.begin_validation()?;
                 }
+                // A rejected handshake (e.g. the old binary after a failed
+                // install) is a health failure: left in `Validating`, every
+                // restart would fail the same way.
                 match self.effects.validate(candidate, nonce) {
-                    Ok(handshake) => self.journal.accept_handshake(&handshake)?,
+                    Ok(handshake) => match self.journal.accept_handshake(&handshake) {
+                        Err(
+                            rejected @ (RecoveryError::IdentityMismatch(_)
+                            | RecoveryError::InvalidFact(_)),
+                        ) => self.journal.record_health_failure(rejected.to_string())?,
+                        accepted => accepted?,
+                    },
                     Err(reason) => self.journal.record_health_failure(reason)?,
                 }
             }
@@ -133,6 +142,8 @@ mod tests {
         journal: Option<JournalStore>,
         phase_seen_by_install: Option<UpdatePhase>,
         validation_fails: bool,
+        /// The running binary is not the candidate (e.g. a failed install).
+        wrong_version: bool,
     }
 
     impl RecoveryEffects for Fake {
@@ -160,6 +171,10 @@ mod tests {
             self.calls.push("validate");
             if self.validation_fails {
                 Err("candidate unhealthy".into())
+            } else if self.wrong_version {
+                let mut old = handshake();
+                old.binary.version = "1.3.0".into();
+                Ok(old)
             } else {
                 Ok(handshake())
             }
@@ -241,6 +256,23 @@ mod tests {
         let mut restart = RecoveryDriver::new(reopened, Fake::default());
         restart.step().unwrap();
         assert_eq!(restart.effects.calls, vec!["restore"]);
+    }
+
+    /// P3-1: a handshake the journal rejects is a health failure, not a
+    /// driver error that leaves the journal in `Validating` forever.
+    #[test]
+    fn rejected_handshake_is_recorded_as_health_failure() {
+        let dir = TempDir::new("driver-rejected-handshake");
+        let mut driver = driver_at_backup_verified(&dir);
+        driver.effects.wrong_version = true;
+        driver.step().unwrap(); // install
+        driver.step().unwrap(); // validate -> rejected handshake persisted
+        let reopened = DurableJournal::open(store(&dir)).unwrap();
+        assert_eq!(reopened.journal().phase(), UpdatePhase::RecoveryNeeded);
+        assert!(matches!(
+            reopened.next_action(),
+            RecoveryAction::RestorePreviousRuntime { .. }
+        ));
     }
 
     #[test]
