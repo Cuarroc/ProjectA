@@ -2248,6 +2248,133 @@ a {
   font-size: var(--text-md);
 }
 
+/* ---- board placeholder: loading, empty, failed ------------------------
+   One frame for all three (the real column heads), so cards arriving only
+   fill the bodies. The frame clips instead of scrolling: it is decoration. */
+.board-placeholder {
+  position: relative;
+}
+
+.board-placeholder .board-columns {
+  overflow: hidden;
+}
+
+.board-placeholder-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-separator);
+  border-top-color: var(--color-accent-text);
+  border-radius: var(--radius-round);
+  animation: bootstrap-spin 0.9s linear infinite;
+}
+
+.board-skeleton {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  animation: board-skeleton-pulse 1.6s ease-in-out infinite alternate;
+}
+
+.board-skeleton-bar {
+  height: 8px;
+  border-radius: var(--radius-selection);
+  background: var(--color-pressed);
+}
+
+.board-skeleton-bar-short {
+  width: 55%;
+}
+
+@keyframes board-skeleton-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-placeholder-spinner,
+  .board-skeleton {
+    animation: none;
+  }
+}
+
+/* The card floats over the frame; the layer lets clicks through to nothing
+   but the card itself. */
+.board-placeholder-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8);
+  pointer-events: none;
+}
+
+.board-placeholder-card {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+  width: min(100%, 380px);
+  padding: var(--space-8);
+  text-align: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-window);
+  box-shadow: var(--shadow-card);
+  pointer-events: auto;
+}
+
+/* Loading is the same card, shrunk to a line: spinner and words. */
+.board-placeholder-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: auto;
+  padding: var(--space-5) var(--space-7);
+  font-size: var(--text-md);
+  color: var(--fg-muted);
+}
+
+.board-placeholder-card h2,
+.board-placeholder-card p {
+  margin: 0;
+}
+
+.board-placeholder-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.board-placeholder-text {
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+/* A failure is read, not glanced at: left-aligned, the × beside the lead-in. */
+.board-placeholder-error {
+  justify-items: stretch;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.board-placeholder-error .state-mark {
+  display: inline-block;
+  margin-right: var(--space-3);
+  vertical-align: -2px;
+}
+
+.board-placeholder-error .error-note-raw {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
 /* ---- coordinator banner (Phase 11) ------------------------------------ */
 
 /* A strip above the columns, never beside them: the flex column that holds

@@ -312,34 +312,9 @@ export default function BoardView({
     );
   }
 
-  if (error !== null && cards.length === 0) {
-    return (
-      <div className="empty-state">
-        <p className="board-error">{error}</p>
-        <p className="empty-hint">Es wird alle paar Sekunden neu versucht.</p>
-      </div>
-    );
-  }
-
-  if (loading && cards.length === 0) {
-    return (
-      <div className="empty-state">
-        <p>Board wird geladen …</p>
-      </div>
-    );
-  }
-
   if (cards.length === 0) {
-    return (
-      <div className="empty-state">
-        <p>In diesem Projekt gibt es noch keine Worker.</p>
-        <div className="empty-actions">
-          <button type="button" className="empty-action" onClick={onNew}>
-            Neuer Worker
-          </button>
-        </div>
-      </div>
-    );
+    const kind = error !== null ? "error" : loading ? "loading" : "empty";
+    return <BoardPlaceholder kind={kind} error={error} onNew={onNew} />;
   }
 
   return (
@@ -671,6 +646,92 @@ export default function BoardView({
           onClose={closeMergeDialog}
         />
       )}
+    </div>
+  );
+}
+
+/** Skeleton cards per column while loading; about what a busy board looks like. */
+const SKELETON_CARDS: Record<BoardColumn, number> = {
+  working: 2,
+  needs_you: 1,
+  in_review: 1,
+  ready_to_merge: 1,
+  done: 2,
+};
+
+/**
+ * The board without cards: loading, empty and failed share one frame, the five
+ * real column heads, so nothing moves when cards arrive — only the column
+ * bodies fill. What needs saying sits in a card on top of the frame. The heads
+ * are decoration; their count reads `–` while it is unknown (loading, failed)
+ * and `0` only when the core really said so.
+ */
+function BoardPlaceholder({
+  kind,
+  error,
+  onNew,
+}: {
+  kind: "loading" | "empty" | "error";
+  error: string | null;
+  onNew: () => void;
+}) {
+  return (
+    <div className="board board-placeholder" aria-busy={kind === "loading"}>
+      <div className="board-columns">
+        {BOARD_COLUMNS.map((column) => (
+          <section key={column} className={`board-column board-column-${column}`}>
+            <header className="board-column-head" aria-hidden="true">
+              <span className="board-column-title">{COLUMN_LABELS[column]}</span>
+              <span className="board-column-count">{kind === "empty" ? 0 : "–"}</span>
+            </header>
+            <div className="board-column-body">
+              {kind === "loading"
+                ? Array.from({ length: SKELETON_CARDS[column] }, (_, slot) => (
+                    <div key={slot} className="board-skeleton" aria-hidden="true">
+                      <span className="board-skeleton-bar" />
+                      <span className="board-skeleton-bar board-skeleton-bar-short" />
+                    </div>
+                  ))
+                : null}
+            </div>
+          </section>
+        ))}
+      </div>
+      <div className="board-placeholder-layer">
+        {kind === "loading" ? (
+          <p className="board-placeholder-card board-placeholder-status" role="status">
+            <span className="board-placeholder-spinner" aria-hidden="true" />
+            Board wird geladen …
+          </p>
+        ) : kind === "empty" ? (
+          <div className="board-placeholder-card">
+            <h2 className="board-placeholder-title">Noch keine Worker in diesem Projekt</h2>
+            <p className="board-placeholder-text">
+              Das Board zeigt, woran deine Worker arbeiten und wann sie dich brauchen.
+            </p>
+            <button type="button" className="empty-action" onClick={onNew}>
+              Neuer Worker
+            </button>
+          </div>
+        ) : (
+          // Same wording shape as `ErrorNote`. The board retries on its own
+          // (`useBoard` polls), so the advice is to wait, not to press.
+          <div className="board-placeholder-card board-placeholder-error error-note" role="alert">
+            <p>
+              <span className="state-danger state-mark" aria-hidden="true" />
+              <strong>Was ist passiert?</strong> Das Board konnte nicht geladen werden.
+            </p>
+            <p>
+              <strong>Was du tun kannst:</strong> Warte einen Moment — ProjectA versucht es alle
+              paar Sekunden von selbst neu. Bleibt es so, starte ProjectA neu.
+            </p>
+            <details>
+              <summary>Originaltext anzeigen</summary>
+              <pre className="error-note-raw">{error}</pre>
+            </details>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

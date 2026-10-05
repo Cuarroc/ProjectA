@@ -114,6 +114,57 @@ describe("BoardView", () => {
   });
 });
 
+describe("BoardView placeholder states", () => {
+  const columnTitles = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll(".board-column-title"), (node) => node.textContent);
+
+  it("loading keeps the board frame and announces itself as busy", () => {
+    const { container } = render(<BoardView {...props} cards={[]} loading />);
+    expect(container.querySelector(".board")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Board wird geladen");
+    expect(container.querySelectorAll(".board-column")).toHaveLength(5);
+    expect(container.querySelectorAll(".board-skeleton").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("empty explains the board in one sentence and offers the one action", () => {
+    const onNew = vi.fn();
+    const { container } = render(<BoardView {...props} cards={[]} onNew={onNew} />);
+    expect(screen.getByText(/Das Board zeigt, woran deine Worker arbeiten/)).toBeInTheDocument();
+    expect(container.querySelector(".board")).toHaveAttribute("aria-busy", "false");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Neuer Worker" }));
+    expect(onNew).toHaveBeenCalledTimes(1);
+  });
+
+  it("failed says what happened and what to do with the raw text one click away", () => {
+    render(<BoardView {...props} cards={[]} error="database is locked" />);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Was ist passiert?");
+    expect(alert).toHaveTextContent("Was du tun kannst:");
+    expect(alert).toHaveTextContent("alle paar Sekunden");
+    expect(alert.querySelector("details pre")).toHaveTextContent("database is locked");
+    expect(screen.queryByRole("button", { name: "Neuer Worker" })).not.toBeInTheDocument();
+  });
+
+  it("all three states draw the same five column heads as the loaded board", () => {
+    const loaded = columnTitles(render(<BoardView {...props} />).container);
+    expect(loaded).toHaveLength(5);
+    for (const extra of [{ loading: true }, {}, { error: "boom" }]) {
+      const { container, unmount } = render(<BoardView {...props} cards={[]} {...extra} />);
+      expect(columnTitles(container)).toEqual(loaded);
+      unmount();
+    }
+  });
+
+  it("a silent refresh or a stale error never replaces cards that are there", () => {
+    render(<BoardView {...props} loading error="boom" />);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("Finished task")).toBeInTheDocument();
+  });
+});
+
 describe("BoardView accessibility (ui-ux-pro-max audit)", () => {
   it("APP-4: the column menu trigger has a name a screen reader can say", () => {
     const active: BoardCard = { ...card, column: "working", worker: { ...worker, status: "running" } };
