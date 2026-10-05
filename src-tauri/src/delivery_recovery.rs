@@ -920,7 +920,7 @@ mod restore;
 mod staging;
 mod startup;
 
-pub use install::{install_through_journal, require_install_evidence};
+pub use install::{install_through_journal, installer_not_started, produce_journal, Announced};
 pub use startup::recover_at_startup;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
