@@ -13,15 +13,13 @@ set -uo pipefail
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 1
 
-# Known findings on main today. Not silent: every code is justified here and
-# the real fixes are follow-ups (see the CI-HARDEN-03 PR text).
+# Global exclusions: only classes that are idiomatic or noisy everywhere. Anything
+# narrower (SC2154 and friends, CI-SHELLCHECK-SCOPE) is an inline
+# `# shellcheck disable=SCxxxx` with a reason at the exact line.
 #   SC1007  `CDPATH= cd` is the idiom that resets CDPATH; shellcheck misreads it
 #   SC1090  dynamic `source` (a `# shellcheck source=` hint exists where it works)
 #   SC2034  unused variables: read-loop fields, sourced-library arrays, test tables
-#   SC2221/SC2222  overlapping case patterns in scripts/lib/test-first.sh
-#   SC2140  quoting in scripts/test-review-local.sh
-#   SC2154  scripts/test-gates.sh references a variable assigned via eval
-SHELLCHECK_EXCLUDE="SC1007,SC1090,SC2034,SC2140,SC2154,SC2221,SC2222"
+SHELLCHECK_EXCLUDE="SC1007,SC1090,SC2034"
 
 check="${1:-}"
 [ $# -gt 0 ] && shift
