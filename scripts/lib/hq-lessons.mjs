@@ -1,7 +1,7 @@
 // Known-error memory for the Dev HQ ("lessons"): what broke, why, and the fix
 // that worked. Agents query it before they start and append after they fix.
 // Side-effect free except for the two file helpers, so node:test can drive it.
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import { createHash } from "node:crypto";
 
@@ -128,8 +128,13 @@ export function writeLessonsFile(path, lessons) {
   const sorted = [...lessons].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || a.id.localeCompare(b.id));
   // Temp file + rename: a crash mid-write never leaves a truncated lessons file.
   const tmp = `${path}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify({ schema: 1, lessons: sorted }, null, 2) + "\n");
-  renameSync(tmp, path);
+  try {
+    writeFileSync(tmp, JSON.stringify({ schema: 1, lessons: sorted }, null, 2) + "\n");
+    renameSync(tmp, path);
+  } catch (error) {
+    rmSync(tmp, { force: true });
+    throw error;
+  }
 }
 
 // --- learning over time ---------------------------------------------------

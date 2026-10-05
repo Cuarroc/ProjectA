@@ -323,10 +323,12 @@ async function lessonsRoute(req, res, url) {
     else if (verb === "worked" || verb === "failed") {
       let feedback;
       try { feedback = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
+      // Read after the asynchronous body boundary so concurrent HTTP feedback
+      // observes the previous synchronous write before applying its outcome.
+      // Only validation errors become 400; I/O errors reach the 5xx catch.
+      const fresh = readLessonsFile(lessonsFile);
       try {
-        // Read after the asynchronous body boundary so concurrent HTTP feedback
-        // observes the previous synchronous write before applying its outcome.
-        next = feedbackLesson(readLessonsFile(lessonsFile), id, verb, undefined, feedback.runId);
+        next = feedbackLesson(fresh, id, verb, undefined, feedback.runId);
       } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
     }
     else {
@@ -334,7 +336,8 @@ async function lessonsRoute(req, res, url) {
       // above is stale once another request wrote while the body streamed in.
       let update;
       try { update = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
-      try { next = refineLesson(readLessonsFile(lessonsFile), id, update); } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
+      const fresh = readLessonsFile(lessonsFile);
+      try { next = refineLesson(fresh, id, update); } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
     }
     writeLessonsFile(lessonsFile, next);
     sendJson(res, 200, { ok: true, lesson: decorate(next.find((l) => l.id === id)) });
@@ -368,13 +371,11 @@ async function lessonsRoute(req, res, url) {
   if (req.method === "POST") {
     let input;
     try { input = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
-    try {
-      const result = addLesson(readLessonsFile(lessonsFile), input);
-      writeLessonsFile(lessonsFile, result.lessons);
-      sendJson(res, 200, { ok: true, merged: result.merged, lesson: decorate(result.lesson) });
-    } catch (error) {
-      sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" });
-    }
+    const fresh = readLessonsFile(lessonsFile);
+    let result;
+    try { result = addLesson(fresh, input); } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
+    writeLessonsFile(lessonsFile, result.lessons);
+    sendJson(res, 200, { ok: true, merged: result.merged, lesson: decorate(result.lesson) });
     return;
   }
   sendJson(res, 405, { error: "method not allowed" });
@@ -596,7 +597,7 @@ const server = createServer((req, res) => {
     return;
   }
   if (req.url.startsWith("/__hq/lessons")) {
-    lessonsRoute(req, res, new URL(req.url, "http://127.0.0.1")).catch((error) => sendJson(res, 500, { error: error.message }));
+    lessonsRoute(req, res, new URL(req.url, "http://127.0.0.1")).catch((error) => sendJson(res, 500, { error: error.message, code: "hq_lessons_io_failed" }));
     return;
   }
   if (req.url === "/__hq/analysis") {
