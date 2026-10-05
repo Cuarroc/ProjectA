@@ -1,7 +1,7 @@
 // scripts/lib/hq-lessons.test.mjs — known-error memory contracts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -158,4 +158,24 @@ test("lessonBrief renders a compact markdown block for prompts", () => {
 
 test("highlightTerms wraps query tokens in <mark> after escaping", () => {
   assert.equal(highlightTerms("gdk-3.0 <was> not found", "gdk not"), "<mark>gdk-3.0</mark> &lt;was&gt; <mark>not</mark> found");
+});
+
+test("writeLessonsFile writes sorted JSON through a temp file and leaves no *.tmp behind", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-lessons-atomic-"));
+  try {
+    const file = join(dir, "lessons.json");
+    writeLessonsFile(file, [{ id: "b", createdAt: "2" }, { id: "a", createdAt: "1" }]);
+    assert.deepEqual(readLessonsFile(file).map((l) => l.id), ["a", "b"]);
+    assert.deepEqual(readdirSync(dir), ["lessons.json"]);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("writeLessonsFile removes its temp file when the rename fails", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-lessons-rename-"));
+  try {
+    const file = join(dir, "lessons.json");
+    mkdirSync(file); // renaming a file over a directory fails
+    assert.throws(() => writeLessonsFile(file, [{ id: "a", createdAt: "1" }]));
+    assert.deepEqual(readdirSync(dir).filter((n) => n.endsWith(".tmp")), []);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

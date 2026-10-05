@@ -257,10 +257,12 @@ function slowPost(path, body, headers, port = hqPort) {
   const text = JSON.stringify(body);
   const half = Math.floor(text.length / 2);
   let release;
+  let markStarted;
   const gate = new Promise((resolve) => { release = resolve; });
+  const started = new Promise((resolve) => { markStarted = resolve; });
   const reply = new Promise((resolve, reject) => {
     const req = request(
-      { hostname: "127.0.0.1", port, path, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(text), ...headers } },
+      { hostname: "127.0.0.1", port, path, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(text), expect: "100-continue", ...headers } },
       (res) => {
         const chunks = [];
         res.on("data", (chunk) => chunks.push(chunk));
@@ -268,10 +270,12 @@ function slowPost(path, body, headers, port = hqPort) {
       },
     );
     req.on("error", reject);
-    req.write(text.slice(0, half));
+    // The server answers 100 Continue only after it dispatched the request to
+    // the handler, so this event is the deterministic "handler started" signal.
+    req.on("continue", () => { req.write(text.slice(0, half)); markStarted(); });
     gate.then(() => req.end(text.slice(half)));
   });
-  return { started: new Promise((r) => setTimeout(r, 150)), finish: () => { release(); return reply; } };
+  return { started, finish: () => { release(); return reply; } };
 }
 
 test("a slow lesson add does not overwrite feedback that landed while its body was in flight", async () => {
@@ -296,6 +300,26 @@ test("a slow lesson refine does not overwrite feedback that landed while its bod
   const stored = JSON.parse((await get("/__hq/lessons?q=race%20refine", headers)).body).lessons.find((l) => l.id === base.id);
   assert.equal(stored.worked, 1, "feedback must survive the concurrent refine");
   assert.match(stored.fix, /reread the file after/);
+});
+
+test("lesson feedback answers 5xx instead of hq_lesson_invalid when storage breaks mid-body", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-routes-io-lessons-"));
+  const started = spawnHq(dir);
+  try {
+    const port = await started.port;
+    const file = join(dir, "lessons.json");
+    const headers = { host: `127.0.0.1:${port}`, "x-hq-session": await session(port) };
+    const base = JSON.parse((await post("/__hq/lessons", { symptom: "io failure base lesson symptom", cause: "io mapped to 400", fix: "narrow the try block" }, headers, port)).body).lesson;
+    const slow = slowPost(`/__hq/lessons/${base.id}/worked`, { runId: "io-run" }, headers, port);
+    await slow.started;
+    writeFileSync(file, "{ not json");
+    const reply = await slow.finish();
+    assert.ok(reply.status >= 500, `expected 5xx, got ${reply.status}: ${reply.body}`);
+    assert.equal(JSON.parse(reply.body).code, "hq_lessons_io_failed");
+  } finally {
+    started.child.kill();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("/__hq/lessons learns: feedback changes confidence, refine keeps history, related and brief and match answer", async () => {
