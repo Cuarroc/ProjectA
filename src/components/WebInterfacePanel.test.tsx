@@ -27,45 +27,57 @@ describe("WebInterfacePanel", () => {
   it("C-3 reports an unknown state until the status request answers", () => {
     render(<WebInterfacePanel />);
     expect(screen.queryByText("aus")).not.toBeInTheDocument();
-    expect(screen.getByText(/wird geprüft|unbekannt/i)).toBeInTheDocument();
+    expect(screen.getByText(/prüft/i)).toBeInTheDocument();
   });
 
-  it("shows the stored webPort as the start port", () => {
+  it("keeps the stopped sidebar to one row without hint text or port field", async () => {
+    vi.mocked(getWebInterfaceStatus).mockResolvedValue(null);
+    render(<WebInterfacePanel />);
+
+    await screen.findByText("aus");
+    expect(screen.getByText("Web-Ansicht")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Starten" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Port")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Shows the board|projecta\.db|token/i)).not.toBeInTheDocument();
+  });
+
+  it("starts on the stored web port", async () => {
     localStorage.setItem("projecta.settings.webPort", "9123");
+    vi.mocked(getWebInterfaceStatus).mockResolvedValue(null);
+    vi.mocked(startWebInterface).mockResolvedValue(9123);
     render(<WebInterfacePanel />);
-    expect(screen.getByLabelText("Port")).toHaveValue("9123");
-  });
 
-  it("rejects invalid ports without asking the core to start", () => {
-    render(<WebInterfacePanel />);
-    fireEvent.change(screen.getByLabelText("Port"), { target: { value: "70000" } });
+    await screen.findByText("aus");
     fireEvent.click(screen.getByRole("button", { name: "Starten" }));
-
-    expect(screen.getByText(/zwischen 1 und 65535/)).toBeInTheDocument();
-    expect(startWebInterface).not.toHaveBeenCalled();
+    await waitFor(() => expect(startWebInterface).toHaveBeenCalledWith(9123));
   });
 
-  it("starts on the requested port and opens both browser destinations", async () => {
+  it("starts on 8787 when no port is stored", async () => {
+    vi.mocked(getWebInterfaceStatus).mockResolvedValue(null);
+    vi.mocked(startWebInterface).mockResolvedValue(8787);
+    render(<WebInterfacePanel />);
+
+    await screen.findByText("aus");
+    fireEvent.click(screen.getByRole("button", { name: "Starten" }));
+    await waitFor(() => expect(startWebInterface).toHaveBeenCalledWith(8787));
+  });
+
+  it("shows the running chip as the only link and opens /board", async () => {
     vi.mocked(getWebInterfaceStatus).mockResolvedValue(null);
     vi.mocked(startWebInterface).mockResolvedValue(9010);
     vi.mocked(openExternal).mockResolvedValue(undefined);
     render(<WebInterfacePanel />);
 
     await screen.findByText("aus");
-    fireEvent.change(screen.getByLabelText("Port"), { target: { value: "9000" } });
     fireEvent.click(screen.getByRole("button", { name: "Starten" }));
 
-    await screen.findByText("http://localhost:9010");
-    expect(startWebInterface).toHaveBeenCalledWith(9000);
-    fireEvent.click(screen.getByRole("button", { name: "http://localhost:9010" }));
-    fireEvent.click(screen.getByRole("button", { name: "/board" }));
-    await waitFor(() => {
-      expect(openExternal).toHaveBeenNthCalledWith(1, "http://localhost:9010");
-      expect(openExternal).toHaveBeenNthCalledWith(2, "http://localhost:9010/board");
-    });
+    const chip = await screen.findByRole("button", { name: /läuft · 9010/ });
+    expect(screen.queryByRole("button", { name: "/board" })).not.toBeInTheDocument();
+    fireEvent.click(chip);
+    await waitFor(() => expect(openExternal).toHaveBeenCalledWith("http://localhost:9010/board"));
   });
 
-  it("stops a running interface and returns to the setup hint", async () => {
+  it("stops a running interface and returns to the stopped state", async () => {
     vi.mocked(getWebInterfaceStatus).mockResolvedValue(9123);
     vi.mocked(stopWebInterface).mockResolvedValue(undefined);
     render(<WebInterfacePanel />);
@@ -73,7 +85,7 @@ describe("WebInterfacePanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Stoppen" }));
     await waitFor(() => expect(stopWebInterface).toHaveBeenCalledOnce());
     expect(await screen.findByRole("button", { name: "Starten" })).toBeInTheDocument();
-    expect(screen.getByText(/Shows the board and learnings/)).toBeInTheDocument();
+    expect(screen.getByText("aus")).toBeInTheDocument();
   });
 
   it("refreshes a status changed by another writer when the document becomes visible", async () => {
@@ -81,6 +93,6 @@ describe("WebInterfacePanel", () => {
     render(<WebInterfacePanel />);
     await screen.findByText("aus");
     fireEvent(document, new Event("visibilitychange"));
-    expect(await screen.findByText("http://localhost:9123")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /läuft · 9123/ })).toBeInTheDocument();
   });
 });

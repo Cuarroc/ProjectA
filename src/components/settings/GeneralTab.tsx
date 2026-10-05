@@ -195,7 +195,7 @@ export default function GeneralTab({
       </div>
       <div className="settings-field">
         <label className="field-label" htmlFor="settings-web-port">
-          Default Port Web-Interface
+          Standard-Port Web-Ansicht
         </label>
         <div className="settings-port-row">
           <input
@@ -211,6 +211,20 @@ export default function GeneralTab({
           </button>
         </div>
         {portError ? <span className="settings-error">{portError}</span> : null}
+        <details className="settings-details">
+          <summary>Vom Handy aus öffnen</summary>
+          <p className="settings-hint">
+            Standardmäßig ist die Web-Ansicht nur auf diesem Rechner erreichbar.
+            Für das Handy im selben WLAN: Web-Ansicht stoppen, in der
+            Datenbank <code>projecta.db</code> (Tabelle <code>settings</code>)
+            <code> web_interface.bind</code> auf <code>0.0.0.0</code> und{" "}
+            <code>web_interface.token</code> auf ein selbst gewähltes Passwort
+            setzen, dann neu starten und auf dem Handy{" "}
+            <code>http://RECHNER-IP:PORT/board?token=PASSWORT</code> öffnen. Das
+            Passwort steht in der Adresse: eine Hürde im Heimnetz, kein echter
+            Schutz.
+          </p>
+        </details>
       </div>
 
       <label className="settings-check">
