@@ -9,7 +9,7 @@ ProjectA-App, PowerShell 7, Node 24, `pa` im PATH und dieses Repository.
 2. **Mehrere Worker starten** (mindestens drei) und warten, bis sie arbeiten.
    Die App muss offen bleiben.
 3. **Skript starten.** PowerShell 7 im Repository-Ordner:
-   `pwsh scripts/drills/estop-drill.ps1 -AppVersion 1.4.1 -OutDir C:\Belege\estop-drill`
+   `pwsh scripts/drills/estop-drill.ps1 -AppVersion 1.5.0 -OutDir C:\Belege\estop-drill`
    (ohne `-OutDir` entsteht ein neuer Ordner mit Zeitstempel). Der Zielordner
    muss neu oder leer sein. Erwartet: Zeile `>>> Jetzt Not-Aus ausloesen`.
 4. **Not-Aus auslösen** (du hast 2 Minuten), auf einem von zwei Wegen:

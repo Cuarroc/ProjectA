@@ -9,6 +9,12 @@ Das Skript liest nur (über `pa`); es startet nichts und verändert keine Datenb
 Voraussetzung: installiertes ProjectA läuft, du bist beim Anbieter angemeldet,
 PowerShell 7, Node 24, `pa` im PATH und dieses Repository sind da.
 
+**Einschränkung in v1.5.0 (beobachtet am 05.10.2026):** `pa hq runs --project <ID>`
+liefert `"runs":[]` mit `"executionEnabled":false`, auch nachdem vier Worker
+gelaufen sind. Einfache Worker legen keine HQ-Läufe an. Darum kann dieser Drill
+in v1.5.0 nicht bestehen; die Zeilen 11 und 12 bleiben „nicht abgedeckt", bis
+die Ausführung eingeschaltet ist.
+
 1. **Version notieren.** In ProjectA „Info" öffnen; Versionsnummer merken
    (kommt als `-AppVersion` in Schritt 6).
 2. **Vorher-Stand speichern.** In PowerShell 7 im Repository-Ordner:
@@ -23,7 +29,7 @@ PowerShell 7, Node 24, `pa` im PATH und dieses Repository sind da.
    `snapshot.txt` und lösche vorher E-Mail-Adressen und Kontonamen. Notiere die
    Uhrzeit der Ansicht.
 5. **Nachher-Stand und Beleg erzeugen:**
-   `pwsh scripts/drills/provider-drill.ps1 -Phase After -Adapter claude -ProjectId <ID> -AppVersion 1.4.1 -SnapshotFile snapshot.txt -SnapshotSource "Claude Usage-Seite" -SnapshotObservedAt "2026-10-05 10:30" -OutDir C:\Belege\provider-claude`
+   `pwsh scripts/drills/provider-drill.ps1 -Phase After -Adapter claude -ProjectId <ID> -AppVersion 1.5.0 -SnapshotFile snapshot.txt -SnapshotSource "Claude Usage-Seite" -SnapshotObservedAt "2026-10-05 10:30" -OutDir C:\Belege\provider-claude`
    (`-OutDir` weglassen: neuer Ordner mit Zeitstempel im aktuellen Ordner; der Zielordner muss neu oder leer sein.)
 6. **Ausgabe lesen.** Erwartet: drei Zeilen mit `OK` und `Ergebnis: pass`.
    Bei `FEHLER` den Ordner behalten und melden. `pass` mit „usage not_reported"

@@ -15,7 +15,7 @@ Voraussetzung: ProjectA, PowerShell 7, Node 24 und dieses Repository sind da.
 3. **ProjectA schließen** (Fenster zu, auch im Tray beenden). Erwartet: Die Datei
    `projecta-api.json` im App-Ordner ist weg.
 4. **Skript starten.** Öffne PowerShell 7 im Repository-Ordner und tippe:
-   `pwsh scripts/drills/backup-drill.ps1 -AppVersion 1.4.1 -OutDir C:\Belege\backup-drill`
+   `pwsh scripts/drills/backup-drill.ps1 -AppVersion 1.5.0 -OutDir C:\Belege\backup-drill`
    (ohne `-OutDir` entsteht ein neuer Ordner mit Zeitstempel im aktuellen Ordner).
    Jeder Lauf braucht einen neuen oder leeren Zielordner, damit keine alten Dateien in den Beleg geraten.
 5. **Ausgabe lesen.** Erwartet: fünf Zeilen mit `OK` und am Ende `Ergebnis: pass`.
