@@ -44,6 +44,11 @@ pub fn list_pre_migration_backups(db_path: &Path) -> Result<Vec<PathBuf>, String
     Ok(backups)
 }
 
+/// Where the in-app updater snapshots `db_path` before installing.
+pub fn update_backup_path(db_path: &Path) -> PathBuf {
+    db_path.with_extension("update-backup")
+}
+
 /// Replace `dest` with a copy of `backup`. The backup file is not opened and
 /// its bytes must be unchanged afterwards.
 #[allow(dead_code)] // pa uses this via #[path]; the app binary only tests it
@@ -53,23 +58,25 @@ pub fn restore_from_pre_migration_backup(backup: &Path, dest: &Path) -> Result<P
     }
     let source = fs::File::open(backup)
         .map_err(|e| format!("failed to open backup {}: {e}", backup.display()))?;
-    restore_from_reader(backup, dest, source)
+    restore_from_reader(backup, dest, source, false)
 }
 
 /// Restore bytes already verified by the recovery journal adapter. The
-/// identity path is still checked, but it is never reopened as the byte source.
+/// identity path is still checked, but it is never reopened as the byte source;
+/// besides pre-migration backups it may be the updater's [`update_backup_path`].
 pub(crate) fn restore_verified_snapshot_bytes(
     backup: &Path,
     dest: &Path,
     bytes: &[u8],
 ) -> Result<PathBuf, String> {
-    restore_from_reader(backup, dest, bytes)
+    restore_from_reader(backup, dest, bytes, true)
 }
 
 fn restore_from_reader(
     backup: &Path,
     dest: &Path,
     mut source: impl Read,
+    update_backup_too: bool,
 ) -> Result<PathBuf, String> {
     let dest_name = dest
         .file_name()
@@ -84,7 +91,9 @@ fn restore_from_reader(
 
     let prefix = format!("{}.pre-migration-", dest_name.to_string_lossy());
     let bak = bak_name.to_string_lossy();
-    if !(bak.starts_with(&prefix) && bak.ends_with(".bak")) {
+    let update_backup =
+        update_backup_too && update_backup_path(Path::new(dest_name)).as_os_str() == bak_name;
+    if !(bak.starts_with(&prefix) && bak.ends_with(".bak")) && !update_backup {
         return Err(format!(
             "{} is not a pre-migration backup of {}",
             backup.display(),
@@ -228,7 +237,7 @@ mod tests {
             dest: dest.clone(),
             dest_at_drop: seen.clone(),
         };
-        restore_from_reader(&bak, &dest, probe).unwrap();
+        restore_from_reader(&bak, &dest, probe, false).unwrap();
         assert_eq!(fs::read(&dest).unwrap(), b"original");
         assert_eq!(seen.borrow().as_deref(), Some(&b"candidate"[..]));
         let _ = fs::remove_dir_all(dir);
@@ -254,6 +263,18 @@ mod tests {
         let err = restore_from_pre_migration_backup(&bak, &dest).unwrap_err();
         assert!(err.contains("not a pre-migration backup"), "{err}");
         assert_eq!(fs::read(&bak).unwrap(), b"snapshot");
+        assert!(!dest.exists());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn pre_migration_restore_refuses_the_update_backup() {
+        let dir = scratch("update-backup");
+        let dest = dir.join("projecta.db");
+        let bak = update_backup_path(&dest);
+        fs::write(&bak, b"snapshot").unwrap();
+        let err = restore_from_pre_migration_backup(&bak, &dest).unwrap_err();
+        assert!(err.contains("not a pre-migration backup"), "{err}");
         assert!(!dest.exists());
         let _ = fs::remove_dir_all(dir);
     }
