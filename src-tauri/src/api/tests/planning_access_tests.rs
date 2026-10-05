@@ -327,7 +327,7 @@ fn operator_token_planning_is_unchanged() {
 fn store_resolved_roles_decide_planning_access() {
     let dir = TempDir::new("w2-04f-store");
     let db = dir.path().join("projecta.db");
-    let (store, runs, pool) = tauri::async_runtime::block_on(async {
+    let (store, runs, pool, project_id) = tauri::async_runtime::block_on(async {
         let store = crate::store::Store::open(&db).await.unwrap();
         let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display()))
             .await
@@ -381,7 +381,7 @@ fn store_resolved_roles_decide_planning_access() {
             sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES(?1,?2,?3,?1,1,1,1)")
                 .bind(task).bind(team).bind(role).execute(&pool).await.unwrap();
         }
-        (store, runs, pool)
+        (store, runs, pool, project.id)
     });
     let backend = Arc::new(FakeBackend {
         native_store: Some(store),
@@ -394,6 +394,7 @@ fn store_resolved_roles_decide_planning_access() {
     )
     .expect("start api");
     let (_, body, _) = PLANNING[1];
+    let body = body.replace("pj-1", &project_id);
     for (owner, run) in &runs {
         let descriptor = server
             .issue_run_descriptor(run, owner, 1, 60)
@@ -403,7 +404,7 @@ fn store_resolved_roles_decide_planning_access() {
             "POST",
             "/api/hq/v1/goals",
             Some(&descriptor.token),
-            body,
+            &body,
         );
         let error = reply["error"].as_str().unwrap_or_default().to_string();
         match *owner {
@@ -424,7 +425,7 @@ fn store_resolved_roles_decide_planning_access() {
     }
     assert_eq!(
         *backend.planned.lock().unwrap(),
-        vec!["goal:pj-1".to_string()]
+        vec![format!("goal:{project_id}")]
     );
 
     // Review pr135 K4: the role is resolved per request, and authority comes
@@ -442,7 +443,7 @@ fn store_resolved_roles_decide_planning_access() {
             "POST",
             "/api/hq/v1/goals",
             Some(&descriptor.token),
-            body,
+            &body,
         )
     };
     sql("UPDATE continuous_team_assignments SET role='reviewer' WHERE task_id='coordinator'");

@@ -2622,6 +2622,8 @@ pub(crate) mod tests {
     mod delivery_route_tests;
     // M4-E2E-14: checkpoint -> abort -> resume over HTTP, store and a child.
     mod continuous_e2e_tests;
+    // M4-R4-PROOF: project scope of goals, tasks, runs and records, real store.
+    mod project_scope_tests;
 
     /// The five ways a merge can fail, copied verbatim from
     /// `workers::merge_worker` (and from `gh` for the last one). They are here
@@ -2907,9 +2909,14 @@ pub(crate) mod tests {
             run: &str,
             owner: &str,
             fence: i64,
-            _kind: &str,
+            kind: &str,
             target: &str,
         ) -> Result<(), String> {
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(
+                    store.agent_planning_scope(run, owner, fence, kind, target),
+                );
+            }
             self.agent_run_context(run, owner, fence)?;
             if target.contains("foreign") {
                 Err("planning target is outside the run project".into())
@@ -2991,8 +2998,27 @@ pub(crate) mod tests {
             collection: &str,
             cursor: Option<&str>,
         ) -> Result<Value, String> {
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(
+                    store.agent_record_page(run, owner, fence, collection, cursor),
+                );
+            }
             self.agent_run_context(run, owner, fence)?;
             Ok(json!({"runId":run,"collection":collection,"cursor":cursor}))
+        }
+        fn agent_evidence(
+            &self,
+            run: &str,
+            owner: &str,
+            fence: i64,
+            id: &str,
+        ) -> Result<Value, String> {
+            match &self.native_store {
+                Some(store) => {
+                    tauri::async_runtime::block_on(store.agent_evidence(run, owner, fence, id))
+                }
+                None => Err("agent evidence retrieval unavailable".into()),
+            }
         }
         fn agent_run_context(&self, run: &str, owner: &str, fence: i64) -> Result<Value, String> {
             if let Some(store) = &self.native_store {
