@@ -5009,6 +5009,14 @@ mod tests {
             ),
             ("Store", "app.manage(store)"),
             ("PanicNotice", "app.manage(panic_notice)"),
+            (
+                "workers::activation::Activation",
+                ".manage(workers::activation::Activation::default())",
+            ),
+            (
+                "HeldSchedulerPermit",
+                ".manage(HeldSchedulerPermit::default())",
+            ),
         ];
 
         // Scan only the code above this module, and build the marker at
