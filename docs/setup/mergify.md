@@ -56,6 +56,13 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
   Queue. Als Draft öffnen, solange Bericht, Review-Disposition oder der
   `NICHT ABGEDECKT`-Block fehlen; dann `gh pr ready <n>`.
 
+- **Früher Windows-Befund vor `review-ok`.** Berührt der Branch Windows-Code
+  (`#[cfg(windows)]`), eine der vier Nahtstellen, PTY-/Process-Capture-Code oder
+  Windows-Skripte, fährt `bash scripts/ci/win-signal.sh <branch>` (Branch ist
+  gepusht) den `ci`-Workflow per Handstart auf dem Branch, wartet und druckt
+  Run-ID und Ergebnis (Exit 0 nur bei `success`). `--dry-run` zeigt nur die
+  Entscheidung. So fällt ein Windows-Fehler vor der Queue auf, nicht in ihr.
+
 ## Labels
 
 | Label | Wer setzt es | Wirkung |

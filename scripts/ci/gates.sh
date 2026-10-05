@@ -125,6 +125,8 @@ GATES=(
   # such PR conflicts with every other one. The self-test proves it can fail.
   "hotspot-guard|prepush,branchpush,linux|.|bash scripts/ci/hotspot-guard.sh"
   "selftest-hotspot-guard|prepush,linux,release|.|bash scripts/test-hotspot-guard.sh"
+  # WIN-01: the selection logic of the early-Windows-verdict helper.
+  "selftest-win-signal|prepush,linux,release|.|bash scripts/test-win-signal.sh"
   "architecture-drift|precommit,prepush,linux|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
 
   # CI-06: the trailers of the new commits against origin/main, with the very
