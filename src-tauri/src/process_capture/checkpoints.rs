@@ -78,6 +78,11 @@ impl Gate {
         Ok(())
     }
 
+    /// True once every submitted checkpoint was acknowledged and polled.
+    pub fn is_drained(&self) -> bool {
+        self.pending.is_empty()
+    }
+
     pub fn poll(&mut self) -> Result<Option<Stage>, String> {
         if self.failed {
             return Err("checkpoint gate invalidated".into());
