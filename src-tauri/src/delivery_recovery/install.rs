@@ -43,13 +43,15 @@ fn identity(path: &Path, version: &str, sha256: String) -> FileIdentity {
 }
 
 /// Snapshot of the quiesced database; its digest is the journal's database
-/// identity.
+/// identity. Same version as the database, or restore refuses it.
 async fn snapshot_database(store: &Store, target: &Path) -> Fx<FileIdentity> {
     let _ = std::fs::remove_file(target);
     store.snapshot_into(target).await?;
     let bytes = std::fs::read(target).map_err(|e| format!("read backup: {e}"))?;
-    Ok(identity(target, "snapshot", sha_hex(&bytes)))
+    Ok(identity(target, DATABASE_VERSION, sha_hex(&bytes)))
 }
+
+const DATABASE_VERSION: &str = "sqlite";
 
 /// True while no installer can have run, so leaving maintenance is safe.
 pub fn installer_not_started(phase: UpdatePhase) -> bool {
@@ -83,9 +85,13 @@ pub async fn produce_journal(
         }
         std::fs::remove_file(journal_store.path()).map_err(|e| e.to_string())?;
     }
-    let backup_path = announced.database.with_extension("update-backup");
+    let backup_path = crate::db_restore::update_backup_path(announced.database);
     let snapshot = snapshot_database(store, &backup_path).await?;
-    let database = identity(announced.database, "sqlite", snapshot.sha256.clone());
+    let database = identity(
+        announced.database,
+        DATABASE_VERSION,
+        snapshot.sha256.clone(),
+    );
     let exe = std::fs::read(announced.exe).map_err(|e| format!("read installed binary: {e}"))?;
     let signed = sha_hex(announced.bytes);
     let staged = StagedManifestIdentity {
@@ -313,7 +319,7 @@ mod tests {
         };
         let lease = live.try_install_lease().unwrap();
         require_install_evidence(&frozen(), &lease, &reopened, bound).unwrap();
-        assert!(database.with_extension("update-backup").exists());
+        assert!(crate::db_restore::update_backup_path(&database).exists());
         // A leftover pre-install journal is replaced, not a permanent refusal.
         produce_journal(&frozen(), &live, store(&dir), &announced(&exe, &database))
             .await
@@ -366,6 +372,35 @@ mod tests {
             .await
             .unwrap_err();
         assert!(error.contains("Installing"), "{error}");
+    }
+
+    /// The producer against a store on another file, so `database` stays
+    /// closed and replaceable on every OS, as at startup.
+    async fn produced(dir: &TempDir) -> (Store, std::path::PathBuf, DurableJournal) {
+        let live = Store::open(&dir.path().join("live.db")).await.unwrap();
+        live.enter_maintenance().await.unwrap();
+        let (exe, database) = (dir.path().join("app"), dir.path().join("projecta.db"));
+        std::fs::write(&exe, b"binary").unwrap();
+        std::fs::write(&database, b"candidate-db").unwrap();
+        let journal = produce_journal(&frozen(), &live, store(dir), &announced(&exe, &database))
+            .await
+            .unwrap();
+        (live, database, journal)
+    }
+
+    #[tokio::test]
+    async fn produced_update_backup_restores_the_previous_database() {
+        let dir = TempDir::new("install-producer-restore");
+        let (_live, database, mut journal) = produced(&dir).await;
+        journal.begin_install().unwrap();
+        journal.begin_validation().unwrap();
+        journal
+            .record_health_failure("candidate unhealthy")
+            .unwrap();
+        let action = journal.next_action();
+        super::super::restore::restore_previous_runtime(journal.journal(), &action).unwrap();
+        let backup = std::fs::read(crate::db_restore::update_backup_path(&database)).unwrap();
+        assert_eq!(std::fs::read(&database).unwrap(), backup);
     }
 
     #[test]
