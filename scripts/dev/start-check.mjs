@@ -27,6 +27,7 @@ export const DEFAULT_MIN_FREE_GB = 1.5;
 export const DEFAULT_MAX_CARGO = 2;
 export const DEFAULT_CAP = 85;
 export const DEFAULT_SINCE_SEC = 300;
+export const DEFAULT_MAX_BEHIND = 40;
 export const EXIT_SILENT = 3;
 
 const HELP = `start-check — Startcheck vor jedem Agenten-Worker
@@ -34,7 +35,8 @@ const HELP = `start-check — Startcheck vor jedem Agenten-Worker
 Aufruf:
   npm run dev:start-check -- [--min-free-gb <GB>] [--max-cargo <n>]
                              [--usage <datei> [--cap <prozent>] [--session-cap <prozent>]]
-                             [--observe-log <datei> [--since-sec <s>]] [--json]
+                             [--observe-log <datei> [--since-sec <s>]]
+                             [--deps [--max-behind <n>]] [--json]
 
 Pruefungen (eine Zeile je Pruefung, OK / WARNUNG / STOPP):
   RAM          freier RAM unter --min-free-gb (Standard ${DEFAULT_MIN_FREE_GB}) -> STOPP
@@ -44,6 +46,11 @@ Pruefungen (eine Zeile je Pruefung, OK / WARNUNG / STOPP):
                Datei fehlt -> WARNUNG, Datei kaputt -> STOPP
   Beobachtung  --observe-log: Log leer, fehlend oder aelter als --since-sec
                (Standard ${DEFAULT_SINCE_SEC} s) -> stumm, wahrscheinlich haengt
+  Abhaengigkeiten (nur mit --deps, read-only, kein Netz; je ein STOPP bei):
+    node_modules   fehlt oder ist aelter als package-lock.json -> npm ci
+    Cargo-Deps     "cargo fetch --locked --offline" scheitert -> cargo fetch
+    Basis          Branch liegt mehr als --max-behind (Standard ${DEFAULT_MAX_BEHIND}) Commits
+                   hinter origin/main (lokaler Stand, vorher git fetch)
 
 Exit-Codes: 0 alles frei, 1 Grenze verletzt (RAM, cargo, Limit), 2 Aufruffehler,
             3 Worker stumm (nur Beobachtung; bei zugleich verletzter Grenze gilt 1).
@@ -116,6 +123,34 @@ export function checkObserve({ stat, file, sinceSec, now }) {
     return check("beobachtung", "Beobachtung", "stumm", `stumm, wahrscheinlich haengt: letzte Ausgabe vor ${ageSec} s (Grenze ${sinceSec} s)`);
   }
   return check("beobachtung", "Beobachtung", "ok", `Ausgabe vor ${Math.max(0, ageSec)} s (Grenze ${sinceSec} s)`);
+}
+
+// --deps (FLOW-04). node_modules/.package-lock.json is written by every npm
+// install; the directory time is the fallback for older npm versions.
+export function checkNodeModules({ stat }) {
+  const lock = stat("package-lock.json");
+  const hidden = stat("node_modules/.package-lock.json");
+  const mod = hidden.exists ? hidden : stat("node_modules");
+  if (!mod.exists) return check("node_modules", "node_modules", "stopp", "node_modules fehlt, bitte `npm ci` ausfuehren");
+  if (lock.exists && mod.mtimeMs < lock.mtimeMs) {
+    return check("node_modules", "node_modules", "stopp", "node_modules ist aelter als package-lock.json, bitte `npm ci` ausfuehren");
+  }
+  return check("node_modules", "node_modules", "ok", "node_modules ist aktuell zu package-lock.json");
+}
+
+export function checkCargoDeps({ run }) {
+  const r = run("cargo", ["fetch", "--locked", "--offline", "--manifest-path", "src-tauri/Cargo.toml"]);
+  if (r.code === 127) return check("cargo-deps", "Cargo-Deps", "warn", "cargo nicht gefunden, Cargo-Abhaengigkeiten nicht geprueft");
+  if (r.code !== 0) return check("cargo-deps", "Cargo-Deps", "stopp", "Cargo-Abhaengigkeiten nicht geladen, bitte `cargo fetch` ausfuehren");
+  return check("cargo-deps", "Cargo-Deps", "ok", "Cargo-Abhaengigkeiten sind geladen");
+}
+
+export function checkBehind({ run, maxBehind }) {
+  const r = run("git", ["rev-list", "--count", "HEAD..origin/main"]);
+  const n = Number(String(r.stdout).trim());
+  if (r.code !== 0 || !Number.isInteger(n)) return check("basis", "Basis", "warn", "origin/main nicht lesbar, Abstand nicht geprueft");
+  if (n > maxBehind) return check("basis", "Basis", "stopp", `Branch liegt ${n} Commits hinter origin/main (hoechstens ${maxBehind}), bitte main einmergen`);
+  return check("basis", "Basis", "ok", `Branch liegt ${n} Commits hinter origin/main (hoechstens ${maxBehind})`);
 }
 
 // `Get-CimInstance ... | ConvertTo-Json` prints one object for one match.
@@ -218,6 +253,8 @@ export const main = withExitCodes(async (argv, io, deps) => {
       "session-cap": { type: "string" },
       "observe-log": { type: "string" },
       "since-sec": { type: "string" },
+      deps: { type: "boolean" },
+      "max-behind": { type: "string" },
       json: { type: "boolean" },
       help: { type: "boolean" },
     },
@@ -232,6 +269,8 @@ export const main = withExitCodes(async (argv, io, deps) => {
   const cap = values.cap === undefined ? DEFAULT_CAP : number("--cap", values.cap);
   const sessionCap = values["session-cap"] === undefined ? DEFAULT_CAP : number("--session-cap", values["session-cap"]);
   if (values["since-sec"] !== undefined && !values["observe-log"]) throw new UsageError("--since-sec braucht --observe-log");
+  if (values["max-behind"] !== undefined && !values.deps) throw new UsageError("--max-behind braucht --deps");
+  const maxBehind = values["max-behind"] === undefined ? DEFAULT_MAX_BEHIND : number("--max-behind", values["max-behind"], { integer: true });
   const sinceSec = values["since-sec"] === undefined ? DEFAULT_SINCE_SEC : number("--since-sec", values["since-sec"]);
 
   const readFile = deps.readFile || realReadFile;
@@ -249,13 +288,18 @@ export const main = withExitCodes(async (argv, io, deps) => {
     }
   }
 
-  const processes = deps.processes ? deps.processes() : listCargoProcesses({ run: deps.run || makeRunner() });
+  const run = deps.run || makeRunner();
+  const processes = deps.processes ? deps.processes() : listCargoProcesses({ run });
   const checks = [
     checkRam({ freeBytes: deps.freeBytes ? deps.freeBytes() : freemem(), minFreeGb }),
     checkCargo({ processes, maxCargo }),
     usageError ? check("limit", "Limit", "stopp", usageError) : checkUsage({ usage, cap, sessionCap, file: values.usage }),
     checkObserve({ stat: deps.stat || realStat, file: values["observe-log"], sinceSec, now: deps.now ? deps.now() : Date.now() }),
   ];
+  if (values.deps) {
+    const stat = deps.stat || realStat;
+    checks.push(checkNodeModules({ stat }), checkCargoDeps({ run }), checkBehind({ run, maxBehind }));
+  }
   const exit = exitCodeFor(checks);
   io.out(values.json ? JSON.stringify({ ok: exit === EXIT.OK, exit, checks }, null, 2) + "\n" : format(checks));
   return exit;

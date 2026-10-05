@@ -138,8 +138,17 @@ Anbieter-Anzeigen), legt die Datei an. Der Selbsttest
 eingespeistem RAM, eingespeisten Prozessen, Dateien und Uhrzeit — es wird kein
 echter Prozess gestartet.
 
+Mit `--deps` kommen drei Prüfungen dazu (FLOW-04, read-only, kein Netz): Ein
+fehlendes oder gegenüber `package-lock.json` älteres `node_modules` →
+STOPP (`npm ci`); scheitert `cargo fetch --locked --offline` →
+STOPP (`cargo fetch`; fehlt cargo, nur WARNUNG); liegt der Branch mehr als
+`--max-behind` (Standard 40) Commits hinter dem lokalen `origin/main` →
+STOPP (vorher `git fetch`, dann `main` einmergen). Ohne `--deps` ändert sich
+nichts.
+
 ```sh
 npm run dev:start-check
+npm run dev:start-check -- --deps --max-behind 25
 npm run dev:start-check -- --usage .pa/usage.json --cap 80
 npm run dev:start-check -- --observe-log .pa/worker-w2-03.log --since-sec 300
 ```

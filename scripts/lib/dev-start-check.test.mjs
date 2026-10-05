@@ -7,6 +7,10 @@ import {
   checkCargo,
   checkUsage,
   checkObserve,
+  checkNodeModules,
+  checkCargoDeps,
+  checkBehind,
+  DEFAULT_MAX_BEHIND,
   countBuilds,
   parseUsage,
   parseWindowsProcesses,
@@ -248,4 +252,67 @@ test("main --help lists the exit codes", async () => {
   const r = await run(["--help"]);
   assert.equal(r.code, 0);
   assert.match(r.out, /Exit-Codes/);
+});
+
+// FLOW-04: --deps checks (node_modules, fetched Cargo deps, distance to origin/main)
+const statOf = (files) => (p) => (p in files ? { exists: true, size: 1, mtimeMs: files[p] } : { exists: false });
+const NM = "node_modules/.package-lock.json";
+
+test("checkNodeModules stops when node_modules is missing or older than package-lock.json", () => {
+  const missing = checkNodeModules({ stat: statOf({ "package-lock.json": 10 }) });
+  assert.equal(missing.status, "stopp");
+  assert.match(missing.text, /npm ci/);
+  const stale = checkNodeModules({ stat: statOf({ [NM]: 5, "package-lock.json": 10 }) });
+  assert.equal(stale.status, "stopp");
+  assert.match(stale.text, /aelter als package-lock\.json/);
+  assert.equal(checkNodeModules({ stat: statOf({ [NM]: 10, "package-lock.json": 10 }) }).status, "ok");
+});
+
+test("checkNodeModules falls back to the node_modules directory time", () => {
+  const files = { node_modules: 20, "package-lock.json": 10 };
+  assert.equal(checkNodeModules({ stat: statOf(files) }).status, "ok");
+});
+
+test("checkCargoDeps stops when the offline fetch fails and warns without cargo", () => {
+  const seen = [];
+  const run = (cmd, args) => (seen.push([cmd, ...args]), { code: 101, stdout: "", stderr: "error: failed to download" });
+  const bad = checkCargoDeps({ run });
+  assert.equal(bad.status, "stopp");
+  assert.match(bad.text, /cargo fetch/);
+  assert.deepEqual(seen[0].slice(0, 2), ["cargo", "fetch"]);
+  assert.ok(seen[0].includes("--offline") && seen[0].includes("--locked"));
+  assert.equal(checkCargoDeps({ run: () => ({ code: 0, stdout: "", stderr: "" }) }).status, "ok");
+  assert.equal(checkCargoDeps({ run: () => ({ code: 127, stdout: "", stderr: "cargo: nicht gefunden" }) }).status, "warn");
+});
+
+test("checkBehind stops above the limit and warns when origin/main is unknown", () => {
+  const git = (n) => () => ({ code: 0, stdout: `${n}\n`, stderr: "" });
+  assert.equal(checkBehind({ run: git(DEFAULT_MAX_BEHIND + 1), maxBehind: DEFAULT_MAX_BEHIND }).status, "stopp");
+  assert.equal(checkBehind({ run: git(DEFAULT_MAX_BEHIND), maxBehind: DEFAULT_MAX_BEHIND }).status, "ok");
+  assert.match(checkBehind({ run: git(7), maxBehind: 5 }).text, /7 Commits/);
+  assert.equal(checkBehind({ run: () => ({ code: 128, stdout: "", stderr: "bad revision" }), maxBehind: 5 }).status, "warn");
+});
+
+test("main without --deps does not run git or cargo checks", async () => {
+  const r = await run(["--json"], { run: () => assert.fail("no command expected") });
+  assert.deepEqual(JSON.parse(r.out).checks.map((c) => c.id), ["ram", "cargo", "limit", "beobachtung"]);
+});
+
+test("main --deps exits 1 with a plain STOPP line when node_modules is missing", async () => {
+  const ok = () => ({ code: 0, stdout: "0\n", stderr: "" });
+  const r = await run(["--deps"], { run: ok, stat: statOf({ "package-lock.json": 10 }) });
+  assert.equal(r.code, 1);
+  assert.match(r.out, /STOPP\s+node_modules/);
+  assert.match(r.out, /OK\s+Cargo-Deps/);
+  assert.match(r.out, /OK\s+Basis/);
+});
+
+test("main --deps exits 0 when all dependencies are current and honours --max-behind", async () => {
+  const files = { [NM]: 20, "package-lock.json": 10 };
+  const git = (n) => (cmd) => (cmd === "git" ? { code: 0, stdout: `${n}\n`, stderr: "" } : { code: 0, stdout: "", stderr: "" });
+  assert.equal((await run(["--deps"], { run: git(3), stat: statOf(files) })).code, 0);
+  const far = await run(["--deps", "--max-behind", "2"], { run: git(3), stat: statOf(files) });
+  assert.equal(far.code, 1);
+  assert.match(far.out, /STOPP\s+Basis/);
+  assert.equal((await run(["--max-behind", "2"])).code, 2, "--max-behind needs --deps");
 });
