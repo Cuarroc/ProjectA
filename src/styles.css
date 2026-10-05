@@ -4621,14 +4621,26 @@ scripts/contrast-check.mjs. */
   flex: 0 0 auto;
 }
 
-/* The on/off state rides along in the section head, like a status badge. */
+/* Label, status chip and the one button share a single row. */
+.webui-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 8px;
+}
+
+.webui-row .section-title {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .webui-state {
   flex: 0 0 auto;
-  padding: 1px 7px;
+  margin-left: auto;
+  white-space: nowrap;
+  padding: 1px 6px;
   border-radius: 8px;
   font-size: var(--text-xs);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   background: var(--color-selection-unfocused);
   color: var(--fg-muted);
 }
@@ -4638,17 +4650,9 @@ scripts/contrast-check.mjs. */
   color: var(--state-merge-fg);
 }
 
-/* Port input and the start/stop button share one row. */
-.webui-form {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px 8px;
-}
-
-.webui-port {
-  flex: 1;
-  min-width: 0;
+/* While running the chip is the link to /board. */
+.webui-chip:hover {
+  text-decoration: underline;
 }
 
 .webui-start,
@@ -4662,41 +4666,6 @@ scripts/contrast-check.mjs. */
 
 .webui-stop:hover:not(:disabled) {
   color: var(--danger);
-}
-
-/* Status line under the form; the URL is the link, in accent colour. */
-.webui-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin: -2px 10px 6px;
-  font-size: var(--text-md);
-  color: var(--fg-muted);
-}
-
-.webui-url-label {
-  flex: 0 0 auto;
-}
-
-.webui-url {
-  min-width: 0;
-  overflow: hidden;
-  padding: 0;
-  font-size: var(--text-md);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--accent-hover);
-  text-align: left;
-}
-
-.webui-url:hover {
-  text-decoration: underline;
-}
-
-.webui-hint {
-  margin: -2px 10px 6px;
-  line-height: 1.4;
 }
 
 /* ---- design studio (landing pages) ------------------------------------- */
@@ -5013,6 +4982,12 @@ scripts/contrast-check.mjs. */
 .settings-command-row .field {
   flex: 1;
   min-width: 0;
+}
+
+.settings-details summary {
+  cursor: pointer;
+  font-size: var(--text-md);
+  color: var(--fg-muted);
 }
 
 .settings-hint {
