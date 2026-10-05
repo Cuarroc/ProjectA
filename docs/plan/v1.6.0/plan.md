@@ -120,7 +120,7 @@ Jeder Prompt läuft durch: Entwurf → Kritik gegen die Checkliste → Verfeiner
 | Team-Schritt | Agent | Agent selbst | höchstens 2 Runden | Team-Notiz | Team-Definition |
 | Prompt-Bibliothek | Autor | andere Modellfamilie | höchstens 2 Runden | Beschreibung „RP v1, n Runden“ | Orchestrator |
 
-Jeder Paket-Auftrag aus diesem Plan beginnt mit dem Worker-Brief: Plan mit höchstens 15 Zeilen (Dateien, roter Test, Abnahme-Befehl, Risiken), Prüfung gegen die Checkliste, höchstens zwei Runden, Eintrag im `### Prompt-Log`. Zeigt die Prüfung, dass der Auftrag selbst falsch ist, meldet der Worker „BLOCKIERT“ mit der Nummer des Punkts. Die fünf Vorlagen (Auftrag, Kritik, Worker-Brief, Review, Team-Schritt) stehen bis FLOW-01 im Text von PR #488 unter „Vorlagen für FLOW-01“.
+Jeder Paket-Auftrag aus diesem Plan beginnt mit dem Worker-Brief: Plan mit höchstens 15 Zeilen (Dateien, roter Test, Abnahme-Befehl, Risiken), Prüfung gegen die Checkliste, höchstens zwei Runden, Eintrag im `### Prompt-Log`. Zeigt die Prüfung, dass der Auftrag selbst falsch ist, meldet der Worker „BLOCKIERT“ mit der Nummer des Punkts. Die fünf Vorlagen (Auftrag, Kritik, Worker-Brief, Review, Team-Schritt) stehen in [`docs/development/prompting.md`](../../development/prompting.md) (Standard samt Checkliste).
 
 Checkliste:
 1. Jeder Beleg ist eingefügte `rg -n`-Ausgabe, ein SHA oder ein gemergter PR, sonst steht „prüfen“ da.
