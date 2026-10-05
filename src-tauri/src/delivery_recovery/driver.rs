@@ -92,21 +92,25 @@ impl<E: RecoveryEffects> RecoveryDriver<E> {
                 // install) is a health failure: left in `Validating`, every
                 // restart would fail the same way.
                 match self.effects.validate(candidate, nonce) {
-                    Ok(handshake) => match self.journal.accept_handshake(&handshake) {
-                        Err(
-                            rejected @ (RecoveryError::IdentityMismatch(_)
-                            | RecoveryError::InvalidFact(_)),
-                        ) => self.journal.record_health_failure(rejected.to_string())?,
-                        accepted => accepted?,
-                    },
+                    Ok(handshake) => {
+                        let accepted = self.journal.accept_handshake(&handshake);
+                        self.health_failure_if_rejected(accepted)?
+                    }
                     Err(reason) => self.journal.record_health_failure(reason)?,
                 }
             }
             RecoveryAction::ResumeWrites => {
+                // An effect error (e.g. I/O) stays a hard error: it is
+                // transient and the next start retries. A proof the journal
+                // rejects would be rejected again, so it is a health failure.
                 let proof = self.effects.resume_writes().map_err(effect_error)?;
-                self.journal.resume_writes(proof)?;
+                let resumed = self.journal.resume_writes(proof);
+                self.health_failure_if_rejected(resumed)?
             }
             RecoveryAction::PromoteSameSignedBytes { candidate_id, .. } => {
+                // Writes have resumed here, so a rejected receipt must not
+                // restore the backup; startup never promotes, so it does not
+                // block the database either.
                 let receipt = self.effects.promote(candidate_id).map_err(effect_error)?;
                 self.journal.promote(&receipt)?;
             }
@@ -121,6 +125,19 @@ impl<E: RecoveryEffects> RecoveryDriver<E> {
             }
         }
         Ok(StepOutcome::Executed(Box::new(action)))
+    }
+}
+
+impl<E: RecoveryEffects> RecoveryDriver<E> {
+    /// Turns a semantic rejection by the journal into a durable health
+    /// failure; any other error stays a driver error.
+    fn health_failure_if_rejected(&mut self, outcome: Result<()>) -> Result<()> {
+        match outcome {
+            Err(
+                rejected @ (RecoveryError::IdentityMismatch(_) | RecoveryError::InvalidFact(_)),
+            ) => self.journal.record_health_failure(rejected.to_string()),
+            other => other,
+        }
     }
 }
 
@@ -144,6 +161,8 @@ mod tests {
         validation_fails: bool,
         /// The running binary is not the candidate (e.g. a failed install).
         wrong_version: bool,
+        /// The write-resumption proof is one the journal rejects.
+        empty_resume_proof: bool,
     }
 
     impl RecoveryEffects for Fake {
@@ -181,8 +200,13 @@ mod tests {
         }
         fn resume_writes(&mut self) -> std::result::Result<WriteResumption, String> {
             self.calls.push("resume_writes");
+            let evidence_id = if self.empty_resume_proof {
+                ""
+            } else {
+                "resume"
+            };
             Ok(WriteResumption {
-                evidence_id: "resume".into(),
+                evidence_id: evidence_id.into(),
             })
         }
         fn promote(&mut self, _: &str) -> std::result::Result<PromotionReceipt, String> {
@@ -269,6 +293,25 @@ mod tests {
         driver.step().unwrap(); // validate -> rejected handshake persisted
         let reopened = DurableJournal::open(store(&dir)).unwrap();
         assert_eq!(reopened.journal().phase(), UpdatePhase::RecoveryNeeded);
+        assert!(matches!(
+            reopened.next_action(),
+            RecoveryAction::RestorePreviousRuntime { .. }
+        ));
+    }
+
+    /// A resume proof the journal rejects is a health failure too: before
+    /// writes resume the backup is still the safe state.
+    #[test]
+    fn rejected_resume_proof_is_recorded_as_health_failure() {
+        let dir = TempDir::new("driver-rejected-resume");
+        let mut driver = driver_at_backup_verified(&dir);
+        driver.effects.empty_resume_proof = true;
+        driver.step().unwrap(); // install
+        driver.step().unwrap(); // validate
+        driver.step().unwrap(); // resume -> rejected proof persisted
+        let reopened = DurableJournal::open(store(&dir)).unwrap();
+        assert_eq!(reopened.journal().phase(), UpdatePhase::RecoveryNeeded);
+        assert!(!reopened.journal().can_accept_writes());
         assert!(matches!(
             reopened.next_action(),
             RecoveryAction::RestorePreviousRuntime { .. }
