@@ -14,7 +14,7 @@ use super::{
     WriteResumption,
 };
 use crate::pty::PtyManager;
-use crate::store::Store;
+use crate::store::{InstallLease, Store};
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
@@ -183,11 +183,13 @@ fn require_staged_matches(staged: Staged<'_>, manifest: &StagedManifestIdentity)
 /// Refuses unless every precondition of the installer is observed now.
 pub fn require_install_evidence(
     pty: &PtyManager,
-    store_write_block: bool,
+    _lease: &InstallLease,
     journal: &DurableJournal,
     staged: Staged<'_>,
 ) -> Fx<()> {
-    require_live_evidence(pty, store_write_block)?;
+    // The lease is the write-block evidence: taken under the Store lock and
+    // held across the installer, not a snapshot.
+    require_live_evidence(pty, true)?;
     match journal.next_action() {
         RecoveryAction::InstallCandidate {
             staged_manifest, ..
@@ -203,12 +205,12 @@ pub fn require_install_evidence(
 /// install latch. Never reaches `install` unless the evidence holds.
 pub fn install_through_journal(
     pty: &PtyManager,
-    store_write_block: bool,
+    lease: &InstallLease,
     journal: DurableJournal,
     staged: Staged<'_>,
     install: impl FnOnce(&[u8]) -> Fx<()>,
 ) -> Fx<()> {
-    require_install_evidence(pty, store_write_block, &journal, staged)?;
+    require_install_evidence(pty, lease, &journal, staged)?;
     let mut driver = RecoveryDriver::new(journal, InstallOnly(Some(install), staged));
     pty.install_in_maintenance(|| driver.step().map(|_| ()).map_err(|error| error.to_string()))
 }
@@ -309,7 +311,8 @@ mod tests {
             bytes: BYTES,
             version: "1.5.0",
         };
-        require_install_evidence(&frozen(), true, &reopened, bound).unwrap();
+        let lease = live.try_install_lease().unwrap();
+        require_install_evidence(&frozen(), &lease, &reopened, bound).unwrap();
         assert!(database.with_extension("update-backup").exists());
         // A leftover pre-install journal is replaced, not a permanent refusal.
         produce_journal(&frozen(), &live, store(&dir), &announced(&exe, &database))
@@ -405,9 +408,17 @@ mod tests {
         pty
     }
 
-    fn refused(pty: &PtyManager, write_block: bool, journal: DurableJournal) -> String {
+    /// A store in maintenance plus the lease the install gate needs.
+    async fn leased(dir: &TempDir) -> (Store, InstallLease) {
+        let (store, _) = live_db(dir).await;
+        store.enter_maintenance().await.unwrap();
+        let lease = store.try_install_lease().unwrap();
+        (store, lease)
+    }
+
+    fn refused(pty: &PtyManager, lease: &InstallLease, journal: DurableJournal) -> String {
         let calls = Cell::new(0);
-        let error = install_through_journal(pty, write_block, journal, staged(BYTES), |_| {
+        let error = install_through_journal(pty, lease, journal, staged(BYTES), |_| {
             calls.set(calls.get() + 1);
             Ok(())
         })
@@ -416,28 +427,54 @@ mod tests {
         error
     }
 
-    #[test]
-    fn production_install_never_reaches_the_installer_without_evidence() {
-        let dir = TempDir::new("install-gate-missing");
-        assert!(refused(&frozen(), false, journal(&dir, true, true)).contains("write block"));
+    #[tokio::test]
+    async fn install_gate_takes_a_lease_not_a_snapshot() {
+        let dir = TempDir::new("install-gate-lease");
+        let (store, _) = live_db(&dir).await;
+        // No write block: there is nothing to lease, so no gate to pass.
+        assert!(store.try_install_lease().is_err());
+        store.enter_maintenance().await.unwrap();
+        let lease = store.try_install_lease().unwrap();
+        let calls = Cell::new(0);
+        install_through_journal(
+            &frozen(),
+            &lease,
+            journal(&dir, true, true),
+            staged(BYTES),
+            |_| {
+                // Mid-install the write block cannot be released.
+                assert!(store.is_maintenance_active());
+                calls.set(calls.get() + 1);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(calls.get(), 1);
+        lease.retain();
+        assert!(store.leave_maintenance().await.is_err());
+    }
+
+    #[tokio::test]
+    async fn production_install_never_reaches_the_installer_without_evidence() {
         let dir = TempDir::new("install-gate-nofreeze");
+        let (_store, lease) = leased(&dir).await;
         let thawed = PtyManager::default();
-        assert!(refused(&thawed, true, journal(&dir, true, true)).contains("frozen"));
+        assert!(refused(&thawed, &lease, journal(&dir, true, true)).contains("frozen"));
         let dir = TempDir::new("install-gate-sessions");
         let busy = PtyManager::default();
         let id = busy.reserve_session().unwrap();
         busy.begin_maintenance().unwrap();
-        assert!(refused(&busy, true, journal(&dir, true, true)).contains("drained"));
+        assert!(refused(&busy, &lease, journal(&dir, true, true)).contains("drained"));
         busy.cancel_reservation(&id);
         let dir = TempDir::new("install-gate-nodrain");
-        assert!(refused(&frozen(), true, journal(&dir, false, false)).contains("WaitingIdle"));
+        assert!(refused(&frozen(), &lease, journal(&dir, false, false)).contains("WaitingIdle"));
         let dir = TempDir::new("install-gate-nobackup");
-        let error = refused(&frozen(), true, journal(&dir, true, false));
+        let error = refused(&frozen(), &lease, journal(&dir, true, false));
         assert!(error.contains("Maintenance"), "{error}");
     }
 
-    #[test]
-    fn install_refuses_updater_bytes_whose_digest_or_version_differ_from_the_journal() {
+    #[tokio::test]
+    async fn install_refuses_updater_bytes_whose_digest_or_version_differ_from_the_journal() {
         for (i, other) in [
             staged(b"candidate-b-bytes"),
             Staged {
@@ -449,10 +486,11 @@ mod tests {
         .enumerate()
         {
             let dir = TempDir::new(&format!("install-gate-bind-{i}"));
+            let (_store, lease) = leased(&dir).await;
             let error = {
                 let calls = Cell::new(0);
                 let journal = journal(&dir, true, true);
-                let error = install_through_journal(&frozen(), true, journal, other, |_| {
+                let error = install_through_journal(&frozen(), &lease, journal, other, |_| {
                     calls.set(calls.get() + 1);
                     Ok(())
                 })
@@ -467,14 +505,15 @@ mod tests {
         }
     }
 
-    #[test]
-    fn production_install_persists_installing_then_runs_the_installer_once() {
+    #[tokio::test]
+    async fn production_install_persists_installing_then_runs_the_installer_once() {
         let dir = TempDir::new("install-gate-ok");
         let pty = frozen();
+        let (_store, lease) = leased(&dir).await;
         let calls = Cell::new(0);
         install_through_journal(
             &pty,
-            true,
+            &lease,
             journal(&dir, true, true),
             staged(BYTES),
             |bytes| {
