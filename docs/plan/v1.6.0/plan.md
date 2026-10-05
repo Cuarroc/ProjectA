@@ -20,7 +20,7 @@ Der Benchmark sagt: PRs landen viel schneller (p90 127 h → 3 h), aber die Nach
 | S4 | 10 Blockaden durch die Umgebung, etwa fehlende Abhängigkeiten (lokal) | Der Startcheck prüft das vor dem Start | FLOW-04 | M-REWORK |
 | S5 | 15,5 % rote Queue-Läufe; KI-30 trat in 8 von 42 Läufen auf (`KNOWN_ISSUES.md:200`) | KI-30 ist das erste Paket (V16-01) | Repo | CI, M-LEAD |
 | S6 | Reviews laufen nur über den PC | Review-Fahrer auf den Server | lokal (L4), Frage 4 | M-LEAD |
-| S7 | Ein Anbieter lieferte 134 von 226 gemergten PRs seit 02.10. (59 %) | Kein Anbieter über 50 % pro Woche; Routing nach Restkontingent | lokal (L5) | M-THR |
+| S7 | Ein Anbieter lieferte 134 von 226 gemergten PRs seit 02.10. (59 %; eigene Zählung am 05.10., 12:08 UTC, Befehl in `benchmark.md`, Abschnitt 5) | Kein Anbieter über 50 % pro Woche; Routing nach Restkontingent | lokal (L5) | M-THR |
 | S8 | Einzelfragen unterbrechen den Nutzer | Entscheidungen gebündelt vor jeder Welle, Freigabe je Welle | `docs/PLAN.md`, Frage 5 | M-HUMAN |
 
 ## 3. Pakete
@@ -44,17 +44,17 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | M5-02 | README: Produktfokus „sicherer Dauerbetrieb: Not-Aus, Kostenkontrolle, Protokoll“ | doc | – | C | S | G1 | glm-5.3 | Der Fokus-Satz steht in den ersten 30 Zeilen des README |
 | V16-03 | Tester-Kit: Installation, Rückmeldeformular, bekannte Grenzen | doc | – | C | S | G1, E16; der Nutzer legt ein frisches Windows-Konto an | glm-5.3 | Trockenlauf: Installation nach Anleitung im frischen Konto, Protokoll im PR |
 | INV-SEC-CRED-CLEANUP | Abgelaufene Zugriffs-Grants löschen; Löschfehler melden statt verschlucken (`api/agent_access.rs:364`) | api | – | A | S | G1 | Claude, ab G2 astra | Roter Test zuerst: ein Löschfehler erscheint im Ergebnis |
-| ARCH-D1 | Die drei Fehlertext-Klassifizierer `merge_status`, `verdict_status`, `core_status` zu einem zusammenführen | api | api.rs | A | S | INV-SEC-CRED-CLEANUP | Claude, ab G2 astra | `rg -c 'fn (merge\|verdict\|core)_status' src-tauri/src/api.rs` sinkt von 3 auf höchstens 1; `api.rs` < 8091 Zeilen |
+| ARCH-D1 | Die drei Fehlertext-Klassifizierer `merge_status`, `verdict_status`, `core_status` zu einem zusammenführen | api | api.rs | A | S | INV-SEC-CRED-CLEANUP | Claude, ab G2 astra | `rg -c 'fn [a-z]+_status\(err' src-tauri/src/api.rs` sinkt von 3 auf 1; `api.rs` < 8091 Zeilen |
 | V16-06 | KI-31-Rest: Der Start nach einem Update ohne Journal blockiert nicht mehr stumm | mn | main.rs | A | M | G1, Frage 3; Update-Drill am PC mit dem Nutzer | astra, vor G2 Claude | Roter Test zuerst; Update-Drill (Erfolg, Abbruch, Fehler): der nächste Start gelingt oder zeigt die Anleitung |
 | ARCH-D2 | Doppelte Projektanlage zusammenführen | mn | main.rs | A | S | V16-06 | astra, vor G2 Claude | `rg -c 'fn create_project' src-tauri/src/main.rs`: von zwei Umsetzungen bleibt eine, die andere ruft sie auf; `main.rs` < 5133 Zeilen |
-| ARCH-D3a | `BEGIN IMMEDIATE` über einen Store-Helfer, Teil a (`store.rs`, `store/continuous.rs`) | st | store | A | S | G1 | Claude, ab G2 astra | `rg -c 'BEGIN IMMEDIATE'` in den beiden Dateien: von 5 auf 1 (nur im Helfer) |
+| ARCH-D3a | Die zwei direkten `BEGIN IMMEDIATE` in `store.rs` nutzen den vorhandenen Helfer `begin_write` (`store/continuous.rs:924`), Teil a | st | store | A | S | G1 | Claude, ab G2 astra | `rg -c 'BEGIN IMMEDIATE' src-tauri/src/store.rs` sinkt von 2 auf 0 |
 | ARCH-D6a | `pa::run`: Verteilung von Darstellung trennen, Teil a | pa | pa.rs | A | S | G1 | Claude, ab G2 astra | `bin/pa.rs` < 6490 Zeilen; die CLI-Tests laufen unverändert durch |
 
 **Nachrücker (vor dem Start in Einzelzeilen auflösen).** Für jedes gilt zusätzlich: `cargo nextest run --profile ci` Exit 0.
 
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (messbares Signal) |
 |---|---|---|---|---|---|---|---|---|
-| ARCH-D3b → ARCH-D7 | Store-Helfer Teil b; Einstellungen nach `store/settings.rs` | st | store | A | S, M | ARCH-D3a | astra, vor G2 Claude | `rg -c 'BEGIN IMMEDIATE' src-tauri/src/store` außerhalb von Testdateien nur noch im Helfer (Rest nach D3a: 9 in drei Dateien); `store.rs` < Stand nach D3a |
+| ARCH-D3b → ARCH-D7 | Store-Helfer Teil b; Einstellungen nach `store/settings.rs` | st | store | A | S, M | ARCH-D3a | astra, vor G2 Claude | `rg 'begin_with\("BEGIN IMMEDIATE' src-tauri/src/store` trifft außerhalb von Testdateien nur noch `begin_write` (Rest nach D3a: 9 Aufrufe in drei Dateien); `store.rs` < Stand nach D3a |
 | ARCH-D4a → D4b | Restlicher API-Router in zwei Scheiben | api | api.rs | A | 2× M | ARCH-D1 | astra | `api.rs` je Scheibe um ≥ 150 Zeilen kleiner (`wc -l`) |
 | ARCH-D5a → D5b → D8a | Diagnose- und Einstellungsbefehle aus `main.rs` lösen; Ereignisnamen als Konstanten | mn | main.rs | A | 2× M, S | ARCH-D2 | astra | `main.rs` je Scheibe um ≥ 150 Zeilen kleiner; D8a: der Auftrag nennt den Anker (heute fehlt er) |
 | ARCH-D8b → D8c | Ereignisnamen in PTY, dann im Frontend | pty → fe | – | A, B | 2× S | ARCH-D8a | sol, terra | wie D8a: Muster und Zielzahl stehen im Auftrag |
@@ -81,7 +81,7 @@ Regeln für jede Welle:
 - **Nähte strikt seriell:** Je Naht (`api.rs`, `main.rs`, `store.rs` mit `store/`, `bin/pa.rs`) läuft nie mehr als ein Paket. Verschiedene Nähte dürfen gleichzeitig laufen. Ein Paket mit zwei Nähten sperrt beide.
 - **Ketten nur bei gleicher Datei:** Pakete außerhalb der Nähte laufen parallel, solange ihre Dateilisten sich nicht überschneiden (der Auftrag nennt die Dateien). Jedes neue Dev-Skript ändert `package.json`, deshalb die Kette BENCH-01 → FLOW-04 → FLOW-03 → FLOW-05 → V16-08. BENCH-02 (neue Workflow-Datei) und FLOW-02 (PR-Vorlage) laufen daneben.
 - **Plätze:** Server 8 = höchstens 4 Naht-Pakete und mindestens 4 für Füllung und Reviews. PC: höchstens 2 Cargo-Builds (Grenze 3); solange ein Release-Drill des Nutzers läuft, 0.
-- **Reserve vor G1:** Aus diesem Plan sind vor G1 nur die W0-Pakete startbar. Die Reserve von 16 füllt bis dahin die laufende Arbeit aus `docs/PLAN.md` (M3/M4).
+- **Reserve vor G1:** Aus diesem Plan sind vor G1 nur die W0-Pakete startbar. Ob die laufende Arbeit aus `docs/PLAN.md` (M3/M4) die Reserve von 16 bis dahin füllt, ist nicht gezählt; der Orchestrator prüft das vor G0.
 - **Ohne Codex (bis G2):** Naht-, Security- und Stufe-A-Pakete nur über Claude und nur unter 70 % Wochenlimit (`docs/setup/providers.md`), sonst warten sie auf G2. Doku und Skripte gehen an OpenCode.
 - **Reviews:** C nur Gates. B ein Reviewer einer anderen Modellfamilie (bei einem GLM-Autor also Kimi K3). A zwei Anbieter, nie die Familie des Autors (Kimi K3 + GLM 5.2, ab G2 auch Codex).
 
@@ -147,7 +147,7 @@ M4-R19-02/03/04/07/09 (Frage 2), V16-10, W1-24c, W1-09c, W5-31, M5-04, Dependabo
 - **Reviews hängen am PC,** solange Frage 4 offen ist. Bis G2 ist das der Engpass für Stufe A und B.
 - **Mehr Regeln können bremsen.** Rekursives Prompting kostet je Auftrag eine Runde. M-LEAD (Ziel p90 ≤ 6 h) zeigt, ob es zu teuer wird.
 - **V16-06 fasst den Update-Start an.** Stufe A, Berater-Paar, roter Test zuerst, Drill unter Windows.
-- **Belege zu den ARCH-D-Paketen sind Stichproben:** `docs/PLAN.md` nennt für D1 vier Klassifizierer (gefunden: drei) und für D3 elf Treffer (gezählt: 15 außerhalb von Tests); D8 hat noch keinen Anker.
+- **Belege zu den ARCH-D-Paketen sind Stichproben:** `docs/PLAN.md` nennt für D1 vier Klassifizierer (gefunden: drei) und für D3 elf direkte Aufrufe (gezählt außerhalb von Tests: elf, dazu der Helfer und drei Kommentarzeilen); D8 hat noch keinen Anker.
 
 ## 10. Fragen an den Nutzer
 

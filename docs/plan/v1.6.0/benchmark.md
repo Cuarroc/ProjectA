@@ -31,7 +31,7 @@ Urteil: **teilweise belegt.**
 |---|---|---|---|---|---|---|---|
 | M-THR | gemergte PRs / aktiver Tag | 12,0 (36/3) | 64,3 (193/3) | 4,3 | 57,2 | teilweise belegt | Größtenteils kleinerer Zuschnitt, s. Codezeilen |
 | M-THR | Code-Zeilen / aktiver Tag | 6 973 | 8 047 | 4 900 | 7 221 | teilweise belegt | +15 % gegen F, +47 % F2→J2 |
-| M-THR | verschiedene Pakete / aktiver Tag | 5,7 (17) | 27,3 (82) | 1,3 | 21,3 | belegt | Paket-ID aus dem Branchnamen |
+| M-THR | verschiedene Pakete / aktiver Tag | 5,7 (17) | 27,3 (82) | 1,3 | 21,3 | teilweise belegt | Paket-ID aus dem Branchnamen; das Muster ist nicht erhalten, bis BENCH-01 nicht nachrechenbar |
 | M-LEAD | PR erstellt → Merge, Median / p90 (h) | 3,8 / 127,3 | 1,1 / 3,1 | 3,4 / 119,3 | 1,1 / 3,0 | **belegt** | Kleinere PRs sind von Natur aus schneller |
 | M-LEAD | erster Commit → Merge, Median / p90 (h) | 3,9 / 126,3 | 1,3 / 3,3 | 3,9 / 122,0 | 1,2 / 3,0 | **belegt** | Prüft „PR erst spät öffnen“: hält stand |
 | Regel 1 | PRs über 300 Zeilen | 81 % (29/36) | 5 % (10/189) | 77 % | 6 % | belegt | Regel steht erst seit 23.09. in AGENTS.md |
@@ -41,14 +41,14 @@ Urteil: **teilweise belegt.**
 | CI | rote PR-Köpfe (ci, pull_request) | 25,2 % (37/147) | 9,2 % (30/327) | 38,0 % | 8,0 % | teilweise belegt | Windows auf PR ist seit CI-03 nur ein Stub, Drafts haben kein CI |
 | CI | rote Queue-Läufe (`mergify/*`) | — | 17,5 % (28/160) | — | 15,5 % | Baseline | Das Windows-Urteil wird erst hier gefällt |
 | M-REDMAIN | rote main-Vorfälle / rote Stunden | 0 / 0 (35 Läufe) | 0 / 0 (179) | 3 / 137 h | 0 / 0 (215) | teilweise belegt | Push auf main ist jetzt „leicht“; KI-32 zeigt, dass Versuch-1-Rot im Endergebnis verschwindet |
-| M-REWORK | Fix-PR, gleiches Paket, ≤ 72 h | 13 % (3/23) | 12,5 % (16/128) | 11,5 % | 15,7 % | **nicht belegt** | pro 100 Zeilen 0,005 → 0,052 (schlechter) |
+| M-REWORK | Fix-PR, gleiches Paket, ≤ 72 h | 13 % (3/23) | 12,5 % (16/128) | 11,5 % | 15,7 % | **nicht belegt** | pro 100 Zeilen Code + Doku 0,005 → 0,052 (3/56 011 gegen 16/30 503), nur Code 0,014 → 0,066: schlechter |
 | M-REWORK | ohne Merge geschlossen (echte PRs) | 7,1 % (2/28) | 9,0 % (19/210) | 12,5 % | 7,9 % | nicht belegt | — |
 | M-REWORK | Hotfix-/Revert-PRs | 0 | 4 | 0 | 4 | nicht belegt | — |
 | M-TRAILER | Commits mit red-first-Trailer | 94 % (193/205) | 99 % (485/490) | 83 % | 99 % | belegt | — |
 | M-HUMAN | Nutzer-Eingriffe | — | 20 Inbox-Einträge E1–E20 | — | 25 | **nicht belegt** | Ein Account für alles; eine Inbox gibt es erst jetzt |
 | Kontingent | Verbrauch pro gemergtem PR | — | — | — | — | **nicht belegt** | Nicht pro PR beobachtet; Codex ist seit J bis 11.10. erschöpft |
 | M-RP | Prompts mit Kritik-Protokoll | — | 40/655 Job-Specs (nur lokal) | — | — | nicht belegt | Keine Baseline vor dem 05.10. |
-| Anbieter | gemergte PRs nach Branch-Präfix seit 02.10. | — | — | — | claude 134 / codex 81 / opencode 4 / übrige 7 (Stand 05.10., 12:08 UTC) | Baseline | Ein Anbieter trägt 59 %; Befehl in Abschnitt 5 |
+| Anbieter | gemergte PRs nach Branch-Präfix seit 02.10. | — | — | — | claude 134 / codex 81 / opencode 4 / übrige 7 (Stand 05.10., 12:08 UTC) | Baseline | Ein Anbieter trägt 59 %; Befehl in Abschnitt 5. Summe 226 gegen 229 in J2: anderer Stichtag und Filter, Abweichung nicht aufgeklärt |
 
 **Orchestrator-Ereignislog** (nur lokal, nicht reproduzierbar, nur Aggregate), L0 (2 Tage) gegen J (3 Tage):
 
