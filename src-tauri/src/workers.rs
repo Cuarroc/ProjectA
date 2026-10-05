@@ -71,6 +71,9 @@ pub mod lane_guard;
 #[allow(dead_code)] // Platform adapters must explicitly supply verified resources.
 pub mod native_launch;
 
+#[path = "workers/activation.rs"]
+#[allow(dead_code)] // Wired into the window by W4-03; locked in production.
+pub mod activation;
 #[path = "workers/scheduler.rs"]
 #[allow(dead_code)] // Production permit arrives with W4-03 after user approval.
 pub mod scheduler;
