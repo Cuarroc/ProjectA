@@ -323,6 +323,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Vorschlag: Startcheck-Doku an die Wahrheit anpassen und nur lesend Abhängigkeits-Drift prüfen (nicht optionale installierte Pakete gegen die Kandidaten-Lock); OPS-02 #35 und SETUP-09 #56 bleiben gemergt, dies ist ein begrenzter Folgeschritt | nach M4; Vorschlag, kein Duplikat |
 | Vorschlag: PTY-Read/Emit-Diagnose erst nach eingespeistem Beweis; Drain und panikfreie Senke bewahren, den `eprintln`-Rückfall in `logging::log` nicht blind nutzen; Stderr-Verlust im Release ungemessen | nach M4, mit Laufzeitbeleg; ohne Graph-/Windows-Beleg |
 | Vorschlag: M4-W2-Merge-Vertrag: frische geschützte Upstream-Bestätigung, gebunden an Kandidat/Lauf/Fence/Scope; lokale Refs und Start-Pin genügen später nicht; Scope-Prüfung Basis → Kandidat auf dem End-Baum nach Merge oder Rebase (Quelle `6fb08b0`, `workers/candidate_scope.rs:56-112`); Continuous nicht aktivieren | nach M4; ohne Graph-/Laufzeit-/Windows-Beleg |
+| Plan für v1.6.0 (Pakete, Wellen, Arbeitsweise, Benchmark-Nachweis): [`docs/plan/v1.6.0/plan.md`](plan/v1.6.0/plan.md) | Entwurf, Nutzer entscheidet; nichts davon steht in M1–M4 |
 
 ### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
 
