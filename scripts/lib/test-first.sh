@@ -6,7 +6,7 @@
 tf_path_is_exempt() {
   local p="${1#./}"
   case "$p" in
-    *.md|docs/*|.pa/*|LICENSE*|CHANGELOG*|*.lock|package-lock.json|src-tauri/Cargo.lock|.gitignore|.gitattributes|.editorconfig)
+    *.md|docs/*|.pa/*|LICENSE*|CHANGELOG*|*.lock|package-lock.json|.gitignore|.gitattributes|.editorconfig)
       return 0
       ;;
     *.test.ts|*.test.tsx|*.spec.ts|*.spec.tsx|src/test/*|src/__tests__/*)
@@ -30,7 +30,7 @@ tf_path_is_source() {
     return 1
   fi
   case "$p" in
-    src/*|src-tauri/*|.github/workflows/*|.githooks/*|scripts/*|package.json|vitest.config.ts|playwright.config.ts|tsconfig.json|eslint.config.*|eslint.config.js|index.html|.claude/settings.json|.claude/hooks/*)
+    src/*|src-tauri/*|.github/workflows/*|.githooks/*|scripts/*|package.json|vitest.config.ts|playwright.config.ts|tsconfig.json|eslint.config.*|index.html|.claude/settings.json|.claude/hooks/*)
       return 0
       ;;
   esac

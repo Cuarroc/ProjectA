@@ -512,7 +512,18 @@ async fn create_worker_impl(
             }
         }
     };
-    let profile = routed.profile;
+    // W5-02b3: the global stage replaces the profile's own isolation, after
+    // routing, so a failover target gets it too.
+    let stage = match store.agent_env_isolation().await {
+        Ok(stage) => stage,
+        Err(err) => {
+            let _ = store.delete_worker(&worker_id).await;
+            let _ = worktree::rollback_worktree(&project.repo_path, &path, &checkout);
+            crate::hooks::remove_worker_files(&worker_id);
+            return Err(err);
+        }
+    };
+    let profile = routed.profile.with_global_isolation(stage);
     let mut env = routed.env;
     if let Some(launch) = launch {
         env.retain(|(key, _)| key != "PROJECTA_API_FILE");
@@ -2674,7 +2685,12 @@ pub async fn respawn_worker(
     // Strict environment on the *routed* profile: a failover may have swapped it.
     let (profile, cwd) = match coordinator_dir {
         Some(dir) => (routed.profile.for_coordinator(), dir),
-        None => (routed.profile, path.to_path_buf()),
+        None => (
+            routed
+                .profile
+                .with_global_isolation(store.agent_env_isolation().await?),
+            path.to_path_buf(),
+        ),
     };
     let env = routed.env;
     crate::routing::prepare_codex_home(&profile, &cwd);
@@ -6661,6 +6677,42 @@ mod tests {
             agents.isolations.lock().unwrap()[0],
             EnvIsolation::Strict,
             "the worker should commit locally under the default strict policy"
+        );
+    }
+
+    /// W5-02b3: the global stage replaces the profile's isolation for an
+    /// ordinary worker, on first spawn and respawn; a coordinator stays strict.
+    #[tokio::test]
+    async fn global_env_stage_reaches_ordinary_workers_but_not_coordinators() {
+        use crate::profiles::EnvIsolation;
+        let fx = fixture("global-env-stage").await;
+        let agents = FakeAgents::default();
+        fx.store
+            .set_agent_env_isolation(EnvIsolation::Allowlist)
+            .await
+            .unwrap();
+
+        let worker = create_worker(&fx.store, &agents, &fx.project_id, "task", "claude", None)
+            .await
+            .unwrap();
+        fx.store
+            .mark_session_exited("pty-fake-1", None)
+            .await
+            .unwrap();
+        respawn_worker(&fx.store, &agents, &worker.id)
+            .await
+            .unwrap();
+        create_orchestrator(&fx.store, &agents, &fx.project_id, None)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            *agents.isolations.lock().unwrap(),
+            vec![
+                EnvIsolation::Allowlist,
+                EnvIsolation::Allowlist,
+                EnvIsolation::Strict
+            ]
         );
     }
 

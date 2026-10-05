@@ -62,6 +62,8 @@ API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers:
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::development::bind_candidate(&self.store,run,owner,fence,input,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::merge_worker(&self.store,&agents,&self.engine,worker_id,remove_worktree,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::send_to_orchestrator(&self.store,&agents,project_id,text,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.agent_env_isolation())
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.set_agent_env_isolation(stage))
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store.rs	begin_with("BEGINIMMEDIATE"
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/continuous.rs	begin_with("BEGINIMMEDIATE"
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_launches.rs	begin_with("BEGINIMMEDIATE"

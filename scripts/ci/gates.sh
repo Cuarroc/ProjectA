@@ -61,6 +61,14 @@ GATES=(
   "no-masked|linux,release|.|bash scripts/ci/no-masked-output.sh"
   "wf-shell|linux,release|.|bash scripts/ci/workflow-shell.sh"
   "wf-pinned|linux,release|.|bash scripts/ci/actions-pinned.sh"
+  # CI-HARDEN-03: lint the glue code. crlf needs no tool; shellcheck and
+  # actionlint skip with a logged reason locally when absent and fail in CI
+  # (scripts/ci/shell-lint.sh). actionlint is installed pinned in setup-linux.
+  "crlf|precommit,prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh crlf"
+  "eol|precommit,prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh eol"
+  "shellcheck|prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh shellcheck"
+  "actionlint|prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh actionlint"
+  "selftest-shell-lint|prepush,linux,release|.|bash scripts/test-shell-lint.sh"
   # CI-03: the structure the cheaper CI relies on - required check names in
   # sync with .mergify.yml, the Windows job guarded against running its lane
   # on Linux, red-first sharing the linux setup.

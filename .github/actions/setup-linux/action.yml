@@ -87,6 +87,41 @@ runs:
         echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
         "$RUNNER_TEMP/gitleaks-bin/gitleaks" version
 
+    # actionlint (MIT) for the `actionlint` gate. Pinned, SHA-256 from
+    # actionlint_1.7.12_checksums.txt of the release (same pattern as gitleaks).
+    - name: actionlint (pinned, checksum verified)
+      shell: bash
+      run: |
+        set -euo pipefail
+        version=1.7.12
+        sha256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        archive="$RUNNER_TEMP/actionlint.tar.gz"
+        curl -sSfL -o "$archive" "https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_amd64.tar.gz"
+        echo "${sha256}  ${archive}" | sha256sum --check --strict
+        mkdir -p "$RUNNER_TEMP/actionlint-bin"
+        tar -xzf "$archive" -C "$RUNNER_TEMP/actionlint-bin" actionlint
+        echo "$RUNNER_TEMP/actionlint-bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/actionlint-bin/actionlint" -version
+
+    # shellcheck (GPL-3.0, used as a standalone tool, not linked or shipped) for
+    # the `shellcheck` gate. Pinned like gitleaks/actionlint above instead of
+    # trusting the runner image (SHELLCHECK-UNPINNED, PR #419). The release
+    # publishes no checksums file, so the SHA-256 is of the v0.11.0 asset
+    # shellcheck-v0.11.0.linux.x86_64.tar.xz as downloaded 2026-10-05.
+    - name: shellcheck (pinned, checksum verified)
+      shell: bash
+      run: |
+        set -euo pipefail
+        version=0.11.0
+        sha256=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+        archive="$RUNNER_TEMP/shellcheck.tar.xz"
+        curl -sSfL -o "$archive" "https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.xz"
+        echo "${sha256}  ${archive}" | sha256sum --check --strict
+        mkdir -p "$RUNNER_TEMP/shellcheck-bin"
+        tar -xJf "$archive" --strip-components=1 -C "$RUNNER_TEMP/shellcheck-bin" "shellcheck-v${version}/shellcheck"
+        echo "$RUNNER_TEMP/shellcheck-bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/shellcheck-bin/shellcheck" --version
+
     - shell: bash
       run: npm ci
 

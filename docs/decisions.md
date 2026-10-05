@@ -1585,3 +1585,24 @@ wall clock, linux + windows.
 - **Reverse when:** the repository replaces Mergify or the orchestrator
   pipeline with another merge authority that enforces the same completed-review
   invariant directly.
+
+## 2026-10-05 - W3-02e (#411) merged with review findings C1/C2 deferred
+
+- **What:** PR #411 (installation only through the recovery journal) was merged
+  although the review left two high findings open: C1 (the installed bytes and
+  version are not bound to the journal's `signed_artifact_sha256` and
+  `candidate_version`) and C2 (the install gate uses a boolean snapshot of the
+  maintenance state instead of a lease). Both became release blockers for the
+  v1.5.0-beta tag (R-1) as W3-02h and W3-02i in `docs/PLAN.md`; the missing
+  journal producer is W3-02g. Advisor: Fable 5.1. The second advisor, GPT-6
+  Astra, was unavailable because of the Codex weekly limit, so this decision
+  has one advisor, not the usual pair.
+- **Why:** the candidate was already at 298 of 300 diff lines. Fixing C1 needs a
+  red regression test plus code, and C2 touches a safety seam (`store.rs`) with a
+  concurrency test; both must be split. The merged state fails closed: nothing
+  produces `update-recovery.json` yet, so the command refuses and no unsafe
+  install can start. The cost is that in-app self-update stays blocked until
+  W3-02g lands.
+- **Reverse when:** the beta tag is wanted before W3-02g-i are merged (then the
+  user must accept a build without in-app update), or an advisor review of the
+  merged code shows C1/C2 are not exploitable and can be downgraded.

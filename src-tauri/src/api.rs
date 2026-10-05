@@ -52,6 +52,8 @@
 //! | GET    | `/api/quota`              |                       | `[quota row]`     |
 //! | GET    | `/api/emergency-stop`     |                       | `{active}`        |
 //! | POST   | `/api/emergency-stop`     | `{active: bool}` + verdict to deactivate | `{active}` |
+//! | GET    | `/api/settings/env-isolation` |                   | `{stage}`         |
+//! | PUT    | `/api/settings/env-isolation` | `{stage}` + verdict | `{stage}`       |
 //! | GET    | `/api/updater`            |                       | updater state     |
 //! | GET    | `/api/budgets`            |                       | `[budget row]`    |
 //! | PUT    | `/api/budgets`            | `{profileId, fiveHourPct?, sevenDayPct?}` | `budget row` |
@@ -539,6 +541,15 @@ pub trait ControlBackend: Send + Sync {
     }
     fn set_emergency_stop(&self, _active: bool, _actor: &str) -> Result<(), String> {
         Err("emergency stop unavailable".into())
+    }
+    // -- global agent environment stage (W5-02b3) --------------------------
+    // The defaults refuse: a backend without the stage must never report
+    // `strict` it does not enforce or accept a write it would drop.
+    fn agent_env_isolation(&self) -> Result<crate::profiles::EnvIsolation, String> {
+        Err("environment stage unavailable".into())
+    }
+    fn set_agent_env_isolation(&self, _stage: crate::profiles::EnvIsolation) -> Result<(), String> {
+        Err("environment stage unavailable".into())
     }
     fn updater_state(&self) -> Result<UpdaterState, String>;
 
@@ -1351,15 +1362,18 @@ enum VerdictProof {
 
 /// Name the protected decision made by this request, if any.
 ///
-/// Only the POSTs. A GET on the same path is a caller who used the wrong verb,
+/// Only the POSTs and the stage PUT. A GET on the same path is a caller who used the wrong verb,
 /// and [`route`] tells them that - answering 403 there would send them looking
 /// for a token they do not need.
 fn verdict_decision(request: &Request) -> Option<&'static str> {
+    let segments = request.segments();
+    let path: Vec<&str> = segments.iter().map(String::as_str).collect();
+    if request.method == "PUT" && path.as_slice() == ["api", "settings", "env-isolation"] {
+        return Some("changing the agent environment stage");
+    }
     if request.method != "POST" {
         return None;
     }
-    let segments = request.segments();
-    let path: Vec<&str> = segments.iter().map(String::as_str).collect();
     if matches!(
         path.as_slice(),
         ["api", "learnings", _, "approve" | "reject"]
@@ -1561,6 +1575,42 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
                 backend
                     .emergency_stop_active()
                     .map(|a| json!({ "active": a })),
+            )
+        }
+        ("GET", ["api", "settings", "env-isolation"]) => into_response(
+            backend
+                .agent_env_isolation()
+                .map(|stage| json!({ "stage": stage.as_str() })),
+        ),
+        // The verdict gate in `handle` has already run: a worker's API token
+        // alone never reaches this arm.
+        ("PUT", ["api", "settings", "env-isolation"]) => {
+            let body = match parse_body(&request.body) {
+                Ok(body) => body,
+                Err(error) => return Response::error(400, error),
+            };
+            if let Err(error) = only_keys(&body, &["stage"]) {
+                return Response::error(400, error);
+            }
+            let stage = match body.get("stage").and_then(Value::as_str) {
+                Some(raw) => match raw.parse::<crate::profiles::EnvIsolation>() {
+                    Ok(stage) => stage,
+                    Err(_) => {
+                        return Response::error(
+                            400,
+                            "stage must be one of inherit, allowlist, strict",
+                        )
+                    }
+                },
+                None => return Response::error(400, "stage is required"),
+            };
+            if let Err(error) = backend.set_agent_env_isolation(stage) {
+                return Response::error(500, error);
+            }
+            into_response(
+                backend
+                    .agent_env_isolation()
+                    .map(|stage| json!({ "stage": stage.as_str() })),
             )
         }
         ("GET", ["api", "updater"]) => into_response(backend.updater_state()),
@@ -2115,6 +2165,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
         | (_, ["api", "board"])
         | (_, ["api", "quota"])
         | (_, ["api", "emergency-stop"])
+        | (_, ["api", "settings", "env-isolation"])
         | (_, ["api", "updater"])
         | (_, ["api", "budgets"])
         | (_, ["api", "providers"])
@@ -2661,6 +2712,7 @@ pub(crate) mod tests {
         reject_agent_run: std::sync::atomic::AtomicBool,
         stop_state: Mutex<(bool, String)>,
         stop_broken: std::sync::atomic::AtomicBool,
+        env_stage: Mutex<crate::profiles::EnvIsolation>,
         created: Mutex<Vec<SpawnRecord>>,
         sent: Mutex<Vec<(String, String)>>,
         /// `(workerId, removeWorktree)` of every merge the API asked for.
@@ -3301,6 +3353,18 @@ pub(crate) mod tests {
             *self.stop_state.lock().unwrap() = (active, actor.to_string());
             Ok(())
         }
+        fn agent_env_isolation(&self) -> Result<crate::profiles::EnvIsolation, String> {
+            Ok(*self.env_stage.lock().unwrap())
+        }
+
+        fn set_agent_env_isolation(
+            &self,
+            stage: crate::profiles::EnvIsolation,
+        ) -> Result<(), String> {
+            *self.env_stage.lock().unwrap() = stage;
+            Ok(())
+        }
+
         fn updater_state(&self) -> Result<UpdaterState, String> {
             Ok(UpdaterState::default())
         }
@@ -5176,6 +5240,66 @@ pub(crate) mod tests {
             r#"{"active":false}"#,
         );
         assert_eq!((status, &body["active"]), (200, &json!(false)), "{body}");
+    }
+
+    #[test]
+    fn env_stage_reads_strict_without_a_row_and_stores_a_valid_put() {
+        let fx = fixture("api-env-stage");
+        let token = fx.token();
+        let verdict = fx.verdict_token();
+        let port = fx.server.port();
+        let target = "/api/settings/env-isolation";
+        let (status, body) = call(port, "GET", target, Some(&token), "");
+        assert_eq!((status, &body["stage"]), (200, &json!("strict")), "{body}");
+
+        let put = r#"{"stage":"allowlist"}"#;
+        let (status, body) = call_with(port, "PUT", target, Some(&token), Some(&verdict), put);
+        assert_eq!(
+            (status, &body["stage"]),
+            (200, &json!("allowlist")),
+            "{body}"
+        );
+        let (_, body) = call(port, "GET", target, Some(&token), "");
+        assert_eq!(body["stage"], "allowlist");
+    }
+
+    #[test]
+    fn env_stage_rejects_an_invalid_stage_with_400_and_keeps_the_old_one() {
+        let fx = fixture("api-env-stage-invalid");
+        let token = fx.token();
+        let verdict = fx.verdict_token();
+        let port = fx.server.port();
+        let target = "/api/settings/env-isolation";
+        for bad in [
+            r#"{"stage":"open"}"#,
+            r#"{"stage":3}"#,
+            "{}",
+            r#"{"stage":"strict","x":1}"#,
+        ] {
+            let (status, body) = call_with(port, "PUT", target, Some(&token), Some(&verdict), bad);
+            assert_eq!(status, 400, "{bad}: {body}");
+        }
+        assert_eq!(
+            *fx.backend.env_stage.lock().unwrap(),
+            crate::profiles::EnvIsolation::Strict
+        );
+    }
+
+    #[test]
+    fn env_stage_write_with_the_normal_token_is_403_and_changes_nothing() {
+        let fx = fixture("api-env-stage-authority");
+        let token = fx.token();
+        let port = fx.server.port();
+        let target = "/api/settings/env-isolation";
+        let put = r#"{"stage":"inherit"}"#;
+        let (status, body) = call(port, "PUT", target, Some(&token), put);
+        assert_eq!(status, 403, "{body}");
+        let (status, _) = call_with(port, "PUT", target, Some(&token), Some("wrong"), put);
+        assert_eq!(status, 403);
+        assert_eq!(
+            *fx.backend.env_stage.lock().unwrap(),
+            crate::profiles::EnvIsolation::Strict
+        );
     }
 
     #[test]
