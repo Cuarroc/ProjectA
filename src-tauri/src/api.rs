@@ -2681,6 +2681,8 @@ pub(crate) mod tests {
     mod continuous_e2e_tests;
     // M4-R4-PROOF: project scope of goals, tasks, runs and records, real store.
     mod project_scope_tests;
+    // M4-ROW3-A: resume stays closed on a real store.
+    mod resume_closed_tests;
 
     /// The five ways a merge can fail, copied verbatim from
     /// `workers::merge_worker` (and from `gh` for the last one). They are here
@@ -3245,9 +3247,14 @@ pub(crate) mod tests {
         }
         fn control_continuous(
             &self,
-            _project_id: &str,
-            _action: &str,
+            project_id: &str,
+            action: &str,
         ) -> Result<crate::store::ContinuousControl, String> {
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(
+                    store.control_continuous(project_id, action),
+                );
+            }
             Err("continuous runtime adapters are unattested; resume is fail-closed".into())
         }
         /// Every id names a project except `pj-nope`, which names none - the
