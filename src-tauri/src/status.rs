@@ -234,7 +234,7 @@ impl ReasonCode {
             ReasonCode::DeliveryFailed => "drücke im Terminal von Hand Enter",
             ReasonCode::AgentExited => "prüfe sein Ergebnis, dann neu starten oder archivieren",
             ReasonCode::AgentStalled => "sieh im Terminal nach oder starte den Agenten neu",
-            ReasonCode::DecisionPending => "beantworte sie im Fragen-Tab",
+            ReasonCode::DecisionPending => "beantworte sie in der Attention-Ansicht",
             ReasonCode::AgentReported => "sieh im Terminal nach",
             ReasonCode::IdleAtPrompt => "gib ihm im Terminal den nächsten Schritt",
             ReasonCode::ChangesRequested => "arbeite die Kommentare ein",
@@ -1547,7 +1547,7 @@ impl StatusEngine {
     /// `reason` ist der Beleg - "Entscheidung wartet: ..." -, gepraegt in
     /// [`crate::questions`], das die Frage kennt. Der Code und damit der
     /// naechste Schritt gehoeren hierher: welche Frage es ist, weiss die
-    /// Frage; dass sie im Fragen-Tab beantwortet wird, weiss die Engine.
+    /// Frage; dass sie in der Attention-Ansicht beantwortet wird, weiss die Engine.
     pub fn note_question(&self, worker_id: &str, reason: &str) {
         self.update(worker_id, |state| {
             state.question = Some(Verdict::coded_with(
@@ -3093,6 +3093,35 @@ mod tests {
         let before = codes.len();
         codes.dedup();
         assert_eq!(codes.len(), before, "zwei Varianten mit demselben Code");
+    }
+
+    /// Kein Nutzertext darf auf einen Tab zeigen, den es nicht mehr gibt
+    /// (Review #512 F1): "Fragen-Tab" und "Usage-Tab" sind keine Ansichten mehr.
+    #[test]
+    fn no_reason_text_names_a_dead_tab() {
+        const ALL: [ReasonCode; 15] = [
+            ReasonCode::ApprovalRequired,
+            ReasonCode::QuotaBlocked,
+            ReasonCode::DeliveryFailed,
+            ReasonCode::AgentExited,
+            ReasonCode::AgentStalled,
+            ReasonCode::DecisionPending,
+            ReasonCode::AgentReported,
+            ReasonCode::IdleAtPrompt,
+            ReasonCode::ChangesRequested,
+            ReasonCode::ReviewPending,
+            ReasonCode::ReviewApproved,
+            ReasonCode::ApprovedButDraft,
+            ReasonCode::ChecksPending,
+            ReasonCode::ReviewDraft,
+            ReasonCode::PullRequestMerged,
+        ];
+        for code in ALL {
+            let line = Signal::new(code).line();
+            for dead in ["Fragen-Tab", "Usage-Tab"] {
+                assert!(!line.contains(dead), "{code:?}: {line}");
+            }
+        }
     }
 
     #[test]
