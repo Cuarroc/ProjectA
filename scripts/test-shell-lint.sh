@@ -25,6 +25,8 @@ printf 'on: push\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - r
 expect crlf-clean 0 bash "$LINT" crlf "$tmp/clean.sh"
 expect crlf-detects-cr 1 bash "$LINT" crlf "$tmp/crlf.sh"
 expect crlf-unreadable-file-fails 1 bash "$LINT" crlf "$tmp/does-not-exist.sh"
+expect eol-source-text-is-lf 0 bash "$LINT" eol
+expect eol-detects-unset-extension 1 bash "$LINT" eol x.rs x.nosuchext
 expect unknown-check 2 bash "$LINT" nonsense
 expect crlf-tracked-tree 0 bash "$LINT" crlf
 
