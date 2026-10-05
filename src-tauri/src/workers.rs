@@ -3613,6 +3613,113 @@ mod tests {
         assert!(format!("{refusal:?}").contains("global emergency stop"));
     }
 
+    /// Matrix rows 8 and 13: team, role and assignee are enforced on the real
+    /// `dispatch_once` path, not only in the store helpers. A refused case must
+    /// leave no spawn, no run intent, no launch reservation and no attempt.
+    #[tokio::test]
+    async fn dispatch_once_starts_nothing_for_unassigned_foreign_assignee_wrong_role_or_reconciling_task(
+    ) {
+        async fn counts(fx: &Fixture) -> (i64, i64, i64) {
+            let pool = fx.store.pool_for_test();
+            let attempts =
+                sqlx::query_scalar("SELECT attempts FROM continuous_tasks WHERE id='due-task'")
+                    .fetch_one(pool)
+                    .await
+                    .unwrap();
+            let runs = sqlx::query_scalar("SELECT COUNT(*) FROM development_runs")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+            let launches = sqlx::query_scalar("SELECT COUNT(*) FROM development_launches")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+            (attempts, runs, launches)
+        }
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+        let defaults = crate::development_policy::DevelopmentPolicy::defaults();
+        let with_roles = |roles: &[&str]| {
+            let mut policy = defaults.clone();
+            policy.teams[0].roles = roles.iter().map(|role| (*role).into()).collect();
+            policy
+        };
+        let assignment = "INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('due-task','development',?,?,1,1,1)";
+        // (label, frozen policy, (role, assignee) of the assignment, refusal text)
+        let cases = [
+            (
+                "unassigned",
+                with_roles(&["reviewer"]),
+                None,
+                "unassigned task",
+            ),
+            (
+                "foreign-assignee",
+                defaults.clone(),
+                Some(("implementer", "someone-else")),
+                "assigned to another owner",
+            ),
+            (
+                "wrong-role",
+                with_roles(&["implementer"]),
+                Some(("reviewer", "scheduler")),
+                "frozen root policy",
+            ),
+        ];
+        for (label, policy, assigned, reason) in cases {
+            let fx = fixture(&format!("dispatch-assignment-{label}")).await;
+            seed_dispatch_case(&fx, true, "claude", &[], 0, &policy).await;
+            if let Some((role, assignee)) = assigned {
+                sqlx::query(assignment)
+                    .bind(role)
+                    .bind(assignee)
+                    .execute(fx.store.pool_for_test())
+                    .await
+                    .unwrap();
+            }
+            let before = counts(&fx).await;
+            let agents = FakeAgents::default();
+            let refusal = dispatch_case(&fx, &agents, "scheduler", &route)
+                .await
+                .expect_err(label);
+            assert!(
+                format!("{refusal:?}").contains(reason),
+                "{label}: {refusal:?}"
+            );
+            assert_eq!(agents.spawn_count(), 0, "{label} must not spawn");
+            assert_eq!(counts(&fx).await, before, "{label} must leave no trace");
+        }
+
+        // Row 13: a launch that is still reconciling keeps its task out of
+        // the next dispatch; nothing spawns and no second attempt is spent.
+        let fx = fixture("dispatch-assignment-reconciling").await;
+        let mut tight = defaults.clone();
+        tight.tokens = Some(crate::development_policy::TokenPolicy {
+            max_per_goal: 500,
+            verification_reserve: 100,
+        });
+        seed_dispatch_case(&fx, true, "claude", &[], 0, &tight).await;
+        let agents = FakeAgents::default();
+        dispatch_case(&fx, &agents, "scheduler", &route)
+            .await
+            .expect_err("the token reservation fails and leaves a reconciling run");
+        let runs = fx
+            .store
+            .list_development_runs(&fx.project_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            runs[0].status,
+            crate::store::development_runs::RUN_RECONCILING
+        );
+        let before = counts(&fx).await;
+        let refusal = dispatch_case(&fx, &agents, "scheduler", &route)
+            .await
+            .expect_err("a reconciling launch must not be dispatched again");
+        assert_eq!(refusal, scheduler::DispatchRefusal::NoDueTask);
+        assert_eq!(agents.spawn_count(), 0);
+        assert_eq!(counts(&fx).await, before);
+    }
+
     #[test]
     fn scheduler_dispatch_requires_the_test_only_permit() {
         // There is no runtime "missing permit" branch: code without this
