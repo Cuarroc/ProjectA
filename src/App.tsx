@@ -1451,7 +1451,6 @@ function AppContent() {
         )}
         <StatusBar
           session={activeSession}
-          sessionCount={sessions.length}
           error={error}
           attentionCount={attentionCount}
           onOpenBoard={() => {
