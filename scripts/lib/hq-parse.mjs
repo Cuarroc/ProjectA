@@ -232,11 +232,13 @@ export function buildPackages(standText, specs) {
 const tableCells = (line) =>
   line.trim().replace(/^\|/, "").replace(/\|$/, "").split(/(?<!\\)\|/).map((c) => c.replace(/\\\|/g, "|").trim());
 
-// "Stand" cell of a PLAN.md milestone table → done | pr | in_progress | open.
+// "Stand" cell of a PLAN.md milestone table → done | pr | in_progress | blocked | open.
 // "✓ #n" = merged; a cell that mixes merged and pending sub-packages
 // ("10a ✓ #13, 10c offen") counts as in progress. PLAN.md defines the
 // vocabulary: "✓ #n" merged, otherwise an open PR or "offen"; a merged row
-// that names another open PR is therefore in progress, too.
+// that names another open PR is therefore in progress, too. A cell that
+// opens with "blockiert" is blocked; "blockiert" after a "✓" ("✓ #1, blockiert:
+// Rest wartet") is the merged-then-stuck tail and counts as in progress.
 function milestoneState(stand) {
   if (/^blockiert/i.test(stand)) return "blocked";
   if (/^in Arbeit|^dieses Paket/i.test(stand)) return "in_progress";

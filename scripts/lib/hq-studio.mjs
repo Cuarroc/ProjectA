@@ -2,6 +2,9 @@
 import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync, readdirSync, lstatSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { readLimited } from './hq-live-lib.mjs';
+
+const MAX_ROUTING_BODY_BYTES = 200000;
 
 const empty = () => ({ version: 1, revision: 0, order: [], rules: { requireEvidence: true, maxAgeDays: 30, minimumSamples: 3, qualityWeight: 80 }, evidence: [] });
 export function readRouting(root) {
@@ -68,9 +71,10 @@ export async function studioRoute(req, res, root, sendJson) {
   try {
     if (req.method === 'GET') sendJson(res, 200, path.endsWith('routing') ? readRouting(root) : studioCatalog(root));
     else if (req.method === 'PUT' && path.endsWith('routing')) {
-      let body = ''; let bytes = 0;
-      for await (const chunk of req) { bytes += chunk.length; if (bytes > 200000) throw Object.assign(new Error('Anfrage zu groß.'), { status: 413 }); body += chunk; }
-      sendJson(res, 200, saveRouting(root, JSON.parse(body)));
+      const body = await readLimited(req, MAX_ROUTING_BODY_BYTES).catch((error) => {
+        throw error.code === 'hq_body_too_large' ? Object.assign(new Error('Anfrage zu groß.'), { status: 413 }) : error;
+      });
+      sendJson(res, 200, saveRouting(root, JSON.parse(body.toString('utf8'))));
     } else sendJson(res, 405, { error: 'method not allowed' });
   } catch (error) { sendJson(res, error.status || 400, { error: error.message }); }
   return true;

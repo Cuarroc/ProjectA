@@ -50,3 +50,8 @@ test('worker start and transcript use the real proxy transport without exposing 
   const transcript = await (await req('/__hq/api/workers/fixture-worker/messages')).json();
   assert.equal(transcript[0].content, 'Fixture reply'); assert.doesNotMatch(JSON.stringify(worker), /secret/);
 });
+test('Studio routing PUT answers 413 for a body over the limit', async () => {
+  const config = await (await req('/__hq/studio/routing')).json();
+  const response = await req('/__hq/studio/routing', 'PUT', { ...config, pad: 'x'.repeat(250000) });
+  assert.equal(response.status, 413);
+});
