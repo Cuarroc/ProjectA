@@ -92,6 +92,32 @@ if dispatch "$d"; then fail "dispatch fallback still rejects a hotspot in the he
     fail "dispatch fallback still rejects a hotspot in the head commit (file not named)"
 fi
 
+# A dispatch checkout that can still reach origin: the guard fetches origin/main
+# itself and compares against the real merge-base (not just HEAD~1), so a
+# hotspot in an earlier commit of the branch is still caught.
+dispatch_clone() { # name file-in-first-commit -> clone holding only the branch ref
+  local d
+  d="$(branch_change "$1" claude/some-work "$2")"
+  (cd "$d" && printf 'more\n' >> other.txt && git commit -qam second)
+  git clone -q --single-branch --branch claude/some-work "file://$d" "$tmp/$1-clone" 2> /dev/null
+  echo "$tmp/$1-clone"
+}
+
+d="$(dispatch_clone dispatch-fetch-ok other.txt)"
+if dispatch "$d"; then
+  grep -q "origin/main" "$d/out" && grep -q "merge-base" "$d/out" &&
+    pass "dispatch fetches origin/main and compares against the merge-base" ||
+    fail "dispatch fetches origin/main and compares against the merge-base (not stated)"
+else
+  fail "dispatch fetches origin/main and compares against the merge-base"
+fi
+
+d="$(dispatch_clone dispatch-fetch-hit docs/dev-hq/data.js)"
+if dispatch "$d"; then fail "dispatch with fetched base rejects a hotspot in an earlier commit"; else
+  grep -q "docs/dev-hq/data.js" "$d/out" && pass "dispatch with fetched base rejects a hotspot in an earlier commit" ||
+    fail "dispatch with fetched base rejects a hotspot in an earlier commit (file not named)"
+fi
+
 d="$(repo dispatch-root)"
 dispatch "$d" && fail "dispatch on a root commit fails closed (no HEAD~1)" || pass "dispatch on a root commit fails closed (no HEAD~1)"
 
