@@ -16,6 +16,7 @@ import LearningsPanel from "./components/LearningsPanel";
 import LiveStatus from "./components/LiveStatus";
 import NewWorkerDialog from "./components/NewWorkerDialog";
 import ProfilePicker from "./components/ProfilePicker";
+import FirstRunChecklist from "./components/FirstRunChecklist";
 import ProviderDialog from "./components/ProviderDialog";
 import QuestionsView from "./components/QuestionsView";
 import QueuePanel from "./components/QueuePanel";
@@ -1420,6 +1421,15 @@ function AppContent() {
                     ) : (
                       <p>Keine Terminal-Sitzungen.</p>
                     )}
+                    {!activeProject ||
+                    (goal !== "review" && !workers.some((worker) => worker.projectId === activeProject.id)) ? (
+                      <FirstRunChecklist
+                        hasProject={projects.length > 0}
+                        hasActiveProject={activeProject !== null}
+                        onOpenProviders={() => setProviderDialogOpen(true)}
+                        onNewWorker={openWorkerDialog}
+                      />
+                    ) : null}
                     <div className="empty-actions">
                       {activeProject ? (
                         <button type="button" className="empty-action" onClick={openWorkerDialog}>
@@ -1427,7 +1437,7 @@ function AppContent() {
                         </button>
                       ) : null}
                       <button type="button" className="empty-action-ghost" onClick={openPicker}>
-                        Ad-hoc session
+                        Ad-hoc-Sitzung
                       </button>
                     </div>
                   </div>

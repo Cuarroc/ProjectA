@@ -225,6 +225,19 @@ describe("hooks", () => {
     expect(bad.result.current.vaultError).toBeNull();
   });
 
+  it("useProviderOverview keeps the last good rows and reports a non-array payload", async () => {
+    vi.mocked(ipc.getProviderOverview).mockResolvedValueOnce([provider({ connected: true })]);
+    const view = renderHook(() => useProviderOverview());
+    await waitFor(() => expect(view.result.current.loading).toBe(false));
+
+    vi.mocked(ipc.getProviderOverview).mockResolvedValueOnce({ unexpected: true } as unknown as Provider[]);
+    await act(async () => {
+      await view.result.current.refresh();
+    });
+    expect(view.result.current.providers).toHaveLength(1);
+    expect(view.result.current.error).toBe("Unerwartete Antwort der Anbieter-Übersicht.");
+  });
+
   it("useProviderKey saves a trimmed key, ignores blanks and reports errors", async () => {
     vi.mocked(ipc.hasProviderKey).mockResolvedValue(false);
     vi.mocked(ipc.setProviderKey).mockResolvedValue(undefined);
