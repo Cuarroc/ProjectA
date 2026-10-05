@@ -1381,6 +1381,25 @@ mod tests {
     }
 
     #[test]
+    fn journal_without_installed_field_loads_and_installed_survives_reopen() {
+        let dir = TempDir::new("delivery-recovery-installed-roundtrip");
+        let old = UpdateJournal::new(offer()).expect("offer");
+        let mut json = serde_json::to_value(&old).expect("serialize");
+        json.as_object_mut().expect("object").remove("installed");
+        let loaded: UpdateJournal = serde_json::from_value(json).expect("old journal loads");
+        assert!(loaded.installed.is_none());
+
+        let mut journal = DurableJournal::create(store(&dir), old).expect("create");
+        through_validation(&mut journal);
+        let mut real = handshake();
+        real.binary.sha256 = "sha256-of-installed-exe".into();
+        journal.accept_handshake(&real).expect("accepted");
+        let reopened = DurableJournal::open(store(&dir)).expect("reopen");
+        let installed = reopened.journal().installed.clone().expect("persisted");
+        assert_eq!(installed.binary.sha256, "sha256-of-installed-exe");
+    }
+
+    #[test]
     fn handshake_requires_named_process_validation_and_health_evidence() {
         let dir = TempDir::new("delivery-recovery-handshake-proof");
         let mut journal =

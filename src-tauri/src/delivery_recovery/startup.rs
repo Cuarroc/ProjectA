@@ -250,9 +250,10 @@ mod tests {
 
     #[test]
     fn wrong_nonce_version_or_path_blocks_writes() {
-        let wrong: [fn(&mut InstanceHandshake); 3] = [
+        let wrong: [fn(&mut InstanceHandshake); 4] = [
             |h| h.nonce = "nonce-b".into(),
             |h| h.binary.version = "1.3.0".into(),
+            |h| h.binary.path = "old.exe".into(),
             |h| h.database.path = "other.db".into(),
         ];
         for (i, tamper) in wrong.iter().enumerate() {
