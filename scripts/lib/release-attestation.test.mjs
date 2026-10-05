@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadReleaseAttestation } from './release-attestation.mjs';
 
-const FILE = '.pa/release_attestation_v1.5.0.json';
+const FILE = '.pa/release_attestation_v1.5.1.json';
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 function fixture() {
@@ -21,7 +21,7 @@ function fixture() {
   return root;
 }
 const valid = root => ({
-  release: 'v1.5.0',
+  release: 'v1.5.1',
   commit: git(root, 'rev-parse', 'HEAD'),
   rows: Array.from({ length: 26 }, (_, i) => i + 1),
   decidedAt: '2026-10-05T10:00:00Z',

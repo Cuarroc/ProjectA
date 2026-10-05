@@ -79,7 +79,7 @@ Gates liefen in der Merge-Queue des jeweiligen PR.
 - Kein Testbeleg möglich oder gewollt: je ein echter PC-Lauf bzw. die
   Entscheidung des Nutzers. Zeile 27: der Weg ist vorbereitet (#372 trennt
   App- von Dauerbetrieb-Release, #390/#413 halten Entscheidung E20 fest); die
-  Attestierung `.pa/release_attestation_v1.5.0.json` fehlt, der Nutzer erstellt
+  Attestierung `.pa/release_attestation_v1.5.1.json` fehlt, der Nutzer erstellt
   sie selbst.
 
 ## Zeile 14 – Checkpoints und Fortschritt (erledigt)

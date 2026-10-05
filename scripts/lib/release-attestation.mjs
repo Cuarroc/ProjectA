@@ -1,10 +1,10 @@
 // Fail-closed loader for the user's app release attestation (E20).
-// Only the user writes .pa/release_attestation_v1.5.0.json; no agent does.
+// Only the user writes .pa/release_attestation_v1.5.1.json; no agent does.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const ATTESTATION_RELEASE = 'v1.5.0';
+export const ATTESTATION_RELEASE = 'v1.5.1';
 const KEYS = ['commit', 'continuousEnabled', 'decidedAt', 'decidedBy', 'release', 'rows'];
 const ROWS = Array.from({ length: 26 }, (_, i) => i + 1);
 const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
