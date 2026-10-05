@@ -6,7 +6,8 @@ Stand 05.10.2026, Basis `2ec6960`. Alle Befehle nur lesend, ausgeführt am 05.10
 
 Frage: Arbeitet das Projekt seit der Pipeline (Mergify-Queue, gestufte Reviews, Server-Autopilot) effektiver als vorher?
 Urteil: **teilweise belegt.**
-- Belegt: PRs landen viel schneller (p90 von 127 h auf 3 h) und viel kleiner. Rote PR-Köpfe sind seltener.
+- Belegt: PRs landen viel schneller (p90 von 127 h auf 3 h) und viel kleiner.
+- Teilweise belegt: Rote PR-Köpfe sind seltener, aber Windows wird auf PRs nicht mehr geprüft; das rote Ergebnis zeigt sich jetzt erst in der Queue.
 - Nicht belegt: Weniger Nacharbeit gibt es nicht (gleich viel pro Paket, pro Codezeile mehr), und die Codemenge pro Tag ist nur um etwa 15 % gestiegen.
 - Nicht messbar: Nutzer-Eingriffe und Kontingent pro PR. Dafür fehlt heute die Messung.
 
@@ -47,6 +48,7 @@ Urteil: **teilweise belegt.**
 | M-HUMAN | Nutzer-Eingriffe | — | 20 Inbox-Einträge E1–E20 | — | 25 | **nicht belegt** | Ein Account für alles; eine Inbox gibt es erst jetzt |
 | Kontingent | Verbrauch pro gemergtem PR | — | — | — | — | **nicht belegt** | Nicht pro PR beobachtet; Codex ist seit J bis 11.10. erschöpft |
 | M-RP | Prompts mit Kritik-Protokoll | — | 40/655 Job-Specs (nur lokal) | — | — | nicht belegt | Keine Baseline vor dem 05.10. |
+| Anbieter | gemergte PRs nach Branch-Präfix seit 02.10. | — | — | — | claude 134 / codex 81 / opencode 4 / übrige 7 (Stand 05.10., 12:08 UTC) | Baseline | Ein Anbieter trägt 59 %; Befehl in Abschnitt 5 |
 
 **Orchestrator-Ereignislog** (nur lokal, nicht reproduzierbar, nur Aggregate), L0 (2 Tage) gegen J (3 Tage):
 
@@ -56,6 +58,7 @@ Urteil: **teilweise belegt.**
 | HAENGT+NEUSTART / Job-Start | 2,2 % (3/137) | 6,3 % (9/142) | schlechter |
 | ALARM gesamt (LEERLAUF / BLOCKIERT / FEHLER) | Alarmart gab es noch nicht | 113 (99 / 9 / 5) bei 460 Jobs (142 lokal + 318 Server) | Baseline |
 | KEIN-PR | — | 0 (J2: 1) | Baseline |
+| Aufträge mit Ende BLOCKIERT je Start; Konflikt-Aufträge (anderes Fenster: 03.–05.10.) | — | 6,7 % (32/479), davon 13 im Auftrag vermeidbar und 10 durch die Umgebung; 28 Konflikt-Aufträge | Baseline |
 
 ## 4. Störgrößen (was davon die Unterschiede erklären könnte)
 
@@ -80,10 +83,12 @@ gh run list -R "$ARCHIV" -w ci --limit 1000 --created 2026-08-20..2026-10-03 --j
 git diff --numstat <merge>^1 <merge>                          # Zeilen je PR (Filter s. Abschnitt 2)
 git log --no-merges --format='%s%n%b' <merge>^1..<merge>^2    # Trailer, Review-Fix-Commits
 git log origin/main -p -- docs/PLAN.md | grep -E '^\+\| *E[0-9]+'   # Inbox-Einträge
+gh pr list -R "$REPO" --state merged --limit 1000 --search 'merged:>=2026-10-02' --json headRefName   # Anbieter = Branch-Präfix, ohne mergify/ und dependabot/
 ```
 
-- Ein `gh run list` liefert höchstens 1000 Zeilen, deshalb tageweise abfragen.
-- Der Auswerter war ein Wegwerf-Skript. BENCH-01 macht daraus ein versioniertes Skript.
+- Ein `gh run list` liefert höchstens 1000 Zeilen, deshalb tageweise abfragen. Die Archiv-Abfrage lieferte 870 Zeilen und liegt unter der Grenze.
+- Der Auswerter war ein Wegwerf-Skript und ist nicht erhalten. Die Muster für Paket-ID, Fix-PR, Review-Fix-Commit und „Runde 2“ stehen deshalb nirgends. Die Zeilen „verschiedene Pakete“, Review und M-REWORK sowie die Nenner 189 und 210 (statt 193) sind bis BENCH-01 nicht nachrechenbar. BENCH-01 schreibt die Muster ins Skript und weist M-LEAD je Stufe und Größenklasse aus.
+- Rohsummen F / F2 / J / J2: aktive Tage 3 / 15 / 3 / 4; gemergt 36 / 64 / 193 / 229; Paket-PRs 23 / 26 / 128 / 140; Code-Zeilen 20 919 / 73 506 / 24 141 / 28 885; Commits 205 / 422 / 490 / 555; PR-Läufe 147 / 403 / 327 / 376, davon rot 37 / 153 / 30 / 30; Queue-Läufe J / J2: 160 / 200, davon rot 28 / 31.
 
 ## 6. Vorwärts-Benchmark v1.6.0
 
@@ -99,8 +104,8 @@ Baseline = J2 (02.10. bis Basis). Ziele gelten pro Woche, gemessen am Montag:
 | Regel 1 | 6 % über 300 Zeilen | ≤ 3 % |
 | M-TRAILER | 99 % | ≥ 99 % |
 | M-HUMAN | 25 Inbox-Einträge in 4 Tagen | ≤ 10 neue pro Woche; neu messen: Nutzer-Kommentare und Freigaben |
-| M-IDLE | 31 LEERLAUF-Alarme pro Tag (lokal) | ≤ 10 pro Tag |
-| M-RP | 6 % der Job-Specs (lokal) | ≥ 90 % mit Kritik-Protokoll; Nacharbeit mit vs. ohne getrennt ausgewiesen |
+| M-IDLE | 31 LEERLAUF-Alarme pro Tag (lokal, J2; im Fenster J 99 in 3 Tagen = 33) | ≤ 10 pro Tag |
+| M-RP | 6 % der Job-Specs (lokal); kein PR vor #488 trägt `### Prompt-Log` | ≥ 90 % der Paket-PRs mit Prompt-Log (FLOW-05); Nacharbeit mit vs. ohne getrennt ausgewiesen |
 | Kontingent | nicht beobachtet | für ≥ 80 % der Jobs Anbieter + Verbrauchsbeleg je PR erfasst |
 
 Pakete für die Wochenmessung (nicht umgesetzt):
