@@ -6,7 +6,7 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 ## Wo wir stehen
 
 - **Release:** v1.4.1 (22.09.) ist der jüngste; alles danach liegt nur auf `main`.
-  Nächster Release: v1.5.0-beta als Abschluss von M3.
+  Nächster Release: v1.5.0 (Beta) als Abschluss von M3.
 - **Meilenstein M1** „Alles Laufende gelandet, App startbar“: erreicht
   (26.09.2026, PLAN.md, Tabelle M1). Zuletzt gelandet: SEC-01 (PR #20),
   CLEAN-02 (PR #25), W1-21d (PR #27), CI-04 (PR #28), W1-18b (PR #30),

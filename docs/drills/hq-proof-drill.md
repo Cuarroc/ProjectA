@@ -13,9 +13,9 @@ Repository, `pa` im Pfad (oder `-Pa <Pfad>`). Die Aufgaben-Vorlagen stehen in
 das HQ oder `pa hq runtime`. Agenten starten die App nie; das tust nur du.
 
 1. **Version notieren.** App starten, „Info" öffnen, Versionsnummer merken
-   (unten `1.5.0-beta` als Beispiel).
+   (unten `1.5.0` als Beispiel).
 2. **Vorher-Lauf.** Bei laufender App in PowerShell 7 im Repository-Ordner:
-   `pwsh scripts/drills/hq-proof-drill.ps1 -Phase before -Project <ID> -AppVersion 1.5.0-beta -OutDir C:\Belege\hq-vorher`
+   `pwsh scripts/drills/hq-proof-drill.ps1 -Phase before -Project <ID> -AppVersion 1.5.0 -OutDir C:\Belege\hq-vorher`
    Erwartet: zwei Zeilen `OK`, `Ergebnis: pass`. Der Zielordner muss neu oder leer sein.
 3. **Drei Aufgaben geben.** Nimm die drei Vorlagen (Fehler mit Test, Text in der
    Oberfläche, Doku-Abschnitt) und gib sie in der App an Agenten.
@@ -35,7 +35,7 @@ das HQ oder `pa hq runtime`. Agenten starten die App nie; das tust nur du.
 7. **PRs landen lassen.** Der Koordinator reiht sie in die Queue ein. Warte, bis
    alle drei auf GitHub als „Merged" stehen.
 8. **Nachher-Lauf.** App läuft noch:
-   `pwsh scripts/drills/hq-proof-drill.ps1 -Phase after -Project <ID> -AppVersion 1.5.0-beta -Before C:\Belege\hq-vorher -Screenshots C:\Belege\hq-bilder -OutDir C:\Belege\hq-nachher`
+   `pwsh scripts/drills/hq-proof-drill.ps1 -Phase after -Project <ID> -AppVersion 1.5.0 -Before C:\Belege\hq-vorher -Screenshots C:\Belege\hq-bilder -OutDir C:\Belege\hq-nachher`
    Fehlt eine PR-Adresse in der Ausgabe, gib sie mit `-Pr <URL>` an (mehrfach möglich).
    Erwartet: vier Zeilen `OK`, `Ergebnis: pass`. Bei `FEHLER` den Ordner nicht löschen und melden.
 9. **Beleg prüfen.** In `hq-nachher` liegen `manifest.json` (Version, Zeiten,
