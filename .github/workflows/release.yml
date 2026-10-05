@@ -7,8 +7,7 @@ name: release
 on:
   push:
     tags: ["v*"]
-  # Pre-tag dry run (after v1.5.0 run 37338718635): job release-gates-dry-run,
-  # start with `gh workflow run release.yml --ref <branch>` before a v* tag.
+  # Pre-tag dry run (job release-gates-dry-run): gh workflow run release.yml --ref <branch>
   workflow_dispatch:
 
 permissions:
@@ -38,8 +37,7 @@ defaults:
     shell: bash
 
 jobs:
-  # No environment, no secrets, read-only token: nothing here can sign or
-  # publish. scripts/ci/release-shape.sh keeps it that way.
+  # No environment, no secrets, read-only token (checked by release-shape.sh).
   release-gates-dry-run:
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
