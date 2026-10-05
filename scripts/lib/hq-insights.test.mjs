@@ -73,8 +73,8 @@ test("significantSignals ranks act > watch > note and names the target", () => {
 
 test("significantSignals: an offline app is the first signal and never reads as all clear", () => {
   const signals = significantSignals({ apiOffline: true });
-  assert.match(signals[0].title, /App nicht verbunden/);
+  assert.match(signals[0].title, /app not connected/);
   assert.ok(!signals.some((s) => /Nothing needs you right now/.test(s.title)));
   const withAct = significantSignals({ apiOffline: true, setup: { ready: false, summary: "x" } });
-  assert.match(withAct[0].title, /App nicht verbunden/);
+  assert.match(withAct[0].title, /app not connected/);
 });

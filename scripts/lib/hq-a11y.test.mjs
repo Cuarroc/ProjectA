@@ -473,8 +473,16 @@ test("offline app: the signal list says so instead of showing the error text", a
   const f = liveFixture({ offline: true, routes: { "/insights": insights } }); t.after(() => f.dom.window.close());
   await settle(f.document, "#live-signals .signal");
   const text = f.document.querySelector("#live-signals").textContent;
-  assert.match(text, /App nicht verbunden/);
+  assert.match(text, /app not connected/);
   assert.doesNotMatch(text, /Live-Daten nicht verfügbar/);
   assert.doesNotMatch(text, /Nothing needs you right now/);
   assert.equal(f.calls.find((c) => c.path === "/insights").body.includes('"apiOffline":true'), true);
+});
+
+test("offline app: a failing insights route gets its own text instead of the Control-API hint", async (t) => {
+  const f = liveFixture({ offline: true }); t.after(() => f.dom.window.close());
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const text = f.document.querySelector("#live-signals").textContent;
+  assert.match(text, /Signale nicht verfügbar/);
+  assert.doesNotMatch(text, /Control-API/);
 });

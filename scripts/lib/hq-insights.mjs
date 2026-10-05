@@ -133,7 +133,9 @@ export function significantSignals(ctx = {}) {
 
   const rank = { act: 0, watch: 1, note: 2 };
   out.sort((a, b) => rank[a.level] - rank[b.level]);
-  if (ctx.apiOffline) out.unshift({ level: "watch", title: "ProjectA-App nicht verbunden", why: "Agenten, Queue und Kontingent unbekannt (nicht leer)", target: "" });
+  // Deliberately out of band: the offline notice leads the list even ahead of `act` signals, because
+  // everything else here was computed without board, queue or quota and must not read as complete.
+  if (ctx.apiOffline) out.unshift({ level: "watch", title: "ProjectA app not connected", why: "agents, queue and quota are unknown (not empty)", target: "" });
   if (!out.length) push("note", "Nothing needs you right now", "no attention, verdicts, quota blocks or disputed lessons", "");
   return out;
 }
