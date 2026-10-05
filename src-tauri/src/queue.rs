@@ -37,6 +37,34 @@ pub const DEFAULT_MAX_CONCURRENT: usize = 4;
 /// The queue is deliberately a slow poller: it is a safety net, not a hot path.
 pub const POLL_INTERVAL: Duration = Duration::from_secs(30);
 
+/// How long one launch may take before its entry is failed (FJ-3).
+///
+/// A product default, not a measured limit. It is a compile-time constant
+/// (no setting yet): changing it is a code change the user decides in the
+/// decision inbox. A launch slower than this fails for good, it is not
+/// retried. No existing launch constant fits (`setupgate::TIMEOUT` bounds a setup
+/// command, not the whole worker start), so this one is named here. Every
+/// project's sweep hangs on one `block_on`; a launch that never returns would
+/// otherwise stall all of them. Only the launch await is bounded here, not the
+/// store/preflight awaits around it. Dropping a timed-out launch does not undo
+/// side effects it already made (a worktree from `spawn_blocking`): follow-up.
+pub const LAUNCH_TIMEOUT: Duration = Duration::from_secs(120);
+
+// Read on the thread that sets it: the sweep is polled inline under `block_on`.
+#[cfg(test)]
+thread_local! {
+    static LAUNCH_TIMEOUT_OVERRIDE: std::cell::Cell<Option<Duration>> =
+        const { std::cell::Cell::new(None) };
+}
+
+fn launch_timeout() -> Duration {
+    #[cfg(test)]
+    if let Some(short) = LAUNCH_TIMEOUT_OVERRIDE.with(std::cell::Cell::get) {
+        return short;
+    }
+    LAUNCH_TIMEOUT
+}
+
 /// Environment switch that keeps the dispatcher from ever starting
 /// (W5-28). A sandboxed proof run sets `PROJECTA_QUEUE=off` so that no
 /// queued task - above all one left over from an earlier session - can
@@ -394,14 +422,27 @@ pub async fn dispatch_project(
         // The guard turns the unwind into the same `Err` an ordinary launch
         // failure is, so the entry fails visibly below instead of dying
         // with the thread.
-        return match (GuardedLaunch {
-            // Keep construction inside the guarded future too. Production
-            // launchers return an async block, but the trait permits a fake
-            // or future launcher to panic before it returns that block.
-            inner: Box::pin(async { launcher.launch(&launched).await }),
-        })
+        // Bounded (FJ-3): a launch that never returns is dropped after
+        // `LAUNCH_TIMEOUT` and fails this entry, fail-closed - the entry goes
+        // to `failed`, never back to `ready`, so it is not spawned twice.
+        let timeout = launch_timeout();
+        let outcome = tokio::time::timeout(
+            timeout,
+            GuardedLaunch {
+                // Keep construction inside the guarded future too. Production
+                // launchers return an async block, but the trait permits a
+                // fake or future launcher to panic before it returns that
+                // block.
+                inner: Box::pin(async { launcher.launch(&launched).await }),
+            },
+        )
         .await
-        {
+        .unwrap_or_else(|_| {
+            Err(format!(
+                "launch timed out after {timeout:?}; entry failed, not retried"
+            ))
+        });
+        return match outcome {
             Ok(worker_id) => {
                 // Say the redirect on the worker's own log, first thing. A
                 // worker that quietly runs on an agent nobody chose is the
@@ -1162,6 +1203,95 @@ mod tests {
             .expect("the fine row is still there");
         assert_eq!(dispatched.status, QUEUE_DISPATCHED);
         assert!(dispatched.worker_id.is_some());
+    }
+
+    /// Launcher that never returns for the entry named "hung" (FJ-3).
+    struct HangingLauncher {
+        calls: Mutex<Vec<String>>,
+    }
+
+    impl TaskLauncher for HangingLauncher {
+        fn launch<'a>(
+            &'a self,
+            entry: &'a QueueEntry,
+        ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + 'a>> {
+            Box::pin(async move {
+                self.calls.lock().unwrap().push(entry.id.clone());
+                if entry.raw_text == "hung" {
+                    std::future::pending::<()>().await;
+                }
+                Ok(format!("wk-{}", entry.id))
+            })
+        }
+    }
+
+    /// Regression (FJ-3): one launch that never returns stalled the sweep for
+    /// every project. Project A's hung launch must fail with a named reason
+    /// after the timeout, be spawned exactly once, and project B's entry must
+    /// still be dispatched in the same sweep.
+    #[test]
+    fn a_hung_launch_fails_its_entry_and_other_projects_still_dispatch() {
+        let handle = thread::spawn(|| {
+            LAUNCH_TIMEOUT_OVERRIDE.with(|cell| cell.set(Some(Duration::from_millis(200))));
+            tauri::async_runtime::block_on(async {
+                let (_dir, store, project_a) = fixture().await;
+                let project_b = store.create_project("two", "C:/repo/two").await.unwrap().id;
+                let mut ids = Vec::new();
+                for (project, text) in [(&project_a, "hung"), (&project_b, "fine")] {
+                    let entry = enqueue_with_enhancer(
+                        &store,
+                        project,
+                        text,
+                        None,
+                        false,
+                        Some(0),
+                        None,
+                        |_, _| unreachable!(),
+                    )
+                    .await
+                    .unwrap();
+                    ids.push(entry.id);
+                }
+                let launcher = HangingLauncher {
+                    calls: Mutex::new(Vec::new()),
+                };
+                let quota = QuotaTracker::default();
+                let preflight = PreflightCache::default();
+                let first = tokio::time::timeout(
+                    Duration::from_secs(10),
+                    dispatch_once(&store, &quota, &preflight, &launcher),
+                )
+                .await
+                .expect("a hung launch must not stall the sweep");
+                // A later sweep must not spawn the failed entry again.
+                let _ = dispatch_once(&store, &quota, &preflight, &launcher).await;
+                let mut rows = store.list_queue(Some(&project_a)).await.unwrap();
+                rows.extend(store.list_queue(Some(&project_b)).await.unwrap());
+                let calls = launcher.calls.lock().unwrap().clone();
+                (first, rows, calls, ids)
+            })
+        });
+        let (first, rows, calls, ids) = handle.join().expect("the sweep must survive");
+        assert_eq!(
+            first, 1,
+            "project B's entry is dispatched in the same sweep"
+        );
+        assert_eq!(
+            calls.iter().filter(|id| **id == ids[0]).count(),
+            1,
+            "the hung entry is spawned exactly once"
+        );
+        let hung = rows.iter().find(|row| row.id == ids[0]).unwrap();
+        assert_eq!(hung.status, QUEUE_FAILED);
+        assert!(
+            hung.error
+                .as_deref()
+                .is_some_and(|e| e.contains("timed out after 200ms")),
+            "named reason expected: {:?}",
+            hung.error
+        );
+        let fine = rows.iter().find(|row| row.id == ids[1]).unwrap();
+        assert_eq!(fine.status, QUEUE_DISPATCHED);
     }
 
     /// A launcher that tries to cancel the entry while it is "starting the
