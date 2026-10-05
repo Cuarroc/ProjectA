@@ -268,6 +268,18 @@ async fn reopen_after_each_transition_never_leaves_an_unreconciled_claim_reclaim
         .reserve_development_launch(&run, "owner", claim.fence, "codex")
         .await
         .unwrap();
+    // Reservation committed, nothing consumed: the reopen keeps the claim and
+    // refuses a second reservation for the same run.
+    let store = crash(&dir, store).await;
+    assert_unreclaimable(&store, &project, &kp).await;
+    let err = store
+        .reserve_development_launch(&run, "owner", claim.fence, "codex")
+        .await
+        .unwrap_err();
+    assert!(
+        err.contains("already reserved"),
+        "second reservation: {err}"
+    );
     store
         .bind_development_launch_baseline(&run, "owner", claim.fence, &"a".repeat(40))
         .await
