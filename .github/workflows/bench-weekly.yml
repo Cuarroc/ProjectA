@@ -1,0 +1,50 @@
+# Weekly benchmark (BENCH-02, v1.6.0 W0): runs scripts/dev/bench-weekly.mjs
+# (BENCH-01) and writes its Markdown table to the job summary. Read-only: no
+# commit, no artifact, no write permission. The summary is the only output.
+# Also startable by hand via workflow_dispatch (e.g. on a branch to try it).
+name: bench-weekly
+
+on:
+  schedule:
+    - cron: "17 5 * * 1" # Mondays 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+# Explicit `shell: bash` starts steps with `-eo pipefail` (see audit.yml).
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # The script counts diff lines per merge commit (`git diff <sha>^1 <sha>`),
+      # so it needs the whole history, not a shallow clone.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      # Window: the 7 days up to today (script default). Output goes to a file
+      # first, so a failing script fails the step instead of publishing a
+      # half-written summary.
+      - name: Compute weekly metrics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/dev/bench-weekly.mjs > "$RUNNER_TEMP/bench-weekly.md"
+          {
+            echo "## Weekly benchmark"
+            echo
+            cat "$RUNNER_TEMP/bench-weekly.md"
+          } >> "$GITHUB_STEP_SUMMARY"
