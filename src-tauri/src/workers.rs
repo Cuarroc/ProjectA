@@ -3535,8 +3535,34 @@ mod tests {
         run
     }
 
+    async fn assert_delivery_audit(
+        fx: &Fixture,
+        after: i64,
+        action: &str,
+        run: &str,
+        result: &str,
+        source_ref: &str,
+    ) {
+        let rows: Vec<String> = sqlx::query_scalar(
+            "SELECT detail_json FROM audit_log WHERE id>? AND action=? ORDER BY id",
+        )
+        .bind(after)
+        .bind(action)
+        .fetch_all(fx.store.pool_for_test())
+        .await
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rows[0]).unwrap(),
+            serde_json::json!({
+                "project": if run == "another-run" { "unresolved" } else { &fx.project_id },
+                "run": run, "result": result, "sourceRef": source_ref
+            })
+        );
+    }
+
     #[tokio::test]
-    async fn repeated_worker_delivery_done_is_idempotent() {
+    async fn worker_delivery_repeated_done_appends_one_complete_audit_envelope() {
         let fx = fixture("worker-delivery-done-replay").await;
         let run = launched_development_run(&fx).await;
 
@@ -3549,6 +3575,10 @@ mod tests {
         )
         .await
         .unwrap();
+        let before: i64 = sqlx::query_scalar("SELECT MAX(id) FROM audit_log")
+            .fetch_one(fx.store.pool_for_test())
+            .await
+            .unwrap();
         let repeated = delivery_state::record_worker_delivery(
             &fx.store,
             &run,
@@ -3560,6 +3590,15 @@ mod tests {
         .expect("repeating done must be a no-op");
 
         assert_eq!(repeated.0, first.0);
+        assert_delivery_audit(
+            &fx,
+            before,
+            "worker_delivery_done",
+            &run,
+            "replayed",
+            "worker:owner:fence:1",
+        )
+        .await;
 
         sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='task'")
             .execute(fx.store.pool_for_test())
@@ -3577,9 +3616,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn wrong_run_or_fence_cannot_complete_worker_delivery() {
+    async fn worker_delivery_wrong_run_appends_one_complete_audit_envelope() {
         let fx = fixture("worker-delivery-fence").await;
-        let run = launched_development_run(&fx).await;
+        let _run = launched_development_run(&fx).await;
 
         delivery_state::record_worker_delivery(
             &fx.store,
@@ -3590,6 +3629,21 @@ mod tests {
         )
         .await
         .expect_err("another run must be rejected");
+        assert_delivery_audit(
+            &fx,
+            0,
+            "worker_delivery_done",
+            "another-run",
+            "rejected",
+            "worker:owner:fence:1",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn worker_delivery_stale_fence_appends_one_complete_audit_envelope() {
+        let fx = fixture("worker-delivery-stale-fence-audit").await;
+        let run = launched_development_run(&fx).await;
         delivery_state::record_worker_delivery(
             &fx.store,
             &run,
@@ -3599,20 +3653,19 @@ mod tests {
         )
         .await
         .expect_err("a stale fence must be rejected");
-
-        assert_eq!(
-            fx.store
-                .get_development_run(&run)
-                .await
-                .unwrap()
-                .unwrap()
-                .status,
-            crate::store::development_runs::RUN_LAUNCHED
-        );
+        assert_delivery_audit(
+            &fx,
+            0,
+            "worker_delivery_done",
+            &run,
+            "rejected",
+            "worker:owner:fence:2",
+        )
+        .await;
     }
 
     #[tokio::test]
-    async fn worker_delivery_blocked_persists_its_reason() {
+    async fn worker_delivery_blocked_success_appends_one_complete_audit_envelope() {
         let fx = fixture("worker-delivery-blocked").await;
         let run = launched_development_run(&fx).await;
 
@@ -3631,6 +3684,63 @@ mod tests {
 
         assert_eq!(blocked.status, crate::store::development_runs::RUN_FAILED);
         assert_eq!(blocked.terminal_detail.as_deref(), Some("missing approval"));
+        assert_delivery_audit(
+            &fx,
+            0,
+            "worker_delivery_blocked",
+            &run,
+            "blocked",
+            "worker:owner:fence:1",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn worker_delivery_done_appends_one_complete_audit_envelope() {
+        let fx = fixture("worker-delivery-done-audit").await;
+        let run = launched_development_run(&fx).await;
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Done,
+        )
+        .await
+        .unwrap();
+        assert_delivery_audit(
+            &fx,
+            0,
+            "worker_delivery_done",
+            &run,
+            "completed",
+            "worker:owner:fence:1",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn worker_delivery_blocked_without_reason_appends_one_complete_audit_envelope() {
+        let fx = fixture("worker-delivery-blocked-empty-audit").await;
+        let run = launched_development_run(&fx).await;
+        delivery_state::record_worker_delivery(
+            &fx.store,
+            &run,
+            "owner",
+            1,
+            delivery_state::WorkerDelivery::Blocked { reason: " ".into() },
+        )
+        .await
+        .expect_err("an empty reason must be rejected");
+        assert_delivery_audit(
+            &fx,
+            0,
+            "worker_delivery_blocked",
+            &run,
+            "rejected",
+            "worker:owner:fence:1",
+        )
+        .await;
     }
 
     #[tokio::test]
@@ -4497,7 +4607,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn native_handoff_owns_one_durable_launch_without_pty_delivery() {
+    async fn development_delivery_start_appends_one_complete_audit_envelope() {
         let fx = fixture("native-owned-handoff").await;
         let route = development_route::test_native_route();
         let reserved = reserved_routed_launch(&fx, &route).await;
@@ -4541,6 +4651,15 @@ mod tests {
             .unwrap();
         assert_eq!(delivery.state, "started");
         assert!(delivery.enqueued_at.is_none());
+        assert_delivery_audit(
+            &fx,
+            0,
+            "delivery_start",
+            &reserved.run_id,
+            "accepted",
+            &format!("delivery:{}:start", reserved.run_id),
+        )
+        .await;
         assert_eq!(
             fx.store
                 .get_development_run(&reserved.run_id)
@@ -4727,7 +4846,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn development_worker_uses_reserved_identity_and_blocks_ordinary_respawn() {
+    async fn development_delivery_enqueue_appends_one_complete_audit_envelope() {
         let fx = fixture("reserved-worker").await;
         let reserved = reserved_launch(&fx).await;
         let descriptor = fx._dir.path().join("scoped.json");
@@ -4773,6 +4892,15 @@ mod tests {
             .unwrap();
         assert_eq!(delivery.state, "enqueued");
         assert_eq!(Some(delivery.process_instance), saved.process_instance);
+        assert_delivery_audit(
+            &fx,
+            0,
+            "delivery_enqueue",
+            &reserved.run_id,
+            "accepted",
+            &format!("delivery:{}:enqueue", reserved.run_id),
+        )
+        .await;
         let delivered = agents.task_deliveries.lock().unwrap()[0].2.clone();
         assert_eq!(delivery.input_bytes, delivered.len() as i64);
         {

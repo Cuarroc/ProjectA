@@ -921,7 +921,7 @@ fn db(label: &'static str) -> impl FnOnce(sqlx::Error) -> String {
 /// fails at once with `(code: 5) database is locked` whenever another
 /// connection holds the lock, and `busy_timeout` never engages. Taking the
 /// lock at `BEGIN` puts the wait where the busy handler does run.
-async fn begin_write(
+pub(super) async fn begin_write(
     pool: &SqlitePool,
     label: &'static str,
 ) -> Result<Transaction<'static, Sqlite>, String> {

@@ -60,19 +60,17 @@ impl Store {
         subject: &str,
         envelope: &AuditEnvelope<'_>,
     ) -> Result<i64, String> {
-        for (field, value) in [
-            ("project", envelope.project),
-            ("run", envelope.run),
-            ("result", envelope.result),
-            ("sourceRef", envelope.source_ref),
-        ] {
-            if value.trim().is_empty() {
-                return Err(format!("{ERR_REFUSED}audit envelope missing {field}"));
-            }
-        }
+        validate_envelope(envelope)?;
         let detail = serde_json::to_value(envelope)
             .map_err(|error| format!("failed to serialize audit envelope: {error}"))?;
         self.append_audit(actor, action, subject, &detail).await
+    }
+
+    pub(crate) async fn audit_project_for_run(&self, run: &str) -> Result<String, String> {
+        sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
+            .bind(run).fetch_optional(&self.pool).await
+            .map(|project| project.unwrap_or_else(|| "unresolved".into()))
+            .map_err(|error| format!("failed to resolve audit project: {error}"))
     }
 
     /// Appends one audit row and returns its monotonically increasing id.
@@ -96,6 +94,42 @@ impl Store {
         .map_err(|e| format!("failed to append to the audit trail: {e}"))?;
         Ok(result.last_insert_rowid())
     }
+}
+
+pub(super) async fn append_domain_audit_tx(
+    tx: &mut Transaction<'_, Sqlite>,
+    actor: &str,
+    action: &str,
+    subject: &str,
+    envelope: &AuditEnvelope<'_>,
+) -> Result<(), String> {
+    validate_envelope(envelope)?;
+    let detail = serde_json::to_value(envelope)
+        .map_err(|error| format!("failed to serialize audit envelope: {error}"))?;
+    sqlx::query("INSERT INTO audit_log(ts,actor,action,subject,detail_json) VALUES(?,?,?,?,?)")
+        .bind(now_unix_secs())
+        .bind(actor)
+        .bind(action)
+        .bind(subject)
+        .bind(detail.to_string())
+        .execute(&mut **tx)
+        .await
+        .map_err(|error| format!("failed to append to the audit trail: {error}"))?;
+    Ok(())
+}
+
+fn validate_envelope(envelope: &AuditEnvelope<'_>) -> Result<(), String> {
+    for (field, value) in [
+        ("project", envelope.project),
+        ("run", envelope.run),
+        ("result", envelope.result),
+        ("sourceRef", envelope.source_ref),
+    ] {
+        if value.trim().is_empty() {
+            return Err(format!("{ERR_REFUSED}audit envelope missing {field}"));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
