@@ -5,8 +5,7 @@
 #      windows-installer or the composite it uses.
 #   2. Both jobs use that composite and run `gates.sh lane release`.
 #   3. windows-installer: push only, keeps `environment: release`.
-#   4. Every other job: no environment, no secret; the dry run is
-#      workflow_dispatch only. Line-wise like ci-shape.sh (block-style YAML).
+#   4. Other jobs: no environment, no secret; dry run dispatch-only (block YAML).
 # Usage: release-shape.sh [release.yml] [action.yml]
 # Self-test: scripts/test-release-shape.sh
 set -uo pipefail

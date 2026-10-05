@@ -1,11 +1,8 @@
 name: setup-windows-release
-description: >
-  Windows bootstrap for `gates.sh lane release`: Node, Rust, cache and every
-  tool a release-lane gate needs. Shared by the tag build and the dry run.
+description: Windows setup for `gates.sh lane release`, shared by tag build and dry run.
 
-# v1.5.0 (run 37338718635) died at gate `shellcheck`: release.yml installed
-# only nextest. One composite for both release jobs, so the dry run proves the
-# tag build's setup; scripts/ci/release-shape.sh checks the tools here.
+# v1.5.0 (run 37338718635) died at gate `shellcheck`: release.yml installed only
+# nextest. scripts/ci/release-shape.sh checks every lane tool is installed here.
 
 runs:
   using: composite
