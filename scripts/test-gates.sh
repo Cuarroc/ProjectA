@@ -74,7 +74,8 @@ pflicht_prepush="red-first-plan fmt typecheck lint fe-test hq-test clippy rust-s
 pflicht_branchpush="red-first-plan fmt typecheck lint fe-test hq-test"
 pflicht_linux="no-masked wf-shell wf-pinned ci-shape selftest-gates selftest-red-first selftest-review selftest-lane-plan fmt typecheck lint fe-test hq-test hq-visual fe-build e2e clippy rust-suite"
 pflicht_windows="fmt clippy rust-suite native-tests"
-pflicht_release="no-masked wf-shell wf-pinned ci-shape selftest-gates selftest-red-first selftest-review selftest-lane-plan fmt typecheck lint fe-test hq-test hq-visual fe-build e2e clippy rust-suite"
+# Release: the Linux-only CI selftests left this lane (gates.sh, hotfix v1.5.0).
+pflicht_release="no-masked wf-shell wf-pinned shellcheck actionlint release-shape licenses fmt typecheck lint fe-test hq-test hq-visual fe-build e2e clippy rust-suite"
 pflicht_audit="audit-rust audit-npm"
 
 for lane in $LANES; do
