@@ -7,6 +7,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 vi.mock("./components/TerminalView", () => ({ default: () => null }));
 
+import { listen } from "@tauri-apps/api/event";
 import App from "./App";
 
 function invokeCalls(command: string): number {
@@ -121,9 +122,34 @@ describe("App bootstrap", () => {
     const list = await screen.findByRole("list", { name: "Erste Schritte" });
     expect(list.querySelectorAll("li")).toHaveLength(3);
     const agentStep = screen.getByText("Ein Agent ist bereit").closest("li");
-    await waitFor(() => expect(agentStep).toHaveTextContent("Nicht gefunden: Claude Code"));
+    await waitFor(() => expect(agentStep).toHaveTextContent("Noch nicht verbunden: Claude Code"));
     expect(agentStep).toHaveAttribute("data-done", "false");
     expect(screen.getByText("Projekt anlegen (ein Git-Ordner)").closest("li")).toHaveAttribute("data-done", "false");
     expect(screen.getByRole("button", { name: "Ad-hoc-Sitzung" })).toBeInTheDocument();
+  });
+
+  it("checklist is not shown for an established project without workers", async () => {
+    const project = { id: "p1", name: "Demo", repoPath: "/repo/demo", createdAt: 1, githubRemote: false };
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "list_projects") return Promise.resolve([project]);
+      if (command === "list_agent_profiles") return Promise.resolve([]);
+      if (command === "list_workers" || command === "list_questions") return Promise.resolve([]);
+      if (command === "get_board_state") return Promise.resolve({ cards: [], coordinators: [] });
+      if (command === "get_provider_overview") {
+        return Promise.resolve([
+          { id: "claude", name: "Claude Code", kind: "subscription", connected: true, detail: null },
+        ]);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    vi.mocked(listen).mockResolvedValue(() => {});
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+    expect(await screen.findByText("Keine Terminal-Sitzungen.")).toBeInTheDocument();
+    await waitFor(() => expect(invokeCalls("get_provider_overview")).toBeGreaterThan(0));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByRole("list", { name: "Erste Schritte" })).toBeNull();
   });
 });
