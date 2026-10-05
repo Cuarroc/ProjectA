@@ -3250,12 +3250,16 @@ pub(crate) mod tests {
             project_id: &str,
             action: &str,
         ) -> Result<crate::store::ContinuousControl, String> {
+            // Sync call from the server's plain request thread, like the other
+            // store-backed fakes here; `block_on` would panic inside a runtime.
             if let Some(store) = &self.native_store {
                 return tauri::async_runtime::block_on(
                     store.control_continuous(project_id, action),
                 );
             }
-            Err("continuous runtime adapters are unattested; resume is fail-closed".into())
+            // Deliberately not the store's wording: a route test that sees the
+            // store's text proves the store was in the path.
+            Err("fake backend without a store: resume is fail-closed".into())
         }
         /// Every id names a project except `pj-nope`, which names none - the
         /// same convention the digest, stats and landing-page fakes follow -

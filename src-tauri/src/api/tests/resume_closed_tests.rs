@@ -1,5 +1,6 @@
-//! M4-ROW3-A (acceptance row 3): `resume` stays closed in v1.5.0 whatever the
-//! caller presents, on a real store, and a refused resume writes nothing.
+//! M4-ROW3-A (acceptance row 3): `resume` stays closed in v1.5.0 for a paused
+//! project whatever verdict token the caller presents, on a real store, and a
+//! refused resume writes nothing.
 use super::*;
 
 const CONTROL: &str = "/api/hq/v1/control";
@@ -12,6 +13,8 @@ async fn state(pool: &sqlx::SqlitePool) -> String {
         "SELECT project_id||'|'||status||'|'||updated_at FROM continuous_projects",
         "SELECT cursor||'|'||kind||'|'||detail FROM continuous_events ORDER BY cursor",
         "SELECT id||'|'||status||'|'||ifnull(claim_owner,'')||'|'||ifnull(claim_fence,'')||'|'||attempts FROM continuous_tasks ORDER BY id",
+        "SELECT id||'|'||status||'|'||updated_at FROM continuous_goals ORDER BY id",
+        "SELECT root_goal_id||'|'||policy_json FROM continuous_root_policies ORDER BY root_goal_id",
         "SELECT id||'|'||status FROM development_runs ORDER BY id",
         "SELECT run_id||'|'||state||'|'||reserved_at FROM development_launches ORDER BY run_id",
     ] {
