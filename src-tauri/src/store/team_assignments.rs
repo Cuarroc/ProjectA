@@ -150,6 +150,14 @@ pub(super) async fn check_claim(
                 return Err("continuous integration capacity exhausted".into());
             }
         }
+    } else if !policy
+        .teams
+        .iter()
+        .any(|team| team.roles.iter().any(|role| role == "implementer"))
+    {
+        // An unassigned task is worked as an implementer; refuse it before any
+        // attempt or launch intent is written when the frozen policy has none.
+        return Err("frozen root policy grants no team the implementer role".into());
     }
     Ok(())
 }
@@ -411,6 +419,50 @@ mod tests {
             .await
             .unwrap_err()
             .contains("integration capacity exhausted"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn check_claim_refuses_unassigned_task_without_implementer_role() {
+        let dir = TempDir::new("team-assignments-no-implementer");
+        let mut policy = DevelopmentPolicy::defaults();
+        for team in &mut policy.teams {
+            team.roles = vec!["reviewer".into()];
+        }
+        std::fs::write(
+            dir.path().join("projecta.dev.json"),
+            serde_json::to_string(&policy).unwrap(),
+        )
+        .unwrap();
+        let store = Store::open(&dir.path().join("projecta.db")).await.unwrap();
+        let project = store
+            .create_project("team", &dir.path().to_string_lossy())
+            .await
+            .unwrap();
+        let goal = store
+            .create_continuous_goal(&project.id, "goal", None, None, true)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO continuous_projects VALUES(?,'enabled',1)")
+            .bind(&project.id)
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "work", None, vec!["src/a.rs".into()], vec![])
+            .await
+            .unwrap();
+        let error = store
+            .claim_continuous_task(&task.id, "alice", false)
+            .await
+            .unwrap_err();
+        assert!(error.contains("implementer"), "{error}");
+        let (attempts, status): (i64, String) =
+            sqlx::query_as("SELECT attempts,status FROM continuous_tasks WHERE id=?")
+                .bind(&task.id)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!((attempts, status.as_str()), (0, "open"));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
