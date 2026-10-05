@@ -12,6 +12,14 @@ Repository, `pa` im Pfad (oder `-Pa <Pfad>`). Die Aufgaben-Vorlagen stehen in
 [`docs/vorlagen/aufgaben.md`](../vorlagen/aufgaben.md). Die Projekt-ID zeigt
 das HQ oder `pa hq runtime`. Agenten starten die App nie; das tust nur du.
 
+Hinweise aus dem Lauf mit v1.5.0 (05.10.2026):
+
+- Als App-Projekt muss ein **ProjectA-Checkout** dienen. Auf einem Repository
+  ohne `projecta.dev.json` bricht `pa hq goals create` mit
+  „cannot read <repo>\projecta.dev.json" ab.
+- Pro Projekt ist nur **ein offenes Hauptziel** erlaubt. Weitere Aufgaben gehen
+  als Tasks unter dieses Ziel: `pa hq tasks create <goalId> ...`.
+
 1. **Version notieren.** App starten, „Info" öffnen, Versionsnummer merken
    (unten `1.5.0` als Beispiel).
 2. **Vorher-Lauf.** Bei laufender App in PowerShell 7 im Repository-Ordner:
