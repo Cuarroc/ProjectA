@@ -772,6 +772,8 @@
       let ins;
       try { ins = await liveApi("/insights", { method: "POST", body: JSON.stringify(ctx) }); } catch (error) {
         host.innerHTML = `<p class="muted">Insights unavailable: ${escape(error.message)}</p>`;
+        // Offline, the generic "check the Control API" text is wrong for this panel: insights never use that API.
+        if (ctx.apiOffline) signalsHost.textContent = `Signale nicht verfügbar: ${error.message}`;
         return;
       }
       const e = ins.effort;
@@ -1025,7 +1027,8 @@
         for (const id of ['live-board', 'live-queue', 'live-questions', 'live-review', 'live-activity', 'live-capacity', 'live-updater', 'live-usage', 'live-providers', 'live-recommendations', 'live-signals', 'live-effort']) {
           el.querySelector(`#${id}`).textContent = 'Live-Daten nicht verfügbar. Verbindung zur Control-API prüfen.';
         }
-        await refreshStats(null);
+        // Insights need only git and local files, not the app: keep the signal list useful offline.
+        await Promise.all([refreshStats(null), refreshInsights({ apiOffline: true, setup: lastSetup }).catch((error) => console.error("hq: offline insights failed", error))]);
       } finally {
         await local;
         refreshing = false;
