@@ -69,3 +69,23 @@ test("rejects a second identical occurrence in an allowlisted file", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /RAW_PROCESS_SPAWN/);
 });
+
+test("a quote char literal in a test mod does not hide later production spawns", () => {
+  const root = fixture({
+    "src-tauri/src/workers.rs":
+      "#[cfg(test)]\nmod tests {\n    fn quote() -> char { '\"' }\n}\nfn launch() { Command::new(\"git\"); }\n",
+  });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /RAW_PROCESS_SPAWN.*src-tauri\/src\/workers\.rs/);
+});
+
+test("escaped char literals and lifetimes do not confuse test mod stripping", () => {
+  const root = fixture({
+    "src-tauri/src/workers.rs":
+      "#[cfg(test)]\nmod tests {\n    fn f<'a>(s: &'a str) -> bool { s.starts_with('\\'') || s.contains('}') }\n    fn spawn() { Command::new(\"git\"); }\n}\nfn launch() { Command::new(\"git\"); }\n",
+  });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
+});
