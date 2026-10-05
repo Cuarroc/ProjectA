@@ -142,3 +142,8 @@ test('attestation: a later code commit invalidates it', () => refusal((d, root) 
   writeFileSync(path.join(root, 'a.txt'), 'later');
   git(root, 'commit', '-q', '-am', 'code');
 }, /does not match HEAD/));
+
+test('attestation: a symbolic commit ref such as HEAD~1 is refused', () => refusal(d => { d.commit = 'HEAD~1'; }, /40-hex/, { commit: true }));
+test('attestation: an abbreviated commit SHA is refused', () => refusal((d, root) => {
+  d.commit = d.commit.slice(0, 12);
+}, /40-hex/));
