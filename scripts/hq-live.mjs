@@ -9,7 +9,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { runSetupChecks } from "./lib/hq-setup.mjs";
 import { studioRoute } from "./lib/hq-studio.mjs";
 import { activitySessions, diffVolume, estimateEffort, heatmap, significantSignals, workSessions } from "./lib/hq-insights.mjs";
-import { authors, commitsPerDay, fleetStats, remainingEstimate, snapshotStats, testSurface } from "./lib/hq-stats.mjs";
+import { authors, commitsPerDay, fleetStats, freshness, remainingEstimate, snapshotStats, testSurface } from "./lib/hq-stats.mjs";
 import { addLesson, feedbackLesson, lessonBadges, lessonBrief, lessonStats, matchSignals, readLessonsFile, refineLesson, relatedLessons, searchLessons, touchLesson, writeLessonsFile } from "./lib/hq-lessons.mjs";
 import { evaluateContinuousReadiness } from "./lib/continuous-readiness.mjs";
 import {
@@ -232,6 +232,19 @@ async function setup() {
   return { generatedAt: new Date().toISOString(), probes, ...checks, continuousReadiness };
 }
 
+// Read-only: compares HEAD with the existing origin/main ref and reads the
+// FETCH_HEAD mtime. Never fetches.
+function checkoutFreshness() {
+  const raw = tryGit(["rev-list", "--count", "HEAD..origin/main"]).trim();
+  const behind = /^\d+$/.test(raw) ? Number(raw) : null;
+  let standAgeH = null;
+  try {
+    const fetchHead = resolve(root, tryGit(["rev-parse", "--git-path", "FETCH_HEAD"]).trim());
+    standAgeH = Math.max(0, (Date.now() - statSync(fetchHead).mtimeMs) / 3600000);
+  } catch { /* no FETCH_HEAD yet */ }
+  return { behind, standAgeH, ...freshness({ behind, standAgeH }) };
+}
+
 function stats() {
   const files = git(["ls-files", "-z"]).split("\0").filter(Boolean);
   const dataPath = join(docs, "data.json");
@@ -251,6 +264,7 @@ function stats() {
     branch: tryGit(["rev-parse", "--abbrev-ref", "HEAD"]).trim(),
     head: tryGit(["rev-parse", "--short", "HEAD"]).trim(),
     dirtyFiles: tryGit(["status", "--short"]).split(/\r?\n/).filter(Boolean).length,
+    freshness: checkoutFreshness(),
   };
 }
 

@@ -89,3 +89,19 @@ export function remainingEstimate(remainingSpecs) {
   const label = hours === 0 ? "nothing remaining" : hours < 8 ? "under one focused day" : `${Math.ceil(hours / 8)} focused days`;
   return { hours, label, basis: "heuristic: 4 focused hours per startable specification; excludes blocked/serial wait time" };
 }
+
+/// Checkout freshness traffic light. `behind` = commits on origin/main that HEAD
+/// lacks (`null` when the ref is missing), `standAgeH` = hours since the last
+/// fetch (`null` when FETCH_HEAD is missing). Yellow from 1 commit behind or a
+/// fetch older than 24 h, red from 50 behind. Text is plain German for the UI.
+export function freshness({ behind = null, standAgeH = null } = {}) {
+  if (!Number.isInteger(behind)) {
+    return { level: "unbekannt", text: "Stand unbekannt: Der Vergleich mit origin/main ist hier nicht möglich." };
+  }
+  const stale = typeof standAgeH === "number" && standAgeH > 24;
+  const age = standAgeH == null ? " Zuletzt geholt: unbekannt (nie geholt?)." : ` Zuletzt geholt vor ${Math.round(standAgeH)} Std.`;
+  if (behind >= 50) return { level: "rot", text: `Dieser Stand liegt ${behind} Änderungen hinter origin/main. Bitte \`git pull\` ausführen.${age}` };
+  if (behind >= 1) return { level: "gelb", text: `Dieser Stand liegt ${behind} Änderung${behind === 1 ? "" : "en"} hinter origin/main. Bald \`git pull\` ausführen.${age}` };
+  if (stale) return { level: "gelb", text: `Auf dem Stand von origin/main, aber der letzte Abruf ist älter als 24 Std. Erst \`git fetch\` ausführen.${age}` };
+  return { level: "grün", text: `Dieser Stand ist auf der Höhe von origin/main.${age}` };
+}
