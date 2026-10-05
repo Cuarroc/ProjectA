@@ -131,3 +131,33 @@ siehe [permissions-proposal.md](permissions-proposal.md).
 6. Die Queue ist eingefroren (Release) — warten.
 7. Niemand hat `@Mergifyio queue` kommentiert — siehe „Einreihen ist ein
    eigener Schritt" oben.
+
+## Lane-Plan im Detail (aus AGENTS.md hierher verschoben)
+
+Quelle: `scripts/ci/lane-plan.sh` (CI-01/CI-02/CI-03). Die Jobs melden immer,
+dürfen ihre Lane aber überspringen und loggen den Grund.
+
+- **`gates (linux)` auf einem PR** überspringt nur bei Doku, die kein Gate
+  liest: `.md` im Root, unter `docs/` oder `.pa/`, außer `STAND.md`,
+  `.pa/task_*`, `.pa/report_f0*.md`, `docs/PLAN.md`, `docs/agents-json.md`,
+  `docs/dev-hq/*`, `include_str!`-Ziele und jede Doku, die in Test-/Gate-Code
+  wörtlich genannt wird. Datei prüfen: `bash scripts/ci/lane-plan.sh --classify <file>`.
+  Ein Gate, das Doku über Verzeichnislisting oder variabel gebauten Pfad liest,
+  muss in `HEAVY_DOCS` in `lane-plan.sh` eingetragen werden — die
+  Listing-Suche sieht solche Leser nicht.
+- **Queue-Läufe, Wochenlauf (Montag), `workflow_dispatch` auf `main`:** beide
+  Lanes voll.
+- **Push auf `main` ist leicht:** Der Kopf muss genau ein Merge-Commit von
+  `mergify[bot]` auf dem Vorgänger des Pushs sein, sonst läuft die Lane voll.
+  Voll läuft sie auch, wenn ein Cache-Schlüssel-Eingang sich änderte
+  (`Cargo.toml`, `Cargo.lock`, Toolchain-Dateien, `.cargo/`; für linux auch
+  `package-lock.json`).
+- **`red-first`** wird in `gates (linux)` berechnet (Schritte `red-first - plan`
+  und `red-first - proof against merge base`); der Job `red-first` meldet nur
+  das Ergebnis.
+- **Queue-Größe:** bis zu zwei Bündel gleichzeitig (`max_parallel_checks: 2`,
+  CI-QUEUE-02), bis zu vier PRs je Bündel.
+- **Dependabot:** Commits, die nur Dependency-Manifeste berühren, brauchen kein
+  Test-First/No-Test-Trailer (`red-first.sh`); alles andere schon.
+- **Lokal:** `PA_PREPUSH=light git push` fährt die Lane `branchpush` (ohne
+  Clippy, ohne Rust-Suite) für Branch-Pushes; Pushes auf `main` bleiben voll.

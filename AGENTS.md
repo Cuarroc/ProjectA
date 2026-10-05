@@ -233,47 +233,18 @@ those `conflict`): merge, never rebase or force-push.
   satisfies the check, so an open package PR must add the section.
   Docs/infra branches (`claude/plan-01-…`, `claude/ci-03-…`)
   are not packages but use the same PR shape.
-- **Red `main`:** when a run on `main` fails, the queue stops. Until CI-04
-  automates it, the coordinator puts `do-not-merge` on queued PRs, records the
-  run ID in `KNOWN_ISSUES.md` and fixes `main` first.
+- **Red `main`:** the queue stops; the coordinator puts `do-not-merge` on
+  queued PRs, records the run ID in `KNOWN_ISSUES.md` and fixes `main` first.
+- `gates (windows)` never runs its lane on an ordinary PR (CI-03): it reports a
+  stub success; the first Windows verdict is the merge-queue run. Never merge
+  past the queue (merge button, admin merge): the PR is untested on Windows.
+  Want it earlier? Run the `ci` workflow by hand on your branch.
 - Never rename a job in `ci.yml` without updating branch protection and
-  `.mergify.yml` (`scripts/ci/ci-shape.sh` checks that the two agree).
-- Lane plan (`scripts/ci/lane-plan.sh`, CI-01/CI-02): the jobs always report,
-  but may skip their lane and log why.
-  - `gates (windows)` never runs its lane on an ordinary PR (CI-03): the job
-    reports success from an Ubuntu runner and logs the Windows inputs the PR
-    changed. The first Windows verdict is the merge-queue run - a Windows
-    failure there removes the PR from the queue. Want it earlier? Run the
-    `ci` workflow by hand on your branch (`workflow_dispatch` runs both
-    lanes in full).
-    Never merge past the queue (GitHub merge button, admin merge): the PR's
-    `gates (windows)` is a stub, so such a merge reaches `main` untested on
-    Windows - the push to `main` then runs the full lane, after the fact.
-  - `gates (linux)` on a PR skips only for docs no gate reads: `.md` at the
-    root, under `docs/` or `.pa/`, except `STAND.md`, `.pa/task_*`,
-    `.pa/report_f0*.md`, `docs/PLAN.md`, `docs/agents-json.md`, `docs/dev-hq/*`,
-    `include_str!` targets and any doc named literally in test/gate code.
-    Check a file with `bash scripts/ci/lane-plan.sh --classify <file>`.
-    A gate that starts reading docs via a directory listing or a variable-
-    built path must be added to `HEAVY_DOCS` in `lane-plan.sh` — the listing
-    search cannot see those readers.
-  - Merge-queue runs, the weekly Monday run and `workflow_dispatch` on `main`
-    run both lanes in full.
-  - A push to `main` is light: its code was fully tested in the queue, and
-    the plan verifies that — the push head must be exactly one merge commit
-    from `mergify[bot]` on top of the push's predecessor, otherwise the lane
-    runs in full. It runs in full also when a cache key input changed
-    (`Cargo.toml`, `Cargo.lock`, toolchain files, `.cargo/`; for linux also
-    `package-lock.json`), to refresh the cache PRs restore.
-- `red-first` is computed inside `gates (linux)` (steps `red-first - plan`
-  and `red-first - proof against merge base`); the `red-first` job only
-  reports their outcome. Look there for details (CI-03).
-- The queue tests up to two batches at once (`max_parallel_checks: 2`,
-  CI-QUEUE-02); more waiting PRs are tested together (up to 4 per batch).
-- Dependabot commits that only touch dependency manifests need no
-  Test-First/No-Test trailer (`red-first.sh`); anything else they touch does.
-- Local: `PA_PREPUSH=light git push` runs the `branchpush` lane (no clippy,
-  no Rust suite) for branch pushes; pushes to `main` stay full.
+  `.mergify.yml` (`scripts/ci/ci-shape.sh`).
+- Lane-plan details (which docs skip `gates (linux)`, `HEAVY_DOCS`, light push
+  to `main`, Dependabot, `PA_PREPUSH=light`, red-first steps, batch size):
+  `docs/setup/mergify.md` ("Lane-Plan im Detail"); classify a file with
+  `bash scripts/ci/lane-plan.sh --classify <file>`.
 - **Nobody merges by hand.** Emergency exception: when the queue hangs or
   Mergify is down, the coordinator may merge a finished PR with
   `gh pr merge --merge --match-head-commit <sha>`, bound to the head SHA whose

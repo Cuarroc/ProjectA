@@ -44,6 +44,11 @@
       "PowerShell(git show *)",
       "PowerShell(git branch)",
       "PowerShell(git worktree list)"
+    ],
+    "deny": [
+      "Read(./target/**)",
+      "Read(./node_modules/**)",
+      "Read(./.pa/archiv/**)"
     ]
   },
   "hooks": {

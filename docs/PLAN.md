@@ -6,6 +6,10 @@ Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
 `docs/archive/plaene-2026-09/`. Wer hier nichts findet, arbeitet an nichts.
 
+> **Für Agenten:** Die Datei ist groß. Lies nur diesen Kopf und „Für den Nutzer",
+> suche dann dein Paket mit `grep -n "<ID>" docs/PLAN.md` und lies die Zeile
+> samt Lane-Schlüssel. Entscheidungs-Inbox und „Gestrichen/Geparkt" nur bei Bedarf.
+
 ## Für den Nutzer
 
 1. **Nächster Meilenstein:** M2 „Überblick und Setup“ (M1 „Alles Laufende
