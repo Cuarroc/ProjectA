@@ -55,6 +55,9 @@ function matchingBraceEnd(source, open) {
     const raw = source.slice(i).match(/^r(#+)?"/);
     if (raw) { string = true; rawEnd = `"${raw[1] ?? ""}`; i += raw[0].length - 1; continue; }
     if (source[i] === '"') { string = true; continue; }
+    // Char literals ('"', '{', '\'', '\u{41}') must not open strings or count braces; lifetimes ('a) do not match.
+    const char = source[i] === "'" && source.slice(i, i + 12).match(/^'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]+\}|[^])|[^\\'\n])'/u);
+    if (char) { i += char[0].length - 1; continue; }
     if (source[i] === "{") depth += 1;
     if (source[i] === "}" && --depth === 0) return i + 1;
   }
