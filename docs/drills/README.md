@@ -45,6 +45,25 @@ Die Spalte „Erst nach Drills frei" für die Drills 1–5 und 8 ist meine
 Ableitung: Die Drill-Seiten nennen W3-02i nur bei Backup (Wartungsmodus) und
 Updater (Wiederherstellungs-Journal). Im Zweifel frag den Orchestrator.
 
+### Was in v1.5.0 bestehen kann (Beleg vom 05.10.2026)
+
+Beobachtet vom Koordinator mit der installierten, signierten v1.5.0 (Commit
+`ec58a1c`):
+
+| Nr | Drill | Ergebnis in v1.5.0 | Warum |
+|----|-------|--------------------|-------|
+| 1 | Singleton | bestanden | — |
+| 2 | Not-Aus | bestanden | Inventar nach 961 ms leer |
+| 3 | Absturz | nicht abgedeckt | braucht Continuous AN, bis M4 gesperrt |
+| 4 | RAM-Druck | nicht abgedeckt | braucht Continuous AN, bis M4 gesperrt |
+| 5 | Provider | kann nicht bestehen | einfache Worker legen keine HQ-Läufe an (`"executionEnabled":false`), siehe [provider-drill.md](provider-drill.md) |
+| 6 | Backup | bestanden | — |
+| 7 | Updater | noch offen | läuft erst nach dem v1.5.0-Tag, braucht eine veröffentlichte neuere Version |
+| 8 | HQ-Beleg | läuft | Hinweise in [hq-proof-drill.md](hq-proof-drill.md) |
+
+Die Tabelle oben nennt Provider als „vor Drills frei" möglich; für v1.5.0 gilt
+trotzdem: Zeilen 11/12 bleiben offen, bis die Ausführung eingeschaltet ist.
+
 ## W3-07: signierter Updater-Relaunch
 
 Die Schritte stehen im [Updater-Drill](updater-drill.md); der Abschnitt
@@ -90,10 +109,9 @@ Texte sind geschwärzt; lies sie trotzdem einmal durch.
 
 ## NICHT ABGEDECKT / offene Widersprüche
 
-- Die Drill-Seiten widersprechen sich bei den Beispiel-Versionen: `1.4.1`
-  (Backup, Singleton, Absturz, Not-Aus, Provider), `1.5.0` (RAM-Druck, HQ-Beleg), `0.9.0`/`0.9.1` (Updater, `-OldVersion`/`-NewVersion`).
-  Nicht aufgelöst: nimm die Zahl aus „Info"; beim Updater frag, was für
-  `-OldVersion`/`-NewVersion` gilt.
+- Beispiel-Versionen: Alle Drill-Seiten nutzen jetzt `1.5.0`, nur der Updater
+  hat `0.9.0`/`0.9.1` (`-OldVersion`/`-NewVersion`). Nimm trotzdem die Zahl
+  aus „Info"; beim Updater frag, was für `-OldVersion`/`-NewVersion` gilt.
 - Absturz-Drill (21) und RAM-Druck-Drill (10) brauchen Continuous AN; das ist
   bis M4 gesperrt. Ohne Continuous sind beide „nicht abgedeckt" bzw. „nur
   Beobachtung", Zeile 10 bleibt offen.

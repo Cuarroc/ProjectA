@@ -21,13 +21,13 @@ dann kein Bestanden, sondern „nicht abgedeckt".
    (bei mehreren Einträgen alle). Nicht über das Menü schließen.
 4. **Zustand sichern.** In PowerShell 7 im Repository-Ordner, ProjectA noch
    geschlossen:
-   `pwsh scripts/drills/crash-drill.ps1 -Phase before -Transition process-starting -AppVersion 1.4.1 -OutDir C:\Belege\crash-vorher`
+   `pwsh scripts/drills/crash-drill.ps1 -Phase before -Transition process-starting -AppVersion 1.5.0 -OutDir C:\Belege\crash-vorher`
    Erlaubt für `-Transition`: claimed, intent, process-starting, input-delivery,
    checkpoint, completion. Erwartet: eine Zeile `OK`, `Ergebnis: pass`.
 5. **ProjectA neu starten** und etwa 2 Minuten warten, bis die App ruhig ist.
    Niemanden einen neuen Lauf starten lassen.
 6. **Prüfen.**
-   `pwsh scripts/drills/crash-drill.ps1 -Phase after -BeforeDir C:\Belege\crash-vorher -AppVersion 1.4.1 -OutDir C:\Belege\crash-nachher`
+   `pwsh scripts/drills/crash-drill.ps1 -Phase after -BeforeDir C:\Belege\crash-vorher -AppVersion 1.5.0 -OutDir C:\Belege\crash-nachher`
    Erwartet: zwei Zeilen `OK` und `Ergebnis: pass`. Bei `FEHLER` beide Ordner
    behalten und melden.
 7. **Beleg:** `crash-nachher` enthält `manifest.json`, Zustand vorher/nachher
