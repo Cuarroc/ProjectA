@@ -16,15 +16,15 @@ unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
 3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
    W3-03, W3-07 und die Abnahme jedes Meilensteins.
 
-4. **Bis v1.5.0 keine neuen Funktionen** (Nutzer 04.10.): neue Ideen kommen nur
+4. **Bis v1.5.1 keine neuen Funktionen** (Nutzer 04.10.): neue Ideen kommen nur
    in den Abschnitt „Später“; danach folgt M5.
 
-**Ziel ab 04.10.: v1.5.0 releasefähig** (Tag und Veröffentlichung macht der
+**Ziel ab 04.10.: v1.5.1 releasefähig** (Tag und Veröffentlichung macht der
 Orchestrator, sobald alle Gates und die 27 Matrixzeilen belegt sind).
 
 **Ziel:** ProjectA und das DevHQ sind auf dem PC des Nutzers voll benutzbar und
 werden zum Entwickeln von ProjectA selbst eingesetzt; danach wird der Continuous
-Mode abgenommen und mit v1.5.0 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
+Mode abgenommen und mit v1.5.1 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
 `3bcaed3`) ist der jüngste Release; alles danach liegt nur auf `main`.
 
 ## Meilensteine
@@ -33,9 +33,9 @@ Mode abgenommen und mit v1.5.0 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
 |---|---|---|
 | M1 | Alles Laufende gelandet, App startbar | Keine offenen Paket-PRs aus M1, `main` grün. Die App startet vom aktuellen `main`, ohne dass alte Queue-Einträge Agenten losschicken; tote Einträge lassen sich gezielt verwerfen (W1-05b). |
 | M2 | Überblick und Setup | Du fragst Claude „Was heißt das?“ und bekommst eine einfache Antwort. Ein Skript schreibt Status und Tagesbericht. Ein Plan, zehn Regeln, gestufte Reviews. Ein roter `main` hält die Queue an. Limits und RAM werden vor jedem Worker-Start geprüft. Backup läuft. |
-| M3 | App im Alltag + Zwischenrelease v1.5.0-beta | Du installierst v1.5.0-beta über den Updater. In der installierten App gibst du drei echte kleine Aufgaben an Agenten, verfolgst sie im HQ, prüfst den Diff in der App, und der PR landet über die Queue. Das HQ ist hell und dunkel lesbar (Screenshots angesehen, auch die DF-07-Dichte). |
-| M4 | Dauerbetrieb abgenommen, v1.5.0 | Du schaltest den Continuous Mode selbst ein. Ein Not-Aus stoppt alles in 10 Sekunden. Alle 27 Zeilen der Abnahmematrix haben einen Beleg oder ein Nutzer-Gate. Update-Drills sind am PC durchgespielt. Du installierst v1.5.0. |
-| M5 | Aufräumen und erste Tester (nach v1.5.0) | 3–5 externe Tester haben v1.5.0 benutzt, ihre Rückmeldungen sind festgehalten. Die Architektur-Befunde sind abgearbeitet, `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI. Die vier Nahtstellen sind kleiner als bei v1.5.0. ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt. |
+| M3 | App im Alltag + Zwischenrelease v1.5.0 (Beta) | Du installierst v1.5.0 (Beta) über den Updater. In der installierten App gibst du drei echte kleine Aufgaben an Agenten, verfolgst sie im HQ, prüfst den Diff in der App, und der PR landet über die Queue. Das HQ ist hell und dunkel lesbar (Screenshots angesehen, auch die DF-07-Dichte). |
+| M4 | Dauerbetrieb abgenommen, v1.5.1 | Du schaltest den Continuous Mode selbst ein. Ein Not-Aus stoppt alles in 10 Sekunden. Alle 27 Zeilen der Abnahmematrix haben einen Beleg oder ein Nutzer-Gate. Update-Drills sind am PC durchgespielt. Du installierst v1.5.1. |
+| M5 | Aufräumen und erste Tester (nach v1.5.1) | 3–5 externe Tester haben v1.5.1 benutzt, ihre Rückmeldungen sind festgehalten. Die Architektur-Befunde sind abgearbeitet, `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI. Die vier Nahtstellen sind kleiner als bei v1.5.0. ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt. |
 
 Lane-Schlüssel: `st` store.rs + store/ · `api` api.rs · `mn` main.rs · `pa`
 bin/pa.rs (diese vier sind Nahtstellen, je ein aktives Paket) · `pty` pty.rs ·
@@ -98,7 +98,7 @@ Backup mit Kopia nach Google Drive, TypeScript-Sprachserver und PowerShell-Profi
 Statuszeile mit Limits, Lernpfad in Häppchen, ruflo/oh-my-claudecode aus,
 Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 
-### M3 — App im Alltag + Zwischenrelease v1.5.0-beta
+### M3 — App im Alltag + Zwischenrelease v1.5.0 (Beta)
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
@@ -119,15 +119,19 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
 | ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
-| R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | offen |
+| R-1 | Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | offen |
 
-**R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0-beta` setzt voraus:
+**R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0` (Beta; E24: A) setzt voraus:
 
 - W3-02 vollständig, einschließlich W3-02f bis W3-02i. Die vier Release-Blocker sind W3-02g (Journal-Erzeuger), W3-02h (Bytes und Version ans Journal, #411-Befund C1), W3-02j (Handshake-Identität nach dem Update) und W3-02i (Wartungs-Lease, #411-Befund C2). W3-02j, weil nach jedem echten Update die App heute nicht mehr startet: die Startprüfung vergleicht den Hash der laufenden exe mit dem Hash des Update-Pakets, dazu den Datenbank-Snapshot-Hash mit der Live-Datenbank (Befund aus PR #457 und Berater Fable 5.1, 05.10.).
-- Die PC-Drills W3-03 (paketierte Drills) und W3-07 (Produktionsschlüssel-Build und Signed-Updater-Relaunch) sowie der Beleg W3-08 (paketierter HQ-v1-Beleg).
+- Die PC-Drills 1-6 und 8 aus W3-03 (paketierte Drills) sowie der Beleg W3-08 (paketierter HQ-v1-Beleg). Sie laufen auf einem lokal signierten Installer: `node scripts/build-signed-windows.mjs` (`scripts/build-signed-windows.mjs:12` verlangt `TAURI_SIGNING_PRIVATE_KEY`, `:22-24` einen sauberen Checkout). Der Signierschlüssel steht nur in der eigenen PowerShell-Sitzung des Nutzers, vorher Backup, Installation über v1.4.1 (E25: A).
 - Alle Gates und die 27 Matrixzeilen (Fassung vom 04.10.).
 
-### M4 — Dauerbetrieb abgenommen, v1.5.0
+**Abnahme der Beta (nach dem Tag, E25: A):** Der Updater-Drill (W3-03e) und W3-07 (Produktionsschlüssel-Build, Signed-Updater-Relaunch) sind keine Voraussetzung des Tags mehr, denn sie brauchen ein echtes veröffentlichtes Update (fester Endpoint `src-tauri/tauri.conf.json:54-56`). Sie gehören zur Abnahme der Beta: Der Nutzer aktualisiert v1.4.1 bzw. v1.5.0 über den Updater. Reihenfolge der Updater-Fälle: `cancel`, `fail`, `success`.
+
+**Versionsnamen (E24: A, 05.10.):** Die Beta trägt den Tag `v1.5.0`, das Endrelease ist `v1.5.1`, weil die Release-Pipeline nur x.y.z annimmt (`scripts/verify-windows-package.ps1:5`, `scripts/release.cmd:16`). In den Entscheidungszeilen und Notizen vom 04.10. meint „v1.5.0“ noch das Endrelease; gelesen als v1.5.1.
+
+### M4 — Dauerbetrieb abgenommen, v1.5.1
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
@@ -166,7 +170,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | ✓ #73 |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5) | S | mn | offen |
-| W4-04 | Release v1.5.0 | S | N | offen |
+| W4-04 | Release v1.5.1 (Endrelease) | S | N | offen |
 | M4-R7-01 | Scheduler-`dispatch_once` hinter einem Nur-Test-Permit (Matrixzeile 7) | S | wk | offen |
 | M4-R7-02 | Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige `dispatch_once` auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall | S | wk | offen |
 | M4-ROW15-PROOF | HTTP-Beleg Zeile 15 (eingeengt): Bindung/Idempotenz Kandidat und Evidenz, Lesen nur im eigenen Run, fremde/stale Evidenz abgewiesen, veränderte Root-Policy ändert `policy_json` nicht und meldet fail-closed | S | api-Tests | offen |
@@ -181,43 +185,43 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | M4-R27-03 | Matrixzeilen 18 und 27 an den menschlich kontrollierten App-Release-Pfad anpassen (E20) | S | doc | offen |
 | M4-R27-04 | Store-Test: Continuous-Integrationsstufe wird bei `approval_eligible = 0` abgewiesen | S | st | offen |
 
-### M5 — Aufräumen und erste Tester (nach v1.5.0)
+### M5 — Aufräumen und erste Tester (nach v1.5.1)
 
 Nutzerentscheidung 04.10. (Empfehlungen des Orchestrators angenommen). Abnahme in
 Alltagssprache:
 
-- 3–5 externe Tester haben v1.5.0 benutzt und ihre Rückmeldungen sind festgehalten.
+- 3–5 externe Tester haben v1.5.1 benutzt und ihre Rückmeldungen sind festgehalten.
 - Die Architektur-Befunde (Pakete ARCH-D*/STATE-* aus der Drift-Karte und dem
   Zustands-Audit; die STATE-Zeilen kommen dazu, sobald sie existieren) sind
   abgearbeitet.
 - `docs/architecture-rules.md` gibt es und ein Drift-Gate läuft in der CI.
-- Die vier Nahtstellen sind kleiner als bei v1.5.0 (Zeilen messen und vergleichen).
+- Die vier Nahtstellen sind kleiner als bei v1.5.1 (Zeilen messen und vergleichen).
 - ProjectA ersetzt die externen Orchestrierungs-Skripte Schritt für Schritt
   (Dogfooding, laut Vision).
 
-Die ARCH-D-Pakete ändern kein Verhalten. Sie laufen erst nach v1.5.0, weil sie die
+Die ARCH-D-Pakete ändern kein Verhalten. Sie laufen erst nach v1.5.1, weil sie die
 seriellen Nahtstellen des Release-Wegs belegen; jedes nutzt den Prompt „ProjectA
 refactoring package“.
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | offen, nach v1.5.0 |
-| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | offen, nach v1.5.0 |
+| M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | offen, nach v1.5.1 |
+| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | offen, nach v1.5.1 |
 | M5-03 | ARCH-G1 Regeldokument `docs/architecture-rules.md` + ARCH-G2 Drift-Gate in der CI (noch nicht gemergt; sonst hier ✓ mit PR-Nummer) | M | ci + doc | offen |
-| M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | offen, nach v1.5.0 |
-| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.0 |
-| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.0 |
-| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.0 |
-| ARCH-D4 | Restlicher API-Router mit 51 Zweigen | M | api | offen, nach v1.5.0 |
-| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.0 |
-| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.0 |
-| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.0 |
-| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.0 |
-| M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19) | S | st | offen, nach v1.5.0 (Nutzer 04.10.) |
-| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19) | S | st | offen, nach v1.5.0 (Nutzer 04.10.) |
-| M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | offen, nach v1.5.0 (Nutzer 04.10.) |
-| M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | offen, nach v1.5.0 (Nutzer 04.10.) |
-| M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | offen, nach v1.5.0 (Nutzer 04.10.) |
+| M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | offen, nach v1.5.1 |
+| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.1 |
+| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.1 |
+| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.1 |
+| ARCH-D4 | Restlicher API-Router mit 51 Zweigen | M | api | offen, nach v1.5.1 |
+| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.1 |
+| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.1 |
+| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.1 |
+| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.1 |
+| M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
+| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
+| M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
+| M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
+| M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | offen, nach v1.5.1 (Nutzer 04.10.) |
 
 ### Reihenfolge der seriellen Lanes (nach Meilensteinen)
 
@@ -501,8 +505,8 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | W5-02b3 | Produktfrage: Verhältnis der globalen Env-Stufe zur Isolation je Profil | Globale Stufe ersetzt die Profil-Isolation. | Nutzer | ✓ entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten; Koordinatoren bleiben immer `strict`; profilspezifisches `passthrough` bleibt. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 | E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | offen, Nutzer, dringend |
-| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.5.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.5.0 |
-| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor M5-01 entscheiden. | Nutzer | offen, nach v1.5.0 |
+| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.5.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.5.1 |
+| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor M5-01 entscheiden. | Nutzer | offen, nach v1.5.1 |
 | E17 | Alte Arbeitsbäume entfernen? 29 von 81 sind nachweislich sicher (PR gemergt oder geschlossen, 0 geänderte Dateien, 0 ungepushte Commits, 0 Commits außerhalb von main); Liste liegt beim Orchestrator. Löschen entscheidet der Nutzer, vorher Backup. | Niedrige Priorität; nicht auf dem v1.5.0-Pfad. | Nutzer | offen, niedrig |
 | E18 | Matrixzeile 3 (riskante Übergänge, `resume`): Für v1.5.0 einengen? Vorschlag (Empfehlung): `resume` ist in v1.5.0 nicht verfügbar; ein Laufzeittest mit echtem Store belegt, dass `resume` ohne, mit falschem und mit aktuellem Urteil abgelehnt wird und nichts verändert, auch nach Neustart (Paket M4-ROW3-A eingereiht). Alternative: urteilsgebundenes `resume` bauen (5 Pakete, davon 2 auf der st-Spur, v1.5.0 ca. 1–2 Tage später). Bis zur Antwort gilt der Vorschlag als Arbeitsannahme. | Hohe Priorität; v1.5.0-Pfad, Empfehlung annehmen. | Nutzer | offen, hoch |
 | E19 | Matrixzeilen 15 und 17 eingeengt statt neu gebaut (Berater Fable + Astra, 04.10., beide Empfehlung: einengen). Echte Policy-Revision je Kandidat (DF-13) und echte Freigabe-Widerrufung (W5-02d) werden in M5 nachgeprüft. Gilt als Beraterentscheid; der Nutzer kann widersprechen. | Hohe Priorität; v1.5.0-Pfad. | Nutzer | entschieden (Berater), Nutzer kann widersprechen |
@@ -510,13 +514,13 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | E21 | Matrixzeile 2 (Aktivierung durch eine einzelne Nutzerentscheidung): Dauerbetrieb bleibt in v1.5.0 aus (E20). Optionen: (A, Empfehlung) Zeile 2 lautet für v1.5.0 „Schalter gebaut und gesperrt (W4-03), Einschalten erst nach v1.5.0“; (B) Zeile 2 nach M5 verschieben. | v1.5.0-Pfad klären. | Nutzer | offen, Nutzer |
 | E22 | Matrixzeile 16 (unabhängige Reviews): Heute laufen Reviews als PR-Text mit anderer Modellfamilie; eine Review-Freigabe in der App gibt es in v1.5.0 nicht (W5-02d nach M4 geparkt). Optionen: (A, Empfehlung) Zeile 16 für v1.5.0 auf „Review durch andere Modellfamilie im PR, an denselben Kandidaten gebunden“ verengen, echte App-Freigabe in M5; (B) offen lassen bis M5. | v1.5.0-Pfad klären. | Nutzer | offen, Nutzer |
 | E23 | Matrixzeile 24 (Benchmark 5 Aufgaben, W4-01 #73): Ein echter Lauf verbraucht Abo-Kontingent. Optionen: (A) freigeben, Lauf am PC mit den 5 bestätigten Aufgaben; (B) nach v1.5.0 verschieben. | Nutzerfreigabe vor dem Lauf. | Nutzer | offen, Nutzer |
-| E24 | Name der Beta: Die Release-Pipeline akzeptiert nur x.y.z (`scripts/verify-windows-package.ps1:5`, `scripts/release.cmd:16`). Beta heißt v1.5.0, Endrelease v1.5.1? | Empfehlung: ja (kein Umbau). Alternative: echte `-beta`-Tags = `release.yml`-Umbau (Stufe A). | Nutzer | offen (05.10.) |
-| E25 | R-1 ist zirkulär: Update-Drill (success/cancel/fail) und W3-07 brauchen ein echtes veröffentlichtes Update (fester Endpoint `tauri.conf.json:54-56`), R-1 verlangt sie aber vor dem Tag. Sollen sie Teil der Beta-Abnahme werden statt Voraussetzung? | Empfehlung: ja; Drills 1-6 und 8 vorher auf lokal signiert gebautem Installer (`node scripts/build-signed-windows.mjs`). | Nutzer | offen (05.10.) |
+| E24 | Name der Beta: Die Release-Pipeline akzeptiert nur x.y.z (`scripts/verify-windows-package.ps1:5`, `scripts/release.cmd:16`). Beta heißt v1.5.0, Endrelease v1.5.1? | Empfehlung: ja (kein Umbau). Alternative: echte `-beta`-Tags = `release.yml`-Umbau (Stufe A). | Nutzer | entschieden (Nutzer 05.10.): A |
+| E25 | R-1 ist zirkulär: Update-Drill (success/cancel/fail) und W3-07 brauchen ein echtes veröffentlichtes Update (fester Endpoint `tauri.conf.json:54-56`), R-1 verlangt sie aber vor dem Tag. Sollen sie Teil der Beta-Abnahme werden statt Voraussetzung? | Empfehlung: ja; Drills 1-6 und 8 vorher auf lokal signiert gebautem Installer (`node scripts/build-signed-windows.mjs`). | Nutzer | entschieden (Nutzer 05.10.): A |
 | R19 | Matrix-Zeile 19 enger gefasst: v1.5.0 verlangt vollständige Audit-Envelopes nur für die sicherheitskritischen Pfade (M4-R19-01/-05/-06/-08); die übrigen Pfade (M4-R19-02/-03/-04/-07/-09) folgen nach v1.5.0 in M5. | Auf die sicherheitskritischen Pfade verengen; Rest in M5. | Nutzer | ✓ entschieden (Nutzer 04.10.) |
 
 Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
 PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
-Zwischenrelease v1.5.0-beta als Abschluss von M3; DF-07d erledigt; DF-15b ja;
+Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; DF-07d erledigt; DF-15b ja;
 W2-08b ja; W1-27 entscheidet der Advisor; Spec nur für M-Pakete; gestufte
 Reviews; PR-Text ist der Bericht; CI nur bei „ready“ und in der Queue.
 Frühere Entscheidungen (Nr. 1–17): `.pa/archiv/PLAN_2026-09-24.md` §5 und

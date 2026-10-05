@@ -1,15 +1,16 @@
 # Updater-Drill (W3-03e, Matrixzeile 23)
 
-Du prüfst drei Fälle des Updates an der **installierten Beta** auf deinem
-Windows-PC: Update klappt, Update abbrechen, Update scheitert. Bei jedem Fall
+Du prüfst drei Fälle des Updates auf deinem Windows-PC, nach dem Tag der Beta
+v1.5.0 (Teil der Beta-Abnahme, nicht des Tags; E25): Update abbrechen, Update
+scheitert, Update klappt, in dieser Reihenfolge. Bei jedem Fall
 bleibt eine gespeicherte Worker-Zeile erhalten. Das Skript liest nur (API, Journal-Datei) und
 schreibt einen Beleg-Ordner. Dauer: je Fall etwa 10 Minuten.
 
-Voraussetzung: ProjectA-Beta installiert, mit einer neueren Beta als Update
-bereit; PowerShell 7, Node 24 und dieses Repository sind da. Alle Live-Sitzungen
+Voraussetzung: v1.4.1 oder v1.5.0 installiert, mit der jeweils neueren
+veröffentlichten Version als Update bereit; PowerShell 7, Node 24 und dieses Repository sind da. Alle Live-Sitzungen
 müssen beendet sein: Der Updater verweigert Installationen, solange ein Worker läuft.
 
-**Für jeden der drei Fälle** (`success`, `cancel`, `fail`):
+**Für jeden der drei Fälle** (Reihenfolge `cancel`, `fail`, `success`):
 
 1. **Alte Version notieren.** Öffne „Info" in ProjectA, merke die Versionsnummer.
 2. **Worker-Zeile vorbereiten.** Lege einen Worker an und beende seine Live-Sitzung,
@@ -42,6 +43,6 @@ Beleg „absent": die installierte Version schreibt es dann noch nicht.
 
 - **Signierter Produktions-Build (W3-07, dein Teil):** Signatur-Prüfung und das
   echte Release-Update gehen erst mit einem signierten Build. Bis dahin steht die
-  Zeile „NICHT ABGEDECKT"; die Beta beweist nur den Ablauf.
+  Zeile „NICHT ABGEDECKT"; W3-07 ist Teil der Beta-Abnahme nach dem Tag.
 - Netzabbruch (Flugmodus) und Abbrechen-Klick machst du von Hand.
 - Update-Text in Fenster und HQ liest das Skript nicht, du schreibst ihn in `angezeigt.txt`.

@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.5.0-beta — (Datum folgt)
+## v1.5.0 (Beta) — (Datum folgt)
 <!-- Entwurf, wird bei R-1 aktualisiert -->
 
 > **Updater-Hinweis:** v1.4.1 aktualisiert automatisch auf v1.5.0 —
