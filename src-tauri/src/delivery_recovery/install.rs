@@ -105,6 +105,9 @@ pub async fn produce_journal(
             database: database.clone(),
         },
         candidate: RuntimeIdentity {
+            // `sha256` is the signed payload digest, not the installed exe's;
+            // the post-restart handshake records the latter (see
+            // `UpdateJournal::accept_handshake`).
             binary: identity(announced.exe, announced.version, signed),
             database: database.clone(),
         },
