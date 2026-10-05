@@ -383,6 +383,15 @@ describe("SettingsView agent env stage", { timeout: 15000 }, () => {
     expect(within(stageGroup()).getByRole("radio", { name: /Erbt alles/ })).not.toBeChecked();
   });
 
+  it("shows the stored stage when it is not the default", async () => {
+    stateReads.getAgentEnvIsolation.mockResolvedValue("inherit");
+    render(<SettingsView {...PROPS} project={null} />);
+    await waitFor(() =>
+      expect(within(stageGroup()).getByRole("radio", { name: /Erbt alles/ })).toBeChecked(),
+    );
+    expect(within(stageGroup()).getByRole("radio", { name: /Streng/ })).not.toBeChecked();
+  });
+
   it("saves the chosen stage exactly once", async () => {
     stateReads.getAgentEnvIsolation.mockResolvedValue("strict");
     stateReads.setAgentEnvIsolation.mockResolvedValue(undefined);
