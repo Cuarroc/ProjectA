@@ -92,3 +92,80 @@ async fn emergency_stop_activation_moves_open_runs_to_reconciling() {
         ]
     );
 }
+
+async fn envelopes(store: &Store) -> Vec<serde_json::Value> {
+    let rows: Vec<(String, String, String)> =
+        sqlx::query_as("SELECT actor,subject,detail_json FROM audit_log ORDER BY id")
+            .fetch_all(&store.pool)
+            .await
+            .unwrap();
+    rows.into_iter()
+        .map(|(actor, subject, detail)| {
+            assert_eq!((actor.as_str(), subject.as_str()), ("human", "global"));
+            serde_json::from_str(&detail).unwrap()
+        })
+        .collect()
+}
+
+fn global(result: &str, source_ref: &str) -> serde_json::Value {
+    serde_json::json!({
+        "project": "global", "run": "global", "result": result,
+        "sourceRef": format!("emergency_stop:{source_ref}")
+    })
+}
+
+#[tokio::test]
+async fn raising_the_emergency_stop_appends_one_complete_envelope() {
+    let (_dir, store) = fixture().await;
+    store.set_emergency_stop(true, "human").await.unwrap();
+    assert_eq!(envelopes(&store).await, vec![global("raised", "raise")]);
+}
+
+#[tokio::test]
+async fn releasing_the_emergency_stop_appends_one_complete_envelope() {
+    let (_dir, store) = fixture().await;
+    store.set_emergency_stop(true, "human").await.unwrap();
+    store.set_emergency_stop(false, "human").await.unwrap();
+    assert_eq!(
+        envelopes(&store).await,
+        vec![global("raised", "raise"), global("released", "release")]
+    );
+}
+
+#[tokio::test]
+async fn a_barrier_failure_appends_one_complete_envelope() {
+    let (_dir, store) = fixture().await;
+    sqlx::query("DELETE FROM emergency_stop")
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    let error = store.set_emergency_stop(false, "human").await.unwrap_err();
+    assert!(error.contains("state missing"), "{error}");
+    assert_eq!(
+        envelopes(&store).await,
+        vec![global("barrier-failed", "release")]
+    );
+}
+
+#[tokio::test]
+async fn a_store_failure_appends_one_complete_envelope_and_no_state_change() {
+    let (_dir, store) = fixture().await;
+    sqlx::query("DROP TABLE continuous_projects")
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    store.set_emergency_stop(true, "human").await.unwrap_err();
+    assert_eq!(
+        envelopes(&store).await,
+        vec![global("store-failed", "raise")]
+    );
+    assert!(!store.emergency_stop_active().await.unwrap());
+}
+
+#[tokio::test]
+async fn a_failing_begin_returns_the_original_error_when_the_trail_is_down_too() {
+    let (_dir, store) = fixture().await;
+    store.pool.close().await;
+    let error = store.set_emergency_stop(true, "human").await.unwrap_err();
+    assert!(error.starts_with("global emergency stop: "), "{error}");
+}
