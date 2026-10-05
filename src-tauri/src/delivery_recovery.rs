@@ -1380,6 +1380,60 @@ mod tests {
         }
     }
 
+    fn case_shifted_handshake() -> InstanceHandshake {
+        let mut relaunched = handshake();
+        relaunched.binary.path = "NEW.EXE".into();
+        relaunched.database.path = "ProjectA.DB".into();
+        relaunched
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn handshake_with_case_only_path_difference_is_accepted_on_windows() {
+        let dir = TempDir::new("delivery-recovery-path-case");
+        let mut journal =
+            DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                .expect("create");
+        through_validation(&mut journal);
+        journal
+            .accept_handshake(&case_shifted_handshake())
+            .expect("case-only path difference accepted");
+        assert_eq!(journal.journal().phase(), UpdatePhase::Installed);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn drain_proof_with_case_only_database_path_difference_is_accepted_on_windows() {
+        let dir = TempDir::new("delivery-recovery-drain-path-case");
+        let mut journal =
+            DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                .expect("create");
+        journal
+            .record_downloaded(&offer().staged_manifest)
+            .expect("downloaded");
+        journal.wait_for_idle().expect("waiting idle");
+        let mut drain = proof();
+        drain.quiesced_database.path = "ProjectA.DB".into();
+        journal
+            .enter_maintenance(drain)
+            .expect("case-only path difference accepted");
+        assert_eq!(journal.journal().phase(), UpdatePhase::Maintenance);
+    }
+
+    #[test]
+    fn handshake_path_check_follows_platform_path_equality() {
+        let equal = paths_equal(Path::new("NEW.EXE"), Path::new("new.exe"))
+            && paths_equal(Path::new("ProjectA.DB"), Path::new("projecta.db"));
+        assert_eq!(equal, cfg!(windows));
+        let dir = TempDir::new("delivery-recovery-path-equality");
+        let mut journal =
+            DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                .expect("create");
+        through_validation(&mut journal);
+        let accepted = journal.accept_handshake(&case_shifted_handshake()).is_ok();
+        assert_eq!(accepted, equal);
+    }
+
     #[test]
     fn journal_without_installed_field_loads_and_installed_survives_reopen() {
         let dir = TempDir::new("delivery-recovery-installed-roundtrip");
