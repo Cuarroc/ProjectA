@@ -2251,9 +2251,29 @@ fn execute_host_inner(
         crate::host_events::Settlement::ExitedUndelivered(exit)
             if undelivered && !acknowledged && !receipt_checkpointed =>
         {
+            drain_checkpoints(&mut controls.borrow_mut().gate)?;
             Ok(HostSettlement::ExitedUndelivered(captured.identity, exit))
         }
         _ => Err("native host settlement inconsistent".into()),
+    }
+}
+
+/// KI-30: nothing waits for a receipt after an undelivered exit, so a
+/// checkpoint the host already triggered (Process) may still be committing.
+/// Dropping the gate now would leave its owner unable to acknowledge, and the
+/// launch would stay unresolved. Bounded above SQLite's 5 s busy wait.
+fn drain_checkpoints(gate: &mut crate::checkpoints::Gate) -> Result<(), String> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        // The host is gone: an acknowledged Launch has no input left to release.
+        while gate.poll()?.is_some() {}
+        if gate.is_drained() {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            return Err("native checkpoint unconfirmed after undelivered exit".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
     }
 }
 
