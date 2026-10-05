@@ -56,6 +56,7 @@ function matchingBraceEnd(source, open) {
     if (raw) { string = true; rawEnd = `"${raw[1] ?? ""}`; i += raw[0].length - 1; continue; }
     if (source[i] === '"') { string = true; continue; }
     // Char literals ('"', '{', '\'', '\u{41}') must not open strings or count braces; lifetimes ('a) do not match.
+    // 12 chars cover the longest literal, '\u{10FFFF}' (10); the slice only bounds the regex input, it never truncates a match.
     const char = source[i] === "'" && source.slice(i, i + 12).match(/^'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]+\}|[^])|[^\\'\n])'/u);
     if (char) { i += char[0].length - 1; continue; }
     if (source[i] === "{") depth += 1;
