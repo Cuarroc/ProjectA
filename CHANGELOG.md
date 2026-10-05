@@ -45,6 +45,17 @@ wird migriert; davor entsteht automatisch ein Backup
 - **Update-Artefakte gebunden** (PR #321): Manifest, Installer, Programmdatei
   und Datenbank werden vor dem Installationsschritt erneut gegen Laenge und
   SHA-256 geprueft. Der echte Windows-Installationspfad folgt separat.
+- **Update mit Wiederherstellungs-Journal** (PR #411, #425, #446, #457, #462):
+  Die In-App-Aktualisierung beendet vor dem Download die Sitzungen, sperrt
+  die Datenbank und legt ein geprueftes Backup samt Journal an; scheitert
+  das, wird sie sichtbar abgelehnt. Der Installer startet nur ueber das
+  Journal, das an genau die geladenen Bytes und Version gebunden ist. Beim
+  Start liest die App zuerst das Journal und oeffnet die Datenbank erst nach
+  stimmiger Pruefung (Nonce, Pfad, Version der neuen Programmdatei). Echtes
+  Herunterladen und Installieren ist erst am PC belegt.
+- **Audit der Zustellung und des Not-Aus** (PR #408, #423): Start,
+  Einreihung und Abschluss-Ausgaenge der Worker sowie jeder Ausgang des
+  Not-Aus hinterlassen genau einen vollstaendigen Audit-Eintrag.
 - **Blockierte Budgets loesen sich ehrlich** (PR #16, #183, #107, #160):
   Bewiesene Abbrueche geben Reservierung und Zustellung atomar frei;
   abgelaufene oder vergiftete Sperren halten keine Aufgabe still fest.
@@ -62,6 +73,19 @@ wird migriert; davor entsteht automatisch ein Backup
   #319): Abbruch braucht ein bewiesenes Prozessende, fehlgeschlagene Starts
   rollen zurueck, Abschlussmeldungen sind gegen Lauf und Fence gebunden, und
   ein Panic beim Start stoppt nicht die weitere Zustellung.
+- **Beweise gegen Fehlstarts** (PR #412, #443, #440, #456, #453; nur Tests):
+  Der Scheduler startet ohne erfuellte Schranken, bei Doppelstart, fremdem
+  oder fehlendem Besitzer, falscher Rolle oder laufendem Abgleich keinen
+  Worker; Pause, Drain und Cancel stoppen neue Continuous-Arbeit auch nach
+  Neustart; nach einem Absturz an jedem Schritt bleibt keine uebernehmbare
+  Zustaendigkeit zurueck; „resume“ bleibt in v1.5.0 geschlossen (401/409).
+- **Strengere Zuteilung** (PR #431, #448): Eine Aufgabe ohne Zuweisung wird
+  abgelehnt, wenn die Team-Richtlinie keine Implementierer-Rolle vergibt;
+  Integrationsaufgaben starten nicht ohne Freigabe-Autoritaet.
+- **Fehlerhafte Starts begrenzt** (PR #450, #465): Ein haengender Start
+  scheitert nach hoechstens 120 Sekunden nur fuer seinen Eintrag, die
+  anderen Projekte laufen weiter; ein negatives Worker-Limit wird mit
+  Fehlermeldung abgelehnt statt still zu 4 zu werden.
 - **Terminal stabiler** (PR #230, #206, #215, #141, #53): Zustellstaus sind
   begrenzt, unterbrochene Reads werden wiederholt, spaetes Aufraeumen blockiert
   nicht den Runtime-Thread und native Windows-Jobs haben Ressourcenlimits.
@@ -77,6 +101,10 @@ wird migriert; davor entsteht automatisch ein Backup
   regulaere Ausdruecke.
 - **Diff-Freigabe mit Pruefstufe** (PR #189): Dateien tragen eine kurze
   Erklaerung und die pfadbasierte Stufe A, B, C oder unbekannt.
+- **Umgebung der Agenten** (PR #438, #442): Unter „Allgemein“ waehlt man
+  global Streng (Standard), Erlaubnisliste oder Erbt alles; die Stufe gilt
+  fuer neue Starts und Neustarts, Koordinatoren bleiben streng, Schreiben
+  per API nur mit Urteils-Token.
 - **Updater, Ziele und Zustellung live** (PR #119, #13, #21, #62): App und
   Dev-HQ teilen den Updater-Zustand; Ziele, Teams, Budget, Routing, Reviews
   und Delivery haben Live-Ansichten.
@@ -95,9 +123,10 @@ Reviews (PR #26); Geheimnis- und Lizenzpruefung (PR #20, #23, #52); roter
 Architekturverstoesse werden lokal und in CI geprueft (PR #137, #170, #304,
 #316); Start-Check vor jedem Worker (PR #35); Lauf-, Benchmark- und
 Testabdeckung ausgebaut (PR #11, #73, #92–#94, #129, #145, #262);
-Dependencies, README und Projektstatus aktualisiert.
+Drill-Einstiegsseite fuer die PC-Pruefungen (PR #467); Dependencies, README
+und Projektstatus aktualisiert.
 
-Quelle: alle seit dem oeffentlichen Neustart gemergten PRs, am 04.10.2026 mit
+Quelle: alle seit dem oeffentlichen Neustart gemergten PRs, am 05.10.2026 mit
 `gh pr list --state merged --limit 300` gegen `origin/main` geprueft.
 
 ## v1.4.1 — 2026-09-22
