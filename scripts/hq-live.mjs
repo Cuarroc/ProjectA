@@ -319,9 +319,11 @@ async function lessonsRoute(req, res, url) {
       } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
     }
     else {
+      // Both write paths below re-read the file after the body: the list read
+      // above is stale once another request wrote while the body streamed in.
       let update;
       try { update = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
-      try { next = refineLesson(lessons, id, update); } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
+      try { next = refineLesson(readLessonsFile(lessonsFile), id, update); } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
     }
     writeLessonsFile(lessonsFile, next);
     sendJson(res, 200, { ok: true, lesson: decorate(next.find((l) => l.id === id)) });
@@ -356,7 +358,7 @@ async function lessonsRoute(req, res, url) {
     let input;
     try { input = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
     try {
-      const result = addLesson(lessons, input);
+      const result = addLesson(readLessonsFile(lessonsFile), input);
       writeLessonsFile(lessonsFile, result.lessons);
       sendJson(res, 200, { ok: true, merged: result.merged, lesson: decorate(result.lesson) });
     } catch (error) {
