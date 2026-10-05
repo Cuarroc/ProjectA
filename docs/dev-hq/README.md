@@ -39,12 +39,11 @@ directory.
 
 Any agent working in this repo should treat the Live view as its primary
 window onto the fleet, queue, quota/budget capacity, usage, provider vault
-status and open recommendations — see `AGENTS.md`'s "Pflicht: das Dev-HQ ist
-dein Cockpit" section. Found a bug in the HQ itself? Log it in
-`docs/dev-hq/BUGS.md` (append-only, template at the top) **and** queue a real
-fix task (Human Controls → "task to queue", or `POST /api/queue`) so it
-actually gets picked up — a log entry without a queued task is only an
-observation.
+status and open recommendations. Found a bug in the HQ itself? Log it in
+`docs/dev-hq/BUGS.md` (append-only, template at the top) and add it as a
+package under "Später" in `docs/PLAN.md`. Do not queue a fix task through the
+app (Human Controls or `POST /api/queue`): a queued entry can start a real
+worker at once (BUGS.md, 2026-09-17: eight unwanted worker starts).
 
 ## Agent teams
 
@@ -99,7 +98,7 @@ commands** collects the shell-ready ones. The same data is at
 
 ## The desk (Live page layout)
 
-Seven numbered sections, top to bottom: **01 What matters now** (the one paper
+Seven numbered sections, spread over the five tabs above, top to bottom: **01 What matters now** (the one paper
 well: signals ranked act → watch → note, each with an "open" that jumps to the
 worker, question or card), **02 Insights**, **03 Desk** (fleet, queue, review,
 recommendations in the main column; attention, capacity, providers, usage,
