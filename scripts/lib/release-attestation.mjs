@@ -33,7 +33,9 @@ export function loadReleaseAttestation(file, root = process.cwd()) {
     }
     if (typeof data.decidedBy !== 'string' || data.decidedBy.trim() === '') return no('decidedBy must be non-empty');
     if (data.continuousEnabled !== false) return no('continuousEnabled must be false');
-    if (typeof data.commit !== 'string' || data.commit === '') return no('commit must be a non-empty string');
+    if (typeof data.commit !== 'string' || !/^[0-9a-f]{40}$/.test(data.commit)) {
+      return no('commit must be a full 40-hex lowercase SHA');
+    }
     let head;
     try {
       head = git(root, ['rev-parse', 'HEAD']).trim();
