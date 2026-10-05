@@ -630,6 +630,19 @@ export function setDigestEnabled(enabled: boolean): Promise<void> {
   return invoke<void>("set_digest_enabled", { enabled });
 }
 
+/** How much of the app's own environment a spawned agent may see. */
+export type AgentEnvStage = "inherit" | "allowlist" | "strict";
+
+/** The global stage; anything unknown reads as the safe default, strict. */
+export async function getAgentEnvIsolation(): Promise<AgentEnvStage> {
+  const raw = await invoke<string>("get_agent_env_isolation");
+  return raw === "inherit" || raw === "allowlist" ? raw : "strict";
+}
+
+export function setAgentEnvIsolation(stage: AgentEnvStage): Promise<void> {
+  return invoke<void>("set_agent_env_isolation", { stage });
+}
+
 // -- stuck diagnosis (Phase 18) ----------------------------------------------
 
 /**
