@@ -4164,9 +4164,10 @@ mod tests {
         );
     }
 
-    /// The download runs after the journal reached at most `BackupVerified`
-    /// (`prepare_and_install`), so a timeout takes the thaw branch of
-    /// `install_update_when_idle`, which tests `installer_not_started`.
+    /// The download runs before `produce_journal` (`prepare_and_install`), so at
+    /// a timeout no journal exists or one at most at `BackupVerified`; either
+    /// way `install_update_when_idle` takes the thaw branch via
+    /// `installer_not_started`.
     #[test]
     fn download_time_journal_phases_take_the_thaw_path() {
         use crate::delivery_recovery::{installer_not_started, UpdatePhase};
