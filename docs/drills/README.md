@@ -1,4 +1,4 @@
-# Drill-Runbook: die PC-Gates für v1.5.0
+# Drill-Runbook: die PC-Gates für v1.5.0 (Beta) und v1.5.1
 
 Das ist deine Einstiegsseite für W3-03 (paketierte Drills), W3-07 (signierter
 Updater-Relaunch) und W3-08 (HQ-Beleg), siehe `docs/PLAN.md` (R-1-Voraussetzungen).
@@ -91,8 +91,7 @@ Texte sind geschwärzt; lies sie trotzdem einmal durch.
 ## NICHT ABGEDECKT / offene Widersprüche
 
 - Die Drill-Seiten widersprechen sich bei den Beispiel-Versionen: `1.4.1`
-  (Backup, Singleton, Absturz, Not-Aus, Provider), `1.5.0` (RAM-Druck),
-  `1.5.0-beta` (HQ-Beleg), `0.9.0`/`0.9.1` (Updater, `-OldVersion`/`-NewVersion`).
+  (Backup, Singleton, Absturz, Not-Aus, Provider), `1.5.0` (RAM-Druck, HQ-Beleg), `0.9.0`/`0.9.1` (Updater, `-OldVersion`/`-NewVersion`).
   Nicht aufgelöst: nimm die Zahl aus „Info"; beim Updater frag, was für
   `-OldVersion`/`-NewVersion` gilt.
 - Absturz-Drill (21) und RAM-Druck-Drill (10) brauchen Continuous AN; das ist
