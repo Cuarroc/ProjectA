@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Richtung B: Stellwerk</title>
+<!--
+  DIRECTION B, STELLWERK (Leitstand)
+  WORLD      A railway signal box. The fleet is the track diagram, every worker a
+             signal at a fixed position; the terminal is the zoom on one signal.
+  PALETTE    ground #090d10 · panel #10171b · tile #141d22 · hair #2c3c43 ·
+             ink #e8eeec · fog #a5b4b8 · lamp mint #82d5b4 · lamp amber #f0c36d ·
+             lamp ember #f59185 · steel #9acbd8 (focus, commands) · unlit #26343a
+  TYPE       Bahnschrift (DIN, variable width): condensed 600 for signal IDs and
+             instrument readouts, normal width 13 for text; Cascadia Mono 12.5 terminal
+  GRID       rail 60 | fleet strip of 7 signal tiles (fixed order) / tabs / terminal +
+             right desk 304 (question or train data) | instrument cluster 52
+  MOTION     still: lamps do not blink; only a new question lights its tile once
+  SIGNATURE  the signal tiles with a 10-minute output trace each, and the notch that
+             ties the selected tile to the terminal below
+  CUT        sidebar list, avatars, rounded cards, any decoration that is not a reading
+  FRÜHER    Nimmt aus der verworfenen Variante A „Mission Control“ (docs/ui-variants/,
+             28.08.) die Flotte als Hauptobjekt; weicht damit bewusst von der Nutzerwahl B
+             (Konversation) ab, um die Gegenthese sichtbar zu machen. Aus dem Vertrag vom
+             29.08. das angeheftete Band (hier: Instrumente) und die Zustandsgrammatik.
+  STATES    shared vocabulary: working blue dot · needs amber diamond · error ember cross ·
+             merge mint check · review violet half ring · paused bars · idle ring
+-->
+<style id="tokens">
+:root {
+  --ground: #090d10;
+  --panel: #10171b;
+  --tile: #141d22;
+  --tile-hi: #1c2930;
+  --hair: #2c3c43;
+  --unlit: #26343a;
+  --edge: #5f808a;
+  --ink: #e8eeec;
+  --fog: #a5b4b8;
+  --mint: #82d5b4;
+  --amber: #f0c36d;
+  --ember: #f59185;
+  --steel: #9acbd8;
+  --violet: #c9b3f2;
+  --amber-wash: #261f12;
+  --on-accent: #090d10;
+}
+</style>
+<script type="application/json" id="contrast-pairs">
+{"dark": [
+  ["ink","ground",4.5,"Terminaltext"],["ink","tile",4.5,"Signaltitel"],["ink","tile-hi",4.5,"Signal gewählt"],["ink","panel",4.5,"Pult"],
+  ["fog","ground",4.5,"Nebentext Terminal"],["fog","tile",4.5,"Nebentext Signal"],["fog","tile-hi",4.5,"Nebentext gewählt"],["fog","panel",4.5,"Nebentext Pult"],
+  ["steel","tile",4.5,"Arbeitet"],["mint","tile",4.5,"Bereit zum Mergen"],["violet","tile",4.5,"In Review"],["amber","tile",4.5,"Wartet"],["ember","tile",4.5,"Fehler"],["amber","amber-wash",4.5,"Anfrage-Kopf"],["ink","amber-wash",4.5,"Anfragetext"],
+  ["mint","ground",4.5,"Erfolg Terminal"],["ember","ground",4.5,"Fehler Terminal"],["steel","ground",4.5,"Befehl"],["amber","ground",4.5,"Warnung Terminal"],
+  ["on-accent","amber",4.5,"Anfrage-Knopf"],["on-accent","mint",4.5,"Primärknopf"],
+  ["edge","panel",3,"Kontrollrand"],["edge","ground",3,"Eingabefeld"],["steel","tile",3,"Fokusring"],["steel","amber-wash",3,"Fokusring Anfrage"],
+  ["fog","unlit",3,"Messbalken gegen Grund"]
+]}
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ground); color: var(--ink); color-scheme: dark;
+  font: 400 13px/18px Bahnschrift, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+}
+button, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root { --ease-out: cubic-bezier(.23,1,.32,1); --cond: "wdth" 75; }
+.cond { font-variation-settings: var(--cond); }
+
+.win { height: 100vh; display: grid; grid-template-columns: 60px minmax(0,1fr); grid-template-rows: auto minmax(0,1fr) 52px; }
+.rail { grid-row: 1 / 3; background: var(--panel); border-right: 1px solid var(--hair); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; }
+.rail button { width: 40px; height: 40px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--fog); font-weight: 600; font-variation-settings: var(--cond); font-size: 14px; }
+.rail button:hover { background: var(--tile-hi); color: var(--ink); }
+.rail button[aria-current="true"] { background: var(--tile-hi); color: var(--ink); border-color: var(--edge); }
+.rail .logo { color: var(--on-accent); background: var(--mint); font-size: 16px; margin-bottom: 8px; }
+.rail .logo:hover { background: var(--mint); color: var(--on-accent); }
+.rail .sp { flex: 1; }
+
+/* fleet strip */
+.fleet { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(146px, 1fr); gap: 8px; padding: 12px 12px 14px; background: var(--panel); border-bottom: 1px solid var(--hair); overflow-x: auto; scrollbar-width: thin; }
+.sig { position: relative; display: grid; grid-template-rows: auto auto 1fr auto; gap: 6px; min-height: 128px; padding: 10px 11px 9px; border: 1px solid var(--hair); border-radius: 6px; background: var(--tile); text-align: left; transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out); }
+.sig:hover { background: var(--tile-hi); border-color: var(--edge); }
+.sig[aria-current="true"] { background: var(--tile-hi); border-color: var(--lamp); }
+.sig[aria-current="true"]::after { content: ""; position: absolute; left: 50%; bottom: -16px; translate: -50% 0; border: 7px solid transparent; border-top-color: var(--lamp); }
+.sig.needs { border-top: 3px solid var(--amber); padding-top: 8px; }
+.sig.error { border-top: 3px solid var(--ember); padding-top: 8px; }
+.sig .top { display: flex; align-items: center; gap: 8px; white-space: nowrap; min-width: 0; }
+.lamp { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--ground); color: var(--lamp); box-shadow: 0 0 0 1px var(--hair); }
+.id { font-variation-settings: var(--cond); font-weight: 650; font-size: 16px; letter-spacing: .01em; }
+.el { margin-left: auto; color: var(--fog); font-size: 12px; font-variation-settings: var(--cond); }
+.sig .title { font-size: 13px; line-height: 17px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.trace { display: flex; align-items: flex-end; gap: 2px; height: 20px; }
+.trace i { flex: 1; min-height: 2px; background: var(--unlit); border-radius: 1px; }
+.trace i.lit { background: var(--fog); }
+.trace i.now { background: var(--lamp); }
+.sig .foot { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--fog); white-space: nowrap; min-width: 0; }
+.sig .foot span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sig .foot b { color: var(--lamp); font-weight: 600; }
+.working { --lamp: var(--steel); } .merge { --lamp: var(--mint); } .review { --lamp: var(--violet); } .needs { --lamp: var(--amber); } .error { --lamp: var(--ember); } .paused, .idle { --lamp: var(--fog); }
+.sig.orch { border-style: dashed; }
+
+/* work area */
+.work { display: grid; grid-template-columns: minmax(0,1fr) 304px; grid-template-rows: 38px minmax(0,1fr); min-height: 0; }
+.tabs { grid-column: 1 / -1; display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--hair); }
+.tw { position: relative; display: flex; align-items: center; }
+.tab { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 30px 0 10px; border: 0; background: transparent; color: var(--fog); font-size: 13px; border-bottom: 2px solid transparent; max-width: 250px; white-space: nowrap; }
+.tab span { overflow: hidden; text-overflow: ellipsis; }
+.tab .id { font-size: 14px; flex: none; overflow: visible; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--lamp); }
+.x { position: absolute; right: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--fog); opacity: 0; }
+.tw:hover .x, .x:focus-visible, .tab[aria-selected="true"] + .x { opacity: 1; }
+.x:hover { background: var(--tile-hi); color: var(--ink); }
+.term { overflow-y: auto; padding: 16px 20px; font: 12.5px/19px "Cascadia Mono", Consolas, monospace; }
+.ln { display: flex; gap: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ln-pre { flex: none; width: 14px; color: var(--fog); }
+.ln-ok, .ln-out, .ln-dim, .ln-err, .ln-warn { padding-left: 24px; }
+.ln-cmd .ln-t, .ln-cmd .ln-pre { color: var(--steel); }
+.ln-ok .ln-t { color: var(--mint); } .ln-err .ln-t { color: var(--ember); } .ln-warn .ln-t { color: var(--amber); } .ln-dim .ln-t { color: var(--fog); }
+.ln-agent .ln-pre { color: var(--mint); }
+.ln-you { margin: 6px 0; } .ln-you .ln-pre { width: auto; color: var(--amber); font-family: Bahnschrift, sans-serif; font-weight: 600; }
+.cursor { display: inline-block; width: 8px; height: 15px; margin-top: 2px; background: var(--ink); animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.desk { border-left: 1px solid var(--hair); background: var(--panel); overflow-y: auto; display: flex; flex-direction: column; }
+.desk h2 { margin: 0; font-size: 12px; font-weight: 600; color: var(--fog); padding: 14px 16px 8px; }
+.desk .big { padding: 0 16px 12px; font-size: 20px; line-height: 24px; font-weight: 600; font-variation-settings: "wdth" 87; }
+.data { margin: 0; padding: 4px 16px 16px; display: grid; grid-template-columns: auto 1fr; gap: 9px 14px; }
+.data dt { color: var(--fog); font-size: 12px; }
+.data dd { margin: 0; text-align: right; font-variation-settings: var(--cond); font-size: 15px; font-weight: 600; }
+.data dd.mono { font: 11.5px/16px "Cascadia Mono", Consolas, monospace; font-variation-settings: normal; overflow-wrap: anywhere; }
+.ask { background: var(--amber-wash); border-bottom: 1px solid var(--hair); padding: 14px 16px 16px; display: grid; gap: 12px; }
+.ask .hd { display: flex; align-items: center; gap: 8px; color: var(--amber); font-weight: 600; font-size: 13px; }
+.ask p { margin: 0; font-size: 14px; line-height: 21px; }
+.btn { min-height: 34px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--edge); background: var(--ground); color: var(--ink); font-weight: 600; text-align: left; transition: background-color 140ms var(--ease-out), transform 100ms var(--ease-out); }
+.btn:hover { background: var(--tile-hi); }
+.btn:active { transform: scale(.97); }
+.btn.go { background: var(--amber); border-color: var(--amber); color: var(--on-accent); }
+.btn.go:hover { background: #f4d08a; }
+.ask .opts { display: grid; gap: 6px; }
+.ask form { display: grid; gap: 6px; }
+.ask textarea { resize: vertical; min-height: 56px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--edge); background: var(--ground); color: var(--ink); line-height: 18px; font-family: Bahnschrift, sans-serif; }
+.ask textarea::placeholder { color: var(--fog); }
+.ask .send { justify-self: end; }
+
+/* instrument cluster */
+.inst { grid-column: 1 / -1; display: flex; align-items: stretch; background: var(--panel); border-top: 1px solid var(--hair); font-size: 12px; color: var(--fog); overflow: hidden; }
+.att { display: flex; align-items: center; gap: 10px; padding: 0 18px; border: 0; background: var(--amber); color: var(--on-accent); font-weight: 600; }
+.att .n { font-variation-settings: var(--cond); font-size: 24px; font-weight: 700; }
+.att:hover { background: #f4d08a; }
+.att.none { background: transparent; color: var(--fog); }
+.gauge { display: grid; align-content: center; gap: 4px; padding: 0 16px; border-left: 1px solid var(--hair); white-space: nowrap; }
+.gauge .lab { display: flex; justify-content: space-between; gap: 12px; }
+.gauge .val { color: var(--ink); font-variation-settings: var(--cond); font-weight: 600; font-size: 14px; }
+.segs { display: flex; gap: 2px; }
+.segs i { width: 7px; height: 6px; background: var(--unlit); border-radius: 1px; }
+.segs i.on { background: var(--fog); }
+.hot .segs i.on { background: var(--amber); } .out .segs i.on { background: var(--ember); } .out .val { color: var(--ember); }
+.inst .sp { flex: 1; }
+.slots { display: flex; gap: 3px; } .slots i { width: 12px; height: 8px; border: 1px solid var(--fog); border-radius: 2px; } .slots i.on { background: var(--fog); }
+
+@media (max-width: 1180px) { .work { grid-template-columns: minmax(0,1fr) 272px; } .gauge.opt { display: none; } }
+@media (max-width: 760px) { .win { grid-template-columns: 1fr; } .rail { display: none; } .work { grid-template-columns: 1fr; } .desk { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<script>/* ProjectA UI v2 mockup core: shared demo data and behaviour. Each direction
+   supplies window.view = { render(app) } and its own markup; this file owns the
+   state, the actions and the event delegation. Mock data, no live fleet. */
+(function () {
+  "use strict";
+  const STATE = {
+    working: "Arbeitet",
+    needs: "Wartet auf dich",
+    error: "Fehler",
+    paused: "Pausiert",
+    idle: "Bereit",
+    merge: "Bereit zum Mergen",
+    review: "In Review",
+  };
+  const L = (k, t) => [k, t];
+  const workers = [
+    {
+      id: "w16-05", title: "Diff-Ansicht virtualisieren", branch: "kimi/w16-05-diff-virtual",
+      agent: "Kimi K3", provider: "Kimi", state: "needs", since: "seit 6 min", elapsed: "52 min",
+      diff: "+311 −148", tests: "86/86", tokens: "164k", files: 7,
+      detail: "Fragt nach einer Entscheidung",
+      q: {
+        text: "DiffView hat noch zwei Aufrufer der alten API: HistoryView und QuestionsView. Soll ich beide auf die neue virtualisierte Liste umstellen oder die alte API als dünnen Wrapper behalten?",
+        options: ["Beide umstellen", "Wrapper behalten"],
+      },
+      lines: [
+        L("cmd", "npx vitest run src/components/DiffView"),
+        L("out", " ✓ src/components/DiffView.test.tsx (31 tests) 412ms"),
+        L("out", " ✓ src/components/DiffView.lines.test.tsx (44 tests) 690ms"),
+        L("out", " ✓ src/components/DiffView.reviewClass.test.tsx (11 tests) 203ms"),
+        L("ok", " Test Files  3 passed (3)   Tests  86 passed (86)"),
+        L("agent", "Virtualised list renders 20 000 diff lines at 60 fps in the bench."),
+        L("cmd", "rg -n \"DiffView\\b\" src/components --type tsx -l"),
+        L("out", "src/components/HistoryView.tsx"),
+        L("out", "src/components/QuestionsView.tsx"),
+        L("out", "src/components/DiffView.tsx"),
+        L("agent", "Two callers still use the old props (lines[], onSelect)."),
+        L("warn", "? Waiting for a decision before touching HistoryView and QuestionsView."),
+      ],
+    },
+    {
+      id: "w16-02", title: "Kontingent-Gate vor Worker-Start", branch: "claude/w16-02-quota-gate",
+      agent: "Claude Opus 5.5", provider: "Claude", state: "working", since: "seit 38 min", elapsed: "38 min",
+      diff: "+184 −22", tests: "41/41", tokens: "212k", files: 4,
+      detail: "Hängt das Gate in dispatch_worker() ein",
+      lines: [
+        L("cmd", "cargo nextest run -p projecta --profile ci quota::"),
+        L("dim", "   Compiling projecta v1.5.0 (src-tauri)"),
+        L("dim", "    Finished `test` profile [unoptimized + debuginfo] target(s) in 48.21s"),
+        L("out", "    Starting 41 tests across 1 binary"),
+        L("ok", "        PASS [   0.012s] projecta quota::gate::blocks_when_week_cap_reached"),
+        L("ok", "        PASS [   0.009s] projecta quota::gate::allows_under_cap"),
+        L("ok", "        PASS [   0.011s] projecta quota::gate::reports_reset_time"),
+        L("ok", "     Summary [   1.402s] 41 tests run: 41 passed, 0 skipped"),
+        L("agent", "Gate is green. Wiring it into dispatch_worker() next."),
+        L("cmd", "rg -n \"fn dispatch_worker\" src-tauri/src"),
+        L("out", "src-tauri/src/queue/dispatch.rs:118:pub(crate) fn dispatch_worker("),
+        L("agent", "Edit src-tauri/src/queue/dispatch.rs  (+12 −3)"),
+        L("cmd", "cargo clippy -p projecta --all-targets -- -D warnings"),
+        L("dim", "    Checking projecta v1.5.0 (src-tauri)"),
+      ],
+      live: true,
+    },
+    {
+      id: "w16-07", title: "Sitzungen wiederherstellen", branch: "codex/w16-07-session-restore",
+      agent: "GPT-5.6 Terra", provider: "Codex", state: "error", since: "seit 12 min", elapsed: "1 h 04 min",
+      diff: "+96 −41", tests: "—", tokens: "301k", files: 3,
+      detail: "Gate clippy rot, Lauf gestoppt",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ fmt            0.8s"),
+        L("ok", "  ✓ secret-scan    2.1s"),
+        L("ok", "  ✓ fe-test       38.4s"),
+        L("out", "  … clippy"),
+        L("err", "error: this expression creates a reference which is immediately dereferenced"),
+        L("err", "   --> src-tauri/src/store/session.rs:212:31"),
+        L("dim", "    |"),
+        L("dim", "212 |         restore_buffer(&conn, &session.id)?;"),
+        L("dim", "    |                               ^^^^^^^^^^^ help: change this to: `session.id`"),
+        L("err", "error: could not compile `projecta` (lib) due to 1 previous error"),
+        L("err", "✕ gate clippy failed (exit 101), lane prepush stopped at 4/9"),
+      ],
+    },
+    {
+      id: "w16-12", title: "Lessons-Suche im HQ", branch: "opencode/w16-12-hq-lessons",
+      agent: "GLM 5.2", provider: "OpenCode", state: "working", since: "seit 9 min", elapsed: "9 min",
+      diff: "+58 −6", tests: "12/12", tokens: "41k", files: 2,
+      detail: "Schreibt den Suchindex",
+      lines: [
+        L("cmd", "node scripts/hq-lesson.mjs search \"pty hang\" --json"),
+        L("out", "{ \"hits\": 3, \"took_ms\": 14 }"),
+        L("agent", "Index is built on every call. Caching it per session."),
+        L("cmd", "npm run test:hq -- lessons"),
+        L("ok", " ✓ lessons.search ranks by symptom (5)"),
+        L("ok", " ✓ lessons.search survives empty store (7)"),
+        L("agent", "Edit scripts/hq-lesson.mjs  (+41 −4)"),
+      ],
+      live: true,
+    },
+    {
+      id: "w16-14", title: "Credential-ACL prüfen", branch: "claude/w16-14-credential-acl",
+      agent: "Claude Opus 5.5", provider: "Claude", state: "needs", since: "seit 2 min", elapsed: "21 min",
+      diff: "+37 −0", tests: "8/8", tokens: "77k", files: 2,
+      detail: "Fragt nach Testumfang",
+      q: {
+        text: "Die ACL-Prüfung braucht Lesezugriff auf den Schlüsselordner. Soll ich dafür einen Test mit einem temporären Verzeichnis anlegen, oder prüfst du das nur von Hand?",
+        options: ["Test anlegen", "Nur von Hand"],
+      },
+      lines: [
+        L("cmd", "cargo nextest run -p projecta credential::acl"),
+        L("ok", "     Summary [   0.311s] 8 tests run: 8 passed, 0 skipped"),
+        L("agent", "Owner-only ACL is enforced on create. Read path is untested."),
+        L("warn", "? Testing the read path needs a real directory with an ACL."),
+      ],
+    },
+    {
+      id: "w16-11", title: "PTY-Trace für Worker", branch: "codex/w16-11-pty-trace",
+      agent: "GPT-5.6 Sol", provider: "Codex", state: "paused", since: "seit 3 h", elapsed: "2 h 10 min",
+      diff: "+142 −18", tests: "23/23", tokens: "388k", files: 5,
+      detail: "Kontingent leer, weiter am 11.10. 14:31",
+      lines: [
+        L("ok", "     Summary [   2.118s] 23 tests run: 23 passed, 0 skipped"),
+        L("agent", "Trace writer flushes every 64 KiB; sample attached to the PR."),
+        L("warn", "! Provider limit reached (week 100 %). Session parked."),
+        L("dim", "  Resumes automatically on 11.10. 14:31."),
+      ],
+    },
+    {
+      id: "w16-09", title: "PLAN.md aufräumen", branch: "glm/w16-09-plan-cleanup",
+      agent: "GLM 5.2", provider: "Ollama", state: "idle", since: "seit 41 min", elapsed: "27 min",
+      diff: "+19 −88", tests: "Doku", tokens: "29k", files: 1,
+      detail: "PR #561 gemergt, wartet auf Auftrag",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ 9/9 gates green (lane prepush, 3m 12s)"),
+        L("cmd", "gh pr create --draft --title \"docs(plan): fold done M2 items\""),
+        L("out", "https://github.com/example/projecta/pull/561"),
+        L("agent", "Draft PR opened."),
+        L("ok", "  ✓ merged by the queue (merge commit 4e1c9a2)"),
+        L("agent", "Done. Idle until the orchestrator sends the next task."),
+      ],
+    },
+    {
+      id: "w16-03", title: "Kontingent in der Statusleiste", branch: "kimi/w16-03-status-quota",
+      agent: "Kimi K3", provider: "Kimi", state: "merge", since: "seit 18 min", elapsed: "44 min",
+      diff: "+126 −31", tests: "64/64", tokens: "98k", files: 4,
+      detail: "PR #559 grün, in der Merge-Queue",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ 9/9 gates green (lane prepush, 4m 02s)"),
+        L("cmd", "gh pr ready 559"),
+        L("out", "✓ Pull request #559 is marked as ready for review"),
+        L("ok", "  ✓ gates (linux)  ✓ red-first  ✓ Mergify Merge Protections"),
+        L("agent", "Queued by Mergify. Nothing left for me to do."),
+      ],
+    },
+  ];
+  const orchestrator = {
+    id: "orch", title: "Orchestrator", branch: "main", agent: "Claude Opus 5.5", provider: "Claude",
+    state: "working", since: "läuft", detail: "Verteilt die Warteschlange", live: true,
+    lines: [
+      L("agent", "Queue: 4 waiting · 2 slots free (RAM 6.2 GB free, cargo 2/3)"),
+      L("agent", "dispatch w16-12 → opencode / glm-5.2 in its own worktree"),
+      L("warn", "w16-05 asks for a decision, forwarded to you"),
+      L("err", "w16-07 gate clippy red, fix brief drafted, waits for a slot"),
+      L("warn", "w16-14 asks for a decision, forwarded to you"),
+      L("dim", "w16-11 parked: Codex week limit, resumes 11.10. 14:31"),
+      L("agent", "Next in queue: w16-15 status-bar tokens (Kimi K3)"),
+    ],
+  };
+  const status = {
+    quota: [
+      { name: "Claude", used: 72, note: "Woche 72 %" },
+      { name: "Codex", used: 100, note: "leer bis 11.10." },
+      { name: "Kimi", used: 34, note: "Woche 34 %" },
+      { name: "GLM", used: 18, note: "Woche 18 %" },
+    ],
+    ramFree: "6,2", ramTotal: "16", queue: 4, builds: "2/3", omni: true,
+  };
+
+  const app = {
+    STATE, workers, orchestrator, status,
+    tabs: ["orch", "w16-05", "w16-02", "w16-07"],
+    tab: "w16-05",
+    sel: "w16-05",
+    drafts: {},
+    byId(id) { return id === "orch" ? orchestrator : workers.find((w) => w.id === id); },
+    current() { return app.byId(app.tab); },
+    attention() { return workers.filter((w) => w.state === "needs").length; },
+    count(s) { return workers.filter((w) => w.state === s).length; },
+    esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    },
+    termHTML(w) {
+      const pre = { cmd: "›", agent: "●", you: "Du", ok: "", out: "", dim: "", err: "", warn: "" };
+      return w.lines.map(([k, t]) =>
+        `<div class="ln ln-${k}">${pre[k] ? `<span class="ln-pre" aria-hidden="true">${pre[k]}</span>` : ""}<span class="ln-t">${app.esc(t)}</span></div>`
+      ).join("") + (w.live ? `<div class="ln ln-cursor"><span class="ln-pre" aria-hidden="true">›</span><span class="cursor" aria-hidden="true"></span></div>` : "");
+    },
+    // State glyphs: shape carries the state as well as colour (dot, diamond, cross, bars, ring).
+    glyph(state, size) {
+      const z = size || 12, a = `width="${z}" height="${z}" viewBox="0 0 12 12" aria-hidden="true" class="g g-${state}"`;
+      if (state === "working") return `<svg ${a}><circle cx="6" cy="6" r="4" fill="currentColor"/></svg>`;
+      if (state === "needs") return `<svg ${a}><path d="M6 1.2 10.8 6 6 10.8 1.2 6Z" fill="currentColor"/></svg>`;
+      if (state === "error") return `<svg ${a}><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+      if (state === "merge") return `<svg ${a}><path d="M1.8 6.3 4.7 9.2 10.2 3.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      if (state === "review") return `<svg ${a}><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 2a4 4 0 0 1 0 8Z" fill="currentColor"/></svg>`;
+      if (state === "paused") return `<svg ${a}><rect x="2.5" y="2" width="2.6" height="8" rx=".8" fill="currentColor"/><rect x="6.9" y="2" width="2.6" height="8" rx=".8" fill="currentColor"/></svg>`;
+      return `<svg ${a}><circle cx="6" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+    },
+    select(id) {
+      app.sel = id;
+      if (!app.tabs.includes(id)) app.tabs.push(id);
+      app.tab = id;
+      app.render();
+    },
+    selectTab(id) { app.tab = id; app.sel = id; app.render(); },
+    closeTab(id) {
+      if (id === "orch") return;
+      const i = app.tabs.indexOf(id);
+      app.tabs.splice(i, 1);
+      if (app.tab === id) { app.tab = app.tabs[Math.max(0, i - 1)]; app.sel = app.tab; }
+      app.render();
+    },
+    answer(id, text) {
+      const w = app.byId(id);
+      if (!w || !w.q || !text.trim()) return;
+      w.lines.push(L("you", text.trim()));
+      w.lines.push(L("agent", "Understood. Continuing with: " + text.trim()));
+      w.q = null; w.state = "working"; w.live = true; w.since = "gerade eben"; w.detail = "Arbeitet mit deiner Antwort weiter";
+      delete app.drafts[id];
+      app.announce(`Antwort an ${id} gesendet. ${w.title} arbeitet weiter.`);
+      app.render();
+    },
+    announce(msg) { const el = document.getElementById("live"); if (el) el.textContent = msg; },
+    render() {
+      const key = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+      window.view.render(app);
+      document.querySelectorAll("[data-scroll-end]").forEach((el) => { el.scrollTop = el.scrollHeight; });
+      if (key) { const el = document.querySelector(`[data-key="${CSS.escape(key)}"]`); if (el) el.focus({ preventScroll: true }); }
+    },
+  };
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-select],[data-tab],[data-close],[data-choice],[data-theme-toggle]");
+    if (!t) return;
+    if (t.dataset.close) { e.stopPropagation(); app.closeTab(t.dataset.close); return; }
+    if (t.dataset.select) app.select(t.dataset.select);
+    else if (t.dataset.tab) app.selectTab(t.dataset.tab);
+    else if (t.dataset.choice) app.answer(t.dataset.for, t.dataset.choice);
+    else if (t.dataset.themeToggle !== undefined) {
+      const r = document.documentElement;
+      r.dataset.theme = r.dataset.theme === "light" ? "dark" : "light";
+      app.render();
+    }
+  });
+  document.addEventListener("submit", (e) => {
+    const f = e.target.closest("[data-answer]");
+    if (!f) return;
+    e.preventDefault();
+    const input = f.querySelector("textarea,input");
+    app.answer(f.dataset.answer, input.value);
+  });
+  document.addEventListener("input", (e) => {
+    const f = e.target.closest("[data-answer]");
+    if (f) app.drafts[f.dataset.answer] = e.target.value;
+  });
+  // Tablist keyboard: arrows, Home, End move and activate (WAI-ARIA tabs, automatic activation).
+  document.addEventListener("keydown", (e) => {
+    const tab = e.target.closest('[role="tab"]');
+    if (!tab) return;
+    const list = [...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];
+    let i = list.indexOf(tab);
+    if (e.key === "ArrowRight") i = (i + 1) % list.length;
+    else if (e.key === "ArrowLeft") i = (i - 1 + list.length) % list.length;
+    else if (e.key === "Home") i = 0;
+    else if (e.key === "End") i = list.length - 1;
+    else return;
+    e.preventDefault();
+    app.selectTab(list[i].dataset.tab);
+  });
+  // A url hash like #sel=w16-07 preselects a worker (used for the proof screenshots).
+  const m = location.hash.match(/sel=([\w-]+)/);
+  if (m && app.byId(m[1])) { app.sel = m[1]; if (!app.tabs.includes(m[1])) app.tabs.push(m[1]); app.tab = m[1]; }
+  window.app = app;
+  document.addEventListener("DOMContentLoaded", () => app.render());
+})();
+</script>
+<script>
+(function () {
+  // A stable pseudo-random output trace per worker (lines per 20 s, last 10 min).
+  function trace(w) {
+    let h = 0; for (const c of w.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const rnd = () => ((h = (h * 1103515245 + 12345) >>> 0) % 1000) / 1000;
+    const out = [];
+    for (let i = 0; i < 30; i++) out.push(2 + Math.round(rnd() * 7));
+    const quiet = { needs: 6, paused: 24, idle: 14, error: 4, working: 0, merge: 9, review: 12 }[w.state] || 0;
+    for (let i = 30 - quiet; i < 30; i++) out[i] = 0;
+    if (w.state === "error") out[25] = 10;
+    return out;
+  }
+  window.view = {
+    render(app) {
+      const e = app.esc, w = app.current();
+      const sig = (x) => {
+        const t = trace(x);
+        return `<button class="sig ${x.state}${x.id === "orch" ? " orch" : ""}" data-select="${x.id}" data-key="sig-${x.id}" aria-current="${x.id === app.sel}" aria-label="${e(x.id === "orch" ? "Orchestrator" : x.id + " " + x.title)}, ${app.STATE[x.state]}">
+          <span class="top"><span class="lamp">${app.glyph(x.state, 10)}</span><span class="id">${x.id === "orch" ? "ORCH" : x.id.toUpperCase()}</span><span class="el">${e(x.since.replace("seit ", ""))}</span></span>
+          <span class="title">${e(x.title)}</span>
+          <span class="trace" aria-hidden="true">${t.map((v, i) => `<i class="${v ? (i >= 26 ? "now" : "lit") : ""}" style="height:${Math.max(2, v * 2)}px"></i>`).join("")}</span>
+          <span class="foot"><b>${app.STATE[x.state]}</b><span>${e(x.agent.replace("Claude ", ""))}</span></span>
+        </button>`;
+      };
+      const tab = (id) => { const t = app.byId(id); return `<div class="tw ${t.state}"><button class="tab" role="tab" id="tab-${id}" data-tab="${id}" data-key="tab-${id}" aria-selected="${id === app.tab}" aria-controls="panel" tabindex="${id === app.tab ? 0 : -1}">${app.glyph(t.state, 10).replace('class="g', 'style="color:var(--lamp)" class="g')}<span class="id">${id === "orch" ? "ORCH" : id.toUpperCase()}</span><span>${e(id === "orch" ? "Orchestrator" : t.title)}</span></button>${id === "orch" ? "" : `<button class="x" aria-label="Tab ${id} schließen" data-close="${id}" tabindex="-1">×</button>`}</div>`; };
+      const segs = (pct, n) => `<span class="segs" aria-hidden="true">${Array.from({ length: n }, (_, i) => `<i class="${i < Math.round(pct / 100 * n) ? "on" : ""}"></i>`).join("")}</span>`;
+      const gauge = (q, opt) => `<div class="gauge ${q.used >= 100 ? "out" : q.used >= 70 ? "hot" : ""} ${opt ? "opt" : ""}"><span class="lab"><span>${q.name}</span><span class="val">${q.used >= 100 ? "leer" : q.used + " %"}</span></span>${segs(q.used, 10)}</div>`;
+      const att = app.attention();
+      const firstNeed = app.workers.find((x) => x.state === "needs");
+      const desk = w.q ? `<section class="ask" aria-label="Anfrage von ${w.id}">
+          <div class="hd">${app.glyph("needs", 12)} Anfrage von ${w.id.toUpperCase()} · ${e(w.since)}</div>
+          <p>${e(w.q.text)}</p>
+          <div class="opts">${w.q.options.map((o, i) => `<button class="btn ${i === 0 ? "go" : ""}" data-choice="${e(o)}" data-for="${w.id}" data-key="opt-${i}">${e(o)}</button>`).join("")}</div>
+          <form data-answer="${w.id}"><label class="sr-only" for="ans">Eigene Antwort</label><textarea id="ans" data-key="ans" placeholder="Eigene Antwort …">${e(app.drafts[w.id] || "")}</textarea><button class="btn send" type="submit" data-key="send">Antwort senden</button></form>
+        </section>` : "";
+      document.getElementById("root").innerHTML = `
+<div class="win">
+  <nav class="rail" aria-label="Projekte">
+    <button class="logo" aria-label="ProjectA">A</button>
+    <button aria-current="true" aria-label="Projekt ProjectA" data-key="p1">PA</button>
+    <button aria-label="Projekt Dev HQ" data-key="p2">HQ</button>
+    <button aria-label="Projekt hinzufügen" data-key="p3">+</button>
+    <span class="sp"></span>
+    <button aria-label="Neuer Worker" data-key="new" style="font-size:20px">＋</button>
+  </nav>
+  <section class="fleet" aria-label="Flotte: ${app.workers.length} Worker">${sig(app.orchestrator)}${app.workers.map(sig).join("")}</section>
+  <main class="work ${w.state}">
+    <div class="tabs" role="tablist" aria-label="Sitzungen">${app.tabs.map(tab).join("")}</div>
+    <div class="term" id="panel" role="tabpanel" aria-labelledby="tab-${w.id}" tabindex="0" data-scroll-end>${app.termHTML(w)}</div>
+    <aside class="desk" aria-label="Pult">
+      ${desk}
+      <h2>Zugdaten</h2>
+      <div class="big">${e(w.title)}</div>
+      <dl class="data">
+        <dt>Zustand</dt><dd style="color:var(--lamp)">${app.STATE[w.state]}</dd>
+        <dt>Agent</dt><dd>${e(w.agent)}</dd>
+        ${w.id === "orch" ? `<dt>Warteschlange</dt><dd>${app.status.queue}</dd>` : `<dt>Laufzeit</dt><dd>${e(w.elapsed)}</dd><dt>Diff</dt><dd>${e(w.diff)}</dd><dt>Tests</dt><dd>${e(w.tests)}</dd><dt>Tokens</dt><dd>${e(w.tokens)}</dd>`}
+        <dt>Zweig</dt><dd class="mono">${e(w.branch)}</dd>
+      </dl>
+    </aside>
+  </main>
+  <footer class="inst" aria-label="Instrumente">
+    <button class="att ${att ? "" : "none"}" data-select="${firstNeed ? firstNeed.id : "orch"}" data-key="att"><span class="n">${att}</span>${att === 1 ? "Anfrage offen" : "Anfragen offen"}</button>
+    <div class="gauge"><span class="lab"><span>Flotte</span><span class="val">${app.count("working")} laufen</span></span>${segs(app.count("working") / app.workers.length * 100, 7)}</div>
+    ${app.status.quota.map((q, i) => gauge(q, i > 1)).join("")}
+    <span class="sp"></span>
+    <div class="gauge"><span class="lab"><span>RAM frei</span><span class="val">${app.status.ramFree} / ${app.status.ramTotal} GB</span></span>${segs(6.2 / 16 * 100, 16)}</div>
+    <div class="gauge"><span class="lab"><span>cargo</span><span class="val">${app.status.builds}</span></span><span class="slots" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span></div>
+    <div class="gauge"><span class="lab"><span>Warteschlange</span><span class="val">${app.status.queue}</span></span>${segs(app.status.queue / 8 * 100, 8)}</div>
+  </footer>
+</div>`;
+    },
+  };
+})();
+</script>
+</body>
+</html>

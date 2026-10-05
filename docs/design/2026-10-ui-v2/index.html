@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProjectA UI v2 Richtungen</title>
+<style>@font-face { font-family: Recursive; src: url("../../dev-hq/fonts/recursive-latin-wght.woff2") format("woff2"); font-weight: 300 1000; font-display: swap; }</style>
+<style>
+/* Layout: one column of reading width for the decision, then a 2x2 board of the four
+   directions where the 1440 screenshot is the object you compare; single dark look
+   on the Dev-HQ ground, because all four directions are dark-first. */
+:root {
+  color-scheme: dark;
+  --ground: #0b1013;
+  --surface: #131b20;
+  --raised: #1b272d;
+  --hair: #35464d;
+  --ink: #e6ece9;
+  --fog: #acbabd;
+  --mint: #82d5b4;
+  --amber: #e4bd74;
+  --ember: #f59185;
+  --steel: #9acbd8;
+  --violet: #c9b3f2;
+  --sans: Recursive, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 400 15px/1.6 var(--sans); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 24px; padding-block: 40px 64px; display: grid; gap: 48px; }
+a { color: var(--steel); text-underline-offset: 3px; }
+a:hover { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--steel); outline-offset: 3px; border-radius: 4px; }
+code { font-family: var(--mono); font-variation-settings: "MONO" 1; font-size: .88em; color: var(--ink); overflow-wrap: anywhere; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 4.2vw, 46px); line-height: 1.05; font-weight: 800; letter-spacing: -.03em; }
+h2 { font-size: 22px; line-height: 1.25; font-weight: 750; letter-spacing: -.015em; }
+.lead { max-width: 66ch; color: var(--fog); margin: 14px 0 0; font-size: 16px; }
+.lead b { color: var(--ink); font-weight: 600; }
+.pick { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 4px 16px; padding: 18px 20px; border: 1px solid var(--hair); border-left: 3px solid var(--mint); border-radius: 6px; background: var(--surface); max-width: 860px; }
+.pick b { color: var(--mint); font-weight: 700; }
+.pick p { margin: 0; min-width: 0; }
+
+.board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 28px; }
+.dir { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.dir header { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 2px 14px; align-items: baseline; }
+.letter { grid-row: 1 / 3; font-size: 52px; line-height: .9; font-weight: 900; color: var(--fog); letter-spacing: -.04em; }
+.dir h3 { font-size: 20px; font-weight: 750; letter-spacing: -.01em; }
+.dir h3 span { color: var(--fog); font-weight: 500; }
+.thesis { margin: 0; color: var(--ink); max-width: 60ch; }
+.shot { display: block; border-radius: 8px; overflow: hidden; border: 1px solid var(--hair); transition: border-color 160ms cubic-bezier(.23,1,.32,1), transform 160ms cubic-bezier(.23,1,.32,1); }
+.shot img { display: block; width: 100%; height: auto; aspect-ratio: 1440 / 900; }
+@media (hover: hover) and (pointer: fine) { .shot:hover { border-color: var(--steel); transform: translateY(-2px); } }
+.facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 6px 14px; font-size: 14px; }
+.facts dt { color: var(--fog); }
+.facts dd { margin: 0; min-width: 0; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+.links .open { font-weight: 650; }
+
+.cols { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 40px; }
+section > p { max-width: 66ch; color: var(--fog); margin: 10px 0 0; }
+.tbl { overflow-x: auto; margin-top: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; color: var(--fog); font-weight: 600; padding: 0 12px 8px 0; border-bottom: 1px solid var(--hair); }
+td { padding: 8px 12px 8px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+td svg { vertical-align: -1px; }
+.list { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.list li { padding-left: 14px; border-left: 2px solid var(--hair); min-width: 0; }
+.list li b { font-weight: 650; }
+.muted { color: var(--fog); }
+footer { color: var(--fog); font-size: 13px; border-top: 1px solid var(--hair); padding-top: 16px; }
+
+@media (max-width: 900px) { .board, .cols { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .wrap { padding-inline: 16px; } .letter { font-size: 40px; } }
+@media (prefers-reduced-motion: reduce) { .shot { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ProjectA Hauptfenster: vier Richtungen</h1>
+    <p class="lead">Vier klickbare Entwürfe für das Hauptfenster: Seitenleiste, Tabs, Terminal, Worker und Statusleiste. Alle leiten sich aus der Sprache des Dev HQ ab, jede hat eine eigene These. <b>Du wählst eine.</b> Umgesetzt wird erst nach Release v1.5.1. Die Daten sind Beispiele, keine echte Flotte.</p>
+  </header>
+
+  <div class="pick" role="note">
+    <b>Empfehlung</b>
+    <p><b>D Protokoll.</b> Es setzt deine Wahl vom 28.08. fort (Variante B „Konversation“) und macht Antworten zur Hauptsache: Du liest auf Deutsch, was ein Agent wissen will, und entscheidest dort, wo du es liest. Wer lieber das Terminal im Mittelpunkt hat, nimmt A.</p>
+  </div>
+
+  <section aria-labelledby="h-dirs">
+    <h2 id="h-dirs" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Die vier Richtungen</h2>
+    <div class="board">
+      <article class="dir" aria-labelledby="t-a">
+        <header><span class="letter" aria-hidden="true">A</span><h3 id="t-a">Werkbank <span>ruhig und dicht</span></h3>
+        <p class="thesis">Das Terminal ist die Arbeit, alles andere ist ruhiger Rand im Ton des Dev HQ.</p></header>
+        <a class="shot" href="direction-a.html" aria-label="Richtung A öffnen"><img src="shots/direction-a-1440.png" alt="Richtung A bei 1440 mal 900: Worker-Liste links, Terminal rechts, Frage-Dock unten in Amber" width="1440" height="900" loading="lazy"></a>
+        <dl class="facts">
+          <dt>Stärkster Punkt</dt><dd>Die gewählte Worker-Zeile hängt am Terminal: Ihre Zustandsfarbe läuft als eine Naht von der Liste über den Tab bis an den Terminalrand.</dd>
+          <dt>Schrift</dt><dd>Segoe UI Variable, Cascadia Mono</dd>
+          <dt>Früher</dt><dd>Dichte und feste Scanachsen aus dem Vertrag vom 29.08., aber HQ-Palette statt Systemblau.</dd>
+        </dl>
+        <div class="links"><a class="open" href="direction-a.html">Mockup öffnen</a><a href="shots/direction-a-1024.png">1024 × 768</a><a href="shots/direction-a-1440-answered.png">nach der Antwort</a></div>
+      </article>
+      <article class="dir" aria-labelledby="t-b">
+        <header><span class="letter" aria-hidden="true">B</span><h3 id="t-b">Stellwerk <span>Leitstand</span></h3>
+        <p class="thesis">Die Flotte ist das Gleisbild, jeder Worker ein Signal an fester Stelle, das Terminal ist der Zoom.</p></header>
+        <a class="shot" href="direction-b.html" aria-label="Richtung B öffnen"><img src="shots/direction-b-1440.png" alt="Richtung B bei 1440 mal 900: Leiste mit Signal-Kacheln oben, Terminal und Anfrage-Pult darunter, Instrumente unten" width="1440" height="900" loading="lazy"></a>
+        <dl class="facts">
+          <dt>Stärkster Punkt</dt><dd>Alle acht Worker auf einen Blick, mit der Ausgabe der letzten zehn Minuten als Spur. Die Statusleiste zeigt Kontingent, RAM und cargo als Instrumente.</dd>
+          <dt>Schrift</dt><dd>Bahnschrift (DIN, schmal geschnitten), Cascadia Mono</dd>
+          <dt>Früher</dt><dd>Bewusste Gegenthese zu deiner Wahl B, nah an der damals verworfenen Variante A „Mission Control“.</dd>
+        </dl>
+        <div class="links"><a class="open" href="direction-b.html">Mockup öffnen</a><a href="shots/direction-b-1024.png">1024 × 768</a><a href="shots/direction-b-1440-answered.png">nach der Antwort</a></div>
+      </article>
+      <article class="dir" aria-labelledby="t-c">
+        <header><span class="letter" aria-hidden="true">C</span><h3 id="t-c">Atelier <span>Studio-Premium</span></h3>
+        <p class="thesis">Jeder Worker ist ein Objekt, das man aufnimmt und im Inspector betrachtet, auf ruhigen Material-Ebenen in Hell und Dunkel.</p></header>
+        <a class="shot" href="direction-c.html" aria-label="Richtung C öffnen"><img src="shots/direction-c-1440.png" alt="Richtung C bei 1440 mal 900: Worker-Karten nach Dringlichkeit, Terminal als Blatt mit Entscheidungs-Sheet, Inspector rechts" width="1440" height="900" loading="lazy"></a>
+        <dl class="facts">
+          <dt>Stärkster Punkt</dt><dd>Das Entscheidungs-Sheet steigt aus dem Terminal auf, und das Fenster wirkt am hochwertigsten. Als einzige Richtung trägt C einen hellen Modus.</dd>
+          <dt>Schrift</dt><dd>Segoe UI Variable Display und Text, Cascadia Code</dd>
+          <dt>Früher</dt><dd>Führt das HQ2-Studio-Konzept ins Hauptfenster, mit der Frage als Karte im Strom aus deiner Wahl B.</dd>
+        </dl>
+        <div class="links"><a class="open" href="direction-c.html">Mockup öffnen</a><a href="shots/direction-c-1024.png">1024 × 768</a><a href="shots/direction-c-1440-light.png">hell</a></div>
+      </article>
+      <article class="dir" aria-labelledby="t-d">
+        <header><span class="letter" aria-hidden="true">D</span><h3 id="t-d">Protokoll <span>Entscheidung zuerst</span></h3>
+        <p class="thesis">Die Arbeit der Agenten steht als lesbares Logbuch mit Zeitrand da, und du liest, dann entscheidest du.</p></header>
+        <a class="shot" href="direction-d.html" aria-label="Richtung D öffnen"><img src="shots/direction-d-1440.png" alt="Richtung D bei 1440 mal 900: Eingang nach Dringlichkeit links mit zitierten Fragen, Protokoll mit Zeitrand rechts" width="1440" height="900" loading="lazy"></a>
+        <dl class="facts">
+          <dt>Stärkster Punkt</dt><dd>Fragen stehen in einer eigenen Stimme (Sitka) und lassen sich direkt im Eingang beantworten. Das rohe Terminal ist einen Klick entfernt.</dd>
+          <dt>Schrift</dt><dd>Recursive (die HQ-Schrift), Sitka nur für Fragen, Cascadia Mono</dd>
+          <dt>Früher</dt><dd>Direkte Fortsetzung deiner Wahl B „Konversation“ vom 28.08.; neu ist der Eingang nach Dringlichkeit statt einer Board-Leiste.</dd>
+        </dl>
+        <div class="links"><a class="open" href="direction-d.html">Mockup öffnen</a><a href="shots/direction-d-1024.png">1024 × 768</a><a href="shots/direction-d-1440-answered.png">nach der Antwort</a></div>
+      </article>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section aria-labelledby="h-states">
+      <h2 id="h-states">Ein Zustandsvokabular für App und HQ</h2>
+      <p>Das ist die wichtigste Empfehlung, egal welche Richtung du wählst. Heute heißt Grün in der App „bereit zum Mergen“ und im Dev HQ „fertig“. Alle vier Entwürfe nutzen schon dieselbe Grammatik: Form, Wort und Farbe zusammen.</p>
+      <div class="tbl"><table>
+        <thead><tr><th scope="col">Form</th><th scope="col">Wort</th><th scope="col">Farbe</th></tr></thead>
+        <tbody>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" fill="var(--steel)"/></svg> Punkt</td><td>Arbeitet</td><td>Blau</td></tr>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.2 10.8 6 6 10.8 1.2 6Z" fill="var(--amber)"/></svg> Raute</td><td>Wartet auf dich</td><td>Amber</td></tr>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="var(--ember)" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg> Kreuz</td><td>Fehler</td><td>Ember</td></tr>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M1.8 6.3 4.7 9.2 10.2 3.2" fill="none" stroke="var(--mint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Haken</td><td>Bereit zum Mergen</td><td>Minze</td></tr>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--violet)" stroke-width="1.6"/><path d="M6 2a4 4 0 0 1 0 8Z" fill="var(--violet)"/></svg> Halbkreis</td><td>In Review</td><td>Violett</td></tr>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="2" width="2.6" height="8" rx=".8" fill="var(--fog)"/><rect x="6.9" y="2" width="2.6" height="8" rx=".8" fill="var(--fog)"/></svg> Balken</td><td>Pausiert</td><td>neutral</td></tr>
+          <tr><td><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="3.8" fill="none" stroke="var(--fog)" stroke-width="1.6"/></svg> Ring</td><td>Bereit</td><td>neutral</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section aria-labelledby="h-prev">
+      <h2 id="h-prev">Frühere Entwürfe</h2>
+      <p>Zwei ältere Runden kamen nie ins öffentliche Repo. Hier sind sie nur zitiert, nicht kopiert.</p>
+      <ul class="list">
+        <li><b>28.08., <code>docs/ui-variants/</code></b><br><span class="muted">Drei Varianten: Mission Control, Konversation, Veredelung. Du hast <b>B „Konversation“</b> gewählt: Chat als Hauptfläche, Board als schmale Leiste, Fragen als Karten im Strom.</span></li>
+        <li><b>29.08.–02.09., <code>docs/design/2026-08-29-apple/</code></b><br><span class="muted">Branch <code>design/apple</code>, nie gemergt. Verbindlicher Vertrag „Xcode-dicht nach Richtung B“ mit Inter, Systemblau, Zeilen ab 26 px, angeheftetem Queue-Band und sechs Zuständen über <code>--state-fg/--state-bg</code>.</span></li>
+        <li><b>September, im Repo</b><br><span class="muted"><code>docs/design/2026-09-dev-hq/</code> (HQ-Richtungen A–D, umgesetzt als Kombination B/C) und <code>docs/dev-hq/concepts/hq2-studio.html</code>.</span></li>
+      </ul>
+    </section>
+  </div>
+
+  <section aria-labelledby="h-proof">
+    <h2 id="h-proof">Beleg und Grenzen</h2>
+    <p>Jede Richtung wurde bei 1440 × 900 und 1024 × 768 fotografiert und angesehen, dazu Auswahl eines Fehler-Workers und eine beantwortete Frage. Eine Kontrastprüfung liest die Farbwerte jeder Datei und prüft 134 Paarungen nach WCAG AA (Text 4,5:1, Ränder und Fokus 3:1): alle bestanden.</p>
+    <p>Nicht geprüft: das echte Tauri-Fenster, die Schriftdarstellung auf anderen Systemen als Windows 11 (Segoe UI Variable, Bahnschrift und Sitka sind Windows-Schriften) und ein heller Modus für A, B und D.</p>
+  </section>
+
+  <footer>Phase 1 von UI v2, nur Design. Quelle: <code>docs/design/2026-10-ui-v2/</code>, Stand 06.10.2026.</footer>
+</div>
+</body>
+</html>

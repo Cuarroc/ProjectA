@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Richtung C: Atelier</title>
+<!--
+  DIRECTION C, ATELIER (Studio-Premium)
+  WORLD      The HQ2 Studio concept grown into the app: solid material layers, generous
+             radii, translucent chrome only on the toolbar. Every worker is an object
+             you pick up and inspect.
+  PALETTE    dark: bg #10181e · surface #19252d · surface2 #202f38 · term #0c1317 ·
+             ink #edf4f7 · muted #b2c3cd · teal #7fdad2 · amber #f2c582 · red #f3a29a
+             light: bg #eef2f4 · surface #ffffff · term #fbfcfd · ink #172b35 ·
+             muted #4f6370 · teal #07787b · amber #8f5a1c · red #a3453b
+  TYPE       Segoe UI Variable Display 600 for titles (-0.02em), Text 13.5 body,
+             Cascadia Code 12.5 terminal
+  GRID       toolbar 60 / sidebar 272 cards grouped by urgency | tab pills + terminal
+             sheet (r18) | inspector 312 / quiet status 30
+  MOTION     elegant: the decision sheet rises once with a soft spring (bounce 0.1);
+             selection 160 ms ease-out; nothing else moves
+  SIGNATURE  the decision sheet that rises out of the terminal sheet when a worker asks
+  CUT        dense tables, hairline grids, colour per provider, glass on working surfaces
+  FRÜHER    Führt docs/dev-hq/concepts/hq2-studio.html (Studio-Tokens, light-dark) ins
+             Hauptfenster; Inspector-Breite und „eine volle Akzentfläche pro Bereich“ aus dem
+             Vertrag vom 29.08. Von der Nutzerwahl B übernimmt sie die Frage als Karte im
+             Strom, hier als Sheet über dem Terminal.
+  STATES    shared vocabulary: working blue dot · needs amber diamond · error ember cross ·
+             merge mint check · review violet half ring · paused bars · idle ring
+-->
+<style id="tokens">
+:root {
+  --bg: #10181e;
+  --surface: #19252d;
+  --surface2: #223139;
+  --term: #0c1317;
+  --line: #344650;
+  --edge: #738e94;
+  --ink: #edf4f7;
+  --muted: #b2c3cd;
+  --teal: #7fdad2;
+  --amber: #f2c582;
+  --red: #f3a29a;
+  --cmd: #9acbd8;
+  --violet: #c9b3f2;
+  --teal-wash: #1d3d3b;
+  --amber-wash: #3d2f1f;
+  --on-accent: #10181e;
+  --shadow-color: #00000059;
+}
+:root[data-theme="light"] {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --surface2: #f3f6f8;
+  --term: #fbfcfd;
+  --line: #d6dfe4;
+  --edge: #6f8791;
+  --ink: #172b35;
+  --muted: #4f6370;
+  --teal: #07787b;
+  --amber: #8f5a1c;
+  --red: #a3453b;
+  --cmd: #2f6680;
+  --violet: #6c3fb0;
+  --teal-wash: #e3f2f1;
+  --amber-wash: #fdf0db;
+  --on-accent: #ffffff;
+  --shadow-color: #17364414;
+}
+</style>
+<script type="application/json" id="contrast-pairs">
+{"dark": [
+  ["ink","bg",4.5,"Text auf Grund"],["ink","surface",4.5,"Text auf Karte"],["ink","surface2",4.5,"Text gewählt"],["ink","term",4.5,"Terminaltext"],
+  ["muted","bg",4.5,"Nebentext Grund"],["muted","surface",4.5,"Nebentext Karte"],["muted","surface2",4.5,"Nebentext gewählt"],["muted","term",4.5,"Nebentext Terminal"],
+  ["teal","term",4.5,"Erfolg"],["cmd","surface",4.5,"Arbeitet"],["teal","surface",4.5,"Bereit zum Mergen"],["violet","surface",4.5,"In Review"],["amber","surface",4.5,"Wartet"],["amber","term",4.5,"Warnung"],["red","surface",4.5,"Fehler"],["red","term",4.5,"Fehler Terminal"],["cmd","term",4.5,"Befehl"],
+  ["ink","amber-wash",4.5,"Fragetext"],["amber","amber-wash",4.5,"Frage-Kopf"],["teal","teal-wash",4.5,"Chip Mergen"],["cmd","surface2",4.5,"Chip Arbeitet"],
+  ["on-accent","teal",4.5,"Primärknopf"],["on-accent","amber",4.5,"Antwortknopf"],
+  ["edge","surface",3,"Kontrollrand"],["edge","bg",3,"Suchfeld"],["edge","amber-wash",3,"Eingabe im Sheet"],["teal","bg",3,"Fokusring"],["teal","amber-wash",3,"Fokusring im Sheet"]
+],
+"light": [
+  ["ink","bg",4.5,"Text auf Grund"],["ink","surface",4.5,"Text auf Karte"],["ink","surface2",4.5,"Text gewählt"],["ink","term",4.5,"Terminaltext"],
+  ["muted","bg",4.5,"Nebentext Grund"],["muted","surface",4.5,"Nebentext Karte"],["muted","surface2",4.5,"Nebentext gewählt"],["muted","term",4.5,"Nebentext Terminal"],
+  ["teal","term",4.5,"Erfolg"],["cmd","surface",4.5,"Arbeitet"],["teal","surface",4.5,"Bereit zum Mergen"],["violet","surface",4.5,"In Review"],["amber","surface",4.5,"Wartet"],["amber","term",4.5,"Warnung"],["red","surface",4.5,"Fehler"],["red","term",4.5,"Fehler Terminal"],["cmd","term",4.5,"Befehl"],
+  ["ink","amber-wash",4.5,"Fragetext"],["amber","amber-wash",4.5,"Frage-Kopf"],["teal","teal-wash",4.5,"Chip Mergen"],["cmd","surface2",4.5,"Chip Arbeitet"],
+  ["on-accent","teal",4.5,"Primärknopf"],["on-accent","amber",4.5,"Antwortknopf"],
+  ["edge","surface",3,"Kontrollrand"],["edge","bg",3,"Suchfeld"],["edge","amber-wash",3,"Eingabe im Sheet"],["teal","bg",3,"Fokusring"],["teal","amber-wash",3,"Fokusring im Sheet"]
+]}
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+:root { color-scheme: dark; --ease-out: cubic-bezier(.23,1,.32,1); --shadow: 0 1px 2px var(--shadow-color), 0 12px 32px var(--shadow-color); }
+:root[data-theme="light"] { color-scheme: light; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 13.5px/19px "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+}
+button, textarea, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.disp { font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -.02em; font-weight: 600; }
+
+.win { height: 100vh; display: grid; grid-template-columns: 272px minmax(0,1fr) 312px; grid-template-rows: 60px minmax(0,1fr) 30px; }
+.bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 16px 0 20px; background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(20px); border-bottom: 1px solid var(--line); position: relative; z-index: 2; }
+.logo { width: 30px; height: 30px; border-radius: 9px; background: var(--teal); color: var(--on-accent); display: grid; place-items: center; font-weight: 700; }
+.bar .name { font-size: 17px; }
+.pill { height: 32px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--edge); background: transparent; color: var(--muted); }
+.pill:hover { background: var(--surface2); color: var(--ink); }
+.search { flex: 1; max-width: 460px; margin: 0 auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--edge); background: var(--bg); color: var(--muted); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; }
+.search input::placeholder { color: var(--muted); }
+.search:focus-within { outline: 2px solid var(--teal); outline-offset: 1px; }
+.search kbd { font: 11.5px "Segoe UI", sans-serif; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); }
+.btn { height: 34px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--edge); background: var(--surface); color: var(--ink); font-weight: 600; transition: background-color 160ms var(--ease-out), transform 100ms var(--ease-out); }
+.btn:hover { background: var(--surface2); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: var(--on-accent); }
+.btn.primary:hover { background: color-mix(in srgb, var(--teal) 88%, var(--ink)); }
+.btn.answer { background: var(--amber); border-color: var(--amber); color: var(--on-accent); }
+.btn.answer:hover { background: color-mix(in srgb, var(--amber) 88%, var(--ink)); }
+.icon { width: 34px; padding: 0; display: grid; place-items: center; }
+
+/* sidebar cards */
+.side { overflow-y: auto; padding: 8px 12px 16px 16px; }
+.side h2 { margin: 16px 4px 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; }
+.cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.card { width: 100%; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 2px 12px; padding: 10px 12px 10px 10px; border-radius: 14px; border: 1px solid transparent; background: transparent; text-align: left; transition: background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+.card:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.card[aria-current="true"] { background: var(--surface); border-color: var(--line); box-shadow: var(--shadow); }
+.mono { grid-row: 1 / 3; width: 34px; height: 34px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--line); display: grid; place-items: center; font-weight: 650; font-size: 13px; position: relative; }
+.mono .g { position: absolute; right: -4px; bottom: -4px; padding: 2px; border-radius: 50%; background: var(--bg); box-sizing: content-box; }
+.card[aria-current="true"] .mono .g { background: var(--surface); }
+.card .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .m { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .m b { font-weight: 600; }
+.g-working, .st-working { color: var(--cmd); } .g-merge, .st-merge { color: var(--teal); } .g-review, .st-review { color: var(--violet); } .g-needs, .st-needs { color: var(--amber); } .g-error, .st-error { color: var(--red); } .g-paused, .g-idle, .st-paused, .st-idle { color: var(--muted); }
+
+/* center */
+.center { display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 12px; padding: 14px 8px 16px; min-height: 0; min-width: 0; }
+.seg { display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); width: max-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tw { position: relative; display: flex; }
+.tab { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 28px 0 11px; border-radius: 9px; border: 0; background: transparent; color: var(--muted); white-space: nowrap; max-width: 230px; }
+.tab span { overflow: hidden; text-overflow: ellipsis; }
+.tab:hover { color: var(--ink); background: var(--surface2); }
+.tab[aria-selected="true"] { background: var(--surface2); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px var(--shadow-color); }
+.tw.orch .tab { padding-right: 11px; }
+.x { position: absolute; right: 5px; top: 5px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); opacity: 0; }
+.tw:hover .x, .x:focus-visible, .tab[aria-selected="true"] + .x { opacity: 1; }
+.x:hover { background: var(--line); color: var(--ink); }
+.sheet { min-width: 0; position: relative; display: grid; grid-template-rows: auto minmax(0,1fr); min-height: 0; border-radius: 18px; background: var(--term); border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; }
+.sheet-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px 12px; border-bottom: 1px solid var(--line); }
+.sheet-head h1 { margin: 0; font-size: 18px; line-height: 24px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: var(--surface2); }
+.chip.working { color: var(--cmd); } .chip.merge { background: var(--teal-wash); color: var(--teal); } .chip.needs { background: var(--amber-wash); color: var(--amber); } .chip.error { color: var(--red); }
+.branch { margin-left: auto; font: 12px "Cascadia Code", Consolas, monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.term { overflow-y: auto; padding: 16px 20px 20px; font: 12.5px/19.5px "Cascadia Code", Consolas, monospace; font-variant-ligatures: none; }
+.term.has-sheet { padding-bottom: 230px; }
+.ln { display: flex; gap: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ln-pre { flex: none; width: 14px; color: var(--muted); }
+.ln-ok, .ln-out, .ln-dim, .ln-err, .ln-warn { padding-left: 24px; }
+.ln-cmd .ln-t, .ln-cmd .ln-pre { color: var(--cmd); }
+.ln-ok .ln-t { color: var(--teal); } .ln-err .ln-t { color: var(--red); } .ln-warn .ln-t { color: var(--amber); } .ln-dim .ln-t { color: var(--muted); }
+.ln-agent .ln-pre { color: var(--teal); }
+.ln-you { margin: 8px 0; } .ln-you .ln-pre { width: auto; color: var(--amber); font-family: "Segoe UI Variable Text", sans-serif; font-weight: 700; }
+.cursor { display: inline-block; width: 8px; height: 15px; margin-top: 2px; background: var(--ink); animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.decide { position: absolute; left: 14px; right: 14px; bottom: 14px; padding: 16px 18px; border-radius: 16px; background: var(--amber-wash); border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent); box-shadow: var(--shadow); display: grid; gap: 12px; }
+.decide.enter { animation: rise 520ms linear(0, .012, .05 2.3%, .2 5.4%, .44 9.4%, .79 15.8%, .94 20.4%, 1.02 25.5%, 1.045 30%, 1.04 35.6%, 1.012 47%, .998 62%, 1); }
+@keyframes rise { from { transform: translateY(calc(100% + 20px)); } }
+.decide .hd { display: flex; gap: 8px; align-items: center; color: var(--amber); font-weight: 600; font-size: 12.5px; }
+.decide p { margin: 0; font-size: 15px; line-height: 22px; max-width: 72ch; }
+.decide .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.decide form { display: flex; gap: 8px; flex: 1; min-width: 240px; }
+.decide input { flex: 1; min-width: 0; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--edge); background: var(--term); }
+.decide input::placeholder { color: var(--muted); }
+
+/* inspector */
+.insp > * { min-width: 0; }
+.insp { grid-template-columns: minmax(0,1fr); overflow-y: auto; padding: 18px 20px 20px 12px; display: grid; align-content: start; gap: 18px; }
+.insp section { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.insp h2 { margin: 0 0 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.insp .big { font-size: 20px; line-height: 26px; margin: 0 0 4px; }
+.insp .who { color: var(--muted); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.facts div { display: grid; gap: 1px; }
+.facts span { font-size: 12px; color: var(--muted); }
+.facts b { font-size: 16px; font-weight: 600; }
+.checks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: flex; align-items: center; gap: 10px; }
+.checks li span:last-child { margin-left: auto; text-align: right; color: var(--muted); font-size: 12.5px; }
+.files { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; font: 12px "Cascadia Code", Consolas, monospace; }
+.files li { display: flex; gap: 8px; min-width: 0; } .files li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; } .files .add { color: var(--teal); } .files .del { color: var(--red); }
+.insp .acts { display: flex; gap: 8px; }
+
+.status { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 0 20px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
+.status .sp { flex: 1; }
+.status b { color: var(--ink); font-weight: 600; }
+.status .att { border: 0; background: transparent; color: var(--amber); font-weight: 600; display: flex; gap: 7px; align-items: center; padding: 0; }
+.status .att:hover { text-decoration: underline; }
+.status .out { color: var(--red); }
+
+@media (max-width: 1180px) { .win { grid-template-columns: 248px minmax(0,1fr); } .insp { display: none; } .center { padding-right: 16px; } }
+@media (max-width: 760px) { .win { grid-template-columns: 1fr; grid-template-rows: 60px auto minmax(0,1fr) 30px; } .side { max-height: 30vh; } .search { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<script>/* ProjectA UI v2 mockup core: shared demo data and behaviour. Each direction
+   supplies window.view = { render(app) } and its own markup; this file owns the
+   state, the actions and the event delegation. Mock data, no live fleet. */
+(function () {
+  "use strict";
+  const STATE = {
+    working: "Arbeitet",
+    needs: "Wartet auf dich",
+    error: "Fehler",
+    paused: "Pausiert",
+    idle: "Bereit",
+    merge: "Bereit zum Mergen",
+    review: "In Review",
+  };
+  const L = (k, t) => [k, t];
+  const workers = [
+    {
+      id: "w16-05", title: "Diff-Ansicht virtualisieren", branch: "kimi/w16-05-diff-virtual",
+      agent: "Kimi K3", provider: "Kimi", state: "needs", since: "seit 6 min", elapsed: "52 min",
+      diff: "+311 −148", tests: "86/86", tokens: "164k", files: 7,
+      detail: "Fragt nach einer Entscheidung",
+      q: {
+        text: "DiffView hat noch zwei Aufrufer der alten API: HistoryView und QuestionsView. Soll ich beide auf die neue virtualisierte Liste umstellen oder die alte API als dünnen Wrapper behalten?",
+        options: ["Beide umstellen", "Wrapper behalten"],
+      },
+      lines: [
+        L("cmd", "npx vitest run src/components/DiffView"),
+        L("out", " ✓ src/components/DiffView.test.tsx (31 tests) 412ms"),
+        L("out", " ✓ src/components/DiffView.lines.test.tsx (44 tests) 690ms"),
+        L("out", " ✓ src/components/DiffView.reviewClass.test.tsx (11 tests) 203ms"),
+        L("ok", " Test Files  3 passed (3)   Tests  86 passed (86)"),
+        L("agent", "Virtualised list renders 20 000 diff lines at 60 fps in the bench."),
+        L("cmd", "rg -n \"DiffView\\b\" src/components --type tsx -l"),
+        L("out", "src/components/HistoryView.tsx"),
+        L("out", "src/components/QuestionsView.tsx"),
+        L("out", "src/components/DiffView.tsx"),
+        L("agent", "Two callers still use the old props (lines[], onSelect)."),
+        L("warn", "? Waiting for a decision before touching HistoryView and QuestionsView."),
+      ],
+    },
+    {
+      id: "w16-02", title: "Kontingent-Gate vor Worker-Start", branch: "claude/w16-02-quota-gate",
+      agent: "Claude Opus 5.5", provider: "Claude", state: "working", since: "seit 38 min", elapsed: "38 min",
+      diff: "+184 −22", tests: "41/41", tokens: "212k", files: 4,
+      detail: "Hängt das Gate in dispatch_worker() ein",
+      lines: [
+        L("cmd", "cargo nextest run -p projecta --profile ci quota::"),
+        L("dim", "   Compiling projecta v1.5.0 (src-tauri)"),
+        L("dim", "    Finished `test` profile [unoptimized + debuginfo] target(s) in 48.21s"),
+        L("out", "    Starting 41 tests across 1 binary"),
+        L("ok", "        PASS [   0.012s] projecta quota::gate::blocks_when_week_cap_reached"),
+        L("ok", "        PASS [   0.009s] projecta quota::gate::allows_under_cap"),
+        L("ok", "        PASS [   0.011s] projecta quota::gate::reports_reset_time"),
+        L("ok", "     Summary [   1.402s] 41 tests run: 41 passed, 0 skipped"),
+        L("agent", "Gate is green. Wiring it into dispatch_worker() next."),
+        L("cmd", "rg -n \"fn dispatch_worker\" src-tauri/src"),
+        L("out", "src-tauri/src/queue/dispatch.rs:118:pub(crate) fn dispatch_worker("),
+        L("agent", "Edit src-tauri/src/queue/dispatch.rs  (+12 −3)"),
+        L("cmd", "cargo clippy -p projecta --all-targets -- -D warnings"),
+        L("dim", "    Checking projecta v1.5.0 (src-tauri)"),
+      ],
+      live: true,
+    },
+    {
+      id: "w16-07", title: "Sitzungen wiederherstellen", branch: "codex/w16-07-session-restore",
+      agent: "GPT-5.6 Terra", provider: "Codex", state: "error", since: "seit 12 min", elapsed: "1 h 04 min",
+      diff: "+96 −41", tests: "—", tokens: "301k", files: 3,
+      detail: "Gate clippy rot, Lauf gestoppt",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ fmt            0.8s"),
+        L("ok", "  ✓ secret-scan    2.1s"),
+        L("ok", "  ✓ fe-test       38.4s"),
+        L("out", "  … clippy"),
+        L("err", "error: this expression creates a reference which is immediately dereferenced"),
+        L("err", "   --> src-tauri/src/store/session.rs:212:31"),
+        L("dim", "    |"),
+        L("dim", "212 |         restore_buffer(&conn, &session.id)?;"),
+        L("dim", "    |                               ^^^^^^^^^^^ help: change this to: `session.id`"),
+        L("err", "error: could not compile `projecta` (lib) due to 1 previous error"),
+        L("err", "✕ gate clippy failed (exit 101), lane prepush stopped at 4/9"),
+      ],
+    },
+    {
+      id: "w16-12", title: "Lessons-Suche im HQ", branch: "opencode/w16-12-hq-lessons",
+      agent: "GLM 5.2", provider: "OpenCode", state: "working", since: "seit 9 min", elapsed: "9 min",
+      diff: "+58 −6", tests: "12/12", tokens: "41k", files: 2,
+      detail: "Schreibt den Suchindex",
+      lines: [
+        L("cmd", "node scripts/hq-lesson.mjs search \"pty hang\" --json"),
+        L("out", "{ \"hits\": 3, \"took_ms\": 14 }"),
+        L("agent", "Index is built on every call. Caching it per session."),
+        L("cmd", "npm run test:hq -- lessons"),
+        L("ok", " ✓ lessons.search ranks by symptom (5)"),
+        L("ok", " ✓ lessons.search survives empty store (7)"),
+        L("agent", "Edit scripts/hq-lesson.mjs  (+41 −4)"),
+      ],
+      live: true,
+    },
+    {
+      id: "w16-14", title: "Credential-ACL prüfen", branch: "claude/w16-14-credential-acl",
+      agent: "Claude Opus 5.5", provider: "Claude", state: "needs", since: "seit 2 min", elapsed: "21 min",
+      diff: "+37 −0", tests: "8/8", tokens: "77k", files: 2,
+      detail: "Fragt nach Testumfang",
+      q: {
+        text: "Die ACL-Prüfung braucht Lesezugriff auf den Schlüsselordner. Soll ich dafür einen Test mit einem temporären Verzeichnis anlegen, oder prüfst du das nur von Hand?",
+        options: ["Test anlegen", "Nur von Hand"],
+      },
+      lines: [
+        L("cmd", "cargo nextest run -p projecta credential::acl"),
+        L("ok", "     Summary [   0.311s] 8 tests run: 8 passed, 0 skipped"),
+        L("agent", "Owner-only ACL is enforced on create. Read path is untested."),
+        L("warn", "? Testing the read path needs a real directory with an ACL."),
+      ],
+    },
+    {
+      id: "w16-11", title: "PTY-Trace für Worker", branch: "codex/w16-11-pty-trace",
+      agent: "GPT-5.6 Sol", provider: "Codex", state: "paused", since: "seit 3 h", elapsed: "2 h 10 min",
+      diff: "+142 −18", tests: "23/23", tokens: "388k", files: 5,
+      detail: "Kontingent leer, weiter am 11.10. 14:31",
+      lines: [
+        L("ok", "     Summary [   2.118s] 23 tests run: 23 passed, 0 skipped"),
+        L("agent", "Trace writer flushes every 64 KiB; sample attached to the PR."),
+        L("warn", "! Provider limit reached (week 100 %). Session parked."),
+        L("dim", "  Resumes automatically on 11.10. 14:31."),
+      ],
+    },
+    {
+      id: "w16-09", title: "PLAN.md aufräumen", branch: "glm/w16-09-plan-cleanup",
+      agent: "GLM 5.2", provider: "Ollama", state: "idle", since: "seit 41 min", elapsed: "27 min",
+      diff: "+19 −88", tests: "Doku", tokens: "29k", files: 1,
+      detail: "PR #561 gemergt, wartet auf Auftrag",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ 9/9 gates green (lane prepush, 3m 12s)"),
+        L("cmd", "gh pr create --draft --title \"docs(plan): fold done M2 items\""),
+        L("out", "https://github.com/example/projecta/pull/561"),
+        L("agent", "Draft PR opened."),
+        L("ok", "  ✓ merged by the queue (merge commit 4e1c9a2)"),
+        L("agent", "Done. Idle until the orchestrator sends the next task."),
+      ],
+    },
+    {
+      id: "w16-03", title: "Kontingent in der Statusleiste", branch: "kimi/w16-03-status-quota",
+      agent: "Kimi K3", provider: "Kimi", state: "merge", since: "seit 18 min", elapsed: "44 min",
+      diff: "+126 −31", tests: "64/64", tokens: "98k", files: 4,
+      detail: "PR #559 grün, in der Merge-Queue",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ 9/9 gates green (lane prepush, 4m 02s)"),
+        L("cmd", "gh pr ready 559"),
+        L("out", "✓ Pull request #559 is marked as ready for review"),
+        L("ok", "  ✓ gates (linux)  ✓ red-first  ✓ Mergify Merge Protections"),
+        L("agent", "Queued by Mergify. Nothing left for me to do."),
+      ],
+    },
+  ];
+  const orchestrator = {
+    id: "orch", title: "Orchestrator", branch: "main", agent: "Claude Opus 5.5", provider: "Claude",
+    state: "working", since: "läuft", detail: "Verteilt die Warteschlange", live: true,
+    lines: [
+      L("agent", "Queue: 4 waiting · 2 slots free (RAM 6.2 GB free, cargo 2/3)"),
+      L("agent", "dispatch w16-12 → opencode / glm-5.2 in its own worktree"),
+      L("warn", "w16-05 asks for a decision, forwarded to you"),
+      L("err", "w16-07 gate clippy red, fix brief drafted, waits for a slot"),
+      L("warn", "w16-14 asks for a decision, forwarded to you"),
+      L("dim", "w16-11 parked: Codex week limit, resumes 11.10. 14:31"),
+      L("agent", "Next in queue: w16-15 status-bar tokens (Kimi K3)"),
+    ],
+  };
+  const status = {
+    quota: [
+      { name: "Claude", used: 72, note: "Woche 72 %" },
+      { name: "Codex", used: 100, note: "leer bis 11.10." },
+      { name: "Kimi", used: 34, note: "Woche 34 %" },
+      { name: "GLM", used: 18, note: "Woche 18 %" },
+    ],
+    ramFree: "6,2", ramTotal: "16", queue: 4, builds: "2/3", omni: true,
+  };
+
+  const app = {
+    STATE, workers, orchestrator, status,
+    tabs: ["orch", "w16-05", "w16-02", "w16-07"],
+    tab: "w16-05",
+    sel: "w16-05",
+    drafts: {},
+    byId(id) { return id === "orch" ? orchestrator : workers.find((w) => w.id === id); },
+    current() { return app.byId(app.tab); },
+    attention() { return workers.filter((w) => w.state === "needs").length; },
+    count(s) { return workers.filter((w) => w.state === s).length; },
+    esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    },
+    termHTML(w) {
+      const pre = { cmd: "›", agent: "●", you: "Du", ok: "", out: "", dim: "", err: "", warn: "" };
+      return w.lines.map(([k, t]) =>
+        `<div class="ln ln-${k}">${pre[k] ? `<span class="ln-pre" aria-hidden="true">${pre[k]}</span>` : ""}<span class="ln-t">${app.esc(t)}</span></div>`
+      ).join("") + (w.live ? `<div class="ln ln-cursor"><span class="ln-pre" aria-hidden="true">›</span><span class="cursor" aria-hidden="true"></span></div>` : "");
+    },
+    // State glyphs: shape carries the state as well as colour (dot, diamond, cross, bars, ring).
+    glyph(state, size) {
+      const z = size || 12, a = `width="${z}" height="${z}" viewBox="0 0 12 12" aria-hidden="true" class="g g-${state}"`;
+      if (state === "working") return `<svg ${a}><circle cx="6" cy="6" r="4" fill="currentColor"/></svg>`;
+      if (state === "needs") return `<svg ${a}><path d="M6 1.2 10.8 6 6 10.8 1.2 6Z" fill="currentColor"/></svg>`;
+      if (state === "error") return `<svg ${a}><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+      if (state === "merge") return `<svg ${a}><path d="M1.8 6.3 4.7 9.2 10.2 3.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      if (state === "review") return `<svg ${a}><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 2a4 4 0 0 1 0 8Z" fill="currentColor"/></svg>`;
+      if (state === "paused") return `<svg ${a}><rect x="2.5" y="2" width="2.6" height="8" rx=".8" fill="currentColor"/><rect x="6.9" y="2" width="2.6" height="8" rx=".8" fill="currentColor"/></svg>`;
+      return `<svg ${a}><circle cx="6" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+    },
+    select(id) {
+      app.sel = id;
+      if (!app.tabs.includes(id)) app.tabs.push(id);
+      app.tab = id;
+      app.render();
+    },
+    selectTab(id) { app.tab = id; app.sel = id; app.render(); },
+    closeTab(id) {
+      if (id === "orch") return;
+      const i = app.tabs.indexOf(id);
+      app.tabs.splice(i, 1);
+      if (app.tab === id) { app.tab = app.tabs[Math.max(0, i - 1)]; app.sel = app.tab; }
+      app.render();
+    },
+    answer(id, text) {
+      const w = app.byId(id);
+      if (!w || !w.q || !text.trim()) return;
+      w.lines.push(L("you", text.trim()));
+      w.lines.push(L("agent", "Understood. Continuing with: " + text.trim()));
+      w.q = null; w.state = "working"; w.live = true; w.since = "gerade eben"; w.detail = "Arbeitet mit deiner Antwort weiter";
+      delete app.drafts[id];
+      app.announce(`Antwort an ${id} gesendet. ${w.title} arbeitet weiter.`);
+      app.render();
+    },
+    announce(msg) { const el = document.getElementById("live"); if (el) el.textContent = msg; },
+    render() {
+      const key = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+      window.view.render(app);
+      document.querySelectorAll("[data-scroll-end]").forEach((el) => { el.scrollTop = el.scrollHeight; });
+      if (key) { const el = document.querySelector(`[data-key="${CSS.escape(key)}"]`); if (el) el.focus({ preventScroll: true }); }
+    },
+  };
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-select],[data-tab],[data-close],[data-choice],[data-theme-toggle]");
+    if (!t) return;
+    if (t.dataset.close) { e.stopPropagation(); app.closeTab(t.dataset.close); return; }
+    if (t.dataset.select) app.select(t.dataset.select);
+    else if (t.dataset.tab) app.selectTab(t.dataset.tab);
+    else if (t.dataset.choice) app.answer(t.dataset.for, t.dataset.choice);
+    else if (t.dataset.themeToggle !== undefined) {
+      const r = document.documentElement;
+      r.dataset.theme = r.dataset.theme === "light" ? "dark" : "light";
+      app.render();
+    }
+  });
+  document.addEventListener("submit", (e) => {
+    const f = e.target.closest("[data-answer]");
+    if (!f) return;
+    e.preventDefault();
+    const input = f.querySelector("textarea,input");
+    app.answer(f.dataset.answer, input.value);
+  });
+  document.addEventListener("input", (e) => {
+    const f = e.target.closest("[data-answer]");
+    if (f) app.drafts[f.dataset.answer] = e.target.value;
+  });
+  // Tablist keyboard: arrows, Home, End move and activate (WAI-ARIA tabs, automatic activation).
+  document.addEventListener("keydown", (e) => {
+    const tab = e.target.closest('[role="tab"]');
+    if (!tab) return;
+    const list = [...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];
+    let i = list.indexOf(tab);
+    if (e.key === "ArrowRight") i = (i + 1) % list.length;
+    else if (e.key === "ArrowLeft") i = (i - 1 + list.length) % list.length;
+    else if (e.key === "Home") i = 0;
+    else if (e.key === "End") i = list.length - 1;
+    else return;
+    e.preventDefault();
+    app.selectTab(list[i].dataset.tab);
+  });
+  // A url hash like #sel=w16-07 preselects a worker (used for the proof screenshots).
+  const m = location.hash.match(/sel=([\w-]+)/);
+  if (m && app.byId(m[1])) { app.sel = m[1]; if (!app.tabs.includes(m[1])) app.tabs.push(m[1]); app.tab = m[1]; }
+  window.app = app;
+  document.addEventListener("DOMContentLoaded", () => app.render());
+})();
+</script>
+<script>
+(function () {
+  const seen = new Set();
+  const mono = { Claude: "Cl", Kimi: "Ki", Codex: "Cx", OpenCode: "Oc", Ollama: "Ol" };
+  const files = {
+    "w16-05": [["src/components/DiffView.tsx", "+188", "−121"], ["src/components/diff/VirtualList.tsx", "+96", "−0"], ["src/components/DiffView.lines.test.tsx", "+27", "−27"]],
+    "w16-02": [["src-tauri/src/quota/gate.rs", "+121", "−0"], ["src-tauri/src/queue/dispatch.rs", "+12", "−3"], ["src-tauri/src/quota/mod.rs", "+51", "−19"]],
+    "w16-07": [["src-tauri/src/store/session.rs", "+71", "−30"], ["src/components/SessionRestorePanel.tsx", "+25", "−11"]],
+  };
+  const checks = (w) => w.state === "error"
+    ? [["merge", "fmt", "0,8 s"], ["merge", "secret-scan", "2,1 s"], ["merge", "fe-test", "38 s"], ["error", "clippy", "exit 101"], ["idle", "rust-test", "offen"]]
+    : w.state === "idle" || w.state === "merge" ? [["merge", "Lane prepush", "9/9"], ["merge", "gates (linux)", "grün"], [w.state === "idle" ? "merge" : "working", "Merge-Queue", w.state === "idle" ? "gemergt" : "läuft"]]
+    : [["merge", "fmt", "ok"], ["merge", "fe-test", w.tests], ["idle", "clippy", "läuft gleich"], ["idle", "Lane prepush", "offen"]];
+  window.view = {
+    render(app) {
+      const e = app.esc, w = app.current();
+      const card = (x) => `<li><button class="card" data-select="${x.id}" data-key="card-${x.id}" aria-current="${x.id === app.sel}">
+          <span class="mono" aria-hidden="true">${mono[x.provider] || "·"}${app.glyph(x.state, 11)}</span>
+          <span class="t">${e(x.title)}</span>
+          <span class="m"><b class="st-${x.state}">${app.STATE[x.state]}</b> · ${e(x.since)}</span></button></li>`;
+      const grp = (label, list) => list.length ? `<h2><span>${label}</span><span>${list.length}</span></h2><ul class="cards">${list.map(card).join("")}</ul>` : "";
+      const W = app.workers;
+      const tab = (id) => { const t = app.byId(id); return `<div class="tw ${id === "orch" ? "orch" : ""}"><button class="tab" role="tab" id="tab-${id}" data-tab="${id}" data-key="tab-${id}" aria-selected="${id === app.tab}" aria-controls="panel" tabindex="${id === app.tab ? 0 : -1}">${app.glyph(t.state, 10)}<span>${e(id === "orch" ? "Orchestrator" : t.title)}</span></button>${id === "orch" ? "" : `<button class="x" aria-label="Tab ${e(t.title)} schließen" data-close="${id}" tabindex="-1">×</button>`}</div>`; };
+      const enter = w.q && !seen.has(w.id);
+      if (w.q) seen.add(w.id);
+      const att = app.attention();
+      const firstNeed = W.find((x) => x.state === "needs");
+      const isLight = document.documentElement.dataset.theme === "light";
+      document.getElementById("root").innerHTML = `
+<div class="win">
+  <header class="bar">
+    <span class="logo" aria-hidden="true">A</span><span class="name disp">ProjectA</span>
+    <button class="pill" data-key="proj" aria-label="Projekt wechseln, aktuell ProjectA">ProjectA · main ▾</button>
+    <label class="search"><span aria-hidden="true">⌕</span><span class="sr-only">Suchen</span><input data-key="search" placeholder="Worker, Befehle oder Dateien suchen"><kbd>Strg K</kbd></label>
+    <button class="btn icon" data-theme-toggle data-key="theme" aria-label="${isLight ? "Dunkles" : "Helles"} Erscheinungsbild">${isLight ? `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A5.6 5.6 0 0 1 6.4 2.5a5.6 5.6 0 1 0 7.1 7.1Z" fill="currentColor"/></svg>` : `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`}</button>
+    <button class="btn primary" data-key="new">Neuer Worker</button>
+  </header>
+  <nav class="side" aria-label="Worker">
+    ${grp("Braucht dich", W.filter((x) => x.state === "needs" || x.state === "error"))}
+    ${grp("In Arbeit", [app.orchestrator, ...W.filter((x) => x.state === "working")])}
+    ${grp("Bereit zum Mergen", W.filter((x) => x.state === "merge" || x.state === "review"))}
+    ${grp("Ruht", W.filter((x) => x.state === "paused" || x.state === "idle"))}
+  </nav>
+  <main class="center">
+    <div class="seg" role="tablist" aria-label="Sitzungen">${app.tabs.map(tab).join("")}</div>
+    <section class="sheet" aria-label="Terminal">
+      <div class="sheet-head"><h1 class="disp">${e(w.title)}</h1><span class="chip ${w.state}">${app.glyph(w.state, 10)}${app.STATE[w.state]}</span><span class="branch">${e(w.branch)}</span></div>
+      <div class="term ${w.q ? "has-sheet" : ""}" id="panel" role="tabpanel" aria-labelledby="tab-${w.id}" tabindex="0" data-scroll-end>${app.termHTML(w)}</div>
+      ${w.q ? `<section class="decide ${enter ? "enter" : ""}" aria-label="Entscheidung für ${e(w.title)}">
+        <div class="hd">${app.glyph("needs", 11)} ${e(w.agent)} wartet auf deine Entscheidung · ${e(w.since)}</div>
+        <p>${e(w.q.text)}</p>
+        <div class="row">${w.q.options.map((o, i) => `<button class="btn ${i === 0 ? "answer" : ""}" data-choice="${e(o)}" data-for="${w.id}" data-key="opt-${i}">${e(o)}</button>`).join("")}
+          <form data-answer="${w.id}"><label class="sr-only" for="ans">Eigene Antwort</label><input id="ans" data-key="ans" placeholder="Oder in eigenen Worten …" value="${e(app.drafts[w.id] || "")}"><button class="btn" type="submit" data-key="send">Senden</button></form></div>
+      </section>` : ""}
+    </section>
+  </main>
+  <aside class="insp" aria-label="Details">
+    <section>
+      <h2>Auftrag</h2>
+      <p class="big disp">${e(w.title)}</p>
+      <div class="who">${e(w.agent)} · ${e(w.detail)}</div>
+      ${w.id === "orch" ? "" : `<div class="facts"><div><span>Laufzeit</span><b>${e(w.elapsed)}</b></div><div><span>Diff</span><b>${e(w.diff)}</b></div><div><span>Tests</span><b>${e(w.tests)}</b></div><div><span>Tokens</span><b>${e(w.tokens)}</b></div></div>`}
+    </section>
+    ${w.id === "orch" ? `<section><h2>Warteschlange</h2><ul class="checks"><li>${app.glyph("idle", 11)}<span>w16-15 Statusleisten-Tokens</span><span>Kimi K3</span></li><li>${app.glyph("idle", 11)}<span>w16-16 Tab-Overflow</span><span>GLM 5.2</span></li><li>${app.glyph("idle", 11)}<span>w16-17 Fix clippy</span><span>Codex</span></li><li>${app.glyph("idle", 11)}<span>w16-18 Lesson-Export</span><span>Claude</span></li></ul></section>` : `
+    <section><h2>Prüfungen</h2><ul class="checks">${checks(w).map(([s, n, v]) => `<li>${app.glyph(s, 11)}<span>${n}</span><span>${e(v)}</span></li>`).join("")}</ul></section>
+    <section><h2>Geänderte Dateien · ${w.files}</h2><ul class="files">${(files[w.id] || [["docs/PLAN.md", "+19", "−88"]]).map(([f, a, d]) => `<li><span>${e(f)}</span><span class="add">${a}</span><span class="del">${d}</span></li>`).join("")}</ul></section>
+    <div class="acts"><button class="btn" data-key="diff">Diff ansehen</button><button class="btn" data-key="pause">Pausieren</button></div>`}
+  </aside>
+  <footer class="status" aria-label="Status">
+    <button class="att" data-select="${firstNeed ? firstNeed.id : "orch"}" data-key="att">${att ? `${app.glyph("needs", 10)} ${att} warten auf dich` : "Niemand wartet auf dich"}</button>
+    <span>${app.count("working")} arbeiten</span>
+    <span class="sp"></span>
+    ${app.status.quota.map((q) => `<span class="${q.used >= 100 ? "out" : ""}">${q.name} <b class="${q.used >= 100 ? "out" : ""}">${q.used >= 100 ? q.note : q.used + " %"}</b></span>`).join("")}
+    <span>RAM frei <b>${app.status.ramFree} GB</b></span>
+    <span>Warteschlange <b>${app.status.queue}</b></span>
+  </footer>
+</div>`;
+    },
+  };
+})();
+</script>
+</body>
+</html>

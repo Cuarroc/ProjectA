@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Richtung A: Werkbank</title>
+<!--
+  DIRECTION A, WERKBANK (ruhig-dicht)
+  WORLD      The Dev-HQ Live desk carried into the app: one dark ground, hairlines,
+             mint selection. The terminal is the work; everything else is margin.
+  PALETTE    ground #0b1013 · surface #131b20 · raised #1b272d · hair #35464d ·
+             ink #e6ece9 · fog #acbabd · mint #82d5b4 (selection, working) ·
+             amber #e4bd74 (needs you) · ember #f59185 (error) · steel #9acbd8 (focus)
+  TYPE       Segoe UI Variable Text 13/18 body, Display 19 for the task title,
+             Cascadia Mono 12.5/19 terminal; labels 11.5 sentence case, tabular nums
+  GRID       sidebar 272 | tabs 40 / task header 64 / terminal / answer dock | status 28
+  MOTION     crisp: 140 ms ease-out on selection only; nothing moves on keyboard nav
+  SIGNATURE  the attached row: the selected worker row has no border to the main
+             area; its state colour runs as one seam down the terminal's left edge
+  CUT        icons beside every label, cards, shadows, gradients, avatars
+  FRÜHER    Nimmt aus dem Vertrag vom 29.08. (docs/design/2026-08-29-apple/RICHTUNG.md)
+             die Dichte, feste Scanachsen und Zustand = Form + Wort + Farbe; weicht ab bei
+             Inter/Systemblau zugunsten der HQ-Palette. Von der Nutzerwahl B (Konversation,
+             docs/ui-variants/, 28.08.) übernimmt sie nur die Frage im Arbeitsfluss (Dock).
+  STATES    shared vocabulary: working blue dot · needs amber diamond · error ember cross ·
+             merge mint check · review violet half ring · paused bars · idle ring
+-->
+<style id="tokens">
+:root {
+  --ground: #0b1013;
+  --surface: #131b20;
+  --raised: #1b272d;
+  --hover: #172227;
+  --hair: #35464d;
+  --edge: #5f808a;
+  --ink: #e6ece9;
+  --fog: #acbabd;
+  --mint: #82d5b4;
+  --amber: #e4bd74;
+  --ember: #f59185;
+  --steel: #9acbd8;
+  --violet: #c9b3f2;
+  --mint-wash: #16302a;
+  --amber-wash: #2a2417;
+  --ember-wash: #33201f;
+  --on-accent: #0b1013;
+}
+</style>
+<script type="application/json" id="contrast-pairs">
+{"dark": [
+  ["ink","ground",4.5,"Terminaltext"],["ink","surface",4.5,"Text auf Fläche"],["ink","raised",4.5,"Text auf gewählter Zeile"],
+  ["fog","ground",4.5,"Nebentext Terminal"],["fog","surface",4.5,"Nebentext Seitenleiste"],["fog","raised",4.5,"Nebentext gewählt"],["fog","hover",4.5,"Nebentext Hover"],
+  ["mint","surface",4.5,"Bereit zum Mergen"],["mint","ground",4.5,"Erfolg im Terminal"],["amber","surface",4.5,"Wartet"],["amber","amber-wash",4.5,"Frage im Dock"],["ink","amber-wash",4.5,"Fragetext"],
+  ["ember","surface",4.5,"Fehler"],["ember","ground",4.5,"Fehler im Terminal"],["steel","ground",4.5,"Befehl"],["steel","surface",4.5,"Arbeitet"],["violet","surface",4.5,"In Review"],
+  ["on-accent","mint",4.5,"Primärknopf"],["on-accent","amber",4.5,"Wartet-Knopf"],
+  ["edge","surface",3,"Kontrollrand"],["edge","ground",3,"Eingabefeld"],["edge","amber-wash",3,"Eingabefeld im Dock"],["steel","surface",3,"Fokusring"],["steel","amber-wash",3,"Fokusring im Dock"]
+]}
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ground); color: var(--ink); color-scheme: dark;
+  font: 400 13px/18px "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+}
+button, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+::selection { background: var(--mint); color: var(--on-accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root { --ease-out: cubic-bezier(.23,1,.32,1); --seam: var(--mint); }
+
+.win { height: 100vh; display: grid; grid-template-columns: 272px minmax(0,1fr); grid-template-rows: minmax(0,1fr) 28px; }
+
+/* sidebar */
+.side { background: var(--surface); border-right: 1px solid var(--hair); display: flex; flex-direction: column; min-height: 0; }
+.brand { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--hair); }
+.mark { width: 22px; height: 22px; border-radius: 6px; background: var(--mint); color: var(--on-accent); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+.brand b { font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.brand .proj { margin-left: auto; height: 28px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 6px; background: transparent; color: var(--fog); font-size: 12px; }
+.brand .proj:hover { color: var(--ink); background: var(--hover); }
+.group { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 16px 6px; color: var(--fog); font-size: 11.5px; font-weight: 600; }
+.group .need { color: var(--amber); font-weight: 600; }
+.list { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; min-height: 0; flex: 1; }
+.row { position: relative; display: grid; grid-template-columns: 14px minmax(0,1fr) auto; gap: 2px 10px; width: calc(100% + 1px); padding: 9px 14px 9px 16px; border: 0; background: transparent; text-align: left; transition: background-color 140ms var(--ease-out); }
+.row .g { margin-top: 3px; }
+.row:hover { background: var(--hover); }
+.row[aria-current="true"] { background: var(--raised); box-shadow: inset -2px 0 0 var(--seam); z-index: 1; }
+.row .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .m { grid-column: 2 / 4; color: var(--fog); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .s { font-size: 11.5px; color: var(--fog); white-space: nowrap; }
+.row.needs .sw { color: var(--amber); font-weight: 600; }
+.row.error .sw { color: var(--ember); font-weight: 600; }
+.row.working .sw { color: var(--steel); } .row.merge .sw { color: var(--mint); }
+.g-working { color: var(--steel); } .g-merge { color: var(--mint); } .g-review { color: var(--violet); } .g-needs { color: var(--amber); } .g-error { color: var(--ember); } .g-paused, .g-idle { color: var(--fog); }
+.side-foot { border-top: 1px solid var(--hair); padding: 10px 16px; }
+.btn { height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--edge); background: transparent; color: var(--ink); font-size: 12.5px; font-weight: 600; transition: background-color 140ms var(--ease-out), transform 100ms var(--ease-out); }
+.btn:hover { background: var(--hover); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--mint); border-color: var(--mint); color: var(--on-accent); }
+.btn.primary:hover { background: #95dec1; }
+.btn.amber { background: var(--amber); border-color: var(--amber); color: var(--on-accent); }
+.side-foot .btn { width: 100%; }
+
+/* main */
+.main { display: grid; grid-template-rows: 40px auto minmax(0,1fr) auto; min-height: 0; border-left: 2px solid var(--seam); margin-left: -1px; background: var(--ground); }
+.tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--hair); overflow-x: auto; scrollbar-width: none; }
+.tw { position: relative; display: flex; border-right: 1px solid var(--hair); }
+.tw.on { background: var(--ground); }
+.tw.on::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: var(--seam); }
+.tw.on::after { content: ""; position: absolute; inset: auto 0 -1px; height: 1px; background: var(--ground); }
+.tab { position: relative; display: flex; align-items: center; gap: 8px; max-width: 260px; padding: 0 30px 0 14px; border: 0; background: transparent; color: var(--fog); white-space: nowrap; }
+.tab:hover { color: var(--ink); background: var(--hover); }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tw.on .tab:hover { background: transparent; }
+.tab .lbl { overflow: hidden; text-overflow: ellipsis; }
+.x { position: absolute; right: 6px; top: 10px; width: 20px; height: 20px; padding: 0; border: 0; background: transparent; border-radius: 4px; display: grid; place-items: center; color: var(--fog); opacity: 0; }
+.tw:hover .x, .tw.on .x, .x:focus-visible { opacity: 1; }
+.x:hover { background: var(--raised); color: var(--ink); }
+.head { display: flex; align-items: flex-end; gap: 24px; padding: 14px 24px 12px; border-bottom: 1px solid var(--hair); }
+.head h1 { margin: 0; font: 600 19px/24px "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -.015em; }
+.head .sub { margin-top: 3px; color: var(--fog); font-size: 12px; }
+.head .sub code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; color: var(--ink); }
+.facts { display: flex; gap: 20px; margin-left: auto; }
+.fact { display: grid; gap: 1px; text-align: right; }
+.fact span { color: var(--fog); font-size: 11.5px; }
+.fact b { font-weight: 600; font-size: 13px; }
+.state-word { font-weight: 600; }
+.term { overflow-y: auto; padding: 14px 24px 18px; font: 12.5px/19px "Cascadia Mono", Consolas, monospace; }
+.ln { display: flex; gap: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ln-pre { flex: none; width: 14px; color: var(--fog); }
+.ln-cmd .ln-t { color: var(--steel); } .ln-cmd .ln-pre { color: var(--steel); }
+.ln-ok .ln-t { color: var(--mint); } .ln-err .ln-t { color: var(--ember); } .ln-warn .ln-t { color: var(--amber); }
+.ln-dim .ln-t { color: var(--fog); } .ln-agent .ln-pre { color: var(--mint); }
+.ln-you { margin: 6px 0; } .ln-you .ln-pre { width: auto; color: var(--amber); font-weight: 700; } .ln-you .ln-t { color: var(--ink); }
+.ln-ok, .ln-out, .ln-dim, .ln-err, .ln-warn { padding-left: 24px; }
+.cursor { display: inline-block; width: 8px; height: 15px; margin-top: 2px; background: var(--ink); animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.dock { border-top: 1px solid var(--amber); background: var(--amber-wash); padding: 14px 24px 16px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 20px; }
+.dock .who { color: var(--amber); font-weight: 600; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.dock p { grid-column: 1; margin: 0; max-width: 78ch; font-size: 14px; line-height: 21px; }
+.dock .opts { grid-column: 2; grid-row: 1 / 3; display: flex; gap: 8px; align-self: end; }
+.dock form { grid-column: 1 / -1; display: flex; gap: 8px; }
+.dock textarea { flex: 1; resize: none; height: 32px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--edge); background: var(--ground); color: var(--ink); line-height: 18px; }
+.dock textarea::placeholder { color: var(--fog); }
+.dock .opts .btn:not(.amber) { background: var(--ground); }
+.dock .opts .btn:not(.amber):hover { background: var(--raised); }
+.btn.amber:hover { background: #ecc98a; }
+
+/* status bar */
+.status { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 0 12px 0 0; background: var(--surface); border-top: 1px solid var(--hair); color: var(--fog); font-size: 12px; white-space: nowrap; overflow: hidden; }
+.status .att { height: 28px; padding: 0 14px 0 16px; border: 0; background: var(--amber); color: var(--on-accent); font-weight: 650; display: flex; gap: 8px; align-items: center; }
+.status .att:hover { background: #ecc98a; }
+.status .att.none { background: transparent; color: var(--fog); font-weight: 400; }
+.status .sp { flex: 1; }
+.q { display: flex; align-items: center; gap: 6px; }
+.q i { width: 34px; height: 4px; border-radius: 2px; background: var(--hair); overflow: hidden; display: block; }
+.q i b { display: block; height: 100%; background: var(--fog); }
+.q.hot i b { background: var(--amber); } .q.out { color: var(--ember); } .q.out i b { background: var(--ember); }
+.status .v { color: var(--ink); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); display: inline-block; }
+
+@media (max-width: 1100px) { .facts .fact:nth-child(n+3) { display: none; } .status .hide-s { display: none; } }
+@media (max-width: 760px) { .win { grid-template-columns: 1fr; grid-template-rows: auto minmax(0,1fr) 28px; } .side { max-height: 38vh; } .main { border-left: 0; border-top: 2px solid var(--seam); } .facts { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<script>/* ProjectA UI v2 mockup core: shared demo data and behaviour. Each direction
+   supplies window.view = { render(app) } and its own markup; this file owns the
+   state, the actions and the event delegation. Mock data, no live fleet. */
+(function () {
+  "use strict";
+  const STATE = {
+    working: "Arbeitet",
+    needs: "Wartet auf dich",
+    error: "Fehler",
+    paused: "Pausiert",
+    idle: "Bereit",
+    merge: "Bereit zum Mergen",
+    review: "In Review",
+  };
+  const L = (k, t) => [k, t];
+  const workers = [
+    {
+      id: "w16-05", title: "Diff-Ansicht virtualisieren", branch: "kimi/w16-05-diff-virtual",
+      agent: "Kimi K3", provider: "Kimi", state: "needs", since: "seit 6 min", elapsed: "52 min",
+      diff: "+311 −148", tests: "86/86", tokens: "164k", files: 7,
+      detail: "Fragt nach einer Entscheidung",
+      q: {
+        text: "DiffView hat noch zwei Aufrufer der alten API: HistoryView und QuestionsView. Soll ich beide auf die neue virtualisierte Liste umstellen oder die alte API als dünnen Wrapper behalten?",
+        options: ["Beide umstellen", "Wrapper behalten"],
+      },
+      lines: [
+        L("cmd", "npx vitest run src/components/DiffView"),
+        L("out", " ✓ src/components/DiffView.test.tsx (31 tests) 412ms"),
+        L("out", " ✓ src/components/DiffView.lines.test.tsx (44 tests) 690ms"),
+        L("out", " ✓ src/components/DiffView.reviewClass.test.tsx (11 tests) 203ms"),
+        L("ok", " Test Files  3 passed (3)   Tests  86 passed (86)"),
+        L("agent", "Virtualised list renders 20 000 diff lines at 60 fps in the bench."),
+        L("cmd", "rg -n \"DiffView\\b\" src/components --type tsx -l"),
+        L("out", "src/components/HistoryView.tsx"),
+        L("out", "src/components/QuestionsView.tsx"),
+        L("out", "src/components/DiffView.tsx"),
+        L("agent", "Two callers still use the old props (lines[], onSelect)."),
+        L("warn", "? Waiting for a decision before touching HistoryView and QuestionsView."),
+      ],
+    },
+    {
+      id: "w16-02", title: "Kontingent-Gate vor Worker-Start", branch: "claude/w16-02-quota-gate",
+      agent: "Claude Opus 5.5", provider: "Claude", state: "working", since: "seit 38 min", elapsed: "38 min",
+      diff: "+184 −22", tests: "41/41", tokens: "212k", files: 4,
+      detail: "Hängt das Gate in dispatch_worker() ein",
+      lines: [
+        L("cmd", "cargo nextest run -p projecta --profile ci quota::"),
+        L("dim", "   Compiling projecta v1.5.0 (src-tauri)"),
+        L("dim", "    Finished `test` profile [unoptimized + debuginfo] target(s) in 48.21s"),
+        L("out", "    Starting 41 tests across 1 binary"),
+        L("ok", "        PASS [   0.012s] projecta quota::gate::blocks_when_week_cap_reached"),
+        L("ok", "        PASS [   0.009s] projecta quota::gate::allows_under_cap"),
+        L("ok", "        PASS [   0.011s] projecta quota::gate::reports_reset_time"),
+        L("ok", "     Summary [   1.402s] 41 tests run: 41 passed, 0 skipped"),
+        L("agent", "Gate is green. Wiring it into dispatch_worker() next."),
+        L("cmd", "rg -n \"fn dispatch_worker\" src-tauri/src"),
+        L("out", "src-tauri/src/queue/dispatch.rs:118:pub(crate) fn dispatch_worker("),
+        L("agent", "Edit src-tauri/src/queue/dispatch.rs  (+12 −3)"),
+        L("cmd", "cargo clippy -p projecta --all-targets -- -D warnings"),
+        L("dim", "    Checking projecta v1.5.0 (src-tauri)"),
+      ],
+      live: true,
+    },
+    {
+      id: "w16-07", title: "Sitzungen wiederherstellen", branch: "codex/w16-07-session-restore",
+      agent: "GPT-5.6 Terra", provider: "Codex", state: "error", since: "seit 12 min", elapsed: "1 h 04 min",
+      diff: "+96 −41", tests: "—", tokens: "301k", files: 3,
+      detail: "Gate clippy rot, Lauf gestoppt",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ fmt            0.8s"),
+        L("ok", "  ✓ secret-scan    2.1s"),
+        L("ok", "  ✓ fe-test       38.4s"),
+        L("out", "  … clippy"),
+        L("err", "error: this expression creates a reference which is immediately dereferenced"),
+        L("err", "   --> src-tauri/src/store/session.rs:212:31"),
+        L("dim", "    |"),
+        L("dim", "212 |         restore_buffer(&conn, &session.id)?;"),
+        L("dim", "    |                               ^^^^^^^^^^^ help: change this to: `session.id`"),
+        L("err", "error: could not compile `projecta` (lib) due to 1 previous error"),
+        L("err", "✕ gate clippy failed (exit 101), lane prepush stopped at 4/9"),
+      ],
+    },
+    {
+      id: "w16-12", title: "Lessons-Suche im HQ", branch: "opencode/w16-12-hq-lessons",
+      agent: "GLM 5.2", provider: "OpenCode", state: "working", since: "seit 9 min", elapsed: "9 min",
+      diff: "+58 −6", tests: "12/12", tokens: "41k", files: 2,
+      detail: "Schreibt den Suchindex",
+      lines: [
+        L("cmd", "node scripts/hq-lesson.mjs search \"pty hang\" --json"),
+        L("out", "{ \"hits\": 3, \"took_ms\": 14 }"),
+        L("agent", "Index is built on every call. Caching it per session."),
+        L("cmd", "npm run test:hq -- lessons"),
+        L("ok", " ✓ lessons.search ranks by symptom (5)"),
+        L("ok", " ✓ lessons.search survives empty store (7)"),
+        L("agent", "Edit scripts/hq-lesson.mjs  (+41 −4)"),
+      ],
+      live: true,
+    },
+    {
+      id: "w16-14", title: "Credential-ACL prüfen", branch: "claude/w16-14-credential-acl",
+      agent: "Claude Opus 5.5", provider: "Claude", state: "needs", since: "seit 2 min", elapsed: "21 min",
+      diff: "+37 −0", tests: "8/8", tokens: "77k", files: 2,
+      detail: "Fragt nach Testumfang",
+      q: {
+        text: "Die ACL-Prüfung braucht Lesezugriff auf den Schlüsselordner. Soll ich dafür einen Test mit einem temporären Verzeichnis anlegen, oder prüfst du das nur von Hand?",
+        options: ["Test anlegen", "Nur von Hand"],
+      },
+      lines: [
+        L("cmd", "cargo nextest run -p projecta credential::acl"),
+        L("ok", "     Summary [   0.311s] 8 tests run: 8 passed, 0 skipped"),
+        L("agent", "Owner-only ACL is enforced on create. Read path is untested."),
+        L("warn", "? Testing the read path needs a real directory with an ACL."),
+      ],
+    },
+    {
+      id: "w16-11", title: "PTY-Trace für Worker", branch: "codex/w16-11-pty-trace",
+      agent: "GPT-5.6 Sol", provider: "Codex", state: "paused", since: "seit 3 h", elapsed: "2 h 10 min",
+      diff: "+142 −18", tests: "23/23", tokens: "388k", files: 5,
+      detail: "Kontingent leer, weiter am 11.10. 14:31",
+      lines: [
+        L("ok", "     Summary [   2.118s] 23 tests run: 23 passed, 0 skipped"),
+        L("agent", "Trace writer flushes every 64 KiB; sample attached to the PR."),
+        L("warn", "! Provider limit reached (week 100 %). Session parked."),
+        L("dim", "  Resumes automatically on 11.10. 14:31."),
+      ],
+    },
+    {
+      id: "w16-09", title: "PLAN.md aufräumen", branch: "glm/w16-09-plan-cleanup",
+      agent: "GLM 5.2", provider: "Ollama", state: "idle", since: "seit 41 min", elapsed: "27 min",
+      diff: "+19 −88", tests: "Doku", tokens: "29k", files: 1,
+      detail: "PR #561 gemergt, wartet auf Auftrag",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ 9/9 gates green (lane prepush, 3m 12s)"),
+        L("cmd", "gh pr create --draft --title \"docs(plan): fold done M2 items\""),
+        L("out", "https://github.com/example/projecta/pull/561"),
+        L("agent", "Draft PR opened."),
+        L("ok", "  ✓ merged by the queue (merge commit 4e1c9a2)"),
+        L("agent", "Done. Idle until the orchestrator sends the next task."),
+      ],
+    },
+    {
+      id: "w16-03", title: "Kontingent in der Statusleiste", branch: "kimi/w16-03-status-quota",
+      agent: "Kimi K3", provider: "Kimi", state: "merge", since: "seit 18 min", elapsed: "44 min",
+      diff: "+126 −31", tests: "64/64", tokens: "98k", files: 4,
+      detail: "PR #559 grün, in der Merge-Queue",
+      lines: [
+        L("cmd", "bash scripts/ci/gates.sh lane prepush"),
+        L("ok", "  ✓ 9/9 gates green (lane prepush, 4m 02s)"),
+        L("cmd", "gh pr ready 559"),
+        L("out", "✓ Pull request #559 is marked as ready for review"),
+        L("ok", "  ✓ gates (linux)  ✓ red-first  ✓ Mergify Merge Protections"),
+        L("agent", "Queued by Mergify. Nothing left for me to do."),
+      ],
+    },
+  ];
+  const orchestrator = {
+    id: "orch", title: "Orchestrator", branch: "main", agent: "Claude Opus 5.5", provider: "Claude",
+    state: "working", since: "läuft", detail: "Verteilt die Warteschlange", live: true,
+    lines: [
+      L("agent", "Queue: 4 waiting · 2 slots free (RAM 6.2 GB free, cargo 2/3)"),
+      L("agent", "dispatch w16-12 → opencode / glm-5.2 in its own worktree"),
+      L("warn", "w16-05 asks for a decision, forwarded to you"),
+      L("err", "w16-07 gate clippy red, fix brief drafted, waits for a slot"),
+      L("warn", "w16-14 asks for a decision, forwarded to you"),
+      L("dim", "w16-11 parked: Codex week limit, resumes 11.10. 14:31"),
+      L("agent", "Next in queue: w16-15 status-bar tokens (Kimi K3)"),
+    ],
+  };
+  const status = {
+    quota: [
+      { name: "Claude", used: 72, note: "Woche 72 %" },
+      { name: "Codex", used: 100, note: "leer bis 11.10." },
+      { name: "Kimi", used: 34, note: "Woche 34 %" },
+      { name: "GLM", used: 18, note: "Woche 18 %" },
+    ],
+    ramFree: "6,2", ramTotal: "16", queue: 4, builds: "2/3", omni: true,
+  };
+
+  const app = {
+    STATE, workers, orchestrator, status,
+    tabs: ["orch", "w16-05", "w16-02", "w16-07"],
+    tab: "w16-05",
+    sel: "w16-05",
+    drafts: {},
+    byId(id) { return id === "orch" ? orchestrator : workers.find((w) => w.id === id); },
+    current() { return app.byId(app.tab); },
+    attention() { return workers.filter((w) => w.state === "needs").length; },
+    count(s) { return workers.filter((w) => w.state === s).length; },
+    esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    },
+    termHTML(w) {
+      const pre = { cmd: "›", agent: "●", you: "Du", ok: "", out: "", dim: "", err: "", warn: "" };
+      return w.lines.map(([k, t]) =>
+        `<div class="ln ln-${k}">${pre[k] ? `<span class="ln-pre" aria-hidden="true">${pre[k]}</span>` : ""}<span class="ln-t">${app.esc(t)}</span></div>`
+      ).join("") + (w.live ? `<div class="ln ln-cursor"><span class="ln-pre" aria-hidden="true">›</span><span class="cursor" aria-hidden="true"></span></div>` : "");
+    },
+    // State glyphs: shape carries the state as well as colour (dot, diamond, cross, bars, ring).
+    glyph(state, size) {
+      const z = size || 12, a = `width="${z}" height="${z}" viewBox="0 0 12 12" aria-hidden="true" class="g g-${state}"`;
+      if (state === "working") return `<svg ${a}><circle cx="6" cy="6" r="4" fill="currentColor"/></svg>`;
+      if (state === "needs") return `<svg ${a}><path d="M6 1.2 10.8 6 6 10.8 1.2 6Z" fill="currentColor"/></svg>`;
+      if (state === "error") return `<svg ${a}><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+      if (state === "merge") return `<svg ${a}><path d="M1.8 6.3 4.7 9.2 10.2 3.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      if (state === "review") return `<svg ${a}><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 2a4 4 0 0 1 0 8Z" fill="currentColor"/></svg>`;
+      if (state === "paused") return `<svg ${a}><rect x="2.5" y="2" width="2.6" height="8" rx=".8" fill="currentColor"/><rect x="6.9" y="2" width="2.6" height="8" rx=".8" fill="currentColor"/></svg>`;
+      return `<svg ${a}><circle cx="6" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
+    },
+    select(id) {
+      app.sel = id;
+      if (!app.tabs.includes(id)) app.tabs.push(id);
+      app.tab = id;
+      app.render();
+    },
+    selectTab(id) { app.tab = id; app.sel = id; app.render(); },
+    closeTab(id) {
+      if (id === "orch") return;
+      const i = app.tabs.indexOf(id);
+      app.tabs.splice(i, 1);
+      if (app.tab === id) { app.tab = app.tabs[Math.max(0, i - 1)]; app.sel = app.tab; }
+      app.render();
+    },
+    answer(id, text) {
+      const w = app.byId(id);
+      if (!w || !w.q || !text.trim()) return;
+      w.lines.push(L("you", text.trim()));
+      w.lines.push(L("agent", "Understood. Continuing with: " + text.trim()));
+      w.q = null; w.state = "working"; w.live = true; w.since = "gerade eben"; w.detail = "Arbeitet mit deiner Antwort weiter";
+      delete app.drafts[id];
+      app.announce(`Antwort an ${id} gesendet. ${w.title} arbeitet weiter.`);
+      app.render();
+    },
+    announce(msg) { const el = document.getElementById("live"); if (el) el.textContent = msg; },
+    render() {
+      const key = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+      window.view.render(app);
+      document.querySelectorAll("[data-scroll-end]").forEach((el) => { el.scrollTop = el.scrollHeight; });
+      if (key) { const el = document.querySelector(`[data-key="${CSS.escape(key)}"]`); if (el) el.focus({ preventScroll: true }); }
+    },
+  };
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-select],[data-tab],[data-close],[data-choice],[data-theme-toggle]");
+    if (!t) return;
+    if (t.dataset.close) { e.stopPropagation(); app.closeTab(t.dataset.close); return; }
+    if (t.dataset.select) app.select(t.dataset.select);
+    else if (t.dataset.tab) app.selectTab(t.dataset.tab);
+    else if (t.dataset.choice) app.answer(t.dataset.for, t.dataset.choice);
+    else if (t.dataset.themeToggle !== undefined) {
+      const r = document.documentElement;
+      r.dataset.theme = r.dataset.theme === "light" ? "dark" : "light";
+      app.render();
+    }
+  });
+  document.addEventListener("submit", (e) => {
+    const f = e.target.closest("[data-answer]");
+    if (!f) return;
+    e.preventDefault();
+    const input = f.querySelector("textarea,input");
+    app.answer(f.dataset.answer, input.value);
+  });
+  document.addEventListener("input", (e) => {
+    const f = e.target.closest("[data-answer]");
+    if (f) app.drafts[f.dataset.answer] = e.target.value;
+  });
+  // Tablist keyboard: arrows, Home, End move and activate (WAI-ARIA tabs, automatic activation).
+  document.addEventListener("keydown", (e) => {
+    const tab = e.target.closest('[role="tab"]');
+    if (!tab) return;
+    const list = [...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];
+    let i = list.indexOf(tab);
+    if (e.key === "ArrowRight") i = (i + 1) % list.length;
+    else if (e.key === "ArrowLeft") i = (i - 1 + list.length) % list.length;
+    else if (e.key === "Home") i = 0;
+    else if (e.key === "End") i = list.length - 1;
+    else return;
+    e.preventDefault();
+    app.selectTab(list[i].dataset.tab);
+  });
+  // A url hash like #sel=w16-07 preselects a worker (used for the proof screenshots).
+  const m = location.hash.match(/sel=([\w-]+)/);
+  if (m && app.byId(m[1])) { app.sel = m[1]; if (!app.tabs.includes(m[1])) app.tabs.push(m[1]); app.tab = m[1]; }
+  window.app = app;
+  document.addEventListener("DOMContentLoaded", () => app.render());
+})();
+</script>
+<script>
+window.view = {
+  render(app) {
+    const e = app.esc, w = app.current();
+    const seamVar = { working: "--steel", needs: "--amber", error: "--ember", paused: "--fog", idle: "--fog", merge: "--mint", review: "--violet" }[w.state];
+    document.documentElement.style.setProperty("--seam", `var(${seamVar})`);
+    const row = (x) => `<li><button class="row ${x.state}" data-select="${x.id}" data-key="row-${x.id}" aria-current="${x.id === app.sel}">
+        ${app.glyph(x.state)}<span class="t">${e(x.title)}</span><span class="s">${e(x.since.replace("seit ", ""))}</span>
+        <span class="m"><span class="sw">${app.STATE[x.state]}</span> · ${x.id} · ${e(x.agent)}</span></button></li>`;
+    const order = { needs: 0, error: 1, working: 2, merge: 3, review: 4, paused: 5, idle: 6 };
+    const sorted = [...app.workers].sort((a, b) => order[a.state] - order[b.state]);
+    const att = app.attention();
+    const tab = (id) => { const t = app.byId(id); return `<div role="presentation" class="tw${id === app.tab ? " on" : ""}"><button class="tab" role="tab" id="tab-${id}" data-tab="${id}" data-key="tab-${id}" aria-selected="${id === app.tab}" aria-controls="panel" tabindex="${id === app.tab ? 0 : -1}">${app.glyph(t.state, 10)}<span class="lbl">${id === "orch" ? "Orchestrator" : `${id} ${e(t.title)}`}</span></button>${id === "orch" ? "" : `<button class="x" aria-label="Tab ${id} schließen" data-close="${id}" tabindex="-1">×</button>`}</div>`; };
+    const q = (s) => `<span class="q ${s.used >= 100 ? "out" : s.used >= 70 ? "hot" : ""}">${s.name} <i><b style="width:${s.used}%"></b></i> <span class="v">${s.used >= 100 ? s.note : s.used + " %"}</span></span>`;
+    document.getElementById("root").innerHTML = `
+<div class="win">
+  <aside class="side" aria-label="Projekt und Worker">
+    <div class="brand"><span class="mark" aria-hidden="true">A</span><b>ProjectA</b><button class="proj" data-key="proj" aria-label="Projekt wechseln, aktuell ProjectA">ProjectA ▾</button></div>
+    <ul class="list" style="flex:none;padding-top:8px" aria-label="Orchestrator">${`<li><button class="row working" data-select="orch" data-key="row-orch" aria-current="${app.sel === "orch"}">${app.glyph("working")}<span class="t">Orchestrator</span><span class="s"></span><span class="m"><span class="sw">Läuft</span> · verteilt ${app.status.queue} Aufträge · 2 Slots frei</span></button></li>`}</ul>
+    <div class="group"><span>Worker · ${app.workers.length}</span>${att ? `<span class="need">${att} warten auf dich</span>` : ""}</div>
+    <ul class="list" aria-label="Worker">${sorted.map(row).join("")}</ul>
+    <div class="side-foot"><button class="btn primary" data-key="new">Neuer Worker</button></div>
+  </aside>
+  <main class="main">
+    <div class="tabs" role="tablist" aria-label="Sitzungen">${app.tabs.map(tab).join("")}</div>
+    <header class="head">
+      <div><h1>${e(w.title)}</h1><div class="sub"><span class="state-word" style="color:var(${seamVar})">${app.STATE[w.state]}</span> · ${e(w.detail)} · <code>${e(w.branch)}</code></div></div>
+      ${w.id === "orch" ? "" : `<div class="facts"><div class="fact"><span>Agent</span><b>${e(w.agent)}</b></div><div class="fact"><span>Laufzeit</span><b>${e(w.elapsed)}</b></div><div class="fact"><span>Diff</span><b>${e(w.diff)}</b></div><div class="fact"><span>Tests</span><b>${e(w.tests)}</b></div></div>`}
+    </header>
+    <div class="term" id="panel" role="tabpanel" aria-labelledby="tab-${w.id}" tabindex="0" data-scroll-end aria-label="Terminal ${e(w.title)}">${app.termHTML(w)}</div>
+    ${w.q ? `<section class="dock" aria-label="Frage von ${w.id}">
+      <div class="who">${app.glyph("needs", 10)} ${e(w.agent)} fragt · ${e(w.since)}</div>
+      <p>${e(w.q.text)}</p>
+      <div class="opts">${w.q.options.map((o, i) => `<button class="btn ${i === 0 ? "amber" : ""}" data-choice="${e(o)}" data-for="${w.id}" data-key="opt-${i}">${e(o)}</button>`).join("")}</div>
+      <form data-answer="${w.id}"><label class="sr-only" for="ans">Eigene Antwort</label><textarea id="ans" data-key="ans" placeholder="Oder eigene Antwort schreiben …">${e(app.drafts[w.id] || "")}</textarea><button class="btn" type="submit" data-key="send">Antwort senden</button></form>
+    </section>` : ""}
+  </main>
+  <footer class="status" aria-label="Status">
+    <button class="att ${att ? "" : "none"}" data-select="${(app.workers.find((x) => x.state === "needs") || {}).id || "orch"}" data-key="att">${att ? `${app.glyph("needs", 10)} ${att} warten auf dich` : "Niemand wartet auf dich"}</button>
+    <span>${app.count("working")} arbeiten · ${app.count("error")} Fehler · ${app.count("merge")} bereit zum Mergen</span>
+    <span class="sp"></span>
+    ${app.status.quota.map(q).join("")}
+    <span class="hide-s">RAM <span class="v">${app.status.ramFree} GB</span> frei</span>
+    <span>Warteschlange <span class="v">${app.status.queue}</span></span>
+    <span class="hide-s">cargo <span class="v">${app.status.builds}</span></span>
+    <span class="hide-s"><span class="dot" aria-hidden="true"></span> OmniRoute</span>
+  </footer>
+</div>`;
+  },
+};
+</script>
+</body>
+</html>
