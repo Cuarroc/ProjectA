@@ -1107,6 +1107,10 @@ fn is_terminal(status: &str) -> bool {
 mod capacity_tests;
 
 #[cfg(test)]
+#[path = "continuous_control_tests.rs"]
+mod control_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::store::Store;
