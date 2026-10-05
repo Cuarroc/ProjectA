@@ -1,0 +1,54 @@
+name: setup-windows-release
+description: Windows setup for `gates.sh lane release`, shared by tag build and dry run.
+
+# v1.5.0 (run 37338718635) died at gate `shellcheck`: release.yml installed only
+# nextest. scripts/ci/release-shape.sh checks every lane tool is installed here.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 24
+        cache: npm
+
+    - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
+      with:
+        toolchain: stable
+
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      with:
+        workspaces: src-tauri
+        shared-key: windows-gates
+
+    # Same versions as setup-linux. install-action verifies the SHA-256 from
+    # its manifest (shellcheck 0.11.0 linux hash = the one pinned in setup-linux).
+    - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+      with:
+        tool: nextest,shellcheck@0.11.0,cargo-deny@0.20.2
+
+    # actionlint (MIT) is not in install-action: pinned zip, SHA-256 from
+    # actionlint_1.7.12_checksums.txt of the release (as in setup-linux).
+    - name: actionlint (pinned, checksum verified)
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $version = '1.7.12'
+        $sha256 = '6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9'
+        $zip = Join-Path $env:RUNNER_TEMP 'actionlint.zip'
+        Invoke-WebRequest -Uri "https://github.com/rhysd/actionlint/releases/download/v$version/actionlint_${version}_windows_amd64.zip" -OutFile $zip -UseBasicParsing
+        $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+        if ($got -ne $sha256) { throw "actionlint checksum mismatch: $got" }
+        $dir = Join-Path $env:RUNNER_TEMP 'actionlint-bin'
+        Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
+        Add-Content -LiteralPath $env:GITHUB_PATH -Value $dir
+        & (Join-Path $dir 'actionlint.exe') -version
+        if ($LASTEXITCODE -ne 0) { throw "actionlint -version failed (exit $LASTEXITCODE)" }
+
+    - shell: bash
+      run: npm ci
+
+    # e2e needs Chromium.
+    - name: Playwright Chromium
+      shell: bash
+      run: npx playwright install chromium
