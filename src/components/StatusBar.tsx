@@ -3,7 +3,6 @@ import type { TerminalSession } from "../types";
 
 interface StatusBarProps {
   session: TerminalSession | null;
-  sessionCount: number;
   error: string | null;
   /** Workers in `needs_you`; `0` hides the pill entirely. */
   attentionCount: number;
@@ -15,7 +14,6 @@ interface StatusBarProps {
 
 export default function StatusBar({
   session,
-  sessionCount,
   error,
   attentionCount,
   onOpenBoard,
@@ -30,20 +28,19 @@ export default function StatusBar({
     <footer className="statusbar">
       {session ? (
         <>
-          <span className="status-item status-session" title={session.sessionId}>
-            {session.sessionId}
+          <span className="status-item" title={session.sessionId}>
+            {session.profileName}
           </span>
-          <span className="status-item">{session.profileName}</span>
           {session.exited ? (
             <span className="status-item status-exit">
-              exited{session.exitCode === null ? "" : ` (code ${session.exitCode})`}
+              beendet{session.exitCode === null ? "" : ` (Code ${session.exitCode})`}
             </span>
           ) : (
-            <span className="status-item status-running">running</span>
+            <span className="status-item status-running">läuft</span>
           )}
         </>
       ) : (
-        <span className="status-item status-muted">no session</span>
+        <span className="status-item status-muted">keine Sitzung</span>
       )}
       <span className="status-spacer" />
       {attentionCount > 0 ? (
@@ -81,23 +78,12 @@ export default function StatusBar({
           {quota.blockedCount} blockiert
         </span>
       ) : null}
-      <span
-        className="status-item status-omni"
-        title={
-          quota.omniRouteOnline === null
-            ? "OmniRoute-Status unbekannt"
-            : `OmniRoute ${quota.omniRouteOnline ? "online" : "offline"}`
-        }
-      >
-        <span
-          className={`omni-dot${quota.omniRouteOnline === true ? " omni-dot-online" : ""}`}
-          aria-hidden="true"
-        />
-        OmniRoute
-      </span>
-      <span className="status-item status-muted">
-        {sessionCount} session{sessionCount === 1 ? "" : "s"}
-      </span>
+      {quota.omniRouteOnline === true ? (
+        <span className="status-item status-omni" title="OmniRoute online">
+          <span className="omni-dot omni-dot-online" aria-hidden="true" />
+          OmniRoute
+        </span>
+      ) : null}
     </footer>
   );
 }
