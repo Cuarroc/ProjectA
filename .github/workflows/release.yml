@@ -7,6 +7,9 @@ name: release
 on:
   push:
     tags: ["v*"]
+  # Pre-tag dry run (after v1.5.0 run 37338718635): job release-gates-dry-run,
+  # start with `gh workflow run release.yml --ref <branch>` before a v* tag.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -35,7 +38,24 @@ defaults:
     shell: bash
 
 jobs:
+  # No environment, no secrets, read-only token: nothing here can sign or
+  # publish. scripts/ci/release-shape.sh keeps it that way.
+  release-gates-dry-run:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-windows-release
+      - name: Gates (release)
+        run: bash scripts/ci/gates.sh lane release
+
   windows-installer:
+    if: github.event_name == 'push'
     runs-on: windows-latest
     # Dieser Job haelt den Tauri-Signing-Key UND den Mirror-PAT, und er wird
     # von einem Tag-Push ausgeloest — den jeder mit Push-Recht machen kann.
@@ -54,34 +74,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-
-      # `@stable` war ein BRANCH, kein Tag - er aenderte sich ohne Commit im
-      # Repo. Gepinnt auf master; die Toolchain steht jetzt sichtbar hier.
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
-        with:
-          toolchain: stable
-
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        with:
-          workspaces: src-tauri
-          shared-key: windows-gates
-
-      # Die Bahn `release` faehrt die Rust-Suite ueber nextest (wie ci.yml).
-      # Vorher stand hier `cargo test`, deshalb brauchte dieser Job das
-      # Werkzeug nie — ohne diesen Schritt waere der Tag-Build sofort rot.
-      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
-        with:
-          tool: nextest
-
-      - run: npm ci
-
-      # Der Browser-Smoke gehoert zur Bahn `release` und braucht Chromium.
-      - name: Playwright Chromium installieren
-        run: npx playwright install chromium
+      # Same setup as release-gates-dry-run (Node, Rust, lane tools, Chromium).
+      - uses: ./.github/actions/setup-windows-release
 
       # Bis zum 09.09. stand hier eine eigene Gate-Liste — und sie war die
       # SCHWAECHSTE im Repo: kein `lint`, kein `test:e2e`, kein
@@ -90,9 +84,9 @@ jobs:
       # der die signierten Installer erzeugt, war damit schlechter gegatet als
       # ein beliebiger PR.
       #
-      # Jetzt dieselbe Quelle wie ueberall: scripts/ci/gates.sh. Die Bahn
-      # `release` enthaelt die Linux-Liste; was hier zusaetzlich laeuft, ist
-      # der Bundle-Build darunter.
+      # Jetzt dieselbe Quelle wie ueberall: scripts/ci/gates.sh. The `release`
+      # lane is the linux list minus the Linux-only CI selftests (reason in
+      # gates.sh); what runs here in addition is the bundle build below.
       #
       # Lokal identisch: bash scripts/ci/gates.sh lane release
       - name: Gates (release)

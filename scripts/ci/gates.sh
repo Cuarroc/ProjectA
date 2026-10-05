@@ -69,32 +69,39 @@ GATES=(
   "shellcheck|prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh shellcheck"
   "actionlint|prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh actionlint"
   "selftest-shell-lint|prepush,linux,release|.|bash scripts/test-shell-lint.sh"
+  # Not in the release lane (v1.5.0 run 37338718635): ci-shape and the five
+  # selftest-* gates up to selftest-main-red test CI tooling that only runs on
+  # ubuntu (python3, curl stubs, `timeout`; never ran on windows-latest). The
+  # linux lane runs them on every merge-queue candidate.
   # CI-03: the structure the cheaper CI relies on - required check names in
   # sync with .mergify.yml, the Windows job guarded against running its lane
   # on Linux, red-first sharing the linux setup.
-  "ci-shape|linux,release|.|bash scripts/ci/ci-shape.sh"
+  "ci-shape|linux|.|bash scripts/ci/ci-shape.sh"
+  # Every tool a release-lane gate needs is installed by the composite both
+  # release.yml jobs use; the dry-run job can neither sign nor publish.
+  "release-shape|linux,release|.|bash scripts/ci/release-shape.sh"
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux,release|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh"
+  "selftest-gates|linux|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
   # CI-02 (W1-19b): Dependabot-Manifest-Commits brauchen keinen Trailer -
   # und nur die. Der Selbsttest belegt die Ausnahme UND ihre Grenzen.
-  "selftest-red-first|linux,release|.|bash scripts/test-red-first-plan.sh && bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh && bash scripts/test-red-first-local.sh"
+  "selftest-red-first|linux|.|bash scripts/test-red-first-plan.sh && bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh && bash scripts/test-red-first-local.sh"
   # Der Review-Transport ist der Weg, auf dem die Dual-Review-Pflicht
   # (AGENTS.md) ueberhaupt eingeloest wird. Am 09.09. starb er an einer
   # Antwort ohne Inhalt und schrieb fuer KEINEN Reviewer ein Protokoll.
   # Laeuft gegen einen lokalen Server: kein Netz, kein Secret, keine
   # Modellminute.
-  "selftest-review|linux,release|.|bash scripts/test-review-transport.sh && bash scripts/test-review-local.sh"
+  "selftest-review|linux|.|bash scripts/test-review-transport.sh && bash scripts/test-review-local.sh"
   # CI-01/CI-02: der Plan-Schritt der Jobs linux und windows entscheidet, ob
   # die Bahn laufen muss (scripts/ci/lane-plan.sh). Ein falsches "false" waere
   # ein Gate, das gruen durch Abwesenheit ist - deshalb belegt der Selbsttest
   # beide Richtungen (Rust-Aenderung -> voll, gelesene Doku -> voll, freie
   # Doku -> aus, Queue/Wochenlauf -> voll, main-Push nur bei Cache-Eingaben).
-  "selftest-lane-plan|linux,release|.|bash scripts/test-lane-plan.sh"
+  "selftest-lane-plan|linux|.|bash scripts/test-lane-plan.sh"
   # Nutzer-Regel (freigegeben 25.09.2026): Geheimnis-Scan vor jedem Commit.
   # gitleaks ueber den Index (nur das, was der Commit einfuehren wuerde,
   # unter einer Sekunde). Die Allowlist fuer die Test-Kanarienvoegel aus
@@ -115,7 +122,7 @@ GATES=(
   # Fehlerklassen: leichtes Gruen (Bahnen uebersprungen) darf NICHT
   # entfrieren, ohne MERGIFY_TOKEN bleibt das Issue der Fallback (gruen mit
   # Warnung), ein scheiternder Freeze-API-Aufruf MIT Token ist laut rot.
-  "selftest-main-red|linux,release|.|bash scripts/test-main-red-guard.sh"
+  "selftest-main-red|linux|.|bash scripts/test-main-red-guard.sh"
   # All tracked shell scripts must remain executable so hooks and local gates
   # can invoke them directly after checkout.
   "script-modes|prepush,linux,release|.|bash scripts/ci/script-modes.sh"
@@ -132,7 +139,7 @@ GATES=(
   # build, no network beyond local git). A wrong trailer used to surface
   # minutes after the push and cost a replacement PR. Needs a current
   # origin/main (git fetch); without one the gate fails loudly.
-  "red-first-plan|prepush,branchpush|.|BASE_SHA=\"$(git merge-base origin/main HEAD)\" && HEAD_SHA=\"$(git rev-parse HEAD)\" && export BASE_SHA HEAD_SHA && bash scripts/ci/red-first.sh --plan"
+  "red-first-plan|prepush,branchpush|.|BASE_SHA=\"\$(git merge-base origin/main HEAD)\" && HEAD_SHA=\"\$(git rev-parse HEAD)\" && export BASE_SHA HEAD_SHA && bash scripts/ci/red-first.sh --plan"
 
   # --- schnell: Form und Typen --------------------------------------------
   "fmt|precommit,prepush,branchpush,linux,windows,release|src-tauri|cargo fmt --check"
