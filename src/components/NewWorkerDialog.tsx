@@ -320,17 +320,17 @@ export default function NewWorkerDialog({
             </div>
           ) : null}
 
-          {/* The rows below are the same preflight questions the Fragen tab is
-              showing right now. This dialog is a modal, so it has to bring
-              them here rather than send the user to a tab it is covering — the
-              card is the tab's own, and an answer given there closes the same
-              row within a poll. */}
+          {/* The rows below are the same preflight questions the Attention
+              view is showing right now. This dialog is a modal, so it has to
+              bring them here rather than send the user to a view it is
+              covering — the card is the view's own, and an answer given there
+              closes the same row within a poll. */}
           {sharpening.phase === "waiting" ? (
             <div className="modal-note sharpen-note" aria-live="polite">
               <span>
                 {sharpening.open.length === 1
-                  ? "Eine Rückfrage — sie steht auch im Fragen-Tab"
-                  : `${sharpening.open.length} Rückfragen — sie stehen auch im Fragen-Tab`}
+                  ? "Eine Rückfrage — sie steht auch in der Attention-Ansicht"
+                  : `${sharpening.open.length} Rückfragen — sie stehen auch in der Attention-Ansicht`}
               </span>
               <span className="sharpen-note-hint">
                 Antworten, dann wird der Prompt daraus gebaut. „Schärfung abbrechen“ lässt
