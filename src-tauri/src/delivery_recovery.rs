@@ -1435,6 +1435,22 @@ mod tests {
     }
 
     #[test]
+    fn drain_proof_path_check_follows_platform_path_equality() {
+        let dir = TempDir::new("delivery-recovery-drain-path-equality");
+        let mut journal =
+            DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                .expect("create");
+        journal
+            .record_downloaded(&offer().staged_manifest)
+            .expect("downloaded");
+        journal.wait_for_idle().expect("waiting idle");
+        let mut drain = proof();
+        drain.quiesced_database.path = "ProjectA.DB".into();
+        let accepted = journal.enter_maintenance(drain).is_ok();
+        assert_eq!(accepted, cfg!(windows));
+    }
+
+    #[test]
     fn journal_without_installed_field_loads_and_installed_survives_reopen() {
         let dir = TempDir::new("delivery-recovery-installed-roundtrip");
         let old = UpdateJournal::new(offer()).expect("offer");
