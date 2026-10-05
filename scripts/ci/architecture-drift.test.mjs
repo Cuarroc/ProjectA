@@ -89,3 +89,25 @@ test("escaped char literals and lifetimes do not confuse test mod stripping", ()
   assert.equal(result.status, 1);
   assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
 });
+
+test("a hex escape char literal does not confuse test mod stripping", () => {
+  // Without the branch the first literal is left unmatched and its closing quote pairs with the next one (','), so '}' is counted as a brace.
+  const root = fixture({
+    "src-tauri/src/workers.rs":
+      "#[cfg(test)]\nmod tests {\n    fn f() -> (char, char) { ('\\x7b','}') }\n    fn spawn() { Command::new(\"git\"); }\n}\nfn launch() { Command::new(\"git\"); }\n",
+  });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
+});
+
+test("a unicode escape char literal does not confuse test mod stripping", () => {
+  // Without the branch the first literal is left unmatched and its closing quote pairs with the next one (','), so '}' is counted as a brace.
+  const root = fixture({
+    "src-tauri/src/workers.rs":
+      "#[cfg(test)]\nmod tests {\n    fn f() -> (char, char) { ('\\u{7b}','}') }\n    fn spawn() { Command::new(\"git\"); }\n}\nfn launch() { Command::new(\"git\"); }\n",
+  });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
+});
