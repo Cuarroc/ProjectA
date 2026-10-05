@@ -9,7 +9,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { runSetupChecks } from "./lib/hq-setup.mjs";
 import { studioRoute } from "./lib/hq-studio.mjs";
 import { activitySessions, diffVolume, estimateEffort, heatmap, significantSignals, workSessions } from "./lib/hq-insights.mjs";
-import { authors, commitsPerDay, fleetStats, snapshotStats, testSurface } from "./lib/hq-stats.mjs";
+import { authors, commitsPerDay, fleetStats, remainingEstimate, snapshotStats, testSurface } from "./lib/hq-stats.mjs";
 import { addLesson, feedbackLesson, lessonBadges, lessonBrief, lessonStats, matchSignals, readLessonsFile, refineLesson, relatedLessons, searchLessons, touchLesson, writeLessonsFile } from "./lib/hq-lessons.mjs";
 import { evaluateContinuousReadiness } from "./lib/continuous-readiness.mjs";
 import {
@@ -22,6 +22,7 @@ import {
   upsertProfile,
   validateProfile,
   writeAgentsFile,
+  readLimited,
 } from "./lib/hq-live-lib.mjs";
 
 const root = process.cwd();
@@ -120,9 +121,8 @@ function analysis() {
   }, 0);
   const dataPath = join(docs, "data.json");
   const snapshot = existsSync(dataPath) ? JSON.parse(readFileSync(dataPath, "utf8")) : {};
-  const remainingSpecs = (snapshot.specs || []).filter((item) => item.startable !== false).length;
+  const remainingSpecs = Array.isArray(snapshot.specs) ? snapshot.specs.filter((item) => item.startable !== false).length : null;
   const commits = git(["log", "--since=30 days ago", "--format=%h"]).split(/\r?\n/).filter(Boolean).length;
-  const estimatedHours = Math.max(remainingSpecs * 4, 2);
   return {
     generatedAt: new Date().toISOString(),
     repository: root,
@@ -131,13 +131,9 @@ function analysis() {
     commitsLast30Days: commits,
     progress: {
       ...snapshotProgress(snapshot),
-      activeSpecs: remainingSpecs,
+      activeSpecs: remainingSpecs ?? 0,
     },
-    estimate: {
-      hours: estimatedHours,
-      label: estimatedHours < 8 ? "under one focused day" : `${Math.ceil(estimatedHours / 8)} focused days`,
-      basis: "heuristic: 4 focused hours per startable specification; excludes blocked/serial wait time",
-    },
+    estimate: remainingEstimate(remainingSpecs),
   };
 }
 
@@ -151,11 +147,13 @@ function tryCommand(command, args) {
 }
 
 function readBody(req) {
-  return new Promise((resolve) => {
-    const body = [];
-    req.on("data", (chunk) => body.push(chunk));
-    req.on("end", () => resolve(Buffer.concat(body).toString("utf8")));
-  });
+  return readLimited(req).then((buffer) => buffer.toString("utf8"));
+}
+
+/// 413 for an oversized body, 400 for everything else a body reader can throw.
+function sendBodyError(res, error) {
+  if (error?.code === "hq_body_too_large") sendJson(res, 413, { error: error.message, code: error.code });
+  else sendJson(res, 400, { error: "invalid JSON body" });
 }
 
 /// Probe the Control API once (GET /api/projects) with a short timeout.
@@ -244,8 +242,8 @@ function stats() {
   const lessons = readLessonsFile(lessonsFile);
   return {
     generatedAt: new Date().toISOString(),
-    commitsPerDay: commitsPerDay(tryGit(["log", "--since=14 days ago", "--format=%ad", "--date=short"]), 14),
-    commitsPerDay30: commitsPerDay(tryGit(["log", "--since=30 days ago", "--format=%ad", "--date=short"]), 30),
+    commitsPerDay: commitsPerDay(tryGit(["log", "--since=14 days ago", "--format=%at"]), 14),
+    commitsPerDay30: commitsPerDay(tryGit(["log", "--since=30 days ago", "--format=%at"]), 30),
     authors: authors(tryGit(["shortlog", "-sn", "--since=30 days ago", "HEAD"])),
     tests: testSurface(files, rustTests),
     snapshot: snapshotStats(snapshot),
@@ -276,14 +274,14 @@ function repositoryInsights() {
 async function insightsRoute(req, res) {
   let ctx = {};
   if (req.method === "POST") {
-    try { ctx = JSON.parse((await readBody(req)) || "{}"); } catch { sendJson(res, 400, { error: "invalid JSON body" }); return; }
+    try { ctx = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
   }
   const repo = repositoryInsights();
   const ledger = ctx.usage?.total && Number.isFinite(ctx.usage.total.tokensIn) ? { tokensIn: ctx.usage.total.tokensIn, tokensOut: ctx.usage.total.tokensOut || 0, costUsd: ctx.usage.reportedCostUsd ?? ctx.usage.total.costUsd ?? null } : null;
   const lessons = readLessonsFile(lessonsFile);
   const dataPath = join(docs, "data.json");
   const snapshot = existsSync(dataPath) ? JSON.parse(readFileSync(dataPath, "utf8")) : {};
-  const st = { commitsPerDay: commitsPerDay(tryGit(["log", "--since=14 days ago", "--format=%ad", "--date=short"]), 14) };
+  const st = { commitsPerDay: commitsPerDay(tryGit(["log", "--since=14 days ago", "--format=%at"]), 14) };
   const dirtyFiles = tryGit(["status", "--short"]).split(/\r?\n/).filter(Boolean).length;
   const effort = estimateEffort({ git: repo.git, activity: repo.activity, volume: repo.volume, ledger });
   sendJson(res, 200, {
@@ -322,7 +320,7 @@ async function lessonsRoute(req, res, url) {
     }
     else {
       let update;
-      try { update = JSON.parse((await readBody(req)) || "{}"); } catch { sendJson(res, 400, { error: "invalid JSON body" }); return; }
+      try { update = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
       try { next = refineLesson(lessons, id, update); } catch (error) { sendJson(res, 400, { error: error.message, code: "hq_lesson_invalid" }); return; }
     }
     writeLessonsFile(lessonsFile, next);
@@ -338,7 +336,7 @@ async function lessonsRoute(req, res, url) {
   }
   if (url.pathname === "/__hq/lessons/match" && req.method === "POST") {
     let body;
-    try { body = JSON.parse((await readBody(req)) || "{}"); } catch { sendJson(res, 400, { error: "invalid JSON body" }); return; }
+    try { body = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
     const signals = Array.isArray(body.signals) ? body.signals.map(String).slice(0, 50) : [];
     sendJson(res, 200, { matches: matchSignals(lessons, signals).map((m) => ({ signal: m.signal, lesson: decorate(m.lesson) })) });
     return;
@@ -356,7 +354,7 @@ async function lessonsRoute(req, res, url) {
   }
   if (req.method === "POST") {
     let input;
-    try { input = JSON.parse((await readBody(req)) || "{}"); } catch { sendJson(res, 400, { error: "invalid JSON body" }); return; }
+    try { input = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
     try {
       const result = addLesson(lessons, input);
       writeLessonsFile(lessonsFile, result.lessons);
@@ -375,13 +373,11 @@ function proxy(req, res, apiPath) {
     sendJson(res, 503, { error: error.message, code: "hq_api_unavailable" });
     return;
   }
-  const body = [];
-  req.on("data", (chunk) => body.push(chunk));
-  req.on("end", () => {
+  readLimited(req).then((body) => {
     const headers = {
       "x-projecta-token": target.token,
       "content-type": req.headers["content-type"] || "application/json",
-      "content-length": Buffer.concat(body).length,
+      "content-length": body.length,
     };
     const verdict = req.headers["x-hq-verdict-token"];
     if (typeof verdict === "string" && verdict) headers["x-verdict-token"] = verdict;
@@ -405,9 +401,9 @@ function proxy(req, res, apiPath) {
       if (!res.headersSent) sendJson(res, 503, { error: error.message, code: "hq_api_unavailable" });
       else res.destroy(error);
     });
-    if (body.length) upstream.write(Buffer.concat(body));
+    if (body.length) upstream.write(body);
     upstream.end();
-  });
+  }, (error) => sendBodyError(res, error));
 }
 
 function serveFile(req, res) {
@@ -535,12 +531,10 @@ async function listProfiles() {
 }
 
 function saveProfile(req, res) {
-  const body = [];
-  req.on("data", (chunk) => body.push(chunk));
-  req.on("end", async () => {
+  readLimited(req).then(async (body) => {
     let profile;
-    try { profile = JSON.parse(Buffer.concat(body).toString("utf8") || "{}"); } catch {
-      sendJson(res, 400, { error: "invalid JSON body" });
+    try { profile = JSON.parse(body.toString("utf8") || "{}"); } catch (error) {
+      sendBodyError(res, error);
       return;
     }
     const invalid = validateProfile(profile);
@@ -557,7 +551,7 @@ function saveProfile(req, res) {
     } catch (error) {
       sendJson(res, 500, { error: error.message, code: "hq_profile_write_failed" });
     }
-  });
+  }, (error) => sendBodyError(res, error));
 }
 
 const server = createServer((req, res) => {

@@ -238,6 +238,7 @@ const tableCells = (line) =>
 // vocabulary: "✓ #n" merged, otherwise an open PR or "offen"; a merged row
 // that names another open PR is therefore in progress, too.
 function milestoneState(stand) {
+  if (/^blockiert/i.test(stand)) return "blocked";
   if (/^in Arbeit|^dieses Paket/i.test(stand)) return "in_progress";
   if (/^PR #\d/i.test(stand)) return "pr";
   // "teilweise:" opens the cell and names what is still missing, so it outranks
