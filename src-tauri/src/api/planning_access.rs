@@ -18,6 +18,12 @@
 //! like on every agent route. A fence that moves in between lets that one
 //! write through; the planning writes themselves do not take the fence.
 //!
+//! Every refusal and every successful write appends one audit envelope
+//! (M4-R19-08, `audit`): the run's project, the run, the result, the route.
+//! The envelope is appended after the write, not in its transaction: a crash
+//! in between leaves an unaudited write; only a failed append is answered
+//! (500 on a success, stderr note on a refusal).
+//!
 //! The operator token (window, `pa`, DevHQ) is not a dispatch credential and
 //! plans as before.
 use super::*;
@@ -43,6 +49,10 @@ pub(super) fn is_planning(request: &Request) -> bool {
 
 const NEEDS_COORDINATOR: &str = "planning requires the coordinator dispatch role";
 
+/// Every authorization refusal and every successful write appends one
+/// envelope (M4-R19-08) for the run's project with the route as `sourceRef`.
+/// A refusal whose audit cannot be written stays a refusal. A write that
+/// succeeded but could not be audited answers 500 so the gap is not silent.
 pub(super) fn handle(
     inner: &Inner,
     request: &Request,
@@ -50,6 +60,71 @@ pub(super) fn handle(
     owner: &str,
     fence: i64,
 ) -> Response {
+    let response = decide(inner, request, run, owner, fence);
+    let route = format!("{} {}", request.method, request.path);
+    let result = match response.status {
+        200..=299 => "accepted".to_string(),
+        403 => format!("refused: {}", refusal_reason(&response)),
+        _ => return response,
+    };
+    match inner.backend.audit_planning(run, &result, &route) {
+        Err(error) if response.status < 300 => Response::error(
+            500,
+            format!("planning write applied but its audit failed: {error}"),
+        ),
+        Err(error) => {
+            note_refusal_audit_gap(run, &route, &error);
+            response
+        }
+        Ok(()) => response,
+    }
+}
+
+/// A refusal stays a refusal when its envelope cannot be written, but the gap
+/// is not silent. `writeln!` instead of `eprintln!`, as in
+/// `agent_access::note_poison`: a failing stderr must not panic a request.
+fn note_refusal_audit_gap(run: &str, route: &str, error: &str) {
+    use std::io::Write;
+    let _ = writeln!(
+        std::io::stderr(),
+        "projecta: planning refusal of run {run} on {route} was not audited: {error}"
+    );
+}
+
+/// The envelope for one planning outcome: the run's project, the run, the
+/// result and the route. A run whose project does not resolve is recorded
+/// as `unresolved` (`audit_project_for_run`), never dropped.
+pub(crate) async fn audit(
+    store: &crate::store::Store,
+    run: &str,
+    result: &str,
+    source_ref: &str,
+) -> Result<(), String> {
+    let project = store.audit_project_for_run(run).await?;
+    store
+        .append_domain_audit(
+            &format!("run:{run}"),
+            "planning",
+            run,
+            &crate::store::audit::AuditEnvelope {
+                project: &project,
+                run,
+                result,
+                source_ref,
+            },
+        )
+        .await
+        .map(|_| ())
+}
+
+fn refusal_reason(response: &Response) -> String {
+    serde_json::from_str::<Value>(&response.body)
+        .ok()
+        .and_then(|body| body["error"].as_str().map(str::to_owned))
+        .unwrap_or_else(|| "forbidden".into())
+}
+
+fn decide(inner: &Inner, request: &Request, run: &str, owner: &str, fence: i64) -> Response {
     // The same limits as every other run-credential route.
     if request.headers.contains_key(VERDICT_TOKEN_HEADER) || !request.query.is_empty() {
         return Response::error(

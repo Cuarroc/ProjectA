@@ -2656,6 +2656,14 @@ impl ControlBackend for ApiBackend {
             self.store.development_run_role(run).await
         })
     }
+    fn audit_planning(&self, run: &str, result: &str, source_ref: &str) -> Result<(), String> {
+        tauri::async_runtime::block_on(api::planning_access::audit(
+            &self.store,
+            run,
+            result,
+            source_ref,
+        ))
+    }
     fn agent_planning_scope(
         &self,
         run: &str,
