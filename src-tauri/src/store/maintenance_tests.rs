@@ -36,3 +36,33 @@ async fn maintenance_refuses_writes_without_losing_data() {
     store.create_project("after", "/after").await.unwrap();
     assert_eq!(store.list_projects().await.unwrap().len(), 2);
 }
+
+#[tokio::test]
+async fn leave_maintenance_refuses_while_install_lease_is_held() {
+    let dir = TempDir::new("maintenance-lease");
+    let store = Store::open(&dir.path().join("projecta.db")).await.unwrap();
+    assert_eq!(
+        store.try_install_lease().err(),
+        Some(MaintenanceError::NotActive)
+    );
+    store.enter_maintenance().await.unwrap();
+    let lease = store.try_install_lease().unwrap();
+    assert_eq!(
+        store.try_install_lease().err(),
+        Some(MaintenanceError::InstallLeased)
+    );
+    assert_eq!(
+        store.leave_maintenance().await,
+        Err(MaintenanceError::InstallLeased)
+    );
+    assert!(store.is_maintenance_active());
+    drop(lease);
+    store.leave_maintenance().await.unwrap();
+    // A retained lease (installer started) is never released.
+    store.enter_maintenance().await.unwrap();
+    store.try_install_lease().unwrap().retain();
+    assert_eq!(
+        store.leave_maintenance().await,
+        Err(MaintenanceError::InstallLeased)
+    );
+}

@@ -1264,6 +1264,12 @@ async fn prepare_and_install(
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let database = dir.join("projecta.db");
     let manifest = update.raw_json.to_string();
+    // Pin the write block for the whole install; dropped (released) on any
+    // failure below, retained once the installer has run.
+    let lease = app
+        .state::<Store>()
+        .try_install_lease()
+        .map_err(|error| error.to_string())?;
     // The journal binds the bytes `install` will receive, so download first.
     let bytes = update
         .download(|_, _| {}, || {})
@@ -1290,11 +1296,12 @@ async fn prepare_and_install(
         };
         delivery_recovery::install_through_journal(
             &app.state::<PtyManager>(),
-            app.state::<Store>().is_maintenance_active(),
+            &lease,
             journal,
             staged,
             |bytes| update.install(bytes).map_err(|error| error.to_string()),
         )
+        .inspect(|()| lease.retain())
     })
     .await
     .map_err(|error| format!("Installer interrupted: {error}; restart before retrying"))?
