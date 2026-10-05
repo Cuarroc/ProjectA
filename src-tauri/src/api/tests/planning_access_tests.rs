@@ -600,3 +600,41 @@ fn role_refusal_is_audited_and_operator_planning_is_not() {
     assert_eq!(status, 200);
     assert_eq!(fx.backend.audited.lock().unwrap().len(), 1);
 }
+
+#[test]
+fn failed_audit_answers_500_after_a_write_and_keeps_a_refusal() {
+    let dir = TempDir::new("planning-audit-fails");
+    let backend = Arc::new(FakeBackend {
+        dispatch_role: Some(Ok(DispatchRole::Coordinator)),
+        audit_error: Some("store down".into()),
+        ..Default::default()
+    });
+    let server = boot(
+        Arc::clone(&backend) as Arc<dyn ControlBackend>,
+        dir.path(),
+        false,
+    )
+    .expect("start api");
+    let descriptor = server
+        .issue_run_descriptor("run-a", "worker-a", 7, 60)
+        .expect("scoped credential");
+    let (path, body, _) = PLANNING[1];
+    let (status, reply) = call(descriptor.port, "POST", path, Some(&descriptor.token), body);
+    assert_eq!(status, 500, "{reply}");
+    assert!(
+        reply["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("store down"),
+        "{reply}"
+    );
+    let foreign = r#"{"projectId":"pj-foreign","objective":"foreign"}"#;
+    let (status, reply) = call(
+        descriptor.port,
+        "POST",
+        path,
+        Some(&descriptor.token),
+        foreign,
+    );
+    assert_eq!(status, 403, "{reply}");
+}

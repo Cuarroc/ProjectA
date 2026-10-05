@@ -20,6 +20,9 @@
 //!
 //! Every refusal and every successful write appends one audit envelope
 //! (M4-R19-08, `audit`): the run's project, the run, the result, the route.
+//! The envelope is appended after the write, not in its transaction: a crash
+//! in between leaves an unaudited write; only a failed append is answered
+//! (500 on a success, stderr note on a refusal).
 //!
 //! The operator token (window, `pa`, DevHQ) is not a dispatch credential and
 //! plans as before.
@@ -69,8 +72,23 @@ pub(super) fn handle(
             500,
             format!("planning write applied but its audit failed: {error}"),
         ),
-        _ => response,
+        Err(error) => {
+            note_refusal_audit_gap(run, &route, &error);
+            response
+        }
+        Ok(()) => response,
     }
+}
+
+/// A refusal stays a refusal when its envelope cannot be written, but the gap
+/// is not silent. `writeln!` instead of `eprintln!`, as in
+/// `agent_access::note_poison`: a failing stderr must not panic a request.
+fn note_refusal_audit_gap(run: &str, route: &str, error: &str) {
+    use std::io::Write;
+    let _ = writeln!(
+        std::io::stderr(),
+        "projecta: planning refusal of run {run} on {route} was not audited: {error}"
+    );
 }
 
 /// The envelope for one planning outcome: the run's project, the run, the

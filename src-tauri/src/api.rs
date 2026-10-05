@@ -2713,6 +2713,8 @@ pub(crate) mod tests {
         /// M4-R19-08: `(run, result, sourceRef)` of every planning audit when
         /// no `native_store` writes the real trail.
         audited: Mutex<Vec<(String, String, String)>>,
+        /// M4-R19-08: when set, `audit_planning` fails with this message.
+        audit_error: Option<String>,
         /// W1-05b: when set, `cancel_queued_task` is the real store rule
         /// instead of the canned answers, so a test can watch the route and
         /// the rule agree end to end.
@@ -2966,6 +2968,9 @@ pub(crate) mod tests {
                 .unwrap_or_else(|| Err("no dispatch role configured".into()))
         }
         fn audit_planning(&self, run: &str, result: &str, source_ref: &str) -> Result<(), String> {
+            if let Some(error) = &self.audit_error {
+                return Err(error.clone());
+            }
             if let Some(store) = &self.native_store {
                 return tauri::async_runtime::block_on(crate::api::planning_access::audit(
                     store, run, result, source_ref,
