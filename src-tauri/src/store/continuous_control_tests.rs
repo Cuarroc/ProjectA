@@ -119,13 +119,18 @@ async fn paused_draining_and_absent_state_refuse_claims_and_survive_reopen() {
     };
     store.insert_queue_entry(&entry).await.unwrap();
     assert!(store.claim_queue_entry("legacy-1").await.unwrap());
+    let waiting = QueueEntry {
+        id: "legacy-2".into(),
+        ..entry.clone()
+    };
+    store.insert_queue_entry(&waiting).await.unwrap();
     assert_eq!(
         project_state(&store, &project).await.as_deref(),
         Some("draining")
     );
 
     // Cancel releases every scope lock, cancels open and running work, and stays paused.
-    assert!(lock_count(&store, &project).await >= 3);
+    assert_eq!(lock_count(&store, &project).await, 3);
     assert_eq!(
         store
             .control_continuous(&project, "cancel")
@@ -139,6 +144,10 @@ async fn paused_draining_and_absent_state_refuse_claims_and_survive_reopen() {
         let task = store.get_continuous_task(id).await.unwrap().unwrap();
         assert_eq!(task.status, "cancelled");
     }
+    let queue = store.list_queue(Some(&project)).await.unwrap();
+    let status_of = |id: &str| queue.iter().find(|e| e.id == id).map(|e| e.status.clone());
+    assert_eq!(status_of("legacy-2").as_deref(), Some(QUEUE_READY));
+    assert_ne!(status_of("legacy-1").as_deref(), Some(QUEUE_READY));
     let store = reopen(&dir, store).await;
     assert_eq!(
         project_state(&store, &project).await.as_deref(),
