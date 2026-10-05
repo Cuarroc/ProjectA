@@ -87,6 +87,12 @@ function routedModules(entry = "scripts/hq-live.mjs") {
 
 test("the live server answers 413 and bounds every body reader", () => {
   assert.ok(MAX_BODY_BYTES > 0 && MAX_BODY_BYTES <= 4 * 1024 * 1024);
+  const source = readFileSync("scripts/hq-live.mjs", "utf8");
+  assert.doesNotMatch(source, /req\.on\("data"/, "raw unbounded body readers must go through readLimited");
+  assert.match(source, /413/);
+});
+
+test("every routed module reads request bodies only through readLimited", () => {
   const modules = routedModules();
   assert.ok(modules.has("scripts/lib/hq-studio.mjs"), "the dispatcher routes into hq-studio.mjs; the guard must see it");
   for (const [file, text] of modules) {
@@ -95,7 +101,6 @@ test("the live server answers 413 and bounds every body reader", () => {
     assert.doesNotMatch(text, /(?<!\breply)\.on\(\s*["']data["']/, `${file}: raw body reader, use readLimited`);
     assert.doesNotMatch(text, /for\s+await\s*\(/, `${file}: stream iteration reads an unbounded body, use readLimited`);
   }
-  assert.match(modules.get("scripts/hq-live.mjs"), /413/);
 });
 
 test("bodyErrorReply separates an oversized body from malformed JSON and a dropped connection", async () => {
