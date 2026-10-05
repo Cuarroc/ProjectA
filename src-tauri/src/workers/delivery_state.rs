@@ -1,6 +1,7 @@
 //! Durable terminal reports from one already authenticated worker run.
 
 use crate::store::{
+    audit::AuditEnvelope,
     development_runs::{DevelopmentRun, RUN_COMPLETED, RUN_FAILED},
     Store,
 };
@@ -20,6 +21,46 @@ pub enum WorkerDeliveryError {
 }
 
 pub async fn record_worker_delivery(
+    store: &Store,
+    run_id: &str,
+    owner: &str,
+    fence: i64,
+    delivery: WorkerDelivery,
+) -> Result<WorkerDeliveryReceipt, WorkerDeliveryError> {
+    let action = match &delivery {
+        WorkerDelivery::Done => "worker_delivery_done",
+        WorkerDelivery::Blocked { .. } => "worker_delivery_blocked",
+    };
+    let outcome = record_worker_delivery_inner(store, run_id, owner, fence, delivery).await;
+    let result = match &outcome {
+        Ok((_, true)) => "replayed",
+        Ok((run, false)) if run.status == RUN_COMPLETED => "completed",
+        Ok(_) => "blocked",
+        Err(_) => "rejected",
+    };
+    let project = store
+        .audit_project_for_run(run_id)
+        .await
+        .map_err(WorkerDeliveryError::Failed)?;
+    let source_ref = format!("worker:{owner}:fence:{fence}");
+    store
+        .append_domain_audit(
+            owner,
+            action,
+            run_id,
+            &AuditEnvelope {
+                project: &project,
+                run: run_id,
+                result,
+                source_ref: &source_ref,
+            },
+        )
+        .await
+        .map_err(WorkerDeliveryError::Failed)?;
+    outcome
+}
+
+async fn record_worker_delivery_inner(
     store: &Store,
     run_id: &str,
     owner: &str,
