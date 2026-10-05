@@ -13,7 +13,7 @@ mindestens eine Sitzung an, damit es etwas zu vergleichen gibt.
 1. **Version notieren.** Öffne „Info" in ProjectA, merke dir die Versionsnummer.
    Schließe dann ProjectA ganz (auch im Tray beenden).
 2. **Skript starten.** PowerShell 7 im Repository-Ordner:
-   `pwsh scripts/drills/singleton-drill.ps1 -AppVersion 1.4.1 -OutDir C:\Belege\singleton`
+   `pwsh scripts/drills/singleton-drill.ps1 -AppVersion 1.5.0 -OutDir C:\Belege\singleton`
    (ohne `-OutDir` entsteht ein neuer Ordner mit Zeitstempel im aktuellen Ordner;
    der Zielordner muss neu oder leer sein).
 3. **Ausgangslage.** Starte ProjectA **einmal**, warte auf das Fenster, drücke im
