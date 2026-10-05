@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { measure, packageId, renderMarkdown, main } from "../dev/bench-weekly.mjs";
+import { measure, packageId, renderMarkdown, main, countLines, collect } from "../dev/bench-weekly.mjs";
 
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/bench-weekly.json", import.meta.url), "utf8"));
 const rows = () => Object.fromEntries(measure(fixture, { from: "2026-10-02", to: "2026-10-05" }).rows.map((r) => [r.id, r]));
@@ -54,4 +54,46 @@ test("markdown and --json outputs come from --input without network", async () =
   const code = await main(["--input", new URL("./fixtures/bench-weekly.json", import.meta.url).pathname, "--from", "2026-10-02", "--to", "2026-10-05", "--json"], { out: (s) => (out += s), err: () => {} });
   assert.equal(code, 0);
   assert.equal(JSON.parse(out).rows.length, m.rows.length);
+});
+
+test("countLines skips lockfiles and counts binary as 0 and follows renames to the new path", () => {
+  const n = [
+    "3\t1\tsrc/a.rs",
+    "-\t-\tassets/logo.png",
+    "10\t0\tdocs/{old => new}/x.md",
+    "5\t5\tpackage-lock.json => sub/x.rs",
+    "7\t0\told/package-lock.json => package-lock.json",
+    "",
+  ].join("\n");
+  assert.deepEqual(countLines(n), { lines: 4 + 10 + 10, codeLines: 4 + 10 });
+});
+
+const mergedPr = { number: 7, title: "t", headRefName: "claude/w1-01-x", mergedAt: "2026-10-03T10:00:00Z", mergeCommit: { oid: "abc" } };
+const fakeRun = (git) => (cmd, args) => {
+  if (cmd === "gh") return { code: 0, stdout: args[0] === "pr" ? JSON.stringify([structuredClone(mergedPr)]) : "[]", stderr: "" };
+  return git(args);
+};
+
+test("collect reads lines and branch commits per merge and skips PRs outside the window", () => {
+  const run = fakeRun((a) => ({ code: 0, stdout: a[0] === "diff" ? "2\t1\tsrc/a.rs\n" : a[0] === "rev-list" ? "abc p1 p2\n" : "fix: review finding\nfeat: x\n", stderr: "" }));
+  const { prs } = collect({ from: "2026-10-03", to: "2026-10-04" }, run);
+  assert.deepEqual([prs[0].lines, prs[0].codeLines, prs[0].commits], [3, 3, ["fix: review finding", "feat: x"]]);
+  const none = collect({ from: "2026-10-04", to: "2026-10-05" }, run);
+  assert.equal(none.prs[0].lines, undefined);
+});
+
+test("collect fails loudly when git fails and marks squash merges as unknown", () => {
+  const bad = fakeRun(() => ({ code: 128, stdout: "", stderr: "bad object" }));
+  assert.throws(() => collect({ from: "2026-10-03", to: "2026-10-04" }, bad), /PR #7.*Exit 128.*bad object/);
+  const squash = fakeRun((a) => ({ code: 0, stdout: a[0] === "diff" ? "1\t0\tsrc/a.rs\n" : "abc p1\n", stderr: "" }));
+  assert.equal(collect({ from: "2026-10-03", to: "2026-10-04" }, squash).prs[0].commits, null);
+});
+
+test("main rejects impossible and reversed dates with exit 2 and git errors with exit 1", async () => {
+  const io = { out: () => {}, err: () => {} };
+  for (const args of [["--to", "2026-13-01"], ["--from", "2026-02-31", "--to", "2026-03-05"], ["--from", "2026-10-05", "--to", "2026-10-02"]]) {
+    assert.equal(await main(args, io), 2, args.join(" "));
+  }
+  const bad = fakeRun(() => ({ code: 128, stdout: "", stderr: "x" }));
+  assert.equal(await main(["--from", "2026-10-03", "--to", "2026-10-04"], io, { run: bad }), 1);
 });

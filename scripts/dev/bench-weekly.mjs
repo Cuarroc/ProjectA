@@ -42,12 +42,17 @@ function p90(xs) {
 const ratio = (id, label, num, den) => ({ id, label, num, den, pct: den ? (100 * num) / den : null });
 const lead = (id, label, hours) => ({ id, label, n: hours.length, median: median(hours), p90: p90(hours) });
 
+// numstat renames: "old => new" or "dir/{old => new}/file"; the new path counts.
+const newPath = (file) => file.replace(/\{([^{}]*?) => ([^{}]*)\}/, "$2").replace(/\/\//g, "/").replace(/^.* => /, "");
+
 // Diff lines of one merge: total and code only (benchmark.md section 2).
+// Binary files ("-\t-\tpath") count 0 lines.
 export function countLines(numstat) {
   let lines = 0;
   let codeLines = 0;
   for (const row of numstat.split("\n")) {
-    const [a, d, file] = row.split("\t");
+    const [a, d, raw] = row.split("\t");
+    const file = raw && newPath(raw);
     if (!file || PATTERNS.skipLines.test(file)) continue;
     const n = (Number(a) || 0) + (Number(d) || 0);
     lines += n;
@@ -67,6 +72,7 @@ export function measure(data, { from, to }) {
   const days = new Set(merged.map((p) => p.mergedAt.slice(0, 10))).size;
   const per = (n) => (days ? n / days : null);
   const codePrs = merged.filter((p) => p.codeLines > 0);
+  const known = codePrs.filter((p) => Array.isArray(p.commits)); // null = squash merge, commits unknown
   const pkgPrs = merged.filter((p) => packageId(p.headRefName));
   const isFix = (p) => {
     const id = packageId(p.headRefName);
@@ -89,7 +95,7 @@ export function measure(data, { from, to }) {
     { id: "thr_pkgs", label: "distinct packages per active day", num: new Set(pkgPrs.map((p) => packageId(p.headRefName))).size, den: days, value: per(new Set(pkgPrs.map((p) => packageId(p.headRefName))).size) },
     lead("lead", "PR created -> merge (h)", leadH(merged)),
     ratio("rule1", "PRs over 300 lines", merged.filter((p) => p.lines > SIZE_LIMITS.M).length, merged.length),
-    ratio("review_fix", "code PRs with review-fix commit", codePrs.filter((p) => (p.commits || []).some((c) => PATTERNS.reviewFixCommit.test(c))).length, codePrs.length),
+    ratio("review_fix", "code PRs with review-fix commit", known.filter((p) => p.commits.some((c) => PATTERNS.reviewFixCommit.test(c))).length, known.length),
     ratio("round2", "PR text names round 2", merged.filter((p) => PATTERNS.round2.test(p.body || "")).length, merged.length),
     ratio("red_heads", "red PR heads (ci, pull_request)", red(heads), heads.length),
     ratio("red_queue", "red queue runs (mergify/*)", red(queue), queue.length),
@@ -107,7 +113,7 @@ export function measure(data, { from, to }) {
 
 const f1 = (n) => (n === null || n === undefined ? "-" : (Math.round(n * 10) / 10).toString());
 export function renderMarkdown(m) {
-  const cell = (r) => (r.median !== undefined ? `median ${f1(r.median)} / p90 ${f1(r.p90)} (n=${r.n})` : r.den === undefined ? String(r.num) : `${f1(r.pct ?? r.value)}${r.pct !== undefined ? " %" : ""} (${r.num}/${r.den})`);
+  const cell = (r) => (r.median !== undefined ? `median ${f1(r.median)} / p90 ${f1(r.p90)} (n=${r.n})` : r.den === undefined ? String(r.num) : `${f1(r.pct ?? r.value)}${r.pct !== undefined && r.pct !== null ? " %" : ""} (${r.num}/${r.den})`);
   return [`Window ${m.window.from} .. ${m.window.to} (UTC, merge date), ${m.activeDays} active days`, "", "| ID | Metric | Value |", "|---|---|---|", ...m.rows.map((r) => `| ${r.id} | ${r.label} | ${cell(r)} |`), ""].join("\n");
 }
 
@@ -122,10 +128,15 @@ export function collect({ from, to }, run, cwd) {
   for (const p of prs) {
     const sha = p.mergeCommit?.oid;
     if (!sha || !p.mergedAt || Date.parse(p.mergedAt) < lo || Date.parse(p.mergedAt) >= hi || PATTERNS.excluded.test(p.headRefName)) continue;
-    const ns = run("git", ["diff", "--numstat", `${sha}^1`, sha], { cwd });
-    if (ns.code === 0) Object.assign(p, countLines(ns.stdout));
-    const log = run("git", ["log", "--no-merges", "--format=%s", `${sha}^1..${sha}^2`], { cwd });
-    p.commits = log.code === 0 ? log.stdout.split("\n").filter(Boolean) : [];
+    const git = (...args) => {
+      const r = run("git", args, { cwd });
+      if (r.code !== 0) throw new Error(`git ${args.join(" ")} (PR #${p.number}, Exit ${r.code}): ${(r.stderr || r.stdout || "").trim()}`);
+      return r.stdout;
+    };
+    Object.assign(p, countLines(git("diff", "--numstat", `${sha}^1`, sha)));
+    // squash/rebase merges have no second parent: the branch commits are unknown, not none
+    const parents = git("rev-list", "--parents", "-n", "1", sha).trim().split(/\s+/).length - 1;
+    p.commits = parents > 1 ? git("log", "--no-merges", "--format=%s", `${sha}^1..${sha}^2`).split("\n").filter(Boolean) : null;
   }
   const runs = [];
   for (let t = lo; t < hi; t += DAY) {
@@ -150,9 +161,10 @@ Exit-Codes: 0 gemessen, 1 gh/git-Fehler, 2 Aufruffehler.
 export const main = withExitCodes(async (argv, io, deps = {}) => {
   const { values } = parseArgs({ args: argv, options: { from: { type: "string" }, to: { type: "string" }, input: { type: "string" }, json: { type: "boolean" }, help: { type: "boolean" } } });
   if (values.help) return io.out(HELP), EXIT.OK;
-  const day = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? s : (() => { throw new UsageError(`Datum nicht lesbar: ${s}`); })());
+  const day = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(s) && Number.isFinite(Date.parse(s)) && new Date(Date.parse(s)).toISOString().startsWith(s) ? s : (() => { throw new UsageError(`Datum nicht lesbar: ${s}`); })());
   const to = day(values.to ?? new Date().toISOString().slice(0, 10));
   const from = day(values.from ?? new Date(Date.parse(to) - 7 * DAY).toISOString().slice(0, 10));
+  if (Date.parse(from) >= Date.parse(to)) throw new UsageError(`--from ${from} muss vor --to ${to} liegen`);
   const data = values.input ? JSON.parse(readFileSync(values.input, "utf8")) : collect({ from, to }, deps.run || makeRunner({ timeoutMs: 120_000 }), deps.cwd);
   const m = measure(data, { from, to });
   io.out(values.json ? JSON.stringify(m, null, 2) + "\n" : renderMarkdown(m));
