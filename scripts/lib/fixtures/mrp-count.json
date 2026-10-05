@@ -1,0 +1,17 @@
+{
+  "prs": [
+    { "number": 1, "headRefName": "claude/w16-flow-01-a", "state": "MERGED", "mergedAt": "2026-10-03T10:00:00Z",
+      "body": "Drei Sätze.\n\n## Report\n\n### Prompt-Log\n\n- **rounds:** 2 · **critic:** model · **findings:** 1 high / 3 other · **changed:** scope cut\n- **Draft:** x\n\n### Evidence\n\n| a | 0 |\n" },
+    { "number": 2, "headRefName": "codex/w16-flow-02-b", "state": "MERGED", "mergedAt": "2026-10-03T11:00:00Z",
+      "body": "## Report\n\n### Prompt-Log\n\n- **rounds:** 1 · **critic:** self · **findings:** 0 high / 2 other · **changed:** none\n\n### Nacharbeit\n\n- src/a.rs:10 `cargo test` exit 1\n\n### Evidence\n" },
+    { "number": 3, "headRefName": "claude/w16-flow-03-c", "state": "MERGED", "mergedAt": "2026-10-04T09:00:00Z",
+      "body": "## Report\n\n### Prompt-Log\n\n- **rounds:** 0-2 · **critic:** self / model · **findings:** n high / n other · **changed:** one line\n" },
+    { "number": 4, "headRefName": "claude/w16-flow-04-d", "state": "MERGED", "mergedAt": "2026-10-04T10:00:00Z",
+      "body": "## Report\n\n### Nacharbeit\n\n- b.rs:3 exit 1\n" },
+    { "number": 5, "headRefName": "claude/w16-flow-06-e", "state": "MERGED", "mergedAt": "2026-10-04T11:00:00Z", "body": null },
+    { "number": 6, "headRefName": "hotfix/ci-red", "state": "MERGED", "mergedAt": "2026-10-04T12:00:00Z", "body": "## Report\n" },
+    { "number": 7, "headRefName": "dependabot/npm/x", "state": "MERGED", "mergedAt": "2026-10-04T12:30:00Z", "body": "" },
+    { "number": 8, "headRefName": "claude/w16-flow-07-f", "state": "MERGED", "mergedAt": "2026-09-01T10:00:00Z", "body": "### Prompt-Log\n- **rounds:** 1\n" },
+    { "number": 9, "headRefName": "claude/w16-flow-08-g", "state": "OPEN", "mergedAt": null, "body": "### Prompt-Log\n- **rounds:** 1\n" }
+  ]
+}
