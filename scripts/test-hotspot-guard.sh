@@ -68,6 +68,33 @@ d="$(branch_change nobase claude/some-work docs/dev-hq/data.js)"
 (cd "$d" && env -u HOTSPOT_BASE -u GITHUB_ACTIONS -u GITHUB_HEAD_REF bash scripts/ci/hotspot-guard.sh > out 2>&1) &&
   fail "guard fails closed without a base" || pass "guard fails closed without a base"
 
+# workflow_dispatch checks out only the dispatched branch: no origin/main, so
+# no merge-base (Actions run 37319932614). The guard then judges the head
+# commit against HEAD~1 and says so; a hotspot in the head commit still fails.
+dispatch() { # dir -> exit code of the guard as in a dispatch checkout
+  (cd "$1" && env -u HOTSPOT_BASE -u GITHUB_HEAD_REF -u HOTSPOT_BRANCH GITHUB_ACTIONS=true \
+    GITHUB_EVENT_NAME=workflow_dispatch GITHUB_REF_NAME=claude/some-work \
+    bash scripts/ci/hotspot-guard.sh > "$1/out" 2>&1)
+}
+
+d="$(branch_change dispatch-ok claude/some-work other.txt)"
+if dispatch "$d"; then
+  grep -q "workflow_dispatch" "$d/out" && grep -q "HEAD~1" "$d/out" &&
+    pass "dispatch without origin/main falls back to HEAD~1 and logs it" ||
+    fail "dispatch without origin/main falls back to HEAD~1 and logs it (reason not logged)"
+else
+  fail "dispatch without origin/main falls back to HEAD~1 and logs it"
+fi
+
+d="$(branch_change dispatch-hit claude/some-work docs/dev-hq/data.js)"
+if dispatch "$d"; then fail "dispatch fallback still rejects a hotspot in the head commit"; else
+  grep -q "docs/dev-hq/data.js" "$d/out" && pass "dispatch fallback still rejects a hotspot in the head commit" ||
+    fail "dispatch fallback still rejects a hotspot in the head commit (file not named)"
+fi
+
+d="$(repo dispatch-root)"
+dispatch "$d" && fail "dispatch on a root commit fails closed (no HEAD~1)" || pass "dispatch on a root commit fails closed (no HEAD~1)"
+
 # sync.sh note: on a branch the tracked journal stays untouched.
 d="$(repo note-branch)"
 (cd "$d" && git checkout -q -b claude/some-work)
