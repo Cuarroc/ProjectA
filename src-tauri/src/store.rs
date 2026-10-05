@@ -2088,11 +2088,18 @@ impl Store {
     ///
     /// `None` and `Some(0)` are different answers: `None` means "no cap of its
     /// own, use the default", while `Some(0)` means "start nothing at all".
+    /// A negative cap is rejected with `invalid max workers` and the stored
+    /// value stays as it was: the dispatcher would otherwise misread it.
     pub async fn set_project_max_workers(
         &self,
         project_id: &str,
         max_workers: Option<i64>,
     ) -> Result<(), String> {
+        if let Some(limit) = max_workers.filter(|limit| *limit < 0) {
+            return Err(format!(
+                "invalid max workers: {limit} is negative (use 0 to pause, none for the default)"
+            ));
+        }
         let done = sqlx::query("UPDATE projects SET max_workers = ?1 WHERE id = ?2")
             .bind(max_workers)
             .bind(project_id)
@@ -5548,6 +5555,29 @@ pub(crate) mod tests {
             .await
             .expect_err("unknown project");
         assert!(err.contains("unknown project"), "{err}");
+    }
+
+    /// A negative employee cap is refused at the store boundary and the
+    /// previously stored cap survives (callers inherit this check).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_negative_max_workers_is_rejected_and_keeps_the_old_value() {
+        let (_dir, store) = store().await;
+        let project = store.create_project("one", "C:/repos/one").await.unwrap();
+        store
+            .set_project_max_workers(&project.id, Some(2))
+            .await
+            .unwrap();
+        let err = store
+            .set_project_max_workers(&project.id, Some(-1))
+            .await
+            .expect_err("negative cap");
+        assert!(err.contains("invalid max workers"), "{err}");
+        let stored = store.get_project(&project.id).await.unwrap().unwrap();
+        assert_eq!(stored.max_workers, Some(2));
+        store
+            .set_project_max_workers(&project.id, Some(0))
+            .await
+            .unwrap();
     }
 
     /// `workers.pr_url`, the status-event `source` and the `messages` table
