@@ -46,9 +46,20 @@ pub struct StagingIdentity {
 pub enum RejectionReason {
     Missing(ArtifactKind),
     Truncated(ArtifactKind),
-    HashMismatch(ArtifactKind),
+    HashMismatch {
+        kind: ArtifactKind,
+        expected: String,
+        actual: String,
+    },
     InvalidSha256(ArtifactKind),
+    /// Unreadable or shorter than expected when re-read for the install.
     Changed(ArtifactKind),
+    /// Re-read for the install and its digest no longer matches.
+    Swapped {
+        kind: ArtifactKind,
+        expected: String,
+        actual: String,
+    },
 }
 
 #[allow(dead_code)] // W3-02
@@ -115,11 +126,21 @@ fn read_expected(
             RejectionReason::Truncated(kind)
         });
     }
-    if actual_len != expected.byte_len || !digest(&bytes).eq_ignore_ascii_case(&expected.sha256) {
+    let actual = digest(&bytes);
+    if actual_len != expected.byte_len || !actual.eq_ignore_ascii_case(&expected.sha256) {
+        let (kind, expected, actual) = (kind, expected.sha256.clone(), actual);
         return Err(if changed {
-            RejectionReason::Changed(kind)
+            RejectionReason::Swapped {
+                kind,
+                expected,
+                actual,
+            }
         } else {
-            RejectionReason::HashMismatch(kind)
+            RejectionReason::HashMismatch {
+                kind,
+                expected,
+                actual,
+            }
         });
     }
     Ok(bytes)
@@ -165,10 +186,13 @@ mod tests {
         fs::write(installer, b"attacker-11").unwrap();
         let calls = Cell::new(0);
         let result = staged.install(|_| calls.set(calls.get() + 1));
-        assert_eq!(
+        assert!(matches!(
             result,
-            Err(RejectionReason::Changed(ArtifactKind::Installer))
-        );
+            Err(RejectionReason::Swapped {
+                kind: ArtifactKind::Installer,
+                ..
+            })
+        ));
         assert_eq!(calls.get(), 0);
     }
 
@@ -179,7 +203,10 @@ mod tests {
         expected.manifest.sha256 = digest(b"wrong-byte");
         assert!(matches!(
             expected.verify(),
-            Err(RejectionReason::HashMismatch(ArtifactKind::Manifest))
+            Err(RejectionReason::HashMismatch {
+                kind: ArtifactKind::Manifest,
+                ..
+            })
         ));
     }
 
