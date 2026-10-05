@@ -3666,7 +3666,7 @@ mod tests {
                 "unassigned",
                 with_roles(&["reviewer"]),
                 None,
-                "unassigned task",
+                "grants no team the implementer role",
             ),
             (
                 "foreign-assignee",
