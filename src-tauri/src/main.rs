@@ -3672,6 +3672,9 @@ fn main() {
             // Without this every injection would be empty and every approve
             // would fail, which is why it is the first thing done with `dir`.
             learnings::set_data_dir(&dir);
+            // W3-02f: resolve an interrupted update first; a failure refuses
+            // to open the database, so no write or dispatcher can start.
+            delivery_recovery::recover_at_startup(&dir)?;
             let store = init_store(&handle, &dir)?;
             let stopped = tauri::async_runtime::block_on(store.emergency_stop_active())
                 .unwrap_or_else(|error| {
@@ -4562,6 +4565,18 @@ mod tests {
         }
         assert_eq!(isolated, PathBuf::from("D:/scratch/projecta-f8"));
         assert_eq!(empty_means_default, tauri);
+    }
+
+    /// W3-02f: update recovery precedes the database and the dispatcher
+    /// (source order, like the tests around it).
+    #[test]
+    fn update_recovery_runs_before_the_database_and_the_dispatcher() {
+        const SOURCE: &str = include_str!("main.rs");
+        let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
+        let at = |needle: &str| code.find(needle).expect("needle moved - fix the test");
+        let recovery = at("delivery_recovery::recover_at_startup(&dir)?");
+        assert!(recovery < at("init_store(&handle, &dir)?"));
+        assert!(recovery < at("queue::start("));
     }
 
     /// KI-23, review finding B1 (kimi-k3): the startup claim release must not
