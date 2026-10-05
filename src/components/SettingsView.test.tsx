@@ -314,6 +314,13 @@ describe("SettingsView tabs (APP-5)", () => {
     expect(onFontsChange).toHaveBeenLastCalledWith({ ...PROPS.fonts, terminalFontSize: 16 });
   });
 
+  it("names the web port field in German and explains phone access in a closed block", () => {
+    render(<SettingsView {...PROPS} project={project("pj-a")} />);
+    expect(screen.getByLabelText("Standard-Port Web-Ansicht")).toBeInTheDocument();
+    const summary = screen.getByText("Vom Handy aus öffnen");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+  });
+
   it("arrow keys switch the section and focus follows and the panel names its tab", () => {
     render(<SettingsView {...PROPS} project={project("pj-a")} />);
     const tabs = screen.getAllByRole("tab");
