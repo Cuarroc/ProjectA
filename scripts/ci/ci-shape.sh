@@ -10,6 +10,7 @@
 #      for a check that never comes).
 #   2. queue_conditions and auto_merge_conditions are identical (the comment
 #      in .mergify.yml demanded it since CI-01 review; now it is checked).
+#      CI-HARDEN-02: both also carry `label = review-ok` (fail-closed queue).
 #   3. The Windows job picks ubuntu-latest only for an ordinary PR
 #      (runs-on names ubuntu-latest, windows-latest and the queue branch
 #      prefix) and carries the guard that fails when the lane would run on a
@@ -116,6 +117,12 @@ if [ "$(mg_list queue_conditions)" != "$(mg_list auto_merge_conditions)" ]; then
   err ".mergify.yml: queue_conditions and auto_merge_conditions differ"
   diff <(mg_list queue_conditions) <(mg_list auto_merge_conditions) | sed 's/^/  /'
 fi
+
+# 2b. CI-HARDEN-02: the queue is fail-closed - both entry lists demand the
+# label the orchestrator pipeline sets after the review disposition.
+for key in queue_conditions auto_merge_conditions; do
+  mg_list "$key" | grep -qxF "label = review-ok" || err ".mergify.yml: $key lacks 'label = review-ok'"
+done
 
 # 3. Windows runner choice and guard. A trailing comment on the runs-on line
 # does not count.
