@@ -157,6 +157,14 @@ test("/__hq/stats reports commit series, test surface and lesson counts", async 
   assert.equal(typeof stats.lessons.count, "number");
 });
 
+test("/__hq/stats carries the checkout freshness light", async () => {
+  const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
+  const { freshness } = JSON.parse((await get("/__hq/stats", headers)).body);
+  assert.ok(["grün", "gelb", "rot", "unbekannt"].includes(freshness.level), `level: ${freshness.level}`);
+  assert.equal(typeof freshness.text, "string");
+  assert.ok(freshness.behind === null || Number.isInteger(freshness.behind));
+});
+
 test("/__hq/lessons: add, search, merge duplicates, count repeats — and refuse junk", async () => {
   const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
   const lesson = { symptom: "cargo check: Package gdk-3.0 was not found", cause: "GTK dev headers missing", fix: "apt-get install libgtk-3-dev", tags: ["cargo"] };

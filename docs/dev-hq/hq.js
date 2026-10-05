@@ -262,7 +262,7 @@
       </section>`;
     el.innerHTML = `
       <div class="live-toolbar masthead" lang="en">
-        <div><p class="meta">LOCAL CONTROL API · same-origin proxy · secrets stay server-side</p><p id="live-status" class="live-status pending" role="status">connecting…</p></div>
+        <div><p class="meta">LOCAL CONTROL API · same-origin proxy · secrets stay server-side</p><p id="live-status" class="live-status pending" role="status">connecting…</p><p id="live-freshness" class="live-status pending" role="status" lang="de" hidden></p></div>
         <div class="masthead-tools">
           <label class="live-project">Project <select id="live-project"><option value="">all projects</option></select></label>
           <button class="hq-button subtle" id="live-refresh" title="Refresh (r)">Refresh</button>
@@ -821,6 +821,13 @@
       try { stats = await liveApi("/stats"); } catch (error) {
         host.innerHTML = `<p class="muted">Statistics unavailable: ${escape(error.message)}</p>`;
         return;
+      }
+      const light = el.querySelector("#live-freshness");
+      if (light && stats.freshness) {
+        light.hidden = false;
+        // gelb/unbekannt share "pending" (ochre) on purpose: it is the warn colour; there is no separate warn style.
+        light.className = `live-status ${{ grün: "ok", rot: "error" }[stats.freshness.level] || "pending"}`;
+        light.textContent = stats.freshness.text;
       }
       const fleet = (() => {
         const columns = {};
