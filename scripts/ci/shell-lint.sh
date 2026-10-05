@@ -3,6 +3,7 @@
 #   shell-lint.sh shellcheck [file...]   shellcheck -S warning over tracked *.sh + .githooks/*
 #   shell-lint.sh actionlint [file...]   actionlint over .github/workflows/*.yml
 #   shell-lint.sh crlf [file...]         no CR byte in tracked *.sh + .githooks/*
+#   shell-lint.sh eol [path...]          .gitattributes forces eol=lf for source text read by tests
 # Without file arguments the tracked files are used; the self-test passes fixtures.
 #
 # A missing tool is a logged skip locally and a failure in CI (GITHUB_ACTIONS=true):
@@ -76,8 +77,36 @@ case "$check" in
     [ "$bad" -eq 0 ] && echo "crlf: $n file(s) free of CR"
     exit "$bad"
     ;;
+  eol)
+    # Tests that read .rs/.md/.json and assert on "\n" snippets break on a CRLF
+    # checkout (PR #412). `git check-attr` also answers for paths that do not exist.
+    # Without arguments the probes are joined by the tracked files, so a nested
+    # .gitattributes override on a real path cannot hide behind the root rule.
+    if [ $# -eq 0 ]; then
+      probes="$(printf 'x.rs\nx.md\nx.json\n'; git ls-files -- '*.rs' '*.md' '*.json')"
+    else
+      probes="$(printf '%s\n' "$@")"
+    fi
+    want="$(printf '%s\n' "$probes" | wc -l)"
+    bad=0
+    n=0
+    while IFS= read -r line; do
+      n=$((n + 1))
+      v="${line##*: }"
+      if [ "$v" != "lf" ]; then
+        echo "ERROR: .gitattributes does not set eol=lf for ${line%%: *} (eol: $v); a Windows checkout would get CRLF" >&2
+        bad=1
+      fi
+    done < <(printf '%s\n' "$probes" | git check-attr --stdin eol)
+    if [ "$n" -ne "$want" ]; then
+      echo "ERROR: git check-attr answered for $n of $want path(s)" >&2
+      bad=1
+    fi
+    [ "$bad" -eq 0 ] && echo "eol: eol=lf set for $n path(s)"
+    exit "$bad"
+    ;;
   *)
-    echo "usage: shell-lint.sh shellcheck|actionlint|crlf [file...]" >&2
+    echo "usage: shell-lint.sh shellcheck|actionlint|crlf|eol [file...]" >&2
     exit 2
     ;;
 esac

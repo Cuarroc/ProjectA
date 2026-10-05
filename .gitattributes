@@ -28,3 +28,11 @@ docs/dev-hq/data.json merge=hqdata
 # wiche dann von der Quelle ab (Harness-No-op-Check schlaegt fehl).
 .github/workflows/*.yml text eol=lf
 .mergify.yml text eol=lf
+# Rust tests read their own sources and docs (include_str!/read_to_string) and
+# assert on "\n"-joined snippets. A Windows checkout with core.autocrlf=true
+# (the GitHub runner default) turns those files into CRLF and the assertion
+# fails only in the merge-queue Windows lane (PR #412, run 37245521200). LF in
+# the working tree removes the class; shell-lint.sh eol guards the rule.
+*.rs text eol=lf
+*.md text eol=lf
+*.json text eol=lf
