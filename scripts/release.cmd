@@ -8,10 +8,9 @@ rem   scripts\release.cmd 1.1.0 "Kurzbeschreibung des Releases"
 rem
 rem Voraussetzung: sauberer Arbeitsbaum auf main, Gates vorher lokal gelaufen
 rem (der pre-push Hook laeuft ohnehin nochmal).
-rem Checkliste je Version: README: Version, Status, Screenshots aktualisieren.
+rem Checkliste je Version: README: Version, Status aktualisieren.
 rem Die Zeile "App-Version" in README.md zieht dieses Skript selbst nach
-rem (scripts/lib/readme-version.test.mjs prueft sie); "Veroeffentlicht" und
-rem Screenshots nach dem Release in einem eigenen kleinen PR anpassen.
+rem (scripts/lib/readme-version.test.mjs prueft sie); "Veroeffentlicht" nach dem Release in einem eigenen kleinen PR anpassen.
 
 setlocal enabledelayedexpansion
 set "V=%~1"
@@ -30,8 +29,8 @@ powershell -NoProfile -Command "(Get-Content src-tauri/Cargo.toml -Raw) -replace
 rem --- package.json ---
 powershell -NoProfile -Command "(Get-Content package.json -Raw) -replace '\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"', '\"version\": \"%V%\"' | Set-Content package.json -NoNewline"
 
-rem --- README.md: Zeile "App-Version" (node statt powershell: UTF-8 mit Umlauten) ---
-node -e "const f=require('fs');f.writeFileSync('README.md',f.readFileSync('README.md','utf8').replace(/^- \*\*App-Version:\*\* `v\d+\.\d+\.\d+`/m,'- **App-Version:** `v%V%`'))" || exit /b 1
+rem --- README.md: Zeile "App-Version" (node statt powershell: UTF-8 mit Umlauten; Exit 1, wenn die Zeile fehlt) ---
+node scripts/lib/readme-version-bump.mjs README.md %V% || (echo README: Zeile App-Version fehlt & exit /b 1)
 
 rem --- CHANGELOG-Zeile ---
 if not "%NOTES%"=="" (
