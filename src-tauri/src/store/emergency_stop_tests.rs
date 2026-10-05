@@ -161,3 +161,11 @@ async fn a_store_failure_appends_one_complete_envelope_and_no_state_change() {
     );
     assert!(!store.emergency_stop_active().await.unwrap());
 }
+
+#[tokio::test]
+async fn a_failing_begin_returns_the_original_error_when_the_trail_is_down_too() {
+    let (_dir, store) = fixture().await;
+    store.pool.close().await;
+    let error = store.set_emergency_stop(true, "human").await.unwrap_err();
+    assert!(error.starts_with("global emergency stop: "), "{error}");
+}

@@ -67,9 +67,13 @@ impl Store {
     /// Trusted human control only; caller authentication belongs to W5-04b.
     /// Clearing permits new queue claims but never revives revoked claims.
     /// Continuous projects stay paused until explicitly resumed/reconciled.
-    /// Every outcome appends exactly one `kill_switch` audit envelope in the
-    /// global scope (`GLOBAL_SCOPE` as project and run): `raised`/`released`
-    /// inside the transition, `barrier-failed`/`store-failed` after rollback.
+    /// Every outcome appends one `kill_switch` audit envelope in the global
+    /// scope (`GLOBAL_SCOPE` as project and run): `raised`/`released` inside
+    /// the transition, `barrier-failed`/`store-failed` after rollback. The
+    /// failure rows are best effort: if the trail is down too, only the
+    /// original error is returned. After a failed commit the rollback is only
+    /// queued (the consumed transaction cannot be awaited), so that row can
+    /// also be lost or, if the commit proved durable, duplicate.
     pub async fn set_emergency_stop(&self, active: bool, actor: &str) -> Result<(), String> {
         if actor.trim().is_empty() {
             return Err("emergency stop actor is required".into());
