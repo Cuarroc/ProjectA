@@ -62,7 +62,12 @@ case "$check" in
     n=0
     while IFS= read -r -d '' f; do
       n=$((n + 1))
-      if LC_ALL=C grep -q $'\r' -- "$f"; then
+      # tr, not grep: grep exit 2 (unreadable) must not pass as clean, and
+      # MSYS grep strips the CR before matching.
+      if [ ! -r "$f" ]; then
+        echo "ERROR: $f is not readable" >&2
+        bad=1
+      elif [ -n "$(LC_ALL=C tr -cd '\r' < "$f" | head -c 1)" ]; then
         echo "ERROR: $f contains CR (CRLF line endings break the shebang and read -r)" >&2
         bad=1
       fi

@@ -1,5 +1,6 @@
 # Shell-Skripte muessen LF behalten, sonst brechen sie unter Git Bash/sh.
 *.sh text eol=lf
+.githooks/* text eol=lf
 # Der Tauri-Build normalisiert Cargo-Manifeste auf LF; mit autocrlf-Checkout
 # (CRLF) gilt der Baum sonst als dirty und das Signatur-Gate bricht ab.
 *.toml text eol=lf
