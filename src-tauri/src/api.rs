@@ -217,7 +217,7 @@ mod credential_acl_tests;
 #[path = "api/hq_routes.rs"]
 mod hq_routes;
 #[path = "api/planning_access.rs"]
-mod planning_access;
+pub(crate) mod planning_access;
 
 /// Header carrying the shared token. Lower case: header names are compared
 /// case-insensitively, and this is the form the CLI sends.
@@ -460,6 +460,12 @@ pub trait ControlBackend: Send + Sync {
         _fence: i64,
     ) -> Result<crate::store::development_launches::DispatchRole, String> {
         Err("dispatch role service unavailable".into())
+    }
+    /// M4-R19-08: appends one audit envelope for a planning outcome of the
+    /// run a scoped credential speaks for (`result`, route as `source_ref`).
+    /// The default writes nothing and says so, so success is never unaudited.
+    fn audit_planning(&self, _run: &str, _result: &str, _source_ref: &str) -> Result<(), String> {
+        Err("planning audit service unavailable".into())
     }
     fn agent_planning_scope(
         &self,
@@ -2704,6 +2710,11 @@ pub(crate) mod tests {
         plan_imports: Mutex<Vec<PlanImportRecord>>,
         native_claim: Option<(String, String, i64)>,
         native_store: Option<crate::store::Store>,
+        /// M4-R19-08: `(run, result, sourceRef)` of every planning audit when
+        /// no `native_store` writes the real trail.
+        audited: Mutex<Vec<(String, String, String)>>,
+        /// M4-R19-08: when set, `audit_planning` fails with this message.
+        audit_error: Option<String>,
         /// W1-05b: when set, `cancel_queued_task` is the real store rule
         /// instead of the canned answers, so a test can watch the route and
         /// the rule agree end to end.
@@ -2955,6 +2966,22 @@ pub(crate) mod tests {
             self.dispatch_role
                 .clone()
                 .unwrap_or_else(|| Err("no dispatch role configured".into()))
+        }
+        fn audit_planning(&self, run: &str, result: &str, source_ref: &str) -> Result<(), String> {
+            if let Some(error) = &self.audit_error {
+                return Err(error.clone());
+            }
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(crate::api::planning_access::audit(
+                    store, run, result, source_ref,
+                ));
+            }
+            self.audited.lock().unwrap().push((
+                run.to_string(),
+                result.to_string(),
+                source_ref.to_string(),
+            ));
+            Ok(())
         }
         fn agent_planning_scope(
             &self,
