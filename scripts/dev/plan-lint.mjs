@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // FLOW-03 — plan-lint: read-only check of the package tables in
-// docs/plan/v1.6.0/plan.md (section 3). Checks size class, tier, lane, a
-// non-empty acceptance cell and that two packages of one seam never run at the
+// docs/plan/v1.6.0/plan.md (every table that has the required columns). Checks
+// size class, tier, lane, a non-empty acceptance cell and that two packages of one seam never run at the
 // same time: every pair must be ordered by "Hängt ab von" or by "→" in the ID
 // cell ("→" means sequential). Exit 0 = clean, 1 = findings, 2 = usage.
 import { readFileSync } from "node:fs";
@@ -44,13 +44,17 @@ export function lint(text) {
   const findings = [];
   const bad = (r, msg) => findings.push(`Zeile ${r.line} (${r.ID || "?"}): ${msg}`);
   const node = new Map();
+  const dupes = [];
   rows.forEach((r, n) => {
     r.parts = r.ID.split("→").map((p) => p.trim()).filter(Boolean);
     for (const p of r.parts) {
       const prefix = r.parts[0].match(/^[A-Z0-9]+-/)?.[0] ?? "";
+      const id = p.includes("-") ? p : prefix + p;
+      if (node.has(id) && node.get(id) !== n) dupes.push([n, id]);
       for (const key of [p, prefix + p]) if (!node.has(key)) node.set(key, n);
     }
   });
+  for (const [n, id] of dupes) bad(rows[n], `Paket-ID ${id} doppelt (Zeile ${rows[node.get(id)].line})`);
   if (rows.length === 0) findings.push("keine Paket-Tabelle gefunden");
   for (const r of rows) {
     if (r.width !== r.expected) bad(r, `${r.width} Spalten statt ${r.expected}`);
@@ -60,12 +64,31 @@ export function lint(text) {
     if (!r.Lane || r.Lane.split(/,\s*|\s*→\s*/).some((l) => !LANES.has(l))) bad(r, `Lane „${r.Lane}“ unbekannt`);
     if (NONE.test(r.Abnahme)) bad(r, "Abnahme fehlt");
     r.deps = new Set();
+    r.selfDep = false;
     for (const d of r["Hängt ab von"].match(ID_LIKE) ?? []) {
       if (!node.has(d)) bad(r, `Abhängigkeit „${d}“ ist kein Paket dieses Plans`);
       else if (node.get(d) !== rows.indexOf(r)) r.deps.add(node.get(d));
+      else r.selfDep = true;
     }
   }
-  // transitive predecessors of every row; cycles end up in the finding below
+  // dependency cycles (self-dependency included) are findings of their own
+  const state = rows.map(() => 0); // 0 new, 1 on the path, 2 done
+  const walk = (n, path) => {
+    state[n] = 1;
+    for (const d of rows[n].deps) {
+      if (state[d] === 1) {
+        const ring = [...path.slice(path.indexOf(d)), n, d];
+        bad(rows[d], `Zyklus in „Hängt ab von“: ${ring.map((x) => rows[x].parts[0] ?? rows[x].ID).join(" → ")}`);
+      } else if (state[d] === 0) walk(d, [...path, n]);
+    }
+    state[n] = 2;
+  };
+  rows.forEach((r, n) => {
+    if (r.selfDep) bad(r, `Zyklus in „Hängt ab von“: ${r.parts[0]} → ${r.parts[0]}`);
+    if (state[n] === 0) walk(n, []);
+  });
+  // transitive predecessors of every row; cycles are reported above and only
+  // have to terminate here
   const before = rows.map(() => null);
   const preds = (n, seen = new Set()) => {
     if (before[n]) return before[n];

@@ -35,8 +35,31 @@ test("lint accepts a seam chain by dependency by arrow and transitively", () => 
 });
 
 test("lint terminates on a dependency cycle", () => {
-  const cyc = HEAD + "| D-1 | x | ci | – | B | S | D-2 | x | ok |\n| D-2 | x | ci | – | B | S | D-1 | x | ok |\n";
-  assert.deepEqual(lint(cyc).findings, []);
+  const cyc = HEAD + "| D-1 | x | api | api.rs | A | S | D-2 | x | ok |\n| D-2 | x | api | api.rs | A | S | D-1 | x | ok |\n";
+  const { findings } = lint(cyc);
+  assert.equal(findings.length, 1, findings.join("\n"));
+  assert.match(findings[0], /Zyklus.*D-1.*D-2/);
+});
+
+test("lint reports a dependency 3-cycle", () => {
+  const cyc = HEAD + "| E-1 | x | ci | – | B | S | E-3 | x | ok |\n| E-2 | x | ci | – | B | S | E-1 | x | ok |\n| E-3 | x | ci | – | B | S | E-2 | x | ok |\n";
+  const { findings } = lint(cyc);
+  assert.equal(findings.length, 1, findings.join("\n"));
+  assert.match(findings[0], /Zyklus/);
+});
+
+test("lint reports a self-dependency", () => {
+  const self = HEAD + "| F-1 | x | ci | – | B | S | F-1 | x | ok |\n";
+  const { findings } = lint(self);
+  assert.equal(findings.length, 1, findings.join("\n"));
+  assert.match(findings[0], /Zyklus.*F-1/);
+});
+
+test("lint reports duplicate package ids", () => {
+  const dup = HEAD + "| G-1 | x | ci | – | B | S | – | x | ok |\n| G-1 | x | ci | – | B | S | – | x | ok |\n";
+  const { findings } = lint(dup);
+  assert.equal(findings.length, 1, findings.join("\n"));
+  assert.match(findings[0], /doppelt/);
 });
 
 test("lint reports a text without any package table", () => {
