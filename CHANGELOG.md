@@ -1,14 +1,51 @@
 # Changelog
 
-## v1.5.0 (Beta) — (Datum folgt)
-<!-- Entwurf, wird bei R-1 aktualisiert -->
+## v1.5.1 — (Datum folgt)
+
+> **Updater-Hinweis:** v1.5.0 aktualisiert automatisch auf v1.5.1 —
+> derselbe Signierschluessel, kein manueller Schritt noetig.
+
+Endversion nach der Beta v1.5.0: Fehlerbehebungen und kleine Verbesserungen,
+**keine neue Datenbank-Migration**.
+
+**Zuverlaessigkeit und Updates:**
+
+- **Update blockiert den Start nicht mehr** (PR #535, #544): Ein
+  fehlgeschlagenes oder zurueckgespieltes Update laesst die App normal
+  starten; das Update-Backup ist wiederherstellbar, und ein abgeschlossenes
+  Journal laesst das naechste Update zu.
+- **Agenten-Ausgabe geht beim Beenden nicht verloren** (PR #518, KI-30): Vor
+  dem Abschluss eines nicht zugestellten Endes werden offene Checkpoints
+  geleert.
+- **Pfadvergleich unter Windows** (PR #556): Handshake und Drain vergleichen
+  Pfade ohne Gross-/Kleinschreibungsfehler.
+- **Lessons ohne Wettlauf** (PR #537): Lessons werden nach dem Lesen erneut
+  geprueft und atomar geschrieben.
+- **Diff gegen frischere Basis** (PR #542): Ist die lokale Basis veraltet,
+  vergleicht die Diff-Ansicht gegen `origin`.
+
+**Oberflaeche:**
+
+- **Hell-Modus folgt dem System** (PR #524).
+- **Erste-Schritte-Liste** im leeren Hauptbereich (PR #526).
+- **Ruhigere Statusleiste** und kompakter Web-Interface-Eintrag (PR #501,
+  #497); der Hinweis zu offenen Entscheidungen fuehrt in die Ansicht
+  „Aufmerksamkeit“ (PR #541).
+
+**Dev-HQ:** ehrliche Restzeiten und Offline-Signale, Frische-Ampel fuer den
+Checkout (PR #495, #511, #514, #516).
+
+**Release-Sicherheit:** Release-Nachweise verlangen den vollen Commit-Hash
+(PR #539); der Updater-Drill schlaegt fehl, wenn sich die installierte Version
+nicht aendert (PR #533).
+
+## v1.5.0 (Beta) — 2026-10-05
 
 > **Updater-Hinweis:** v1.4.1 aktualisiert automatisch auf v1.5.0 —
 > derselbe Minisign-Signierschluessel, kein manueller Schritt noetig.
 
-Dieser Entwurf fasst die seit dem Neustart des oeffentlichen Repos am
+Diese Version fasst die seit dem Neustart des oeffentlichen Repos am
 25.09.2026 gemergten, nutzer- oder sicherheitsrelevanten Aenderungen zusammen.
-Der finale Umfang und das Datum folgen mit R-1.
 
 **Diese Version migriert die Datenbank bis Schema 25.** Beim ersten Start
 wird migriert; davor entsteht automatisch ein Backup
