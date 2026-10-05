@@ -247,16 +247,16 @@ export default function QueuePanel({
             </div>
           </form>
 
-          {/* The round's questions are ordinary preflight rows; the tab is
-              where they get answered, and the prompt comes back into the field
-              above once they are. */}
+          {/* The round's questions are ordinary preflight rows in the
+              Attention view; the prompt comes back into the field above once
+              they are answered. */}
           {sharpening.phase === "waiting" ? (
             <div className="sidebar-note queue-sharpen-note" aria-live="polite">
               {sharpening.open.length === 1
-                ? "Eine Rückfrage wartet im Fragen-Tab. "
-                : `${sharpening.open.length} Rückfragen warten im Fragen-Tab. `}
+                ? "Eine Rückfrage wartet. "
+                : `${sharpening.open.length} Rückfragen warten. `}
               <button type="button" className="link-button" onClick={onOpenQuestions}>
-                Beantworten
+                → Rückfragen öffnen
               </button>
               {" · "}
               <button type="button" className="link-button" onClick={sharpening.cancel}>
