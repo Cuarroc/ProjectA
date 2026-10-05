@@ -322,6 +322,34 @@ test("lesson feedback answers 5xx instead of hq_lesson_invalid when storage brea
   }
 });
 
+// Corrupts the lessons file while a slow write request is parked at its body.
+async function ioBreaksMidBody(label, buildSlow) {
+  const dir = mkdtempSync(join(tmpdir(), "hq-routes-io-lessons-"));
+  const started = spawnHq(dir);
+  try {
+    const port = await started.port;
+    const headers = { host: `127.0.0.1:${port}`, "x-hq-session": await session(port) };
+    const base = JSON.parse((await post("/__hq/lessons", { symptom: `io failure ${label} base symptom`, cause: "io mapped to 400", fix: "narrow the try block" }, headers, port)).body).lesson;
+    const slow = buildSlow(base, headers, port);
+    await slow.started;
+    writeFileSync(join(dir, "lessons.json"), "{ not json");
+    const reply = await slow.finish();
+    assert.ok(reply.status >= 500, `expected 5xx, got ${reply.status}: ${reply.body}`);
+    assert.equal(JSON.parse(reply.body).code, "hq_lessons_io_failed");
+  } finally {
+    started.child.kill();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("lesson refine answers 5xx instead of hq_lesson_invalid when storage breaks mid-body", async () => {
+  await ioBreaksMidBody("refine", (base, headers, port) => slowPost(`/__hq/lessons/${base.id}/refine`, { fix: "refine after io break", note: "io" }, headers, port));
+});
+
+test("lesson add answers 5xx instead of hq_lesson_invalid when storage breaks mid-body", async () => {
+  await ioBreaksMidBody("add", (_base, headers, port) => slowPost("/__hq/lessons", { symptom: "io failure add second symptom", cause: "io mapped to 400", fix: "narrow the try block" }, headers, port));
+});
+
 test("/__hq/lessons learns: feedback changes confidence, refine keeps history, related and brief and match answer", async () => {
   const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
   const base = { symptom: "Vite answers 504 Outdated Optimize Dep on every module", cause: "stale dependency cache", fix: "scripts/dev-fresh.cmd", tags: ["vite", "frontend"] };
