@@ -67,7 +67,8 @@ pub fn installer_not_started(phase: UpdatePhase) -> bool {
 
 /// Creates the journal at `BackupVerified` before the download. Needs the
 /// live drain facts (`require_live_evidence`); a stale journal that never
-/// reached `Installing` is replaced, a later one is left to startup recovery.
+/// reached `Installing` or a completed one (writes resumed) is replaced, any
+/// other is left to startup recovery.
 pub async fn produce_journal(
     pty: &PtyManager,
     store: &Store,
@@ -77,7 +78,7 @@ pub async fn produce_journal(
     require_live_evidence(pty, store.is_maintenance_active())?;
     if journal_store.path().exists() {
         let stale = journal_store.load().map_err(|e| e.to_string())?;
-        if !installer_not_started(stale.phase()) {
+        if !installer_not_started(stale.phase()) && !stale.can_accept_writes() {
             return Err(format!(
                 "update journal is in phase {:?}; refusing to start another update",
                 stale.phase()
@@ -401,6 +402,39 @@ mod tests {
         super::super::restore::restore_previous_runtime(journal.journal(), &action).unwrap();
         let backup = std::fs::read(crate::db_restore::update_backup_path(&database)).unwrap();
         assert_eq!(std::fs::read(&database).unwrap(), backup);
+    }
+
+    #[tokio::test]
+    async fn completed_update_does_not_block_the_next_update() {
+        let dir = TempDir::new("install-producer-after-success");
+        let (live, database, mut journal) = produced(&dir).await;
+        journal.begin_install().unwrap();
+        journal.begin_validation().unwrap();
+        let RecoveryAction::ValidateCandidate { candidate, nonce } = journal.next_action() else {
+            panic!("journal must validate the candidate");
+        };
+        let mut handshake = crate::delivery_recovery::tests::handshake();
+        handshake.binary.path = candidate.binary.path;
+        handshake.binary.version = "1.5.0".into();
+        handshake.database.path = candidate.database.path;
+        handshake.nonce = nonce;
+        journal.accept_handshake(&handshake).unwrap();
+        // Installed but writes not yet resumed: still startup recovery's job.
+        let exe = dir.path().join("app");
+        let next = announced(&exe, &database);
+        let error = produce_journal(&frozen(), &live, store(&dir), &next)
+            .await
+            .unwrap_err();
+        assert!(error.contains("Installed"), "{error}");
+        journal
+            .resume_writes(WriteResumption {
+                evidence_id: "resume".into(),
+            })
+            .unwrap();
+        let journal = produce_journal(&frozen(), &live, store(&dir), &next)
+            .await
+            .unwrap();
+        assert_eq!(journal.journal().phase(), UpdatePhase::BackupVerified);
     }
 
     #[test]
