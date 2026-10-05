@@ -90,7 +90,7 @@ export function useProviderOverview(pollMs = 0): ProviderSnapshot {
     try {
       const next = await getProviderOverview();
       if (!aliveRef.current) return;
-      setProviders(next);
+      setProviders(Array.isArray(next) ? next : []);
       setError(null);
     } catch (err) {
       if (!aliveRef.current) return;

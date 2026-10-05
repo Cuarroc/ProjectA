@@ -102,4 +102,28 @@ describe("App bootstrap", () => {
     fireEvent.click(screen.getByRole("button", { name: "Erneut versuchen" }));
     await waitFor(() => expect(invokeCalls("list_projects")).toBe(2));
   });
+  it("shows the first-run checklist with the missing agent when nothing is connected", async () => {
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "list_projects" || command === "list_agent_profiles") return Promise.resolve([]);
+      if (command === "list_workers" || command === "list_questions") return Promise.resolve([]);
+      if (command === "get_board_state") return Promise.resolve({ cards: [], coordinators: [] });
+      if (command === "get_provider_overview") {
+        return Promise.resolve([
+          { id: "claude", name: "Claude Code", kind: "subscription", connected: false, detail: null },
+        ]);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+    const list = await screen.findByRole("list", { name: "Erste Schritte" });
+    expect(list.querySelectorAll("li")).toHaveLength(3);
+    const agentStep = screen.getByText("Ein Agent ist bereit").closest("li");
+    await waitFor(() => expect(agentStep).toHaveTextContent("Nicht gefunden: Claude Code"));
+    expect(agentStep).toHaveAttribute("data-done", "false");
+    expect(screen.getByText("Projekt anlegen (ein Git-Ordner)").closest("li")).toHaveAttribute("data-done", "false");
+    expect(screen.getByRole("button", { name: "Ad-hoc-Sitzung" })).toBeInTheDocument();
+  });
 });
