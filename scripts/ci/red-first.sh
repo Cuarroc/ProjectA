@@ -227,7 +227,7 @@ if [ -n "$COMMIT_MSG_FILE" ]; then
     fi
     if [[ "$spec" == *::* ]]; then
       name="${spec##*::}"
-      if ! git show ":${path}" 2>/dev/null | grep -qF -- "$name"; then
+      if ! git show ":${path}" 2>/dev/null | grep -F -- "$name" >/dev/null; then
         echo "red-first: test '$name' does not occur in $path ($spec)" >&2; exit 1
       fi
     fi
