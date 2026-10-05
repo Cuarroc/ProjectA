@@ -8,6 +8,9 @@ rem   scripts\release.cmd 1.1.0 "Kurzbeschreibung des Releases"
 rem
 rem Voraussetzung: sauberer Arbeitsbaum auf main, Gates vorher lokal gelaufen
 rem (der pre-push Hook laeuft ohnehin nochmal).
+rem Checkliste je Version: README: Version, Status aktualisieren.
+rem Die Zeile "App-Version" in README.md zieht dieses Skript selbst nach
+rem (scripts/lib/readme-version.test.mjs prueft sie); "Veroeffentlicht" nach dem Release in einem eigenen kleinen PR anpassen.
 
 setlocal enabledelayedexpansion
 set "V=%~1"
@@ -26,12 +29,15 @@ powershell -NoProfile -Command "(Get-Content src-tauri/Cargo.toml -Raw) -replace
 rem --- package.json ---
 powershell -NoProfile -Command "(Get-Content package.json -Raw) -replace '\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"', '\"version\": \"%V%\"' | Set-Content package.json -NoNewline"
 
+rem --- README.md: Zeile "App-Version" (node statt powershell: UTF-8 mit Umlauten; Exit 1, wenn die Zeile fehlt) ---
+node scripts/lib/readme-version-bump.mjs README.md %V% || (echo README: Zeile App-Version fehlt & exit /b 1)
+
 rem --- CHANGELOG-Zeile ---
 if not "%NOTES%"=="" (
   powershell -NoProfile -Command "$c = Get-Content CHANGELOG.md -Raw; $d = Get-Date -Format yyyy-MM-dd; $c = $c -replace '(?m)^# Changelog', (\"# Changelog`r`n`r`n## v%V% - $d`r`n`r`n- %NOTES%\"); Set-Content CHANGELOG.md $c -NoNewline"
 )
 
-git add src-tauri/tauri.conf.json src-tauri/Cargo.toml package.json CHANGELOG.md
+git add src-tauri/tauri.conf.json src-tauri/Cargo.toml package.json CHANGELOG.md README.md
 git commit -m "chore(release): v%V%" || exit /b 1
 
 rem --- Lockfile nachziehen (Version steht auch dort) ---
