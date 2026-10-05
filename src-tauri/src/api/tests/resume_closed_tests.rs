@@ -24,10 +24,25 @@ async fn state(pool: &sqlx::SqlitePool) -> String {
     out.join("\n")
 }
 
+/// Drop every wall-clock `observedAt` (host admission samples the clock on
+/// each read, so it moves when a second boundary passes between two reads).
+fn without_clock(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            map.remove("observedAt");
+            map.values_mut().for_each(without_clock);
+        }
+        Value::Array(items) => items.iter_mut().for_each(without_clock),
+        _ => {}
+    }
+}
+
 /// The real context: the journal cursor and the runtime capabilities.
 fn context(store: &crate::store::Store, project: &str) -> (i64, Value, String) {
     let ctx = tauri::async_runtime::block_on(store.continuous_context(project, 0)).unwrap();
-    (ctx.cursor, ctx.effective_limits, ctx.control.status)
+    let mut limits = ctx.effective_limits;
+    without_clock(&mut limits);
+    (ctx.cursor, limits, ctx.control.status)
 }
 
 fn serve(store: &crate::store::Store, dir: &Path) -> ApiServer {
