@@ -1264,6 +1264,11 @@ async fn prepare_and_install(
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let database = dir.join("projecta.db");
     let manifest = update.raw_json.to_string();
+    // The journal binds the bytes `install` will receive, so download first.
+    let bytes = update
+        .download(|_, _| {}, || {})
+        .await
+        .map_err(|error| error.to_string())?;
     let journal = delivery_recovery::produce_journal(
         &app.state::<PtyManager>(),
         &app.state::<Store>(),
@@ -1272,22 +1277,23 @@ async fn prepare_and_install(
             exe: &exe,
             database: &database,
             version: &update.version,
-            signature: &update.signature,
+            bytes: &bytes,
             manifest: &manifest,
         },
     )
     .await?;
-    let bytes = update
-        .download(|_, _| {}, || {})
-        .await
-        .map_err(|error| error.to_string())?;
     let (app, update) = (app.clone(), update.clone());
     tauri::async_runtime::spawn_blocking(move || {
+        let staged = delivery_recovery::Staged {
+            bytes: &bytes,
+            version: &update.version,
+        };
         delivery_recovery::install_through_journal(
             &app.state::<PtyManager>(),
             app.state::<Store>().is_maintenance_active(),
             journal,
-            || update.install(&bytes).map_err(|error| error.to_string()),
+            staged,
+            |bytes| update.install(bytes).map_err(|error| error.to_string()),
         )
     })
     .await

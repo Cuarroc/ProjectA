@@ -20,13 +20,13 @@ use std::path::Path;
 
 type Fx<T> = std::result::Result<T, String>;
 
-/// What the updater announces before any byte is downloaded. The staged bytes
-/// are not bound to it yet (W3-02h): the signature stands in for them.
+/// What the updater announces and the exact bytes `update.install` will
+/// receive: the journal's artifact digest is the digest of `bytes`.
 pub struct Announced<'a> {
     pub exe: &'a Path,
     pub database: &'a Path,
     pub version: &'a str,
-    pub signature: &'a str,
+    pub bytes: &'a [u8],
     pub manifest: &'a str,
 }
 
@@ -87,7 +87,7 @@ pub async fn produce_journal(
     let snapshot = snapshot_database(store, &backup_path).await?;
     let database = identity(announced.database, "sqlite", snapshot.sha256.clone());
     let exe = std::fs::read(announced.exe).map_err(|e| format!("read installed binary: {e}"))?;
-    let signed = sha_hex(announced.signature.as_bytes());
+    let signed = sha_hex(announced.bytes);
     let staged = StagedManifestIdentity {
         manifest_sha256: sha_hex(announced.manifest.as_bytes()),
         signed_artifact_sha256: signed.clone(),
@@ -154,15 +154,41 @@ fn require_live_evidence(pty: &PtyManager, store_write_block: bool) -> Fx<()> {
     Ok(())
 }
 
+/// The updater object about to be installed: its bytes and announced version.
+#[derive(Clone, Copy)]
+pub struct Staged<'a> {
+    pub bytes: &'a [u8],
+    pub version: &'a str,
+}
+
+/// Refuses unless these bytes and this version are the journal's candidate.
+fn require_staged_matches(staged: Staged<'_>, manifest: &StagedManifestIdentity) -> Fx<()> {
+    if staged.version != manifest.candidate_version {
+        return Err(format!(
+            "updater version {} differs from the journal's candidate {}; refusing to install",
+            staged.version, manifest.candidate_version
+        ));
+    }
+    if sha_hex(staged.bytes) != manifest.signed_artifact_sha256 {
+        return Err(
+            "updater bytes differ from the journal's artifact digest; refusing to install".into(),
+        );
+    }
+    Ok(())
+}
+
 /// Refuses unless every precondition of the installer is observed now.
 pub fn require_install_evidence(
     pty: &PtyManager,
     store_write_block: bool,
     journal: &DurableJournal,
+    staged: Staged<'_>,
 ) -> Fx<()> {
     require_live_evidence(pty, store_write_block)?;
     match journal.next_action() {
-        RecoveryAction::InstallCandidate { .. } => Ok(()),
+        RecoveryAction::InstallCandidate {
+            staged_manifest, ..
+        } => require_staged_matches(staged, &staged_manifest),
         _ => Err(format!(
             "update journal is in phase {:?}, without drain and backup evidence; refusing to install",
             journal.journal().phase()
@@ -176,27 +202,29 @@ pub fn install_through_journal(
     pty: &PtyManager,
     store_write_block: bool,
     journal: DurableJournal,
-    install: impl FnOnce() -> Fx<()>,
+    staged: Staged<'_>,
+    install: impl FnOnce(&[u8]) -> Fx<()>,
 ) -> Fx<()> {
-    require_install_evidence(pty, store_write_block, &journal)?;
-    let mut driver = RecoveryDriver::new(journal, InstallOnly(Some(install)));
+    require_install_evidence(pty, store_write_block, &journal, staged)?;
+    let mut driver = RecoveryDriver::new(journal, InstallOnly(Some(install), staged));
     pty.install_in_maintenance(|| driver.step().map(|_| ()).map_err(|error| error.to_string()))
 }
 
 /// Only `install` is driven here; every later step belongs to the restart
 /// validation, so the other effects refuse.
-struct InstallOnly<F>(Option<F>);
+struct InstallOnly<'a, F>(Option<F>, Staged<'a>);
 
 fn not_here<T>() -> Fx<T> {
     Err("not part of the install step".into())
 }
 
-impl<F: FnOnce() -> Fx<()>> RecoveryEffects for InstallOnly<F> {
+impl<F: FnOnce(&[u8]) -> Fx<()>> RecoveryEffects for InstallOnly<'_, F> {
     fn verify_backup(&mut self) -> Fx<VerifiedBackup> {
         not_here()
     }
-    fn install(&mut self, _: &FileIdentity, _: &StagedManifestIdentity) -> Fx<()> {
-        (self.0.take().ok_or("installer already consumed")?)()
+    fn install(&mut self, _: &FileIdentity, manifest: &StagedManifestIdentity) -> Fx<()> {
+        require_staged_matches(self.1, manifest)?;
+        (self.0.take().ok_or("installer already consumed")?)(self.1.bytes)
     }
     fn validate(&mut self, _: &RuntimeIdentity, _: &str) -> Fx<InstanceHandshake> {
         not_here()
@@ -228,12 +256,28 @@ mod tests {
         (Store::open(&path).await.unwrap(), path)
     }
 
+    const BYTES: &[u8] = b"updater-bytes";
+
+    fn staged(bytes: &[u8]) -> Staged<'_> {
+        Staged {
+            bytes,
+            version: "1.4.0",
+        }
+    }
+
+    /// The test offer, bound to `BYTES`.
+    fn bound_offer() -> crate::delivery_recovery::UpdateOffer {
+        let mut offer = offer();
+        offer.staged_manifest.signed_artifact_sha256 = sha_hex(BYTES);
+        offer
+    }
+
     fn announced<'a>(exe: &'a Path, database: &'a Path) -> Announced<'a> {
         Announced {
             exe,
             database,
             version: "1.5.0",
-            signature: "sig",
+            bytes: BYTES,
             manifest: "{}",
         }
     }
@@ -251,12 +295,47 @@ mod tests {
         assert_eq!(journal.journal().phase(), UpdatePhase::BackupVerified);
         let reopened = DurableJournal::open(store(&dir)).unwrap();
         assert_eq!(reopened.journal().phase(), UpdatePhase::BackupVerified);
-        require_install_evidence(&frozen(), true, &reopened).unwrap();
+        let RecoveryAction::InstallCandidate {
+            staged_manifest, ..
+        } = reopened.next_action()
+        else {
+            panic!("journal must be ready to install");
+        };
+        assert_eq!(staged_manifest.signed_artifact_sha256, sha_hex(BYTES));
+        let bound = Staged {
+            bytes: BYTES,
+            version: "1.5.0",
+        };
+        require_install_evidence(&frozen(), true, &reopened, bound).unwrap();
         assert!(database.with_extension("update-backup").exists());
         // A leftover pre-install journal is replaced, not a permanent refusal.
         produce_journal(&frozen(), &live, store(&dir), &announced(&exe, &database))
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn journal_carries_the_digest_of_the_exact_updater_bytes() {
+        let dir = TempDir::new("install-producer-digest");
+        let (live, database) = live_db(&dir).await;
+        live.enter_maintenance().await.unwrap();
+        let exe = dir.path().join("app");
+        std::fs::write(&exe, b"binary").unwrap();
+        let mut offer = announced(&exe, &database);
+        offer.manifest = "manifest-not-the-bytes";
+        let journal = produce_journal(&frozen(), &live, store(&dir), &offer)
+            .await
+            .unwrap();
+        let RecoveryAction::InstallCandidate {
+            candidate,
+            staged_manifest,
+        } = journal.next_action()
+        else {
+            panic!("journal must be ready to install");
+        };
+        assert_eq!(candidate.sha256, sha_hex(BYTES));
+        assert_eq!(staged_manifest.signed_artifact_sha256, sha_hex(BYTES));
+        assert_ne!(staged_manifest.manifest_sha256, sha_hex(BYTES));
     }
 
     #[tokio::test]
@@ -303,8 +382,10 @@ mod tests {
     /// Journal at `BackupVerified` unless a step is left out.
     fn journal(dir: &TempDir, with_drain: bool, with_backup: bool) -> DurableJournal {
         let mut journal =
-            DurableJournal::create(store(dir), UpdateJournal::new(offer()).unwrap()).unwrap();
-        journal.record_downloaded(&offer().staged_manifest).unwrap();
+            DurableJournal::create(store(dir), UpdateJournal::new(bound_offer()).unwrap()).unwrap();
+        journal
+            .record_downloaded(&bound_offer().staged_manifest)
+            .unwrap();
         journal.wait_for_idle().unwrap();
         if with_drain {
             journal.enter_maintenance(proof()).unwrap();
@@ -323,7 +404,7 @@ mod tests {
 
     fn refused(pty: &PtyManager, write_block: bool, journal: DurableJournal) -> String {
         let calls = Cell::new(0);
-        let error = install_through_journal(pty, write_block, journal, || {
+        let error = install_through_journal(pty, write_block, journal, staged(BYTES), |_| {
             calls.set(calls.get() + 1);
             Ok(())
         })
@@ -353,14 +434,52 @@ mod tests {
     }
 
     #[test]
+    fn install_refuses_updater_bytes_whose_digest_or_version_differ_from_the_journal() {
+        for (i, other) in [
+            staged(b"candidate-b-bytes"),
+            Staged {
+                bytes: BYTES,
+                version: "1.9.9",
+            },
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let dir = TempDir::new(&format!("install-gate-bind-{i}"));
+            let error = {
+                let calls = Cell::new(0);
+                let journal = journal(&dir, true, true);
+                let error = install_through_journal(&frozen(), true, journal, other, |_| {
+                    calls.set(calls.get() + 1);
+                    Ok(())
+                })
+                .unwrap_err();
+                assert_eq!(calls.get(), 0, "{error}");
+                error
+            };
+            assert!(error.contains("differ"), "{error}");
+            // Refused before `begin_install`: the journal still waits to install.
+            let reopened = DurableJournal::open(store(&dir)).unwrap();
+            assert_eq!(reopened.journal().phase(), UpdatePhase::BackupVerified);
+        }
+    }
+
+    #[test]
     fn production_install_persists_installing_then_runs_the_installer_once() {
         let dir = TempDir::new("install-gate-ok");
         let pty = frozen();
         let calls = Cell::new(0);
-        install_through_journal(&pty, true, journal(&dir, true, true), || {
-            calls.set(calls.get() + 1);
-            Ok(())
-        })
+        install_through_journal(
+            &pty,
+            true,
+            journal(&dir, true, true),
+            staged(BYTES),
+            |bytes| {
+                assert_eq!(bytes, BYTES);
+                calls.set(calls.get() + 1);
+                Ok(())
+            },
+        )
         .unwrap();
         assert_eq!(calls.get(), 1);
         let reopened = DurableJournal::open(store(&dir)).unwrap();
