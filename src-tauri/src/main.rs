@@ -1133,6 +1133,11 @@ fn list_live_sessions(pty: State<'_, PtyManager>) -> Result<Vec<String>, String>
 
 /// How long a maintenance request waits for owned sessions to finish.
 const MAINTENANCE_DRAIN_WAIT: Duration = Duration::from_secs(10);
+/// Upper bound for the update download, which runs while the app is frozen in
+/// maintenance. The updater's own request timeout is fixed when the update is
+/// checked (`UpdaterBuilder::timeout`, tauri-plugin-updater `updater.rs`) and
+/// is unset by default, so it cannot be relied on here.
+const UPDATE_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
 /// Drain, then reserve the database. New launches are frozen first; a session
 /// that outlives `wait` refuses maintenance by name and changes nothing.
@@ -1255,6 +1260,24 @@ fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Res
     }
 }
 
+/// Bound a download so a stalled network returns an error instead of keeping
+/// the app frozen; the caller's thaw path then runs.
+async fn bounded_download<F, E: std::fmt::Display>(
+    download: F,
+    limit: Duration,
+) -> Result<Vec<u8>, String>
+where
+    F: std::future::Future<Output = Result<Vec<u8>, E>>,
+{
+    match tokio::time::timeout(limit, download).await {
+        Ok(result) => result.map_err(|error| error.to_string()),
+        Err(_) => Err(format!(
+            "Update download timed out after {} seconds",
+            limit.as_secs()
+        )),
+    }
+}
+
 async fn prepare_and_install(
     app: &AppHandle,
     update: &tauri_plugin_updater::Update,
@@ -1271,10 +1294,11 @@ async fn prepare_and_install(
         .try_install_lease()
         .map_err(|error| error.to_string())?;
     // The journal binds the bytes `install` will receive, so download first.
-    let bytes = update
-        .download(|_, _| {}, || {})
-        .await
-        .map_err(|error| error.to_string())?;
+    let bytes = bounded_download(
+        async { update.download(|_, _| {}, || {}).await },
+        UPDATE_DOWNLOAD_TIMEOUT,
+    )
+    .await?;
     let journal = delivery_recovery::produce_journal(
         &app.state::<PtyManager>(),
         &app.state::<Store>(),
@@ -4114,6 +4138,44 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn stalled_download_times_out_with_an_error() {
+        let stalled = std::future::pending::<Result<Vec<u8>, String>>();
+        let outcome = tokio::time::timeout(
+            Duration::from_secs(5),
+            crate::bounded_download(stalled, Duration::from_millis(20)),
+        )
+        .await
+        .expect("bounded_download must return on its own");
+        assert!(outcome.unwrap_err().contains("timed out"));
+    }
+
+    #[tokio::test]
+    async fn finished_download_passes_bytes_and_errors_through() {
+        let ok = async { Ok::<_, String>(vec![1, 2]) };
+        assert_eq!(
+            crate::bounded_download(ok, Duration::from_secs(5)).await,
+            Ok(vec![1, 2])
+        );
+        let failed = async { Err::<Vec<u8>, _>("boom".to_string()) };
+        assert_eq!(
+            crate::bounded_download(failed, Duration::from_secs(5)).await,
+            Err("boom".to_string())
+        );
+    }
+
+    /// The download runs before `produce_journal` (`prepare_and_install`), so at
+    /// a timeout no journal exists or one at most at `BackupVerified`; either
+    /// way `install_update_when_idle` takes the thaw branch via
+    /// `installer_not_started`.
+    #[test]
+    fn download_time_journal_phases_take_the_thaw_path() {
+        use crate::delivery_recovery::{installer_not_started, UpdatePhase};
+        assert!(installer_not_started(UpdatePhase::Maintenance));
+        assert!(installer_not_started(UpdatePhase::BackupVerified));
+        assert!(!installer_not_started(UpdatePhase::Installing));
+    }
+
     #[test]
     fn failed_thaw_does_not_hide_the_update_error() {
         let both =
