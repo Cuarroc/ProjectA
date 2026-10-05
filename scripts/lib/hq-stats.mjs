@@ -1,12 +1,14 @@
 // Repository statistics for the HQ. Pure over injected inputs (git output,
 // file lists, snapshot) so tests do not need a repository.
 
-/// `git log --since=<n> days --format=%ad --date=short` output → daily counts,
-/// oldest first, every day present (zeros included).
+/// `git log --since=<n> days --format=%at` output (epochs; ISO days also work)
+/// → daily UTC counts, oldest first, every day present (zeros included).
 export function commitsPerDay(logOutput, days = 14, today = new Date()) {
   const counts = new Map();
   for (const line of String(logOutput || "").split(/\r?\n/)) {
-    const day = line.trim();
+    let day = line.trim();
+    // `%at` epochs are bucketed in UTC; `--date=short` would use the author's zone.
+    if (/^\d{9,}$/.test(day)) day = new Date(Number(day) * 1000).toISOString().slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(day)) counts.set(day, (counts.get(day) || 0) + 1);
   }
   const series = [];
@@ -75,4 +77,15 @@ export function fleetStats(board) {
     }
   }
   return { workers: (board || []).length, columns, contextPercent: ctxTotal ? Math.round((ctxUsed / ctxTotal) * 100) : null };
+}
+
+/// Remaining-work estimate from the number of startable specs. `null` means the
+/// snapshot is unknown: no hours are shown instead of an invented minimum.
+export function remainingEstimate(remainingSpecs) {
+  if (!Number.isInteger(remainingSpecs)) {
+    return { hours: null, label: "unknown", basis: "no specification snapshot available; no estimate is shown" };
+  }
+  const hours = remainingSpecs * 4;
+  const label = hours === 0 ? "nothing remaining" : hours < 8 ? "under one focused day" : `${Math.ceil(hours / 8)} focused days`;
+  return { hours, label, basis: "heuristic: 4 focused hours per startable specification; excludes blocked/serial wait time" };
 }

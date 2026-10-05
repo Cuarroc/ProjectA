@@ -444,7 +444,7 @@
           ${metric(analysis.lines.code.toLocaleString(), "lines of code", `${analysis.files.code} source files`)}
           ${metric(analysis.lines.source.toLocaleString(), "source lines", `${analysis.files.source} tracked source assets`)}
           ${metric(`${analysis.progress.percent}%`, "package progress", `${analysis.progress.packagesDone}/${analysis.progress.packagesTotal} packages complete`)}
-          ${metric(analysis.estimate.label, "estimated remaining", `${analysis.estimate.hours}h · heuristic`)}
+          ${metric(analysis.estimate.label, "estimated remaining", analysis.estimate.hours == null ? "no estimate" : `${analysis.estimate.hours}h · heuristic`)}
           ${metric(analysis.commitsLast30Days, "commits / 30 days", "repository throughput")}
         </div>
         <div class="analysis-progress"><span style="width:${Math.min(100, Math.max(0, analysis.progress.percent))}%"></span></div>
@@ -1301,6 +1301,7 @@
     done: ["done", "done"],
     in_progress: ["active", "in progress"],
     pr: ["active", "PR open"],
+    blocked: ["blocked", "blocked"],
     open: ["waiting", "open"],
   };
 
