@@ -43,7 +43,8 @@
     "dev:spec-close": "node scripts/dev/spec-close.mjs",
     "dev:hygiene": "node scripts/dev/hygiene.mjs",
     "dev:start-check": "node scripts/dev/start-check.mjs",
-    "dev:bench-weekly": "node scripts/dev/bench-weekly.mjs"
+    "dev:bench-weekly": "node scripts/dev/bench-weekly.mjs",
+    "dev:plan-lint": "node scripts/dev/plan-lint.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.0",
