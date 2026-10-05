@@ -436,7 +436,7 @@ run bash "$RUN" --models Llama3:8b,llama3:8b --out-dir "$tmp/o19"
 sent_after="$(grep -ci '^llama3:8b|' "$tmp/requests.log" 2>/dev/null)"
 if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q "Protokolldatei" \
   && [ "$sent_before" = "$sent_after" ] && [ ! -e "$tmp/o19/review_prompt_${label}.md" ] \
-  && ! ls "$tmp/o19"/review_"${label}"_*lama3-8b.md > /dev/null 2>&1; then
+  && ! ls "$tmp/o19/review_${label}_"*lama3-8b.md > /dev/null 2>&1; then
   ok "Llama3:8b und llama3:8b kollidieren auf NTFS/APFS: Exit 2, kein Prompt, kein Versand, kein Protokoll"
 else
   bad "Gross-/Kleinschreibungs-Kollision: rc=$rc gesendet $sent_before->$sent_after"; echo "$out"; ls "$tmp/o19" 2>&1

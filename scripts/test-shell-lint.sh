@@ -48,6 +48,11 @@ expect crlf-tracked-tree 0 bash "$LINT" crlf
 if command -v shellcheck > /dev/null 2>&1; then
   expect shellcheck-clean 0 bash "$LINT" shellcheck "$tmp/clean.sh"
   expect shellcheck-detects-finding 1 bash "$LINT" shellcheck "$tmp/bad.sh"
+  # SC2154 (var referenced but never assigned) must not be excluded repo-wide.
+  printf '#!/usr/bin/env bash\necho "$undefined_var"\n' > "$tmp/sc2154.sh"
+  printf '#!/usr/bin/env bash\n# shellcheck disable=SC2154 # assigned elsewhere\necho "$undefined_var"\n' > "$tmp/sc2154-inline.sh"
+  expect shellcheck-detects-sc2154 1 bash "$LINT" shellcheck "$tmp/sc2154.sh"
+  expect shellcheck-inline-disable-passes 0 bash "$LINT" shellcheck "$tmp/sc2154-inline.sh"
   expect shellcheck-tracked-tree 0 bash "$LINT" shellcheck
 else
   echo "SKIPPED shellcheck cases: shellcheck not installed"
