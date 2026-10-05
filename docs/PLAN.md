@@ -119,7 +119,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | offen |
 | ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
-| R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen belegt sind (Nutzer 04.10.) | S | N + doc | offen |
+| R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | offen |
 
 ### M4 — Dauerbetrieb abgenommen, v1.5.0
 
@@ -160,6 +160,10 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | M4-R19-05 | Vollständige Audit-Envelopes für Delivery-Start/-Enqueue und W1-03f done/blocked mit Erfolg und Ablehnung (Matrixzeile 19) | S | st | offen |
 | M4-R19-06 | Vollständige Audit-Envelopes für Not-Aus an/aus und Barrier-/Store-Fehler (Matrixzeile 19) | S | st | offen |
 | M4-R19-08 | Vollständige Audit-Envelopes für Planungs-Autorisierungsablehnungen und Planungs-Schreibvorgänge (Matrixzeile 19) | S | api | offen |
+| M4-R27-01 | Readiness für App-Release und Continuous-Release getrennt ausweisen (E20) | S | scripts | ✓ #372 |
+| M4-R27-02 | Release-Attestierung für den App-Release prüfen, ohne Continuous freizugeben (E20) | S | scripts | ✓ #398 |
+| M4-R27-03 | Matrixzeilen 18 und 27 an den menschlich kontrollierten App-Release-Pfad anpassen (E20) | S | doc | offen |
+| M4-R27-04 | Store-Test: Continuous-Integrationsstufe wird bei `approval_eligible = 0` abgewiesen | S | st | offen |
 
 ### M5 — Aufräumen und erste Tester (nach v1.5.0)
 
