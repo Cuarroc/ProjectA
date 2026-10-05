@@ -81,6 +81,7 @@ for lane in $LANES; do
   eval "soll=\$pflicht_$lane"
   ist="$(bash scripts/ci/gates.sh --list "$lane")"
   fehlend=""
+  # shellcheck disable=SC2154 # soll is assigned by the eval above
   for pflicht in $soll; do
     printf '%s\n' "$ist" | grep -qx "$pflicht" || fehlend="$fehlend $pflicht"
   done
