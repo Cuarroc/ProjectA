@@ -117,6 +117,9 @@ impl Activation {
         if prior.is_some() {
             return Err(ActivationRefusal::AlreadyEnabled);
         }
+        // The stop is not re-checked after this write: dispatch writes are guarded
+        // by the emergency-stop triggers in the store, so a stop that latches now
+        // still blocks every use of the permit.
         store
             .set_setting(ENABLED_REVISION_KEY, &requested.to_string())
             .await
@@ -166,7 +169,7 @@ mod tests {
     async fn activation_refuses_missing_or_wrong_verdict_token() {
         let (_dir, store) = store("activation-token").await;
         let activation = Activation::default();
-        for given in ["", "wrong", "tok-and-more"] {
+        for given in ["", "wrong", "tok-and-more", "t0k", "toK"] {
             let refusal = activation
                 .enable(&store, &Unlocked(1), "tok", given, 1)
                 .await
