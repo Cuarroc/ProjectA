@@ -233,7 +233,7 @@ those `conflict`): merge, never rebase or force-push.
   satisfies the check, so an open package PR must add the section.
   Docs/infra branches (`claude/plan-01-…`, `claude/ci-03-…`)
   are not packages but use the same PR shape.
-- **Red `main`:** the queue stops; the coordinator puts `do-not-merge` on
+- **Red `main`:** the queue stops (until CI-04 automates it); the coordinator puts `do-not-merge` on
   queued PRs, records the run ID in `KNOWN_ISSUES.md` and fixes `main` first.
 - `gates (windows)` never runs its lane on an ordinary PR (CI-03): it reports a
   stub success; the first Windows verdict is the merge-queue run. Never merge

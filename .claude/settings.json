@@ -46,8 +46,10 @@
       "PowerShell(git worktree list)"
     ],
     "deny": [
-      "Read(./target/**)",
-      "Read(./node_modules/**)",
+      "Read(**/target/**)",
+      "Read(**/target-red-first-base/**)",
+      "Read(**/target-red-first-head/**)",
+      "Read(**/node_modules/**)",
       "Read(./.pa/archiv/**)"
     ]
   },

@@ -132,11 +132,19 @@ siehe [permissions-proposal.md](permissions-proposal.md).
 7. Niemand hat `@Mergifyio queue` kommentiert — siehe „Einreihen ist ein
    eigener Schritt" oben.
 
-## Lane-Plan im Detail (aus AGENTS.md hierher verschoben)
+## Lane-Plan im Detail (aus AGENTS.md hierher verschoben; Windows-Stub wiederhergestellt)
 
 Quelle: `scripts/ci/lane-plan.sh` (CI-01/CI-02/CI-03). Die Jobs melden immer,
 dürfen ihre Lane aber überspringen und loggen den Grund.
 
+- **`gates (windows)` auf einem PR** (CI-03) führt seine Lane nie aus: der Job
+  meldet Erfolg von einem Ubuntu-Runner und loggt die Windows-Eingänge, die der
+  PR geändert hat. Das erste Windows-Urteil ist der Queue-Lauf; scheitert er
+  dort, fliegt der PR aus der Queue. Früher: `ci`-Workflow per
+  `workflow_dispatch` auf dem Branch (beide Lanes voll). Nie an der Queue
+  vorbei mergen (Merge-Button, Admin-Merge): der Stub war grün, der PR erreicht
+  `main` ungetestet auf Windows, der Push auf `main` fährt die volle Lane erst
+  nachträglich.
 - **`gates (linux)` auf einem PR** überspringt nur bei Doku, die kein Gate
   liest: `.md` im Root, unter `docs/` oder `.pa/`, außer `STAND.md`,
   `.pa/task_*`, `.pa/report_f0*.md`, `docs/PLAN.md`, `docs/agents-json.md`,
