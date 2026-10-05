@@ -8,6 +8,8 @@ on:
   schedule:
     - cron: "17 5 * * 1" # Mondays 05:17 UTC
   workflow_dispatch:
+  push: # TEMP-PROOF: remove before merge
+    branches: [claude/w16-bench-02-weekly-wf]
 
 permissions:
   contents: read
