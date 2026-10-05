@@ -1332,6 +1332,11 @@ code {
   color: var(--ink-3);
 }
 
+.package-state.blocked {
+  color: var(--ember-text);
+  font-weight: 600;
+}
+
 .dag-svg.mini .dag-label {
   font-size: 8px;
 }

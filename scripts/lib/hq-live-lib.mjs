@@ -202,3 +202,25 @@ export function mergeProfileViews(builtins, overrides) {
   }
   return merged;
 }
+
+/// Largest request body any HQ endpoint accepts (profiles and insight contexts are small JSON).
+export const MAX_BODY_BYTES = 1024 * 1024;
+
+/// Collect a request body, rejecting with `hq_body_too_large` once it passes `maxBytes`.
+export function readLimited(req, maxBytes = MAX_BODY_BYTES) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        chunks.length = 0;
+        reject(Object.assign(new Error(`request body exceeds ${maxBytes} bytes`), { code: "hq_body_too_large" }));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
