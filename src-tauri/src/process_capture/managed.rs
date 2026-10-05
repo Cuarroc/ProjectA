@@ -135,9 +135,9 @@ mod tests {
             .join("pa-capture-host.exe");
         let hash = format!("{:x}", Sha256::digest(std::fs::read(&host).unwrap()));
         let dir = crate::testutil::TempDir::new("native-undelivered-drain");
-        // Larger than the anonymous pipe buffer, so delivery cannot succeed
-        // without the provider reading it.
-        let input = vec![b'x'; 8192];
+        // The protocol maximum (1 MiB), far above any anonymous pipe buffer, so
+        // delivery cannot succeed without the provider reading it.
+        let input = vec![b'x'; protocol::MAX_INPUT];
         let binding = protocol::Binding {
             run_id: "run-ki30".into(),
             session_id: "session-ki30".into(),

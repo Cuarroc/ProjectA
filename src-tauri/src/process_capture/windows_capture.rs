@@ -2243,6 +2243,9 @@ fn execute_host_inner(
         return Err("native host receipt checkpoint unconfirmed".into());
     }
     match receiver.finish_settlement()? {
+        // Completed needs the receipt acknowledged above; the host waits for
+        // each checkpoint ack before the next, so none is still pending here.
+        // Error returns go to reconciliation, where a dropped gate is only noise.
         crate::host_events::Settlement::Completed(reply) if !undelivered => {
             Ok(HostSettlement::Completed(captured.identity, reply))
         }
