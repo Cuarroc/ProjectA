@@ -126,8 +126,11 @@ pub fn worktree_of(worker: &Worker) -> Result<&str, String> {
 ///
 /// The base is the merge path's base (`gh::default_base_branch`), and both it
 /// and `HEAD` are pinned to SHAs before anything is read: every git call below
-/// works on exactly these object ids, so the diff lines and the merge-tree
-/// tuple always come from one and the same snapshot (review r5, TOCTOU).
+/// works on exactly these object ids (review r5, TOCTOU). The pinned local base
+/// feeds the merge-tree tuple, because the merge and approval paths
+/// (`workers.rs`) measure the local base and compare the verdict's tuple with
+/// it. Only the displayed files and stat may use a fresher `origin/<base>`
+/// (see `fresher_remote_base`); the tuple and `HEAD` stay one pinned snapshot.
 pub fn worker_diff(repo_path: &str, worktree_path: &str) -> Result<WorkerDiff, String> {
     let base_branch = crate::gh::default_base_branch(repo_path);
     let base_sha = git(worktree_path, ["rev-parse", &base_branch])?;
@@ -158,6 +161,8 @@ pub fn worker_diff(repo_path: &str, worktree_path: &str) -> Result<WorkerDiff, S
 /// otherwise count everything that landed upstream since as the worker's own
 /// work (drill 2026-10-05: 377 files for a 6-file PR). The merge-tree tuple
 /// keeps the local base, because that is what the merge path measures.
+/// Only the remote named `origin` is consulted; other remotes keep the old
+/// behaviour (local base).
 fn fresher_remote_base(worktree_path: &str, base_branch: &str, local_sha: &str) -> String {
     let remote_ref = format!("refs/remotes/origin/{base_branch}");
     let Ok(remote) = git(
@@ -756,6 +761,30 @@ diff --git a/x b/x
         let diff = worker_diff(&fx.repo, &fx.worktree).expect("diff");
         let paths: Vec<&str> = diff.files.iter().map(|f| f.path.as_str()).collect();
         assert_eq!(paths, ["mine.txt"], "stat: {}", diff.stat);
+    }
+
+    #[test]
+    fn a_stale_local_base_keeps_the_tuple_on_the_local_base() {
+        let fx = repo_with_worker("stale-base-tuple");
+        let local = git(&fx.worktree, ["rev-parse", "main"]).expect("main");
+        commit(&fx.worktree, "upstream.txt", "landed upstream\n");
+        git(
+            &fx.worktree,
+            ["update-ref", "refs/remotes/origin/main", "HEAD"],
+        )
+        .expect("origin/main");
+        commit(&fx.worktree, "mine.txt", "own work\n");
+
+        let diff = worker_diff(&fx.repo, &fx.worktree).expect("diff");
+        let code = diff.code.expect("tuple");
+        assert_eq!(code.base_tip_sha, local.trim());
+        let merge_path =
+            crate::readiness::measure_code(std::path::Path::new(&fx.worktree), "main", "HEAD")
+                .expect("measure");
+        assert!(
+            code.matches(&merge_path),
+            "tuple must equal the merge path's"
+        );
     }
 
     #[test]
