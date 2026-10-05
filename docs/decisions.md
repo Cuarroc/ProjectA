@@ -1606,3 +1606,22 @@ wall clock, linux + windows.
 - **Reverse when:** the beta tag is wanted before W3-02g-i are merged (then the
   user must accept a build without in-app update), or an advisor review of the
   merged code shows C1/C2 are not exploitable and can be downgraded.
+
+## 2026-10-05 - Trust on first run for the post-update handshake identity (W3-02j)
+
+- **What:** after an in-app update the startup check accepts the new running
+  executable and the live database as the successor of the journal's
+  candidate once, on the first run after the install, and records their
+  hashes as the new identity. It does not demand that they equal the
+  update package hash or the pre-update database snapshot hash.
+- **Why:** observed in PR #457 (advisor Fable 5.1): the check compares the
+  running exe hash with the update package hash and the database snapshot
+  hash with the live database, so every real update ends in `IdentityMismatch`
+  and the app no longer starts. The update manifest is not signed and there is
+  no build id the installed binary could be matched against, so no stronger
+  check exists yet. Cost: the first start after an update is trusted, not
+  proven. It stays fail-closed for all later starts and for any journal
+  without a completed install.
+- **Reverse when:** the update manifest gets signed or a build id exists that
+  binds the installed bytes to the package; then the first run must be
+  verified, not trusted.
