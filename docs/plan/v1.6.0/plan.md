@@ -47,7 +47,7 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | ARCH-D1 | Die drei Fehlertext-Klassifizierer `merge_status`, `verdict_status`, `core_status` zu einem zusammenführen | api | api.rs | A | S | INV-SEC-CRED-CLEANUP | Claude, ab G2 astra | `rg -c 'fn [a-z]+_status\(err' src-tauri/src/api.rs` sinkt von 3 auf 1; `api.rs` < 8091 Zeilen |
 | V16-06 | KI-31-Rest: Der Start nach einem Update ohne Journal blockiert nicht mehr stumm | mn | main.rs | A | M | G1, Frage 3; Update-Drill am PC mit dem Nutzer | astra, vor G2 Claude | Roter Test zuerst; Update-Drill (Erfolg, Abbruch, Fehler): der nächste Start gelingt oder zeigt die Anleitung |
 | ARCH-D2 | Doppelte Projektanlage zusammenführen | mn | main.rs | A | S | V16-06 | astra, vor G2 Claude | `rg -c 'fn create_project' src-tauri/src/main.rs`: von zwei Umsetzungen bleibt eine, die andere ruft sie auf; `main.rs` < 5133 Zeilen |
-| ARCH-D3a | Die zwei direkten `BEGIN IMMEDIATE` in `store.rs` nutzen den vorhandenen Helfer `begin_write` (`store/continuous.rs:924`), Teil a | st | store | A | S | G1 | Claude, ab G2 astra | `rg -c 'BEGIN IMMEDIATE' src-tauri/src/store.rs` sinkt von 2 auf 0 |
+| ARCH-D3a | Die zwei direkten `BEGIN IMMEDIATE` in `store.rs` auf den vorhandenen Helfer `begin_write` (`store/continuous.rs:924`) umstellen, Teil a. `store.rs:1061` ist ein manuelles `BEGIN` auf einer eigenen Verbindung (Wartung): Der Auftrag prüft zuerst, ob der Helfer dort passt, sonst wird vorher geschnitten | st | store | A | S | G1 | Claude, ab G2 astra | `rg -c 'BEGIN IMMEDIATE' src-tauri/src/store.rs` sinkt von 2 auf 0; bleibt `:1061` bestehen, auf 1 mit Begründung im PR |
 | ARCH-D6a | `pa::run`: Verteilung von Darstellung trennen, Teil a | pa | pa.rs | A | S | G1 | Claude, ab G2 astra | `bin/pa.rs` < 6490 Zeilen; die CLI-Tests laufen unverändert durch |
 
 **Nachrücker (vor dem Start in Einzelzeilen auflösen).** Für jedes gilt zusätzlich: `cargo nextest run --profile ci` Exit 0.
@@ -147,7 +147,7 @@ M4-R19-02/03/04/07/09 (Frage 2), V16-10, W1-24c, W1-09c, W5-31, M5-04, Dependabo
 - **Reviews hängen am PC,** solange Frage 4 offen ist. Bis G2 ist das der Engpass für Stufe A und B.
 - **Mehr Regeln können bremsen.** Rekursives Prompting kostet je Auftrag eine Runde. M-LEAD (Ziel p90 ≤ 6 h) zeigt, ob es zu teuer wird.
 - **V16-06 fasst den Update-Start an.** Stufe A, Berater-Paar, roter Test zuerst, Drill unter Windows.
-- **Belege zu den ARCH-D-Paketen sind Stichproben:** `docs/PLAN.md` nennt für D1 vier Klassifizierer (gefunden: drei) und für D3 elf direkte Aufrufe (gezählt außerhalb von Tests: elf, dazu der Helfer und drei Kommentarzeilen); D8 hat noch keinen Anker.
+- **Belege zu den ARCH-D-Paketen sind Stichproben:** `docs/PLAN.md` nennt für D1 vier Klassifizierer (gefunden: drei) und für D3 elf direkte Aufrufe (gezählt außerhalb von Tests: elf, dazu der Helfer und drei Kommentarzeilen, zwei in `store/continuous.rs` und eine in `workers/delivery_state.rs`); D8 hat noch keinen Anker.
 
 ## 10. Fragen an den Nutzer
 
