@@ -918,8 +918,10 @@ mod install;
 mod installer;
 mod restore;
 mod staging;
+mod startup;
 
 pub use install::{install_through_journal, require_install_evidence};
+pub use startup::recover_at_startup;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(dead_code)] // W3-02
