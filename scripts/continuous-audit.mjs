@@ -45,7 +45,7 @@ export async function buildReport(root = process.cwd(), { attestation = null } =
       benchmarkAccepted: false,
       continuousExecutionEnabled: false,
       stablePromotionAuthorized: false,
-      // Written only by the user in .pa/release_attestation_v1.5.0.json (E20).
+      // Written only by the user in .pa/release_attestation_v1.5.1.json (E20).
       appReleaseAttested: appRelease.attested,
     },
   });
