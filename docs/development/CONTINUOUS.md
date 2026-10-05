@@ -600,7 +600,9 @@ one to its W2-04 role (assignment, or implementer when unassigned, both checked
 against the frozen root policy) within the free per-project worker slots and the
 global integration lane. Others are skipped with a stable reason:
 `attempts_exhausted`, `dependencies_pending`, `dependencies_unreadable`,
-`role_refused`, `worker_capacity_exhausted`, `integration_capacity_exhausted`.
+`role_refused`, `integration_requires_approval_authority` (an integrator task while
+approval authority is unavailable, always so in v1.5.0), `worker_capacity_exhausted`,
+`integration_capacity_exhausted`.
 The result is a `discovery_dispatched` journal event committed with the permit;
 a failed scan keeps no slot. Context adds `dispatchState` per recent permit and
 `latestDispatch`. A dispatch is intent: nothing is claimed, launched or spawned,
