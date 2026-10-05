@@ -1,10 +1,16 @@
 //! Single-step scheduler core. Production activation requires an unforgeable
-//! permit that W4-03 will provide only after the user-approved runtime gates.
-use super::{development, development_route::PreparedRoute, AgentControl};
+//! permit that only the fail-closed activation switch (`activation.rs`) hands out.
+use super::{
+    activation::ActivationGrant, development, development_route::PreparedRoute, AgentControl,
+};
 use crate::{api::RunCredentialIssuer, store::Store};
 pub struct SchedulerPermit(());
 #[cfg(test)]
 pub(super) fn test_permit() -> SchedulerPermit {
+    SchedulerPermit(())
+}
+/// The one production constructor; an [`ActivationGrant`] cannot be forged.
+pub(super) fn permit_from_grant(_grant: ActivationGrant) -> SchedulerPermit {
     SchedulerPermit(())
 }
 #[derive(Debug, PartialEq, Eq)]
