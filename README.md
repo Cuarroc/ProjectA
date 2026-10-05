@@ -55,13 +55,13 @@
 
 ## Status und Grenzen
 
-- **App-Version:** `v1.5.0` – diese Version baut der Quellcode auf `main`.
-- **Veröffentlicht:** zuletzt `v1.4.1`; v1.5.0 (Beta) ist in Vorbereitung.
+- **App-Version:** `v1.5.1` – diese Version baut der Quellcode auf `main`.
+- **Veröffentlicht:** zuletzt `v1.5.0` (Beta); v1.5.1 (Endversion) ist in Vorbereitung.
   Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
 - Aktives persönliches Projekt. Windows ist das einzige paketierte Ziel.
   Plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
   Linux beziehungsweise WSL2; ein Linux- oder macOS-Paket gibt es nicht.
-- Der Dauerbetrieb (Continuous) ist in v1.5.0 ausgeschaltet und nicht
+- Der Dauerbetrieb (Continuous) ist in v1.5.1 ausgeschaltet und nicht
   freigegeben.
 - Agent-CLIs und Anbieterzugänge bringst du selbst mit (siehe oben).
 - Interne Projektunterlagen sind überwiegend auf Deutsch.
