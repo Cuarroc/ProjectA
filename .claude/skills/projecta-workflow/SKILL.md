@@ -49,6 +49,8 @@ Every commit that changes source (`src/`, `src-tauri/`, `scripts/`,
   trailer runs the whole file, which is already green on the base when the
   file only gains tests — red-first then rejects it. Rust:
   `Test-First: src-tauri/src/x.rs::test_fn` or the fully qualified test path.
+  A bare Rust test name such as `Test-First: test_fn` is invalid: use
+  `path::name`. Every referenced path must exist at the candidate HEAD.
 - `Regression-For: <sha>` — for a regression of that commit.
 - `No-Test: <reason>` — docs, config, or changes that cannot be tested; give
   the real reason.
