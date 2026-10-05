@@ -28,7 +28,6 @@ import type {
   ProjectStats,
   Provider,
   ProviderUsage,
-  PtyExitPayload,
   Question,
   QuestionScope,
   QuestionStatus,
@@ -42,7 +41,6 @@ import type {
   SetupTrustGrant,
   SetupTrustView,
   SkillPack,
-  SpawnPtyResult,
   StatsActivityDay,
   StatsCompletion,
   StatsLabelCount,
@@ -72,6 +70,15 @@ export {
   listProjects,
   removeProject,
 } from "./ipc/projects";
+export {
+  getScrollback,
+  killPty,
+  onPtyExit,
+  onPtyOutput,
+  resizePty,
+  spawnPty,
+  writePty,
+} from "./ipc/pty";
 export { createWorker, listWorkers } from "./ipc/workers";
 
 function requirePlanId(value: string, field: string): void {
@@ -144,37 +151,6 @@ export async function listAgentProfiles(): Promise<AgentProfile[]> {
     fallback: profile.fallback ?? null,
     enabled: profile.enabled ?? true,
   }));
-}
-
-export async function spawnPty(args: {
-  profileId: string;
-  cwd?: string;
-  cols: number;
-  rows: number;
-}): Promise<string> {
-  const result = await invoke<SpawnPtyResult>("spawn_pty", {
-    profileId: args.profileId,
-    cwd: args.cwd,
-    cols: args.cols,
-    rows: args.rows,
-  });
-  return result.sessionId;
-}
-
-export function writePty(sessionId: string, data: string): Promise<void> {
-  return invoke<void>("write_pty", { sessionId, data });
-}
-
-export function resizePty(sessionId: string, cols: number, rows: number): Promise<void> {
-  return invoke<void>("resize_pty", { sessionId, cols, rows });
-}
-
-export function killPty(sessionId: string): Promise<void> {
-  return invoke<void>("kill_pty", { sessionId });
-}
-
-export function getScrollback(sessionId: string): Promise<string> {
-  return invoke<string>("get_scrollback", { sessionId });
 }
 
 interface RawSessionRestore {
@@ -2086,20 +2062,6 @@ export async function askQuestion(args: {
 }
 
 // -- events ------------------------------------------------------------------
-
-export function onPtyOutput(
-  sessionId: string,
-  handler: (chunk: string) => void,
-): Promise<UnlistenFn> {
-  return listen<string>(`pty:output:${sessionId}`, (event) => handler(event.payload));
-}
-
-export function onPtyExit(
-  sessionId: string,
-  handler: (payload: PtyExitPayload) => void,
-): Promise<UnlistenFn> {
-  return listen<PtyExitPayload>(`pty:exit:${sessionId}`, (event) => handler(event.payload));
-}
 
 /** Fires on every visible column or attention change, for every worker. */
 export function onWorkerStatus(
