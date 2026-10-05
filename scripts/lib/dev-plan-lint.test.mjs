@@ -1,10 +1,11 @@
 // FLOW-03: plan-lint finds broken package tables and passes the real plan.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 import { lint, main } from "../dev/plan-lint.mjs";
 
-const FIXTURE = new URL("./fixtures/plan-lint-broken.md", import.meta.url).pathname;
-const REAL_PLAN = new URL("../../docs/plan/v1.6.0/plan.md", import.meta.url).pathname;
+const FIXTURE = fileURLToPath(new URL("./fixtures/plan-lint-broken.md", import.meta.url));
+const REAL_PLAN = fileURLToPath(new URL("../../docs/plan/v1.6.0/plan.md", import.meta.url));
 const HEAD = "| ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme |\n|---|---|---|---|---|---|---|---|---|\n";
 const run = async (...argv) => {
   let out = "";

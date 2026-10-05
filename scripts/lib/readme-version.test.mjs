@@ -6,6 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
@@ -26,7 +27,7 @@ test("readme-version-bump rewrites the App-Version line and fails when it is mis
   const { mkdtempSync, writeFileSync, readFileSync: rf } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const script = new URL("readme-version-bump.mjs", import.meta.url).pathname;
+  const script = fileURLToPath(new URL("readme-version-bump.mjs", import.meta.url));
   const dir = mkdtempSync(join(tmpdir(), "readme-bump-"));
   const file = join(dir, "README.md");
 
