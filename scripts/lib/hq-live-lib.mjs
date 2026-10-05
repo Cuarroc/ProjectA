@@ -32,6 +32,13 @@ export function snapshotProgress(snapshot) {
   return { packagesDone, packagesTotal, percent: packagesTotal ? Math.round((packagesDone / packagesTotal) * 100) : 0 };
 }
 
+/// Progress block of /__hq/analysis. Without a snapshot the number of active specs is
+/// unknown: `activeSpecs` is null there, never an invented 0.
+export function analysisProgress(snapshot) {
+  const activeSpecs = Array.isArray(snapshot?.specs) ? snapshot.specs.filter((item) => item.startable !== false).length : null;
+  return { ...snapshotProgress(snapshot), activeSpecs };
+}
+
 /// Validate one custom profile coming from the HQ UI.
 /// Returns an error string, or null when the profile is acceptable.
 export function validateProfile(profile) {
@@ -223,4 +230,13 @@ export function readLimited(req, maxBytes = MAX_BODY_BYTES) {
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
+}
+
+/// HTTP answer for an error thrown while reading or parsing a request body: 413 for an
+/// oversized body, 400 for malformed JSON, null for a transport failure (the client is gone,
+/// there is nobody to tell that its JSON was bad).
+export function bodyErrorReply(error) {
+  if (error?.code === "hq_body_too_large") return { status: 413, body: { error: error.message, code: error.code } };
+  if (error instanceof SyntaxError) return { status: 400, body: { error: "invalid JSON body" } };
+  return null;
 }

@@ -18,7 +18,8 @@ import {
   parseBuiltinProfiles,
   readAgentsFile,
   resolveAgentsFile,
-  snapshotProgress,
+  analysisProgress,
+  bodyErrorReply,
   upsertProfile,
   validateProfile,
   writeAgentsFile,
@@ -121,7 +122,7 @@ function analysis() {
   }, 0);
   const dataPath = join(docs, "data.json");
   const snapshot = existsSync(dataPath) ? JSON.parse(readFileSync(dataPath, "utf8")) : {};
-  const remainingSpecs = Array.isArray(snapshot.specs) ? snapshot.specs.filter((item) => item.startable !== false).length : null;
+  const progress = analysisProgress(snapshot);
   const commits = git(["log", "--since=30 days ago", "--format=%h"]).split(/\r?\n/).filter(Boolean).length;
   return {
     generatedAt: new Date().toISOString(),
@@ -129,11 +130,8 @@ function analysis() {
     files: { tracked: files.length, source: source.length, code: code.length },
     lines: { source: countLines(source), code: countLines(code) },
     commitsLast30Days: commits,
-    progress: {
-      ...snapshotProgress(snapshot),
-      activeSpecs: remainingSpecs ?? 0,
-    },
-    estimate: remainingEstimate(remainingSpecs),
+    progress,
+    estimate: remainingEstimate(progress.activeSpecs),
   };
 }
 
@@ -150,10 +148,11 @@ function readBody(req) {
   return readLimited(req).then((buffer) => buffer.toString("utf8"));
 }
 
-/// 413 for an oversized body, 400 for everything else a body reader can throw.
+/// 413 for an oversized body, 400 for malformed JSON; a dropped connection just gets closed.
 function sendBodyError(res, error) {
-  if (error?.code === "hq_body_too_large") sendJson(res, 413, { error: error.message, code: error.code });
-  else sendJson(res, 400, { error: "invalid JSON body" });
+  const reply = bodyErrorReply(error);
+  if (reply) sendJson(res, reply.status, reply.body);
+  else res.destroy();
 }
 
 /// Probe the Control API once (GET /api/projects) with a short timeout.
@@ -311,8 +310,9 @@ async function lessonsRoute(req, res, url) {
     let next;
     if (verb === "hit") next = touchLesson(lessons, id);
     else if (verb === "worked" || verb === "failed") {
+      let feedback;
+      try { feedback = JSON.parse((await readBody(req)) || "{}"); } catch (error) { sendBodyError(res, error); return; }
       try {
-        const feedback = JSON.parse((await readBody(req)) || "{}");
         // Read after the asynchronous body boundary so concurrent HTTP feedback
         // observes the previous synchronous write before applying its outcome.
         next = feedbackLesson(readLessonsFile(lessonsFile), id, verb, undefined, feedback.runId);

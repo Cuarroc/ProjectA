@@ -282,6 +282,19 @@ test("/__hq/lessons learns: feedback changes confidence, refine keeps history, r
   assert.equal(sorted[0].id, added.id, "confidence sort puts the voted lesson first");
 });
 
+test("lesson worked/failed feedback answers 413 for an oversized body instead of hq_lesson_invalid", async () => {
+  const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
+  const added = JSON.parse((await post("/__hq/lessons", { symptom: "An oversized feedback body is mislabelled", cause: "shared catch", fix: "answer 413 through sendBodyError", tags: ["body-limit"] }, headers)).body).lesson;
+  const oversized = { runId: "run-413", pad: "x".repeat(1024 * 1024 + 16) };
+  for (const verb of ["worked", "failed"]) {
+    const reply = await post(`/__hq/lessons/${added.id}/${verb}`, oversized, headers);
+    assert.equal(reply.status, 413, `${verb}: ${reply.body.slice(0, 120)}`);
+    assert.equal(JSON.parse(reply.body).code, "hq_body_too_large");
+  }
+  const after = JSON.parse((await get("/__hq/lessons?q=oversized%20feedback%20body", headers)).body).lessons[0];
+  assert.equal(after.worked || 0, 0, "a refused body must not count as feedback");
+});
+
 test("/__hq/insights estimates whole-project time and tokens with a stated basis and ranks live signals", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "hq-insights-"));
   const repo = syntheticRepo(dir);
