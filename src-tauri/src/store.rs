@@ -967,6 +967,8 @@ type PendingExits = Arc<Mutex<HashMap<String, (i64, Option<i32>)>>>;
 pub enum MaintenanceError {
     AlreadyActive,
     NotActive,
+    /// An installer holds the write block; see [`InstallLease`].
+    InstallLeased,
     Database(String),
 }
 
@@ -975,6 +977,7 @@ impl std::fmt::Display for MaintenanceError {
         match self {
             Self::AlreadyActive => f.write_str("database maintenance is already active"),
             Self::NotActive => f.write_str("database maintenance is not active"),
+            Self::InstallLeased => f.write_str("an update install holds the database maintenance"),
             Self::Database(error) => write!(f, "database maintenance failed: {error}"),
         }
     }
@@ -985,7 +988,30 @@ impl std::error::Error for MaintenanceError {}
 #[derive(Default)]
 struct MaintenanceState {
     active: AtomicBool,
+    /// Set and cleared only while `connection` is locked or by the lease drop.
+    leased: AtomicBool,
     connection: tokio::sync::Mutex<Option<sqlx::pool::PoolConnection<Sqlite>>>,
+}
+
+/// Pins the maintenance write block for an installer: while it lives (or was
+/// [`retained`](Self::retain)), `leave_maintenance` refuses. Taking it is the
+/// live check that maintenance is active, made under the connection lock.
+#[must_use]
+pub struct InstallLease(Option<Arc<MaintenanceState>>);
+
+impl InstallLease {
+    /// Keep the pin for the rest of the process: the installer has started.
+    pub fn retain(mut self) {
+        self.0.take();
+    }
+}
+
+impl Drop for InstallLease {
+    fn drop(&mut self) {
+        if let Some(state) = self.0.take() {
+            state.leased.store(false, Ordering::Release);
+        }
+    }
 }
 
 /// The database plus the in-memory worker to PTY session mapping.
@@ -1046,6 +1072,9 @@ impl Store {
     pub async fn leave_maintenance(&self) -> Result<(), MaintenanceError> {
         let mut held = self.maintenance.connection.lock().await;
         let connection = held.as_mut().ok_or(MaintenanceError::NotActive)?;
+        if self.maintenance.leased.load(Ordering::Acquire) {
+            return Err(MaintenanceError::InstallLeased);
+        }
         sqlx::query("ROLLBACK")
             .execute(&mut **connection)
             .await
@@ -1053,6 +1082,22 @@ impl Store {
         held.take();
         self.maintenance.active.store(false, Ordering::Release);
         Ok(())
+    }
+
+    /// Check maintenance is active and pin it for an installer, atomically
+    /// with respect to `enter`/`leave_maintenance`. Never waits: a transition
+    /// in progress refuses.
+    pub fn try_install_lease(&self) -> Result<InstallLease, MaintenanceError> {
+        let held = self.maintenance.connection.try_lock().map_err(|_| {
+            MaintenanceError::Database("a maintenance transition is in progress".into())
+        })?;
+        if held.is_none() {
+            return Err(MaintenanceError::NotActive);
+        }
+        if self.maintenance.leased.swap(true, Ordering::AcqRel) {
+            return Err(MaintenanceError::InstallLeased);
+        }
+        Ok(InstallLease(Some(self.maintenance.clone())))
     }
 
     /// Whether this store has reserved the database for maintenance.
