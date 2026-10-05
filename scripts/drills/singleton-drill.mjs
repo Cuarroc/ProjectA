@@ -27,4 +27,6 @@ const manifest = await runSingletonDrill({
 rl.close();
 for (const s of manifest.steps) console.log(`${s.exitCode === 0 ? 'OK    ' : 'FEHLER'} ${s.n}. ${s.name}${s.detail ? ` - ${s.detail}` : ''}`);
 console.log(`Ergebnis: ${manifest.result}. Beleg-Ordner: ${outDir}`);
-process.exit(manifest.result === 'pass' ? 0 : 1);
+// No process.exit after rl.close(): with piped stdin on Windows the handle is
+// still closing and libuv aborts node (async.c assertion, exit 3221226505).
+process.exitCode = manifest.result === 'pass' ? 0 : 1;
