@@ -37,6 +37,23 @@ test('successful update passes after phases and relaunch with surviving sessions
   assert.match(m.steps.find((s) => s.name === 'watch updater phases').detail, /installing > unreachable > up-to-date/);
   assert.ok(!readFileSync(join(outDir, 'manifest.json'), 'utf8').includes(TOKEN));
 });
+test('successful update fails when the installed version did not change', async () => {
+  const { m } = await run('success', [{ phase: 'installing', version: '0.9.0' }, null, { phase: 'up-to-date', version: '0.9.0' }]);
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps.at(-1).detail, /version did not change/);
+});
+test('successful update fails when the installed version is not the expected new one', async () => {
+  const fx = fixture();
+  const script = [{ phase: 'installing', version: '1.0.0' }, null, { phase: 'up-to-date', version: '1.0.0' }];
+  const m = await runUpdaterDrill({ ...fx, scenario: 'success', appVersion: '0.9.0', newVersion: '1.1.0', commit: 'abc', timeoutMs: 60000, ...fake(script) });
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps.at(-1).detail, /expected 1\.1\.0/);
+});
+test('successful update fails when no installed version is reported', async () => {
+  const { m } = await run('success', [{ phase: 'installing' }, null, { phase: 'up-to-date' }]);
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps.at(-1).detail, /no installed version/);
+});
 test('successful update rejects an error state after relaunch', async () => {
   const { m } = await run('success', [{ phase: 'installing', version: '1.0.0' }, null, { phase: 'error', message: 'startup failed' }]);
   assert.equal(m.result, 'fail');

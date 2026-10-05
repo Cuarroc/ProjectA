@@ -57,13 +57,18 @@ export async function watchUpdater({ read, scenario, timeoutMs, intervalMs = 200
   }
   return { transitions, relaunched, elapsedMs: now() - start, last };
 }
-export function judge(scenario, w, { before, after }) {
+export function judge(scenario, w, { before, after }, { appVersion, newVersion } = {}) {
   const seen = w.transitions.map((t) => t.phase);
   const problems = [];
   if (scenario === 'success') {
     if (!seen.includes('installing') && !seen.includes('ready')) problems.push('no installing/ready phase seen');
     if (!w.relaunched) problems.push('app never came back (no relaunch)');
     if (!['idle', 'up-to-date'].includes(w.last?.phase)) problems.push(`unexpected post-update state (last: ${w.last?.phase})`);
+    // A relaunch alone is no update: the version reported afterwards must be the new one.
+    const installed = w.last?.version;
+    if (!installed) problems.push('no installed version reported after the update');
+    else if (installed === appVersion) problems.push(`version did not change (still ${installed})`);
+    else if (newVersion && newVersion !== 'unknown' && installed !== newVersion) problems.push(`installed version ${installed}, expected ${newVersion}`);
   } else {
     if (w.relaunched) problems.push('app relaunched, but this scenario must not install');
     if (scenario === 'fail' && !w.transitions.some((t) => t.phase === 'error' && t.message)) problems.push('no error phase with a message');
@@ -96,7 +101,7 @@ export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, ne
   try { after = workerIds(await get('/api/workers')); } catch (e) { bundle.step('list workers after', { exitCode: 1, detail: e.message }); }
   const journalAfter = summarizeJournal(appDir);
   bundle.addFile('after.json', JSON.stringify({ newVersion, observedUi, workers: after, journal: journalAfter }, null, 2));
-  const problems = judge(scenario, w, { before, after });
+  const problems = judge(scenario, w, { before, after }, { appVersion, newVersion });
   bundle.step(`judge ${scenario}`, { exitCode: problems.length ? 1 : 0, detail: problems.join('; ') || `ok in ${Math.round(w.elapsedMs / 1000)} s, relaunch ${w.relaunched}` });
   return bundle.finish(NOT_COVERED);
 }
