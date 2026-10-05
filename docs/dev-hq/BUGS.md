@@ -40,7 +40,7 @@
 - **Repro:** mit laufender App `node`-Fetch auf den Cancel-Pfad (siehe `.pa/report_devhq_setup_2026-09-15.md` §4f).
 - **Schwere:** stört (Zombie-Buchhaltung, W1-05 kann die Entscheidung nicht umsetzen).
 - **Queue:** Pending — Nutzerentscheidung 17.09.: als Bug loggen, nicht in der DB umschreiben; gehört zu W1-05.
-- **Status:** offen. Fix: Cancel für `dispatched` erlauben, wenn der Worker `archived`/`exited` ist (roter Test in `api.rs`, Store-Regel in `store.rs` — Nahtstellen-Lane).
+- **Status:** behoben — W1-05b ✓ PR #19 (gemergt 25.09., `docs/PLAN.md` W1-05b): Cancel für `dispatched` bei archiviertem/beendetem Worker. Ursprünglicher Plan: Cancel für `dispatched` erlauben, wenn der Worker `archived`/`exited` ist.
 
 ## 2026-09-17 · Last-Flake: `native_handoff_*`-Tests scheitern an der 60-s-Gültigkeit der Route-Fixture
 - **Wo:** `src-tauri/src/workers/development_route.rs` `tests::fixture` (`expires_at: now + 60`), genutzt von `test_native_route()`; Tests `workers::tests::native_handoff_owns_one_durable_launch_without_pty_delivery` und `native_handoff_dispatch_failure_preserves_identity_and_reconciles`.
