@@ -4,9 +4,9 @@ Stand 05.10.2026, Basis `2ec6960` (`origin/main`). Dieser Entwurf ändert nichts
 
 ## 1. Ziel
 
-v1.6.0 macht ProjectA bereit für die ersten externen Tester: Die App startet nach einem Update sicher, das README sagt klar, wofür sie da ist, und es gibt ein Tester-Kit. Die vier Nahtstellen werden kleiner, und der Windows-Flake KI-30, der die Merge-Queue anhält, wird untersucht und behoben. Die Arbeitsweise wird messbar besser: weniger Nacharbeit und Leerlauf, mit Wochenmessung und rekursivem Prompting als Pflicht.
+v1.6.0 verringert zuerst die Nacharbeit bedeutend und verbessert sie (Nutzervorgabe 05.10.): weniger Fix-PRs, weniger Review-Runden, weniger rote Läufe, und wenn doch Nacharbeit nötig ist, genau eine begrenzte Runde auf demselben Branch. Danach macht es ProjectA bereit für die ersten externen Tester: Die App startet nach einem Update sicher, das README sagt klar, wofür sie da ist, und es gibt ein Tester-Kit. Die vier Nahtstellen werden kleiner, und der Windows-Flake KI-30, der die Merge-Queue anhält, wird untersucht und behoben. Die Messung läuft jede Woche, rekursives Prompting ist Pflicht (Abschnitte 2a, 7a, 7b).
 
-Fertig ist v1.6.0, wenn alle Kern-Pakete gemergt sind, jede der vier Nahtstellen weniger Zeilen hat als an der Basis (`wc -l`: `api.rs` 8091, `store.rs` 7227, `bin/pa.rs` 6490, `main.rs` 5133) und zwei Wochenmessungen vorliegen.
+Fertig ist v1.6.0, wenn alle Kern-Pakete gemergt sind, die Nacharbeits-Ziele aus Abschnitt 7a in zwei Wochenmessungen erreicht sind, jede der vier Nahtstellen weniger Zeilen hat als an der Basis (`wc -l`: `api.rs` 8091, `store.rs` 7227, `bin/pa.rs` 6490, `main.rs` 5133) und zwei Wochenmessungen vorliegen.
 
 ## 2. Was sich an der Arbeitsweise ändert
 
@@ -23,11 +23,25 @@ Der Benchmark sagt: PRs landen viel schneller (p90 127 h → 3 h), aber die Nach
 | S7 | Ein Anbieter lieferte 134 von 226 gemergten PRs seit 02.10. (59 %; eigene Zählung am 05.10., 12:08 UTC, Befehl in `benchmark.md`, Abschnitt 5) | Kein Anbieter über 50 % pro Woche; Routing nach Restkontingent | lokal (L5) | M-THR |
 | S8 | Einzelfragen unterbrechen den Nutzer | Entscheidungen gebündelt vor jeder Welle, Freigabe je Welle | `docs/PLAN.md`, Frage 5 | M-HUMAN |
 
+## 2a. Ursachen der Nacharbeit
+
+Belege: `benchmark.md`, Abschnitt 3 (M-REWORK, Review, CI) und Abschnitt 2 hier (lokal: Konflikte, Blockaden).
+
+| Ursache (Beleg) | Paket, das sie beseitigt |
+|---|---|
+| Aufträge mit Lücken: 13 von 32 Blockaden vermeidbar, Abnahme oder Basis fehlte (lokal) | FLOW-01/02 und L1 (rekursives Prompting auf Aufträgen und Briefs); FLOW-03 (Abnahme-Befehl in jedem Auftrag, plan-lint) |
+| Fehler, die der Autor vor dem Push selbst finden könnte: 15 % der Code-PRs mit Review-Fix-Commit | **FLOW-07** (Selbstprüfung vor dem Push, Checkliste) |
+| Zwei Pakete an derselben Datei: 28 Konflikt-Aufträge in 3 Tagen (lokal) | FLOW-03, L3 |
+| Windows-Rot erst in der Queue: 15,5 % rote Queue-Läufe | **WIN-01** (Windows-Lauf vor `review-ok`); V16-01 (KI-30) |
+| Flake KI-30 (`workers::tests::real_native_provider_exit_before_input_delivery_reconciles_as_exited`, 8 von 42 Läufen; „os error 32“ nur Begleiterscheinung) | V16-01 |
+| Umgebung: 10 Blockaden durch fehlende Abhängigkeiten (lokal) | FLOW-04 |
+| Nacharbeit als neuer PR statt Runde am selben Branch | FLOW-07 (Fixrunde, Abschnitt 7b) |
+
 ## 3. Pakete
 
 Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start messen). Stufe A/B/C nach AGENTS.md, Regel 5. Anbieter sind Vorschläge nach `docs/setup/providers.md`: astra/sol/terra = Codex (erst ab G2), glm-5.3/deepseek = OpenCode. Vor jedem Start gilt `npm run dev:start-check`.
 
-**Kern (17 Pakete)**
+**Kern (19 Pakete)**
 
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (messbares Signal) |
 |---|---|---|---|---|---|---|---|---|
@@ -40,6 +54,8 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | FLOW-03 | plan-lint: prüft diese Tabelle (Größe, Stufe, Lane, Abnahme vorhanden, nie zwei Pakete derselben Naht gleichzeitig; „→“ heißt nacheinander) | ci | – | B | M | FLOW-04 | glm-5.3, sonst Claude | Exit 0 auf diesem Plan, Exit 1 auf einem präparierten Fehlerfall |
 | FLOW-05 | M-RP-Zähler: liest PR-Texte und zählt Prompt-Log, Runden und Befunde | ci | – | B | M | FLOW-03, FLOW-02 | glm-5.3 | JSON-Ausgabe; der Montagslauf zeigt M-RP |
 | FLOW-06 | Ein Satz in `AGENTS.md`: rekursives Prompting ist Pflicht (Nutzerauftrag 05.10.) | doc | – | C | S | FLOW-01 | Koordinator | `npm run dev:agent-check` Exit 0 |
+| FLOW-07 | `docs/development/prompting.md` ergänzen: Selbstprüfung vor dem Push (Checkliste aus Abschnitt 6, Punkte 4, 5, 9) und die eine begrenzte Fixrunde (Abschnitt 7b); PR-Vorlage bekommt `### Nacharbeit` | doc | – | C | S | FLOW-01 | glm-5.3 | `npm run dev:agent-check` Exit 0; beide Regeln stehen in der Datei; FLOW-05 zählt Fixrunden je PR |
+| WIN-01 | `scripts/ci/win-signal.sh <branch>`: startet den `ci`-Workflow per `workflow_dispatch` auf dem Branch (beide Bahnen) für Pakete mit `#[cfg(windows)]`, Nähten oder PTY-Code, vor `review-ok`; liest das Ergebnis | ci | – | B | S | – | glm-5.3, sonst Claude | Test mit Fixture (Auswahl der Pakete); ein Probelauf auf einem Branch ist grün; Actions-Minuten im öffentlichen Repo kostenlos, sonst Frage an den Nutzer |
 | V16-02 | Doku-Sync: Erledigtes steht nicht mehr als „offen“ da (KI-16, KI-19, M5-03, CSP, FE-Stale, FJ-*) | doc | – | C | S | dieser PR gemergt, Zuweisung durch den Koordinator | glm-5.3 | Prüfliste im PR: 0 gemergte IDs mit Stand „offen“ |
 | M5-02 | README: Produktfokus „sicherer Dauerbetrieb: Not-Aus, Kostenkontrolle, Protokoll“ | doc | – | C | S | G1 | glm-5.3 | Der Fokus-Satz steht in den ersten 30 Zeilen des README |
 | V16-03 | Tester-Kit: Installation, Rückmeldeformular, bekannte Grenzen | doc | – | C | S | G1, E16; der Nutzer legt ein frisches Windows-Konto an | glm-5.3 | Trockenlauf: Installation nach Anleitung im frischen Konto, Protokoll im PR |
@@ -72,7 +88,7 @@ Tore: **G0** = der Nutzer gibt den Plan frei (Fragen 1, 2 und 5) und dieser PR i
 
 | Welle | Start | Läuft gleichzeitig | Plätze |
 |---|---|---|---|
-| W0 | nach G0, ohne Codex, ohne Naht | Sofort sieben: V16-01 · BENCH-01 · FLOW-01 · V16-07 · ARCH-09c · ADR-A1 · V16-02. Danach BENCH-02, FLOW-02, FLOW-06 und die Datei-Kette FLOW-04 → FLOW-03 → FLOW-05 → V16-08 | Server: bis 6 Worker, Rest Reviews. PC: 1 Cargo-Build (V16-01 braucht Windows) |
+| W0 | nach G0, ohne Codex, ohne Naht | Sofort acht (Nacharbeits-Pakete zuerst): V16-01 · BENCH-01 · FLOW-01 · WIN-01 · V16-07 · ARCH-09c · ADR-A1 · V16-02. Danach FLOW-07 (nach FLOW-01), BENCH-02, FLOW-02, FLOW-06 und die Datei-Kette FLOW-04 → FLOW-03 → FLOW-05 → V16-08 | Server: bis 6 Worker, Rest Reviews. PC: 1 Cargo-Build (V16-01 braucht Windows) |
 | W1 | nach G1 | Vier Ketten-Köpfe, je einer pro Lane: st ARCH-D3a · mn V16-06 · api INV-SEC-CRED-CLEANUP · pa ARCH-D6a. Füllung: M5-02, V16-03 | Server: 4 Ketten-Köpfe + 4 Füllung und Reviews. PC: höchstens 1 Build (Update-Drill für V16-06) |
 | W2 | sobald der Vorgänger der Lane gemergt ist | mn ARCH-D2 · api ARCH-D1 · st ARCH-D3b · pa ARCH-D6b | wie W1 |
 | W3 | nach G2, Nachrücker | st ARCH-D7 · api D4a → D4b · mn D5a → D5b → D8a, dann D8b, D8c · ADR-A7 | wie W1 |
@@ -128,11 +144,33 @@ Baseline ist J2 (02.10. bis Basis), gemessen wird jeden Montag. Die volle Tabell
 |---|---|---|
 | M-THR | 7 221 Code-Zeilen und 21 Pakete pro aktivem Tag | ≥ 7 000 und ≥ 20, auch in Wochen ohne Codex |
 | M-LEAD | p90 3,0 h | p90 ≤ 6 h |
-| M-REWORK | 15,7 % Fix-PRs binnen 72 h; 4 Hotfixes/Reverts | ≤ 8 %; ≤ 1 pro Woche |
-| CI | 8,0 % rote PR-Köpfe; 15,5 % rote Queue-Läufe | ≤ 7 %; ≤ 10 % |
+| M-REWORK | 15,7 % Fix-PRs binnen 72 h; 4 Hotfixes/Reverts | ≤ 8 %; ≤ 1 pro Woche (Detail: 7a) |
+| CI | 8,0 % rote PR-Köpfe; 15,5 % rote Queue-Läufe | ≤ 5 %; ≤ 8 % |
 | M-IDLE | 31 Leerlauf-Alarme pro Tag (lokal, J2) | ≤ 10 pro Tag |
 | M-HUMAN | 25 Inbox-Einträge in 4 Tagen | ≤ 10 neue pro Woche |
 | M-RP | kein PR mit Prompt-Log; lokal 6 % der Aufträge mit Kritik-Protokoll | ≥ 90 % der Paket-PRs mit Prompt-Log |
+
+## 7a. Nacharbeit: harte Ziele
+
+Messung jeden Montag. Heute heißt: `gh`/`git`-Befehle aus `benchmark.md`, Abschnitt 5; ab BENCH-01: `node scripts/dev/bench-weekly.mjs` (die Ausgabe weist jede Zeile aus; Flag-Namen legt BENCH-01 fest). „lokal“: BENCH-03.
+
+| Metrik | Heute (J2) | Ziel v1.6.0 | Gemessen durch |
+|---|---|---|---|
+| Fix-PRs, gleiches Paket, ≤ 72 h | 15,7 % | ≤ 8 % | BENCH-01 |
+| Hotfix-/Revert-PRs | 4 in 4 Tagen | ≤ 1 pro Woche | BENCH-01 |
+| Ohne Merge geschlossene PRs | 7,9 % | ≤ 4 % | BENCH-01 |
+| Code-PRs mit Review-Fix-Commit | 15 % | ≤ 8 % | BENCH-01 |
+| PR-Text nennt Runde 2 | 12 % | ≤ 5 %; nie Runde 3 | BENCH-01, FLOW-05 |
+| Rote PR-Köpfe | 8,0 % | ≤ 5 % | BENCH-01 |
+| Rote Queue-Läufe (= Entfernungen aus der Queue) | 15,5 % | ≤ 8 % | BENCH-01 |
+| Aufträge, die BLOCKIERT enden, vermeidbar / Umgebung | 2,7 % / 10 in 3 Tagen (lokal) | < 1 % / ≤ 2 pro Woche | BENCH-03, FLOW-04 |
+| Konflikt-Aufträge | 28 in 3 Tagen (lokal) | ≤ 3 pro Woche | BENCH-03, FLOW-03 |
+
+Zu hohe Ziele werden nicht still gesenkt: Verfehlt eine Zeile nach zwei Wochenmessungen das Ziel, kommt sie als Frage in die Inbox.
+
+## 7b. Bessere Nacharbeit
+
+Ist Nacharbeit nötig (Review-Befund, rote Prüfung), gilt: **genau eine begrenzte Fixrunde auf demselben Branch, kein neuer PR.** Jeder Befund steht als `Datei:Zeile` mit Befehl und Exit-Code im Abschnitt `### Nacharbeit` des PR-Textes. Der Fix ist ein Commit auf dem Branch, danach ein erneutes `prepush`. Bleibt ein Befund offen, entscheidet der Nutzer (AGENTS.md, Regel 5), es folgt keine zweite Fixrunde. Befund ohne `Datei:Zeile` zählt als unbelegt. Die Pakete FLOW-01, FLOW-02, FLOW-07, FLOW-03 und WIN-01 liegen deshalb in der ersten Welle (W0), nicht erst nach G1.
 
 ## 8. Bewusst nicht in v1.6.0
 
@@ -141,7 +179,7 @@ M4-R19-02/03/04/07/09 (Frage 2), V16-10, W1-24c, W1-09c, W5-31, M5-04, Dependabo
 ## 9. Risiken
 
 - **G1 liegt nicht in diesem Plan.** Verzögert sich v1.5.1, läuft nur W0. W0 enthält kein Naht-Paket; die Nachrücker an den Nähten warten mit.
-- **KI-30 kann offen bleiben.** Die Ursache ist unbelegt. Endet V16-01 als Diagnose, bleibt die serielle Minderung, und das CI-Ziel (≤ 10 % rote Queue-Läufe) ist gefährdet.
+- **KI-30 kann offen bleiben.** Die Ursache ist unbelegt. Endet V16-01 als Diagnose, bleibt die serielle Minderung, und das CI-Ziel (≤ 8 % rote Queue-Läufe) ist gefährdet.
 - **Größen sind Schätzungen.** Ein Architektur-Paket lag früher doppelt über dem Budget. Der Worker-Brief misst vor dem ersten Edit und schneidet.
 - **Ohne Codex fehlt Kapazität.** Codex lieferte 41 % der PRs im Messfenster. Das Durchsatz-Ziel ist bis G2 unsicher.
 - **Reviews hängen am PC,** solange Frage 4 offen ist. Bis G2 ist das der Engpass für Stufe A und B.
@@ -155,7 +193,7 @@ Die E-Nummern vergibt der Koordinator beim Eintrag in die Entscheidungs-Inbox. D
 
 | # | Art | Frage | Empfehlung |
 |---|---|---|---|
-| 1 | Richtung | Ist „tester-tauglich und schlanker“ mit den 17 Kern-Paketen das Thema von v1.6.0? | Ja. |
+| 1 | Richtung | Ist „tester-tauglich und schlanker“ mit den 19 Kern-Paketen das Thema von v1.6.0? | Ja. |
 | 2 | Richtung | Die fünf Audit-Reste M4-R19-02/03/04/07/09 (am 04.10. nach M5 gelegt) auf v1.6.x verschieben? | Ja. Die Tester-Abnahme braucht sie nicht, und st sinkt von 7 auf 3 Pakete. |
 | 3 | Sicherheit | Start nach einem Update ohne Journal: gesperrt bleiben und eine Anleitung zeigen, oder dem ersten Start vertrauen? | Gesperrt mit Anleitung. Sicherheit geht vor Komfort. |
 | 4 | Installation | Den kostenlosen Ollama-Client auf dem Build-Server installieren, damit Reviews nicht mehr am PC hängen? | Ja. Ohne ihn bleibt der PC der Engpass. |

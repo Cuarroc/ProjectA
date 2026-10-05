@@ -98,8 +98,8 @@ Baseline = J2 (02.10. bis Basis). Ziele gelten pro Woche, gemessen am Montag:
 |---|---|---|
 | M-THR | 7 221 Code-Zeilen / 21 Pakete pro aktivem Tag | ≥ 7 000 / ≥ 20, auch in Wochen ohne Codex |
 | M-LEAD | p90 3,0 h | p90 ≤ 6 h |
-| M-REWORK | 15,7 % Fix-PRs ≤ 72 h pro Paket-PR; 4 Hotfix/Revert | ≤ 8 %; ≤ 1 pro Woche |
-| CI | 8,0 % rote PR-Köpfe; 15,5 % rote Queue-Läufe | ≤ 7 %; ≤ 10 % |
+| M-REWORK | 15,7 % Fix-PRs ≤ 72 h pro Paket-PR; 4 Hotfix/Revert | ≤ 8 %; ≤ 1 pro Woche (weitere Nacharbeits-Ziele: `plan.md`, Abschnitt 7a) |
+| CI | 8,0 % rote PR-Köpfe; 15,5 % rote Queue-Läufe | ≤ 5 %; ≤ 8 % |
 | M-REDMAIN | 0 Vorfälle (Endergebnis) | 0, gezählt **pro Versuch** |
 | Regel 1 | 6 % über 300 Zeilen | ≤ 3 % |
 | M-TRAILER | 99 % | ≥ 99 % |
