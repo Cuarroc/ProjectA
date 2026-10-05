@@ -215,7 +215,7 @@ test("lic-01: cli fails closed on an empty or root-only report", () => {
   const dir = mkdtempSync(join(tmpdir(), "lic-check-"));
   for (const [label, report] of [
     ["empty", {}],
-    ["root-only", { "projecta@1.5.0": { licenses: "UNLICENSED" } }],
+    ["root-only", { "projecta@1.5.1": { licenses: "UNLICENSED" } }],
   ]) {
     const file = join(dir, `${label}.json`);
     writeFileSync(file, JSON.stringify(report));
