@@ -2,8 +2,10 @@
 //! the database is opened or the queue dispatcher starts.
 //!
 //! The running process is the candidate: it proves its identity against the
-//! journal's nonce, binary and database, and only then resumes writes. Any
-//! failed step returns a reason and the caller refuses to open the database.
+//! journal's nonce, binary and database, and only then resumes writes. A
+//! rejected candidate restores the verified backup once, then the database
+//! opens; any other failed step returns a reason and the caller refuses to
+//! open the database.
 
 use super::driver::{RecoveryDriver, RecoveryEffects};
 use super::{
@@ -22,6 +24,7 @@ pub fn recover_before_open<E: RecoveryEffects>(
     if !store.path().exists() {
         return Ok(());
     }
+    let store_path = store.path().to_path_buf();
     let journal = DurableJournal::open(store)
         .map_err(|error| format!("update journal unreadable, writes stay blocked: {error}"))?;
     let mut driver = RecoveryDriver::new(journal, effects);
@@ -37,6 +40,18 @@ pub fn recover_before_open<E: RecoveryEffects>(
         driver
             .step()
             .map_err(|error| format!("update recovery failed, writes stay blocked: {error}"))?;
+        if let RecoveryAction::RestorePreviousRuntime { .. } = action {
+            // The restored database opens; the journal is kept aside as the
+            // record, so the next start neither restores again nor blocks.
+            let record = store_path.with_extension("restored.json");
+            std::fs::rename(&store_path, &record)
+                .map_err(|error| format!("restored, but journal not archived: {error}"))?;
+            crate::logf!(
+                "update",
+                "update rolled back, database restored from backup"
+            );
+            return Ok(());
+        }
         if terminal {
             return Err(format!("update recovery ran {action:?}; writes blocked"));
         }
@@ -262,23 +277,51 @@ mod tests {
             let mut forged = handshake();
             tamper(&mut forged);
             let (effects, calls) = fake(forged);
-            assert!(recover_before_open(location.clone(), effects).is_err());
-            assert_eq!(*calls.borrow(), vec!["validate"], "case {i}");
-            let journal = DurableJournal::open(location).unwrap();
-            assert!(!journal.journal().can_accept_writes());
+            recover_before_open(location, effects).unwrap();
+            assert_eq!(*calls.borrow(), vec!["validate", "restore"], "case {i}");
+            assert_eq!(restored_record(&dir), UpdatePhase::RecoveryNeeded);
         }
     }
 
+    /// The restored journal, kept beside the database as the outcome record.
+    fn restored_record(dir: &TempDir) -> UpdatePhase {
+        let archived = dir.path().join("update-recovery.restored.json");
+        let record = JournalStore::new(archived, &dir.path().join("projecta.db")).unwrap();
+        record.load().unwrap().phase()
+    }
+
+    /// P3-1: after a failed install the old binary starts. Its handshake is
+    /// rejected, the backup is restored once, and the database may open.
     #[test]
-    fn recovery_needed_restores_and_keeps_writes_blocked() {
-        let dir = TempDir::new("startup-restore");
+    fn failed_install_restores_once_then_opens() {
+        let dir = TempDir::new("startup-failed-install");
+        let location = installing(&dir);
+        let mut old = handshake();
+        old.binary.version = "1.3.0".into();
+        let (effects, calls) = fake(old.clone());
+        recover_before_open(location.clone(), effects).unwrap();
+        assert_eq!(*calls.borrow(), vec!["validate", "restore"]);
+        assert_eq!(restored_record(&dir), UpdatePhase::RecoveryNeeded);
+        let (effects, calls) = fake(old);
+        recover_before_open(location, effects).unwrap();
+        assert!(calls.borrow().is_empty());
+    }
+
+    /// P3-3: a successful restore lets the app start and is not repeated.
+    #[test]
+    fn successful_restore_opens_and_does_not_restore_again() {
+        let dir = TempDir::new("startup-restore-once");
         let location = installing(&dir);
         let mut journal = DurableJournal::open(location.clone()).unwrap();
         journal.begin_validation().unwrap();
         journal.record_health_failure("unhealthy").unwrap();
         let (effects, calls) = fake(handshake());
-        assert!(recover_before_open(location, effects).is_err());
+        recover_before_open(location.clone(), effects).unwrap();
         assert_eq!(*calls.borrow(), vec!["restore"]);
+        assert_eq!(restored_record(&dir), UpdatePhase::RecoveryNeeded);
+        let (effects, calls) = fake(handshake());
+        recover_before_open(location, effects).unwrap();
+        assert!(calls.borrow().is_empty());
     }
 
     #[test]
