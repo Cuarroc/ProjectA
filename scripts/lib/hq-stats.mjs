@@ -94,6 +94,20 @@ export function remainingEstimate(remainingSpecs) {
 /// lacks (`null` when the ref is missing), `standAgeH` = hours since the last
 /// fetch (`null` when FETCH_HEAD is missing). Yellow from 1 commit behind or a
 /// fetch older than 24 h, red from 50 behind. Text is plain German for the UI.
+/// Hours since FETCH_HEAD was written. `gitPath` is the (already resolved) path
+/// or "" when `git rev-parse` failed: never stat an empty path (it would resolve
+/// to the repo root). Only a missing file means "never fetched"; other errors
+/// are rethrown so the caller cannot mislabel them.
+export function fetchHeadAgeH(gitPath, { stat, now = Date.now() }) {
+  if (!gitPath) return null;
+  try {
+    return Math.max(0, (now - stat(gitPath).mtimeMs) / 3600000);
+  } catch (err) {
+    if (err && err.code === "ENOENT") return null;
+    throw err;
+  }
+}
+
 export function freshness({ behind = null, standAgeH = null } = {}) {
   if (!Number.isInteger(behind)) {
     return { level: "unbekannt", text: "Stand unbekannt: Der Vergleich mit origin/main ist hier nicht möglich." };
@@ -103,5 +117,6 @@ export function freshness({ behind = null, standAgeH = null } = {}) {
   if (behind >= 50) return { level: "rot", text: `Dieser Stand liegt ${behind} Änderungen hinter origin/main. Bitte \`git pull\` ausführen.${age}` };
   if (behind >= 1) return { level: "gelb", text: `Dieser Stand liegt ${behind} Änderung${behind === 1 ? "" : "en"} hinter origin/main. Bald \`git pull\` ausführen.${age}` };
   if (stale) return { level: "gelb", text: `Auf dem Stand von origin/main, aber der letzte Abruf ist älter als 24 Std. Erst \`git fetch\` ausführen.${age}` };
+  if (standAgeH == null) return { level: "gelb", text: `Auf dem Stand von origin/main, aber der letzte Abruf ist unbekannt. Erst \`git fetch\` ausführen.${age}` };
   return { level: "grün", text: `Dieser Stand ist auf der Höhe von origin/main.${age}` };
 }

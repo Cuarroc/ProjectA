@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { authors, commitsPerDay, fleetStats, freshness, snapshotStats, testSurface } from "./hq-stats.mjs";
+import { authors, commitsPerDay, fetchHeadAgeH, fleetStats, freshness, snapshotStats, testSurface } from "./hq-stats.mjs";
 
 test("commitsPerDay fills every day of the window, oldest first", () => {
   const series = commitsPerDay("2026-09-08\n2026-09-08\n2026-09-06\n", 4, new Date("2026-09-08T12:00:00Z"));
@@ -49,6 +49,22 @@ test("freshness is green at 0 behind and yellow when behind or stale", () => {
 test("freshness reports unknown inputs as unknown and never as green", () => {
   assert.equal(freshness({ behind: null, standAgeH: null }).level, "unbekannt");
   const noFetch = freshness({ behind: 0, standAgeH: null });
-  assert.equal(noFetch.level, "grün");
+  assert.equal(noFetch.level, "gelb");
   assert.match(noFetch.text, /nie geholt|unbekannt/);
+});
+
+test("fetchHeadAgeH never stats an empty path and only maps ENOENT to null", () => {
+  const stat = () => { throw new Error("must not be called"); };
+  assert.equal(fetchHeadAgeH("", { stat }), null);
+  const enoent = () => { throw Object.assign(new Error("gone"), { code: "ENOENT" }); };
+  assert.equal(fetchHeadAgeH("/x/FETCH_HEAD", { stat: enoent }), null);
+  const eperm = () => { throw Object.assign(new Error("denied"), { code: "EPERM" }); };
+  assert.throws(() => fetchHeadAgeH("/x/FETCH_HEAD", { stat: eperm }), /denied/);
+  assert.equal(fetchHeadAgeH("/x/FETCH_HEAD", { stat: () => ({ mtimeMs: 0 }), now: 7200000 }), 2);
+});
+
+test("the freshness light is marked lang=de inside the English masthead", async () => {
+  const { readFileSync } = await import("node:fs");
+  const html = readFileSync("docs/dev-hq/hq.js", "utf8");
+  assert.match(html, /<p id="live-freshness"[^>]*\blang="de"/);
 });

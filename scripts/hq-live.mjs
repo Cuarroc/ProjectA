@@ -9,7 +9,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { runSetupChecks } from "./lib/hq-setup.mjs";
 import { studioRoute } from "./lib/hq-studio.mjs";
 import { activitySessions, diffVolume, estimateEffort, heatmap, significantSignals, workSessions } from "./lib/hq-insights.mjs";
-import { authors, commitsPerDay, fleetStats, freshness, remainingEstimate, snapshotStats, testSurface } from "./lib/hq-stats.mjs";
+import { authors, commitsPerDay, fleetStats, fetchHeadAgeH, freshness, remainingEstimate, snapshotStats, testSurface } from "./lib/hq-stats.mjs";
 import { addLesson, feedbackLesson, lessonBadges, lessonBrief, lessonStats, matchSignals, readLessonsFile, refineLesson, relatedLessons, searchLessons, touchLesson, writeLessonsFile } from "./lib/hq-lessons.mjs";
 import { evaluateContinuousReadiness } from "./lib/continuous-readiness.mjs";
 import {
@@ -237,11 +237,8 @@ async function setup() {
 function checkoutFreshness() {
   const raw = tryGit(["rev-list", "--count", "HEAD..origin/main"]).trim();
   const behind = /^\d+$/.test(raw) ? Number(raw) : null;
-  let standAgeH = null;
-  try {
-    const fetchHead = resolve(root, tryGit(["rev-parse", "--git-path", "FETCH_HEAD"]).trim());
-    standAgeH = Math.max(0, (Date.now() - statSync(fetchHead).mtimeMs) / 3600000);
-  } catch { /* no FETCH_HEAD yet */ }
+  const gitPath = tryGit(["rev-parse", "--git-path", "FETCH_HEAD"]).trim();
+  const standAgeH = fetchHeadAgeH(gitPath && resolve(root, gitPath), { stat: statSync });
   return { behind, standAgeH, ...freshness({ behind, standAgeH }) };
 }
 
