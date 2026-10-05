@@ -3617,7 +3617,8 @@ mod tests {
     fn scheduler_dispatch_requires_the_test_only_permit() {
         // There is no runtime "missing permit" branch: code without this
         // unforgeable value cannot call dispatch_once, so it cannot reach spawn.
-        let source = include_str!("workers/scheduler.rs");
+        // Normalize CRLF: a Windows checkout may carry CRLF line endings.
+        let source = include_str!("workers/scheduler.rs").replace("\r\n", "\n");
         assert!(source.contains("pub struct SchedulerPermit(());"));
         assert!(source.contains("#[cfg(test)]\npub(super) fn test_permit()"));
         assert!(source.contains("_permit: &SchedulerPermit"));
