@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { describeError, deleteSessionBuffers, type ProductMode, type RoutingStatus } from "../../lib/ipc";
+import { describeError, deleteSessionBuffers, type AgentEnvStage, type ProductMode, type RoutingStatus } from "../../lib/ipc";
 import {
   saveTerminalFont,
   saveTerminalFontSize,
@@ -34,6 +34,9 @@ export interface GeneralTabProps {
   digestEnabled: boolean;
   handleToggleDigest: (enabled: boolean) => void;
   digestError: string | null;
+  envStage: AgentEnvStage;
+  handleEnvStage: (stage: AgentEnvStage) => void;
+  envStageError: string | null;
   stuckInput: string;
   setStuckInput: (value: string) => void;
   savingStuck: boolean;
@@ -75,6 +78,9 @@ export default function GeneralTab({
   digestEnabled,
   handleToggleDigest,
   digestError,
+  envStage,
+  handleEnvStage,
+  envStageError,
   stuckInput,
   setStuckInput,
   savingStuck,
@@ -223,6 +229,34 @@ export default function GeneralTab({
         gitignored, die Seiten sind Lesestoff für den Vault.
       </p>
         {digestError ? <span className="settings-error">{digestError}</span> : null}
+
+      <fieldset className="settings-field">
+        <legend className="field-label">Umgebung der Agenten</legend>
+        {(
+          [
+            ["strict", "Streng (empfohlen)"],
+            ["allowlist", "Erlaubnisliste"],
+            ["inherit", "Erbt alles (schwächste Stufe)"],
+          ] as const
+        ).map(([value, label]) => (
+          <label className="settings-check" key={value}>
+            <input
+              type="radio"
+              name="settings-env-stage"
+              value={value}
+              checked={envStage === value}
+              onChange={() => handleEnvStage(value)}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+        <p className="settings-hint">
+          Gilt für alle Projekte und nur für neue Starts und Neustarts von Agenten;
+          laufende Agenten behalten ihre Umgebung. „Erbt alles“ ist die schwächste
+          Stufe. Koordinatoren bleiben immer streng.
+        </p>
+        {envStageError ? <span className="settings-error" role="alert">{envStageError}</span> : null}
+      </fieldset>
 
       <SessionBufferDelete />
 
