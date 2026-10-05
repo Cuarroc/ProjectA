@@ -1,6 +1,6 @@
 [package]
 name = "projecta"
-version = "1.4.1"
+version = "1.5.0"
 description = "ProjectA - agentic terminal for running parallel CLI coding agents"
 default-run = "projecta"
 edition = "2021"
