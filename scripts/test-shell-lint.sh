@@ -27,6 +27,21 @@ expect crlf-detects-cr 1 bash "$LINT" crlf "$tmp/crlf.sh"
 expect crlf-unreadable-file-fails 1 bash "$LINT" crlf "$tmp/does-not-exist.sh"
 expect eol-source-text-is-lf 0 bash "$LINT" eol
 expect eol-detects-unset-extension 1 bash "$LINT" eol x.rs x.nosuchext
+# A nested .gitattributes can override the root rule for real tracked files.
+eolrepo="$tmp/eolrepo"
+mkdir -p "$eolrepo/sub" "$eolrepo/scripts/ci"
+cp "$LINT" "$eolrepo/scripts/ci/shell-lint.sh"  # the script cds to its own checkout
+git -C "$eolrepo" init -q
+printf '*.rs text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+' > "$eolrepo/.gitattributes"
+printf '*.rs text eol=crlf
+' > "$eolrepo/sub/.gitattributes"
+printf 'fn main() {}
+' > "$eolrepo/sub/a.rs"
+git -C "$eolrepo" add -A
+expect eol-detects-nested-override-on-tracked-file 1 bash "$eolrepo/scripts/ci/shell-lint.sh" eol
 expect unknown-check 2 bash "$LINT" nonsense
 expect crlf-tracked-tree 0 bash "$LINT" crlf
 
