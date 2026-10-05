@@ -64,6 +64,16 @@ impl AgentProfile {
         profile.env_policy.isolation = EnvIsolation::Strict;
         profile
     }
+
+    /// This profile as an ordinary agent runs it (W5-02b3): the global stage
+    /// replaces whatever isolation the profile asked for; its passthrough
+    /// list stays. Applied after routing and never to a coordinator, which
+    /// goes through [`Self::for_coordinator`] and stays strict.
+    pub fn with_global_isolation(&self, stage: EnvIsolation) -> AgentProfile {
+        let mut profile = self.clone();
+        profile.env_policy.isolation = stage;
+        profile
+    }
 }
 
 /// How much of the app's environment reaches an agent process (W5-02b).

@@ -716,19 +716,43 @@ impl AgentControl for PtyAgents<'_> {
 
 // -- pty commands (Phase 1) ------------------------------------------------
 
+/// The profile a direct terminal runs: the global environment stage replaces
+/// the profile's own isolation (W5-02b3), as it does for every ordinary spawn.
+async fn direct_pty_profile(store: &Store, profile_id: &str) -> Result<AgentProfile, String> {
+    let profile = profiles::find_profile(profile_id)
+        .ok_or_else(|| format!("unknown agent profile: {profile_id}"))?;
+    Ok(profile.with_global_isolation(store.agent_env_isolation().await?))
+}
+
 #[tauri::command]
-fn spawn_pty(
+async fn spawn_pty(
     app: AppHandle,
     manager: State<'_, PtyManager>,
+    store: State<'_, Store>,
     profile_id: String,
     cwd: Option<String>,
     cols: u16,
     rows: u16,
 ) -> Result<SpawnPtyResponse, String> {
-    let profile = profiles::find_profile(&profile_id)
-        .ok_or_else(|| format!("unknown agent profile: {profile_id}"))?;
+    let profile = direct_pty_profile(&store, &profile_id).await?;
     let session_id = manager.spawn(&app, &profile, cwd, cols, rows, &[])?;
     Ok(SpawnPtyResponse { session_id })
+}
+
+/// The global environment stage for ordinary agents (`strict` without a row).
+#[tauri::command]
+async fn get_agent_env_isolation(store: State<'_, Store>) -> Result<String, String> {
+    Ok(store.agent_env_isolation().await?.as_str().to_string())
+}
+
+/// Set the global stage; it applies to the next spawn or respawn only. The
+/// window is the human; the Control API demands the verdict token instead.
+#[tauri::command]
+async fn set_agent_env_isolation(store: State<'_, Store>, stage: String) -> Result<(), String> {
+    let stage = stage
+        .parse::<profiles::EnvIsolation>()
+        .map_err(|e| e.to_string())?;
+    store.set_agent_env_isolation(stage).await
 }
 
 #[tauri::command]
@@ -2996,6 +3020,14 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
+    fn agent_env_isolation(&self) -> Result<profiles::EnvIsolation, String> {
+        tauri::async_runtime::block_on(self.store.agent_env_isolation())
+    }
+
+    fn set_agent_env_isolation(&self, stage: profiles::EnvIsolation) -> Result<(), String> {
+        tauri::async_runtime::block_on(self.store.set_agent_env_isolation(stage))
+    }
+
     fn updater_state(&self) -> Result<api::UpdaterState, String> {
         self.updater
             .lock()
@@ -3871,6 +3903,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             spawn_pty,
+            get_agent_env_isolation,
+            set_agent_env_isolation,
             write_pty,
             resize_pty,
             kill_pty,
@@ -4237,6 +4271,22 @@ mod tests {
             .await
             .expect("open store");
         (dir, store)
+    }
+
+    #[tokio::test]
+    async fn direct_terminal_profile_follows_the_global_env_stage() {
+        use crate::profiles::EnvIsolation;
+        let (_dir, store) = seam_fixture("direct-pty-env-stage").await;
+        let id = crate::profiles::load_profiles().remove(0).id;
+        let strict = super::direct_pty_profile(&store, &id).await.unwrap();
+        assert_eq!(strict.env_policy.isolation, EnvIsolation::Strict);
+        store
+            .set_agent_env_isolation(EnvIsolation::Inherit)
+            .await
+            .unwrap();
+        let inherit = super::direct_pty_profile(&store, &id).await.unwrap();
+        assert_eq!(inherit.env_policy.isolation, EnvIsolation::Inherit);
+        assert!(super::direct_pty_profile(&store, "no-such").await.is_err());
     }
 
     #[tokio::test]
