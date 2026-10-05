@@ -324,6 +324,32 @@ mod tests {
         assert!(calls.borrow().is_empty());
     }
 
+    /// If the journal cannot be archived after the restore, writes stay
+    /// blocked and the next start restores again and retries the archive.
+    #[cfg(unix)]
+    #[test]
+    fn unarchived_journal_blocks_writes_then_restores_and_archives_again() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = TempDir::new("startup-archive-fails");
+        let location = installing(&dir);
+        let mut journal = DurableJournal::open(location.clone()).unwrap();
+        journal.begin_validation().unwrap();
+        journal.record_health_failure("unhealthy").unwrap();
+        let mode = |m| std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(m));
+        mode(0o555).unwrap();
+        let (effects, calls) = fake(handshake());
+        let blocked = recover_before_open(location.clone(), effects);
+        mode(0o755).unwrap();
+        assert!(blocked.unwrap_err().contains("not archived"));
+        assert_eq!(*calls.borrow(), vec!["restore"]);
+        assert!(location.path().exists());
+        let (effects, calls) = fake(handshake());
+        recover_before_open(location.clone(), effects).unwrap();
+        assert_eq!(*calls.borrow(), vec!["restore"]);
+        assert!(!location.path().exists());
+        assert_eq!(restored_record(&dir), UpdatePhase::RecoveryNeeded);
+    }
+
     #[test]
     fn live_validate_reports_the_observed_files_and_the_journal_nonce() {
         let dir = TempDir::new("startup-live");
