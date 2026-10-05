@@ -43,16 +43,20 @@ pub fn recover_before_open<E: RecoveryEffects>(
     }
     let journal = driver.journal().journal();
     // Before `Installing` nothing was replaced; later only a resumed one writes.
-    if journal.can_accept_writes()
-        || !matches!(
-            journal.phase(),
-            UpdatePhase::Installing
-                | UpdatePhase::Validating
-                | UpdatePhase::Installed
-                | UpdatePhase::Promoted
-                | UpdatePhase::RecoveryNeeded
-        )
-    {
+    // Exhaustive on purpose: a new phase must be classified here to compile.
+    let writable = match journal.phase() {
+        UpdatePhase::Available
+        | UpdatePhase::Downloaded
+        | UpdatePhase::WaitingIdle
+        | UpdatePhase::Maintenance
+        | UpdatePhase::BackupVerified => true,
+        UpdatePhase::Installing
+        | UpdatePhase::Validating
+        | UpdatePhase::Installed
+        | UpdatePhase::Promoted
+        | UpdatePhase::RecoveryNeeded => journal.can_accept_writes(),
+    };
+    if writable {
         Ok(())
     } else {
         Err(format!(
