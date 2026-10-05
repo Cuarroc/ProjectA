@@ -1225,20 +1225,25 @@ impl Store {
             .map(|name| name.to_string_lossy().into_owned())
             .ok_or_else(|| format!("{} has no file name", path.display()))?;
         let backup = path.with_file_name(format!("{name}.pre-migration-{ts}.bak"));
+        self.snapshot_into(&backup).await?;
+        Self::prune_pre_migration_backups(path, &name)?;
+        Ok(backup)
+    }
+
+    /// Coherent, integrity-checked, flushed copy of this database at `backup`
+    /// (`VACUUM INTO` includes committed WAL frames and runs beside a held
+    /// maintenance write lock). The target must not exist.
+    pub async fn snapshot_into(&self, backup: &Path) -> Result<(), String> {
         // SQLite takes a coherent snapshot including committed WAL frames.
         // A busy checkpoint must never silently produce an older main-file copy.
         sqlx::query("VACUUM main INTO ?")
             .bind(backup.to_string_lossy().as_ref())
             .execute(&self.pool)
             .await
-            .map_err(|e| format!("failed to snapshot {}: {e}", path.display()))?;
+            .map_err(|e| format!("failed to snapshot into {}: {e}", backup.display()))?;
         let verification = SqlitePoolOptions::new()
             .max_connections(1)
-            .connect_with(
-                SqliteConnectOptions::new()
-                    .filename(&backup)
-                    .read_only(true),
-            )
+            .connect_with(SqliteConnectOptions::new().filename(backup).read_only(true))
             .await
             .map_err(|e| format!("failed to open backup for verification: {e}"))?;
         let integrity: Result<(String,), _> = sqlx::query_as("PRAGMA quick_check")
@@ -1251,11 +1256,9 @@ impl Store {
         }
         std::fs::OpenOptions::new()
             .write(true)
-            .open(&backup)
+            .open(backup)
             .and_then(|file| file.sync_all())
-            .map_err(|e| format!("failed to flush verified backup: {e}"))?;
-        Self::prune_pre_migration_backups(path, &name)?;
-        Ok(backup)
+            .map_err(|e| format!("failed to flush verified backup: {e}"))
     }
 
     /// Keep the [`MAX_PRE_MIGRATION_BACKUPS`] newest
