@@ -13,6 +13,15 @@ starts with "## Report" on package branches.
 
 - 
 
+### Prompt-Log
+
+<!-- Recursive prompting (docs/development/prompting.md): the worker brief as draft, critique against checklist items 1-10, final. At most two rounds. -->
+
+- **rounds:** 0-2 · **critic:** self / model · **findings:** n high / n other · **changed:** one line
+- **Draft** (plan, at most 15 lines): 
+- **Critique:** 
+- **Final:** 
+
 ### Evidence
 
 | Command | Exit code |
