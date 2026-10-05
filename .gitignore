@@ -52,3 +52,6 @@ __pycache__/
 *.pyc
 /src-tauri/target-red-first-base
 /src-tauri/target-red-first-head
+# Root-level cargo target (5+ GB) and stray CLI logs: keep ripgrep/Glob and git status clean
+/target/
+/error.log
