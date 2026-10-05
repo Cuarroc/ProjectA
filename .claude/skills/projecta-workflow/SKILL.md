@@ -66,6 +66,7 @@ test first, then the fix.
   After round two the user decides. Everyday pair: `kimi-k3:cloud` +
   `glm-5.2:cloud` via Ollama Cloud and `.pa/review_transport.py` (setup and
   command: `docs/setup/ollama-reviewers.md`).
+- Recursive prompting (draft -> critique -> refine, at most two rounds, logged; `docs/development/prompting.md`) is mandatory for every task, worker brief and review prompt (user order 2026-10-05).
 - Keep review prompts out of the repo. Record every finding in the PR text
   (ID, source, severity, finding, disposition: accepted with commit / rejected
   with reason / follow-up).

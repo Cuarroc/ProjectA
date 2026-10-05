@@ -99,6 +99,8 @@ round two the user decides. Evidence is bound to the actual candidate; later
 changes invalidate the affected evidence, so review the delta again. A finding
 without `file:line` counts as unproven.
 
+Recursive prompting (draft -> critique -> refine, at most two rounds, logged; `docs/development/prompting.md`) is mandatory for every task, worker brief and review prompt (user order 2026-10-05).
+
 - **Everyday pair:** Kimi K3 (`kimi-k3:cloud`) + GLM 5.2 (`glm-5.2:cloud`) on
   Ollama Cloud through `.pa/review_transport.py`. Setup, call and prompt rules:
   `docs/setup/ollama-reviewers.md`. Keep review prompts out of the repo; they
