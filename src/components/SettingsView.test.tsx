@@ -10,6 +10,8 @@ const setProjectSetupCommand = vi.fn(async (...args: unknown[]): Promise<void> =
   void args;
 });
 const stateReads = vi.hoisted(() => ({
+  getAgentEnvIsolation: vi.fn(() => new Promise(() => {})),
+  setAgentEnvIsolation: vi.fn(),
   getBudgets: vi.fn(() => new Promise(() => {})),
   getDigestEnabled: vi.fn(() => new Promise(() => {})),
   getRoutingStatus: vi.fn(() => new Promise(() => {})),
@@ -22,6 +24,8 @@ const stateReads = vi.hoisted(() => ({
 vi.mock("../lib/ipc", () => ({
   describeError: (cause: unknown) => String(cause),
   deleteSessionBuffers: vi.fn(async () => {}),
+  getAgentEnvIsolation: stateReads.getAgentEnvIsolation,
+  setAgentEnvIsolation: stateReads.setAgentEnvIsolation,
   getBudgets: stateReads.getBudgets,
   getDigestEnabled: stateReads.getDigestEnabled,
   getLearningSettings: vi.fn(() => new Promise(() => {})),
@@ -358,5 +362,58 @@ describe("SettingsView global state resync", () => {
     await waitFor(() => expect(stateReads.setBudget).toHaveBeenCalled());
     await act(async () => resolveStale([{ profileId: "codex", fiveHourPct: 70, sevenDayPct: 90 }]));
     expect(screen.getByLabelText("5 h")).toHaveValue("65");
+  });
+});
+
+describe("SettingsView agent env stage", { timeout: 15000 }, () => {
+  const stageGroup = () => screen.getByRole("group", { name: /Umgebung der Agenten/ });
+
+  beforeEach(() => {
+    stateReads.getAgentEnvIsolation.mockReset();
+    stateReads.setAgentEnvIsolation.mockReset();
+  });
+
+  it("selects strict when opened", async () => {
+    stateReads.getAgentEnvIsolation.mockResolvedValue("strict");
+    render(<SettingsView {...PROPS} project={null} />);
+    await waitFor(() =>
+      expect(within(stageGroup()).getByRole("radio", { name: /Streng/ })).toBeChecked(),
+    );
+    expect(within(stageGroup()).getByRole("radio", { name: /Erlaubnisliste/ })).not.toBeChecked();
+    expect(within(stageGroup()).getByRole("radio", { name: /Erbt alles/ })).not.toBeChecked();
+  });
+
+  it("shows the stored stage when it is not the default", async () => {
+    stateReads.getAgentEnvIsolation.mockResolvedValue("inherit");
+    render(<SettingsView {...PROPS} project={null} />);
+    await waitFor(() =>
+      expect(within(stageGroup()).getByRole("radio", { name: /Erbt alles/ })).toBeChecked(),
+    );
+    expect(within(stageGroup()).getByRole("radio", { name: /Streng/ })).not.toBeChecked();
+  });
+
+  it("saves the chosen stage exactly once", async () => {
+    stateReads.getAgentEnvIsolation.mockResolvedValue("strict");
+    stateReads.setAgentEnvIsolation.mockResolvedValue(undefined);
+    render(<SettingsView {...PROPS} project={null} />);
+    const allowlist = await within(await screen.findByRole("group", { name: /Umgebung der Agenten/ })).findByRole("radio", { name: /Erlaubnisliste/ });
+    fireEvent.click(allowlist);
+    await waitFor(() => expect(allowlist).toBeChecked());
+    expect(stateReads.setAgentEnvIsolation).toHaveBeenCalledTimes(1);
+    expect(stateReads.setAgentEnvIsolation).toHaveBeenCalledWith("allowlist");
+  });
+
+  it("restores the previous stage and shows an alert when the save fails", async () => {
+    stateReads.getAgentEnvIsolation.mockResolvedValue("strict");
+    stateReads.setAgentEnvIsolation.mockRejectedValue(new Error("forbidden"));
+    render(<SettingsView {...PROPS} project={null} />);
+    const group = await screen.findByRole("group", { name: /Umgebung der Agenten/ });
+    const strict = await within(group).findByRole("radio", { name: /Streng/ });
+    await waitFor(() => expect(strict).toBeChecked());
+    fireEvent.click(within(group).getByRole("radio", { name: /Erbt alles/ }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("forbidden");
+    expect(strict).toBeChecked();
+    expect(within(group).getByRole("radio", { name: /Erbt alles/ })).not.toBeChecked();
   });
 });

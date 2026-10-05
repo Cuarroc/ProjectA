@@ -6,6 +6,7 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import {
   describeError,
   getBudgets,
+  getAgentEnvIsolation,
   getDigestEnabled,
   getLearningSettings,
   getProjectSetupCommand,
@@ -18,12 +19,14 @@ import {
   setUpdaterState,
   setBudget,
   setCategoryLearning,
+  setAgentEnvIsolation,
   setDigestEnabled,
   setProductMode,
   setProfileEnabled,
   setProjectSetupCommand,
   setStuckAfterMinutes,
   type ProductMode,
+  type AgentEnvStage,
   type RoutingStatus,
   type UpdaterState,
 } from "../lib/ipc";
@@ -178,6 +181,27 @@ export default function SettingsView({
       .catch((cause: unknown) => {
         setDigestEnabledState(previous);
         setDigestError(describeError(cause));
+      });
+  };
+
+  // The env stage is global and lives in the core; strict is the default and
+  // the value shown until the first read lands.
+  const [envStage, setEnvStageState] = useState<AgentEnvStage>("strict");
+  const [envStageError, setEnvStageError] = useState<string | null>(null);
+
+  const handleEnvStage = (stage: AgentEnvStage) => {
+    const previous = envStage;
+    setEnvStageState(stage);
+    setEnvStageError(null);
+    void setAgentEnvIsolation(stage)
+      .then(() => {
+        globalRead.current += 1;
+        setEnvStageState(stage);
+        flashSaved("Umgebung der Agenten gespeichert.");
+      })
+      .catch((cause: unknown) => {
+        setEnvStageState(previous);
+        setEnvStageError(describeError(cause));
       });
   };
 
@@ -703,6 +727,9 @@ export default function SettingsView({
     void getDigestEnabled()
       .then((enabled) => globalRead.current === mine && setDigestEnabledState(enabled))
       .catch((cause: unknown) => setDigestError(describeError(cause)));
+    void getAgentEnvIsolation()
+      .then((stage) => globalRead.current === mine && setEnvStageState(stage))
+      .catch((cause: unknown) => setEnvStageError(describeError(cause)));
     void getStuckAfterMinutes()
       .then((minutes) => {
         if (globalRead.current !== mine) return;
@@ -830,6 +857,9 @@ export default function SettingsView({
             digestEnabled={digestEnabled}
             handleToggleDigest={handleToggleDigest}
             digestError={digestError}
+            envStage={envStage}
+            handleEnvStage={handleEnvStage}
+            envStageError={envStageError}
             stuckInput={stuckInput}
             setStuckInput={setStuckInput}
             savingStuck={savingStuck}
