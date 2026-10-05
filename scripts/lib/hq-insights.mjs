@@ -133,6 +133,7 @@ export function significantSignals(ctx = {}) {
 
   const rank = { act: 0, watch: 1, note: 2 };
   out.sort((a, b) => rank[a.level] - rank[b.level]);
+  if (ctx.apiOffline) out.unshift({ level: "watch", title: "ProjectA-App nicht verbunden", why: "Agenten, Queue und Kontingent unbekannt (nicht leer)", target: "" });
   if (!out.length) push("note", "Nothing needs you right now", "no attention, verdicts, quota blocks or disputed lessons", "");
   return out;
 }

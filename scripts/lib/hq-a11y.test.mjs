@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
+import { significantSignals } from "./hq-insights.mjs";
 
 const source = (path) => readFileSync(path, "utf8");
 const HQ_JS = source("docs/dev-hq/hq.js");
@@ -17,7 +18,7 @@ const BOARD = [
   { worker: { id: "wk-1", task: "Fix the dispatcher", status: "running", profileId: "claude" }, column: "working" },
   { worker: { id: "wk-2", task: "Review the review", status: "exited", profileId: "codex" }, column: "ready_to_merge" },
 ];
-function liveFixture({ routes = {}, hash = "" } = {}) {
+function liveFixture({ routes = {}, hash = "", offline = false } = {}) {
   const dom = new JSDOM(source("docs/dev-hq/live.html"), { url: `http://localhost/live.html${hash}`, runScripts: "outside-only" });
   const { window } = dom;
   window.HQ_DATA = JSON.parse(source("docs/dev-hq/data.json"));
@@ -25,7 +26,9 @@ function liveFixture({ routes = {}, hash = "" } = {}) {
   window.fetch = (url, options = {}) => {
     const path = String(url).replace(/^\/__hq/, "").split("?")[0];
     calls.push({ path, method: options.method || "GET", body: options.body });
-    const body = path === "/api/projects" ? [] : path === "/api/board" ? BOARD : routes[path];
+    if (offline && path.startsWith("/api/")) return Promise.resolve({ ok: false, status: 503, json: async () => ({ error: "app offline" }) });
+    const route = routes[path];
+    const body = path === "/api/projects" ? [] : path === "/api/board" ? BOARD : typeof route === "function" ? route(options) : route;
     if (body === undefined && path.startsWith("/api/")) return Promise.resolve({ ok: true, json: async () => [] });
     if (body === undefined) return Promise.resolve({ ok: false, status: 404, json: async () => ({ error: "mock" }) });
     return Promise.resolve({ ok: true, json: async () => body });
@@ -457,4 +460,21 @@ test("HQ-21: lesson feedback asks for the run id in the card", async (t) => {
   const sent = f.calls.find((c) => c.path === "/lessons/L1/worked");
   assert.ok(sent);
   assert.deepEqual(JSON.parse(sent.body), { runId: "run-42" });
+});
+
+test("offline app: the signal list says so instead of showing the error text", async (t) => {
+  // /insights is a local route; answer it with the real signal logic.
+  const insights = (options) => ({
+    effort: { time: { hours: 1, low: 1, high: 2, basis: "x" }, tokens: { value: 1, low: 1, high: 1, source: "estimate", basis: "x" }, costUsd: null },
+    sittings: { count: 1, journalSessions: 0, instances: 0 }, volume: { insertions: 0, deletions: 0 },
+    heat: { grid: Array.from({ length: 7 }, () => Array(24).fill(0)), max: 0 },
+    signals: significantSignals(JSON.parse(options.body)),
+  });
+  const f = liveFixture({ offline: true, routes: { "/insights": insights } }); t.after(() => f.dom.window.close());
+  await settle(f.document, "#live-signals .signal");
+  const text = f.document.querySelector("#live-signals").textContent;
+  assert.match(text, /App nicht verbunden/);
+  assert.doesNotMatch(text, /Live-Daten nicht verfügbar/);
+  assert.doesNotMatch(text, /Nothing needs you right now/);
+  assert.equal(f.calls.find((c) => c.path === "/insights").body.includes('"apiOffline":true'), true);
 });

@@ -1018,7 +1018,8 @@
         for (const id of ['live-board', 'live-queue', 'live-questions', 'live-review', 'live-activity', 'live-capacity', 'live-updater', 'live-usage', 'live-providers', 'live-recommendations', 'live-signals', 'live-effort']) {
           el.querySelector(`#${id}`).textContent = 'Live-Daten nicht verfügbar. Verbindung zur Control-API prüfen.';
         }
-        await refreshStats(null);
+        // Insights need only git and local files, not the app: keep the signal list useful offline.
+        await Promise.all([refreshStats(null), refreshInsights({ apiOffline: true, setup: lastSetup }).catch(() => {})]);
       } finally {
         await local;
         refreshing = false;

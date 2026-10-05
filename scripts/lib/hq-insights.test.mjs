@@ -70,3 +70,11 @@ test("significantSignals ranks act > watch > note and names the target", () => {
   assert.deepEqual(levels, [...levels].sort((a, b) => ({ act: 0, watch: 1, note: 2 })[a] - ({ act: 0, watch: 1, note: 2 })[b]));
   assert.equal(significantSignals({})[0].title, "Nothing needs you right now");
 });
+
+test("significantSignals: an offline app is the first signal and never reads as all clear", () => {
+  const signals = significantSignals({ apiOffline: true });
+  assert.match(signals[0].title, /App nicht verbunden/);
+  assert.ok(!signals.some((s) => /Nothing needs you right now/.test(s.title)));
+  const withAct = significantSignals({ apiOffline: true, setup: { ready: false, summary: "x" } });
+  assert.match(withAct[0].title, /App nicht verbunden/);
+});
