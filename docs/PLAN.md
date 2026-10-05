@@ -123,7 +123,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 
 **R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0-beta` setzt voraus:
 
-- W3-02 vollständig, einschließlich W3-02f bis W3-02i. Die drei Release-Blocker sind W3-02g (Journal-Erzeuger), W3-02h (Bytes und Version ans Journal, #411-Befund C1) und W3-02i (Wartungs-Lease, #411-Befund C2).
+- W3-02 vollständig, einschließlich W3-02f bis W3-02i. Die vier Release-Blocker sind W3-02g (Journal-Erzeuger), W3-02h (Bytes und Version ans Journal, #411-Befund C1), W3-02j (Handshake-Identität nach dem Update) und W3-02i (Wartungs-Lease, #411-Befund C2). W3-02j, weil nach jedem echten Update die App heute nicht mehr startet: die Startprüfung vergleicht den Hash der laufenden exe mit dem Hash des Update-Pakets, dazu den Datenbank-Snapshot-Hash mit der Live-Datenbank (Befund aus PR #457 und Berater Fable 5.1, 05.10.).
 - Die PC-Drills W3-03 (paketierte Drills) und W3-07 (Produktionsschlüssel-Build und Signed-Updater-Relaunch) sowie der Beleg W3-08 (paketierter HQ-v1-Beleg).
 - Alle Gates und die 27 Matrixzeilen (Fassung vom 04.10.).
 
@@ -158,6 +158,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-02f | Wiederherstellung beim Start | M | fR | in Arbeit (Branch `claude/w3-02f-startup-recovery`) |
 | W3-02g | Release-Blocker R-1 (Beta): Journal-Erzeuger. `update-recovery.json` legt heute nichts an, daher lehnt das Selbst-Update in der App immer ab (offener Punkt aus #411). Stufe A | M | mn | offen |
 | W3-02h | Release-Blocker R-1 (Beta): #411-Befund C1, die installierten Bytes und die Version an das Journal binden (`signed_artifact_sha256`, `candidate_version`; heute verwirft `InstallOnly` beide). Stufe A | M | mn | offen |
+| W3-02j | Release-Blocker R-1 (Beta): Handshake-Identität nach dem Update. Die Startprüfung muss die laufende exe und die Live-Datenbank nach einem echten Update als Erbe des Journals anerkennen (Vertrauen beim ersten Start, siehe `docs/decisions.md`), sonst blockiert `IdentityMismatch` den Start. Befund aus #457. Stufe A | M | mn | offen |
 | W3-02i | Release-Blocker R-1 (Beta): #411-Befund C2, Wartungs-Lease statt Momentaufnahme von `is_maintenance_active()`; berührt auch `store.rs` (Naht, nur seriell). Stufe A | M | mn | offen |
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | ✓ #119 |
