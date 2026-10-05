@@ -454,7 +454,7 @@ impl UpdateJournal {
     pub fn enter_maintenance(&mut self, proof: DrainProof) -> Result<()> {
         self.require(UpdatePhase::WaitingIdle, "enter maintenance")?;
         proof.valid()?;
-        if proof.quiesced_database.path != self.previous.database.path {
+        if !paths_equal(&proof.quiesced_database.path, &self.previous.database.path) {
             return Err(RecoveryError::IdentityMismatch("quiesced database path"));
         }
         self.previous.database = proof.quiesced_database.clone();
@@ -506,9 +506,9 @@ impl UpdateJournal {
         // check, so the handshake gates on nonce, path, version and records the
         // observed digests instead of comparing them.
         if handshake.nonce != self.nonce
-            || handshake.binary.path != self.candidate.binary.path
+            || !paths_equal(&handshake.binary.path, &self.candidate.binary.path)
             || handshake.binary.version != self.staged_manifest.candidate_version
-            || handshake.database.path != self.candidate.database.path
+            || !paths_equal(&handshake.database.path, &self.candidate.database.path)
         {
             return Err(RecoveryError::IdentityMismatch(
                 "current instance handshake",
