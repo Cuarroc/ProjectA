@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { measure, packageId, renderMarkdown, main, countLines, collect } from "../dev/bench-weekly.mjs";
 
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/bench-weekly.json", import.meta.url), "utf8"));
@@ -51,7 +52,7 @@ test("markdown and --json outputs come from --input without network", async () =
   const m = measure(fixture, { from: "2026-10-02", to: "2026-10-05" });
   assert.match(renderMarkdown(m), /\| thr_prs \|/);
   let out = "";
-  const code = await main(["--input", new URL("./fixtures/bench-weekly.json", import.meta.url).pathname, "--from", "2026-10-02", "--to", "2026-10-05", "--json"], { out: (s) => (out += s), err: () => {} });
+  const code = await main(["--input", fileURLToPath(new URL("./fixtures/bench-weekly.json", import.meta.url)), "--from", "2026-10-02", "--to", "2026-10-05", "--json"], { out: (s) => (out += s), err: () => {} });
   assert.equal(code, 0);
   assert.equal(JSON.parse(out).rows.length, m.rows.length);
 });
