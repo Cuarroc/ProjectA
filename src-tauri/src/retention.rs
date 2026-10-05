@@ -499,12 +499,22 @@ mod tests {
         add_worker(&store, &project.id, "wk-1").await;
         // More than two DELETE_CHUNK batches, so the loop has to iterate.
         let count = DELETE_CHUNK * 2 + 200;
+        // One transaction for all rows: the store runs `synchronous=FULL`, so
+        // one autocommit insert per row meant one fsync per row, which took
+        // over 120 s on a slow Windows runner (KI-33).
+        let mut tx = store.pool_for_test().begin().await.unwrap();
         for _ in 0..count {
-            store
-                .insert_status_event_at("wk-1", &new_id("ev"), NOW - 400 * DAY_SECS)
-                .await
-                .unwrap();
+            sqlx::query(
+                "INSERT INTO status_events (id, worker_id, kind, detail, source, created_at)
+                 VALUES (?1, 'wk-1', 'column', 'working', 'app', ?2)",
+            )
+            .bind(new_id("ev"))
+            .bind(NOW - 400 * DAY_SECS)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
         }
+        tx.commit().await.unwrap();
 
         let report = sweep_at(&store, &dir.path().join("archive"), NOW).await;
 
