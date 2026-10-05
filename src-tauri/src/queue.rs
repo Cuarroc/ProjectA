@@ -39,13 +39,18 @@ pub const POLL_INTERVAL: Duration = Duration::from_secs(30);
 
 /// How long one launch may take before its entry is failed (FJ-3).
 ///
-/// A product default, not a measured limit: the user can change it. No
-/// existing launch constant fits (`setupgate::TIMEOUT` bounds a setup
+/// A product default, not a measured limit. It is a compile-time constant
+/// (no setting yet): changing it is a code change the user decides in the
+/// decision inbox. A launch slower than this fails for good, it is not
+/// retried. No existing launch constant fits (`setupgate::TIMEOUT` bounds a setup
 /// command, not the whole worker start), so this one is named here. Every
 /// project's sweep hangs on one `block_on`; a launch that never returns would
-/// otherwise stall all of them.
+/// otherwise stall all of them. Only the launch await is bounded here, not the
+/// store/preflight awaits around it. Dropping a timed-out launch does not undo
+/// side effects it already made (a worktree from `spawn_blocking`): follow-up.
 pub const LAUNCH_TIMEOUT: Duration = Duration::from_secs(120);
 
+// Read on the thread that sets it: the sweep is polled inline under `block_on`.
 #[cfg(test)]
 thread_local! {
     static LAUNCH_TIMEOUT_OVERRIDE: std::cell::Cell<Option<Duration>> =
@@ -434,8 +439,7 @@ pub async fn dispatch_project(
         .await
         .unwrap_or_else(|_| {
             Err(format!(
-                "launch timed out after {}s; entry failed, not retried",
-                timeout.as_secs()
+                "launch timed out after {timeout:?}; entry failed, not retried"
             ))
         });
         return match outcome {
@@ -1282,7 +1286,7 @@ mod tests {
         assert!(
             hung.error
                 .as_deref()
-                .is_some_and(|e| e.contains("timed out")),
+                .is_some_and(|e| e.contains("timed out after 200ms")),
             "named reason expected: {:?}",
             hung.error
         );
