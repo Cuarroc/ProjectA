@@ -23,6 +23,28 @@ Standard für jeden Prompt in ProjectA: **Entwurf → Kritik gegen die Checklist
 9. Ein Modell ohne Gedächtnis versteht den Auftrag allein (Basis-SHA, Ausgabeform).
 10. Der wahrscheinlichste Grund für „BLOCKIERT“ ist ausgeräumt.
 
+## Selbstprüfung vor dem Push
+
+Der Autor prüft sein Ergebnis selbst, bevor er pusht; das fängt Fehler ab, die sonst erst ein Review-Fix-Commit behebt (Ziel: Code-PRs mit Review-Fix-Commit von 15 % auf höchstens 8 %). Jeder Punkt hat einen Befehl, dessen Ausgabe und Exit-Code in den PR-Text gehören (Checkliste 4, 5, 9):
+
+1. **Größe (4):** `git diff --shortstat origin/main...HEAD` zeigt höchstens 300 Zeilen einschließlich Tests; sonst vor dem Push schneiden.
+2. **Abnahme und Trailer (5):** der Abnahmebefehl aus dem Auftrag läuft mit Exit 0; jede Commit-Nachricht trägt `Test-First: <Pfad>::<Test>`, `Regression-For:` oder `No-Test: <Grund>`; Code-PRs: `bash scripts/ci/red-first.sh --plan`. Nach dem Commit `git log -1 --format=%s%n%b` lesen, nicht durch `tail` oder `head` leiten.
+3. **Allein verständlich (9):** der PR-Text nennt Basis-SHA, drei deutsche Sätze für den Nutzer, `## Report`, `### Prompt-Log` und `NICHT ABGEDECKT`.
+4. **Sicherheit:** Secret-Scan vor jedem Commit; nichts Persönliches (Namen, E-Mails außer noreply, Pfade mit Benutzernamen, Kosten).
+5. **Grün:** `bash scripts/ci/gates.sh lane prepush` am letzten Commit im eigenen Arbeitsbaum, Exit 0 ungemaskiert; erst danach pushen und mit `git ls-remote` prüfen.
+
+Ein roter Punkt wird vor dem Push behoben. Er zählt nicht als Fixrunde.
+
+## Nacharbeit: genau eine Fixrunde
+
+Ist nach dem Push Nacharbeit nötig (Review-Befund, rote Prüfung), gilt (Plan Abschnitt 6 und 7b):
+
+- **Eine begrenzte Fixrunde auf demselben Branch, kein neuer PR.** Der Fix ist ein Commit (kein Force-Push, kein Rebase), danach ein erneutes `prepush` und ein Push.
+- Jeder Befund steht im PR-Text unter `### Nacharbeit` als `Datei:Zeile` mit Befehl und Exit-Code. Ein Befund ohne `Datei:Zeile` zählt als unbelegt.
+- Die Runde behebt nur die genannten Befunde; Neues kommt in ein eigenes Paket.
+- Bleibt ein Befund offen oder ist ein gepushter Commit selbst falsch (etwa ein Trailer), folgt keine zweite Fixrunde: der Worker schreibt `BLOCKIERT: <Grund>`, der Nutzer entscheidet (AGENTS.md, Regel 5: Zusammenführen, Aufteilen oder Verwerfen).
+- FLOW-05 zählt die Fixrunden je PR.
+
 ## Vorlagen
 
 Die Vorlagen sind englisch, weil sie an Agenten gehen; die Erläuterungen sind deutsch.
