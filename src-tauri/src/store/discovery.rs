@@ -177,6 +177,8 @@ async fn scan_root(
     let mut workers = (i64::from(policy.continuous.max_workers) - running).max(0);
     let mut integration = (i64::from(policy.continuous.max_integration) - integrating).max(0);
     let max_attempts = i64::from(policy.continuous.max_attempts_per_task);
+    let approval_authority_available =
+        super::development_runs::approval_authority()["state"] == "available";
     let mut dispatched = Vec::new();
     let mut skipped = Vec::new();
     for (task_id, goal_id, attempts, dependencies, team, role, assignee) in rows {
@@ -223,6 +225,12 @@ async fn scan_root(
                 continue;
             }
         };
+        // M4-R27-04 (matrix row 18): without approval authority nothing may
+        // reach integration; refuse before any capacity is consumed.
+        if dispatch_role == DispatchRole::Integrator && !approval_authority_available {
+            skipped.push(skip("integration_requires_approval_authority", None));
+            continue;
+        }
         if workers == 0 {
             skipped.push(skip("worker_capacity_exhausted", None));
             continue;
@@ -783,16 +791,65 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(scan.dispatched.len(), 1);
-        assert_eq!(scan.dispatched[0].task_id, first);
-        assert_eq!(scan.dispatched[0].dispatch_role, DispatchRole::Integrator);
+        // v1.5.0 has no approval authority, so even the permitted integrators
+        // are refused (M4-R27-04b); the role refusals are unchanged.
+        assert!(scan.dispatched.is_empty());
         assert_eq!(
             reasons(&scan),
             vec![
                 (coordinate, "role_refused".to_string()),
                 (unassigned, "role_refused".to_string()),
-                (second, "integration_capacity_exhausted".to_string()),
+                (first, "integration_requires_approval_authority".to_string()),
+                (
+                    second,
+                    "integration_requires_approval_authority".to_string()
+                ),
             ]
+        );
+    }
+
+    /// M4-R27-04 negative test for matrix row 18: the integration stage is
+    /// refused without approval authority; implementer work still dispatches
+    /// and nothing is claimed, attempted or launched for the integrator.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn discovery_refuses_integration_stage_without_approval_authority() {
+        let (_dir, store, _project, goal) = fixture().await;
+        let implement = task(&store, &goal, "implement", vec![], 1).await;
+        let integrate = task(&store, &goal, "integrate", vec![], 2).await;
+        assign(&store, &integrate, "integrator", "int-a").await;
+        assert_eq!(
+            crate::store::development_runs::approval_authority()["state"],
+            "unavailable"
+        );
+
+        let scan = store
+            .scan_discovery_at(&goal, "scan-integration", now_unix_secs())
+            .await
+            .unwrap();
+
+        assert_eq!(
+            reasons(&scan),
+            vec![(
+                integrate.clone(),
+                "integration_requires_approval_authority".to_string()
+            )]
+        );
+        assert_eq!(scan.dispatched.len(), 1);
+        assert_eq!(scan.dispatched[0].task_id, implement);
+        assert_eq!(scan.dispatched[0].dispatch_role, DispatchRole::Implementer);
+        for sql in [
+            "SELECT COUNT(*) FROM development_runs",
+            "SELECT COUNT(*) FROM development_launches",
+        ] {
+            assert_eq!(count(&store, sql).await, 0, "{sql}");
+        }
+        assert_eq!(
+            count(
+                &store,
+                &format!("SELECT attempts+(claim_owner IS NOT NULL) FROM continuous_tasks WHERE id='{integrate}'")
+            )
+            .await,
+            0
         );
     }
 
