@@ -3,6 +3,7 @@
 #   shell-lint.sh shellcheck [file...]   shellcheck -S warning over tracked *.sh + .githooks/*
 #   shell-lint.sh actionlint [file...]   actionlint over .github/workflows/*.yml
 #   shell-lint.sh crlf [file...]         no CR byte in tracked *.sh + .githooks/*
+#   shell-lint.sh eol [path...]          .gitattributes forces eol=lf for source text read by tests
 # Without file arguments the tracked files are used; the self-test passes fixtures.
 #
 # A missing tool is a logged skip locally and a failure in CI (GITHUB_ACTIONS=true):
@@ -76,8 +77,23 @@ case "$check" in
     [ "$bad" -eq 0 ] && echo "crlf: $n file(s) free of CR"
     exit "$bad"
     ;;
+  eol)
+    # Tests that read .rs/.md/.json and assert on "\n" snippets break on a CRLF
+    # checkout (PR #412). `git check-attr` also answers for paths that do not exist.
+    [ $# -gt 0 ] || set -- x.rs x.md x.json
+    bad=0
+    for f in "$@"; do
+      v="$(git check-attr eol -- "$f" | sed 's/.*: //')"
+      if [ "$v" != "lf" ]; then
+        echo "ERROR: .gitattributes does not set eol=lf for $f (eol: $v); a Windows checkout would get CRLF" >&2
+        bad=1
+      fi
+    done
+    [ "$bad" -eq 0 ] && echo "eol: eol=lf set for $*"
+    exit "$bad"
+    ;;
   *)
-    echo "usage: shell-lint.sh shellcheck|actionlint|crlf [file...]" >&2
+    echo "usage: shell-lint.sh shellcheck|actionlint|crlf|eol [file...]" >&2
     exit 2
     ;;
 esac
