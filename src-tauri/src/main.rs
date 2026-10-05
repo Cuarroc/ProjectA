@@ -1204,9 +1204,10 @@ async fn leave_maintenance(
     leave_database_maintenance(&pty, &store).await
 }
 
-/// Download and verify first, then install through the recovery journal: the
-/// persisted drain and backup evidence, the live write block and the session
-/// freeze must all hold, else the installer is never invoked (W3-02e).
+/// Drain, enter store maintenance, take the verified backup and persist the
+/// journal up to `BackupVerified` - all before the download - then install
+/// through the journal (W3-02e/g). Any failure before the installer started
+/// leaves maintenance again and refuses.
 #[tauri::command]
 async fn install_update_when_idle(
     webview: tauri::Webview,
@@ -1218,22 +1219,69 @@ async fn install_update_when_idle(
         .map_err(|error| error.to_string())?;
     let app = webview.app_handle().clone();
     let dir = app_data_dir(&app)?;
-    let journal = delivery_recovery::JournalStore::new(
+    let journal_store = delivery_recovery::JournalStore::new(
         dir.join("update-recovery.json"),
         &dir.join("projecta.db"),
     )
-    .and_then(delivery_recovery::DurableJournal::open)
     .map_err(|error| format!("update journal unavailable: {error}"))?;
-    // Refuse before the download when the evidence is already missing.
-    delivery_recovery::require_install_evidence(
+    enter_database_maintenance(
         &app.state::<PtyManager>(),
-        app.state::<Store>().is_maintenance_active(),
-        &journal,
-    )?;
+        &app.state::<Store>(),
+        MAINTENANCE_DRAIN_WAIT,
+    )
+    .await?;
+    let result = prepare_and_install(&app, &update, &dir, journal_store.clone()).await;
+    // From `Installing` on, only the restart validation may thaw the app.
+    // An unreadable journal counts as started: the app stays frozen.
+    let installer_started = journal_store.path().exists()
+        && journal_store.load().map_or(true, |journal| {
+            !delivery_recovery::installer_not_started(journal.phase())
+        });
+
+    if result.is_err() && !installer_started {
+        let thaw =
+            leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()).await;
+        return report_with_thaw(result, thaw);
+    }
+    result
+}
+
+fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Result<(), String> {
+    match (result, thaw) {
+        (Err(error), Err(thaw)) => {
+            Err(format!("{error} (leaving maintenance also failed: {thaw})"))
+        }
+        (result, _) => result,
+    }
+}
+
+async fn prepare_and_install(
+    app: &AppHandle,
+    update: &tauri_plugin_updater::Update,
+    dir: &Path,
+    journal_store: delivery_recovery::JournalStore,
+) -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let database = dir.join("projecta.db");
+    let manifest = update.raw_json.to_string();
+    let journal = delivery_recovery::produce_journal(
+        &app.state::<PtyManager>(),
+        &app.state::<Store>(),
+        journal_store,
+        &delivery_recovery::Announced {
+            exe: &exe,
+            database: &database,
+            version: &update.version,
+            signature: &update.signature,
+            manifest: &manifest,
+        },
+    )
+    .await?;
     let bytes = update
         .download(|_, _| {}, || {})
         .await
         .map_err(|error| error.to_string())?;
+    let (app, update) = (app.clone(), update.clone());
     tauri::async_runtime::spawn_blocking(move || {
         delivery_recovery::install_through_journal(
             &app.state::<PtyManager>(),
@@ -4053,6 +4101,14 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn failed_thaw_does_not_hide_the_update_error() {
+        let both =
+            crate::report_with_thaw(Err("download failed".into()), Err("thaw failed".into()));
+        let message = both.unwrap_err();
+        assert!(message.starts_with("download failed") && message.contains("thaw failed"));
+    }
+
     use super::{Duration, PtyManager};
     use std::path::PathBuf;
 
