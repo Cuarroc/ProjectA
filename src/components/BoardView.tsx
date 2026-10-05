@@ -30,6 +30,7 @@ import type {
   TestStatus,
   Worker,
 } from "../types";
+import ErrorNote from "./ErrorNote";
 import InfoLine from "./InfoLine";
 
 interface BoardViewProps {
@@ -312,30 +313,70 @@ export default function BoardView({
     );
   }
 
+  // Nothing to show yet and the fetch failed: say it in plain words. The
+  // board polls on its own (`useBoard`), so the next attempt needs no button.
   if (error !== null && cards.length === 0) {
     return (
-      <div className="empty-state">
-        <p className="board-error">{error}</p>
-        <p className="empty-hint">Es wird alle paar Sekunden neu versucht.</p>
+      <div className="board-state">
+        <div className="board-state-panel">
+          <h2 className="board-state-title">Das Board konnte nicht geladen werden</h2>
+          <ErrorNote message={error} />
+          <p className="board-state-retry">
+            <span className="board-state-retry-dot" aria-hidden="true" />
+            ProjectA versucht es alle paar Sekunden von selbst erneut.
+          </p>
+        </div>
       </div>
     );
   }
 
+  // The skeleton is the board itself with placeholder cards: the columns the
+  // cards will land in are already where they belong, so nothing jumps.
   if (loading && cards.length === 0) {
     return (
-      <div className="empty-state">
-        <p>Board wird geladen …</p>
+      <div className="board board-loading" aria-busy="true">
+        <p className="board-loading-note" role="status">
+          Board wird geladen …
+        </p>
+        <div className="board-columns" aria-hidden="true">
+          {BOARD_COLUMNS.map((column) => (
+            <section key={column} className={`board-column board-column-${column}`}>
+              <header className="board-column-head">
+                <span className="board-column-title">{COLUMN_LABELS[column]}</span>
+              </header>
+              <div className="board-column-body">
+                <div className="board-skeleton-card">
+                  <span className="board-skeleton-line" />
+                  <span className="board-skeleton-line board-skeleton-line-short" />
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (cards.length === 0) {
     return (
-      <div className="empty-state">
-        <p>In diesem Projekt gibt es noch keine Worker.</p>
-        <div className="empty-actions">
-          <button type="button" className="empty-action" onClick={onNew}>
-            Neuer Worker
+      <div className="board-state">
+        <div className="board-state-panel">
+          <h2 className="board-state-title">Noch keine Worker in diesem Projekt</h2>
+          <p className="board-state-text">
+            Hier siehst du jeden Worker dieses Projekts und in welcher Phase seine Aufgabe gerade
+            steht.
+          </p>
+          <ol className="board-state-flow" aria-label="Die Phasen auf dem Board">
+            {BOARD_COLUMNS.map((column) => (
+              <li key={column}>
+                <span className={`board-state-step board-state-step-${column}`}>
+                  {COLUMN_LABELS[column]}
+                </span>
+              </li>
+            ))}
+          </ol>
+          <button type="button" className="empty-action board-state-action" onClick={onNew}>
+            Ersten Worker starten
           </button>
         </div>
       </div>

@@ -140,3 +140,33 @@ describe("BoardView accessibility (ui-ux-pro-max audit)", () => {
     expect(document.activeElement).toBe(trigger);
   });
 });
+
+describe("BoardView states without cards", () => {
+  it("empty: explains the board and offers the first worker", () => {
+    const onNew = vi.fn();
+    render(<BoardView {...props} cards={[]} onNew={onNew} />);
+    expect(screen.getByRole("heading", { name: "Noch keine Worker in diesem Projekt" })).toBeInTheDocument();
+    const phases = screen.getByRole("list", { name: "Die Phasen auf dem Board" });
+    expect(phases.querySelectorAll("li")).toHaveLength(5);
+    fireEvent.click(screen.getByRole("button", { name: "Ersten Worker starten" }));
+    expect(onNew).toHaveBeenCalledTimes(1);
+  });
+
+  it("loading: keeps the five columns in place and announces the load", () => {
+    const { container } = render(<BoardView {...props} cards={[]} loading />);
+    expect(container.querySelector(".board")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Board wird geladen");
+    expect(container.querySelectorAll(".board-columns .board-column")).toHaveLength(5);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("error: says what happened and that it retries by itself", () => {
+    render(<BoardView {...props} cards={[]} loading error="database is locked" />);
+    const note = screen.getByRole("alert");
+    expect(note).toHaveTextContent("Was ist passiert?");
+    expect(note).toHaveTextContent("Was du tun kannst:");
+    expect(note).toHaveTextContent("database is locked");
+    expect(screen.getByText(/versucht es alle paar Sekunden von selbst erneut/)).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});
