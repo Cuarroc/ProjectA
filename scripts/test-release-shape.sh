@@ -54,6 +54,10 @@ awk '/run: bash scripts\/ci\/gates\.sh lane release/ && ++n == 1 {
 check dry-run-reading-secret-fails fail "$tmp/drysecret.yml" "$ACT" "job release-gates-dry-run reads a secret"
 check dry-run-without-dispatch-guard-fails fail \
   "$(wf "/^    if: github.event_name == 'workflow_dispatch'\$/d" drynoif)" "$ACT" "not limited to workflow_dispatch"
+check dry-run-with-write-permissions-fails fail \
+  "$(wf "s/^      contents: read\$/      contents: write/" drywrite)" "$ACT" "job release-gates-dry-run has a write permission"
+check dry-run-without-permissions-fails fail \
+  "$(wf "/^    permissions:\$/,/^      contents: read\$/d" drynoperm)" "$ACT" "job release-gates-dry-run declares no job-level permissions"
 check installer-without-environment-fails fail "$(wf '/^    environment: release$/d' noenv)" "$ACT" "lost environment: release"
 check installer-without-push-guard-fails fail "$(wf "/^    if: github.event_name == 'push'\$/d" nopush)" "$ACT" "not limited to push"
 

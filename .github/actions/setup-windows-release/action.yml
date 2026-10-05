@@ -48,7 +48,7 @@ runs:
     - shell: bash
       run: npm ci
 
-    # hq-visual and e2e need Chromium.
+    # e2e needs Chromium.
     - name: Playwright Chromium
       shell: bash
       run: npx playwright install chromium

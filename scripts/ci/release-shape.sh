@@ -5,7 +5,8 @@
 #      windows-installer or the composite it uses.
 #   2. Both jobs use that composite and run `gates.sh lane release`.
 #   3. windows-installer: push only, keeps `environment: release`.
-#   4. Other jobs: no environment, no secret; dry run dispatch-only (block YAML).
+#   4. Other jobs: no environment, no secret, job-level permissions without
+#      write; dry run dispatch-only (block YAML).
 # Usage: release-shape.sh [release.yml] [action.yml]
 # Self-test: scripts/test-release-shape.sh
 set -uo pipefail
@@ -32,7 +33,6 @@ TOOLS=(
   "licenses|tool:.*cargo-deny@"
   "rust-suite|tool:.*nextest"
   "e2e|playwright install chromium"
-  "hq-visual|playwright install chromium"
 )
 
 nocomment() { grep -v -E '^[[:space:]]*#' "$1"; }
@@ -82,6 +82,8 @@ while IFS= read -r j; do
   body="$(job "$j")"
   grep -qE '^    environment:' <<< "$body" && err "job $j has an environment (only windows-installer may)"
   grep -qE 'secrets\.' <<< "$body" && err "job $j reads a secret (only windows-installer may)"
+  grep -qE '^    permissions:' <<< "$body" || err "job $j declares no job-level permissions"
+  grep -qE '^      [a-z-]+:[[:space:]]*write' <<< "$body" && err "job $j has a write permission (only windows-installer may)"
 done <<< "$jobs"
 
 if [ "$errors" -gt 0 ]; then
