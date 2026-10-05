@@ -274,8 +274,9 @@ mod tests {
             journal,
             exe: exe.clone(),
         };
-        let got = live.validate(&candidate, "nonce-a").unwrap();
-        assert_eq!(got.nonce, "nonce-a");
+        let nonce = format!("nonce-{}", std::process::id());
+        let got = live.validate(&candidate, &nonce).unwrap();
+        assert_eq!(got.nonce, nonce);
         assert_eq!(got.binary.sha256, sha(&exe).unwrap());
         assert_eq!(got.database.sha256, sha(&db).unwrap());
     }
