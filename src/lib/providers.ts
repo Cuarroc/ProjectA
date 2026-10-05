@@ -90,6 +90,10 @@ export function useProviderOverview(pollMs = 0): ProviderSnapshot {
     try {
       const next = await getProviderOverview();
       if (!aliveRef.current) return;
+      if (!Array.isArray(next)) {
+        setError("Unerwartete Antwort der Anbieter-Übersicht.");
+        return;
+      }
       setProviders(next);
       setError(null);
     } catch (err) {
