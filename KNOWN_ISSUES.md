@@ -44,7 +44,7 @@ vorkommen — die Einstufung „nur Linux" heißt genau das und ist per
 | KI-24 | SQLite-Lastklasse: einzelne Store-Tests scheiterten unter paralleler Last mit `database is locked (code: 5)` bzw. `pool timed out` — `store::continuous::tests::stale_fence_cannot_complete_claim_and_expiry_does_not_reclaim` (Linux, Run 35288206709 auf `main` @ `4e409d9`, 17.09.) und `workers::tests::an_agent_that_exits_during_respawn_is_not_revived_as_running` (Linux, Run 35025975338, 15.09.) | niedrig (bearbeitet, beobachten) | Aus `STAND.md` übernommen 2026-09-24. **Bearbeitet** mit W1-25 (PR #77: Transaktionen schließen, Pool-Frist) und W1-25b (PR #85: Store-Schreiber gegen fremde Schreiber). Nicht reproduziert ist der ursprüngliche Drop-Wettlauf (`.pa/report_w1-25.md`, „Nicht abgedeckt"). Der frühere `delivery_recovery`-Fall ist mit W1-04 (PR #55, 20/20 unter Last) abgenommen. Tritt einer der Tests wieder auf, ist das ein neuer Befund mit Run-ID, kein „Flake". **Nachgeführt 2026-10-02 (KI-OBS): tritt wieder auf, offen.** Suche über 301 abgeschlossene CI-Läufe vom 25.09. bis 02.10. (50 rot, alle per `gh run view --log-failed` auf `database is locked` / `pool timed out` und die Testnamen geprüft): die beiden in diesem Eintrag genannten Tests scheiterten nicht erneut, aber die Lastklasse trat zweimal auf der Windows-Bahn von `main` auf, mit anderen Tests: Run 36165944208 (25.09., `main` @ `a18dcd6`; `api::tests::review_route_maps_store_refusals_and_replays_at_the_seam` und `review_route_takes_the_reviewer_run_from_the_credential_not_the_body`, `api.rs:4775`: „failed to reopen migrated database … (code: 5) database is locked“, in beiden Versuchen) und Run 36215024767 (26.09., `main` @ `da20f22`; `store::development_launches::tests::schema15_upgrade_keeps_old_launch_identity_without_inventing_baseline`, `development_launches.rs:705`: „failed to open …projecta.db … (code: 5) database is locked“, in beiden Versuchen). Beide Stellen öffnen eine Test-DB erneut, die kurz vorher geschlossen wurde; das sieht nach dem Windows-Dateisperr-Fenster aus, ist aber nicht gemessen. Neuer Befund mit Run-ID, wie oben vorgesehen; Paketkandidat für die Store-Lane. |
 | KI-28 | Der Capture-Host (`bin/pa-capture-host.rs`) läuft nur unter Windows | — (dokumentierte Grenze) | Entscheidung 16.09. (W3-05, `docs/decisions.md`; `pa-capture-host.rs:142`). Aus `STAND.md` übernommen 2026-09-24. Die frühere Einschränkung „acht native Tests laufen in CI nie" gilt nicht mehr: W3-06 (PR #75) fährt sie im Gate `native-tests` der Windows-Bahn. Linux-CI prüft nur die Kompilation. |
 | KI-29 | F-SEC-4, Restrisiko des OmniRoute-Schlüssel-Syncs: wer den Opt-in einschaltet, schickt die Vault-Schlüssel an den Listener auf dem OmniRoute-Port, ohne dessen Identität zu prüfen | niedrig (bewusst in Kauf genommen) | Default ist seit W1-24 (PR #62) „kein Push"; W1-24b (PR #98) hat daraus ein ausdrückliches Opt-in-Setting gemacht, das im UI das Restrisiko benennt (`.pa/report_w1-24b.md`, „Hinweise und Folgearbeiten"). Eine Listener-Identität gibt es nicht: `/api/version` bräche Builds, die es weglassen, und ein Management-Token als Bearer gäbe es einem Horcher mit (PLAN, frühere Entscheidung Nr. 13). Solange der Sync aus bleibt, besteht kein Risiko. Paket W1-24c. |
-| KI-30 | Windows-Gate `native-tests`: vier der acht `real_native_*`-Tests scheitern sporadisch in Merge-Queue-Läufen, jedes Mal nach grüner `rust-suite` | mittel (Flake, blockiert die Queue) | Forschungsstand 2026-10-04: 8 von 42 untersuchten Queue-Läufen. Die Ursache ist nicht behoben; serielle Ausführung ist nur eine temporäre Minderung. Details im Abschnitt „KI-30“ unten. |
+| KI-30 | Windows-Gate `native-tests`: vier der acht `real_native_*`-Tests scheitern sporadisch in Merge-Queue-Läufen, jedes Mal nach grüner `rust-suite` | mittel (Flake, blockiert die Queue) | Stand 2026-10-05 (V16-01): Ursache für den Early-Exit-Fall belegt und behoben, die serielle Minderung ist entfernt. Offen bleibt der Beleg über die nächsten 40 Queue-Läufe und die Ursache der übrigen drei Tests. Details im Abschnitt „KI-30“ unten. |
 | KI-31 | In-App-Update aus einem main-Build blockiert den nächsten Start (`update-recovery.json`, `IdentityMismatch`) | hoch (Release-Blocker R-1; Journal-Pfad behoben, siehe Stand) | Nach einem echten Update vergleicht die Startprüfung den Hash der laufenden exe mit dem Hash des Update-Pakets und den Datenbank-Snapshot-Hash mit der Live-Datenbank; beides passt nach dem Update nicht mehr, die App startet nicht. Befund aus PR #457 und Berater Fable 5.1 (05.10.). **Workaround:** kein In-App-Update aus main-Builds vor W3-02j; die Datei `update-recovery.json` im App-Datenordner zu entfernen löst den Block. **Stand 2026-10-05:** für Updates, die über den Journal-Pfad installiert werden, behoben durch W3-02j (PR #462, Trust-on-first-run-Handshake: die Startprüfung übernimmt exe- und Datenbank-Identität als Erbe des Journals). **Offen:** ein echter Lauf „Update installieren und neu starten“ auf dem Windows-PC ist nicht belegt; Updates, die nicht über den Journal-Pfad installiert wurden, deckt der Fix nicht ab. Der Workaround gilt bis dahin für diese Fälle. |
 
 ## Behoben
@@ -204,3 +204,31 @@ Mechanismus ein, beweist aber weiterhin keine Ursache. Die serielle Ausführung
 des unveränderten Bestands von acht `real_native_*`-Tests bleibt deshalb eine
 als **TEMPORÄR** gekennzeichnete Minderung und wird mit der eigentlichen
 KI-30-Behebung wieder entfernt.
+
+**Ursache belegt 2026-10-05 (V16-01, Branch `claude/w16-01-ki30-gate-drain`).**
+In beiden roten Läufen vom 05.10. (37301269691, 37308669763) meldet der
+Early-Exit-Test als einzigen Fehler `checkpoint owner no longer waiting; launch
+retained for reconciliation`: Die native Seite war erfolgreich, nur die
+Bestätigung eines Checkpoints scheiterte. Mechanismus: Beendet sich der
+Provider, bevor seine Eingabe ankommt, wartet der Elternprozess auf keine
+Quittung mehr. `execute_host_inner` (`process_capture/windows_capture.rs`) kehrte
+zurück, während der Process-Checkpoint noch in SQLite geschrieben wurde. Damit
+fiel der Antwortkanal weg, die Bestätigung des Checkpoint-Akteurs
+(`checkpoints.rs`, `acknowledge`) scheiterte, `managed::run` übersprang
+`finalize_native_undelivered_exit`, und der Start blieb `unresolved`. „os error
+32“ ist nur Aufräumrauschen nach dem Panic. Belegt durch den deterministischen
+Test `process_capture::managed::tests::real_native_owned_host_waits_for_pending_checkpoints_after_an_undelivered_exit`
+(Process-Bestätigung 3 s verzögert): rot in Lauf 37323778974 mit
+`[(Launch, Ok(())), (Process, Err("checkpoint owner no longer waiting"))]`,
+grün nach dem Fix in 37325836015, 37327636278 und 37332693087 (37327651607
+dazwischen rot nur durch einen fremden Timeout in `rust-suite`,
+`retention::tests::deletion_runs_in_chunks_until_the_table_is_clean`). Fix: Der
+Undelivered-Pfad wartet, bis jeder eingereichte Checkpoint bestätigt ist
+(höchstens 10 s); Ablehnung, Verlust und Zeitüberschreitung bleiben Fehler.
+Danach ist `--test-threads=1` aus `scripts/ci/native-tests.sh` entfernt
+(Lauf siehe PR-Text). **Nicht belegt:** ob dieselbe Ursache die anderen drei
+Tests trifft (`…bounds_capacity…`, `…launch_service_owns_worktree…`,
+`…job_revokes_credentials…`; Letzterer trug ebenfalls „checkpoint owner no
+longer waiting“, aber neben einem nativen Fehler). Geschlossen wird KI-30 erst
+nach 0 Fehlschlägen in den nächsten 40 Queue-Läufen (`docs/plan/v1.6.0/plan.md`,
+V16-01).

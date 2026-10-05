@@ -96,5 +96,4 @@ echo "alle neun erwarteten Tests sind vorhanden:"
 printf '  - %s\n' "${EXPECTED[@]}"
 
 echo ">>> fuehre die neun nativen Tests aus (--ignored)"
-# KI-30: serial until the root cause is fixed (parallel ConPTY children on the hosted runner); remove with the KI-30 fix
-cargo test --bin projecta real_native_ -- --ignored --test-threads=1
+cargo test --bin projecta real_native_ -- --ignored

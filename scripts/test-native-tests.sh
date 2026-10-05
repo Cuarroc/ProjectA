@@ -32,10 +32,12 @@ for index in "${!expected_names[@]}"; do
     exit 1
   fi
 done
+# KI-30 is fixed at its cause (undelivered exit drains its checkpoints), so the
+# temporary serial mitigation must not come back silently.
 if ! grep -Fxq \
-  'cargo test --bin projecta real_native_ -- --ignored --test-threads=1' \
+  'cargo test --bin projecta real_native_ -- --ignored' \
   "$ROOT/scripts/ci/native-tests.sh"; then
-  echo "FAIL: native-tests.sh must run the nine tests serially" >&2
+  echo "FAIL: native-tests.sh must run the nine tests without --test-threads" >&2
   exit 1
 fi
 
@@ -59,7 +61,7 @@ projecta::process_capture::managed::tests::real_native_owned_host_waits_for_pend
 LIST
     for _ in $(seq 1 20000); do echo filler; done
     ;;
-  test\ --bin\ projecta\ real_native_\ --\ --ignored\ --test-threads=1) exit 0 ;;
+  test\ --bin\ projecta\ real_native_\ --\ --ignored) exit 0 ;;
   *) echo "unexpected cargo invocation: $*" >&2; exit 1 ;;
 esac
 EOF
@@ -83,4 +85,4 @@ if ! PATH="$tmp/bin:$PATH" OS=Windows_NT CARGO_TARGET_DIR="$tmp/target" \
 fi
 grep -q 'alle neun erwarteten Tests sind vorhanden' "$tmp/out"
 echo 'ok   native-tests handles long listings without SIGPIPE'
-echo 'ok   native-tests serializes unchanged nine-test inventory'
+echo 'ok   native-tests runs the unchanged nine-test inventory in parallel'
