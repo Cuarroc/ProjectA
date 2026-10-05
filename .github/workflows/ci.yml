@@ -201,9 +201,12 @@ jobs:
       # fetch-depth 0 the former red-first job used. The string '0' is
       # deliberate: a number 0 is falsy in an expression and would fall
       # through to 2.
+      # WIN-01: a manual run on a package branch (scripts/ci/win-signal.sh) needs
+      # origin/main too, or hotspot-guard fails with "no base commit" (probe
+      # run 37324458365: gates (linux) red on exactly that).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '2' }}
+          fetch-depth: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && '0' || '2' }}
 
       # CI-02: Braucht dieser Lauf die Linux-Bahn? Aus nur bei reiner Doku,
       # die kein Gate liest, und bei einem main-Push ohne Cache-Eingabe.
