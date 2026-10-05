@@ -342,7 +342,6 @@ describe("shell accessibility tree — untested surfaces", () => {
     const { container } = render(
       <StatusBar
         session={session}
-        sessionCount={1}
         error="Fehler"
         attentionCount={1}
         onOpenBoard={vi.fn()}
