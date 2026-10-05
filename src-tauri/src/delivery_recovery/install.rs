@@ -283,6 +283,23 @@ mod tests {
         assert!(error.contains("Installing"), "{error}");
     }
 
+    #[test]
+    fn leaving_maintenance_is_allowed_only_before_the_installer() {
+        use UpdatePhase::*;
+        for phase in [
+            Available,
+            Downloaded,
+            WaitingIdle,
+            Maintenance,
+            BackupVerified,
+        ] {
+            assert!(installer_not_started(phase), "{phase:?}");
+        }
+        for phase in [Installing, Validating, Installed, Promoted, RecoveryNeeded] {
+            assert!(!installer_not_started(phase), "{phase:?}");
+        }
+    }
+
     /// Journal at `BackupVerified` unless a step is left out.
     fn journal(dir: &TempDir, with_drain: bool, with_backup: bool) -> DurableJournal {
         let mut journal =

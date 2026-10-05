@@ -1239,9 +1239,20 @@ async fn install_update_when_idle(
         });
 
     if result.is_err() && !installer_started {
-        leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()).await?;
+        let thaw =
+            leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()).await;
+        return report_with_thaw(result, thaw);
     }
     result
+}
+
+fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Result<(), String> {
+    match (result, thaw) {
+        (Err(error), Err(thaw)) => {
+            Err(format!("{error} (leaving maintenance also failed: {thaw})"))
+        }
+        (result, _) => result,
+    }
 }
 
 async fn prepare_and_install(
@@ -4082,6 +4093,14 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn failed_thaw_does_not_hide_the_update_error() {
+        let both =
+            crate::report_with_thaw(Err("download failed".into()), Err("thaw failed".into()));
+        let message = both.unwrap_err();
+        assert!(message.starts_with("download failed") && message.contains("thaw failed"));
+    }
+
     use super::{Duration, PtyManager};
     use std::path::PathBuf;
 
