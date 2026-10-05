@@ -118,8 +118,9 @@ impl InstallerLauncher for ProcessLauncher {
         if let Err(error) = written {
             return LaunchResult::StartFailed(error.raw_os_error());
         }
-        // Held until the process has started: the bytes cannot be swapped
-        // between this digest check and the launch.
+        // Held until `status()` returns, i.e. until the installer process has
+        // exited (the `drop` below): the bytes cannot be swapped between this
+        // digest check and the launch, nor while the installer runs.
         let held = match projecta_capture::windows_image::VerifiedImage::open(
             &self.target,
             &super::staging::digest(installer),
@@ -210,6 +211,17 @@ mod tests {
         assert_eq!(classify(StartFailed(Some(5))), Unclear);
         assert_eq!(classify(StartFailed(None)), Unclear);
         assert_eq!(classify(NoExitCode), Unclear);
+    }
+
+    #[test]
+    fn swapped_installer_error_names_expected_and_actual_digest() {
+        let dir = TempDir::new("installer-digest-detail");
+        let staging = staged(&dir);
+        fs::write(dir.path().join("installer.bin"), b"attacker-11").unwrap();
+        let mut process = fake(LaunchResult::Exited(0));
+        let error = run_installer(staging, &mut process).unwrap_err();
+        assert!(error.contains(&digest(b"installer-1")), "{error}");
+        assert!(error.contains(&digest(b"attacker-11")), "{error}");
     }
 
     #[test]

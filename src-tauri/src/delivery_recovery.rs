@@ -914,9 +914,12 @@ impl DurableJournal {
 }
 
 mod driver;
+mod install;
 mod installer;
 mod restore;
 mod staging;
+
+pub use install::{install_through_journal, require_install_evidence};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(dead_code)] // W3-02
