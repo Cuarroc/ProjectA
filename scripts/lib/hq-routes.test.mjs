@@ -335,4 +335,7 @@ test("/__hq/insights estimates whole-project time and tokens with a stated basis
   assert.equal(noLedger.effort.tokens.source, "heuristic");
   assert.match(noLedger.effort.tokens.basis, /2,000 changed lines × 10 tokens × 6/);
   assert.equal(noLedger.effort.tokens.value, 120_000);
+  // Offline callers send only a sparse ctx: the real handler must lead with the offline notice.
+  const offline = JSON.parse((await post("/__hq/insights", { apiOffline: true, setup: { ready: false, summary: "x" } }, headers, port)).body);
+  assert.match(offline.signals[0].title, /app not connected/);
 });
