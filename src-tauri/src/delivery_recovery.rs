@@ -347,6 +347,10 @@ pub struct UpdateJournal {
     backup: Option<VerifiedBackup>,
     writes_resumed: bool,
     recovery_action: Option<RecoveryAction>,
+    /// Digests observed on the first run of the installed candidate
+    /// (trust-on-first-run); informational, never compared against the offer.
+    #[serde(default)]
+    installed: Option<RuntimeIdentity>,
 }
 
 impl UpdateJournal {
@@ -374,6 +378,7 @@ impl UpdateJournal {
             backup: None,
             writes_resumed: false,
             recovery_action: None,
+            installed: None,
         })
     }
 
@@ -494,14 +499,25 @@ impl UpdateJournal {
         self.require(UpdatePhase::Validating, "accept candidate handshake")?;
         handshake.process.valid()?;
         handshake.validation.valid()?;
+        // `candidate.binary.sha256` is the digest of the signed payload (archive
+        // or installer), `candidate.database.sha256` that of the VACUUM INTO
+        // snapshot; neither equals the digest of the running exe / live
+        // database. Payload authenticity is the signature plus the staged-bytes
+        // check, so the handshake gates on nonce, path, version and records the
+        // observed digests instead of comparing them.
         if handshake.nonce != self.nonce
-            || handshake.binary != self.candidate.binary
-            || handshake.database != self.candidate.database
+            || handshake.binary.path != self.candidate.binary.path
+            || handshake.binary.version != self.staged_manifest.candidate_version
+            || handshake.database.path != self.candidate.database.path
         {
             return Err(RecoveryError::IdentityMismatch(
                 "current instance handshake",
             ));
         }
+        self.installed = Some(RuntimeIdentity {
+            binary: handshake.binary.clone(),
+            database: handshake.database.clone(),
+        });
         self.phase = UpdatePhase::Installed;
         Ok(())
     }
@@ -1310,6 +1326,58 @@ mod tests {
             ))
         );
         assert_eq!(journal.journal().phase(), UpdatePhase::Validating);
+    }
+
+    #[test]
+    fn real_update_handshake_with_installed_exe_digest_is_accepted() {
+        let dir = TempDir::new("delivery-recovery-exe-digest");
+        let mut journal =
+            DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                .expect("create");
+        through_validation(&mut journal);
+        let mut real = handshake();
+        real.binary.sha256 = "sha256-of-installed-exe".into();
+        journal.accept_handshake(&real).expect("accepted");
+        assert_eq!(journal.journal().phase(), UpdatePhase::Installed);
+        let installed = journal.journal().installed.clone().expect("recorded");
+        assert_eq!(installed.binary.sha256, "sha256-of-installed-exe");
+    }
+
+    #[test]
+    fn handshake_with_vacuumed_snapshot_digest_is_accepted() {
+        let dir = TempDir::new("delivery-recovery-live-db-digest");
+        let mut journal =
+            DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                .expect("create");
+        through_validation(&mut journal);
+        let mut live = handshake();
+        live.database.sha256 = "sha256-of-live-db".into();
+        journal.accept_handshake(&live).expect("accepted");
+        assert_eq!(journal.journal().phase(), UpdatePhase::Installed);
+        let installed = journal.journal().installed.clone().expect("recorded");
+        assert_eq!(installed.database.sha256, "sha256-of-live-db");
+    }
+
+    #[test]
+    fn handshake_with_wrong_version_or_path_or_nonce_is_rejected() {
+        let wrong: [fn(&mut InstanceHandshake); 4] = [
+            |h| h.binary.version = "1.3.0".into(),
+            |h| h.binary.path = "old.exe".into(),
+            |h| h.database.path = "other.db".into(),
+            |h| h.nonce = "old-instance".into(),
+        ];
+        for (i, tamper) in wrong.iter().enumerate() {
+            let dir = TempDir::new(&format!("delivery-recovery-wrong-id-{i}"));
+            let mut journal =
+                DurableJournal::create(store(&dir), UpdateJournal::new(offer()).expect("offer"))
+                    .expect("create");
+            through_validation(&mut journal);
+            let mut forged = handshake();
+            tamper(&mut forged);
+            assert!(journal.accept_handshake(&forged).is_err(), "case {i}");
+            assert_eq!(journal.journal().phase(), UpdatePhase::Validating);
+            assert!(journal.journal().installed.is_none());
+        }
     }
 
     #[test]
