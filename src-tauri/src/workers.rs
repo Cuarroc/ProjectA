@@ -3400,6 +3400,51 @@ mod tests {
         }
     }
 
+    async fn seed_dispatch_case(
+        fx: &Fixture,
+        admitted: bool,
+        profile: &str,
+        dependencies: &[String],
+        attempts: i64,
+        policy: &crate::development_policy::DevelopmentPolicy,
+    ) {
+        let pool = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            fx._dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO continuous_goals(id, project_id, root_goal_id, objective, status, deadline_at, admitted, created_at, updated_at) VALUES('due-goal', ?, 'due-goal', 'goal', 'open', 9999999999, ?, 1, 1)")
+            .bind(&fx.project_id).bind(admitted).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_root_policies(root_goal_id, policy_json, source, observed_at) VALUES('due-goal', ?, 'test', 1)")
+            .bind(serde_json::to_string(policy).unwrap()).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, profile_id, owned_paths_json, dependencies_json, status, attempts, created_at, updated_at) VALUES('due-task', 'due-goal', 'implement it', ?, '[\"src\"]', ?, 'open', ?, 2, 2)")
+            .bind(profile).bind(serde_json::to_string(dependencies).unwrap()).bind(attempts).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_projects(project_id, status, updated_at) VALUES(?, 'enabled', 1)")
+            .bind(&fx.project_id).execute(&pool).await.unwrap();
+        pool.close().await;
+    }
+
+    async fn dispatch_case(
+        fx: &Fixture,
+        agents: &FakeAgents,
+        owner: &str,
+        route: &development_route::PreparedRoute,
+    ) -> Result<scheduler::DispatchSuccess, scheduler::DispatchRefusal> {
+        let server =
+            crate::api::tests::native_store_server(&fx._dir.path().join("api"), fx.store.clone());
+        scheduler::dispatch_once(
+            &scheduler::test_permit(),
+            &fx.store,
+            agents,
+            server.run_credential_issuer(),
+            &fx.project_id,
+            owner,
+            route,
+        )
+        .await
+    }
+
     #[tokio::test]
     async fn dispatch_once_launches_one_admitted_task_with_one_durable_intent() {
         let fx = fixture("dispatch-once-admitted").await;
@@ -3444,6 +3489,242 @@ mod tests {
         assert_eq!(runs.len(), 1);
         assert_eq!(runs[0].id, dispatched.run_id);
         assert_eq!(runs[0].status, crate::store::development_runs::RUN_LAUNCHED);
+    }
+
+    #[tokio::test]
+    async fn dispatch_once_refuses_truncated_dependency_set() {
+        // Scheduler-level regression for
+        // store::continuous::tests::claim_refuses_more_than_64_completed_dependencies.
+        let fx = fixture("dispatch-once-truncated-dependencies").await;
+        let pool = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            fx._dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        let policy =
+            serde_json::to_string(&crate::development_policy::DevelopmentPolicy::defaults())
+                .unwrap();
+        sqlx::query("INSERT INTO continuous_goals(id, project_id, root_goal_id, objective, status, deadline_at, admitted, created_at, updated_at) VALUES('due-goal', ?, 'due-goal', 'goal', 'open', 9999999999, 1, 1, 1)").bind(&fx.project_id).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_root_policies(root_goal_id, policy_json, source, observed_at) VALUES('due-goal', ?, 'test', 1)").bind(policy).execute(&pool).await.unwrap();
+        let dependencies: Vec<String> =
+            (0..65).map(|index| format!("dependency-{index}")).collect();
+        for dependency in &dependencies {
+            sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, owned_paths_json, dependencies_json, status, created_at, updated_at) VALUES(?, 'due-goal', 'dependency', '[]', '[]', 'completed', 1, 1)")
+                .bind(dependency)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        let dependencies = serde_json::to_string(&dependencies).unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, profile_id, owned_paths_json, dependencies_json, status, created_at, updated_at) VALUES('due-task', 'due-goal', 'implement it', 'claude', '[\"src\"]', ?, 'open', 2, 2)").bind(dependencies).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_projects(project_id, status, updated_at) VALUES(?, 'enabled', 1)").bind(&fx.project_id).execute(&pool).await.unwrap();
+        pool.close().await;
+        let server =
+            crate::api::tests::native_store_server(&fx._dir.path().join("api"), fx.store.clone());
+        let agents = FakeAgents::default();
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+
+        let refusal = scheduler::dispatch_once(
+            &scheduler::test_permit(),
+            &fx.store,
+            &agents,
+            server.run_credential_issuer(),
+            &fx.project_id,
+            "scheduler",
+            &route,
+        )
+        .await
+        .expect_err("a dependency set beyond the attested projection must fail closed");
+
+        assert_eq!(agents.spawn_count(), 0);
+        assert!(
+            format!("{refusal:?}").contains("dependenc"),
+            "the refusal must name the dependency gate: {refusal:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_once_refuses_each_missing_gate_without_spawning() {
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+        let defaults = crate::development_policy::DevelopmentPolicy::defaults();
+        for (label, admitted, profile, dependencies, attempts, reason) in [
+            ("draft", false, "claude", vec![], 0, "NoDueTask"),
+            (
+                "dependency",
+                true,
+                "claude",
+                vec!["missing".into()],
+                0,
+                "dependency",
+            ),
+            (
+                "attempts",
+                true,
+                "claude",
+                vec![],
+                i64::from(defaults.continuous.max_attempts_per_task),
+                "attempt budget",
+            ),
+            ("provider", true, "codex", vec![], 0, "different profile"),
+        ] {
+            let fx = fixture(&format!("dispatch-gate-{label}")).await;
+            seed_dispatch_case(&fx, admitted, profile, &dependencies, attempts, &defaults).await;
+            let agents = FakeAgents::default();
+            let refusal = dispatch_case(&fx, &agents, "scheduler", &route)
+                .await
+                .expect_err(label);
+            assert_eq!(agents.spawn_count(), 0, "{label} must not spawn");
+            assert!(
+                format!("{refusal:?}").contains(reason),
+                "{label}: {refusal:?}"
+            );
+        }
+
+        let fx = fixture("dispatch-gate-unattested-route").await;
+        let mut changed_policy = defaults.clone();
+        changed_policy.continuous.max_workers = 1;
+        seed_dispatch_case(&fx, true, "claude", &[], 0, &changed_policy).await;
+        let agents = FakeAgents::default();
+        let refusal = dispatch_case(&fx, &agents, "scheduler", &route)
+            .await
+            .expect_err("an unattested route must be refused");
+        assert_eq!(agents.spawn_count(), 0);
+        assert!(format!("{refusal:?}").contains("policy/profile changed"));
+
+        let fx = fixture("dispatch-gate-emergency-stop").await;
+        seed_dispatch_case(&fx, true, "claude", &[], 0, &defaults).await;
+        let pool = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            fx._dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        sqlx::query("UPDATE emergency_stop SET active=1")
+            .execute(&pool)
+            .await
+            .unwrap();
+        pool.close().await;
+        let agents = FakeAgents::default();
+        let refusal = dispatch_case(&fx, &agents, "scheduler", &route)
+            .await
+            .expect_err("the global emergency stop must refuse dispatch");
+        assert_eq!(agents.spawn_count(), 0);
+        assert!(format!("{refusal:?}").contains("global emergency stop"));
+    }
+
+    #[test]
+    fn scheduler_dispatch_requires_the_test_only_permit() {
+        // There is no runtime "missing permit" branch: code without this
+        // unforgeable value cannot call dispatch_once, so it cannot reach spawn.
+        // Normalize CRLF: a Windows checkout may carry CRLF line endings.
+        let source = include_str!("workers/scheduler.rs").replace("\r\n", "\n");
+        assert!(source.contains("pub struct SchedulerPermit(());"));
+        assert!(source.contains("#[cfg(test)]\npub(super) fn test_permit()"));
+        assert!(source.contains("_permit: &SchedulerPermit"));
+        assert!(!source.contains("pub fn permit()"));
+    }
+
+    #[tokio::test]
+    async fn concurrent_dispatch_starts_one_worker_and_refuses_stale_writer() {
+        let fx = fixture("dispatch-concurrent").await;
+        let policy = crate::development_policy::DevelopmentPolicy::defaults();
+        seed_dispatch_case(&fx, true, "claude", &[], 0, &policy).await;
+        let agents = FakeAgents::default();
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+        let server =
+            crate::api::tests::native_store_server(&fx._dir.path().join("api"), fx.store.clone());
+        let permit_a = scheduler::test_permit();
+        let permit_b = scheduler::test_permit();
+        let (a, b) = tokio::join!(
+            scheduler::dispatch_once(
+                &permit_a,
+                &fx.store,
+                &agents,
+                server.run_credential_issuer(),
+                &fx.project_id,
+                "scheduler-a",
+                &route
+            ),
+            scheduler::dispatch_once(
+                &permit_b,
+                &fx.store,
+                &agents,
+                server.run_credential_issuer(),
+                &fx.project_id,
+                "scheduler-b",
+                &route
+            ),
+        );
+        assert_eq!(
+            usize::from(a.is_ok()) + usize::from(b.is_ok()),
+            1,
+            "{a:?} {b:?}"
+        );
+        assert_eq!(agents.spawn_count(), 1);
+        let loser = if a.is_ok() {
+            "scheduler-b"
+        } else {
+            "scheduler-a"
+        };
+        let stale = fx
+            .store
+            .checkpoint_continuous_task("due-task", loser, 1, Some("running"), None)
+            .await
+            .expect_err("the losing fence must not write");
+        assert!(stale.contains("stale or unauthorized"), "{stale}");
+    }
+
+    #[tokio::test]
+    async fn dependency_matrix_launches_only_fully_satisfied_task() {
+        let policy = crate::development_policy::DevelopmentPolicy::defaults();
+        let route = development_route::test_route(profiles::find_profile("claude").unwrap());
+        let mut launches = 0;
+        for (label, count, status, foreign, should_launch) in [
+            ("fulfilled", 1, "completed", false, true),
+            ("open", 1, "open", false, false),
+            ("missing", 0, "completed", false, false),
+            ("foreign", 1, "completed", true, false),
+            ("truncated", 65, "completed", false, false),
+        ] {
+            let fx = fixture(&format!("dispatch-dependencies-{label}")).await;
+            let dependencies: Vec<String> = if count == 0 {
+                vec!["missing".into()]
+            } else {
+                (0..count).map(|index| format!("dep-{index}")).collect()
+            };
+            seed_dispatch_case(&fx, true, "claude", &dependencies, 0, &policy).await;
+            let pool = sqlx::SqlitePool::connect(&format!(
+                "sqlite:{}",
+                fx._dir.path().join("projecta.db").display()
+            ))
+            .await
+            .unwrap();
+            let project = if foreign {
+                "foreign-project"
+            } else {
+                &fx.project_id
+            };
+            sqlx::query("INSERT INTO continuous_goals(id, project_id, root_goal_id, objective, status, deadline_at, admitted, created_at, updated_at) VALUES('dep-goal', ?, 'dep-goal', 'dependencies', 'closed', 9999999999, 1, 1, 1)")
+                .bind(project).execute(&pool).await.unwrap();
+            for dependency in dependencies.iter().take(count) {
+                sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, owned_paths_json, dependencies_json, status, created_at, updated_at) VALUES(?, 'dep-goal', 'dependency', '[]', '[]', ?, 1, 1)")
+                    .bind(dependency).bind(status).execute(&pool).await.unwrap();
+            }
+            pool.close().await;
+            let agents = FakeAgents::default();
+            let result = dispatch_case(&fx, &agents, "scheduler", &route).await;
+            assert_eq!(result.is_ok(), should_launch, "{label}: {result:?}");
+            assert_eq!(agents.spawn_count(), usize::from(should_launch), "{label}");
+            if !should_launch {
+                assert!(
+                    format!("{result:?}").contains("dependency"),
+                    "{label}: {result:?}"
+                );
+            }
+            launches += agents.spawn_count();
+        }
+        assert_eq!(launches, 1);
     }
 
     #[tokio::test]
