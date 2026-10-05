@@ -121,6 +121,12 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
 | R-1 | Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | offen |
 
+**R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0-beta` setzt voraus:
+
+- W3-02 vollständig, einschließlich W3-02f bis W3-02i. Die drei Release-Blocker sind W3-02g (Journal-Erzeuger), W3-02h (Bytes und Version ans Journal, #411-Befund C1) und W3-02i (Wartungs-Lease, #411-Befund C2).
+- Die PC-Drills W3-03 (paketierte Drills) und W3-07 (Produktionsschlüssel-Build und Signed-Updater-Relaunch) sowie der Beleg W3-08 (paketierter HQ-v1-Beleg).
+- Alle Gates und die 27 Matrixzeilen (Fassung vom 04.10.).
+
 ### M4 — Dauerbetrieb abgenommen, v1.5.0
 
 | ID | Paket | Gr. | Lane | Stand |
@@ -144,6 +150,15 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | offen |
 | W3-01 | Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind) | M | st → mn | offen |
 | W3-02 | Windows-Recovery-Helper | M | fR + N | offen |
+| W3-02a | Journal-Treiber, eine Aktion je Schritt | S | fR | ✓ #291 |
+| W3-02b | Staged-Update-Identitäten binden | S | fR | ✓ #321 |
+| W3-02c | Datenbank-Wiederherstellung ans Journal binden | S | fR | ✓ #357 |
+| W3-02d | Installer-Adapter (Exit-/UAC-/Sharing-Klassifikation, kein Retry) | S | fR | ✓ #348 |
+| W3-02e | Installation nur über das Wiederherstellungs-Journal | S | fR | ✓ #411 (gemergt 05.10.; Befunde C1/C2 zurückgestellt, siehe W3-02h/i) |
+| W3-02f | Wiederherstellung beim Start | M | fR | in Arbeit (Branch `claude/w3-02f-startup-recovery`) |
+| W3-02g | Release-Blocker R-1 (Beta): Journal-Erzeuger. `update-recovery.json` legt heute nichts an, daher lehnt das Selbst-Update in der App immer ab (offener Punkt aus #411). Stufe A | M | mn | offen |
+| W3-02h | Release-Blocker R-1 (Beta): #411-Befund C1, die installierten Bytes und die Version an das Journal binden (`signed_artifact_sha256`, `candidate_version`; heute verwirft `InstallOnly` beide). Stufe A | M | mn | offen |
+| W3-02i | Release-Blocker R-1 (Beta): #411-Befund C2, Wartungs-Lease statt Momentaufnahme von `is_maintenance_active()`; berührt auch `store.rs` (Naht, nur seriell). Stufe A | M | mn | offen |
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | offen |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | ✓ #119 |
 | W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4) | S | N | offen |
