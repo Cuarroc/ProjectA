@@ -755,6 +755,45 @@ async fn set_agent_env_isolation(store: State<'_, Store>, stage: String) -> Resu
     store.set_agent_env_isolation(stage).await
 }
 
+/// Read-only state of the continuous activation switch (locked by default).
+#[tauri::command]
+async fn get_continuous_activation(store: State<'_, Store>) -> Result<Value, String> {
+    workers::activation::Activation::status(&store, &workers::activation::NoMachineReadableEvidence)
+        .await
+}
+
+/// W4-03: turn the continuous switch on, fail-closed. Refused unless the
+/// verdict token matches, no emergency stop is active, rows 1-26 of the
+/// acceptance matrix are evidenced for `policy_revision` and it was not enabled
+/// before. The permit is only parked here: no dispatch loop is started yet.
+#[tauri::command]
+async fn enable_continuous_activation(
+    app: AppHandle,
+    store: State<'_, Store>,
+    activation: State<'_, workers::activation::Activation>,
+    held: State<'_, HeldSchedulerPermit>,
+    verdict_token: String,
+    policy_revision: u64,
+) -> Result<(), String> {
+    let expected = get_verdict_token(app)?;
+    let permit = activation
+        .enable(
+            &store,
+            &workers::activation::NoMachineReadableEvidence,
+            &expected,
+            &verdict_token,
+            policy_revision,
+        )
+        .await
+        .map_err(|refusal| format!("continuous activation refused: {refusal:?}"))?;
+    *held.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(permit);
+    Ok(())
+}
+
+/// The permit of an enabled switch; nothing else holds one.
+#[derive(Default)]
+struct HeldSchedulerPermit(std::sync::Mutex<Option<workers::scheduler::SchedulerPermit>>);
+
 #[tauri::command]
 fn write_pty(
     manager: State<'_, PtyManager>,
@@ -2861,6 +2900,12 @@ impl ControlBackend for ApiBackend {
                 "policyLimitSupervisor": {"supported": true, "startsWorkers": false},
                 "teamAssignments": {"supported":true,"approvalAuthority":false},
                 "planProjection": {"supported":true,"contractVersion":1,"startsWorkers":false},
+                "continuousActivation": tauri::async_runtime::block_on(
+                    workers::activation::Activation::status(
+                        &self.store,
+                        &workers::activation::NoMachineReadableEvidence,
+                    ),
+                )?,
                 "continuousScheduler": false,
                 "launchIntent": false,
                 "automaticDelivery": false,
@@ -3757,6 +3802,8 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(PtyManager::default())
         .manage(tokio::sync::Mutex::new(()))
+        .manage(workers::activation::Activation::default())
+        .manage(HeldSchedulerPermit::default())
         // The web interface starts on demand; its state only exists so the
         // frontend can ask for status or stop it later.
         .manage(Mutex::new(WebInterfaceState::default()))
@@ -4003,6 +4050,8 @@ fn main() {
             kill_pty,
             get_emergency_stop,
             set_emergency_stop,
+            get_continuous_activation,
+            enable_continuous_activation,
             get_scrollback,
             get_session_restore,
             list_agent_profiles,
@@ -4960,6 +5009,14 @@ mod tests {
             ),
             ("Store", "app.manage(store)"),
             ("PanicNotice", "app.manage(panic_notice)"),
+            (
+                "workers::activation::Activation",
+                ".manage(workers::activation::Activation::default())",
+            ),
+            (
+                "HeldSchedulerPermit",
+                ".manage(HeldSchedulerPermit::default())",
+            ),
         ];
 
         // Scan only the code above this module, and build the marker at
