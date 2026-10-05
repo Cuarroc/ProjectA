@@ -30,6 +30,7 @@ import type {
   TestStatus,
   Worker,
 } from "../types";
+import ErrorNote from "./ErrorNote";
 import InfoLine from "./InfoLine";
 
 interface BoardViewProps {
@@ -62,6 +63,8 @@ interface BoardViewProps {
   /** Worker with a respawn call in flight. */
   busyWorkerId: string | null;
   onNew: () => void;
+  /** Fetch the board again now; only the load-failed state offers it. */
+  onRetry?: () => void;
   onOpen: (worker: Worker) => void;
   /** Open the worker's workspace on its diff rather than its terminal. */
   onOpenDiff: (worker: Worker) => void;
@@ -104,6 +107,7 @@ export default function BoardView({
   error,
   busyWorkerId,
   onNew,
+  onRetry,
   onOpen,
   onOpenDiff,
   onRespawn,
@@ -315,16 +319,44 @@ export default function BoardView({
   if (error !== null && cards.length === 0) {
     return (
       <div className="empty-state">
-        <p className="board-error">{error}</p>
-        <p className="empty-hint">Es wird alle paar Sekunden neu versucht.</p>
+        <section className="board-state" aria-labelledby="board-state-title">
+          <h2 id="board-state-title" className="board-state-title">
+            Das Board konnte nicht geladen werden
+          </h2>
+          <ErrorNote message={error} />
+          <p className="empty-hint">
+            Das Board versucht es alle paar Sekunden von selbst noch einmal.
+          </p>
+          {onRetry ? (
+            <button type="button" className="empty-action" onClick={onRetry}>
+              Jetzt erneut versuchen
+            </button>
+          ) : null}
+        </section>
       </div>
     );
   }
 
   if (loading && cards.length === 0) {
+    // The same five columns the loaded board has, so nothing jumps when the
+    // cards arrive; the placeholders are decoration, the status line is the
+    // announcement.
     return (
-      <div className="empty-state">
-        <p>Board wird geladen …</p>
+      <div className="board board-loading" role="status" aria-busy="true">
+        <span className="sr-only">Board wird geladen …</span>
+        <div className="board-columns" aria-hidden="true">
+          {BOARD_COLUMNS.map((column) => (
+            <section key={column} className={`board-column board-column-${column}`}>
+              <header className="board-column-head">
+                <span className="board-column-title">{COLUMN_LABELS[column]}</span>
+              </header>
+              <div className="board-column-body">
+                <div className="board-skeleton-card" />
+                {column === "working" ? <div className="board-skeleton-card" /> : null}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     );
   }
@@ -332,12 +364,19 @@ export default function BoardView({
   if (cards.length === 0) {
     return (
       <div className="empty-state">
-        <p>In diesem Projekt gibt es noch keine Worker.</p>
-        <div className="empty-actions">
-          <button type="button" className="empty-action" onClick={onNew}>
-            Neuer Worker
-          </button>
-        </div>
+        <section className="board-state" aria-labelledby="board-state-title">
+          <h2 id="board-state-title" className="board-state-title">
+            Noch keine Worker
+          </h2>
+          <p className="empty-hint">
+            Hier siehst du, woran deine Worker gerade arbeiten – jeder bekommt eine eigene Karte.
+          </p>
+          <div className="empty-actions">
+            <button type="button" className="empty-action" onClick={onNew}>
+              Neuer Worker
+            </button>
+          </div>
+        </section>
       </div>
     );
   }

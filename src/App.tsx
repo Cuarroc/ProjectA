@@ -1213,6 +1213,7 @@ function AppContent() {
                 error={board.error}
                 busyWorkerId={busyWorkerId}
                 onNew={openWorkerDialog}
+                onRetry={board.refresh}
                 onOpen={handleOpenCard}
                 onOpenDiff={handleOpenCardDiff}
                 onRespawn={handleRespawnWorker}

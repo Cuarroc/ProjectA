@@ -66,6 +66,36 @@ const props = {
 };
 
 describe("BoardView", () => {
+  it("shows a calm empty state with the one next action", () => {
+    const onNew = vi.fn();
+    render(<BoardView {...props} cards={[]} onNew={onNew} />);
+    expect(screen.getByRole("heading", { name: "Noch keine Worker" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Neuer Worker" }));
+    expect(onNew).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces loading as a busy status and keeps the column frame", () => {
+    const { container } = render(<BoardView {...props} cards={[]} loading />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-busy", "true");
+    expect(status).toHaveTextContent("Board wird geladen");
+    expect(container.querySelectorAll(".board-column")).toHaveLength(5);
+  });
+
+  it("explains a failed load in plain German and offers a retry", () => {
+    const onRetry = vi.fn();
+    render(<BoardView {...props} cards={[]} error="network timed out" onRetry={onRetry} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Was ist passiert?");
+    expect(screen.getByRole("alert")).toHaveTextContent("Was du tun kannst:");
+    fireEvent.click(screen.getByRole("button", { name: "Jetzt erneut versuchen" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no retry button when the host passes no retry", () => {
+    render(<BoardView {...props} cards={[]} error="boom" />);
+    expect(screen.queryByRole("button", { name: "Jetzt erneut versuchen" })).toBeNull();
+  });
+
   it("F-8 keeps a running Learning critic visible when the board is revisited", () => {
     const mounted = render(<BoardView {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Learning" }));

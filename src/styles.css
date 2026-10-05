@@ -2248,6 +2248,68 @@ a {
   font-size: var(--text-md);
 }
 
+/* Calm board states: empty, load failed and loading. The first two sit on one
+   quiet elevated surface in the middle; loading keeps the five-column frame so
+   the arriving cards do not shift anything. */
+.board-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  width: min(440px, calc(100% - 32px));
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: var(--text-base);
+  text-align: left;
+}
+
+.board-state .empty-hint {
+  color: var(--fg-muted);
+  opacity: 1;
+}
+
+.board-state .error-note {
+  width: 100%;
+  font-size: var(--text-md);
+}
+
+.board-state-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.board-state .empty-action {
+  min-height: var(--ui-control-min, 32px);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.board-skeleton-card {
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  animation: board-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes board-skeleton-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-skeleton-card {
+    animation: none;
+  }
+}
+
 /* ---- coordinator banner (Phase 11) ------------------------------------ */
 
 /* A strip above the columns, never beside them: the flex column that holds
