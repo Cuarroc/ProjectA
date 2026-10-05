@@ -233,11 +233,28 @@ mod tests {
     }
 
     #[test]
-    fn wrong_nonce_binary_or_database_blocks_writes() {
-        let wrong: [fn(&mut InstanceHandshake); 3] = [
+    fn digest_only_difference_in_handshake_is_accepted() {
+        let dir = TempDir::new("startup-digest-only");
+        let location = installing(&dir);
+        let mut real = handshake();
+        real.binary.sha256 = "installed-exe".into();
+        real.database.sha256 = "live-db".into();
+        let (effects, calls) = fake(real);
+        recover_before_open(location.clone(), effects).unwrap();
+        assert_eq!(*calls.borrow(), vec!["validate", "resume_writes"]);
+        assert!(DurableJournal::open(location)
+            .unwrap()
+            .journal()
+            .can_accept_writes());
+    }
+
+    #[test]
+    fn wrong_nonce_version_or_path_blocks_writes() {
+        let wrong: [fn(&mut InstanceHandshake); 4] = [
             |h| h.nonce = "nonce-b".into(),
-            |h| h.binary.sha256 = "other-bin".into(),
-            |h| h.database.sha256 = "other-db".into(),
+            |h| h.binary.version = "1.3.0".into(),
+            |h| h.binary.path = "old.exe".into(),
+            |h| h.database.path = "other.db".into(),
         ];
         for (i, tamper) in wrong.iter().enumerate() {
             let dir = TempDir::new(&format!("startup-wrong-{i}"));
