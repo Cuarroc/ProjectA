@@ -10,11 +10,12 @@
 # von pwsh nach bash uebertragen (der Default dieser Datei ist ohnehin
 # Git-Bash, siehe .github/workflows/ci.yml).
 #
-# Welche neun #[ignore]-Tests das Repo fuer den nativen Capture-Host kennt
-# (docs/PLAN.md W3-06), und warum hier nur acht laufen:
+# Welche zehn #[ignore]-Tests das Repo fuer den nativen Capture-Host kennt
+# (docs/PLAN.md W3-06, KI-30), und warum hier nur neun laufen:
 #
 #   - 5 in src-tauri/src/store/native_managed_tests.rs (real_native_*)
 #   - 3 in src-tauri/src/workers.rs                     (real_native_*)
+#   - 1 in src-tauri/src/process_capture/managed.rs     (real_native_*, KI-30)
 #   - 1 in src-tauri/src/process_capture/windows_capture.rs:
 #       native_argument_fixture. Das ist kein eigenstaendiger Test, sondern
 #       ein isolierter Kind-Prozess-Fixture: neun ANDERE, NICHT ignorierte
@@ -58,7 +59,7 @@ echo ">>> Selbsttest der Parent/Host-Prozessgrenze"
 rc=$?
 [ "$rc" -eq 0 ] || { echo "::error::pa-capture-host --self-test-host: Exit $rc" >&2; exit "$rc"; }
 
-# Die acht erwarteten Testnamen. Erst in eine Variable, dann pruefen -
+# Die neun erwarteten Testnamen. Erst in eine Variable, dann pruefen -
 # `cargo test ... --list | grep ...` unter `pipefail` waere anfaellig fuer
 # genau die SIGPIPE-Falle, die scripts/test-gates.sh fuer gates.sh selbst
 # dokumentiert (frueher Abbruch von grep -> Exit 141 statt eines echten
@@ -72,9 +73,10 @@ EXPECTED=(
   real_native_launch_service_owns_worktree_credentials_and_exit
   real_native_supervisor_retains_failed_run_after_completion
   real_native_provider_exit_before_input_delivery_reconciles_as_exited
+  real_native_owned_host_waits_for_pending_checkpoints_after_an_undelivered_exit
 )
 
-echo ">>> pruefe, dass alle acht erwarteten nativen Tests existieren (kein gruen durch Abwesenheit)"
+echo ">>> pruefe, dass alle neun erwarteten nativen Tests existieren (kein gruen durch Abwesenheit)"
 listed="$(cargo test --bin projecta real_native_ -- --ignored --list)"
 rc=$?
 [ "$rc" -eq 0 ] || { echo "::error::cargo test --list: Exit $rc" >&2; exit "$rc"; }
@@ -90,9 +92,9 @@ for name in "${EXPECTED[@]}"; do
   fi
 done
 [ "$missing" -eq 0 ] || exit 1
-echo "alle acht erwarteten Tests sind vorhanden:"
+echo "alle neun erwarteten Tests sind vorhanden:"
 printf '  - %s\n' "${EXPECTED[@]}"
 
-echo ">>> fuehre die acht nativen Tests aus (--ignored)"
+echo ">>> fuehre die neun nativen Tests aus (--ignored)"
 # KI-30: serial until the root cause is fixed (parallel ConPTY children on the hosted runner); remove with the KI-30 fix
 cargo test --bin projecta real_native_ -- --ignored --test-threads=1

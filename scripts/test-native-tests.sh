@@ -16,13 +16,14 @@ expected_names=(
   real_native_launch_service_owns_worktree_credentials_and_exit
   real_native_supervisor_retains_failed_run_after_completion
   real_native_provider_exit_before_input_delivery_reconciles_as_exited
+  real_native_owned_host_waits_for_pending_checkpoints_after_an_undelivered_exit
 )
 mapfile -t configured_names < <(
   sed -n '/^EXPECTED=(/,/^)/ { /real_native_/ { s/^[[:space:]]*//; p; } }' \
     "$ROOT/scripts/ci/native-tests.sh"
 )
-if [ "${#configured_names[@]}" -ne 8 ]; then
-  echo "FAIL: native-tests.sh must keep exactly eight real_native_ tests" >&2
+if [ "${#configured_names[@]}" -ne 9 ]; then
+  echo "FAIL: native-tests.sh must keep exactly nine real_native_ tests" >&2
   exit 1
 fi
 for index in "${!expected_names[@]}"; do
@@ -34,7 +35,7 @@ done
 if ! grep -Fxq \
   'cargo test --bin projecta real_native_ -- --ignored --test-threads=1' \
   "$ROOT/scripts/ci/native-tests.sh"; then
-  echo "FAIL: native-tests.sh must run the eight tests serially" >&2
+  echo "FAIL: native-tests.sh must run the nine tests serially" >&2
   exit 1
 fi
 
@@ -54,6 +55,7 @@ projecta::real_native_runner_retains_failed_completion_during_drain: test
 projecta::real_native_launch_service_owns_worktree_credentials_and_exit: test
 projecta::real_native_supervisor_retains_failed_run_after_completion: test
 projecta::real_native_provider_exit_before_input_delivery_reconciles_as_exited: test
+projecta::process_capture::managed::tests::real_native_owned_host_waits_for_pending_checkpoints_after_an_undelivered_exit: test
 LIST
     for _ in $(seq 1 20000); do echo filler; done
     ;;
@@ -79,6 +81,6 @@ if ! PATH="$tmp/bin:$PATH" OS=Windows_NT CARGO_TARGET_DIR="$tmp/target" \
   echo "FAIL: native-tests.sh rejected a valid long test listing" >&2
   exit 1
 fi
-grep -q 'alle acht erwarteten Tests sind vorhanden' "$tmp/out"
+grep -q 'alle neun erwarteten Tests sind vorhanden' "$tmp/out"
 echo 'ok   native-tests handles long listings without SIGPIPE'
-echo 'ok   native-tests serializes unchanged eight-test inventory'
+echo 'ok   native-tests serializes unchanged nine-test inventory'
