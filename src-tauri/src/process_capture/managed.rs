@@ -116,4 +116,87 @@ mod tests {
             Err("actor".into())
         );
     }
+
+    /// KI-30: an undelivered exit must not settle while a checkpoint it already
+    /// submitted is still being persisted. Otherwise the actor's acknowledgement
+    /// finds no waiting owner and `run` retains the launch as unresolved.
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "requires built capture host; KI-30 undelivered exit checkpoint drain"]
+    fn real_native_owned_host_waits_for_pending_checkpoints_after_an_undelivered_exit() {
+        use crate::process_capture::{checkpoints::Stage, protocol};
+        use sha2::{Digest, Sha256};
+        let host = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("pa-capture-host.exe");
+        let hash = format!("{:x}", Sha256::digest(std::fs::read(&host).unwrap()));
+        let dir = crate::testutil::TempDir::new("native-undelivered-drain");
+        // The protocol maximum (1 MiB), far above any anonymous pipe buffer, so
+        // delivery cannot succeed without the provider reading it.
+        let input = vec![b'x'; protocol::MAX_INPUT];
+        let binding = protocol::Binding {
+            run_id: "run-ki30".into(),
+            session_id: "session-ki30".into(),
+            process_instance: "attempt-ki30".into(),
+            capability: "a".repeat(64),
+            route_sha256: "b".repeat(64),
+        };
+        let launch = protocol::Launch {
+            executable: host.to_string_lossy().into_owned(),
+            executable_sha256: hash.clone(),
+            // Unknown to the host binary: it exits 2 without reading stdin.
+            args: vec!["--fixture-exit-before-input".into()],
+            cwd: dir.path().to_string_lossy().into_owned(),
+            environment: vec![],
+            input_bytes: input.len(),
+            input_sha256: format!("{:x}", Sha256::digest(&input)),
+            output_limit: 1000,
+            timeout_ms: 20_000,
+        };
+        let (mut wire, tail) = protocol::launch_parts(binding, launch, &input).unwrap();
+        wire.extend(tail);
+        let prepared = protocol::prepare_buffer(&wire).unwrap();
+        let (sender, receiver) = mpsc::sync_channel(4);
+        let cancelled = std::sync::atomic::AtomicBool::new(false);
+        let (settlement, acknowledged) = std::thread::scope(|scope| {
+            let actor = scope.spawn(move || {
+                let mut acknowledged = Vec::new();
+                while let Ok(request) = receiver.recv() {
+                    let request: crate::process_capture::checkpoints::Request = request;
+                    let stage = request.stage;
+                    // Launch releases the input at once; every later checkpoint
+                    // commits slowly, like a busy SQLite writer on a CI runner.
+                    if stage != Stage::Launch {
+                        std::thread::sleep(std::time::Duration::from_secs(3));
+                    }
+                    acknowledged.push((stage, request.acknowledge(Ok(()))));
+                }
+                acknowledged
+            });
+            let settlement =
+                windows_process::execute_owned_host(&host, &hash, prepared, sender, &cancelled);
+            (settlement, actor.join().unwrap())
+        });
+        match settlement {
+            Ok(windows_process::NativeSettlement::ExitedUndelivered(exit)) => {
+                assert_eq!(exit.exit().exit_code, 2);
+            }
+            Ok(windows_process::NativeSettlement::Completed(_)) => {
+                panic!("undelivered fixture completed")
+            }
+            Err(error) => panic!("undelivered fixture failed: {error}"),
+        }
+        assert!(
+            acknowledged.len() >= 2,
+            "launch and process checkpoints expected: {acknowledged:?}"
+        );
+        assert!(
+            acknowledged.iter().all(|(_, result)| result.is_ok()),
+            "undelivered exit settled before its checkpoints were acknowledged: {acknowledged:?}"
+        );
+    }
 }
