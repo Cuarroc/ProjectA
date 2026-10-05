@@ -251,6 +251,53 @@ test("lesson run feedback is idempotent under concurrent HTTP retries", async ()
   assert.equal((await post(path, { runId: {} }, headers)).status, 400);
 });
 
+// Sends the headers and half of the body, then waits: the handler is parked at
+// its `await readBody` while another request completes.
+function slowPost(path, body, headers, port = hqPort) {
+  const text = JSON.stringify(body);
+  const half = Math.floor(text.length / 2);
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const reply = new Promise((resolve, reject) => {
+    const req = request(
+      { hostname: "127.0.0.1", port, path, method: "POST", headers: { "content-type": "application/json", "content-length": Buffer.byteLength(text), ...headers } },
+      (res) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+      },
+    );
+    req.on("error", reject);
+    req.write(text.slice(0, half));
+    gate.then(() => req.end(text.slice(half)));
+  });
+  return { started: new Promise((r) => setTimeout(r, 150)), finish: () => { release(); return reply; } };
+}
+
+test("a slow lesson add does not overwrite feedback that landed while its body was in flight", async () => {
+  const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
+  const base = JSON.parse((await post("/__hq/lessons", { symptom: "race add base lesson symptom", cause: "stale list written back", fix: "reread after the body", tags: ["race-add"] }, headers)).body).lesson;
+  const slow = slowPost("/__hq/lessons", { symptom: "race add second lesson symptom", cause: "slow body", fix: "reread after the body", tags: ["race-add-2"] }, headers);
+  await slow.started;
+  assert.equal((await post(`/__hq/lessons/${base.id}/worked`, { runId: "race-add-run" }, headers)).status, 200);
+  assert.equal((await slow.finish()).status, 200);
+  const stored = JSON.parse((await get("/__hq/lessons?q=race%20add", headers)).body).lessons;
+  assert.equal(stored.find((l) => l.id === base.id).worked, 1, "feedback must survive the concurrent add");
+  assert.equal(stored.length, 2);
+});
+
+test("a slow lesson refine does not overwrite feedback that landed while its body was in flight", async () => {
+  const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
+  const base = JSON.parse((await post("/__hq/lessons", { symptom: "race refine base lesson symptom", cause: "stale list written back", fix: "reread after the body", tags: ["race-refine"] }, headers)).body).lesson;
+  const slow = slowPost(`/__hq/lessons/${base.id}/refine`, { fix: "reread the file after the body arrived", note: "slow refine" }, headers);
+  await slow.started;
+  assert.equal((await post(`/__hq/lessons/${base.id}/worked`, { runId: "race-refine-run" }, headers)).status, 200);
+  assert.equal((await slow.finish()).status, 200);
+  const stored = JSON.parse((await get("/__hq/lessons?q=race%20refine", headers)).body).lessons.find((l) => l.id === base.id);
+  assert.equal(stored.worked, 1, "feedback must survive the concurrent refine");
+  assert.match(stored.fix, /reread the file after/);
+});
+
 test("/__hq/lessons learns: feedback changes confidence, refine keeps history, related and brief and match answer", async () => {
   const headers = { host: `127.0.0.1:${hqPort}`, "x-hq-session": await session() };
   const base = { symptom: "Vite answers 504 Outdated Optimize Dep on every module", cause: "stale dependency cache", fix: "scripts/dev-fresh.cmd", tags: ["vite", "frontend"] };
