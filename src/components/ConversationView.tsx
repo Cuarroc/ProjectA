@@ -12,7 +12,7 @@ interface ConversationViewProps {
   projectName: string | null;
   /** Open the orchestrator's own terminal, for when the dialog is not enough. */
   onOpenOrchestrator: () => void;
-  /** Switch to the Fragen tab, where a sharpening round's questions wait. */
+  /** Open the Attention view, where a sharpening round's questions wait. */
   onOpenQuestions: () => void;
   /**
    * Der Attention-Eintrag des aktiven Orchestrators, fertig formuliert vom
@@ -42,8 +42,8 @@ export default function ConversationView({
   const [text, setText] = useState("");
   /**
    * Sharpening is a conversation (Phase 21 P1): a vague draft comes back as
-   * preflight questions in the Fragen tab, and the composer only gets its text
-   * once they are answered. Nothing is ever sent by itself — here as before,
+   * preflight questions in the Attention view, and the composer only gets its
+   * text once they are answered. Nothing is ever sent by itself — here as before,
    * the user reads the final prompt and presses Senden.
    */
   const sharpening = useSharpening(projectId, setText);
@@ -169,16 +169,16 @@ export default function ConversationView({
             </button>
           </div>
         ) : null}
-        {/* The questions are ordinary preflight rows, so the tab is where they
-            are answered — this composer only says that they are there and
-            waits for the answers to come back as the final prompt. */}
+        {/* The questions are ordinary preflight rows in the Attention view —
+            this composer only says that they are there and waits for the
+            answers to come back as the final prompt. */}
         {sharpening.phase === "waiting" ? (
           <p className="convo-sharpen-note" aria-live="polite">
             {sharpening.open.length === 1
-              ? "Eine Rückfrage wartet im Fragen-Tab. "
-              : `${sharpening.open.length} Rückfragen warten im Fragen-Tab. `}
+              ? "Eine Rückfrage wartet. "
+              : `${sharpening.open.length} Rückfragen warten. `}
             <button type="button" className="convo-sharpen-link" onClick={onOpenQuestions}>
-              Beantworten
+              → Rückfragen öffnen
             </button>
             {" · "}
             <button type="button" className="convo-sharpen-link" onClick={sharpening.cancel}>
@@ -218,7 +218,7 @@ export default function ConversationView({
               onClick={handleSharpen}
               title={
                 "Den Entwurf vom Prompt-Master schärfen lassen — sendet nicht. Bei einer " +
-                "vagen Aufgabe kommen erst Rückfragen zurück, die im Fragen-Tab landen."
+                "vagen Aufgabe kommen erst Rückfragen zurück, die in der Attention-Ansicht landen."
               }
             >
               {

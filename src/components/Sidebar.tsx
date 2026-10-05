@@ -160,8 +160,8 @@ export default function Sidebar({
    * Only one orchestrator panel is open at a time, so one round is all this
    * needs — and it belongs to the panel that is open, which is also the
    * project its preflight questions are filed under. See
-   * {@link useSharpening}: a vague draft comes back as questions in the Fragen
-   * tab instead of a guessed prompt.
+   * {@link useSharpening}: a vague draft comes back as questions in the
+   * Attention view instead of a guessed prompt.
    */
   const sharpening = useSharpening(orchestratorPanelId, (prompt) => {
     if (orchestratorPanelId === null) return;
@@ -366,14 +366,14 @@ export default function Sidebar({
                     {sharpening.error !== null ? (
                       <div className="sidebar-error">{sharpening.error}</div>
                     ) : null}
-                    {/* Ordinary preflight rows: the Fragen tab is where they
-                        get answered, and the prompt lands in the field above
-                        once they are. */}
+                    {/* Ordinary preflight rows: the Attention view is where
+                        they get answered, and the prompt lands in the field
+                        above once they are. */}
                     {sharpening.phase === "waiting" ? (
                       <div className="sidebar-note">
                         {sharpening.open.length === 1
-                          ? "Eine Rückfrage wartet im Fragen-Tab. "
-                          : `${sharpening.open.length} Rückfragen warten im Fragen-Tab. `}
+                          ? "Eine Rückfrage wartet in der Attention-Ansicht. "
+                          : `${sharpening.open.length} Rückfragen warten in der Attention-Ansicht. `}
                         <button type="button" className="link-button" onClick={sharpening.cancel}>
                           Abbrechen
                         </button>
