@@ -110,7 +110,7 @@
 //! hands them
 //! one untyped `String` that mixed a mistyped project id in with a worktree
 //! that would not check out. [`crate::workers`] now opens those messages with
-//! `unknown ` and `refused: `, and [`core_status`] reads that opening. Where a
+//! `unknown ` and `refused: `, and [`error_status`] reads that opening. Where a
 //! route still cannot tell the two apart it answers 500, which is the
 //! conservative reading: 500 invites a retry or a bug report, a 4xx wrongly
 //! blames the caller.
@@ -118,7 +118,7 @@
 //! Linking a GitHub repository and accepting a recommendation carried the same
 //! confusion the other way round: both answered 400 for every failure, so a
 //! `git` that would not run, a missing `gh` and a queue insert that failed all
-//! came back as the caller's mistake. Both read [`core_status`] now, and the
+//! came back as the caller's mistake. Both read [`error_status`] now, and the
 //! two messages behind them that describe a wrong moment - an `origin` that
 //! already exists, a recommendation that was accepted before - say so in the
 //! core's own words. What a route can judge on its own it still judges before
@@ -127,7 +127,7 @@
 //!
 //! `/api/recommendations/<id>/status` was left behind by that round, one line
 //! below `accept`: a recommendation id that names nothing and a store that fell
-//! over both answered 400. It reads [`core_status`] too now, and its own
+//! over both answered 400. It reads [`error_status`] too now, and its own
 //! judgement - whether the status is one of the two words the store knows - is
 //! made here, before the core is asked, so a misspelled status never reaches
 //! the store and stays the 400 it always was. It answers no 409, and that is
@@ -137,7 +137,7 @@
 //!
 //! `POST /api/queue/<id>/cancel` was the last member of that class still
 //! open: it answered 400 for every failure, including a store that fell over.
-//! It reads [`core_status`] now - 404 for an id that names nothing, 409 for
+//! It reads [`error_status`] now - 404 for an id that names nothing, 409 for
 //! an entry that is no longer queued or ready, 500 for the store - because
 //! `store::cancel_queue_entry` opens those two cases with `unknown ` and
 //! `refused: ` like the rest of the core. The audit card that found this
@@ -1543,7 +1543,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
                 .unwrap_or(false);
             match backend.merge_worker(worker_id, remove_worktree) {
                 Ok(worker) => into_response(Ok(worker)),
-                Err(err) => Response::error(merge_status(&err), err),
+                Err(err) => Response::error(error_status(&err, StatusPolicy::Merge), err),
             }
         }
 
@@ -1821,7 +1821,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
             // statuses. That is not symmetry for its own sake: the core's own
             // refusal reads `unknown recommendation status: …` (`scout.rs:434`),
             // which opens with [`crate::workers::ERR_UNKNOWN`], so
-            // [`core_status`] would answer 404 - and 404 here means "an id that
+            // [`error_status`] would answer 404 - and 404 here means "an id that
             // names nothing", which this is not. The check has to stay in front
             // of the core, however redundant it looks beside `scout.rs`.
             // Behind it the core's own words are read: this route
@@ -1843,7 +1843,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
             // serialized `()` is not. Only the reading of the failure is shared.
             match backend.set_recommendation_status(id, &status) {
                 Ok(()) => Response::ok(json!({ "ok": true })),
-                Err(err) => Response::error(core_status(&err), err),
+                Err(err) => Response::error(error_status(&err, StatusPolicy::Core), err),
             }
         }
 
@@ -1868,13 +1868,13 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
             };
             match backend.approve_learning(id, &text) {
                 Ok(()) => Response::ok(json!({ "ok": true })),
-                Err(err) => Response::error(verdict_status(&err), err),
+                Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
             }
         }
 
         ("POST", ["api", "learnings", id, "reject"]) => match backend.reject_learning(id) {
             Ok(()) => Response::ok(json!({ "ok": true })),
-            Err(err) => Response::error(verdict_status(&err), err),
+            Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
         },
 
         // -- questions (Phase 21) --------------------------------------------
@@ -1946,12 +1946,12 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
         // reviewer either wants it or does not.
         ("POST", ["api", "roles", id, "approve"]) => match backend.approve_role_variant(id) {
             Ok(()) => Response::ok(json!({ "ok": true })),
-            Err(err) => Response::error(verdict_status(&err), err),
+            Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
         },
 
         ("POST", ["api", "roles", id, "reject"]) => match backend.reject_role_variant(id) {
             Ok(()) => Response::ok(json!({ "ok": true })),
-            Err(err) => Response::error(verdict_status(&err), err),
+            Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
         },
 
         // -- activity feed (Phase 16) --------------------------------------
@@ -2078,7 +2078,7 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
             // the failure is shared, and that is the part that was wrong.
             match backend.link_github_remote(project_id, &url) {
                 Ok(()) => Response::ok(json!({ "ok": true })),
-                Err(err) => Response::error(core_status(&err), err),
+                Err(err) => Response::error(error_status(&err, StatusPolicy::Core), err),
             }
         }
 
@@ -2206,48 +2206,78 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
     }
 }
 
-/// Which status a failed merge deserves.
+/// Which route family a failed call belongs to, for [`error_status`].
 ///
-/// [`crate::workers::merge_worker`] refuses for two kinds of reason and the
-/// caller can only act on one of them. A wrong id is a 404. The three gate
-/// refusals - the card is not in `ready to merge`, the test gate is not green,
-/// the agent is still running - all describe a worker that exists and is simply
-/// not mergeable yet, which is a 409: retrying later can work, retrying now
-/// cannot. Everything else comes from git, `gh` or the store, and is the app's
-/// own problem, so it keeps the 500 default.
-///
-/// This reads the message text because the backend hands the route a bare
-/// `String` - the same bargain the landing-page routes already make. The three
-/// fragments below are the stable parts of the messages minted in
-/// `workers::merge_worker`; a message reworded there falls back to 500, which
-/// is the safe direction to be wrong in.
-fn merge_status(err: &str) -> u16 {
-    if err.starts_with("unknown worker") {
-        404
-    } else if err.contains("sits in ")
-        || err.starts_with("the test gate for ")
-        || err.contains("still has a running agent")
-        || err.contains("merge blocked")
-    {
-        409
-    } else {
-        500
-    }
+/// The families read the same error text differently on purpose: the same
+/// message is the caller's typo on one route and the app's own inconsistency
+/// on another. `api::tests::error_status_pins_every_pattern_per_policy` holds
+/// the table.
+#[derive(Clone, Copy)]
+enum StatusPolicy {
+    /// `POST /api/workers/<id>/merge`.
+    Merge,
+    /// The four verdict routes.
+    Verdict,
+    /// Every route whose core speaks the [`crate::workers`] vocabulary.
+    Core,
 }
 
-/// A verdict the core refused because the row already has one is a 409: the
-/// request is well formed, it just arrives too late. Everything else these
-/// four routes can fail with is a caller who named the wrong id or wrote an
-/// unusable text, which is the 400 they always answered.
+/// Which status a failed call deserves; the one reader of error text.
 ///
-/// Like [`merge_status`] this reads the message, because the backend hands the
-/// route a bare `String`. The prefix is [`crate::workers::ERR_REFUSED`], which
-/// is minted in one place per verdict and shared with the rest of the core.
-fn verdict_status(err: &str) -> u16 {
-    if err.starts_with(crate::workers::ERR_REFUSED) {
-        409
-    } else {
-        400
+/// The backend hands the route a bare `String`, so the status is read from the
+/// message - the same bargain the landing-page routes already make. A message
+/// that stops matching falls back to the policy's default, which for `Merge`
+/// and `Core` is the safe 500.
+fn error_status(err: &str, policy: StatusPolicy) -> u16 {
+    match policy {
+        // [`crate::workers::merge_worker`] refuses for two kinds of reason. A
+        // wrong id is a 404. The three gate refusals - the card is not in
+        // `ready to merge`, the test gate is not green, the agent is still
+        // running - describe a worker that exists and is not mergeable yet:
+        // a 409. Everything else comes from git, `gh` or the store and keeps
+        // the 500. The fragments are the stable parts of the messages minted
+        // there. A worker whose project has gone missing is an inconsistency
+        // in the store, not a wrong id from the caller, so `unknown project`
+        // is a 500 here and a 404 on the core routes.
+        StatusPolicy::Merge => {
+            if err.starts_with("unknown worker") {
+                404
+            } else if err.contains("sits in ")
+                || err.starts_with("the test gate for ")
+                || err.contains("still has a running agent")
+                || err.contains("merge blocked")
+            {
+                409
+            } else {
+                500
+            }
+        }
+        // A verdict the core refused because the row already has one is a
+        // 409: the request is well formed, it just arrives too late.
+        // Everything else these routes fail with is a caller who named the
+        // wrong id or wrote an unusable text, the 400 they always answered.
+        StatusPolicy::Verdict => {
+            if err.starts_with(crate::workers::ERR_REFUSED) {
+                409
+            } else {
+                400
+            }
+        }
+        // `unknown <kind>: <id>` is a caller who named something that does
+        // not exist, `refused: <reason>` something that exists but may not be
+        // used that way; nothing was attempted in either case. Only the
+        // opening is read, never the sentence after it: that text is for a
+        // person and may be reworded. Everything else is git, `gh`, the
+        // filesystem, the store or a CLI that would not start: a 500.
+        StatusPolicy::Core => {
+            if err.starts_with(crate::workers::ERR_UNKNOWN) {
+                404
+            } else if err.starts_with(crate::workers::ERR_REFUSED) {
+                409
+            } else {
+                500
+            }
+        }
     }
 }
 
@@ -2280,35 +2310,6 @@ fn unknown_project(backend: &dyn ControlBackend, project_id: Option<&str>) -> Op
     }
 }
 
-/// Which status a failed core call deserves.
-///
-/// The core answers with a bare `String`, and [`crate::workers`] documents the
-/// two openings that make one readable from out here: `unknown <kind>: <id>` is
-/// a caller who named something that does not exist, `refused: <reason>` is
-/// something that exists but may not be used the way it was asked for. Nothing
-/// was attempted in either case. Everything else is git, `gh`, the filesystem,
-/// the store or a CLI that would not start - the app's own problem, and the
-/// 500 these routes used to answer for all three.
-///
-/// Only the opening is read, never the sentence after it: that text is for a
-/// person and may be reworded, and a rewording must not move a status. A
-/// message that stops opening with either prefix falls back to 500, which is
-/// the safe direction to be wrong in.
-///
-/// Phase 21's question routes arrived with this function written a second time
-/// under the name `question_status`, on a branch that could not see this one -
-/// same three cases, same order, same fallback. Two readers of one vocabulary
-/// is one too many, so they are this.
-fn core_status(err: &str) -> u16 {
-    if err.starts_with(crate::workers::ERR_UNKNOWN) {
-        404
-    } else if err.starts_with(crate::workers::ERR_REFUSED) {
-        409
-    } else {
-        500
-    }
-}
-
 /// [`into_response`] for the routes whose core speaks that vocabulary.
 ///
 /// Eight of them create something: a worker, a queen, a queued task, a scout, a
@@ -2320,7 +2321,7 @@ fn core_status(err: &str) -> u16 {
 /// branch that could not see this one. One reader is enough.
 fn core_response<T: Serialize>(result: Result<T, String>) -> Response {
     match result {
-        Err(err) => Response::error(core_status(&err), err),
+        Err(err) => Response::error(error_status(&err, StatusPolicy::Core), err),
         ok => into_response(ok),
     }
 }
@@ -2434,7 +2435,7 @@ fn plan_response(result: Result<Value, String>) -> Response {
 }
 
 fn continuous_error(err: String) -> Response {
-    let vocabulary_status = core_status(&err);
+    let vocabulary_status = error_status(&err, StatusPolicy::Core);
     if vocabulary_status != 500 {
         return Response::error(vocabulary_status, err);
     }
@@ -2686,7 +2687,7 @@ pub(crate) mod tests {
 
     /// The five ways a merge can fail, copied verbatim from
     /// `workers::merge_worker` (and from `gh` for the last one). They are here
-    /// so both the fake backend and the [`merge_status`] unit test speak the
+    /// so both the fake backend and the [`error_status`] unit test speak the
     /// exact words the real backend speaks: if one of them is reworded over
     /// there without this file following, the route quietly falls back to 500,
     /// and these constants are where a reader looks to find out why.
@@ -7946,17 +7947,23 @@ pub(crate) mod tests {
 
     #[test]
     fn merge_status_separates_the_gate_from_the_app() {
-        assert_eq!(merge_status(MERGE_UNKNOWN), 404);
-        assert_eq!(merge_status(MERGE_WRONG_COLUMN), 409);
-        assert_eq!(merge_status(MERGE_TEST_GATE), 409);
-        assert_eq!(merge_status("merge blocked (blocked); dirty: x"), 409);
-        assert_eq!(merge_status(MERGE_GIT_FAILED), 500);
-        assert_eq!(merge_status("database is locked"), 500);
+        assert_eq!(error_status(MERGE_UNKNOWN, StatusPolicy::Merge), 404);
+        assert_eq!(error_status(MERGE_WRONG_COLUMN, StatusPolicy::Merge), 409);
+        assert_eq!(error_status(MERGE_TEST_GATE, StatusPolicy::Merge), 409);
+        assert_eq!(
+            error_status("merge blocked (blocked); dirty: x", StatusPolicy::Merge),
+            409
+        );
+        assert_eq!(error_status(MERGE_GIT_FAILED, StatusPolicy::Merge), 500);
+        assert_eq!(error_status("database is locked", StatusPolicy::Merge), 500);
         // A worker whose project has gone missing is an inconsistency in the
         // store, not a wrong id from the caller - which is why `unknown
         // project` is a 404 on the landing-page routes, where the caller named
         // the project, and a 500 here, where the worker did.
-        assert_eq!(merge_status("unknown project: pj-1"), 500);
+        assert_eq!(
+            error_status("unknown project: pj-1", StatusPolicy::Merge),
+            500
+        );
     }
 
     /// Every route that creates something starts by looking up the project,
@@ -8031,39 +8038,105 @@ pub(crate) mod tests {
 
     #[test]
     fn core_status_reads_the_opening_and_nothing_else() {
-        assert_eq!(core_status("unknown project: pj-1"), 404);
-        assert_eq!(core_status("unknown agent profile: kimi"), 404);
-        assert_eq!(core_status("refused: profile 'kimi' is switched off"), 409);
         assert_eq!(
-            core_status("failed to add the worktree: git exited 128"),
+            error_status("unknown project: pj-1", StatusPolicy::Core),
+            404
+        );
+        assert_eq!(
+            error_status("unknown agent profile: kimi", StatusPolicy::Core),
+            404
+        );
+        assert_eq!(
+            error_status(
+                "refused: profile 'kimi' is switched off",
+                StatusPolicy::Core
+            ),
+            409
+        );
+        assert_eq!(
+            error_status(
+                "failed to add the worktree: git exited 128",
+                StatusPolicy::Core
+            ),
             500
         );
         // W1-05b: a dispatched task without a proven process end is a refusal,
         // a pinned delete that matched nothing is the store's own failure.
         assert_eq!(
-            core_status(
+            error_status(
                 "refused: task tq-1 is dispatched and worker wk-1 is still running; it can be \
-                 cancelled only once its process end is proven"
+                 cancelled only once its process end is proven",
+                StatusPolicy::Core
             ),
             409
         );
         assert_eq!(
-            core_status("failed to cancel dispatched task tq-1: the pinned delete matched 0 rows"),
+            error_status(
+                "failed to cancel dispatched task tq-1: the pinned delete matched 0 rows",
+                StatusPolicy::Core
+            ),
             500
         );
         // The prefix has to open the message. A sentence that merely mentions
         // it somewhere is the app talking about itself, not about the caller.
-        assert_eq!(core_status("the store is unknown territory"), 500);
-        assert_eq!(core_status("git refused: nothing to commit"), 500);
+        assert_eq!(
+            error_status("the store is unknown territory", StatusPolicy::Core),
+            500
+        );
+        assert_eq!(
+            error_status("git refused: nothing to commit", StatusPolicy::Core),
+            500
+        );
         // Both constants are what `crate::workers` mints, not a copy of them.
         assert_eq!(
-            core_status(&format!("{}worker: wk-1", crate::workers::ERR_UNKNOWN)),
+            error_status(
+                &format!("{}worker: wk-1", crate::workers::ERR_UNKNOWN),
+                StatusPolicy::Core
+            ),
             404
         );
         assert_eq!(
-            core_status(&format!("{}the gate is red", crate::workers::ERR_REFUSED)),
+            error_status(
+                &format!("{}the gate is red", crate::workers::ERR_REFUSED),
+                StatusPolicy::Core
+            ),
             409
         );
+    }
+
+    /// One row per message shape, one column per route family: (text, merge,
+    /// verdict, core). The three families disagree on purpose - an `unknown
+    /// project` is the caller's typo on a core route, a store inconsistency on
+    /// the merge route, and one more unusable input on a verdict route.
+    #[test]
+    fn error_status_pins_every_pattern_per_policy() {
+        let table: &[(&str, u16, u16, u16)] = &[
+            ("unknown worker: wk-1", 404, 400, 404),
+            ("unknown project: pj-1", 500, 400, 404),
+            ("unknown agent profile: kimi", 500, 400, 404),
+            ("refused: profile 'kimi' is switched off", 500, 409, 409),
+            ("refused: worker wk-1 sits in 'working'", 409, 409, 409),
+            ("wk-1 sits in 'working', not 'ready'", 409, 400, 500),
+            ("the test gate for wk-1 is 'fail'", 409, 400, 500),
+            ("wk-1 still has a running agent", 409, 400, 500),
+            ("merge blocked (blocked); dirty: x", 409, 400, 500),
+            ("git merge failed: unrelated histories", 500, 400, 500),
+            ("note: unknown worker wk-1, see log", 500, 400, 500),
+            ("recheck the test gate for wk-1", 500, 400, 500),
+            ("the store is unknown territory", 500, 400, 500),
+            ("git refused: nothing to commit", 500, 400, 500),
+            ("database is locked", 500, 400, 500),
+            ("", 500, 400, 500),
+        ];
+        for (text, merge, verdict, core) in table {
+            let got = [
+                StatusPolicy::Merge,
+                StatusPolicy::Verdict,
+                StatusPolicy::Core,
+            ]
+            .map(|policy| error_status(text, policy));
+            assert_eq!(got, [*merge, *verdict, *core], "{text}");
+        }
     }
 
     #[test]
