@@ -4,7 +4,8 @@
 #
 # Env: HOTSPOT_BRANCH (branch name override), HOTSPOT_BASE (base commit; the
 # default is the merge-base with origin/main - no base is a failure, not a pass;
-# the one exception is workflow_dispatch, which falls back to HEAD~1, logged).
+# the one exception is workflow_dispatch, which fetches origin/main first and
+# only then falls back to HEAD~1, logged).
 set -uo pipefail
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
@@ -19,6 +20,16 @@ if [ -n "$branch" ] && hs_may_touch "$branch"; then
 fi
 
 base="${HOTSPOT_BASE:-$(git merge-base origin/main HEAD 2> /dev/null)}"
+# A dispatch checkout may hold only the dispatched branch. Fetch origin/main
+# (deep enough for a merge-base) before settling for the weaker HEAD~1 check.
+if [ -z "$base" ] && [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
+  depth=()
+  [ "$(git rev-parse --is-shallow-repository 2> /dev/null)" = "true" ] && depth=(--depth=500)
+  if git fetch -q --no-tags "${depth[@]}" origin +refs/heads/main:refs/remotes/origin/main 2> /dev/null; then
+    base="$(git merge-base origin/main HEAD 2> /dev/null)"
+    [ -n "$base" ] && echo "hotspot-guard: workflow_dispatch fetched origin/main - comparing against the merge-base ${base:0:12}"
+  fi
+fi
 # workflow_dispatch fetches only the dispatched branch, so origin/main (and a
 # merge-base) does not exist. Judge the head commit against its parent and say
 # so; a root commit has no parent and still fails closed.
