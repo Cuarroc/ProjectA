@@ -151,10 +151,11 @@ touch "$tmp/list-fail"
 out="$(printf 'docs/a.md\n' | PATH="$tmp/bin:$PATH" GH_SHIM_DIR="$tmp" WIN_SIGNAL_SLEEP=0 WIN_SIGNAL_TIMEOUT=30 bash "$SIGNAL" --force --files-from - b 2> "$tmp/stderr")"
 rc=$?
 if [ "$rc" -eq 2 ] && grep -q 'HTTP 502 list' "$tmp/stderr"; then pass gh-list-error-fails-fast-with-2; else fail "gh-list-error-fails-fast-with-2 (rc=$rc)"; fi
-# The --jq filter itself: a list with a stale run (before the start) and a
-# fresh one; only the fresh id may come out. A missing jq skips the case.
+# The --jq filter itself: a list with a stale run (before the start) and two
+# fresh ones; the newest fresh id may come out (two fresh runs pin the
+# sort_by | last selection). A missing jq skips the case.
 if command -v jq > /dev/null 2>&1; then
-  printf '[{"databaseId":1,"createdAt":"2000-01-01T00:00:00Z"},{"databaseId":77,"createdAt":"2999-01-01T00:00:00Z"}]\n' > "$tmp/runs.json"
+  printf '[{"databaseId":1,"createdAt":"2000-01-01T00:00:00Z"},{"databaseId":78,"createdAt":"2998-01-01T00:00:00Z"},{"databaseId":77,"createdAt":"2999-01-01T00:00:00Z"}]\n' > "$tmp/runs.json"
   poll 'success\n'
   if [ "$rc" -eq 0 ] && grep -qx 'run=77' <<< "$out"; then pass jq-filter-picks-the-fresh-run; else fail "jq-filter-picks-the-fresh-run (rc=$rc)"; fi
   printf '[{"databaseId":1,"createdAt":"2000-01-01T00:00:00Z"}]\n' > "$tmp/runs.json"
