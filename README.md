@@ -1,7 +1,10 @@
 # ProjectA
 
 <div align="center">
-  <img src="assets/banner.svg" alt="ProjectA" width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
+    <img src="assets/banner-light.png" alt="ProjectA – Mehrere KI-Agenten, ein Leitstand. Fertig ist nur, was bewiesen ist." width="100%">
+  </picture>
   <p><em>An agentic terminal for Windows: many AI coding agents, one calm cockpit.</em></p>
   <p><strong>Mehrere KI-Coding-Agenten parallel arbeiten lassen – jeder in seinem eigenen Terminal, Branch und Worktree.</strong></p>
   <p><strong>Fertig ist nur, was bewiesen ist: Grün heißt bewiesen, kein Modell prüft sich selbst, der Mensch behält die Kontrolle.</strong></p>
@@ -19,6 +22,7 @@
 - [Schnellstart](#schnellstart)
 - [Funktionen](#funktionen)
 - [Wo steht ProjectA?](#wo-steht-projecta)
+- [So sieht ProjectA 2.0 aus (Entwurf)](#so-sieht-projecta-20-aus-entwurf)
 - [Status und Grenzen](#status-und-grenzen)
 - [Mitmachen als Tester](#mitmachen-als-tester)
 - [Dokumentation](#dokumentation)
@@ -82,6 +86,29 @@ Dauerbetrieb selbst ist in v1.5.1 noch ausgeschaltet; siehe „Status und Grenze
   vollständige Plan in [`docs/plan/v2.0/plan.md`](docs/plan/v2.0/plan.md).
 - Der automatische Dauerbetrieb bleibt bis auf Weiteres ausgeschaltet; er wird
   erst nach belegter Abnahme und nur durch den Menschen freigegeben.
+
+## So sieht ProjectA 2.0 aus (Entwurf)
+
+Diese Bilder sind Design-Entwürfe für Version 2.0 nach dem freigegebenen Plan.
+Die heute testbare Version ist v1.5.1 und sieht anders aus. Die Entwürfe sind
+nicht die aktuelle App.
+
+<img src="assets/ui/leitstand.png" alt="Entwurf des Leitstands von ProjectA 2.0: Navigation links, vier Agenten-Karten mit den Zuständen Läuft, Fremdprüfung, Braucht dich und Bewiesen, darunter der Verlauf." width="100%">
+
+Leitstand: alle Agenten auf einen Blick, einer braucht eine Entscheidung von dir.
+
+<table>
+<tr>
+<td width="49%" valign="top">
+<img src="assets/ui/agent-starten.png" alt="Entwurf des Dialogs Agent starten: Aufgabe im Textfeld, Ort Dieser PC, KI Claude, Hinweis dass ein Prüfer eines anderen Herstellers mitprüft." width="100%"><br>
+Agent starten: Aufgabe, Ort und KI wählen; ein anderer Hersteller prüft mit.
+</td>
+<td width="49%" valign="top">
+<img src="assets/ui/beweise.png" alt="Entwurf der Beweise-Ansicht: Tests, Code-Stil, Sicherheits-Scan, Fremdprüfung und Warteschlange sind grün." width="100%"><br>
+Beweise: fertig gilt erst, wenn die Prüfungen grün sind.
+</td>
+</tr>
+</table>
 
 ## Status und Grenzen
 

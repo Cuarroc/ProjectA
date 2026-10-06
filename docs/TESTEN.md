@@ -3,6 +3,8 @@
 Danke, dass du ProjectA ausprobierst! Diese Seite führt dich in etwa einer
 halben Stunde durch die wichtigsten Funktionen der aktuellen Version `v1.5.1`
 und erklärt, wie du deine Beobachtungen meldest.
+Die Bildergalerie in der [README](../README.md#so-sieht-projecta-20-aus-entwurf)
+zeigt Entwürfe für 2.0. Die heutige App (v1.5.1) sieht anders aus.
 
 ## Installation
 
