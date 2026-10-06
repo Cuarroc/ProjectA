@@ -1,0 +1,48 @@
+name: Tester-Feedback
+description: Beobachtung aus dem Testen der installierten App melden
+title: "[Tester]: "
+labels: ["tester-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke fürs Testen von ProjectA! Drei kurze Antworten genügen.
+        Bitte keine Zugangsdaten, API-Schlüssel oder persönliche Daten einfügen.
+  - type: textarea
+    id: did
+    attributes:
+      label: Was hast du gemacht?
+      description: Die Schritte der Reihe nach, zum Beispiel „Projekt hinzugefügt, dann Worker gestartet".
+      placeholder: 1. … 2. … 3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Was hast du erwartet?
+      description: Was hätte deiner Meinung nach passieren sollen?
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: Was ist passiert?
+      description: Was hast du stattdessen beobachtet? Fehlermeldungen gern im Wortlaut.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Steht in der App unter „Info“.
+      value: v1.5.1
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (freiwillig)
+      description: Ein Bild hilft oft. Bitte vorher prüfen, dass keine Zugangsdaten oder persönlichen Daten zu sehen sind.
+      placeholder: Bild hierher ziehen oder beschreiben, was zu sehen war.
+    validations:
+      required: false
