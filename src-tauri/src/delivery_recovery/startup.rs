@@ -43,12 +43,12 @@ pub fn recover_before_open<E: RecoveryEffects>(
         if let RecoveryAction::RestorePreviousRuntime { .. } = action {
             // The restored database opens; the journal is kept aside as the
             // record, so the next start neither restores again nor blocks.
-            let record = store_path.with_extension("restored.json");
-            std::fs::rename(&store_path, &record)
+            let record = archive_record(&store_path)
                 .map_err(|error| format!("restored, but journal not archived: {error}"))?;
             crate::logf!(
                 "update",
-                "update rolled back, database restored from backup"
+                "update rolled back, database restored from backup; record {}",
+                record.display()
             );
             return Ok(());
         }
@@ -79,6 +79,46 @@ pub fn recover_before_open<E: RecoveryEffects>(
             journal.phase()
         ))
     }
+}
+
+/// Move the journal to `update-recovery.restored.<yyyymmddThhmmssZ>[-n].json`
+/// so a second rollback never overwrites the first record.
+fn archive_record(store_path: &Path) -> std::io::Result<PathBuf> {
+    let unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    let secs = unix.rem_euclid(86_400);
+    let stamp = format!(
+        "{}T{:02}{:02}{:02}Z",
+        crate::digest::utc_date(unix).replace('-', ""),
+        secs / 3600,
+        (secs % 3600) / 60,
+        secs % 60
+    );
+    archive_record_stamped(store_path, &stamp)
+}
+
+/// Suffixes tried for one stamp, then the journal stays where it is and the
+/// error blocks writes - the next start restores and retries the archive.
+const ARCHIVE_SUFFIX_BUDGET: u32 = 100;
+
+fn archive_record_stamped(store_path: &Path, stamp: &str) -> std::io::Result<PathBuf> {
+    for n in 0..ARCHIVE_SUFFIX_BUDGET {
+        let suffix = if n == 0 {
+            String::new()
+        } else {
+            format!("-{n}")
+        };
+        let record = store_path.with_extension(format!("restored.{stamp}{suffix}.json"));
+        if !record.exists() {
+            std::fs::rename(store_path, &record)?;
+            return Ok(record);
+        }
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        format!("{ARCHIVE_SUFFIX_BUDGET} rollback records already carry the stamp {stamp}"),
+    ))
 }
 
 /// What the real process can do at startup; install and promotion are refused.
@@ -284,10 +324,83 @@ mod tests {
     }
 
     /// The restored journal, kept beside the database as the outcome record.
+    fn restored_records(dir: &TempDir) -> Vec<PathBuf> {
+        let mut found: Vec<PathBuf> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| {
+                let name = path.file_name().unwrap().to_string_lossy();
+                name.starts_with("update-recovery.restored.") && name.ends_with(".json")
+            })
+            .collect();
+        found.sort();
+        found
+    }
+
     fn restored_record(dir: &TempDir) -> UpdatePhase {
-        let archived = dir.path().join("update-recovery.restored.json");
+        let archived = restored_records(dir).remove(0);
         let record = JournalStore::new(archived, &dir.path().join("projecta.db")).unwrap();
         record.load().unwrap().phase()
+    }
+
+    #[test]
+    fn second_rollback_keeps_the_first_record() {
+        let dir = TempDir::new("startup-two-rollbacks");
+        for _ in 0..2 {
+            let location = installing(&dir);
+            let mut forged = handshake();
+            forged.nonce = "nonce-b".into();
+            let (effects, _) = fake(forged);
+            recover_before_open(location, effects).unwrap();
+        }
+        assert_eq!(restored_records(&dir).len(), 2);
+    }
+
+    /// Two rollbacks inside the same second collide on the stamp; the second
+    /// takes the `-1` suffix and the first record is never overwritten.
+    #[test]
+    fn a_colliding_stamp_takes_the_next_suffix_and_keeps_the_first_record() {
+        let dir = TempDir::new("startup-archive-collision");
+        let journal = dir.path().join("update-recovery.json");
+        std::fs::write(&journal, b"second").unwrap();
+        let first = dir
+            .path()
+            .join("update-recovery.restored.20990101T000000Z.json");
+        std::fs::write(&first, b"first").unwrap();
+        let record = archive_record_stamped(&journal, "20990101T000000Z").unwrap();
+        assert_eq!(
+            record.file_name().unwrap().to_string_lossy(),
+            "update-recovery.restored.20990101T000000Z-1.json"
+        );
+        assert_eq!(std::fs::read(&first).unwrap(), b"first");
+        assert_eq!(std::fs::read(&record).unwrap(), b"second");
+        assert!(!journal.exists());
+    }
+
+    /// Past the suffix budget the archive fails closed: the journal stays
+    /// where it is, writes stay blocked and the next start retries.
+    #[test]
+    fn exhausted_suffixes_fail_closed_and_keep_the_journal() {
+        let dir = TempDir::new("startup-archive-budget");
+        let journal = dir.path().join("update-recovery.json");
+        std::fs::write(&journal, b"payload").unwrap();
+        for n in 0..ARCHIVE_SUFFIX_BUDGET {
+            let suffix = if n == 0 {
+                String::new()
+            } else {
+                format!("-{n}")
+            };
+            std::fs::write(
+                dir.path().join(format!(
+                    "update-recovery.restored.20990101T000000Z{suffix}.json"
+                )),
+                b"x",
+            )
+            .unwrap();
+        }
+        let error = archive_record_stamped(&journal, "20990101T000000Z").unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::AlreadyExists);
+        assert!(journal.exists());
     }
 
     /// P3-1: after a failed install the old binary starts. Its handshake is
