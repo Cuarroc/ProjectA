@@ -122,6 +122,9 @@ mod fs_replace;
 #[path = "pa/render_stats.rs"]
 mod render_stats;
 use render_stats::render_stats;
+#[path = "pa/render_ops.rs"]
+mod render_ops;
+use render_ops::{render_diagnosis, render_emergency_stop, render_quota};
 
 /// Descriptor written by the app on startup.
 const DESCRIPTOR_FILE: &str = "projecta-api.json";
@@ -3339,68 +3342,6 @@ fn request_emergency_stop(
     }
 }
 
-/// The reply must carry a boolean `active`; anything else is an error, so an
-/// odd reply can never read as "not stopped".
-fn render_emergency_stop(body: &Value) -> Result<String, String> {
-    match body.get("active").and_then(Value::as_bool) {
-        Some(true) => Ok("emergency stop: ACTIVE (no new dispatch)\n".to_string()),
-        Some(false) => Ok("emergency stop: off\n".to_string()),
-        None => Err("emergency stop: reply has no boolean `active`".to_string()),
-    }
-}
-
-fn render_quota(quota: &Value) -> String {
-    let Some(rows) = quota.as_array() else {
-        return "no quota information\n".to_string();
-    };
-    if rows.is_empty() {
-        return "no quota information\n".to_string();
-    }
-
-    let mut out = String::new();
-    for row in rows {
-        let reason = row
-            .get("reason")
-            .and_then(Value::as_str)
-            .map(|reason| format!("  {reason}"))
-            .unwrap_or_default();
-        out.push_str(&format!(
-            "{:<10}  {}{reason}\n",
-            text(row, "profileId"),
-            text(row, "state")
-        ));
-    }
-    if rows
-        .first()
-        .and_then(|row| row.get("omniRouteOnline"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false)
-    {
-        out.push_str("omniroute  online\n");
-    }
-    out
-}
-
-/// Log path and panic flags only. The pack stays in the window so an agent
-/// that can read `pa` cannot walk away with log excerpts.
-fn render_diagnosis(body: &Value) -> String {
-    let log_path = text(body, "logPath");
-    let panic_current = body
-        .get("panicCurrent")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let panic_previous = body
-        .get("panicPrevious")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let panic = if panic_current || panic_previous {
-        "panic marker present — open Diagnose in the window"
-    } else {
-        "no panic marker"
-    };
-    format!("{log_path}\n{panic}\n")
-}
-
 /// One line per provider: what it is, whether it was found, what it is
 /// saying about quota, and the latest usage snapshot. Deliberately never a
 /// key - the API does not serve them and this would be the wrong place to
@@ -6150,6 +6091,18 @@ mod tests {
         assert!(rendered.contains("kimi        ok\n"), "{rendered}");
         assert!(rendered.contains("omniroute  online\n"), "{rendered}");
         assert_eq!(render_quota(&json!([])), "no quota information\n");
+    }
+
+    #[test]
+    fn diagnosis_prints_log_path_and_panic_flag_only() {
+        assert_eq!(
+            render_diagnosis(&json!({"logPath": "/l/app.log", "panicPrevious": true})),
+            "/l/app.log\npanic marker present — open Diagnose in the window\n"
+        );
+        assert_eq!(
+            render_diagnosis(&json!({"logPath": "/l/app.log", "pack": "secret"})),
+            "/l/app.log\nno panic marker\n"
+        );
     }
 
     #[test]
