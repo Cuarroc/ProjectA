@@ -8121,6 +8121,8 @@ pub(crate) mod tests {
             ("wk-1 still has a running agent", 409, 400, 500),
             ("merge blocked (blocked); dirty: x", 409, 400, 500),
             ("git merge failed: unrelated histories", 500, 400, 500),
+            ("note: unknown worker wk-1, see log", 500, 400, 500),
+            ("recheck the test gate for wk-1", 500, 400, 500),
             ("the store is unknown territory", 500, 400, 500),
             ("git refused: nothing to commit", 500, 400, 500),
             ("database is locked", 500, 400, 500),
