@@ -337,11 +337,11 @@ pub(super) const ACCESS_DIR: &str = "agent-access";
 /// file that cannot be removed holds a token no server honours. The name
 /// shape is `new_token()`'s (`{:032x}`), guarded by
 /// `new_token_has_the_shape_redact_expects_to_mask`.
-pub(super) fn sweep_orphaned_descriptor_files(api_dir: &Path) -> usize {
+pub(super) fn sweep_orphaned_descriptor_files(api_dir: &Path) -> SweepReport {
+    let mut report = SweepReport::default();
     let Ok(entries) = std::fs::read_dir(api_dir.join(ACCESS_DIR)) else {
-        return 0;
+        return report;
     };
-    let mut removed = 0;
     for entry in entries.flatten() {
         let name = entry.file_name();
         let Some(stem) = name.to_str().and_then(|n| n.strip_suffix(".json")) else {
@@ -352,17 +352,26 @@ pub(super) fn sweep_orphaned_descriptor_files(api_dir: &Path) -> usize {
                 .bytes()
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
         let regular = entry.file_type().is_ok_and(|kind| kind.is_file());
-        if minted && regular && std::fs::remove_file(entry.path()).is_ok() {
-            removed += 1;
+        if minted && regular {
+            let _ = std::fs::remove_file(entry.path());
+            report.removed += 1;
         }
     }
-    removed
+    report
 }
 
-fn remove_grant_file(grant: &RunGrant) {
+/// Outcome of the boot sweep: files removed vs. files that stayed behind.
+#[derive(Default)]
+pub(super) struct SweepReport {
+    pub removed: usize,
+    pub failed: usize,
+}
+
+fn remove_grant_file(grant: &RunGrant) -> Result<(), String> {
     if let Some(path) = &grant.descriptor_file {
         let _ = std::fs::remove_file(path);
     }
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -1152,6 +1161,48 @@ mod tests {
         assert!(credentials.lookup("live").is_some());
         assert!(RunCredentials::default().lookup("live").is_none());
     }
+    fn grant_with_file(path: PathBuf) -> RunGrant {
+        RunGrant {
+            run_id: "run".into(),
+            owner: "owner".into(),
+            fence: 1,
+            expires_at: now() + Duration::from_secs(60),
+            descriptor_file: Some(path),
+            session_id: None,
+        }
+    }
+
+    /// INV-SEC-CRED-CLEANUP: a descriptor that cannot be removed used to
+    /// vanish into `let _ =`; it must come back as an error, while a file
+    /// that is already gone counts as removed.
+    #[test]
+    fn grant_file_removal_failure_is_reported_and_not_found_counts_as_removed() {
+        let dir = TempDir::new("grant-file-removal");
+        let file = dir.path().join("gone.json");
+        assert_eq!(remove_grant_file(&grant_with_file(file.clone())), Ok(()));
+        std::fs::write(&file, b"{}").unwrap();
+        assert_eq!(remove_grant_file(&grant_with_file(file.clone())), Ok(()));
+        assert!(!file.exists());
+        let stuck = dir.path().join("stuck.json");
+        std::fs::create_dir(&stuck).unwrap();
+        assert!(remove_grant_file(&grant_with_file(stuck)).is_err());
+    }
+
+    /// The boot sweep counts failures instead of only successes.
+    #[cfg(unix)]
+    #[test]
+    fn orphan_sweep_counts_files_it_could_not_remove() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = TempDir::new("orphan-sweep-failure");
+        let access = dir.path().join(ACCESS_DIR);
+        std::fs::create_dir_all(&access).unwrap();
+        std::fs::write(access.join(format!("{:032x}.json", 1)), b"{}").unwrap();
+        std::fs::set_permissions(&access, std::fs::Permissions::from_mode(0o500)).unwrap();
+        let report = sweep_orphaned_descriptor_files(dir.path());
+        std::fs::set_permissions(&access, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert_eq!((report.removed, report.failed), (0, 1));
+    }
+
     /// W1-15c: under poison the credential map only shrinks and is never
     /// trusted. `revoke_all` used to skip a poisoned map, leaving every
     /// grant and its descriptor file alive; `lookup` stays fail-closed,
