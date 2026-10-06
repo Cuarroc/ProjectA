@@ -73,7 +73,7 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (messbares Signal) |
 |---|---|---|---|---|---|---|---|---|
 | ARCH-D3b → ARCH-D7 | Store-Helfer Teil b; Einstellungen nach `store/settings.rs` | st | store | A | S, M | ARCH-D3a | astra, vor G2 Claude | `rg 'begin_with\("BEGIN IMMEDIATE' src-tauri/src/store` trifft außerhalb von Testdateien nur noch `begin_write` (Rest nach D3a: 9 Aufrufe in drei Dateien); `store.rs` < Stand nach D3a |
-| ARCH-D4a → D4b | Restlicher API-Router in kleinere serielle Teil-PRs schneiden (ARCH-D4-PLAN, siehe unten) | api | api.rs | A | M je Teil-PR | ARCH-D1 | astra | Insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs` gegenüber der Basis vor ARCH-D4; jeder Teil-PR ≤ 300 Gesamtdiffzeilen einschließlich Tests. Kein Mindestabbau von 150 je Teil-PR |
+| ARCH-D4a → D4b | Restlicher API-Router in kleinere serielle Teil-PRs schneiden (ARCH-D4-PLAN, siehe unten) | api | api.rs | A | M | ARCH-D1 | astra | Insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs` gegenüber der Basis vor ARCH-D4; jeder Teil-PR ≤ 300 Gesamtdiffzeilen einschließlich Tests. Kein Mindestabbau von 150 je Teil-PR |
 | ARCH-D5a → D5b → D8a | Diagnose- und Einstellungsbefehle aus `main.rs` lösen; Ereignisnamen als Konstanten | mn | main.rs | A | 2× M, S | ARCH-D2 | astra | `main.rs` je Scheibe um ≥ 150 Zeilen kleiner; D8a: der Auftrag nennt den Anker (heute fehlt er) |
 | ARCH-D8b → D8c | Ereignisnamen in PTY, dann im Frontend | pty → fe | – | A, B | 2× S | ARCH-D8a | sol, terra | wie D8a: Muster und Zielzahl stehen im Auftrag |
 | ARCH-D6b | `pa::run`, Teil b | pa | pa.rs | A | S | ARCH-D6a | astra, vor G2 Claude | `bin/pa.rs` < Stand nach D6a |
