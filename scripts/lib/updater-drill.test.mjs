@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { readDescriptor, runUpdaterDrill, summarizeJournal } from './updater-drill.mjs';
+import { normalizeVersion, readDescriptor, runUpdaterDrill, summarizeJournal } from './updater-drill.mjs';
 
 const TOKEN = 's3cr3t-token-value';
 function fixture(journal) {
@@ -53,6 +53,30 @@ test('successful update fails when no installed version is reported', async () =
   const { m } = await run('success', [{ phase: 'installing' }, null, { phase: 'up-to-date' }]);
   assert.equal(m.result, 'fail');
   assert.match(m.steps.at(-1).detail, /no installed version/);
+});
+test('a leading v and whitespace do not count as a version mismatch', async () => {
+  assert.equal(normalizeVersion(' v1.5.1 '), '1.5.1');
+  const fx = fixture();
+  const script = [{ phase: 'installing', version: 'v1.5.1' }, null, { phase: 'up-to-date', version: 'v1.5.1' }];
+  const m = await runUpdaterDrill({ ...fx, scenario: 'success', appVersion: 'v1.5.0', newVersion: '1.5.1', commit: 'abc', timeoutMs: 60000, ...fake(script) });
+  assert.equal(m.result, 'pass', JSON.stringify(m.steps));
+  const same = await runUpdaterDrill({ ...fixture(), scenario: 'success', appVersion: 'v1.5.1', commit: 'abc', timeoutMs: 60000, ...fake([{ phase: 'installing', version: '1.5.1' }, null, { phase: 'up-to-date', version: '1.5.1' }]) });
+  assert.match(same.steps.at(-1).detail, /version did not change/);
+});
+test('successful update compares the commit when expected and reported are known', async () => {
+  const script = [{ phase: 'installing', version: '1.0.0' }, null, { phase: 'up-to-date', version: '1.0.0', commit: 'AAA111' }];
+  const bad = await runUpdaterDrill({ ...fixture(), scenario: 'success', appVersion: '0.9.0', newCommit: 'bbb222', commit: 'abc', timeoutMs: 60000, ...fake(script) });
+  assert.equal(bad.result, 'fail');
+  assert.match(bad.steps.at(-1).detail, /installed commit aaa111, expected bbb222/);
+  const ok = await runUpdaterDrill({ ...fixture(), scenario: 'success', appVersion: '0.9.0', newCommit: 'aaa111', commit: 'abc', timeoutMs: 60000, ...fake(script) });
+  assert.equal(ok.result, 'pass', JSON.stringify(ok.steps));
+});
+test('cancelled update fails when the installed version changed anyway', async () => {
+  const bad = await run('cancel', [{ phase: 'installing' }, { phase: 'idle', version: 'v1.0.0' }]);
+  assert.equal(bad.m.result, 'fail');
+  assert.match(bad.m.steps.at(-1).detail, /installed version 1\.0\.0 after cancel, expected 0\.9\.0/);
+  const ok = await run('cancel', [{ phase: 'installing' }, { phase: 'idle', version: 'v0.9.0' }]);
+  assert.equal(ok.m.result, 'pass', JSON.stringify(ok.m.steps));
 });
 test('successful update rejects an error state after relaunch', async () => {
   const { m } = await run('success', [{ phase: 'installing', version: '1.0.0' }, null, { phase: 'error', message: 'startup failed' }]);
