@@ -93,6 +93,27 @@ Lesend, ohne Netzwerk. Die Zahlen in `plan.md`, Abschnitt 3.14, kommen aus diese
 
 Regeln des Skripts: eindeutig nach ID; Zeilen von `### 3.1` bis vor `## 4.` plus die Zeilen `| V2-EX-n (` aus 4a; der Abschnitt 3.13 (Geparkt) zählt nicht; `n×M` zählt als n Pakete; V2-REL und V2-N1 (Nutzer-Aufgaben) zählen 0; „Kern“ sind die in 1a ausgeschriebenen IDs; „übernommen“ sind die IDs der Zeilen „übernehmen“ in `mapping.md` (Ketten wie `D4a → D4b` zählen je Glied), soweit sie keine eigene Zeile im Plan haben. Die Variante „Regel 600“ halbiert (aufgerundet) die Pakete der Lane `fe` mit Stufe B und lässt alle anderen unverändert; sie setzt voraus, dass Frage 4b beantwortet wird. Grenzen: Die Größen sind Schätzungen aus Boardzeilen (die Umrechnung in Diffzeilen misst erst das erste Paket); die Zeilen für Gruppen („W5-01 bis W5-39“) sind nicht in Pakete aufgelöst; Runde 2 wurde mit demselben Skript auf dem Stand `25e7c95` gezählt (204 Pakete mit Schnitten, 163 Zeilen, 17 übernommen).
 
+### Kern je Bündel (Runde 3b, Stand nach der Fremdkritik)
+
+Die Tabelle schlüsselt die 107 Kernzeilen und 125 Kernpakete aus `plan.md`, Abschnitt 3.14, nach den Zeilen der Tabelle in 1a auf. Eine ID zählt eindeutig beim **ersten** Bündel, das sie nennt (daher hat „Not-Aus“ nur 2 eigene Zeilen: V2-F8 steht im Fundament). „Zusätzliche Schnitte“ ist die Zahl der Pakete über der Zeilenzahl, also Summe von (n − 1) je `n×M`-Zeile. Erzeugt mit dem Skript unten (gleiche Funktionen `rows`, `kern_ids`) und einer Gruppierung nach den Kernzeilen von 1a; Stand: 155 Zeilen, 193 Pakete, 06.10.2026.
+
+| Bündel (Kernzeile in 1a) | Zeilen | Zusätzliche Schnitte | Pakete | Geschnittene Zeilen |
+|---|---|---|---|---|
+| Beweis-Schicht und Ablauf mit Beweis | 12 | 3 | 15 | RUN-2 2×, S03a 3× |
+| Leitstand | 5 | 2 | 7 | S01a 3× |
+| Agent starten, Ort, drei Anbieter-Wege (mit V2-DOC-SRV) | 16 | 4 | 20 | S02 3×, LOCAL-1 2×, B19 2× |
+| Kontingente und Failover | 6 | 1 | 7 | S05a 2× |
+| Not-Aus | 2 | 0 | 2 | – |
+| Core (Steuerung, Autonomie) | 18 | 4 | 22 | CORE-AT 2×, S08 3×, S05c 2× |
+| Ersteinrichtung und Einstellungen (Rahmen) | 3 | 3 | 6 | S11 2×, S10a 3× |
+| Querschnitt des Kerns | 17 | 0 | 17 | – |
+| Release-Pfad | 8 | 1 | 9 | API-C 2× |
+| Abschluss | 5 | 0 | 5 | – |
+| Fundament | 15 | 0 | 15 | – |
+| **Summe** | **107** | **18** | **125** | |
+
+Nachrechnen: 107 + 18 = 125. Gegenüber Runde 3 (108 Zeilen, 126 Pakete): V2-B27 und V2-B23 sind hinter die Schalter gewandert (−2 Zeilen, −2 Pakete), V2-DOC-SRV ist neu (+1 Zeile, +1 Paket); die 18 Zusatzschnitte sind unverändert, weil beide verschobenen Zeilen `M` und `S` sind. Der Reviewer der Fremdkritik schätzte „18 Schnitte“ aus den `n×M`-Zeilen richtig.
+
 ```python
 """Count packages of plan.md (std lib only). Usage: python3 count.py plan.md mapping.md"""
 import re, sys, math

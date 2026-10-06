@@ -1,6 +1,6 @@
 # Core: die eine App-KI mit Rechten (Entwurf, Teil von Plan v2.0)
 
-Stand 06.10.2026. Der Nutzer hat das Konzept am 06.10. freigegeben. Dieses Dokument beschreibt es; die Pakete (V2-CORE-*, V2-SEC-*) stehen in [`plan.md`](plan.md), Abschnitt 3.9. Das Board dazu, `docs/design/2026-10-ui-v2/glass/Core.dc.html` (1165 Zeilen), liegt jetzt im Repo und wird der Bildschirm „Core“ (V2-S07a). Alles hier ist Entwurf: Datei- und Tabellennamen sind Vorschläge, die V2-ARCH-0 (Architektur-Skizze, zwei Fremd-Reviews) festlegt.
+Stand 06.10.2026. Der Nutzer hat das Konzept am 06.10. freigegeben. Dieses Dokument beschreibt es; die Pakete (V2-CORE-*, V2-SEC-*) stehen in [`plan.md`](plan.md), Abschnitt 3.9. Das Board dazu, `docs/design/2026-10-ui-v2/glass/Core.dc.html` (1165 Zeilen), liegt jetzt im Repo und wird der Bildschirm „Core“ (V2-S08). Alles hier ist Entwurf: Datei- und Tabellennamen sind Vorschläge, die V2-ARCH-0 (Architektur-Skizze, zwei Fremd-Reviews) festlegt.
 
 ## 1. Was der Core ist
 
@@ -80,4 +80,4 @@ Tests (V2-SEC-1): ein präpariertes Repo mit Injektionstext erzeugt keinen Ände
 
 ## 8. Reihenfolge
 
-V2-ARCH-0 und V2-SEC-0 (Doku, vor Welle 1) → V2-CORE-1, 2, 4 (Kern ohne Datenbank) → V2-ST-K1 (Tabellen) → V2-CORE-3, 10 → V2-API-K, V2-MN-K → V2-CORE-5, 6, 9, AT → V2-S07a (Bildschirm) → V2-CORE-7 (nach dem Kern-Release erlaubt, vor 2.x gebaut). V2-SEC-1 läuft vor dem ersten „Selbst mit Bericht“.
+V2-ARCH-0 und V2-SEC-0 (Doku, vor Welle 1) → V2-CORE-1, 2, 4 (Kern ohne Datenbank) → V2-ST-K1 (Tabellen) → V2-CORE-3, 10 → V2-API-K, V2-MN-K → V2-CORE-5, 6, 9, AT → V2-S08 (Bildschirm) → V2-CORE-7 (nach dem Kern-Release erlaubt, vor 2.x gebaut). V2-SEC-1 läuft vor dem ersten „Selbst mit Bericht“.
