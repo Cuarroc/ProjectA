@@ -1,5 +1,44 @@
 # Dev HQ
 
+> **Dev HQ is no longer its own interface (v2.0 decision, 06.10.2026).**
+> Every HQ view moves into one of the ten screens of the app. Do not
+> open new work in `hq.js`/`hq.css` — new features belong in the app,
+> not here. The contents below move into the app; the authoritative
+> assessment is `docs/plan/v2.0/dev-hq.md`. The checked-in HQ snapshot
+> (`data.js`/`data.json`) is a known intermediate state of this
+> transition, not a data error. The source of truth for the plan remains
+> `docs/PLAN.md` (in future `docs/plan/v2.0/plan.md`); this README
+> records the mapping below only — it is not a second copy of the plan.
+
+## Where each HQ view is going
+
+Every HQ view exactly once, with its target screen and the source of
+the mapping. Authoritative version, with rationale:
+`docs/plan/v2.0/dev-hq.md`, section 3 (anchors re-verified against
+`origin/main` on 06.10.2026). The ten screens (plan, section 3.4):
+Leitstand, Eingang & Plan, Beweise, Team, Automatik, Core,
+Core · Steuerung, Gedächtnis, Einstellungen, Ersteinrichtung — plus
+the start sheet as a sheet of the Leitstand. A view is only cut when
+its replacement in the app shows real data.
+
+| HQ view | Source | Decision | Target screen |
+|---|---|---|---|
+| **Now** (next decision from `STAND.md`, spec traces) | `hq.js:1268` | into the app | Eingang & Plan (Plan tab), Leitstand |
+| **Map** (milestone tables) | `hq.js:1342` | into the app | Eingang & Plan (Roadmap) |
+| **Next** (startable, waiting, open) | `hq.js:1446` | into the app | Eingang & Plan (critical path), Leitstand (history) |
+| **Proof** (fact / claim / unproven) | `hq.js:1361` | into the app | Beweise |
+| **Sources** (path and SHA-256 of the inputs) | `hq.js:1526` | cut (data stays in the proof) | Beweise, Leitstand (history) |
+| **Lessons** and `npm run hq:lesson` | `hq.js:1475`; `package.json:33` | into the app (CLI stays) | Gedächtnis |
+| **Live · Overview** | `workspace.js:14-16` | into the app | Leitstand |
+| **Live · Agent teams** (writes `agents.json`) | `hq.js:345,549` | into the app | Team (organigram, personas) |
+| **Live · Statistics** | `workspace.js:14-20` | into the app; drop the estimate | Core · Steuerung (quotas, cost ledger) |
+| **Live · Evidence** | `workspace.js:14-20` | into the app | Beweise, Gedächtnis |
+| **Live · System** (setup helper) | `hq.js:721` | into the app | Ersteinrichtung, Einstellungen |
+| **Continuous-mode card** | `continuous.js:1-30` | keep, frozen | Leitstand (honest state "off, locked until …") |
+| **Remote view** (new, from Live and the proxy) | `hq-live.mjs:373-412`; `web_interface.rs:1-14` | browser access to the app | Einstellungen (Notifications & Phone tab), Leitstand |
+| **Studio concept** (`concepts/`) | `docs/dev-hq/concepts/` | cut after v2.0 | – (the Glass boards replace it) |
+| **Snapshot generator** `dev-hq.mjs`, `data.js/json` | `scripts/dev-hq.mjs`; `.gitattributes:14-22` | cut once plan and proofs run in the app | – (ends the conflict source) |
+
 The Live workspace uses the approved B/C design with five keyboard-accessible
 tabs: Übersicht, Agenten-Teams, Statistiken, Belege and System. Panels scroll
 independently; changing tabs preserves form drafts. Arrow keys, Home and End
