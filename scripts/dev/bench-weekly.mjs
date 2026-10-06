@@ -6,6 +6,7 @@
 // (same shape the live path builds), so tests need no network.
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
+import { countRp, rpRows } from "./mrp-count.mjs";
 import { EXIT, UsageError, makeRunner, ghJson, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
 
 // All counting patterns live here (benchmark.md section 5 lost them once).
@@ -103,6 +104,7 @@ export function measure(data, { from, to }) {
     ratio("closed", "closed without merge", closed.length, closed.length + merged.length),
     { id: "hotfix", label: "hotfix/revert PRs", num: merged.filter((p) => PATTERNS.hotfix.test(p.title) || PATTERNS.hotfix.test(p.headRefName)).length },
   ];
+  rows.push(...rpRows(countRp(real, { from, to })));
   for (const t of [...new Set(merged.map(tierOf))].sort()) rows.push(lead(`lead.tier.${t}`, `lead time, tier ${t} (h)`, leadH(merged.filter((p) => tierOf(p) === t))));
   for (const s of ["S", "M", "L"]) {
     const ps = merged.filter((p) => sizeClass(p.lines || 0) === s);
