@@ -163,20 +163,20 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                         runtime.block_on(sqlx::query("BEGIN IMMEDIATE")
                             .execute(&mut connection)).unwrap();
                         Some(runtime.spawn(async move {
-                            // Experimental load: exceeds the host's existing
+                            // Experimental load: exceeds the host's former
                             // 3s receipt wait but stays inside SQLite's 5s wait.
                             tokio::time::sleep(Duration::from_secs(4)).await;
                             sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
                         }))
                     } else { None };
                     let persist_start = start.elapsed();
-                    let persisted = runtime.block_on(store.persist_native_checkpoint(&owner, &request));
+                    let persisted = runtime.block_on(store.persist_native_checkpoint(owner, &request));
                     let persist_end = start.elapsed();
                     let acknowledged = request.acknowledge(persisted.clone());
                     observations.push((stage, persist_start, persist_end, start.elapsed(), persisted, acknowledged));
                     if let Some(holder) = holder { runtime.block_on(holder).unwrap(); }
                 }
-                runtime.block_on(store.close_native_capture_owner(&owner)).unwrap();
+                runtime.block_on(store.close_native_capture_owner(owner)).unwrap();
                 observations
             });
             let native = windows_process::execute_owned_host(
@@ -194,6 +194,11 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
         assert_eq!(count, 4);
         assert!(native.is_ok(), "valid delivered run failed while SQLite committed within busy wait: {:?}; {observations:?}", native.err());
         assert!(observations.iter().all(|o| o.5.is_ok()), "acknowledgements: {observations:?}");
+        assert!(returned_at >= observations.last().unwrap().2, "completion preceded receipt persistence");
+        let windows_process::NativeSettlement::Completed(confirmed) = native.unwrap() else {
+            panic!("sort input was delivered");
+        };
+        assert_eq!(confirmed.reply().capture.stdout, b"a\r\nz\r\n");
     }).await.unwrap();
 }
 
