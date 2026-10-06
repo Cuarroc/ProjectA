@@ -129,6 +129,80 @@ async fn real_native_host_commits_checkpoints_before_registry_and_final_handler_
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires built Windows capture host; controlled foreign SQLite writer"]
+async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout() {
+    use crate::process_capture::{
+        checkpoints::{Request, Stage},
+        windows_process,
+    };
+    use sqlx::Connection as _;
+    use std::{
+        sync::{atomic::AtomicBool, mpsc},
+        time::{Duration, Instant},
+    };
+    let (dir, store, owner, prepared, _manager, host, host_hash) = prepared_fixture(false).await;
+    let runtime = tokio::runtime::Handle::current();
+    tokio::task::spawn_blocking(move || {
+        let (sender, receiver) = mpsc::sync_channel::<Request>(4);
+        let start = Instant::now();
+        let (native, observations, returned_at) = std::thread::scope(|scope| {
+            let (store_ref, owner_ref, runtime_ref, dir_ref) = (&store, &owner, &runtime, &dir);
+            let actor = scope.spawn(move || {
+                let (store, owner, runtime, dir) = (store_ref, owner_ref, runtime_ref, dir_ref);
+                let mut observations = Vec::new();
+                while let Ok(request) = receiver.recv() {
+                    let stage = request.stage;
+                    // Take the foreign lock only after the real Completed
+                    // receipt arrives, leaving Launch/Process/Input untouched.
+                    let holder = if stage == Stage::Receipt {
+                        let options = sqlx::sqlite::SqliteConnectOptions::new()
+                            .filename(dir.path().join("projecta.db"))
+                            .busy_timeout(Duration::from_secs(5));
+                        let mut connection = runtime.block_on(
+                            sqlx::sqlite::SqliteConnection::connect_with(&options)).unwrap();
+                        runtime.block_on(sqlx::query("BEGIN IMMEDIATE")
+                            .execute(&mut connection)).unwrap();
+                        Some(runtime.spawn(async move {
+                            // Experimental load: exceeds the host's former
+                            // 3s receipt wait but stays inside SQLite's 5s wait.
+                            tokio::time::sleep(Duration::from_secs(4)).await;
+                            sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
+                        }))
+                    } else { None };
+                    let persist_start = start.elapsed();
+                    let persisted = runtime.block_on(store.persist_native_checkpoint(owner, &request));
+                    let persist_end = start.elapsed();
+                    let acknowledged = request.acknowledge(persisted.clone());
+                    observations.push((stage, persist_start, persist_end, start.elapsed(), persisted, acknowledged));
+                    if let Some(holder) = holder { runtime.block_on(holder).unwrap(); }
+                }
+                runtime.block_on(store.close_native_capture_owner(owner)).unwrap();
+                observations
+            });
+            let native = windows_process::execute_owned_host(
+                &host, &host_hash, prepared, sender, &AtomicBool::new(false));
+            let returned_at = start.elapsed();
+            (native, actor.join().unwrap(), returned_at)
+        });
+        eprintln!("host_return={returned_at:?}; error={:?}; checkpoints={observations:?}", native.as_ref().err());
+        assert_eq!(observations.iter().map(|o| o.0).collect::<Vec<_>>(),
+            [Stage::Launch, Stage::Process, Stage::Input, Stage::Receipt]);
+        assert!(observations.iter().all(|o| o.4.is_ok()), "persistence: {observations:?}");
+        let count: i64 = runtime.block_on(sqlx::query_scalar(
+            "SELECT count(*) FROM development_capture_checkpoints WHERE run_id=?")
+            .bind(&owner.binding.run_id).fetch_one(&store.pool)).unwrap();
+        assert_eq!(count, 4);
+        assert!(native.is_ok(), "valid delivered run failed while SQLite committed within busy wait: {:?}; {observations:?}", native.err());
+        assert!(observations.iter().all(|o| o.5.is_ok()), "acknowledgements: {observations:?}");
+        assert!(returned_at >= observations.last().unwrap().2, "completion preceded receipt persistence");
+        let windows_process::NativeSettlement::Completed(confirmed) = native.unwrap() else {
+            panic!("sort input was delivered");
+        };
+        assert_eq!(confirmed.reply().capture.stdout, b"a\r\nz\r\n");
+    }).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "requires built capture host; isolated native process and local credential server"]
 async fn real_native_job_revokes_credentials_before_retirement_or_reconciliation() {
     for case in 0..5 {
