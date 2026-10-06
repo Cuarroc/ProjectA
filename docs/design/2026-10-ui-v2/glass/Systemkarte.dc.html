@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Systemkarte</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Glass Leitstand · shared system v2 (identical in every artboard) ===== */
+    *{box-sizing:border-box}
+    body{margin:0;background:#E9EDF3}
+    .app{
+      --ground:#E9EDF3;--ink:#121826;--ink2:#2F3747;--muted:#4E5868;--faint:#636C7D;
+      --line:rgba(18,24,38,.11);--hair:rgba(18,24,38,.07);
+      --tint:rgba(255,255,255,.52);--tint-hi:rgba(255,255,255,.92);--hover:#fff;
+      --accent:#1F57D6;--accent-hover:#1A4BBB;--on-accent:#fff;--accent-soft:rgba(31,87,214,.10);--accent-line:rgba(31,87,214,.45);
+      --run:#08679E;--run-bg:#DDEEF8;--need:#A54800;--need-bg:#FCE8D3;--on-need:#fff;--rev:#6431B6;--rev-bg:#EDE4FA;
+      --ok:#11703A;--ok-bg:#DBF0E3;--done:#525B69;--done-bg:#E7EAEF;--bad:#B51D25;--bad-bg:#FBE1E1;--danger-line:rgba(181,29,37,.36);
+      --chrome-bg:rgba(255,255,255,.5);--chrome-blur:blur(32px) saturate(180%);
+      --content-bg:rgba(255,255,255,.74);--content-blur:blur(20px) saturate(140%);
+      --spec:inset 0 1px 0 rgba(255,255,255,.9);
+      --shadow:0 1px 2px rgba(20,24,40,.06),0 8px 24px -12px rgba(20,24,40,.18);
+      --shadow-pop:0 1px 2px rgba(20,24,40,.08),0 24px 56px -20px rgba(20,24,40,.32);
+      --amb1:#CADCFA;--amb2:#D0ECE2;--amb3:#F6E4D5;
+      --av1:#D9E3F7;--av2:#D3ECE6;--av3:#F2E3D1;--av4:#E6DDF4;--av5:#F3DCE4;--av6:#E0E5EB;
+      --pad:20px;--r-panel:20px;--r-card:14px;--r-ctl:10px;
+      --dur-1:120ms;--dur-2:200ms;--dur-3:320ms;--ease-out:cubic-bezier(.2,.8,.2,1);--ease-spring:cubic-bezier(.34,1.3,.64,1);
+      --ease:var(--ease-out);--dur:var(--dur-1);
+      --sans:"Geist",ui-sans-serif,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+      --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+      position:relative;min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;padding:12px;
+      font:400 13px/1.5 var(--sans);color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+      background:radial-gradient(900px 640px at 0% 0%,var(--amb1),transparent 66%),radial-gradient(780px 600px at 100% 120px,var(--amb2),transparent 66%),radial-gradient(1000px 520px at 50% 900px,var(--amb3),transparent 66%),var(--ground)}
+    .app.dark{
+      --ground:#0D1219;--ink:#E8ECF2;--ink2:#C9D0DA;--muted:#A2ACBB;--faint:#8D97A7;
+      --line:rgba(255,255,255,.11);--hair:rgba(255,255,255,.07);
+      --tint:rgba(255,255,255,.05);--tint-hi:rgba(255,255,255,.10);--hover:rgba(255,255,255,.14);
+      --accent:#6E9BFF;--accent-hover:#8AAEFF;--on-accent:#0A1022;--accent-soft:rgba(110,155,255,.16);--accent-line:rgba(110,155,255,.55);
+      --run:#66C5F2;--run-bg:rgba(102,197,242,.14);--need:#FFB16A;--need-bg:rgba(255,177,106,.14);--on-need:#1D1206;--rev:#C0A6FF;--rev-bg:rgba(192,166,255,.15);
+      --ok:#66D392;--ok-bg:rgba(102,211,146,.14);--done:#A2ACBB;--done-bg:rgba(162,172,187,.13);--bad:#FF8388;--bad-bg:rgba(255,131,136,.14);--danger-line:rgba(255,131,136,.42);
+      --chrome-bg:rgba(20,26,36,.56);--content-bg:rgba(27,33,45,.8);
+      --spec:inset 0 1px 0 rgba(255,255,255,.07);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.55);
+      --shadow-pop:0 1px 2px rgba(0,0,0,.35),0 28px 64px -20px rgba(0,0,0,.7);
+      --amb1:#16264A;--amb2:#0F322D;--amb3:#33231A;
+      --av1:#25324F;--av2:#1F3B37;--av3:#3D3122;--av4:#33294A;--av5:#432936;--av6:#2B323C;color-scheme:dark}
+    .app a{color:inherit}
+    .app :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .app h1,.app h2,.app h3,.app h4,.app p,.app ol,.app ul,.app dl,.app dd,.app figure,.app fieldset{margin:0}
+    .app h1,.app h2,.app h3,.app h4{font-size:inherit;font-weight:600}
+    .app ol,.app ul{list-style:none;padding:0}
+    .app fieldset{border:0;padding:0;min-width:0}
+    .app code,.mono{font-family:var(--mono);font-size:12px;letter-spacing:0}
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .muted{color:var(--muted)}
+    .trunc{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .ic.s{width:16px;height:16px}
+    /* materials: chrome (sidebar, top bar, sheets) and content (cards, tables, editors) */
+    .chrome{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass{background:var(--content-bg);-webkit-backdrop-filter:var(--content-blur);backdrop-filter:var(--content-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass .glass,.chrome .glass,.glass .chrome{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--tint);box-shadow:none}
+    .pane{padding:var(--pad);display:flex;flex-direction:column;gap:12px;min-width:0}
+    .pane-h{display:flex;align-items:center;gap:8px;min-height:24px}
+    .pane-h h2,.pane-h h3{font:600 15px/1.3 var(--sans)}
+    .pane-h .r{margin-left:auto;font-size:12px;color:var(--muted)}
+    .grp-h{font:600 13px/1.3 var(--sans);color:var(--ink)}
+    .note{font-size:12px;line-height:1.45;color:var(--muted)}
+    .split{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;flex:1}
+    .grow{flex:999 1 560px;min-width:0}
+    .aside{flex:1 1 320px;max-width:100%;min-width:0}
+    @media (min-width:900px){.aside{max-width:360px}.aside.wide{max-width:400px}}
+    .phead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;padding:4px 4px 0}
+    .phead h1{font:600 28px/1.1 var(--sans);letter-spacing:-.01em}
+    .phead p{font-size:13px;color:var(--muted);margin-top:4px;max-width:76ch}
+    .phead .act{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+    .item{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card)}
+    .pickable{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pickable:active{transform:scale(.98)}
+    .pickable[aria-pressed="true"],.pickable[aria-current="true"],.pickable[aria-checked="true"]{background:var(--tint-hi);border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+    @media (hover:hover) and (pointer:fine){.pickable:hover{background:var(--tint-hi)}}
+    .lamp{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+    .lamp.off{background:var(--done)}
+    .empty{padding:24px;border-radius:var(--r-card);border:1px dashed var(--line);text-align:center;font-size:12px;color:var(--muted)}
+    /* buttons: one filled primary per screen; secondary is glass; tint and ghost are quiet */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--tint-hi);color:var(--ink);font:500 13px/1 var(--sans);text-decoration:none;cursor:pointer;white-space:nowrap;box-shadow:var(--spec),0 1px 2px rgba(20,24,40,.06);transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease)}
+    .btn:active{transform:scale(.98)}
+    .btn.primary{background:var(--accent);border-color:transparent;color:var(--on-accent);box-shadow:0 1px 2px rgba(20,24,40,.08)}
+    .btn.tint{background:var(--accent-soft);border-color:transparent;color:var(--accent);box-shadow:none}
+    .btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink2)}
+    .btn.lg{height:44px;padding:0 20px}
+    .btn.sm{height:32px;padding:0 12px;font-size:12px}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    @media (hover:hover) and (pointer:fine){.btn:hover{background:var(--hover)}.btn.primary:hover{background:var(--accent-hover)}.btn.tint:hover{background:var(--accent-soft);color:var(--accent-hover)}.btn.ghost:hover{background:var(--tint)}}
+    .inp{width:100%;height:40px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--tint);padding:0 12px;font:400 13px var(--sans);color:var(--ink)}
+    textarea.inp{height:auto;min-height:88px;padding:8px 12px;line-height:1.5;resize:vertical}
+    .inp.mono{font-family:var(--mono);font-size:12px}
+    .inp::placeholder{color:var(--faint)}
+    .field{display:flex;flex-direction:column;gap:4px;font:500 12px/1.3 var(--sans);color:var(--muted);min-width:0}
+    .kbd{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;border:1px solid var(--line);background:var(--tint-hi);font:500 11px/1 var(--mono);color:var(--muted)}
+    .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair)}
+    .seg button{height:32px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);color:var(--ink2);cursor:pointer;transition:background-color var(--dur) var(--ease)}
+    .seg button[aria-checked="true"],.seg button[aria-pressed="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    .sw{position:relative;width:40px;height:24px;border-radius:12px;border:0;padding:0;background:var(--line);cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease)}
+    .sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,24,40,.2);transition:transform var(--dur) var(--ease)}
+    .sw[aria-checked="true"]{background:var(--ok)}
+    .sw[aria-checked="true"]::after{transform:translateX(16px)}
+    .sw:disabled{cursor:not-allowed;opacity:.6}
+    .tabs{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair)}
+    .tabs a,.tabs button{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);text-decoration:none;color:var(--ink2);cursor:pointer}
+    .tabs [aria-current="page"],.tabs [aria-selected="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    table.tbl{width:100%;border-collapse:collapse}
+    .tbl th{font:500 12px/1.3 var(--sans);color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+    .tbl td{padding:0 12px;height:44px;border-bottom:1px solid var(--hair);font-size:13px;vertical-align:middle}
+    .tbl tbody tr:last-child td{border-bottom:0}
+    .tw{overflow-x:auto;min-width:0}
+    .meter{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+    .meter b{display:block;height:100%;border-radius:2px;background:var(--ink2)}
+    .meter b.acc{background:var(--accent)}.meter b.hot{background:var(--need)}.meter b.lock{background:var(--bad)}.meter b.good{background:var(--ok)}
+    .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12px;line-height:1.5}
+    .kv dt{color:var(--muted)}
+    .kv dd{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .sheet{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow-pop);border-radius:24px}
+    /* sidebar */
+    .side{flex:1 1 224px;display:flex;flex-direction:column;gap:16px;padding:12px 8px}
+    @media (min-width:760px){.side{max-width:232px}}
+    .brand{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px}
+    .mark{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);flex:none}
+    .brand b{font:600 15px/1 var(--sans);letter-spacing:-.01em}
+    .brand small{font:500 11px/1 var(--mono);color:var(--muted)}
+    .sgrp{display:flex;flex-direction:column;gap:4px}
+    .slabel{font:500 12px/1 var(--sans);color:var(--muted);padding:4px 8px}
+    .nav{display:flex;flex-direction:column}
+    .nav a{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:10px;color:var(--ink2);text-decoration:none;font:500 13px/1 var(--sans);white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .nav a:active{transform:scale(.98)}
+    .nav a .ic{color:var(--muted)}
+    .nav a .n{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font:500 12px/1 var(--sans);color:var(--muted)}
+    .nav a.sub{padding-left:36px;color:var(--muted)}
+    .nav a[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    .nav a[aria-current="page"] .ic{color:var(--accent)}
+    .nav a.proj[aria-current="true"]{color:var(--ink);font-weight:600}
+    @media (hover:hover) and (pointer:fine){.nav a:hover{background:var(--tint)}}
+    .pj{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:600 11px/1 var(--sans);background:var(--tint-hi);border:1px solid var(--line);color:var(--ink2);flex:none}
+    .dia{width:8px;height:8px;border-radius:2px;transform:rotate(45deg);background:var(--need);flex:none}
+    .live{width:8px;height:8px;border-radius:50%;background:var(--run);flex:none}
+    .side-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--hair);display:flex;flex-direction:column;gap:4px}
+    .me{display:flex;align-items:center;gap:8px;padding:4px 8px}
+    .me b{display:block;font:600 13px/1.3 var(--sans)}
+    .me small{display:block;font-size:12px;line-height:1.3;color:var(--muted)}
+    /* main column and top bar */
+    .main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px}
+    .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px}
+    .pick,.qm,.bell{display:inline-flex;align-items:center;height:44px;border-radius:12px;border:0;background:transparent;color:var(--ink2);text-decoration:none;cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pick:active,.qm:active,.bell:active{transform:scale(.98)}
+    @media (hover:hover) and (pointer:fine){.pick:hover,.qm:hover,.bell:hover{background:var(--tint)}}
+    .pick{gap:8px;padding:0 12px 0 8px;font:600 13px/1 var(--sans);color:var(--ink)}
+    .pick .pj{width:28px;height:28px;border-radius:8px;font-size:12px}
+    .search{flex:1 1 240px;position:relative;display:flex;align-items:center;min-width:0}
+    .search input{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--tint);padding:0 80px 0 40px;font:400 13px var(--sans);color:var(--ink)}
+    .search input::placeholder{color:var(--faint)}
+    .search>.ic{position:absolute;left:12px;color:var(--muted);pointer-events:none}
+    .search .kbd{position:absolute;right:12px}
+    .qm{gap:12px;padding:0 12px}
+    .qb{display:flex;flex-direction:column;gap:4px;width:48px;font:500 11px/1 var(--sans);color:var(--muted)}
+    .qb i{display:block;height:4px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+    .qb i b{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--ink2)}
+    .qb i b.hot{background:var(--need)}.qb i b.lock{background:var(--bad)}
+    .bell{position:relative;width:44px;justify-content:center}
+    .badge{position:absolute;top:6px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--need);color:var(--on-need);font:600 11px/16px var(--sans);text-align:center}
+    .top .divider{width:1px;height:24px;background:var(--line);margin:0 4px}
+    .estop{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 12px;border-radius:999px;border:1px solid var(--danger-line);background:var(--bad-bg);color:var(--bad);font:600 13px/1.15 var(--sans);text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(20,24,40,.06);transition:transform var(--dur) var(--ease)}
+    .estop:active{transform:scale(.98)}
+    .estop small{display:block;font:500 11px/1.2 var(--sans)}
+    .stopband{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-radius:var(--r-card);background:var(--bad-bg);border:1px solid var(--danger-line);color:var(--bad);animation:enter .2s var(--ease)}
+    .stopband p{font-weight:600}
+    .stopband span{font-size:12px;color:var(--ink2)}
+    .stopband .btn{margin-left:auto}
+    /* six-state vocabulary: shape + label + color, one definition */
+    .st{--c:var(--done);--b:var(--done-bg);display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;background:var(--b);color:var(--c);font:500 12px/1 var(--sans);white-space:nowrap;flex:none}
+    .st.run{--c:var(--run);--b:var(--run-bg)}.st.need{--c:var(--need);--b:var(--need-bg)}.st.rev{--c:var(--rev);--b:var(--rev-bg)}
+    .st.ok{--c:var(--ok);--b:var(--ok-bg)}.st.done{--c:var(--done);--b:var(--done-bg)}.st.bad{--c:var(--bad);--b:var(--bad-bg)}
+    .st::before,.glyph{content:"";display:inline-block;width:10px;height:10px;flex:none;box-sizing:border-box;background:currentColor}
+    .glyph.run{color:var(--run)}.glyph.need{color:var(--need)}.glyph.rev{color:var(--rev)}.glyph.ok{color:var(--ok)}.glyph.done{color:var(--done)}.glyph.bad{color:var(--bad)}
+    .st.run::before,.glyph.run{background:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%}
+    .st.need::before,.glyph.need{width:8px;height:8px;margin:0 1px;border-radius:2px;transform:rotate(45deg)}
+    .st.rev::before,.glyph.rev{border-radius:50%;background:linear-gradient(90deg,transparent 50%,currentColor 50%);box-shadow:inset 0 0 0 1.5px currentColor}
+    .st.ok::before,.glyph.ok{border-radius:50%}
+    .st.done::before,.glyph.done{width:5px;height:9px;margin:0 3px 0 2px;background:none;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+    .st.bad::before,.glyph.bad{clip-path:polygon(50% 0,100% 100%,0 100%)}
+    /* signature: the proof chip (Beweisleiste) */
+    .proof{display:inline-flex;flex-wrap:wrap;align-items:center;gap:0 8px;min-height:24px;padding:0 8px;border-radius:12px;background:var(--tint-hi);border:1px solid var(--line);font:500 12px/22px var(--sans);color:var(--ink2);white-space:nowrap;text-decoration:none;max-width:100%;flex:0 1 auto}
+    a.proof{transition:border-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){a.proof:hover{border-color:var(--accent-line)}}
+    .gt{display:inline-flex;gap:2px}
+    .gt i{width:4px;height:12px;border-radius:2px;background:var(--line)}
+    .gt i.y{background:var(--ok)}.gt i.r{background:var(--bad)}.gt i.w{background:var(--run)}
+    .proof .sep{width:1px;height:12px;background:var(--line);flex:none}
+    .proof .yes{color:var(--ok);font-weight:600}.proof .no{color:var(--bad);font-weight:600}.proof .wip{color:var(--run);font-weight:600}
+    .proof code{font-size:11px;color:var(--muted)}
+    /* CLI/model chip, tag chip, persona avatar */
+    .chip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;background:var(--tint);border:1px solid var(--hair);font:500 12px/1 var(--sans);color:var(--ink2);white-space:nowrap;max-width:100%;overflow:hidden;min-width:0;flex:none}
+    .chip code{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+    .ava{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;font:600 12px/1 var(--sans);color:var(--ink);background:var(--tint-hi);border:1px solid var(--line)}
+    .ava.sm{width:24px;height:24px;border-radius:8px;font-size:11px}
+    .ava.lg{width:48px;height:48px;border-radius:14px;font-size:15px}
+    .ava.owner{border-radius:50%;background:var(--ink);color:var(--ground);border-color:transparent}
+    .ava.lead{background:var(--accent);color:var(--on-accent);border-color:transparent}
+    .ava.sys{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+    .ava.c1{background:var(--av1);border-color:transparent}.ava.c2{background:var(--av2);border-color:transparent}.ava.c3{background:var(--av3);border-color:transparent}
+    .ava.c4{background:var(--av4);border-color:transparent}.ava.c5{background:var(--av5);border-color:transparent}.ava.c6{background:var(--av6);border-color:transparent}
+    @keyframes enter{from{opacity:0;transform:translateY(8px)}}
+    /* motion layer: purposeful only. hover/press dur-1, sheets and views dur-2, bars dur-3, one live pulse */
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+    @keyframes fade{from{opacity:0}}
+    @keyframes row-in{from{opacity:0;transform:translateY(-4px)}}
+    @keyframes live{50%{opacity:.45}}
+    .sheet{animation:rise var(--dur-2) var(--ease-out)}
+    [role="tabpanel"],.view{animation:fade var(--dur-2) var(--ease-out)}
+    .is-new{animation:row-in var(--dur-2) var(--ease-out)}
+    .st,.st::before,.glyph{transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),border-radius var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+    .st.run::before,.glyph.run{animation:live 2s ease-in-out infinite}
+    .meter b{transition:width var(--dur-3) var(--ease-out)}
+    @media (prefers-reduced-motion:reduce){.app *,.app *::before,.app *::after{animation:none!important;transition-duration:0ms!important}}
+
+    /* ===== Systemkarte: architecture poster ===== */
+    .sk{display:flex;flex-direction:column;gap:24px;min-width:0}
+    /* hero */
+    .hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:24px 48px;padding:8px 8px 0}
+    .hero-t{flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:12px}
+    .eyebrow{font:500 12px/1.3 var(--sans);color:var(--muted)}
+    .hero h1{font:600 clamp(36px,5vw,48px)/1.02 var(--sans);letter-spacing:-.035em}
+    .lede{font-size:15px;line-height:1.55;color:var(--ink2);max-width:60ch}
+    .lede b{font-weight:600;color:var(--ink)}
+    .key{flex:0 1 344px;min-width:0;padding:16px;display:flex;flex-direction:column;gap:12px}
+    .key-h{font:600 12px/1.3 var(--sans)}
+    .key-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+    .key-g li{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;line-height:20px;color:var(--ink2)}
+    .key-g b{margin-left:auto;font-weight:600;color:var(--ink)}
+    .key .bs{width:12px;height:12px;margin:0}
+    .key-line{display:flex;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--hair);font-size:12px;color:var(--ink2)}
+    .kl{position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:20px;flex:none}
+    .kl::before{content:"";position:absolute;left:0;right:0;top:9px;height:3px;border-radius:2px;background:var(--accent)}
+    .kl .stn{width:20px;height:20px;font-size:11px;animation:none}
+    .key-note{font-size:12px;color:var(--muted)}
+
+    /* the layer stack */
+    .stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+    .layer{position:relative;display:flex;flex-wrap:wrap;gap:16px 24px;padding:16px 24px;animation:rise .36s var(--ease) both}
+    .l-orch{animation-delay:40ms}.l-rt{animation-delay:80ms}.l-proof{animation-delay:120ms}.l-data{animation-delay:160ms}
+    .l-proof{background:color-mix(in srgb,var(--accent) 6%,var(--content-bg));border-color:var(--accent-line)}
+    /* signature: the path line, one segment per layer, drawn top to bottom */
+    .lane{position:absolute;left:34.5px;top:-7px;bottom:-7px;width:3px;background:var(--accent);transform-origin:50% 0;animation:draw .11s linear both;pointer-events:none}
+    .l-ui .lane{top:16px;border-radius:2px 2px 0 0;animation-delay:.2s;animation-duration:.17s}
+    .l-ui .lane::before{content:"";position:absolute;left:-3.5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+    .l-orch .lane{animation-delay:.37s}
+    .l-rt .lane{animation-delay:.48s}
+    .l-proof .lane{background:linear-gradient(var(--accent) calc(100% - 64px),var(--ok) calc(100% - 24px));animation-delay:.59s;animation-duration:.17s}
+    .l-data .lane{bottom:16px;background:var(--ok);border-radius:0 0 2px 2px;animation-delay:.76s;animation-duration:.14s;animation-timing-function:var(--ease)}
+    .l-data .lane::after{content:"";position:absolute;left:-3.5px;bottom:-4px;width:10px;height:10px;border-radius:50%;background:var(--ok)}
+    .lhead{position:relative;flex:1 1 192px;min-width:0;display:flex;flex-direction:column;gap:16px;padding-left:36px}
+    @media (min-width:900px){.lhead{max-width:192px}}
+    .lname{display:flex;flex-direction:column;gap:4px}
+    .lhead h2{font:600 20px/1.2 var(--sans);letter-spacing:-.015em}
+    .ldesc{font-size:12px;line-height:1.4;color:var(--muted)}
+    .l-proof .ldesc{color:var(--ok);font-weight:500}
+    .tally{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;font:500 12px/20px var(--sans);color:var(--ink2)}
+    .tl{display:inline-flex;align-items:center;gap:4px}
+    .tl .bs{margin:0}
+    .steps{display:flex;flex-direction:column;gap:8px}
+    .step{display:flex;align-items:flex-start;gap:12px;margin-left:-36px;border-radius:8px;color:var(--ink);text-decoration:none}
+    .stx{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;min-height:24px}
+    .sl{font:500 13px/1.35 var(--sans);transition:color .15s ease}
+    .stn{position:relative;z-index:1;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;flex:none;background:var(--accent);color:var(--on-accent);font:600 12px/1 var(--sans);animation:pop .2s var(--ease) both}
+    .stn.ok{background:var(--ok)}
+    .stn.branch{background:none}
+    .stn.branch::after{content:"";width:8px;height:8px;border-radius:50%;border:2px solid var(--accent);background:var(--ground)}
+    .l-ui .stn{animation-delay:.26s}.l-orch .stn{animation-delay:.42s}.l-rt .stn{animation-delay:.53s}.l-proof .stn{animation-delay:.68s}.l-data .stn{animation-delay:.84s}
+    .st.pulse::before{animation:pulse 2.4s ease-in-out infinite}
+    /* tiles: flat tint inside the glass, never glass on glass */
+    .tiles{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px}
+    .groups{display:flex;flex-direction:column;gap:12px;min-width:0}
+    .groups.cols,.grid5{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+    .grp{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .gname{font:600 12px/16px var(--sans);color:var(--muted)}
+    .cols .gname{min-height:32px;display:flex;align-items:flex-end}
+    .list{display:flex;flex-direction:column;gap:4px}
+    .chain{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px}
+    .t{position:relative;display:flex;flex-direction:column;gap:4px;min-width:0;padding:8px 12px;border-radius:12px;background:var(--tint);border:1px solid var(--hair);color:var(--ink);text-decoration:none;transition:opacity .15s ease,background-color .15s ease,border-color .15s ease,transform .15s var(--ease)}
+    .t:active{transform:scale(.98)}
+    .t.sm{justify-content:center;min-height:32px;padding:6px 8px;border-radius:10px}
+    .t.lg{gap:8px;padding:16px}
+    .t-top{display:flex;align-items:flex-start;gap:8px;min-width:0}
+    .t-name{flex:1 1 auto;min-width:0;font:500 13px/1.35 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .t.lg .t-name{font:600 15px/1.3 var(--sans);white-space:normal}
+    .t-why{font-size:12px;line-height:1.45;color:var(--ink2)}
+    .t-code{display:block;font:400 11px/1.45 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .t.lg .t-code{white-space:normal}
+    .t.st-b{background:var(--tint-hi)}
+    .t.st-g{background:transparent;border-style:dashed;border-color:var(--line)}
+    .t.st-g .t-name{color:var(--ink2)}
+    .t.onpath{border-color:var(--accent-line)}
+    .t.lit{background:var(--tint-hi);border-color:var(--accent)}
+    .t.dim{opacity:.45}
+    .num{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;flex:none;background:var(--accent);color:var(--on-accent);font:600 11px/1 var(--sans)}
+    .num.ok{background:var(--ok)}
+    .chain .t:not(:last-child)::after{content:"";position:absolute;top:50%;right:-27px;width:20px;height:2px;margin-top:-1px;border-radius:1px;background:var(--accent)}
+    .chain .t:not(:last-child)::before{content:"";position:absolute;top:50%;right:-26px;width:7px;height:7px;margin-top:-4.5px;border:solid var(--accent);border-width:2px 2px 0 0;transform:rotate(45deg)}
+    .foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--hair)}
+    .foot-l{margin-right:4px;font:600 12px/1.3 var(--sans);color:var(--muted)}
+    .foot .t{display:inline-flex;flex-direction:row}
+    /* build-state glyphs: square family, shape first, color second */
+    .bs{width:10px;height:10px;flex:none;margin-top:4px;border-radius:2px;box-sizing:border-box}
+    .t.lg .bs{margin-top:6px}
+    .bs.b{background:var(--ink)}
+    .bs.p{border:1.5px solid var(--ink);background:linear-gradient(90deg,var(--ink) 50%,transparent 50%)}
+    .bs.n{border:1.5px solid var(--accent)}
+    .bs.g{border:1.5px dashed var(--muted)}
+    @media (hover:hover) and (pointer:fine){.t:hover{background:var(--tint-hi)}.step:hover .sl{color:var(--accent)}}
+
+    /* what ProjectA does differently */
+    .usp{display:flex;flex-direction:column;gap:12px}
+    .usp-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;padding:0 8px}
+    .usp-h h2{font:600 20px/1.2 var(--sans);letter-spacing:-.015em}
+    .usp-h p{font-size:13px;color:var(--muted)}
+    .usp-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:12px}
+    .uc{padding:16px;display:flex;flex-direction:column;gap:8px}
+    .uc-top{display:flex;align-items:flex-start;gap:12px}
+    .uc h3{flex:1;min-width:0;font:600 15px/1.3 var(--sans)}
+    .uc-st{display:inline-flex;align-items:center;gap:6px;font:500 12px/20px var(--sans);color:var(--muted);white-space:nowrap}
+    .uc-st .bs{margin:0}
+    .uc p{font-size:13px;line-height:1.5;color:var(--ink2)}
+    .uc .proofline{margin-top:auto;padding-top:8px;border-top:1px solid var(--hair);font-size:12px;color:var(--muted)}
+    .proofline b{font-weight:600;color:var(--ink)}
+    .proofline code{font-size:11px;color:var(--ink2)}
+    .fine{padding:0 8px;font-size:12px;line-height:1.5;color:var(--muted)}
+
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+    @keyframes draw{from{transform:scaleY(0)}}
+    @keyframes pop{from{opacity:0;transform:scale(.6)}}
+    @keyframes pulse{50%{opacity:.3}}
+    @media (max-width:899px){.lane{display:none}.lhead{padding-left:0}.step{margin-left:0}.chain{grid-template-columns:minmax(0,1fr);gap:12px}.chain .t::after,.chain .t::before{display:none}}
+  </style>
+</helmet>
+<div class="app {{ themeClass }}">
+  <nav class="side chrome" aria-label="Hauptnavigation">
+    <div class="brand"><span class="mark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg></span><b>ProjectA</b><small>2.0</small></div>
+    <div class="sgrp">
+      <p class="slabel">Arbeiten</p>
+      <div class="nav">
+        <a href="Main.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3.5 13.5a6.5 6.5 0 1 1 13 0"/><path d="m10 13.5 3-5"/></svg>Leitstand<span class="n">7</span></a>
+        <a href="TeamLauf.dc.html" class="sub"><span class="live" aria-hidden="true"></span>Team-Lauf<span class="n">3 aktiv</span></a>
+        <a href="Beweise.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg>Beweise<span class="n">3</span></a>
+        <a href="Aktivitaet.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M2.5 10h3l2-5 3 10 2-5h5"/></svg>Aktivität</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Organisation</p>
+      <div class="nav">
+        <a href="Organigramm.dc.html"><svg class="ic" viewBox="0 0 20 20"><circle cx="7" cy="7.5" r="2.5"/><circle cx="13.5" cy="8.5" r="2"/><path d="M2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12 12.2c2.2-.3 4 .9 4.8 3.3"/></svg>Teams</a>
+        <a href="Personas.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="4" y="6" width="12" height="10" rx="3"/><path d="M10 3v3M7.5 11h.01M12.5 11h.01"/></svg>Agenten</a>
+        <a href="AgentGenerator.dc.html" class="sub">Agenten-Generator</a>
+        <a href="Ablaeufe.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5" rx="1.5"/><rect x="12" y="12" width="5" height="5" rx="1.5"/><path d="M5.5 8v3.5a1 1 0 0 0 1 1H12"/></svg>Abläufe</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Eingang</p>
+      <div class="nav">
+        <a href="Ideen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7.5 14.5h5M8.5 17h3M10 3a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9Z"/></svg>Ideen<span class="n">12</span></a>
+        <a href="Bugs.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="10.5" rx="4"/><path d="M8 6a2 2 0 0 1 4 0M3 10.5h3M14 10.5h3M10 9v6"/></svg>Bugs<span class="n">4</span></a>
+        <a href="Plan.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M5 17.5v-14M5 4h9.5l-2 3.5 2 3.5H5"/></svg>Plan<span class="n"><span class="dia" aria-hidden="true"></span><span class="sr">2 Entscheidungen offen</span></span></a>
+        <a href="Gedaechtnis.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16"/><path d="M8 7h5"/></svg>Gedächtnis</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Automatik</p>
+      <div class="nav">
+        <a href="Trigger.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z"/></svg>Trigger</a>
+        <a href="Befehle.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="m8.5 13.5 3-7"/></svg>Befehle</a>
+        <a href="MCP.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7 3v4M13 3v4M5 7h10v3a5 5 0 0 1-10 0Z"/><path d="M10 15v3"/></svg>MCP-Server</a>
+      </div>
+    </div>
+    <div class="side-foot">
+      <div class="nav">
+        <a href="Einstellungen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M4 6h7M15 6h1M4 14h1M9 14h7"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>Einstellungen</a>
+        <a href="Systemkarte.dc.html" aria-current="page"><svg class="ic" viewBox="0 0 20 20"><path d="M3 5.5 7.5 4l5 2 4.5-1.5V15l-4.5 1.5-5-2L3 16Z"/><path d="M7.5 4v10.5M12.5 6v10.5"/></svg>Systemkarte</a>
+      </div>
+      <div class="me"><span class="ava sm owner" aria-hidden="true">Du</span><div><b>Du</b><small>Eigentümer, v1.5.1</small></div></div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <header class="top chrome">
+      <button class="pick" type="button" aria-label="Projekt wechseln, aktuell ProjectA"><span class="pj">A</span>ProjectA<svg class="ic s" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></button>
+      <label class="search"><span class="sr">Suchen oder Befehl eingeben</span><svg class="ic s" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg><input type="search" placeholder="Agenten, PRs, Ideen, Befehle"><span class="kbd">Strg K</span></label>
+      <a class="qm" href="Kontingente.dc.html" aria-label="Kontingente diese Woche: Claude 71 Prozent, Codex 96 Prozent, Kimi 34 Prozent, Ollama 12 Prozent">
+        <span class="qb">Claude<i><b style="width:71%"></b></i></span>
+        <span class="qb">Codex<i><b class="hot" style="width:96%"></b></i></span>
+        <span class="qb">Kimi<i><b style="width:34%"></b></i></span>
+        <span class="qb">Ollama<i><b style="width:12%"></b></i></span>
+      </a>
+      <a class="bell" href="Benachrichtigungen.dc.html" aria-label="Benachrichtigungen, 2 brauchen dich"><svg class="ic" viewBox="0 0 20 20"><path d="M5 13.5V9a5 5 0 0 1 10 0v4.5l1.5 2h-13Z"/><path d="M8.5 17.5h3"/></svg><span class="badge" aria-hidden="true">2</span></a>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="estop" type="button" onClick="{{ stop }}"><svg class="ic" viewBox="0 0 20 20"><path d="M7 2.5h6L17.5 7v6L13 17.5H7L2.5 13V7Z"/><path d="M7.5 10h5"/></svg><span>Not-Aus<small>stoppt alles in 10 s</small></span></button>
+    </header>
+
+    <sc-if value="{{ stopped }}" hint-placeholder-val="{{ false }}">
+      <div class="stopband" role="status">
+        <p>Alle 7 Agenten in 3,4 s gestoppt.</p>
+        <span>Journal gesichert, keine Aufgabe läuft doppelt. 2 Worktrees mit offenen Änderungen sind als WIP-Commit gesichert.</span>
+        <button class="btn sm" type="button" onClick="{{ resume }}">Fortsetzen</button>
+      </div>
+    </sc-if>
+
+    <div class="sk">
+      <section class="hero" aria-labelledby="h-map">
+        <div class="hero-t">
+          <p class="eyebrow">Systemkarte · Entwurf 2.0 · Stand 06.10.2026</p>
+          <h1 id="h-map">So ist ProjectA gebaut.</h1>
+          <p class="lede">Fünf Schichten, ein Weg. Folge der blauen Linie: Jede Aufgabe läuft von der Idee bis nach main, und nach main kommt nur, was die <b>Beweis-Schicht</b> grün gemacht hat.</p>
+        </div>
+        <aside class="key glass" aria-label="Legende">
+          <p class="key-h">Bau-Stand je Teil</p>
+          <ul class="key-g">
+            <li><span class="bs b" aria-hidden="true"></span>gebaut<b>{{ cntB }}</b></li>
+            <li><span class="bs p" aria-hidden="true"></span>teilweise<b>{{ cntP }}</b></li>
+            <li><span class="bs n" aria-hidden="true"></span>neu, nur Entwurf<b>{{ cntN }}</b></li>
+            <li><span class="bs g" aria-hidden="true"></span>geplant, im Plan<b>{{ cntG }}</b></li>
+          </ul>
+          <p class="key-line"><span class="kl" aria-hidden="true"><span class="stn">1</span></span>Weg einer Aufgabe, Schritt 1 bis 8</p>
+          <p class="key-note">Zeig auf eine Kachel: ihre Verbindungen bleiben hell.</p>
+        </aside>
+      </section>
+
+      <div class="stack">
+        <sc-for list="{{ layers }}" as="layer" hint-placeholder-count="5">
+          <section class="{{ layer.cls }}" aria-labelledby="{{ layer.hid }}">
+            <span class="lane" aria-hidden="true"></span>
+            <div class="lhead" onMouseEnter="{{ layer.on }}" onMouseLeave="{{ layer.off }}">
+              <div class="lname">
+                <h2 id="{{ layer.hid }}">{{ layer.name }}</h2>
+                <p class="ldesc">{{ layer.desc }}</p>
+                <p class="tally">
+                  <sc-for list="{{ layer.tally }}" as="c" hint-placeholder-count="3">
+                    <span class="tl"><span class="bs {{ c.cls }}" aria-hidden="true"></span>{{ c.n }}<span class="sr"> {{ c.word }}</span></span>
+                  </sc-for>
+                </p>
+              </div>
+              <ol class="steps" aria-label="Weg einer Aufgabe in dieser Schicht">
+                <sc-for list="{{ layer.steps }}" as="s" hint-placeholder-count="1">
+                  <li><a class="step" href="{{ s.href }}" aria-label="{{ s.aria }}" onMouseEnter="{{ s.on }}" onMouseLeave="{{ s.off }}" onFocus="{{ s.on }}" onBlur="{{ s.off }}"><span class="stn {{ s.stn }}" aria-hidden="true">{{ s.num }}</span><span class="stx"><sc-if value="{{ s.chipFirst }}" hint-placeholder-val="{{ false }}"><span class="st {{ s.chipCls }}">{{ s.chip }}</span></sc-if><span class="sl">{{ s.label }}</span><sc-if value="{{ s.chipAfter }}" hint-placeholder-val="{{ false }}"><span class="st {{ s.chipCls }}">{{ s.chip }}</span></sc-if></span></a></li>
+                </sc-for>
+              </ol>
+            </div>
+            <div class="tiles">
+              <div class="{{ layer.groupsCls }}">
+                <sc-for list="{{ layer.groups }}" as="g" hint-placeholder-count="2">
+                  <div class="grp">
+                    <sc-if value="{{ g.hasName }}" hint-placeholder-val="{{ true }}"><h3 class="gname">{{ g.name }}</h3></sc-if>
+                    <div class="{{ g.listCls }}">
+                      <sc-for list="{{ g.tiles }}" as="t" hint-placeholder-count="4">
+                        <a class="{{ t.cls }}" href="{{ t.href }}" title="{{ t.title }}" aria-label="{{ t.aria }}" onMouseEnter="{{ t.on }}" onMouseLeave="{{ t.off }}" onFocus="{{ t.on }}" onBlur="{{ t.off }}">
+                          <span class="t-top"><span class="bs {{ t.status }}" aria-hidden="true"></span><span class="t-name">{{ t.name }}</span><sc-if value="{{ t.hasStep }}" hint-placeholder-val="{{ false }}"><span class="{{ t.numCls }}" aria-hidden="true">{{ t.step }}</span></sc-if></span>
+                          <sc-if value="{{ t.hasWhy }}" hint-placeholder-val="{{ false }}"><span class="t-why">{{ t.why }}</span></sc-if>
+                          <sc-if value="{{ t.hasCode }}" hint-placeholder-val="{{ false }}"><code class="t-code">{{ t.code }}</code></sc-if>
+                        </a>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ layer.hasFoot }}" hint-placeholder-val="{{ false }}">
+                <div class="foot">
+                  <span class="foot-l">Auf jedem Bildschirm</span>
+                  <sc-for list="{{ layer.foot }}" as="f" hint-placeholder-count="3">
+                    <a class="{{ f.cls }}" href="{{ f.href }}" title="{{ f.title }}" aria-label="{{ f.aria }}" onMouseEnter="{{ f.on }}" onMouseLeave="{{ f.off }}" onFocus="{{ f.on }}" onBlur="{{ f.off }}"><span class="t-top"><span class="bs {{ f.status }}" aria-hidden="true"></span><span class="t-name">{{ f.name }}</span></span></a>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+
+      <section class="usp" aria-labelledby="h-usp">
+        <div class="usp-h">
+          <h2 id="h-usp">Was ProjectA anders macht</h2>
+          <p>Drei Versprechen, jedes mit Beleg und ehrlichem Stand.</p>
+        </div>
+        <div class="usp-g">
+          <article class="uc glass">
+            <div class="uc-top"><h3>Grün heißt bewiesen</h3><span class="uc-st"><span class="bs p" aria-hidden="true"></span>teilweise</span></div>
+            <p>Ein Beleg gilt nur für den Commit, auf dem er lief. Ein neuer Commit braucht einen neuen Lauf.</p>
+            <p class="proofline"><b>Beleg:</b> eine Gate-Liste für Hook, CI und Merge-Queue, <code>scripts/ci/gates.sh</code>. In der App ist die Beweiskette neu.</p>
+          </article>
+          <article class="uc glass">
+            <div class="uc-top"><h3>Kein Modell prüft sich selbst</h3><span class="uc-st"><span class="bs n" aria-hidden="true"></span>neu, nur Entwurf</span></div>
+            <p>Jede Änderung prüft ein Modell eines anderen Anbieters. Nahtstellen und Sicherheit: zwei Prüfer.</p>
+            <p class="proofline"><b>Beleg:</b> Regel 5 in <code>AGENTS.md</code>, heute von Hand. In der App nur im ausgeschalteten Dauerbetrieb.</p>
+          </article>
+          <article class="uc glass">
+            <div class="uc-top"><h3>Pause statt Rechnung</h3><span class="uc-st"><span class="bs b" aria-hidden="true"></span>gebaut</span></div>
+            <p>Nur Abos, keine API-Schlüssel. An einer Grenze pausiert ProjectA, statt Geld auszugeben.</p>
+            <p class="proofline"><b>Beleg:</b> Tresor ohne API-Schlüssel; die Regel ist Pflicht und lässt sich nicht abschalten.</p>
+          </article>
+        </div>
+        <p class="fine">Ehrlich gesagt: AgentsRoom und Orca laufen heute auf Windows, Mac, Linux und dem Handy, ProjectA nur auf Windows. Orca nennt 27 CLIs, AgentsRoom 14; ProjectA bindet heute 5 an, dieser Entwurf 10. Orca hat die größere Community. Eine Lizenz fehlt noch (Entscheidung im Plan). Wettbewerbsangaben aus Webquellen vom 06.10.2026, nicht selbst gemessen.</p>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dunkel":{"editor":"boolean","default":false,"section":"Darstellung"},"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { stopped: false, hl: null };
+    const T = (id, name, status, href, o) => Object.assign({ id: id, name: name, status: status, href: href, full: '', step: 0, code: '', why: '', tip: '', links: [] }, o || {});
+    const soon = 'Neu in diesem Entwurf.';
+    this.layers = [
+      { id: 'ui', name: 'Oberfläche', desc: '22 Bildschirme, 5 Gruppen', groupsCls: 'groups cols', kind: 'sm',
+        steps: [
+          { num: 1, label: 'Idee oder Bug', href: 'Ideen.dc.html' },
+          { num: 2, label: 'Plan: ein Paket', chip: 'Braucht dich', chipCls: 'need', href: 'Plan.dc.html' }
+        ],
+        groups: [
+          { name: 'Arbeiten', tiles: [
+            T('main', 'Leitstand', 'p', 'Main.dc.html', { tip: 'Live-Agentenkarten; jede Karte trägt ihren Beweis. Heute: BoardView, WorkerPanel.', links: ['o-queue', 'r-pty', 'p-stop', 'x-ask'] }),
+            T('start', 'Agent starten', 'p', 'AgentStarten.dc.html', { full: 'Agent starten · Modell & Failover', tip: '10 CLIs, Modell, Aufwand, MCP und Rechte; das Modell wird beim Start beobachtet. Heute: NewWorkerDialog mit 5 CLIs.', links: ['r-cli', 'r-fail', 'r-check', 'r-mcp', 'o-pers'] }),
+            T('beweise', 'Beweise & Merge', 'n', 'Beweise.dc.html', { tip: 'Beweiskette, Fremd-Review und Merge nur über die Warteschlange. Heute nur extern in pa-orch/pipeline.py.', links: ['p-gates', 'p-review', 'p-merge', 'p-tier', 'p-commit', 'p-gap'] }),
+            T('kont', 'Kontingente', 'p', 'Kontingente.dc.html', { full: 'Kontingente & Failover', tip: '5 h, Woche und Monat mit Entsperr-Probe; Regeln als Sätze (neu). Heute: quota.rs.', links: ['r-quota', 'r-abo', 'r-fail'] })
+          ] },
+          { name: 'Organisation', tiles: [
+            T('org', 'Organigramm', 'n', 'Organigramm.dc.html', { tip: 'Abteilungen mit Budget, erlaubten CLIs und Autonomie als Grenze. Heute nicht vorhanden.', links: ['o-teams', 'o-auto'] }),
+            T('pers', 'Personas', 'n', 'Personas.dc.html', { full: 'Personas & Vorlagen', tip: 'Vorlagen und eigene Personas mit Rechten, Failover und MCP-Servern. Heute: agent-defaults.json ohne Rollen.', links: ['o-pers'] }),
+            T('team', 'Team-Lauf', 'p', 'TeamLauf.dc.html', { full: 'Team-Lauf · Orchestrator', tip: 'Orchestrator, Chief of Staff und drei Teams gleichzeitig. Heute extern in pa-orch und AgentsRoom.', links: ['o-orch', 'o-cos', 'o-par'] }),
+            T('ged', 'Gedächtnis', 'p', 'Gedaechtnis.dc.html', { full: 'Projektgedächtnis', tip: 'Notizen mit Quelle, Prüfdatum und deiner Bestätigung; Lessons mit Abstimmung. Heute: LearningsPanel, memorix extern.', links: ['r-mem', 'd-lessons'] })
+          ] },
+          { name: 'Eingang & Werkzeuge', tiles: [
+            T('ideen', 'Ideen', 'n', 'Ideen.dc.html', { step: 1, tip: 'Agenten-Triage: Dubletten, Größe und Meilenstein stehen vor dem Ticket fest. Heute: Später-Liste in docs/PLAN.md.', links: ['o-orch', 'd-plan'] }),
+            T('bugs', 'Bugs', 'n', 'Bugs.dc.html', { step: 1, tip: 'Kein Fix ohne kompilierenden roten Test mit Exit-Code. Heute: Hook red-first.sh, keine Ansicht.', links: ['p-red'] }),
+            T('plan', 'Plan', 'p', 'Plan.dc.html', { step: 2, full: 'Plan & Entscheidungen', tip: 'Plan und Entscheidungs-Inbox im selben Fenster. Heute: Dev-HQ getrennt, Token aus der Seitenleiste (hq.js:387).', links: ['d-plan', 'o-orch'] }),
+            T('mcp', 'MCP-Server', 'n', 'MCP.dc.html', { tip: 'Team-Rechte, Schlüssel nur als Tresor-Verweis, Mergen über MCP gesperrt. Heute nur in den CLI-Einstellungen.', links: ['r-mcp'] })
+          ] },
+          { name: 'Erstellen & Automatisieren', tiles: [
+            T('gen', 'Agenten-Generator', 'n', 'AgentGenerator.dc.html', { tip: soon, links: ['o-pers'] }),
+            T('trig', 'Trigger', 'n', 'Trigger.dc.html', { full: 'Trigger & Webhooks', tip: soon, links: ['o-trig'] }),
+            T('bef', 'Befehle', 'n', 'Befehle.dc.html', { full: 'Befehle & Automatik', tip: soon, links: ['o-trig'] }),
+            T('einst', 'Einstellungen', 'p', 'Einstellungen.dc.html', { tip: 'Heute: SettingsView; dort liegt auch der Not-Aus, versteckt.', links: ['p-stop', 'r-abo'] }),
+            T('pein', 'Projekteinstellungen', 'n', 'Projekteinstellungen.dc.html', { tip: soon, links: ['o-auto', 'r-mcp'] })
+          ] },
+          { name: 'Vervollständigen', tiles: [
+            T('erst', 'Ersteinrichtung', 'n', 'Ersteinrichtung.dc.html', { tip: soon, links: ['r-cli', 'r-abo'] }),
+            T('diff', 'Diff & Rückspulen', 'p', 'Diff.dc.html', { tip: 'Heute: DiffView. Rückspulen ist neu.', links: ['p-commit'] }),
+            T('ben', 'Benachrichtigungen', 'p', 'Benachrichtigungen.dc.html', { full: 'Benachrichtigungen & Handy', tip: 'Heute: AttentionInbox in der App. Handy-Benachrichtigungen fehlen noch.', links: ['o-cos', 'x-ask'] }),
+            T('akt', 'Aktivität', 'p', 'Aktivitaet.dc.html', { full: 'Aktivität & Wiederholung', tip: 'Heute: ActivityView und HistoryView.', links: ['d-store', 'd-audit', 'r-lim'] }),
+            T('abl', 'Abläufe', 'n', 'Ablaeufe.dc.html', { full: 'Ablauf-Vorlagen', tip: soon, links: ['o-trig', 'o-queue'] })
+          ] }
+        ],
+        foot: [
+          T('x-states', 'Sechs Zustände', 'n', 'Main.dc.html', { full: 'Sechs Zustände, ein Wörterbuch', tip: 'Jeder Zustand hat Form, Wort und Farbe, gleich in App, HQ und CLI. Heute vier Designsprachen, Grün doppelt belegt (KI-28).', links: ['main', 'beweise'] }),
+          T('x-ask', 'Antwort im Stream', 'b', 'Main.dc.html', { full: '„Braucht dich“ mit Antwort im Stream', tip: 'Die Antwort geht direkt ins Terminal, mit Frist und „entscheide selbst“. Heute: QuestionsView, questions.rs.', links: ['o-cos'] }),
+          T('x-glass', 'Glass, hell und dunkel', 'n', 'Main.dc.html', { tip: 'Eine ruhige Sprache für alles, Kontrast 4,5:1, ganz per Tastatur. Heute vier Designsprachen.' }),
+          T('x-lang', 'Deutsch und Englisch', 'n', 'Einstellungen.dc.html', { tip: 'Die ganze Oberfläche auf Deutsch oder Englisch.', links: ['einst'] })
+        ] },
+      { id: 'orch', name: 'Orchestrierung', desc: 'Wer welche Arbeit bekommt', groupsCls: 'groups', kind: '',
+        steps: [{ num: 3, label: 'Agent bekommt es', href: 'TeamLauf.dc.html' }],
+        groups: [{ name: '', tiles: [
+          T('o-orch', 'Orchestrator', 'p', 'TeamLauf.dc.html', { step: 3, code: 'CommandChat · Rest in pa-orch', tip: 'Nimmt ein Paket aus dem Plan und gibt es einem Agenten. In der App heute die Befehlsleiste an den Orchestrator.', links: ['o-queue', 'r-pty'] }),
+          T('o-cos', 'Chief of Staff', 'n', 'TeamLauf.dc.html', { code: 'nur extern in pa-orch', tip: 'Übergaben bleiben sichtbar, nur wichtige Fragen erreichen dich.' }),
+          T('o-teams', 'Abteilungsregeln', 'n', 'Organigramm.dc.html', { code: 'nicht vorhanden', tip: 'Jede Abteilung hat Budget, erlaubte CLIs und Autonomie als Grenze, nicht nur als Gruppierung.', links: ['o-auto'] }),
+          T('o-par', 'Drei Teams parallel', 'n', 'TeamLauf.dc.html', { code: 'nicht vorhanden', tip: 'Abhängigkeiten und Naht-Spur sind sichtbar; kein Auftrag bleibt als Zombie hängen.', links: ['o-queue'] }),
+          T('o-pers', 'Personas als Rollen', 'n', 'Personas.dc.html', { code: 'agent-defaults.json, ohne Rollen', tip: 'Eine Persona bringt Rechte, Failover und MCP-Server mit, nicht nur einen Prompt.', links: ['r-mcp'] }),
+          T('o-trig', 'Trigger und Abläufe', 'n', 'Trigger.dc.html', { code: 'neu in diesem Entwurf', tip: 'Trigger und Webhooks starten Abläufe aus Vorlagen.', links: ['o-queue'] }),
+          T('o-queue', 'Warteschlange', 'n', 'Main.dc.html', { code: 'queue.rs ohne Vorgänger', tip: 'Mit Vorgängern, Naht-Spur und RAM-Prüfung: Ein Auftrag startet, oder du erfährst, warum nicht.', links: ['r-check', 'r-pty'] }),
+          T('o-auto', 'Verdiente Autonomie', 'n', 'Organigramm.dc.html', { code: 'Regel in AGENTS.md', tip: 'Agenten erweitern ihre Rechte nie selbst; Vertrauen wächst mit grünen Läufen.', links: ['p-tier'] }),
+          T('o-cont', 'Dauerbetrieb', 'g', 'Plan.dc.html', { code: 'M4 · W4-03', tip: 'Eingefroren bis M4; Aktivierung nur nach der Abnahmematrix und mit deiner Freigabe.', links: ['p-gates', 'p-review', 'd-audit'] }),
+          T('o-watch', 'Wachhund', 'p', 'Main.dc.html', { code: 'pa-orch/watchdog.sh', tip: 'Erkennt fertige und stehengebliebene Läufe und meldet sie. Heute ein pa-orch-Skript, nicht in der App.', links: ['r-pty', 'r-lim', 'o-queue', 'akt'] })
+        ] }] },
+      { id: 'rt', name: 'Laufzeit', desc: 'Wo Agenten wirklich arbeiten', groupsCls: 'groups', kind: '',
+        steps: [{ num: 4, label: 'Agent arbeitet', chip: 'Läuft', chipCls: 'run pulse', href: 'Main.dc.html' }],
+        groups: [{ name: '', tiles: [
+          T('r-pty', 'Agent im Worktree', 'b', 'Main.dc.html', { step: 4, code: 'workers.rs · TerminalView', tip: 'Jeder Agent läuft als echtes Terminal (PTY) in seinem eigenen Worktree.', links: ['p-gates', 'd-store', 'p-stop'] }),
+          T('r-cli', 'CLI-Anbieter', 'p', 'AgentStarten.dc.html', { code: '5 heute · 10 im Entwurf', tip: 'Heute im NewWorkerDialog.', links: ['r-fail'] }),
+          T('r-fail', 'Failover-Kette', 'p', 'AgentStarten.dc.html', { code: 'quota.rs · fallback: null', tip: 'Wechselt vor der Grenze über Anbieter hinweg, ohne Kontowechsel im Gespräch.', links: ['r-quota'] }),
+          T('r-quota', 'Kontingente', 'p', 'Kontingente.dc.html', { code: 'quota.rs · ohne Entsperr-Probe', tip: '5 h, Woche und Monat. Heute endet eine Sperre erst bei neuer Aktivität; eine eigene Probe soll sie aufheben.' }),
+          T('r-abo', 'Nur Abos', 'b', 'Kontingente.dc.html', { code: 'Tresor, keine API-Schlüssel', tip: '„Pause statt Rechnung“ ist eine Pflichtregel, die niemand abschaltet.', links: ['r-quota'] }),
+          T('r-check', 'Startprüfung', 'p', 'AgentStarten.dc.html', { code: 'pa-orch · resources.rs', tip: 'Vor jedem Start: beobachtetes Modell, Kontingent, freier RAM, laufende Builds. Heute als pa-orch-Skript, nicht in der App.', links: ['r-lim'] }),
+          T('r-mcp', 'MCP-Anbindung', 'n', 'MCP.dc.html', { code: 'nur in den CLI-Einstellungen', tip: 'MCP-Server je Agent und Team, Schlüssel nur als Tresor-Verweis.' }),
+          T('r-mem', 'Gedächtnis', 'p', 'Gedaechtnis.dc.html', { code: 'LearningsPanel · memorix extern', tip: 'Jede Notiz trägt Quelle, Prüfdatum und deine Bestätigung.', links: ['d-lessons'] }),
+          T('r-lim', 'Grenzen je Job', 'g', 'Plan.dc.html', { code: 'M4 · W2-08b', tip: 'Speicher- und CPU-Grenzen je Job; Stillstand früh erkennen.' }),
+          T('r-server', 'Server-Ort', 'p', 'Einstellungen.dc.html', { code: 'lokal oder Server · pa-orch', tip: 'Wo Agenten laufen: auf diesem Rechner oder auf dem Server. Heute über pa-orch eingerichtet, nicht in der App.', links: ['r-pty', 'd-backup'] })
+        ] }] },
+      { id: 'proof', name: 'Beweis-Schicht', desc: 'Grün heißt bewiesen.', groupsCls: 'groups', kind: '',
+        steps: [
+          { num: 5, label: 'Gates', chip: 'In Prüfung', chipCls: 'rev', href: 'Beweise.dc.html' },
+          { branch: true, label: 'zurück zu 4', chip: 'Fehler', chipCls: 'bad', href: 'Beweise.dc.html' },
+          { num: 6, label: 'Fremd-Review', chip: 'In Prüfung', chipCls: 'rev', href: 'Beweise.dc.html' },
+          { num: 7, label: 'Merge-Queue', chip: 'Bereit zum Mergen', chipCls: 'ok', ok: true, href: 'Beweise.dc.html' }
+        ],
+        groups: [
+          { name: 'Die Kette', listCls: 'chain', kind: 'lg', tiles: [
+            T('p-gates', 'Gates', 'b', 'Beweise.dc.html', { step: 5, why: 'Eine Liste für Hook, CI und Merge-Queue. Rot geht zurück an den Agenten.', code: 'scripts/ci/gates.sh', tip: 'Die Gate-Liste steht an genau einer Stelle; beide Hooks und alle Workflows rufen dieselben Lanes.', links: ['p-review', 'p-commit', 'p-gap', 'p-red'] }),
+            T('p-review', 'Fremd-Review', 'n', 'Beweise.dc.html', { step: 6, why: 'Ein Modell eines anderen Anbieters prüft. Stufe A heißt zwei Prüfer.', code: 'store/development_runs.rs:1322, Dauerbetrieb aus', tip: 'Kein Modell benotet seine eigene Familie.', links: ['p-merge', 'p-tier'] }),
+            T('p-merge', 'Merge-Queue', 'n', 'Beweise.dc.html', { step: 7, why: 'Nach main nur über die Mergify-Warteschlange. Ein roter main hält sie an.', code: 'Merge-Knopf umgeht sie: gh.rs:429 (KI-29)', tip: 'Im Repo läuft Mergify seit 24.09.2026; der Merge-Knopf der App umgeht die Warteschlange noch.', links: ['d-store'] })
+          ] },
+          { name: 'Sicherungen', listCls: 'grid5', tiles: [
+            T('p-tier', 'Risikostufe', 'n', 'Beweise.dc.html', { code: 'AGENTS.md · Skript in pa-orch', tip: 'A, B oder C folgt aus den Dateipfaden. Nahtstellen, Sicherheit und Datenbank sind immer A mit zwei Prüfern.' }),
+            T('p-commit', 'Beleg am Commit', 'n', 'Beweise.dc.html', { code: 'nur extern: pipeline.py', tip: 'Ein neuer Commit macht den Beleg ungültig; das Delta wird neu geprüft.' }),
+            T('p-gap', 'NICHT ABGEDECKT', 'p', 'Beweise.dc.html', { code: 'PR-Vorlage, nicht in der App', tip: 'Ehrliche Lücken werden sichtbar statt eines pauschalen „alles grün“.' }),
+            T('p-red', 'red-first', 'n', 'Bugs.dc.html', { code: 'Hook red-first.sh', tip: 'Kein Fix ohne roten Test. Nach drei gescheiterten Fix-Versuchen entscheidest du.' }),
+            T('p-stop', 'Not-Aus in 10 s', 'p', 'Main.dc.html', { code: 'estop.rs · App-Frist in M4', tip: 'Immer sichtbar in jeder Kopfleiste, mit Zeitgarantie und Nachweis. Heute versteckt in den Einstellungen.', links: ['d-store'] }),
+            T('p-pipe', 'Mergify-Pipeline', 'p', 'Beweise.dc.html', { code: 'pa-orch/pipeline.py · CI', tip: 'Reagiert selbst: CI rot → Fix-Auftrag, Konflikt → Merge-Auftrag, aus der Queue geworfen → genau ein neuer Versuch. Heute in pa-orch, nicht in der App.', links: ['p-merge', 'p-gates', 'o-queue'] }),
+            T('p-safe', 'Sicherer Start', 'p', 'Main.dc.html', { code: 'teilweise, nicht in der App', tip: 'Nach einem Neustart bleiben alte Aufträge pausiert, statt blind weiterzulaufen.', links: ['o-queue', 'p-stop', 'd-store'] }),
+            T('p-sign', 'Signierter Installer', 'p', 'Einstellungen.dc.html', { code: 'release.yml · nur v*-Tags', tip: 'CI baut Installer nur auf v*-Tags. Produktionsschlüssel und signierter Updater fehlen noch (M4 · W3-07).', links: ['p-gates', 'einst'] })
+          ] }
+        ] },
+      { id: 'data', name: 'Daten', desc: 'Was bleibt', groupsCls: 'groups', kind: '',
+        steps: [{ num: 8, label: 'Gemergt', chip: 'Erledigt', chipCls: 'done', ok: true, href: 'Aktivitaet.dc.html' }],
+        groups: [{ name: '', tiles: [
+          T('d-store', 'SQLite-Store', 'b', 'Aktivitaet.dc.html', { step: 8, code: 'store.rs · store/', tip: 'Rust und SQLite besitzen den Laufzeitzustand; HQ zeigt ihn nur an.' }),
+          T('d-plan', 'Plan als Quelle', 'p', 'Plan.dc.html', { code: 'docs/PLAN.md · Inbox', tip: 'Der einzige Plan: Meilensteine M1 bis M4 und die Entscheidungs-Inbox.' }),
+          T('d-lessons', 'Lessons', 'b', 'Gedaechtnis.dc.html', { code: 'npm run hq:lesson', tip: 'Was geholfen hat, wandert nach oben; was nicht half, nach unten.' }),
+          T('d-audit', 'Prüfpfad', 'g', 'Aktivitaet.dc.html', { code: 'M4 · W5-05', tip: 'Nur anhängen: Trigger verhindern UPDATE und DELETE.', links: ['p-stop'] }),
+          T('d-score', 'Anbieter-Zeugnisse', 'n', 'Kontingente.dc.html', { code: 'neu in diesem Entwurf', tip: 'Ein Zeugnis je Modell, gebildet aus seinen bisherigen Läufen und Reviews.', links: ['p-review', 'r-fail', 'start'] }),
+          T('d-cost', 'Kostenbuch', 'n', 'Kontingente.dc.html', { code: 'neu in diesem Entwurf', tip: 'Hält fest, wie viel Kontingent jeder Lauf verbraucht hat.', links: ['r-quota', 'r-abo', 'kont'] }),
+          T('d-backup', 'Sicherung & Umzug', 'g', 'Einstellungen.dc.html', { code: 'M4 · W3-03, Backup-Drill', tip: 'Sichern und auf einen anderen Rechner umziehen. Der Backup-Drill ist für M4 geplant; der Umzug ist neu.', links: ['d-store', 'einst'] }),
+          T('d-license', 'Lizenz', 'g', 'Plan.dc.html', { code: 'Entscheidung in docs/PLAN.md', tip: 'Eine Lizenz fehlt noch; die Entscheidung steht in der Inbox des Plans.', links: ['d-plan', 'plan'] })
+        ] }] }
+    ];
+    // index every tile, and make the connection graph symmetric
+    this.all = [];
+    this.byId = {};
+    this.byLayer = {};
+    this.layers.forEach((l) => {
+      this.byLayer[l.id] = [];
+      const add = (t) => { this.all.push(t); this.byId[t.id] = t; this.byLayer[l.id].push(t.id); };
+      l.groups.forEach((g) => g.tiles.forEach(add));
+      (l.foot || []).forEach(add);
+    });
+    this.adj = {};
+    this.all.forEach((t) => { this.adj[t.id] = this.adj[t.id] || new Set(); });
+    this.all.forEach((t) => t.links.forEach((x) => {
+      if (!this.adj[x]) return;
+      this.adj[t.id].add(x);
+      this.adj[x].add(t.id);
+    }));
+  }
+
+  renderVals() {
+    const WORD = { b: 'gebaut', p: 'teilweise', n: 'neu, nur Entwurf', g: 'geplant' };
+    const hl = this.state.hl;
+    let lit = null;
+    if (hl) {
+      lit = new Set();
+      const withLinks = (id) => { lit.add(id); (this.adj[id] || new Set()).forEach((x) => lit.add(x)); };
+      if (hl.indexOf('L:') === 0) (this.byLayer[hl.slice(2)] || []).forEach(withLinks);
+      else if (hl.indexOf('S:') === 0) this.all.filter((t) => String(t.step) === hl.slice(2)).forEach((t) => lit.add(t.id));
+      else withLinks(hl);
+    }
+    const off = () => this.setState({ hl: null });
+    const tile = (t, kind) => {
+      const linked = Array.from(this.adj[t.id] || []).map((x) => this.byId[x].name);
+      const state = lit ? (lit.has(t.id) ? ' lit' : ' dim') : '';
+      return {
+        name: t.name,
+        href: t.href,
+        status: t.status,
+        step: t.step || '',
+        hasStep: !!t.step,
+        numCls: t.step >= 7 ? 'num ok' : 'num',
+        why: t.why,
+        hasWhy: !!t.why,
+        code: t.code,
+        hasCode: !!t.code && kind !== 'sm',
+        cls: 't ' + (kind || '') + ' st-' + t.status + (t.step ? ' onpath' : '') + state,
+        title: t.tip + (linked.length ? '\nVerbunden mit: ' + linked.join(', ') : ''),
+        aria: (t.full || t.name) + ', ' + WORD[t.status] + (t.step ? ', Schritt ' + t.step + ' im Weg einer Aufgabe' : ''),
+        on: () => this.setState({ hl: t.id }),
+        off: off
+      };
+    };
+    const count = (ids) => {
+      const c = { b: 0, p: 0, n: 0, g: 0 };
+      ids.forEach((id) => { c[this.byId[id].status]++; });
+      return c;
+    };
+    const layers = this.layers.map((l) => {
+      const c = count(this.byLayer[l.id]);
+      return {
+        cls: 'layer glass l-' + l.id,
+        hid: 'h-l-' + l.id,
+        name: l.name,
+        desc: l.desc,
+        groupsCls: l.groupsCls,
+        on: () => this.setState({ hl: 'L:' + l.id }),
+        off: off,
+        tally: ['b', 'p', 'n', 'g'].filter((k) => c[k]).map((k) => ({ cls: k, n: c[k], word: WORD[k] })),
+        steps: l.steps.map((s) => ({
+          num: s.branch ? '' : s.num,
+          stn: s.branch ? 'branch' : (s.ok ? 'ok' : ''),
+          label: s.label,
+          href: s.href,
+          chip: s.chip || '',
+          chipCls: s.chipCls || '',
+          chipFirst: !!s.branch,
+          chipAfter: !!s.chip && !s.branch,
+          aria: s.branch ? 'Bei Fehler: ' + s.label : 'Schritt ' + s.num + ': ' + s.label + (s.chip ? ', Zustand ' + s.chip : ''),
+          on: () => this.setState({ hl: s.branch ? 'S:4' : 'S:' + s.num }),
+          off: off
+        })),
+        groups: l.groups.map((g) => ({
+          name: g.name,
+          hasName: !!g.name,
+          listCls: g.listCls || (l.kind === 'sm' ? 'list' : 'grid5'),
+          tiles: g.tiles.map((t) => tile(t, g.kind || l.kind))
+        })),
+        hasFoot: !!(l.foot && l.foot.length),
+        foot: (l.foot || []).map((t) => tile(t, 'sm'))
+      };
+    });
+    const all = count(this.all.map((t) => t.id));
+    return {
+      themeClass: (this.props.dunkel ?? false) ? 'dark' : '',
+      stopped: this.state.stopped,
+      stop: () => this.setState({ stopped: true }),
+      resume: () => this.setState({ stopped: false }),
+      layers: layers,
+      cntB: all.b,
+      cntP: all.p,
+      cntN: all.n,
+      cntG: all.g
+    };
+  }
+}
+</script>
+</body>
+</html>
