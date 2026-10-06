@@ -52,7 +52,7 @@ Pruefungen (eine Zeile je Pruefung, OK / WARNUNG / STOPP):
     Basis          Branch liegt mehr als --max-behind (Standard ${DEFAULT_MAX_BEHIND}) Commits
                    hinter origin/main (lokaler Stand, vorher git fetch)
 
-Exit-Codes: 0 alles frei, 1 Grenze verletzt (RAM, cargo, Limit), 2 Aufruffehler,
+Exit-Codes: 0 alles frei, 1 Grenze verletzt (RAM, cargo, Limit, --deps), 2 Aufruffehler,
             3 Worker stumm (nur Beobachtung; bei zugleich verletzter Grenze gilt 1).
 Ohne --json gibt es Klartext, mit --json ein Objekt {ok, exit, checks[]}.
 `;
@@ -132,6 +132,7 @@ export function checkNodeModules({ stat }) {
   const hidden = stat("node_modules/.package-lock.json");
   const mod = hidden.exists ? hidden : stat("node_modules");
   if (!mod.exists) return check("node_modules", "node_modules", "stopp", "node_modules fehlt, bitte `npm ci` ausfuehren");
+  // fail-safe on purpose: a lock rewrite without content change also asks for `npm ci`
   if (lock.exists && mod.mtimeMs < lock.mtimeMs) {
     return check("node_modules", "node_modules", "stopp", "node_modules ist aelter als package-lock.json, bitte `npm ci` ausfuehren");
   }
@@ -147,8 +148,10 @@ export function checkCargoDeps({ run }) {
 
 export function checkBehind({ run, maxBehind }) {
   const r = run("git", ["rev-list", "--count", "HEAD..origin/main"]);
-  const n = Number(String(r.stdout).trim());
-  if (r.code !== 0 || !Number.isInteger(n)) return check("basis", "Basis", "warn", "origin/main nicht lesbar, Abstand nicht geprueft");
+  const out = String(r.stdout).trim();
+  const n = Number(out);
+  // empty output would parse as 0 ("not behind"); treat it as unknown instead
+  if (r.code !== 0 || out === "" || !Number.isInteger(n)) return check("basis", "Basis", "warn", "origin/main nicht lesbar, Abstand nicht geprueft");
   if (n > maxBehind) return check("basis", "Basis", "stopp", `Branch liegt ${n} Commits hinter origin/main (hoechstens ${maxBehind}), bitte main einmergen`);
   return check("basis", "Basis", "ok", `Branch liegt ${n} Commits hinter origin/main (hoechstens ${maxBehind})`);
 }
