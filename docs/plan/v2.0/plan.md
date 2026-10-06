@@ -628,7 +628,7 @@ Die alten Fragen D1 bis D8 und alle neuen Entscheidungen stehen hier zusammen. D
 | 10 | **Plan-Freeze:** Nach der Freigabe ist dieser Plan das einzige Plandokument, ersetzt `docs/PLAN.md` und den v1.6.0-Plan (sie gehen ins Archiv), ab dann nur Ausführung; Änderungen höchstens einmal je Woche über Wochenbrief und Ideen-Parkplatz | Ja; zuerst die Leserliste V2-FREEZE-1a (25 Dateien lesen `docs/PLAN.md`) | `docs/PLAN.md` bleibt, wie es ist; beide Pläne laufen nebeneinander |
 | 11 | **Aufräumen** (immer mit Sicherung, nie ohne dich): 5 von 13 Teams, die nie liefen (Zahl nicht prüfbar), alte Arbeitsbäume (E17), der Hauptcheckout mit kaputten Dateinamen | Erst melden lassen (V2-HYG-1), dann einzeln freigeben | Nichts wird gelöscht |
 
-**Antwort des Nutzers (06.10.2026, im Chat mit dem Koordinator):** „ja zu allem“ zu den Fragen 1, 2, 3 und 4a bis 4d, jeweils mit der Empfehlung. Die Fragen 5 bis 11 wurden nicht einzeln gestellt; für sie gilt bis zu einer Antwort „Ohne Antwort“.
+**Antwort des Nutzers (06.10.2026, im Chat mit dem Koordinator):** „ja zu allem“ zu den Fragen 1, 2, 3 und 4a bis 4d, jeweils mit der Empfehlung. Danach „ja“ zu Frage 10 (Plan-Freeze mit der Empfehlung: zuerst V2-FREEZE-1a, dann V2-FREEZE-1b). Die Fragen 5 bis 9 und 11 wurden nicht einzeln gestellt; für sie gilt bis zu einer Antwort „Ohne Antwort“.
 
 Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen), E14 (Sicherung des Schlüssels, dringend). Sie stehen in `docs/PLAN.md` und werden hier nicht neu gefragt. Die Fragen 1 bis 4 muss der Nutzer vor G0 beantworten (bei 4 genügt je Teil die Wahl „Ohne Antwort“); für alle anderen gilt „Ohne Antwort“.
 
@@ -666,7 +666,7 @@ Nach der Freigabe ist dieser Plan das **einzige** Plandokument. Er übernimmt `d
 
 Fünf Hinweise zur Lesart: (1) Eine Zeile kann mehrere Pakete bündeln (Gruppen wie DEVFLOW). (2) „Streichen“ heißt bei Gemergtem „erledigt“ mit PR-Nummer, bei Offenem „fällt weg, bei Bedarf neu einplanen“. (3) Die Stand-Spalten beider Pläne sind veraltet: `docs/PLAN.md` führt R-1 und W4-04 als offen, v1.5.1 ist veröffentlicht. (4) Übernommene Pakete tragen `V2-` vor der alten ID und behalten Lane, Stufe, Größe und Abnahme der Quellzeile, bis V2-FREEZE-1a sie in den Plan kopiert. (5) Dauerbetrieb bleibt aus: seine Pakete sind geparkt oder gestrichen (D7), nicht übernommen.
 
-**Freeze in zwei Paketen, beide erst nach Frage 11:**
+**Freeze in zwei Paketen, beide erst nach Frage 10 (freigegeben am 06.10.):**
 - **V2-FREEZE-1a** (Leserliste): 25 Dateien nennen `docs/PLAN.md` (`rg -l "docs/PLAN.md" scripts src-tauri/src src .github package.json`, 06.10.). Darunter lesen `development_plan.rs` (DEVFLOW-Tabelle, 38 Zeilen), `hq-parse.mjs`, `ci.yml` und die PR-Vorlage den Plan maschinell. Jeder Leser bekommt ein Ziel; V2-H2 (ein Plan-Parser) ist Voraussetzung. Die übernommenen Zeilen werden nach `docs/plan/v2.0/` kopiert.
 - **V2-FREEZE-1b** (Folge-PR): `docs/PLAN.md` wird zum Verweis, die alten Pläne und `docs/plan/roadmap/` gehen ins Archiv, `STAND.md` und `docs/ERLEDIGT.md` folgen, mit Sicherung vorher.
 
