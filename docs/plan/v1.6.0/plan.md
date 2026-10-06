@@ -73,7 +73,7 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (messbares Signal) |
 |---|---|---|---|---|---|---|---|---|
 | ARCH-D3b → ARCH-D7 | Store-Helfer Teil b; Einstellungen nach `store/settings.rs` | st | store | A | S, M | ARCH-D3a | astra, vor G2 Claude | `rg 'begin_with\("BEGIN IMMEDIATE' src-tauri/src/store` trifft außerhalb von Testdateien nur noch `begin_write` (Rest nach D3a: 9 Aufrufe in drei Dateien); `store.rs` < Stand nach D3a |
-| ARCH-D4a → D4b | Restlicher API-Router in zwei Scheiben | api | api.rs | A | 2× M | ARCH-D1 | astra | `api.rs` je Scheibe um ≥ 150 Zeilen kleiner (`wc -l`) |
+| ARCH-D4a → D4b | Restlicher API-Router in kleinere serielle Teil-PRs schneiden (ARCH-D4-PLAN, siehe unten) | api | api.rs | A | M je Teil-PR | ARCH-D1 | astra | Insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs` gegenüber der Basis vor ARCH-D4; jeder Teil-PR ≤ 300 Gesamtdiffzeilen einschließlich Tests. Kein Mindestabbau von 150 je Teil-PR |
 | ARCH-D5a → D5b → D8a | Diagnose- und Einstellungsbefehle aus `main.rs` lösen; Ereignisnamen als Konstanten | mn | main.rs | A | 2× M, S | ARCH-D2 | astra | `main.rs` je Scheibe um ≥ 150 Zeilen kleiner; D8a: der Auftrag nennt den Anker (heute fehlt er) |
 | ARCH-D8b → D8c | Ereignisnamen in PTY, dann im Frontend | pty → fe | – | A, B | 2× S | ARCH-D8a | sol, terra | wie D8a: Muster und Zielzahl stehen im Auftrag |
 | ARCH-D6b | `pa::run`, Teil b | pa | pa.rs | A | S | ARCH-D6a | astra, vor G2 Claude | `bin/pa.rs` < Stand nach D6a |
@@ -83,6 +83,10 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | ADR-A1 → ADR-A7 | Entscheidungsnotizen: `ApiBackend` teilen; st-Lane teilen | doc | – | C | 2× S | A7: zwei Wochenmessungen | Berater-Paar | Je ein Eintrag in `docs/decisions.md` |
 
 **Lokal beim Orchestrator (kein PR, Eigentümer: Orchestrator):** L1 Auftrags-Erzeuger mit Kritikschritt und den Kopfzeilen `Prompt-Rounds:` und `Critique-By:`. L2 Reserve füllt alle freien Plätze. L3 Sperre für Dateien offener PRs. L4 Review-Fahrer auf den Server (nach Frage 4). L5 Anbieteranteil im Stundenbericht. L6 Prüfskript für Review-Prompts (Exit 1 = nicht senden). BENCH-03 Wochen-Aggregat für M-IDLE, M-HUMAN, M-RP und Kontingent. Abnahme für alle: Die Wochenmessung zeigt die Zielwerte aus Abschnitt 7.
+
+**ARCH-D4-PLAN, Nutzerentscheidung vom 06.10.2026:** `serial-total300` (Revision 1, Antwort `6b733c02-a4ff-466e-aaf6-905511d5570c`, gespeichert 21:55:57.174 UTC; Rootempfang 21:57:52.126 UTC, State-Revision 7). ARCH-D4a/D4b bezeichnet die bestehende Kette; vor dem Dispatch wird sie in kleinere, einzeln ausführbare Teil-PRs geschnitten. Jeder Teil-PR hält die Grenze von 300 Gesamtdiffzeilen einschließlich Tests ein; der Netto-Abbau in `api.rs` beträgt über die gesamte Kette mindestens 300 Zeilen. Die frühere Vorgabe von mindestens 150 Zeilen je Scheibe entfällt. Ein vorhandener Schnittentwurf ist noch kein Machbarkeitsbeleg.
+
+Vor dem ersten Teil-PR bindet der Auftrag die Ausgangszeilenzahl an den Kandidaten-SHA vor ARCH-D4. Jeder Teil-PR dokumentiert den kumulierten Netto-Abbau mit `wc -l` und Vorher-/Nachher-SHA sowie seinen vollständigen Diffumfang mit `git diff --numstat <PR-Basis> <Kandidat>` (Summe aller Hinzufügungen und Löschungen, einschließlich Tests). Red-first, vollständige Gates, Tier A mit zwei Reviewern anderer Anbieter als der Autor und eine exklusive serielle API-Naht bleiben unverändert. Der nächste Teil-PR wartet auf den gemergten Vorgänger. Der Rootempfang belegt keine Umsetzung; diese Planänderung allein belegt weder API-Abbau noch Releasefähigkeit.
 
 ## 4. Wellen
 
