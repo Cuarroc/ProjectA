@@ -628,6 +628,8 @@ Die alten Fragen D1 bis D8 und alle neuen Entscheidungen stehen hier zusammen. D
 | 10 | **Plan-Freeze:** Nach der Freigabe ist dieser Plan das einzige Plandokument, ersetzt `docs/PLAN.md` und den v1.6.0-Plan (sie gehen ins Archiv), ab dann nur Ausführung; Änderungen höchstens einmal je Woche über Wochenbrief und Ideen-Parkplatz | Ja; zuerst die Leserliste V2-FREEZE-1a (25 Dateien lesen `docs/PLAN.md`) | `docs/PLAN.md` bleibt, wie es ist; beide Pläne laufen nebeneinander |
 | 11 | **Aufräumen** (immer mit Sicherung, nie ohne dich): 5 von 13 Teams, die nie liefen (Zahl nicht prüfbar), alte Arbeitsbäume (E17), der Hauptcheckout mit kaputten Dateinamen | Erst melden lassen (V2-HYG-1), dann einzeln freigeben | Nichts wird gelöscht |
 
+**Antwort des Nutzers (06.10.2026, im Chat mit dem Koordinator):** „ja zu allem“ zu den Fragen 1, 2, 3 und 4a bis 4d, jeweils mit der Empfehlung. Die Fragen 5 bis 11 wurden nicht einzeln gestellt; für sie gilt bis zu einer Antwort „Ohne Antwort“.
+
 Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen), E14 (Sicherung des Schlüssels, dringend). Sie stehen in `docs/PLAN.md` und werden hier nicht neu gefragt. Die Fragen 1 bis 4 muss der Nutzer vor G0 beantworten (bei 4 genügt je Teil die Wahl „Ohne Antwort“); für alle anderen gilt „Ohne Antwort“.
 
 ## 8. NICHT ABGEDECKT
