@@ -2,6 +2,15 @@
   "v": 3,
   "attachments": {},
   "boards": {
+    "Ablaeufe.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Ablauf-Vorlagen",
+      "w": 1440,
+      "x": 6080,
+      "y": 5280
+    },
     "AgentGenerator.dc.html": {
       "expand": "fill",
       "h": 900,
@@ -20,6 +29,15 @@
       "x": 1520,
       "y": 0
     },
+    "Aktivitaet.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Aktivität & Wiederholung",
+      "w": 1440,
+      "x": 4560,
+      "y": 5280
+    },
     "Befehle.dc.html": {
       "expand": "fill",
       "h": 900,
@@ -28,6 +46,15 @@
       "w": 1440,
       "x": 3040,
       "y": 3960
+    },
+    "Benachrichtigungen.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Benachrichtigungen & Handy",
+      "w": 1440,
+      "x": 3040,
+      "y": 5280
     },
     "Beweise.dc.html": {
       "expand": "fill",
@@ -47,6 +74,15 @@
       "x": 1520,
       "y": 2640
     },
+    "Diff.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Diff & Rückspulen",
+      "w": 1440,
+      "x": 1520,
+      "y": 5280
+    },
     "Einstellungen.dc.html": {
       "expand": "fill",
       "h": 900,
@@ -55,6 +91,15 @@
       "w": 1440,
       "x": 4560,
       "y": 3960
+    },
+    "Ersteinrichtung.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Ersteinrichtung",
+      "w": 1440,
+      "x": 0,
+      "y": 5280
     },
     "Gedaechtnis.dc.html": {
       "expand": "fill",
@@ -139,12 +184,12 @@
     },
     "Systemkarte.dc.html": {
       "expand": "fill",
-      "h": 1700,
+      "h": 1760,
+      "is_interactive": true,
       "title": "Systemkarte · Was ist gebaut, was neu",
       "w": 1440,
       "x": 0,
-      "y": 6600,
-      "is_interactive": true
+      "y": 6600
     },
     "TeamLauf.dc.html": {
       "expand": "fill",
@@ -164,59 +209,23 @@
       "x": 1520,
       "y": 3960
     },
-    "Ersteinrichtung.dc.html": {
-      "expand": "fill",
-      "h": 900,
-      "is_interactive": true,
-      "title": "Ersteinrichtung",
-      "w": 1440,
-      "x": 0,
-      "y": 5280
-    },
-    "Diff.dc.html": {
-      "expand": "fill",
-      "h": 900,
-      "is_interactive": true,
-      "title": "Diff & Rückspulen",
-      "w": 1440,
-      "x": 1520,
-      "y": 5280
-    },
-    "Benachrichtigungen.dc.html": {
-      "expand": "fill",
-      "h": 900,
-      "is_interactive": true,
-      "title": "Benachrichtigungen & Handy",
-      "w": 1440,
-      "x": 3040,
-      "y": 5280
-    },
-    "Aktivitaet.dc.html": {
-      "expand": "fill",
-      "h": 900,
-      "is_interactive": true,
-      "title": "Aktivität & Wiederholung",
-      "w": 1440,
-      "x": 4560,
-      "y": 5280
-    },
-    "Ablaeufe.dc.html": {
-      "expand": "fill",
-      "h": 900,
-      "is_interactive": true,
-      "title": "Ablauf-Vorlagen",
-      "w": 1440,
-      "x": 6080,
-      "y": 5280
-    },
     "Verbesserungen.dc.html": {
       "expand": "fill",
-      "h": 900,
+      "h": 4842,
       "is_interactive": true,
       "title": "Erweitert · Verbesserungen",
       "w": 1440,
       "x": 7600,
       "y": 3960
+    },
+    "Core.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Core · Steuerung, Arbeit, Aufmerksamkeit",
+      "w": 1440,
+      "x": 6080,
+      "y": 1320
     }
   },
   "createdOnFiles": {
@@ -238,7 +247,7 @@
     },
     "row2": {
       "kind": "title1",
-      "maxW": 6000,
+      "maxW": 7520,
       "text": "Organisation: Firma aus Agenten",
       "w": 240,
       "x": 0,
@@ -254,7 +263,7 @@
     },
     "row4": {
       "kind": "title1",
-      "maxW": 9040,
+      "maxW": 8000,
       "text": "Erstellen, automatisieren, einstellen",
       "w": 240,
       "x": 0,
@@ -286,6 +295,7 @@
     "Personas.dc.html",
     "TeamLauf.dc.html",
     "Gedaechtnis.dc.html",
+    "Core.dc.html",
     "Ideen.dc.html",
     "Bugs.dc.html",
     "MCP.dc.html",
