@@ -22,6 +22,9 @@ printf '#[cfg(unix)]\nfn u() {}\n' > "$tmp/tree/src-tauri/src/unix_only.rs"
 printf 'fn plain() {}\n' > "$tmp/tree/src-tauri/src/plain.rs"
 printf 'fn f() { if cfg!(windows) {} }\n' > "$tmp/tree/src-tauri/src/cfg_macro.rs"
 printf 'fn f() { if cfg!(target_os = "windows") {} }\n' > "$tmp/tree/src-tauri/src/cfg_macro_os.rs"
+printf '#[cfg(any(windows, unix))]\nfn a() {}\n' > "$tmp/tree/src-tauri/src/cfg_any.rs"
+printf '#[cfg(all(target_os = "windows", feature = "x"))]\nfn a() {}\n' > "$tmp/tree/src-tauri/src/cfg_all.rs"
+printf '#[cfg(not(windows))]\nfn a() {}\n' > "$tmp/tree/src-tauri/src/cfg_not.rs"
 printf 'x\n' > "$tmp/tree/src/App.tsx"
 
 # decide <name> <expect: yes|no> <file>...: run --dry-run on a file list.
@@ -40,6 +43,11 @@ decide cfg-windows-code-needs-signal yes src-tauri/src/win_only.rs
 decide cfg-target-os-windows-needs-signal yes src-tauri/src/win_os.rs
 decide cfg-macro-windows-needs-signal yes src-tauri/src/cfg_macro.rs
 decide cfg-macro-target-os-windows-needs-signal yes src-tauri/src/cfg_macro_os.rs
+decide cfg-any-windows-unix-needs-signal yes src-tauri/src/cfg_any.rs
+decide cfg-all-target-os-windows-feature-needs-signal yes src-tauri/src/cfg_all.rs
+# not(windows) guards the non-Windows twin of a Windows branch; the file
+# holds Windows-conditional code, so the early verdict is worth it.
+decide cfg-not-windows-needs-signal yes src-tauri/src/cfg_not.rs
 decide cfg-unix-only-code-needs-no-signal no src-tauri/src/unix_only.rs
 decide plain-rust-needs-no-signal no src-tauri/src/plain.rs
 decide seam-api-needs-signal yes src-tauri/src/api.rs
@@ -97,6 +105,15 @@ case "$1 $2" in
   "workflow run") echo "Created workflow_dispatch event"; exit 0 ;;
   "run list")
     if [ -e "$d/list-fail" ]; then echo "HTTP 502 list" >&2; exit 1; fi
+    if [ -e "$d/runs.json" ]; then
+      # Apply the caller's --jq filter to a fixture list, as real gh does.
+      filter=""
+      while [ $# -gt 0 ]; do
+        if [ "$1" = "--jq" ]; then filter="$2"; fi
+        shift
+      done
+      jq -r "$filter" "$d/runs.json"; exit $?
+    fi
     echo 4242; exit 0 ;;
   "run view")
     if [ -e "$d/view-fail" ]; then echo "HTTP 401 view" >&2; exit 1; fi
@@ -134,6 +151,18 @@ touch "$tmp/list-fail"
 out="$(printf 'docs/a.md\n' | PATH="$tmp/bin:$PATH" GH_SHIM_DIR="$tmp" WIN_SIGNAL_SLEEP=0 WIN_SIGNAL_TIMEOUT=30 bash "$SIGNAL" --force --files-from - b 2> "$tmp/stderr")"
 rc=$?
 if [ "$rc" -eq 2 ] && grep -q 'HTTP 502 list' "$tmp/stderr"; then pass gh-list-error-fails-fast-with-2; else fail "gh-list-error-fails-fast-with-2 (rc=$rc)"; fi
+# The --jq filter itself: a list with a stale run (before the start) and two
+# fresh ones; the newest fresh id may come out (two fresh runs pin the
+# sort_by | last selection). A missing jq skips the case.
+if command -v jq > /dev/null 2>&1; then
+  printf '[{"databaseId":1,"createdAt":"2000-01-01T00:00:00Z"},{"databaseId":78,"createdAt":"2998-01-01T00:00:00Z"},{"databaseId":77,"createdAt":"2999-01-01T00:00:00Z"}]\n' > "$tmp/runs.json"
+  poll 'success\n'
+  if [ "$rc" -eq 0 ] && grep -qx 'run=77' <<< "$out"; then pass jq-filter-picks-the-fresh-run; else fail "jq-filter-picks-the-fresh-run (rc=$rc)"; fi
+  printf '[{"databaseId":1,"createdAt":"2000-01-01T00:00:00Z"}]\n' > "$tmp/runs.json"
+  poll 'success\n' 1
+  if [ "$rc" -eq 3 ] && ! grep -q '^run=' <<< "$out"; then pass jq-filter-drops-stale-run; else fail "jq-filter-drops-stale-run (rc=$rc)"; fi
+  rm -f "$tmp/runs.json"
+else echo "skip: jq missing (jq-filter cases)"; fi
 # The start confirmation goes to stderr, stdout stays machine-readable.
 poll 'success\n'
 if ! grep -q 'Created workflow_dispatch' <<< "$out" && grep -q 'Created workflow_dispatch' "$tmp/stderr"; then pass workflow-run-confirmation-goes-to-stderr; else fail "workflow-run-confirmation-goes-to-stderr"; fi
