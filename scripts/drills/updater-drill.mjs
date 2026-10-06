@@ -9,7 +9,7 @@ import { runUpdaterDrill } from '../lib/updater-drill.mjs';
 const { values: v } = parseArgs({
   options: {
     'app-dir': { type: 'string' }, out: { type: 'string' }, scenario: { type: 'string' },
-    'old-version': { type: 'string' }, 'new-version': { type: 'string' }, commit: { type: 'string' },
+    'old-version': { type: 'string' }, 'new-version': { type: 'string' }, 'new-commit': { type: 'string' }, commit: { type: 'string' },
     'observed-ui': { type: 'string' }, 'process-list': { type: 'string' }, 'timeout-min': { type: 'string' },
   },
 });
@@ -18,7 +18,7 @@ const commit = v.commit ?? execFileSync('git', ['rev-parse', 'HEAD'], {
   cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8' }).trim();
 const manifest = await runUpdaterDrill({
   appDir: v['app-dir'], outDir: v.out ?? defaultOutDir(`updater-${v.scenario}`), scenario: v.scenario,
-  appVersion: v['old-version'], newVersion: v['new-version'], commit, observedUi: v['observed-ui'] ?? '',
+  appVersion: v['old-version'], newVersion: v['new-version'], newCommit: v['new-commit'], commit, observedUi: v['observed-ui'] ?? '',
   timeoutMs: Number(v['timeout-min'] ?? 10) * 60000,
   processList: v['process-list'] ? readFileSync(v['process-list'], 'utf8') : '',
 });
