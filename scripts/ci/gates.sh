@@ -134,6 +134,9 @@ GATES=(
   "selftest-hotspot-guard|prepush,linux,release|.|bash scripts/test-hotspot-guard.sh"
   # WIN-01: the selection logic of the early-Windows-verdict helper.
   "selftest-win-signal|prepush,linux,release|.|bash scripts/test-win-signal.sh"
+  # V16-08: Rust tests that read source text (include_str!/read_to_string) and
+  # match it against a "\n" literal must normalise CRLF (Windows broke on 05.10.).
+  "crlf-source-compare|precommit,prepush,linux|.|node --test scripts/ci/crlf-source-compare.test.mjs && node scripts/ci/crlf-source-compare.mjs check"
   "architecture-drift|precommit,prepush,linux|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
 
   # CI-06: the trailers of the new commits against origin/main, with the very

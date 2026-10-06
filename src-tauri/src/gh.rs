@@ -722,7 +722,7 @@ mod tests {
 
     #[test]
     fn every_gh_spawn_uses_the_windows_shim_resolver() {
-        let source = include_str!("gh.rs");
+        let source = include_str!("gh.rs").replace("\r\n", "\n");
         for function in ["gh_available", "pr_for_branch"] {
             let body = source
                 .split(&format!("fn {function}"))
