@@ -39,7 +39,9 @@ Die Seitenleiste führt durch neun Bereiche: **Leitstand** (laufende Arbeit),
 Nicht alles davon gehört zum Kern. Alles außerhalb des Kerns wird zwar gebaut,
 liegt aber hinter Funktionsschaltern und ist standardmäßig aus: sichtbar wird
 es erst mit Freigabe durch den Nutzer – spätere 2.x-Versionen schalten es ohne
-neues großes Release zu.## Der Weg in sechs Wellen
+neues großes Release zu.
+
+## Der Weg in sechs Wellen
 
 - **Welle 0 – Fundament:** die neue Designsprache (Farben, Bewegung, Bausteine,
   Texte), unsichtbar hinter einem Schalter, dazu Architektur- und Sicherheits-
