@@ -1058,6 +1058,9 @@ impl Store {
             .acquire()
             .await
             .map_err(|error| MaintenanceError::Database(error.to_string()))?;
+        // Not `continuous::begin_write`: that returns a pool-owned
+        // `Transaction` that rolls back on drop, while the reservation must
+        // outlive this call on a raw connection until `leave_maintenance`.
         sqlx::query("BEGIN IMMEDIATE")
             .execute(&mut *connection)
             .await
@@ -2758,16 +2761,10 @@ impl Store {
     /// `exited` afterwards. Workers the reattach pass skips (profile switched
     /// off, budget pause) stay `running` and keep their claim as well.
     pub async fn release_claimed_queue_entries(&self) -> Result<usize, String> {
-        // Take the writer lock first: a deferred BEGIN would read, and SQLite
-        // skips the busy handler on the later read-to-write upgrade, failing
-        // `database is locked` at once instead of waiting busy_timeout.
+        // `begin_write` takes the writer lock first (see its doc).
         // Errors here are database failures only; unlike the continuous
         // writers there is no early rejection that would need `settle`.
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(|e| format!("failed to begin claim release: {e}"))?;
+        let mut tx = continuous::begin_write(&self.pool, "failed to begin claim release").await?;
         let claimed: Vec<(String, String, String, Option<String>)> = sqlx::query_as(
             "SELECT id, project_id, raw_text, sharpened_text FROM task_queue WHERE status = ?1 ORDER BY created_at, id",
         )
