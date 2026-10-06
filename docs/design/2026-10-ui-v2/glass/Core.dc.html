@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Core</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Glass Leitstand · shared system v2 (identical in every artboard) ===== */
+    *{box-sizing:border-box}
+    body{margin:0;background:#E9EDF3}
+    .app{
+      --ground:#E9EDF3;--ink:#121826;--ink2:#2F3747;--muted:#4E5868;--faint:#636C7D;
+      --line:rgba(18,24,38,.11);--hair:rgba(18,24,38,.07);
+      --tint:rgba(255,255,255,.52);--tint-hi:rgba(255,255,255,.92);--hover:#fff;
+      --accent:#1F57D6;--accent-hover:#1A4BBB;--on-accent:#fff;--accent-soft:rgba(31,87,214,.10);--accent-line:rgba(31,87,214,.45);--sw-on:#1F57D6;--sw-off:#7F8794;
+      --run:#08679E;--run-bg:#DDEEF8;--need:#A54800;--need-bg:#FCE8D3;--on-need:#fff;--rev:#6431B6;--rev-bg:#EDE4FA;
+      --ok:#11703A;--ok-bg:#DBF0E3;--done:#525B69;--done-bg:#E7EAEF;--bad:#B51D25;--bad-bg:#FBE1E1;--danger-line:rgba(181,29,37,.36);
+      --chrome-bg:rgba(255,255,255,.5);--chrome-blur:blur(32px) saturate(180%);
+      --content-bg:rgba(255,255,255,.74);--content-blur:blur(20px) saturate(140%);
+      --spec:inset 0 1px 0 rgba(255,255,255,.9);
+      --shadow:0 1px 2px rgba(20,24,40,.06),0 8px 24px -12px rgba(20,24,40,.18);
+      --shadow-pop:0 1px 2px rgba(20,24,40,.08),0 24px 56px -20px rgba(20,24,40,.32);
+      --amb1:#CADCFA;--amb2:#D0ECE2;--amb3:#F6E4D5;
+      --av1:#D9E3F7;--av2:#D3ECE6;--av3:#F2E3D1;--av4:#E6DDF4;--av5:#F3DCE4;--av6:#E0E5EB;
+      --pad:20px;--r-panel:20px;--r-card:14px;--r-ctl:10px;
+      --dur-1:120ms;--dur-2:200ms;--dur-3:320ms;--ease-out:cubic-bezier(.2,.8,.2,1);--ease-spring:cubic-bezier(.34,1.3,.64,1);
+      --ease:var(--ease-out);--dur:var(--dur-1);
+      --sans:"Geist",ui-sans-serif,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+      --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+      position:relative;min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;padding:12px;
+      font:400 13px/1.5 var(--sans);color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+      background:radial-gradient(900px 640px at 0% 0%,var(--amb1),transparent 66%),radial-gradient(780px 600px at 100% 120px,var(--amb2),transparent 66%),radial-gradient(1000px 520px at 50% 900px,var(--amb3),transparent 66%),var(--ground)}
+    .app.dark{
+      --ground:#0D1219;--ink:#E8ECF2;--ink2:#C9D0DA;--muted:#A2ACBB;--faint:#8D97A7;
+      --line:rgba(255,255,255,.11);--hair:rgba(255,255,255,.07);
+      --tint:rgba(255,255,255,.05);--tint-hi:rgba(255,255,255,.10);--hover:rgba(255,255,255,.14);
+      --accent:#6E9BFF;--accent-hover:#8AAEFF;--on-accent:#0A1022;--accent-soft:rgba(110,155,255,.16);--accent-line:rgba(110,155,255,.55);--sw-on:#3A6FE0;--sw-off:#687284;
+      --run:#66C5F2;--run-bg:rgba(102,197,242,.14);--need:#FFB16A;--need-bg:rgba(255,177,106,.14);--on-need:#1D1206;--rev:#C0A6FF;--rev-bg:rgba(192,166,255,.15);
+      --ok:#66D392;--ok-bg:rgba(102,211,146,.14);--done:#A2ACBB;--done-bg:rgba(162,172,187,.13);--bad:#FF8388;--bad-bg:rgba(255,131,136,.14);--danger-line:rgba(255,131,136,.42);
+      --chrome-bg:rgba(20,26,36,.56);--content-bg:rgba(27,33,45,.8);
+      --spec:inset 0 1px 0 rgba(255,255,255,.07);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.55);
+      --shadow-pop:0 1px 2px rgba(0,0,0,.35),0 28px 64px -20px rgba(0,0,0,.7);
+      --amb1:#16264A;--amb2:#0F322D;--amb3:#33231A;
+      --av1:#25324F;--av2:#1F3B37;--av3:#3D3122;--av4:#33294A;--av5:#432936;--av6:#2B323C;color-scheme:dark}
+    .app a{color:inherit}
+    :where(.app) :where(b,strong){font-weight:600}
+    /* small never falls back to the browser's "smaller" (10px under 12px text): one token size unless a board sets its own */
+    :where(.app) :where(small){font-size:12px}
+    .app :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .app h1,.app h2,.app h3,.app h4,.app p,.app ol,.app ul,.app dl,.app dd,.app figure,.app fieldset{margin:0}
+    .app h1,.app h2,.app h3,.app h4{font-size:inherit;font-weight:600}
+    .app ol,.app ul{list-style:none;padding:0}
+    .app fieldset{border:0;padding:0;min-width:0}
+    .app code,.mono{font-family:var(--mono);font-size:12px;letter-spacing:0}
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .muted{color:var(--muted)}
+    .trunc{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .ic.s{width:16px;height:16px}
+    /* materials: chrome (sidebar, top bar, sheets) and content (cards, tables, editors) */
+    .chrome{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass{background:var(--content-bg);-webkit-backdrop-filter:var(--content-blur);backdrop-filter:var(--content-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass .glass,.chrome .glass,.glass .chrome{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--tint);box-shadow:none}
+    .pane{padding:var(--pad);display:flex;flex-direction:column;gap:12px;min-width:0}
+    .pane-h{display:flex;align-items:center;gap:8px;min-height:24px}
+    .pane-h h2,.pane-h h3{font:600 15px/1.3 var(--sans)}
+    .pane-h .r{margin-left:auto;font-size:12px;color:var(--muted)}
+    .grp-h{font:600 13px/1.3 var(--sans);color:var(--ink)}
+    .note{font-size:12px;line-height:1.45;color:var(--muted)}
+    .split{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;flex:1}
+    .grow{flex:999 1 560px;min-width:0}
+    .aside{flex:1 1 320px;max-width:100%;min-width:0}
+    @media (min-width:900px){.aside{max-width:360px}.aside.wide{max-width:400px}}
+    .phead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;padding:4px 4px 0}
+    .phead h1{font:600 28px/1.1 var(--sans);letter-spacing:-.01em}
+    .phead p{font-size:13px;color:var(--muted);margin-top:4px;max-width:76ch}
+    .phead .act{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+    .phead .act .btn{height:44px;padding:0 20px;font-size:13px}
+    .crumb{display:flex;align-items:center;gap:4px;width:max-content;margin-bottom:8px;font:500 12px/1 var(--sans);text-decoration:none;border-radius:6px}
+    .app a.crumb{color:var(--muted)}
+    @media (hover:hover) and (pointer:fine){.app a.crumb:hover{color:var(--accent)}}
+    .item{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card)}
+    .pickable{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pickable:active{transform:scale(.98)}
+    .pickable[aria-pressed="true"],.pickable[aria-current="true"],.pickable[aria-checked="true"]{background:var(--tint-hi);border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+    @media (hover:hover) and (pointer:fine){.pickable:hover{background:var(--tint-hi)}}
+    .lamp{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+    .lamp.off{background:var(--done)}
+    /* a lamp that is not ok/off borrows the state shape: warn = need diamond, busy = run ring, bad = triangle */
+    .lamp.warn{width:7px;height:7px;margin:0 .5px;border-radius:2px;transform:rotate(45deg);background:var(--need)}
+    .lamp.busy{background:none;border:2px solid var(--run);border-right-color:transparent}
+    .lamp.bad{border-radius:0;background:var(--bad);clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .empty{padding:24px;border-radius:var(--r-card);border:1px dashed var(--line);text-align:center;font-size:12px;color:var(--muted)}
+    .empty .btn{margin-top:12px}
+    /* buttons: one filled primary per screen; secondary is glass; tint and ghost are quiet */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--tint-hi);color:var(--ink);font:500 13px/1 var(--sans);text-decoration:none;cursor:pointer;white-space:nowrap;box-shadow:none;transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .btn:active{transform:scale(.97)}
+    .btn.primary{background:var(--accent);border-color:transparent;color:var(--on-accent)}
+    .btn.tint{background:var(--accent-soft);border-color:transparent;color:var(--accent);box-shadow:none}
+    .btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink2)}
+    .btn.lg{height:44px;padding:0 20px}
+    .btn.sm{height:32px;padding:0 12px;font-size:12px}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    @media (hover:hover) and (pointer:fine){.btn:hover{background:var(--hover)}.btn.primary:hover{background:var(--accent-hover)}.btn.tint:hover{background:var(--accent-soft);color:var(--accent-hover)}.btn.ghost:hover{background:var(--tint)}}
+    .inp{width:100%;height:40px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--tint);padding:0 12px;font:400 13px var(--sans);color:var(--ink)}
+    textarea.inp{height:auto;min-height:88px;padding:8px 12px;line-height:1.5;resize:vertical}
+    .inp.mono{font-family:var(--mono);font-size:12px}
+    .inp::placeholder{color:var(--faint)}
+    .inp.sm{height:36px}
+    .selw{position:relative;display:flex;align-items:center;min-width:0}
+    .selw select{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:pointer}
+    .selw>.ic{position:absolute;right:12px;color:var(--muted);pointer-events:none}
+    .field{display:flex;flex-direction:column;gap:4px;font:500 12px/1.3 var(--sans);color:var(--muted);min-width:0}
+    .kbd{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;border:1px solid var(--line);background:var(--tint-hi);font:500 11px/1 var(--mono);color:var(--muted)}
+    .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair)}
+    .seg button{height:32px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);color:var(--ink2);cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .seg button:active,.tabs a:active,.tabs button:active{transform:scale(.97)}
+    .seg button[aria-checked="true"],.seg button[aria-pressed="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    .sw{position:relative;width:40px;height:24px;border-radius:12px;border:0;padding:0;background:var(--sw-off);cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .sw:active{transform:scale(.97)}
+    .sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,24,40,.2);transition:transform var(--dur) var(--ease)}
+    .sw[aria-checked="true"]{background:var(--sw-on)}
+    .sw[aria-checked="true"]::after{transform:translateX(16px)}
+    .sw:disabled{cursor:not-allowed;opacity:.6}
+    .tabs{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair);max-width:100%;overflow-x:auto;scrollbar-width:none}
+    .tabs a,.tabs button{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);text-decoration:none;color:var(--ink2);cursor:pointer;flex:none;white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .tabs [aria-current="page"],.tabs [aria-selected="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    @media (hover:hover) and (pointer:fine){.seg button:not([aria-checked="true"]):not([aria-pressed="true"]):hover,.tabs a:not([aria-current="page"]):hover,.tabs button:not([aria-selected="true"]):hover{background:var(--tint)}}
+    /* filter chip: one look for every filter row. pressed = accent-soft + accent text */
+    .fchips{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+    .fchip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:var(--tint);color:var(--ink2);font:500 12px/1 var(--sans);white-space:nowrap;cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .fchip b{font-weight:600;color:var(--muted)}
+    .fchip:active{transform:scale(.97)}
+    .fchip[aria-pressed="true"],.fchip[aria-checked="true"],.fchip[aria-selected="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+    .fchip[aria-pressed="true"] b,.fchip[aria-checked="true"] b,.fchip[aria-selected="true"] b{color:var(--accent)}
+    @media (hover:hover) and (pointer:fine){.fchip:not([aria-pressed="true"]):not([aria-checked="true"]):not([aria-selected="true"]):hover{background:var(--tint-hi)}}
+    table.tbl{width:100%;border-collapse:collapse}
+    .tbl th{font:500 12px/1.3 var(--sans);color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+    .tbl td{padding:0 12px;height:44px;border-bottom:1px solid var(--hair);font-size:13px;vertical-align:middle}
+    .tbl tbody tr:last-child td{border-bottom:0}
+    .tw{position:relative;overflow-x:auto;min-width:0}
+    .meter{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+    .meter b{display:block;height:100%;border-radius:2px;background:var(--ink2)}
+    .meter b.acc{background:var(--accent)}.meter b.hot{background:var(--need)}.meter b.lock{background:var(--bad)}.meter b.good{background:var(--ok)}
+    .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12px;line-height:1.5}
+    .kv dt{color:var(--muted)}
+    .kv dd{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .kv.box{padding:4px 12px;gap:0 12px;border:1px solid var(--hair);border-radius:var(--r-card);background:var(--tint)}
+    .kv.box dt,.kv.box dd{padding:8px 0;border-top:1px solid var(--hair)}
+    .kv.box dt:first-of-type,.kv.box dd:first-of-type{border-top:0}
+    .sheet{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow-pop);border-radius:24px}
+    /* sidebar */
+    .side{flex:1 1 224px;display:flex;flex-direction:column;gap:16px;padding:12px 8px}
+    @media (min-width:760px){.side{max-width:232px}}
+    .brand{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px}
+    .mark{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);flex:none}
+    .brand b{font:600 15px/1 var(--sans);letter-spacing:-.01em}
+    .brand small{font:500 11px/1 var(--mono);color:var(--muted)}
+    .sgrp{display:flex;flex-direction:column;gap:4px}
+    .slabel{font:500 12px/1 var(--sans);color:var(--muted);padding:4px 8px}
+    .nav{display:flex;flex-direction:column}
+    .nav a{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:10px;color:var(--ink2);text-decoration:none;font:500 13px/1 var(--sans);white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .nav a:active{transform:scale(.98)}
+    .nav a .ic{color:var(--muted)}
+    .nav a .n{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font:500 12px/1 var(--sans);color:var(--muted)}
+    .nav a.sub{padding-left:36px;color:var(--muted)}
+    .nav a[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    .nav a[aria-current="page"] .ic{color:var(--accent)}
+    .nav a.proj[aria-current="true"]{color:var(--ink);font-weight:600}
+    @media (hover:hover) and (pointer:fine){.nav a:hover{background:var(--tint)}}
+    .pj{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:600 11px/1 var(--sans);background:var(--tint-hi);border:1px solid var(--line);color:var(--ink2);flex:none}
+    .dia{width:8px;height:8px;border-radius:2px;transform:rotate(45deg);background:var(--need);flex:none}
+    .nav a.sub .glyph{margin-left:-22px;margin-right:4px}
+    .side-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--hair);display:flex;flex-direction:column;gap:4px}
+    .me{display:flex;align-items:center;gap:8px;padding:4px 8px}
+    .me b{display:block;font:600 13px/1.3 var(--sans)}
+    .me small{display:block;font-size:12px;line-height:1.3;color:var(--muted)}
+    /* main column and top bar */
+    .main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px}
+    .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px}
+    .pick,.qm,.bell{display:inline-flex;align-items:center;height:44px;border-radius:12px;border:0;background:transparent;color:var(--ink2);text-decoration:none;cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pick:active,.qm:active,.bell:active{transform:scale(.97)}
+    .qm[aria-current="page"],.bell[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    @media (hover:hover) and (pointer:fine){.pick:hover,.qm:hover,.bell:hover{background:var(--tint)}}
+    .pick{gap:8px;padding:0 12px 0 8px;font:600 13px/1 var(--sans);color:var(--ink)}
+    .pick .pj{width:28px;height:28px;border-radius:8px;font-size:12px}
+    .search{flex:1 1 240px;position:relative;display:flex;align-items:center;min-width:0}
+    .search input{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--tint);padding:0 80px 0 40px;font:400 13px var(--sans);color:var(--ink)}
+    .search input::placeholder{color:var(--faint)}
+    .search>.ic{position:absolute;left:12px;color:var(--muted);pointer-events:none}
+    .search .kbd{position:absolute;right:12px}
+    .qm{gap:12px;padding:0 12px}
+    .qb{display:flex;flex-direction:column;gap:4px;width:48px;font:500 11px/1 var(--sans);color:var(--muted)}
+    .qb i{display:block;height:4px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+    .qb i b{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--ink2)}
+    .qb i b.hot{background:var(--need)}.qb i b.lock{background:var(--bad)}
+    .bell{position:relative;width:44px;justify-content:center}
+    .badge{position:absolute;top:6px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--need);color:var(--on-need);font:600 11px/16px var(--sans);text-align:center}
+    .top .divider{width:1px;height:24px;background:var(--line);margin:0 4px}
+    .estop{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 12px;border-radius:999px;border:1px solid var(--danger-line);background:var(--bad-bg);color:var(--bad);font:600 13px/1.15 var(--sans);text-align:left;cursor:pointer;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .estop:active{transform:scale(.97)}
+    @media (hover:hover) and (pointer:fine){.estop:hover{border-color:var(--bad)}}
+    .estop small{display:block;font:500 11px/1.2 var(--sans)}
+    .stopband{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-radius:var(--r-card);background:var(--bad-bg);border:1px solid var(--danger-line);color:var(--bad);animation:rise var(--dur-2) var(--ease-out)}
+    .stopband p{font-weight:600}
+    .stopband span{font-size:12px;color:var(--ink2)}
+    .stopband .btn{margin-left:auto}
+    /* six-state vocabulary: shape + label + color, one definition */
+    .st{--c:var(--done);--b:var(--done-bg);display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;background:var(--b);color:var(--c);font:500 12px/1 var(--sans);white-space:nowrap;flex:none}
+    .st.run{--c:var(--run);--b:var(--run-bg)}.st.need{--c:var(--need);--b:var(--need-bg)}.st.rev{--c:var(--rev);--b:var(--rev-bg)}
+    .st.ok{--c:var(--ok);--b:var(--ok-bg)}.st.done{--c:var(--done);--b:var(--done-bg)}.st.bad{--c:var(--bad);--b:var(--bad-bg)}
+    .st::before,.glyph{content:"";display:inline-block;width:10px;height:10px;flex:none;box-sizing:border-box;background:currentColor}
+    .glyph.run{color:var(--run)}.glyph.need{color:var(--need)}.glyph.rev{color:var(--rev)}.glyph.ok{color:var(--ok)}.glyph.done{color:var(--done)}.glyph.bad{color:var(--bad)}
+    .st.run::before,.glyph.run{background:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%}
+    .st.need::before,.glyph.need{width:8px;height:8px;margin:0 1px;border-radius:2px;transform:rotate(45deg)}
+    .st.rev::before,.glyph.rev{border-radius:50%;background:linear-gradient(90deg,transparent 50%,currentColor 50%);box-shadow:inset 0 0 0 1.5px currentColor}
+    .st.ok::before,.glyph.ok{border-radius:50%}
+    .st.done::before,.glyph.done{width:5px;height:9px;margin:0 3px 0 2px;background:none;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+    .st.bad::before,.glyph.bad{clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .st.open{--c:var(--muted);--b:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+    .st.open::before,.glyph.open{background:none;border:1.5px dashed currentColor;border-radius:50%}.glyph.open{color:var(--muted)}
+    /* signature: the proof chip (Beweisleiste) */
+    .proof{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 8px;border-radius:999px;background:var(--tint-hi);border:1px solid var(--line);font:500 12px/22px var(--sans);color:var(--ink2);white-space:nowrap;text-decoration:none;max-width:100%;min-width:0;flex:0 1 auto;overflow:hidden}
+    .proof>*{flex:none}
+    .proof>.yes,.proof>.no,.proof>.wip{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+    a.proof{transition:border-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){a.proof:hover{border-color:var(--accent-line)}}
+    .gt{display:inline-flex;gap:2px}
+    .gt i{width:4px;height:12px;border-radius:2px;background:transparent;box-shadow:inset 0 0 0 1px var(--faint)}
+    .gt i{transition:background-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}.gt i:nth-child(2){transition-delay:40ms}.gt i:nth-child(3){transition-delay:80ms}.gt i:nth-child(4){transition-delay:120ms}
+    .gt i.y,.gt i.r,.gt i.w{box-shadow:none}.gt i.y{background:var(--ok)}.gt i.r{background:var(--bad)}.gt i.w{background:var(--run)}
+    .proof .sep{width:1px;height:12px;background:var(--line);flex:none}
+    .proof .yes{color:var(--ok);font-weight:600}.proof .no{color:var(--bad);font-weight:600}.proof .wip{color:var(--run);font-weight:600}
+    .proof code{font-size:11px;color:var(--muted)}
+    /* CLI/model chip, tag chip, persona avatar */
+    .chip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;background:var(--tint);border:1px solid var(--hair);font:500 12px/1 var(--sans);color:var(--ink2);white-space:nowrap;max-width:100%;overflow:hidden;min-width:0;flex:none}
+    .chip code{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+    .chip.sm{height:20px;padding:0 8px;font-size:11px;border-radius:6px}
+    .ava{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;font:600 12px/1 var(--sans);color:var(--ink);background:var(--tint-hi);border:1px solid var(--line)}
+    .ava.sm{width:24px;height:24px;border-radius:8px;font-size:11px}
+    .ava.lg{width:48px;height:48px;border-radius:14px;font-size:15px}
+    .ava.owner{border-radius:50%;background:var(--ink);color:var(--ground);border-color:transparent}
+    .ava.lead{background:var(--accent);color:var(--on-accent);border-color:transparent}
+    .ava.sys{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+    .ava.c1{background:var(--av1);border-color:transparent}.ava.c2{background:var(--av2);border-color:transparent}.ava.c3{background:var(--av3);border-color:transparent}
+    .ava.c4{background:var(--av4);border-color:transparent}.ava.c5{background:var(--av5);border-color:transparent}.ava.c6{background:var(--av6);border-color:transparent}
+    @keyframes enter{from{opacity:0;transform:translateY(8px)}}
+    /* motion layer: purposeful only. hover/press dur-1, sheets and views dur-2, bars dur-3, one live pulse */
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+    @keyframes fade{from{opacity:0}}
+    @keyframes row-in{from{opacity:0;transform:translateY(-4px)}}
+    @keyframes live{50%{opacity:.45}}
+    .sheet{animation:rise var(--dur-2) var(--ease-out)}
+    [role="tabpanel"],.view{animation:fade var(--dur-2) var(--ease-out)}
+    .is-new{animation:row-in var(--dur-2) var(--ease-out)}
+    .st,.st::before,.glyph{transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),border-radius var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+    .st.run::before{animation:live 2s ease-in-out infinite}
+    .meter b{transition:width var(--dur-3) var(--ease-out)}
+    @media (prefers-reduced-motion:reduce){.app *,.app *::before,.app *::after{animation:none!important;transition-duration:0ms!important}}
+
+    /* ===== Core: eine KI mit Rechten, ein Journal ===== */
+    .app ::selection{background:var(--accent-soft);color:var(--ink)}
+    .scr{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+    /* fit 1440x900: the two lower panels scroll inside, the page does not */
+    .core{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:12px;align-items:stretch}
+    @media (min-width:1100px) and (min-height:720px){
+      .main{height:calc(100vh - 24px)}
+      .core{flex:1 1 0;min-height:0;grid-template-rows:auto minmax(0,1fr)}
+      .core .scr{flex:1 1 0;min-height:0;overflow:auto;margin-right:-8px;padding-right:8px}
+    }
+    @media (max-width:1099px){.core{grid-template-columns:minmax(0,1fr)}}
+    /* header: the three hats as compact status */
+    .hats{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+    .hat{display:flex;align-items:center;gap:12px;min-width:0;padding:8px 16px 8px 12px;border-radius:var(--r-card);background:var(--tint-hi);border:1px solid var(--line)}
+    .hat .ic{color:var(--accent)}
+    .hat b{display:block;font:600 12px/1.35 var(--sans);color:var(--ink)}
+    .hat small{display:block;font-size:12px;line-height:1.35;color:var(--muted);white-space:nowrap}
+    .hat.idle .ic{color:var(--muted)}
+    /* rule-mode banner (example state) */
+    .rband{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-radius:var(--r-card);background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--ink);animation:rise var(--dur-2) var(--ease-out)}
+    .rband .ic{color:var(--accent)}
+    .rband p{font-weight:600}
+    .rband span{font-size:12px;color:var(--ink2)}
+    .rband .btn{margin-left:auto}
+    /* ask the Core */
+    .ask{gap:12px}
+    .ask-row{display:flex;align-items:center;gap:12px;min-width:0}
+    .ask-row h2{font:600 15px/1.3 var(--sans);white-space:nowrap}
+    .askf{position:relative;flex:1 1 auto;display:flex;min-width:0}
+    .askf .ic{position:absolute;left:8px;top:12px;color:var(--accent);pointer-events:none}
+    .askf .inp{padding-left:32px}
+    .askf .inp:disabled{cursor:not-allowed;opacity:.7}
+    .res{display:flex;flex-direction:column;gap:8px;min-width:0;animation:fade var(--dur-2) var(--ease-out)}
+    .res-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:32px}
+    .res-h p{font-size:12px;color:var(--ink2)}
+    .res-h p b{color:var(--ink)}
+    .btns{display:flex;flex-wrap:wrap;gap:8px}
+    .res-h .btns{margin-left:auto}
+    .app .plan{display:flex;flex-direction:column;padding:0 12px;border-radius:var(--r-card);background:var(--tint);border:1px solid var(--hair)}
+    .plan li{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) 104px;align-items:center;gap:12px;min-height:28px;border-top:1px solid var(--hair);font-size:12px}
+    .plan li:first-child{border-top:0}
+    .pn{color:var(--ink);font-weight:500}
+    .pv{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+    .po{color:var(--muted);text-align:right}
+    .plan li.keep .pv{color:var(--ink2)}
+    .plan li.keep .pv .ic{color:var(--muted)}
+    .old{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
+    .new{color:var(--ink);font-weight:600}
+    .ar{width:16px;height:16px;color:var(--faint)}
+    .exp{font-size:12px;color:var(--muted)}
+    .msg{display:flex;align-items:flex-start;gap:8px;padding:12px;border-radius:var(--r-card);background:var(--tint);border:1px solid var(--hair);font-size:13px;line-height:1.5;color:var(--ink)}
+    .msg.answer{background:var(--accent-soft);border-color:transparent}
+    .msg .ic{color:var(--accent)}
+    .msg.lock .ic,.msg.off .ic{color:var(--muted)}
+    .msg>div{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .exs{display:flex;flex-wrap:wrap;gap:8px}
+    /* model chain */
+    .mdl{gap:12px}
+    .chain{display:flex;flex-direction:column}
+    .chain li{position:relative;display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;column-gap:12px;min-height:40px}
+    .chain li+li::before{content:"";position:absolute;left:7px;top:-14px;width:1px;height:28px;background:var(--line)}
+    .mk{position:relative;z-index:1;justify-self:center;width:12px;height:12px;border-radius:50%;border:1.5px solid var(--faint);background:var(--ground)}
+    .mk.on{background:var(--accent);border-color:var(--accent)}
+    .mk.rule{border-radius:3px}
+    .mn{min-width:0}
+    .mn b{display:block;font:600 13px/1.3 var(--sans)}
+    .mn small{display:block;font-size:12px;line-height:1.35;color:var(--muted)}
+    .ms{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted);white-space:nowrap}
+    .ms .meter{width:72px}
+    .ms.on{color:var(--accent);font-weight:600}
+    .demo{display:flex;align-items:center;gap:12px;margin-top:auto;padding-top:12px;border-top:1px solid var(--hair);font-size:12px;color:var(--ink2)}
+    .demo .dl{font-weight:500;color:var(--ink)}
+    .demo .note{margin-left:auto;text-align:right}
+    /* journal */
+    .jr{gap:12px;min-height:0}
+    .jr-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+    .jr-h h2{font:600 15px/1.3 var(--sans)}
+    .jr-h .fchips{margin-left:auto}
+    .rep{display:grid;grid-template-columns:104px minmax(0,1fr);gap:12px;padding:12px 16px;border-radius:var(--r-card);background:var(--tint);border:1px solid var(--hair)}
+    .rep h3{font:600 12px/1.5 var(--sans);color:var(--ink)}
+    .rep h3 small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+    .rep ul{display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:1.5;color:var(--ink2)}
+    .day{position:sticky;top:0;z-index:2;padding:4px 0 8px;font:600 12px/1.3 var(--sans);color:var(--muted);background:linear-gradient(var(--content-bg) 70%,transparent)}
+    .jl{display:flex;flex-direction:column;margin-bottom:12px}
+    .je{position:relative;display:grid;grid-template-columns:40px 24px minmax(0,1fr);column-gap:12px;padding-bottom:8px}
+    .je::before{content:"";position:absolute;left:63px;top:36px;bottom:0;width:1px;background:var(--line)}
+    .je:last-child::before{display:none}
+    .jt{padding-top:8px;font:500 12px/24px var(--sans);color:var(--muted);text-align:right}
+    .jrail{padding-top:8px}
+    .jb{min-width:0;display:flex;flex-direction:column;gap:4px;padding:8px 12px 12px;border-radius:var(--r-card);border:1px solid transparent;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){.jb:hover{background:var(--tint)}}
+    .je.sel .jb{background:var(--tint-hi);border-color:var(--accent-line)}
+    .je.fresh .jb{animation:flash 1s var(--ease-out)}
+    @keyframes flash{from{background-color:var(--accent-soft);border-color:var(--accent-line)}}
+    .jh{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;min-width:0}
+    .jn{font:600 13px/1.5 var(--sans);color:var(--ink)}
+    .hatl{font-size:12px;color:var(--muted)}
+    .src{font-size:12px;color:var(--ink2)}
+    .jrows{display:flex;flex-direction:column;gap:4px}
+    .jrows li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:12px;line-height:1.5}
+    .jrows .rn{color:var(--ink2)}
+    .jwhy{font-size:12px;line-height:1.5;color:var(--muted);max-width:76ch}
+    .jf{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;margin-top:4px;font-size:12px;color:var(--ink2)}
+    .pz{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+    .pz .ic{color:var(--accent)}
+    .pz .meter{width:120px}
+    .effv b{font-weight:600;color:var(--ink)}
+    .effv.flat b{color:var(--ink2)}
+    .jnote{display:inline-flex;align-items:center;gap:8px}
+    .jnote .ic{color:var(--muted)}
+    .jact{margin-left:auto;display:flex;gap:4px;margin-top:-4px;margin-bottom:-4px}
+    .je.muted .jn,.je.muted .new{color:var(--muted)}
+    .hx{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-2) var(--ease-out)}
+    .hx.open{grid-template-rows:1fr}
+    .hx>div{min-height:0;overflow:hidden;visibility:hidden;transition:visibility 0s linear var(--dur-2)}
+    .hx.open>div{visibility:visible;transition:visibility 0s}
+    .app .hist{display:flex;flex-direction:column;margin-top:8px;padding:8px 12px;border-radius:var(--r-ctl);background:var(--tint);border:1px solid var(--hair)}
+    .hist li{display:grid;grid-template-columns:88px 104px minmax(0,1fr);gap:12px;padding:4px 0;font-size:12px;line-height:1.45}
+    .hist time{color:var(--muted)}
+    .hist b{font-weight:600;color:var(--ink)}
+    .hist span{color:var(--ink2)}
+    .hist .who{color:var(--muted)}
+    .owner{margin-top:8px}
+    @media (max-width:600px){.hist li{grid-template-columns:88px minmax(0,1fr)}.hist li>span{grid-column:1 / -1}.je{grid-template-columns:24px minmax(0,1fr)}.jt{display:none}.je::before{left:11px}}
+    /* right panel: tabs */
+    .tabp{gap:12px;min-height:0}
+    .tabs.full{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);flex:none}
+    .tabs.full button{justify-content:center;gap:8px}
+    .tabs button small{font:500 12px/1 var(--sans);color:var(--muted)}
+    .tpan{display:flex;flex-direction:column;gap:12px}
+    .sec-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+    .sec-h h3{font:600 13px/1.4 var(--sans)}
+    .sec-h span{font-size:12px;color:var(--muted)}
+    .sec-h+.note{margin-top:-8px}
+    /* requests */
+    .req{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;padding:12px}
+    .req h3{font:600 13px/1.4 var(--sans)}
+    .req .who{font-size:12px;color:var(--muted)}
+    .want{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px;font-size:12px}
+    .req .why{margin-top:4px;font-size:12px;line-height:1.45;color:var(--ink2)}
+    .cd{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding:8px 12px;border-radius:var(--r-ctl);background:var(--tint-hi);border:1px solid var(--hair);font-size:12px;line-height:1.45;color:var(--ink2)}
+    .cd b{font-weight:600;color:var(--ink)}
+    .cd.you{background:var(--need-bg);border-color:transparent;color:var(--ink)}
+    .cd .st{align-self:flex-start}
+    .linkbtn{align-self:flex-start;border:0;background:none;padding:0;font:500 12px/1.5 var(--sans);color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px;border-radius:4px}
+    /* autonomy */
+    .au{display:flex;flex-direction:column}
+    .au li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 0;border-top:1px solid var(--hair)}
+    .au li:first-child{border-top:0}
+    .an{flex:1 1 120px;min-width:0}
+    .an b{display:block;font:500 13px/1.35 var(--sans);color:var(--ink)}
+    .an small{display:block;font-size:12px;line-height:1.35;color:var(--muted)}
+    .au .seg{flex:none;width:208px}
+    .au .seg button{height:28px}
+    .au .seg button:disabled{cursor:not-allowed}
+    .au .seg button:disabled:not([aria-checked="true"]){opacity:.55}
+    .lockp{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 12px;border-radius:999px;border:1px dashed var(--line);font:500 12px/1 var(--sans);color:var(--ink2);white-space:nowrap}
+    .lockp .ic{color:var(--muted)}
+    .au li.locked .an b{color:var(--ink2)}
+    .trust{flex-basis:100%;display:flex;flex-direction:column;gap:8px;padding:8px 12px;border-radius:var(--r-ctl);background:var(--accent-soft);font-size:12px;line-height:1.45;color:var(--ink);animation:fade var(--dur-2) var(--ease-out)}
+    .trust b{font-weight:600}
+    /* healing and trials */
+    .hl{display:flex;flex-direction:column}
+    .hl li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:start;column-gap:12px;padding:8px 0;border-top:1px solid var(--hair)}
+    .hl li:first-child{border-top:0}
+    .hl .ic{color:var(--muted)}
+    .hl b{display:block;font:600 13px/1.5 var(--sans)}
+    .hl p{font-size:12px;line-height:1.45;color:var(--ink2)}
+    .hl time{font-size:12px;line-height:1.7;color:var(--muted)}
+    .tri{display:flex;flex-direction:column;gap:8px;padding:12px}
+    .tri-h{display:flex;align-items:baseline;gap:8px}
+    .tri-h b{font:600 13px/1.4 var(--sans);min-width:0}
+    .tri-h span{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+    .tri p{font-size:12px;line-height:1.45;color:var(--ink2)}
+    .tri p b{font-weight:600;color:var(--ink)}
+    .tri.flat p b{color:var(--ink2)}
+    .tri .note{margin-top:-4px}
+    .prop{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--r-card);border:1px dashed var(--accent-line);background:var(--tint)}
+    .prop b{font:600 13px/1.4 var(--sans)}
+    .prop p{font-size:12px;line-height:1.45;color:var(--ink2)}
+    .wiss{display:flex;flex-direction:column;gap:8px}
+    .wiss li{padding:8px 12px;border-radius:var(--r-ctl);background:var(--tint);border:1px solid var(--hair);font-size:12px;line-height:1.45;color:var(--ink2)}
+    .wiss li b{display:block;font-weight:600;color:var(--ink)}
+    .foot-n{padding-top:12px;border-top:1px solid var(--hair)}
+  </style>
+</helmet>
+<div class="app {{ themeClass }}">
+    <nav class="side chrome" aria-label="Hauptnavigation">
+    <div class="brand"><span class="mark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg></span><b>ProjectA</b><small>2.0</small></div>
+    <div class="sgrp">
+      <p class="slabel">Arbeiten</p>
+      <div class="nav">
+        <a href="Main.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3.5 13.5a6.5 6.5 0 1 1 13 0"/><path d="m10 13.5 3-5"/></svg>Leitstand<span class="n">7</span></a>
+        <a href="TeamLauf.dc.html" class="sub"><span class="glyph run" aria-hidden="true"></span>Team-Lauf<span class="n">3 aktiv</span></a>
+        <a href="Beweise.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg>Beweise<span class="n">4</span></a>
+        <a href="Aktivitaet.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M2.5 10h3l2-5 3 10 2-5h5"/></svg>Aktivität</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Organisation</p>
+      <div class="nav">
+        <a href="Core.dc.html" aria-current="page"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5Z"/><circle cx="10" cy="10" r="2.5"/></svg>Core</a>
+        <a href="Organigramm.dc.html"><svg class="ic" viewBox="0 0 20 20"><circle cx="7" cy="7.5" r="2.5"/><circle cx="13.5" cy="8.5" r="2"/><path d="M2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12 12.2c2.2-.3 4 .9 4.8 3.3"/></svg>Teams</a>
+        <a href="Personas.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="4" y="6" width="12" height="10" rx="3"/><path d="M10 3v3M7.5 11h.01M12.5 11h.01"/></svg>Agenten</a>
+        <a href="AgentGenerator.dc.html" class="sub">Agenten-Generator</a>
+        <a href="Ablaeufe.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5" rx="1.5"/><rect x="12" y="12" width="5" height="5" rx="1.5"/><path d="M5.5 8v3.5a1 1 0 0 0 1 1H12"/></svg>Abläufe</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Eingang</p>
+      <div class="nav">
+        <a href="Ideen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7.5 14.5h5M8.5 17h3M10 3a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9Z"/></svg>Ideen<span class="n">2 neu</span></a>
+        <a href="Bugs.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="10.5" rx="4"/><path d="M8 6a2 2 0 0 1 4 0M3 10.5h3M14 10.5h3M10 9v6"/></svg>Bugs<span class="n">7</span></a>
+        <a href="Plan.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M5 17.5v-14M5 4h9.5l-2 3.5 2 3.5H5"/></svg>Plan<span class="n"><span class="dia" aria-hidden="true"></span><span class="sr">2 Entscheidungen offen</span></span></a>
+        <a href="Gedaechtnis.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16"/><path d="M8 7h5"/></svg>Gedächtnis</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Automatik</p>
+      <div class="nav">
+        <a href="Trigger.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z"/></svg>Trigger</a>
+        <a href="Befehle.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="m8.5 13.5 3-7"/></svg>Befehle</a>
+        <a href="MCP.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7 3v4M13 3v4M5 7h10v3a5 5 0 0 1-10 0Z"/><path d="M10 15v3"/></svg>MCP-Server</a>
+      </div>
+    </div>
+    <div class="side-foot">
+      <div class="nav">
+        <a href="Einstellungen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M4 6h7M15 6h1M4 14h1M9 14h7"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>Einstellungen</a>
+        <a href="Systemkarte.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3 5.5 7.5 4l5 2 4.5-1.5V15l-4.5 1.5-5-2L3 16Z"/><path d="M7.5 4v10.5M12.5 6v10.5"/></svg>Systemkarte</a>
+      </div>
+      <div class="me"><span class="ava sm owner" aria-hidden="true">Du</span><div><b>Du</b><small>Eigentümer, v1.5.1</small></div></div>
+    </div>
+  </nav>
+
+  <div class="main">
+        <header class="top chrome">
+      <button class="pick" type="button" aria-label="Projekt wechseln, aktuell ProjectA"><span class="pj">A</span>ProjectA<svg class="ic s" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></button>
+      <label class="search"><span class="sr">Suchen oder Befehl eingeben</span><svg class="ic s" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg><input type="search" placeholder="Agenten, PRs, Ideen, Befehle"><span class="kbd">Strg K</span></label>
+      <a class="qm" href="Kontingente.dc.html" aria-label="Kontingente diese Woche: Claude 71 Prozent, Codex 96 Prozent, Kimi 34 Prozent, Ollama 12 Prozent">
+        <span class="qb">Claude<i><b style="width:71%"></b></i></span>
+        <span class="qb">Codex<i><b class="hot" style="width:96%"></b></i></span>
+        <span class="qb">Kimi<i><b style="width:34%"></b></i></span>
+        <span class="qb">Ollama<i><b style="width:12%"></b></i></span>
+      </a>
+      <a class="bell" href="Benachrichtigungen.dc.html" aria-label="Benachrichtigungen, 2 warten auf dich"><svg class="ic" viewBox="0 0 20 20"><path d="M5 13.5V9a5 5 0 0 1 10 0v4.5l1.5 2h-13Z"/><path d="M8.5 17.5h3"/></svg><span class="badge" aria-hidden="true">2</span></a>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="estop" type="button" onClick="{{ stop }}"><svg class="ic" viewBox="0 0 20 20"><path d="M7 2.5h6L17.5 7v6L13 17.5H7L2.5 13V7Z"/><path d="M7.5 10h5"/></svg><span>Not-Aus<small>stoppt alles in 10 s</small></span></button>
+    </header>
+
+    <sc-if value="{{ stopped }}" hint-placeholder-val="{{ false }}">
+      <div class="stopband" role="status">
+        <p>Alle 7 Agenten in 3,4 s gestoppt.</p>
+        <span>Journal gesichert, keine Aufgabe läuft doppelt. 2 Worktrees mit offenen Änderungen sind als WIP-Commit gesichert.</span>
+        <button class="btn sm" type="button" onClick="{{ resume }}">Fortsetzen</button>
+      </div>
+    </sc-if>
+
+    <section class="phead" aria-labelledby="h-core">
+      <div>
+        <h1 id="h-core">Core</h1>
+        <p>Die eine KI mit Rechten. Jede Änderung steht im Journal.</p>
+      </div>
+      <ul class="hats" aria-label="Die drei Aufgaben des Core">
+        <sc-for list="{{ hats }}" as="h" hint-placeholder-count="3">
+          <li class="hat {{ h.cls }}"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ h.ic }}"/></svg><span><b>{{ h.name }}</b><small>{{ h.status }}</small></span></li>
+        </sc-for>
+      </ul>
+    </section>
+
+    <sc-if value="{{ rule }}" hint-placeholder-val="{{ false }}">
+      <div class="rband" role="status">
+        <svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="2.5"/><path d="M7 8h6M7 12h4"/></svg>
+        <p>Regelmodus seit 13:58</p>
+        <span>Kein Kontingent für den Core. Er arbeitet mit festen Regeln weiter, ohne KI, und geht nie aus. Ab Mi 06:00 denkt wieder Claude Opus.</span>
+        <button class="btn sm" type="button" onClick="{{ toggleRule }}">Beispiel beenden</button>
+      </div>
+    </sc-if>
+
+    <div class="core">
+      <section class="ask glass pane" aria-labelledby="h-ask">
+        <div class="ask-row">
+          <h2 id="h-ask">Frag den Core</h2>
+          <label class="askf"><span class="sr">Was soll der Core tun? Ein Satz genügt.</span><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h12a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-6l-4 3v-3H4a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z"/></svg><input class="inp" type="text" placeholder="Zum Beispiel: Spar diese Woche Claude" value="{{ q }}" disabled="{{ askOff }}" onChange="{{ setQ }}"></label>
+          <button class="btn" type="button" disabled="{{ askOff }}" onClick="{{ submit }}">Plan zeigen</button>
+        </div>
+
+        <sc-if value="{{ resPlan }}" hint-placeholder-val="{{ true }}">
+          <div class="res" role="region" aria-label="Geplante Änderungen">
+            <div class="res-h">
+              <p><b>{{ plan.head }}</b> · {{ plan.until }}</p>
+              <span class="btns"><button class="btn sm ghost" type="button" onClick="{{ cancel }}">Abbrechen</button><button class="btn sm primary" type="button" onClick="{{ apply }}">Anwenden</button></span>
+            </div>
+            <ul class="plan">
+              <sc-for list="{{ plan.rows }}" as="r" hint-placeholder-count="3">
+                <li class="{{ r.cls }}">
+                  <span class="pn">{{ r.name }}</span>
+                  <span class="pv"><span class="{{ r.fromCls }}">{{ r.from }}</span><svg class="ic ar" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ r.arIc }}"/></svg><span class="new">{{ r.to }}</span></span>
+                  <span class="po">{{ r.owner }}</span>
+                </li>
+              </sc-for>
+            </ul>
+            <p class="exp">{{ plan.exp }}</p>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ resMsg }}" hint-placeholder-val="{{ false }}">
+          <div class="res" role="status">
+            <div class="msg {{ msg.cls }}">
+              <svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ msg.ic }}"/></svg>
+              <div>
+                <p>{{ msg.text }}</p>
+                <sc-if value="{{ msg.hasBtn }}" hint-placeholder-val="{{ false }}"><span class="btns"><button class="btn sm" type="button" onClick="{{ msg.act }}">{{ msg.btn }}</button></span></sc-if>
+                <sc-if value="{{ msg.hasEx }}" hint-placeholder-val="{{ true }}">
+                  <div class="exs" role="group" aria-label="Beispielsätze"><sc-for list="{{ examples }}" as="x" hint-placeholder-count="4"><button class="fchip" type="button" onClick="{{ x.pick }}">{{ x.label }}</button></sc-for></div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+
+      <section class="mdl glass pane" aria-labelledby="h-mdl">
+        <div class="pane-h"><h2 id="h-mdl">Modell und Ausweichen</h2><span class="r">{{ mdlNote }}</span></div>
+        <ol class="chain">
+          <sc-for list="{{ chain }}" as="m" hint-placeholder-count="3">
+            <li>
+              <span class="mk {{ m.mk }}" aria-hidden="true"></span>
+              <span class="mn"><b>{{ m.name }}</b><small>{{ m.sub }}</small></span>
+              <span class="ms {{ m.sCls }}">{{ m.status }}<sc-if value="{{ m.hasMeter }}" hint-placeholder-val="{{ true }}"><span class="meter" aria-hidden="true"><b class="{{ m.meterCls }}" style="width:{{ m.pct }}%"></b></span></sc-if></span>
+            </li>
+          </sc-for>
+        </ol>
+        <div class="demo">
+          <button class="sw" type="button" role="switch" aria-checked="{{ ruleA }}" aria-labelledby="lbl-rule" onClick="{{ toggleRule }}"></button>
+          <span class="dl" id="lbl-rule">Beispiel: Regelmodus ohne KI</span>
+        </div>
+      </section>
+
+      <section class="jr glass pane" aria-labelledby="h-jr">
+        <div class="jr-h">
+          <h2 id="h-jr">Änderungs-Journal</h2>
+          <div class="fchips" role="group" aria-label="Journal filtern">
+            <sc-for list="{{ jfs }}" as="f" hint-placeholder-count="5"><button class="fchip" type="button" aria-pressed="{{ f.pressed }}" onClick="{{ f.pick }}">{{ f.label }}<b>{{ f.n }}</b></button></sc-for>
+          </div>
+        </div>
+        <div class="rep">
+          <h3>Tagesbericht<small>06.10., 14:20</small></h3>
+          <ul><sc-for list="{{ report }}" as="l" hint-placeholder-count="3"><li>{{ l }}</li></sc-for></ul>
+        </div>
+        <div class="scr" tabindex="0" aria-label="Journal-Einträge">
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="2">
+            <h3 class="day">{{ d.label }}</h3>
+            <ol class="jl">
+              <sc-for list="{{ d.entries }}" as="e" hint-placeholder-count="4">
+                <li class="je {{ e.cls }}">
+                  <time class="jt">{{ e.time }}</time>
+                  <span class="jrail"><span class="ava sm {{ e.avaCls }}" aria-hidden="true">{{ e.ava }}</span></span>
+                  <div class="jb">
+                    <div class="jh"><b class="jn">{{ e.title }}</b><span class="hatl">{{ e.hat }} · <span class="src">{{ e.srcText }}</span></span>
+                      <span class="jact">
+                        <button class="btn sm ghost" type="button" aria-expanded="{{ e.whyOpen }}" onClick="{{ e.toggleWhy }}">Warum?</button>
+                        <sc-if value="{{ e.canUndo }}" hint-placeholder-val="{{ true }}"><button class="btn sm" type="button" onClick="{{ e.undo }}">Rückgängig</button></sc-if>
+                      </span>
+                    </div>
+                    <ul class="jrows">
+                      <sc-for list="{{ e.rows }}" as="r" hint-placeholder-count="1"><li><span class="rn">{{ r.name }}</span><span class="old">{{ r.from }}</span><svg class="ic ar" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M12 6l4 4-4 4"/></svg><span class="new">{{ r.to }}</span></li></sc-for>
+                    </ul>
+                    <p class="jwhy">{{ e.why }}</p>
+                    <div class="jf">
+                      <sc-if value="{{ e.isRun }}" hint-placeholder-val="{{ true }}">
+                        <span class="pz"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg><span class="meter" role="img" aria-label="{{ e.pzAria }}"><b class="acc" style="width:{{ e.pct }}%"></b></span>Probezeit {{ e.left }}</span>
+                        <span class="effv {{ e.effCls }}">Wirkung bisher: <b>{{ e.eff }}</b></span>
+                      </sc-if>
+                      <sc-if value="{{ e.isNote }}" hint-placeholder-val="{{ false }}">
+                        <span class="jnote"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ e.noteIc }}"/></svg>{{ e.note }}</span>
+                      </sc-if>
+                    </div>
+                    <div class="hx {{ e.hxCls }}"><div>
+                      <ol class="hist" aria-label="Verlauf: {{ e.histName }}">
+                        <sc-for list="{{ e.hist }}" as="h" hint-placeholder-count="3"><li><time>{{ h.d }}</time><b>{{ h.v }}</b><span>{{ h.why }} <span class="who">{{ h.who }}</span></span></li></sc-for>
+                      </ol>
+                      <p class="note owner">{{ e.owner }}</p>
+                    </div></div>
+                  </div>
+                </li>
+              </sc-for>
+            </ol>
+          </sc-for>
+          <sc-if value="{{ jEmpty }}" hint-placeholder-val="{{ false }}">
+            <div class="empty">
+              <p>Keine Änderung in dieser Auswahl. Alles, was der Core, du oder ein Antrag ändert, landet hier.</p>
+              <button class="btn sm" type="button" onClick="{{ jAll }}">Alle Änderungen zeigen</button>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+
+      <section class="tabp glass pane" aria-label="Anträge, Autonomie und Selbstheilung">
+        <div class="tabs full" role="tablist" aria-label="Bereich wählen">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" id="{{ t.id }}" aria-selected="{{ t.sel }}" aria-controls="tp-core" onClick="{{ t.pick }}">{{ t.label }}<sc-if value="{{ t.hasNeed }}" hint-placeholder-val="{{ false }}"><span class="dia" aria-hidden="true"></span><span class="sr">, braucht dich</span></sc-if><small>{{ t.n }}</small></button></sc-for>
+        </div>
+
+        <div class="scr" id="tp-core" role="tabpanel" aria-labelledby="{{ tabId }}" tabindex="0">
+          <sc-if value="{{ isReq }}" hint-placeholder-val="{{ true }}">
+            <div class="tpan">
+              <p class="note">Helfer-Agenten ändern nie selbst etwas. Sie stellen einen Antrag, der Core entscheidet und schreibt es ins Journal. Zwei Anträge für dieselbe Einstellung kommen nacheinander dran.</p>
+              <sc-for list="{{ reqs }}" as="r" hint-placeholder-count="4">
+                <article class="req item" aria-labelledby="{{ r.hid }}">
+                  <span class="ava sm {{ r.avaCls }}" aria-hidden="true">{{ r.ava }}</span>
+                  <div>
+                    <h3 id="{{ r.hid }}">{{ r.title }}</h3>
+                    <p class="who">Antrag von {{ r.from }} · {{ r.time }}</p>
+                    <p class="want"><span class="old">{{ r.oldV }}</span><svg class="ic ar" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M12 6l4 4-4 4"/></svg><span class="new">{{ r.newV }}</span></p>
+                    <p class="why">{{ r.why }}</p>
+                    <div class="cd {{ r.cdCls }}">
+                      <sc-if value="{{ r.needsYou }}" hint-placeholder-val="{{ false }}"><span class="st need">Braucht dich</span></sc-if>
+                      <p><b>{{ r.lead }}</b> {{ r.text }}</p>
+                      <sc-if value="{{ r.hasYes }}" hint-placeholder-val="{{ false }}"><span class="btns"><button class="btn sm tint" type="button" onClick="{{ r.yes }}">{{ r.yesLabel }}</button><sc-if value="{{ r.hasNo }}" hint-placeholder-val="{{ false }}"><button class="btn sm" type="button" onClick="{{ r.no }}">Ablehnen</button></sc-if></span></sc-if>
+                      <sc-if value="{{ r.hasLink }}" hint-placeholder-val="{{ false }}"><button class="linkbtn" type="button" onClick="{{ r.show }}">Im Journal zeigen</button></sc-if>
+                    </div>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isAuto }}" hint-placeholder-val="{{ false }}">
+            <div class="tpan">
+              <p class="note">{{ autoNote }}</p>
+              <div class="sec-h"><h3>Einstellbar</h3><span>pro Bereich eine Stufe</span></div>
+              <ul class="au">
+                <sc-for list="{{ areas }}" as="a" hint-placeholder-count="9">
+                  <li>
+                    <span class="an"><b>{{ a.name }}</b><small>{{ a.sub }}</small></span>
+                    <span class="seg" role="radiogroup" aria-label="Stufe für {{ a.name }}">
+                      <sc-for list="{{ a.opts }}" as="o" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{ o.on }}" disabled="{{ o.off }}" onClick="{{ o.pick }}">{{ o.label }}</button></sc-for>
+                    </span>
+                    <sc-if value="{{ a.ask }}" hint-placeholder-val="{{ false }}">
+                      <div class="trust" role="status">
+                        <p><b>{{ a.askLead }}</b> {{ a.askText }}</p>
+                        <span class="btns"><button class="btn sm tint" type="button" onClick="{{ a.raise }}">Auf Selbst stellen</button><button class="btn sm ghost" type="button" onClick="{{ a.later }}">Nicht jetzt</button></span>
+                      </div>
+                    </sc-if>
+                  </li>
+                </sc-for>
+              </ul>
+              <div class="sec-h"><h3>Fest im Code</h3><span>immer nur Vorschlag, auch auf Wunsch nicht änderbar</span></div>
+              <ul class="au">
+                <sc-for list="{{ locked }}" as="a" hint-placeholder-count="6">
+                  <li class="locked">
+                    <span class="an"><b>{{ a.name }}</b><small>{{ a.sub }}</small></span>
+                    <span class="lockp"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>nur Vorschlag</span>
+                  </li>
+                </sc-for>
+              </ul>
+              <p class="note foot-n">Aus: der Core fasst den Bereich nicht an. Vorschlag: er fragt dich vorher. Selbst: er handelt, berichtet im Journal und hält jede Änderung 24 h zur Probe. Not-Aus hält auch den Core an.</p>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isHeal }}" hint-placeholder-val="{{ false }}">
+            <div class="tpan">
+              <div class="sec-h"><h3>Selbstheilung</h3><span>letzte 24 h</span></div>
+              <ul class="hl">
+                <sc-for list="{{ heal }}" as="h" hint-placeholder-count="3">
+                  <li><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ h.ic }}"/></svg><span><b>{{ h.t }}</b><p>{{ h.d }}</p></span><time>{{ h.time }}</time></li>
+                </sc-for>
+              </ul>
+
+              <div class="sec-h"><h3>Laufende Versuche</h3><span>je eine Woche, mit Vergleich zur Woche davor</span></div>
+              <sc-if value="{{ trialNote }}" hint-placeholder-val="{{ false }}"><p class="note">Im Regelmodus pausieren die Versuche. Die Messung läuft weiter.</p></sc-if>
+              <sc-for list="{{ trials }}" as="t" hint-placeholder-count="2">
+                <article class="tri item {{ t.cls }}" aria-label="Versuch: {{ t.name }}">
+                  <div class="tri-h"><b>{{ t.name }}</b><span>Tag {{ t.day }} von 7</span></div>
+                  <span class="meter" role="img" aria-label="Tag {{ t.day }} von 7"><b class="acc" style="width:{{ t.pct }}%"></b></span>
+                  <p>{{ t.lead }} <b>{{ t.eff }}</b></p>
+                  <sc-if value="{{ t.hasNote }}" hint-placeholder-val="{{ false }}"><p class="note">{{ t.note }}</p></sc-if>
+                  <span class="btns"><button class="btn sm ghost" type="button" onClick="{{ t.end }}">Versuch beenden</button></span>
+                </article>
+              </sc-for>
+              <sc-if value="{{ noTrials }}" hint-placeholder-val="{{ false }}"><p class="empty">Gerade läuft kein Versuch. Neue Vorschläge des Core erscheinen hier, mit Belegen.</p></sc-if>
+
+              <sc-if value="{{ hasProp }}" hint-placeholder-val="{{ true }}">
+                <div class="prop">
+                  <b>Vorschlag: Tests nur für geänderte Dateien</b>
+                  <p>Beleg: In 12 von 14 Läufen betrafen rote Tests nur Dateien, die das Paket geändert hat. Erwartet: etwa 6 min schneller pro Lauf.</p>
+                  <span class="btns"><button class="btn sm tint" type="button" disabled="{{ askOff }}" onClick="{{ startProp }}">Als Versuch starten</button><button class="btn sm ghost" type="button" onClick="{{ skipProp }}">Nicht jetzt</button></span>
+                </div>
+              </sc-if>
+
+              <div class="sec-h"><h3>App-Wissen der Agenten</h3><span>24 Wann-was-Regeln</span></div>
+              <p class="note">Verpasst ein Agent ein Werkzeug, ergänzt der Core eine Regel. Jede neue Regel steht im Journal.</p>
+              <ul class="wiss">
+                <li><b>Vor dem Push: die Lane prepush, nicht cargo test</b>heute 09:30, nachdem 3 Agenten rot gepusht hatten</li>
+                <li><b>Bei Fragen zum Plan: erst den Plan lesen, dann fragen</b>03.10., nachdem 2 Agenten doppelt nachgefragt hatten</li>
+              </ul>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dunkel":{"editor":"boolean","default":false,"section":"Darstellung"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  static data() {
+    const IC = {
+      steer: 'M4 6h7M15 6h1M4 14h1M9 14h7M13 4v4M7 12v4',
+      work: 'M3 7.5A1.5 1.5 0 0 1 4.5 6h11A1.5 1.5 0 0 1 17 7.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5ZM7.5 6V4.5h5V6M3 10.5h14',
+      bell: 'M5 13.5V9a5 5 0 0 1 10 0v4.5l1.5 2h-13ZM8.5 17.5h3',
+      arrow: 'M4 10h12M12 6l4 4-4 4',
+      keep: 'M5 10h10',
+      lock: 'M6.5 9h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2ZM7 9V6.5a3 3 0 0 1 6 0V9',
+      undo: 'M7.5 5 4 8.5 7.5 12M4 8.5h7.5a4.5 4.5 0 0 1 0 9H9',
+      pin: 'M10 17.5v-5M6.5 3.5h7l-1 4 2.5 2.5v2.5h-10V10L7.5 7.5Z',
+      you: 'M10 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6ZM4 16.5c.8-2.6 3.1-4 6-4s5.2 1.4 6 4',
+      queue: 'M6 3h8M6 17h8M7 3v2.5L10 10l3-4.5V3M7 17v-2.5L10 10l3 4.5V17',
+      rules: 'M6 3.5h8A2.5 2.5 0 0 1 16.5 6v8a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 14V6A2.5 2.5 0 0 1 6 3.5ZM7 8h6M7 12h4',
+      ask: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM8 8a2 2 0 1 1 2.8 1.8c-.5.2-.8.7-.8 1.2v.5M10 14h.01',
+      ram: 'M7 5h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM8 2.5V5M12 2.5V5M8 15v2.5M12 15v2.5M2.5 8H5M2.5 12H5M15 8h2.5M15 12h2.5',
+      gauge: 'M3.5 13.5a6.5 6.5 0 1 1 13 0M10 13.5l3-5',
+      pulse: 'M2.5 10h3l2-5 3 10 2-5h5',
+      send: 'M3.5 16.5 17 10 3.5 3.5l2 6.5ZM5.5 10H11'
+    };
+    const HATS = { S: 'Steuerung', A: 'Arbeit', M: 'Aufmerksamkeit' };
+    const hist = {
+      failover: [
+        { d: '25.09.', v: '98 %', who: 'du', why: 'Startwert beim Einrichten.' },
+        { d: '02.10.', v: '96 %', who: 'Core', why: 'Zwei Stillstände bei 97 %. Nach 24 h Probezeit behalten.' },
+        { d: 'heute 10:05', v: '90 %', who: 'Core', why: 'Drei Aufgaben warteten zusammen 2 h auf Codex.' }
+      ],
+      reviewB: [
+        { d: '28.09.', v: 'GLM 5.2', who: 'du', why: 'Reviews der Stufe B gehen an ein fremdes Modell.' },
+        { d: 'heute 09:40', v: 'Kimi K3', who: 'Antrag Prüfer, vom Core angenommen', why: 'GLM 5.2 brauchte zuletzt 38 min pro Review.' }
+      ],
+      runloc: [
+        { d: '30.09.', v: 'PC', who: 'du', why: 'Alles läuft auf diesem PC, solange der Speicher reicht.' },
+        { d: 'heute 11:42', v: 'Server', who: 'Core', why: 'Nur noch 1,2 GB RAM frei, ein Build drohte abzubrechen.' }
+      ],
+      ruhe: [
+        { d: '01.10.', v: '23–07 Uhr', who: 'du', why: 'Nachts nur Not-Aus und Sicherheit.' },
+        { d: 'heute 10:15', v: '22–07 Uhr', who: 'du', why: 'Dein Satz: „Ab 22 Uhr will ich Ruhe“.' }
+      ],
+      wannwas: [
+        { d: '03.10.', v: '23 Regeln', who: 'Core', why: 'Regel zum Plan-Lesen ergänzt.' },
+        { d: 'heute 09:30', v: '24 Regeln', who: 'Core', why: '3 Agenten haben das Prüfwerkzeug vor dem Push verpasst.' }
+      ],
+      buendeln: [
+        { d: '01.10.', v: 'alle 20 min', who: 'du', why: 'Startwert beim Einrichten.' },
+        { d: 'gestern 08:40', v: 'alle 30 min', who: 'Core', why: 'Weniger Unterbrechungen erwartet.' },
+        { d: 'heute 08:40', v: 'alle 20 min', who: 'Core', why: 'Ohne Nutzen nach 24 h automatisch zurück.' }
+      ],
+      anstupsen: [
+        { d: '27.09.', v: '20 min', who: 'du', why: 'Startwert beim Einrichten.' },
+        { d: 'gestern 09:12', v: '15 min', who: 'Core', why: 'Zwei Agenten hingen je 19 min unbemerkt.' },
+        { d: 'heute 09:12', v: '15 min', who: 'Core', why: 'Probezeit bestanden, 2 Läufe gerettet. Bleibt so.' }
+      ],
+      claude: [{ d: '25.09.', v: '40 %', who: 'du', why: 'Startwert: Routine geht zu 40 % an Claude.' }],
+      server: [{ d: '30.09.', v: 'PC', who: 'du', why: 'Startwert: Routine läuft auf diesem PC.' }],
+      rights: [{ d: '29.09.', v: 'Stufe 2', who: 'Rechte-Rampe', why: 'Schreibt im eigenen Worktree, pusht nicht selbst.' }],
+      nacht: [{ d: '01.10.', v: '23 Uhr', who: 'du', why: 'Nachtlauf startet nach Beginn der Ruhezeit.' }],
+      level: [{ d: '25.09.', v: 'Startstufen', who: 'du', why: 'Beim Einrichten gesetzt.' }],
+      trial: [{ d: '01.10.', v: 'Versuche an', who: 'du', why: 'Der Core darf Verbesserungen eine Woche lang testen.' }]
+    };
+    const OWN = { failover: 'S', reviewB: 'A', runloc: 'A', ruhe: 'M', wannwas: 'A', buendeln: 'M', anstupsen: 'A', claude: 'S', server: 'S', nacht: 'S', trial: 'A' };
+    const J = [
+      { id: 'e4', day: 0, time: '11:42', src: 'core', hat: 'A', key: 'runloc', title: '2 Agenten auf den Server verlegt', rows: [{ name: 'Laufort Prüfer-2', from: 'PC', to: 'Server' }, { name: 'Laufort Doku-Schreiber', from: 'PC', to: 'Server' }], why: 'Nur noch 1,2 GB RAM frei, ein Build drohte abzubrechen. Die Agenten liefen ohne Unterbrechung weiter.', k: 'run', el: 158, eff: 'freier RAM 1,2 → 4,8 GB' },
+      { id: 'e3', day: 0, time: '10:55', src: 'antrag', agent: 'Nachtwache', ava: 'Na', avaCls: 'c4', hat: 'A', key: 'reviewB', title: 'Reviews der Stufe B zurück auf GLM 5.2', rows: [{ name: 'Review-Modell Stufe B', from: 'Kimi K3', to: 'GLM 5.2' }], why: 'Antrag von Nachtwache: Kimi K3 ist nachts oft ausgelastet.', k: 'queue', note: 'In Reihe, Platz 2: dieselbe Einstellung ist noch bis morgen 09:40 in Probezeit.' },
+      { id: 'e5', day: 0, time: '10:15', src: 'du', hat: 'M', key: 'ruhe', title: '„Ab 22 Uhr will ich Ruhe“', rows: [{ name: 'Ruhezeit', from: '23–07 Uhr', to: '22–07 Uhr' }], why: 'Dein Satz im Feld „Frag den Core“, von dir angewendet.', k: 'direct', note: 'Von dir, gilt sofort und ohne Probezeit.' },
+      { id: 'e1', day: 0, time: '10:05', src: 'core', hat: 'S', key: 'failover', title: 'Codex weicht früher aus', rows: [{ name: 'Ausweichen ab (Codex)', from: '96 %', to: '90 %' }], why: 'Codex lag diese Woche zweimal über 95 %. Drei Aufgaben warteten zusammen 2 h.', k: 'run', el: 255, eff: 'Wartezeit −41 %' },
+      { id: 'e2', day: 0, time: '09:40', src: 'antrag', agent: 'Prüfer', ava: 'Pr', avaCls: 'c2', hat: 'A', key: 'reviewB', title: 'Reviews der Stufe B an Kimi K3', rows: [{ name: 'Review-Modell Stufe B', from: 'GLM 5.2', to: 'Kimi K3' }], why: 'GLM 5.2 brauchte zuletzt 38 min pro Review, Kimi K3 im Test 14 min.', k: 'run', el: 280, eff: 'Review-Dauer −52 %, 3 Reviews' },
+      { id: 'e6', day: 0, time: '09:30', src: 'core', hat: 'A', key: 'wannwas', title: 'App-Wissen: neue Wann-was-Regel', rows: [{ name: 'Vor dem Push', from: 'cargo test', to: 'Lane prepush' }], why: '3 Agenten haben heute das Prüfwerkzeug verpasst und rot gepusht.', k: 'run', el: 290, eff: '0 rote Pushes seit 09:30' },
+      { id: 'e7', day: 1, time: '09:12', src: 'core', hat: 'A', key: 'anstupsen', title: 'Hängende Agenten früher anstupsen', rows: [{ name: 'Anstupsen nach', from: '20 min', to: '15 min' }], why: 'Zwei Agenten hingen je 19 min, ohne dass es jemand merkte.', k: 'kept', note: 'Probezeit bestanden: 2 Läufe gerettet. Bleibt so.' },
+      { id: 'e8', day: 1, time: '08:40', src: 'core', hat: 'M', key: 'buendeln', title: 'Meldungen seltener bündeln', rows: [{ name: 'Bündeln', from: 'alle 20 min', to: 'alle 30 min' }], why: 'Erwartet: weniger Unterbrechungen für dich.', k: 'rolled', note: 'Ohne Nutzen (Unterbrechungen ±0): heute 08:40 automatisch zurück auf alle 20 min.' }
+    ];
+    const RULE_J = [
+      { id: 'r2', day: 0, time: '14:12', src: 'regel', hat: 'A', key: 'failover', title: 'Ausweichen nach fester Regel', rows: [{ name: 'Neue Aufgaben von Codex', from: 'Codex', to: 'GLM 5.2' }], why: 'Codex bei 98 %. Regel: ab 95 % zum nächsten freien Anbieter.', k: 'info', note: 'Feste Regel, keine Probezeit nötig.' },
+      { id: 'r1', day: 0, time: '13:58', src: 'regel', hat: 'S', key: 'level', title: 'Core wechselt in den Regelmodus', rows: [{ name: 'Modell des Core', from: 'Kimi K3', to: 'Regelmodus' }], why: 'Claude Opus und Kimi K3 haben kein Wochenkontingent mehr.', k: 'info', note: 'Zurück zur KI automatisch, sobald Kontingent frei ist.' }
+    ];
+    const REQ = [
+      { id: 'q3', from: 'Frontend-Bauer', ava: 'Fr', avaCls: 'c3', time: '14:02', title: 'Selbst pushen dürfen', oldV: 'Rechte-Stufe 2', newV: 'Rechte-Stufe 3', why: 'Wartet jeden Tag etwa 40 min auf eine Freigabe zum Pushen.', key: 'rights' },
+      { id: 'q4', from: 'Planer', ava: 'Pl', avaCls: 'c1', time: '12:20', title: 'Nachtlauf schon um 22 Uhr starten', oldV: '23 Uhr', newV: '22 Uhr', why: 'Mehr Zeit für lange Aufgaben in der Nacht.', key: 'nacht' },
+      { id: 'q2', from: 'Nachtwache', ava: 'Na', avaCls: 'c4', time: '10:55', title: 'Reviews der Stufe B zurück auf GLM 5.2', oldV: 'Kimi K3', newV: 'GLM 5.2', why: 'Kimi K3 ist nachts oft ausgelastet.', key: 'reviewB', entry: 'e3' },
+      { id: 'q1', from: 'Prüfer', ava: 'Pr', avaCls: 'c2', time: '09:38', title: 'Reviews der Stufe B an Kimi K3', oldV: 'GLM 5.2', newV: 'Kimi K3', why: 'GLM 5.2 brauchte zuletzt 38 min pro Review, Kimi K3 im Test 14 min.', key: 'reviewB', entry: 'e2' },
+    ];
+    const AREAS = [
+      { id: 'kont', name: 'Kontingente', hat: 'S', lv: 2 },
+      { id: 'lauf', name: 'Laufort', hat: 'S', lv: 2 },
+      { id: 'trig', name: 'Trigger', hat: 'S', lv: 1, trust: '18 von 19 Vorschlägen hast du angenommen.' },
+      { id: 'pers', name: 'Personas', hat: 'S', lv: 1 },
+      { id: 'vert', name: 'Arbeit verteilen', hat: 'A', lv: 2 },
+      { id: 'rev', name: 'Reviews zuteilen', hat: 'A', lv: 2 },
+      { id: 'wis', name: 'App-Wissen', hat: 'A', lv: 2 },
+      { id: 'vers', name: 'Verbesserungen testen', hat: 'A', lv: 1 },
+      { id: 'meld', name: 'Was dich erreicht', hat: 'M', lv: 2 }
+    ];
+    const LOCKED = [
+      { name: 'Geld und Abos', sub: 'nichts kostet extra ohne dich' },
+      { name: 'Rechte der Agenten', sub: 'wer was darf, entscheidest du' },
+      { name: 'Sicherheit', sub: 'Secret-Scan, Nahtstellen, Not-Aus' },
+      { name: 'Löschen', sub: 'Dateien, Worktrees, Branches' },
+      { name: 'Releases', sub: 'veröffentlichen nur mit dir' },
+      { name: 'Stufen des Core selbst', sub: 'er hebt sich nie selbst an' }
+    ];
+    const TRIALS = [
+      { id: 't1', name: 'Übergabe schon bei 55 % Kontext', day: 3, lead: 'Bisher:', eff: '−9 % Tokens pro Aufgabe, gleich viele grüne PRs.', good: true, from: '60 %', to: '55 %' },
+      { id: 't2', name: 'Reviews nachts bündeln', day: 5, lead: 'Bisher:', eff: 'kein Nutzen, Review-Dauer ±0.', good: false, note: 'Endet Fr automatisch und wird zurückgenommen, wenn es so bleibt.', from: 'einzeln', to: 'gebündelt' }
+    ];
+    return { IC, HATS, hist, OWN, J, RULE_J, REQ, AREAS, LOCKED, TRIALS };
+  }
+
+  constructor(props) {
+    super(props);
+    this.D = Component.data();
+    const lv = {};
+    this.D.AREAS.forEach((a) => { lv[a.id] = a.lv; });
+    this.state = {
+      q: 'Spar diese Woche Claude', res: 'claude', lastPlan: 'claude',
+      journal: this.D.J.slice(), undone: {}, extra: {}, fresh: '', seq: 0,
+      jf: 'alle', sel: '', open: {},
+      tab: 'req', req: { q1: 'acc', q2: 'queue', q3: 'you', q4: 'rej' },
+      lv, trust: 'ask', trials: this.D.TRIALS.slice(), prop: 'open',
+      rule: false, stopped: false
+    };
+  }
+
+  parse(q) {
+    const t = (q || '').toLowerCase();
+    if (!t.trim()) return 'empty';
+    if (t.indexOf('warum') >= 0) return 'why';
+    if (/geld|kauf|bezahl|abo/.test(t)) return 'lock:Geld';
+    if (/recht|erlaub/.test(t)) return 'lock:Rechte';
+    if (/lösch|loesch|entfern/.test(t)) return 'lock:Löschen';
+    if (/release|veröffentl/.test(t)) return 'lock:Releases';
+    if (t.indexOf('claude') >= 0 && /spar|weniger|schon/.test(t)) return 'claude';
+    if (/server|cloud|auslager/.test(t)) return 'server';
+    return 'unknown';
+  }
+
+  plans() {
+    return {
+      claude: { head: '2 Änderungen, 1 bleibt', until: 'gilt bis So 23:59, dann automatisch zurück', key: 'claude', hat: 'S', title: '„Spar diese Woche Claude“',
+        exp: 'Erwartet: Die Claude-Woche endet bei etwa 82 % statt 96 %. Alle Änderungen lassen sich im Journal zurücknehmen.',
+        rows: [
+          { name: 'Claude für Routine-Aufgaben', from: '40 %', to: '15 %', owner: 'Steuerung' },
+          { name: 'Routine geht zuerst an', from: 'Claude Opus', to: 'Kimi K3', owner: 'Arbeit' },
+          { name: 'Reviews der Stufe A', from: 'Claude Opus', to: 'bleibt, Regel für Stufe A', owner: 'Arbeit', keep: true }
+        ] },
+      server: { head: '2 Änderungen, 1 bleibt', until: 'gilt ab sofort, bis du es änderst', key: 'server', hat: 'S', title: '„Mehr auf den Server“',
+        exp: 'Erwartet: etwa 3 GB mehr freier Speicher auf diesem PC. Nahtstellen bleiben lokal, damit sie seriell geprüft werden.',
+        rows: [
+          { name: 'Laufort für Routine-Agenten', from: 'PC', to: 'Server', owner: 'Steuerung' },
+          { name: 'Build-Plätze auf diesem PC', from: '3', to: '2', owner: 'Steuerung' },
+          { name: 'Pakete an Nahtstellen', from: 'PC', to: 'bleiben, Regel für Nahtstellen', owner: 'Arbeit', keep: true }
+        ] }
+    };
+  }
+
+  nextId() { const n = this.state.seq + 1; return { id: 'n' + n, seq: n }; }
+
+  addEntry(e, extraState) {
+    const s = this.state, nx = this.nextId();
+    const entry = Object.assign({ day: 0, time: '14:20', src: 'du', ava: 'Du', avaCls: 'owner', k: 'direct', note: 'Von dir, gilt sofort und ohne Probezeit.' }, e, { id: nx.id });
+    const extra = Object.assign({}, s.extra);
+    if (e.key && e.rows && e.rows[0]) extra[e.key] = (extra[e.key] || []).concat([{ d: 'heute 14:20', v: e.rows[0].to, who: 'du', why: e.histWhy || e.why }]);
+    this.setState(Object.assign({ journal: [entry].concat(s.journal), seq: nx.seq, fresh: nx.id, sel: nx.id, extra, jf: 'alle' }, extraState || {}));
+  }
+
+  submit() {
+    if (this.state.rule || this.state.stopped) return;
+    const r = this.parse(this.state.q);
+    this.setState({ res: r === 'empty' ? 'unknown' : r, lastPlan: r === 'claude' || r === 'server' ? r : this.state.lastPlan });
+  }
+  ask(text) {
+    if (this.state.rule || this.state.stopped) return;
+    const r = this.parse(text);
+    this.setState({ q: text, res: r, lastPlan: r === 'claude' || r === 'server' ? r : this.state.lastPlan });
+  }
+  apply() {
+    const s = this.state;
+    const p = this.plans()[s.res];
+    if (!p || s.rule || s.stopped) return;
+    this.addEntry({ hat: p.hat, key: p.key, title: p.title, rows: p.rows.filter((r) => !r.keep).map((r) => ({ name: r.name, from: r.from, to: r.to })), why: 'Dein Satz im Feld „Frag den Core“, von dir angewendet. ' + p.until.charAt(0).toUpperCase() + p.until.slice(1) + '.' }, { res: 'applied' });
+  }
+  undo(id) {
+    const s = this.state, e = s.journal.find((x) => x.id === id);
+    if (!e || s.undone[id]) return;
+    const undone = Object.assign({}, s.undone, { [id]: true });
+    this.addEntry({ hat: e.hat, key: e.key, title: 'Zurückgenommen: ' + e.title, rows: e.rows.map((r) => ({ name: r.name, from: r.to, to: r.from })), why: 'Du hast die Änderung von ' + (e.day ? 'gestern ' : '') + e.time + ' zurückgenommen.', noUndo: true }, { undone });
+  }
+  decideReq(id, how) {
+    const s = this.state, r = this.D.REQ.find((x) => x.id === id);
+    const req = Object.assign({}, s.req, { [id]: how });
+    if (how === 'yes' || how === 'over') {
+      this.addEntry({ hat: r.key === 'rights' ? 'A' : 'S', key: r.key, title: r.title + ' (' + r.from + ')', rows: [{ name: r.key === 'rights' ? 'Rechte ' + r.from : 'Nachtlauf-Start', from: r.oldV, to: r.newV }], why: how === 'yes' ? 'Antrag von ' + r.from + ', von dir erlaubt. Rechte ändert nur du.' : 'Antrag von ' + r.from + ': der Core hatte abgelehnt, du hast ihn angenommen.' }, { req });
+    } else this.setState({ req });
+  }
+  setLevel(id, lv) {
+    const s = this.state, a = this.D.AREAS.find((x) => x.id === id);
+    if (s.lv[id] === lv || s.rule || s.stopped) return;
+    const N = ['Aus', 'Vorschlag', 'Selbst'];
+    const lvs = Object.assign({}, s.lv, { [id]: lv });
+    this.addEntry({ hat: 'S', key: 'level', title: 'Autonomie: ' + a.name, rows: [{ name: 'Stufe', from: N[s.lv[id]], to: N[lv] }], why: 'Von dir im Bereich Autonomie umgestellt.' }, { lv: lvs, trust: id === 'trig' ? 'done' : s.trust });
+  }
+  endTrial(id) {
+    const s = this.state, t = s.trials.find((x) => x.id === id);
+    if (!t) return;
+    this.addEntry({ hat: 'A', key: 'trial', title: 'Versuch beendet: ' + t.name, rows: [{ name: 'Einstellung', from: t.to, to: t.from }], why: 'Von dir nach Tag ' + t.day + ' von 7 beendet. Alles steht wieder wie vorher.', noUndo: true }, { trials: s.trials.filter((x) => x.id !== id) });
+  }
+  startProp() {
+    const s = this.state;
+    if (s.prop !== 'open' || s.rule || s.stopped) return;
+    const t = { id: 't3', name: 'Tests nur für geänderte Dateien', day: 0, lead: 'Startet heute, erste Messung:', eff: 'morgen 14:20.', good: true, from: 'alle Tests', to: 'nur betroffene' };
+    this.addEntry({ hat: 'A', key: 'trial', title: 'Versuch gestartet: ' + t.name, rows: [{ name: 'Tests nach jeder Änderung', from: t.from, to: t.to }], why: 'Vorschlag des Core mit Beleg aus 14 Läufen, von dir gestartet. Läuft eine Woche, dann entscheidet die Messung.', k: 'run', el: 0, eff: 'Messung beginnt', flat: true }, { trials: s.trials.concat([t]), prop: 'started' });
+  }
+  showEntry(id) {
+    const s = this.state;
+    this.setState({ jf: 'alle', sel: id, open: Object.assign({}, s.open, { [id]: true }) });
+  }
+
+  renderVals() {
+    const s = this.state, D = this.D, IC = D.IC, H = D.HATS;
+    const off = s.rule || s.stopped;
+    const N = ['Aus', 'Vorschlag', 'Selbst'];
+    const fmtLeft = (el) => { const l = Math.max(0, 1440 - el), h = Math.floor(l / 60), m = l % 60; return 'noch ' + h + ' h' + (m ? ' ' + m + ' min' : ''); };
+
+    // journal: rule-mode entries sit on top while the example is on
+    const all = (s.rule ? D.RULE_J : []).concat(s.journal);
+    const isRun = (e) => e.k === 'run' && !s.undone[e.id];
+    const FIL = [
+      { id: 'alle', label: 'Alle', test: () => true },
+      { id: 'probe', label: 'In Probezeit', test: isRun },
+      { id: 'core', label: 'Vom Core', test: (e) => e.src === 'core' || e.src === 'regel' },
+      { id: 'du', label: 'Von dir', test: (e) => e.src === 'du' },
+      { id: 'antrag', label: 'Anträge', test: (e) => e.src === 'antrag' }
+    ];
+    const cur = FIL.find((f) => f.id === s.jf) || FIL[0];
+    const SRC = { core: 'vom Core', du: 'von dir', regel: 'Regelmodus, ohne KI' };
+    const AV = { core: ['C', 'lead'], du: ['Du', 'owner'], regel: ['R', 'sys'] };
+    const ent = (e) => {
+      const un = !!s.undone[e.id], run = isRun(e);
+      const base = D.hist[e.key] || [];
+      const hk = base.concat(s.extra[e.key] || []);
+      const own = e.key === 'rights' ? 'Besitzer: du. Rechte darf der Core nur vorschlagen.' : e.key === 'level' ? 'Besitzer: du. Die Stufen des Core ändert nur du.' : 'Besitzer: Core, Aufgabe ' + H[D.OWN[e.key] || e.hat] + '. Helfer-Agenten können hier nur Anträge stellen.';
+      let note = e.note || '', noteIc = IC.pin;
+      if (e.k === 'rolled') noteIc = IC.undo;
+      if (e.k === 'direct') noteIc = IC.you;
+      if (e.k === 'queue') noteIc = IC.queue;
+      if (e.k === 'info') noteIc = IC.rules;
+      if (un) { note = 'Von dir zurückgenommen um 14:20.'; noteIc = IC.undo; }
+      const pct = run ? Math.round(e.el / 1440 * 100) : 0;
+      return {
+        id: e.id, time: e.time, ava: AV[e.src] ? AV[e.src][0] : e.ava, avaCls: AV[e.src] ? AV[e.src][1] : e.avaCls,
+        title: e.title, hat: H[e.hat], rows: e.rows, why: e.why,
+        srcText: e.src === 'antrag' ? 'Antrag von ' + e.agent + (e.k === 'queue' ? ', wartet' : ', vom Core angenommen') : SRC[e.src],
+        isRun: run, pct, left: fmtLeft(e.el || 0), eff: e.eff || '', effCls: e.flat ? 'flat' : '',
+        pzAria: 'Probezeit: ' + pct + ' % von 24 h vorbei, ' + fmtLeft(e.el || 0),
+        isNote: !run, note, noteIc,
+        canUndo: !un && !e.noUndo && e.src !== 'regel' && ['run', 'kept', 'direct'].indexOf(e.k) >= 0 && !off,
+        undo: () => this.undo(e.id),
+        whyOpen: s.open[e.id] ? 'true' : 'false', hxCls: s.open[e.id] ? 'open' : '',
+        toggleWhy: () => this.setState({ sel: e.id, open: Object.assign({}, this.state.open, { [e.id]: !this.state.open[e.id] }) }),
+        hist: hk, histName: e.rows[0] ? e.rows[0].name : e.title, owner: own,
+        cls: [s.sel === e.id ? 'sel' : '', s.fresh === e.id ? 'is-new fresh' : '', un || e.k === 'rolled' ? 'muted' : ''].filter(Boolean).join(' ')
+      };
+    };
+    const shown = all.filter(cur.test);
+    const days = [{ label: 'Heute, 06.10.', entries: shown.filter((e) => !e.day).map(ent) }, { label: 'Gestern, 05.10.', entries: shown.filter((e) => e.day).map(ent) }].filter((d) => d.entries.length);
+    const jfs = FIL.map((f) => ({ label: f.label, n: String(all.filter(f.test).length), pressed: s.jf === f.id ? 'true' : 'false', pick: () => this.setState({ jf: f.id }) }));
+
+    // counts for hats and report
+    const today = all.filter((e) => !e.day);
+    const nRun = all.filter(isRun).length;
+    const needYou = s.req.q3 === 'you';
+    const report = s.rule ? [
+      'Seit 13:58 im Regelmodus: Claude Opus und Kimi K3 haben kein Wochenkontingent mehr.',
+      'Feste Regeln laufen weiter: Ausweichen, RAM-Schutz, Anstupsen, Not-Aus. Neue Änderungen und Versuche pausieren.',
+      'Ab Mi 06:00 denkt wieder Claude Opus. Du musst nichts tun.'
+    ] : [
+      today.length + ' Änderungen heute, ' + nRun + ' in Probezeit, 1 ohne Nutzen automatisch zurückgenommen.',
+      '11:42 Speicher knapp: 2 Agenten laufen jetzt auf dem Server, nichts ging verloren.',
+      needYou ? '1 Antrag braucht dich: der Frontend-Bauer möchte selbst pushen.' : 'Nichts wartet auf dich. Der Core meldet sich, wenn sich das ändert.'
+    ];
+    const hats = [
+      { name: 'Steuerung', ic: IC.steer, status: s.stopped ? 'angehalten durch Not-Aus' : s.rule ? 'nur feste Regeln' : nRun + ' Änderungen in Probezeit' },
+      { name: 'Arbeit', ic: IC.work, status: s.stopped ? 'angehalten durch Not-Aus' : s.rule ? 'verteilt nach Regel' : '7 Agenten, 2 auf dem Server' },
+      { name: 'Aufmerksamkeit', ic: IC.bell, status: s.stopped ? 'angehalten durch Not-Aus' : s.rule ? 'nur Dringendes kommt durch' : (needYou ? '1 Antrag für dich, ' : 'nichts für dich, ') + '6 Meldungen gebündelt' }
+    ].map((h) => Object.assign(h, { cls: off ? 'idle' : '' }));
+
+    // model chain
+    const chain = s.rule ? [
+      { name: 'Claude Opus', sub: 'denkt für den Core', status: 'leer bis Mi 06:00', mk: '', sCls: '', hasMeter: true, pct: 100, meterCls: 'lock' },
+      { name: 'Kimi K3', sub: 'übernimmt ab 95 % Woche', status: 'leer bis Do 09:00', mk: '', sCls: '', hasMeter: true, pct: 100, meterCls: 'lock' },
+      { name: 'Regelmodus', sub: 'ohne KI, feste Regeln', status: s.stopped ? 'angehalten' : 'aktiv seit 13:58', mk: 'rule on', sCls: s.stopped ? '' : 'on', hasMeter: false, pct: 0, meterCls: '' }
+    ] : [
+      { name: 'Claude Opus', sub: 'denkt für den Core', status: s.stopped ? 'angehalten' : 'aktiv, Woche 71 %', mk: 'on', sCls: s.stopped ? '' : 'on', hasMeter: true, pct: 71, meterCls: 'acc' },
+      { name: 'Kimi K3', sub: 'übernimmt ab 95 % Woche', status: 'bereit, Woche 34 %', mk: '', sCls: '', hasMeter: true, pct: 34, meterCls: '' },
+      { name: 'Regelmodus', sub: 'ohne KI, feste Regeln', status: 'immer da', mk: 'rule', sCls: '', hasMeter: false, pct: 0, meterCls: '' }
+    ];
+
+    // ask
+    const P = this.plans();
+    const pl = P[s.res] || P[s.lastPlan] || P.claude;
+    const plan = {
+      head: pl.head, until: pl.until, exp: pl.exp,
+      rows: pl.rows.map((r) => ({ name: r.name, from: r.from, to: r.to, owner: r.owner, cls: r.keep ? 'keep' : '', fromCls: r.keep ? '' : 'old', arIc: r.keep ? IC.keep : IC.arrow }))
+    };
+    const ex = ['Spar diese Woche Claude', 'Mehr auf den Server', 'Warum weicht Codex bei 90 % aus?', 'Kauf mehr Kontingent'];
+    const examples = ex.map((x) => ({ label: x, pick: () => this.ask(x) }));
+    const isPlan = !off && !!P[s.res];
+    let msg = { cls: '', ic: IC.ask, text: '', hasBtn: false, btn: '', act: () => {}, hasEx: true };
+    if (s.stopped) msg = { cls: 'off', ic: IC.lock, text: 'Not-Aus hält auch den Core an. Er ändert nichts, bis du oben fortsetzt.', hasBtn: false, btn: '', act: () => {}, hasEx: false };
+    else if (s.rule) msg = { cls: 'off', ic: IC.rules, text: 'Im Regelmodus versteht der Core keine Sätze, weil keine KI läuft. Feste Regeln arbeiten weiter. Ab Mi 06:00 kannst du wieder fragen.', hasBtn: false, btn: '', act: () => {}, hasEx: false };
+    else if (s.res === 'why') msg = { cls: 'answer', ic: IC.ask, text: 'Codex weicht seit heute 10:05 schon bei 90 % aus, vorher bei 96 %. Der Core hat das geändert, weil diese Woche drei Aufgaben zusammen 2 h warteten. Seitdem sank die Wartezeit um 41 %. Die Probezeit läuft ' + fmtLeft(255) + '; bringt es nichts, nimmt er es selbst zurück.', hasBtn: true, btn: 'Verlauf im Journal zeigen', act: () => this.showEntry('e1'), hasEx: false };
+    else if (s.res.indexOf('lock:') === 0) { const area = s.res.slice(5); msg = { cls: 'lock', ic: IC.lock, text: area + ' ändert der Core nie selbst, das ist fest im Code. Er kann es dir nur vorschlagen.', hasBtn: true, btn: 'Als Vorschlag in deinen Eingang', act: () => this.setState({ res: 'sent' }), hasEx: false }; }
+    else if (s.res === 'sent') msg = { cls: '', ic: IC.send, text: 'Liegt als Vorschlag in deinem Entscheidungseingang unter Plan. Bis du entscheidest, ändert sich nichts.', hasBtn: false, btn: '', act: () => {}, hasEx: true };
+    else if (s.res === 'applied') msg = { cls: '', ic: IC.pin, text: 'Angewendet um 14:20. Die Änderung steht oben im Journal und lässt sich dort zurücknehmen.', hasBtn: false, btn: '', act: () => {}, hasEx: true };
+    else if (s.res === 'cancelled') msg = { cls: '', ic: IC.undo, text: 'Abgebrochen. Es wurde nichts geändert.', hasBtn: false, btn: '', act: () => {}, hasEx: true };
+    else if (!isPlan) msg = { cls: '', ic: IC.ask, text: 'Diesen Satz kann der Core noch nicht sicher in Einstellungen übersetzen. Er ändert lieber nichts, als zu raten. Probier einen dieser Sätze:', hasBtn: false, btn: '', act: () => {}, hasEx: true };
+
+    // requests
+    const REQT = {
+      acc: { lead: 'Core: angenommen.', text: 'Steht seit 09:40 im Journal, Probezeit bis morgen 09:40.', link: true },
+      queue: { lead: 'Core: in Reihe, Platz 2.', text: 'Dieselbe Einstellung ist noch in Probezeit. Der Core entscheidet ab morgen 09:40 mit den Messwerten.', link: true },
+      you: { lead: 'Core: an dich weitergegeben.', text: 'Rechte ändert der Core nie selbst. Empfehlung: erlauben, 9 von 9 Läufen waren grün.', you: true, yes: 'Erlauben', no: true },
+      yes: { lead: 'Von dir erlaubt um 14:20.', text: 'Der Frontend-Bauer ist jetzt auf Stufe 3. Steht im Journal.' },
+      no: { lead: 'Von dir abgelehnt.', text: 'Der Frontend-Bauer bleibt auf Stufe 2.' },
+      rej: { lead: 'Core: abgelehnt.', text: 'Ab 22 Uhr gilt deine Ruhezeit (seit heute 10:15). Der Nachtlauf bleibt um 23 Uhr.', yes: 'Trotzdem annehmen' },
+      over: { lead: 'Von dir angenommen um 14:20.', text: 'Der Nachtlauf startet jetzt um 22 Uhr. Steht im Journal.' }
+    };
+    const reqs = D.REQ.map((r) => {
+      const st = s.req[r.id], t = REQT[st];
+      return {
+        hid: 'h-' + r.id, title: r.title, from: r.from, ava: r.ava, avaCls: r.avaCls, time: r.time, oldV: r.oldV, newV: r.newV, why: r.why,
+        cdCls: t.you ? 'you' : '', needsYou: !!t.you, lead: t.lead, text: t.text,
+        hasYes: !!t.yes && !off, yesLabel: t.yes || '', hasNo: !!t.no,
+        yes: () => this.decideReq(r.id, st === 'rej' ? 'over' : 'yes'), no: () => this.decideReq(r.id, 'no'),
+        hasLink: !!t.link, show: () => this.showEntry(r.entry || 'e2')
+      };
+    });
+
+    // autonomy
+    const SUB = { kont: 'Ausweichen, Lastverteilung', lauf: 'PC, Cloud oder Server', vert: 'Pakete und Agenten', wis: 'Wann-was-Regeln' };
+    const areas = D.AREAS.map((a) => ({
+      name: a.name, sub: SUB[a.id] || H[a.hat],
+      opts: N.map((label, i) => ({ label, on: s.lv[a.id] === i ? 'true' : 'false', off: off, pick: () => this.setLevel(a.id, i) })),
+      ask: !!a.trust && s.trust === 'ask' && s.lv[a.id] === 1 && !off,
+      askLead: a.trust || '', askText: 'Soll der Core Trigger selbst anpassen und dir im Journal berichten?',
+      raise: () => this.setLevel(a.id, 2), later: () => this.setState({ trust: 'later' })
+    }));
+    const autoNote = s.rule ? 'Im Regelmodus gelten nur feste Regeln. Die Stufen greifen wieder, sobald der Core zurück ist.' : s.stopped ? 'Not-Aus ist aktiv. Der Core handelt in keinem Bereich, bis du fortsetzt.' : 'Wie viel der Core selbst tun darf, stellst du pro Bereich ein. Nach vielen angenommenen Vorschlägen fragt er, ob er mehr übernehmen soll.';
+
+    // healing and trials
+    const heal = [
+      { ic: IC.ram, t: 'Speicher knapp, 2 Agenten verlegt', d: 'Von 1,2 GB auf 4,8 GB frei. Prüfer-2 und Doku-Schreiber laufen auf dem Server weiter.', time: '11:42' },
+      { ic: IC.gauge, t: 'Codex fast voll, Aufgaben umgeleitet', d: '3 neue Aufgaben gingen an Kimi K3, statt zu warten.', time: '10:05' },
+      { ic: IC.pulse, t: 'Planer hing, wieder angestoßen', d: '24 min ohne Ausgabe. Nach einem Anstoß lief er weiter.', time: '08:51' }
+    ];
+    const trials = s.trials.map((t) => ({ name: t.name, day: t.day, pct: Math.round(t.day / 7 * 100), lead: t.lead, eff: t.eff, hasNote: !!t.note, note: t.note || '', cls: t.good ? '' : 'flat', end: () => this.endTrial(t.id) }));
+
+    const tabs = [
+      { k: 'req', label: 'Anträge', n: String(D.REQ.length), need: needYou },
+      { k: 'auto', label: 'Autonomie', n: '', need: false },
+      { k: 'heal', label: 'Heilung', n: String(s.trials.length), need: false }
+    ].map((t) => ({ id: 'tab-' + t.k, label: t.label, n: t.n, hasNeed: t.need, sel: s.tab === t.k ? 'true' : 'false', pick: () => this.setState({ tab: t.k }) }));
+
+    return {
+      themeClass: (this.props.dunkel ?? false) ? 'dark' : '',
+      stopped: s.stopped,
+      stop: () => this.setState({ stopped: true }),
+      resume: () => this.setState({ stopped: false }),
+      rule: s.rule, ruleA: s.rule ? 'true' : 'false',
+      toggleRule: () => this.setState({ rule: !this.state.rule }),
+      hats,
+      mdlNote: s.rule ? 'Beispielzustand' : 'wechselt selbst',
+      chain,
+      q: s.q, askOff: off,
+      setQ: (e) => this.setState({ q: e && e.target ? e.target.value : '' }),
+      submit: () => this.submit(),
+      resPlan: isPlan, resMsg: !isPlan, plan, msg, examples,
+      apply: () => this.apply(),
+      cancel: () => this.setState({ res: 'cancelled' }),
+      jfs, report, days, jEmpty: days.length === 0,
+      jAll: () => this.setState({ jf: 'alle' }),
+      tabs, tabId: 'tab-' + s.tab,
+      isReq: s.tab === 'req', isAuto: s.tab === 'auto', isHeal: s.tab === 'heal',
+      reqs, areas, locked: D.LOCKED, autoNote,
+      heal, trials, noTrials: trials.length === 0, trialNote: s.rule,
+      hasProp: s.prop === 'open',
+      startProp: () => this.startProp(),
+      skipProp: () => this.setState({ prop: 'later' })
+    };
+  }
+}
+</script>
+</body>
+</html>
