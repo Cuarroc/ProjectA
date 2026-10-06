@@ -1,0 +1,31 @@
+/* V2-F1 materials. Not imported by the app.
+   chrome: sidebar, top bar, sheets. glass: cards, tables, editors.
+   A material nested inside either one drops the blur and uses the tint. */
+
+.g-chrome,
+.g-glass {
+  border: 1px solid var(--g-line);
+  box-shadow: var(--g-spec), var(--g-shadow);
+  border-radius: var(--g-r-panel);
+}
+
+.g-chrome {
+  background: var(--g-chrome-bg);
+  -webkit-backdrop-filter: var(--g-chrome-blur);
+  backdrop-filter: var(--g-chrome-blur);
+}
+
+.g-glass {
+  background: var(--g-content-bg);
+  -webkit-backdrop-filter: var(--g-content-blur);
+  backdrop-filter: var(--g-content-blur);
+}
+
+.g-glass .g-glass,
+.g-chrome .g-glass,
+.g-glass .g-chrome {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--g-tint);
+  box-shadow: none;
+}
