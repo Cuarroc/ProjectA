@@ -1,19 +1,19 @@
 # Plan v2.0 (Entwurf, der Nutzer entscheidet)
 
-Stand 06.10.2026, Basis `origin/main` 719426c (zuletzt per `git fetch` am 06.10. geprüft). Dieser Entwurf ändert nichts an `docs/PLAN.md` und nichts an v1.6.0 ([`../v1.6.0/plan.md`](../v1.6.0/plan.md)). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 7 beantwortet hat und dieser PR gemergt ist (Tor G0). Eingaben: die 24 Boards „Glass Leitstand“ (`docs/design/2026-10-ui-v2/glass/`), die Bestandsaufnahme [`inventory.md`](inventory.md) (70 Teile) und die Bewertung des Dev-HQ in [`dev-hq.md`](dev-hq.md). Rechenweg der Größenzahlen: [`size-evidence.md`](size-evidence.md).
+Stand 06.10.2026, Basis `origin/main` 01a0bf7 (`git fetch` am 06.10.; Zeilennummern im Text galten an 719426c und wurden nur dort neu geprüft, wo es unten steht). Dieser Entwurf ändert nichts an `docs/PLAN.md` und nichts an v1.6.0 ([`../v1.6.0/plan.md`](../v1.6.0/plan.md)). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 7 beantwortet hat und dieser PR gemergt ist (Tor G0). Eingaben: die 24 Boards „Glass Leitstand“ (`docs/design/2026-10-ui-v2/glass/`), die Bestandsaufnahme [`inventory.md`](inventory.md) (70 Teile), die Bewertung des Dev-HQ in [`dev-hq.md`](dev-hq.md). Anhänge: [`core.md`](core.md) (die App-KI), [`mapping.md`](mapping.md) (Zuordnung aller offenen Pakete), [`evidence-r2.md`](evidence-r2.md) (Belege der 36 Ergänzungen), [`size-evidence.md`](size-evidence.md) (Rechenweg der Größenzahlen). **Runde 2 (06.10.):** Core, Ausführung, 36 Ergänzungen, ein einziges Plandokument.
 
-Nutzerentscheidungen vom 06.10.2026 (verbindlich): (1) v2.0 ist der Entwurf mit echter Funktion, als **ein** großes Release, keine Zwischenreleases v1.7 bis v1.9; (2) das Fundament startet **parallel** zu v1.6.0, ohne die vier Nahtstellen und ohne Dateien offener PRs; (3) die Paketgrößenregel darf sich ändern; (4) jeder Agent läuft wahlweise auf diesem PC, in der Cloud des Anbieters oder auf einem eigenen Server über SSH.
+Nutzerentscheidungen vom 06.10.2026 (verbindlich): (1) v2.0 ist der Entwurf mit echter Funktion, als **ein** großes Release, keine Zwischenreleases v1.7 bis v1.9; (2) das Fundament startet **parallel** zu v1.6.0, ohne die vier Nahtstellen und ohne Dateien offener PRs; (3) die Paketgrößenregel darf sich ändern; (4) jeder Agent läuft wahlweise auf diesem PC, in der Cloud des Anbieters oder auf einem eigenen Server über SSH; (5) v2.0 bekommt **eine** App-KI mit Rechten, den Core ([`core.md`](core.md)); (6) die Ausführung läuft in AgentsRoom ohne Leerlauf (Abschnitt 4a); (7) alle 36 Ergänzungen sind aufgenommen, und dieser Plan wird nach der Freigabe das **einzige** Plandokument (Abschnitt 9).
 
 ## 1. Ziel und „fertig“
 
 **Ziel.** Die 24 Bildschirme des Entwurfs sind in der App echt: gleiche Sprache (Glas, hell und dunkel, sechs Zustandsformen, Bewegung), echte Daten aus Rust und SQLite, und hinter jedem Knopf eine Funktion, die ihre Wirkung belegt. Ein Bildschirm mit erfundenen Daten ist nie fertig: Gibt es das Backend noch nicht, zeigt der Bildschirm den ehrlichen Zustand („noch nicht verbunden“, „aus, gesperrt bis …“).
 
-**Fertig ist v2.0, wenn alles gilt (jede Zeile ist ein Befehl oder eine Prüfung mit Beleg):**
+**Fertig ist v2.0, sobald der Kern (Abschnitt 1a) echt läuft und alles unten gilt (jede Zeile ist ein Befehl oder eine Prüfung mit Beleg). Alle übrigen Bildschirme werden fertig gebaut, liegen aber standardmäßig hinter Funktionsschaltern (Abschnitt 1a); 2.x schaltet sie ohne neues großes Release frei.**
 
 | # | Kriterium | Messung |
 |---|---|---|
-| 1 | 24 von 24 Bildschirmen erreichbar, jeder mit echter Datenquelle | Je Bildschirm ein Test gegen Store oder HTTP-Router, nicht gegen eine Attrappe (Muster: M4-E2E-14, `docs/PLAN.md`); die Tabelle „Datenquelle je Datenblock“ steht im PR des Bildschirms. Gesamtlauf: V2-ACC1 |
-| 2 | Aussehen entspricht dem Board | Screenshot 1440×900, hell und dunkel, je Bildschirm angesehen und mit dem Board verglichen (48 Bilder); Abweichungen stehen im PR |
+| 1 | Jeder Kern-Bildschirm (1a) erreichbar mit echter Datenquelle; jeder übrige gemergte Bildschirm hinter seinem Schalter: aus = Route fehlt und kein Backend-Aufruf, an = echte Datenquelle | Je Bildschirm ein Test gegen Store oder HTTP-Router, nicht gegen eine Attrappe (Muster: M4-E2E-14, `docs/PLAN.md`); die Tabelle „Datenquelle je Datenblock“ steht im PR des Bildschirms. Gesamtlauf: V2-ACC1 |
+| 2 | Aussehen entspricht dem Board | Screenshot 1440×900, hell und dunkel, je Bildschirm (Kern, übrige mit Schalter an) angesehen und mit dem Board verglichen (bis zu 50 Bilder); Abweichungen stehen im PR |
 | 3 | Kontrast und Tastatur | `node scripts/contrast-check.mjs` Exit 0 (läuft schon in `npm run build`, `package.json:18`), erweitert auf die neue Tokendatei; je Bildschirm ein Test, dass jedes bedienbare Element per Tab erreichbar ist und der Fokusring sichtbar bleibt |
 | 4 | Ein Zustandswörterbuch | `rg -ln -e '--state-' src` trifft nach V2-ACC1 nur noch `src/design/`; keine zweite Definition der sechs Zustände |
 | 5 | Zwei Sprachen | Test auf Schlüsselgleichheit de/en, Exit 0; je Bildschirm Screenshot in beiden Sprachen |
@@ -23,8 +23,30 @@ Nutzerentscheidungen vom 06.10.2026 (verbindlich): (1) v2.0 ist der Entwurf mit 
 | 9 | Dauerbetrieb bleibt, was er ist | Aus, bis der Nutzer ihn selbst einschaltet; kein neuer Selbststart ohne Freigabe (AGENTS.md, „Development loop“) |
 | 10 | Fernansicht | Gekoppeltes Gerät sieht den Leitstand, antwortet auf „Braucht dich“ und stoppt; `merge` und `start` liefern 403 (V2-H4) |
 | 11 | Release | Installation von v2.0 über den Updater am PC des Nutzers (Drill und Signatur: Nutzer, wie bei v1.5.1) |
+| 12 | Core | Abnahmen aus [`core.md`](core.md), Abschnitt 5, je Fähigkeit; Sicherheitsreview V2-SEC-1 ohne offenen Befund „hoch“ |
+| 13 | Nutzerabnahme | Je Welle und für den Kern: Beta-Build, Klick-Checkliste (höchstens 10 Punkte), Bildschirmvideo, „neu / bewiesen / nicht abgedeckt“; der Nutzer gibt frei, was er gesehen hat (V2-UAT-1) |
+| 14 | Leitzahl | Nicht mehr „gemergte PRs“, sondern: Kernteile mit bestandener Nutzerabnahme und Funktionen, die ein Tester benutzt hat (V2-KPI-1) |
 
 **Nicht Teil von v2.0:** ein eingeschalteter Dauerbetrieb, ein Hintergrunddienst bei geschlossener App, Zugang aus dem Internet, Geldausgaben.
+
+## 1a. Kern und Schalter
+
+**Kern** sind die Teile, ohne die ProjectA 2.0 sein Versprechen nicht hält („Grün heißt bewiesen“, „Kein Modell prüft sich selbst“, Kontrolle über Kosten und Stopp). Alle anderen Bildschirme sind gebaut, aber ausgeschaltet (Paket V2-FLAG-1: ein Schalterverzeichnis, Standard aus, Schalten über die vorhandene Einstellung; nichts wird öffentlich ohne Freigabe des Nutzers). Die Beweis-Schicht steht in der ersten Welle nach dem Fundament, weil zwei der drei Alleinstellungsmerkmale laut Systemkarte nicht oder nur teilweise gebaut sind.
+
+| Kernteil | Pakete | Abnahme (messbar) |
+|---|---|---|
+| Beweis-Schicht: Beweise und Merge, Fremd-Review, Merge nur über die Queue | V2-B9, B10, MQ1, ST-B1, S03 | Am Test-PR: Beleg trägt Gate, Exit-Code, SHA; neuer Commit macht ihn „veraltet“; `rg -n build_pr_merge_args src-tauri/src` trifft nur die Einreihung; gleiche Modellfamilie wird abgelehnt; ein Queue-Lauf beobachtet |
+| Leitstand | V2-S01a, S01b | Karte je laufender Agent aus dem Store; Antwort auf „Braucht dich“ erreicht das Terminal (Test); Auftrag mit offenem Vorgänger zeigt den Grund |
+| Agent starten, mit Ausführungsort | V2-S02, B5, B6a bis c, CLI-1, CTX | Kriterium 7: je ein Lauf auf PC und eigenem Server mit Lauf-ID; Ort grau, wenn nicht beobachtet verfügbar |
+| Kontingente und Failover | V2-B1, B2, S05a | „Jetzt prüfen“ löst die echte Probe aus; Pflichtregel „Pause statt Rechnung“ nicht abschaltbar; Treffer des Limits wechselt nach Regel den Anbieter |
+| Not-Aus | V2-F8 (Schale), B6b (Server), CORE-10 | Messung höchstens 10 s auch für einen Server-Lauf; der Core wendet danach nichts an |
+| Core · Steuerung (Vorschlagen und Selbst mit Bericht) | V2-CORE-1 bis 10, S25, SEC-1 | [`core.md`](core.md), Abschnitt 5; Board `glass/Core.dc.html` |
+| Ersteinrichtung | V2-S19, B28 | Der Nutzer durchläuft die Klick-Checkliste (≤ 10 Punkte) in einem frischen Profil bis zum ersten Agenten; Test mit Fixture-Repo |
+| Demo-Modus | V2-DEMO-1 | Beispielprojekt ohne Abo: im Demo-Modus null Anbieter-Aufrufe (Zähler), jede Kernseite trägt „Demo“ |
+
+**Querschnitt des Kerns:** V2-GATE-DESIGN, V2-GATE-PERF, V2-GATE-SIZE, V2-E2E-0 (ein Playwright-Durchlauf je Kernseite als Gate), V2-MIG-1, V2-UPD-1, V2-SEC-0/1, V2-UAT-1.
+
+**Hinter Schaltern (gebaut, Standard aus):** V2-S04, S05b, S06 bis S18, S20 bis S24. Für Orte und Ersteinrichtung gibt es die Vorgabe schon im Start-Sheet und im Core-Bildschirm; die Seiten Personas (S09) und Projekteinstellungen (S18) sind dafür keine Voraussetzung. Was beim Kern-Release noch nicht gemergt ist, läuft in 2.x weiter, ohne ein großes Release zu blockieren (Frage 2).
 
 ## 2. Fundament zuerst (startbar am Tag von G0, keine Nahtstelle)
 
@@ -52,7 +74,7 @@ Warum jetzt: Alle 24 Boards wiederholen denselben Block aus 215 Zeilen (`glass/M
 
 **Standardabnahmen** (jede Zeile unten nennt nur, was dazukommt):
 - **R** (Rust): roter Test zuerst (`Test-First: <Pfad>::<Test>`), dann `cargo nextest run --profile ci` Exit 0 und `bash scripts/ci/gates.sh lane prepush` Exit 0.
-- **U** (Bildschirm): `npm run build` Exit 0 (enthält den Kontrast-Check), `npx vitest run <Ordner>` Exit 0, ein Test gegen echte Daten (nicht Attrappe), Screenshot 1440×900 hell und dunkel, angesehen und mit dem Board verglichen, Tab-Reihenfolge getestet, beide Sprachen, `prepush` Exit 0.
+- **U** (Bildschirm): `npm run build` Exit 0 (enthält den Kontrast-Check), `npx vitest run <Ordner>` Exit 0, ein Test gegen echte Daten (nicht Attrappe), Screenshot 1440×900 hell und dunkel, angesehen und mit dem Board verglichen, Tab-Reihenfolge getestet, beide Sprachen, bei Kernseiten ein Playwright-Durchlauf (V2-E2E-0), `prepush` Exit 0.
 - **D**: `npm run dev:agent-check` Exit 0.
 
 ### 3.1 Fundament (Welle 0)
@@ -67,7 +89,7 @@ Warum jetzt: Alle 24 Boards wiederholen denselben Block aus 215 Zeilen (`glass/M
 | V2-F5a | Tabs, Sheet, Toast | fe | – | B | M | V2-F4a | terra | Test: Fokusfalle, Esc, Pfeiltasten |
 | V2-F5b | Tabelle, Schlüssel-Wert, Beweis-Chip, `HonestState` | fe | – | B | M | V2-F3, V2-F4a | terra | Test: `HonestState` zeigt nie Zahlen |
 | V2-F6 | de/en-Wörterbuch, Hook, Sprachwahl (Einstellung über vorhandenes `settings`) | fe | – | B | M | V2-F1 | terra | Schlüsselgleichheit-Test Exit 0; Prüfung gegen fest verdrahtete Texte |
-| V2-F7 | Screenshot- und Tabulator-Werkzeug (`scripts/dev/`); ändert `package.json`, daher nach #567 | ci | – | B | M | #567 gemergt | glm-5.3 | `node scripts/dev/shot.mjs --route <r>` erzeugt 4 Bilder (2 Themen × 2 Sprachen); Test mit Fixture |
+| V2-F7 | Screenshot- und Tabulator-Werkzeug (`scripts/dev/`); ändert `package.json` (die Kette FLOW-05 #567 ist gemergt) | ci | – | B | M | G0 | glm-5.3 | `node scripts/dev/shot.mjs --route <r>` erzeugt 4 Bilder (2 Themen × 2 Sprachen); Test mit Fixture |
 | V2-F8 | Schale mit Not-Aus in der Kopfleiste | fe | – | B | M | F3, F4a, F5a | terra | U; Test: `EmergencyStop` ist auf jeder Route im DOM |
 | V2-F9 | Schale in `App.tsx` einhängen, hinter dem Schalter D1 | fe | – | B | S | V2-F8, D1 | terra | Schalter aus: Bild unverändert (Screenshot-Vergleich gegen `main`); an: Schale sichtbar |
 | V2-O0 | `pa-orch` ist nicht im Repo (`ls pa-orch*` leer). Der Koordinator legt `docs/plan/v2.0/pa-orch.md` an: Skripte, Eingaben, Ausgaben, was nach V2-O1 bis O4 wandert | doc | – | C | S | G0, Koordinator | Koordinator | D; jede Funktion aus dem Inventar (Orchestrator, Chief of Staff, Wachhund, Pipeline, Startprüfung, Server-Ort) hat dort eine Zeile |
@@ -125,28 +147,28 @@ Jedes Bündel hängt am Kern aus 3.2. Die Domänenlogik liegt in neuen Dateien (
 | V2-ST-A3 | Tabellen: Failover-Regeln; Spalten der Warteschlange für Vorgänger und Naht | st | store | A | M | V2-ST-A2, V2-B2, V2-B4 | astra | wie A1; alte Einträge bleiben lesbar |
 | V2-API-A | Routen und Befehle für Bündel A (`api/<name>_routes.rs` + Haken in `api.rs`) | api | api | A | M | V2-ST-A3 | astra | HTTP-Test gegen echten Router + Store je Route; Rechte-Test (403 ohne Recht) |
 | V2-MN-A | Tauri-Befehle für Bündel A (`main.rs` + `ApiBackend`, bleibt dort bis nach M4 laut Entscheidung F1 in `docs/PLAN.md`) | mn | main | A | M | V2-ST-A3 | astra | Test je Befehl; `rg -c invoke_handler src-tauri/src/main.rs` bleibt 1 (eine Befehlsliste) |
-| V2-ST-B1 | Tabellen: Beweise (Gate-Läufe, Reviews, Entwertung) – prüfen, was `store/development_runs.rs` schon abdeckt, bevor neu gebaut wird | st | store | A | M | V2-B9, V2-B10 | astra | wie A1 |
+| V2-ST-B1 | Tabellen: Beweise (Gate-Läufe, Reviews, Entwertung) – prüfen, was `store/development_runs.rs` schon abdeckt, bevor neu gebaut wird. **Erstes Paket der store-Spur** (Beweis-Schicht zuerst, 1a) | st | store | A | M | V2-B9, V2-B10 | astra | wie A1 |
 | V2-ST-B2 | Tabellen: Checkpoints, Lauf-Schritte (Wiederholung) | st | store | A | M | V2-ST-B1, V2-B8, V2-B25 | astra | wie A1; Secret-Scan über Testdaten |
 | V2-ST-B3 | Tabellen: Notizen (Gedächtnis) und Lessons, Ideen, Bugs, Entscheidungen | st | store | A | M | V2-ST-B2, V2-B12, V2-B13, V2-B14 | astra | wie A1; `lessons.json` wird einmal migriert (V2-H5) |
-| V2-API-B | Routen für Bündel B | api | api | A | M | V2-ST-B3, V2-API-A | astra | wie API-A |
-| V2-MN-B | Tauri-Befehle für Bündel B | mn | main | A | M | V2-ST-B3, V2-MN-A | astra | wie MN-A |
+| V2-API-B | Routen für Bündel B. **Schnitt:** Scheibe B-Kern (Beweise, Review, Queue-Einreihung) hängt nur an V2-ST-B1; Scheibe B-Rest (Notizen, Ideen, Bugs, Lessons) an V2-ST-B3 | api | api | A | M | V2-ST-B1 (Kern; steht in der api-Spur vor API-A), V2-ST-B3 und V2-API-A (Rest) | astra | wie API-A |
+| V2-MN-B | Tauri-Befehle für Bündel B, gleicher Schnitt B-Kern / B-Rest | mn | main | A | M | V2-ST-B1 (Kern; steht in der main-Spur vor MN-A), V2-ST-B3 und V2-MN-A (Rest) | astra | wie MN-A |
 | V2-ST-C1 | Tabellen: Trigger und Läufe, Ablauf-Vorlagen und Läufe | st | store | A | M | V2-B15, V2-B16, V2-ST-B3 | astra | wie A1 |
 | V2-ST-C2 | Tabellen: Geräte und Kopplung, Benachrichtigungen, Kostenbuch, Verbesserungs-Schalter, Nutzungsprotokoll | st | store | A | M | V2-ST-C1, V2-B11, V2-B20, V2-B21, V2-B26 | astra | wie A1 |
 | V2-API-C | Routen für Bündel C inklusive Kopplung und eingeschränkter Rechte (V2-H4) | api | api | A | 2×M | V2-ST-C2, V2-API-B | astra | wie API-A; gekoppeltes Gerät: `merge`, `start` → 403 |
 | V2-MN-C | Tauri-Befehle für Bündel C; **Sicherer Start**: nach Neustart bleiben alte Aufträge pausiert (heute `main.rs:295`, Aufruf `:4006`; prüfen, was fehlt) | mn | main | A | M | V2-ST-C2, V2-MN-B | astra | Test: Neustart mit zwei `dispatched`-Einträgen startet keinen Agenten |
-| V2-PA-1 | `pa`: sechs Zustände mit denselben Wörtern wie die App; baut auf der Zerlegung ARCH-D6a (#579) auf | pa | pa | A | M | #579 gemergt | astra | Test: `pa`-Ausgabe nennt für jeden Zustand dasselbe Wort wie `src/design/` (gemeinsame Fixture) |
+| V2-PA-1 | `pa`: sechs Zustände mit denselben Wörtern wie die App; baut auf der gemergten Zerlegung ARCH-D6a (#579) auf | pa | pa | A | M | G0 | astra | Test: `pa`-Ausgabe nennt für jeden Zustand dasselbe Wort wie `src/design/` (gemeinsame Fixture) |
 | V2-PA-2 | `pa`-Befehle für die neuen Bereiche (Personas, Orte, Ideen, Bugs, Gedächtnis), damit Agenten sie bedienen können | pa | pa | A | M | V2-PA-1, V2-API-C | astra | Test je Befehl; V2-B26-Handbuch nennt sie |
 
 ### 3.4 Bildschirme (je Board; „Daten“ nennt, was echt sein muss)
 
-Größen sind Schätzungen aus den Boardzeilen ohne den gemeinsamen Block (`wc -l`: 471 bis 1527 Zeilen je Board, Summe 14879; abzüglich 24 × 215 ≈ 9700 Zeilen; Umrechnung in Diffzeilen **prüfen**, erst das erste Paket misst sie). Alle Bildschirme: U, hängen am Schalter D1 und an V2-F1 bis V2-F9.
+Größen sind Schätzungen aus den Boardzeilen ohne den gemeinsamen Block (`wc -l`: 471 bis 1527 Zeilen je Board, Summe 14879; abzüglich 24 × 215 ≈ 9700 Zeilen; Umrechnung in Diffzeilen **prüfen**, erst das erste Paket misst sie). Alle Bildschirme: U, hängen am Schalter D1 und an V2-F1 bis V2-F9. **Kern-Bildschirme** (1a): S01a, S01b, S02, S03, S05a, S19, S25; alle anderen sind gebaut und hinter einem Funktionsschalter (V2-FLAG-1).
 
 | ID | Bildschirm (Board) | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Daten und zusätzliche Abnahme |
 |---|---|---|---|---|---|---|---|---|
 | V2-S01a | Leitstand (Main): Karten, Filter, „Braucht dich“ mit Antwort im Stream, Beweis je Karte; ersetzt `BoardView`/`WorkerPanel`-Optik, restylt `QuestionsView` | fe | – | B | 3×M | F9, V2-B9 (Beweis-Chip nur mit Daten, sonst `HonestState`) | terra | `get_board_state` (`main.rs:1720`), `answer_question`; Antwort erreicht das Terminal (Test) |
 | V2-S01b | Leitstand, Betrieb: Warteschlange, Startprüfung, Wachhund, Sicherer Start, Grenzen je Job | fe | – | B | M | S01a, MN-A, V2-B3, V2-B4, V2-B22, V2-B23 | terra | Test: Auftrag mit Vorgänger zeigt den Grund |
 | V2-S02 | Agent starten (AgentStarten): Persona, Ort, CLI, Modell, Aufwand, MCP, Failover, Startprüfung | fe | – | B | 3×M | MN-A, V2-B5, V2-CLI-1, V2-CTX | terra | Modellname „beim Start beobachtet“ (`status.rs:1888`); Ort grau, wenn nicht verfügbar |
-| V2-S03 | Beweise & Merge (Beweise): Kette, Gates je Lane, Fremd-Review, NICHT ABGEDECKT, Queue-Position | fe | – | A | 3×M | MN-B, V2-MQ1, V2-B9, V2-B10 | terra | Beleg am Commit (Test: neuer Commit → „stale“); Knopf „In die Warteschlange“ reiht ein, kein direkter Merge |
+| V2-S03 | Beweise & Merge (Beweise): Kette, Gates je Lane, Fremd-Review, NICHT ABGEDECKT, Queue-Position | fe | – | A | 3×M | MN-B (Scheibe B-Kern), V2-MQ1, V2-B9, V2-B10 | terra | Beleg am Commit (Test: neuer Commit → „stale“); Knopf „In die Warteschlange“ reiht ein, kein direkter Merge |
 | V2-S04 | Aktivität & Wiederholung (Aktivitaet): Protokoll, Schritt-für-Schritt-Wiederholung | fe | – | B | 2×M | MN-B, V2-B25 | terra | Prüfpfad `store/audit.rs:11-13` angezeigt; „Als Lektion merken“ schreibt ins Gedächtnis |
 | V2-S05a | Kontingente & Failover (Kontingente): drei Fenster, Probe, Regeln als Sätze, Protokoll | fe | – | B | 2×M | MN-A, V2-B1, V2-B2 | terra | „Jetzt prüfen“ löst die echte Probe aus |
 | V2-S05b | Kontingente: Zeugnisse und Kostenbuch | fe | – | B | M | MN-C, V2-B21 | terra | Summe der Zeilen = Summe der Ereignisse |
@@ -168,6 +190,7 @@ Größen sind Schätzungen aus den Boardzeilen ohne den gemeinsamen Block (`wc -
 | V2-S21 | Benachrichtigungen & Handy | fe | – | B | 2×M | MN-C, V2-B11, V2-H4 | terra | Kopplungs-QR echt; Handy-Rechte nur antworten und stoppen |
 | V2-S22 | Ablauf-Vorlagen | fe | – | B | 2×M | MN-C, V2-B16 | terra | „Mit Team starten“ reiht ein; Laufstatistik aus echten Läufen |
 | V2-S23 | Erweitert · Verbesserungen | fe | – | B | 3×M | MN-C, V2-B20 | terra | Zahl der Schalter = Zahl mit belegter Wirkung (D8) |
+| V2-S25 | **Core · Steuerung** (Board `glass/Core.dc.html`, vom Koordinator angelegt): Anträge und Diff-Vorschau, Journal mit Rücknahme, Stufen je Bereich, Probezeiten, Tagesbericht, Satz-Eingabe. Kern | fe | – | B | 3×M | MN-K, V2-CORE-6, V2-CORE-9, F9 | terra | Alle Daten aus Journal und Register; „Selbst mit Bericht“ in Geld, Rechte, Sicherheit, Löschen, Releases nicht wählbar (Test); Not-Aus sichtbar |
 | V2-S24 | Systemkarte: erzeugt aus einer maschinenlesbaren Fassung von `inventory.md`; heutiger Entwurf hat von Hand gepflegte Stände | fe + ci | – | B | 2×M | V2-F9 | terra | Test: jede Kachel hat eine Zeile im Inventar; Stand „gebaut“ nur mit Verweis auf ein gemergtes Paket |
 
 ### 3.5 Orchestrierung in der App
@@ -180,6 +203,9 @@ Heute liegt vieles in `pa-orch` außerhalb des Repos (`ls pa-orch*` leer; nicht 
 | V2-O2 | Chief of Staff: Übergaben sichtbar, nur wichtige Fragen erreichen den Nutzer (Filter-Regel als Sätze) | fR | – | B | M | V2-O1 | sol | Test: unwichtige Frage wird im Übergabe-Log gesammelt, wichtige als „Braucht dich“ |
 | V2-O3 | Drei Teams parallel: Abhängigkeiten und Naht-Spur sichtbar, kein Zombie-Auftrag (nutzt `lane_guard.rs`, B4) | fR | – | A | M | V2-O1, V2-ST-A3 | astra | Test: zwei Aufträge derselben Naht laufen nacheinander |
 | V2-O4 | Mergify-Pipeline in der App als **Vorschlag**: CI rot → Fix-Auftrag vorgeschlagen, Konflikt → Merge-Auftrag vorgeschlagen, aus der Queue geworfen → ein Versuch vorgeschlagen; der Nutzer bestätigt (Selbstausführung wäre Dauerbetrieb) | fR | – | A | M | V2-O1, V2-MQ1 | astra | Test: Vorschlag entsteht, nichts startet ohne Bestätigung |
+
+| V2-O5 | Review-Fahrer und Queue-Freigabe als getesteter Code: wählt Prüfer nach Stufe und Familie (B9, B10), sammelt Befunde, setzt `review-ok` erst bei vollständiger Disposition ohne offenen Befund „hoch“, nie für den eigenen Autor | fR | – | A | M | V2-O1, V2-B9, V2-B10 | astra | Test: Stufe A ohne zwei Prüfer anderer Anbieter → kein `review-ok`; der Pfad `api/agent_access.rs` ergibt A (Fall #578, Beleg in `evidence-r2.md`) |
+| V2-DOG-1 | **Dogfood-Tor DG1 „ProjectA wird mit ProjectA gebaut“:** die Regeln aus `pa-orch` (Stufen-Einordnung = B9, Review-Fahrer = O5, Queue-Freigabe = MQ1/O4, Wachhund = B22, Reserve = EX-4) laufen als getesteter Code im Repo und sind der Hut „Arbeit“ des Core. Danach zieht die Entwicklung Schritt für Schritt von `pa-orch` und AgentsRoom in die App; jeder Schritt ist umkehrbar | doc + Messung | – | C | S | V2-O0, O5, B22, EX-4 | Koordinator | je Regel: Test grün und eine Woche Parallellauf App gegen `pa-orch` ohne Abweichung; Rückweg: `pa-orch` bleibt startbar, bis der Nutzer den Schritt freigibt |
 
 ### 3.6 Fernansicht und Dev-HQ
 
@@ -200,7 +226,7 @@ Begründung und Belege: [`dev-hq.md`](dev-hq.md), Abschnitte 3 bis 6.
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme |
 |---|---|---|---|---|---|---|---|---|
 | V2-I18N | Übersetzungsdurchgang: Lücken, Zeichenlängen, Datum und Zahl je Sprache | fe | – | B | 2×M | alle V2-S | glm-5.3 | Kriterium 5 |
-| V2-ACC1 | Gesamtabnahme: 24 Bildschirme × 2 Themen × 2 Sprachen, Tabulator, Kontrast, Datenquellen-Test, Gate gegen zweite Zustandsdefinition | fe + ci | – | B | M | alle V2-S | terra | Kriterien 1 bis 6 mit Befehlen im PR |
+| V2-ACC1 | Gesamtabnahme: alle gemergten Bildschirme (24 Boards plus Core, Schalter an) × 2 Themen × 2 Sprachen, Tabulator, Kontrast, Datenquellen-Test, Gate gegen zweite Zustandsdefinition | fe + ci | – | B | M | alle V2-S | terra | Kriterien 1 bis 6 mit Befehlen im PR |
 | V2-RULE1 | AGENTS.md: neue Größenregel (nur nach Freigabe von D3) | doc | – | C | S | D3 | Koordinator | D |
 | V2-REL | Release v2.0: Update-Drill, Signatur, Tag, Veröffentlichung | N | – | – | – | V2-ACC1, E3, E14 (offen in `docs/PLAN.md`) | Nutzer | Kriterium 11 |
 
@@ -280,38 +306,146 @@ Begründung und Belege: [`dev-hq.md`](dev-hq.md), Abschnitte 3 bis 6.
 | App-Wissen der Agenten | V2-B26, V2-S16, V2-PA-2 |
 | Bewegung | V2-F2 |
 | Ausführungsort je Agent | V2-LOC-0, V2-B5, V2-B6a/b/c, V2-S02, V2-S09, V2-S18 |
+| Core (Steuerung, Arbeit, Aufmerksamkeit) | V2-CORE-1 bis 10, V2-CORE-AT, V2-S25, V2-O1 bis O5; Beschreibung `core.md` |
+| Ausführung in AgentsRoom | V2-EX-1 bis EX-6 (Abschnitt 4a) |
+
+### 3.9 Core, Sicherheit und Architektur-Skizze (Kern)
+
+Beschreibung und Abnahmen je Fähigkeit: [`core.md`](core.md). Der Core ist **eine** App-KI mit drei Hüten (Steuerung, Arbeit = V2-O1 bis O5, Aufmerksamkeit = V2-O2 und V2-CORE-AT); ein zweiter Orchestrator entsteht nicht. Ein Schreiber je Einstellung, ein Journal, feste Grenzen im Code.
+
+| ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (zusätzlich zu R) |
+|---|---|---|---|---|---|---|---|---|
+| V2-ARCH-0 | **Architektur-Skizze vor Welle 1:** Datenmodell, Ereignisfluss und Rechte-Modell für Core-Journal, Anträge, Rechte-Stufen, Personas, Trigger und Webhooks; als ADRs in `docs/decisions.md` (dazu die st-Frage „Module gleichzeitig“ aus ADR-A7) | doc | – | C (Berater-Paar laut Auftrag) | M | G0 | Fable 5.1 + astra | ADRs nennen Tabellen, Module und Ereignisse; jedes spätere Core-, Trigger- und Persona-Paket nennt seinen ADR; beide Gegenprüfungen im PR |
+| V2-ARCH-1 | Nichts Neues in die Nähte: `scripts/ci/seam-budget.json` mit Zielzahl je Naht (Start 8091, 7227, 6490, 5133; nur sinkend), Regel „neue v2.0-Funktion = neues Modul, Naht nur Verdrahtung“, Zulage je Paket nur mit Label `seam-ok` | ci | – | B | M | G0 | glm-5.3 | roter Test auf präpariertem Fall; `architecture-drift.test.mjs` grün; Exit 0 auf `main`; kein Allowlisten ohne Begründung |
+| V2-SEC-0 | Bedrohungsmodell v2.0: Core, Webhooks, MCP, Server-Zugriff (SSH), Prompt-Injection aus Repo-Inhalten und Agentenpost; dazu der Prüfpunkt „Descriptor-Datei unter Unix“ | doc | – | A (Berater-Paar) | M | G0 | Fable 5.1 + astra | Tabelle Bedrohung → Maßnahme → Paket → Test; jede Zeile trägt eine Paket-ID, Befunde nur mit `Datei:Zeile` |
+| V2-SEC-1 | Sicherheitstests für den Core: Injection aus Repo und Agentenpost, Umgehung der Freigabe, feste Grenzen (Tests aus `core.md`, Abschnitt 6) | fR | – | A | M | V2-CORE-1, V2-CORE-2, V2-SEC-0 | astra | zwei Fremd-Reviews; Test: präpariertes Repo erzeugt keinen Eintrag außerhalb des Registers; läuft vor dem ersten „Selbst mit Bericht“ |
+| V2-SEC-2 | `planning_access` ohne Projektrahmen und die TOCTOU-Lücke (M4-Blocker in `docs/PLAN.md`); zuerst prüfen, ob der Befund noch gilt | api | api (prüfen) | A | S | V2-SEC-0 | astra | roter Test zuerst, sonst Bericht „gilt nicht mehr“ mit Beleg |
+| V2-CORE-1 | Register (Schlüssel → Besitzer, Bereich, Risikoklasse, Wirkstelle), Antrag, Änderungs-Journal (`key`, `old`, `new`, `reason`, `evidence`, `risk_class`, `rollback`), Serialisierung je Schlüssel; Kern ohne Datenbank | fR | – | A | M | V2-ARCH-0 | astra | Schlüssel ohne Besitzer nicht änderbar; zwei Anträge auf denselben Schlüssel nacheinander; Hilfs-Agent kann nur Anträge stellen |
+| V2-CORE-2 | Stufen je Bereich (Aus, Vorschlagen, Selbst mit Bericht) und die festen Grenzen in Rust: Geld, Rechte, Sicherheit, Löschen, Releases und die eigene Stufe sind immer nur Vorschlag; Vertrauenszähler; der Core erhöht seine Stufe nie | fR | – | A | M | V2-CORE-1 | astra | roter Test je feste Grenze, auch bei falsch gepflegtem Register |
+| V2-CORE-3 | Probezeit 24 h mit Messgröße, Toleranz und automatischer Rücknahme | fR | – | A | M | V2-CORE-1, V2-CORE-2 | astra | Test mit verschlechterter Messgröße: Rücknahme, vollständiger Eintrag; Wirkung ohne Messung bleibt Vorschlag |
+| V2-CORE-4 | Register füllen: Schlüssel der heutigen Einstellungen und der Pakete B2, B5, B15, B17, B20 mit Besitzer und Wirkstelle | fR | – | B | M | V2-CORE-1, V2-B20 | sol | jeder Schlüssel nennt seine Wirkstelle (`rg`-Beleg), sonst nicht im Register |
+| V2-ST-K1 | Tabellen: Journal (append-only, Trigger gegen UPDATE/DELETE), Anträge, Stufen, Probezeiten | st | store | A | M | V2-CORE-1 bis 3, V2-ST-B1 | astra | wie A1; UPDATE auf das Journal scheitert |
+| V2-API-K | Routen `api/core_routes.rs` + Haken in `api.rs` | api | api | A | M | V2-ST-K1, V2-API-A | astra | HTTP-Test je Route; Antrag ohne Run-Credential → 403; gekoppeltes Gerät kann nicht bestätigen |
+| V2-MN-K | Tauri-Befehle für den Core + Haken in `main.rs` | mn | main | A | M | V2-ST-K1, V2-MN-A | astra | Test je Befehl |
+| V2-CORE-5 | Selbstheilung: RAM knapp → Agenten auf Server oder Cloud (nur belegt verfügbare Orte), Kontingent nahe am Limit → Failover, stehengebliebener Agent → eine Meldung | fR | – | A | M | V2-CORE-3, V2-B2, V2-B3, V2-B5, V2-B22 | astra | je Fall ein Test mit Fixture |
+| V2-CORE-6 | Steuerung per Satz mit Diff-Vorschau; das Modell wählt nur aus einer vom Code erzeugten Liste erlaubter Änderungen | fR | – | A | M | V2-CORE-4, V2-SEC-1 | astra | Wert außerhalb des Registers abgelehnt; Vorschau zeigt alt und neu |
+| V2-CORE-7 | Optimierer: Verbesserungen als Einwochen-Versuche mit Messgröße | fR | – | B | M | V2-CORE-3, V2-B20, V2-B21 | sol | Versuch endet nach einer Woche mit Vergleich und ändert danach nichts ohne Bestätigung |
+| V2-CORE-8 | App-Wissen der Agenten pflegen („Wann was“-Regeln aus V2-B26) | fR | – | B | M | V2-B26, V2-CORE-1 | sol | Lücke zwischen `pa`-Befehlen und Handbuch wird zum Antrag |
+| V2-CORE-9 | Einstellungen erklären mit Verlauf; Tagesbericht in genau drei Zeilen | fR | – | B | M | V2-CORE-1 | sol | Test: drei Zeilen, jede mit Journal-Verweis |
+| V2-CORE-10 | Regelmodus ohne Kontingent (nie dunkel); Not-Aus stoppt den Core | fR | – | A | M | V2-CORE-2, V2-B1 | astra | Kontingent leer → Regeln greifen ohne Modellanfrage; Not-Aus: nichts wird angewendet, Messung mit der 10-s-Frist |
+| V2-CORE-AT | Aufmerksamkeit: Sammelkorb, festes Tagesfenster, Ausnahmen nur Not-Aus und Sicherheit; nachts laufen nur Aufträge ohne offene Entscheidung | fR | – | A | M | V2-O2, V2-B11, V2-CORE-2 | astra | Frage außerhalb des Fensters landet im Korb; Not-Aus bleibt laut |
+| V2-DEMO-1 | Demo-Modus: Beispielprojekt ohne Abos, für Tester und die Webseite | fR + fe | – | B | 2×M | V2-F9, V2-B28 | terra | Null Anbieter-Aufrufe im Demo-Modus (Zähler); Seiten tragen „Demo“ |
+| V2-FLAG-1 | Schalterverzeichnis für Seiten außerhalb des Kerns und Vorschau-Funktionen; Standard aus; Wirkung über die vorhandene Einstellung, keine neue Tabelle | fR + fe | – | B | M | G0 | terra | Schalter aus: Route fehlt, kein Backend-Aufruf; an: Route da; `rg -il featureFlag src` heute leer (Beleg), danach ein Ort |
+
+### 3.10 Ergänzungen: Gates, Abnahme, Betrieb, Recht, Lernen
+
+Alles Folgende ist aus den 36 Ergänzungen vom 06.10. (Zuordnung Punkt → Paket: [`evidence-r2.md`](evidence-r2.md), Abschnitt 2).
+
+| ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme |
+|---|---|---|---|---|---|---|---|---|
+| V2-GATE-SIZE | CI-Gate für die Größenregel: über der Grenze rot, außer mit Label `size-ok` vom Koordinator und einem Grund im PR-Text. Grenzwerte in einer Datei; bis D3 beantwortet ist, gilt 300 (Beleg: #579 kam mit 417 Diffzeilen) | ci | – | B | M | G0 | glm-5.3 | roter Test auf einem 417-Zeilen-Fall; mit `size-ok` grün; Exit 0 auf `main`; `gates.sh --list` führt es |
+| V2-GATE-DESIGN | Design-Gate aus den Audit-Skripten: Kopfzeile, Radien, Schalterfarbe, Zustandsformen, Kontrast, abgeschnittener Text ohne Titel. Die Skripte liegen nicht im Repo (Beleg `evidence-r2.md`); der Koordinator übergibt sie, `contrast-check.mjs` ist der Kontrast-Teil | ci | – | B | M | V2-F1, V2-F3, Skripte vom Koordinator | glm-5.3 | je Regel ein roter Fall; grün auf der Schale |
+| V2-GATE-PERF | Leistungsbudgets: Startzeit, RAM je Agent, Leerlauf-CPU. **Das Paket misst zuerst** (drei Läufe, Streuung), bevor es Grenzen festlegt | ci | – | B | M | G0 | sol | Messprotokoll im PR; Gate rot bei Überschreitung des gemessenen Budgets plus Toleranz |
+| V2-E2E-0 | Playwright-Rahmen: ein Durchlauf je Kernseite als Gate, schreibt Schritte und Bilder in ein Ablauf-Protokoll (`@playwright/test` ist vorhanden, `package.json:62`, keine neue Abhängigkeit) | ci + fe | – | B | M | V2-F7 | glm-5.3 | Durchlauf der Schale grün; Protokoll mit Bildern je Schritt |
+| V2-MAN-1 | Nutzerhandbuch aus denselben Abläufen (Schritt für Schritt mit Bildern), deutsch und englisch | doc | – | C | M | V2-E2E-0 | glm-5.3 | jede Kernseite hat ein Kapitel; Bilder stammen aus dem Durchlauf |
+| V2-UAT-1 | Nutzerabnahme je Welle: Beta-Build über den internen Kanal, Klick-Checkliste (höchstens 10 Punkte, einfache Worte), kurzes Bildschirmvideo, „neu / bewiesen / nicht abgedeckt“; Vorlage und Skript | doc + ci | – | C | S | V2-BETA-1 | glm-5.3 | Vorlage im Repo; erste Welle durchgespielt; der Nutzer gibt frei, was er gesehen hat |
+| V2-BETA-1 | Interner Beta-Kanal: Updater-Endpunkt und Release-Weg für Beta-Builds, nie öffentlich ohne Freigabe; Eingriff in `release.yml` | ci + N | – | A | M | G0, Freigabe des Nutzers | astra | Beta-Build erreicht nur den internen Kanal (Test mit Endpunkt); Veröffentlichung braucht den Nutzer |
+| V2-MIG-1 | Migration 1.5 → 2.0 mit Rückweg: Kopie einer echten v1.5.1-Datenbank durch alle neuen Migrationen, Vorab-Sicherung (`store.rs:859`), Rücksprung auf die Sicherung | fR | – | A | M | V2-ST-C2 | astra | Zeilenzahlen gleich; Rücksprung belegt; Drill am PC mit dem Nutzer |
+| V2-UPD-1 | Updater: Abbrechen-Knopf und Versionsanzeige nach dem Neustart (Lücken aus dem Update-Drill vom 06.10.; Beleg `evidence-r2.md`); Zusammenarbeit mit V2-R-06 | fe + mn | main (Haken in MN-C) | A | M | V2-MN-C | astra | Test: Abbrechen lässt die alte Version laufen; nach dem Neustart steht die neue Version da |
+| V2-BAK-1 | Sicherung und Wiederherstellung in der App (auf V2-B24) mit automatischem Wiederherstellungstest (Vorbild `scripts/restore-probe.sh`) | fR + fe | – | A | M | V2-B24 | astra | Test: Sicherung → frischer Ordner → Wiederherstellung → Prüfsumme gleich, läuft nächtlich |
+| V2-FB-1 | „Fehler melden“ mit einem Klick: Logs ohne Geheimnisse (Secret-Scan vor dem Senden), Opt-in, Standard ist ein lokales Paket ohne Netzwerk | fR + fe | – | A | M | V2-LEGAL-1 | astra | Test: Log mit Geheimnis wird nicht gesendet; ohne Zustimmung kein Netzwerkaufruf |
+| V2-LEGAL-1 | Rechtscheck vor dem Verkauf: Produktname, Domain, Markenrecherche; Nutzungsbedingungen der Anbieter für automatisierte Nutzung ihrer Abo-CLIs **mit Quellen** (ungeprüft gilt „prüfen“); Lizenzvorschlag (heute MIT, `LICENSE:1`); Datenschutz: Opt-in, Datenminimierung, Datenschutzerklärung für „Fehler melden“, Telemetrie und Webhooks. Keine Rechtsberatung; der Nutzer entscheidet am Ende | doc | – | C | M | G0 | glm-5.3 | je Aussage Quelle und Abrufdatum; Entscheidungsvorlage für Frage 8; kein Haken ohne Quelle |
+| V2-WEB-1 | Monetarisierung und Reichweite: Preismodell, kleine Webseite, Mac/Linux (heute nur Windows, `release.yml` baut auf `windows-latest`); Entscheidung mit Empfehlung | doc | – | C | M | V2-LEGAL-1, V2-DEMO-1 | glm-5.3 | Vorlage für Frage 9; die Webseite entsteht erst nach Freigabe |
+| V2-LEARN-1 | Lernmodus: zu jeder Welle erklärt der Erklärer in einfachen Worten, was gebaut wurde und warum; dazu ein Glossar | doc | – | C | S je Welle | V2-UAT-1 | glm-5.3 | eine Seite je Welle im PR der Welle; Glossar-Begriffe stehen im Glossar |
+| V2-LEARN-2 | Portfolio-Seite mit Belegen als Grundlage für die Bewerbung (IT-Ausbildung). **Wird lokal erzeugt und nie eingecheckt** (öffentliches Repo: nichts Persönliches) | fe | – | B | M | V2-LEARN-1 | terra | Seite entsteht aus Journal und PR-Belegen; `git status` zeigt sie nicht als versionierbar |
+| V2-KPI-1 | Leitzahl statt Durchsatz: Kernteile mit bestandener Nutzerabnahme, Funktionen, die ein Tester benutzt hat (Nutzungsprotokoll mit Opt-in, V2-B26); Erweiterung von `bench-weekly.mjs` | ci | – | B | M | V2-UAT-1, V2-B26 | glm-5.3 | Wochenausgabe nennt beide Zahlen mit Quelle; die Zahl gemergter PRs bleibt nur Nebenwert |
+| V2-DIET-1 | Prozess-Diät messen: Anteil Prozess- und Doku-Pakete je Woche (Grenze 20 %), neue Prozess-Werkzeuge nur gegen ein altes | ci | – | B | S | V2-KPI-1 | glm-5.3 | Wochenausgabe zeigt den Anteil; Beleg heute: 87 von 281 PRs mit „fix“, 52 mit „docs“ im Titel (`evidence-r2.md`) |
+| V2-HYG-1 | Hygiene-Check erweitern (`scripts/dev/hygiene.mjs`, Prüfung 5): Dateien mit Shell-Zeichen im Namen und Rückstand des Hauptcheckouts gegen `origin/main`; nur melden. Aufräumen nur mit Sicherung und Freigabe des Nutzers (Frage 12) | doc | – | B | S | G0 | glm-5.3 | roter Test mit einer Datei `!fs.existsSync(dir`; Ausgabe nennt den Rückstand |
+| V2-BRIEF-1 | Wochenbrief: eine Seite je Woche (Ziel, erreicht, nicht erreicht, Kosten und Kontingente, **genau 3 Entscheidungen mit Empfehlung**); ersetzt Einzelmeldungen außer Not-Aus und Sicherheit. Zuerst als Skript (aus `bench-weekly.mjs` und der Inbox), später durch den Core | ci | – | B | M | V2-DEC-1 | glm-5.3 | Probe auf den Daten der letzten Woche; Entscheidungen ≤ 3 (Test) |
+| V2-STOP-1 | Abbruch-Regel: ein Paket mit mehr als 2 Nacharbeitsrunden wird geteilt oder gestrichen, nicht weiter geflickt; automatisch, Meldung im Wochenbrief (Zähler FLOW-05 ist gemergt) | ci | – | B | S | V2-BRIEF-1 | glm-5.3 | Test: Fixture mit 3 Runden → Vorschlag „teilen oder streichen“ |
+| V2-DEC-1 | Entscheidungen mit Ablaufdatum: jeder Eintrag in `docs/decisions.md` bekommt „Prüfen am“; ein Skript meldet fällige Einträge, später erinnert der Core | ci + doc | – | B | S | G0 | glm-5.3 | Test: fälliger Eintrag wird gemeldet; neue Einträge ohne Datum lehnt `dev:agent-check` ab (nur neue) |
+| V2-SRV-1 | Server: Kosten gegen Nutzen: monatliche Auslastungszahl, belegte Plätze über die Zeit (aus der Startprüfung V2-B3 statt aus dem lokalen Log) | fR | – | B | M | V2-B3 | sol | Monatszahl mit Quelle; Entscheidung des Nutzers in Frage 7 |
+| V2-CAP-1 | Kapazitätsrechnung: Tokens je Paket (Median je Stufe und Größe) × Pakete gegen die Wochenlimits aller Anbieter → Zeitrahmen in Wochen als Spanne und Routing nach Restkontingent; **kein Anbieter über 50 % der Pakete je Woche**. Messdaten fehlen im Repo (`benchmark.md` ohne Token-Zahlen); `usage_events` liefert sie | fR + ci | – | B | M | V2-B21 | sol | Ausgabe mit Spanne und Stichprobengröße; ohne Daten „zu wenig Daten“, nie eine Tageszusage |
+| V2-CLI-3 | CLI-Vertragstests, nächtlich je angebundener CLI: Startflags, Modellnamen, Ausgabeformat (Beleg: Codex-Namen änderten sich). Läuft auf Server oder PC, nicht in GitHub Actions (braucht Abo-Anmeldung); Ergebnis im Morgenbericht | wk + ci | – | B | M | V2-CLI-1 | sol | je CLI ein Test; eine gebrochene CLI erscheint am Morgen, nicht beim Kunden |
+| V2-TEST-1 | Testerrunde über den Beta-Kanal (aus M5-01 und V16-03): Tester-Kit, Rückmeldeformular, bekannte Grenzen; ein frisches Windows-Konto stellt der Nutzer | doc + N | – | C | S | V2-BETA-1, V2-LEGAL-1, Frage 8 | glm-5.3 | Trockenlauf der Installation im frischen Konto |
+| V2-RULE-2 | AGENTS.md: Wissensrangfolge (Repo > AgentsRoom-Gedächtnis > lokale Notizen), Agenten schreiben nie in den Hauptcheckout, Prozess-Diät, Plan-Freeze (nur nach Freigabe) | doc | – | C | S | Fragen 8, 11, 12 | Koordinator | `npm run dev:agent-check` Exit 0 |
+| V2-FREEZE-1a | Plan-Freeze, Teil a: Leserliste. 25 Dateien nennen `docs/PLAN.md` (`development_plan.rs` liest die DEVFLOW-Tabelle mit 38 Zeilen, `hq-parse.mjs`, `ci.yml`, PR-Vorlage und andere); jede bekommt ein Ziel. Die übernommenen Zeilen aus `mapping.md` werden in `docs/plan/v2.0/` kopiert | doc | – | C | M | Freigabe (Frage 11), V2-H2 | Koordinator | Liste vollständig (`rg -l`), kein Leser zeigt ins Leere |
+| V2-FREEZE-1b | Plan-Freeze, Teil b (**eigener Folge-PR, nicht dieser**): `docs/PLAN.md` wird Verweis auf den v2.0-Plan, v1.6.0-Plan und `docs/plan/roadmap/` gehen ins Archiv, `STAND.md` und `docs/ERLEDIGT.md` folgen | doc | – | C | M | V2-FREEZE-1a | Koordinator | `npm run dev:agent-check` Exit 0; `bash scripts/ci/gates.sh lane prepush` Exit 0; Sicherung vorher |
+| V2-N1 | Nutzer-Aufgaben aus `docs/PLAN.md` (SETUP-14: tote Keys, Permission-Regeln) und die Klick-Checklisten der Wellen | N | – | – | – | – | Nutzer | vom Nutzer abgehakt |
+
+### 3.11 Ausführungsort: Paketkette
+
+Schon in 3.1 bis 3.4 als Pakete enthalten, hier nur die Reihenfolge: V2-LOC-0 (Notiz) → V2-B3 (RAM-Fakten) → V2-B5 (Auflösung: Start > Persona > Projekt > „automatisch“) → V2-ST-A1/A2 (Personas, Hosts als Verweise, Projekt-Richtlinien mit Ort) → V2-B6a (SSH) → V2-B6b (Server-Lauf, Not-Aus erreicht ihn) und V2-B6c (Cloud, je Anbieter nur mit Beleg) → V2-S02 (Start-Sheet), V2-S09, V2-S18 (Vorgaben) → V2-CORE-5 (Selbstheilung nutzt „automatisch“). Ort und Standardwerte sind Core-Schlüssel mit einem Besitzer (V2-CORE-4).
 
 ## 4. Wellen und Tore
 
-Tore: **G0** = der Nutzer gibt den Plan frei (Fragen D1 bis D3) und dieser PR ist gemergt. **G-F** = V2-F1 bis V2-F5b gemergt: Bildschirme dürfen starten. **G-A/B/C** = das jeweilige Nahtbündel gemergt. **G-REL** = V2-ACC1 grün und der Nutzer gibt frei.
+Tore: **G0** = der Nutzer gibt den Plan frei (Fragen 1 bis 4) und dieser PR ist gemergt. **G-F** = V2-F1 bis V2-F5b gemergt: Bildschirme dürfen starten. **G-A/B/C/K** = das jeweilige Nahtbündel gemergt (K = Core). **G-Kern** = alle Kernteile aus 1a erfüllt, V2-SEC-1 ohne offenen Befund „hoch“, Nutzerabnahme. **G-REL** = G-Kern, V2-ACC1 grün und der Nutzer gibt frei. Die **Beweis-Schicht kommt zuerst** nach dem Fundament (W1), weil zwei der drei Alleinstellungsmerkmale heute fehlen oder nur teilweise gebaut sind.
 
 | Welle | Start | Läuft gleichzeitig | Plätze (Server 8: höchstens 4 Naht, mindestens 4 Füllung/Review; PC höchstens 2 Builds) |
 |---|---|---|---|
-| W0 Fundament | G0 | F1 → (F2, F3, F4a → F4b, F5a → F5b, F6) → F7 (nach #567) → F8 → F9; B1, B3, B8, B9, B11 bis B14, B20, B23, B28, H1, H2, V2-O0, LOC-0, CLI-0 | alles ohne Nahtstelle; Rust: 1 bis 2 Builds, Frontend ohne Cargo |
-| W1 Bündel A | G0, Nahtplätze nach 4.1 | Kerne B2, B4, B5, B17, B18, B19, B27 (fR), dann `ST-A1 → A2 → A3`, danach `API-A` ‖ `MN-A` | 1 Naht-Paket je Naht |
-| W2 Bildschirme A | G-F und G-A | S01a, S01b, S02, S05a, S08, S09, S14, S17, S18, S19, S24; CLI-1 → CLI-2, CTX; MQ1; B6a → B6b, B6c | bis 6 Frontend-Pakete parallel (Dateien trennen: ein Ordner je Bildschirm; `App.tsx` nur F9 und die Routenregister) |
-| W3 Bündel B | G-A | Kerne B9, B10, B21, B22, B24, B25, B26, O1 bis O4; `ST-B1 → B2 → B3`, `API-B` ‖ `MN-B`, V2-H3, V2-H5 | wie W1 |
-| W3 Bildschirme B | G-B | S03, S04, S06, S07, S10, S11, S12, S13, S20 | wie W2 |
-| W4 Bündel C | G-B | `ST-C1 → C2`, `API-C`, `MN-C`, PA-1 → PA-2, H4 → H6 | wie W1 |
-| W4 Bildschirme C | G-C | S05b, S15, S16, S21, S22, S23 | wie W2 |
-| W5 Abschluss | alle S gemergt | V2-I18N, V2-ACC1, V2-RULE1, V2-H7 (nach Freigabe), V2-REL (Nutzer) | – |
+| W0 Fundament und Grundlagen | G0 | F1 → (F2, F3, F4a → F4b, F5a → F5b, F6) → F7 → F8 → F9; B1, B3, B8, B11 bis B14, B20, B23, B28, H1, H2, O0, LOC-0, CLI-0; Doku und CI ohne Naht: **V2-ARCH-0, V2-SEC-0 (zuerst, vor W1)**, ARCH-1, GATE-SIZE, GATE-DESIGN, GATE-PERF, FLAG-1, DEC-1, HYG-1, LEGAL-1, CAP-1 | alles ohne Nahtstelle; Rust: 1 bis 2 Builds, Frontend ohne Cargo |
+| W1 Beweis-Schicht und Core-Kern | G0, V2-ARCH-0, V2-SEC-0, Nahtplätze nach 4.1 | Kerne **B9 → B10, MQ1** (Beweise zuerst), B2, B4, B5, B17, B18, B19, B27, CORE-1 → CORE-2 → CORE-3, CORE-4, O1; Nähte: store `ST-B1 → ST-K1 → ST-A1 → A2 → A3`, api `API-B (Kern) → API-A → API-K`, main `MN-B (Kern) → MN-A → MN-K`; Ausführung EX-1 bis EX-6 (4a) | 1 Naht-Paket je Naht |
+| W2 Kern-Bildschirme | G-F, G-B (Kern), G-A, G-K | S03, S01a, S01b, S02, S05a, S19, S25, DEMO-1; CLI-1 → CLI-2, CTX; B6a → B6b, B6c; E2E-0; CORE-5, 6, 9, 10, AT, SEC-1; dahinter (Schalter aus): S08, S09, S14, S17, S18, S24 | bis 6 Frontend-Pakete parallel (ein Ordner je Bildschirm; `App.tsx` nur F9 und Routenregister) |
+| W3 Bündel B-Rest, Kern-Abnahme | G-B (Kern) | B21, B22, B24, B25, B26, O2 bis O5, DOG-1; `ST-B2 → B3`, `API-B (Rest)` ‖ `MN-B (Rest)`, H3, H5; UAT-1 für den Kern, BAK-1, FB-1, MIG-1 (nach ST-C2) | wie W1 |
+| W3 Bildschirme B | G-B (Rest) | S04, S06, S07, S10, S11, S12, S13, S20 (alle hinter Schaltern) | wie W2 |
+| W4 Bündel C | G-B | `ST-C1 → C2`, `API-C`, `MN-C` (mit UPD-1), PA-1 → PA-2, H4 → H6, CORE-7, CORE-8 | wie W1 |
+| W4 Bildschirme C | G-C | S05b, S15, S16, S21, S22, S23 (hinter Schaltern) | wie W2 |
+| W5 Abschluss | G-Kern | V2-I18N, V2-ACC1, V2-RULE1, V2-RULE-2, V2-H7 (nach Freigabe), V2-REL (Nutzer); danach V2-FREEZE-1b | – |
 
-Regeln wie in v1.6.0, Abschnitt 4: Nähte strikt seriell; Pakete derselben Datei laufen nacheinander (neue Dev-Skripte ändern `package.json`: FLOW-05 #567 hält sie heute); keine Datei eines offenen PRs; Reviews A zwei Anbieter, B einer.
+Regeln wie in v1.6.0, Abschnitt 4: Nähte strikt seriell; Pakete derselben Datei laufen nacheinander (neue Dev-Skripte ändern `package.json`); keine Datei eines offenen PRs; Reviews A zwei Anbieter, B einer. Laufende Wellen werden nicht umgeplant, außer bei Sicherheit oder einem roten `main` (Abschnitt 4b).
 
-### 4.1 Nahtstellen und v1.6.0 (Stand `gh pr list` vom 06.10.2026)
+### 4.1 Nahtstellen und die übernommenen v1.6.0-Pakete (Stand `gh pr list` und `git log origin/main` vom 06.10.2026)
 
-| Naht | Heute belegt durch | Weitere v1.6.0-Pakete (Plan, Abschnitt 3) | v2.0-Pakete in dieser Spur | Länge der Spur |
+| Naht | Heute belegt durch | Übernommene v1.6.0-Pakete (`mapping.md`) | v2.0-Pakete in dieser Spur | Länge der Spur |
 |---|---|---|---|---|
-| `store.rs` | #577 ARCH-D3a (offen) | D3b → D7 (nach G2) | ST-A1, A2, A3, B1, B2, B3, C1, C2, H5 | 3 + 9 = 12 |
-| `bin/pa.rs` | #579 ARCH-D6a (offen) | D6b | PA-1, PA-2 | 2 + 2 = 4 |
-| `api.rs` | frei (#578 INV-SEC-CRED-CLEANUP berührt `api.rs` nicht, `gh pr list --json files`) | ARCH-D1 → D4a → D4b | API-A, B, C (C = 2×M), H4 | 3 + 5 = 8 |
-| `main.rs` | frei | V16-06 → D2 → D5a → D5b → D8a | MN-A, B, C, H6 | 5 + 4 = 9 |
+| `store.rs` | #577 ARCH-D3a ist gemergt; #587 ARCH-D3b ist ein offener Entwurf | D3b → D7 | ST-B1, K1, A1, A2, A3, B2, B3, C1, C2, H5 | 2 + 10 = 12 |
+| `bin/pa.rs` | #579 ARCH-D6a ist gemergt | D6b | PA-1, PA-2 | 1 + 2 = 3 |
+| `api.rs` | #578 ändert nur `api/agent_access.rs` (`gh pr view 578 --json files`), `api.rs` ist frei | ARCH-D1 → D4a → D4b | API-B (Kern), A, K, B (Rest), C (2×M), H4, SEC-2, EX-2 (Webhook) | 3 + 9 = 12 |
+| `main.rs` | frei | V2-R-06 → D2 → D5a → D5b → D8a | MN-B (Kern), A, K, B (Rest), C (mit UPD-1), H6 | 5 + 6 = 11 |
 
-Befund: Die längste Spur ist `store.rs` mit 12 seriellen Paketen, danach `main.rs` mit 9. Das Fundament (Abschnitt 2) ist davon unabhängig. **Vorschlag (Frage D2):** je Naht abwechselnd, ein v1.6.0-Paket, dann ein v2.0-Paket, ab dem nächsten freien Platz; ein bereits offenes Paket läuft zu Ende. So bleibt jede Spur in beiden Plänen in Bewegung, und die Architektur-Pakete (D-Pakete) machen die Nahtdateien kleiner, bevor v2.0 sie größer macht. Keine Tageszusage: Die Messung der Nahtpakete (Median 185 Diffzeilen, `size-evidence.md`) sagt nichts über die Wartezeit in der Spur.
+Befund: Die längsten Spuren sind `store.rs` und `api.rs` mit je 12 seriellen Paketen, danach `main.rs` mit 11. Der Core fügt je Naht ein Paket hinzu (K). Das Fundament (Abschnitt 2) ist davon unabhängig. **Vorschlag (Frage 4):** je Naht abwechselnd ein übernommenes Paket, dann ein v2.0-Paket, ab dem nächsten freien Platz; ein bereits offenes Paket läuft zu Ende. So bleibt jede Spur in Bewegung, und die D-Pakete machen die Nahtdateien kleiner, bevor v2.0 sie größer macht. Das Gate V2-ARCH-1 hält neue Logik aus den Nähten heraus. Keine Tageszusage: Die Messung der Nahtpakete (Median 185 Diffzeilen, `size-evidence.md`) sagt nichts über die Wartezeit in der Spur.
+
+## 4a. Ausführung (AgentsRoom, ohne Leerlauf)
+
+Vorgabe des Nutzers (06.10.): schnell und effektiv, ohne Leerläufe, lange Wartezeiten und Nachbesserungen, bei hoher Qualität. Grundlage ist [`../v1.6.0/plan.md`](../v1.6.0/plan.md), Abschnitt 2 (Engpässe S1 bis S8, Ziele M-IDLE und M-REWORK) und Abschnitt 6 (rekursives Prompting, Checkliste, Fixrunde 7b); das wird hier **nicht wiederholt**, nur erweitert. Bis V2-DOG-1 läuft die Ausführung in AgentsRoom (extern, nicht prüfbar); danach übernimmt der Core (Hut „Arbeit“) Schritt für Schritt.
+
+| Paket | Regel | Abnahme |
+|---|---|---|
+| V2-EX-1 (ci, B, M) | **Ein Ticket je Paket** mit Voraussetzungen (`backlog_link`): `scripts/dev/plan-to-tickets.mjs` liest die Paketspalten dieses Plans (Spalte „Hängt ab von“) und schreibt eine Liste; den Import in AgentsRoom macht der Koordinator (die Schnittstelle ist hier nicht beobachtet: prüfen) | Test mit Fixture; jedes Paket hat genau ein Ticket; kein Ticket ohne seine Vorgänger |
+| V2-EX-2 (api, A, M; Haken in `api.rs`) | **GitHub-Webhook statt der 3-Minuten-Schleife:** Empfänger mit Signaturprüfung (Kern: V2-B15), nur die Ereignisse „PR bereit“, „Check fertig“, „Queue-Ergebnis“. Erreichbarkeit von außen ist Frage 5; bis zur Antwort fragt die App bedingt ab (`ETag`, 304); ob 304-Antworten das Ratenlimit schonen, ist zu prüfen | gefälschte Signatur → 403; Ereignis löst genau eine Aktion aus; ohne Antwort auf Frage 5 bleibt der Webhook aus |
+| V2-EX-3 (fR, A, M) | **ship- und start-next-Trigger:** „Paket gemergt“ (ship) und „Platz frei oder Vorgänger gemergt“ (start-next) starten den nächsten startbaren Auftrag; **Agenten-Post weckt den Empfänger**, statt auf die Schleife zu warten. Nur auf Befehl des Nutzers (Abschnitt 3.5), nie als Dauerbetrieb | Test: Merge eines Vorgängers startet den Nachfolger nach Startprüfung; Post an einen schlafenden Agenten weckt ihn |
+| V2-EX-4 (fR + ci, B, M) | **Reserve von mindestens 16 startbaren Paketen.** Startbar heißt: alle Vorgänger gemergt, Naht frei oder an der Reihe, Spec-Kritik bestanden, Anbieter und Ort verfügbar. Fällt die Zahl unter 16, meldet der Wochenbrief „Nachschub“ (Quelle: `plan-lint` und `start-check`) | Zähler mit Fixture; Reserve < 16 erzeugt genau eine Meldung |
+| V2-EX-5 (fR + ci, B, M) | **Spec-Kritik vor dem Start, Selbstprüfung vor dem Push, eine begrenzte Fixrunde** (v1.6.0, Abschnitt 6 und 7b; `docs/development/prompting.md`): kein Start ohne Kopfzeilen `Prompt-Rounds:` und `Critique-By:`; Review-Prompts laufen durch das Prüfskript; „fertig“ nur mit Gate-Exit, Kandidaten-SHA, `git ls-remote` und PR. Mehr als zwei Nacharbeitsrunden: V2-STOP-1 | Test: Auftrag ohne Kritik-Kopf startet nicht; Meldung „fertig“ ohne `ls-remote`-Beleg wird abgelehnt |
+| V2-EX-6 (fR + doc, B, M) | **Quota-Regeln für alle Anbieter** (Tabelle unten), gespeist von `start-check --usage` und V2-B1; Routing nach Restkontingent | Test je Zeile der Tabelle; unbeobachteter Anbieter gilt als „prüfen“ und bekommt nur Stufe C |
+
+| Beobachtetes Wochenlimit eines Anbieters | Regel (Schwellen sind Vorschläge; V2-CAP-1 kalibriert sie an Messdaten) |
+|---|---|
+| unter 70 % | alle Stufen, auch Nahtstellen und Sicherheit (Wert 70 % steht schon in `docs/setup/providers.md` für Claude-Worker) |
+| 70 % bis unter 90 % | Stufe B und C; Stufe A nur bei einem anderen Anbieter |
+| ab 90 % oder Limit-Meldung | kein Neustart bei diesem Anbieter; laufende Pakete enden; Failover nach V2-B2; „Pause statt Rechnung“ bleibt (nie API-Schlüssel, nie Geld) |
+| immer | kein Anbieter über 50 % der Pakete je Woche (Stand 05.10.: 59 %, v1.6.0 S7); nie Kontowechsel im laufenden Gespräch |
+
+**Messung jede Woche:** M-IDLE (Leerlauf-Alarme, Ziel ≤ 10 pro Tag) und M-REWORK (Fix-PRs binnen 72 h, Ziel ≤ 8 %) nach v1.6.0, Abschnitt 7 und 7a, über `scripts/dev/bench-weekly.mjs` (BENCH-01/02 sind gemergt); sie stehen im Wochenbrief. Verfehlt eine Zeile nach zwei Wochen ihr Ziel, kommt sie als Frage in die Inbox, das Ziel wird nicht still gesenkt. Die Zahlen für M-IDLE stammen heute aus dem lokalen Log (nicht nachrechenbar); V2-SRV-1 und V2-B3 holen sie in die App.
+
+## 4b. Betriebsregeln (ab G0)
+
+| Regel | Inhalt | Durchsetzung |
+|---|---|---|
+| Wissensrangfolge | Repo (AGENTS.md, Plan) > AgentsRoom-Gedächtnis > lokale Notizen. Wöchentlicher Widerspruchs-Check, später durch den Core. Beleg am 06.10.: Fast Mode „an“ gegenüber „nie“ und Check „10 min“ gegenüber „30 min“ (lokale Notizen, im Repo nicht prüfbar) | V2-B12, V2-RULE-2 |
+| Prozess-Diät | Neue Prozess-Werkzeuge nur, wenn sie ein altes ersetzen. Höchstens 20 % der Pakete je Woche sind Prozess oder Doku (V2-DIET-1). Beleg: 87 von 281 gemergten PRs seit 02.10. tragen „fix“ im Titel, 52 „docs“ | V2-DIET-1; Welle 0 ist wegen der Grundlagenpakete eine begründete Ausnahme |
+| Ergebnis statt Durchsatz | Leitzahl: Kernteile mit bestandener Nutzerabnahme und Funktionen, die ein Tester benutzt hat, nicht die Zahl gemergter PRs | V2-KPI-1 |
+| Sauberer Hauptcheckout | Agenten schreiben nie in den Hauptcheckout, nur in eigene Worktrees (der Checkout auf diesem Server liegt 959 Commits hinter `origin/main`). Ein Hygiene-Check meldet kaputte Dateinamen; Aufräumen nur mit Sicherung und Freigabe des Nutzers | V2-HYG-1, Frage 12 |
+| Nachtruhe | Core · Aufmerksamkeit bündelt Fragen in ein festes Tagesfenster; nachts läuft nur, was keine Entscheidung braucht; der Nutzer muss nie wach bleiben, damit das System weiterläuft. Ausnahmen: Not-Aus und Sicherheit | V2-CORE-AT |
+| Wochenbrief | Eine Seite je Woche: Ziel, erreicht, nicht erreicht, Kosten und Kontingente, genau 3 Entscheidungen mit Empfehlung; ersetzt Einzelmeldungen außer Not-Aus und Sicherheit | V2-BRIEF-1 |
+| Abbruch vorab | Mehr als 2 Nacharbeitsrunden: das Paket wird geteilt oder gestrichen, nicht weiter geflickt; automatisch, Meldung im Wochenbrief | V2-STOP-1 |
+| Ablaufdatum | Jeder Eintrag im Entscheidungslog trägt „Prüfen am“; der Core erinnert. Beleg: Fast Mode und das 1M-Kontextfenster wurden mehrfach anders entschieden | V2-DEC-1 |
+| Ideen-Parkplatz | Neue Ideen gehen automatisch in den Ideen-Eingang (bis V2-S12: Abschnitt „Später“ in `docs/PLAN.md`); der Core sortiert sie einmal je Woche ein. **Höchstens 3 offene Entscheidungen gleichzeitig** (die 12 Fragen in Abschnitt 7 sind die einmalige Freigabe dieses Plans, danach gilt die Grenze). Laufende Wellen werden nicht umgeplant, außer bei Sicherheit oder einem roten `main` | V2-B13, Wochenbrief |
+| Plan-Freeze | Nach der Freigabe ist dieser Plan das einzige Plandokument; er wird nur noch ausgeführt. Änderungen nur über Ideen-Parkplatz und Wochenbrief: höchstens eine Planänderung je Woche, mit Kosten, Nutzen und Freigabe des Nutzers | V2-FREEZE-1a/b, V2-RULE-2 |
+| Dogfood | Ab DG1 (V2-DOG-1) zieht die Entwicklung schrittweise von `pa-orch` und AgentsRoom in die App; jeder Schritt ist umkehrbar | V2-DOG-1 |
 
 ## 5. Kritischer Pfad und Risiken
 
-**Kritischer Pfad.** G0 → Kerne (W0) → `store.rs`-Spur (12 Pakete) → `MN-C` → Bildschirme C → V2-ACC1 → V2-REL. Der zweite Pfad ist die Frontend-Kette F1 → F9 → alle Bildschirme (24 Bildschirme, geschätzt 60 Pakete nach der heutigen Größenregel, Abschnitt 6).
+**Kritischer Pfad.** G0 → V2-ARCH-0 und V2-SEC-0 → Beweis-Kerne (B9, B10) → `store.rs`-Spur (12 Pakete, mit ST-B1 vorn und ST-K1 für den Core) → MN-K → Kern-Bildschirme (S03, S01, S02, S05a, S25) → V2-SEC-1 → G-Kern → V2-ACC1 → V2-REL. Der zweite Pfad ist die Frontend-Kette F1 → F9 → Kern-Bildschirme; die übrigen Bildschirme (hinter Schaltern) liegen nicht mehr auf dem Pfad zum Release. Der dritte ist die `api.rs`-Spur (12 Pakete, mit dem Webhook EX-2).
 
 **Risiken.**
 - **v1.6.0 wird aus `main` gebaut.** Alles, was bis dahin auf `main` landet, steckt im v1.6.0-Build. Das Fundament ist unsichtbar (nur neue, ungenutzte Dateien); Bildschirme und die Schale hängen am Laufzeitschalter D1, Standard aus. Ohne D1 würde v1.6.0 halb die neue Oberfläche ausliefern.
@@ -328,6 +462,13 @@ Befund: Die längste Spur ist `store.rs` mit 12 seriellen Paketen, danach `main.
 - **Echte Proben verbrauchen Abo-Kontingent** (CLI-Beobachtung, Cloud-Lauf); erlaubt sind sie laut N2 in `docs/PLAN.md`.
 - **Widersprüche in den Boards:** Der Chief of Staff läuft mit Kimi K3 (`Organigramm.dc.html:388`, Kimi CLI) oder Claude Sonnet 5.5 (`Ersteinrichtung.dc.html:356`); das Modell kommt aus der Persona, nicht aus dem Bild.
 - **Sechs Zustände reichen nicht für alles:** Warten, Blockiert, Pausiert haben keine Form (D4).
+
+- **Der Core liest Fremdtext und ändert Einstellungen.** Prompt-Injection aus Repo-Inhalten und Agentenpost, Umgehung der Freigabe: V2-SEC-0 und V2-SEC-1 (Stufe A, zwei Fremd-Reviews) laufen vor dem ersten „Selbst mit Bericht“ ([`core.md`](core.md), Abschnitt 6).
+- **Webhook braucht einen Weg von außen.** Ohne Antwort auf Frage 5 bleibt er aus; bedingtes Abfragen ersetzt ihn (Abschnitt 4a).
+- **Plan-Freeze kann Leser brechen.** 25 Dateien nennen `docs/PLAN.md`; V2-FREEZE-1a legt vorher fest, wohin jeder Leser zeigt.
+- **Prozess-Anteil in Welle 0.** Viele Doku- und CI-Pakete (Gates, Rechtscheck, Skizze) überschreiten dort die 20-%-Grenze der Prozess-Diät; die Ausnahme ist begründet, die Messung (V2-DIET-1) zeigt es.
+- **Kern-Release lässt Seiten offen.** Was beim G-Kern nicht gemergt ist, läuft in 2.x weiter (Frage 2); die Schalter müssen aus-Zustand sicher machen (V2-FLAG-1).
+- **Nutzungsbedingungen der Anbieter für automatisierte Abo-Nutzung sind ungeprüft** (V2-LEGAL-1); „prüfen“ gilt, keine Annahme.
 
 **Mitwirkung des Nutzers ohne Entscheidung:** je Board ein Bild hell und dunkel (48 Bilder) als Vergleichsbasis; ein eigener Server für V2-B6b (kein Kauf durch Agenten); der PC für Update-Drill und V2-REL.
 
@@ -374,22 +515,26 @@ Mit der Frontend-Grenze 600 sinkt die geschätzte Zahl der Bildschirm-Pakete von
 
 **Absicherung.** Probe über zwei Wochen, gemessen durch `node scripts/dev/bench-weekly.mjs` (BENCH-01): Steigt der Anteil der Fix-PRs binnen 72 h bei den größeren Paketen über 8 % (Ziel aus v1.6.0, Abschnitt 7a), kehrt die Regel zurück. Jedes Paket über der Grenze braucht einen Satz „Warum nicht geteilt“ im PR. Die Änderung selbst ist **nicht** in diesem PR: Sie wird das Paket V2-RULE1, das erst nach Freigabe von D3 startet.
 
-## 7. Entscheidungs-Inbox (bündeln, mit Empfehlung)
+## 7. Entscheidungs-Inbox (eine gebündelte Liste, höchstens 12 Fragen)
 
-Die E-Nummern vergibt der Koordinator beim Eintrag in `docs/PLAN.md`. Dieser Plan kostet kein Geld und löscht nichts.
+Die alten Fragen D1 bis D8 und alle neuen Entscheidungen stehen hier zusammen. Die E-Nummern vergibt der Koordinator beim Eintrag in `docs/PLAN.md`. Sortiert nach Dringlichkeit: Zeilen 1 bis 4 blockieren Welle 1, 5 bis 7 Welle 2, 8 bis 12 die Welle vor Beta, Testern und Verkauf. Zuordnung der alten Nummern: D1 = Frage 1, D2 und D3 = 4, D5 = 5, D4, D6, D7 und D8 = 6. Dieser Plan kostet kein Geld und löscht nichts. In „Ohne Antwort“ steht, was ohne Entscheidung geschieht (immer die vorsichtige Wahl).
 
-| # | Frage | Empfehlung |
-|---|---|---|
-| D1 | Die neue Oberfläche kommt hinter einen Laufzeitschalter „Neue Oberfläche (Vorschau)“, Standard **aus**, bis v2.0. Sonst enthält v1.6.0, das aus `main` gebaut wird, eine halbe neue Oberfläche. Annahme dabei: v1.6.0 wird wie geplant veröffentlicht, danach gibt es bis v2.0 keine v1.x-Funktionsreleases. | Ja. Der Schalter fällt mit v2.0 weg (Paket in V2-ACC1). |
-| D2 | Nahtspuren abwechselnd: ein v1.6.0-Paket, dann ein v2.0-Paket (Abschnitt 4.1)? | Ja. Sonst wartet v2.0 hinter 5 `main.rs`- und 3 `store.rs`-Paketen von v1.6.0. |
-| D3 | Neue Größenregel nach Abschnitt 6 (Stufe A 300, B 400, nur Frontend 600, jeweils netto) als Zwei-Wochen-Probe? | Ja, mit Rückkehr bei > 8 % Fix-PRs. Die AGENTS.md-Änderung folgt erst danach (V2-RULE1). |
-| D4 | Warten, Blockiert, Pausiert haben im Entwurf keine Form (Abschnitt 5 in `dev-hq.md`). Eine siebte Form oder nur Text? | Nur Text in grauer Schrift, keine siebte Form in v2.0. |
-| D5 | Reichweite der Fernansicht: nur eigenes Netz oder SSH-Tunnel, oder auch aus dem Internet? | Nur eigenes Netz und SSH-Tunnel. Internet bräuchte eigene Sicherheitsprüfung und gehört nicht zu v2.0. |
-| D6 | Die Richtung „HQ als Hauptbereich mit Studio-Layout“ (E1, HQ2-02, `docs/PLAN.md:495`) wird durch die Glass-Boards ersetzt; das Studio-Konzept wird nach v2.0 entfernt. | Ja. |
-| D7 | Trigger und Webhooks starten in v2.0 nur Meldungen und Testläufe; die Aktion „Agent starten“ bleibt aus, bis du den Dauerbetrieb einschaltest. Kein Hintergrunddienst bei geschlossener App. | Ja. Ein Dienst bei geschlossenem Fenster wäre Dauerbetrieb und eine Installation (Sache des Nutzers). |
-| D8 | „Verbesserungen“ zeigt nur Schalter, deren Wirkung im Code belegt ist; die Zahl 32 ist kein Ziel. | Ja. |
+| # | Frage | Empfehlung | Ohne Antwort |
+|---|---|---|---|
+| 1 | **Oberfläche hinter einem Schalter** (früher D1): „Neue Oberfläche (Vorschau)“, Standard aus, bis v2.0, damit v1.6.0 aus `main` keine halbe neue Oberfläche trägt | Ja; der Schalter fällt mit v2.0 weg (V2-ACC1) | Nur das Fundament (Abschnitt 2, ungenutzter Code) startet; kein Bildschirm |
+| 2 | **Kern-Umfang und Release-Regel:** v2.0 erscheint, sobald der Kern aus 1a echt läuft (Beweis-Schicht, Leitstand, Agent starten mit Ort, Kontingente, Not-Aus, Core · Steuerung, Ersteinrichtung, Demo-Modus); alle anderen Seiten fertig gebaut, standardmäßig hinter Schaltern, 2.x schaltet sie frei | Ja | Planung läuft mit dem Kern aus 1a; es gibt kein Release-Datum und keinen Freischalttermin |
+| 3 | **Core: Stufen und Grenzen** ([`core.md`](core.md)): Start auf „Vorschlagen“ in jedem Bereich; „Selbst mit Bericht“ nur für Orte, Kontingente und Benachrichtigungen, erst nach 24 h Probezeit-Beleg und nach V2-SEC-1; Geld, Rechte, Sicherheit, Löschen, Releases und die eigene Stufe bleiben für immer nur Vorschlag | Ja | Der Core arbeitet nur im Modus „Vorschlagen“ |
+| 4 | **Arbeitsregeln der Nähte und der Größe:** (a) Nahtspuren abwechselnd, ein übernommenes Paket, dann ein v2.0-Paket (früher D2); (b) neue Größenregel aus Abschnitt 6, Stufe A 300, B 400, nur Frontend 600, netto, zwei Wochen Probe, mit CI-Gate und Ausnahme `size-ok` (früher D3); (c) Prozess-Diät: höchstens 20 % Prozess und Doku je Woche | Ja zu a, b und c; Rückkehr zu 300, wenn Fix-PRs über 8 % steigen | Es gilt 300 Diffzeilen; V2-GATE-SIZE läuft mit 300; Nähte nach der Reihenfolge der Spur |
+| 5 | **Erreichbarkeit:** (a) Fernansicht nur im eigenen Netz und per SSH-Tunnel (früher D5); (b) wie erreicht ein GitHub-Webhook den Rechner: Tunnel des Nutzers, oder bis dahin bedingtes Abfragen | a Ja; b: erst Tunnel prüfen, bis dahin Abfragen mit `ETag` | Kein Zugang aus dem Internet; Webhook aus, bedingtes Abfragen |
+| 6 | **Entwurfsregeln** (früher D4, D6, D7, D8): (a) Warten, Blockiert, Pausiert nur als Text, keine siebte Form; (b) die Glass-Boards ersetzen das HQ-Studio-Konzept; (c) Trigger starten nur Meldungen und Testläufe, kein Hintergrunddienst; (d) „Verbesserungen“ zeigt nur Schalter mit belegter Wirkung | Ja zu a bis d | Es gilt jeweils die vorsichtige Wahl: nur Text; Studio bleibt eingefroren; Trigger ohne Agentenstart; Schalter nur mit Beleg |
+| 7 | **Server: Kosten gegen Nutzen** (E15): behalten, kleiner mieten oder kündigen; Entscheidungsgrundlage ist die monatliche Auslastungszahl aus V2-SRV-1 (Beleg: mehrere Leerlauf-Alarme „Server 0/8“ in der Nacht zum 06.10., lokales Log, nicht prüfbar) | Erst auslasten (Reserve ≥ 16, Abschnitt 4a), nach einem Monat entscheiden | Server bleibt unverändert; keine Kündigung, kein Kauf |
+| 8 | **Rechtscheck** vor dem Verkauf (V2-LEGAL-1): Produktname, Domain, Marke; Nutzungsbedingungen der Anbieter für automatisierte Nutzung ihrer Abo-CLIs; Lizenz (heute MIT, E16); Datenschutz (Opt-in, Datenminimierung, Erklärung). Keine Rechtsberatung: für den Verkauf eine Fachperson fragen | Paket jetzt starten (kostenlos, Doku); Entscheidung mit den Quellen am Ende | Kein Verkauf, kein externer Tester, keine Telemetrie; „Fehler melden“ nur lokal; Lizenz bleibt MIT |
+| 9 | **Monetarisierung und Plattformen** (V2-WEB-1): Preismodell, kleine Webseite, Mac und Linux (heute nur Windows, `release.yml` baut auf `windows-latest`) | Erst Demo-Modus und Webseite als Entwurf; Mac/Linux nur als Machbarkeitsstudie nach dem Kern-Release | Kein Preis, keine Webseite, nur Windows |
+| 10 | **Code-Signatur des Installers:** Zertifikat kaufen (Geld), Alternative oder vorerst nicht. Ob der Installer heute ein Authenticode-Zertifikat trägt, ist nicht belegt (nur der Updater-Schlüssel, `build-signed-windows.mjs:12`) | Vorerst nicht kaufen; Testern Prüfsumme und Hinweis geben; vor dem öffentlichen Verkauf neu entscheiden | Kein Kauf; unsignierter Beta-Kanal nur für den Nutzer |
+| 11 | **Plan-Freeze:** Nach der Freigabe ist dieser Plan das einzige Plandokument, ersetzt `docs/PLAN.md` und den v1.6.0-Plan (sie gehen ins Archiv), ab dann nur Ausführung; Änderungen höchstens einmal je Woche über Wochenbrief und Ideen-Parkplatz | Ja; zuerst die Leserliste V2-FREEZE-1a (25 Dateien lesen `docs/PLAN.md`) | `docs/PLAN.md` bleibt, wie es ist; beide Pläne laufen nebeneinander |
+| 12 | **Aufräumen** (immer mit Sicherung, nie ohne dich): 5 von 13 Teams, die nie liefen (Zahl nicht prüfbar), alte Arbeitsbäume (E17), der Hauptcheckout mit kaputten Dateinamen | Erst melden lassen (V2-HYG-1), dann einzeln freigeben | Nichts wird gelöscht |
 
-Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen), E14 (Sicherung des Schlüssels, dringend), E16 (Lizenzmodell vor externen Nutzern). Sie stehen in `docs/PLAN.md` und werden hier nicht neu gefragt.
+Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen), E14 (Sicherung des Schlüssels, dringend). Sie stehen in `docs/PLAN.md` und werden hier nicht neu gefragt. Die Fragen 1 bis 4 muss der Nutzer vor G0 beantworten; für alle anderen gilt „Ohne Antwort“.
 
 ## 8. NICHT ABGEDECKT
 
@@ -400,4 +545,28 @@ Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen
 - `pa-orch` ist nicht im Repo und wurde nicht gelesen.
 - Review-Runden und rote Queue-Läufe je PR-Größe sind nicht gemessen (Abschnitt 6).
 - Die Windows-Hälfte der späteren Pakete ist hier nicht Gegenstand; sie läuft in der Merge-Queue.
-- Fremdkritik durch eine andere Modellfamilie: siehe Prompt-Log im PR-Text.
+- Fremdkritik durch eine andere Modellfamilie: **ausstehend** (kein Ollama auf diesem Server, siehe Prompt-Log im PR-Text).
+- Runde 2: Der Core, die Ausführung und die 36 Ergänzungen sind Entwurf; Datei-, Tabellen- und Schlüsselnamen legt V2-ARCH-0 fest. Das Board `glass/Core.dc.html` liegt noch nicht im Repo.
+- AgentsRoom, `pa-orch`, `pipeline.py` und die lokalen Orchestrator-Zahlen sind nicht prüfbar; Aussagen darüber sind Nutzerangaben (siehe `evidence-r2.md`, Abschnitt 1).
+- Die Schwellen der Quota-Regeln (70/90 %), die Reserve von 16, die Wochenziele und die Zulage je Naht sind Vorschläge; V2-CAP-1 und V2-ARCH-1 messen sie.
+- Rechtliche, steuerliche und markenrechtliche Aussagen: keine geprüft; V2-LEGAL-1 liefert Quellen, keine Beratung.
+- Die Zuordnung (`mapping.md`) beruht auf `git log origin/main --grep` und `gh pr list` am 06.10.; ein „erledigt“ ist nur dort belegt, wo eine PR-Nummer steht.
+
+## 9. Ein Plandokument: Zuordnung und Freeze
+
+Nach der Freigabe ist dieser Plan das **einzige** Plandokument. Er übernimmt `docs/PLAN.md` (M1 bis M4, M5, „Später“, Geparkt) und den v1.6.0-Plan; die alten Pläne kommen ins Archiv. Dieser PR ändert **nicht** `docs/PLAN.md`.
+
+[`mapping.md`](mapping.md) gibt jedem offenen Paket genau ein Urteil mit Grund:
+
+| Quelle | übernehmen (mit v2.0-ID) | nach v2.0 parken | streichen |
+|---|---|---|---|
+| `docs/PLAN.md` (M2 bis M5, Später, Geparkt, Inbox) | 35 Zeilen | 21 | 14 |
+| `docs/plan/v1.6.0/plan.md` | 16 Zeilen | 0 | 8 (alles Gemergte) |
+
+Fünf Hinweise zur Lesart: (1) Eine Zeile kann mehrere Pakete bündeln (Gruppen wie DEVFLOW). (2) „Streichen“ heißt bei Gemergtem „erledigt“ mit PR-Nummer, bei Offenem „fällt weg, bei Bedarf neu einplanen“. (3) Die Stand-Spalten beider Pläne sind veraltet: `docs/PLAN.md` führt R-1 und W4-04 als offen, v1.5.1 ist veröffentlicht. (4) Übernommene Pakete tragen `V2-` vor der alten ID und behalten Lane, Stufe, Größe und Abnahme der Quellzeile, bis V2-FREEZE-1a sie in den Plan kopiert. (5) Dauerbetrieb bleibt aus: seine Pakete sind geparkt oder gestrichen (D7), nicht übernommen.
+
+**Freeze in zwei Paketen, beide erst nach Frage 11:**
+- **V2-FREEZE-1a** (Leserliste): 25 Dateien nennen `docs/PLAN.md` (`rg -l "docs/PLAN.md" scripts src-tauri/src src .github package.json`, 06.10.). Darunter lesen `development_plan.rs` (DEVFLOW-Tabelle, 38 Zeilen), `hq-parse.mjs`, `ci.yml` und die PR-Vorlage den Plan maschinell. Jeder Leser bekommt ein Ziel; V2-H2 (ein Plan-Parser) ist Voraussetzung. Die übernommenen Zeilen werden nach `docs/plan/v2.0/` kopiert.
+- **V2-FREEZE-1b** (Folge-PR): `docs/PLAN.md` wird zum Verweis, die alten Pläne und `docs/plan/roadmap/` gehen ins Archiv, `STAND.md` und `docs/ERLEDIGT.md` folgen, mit Sicherung vorher.
+
+Ab dann gilt Regel „Plan-Freeze“ (Abschnitt 4b): nur Ausführung, höchstens eine Planänderung je Woche mit Kosten, Nutzen und Freigabe des Nutzers.
