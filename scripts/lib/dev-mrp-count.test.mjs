@@ -39,7 +39,7 @@ test("an empty window gives a null share", () => {
   assert.equal(m.sharePct, null);
 });
 
-test("the CLI prints JSON the counter from --input", async () => {
+test("the CLI prints JSON", async () => {
   let out = "";
   const code = await main(["--input", new URL("./fixtures/mrp-count.json", import.meta.url).pathname, "--from", "2026-10-02", "--to", "2026-10-05"], { out: (s) => (out += s), err: () => {} });
   assert.equal(code, 0);
