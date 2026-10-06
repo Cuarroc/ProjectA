@@ -1,6 +1,6 @@
 # Core: die eine App-KI mit Rechten (Entwurf, Teil von Plan v2.0)
 
-Stand 06.10.2026. Der Nutzer hat das Konzept am 06.10. freigegeben. Dieses Dokument beschreibt es; die Pakete (V2-CORE-*, V2-SEC-*) stehen in [`plan.md`](plan.md), Abschnitt 3.9. Das Board dazu, `docs/design/2026-10-ui-v2/glass/Core.dc.html`, legt der Koordinator getrennt an (es liegt an der Basis `01a0bf7` noch nicht im Repo: `ls docs/design/2026-10-ui-v2/glass` zeigt es nicht). Alles hier ist Entwurf: Datei- und Tabellennamen sind Vorschläge, die V2-ARCH-0 (Architektur-Skizze, zwei Fremd-Reviews) festlegt.
+Stand 06.10.2026. Der Nutzer hat das Konzept am 06.10. freigegeben. Dieses Dokument beschreibt es; die Pakete (V2-CORE-*, V2-SEC-*) stehen in [`plan.md`](plan.md), Abschnitt 3.9. Das Board dazu, `docs/design/2026-10-ui-v2/glass/Core.dc.html` (1165 Zeilen), liegt jetzt im Repo und wird der Bildschirm „Core“ (V2-S07a). Alles hier ist Entwurf: Datei- und Tabellennamen sind Vorschläge, die V2-ARCH-0 (Architektur-Skizze, zwei Fremd-Reviews) festlegt.
 
 ## 1. Was der Core ist
 
@@ -8,9 +8,9 @@ ProjectA 2.0 hat **eine** App-KI mit Rechten. Es gibt keinen zweiten Orchestrato
 
 | Hut | Aufgabe | Heute | Pakete |
 |---|---|---|---|
-| **Steuerung** | App-Einstellungen, Personas, Trigger, Kontingente, Ausführungsorte | von Hand in `SettingsView` und in Dateien | V2-CORE-1 bis 9 |
-| **Arbeit** | Pakete nehmen, Agenten starten, Reviews fahren, Queue beobachten (der heutige Orchestrator) | `pa-orch` außerhalb des Repos (nicht prüfbar, V2-O0) | V2-O0 bis O5, V2-DOG-1 |
-| **Aufmerksamkeit** | Was erreicht den Nutzer; Fragen gebündelt in ein festes Tagesfenster; Wochenbrief (der heutige Chief of Staff) | `pa-orch`, `QuestionsView` | V2-O2, V2-CORE-AT |
+| **Steuerung** | App-Einstellungen, Personas, Trigger, Kontingente, Ausführungsorte | von Hand in `SettingsView` und in Dateien | V2-CORE-1 bis 7 und 9 |
+| **Arbeit** | Pakete nehmen, Agenten starten, Reviews fahren, Queue beobachten (der heutige Orchestrator) | `pa-orch` außerhalb des Repos (nicht prüfbar, V2-O0) | V2-O0, die Maschine „Ablauf mit Beweis“ (V2-RUN-1 bis V2-RUN-4, `plan.md` 3.5), V2-DOG-1 |
+| **Aufmerksamkeit** | Was erreicht den Nutzer; Fragen gebündelt in ein festes Tagesfenster; Wochenbrief (der heutige Chief of Staff) | `pa-orch`, `QuestionsView` | V2-CORE-AT (enthält den früheren Chief of Staff) |
 
 Ein Hut ist eine Rolle des Core, kein eigener Prozess: dieselbe Regelgrenze (Abschnitt 4), dasselbe Journal (Abschnitt 3), derselbe Not-Aus.
 
@@ -32,7 +32,7 @@ Je **Bereich** (Orte, Kontingente und Failover, Personas, Trigger, Benachrichtig
 | **Vorschlagen** | der Core schreibt Anträge mit Diff-Vorschau; der Nutzer bestätigt |
 | **Selbst mit Bericht** | der Core ändert, stellt es ins Journal, schreibt einen Bericht und rollt bei schlechter Wirkung zurück |
 
-**Immer nur Vorschlag, in Rust festgelegt, nicht abschaltbar:** Geld, Rechte (auch die Rechte anderer Agenten und der eigenen Stufe), Sicherheit, Löschen, Releases und die **eigene Stufe**. Ein Test erzwingt das: jeder Schlüssel mit diesen Klassen lehnt Selbst-Änderung ab, auch wenn das Register falsch gepflegt ist.
+**Immer nur Vorschlag, in Rust festgelegt, nicht abschaltbar:** Geld, Rechte (auch die Rechte anderer Agenten und der eigenen Stufe), Sicherheit (dazu gehören die Datenschutz-Einstellungen der Kundenprojekte: Allowlist, Einwilligung, Filter), Löschen, Releases und die **eigene Stufe**. Ein Test erzwingt das: jeder Schlüssel mit diesen Klassen lehnt Selbst-Änderung ab, auch wenn das Register falsch gepflegt ist.
 
 **Vertrauen wächst mit Belegen:** Je Bereich zählt das Journal Änderungen, die die Probezeit ohne Rücknahme bestanden haben. Das Erhöhen der Stufe ist selbst ein Vorschlag an den Nutzer, mit dieser Zahl als Beleg. Der Core erhöht seine Stufe nie.
 
@@ -50,11 +50,11 @@ Je **Bereich** (Orte, Kontingente und Failover, Personas, Trigger, Benachrichtig
 | Selbstheilung | V2-CORE-5 | RAM unter 1,5 GiB frei: neue Starts gehen auf den Server oder in die Cloud (nur wenn belegt verfügbar); Kontingent nahe am Limit: Failover nach Regel; stehengebliebener Agent: genau eine Meldung. Je Fall ein Test mit Fixture |
 | Probezeit und Rücknahme | V2-CORE-3 | Test mit künstlich verschlechterter Messgröße: Rücknahme innerhalb der Probezeit, Journal-Eintrag vollständig |
 | Optimierer | V2-CORE-7 | Ein Versuch läuft genau eine Woche, endet mit Vergleich, ändert danach nichts ohne Bestätigung |
-| App-Wissen pflegen („Wann was“) | V2-CORE-8 | Nach einer Befehlsänderung von `pa` meldet der Vergleich mit dem Handbuch (V2-B26) die Lücke als Antrag |
+| App-Wissen pflegen („Wann was“) | V2-B26 (früher V2-B26) | Nach einer Befehlsänderung von `pa` meldet der Vergleich mit dem Handbuch (V2-B26) die Lücke als Antrag |
 | Einstellungen erklären mit Verlauf | V2-CORE-9 | Zu jedem Schlüssel: Besitzer, aktueller Wert, die letzten Journal-Einträge mit Grund |
 | Tagesbericht (3 Zeilen) | V2-CORE-9 | Genau drei Zeilen: was geändert, was zurückgenommen, was wartet auf den Nutzer |
 | Aufmerksamkeit (Tagesfenster, Wochenbrief) | V2-CORE-AT | Fragen außerhalb des Fensters landen im Sammelkorb; Not-Aus und Sicherheit sind die einzigen Ausnahmen |
-| Regelmodus ohne Kontingent | V2-CORE-10 | Ohne Modell-Kontingent arbeitet der Core nach festen Regeln (RAM, Stillstand, Not-Aus, Frist-Erinnerung); er ist nie dunkel. Test: Kontingent leer → Regeln greifen, keine Modellanfrage |
+| Regelmodus ohne Kontingent | V2-CORE-10 | Ohne Modell-Kontingent arbeitet der Core nach festen Regeln (RAM, Stillstand, Not-Aus, Frist-Erinnerung); er ist nie dunkel. Steht die Stufe „lokal“ bereit (V2-B2b), darf V2-ARCH-0 vorsehen, dass der Core sie nutzt; der Regelmodus bleibt der Boden. Test: Kontingent leer → Regeln greifen, keine Modellanfrage |
 | Not-Aus stoppt den Core | V2-CORE-10 | Bei aktivem Not-Aus wendet der Core nichts an, Probezeiten pausieren, Modellanfragen enden; Messung gemeinsam mit der 10-s-Frist (`estop.rs:9`) |
 
 ## 6. Sicherheit (Stufe A, zwei Fremd-Reviews)
@@ -67,6 +67,7 @@ Der Core liest Text, den Dritte beeinflussen können, und darf Einstellungen än
 | **Injection über Agenten-Post** | Ein Antrag trägt die geprüfte Identität des Absenders (Run-Credential, `api/agent_access.rs`), nie eine Selbstauskunft im Text; Text im Antrag ist Begründung, nie Befehl |
 | **Freigabe-Umgehung** | Bestätigung nur über einen vom Nutzer authentifizierten Kanal (das App-Fenster). Ein gekoppeltes Gerät darf nur antworten und stoppen, nie bestätigen (V2-H4). Der Core bestätigt nie seine eigenen Anträge; Anträge auf Geld, Rechte, Sicherheit, Löschen, Releases oder die eigene Stufe führen nie zu Selbst-Änderung |
 | **Schlüssel- und Datenabfluss** | Der Core sieht Schlüssel nur als `tresor://`-Verweis; Berichte und Journal laufen durch den Secret-Scan (`scripts/ci/secret-scan.sh`) |
+| **Kundendaten bei KI-Aufrufen** (Kundenprojekte) | Datenschutz-Schleuse V2-PRIV-1 bis 3 (`plan.md` 3.12): Allowlist, Protokoll, Filter; der Core ändert sie nie (Klasse „Sicherheit“) |
 | **Eskalation über Reihenfolge** | Serialisierung je Schlüssel; Rücknahme stellt den alten Wert wieder her, auch wenn zwischendurch ein Antrag wartet |
 
 Tests (V2-SEC-1): ein präpariertes Repo mit Injektionstext erzeugt keinen Änderungs-Eintrag außerhalb des Registers; ein Antrag mit „der Nutzer hat zugestimmt“ im Text bleibt Antrag; jede feste Grenze aus Abschnitt 3 hat einen roten Test; das Bedrohungsmodell (V2-SEC-0) benennt Core, Webhooks, MCP, SSH und Agentenpost gemeinsam.
@@ -75,8 +76,8 @@ Tests (V2-SEC-1): ein präpariertes Repo mit Injektionstext erzeugt keinen Ände
 
 - Neue Module, keine Logik in den Nahtstellen: `src-tauri/src/core/` (Register, Journal, Antrags-Warteschlange, Stufen, Probezeit, Regelmodus). Persistenz in `store/core.rs`, Routen in `api/core_routes.rs`, Befehle in `main.rs`; in den Nahtdateien stehen nur Verdrahtungszeilen (V2-ARCH-1).
 - Ereignisfluss: Agent oder Nutzer → Antrag → Prüfung (Register, Grenzen, Serialisierung) → Entscheidung (Nutzer oder Stufe „Selbst“) → Anwenden → Probezeit mit Messung → bestätigt oder Rücknahme → Journal, Tagesbericht.
-- Besitz der Einstellungen anderer Pakete: Persona-Rechte (V2-B17), Orte (V2-B5), Failover (V2-B2), Trigger (V2-B15), Verbesserungs-Schalter (V2-B20) tragen ihren Besitzer im Register; sie schreiben nicht an V2-CORE-1 vorbei.
+- Besitz der Einstellungen anderer Pakete: Persona-Rechte (V2-B17), Orte (V2-B5), Failover (V2-B2a), Trigger (V2-B15), Verbesserungs-Presets (V2-B20) tragen ihren Besitzer im Register; sie schreiben nicht an V2-CORE-1 vorbei.
 
 ## 8. Reihenfolge
 
-V2-ARCH-0 und V2-SEC-0 (Doku, vor Welle 1) → V2-CORE-1, 2, 4 (Kern ohne Datenbank) → V2-ST-K1 (Tabellen) → V2-CORE-3, 10 → V2-API-K, V2-MN-K → V2-CORE-5, 6, 9, AT → V2-S25 (Bildschirm) → V2-CORE-7, 8 (nach dem Kern-Release erlaubt, vor 2.x gebaut). V2-SEC-1 läuft vor dem ersten „Selbst mit Bericht“.
+V2-ARCH-0 und V2-SEC-0 (Doku, vor Welle 1) → V2-CORE-1, 2, 4 (Kern ohne Datenbank) → V2-ST-K1 (Tabellen) → V2-CORE-3, 10 → V2-API-K, V2-MN-K → V2-CORE-5, 6, 9, AT → V2-S07a (Bildschirm) → V2-CORE-7 (nach dem Kern-Release erlaubt, vor 2.x gebaut). V2-SEC-1 läuft vor dem ersten „Selbst mit Bericht“.

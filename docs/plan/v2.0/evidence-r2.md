@@ -35,37 +35,52 @@ Die Stand-Spalten der Pläne sind teils veraltet (siehe `mapping.md`, Stand-Hinw
 |---|---|
 | 1 Kern und Schalter | `plan.md` 1a; V2-FLAG-1; Frage 2 |
 | 2 Beweis-Schicht zuerst | Wellen (Abschnitt 4): V2-B9, V2-B10, V2-MQ1, V2-ST-B1 in W1 |
-| 3 Tor D1 | V2-DOG-1, V2-O0 bis O5 (Abschnitt 3.5, 4b) |
+| 3 Tor D1 | V2-DOG-1, V2-O0, V2-RUN-1 bis V2-RUN-4 (Abschnitt 3.5, 4b) |
 | 4 Kapazität | V2-CAP-1; Abschnitt 4a |
-| 5 Ausführung in AgentsRoom | Abschnitt 4a; V2-EX-1 bis EX-6 |
+| 5 Ausführung in AgentsRoom | Abschnitt 4a; V2-EX-1, EX-2, EX-4 bis EX-6 (EX-3 steckt in V2-RUN-2) |
 | 6 Größenregel als Gate | V2-GATE-SIZE (Abschnitt 6, Frage 4) |
 | 7 Abnahme je Welle | V2-UAT-1 |
 | 8 Design-Gate | V2-GATE-DESIGN |
 | 9 Leistungsbudgets | V2-GATE-PERF |
 | 10 Bedrohungsmodell | V2-SEC-0, V2-SEC-1 |
 | 11 Migration, Updater | V2-MIG-1, V2-UPD-1 (mit V2-R-06) |
-| 12 Sicherung | V2-B24, V2-BAK-1 |
-| 13 Fehler melden | V2-FB-1 |
+| 12 Sicherung | V2-B24 (mit Wiederherstellungstest) |
+| 13 Fehler melden | geparkt (`plan.md` 3.13); lokales Paket wie heute |
 | 14 Beta-Kanal, Flags | V2-BETA-1, V2-FLAG-1 |
-| 15 Rechtscheck | V2-LEGAL-1; Frage 8 |
-| 16 Monetarisierung | V2-WEB-1; Frage 9 |
-| 17 Demo-Modus | V2-DEMO-1 |
+| 15 Rechtscheck | geparkt (3.13); Bedingungen der Anbieter in V2-CLI-0 |
+| 16 Monetarisierung | geparkt (3.13) |
+| 17 Demo-Modus | geparkt (3.13) |
 | 18 Rangfolge des Wissens | Regel in Abschnitt 4b; V2-B12; V2-RULE-2 |
-| 19 Prozess-Diät | Regel in 4b; V2-DIET-1; Frage 12 |
+| 19 Prozess-Diät | Regel in 4b; V2-KPI-1; Frage 11 |
 | 20 Ergebnis statt Durchsatz | V2-KPI-1 |
-| 21 Sauberer Hauptcheckout | Regel in 4b; V2-HYG-1; Frage 12 |
+| 21 Sauberer Hauptcheckout | Regel in 4b; V2-HYG-1; Frage 11 |
 | 22 Nachtruhe | V2-CORE-AT; Regel in 4a |
 | 23 Wochenbrief | V2-BRIEF-1 |
-| 24 Abbruch-Regeln | V2-STOP-1 |
+| 24 Abbruch-Regeln | V2-BRIEF-1 |
 | 25 Entscheidungen mit Ablaufdatum | V2-DEC-1 |
-| 26 Server: Kosten gegen Nutzen | V2-SRV-1; Frage 7 |
+| 26 Server: Kosten gegen Nutzen | V2-CAP-1; Frage 7 |
 | 27 Ideen-Parkplatz | Regel in 4b; V2-B13 |
-| 28 Lernmodus | V2-LEARN-1, V2-LEARN-2 |
+| 28 Lernmodus | V2-UAT-1, V2-LEARN-2 |
 | 29 Architektur-Skizze | V2-ARCH-0 |
 | 30 Nichts Neues in die Nähte | V2-ARCH-1 |
 | 31 M1–M4 einordnen | `mapping.md`; Abschnitt 9 |
 | 32 CLI-Vertragstests | V2-CLI-3 |
-| 33 Code-Signatur | Frage 10 |
-| 34 Datenschutz | V2-LEGAL-1; V2-FB-1 (Opt-in); Frage 8 |
-| 35 E2E und Handbuch | V2-E2E-0, V2-MAN-1; je Kernseite im U-Standard |
-| 36 Plan-Freeze | V2-FREEZE-1a/b; Regel in 4b; Frage 11 |
+| 33 Code-Signatur | geparkt (3.13) |
+| 34 Datenschutz | V2-PRIV-1 bis 3 (Kundendaten), Frage 8; Versand mit Opt-in geparkt |
+| 35 E2E und Handbuch | V2-E2E-0; Handbuch geparkt; je Kernseite im U-Standard |
+| 36 Plan-Freeze | V2-FREEZE-1a/b; Regel in 4b; Frage 10 |
+
+## 3. Belege der Richtungsentscheidung (Runde 3, 06.10.2026)
+
+Gelesen und gezählt, nichts gestartet.
+
+| Aussage | Befund | Befehl |
+|---|---|---|
+| Alle 25 Boards tragen denselben Block | Prüfsumme der Zeilen 15–229 von `Main.dc.html` gleich bei allen 25 Dateien (auch `Core.dc.html`) | `sed -n 15,229p <Board> \| md5sum` je Datei, Ergebnis `same=25` |
+| Größe der Boards | 508 bis 1572 Zeilen, Summe 17149 (Plan 1572, Gedächtnis 1201, Core 1165) | `wc -l docs/design/2026-10-ui-v2/glass/*.dc.html` |
+| Boardanker haben sich verschoben | Material `Main.dc.html:69-71`, Bewegung `:255-260,267`, Zustandswörterbuch `:216-224`, Schale `:331,379,390`, Tabs `Kontingente.dc.html:425`, Sheet `AgentStarten.dc.html:432` | `rg -n` auf die genannten Klassen |
+| Die Boards zeigen zehn CLIs und Ollama Cloud als letzte Stufe | `AgentStarten.dc.html:577-586` (Claude, Codex, Kimi, OpenCode, Gemini, Copilot, Kilo, Ollama, Cursor, Grok); `:532` Ollama `glm-5.2:cloud`, „danach Pause statt Rechnung“ | `sed -n 575,587p`; `rg -n Ollama` |
+| Ollama ist im Bestand | Profil `agent-defaults.json:76` (`ollama run llama3.2`), Cloud-Profil `:86`; Anbieter `providers.rs:194`, Port 11434 `:82`, lokaler Verbrauch `:1064` | `rg -n -i ollama src-tauri/resources/agent-defaults.json src-tauri/src/providers.rs` |
+| Maskierung vorhanden, PII-Muster fehlen | `src-tauri/src/redact.rs:213` (`pub fn redact`); `rg -i "email\|phone\|password\|passwort\|@" src-tauri/src/redact.rs` ohne Treffer | `rg -n "fn redact" src-tauri/src`; die zweite Zeile |
+| Playwright vorhanden und Apache-2.0 | `package.json:62` (`@playwright/test`), `node_modules/@playwright/test/package.json:16` `"license": "Apache-2.0"` | `rg -n playwright package.json`; `rg -n '"license"' node_modules/@playwright/test/package.json` |
+| Paketzahl vor Runde 3 | 163 eindeutige Pakete in den Tabellen ab 3.1, 215 mit den `×M`-Schnitten (ohne übernommene Pakete) | Zählskript in `size-evidence.md` auf dem Stand `25e7c95` |

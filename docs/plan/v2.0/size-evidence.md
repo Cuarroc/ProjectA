@@ -86,3 +86,96 @@ for label, key in (('Groesse roh', lambda p: bucket(p['raw'])), ('Groesse netto'
 seam = [p for p in merged if any(SEAM.search(f['path']) for f in p['files'])]
 print('\nSeam-PRs', len(seam), 'median raw', st.median(p['raw'] for p in seam))
 ```
+
+## Paketzahl (Runde 3, 06.10.2026)
+
+Lesend, ohne Netzwerk. Die Zahlen in `plan.md`, Abschnitt 3.14, kommen aus diesem Skript (Python 3, nur Standardbibliothek). Aufruf, im Repo-Stamm: `python3 count.py docs/plan/v2.0/plan.md docs/plan/v2.0/mapping.md` (das Skript liegt zum Nachrechnen hier abgedruckt, nicht im Repo).
+
+Regeln des Skripts: eindeutig nach ID; Zeilen von `### 3.1` bis vor `## 4.` plus die Zeilen `| V2-EX-n (` aus 4a; der Abschnitt 3.13 (Geparkt) zählt nicht; `n×M` zählt als n Pakete; V2-REL und V2-N1 (Nutzer-Aufgaben) zählen 0; „Kern“ sind die in 1a ausgeschriebenen IDs; „übernommen“ sind die IDs der Zeilen „übernehmen“ in `mapping.md` (Ketten wie `D4a → D4b` zählen je Glied), soweit sie keine eigene Zeile im Plan haben. Die Variante „Regel 600“ halbiert (aufgerundet) die Pakete der Lane `fe` mit Stufe B und lässt alle anderen unverändert; sie setzt voraus, dass Frage 4b beantwortet wird. Grenzen: Die Größen sind Schätzungen aus Boardzeilen (die Umrechnung in Diffzeilen misst erst das erste Paket); die Zeilen für Gruppen („W5-01 bis W5-39“) sind nicht in Pakete aufgelöst; Runde 2 wurde mit demselben Skript auf dem Stand `25e7c95` gezählt (204 Pakete mit Schnitten, 163 Zeilen, 17 übernommen).
+
+```python
+"""Count packages of plan.md (std lib only). Usage: python3 count.py plan.md mapping.md"""
+import re, sys, math
+
+def rows(plan):
+    start = plan.index('### 3.1 ')
+    end = plan.index('## 4. Wellen und Tore')
+    seen = {}
+    seg = plan[start:end]
+    if '### 3.13' in seg:
+        a = seg.index('### 3.13')
+        b = seg.index('@@PAKETZAHL@@') if '@@PAKETZAHL@@' in seg else (seg.index('### 3.14') if '### 3.14' in seg else len(seg))
+        seg = seg[:a] + seg[b:]
+    for l in seg.split('\n'):
+        if not l.startswith('| V2-'):
+            continue
+        c = [x.strip() for x in l.split('|')[1:-1]]
+        pid = c[0]
+        if pid in seen or '/' in pid:
+            continue
+        w = 1
+        lane = c[2] if len(c) > 2 else ''
+        stufe = c[4] if len(c) > 4 else ''
+        for x in c[1:9]:
+            m = re.fullmatch(r'(\d)×M', x)
+            if m:
+                w = int(m.group(1)); break
+        if pid in ('V2-REL', 'V2-N1'):
+            w = 0
+        seen[pid] = dict(w=w, lane=lane, stufe=stufe)
+    a4 = plan.index('## 4a. ')
+    b4 = plan.index('## 4b. ')
+    for l in plan[a4:b4].split('\n'):
+        mm = re.match(r'\| (V2-EX-\d) \(', l)
+        if mm and mm.group(1) not in seen:
+            seen[mm.group(1)] = dict(w=1, lane='ci', stufe='B')
+    return seen
+
+def kern_ids(plan):
+    a = plan.index('| Kernteil |')
+    b = plan.index('**Nach dem Kern')
+    ids = set()
+    for l in plan[a:b].split('\n'):
+        if l.startswith('| ') and not l.startswith('| Kernteil') and not l.startswith('|---'):
+            cell = l.split('|')[2]
+        elif l.startswith('**Querschnitt'):
+            cell = l
+        else:
+            continue
+        ids |= set(re.findall(r'V2-[A-Z0-9][A-Za-z0-9-]*[A-Za-z0-9]', cell))
+    return ids
+
+def w600(r):
+    return math.ceil(r['w'] / 2) if r['lane'] == 'fe' and r['stufe'] == 'B' else r['w']
+
+def adopted(plan, mapping, own):
+    ids = set()
+    for l in mapping.split('\n'):
+        if re.search(r'\| übernehmen \|', l):
+            c = [x.strip() for x in l.split('|')[1:-1]]
+            for piece in re.split(r'→|,|\+', c[2]):
+                piece = piece.strip()
+                if piece.startswith('V2-'):
+                    ids.add(re.match(r'V2-[A-Za-z0-9-]+', piece).group(0))
+                elif re.fullmatch(r'[A-Z]\d[a-z]?', piece):
+                    ids.add('V2-ARCH-' + piece)
+    return {i for i in ids if i not in own}
+
+def summary(plan, mapping):
+    r = rows(plan)
+    k = kern_ids(plan)
+    own = set(r)
+    ad = adopted(plan, mapping, own)
+    miss = sorted(i for i in k if i not in r)
+    tot = sum(v['w'] for v in r.values())
+    kern = sum(v['w'] for i, v in r.items() if i in k)
+    tot6 = sum(w600(v) for v in r.values())
+    kern6 = sum(w600(v) for i, v in r.items() if i in k)
+    return dict(rows=len(r), krows=len([i for i in r if i in k]), tot=tot, kern=kern, tot6=tot6, kern6=kern6,
+                ad=len(ad), missing=miss, adopted=sorted(ad))
+
+if __name__ == '__main__':
+    p = open(sys.argv[1], encoding='utf-8').read()
+    m = open(sys.argv[2], encoding='utf-8').read()
+    print(summary(p, m))
+```
