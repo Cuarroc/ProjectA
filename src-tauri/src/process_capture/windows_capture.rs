@@ -1653,7 +1653,8 @@ fn execute_protocol_events(
     use crate::host_events::{Message, Sender, Settlement};
     let lifecycle = handshake.is_some();
     let (events_tx, events_rx) = std::sync::mpsc::sync_channel(64);
-    let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel::<Result<Settlement, String>>(1);
+    let (terminal_tx, terminal_rx) =
+        std::sync::mpsc::sync_channel::<(Result<Settlement, String>, Instant)>(1);
     let stop = Arc::new(AtomicBool::new(false));
     let writer_stop = Arc::clone(&stop);
     let writer = std::thread::Builder::new()
@@ -1671,10 +1672,10 @@ fn execute_protocol_events(
                     Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
                 }
             }
-            let receipt = match terminal_rx
+            let (settlement, deadline) = terminal_rx
                 .recv_timeout(Duration::from_secs(5))
-                .map_err(|_| "event settlement unavailable")??
-            {
+                .map_err(|_| "event settlement unavailable")?;
+            let receipt = match settlement? {
                 Settlement::Completed(receipt) => receipt,
                 Settlement::ExitedUndelivered(exit) => {
                     // Nothing was delivered, so there is no receipt for the
@@ -1692,7 +1693,9 @@ fn execute_protocol_events(
                 receipt: Box::new(receipt),
             })?;
             if let Some(handshake) = &handshake {
-                let deadline = Instant::now() + Duration::from_secs(3);
+                // Durable receipt persistence shares the existing writer-drain
+                // deadline. A shorter independent wait can reject a successful
+                // SQLite checkpoint; a new wait here would extend the budget.
                 while !handshake.observed.load(Ordering::Acquire) {
                     if writer_stop.load(Ordering::Acquire) || Instant::now() >= deadline {
                         return Err("receipt acknowledgement unavailable".into());
@@ -1712,9 +1715,9 @@ fn execute_protocol_events(
         .and_then(|prepared| execute_protocol_settlement(prepared, observer, lifecycle));
     let capture_failure = terminal.as_ref().err().cloned();
     drop(events_tx);
-    let submitted = terminal_tx.send(terminal);
-    drop(terminal_tx);
     let drain_deadline = Instant::now() + Duration::from_secs(5);
+    let submitted = terminal_tx.send((terminal, drain_deadline));
+    drop(terminal_tx);
     while !writer.is_finished() && Instant::now() < drain_deadline {
         std::thread::sleep(Duration::from_millis(2));
     }
