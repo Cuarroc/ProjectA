@@ -43,11 +43,12 @@ pub fn recover_before_open<E: RecoveryEffects>(
         if let RecoveryAction::RestorePreviousRuntime { .. } = action {
             // The restored database opens; the journal is kept aside as the
             // record, so the next start neither restores again nor blocks.
-            archive_record(&store_path)
+            let record = archive_record(&store_path)
                 .map_err(|error| format!("restored, but journal not archived: {error}"))?;
             crate::logf!(
                 "update",
-                "update rolled back, database restored from backup"
+                "update rolled back, database restored from backup; record {}",
+                record.display()
             );
             return Ok(());
         }
@@ -94,7 +95,15 @@ fn archive_record(store_path: &Path) -> std::io::Result<PathBuf> {
         (secs % 3600) / 60,
         secs % 60
     );
-    for n in 0u32.. {
+    archive_record_stamped(store_path, &stamp)
+}
+
+/// Suffixes tried for one stamp, then the journal stays where it is and the
+/// error blocks writes - the next start restores and retries the archive.
+const ARCHIVE_SUFFIX_BUDGET: u32 = 100;
+
+fn archive_record_stamped(store_path: &Path, stamp: &str) -> std::io::Result<PathBuf> {
+    for n in 0..ARCHIVE_SUFFIX_BUDGET {
         let suffix = if n == 0 {
             String::new()
         } else {
@@ -106,7 +115,10 @@ fn archive_record(store_path: &Path) -> std::io::Result<PathBuf> {
             return Ok(record);
         }
     }
-    unreachable!("the counter is unbounded")
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        format!("{ARCHIVE_SUFFIX_BUDGET} rollback records already carry the stamp {stamp}"),
+    ))
 }
 
 /// What the real process can do at startup; install and promotion are refused.
@@ -342,6 +354,53 @@ mod tests {
             recover_before_open(location, effects).unwrap();
         }
         assert_eq!(restored_records(&dir).len(), 2);
+    }
+
+    /// Two rollbacks inside the same second collide on the stamp; the second
+    /// takes the `-1` suffix and the first record is never overwritten.
+    #[test]
+    fn a_colliding_stamp_takes_the_next_suffix_and_keeps_the_first_record() {
+        let dir = TempDir::new("startup-archive-collision");
+        let journal = dir.path().join("update-recovery.json");
+        std::fs::write(&journal, b"second").unwrap();
+        let first = dir
+            .path()
+            .join("update-recovery.restored.20990101T000000Z.json");
+        std::fs::write(&first, b"first").unwrap();
+        let record = archive_record_stamped(&journal, "20990101T000000Z").unwrap();
+        assert_eq!(
+            record.file_name().unwrap().to_string_lossy(),
+            "update-recovery.restored.20990101T000000Z-1.json"
+        );
+        assert_eq!(std::fs::read(&first).unwrap(), b"first");
+        assert_eq!(std::fs::read(&record).unwrap(), b"second");
+        assert!(!journal.exists());
+    }
+
+    /// Past the suffix budget the archive fails closed: the journal stays
+    /// where it is, writes stay blocked and the next start retries.
+    #[test]
+    fn exhausted_suffixes_fail_closed_and_keep_the_journal() {
+        let dir = TempDir::new("startup-archive-budget");
+        let journal = dir.path().join("update-recovery.json");
+        std::fs::write(&journal, b"payload").unwrap();
+        for n in 0..ARCHIVE_SUFFIX_BUDGET {
+            let suffix = if n == 0 {
+                String::new()
+            } else {
+                format!("-{n}")
+            };
+            std::fs::write(
+                dir.path().join(format!(
+                    "update-recovery.restored.20990101T000000Z{suffix}.json"
+                )),
+                b"x",
+            )
+            .unwrap();
+        }
+        let error = archive_record_stamped(&journal, "20990101T000000Z").unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::AlreadyExists);
+        assert!(journal.exists());
     }
 
     /// P3-1: after a failed install the old binary starts. Its handshake is
