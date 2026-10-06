@@ -119,6 +119,9 @@ use serde_json::{json, Value};
 mod db_restore;
 #[path = "../fs_replace.rs"]
 mod fs_replace;
+#[path = "pa/render_stats.rs"]
+mod render_stats;
+use render_stats::render_stats;
 
 /// Descriptor written by the app on startup.
 const DESCRIPTOR_FILE: &str = "projecta-api.json";
@@ -859,25 +862,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 let tree = api.get(&format!("/api/projects/{}/tree", encode(&project_id)), None)?;
                 print!("{}", render_tree(&tree));
             }
-            None => {
-                // The tree route is bound to a project path, so there is no
-                // single request for everything: ask which projects exist,
-                // then ask each of them for its tree.
-                let projects = api.get("/api/projects", None)?;
-                let rows: Vec<Value> = projects.as_array().cloned().unwrap_or_default();
-                if rows.is_empty() {
-                    println!("no projects");
-                }
-                for (index, project) in rows.iter().enumerate() {
-                    let id = text(project, "id");
-                    let tree = api.get(&format!("/api/projects/{}/tree", encode(&id)), None)?;
-                    if index > 0 {
-                        println!();
-                    }
-                    println!("{} ({id})", text(project, "name"));
-                    print!("{}", render_tree(&tree));
-                }
-            }
+            None => print_all_trees(&api)?,
         },
 
         Command::Quota => {
@@ -916,12 +901,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 ),
                 None,
             )?;
-            // The page is Markdown that already ends in a newline; printing it
-            // verbatim is what makes `pa digest show ... > file` useful.
-            match page.get("markdown").and_then(Value::as_str) {
-                Some(markdown) => print!("{markdown}"),
-                None => println!("(no digest for {date})"),
-            }
+            print!("{}", render_digest_show(&page, &date));
         }
 
         Command::BudgetList => {
@@ -970,6 +950,36 @@ fn run(args: &[String]) -> Result<(), String> {
         Command::DbRestore { .. } => unreachable!("handled before Api::load"),
     }
     Ok(())
+}
+
+/// Prints every project's tree. The tree route is bound to a project path, so
+/// there is no single request for everything: ask which projects exist, then
+/// ask each of them for its tree.
+fn print_all_trees(api: &Api) -> Result<(), String> {
+    let projects = api.get("/api/projects", None)?;
+    let rows: Vec<Value> = projects.as_array().cloned().unwrap_or_default();
+    if rows.is_empty() {
+        println!("no projects");
+    }
+    for (index, project) in rows.iter().enumerate() {
+        let id = text(project, "id");
+        let tree = api.get(&format!("/api/projects/{}/tree", encode(&id)), None)?;
+        if index > 0 {
+            println!();
+        }
+        println!("{} ({id})", text(project, "name"));
+        print!("{}", render_tree(&tree));
+    }
+    Ok(())
+}
+
+/// The page is Markdown that already ends in a newline; printing it verbatim
+/// is what makes `pa digest show ... > file` useful.
+fn render_digest_show(page: &Value, date: &str) -> String {
+    match page.get("markdown").and_then(Value::as_str) {
+        Some(markdown) => markdown.to_string(),
+        None => format!("(no digest for {date})\n"),
+    }
 }
 
 // -- arguments -------------------------------------------------------------
@@ -3577,177 +3587,6 @@ fn render_usage_totals(totals: Option<&Value>) -> String {
     )
 }
 
-/// `YYYY-MM-DD HH:MM` in UTC, the same convention the digests use.
-/// One project's statistics as a page of plain text.
-///
-/// Two things it refuses to do, both of them the reason the statistics tab
-/// exists at all: it prints "not measured" where the OmniRoute ledger has no
-/// rows rather than a row of zeroes, and it prints the completion figure with
-/// the word "estimated" and its own arithmetic under it rather than alone.
-fn render_stats(stats: &Value) -> String {
-    let mut out = String::new();
-    out.push_str(&format!(
-        "{}  ({})\nrange      {}\n\n",
-        text(stats, "projectName"),
-        text(stats, "projectId"),
-        text(stats, "range")
-    ));
-
-    let overview = stats.get("overview").unwrap_or(&Value::Null);
-    out.push_str(&format!(
-        "workers    {} active, {} archived, {} total\n",
-        num(overview, "workersActive"),
-        num(overview, "workersArchived"),
-        num(overview, "workersTotal")
-    ));
-    let columns = label_counts(overview.get("byColumn"));
-    if !columns.is_empty() {
-        out.push_str(&format!("board      {columns}\n"));
-    }
-    let queue = label_counts(overview.get("queue"));
-    out.push_str(&format!(
-        "queue      {}\n",
-        if queue.is_empty() {
-            "empty".to_string()
-        } else {
-            queue
-        }
-    ));
-    out.push_str(&format!(
-        "attention  {} card(s) waiting on you\nlearnings  {} pending\n",
-        num(overview, "needsAttention"),
-        num(overview, "learningsPending")
-    ));
-    out.push_str(&format!(
-        "activity   {} message(s), {} status event(s), {} review comment(s) in range\n",
-        num(overview, "messages"),
-        num(overview, "statusEvents"),
-        num(overview, "diffComments")
-    ));
-
-    out.push('\n');
-    match stats.get("tokens") {
-        None | Some(Value::Null) => out.push_str(
-            "tokens     not measured - the omniroute ledger has no rows for this window.\n\
-             \x20          only agents routed through omniroute are counted at all;\n\
-             \x20          a cli talking to its vendor directly spends tokens nothing here sees.\n",
-        ),
-        Some(tokens) => {
-            out.push_str(&format!(
-                "tokens     {} request(s), {} in / {} out (fleet-wide, not per project)\n",
-                num(tokens, "requests"),
-                num(tokens, "tokensIn"),
-                num(tokens, "tokensOut")
-            ));
-            let priced = tokens.get("priced").and_then(Value::as_i64).unwrap_or(0);
-            out.push_str(&format!(
-                "           {}\n",
-                if priced == 0 {
-                    "no price on any row - omniroute's request log carries tokens only".to_string()
-                } else {
-                    format!(
-                        "{:.4} USD over {priced} priced row(s)",
-                        tokens.get("costUsd").and_then(Value::as_f64).unwrap_or(0.0)
-                    )
-                }
-            ));
-            for row in tokens
-                .get("byProfile")
-                .and_then(Value::as_array)
-                .unwrap_or(&Vec::new())
-            {
-                let mine = row
-                    .get("usedByProject")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false);
-                out.push_str(&format!(
-                    "           {:<16} {:>7} req  {:>10} in  {:>10} out{}\n",
-                    row.get("profileId")
-                        .and_then(Value::as_str)
-                        .unwrap_or("(unattributed)"),
-                    num(row, "requests"),
-                    num(row, "tokensIn"),
-                    num(row, "tokensOut"),
-                    if mine {
-                        "  <- used by this project"
-                    } else {
-                        ""
-                    }
-                ));
-            }
-        }
-    }
-
-    let sessions = stats.get("sessions").unwrap_or(&Value::Null);
-    out.push_str(&format!(
-        "\nsessions   {} total, {} ended, {} still open\n",
-        num(sessions, "total"),
-        num(sessions, "ended"),
-        num(sessions, "open")
-    ));
-    if sessions.get("ended").and_then(Value::as_i64).unwrap_or(0) > 0 {
-        out.push_str(&format!(
-            "           {} in total, median {}\n           {} non-zero exit(s), {} with no code at all\n",
-            duration(sessions.get("totalSeconds").and_then(Value::as_i64).unwrap_or(0)),
-            sessions
-                .get("medianSeconds")
-                .and_then(Value::as_i64)
-                .map_or_else(|| "—".to_string(), duration),
-            num(sessions, "failed"),
-            num(sessions, "unknownExit")
-        ));
-    }
-
-    let completion = stats.get("completion").unwrap_or(&Value::Null);
-    match completion.get("percent").and_then(Value::as_f64) {
-        None => out
-            .push_str("\nestimate   nothing to estimate from - no workers and no queue entries\n"),
-        Some(percent) => {
-            out.push_str(&format!(
-                "\nestimate   {percent:.0} % (estimated, not measured)\n"
-            ));
-            for part in completion
-                .get("components")
-                .and_then(Value::as_array)
-                .unwrap_or(&Vec::new())
-            {
-                out.push_str(&format!(
-                    "           {:<8} weight {:.2}  score {:.2}  {}\n",
-                    text(part, "key"),
-                    part.get("weight").and_then(Value::as_f64).unwrap_or(0.0),
-                    part.get("score").and_then(Value::as_f64).unwrap_or(0.0),
-                    text(part, "detail")
-                ));
-            }
-        }
-    }
-
-    let timeline = stats
-        .get("timeline")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    if !timeline.is_empty() {
-        out.push_str("\nday          messages  events\n");
-        for day in timeline
-            .iter()
-            .rev()
-            .take(14)
-            .collect::<Vec<_>>()
-            .iter()
-            .rev()
-        {
-            out.push_str(&format!(
-                "{:<12} {:>8}  {:>6}\n",
-                text(day, "date"),
-                num(day, "messages"),
-                num(day, "statusEvents")
-            ));
-        }
-    }
-    out
-}
-
 /// A whole number of the response, or `0` where the field is missing.
 fn num(value: &Value, key: &str) -> i64 {
     value.get(key).and_then(Value::as_i64).unwrap_or(0)
@@ -3775,6 +3614,7 @@ fn duration(seconds: i64) -> String {
     }
 }
 
+/// `YYYY-MM-DD HH:MM` in UTC, the same convention the digests use.
 fn iso_minute(unix_seconds: i64) -> String {
     let day = unix_seconds.div_euclid(86_400);
     let rest = unix_seconds.rem_euclid(86_400);
@@ -6354,6 +6194,16 @@ mod tests {
         assert_eq!(render_digest_list(&dates), "2026-08-27\n2026-08-26\n");
         assert_eq!(render_digest_list(&json!([])), "no digests\n");
         assert_eq!(render_digest_list(&json!({})), "no digests\n");
+    }
+
+    #[test]
+    fn a_digest_page_prints_verbatim_or_names_the_missing_date() {
+        let page = json!({ "markdown": "# Digest\n" });
+        assert_eq!(render_digest_show(&page, "2026-08-27"), "# Digest\n");
+        assert_eq!(
+            render_digest_show(&json!({}), "2026-08-27"),
+            "(no digest for 2026-08-27)\n"
+        );
     }
 
     #[test]
