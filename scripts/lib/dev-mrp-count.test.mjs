@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { countRp, parsePromptLog, main } from "../dev/mrp-count.mjs";
 import { measure } from "../dev/bench-weekly.mjs";
 
@@ -41,7 +42,7 @@ test("an empty window gives a null share", () => {
 
 test("the CLI prints JSON", async () => {
   let out = "";
-  const code = await main(["--input", new URL("./fixtures/mrp-count.json", import.meta.url).pathname, "--from", "2026-10-02", "--to", "2026-10-05"], { out: (s) => (out += s), err: () => {} });
+  const code = await main(["--input", fileURLToPath(new URL("./fixtures/mrp-count.json", import.meta.url)), "--from", "2026-10-02", "--to", "2026-10-05"], { out: (s) => (out += s), err: () => {} });
   assert.equal(code, 0);
   assert.equal(JSON.parse(out).sharePct, 40);
 });
