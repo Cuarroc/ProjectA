@@ -1,0 +1,5 @@
+# path::fn<TAB>reason - one allowed hit per line (scripts/ci/crlf-source-compare.mjs)
+src-tauri/src/main.rs::the_readiness_marker_lookup_does_not_swallow_store_errors	seam file (rule 6), test-only fix deferred; .gitattributes forces eol=lf for *.rs
+src-tauri/src/main.rs::api_backend_implements_the_emergency_stop	seam file (rule 6), test-only fix deferred; .gitattributes forces eol=lf for *.rs
+src-tauri/src/store/development_runs.rs::approval_authority_has_no_second_literal_in_production_code	seam file (rule 6), test-only fix deferred; .gitattributes forces eol=lf for *.rs
+src-tauri/src/learnings.rs::approving_writes_the_human_wording_into_the_playbook	reads a file the app itself writes with LF, not checked-in source text

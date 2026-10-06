@@ -725,7 +725,7 @@ diff --git a/x b/x
     /// the panel would show A and approve B.
     #[test]
     fn the_diff_and_its_tuple_use_pinned_shas() {
-        let source = include_str!("diff.rs");
+        let source = include_str!("diff.rs").replace("\r\n", "\n");
         let body = source
             .split("pub fn worker_diff(")
             .nth(1)
