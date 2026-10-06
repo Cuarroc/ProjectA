@@ -1,4 +1,6 @@
 // Prüft die Farbpaarungen aus src/styles.css gegen WCAG 2.1 AA.
+// V2-F1: src/design/tokens.css is checked as well. Its colours are not
+// imported by the app; the pairs below are the new light and dark text.
 //
 // Warum es das gibt: Die Oberfläche hat zwei Modi, und ein Token, das im
 // Dunkeln gut aussieht, kann im Hellen durchfallen — genau das ist der Grund,
@@ -446,6 +448,54 @@ if (tokenCss) {
       } catch (err) {
         fails.push(`${mode.trim()}: ${label}: ${err.message}`);
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// V2 design tokens (src/design/tokens.css). Light is :root. Dark replaces
+// the theme tokens inside @media (prefers-color-scheme: dark). Translucent
+// chrome, glass and washes are composed over --g-ground.
+// ---------------------------------------------------------------------------
+
+const designCss = readFileSync(join(here, "..", "src", "design", "tokens.css"), "utf8");
+const designDarkAt = designCss.indexOf("@media (prefers-color-scheme: dark)");
+if (designDarkAt < 0) {
+  fails.push("design: kein @media (prefers-color-scheme: dark)-Block in tokens.css");
+} else {
+  const designLight = parseVars(designCss.slice(0, designDarkAt));
+  const designDark = { ...designLight, ...parseVars(designCss.slice(designDarkAt)) };
+  const textRoles = ["g-ink", "g-ink2", "g-muted", "g-faint", "g-accent"];
+  const stateRoles = ["g-run", "g-need", "g-rev", "g-ok", "g-done", "g-bad"];
+  for (const [mode, vars] of [
+    ["token hell  ", designLight],
+    ["token dunkel", designDark],
+  ]) {
+    try {
+      const ground = color(vars, "g-ground");
+      const chrome = over(color(vars, "g-chrome-bg"), ground);
+      const glass = over(color(vars, "g-content-bg"), ground);
+      const soften = (base) => over(color(vars, "g-accent-soft"), base);
+      for (const role of textRoles) {
+        for (const [name, surface] of [
+          ["ground", ground],
+          ["chrome", chrome],
+          ["glass", glass],
+        ]) {
+          check(mode, `${role} / ${name}`, color(vars, role), surface);
+        }
+      }
+      check(mode, "g-on-accent / g-accent", color(vars, "g-on-accent"), color(vars, "g-accent"));
+      check(mode, "g-on-accent / g-accent-hover", color(vars, "g-on-accent"), color(vars, "g-accent-hover"));
+      check(mode, "g-accent / accent-soft auf ground", color(vars, "g-accent"), soften(ground));
+      check(mode, "g-accent / accent-soft auf glass", color(vars, "g-accent"), soften(glass));
+      check(mode, "g-on-need / g-need", color(vars, "g-on-need"), color(vars, "g-need"));
+      for (const role of stateRoles) {
+        const wash = color(vars, `${role}-bg`);
+        check(mode, `${role} / ${role}-bg`, color(vars, role), wash.a < 1 ? over(wash, ground) : wash);
+      }
+    } catch (err) {
+      fails.push(`${mode.trim()}: ${err.message}`);
     }
   }
 }

@@ -16,10 +16,11 @@ function runGate(mutateHq, mutateConcepts = () => {}) {
   const dir = mkdtempSync(join(tmpdir(), "contrast-gate-"));
   try {
     mkdirSync(join(dir, "scripts"));
-    mkdirSync(join(dir, "src"));
+    mkdirSync(join(dir, "src", "design"), { recursive: true });
     mkdirSync(join(dir, "docs", "dev-hq"), { recursive: true });
     cpSync(join(root, "scripts", "contrast-check.mjs"), join(dir, "scripts", "contrast-check.mjs"));
     cpSync(join(root, "src", "styles.css"), join(dir, "src", "styles.css"));
+    cpSync(join(root, "src", "design", "tokens.css"), join(dir, "src", "design", "tokens.css"));
     const hq = readFileSync(join(root, "docs", "dev-hq", "hq.css"), "utf8");
     writeFileSync(join(dir, "docs", "dev-hq", "hq.css"), mutateHq(hq));
     cpSync(join(root, "docs", "dev-hq", "concepts"), join(dir, "docs", "dev-hq", "concepts"), { recursive: true });
