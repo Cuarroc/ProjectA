@@ -4,6 +4,7 @@
   <img src="assets/banner.svg" alt="ProjectA" width="100%" />
   <p><em>An agentic terminal for Windows: many AI coding agents, one calm cockpit.</em></p>
   <p><strong>Mehrere KI-Coding-Agenten parallel arbeiten lassen – jeder in seinem eigenen Terminal, Branch und Worktree.</strong></p>
+  <p><strong>Fokus: sicherer Dauerbetrieb – Not-Aus, Kostenkontrolle, Protokoll.</strong></p>
 
   <a href="https://github.com/Cuarroc/ProjectA-updates/releases/latest"><img alt="Neueste Version" src="https://img.shields.io/github/v/release/Cuarroc/ProjectA-updates?label=Version" /></a>
   <a href="LICENSE"><img alt="Lizenz: MIT" src="https://img.shields.io/github/license/Cuarroc/ProjectA?label=Lizenz" /></a>
@@ -12,6 +13,12 @@
 </div>
 
 ## Warum ProjectA?
+
+**Unser Fokus ist sicherer Dauerbetrieb:** Agenten sollen lange für dich
+arbeiten können, ohne dass du sie aus den Augen verlieren musst. Dafür gibt es
+den Not-Aus (alles sofort stoppen), Budgetgrenzen als Kostenkontrolle und ein
+nachvollziehbares Protokoll in der lokalen Datenbank. Der automatische
+Dauerbetrieb selbst ist in v1.5.1 noch ausgeschaltet; siehe „Status und Grenzen“.
 
 - **Parallel statt nacheinander:** Jede Aufgabe läuft als eigener Worker mit
   eigenem Git-Branch und Worktree – die Agenten kommen sich nicht in die Quere.
@@ -56,7 +63,7 @@
 ## Status und Grenzen
 
 - **App-Version:** `v1.5.1` – diese Version baut der Quellcode auf `main`.
-- **Veröffentlicht:** zuletzt `v1.5.0` (Beta); v1.5.1 (Endversion) ist in Vorbereitung.
+- **Veröffentlicht:** zuletzt `v1.5.1`.
   Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
 - Aktives persönliches Projekt. Windows ist das einzige paketierte Ziel.
   Plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
