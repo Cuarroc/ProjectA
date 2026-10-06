@@ -43,8 +43,7 @@ pub fn recover_before_open<E: RecoveryEffects>(
         if let RecoveryAction::RestorePreviousRuntime { .. } = action {
             // The restored database opens; the journal is kept aside as the
             // record, so the next start neither restores again nor blocks.
-            let record = store_path.with_extension("restored.json");
-            std::fs::rename(&store_path, &record)
+            archive_record(&store_path)
                 .map_err(|error| format!("restored, but journal not archived: {error}"))?;
             crate::logf!(
                 "update",
@@ -79,6 +78,35 @@ pub fn recover_before_open<E: RecoveryEffects>(
             journal.phase()
         ))
     }
+}
+
+/// Move the journal to `update-recovery.restored.<yyyymmddThhmmssZ>[-n].json`
+/// so a second rollback never overwrites the first record.
+fn archive_record(store_path: &Path) -> std::io::Result<PathBuf> {
+    let unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    let secs = unix.rem_euclid(86_400);
+    let stamp = format!(
+        "{}T{:02}{:02}{:02}Z",
+        crate::digest::utc_date(unix).replace('-', ""),
+        secs / 3600,
+        (secs % 3600) / 60,
+        secs % 60
+    );
+    for n in 0u32.. {
+        let suffix = if n == 0 {
+            String::new()
+        } else {
+            format!("-{n}")
+        };
+        let record = store_path.with_extension(format!("restored.{stamp}{suffix}.json"));
+        if !record.exists() {
+            std::fs::rename(store_path, &record)?;
+            return Ok(record);
+        }
+    }
+    unreachable!("the counter is unbounded")
 }
 
 /// What the real process can do at startup; install and promotion are refused.
@@ -284,10 +312,36 @@ mod tests {
     }
 
     /// The restored journal, kept beside the database as the outcome record.
+    fn restored_records(dir: &TempDir) -> Vec<PathBuf> {
+        let mut found: Vec<PathBuf> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| {
+                let name = path.file_name().unwrap().to_string_lossy();
+                name.starts_with("update-recovery.restored.") && name.ends_with(".json")
+            })
+            .collect();
+        found.sort();
+        found
+    }
+
     fn restored_record(dir: &TempDir) -> UpdatePhase {
-        let archived = dir.path().join("update-recovery.restored.json");
+        let archived = restored_records(dir).remove(0);
         let record = JournalStore::new(archived, &dir.path().join("projecta.db")).unwrap();
         record.load().unwrap().phase()
+    }
+
+    #[test]
+    fn second_rollback_keeps_the_first_record() {
+        let dir = TempDir::new("startup-two-rollbacks");
+        for _ in 0..2 {
+            let location = installing(&dir);
+            let mut forged = handshake();
+            forged.nonce = "nonce-b".into();
+            let (effects, _) = fake(forged);
+            recover_before_open(location, effects).unwrap();
+        }
+        assert_eq!(restored_records(&dir).len(), 2);
     }
 
     /// P3-1: after a failed install the old binary starts. Its handshake is
