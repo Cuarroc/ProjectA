@@ -443,6 +443,15 @@ mod tests {
     #[test]
     fn unarchived_journal_blocks_writes_then_restores_and_archives_again() {
         use std::os::unix::fs::PermissionsExt;
+        /// Restores the record dir mode even when the test panics, so the
+        /// TempDir cleanup never meets a read-only directory. Declared after
+        /// `dir`, it drops first and hands cleanup a writable dir.
+        struct ModeGuard(PathBuf);
+        impl Drop for ModeGuard {
+            fn drop(&mut self) {
+                let _ = std::fs::set_permissions(&self.0, std::fs::Permissions::from_mode(0o755));
+            }
+        }
         let dir = TempDir::new("startup-archive-fails");
         let location = installing(&dir);
         let mut journal = DurableJournal::open(location.clone()).unwrap();
@@ -450,6 +459,12 @@ mod tests {
         journal.record_health_failure("unhealthy").unwrap();
         let mode = |m| std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(m));
         mode(0o555).unwrap();
+        let _guard = ModeGuard(dir.path().to_path_buf());
+        // Root ignores the mode bits (CAP_DAC_OVERRIDE), so the archive
+        // failure cannot be provoked; skip instead of failing.
+        if std::fs::write(dir.path().join("probe"), b"").is_ok() {
+            return;
+        }
         let (effects, calls) = fake(handshake());
         let blocked = recover_before_open(location.clone(), effects);
         mode(0o755).unwrap();
