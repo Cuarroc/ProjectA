@@ -2,6 +2,7 @@
 //! never fabricate exit evidence or release live workers' scope/budget locks.
 //! Direct database/schema access is outside the trusted control API boundary.
 use super::audit::{append_domain_audit_tx, AuditEnvelope};
+use super::continuous::begin_write;
 use super::{now_unix_secs, Store};
 use sqlx::{Sqlite, Transaction};
 
@@ -79,11 +80,11 @@ impl Store {
             return Err("emergency stop actor is required".into());
         }
         let source_ref = if active { "raise" } else { "release" };
-        let mut tx = match self.pool.begin_with("BEGIN IMMEDIATE").await {
+        let mut tx = match begin_write(&self.pool, "global emergency stop").await {
             Ok(tx) => tx,
             Err(error) => {
                 return self
-                    .audit_failure(actor, source_ref, STORE_FAILED, db(error))
+                    .audit_failure(actor, source_ref, STORE_FAILED, error)
                     .await
             }
         };

@@ -1,5 +1,6 @@
 //! Durable identity and single-use authorization before worktree/process creation.
 //! Existing reservations are never returned as permission to start again.
+use super::continuous::begin_write;
 use super::{new_id, now_unix_secs, Store};
 use crate::development_policy::DevelopmentPolicy;
 use serde::Serialize;
@@ -279,7 +280,7 @@ impl Store {
         if body.len() > 32768 {
             return Err("route receipt too large".into());
         }
-        let mut tx = self.pool.begin_with("BEGIN IMMEDIATE").await.map_err(db)?;
+        let mut tx = begin_write(&self.pool, "development launch storage").await?;
         // A receipt that names its dispatch role binds only to a run
         // dispatched in that role; any non-string claim fails closed.
         if let Some(claimed) = receipt.get("dispatchRole") {

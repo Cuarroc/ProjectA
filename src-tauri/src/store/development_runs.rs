@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, Sqlite, Transaction};
 
+use super::continuous::begin_write;
 use super::development_launches::{run_role, DispatchRole};
 use super::{new_id, now_unix_secs, Store};
 
@@ -454,11 +455,7 @@ impl Store {
             return Err("fence must be positive".to_string());
         }
         let now = now_unix_secs();
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(db("begin development run intent"))?;
+        let mut tx = begin_write(&self.pool, "begin development run intent").await?;
         let current: Option<(String,)> = sqlx::query_as(
             "SELECT g.root_goal_id FROM continuous_tasks t JOIN continuous_goals g ON g.id = t.goal_id WHERE t.id = ?1 AND t.status = 'running' AND t.claim_owner = ?2 AND t.claim_fence = ?3",
         )
@@ -526,11 +523,7 @@ impl Store {
             return Err("launch must record a workerId or processId".to_string());
         }
         let now = now_unix_secs();
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(db("begin mark run launched"))?;
+        let mut tx = begin_write(&self.pool, "begin mark run launched").await?;
         let reserved: Option<(String, String)> =
             sqlx::query_as("SELECT worker_id, state FROM development_launches WHERE run_id = ?")
                 .bind(&run_id)
@@ -736,11 +729,7 @@ impl Store {
             return Err("fence must be positive".to_string());
         }
         validate_observed_at(observed_at)?;
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(db("begin candidate binding"))?;
+        let mut tx = begin_write(&self.pool, "begin candidate binding").await?;
         require_active_run_authority(&mut tx, &run_id, &owner, fence).await?;
         let invalidated_records =
             bind_candidate(&mut tx, &run_id, &candidate_commit, &source, observed_at).await?;
@@ -803,11 +792,7 @@ impl Store {
             .map_err(|error| format!("encode evidence payload: {error}"))?;
         let measurement_json = serde_json::to_string(&input.measurement)
             .map_err(|error| format!("encode evidence measurement: {error}"))?;
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(db("begin development evidence"))?;
+        let mut tx = begin_write(&self.pool, "begin development evidence").await?;
         require_active_run_authority(&mut tx, &run_id, &owner, fence).await?;
         require_bound_candidate(&mut tx, &run_id, &input.candidate_commit).await?;
         let id = new_id("dre");
@@ -856,11 +841,7 @@ impl Store {
             return Err("fence must be positive".to_string());
         }
         validate_review(&input)?;
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(db("begin development review"))?;
+        let mut tx = begin_write(&self.pool, "begin development review").await?;
         require_run_authority(&mut tx, &reviewer_run, &owner, fence).await?;
         let evidence: EvidenceRow = sqlx::query_as("SELECT id, run_id, idempotency_key, source, trusted_test_source, observed_at, candidate_commit, measurement_json, payload_json, invalidated_at, invalidated_by_commit FROM development_run_evidence WHERE id = ?1")
             .bind(&input.evidence_id).fetch_optional(&mut *tx).await.map_err(db("read review evidence"))?
@@ -952,11 +933,7 @@ impl Store {
         }
         let current_candidate_commit = required(current_candidate_commit, "candidateCommit")?;
         validate_observed_at(observed_at)?;
-        let mut tx = self
-            .pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(db("begin candidate invalidation"))?;
+        let mut tx = begin_write(&self.pool, "begin candidate invalidation").await?;
         require_run_authority(&mut tx, &run_id, &owner, fence).await?;
         let invalidated = bind_candidate(
             &mut tx,
@@ -989,11 +966,7 @@ async fn transition_run(
     }
     let detail = detail.map(|value| required(value, "detail")).transpose()?;
     let now = now_unix_secs();
-    let mut tx = store
-        .pool
-        .begin_with("BEGIN IMMEDIATE")
-        .await
-        .map_err(db("begin development run transition"))?;
+    let mut tx = begin_write(&store.pool, "begin development run transition").await?;
     let status = run_by_id(&mut tx, &run_id)
         .await?
         .ok_or_else(|| format!("unknown development run: {run_id}"))?
