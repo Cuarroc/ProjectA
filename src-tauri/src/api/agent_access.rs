@@ -1230,6 +1230,12 @@ mod tests {
         std::fs::create_dir_all(&access).unwrap();
         std::fs::write(access.join(format!("{:032x}.json", 1)), b"{}").unwrap();
         std::fs::set_permissions(&access, std::fs::Permissions::from_mode(0o500)).unwrap();
+        // Root ignores the mode bits, so the failure cannot be provoked.
+        let probe = access.join("probe");
+        if std::fs::write(&probe, b"").is_ok() {
+            std::fs::set_permissions(&access, std::fs::Permissions::from_mode(0o700)).unwrap();
+            return;
+        }
         let report = sweep_orphaned_descriptor_files(dir.path());
         std::fs::set_permissions(&access, std::fs::Permissions::from_mode(0o700)).unwrap();
         assert_eq!((report.removed, report.failed), (0, 1));
