@@ -72,9 +72,10 @@ export function judge(scenario, w, { before, after }, { appVersion, newVersion, 
     if (!installed) problems.push('no installed version reported after the update');
     else if (sameVersion(installed, appVersion)) problems.push(`version did not change (still ${normalizeVersion(installed)})`);
     else if (newVersion && newVersion !== 'unknown' && !sameVersion(installed, newVersion)) problems.push(`installed version ${normalizeVersion(installed)}, expected ${normalizeVersion(newVersion)}`);
-    // The commit is compared only when both sides are known; both are reported on a mismatch.
+    // An expected commit is an explicit ask: a missing report is a failure, not a silent skip.
     const got = w.last?.commit;
-    if (newCommit && got && String(got).toLowerCase() !== String(newCommit).toLowerCase()) problems.push(`installed commit ${String(got).toLowerCase()}, expected ${String(newCommit).toLowerCase()}`);
+    if (newCommit && !got) problems.push(`no installed commit reported, expected ${String(newCommit).toLowerCase()}`);
+    else if (newCommit && String(got).toLowerCase() !== String(newCommit).toLowerCase()) problems.push(`installed commit ${String(got).toLowerCase()}, expected ${String(newCommit).toLowerCase()}`);
   } else {
     if (w.relaunched) problems.push('app relaunched, but this scenario must not install');
     if (scenario === 'fail' && !w.transitions.some((t) => t.phase === 'error' && t.message)) problems.push('no error phase with a message');
@@ -109,7 +110,7 @@ export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, ne
   let after = [];
   try { after = workerIds(await get('/api/workers')); } catch (e) { bundle.step('list workers after', { exitCode: 1, detail: e.message }); }
   const journalAfter = summarizeJournal(appDir);
-  bundle.addFile('after.json', JSON.stringify({ newVersion, observedUi, workers: after, journal: journalAfter }, null, 2));
+  bundle.addFile('after.json', JSON.stringify({ newVersion, newCommit, observedUi, workers: after, journal: journalAfter }, null, 2));
   const problems = judge(scenario, w, { before, after }, { appVersion, newVersion, newCommit });
   bundle.step(`judge ${scenario}`, { exitCode: problems.length ? 1 : 0, detail: problems.join('; ') || `ok in ${Math.round(w.elapsedMs / 1000)} s, relaunch ${w.relaunched}` });
   return bundle.finish(NOT_COVERED);

@@ -71,6 +71,14 @@ test('successful update compares the commit when expected and reported are known
   const ok = await runUpdaterDrill({ ...fixture(), scenario: 'success', appVersion: '0.9.0', newCommit: 'aaa111', commit: 'abc', timeoutMs: 60000, ...fake(script) });
   assert.equal(ok.result, 'pass', JSON.stringify(ok.steps));
 });
+test('successful update fails when a commit is expected but the app reports none', async () => {
+  const script = [{ phase: 'installing', version: '1.0.0' }, null, { phase: 'up-to-date', version: '1.0.0' }];
+  const fx = fixture();
+  const m = await runUpdaterDrill({ ...fx, scenario: 'success', appVersion: '0.9.0', newCommit: 'bbb222', commit: 'abc', timeoutMs: 60000, ...fake(script) });
+  assert.equal(m.result, 'fail');
+  assert.match(m.steps.at(-1).detail, /no installed commit reported, expected bbb222/);
+  assert.match(readFileSync(join(fx.outDir, 'after.json'), 'utf8'), /bbb222/);
+});
 test('cancelled update fails when the installed version changed anyway', async () => {
   const bad = await run('cancel', [{ phase: 'installing' }, { phase: 'idle', version: 'v1.0.0' }]);
   assert.equal(bad.m.result, 'fail');
