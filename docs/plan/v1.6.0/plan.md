@@ -6,7 +6,9 @@ Stand 05.10.2026, Basis `2ec6960` (`origin/main`). Dieser Entwurf ändert nichts
 
 v1.6.0 verringert zuerst die Nacharbeit bedeutend und verbessert sie (Nutzervorgabe 05.10.): weniger Fix-PRs, weniger Review-Runden, weniger rote Läufe, und wenn doch Nacharbeit nötig ist, genau eine begrenzte Runde auf demselben Branch. Danach macht es ProjectA bereit für die ersten externen Tester: Die App startet nach einem Update sicher, das README sagt klar, wofür sie da ist, und es gibt ein Tester-Kit. Die vier Nahtstellen werden kleiner, und der Windows-Flake KI-30, der die Merge-Queue anhält, wird untersucht und behoben. Die Messung läuft jede Woche, rekursives Prompting ist Pflicht (Abschnitte 2a, 7a, 7b).
 
-Fertig ist v1.6.0, wenn alle Kern-Pakete gemergt sind, die Nacharbeits-Ziele aus Abschnitt 7a in zwei Wochenmessungen erreicht sind, jede der vier Nahtstellen weniger Zeilen hat als an der Basis (`wc -l`: `api.rs` 8091, `store.rs` 7227, `bin/pa.rs` 6490, `main.rs` 5133) und zwei Wochenmessungen vorliegen.
+Fertig ist v1.6.0, wenn alle weiterhin freigegebenen Kern-Pakete gemergt sind und jede der vier Nahtstellen weniger Zeilen hat als an der Basis (`wc -l`: `api.rs` 8091, `store.rs` 7227, `bin/pa.rs` 6490, `main.rs` 5133). Vor dem Release bleiben tatsächliche Windows-/Linux-Prüfungen am Kandidaten, unabhängige Reviews gemäß Risikostufe, der Update-Probelauf und keine bekannten kritischen Fehler verbindlich. Diese Dokumentation erklärt keinen dieser Belege für erbracht.
+
+**Nutzerentscheidung vom 06.10.2026 („Passt so“):** Die zwei Wochenmessungen mit den unveränderten Nacharbeits-Zielen aus Abschnitt 7a und die Beobachtung von 40 Queue-Läufen bleiben **offene Nachbeobachtung** nach v1.6.0, keine Vorab-Wartegates. Sie sind weder bestanden noch gestrichen. Befunde fließen in v1.6.1 ein, kritische Befunde werden früher behandelt. Releasehinweise müssen die fehlenden Langzeitnachweise ausdrücklich nennen. Andere Architektur-/Funktionspakete, Schwellenwerte und Sicherheitsgates bleiben unverändert; diese Entscheidung erlaubt keinen automatischen Tag oder Release.
 
 ## 2. Was sich an der Arbeitsweise ändert
 
@@ -45,7 +47,7 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (messbares Signal) |
 |---|---|---|---|---|---|---|---|---|
-| V16-01 | KI-30: Ursache des `real_native_*`-Flakes belegen und beheben. Heute ist sie unbelegt (`KNOWN_ISSUES.md:193-205`); rot wird der Assert „native launch left unresolved“ (`workers.rs:4857`), „os error 32“ tritt nur zusätzlich auf (zuletzt Queue-Lauf 37301269691 am 05.10.) | wk | – | A | M | – | Claude, ab G2 astra | Beleg der Ursache zuerst (roter Test oder Messung); `--test-threads=1` in `scripts/ci/native-tests.sh:98` ist entfernt; 0 KI-30-Fehlschläge in den nächsten 40 Queue-Läufen. Ohne belegte Ursache: Bericht und neuer Schnitt statt Fix |
+| V16-01 | KI-30: Ursache des `real_native_*`-Flakes belegen und beheben. Heute ist sie unbelegt (`KNOWN_ISSUES.md:193-205`); rot wird der Assert „native launch left unresolved“ (`workers.rs:4857`), „os error 32“ tritt nur zusätzlich auf (zuletzt Queue-Lauf 37301269691 am 05.10.) | wk | – | A | M | – | Claude, ab G2 astra | Beleg der Ursache zuerst (roter Test oder Messung); `--test-threads=1` in `scripts/ci/native-tests.sh:98` ist entfernt; 0 KI-30-Fehlschläge in den nächsten 40 Queue-Läufen (offene Nachbeobachtung nach v1.6.0, Abschnitt 7a.1). Ohne belegte Ursache: Bericht und neuer Schnitt statt Fix |
 | BENCH-01 | Wochenmessung als Skript `scripts/dev/bench-weekly.mjs`, nur lesend; M-LEAD je Stufe und Größenklasse | ci | – | B | M | – | glm-5.3, sonst Claude | Test mit JSON-Fixtures; die Ausgabe enthält jede Metrik aus `benchmark.md`, Abschnitt 6; alle Zähl-Muster stehen im Skript |
 | BENCH-02 | Montags-Workflow, der BENCH-01 ausführt (nur Leserechte, kein Commit) | ci | – | B | S | BENCH-01 | glm-5.3 | Ein Lauf per `workflow_dispatch` ist grün, der Bericht steht in der Job-Summary |
 | FLOW-01 | Standard für rekursives Prompting: `docs/development/prompting.md` mit Checkliste und den fünf Vorlagen aus dem Text von PR #488 | doc | – | C | S | – | glm-5.3 | Datei enthält die fünf Vorlagen; `npm run dev:agent-check` Exit 0 |
@@ -166,7 +168,18 @@ Messung jeden Montag. Heute heißt: `gh`/`git`-Befehle aus `benchmark.md`, Absch
 | Aufträge, die BLOCKIERT enden, vermeidbar / Umgebung | 2,7 % / 10 in 3 Tagen (lokal) | < 1 % / ≤ 2 pro Woche | BENCH-03, FLOW-04 |
 | Konflikt-Aufträge | 28 in 3 Tagen (lokal) | ≤ 3 pro Woche | BENCH-03, FLOW-03 |
 
-Zu hohe Ziele werden nicht still gesenkt: Verfehlt eine Zeile nach zwei Wochenmessungen das Ziel, kommt sie als Frage in die Inbox.
+Zu hohe Ziele werden nicht still gesenkt: Verfehlt eine Zeile nach zwei Wochenmessungen das Ziel, kommt sie als Frage in die Inbox. Die Ergebnisse bleiben Nachbeobachtung für v1.6.1; kritische Befunde werden früher behandelt.
+
+### 7a.1 Offene Nachbeobachtung nach v1.6.0
+
+| Nachweis | Originalkriterium und Stand | Zuständigkeit und nächster Abgleich |
+|---|---|---|
+| Zwei Wochenmessungen | **Offen:** zwei vollständige Wochenfenster mit Zielerreichung nach Abschnitt 7a; Baseline J2, Nenner, Ausschlüsse und Schwellenwerte bleiben gleich. Ein erfolgreicher Workflow-Lauf allein belegt kein vollständiges Fenster oder Zielerreichung. | Root sammelt BENCH-01/02-Berichte und BENCH-03-Aggregate; PM pflegt die Releaseakte, Chief verfolgt Befunde. Nach der ersten und zweiten vollständigen Messwoche ab tatsächlichem Release, im bestehenden Montagsrhythmus. Releasedatum und konkrete Prüfdaten sind noch unbekannt. |
+| 40 Queue-Läufe | **Offen:** 0 KI-30-Fehlschläge in 40 Queue-Läufen; bestehendes Fenster nach #518-Merge vom 05.10.2026 22:12:40 UTC wird fortgeführt, nicht am Release neu begonnen. Root-Audit vom 06.10.2026 17:15 UTC: 21 Läufe, 19 erfolgreich, 2 fehlgeschlagen; dies ist kein aktueller Vollnachweis. Queue-Fehler sind nicht automatisch KI-30. | Root ergänzt den gespeicherten Audit mit Run-ID, Kandidaten-SHA und Fehlerdisposition; Chief/PM führen den offenen Befund nach. Nächster Releaseakte-Abgleich beim tatsächlichen Release, Abschlussprüfung beim 40. Lauf des bestehenden Fensters; konkrete Prüfdaten unbekannt. |
+
+Belegquellen: [`benchmark.md`](benchmark.md), `scripts/dev/bench-weekly.mjs`, `.github/workflows/bench-weekly.yml` (Job-Summary), vorhandene lokale BENCH-03-Aggregate und Root-Audit `root-v160-queue-evidence-20261006.json`. Queue-Auswahl: Workflow `ci`, Ereignis `pull_request`, Branch `mergify/merge-queue/*`, vollständiges bestehendes Zeitfenster und eindeutige Run-IDs; nicht `merge_group`. Der Auditpfad und lokale Rohdaten gehören nicht ins öffentliche Repo. Neue Beobachtungen brauchen Quellenstand, vollständigen Nenner und Fehlerzuordnung; fehlende Daten bleiben offen.
+
+Pflicht in den Releasehinweisen: „Die zwei Wochenmessungen und der 40-Queue-Lauf-Nachweis sind noch offen und werden nach v1.6.0 fortgeführt. Befunde gehen in v1.6.1 ein, kritische Befunde werden früher behandelt.“ Das ist keine Releasefreigabe.
 
 ## 7b. Bessere Nacharbeit
 
