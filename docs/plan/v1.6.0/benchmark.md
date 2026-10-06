@@ -94,6 +94,8 @@ gh pr list -R "$REPO" --state merged --limit 1000 --search 'merged:>=2026-10-02'
 
 Baseline = J2 (02.10. bis Basis). Ziele gelten pro Woche, gemessen am Montag:
 
+**Nutzerentscheidung vom 06.10.2026 („Passt so“):** Zwei vollständige Wochenmessungen mit den ursprünglichen Zielen und 40 Queue-Läufe bleiben offene Nachbeobachtung nach v1.6.0, keine Vorab-Wartegates. Keine Baseline, Schwelle, Definition oder Zählfenster wird geändert; fehlende Werte sind nicht bestanden. Befunde gehen in v1.6.1 ein, kritische Befunde früher. Windows-/Linux-Prüfungen, Risikoreviews, Update-Probelauf und keine bekannten kritischen Fehler bleiben vor dem Release erforderlich; Releasehinweise nennen die fehlenden Langzeitnachweise ausdrücklich. Zuständigkeit, Belegquellen und nächste Abgleiche stehen in [`plan.md`, Abschnitt 7a.1](plan.md#7a1-offene-nachbeobachtung-nach-v160); konkrete Prüfdaten hängen vom noch unbekannten tatsächlichen Releasedatum ab. Die 40-Lauf-Beobachtung setzt das bestehende Fenster nach #518 fort, kein Neustart der Zählung.
+
 | ID | Baseline | Ziel v1.6.0 |
 |---|---|---|
 | M-THR | 7 221 Code-Zeilen / 21 Pakete pro aktivem Tag | ≥ 7 000 / ≥ 20, auch in Wochen ohne Codex |
