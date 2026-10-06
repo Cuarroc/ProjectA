@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,4 +54,15 @@ test("crlf_allow_list_entry_silences_one_function", () => {
 test("crlf_nested_helper_belongs_to_its_test", () => {
   const nested = blind.replace("let src =", "fn helper() {}\n        let src =");
   assert.equal(run({ "src/lib.rs": nested }).status, 1);
+});
+
+test("crlf_gate_runs_from_a_path_with_a_space", () => {
+  const dir = mkdtempSync(join(tmpdir(), "projecta crlf gate "));
+  const copy = join(dir, "crlf-source-compare.mjs");
+  copyFileSync(gate, copy);
+  const root = mkdtempSync(join(tmpdir(), "projecta-crlf-compare-"));
+  mkdirSync(join(root, "src"));
+  writeFileSync(join(root, "src/lib.rs"), blind);
+  const result = spawnSync(process.execPath, [copy, "check", root], { encoding: "utf8" });
+  assert.equal(result.status, 1, result.stdout + result.stderr);
 });

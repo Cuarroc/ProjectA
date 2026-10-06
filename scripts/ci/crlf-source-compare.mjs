@@ -7,9 +7,13 @@
 // gate flags such a function unless it normalises the text (mentions "\r").
 // Allow-list: scripts/ci/crlf-source-compare.allow, one `path::fn<TAB>reason`.
 //
+// Scope (heuristic): only double-quoted "\n" literals are seen, and any "\r"
+// in the fn counts as normalisation.
+//
 // Usage: crlf-source-compare.mjs check [root]
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const READS = /\binclude_str!|\bread_to_string\s*\(/;
 const NEEDLE = /\b(?:contains|find|rfind|starts_with|ends_with|matches|split|split_once|strip_prefix|strip_suffix)\s*\(\s*&?"(?:[^"\\\n]|\\.)*\\n(?:[^"\\\n]|\\.)*"/;
@@ -71,7 +75,7 @@ export function check(root) {
   return hits.filter((h) => !allowed.has(`${h.path}::${h.fn}`));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   if (process.argv[2] !== "check") {
     console.error("usage: crlf-source-compare.mjs check [root]");
     process.exit(2);
