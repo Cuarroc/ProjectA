@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Gedächtnis</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Glass Leitstand · shared system v2 (identical in every artboard) ===== */
+    *{box-sizing:border-box}
+    body{margin:0;background:#E9EDF3}
+    .app{
+      --ground:#E9EDF3;--ink:#121826;--ink2:#2F3747;--muted:#4E5868;--faint:#636C7D;
+      --line:rgba(18,24,38,.11);--hair:rgba(18,24,38,.07);
+      --tint:rgba(255,255,255,.52);--tint-hi:rgba(255,255,255,.92);--hover:#fff;
+      --accent:#1F57D6;--accent-hover:#1A4BBB;--on-accent:#fff;--accent-soft:rgba(31,87,214,.10);--accent-line:rgba(31,87,214,.45);--sw-on:#1F57D6;--sw-off:#7F8794;
+      --run:#08679E;--run-bg:#DDEEF8;--need:#A54800;--need-bg:#FCE8D3;--on-need:#fff;--rev:#6431B6;--rev-bg:#EDE4FA;
+      --ok:#11703A;--ok-bg:#DBF0E3;--done:#525B69;--done-bg:#E7EAEF;--bad:#B51D25;--bad-bg:#FBE1E1;--danger-line:rgba(181,29,37,.36);
+      --chrome-bg:rgba(255,255,255,.5);--chrome-blur:blur(32px) saturate(180%);
+      --content-bg:rgba(255,255,255,.74);--content-blur:blur(20px) saturate(140%);
+      --spec:inset 0 1px 0 rgba(255,255,255,.9);
+      --shadow:0 1px 2px rgba(20,24,40,.06),0 8px 24px -12px rgba(20,24,40,.18);
+      --shadow-pop:0 1px 2px rgba(20,24,40,.08),0 24px 56px -20px rgba(20,24,40,.32);
+      --amb1:#CADCFA;--amb2:#D0ECE2;--amb3:#F6E4D5;
+      --av1:#D9E3F7;--av2:#D3ECE6;--av3:#F2E3D1;--av4:#E6DDF4;--av5:#F3DCE4;--av6:#E0E5EB;
+      --pad:20px;--r-panel:20px;--r-card:14px;--r-ctl:10px;
+      --dur-1:120ms;--dur-2:200ms;--dur-3:320ms;--ease-out:cubic-bezier(.2,.8,.2,1);--ease-spring:cubic-bezier(.34,1.3,.64,1);
+      --ease:var(--ease-out);--dur:var(--dur-1);
+      --sans:"Geist",ui-sans-serif,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+      --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+      position:relative;min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;padding:12px;
+      font:400 13px/1.5 var(--sans);color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+      background:radial-gradient(900px 640px at 0% 0%,var(--amb1),transparent 66%),radial-gradient(780px 600px at 100% 120px,var(--amb2),transparent 66%),radial-gradient(1000px 520px at 50% 900px,var(--amb3),transparent 66%),var(--ground)}
+    .app.dark{
+      --ground:#0D1219;--ink:#E8ECF2;--ink2:#C9D0DA;--muted:#A2ACBB;--faint:#8D97A7;
+      --line:rgba(255,255,255,.11);--hair:rgba(255,255,255,.07);
+      --tint:rgba(255,255,255,.05);--tint-hi:rgba(255,255,255,.10);--hover:rgba(255,255,255,.14);
+      --accent:#6E9BFF;--accent-hover:#8AAEFF;--on-accent:#0A1022;--accent-soft:rgba(110,155,255,.16);--accent-line:rgba(110,155,255,.55);--sw-on:#3A6FE0;--sw-off:#687284;
+      --run:#66C5F2;--run-bg:rgba(102,197,242,.14);--need:#FFB16A;--need-bg:rgba(255,177,106,.14);--on-need:#1D1206;--rev:#C0A6FF;--rev-bg:rgba(192,166,255,.15);
+      --ok:#66D392;--ok-bg:rgba(102,211,146,.14);--done:#A2ACBB;--done-bg:rgba(162,172,187,.13);--bad:#FF8388;--bad-bg:rgba(255,131,136,.14);--danger-line:rgba(255,131,136,.42);
+      --chrome-bg:rgba(20,26,36,.56);--content-bg:rgba(27,33,45,.8);
+      --spec:inset 0 1px 0 rgba(255,255,255,.07);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.55);
+      --shadow-pop:0 1px 2px rgba(0,0,0,.35),0 28px 64px -20px rgba(0,0,0,.7);
+      --amb1:#16264A;--amb2:#0F322D;--amb3:#33231A;
+      --av1:#25324F;--av2:#1F3B37;--av3:#3D3122;--av4:#33294A;--av5:#432936;--av6:#2B323C;color-scheme:dark}
+    .app a{color:inherit}
+    :where(.app) :where(b,strong){font-weight:600}
+    /* small never falls back to the browser's "smaller" (10px under 12px text): one token size unless a board sets its own */
+    :where(.app) :where(small){font-size:12px}
+    .app :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .app h1,.app h2,.app h3,.app h4,.app p,.app ol,.app ul,.app dl,.app dd,.app figure,.app fieldset{margin:0}
+    .app h1,.app h2,.app h3,.app h4{font-size:inherit;font-weight:600}
+    .app ol,.app ul{list-style:none;padding:0}
+    .app fieldset{border:0;padding:0;min-width:0}
+    .app code,.mono{font-family:var(--mono);font-size:12px;letter-spacing:0}
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .muted{color:var(--muted)}
+    .trunc{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .ic.s{width:16px;height:16px}
+    /* materials: chrome (sidebar, top bar, sheets) and content (cards, tables, editors) */
+    .chrome{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass{background:var(--content-bg);-webkit-backdrop-filter:var(--content-blur);backdrop-filter:var(--content-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass .glass,.chrome .glass,.glass .chrome{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--tint);box-shadow:none}
+    .pane{padding:var(--pad);display:flex;flex-direction:column;gap:12px;min-width:0}
+    .pane-h{display:flex;align-items:center;gap:8px;min-height:24px}
+    .pane-h h2,.pane-h h3{font:600 15px/1.3 var(--sans)}
+    .pane-h .r{margin-left:auto;font-size:12px;color:var(--muted)}
+    .grp-h{font:600 13px/1.3 var(--sans);color:var(--ink)}
+    .note{font-size:12px;line-height:1.45;color:var(--muted)}
+    .split{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;flex:1}
+    .grow{flex:999 1 560px;min-width:0}
+    .aside{flex:1 1 320px;max-width:100%;min-width:0}
+    @media (min-width:900px){.aside{max-width:360px}.aside.wide{max-width:400px}}
+    .phead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;padding:4px 4px 0}
+    .phead h1{font:600 28px/1.1 var(--sans);letter-spacing:-.01em}
+    .phead p{font-size:13px;color:var(--muted);margin-top:4px;max-width:76ch}
+    .phead .act{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+    .phead .act .btn{height:44px;padding:0 20px;font-size:13px}
+    .crumb{display:flex;align-items:center;gap:4px;width:max-content;margin-bottom:8px;font:500 12px/1 var(--sans);text-decoration:none;border-radius:6px}
+    .app a.crumb{color:var(--muted)}
+    @media (hover:hover) and (pointer:fine){.app a.crumb:hover{color:var(--accent)}}
+    .item{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card)}
+    .pickable{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pickable:active{transform:scale(.98)}
+    .pickable[aria-pressed="true"],.pickable[aria-current="true"],.pickable[aria-checked="true"]{background:var(--tint-hi);border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+    @media (hover:hover) and (pointer:fine){.pickable:hover{background:var(--tint-hi)}}
+    .lamp{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+    .lamp.off{background:var(--done)}
+    /* a lamp that is not ok/off borrows the state shape: warn = need diamond, busy = run ring, bad = triangle */
+    .lamp.warn{width:7px;height:7px;margin:0 .5px;border-radius:2px;transform:rotate(45deg);background:var(--need)}
+    .lamp.busy{background:none;border:2px solid var(--run);border-right-color:transparent}
+    .lamp.bad{border-radius:0;background:var(--bad);clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .empty{padding:24px;border-radius:var(--r-card);border:1px dashed var(--line);text-align:center;font-size:12px;color:var(--muted)}
+    .empty .btn{margin-top:12px}
+    /* buttons: one filled primary per screen; secondary is glass; tint and ghost are quiet */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--tint-hi);color:var(--ink);font:500 13px/1 var(--sans);text-decoration:none;cursor:pointer;white-space:nowrap;box-shadow:none;transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .btn:active{transform:scale(.97)}
+    .btn.primary{background:var(--accent);border-color:transparent;color:var(--on-accent)}
+    .btn.tint{background:var(--accent-soft);border-color:transparent;color:var(--accent);box-shadow:none}
+    .btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink2)}
+    .btn.lg{height:44px;padding:0 20px}
+    .btn.sm{height:32px;padding:0 12px;font-size:12px}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    @media (hover:hover) and (pointer:fine){.btn:hover{background:var(--hover)}.btn.primary:hover{background:var(--accent-hover)}.btn.tint:hover{background:var(--accent-soft);color:var(--accent-hover)}.btn.ghost:hover{background:var(--tint)}}
+    .inp{width:100%;height:40px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--tint);padding:0 12px;font:400 13px var(--sans);color:var(--ink)}
+    textarea.inp{height:auto;min-height:88px;padding:8px 12px;line-height:1.5;resize:vertical}
+    .inp.mono{font-family:var(--mono);font-size:12px}
+    .inp::placeholder{color:var(--faint)}
+    .inp.sm{height:36px}
+    .selw{position:relative;display:flex;align-items:center;min-width:0}
+    .selw select{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:pointer}
+    .selw>.ic{position:absolute;right:12px;color:var(--muted);pointer-events:none}
+    .field{display:flex;flex-direction:column;gap:4px;font:500 12px/1.3 var(--sans);color:var(--muted);min-width:0}
+    .kbd{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;border:1px solid var(--line);background:var(--tint-hi);font:500 11px/1 var(--mono);color:var(--muted)}
+    .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair)}
+    .seg button{height:32px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);color:var(--ink2);cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .seg button:active,.tabs a:active,.tabs button:active{transform:scale(.97)}
+    .seg button[aria-checked="true"],.seg button[aria-pressed="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    .sw{position:relative;width:40px;height:24px;border-radius:12px;border:0;padding:0;background:var(--sw-off);cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .sw:active{transform:scale(.97)}
+    .sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,24,40,.2);transition:transform var(--dur) var(--ease)}
+    .sw[aria-checked="true"]{background:var(--sw-on)}
+    .sw[aria-checked="true"]::after{transform:translateX(16px)}
+    .sw:disabled{cursor:not-allowed;opacity:.6}
+    .tabs{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair);max-width:100%;overflow-x:auto;scrollbar-width:none}
+    .tabs a,.tabs button{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);text-decoration:none;color:var(--ink2);cursor:pointer;flex:none;white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .tabs [aria-current="page"],.tabs [aria-selected="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    @media (hover:hover) and (pointer:fine){.seg button:not([aria-checked="true"]):not([aria-pressed="true"]):hover,.tabs a:not([aria-current="page"]):hover,.tabs button:not([aria-selected="true"]):hover{background:var(--tint)}}
+    /* filter chip: one look for every filter row. pressed = accent-soft + accent text */
+    .fchips{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+    .fchip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:var(--tint);color:var(--ink2);font:500 12px/1 var(--sans);white-space:nowrap;cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .fchip b{font-weight:600;color:var(--muted)}
+    .fchip:active{transform:scale(.97)}
+    .fchip[aria-pressed="true"],.fchip[aria-checked="true"],.fchip[aria-selected="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+    .fchip[aria-pressed="true"] b,.fchip[aria-checked="true"] b,.fchip[aria-selected="true"] b{color:var(--accent)}
+    @media (hover:hover) and (pointer:fine){.fchip:not([aria-pressed="true"]):not([aria-checked="true"]):not([aria-selected="true"]):hover{background:var(--tint-hi)}}
+    table.tbl{width:100%;border-collapse:collapse}
+    .tbl th{font:500 12px/1.3 var(--sans);color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+    .tbl td{padding:0 12px;height:44px;border-bottom:1px solid var(--hair);font-size:13px;vertical-align:middle}
+    .tbl tbody tr:last-child td{border-bottom:0}
+    .tw{position:relative;overflow-x:auto;min-width:0}
+    .meter{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+    .meter b{display:block;height:100%;border-radius:2px;background:var(--ink2)}
+    .meter b.acc{background:var(--accent)}.meter b.hot{background:var(--need)}.meter b.lock{background:var(--bad)}.meter b.good{background:var(--ok)}
+    .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12px;line-height:1.5}
+    .kv dt{color:var(--muted)}
+    .kv dd{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .kv.box{padding:4px 12px;gap:0 12px;border:1px solid var(--hair);border-radius:var(--r-card);background:var(--tint)}
+    .kv.box dt,.kv.box dd{padding:8px 0;border-top:1px solid var(--hair)}
+    .kv.box dt:first-of-type,.kv.box dd:first-of-type{border-top:0}
+    .sheet{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow-pop);border-radius:24px}
+    /* sidebar */
+    .side{flex:1 1 224px;display:flex;flex-direction:column;gap:16px;padding:12px 8px}
+    @media (min-width:760px){.side{max-width:232px}}
+    .brand{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px}
+    .mark{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);flex:none}
+    .brand b{font:600 15px/1 var(--sans);letter-spacing:-.01em}
+    .brand small{font:500 11px/1 var(--mono);color:var(--muted)}
+    .sgrp{display:flex;flex-direction:column;gap:4px}
+    .slabel{font:500 12px/1 var(--sans);color:var(--muted);padding:4px 8px}
+    .nav{display:flex;flex-direction:column}
+    .nav a{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:10px;color:var(--ink2);text-decoration:none;font:500 13px/1 var(--sans);white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .nav a:active{transform:scale(.98)}
+    .nav a .ic{color:var(--muted)}
+    .nav a .n{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font:500 12px/1 var(--sans);color:var(--muted)}
+    .nav a.sub{padding-left:36px;color:var(--muted)}
+    .nav a[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    .nav a[aria-current="page"] .ic{color:var(--accent)}
+    .nav a.proj[aria-current="true"]{color:var(--ink);font-weight:600}
+    @media (hover:hover) and (pointer:fine){.nav a:hover{background:var(--tint)}}
+    .pj{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:600 11px/1 var(--sans);background:var(--tint-hi);border:1px solid var(--line);color:var(--ink2);flex:none}
+    .dia{width:8px;height:8px;border-radius:2px;transform:rotate(45deg);background:var(--need);flex:none}
+    .nav a.sub .glyph{margin-left:-22px;margin-right:4px}
+    .side-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--hair);display:flex;flex-direction:column;gap:4px}
+    .me{display:flex;align-items:center;gap:8px;padding:4px 8px}
+    .me b{display:block;font:600 13px/1.3 var(--sans)}
+    .me small{display:block;font-size:12px;line-height:1.3;color:var(--muted)}
+    /* main column and top bar */
+    .main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px}
+    .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px}
+    .pick,.qm,.bell{display:inline-flex;align-items:center;height:44px;border-radius:12px;border:0;background:transparent;color:var(--ink2);text-decoration:none;cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pick:active,.qm:active,.bell:active{transform:scale(.97)}
+    .qm[aria-current="page"],.bell[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    @media (hover:hover) and (pointer:fine){.pick:hover,.qm:hover,.bell:hover{background:var(--tint)}}
+    .pick{gap:8px;padding:0 12px 0 8px;font:600 13px/1 var(--sans);color:var(--ink)}
+    .pick .pj{width:28px;height:28px;border-radius:8px;font-size:12px}
+    .search{flex:1 1 240px;position:relative;display:flex;align-items:center;min-width:0}
+    .search input{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--tint);padding:0 80px 0 40px;font:400 13px var(--sans);color:var(--ink)}
+    .search input::placeholder{color:var(--faint)}
+    .search>.ic{position:absolute;left:12px;color:var(--muted);pointer-events:none}
+    .search .kbd{position:absolute;right:12px}
+    .qm{gap:12px;padding:0 12px}
+    .qb{display:flex;flex-direction:column;gap:4px;width:48px;font:500 11px/1 var(--sans);color:var(--muted)}
+    .qb i{display:block;height:4px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+    .qb i b{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--ink2)}
+    .qb i b.hot{background:var(--need)}.qb i b.lock{background:var(--bad)}
+    .bell{position:relative;width:44px;justify-content:center}
+    .badge{position:absolute;top:6px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--need);color:var(--on-need);font:600 11px/16px var(--sans);text-align:center}
+    .top .divider{width:1px;height:24px;background:var(--line);margin:0 4px}
+    .estop{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 12px;border-radius:999px;border:1px solid var(--danger-line);background:var(--bad-bg);color:var(--bad);font:600 13px/1.15 var(--sans);text-align:left;cursor:pointer;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .estop:active{transform:scale(.97)}
+    @media (hover:hover) and (pointer:fine){.estop:hover{border-color:var(--bad)}}
+    .estop small{display:block;font:500 11px/1.2 var(--sans)}
+    .stopband{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-radius:var(--r-card);background:var(--bad-bg);border:1px solid var(--danger-line);color:var(--bad);animation:rise var(--dur-2) var(--ease-out)}
+    .stopband p{font-weight:600}
+    .stopband span{font-size:12px;color:var(--ink2)}
+    .stopband .btn{margin-left:auto}
+    /* six-state vocabulary: shape + label + color, one definition */
+    .st{--c:var(--done);--b:var(--done-bg);display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;background:var(--b);color:var(--c);font:500 12px/1 var(--sans);white-space:nowrap;flex:none}
+    .st.run{--c:var(--run);--b:var(--run-bg)}.st.need{--c:var(--need);--b:var(--need-bg)}.st.rev{--c:var(--rev);--b:var(--rev-bg)}
+    .st.ok{--c:var(--ok);--b:var(--ok-bg)}.st.done{--c:var(--done);--b:var(--done-bg)}.st.bad{--c:var(--bad);--b:var(--bad-bg)}
+    .st::before,.glyph{content:"";display:inline-block;width:10px;height:10px;flex:none;box-sizing:border-box;background:currentColor}
+    .glyph.run{color:var(--run)}.glyph.need{color:var(--need)}.glyph.rev{color:var(--rev)}.glyph.ok{color:var(--ok)}.glyph.done{color:var(--done)}.glyph.bad{color:var(--bad)}
+    .st.run::before,.glyph.run{background:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%}
+    .st.need::before,.glyph.need{width:8px;height:8px;margin:0 1px;border-radius:2px;transform:rotate(45deg)}
+    .st.rev::before,.glyph.rev{border-radius:50%;background:linear-gradient(90deg,transparent 50%,currentColor 50%);box-shadow:inset 0 0 0 1.5px currentColor}
+    .st.ok::before,.glyph.ok{border-radius:50%}
+    .st.done::before,.glyph.done{width:5px;height:9px;margin:0 3px 0 2px;background:none;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+    .st.bad::before,.glyph.bad{clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .st.open{--c:var(--muted);--b:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+    .st.open::before,.glyph.open{background:none;border:1.5px dashed currentColor;border-radius:50%}.glyph.open{color:var(--muted)}
+    /* signature: the proof chip (Beweisleiste) */
+    .proof{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 8px;border-radius:999px;background:var(--tint-hi);border:1px solid var(--line);font:500 12px/22px var(--sans);color:var(--ink2);white-space:nowrap;text-decoration:none;max-width:100%;min-width:0;flex:0 1 auto;overflow:hidden}
+    .proof>*{flex:none}
+    .proof>.yes,.proof>.no,.proof>.wip{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+    a.proof{transition:border-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){a.proof:hover{border-color:var(--accent-line)}}
+    .gt{display:inline-flex;gap:2px}
+    .gt i{width:4px;height:12px;border-radius:2px;background:transparent;box-shadow:inset 0 0 0 1px var(--faint)}
+    .gt i{transition:background-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}.gt i:nth-child(2){transition-delay:40ms}.gt i:nth-child(3){transition-delay:80ms}.gt i:nth-child(4){transition-delay:120ms}
+    .gt i.y,.gt i.r,.gt i.w{box-shadow:none}.gt i.y{background:var(--ok)}.gt i.r{background:var(--bad)}.gt i.w{background:var(--run)}
+    .proof .sep{width:1px;height:12px;background:var(--line);flex:none}
+    .proof .yes{color:var(--ok);font-weight:600}.proof .no{color:var(--bad);font-weight:600}.proof .wip{color:var(--run);font-weight:600}
+    .proof code{font-size:11px;color:var(--muted)}
+    /* CLI/model chip, tag chip, persona avatar */
+    .chip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;background:var(--tint);border:1px solid var(--hair);font:500 12px/1 var(--sans);color:var(--ink2);white-space:nowrap;max-width:100%;overflow:hidden;min-width:0;flex:none}
+    .chip code{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+    .chip.sm{height:20px;padding:0 8px;font-size:11px;border-radius:6px}
+    .ava{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;font:600 12px/1 var(--sans);color:var(--ink);background:var(--tint-hi);border:1px solid var(--line)}
+    .ava.sm{width:24px;height:24px;border-radius:8px;font-size:11px}
+    .ava.lg{width:48px;height:48px;border-radius:14px;font-size:15px}
+    .ava.owner{border-radius:50%;background:var(--ink);color:var(--ground);border-color:transparent}
+    .ava.lead{background:var(--accent);color:var(--on-accent);border-color:transparent}
+    .ava.sys{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+    .ava.c1{background:var(--av1);border-color:transparent}.ava.c2{background:var(--av2);border-color:transparent}.ava.c3{background:var(--av3);border-color:transparent}
+    .ava.c4{background:var(--av4);border-color:transparent}.ava.c5{background:var(--av5);border-color:transparent}.ava.c6{background:var(--av6);border-color:transparent}
+    @keyframes enter{from{opacity:0;transform:translateY(8px)}}
+    /* motion layer: purposeful only. hover/press dur-1, sheets and views dur-2, bars dur-3, one live pulse */
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+    @keyframes fade{from{opacity:0}}
+    @keyframes row-in{from{opacity:0;transform:translateY(-4px)}}
+    @keyframes live{50%{opacity:.45}}
+    .sheet{animation:rise var(--dur-2) var(--ease-out)}
+    [role="tabpanel"],.view{animation:fade var(--dur-2) var(--ease-out)}
+    .is-new{animation:row-in var(--dur-2) var(--ease-out)}
+    .st,.st::before,.glyph{transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),border-radius var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+    .st.run::before{animation:live 2s ease-in-out infinite}
+    .meter b{transition:width var(--dur-3) var(--ease-out)}
+    @media (prefers-reduced-motion:reduce){.app *,.app *::before,.app *::after{animation:none!important;transition-duration:0ms!important}}
+
+    /* ===== Projektgedächtnis ===== */
+    .mem{display:flex;flex-direction:column;gap:12px;min-width:0}
+    /* two more glyphs in the state shape language: list = all notes, equal sign = duplicate */
+    .glyph.all{color:var(--ink2);background:linear-gradient(currentColor,currentColor) 0 1px/10px 2px no-repeat,linear-gradient(currentColor,currentColor) 0 4px/10px 2px no-repeat,linear-gradient(currentColor,currentColor) 0 7px/6px 2px no-repeat}
+    /* veraltet is not one of the six states: neutral dashed ring, like the other non-state markers */
+    .glyph.stale,.st.stale::before{background:none;border:1.5px dashed currentColor;border-radius:50%}
+    .glyph.stale{color:var(--done)}
+    .st.stale{--c:var(--done);--b:var(--done-bg)}
+    .glyph.dup{color:var(--accent);background:linear-gradient(currentColor,currentColor) 0 2px/10px 2px no-repeat,linear-gradient(currentColor,currentColor) 0 6px/10px 2px no-repeat}
+    /* page head and scope switch */
+    .scope{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:0}
+    .phead .scope .sdesc{margin-top:0;font-size:12px}
+    .mem .seg{grid-auto-columns:max-content}
+    .mem .seg button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .mem .seg button:active{transform:scale(.98)}
+    .mem .seg button b{font-weight:500;color:var(--muted)}
+    @media (hover:hover) and (pointer:fine){.mem .seg button:hover{background:var(--tint-hi)}}
+    /* health strip: six filters */
+    .health{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr));gap:4px;padding:4px;border-radius:16px}
+    .hf{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border:1px solid transparent;border-radius:12px;background:transparent;font:400 12px/1.3 var(--sans);color:var(--ink2);text-align:left;cursor:pointer;min-width:0;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .hf:active{transform:scale(.98)}
+    .hf b{font:600 15px/1 var(--sans);color:var(--ink)}
+    .hf.zero{color:var(--muted)}
+    .hf.zero b{font-weight:500;color:var(--muted)}
+    .hf[aria-pressed="true"]{background:var(--tint-hi);border-color:var(--accent-line)}
+    @media (hover:hover) and (pointer:fine){.hf:hover{background:var(--tint)}.hf[aria-pressed="true"]:hover{background:var(--tint-hi)}}
+    /* work area: list | reader | rail */
+    .work{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch}
+    .col{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+    .lst{flex:1 1 300px}.rdr{flex:999 1 440px}.rail{flex:1 1 100%}
+    .scr{flex:1;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+    .lst .scr{max-height:720px}
+    @media (min-width:1360px){
+      .work{flex-wrap:nowrap;height:max(560px,calc(100vh - 236px))}
+      .lst{flex:0 0 328px}.rdr{flex:1 1 auto}.rail{flex:0 0 320px}
+      .lst .scr{max-height:none}
+    }
+    /* knowledge list */
+    .lst-h{display:flex;flex-direction:column;gap:8px;padding:16px 16px 8px}
+    .ttl{display:flex;align-items:baseline;gap:8px}
+    .ttl h2{font:600 15px/1.3 var(--sans)}
+    .ttl span{margin-left:auto;font-size:12px;color:var(--muted)}
+    .find{position:relative;display:flex;align-items:center}
+    .find .inp{padding-left:32px}
+    .find .ic{position:absolute;left:8px;color:var(--muted);pointer-events:none}
+    .tools{display:flex;align-items:center;gap:8px}
+    .tools .tl{font-size:12px;color:var(--muted)}
+    .grp{margin-left:auto;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 12px;border:1px solid var(--hair);border-radius:10px;background:var(--tint);font:500 12px/1 var(--sans);color:var(--ink2);cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .grp:active{transform:scale(.98)}
+    .grp[aria-pressed="true"]{background:var(--tint-hi);color:var(--ink);border-color:var(--line)}
+    .grp svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+    .grp[aria-pressed="true"] svg{opacity:1}
+    .fhint{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+    .lnk{border:0;background:none;padding:0;font:500 12px/1.3 var(--sans);color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+    .groups{display:flex;flex-direction:column;gap:12px;padding:4px 8px 16px}
+    .gh{display:flex;align-items:center;gap:8px;height:24px;padding:0 8px;font:600 12px/1 var(--sans);color:var(--ink2)}
+    .gh span{font-weight:500;color:var(--muted)}
+    .rows{list-style:none;padding:0;display:flex;flex-direction:column;gap:4px}
+    .row{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;width:100%;padding:8px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .row:active{transform:scale(.98)}
+    .row[aria-current="true"]{background:var(--tint-hi);border-color:var(--accent-line)}
+    @media (hover:hover) and (pointer:fine){.row:hover{background:var(--tint)}.row[aria-current="true"]:hover{background:var(--tint-hi)}}
+    .row .txt{display:flex;flex-direction:column;min-width:0}
+    .row .tt{font:500 13px/1.35 var(--sans)}
+    .row .cs{font-size:12px;line-height:1.4;color:var(--muted)}
+    .row .meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:11px;line-height:16px;color:var(--muted)}
+    .row .sv{display:inline-flex;align-items:center;gap:4px;font-weight:500}
+    .sv.ok{color:var(--ok)}.sv.need{color:var(--need)}.sv.stale{color:var(--done)}.sv.bad{color:var(--bad)}
+    .row .use{margin-left:auto}
+    .tile{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;flex:none;background:var(--tint-hi);border:1px solid var(--hair);color:var(--ink2)}
+    .tile svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .lst .empty{display:flex;flex-direction:column;align-items:center;gap:8px;margin:8px}
+    /* reader */
+    .rdr-h{display:flex;flex-direction:column;gap:8px;padding:16px 24px;border-bottom:1px solid var(--hair)}
+    .kind{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+    .kind code{margin-left:auto;font-size:11px}
+    .rdr h2{font:600 20px/1.25 var(--sans);letter-spacing:-.01em;max-width:36ch}
+    .trust{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:12px;color:var(--muted)}
+    .trust .m{display:inline-flex;align-items:center;gap:4px}
+    .acts{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
+    .rdr-b{display:flex;flex-direction:column;gap:24px;padding:16px 24px 24px}
+    .sec{display:flex;flex-direction:column;gap:8px;max-width:68ch}
+    .lab{display:flex;align-items:center;gap:8px;font:600 11px/1.2 var(--sans);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .lab span{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none}
+    .kern{padding:12px 16px;border-radius:12px;font:500 15px/1.5 var(--sans);color:var(--ink)}
+    .kern-in.inp{height:auto;min-height:96px;padding:12px 16px;border-color:var(--accent-line);background:var(--tint-hi);font:500 15px/1.5 var(--sans)}
+    .prose{font-size:13px;line-height:1.6;color:var(--ink2)}
+    .steps{padding-left:24px;display:flex;flex-direction:column;gap:4px;font-size:13px;line-height:1.5;color:var(--ink2)}
+    .steps code{font-size:12px;padding:0 4px;border-radius:4px;background:var(--tint-hi);border:1px solid var(--hair);color:var(--ink);overflow-wrap:anywhere}
+    .call{--c:var(--ink);display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:12px;font-size:12px;line-height:1.5;color:var(--ink2);max-width:68ch}
+    .call.need{--c:var(--need);background:var(--need-bg)}.call.stale{--c:var(--done);background:var(--done-bg)}.call.bad{--c:var(--bad);background:var(--bad-bg)}.call.dup{--c:var(--accent);background:var(--accent-soft)}
+    .call .glyph{margin-top:4px}
+    .call .ct{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+    .call b{font:600 13px/1.35 var(--sans);color:var(--c)}
+    .call .btn{flex:none;align-self:center}
+    .ev{list-style:none;padding:0;display:flex;flex-direction:column;overflow:hidden;border-radius:12px}
+    .ev li+li{border-top:1px solid var(--hair)}
+    .ev a{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:44px;padding:8px 12px;color:var(--ink);text-decoration:none;transition:background-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){.ev a:hover{background:var(--tint-hi)}}
+    .ev .k{font:500 11px/1 var(--sans);color:var(--muted)}
+    .ev .w{display:flex;flex-direction:column;min-width:0}
+    .ev .w code{font-size:12px;color:var(--ink)}
+    .ev .w span{font-size:12px;color:var(--muted)}
+    .chk{display:inline-flex;align-items:center;gap:4px;font:500 11px/1 var(--sans);white-space:nowrap}
+    .chk.ok{color:var(--ok)}.chk.bad{color:var(--bad)}
+    .paths,.rels{display:flex;flex-wrap:wrap;gap:8px}
+    .rel{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--tint);font:500 12px/1 var(--mono);color:var(--accent);cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .rel:active{transform:scale(.98)}
+    @media (hover:hover) and (pointer:fine){.rel:hover{background:var(--tint-hi)}}
+    .none{font-size:12px;color:var(--muted)}
+    .hist{list-style:none;padding:0;display:flex;flex-direction:column}
+    .hist li{position:relative;display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:12px;padding:8px 0;font-size:12px;line-height:1.5;color:var(--ink2)}
+    .hist li:not(:last-child)::before{content:"";position:absolute;left:3.5px;top:20px;bottom:-4px;width:1px;background:var(--line)}
+    .hist i{width:8px;height:8px;margin-top:4px;border-radius:50%;box-sizing:border-box}
+    .hist i.du{background:var(--ink)}
+    .hist i.ag{border:1.5px solid var(--muted)}
+    .hist i.sys{background:var(--muted);border-radius:2px}
+    .hist b{font-weight:600;color:var(--ink)}
+    .hist time{color:var(--muted);white-space:nowrap}
+    /* right rail */
+    .rail .tabs{margin:16px 16px 0}
+    .rail .tabs button{flex:1;justify-content:center;gap:8px;padding:0 8px;white-space:nowrap;transition:background-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){.rail .tabs button:hover{background:var(--tint-hi)}}
+    .cnt{min-width:20px;height:20px;padding:0 4px;border-radius:10px;background:var(--need);color:var(--on-need);font:600 11px/20px var(--sans);text-align:center}
+    .rp{display:flex;flex-direction:column;gap:16px;padding:16px}
+    .lead{font-size:12px;line-height:1.5;color:var(--muted)}
+    .selw{position:relative;display:flex;align-items:center}
+    .selw .inp{appearance:none;-webkit-appearance:none;height:36px;padding-right:32px;background:var(--tint-hi);font-weight:500;cursor:pointer}
+    .selw .ic{position:absolute;right:12px;color:var(--muted);pointer-events:none}
+    .bud{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px}
+    .bud-n{display:flex;align-items:baseline;gap:4px;font-size:12px;color:var(--muted)}
+    .bud-n b{font:600 15px/1 var(--sans);color:var(--ink)}
+    .bud-n .r{margin-left:auto}
+    .bar{display:flex;gap:2px;height:8px;border-radius:4px;background:var(--hair);overflow:hidden}
+    .bar i{display:block;flex:none;height:100%;border-radius:2px;background:var(--accent)}
+    .bar.over i{background:var(--need)}
+    .bud-f{font-size:12px;line-height:1.45;color:var(--ink2)}
+    .bud-f.over{color:var(--need);font-weight:500}
+    .sub{display:flex;align-items:center;gap:8px;font:600 12px/1 var(--sans);color:var(--ink2);padding:0 8px}
+    .sub span{font-weight:500;color:var(--muted)}
+    .cxg{display:flex;flex-direction:column;gap:4px}
+    .cx{list-style:none;padding:0;display:flex;flex-direction:column;gap:4px}
+    .cxr{display:grid;grid-template-columns:minmax(0,1fr) auto 40px;align-items:center;gap:12px;padding:8px;border-radius:10px;transition:background-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){.cxr:hover{background:var(--tint)}}
+    .cxt{display:flex;flex-direction:column;min-width:0}
+    .nm{display:block;max-width:100%;padding:0;border:0;background:none;font:500 13px/1.35 var(--sans);color:var(--ink);text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    @media (hover:hover) and (pointer:fine){.nm:hover{text-decoration:underline;text-underline-offset:2px}}
+    .cxr[data-on="false"] .nm{color:var(--muted)}
+    .why{display:flex;align-items:center;gap:4px;font-size:12px;line-height:1.4;color:var(--muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .why b{font-weight:500;color:var(--ink2)}
+    .tk{font:500 11px/1 var(--mono);color:var(--muted)}
+    .cxr[data-on="false"] .tk{text-decoration:line-through}
+    .quiet{padding-top:12px;border-top:1px solid var(--hair);font-size:12px;line-height:1.5;color:var(--muted)}
+    .props{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
+    .prop{display:flex;flex-direction:column;gap:8px;padding:12px}
+    .prop .hd{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+    .prop .hd a{margin-left:auto;font:500 11px/1 var(--mono);color:var(--accent);text-underline-offset:2px}
+    .prop .nm{white-space:normal;font-weight:600}
+    .prop .pc{font-size:12px;line-height:1.5;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .prop .evd{font-size:12px;line-height:1.45;color:var(--ink2)}
+    .prop .evd b{font-weight:600;color:var(--ink)}
+    .prop .by{font-size:11px;color:var(--muted)}
+    .prop .btns{display:flex;flex-wrap:wrap;gap:8px}
+    /* toast is a sheet: chrome material, lifted */
+    .toastw{position:fixed;left:50%;bottom:24px;translate:-50% 0;z-index:5;width:min(560px,calc(100% - 32px));pointer-events:none}
+    .toast{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 8px 8px 16px;border-radius:16px;box-shadow:var(--spec),var(--shadow-pop);font-size:13px;line-height:1.4;color:var(--ink);pointer-events:auto;animation:enter var(--dur-2) var(--ease-out)}
+    .toast span{flex:1;min-width:0}
+    .toast .x{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+    @media (hover:hover) and (pointer:fine){.toast .x:hover{background:var(--tint)}}
+    /* fit 1440x900: the three columns scroll inside, the page does not */
+    @media (min-width:1360px) and (min-height:720px){
+      .main{height:calc(100vh - 24px)}
+      .mem{flex:1 1 0;min-height:0}
+      .work{flex:1 1 0;min-height:0;height:auto}
+    }
+  </style>
+</helmet>
+<div class="app {{ themeClass }}">
+  <nav class="side chrome" aria-label="Hauptnavigation">
+    <div class="brand"><span class="mark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg></span><b>ProjectA</b><small>2.0</small></div>
+    <div class="sgrp">
+      <p class="slabel">Arbeiten</p>
+      <div class="nav">
+        <a href="Main.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3.5 13.5a6.5 6.5 0 1 1 13 0"/><path d="m10 13.5 3-5"/></svg>Leitstand<span class="n">7</span></a>
+        <a href="TeamLauf.dc.html" class="sub"><span class="glyph run" aria-hidden="true"></span>Team-Lauf<span class="n">3 aktiv</span></a>
+        <a href="Beweise.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg>Beweise<span class="n">4</span></a>
+        <a href="Aktivitaet.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M2.5 10h3l2-5 3 10 2-5h5"/></svg>Aktivität</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Organisation</p>
+      <div class="nav">
+        <a href="Core.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5Z"/><circle cx="10" cy="10" r="2.5"/></svg>Core</a>
+        <a href="Organigramm.dc.html"><svg class="ic" viewBox="0 0 20 20"><circle cx="7" cy="7.5" r="2.5"/><circle cx="13.5" cy="8.5" r="2"/><path d="M2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12 12.2c2.2-.3 4 .9 4.8 3.3"/></svg>Teams</a>
+        <a href="Personas.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="4" y="6" width="12" height="10" rx="3"/><path d="M10 3v3M7.5 11h.01M12.5 11h.01"/></svg>Agenten</a>
+        <a href="AgentGenerator.dc.html" class="sub">Agenten-Generator</a>
+        <a href="Ablaeufe.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5" rx="1.5"/><rect x="12" y="12" width="5" height="5" rx="1.5"/><path d="M5.5 8v3.5a1 1 0 0 0 1 1H12"/></svg>Abläufe</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Eingang</p>
+      <div class="nav">
+        <a href="Ideen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7.5 14.5h5M8.5 17h3M10 3a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9Z"/></svg>Ideen<span class="n">2 neu</span></a>
+        <a href="Bugs.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="10.5" rx="4"/><path d="M8 6a2 2 0 0 1 4 0M3 10.5h3M14 10.5h3M10 9v6"/></svg>Bugs<span class="n">7</span></a>
+        <a href="Plan.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M5 17.5v-14M5 4h9.5l-2 3.5 2 3.5H5"/></svg>Plan<span class="n"><span class="dia" aria-hidden="true"></span><span class="sr">2 Entscheidungen offen</span></span></a>
+        <a href="Gedaechtnis.dc.html" aria-current="page"><svg class="ic" viewBox="0 0 20 20"><path d="M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16"/><path d="M8 7h5"/></svg>Gedächtnis</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Automatik</p>
+      <div class="nav">
+        <a href="Trigger.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z"/></svg>Trigger</a>
+        <a href="Befehle.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="m8.5 13.5 3-7"/></svg>Befehle</a>
+        <a href="MCP.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7 3v4M13 3v4M5 7h10v3a5 5 0 0 1-10 0Z"/><path d="M10 15v3"/></svg>MCP-Server</a>
+      </div>
+    </div>
+    <div class="side-foot">
+      <div class="nav">
+        <a href="Einstellungen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M4 6h7M15 6h1M4 14h1M9 14h7"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>Einstellungen</a>
+        <a href="Systemkarte.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3 5.5 7.5 4l5 2 4.5-1.5V15l-4.5 1.5-5-2L3 16Z"/><path d="M7.5 4v10.5M12.5 6v10.5"/></svg>Systemkarte</a>
+      </div>
+      <div class="me"><span class="ava sm owner" aria-hidden="true">Du</span><div><b>Du</b><small>Eigentümer, v1.5.1</small></div></div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <header class="top chrome">
+      <button class="pick" type="button" aria-label="Projekt wechseln, aktuell ProjectA"><span class="pj">A</span>ProjectA<svg class="ic s" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></button>
+      <label class="search"><span class="sr">Suchen oder Befehl eingeben</span><svg class="ic s" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg><input type="search" placeholder="Agenten, PRs, Ideen, Befehle"><span class="kbd">Strg K</span></label>
+      <a class="qm" href="Kontingente.dc.html" aria-label="Kontingente diese Woche: Claude 71 Prozent, Codex 96 Prozent, Kimi 34 Prozent, Ollama 12 Prozent">
+        <span class="qb">Claude<i><b style="width:71%"></b></i></span>
+        <span class="qb">Codex<i><b class="hot" style="width:96%"></b></i></span>
+        <span class="qb">Kimi<i><b style="width:34%"></b></i></span>
+        <span class="qb">Ollama<i><b style="width:12%"></b></i></span>
+      </a>
+      <a class="bell" href="Benachrichtigungen.dc.html" aria-label="Benachrichtigungen, 2 warten auf dich"><svg class="ic" viewBox="0 0 20 20"><path d="M5 13.5V9a5 5 0 0 1 10 0v4.5l1.5 2h-13Z"/><path d="M8.5 17.5h3"/></svg><span class="badge" aria-hidden="true">2</span></a>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="estop" type="button" onClick="{{ stop }}"><svg class="ic" viewBox="0 0 20 20"><path d="M7 2.5h6L17.5 7v6L13 17.5H7L2.5 13V7Z"/><path d="M7.5 10h5"/></svg><span>Not-Aus<small>stoppt alles in 10 s</small></span></button>
+    </header>
+
+    <sc-if value="{{ stopped }}" hint-placeholder-val="{{ false }}">
+      <div class="stopband" role="status">
+        <p>Alle 7 Agenten in 3,4 s gestoppt.</p>
+        <span>Journal gesichert, keine Aufgabe läuft doppelt. 2 Worktrees mit offenen Änderungen sind als WIP-Commit gesichert.</span>
+        <button class="btn sm" type="button" onClick="{{ resume }}">Fortsetzen</button>
+      </div>
+    </sc-if>
+
+    <section class="mem" aria-labelledby="h-mem">
+      <div class="phead">
+        <div>
+          <h1 id="h-mem">Gedächtnis</h1>
+          <p>Jede Notiz zeigt, woher sie kommt, ob sie noch zum Code passt und welche Agenten sie beim Start bekommen.</p>
+        </div>
+        <div class="scope">
+          <div class="seg" role="group" aria-label="Bereich des Gedächtnisses">
+            <sc-for list="{{ scopes }}" as="sc" hint-placeholder-count="4">
+              <button type="button" aria-pressed="{{ sc.on }}" onClick="{{ sc.pick }}">{{ sc.name }}<b>{{ sc.n }}</b></button>
+            </sc-for>
+          </div>
+          <p class="sdesc">{{ scopeDesc }}</p>
+        </div>
+      </div>
+
+      <div class="health glass" role="group" aria-label="Zustand des Gedächtnisses, jede Zahl filtert die Liste">
+        <sc-for list="{{ health }}" as="h" hint-placeholder-count="6">
+          <button type="button" class="hf {{ h.zero }}" aria-pressed="{{ h.on }}" onClick="{{ h.pick }}"><span class="glyph {{ h.g }}" aria-hidden="true"></span><b>{{ h.n }}</b>{{ h.lab }}</button>
+        </sc-for>
+      </div>
+
+      <div class="work">
+        <section class="lst col glass" aria-labelledby="h-list">
+          <div class="lst-h">
+            <div class="ttl"><h2 id="h-list">Wissen</h2><span>{{ listCount }}</span></div>
+            <label class="find"><span class="sr">Wissen durchsuchen</span><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg><input class="inp" type="search" placeholder="Suchen, z. B. cargo" value="{{ q }}" onChange="{{ setQ }}"></label>
+            <div class="tools">
+              <span class="tl" id="sort-l">Sortieren</span>
+              <div class="seg" role="group" aria-labelledby="sort-l">
+                <button type="button" aria-pressed="{{ sortRel }}" onClick="{{ sortByRel }}">Relevanz</button>
+                <button type="button" aria-pressed="{{ sortFresh }}" onClick="{{ sortByFresh }}">Frische</button>
+              </div>
+              <button type="button" class="grp" aria-pressed="{{ grouped }}" onClick="{{ toggleGroup }}"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2.5 6.2 2.3 2.3 4.7-5"/></svg>Nach Typ</button>
+            </div>
+            <sc-if value="{{ filterOn }}" hint-placeholder-val="{{ false }}">
+              <p class="fhint"><span class="glyph {{ filterGlyph }}" aria-hidden="true"></span>{{ filterText }}<button type="button" class="lnk" onClick="{{ clearFilter }}">Filter lösen</button></p>
+            </sc-if>
+          </div>
+          <div class="scr">
+            <sc-if value="{{ listEmpty }}" hint-placeholder-val="{{ false }}">
+              <div class="empty"><p>{{ emptyText }}</p><button type="button" class="btn sm" onClick="{{ resetList }}">Suche und Filter zurücksetzen</button></div>
+            </sc-if>
+            <div class="groups">
+              <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+                <div>
+                  <sc-if value="{{ g.showHead }}" hint-placeholder-val="{{ true }}"><h3 class="gh">{{ g.name }}<span>{{ g.n }}</span></h3></sc-if>
+                  <ul class="rows">
+                    <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                      <li>
+                        <button type="button" class="row" aria-current="{{ r.cur }}" onClick="{{ r.pick }}">
+                          <span class="tile" title="{{ r.typeLab }}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="{{ r.icon }}"/></svg><span class="sr">{{ r.typeLab }}:</span></span>
+                          <span class="txt">
+                            <span class="tt trunc" title="{{ r.title }}">{{ r.title }}</span>
+                            <span class="cs trunc" title="{{ r.core }}">{{ r.core }}</span>
+                            <span class="meta"><span class="sv {{ r.g }}"><span class="glyph {{ r.g }}" aria-hidden="true"></span>{{ r.stLab }}</span><span>{{ r.chk }}</span><span class="use">{{ r.use }}</span></span>
+                          </span>
+                        </button>
+                      </li>
+                    </sc-for>
+                  </ul>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+
+        <article class="rdr col glass" aria-labelledby="h-note">
+          <header class="rdr-h">
+            <p class="kind"><span class="tile"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="{{ note.icon }}"/></svg></span>{{ note.typeLab }} · {{ note.scopeLab }}<code>[[{{ note.slug }}]]</code></p>
+            <h2 id="h-note">{{ note.title }}</h2>
+            <div class="trust">
+              <span class="st {{ note.g }}">{{ note.stLab }}</span>
+              <span class="m"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg>{{ note.chk }}</span>
+              <span class="m"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg>{{ note.use }}</span>
+            </div>
+            <div class="acts" role="group" aria-label="Aktionen für diese Notiz">
+              <sc-if value="{{ note.editing }}" hint-placeholder-val="{{ false }}">
+                <button type="button" class="btn sm primary" onClick="{{ saveEdit }}">Speichern</button>
+                <button type="button" class="btn sm" onClick="{{ cancelEdit }}">Abbrechen</button>
+              </sc-if>
+              <sc-if value="{{ note.notEditing }}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btn sm" onClick="{{ startEdit }}">Bearbeiten</button>
+                <sc-if value="{{ note.canStale }}" hint-placeholder-val="{{ true }}"><button type="button" class="btn sm" onClick="{{ markStale }}">Als veraltet markieren</button></sc-if>
+                <button type="button" class="btn sm" disabled="{{ note.mdOff }}" onClick="{{ toAgents }}">{{ note.mdLab }}</button>
+              </sc-if>
+            </div>
+          </header>
+          <div class="scr">
+            <div class="rdr-b">
+              <sc-if value="{{ note.hasCall }}" hint-placeholder-val="{{ true }}">
+                <div class="call {{ note.callCls }}" role="note">
+                  <span class="glyph {{ note.callGlyph }}" aria-hidden="true"></span>
+                  <div class="ct"><b>{{ note.callTitle }}</b><span>{{ note.callText }}</span></div>
+                  <sc-if value="{{ note.callConfirm }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn sm primary" onClick="{{ confirm }}">Bestätigen</button></sc-if>
+                  <sc-if value="{{ note.callMerge }}" hint-placeholder-val="{{ true }}"><button type="button" class="btn sm primary" onClick="{{ merge }}">Zusammenführen</button></sc-if>
+                </div>
+              </sc-if>
+
+              <section class="sec" aria-labelledby="l-kern">
+                <h3 class="lab" id="l-kern">Kernaussage<span>so liest es der Agent</span></h3>
+                <sc-if value="{{ note.editing }}" hint-placeholder-val="{{ false }}">
+                  <label class="sr" for="kern-edit">Kernaussage bearbeiten</label>
+                  <textarea id="kern-edit" class="inp kern-in" value="{{ draft }}" onChange="{{ setDraft }}"></textarea>
+                </sc-if>
+                <sc-if value="{{ note.notEditing }}" hint-placeholder-val="{{ true }}"><p class="kern item">{{ note.core }}</p></sc-if>
+              </section>
+
+              <section class="sec" aria-labelledby="l-why">
+                <h3 class="lab" id="l-why">Warum</h3>
+                <p class="prose">{{ note.why }}</p>
+              </section>
+
+              <section class="sec" aria-labelledby="l-how">
+                <h3 class="lab" id="l-how">So anwenden</h3>
+                <ol class="steps">
+                  <sc-for list="{{ note.apply }}" as="a" hint-placeholder-count="2">
+                    <li>{{ a.x }}<sc-if value="{{ a.hasC }}" hint-placeholder-val="{{ true }}"> <code>{{ a.c }}</code></sc-if></li>
+                  </sc-for>
+                </ol>
+              </section>
+
+              <section class="sec" aria-labelledby="l-ev">
+                <h3 class="lab" id="l-ev">Belege<span>{{ note.evSum }}</span></h3>
+                <ul class="ev item">
+                  <sc-for list="{{ note.ev }}" as="e" hint-placeholder-count="4">
+                    <li><a href="{{ e.href }}" aria-label="{{ e.aria }}"><span class="k">{{ e.k }}</span><span class="w"><code class="trunc" title="{{ e.ref }}">{{ e.ref }}</code><span class="trunc" title="{{ e.lab }}">{{ e.lab }}</span></span><span class="chk {{ e.cls }}"><span class="glyph {{ e.cls }}" aria-hidden="true"></span>{{ e.stT }}</span></a></li>
+                  </sc-for>
+                </ul>
+              </section>
+
+              <section class="sec" aria-labelledby="l-on">
+                <h3 class="lab" id="l-on">Gilt für</h3>
+                <div class="paths"><sc-for list="{{ note.on }}" as="p" hint-placeholder-count="3"><span class="chip" title="{{ p.p }}"><code>{{ p.p }}</code></span></sc-for></div>
+              </section>
+
+              <section class="sec" aria-labelledby="l-rel">
+                <h3 class="lab" id="l-rel">Verwandt</h3>
+                <sc-if value="{{ note.hasRel }}" hint-placeholder-val="{{ true }}">
+                  <div class="rels"><sc-for list="{{ note.rel }}" as="x" hint-placeholder-count="2"><button type="button" class="rel" aria-label="{{ x.aria }}" onClick="{{ x.pick }}">{{ x.nm }}</button></sc-for></div>
+                </sc-if>
+                <sc-if value="{{ note.noRel }}" hint-placeholder-val="{{ false }}"><p class="none">Noch keine verwandten Notizen.</p></sc-if>
+              </section>
+
+              <section class="sec" aria-labelledby="l-hist">
+                <h3 class="lab" id="l-hist">Verlauf</h3>
+                <ol class="hist">
+                  <sc-for list="{{ note.hist }}" as="v" hint-placeholder-count="3">
+                    <li><i class="{{ v.k }}" aria-hidden="true"></i><span><b>{{ v.who }}</b> {{ v.what }}</span><time>{{ v.when }}</time></li>
+                  </sc-for>
+                </ol>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <aside class="rail col glass" aria-label="Wirkung auf Agenten und Vorschläge">
+          <div class="tabs" role="tablist" aria-label="Ansicht der Seitenleiste">
+            <button type="button" role="tab" id="t-ctx" aria-controls="p-ctx" aria-selected="{{ tabCtx }}" onClick="{{ showCtx }}">Was Agenten bekommen</button>
+            <button type="button" role="tab" id="t-inb" aria-controls="p-inb" aria-selected="{{ tabInb }}" onClick="{{ showInb }}">Vorschläge<sc-if value="{{ inboxHas }}" hint-placeholder-val="{{ true }}"><span class="cnt">{{ inboxN }}</span></sc-if></button>
+          </div>
+
+          <sc-if value="{{ isCtx }}" hint-placeholder-val="{{ true }}">
+            <div class="scr" role="tabpanel" id="p-ctx" aria-labelledby="t-ctx">
+              <div class="rp">
+                <p class="lead">Genau diese Notizen liest ein Agent beim Start, bevor er die erste Zeile schreibt.</p>
+                <label class="field" for="persona">Agent und Aufgabe
+                  <span class="selw"><select class="inp" id="persona" value="{{ persona }}" onChange="{{ setPersona }}"><sc-for list="{{ personas }}" as="p" hint-placeholder-count="3"><option value="{{ p.id }}">{{ p.name }}</option></sc-for></select><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></span>
+                </label>
+                <div class="bud item">
+                  <p class="bud-n"><b>{{ ctx.used }}</b>von 8k Token<span class="r">{{ ctx.nOn }}</span></p>
+                  <div class="bar {{ ctx.barCls }}" role="img" aria-label="{{ ctx.aria }}"><sc-for list="{{ ctx.segs }}" as="sg" hint-placeholder-count="6"><i style="width:{{ sg.w }}"></i></sc-for></div>
+                  <p class="bud-f {{ ctx.barCls }}">{{ ctx.foot }}</p>
+                </div>
+                <div class="cxg">
+                  <h3 class="sub">Kandidaten<span>{{ ctx.candN }}</span></h3>
+                  <ul class="cx">
+                    <sc-for list="{{ ctx.cands }}" as="c" hint-placeholder-count="6">
+                      <li class="cxr" data-on="{{ c.on }}">
+                        <span class="cxt"><button type="button" class="nm" onClick="{{ c.open }}" title="{{ c.title }}">{{ c.title }}</button><span class="why" title="{{ c.kind }} {{ c.why }}"><b>{{ c.kind }}</b>{{ c.why }}</span></span>
+                        <span class="tk">{{ c.tok }}</span>
+                        <button type="button" class="sw" role="switch" aria-checked="{{ c.on }}" aria-label="{{ c.aria }}" onClick="{{ c.toggle }}"></button>
+                      </li>
+                    </sc-for>
+                  </ul>
+                </div>
+                <sc-if value="{{ ctx.hasLocks }}" hint-placeholder-val="{{ true }}">
+                  <div class="cxg">
+                    <h3 class="sub">Gesperrt, bis du entscheidest<span>{{ ctx.lockN }}</span></h3>
+                    <ul class="cx">
+                      <sc-for list="{{ ctx.locks }}" as="c" hint-placeholder-count="2">
+                        <li class="cxr" data-on="false">
+                          <span class="cxt"><button type="button" class="nm" onClick="{{ c.open }}" title="{{ c.title }}">{{ c.title }}</button><span class="why" title="{{ c.why }}"><span class="glyph {{ c.g }}" aria-hidden="true"></span>{{ c.why }}</span></span>
+                          <span class="tk">{{ c.tok }}</span>
+                          <button type="button" class="sw" role="switch" aria-checked="false" aria-label="{{ c.aria }}" disabled="{{ true }}"></button>
+                        </li>
+                      </sc-for>
+                    </ul>
+                  </div>
+                </sc-if>
+                <p class="quiet">Alles liegt lokal in deinem Repo und ist hier vollständig einsehbar. AgentsRoom hält sein Gedächtnis auf dem Server, ohne diese Sicht.</p>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isInb }}" hint-placeholder-val="{{ false }}">
+            <div class="scr" role="tabpanel" id="p-inb" aria-labelledby="t-inb">
+              <div class="rp">
+                <p class="lead">Agenten schlagen aus fertigen Läufen vor, was sie gelernt haben. Erst wenn du annimmst, bekommen andere Agenten die Notiz.</p>
+                <sc-if value="{{ inboxEmpty }}" hint-placeholder-val="{{ false }}"><p class="empty">Keine Vorschläge offen. Neue kommen hierher, sobald ein Lauf etwas Neues lernt.</p></sc-if>
+                <ul class="props">
+                  <sc-for list="{{ inbox }}" as="p" hint-placeholder-count="3">
+                    <li class="prop item">
+                      <p class="hd"><span class="tile"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="{{ p.icon }}"/></svg></span>{{ p.typeLab }}<a href="Beweise.dc.html">Lauf {{ p.run }}</a></p>
+                      <h3><button type="button" class="nm" onClick="{{ p.open }}" title="{{ p.title }}">{{ p.title }}</button></h3>
+                      <p class="pc">{{ p.core }}</p>
+                      <p class="evd"><b>Beleg:</b> {{ p.evd }}</p>
+                      <p class="by">{{ p.by }} · {{ p.ago }}</p>
+                      <div class="btns">
+                        <button type="button" class="btn sm tint" aria-label="{{ p.aAccept }}" onClick="{{ p.accept }}">Annehmen</button>
+                        <button type="button" class="btn sm" aria-label="{{ p.aEdit }}" onClick="{{ p.edit }}">Bearbeiten</button>
+                        <button type="button" class="btn sm ghost" aria-label="{{ p.aReject }}" onClick="{{ p.reject }}">Ablehnen</button>
+                      </div>
+                    </li>
+                  </sc-for>
+                </ul>
+              </div>
+            </div>
+          </sc-if>
+        </aside>
+      </div>
+
+      <div class="toastw" role="status" aria-live="polite">
+        <sc-if value="{{ hasFlash }}" hint-placeholder-val="{{ false }}">
+          <div class="toast chrome">
+            <span>{{ flash }}</span>
+            <sc-if value="{{ canUndo }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn sm ghost" onClick="{{ undo }}">Rückgängig</button></sc-if>
+            <button type="button" class="x" aria-label="Hinweis schließen" onClick="{{ closeFlash }}"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8"/></svg></button>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dunkel":{"editor":"boolean","default":false,"section":"Darstellung"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { scope: 'proj', sel: 'cargo', filter: 'all', q: '', sort: 'rel', grouped: true, tab: 'ctx', persona: 'rust',
+      over: {}, merged: false, md: {}, edits: {}, hist: {}, ctxOn: {}, editing: false, draft: '', flash: null, undo: null, stopped: false };
+    const A = (x, c) => ({ x, c: c || '' });
+    const E = (k, ref, lab, st, stT) => ({ k, ref, lab, st, stT });
+    const H = (who, k, what, when) => ({ who, k, what, when });
+    const chk = (when) => H('Gedächtnis-Prüfung', 'sys', 'alle Belege gegen main geprüft', when);
+    this.T = {
+      dec: { one: 'Entscheidung', many: 'Entscheidungen', icon: 'M10 17V11L5 5M10 11l5-6M5 5h3M5 5v3M15 5h-3M15 5v3' },
+      trap: { one: 'Fallstrick', many: 'Fallstricke', icon: 'M11 2.5 5.5 11h4l-1 6.5L14.5 9h-4Z' },
+      conv: { one: 'Konvention', many: 'Konventionen', icon: 'M4 5.5h12M4 10h12M4 14.5h7' },
+      arch: { one: 'Architektur', many: 'Architektur', icon: 'M10 3l7 3.5-7 3.5-7-3.5ZM3 10l7 3.5 7-3.5M3 13.5 10 17l7-3.5' },
+      lesson: { one: 'Lesson', many: 'Lessons', icon: 'M4.5 10a5.5 5.5 0 1 0 1.8-4.1M4 3.5v3h3' }
+    };
+    this.S = {
+      proj: { name: 'Projekt', desc: 'Projekt: gilt nur für ProjectA' },
+      org: { name: 'Ordner', desc: 'Ordner Firma: gilt für ProjectA, pa-orch und Website' },
+      own: { name: 'Persönlich', desc: 'Persönlich: wie du arbeitest, in allen Projekten' },
+      glob: { name: 'Global', desc: 'Global: alle Projekte auf diesem Rechner' }
+    };
+    this.N = [
+      { id: 'cargo', slug: 'cargo-profile-cache', sc: 'proj', t: 'trap', s: 'ok', dup: 'slots', use: 31, chk: 1006, chkT: 'heute, 06:12', tok: 380,
+        title: 'CARGO_PROFILE_* zerstört den Build-Cache',
+        core: 'Setze nie eine CARGO_PROFILE_*-Variable: Sie macht rund 400 gebaute Abhängigkeiten ungültig, und der 16-GB-Rechner baut sie nicht in vertretbarer Zeit neu.',
+        why: 'Cargo nimmt Profil-Variablen in den Fingerabdruck jeder Abhängigkeit auf. Eine einzige gesetzte Variable reicht, und der warme target-Ordner zählt nicht mehr. In Lauf r-2211 startete so ein Neubau von 412 Paketen, der nach 47 Minuten abbrach, weil zwei andere Builds keinen Speicher mehr bekamen.',
+        apply: [A('Statt Profil-Variablen einen warmen Build-Slot nehmen:', 'CARGO_TARGET_DIR=%USERPROFILE%/cargo-targets/projecta-b'), A('Parallelität begrenzen:', 'CARGO_BUILD_JOBS=1'), A('Höchstens drei Builds gleichzeitig, bei weniger als 1,5 GB freiem RAM zwei.')],
+        ev: [E('Datei', 'docs/setup/claude-code.md:41', 'Abschnitt „Worktrees und Build-Slots“', 'ok', 'Zeile da'), E('Datei', 'scripts/ci/gates.sh:27', 'setzt CARGO_BUILD_JOBS=1 für alle Lanes', 'ok', 'Zeile da'), E('Lauf', 'r-2211', 'Neubau von 412 Paketen, nach 47 min abgebrochen', 'ok', 'gesichert'), E('PR', '#57', 'Build-Slots statt Profil-Override', 'ok', 'gemergt'), E('Commit', '3f9c2ad', 'docs: warn against CARGO_PROFILE_*', 'ok', 'in main')],
+        on: ['src-tauri/**', 'scripts/ci/**', '.cargo/config.toml'], rel: ['slots', 'stash', 'gates'],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '22.09., 18:02'), H('Rust-Backend', 'ag', 'Beleg ergänzt: scripts/ci/gates.sh:27', '22.09., 17:30'), H('Rust-Backend', 'ag', 'vorgeschlagen aus Lauf r-2211', '22.09., 16:48')] },
+      { id: 'slots', slug: 'cargo-build-slots', sc: 'proj', t: 'conv', s: 'ok', dup: 'cargo', use: 24, chk: 1006, chkT: 'heute, 06:12', tok: 340,
+        title: 'Build-Slots: warme target-Kopien statt Neubau',
+        core: 'Worktrees haben kein eigenes target; baue über CARGO_TARGET_DIR in einem warmen Slot und nie mit eigenen Profil-Einstellungen.',
+        why: 'Ein Neubau aller Abhängigkeiten dauert auf diesem Rechner länger als ein ganzes Paket. Die Slots projecta-a bis projecta-c sind vorgewärmt und werden reihum benutzt.',
+        apply: [A('Slot setzen:', 'CARGO_TARGET_DIR=%USERPROFILE%/cargo-targets/projecta-a'), A('Vor jedem Build den freien Speicher prüfen.')],
+        ev: [E('Datei', 'docs/setup/claude-code.md:38', 'Abschnitt „Worktrees und Build-Slots“', 'ok', 'Zeile da'), E('Lauf', 'r-2240', 'drei Slots parallel, kein Neubau', 'ok', 'gesichert')],
+        on: ['src-tauri/**', '.claude/worktrees/**'], rel: ['cargo'],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '24.09., 09:15'), H('Technik-Leitung', 'ag', 'vorgeschlagen aus Lauf r-2240', '23.09., 22:40')] },
+      { id: 'seams', slug: 'vier-nahtstellen', sc: 'proj', t: 'arch', s: 'ok', use: 61, chk: 1006, chkT: 'heute, 06:12', tok: 420,
+        title: 'Vier Nahtstellen, nur seriell',
+        core: 'api.rs, main.rs, store.rs mit store/ und bin/pa.rs sind Nahtstellen: An jeder arbeitet immer nur ein Agent.',
+        why: 'Zwei gleichzeitige Änderungen an einer Naht haben im September zweimal einen roten main verursacht. Der Planer hält deshalb für jede Naht eine eigene Spur, und ein Paket, das eine Naht berührt, ist immer Review-Stufe A.',
+        apply: [A('Vor dem Start prüfen, ob die Spur frei ist:', 'pa hq runtime'), A('Berührt das Paket eine Naht, zwei Prüfer anderer Anbieter einplanen.')],
+        ev: [E('Datei', 'AGENTS.md:31', 'Kernregel 6', 'ok', 'Zeile da'), E('Datei', 'src-tauri/src/api.rs', 'Naht 1 von 4', 'ok', 'vorhanden'), E('PR', '#22', 'roter main nach parallelem Umbau von store.rs', 'ok', 'gemergt')],
+        on: ['src-tauri/src/api.rs', 'src-tauri/src/main.rs', 'src-tauri/src/store/**', 'src-tauri/src/bin/pa.rs'], rel: ['owner'],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '09.09., 10:30'), H('Technik-Leitung', 'ag', 'angelegt', '09.09., 10:02')] },
+      { id: 'owner', slug: 'rust-besitzt-zustand', sc: 'proj', t: 'arch', s: 'ok', use: 44, chk: 1006, chkT: 'heute, 06:12', tok: 460,
+        title: 'Rust und SQLite besitzen den Laufzeitzustand',
+        core: 'Der Zustand aller Agenten, Warteschlangen und Belege liegt in SQLite und wird nur über Rust geschrieben; das HQ ist Host und Proxy, kein zweiter Planer.',
+        why: 'Zwei Stellen, die Zustand schreiben, ergeben zwei Wahrheiten. Wer im HQ etwas anstößt, ruft deshalb dieselben Rust-Befehle auf wie die App.',
+        apply: [A('Zustand lesen über', 'pa hq context --project <id>'), A('Nie direkt in die Datenbank schreiben, auch nicht für Tests im HQ.')],
+        ev: [E('Datei', 'src-tauri/src/store.rs', 'einziger Schreibpfad', 'ok', 'vorhanden'), E('Datei', 'docs/decisions.md:112', 'Entscheidung vom 24.09.', 'ok', 'Zeile da')],
+        on: ['src-tauri/src/store/**', 'hq/**'], rel: ['seams'],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '24.09., 21:30'), H('Core · Arbeit', 'ag', 'angelegt', '24.09., 21:10')] },
+      { id: 'prreport', slug: 'pr-text-ist-bericht', sc: 'proj', t: 'dec', s: 'ok', use: 38, chk: 1005, chkT: '05.10.', tok: 280,
+        title: 'Der PR-Text ist der Bericht',
+        core: 'Jeder PR beginnt mit drei deutschen Sätzen für dich und hat dann einen Abschnitt „## Report“ mit Belegen, NICHT ABGEDECKT und den Review-Entscheidungen.',
+        why: 'Eine eigene Berichtsdatei lag oft neben dem PR und wurde nicht mehr aktualisiert. Seit dem 25.09. prüft Mergify, dass der Abschnitt im PR-Text steht.',
+        apply: [A('Vorlage nutzen:', '.github/pull_request_template.md'), A('Belege immer mit Befehl und Exit-Code angeben.')],
+        ev: [E('Datei', '.github/pull_request_template.md', 'Vorlage für jeden PR', 'ok', 'vorhanden'), E('Datei', '.mergify.yml:18', 'prüft den Abschnitt „## Report“', 'ok', 'Zeile da')],
+        on: ['.github/**'], rel: ['report', 'mergify'],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'bestätigt', '25.09., 23:55'), H('Core · Aufmerksamkeit', 'ag', 'angelegt', '25.09., 23:40')] },
+      { id: 'mergify', slug: 'merge-nur-queue', sc: 'proj', t: 'dec', s: 'ok', use: 27, chk: 1005, chkT: '05.10.', tok: 390,
+        title: 'Merge nur über die Merge-Warteschlange',
+        core: 'Niemand mergt von Hand: Ein grüner PR wird eingereiht, auf dem aktuellen main getestet und mit Merge-Commit übernommen.',
+        why: 'Der Windows-Check eines PRs ist nur ein Platzhalter. Erst der Lauf in der Warteschlange prüft Windows wirklich; ein Merge daran vorbei erreicht main ungetestet.',
+        apply: [A('Roter main stoppt die Warteschlange: erst main reparieren, dann weiter.'), A('Grünen PR zurückhalten mit dem Label', 'do-not-merge')],
+        ev: [E('Datei', '.mergify.yml', 'Warteschlange und Pflichtprüfungen', 'ok', 'vorhanden'), E('PR', '#39', 'erster Merge über die Warteschlange', 'ok', 'gemergt')],
+        on: ['.mergify.yml', '.github/workflows/**'], rel: ['prreport', 'gates'],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'bestätigt', '24.09., 18:40'), H('CI-Wächter', 'ag', 'angelegt', '24.09., 18:15')] },
+      { id: 'stash', slug: 'kein-geteilter-stash', sc: 'proj', t: 'trap', s: 'ok', use: 19, chk: 1006, chkT: 'heute, 06:12', tok: 260,
+        title: 'Nie den geteilten git-Stash benutzen',
+        core: 'Alle Worktrees teilen einen Stash-Stapel; ein blankes git stash pop greift in die Arbeit eines anderen Agenten. Mach stattdessen einen WIP-Commit.',
+        why: 'Am 18.09. hat ein Tester so die halbe Änderung eines anderen Pakets übernommen. Der Fehler fiel erst im Review auf.',
+        apply: [A('Zwischenstand sichern mit', 'git commit -m "WIP"')],
+        ev: [E('Lauf', 'r-1874', 'fremde Änderung per stash pop übernommen', 'ok', 'gesichert'), E('Datei', 'CLAUDE.md:44', 'Abschnitt Worktrees', 'ok', 'Zeile da')],
+        on: ['.claude/worktrees/**'], rel: ['cargo'],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '18.09., 11:00'), H('Tester', 'ag', 'angelegt', '18.09., 09:30')] },
+      { id: 'ps', slug: 'powershell-umlaute', sc: 'proj', t: 'trap', s: 'ok', use: 12, chk: 1004, chkT: '04.10.', tok: 210,
+        title: 'PowerShell verstümmelt Umlaute',
+        core: 'Get-Content und Set-Content ändern Umlaute und Gedankenstriche stillschweigend; schreibe Quelldateien nur mit dem Editor-Werkzeug oder Node um.',
+        why: 'Die Änderung ist im Diff kaum zu sehen und taucht erst als kaputter Text in der App auf.',
+        apply: [A('Für Massenänderungen ein kurzes Node-Skript nehmen.')],
+        ev: [E('PR', '#44', 'kaputte Umlaute in sechs Dateien', 'ok', 'gemergt')],
+        on: ['src/**/*.tsx', 'docs/**/*.md'], rel: ['fenpm'],
+        h: [chk('04.10., 06:00'), H('Du', 'du', 'bestätigt', '27.09., 15:00'), H('Frontend', 'ag', 'angelegt', '27.09., 14:20')] },
+      { id: 'redfirst', slug: 'red-first', sc: 'proj', t: 'conv', s: 'ok', use: 52, chk: 1006, chkT: 'heute, 06:12', tok: 300,
+        title: 'Red-first: erst der rote Test, dann der Fix',
+        core: 'Jeder Bug bekommt zuerst einen kompilierenden, fehlschlagenden Test; der Commit trägt einen Test-First- oder Regression-For-Trailer.',
+        why: 'Ohne roten Test beweist ein grüner Lauf nur, dass nichts kaputt ist, was schon getestet war. Grün soll heißen: bewiesen.',
+        apply: [A('Trailer im Commit:', 'Test-First: <testname>'), A('Nur reine Dokumentation ist ausgenommen.')],
+        ev: [E('Datei', '.claude/hooks/red-first.sh', 'Warnung beim Schreiben', 'ok', 'vorhanden'), E('Datei', 'AGENTS.md:19', 'Kernregel 2', 'ok', 'Zeile da')],
+        on: ['**'], rel: [],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '10.09., 11:20'), H('Tester', 'ag', 'angelegt', '10.09., 11:00')] },
+      { id: 'gates', slug: 'gate-liste', sc: 'proj', t: 'conv', s: 'bad', use: 9, chk: 1006, chkT: 'heute, 06:12', tok: 240,
+        title: 'Gate-Liste steht in ci.yml und den Hooks',
+        core: 'Welche Gates laufen, steht in .github/workflows/ci.yml und in beiden git-Hooks.',
+        why: 'So war es bis zum 09.09. Die Notiz wurde damals aus einem Lauf übernommen und seitdem nicht geändert.',
+        apply: [A('Neue Gates in ci.yml und den Hooks ergänzen.')],
+        ev: [E('Datei', '.github/workflows/ci.yml:31', 'ruft nur noch gates.sh lane linux auf', 'bad', 'weicht ab'), E('Datei', 'scripts/ci/gates.sh', 'einzige Gate-Liste seit 09.09.', 'ok', 'vorhanden')],
+        on: ['.github/workflows/**', 'scripts/ci/**'], rel: ['mergify'],
+        call: 'ci.yml ruft nur noch gates.sh lane linux auf. Die Liste steht seit dem 09.09. allein in scripts/ci/gates.sh. Bearbeite die Notiz oder markiere sie als veraltet.',
+        h: [H('Gedächtnis-Prüfung', 'sys', 'Widerspruch gefunden in ci.yml:31', 'heute, 06:12'), H('Du', 'du', 'bestätigt', '02.09., 10:00'), H('CI-Wächter', 'ag', 'angelegt', '02.09., 09:40')] },
+      { id: 'tunnel', slug: 'linux-ueber-tunnel', sc: 'proj', t: 'arch', s: 'stale', use: 6, chk: 1006, chkT: 'heute, 06:12', tok: 230,
+        title: 'Linux-Lane läuft über den Server-Tunnel',
+        core: 'Die Linux-Gates laufen auf dem Server; der Tunnel wird mit scripts/tunnel.sh geöffnet.',
+        why: 'Bis zum 09.09. gab es keinen anderen Linux-Rechner.',
+        apply: [A('Tunnel öffnen:', 'bash scripts/tunnel.sh')],
+        ev: [E('Datei', 'scripts/tunnel.sh', 'existiert seit 09.09. nicht mehr', 'bad', 'fehlt'), E('Datei', 'docs/ci-lokal.md:12', 'Linux-Hälfte kommt jetzt aus WSL2', 'ok', 'Zeile da')],
+        on: ['scripts/ci/**'], rel: ['gates'],
+        call: 'scripts/tunnel.sh gibt es seit dem 09.09. nicht mehr; die Linux-Hälfte kommt jetzt aus WSL2. Korrigiere die Notiz mit Bearbeiten, dein Speichern bestätigt sie neu.',
+        h: [H('Gedächtnis-Prüfung', 'sys', 'Beleg fehlt: scripts/tunnel.sh', 'heute, 06:12'), H('Du', 'du', 'bestätigt', '28.08., 12:00'), H('DevOps', 'ag', 'angelegt', '28.08., 11:30')] },
+      { id: 'report', slug: 'bericht-als-datei', sc: 'proj', t: 'dec', s: 'stale', use: 4, chk: 1006, chkT: 'heute, 06:12', tok: 200,
+        title: 'Bericht als .pa/report_*.md ablegen',
+        core: 'Jedes Paket legt seinen Bericht als Datei .pa/report_<id>.md ab.',
+        why: 'Das war die Regel bis zum 25.09.',
+        apply: [A('Vorlage kopieren:', '.pa/report_template.md')],
+        ev: [E('Datei', '.pa/report_template.md', 'gelöscht am 25.09.', 'bad', 'fehlt'), E('Datei', 'AGENTS.md:27', 'Kernregel 7: Der PR-Text ist der Bericht', 'ok', 'Zeile da')],
+        on: ['.pa/**'], rel: ['prreport'],
+        call: '.pa/report_template.md wurde am 25.09. gelöscht. Seitdem ist der PR-Text der Bericht, siehe [[pr-text-ist-bericht]].',
+        h: [H('Gedächtnis-Prüfung', 'sys', 'Beleg fehlt: .pa/report_template.md', 'heute, 06:12'), H('Du', 'du', 'bestätigt', '11.09., 09:00'), H('Doku-Autor', 'ag', 'angelegt', '11.09., 08:40')] },
+      { id: 'fenpm', slug: 'fe-test-npm-ci', sc: 'proj', t: 'lesson', s: 'ok', use: 14, chk: 1005, chkT: '05.10.', tok: 190,
+        title: 'Rote Frontend-Tests im Worktree: erst npm ci',
+        core: 'Schlagen Frontend-Tests nur im Worktree fehl, sind meist die node_modules aus main veraltet; zuerst npm ci, dann weitersuchen.',
+        why: 'Drei Läufe haben im September je eine Stunde mit einem Fehler verbracht, der nach npm ci verschwand.',
+        apply: [A('Im Worktree ausführen:', 'npm ci')],
+        ev: [E('Lauf', 'r-2650', 'roter fe-test, grün nach npm ci', 'ok', 'gesichert')],
+        on: ['src/**', 'package-lock.json'], rel: ['ps'],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'angenommen', '25.09., 20:10'), H('Frontend', 'ag', 'vorgeschlagen aus Lauf r-2650', '25.09., 19:40')] },
+      { id: 'hygiene', slug: 'status-im-pfad', sc: 'proj', t: 'lesson', s: 'prop', use: 0, chk: 1006, chkT: 'heute, 04:05', tok: 210, run: 'r-3302', by: 'CI-Wächter · Kimi Code', ago: 'vor 2 Stunden', evd: 'zwei rote Läufe mit derselben Ursache, Test-Zeile 198',
+        title: 'Worktree-Pfad mit „status“ bricht den Hygiene-Test',
+        core: 'dev-hygiene.test.mjs schlägt fehl, wenn der Worktree-Pfad das Wort „status“ enthält; das ist kein roter main.',
+        why: 'Zwei Läufe sind am selben Test gescheitert, beide in einem Worktree namens status-board.',
+        apply: [A('Worktree anders benennen oder den Test reparieren:', 'scripts/dev-hygiene.test.mjs:198')],
+        ev: [E('Lauf', 'r-3302', 'Hygiene-Test rot, Pfad enthält „status“', 'ok', 'gesichert'), E('Lauf', 'r-3297', 'gleicher Fehler, anderer Agent', 'ok', 'gesichert'), E('Datei', 'scripts/dev-hygiene.test.mjs:198', 'prüft den Pfad mit /status/', 'ok', 'Zeile da')],
+        on: ['scripts/dev-hygiene.test.mjs'], rel: [],
+        h: [H('CI-Wächter', 'ag', 'vorgeschlagen aus Lauf r-3302', 'heute, 04:05')] },
+      { id: 'ollama', slug: 'ollama-429-umleiten', sc: 'proj', t: 'lesson', s: 'prop', use: 0, chk: 1006, chkT: 'heute, 01:10', tok: 230, run: 'r-3318', by: 'Prüfer · GLM 5.2', ago: 'vor 5 Stunden', evd: 'drei Abbrüche mit 429 in 24 Stunden',
+        title: 'Ollama meldet 429: Review sofort umleiten',
+        core: 'Meldet Ollama Cloud 429, gib das Review sofort an einen Prüfer einer anderen Modellfamilie, statt zu warten.',
+        why: 'Das Limit setzt sich erst nach Stunden zurück. Drei Reviews haben gestern deswegen den ganzen Abend gewartet.',
+        apply: [A('Ersatz-Prüfer aus einer anderen Familie wählen, nie aus der des Autors.')],
+        ev: [E('Lauf', 'r-3318', 'drei Abbrüche mit 429 in 24 h', 'ok', 'gesichert'), E('Datei', '.pa/review_transport.py:64', 'wartet bisher mit festem Backoff', 'ok', 'Zeile da')],
+        on: ['.pa/review_transport.py'], rel: [],
+        h: [H('Prüfer', 'ag', 'vorgeschlagen aus Lauf r-3318', 'heute, 01:10')] },
+      { id: 'lsremote', slug: 'push-mit-ls-remote', sc: 'proj', t: 'lesson', s: 'prop', use: 0, chk: 1005, chkT: '05.10.', tok: 200, run: 'r-3291', by: 'Rust-Backend · Claude Code', ago: 'gestern', evd: 'Exit-Code 1, Commit trotzdem auf dem Server',
+        title: 'Push mit git ls-remote prüfen, nicht am Exit-Code',
+        core: 'git push kann mit Exit-Code 1 enden, obwohl der Push angekommen ist; prüfe mit git ls-remote, ob der Commit auf dem Server liegt.',
+        why: 'Ein Hook meldet nach erfolgreichem Push einen Fehler. Zwei Agenten haben deshalb doppelt gepusht.',
+        apply: [A('Prüfen mit', 'git ls-remote origin <branch>')],
+        ev: [E('Lauf', 'r-3291', 'Exit 1, Commit trotzdem auf dem Server', 'ok', 'gesichert'), E('PR', '#61', 'doppelter Push in derselben Minute', 'ok', 'offen')],
+        on: ['**'], rel: [],
+        h: [H('Rust-Backend', 'ag', 'vorgeschlagen aus Lauf r-3291', '05.10., 22:30')] },
+      { id: 'o-secrets', slug: 'keine-secrets', sc: 'org', t: 'conv', s: 'ok', use: 88, chk: 1006, chkT: 'heute, 06:12', tok: 220,
+        title: 'Secrets nie in Dateien, Logs oder Commits',
+        core: 'Schlüssel und Tokens gehören in den Schlüsselbund des Systems, nie in eine Datei, ein Log oder einen Commit; vor jedem Commit läuft der Secret-Scan.',
+        why: 'Ein öffentliches Repo vergisst nichts. Ein Schlüssel im Verlauf muss sofort ersetzt werden.',
+        apply: [A('Vor dem Commit:', 'bash scripts/ci/secret-scan.sh')],
+        ev: [E('Datei', 'scripts/ci/secret-scan.sh', 'läuft in der Lane precommit', 'ok', 'vorhanden')],
+        on: ['**'], rel: [],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '02.09., 09:00')] },
+      { id: 'o-subs', slug: 'nur-abos', sc: 'org', t: 'dec', s: 'ok', use: 40, chk: 1005, chkT: '05.10.', tok: 170,
+        title: 'Nur Abos, keine API-Schlüssel',
+        core: 'Alle Agenten laufen über bestehende Abos; keine API-Schlüssel, kein OpenRouter, keine zusätzlichen Kosten.',
+        why: 'Kosten entscheidest du. Ein Schlüssel mit Guthaben kann unbemerkt Geld ausgeben.',
+        apply: [A('Fehlt ein Kontingent, Arbeit verschieben statt zahlen.')],
+        ev: [E('Datei', 'AGENTS.md:88', 'Abschnitt Reviews und Berater', 'ok', 'Zeile da')],
+        on: ['**'], rel: [],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'bestätigt', '25.09., 22:00')] },
+      { id: 'o-noreply', slug: 'noreply-commits', sc: 'org', t: 'conv', s: 'ok', use: 21, chk: 1004, chkT: '04.10.', tok: 140,
+        title: 'Commits mit noreply-Adresse',
+        core: 'Commits in öffentlichen Repos tragen die noreply-Adresse von GitHub, nie eine private E-Mail-Adresse.',
+        why: 'Die Repos sind öffentlich; eine Adresse im Commit bleibt für immer lesbar.',
+        apply: [A('Pro Repo setzen:', 'git config user.email <noreply-Adresse>')],
+        ev: [E('Commit', '9b51e43', 'erster Merge mit noreply-Adresse', 'ok', 'in main')],
+        on: ['**'], rel: [],
+        h: [chk('04.10., 06:00'), H('Du', 'du', 'bestätigt', '02.10., 19:00')] },
+      { id: 'o-codex', slug: 'codex-slugs', sc: 'org', t: 'trap', s: 'ok', use: 11, chk: 1005, chkT: '05.10.', tok: 160,
+        title: 'Codex-Modelle heißen gpt-5.6-*',
+        core: 'Die Codex-Modelle heißen gpt-5.6-sol, gpt-5.6-terra und gpt-5.6-luna; ein falscher Name bricht den Start sofort ab.',
+        why: 'Der Fehler kommt erst beim Start und kostet einen ganzen Versuch.',
+        apply: [A('Namen vor dem Start mit der Modellliste abgleichen.')],
+        ev: [E('Lauf', 'r-2702', 'Start abgebrochen: unbekanntes Modell', 'ok', 'gesichert')],
+        on: ['**'], rel: [],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'bestätigt', '25.09., 21:00')] },
+      { id: 'p-short', slug: 'kurz-und-als-liste', sc: 'own', t: 'conv', s: 'ok', use: 120, chk: 1006, chkT: 'heute, 06:12', tok: 150,
+        title: 'Texte an dich: kurz und als Liste',
+        core: 'Alles, was dich direkt anspricht, ist einfaches Deutsch, kurz, als Liste, höchstens sechs Zeilen.',
+        why: 'Lange Absätze werden übersprungen; eine Liste mit dem nächsten Schritt nicht.',
+        apply: [A('Erst das Ergebnis, dann was du entscheidest, dann der nächste Schritt.')],
+        ev: [E('Datei', 'AGENTS.md:52', 'Kernregel 7, Sprache', 'ok', 'Zeile da')],
+        on: ['**'], rel: [],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'angelegt', '25.09., 10:00')] },
+      { id: 'p-money', slug: 'du-entscheidest-geld', sc: 'own', t: 'dec', s: 'ok', use: 97, chk: 1006, chkT: 'heute, 06:12', tok: 180,
+        title: 'Geld, Installationen und Löschen entscheidest du',
+        core: 'Alles, was Geld kostet, etwas installiert, löscht oder veröffentlicht, wartet auf deine Entscheidung im Entscheidungs-Eingang.',
+        why: 'Diese Schritte lassen sich nicht oder nur teuer zurücknehmen.',
+        apply: [A('Frage in den Eingang legen:', 'docs/PLAN.md')],
+        ev: [E('Datei', 'AGENTS.md:58', 'Kernregel 10', 'ok', 'Zeile da')],
+        on: ['**'], rel: [],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'angelegt', '25.09., 10:05')] },
+      { id: 'p-checkin', slug: 'stand-alle-20-min', sc: 'own', t: 'conv', s: 'ok', use: 33, chk: 1005, chkT: '05.10.', tok: 120,
+        title: 'Kurzer Stand alle 20 Minuten',
+        core: 'Bei langen Läufen bekommst du alle 20 Minuten einen Stand in höchstens sechs Zeilen.',
+        why: 'Ohne Stand ist nicht zu erkennen, ob ein Lauf hängt oder arbeitet.',
+        apply: [A('Takt einstellen in', 'projecta.dev.json')],
+        ev: [E('Datei', 'projecta.dev.json', 'Feld checkInMinutes: 20', 'ok', 'vorhanden')],
+        on: ['**'], rel: [],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'angelegt', '03.10., 08:00')] },
+      { id: 'g-noverify', slug: 'nie-no-verify', sc: 'glob', t: 'conv', s: 'ok', use: 140, chk: 1006, chkT: 'heute, 06:12', tok: 180,
+        title: 'Nie --no-verify, nie Exit-Codes verschlucken',
+        core: 'Hooks werden nie übersprungen und Exit-Codes nie mit einer Pipe verschluckt; ein roter Schritt wird untersucht, nicht umgangen.',
+        why: 'Ein verschluckter Exit-Code macht aus Rot ein falsches Grün.',
+        apply: [A('Exit-Code direkt lesen, nicht hinter einer Pipe.')],
+        ev: [E('Datei', 'AGENTS.md:23', 'Kernregel 3', 'ok', 'Zeile da')],
+        on: ['**'], rel: [],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '09.09., 08:30')] },
+      { id: 'g-package', slug: 'ein-paket-ein-pr', sc: 'glob', t: 'dec', s: 'ok', use: 76, chk: 1006, chkT: 'heute, 06:12', tok: 200,
+        title: 'Ein Paket, ein Branch, ein Worktree, ein PR',
+        core: 'Jedes Paket hat genau einen Branch, einen Agenten, einen Worktree und einen PR, mit höchstens 300 Zeilen Diff.',
+        why: 'Kleine Pakete lassen sich prüfen; große werden durchgewunken.',
+        apply: [A('Größere Arbeit vor dem Start teilen.')],
+        ev: [E('Datei', 'AGENTS.md:15', 'Kernregel 1', 'ok', 'Zeile da')],
+        on: ['**'], rel: [],
+        h: [chk('heute, 06:12'), H('Du', 'du', 'bestätigt', '09.09., 08:30')] },
+      { id: 'g-ram', slug: 'ram-vor-build', sc: 'glob', t: 'trap', s: 'ok', use: 58, chk: 1005, chkT: '05.10.', tok: 160,
+        title: 'Unter 1,5 GB freiem RAM keinen Build starten',
+        core: 'Vor jedem cargo- oder Gate-Lauf den freien Speicher prüfen; unter 1,5 GB wird kein Build gestartet.',
+        why: 'Ein Build ohne Speicher reißt die anderen Builds mit.',
+        apply: [A('Erst prüfen, dann bauen; sonst warten, bis ein Slot frei ist.')],
+        ev: [E('Lauf', 'r-1455', 'Gate-Lauf mit Speicherfehler abgebrochen', 'ok', 'gesichert')],
+        on: ['**'], rel: [],
+        h: [chk('05.10., 06:10'), H('Du', 'du', 'bestätigt', '19.09., 22:00')] }
+    ];
+    this.P = [
+      { id: 'rust', name: 'Rust-Backend · Paket ARCH-D3a', short: 'ARCH-D3a', items: [
+        ['seams', 'Pfad', 'src-tauri/src/store/** ist eine Naht', 420, true], ['owner', 'Pfad', 'store.rs besitzt den Zustand', 460, true],
+        ['cargo', 'Persona', 'Rust-Backend baut mit cargo', 380, true], ['slots', 'Persona', 'Rust-Backend baut mit cargo', 340, true],
+        ['redfirst', 'Typ', 'Konvention für jedes Paket', 300, true], ['mergify', 'Typ', 'Entscheidung für jedes Paket', 390, true],
+        ['stash', 'Persona', 'arbeitet in einem Worktree', 260, true], ['g-noverify', 'Immer', 'Global', 180, true],
+        ['o-secrets', 'Immer', 'Ordner Firma', 220, true], ['p-short', 'Immer', 'Persönlich, Texte an dich', 150, true],
+        ['ps', 'Pfad', 'nur src/**/*.tsx, nicht in diesem Paket', 210, false], ['fenpm', 'Typ', 'Lesson für Frontend-Tests', 190, false],
+        ['tunnel', '', '', 230, false], ['gates', '', '', 240, false], ['hygiene', '', '', 210, false]] },
+      { id: 'fe', name: 'Frontend · Paket W2-11', short: 'W2-11', items: [
+        ['ps', 'Pfad', 'src/**/*.tsx', 210, true], ['fenpm', 'Persona', 'Frontend-Tests im Worktree', 190, true],
+        ['redfirst', 'Typ', 'Konvention für jedes Paket', 300, true], ['prreport', 'Typ', 'Entscheidung für jedes Paket', 280, true],
+        ['stash', 'Persona', 'arbeitet in einem Worktree', 260, true], ['g-noverify', 'Immer', 'Global', 180, true],
+        ['o-secrets', 'Immer', 'Ordner Firma', 220, true], ['p-short', 'Immer', 'Persönlich, Texte an dich', 150, true],
+        ['cargo', 'Persona', 'kein Rust in diesem Paket', 380, false], ['lsremote', '', '', 200, false], ['hygiene', '', '', 210, false]] },
+      { id: 'ci', name: 'CI-Wächter · Gate-Reparatur', short: 'der Gate-Reparatur', items: [
+        ['mergify', 'Persona', 'CI-Wächter betreut die Warteschlange', 390, true], ['redfirst', 'Typ', 'Konvention für jedes Paket', 300, true],
+        ['cargo', 'Pfad', 'scripts/ci/** setzt cargo-Variablen', 380, true], ['slots', 'Pfad', 'scripts/ci/** baut in Slots', 340, true],
+        ['g-noverify', 'Immer', 'Global', 180, true], ['o-secrets', 'Immer', 'Ordner Firma', 220, true], ['p-short', 'Immer', 'Persönlich, Texte an dich', 150, true],
+        ['gates', '', '', 240, false], ['report', '', '', 200, false], ['hygiene', '', '', 210, false], ['lsremote', '', '', 200, false]] }
+    ];
+  }
+
+  live() {
+    const s = this.state;
+    return this.N.map((n) => {
+      let st = s.over[n.id] || n.s;
+      if (n.id === 'slots' && s.merged) st = 'gone';
+      return Object.assign({}, n, { st, core: s.edits[n.id] || n.core });
+    }).filter((n) => n.st !== 'gone');
+  }
+
+  act(patch, msg) {
+    const s = this.state;
+    const snap = { over: s.over, merged: s.merged, md: s.md, edits: s.edits, hist: s.hist, sel: s.sel, scope: s.scope };
+    this.setState(Object.assign({ flash: msg, undo: snap, editing: false }, patch));
+    this.arm();
+  }
+
+  arm() {
+    if (typeof clearTimeout === 'function') clearTimeout(this.ft);
+    this.ft = setTimeout(() => this.setState({ flash: null, undo: null }), 7000);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const T = this.T, S = this.S;
+    const L = this.live();
+    const byId = (id) => L.find((n) => n.id === id);
+    const dupOn = (n) => !!(n.dup && byId(n.dup) && !s.merged);
+    const G = { ok: 'ok', prop: 'need', stale: 'stale', bad: 'bad' };
+    const word = { ok: 'bestätigt', prop: 'Vorschlag', stale: 'veraltet', bad: 'widerspricht' };
+    const hist = (id, what) => Object.assign({}, s.hist, { [id]: [{ who: 'Du', k: 'du', what, when: 'gerade eben' }].concat(s.hist[id] || []) });
+    const setOver = (id, v) => Object.assign({}, s.over, { [id]: v });
+    const inScope = L.filter((n) => n.sc === s.scope);
+    const sortFn = s.sort === 'fresh' ? (a, b) => (b.chk - a.chk) || (b.use - a.use) : (a, b) => (b.use - a.use) || (b.chk - a.chk);
+    const firstOf = (sc) => (L.filter((n) => n.sc === sc).sort(sortFn)[0] || L[0]).id;
+    const cur = inScope.find((n) => n.id === s.sel) || inScope.slice().sort(sortFn)[0] || L[0];
+
+    // health strip = filters
+    const FP = { all: () => true, ok: (n) => n.st === 'ok', prop: (n) => n.st === 'prop', stale: (n) => n.st === 'stale', bad: (n) => n.st === 'bad', dup: dupOn };
+    const cnt = (f) => inScope.filter(FP[f]).length;
+    const nAll = cnt('all'), nProp = cnt('prop'), nBad = cnt('bad'), nDup = Math.ceil(cnt('dup') / 2);
+    const H = [
+      ['all', 'all', nAll, nAll === 1 ? 'Notiz' : 'Notizen'],
+      ['ok', 'ok', cnt('ok'), 'von dir bestätigt'],
+      ['prop', 'need', nProp, nProp === 1 ? 'Vorschlag wartet' : 'Vorschläge warten'],
+      ['stale', 'stale', cnt('stale'), 'veraltet'],
+      ['bad', 'bad', nBad, nBad === 1 ? 'widerspricht dem Code' : 'widersprechen dem Code'],
+      ['dup', 'dup', nDup, nDup === 1 ? 'Dublette' : 'Dubletten']
+    ];
+    const health = H.map(([id, g, n, lab]) => ({ g, n, lab, zero: n ? '' : 'zero', on: s.filter === id ? 'true' : 'false',
+      pick: () => this.setState(id === 'prop' && s.filter !== 'prop' ? { filter: 'prop', tab: 'inb' } : { filter: s.filter === id || id === 'all' ? 'all' : id }) }));
+
+    // knowledge list
+    const q = (s.q || '').toLowerCase().trim();
+    const match = (n) => !q || [n.title, n.core, n.why, n.on.join(' ')].join(' ').toLowerCase().indexOf(q) >= 0;
+    const vis = inScope.filter(FP[s.filter] || FP.all).filter(match).sort(sortFn);
+    const row = (n) => ({ id: n.id, title: n.title, core: n.core, icon: T[n.t].icon, typeLab: T[n.t].one, g: G[n.st], stLab: word[n.st],
+      chk: 'geprüft ' + n.chkT.split(',')[0], use: n.use ? n.use + ' Starts' : 'noch kein Start', cur: n.id === cur.id ? 'true' : 'false',
+      pick: () => this.setState({ sel: n.id, editing: false }) });
+    const groups = s.grouped
+      ? ['dec', 'trap', 'conv', 'arch', 'lesson'].map((t) => ({ t, rows: vis.filter((n) => n.t === t) })).filter((g) => g.rows.length)
+        .map((g) => ({ showHead: true, name: T[g.t].many, n: g.rows.length, rows: g.rows.map(row) }))
+      : (vis.length ? [{ showHead: false, name: '', n: vis.length, rows: vis.map(row) }] : []);
+    const fLab = { ok: 'Nur von dir bestätigte Notizen', prop: 'Nur Vorschläge, die auf dich warten', stale: 'Nur veraltete Notizen', bad: 'Nur Notizen, die dem Code widersprechen', dup: 'Nur Dubletten' };
+
+    // reader
+    const st = cur.st, isDup = dupOn(cur), dupN = isDup ? byId(cur.dup) : null;
+    const extraEv = cur.id === 'cargo' && s.merged ? [{ k: 'Lauf', ref: 'r-2240', lab: 'aus [[cargo-build-slots]] übernommen', st: 'ok', stT: 'gesichert' }] : [];
+    const ev = cur.ev.concat(extraEv);
+    const evBad = ev.filter((e) => e.st !== 'ok').length;
+    const call = st === 'prop' ? { cls: 'need', title: 'Vorschlag aus Lauf ' + cur.run + ', wartet auf dein Urteil', text: 'Kein Agent bekommt diese Notiz, bevor du sie bestätigst. Vorgeschlagen von ' + cur.by + ', ' + cur.ago + '.' }
+      : st === 'stale' ? { cls: 'stale', title: 'Veraltet: ein Beleg fehlt im Code', text: cur.call || 'Ein zitierter Beleg existiert nicht mehr. Korrigiere die Notiz mit Bearbeiten.' }
+      : st === 'bad' ? { cls: 'bad', title: 'Widerspricht dem aktuellen Code', text: cur.call || 'Der Code sagt inzwischen etwas anderes.' }
+      : isDup ? { cls: 'dup', title: 'Überschneidet sich mit [[' + dupN.slug + ']]', text: 'Beide Notizen sagen im Kern dasselbe. Zusammengeführt bekommt ein Agent die Aussage einmal statt zweimal und spart rund 220 Token.' }
+      : null;
+    const md = !!s.md[cur.id];
+    const note = {
+      title: cur.title, slug: cur.slug, icon: T[cur.t].icon, typeLab: T[cur.t].one, scopeLab: S[cur.sc].name,
+      g: G[st], stLab: st === 'ok' ? 'Von dir bestätigt' : st === 'prop' ? 'Vorschlag' : st === 'stale' ? 'Veraltet' : 'Widerspricht dem Code',
+      chk: 'gegen main geprüft: ' + cur.chkT, use: cur.use ? 'in ' + cur.use + ' Agenten-Starts' : 'noch in keinem Start',
+      editing: !!s.editing, notEditing: !s.editing, canStale: st === 'ok' || st === 'bad',
+      mdOff: st !== 'ok' || md, mdLab: md ? 'In AGENTS.md übernommen' : 'In AGENTS.md übernehmen',
+      hasCall: !!call, callCls: call ? call.cls : '', callGlyph: call ? (call.cls === 'dup' ? 'dup' : call.cls) : '',
+      callTitle: call ? call.title : '', callText: call ? call.text : '',
+      callConfirm: st === 'prop', callMerge: !!call && call.cls === 'dup',
+      core: cur.core, why: cur.why,
+      apply: cur.apply.map((a) => ({ x: a.x, c: a.c, hasC: !!a.c })),
+      evSum: evBad ? (ev.length - evBad) + ' von ' + ev.length + ' passen zum Code' : 'alle ' + ev.length + ' passen zum Code',
+      ev: ev.map((e) => ({ k: e.k, ref: e.ref, lab: e.lab, stT: e.stT, cls: e.st === 'ok' ? 'ok' : 'bad', href: e.k === 'Datei' ? 'Systemkarte.dc.html' : 'Beweise.dc.html', aria: e.k + ' ' + e.ref + ': ' + e.lab + ', ' + e.stT })),
+      on: cur.on.map((p) => ({ p })),
+      rel: cur.rel.map(byId).filter(Boolean).map((r) => ({ nm: '[[' + r.slug + ']]', aria: 'Verwandte Notiz öffnen: ' + r.title, pick: () => this.setState({ scope: r.sc, sel: r.id, editing: false }) })),
+      hist: (s.hist[cur.id] || []).concat(cur.h)
+    };
+    note.hasRel = note.rel.length > 0;
+    note.noRel = !note.hasRel;
+
+    // context preview
+    const per = this.P.find((p) => p.id === s.persona) || this.P[0];
+    const lockWhy = { prop: 'Vorschlag, wartet auf dein Urteil', stale: 'Veraltet, ein Beleg fehlt', bad: 'Widerspricht dem Code' };
+    const rows = per.items.map(([id, kind, why, tok, def]) => {
+      const n = byId(id);
+      if (!n) return null;
+      const t = tok + (id === 'cargo' && s.merged ? 120 : 0);
+      const locked = n.st !== 'ok';
+      const key = per.id + ':' + id;
+      const on = !locked && (key in s.ctxOn ? s.ctxOn[key] : def);
+      return { id, locked, t, title: n.title, kind, why: locked ? lockWhy[n.st] : why, tok: String(t), g: G[n.st], on: on ? 'true' : 'false', isOn: on,
+        aria: locked ? n.title + ': gesperrt, ' + lockWhy[n.st] : n.title + ' für diesen Start einfügen',
+        open: () => this.setState({ scope: n.sc, sel: n.id, editing: false }),
+        toggle: () => this.setState({ ctxOn: Object.assign({}, s.ctxOn, { [key]: !on }) }) };
+    }).filter(Boolean);
+    const cands = rows.filter((r) => !r.locked), locks = rows.filter((r) => r.locked);
+    const used = cands.filter((r) => r.isOn).reduce((a, r) => a + r.t, 0);
+    const k = (v) => (v / 1000).toFixed(1).replace('.', ',') + 'k';
+    const nOn = cands.filter((r) => r.isOn).length;
+    const over = used > 8000;
+    const ctx = {
+      used: k(used), nOn: nOn === 1 ? '1 Notiz' : nOn + ' Notizen', barCls: over ? 'over' : '',
+      aria: k(used) + ' von 8k Token belegt durch ' + nOn + ' Notizen',
+      segs: cands.filter((r) => r.isOn).map((r) => ({ w: (r.t / 80).toFixed(2) + '%' })),
+      foot: over ? 'Über dem Budget: Der Start kürzt die Notizen mit der geringsten Relevanz.' : (nOn ? 'Noch ' + k(8000 - used) + ' frei. Deine Schalter gelten nur für den nächsten Start von ' + per.short + '.' : 'Dieser Start bekommt kein Wissen aus dem Gedächtnis.'),
+      cands, candN: cands.length, locks, lockN: locks.length, hasLocks: locks.length > 0
+    };
+
+    // proposals inbox
+    const inboxL = L.filter((n) => n.st === 'prop' && n.run);
+    const inbox = inboxL.map((n) => ({ title: n.title, core: n.core, icon: T[n.t].icon, typeLab: T[n.t].one, run: n.run, evd: n.evd, by: n.by, ago: n.ago,
+      aAccept: 'Annehmen: ' + n.title, aEdit: 'Bearbeiten: ' + n.title, aReject: 'Ablehnen: ' + n.title,
+      open: () => this.setState({ scope: n.sc, sel: n.id, editing: false }),
+      accept: () => this.act({ over: setOver(n.id, 'ok'), hist: hist(n.id, 'angenommen') }, 'Angenommen. Passende Agenten bekommen die Notiz ab dem nächsten Start.'),
+      edit: () => this.setState({ scope: n.sc, sel: n.id, editing: true, draft: n.core }),
+      reject: () => this.act({ over: setOver(n.id, 'gone') }, 'Abgelehnt. Die Notiz geht an keinen Agenten.') }));
+
+    const scopes = Object.keys(S).map((id) => ({ name: S[id].name, n: L.filter((n) => n.sc === id).length, on: s.scope === id ? 'true' : 'false',
+      pick: () => this.setState({ scope: id, sel: firstOf(id), editing: false, filter: 'all' }) }));
+
+    return {
+      themeClass: (this.props.dunkel ?? false) ? 'dark' : '',
+      scopes, scopeDesc: S[s.scope].desc, health,
+      q: s.q,
+      setQ: (e) => this.setState({ q: e.target.value }),
+      sortRel: s.sort === 'rel' ? 'true' : 'false', sortFresh: s.sort === 'fresh' ? 'true' : 'false',
+      sortByRel: () => this.setState({ sort: 'rel' }), sortByFresh: () => this.setState({ sort: 'fresh' }),
+      grouped: s.grouped ? 'true' : 'false', toggleGroup: () => this.setState({ grouped: !s.grouped }),
+      filterOn: s.filter !== 'all', filterText: fLab[s.filter] || '', filterGlyph: (H.find((h) => h[0] === s.filter) || H[0])[1],
+      clearFilter: () => this.setState({ filter: 'all' }),
+      listCount: vis.length === nAll ? nAll + (nAll === 1 ? ' Notiz' : ' Notizen') : vis.length + ' von ' + nAll,
+      listEmpty: vis.length === 0, emptyText: q ? 'Keine Notiz enthält „' + s.q.trim() + '“. Probiere ein kürzeres Wort oder löse den Filter.' : 'Keine Notiz in diesem Filter. Gut so, wenn es um Probleme geht.',
+      resetList: () => this.setState({ q: '', filter: 'all' }),
+      groups,
+      note, draft: s.draft,
+      setDraft: (e) => this.setState({ draft: e.target.value }),
+      startEdit: () => this.setState({ editing: true, draft: cur.core }),
+      cancelEdit: () => this.setState({ editing: false }),
+      saveEdit: () => {
+        const txt = (this.state.draft || '').trim();
+        if (!txt) { this.setState({ flash: 'Die Kernaussage darf nicht leer sein. Schreib einen Satz, den ein Agent befolgen kann.', undo: null }); this.arm(); return; }
+        this.act({ edits: Object.assign({}, s.edits, { [cur.id]: txt }), over: setOver(cur.id, 'ok'), hist: hist(cur.id, st === 'ok' ? 'Kernaussage geändert' : 'Kernaussage geändert und damit bestätigt') },
+          st === 'ok' ? 'Gespeichert.' : 'Gespeichert und bestätigt. Agenten bekommen die neue Fassung ab dem nächsten Start.');
+      },
+      confirm: () => this.act({ over: setOver(cur.id, 'ok'), hist: hist(cur.id, 'bestätigt') }, 'Bestätigt. Passende Agenten bekommen die Notiz ab dem nächsten Start.'),
+      markStale: () => this.act({ over: setOver(cur.id, 'stale'), hist: hist(cur.id, 'als veraltet markiert') }, 'Als veraltet markiert. Kein Agent bekommt sie, bis du sie korrigierst.'),
+      merge: () => this.act({ merged: true, sel: 'cargo', hist: hist('cargo', 'mit [[cargo-build-slots]] zusammengeführt') }, 'Zusammengeführt. Die Build-Slots stehen jetzt in [[cargo-profile-cache]].'),
+      toAgents: () => this.act({ md: Object.assign({}, s.md, { [cur.id]: true }), hist: hist(cur.id, 'in AGENTS.md übernommen, als Entwurf für den nächsten Doku-PR') }, 'In AGENTS.md übernommen, als Entwurf für den nächsten Doku-PR.'),
+      tabCtx: s.tab === 'ctx' ? 'true' : 'false', tabInb: s.tab === 'inb' ? 'true' : 'false', isCtx: s.tab === 'ctx', isInb: s.tab === 'inb',
+      showCtx: () => this.setState({ tab: 'ctx' }), showInb: () => this.setState({ tab: 'inb' }),
+      persona: per.id, personas: this.P.map((p) => ({ id: p.id, name: p.name })),
+      setPersona: (e) => { const v = e && e.target && e.target.value; if (this.P.some((p) => p.id === v)) this.setState({ persona: v }); },
+      ctx,
+      inbox, inboxN: inbox.length, inboxHas: inbox.length > 0, inboxEmpty: inbox.length === 0,
+      hasFlash: !!s.flash, flash: s.flash || '', canUndo: !!s.undo,
+      undo: () => { if (s.undo) { this.setState(Object.assign({}, s.undo, { undo: null, editing: false, flash: 'Rückgängig gemacht.' })); this.arm(); } },
+      closeFlash: () => this.setState({ flash: null, undo: null }),
+      stopped: s.stopped,
+      stop: () => this.setState({ stopped: true }),
+      resume: () => this.setState({ stopped: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

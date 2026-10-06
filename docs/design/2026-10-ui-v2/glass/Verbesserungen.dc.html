@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Verbesserungen</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Glass Leitstand · shared system v2 (identical in every artboard) ===== */
+    *{box-sizing:border-box}
+    body{margin:0;background:#E9EDF3}
+    .app{
+      --ground:#E9EDF3;--ink:#121826;--ink2:#2F3747;--muted:#4E5868;--faint:#636C7D;
+      --line:rgba(18,24,38,.11);--hair:rgba(18,24,38,.07);
+      --tint:rgba(255,255,255,.52);--tint-hi:rgba(255,255,255,.92);--hover:#fff;
+      --accent:#1F57D6;--accent-hover:#1A4BBB;--on-accent:#fff;--accent-soft:rgba(31,87,214,.10);--accent-line:rgba(31,87,214,.45);--sw-on:#1F57D6;--sw-off:#7F8794;
+      --run:#08679E;--run-bg:#DDEEF8;--need:#A54800;--need-bg:#FCE8D3;--on-need:#fff;--rev:#6431B6;--rev-bg:#EDE4FA;
+      --ok:#11703A;--ok-bg:#DBF0E3;--done:#525B69;--done-bg:#E7EAEF;--bad:#B51D25;--bad-bg:#FBE1E1;--danger-line:rgba(181,29,37,.36);
+      --chrome-bg:rgba(255,255,255,.5);--chrome-blur:blur(32px) saturate(180%);
+      --content-bg:rgba(255,255,255,.74);--content-blur:blur(20px) saturate(140%);
+      --spec:inset 0 1px 0 rgba(255,255,255,.9);
+      --shadow:0 1px 2px rgba(20,24,40,.06),0 8px 24px -12px rgba(20,24,40,.18);
+      --shadow-pop:0 1px 2px rgba(20,24,40,.08),0 24px 56px -20px rgba(20,24,40,.32);
+      --amb1:#CADCFA;--amb2:#D0ECE2;--amb3:#F6E4D5;
+      --av1:#D9E3F7;--av2:#D3ECE6;--av3:#F2E3D1;--av4:#E6DDF4;--av5:#F3DCE4;--av6:#E0E5EB;
+      --pad:20px;--r-panel:20px;--r-card:14px;--r-ctl:10px;
+      --dur-1:120ms;--dur-2:200ms;--dur-3:320ms;--ease-out:cubic-bezier(.2,.8,.2,1);--ease-spring:cubic-bezier(.34,1.3,.64,1);
+      --ease:var(--ease-out);--dur:var(--dur-1);
+      --sans:"Geist",ui-sans-serif,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+      --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+      position:relative;min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;padding:12px;
+      font:400 13px/1.5 var(--sans);color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+      background:radial-gradient(900px 640px at 0% 0%,var(--amb1),transparent 66%),radial-gradient(780px 600px at 100% 120px,var(--amb2),transparent 66%),radial-gradient(1000px 520px at 50% 900px,var(--amb3),transparent 66%),var(--ground)}
+    .app.dark{
+      --ground:#0D1219;--ink:#E8ECF2;--ink2:#C9D0DA;--muted:#A2ACBB;--faint:#8D97A7;
+      --line:rgba(255,255,255,.11);--hair:rgba(255,255,255,.07);
+      --tint:rgba(255,255,255,.05);--tint-hi:rgba(255,255,255,.10);--hover:rgba(255,255,255,.14);
+      --accent:#6E9BFF;--accent-hover:#8AAEFF;--on-accent:#0A1022;--accent-soft:rgba(110,155,255,.16);--accent-line:rgba(110,155,255,.55);--sw-on:#3A6FE0;--sw-off:#687284;
+      --run:#66C5F2;--run-bg:rgba(102,197,242,.14);--need:#FFB16A;--need-bg:rgba(255,177,106,.14);--on-need:#1D1206;--rev:#C0A6FF;--rev-bg:rgba(192,166,255,.15);
+      --ok:#66D392;--ok-bg:rgba(102,211,146,.14);--done:#A2ACBB;--done-bg:rgba(162,172,187,.13);--bad:#FF8388;--bad-bg:rgba(255,131,136,.14);--danger-line:rgba(255,131,136,.42);
+      --chrome-bg:rgba(20,26,36,.56);--content-bg:rgba(27,33,45,.8);
+      --spec:inset 0 1px 0 rgba(255,255,255,.07);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.55);
+      --shadow-pop:0 1px 2px rgba(0,0,0,.35),0 28px 64px -20px rgba(0,0,0,.7);
+      --amb1:#16264A;--amb2:#0F322D;--amb3:#33231A;
+      --av1:#25324F;--av2:#1F3B37;--av3:#3D3122;--av4:#33294A;--av5:#432936;--av6:#2B323C;color-scheme:dark}
+    .app a{color:inherit}
+    :where(.app) :where(b,strong){font-weight:600}
+    /* small never falls back to the browser's "smaller" (10px under 12px text): one token size unless a board sets its own */
+    :where(.app) :where(small){font-size:12px}
+    .app :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .app h1,.app h2,.app h3,.app h4,.app p,.app ol,.app ul,.app dl,.app dd,.app figure,.app fieldset{margin:0}
+    .app h1,.app h2,.app h3,.app h4{font-size:inherit;font-weight:600}
+    .app ol,.app ul{list-style:none;padding:0}
+    .app fieldset{border:0;padding:0;min-width:0}
+    .app code,.mono{font-family:var(--mono);font-size:12px;letter-spacing:0}
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .muted{color:var(--muted)}
+    .trunc{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .ic.s{width:16px;height:16px}
+    /* materials: chrome (sidebar, top bar, sheets) and content (cards, tables, editors) */
+    .chrome{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass{background:var(--content-bg);-webkit-backdrop-filter:var(--content-blur);backdrop-filter:var(--content-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow);border-radius:var(--r-panel)}
+    .glass .glass,.chrome .glass,.glass .chrome{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--tint);box-shadow:none}
+    .pane{padding:var(--pad);display:flex;flex-direction:column;gap:12px;min-width:0}
+    .pane-h{display:flex;align-items:center;gap:8px;min-height:24px}
+    .pane-h h2,.pane-h h3{font:600 15px/1.3 var(--sans)}
+    .pane-h .r{margin-left:auto;font-size:12px;color:var(--muted)}
+    .grp-h{font:600 13px/1.3 var(--sans);color:var(--ink)}
+    .note{font-size:12px;line-height:1.45;color:var(--muted)}
+    .split{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;flex:1}
+    .grow{flex:999 1 560px;min-width:0}
+    .aside{flex:1 1 320px;max-width:100%;min-width:0}
+    @media (min-width:900px){.aside{max-width:360px}.aside.wide{max-width:400px}}
+    .phead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;padding:4px 4px 0}
+    .phead h1{font:600 28px/1.1 var(--sans);letter-spacing:-.01em}
+    .phead p{font-size:13px;color:var(--muted);margin-top:4px;max-width:76ch}
+    .phead .act{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+    .phead .act .btn{height:44px;padding:0 20px;font-size:13px}
+    .crumb{display:flex;align-items:center;gap:4px;width:max-content;margin-bottom:8px;font:500 12px/1 var(--sans);text-decoration:none;border-radius:6px}
+    .app a.crumb{color:var(--muted)}
+    @media (hover:hover) and (pointer:fine){.app a.crumb:hover{color:var(--accent)}}
+    .item{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card)}
+    .pickable{background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pickable:active{transform:scale(.98)}
+    .pickable[aria-pressed="true"],.pickable[aria-current="true"],.pickable[aria-checked="true"]{background:var(--tint-hi);border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+    @media (hover:hover) and (pointer:fine){.pickable:hover{background:var(--tint-hi)}}
+    .lamp{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+    .lamp.off{background:var(--done)}
+    /* a lamp that is not ok/off borrows the state shape: warn = need diamond, busy = run ring, bad = triangle */
+    .lamp.warn{width:7px;height:7px;margin:0 .5px;border-radius:2px;transform:rotate(45deg);background:var(--need)}
+    .lamp.busy{background:none;border:2px solid var(--run);border-right-color:transparent}
+    .lamp.bad{border-radius:0;background:var(--bad);clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .empty{padding:24px;border-radius:var(--r-card);border:1px dashed var(--line);text-align:center;font-size:12px;color:var(--muted)}
+    .empty .btn{margin-top:12px}
+    /* buttons: one filled primary per screen; secondary is glass; tint and ghost are quiet */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--tint-hi);color:var(--ink);font:500 13px/1 var(--sans);text-decoration:none;cursor:pointer;white-space:nowrap;box-shadow:none;transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .btn:active{transform:scale(.97)}
+    .btn.primary{background:var(--accent);border-color:transparent;color:var(--on-accent)}
+    .btn.tint{background:var(--accent-soft);border-color:transparent;color:var(--accent);box-shadow:none}
+    .btn.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink2)}
+    .btn.lg{height:44px;padding:0 20px}
+    .btn.sm{height:32px;padding:0 12px;font-size:12px}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    @media (hover:hover) and (pointer:fine){.btn:hover{background:var(--hover)}.btn.primary:hover{background:var(--accent-hover)}.btn.tint:hover{background:var(--accent-soft);color:var(--accent-hover)}.btn.ghost:hover{background:var(--tint)}}
+    .inp{width:100%;height:40px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--tint);padding:0 12px;font:400 13px var(--sans);color:var(--ink)}
+    textarea.inp{height:auto;min-height:88px;padding:8px 12px;line-height:1.5;resize:vertical}
+    .inp.mono{font-family:var(--mono);font-size:12px}
+    .inp::placeholder{color:var(--faint)}
+    .inp.sm{height:36px}
+    .selw{position:relative;display:flex;align-items:center;min-width:0}
+    .selw select{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:pointer}
+    .selw>.ic{position:absolute;right:12px;color:var(--muted);pointer-events:none}
+    .field{display:flex;flex-direction:column;gap:4px;font:500 12px/1.3 var(--sans);color:var(--muted);min-width:0}
+    .kbd{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;border:1px solid var(--line);background:var(--tint-hi);font:500 11px/1 var(--mono);color:var(--muted)}
+    .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair)}
+    .seg button{height:32px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);color:var(--ink2);cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .seg button:active,.tabs a:active,.tabs button:active{transform:scale(.97)}
+    .seg button[aria-checked="true"],.seg button[aria-pressed="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    .sw{position:relative;width:40px;height:24px;border-radius:12px;border:0;padding:0;background:var(--sw-off);cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .sw:active{transform:scale(.97)}
+    .sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,24,40,.2);transition:transform var(--dur) var(--ease)}
+    .sw[aria-checked="true"]{background:var(--sw-on)}
+    .sw[aria-checked="true"]::after{transform:translateX(16px)}
+    .sw:disabled{cursor:not-allowed;opacity:.6}
+    .tabs{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--tint);border:1px solid var(--hair);max-width:100%;overflow-x:auto;scrollbar-width:none}
+    .tabs a,.tabs button{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:500 12px/1 var(--sans);text-decoration:none;color:var(--ink2);cursor:pointer;flex:none;white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .tabs [aria-current="page"],.tabs [aria-selected="true"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 1px 2px rgba(20,24,40,.10)}
+    @media (hover:hover) and (pointer:fine){.seg button:not([aria-checked="true"]):not([aria-pressed="true"]):hover,.tabs a:not([aria-current="page"]):hover,.tabs button:not([aria-selected="true"]):hover{background:var(--tint)}}
+    /* filter chip: one look for every filter row. pressed = accent-soft + accent text */
+    .fchips{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+    .fchip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:var(--tint);color:var(--ink2);font:500 12px/1 var(--sans);white-space:nowrap;cursor:pointer;flex:none;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .fchip b{font-weight:600;color:var(--muted)}
+    .fchip:active{transform:scale(.97)}
+    .fchip[aria-pressed="true"],.fchip[aria-checked="true"],.fchip[aria-selected="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+    .fchip[aria-pressed="true"] b,.fchip[aria-checked="true"] b,.fchip[aria-selected="true"] b{color:var(--accent)}
+    @media (hover:hover) and (pointer:fine){.fchip:not([aria-pressed="true"]):not([aria-checked="true"]):not([aria-selected="true"]):hover{background:var(--tint-hi)}}
+    table.tbl{width:100%;border-collapse:collapse}
+    .tbl th{font:500 12px/1.3 var(--sans);color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+    .tbl td{padding:0 12px;height:44px;border-bottom:1px solid var(--hair);font-size:13px;vertical-align:middle}
+    .tbl tbody tr:last-child td{border-bottom:0}
+    .tw{position:relative;overflow-x:auto;min-width:0}
+    .meter{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+    .meter b{display:block;height:100%;border-radius:2px;background:var(--ink2)}
+    .meter b.acc{background:var(--accent)}.meter b.hot{background:var(--need)}.meter b.lock{background:var(--bad)}.meter b.good{background:var(--ok)}
+    .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12px;line-height:1.5}
+    .kv dt{color:var(--muted)}
+    .kv dd{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .kv.box{padding:4px 12px;gap:0 12px;border:1px solid var(--hair);border-radius:var(--r-card);background:var(--tint)}
+    .kv.box dt,.kv.box dd{padding:8px 0;border-top:1px solid var(--hair)}
+    .kv.box dt:first-of-type,.kv.box dd:first-of-type{border-top:0}
+    .sheet{background:var(--chrome-bg);-webkit-backdrop-filter:var(--chrome-blur);backdrop-filter:var(--chrome-blur);border:1px solid var(--line);box-shadow:var(--spec),var(--shadow-pop);border-radius:24px}
+    /* sidebar */
+    .side{flex:1 1 224px;display:flex;flex-direction:column;gap:16px;padding:12px 8px}
+    @media (min-width:760px){.side{max-width:232px}}
+    .brand{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px}
+    .mark{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);flex:none}
+    .brand b{font:600 15px/1 var(--sans);letter-spacing:-.01em}
+    .brand small{font:500 11px/1 var(--mono);color:var(--muted)}
+    .sgrp{display:flex;flex-direction:column;gap:4px}
+    .slabel{font:500 12px/1 var(--sans);color:var(--muted);padding:4px 8px}
+    .nav{display:flex;flex-direction:column}
+    .nav a{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:10px;color:var(--ink2);text-decoration:none;font:500 13px/1 var(--sans);white-space:nowrap;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .nav a:active{transform:scale(.98)}
+    .nav a .ic{color:var(--muted)}
+    .nav a .n{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font:500 12px/1 var(--sans);color:var(--muted)}
+    .nav a.sub{padding-left:36px;color:var(--muted)}
+    .nav a[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    .nav a[aria-current="page"] .ic{color:var(--accent)}
+    .nav a.proj[aria-current="true"]{color:var(--ink);font-weight:600}
+    @media (hover:hover) and (pointer:fine){.nav a:hover{background:var(--tint)}}
+    .pj{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font:600 11px/1 var(--sans);background:var(--tint-hi);border:1px solid var(--line);color:var(--ink2);flex:none}
+    .dia{width:8px;height:8px;border-radius:2px;transform:rotate(45deg);background:var(--need);flex:none}
+    .nav a.sub .glyph{margin-left:-22px;margin-right:4px}
+    .side-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--hair);display:flex;flex-direction:column;gap:4px}
+    .me{display:flex;align-items:center;gap:8px;padding:4px 8px}
+    .me b{display:block;font:600 13px/1.3 var(--sans)}
+    .me small{display:block;font-size:12px;line-height:1.3;color:var(--muted)}
+    /* main column and top bar */
+    .main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px}
+    .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px}
+    .pick,.qm,.bell{display:inline-flex;align-items:center;height:44px;border-radius:12px;border:0;background:transparent;color:var(--ink2);text-decoration:none;cursor:pointer;transition:background-color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .pick:active,.qm:active,.bell:active{transform:scale(.97)}
+    .qm[aria-current="page"],.bell[aria-current="page"]{background:var(--tint-hi);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+    @media (hover:hover) and (pointer:fine){.pick:hover,.qm:hover,.bell:hover{background:var(--tint)}}
+    .pick{gap:8px;padding:0 12px 0 8px;font:600 13px/1 var(--sans);color:var(--ink)}
+    .pick .pj{width:28px;height:28px;border-radius:8px;font-size:12px}
+    .search{flex:1 1 240px;position:relative;display:flex;align-items:center;min-width:0}
+    .search input{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--tint);padding:0 80px 0 40px;font:400 13px var(--sans);color:var(--ink)}
+    .search input::placeholder{color:var(--faint)}
+    .search>.ic{position:absolute;left:12px;color:var(--muted);pointer-events:none}
+    .search .kbd{position:absolute;right:12px}
+    .qm{gap:12px;padding:0 12px}
+    .qb{display:flex;flex-direction:column;gap:4px;width:48px;font:500 11px/1 var(--sans);color:var(--muted)}
+    .qb i{display:block;height:4px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+    .qb i b{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--ink2)}
+    .qb i b.hot{background:var(--need)}.qb i b.lock{background:var(--bad)}
+    .bell{position:relative;width:44px;justify-content:center}
+    .badge{position:absolute;top:6px;right:4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--need);color:var(--on-need);font:600 11px/16px var(--sans);text-align:center}
+    .top .divider{width:1px;height:24px;background:var(--line);margin:0 4px}
+    .estop{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 12px;border-radius:999px;border:1px solid var(--danger-line);background:var(--bad-bg);color:var(--bad);font:600 13px/1.15 var(--sans);text-align:left;cursor:pointer;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .estop:active{transform:scale(.97)}
+    @media (hover:hover) and (pointer:fine){.estop:hover{border-color:var(--bad)}}
+    .estop small{display:block;font:500 11px/1.2 var(--sans)}
+    .stopband{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-radius:var(--r-card);background:var(--bad-bg);border:1px solid var(--danger-line);color:var(--bad);animation:rise var(--dur-2) var(--ease-out)}
+    .stopband p{font-weight:600}
+    .stopband span{font-size:12px;color:var(--ink2)}
+    .stopband .btn{margin-left:auto}
+    /* six-state vocabulary: shape + label + color, one definition */
+    .st{--c:var(--done);--b:var(--done-bg);display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:999px;background:var(--b);color:var(--c);font:500 12px/1 var(--sans);white-space:nowrap;flex:none}
+    .st.run{--c:var(--run);--b:var(--run-bg)}.st.need{--c:var(--need);--b:var(--need-bg)}.st.rev{--c:var(--rev);--b:var(--rev-bg)}
+    .st.ok{--c:var(--ok);--b:var(--ok-bg)}.st.done{--c:var(--done);--b:var(--done-bg)}.st.bad{--c:var(--bad);--b:var(--bad-bg)}
+    .st::before,.glyph{content:"";display:inline-block;width:10px;height:10px;flex:none;box-sizing:border-box;background:currentColor}
+    .glyph.run{color:var(--run)}.glyph.need{color:var(--need)}.glyph.rev{color:var(--rev)}.glyph.ok{color:var(--ok)}.glyph.done{color:var(--done)}.glyph.bad{color:var(--bad)}
+    .st.run::before,.glyph.run{background:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%}
+    .st.need::before,.glyph.need{width:8px;height:8px;margin:0 1px;border-radius:2px;transform:rotate(45deg)}
+    .st.rev::before,.glyph.rev{border-radius:50%;background:linear-gradient(90deg,transparent 50%,currentColor 50%);box-shadow:inset 0 0 0 1.5px currentColor}
+    .st.ok::before,.glyph.ok{border-radius:50%}
+    .st.done::before,.glyph.done{width:5px;height:9px;margin:0 3px 0 2px;background:none;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+    .st.bad::before,.glyph.bad{clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .st.open{--c:var(--muted);--b:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+    .st.open::before,.glyph.open{background:none;border:1.5px dashed currentColor;border-radius:50%}.glyph.open{color:var(--muted)}
+    /* signature: the proof chip (Beweisleiste) */
+    .proof{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 8px;border-radius:999px;background:var(--tint-hi);border:1px solid var(--line);font:500 12px/22px var(--sans);color:var(--ink2);white-space:nowrap;text-decoration:none;max-width:100%;min-width:0;flex:0 1 auto;overflow:hidden}
+    .proof>*{flex:none}
+    .proof>.yes,.proof>.no,.proof>.wip{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+    a.proof{transition:border-color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){a.proof:hover{border-color:var(--accent-line)}}
+    .gt{display:inline-flex;gap:2px}
+    .gt i{width:4px;height:12px;border-radius:2px;background:transparent;box-shadow:inset 0 0 0 1px var(--faint)}
+    .gt i{transition:background-color var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}.gt i:nth-child(2){transition-delay:40ms}.gt i:nth-child(3){transition-delay:80ms}.gt i:nth-child(4){transition-delay:120ms}
+    .gt i.y,.gt i.r,.gt i.w{box-shadow:none}.gt i.y{background:var(--ok)}.gt i.r{background:var(--bad)}.gt i.w{background:var(--run)}
+    .proof .sep{width:1px;height:12px;background:var(--line);flex:none}
+    .proof .yes{color:var(--ok);font-weight:600}.proof .no{color:var(--bad);font-weight:600}.proof .wip{color:var(--run);font-weight:600}
+    .proof code{font-size:11px;color:var(--muted)}
+    /* CLI/model chip, tag chip, persona avatar */
+    .chip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:8px;background:var(--tint);border:1px solid var(--hair);font:500 12px/1 var(--sans);color:var(--ink2);white-space:nowrap;max-width:100%;overflow:hidden;min-width:0;flex:none}
+    .chip code{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+    .chip.sm{height:20px;padding:0 8px;font-size:11px;border-radius:6px}
+    .ava{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;font:600 12px/1 var(--sans);color:var(--ink);background:var(--tint-hi);border:1px solid var(--line)}
+    .ava.sm{width:24px;height:24px;border-radius:8px;font-size:11px}
+    .ava.lg{width:48px;height:48px;border-radius:14px;font-size:15px}
+    .ava.owner{border-radius:50%;background:var(--ink);color:var(--ground);border-color:transparent}
+    .ava.lead{background:var(--accent);color:var(--on-accent);border-color:transparent}
+    .ava.sys{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+    .ava.c1{background:var(--av1);border-color:transparent}.ava.c2{background:var(--av2);border-color:transparent}.ava.c3{background:var(--av3);border-color:transparent}
+    .ava.c4{background:var(--av4);border-color:transparent}.ava.c5{background:var(--av5);border-color:transparent}.ava.c6{background:var(--av6);border-color:transparent}
+    @keyframes enter{from{opacity:0;transform:translateY(8px)}}
+    /* motion layer: purposeful only. hover/press dur-1, sheets and views dur-2, bars dur-3, one live pulse */
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+    @keyframes fade{from{opacity:0}}
+    @keyframes row-in{from{opacity:0;transform:translateY(-4px)}}
+    @keyframes live{50%{opacity:.45}}
+    .sheet{animation:rise var(--dur-2) var(--ease-out)}
+    [role="tabpanel"],.view{animation:fade var(--dur-2) var(--ease-out)}
+    .is-new{animation:row-in var(--dur-2) var(--ease-out)}
+    .st,.st::before,.glyph{transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),border-radius var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+    .st.run::before{animation:live 2s ease-in-out infinite}
+    .meter b{transition:width var(--dur-3) var(--ease-out)}
+    @media (prefers-reduced-motion:reduce){.app *,.app *::before,.app *::after{animation:none!important;transition-duration:0ms!important}}
+
+    /* ===== Erweitert · Verbesserungen ===== */
+    .app{--spring:cubic-bezier(.34,1.5,.64,1);--inout:cubic-bezier(.77,0,.175,1)}
+    .phead .act{align-self:flex-end}
+    /* control pane: preset, summary, diff, filter */
+    .ctl{padding:16px var(--pad);display:flex;flex-direction:column;gap:12px}
+    .ctl-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 24px}
+    .preset{display:flex;flex-direction:column;gap:8px;flex:1 1 360px;max-width:520px;min-width:0}
+    .preset .seg{position:relative}
+    .preset .seg button{position:relative;z-index:1;transition:color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .preset .seg button:active{transform:scale(.98)}
+    .preset .seg button[aria-pressed="true"]{background:transparent;box-shadow:none}
+    .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / 4);border-radius:8px;background:var(--tint-hi);box-shadow:0 1px 2px rgba(20,24,40,.10);transform:translateX(calc(var(--i) * 100%));transition:transform .24s var(--inout)}
+    .pnote{font-size:12px;color:var(--muted)}
+    .stats{display:flex;flex-wrap:wrap;gap:12px 32px;margin-left:auto}
+    .stat b{display:block;font:600 20px/1.2 var(--sans);letter-spacing:-.01em;color:var(--ink)}
+    .stat span{font-size:12px;color:var(--muted)}
+    .diff{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 8px 8px 12px;border-radius:var(--r-card);background:var(--accent-soft);color:var(--ink);animation:enter var(--dur-2) var(--ease-out)}
+    .diff .ic{color:var(--accent)}
+    .diff b{font-weight:600}
+    .dchips{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+    .dchips .chip{background:var(--tint-hi)}
+    .diff .btn{margin-left:auto}
+    .filt{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+    .fsearch{position:relative;flex:0 1 280px;min-width:200px;display:flex}
+    .fsearch .inp{height:36px;padding-left:36px}
+    .fsearch .ic{position:absolute;left:12px;top:10px;color:var(--muted);pointer-events:none}
+    .fchips{display:flex;flex-wrap:wrap;gap:8px}
+    .fchip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:var(--tint);font:500 12px/1 var(--sans);color:var(--ink2);cursor:pointer;white-space:nowrap;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),transform var(--dur) var(--ease)}
+    .fchip:active{transform:scale(.98)}
+    .fchip small{font:500 11px/1 var(--sans);color:var(--muted)}
+    .fchip[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+    .fchip[aria-pressed="true"] small{color:var(--accent)}
+    @media (hover:hover) and (pointer:fine){.fchip:hover{background:var(--tint-hi)}.fchip[aria-pressed="true"]:hover{background:var(--accent-soft)}}
+    /* groups and improvement items (flat tint inside the content glass) */
+    .list{display:flex;flex-direction:column;gap:12px}
+    .grp{container-type:inline-size}
+    .grp .pane-h>.ic{color:var(--muted)}
+    .items{display:flex;flex-direction:column;gap:8px}
+    .it{display:grid;grid-template-columns:minmax(0,1fr) 168px auto;column-gap:16px;align-items:start;padding:12px 16px;background:var(--tint);border:1px solid var(--hair);border-radius:var(--r-card);cursor:pointer;transition:background-color var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+    .it.sel{background:var(--tint-hi);border-color:var(--accent-line);outline:3px solid var(--accent-soft);outline-offset:0}
+    @media (hover:hover) and (pointer:fine){.it:hover{border-color:var(--line)}.it.sel:hover{border-color:var(--accent-line)}}
+    .it.fl0{animation:fl0 .6s var(--ease) both}
+    .it.fl1{animation:fl1 .6s var(--ease) both}
+    @keyframes fl0{from{background-color:var(--accent-soft);border-color:var(--accent-line)}}
+    @keyframes fl1{from{background-color:var(--accent-soft);border-color:var(--accent-line)}}
+    .it-main{min-width:0}
+    .it-h{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+    .it-name{border:0;background:none;padding:0;margin:0;font:600 13px/1.4 var(--sans);color:var(--ink);cursor:pointer;text-align:left;border-radius:4px;transition:color var(--dur) var(--ease)}
+    @media (hover:hover) and (pointer:fine){.it-name:hover{color:var(--accent)}}
+    .it-d{margin-top:4px;color:var(--ink2);max-width:72ch}
+    .it-m{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin-top:8px;font-size:12px;color:var(--muted);min-width:0}
+    .it-m .sc{display:inline-flex;align-items:center;gap:4px;color:var(--ink2);font-weight:500}
+    .it-m .sc .ic{width:14px;height:14px;color:var(--muted)}
+    .dep{display:inline-flex;align-items:center;gap:4px}
+    button.dep{height:24px;padding:0 8px;border-radius:999px;border:0;background:var(--accent-soft);color:var(--accent);font:500 12px/1 var(--sans);cursor:pointer;transition:transform var(--dur) var(--ease)}
+    button.dep:active{transform:scale(.98)}
+    .bdg{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font:500 11px/1 var(--sans);white-space:nowrap}
+    .bdg.rec{background:var(--accent-soft);color:var(--accent)}
+    .bdg.exp{background:transparent;border:1px dashed var(--line);color:var(--ink2)}
+    .bdg.sec,.bdg.must{background:var(--tint-hi);border:1px solid var(--line);color:var(--ink2)}
+    .eff{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .eff b{font:600 15px/1.3 var(--sans);letter-spacing:-.01em;color:var(--ink);transition:color var(--dur) var(--ease)}
+    .eff span{font-size:12px;line-height:1.35;color:var(--ink2)}
+    .eff small{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+    .it.off .eff b,.it.off .eff span{color:var(--muted)}
+    /* switch: real checkbox, flat track, neutral knob, spring travel */
+    .tg{position:relative;display:inline-flex;flex:none;padding:4px;margin:-4px -4px 0 0;cursor:pointer}
+    .tg input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:inherit}
+    .trk{position:relative;display:block;width:40px;height:24px;border-radius:12px;background:var(--sw-off);transition:background-color var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+    .trk::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,24,40,.2);transition:transform var(--dur-2) var(--spring)}
+    .tg input:checked+.trk{background:var(--sw-on)}
+    .tg input:checked+.trk::after{transform:translateX(16px)}
+    .tg input:focus-visible+.trk{outline:2px solid var(--accent);outline-offset:2px}
+    .tg:active .trk{transform:scale(.97)}
+    .tg:has(input:disabled){cursor:not-allowed}
+    .tg input:disabled+.trk{opacity:.55}
+    /* inline sub-settings: height opens at 200ms */
+    .subw{grid-column:1 / -1;display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-2) var(--ease-out)}
+    .subw.open{grid-template-rows:1fr}
+    .subw>div{min-height:0;overflow:hidden;visibility:hidden;opacity:0;transition:opacity var(--dur-1) var(--ease-out),visibility 0s linear var(--dur-2)}
+    .subw.open>div{visibility:visible;opacity:1;transition:opacity var(--dur-2) var(--ease-out) 40ms,visibility 0s}
+    .subs{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:12px;padding:12px 4px 4px;border-top:1px solid var(--hair)}
+    .sub{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:12px;font-weight:500;color:var(--ink2);min-width:0}
+    .sub .val{min-width:80px;font-weight:600;color:var(--ink)}
+    .sub .inp{height:32px;width:auto;padding:0 8px}
+    .sub input[type="number"].inp{width:72px}
+    .sub input[type="range"]{width:200px;max-width:100%;margin:0;accent-color:var(--accent)}
+    @container (max-width:520px){
+      .it{grid-template-columns:minmax(0,1fr) auto}
+      .it .tg{grid-column:2;grid-row:1}
+      .eff{grid-column:1;grid-row:2;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin-top:8px}
+    }
+    /* right rail: the selected improvement */
+    .rail{gap:16px}
+    @media (min-width:900px){.rail{position:sticky;top:12px;align-self:flex-start;max-height:calc(100vh - 24px);overflow:auto}}
+    .rail-h{display:flex;align-items:flex-start;gap:12px}
+    .rail-h>div{flex:1;min-width:0}
+    .rail-h h2{font:600 15px/1.3 var(--sans);margin-top:4px}
+    .rail-d{color:var(--ink2)}
+    .rail section{display:flex;flex-direction:column;gap:8px}
+    .rail h3{font:600 12px/1.3 var(--sans);color:var(--muted)}
+    .wk{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+    .wk b{font:600 20px/1.2 var(--sans);letter-spacing:-.01em}
+    .wk span{font-size:12px;color:var(--ink2)}
+    .wk small{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+    .spark{display:block;width:100%;height:auto}
+    .spark .base{stroke:var(--line);stroke-width:1}
+    .spark polyline{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+    .spark circle{fill:var(--accent)}
+    .axis{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted)}
+    .axis span:nth-child(2){text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .steps{counter-reset:s;display:flex;flex-direction:column;gap:8px}
+    .steps li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;font-size:12px;line-height:1.45;color:var(--ink2)}
+    .steps li::before{counter-increment:s;content:counter(s);width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--tint-hi);border:1px solid var(--line);font:600 11px/1 var(--sans);color:var(--ink2)}
+    .ba{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .ba>div{padding:8px 12px;border-radius:var(--r-ctl);background:var(--tint);border:1px solid var(--hair);font-size:12px;line-height:1.45;color:var(--ink2)}
+    .ba b{display:flex;align-items:center;gap:4px;font:600 12px/1.3 var(--sans);color:var(--ink);margin-bottom:4px}
+    .chain li{display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:36px;padding:4px 0;border-bottom:1px solid var(--hair);font-size:12px}
+    .chain li:last-child{border-bottom:0}
+    .chain .lvl{color:var(--muted)}
+    .chain .who{min-width:0;color:var(--ink);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .chain .who small{font-weight:400;color:var(--muted);font-size:12px}
+    .chain .end{display:flex;align-items:center;gap:8px}
+    .chain .v-on{color:var(--accent);font-weight:600}
+    .chain .v-off{color:var(--muted);font-weight:600}
+    .ovr{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+    .ovr .field{flex:1 1 140px}
+    .ovr .inp{height:32px;padding:0 8px}
+    .sub .selw .inp,.ovr .selw .inp{padding-right:36px}
+    .rail-foot{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--hair)}
+  </style>
+</helmet>
+<div class="app {{ themeClass }}">
+  <nav class="side chrome" aria-label="Hauptnavigation">
+    <div class="brand"><span class="mark" aria-hidden="true"><svg class="ic s" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg></span><b>ProjectA</b><small>2.0</small></div>
+    <div class="sgrp">
+      <p class="slabel">Arbeiten</p>
+      <div class="nav">
+        <a href="Main.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3.5 13.5a6.5 6.5 0 1 1 13 0"/><path d="m10 13.5 3-5"/></svg>Leitstand<span class="n">7</span></a>
+        <a href="TeamLauf.dc.html" class="sub"><span class="glyph run" aria-hidden="true"></span>Team-Lauf<span class="n">3 aktiv</span></a>
+        <a href="Beweise.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z"/><path d="m7.3 10 1.9 1.9 3.6-3.8"/></svg>Beweise<span class="n">4</span></a>
+        <a href="Aktivitaet.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M2.5 10h3l2-5 3 10 2-5h5"/></svg>Aktivität</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Organisation</p>
+      <div class="nav">
+        <a href="Core.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5Z"/><circle cx="10" cy="10" r="2.5"/></svg>Core</a>
+        <a href="Organigramm.dc.html"><svg class="ic" viewBox="0 0 20 20"><circle cx="7" cy="7.5" r="2.5"/><circle cx="13.5" cy="8.5" r="2"/><path d="M2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12 12.2c2.2-.3 4 .9 4.8 3.3"/></svg>Teams</a>
+        <a href="Personas.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="4" y="6" width="12" height="10" rx="3"/><path d="M10 3v3M7.5 11h.01M12.5 11h.01"/></svg>Agenten</a>
+        <a href="AgentGenerator.dc.html" class="sub">Agenten-Generator</a>
+        <a href="Ablaeufe.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="5" height="5" rx="1.5"/><rect x="12" y="12" width="5" height="5" rx="1.5"/><path d="M5.5 8v3.5a1 1 0 0 0 1 1H12"/></svg>Abläufe</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Eingang</p>
+      <div class="nav">
+        <a href="Ideen.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7.5 14.5h5M8.5 17h3M10 3a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9Z"/></svg>Ideen<span class="n">2 neu</span></a>
+        <a href="Bugs.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="10.5" rx="4"/><path d="M8 6a2 2 0 0 1 4 0M3 10.5h3M14 10.5h3M10 9v6"/></svg>Bugs<span class="n">7</span></a>
+        <a href="Plan.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M5 17.5v-14M5 4h9.5l-2 3.5 2 3.5H5"/></svg>Plan<span class="n"><span class="dia" aria-hidden="true"></span><span class="sr">2 Entscheidungen offen</span></span></a>
+        <a href="Gedaechtnis.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16"/><path d="M8 7h5"/></svg>Gedächtnis</a>
+      </div>
+    </div>
+    <div class="sgrp">
+      <p class="slabel">Automatik</p>
+      <div class="nav">
+        <a href="Trigger.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z"/></svg>Trigger</a>
+        <a href="Befehle.dc.html"><svg class="ic" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="m8.5 13.5 3-7"/></svg>Befehle</a>
+        <a href="MCP.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M7 3v4M13 3v4M5 7h10v3a5 5 0 0 1-10 0Z"/><path d="M10 15v3"/></svg>MCP-Server</a>
+      </div>
+    </div>
+    <div class="side-foot">
+      <div class="nav">
+        <a href="Einstellungen.dc.html" aria-current="page"><svg class="ic" viewBox="0 0 20 20"><path d="M4 6h7M15 6h1M4 14h1M9 14h7"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>Einstellungen</a>
+        <a href="Systemkarte.dc.html"><svg class="ic" viewBox="0 0 20 20"><path d="M3 5.5 7.5 4l5 2 4.5-1.5V15l-4.5 1.5-5-2L3 16Z"/><path d="M7.5 4v10.5M12.5 6v10.5"/></svg>Systemkarte</a>
+      </div>
+      <div class="me"><span class="ava sm owner" aria-hidden="true">Du</span><div><b>Du</b><small>Eigentümer, v1.5.1</small></div></div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <header class="top chrome">
+      <button class="pick" type="button" aria-label="Projekt wechseln, aktuell ProjectA"><span class="pj">A</span>ProjectA<svg class="ic s" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></button>
+      <label class="search"><span class="sr">Suchen oder Befehl eingeben</span><svg class="ic s" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg><input type="search" placeholder="Agenten, PRs, Ideen, Befehle"><span class="kbd">Strg K</span></label>
+      <a class="qm" href="Kontingente.dc.html" aria-label="Kontingente diese Woche: Claude 71 Prozent, Codex 96 Prozent, Kimi 34 Prozent, Ollama 12 Prozent">
+        <span class="qb">Claude<i><b style="width:71%"></b></i></span>
+        <span class="qb">Codex<i><b class="hot" style="width:96%"></b></i></span>
+        <span class="qb">Kimi<i><b style="width:34%"></b></i></span>
+        <span class="qb">Ollama<i><b style="width:12%"></b></i></span>
+      </a>
+      <a class="bell" href="Benachrichtigungen.dc.html" aria-label="Benachrichtigungen, 2 warten auf dich"><svg class="ic" viewBox="0 0 20 20"><path d="M5 13.5V9a5 5 0 0 1 10 0v4.5l1.5 2h-13Z"/><path d="M8.5 17.5h3"/></svg><span class="badge" aria-hidden="true">2</span></a>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="estop" type="button" onClick="{{ stop }}"><svg class="ic" viewBox="0 0 20 20"><path d="M7 2.5h6L17.5 7v6L13 17.5H7L2.5 13V7Z"/><path d="M7.5 10h5"/></svg><span>Not-Aus<small>stoppt alles in 10 s</small></span></button>
+    </header>
+
+    <sc-if value="{{ stopped }}" hint-placeholder-val="{{ false }}">
+      <div class="stopband" role="status">
+        <p>Alle 7 Agenten in 3,4 s gestoppt.</p>
+        <span>Journal gesichert, keine Aufgabe läuft doppelt. 2 Worktrees mit offenen Änderungen sind als WIP-Commit gesichert.</span>
+        <button class="btn sm" type="button" onClick="{{ resume }}">Fortsetzen</button>
+      </div>
+    </sc-if>
+
+    <section class="phead" aria-labelledby="h-verb">
+      <div>
+        <a class="crumb" href="Einstellungen.dc.html"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="m12 5-5 5 5 5"/></svg>Einstellungen</a>
+        <h1 id="h-verb">Verbesserungen</h1>
+        <p>Schalter, die das Verhalten deiner Agenten ändern. Jeder zeigt, was er gebracht hat und was er kostet.</p>
+      </div>
+    </section>
+
+    <section class="ctl glass" aria-label="Voreinstellung, Übersicht und Filter">
+      <div class="ctl-row">
+        <div class="preset">
+          <div class="seg" role="group" aria-label="Voreinstellung">
+            <span class="thumb" style="--i:{{ presetIdx }}" aria-hidden="true"></span>
+            <sc-for list="{{ presets }}" as="p" hint-placeholder-count="4"><button type="button" aria-pressed="{{ p.pressed }}" onClick="{{ p.pick }}">{{ p.name }}</button></sc-for>
+          </div>
+          <p class="pnote">{{ presetNote }}</p>
+        </div>
+        <div class="stats">
+          <div class="stat"><b>{{ activeText }}</b><span>aktiv</span></div>
+          <div class="stat"><b>{{ tokText }}</b><span>Tokens, geschätzt</span></div>
+          <div class="stat"><b>{{ chkText }}</b><span>Prüfungen pro PR</span></div>
+        </div>
+      </div>
+
+      <sc-if value="{{ hasDiff }}" hint-placeholder-val="{{ true }}">
+        <div class="diff" role="status">
+          <svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h11l-3-3M16 13H5l3 3"/></svg>
+          <span><b>{{ diff.from }} → {{ diff.to }}</b> · {{ diff.text }}</span>
+          <span class="dchips"><sc-for list="{{ diff.names }}" as="n" hint-placeholder-count="4"><span class="chip">{{ n }}</span></sc-for></span>
+          <button class="btn sm" type="button" onClick="{{ undo }}">Rückgängig</button>
+        </div>
+      </sc-if>
+
+      <div class="filt">
+        <label class="fsearch"><span class="sr">Verbesserungen durchsuchen</span><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 3.5 3.5"/></svg><input class="inp" type="search" placeholder="Verbesserung suchen" value="{{ q }}" onChange="{{ setQ }}"></label>
+        <div class="fchips" role="group" aria-label="Nach Bereich filtern">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="7"><button class="fchip" type="button" aria-pressed="{{ c.pressed }}" aria-label="{{ c.aria }}" onClick="{{ c.pick }}">{{ c.label }}<small>{{ c.count }}</small></button></sc-for>
+        </div>
+      </div>
+    </section>
+
+    <div class="split">
+      <div class="grow list">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="6">
+          <section class="grp glass pane" aria-labelledby="{{ g.hid }}">
+            <div class="pane-h"><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ g.ic }}"/></svg><h2 id="{{ g.hid }}">{{ g.name }}</h2><span class="r">{{ g.countText }}</span></div>
+            <div class="items">
+              <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="5">
+                <article class="it {{ it.cls }}" style="animation-delay:{{ it.delay }}" aria-label="{{ it.name }}" onClick="{{ it.pick }}">
+                  <div class="it-main">
+                    <div class="it-h">
+                      <button class="it-name" type="button" aria-pressed="{{ it.selA }}" onClick="{{ it.pick }}">{{ it.name }}</button>
+                      <sc-for list="{{ it.badges }}" as="b" hint-placeholder-count="1"><span class="bdg {{ b.k }}">{{ b.t }}</span></sc-for>
+                    </div>
+                    <p class="it-d">{{ it.desc }}</p>
+                    <div class="it-m">
+                      <span class="sc"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="{{ it.scIc }}"/></svg>{{ it.scope }}</span>
+                      <sc-if value="{{ it.hasHint }}" hint-placeholder-val="{{ false }}"><span>{{ it.hint }}</span></sc-if>
+                      <span>Kosten: {{ it.cost }}</span>
+                      <sc-if value="{{ it.depOk }}" hint-placeholder-val="{{ false }}"><span class="dep">braucht: {{ it.depName }}</span></sc-if>
+                      <sc-if value="{{ it.depOff }}" hint-placeholder-val="{{ false }}"><button class="dep" type="button" onClick="{{ it.enableDep }}">braucht: {{ it.depName }} · einschalten</button></sc-if>
+                      <sc-if value="{{ it.locked }}" hint-placeholder-val="{{ false }}"><span class="bdg must">{{ it.lockText }}</span></sc-if>
+                    </div>
+                  </div>
+                  <div class="eff">
+                    <b>{{ it.effV }}</b>
+                    <span>{{ it.effL }}</span>
+                    <small>{{ it.basis }}</small>
+                  </div>
+                  <label class="tg"><input type="checkbox" role="switch" checked="{{ it.on }}" disabled="{{ it.disabled }}" onChange="{{ it.toggle }}"><span class="trk" aria-hidden="true"></span><span class="sr">{{ it.name }}</span></label>
+                  <div class="subw {{ it.subOpen }}"><div><div class="subs">
+                    <sc-for list="{{ it.subs }}" as="s" hint-placeholder-count="1">
+                      <label class="sub"><span>{{ s.label }}</span>
+                        <sc-if value="{{ s.isRange }}" hint-placeholder-val="{{ true }}"><input type="range" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" value="{{ s.value }}" aria-valuetext="{{ s.display }}" onChange="{{ s.set }}"><b class="val">{{ s.display }}</b></sc-if>
+                        <sc-if value="{{ s.isNum }}" hint-placeholder-val="{{ false }}"><input class="inp" type="number" min="{{ s.min }}" max="{{ s.max }}" step="{{ s.step }}" value="{{ s.value }}" onChange="{{ s.set }}"><span>{{ s.unit }}</span></sc-if>
+                        <sc-if value="{{ s.isSel }}" hint-placeholder-val="{{ false }}"><span class="selw"><select class="inp" value="{{ s.value }}" onChange="{{ s.set }}"><sc-for list="{{ s.options }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for></select><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></span></sc-if>
+                      </label>
+                    </sc-for>
+                  </div></div></div>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div class="empty glass">
+            <p>{{ emptyText }}</p>
+            <p style="margin-top:12px"><button class="btn sm" type="button" onClick="{{ clearFilter }}">Suche und Filter zurücksetzen</button></p>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside class="aside rail glass pane" aria-labelledby="h-det">
+        <div class="rail-h">
+          <div>
+            <p class="note">{{ d.group }}</p>
+            <h2 id="h-det">{{ d.name }}</h2>
+          </div>
+          <label class="tg"><input type="checkbox" role="switch" checked="{{ d.on }}" disabled="{{ d.disabled }}" onChange="{{ d.toggle }}"><span class="trk" aria-hidden="true"></span><span class="sr">{{ d.name }}</span></label>
+        </div>
+        <div class="it-h">
+          <sc-for list="{{ d.badges }}" as="b" hint-placeholder-count="1"><span class="bdg {{ b.k }}">{{ b.t }}</span></sc-for>
+          <sc-if value="{{ d.locked }}" hint-placeholder-val="{{ false }}"><span class="bdg must">{{ d.lockText }}</span></sc-if>
+        </div>
+        <p class="rail-d">{{ d.desc }}</p>
+
+        <section aria-labelledby="h-wk">
+          <h3 id="h-wk">Wirkung</h3>
+          <div class="wk"><b>{{ d.effV }}</b><span>{{ d.effL }}</span><small>{{ d.basis }}</small></div>
+          <sc-if value="{{ d.hasHist }}" hint-placeholder-val="{{ true }}">
+            <svg class="spark" viewBox="0 0 320 56" role="img" aria-label="{{ d.sparkAria }}"><line class="base" x1="0" y1="54.5" x2="320" y2="54.5"/><polyline points="{{ d.spark }}"/><circle cx="{{ d.endX }}" cy="{{ d.endY }}" r="3"/></svg>
+            <div class="axis"><span>vor 14 Tagen</span><span>{{ d.metric }}</span><span>heute {{ d.last }}</span></div>
+          </sc-if>
+          <sc-if value="{{ d.noHist }}" hint-placeholder-val="{{ false }}">
+            <p class="empty">Noch nicht gemessen. Nach 3 Läufen mit diesem Schalter erscheint hier der Verlauf.</p>
+          </sc-if>
+        </section>
+
+        <section aria-labelledby="h-how">
+          <h3 id="h-how">Was genau passiert</h3>
+          <ol class="steps"><sc-for list="{{ d.how }}" as="h" hint-placeholder-count="3"><li>{{ h }}</li></sc-for></ol>
+        </section>
+
+        <section aria-labelledby="h-ex">
+          <h3 id="h-ex">Beispiel</h3>
+          <div class="ba">
+            <div><b>Ohne</b>{{ d.before }}</div>
+            <div><b>Mit</b>{{ d.after }}</div>
+          </div>
+        </section>
+
+        <section aria-labelledby="h-gilt">
+          <h3 id="h-gilt">Wo es gilt</h3>
+          <ol class="chain">
+            <sc-for list="{{ d.chain }}" as="c" hint-placeholder-count="3">
+              <li>
+                <span class="lvl">{{ c.lvl }}</span>
+                <span class="who" title="{{ c.who }}">{{ c.who }} <small>{{ c.note }}</small></span>
+                <span class="end"><span class="{{ c.vcls }}">{{ c.val }}</span><sc-if value="{{ c.isOvr }}" hint-placeholder-val="{{ false }}"><button class="btn ghost sm" type="button" aria-label="Überschreibung für {{ c.who }} entfernen" onClick="{{ c.remove }}">Entfernen</button></sc-if></span>
+              </li>
+            </sc-for>
+          </ol>
+          <sc-if value="{{ d.canAdd }}" hint-placeholder-val="{{ true }}">
+            <div class="ovr">
+              <label class="field">Persona<span class="selw"><select class="inp" value="{{ d.ovrP }}" onChange="{{ d.setOvrP }}"><sc-for list="{{ d.personas }}" as="p" hint-placeholder-count="3"><option value="{{ p }}">{{ p }}</option></sc-for></select><svg class="ic s" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></span></label>
+              <button class="btn sm" type="button" onClick="{{ d.addOvr }}">Für diese Persona überschreiben</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ d.locked }}" hint-placeholder-val="{{ false }}"><p class="note">Pflicht gilt für alle Projekte und Personas.</p></sc-if>
+        </section>
+
+        <div class="rail-foot">
+          <button class="btn sm" type="button" onClick="{{ d.reset }}">{{ d.resetLabel }}</button>
+          <a class="btn sm ghost" href="Beweise.dc.html">Messungen ansehen</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dunkel":{"editor":"boolean","default":false,"section":"Darstellung"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  static data() {
+    const G = [
+      { id: 'denken', name: 'Denken & Qualität', short: 'Denken', ic: 'M10 3v2.5M10 14.5V17M3 10h2.5M14.5 10H17M5.1 5.1l1.8 1.8M13.1 13.1l1.8 1.8M14.9 5.1l-1.8 1.8M6.9 13.1l-1.8 1.8' },
+      { id: 'kontext', name: 'Kontext & Gedächtnis', short: 'Kontext', ic: 'M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16M8 7h5' },
+      { id: 'werkzeuge', name: 'Werkzeuge & Automatik', short: 'Werkzeuge', ic: 'M12.5 3.5a3.5 3.5 0 0 0-3.3 4.6l-5.7 5.7a1.4 1.4 0 0 0 2 2l5.7-5.7a3.5 3.5 0 0 0 4.6-3.3l-2.1 2.1-2.1-.6-.6-2.1Z' },
+      { id: 'kosten', name: 'Kontingente & Kosten', short: 'Kosten', ic: 'M4 6h7M15 6h1M4 14h1M9 14h7M13 4v4M7 12v4' },
+      { id: 'sicherheit', name: 'Sicherheit & Rechte', short: 'Sicherheit', ic: 'M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5Z' },
+      { id: 'ablauf', name: 'Ablauf & Aufmerksamkeit', short: 'Ablauf', ic: 'M2.5 10h3l2-5 3 10 2-5h5' }
+    ];
+    const I = [
+      { id: 'plan', g: 'denken', n: 'Plan zuerst', d: 'Der Agent zeigt dir einen kurzen Plan, bevor er die erste Datei ändert.', v: '4', l: 'Irrwege früh gestoppt', b: 'm30', c: '~40 s langsamerer Start', sc: 'p', h: 'überschreibt Global', bd: 'E', tok: 3, pre: 'VA',
+        subs: [{ k: 'ok', l: 'Plan freigeben', t: 'sel', o: ['automatisch nach 60 s', 'immer durch dich', 'nur bei Nahtstellen'], def: 'automatisch nach 60 s' }],
+        how: ['Vor dem ersten Schreibzugriff schreibt der Agent 3 bis 7 Schritte und die betroffenen Dateien auf.', 'Du siehst den Plan im Leitstand; ohne Einspruch geht es nach 60 s weiter.', 'Weicht der Agent später vom Plan ab, steht das im PR-Bericht.'],
+        bf: 'Agent ändert sofort 14 Dateien und merkt nach 20 min, dass der Ansatz falsch ist.', af: 'Der Plan nennt store.rs als Nahtstelle, du lenkst in 30 s um.', m: 'gestoppte Irrwege, aufsummiert', hi: '1,1,1,2,2,2,2,3,3,3,3,3,4,4' },
+      { id: 'selbst', g: 'denken', n: 'Selbstprüfung vor dem Push', d: 'Vor jedem Push liest der Agent seinen Diff gegen Aufgabe, Regeln und Gates.', v: '11', l: 'rote Pushes verhindert', b: 'm7', c: '~6 % mehr Tokens', sc: 'g', bd: 'E', tok: 6, chk: 1, pre: 'VA',
+        how: ['Der Agent vergleicht den Diff mit der Aufgabe und den zehn Kernregeln.', 'Er führt die Lane prepush im eigenen Worktree aus und liest den Exit-Code ungefiltert.', 'Findet er etwas, behebt er es vor dem Push und notiert es im Bericht.'],
+        bf: 'Push ohne Test-First-Trailer, CI ist nach 9 min rot.', af: 'Die Selbstprüfung findet den fehlenden Trailer, der Push ist beim ersten Mal grün.', m: 'verhinderte rote Pushes pro Tag', hi: '1,0,2,1,0,1,1,2,1,3,1,2,1,1' },
+      { id: 'verfein', g: 'denken', n: 'Prompt-Verfeinerung', d: 'Specs und Review-Prompts gehen durch Entwurf, Kritik und Verbesserung, höchstens {v}.', v: '−31 %', l: 'Rückfragen von Agenten', b: 'm14', c: '~4 % mehr Tokens', sc: 'g', bd: '', tok: 4, pre: 'V',
+        subs: [{ k: 'r', l: 'Runden höchstens', t: 'num', min: 1, max: 3, step: 1, u: 'Runden', def: 2 }],
+        how: ['Ein zweiter Durchgang kritisiert den Entwurf: Lücken, Mehrdeutigkeiten, fehlende Beweise.', 'Die Kritik fließt in eine bessere Fassung; nach der eingestellten Rundenzahl ist Schluss.', 'Gilt für Specs, Briefings und Review-Prompts, nicht für den Chat.'],
+        bf: 'Spec ohne Abbruchkriterium, der Agent fragt dreimal nach.', af: 'Die Kritik ergänzt Abbruchkriterium und Beweismaßstab vor dem Start.', m: 'Rückfragen pro Aufgabe', hi: '3.2,3,3.1,2.8,2.6,2.7,2.4,2.3,2.2,2.3,2.1,2,2.1,2.2' },
+      { id: 'denkstufe', g: 'denken', n: 'Denkstufe nach Fehlversuchen erhöhen', d: 'Scheitert eine Aufgabe {v}, startet der nächste Versuch mit höherer Denkstufe.', v: '7 von 9', l: 'Aufgaben im 3. Versuch grün', b: 'm30', c: 'teurere Läufe, nur im Fehlerfall', sc: 'g', bd: 'X', tok: 5, pre: 'V',
+        subs: [{ k: 'n', l: 'nach Fehlversuchen', t: 'num', min: 1, max: 4, step: 1, u: 'Mal', def: 2 }, { k: 'max', l: 'höchstens bis', t: 'sel', o: ['hoch', 'sehr hoch'], def: 'hoch' }],
+        how: ['ProjectA zählt Fehlversuche pro Aufgabe, nicht pro Agent.', 'Ab dem eingestellten Wert startet der nächste Versuch eine Stufe höher, nie über die Obergrenze.', 'Bezahlte Schnellmodi bleiben gesperrt, der Kosten-Wächter hat Vorrang.'],
+        bf: 'Dritter Versuch mit derselben Stufe, derselbe Fehler.', af: 'Dritter Versuch mit Denkstufe hoch, die Ursache ist gefunden.', m: 'gerettete Aufgaben, aufsummiert', hi: '1,1,2,2,3,3,3,4,5,5,6,6,7,7' },
+      { id: 'redfirst', g: 'denken', n: 'Red-first erzwingen', d: 'Bugfixes brauchen zuerst einen roten Regressionstest, sonst nimmt ProjectA den Commit nicht an.', v: '0', l: 'Rückfälle bei 18 Fixes', b: 'm30', c: '~5 min pro Bugfix', sc: 'g', bd: 'E', lock: 'Pflicht laut AGENTS.md', tok: 2, chk: 1, pre: 'VAS',
+        how: ['Der Hook red-first.sh prüft, ob ein neuer Test vor dem Fix rot war.', 'Ohne Test-First- oder No-Test-Trailer wird der Commit abgelehnt.', 'Nur reine Dokumentation ist ausgenommen.'],
+        bf: 'Fix ohne Test, derselbe Fehler kommt zwei Wochen später zurück.', af: 'Der rote Test hält den Fehler fest, der Fix macht ihn grün.', m: 'Fixes mit rotem Test, aufsummiert', hi: '2,3,4,5,6,8,9,10,11,13,14,15,17,18' },
+
+      { id: 'gedaechtnis', g: 'kontext', n: 'Projektgedächtnis einfügen', d: 'Passende Entscheidungen und Fallstricke kommen vor dem Start automatisch in den Prompt.', v: '−14 %', l: 'Tokens pro Aufgabe', b: 'm7', c: 'bis {v} pro Start', sc: 'g', bd: 'E', tok: -14, pre: 'VAS',
+        subs: [{ k: 'bud', l: 'Budget', t: 'range', min: 500, max: 6000, step: 500, u: 'Tokens', def: 2000 }],
+        how: ['Vor jedem Start sucht ProjectA Einträge zur Aufgabe und zu den betroffenen Dateien.', 'Die besten Treffer kommen in den Prompt, bis das Budget erreicht ist.', 'Einträge zu inzwischen geänderten Dateien werden markiert statt eingefügt.'],
+        bf: 'Der Agent sucht 12 min, warum der Build ohne CARGO_TARGET_DIR scheitert.', af: 'Der Fallstrick steht im Prompt, der Agent setzt den Build-Slot sofort.', m: 'eingesparte Tokens pro Aufgabe, Prozent', hi: '4,6,8,7,10,11,12,12,13,15,14,13,15,14' },
+      { id: 'uebergabe', g: 'kontext', n: 'Übergabe bei vollem Kontext', d: 'Ab {v} Kontext schreibt der Agent eine Übergabe und arbeitet frisch weiter.', v: '9', l: 'Übergaben, 0 Aufgaben verloren', b: 'm7', c: '~1 min pro Übergabe', sc: 'p', h: 'überschreibt Global (70 %)', dep: 'gedaechtnis', tok: -4, pre: 'VAS',
+        subs: [{ k: 'pct', l: 'Übergabe bei', t: 'range', min: 40, max: 90, step: 5, u: '%', def: 60 }],
+        how: ['ProjectA misst die Kontextfüllung jedes Agenten.', 'An der Schwelle schreibt der Agent Ziel, Stand, offene Punkte und Dateien ins Gedächtnis.', 'Ein neuer Agent übernimmt mit dieser Übergabe, der alte wird sauber beendet.'],
+        bf: 'Bei 92 % Kontext vergisst der Agent die Aufgabe vom Anfang.', af: 'Übergabe bei 60 %, der neue Agent kennt Ziel und Stand.', m: 'Übergaben pro Tag', hi: '0,1,0,1,1,0,2,1,1,2,1,1,2,1' },
+      { id: 'lernen', g: 'kontext', n: 'Lernvorschläge nach jedem Lauf', d: 'Nach dem Lauf schlägt der Agent bis zu 3 Lektionen fürs Gedächtnis vor; du bestätigst.', v: '12', l: 'Lektionen übernommen', b: 'm30', c: '~1.500 Tokens pro Lauf', sc: 'g', dep: 'gedaechtnis', tok: 2, pre: 'V',
+        how: ['Am Ende eines Laufs fasst der Agent zusammen, was überraschend war oder schiefging.', 'Daraus werden höchstens 3 Vorschläge mit Symptom, Ursache und Lösung.', 'Nur was du bestätigst, landet im Projektgedächtnis.'],
+        bf: 'Derselbe Hook-Fehler kostet drei Agenten je 15 min.', af: 'Die Lektion aus dem ersten Lauf steht beim zweiten im Prompt.', m: 'übernommene Lektionen, aufsummiert', hi: '3,4,4,5,6,6,7,8,8,9,10,11,11,12' },
+      { id: 'cache', g: 'kontext', n: 'Prompt-Cache warm halten', d: 'Wartende Agenten mit großem Kontext bekommen {v} einen kurzen Takt, bevor der Cache abläuft.', v: '−27 %', l: 'Eingabe-Tokens bei langen Läufen', b: 'm7', c: '1 kleiner Aufruf je Takt', sc: 'g', tok: -9, pre: 'AS',
+        subs: [{ k: 'takt', l: 'Takt', t: 'sel', o: ['alle 45 min', 'alle 50 min', 'alle 55 min'], def: 'alle 50 min' }],
+        how: ['ProjectA erkennt Agenten, die warten und viel Kontext haben.', 'Kurz vor Ablauf des Caches schickt es einen minimalen Aufruf.', 'Nach 60 min ohne Arbeit gibt es stattdessen eine Übergabe und einen frischen Start.'],
+        bf: 'Nach 70 min Pause liest der nächste Schritt 400.000 Tokens neu.', af: 'Takt nach 50 min, der nächste Schritt liest aus dem Cache.', m: 'eingesparte Eingabe-Tokens, Prozent', hi: '18,22,20,25,24,27,26,28,27,29,26,28,27,27' },
+      { id: 'index', g: 'kontext', n: 'Dateien vorab indexieren', d: 'Beim Öffnen eines Worktrees entsteht ein Code-Index, damit Agenten weniger suchen.', v: '≈ −5 %', l: 'Tokens bei Suchaufgaben', b: 'est', c: '~300 MB RAM, Start +20 s', sc: 'g', bd: 'X', tok: -5, pre: 'S',
+        how: ['Beim Anlegen eines Worktrees baut ProjectA einen Index aus Symbolen und Aufrufen.', 'Agenten fragen den Index, statt Dateien einzeln zu öffnen.', 'Der Index wird bei Änderungen nachgeführt und mit dem Worktree gelöscht.'],
+        bf: 'Der Agent öffnet 23 Dateien, um einen Aufrufer zu finden.', af: 'Eine Abfrage im Index liefert die 3 Aufrufer.' },
+
+      { id: 'skills', g: 'werkzeuge', n: 'Skills und MCP passend wählen', d: 'Lädt nur die Skills und MCP-Server, die zur Aufgabe passen.', v: '−2,1 s', l: 'Startzeit und −6 % Tokens', b: 'm7', c: 'selten fehlt ein Werkzeug', sc: 'g', bd: 'E', tok: -6, pre: 'AS',
+        how: ['Aus Aufgabe und betroffenen Dateien bestimmt ProjectA die nötigen Werkzeuge.', 'Nur diese werden beim Start geladen, der Rest bleibt abrufbar.', 'Fehlt doch eines, lädt der Agent es nach und ProjectA merkt sich das.'],
+        bf: 'Der Start lädt 41 Skills und 6 MCP-Server, 3 hängen beim Verbinden.', af: 'Der Start lädt 5 Skills und 2 Server, der Agent arbeitet nach 4 s.', m: 'Startzeit in Sekunden', hi: '6.3,6.1,6.4,4.4,4.1,4.3,4,4.2,4.1,4,4.2,4.1,4,4.2' },
+      { id: 'befehle', g: 'werkzeuge', n: 'Passende Befehle vorschlagen', d: 'Bei typischen Schritten schlägt ProjectA den richtigen Befehl aus dem Repo vor.', v: '31 von 38', l: 'Vorschlägen genutzt', b: 'm7', c: 'keine', sc: 'g', tok: 0, pre: 'VAS',
+        how: ['ProjectA kennt die Befehle aus AGENTS.md und den Skripten im Repo.', 'Steht ein Schritt wie Push oder Review an, erscheint der passende Befehl.', 'Der Agent führt ihn nur aus, wenn seine Rechte es erlauben.'],
+        bf: 'Der Agent ruft cargo test statt der Gates-Lane auf.', af: 'Vorschlag: bash scripts/ci/gates.sh lane prepush.', m: 'genutzte Vorschläge pro Tag', hi: '3,4,5,4,6,5,4,4,5,5,4,4,5,4' },
+      { id: 'tests', g: 'werkzeuge', n: 'Tests nach jeder Änderung', d: 'Nach jeder Änderung laufen {v}, nicht die ganze Suite.', v: '14 min', l: 'früher entdeckt, Median', b: 'm14', c: 'belegt 1 Build-Slot', sc: 'p', h: 'überschreibt Global', tok: 0, chk: 1, pre: 'VS',
+        subs: [{ k: 'um', l: 'Umfang', t: 'sel', o: ['betroffene Tests', 'Lane precommit'], def: 'betroffene Tests' }],
+        how: ['Nach dem Speichern bestimmt ProjectA die Tests, die den geänderten Code berühren.', 'Sie laufen im Build-Slot des Agenten; ist keiner frei, wartet der Lauf.', 'Rote Tests landen sofort beim Agenten, nicht erst beim Push.'],
+        bf: 'Der Fehler fällt erst beim Push auf, 25 min nach der Änderung.', af: 'Der betroffene Test wird 40 s nach der Änderung rot.', m: 'Minuten bis zum ersten roten Test', hi: '25,22,24,12,10,11,9,10,8,11,9,10,11,11' },
+      { id: 'diff', g: 'werkzeuge', n: 'Diff-Größe begrenzen', d: 'Wächst ein Paket über {v}, teilt der Agent es in mehrere PRs.', v: '−46 %', l: 'Review-Dauer', b: 'm30', c: 'mehr PRs in der Queue', sc: 'g', tok: 0, pre: 'VA',
+        subs: [{ k: 'max', l: 'Grenze', t: 'num', min: 100, max: 600, step: 50, u: 'Zeilen', def: 300 }],
+        how: ['ProjectA zählt die Diff-Zeilen einschließlich Tests.', 'Kurz vor der Grenze hält der Agent an und schlägt eine Teilung vor.', 'Jeder Teil wird ein eigenes Paket mit eigenem Branch und PR.'],
+        bf: 'PR mit 840 Zeilen, das Review braucht zwei Runden und einen Tag.', af: 'Drei PRs mit je unter 300 Zeilen, jeder in 2 h geprüft.', m: 'Review-Dauer in Stunden', hi: '7.5,7.2,6.8,5.1,4.6,4.2,4.4,4,3.9,4.1,3.8,4,4.1,4' },
+      { id: 'bericht', g: 'werkzeuge', n: 'PR-Bericht automatisch schreiben', d: 'Der Agent schreibt den PR-Text mit drei Sätzen für dich, Beweisen und NICHT ABGEDECKT.', v: '0', l: 'rote Merge-Prüfungen wegen Bericht', b: 'm30', c: '~800 Tokens pro PR', sc: 'g', bd: 'E', tok: 1, pre: 'VAS',
+        how: ['Der Agent sammelt Befehle, Exit-Codes und Review-Funde während der Arbeit.', 'Daraus entsteht der PR-Text: drei deutsche Sätze, dann der Abschnitt Report.', 'Fehlt ein Beweis, steht er unter NICHT ABGEDECKT, statt verschwiegen zu werden.'],
+        bf: 'PR ohne Report-Abschnitt, die Merge-Prüfung bleibt rot.', af: 'Report mit Beweisen, die Prüfung ist beim ersten Mal grün.', m: 'vollständige Berichte, aufsummiert', hi: '2,4,5,7,9,10,12,13,15,17,18,20,22,23' },
+
+      { id: 'failover', g: 'kosten', n: 'Failover bei Kontingent', d: 'Erreicht ein Anbieter {v}, gehen neue Aufgaben an den nächsten freien.', v: '3', l: 'Stillstände verhindert', b: 'm7', c: 'anderes Modell, andere Stärken', sc: 'g', bd: 'E', tok: 0, pre: 'VAS',
+        subs: [{ k: 'ab', l: 'Ausweichen ab', t: 'range', min: 80, max: 98, step: 1, u: '% der Woche', def: 96 }],
+        how: ['Vor jedem Start prüft ProjectA die Kontingente aller Anbieter.', 'Liegt der gewählte über der Schwelle, geht die Aufgabe an den nächsten passenden.', 'Reviews bleiben bei einer fremden Modellfamilie.'],
+        bf: 'Codex bei 98 %, drei Aufgaben warten bis Samstag.', af: 'Die Aufgaben laufen bei Kimi K3 weiter.', m: 'umgeleitete Aufgaben pro Tag', hi: '0,0,1,0,0,0,0,0,1,0,0,2,0,3' },
+      { id: 'last', g: 'kosten', n: 'Lastverteilung über Anbieter', d: 'Verteilt Aufgaben so, dass alle Abos gleichmäßig genutzt werden.', v: '96 → 71 %', l: 'höchste Wochenauslastung', b: 'm7', c: 'Routine nicht immer beim Lieblingsmodell', sc: 'g', tok: 0, pre: 'AS',
+        how: ['ProjectA vergleicht, wie weit jedes Abo im 5-h-, Wochen- und Monatsfenster ist.', 'Routine geht an das Abo mit dem meisten Spielraum.', 'Nahtstellen und Sicherheit bleiben beim festgelegten Anbieter.'],
+        bf: 'Claude steht bei 96 %, Ollama bei 12 %.', af: 'Alle Abos liegen zwischen 34 und 71 %.', m: 'höchste Wochenauslastung, Prozent', hi: '96,95,93,90,88,85,83,80,78,76,75,73,72,71' },
+      { id: 'waechter', g: 'kosten', n: 'Kosten-Wächter', d: 'Nichts kostet extra ohne dich: kein bezahlter Schnellmodus, keine API-Schlüssel, kein Zusatzkontingent.', v: '0 €', l: 'extra seit 25.09.', b: 'm30', c: 'manche Abkürzung fragt erst', sc: 'g', bd: 'ES', tok: 0, pre: 'VAS',
+        how: ['Jeder Start wird gegen deine Abos geprüft, bevor er läuft.', 'Würde etwas Geld kosten, hält ProjectA an und legt die Frage in deinen Entscheidungseingang.', 'Ohne deine Zustimmung bleibt es gesperrt, auch für Agenten mit vollen Rechten.'],
+        bf: 'Schnellmodus an, 5,00 € Guthaben in einer Nacht verbraucht.', af: 'Schnellmodus gesperrt, die Frage liegt im Eingang.', m: 'Euro extra pro Tag', hi: '0,0,0,0,0,0,0,0,0,0,0,0,0,0' },
+      { id: 'budget', g: 'kosten', n: 'Budget-Stopp', d: 'Bei {v} eines Abos pausieren alle Agenten, statt eine Rechnung zu riskieren.', v: '1×', l: 'ausgelöst, 0 € Kosten', b: 'm30', c: 'Arbeit pausiert bis zum Reset', sc: 'g', bd: 'S', tok: 0, pre: 'VAS',
+        subs: [{ k: 'bei', l: 'Stopp bei', t: 'range', min: 90, max: 99, step: 1, u: '%', def: 98 }],
+        how: ['ProjectA misst alle 5 min die Auslastung jedes Abos.', 'Ab der Schwelle startet nichts Neues; laufende Agenten sichern ihre Arbeit als WIP-Commit.', 'Nach dem Reset geht es automatisch weiter.'],
+        bf: 'Abo bei 100 %, Zusatznutzung startet.', af: 'Stopp bei 98 %, die Arbeit ist als WIP gesichert.', m: 'Auslösungen, aufsummiert', hi: '0,0,0,0,0,0,1,1,1,1,1,1,1,1' },
+      { id: 'nacht', g: 'kosten', n: 'Nachtfenster nutzen', d: 'Lange, nicht dringende Aufgaben laufen {v}, wenn die 5-h-Fenster frei sind.', v: '≈ +30 %', l: 'Durchsatz pro Woche', b: 'est', c: 'Ergebnisse erst am Morgen', sc: 'p', h: 'nur für ProjectA', tok: 0, pre: 'S',
+        subs: [{ k: 'f', l: 'Fenster', t: 'sel', o: ['23–07 Uhr', '00–06 Uhr', '22–08 Uhr'], def: '23–07 Uhr' }],
+        how: ['Aufgaben ohne Termin und ohne Nahtstelle bekommen die Markierung Nacht.', 'Im Fenster startet ProjectA sie nacheinander, mit Failover und RAM-Schutz.', 'Am Morgen liegt eine Zusammenfassung mit Beweisen im Leitstand.'],
+        bf: 'Die 5-h-Fenster laufen nachts ungenutzt ab.', af: 'Vier Pakete über Nacht, morgens zur Prüfung bereit.' },
+      { id: 'modell', g: 'kosten', n: 'Modell nach Aufgabe wählen', d: 'Routine geht an günstige Modelle, Nahtstellen und Sicherheit an die stärksten.', v: '≈ −4 %', l: 'Tokens im stärksten Abo', b: 'est', c: 'schwächeres Modell bei Fehleinschätzung', sc: 'g', bd: 'X', tok: -4, pre: 'S',
+        how: ['ProjectA schätzt Risiko und Umfang aus Aufgabe und betroffenen Dateien.', 'Geringes Risiko geht an Kimi K3 oder GLM 5.2, Stufe A immer an Claude oder Codex.', 'Scheitert ein günstiges Modell, übernimmt beim nächsten Versuch ein stärkeres.'],
+        bf: 'Ein Tippfehler-Fix verbraucht Claude-Kontingent.', af: 'Der Tippfehler-Fix läuft auf Kimi K3.' },
+
+      { id: 'secret', g: 'sicherheit', n: 'Secret-Scan vor Commit', d: 'Jeder Commit wird auf Schlüssel, Tokens und Passwörter geprüft.', v: '2', l: 'Schlüssel abgefangen', b: 'm30', c: '~2 s pro Commit', sc: 'g', bd: 'S', lock: 'Pflicht laut AGENTS.md', tok: 0, pre: 'VAS',
+        how: ['secret-scan.sh prüft die vorgemerkten Änderungen vor dem Commit.', 'Ein Fund stoppt den Commit und zeigt Datei und Zeile, nie den Wert.', 'Ausnahmen gibt es nur über die Erlaubnisliste im Repo.'],
+        bf: 'Ein API-Schlüssel landet in einer Testdatei im Commit.', af: 'Commit gestoppt, die Fundstelle wird ohne Wert angezeigt.', m: 'abgefangene Funde, aufsummiert', hi: '0,0,0,1,1,1,1,1,1,2,2,2,2,2' },
+      { id: 'naht', g: 'sicherheit', n: 'Nahtstellen-Sperre', d: 'api.rs, main.rs, store.rs und pa.rs bearbeitet immer nur ein Agent zur Zeit.', v: '5', l: 'Konflikte verhindert', b: 'm30', c: 'Agenten warten aufeinander', sc: 'g', bd: 'S', lock: 'Pflicht laut AGENTS.md', tok: 0, pre: 'VAS',
+        how: ['Vor dem ersten Schreibzugriff auf eine Nahtstelle holt sich der Agent eine Sperre.', 'Hält ein anderer sie schon, wartet er oder nimmt eine andere Aufgabe.', 'Die Sperre endet mit dem Merge oder der Übergabe.'],
+        bf: 'Zwei Agenten ändern store.rs, der Merge-Konflikt kostet einen Abend.', af: 'Der zweite Agent wartet 20 min und baut auf dem Merge auf.', m: 'verhinderte Konflikte, aufsummiert', hi: '1,1,2,2,2,3,3,3,4,4,4,5,5,5' },
+      { id: 'rampe', g: 'sicherheit', n: 'Rechte-Rampe', d: 'Neue Personas starten mit Leserechten und steigen nach {v} eine Stufe auf.', v: '2', l: 'Personas aufgestiegen', b: 'm30', c: 'neue Personas sind anfangs langsamer', sc: 'g', bd: 'S', tok: 0, pre: 'V',
+        subs: [{ k: 'n', l: 'Aufstieg nach', t: 'num', min: 3, max: 10, step: 1, u: 'grünen Läufen', def: 5 }],
+        how: ['Stufe 1 liest nur, Stufe 2 schreibt im eigenen Worktree, Stufe 3 darf pushen.', 'Nach der eingestellten Zahl grüner Läufe schlägt ProjectA die nächste Stufe vor.', 'Nahtstellen bleiben immer an deine Freigabe gebunden.'],
+        bf: 'Eine neue Persona pusht am ersten Tag auf einen falschen Branch.', af: 'Die neue Persona liest zuerst und pusht erst nach 5 grünen Läufen.', m: 'Personas in Stufe 3', hi: '0,0,0,0,1,1,1,1,1,1,2,2,2,2' },
+      { id: 'lesen', g: 'sicherheit', n: 'Lesebefehle ohne Rückfrage', d: 'git status, cargo check und andere lesende Befehle laufen, ohne dich zu fragen.', v: '−64', l: 'Rückfragen pro Tag', b: 'm7', c: 'Agent sieht mehr ohne Nachfrage', sc: 'g', bd: 'E', tok: 0, pre: 'AS',
+        how: ['ProjectA führt eine Liste rein lesender Befehle aus den Repo-Einstellungen.', 'Diese laufen ohne Rückfrage, alles Schreibende fragt weiter.', 'Löschen, Pushen und Installieren sind nie dabei.'],
+        bf: '64 Rückfragen am Tag, die meisten für git status.', af: 'Rückfragen gibt es nur noch für schreibende Befehle.', m: 'Rückfragen pro Tag', hi: '71,68,74,9,8,10,7,9,8,6,8,7,9,7' },
+      { id: 'anomalie', g: 'sicherheit', n: 'Not-Aus bei Anomalie', d: 'Stoppt einen Agenten, der plötzlich viele Dateien löscht oder außerhalb seines Worktrees schreibt.', v: '0', l: 'Auslösungen, Probelauf am 02.10. bestanden', b: 'm30', c: 'seltene Fehlalarme', sc: 'g', bd: 'XS', tok: 0, pre: 'V',
+        how: ['ProjectA beobachtet Löschungen, Schreibpfade und Netzzugriffe jedes Agenten.', 'Weicht ein Muster stark ab, wird nur dieser Agent gestoppt und sein Stand gesichert.', 'Du bekommst eine Meldung mit dem Grund und kannst fortsetzen.'],
+        bf: 'Ein Aufräum-Skript löscht 300 Dateien.', af: 'Gestoppt nach 20 Löschungen, der Stand ist gesichert.', m: 'Auslösungen pro Tag', hi: '0,0,0,0,0,0,0,0,0,0,0,0,0,0' },
+
+      { id: 'haengen', g: 'ablauf', n: 'Hängende Agenten anstupsen', d: 'Ohne Ausgabe seit {v} bekommt ein Agent einen Anstoß, danach meldet er sich bei dir.', v: '6', l: 'Läufe gerettet', b: 'm7', c: 'ein kurzer Aufruf pro Anstoß', sc: 'g', bd: 'E', tok: 1, pre: 'VAS',
+        subs: [{ k: 'min', l: 'Anstupsen nach', t: 'range', min: 5, max: 60, step: 5, u: 'min', def: 20 }],
+        how: ['ProjectA misst die Zeit seit der letzten Ausgabe jedes Agenten.', 'Nach der Schwelle bekommt der Agent eine kurze Nachricht mit seinem letzten Schritt.', 'Bleibt er stumm, erscheint er im Leitstand mit dem Zustand „braucht dich“.'],
+        bf: 'Ein Agent hängt 2 h in einer Rückfrage, niemand merkt es.', af: 'Anstoß nach 20 min, der Agent arbeitet weiter.', m: 'gerettete Läufe pro Tag', hi: '0,1,0,1,1,0,1,1,0,2,1,0,1,1' },
+      { id: 'nachfuellen', g: 'ablauf', n: 'Freie Plätze sofort nachfüllen', d: 'Ist ein Agent fertig, startet die nächste freigegebene Aufgabe aus dem Plan.', v: '≈ −52 min', l: 'Leerlauf pro Tag', b: 'est', c: 'Kontingente sinken schneller', sc: 'g', dep: 'last', tok: 0, pre: 'S',
+        how: ['Wird ein Platz frei, nimmt ProjectA die nächste freigegebene Aufgabe aus dem Plan.', 'Vorher prüft es Kontingent, freien Speicher und laufende Builds.', 'Aufgaben an Nahtstellen warten, bis die Sperre frei ist.'],
+        bf: 'Ein Platz bleibt 50 min leer, bis du nachschaust.', af: 'Das nächste Paket startet 30 s nach dem Merge.' },
+      { id: 'ram', g: 'ablauf', n: 'RAM-Schutz', d: 'Unter {v} freiem Speicher werden untätige Wegwerf-Agenten geschlossen.', v: '4', l: 'Abstürze verhindert', b: 'm30', c: 'Wegwerf-Agenten verlieren ihren Kontext', sc: 'g', bd: 'E', tok: 0, pre: 'VAS',
+        subs: [{ k: 'gb', l: 'Schließen unter', t: 'range', min: 1, max: 3, step: 0.5, u: 'GB', def: 1.5 }],
+        how: ['ProjectA misst alle 30 s den freien Speicher.', 'Unter der Schwelle schließt es zuerst untätige Wegwerf-Agenten, nie laufende Builds.', 'Jeder geschlossene Agent hinterlässt eine Übergabe.'],
+        bf: 'Ein Build bricht mit Speicherfehler ab, drei Agenten verlieren Arbeit.', af: 'Zwei untätige Agenten geschlossen, der Build läuft durch.', m: 'Eingriffe, aufsummiert', hi: '0,0,1,1,1,2,2,2,3,3,3,3,4,4' },
+      { id: 'buendeln', g: 'ablauf', n: 'Benachrichtigungen bündeln', d: 'Meldungen kommen gesammelt {v}; was dich braucht, kommt sofort.', v: '−70 %', l: 'Unterbrechungen', b: 'm7', c: 'Infos kommen bis zu 20 min später', sc: 'g', tok: 0, pre: 'V',
+        subs: [{ k: 'tk', l: 'Sammeln', t: 'sel', o: ['alle 10 min', 'alle 20 min', 'alle 60 min'], def: 'alle 20 min' }],
+        how: ['Meldungen ohne Handlungsbedarf sammelt ProjectA im eingestellten Takt.', 'Braucht dich ein Agent, ist der Not-Aus betroffen oder geht es um Geld, kommt die Meldung sofort.', 'Jedes Bündel hat höchstens 6 Zeilen.'],
+        bf: '23 Meldungen in einer Stunde.', af: '3 Bündel und 1 sofortige Frage.', m: 'Unterbrechungen pro Tag', hi: '41,38,44,40,13,12,11,13,12,10,12,11,13,12' },
+      { id: 'ruhe', g: 'ablauf', n: 'Ruhezeiten', d: 'Von {v} kommen nur Not-Aus und Sicherheitsmeldungen durch.', v: '≈ 0', l: 'Meldungen in der Nacht', b: 'est', c: 'Fragen warten bis zum Morgen', sc: 'g', dep: 'buendeln', tok: 0, pre: '',
+        subs: [{ k: 'z', l: 'Zeitraum', t: 'sel', o: ['22–07 Uhr', '23–08 Uhr', '00–09 Uhr'], def: '22–07 Uhr' }],
+        how: ['Im Zeitraum landen Meldungen im Bündel für den Morgen.', 'Not-Aus, Sicherheitsfunde und Kostenfragen kommen weiter sofort.', 'Agenten arbeiten weiter, nur die Meldungen warten.'],
+        bf: 'Eine Meldung um 03:12 weckt dich wegen eines grünen PRs.', af: 'Der grüne PR steht morgens im Bündel.' },
+      { id: 'kurz', g: 'ablauf', n: 'Kurze Statusmeldungen', d: 'Status in höchstens {v}, auf Deutsch, mit dem nächsten Schritt.', v: '4,2', l: 'Zeilen statt 19 im Schnitt', b: 'm7', c: 'Details nur auf Nachfrage', sc: 'g', bd: 'E', tok: -2, pre: 'VAS',
+        subs: [{ k: 'z', l: 'höchstens', t: 'num', min: 3, max: 12, step: 1, u: 'Zeilen', def: 6 }],
+        how: ['Jede Statusmeldung folgt dem Muster: was passiert ist, was du entscheidest, nächster Schritt.', 'Fachbegriffe werden einmal kurz erklärt.', 'Die ausführliche Fassung liegt im Bericht, einen Klick entfernt.'],
+        bf: 'Status mit 19 Zeilen Log und englischen Fachbegriffen.', af: '4 Zeilen: grün, nichts zu entscheiden, das nächste Paket startet.', m: 'Zeilen pro Meldung', hi: '19,18,20,6,5,4,4,5,4,4,4,4,4,4' }
+    ];
+    const by = {};
+    I.forEach((it) => { by[it.id] = it; it.hist = it.hi ? it.hi.split(',').map(Number) : null; });
+    return { groups: G, items: I, by };
+  }
+
+  constructor(props) {
+    super(props);
+    this.D = Component.data();
+    const cfg = {};
+    this.D.items.forEach((it) => (it.subs || []).forEach((sb) => { cfg[it.id + '.' + sb.k] = sb.def; }));
+    const from = this.presetOn('V');
+    const on = this.presetOn('A');
+    this.state = {
+      preset: 'A', base: 'A', on, cfg, custom: null,
+      sel: 'plan', q: '', grp: 'all',
+      ovr: { plan: [{ p: 'Prüfer', v: false }] }, ovrP: '',
+      prev: { on: from, preset: 'V', base: 'V' },
+      diff: this.mkDiff('V', 'A', from, on),
+      flash: this.toSet(this.changed(from, on)), fn: 0,
+      stopped: false
+    };
+  }
+
+  names() { return { V: 'Vorsichtig', A: 'Ausgewogen', S: 'Schnell', E: 'Eigene' }; }
+  presetOn(p) { const o = {}; this.D.items.forEach((it) => { o[it.id] = !!it.lock || it.pre.indexOf(p) >= 0; }); return o; }
+  changed(a, b) { return this.D.items.filter((it) => !!a[it.id] !== !!b[it.id]).map((it) => it.id); }
+  toSet(ids) { const o = {}; ids.forEach((id, i) => { o[id] = i + 1; }); return o; }
+  match(on) { for (const p of ['A', 'V', 'S']) { if (!this.changed(this.presetOn(p), on).length) return p; } return 'E'; }
+  eff(on, id) { const it = this.D.by[id]; return !!on[id] && (!it.dep || this.eff(on, it.dep)); }
+  fmt(v) {
+    const parts = String(Math.abs(v)).split('.');
+    return (v < 0 ? '−' : '') + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (parts[1] ? ',' + parts[1] : '');
+  }
+  mkDiff(fromP, toP, a, b) {
+    const N = this.names(), ids = this.changed(a, b);
+    const an = ids.filter((id) => b[id]).length, n = ids.length;
+    const names = ids.slice(0, 4).map((id) => this.D.by[id].n);
+    if (n > 4) names.push('+' + (n - 4) + ' weitere');
+    return {
+      from: N[fromP], to: N[toP], names,
+      text: n ? n + (n === 1 ? ' Änderung: ' : ' Änderungen: ') + an + ' an, ' + (n - an) + ' aus' : 'keine Änderung, alles steht schon so'
+    };
+  }
+
+  applyPreset(p) {
+    const s = this.state;
+    let target;
+    if (p === 'E') {
+      if (!s.custom) { this.setState({ preset: 'E', diff: null, flash: {} }); return; }
+      target = s.custom;
+    } else target = this.presetOn(p);
+    this.setState({
+      prev: { on: s.on, preset: s.preset, base: s.base },
+      on: target, preset: p, base: p === 'E' ? s.base : p,
+      diff: this.mkDiff(s.preset, p, s.on, target),
+      flash: this.toSet(this.changed(s.on, target)), fn: s.fn + 1
+    });
+  }
+  toggle(id) {
+    const s = this.state, it = this.D.by[id];
+    if (it.lock || (it.dep && !this.eff(s.on, it.dep))) return;
+    const on = Object.assign({}, s.on, { [id]: !s.on[id] });
+    const knock = this.D.items.filter((x) => x.id !== id && this.eff(s.on, x.id) !== this.eff(on, x.id)).map((x) => x.id);
+    const m = this.match(on);
+    this.setState({ on, preset: m, base: m === 'E' ? s.base : m, custom: m === 'E' ? on : s.custom, diff: null, prev: null, sel: id, flash: this.toSet(knock), fn: s.fn + 1 });
+  }
+  enableDep(id) {
+    const it = this.D.by[id];
+    if (it.dep) this.toggle(it.dep);
+  }
+  undo() {
+    const s = this.state;
+    if (!s.prev) return;
+    this.setState({ on: s.prev.on, preset: s.prev.preset, base: s.prev.base, prev: null, diff: null, flash: this.toSet(this.changed(s.on, s.prev.on)), fn: s.fn + 1 });
+  }
+  setCfg(key, sb, raw) {
+    let v = raw;
+    if (sb.t === 'sel') { if (sb.o.indexOf(v) < 0) return; }
+    else { if (raw === '' || raw == null) return; v = Number(raw); if (!isFinite(v)) return; v = Math.min(sb.max, Math.max(sb.min, v)); }
+    this.setState({ cfg: Object.assign({}, this.state.cfg, { [key]: v }) });
+  }
+  reset(id) {
+    const s = this.state, it = this.D.by[id];
+    const on = Object.assign({}, s.on, { [id]: !!it.lock || it.pre.indexOf(s.base) >= 0 });
+    const cfg = Object.assign({}, s.cfg);
+    (it.subs || []).forEach((sb) => { cfg[id + '.' + sb.k] = sb.def; });
+    const m = this.match(on);
+    this.setState({ on, cfg, ovr: Object.assign({}, s.ovr, { [id]: [] }), preset: m, base: m === 'E' ? s.base : m, diff: null, prev: null, flash: { [id]: 1 }, fn: s.fn + 1 });
+  }
+  addOvr(id, p) {
+    const s = this.state, list = s.ovr[id] || [];
+    if (!p || list.some((o) => o.p === p)) return;
+    this.setState({ ovr: Object.assign({}, s.ovr, { [id]: list.concat([{ p, v: !this.eff(s.on, id) }]) }), ovrP: '' });
+  }
+  rmOvr(id, p) {
+    const s = this.state;
+    this.setState({ ovr: Object.assign({}, s.ovr, { [id]: (s.ovr[id] || []).filter((o) => o.p !== p) }) });
+  }
+
+  renderVals() {
+    const s = this.state, D = this.D, N = this.names();
+    const E = (id) => this.eff(s.on, id);
+    const q = (s.q || '').trim().toLowerCase();
+    const BADGE = { E: { t: 'Empfohlen', k: 'rec' }, X: { t: 'Experimentell', k: 'exp' }, S: { t: 'Sicherheit', k: 'sec' } };
+    const BASIS = { m7: 'gemessen, 7 Tage', m14: 'gemessen, 14 Tage', m30: 'gemessen, 30 Tage', est: 'geschätzt' };
+    const GLOBE = 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM3 10h14M10 3c1.9 2 2.8 4.4 2.8 7s-.9 5-2.8 7c-1.9-2-2.8-4.4-2.8-7S8.1 5 10 3Z';
+    const FOLDER = 'M3 6.5A1.5 1.5 0 0 1 4.5 5H8l1.5 1.5h6A1.5 1.5 0 0 1 17 8v6.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5Z';
+    const PERSONAS = ['Prüfer', 'Frontend-Bauer', 'Planer', 'Nachtwache'];
+
+    const subVals = (it) => (it.subs || []).map((sb) => {
+      const key = it.id + '.' + sb.k, v = s.cfg[key];
+      return {
+        label: sb.l, isRange: sb.t === 'range', isNum: sb.t === 'num', isSel: sb.t === 'sel',
+        min: sb.min || 0, max: sb.max || 0, step: sb.step || 1, value: v, unit: sb.u || '', options: sb.o || [],
+        display: sb.t === 'sel' ? v : this.fmt(v) + (sb.u ? ' ' + sb.u : ''),
+        set: (e) => this.setCfg(key, sb, e && e.target ? e.target.value : e)
+      };
+    });
+    const fill = (txt, subs) => (txt.indexOf('{v}') < 0 ? txt : txt.split('{v}').join(subs.length ? subs[0].display : ''));
+    const base = (it) => {
+      const on = E(it.id), subs = subVals(it), ovr = s.ovr[it.id] || [];
+      const depOff = !!it.dep && !E(it.dep);
+      const hint = [it.h || '', ovr.length === 1 ? ovr[0].p + ' weicht ab' : ovr.length > 1 ? ovr.length + ' Personas weichen ab' : ''].filter(Boolean).join(' · ');
+      return {
+        id: it.id, name: it.n, desc: fill(it.d, subs), cost: fill(it.c, subs),
+        effV: it.v, effL: it.l, basis: BASIS[it.b], measured: it.b !== 'est',
+        badges: (it.bd || '').split('').map((k) => BADGE[k]),
+        locked: !!it.lock, lockText: it.lock || '',
+        on, disabled: !!it.lock || depOff, subs, hasSubs: subs.length > 0,
+        scope: it.sc === 'p' ? 'Projekt' : 'Global', scIc: it.sc === 'p' ? FOLDER : GLOBE,
+        hint, hasHint: !!hint,
+        hasDep: !!it.dep, depOk: !!it.dep && !depOff, depOff, depName: it.dep ? D.by[it.dep].n : '',
+        toggle: () => this.toggle(it.id),
+        enableDep: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.enableDep(it.id); }
+      };
+    };
+
+    const groups = D.groups.map((g) => {
+      const all = D.items.filter((it) => it.g === g.id);
+      const act = all.filter((it) => E(it.id)).length;
+      const vis = all.filter((it) => (s.grp === 'all' || s.grp === g.id) && (!q || (it.n + ' ' + it.d + ' ' + it.c).toLowerCase().indexOf(q) >= 0));
+      return {
+        id: g.id, hid: 'h-' + g.id, name: g.name, short: g.short, ic: g.ic, act, total: all.length,
+        countText: act + ' von ' + all.length + ' aktiv',
+        items: vis.map((it) => {
+          const v = base(it), fl = s.flash[it.id];
+          return Object.assign(v, {
+            cls: [it.id === s.sel ? 'sel' : '', v.on ? '' : 'off', fl ? 'fl' + (s.fn % 2) : ''].filter(Boolean).join(' '),
+            delay: fl ? Math.min((fl - 1) * 40, 400) + 'ms' : '0ms',
+            selA: it.id === s.sel ? 'true' : 'false',
+            subOpen: v.on && v.hasSubs ? 'open' : '',
+            pick: () => { if (this.state.sel !== it.id) this.setState({ sel: it.id }); }
+          });
+        })
+      };
+    });
+    const shown = groups.filter((g) => g.items.length);
+
+    const act = D.items.filter((it) => E(it.id));
+    const tok = act.reduce((a, it) => a + (it.tok || 0), 0);
+    const chk = act.reduce((a, it) => a + (it.chk || 0), 0);
+    const order = ['V', 'A', 'S', 'E'];
+    const NOTES = {
+      V: 'Mehr Prüfungen und Rückfragen. Für Nahtstellen, neue Personas und heikle Wochen.',
+      A: 'Empfohlen für ProjectA. Qualität und Tokens im Gleichgewicht.',
+      S: 'Weniger Runden, mehr Automatik. Für Routine und Nachtläufe.'
+    };
+    const dev = this.changed(this.presetOn(s.base), s.on).length;
+    const presetNote = s.preset === 'E'
+      ? (dev ? 'Eigene Auswahl: ' + dev + (dev === 1 ? ' Abweichung' : ' Abweichungen') + ' von ' + N[s.base] + '.' : 'Eigene Auswahl, noch wie ' + N[s.base] + '. Schalte einzelne Verbesserungen um.')
+      : NOTES[s.preset];
+
+    // detail rail
+    const it = D.by[s.sel], dv = base(it), ovr = s.ovr[it.id] || [];
+    const preA = !!it.lock || it.pre.indexOf('A') >= 0;
+    const vc = (b) => (b ? 'v-on' : 'v-off');
+    const noop = () => {};
+    const chain = [
+      { lvl: 'Global', who: 'alle Projekte', note: it.sc === 'g' ? 'hier eingestellt' : 'Standard', val: (it.sc === 'g' ? dv.on : preA) ? 'an' : 'aus', vcls: vc(it.sc === 'g' ? dv.on : preA), isOvr: false, remove: noop },
+      { lvl: 'Projekt', who: 'ProjectA', note: it.sc === 'p' ? 'überschreibt Global' : 'geerbt', val: dv.on ? 'an' : 'aus', vcls: vc(dv.on), isOvr: false, remove: noop }
+    ].concat(ovr.map((o) => ({ lvl: 'Persona', who: o.p, note: 'überschrieben', val: o.v ? 'an' : 'aus', vcls: vc(o.v), isOvr: true, remove: () => this.rmOvr(it.id, o.p) })));
+    const avail = PERSONAS.filter((p) => !ovr.some((o) => o.p === p));
+    const ovrP = avail.indexOf(s.ovrP) >= 0 ? s.ovrP : (avail[0] || '');
+    let spark = '', endX = 0, endY = 0, last = '', sparkAria = '';
+    if (it.hist) {
+      const h = it.hist, n = h.length, mx = Math.max.apply(null, h), mn = Math.min.apply(null, h), rg = mx - mn || 1;
+      const pts = h.map((v, i) => [4 + i * 312 / (n - 1), mx === mn ? 50 : 50 - (v - mn) / rg * 44]);
+      spark = pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+      endX = +pts[n - 1][0].toFixed(1); endY = +pts[n - 1][1].toFixed(1);
+      last = this.fmt(h[n - 1]);
+      sparkAria = it.m + ', letzte 14 Tage: von ' + this.fmt(h[0]) + ' auf ' + last;
+    }
+    const d = Object.assign(dv, {
+      group: D.groups.find((g) => g.id === it.g).name,
+      how: it.how, before: it.bf, after: it.af,
+      hasHist: !!it.hist, noHist: !it.hist, spark, endX, endY, last, sparkAria, metric: it.m || '',
+      chain, personas: avail, ovrP, canAdd: avail.length > 0 && !it.lock,
+      setOvrP: (e) => this.setState({ ovrP: e && e.target ? e.target.value : '' }),
+      addOvr: () => this.addOvr(it.id, ovrP),
+      reset: () => this.reset(it.id),
+      resetLabel: 'Auf ' + N[s.base] + ' zurücksetzen'
+    });
+
+    return {
+      themeClass: (this.props.dunkel ?? false) ? 'dark' : '',
+      presets: order.map((p) => ({ name: N[p], pressed: s.preset === p ? 'true' : 'false', pick: () => this.applyPreset(p) })),
+      presetIdx: order.indexOf(s.preset),
+      presetNote,
+      activeText: act.length + ' von ' + D.items.length,
+      tokText: (tok < 0 ? '−' : tok > 0 ? '+' : '±') + Math.abs(tok) + ' %',
+      chkText: '+' + chk,
+      hasDiff: !!s.diff,
+      diff: s.diff || { from: '', to: '', text: '', names: [] },
+      undo: () => this.undo(),
+      q: s.q,
+      setQ: (e) => this.setState({ q: e && e.target ? e.target.value : '' }),
+      chips: [{ label: 'Alle', count: String(D.items.length), aria: 'Alle Bereiche, ' + act.length + ' von ' + D.items.length + ' aktiv', pressed: s.grp === 'all' ? 'true' : 'false', pick: () => this.setState({ grp: 'all' }) }]
+        .concat(groups.map((g) => ({ label: g.short, count: g.act + '/' + g.total, aria: g.name + ', ' + g.act + ' von ' + g.total + ' aktiv', pressed: s.grp === g.id ? 'true' : 'false', pick: () => this.setState({ grp: s.grp === g.id ? 'all' : g.id }) }))),
+      groups: shown,
+      noResults: shown.length === 0,
+      emptyText: 'Keine Verbesserung passt zu „' + (s.q || '').trim() + '“' + (s.grp === 'all' ? '.' : ' in diesem Bereich.'),
+      clearFilter: () => this.setState({ q: '', grp: 'all' }),
+      d,
+      stopped: s.stopped,
+      stop: () => this.setState({ stopped: true }),
+      resume: () => this.setState({ stopped: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

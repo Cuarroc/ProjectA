@@ -1,0 +1,318 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Ablaeufe.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Ablauf-Vorlagen",
+      "w": 1440,
+      "x": 6080,
+      "y": 5280
+    },
+    "AgentGenerator.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Agenten-Generator",
+      "w": 1440,
+      "x": 0,
+      "y": 3960
+    },
+    "AgentStarten.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Agent starten · Modell & Failover",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Aktivitaet.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Aktivität & Wiederholung",
+      "w": 1440,
+      "x": 4560,
+      "y": 5280
+    },
+    "Befehle.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Befehle & Automatik",
+      "w": 1440,
+      "x": 3040,
+      "y": 3960
+    },
+    "Benachrichtigungen.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Benachrichtigungen & Handy",
+      "w": 1440,
+      "x": 3040,
+      "y": 5280
+    },
+    "Beweise.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Beweise & Merge",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Bugs.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Bugs",
+      "w": 1440,
+      "x": 1520,
+      "y": 2640
+    },
+    "Diff.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Diff & Rückspulen",
+      "w": 1440,
+      "x": 1520,
+      "y": 5280
+    },
+    "Einstellungen.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Einstellungen",
+      "w": 1440,
+      "x": 4560,
+      "y": 3960
+    },
+    "Ersteinrichtung.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Ersteinrichtung",
+      "w": 1440,
+      "x": 0,
+      "y": 5280
+    },
+    "Gedaechtnis.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Projektgedächtnis",
+      "w": 1440,
+      "x": 4560,
+      "y": 1320
+    },
+    "Ideen.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Ideen",
+      "w": 1440,
+      "x": 0,
+      "y": 2640
+    },
+    "Kontingente.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Kontingente & Failover",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "MCP.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "MCP-Server",
+      "w": 1440,
+      "x": 3040,
+      "y": 2640
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Leitstand",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Organigramm.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Organigramm",
+      "w": 1440,
+      "x": 0,
+      "y": 1320
+    },
+    "Personas.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Personas & Vorlagen",
+      "w": 1440,
+      "x": 1520,
+      "y": 1320
+    },
+    "Plan.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Plan & Entscheidungen",
+      "w": 1440,
+      "x": 4560,
+      "y": 2640
+    },
+    "Projekteinstellungen.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Projekteinstellungen",
+      "w": 1440,
+      "x": 6080,
+      "y": 3960
+    },
+    "Systemkarte.dc.html": {
+      "expand": "fill",
+      "h": 1760,
+      "is_interactive": true,
+      "title": "Systemkarte · Was ist gebaut, was neu",
+      "w": 1440,
+      "x": 0,
+      "y": 6600
+    },
+    "TeamLauf.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Team-Lauf · Orchestrator",
+      "w": 1440,
+      "x": 3040,
+      "y": 1320
+    },
+    "Trigger.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Trigger & Webhooks",
+      "w": 1440,
+      "x": 1520,
+      "y": 3960
+    },
+    "Verbesserungen.dc.html": {
+      "expand": "fill",
+      "h": 4842,
+      "is_interactive": true,
+      "title": "Erweitert · Verbesserungen",
+      "w": 1440,
+      "x": 7600,
+      "y": 3960
+    },
+    "Core.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Core · Steuerung, Arbeit, Aufmerksamkeit",
+      "w": 1440,
+      "x": 6080,
+      "y": 1320
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-06T01:30:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "row1": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Arbeiten: steuern, starten, beweisen",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Organisation: Firma aus Agenten",
+      "w": 240,
+      "x": 0,
+      "y": 1020
+    },
+    "row3": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Eingang & Werkzeuge",
+      "w": 240,
+      "x": 0,
+      "y": 2340
+    },
+    "row4": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "Erstellen, automatisieren, einstellen",
+      "w": 240,
+      "x": 0,
+      "y": 3660
+    },
+    "row5": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Vervollständigen: einrichten, prüfen, verfolgen",
+      "w": 240,
+      "x": 0,
+      "y": 4980
+    },
+    "row6": {
+      "kind": "title1",
+      "maxW": 1440,
+      "text": "Systemkarte",
+      "w": 240,
+      "x": 0,
+      "y": 6300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "AgentStarten.dc.html",
+    "Beweise.dc.html",
+    "Kontingente.dc.html",
+    "Organigramm.dc.html",
+    "Personas.dc.html",
+    "TeamLauf.dc.html",
+    "Gedaechtnis.dc.html",
+    "Core.dc.html",
+    "Ideen.dc.html",
+    "Bugs.dc.html",
+    "MCP.dc.html",
+    "Plan.dc.html",
+    "AgentGenerator.dc.html",
+    "Trigger.dc.html",
+    "Befehle.dc.html",
+    "Einstellungen.dc.html",
+    "Projekteinstellungen.dc.html",
+    "Verbesserungen.dc.html",
+    "Ersteinrichtung.dc.html",
+    "Diff.dc.html",
+    "Benachrichtigungen.dc.html",
+    "Aktivitaet.dc.html",
+    "Ablaeufe.dc.html",
+    "Systemkarte.dc.html"
+  ],
+  "pages": [],
+  "title": "ProjectA 2.0 Glass"
+}
