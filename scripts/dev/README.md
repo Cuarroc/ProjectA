@@ -110,6 +110,7 @@ calls (`gh pr list` twice, `gh run list` once) and spends no money. The test is
 |---|---|---|
 | `start-check.mjs` | `npm run dev:start-check [-- --usage <datei> --observe-log <datei>]` | Darf jetzt noch ein Agenten-Worker starten? (read-only, kein Geld, kein Netz) |
 | `bench-weekly.mjs` | `npm run dev:bench-weekly [-- --from <tag> --to <tag> --json --input <datei>]` | Wochenmessung aus `docs/plan/v1.6.0/benchmark.md` Abschnitt 6, nur lesend (gh/git); Test: `scripts/lib/dev-bench-weekly.test.mjs` |
+| `mrp-count.mjs` | `npm run dev:mrp-count [-- --from <tag> --to <tag> --input <datei>]` | M-RP-Zähler: Anteil der Paket-PRs mit Prompt-Log, Runden, Befunde, Fixrunden (`### Nacharbeit`), JSON; dieselben Zeilen stehen in `dev:bench-weekly`, nur lesend; Test: `scripts/lib/dev-mrp-count.test.mjs` |
 | `plan-lint.mjs` | `npm run dev:plan-lint [-- <plan.md>]` | Prüft die Paket-Tabellen von `docs/plan/v1.6.0/plan.md` (Größe, Stufe, Lane, Abnahme, nie zwei Pakete einer Naht gleichzeitig), nur lesend; Exit 1 bei Befunden; Test: `scripts/lib/dev-plan-lint.test.mjs` |
 
 Vier Prüfungen, je eine deutsche Zeile (`OK` / `WARNUNG` / `STOPP`), bei einer
