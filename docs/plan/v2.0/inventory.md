@@ -59,7 +59,7 @@ Beleg. Der Plan prüft jeden Anker mit `rg -n`, bevor er ein Paket darauf baut.
 | Laufzeit | MCP-Anbindung | neu | nur in den CLI-Einstellungen | MCP-Server je Agent und Team, Schlüssel nur als Tresor-Verweis. |
 | Laufzeit | Gedächtnis | teilweise | LearningsPanel · memorix extern | Jede Notiz trägt Quelle, Prüfdatum und deine Bestätigung. |
 | Laufzeit | Grenzen je Job | geplant | M4 · W2-08b | Speicher- und CPU-Grenzen je Job; Stillstand früh erkennen. |
-| Laufzeit | Server-Ort | teilweise | lokal oder Hetzner · pa-orch | Wo Agenten laufen: auf diesem Rechner oder auf dem Hetzner-Server. Heute über pa-orch eingerichtet, nicht in der App. |
+| Laufzeit | Server-Ort | teilweise | lokal oder eigener Server · pa-orch | Wo Agenten laufen: auf diesem Rechner oder auf dem eigenen Server. Heute über pa-orch eingerichtet, nicht in der App. |
 | Beweis-Schicht | Gates | gebaut | scripts/ci/gates.sh | Die Gate-Liste steht an genau einer Stelle; beide Hooks und alle Workflows rufen dieselben Lanes. |
 | Beweis-Schicht | Fremd-Review | neu | store/development_runs.rs:1322, Dauerbetrieb aus | Kein Modell benotet seine eigene Familie. |
 | Beweis-Schicht | Merge-Queue | neu | Merge-Knopf umgeht sie: gh.rs:429 (KI-29) | Im Repo läuft Mergify seit 24.09.2026; der Merge-Knopf der App umgeht die Warteschlange noch. |
