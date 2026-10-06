@@ -4,13 +4,26 @@
   <img src="assets/banner.svg" alt="ProjectA" width="100%" />
   <p><em>An agentic terminal for Windows: many AI coding agents, one calm cockpit.</em></p>
   <p><strong>Mehrere KI-Coding-Agenten parallel arbeiten lassen – jeder in seinem eigenen Terminal, Branch und Worktree.</strong></p>
-  <p><strong>Fokus: sicherer Dauerbetrieb – Not-Aus, Kostenkontrolle, Protokoll.</strong></p>
+  <p><strong>Fertig ist nur, was bewiesen ist: Grün heißt bewiesen, kein Modell prüft sich selbst, der Mensch behält die Kontrolle.</strong></p>
+  <p><strong>Dazu gehören Not-Aus, Kostenkontrolle über Budgetgrenzen und ein nachvollziehbares Protokoll.</strong></p>
 
   <a href="https://github.com/Cuarroc/ProjectA-updates/releases/latest"><img alt="Neueste Version" src="https://img.shields.io/github/v/release/Cuarroc/ProjectA-updates?label=Version" /></a>
   <a href="LICENSE"><img alt="Lizenz: MIT" src="https://img.shields.io/github/license/Cuarroc/ProjectA?label=Lizenz" /></a>
   <a href="https://github.com/Cuarroc/ProjectA/actions/workflows/ci.yml?query=branch%3Amain"><img alt="CI auf main" src="https://img.shields.io/github/actions/workflow/status/Cuarroc/ProjectA/ci.yml?branch=main&label=CI" /></a>
   <img alt="Plattform: Windows" src="https://img.shields.io/badge/Plattform-Windows-0078D6" />
 </div>
+
+## Inhalt
+
+- [Warum ProjectA?](#warum-projecta)
+- [Schnellstart](#schnellstart)
+- [Funktionen](#funktionen)
+- [Wo steht ProjectA?](#wo-steht-projecta)
+- [Status und Grenzen](#status-und-grenzen)
+- [Mitmachen als Tester](#mitmachen-als-tester)
+- [Dokumentation](#dokumentation)
+- [Für Entwickler](#für-entwickler)
+- [Lizenz](#lizenz)
 
 ## Warum ProjectA?
 
@@ -60,6 +73,16 @@ Dauerbetrieb selbst ist in v1.5.1 noch ausgeschaltet; siehe „Status und Grenze
 | Sitzungen wiederherstellen | Verlauf und Entwürfe überstehen einen Neustart (höchstens 7 Tage). |
 | Kommandozeile `pa` | Spricht mit der laufenden App über eine lokale, per Token geschützte API. |
 
+## Wo steht ProjectA?
+
+- **Aktuelle Version: `v1.5.1`.** Was sich ändert, steht im
+  [`CHANGELOG.md`](CHANGELOG.md).
+- **Der Plan für Version 2.0 ist am 06.10.2026 freigegeben.** Die verständliche
+  Kurzfassung steht in [`docs/roadmap-2.0.md`](docs/roadmap-2.0.md), der
+  vollständige Plan in [`docs/plan/v2.0/plan.md`](docs/plan/v2.0/plan.md).
+- Der automatische Dauerbetrieb bleibt bis auf Weiteres ausgeschaltet; er wird
+  erst nach belegter Abnahme und nur durch den Menschen freigegeben.
+
 ## Status und Grenzen
 
 - **App-Version:** `v1.5.1` – diese Version baut der Quellcode auf `main`.
@@ -72,6 +95,14 @@ Dauerbetrieb selbst ist in v1.5.1 noch ausgeschaltet; siehe „Status und Grenze
   freigegeben.
 - Agent-CLIs und Anbieterzugänge bringst du selbst mit (siehe oben).
 - Interne Projektunterlagen sind überwiegend auf Deutsch.
+
+## Mitmachen als Tester
+
+Du möchtest ProjectA ausprobieren? Installiere die aktuelle Version von der
+[Release-Seite](https://github.com/Cuarroc/ProjectA-updates/releases/latest)
+und arbeite die kurze Klickliste in [`docs/TESTEN.md`](docs/TESTEN.md) durch.
+Deine Beobachtungen meldest du am besten über die Issue-Vorlage
+„Tester-Feedback“ – sie fragt genau das ab, was wir zur Fehlersuche brauchen.
 
 ## Dokumentation
 
