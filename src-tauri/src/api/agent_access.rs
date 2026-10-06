@@ -111,7 +111,7 @@ impl RunCredentialIssuer {
             .map_err(|_| "run credentials unavailable")?
             .retain(|_, grant| {
                 if grant.session_id.as_deref() == Some(session_id) {
-                    remove_grant_file(grant);
+                    drop_grant_file(grant);
                     false
                 } else {
                     true
@@ -147,7 +147,7 @@ impl RunCredentialIssuer {
             if grant.expires_at > timestamp {
                 true
             } else {
-                remove_grant_file(grant);
+                drop_grant_file(grant);
                 false
             }
         });
@@ -256,7 +256,7 @@ impl RunCredentialIssuer {
                     poison.into_inner()
                 });
             if let Some(grant) = grants.remove(&descriptor.token) {
-                remove_grant_file(&grant);
+                drop_grant_file(&grant);
             }
         }
         result
@@ -273,7 +273,7 @@ impl RunCredentialIssuer {
                 if grant.run_id != run_id {
                     true
                 } else {
-                    remove_grant_file(grant);
+                    drop_grant_file(grant);
                     false
                 }
             });
@@ -302,7 +302,7 @@ impl RunCredentials {
             poison.into_inner()
         });
         for grant in grants.values() {
-            remove_grant_file(grant);
+            drop_grant_file(grant);
         }
         grants.clear();
     }
@@ -353,8 +353,13 @@ pub(super) fn sweep_orphaned_descriptor_files(api_dir: &Path) -> SweepReport {
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
         let regular = entry.file_type().is_ok_and(|kind| kind.is_file());
         if minted && regular {
-            let _ = std::fs::remove_file(entry.path());
-            report.removed += 1;
+            match remove_file_if_present(&entry.path()) {
+                Ok(()) => report.removed += 1,
+                Err(error) => {
+                    report.failed += 1;
+                    note_removal_failure(&error);
+                }
+            }
         }
     }
     report
@@ -367,11 +372,38 @@ pub(super) struct SweepReport {
     pub failed: usize,
 }
 
-fn remove_grant_file(grant: &RunGrant) -> Result<(), String> {
-    if let Some(path) = &grant.descriptor_file {
-        let _ = std::fs::remove_file(path);
+/// NotFound counts as removed: the goal is "the file is gone".
+fn remove_file_if_present(path: &Path) -> Result<(), String> {
+    match std::fs::remove_file(path) {
+        Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(error.to_string()),
+        _ => Ok(()),
     }
-    Ok(())
+}
+
+fn remove_grant_file(grant: &RunGrant) -> Result<(), String> {
+    grant
+        .descriptor_file
+        .as_deref()
+        .map_or(Ok(()), remove_file_if_present)
+}
+
+/// The map-internal call sites (`retain`, rollback, `revoke_all`) cannot
+/// return an error, and the grant is dropped from memory regardless, so the
+/// token is dead; the leftover file is reported, never silently ignored.
+fn drop_grant_file(grant: &RunGrant) {
+    if let Err(error) = remove_grant_file(grant) {
+        note_removal_failure(&error);
+    }
+}
+
+/// Log the OS error only: the path's file name is the token, so it never
+/// reaches stderr (same `writeln!` rationale as [`note_poison`]).
+fn note_removal_failure(error: &str) {
+    use std::io::Write;
+    let _ = writeln!(
+        std::io::stderr(),
+        "projecta: scoped descriptor file could not be removed: {error}"
+    );
 }
 
 #[derive(Deserialize)]
