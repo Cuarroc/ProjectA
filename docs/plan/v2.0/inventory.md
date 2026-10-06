@@ -78,7 +78,7 @@ Beleg. Der Plan prüft jeden Anker mit `rg -n`, bevor er ein Paket darauf baut.
 | Daten | Anbieter-Zeugnisse | neu | neu in diesem Entwurf | Ein Zeugnis je Modell, gebildet aus seinen bisherigen Läufen und Reviews. |
 | Daten | Kostenbuch | neu | neu in diesem Entwurf | Hält fest, wie viel Kontingent jeder Lauf verbraucht hat. |
 | Daten | Sicherung & Umzug | geplant | M4 · W3-03, Backup-Drill | Sichern und auf einen anderen Rechner umziehen. Der Backup-Drill ist für M4 geplant; der Umzug ist neu. |
-| Daten | Lizenz | geplant | Entscheidung in docs/PLAN.md | Eine Lizenz fehlt noch; die Entscheidung steht in der Inbox des Plans. |
+| Daten | Lizenz | geplant | Entscheidung in docs/PLAN.md | Die Lizenz ist MIT (`LICENSE`); offen ist nur, ob sie bleibt (Inbox des Plans). |
 ## Nach der Systemkarte hinzugekommen
 
 | Schicht | Teil | Stand | Code heute | Beschreibung |

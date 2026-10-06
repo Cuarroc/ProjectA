@@ -12,7 +12,7 @@ ProjectA 2.0 hat **eine** App-KI mit Rechten. Es gibt keinen zweiten Orchestrato
 | **Arbeit** | Pakete nehmen, Agenten starten, Reviews fahren, Queue beobachten (der heutige Orchestrator) | `pa-orch` außerhalb des Repos (nicht prüfbar, V2-O0) | V2-O0, die Maschine „Ablauf mit Beweis“ (V2-RUN-1 bis V2-RUN-4, `plan.md` 3.5), V2-DOG-1 |
 | **Aufmerksamkeit** | Was erreicht den Nutzer; Fragen gebündelt in ein festes Tagesfenster; Wochenbrief (der heutige Chief of Staff) | `pa-orch`, `QuestionsView` | V2-CORE-AT (enthält den früheren Chief of Staff) |
 
-Ein Hut ist eine Rolle des Core, kein eigener Prozess: dieselbe Regelgrenze (Abschnitt 4), dasselbe Journal (Abschnitt 3), derselbe Not-Aus.
+Ein Hut ist eine Rolle des Core, kein eigener Prozess: dieselbe Regelgrenze (Abschnitt 3), dasselbe Journal (Abschnitt 2), derselbe Not-Aus.
 
 ## 2. Ein Schreiber je Einstellung
 
@@ -50,7 +50,7 @@ Je **Bereich** (Orte, Kontingente und Failover, Personas, Trigger, Benachrichtig
 | Selbstheilung | V2-CORE-5 | RAM unter 1,5 GiB frei: neue Starts gehen auf den Server oder in die Cloud (nur wenn belegt verfügbar); Kontingent nahe am Limit: Failover nach Regel; stehengebliebener Agent: genau eine Meldung. Je Fall ein Test mit Fixture |
 | Probezeit und Rücknahme | V2-CORE-3 | Test mit künstlich verschlechterter Messgröße: Rücknahme innerhalb der Probezeit, Journal-Eintrag vollständig |
 | Optimierer | V2-CORE-7 | Ein Versuch läuft genau eine Woche, endet mit Vergleich, ändert danach nichts ohne Bestätigung |
-| App-Wissen pflegen („Wann was“) | V2-B26 (früher V2-B26) | Nach einer Befehlsänderung von `pa` meldet der Vergleich mit dem Handbuch (V2-B26) die Lücke als Antrag |
+| App-Wissen pflegen („Wann was“) | V2-B26 (früher V2-CORE-8) | Nach einer Befehlsänderung von `pa` meldet der Vergleich mit dem Handbuch (V2-B26) die Lücke als Antrag |
 | Einstellungen erklären mit Verlauf | V2-CORE-9 | Zu jedem Schlüssel: Besitzer, aktueller Wert, die letzten Journal-Einträge mit Grund |
 | Tagesbericht (3 Zeilen) | V2-CORE-9 | Genau drei Zeilen: was geändert, was zurückgenommen, was wartet auf den Nutzer |
 | Aufmerksamkeit (Tagesfenster, Wochenbrief) | V2-CORE-AT | Fragen außerhalb des Fensters landen im Sammelkorb; Not-Aus und Sicherheit sind die einzigen Ausnahmen |

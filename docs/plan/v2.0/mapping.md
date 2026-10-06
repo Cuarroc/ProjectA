@@ -4,9 +4,9 @@ Stand 06.10.2026, `origin/main` 01a0bf7. Jedes offene Paket aus [`docs/PLAN.md`]
 
 **Stand-Hinweis.** Die Stand-Spalten beider Pläne sind veraltet: `docs/PLAN.md` führt R-1 und W4-04 als „offen“, obwohl `gh release list` (06.10.2026) v1.5.0 (05.10., 21:18 UTC) und v1.5.1 (06.10., 00:00 UTC, Latest) zeigt; die v1.6.0-Pakete BENCH-01/02, FLOW-01 bis 07, WIN-01, V16-02, V16-07, M5-02, ARCH-D3a und ARCH-D6a stehen laut `git log origin/main --grep` als gemergt auf `main` (PR-Nummern unten). Ein Urteil „erledigt“ ist kein Paket. Wer ein „übernehmen“ startet, prüft vorher `git log --grep` und `gh pr list --search`, ob es nicht doch schon erledigt ist (Checkliste Punkt 2, v1.6.0 Abschnitt 6).
 
-**Runde 3 (06.10., Richtungsentscheidung):** Der Verkauf der App an Dritte ist geparkt; Zeilen, die nur ihm dienten, stehen jetzt bei „nach v2.0 parken“. Die Paket-IDs folgen den 10 Bildschirmen (S01 bis S11) und der einen Maschine „Ablauf mit Beweis“ (V2-RUN-1 bis RUN-4); die Fragen sind neu nummeriert (Freeze = 10, Aufräumen = 11).
+**Runde 3 (06.10., Richtungsentscheidung):** Der Verkauf der App an Dritte ist geparkt; Zeilen, die nur ihm dienten, stehen jetzt bei „nach v2.0 parken“. Die Paket-IDs folgen den 10 Bildschirmen (S01 bis S11; S02 ist das Sheet „Agent starten“) und der einen Maschine „Ablauf mit Beweis“ (V2-RUN-1 bis RUN-4); die Fragen sind neu nummeriert (Freeze = 10, Aufräumen = 11).
 
-**ID-Regel.** Übernommene Pakete tragen `V2-` vor der alten ID (`ARCH-D2` → `V2-ARCH-D2`), `V16-nn` wird `V2-R-nn`. Lane, Stufe, Größe und Abnahme bleiben die der Quellzeile, bis V2-FREEZE-1 sie in den Plan kopiert.
+**ID-Regel.** Übernommene Pakete tragen `V2-` vor der alten ID (`ARCH-D2` → `V2-ARCH-D2`), `V16-nn` wird `V2-R-nn`. Ausnahme: neu zugeschnittene Pakete (z. B. SETUP-14 → V2-N1, W3-07 → V2-REL, HQ2-05b → V2-B21 und V2-CLI-1) tragen die neue v2.0-ID, die Zeile nennt sie. Lane, Stufe, Größe und Abnahme bleiben die der Quellzeile, bis V2-FREEZE-1 sie in den Plan kopiert.
 
 ## 1. `docs/PLAN.md`
 
@@ -76,7 +76,7 @@ Stand 06.10.2026, `origin/main` 01a0bf7. Jedes offene Paket aus [`docs/PLAN.md`]
 | HQ: Restzeit, `blocked`, UTC, Body-Limit | streichen | – | erledigt in V16-07 (#495); HQ eingefroren (V2-H1) |
 | Tests und Plattform (`resources.rs`) | übernehmen | V2-B23 | Grenzen je Job prüfen |
 | Performance (`useQuestions`, Digest) | nach v2.0 parken | – | erst messen; Leistungsbudget V2-GATE-PERF liefert die Zahlen |
-| Ops-Prozess: Tier-Einordnung, „Review disposition“ | übernehmen | V2-B9, V2-RUN-3 | Beleg am 06.10.: die Regex in `pipeline.py` stufte #578 als B ein; `src/lib/reviewClass.ts:19` stuft denselben Pfad als A ein |
+| Ops-Prozess: Tier-Einordnung, „Review disposition“ | übernehmen | V2-B9, V2-RUN-3 | Beleg am 06.10.: `src/lib/reviewClass.ts:19` stuft den Pfad von #578 als A ein; dass die Regex in `pipeline.py` ihn als B einstufte, ist nicht prüfbar (`pipeline.py` liegt nicht im Repo, `evidence-r2.md` Punkt 3) |
 | Wartezeit (CI-06 semantisch, Flake-Auswertung) | nach v2.0 parken | – | `--plan` reicht heute; Flake-Auswertung läuft schon (E11) |
 | Doku (Link-Prüfer) | nach v2.0 parken | – | Komfort |
 | Links auf den v1.6.0-Plan und `docs/plan/roadmap/` | streichen | – | beide Pläne gehen im Archiv auf (V2-FREEZE-1); der Fahrplan v1.7 bis v1.9 widerspricht der Entscheidung „ein großes Release“ |
