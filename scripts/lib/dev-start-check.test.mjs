@@ -293,6 +293,18 @@ test("checkBehind stops above the limit and warns when origin/main is unknown", 
   assert.equal(checkBehind({ run: () => ({ code: 128, stdout: "", stderr: "bad revision" }), maxBehind: 5 }).status, "warn");
 });
 
+test("checkBehind treats empty or unparsable git output as unknown", () => {
+  for (const stdout of ["", "\n", "abc\n"]) {
+    const r = checkBehind({ run: () => ({ code: 0, stdout, stderr: "" }), maxBehind: 5 });
+    assert.equal(r.status, "warn", JSON.stringify(stdout));
+  }
+});
+
+test("main --help names the --deps stop sources in the exit-code line", async () => {
+  const r = await run(["--help"]);
+  assert.match(r.out, /1 Grenze verletzt \(RAM, cargo, Limit, --deps\)/);
+});
+
 test("main without --deps does not run git or cargo checks", async () => {
   const r = await run(["--json"], { run: () => assert.fail("no command expected") });
   assert.deepEqual(JSON.parse(r.out).checks.map((c) => c.id), ["ram", "cargo", "limit", "beobachtung"]);
