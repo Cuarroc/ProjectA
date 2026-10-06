@@ -31,6 +31,9 @@ export function summarizeJournal(appDir) {
     phase: typeof parsed?.phase === 'string' ? parsed.phase : null, keys: parsed ? Object.keys(parsed).sort() : [] };
 }
 export const workerIds = (workers) => (Array.isArray(workers) ? workers : []).map((w) => String(w.id)).sort();
+// "v1.5.1" and "1.5.1" are the same version; compare only through this.
+export const normalizeVersion = (v) => String(v ?? '').trim().replace(/^v/i, '');
+const sameVersion = (a, b) => normalizeVersion(a) === normalizeVersion(b);
 const key = (s) => `${s.phase}|${s.version ?? ''}|${s.message ?? ''}`;
 // One poll loop; `down` marks the gap in which the app was unreachable.
 export async function watchUpdater({ read, scenario, timeoutMs, intervalMs = 2000, sleep, now = Date.now }) {
@@ -57,7 +60,7 @@ export async function watchUpdater({ read, scenario, timeoutMs, intervalMs = 200
   }
   return { transitions, relaunched, elapsedMs: now() - start, last };
 }
-export function judge(scenario, w, { before, after }, { appVersion, newVersion } = {}) {
+export function judge(scenario, w, { before, after }, { appVersion, newVersion, newCommit } = {}) {
   const seen = w.transitions.map((t) => t.phase);
   const problems = [];
   if (scenario === 'success') {
@@ -67,13 +70,20 @@ export function judge(scenario, w, { before, after }, { appVersion, newVersion }
     // A relaunch alone is no update: the version reported afterwards must be the new one.
     const installed = w.last?.version;
     if (!installed) problems.push('no installed version reported after the update');
-    else if (installed === appVersion) problems.push(`version did not change (still ${installed})`);
-    else if (newVersion && newVersion !== 'unknown' && installed !== newVersion) problems.push(`installed version ${installed}, expected ${newVersion}`);
+    else if (sameVersion(installed, appVersion)) problems.push(`version did not change (still ${normalizeVersion(installed)})`);
+    else if (newVersion && newVersion !== 'unknown' && !sameVersion(installed, newVersion)) problems.push(`installed version ${normalizeVersion(installed)}, expected ${normalizeVersion(newVersion)}`);
+    // An expected commit is an explicit ask: a missing report is a failure, not a silent skip.
+    const got = w.last?.commit;
+    if (newCommit && !got) problems.push(`no installed commit reported, expected ${String(newCommit).toLowerCase()}`);
+    else if (newCommit && String(got).toLowerCase() !== String(newCommit).toLowerCase()) problems.push(`installed commit ${String(got).toLowerCase()}, expected ${String(newCommit).toLowerCase()}`);
   } else {
     if (w.relaunched) problems.push('app relaunched, but this scenario must not install');
     if (scenario === 'fail' && !w.transitions.some((t) => t.phase === 'error' && t.message)) problems.push('no error phase with a message');
     if (scenario === 'cancel' && !seen.includes('installing')) problems.push('update never started, nothing was cancelled');
     if (scenario === 'cancel' && !['available', 'idle', 'up-to-date'].includes(w.last?.phase)) problems.push(`not back to a resting phase (last: ${w.last?.phase})`);
+    // In idle/up-to-date the reported version is the installed one (in `available` it is the offered one).
+    const left = w.last?.version;
+    if (scenario === 'cancel' && appVersion && left && ['idle', 'up-to-date'].includes(w.last?.phase) && !sameVersion(left, appVersion)) problems.push(`installed version ${normalizeVersion(left)} after cancel, expected ${normalizeVersion(appVersion)}`);
   }
   if (w.timedOut) problems.push('time limit reached');
   const lost = before.filter((id) => !after.includes(id));
@@ -81,7 +91,7 @@ export function judge(scenario, w, { before, after }, { appVersion, newVersion }
   if (lost.length) problems.push(`worker records missing afterwards: ${lost.join(', ')}`);
   return problems;
 }
-export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, newVersion = 'unknown', commit, observedUi = '', processList = '',
+export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, newVersion = 'unknown', newCommit, commit, observedUi = '', processList = '',
   timeoutMs = 600000, request = httpRequest, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now, intervalMs }) {
   if (!SCENARIOS.includes(scenario)) throw new Error(`scenario must be one of ${SCENARIOS.join(', ')}`);
   const bundle = createBundle({ outDir, drill: `updater-${scenario}`, appVersion, commit });
@@ -100,8 +110,8 @@ export async function runUpdaterDrill({ appDir, outDir, scenario, appVersion, ne
   let after = [];
   try { after = workerIds(await get('/api/workers')); } catch (e) { bundle.step('list workers after', { exitCode: 1, detail: e.message }); }
   const journalAfter = summarizeJournal(appDir);
-  bundle.addFile('after.json', JSON.stringify({ newVersion, observedUi, workers: after, journal: journalAfter }, null, 2));
-  const problems = judge(scenario, w, { before, after }, { appVersion, newVersion });
+  bundle.addFile('after.json', JSON.stringify({ newVersion, newCommit, observedUi, workers: after, journal: journalAfter }, null, 2));
+  const problems = judge(scenario, w, { before, after }, { appVersion, newVersion, newCommit });
   bundle.step(`judge ${scenario}`, { exitCode: problems.length ? 1 : 0, detail: problems.join('; ') || `ok in ${Math.round(w.elapsedMs / 1000)} s, relaunch ${w.relaunched}` });
   return bundle.finish(NOT_COVERED);
 }
