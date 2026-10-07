@@ -1,0 +1,44 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import { findViolations } from "./hygiene-check.mjs";
+
+// Fixtures are assembled at runtime so this file never holds a forbidden
+// literal itself (it is scanned by the very check it tests).
+const join = (...parts) => parts.join("");
+const AT = String.fromCharCode(64);
+const rulesFor = (text, path = "tools/denkraum/x.mjs") => findViolations([{ path, text }]).map((f) => f.rule);
+
+test("flags each forbidden class and passes its clean twin", () => {
+  const cases = [
+    ["machine-path", join("C:", "/Users/someone/x"), "C-Users without a drive"],
+    ["machine-path", join("c:", "\\", "Users", "\\", "someone"), "path\\to\\Users"],
+    ["machine-path", join("/ho", "me/someone/repo"), "/homepage/x"],
+    ["agent-id", join("agent", "-", "1".repeat(13), "-", "abc123"), join("agent", "-", "1".repeat(12), "-", "abc123")],
+    ["email", join("someone", AT, "example", ".", "org"), join("npm i ", AT, "playwright/test")],
+    ["ipv4", ["10", "1", "2", "3"].join("."), ["127", "0", "0", "1"].join(".")],
+  ];
+  for (const [rule, bad, good] of cases) {
+    assert.deepEqual(rulesFor(`x\n${bad}\n`), [rule], `${rule} must be flagged`);
+    assert.deepEqual(rulesFor(`x\n${good}\n`), [], `${rule} clean twin must pass`);
+  }
+  assert.deepEqual(rulesFor(["1", "2", "3", "999"].join(".")), [], "octet over 255 is no address");
+});
+
+test("flags ledger state by path and reports file and line only", () => {
+  assert.deepEqual(rulesFor("{}", join("tools/denkraum/", "state", ".json")), ["state-file"]);
+  assert.deepEqual(rulesFor("{}", join("tools/denkraum/", "state", "/ledger.json")), ["state-file"]);
+  assert.deepEqual(rulesFor("{}", "tools/denkraum/statement.json"), []);
+  const secret = join("someone", AT, "example", ".", "org");
+  const [finding] = findViolations([{ path: "tools/denkraum/a.md", text: `ok\r\n${secret}` }]);
+  assert.deepEqual(finding, { path: "tools/denkraum/a.md", line: 2, rule: "email" });
+  assert.ok(!JSON.stringify(finding).includes(secret), "matched value must not be reported");
+});
+
+test("the check and its test are clean under their own rules", () => {
+  const files = ["hygiene-check.mjs", "hygiene-check.test.mjs"].map((name) => ({
+    path: `tools/denkraum/${name}`,
+    text: readFileSync(new URL(name, import.meta.url), "utf8"),
+  }));
+  assert.deepEqual(findViolations(files), []);
+});
