@@ -58,6 +58,8 @@ mod journal_watch;
 mod maintenance_tests;
 #[path = "store/queue_cancel.rs"]
 mod queue_cancel;
+#[path = "store/settings.rs"]
+mod settings;
 #[path = "store/supervisor.rs"]
 pub(crate) mod supervisor;
 #[path = "store/team_assignments.rs"]
@@ -3597,86 +3599,6 @@ impl Store {
         result.map_err(|e| format!("failed to list activity: {e}"))
     }
 
-    /// One application setting, or `None` when nobody has written it. The
-    /// callers in [`crate::learnings`] decide what a missing key means; the
-    /// store only reports its absence.
-    pub async fn get_setting(&self, key: &str) -> Result<Option<String>, String> {
-        let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = ?1")
-            .bind(key)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| format!("failed to read setting: {e}"))?;
-        Ok(row.map(|(value,)| value))
-    }
-
-    /// Write a setting, replacing whatever was there. Toggles are flipped far
-    /// more often than they are created, so upsert is the only useful shape.
-    pub async fn set_setting(&self, key: &str, value: &str) -> Result<(), String> {
-        sqlx::query(
-            "INSERT INTO settings (key, value) VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        )
-        .bind(key)
-        .bind(value)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| format!("failed to store setting: {e}"))?;
-        Ok(())
-    }
-
-    /// The global environment isolation stage for ordinary agents. Missing
-    /// settings fail closed so an older database starts at `strict`.
-    #[allow(dead_code)] // API and frontend consumers land in the next package slices.
-    pub async fn agent_env_isolation(&self) -> Result<crate::profiles::EnvIsolation, String> {
-        let Some(value) = self.get_setting("agent.env_isolation").await? else {
-            return Ok(crate::profiles::EnvIsolation::Strict);
-        };
-        value
-            .parse::<crate::profiles::EnvIsolation>()
-            .map_err(|error| error.to_string())
-    }
-
-    /// Persist the global environment isolation stage for ordinary agents.
-    #[allow(dead_code)] // API and frontend consumers land in the next package slices.
-    pub async fn set_agent_env_isolation(
-        &self,
-        isolation: crate::profiles::EnvIsolation,
-    ) -> Result<(), String> {
-        self.set_setting("agent.env_isolation", isolation.as_str())
-            .await
-    }
-
-    /// Every setting whose key starts with `prefix`, sorted by key.
-    ///
-    /// The settings table is a flat key-value store, so a family of keys -
-    /// `budget.<profile>.five_hour_pct` and its siblings - can only be listed
-    /// by prefix. `LIKE` is not used: the prefix is caller-supplied and `%`
-    /// and `_` are wildcards in it, so a key containing an underscore would
-    /// otherwise match prefixes nobody asked for.
-    pub async fn list_settings(&self, prefix: &str) -> Result<Vec<(String, String)>, String> {
-        let rows: Vec<(String, String)> =
-            sqlx::query_as("SELECT key, value FROM settings ORDER BY key")
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| format!("failed to list settings: {e}"))?;
-        Ok(rows
-            .into_iter()
-            .filter(|(key, _)| key.starts_with(prefix))
-            .collect())
-    }
-
-    /// Remove a setting. Writing an empty value would be a value of its own -
-    /// "no limit" has to be the absence of the key, or every reader would have
-    /// to know which empty string means what.
-    pub async fn delete_setting(&self, key: &str) -> Result<(), String> {
-        sqlx::query("DELETE FROM settings WHERE key = ?1")
-            .bind(key)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| format!("failed to delete setting: {e}"))?;
-        Ok(())
-    }
-
     /// Status events of one project inside a half-open time window
     /// `[from, until)`, oldest first.
     ///
@@ -6561,6 +6483,36 @@ pub(crate) mod tests {
                 "{method} moved out of store.rs"
             );
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn list_settings_treats_percent_and_underscore_prefixes_literally_and_sorts() {
+        let (_dir, store) = store().await;
+        for key in ["_z", "%z", "_a", "%a", "xa", "ya"] {
+            store.set_setting(key, key).await.unwrap();
+        }
+
+        assert_eq!(
+            store.list_settings("%").await.unwrap(),
+            vec![("%a".into(), "%a".into()), ("%z".into(), "%z".into())]
+        );
+        assert_eq!(
+            store.list_settings("_").await.unwrap(),
+            vec![("_a".into(), "_a".into()), ("_z".into(), "_z".into())]
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn deleted_setting_stays_absent_after_database_reopen() {
+        let dir = TempDir::new("store-deleted-setting");
+        let path = dir.path().join("projecta.db");
+        let store = Store::open(&path).await.expect("open store");
+        store.set_setting("remove.me", "value").await.unwrap();
+        store.delete_setting("remove.me").await.unwrap();
+        store.pool.close().await;
+
+        let reopened = Store::open(&path).await.expect("reopen store");
+        assert_eq!(reopened.get_setting("remove.me").await.unwrap(), None);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
