@@ -2,6 +2,8 @@
 use super::*;
 #[path = "d4_discovery.rs"]
 mod discovery;
+#[path = "d4_governance.rs"]
+mod governance;
 
 pub(super) fn route(
     inner: &Inner,
@@ -13,7 +15,7 @@ pub(super) fn route(
 ) -> Option<Response> {
     type Router =
         fn(&Inner, &Request, &str, &[&str], Option<&str>, Option<&str>) -> Option<Response>;
-    let routers: &[Router] = &[discovery::route];
+    let routers: &[Router] = &[discovery::route, governance::route];
     routers
         .iter()
         .find_map(|route| route(inner, request, method, path, project_id, status))
@@ -49,5 +51,6 @@ fn assert_none(inner: &Inner, method: &str, path: &str) {
 #[cfg(test)]
 pub(super) fn assert_contract(inner: &Inner) {
     discovery::contract(inner);
+    governance::contract(inner);
     assert_none(inner, "POST", "/api/not-owned");
 }
