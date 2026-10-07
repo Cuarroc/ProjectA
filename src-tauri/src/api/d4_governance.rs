@@ -148,5 +148,13 @@ pub(super) fn contract(inner: &Inner) {
         .status,
         400
     );
+    for (method, path) in [
+        ("GET", "/api/learnings"),
+        ("POST", "/api/learnings/lr-1/reject"),
+        ("GET", "/api/activity"),
+    ] {
+        assert_eq!(reply(inner, method, path, "").status, 200);
+        assert_none(inner, "DELETE", path);
+    }
     assert_none(inner, "GET", "/api/learnings/lr-1/approve");
 }
