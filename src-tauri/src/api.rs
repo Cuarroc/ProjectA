@@ -214,6 +214,8 @@ mod credential_acl;
 #[cfg(all(test, windows))]
 #[path = "api/credential_acl_tests.rs"]
 mod credential_acl_tests;
+#[path = "api/d4_routes.rs"]
+mod d4_routes;
 #[path = "api/hq_routes.rs"]
 mod hq_routes;
 #[path = "api/planning_access.rs"]
@@ -1429,6 +1431,12 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
     let status = request.query.get("status").map(String::as_str);
 
     if let Some(reply) = hq_routes::route(inner, request, method, path.as_slice(), project_id) {
+        return reply;
+    }
+
+    if let Some(reply) =
+        d4_routes::route(inner, request, method, path.as_slice(), project_id, status)
+    {
         return reply;
     }
 
@@ -4078,6 +4086,16 @@ pub(crate) mod tests {
         fn verdict_token(&self) -> String {
             self.server.verdict_token().to_string()
         }
+    }
+
+    #[test]
+    fn d4_routes_preserve_dispatch_and_fallback() {
+        let fx = fixture("d4-routes");
+        d4_routes::assert_contract(&fx.server.inner);
+        assert_eq!(
+            fx.backend.scouted.lock().unwrap()[0].1,
+            vec!["https://example.com/a".to_string()]
+        );
     }
 
     fn fixture(label: &str) -> Fixture {
