@@ -6537,6 +6537,32 @@ pub(crate) mod tests {
         assert_eq!(store.get_setting("learning.queen").await.unwrap(), None);
     }
 
+    #[test]
+    fn settings_storage_methods_live_in_store_settings_module() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let module = std::fs::read_to_string(root.join("src/store/settings.rs"))
+            .expect("settings persistence module exists");
+        let store =
+            std::fs::read_to_string(root.join("src/store.rs")).expect("store module exists");
+        for method in [
+            "get_setting",
+            "set_setting",
+            "agent_env_isolation",
+            "set_agent_env_isolation",
+            "list_settings",
+            "delete_setting",
+        ] {
+            assert!(
+                module.contains(&format!("fn {method}(")),
+                "{method} belongs in settings.rs"
+            );
+            assert!(
+                !store.contains(&format!("fn {method}(")),
+                "{method} moved out of store.rs"
+            );
+        }
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn missing_agent_env_isolation_defaults_to_strict() {
         let (_dir, store) = store().await;
