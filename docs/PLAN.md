@@ -216,7 +216,7 @@ refactoring package“.
 | ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.1 |
 | ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.1 |
 | ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.1 |
-| ARCH-D4 | Restlicher API-Router mit 51 Zweigen | M | api | offen, nach v1.5.1 |
+| ARCH-D4 | Restlicher API-Router mit 51 Zweigen: kleinere serielle Teil-PRs, insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs`; je PR ≤ 300 Gesamtdiffzeilen einschließlich Tests (ARCH-D4-PLAN) | M | api | offen, nach v1.5.1; Schnitt vor Dispatch messen |
 | ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.1 |
 | ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.1 |
 | ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.1 |
@@ -492,6 +492,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 
 | # | Frage | Empfehlung | Wer entscheidet? | Status |
 |---|---|---|---|---|
+| ARCH-D4-PLAN | ARCH-D4a/D4b: das API-Abbauziel mit kleineren seriellen Teil-PRs erreichen? | Gesamtziel ≥ 300 Zeilen Netto-Abbau in `api.rs` beibehalten; je Teil-PR ≤ 300 Gesamtdiffzeilen einschließlich Tests. | Nutzer | ✓ entschieden (06.10.2026): `serial-total300`, Frage Revision 1; Antwort `6b733c02-a4ff-466e-aaf6-905511d5570c`, gespeichert 21:55:57.174 UTC, Rootempfang 21:57:52.126 UTC (State-Revision 7). Keine Vorgabe ≥ 150 je Teil-PR. Red-first, vollständige Gates, Tier A mit zwei anderen Anbietern und serielle API-Naht bleiben verbindlich. Umsetzungskriterien: `docs/plan/v1.6.0/plan.md`, Abschnitt 3. Empfang ist kein Umsetzungsbeleg. |
 | E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | ✓ entschieden (Nutzer 04.10.): Mix. Das Studio-Layout (`hq2-concept`/`hq2-studio`) ist die Richtung für „HQ als Hauptbereich der App“, dazu die Einleitungsleiste und die Entscheidungsbox „Dein Urteil ist gefragt“ aus der Demo (zweite Antwort ~17:15). HQ2-03 ist freigegeben und baut darauf auf. |
 | E1-Hinweis | HQ2-02/03 blockiert die Farbthemen T2–T5. | Erst HQ2-02 festlegen, dann die Farbthemen in HQ2-03 bearbeiten. | Nutzer | Hinweis |
 | E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | Nutzer | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
