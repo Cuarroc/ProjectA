@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 04.10.2026 (Paket PLAN-SYNC-06 auf `origin/main` effef1a, abgeglichen mit `gh pr list`/`gh pr view`; davor PLAN-STATUS-03 auf 6598890, PLAN-SYNTHESIS-03 auf 1b38596 und PLAN-SYNC, 02.10.2026).
+Stand Kopf/Priorität: 07.10.2026, PLAN-L0-P0; Quellenbasis `3db340774ca84e60024b8b1e36d414f8ad9766e7`. Die übrigen M1–M5-Tabellen sind historische Paketstände, kein vollständiger Liveabgleich.
 Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
 Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
 unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
@@ -12,24 +12,292 @@ unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
 
 ## Für den Nutzer
 
-1. **Nächster Meilenstein:** M2 „Überblick und Setup“ (M1 „Alles Laufende
-   gelandet, App startbar“ ist erreicht, 26.09.2026). Was noch offen ist, steht
-   in der Tabelle M2 (Spalte „Stand“).
+1. **Jetzt zuerst IDEAS-L0:** eine erreichbare Ideensammlung: Text speichern,
+   nach Neuladen wiederfinden, bearbeiten, Kategorie/Priorität setzen und suchen/sortieren.
+   M2 und die übrigen Release-Meilensteine bleiben erhalten; ihre Häkchen sind kein Livebeleg.
 2. **Was du entscheiden musst:** die Entscheidungs-Inbox unten. Fragen kommen
    gebündelt dorthin, nicht einzeln in den Chat.
 3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
    W3-03, W3-07 und die Abnahme jedes Meilensteins.
 
-4. **Bis v1.5.1 keine neuen Funktionen** (Nutzer 04.10.): neue Ideen kommen nur
-   in den Abschnitt „Später“; danach folgt M5.
+4. **Priorität vom 07.10.: L0-Ideensammlung zuerst** ersetzt für diesen
+   ausdrücklich beauftragten Ausbau den alten 04.10.-Freeze. Erfassen einer Idee
+   genehmigt keine Umsetzung; neue Ideen starten keine automatischen Agentenjobs.
 
-**Ziel ab 04.10.: v1.5.1 releasefähig** (Tag und Veröffentlichung macht der
-Orchestrator, sobald alle Gates und die 27 Matrixzeilen belegt sind).
+**Release-Strang:** [v1.6.0](plan/v1.6.0/plan.md) bleibt mit allen übrigen
+Paketen, Sicherheitsgates und offener Langzeitnachbeobachtung erhalten.
+Dieser Prioritätsabgleich erteilt keine neue Tag-/Release-/Continuous-Freigabe.
 
-**Ziel:** ProjectA und das DevHQ sind auf dem PC des Nutzers voll benutzbar und
-werden zum Entwickeln von ProjectA selbst eingesetzt; danach wird der Continuous
-Mode abgenommen und mit v1.5.1 freigeschaltet. **Baseline:** v1.4.1 (22.09.2026,
-`3bcaed3`) ist der jüngste Release; alles danach liegt nur auf `main`.
+**Ziel:** ProjectA und DevHQ werden im Alltag benutzbar; zuerst die Ideensammlung.
+Continuous bleibt bis zu seiner gesonderten Abnahme aus. Historische Releasebaselines
+und `STAND.md` (04.10.-Snapshot) ersetzen keine datierte Prüfung des aktuellen Kandidaten.
+
+## Aktive Ziele und verbindlicher L0-Schnitt
+
+[Ideenfließband V1.0](#ideas-l0-v1-0) steht vollständig mit unveränderten 198 Zeilen in diesem Dokument als historischer Anforderungs-/Übergabestand. Aktuellen Status, Freigaben und Verträge führt ausschließlich dieser Masterkopf. Cloud-/Assistentenfassungen sind historische Übergaben, keine synchronisierte zweite Planquelle; PA r05iwt erhält den bestätigten Ref erst nach Integration.
+Root-Auftrag und Site-Amende: Child `ec223b75-7972-4555-a442-43e0e32c8fcd`, Chief-Mail `msg-0muy8gvba-939fb23b`, 07.10.2026 14:59 UTC. PM besitzt nur diesen Dokumentenschnitt, Gesamtowner IDEAS-L0 ist Root; Chief disponiert, Root prüft FIT und nimmt ab.
+Vorhersage vor Vorbereitung: vorhandener Masterplan plus kompletter Teilplan spart eine neue Planarchitektur und macht L0 ohne Editor/Graph ausführbar. Unvalidiert; ein Dokumentabschluss beweist keine nutzbare Lieferung.
+
+| Ziel / bestehender Auftrag | Wirkung, Umfang / Nichtziele | Owner / Vorgänger | Abnahme / Evidenz / Status | Nächster Schritt / Blocker / Stand UTC |
+|---|---|---|---|---|
+| IDEAS-L0 / PLAN-L0-P0 `ec223b75-7972-4555-a442-43e0e32c8fcd` | dauerhaft erfassen, bearbeiten, wiederfinden; kein Planeditor/Graph/Pilot/Autorecherche | Root Gesamtziel; PM cwqxbk Dokument; Backend mctdww; UI d567gh; Chief Integration/FIT an Root | P0 In Prüfung; Vorbereitung tatsächlich15:05:57Z, Source noch nicht gestartet; Produktlieferung offen; Quellbasis oben, V1.0-SHA329a53ca…124b2c; Zuweisung ist kein Runtime-Start | vollständiger Diff/Metadatenvertrag → Root; anschließend Backend/UI und echte Nutzerabnahme; 07.10.15:00:47 |
+| DD-RECEIPT `285001a5-ede9-4940-b039-42d0dd892e96` | bestehende Frage-Quittungsanzeige, disjunkt zu L0 | alleiniger UI d567gh; bestehender V2-Receiptvertrag | Verschoben nach L0; Child pending, Root15:10:09Z; 495 ALL NOT FIT, unimplementiert | ganze Programme/23 Fälle/Pins erhalten; keine zweite Revision/Integration; Frageanzeigebug blockiert Ideensammlung nicht |
+| V16-ARCH-D4 `b9606dd4-4dab-460c-9229-a47699702f6d` | restliche API-Entlastung; kein L0-Vorgänger/Releasebeleg | alleiniger API-Owner Root; Part4 Mergify #629 auf3db3407 | In Prüfung laut Root15:20Z: [PR631](https://github.com/Cuarroc/ProjectA/pull/631)/1d4b5bc, eigene Gates0, beide CI37631238380 erfolgreich, Sonnet ACCEPT; kein Merge | zweiter Vendor403, Reviewgate offen; keine frische PM-CI-/Sourceprüfung, Chief API seriell |
+
+Verbindliche acht Nutzerstatuswerte: Root-Original `msg-0muy9i618-c05a9ee8`, 07.10.2026 15:28:14.348 UTC, vollständig im P0-Child; Chief-Mail `msg-0muy9ivvz-44910681`. B-STATUS ist damit geklärt. Zuweisung allein ist nicht In Arbeit.
+
+| Status | Bedeutung |
+|---|---|
+| Geplant | beschrieben, noch nicht ausführungsbereit |
+| Bereit | Voraussetzungen und Abnahme geklärt |
+| In Arbeit | tatsächliche Bearbeitung begonnen |
+| In Prüfung | Ergebnis vorhanden, Abnahme offen |
+| Erledigt | Abschlusskriterien erfüllt und belegt |
+| Blockiert | konkrete Voraussetzung verhindert Fortsetzung |
+| Verschoben | bewusst späteres Lieferfenster |
+| Entfallen | durch dokumentierte Entscheidung aus Umfang genommen |
+
+### L0-Mapping auf vorhandene Arbeit
+
+P0 im importierten V1.0-Text = PLAN-L0-P0; dieser Schnitt besitzt ausschließlich `docs/PLAN.md` (Tier C). Keine Runtime-/Gate-/Supportänderung; kompletter materialisierter Diff einschließlich Unterstützung muss ≤300 ALL sein.
+P1 = bestehender DD3b `b0e90b72-c328-4fe5-8c12-b158c8ab6e83`, alleiniger Backendowner mctdww: Store/API-Vertrag, Metadaten, Daten-/Replay-/CAS-Regressionen; keine UI-Dateien. Bestehende DD1/DD3a-Vorgänger done laut Ticket; DD3b insgesamt weiter offen.
+P2 = bestehender DD2 `6713479b-4e9b-46a6-98f4-3b8c0c76344f`, alleiniger UI-Owner d567gh: Eingabe/Liste/Detail, Suche/Filter/Sortierung, Entwürfe und Stationsband; keine Store-/Serverdateien. Start erst nach Root-FIT des P1-Vertrags und Chief-Abgrenzung der freigegebenen UI-Dateien; keine neue parallele Ticketserie.
+P3 = Chief/Root bestehende Betriebs-/Integrationsverantwortung nach P1/P2: Backup, kontrollierte Integration und tatsächlicher Nutzerzugriff. Ein neuer Child/Arbeitsbeginn ist hier nicht behauptet. HTTP200 lokal ist kein Handy-/Öffentlichkeitsbeleg.
+P4–P10 bleiben mit allen Originalanforderungen im folgenden V1.0-Abschnitt; keine vorgezogene Umsetzung. Teil02-A `73aa18e3-8f3b-4f92-93e8-279e858b6d01` ist nach L0 verschoben, Original/tests/transport/pins erhalten; kein dritter Lauf. Studio `7e16930a-2dee-449b-ad8c-7ed642d8bb7b` und Pilot `44ac79d9-48fb-4fb7-8eb7-ee35608bd964` sind keine L0-Abhängigkeiten.
+B3-Store ED6A560E und W3-r app51C5D7E8 sind Root-berichtete deployte Quellen, keine frisch hier auditierte oder synchronisierte Workbench/PlanDraft-Komposition. Angenommen, integriert, erreichbar und abgenommen bleiben getrennt. Backend/UI prüfen ihre vollständige tatsächliche Basis vor Source-Start.
+
+### Modellzuordnung: geplant, konfiguriert, wirksam, erfolgreich benutzt
+
+Direkter Nutzerauftrag/Root-Amende07.10.: nur Fable5.1, Opus5.5, Sonnet5.5 und Codex; kein älterer stiller Fallback. Pflege dieses Abschnitts Root/PM, Dispatch ausschließlich Chief. Kein Wechsel laufender PM-/Backend-/UI-Kontexte. Tabelle Stand Root-Beleg15:09Z/Chief-Mail `msg-0muy8wfxd-8b83643c`; Planung ist keine Ausführungs-/Qualitätszusage.
+| Rolle / vorhandener Owner | Geplant (Begründung) | Konfiguriert | Wirksame Sitzung | Erfolgreich benutzt / datierter Beleg |
+|---|---|---|---|---|
+| Root / Chief | Codex Sol/medium für Priorität/Integration, laufenden Kontext halten | kein Wechsel in diesem Paket | exakte neue Turn-/Startbelege beim jeweiligen Owner; hier nicht frisch geprüft | bisherige operative Arbeit; keine neue Modell-/Qualitätsmessung |
+| PM cwqxbk | Codex Sol; Sonnet5.5 nur bei Bedarf am sauberen Übergang für begrenzte Doku | unverändert; Ticketalias opus ist kein Threadbeleg | eigener turn_context07.10.15:25:49Z: gpt-6.1-sol/medium; served unbekannt | P0-255ALL-Materialisierung15:05:57Z, keine Sonnet-PM-Sitzung |
+| Backend mctdww / UI d567gh | laufendes Codex bis L0-Handoff, Autor-/Evidenzbindung erhalten | keine Umstellung | neue eigene Owner-Startbelege erforderlich | vorhandene Paketbelege bleiben kandidatengebunden; kein L0-Erfolg behauptet |
+| Reviewer jl1dcg | Sonnet5.5/high für fremde OpenAI-Kandidaten, vorhandenes R1 wiederverwenden | offline: Alias sonnet + cliOptions `--model claude-sonnet-5-5`, Effort high gespeichert/readback (Root) | neuer Sidebar-Start mit Pin unbewiesen | echtes Sonnet5.5-R1 laut Root; kein zweiter Vendor durch anderen Claude-Modellnamen |
+| Implementierer et2cqi | Opus5.5/medium für schwierige isolierte Umsetzung | offline: opus-5.5[1m] + `--model claude-opus-5-5`, Effort medium gespeichert/readback (Root) | neue Implementierersitzung unbewiesen | Root-Serverprobe15:05:08.355Z: actual0/MODEL_ACCESS_OK, modelUsage claude-opus-5-5/firstParty; Zugriff, keine Implementierungsqualität |
+| Architekturberater dga50i | Fable5.1/high für konkrete folgenreiche Architekturfrage | offline: fable + `--model claude-fable-5-1`, Effort high gespeichert/readback (Root) | neue Beratersitzung unbewiesen | Root-Serverprobe15:05:10.969Z: actual0/MODEL_ACCESS_OK, modelUsage claude-fable-5-1/firstParty; Zugriff, keine Beratungsqualität |
+Root-Beleg im P0-Child15:11:10Z: vorhandene PC/server CLIs2.1.291/2.1.287, Max/claude.ai/firstParty; native full-ID-Picker wurde abgewiesen, Alias blieb. cliOptions-Readback gilt nur für nächsten Start; keine wirksame Sitzung daraus. Proben/MCP-/Tool-/Writes deaktiviert; keine API-Key-/PAYG-/Installfreigabe.
+Kontingente sind datiert: PM native Codex21% USED/Session unbekannt; Root Claude27% Session/2% Woche (15:01Z), keine neue Quotenmessung hier. Vor jedem echten Start frische Auth/Quota/RAM/Naht-/Modellbelege. Zugriff auf Modell ist keine Source-Review/FIT-/Lieferabnahme.
+Alle Claude-Modelle gehören zum selben Anbieter. Tier A benötigt weiterhin zwei geeignete andere Anbieter als der Autor; zweiter Fremdanbieter ist laut Root offen (Zen/NVIDIA403, kein RAMfehler). Root qualifiziert bestehenden authentifizierten zulässigen Weg; bis tatsächlichem gebundenem Review sichtbarer Blocker. Keine zusätzlichen Reviewer/Agenten/Quota-/Runtimeänderungen.
+
+### Minimaler additiver Ideenmetadatenvertrag (Root-Disposition 07.10.15:20 UTC)
+
+Root15:20Z hat flache optionale Request-/Revisionsfelder genehmigt (ersetzt den früheren Envelope-Vorschlag): `category` = getrimmter Text ≤80 UTF-16-Codeunits, leer erlaubt; `userPriority` = `urgent|high|normal|later` (UI dringend/hoch/normal/später). Keine Pflichtoptionen zur Freitextidee, keine Metadaten im Originaltext und keine neue Schema-/Jobarchitektur.
+Fehlende historische Metadaten nur lesend als `category=""` (UI „Nicht eingeordnet“) / `userPriority="normal"` projizieren; alte gespeicherte Objekte, Originaltexte, Request-Payloads und Antwortbytes nicht rückwirkend umschreiben. `questionPriority` ist niemals `ideaPriority`/`userPriority`.
+Neue explizite Metadaten werden Teil der normalisierten Request-Identität und des neuen append-only Ideensnapshots; gleicher RequestId/geänderte Metadaten muss409 bleiben. Bei vollständig ausgelassenen Metadaten exakt den bisherigen kanonischen Replaypfad/Bytes erhalten; historische Replays bleiben historische Antworten.
+Neue CAS-Revisionen übernehmen bei ausgelassenen Feldern die aktuelle Kategorie/Priorität erst nach der bestehenden Replayprüfung; historischer Replay wird nicht neu ausgerechnet. Nur explizite Eingabe ändert Werte, kein Default-Reset. Neues Schreiben verlangt explizite CAS-Revision, veralteter neuer Edit409; vorhandene atomare Schreib-/Recoverypfade verwenden.
+Titel/Text/Quelle/Herkunft und alte Ideen-/Fragen-/Antwort-/Receipt-/Planreferenzen erhalten; `actor/source` sind Provenienz, niemals Freigabe. `incoming` heißt Eingang, nicht bereits geprüft; automatische Bewertungen bleiben sichtbar ungeprüft. Vormerken erzeugt keinen Agentenauftrag und keine Root-/Nutzerfreigabe.
+Pflichtkompatibilität P1: alte Requests/byteidentischer Replay nach Neustart; neue Defaults, alle vier Prioritäten, Kategoriegrenze; Metadaten-only Edit, omit-preserve, changed-request409, stale-CAS409; Fehlwrite/Retry ohne Datenverlust; unveränderte Geschwister/Receipt-/Provenienzfälle. Tatsächliche Tests erst im zuständigen Paket, nicht hier behauptet.
+P2 liest nur erkannte Felder, sucht Text/Titel, filtert Kategorie/Priorität/Station und sortiert stabil; zeigt Herkunft und „Noch nicht geprüft“ sowie vollständiges Stationsband mit unfertigen Stationen „Wird ergänzt“. Alte Inhalte ohne Felder bleiben bedienbar; Wechsel zur tatsächlich gewählten Idee gegen erhaltenen ungesicherten Entwurf prüfen, bevor Bearbeiten als geliefert gilt; kein Editor/Graph als Voraussetzung.
+L0-Abnahme: Elias speichert drei Ideen, bearbeitet eine samt Kategorie/Priorität, sucht/sortiert, lädt neu; Inhalt bleibt gleich. Speicherfehler erhält den Entwurf; CAS-Konflikt/replay/restart verlieren nichts. Funktionierender Nutzerlink mit Zugriffsvoraussetzungen und tatsächlicher Prüfung, relevante unabhängige Reviews und kontrollierte Integration sind erforderlich; P0-Dokuabschluss erfüllt dies nicht.
+
+<a id="ideas-l0-v1-0"></a>
+
+## Ideenfließband-Anforderungen und historischer Übergabestand (V1.0)
+
+Der folgende vollständige Originaltext ist unverändert importiert (SHA329a53ca…124b2c, 198 Zeilen). Sein Lieferprotokoll/Statuslog und seine Cloud-/Ticket-Pflegebeschreibung sind historischer Übergabestand; ausschließlich der obige PLAN-Kopf und aktuelle datierte Dispositionen führen Status/Freigaben. Unterpläne entstehen erst mit abhakbarem Umfang; hier wird keine weitere Plandatei angelegt.
+
+<!-- PLAN-L0-P0 V1.0 BEGIN -->
+# ProjectA: Ideenfließband – Umsetzungsplan
+Version 1.0 · 7. Oktober 2026 · Auftraggeber: Elias · Ausführungsverantwortung: bestehender ProjectA-Orchestrator
+
+## 1. Verbindlicher Auftrag und erste Lieferung
+
+Elias möchte jetzt möglichst bald Ideen im Denkraum erfassen, langfristig sammeln, geordnet wiederfinden und bereits erste Einordnungen sehen. Die Oberfläche soll während ihrer Weiterentwicklung benutzbar bleiben. Das vollständige Fließband wächst um diesen nutzbaren Kern herum. Neue Ideen sollen laufende Entwicklungsarbeit nicht unterbrechen.
+
+Diese Anweisung autorisiert den Orchestrator zur Umsetzung dieses Produktausbaus, zum Einsatz seiner Agenten, geeigneter Workflows und des vorhandenen Servers. Vorhandene Kosten-, Sicherheits- und Betriebsgrenzen bleiben verbindlich; „volle Power“ ist keine unbegrenzte Beschaffungserlaubnis. Der Orchestrator organisiert verfügbare Kapazitäten selbst und meldet konkrete Grenzen statt pauschal auf weitere Freigaben zu warten. Es wird keine neue QA-Bot-Delegation beauftragt.
+
+**Lieferziel L0: Elias kann die Website öffnen, eine Textidee speichern, nach Neuladen wiederfinden, bearbeiten und nach Kategorie, Wichtigkeit und Bearbeitungsstand sortieren.** Ein sichtbarer Abschnitt „Noch nicht geprüft“ verhindert, dass erste Vermutungen wie fertige Bewertungen erscheinen. Eine einfache Stationsübersicht zeigt, wo Ideen stehen. Die aufwendige Graphansicht, automatische Recherche und komplette Patchplanung dürfen diese erste Lieferung nicht blockieren.
+
+**Nach L0 folgen unmittelbar** dateibasierte Anhänge, nachvollziehbare automatische Einordnung und die Planungspipeline. Falls vorhandene Funktionen sichere Anhänge oder Kategorien bereits unterstützen, in L0 wiederverwenden; keine funktionsfähigen Teile künstlich zurückhalten.
+
+Für L0 zunächst den vorhandenen erreichbaren Denkraum nutzen. „Live“ bedeutet zuerst eine tatsächlich erreichbare, geprüfte Nutzeroberfläche auf dem vereinbarten Zugangsweg. Lokales HTTP200 beweist weder Zugriff vom Handy noch eine öffentliche Bereitstellung. Der Orchestrator nennt den funktionierenden Link und seine Zugriffsvoraussetzungen. Serverbetrieb bevorzugt vorhandene authentifizierte Verbindungen; private Inhalte werden nicht ungefragt öffentlich exponiert.
+
+## 2. Ausgangslage und Evidenzgrenze
+
+Dieser Plan baut auf ProjectA-Projektnotizen und Backlogständen sowie dem aktuellen Nutzerauftrag auf. Er ist kein neuer Quellcodeaudit und keine abgeschlossene visuelle Abnahme.
+
+Dokumentiert sind ein revisioniertes lokales DeskStore-Ledger, Workbench-Ausarbeitungen, Planentwürfe mit festen Ideenreferenzen sowie ein bestehender API-/UI-Unterbau. Die Notizen nennen GET /api/state, GET /api/inbox und POST /api/plan-drafts. Vor Erweiterungen prüft der jeweilige Owner den aktuellen Vertrag im tatsächlichen Quellstand; hier werden keine zusätzlichen Endpunkte als bereits vorhanden behauptet.
+
+Die Projektmemory vom 07.10.2026 berichtet wiederhergestellte Denkraum-Erreichbarkeit auf localhost:4791 mit HTTP200. Zugleich wurde Planeditor-Teil02 A-R1 wegen mindestens315 statt erlaubter300 ALL-Zeilen terminal als NOT FIT geparkt. Der vollständige Planeditor darf deshalb nicht stillschweigend Voraussetzung der ersten Ideensammlung werden. Die Root-Disposition für bestehende Paketregeln bleibt erforderlich. Bei einem Split funktionale Fälle und vollständige Transport-/Testbestandteile erhalten; keine versteckten Hilfsprogramme oder automatische weitere Vorbereitungsrunde.
+
+Bestehende Referenzen für die Arbeitszuordnung:
+- Planeditor-Gesamtumfang: 41e7c585-21e5-42b7-8085-5edb1c12402a.
+- Geparkter Teil02: 73aa18e3-8f3b-4f92-93e8-279e858b6d01.
+- Studio-Vorbereitung: 7e16930a-2dee-449b-ad8c-7ed642d8bb7b.
+- Begrenzter Koordinationspilot: 44ac79d9-48fb-4fb7-8eb7-ee35608bd964.
+
+Der Orchestrator prüft den aktuellen Status dieser Tickets vor Zuordnung. Vorhandene Arbeit fortsetzen oder ausdrücklich abgrenzen; keine doppelte Umsetzung und keine erledigten Tickets ohne Beleg wieder öffnen.
+
+## 3. Produktmodell: zwei miteinander verbundene Bereiche
+
+**Ideensammlung:** nahezu reibungsfreie Erfassung, Suche, Sortierung, langfristige Planung. Eine Idee ist noch kein Entwicklungsauftrag.
+
+**Fließband:** begrenzte Vorbereitung ausgewählter Ideen bis zum prüfbaren Plan, anschließend Nutzerfreigabe, Patchplanung und Ausführung. Ein Eingang mit vielen Ideen erzeugt nicht automatisch ebenso viele aktive Agentenaufträge.
+
+Eine Idee besitzt Originaltext, Anlagen, Herkunft und Versionen. Daneben stehen bearbeitbare Interpretation, Kategorien, Bewertungen, offene Fragen und Planstände. Der Originaltext bleibt erhalten. Agenten verbessern Formulierung und Struktur, verändern aber keine Nutzerabsicht unbemerkt. Ergänzungen heißen „Vorschlag“, Unsicherheiten „Hypothese“.
+
+### Stationen und eindeutige Austrittskriterien
+
+| Station | Ergebnis | Weiter, wenn |
+| --- | --- | --- |
+| Eingang | dauerhaft gespeicherter Originaltext und Herkunft | Speicherung bestätigt |
+| Einordnen | verständlicher Titel, Kategorie, Tags, erste Nutzen-/Risikoeinschätzung | Einordnung vorhanden, Unsicherheit sichtbar |
+| Prüfen | Machbarkeit, Abhängigkeiten, ähnliche Ideen, Stolperfallen | wesentliche Fragen beantwortet oder konkret markiert |
+| Ausarbeiten | recherchierter Kontext und nachvollziehbarer Planentwurf | Aufgaben, Umfang, Abnahme und offene Entscheidungen beschrieben |
+| Zur Entscheidung | lesbare, feste Planversion mit Alternativen | Elias genehmigt genau diese Version oder verlangt Änderung |
+| Bereit | genehmigter und ausführbarer Plan | Kapazität und Voraussetzungen für Patch vorhanden |
+| Eingeplant | verbindliches Paket mit Owner und Abhängigkeiten | Orchestrator startet tatsächlich |
+| Umsetzung | belegte Arbeitsstände und Ergebnisse | Integration und relevante Abnahme nachgewiesen |
+| Geliefert | erreichbare Funktion und Beleg | Ergebnis für Nutzer verfügbar |
+
+„Wartet auf Elias“, „Wartet auf Abhängigkeit“, „Blockiert“, „Zurück zur Ausarbeitung“ und „Geparkt“ sind zusätzliche Zustände, keine erfundenen Fortschrittsschritte. Eine große Idee kann mehrere Lieferteile und Patches haben. Der Elternstatus ergibt sich aus deren tatsächlichem Umfang.
+
+Die vollständige Stationsfolge wird zunächst angezeigt, auch wenn nur frühe Stationen arbeiten. Unfertige Stationen sind eindeutig als „Wird ergänzt“ gekennzeichnet. Gespeicherte Ideen bleiben dort vorgemerkt; nach Aktivierung verarbeitet ein kontrollierter Rückstandslauf sie ohne Neueingabe.
+
+## 4. Freigabe und Priorisierung
+
+Agenten und Orchestrator dürfen Ideen vorschlagen und bis zum entscheidungsreifen Plan vorbereiten. **Agentenideen dürfen erst nach ausdrücklicher Freigabe durch Elias verbindlich eingeplant oder umgesetzt werden.** Herkunft bleibt im UI sichtbar. Für Nutzerideen ist das Erfassen allein ebenfalls keine Umsetzungsfreigabe. Dieser Produktausbau selbst ist durch den aktuellen Auftrag autorisiert.
+
+Freigabe bindet Ideenrevision, Planversion und relevanten Umfang. Wesentliche Änderungen an Ziel, Aufwand, Risiko oder Abnahme machen eine alte Freigabe überprüfungsbedürftig. Empfang, Speichern, automatische Bewertung und Root-Quittierung ersetzen keine Freigabe.
+
+Erste Sortierung einfach und erklärbar:
+- Nutzerpriorität: dringend / hoch / normal / später; vom Nutzer jederzeit korrigierbar.
+- Nutzen: erwartete Wirkung plus kurze Begründung.
+- Aufwand: klein / mittel / groß / unbekannt; später Bandbreite mit Annahmen.
+- Risiko: niedrig / mittel / hoch / ungeprüft; konkrete Stolperfallen separat.
+- Abhängigkeiten und frühester sinnvoller Zeitpunkt.
+- Evidenz: ungeprüft / plausibel / belegt; Herkunft und Prüfdaten.
+
+„Schwere“ wird bei Fehlern als Schweregrad verwendet. Bei Featureideen heißt das Feld Risiko oder Komplexität; ein großes Feature ist nicht automatisch ein schwerer Fehler.
+
+Agenten geben Empfehlungen, Elias kann sie ändern. Keine undurchsichtige Gesamtnote als alleinige Wahrheit. Die Umsetzung berücksichtigt Nutzen, Dringlichkeit, Abhängigkeiten, Aufwand, Unsicherheit und verfügbare Kapazität. Große wertvolle Ideen werden bei Bedarf geteilt, nicht automatisch nach hinten verdrängt. Wartende Ideen regelmäßig neu ansehen, damit kleine schnelle Aufgaben sie nicht dauerhaft verdrängen.
+
+Langfristige Planung nutzt Jetzt / Als Nächstes / Später sowie Themen oder Zielhorizonte. Patchnummern werden nur bei realer Planung verbindlich. Überschreitet ein Paket seine Kapazität, benennt der Orchestrator den verschobenen Teil, Ursache, Auswirkung und neues Planungsfenster.
+
+## 5. UI und UX: schnell erfassen, gut überblicken, gezielt vertiefen
+
+Bestehende ProjectA-Komponenten, Navigation, Typografie, Abstände, Farben und Materialwirkung übernehmen. Keine unabhängige Designwelt daneben schaffen. Die erste Iteration poliert Hierarchie, Lesbarkeit und Zustandsführung; ein großer visueller Neubau gehört nicht auf den kritischen Pfad.
+
+**Desktop:** links kompakte Navigation mit Eingang, Sammlung, Fließband, Entscheidungen und Roadmap; in der Mitte filterbare Liste oder Board; rechts bei Auswahl der Ideendetailbereich. **Mobil:** zuerst Erfassung und Liste, Details auf eigener Ansicht; keine drei schmalen Spalten.
+
+Die primäre Aktion lautet „Idee festhalten“. Ein Textfeld genügt; Titel und Einordnung können später folgen. Mehrere Absätze dürfen mehrere Gedanken enthalten: Trennvorschläge anbieten, vor einer tatsächlichen Aufteilung bestätigen lassen. Enter in langen Texten erzeugt keinen überraschenden Versand.
+
+Eine kompakte Karte zeigt Titel, Herkunft, aktuelle Station, Nutzerpriorität, Nutzen, Risiken und nächste Aktion. Detailansicht ergänzt Original, Interpretation, Anlagen, Verlauf, Fragen, Quellen, Plan und Freigabe. Erweiterte Felder schrittweise offenlegen.
+
+Filter kombinieren: Kategorie, Tag, Priorität, Status, Herkunft, Zeitraum, Patch. Sortierung und gespeicherte Ansichten merken. Suche trifft Originaltext, Titel und Tags; später Planinhalte. Zunächst Liste und Stationsband anbieten. Danach Board und Graph ergänzen.
+
+**Graph:** gerichtete Beziehungen „benötigt“, „gehört zu“, „ähnelt“ und „liefert Teil von“. Keine unlesbare Sammlung aller Knoten als Standard. Fokus auf ausgewählte Idee mit unmittelbaren Nachbarn, Filter, Legende und Textalternative. Automatisch vermutete Ähnlichkeit hat einen anderen Stil als bestätigte Abhängigkeit. Zyklen als Planungsproblem anzeigen. Position im Graphen ist keine Prioritätsbewertung.
+
+Fortschrittsanzeige unterscheidet „Planvorbereitung“ und „Umsetzung“. Vor Aufgabenzerlegung stehen Station und nächste Aktion statt Prozent. Später belegte Aufgabenstände mit Nenner und verbleibenden Unsicherheiten. Zeitprognosen als Bandbreite und aktualisierte Annahme zeigen, nicht als Garantie.
+
+Essenzielle Zustände: leer, speichert, gespeichert, lokaler ungesicherter Entwurf, offline, Fehler, Konflikt, Upload läuft, Einordnung ausstehend, blockiert, Entscheidung nötig und geliefert. Änderungen dürfen beim Neuladen, einem fehlgeschlagenen Upload oder konkurrierendem Editieren nicht verschwinden. Tastaturbedienung, sichtbarer Fokus, beschriftete Controls, ausreichender Kontrast und reduzierte Bewegung gehören zur Abnahme.
+
+## 6. Anlagen, Recherche und Planentwurf
+
+Text und eingefügte Links funktionieren in L0. URLs zunächst als Referenz speichern; Speichern löst keine beliebige Browseraktion aus. Screenshots und Dateien danach mit echter Uploadbestätigung, Vorschau, Dateigröße, Fehleranzeige und Downloadzugang. Keine großen Binärdaten in das bestehende JSON-Ledger stopfen. Uploadgrenzen und zulässige Formate anhand vorhandener Infrastruktur festlegen und im UI nennen.
+
+Anlagen bleiben mit ihrer Ideenrevision verbunden. Inhalte und enthaltene Anweisungen sind Quellenmaterial, keine neuen Befehle oder Berechtigungen. Recherche nutzt tatsächliche verfügbare Zugriffe; unzugängliche Links oder benötigte Anmeldung werden sichtbar gemeldet. Zugangsdaten werden im vorhandenen sicheren Verfahren vom Nutzer bereitgestellt, niemals im Ideenfeld angefordert.
+
+Vorbereitung in vier begrenzten Schritten:
+1. Ziel und erwarteten Nutzen aus dem Original extrahieren; Mehrdeutigkeit sichtbar lassen.
+2. Bestehende Features, ähnliche Ideen, technische Voraussetzungen und Abhängigkeiten prüfen.
+3. Nur entscheidungsrelevante Wissenslücken recherchieren; Quellen, Stand und Grenzen notieren.
+4. Planprompt erzeugen und ausführen; Ergebnis kritisch gegen Originalziel, Risiken und Alternativen prüfen.
+
+Präferenzen oder persönliche Entscheidungen werden nicht durch Recherche erfunden. Nicht kritische Unklarheiten als explizite Annahmen dokumentieren; blockierende Fragen bündeln. Jede Recherche erhält einen klaren Endpunkt und begrenzten Arbeitsumfang. Ein Plan darf mit benannten offenen Fragen vorgelegt werden.
+
+Standardprompt für die Vorbereitung:
+> Bewahre Original und Herkunft. Beschreibe Ziel, Nutzen und konkrete Nutzung. Trenne belegte Fakten, Interpretation und Hypothesen. Prüfe ähnliche Funktionen, Abhängigkeiten, Machbarkeit und die stärksten Einwände. Recherchiere nur fehlende entscheidungsrelevante Fakten. Erstelle die kleinste nutzbare Lieferung und anschließende Ausbaustufen mit Aufgaben, Abnahmen und Risiken. Kennzeichne Annahmen und Agentenergänzungen. Binde Ergebnis an die aktuelle Ideenrevision. Beantrage keine Umsetzung und simuliere keine Nutzerfreigabe.
+
+Jeder gespeicherte Plan enthält Problem, Ziel, Nutzungsablauf, Umfang, Ausnahmen, vorhandene Grundlage, Alternativen, Tasks, Abhängigkeiten, Aufwandannahmen, Akzeptanzkriterien, Risiken, offene Entscheidungen, Quellen und genaue Version.
+
+## 7. Daten und technische Leitplanken
+
+Vorhandene Ledger-/Workbench-/PlanDraft-Verträge erweitern statt eine zweite Wahrheit einzuführen. Die folgenden Felder sind ein Vorschlag für die Vertragserweiterung und müssen gegen den aktuellen Quellstand geprüft werden:
+
+Idee: ID, Revision, Original, Titel, Herkunft, Kategorien/Tags, Nutzerpriorität, Bewertungsstände, Beziehungen, Anlagenreferenzen, Station, Wartegrund, nächste Aktion, Planreferenzen, Zeitpunkte. Plan: stabile ID, unveränderliche Version, Ideenreferenz, Aufgaben/Abnahmen, Freigabereferenz, Patchzuordnung. Job: Eingangsrevision, Typ, Status, Owner, Start/Ende, Wiederholungskennung, Fehler und Ergebnisreferenz.
+
+Bestehende Compare-and-swap-Prüfungen und atomare Schreibwege erhalten. Veraltete neue Schreibversuche erzeugen einen verständlichen Konflikt; nicht still überschreiben. Wiederholter Auftrag derselben Referenz erzeugt keine zweite Entscheidung oder doppelte Umsetzung. Event-Duplikate sind von einem ausdrücklich neuen Job zu unterscheiden.
+
+Die Sammlung muss vor Start automatischer Jobs bereits dauerhaft speichern. Ein fehlgeschlagener Agentenlauf darf die Idee nicht verlieren. Rückstandsläufe, Revisionen und Neustarts benötigen wiederaufnehmbare Zustände. Backup, Export und kontrolliertes Wiederherstellen vor Migrationen vorsehen. Kein vorschneller Datenbankwechsel nur wegen „vielen Ideen“; zunächst gemessene Grenzen bestimmen.
+
+Als vorgeschlagene Lastfälle 1.000 Ideen und anschließend 10.000 synthetische Ideen verwenden. Listen werden begrenzt geladen; Graphen zeigen fokussierte Ausschnitte. Rohdaten und lange Anlagen nicht für jede Karte vollständig laden. Produktionsähnliche Antwortzeiten messen und vom Owner begründete Grenzwerte vor Abnahme festhalten.
+
+## 8. Umsetzungspakete und Parallelisierung
+
+| Paket | Inhalt / Ownerrolle | Voraussetzung | Abnahme |
+| --- | --- | --- | --- |
+| P0 | Root + PM: Quellstand, Zugriff, bestehende Tickets und Paketgrenzen disponieren | aktueller Auftrag | Owner, erster kritischer Pfad, Blocker und Lieferprognose dokumentiert |
+| P1 | Backend: sichere Erfassung, Revision, Liste und Bearbeitung wiederverwenden/ergänzen | P0 | Idee überlebt Reload/Neustart; Konflikt und Fehlversuch verlieren keine Daten |
+| P2 | Frontend: Eingabe, Liste, Filter, Sortierung und Detail | P0, abgestimmter P1-Vertrag | Elias kann vollständigen L0-Ablauf bedienen |
+| P3 | Betrieb/Integration: erreichbarer Zugang, stabile Instanz, Backup und L0-Verifikation | P1/P2 | echter Nutzerlink, getesteter Speicherweg, Rückfallmöglichkeit |
+| P4 | Backend + Frontend: Anlagen und Vorschau | L0, Uploadvertrag | Datei bleibt zugeordnet; Fehler/Limit/Rechte verständlich |
+| P5 | Vorbereitung: Kategorien, Dublettenhinweise, Nutzen/Risiko mit Provenienz | P1, Jobvertrag | konkrete Einordnung sichtbar/korrigierbar; unbekannt bleibt unbekannt |
+| P6 | Pipeline: Jobs, begrenzte Recherche und revisionierter Plan | P5, bestehende PlanDraft-Verträge | Ergebnis referenziert richtige Revision; Retry erzeugt kein Duplikat |
+| P7 | Freigabe + Roadmap + Orchestrator-Handoff | P6 | exakte Planfreigabe; tatsächlicher Empfang/Start/Abschluss getrennt |
+| P8 | Board, fokussierter Graph, Langfristansichten | stabile Beziehungen aus P5/P7 | Filter/Textalternative/Zyklen; keine Verzögerung von L0 |
+| P9 | Last, Mobilpolitur, Export/Wiederherstellung | inkrementell nach L0 | gemessene Grenzen und bestandene relevante Regressionen |
+| P10 | Arbeitsregeln, Skills/Prompts/Trigger und begrenzter Kritikerpilot | bestehender Pilotauftrag | messbare Entlastung, keine neue dauerhafte Koordinationslast |
+
+P1 und P2 parallel nach einem kurzen verbindlichen Vertragsschritt. P3 kann Zugriff, Betrieb und Abnahmevorbereitung parallel bearbeiten. P5 fachlich vorbereiten, ohne vorzeitig eine konkurrierende Datenimplementierung zu beginnen. Gemeinsame Schema-/Integrationsänderungen seriell verantworten.
+
+Bestehende Regel „maximal drei parallele Implementierungen“ bleibt Ausgangspunkt, bis Root sie anhand aktueller Ressourcen und zulässiger Disposition verändert. Zusätzliche Kapazität kann konkrete Recherche, UX-Spezifikation, Regression, Betriebsarbeit und Review übernehmen. Auslastung ohne verwertbaren Output ist kein Erfolg.
+
+Der vorhandene Server darf für geeignete Builds, Prüfungen und Agentenarbeit genutzt werden. Vor Start Ressourcen, authentifizierten Zugang und Rückgabeweg feststellen. Keine neuen Server kaufen und keine zweite unkontrollierte Denkrauminstanz starten. Modelle und Reasoning nach Aufgabe wählen: anspruchsvolle Planung/Architektur starke Modelle; Routineausführung angemessen dimensionieren. „Superagent“ beschreibt Verantwortung und Fähigkeit, keine unbelegte Produkteigenschaft.
+
+Fast Mode für Führungsagenten muss bei ausdrücklichem Nutzerbefehl aktivierbar und als Präferenz festgehalten sein; Worker nicht pauschal aktivieren. Die jetzige Leistungsanforderung ersetzt keinen konkreten Fast-Schalterbefehl und keine Prüfung vorhandener Provider-/Kostenregeln.
+
+## 9. Blocker, Bestätigungen und Cloud-Dokument
+
+Kein Agent stoppt geräuschlos. Ein Blocker meldet betroffene Aufgabe, konkreten Grund, Zuständigkeit, bereits vorbereiteten nächsten Schritt und benötigte Nutzerhandlung. Fehlende Anmeldung soweit möglich vorbereiten; Elias führt nur den unvermeidbaren interaktiven Schritt aus. Danach funktionierenden Zugriff prüfen und Arbeit tatsächlich wieder aufnehmen.
+
+Der Orchestrator bestätigt:
+1. Dokument persönlich gelesen und Auftrag verstanden.
+2. Tatsächlichen Start mit Ticket/Owner und erster Lieferstufe.
+3. Erste nutzbare Lieferung mit funktionierendem Zugangslink.
+4. Spätere Paketabschlüsse oder konkrete Blocker mit Belegen.
+
+Dieser Cloud-Plan ist fachliche Referenz. Tickets bleiben die Ausführungsquelle und enthalten Owner, Status und Abhängigkeiten. Cloud-Zugriff wird geprüft, nicht aus dem Link angenommen. Eine lokale gleichlautende Markdown-Fassung dient als zugängliche Übergabe, falls Agenten keinen Cloud-Zugang haben.
+
+Dokumentpflege hat einen benannten Owner; andere Agenten schlagen gezielte Änderungen vor. Änderungen an Anforderungen, Beschlüssen und Abnahme werden versioniert. Reine Fortschrittsupdates stehen im Lieferprotokoll. Widersprüche zwischen Cloud, lokaler Fassung und Ticket werden ausdrücklich aufgelöst statt still übernommen.
+
+## 10. Die stärksten Einwände und ihre Behebung
+
+| Kritik | Konsequenz |
+| --- | --- |
+| „Ein komplexes System verhindert endlich nutzbare Ergebnisse.“ | L0 separat liefern; Graph, Rat und vollständige Planung nicht als Vorbedingung. |
+| „Automatische Ordnung ist nur Scheingenauigkeit.“ | Begründungen, Provenienz, Unsicherheit und Korrekturmöglichkeit; keine unbelegte Punktzahl. |
+| „Viele Ideen lösen teure Dauerrecherche aus.“ | Sammlung von aktiver Vorbereitung trennen; begrenzte Warteschlange und Priorität. |
+| „Die ersten Ideen gehen bei Umbauten verloren.“ | Dauerhafte IDs, Migration/Backup/Export; gespeicherte Rückstände nachziehen. |
+| „Agenten setzen ihre eigenen Wünsche durch.“ | Original/Herkunft erhalten, exakte Nutzerfreigabe für Agentenpläne. |
+| „Ein Graph ist hübsch, aber unbedienbar.“ | Fokussierte Beziehungen; Liste und Textalternative bleiben vollständig. |
+| „Volle Auslastung produziert Reviewstau und Konflikte.“ | Parallelität nach Abschlusskapazität; ein Integrationsowner pro Nahtstelle. |
+| „Der Kritiker produziert Kritik statt Nutzen.“ | Gemeinsame Ergebnisziele; nur belegte Fälle, begrenzter Pilot, Jury nur bei materieller Uneinigkeit. |
+| „Größenregeln sind inzwischen die Hauptarbeit.“ | Root entscheidet zulässigen funktionalen Split oder Parken; kein wiederholtes Zählen ohne Lieferweg. |
+| „Live bedeutet hier bloß lokaler Dienst.“ | Nutzerzugriff gesondert testen; echten Link und Reichweite nennen. |
+
+## 11. Abnahme, Erfolg und sofortiger Arbeitsauftrag
+
+Die erste reale Nutzerprüfung: Elias erfasst drei unterschiedliche Ideen, verändert eine, setzt Priorität und Kategorie, sucht sie wieder, lädt die Seite neu und findet denselben Inhalt. Mindestens eine Idee bleibt sichtbar als noch ungeprüft; ihre spätere Bearbeitung ist vorgemerkt. Ein simulierter Speicherfehler zeigt einen erhaltenen Entwurf statt einer falschen Erfolgsmeldung. Bestehende Inhalte und Quittierungswege bleiben funktionsfähig.
+
+Weitere Pflichtfälle der zuständigen Entwickler: konkurrierende Revisionen, wiederholtes Ereignis, Neustart während Job, alte Planfreigabe nach wesentlicher Änderung, Agentenidee ohne Freigabe, blockierte Abhängigkeit und abgeschlossene Lieferung mit tatsächlichem Beleg. Testumfang nach realer Änderung wählen; vorhandene passende Prüfungen verwenden. Es wird kein QA Bot gestartet.
+
+Erfolg zuerst messen an: Zeit bis zur ersten wirklich nutzbaren Sammlung, erfolgreich erhaltenen Eingaben, Zeit vom Erfassen bis Einordnen, Anteil nachvollziehbarer Bewertungen und sichtbar aufgelösten Blockern. Später Plan-Durchlaufzeit, Nacharbeit und gelieferter Nutzen ergänzen. Anzahl Agenten, Kritikpunkte oder Nachrichten ist keine Erfolgsmetrik.
+
+**An den Orchestrator:** Lies den Plan vollständig. Ordne ihn den bestehenden Tickets zu und benenne den kleinsten sicheren L0-Lieferweg. Dispone bestehende Paket-/Zugriffsblocker innerhalb deiner Befugnisse. Starte konkrete parallele Aufgaben mit eindeutigen Ownern und nutze den vorhandenen Server sinnvoll. Liefere zuerst die erreichbare, dauerhafte Ideensammlung; entwickle die übrigen Stationen danach weiter, während Elias bereits Ideen sammelt. Bestätige echten Empfang, tatsächlichen Start und den ersten benutzbaren Stand jeweils mit Belegen. Melde nur reale Grenzen; behauptete Ausführung ersetzt keine Lieferung.
+
+### Lieferprotokoll
+
+| Stand | Beleg | Status |
+| --- | --- | --- |
+| Plan V1.0 erstellt | Cloud-Seite und lokale Markdown-Fassung | Dokument fertig |
+| Root hat persönlich gelesen | noch einzutragen | nicht bestätigt |
+| L0 tatsächlich gestartet | Ticket / Owner / Arbeitsbeleg einzutragen | nicht bestätigt |
+| L0 für Elias erreichbar | Link / Zugriffsprüfung / Abnahme einzutragen | nicht bestätigt |
+
+<!-- PLAN-L0-P0 V1.0 END -->
 
 ## Meilensteine
 
@@ -492,6 +760,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 
 | # | Frage | Empfehlung | Wer entscheidet? | Status |
 |---|---|---|---|---|
+| PLAN-L0-SINGLE | Nur EIN Plandokument `docs/PLAN.md`; Masterplaninhalte an richtiger Stelle integrieren, Unterpläne erst bei abhakbarem Umfang. | Ganzen 198-Zeilen-V1.0-Text inline erhalten; 255/270-Zwei-Dateien-Kandidaten nur historische Übergaben, nicht integrieren. | Nutzerauftrag laut Root-Mail `msg-0muy9f100-5279e4be`, 07.10.15:25:47 UTC | Entschieden; finale Ein-Datei-Anwendung bleibt an Root-FIT und normale Gates gebunden; keine Cloud-Synchronisierung behauptet. |
 | ARCH-D4-PLAN | ARCH-D4a/D4b: das API-Abbauziel mit kleineren seriellen Teil-PRs erreichen? | Gesamtziel ≥ 300 Zeilen Netto-Abbau in `api.rs` beibehalten; je Teil-PR ≤ 300 Gesamtdiffzeilen einschließlich Tests. | Nutzer | ✓ entschieden (06.10.2026): `serial-total300`, Frage Revision 1; Antwort `6b733c02-a4ff-466e-aaf6-905511d5570c`, gespeichert 21:55:57.174 UTC, Rootempfang 21:57:52.126 UTC (State-Revision 7). Keine Vorgabe ≥ 150 je Teil-PR. Red-first, vollständige Gates, Tier A mit zwei anderen Anbietern und serielle API-Naht bleiben verbindlich. Umsetzungskriterien: `docs/plan/v1.6.0/plan.md`, Abschnitt 3. Empfang ist kein Umsetzungsbeleg. |
 | E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | ✓ entschieden (Nutzer 04.10.): Mix. Das Studio-Layout (`hq2-concept`/`hq2-studio`) ist die Richtung für „HQ als Hauptbereich der App“, dazu die Einleitungsleiste und die Entscheidungsbox „Dein Urteil ist gefragt“ aus der Demo (zweite Antwort ~17:15). HQ2-03 ist freigegeben und baut darauf auf. |
 | E1-Hinweis | HQ2-02/03 blockiert die Farbthemen T2–T5. | Erst HQ2-02 festlegen, dann die Farbthemen in HQ2-03 bearbeiten. | Nutzer | Hinweis |
