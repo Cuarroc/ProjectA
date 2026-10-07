@@ -1,5 +1,5 @@
 # ARCH-D4 serial slice 2: governance
-Status: aktiv
+Status: historisch
 
 Source: docs/PLAN.md ARCH-D4; docs/plan/v1.6.0/plan.md section 3.
 Decision: ARCH-D4-PLAN rev1, answer 6b733c02, serial-total300.
