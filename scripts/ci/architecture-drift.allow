@@ -75,7 +75,7 @@ DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGIN
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#6
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/development_runs.rs	begin_with("BEGINIMMEDIATE"	#7
 DIRECT_BEGIN_IMMEDIATE	src-tauri/src/store/emergency_stop.rs	begin_with("BEGINIMMEDIATE"
-ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.contains("hasnorunningagent")=>Response::error(409,err),
+ERROR_TEXT_CLASSIFIER	src-tauri/src/api/d4_worker_write.rs	Err(err)iferr.contains("hasnorunningagent")=>Response::error(409,err),
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with("unknownproject")=>Response::error(404,err),
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with("unknownproject")=>Response::error(404,err),	#2
 ERROR_TEXT_CLASSIFIER	src-tauri/src/api.rs	Err(err)iferr.starts_with(crate::workers::ERR_UNKNOWN)=>{

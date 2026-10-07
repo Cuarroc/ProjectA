@@ -13,9 +13,9 @@ Preserve parent token/verdict/HQ order, exact None and final404/405.
 Discovery/governance/worker-read and public test bodies unchanged.
 Fresh observed model/native quota/rules, RAM>=1.5GiB/build/lane guards.
 Set cargo target/jobs in every native command; npm ci if required.
-Full branch source200ALL; complete documentation reserve<=75ALL.
+Full branch source203ALL; complete documentation reserve<=75ALL.
 Actual full additions+deletions<=300 at RED/everycommit/final/push.
-Job critique Kimi actual10:10:40Z, no HIGH/MEDIUM; Root C1-C8 disposed.
+Job critiques Kimi10:10:40Z and Claude R1; direct-child/UTF8 conditions met.
 Bind critique report052dfee2 and Root FIT52fd9e2a to actual base bytes.
 RED child36-line None stub with identical complete private contract.
 Register child/contract before RED; all original parent arms remain.

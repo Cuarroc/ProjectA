@@ -90,7 +90,8 @@ pub(super) fn contract(inner: &Inner) {
     assert_eq!(reply(inner, "GET", "/api/workers", "").status, 200);
     assert_eq!(reply(inner, "GET", "/api/workers/missing", "").status, 404);
     assert_none(inner, "GET", "/api/queens");
-    assert_none(inner, "POST", "/api/workers");
+    let write = request("POST", "/api/workers", "invalid json");
+    assert!(route(inner, &write, "POST", &["api", "workers"], None, None).is_none());
     assert_none(inner, "POST", "/api/workers/missing");
     assert_none(inner, "POST", "/api/workers/missing/messages");
     assert_none(inner, "POST", "/api/board");
