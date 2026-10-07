@@ -1578,56 +1578,6 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
             }
         }
 
-        ("POST", ["api", "queue"]) => {
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(err) => return Response::error(400, err),
-            };
-            let project_id = match required_str(&body, "projectId") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            let raw_text = match required_str(&body, "rawText") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            let profile_id = body
-                .get("profileId")
-                .and_then(Value::as_str)
-                .filter(|value| !value.trim().is_empty())
-                .map(str::to_string);
-            let sharpen = body
-                .get("sharpen")
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            let priority = body
-                .get("priority")
-                .and_then(Value::as_i64)
-                .and_then(|value| i32::try_from(value).ok());
-            let spawned_by = optional_str(&body, "spawnedBy");
-            core_response(backend.enqueue_task(
-                &project_id,
-                &raw_text,
-                profile_id,
-                sharpen,
-                priority,
-                spawned_by,
-            ))
-        }
-
-        ("GET", ["api", "queue"]) => {
-            if let Some(reply) = unknown_project(backend, project_id) {
-                return reply;
-            }
-            into_response(backend.list_queue(project_id))
-        }
-
-        ("POST", ["api", "queue", id, "cancel"]) => core_response(
-            backend
-                .cancel_queued_task(id)
-                .map(|()| json!({ "ok": true })),
-        ),
-
         // -- questions (Phase 21) --------------------------------------------
         ("POST", ["api", "questions"]) => {
             let body = match parse_body(&request.body) {
