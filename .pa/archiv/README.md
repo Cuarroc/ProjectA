@@ -10,6 +10,7 @@ wurde verschoben, nicht gelöscht; die Historie jeder Datei zeigt
 | `PLAN_2026-09-24.md` | `docs/PLAN.md` vor dem Umbau auf Meilensteine (Wellen W0–W4, HQ2, DEVFLOW mit Verträgen und Protokoll, W5-Verweis, Register Nr. 1–17) |
 | `MASTERPLAN_2026-09-24.md` | der frühere `docs/MASTERPLAN.md` (Stufen S0–S5, Aliase, Fortschrittsrechnung, Worker-Struktur, Hygiene-Befunde) |
 | `STAND_2026-09-24.md` | die frühere Langfassung von `STAND.md` |
+| `STAND-AGENTS-history-2026-10.md` | Verlauf, der am 08.10.2026 aus `STAND.md`, `AGENTS.md` und `CLAUDE.md` herausgenommen wurde |
 | `specs/` | alle Specs `task_*.md` mit `Status: historisch` (abgeschlossene oder abgelöste Aufträge) |
 | `review-prompts/` | eingecheckte Review-Prompts `review_prompt_*.md`; sie enthielten meist den ganzen Diff und werden nicht mehr eingecheckt (AGENTS.md, Regel 7) |
 

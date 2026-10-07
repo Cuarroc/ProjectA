@@ -100,8 +100,9 @@ who asks the user.
 3. `main` is merged by the **Mergify** merge queue (`.mergify.yml`,
    `AGENTS.md` "Merging"). Do not merge `main` into your branch just to
    refresh it; only to resolve a real conflict — merge, never rebase or
-   force-push. Labels: `do-not-merge` keeps a PR out of the queue; `priority`
-   (coordinator only) moves it to the front; `conflict` is set and cleared by
-   Mergify. Workers never merge by hand; only the coordinator may, as an
+   force-push. Labels: `review-ok` (set by the orchestrator pipeline after the
+   review disposition) is required to enter the queue; `do-not-merge` keeps a
+   PR out; `priority` (coordinator only) moves it to the front; `conflict` is
+   set and cleared by Mergify. Workers never merge by hand; only the coordinator may, as an
    emergency exception when the queue hangs or Mergify is down.
    Details: `docs/setup/mergify.md`.

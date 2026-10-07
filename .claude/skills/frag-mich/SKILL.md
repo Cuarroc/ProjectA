@@ -11,7 +11,7 @@ Deutsch (Code, Befehle und Dateinamen bleiben unverändert).
 
 ## Wo die Wahrheit steht (nicht kopieren, nur verweisen)
 
-- Begriffe: [`docs/hilfe/glossar.md`](../../../docs/hilfe/glossar.md) — 30 Begriffe.
+- Begriffe: [`docs/hilfe/glossar.md`](../../../docs/hilfe/glossar.md).
 - Befehle und Klicks: [`docs/hilfe/spickzettel.md`](../../../docs/hilfe/spickzettel.md).
 - Regeln und Gates: `AGENTS.md`; Stand: `STAND.md`; Plan: `docs/PLAN.md`.
 
