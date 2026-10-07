@@ -5,7 +5,7 @@
 // Findings name file, line and rule only: the matched value is never printed,
 // so the gate log cannot leak what it found.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SCOPE = "tools/denkraum";
@@ -28,6 +28,7 @@ export function findViolations(files) {
   const found = [];
   for (const { path, text } of files) {
     if (/(^|\/)state(\.json$|\/)/.test(path)) found.push({ path, line: 0, rule: "state-file" });
+    if (/(^|\/)\.env[^/]*$/.test(path)) found.push({ path, line: 0, rule: "env-file" });
     text.split(/\r?\n/).forEach((line, index) => {
       for (const [rule, pattern] of LINE_RULES) {
         if (pattern.test(line)) found.push({ path, line: index + 1, rule });
@@ -38,10 +39,14 @@ export function findViolations(files) {
   return found;
 }
 
-function scopeFiles(root) {
-  const out = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", SCOPE], { cwd: root, encoding: "utf8" });
-  return out.split("\0").filter((path) => path && existsSync(`${root}/${path}`))
-    .map((path) => ({ path, text: readFileSync(`${root}/${path}`, "utf8") }));
+// Tracked files are read from the index, because that is what a commit
+// publishes; the working tree may differ from it or miss the file entirely.
+export function scopeFiles(root) {
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 });
+  const list = (...flags) => git("ls-files", "-z", ...flags, "--", SCOPE).split("\0").filter(Boolean);
+  const staged = list("--cached").map((path) => ({ path, text: git("show", `:${path}`) }));
+  const added = list("--others", "--exclude-standard").map((path) => ({ path, text: readFileSync(`${root}/${path}`, "utf8") }));
+  return [...staged, ...added];
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join as joinPath } from "node:path";
 import { test } from "node:test";
-import { findViolations } from "./hygiene-check.mjs";
+import { findViolations, scopeFiles } from "./hygiene-check.mjs";
 
 // Fixtures are assembled at runtime so this file never holds a forbidden
 // literal itself (it is scanned by the very check it tests).
@@ -33,6 +36,32 @@ test("flags ledger state by path and reports file and line only", () => {
   const [finding] = findViolations([{ path: "tools/denkraum/a.md", text: `ok\r\n${secret}` }]);
   assert.deepEqual(finding, { path: "tools/denkraum/a.md", line: 2, rule: "email" });
   assert.ok(!JSON.stringify(finding).includes(secret), "matched value must not be reported");
+});
+
+test("flags env files by path whatever their content", () => {
+  assert.deepEqual(rulesFor("TOKEN=opaque", join("tools/denkraum/", ".env")), ["env-file"]);
+  assert.deepEqual(rulesFor("", join("tools/denkraum/sub/", ".env", ".local")), ["env-file"]);
+  assert.deepEqual(rulesFor("", "tools/denkraum/env.md"), []);
+});
+
+test("scans staged content instead of the working tree", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  try {
+    git("init", "-q");
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    const put = (name, text) => writeFileSync(joinPath(root, "tools/denkraum", name), text);
+    put("a.txt", ["10", "1", "2", "3"].join("."));
+    put("b.txt", join("someone", AT, "example", ".", "org"));
+    git("add", "tools");
+    put("a.txt", "clean in the working tree only");
+    unlinkSync(joinPath(root, "tools/denkraum/b.txt"));
+    put("c.txt", join("agent", "-", "2".repeat(13), "-", "xyz789"));
+    const rules = findViolations(scopeFiles(root)).map((f) => `${f.path}:${f.rule}`).sort();
+    assert.deepEqual(rules, ["tools/denkraum/a.txt:ipv4", "tools/denkraum/b.txt:email", "tools/denkraum/c.txt:agent-id"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("the check and its test are clean under their own rules", () => {
