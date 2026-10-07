@@ -214,6 +214,8 @@ mod credential_acl;
 #[cfg(all(test, windows))]
 #[path = "api/credential_acl_tests.rs"]
 mod credential_acl_tests;
+#[path = "api/d4_routes.rs"]
+mod d4_routes;
 #[path = "api/hq_routes.rs"]
 mod hq_routes;
 #[path = "api/planning_access.rs"]
@@ -1432,6 +1434,12 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
         return reply;
     }
 
+    if let Some(reply) =
+        d4_routes::route(inner, request, method, path.as_slice(), project_id, status)
+    {
+        return reply;
+    }
+
     match (method, path.as_slice()) {
         ("GET", ["api", "health"]) => Response::ok(json!({ "ok": true })),
 
@@ -1728,83 +1736,6 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
                 .cancel_queued_task(id)
                 .map(|()| json!({ "ok": true })),
         ),
-
-        // -- scout and recommendations (Phase 7.1) -------------------------
-        ("POST", ["api", "scout"]) => {
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(err) => return Response::error(400, err),
-            };
-            let project_id = match required_str(&body, "projectId") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            core_response(backend.create_scout(&project_id))
-        }
-
-        ("POST", ["api", "scout", "triage"]) => {
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(err) => return Response::error(400, err),
-            };
-            let project_id = match required_str(&body, "projectId") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            let urls: Vec<String> = body
-                .get("urls")
-                .and_then(Value::as_array)
-                .map(|urls| {
-                    urls.iter()
-                        .filter_map(Value::as_str)
-                        .map(str::trim)
-                        .filter(|url| !url.is_empty())
-                        .map(str::to_string)
-                        .collect()
-                })
-                .unwrap_or_default();
-            if urls.is_empty() {
-                return Response::error(400, "urls is required");
-            }
-            core_response(backend.triage_repos(&project_id, &urls))
-        }
-
-        ("GET", ["api", "recommendations"]) => {
-            if let Some(reply) = unknown_project(backend, project_id) {
-                return reply;
-            }
-            into_response(backend.list_recommendations(project_id))
-        }
-
-        ("POST", ["api", "recommendations"]) => {
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(err) => return Response::error(400, err),
-            };
-            let project_id = match required_str(&body, "projectId") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            let title = match required_str(&body, "title") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            let rationale = match required_str(&body, "rationale") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            core_response(backend.add_recommendation(
-                &project_id,
-                &title,
-                &rationale,
-                optional_str(&body, "url"),
-                optional_str(&body, "effort"),
-            ))
-        }
-
-        ("POST", ["api", "recommendations", id, "accept"]) => {
-            core_response(backend.accept_recommendation(id))
-        }
 
         ("POST", ["api", "recommendations", id, "status"]) => {
             let body = match parse_body(&request.body) {
@@ -4078,6 +4009,16 @@ pub(crate) mod tests {
         fn verdict_token(&self) -> String {
             self.server.verdict_token().to_string()
         }
+    }
+
+    #[test]
+    fn d4_routes_preserve_dispatch_and_fallback() {
+        let fx = fixture("d4-routes");
+        d4_routes::assert_contract(&fx.server.inner);
+        assert_eq!(
+            fx.backend.scouted.lock().unwrap()[0].1,
+            vec!["https://example.com/a".to_string()]
+        );
     }
 
     fn fixture(label: &str) -> Fixture {
