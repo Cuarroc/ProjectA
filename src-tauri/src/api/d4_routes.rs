@@ -4,6 +4,8 @@ use super::*;
 mod discovery;
 #[path = "d4_governance.rs"]
 mod governance;
+#[path = "d4_worker_read.rs"]
+mod worker_read;
 
 pub(super) fn route(
     inner: &Inner,
@@ -15,7 +17,7 @@ pub(super) fn route(
 ) -> Option<Response> {
     type Router =
         fn(&Inner, &Request, &str, &[&str], Option<&str>, Option<&str>) -> Option<Response>;
-    let routers: &[Router] = &[discovery::route, governance::route];
+    let routers: &[Router] = &[discovery::route, governance::route, worker_read::route];
     routers
         .iter()
         .find_map(|route| route(inner, request, method, path, project_id, status))
@@ -52,5 +54,6 @@ fn assert_none(inner: &Inner, method: &str, path: &str) {
 pub(super) fn assert_contract(inner: &Inner) {
     discovery::contract(inner);
     governance::contract(inner);
+    worker_read::contract(inner);
     assert_none(inner, "POST", "/api/not-owned");
 }
