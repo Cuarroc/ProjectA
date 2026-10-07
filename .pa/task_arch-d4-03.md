@@ -1,5 +1,6 @@
 # ARCH-D4 serial slice 3: worker read routes
-Status: aktiv
+Status: historisch
+Completed: actual Mergify PR627, merge621ccbd.
 
 Source: docs/PLAN.md ARCH-D4; docs/plan/v1.6.0/plan.md section3.
 Decision: ARCH-D4-PLAN rev1, serial-total300, answer6b733c02.

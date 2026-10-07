@@ -6,6 +6,8 @@ mod discovery;
 mod governance;
 #[path = "d4_worker_read.rs"]
 mod worker_read;
+#[path = "d4_worker_write.rs"]
+mod worker_write;
 
 pub(super) fn route(
     inner: &Inner,
@@ -17,7 +19,12 @@ pub(super) fn route(
 ) -> Option<Response> {
     type Router =
         fn(&Inner, &Request, &str, &[&str], Option<&str>, Option<&str>) -> Option<Response>;
-    let routers: &[Router] = &[discovery::route, governance::route, worker_read::route];
+    let routers: &[Router] = &[
+        discovery::route,
+        governance::route,
+        worker_read::route,
+        worker_write::route,
+    ];
     routers
         .iter()
         .find_map(|route| route(inner, request, method, path, project_id, status))
@@ -55,5 +62,6 @@ pub(super) fn assert_contract(inner: &Inner) {
     discovery::contract(inner);
     governance::contract(inner);
     worker_read::contract(inner);
+    worker_write::contract(inner);
     assert_none(inner, "POST", "/api/not-owned");
 }
