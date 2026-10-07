@@ -1737,77 +1737,6 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
                 .map(|()| json!({ "ok": true })),
         ),
 
-        ("POST", ["api", "recommendations", id, "status"]) => {
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(err) => return Response::error(400, err),
-            };
-            let status = match required_str(&body, "status") {
-                Ok(value) => value,
-                Err(err) => return Response::error(400, err),
-            };
-            // The vocabulary is the one part of this request the route can
-            // decide on its own, as with the GitHub url and the digest date, so
-            // it is decided here and stays a 400 once the core speaks in
-            // statuses. That is not symmetry for its own sake: the core's own
-            // refusal reads `unknown recommendation status: …` (`scout.rs:434`),
-            // which opens with [`crate::workers::ERR_UNKNOWN`], so
-            // [`error_status`] would answer 404 - and 404 here means "an id that
-            // names nothing", which this is not. The check has to stay in front
-            // of the core, however redundant it looks beside `scout.rs`.
-            // Behind it the core's own words are read: this route
-            // answered 400 for every failure, one line below the `accept` route
-            // that had already learned to tell them apart - an id that names
-            // nothing and a store that fell over both came back as the caller's
-            // mistake, which tells a script to fix a request that was fine.
-            if status != crate::store::REC_ACCEPTED && status != crate::store::REC_DISMISSED {
-                return Response::error(
-                    400,
-                    format!(
-                        "unknown recommendation status: {status} (expected {} or {})",
-                        crate::store::REC_ACCEPTED,
-                        crate::store::REC_DISMISSED
-                    ),
-                );
-            }
-            // Not [`core_response`]: the reply is `{ok: true}`, which a
-            // serialized `()` is not. Only the reading of the failure is shared.
-            match backend.set_recommendation_status(id, &status) {
-                Ok(()) => Response::ok(json!({ "ok": true })),
-                Err(err) => Response::error(error_status(&err, StatusPolicy::Core), err),
-            }
-        }
-
-        // -- learnings (Phase 14) --------------------------------------------
-        ("GET", ["api", "learnings"]) => {
-            if let Some(reply) = unknown_project(backend, project_id) {
-                return reply;
-            }
-            into_response(backend.list_learnings(project_id, status))
-        }
-
-        ("POST", ["api", "learnings", id, "approve"]) => {
-            let body = match parse_body(&request.body) {
-                Ok(body) => body,
-                Err(err) => return Response::error(400, err),
-            };
-            // Unlike `worker send`, blank is not a legitimate value here: an
-            // empty learning would put an empty bullet into the playbook.
-            let text = match required_str(&body, "text") {
-                Ok(value) => value,
-                Err(_) => return Response::error(400, "text is required and must not be empty"),
-            };
-            match backend.approve_learning(id, &text) {
-                Ok(()) => Response::ok(json!({ "ok": true })),
-                Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
-            }
-        }
-
-        ("POST", ["api", "learnings", id, "reject"]) => match backend.reject_learning(id) {
-            Ok(()) => Response::ok(json!({ "ok": true })),
-            Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
-        },
-
         // -- questions (Phase 21) --------------------------------------------
         ("POST", ["api", "questions"]) => {
             let body = match parse_body(&request.body) {
@@ -1884,23 +1813,6 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
             Ok(()) => Response::ok(json!({ "ok": true })),
             Err(err) => Response::error(error_status(&err, StatusPolicy::Verdict), err),
         },
-
-        // -- activity feed (Phase 16) --------------------------------------
-        ("GET", ["api", "activity"]) => {
-            // Read-only by construction: the feed is a view over tables the
-            // other routes write. An absent or unreadable limit is the
-            // default, anything above the cap is the cap.
-            if let Some(reply) = unknown_project(backend, project_id) {
-                return reply;
-            }
-            let limit = request
-                .query
-                .get("limit")
-                .and_then(|value| value.parse::<u32>().ok())
-                .unwrap_or(50)
-                .min(200);
-            into_response(backend.get_activity(project_id, limit))
-        }
 
         // -- github (Phase 8) ------------------------------------------------
         ("GET", ["api", "projects"]) => into_response(backend.list_projects()),
