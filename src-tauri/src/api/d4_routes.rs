@@ -4,6 +4,8 @@ use super::*;
 mod discovery;
 #[path = "d4_governance.rs"]
 mod governance;
+#[path = "d4_queue.rs"]
+mod queue;
 #[path = "d4_worker_read.rs"]
 mod worker_read;
 #[path = "d4_worker_write.rs"]
@@ -24,6 +26,7 @@ pub(super) fn route(
         governance::route,
         worker_read::route,
         worker_write::route,
+        queue::route,
     ];
     routers
         .iter()
@@ -63,5 +66,6 @@ pub(super) fn assert_contract(inner: &Inner) {
     governance::contract(inner);
     worker_read::contract(inner);
     worker_write::contract(inner);
+    queue::contract(inner);
     assert_none(inner, "POST", "/api/not-owned");
 }
