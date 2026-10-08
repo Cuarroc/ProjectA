@@ -297,14 +297,18 @@ node_name_run() {
   node --test --test-reporter=spec --test-name-pattern="^$(regex_escape "$1")\$" "$2"
 }
 
+playwright_title_in_source() {
+  # Exact test()/test.only|skip|fix() string title present in the source file.
+  node -e 'const fs=require("fs");const n=process.argv[2];const s=fs.readFileSync(process.argv[1],"utf8");const re=/test(?:\.(?:skip|only|fix))?\(\s*(["'\''`])((?:\\.|(?!\1).)*)\1/g;let m;while((m=re.exec(s))){if(m[2]===n)process.exit(0);}process.exit(1);' "$1" "$2"
+}
+
 playwright_denkraum_name_run() {
-  # Playwright `-g` is a regex over the full title (`file › name`). Escape the
-  # trailer name and end-anchor it so `existing test (root)` cannot select
-  # `existing test root`. Force the list reporter so classify_run can see the
-  # exact title that ran.
-  local name="$1" path="$2"
+  # `-g` matches space-joined grepTitle (`basename title`) with flags `gi`.
+  # Anchor basename+title so suffix/prefix siblings cannot satisfy the trailer.
+  local name="$1" path="$2" base
+  base="$(basename "$path")"
   npx playwright test -c tools/denkraum/playwright.config.mjs "$path" \
-    -g "$(regex_escape "$name")$" --reporter=list
+    -g "$(regex_escape "$base") $(regex_escape "$name")$" --reporter=list
 }
 
 ensure_node_modules() {
@@ -456,7 +460,21 @@ run_spec() {
       # Denkraum Playwright harness (config is not the repo-root e2e one).
       ensure_node_modules "$tree"
       if [ -n "$name" ]; then
-        (cd "$tree" && playwright_denkraum_name_run "$name" "$path")
+        local pw_out pw_code
+        set +e
+        pw_out="$(cd "$tree" && playwright_denkraum_name_run "$name" "$path" 2>&1)"
+        pw_code=$?
+        set -e
+        printf '%s\n' "$pw_out"
+        if printf '%s\n' "$pw_out" | sed -E $'s/\033\\[[0-9;]*m//g' |
+          grep -E 'No tests found' >/dev/null; then
+          if playwright_title_in_source "$tree/$path" "$name"; then
+            echo "red-first: playwright title present but not discovered"
+          else
+            echo "red-first: playwright title absent from source"
+          fi
+        fi
+        return "$pw_code"
       else
         (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path" --reporter=list)
       fi
@@ -490,13 +508,51 @@ run_spec() {
 classify_run() {
   # 0 = gruen (Tests gelaufen und ok)
   # 1 = rot (fehlgeschlagen, Datei fehlt, 0 Tests, Compile-Fehler)
+  # 2 = ungueltiger Beweis (Mehrdeutigkeit / Discovery-Ausschluss)
   local out="$1" code="$2" spec="$3" path
-  if [ "$code" -ne 0 ]; then
-    return 1
-  fi
   path="${spec%%::*}"
   if [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]]; then
     path="src-tauri/src/main.rs"
+  fi
+  # Named Denkraum runs classify on non-zero exits too: absent title = red (1);
+  # discovery exclusion / ambiguity = INVALID (2).
+  case "$path" in
+    tools/denkraum/*.spec.mjs)
+      local plain expected
+      plain="$(printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g')"
+      if printf '%s\n' "$plain" | grep -F 'Datei fehlt:' >/dev/null; then
+        return 1
+      fi
+      if [[ "$spec" == *::* ]]; then
+        expected="${spec#*::}"
+        if printf '%s\n' "$plain" |
+          grep -F 'red-first: playwright title present but not discovered' >/dev/null; then
+          return 2
+        fi
+        if printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null; then
+          if printf '%s\n' "$plain" |
+            grep -F 'red-first: playwright title absent from source' >/dev/null; then
+            return 1
+          fi
+          return 2
+        fi
+        if ! printf '%s\n' "$plain" | grep -F -- "› ${expected} (" >/dev/null; then
+          return 2
+        fi
+        [ "$code" -eq 0 ] || return 1
+        printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null || return 2
+        return 0
+      fi
+      if printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null; then
+        return 1
+      fi
+      [ "$code" -eq 0 ] || return 1
+      printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
+      return
+      ;;
+  esac
+  if [ "$code" -ne 0 ]; then
+    return 1
   fi
   case "$path" in
     src-tauri/*|*.rs)
@@ -523,22 +579,6 @@ classify_run() {
         return
       fi
       return 0
-      ;;
-    tools/denkraum/*.spec.mjs)
-      # Exact title identity: "No tests found" / missing file stay red; a green
-      # named run must show the literal title after › and a single pass.
-      local plain
-      plain="$(printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g')"
-      if printf '%s\n' "$plain" | grep -E 'Datei fehlt:|No tests found' >/dev/null; then
-        return 1
-      fi
-      if [[ "$spec" == *::* ]]; then
-        local expected="${spec#*::}"
-        printf '%s\n' "$plain" | grep -F -- "› ${expected}" >/dev/null || return 1
-        printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null
-        return
-      fi
-      printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
       ;;
     *.mjs|*.cjs)
       if printf '%s\n' "$out" | grep -E 'ℹ tests 0$|Datei fehlt:' >/dev/null; then
@@ -639,16 +679,27 @@ for spec in "${SPECS[@]}"; do
   code=$?
   set -e
   printf '%s\n' "$out"
-  if classify_run "$out" "$code" "$spec"; then
-    if grep -qxF -- "$spec" <<< "$PROVEN_ON_MAIN"; then
-      echo "red-first: $spec ist an der Merge-Base gruen, aber already proven on main (identischer Test-First-Trailer in der Historie der Merge-Base) - kein Fehler; der Kopf muss weiter gruen sein."
-    else
-      echo "red-first: $spec war an der Merge-Base GRUEN — das ist kein Test-First-Beleg." >&2
+  set +e
+  classify_run "$out" "$code" "$spec"
+  cls=$?
+  set -e
+  case "$cls" in
+    0)
+      if grep -qxF -- "$spec" <<< "$PROVEN_ON_MAIN"; then
+        echo "red-first: $spec ist an der Merge-Base gruen, aber already proven on main (identischer Test-First-Trailer in der Historie der Merge-Base) - kein Fehler; der Kopf muss weiter gruen sein."
+      else
+        echo "red-first: $spec war an der Merge-Base GRUEN — das ist kein Test-First-Beleg." >&2
+        red_ok=0
+      fi
+      ;;
+    1)
+      echo "red-first: $spec ist an der Merge-Base rot/fehlend (erwartet)."
+      ;;
+    *)
+      echo "red-first: $spec liefert an der Merge-Base keinen gueltigen Rot-Beweis (ungueltig/mehrdeutig)." >&2
       red_ok=0
-    fi
-  else
-    echo "red-first: $spec ist an der Merge-Base rot/fehlend (erwartet)."
-  fi
+      ;;
+  esac
 done
 
 head_ok=1
@@ -661,7 +712,11 @@ for spec in "${SPECS[@]}"; do
   code=$?
   set -e
   printf '%s\n' "$out"
-  if ! classify_run "$out" "$code" "$spec"; then
+  set +e
+  classify_run "$out" "$code" "$spec"
+  cls=$?
+  set -e
+  if [ "$cls" -ne 0 ]; then
     echo "red-first: $spec ist am Kopf nicht gruen." >&2
     head_ok=0
   else
