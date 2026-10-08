@@ -164,24 +164,64 @@ test("broken questions.js makes the test red", async ({ page }) => {
 });
 
 test("D4: a missing or empty root id blocks every POST action", async ({ page }) => {
-  // Test that POST actions are blocked when rootReceiver is missing
-  await setupPage(page, null, stateWith("injected"));
-  
-  // Try to submit an idea
+  const reason = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.';
+  const question = {
+    id: 'Q1', title: 'Frage', context: 'C', owner: 'O', category: 'K', scope: 'S',
+    source: 'S', uncertainty: 'U', revision: 1, mode: 'single',
+    options: [{ id: 'a', label: 'A', rationale: 'r', impact: 'i', tradeoff: 't', effort: 'e', reversible: 'ja' }],
+    recommendation: { optionIds: ['a'], rationale: 'R' },
+  };
+  const state = { ...stateWith('injected'), questions: [question] };
+  const posts = [];
+  page.on('request', req => { if (req.method() === 'POST') posts.push(new URL(req.url()).pathname); });
+
+  async function expectBlocked(meta, run, statusSel) {
+    posts.length = 0;
+    await setupPage(page, meta, state);
+    await run();
+    await page.waitForTimeout(300);
+    expect(posts, `meta=${JSON.stringify(meta)}`).toEqual([]);
+    await expect(page.locator(statusSel)).toHaveText(reason);
+  }
+
+  for (const meta of [null, '']) {
+    await expectBlocked(meta, async () => {
+      await page.locator('#area-think').click();
+      await page.locator('#idea').fill('Test idea');
+      await page.locator('#idea-save').click();
+    }, '#idea-status');
+
+    await expectBlocked(meta, async () => {
+      await page.locator('#option-Q1-a').check();
+      await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
+      await page.getByRole('button', { name: 'Auswahl verbindlich speichern' }).click();
+    }, '#detail .feedback');
+
+    await expectBlocked(meta, async () => {
+      await page.getByRole('button', { name: 'Später entscheiden' }).click();
+      await page.getByRole('button', { name: 'Zurückstellung speichern' }).click();
+    }, '#detail .feedback');
+
+    await expectBlocked(meta, async () => {
+      await page.locator('#note').fill('Rückfrage');
+      await page.getByRole('button', { name: 'Rückfrage stellen' }).click();
+      await page.getByRole('button', { name: 'Rückfrage senden' }).click();
+    }, '#detail .feedback');
+
+    await expectBlocked(meta, async () => {
+      await page.locator('#area-think').click();
+      await page.getByRole('button', { name: 'Ausarbeiten' }).click();
+      await page.locator('#wb-variant-title-0').fill('Variante');
+      await page.locator('#wb-variant-description-0').fill('Beschreibung');
+      await page.locator('#wb-save').click();
+    }, '#wb-status');
+  }
+
+  posts.length = 0;
+  await setupPage(page, 'injected', state);
   await page.locator('#area-think').click();
   await page.locator('#idea').fill('Test idea');
-  
-  let postCalled = false;
-  await page.route('**/api/ideas', async route => {
-    postCalled = true;
-    await route.fulfill({ json: {} });
-  });
-  
   await page.locator('#idea-save').click();
-  
-  // Wait a bit to ensure no request is made
-  await page.waitForTimeout(500);
-  
-  expect(postCalled).toBe(false);
-  await expect(page.locator('#idea-status')).toHaveText('Nur in diesem Browser · noch nicht an den Orchestrator gesendet.');
+  await page.waitForTimeout(300);
+  expect(posts.some(p => p.includes('/api/ideas'))).toBe(true);
 });
