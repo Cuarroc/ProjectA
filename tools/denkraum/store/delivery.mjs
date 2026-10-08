@@ -32,6 +32,8 @@ export class DeliveryStore extends AnswerStore {
     this.#notificationQueue = work.catch(() => {}); return work;
   }
   async #deliver(eventId) {
+    // DR-04B-FU: V2 root check before missing-transport, so rootless V2 answers 503 not not-configured.
+    requireRoot(await this.read(), this.rootAgentId);
     if (typeof this.io.notifyEvent !== 'function') return { status: 'not-configured' };
     const event = await this.change(state => {
       if (state.schemaVersion !== 2) return null;
