@@ -251,4 +251,4 @@ noscript{grid-column:2;grid-row:7}
 #idea-search{width:100%;min-width:0;max-width:100%}
 #idea-count,#idea-cards{min-width:0;overflow-wrap:anywhere}
 
-#idea-category{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+#idea-search,#idea-category,#idea-priority,#idea-station{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
