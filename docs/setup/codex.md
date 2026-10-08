@@ -51,17 +51,28 @@ schreiben.
 
 ## Hooks `.codex/hooks.json` (lokal, gitignored)
 
-`.codex/` ist per `.gitignore` bewusst lokal. `hooks.json` hängt ein:
+`.codex/` ist per `.gitignore` bewusst lokal, eine Datei je Checkout. Sie wird
+**erzeugt, nicht kopiert**: `npm run dev:setup -- --apply` schreibt sie
+(`scripts/lib/codex-hooks.mjs`), `npm run dev:doctor` meldet eine veraltete.
+Eingehängt sind:
 
-- `PostToolUse` (Write|Edit) → `bash '<Hauptcheckout>\.codex\hooks\red-first.sh'`
-  (**absoluter Pfad**)
-- `SessionStart` → `bash scripts/install-hooks.sh` (relativ)
+- `PostToolUse` (Write|Edit) → `.claude/hooks/red-first.sh` dieses Checkouts
+- `SessionStart` → `scripts/install-hooks.sh` dieses Checkouts
 
-Der absolute Pfad ist **richtig so** und soll nicht relativ werden: Weil
-`.codex/` gitignored ist, gibt es das Skript in Codex-Worktrees gar nicht — ein
-relativer Pfad liefe dort ins Leere. Das Skript selbst arbeitet mit
-`git rev-parse --show-toplevel` im aktuellen Verzeichnis, prüft also immer den
-Worktree, in dem Codex gerade arbeitet (geprüft 24.09.2026).
+Beide mit **absolutem Pfad** auf den Checkout, für den die Datei erzeugt wurde.
+Die Skripte arbeiten mit `git rev-parse --show-toplevel` im aktuellen
+Verzeichnis, prüfen also den Worktree, in dem Codex gerade arbeitet.
+
+**Windows (HOOK-WIN, 07.10.2026):** Codex führt Hooks in der Shell seiner
+Umgebung aus (meist PowerShell). Ein nacktes `bash` ist dort der
+WindowsApps-WSL-Starter; ohne WSL-Distribution endet er mit Exit 1, und jede
+Codex-Sitzung meldete „hook exited with code 1“. Deshalb trägt jeder Hook ein
+`commandWindows`, das `scripts/lib/codex-git-bash-hook.ps1` aufruft: Der Wrapper
+nimmt Git Bash aus `PROJECTA_GIT_BASH` oder dem Standardpfad von Git for
+Windows, nie aus `PATH`. Fehlt Git Bash, endet der Hook sichtbar mit Exit 127.
+stdin und der Exit-Code des Skripts gehen unverändert durch. Eine
+handkopierte alte `hooks.json` ersetzt `dev:setup`; die alte Fassung bleibt
+als `hooks.json.<sha12>.bak` daneben liegen.
 
 ## Belegte Eigenschaften
 
