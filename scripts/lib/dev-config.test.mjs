@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { validateDevConfig } from './dev-config.mjs';
@@ -79,8 +79,21 @@ test('explicit setup is idempotent and never enables continuous execution', t =>
   const root = mkdtempSync(join(tmpdir(), 'projecta-setup-')); t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(join(root, 'projecta.dev.json'), source);
   const probe = () => ({ status: 0, stdout: '.githooks\n' });
-  assert.deepEqual(setup(root, probe).changed, ['.pa/HQ-START.md']);
+  assert.deepEqual(setup(root, probe).changed, ['.pa/HQ-START.md', '.codex/hooks.json']);
   assert.deepEqual(setup(root, probe).changed, []);
   assert.equal(JSON.parse(readFileSync(join(root, 'projecta.dev.json'))).continuous.enabled, false);
   assert.equal(readFileSync(join(root, 'projecta.dev.json'), 'utf8'), source);
+});
+
+test('setup replaces project Codex hooks that call bare bash and the doctor confirms it', t => {
+  const root = mkdtempSync(join(tmpdir(), 'projecta-codex-hooks-')); t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, 'projecta.dev.json'), source);
+  mkdirSync(join(root, '.codex'));
+  writeFileSync(join(root, '.codex', 'hooks.json'), JSON.stringify({ hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'bash scripts/install-hooks.sh' }] }] } }));
+  const probe = () => ({ status: 0, stdout: '.githooks\n' });
+  const before = doctor(root, probe).checks.find(c => c.id === 'codex-hooks');
+  assert.equal(before.state, 'fail');
+  assert.match(before.detail, /bare bash/);
+  assert.ok(setup(root, probe).changed.includes('.codex/hooks.json'));
+  assert.equal(doctor(root, probe).checks.find(c => c.id === 'codex-hooks').state, 'ok');
 });
