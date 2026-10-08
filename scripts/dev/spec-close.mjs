@@ -15,6 +15,7 @@ import { listedInStand } from "../lib/active-specs.mjs";
 
 const SECTION = /^#{2,4}\s*Aktive Specs\s*$/; // same rule as scripts/lib/active-specs.mjs
 const HEAD_LINES = 8; // same rule as scripts/lib/active-specs.mjs
+const ALLOWED_STATUSES = new Set(["aktiv", "historisch", "entwurf"]); // existing active-specs.mjs contract
 
 const HELP = `spec-close — Spec auf "Status: historisch" setzen und aus STAND.md "Aktive Specs" austragen
 
@@ -48,6 +49,7 @@ export function closeSpec(text) {
   const value = /^Status:\s*(\S+)\s*$/.exec(line);
   if (!value) throw new RefusedError(`Status-Zeile nicht im Format "Status: <Wert>" (ein Wort, kein Zusatz): ${line.trim()}`);
   const previous = value[1];
+  if (!ALLOWED_STATUSES.has(previous)) throw new RefusedError(`Status "${previous}" unbekannt; erlaubt: aktiv, historisch, entwurf.`);
   if (previous === "historisch") return { text, changed: false, previous };
   lines[i] = "Status: historisch";
   return { text: lines.join(eol), changed: true, previous };
