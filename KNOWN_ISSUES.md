@@ -231,3 +231,24 @@ Tests trifft (`…bounds_capacity…`, `…launch_service_owns_worktree…`,
 longer waiting“, aber neben einem nativen Fehler). Geschlossen wird KI-30 erst
 nach 0 Fehlschlägen in den nächsten 40 Queue-Läufen (`docs/plan/v1.6.0/plan.md`,
 V16-01).
+
+**Zusatzbeobachtung 2026-10-08 (KI-30, anderer Test).** In den Queue-Runs
+[37810056116](https://github.com/Cuarroc/ProjectA/actions/runs/37810056116)
+(Branch `mergify/merge-queue/cc3f3a946c`, Head `622f2e21`) und
+[37814405700](https://github.com/Cuarroc/ProjectA/actions/runs/37814405700)
+(Branch `mergify/merge-queue/f8a5121bb4`, Head `5b4452b7`) scheiterte
+`store::development_capture::managed_tests::real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout`.
+Die gelesenen Windows-Logs nennen `native host did not complete cleanly` und
+am Receipt-Checkpoint `checkpoint owner no longer waiting`; die Assertion
+steht dort in `src-tauri/src/store/native_managed_tests.rs:195`, der folgende
+Join-Fehler bei `:202`. Beide Runs: Windows rot, Linux und red-first grün.
+Quelle: `gh run view <id> --json headBranch,headSha,conclusion,jobs` und
+`gh run view <id> --log-failed`, jeweils Exit 0; kein neuer Testlauf.
+
+Root ordnet dies derselben Windows-Native-Flake-Klasse zu und meldet andere
+grüne Batches im Zeitfenster sowie die erneute Einreihung von #663/#700.
+Das belegt keine gemeinsame Ursache mit KI-24b oder den früheren KI-30-Tests;
+der Befund bleibt offen. Zur Eingrenzung im bestehenden Z4-ARCH-11 aufnehmen,
+solange der Schnitt bei dieser Klasse bleibt; vorhandene Store-Reservierung,
+Windows-RED, Größen-/Tier-A-Gates erhalten. Keine Blanket-Retries oder
+abgeschwächte Assertionen aus dieser Dokumentation ableiten.
