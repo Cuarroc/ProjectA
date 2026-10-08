@@ -35,6 +35,9 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 2. Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).
 3. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.
 
+Historischer HQ-Snapshot (04.10.; keine Startfreigabe): „M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.“
+Der generierte Snapshot bleibt unverändert; aktuelle Starts folgen Z1–Z4 oben.
+
 ## Offene Befunde (Details: `KNOWN_ISSUES.md`)
 
 - KI-30: sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 (gemergt) gibt nur Diagnose aus; neue Beobachtung 04.10. (Queue-Lauf 37196272431).

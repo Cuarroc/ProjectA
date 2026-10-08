@@ -71,7 +71,7 @@ Größenausnahme. **D2** keine interne Agenten-ID im öffentlichen Code oder in 
 | DR-07 | Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import | Seniorentwickler | DR-06 | Server | C | Geplant | Testsuite grün im Gate | 55ea21ce |
 | DR-08 | UI-Hülle `index.html` + Style, byte-genau auf Stand B1 | UX-Architekt | FIT vorbereitet, Root-FIT-Abnahme; DR-01 | egal | B | In Prüfung (PR #640, Entwurf, `2c57bd3`; Push bestätigt) | Byte-Vergleich mit B1-Kandidat; prepush Exit 0 | 55ea21ce, 6713479b |
 | DR-09 | App-Teil Fragen (B1 `app.js` Zeilen 1–238, byte-genau) | Implementierer · Codex | DR-01 | Server | B | In Prüfung (PR #638, Entwurf) | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
-| DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | UX-Architekt | DR-08 | egal | B | Geplant | Ideen-Ablauf wie B1, Harness grün | 55ea21ce, 5945accc |
+| DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | UX-Architekt | DR-08, DR-09 (gemeinsames `questions.js`) | egal | B | Geplant | Ideen-Ablauf wie B1, Harness grün | 55ea21ce, 5945accc |
 | DR-11 | UI-Harness auf `@playwright/test` portieren (nur relative Pfade) | UX-Architekt | DR-10 | Server | B | Geplant | Harness läuft im Gate auf dem Server | 55ea21ce |
 | DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-10 | egal | B | Geplant | roter Test vor Fix, danach grün; Auswahl bleibt über 15-s-Poll erhalten; Textfeld-Rand mit Kontrast ≥ 3:1 (Folgepunkt aus DR-08) | 98fa8267 |
 | DR-13 | Filter Priorität und Station | UX-Architekt | DR-12 | Server | B | Geplant | Filtertests grün | 98fa8267 |
@@ -89,6 +89,7 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 |---|---|---|---|---|---|---|---|---|
 | Z2-PLAN-COMMIT | P2: v3 in kohärenten Paketen übernehmen; PLAN-C1 stellt Z1–Z4 vor den unveränderten historischen Parserbestand, danach getrennte Archiv-/Bereinigungsschnitte ≤ 300 ALL | Stabschef | Root-Abnahme je Kandidat | egal | C | In Arbeit (PLAN-C1); #642 bleibt als Entwurf erhalten | ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen | 55ea21ce |
 | Z2-RULE10 | P2: konkrete bereits erteilte Nutzerfreigaben erhalten; keine Rechteausweitung; Geld, Passwörter und Releases bleiben beim Nutzer | Stabschef | PLAN-C1; gemeinsam mit GOALS-B | egal | C | Geplant | freigegebene Handlung nicht erneut erfragen; keine abgeleitete Pauschalfreigabe; eigene prepush-Lane Exit 0; Root-Abnahme | 52f46527 |
+| HOOK-WIN | P1: bestehende Windows-Hook-Reparatur übergeben; keine Wiederholung abgeschlossener Runtime-Reparaturen | Git- und CI-Spezialist; Ersatzstart durch Chief | vorhandene Runtime-Belege; ausführbarer red-first und Fremdreview fehlen | PC | B | In Prüfung (#641, `e3f7e3a`); Ersatzstart fehlgeschlagen, kein Arbeitsbeginn belegt | fehlende Testbasis korrigieren; eigener prepush Exit 0; unabhängiges Review am Kandidaten; Root-Abnahme; User-/AgentsRoom-Homes separat belegen | b14492cb |
 | GOALS-A | P1 jetzt: Ist-Abgleich früherer Aufträge, realer Native-Goals, laufender Owner und PLAN; verhindert Doppelstarts und unbelegte Abschlüsse | Stabschef; Root nimmt ab | bestehende Übergaben und eigene Goal-Werkzeuge je Session | egal | C | In Arbeit; Root und Chief nativ bestätigt, Worker-Belege werden im Ticket ergänzt | eine Zeile je Live-Agent: Ziel, eigener get/create-Beleg oder belegte Nichtverfügbarkeit plus Ticketziel, Meilenstein und Grenze; kein Plantext als Goal-Beleg | 52f46527 |
 | GOALS-B | P2: Rollen-Goals, Anpassung, Grenzen und selektive Rekursion in AGENTS.md, projecta-workflow und Übergabevorlage verankern; nur Prozessdoku, kein Runtime-Ausbau | Stabschef als Editor; Root nimmt ab | PLAN-C1; Z2-RULE10 im selben Dokumentationspaket | egal | C | Geplant; nächster Schritt: nach PLAN-C1 geprüfter Übergabe Regelpaket schreiben | ≤ 300 ALL; Anforderungen GOALS-01 2–7 erhalten; 1 zusätzliche Selbstprüfung, 2. nur konkreter Restmangel; Stops und unabhängige Reviews/Nutzerfreigaben unverändert; prepush Exit 0 | 52f46527 |
 | GOALS-C | P2 begleitend: drei vorhandene Praxisproben Lane F, DR-02 und HOOK-WIN auswerten; Stichprobe, kein Wirksamkeitsbeweis; keine neuen Jobs/QA/Benchmarks | ausführende Owner dokumentieren; Root bewertet | vorhandene Fix-, Review- und Runtimebelege | egal | C | In Arbeit; Lane F dokumentiert; DR-02 und HOOK-WIN nachführen, Messlücken offen nennen | je Ticket Mangel/kein Mangel, Bestätigung, beobachtete Regressionen, nur gemessener Zusatzaufwand; bei überwiegendem Aufwand Anwendung begrenzen | 52f46527, 55ea21ce, b14492cb |
@@ -101,6 +102,13 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 | Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
 | Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Architekt für Multi-Agenten-Systeme | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
 | Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
+
+Routing-Freigabe Elias 08.10.: Codex und vorhandene dynamische Workflows voll nutzen;
+bei tatsächlich beobachteten ≥ 98 % Wochenverbrauch den vorhandenen banked reset
+über den unterstützten nativen Weg verbrauchen, danach Kontingent neu prüfen.
+Kein Reset vor der Schwelle, keine Quota-Kappenänderung; RAM-, Prozess-, Naht-,
+Review- und Freigabegates bleiben bestehen. Root hat am 08.10. 01:43:49 UTC
+40 % und einen Full-reset-Credit beobachtet; damit ist noch kein Reset ausgeführt.
 
 ## Z3 — Rest von v1.6.0
 
