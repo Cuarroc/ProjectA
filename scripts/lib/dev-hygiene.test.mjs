@@ -92,7 +92,7 @@ test("inProgressPackages reads the Stand column of the milestone tables in docs/
 
 function assertInProgressRows(rows) {
   for (const r of rows) {
-    assert.match(r.status, /^(in Arbeit|PR #\d)/);
+    assert.match(r.status, /^(?:in Arbeit|PR #\d|Drafts? #\d|Ready #\d)/i);
     assert.match(r.id, /^[A-Z]/);
   }
 }
@@ -323,4 +323,164 @@ test("hygiene reports a malformed Z goal table of docs/PLAN.md instead of passin
   assert.match(broken.notChecked.join("\n"), /Z2-B.*4 statt 9 Spalten/);
   assert.match(broken.notChecked.join("\n"), /Z3.*keine Tabelle/);
   assert.ok(countFindings(broken) >= 2);
+});
+
+// Z2-HYGIENE-STATUS — current PLAN status tokens (Draft / Ready / In Arbeit).
+const Z_HEAD =
+  "| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |\n|---|---|---|---|---|---|---|---|---|\n";
+
+test("current PLAN Draft Ready and In Arbeit statuses are recognized", () => {
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    "| Z2-D1 | draft row | o | – | egal | B | Draft #1 | a | – |",
+    "| Z2-R2 | ready row | o | – | egal | B | Ready #2 | a | – |",
+    "| Z2-IA | running | o | – | egal | B | In Arbeit | a | – |",
+    // siblings: legacy tokens still recognized
+    "| Z2-OLD | legacy | o | – | egal | B | in Arbeit PR #10 | a | – |",
+    "| Z2-PR | legacy pr | o | – | egal | B | PR #11 | a | – |",
+    // two candidate PRs
+    "| Z2-DS | drafts | o | – | egal | B | Drafts #3/#4 | a | – |",
+    // explained predecessor / historical numbers must not become candidates
+    "| Z2-PRED | pred | o | – | egal | B | Draft #5 (Vorgänger PR #99; früher #88) | a | – |",
+    // negatives: not startable / not in progress
+    "| Z2-E | done | o | – | egal | B | Erledigt | a | – |",
+    "| Z2-B | blocked | o | – | egal | B | Blockiert | a | – |",
+    "| Z2-P | pending | o | – | egal | B | Pending | a | – |",
+    "| Z2-G | planned | o | – | egal | B | Geplant | a | – |",
+    "",
+  ].join("\n");
+
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(
+    rows.map((r) => [r.id, r.prNumbers]),
+    [
+      ["Z2-D1", [1]],
+      ["Z2-R2", [2]],
+      ["Z2-IA", []],
+      ["Z2-OLD", [10]],
+      ["Z2-PR", [11]],
+      ["Z2-DS", [3, 4]],
+      ["Z2-PRED", [5]],
+    ],
+  );
+
+  // collectHygiene: open candidate PR suppresses the finding; missing does not.
+  const openOk = collectHygiene({
+    ...input,
+    planText: plan,
+    prsOpen: [
+      { number: 1, title: "Z2-D1", headRefName: "cursor/z2-d1", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 2, title: "Z2-R2", headRefName: "cursor/z2-r2", updatedAt: "2026-09-25T11:00:00Z", isDraft: false },
+      { number: 3, title: "Z2-DS", headRefName: "cursor/z2-ds-a", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 4, title: "Z2-DS", headRefName: "cursor/z2-ds-b", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 5, title: "Z2-PRED", headRefName: "cursor/z2-pred", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 10, title: "Z2-OLD", headRefName: "cursor/z2-old", updatedAt: "2026-09-25T11:00:00Z", isDraft: false },
+      { number: 11, title: "Z2-PR", headRefName: "cursor/z2-pr", updatedAt: "2026-09-25T11:00:00Z", isDraft: false },
+    ],
+  });
+  assert.deepEqual(openOk.inProgressWithoutPr.map((r) => r.id), ["Z2-IA"]);
+
+  const missing = collectHygiene({
+    ...input,
+    planText: [
+      "## Z2 — Setup",
+      "",
+      Z_HEAD.trimEnd(),
+      "| Z2-MISS | missing draft | o | – | egal | B | Draft #9 | a | – |",
+      "",
+    ].join("\n"),
+    prsOpen: [],
+  });
+  assert.deepEqual(missing.inProgressWithoutPr.map((r) => r.id), ["Z2-MISS"]);
+  assert.deepEqual(missing.inProgressWithoutPr[0].prNumbers, [9]);
+});
+
+test("In Arbeit candidate PRs exclude later historical PR mentions", () => {
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    "| Z2-IA1 | running | o | – | egal | B | In Arbeit PR #1; Vorgänger PR #99 | a | – |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(rows.map((r) => [r.id, r.prNumbers]), [["Z2-IA1", [1]]]);
+
+  // Only the unrelated predecessor is open — the status's own candidate #1 is missing.
+  const f = collectHygiene({
+    ...input,
+    planText: plan,
+    prsOpen: [{ number: 99, title: "other", headRefName: "cursor/other", updatedAt: "2026-09-25T11:00:00Z", isDraft: false }],
+  });
+  assert.deepEqual(f.inProgressWithoutPr.map((r) => r.id), ["Z2-IA1"]);
+  assert.deepEqual(f.inProgressWithoutPr[0].prNumbers, [1]);
+});
+
+test("Drafts candidates allow SHA and text between PR numbers", () => {
+  const status = "Drafts #671 `5d31ef5` / #674 `39bc839`; earlier note PR #12";
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    `| DR-04c | dual draft | o | – | egal | B | ${status} | a | – |`,
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(rows.map((r) => [r.id, r.prNumbers]), [["DR-04c", [671, 674]]]);
+
+  // One of the two candidates open — must not report "without open PR".
+  const f = collectHygiene({
+    ...input,
+    planText: plan,
+    prsOpen: [{ number: 674, title: "DR-04c", headRefName: "cursor/dr-04c-b", updatedAt: "2026-09-25T11:00:00Z", isDraft: true }],
+  });
+  assert.deepEqual(f.inProgressWithoutPr.map((r) => r.id), []);
+});
+
+test("Draft and Ready PR numbers require a boundary after the digits", () => {
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    "| Z2-BAD-D | typo draft | o | – | egal | B | Draft #1oops | a | – |",
+    "| Z2-BAD-R | typo ready | o | – | egal | B | Ready #2oops | a | – |",
+    "| Z2-OK-D | ok draft | o | – | egal | B | Draft #1 | a | – |",
+    "| Z2-OK-R | ok ready | o | – | egal | B | Ready #2 | a | – |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(
+    rows.map((r) => [r.id, r.prNumbers]),
+    [
+      ["Z2-OK-D", [1]],
+      ["Z2-OK-R", [2]],
+    ],
+  );
+});
+
+test("Drafts candidates exclude later historical PR mentions after a comma", () => {
+  const planText = [
+    "| ID | Title | Status |",
+    "|---|---|---|",
+    "| Z2-PROBE | probe | Drafts #1/#2, Vorgänger PR #99 |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(planText);
+  assert.deepEqual(rows[0].prNumbers, [1, 2]);
+
+  // Only the unrelated predecessor is open — candidates #1/#2 are missing.
+  const hints = collectHygiene({
+    now: NOW,
+    planText,
+    prsOpen: [{ number: 99, title: "unrelated", headRefName: "cursor/unrelated", updatedAt: "2026-09-25T11:00:00Z" }],
+    prsAll: [],
+    remoteBranches: [],
+    standText: "## Aktive Specs\n",
+    erledigtText: "| Datum | ID |\n",
+    untracked: [],
+  }).inProgressWithoutPr;
+  assert.equal(hints.length, 1);
+  assert.deepEqual(hints[0].prNumbers, [1, 2]);
 });
