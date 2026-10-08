@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join as joinPath } from "node:path";
 import { test } from "node:test";
-import { findViolations, scopeFiles } from "./hygiene-check.mjs";
+import { findViolations, run, scopeFiles } from "./hygiene-check.mjs";
 
 // Fixtures are assembled at runtime so this file never holds a forbidden
 // literal itself (it is scanned by the very check it tests).
@@ -62,6 +62,24 @@ test("scans staged content instead of the working tree", () => {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("a git read failure exits 2 without printing file content", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  const secret = join("someone", AT, "example", ".", "org");
+  const lines = [];
+  try {
+    git("init", "-q");
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    writeFileSync(joinPath(root, "tools/denkraum/big.txt"), `${secret}\n`.repeat(50));
+    git("add", "tools");
+    const log = { log: (...a) => lines.push(a.join(" ")), error: (...a) => lines.push(a.join(" ")) };
+    assert.equal(run(root, log, 64), 2, "a buffer overflow must fail with its own exit code");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+  assert.ok(lines.length > 0 && lines.every((line) => !line.includes(secret)), "diagnostic must not carry file content");
 });
 
 test("the check and its test are clean under their own rules", () => {

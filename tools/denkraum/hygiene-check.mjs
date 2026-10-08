@@ -41,19 +41,28 @@ export function findViolations(files) {
 
 // Tracked files are read from the index, because that is what a commit
 // publishes; the working tree may differ from it or miss the file entirely.
-export function scopeFiles(root) {
-  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 });
+export function scopeFiles(root, maxBuffer = 64 << 20) {
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer });
   const list = (...flags) => git("ls-files", "-z", ...flags, "--", SCOPE).split("\0").filter(Boolean);
   const staged = list("--cached").map((path) => ({ path, text: git("show", `:${path}`) }));
   const added = list("--others", "--exclude-standard").map((path) => ({ path, text: readFileSync(`${root}/${path}`, "utf8") }));
   return [...staged, ...added];
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const root = fileURLToPath(new URL("../..", import.meta.url));
-  const files = scopeFiles(root);
+// Exit 0 clean, 1 findings, 2 the scope could not be read. A git or read error
+// is reported by its code only: its message or captured stdout may hold file content.
+export function run(root, log = console, maxBuffer) {
+  let files;
+  try { files = scopeFiles(root, maxBuffer); } catch (error) {
+    log.error(`denkraum hygiene: cannot read ${SCOPE} (${error.code ?? error.status ?? "error"})`);
+    return 2;
+  }
   const found = findViolations(files);
-  for (const { path, line, rule } of found) console.error(`${path}:${line}: ${rule}`);
-  console.log(`denkraum hygiene: ${files.length} files, ${found.length} findings`);
-  process.exit(found.length ? 1 : 0);
+  for (const { path, line, rule } of found) log.error(`${path}:${line}: ${rule}`);
+  log.log(`denkraum hygiene: ${files.length} files, ${found.length} findings`);
+  return found.length ? 1 : 0;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exit(run(fileURLToPath(new URL("../..", import.meta.url))));
 }
