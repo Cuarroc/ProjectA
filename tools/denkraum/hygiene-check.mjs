@@ -42,7 +42,7 @@ export function findViolations(files) {
 // Tracked files are read from the index, because that is what a commit
 // publishes; the working tree may differ from it or miss the file entirely.
 export function scopeFiles(root, maxBuffer = 64 << 20) {
-  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer });
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer, stdio: "pipe" });
   const list = (...flags) => git("ls-files", "-z", ...flags, "--", SCOPE).split("\0").filter(Boolean);
   const staged = list("--cached").map((path) => ({ path, text: git("show", `:${path}`) }));
   const added = list("--others", "--exclude-standard").map((path) => ({ path, text: readFileSync(`${root}/${path}`, "utf8") }));
