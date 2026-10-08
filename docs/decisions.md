@@ -3,15 +3,20 @@
 Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 (Log, keine zweite AGENTS.md — M12, Rev-8-SANIERUNGSPLAN §9/8.31.)
 
+## 2026-10-08
+
+- **A1 ApiBackend-Adapter und `main.rs` (entschieden 08.10.2026).** **Was?** Aufteilung erst nach M4: `ApiBackend` bleibt bis dahin in `main.rs`; danach kleine fachliche Schnittstellen (Domänenports) schrittweise aus `ControlBackend` lösen, keine Gesamtverschiebung. Chief plant dafür eigene Pakete innerhalb der Paketgrenze aus AGENTS.md Regel 1; ARCH-12 bleibt bis zu diesem Zuschnitt gesperrt.
+  **Warum?** `ControlBackend` in `api.rs` umfasst 497 Zeilen und 74 Methoden, die Implementierung in `main.rs` 725 Zeilen und 73 Methoden. Kleine fachliche Schritte sind deshalb sinnvoller als eine Gesamtverschiebung. Eine zusätzliche Aufteilung würde beide Nahtstellen neben den bereits geplanten Arbeiten belegen.
+  **Wann zurücknehmen?** Das Warten bis nach M4 neu entscheiden, sobald für mindestens zwei ansonsten startbereite M4-Pakete jeweils mehr als sieben Tage Wartezeit allein auf mn belegt sind. Messquelle: PLAN-Statusspalte und Datum des Bereit-Eintrags (`git log`), bis OPS-01 Wartezeit je Lane ausweist; solche Messungen liegen diesem Eintrag nicht vor. Den Port-Zuschnitt neu entscheiden, wenn ein konkreter vollständiger Kandidat samt Tests nicht innerhalb der Paketgrenze aus AGENTS.md Regel 1 teilbar ist.
+
 ## 2026-10-05
 
 - **Was?** v1.5.0 ist ein App-Release über den menschlich kontrollierten GitHub-Pfad; der Dauerbetrieb bleibt ausgeschaltet und nicht freigegeben. **Warum?** W5-02d ist nach M4 geparkt, E5 verlangt den ausgeschalteten Dauerbetrieb bis zur Abnahme, und Fable 5.1 sowie GPT-6 Astra empfahlen deshalb E20 Option A. **Wann zurücknehmen?** Sobald W5-02d gelandet ist, die ursprünglichen Matrixzeilen 18 und 27 in M5 wiederherstellen.
 
 ## 2026-10-03
 
-### ADR-Vorschläge (offen)
+### ADR-Entscheidungen und offene Vorschläge
 
-- **A1 ApiBackend-Adapter und `main.rs`: Vorschlag (offen).** Die große Verbindungsschicht bleibt bis nach M4 liegen; danach wird das Trait in Domänenports geteilt, weil der Block nicht sinnvoll in ein Paket mit höchstens 300 Diffzeilen passt. Umkehren, wenn OPS-01 belegt, dass zwei M4-Pakete länger als eine Woche auf der mn-Lane warten.
 - **A2 Dead-Code-Sichtbarkeit: Vorschlag (offen).** Binärmodule verwenden `mod` statt `pub mod`, eingefrorener M4-Code erhält Item-`allow` mit Paket-ID, und die M4-Abnahme löscht den verbleibenden Rest. Umkehren: nie; das ist Lint-Hygiene.
 - **A3 Ein atomarer Schreibpfad: Vorschlag (offen).** `fsutil::replace_file` nutzt auf Windows `MoveFileExW(REPLACE_EXISTING|WRITE_THROUGH)` und auf Unix `rename(2)`; lokale Kopien entfallen. Umkehren, wenn eine Messung `WRITE_THROUGH` als Engpass zeigt; dann das Flag je Aufrufer prüfen, nicht wieder Kopien einführen.
 - **A4 Fehlercodes: Vorschlag (offen).** Präfix-Strings für `ERR_UNKNOWN` und `ERR_REFUSED` bleiben bis M4 bestehen; `CoreError` kommt erst mit einem dritten Transport. Umkehren mit diesem Paket, falls der dritte Transport früher verbindlich wird.
