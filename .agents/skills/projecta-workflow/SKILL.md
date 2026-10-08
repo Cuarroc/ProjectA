@@ -131,3 +131,12 @@ who asks the user.
    (coordinator only) moves it to the front; `conflict` is set and cleared by
    Mergify. Merge authority follows AGENTS.md's ten core rules; use Mergify,
    never infer a manual bypass from this skill. Details: `docs/setup/mergify.md`.
+
+## 7. Task operators
+
+Use ONE stable German uppercase operator from `AGENTS.md` “Task operators” per brief.
+Include its minimal header: OPERATOR, AUTHORITY, GOAL, NON-GOALS, BASE branch@SHA, FILES/SEAM, SIZE, RED-FIRST, ACCEPTANCE, TIER/REVIEW, REPORT, OVERLAP.
+Rules 4 (push) and 7 (PR text = report) apply to UMSETZEN/NACHBESSERN/INTEGRIEREN; read-only operators report in the last message or an uncommitted report file and never commit.
+REVIEWEN binds findings to a fixed head and file:line, never in the author's model family; INTEGRIEREN is coordinator-only and uses Mergify.
+ENTSCHEIDEN is for the named owner only; money/install/delete/release/security/scope decisions belong to the user. ERFRAGEN answers are information, not approval.
+Follow each operator's output and write/push/PR limits in the table; no operator expands authority. Keep PFLEGEN canonical; ÜBERGEBEN records WIP commit + push and checkpoint; BLOCKIERT MELDEN stops with reason, evidence and resume condition.
