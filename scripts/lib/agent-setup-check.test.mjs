@@ -128,6 +128,7 @@ test("SETUP-VERSION: non-finite node major fails mandatory check", () => {
   const binaries = { ...healthy.binaries, kimi: null, opencode: null };
   for (const nodeVersion of [
     "vInfinity.0.0", Infinity, "v1e309.0.0", "vNaN.0.0", NaN,
+    `v${"9".repeat(400)}.0.0`, "v9007199254740992.0.0",
     "vinvalid.0.0", "v0x18.0.0", "v2e2.0.0", "v+24.0.0", "v 24.0.0",
     "", null, undefined,
   ]) {

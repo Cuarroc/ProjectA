@@ -84,8 +84,9 @@ export const CHECKS = [
     label: "Node.js >= 24",
     required: true,
     run: (p) => {
-      const major = Number(String(p.nodeVersion || "").replace(/^v/, "").split(".")[0]);
-      return major >= 24 ? ok(`node ${p.nodeVersion}`) : fail(`node ${p.nodeVersion || "missing"}`, "Install Node.js 24 or newer, then npm ci.");
+      const majorText = String(p.nodeVersion || "").replace(/^v/, "").split(".")[0];
+      const major = /^(0|[1-9]\d*)$/.test(majorText) ? Number(majorText) : NaN;
+      return Number.isSafeInteger(major) && major >= 24 ? ok(`node ${p.nodeVersion}`) : fail(`node ${p.nodeVersion || "missing"}`, "Install Node.js 24 or newer, then npm ci.");
     },
   },
   ...Object.entries(REQUIRED_BINARIES).map(([name, spec]) => binaryCheck(name, spec, true)),
