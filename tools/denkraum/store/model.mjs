@@ -88,6 +88,9 @@ export function compareQuestions(state, a, b) {
 
 function validateState(state) {
   ensure(state && [1, 2].includes(state.schemaVersion) && Number.isSafeInteger(state.revision) && state.revision >= 0 && Array.isArray(state.questions) && Array.isArray(state.answers), 'Datendatei beschädigt. Wiederherstellung nötig.', 503);
+  // Only the shape every ledger scan dereferences; older optional fields stay untouched (DR-03 C-2).
+  ensure(state.questions.every(q => record(q) && validId(q.id)) && state.answers.every(a => record(a) && validId(a.questionId)),
+    'Datendatei beschädigt: Frage oder Antwort.', 503);
   if (state.questionImports !== undefined) ensure(Array.isArray(state.questionImports) && state.questionImports.every(r => record(r) && validId(r.requestId)
     && typeof r.payload === 'string' && record(r.result) && validId(r.result.id) && Number.isSafeInteger(r.result.revision) && r.result.revision > 0), 'Datendatei beschädigt: question imports.', 503);
   for (const r of state.questionImports ?? []) {
