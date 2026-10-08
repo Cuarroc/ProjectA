@@ -69,6 +69,7 @@ mod development_plan;
 mod development_plan_access;
 mod development_policy;
 mod diagnosis;
+mod diagnosis_cmds;
 mod diff;
 mod digest;
 mod enhance;
@@ -117,6 +118,7 @@ mod web_interface;
 mod workers;
 mod worktree;
 
+use diagnosis_cmds::*;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1953,43 +1955,6 @@ fn parse_stats_range(range: Option<&str>) -> Result<stats::StatsRange, String> {
 
 // -- P2-H diagnosis (log path, pack, Warum) --------------------------------
 
-#[tauri::command]
-fn get_log_path(app: AppHandle) -> Result<String, String> {
-    let dir = app_data_dir(&app)?;
-    Ok(logging::log_file(&dir).display().to_string())
-}
-
-#[tauri::command]
-fn get_panic_notice(notice: State<'_, PanicNotice>) -> PanicNotice {
-    notice.inner().clone()
-}
-
-#[tauri::command]
-fn get_reason_catalog() -> Vec<diagnosis::ReasonExplanation> {
-    diagnosis::reason_catalog()
-}
-
-#[tauri::command]
-async fn export_diagnosis(
-    app: AppHandle,
-    store: State<'_, Store>,
-    engine: State<'_, Arc<StatusEngine>>,
-    vault: State<'_, Arc<KeyVault>>,
-    notice: State<'_, PanicNotice>,
-) -> Result<String, String> {
-    let dir = app_data_dir(&app)?;
-    let panic = notice.inner().clone();
-    let (pack, secrets) = diagnosis::collect(
-        &dir,
-        store.inner(),
-        engine.inner().as_ref(),
-        vault.inner().as_ref(),
-        &panic,
-    )
-    .await?;
-    Ok(diagnosis::export_json(&pack, &secrets))
-}
-
 /// F5 baseline: CPU/RAM/disk plus the OmniRoute token totals. No ceilings.
 #[tauri::command]
 async fn get_resource_snapshot(
@@ -2018,58 +1983,7 @@ async fn delete_session_buffers() -> Result<usize, String> {
         .map_err(|e| format!("deleting the session buffers did not finish: {e}"))?
 }
 
-/// Open the log file in the OS file manager so the user does not have to
-/// know `%APPDATA%`. Explorer's `/select,` highlights the file; elsewhere
-/// the parent directory opens.
-#[tauri::command]
-fn reveal_log_path(app: AppHandle) -> Result<(), String> {
-    let dir = app_data_dir(&app)?;
-    let path = logging::log_file(&dir);
-    #[cfg(windows)]
-    {
-        crate::proc::command("explorer")
-            .arg(format!("/select,{}", path.display()))
-            .spawn()
-            .map_err(|e| format!("failed to open Explorer: {e}"))?;
-        Ok(())
-    }
-    #[cfg(target_os = "macos")]
-    {
-        crate::proc::command("open")
-            .arg("-R")
-            .arg(&path)
-            .spawn()
-            .map_err(|e| format!("failed to reveal the log file: {e}"))?;
-        Ok(())
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        let parent = path.parent().unwrap_or(path.as_path());
-        crate::proc::command("xdg-open")
-            .arg(parent)
-            .spawn()
-            .map_err(|e| format!("failed to open the log directory: {e}"))?;
-        Ok(())
-    }
-}
-
 // -- stuck diagnosis commands (Phase 18) -----------------------------------
-
-/// After how many quiet minutes a running worker is called stuck, or `null`
-/// when the built-in default applies.
-#[tauri::command]
-async fn get_stuck_after_minutes(store: State<'_, Store>) -> Result<Option<u64>, String> {
-    Ok(stuck::threshold_minutes(&store).await)
-}
-
-/// Set (or with `null`, clear) that threshold.
-#[tauri::command]
-async fn set_stuck_after_minutes(
-    store: State<'_, Store>,
-    minutes: Option<u64>,
-) -> Result<(), String> {
-    stuck::set_threshold_minutes(&store, minutes).await
-}
 
 // -- provider commands (Phase 7.2) -----------------------------------------
 
