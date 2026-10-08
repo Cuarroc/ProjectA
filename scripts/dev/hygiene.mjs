@@ -77,6 +77,61 @@ export function hasStatusTable(md) {
   return lines.some((_, i) => statusColumn(lines, i) !== -1);
 }
 
+// Current PLAN tokens (Draft / Ready / In Arbeit) plus the legacy "in Arbeit" /
+// "PR #n" forms. Candidate PRs come from the leading status marker only —
+// bare "#n" or "PR #n" inside later explanations (Vorgänger, früher, …) is ignored.
+// Digits must end at a non-alphanumeric boundary so "Draft #1oops" is not a match.
+const PR_NUM = String.raw`#(\d+)(?![0-9A-Za-z])`;
+const IN_PROGRESS_STATUS = new RegExp(String.raw`^(?:in Arbeit|PR ${PR_NUM}|Drafts? ${PR_NUM}|Ready ${PR_NUM})`, "i");
+
+// Leading Drafts candidate list: #n, optional `sha` / bare hex between `/`
+// separators. Later free-text explanations (", Vorgänger PR #99", "; …") stop
+// the scan — they are not candidates.
+function draftsCandidateNumbers(status) {
+  const prefix = /^Drafts\s+/i.exec(status);
+  if (!prefix) return null;
+  let pos = prefix[0].length;
+  const nums = [];
+  const takeNum = () => {
+    const m = /^#(\d+)(?![0-9A-Za-z])/.exec(status.slice(pos));
+    if (!m) return null;
+    pos += m[0].length;
+    return Number(m[1]);
+  };
+  const skipDecor = () => {
+    while (true) {
+      const m = /^(?:\s+|`[^`]*`|[0-9a-f]{7,40}\b)/i.exec(status.slice(pos));
+      if (!m) break;
+      pos += m[0].length;
+    }
+  };
+  const first = takeNum();
+  if (first == null) return [];
+  nums.push(first);
+  skipDecor();
+  while (status[pos] === "/") {
+    pos += 1;
+    skipDecor();
+    const n = takeNum();
+    if (n == null) break;
+    nums.push(n);
+    skipDecor();
+  }
+  return nums;
+}
+
+function candidatePrNumbers(status) {
+  const s = String(status);
+  const drafts = draftsCandidateNumbers(s);
+  if (drafts) return drafts;
+  let m = new RegExp(String.raw`^(?:Draft|Ready|PR) ${PR_NUM}`, "i").exec(s);
+  if (m) return [Number(m[1])];
+  // In Arbeit: only the optional PR immediately after the status token.
+  m = new RegExp(String.raw`^in Arbeit(?: PR ${PR_NUM})?`, "i").exec(s);
+  if (m) return m[1] ? [Number(m[1])] : [];
+  return [];
+}
+
 export function inProgressPackages(md) {
   const lines = String(md).split(/\r?\n/);
   const out = [];
@@ -86,8 +141,8 @@ export function inProgressPackages(md) {
     for (let j = i + 2; j < lines.length && lines[j].startsWith("|"); j++) {
       const c = cells(lines[j]);
       const status = c[statusIdx] || "";
-      if (!/^(in Arbeit|PR #\d)/.test(status)) continue;
-      out.push({ id: c[0], title: c[1] || "", status, prNumbers: [...status.matchAll(/PR #(\d+)/g)].map((m) => Number(m[1])) });
+      if (!IN_PROGRESS_STATUS.test(status)) continue;
+      out.push({ id: c[0], title: c[1] || "", status, prNumbers: candidatePrNumbers(status) });
     }
   }
   return out;
