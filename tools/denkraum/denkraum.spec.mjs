@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +15,8 @@ const stateWith = (rootAgentId, extra = {}) => ({
   patches: [{ id: "p1", revision: 1, label: "l", windowText: "w", reason: "r", sourceRefs: [ref], authorityMode: "configured-verifier-attestation", authorityEvidenceRefs: ["evidence"] }],
 });
 
-async function setupPage(page, metaContent, stateData, scriptError = false) {
+async function setupPage(page, metaContent, stateData, scriptError = false, { clock = false } = {}) {
+  if (clock) await page.clock.install();
   await page.route('**/*', async route => {
     const url = route.request().url();
     if (url === 'http://127.0.0.1/' || url === 'http://127.0.0.1/index.html') {
@@ -28,14 +29,14 @@ async function setupPage(page, metaContent, stateData, scriptError = false) {
       if (stateData === "network-error") {
         await route.abort('failed');
       } else {
-        await route.fulfill({ json: stateData });
+        await route.fulfill({ json: typeof stateData === 'function' ? stateData() : stateData });
       }
     } else if (url.includes('/api/inbox')) {
       await route.fulfill({ status: 404 });
     } else if (url.includes('/api/ideas') || url.includes('/api/answers') || url.includes('/api/workbench')) {
       await route.fulfill({ json: {} });
     } else if (url.includes('/style.css')) {
-      await route.fulfill({ body: '', contentType: 'text/css' });
+      await route.fulfill({ body: readFileSync(join(__dirname, 'style.css'), 'utf8'), contentType: 'text/css' });
     } else if (url.includes('/app/questions.js')) {
       const code = scriptError ? "throw new Error('split script startup broken');" : readFileSync(join(__dirname, 'app/questions.js'), 'utf8');
       await route.fulfill({ body: code, contentType: 'application/javascript' });
@@ -58,6 +59,16 @@ async function setupPage(page, metaContent, stateData, scriptError = false) {
     });
   }
 }
+
+const stamp = '2026-01-01T00:00:00Z';
+const idea = (id, title, text, fields = {}, history = []) => ({
+  id, revisions: [...history, { revision: history.length + 1, eventId: `e-${id}`, requestId: `r-${id}`, title, text, createdAt: stamp, ...fields }],
+});
+function categoryState(ideas) {
+  return { schemaVersion: 2, revision: 1, answers: [], questions: [], ideas, receipts: [], progress: [], patches: [] };
+}
+async function openIdeas(page) { await page.locator('#area-think').click(); }
+async function ideaIds(page) { return page.locator('.idea-card').evaluateAll(nodes => nodes.map(n => n.dataset.ideaId)); }
 
 test("root receiver fails closed without injected id", async ({ page }) => {
   const dir = join(__dirname, 'app');
@@ -184,4 +195,245 @@ test("D4: a missing or empty root id blocks every POST action", async ({ page })
   
   expect(postCalled).toBe(false);
   await expect(page.locator('#idea-status')).toHaveText('Nur in diesem Browser · noch nicht an den Orchestrator gesendet.');
+});
+
+test('DR12: category projection and search intersection', async ({ page }) => {
+  const ideas = [
+    idea('b', 'Beta', 'Original alpha', { category: ' Technik ' }, [{ revision: 1, eventId: 'old-b', requestId: 'old', title: 'Historischer Titel', text: 'alt', createdAt: stamp, category: 'Historische Kategorie' }]),
+    idea('a', 'Alpha', 'Original beta'),
+    idea('blank', 'Leer', 'Leer', { category: ' ' }),
+    idea('null', 'Null', 'Null', { category: null }),
+    idea('invalid', 'Zahl', 'Zahl', { category: 7 }),
+    idea('over', 'Zu lang', 'Zu lang', { category: 'A'.repeat(81) }),
+    idea('edge', 'Grenze', 'Grenze', { category: ' ' + '😀'.repeat(40) + ' ' }),
+    idea('edgeover', 'Über Grenze', 'Über Grenze', { category: '😀'.repeat(41) }),
+    idea('star', 'Stern', 'Stern', { category: '*' }),
+    idea('long80', 'L80', 'Text80', { category: 'S'.repeat(80) }),
+  ];
+  await setupPage(page, 'injected', categoryState(ideas));
+  await openIdeas(page);
+  const category = page.locator('#idea-category');
+  await expect(category.locator('option').first()).toHaveText('Alle Kategorien');
+  expect(await category.locator('option').first().getAttribute('value')).toBe('*');
+  expect(await category.locator('option').evaluateAll(nodes => nodes.map(n => n.value))).not.toContain(JSON.stringify('Historische Kategorie'));
+  await category.selectOption(JSON.stringify('Technik'));
+  await page.locator('#idea-search').fill('ALPHA');
+  expect(await ideaIds(page)).toEqual(['b']);
+  await expect(page.locator('#idea-count')).toHaveText('1 von 10 gespeicherten Ideen');
+  await page.locator('#idea-search').fill('Historischer Titel');
+  expect(await ideaIds(page)).toEqual([]);
+  await expect(page.locator('#idea-cards')).toContainText('Keine Ideen für diese Auswahl.');
+  await page.locator('#idea-search').fill('');
+  await category.selectOption('*');
+  expect(await ideaIds(page)).toEqual(ideas.map(i => i.id));
+  for (const [value, expected] of [
+    ['', ['a', 'blank']],
+    [null, ['null', 'invalid', 'over', 'edgeover']],
+    ['😀'.repeat(40), ['edge']],
+    ['*', ['star']],
+    ['S'.repeat(80), ['long80']],
+  ]) {
+    await category.selectOption(JSON.stringify(value));
+    expect(await ideaIds(page)).toEqual(expected);
+  }
+});
+
+test('DR12: changed categories retain absent selection', async ({ page }) => {
+  let live = categoryState([
+    idea('b', 'Beta', 'Text', { category: 'Technik' }),
+    idea('a', 'Alpha', 'Other', { category: 'Neu' }),
+  ]);
+  await setupPage(page, 'injected', () => live);
+  await openIdeas(page);
+  const category = page.locator('#idea-category');
+  await category.selectOption(JSON.stringify('Technik'));
+  expect(await ideaIds(page)).toEqual(['b']);
+  live = categoryState([
+    idea('b', 'Beta', 'Text', { category: 'Neu' }),
+    idea('a', 'Alpha', 'Other', { category: 'Neu' }),
+  ]);
+  await page.evaluate(() => load());
+  await page.waitForFunction(() => !loading);
+  expect(await category.inputValue()).toBe(JSON.stringify('Technik'));
+  await expect(category.locator('option:checked')).toContainText('derzeit nicht im Datenstand');
+  expect(await ideaIds(page)).toEqual([]);
+  expect(await category.locator('option').evaluateAll(nodes => nodes.map(n => n.value))).toEqual(['*', JSON.stringify('Neu'), JSON.stringify('Technik')]);
+  live = categoryState([
+    idea('b', 'Beta', 'Text', { category: 'Technik' }),
+    idea('a', 'Alpha', 'Other', { category: 'Neu' }),
+  ]);
+  await page.evaluate(() => load());
+  await page.waitForFunction(() => !loading);
+  expect(await category.inputValue()).toBe(JSON.stringify('Technik'));
+  expect(await ideaIds(page)).toEqual(['b']);
+  expect(await page.evaluate(() => document.querySelector('#idea-category option:checked')?.textContent)).toBe('Technik');
+});
+
+test('DR12: unchanged options survive the 15 second poll', async ({ page }) => {
+  const live = categoryState([
+    idea('b', 'Beta', 'alpha text', { category: 'Technik' }),
+    idea('a', 'Alpha', 'beta text', { category: 'Plan' }),
+  ]);
+  await setupPage(page, 'injected', () => live, false, { clock: true });
+  await openIdeas(page);
+  const category = page.locator('#idea-category');
+  await category.selectOption(JSON.stringify('Technik'));
+  await category.focus();
+  expect(await page.evaluate(() => {
+    const select = document.getElementById('idea-category');
+    window.__dr12Category = { select, options: [...select.options], value: select.value };
+    return document.activeElement === select;
+  })).toBe(true);
+  const second = page.waitForResponse(r => r.url().includes('/api/state') && r.ok());
+  await page.clock.fastForward(15000);
+  await second;
+  await page.waitForFunction(() => !loading);
+  const afterPoll = await page.evaluate(() => {
+    const select = document.getElementById('idea-category'), prev = window.__dr12Category;
+    return {
+      sameSelect: select === prev.select,
+      sameOptions: [...select.options].every((o, i) => o === prev.options[i]),
+      value: select.value,
+      focus: document.activeElement === select,
+    };
+  });
+  expect(afterPoll).toEqual({ sameSelect: true, sameOptions: true, value: JSON.stringify('Technik'), focus: true });
+  await page.locator('#idea-search').fill('alpha');
+  const afterSearch = await page.evaluate(() => {
+    const select = document.getElementById('idea-category'), prev = window.__dr12Category;
+    return {
+      sameSelect: select === prev.select,
+      sameOptions: [...select.options].every((o, i) => o === prev.options[i]),
+      value: select.value,
+    };
+  });
+  expect(afterSearch).toEqual({ sameSelect: true, sameOptions: true, value: JSON.stringify('Technik') });
+  expect(await ideaIds(page)).toEqual(['b']);
+});
+
+test('DR12: category refresh preserves draft and pending guards', async ({ page }) => {
+  const ideas = [
+    idea('b', 'Beta', 'Original', { category: 'Technik' }),
+    idea('a', 'Alpha', 'Other', { category: '' }),
+    idea('c', 'Gamma', 'More', { category: null }),
+    idea('d', 'Delta', 'Last', { category: 'Plan' }),
+  ];
+  const errors = [];
+  const posts = [];
+  page.on('pageerror', err => errors.push(err.message));
+  await page.route('**/api/ideas', async route => {
+    if (route.request().method() === 'POST') posts.push(route.request().postData());
+    await route.fulfill({ json: {} });
+  });
+  await setupPage(page, 'injected', categoryState(ideas));
+  await openIdeas(page);
+  const category = page.locator('#idea-category');
+  await category.selectOption(JSON.stringify('Technik'));
+  expect(await page.locator('.idea-edit:enabled').count()).toBe(1);
+  await category.focus();
+  await page.keyboard.press('Tab');
+  expect(await page.locator('.idea-card[data-idea-id="b"] .idea-edit').evaluate(n => document.activeElement === n)).toBe(true);
+  await page.locator('.idea-card[data-idea-id="b"] .idea-edit').click();
+  await page.locator('#idea').fill('Ungesicherter Entwurf');
+  await page.locator('#idea').evaluate(n => n.setSelectionRange(3, 6));
+  const saved = await page.evaluate(() => JSON.stringify({ ideaOperation, storage: { ...localStorage } }));
+  await category.selectOption(JSON.stringify(''));
+  await category.focus();
+  await page.evaluate(() => load());
+  await page.waitForFunction(() => !loading);
+  expect(await category.inputValue()).toBe(JSON.stringify(''));
+  expect(await page.evaluate(() => document.activeElement.id)).toBe('idea-category');
+  expect(await page.locator('#idea').inputValue()).toBe('Ungesicherter Entwurf');
+  expect(await page.locator('#idea').evaluate(n => [n.selectionStart, n.selectionEnd])).toEqual([3, 6]);
+  expect(await page.evaluate(() => JSON.stringify({ ideaOperation, storage: { ...localStorage } }))).toBe(saved);
+  const pending = { id: 'b', expectedRevision: 1, requestId: 'pending', title: 'Pending', text: 'Unbestätigter Text' };
+  await page.evaluate(value => {
+    localStorage.setItem('decision-desk.idea-operation.v1', JSON.stringify({ id: value.id, expectedRevision: 1, pending: value }));
+  }, pending);
+  await page.reload();
+  await page.waitForFunction(() => {
+    const conn = document.getElementById('connection');
+    return conn && conn.textContent.includes('Aktualisiert');
+  });
+  await openIdeas(page);
+  await page.locator('#idea-category').selectOption('null');
+  await page.evaluate(() => load());
+  await page.waitForFunction(() => !loading);
+  expect(await page.evaluate(() => ideaOperation.pending)).toEqual(pending);
+  expect(await page.locator('#idea').isDisabled()).toBe(true);
+  const editCount = await page.locator('.idea-edit').count();
+  expect(editCount).toBeGreaterThan(0);
+  expect(await page.locator('.idea-edit').evaluateAll(nodes => nodes.every(n => n.disabled))).toBe(true);
+  expect(posts).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('DR12: real CSS gives field borders 3 to 1 contrast', async ({ page }) => {
+  await setupPage(page, 'injected', categoryState([idea('a', 'Alpha', 'Text')]));
+  await openIdeas(page);
+  const report = await page.evaluate(() => {
+    const parse = color => {
+      const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
+      if (!m) return null;
+      return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+    };
+    const blend = (fg, bg) => ({
+      r: Math.round(fg.r * fg.a + bg.r * (1 - fg.a)),
+      g: Math.round(fg.g * fg.a + bg.g * (1 - fg.a)),
+      b: Math.round(fg.b * fg.a + bg.b * (1 - fg.a)),
+      a: 1,
+    });
+    const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const lum = ({ r, g, b }) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const sheets = [...document.styleSheets].some(s => {
+      try { return [...s.cssRules].some(r => r.cssText && r.cssText.includes('--line')); } catch { return false; }
+    });
+    const field = document.getElementById('idea') || document.getElementById('idea-search');
+    const cs = getComputedStyle(field);
+    const border = parse(cs.borderTopColor);
+    let bg = { r: 0, g: 0, b: 0, a: 0 };
+    for (let el = field; el; el = el.parentElement) {
+      const fill = parse(getComputedStyle(el).backgroundColor);
+      if (!fill) continue;
+      bg = fill.a >= 1 ? { ...fill, a: 1 } : blend(fill, bg.a ? bg : { r: 233, g: 237, b: 243, a: 1 });
+      if (bg.a >= 1 && fill.a >= 1) break;
+    }
+    if (!bg.a) bg = { r: 233, g: 237, b: 243, a: 1 };
+    const fieldFill = parse(cs.backgroundColor);
+    const composite = fieldFill.a < 1 ? blend(fieldFill, bg) : fieldFill;
+    const contrast = ratio(border, composite);
+    return { sheets, border, composite, contrast, method: 'WCAG relative luminance on composited border vs field fill' };
+  });
+  expect(report.sheets).toBe(true);
+  expect(report.contrast).toBeGreaterThanOrEqual(3);
+  console.log('DR12 contrast', JSON.stringify(report));
+});
+
+test('DR12: category controls fit 1440 390 and 320', async ({ page }) => {
+  const ideas = [
+    idea('long', 'L'.repeat(200), 'Text'.repeat(2000), { category: 'S'.repeat(80), source: 'S'.repeat(2000) }),
+    idea('b', 'Beta', 'Text', { category: 'Technik' }),
+    idea('a', 'Alpha', 'Other'),
+  ];
+  const outDir = join('/tmp', `dr12-fit-${Date.now()}`);
+  mkdirSync(outDir, { recursive: true });
+  await setupPage(page, 'injected', categoryState(ideas));
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await openIdeas(page);
+    await expect(page.getByLabel('Kategorie · Nutzerangabe (ungeprüft)', { exact: true })).toHaveCount(1);
+    await page.locator('#idea-category').focus();
+    expect(await page.evaluate(() => document.activeElement.id)).toBe('idea-category');
+    expect(await page.locator('#idea-category').count()).toBe(1);
+    expect(await page.locator('.idea-card').count()).toBeGreaterThan(0);
+    const bounds = await page.locator('#idea-category,.idea-card').evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect(), panel = document.getElementById('thinking').getBoundingClientRect();
+      return { left: box.left, right: box.right, panelLeft: panel.left, panelRight: panel.right, overflow: node.scrollWidth - node.clientWidth };
+    }));
+    expect(bounds.every(b => b.left >= b.panelLeft - 1 && b.right <= b.panelRight + 1 && b.overflow <= 1)).toBe(true);
+    const shot = join(outDir, `${width}.png`);
+    await page.screenshot({ path: shot, fullPage: true });
+    expect(readFileSync(shot).length).toBeGreaterThan(1000);
+  }
 });
