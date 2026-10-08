@@ -1693,9 +1693,9 @@ fn execute_protocol_events(
                 receipt: Box::new(receipt),
             })?;
             if let Some(handshake) = &handshake {
-                // Durable receipt persistence shares the existing writer-drain
-                // deadline. A shorter independent wait can reject a successful
-                // SQLite checkpoint; a new wait here would extend the budget.
+                // Durable receipt persistence shares the writer-drain deadline
+                // derived below from the SQLite busy_timeout budget. A shorter
+                // independent wait can reject a successful SQLite checkpoint.
                 while !handshake.observed.load(Ordering::Acquire) {
                     if writer_stop.load(Ordering::Acquire) || Instant::now() >= deadline {
                         return Err("receipt acknowledgement unavailable".into());
@@ -1715,7 +1715,15 @@ fn execute_protocol_events(
         .and_then(|prepared| execute_protocol_settlement(prepared, observer, lifecycle));
     let capture_failure = terminal.as_ref().err().cloned();
     drop(events_tx);
-    let drain_deadline = Instant::now() + Duration::from_secs(5);
+    // Fail-closed: still bound the drain, but size it for sequential durable
+    // checkpoints. Launch/Process/Input/Receipt may still be pending when the
+    // child exits; each can wait up to Store::open busy_timeout (5s). A fixed
+    // 5s window rejected a successful Receipt commit under that load (KI-30).
+    const CHECKPOINT_BUSY_BUDGET_SECS: u64 = 5;
+    const CHECKPOINT_STAGES: u64 = 4;
+    const DRAIN_MARGIN_SECS: u64 = 2;
+    let drain_deadline = Instant::now()
+        + Duration::from_secs(CHECKPOINT_STAGES * CHECKPOINT_BUSY_BUDGET_SECS + DRAIN_MARGIN_SECS);
     let submitted = terminal_tx.send((terminal, drain_deadline));
     drop(terminal_tx);
     while !writer.is_finished() && Instant::now() < drain_deadline {
