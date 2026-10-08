@@ -635,6 +635,28 @@ mod tests {
         }
     }
 
+    #[test]
+    fn store_fixture_closes_shared_pool_before_runtime_shutdown() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(1)
+            .build()
+            .expect("build fixture runtime");
+        let store = runtime.block_on(async {
+            let fixture = fixture("questions-runtime-cleanup").await;
+            let store = fixture.store.clone();
+            drop(fixture);
+            store
+        });
+
+        drop(runtime);
+
+        assert!(
+            store.test_pool_is_closed(),
+            "fixture cleanup must close the shared pool before runtime shutdown returns"
+        );
+    }
+
     #[cfg(windows)]
     #[tokio::test]
     async fn store_fixture_removes_its_temp_dir_on_drop() {
