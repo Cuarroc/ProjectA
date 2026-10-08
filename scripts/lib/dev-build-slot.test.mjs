@@ -1,8 +1,8 @@
 // SETUP-08a: build-slot decides from injected processes, file times and RAM.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseLocaleNumber } from "./dev-tools.mjs";
-import { RefusedError } from "./dev-tools.mjs";
+import { resolve as pathResolve, win32 as pathWin32 } from "node:path";
+import { parseLocaleNumber, RefusedError } from "./dev-tools.mjs";
 import { slotStatus, parseWindowsProcesses, defaultSlots, listCargoProcesses, main, MIN_FREE_GB, MAX_PARALLEL } from "../dev/build-slot.mjs";
 
 const GB = 1024 ** 3;
@@ -144,6 +144,90 @@ test("configured slot root accepts Windows-style roots without home fallback", (
     listDir: () => ["slot2", "projecta-c"],
   });
   assert.deepEqual(d.map((s) => s.path), ["C:/warm/root/projecta-c", "C:/warm/root/slot2"]);
+});
+
+test("configured relative slot root resolves for process attribution", () => {
+  const listed = [];
+  const d = defaultSlots({
+    home: "/home/defaults",
+    mainCheckout: "/main/checkout",
+    env: { PROJECTA_BUILD_SLOTS_ROOT: "../warm/root" },
+    listDir: (root) => {
+      listed.push(root);
+      return ["slot1"];
+    },
+    resolvePath: (p) => pathResolve("/fixture/cwd", p),
+  });
+  assert.deepEqual(listed, ["/fixture/warm/root"]);
+  assert.deepEqual(d.map((s) => s.path), ["/fixture/warm/root/slot1"]);
+  const processes = [
+    { pid: 1, name: "rustc", cmd: "rustc --out-dir /fixture/warm/root/slot1/debug/deps -L dependency=/fixture/warm/root/slot1/debug/deps" },
+  ];
+  const s = slotStatus({ slots: d, processes, freeBytes: 8 * GB, stat: quietStat, now: NOW });
+  assert.equal(s.slots[0].state, "belegt");
+  assert.equal(s.unattributed, 0);
+  assert.equal(s.recommendation.slot, null);
+});
+
+test("configured slot root preserves POSIX filesystem root", () => {
+  const listed = [];
+  const d = defaultSlots({
+    home: "/home/defaults",
+    mainCheckout: "/main/checkout",
+    env: { PROJECTA_BUILD_SLOTS_ROOT: "/" },
+    listDir: (root) => {
+      listed.push(root);
+      return ["slot1"];
+    },
+  });
+  assert.deepEqual(listed, ["/"]);
+  assert.deepEqual(d.map((s) => s.path), ["/slot1"]);
+});
+
+test("configured slot root preserves Windows drive root", () => {
+  const listed = [];
+  const d = defaultSlots({
+    home: "C:/Users/defaults",
+    mainCheckout: "C:/ProjectA",
+    env: { PROJECTA_BUILD_SLOTS_ROOT: "C:\\" },
+    listDir: (root) => {
+      listed.push(root);
+      return ["slot1"];
+    },
+    resolvePath: pathWin32.resolve,
+  });
+  assert.deepEqual(listed, ["C:/"]);
+  assert.deepEqual(d.map((s) => s.path), ["C:/slot1"]);
+});
+
+test("empty PROJECTA_BUILD_SLOTS_ROOT keeps the old default slots", () => {
+  const home = "/home/defaults";
+  const mainCheckout = "/main/checkout";
+  const unset = defaultSlots({ home, mainCheckout, env: {} });
+  const empty = defaultSlots({ home, mainCheckout, env: { PROJECTA_BUILD_SLOTS_ROOT: "" } });
+  assert.deepEqual(empty, unset);
+  assert.deepEqual(
+    empty.map((s) => s.path),
+    ["/home/defaults/cargo-targets/projecta-a", "/home/defaults/cargo-targets/projecta-b", "/home/defaults/cargo-targets/projecta-c", "/main/checkout/src-tauri/target"],
+  );
+});
+
+test("configured slot root refusal exits 3 with stderr message", async () => {
+  const out = [];
+  const err = [];
+  const code = await main([], { out: (s) => out.push(s), err: (s) => err.push(s) }, {
+    env: { PROJECTA_BUILD_SLOTS_ROOT: "/missing/root" },
+    listDir: () => {
+      throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+    },
+    processes: () => [],
+    freeBytes: () => 8 * GB,
+    stat: quietStat,
+    now: () => NOW,
+  });
+  assert.equal(code, 3);
+  assert.match(err.join(""), /Abgelehnt:.*fehlt|unlesbar/i);
+  assert.equal(out.join(""), "");
 });
 
 test("build-slot thresholds stay at 2.5 GB and three parallel builds", () => {
