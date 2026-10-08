@@ -321,10 +321,7 @@ test('DR12: category refresh preserves draft and pending guards', async ({ page 
   const errors = [];
   const posts = [];
   page.on('pageerror', err => errors.push(err.message));
-  await page.route('**/api/ideas', async route => {
-    if (route.request().method() === 'POST') posts.push(route.request().postData());
-    await route.fulfill({ json: {} });
-  });
+  page.on('request', request => { if (request.method() === 'POST') posts.push(request.url()); });
   await setupPage(page, 'injected', categoryState(ideas));
   await openIdeas(page);
   const category = page.locator('#idea-category');
@@ -366,48 +363,43 @@ test('DR12: category refresh preserves draft and pending guards', async ({ page 
   expect(await page.locator('.idea-edit').evaluateAll(nodes => nodes.every(n => n.disabled))).toBe(true);
   expect(posts).toEqual([]);
   expect(errors).toEqual([]);
+  // Positive control: every write endpoint must reach the independent detector.
+  for (const endpoint of ['ideas', 'answers', 'workbench']) {
+    await page.evaluate(endpoint => fetch(`/api/${endpoint}`, { method: 'POST' }), endpoint);
+  }
+  expect(posts).toHaveLength(3);
 });
 
 test('DR12: real CSS gives field borders 3 to 1 contrast', async ({ page }) => {
   await setupPage(page, 'injected', categoryState([idea('a', 'Alpha', 'Text')]));
   await openIdeas(page);
-  const report = await page.evaluate(() => {
-    const parse = color => {
-      const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/);
-      if (!m) return null;
-      return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
-    };
-    const blend = (fg, bg) => ({
-      r: Math.round(fg.r * fg.a + bg.r * (1 - fg.a)),
-      g: Math.round(fg.g * fg.a + bg.g * (1 - fg.a)),
-      b: Math.round(fg.b * fg.a + bg.b * (1 - fg.a)),
-      a: 1,
-    });
+  const sheets = await page.evaluate(() => [...document.styleSheets].some(s => {
+    try { return [...s.cssRules].some(r => r.cssText?.includes('--line')); } catch { return false; }
+  }));
+  expect(sheets).toBe(true);
+  // Read rendered pixels: Chromium composes gradients, alpha layers and backdrop filters.
+  const image = await page.locator('#idea').screenshot();
+  const report = await page.evaluate(async base64 => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width; canvas.height = image.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    const pixel = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
     const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
-    const lum = ({ r, g, b }) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-    const sheets = [...document.styleSheets].some(s => {
-      try { return [...s.cssRules].some(r => r.cssText && r.cssText.includes('--line')); } catch { return false; }
+    const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    // Midpoints avoid rounded corners; adjacent inner pixels avoid text and placeholder glyphs.
+    return [0.25, 0.5, 0.75].map(fraction => {
+      const x = Math.floor(image.width * fraction);
+      const border = pixel(x, 0), fill = pixel(x, 2);
+      const [light, dark] = [lum(border), lum(fill)].sort((a, b) => b - a);
+      return { border, fill, contrast: (light + 0.05) / (dark + 0.05) };
     });
-    const field = document.getElementById('idea') || document.getElementById('idea-search');
-    const cs = getComputedStyle(field);
-    const border = parse(cs.borderTopColor);
-    let bg = { r: 0, g: 0, b: 0, a: 0 };
-    for (let el = field; el; el = el.parentElement) {
-      const fill = parse(getComputedStyle(el).backgroundColor);
-      if (!fill) continue;
-      bg = fill.a >= 1 ? { ...fill, a: 1 } : blend(fill, bg.a ? bg : { r: 233, g: 237, b: 243, a: 1 });
-      if (bg.a >= 1 && fill.a >= 1) break;
-    }
-    if (!bg.a) bg = { r: 233, g: 237, b: 243, a: 1 };
-    const fieldFill = parse(cs.backgroundColor);
-    const composite = fieldFill.a < 1 ? blend(fieldFill, bg) : fieldFill;
-    const contrast = ratio(border, composite);
-    return { sheets, border, composite, contrast, method: 'WCAG relative luminance on composited border vs field fill' };
-  });
-  expect(report.sheets).toBe(true);
-  expect(report.contrast).toBeGreaterThanOrEqual(3);
-  console.log('DR12 contrast', JSON.stringify(report));
+  }, image.toString('base64'));
+  console.log('DR12 rendered contrast', JSON.stringify(report));
+  expect(Math.min(...report.map(sample => sample.contrast))).toBeGreaterThanOrEqual(3);
 });
 
 test('DR12: category controls fit 1440 390 and 320', async ({ page }) => {
