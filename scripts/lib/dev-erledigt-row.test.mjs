@@ -141,6 +141,38 @@ async function runMain(argv, pr) {
   return { code, out: out.join(""), err: err.join("") };
 }
 
+test("ERLEDIGT-META: invalid merge date refuses without write", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "dev-erledigt-meta-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = join(dir, "ERLEDIGT.md");
+  const before = `${HEAD2}${ROW(150, "W1-05")}\n`;
+  writeFileSync(file, before);
+  const argv = ["106", "W2-07", "--file", file];
+  const invalidDates = ["not-a-date", "2026-13-24T21:30:00Z", "", null, undefined, true, 1, {}, []];
+  for (const mergedAt of invalidDates) {
+    for (const apply of [true, false]) {
+      const res = await runMain(apply ? [...argv, "--apply"] : argv, { ...PR, mergedAt });
+      assert.equal(readFileSync(file, "utf8"), before, "invalid metadata must leave the table unchanged");
+      assert.doesNotMatch(res.out, /NaN/);
+      assert.equal(res.code, 3, `refuse ${JSON.stringify(mergedAt)} (apply=${apply})`);
+      assert.equal(res.out, "");
+      assert.notEqual(res.err, "");
+    }
+    assert.throws(() => makeRow({ pr: { ...PR, mergedAt }, id: "W2-07" }), /mergedAt/);
+  }
+
+  const valid = { ...PR, mergedAt: "2026-09-25T00:30:00+02:00" };
+  const first = await runMain([...argv, "--apply"], valid);
+  assert.equal(first.code, 0);
+  const written = readFileSync(file, "utf8");
+  assert.equal(written, `${HEAD2}${makeRow({ pr: valid, id: "W2-07" })}\n${ROW(150, "W1-05")}\n`);
+  assert.match(written, /\| 24\.09\. \| W2-07 \|/);
+  const replay = await runMain([...argv, "--apply"], valid);
+  assert.equal(replay.code, 0);
+  assert.match(replay.out, /schon vorhanden/);
+  assert.equal(readFileSync(file, "utf8"), written);
+});
+
 test("erledigt-row --apply refuses a missing file and a file without table with exit 3 (glm #6)", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "dev-erledigt-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
