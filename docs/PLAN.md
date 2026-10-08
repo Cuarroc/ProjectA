@@ -221,14 +221,20 @@ benanntes kompilierendes Rot vor Source-Fix; kein Befund/kein Zusatznutzen = Rü
 mit Beleg statt erfundener Änderung. Jede Einheit ≤ 180 ALL, ein Worktree/PR.
 Hypothesen stammen aus begrenztem Source-Nachlesen; Graphzugang war nicht angeboten.
 
-| ID | Ziel / Gegenfall vor Fix | Exklusives Dateipaar | Ort / Stufe | Abnahme |
-|---|---|---|---|---|
-| Z2-STATUS-CI | main-Gates nicht durch jüngeren grünen CodeQL-Lauf verdecken; gemischte Workflow-Fixture | scripts/dev/status-report.mjs + scripts/lib/dev-status-report.test.mjs | Codex Cloud Node 20 möglich; Server Node 24 / B | benanntes Rot: ältere rote CI + jüngeres grünes CodeQL bleibt sichtbarer CI-Blocker; bestehende Zeit-/Zeilenlimitfälle erhalten |
-| Z2-SETUP-VERSION | Nicht-endliche/ungültige Node-Versionsangaben dürfen Pflichtcheck nicht grün machen | scripts/dev/agent-setup-check.mjs + scripts/lib/agent-setup-check.test.mjs | Codex Cloud Node 20 möglich; Server Node 24 / B | benanntes Rot: Infinity/ungültige Majorversion fail; echte Node 24 bleibt ok, fehlende optionale Programme weiterhin nur Warnung |
-| Z2-ERLEDIGT-META | Fehlerhafte Merge-Metadaten vor Tabellenwrite ablehnen | scripts/dev/erledigt-row.mjs + scripts/lib/dev-erledigt-row.test.mjs | Codex Cloud Node 20 möglich; Server Node 24 / B | benanntes Rot: ungültiges mergedAt erzeugt keine NaN-Datumszeile/keinen Write; gültiges UTC-Datum/Replay erhalten; nur temporäre Fixture |
-| Z2-SPEC-STATUS | Unbekannten Spec-Status nicht still als historisch umschreiben | scripts/dev/spec-close.mjs + scripts/lib/dev-spec-close.test.mjs | Server / B | benanntes Rot: Status-Tippfehler verweigert ohne Änderung an Spec/STAND; erlaubte Statuswerte aus bestehendem Spec-Vertrag lesen/pinnen; dry-run und historische Wiederholung erhalten |
-| Z2-PUSH-REMOTE | Optionsähnlichen Remote-Wert vor Git-Aufruf abweisen | scripts/dev/push-verified.mjs + scripts/lib/dev-push-verified.test.mjs | Server / A | benanntes Rot: --remote -x verweigert ohne Push/Netzwerk; gültiger Remote/Branch sowie Remote-SHA-Beweis erhalten; nur injizierter Runner |
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| Z2-STATUS-CI | main-Gates nicht durch jüngeren grünen CodeQL-Lauf verdecken; gemischte Workflow-Fixture; exklusiv scripts/dev/status-report.mjs + scripts/lib/dev-status-report.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Codex Cloud Node 20 möglich; Server Node 24 | B | Startvertrag zur Root-Abnahme; kein Dispatch | benanntes Rot: ältere rote CI + jüngeres grünes CodeQL bleibt sichtbarer CI-Blocker; bestehende Zeit-/Zeilenlimitfälle erhalten | 77c993f3 |
+| Z2-SETUP-VERSION | Nicht-endliche/ungültige Node-Versionsangaben dürfen Pflichtcheck nicht grün machen; exklusiv scripts/dev/agent-setup-check.mjs + scripts/lib/agent-setup-check.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Codex Cloud Node 20 möglich; Server Node 24 | B | Startvertrag zur Root-Abnahme; kein Dispatch | benanntes Rot: Infinity/ungültige Majorversion fail; echte Node 24 bleibt ok, fehlende optionale Programme weiterhin nur Warnung | 77c993f3 |
+| Z2-ERLEDIGT-META | Fehlerhafte Merge-Metadaten vor Tabellenwrite ablehnen; exklusiv scripts/dev/erledigt-row.mjs + scripts/lib/dev-erledigt-row.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Codex Cloud Node 20 möglich; Server Node 24 | B | Startvertrag zur Root-Abnahme; kein Dispatch | benanntes Rot: ungültiges mergedAt erzeugt keine NaN-Datumszeile/keinen Write; gültiges UTC-Datum/Replay erhalten; nur temporäre Fixture | 77c993f3 |
+| Z2-SPEC-STATUS | Unbekannten Spec-Status nicht still als historisch umschreiben; exklusiv scripts/dev/spec-close.mjs + scripts/lib/dev-spec-close.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Server | B | Startvertrag zur Root-Abnahme; kein Dispatch | benanntes Rot: Status-Tippfehler verweigert ohne Änderung an Spec/STAND; erlaubte Statuswerte aus bestehendem Spec-Vertrag lesen/pinnen; dry-run und historische Wiederholung erhalten | 77c993f3 |
+| Z2-PUSH-REMOTE | Optionsähnlichen Remote-Wert vor Git-Aufruf abweisen; exklusiv scripts/dev/push-verified.mjs + scripts/lib/dev-push-verified.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Server | A | Startvertrag zur Root-Abnahme; kein Dispatch | benanntes Rot: --remote -x verweigert ohne Push/Netzwerk; gültiger Remote/Branch sowie Remote-SHA-Beweis erhalten; nur injizierter Runner | 77c993f3 |
 
+Benannte Rotfälle (exakte neue Testnamen, je Zeile obiges Dateipaar):
+`STATUS-CI: newer CodeQL cannot mask failing ci`,
+`SETUP-VERSION: non-finite node major fails mandatory check`,
+`ERLEDIGT-META: invalid merge date refuses without write`,
+`SPEC-STATUS: unknown status refuses without write`,
+`PUSH-REMOTE: option-like remote refuses before push`.
 Für jedes Paar: `node --test --test-name-pattern='<exakter neuer Testname>' <Testdatei>`
 auf Basis rot und Kopf grün; danach `node --test <Testdatei>` und eigene vollständige
 `bash scripts/ci/gates.sh lane prepush` auf Server Node 24, Exitcodes unverdeckt.
