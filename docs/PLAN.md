@@ -173,6 +173,11 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 | Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
 | Z2-RAM-SLOTS | Konfigurierten Warm-Slot-Root im bestehenden `build-slot` beachten; keine zweite RAM-Messung | Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/build-slot.mjs` und eigener Test | Basis `fc85e3d`, unabhängig von DR-04B-FU und HYGIENE | Server | A (Start-/Ressourcenempfehlung) | Startvertrag unten; geprüftes bestehendes Auswahlproblem, kein Dispatch | ≤ 180 ALL; kompilierendes Rot, Root-/Override-/Fehler- und belegte-Slot-Fälle; bestehende Schwellen/Heuristiken erhalten; eigene prepush + zwei Fremdvendor-Reviews am Kandidaten | – |
 | Z2-HYGIENE-STATUS | Aktuelle Draft-/Ready-/In-Arbeit-Zeilen im lesenden Hygiene-Werkzeug erkennen | Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/hygiene.mjs` und eigener Test | Basis `fc85e3d`, unabhängig von beiden anderen Reservepaketen | Server | B | Startvertrag unten; Dreizeilen-Statusprobe liefert bisher keine Einträge, kein Dispatch | ≤ 160 ALL; benanntes kompilierendes Rot, Kandidaten-PR-Nummern von Vorgänger-/historischen Nummern trennen; keine Board-/PLAN-/GitHub-Schreibwirkung; eigene prepush + Fremdreview am Kandidaten | – |
+| Z2-PR-PROTECTION | Merge-Protection in lesender PR-Bereitempfehlung berücksichtigen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Startvertrag unten; Draft zur Root-Abnahme, kein Dispatch | ≤ 160 ALL; benanntes Rot, Protection-Fälle und Queue-Fakt; volle prepush und Fremdreview | 77c993f3 |
+| Z2-STATUS-UNKNOWN | Unbekannte CI-Kontexte und fehlende Checks nicht als grün darstellen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Startvertrag unten; Draft zur Root-Abnahme, kein Dispatch | ≤ 140 ALL; benanntes Rot und Bericht-Fixtures; volle prepush und Fremdreview | 77c993f3 |
+| Z2-START-MEASURE | Ungültige RAM-/Usage-Messwerte und leere Usage-Datei verweigern | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig von RAM-SLOTS #725 | Server | A | Startvertrag unten; Draft zur Root-Abnahme, kein Dispatch | ≤ 160 ALL; benanntes Rot, CLI Exit 1, gültige Defaults erhalten; volle prepush und zwei Fremdvendor-Reviews | 77c993f3 |
+| Z2-CIWATCH-SHAPE | Ungültige Check-Objekte als Lesefehler verweigern statt abstürzen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Startvertrag unten; Draft zur Root-Abnahme, kein Dispatch | ≤ 140 ALL; benanntes Rot, Exit 3 ohne Folgepoll/Grün; volle prepush und Fremdreview | 77c993f3 |
+| Z2-MRP-COMPLETE | Teilweise ausgefülltes Prompt-Log nicht als vollständigen Messbeleg zählen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Startvertrag unten; Draft zur Root-Abnahme, kein Dispatch | ≤ 120 ALL; benanntes Rot, Zähler-/Bench-Fixture, Nullbefund gültig; volle prepush und Fremdreview | 77c993f3 |
 | Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Stabschef Ausführung beobachtet/routet; keine eigenmächtige Quota-Regeländerung | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
 | Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef Ausführung: Ready-Reserve, Lane-/Blocker-Beobachtung; Chief nur PLAN | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
 
@@ -347,6 +352,133 @@ Nicht als freie Reserve zählen: R19-09 benötigt die besetzte Store-Naht;
 DR-10-WIRE überschneidet sich mit der aktiven #718-UI-Dateiliste (index/ideas).
 DR-05/07 und DR-12 behalten ihre wirklichen Vorgänger. Die drei Verträge oben
 benötigen keine dieser Änderungen; nach Head-/Owner-Wechsel vor Dispatch neu prüfen.
+
+### Serverreserve 2: fünf zusätzliche Startverträge (Root 08.10., 21:27Z)
+
+Auftrag `msg-0mv01rpmz-e52b4baf`: ENTWERFEN/PFLEGEN; Root dispatcht.
+Gemeinsame geprüfte Basis: `9d9eaa78e2d135bc0144809ae9712e2cda51da31`
+(origin/main, #722 gemergt). Die drei #722-Umsetzungen bleiben bei den vorhandenen
+Eigentümern: #725 `94eca3b`, #726 `5cb73e1`, #727 `a4e0fc9`, laut Root in Prüfung.
+Sie zählen nicht als fünf neue Verträge; keine Wiederholung dieser Arbeit.
+
+Je folgendem Paket genau ein von Root benannter bestehender Serverworker,
+eigener Branch/Worktree/PR. Die fünf Dateipaare sind untereinander und zu den
+beobachteten offenen Paket-PRs disjunkt. Keine Rust-Naht, package.json, gemeinsamen
+Helfer oder Gates ändern; kein ausstehender Implementierungsvorgänger.
+Root prüft vor Dispatch frische Datei-/Prozessbesitzer, tatsächliches Modell,
+Kontingent, RAM ≥ 1,5 GiB, Cargo und freien Build-Slot. Lease/Queue/Mail beweisen
+kein Prozessende/Start. Kein neuer Agent, kein zweiter Dispatcher.
+Vorhandene einzelne RED → GREEN → unabhängiges Review → Root-Ketten reichen;
+ein neues Team würde bei diesen einstufigen Dateipaaren keine Übergabelücke lösen.
+
+Root routet Codex unter 98 %, Cursor auto, Claude sparsam. A bei OpenAI-Autor:
+Kimi und GLM über den von Root freigegebenen bestehenden Ollama-Credit-Weg;
+bei Anthropic-Autor OpenAI plus Kimi oder GLM. B: eine andere Vendorfamilie.
+Bei Cursor auto zuerst tatsächlichen Autorenvendor belegen, dann andere wählen;
+Transportname ist kein Vendor-/Modellbeleg. Je Review Kandidaten-SHA, beobachtetes
+Modell, Befunde mit Datei:Zeile und Disposition. Keine Kappen-/Reset-/Installations-
+oder zusätzliche API-Ausgabenentscheidung. Root nimmt Kopf ab; danach Ready,
+Merge nur Mergify. Diese Dokumentation selbst ist C, keine Umsetzung/Abnahme.
+
+**Z2-PR-PROTECTION — ehrliche Bereitempfehlung (≤ 160 ALL, B).**
+- Ziel/Beleg: `buildRows` liefert auf der Basis bei drei grünen CI-Jobs plus
+  roter `Mergify Merge Protections` trotzdem „bereit“. Fehlende/rote/laufende
+  Protection darf keine Bereitempfehlung ergeben.
+- Exklusiv: `scripts/dev/pr-status.mjs`, `scripts/lib/dev-pr-status.test.mjs`.
+  Nichtziele: YAML/Branch-Protection/CI/Ready/Labels ändern. Die `REQUIRED`-Liste
+  der drei YAML-Jobs separat erhalten; externe Protection zusätzlich prüfen,
+  keinen erfundenen CI-Job in den bestehenden YAML-Shape-Test aufnehmen.
+- Kompilierendes Rot zuerst: `dev-pr-status.test.mjs::red merge protection
+  prevents ready recommendation`; bestehendes `buildRows` mit drei SUCCESS-
+  CheckRuns plus roter Protection aufrufen, „bereit“ ausschließen.
+- Abnahme: Protection fehlt/pending/rot/grün; unbekannt ist keine Freigabe,
+  NEUTRAL/SKIPPED nur gemäß tatsächlichem Schutzvertrag. Beobachteter Queue-PR
+  bleibt „in Queue“ ohne Mergeversprechen. Draft/do-not-merge/Konflikt-Prioritäten
+  erhalten; Protection in Tabelle/JSON, Shapes nur im eigenen Test anpassen.
+  `node --test scripts/lib/dev-pr-status.test.mjs`, eigene volle prepush Exit 0,
+  ein Fremdvendor-Review; NICHT ABGEDECKT: tatsächliche Queue-Zulassung.
+
+**Z2-STATUS-UNKNOWN — unbekannt ist kein Grün (≤ 140 ALL, B).**
+- Ziel/Beleg: `checkState` liefert für `StatusContext.state=UNKNOWN` derzeit
+  `green`. Unbekannt/leerer Kontext wird pending; `classify` nennt PRs ohne
+  Checks nicht „grün, wartet auf die Queue“.
+- Exklusiv: `scripts/dev/status-report.mjs`,
+  `scripts/lib/dev-status-report.test.mjs`. Nichtziele: pr-status, GH_CALLS,
+  Limits, Tagesgrenze, Output-Pfad oder Remote-Zustand ändern.
+- Kompilierendes Rot zuerst: `dev-status-report.test.mjs::unknown status
+  context is pending rather than green`; vorhandenes `checkState` mit UNKNOWN
+  aufrufen, pending erwarten. Zweites Rot für Bericht ohne Checks.
+- Abnahme: SUCCESS/PENDING/EXPECTED/FAILURE/ERROR, leer/unbekannt, CheckRun-
+  Schlusswerte, fehlende Rollups; failing vor pending. Leere Checks bleiben
+  `none`; Bericht behauptet keine Prüfung. Main-Rot, Draft-/Queue-/Konflikt-
+  Zählung und 25-Zeilen-Grenze erhalten. `node --test scripts/lib/dev-status-report.test.mjs`,
+  eigene volle prepush Exit 0, ein Fremdvendor-Review;
+  NICHT ABGEDECKT: live GitHub-Gesamtzustand.
+
+**Z2-START-MEASURE — kaputte Messwerte stoppen (≤ 160 ALL, A).**
+- Ziel/Beleg: `checkRam(NaN)` und `checkUsage({})` liefern auf der Basis `ok`.
+  Nicht endliche/negative RAM-Werte, leere oder inhaltlich ungültige vorhandene
+  Usage-Daten müssen STOPP ergeben, kein OK/Exit 0 als Messbeleg.
+- Exklusiv: `scripts/dev/start-check.mjs`, `scripts/lib/dev-start-check.test.mjs`.
+  Nichtziele: build-slot/#725, Defaults/Grenzen/Kontingente ändern, neue
+  Messquelle, Prozessaktion, Hook/Scheduler. Kein --usage/fehlende Datei behalten
+  dokumentierten Warnmodus; Root muss Pflichtbelege separat einholen.
+- Kompilierendes Rot zuerst: `dev-start-check.test.mjs::invalid measurements
+  cannot pass start check`; bestehendes `checkRam` mit NaN muss stopp liefern;
+  getrennte Rotprobe für vorhandenes leeres Objekt über `checkUsage`.
+- Abnahme: NaN/Infinity/negative RAM-Werte, leeres Usage-Objekt, negative/nicht
+  endliche Prozentwerte; gültige Null/Schwellen und normale CLI-Aufrufe erhalten.
+  Injizierter kaputter CLI-Messwert gibt Exit 1/JSON `ok:false`. Warnungen nicht
+  als gemessene Freigabe ausgeben. `node --test scripts/lib/dev-start-check.test.mjs`,
+  eigene volle prepush Exit 0, zwei Fremdvendor-Reviews;
+  NICHT ABGEDECKT: 24-h-RAM-Ziel, realer Start und vollständige Gateautomatisierung.
+
+**Z2-CIWATCH-SHAPE — kaputte Check-Liste verweigern (≤ 140 ALL, B).**
+- Ziel/Beleg: `watchChecks` stürzt bei syntaktisch gültigem JSON `[null]` mit
+  TypeError ab. Ungültige Check-Einträge müssen kontrolliert Exit 3 liefern,
+  keine grüne Aussage, kein Folgepoll und kein ungefangener Absturz.
+- Exklusiv: `scripts/dev/ci-watch.mjs`, `scripts/lib/dev-ci-watch.test.mjs`.
+  Nichtziele: echter Watcher/Command/Workflow starten, gh-Aufruf/Pollbudget,
+  Standardintervalle, Karenz oder Status-/Quota-/Retrypolitik ändern.
+- Kompilierendes Rot zuerst: `dev-ci-watch.test.mjs::malformed check entries
+  refuse without polling`; vorhandenes `watchChecks` mit injiziertem Runner
+  (code 0, stdout `[null]`) aufrufen, Ergebniscode 3 statt Rejection erwarten;
+  Schlaf darf nicht aufgerufen werden, Runner genau einmal.
+- Abnahme: null/primitive Einträge, fehlender/leerer Name oder bucket geben
+  Exit 3 mit begrenzter Diagnose. Gültige pass/fail/cancel/skipping/pending-
+  Fixtures, leere Liste/Karenz, Timeout und unbekannter nichtleerer bucket als
+  pending behalten ihren Vertrag; kein vorschnelles Grün. CLI mit Fake-Runner
+  bestätigt Exit 3. `node --test scripts/lib/dev-ci-watch.test.mjs`, eigene
+  volle prepush Exit 0, ein Fremdvendor-Review;
+  NICHT ABGEDECKT: live GitHub-Fehler oder tatsächlicher Langzeit-Watchlauf.
+
+**Z2-MRP-COMPLETE — unfertiges Log nicht mitzählen (≤ 120 ALL, B).**
+- Ziel/Beleg: rounds 1 plus `n high / n other` liefert derzeit `filled:true`/0/0.
+  Nur numerische rounds UND findings sind gefüllt; Platzhalter sind kein Nullbefund.
+- Exklusiv: `scripts/dev/mrp-count.mjs`, `scripts/lib/dev-mrp-count.test.mjs`.
+  Nichtziele: Template/Bench/Workflow/Paketbranch-Regel ändern oder neue
+  Prompt-Pflichten; nur vorhandene M-RP-Messdefinition korrekt lesen.
+- Kompilierendes Rot zuerst: `dev-mrp-count.test.mjs::partial prompt log
+  placeholders are not complete evidence`; bestehendes `parsePromptLog` mit
+  rounds 1/Platzhalter-findings aufrufen, `filled:false` erwarten.
+- Abnahme: fehlende/teilweise/nichtnumerische findings nicht withLog; gültige
+  0 high / 0 other, rounds 0–2 und vollständige Logs bleiben gültig. `countRp`
+  und vorhandener `measure`-Fixture-Aufruf belegen Zähler/Nenner/Fixrunden-
+  Zuordnung ohne Bench-Datei-/Netzwerkänderung. `node --test scripts/lib/dev-mrp-count.test.mjs`,
+  eigene volle prepush Exit 0, ein Fremdvendor-Review;
+  NICHT ABGEDECKT: allgemeine Prompt-Adoption oder Wirksamkeit.
+
+Evidenzgrenze: vier ausführbare Assertions und die ungültige Check-Probe waren RED;
+explorative Proben, keine committed Test-First-/Fixbelege. Worker schreiben zuerst
+die benannten Regressionstests und binden Rot/Grün an ihre Basis/Köpfe.
+Graphwerkzeuge waren nach Tool-Katalog-/Runtime-Prüfung nicht gebunden; bekannte
+Hilfsdateien und Tests wurden direkt gelesen. W118B-PROFILE #678 ist seit
+15:58:08Z gemergt, kein neuer Start. DR-13/14 bleiben nach DR-12, KI-30 beim
+laufenden Owner; kein Sibling-Fix ohne Eigentumsabgrenzung. Der ebenfalls belegte
+Multi-Naht-Parserfall zählt nicht mit: #574 berührt dessen Testdatei und ist
+noch nicht disponiert. CIWATCH ersetzt ihn mit einem unabhängigen Dateipaar.
+Diese fünf Z2-Paare
+benötigen keinen der blockierten Pfade.
 
 ### Anpassungsnachweis DR-15a und Übergaben (08.10. 04:40 UTC)
 
