@@ -27,6 +27,8 @@ const SECTION_LIMITS = { done: 5, running: 6, decide: 7 };
 
 const FAILING = new Set(["FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE"]);
 const FAILING_STATE = new Set(["FAILURE", "ERROR"]);
+const PENDING_STATE = new Set(["PENDING", "EXPECTED"]);
+const GOOD_STATE = new Set(["SUCCESS"]);
 // Conclusions that prove a completed check is fine. Anything else (null,
 // empty, an unknown value) is indeterminate: it counts as pending, never as
 // green — an unproven state must not read as success.
@@ -48,8 +50,10 @@ export function checkState(rollup) {
   let pending = false;
   for (const c of checks) {
     if (c.__typename === "StatusContext") {
+      // StatusContext has no conclusion: only SUCCESS is proven green.
+      // UNKNOWN/empty/other states are unproven → pending, never green.
       if (FAILING_STATE.has(c.state)) return "failing";
-      if (c.state === "PENDING" || c.state === "EXPECTED") pending = true;
+      if (PENDING_STATE.has(c.state) || !GOOD_STATE.has(c.state)) pending = true;
     } else if (c.status && c.status !== "COMPLETED") {
       pending = true;
     } else if (FAILING.has(c.conclusion)) {
@@ -130,6 +134,7 @@ export function classify(data, { now = new Date(), timeZone } = {}) {
     else if (labels.includes("dequeued")) decide.push(item(p.number, head, " — aus der Queue geflogen"));
     else if (checks === "failing") decide.push(item(p.number, head, " — Checks rot"));
     else if (checks === "pending") running.push(item(p.number, head, " — Checks laufen"));
+    else if (checks === "none") running.push(item(p.number, head, " — keine Checks"));
     else if (labels.includes("queued")) running.push(item(p.number, head, " — in der Merge-Queue"));
     else running.push(item(p.number, head, " — grün, wartet auf die Queue"));
   }
