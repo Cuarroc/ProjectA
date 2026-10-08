@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { resolve, join, dirname, toNamespacedPath } from "node:path";
+import { resolve, join, dirname, toNamespacedPath, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadStartConfig } from "./config.mjs";
 
@@ -84,13 +84,17 @@ test("refuses a state path inside the repository", () => {
   assert.equal(load({ ...validEnv(), [name("STATE")]: outside }).config.statePath, resolve(outside));
 });
 
-test("refuses Windows namespace and UNC state paths", { skip: process.platform !== "win32" }, () => {
-  const namespaced = toNamespacedPath(join(repoRoot, "state.json"));
+test("refuses Windows namespace and UNC state paths", () => {
+  // Backslash Windows paths are relative on POSIX; slash paths use native semantics.
+  const namespaced = process.platform === "win32"
+    ? toNamespacedPath(join(repoRoot, "state.json"))
+    : win32.toNamespacedPath(win32.join("Z:" + win32.sep, "synthetic-repository", "state.json"));
   refuses("STATE", [namespaced, namespaced.replace("\\\\?\\", "\\\\.\\"),
-    namespaced.replaceAll("\\", "/"),
     "\\\\synthetic-host\\synthetic-share\\state.json",
     "\\\\?\\UNC\\synthetic-host\\synthetic-share\\state.json"]);
-  refuses("STATE", [join(repoRoot.toUpperCase(), "state.json")]);
+  const slashPath = namespaced.replaceAll("\\", "/");
+  if (process.platform === "win32") refuses("STATE", [slashPath, join(repoRoot.toUpperCase(), "state.json")]);
+  else assert.equal(load({ ...validEnv(), [name("STATE")]: slashPath }).ok, true);
   assert.equal(load(validEnv()).ok, true);
 });
 
