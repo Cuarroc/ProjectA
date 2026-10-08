@@ -297,6 +297,16 @@ node_name_run() {
   node --test --test-reporter=spec --test-name-pattern="^$(regex_escape "$1")\$" "$2"
 }
 
+playwright_denkraum_name_run() {
+  # Playwright `-g` is a regex over the full title (`file › name`). Escape the
+  # trailer name and end-anchor it so `existing test (root)` cannot select
+  # `existing test root`. Force the list reporter so classify_run can see the
+  # exact title that ran.
+  local name="$1" path="$2"
+  npx playwright test -c tools/denkraum/playwright.config.mjs "$path" \
+    -g "$(regex_escape "$name")$" --reporter=list
+}
+
 ensure_node_modules() {
   local tree="$1"
   if [ ! -d "$tree/node_modules" ] && [ -f "$tree/package.json" ]; then
@@ -442,6 +452,15 @@ run_spec() {
       ensure_node_modules "$tree"
       (cd "$tree" && npx playwright test "$path")
       ;;
+    tools/denkraum/*.spec.mjs)
+      # Denkraum Playwright harness (config is not the repo-root e2e one).
+      ensure_node_modules "$tree"
+      if [ -n "$name" ]; then
+        (cd "$tree" && playwright_denkraum_name_run "$name" "$path")
+      else
+        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path" --reporter=list)
+      fi
+      ;;
     *.ts|*.tsx)
       ensure_node_modules "$tree"
       if [ -n "$name" ]; then
@@ -504,6 +523,22 @@ classify_run() {
         return
       fi
       return 0
+      ;;
+    tools/denkraum/*.spec.mjs)
+      # Exact title identity: "No tests found" / missing file stay red; a green
+      # named run must show the literal title after › and a single pass.
+      local plain
+      plain="$(printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g')"
+      if printf '%s\n' "$plain" | grep -E 'Datei fehlt:|No tests found' >/dev/null; then
+        return 1
+      fi
+      if [[ "$spec" == *::* ]]; then
+        local expected="${spec#*::}"
+        printf '%s\n' "$plain" | grep -F -- "› ${expected}" >/dev/null || return 1
+        printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null
+        return
+      fi
+      printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
       ;;
     *.mjs|*.cjs)
       if printf '%s\n' "$out" | grep -E 'ℹ tests 0$|Datei fehlt:' >/dev/null; then
