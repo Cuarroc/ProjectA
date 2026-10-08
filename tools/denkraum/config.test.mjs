@@ -163,15 +163,26 @@ test("checks config through a real CLI directory alias without running on import
     assert.equal(child.stderr,
       "DECISION_DESK_ROOT_RECEIPT_TOKEN: required; use 32–256 letters, digits, underscores or hyphens\n");
     for (const value of Object.values(env)) assert.equal(child.stderr.includes(value), false);
+    const valid = spawnSync(process.execPath, [entry, "--check"],
+      { env: { ...env, [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32) }, encoding: "utf8" });
+    assert.equal(valid.error, undefined);
+    assert.equal(valid.status, 0);
+    assert.equal(valid.stderr, "");
+    assert.equal(valid.stdout, ["ROOT_RECEIPT_TOKEN", "WEBHOOK_SECRET", "STATE", "PORT"]
+      .map((suffix) => `${name(suffix)}: valid\n`).join("")
+      + "DECISION_DESK_ROOT_AGENT_ID: notifications enabled\n");
+    const usage = spawnSync(process.execPath, [entry], { env, encoding: "utf8" });
+    assert.equal(usage.error, undefined);
+    assert.equal(usage.status, 1);
+    assert.equal(usage.stdout, "");
+    assert.equal(usage.stderr, "Usage: node tools/denkraum/config.mjs --check\n");
   }
-  const usage = spawnSync(process.execPath, [aliasedScript], { env, encoding: "utf8" });
-  assert.equal(usage.error, undefined);
-  assert.equal(usage.status, 1);
-  assert.match(usage.stderr, /^Usage: node tools\/denkraum\/config\.mjs --check\n$/u);
-  const imported = spawnSync(process.execPath,
-    ["--input-type=module", "-e", `await import(${JSON.stringify(pathToFileURL(aliasedScript).href)})`],
-    { env, encoding: "utf8" });
-  assert.equal(imported.error, undefined);
-  assert.equal(imported.status, 0);
-  assert.equal(imported.stdout + imported.stderr, "");
+  for (const args of [[], [script], [join(fixture, "missing-entry.mjs")]]) {
+    const imported = spawnSync(process.execPath,
+      ["--input-type=module", "-e", `await import(${JSON.stringify(pathToFileURL(aliasedScript).href)})`, ...args],
+      { env, encoding: "utf8" });
+    assert.equal(imported.error, undefined);
+    assert.equal(imported.status, 0);
+    assert.equal(imported.stdout + imported.stderr, "");
+  }
 });
