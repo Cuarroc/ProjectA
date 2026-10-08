@@ -614,8 +614,23 @@ mod tests {
         store: Store,
         engine: StatusEngine,
         project_id: String,
-        /// Last, so SQLite closes before the temporary directory is removed.
-        _dir: TempDir,
+        _dir: Option<TempDir>,
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let dir = self._dir.take().expect("fixture directory");
+            let store = self.store.clone();
+            let runtime = tokio::runtime::Handle::current();
+            let (started, start) = std::sync::mpsc::sync_channel(0);
+            drop(tokio::task::spawn_blocking(move || {
+                started.send(()).expect("start fixture cleanup");
+                runtime.block_on(store.close_test_pool());
+                drop(dir);
+            }));
+            // Shutdown waits for running blocking tasks but may cancel queued ones.
+            start.recv().expect("fixture cleanup task started");
+        }
     }
 
     async fn fixture(label: &str) -> Fixture {
@@ -631,37 +646,49 @@ mod tests {
             store,
             engine: StatusEngine::default(),
             project_id: project.id,
-            _dir: dir,
+            _dir: Some(dir),
         }
     }
 
     #[test]
     fn store_fixture_closes_shared_pool_before_runtime_shutdown() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .max_blocking_threads(1)
-            .build()
-            .expect("build fixture runtime");
-        let store = runtime.block_on(async {
-            let fixture = fixture("questions-runtime-cleanup").await;
-            let store = fixture.store.clone();
-            drop(fixture);
-            store
-        });
+        for reuse_blocking_worker in [false, true] {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .max_blocking_threads(1)
+                .build()
+                .expect("build fixture runtime");
+            let store = runtime.block_on(async {
+                if reuse_blocking_worker {
+                    tokio::task::spawn_blocking(|| ())
+                        .await
+                        .expect("reuse idle blocking worker");
+                }
+                let fixture = fixture("questions-runtime-cleanup").await;
+                let store = fixture.store.clone();
+                drop(fixture);
+                store
+            });
 
-        drop(runtime);
+            drop(runtime);
 
-        assert!(
-            store.test_pool_is_closed(),
-            "fixture cleanup must close the shared pool before runtime shutdown returns"
-        );
+            assert!(
+                store.test_pool_is_closed(),
+                "fixture cleanup must close the shared pool before runtime shutdown returns"
+            );
+        }
     }
 
     #[cfg(windows)]
     #[tokio::test]
     async fn store_fixture_removes_its_temp_dir_on_drop() {
         let fixture = fixture("questions-temp-cleanup").await;
-        let path = fixture._dir.path().to_path_buf();
+        let path = fixture
+            ._dir
+            .as_ref()
+            .expect("fixture directory")
+            .path()
+            .to_path_buf();
 
         drop(fixture);
 
