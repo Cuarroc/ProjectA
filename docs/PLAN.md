@@ -60,22 +60,22 @@ Größenausnahme. **D2** keine interne Agenten-ID im öffentlichen Code oder in 
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| DR-01 | Gerüst `tools/denkraum/`, Gate-Zeile in `scripts/ci/gates.sh`, Hygiene-Check (LF-Regel in `.gitattributes`, kein State-Pfad im Repo) | Seniorentwickler | – | PC | B | angenommen, Mergify ausstehend (PR #635) | `bash scripts/ci/gates.sh lane prepush` Exit 0; neue Gate-Zeile läuft die Denkraum-Tests | 55ea21ce |
-| DR-01a | Überlauf im Hygiene-Check beheben, roter Test zuerst; vor DR-02 mergen | Seniorentwickler | DR-01 | Server | B | Geplant | Überlauf-Test vor Fix rot, danach grün; `bash scripts/ci/gates.sh lane prepush` Exit 0; Merge vor DR-02 | – |
-| DR-02 | Ledger-Modell als Modul, Split-Beweis (verhaltensgleich) | Seniorentwickler | DR-01, DR-01a | Server | A | In Prüfung (PR #636) | FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt | 55ea21ce, b0e90b72 |
-| DR-03 | DeskStore-Kern | Seniorentwickler | DR-02 | Server | A | Geplant | Store-Tests grün, Revision/Konflikt verlieren keine Daten | 55ea21ce |
-| DR-04 | Antworten, Quittungen, Benachrichtigungen | Seniorentwickler | DR-03 | Server | A | Geplant | Tests für Antwort/Quittung/Dedupe grün | 55ea21ce |
+| DR-01 | Gerüst `tools/denkraum/`, Gate-Zeile in `scripts/ci/gates.sh`, Hygiene-Check (LF-Regel in `.gitattributes`, kein State-Pfad im Repo) | Seniorentwickler | – | PC | B | Root-Abnahme am `e9f8ce8`; Ready, Mergify ausstehend (PR #635); DR-01a vor DR-02 | `bash scripts/ci/gates.sh lane prepush` Exit 0; neue Gate-Zeile läuft die Denkraum-Tests | 55ea21ce |
+| DR-01a | Überlauf im Hygiene-Check beheben, roter Test zuerst; vor DR-02 mergen | Seniorentwickler | DR-01 | Server | B | In Prüfung (PR #637, Entwurf) | Überlauf-Test vor Fix rot, danach grün; `bash scripts/ci/gates.sh lane prepush` Exit 0; Merge vor DR-02 | – |
+| DR-02 | Ledger-Modell als Modul, Split-Beweis (verhaltensgleich) | Seniorentwickler | DR-01, DR-01a | Server | A | In Prüfung (PR #636): Gemini PASS, Codex PASS mit Korrekturen; Root-Abnahme ausstehend | FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt | 55ea21ce, b0e90b72 |
+| DR-03 | DeskStore-Kern | Seniorentwickler | DR-02 | Server | A | Geplant | Store-Tests grün, Revision/Konflikt verlieren keine Daten; Folgepunkte aus DR-02: Längenlimit für Ledger-Listen, Antwort-Elemente prüfen (DeskError statt TypeError) | 55ea21ce |
+| DR-04 | Antworten, Quittungen, Benachrichtigungen | Seniorentwickler | DR-03 | Server | A | Geplant | Tests für Antwort/Quittung/Dedupe grün; Quittungs-Wiederholung und v1-Ack laufen über die D2-Prüfung (Test) | 55ea21ce |
 | DR-05 | P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, `userPriority`) | Seniorentwickler | DR-03 | Server | A | Geplant | Metadaten-Tests grün, Grenzfälle rot vor Fix | 55ea21ce |
 | DR-06 | HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: `DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed | Seniorentwickler | DR-04 | Server | A | Geplant | Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test | 55ea21ce |
 | DR-07 | Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import | Seniorentwickler | DR-06 | Server | C | Geplant | Testsuite grün im Gate | 55ea21ce |
-| DR-08 | UI-Hülle `index.html` + Style, byte-genau auf Stand B1 | UX-Architekt | FIT vorbereitet, Root-FIT-Abnahme; DR-01 | egal | B | Geplant | Byte-Vergleich mit B1-Kandidat; prepush Exit 0 | 55ea21ce, 6713479b |
-| DR-09 | App-Teil Fragen | UX-Architekt | DR-08 | egal | B | Geplant | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
+| DR-08 | UI-Hülle `index.html` + Style, byte-genau auf Stand B1 | UX-Architekt | FIT vorbereitet, Root-FIT-Abnahme; DR-01 | egal | B | lokal fertig, Push ausstehend | Byte-Vergleich mit B1-Kandidat; prepush Exit 0 | 55ea21ce, 6713479b |
+| DR-09 | App-Teil Fragen (B1 `app.js` Zeilen 1–238, byte-genau) | Implementierer · Codex | DR-01 | Server | B | In Prüfung (PR #638, Entwurf) | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
 | DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | UX-Architekt | DR-08 | egal | B | Geplant | Ideen-Ablauf wie B1, Harness grün | 55ea21ce, 5945accc |
 | DR-11 | UI-Harness auf `@playwright/test` portieren (nur relative Pfade) | UX-Architekt | DR-10 | Server | B | Geplant | Harness läuft im Gate auf dem Server | 55ea21ce |
-| DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-10 | egal | B | Geplant | roter Test vor Fix, danach grün; Auswahl bleibt über 15-s-Poll erhalten | 98fa8267 |
+| DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-10 | egal | B | Geplant | roter Test vor Fix, danach grün; Auswahl bleibt über 15-s-Poll erhalten; Textfeld-Rand mit Kontrast ≥ 3:1 (Folgepunkt aus DR-08) | 98fa8267 |
 | DR-13 | Filter Priorität und Station | UX-Architekt | DR-12 | Server | B | Geplant | Filtertests grün | 98fa8267 |
 | DR-14 | Stabile Sortierung | UX-Architekt | DR-13 | Server | B | Geplant | Sortiertests grün | 98fa8267 |
-| DR-15 | Sicherer Start ohne manuelle Secret-Eingabe | Seniorentwickler | – | Server | A | Geplant | Start ohne Eingabe; kein Secret in Datei/Log/Commit (Secret-Scan Exit 0) | 55ea21ce |
+| DR-15 | Sicherer Start ohne manuelle Secret-Eingabe; 15a Startprüfung als Modul, 15b Einbindung nach DR-06 (Secrets über den Secret-Manager von AgentsRoom) | Implementierer · Codex | – (15b: DR-06) | Server | A | 15a In Prüfung (PR #639, Entwurf); 15b Geplant | Start ohne Eingabe; kein Secret in Datei/Log/Commit (Secret-Scan Exit 0) | 55ea21ce |
 | DR-16 | P3-Live-Schaltung: Schreibpause, Sicherung, metadatensicherer Rückweg | Stabschef | DR-07, DR-14, DR-15 | PC | A | Geplant | Drill: Pause → Sicherung → Umschalten → Rückweg ohne Datenverlust, protokolliert | b0e90b72 |
 | DR-17 | Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum | Technischer Autor | DR-16 | egal | C | Geplant | Trockenlauf der 5 Schritte im PR-Text | 55ea21ce |
 
@@ -107,7 +107,7 @@ Baseline. Gemessen 07.10. auf 1c09ebb: `api.rs` 7908 < 8091, `store.rs` 7224 < 7
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
 | V16-ARCH-D4-05 | Queue-Routen aus `api.rs` (PR #631) | Implementierer · Codex, Abnahme Root | – | Server | A | angenommen, Mergify ausstehend | Merge über Mergify; `api.rs` 7858 | b9606dd4 |
-| V16-ARCH-D7 | Einstellungen nach `store/settings.rs` (PR #632) | Implementierer · Codex | V16-ARCH-D4-05 (Review seriell) | Server | A | In Prüfung (Gemini PASS, vollständig gelesen; wartet Root-Abnahme); Entwurf | Root-Abnahme am Kandidaten `e154e4d`; dann Ready und Merge über Mergify | 782d9e58 |
+| V16-ARCH-D7 | Einstellungen nach `store/settings.rs` (PR #632) | Implementierer · Codex | V16-ARCH-D4-05 (Review seriell) | Server | A | Root-Abnahme 08.10. 02:55Z am `e154e4d`; Ready → Mergify | Merge über Mergify | 782d9e58 |
 | V16-06 | Start nach Update ohne Journal blockiert nicht stumm | MCP-Integrationsentwickler | Inbox V16-F3; Update-Drill | PC | A | Blockiert | roter Test zuerst; Drill Erfolg/Abbruch/Fehler | 2557db66 |
 | V16-UPD-CANCEL | Abbrechen-Knopf beim Update-Download (sonst ist der Drill „Abbruch“ unmöglich) | Desktop-App-Entwickler | – | PC | B | Geplant | roter Test zuerst; Drill „Abbruch“ möglich | – |
 | V16-ARCH-D2 | Doppelte Projektanlage in `main.rs` zusammenführen | Implementierer · Claude | V16-06 (Lane mn; Vorziehen: Inbox V16-D2) | Server | A | Geplant | `rg -c 'fn create_project' src-tauri/src/main.rs` → eine Umsetzung; `main.rs` < 5133 | – |
