@@ -3,14 +3,17 @@ import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { request } from 'node:http';
 import { createDeskServer } from './server.mjs';
 import { runCli } from './cli.mjs';
 import { Readable } from 'node:stream';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 test('CLI received and applied commands require proof and persist their states', async t => {
-  const base = await start(t); const dir = await mkdtemp(join(tmpdir(), 'decision-cli-'));
+  const base = await start(t); const dir = await tmp(t);
   const post = (route, body) => fetch(`${base}/api/${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(body) });
   await post('questions', q());
   const a = await (await post('answers', { questionId: 'utf8', questionRevision: 1, expectedAnswerId: null, requestId: 'cli-1', action: 'answer', selected: ['a'], note: '' })).json();
@@ -29,10 +32,25 @@ test('CLI received and applied commands require proof and persist their states',
 
 const q = () => ({ id: 'utf8', title: 'Grüße 🧠', context: 'Test', owner: 'Test', category: 'Test', scope: 'Test', source: 'Test', uncertainty: 'Test', recommendation: { optionIds: ['a'], rationale: 'Test' }, options: ['a', 'b'].map(id => ({ id, label: id, rationale: 'Test', impact: 'Test', tradeoff: 'Test', effort: 'Test', reversible: 'Test' })) });
 
+test('CLI input failures print fixed diagnostics without path or file content', async t => {
+  const dir = await tmp(t);
+  const cli = fileURLToPath(new URL('./cli.mjs', import.meta.url));
+  const runFailing = async file => {
+    const err = await promisify(execFile)(process.execPath, [cli, 'progress', file]).then(() => assert.fail('CLI must exit 1'), e => e);
+    assert.equal(err.code, 1); assert.equal(err.stdout, '');
+    return err.stderr;
+  };
+  const missing = join(dir, 'SYNTHETIC_MISSING_PATH.json');
+  const bad = join(dir, 'bad.json');
+  await writeFile(bad, 'SYNTHETIC_SECRET_DO_NOT_LOG');
+  const missingErr = await runFailing(missing); const badErr = await runFailing(bad);
+  for (const out of [missingErr, badErr]) for (const leak of [dir, 'SYNTHETIC_MISSING_PATH', 'bad.json', 'SYNTHETIC_SECRET_DO_NOT_LOG', 'SYNTHETIC_']) assert.ok(!out.includes(leak), `diagnostic leaks ${leak}`);
+  assert.match(missingErr, /cannot read input file/); assert.match(badErr, /input is not valid JSON/);
+});
+
 test('HTTP body decodes UTF-8 across every byte boundary', async t => {
-  const dir = await mkdtemp(join(tmpdir(), 'decision-utf8-'));
-  const server = createDeskServer({ statePath: join(dir, 'state.json'), rootAgentId: 'root-test' });
-  t.after(() => server.close());
+  let server; const dir = await tmp(t, () => server);
+  server = createDeskServer({ statePath: join(dir, 'state.json'), rootAgentId: 'root-test' });
   const req = Readable.from([...Buffer.from(JSON.stringify(q()))].map(byte => Buffer.from([byte])));
   Object.assign(req, { method: 'POST', url: '/api/questions', headers: { host: '127.0.0.1:4791', origin: 'http://127.0.0.1:4791', 'content-type': 'application/json' } });
   const result = await new Promise(resolve => server.emit('request', req, { socket: { localPort: 4791 }, setHeader() {}, writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } }));
@@ -65,11 +83,20 @@ test('malformed preview image objects cannot escape schema validation as 500', a
   assert.equal(r.status, 400); assert.match((await r.json()).error, /Vorschau/);
 });
 
+// One cleanup per fixture dir: close the server first (if it listens), then remove the dir, also after a failed test.
+async function tmp(t, server = () => null) {
+  const dir = await mkdtemp(join(tmpdir(), 'decision-'));
+  t.after(async () => {
+    try { const s = server(); if (s?.listening) await new Promise(resolve => s.close(resolve)); }
+    finally { await rm(dir, { recursive: true, force: true }); }
+  });
+  return dir;
+}
+
 async function start(t) {
-  const dir = await mkdtemp(join(tmpdir(), 'decision-http-'));
-  const server = createDeskServer({ statePath: join(dir, 'state.json'), rootAgentId: 'root-test' });
+  let server; const dir = await tmp(t, () => server);
+  server = createDeskServer({ statePath: join(dir, 'state.json'), rootAgentId: 'root-test' });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => new Promise(resolve => server.close(resolve)));
   return `http://127.0.0.1:${server.address().port}`;
 }
 test('reject foreign origins, null origin, DNS rebinding and missing agent header', async t => {

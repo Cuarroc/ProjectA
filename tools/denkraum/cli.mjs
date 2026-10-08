@@ -8,7 +8,8 @@ export async function runCli(args, env = process.env, request = fetch) {
   if (!Object.hasOwn(routes, command) || (needsFile && !file) || args.length > (needsFile ? 2 : 1)) throw new Error('Aufruf: node cli.mjs state|pending|inbox|notify|receipt <JSON-Datei>|progress <JSON-Datei>|patch <JSON-Datei>|idea <JSON-Datei>|question <JSON-Datei>|received <JSON-Datei>|applied <JSON-Datei>|ack <JSON-Datei>');
   let body = command === 'notify' ? '{}' : undefined; let needsRoot = ['progress', 'patch', 'receipt', 'notify'].includes(command);
   if (needsFile) {
-    const input = JSON.parse((await readFile(file, 'utf8')).replace(/^\uFEFF/, ''));
+    const text = await readFile(file, 'utf8').catch(() => { throw new Error('cannot read input file'); });
+    let input; try { input = JSON.parse(text.replace(/^\uFEFF/, '')); } catch { throw new Error('input is not valid JSON'); }
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('JSON-Objekt erforderlich.');
     if (['received', 'applied'].includes(command)) {
       if (input.status && input.status !== command) throw new Error('Status widerspricht dem CLI-Befehl.');
