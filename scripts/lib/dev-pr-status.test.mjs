@@ -88,6 +88,60 @@ test("queued draft lock and conflict still beat protection", () => {
   assert.equal(q[214], "Konflikt");
 });
 
+const timed = (name, conclusion, startedAt, completedAt, status = "COMPLETED") => ({
+  __typename: "CheckRun",
+  name,
+  conclusion,
+  startedAt,
+  completedAt,
+  status,
+});
+const at = (m) => `2026-10-08T10:0${m}:00Z`;
+const timedGreen = REQUIRED.map(([, n]) => timed(n, "SUCCESS", at(0), at(0)));
+const queueOf = (protectionRuns) =>
+  buildRows([basePr(220, [...timedGreen, ...protectionRuns])])[0];
+
+test("overlapping protection success and newer in-progress do not recommend ready", () => {
+  const row = queueOf([
+    timed(PROTECTION, "SUCCESS", at(0), at(2)),
+    timed(PROTECTION, null, at(1), null, "IN_PROGRESS"),
+  ]);
+  assert.notEqual(row.queue, "bereit");
+  assert.equal(row.protection, "läuft");
+  assert.equal(row.queue, "wartet auf CI");
+  // Order must not matter: reverse the rollup entries.
+  const reversed = queueOf([
+    timed(PROTECTION, null, at(1), null, "IN_PROGRESS"),
+    timed(PROTECTION, "SUCCESS", at(0), at(2)),
+  ]);
+  assert.notEqual(reversed.queue, "bereit");
+  assert.equal(reversed.protection, "läuft");
+});
+
+test("contradictory same-timestamp protection runs do not recommend ready", () => {
+  const successFirst = queueOf([
+    timed(PROTECTION, "SUCCESS", at(0), at(0)),
+    timed(PROTECTION, "FAILURE", at(0), at(0)),
+  ]);
+  const failureFirst = queueOf([
+    timed(PROTECTION, "FAILURE", at(0), at(0)),
+    timed(PROTECTION, "SUCCESS", at(0), at(0)),
+  ]);
+  assert.notEqual(successFirst.queue, "bereit");
+  assert.notEqual(failureFirst.queue, "bereit");
+  assert.equal(successFirst.protection, "rot");
+  assert.equal(failureFirst.protection, "rot");
+  assert.equal(successFirst.queue, "rot");
+  assert.equal(failureFirst.queue, "rot");
+  // A strictly newer successful rerun still supersedes an older failure.
+  const newerOk = queueOf([
+    timed(PROTECTION, "FAILURE", at(0), at(1)),
+    timed(PROTECTION, "SUCCESS", at(2), at(3)),
+  ]);
+  assert.equal(newerOk.protection, "ok");
+  assert.equal(newerOk.queue, "bereit");
+});
+
 test("pr-status prints a markdown table with one row per PR", () => {
   const table = formatTable(buildRows(PRS));
   const lines = table.trim().split("\n");
