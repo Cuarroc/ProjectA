@@ -1357,6 +1357,166 @@ mod tests {
         assert_eq!(count, 1);
     }
 
+    #[tokio::test]
+    async fn goal_task_audit_control_uses_one_connection() {
+        let (dir, mut store, project) = store().await;
+        store.pool.close().await;
+        store.pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(&format!(
+                "sqlite:{}",
+                dir.path().join("projecta.db").display()
+            ))
+            .await
+            .unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            store
+                .create_continuous_goal(&project, "goal", None, None, false)
+                .await
+                .unwrap();
+            store.control_continuous(&project, "cancel").await.unwrap();
+            assert_eq!(goal_task_envelopes(&store).await.len(), 2);
+        })
+        .await
+        .expect("audit must not acquire a second pooled connection while holding the writer");
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_success_covers_creation_transition_and_close() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        store
+            .checkpoint_continuous_task(&task.id, "worker", claim.fence, Some("completed"), None)
+            .await
+            .unwrap();
+        store.control_continuous(&project, "cancel").await.unwrap();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len(), 5, "one envelope per operation");
+        for row in rows {
+            assert_eq!(row["project"], project);
+            assert_eq!(row["result"], "accepted");
+            assert!(!row["run"].as_str().unwrap().is_empty());
+            assert!(row["sourceRef"]
+                .as_str()
+                .unwrap()
+                .starts_with("continuous:"));
+        }
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap()[0].status,
+            "cancelled"
+        );
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_transition_refusals_leave_state_unchanged() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["src".into()], vec![])
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        let before = store.get_continuous_task(&task.id).await.unwrap();
+        let count = goal_task_envelopes(&store).await.len();
+        store
+            .claim_continuous_task(&task.id, "other", false)
+            .await
+            .unwrap_err();
+        store
+            .checkpoint_continuous_task(
+                &task.id,
+                "worker",
+                claim.fence + 1,
+                Some("completed"),
+                None,
+            )
+            .await
+            .unwrap_err();
+        store
+            .control_continuous(&project, "resume")
+            .await
+            .unwrap_err();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len() - count, 3);
+        for row in &rows[count..] {
+            assert!(row["result"].as_str().unwrap().starts_with("refused:"));
+            for key in ["project", "run", "sourceRef"] {
+                assert!(!row[key].as_str().unwrap().is_empty());
+            }
+        }
+        assert_eq!(store.get_continuous_task(&task.id).await.unwrap(), before);
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap().len(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_transition_failure_rolls_back() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        let before = store.get_continuous_task(&task.id).await.unwrap();
+        let pending = store
+            .create_continuous_task(&goal.id, "pending", None, vec!["other".into()], vec![])
+            .await
+            .unwrap();
+        let rows = goal_task_envelopes(&store).await;
+        sqlx::query("CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END")
+            .execute(&store.pool).await.unwrap();
+        assert!(store
+            .checkpoint_continuous_task(&task.id, "worker", claim.fence, Some("completed"), None)
+            .await
+            .is_err());
+        assert!(store.control_continuous(&project, "cancel").await.is_err());
+        assert!(store
+            .claim_continuous_task(&pending.id, "worker", false)
+            .await
+            .is_err());
+        assert_eq!(
+            store.get_continuous_task(&pending.id).await.unwrap(),
+            Some(pending)
+        );
+        assert_eq!(goal_task_envelopes(&store).await, rows);
+        assert_eq!(store.get_continuous_task(&task.id).await.unwrap(), before);
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap(),
+            vec![goal]
+        );
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM continuous_tasks")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn event_pages_report_overflow_without_skipping_project_events() {
         let (dir, store, project) = store().await;
