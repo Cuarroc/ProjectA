@@ -39,12 +39,14 @@ Liest nur: gh pr list --state open --json ${FIELDS}
 Exit-Codes: 0 ok, 2 Aufruffehler, 3 gh-Fehler.
 `;
 
-const time = (c) => Date.parse(c.completedAt || c.startedAt || 0) || 0;
+// Prefer startedAt so a newer in-progress rerun is not hidden by an older
+// run that completed later. Fall back to completedAt for contexts without start.
+const time = (c) => Date.parse(c.startedAt || c.completedAt || 0) || 0;
 
-export function checkState(rollup, name) {
-  const runs = (rollup || []).filter((c) => (c.name || c.context) === name);
-  if (!runs.length) return "—";
-  const c = runs.sort((a, b) => time(b) - time(a))[0];
+// Lower rank = worse for readiness. Ties at the newest start keep the worst.
+const STATE_RANK = { rot: 0, "läuft": 1, "—": 2, "übersprungen": 3, ok: 4 };
+
+function singleRunState(c) {
   if (c.__typename === "StatusContext" || (c.state && !c.status)) {
     return { SUCCESS: "ok", PENDING: "läuft", EXPECTED: "läuft" }[c.state] || "rot";
   }
@@ -52,6 +54,18 @@ export function checkState(rollup, name) {
   if (c.conclusion === "SUCCESS") return "ok";
   if (c.conclusion === "SKIPPED" || c.conclusion === "NEUTRAL") return "übersprungen";
   return "rot";
+}
+
+function worseState(a, b) {
+  return (STATE_RANK[a] ?? 0) <= (STATE_RANK[b] ?? 0) ? a : b;
+}
+
+export function checkState(rollup, name) {
+  const runs = (rollup || []).filter((c) => (c.name || c.context) === name);
+  if (!runs.length) return "—";
+  const newest = Math.max(...runs.map(time));
+  // Newest start wins; equal timestamps take the worst outcome (order-independent).
+  return runs.filter((c) => time(c) === newest).map(singleRunState).reduce(worseState);
 }
 
 function queuedNumbers(prs) {
