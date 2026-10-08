@@ -1,16 +1,41 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as joinPath } from "node:path";
 import { test } from "node:test";
-import { findViolations, run, scopeFiles } from "./hygiene-check.mjs";
+import { findViolations, scopeFiles } from "./hygiene-check.mjs";
 
 // Fixtures are assembled at runtime so this file never holds a forbidden
 // literal itself (it is scanned by the very check it tests).
 const join = (...parts) => parts.join("");
 const AT = String.fromCharCode(64);
 const rulesFor = (text, path = "tools/denkraum/x.mjs") => findViolations([{ path, text }]).map((f) => f.rule);
+
+// Run the actual CLI, including its entry point and complete process output.
+// A child-only buffer limit keeps the overflow fixture small on every base.
+function runChecker(root, maxBuffer, env = {}) {
+  const checker = joinPath(root, "tools/denkraum/hygiene-check.mjs");
+  copyFileSync(new URL("hygiene-check.mjs", import.meta.url), checker);
+  const script = `
+    import cp from "node:child_process";
+    import { syncBuiltinESMExports } from "node:module";
+    import { pathToFileURL } from "node:url";
+    const original = cp.execFileSync;
+    const maxBuffer = ${JSON.stringify(maxBuffer) ?? "undefined"};
+    if (maxBuffer !== undefined) {
+      cp.execFileSync = (file, args, options) => original(file, args, { ...options, maxBuffer });
+      syncBuiltinESMExports();
+    }
+    await import(pathToFileURL(process.argv[1]).href);
+  `;
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script, checker], {
+    encoding: "utf8", env: { ...process.env, ...env },
+  });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  return result;
+}
 
 test("flags each forbidden class and passes its clean twin", () => {
   const cases = [
@@ -68,18 +93,18 @@ test("a git read failure exits 2 without printing file content", () => {
   const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
   const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
   const secret = join("someone", AT, "example", ".", "org");
-  const lines = [];
   try {
     git("init", "-q");
     mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
     writeFileSync(joinPath(root, "tools/denkraum/big.txt"), `${secret}\n`.repeat(50));
     git("add", "tools");
-    const log = { log: (...a) => lines.push(a.join(" ")), error: (...a) => lines.push(a.join(" ")) };
-    assert.equal(run(root, log, 64), 2, "a buffer overflow must fail with its own exit code");
+    const result = runChecker(root, 64);
+    assert.ok(!(result.stdout + result.stderr).includes(secret), "diagnostic must not carry file content");
+    assert.equal(result.status, 2, "a buffer overflow must fail with its own exit code");
+    assert.match(result.stderr, /cannot read tools\/denkraum \(ENOBUFS\)/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
-  assert.ok(lines.length > 0 && lines.every((line) => !line.includes(secret)), "diagnostic must not carry file content");
 });
 
 test("the check and its test are clean under their own rules", () => {
