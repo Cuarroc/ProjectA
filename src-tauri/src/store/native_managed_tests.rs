@@ -137,6 +137,7 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
     };
     use sqlx::Connection as _;
     use std::{
+        io::Write as _,
         sync::{atomic::AtomicBool, mpsc},
         time::{Duration, Instant},
     };
@@ -145,11 +146,12 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
     tokio::task::spawn_blocking(move || {
         let (sender, receiver) = mpsc::sync_channel::<Request>(4);
         let start = Instant::now();
-        let (native, observations, returned_at) = std::thread::scope(|scope| {
+        let (native, (observations, writer_timings), returned_at) = std::thread::scope(|scope| {
             let (store_ref, owner_ref, runtime_ref, dir_ref) = (&store, &owner, &runtime, &dir);
             let actor = scope.spawn(move || {
                 let (store, owner, runtime, dir) = (store_ref, owner_ref, runtime_ref, dir_ref);
                 let mut observations = Vec::new();
+                let mut writer_timings = Vec::new();
                 while let Ok(request) = receiver.recv() {
                     let stage = request.stage;
                     // Take the foreign lock only after the real Completed
@@ -162,11 +164,20 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                             sqlx::sqlite::SqliteConnection::connect_with(&options)).unwrap();
                         runtime.block_on(sqlx::query("BEGIN IMMEDIATE")
                             .execute(&mut connection)).unwrap();
+                        let lock_confirmed = start.elapsed();
                         Some(runtime.spawn(async move {
-                            // Experimental load: exceeds the host's former
-                            // 3s receipt wait but stays inside SQLite's 5s wait.
-                            tokio::time::sleep(Duration::from_secs(4)).await;
+                            let task_polled = start.elapsed();
+                            // Intended load: beyond the former 3s receipt wait,
+                            // within SQLite's 5s wait. Measure the actual release.
+                            let delay = tokio::time::sleep(Duration::from_secs(4));
+                            let target_wake = delay.deadline().into_std().duration_since(start);
+                            delay.await;
+                            let timer_woke = start.elapsed();
+                            let rollback_submitted = start.elapsed();
                             sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
+                            let rollback_confirmed = start.elapsed();
+                            (lock_confirmed, task_polled, target_wake, timer_woke,
+                                rollback_submitted, rollback_confirmed)
                         }))
                     } else { None };
                     let persist_start = start.elapsed();
@@ -174,17 +185,22 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                     let persist_end = start.elapsed();
                     let acknowledged = request.acknowledge(persisted.clone());
                     observations.push((stage, persist_start, persist_end, start.elapsed(), persisted, acknowledged));
-                    if let Some(holder) = holder { runtime.block_on(holder).unwrap(); }
+                    if let Some(holder) = holder {
+                        writer_timings.push(runtime.block_on(holder).unwrap());
+                    }
                 }
                 runtime.block_on(store.close_native_capture_owner(owner)).unwrap();
-                observations
+                (observations, writer_timings)
             });
             let native = windows_process::execute_owned_host(
                 &host, &host_hash, prepared, sender, &AtomicBool::new(false));
             let returned_at = start.elapsed();
             (native, actor.join().unwrap(), returned_at)
         });
-        eprintln!("host_return={returned_at:?}; error={:?}; checkpoints={observations:?}", native.as_ref().err());
+        // Raw stderr preserves timing evidence in passing libtest runs, too.
+        // The required CI suite keeps its existing capture/filter settings.
+        let _ = writeln!(std::io::stderr(), "host_return={returned_at:?}; error={:?}; checkpoints={observations:?}", native.as_ref().err());
+        let _ = writeln!(std::io::stderr(), "writer_order=(lock_confirmed, task_polled, target_wake, timer_woke, rollback_submitted, rollback_confirmed); writer_timings={writer_timings:?}");
         assert_eq!(observations.iter().map(|o| o.0).collect::<Vec<_>>(),
             [Stage::Launch, Stage::Process, Stage::Input, Stage::Receipt]);
         assert!(observations.iter().all(|o| o.4.is_ok()), "persistence: {observations:?}");
@@ -200,6 +216,96 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
         };
         assert_eq!(confirmed.reply().capture.stdout, b"a\r\nz\r\n");
     }).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires built Windows capture host; channel-controlled overdue Receipt"]
+async fn real_native_receipt_persistence_after_host_return_rejects_late_ack() {
+    use crate::process_capture::{
+        checkpoints::{Request, Stage},
+        windows_process,
+    };
+    use std::{
+        sync::{atomic::AtomicBool, mpsc},
+        time::Instant,
+    };
+    for overdue in [false, true] {
+        let (_dir, store, owner, prepared, _manager, host, host_hash) =
+            prepared_fixture(false).await;
+        let runtime = tokio::runtime::Handle::current();
+        tokio::task::spawn_blocking(move || {
+            let (sender, receiver) = mpsc::sync_channel::<Request>(4);
+            let (release, released) = mpsc::sync_channel(1);
+            let start = Instant::now();
+            let (native, observations, returned_at, release_sent, release_ok) =
+                std::thread::scope(|scope| {
+                    let (store_ref, owner_ref, runtime_ref) = (&store, &owner, &runtime);
+                    let actor = scope.spawn(move || {
+                        let mut observations = Vec::new();
+                        while let Ok(request) = receiver.recv() {
+                            let stage = request.stage;
+                            let received_at = start.elapsed();
+                            // This case intentionally misses the real host boundary.
+                            // A successful later DB commit is not timely completion.
+                            let release_at = if stage == Stage::Receipt {
+                                Some(released.recv().unwrap())
+                            } else { None };
+                            let persist_start = start.elapsed();
+                            let persisted = runtime_ref.block_on(
+                                store_ref.persist_native_checkpoint(owner_ref, &request));
+                            let persist_end = start.elapsed();
+                            let acknowledged = request.acknowledge(persisted.clone());
+                            observations.push((stage, received_at, release_at, persist_start,
+                                persist_end, start.elapsed(), persisted, acknowledged));
+                        }
+                        runtime_ref.block_on(
+                            store_ref.close_native_capture_owner(owner_ref)).unwrap();
+                        observations
+                    });
+                    // The early control pre-releases the same channel. The overdue
+                    // case releases only after execute_owned_host actually returns.
+                    let mut release_sent = start.elapsed();
+                    let mut release_ok = if overdue { false } else {
+                        release.send(release_sent).is_ok()
+                    };
+                    let native = windows_process::execute_owned_host(
+                        &host, &host_hash, prepared, sender, &AtomicBool::new(false));
+                    let returned_at = start.elapsed();
+                    if overdue {
+                        release_sent = start.elapsed();
+                        release_ok = release.send(release_sent).is_ok();
+                    }
+                    (native, actor.join().unwrap(), returned_at, release_sent, release_ok)
+                });
+            eprintln!("overdue={overdue}; host_return={returned_at:?}; release_sent={release_sent:?}; error={:?}; checkpoints={observations:?}", native.as_ref().err());
+            assert!(release_ok, "Receipt actor must consume the controlled release");
+            assert_eq!(observations.iter().map(|o| o.0).collect::<Vec<_>>(),
+                [Stage::Launch, Stage::Process, Stage::Input, Stage::Receipt]);
+            assert!(observations.iter().all(|o| o.6.is_ok()), "persistence: {observations:?}");
+            let count: i64 = runtime.block_on(sqlx::query_scalar(
+                "SELECT count(*) FROM development_capture_checkpoints WHERE run_id=?")
+                .bind(&owner.binding.run_id).fetch_one(&store.pool)).unwrap();
+            assert_eq!(count, 4);
+            let receipt = observations.last().unwrap();
+            assert_eq!(receipt.2, Some(release_sent));
+            assert!(receipt.3 >= release_sent);
+            assert!(receipt.4 >= receipt.3 && receipt.5 >= receipt.4);
+            assert!(observations[..3].iter().all(|o| o.7.is_ok()));
+            if overdue {
+                assert!(release_sent >= returned_at && receipt.3 >= returned_at);
+                assert_eq!(native.err().as_deref(), Some("native host did not complete cleanly"));
+                assert_eq!(receipt.7.as_ref().map_err(String::as_str), Err("checkpoint owner no longer waiting"));
+            } else {
+                assert!(returned_at >= receipt.4);
+                assert!(receipt.7.is_ok(), "early Receipt acknowledgement: {receipt:?}");
+                let windows_process::NativeSettlement::Completed(confirmed) = native.unwrap() else {
+                    panic!("early control must complete delivered sort input");
+                };
+                assert_eq!(confirmed.reply().capture.stdout, b"a\r\nz\r\n");
+            }
+            runtime.block_on(store.close_test_pool());
+        }).await.unwrap();
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
