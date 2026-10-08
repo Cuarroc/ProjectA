@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, toNamespacedPath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadStartConfig } from "./config.mjs";
 
@@ -84,6 +84,16 @@ test("refuses a state path inside the repository", () => {
   assert.equal(load({ ...validEnv(), [name("STATE")]: outside }).config.statePath, resolve(outside));
 });
 
+test("refuses Windows namespace and UNC state paths", { skip: process.platform !== "win32" }, () => {
+  const namespaced = toNamespacedPath(join(repoRoot, "state.json"));
+  refuses("STATE", [namespaced, namespaced.replace("\\\\?\\", "\\\\.\\"),
+    namespaced.replaceAll("\\", "/"),
+    "\\\\synthetic-host\\synthetic-share\\state.json",
+    "\\\\?\\UNC\\synthetic-host\\synthetic-share\\state.json"]);
+  refuses("STATE", [join(repoRoot.toUpperCase(), "state.json")]);
+  assert.equal(load(validEnv()).ok, true);
+});
+
 test("rejects invalid ports without coercion", () => {
   refuses("PORT", ["", "0", "65536", "-1", "1.5", "1e3", "0x10", " 80", "80\n", "NaN"]);
 });
@@ -97,7 +107,13 @@ test("returns only environment names and fixed reasons in errors", () => {
   const result = load(env);
   assert.equal(result.errors.length, 4);
   for (const error of result.errors) assert.deepEqual(Object.keys(error), ["name", "reason"]);
-  for (const value of Object.values(env)) assert.equal(JSON.stringify(result.errors).includes(value), false);
+  for (const { name: errorName, reason } of result.errors) {
+    for (const value of Object.values(env)) {
+      for (const fragment of [value, value.slice(0, 12)]) {
+        assert.equal(errorName.includes(fragment) || reason.includes(fragment), false);
+      }
+    }
+  }
 });
 
 test("check CLI never prints synthetic environment values", () => {
