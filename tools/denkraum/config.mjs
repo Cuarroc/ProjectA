@@ -30,7 +30,9 @@ export function loadStartConfig(env, { repoRoot }) {
   } else {
     statePath = resolve(state);
     const fromRepo = relative(resolve(repoRoot), statePath);
-    if (!isAbsolute(fromRepo) && fromRepo !== ".." && !fromRepo.startsWith(`..${sep}`)) {
+    if (process.platform === "win32" && statePath.startsWith("\\\\")) {
+      error("STATE", "Windows namespace and UNC state paths are not supported");
+    } else if (!isAbsolute(fromRepo) && fromRepo !== ".." && !fromRepo.startsWith(`..${sep}`)) {
       error("STATE", "must be outside the repository after path resolution");
     }
   }
