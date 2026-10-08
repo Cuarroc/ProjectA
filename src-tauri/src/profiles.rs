@@ -516,8 +516,9 @@ mod tests {
             .find(|profile| profile.id == "ollama")
             .expect("ollama");
         assert_eq!(ollama.caps, AgentCapabilities::default());
-        // Codex carries a captured readiness marker and the documented
-        // model-instructions file setting; other capabilities stay cautious.
+        // Codex carries a captured readiness marker, the documented
+        // model-instructions file setting and the probed repo skills
+        // directory; other capabilities stay cautious.
         let codex = default_profiles()
             .into_iter()
             .find(|profile| profile.id == "codex")
@@ -529,6 +530,9 @@ mod tests {
                     flag: "--config".into(),
                     key: "model_instructions_file".into(),
                     ext: "md".into(),
+                },
+                skills: SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
                 },
                 readiness_marker: Some("Ask Codex to do anything".into()),
                 ..AgentCapabilities::default()

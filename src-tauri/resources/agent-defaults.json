@@ -35,7 +35,7 @@
     {
       "id": "codex", "name": "Codex CLI", "command": "codex", "args": [],
       "caps": {
-        "systemPrompt": { "mode": "configFile", "flag": "--config", "key": "model_instructions_file", "ext": "md" }, "skills": { "mode": "unsupported" },
+        "systemPrompt": { "mode": "configFile", "flag": "--config", "key": "model_instructions_file", "ext": "md" }, "skills": { "mode": "conventionAt", "dir": ".agents/skills" },
         "lifecycle": { "mode": "heuristic" },
         "dialect": { "permission": [], "quota": [], "contextLabels": [] }, "readinessMarker": "Ask Codex to do anything"
       },
