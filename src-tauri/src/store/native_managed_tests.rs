@@ -168,7 +168,12 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                             tokio::time::sleep(Duration::from_secs(4)).await;
                             sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
                         }))
-                    } else if stage == Stage::Launch {
+                    } else if stage == Stage::Process {
+                        // Process does not gate host progress, so this delay
+                        // overlaps the host drain window that starts at child
+                        // exit. Launch delay would only shift the whole run
+                        // and leave the 5s receipt budget intact (CI run
+                        // 37840356500 stayed green).
                         std::thread::sleep(Duration::from_secs(2));
                         None
                     } else { None };
