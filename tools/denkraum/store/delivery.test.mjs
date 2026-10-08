@@ -118,7 +118,7 @@ test('V2 reads and delivery refuse a missing root agent id even when no event ne
   for (const call of [() => rootless.pending(), () => rootless.inbox(), () => rootless.flushNotifications(), () => rootless.flushNotifications('other-event')])
     await assert.rejects(call(), status(503));
   assert.deepEqual(calls, []); assert.equal(await readFile(file, 'utf8'), bytes);
-  assert.equal((await new DeliveryStore(file).flushNotifications()).status, 'not-configured', 'P1: no transport is reported before any ledger read');
+  await assert.rejects(() => new DeliveryStore(file).flushNotifications(), status(503), 'rootless V2 refuses before not-configured');
 });
 
 test('rootless V2 without transport refuses notification flush with 503', async () => {
