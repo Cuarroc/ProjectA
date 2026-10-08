@@ -5,15 +5,19 @@ import { randomUUID } from 'node:crypto';
 import { AnswerStore } from './answers.mjs';
 import { activeAnswers, activeEvents, ensure, isoTime, receiptFor, validId } from './model.mjs';
 
+// R669-O1: on V2 every path here checks the root id before reading events, so an empty ledger also answers 503.
+const requireRoot = (state, rootAgentId) => ensure(state.schemaVersion !== 2 || validId(rootAgentId),
+  'Root-Agent-ID ist nicht konfiguriert; Empfangsprüfung abgelehnt.', 503);
+
 export class DeliveryStore extends AnswerStore {
   #notificationQueue = Promise.resolve();
   async pending() {
-    const state = await this.read();
+    const state = await this.read(); requireRoot(state, this.rootAgentId);
     return activeAnswers(state).filter(a => state.schemaVersion === 2
       ? !receiptFor(state, a, this.rootAgentId) : !a.ack);
   }
   async inbox() {
-    const state = await this.read(); const pending = []; const received = [];
+    const state = await this.read(); requireRoot(state, this.rootAgentId); const pending = []; const received = [];
     for (const event of activeEvents(state)) {
       const receipt = receiptFor(state, event, this.rootAgentId) || null;
       const progress = state.progress?.find(p => p.eventId === event.eventRef.eventId) ?? null;
@@ -31,7 +35,7 @@ export class DeliveryStore extends AnswerStore {
     if (typeof this.io.notifyEvent !== 'function') return { status: 'not-configured' };
     const event = await this.change(state => {
       if (state.schemaVersion !== 2) return null;
-      const at = this.io.clock();
+      requireRoot(state, this.rootAgentId); const at = this.io.clock();
       const eligible = activeEvents(state).filter(e => (eventId === undefined || e.eventRef.eventId === eventId) && !receiptFor(state, e, this.rootAgentId));
       const a = eligible.map(e => e.content).filter(a =>
         (a.webhookDelivery?.status !== 'queued' || isoTime(a.webhookDelivery.queuedAt) && at - Date.parse(a.webhookDelivery.queuedAt) >= 7 * 86400000))
