@@ -1,5 +1,6 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 // Pure preflight: no file access, server start, or secret-source assumptions.
 // Only config contains values; errors and notification reasons are safe to print.
@@ -51,7 +52,17 @@ export function loadStartConfig(env, { repoRoot }) {
   };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+let isCliEntry = import.meta.main;
+// Node 24.0/24.1 lack import.meta.main; resolve only the CLI entry, never STATE.
+if (isCliEntry === undefined && process.argv[1]
+    && !process.execArgv.some((arg) => /^(?:--(?:eval|print)(?:=|$)|-[ep])/u.test(arg))) {
+  try {
+    isCliEntry = createRequire(import.meta.url).resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    isCliEntry = false;
+  }
+}
+if (isCliEntry) {
   if (process.argv.length !== 3 || process.argv[2] !== "--check") {
     console.error("Usage: node tools/denkraum/config.mjs --check");
     process.exitCode = 1;
