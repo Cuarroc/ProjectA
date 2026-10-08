@@ -53,7 +53,7 @@ Specs aus M3/M4 (`task_w1-10.md`, `task_hq2-02.md`, `task_ollama_worker_adapter.
 
 | Spec | Paket | Lane |
 |---|---|---|
-| `.pa/task_arch-d4-04.md` | ARCH-D4: API-Router, serieller Teil 4 | seriell: `api.rs`; Root, Slot B |
+| `.pa/task_arch-d4-05.md` | ARCH-D4: API-Router, serieller Teil 5 | seriell: `api.rs`; Root, Slot B |
 | `.pa/task_w1-05.md` | W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched` | seriell: `store.rs`, danach `api.rs` (Nahtstellen) |
 | `.pa/task_f_core3_delivery.md` | W1-03e/f: F-CORE-3 Rest B.3/C | W1-03e: `workers.rs` (keine Nahtstelle); W1-03f (M4) zusätzlich `bin/pa.rs` |
 | `.pa/task_w1-20.md` | W1-20: Zweites Setup reproduzieren | parallel (keine Nahtstelle) |
