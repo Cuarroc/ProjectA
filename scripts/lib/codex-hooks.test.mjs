@@ -54,6 +54,32 @@ test('generated hooks bind tracked scripts into a self-contained Git Bash comman
   assert.match(decode(windowsCommand("C:/it's here/x.sh")), /^\$Script = 'C:\/it''s here\/x\.sh'\n/);
 });
 
+// A real bash for the POSIX `command` arm: Git Bash on Windows (never the
+// WSL launcher on PATH), the system bash elsewhere.
+function posixBash() {
+  if (!windows) return 'bash';
+  const env = process.env;
+  const bases = [env.ProgramFiles, env.ProgramW6432, env.LOCALAPPDATA && join(env.LOCALAPPDATA, 'Programs')].filter(Boolean);
+  return (env.PROJECTA_GIT_BASH ? [env.PROJECTA_GIT_BASH] : bases.map(base => join(base, 'Git', 'bin', 'bash.exe'))).find(existsSync);
+}
+
+test('generated Unix hook commands keep an apostrophe in the checkout path literal', () => {
+  const bash = posixBash();
+  assert.ok(bash, 'Git Bash is needed to check the POSIX hook command');
+  const root = "/Users/O'Brian/my $repo";
+  const scripts = { PostToolUse: '.claude/hooks/red-first.sh', SessionStart: 'scripts/install-hooks.sh' };
+  for (const [event, groups] of Object.entries(codexHooksConfig(root).hooks)) {
+    const { command } = groups[0].hooks[0];
+    assert.match(command, /^bash /, event);
+    const syntax = spawnSync(bash, ['-n', '-c', command], { encoding: 'utf8', windowsHide: true });
+    assert.equal(syntax.status, 0, `${event}: bash -n: ${syntax.stderr}`);
+    // The same words with printf in place of bash show the argument the hook
+    // script would receive, without running the hook.
+    const words = spawnSync(bash, ['-c', command.replace(/^bash /, "printf '%s\\n' ")], { encoding: 'utf8', windowsHide: true });
+    assert.equal(words.stdout, `${root}/${scripts[event]}\n`, `${event}: ${words.stderr}`);
+  }
+});
+
 test('writeCodexHooks keeps a backup of a legacy file and the doctor turns ok', () => {
   const root = tempRoot();
   assert.equal(inspectCodexHooks(root).state, 'ok', 'no file is fine');
