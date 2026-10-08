@@ -22,6 +22,16 @@ test('receiptFor matches only receipts of the configured root agent', () => {
   assert.equal(receiptFor({ ...state, schemaVersion: 1 }, { eventRef }, undefined), false, 'v1 ledgers have no receipts to check');
 });
 
+test('malformed stored questions or answers fail as DeskError 503 instead of a later TypeError', () => {
+  const ledger = extra => ({ schemaVersion: 1, revision: 0, questions: [], answers: [], ...extra });
+  for (const bad of [{ answers: [null] }, { answers: [7] }, { answers: [{ questionId: 'bad id!' }] },
+    { questions: [null] }, { questions: ['q'] }, { questions: [{ id: 'bad id!' }] }]) {
+    assert.throws(() => migrateState(ledger(bad)), e => e instanceof DeskError && e.status === 503, JSON.stringify(bad));
+  }
+  const legacy = ledger({ questions: [{ id: 'E-1', revision: 1, options: [] }], answers: [{ id: 'a-1', questionId: 'E-1', questionRevision: 1, ack: null }] });
+  assert.deepEqual(migrateState(legacy).answers, legacy.answers, 'well-formed legacy records stay accepted');
+});
+
 test('exported validation lists cannot be changed by an importer', () => {
   for (const list of [statuses, ideaPriorities]) {
     assert.ok(Object.isFrozen(list));
