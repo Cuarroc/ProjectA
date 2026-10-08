@@ -459,3 +459,28 @@ test("Draft and Ready PR numbers require a boundary after the digits", () => {
     ],
   );
 });
+
+test("Drafts candidates exclude later historical PR mentions after a comma", () => {
+  const planText = [
+    "| ID | Title | Status |",
+    "|---|---|---|",
+    "| Z2-PROBE | probe | Drafts #1/#2, Vorgänger PR #99 |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(planText);
+  assert.deepEqual(rows[0].prNumbers, [1, 2]);
+
+  // Only the unrelated predecessor is open — candidates #1/#2 are missing.
+  const hints = collectHygiene({
+    now: NOW,
+    planText,
+    prsOpen: [{ number: 99, title: "unrelated", headRefName: "cursor/unrelated", updatedAt: "2026-09-25T11:00:00Z" }],
+    prsAll: [],
+    remoteBranches: [],
+    standText: "## Aktive Specs\n",
+    erledigtText: "| Datum | ID |\n",
+    untracked: [],
+  }).inProgressWithoutPr;
+  assert.equal(hints.length, 1);
+  assert.deepEqual(hints[0].prNumbers, [1, 2]);
+});
