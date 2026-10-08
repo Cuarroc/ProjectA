@@ -83,10 +83,30 @@ function eventSummary(ref, action) {
     return `${prefix} · Umgesetzt · ${implementation.artifactRef} · ${implementation.check} · ${implementation.observedResult} · ${implementation.actor} · ${date(implementation.observedAt)}`;
   return `${prefix} · Weitere Bearbeitung noch nicht belegt`;
 }
+function ideaCategory(event) {
+  const r = event.revision;
+  return !Object.hasOwn(r, 'category') ? '' : typeof r.category === 'string' && r.category.trim().length <= 80 ? r.category.trim() : null;
+}
+let ideaCategoryDescriptors = '';
+function updateIdeaCategories(events) {
+  const select = $('idea-category'), selected = select.value;
+  const categories = [...new Set(events.map(event => JSON.stringify(ideaCategory(event))))];
+  const label = value => value === 'null' ? 'Nicht lesbar' : JSON.parse(value) || 'Keine Kategorie';
+  const descriptors = [['*', 'Alle Kategorien'], ...categories.map(value => [value, label(value)])];
+  if (selected !== '*' && selected !== '' && !categories.includes(selected)) descriptors.push([selected, label(selected) + ' · derzeit nicht im Datenstand']);
+  const encoded = JSON.stringify(descriptors);
+  if (encoded === ideaCategoryDescriptors) return;
+  ideaCategoryDescriptors = encoded;
+  select.replaceChildren();
+  for (const [value, text] of descriptors) {
+    const option = node('option', text); option.value = value; select.append(option);
+  }
+  select.value = selected;
+}
 function ideaMetadata(event) {
   const r = event.revision, priorities = ['urgent', 'high', 'normal', 'later'];
   const names = { urgent: 'Dringend', high: 'Hoch', normal: 'Normal', later: 'Später' };
-  const category = !Object.hasOwn(r, 'category') ? '' : typeof r.category === 'string' && r.category.trim().length <= 80 ? r.category.trim() : null;
+  const category = ideaCategory(event);
   const priority = !Object.hasOwn(r, 'userPriority') ? 'normal' : priorities.includes(r.userPriority) ? r.userPriority : null;
   const source = r.source == null ? 'Nicht hinterlegt' : typeof r.source === 'string' && r.source.trim() && r.source.length <= 2000 ? r.source : 'Nicht lesbar';
   const progress = state.progress.find(p => p.eventId === event.ref.eventId);
@@ -103,16 +123,22 @@ function ideaStations() {
 }
 function renderIdeaState() {
   const events = activeEvents(), all = events.filter(event => event.idea);
-  if (!$('idea-search')) {
+  if (document.getElementById('idea-search')?.id !== 'idea-search') {
     const label = node('label', 'Titel oder Originaltext durchsuchen'); label.htmlFor = 'idea-search';
     const search = node('input'); search.id = 'idea-search'; search.type = 'search';
     search.addEventListener('input', renderIdeaState);
+    const categoryLabel = node('label', 'Kategorie · Nutzerangabe (ungeprüft)'); categoryLabel.htmlFor = 'idea-category';
+    const category = node('select'); category.id = 'idea-category';
+    const every = node('option', 'Alle Kategorien'); every.value = '*'; category.append(every); category.value = '*';
+    category.addEventListener('change', renderIdeaState);
     const count = node('p', '', 'muted'); count.id = 'idea-count'; count.setAttribute('role', 'status');
     const cards = node('div'); cards.id = 'idea-cards';
-    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), label, search, count, cards);
+    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), label, search, categoryLabel, category, count, cards);
   }
   const term = $('idea-search').value.toLocaleLowerCase('de');
-  const ideas = all.filter(event => [event.title, event.revision.text].join(' ').toLocaleLowerCase('de').includes(term));
+  updateIdeaCategories(all); const selectedCategory = $('idea-category').value || '*';
+  const ideas = all.filter(event => [event.title, event.revision.text].join(' ').toLocaleLowerCase('de').includes(term)
+    && (selectedCategory === '*' || JSON.stringify(ideaCategory(event)) === selectedCategory));
   const cards = $('idea-cards'); cards.replaceChildren(); $('idea-count').textContent = `${ideas.length} von ${all.length} gespeicherten Ideen`;
   for (const event of ideas) {
     const item = node('article', undefined, 'idea-card');
@@ -142,7 +168,7 @@ function renderIdeaState() {
     }
     cards.append(item);
   }
-  if (!ideas.length) cards.append(node('p', all.length ? 'Keine Ideen für diese Suche.' : 'Hier erscheinen deine gespeicherten Ideen. Beginne mit einem freien Gedanken.', 'muted'));
+  if (!ideas.length) cards.append(node('p', all.length ? 'Keine Ideen für diese Auswahl.' : 'Hier erscheinen deine gespeicherten Ideen. Beginne mit einem freien Gedanken.', 'muted'));
   ideaEvents.querySelector('.idea-answer-archive')?.remove();
   const answers = events.filter(event => !event.idea);
   if (answers.length) { const archive = node('details', undefined, 'idea-answer-archive'); archive.append(node('summary', `Gespeicherte Antworten (${answers.length})`)); for (const event of answers) archive.append(node('h3', event.title), node('p', eventSummary(event.ref, event.action))); ideaEvents.append(archive); }
