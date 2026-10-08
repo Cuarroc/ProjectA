@@ -856,22 +856,23 @@ async fn list_agent_profiles(store: State<'_, Store>) -> Result<Vec<AgentProfile
 /// Register a repository and answer with the same enriched shape
 /// `list_projects` uses: the sidebar decides its GitHub affordances off
 /// `githubRemote`, and a freshly created row must not claim "no remote" for a
-/// repository that already has one.
+/// repository that already has one. The one implementation behind the IPC
+/// command and the control API; it blocks (git child processes, the insert).
+fn register_project(store: &Store, name: &str, repo_path: &str) -> Result<ProjectOverview, String> {
+    worktree::ensure_git_repo(repo_path)?;
+    let project = tauri::async_runtime::block_on(store.create_project(name, repo_path))?;
+    Ok(with_github_flag(project))
+}
+
 #[tauri::command]
 async fn create_project(
     store: State<'_, Store>,
     name: String,
     repo_path: String,
 ) -> Result<ProjectOverview, String> {
-    // `git rev-parse` is a child process; keep it off the thread serving the
-    // UI - the `with_github_flag` probe two lines below travels the same way.
-    let git_path = repo_path.clone();
-    tauri::async_runtime::spawn_blocking(move || worktree::ensure_git_repo(&git_path))
-        .await
-        .map_err(|e| format!("checking the repository did not finish: {e}"))??;
-    let project = store.create_project(&name, &repo_path).await?;
-    // The git probe is a child process; keep it off the thread serving the UI.
-    tauri::async_runtime::spawn_blocking(move || Ok(with_github_flag(project)))
+    // Keep the blocking work off the thread serving the UI.
+    let store = store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || register_project(&store, &name, &repo_path))
         .await
         .map_err(|e| format!("creating the project did not finish: {e}"))?
 }
@@ -3423,11 +3424,8 @@ impl ControlBackend for ApiBackend {
     }
 
     fn create_project(&self, name: &str, repo_path: &str) -> Result<ProjectOverview, String> {
-        // Same two steps as the IPC command: refuse a path that is not a git
-        // work tree, then insert. The connection thread is already blocking.
-        worktree::ensure_git_repo(repo_path)?;
-        let project = tauri::async_runtime::block_on(self.store.create_project(name, repo_path))?;
-        Ok(with_github_flag(project))
+        // The connection thread is already blocking.
+        register_project(&self.store, name, repo_path)
     }
 
     fn create_github_repo(
