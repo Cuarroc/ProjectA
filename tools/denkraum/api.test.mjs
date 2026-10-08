@@ -49,7 +49,8 @@ test('API receipt authority rejects browser, missing or wrong credentials and un
 for (const status of [307, 308]) test(`API CLI all mutations refuse ${status} redirects before replay at another host`, async () => {
   const cli = await import('./cli.mjs'); const dir = await mkdtemp(join(tmpdir(), 'desk-redirect-'));
   const file = join(dir, 'input.json'); await writeFile(file, '{}');
-  for (const command of ['question', 'ack', 'received', 'applied', 'receipt', 'notify']) {
+  // R731-K2: progress, patch and idea are the sibling mutations; progress and patch carry the Root bearer.
+  for (const command of ['question', 'ack', 'received', 'applied', 'receipt', 'notify', 'progress', 'patch', 'idea']) {
     const calls = []; const request = async (url, options) => {
       calls.push(String(url));
       if (options.redirect === 'error') throw new TypeError(`Redirect ${status} refused`);
@@ -99,4 +100,8 @@ test('API CLI inbox and receipt IO are testable without a server or subprocess a
   await assert.rejects(cli.runCli(['inbox', file], env, request), /Aufruf/);
   await assert.rejects(cli.runCli(['state'], env, async () => ({ ok: false, json: async () => ({ error: 'offline' }) })), /offline/);
   assert.equal(calls.length, 2);
+  for (const command of ['state', 'pending', 'inbox']) { // R731-K2: reads never send the Root bearer, so a followed redirect cannot leak it
+    let sent; await cli.runCli([command], env, async (url, options) => { sent = options; return { ok: true, json: async () => ({}) }; });
+    assert.ok(!JSON.stringify(sent).includes(token));
+  }
 });
