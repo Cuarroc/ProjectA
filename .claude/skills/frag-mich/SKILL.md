@@ -5,9 +5,9 @@ description: Beantwortet Einsteiger-Fragen des Nutzers zu ProjectA kurz und auf 
 
 # frag-mich — kurze Antworten für den Nutzer
 
-Der Nutzer ist Einsteiger und hat ADHS: **kurz, Kernaussage zuerst, Listen statt
-Fließtext, normaler Ton, Fachbegriff in einem Halbsatz erklärt.** Antworte auf
-Deutsch (Code, Befehle und Dateinamen bleiben unverändert).
+Erkläre unbekannte Begriffe kurz und konkret: Kernaussage zuerst, normaler Ton;
+Listen nur, wenn sie die Antwort leichter erfassbar machen. Keine Diagnose oder
+stabile Eigenschaft ableiten. Antworte auf Deutsch; Code/Befehle bleiben unverändert.
 
 ## Wo die Wahrheit steht (nicht kopieren, nur verweisen)
 
@@ -50,10 +50,11 @@ immer genau diese drei Punkte, je ein Satz oder eine Zeile:
 
 ## Regeln für die Entscheidung
 
-Beim Nutzer liegen immer: **Löschen, Geld, Installationen, Veröffentlichen /
-Release, Rechte ausweiten.** Alles andere (grüne PRs mergen, Worker neu
-starten, Reviews einholen) erledigen Agenten — sag dann „nichts“ und nenne,
-wer es tut. Frage nicht mehr als eine Sache auf einmal.
+Prüfe gültige konkrete Freigaben und verbindliche Projektregeln. Bereits passende
+autorisierte Pflege nicht erneut pauschal zur Entscheidung stellen. Neue Kosten,
+Veröffentlichung, Löschung oder Rechte nicht aus Optimierungsabsicht ableiten.
+Operative Schritte führt der zuständige Owner im geltenden Workflow aus;
+Merge nur durch Mergify. Nötige Fragen im normalen Chat bündeln, keine AskUser-Fenster.
 
 ## Beispiele
 
