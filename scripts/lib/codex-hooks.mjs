@@ -31,7 +31,8 @@ export function codexHooksConfig(root) {
   const unix = root.replace(/\\/g, '/');
   const redFirst = posix.join(unix, '.claude/hooks/red-first.sh');
   const installHooks = posix.join(unix, 'scripts/install-hooks.sh');
-  const hook = script => ({ type: 'command', command: `bash '${script}'`, commandWindows: windowsCommand(script) });
+  // POSIX single quotes: an embedded ' becomes '\'' (close, escaped quote, reopen).
+  const hook = script => ({ type: 'command', command: `bash '${script.replace(/'/g, "'\\''")}'`, commandWindows: windowsCommand(script) });
   return {
     hooks: {
       PostToolUse: [{ matcher: 'Write|Edit', hooks: [hook(redFirst)] }],
