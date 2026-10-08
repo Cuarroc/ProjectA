@@ -109,3 +109,14 @@ test('V2 pending inbox and delivery fail closed without a configured root agent 
   const v1 = await fresh({ v2: false });
   assert.equal((await new DeliveryStore(v1.file).pending()).length, 1, 'V1 has no receipts; the DR-02 model binds D2 to V2 only');
 });
+
+test('V2 reads and delivery refuse a missing root agent id even when no event needs a receipt check (R669-O1)', async () => {
+  const file = join(await mkdtemp(join(tmpdir(), 'denkraum-delivery-')), 'ledger.json'); const base = store(file);
+  await base.change(state => { state.questions.push(question()); }); await base.migrate((await base.read()).revision);
+  const calls = []; const bytes = await readFile(file, 'utf8');
+  const rootless = new DeliveryStore(file, { notifyEvent: async event => calls.push(event) });
+  for (const call of [() => rootless.pending(), () => rootless.inbox(), () => rootless.flushNotifications(), () => rootless.flushNotifications('other-event')])
+    await assert.rejects(call(), status(503));
+  assert.deepEqual(calls, []); assert.equal(await readFile(file, 'utf8'), bytes);
+  assert.equal((await new DeliveryStore(file).flushNotifications()).status, 'not-configured', 'P1: no transport is reported before any ledger read');
+});
