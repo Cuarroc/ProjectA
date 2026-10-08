@@ -1897,13 +1897,16 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
 /// on another. `api::tests::error_status_pins_every_pattern_per_policy` holds
 /// the table.
 #[derive(Clone, Copy)]
-enum StatusPolicy {
+pub(crate) enum StatusPolicy {
     /// `POST /api/workers/<id>/merge`.
     Merge,
     /// The four verdict routes.
     Verdict,
     /// Every route whose core speaks the [`crate::workers`] vocabulary.
     Core,
+    /// The development-plan read and import routes
+    /// ([`crate::development_plan_access`]).
+    Plan,
 }
 
 /// Which status a failed call deserves; the one reader of error text.
@@ -1912,7 +1915,7 @@ enum StatusPolicy {
 /// message - the same bargain the landing-page routes already make. A message
 /// that stops matching falls back to the policy's default, which for `Merge`
 /// and `Core` is the safe 500.
-fn error_status(err: &str, policy: StatusPolicy) -> u16 {
+pub(crate) fn error_status(err: &str, policy: StatusPolicy) -> u16 {
     match policy {
         // [`crate::workers::merge_worker`] refuses for two kinds of reason. A
         // wrong id is a 404. The three gate refusals - the card is not in
@@ -1958,6 +1961,41 @@ fn error_status(err: &str, policy: StatusPolicy) -> u16 {
                 404
             } else if err.starts_with(crate::workers::ERR_REFUSED) {
                 409
+            } else {
+                500
+            }
+        }
+        // The bounded set of plan Store errors: an unknown project, plan or
+        // missing source is a 404, a revision or binding conflict a 409, a
+        // source the importer cannot accept a 422, a malformed id or revision
+        // a 400. Anything else - including a failed reader task - stays 500.
+        StatusPolicy::Plan => {
+            if err.starts_with("unknown project")
+                || err.starts_with("plan source docs/PLAN.md: unknown project")
+                || err.starts_with("plan source docs/PLAN.md: missing")
+                || err.starts_with("plan source docs/PLAN.md: project_root_unavailable")
+            {
+                404
+            } else if err.contains("projection revision conflict")
+                || err.contains("already bound")
+                || err.contains("nonempty rollback reason")
+            {
+                409
+            } else if err.starts_with("invalid plan source")
+                || err.starts_with("plan source docs/PLAN.md: outside_project")
+                || err.starts_with("plan source docs/PLAN.md: not_regular_file")
+                || err.starts_with("plan source docs/PLAN.md: oversized")
+                || err.starts_with("plan source docs/PLAN.md: invalid_utf8")
+                || err.starts_with("plan source docs/PLAN.md: unreadable")
+                || err.starts_with("plan source docs/PLAN.md: file_identity_unavailable")
+            {
+                422
+            } else if err.starts_with("projectId is required")
+                || err.starts_with("planId is required")
+                || err.starts_with("revision must")
+                || err.starts_with("expectedProjectionRevision must")
+            {
+                400
             } else {
                 500
             }
@@ -2111,10 +2149,7 @@ fn continuous_response<T: Serialize>(result: Result<T, String>) -> Response {
 fn plan_response(result: Result<Value, String>) -> Response {
     match result {
         Ok(value) => Response::ok(value),
-        Err(reason) => Response::error(
-            crate::development_plan_access::error_status(&reason),
-            reason,
-        ),
+        Err(reason) => Response::error(error_status(&reason, StatusPolicy::Plan), reason),
     }
 }
 
@@ -7830,6 +7865,47 @@ pub(crate) mod tests {
             ]
             .map(|policy| error_status(text, policy));
             assert_eq!(got, [*merge, *verdict, *core], "{text}");
+        }
+    }
+
+    /// Every development-plan reason keeps the status it had before the plan
+    /// routes moved into the shared classifier.
+    #[test]
+    fn error_status_plan_policy_pins_every_development_plan_reason() {
+        for (reason, status) in [
+            ("unknown project", 404),
+            ("unknown project or plan", 404),
+            ("unknown project, plan or projection revision", 404),
+            ("plan source docs/PLAN.md: unknown project", 404),
+            ("plan source docs/PLAN.md: missing", 404),
+            (
+                "plan source docs/PLAN.md: project_root_unavailable: registered path is empty",
+                404,
+            ),
+            ("plan projection revision conflict", 409),
+            ("plan source path is already bound to another path", 409),
+            (
+                "reimport of historic source requires a nonempty rollback reason",
+                409,
+            ),
+            ("invalid plan source docs/PLAN.md:1: bad table", 422),
+            ("plan source docs/PLAN.md: invalid_utf8", 422),
+            ("plan source docs/PLAN.md: outside_project", 422),
+            ("plan source docs/PLAN.md: not_regular_file", 422),
+            ("plan source docs/PLAN.md: oversized", 422),
+            ("plan source docs/PLAN.md: unreadable", 422),
+            ("plan source docs/PLAN.md: file_identity_unavailable", 422),
+            ("plan source docs/PLAN.md: reader task failed: panic", 500),
+            ("projectId is required", 400),
+            ("planId is required", 400),
+            ("revision must be a positive integer", 400),
+            ("expectedProjectionRevision must be non-negative", 400),
+            ("database unavailable", 500),
+            ("unknown worker: wk-1", 500),
+            ("refused: profile 'kimi' is switched off", 500),
+            ("", 500),
+        ] {
+            assert_eq!(error_status(reason, StatusPolicy::Plan), status, "{reason}");
         }
     }
 
