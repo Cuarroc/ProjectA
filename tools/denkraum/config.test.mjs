@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve, join, dirname, toNamespacedPath, win32 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadStartConfig } from "./config.mjs";
 
 const repoRoot = resolve("synthetic-repository");
@@ -142,5 +144,45 @@ test("check CLI never prints synthetic environment values", () => {
     if (invalid) for (const suffix of ["ROOT_RECEIPT_TOKEN", "WEBHOOK_SECRET", "STATE", "PORT"]) {
       assert.ok(output.includes(name(suffix)));
     }
+  }
+});
+
+test("checks config through a real CLI directory alias without running on import", () => {
+  const script = fileURLToPath(new URL("config.mjs", import.meta.url));
+  const fixture = mkdtempSync(join(tmpdir(), "denkraum-cli-alias-"));
+  const alias = join(fixture, "alias");
+  symlinkSync(dirname(script), alias, process.platform === "win32" ? "junction" : "dir");
+  const aliasedScript = join(alias, "config.mjs");
+  const env = { ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: "invalid-token!",
+    [name("STATE")]: join(fixture, "state.json") };
+  for (const entry of [script, aliasedScript]) {
+    const child = spawnSync(process.execPath, [entry, "--check"], { env, encoding: "utf8" });
+    assert.equal(child.error, undefined);
+    assert.equal(child.status, 1);
+    assert.equal(child.stdout, "");
+    assert.equal(child.stderr,
+      "DECISION_DESK_ROOT_RECEIPT_TOKEN: required; use 32–256 letters, digits, underscores or hyphens\n");
+    for (const value of Object.values(env)) assert.equal(child.stderr.includes(value), false);
+    const valid = spawnSync(process.execPath, [entry, "--check"],
+      { env: { ...env, [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32) }, encoding: "utf8" });
+    assert.equal(valid.error, undefined);
+    assert.equal(valid.status, 0);
+    assert.equal(valid.stderr, "");
+    assert.equal(valid.stdout, ["ROOT_RECEIPT_TOKEN", "WEBHOOK_SECRET", "STATE", "PORT"]
+      .map((suffix) => `${name(suffix)}: valid\n`).join("")
+      + "DECISION_DESK_ROOT_AGENT_ID: notifications enabled\n");
+    const usage = spawnSync(process.execPath, [entry], { env, encoding: "utf8" });
+    assert.equal(usage.error, undefined);
+    assert.equal(usage.status, 1);
+    assert.equal(usage.stdout, "");
+    assert.equal(usage.stderr, "Usage: node tools/denkraum/config.mjs --check\n");
+  }
+  for (const args of [[], [script], [join(fixture, "missing-entry.mjs")]]) {
+    const imported = spawnSync(process.execPath,
+      ["--input-type=module", "-e", `await import(${JSON.stringify(pathToFileURL(aliasedScript).href)})`, ...args],
+      { env, encoding: "utf8" });
+    assert.equal(imported.error, undefined);
+    assert.equal(imported.status, 0);
+    assert.equal(imported.stdout + imported.stderr, "");
   }
 });
