@@ -476,16 +476,15 @@ impl Store {
         escalation: bool,
         observe_capacity: impl FnOnce() -> capacity::Capacity,
     ) -> Result<ContinuousClaim, String> {
-        let owner = required_text(owner, "owner")?;
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(db("begin continuous claim"))?;
-        let outcome =
-            Self::claim_with_capacity_body(&mut tx, task_id, &owner, escalation, observe_capacity)
-                .await;
-        settle(tx, outcome, "commit continuous claim").await
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let owner = required_text(owner, "owner")?;
+            Self::claim_with_capacity_body(&mut work, task_id, &owner, escalation, observe_capacity)
+                .await
+        }
+        .await;
+        let subject = task_id;
+        finish_goal_task_audit(work, outcome, "task_claim", subject, None).await
     }
 
     async fn claim_with_capacity_body(
@@ -606,6 +605,8 @@ impl Store {
         status: Option<&str>,
         detail: Option<&str>,
     ) -> Result<ContinuousTask, String> {
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
         let owner = required_text(owner, "owner")?;
         let requested = status.unwrap_or(TASK_RUNNING);
         let retry = requested == "retry";
@@ -621,12 +622,14 @@ impl Store {
                     .to_string(),
             );
         }
-        let mut tx = begin_write(&self.pool, "begin continuous checkpoint").await?;
-        let outcome = Self::checkpoint_continuous_task_body(
-            &mut tx, task_id, &owner, fence, next, retry, detail,
+        Self::checkpoint_continuous_task_body(
+            &mut work, task_id, &owner, fence, next, retry, detail,
         )
-        .await;
-        settle(tx, outcome, "commit continuous checkpoint").await?;
+        .await
+        }.await;
+        let subject = task_id;
+        let outcome = finish_goal_task_audit(work, outcome, "task_checkpoint", subject, None).await;
+        outcome?;
         self.get_continuous_task(task_id)
             .await?
             .ok_or_else(|| "checkpointed continuous task disappeared".to_string())
@@ -708,27 +711,45 @@ impl Store {
         project_id: &str,
         action: &str,
     ) -> Result<ContinuousControl, String> {
-        self.require_project(project_id).await?;
-        let status = match action {
-            "pause" => CONTINUOUS_PAUSED,
-            "drain" => CONTINUOUS_DRAINING,
-            "cancel" => CONTINUOUS_PAUSED,
-            "resume" => {
-                return Err(
-                    "continuous runtime adapters are unattested; resume is fail-closed".to_string(),
-                )
-            }
-            _ => return Err("continuous action must be pause, drain, resume or cancel".to_string()),
-        };
-        let now = now_unix_secs();
-        let mut tx = begin_write(&self.pool, "begin continuous control").await?;
-        let outcome = Self::control_continuous_body(&mut tx, project_id, action, status, now).await;
-        settle(tx, outcome, "commit continuous control").await?;
-        Ok(ContinuousControl {
-            project_id: project_id.to_string(),
-            status: status.to_string(),
-            updated_at: now,
-        })
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            goal_task_project_path(&mut work, project_id).await?;
+            let status = match action {
+                "pause" => CONTINUOUS_PAUSED,
+                "drain" => CONTINUOUS_DRAINING,
+                "cancel" => CONTINUOUS_PAUSED,
+                "resume" => {
+                    return Err(
+                        "continuous runtime adapters are unattested; resume is fail-closed"
+                            .to_string(),
+                    )
+                }
+                _ => {
+                    return Err(
+                        "continuous action must be pause, drain, resume or cancel".to_string()
+                    )
+                }
+            };
+            let now = now_unix_secs();
+            let outcome =
+                Self::control_continuous_body(&mut work, project_id, action, status, now).await;
+            outcome?;
+            Ok(ContinuousControl {
+                project_id: project_id.to_string(),
+                status: status.to_string(),
+                updated_at: now,
+            })
+        }
+        .await;
+        let subject = project_id;
+        finish_goal_task_audit(
+            work,
+            outcome,
+            &format!("control_{action}"),
+            subject,
+            Some(project_id),
+        )
+        .await
     }
 
     async fn control_continuous_body(
