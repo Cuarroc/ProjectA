@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Dein Denkraum · ProjectA</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body class="glass-desk">
+  <a class="skip" href="#detail">Zur Frage springen</a>
+  <header class="page-header"><div><h1>Dein Denkraum</h1><p>Gedanken entwickeln. In Ruhe entscheiden.</p></div><button id="refresh" type="button">Aktualisieren</button></header>
+  <nav class="area-nav" aria-label="Bereiche"><span class="desk-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6h8a5 5 0 0 1 0 10H5M9 6v12"/></svg>ProjectA</span><button id="area-now" aria-pressed="true" aria-controls="now">Fragen</button><button id="area-think" aria-pressed="false" aria-controls="thinking">Ideen</button><button id="area-plan" aria-pressed="false" aria-controls="planned">Geplant</button></nav>
+  <div id="connection" role="status" aria-live="polite">Fragen werden geladen …</div>
+  <div id="global-error" role="alert" hidden></div>
+  <div id="save-status" role="status" aria-live="polite"></div>
+  <main id="now" class="workspace">
+    <aside aria-label="Fragenübersicht">
+      <details class="question-tools"><summary>Fragen suchen und filtern</summary><p class="muted">Weitere Fragen sind optional. Nur ausdrücklich abhängige Arbeit wartet auf eine Entscheidung.</p><label for="search">Fragen durchsuchen</label><input id="search" type="search" placeholder="Titel, Thema oder Verantwortlicher">
+      <label for="filter">Status</label><select id="filter"><option value="open">Offene Fragen</option><option value="all">Alle Fragen</option><option value="answered">Beantwortet</option><option value="deferred">Zurückgestellt</option><option value="clarify">Rückfrage</option><option value="received">Gelesen</option><option value="applied">Umgesetzt</option></select>
+      </details><p id="count" class="muted"></p><nav id="questions" aria-label="Fragen"></nav>
+    </aside>
+    <section id="detail" tabindex="-1" aria-label="Frage und Entscheidung"><div class="empty"><h2>Platz für einen klaren Gedanken</h2><p>Offene Entscheidungen erscheinen hier. Empfehlungen werden nie automatisch ausgewählt.</p></div></section>
+  </main>
+  <section id="thinking" class="space-panel" tabindex="-1" aria-labelledby="thinking-title" hidden><h2 id="thinking-title">Was geht dir gerade durch den Kopf?</h2><p>Eine Idee, ein Widerspruch oder eine offene Frage darf erst einmal ein Gedanke bleiben.</p><label for="idea">Dein freier Entwurf</label><textarea id="idea" maxlength="8000" aria-describedby="idea-status idea-boundary" placeholder="Was möchtest du ausprobieren oder besser verstehen?"></textarea><p id="idea-status" role="status">Nur in diesem Browser · noch nicht an den Orchestrator gesendet.</p><p id="idea-boundary" class="muted">Hier entsteht kein Auftrag und keine Zustimmung. Eine Weitergabe wird erst angeboten, wenn ihr Empfang zuverlässig gespeichert werden kann.</p></section>
+  <section id="planned" class="space-panel" tabindex="-1" aria-labelledby="planned-title" hidden><h2 id="planned-title">Was als Nächstes ansteht</h2><p>Kein Patchfenster hinterlegt. Ein Termin wird erst angezeigt, wenn er tatsächlich geplant ist.</p></section>
+  <footer>Gespeichert, empfangen und umgesetzt sind getrennte Schritte. Entwürfe bleiben in diesem Browser.</footer>
+  <noscript>Bitte JavaScript aktivieren, um Fragen zu lesen und Antworten zu speichern.</noscript>
+</body>
+</html>
