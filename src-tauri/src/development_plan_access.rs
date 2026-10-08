@@ -67,39 +67,6 @@ pub async fn import(
     Ok(envelope(projection))
 }
 
-/// Status mapping for the bounded set of plan Store errors. Unknown errors stay 500.
-pub fn error_status(reason: &str) -> u16 {
-    if reason.starts_with("unknown project")
-        || reason.starts_with("plan source docs/PLAN.md: unknown project")
-        || reason.starts_with("plan source docs/PLAN.md: missing")
-        || reason.starts_with("plan source docs/PLAN.md: project_root_unavailable")
-    {
-        404
-    } else if reason.contains("projection revision conflict")
-        || reason.contains("already bound")
-        || reason.contains("nonempty rollback reason")
-    {
-        409
-    } else if reason.starts_with("invalid plan source")
-        || reason.starts_with("plan source docs/PLAN.md: outside_project")
-        || reason.starts_with("plan source docs/PLAN.md: not_regular_file")
-        || reason.starts_with("plan source docs/PLAN.md: oversized")
-        || reason.starts_with("plan source docs/PLAN.md: invalid_utf8")
-        || reason.starts_with("plan source docs/PLAN.md: unreadable")
-        || reason.starts_with("plan source docs/PLAN.md: file_identity_unavailable")
-    {
-        422
-    } else if reason.starts_with("projectId is required")
-        || reason.starts_with("planId is required")
-        || reason.starts_with("revision must")
-        || reason.starts_with("expectedProjectionRevision must")
-    {
-        400
-    } else {
-        500
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,10 +89,11 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("docs")).unwrap();
         std::fs::write(dir.path().join("docs/PLAN.md"), "invalid source").unwrap();
         assert_eq!(
-            error_status(
+            crate::api::error_status(
                 &import(&store, &project.id, "main", 0, None)
                     .await
-                    .unwrap_err()
+                    .unwrap_err(),
+                crate::api::StatusPolicy::Plan
             ),
             422
         );
@@ -145,10 +113,11 @@ mod tests {
             first["sourceRevision"]
         );
         assert_eq!(
-            error_status(
+            crate::api::error_status(
                 &import(&store, &project.id, "main", 0, None)
                     .await
-                    .unwrap_err()
+                    .unwrap_err(),
+                crate::api::StatusPolicy::Plan
             ),
             409
         );
@@ -164,38 +133,5 @@ mod tests {
             read(&store, &project.id, "main", None).await.unwrap()["sourceRevision"],
             second["sourceRevision"]
         );
-    }
-
-    #[test]
-    fn plan_errors_have_distinct_http_statuses() {
-        for (reason, status) in [
-            ("unknown project", 404),
-            ("unknown project or plan", 404),
-            ("unknown project, plan or projection revision", 404),
-            ("plan source docs/PLAN.md: unknown project", 404),
-            ("plan source docs/PLAN.md: missing", 404),
-            (
-                "plan source docs/PLAN.md: project_root_unavailable: registered path is empty",
-                404,
-            ),
-            ("plan projection revision conflict", 409),
-            ("plan source path is already bound to another path", 409),
-            (
-                "reimport of historic source requires a nonempty rollback reason",
-                409,
-            ),
-            ("invalid plan source docs/PLAN.md:1: bad table", 422),
-            ("plan source docs/PLAN.md: invalid_utf8", 422),
-            ("plan source docs/PLAN.md: outside_project", 422),
-            ("plan source docs/PLAN.md: not_regular_file", 422),
-            ("plan source docs/PLAN.md: oversized", 422),
-            ("plan source docs/PLAN.md: unreadable", 422),
-            ("plan source docs/PLAN.md: file_identity_unavailable", 422),
-            ("plan source docs/PLAN.md: reader task failed: panic", 500),
-            ("revision must be a positive integer", 400),
-            ("database unavailable", 500),
-        ] {
-            assert_eq!(error_status(reason), status, "{reason}");
-        }
     }
 }
