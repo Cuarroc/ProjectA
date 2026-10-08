@@ -120,3 +120,9 @@ test('V2 reads and delivery refuse a missing root agent id even when no event ne
   assert.deepEqual(calls, []); assert.equal(await readFile(file, 'utf8'), bytes);
   assert.equal((await new DeliveryStore(file).flushNotifications()).status, 'not-configured', 'P1: no transport is reported before any ledger read');
 });
+
+test('rootless V2 without transport refuses notification flush with 503', async () => {
+  const { file } = await fresh(); const bytes = await readFile(file, 'utf8');
+  await assert.rejects(() => new DeliveryStore(file).flushNotifications(), status(503));
+  assert.equal(await readFile(file, 'utf8'), bytes);
+});
