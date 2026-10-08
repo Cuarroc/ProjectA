@@ -77,6 +77,29 @@ export function hasStatusTable(md) {
   return lines.some((_, i) => statusColumn(lines, i) !== -1);
 }
 
+// Current PLAN tokens (Draft / Ready / In Arbeit) plus the legacy "in Arbeit" /
+// "PR #n" forms. Candidate PRs come from the leading status marker only —
+// bare "#n" or "PR #n" inside later explanations (Vorgänger, früher, …) is ignored.
+const IN_PROGRESS_STATUS = /^(?:in Arbeit|PR #\d|Drafts? #\d|Ready #\d)/i;
+
+function candidatePrNumbers(status) {
+  const s = String(status);
+  let m = /^Drafts #(\d+)((?:\/#\d+)*)/i.exec(s);
+  if (m) {
+    const out = [Number(m[1])];
+    for (const n of m[2].matchAll(/\/#(\d+)/g)) out.push(Number(n[1]));
+    return out;
+  }
+  m = /^(?:Draft|Ready|PR) #(\d+)/i.exec(s);
+  if (m) return [Number(m[1])];
+  if (/^in Arbeit/i.test(s)) {
+    // Drop parenthetical asides so "Vorgänger PR #99" inside them is not a candidate.
+    const head = s.replace(/\([^)]*\)/g, "");
+    return [...head.matchAll(/\bPR #(\d+)/gi)].map((x) => Number(x[1]));
+  }
+  return [];
+}
+
 export function inProgressPackages(md) {
   const lines = String(md).split(/\r?\n/);
   const out = [];
@@ -86,8 +109,8 @@ export function inProgressPackages(md) {
     for (let j = i + 2; j < lines.length && lines[j].startsWith("|"); j++) {
       const c = cells(lines[j]);
       const status = c[statusIdx] || "";
-      if (!/^(in Arbeit|PR #\d)/.test(status)) continue;
-      out.push({ id: c[0], title: c[1] || "", status, prNumbers: [...status.matchAll(/PR #(\d+)/g)].map((m) => Number(m[1])) });
+      if (!IN_PROGRESS_STATUS.test(status)) continue;
+      out.push({ id: c[0], title: c[1] || "", status, prNumbers: candidatePrNumbers(status) });
     }
   }
   return out;

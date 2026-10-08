@@ -92,7 +92,7 @@ test("inProgressPackages reads the Stand column of the milestone tables in docs/
 
 function assertInProgressRows(rows) {
   for (const r of rows) {
-    assert.match(r.status, /^(in Arbeit|PR #\d)/);
+    assert.match(r.status, /^(?:in Arbeit|PR #\d|Drafts? #\d|Ready #\d)/i);
     assert.match(r.id, /^[A-Z]/);
   }
 }
