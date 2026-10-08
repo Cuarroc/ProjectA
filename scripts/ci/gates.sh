@@ -158,6 +158,10 @@ GATES=(
   # package.json und liefen in keinem Workflow und keinem Hook.
   # Not in release: DevHQ tooling, not shipped; 11 tests red on Windows (run 37343951787).
   "hq-test|prepush,branchpush,linux|.|npm run test:hq"
+  # DR-01: Denkraum (tools/denkraum/) tests + public-repo hygiene check. Pure
+  # node, milliseconds, so also precommit; not windows (platform-independent,
+  # linux proves it) and not release (dev tooling, not shipped).
+  "denkraum|precommit,prepush,branchpush,linux|.|npm run test:denkraum"
   # Browser-Smoke des HQ. Kam am 12.09. auf main dazu.
   "hq-visual|linux|.|npm run test:hq:visual"
   "fe-build|linux,release|.|npm run build"

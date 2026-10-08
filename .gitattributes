@@ -36,3 +36,6 @@ docs/dev-hq/data.json merge=hqdata
 *.rs text eol=lf
 *.md text eol=lf
 *.json text eol=lf
+# Denkraum (DR-01, H6): provenance is pinned by byte hashes of LF files; an
+# autocrlf checkout would change every hash.
+tools/denkraum/** text eol=lf
