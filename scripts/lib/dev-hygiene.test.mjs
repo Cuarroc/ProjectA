@@ -312,3 +312,15 @@ test("hygiene reports a gh failure as exit 3 (glm #6)", async () => {
   assert.equal(await main(["--no-fetch"], { out: () => {}, err: (s) => err.push(s) }, { run, now: () => NOW }), 3);
   assert.match(err.join(""), /not logged in/);
 });
+
+test("hygiene reports a malformed Z goal table of docs/PLAN.md instead of passing it silently", () => {
+  const head = "| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |\n|---|---|---|---|---|---|---|---|---|\n";
+  const good = "| Z2-A | x | o | – | egal | C | Geplant | a | – |\n";
+  const clean = collect({ planText: `## Z2 — Setup\n\n${head}${good}` });
+  assert.deepEqual(clean.notChecked, []);
+  const broken = collect({ planText: `## Z2 — Setup\n\n${head}${good}| Z2-B | x | o | Geplant |\n\n## Z3 — Rest\n\nNur Prosa.\n` });
+  assert.equal(broken.notChecked.length, 2);
+  assert.match(broken.notChecked.join("\n"), /Z2-B.*4 statt 9 Spalten/);
+  assert.match(broken.notChecked.join("\n"), /Z3.*keine Tabelle/);
+  assert.ok(countFindings(broken) >= 2);
+});
