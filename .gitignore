@@ -55,3 +55,7 @@ __pycache__/
 # Root-level cargo target (5+ GB) and stray CLI logs: keep ripgrep/Glob and git status clean
 /target/
 /error.log
+# Denkraum (DR-01, H2): the ledger state and env files never enter the public repo
+tools/denkraum/**/state.json
+tools/denkraum/**/state/
+tools/denkraum/**/.env*
