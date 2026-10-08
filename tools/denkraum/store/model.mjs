@@ -212,6 +212,9 @@ function validateQuestion(input) {
   q.recommendation = { optionIds: recommended, rationale: text(input.recommendation.rationale, 'Empfehlungsbegründung') };
   return q;
 }
+// Exported for the store class; frozen so no importer can widen validation for all others.
+Object.freeze(statuses);
+Object.freeze(ideaPriorities);
 export { ensure, text, validId, id, now, record, object, isoTime, ideaPriorities, validIdeaCategory, ideaDefaults, statuses,
   validImplementationEvidence, validEventRef, requireCurrentSource, activeAnswers, answerRef, sameRef, receiptFor, activeEvents, currentAnswer,
   priorityRefCurrent, validateState, validateQuestion };
