@@ -91,6 +91,24 @@ test("defaultSlots honours PA_BUILD_SLOTS", () => {
   assert.deepEqual(custom.map((s) => s.path), ["/x/one", "/x/two"]);
 });
 
+test("configured slot root takes precedence over home defaults", () => {
+  const listed = ["noise.txt", "other", "slot5", "projecta-b", "slot10", "projecta-a", "slot0", "file-slot5"];
+  const d = defaultSlots({
+    home: "/home/defaults",
+    mainCheckout: "/main/checkout",
+    env: { PROJECTA_BUILD_SLOTS_ROOT: "/warm/root" },
+    listDir: () => listed,
+  });
+  assert.deepEqual(
+    d.map((s) => s.path),
+    ["/warm/root/projecta-a", "/warm/root/projecta-b", "/warm/root/slot5", "/warm/root/slot10"],
+  );
+  assert.equal(
+    d.some((s) => s.path.includes("/home/defaults") || s.name === "main"),
+    false,
+  );
+});
+
 test("build-slot CLI exits 3 when no slot is usable and 0 otherwise", async () => {
   const out = [];
   const io = { out: (s) => out.push(s), err: (s) => out.push(s) };
