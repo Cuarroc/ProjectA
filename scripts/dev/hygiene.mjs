@@ -84,17 +84,47 @@ export function hasStatusTable(md) {
 const PR_NUM = String.raw`#(\d+)(?![0-9A-Za-z])`;
 const IN_PROGRESS_STATUS = new RegExp(String.raw`^(?:in Arbeit|PR ${PR_NUM}|Drafts? ${PR_NUM}|Ready ${PR_NUM})`, "i");
 
+// Leading Drafts candidate list: #n, optional `sha` / bare hex between `/`
+// separators. Later free-text explanations (", Vorgänger PR #99", "; …") stop
+// the scan — they are not candidates.
+function draftsCandidateNumbers(status) {
+  const prefix = /^Drafts\s+/i.exec(status);
+  if (!prefix) return null;
+  let pos = prefix[0].length;
+  const nums = [];
+  const takeNum = () => {
+    const m = /^#(\d+)(?![0-9A-Za-z])/.exec(status.slice(pos));
+    if (!m) return null;
+    pos += m[0].length;
+    return Number(m[1]);
+  };
+  const skipDecor = () => {
+    while (true) {
+      const m = /^(?:\s+|`[^`]*`|[0-9a-f]{7,40}\b)/i.exec(status.slice(pos));
+      if (!m) break;
+      pos += m[0].length;
+    }
+  };
+  const first = takeNum();
+  if (first == null) return [];
+  nums.push(first);
+  skipDecor();
+  while (status[pos] === "/") {
+    pos += 1;
+    skipDecor();
+    const n = takeNum();
+    if (n == null) break;
+    nums.push(n);
+    skipDecor();
+  }
+  return nums;
+}
+
 function candidatePrNumbers(status) {
   const s = String(status);
-  // Drafts: take every #n in the leading candidate list (SHA/text between
-  // "/ #n" is allowed); stop before ";" or "(" explanations.
-  let m = new RegExp(String.raw`^Drafts ${PR_NUM}`, "i").exec(s);
-  if (m) {
-    const cut = s.search(/[;(]/);
-    const region = cut === -1 ? s : s.slice(0, cut);
-    return [...region.matchAll(new RegExp(PR_NUM, "g"))].map((x) => Number(x[1]));
-  }
-  m = new RegExp(String.raw`^(?:Draft|Ready|PR) ${PR_NUM}`, "i").exec(s);
+  const drafts = draftsCandidateNumbers(s);
+  if (drafts) return drafts;
+  let m = new RegExp(String.raw`^(?:Draft|Ready|PR) ${PR_NUM}`, "i").exec(s);
   if (m) return [Number(m[1])];
   // In Arbeit: only the optional PR immediately after the status token.
   m = new RegExp(String.raw`^in Arbeit(?: PR ${PR_NUM})?`, "i").exec(s);
