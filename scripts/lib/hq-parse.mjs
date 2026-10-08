@@ -296,6 +296,83 @@ export function parseMilestones(planText) {
   return milestones;
 }
 
+/// The eight values of the "## Statuswerte" section of docs/PLAN.md.
+export const PLAN_STATUS_VALUES = ["Geplant", "Bereit", "In Arbeit", "In Prüfung", "Erledigt", "Blockiert", "Verschoben", "Entfallen"];
+// PLAN.md: "Angenommen, Mergify ausstehend" and "Entwurf" belong to In Prüfung, "wartet" to Blockiert.
+const STATUS_LABELS = [
+  ...PLAN_STATUS_VALUES.map((v) => [v, v]),
+  ["Angenommen, Mergify ausstehend", "In Prüfung"],
+  ["Entwurf", "In Prüfung"],
+  ["wartet", "Blockiert"],
+];
+const GOAL_COLUMNS = ["ID", "Ziel", "Owner", "Hängt ab von", "Ort", "Stufe", "Status", "Abnahme", "Ticket"];
+
+// A Status cell opens with one of the defined values (prose may follow after
+// ":", ";", "," or a space); anything else is "invalid" and stays visible.
+function goalStatus(cell) {
+  for (const [label, value] of STATUS_LABELS) {
+    if (cell.toLowerCase().startsWith(label.toLowerCase()) && !/^[\p{L}\p{N}-]/u.test(cell.slice(label.length))) return value;
+  }
+  return "invalid";
+}
+
+/// The goal sections "## Z<n> — title" of docs/PLAN.md with their package tables
+/// (columns GOAL_COLUMNS). Never drops silently: a section without the table, a
+/// table with another header and a row with the wrong column count end up in
+/// `problems`; a Status outside the eight values becomes status "invalid".
+export function parseGoals(planText) {
+  const lines = String(planText).split(/\r?\n/);
+  const goals = [];
+  let current = null;
+  for (let i = 0; i < lines.length; i++) {
+    const heading = lines[i].match(/^##\s+(Z\d+)\s+[—–-]\s+(.+?)\s*$/);
+    if (heading) {
+      current = { id: heading[1], title: heading[2], packages: [], problems: [], tables: 0 };
+      goals.push(current);
+      continue;
+    }
+    if (/^#{1,2}\s/.test(lines[i])) {
+      current = null;
+      continue;
+    }
+    if (!current || !lines[i].startsWith("|") || !/^\|[-|: ]+\|\s*$/.test(lines[i + 1] || "")) continue;
+    current.tables++;
+    const head = tableCells(lines[i]);
+    let end = i + 1;
+    while (lines[end + 1]?.startsWith("|")) end++;
+    if (head.join("|") !== GOAL_COLUMNS.join("|")) {
+      current.problems.push(`${current.id}: Kopfzeile weicht ab (erwartet ${GOAL_COLUMNS.join(" | ")}; gefunden ${head.join(" | ")})`);
+    } else {
+      for (let j = i + 2; j <= end; j++) {
+        const c = tableCells(lines[j]);
+        if (c.length !== GOAL_COLUMNS.length) {
+          current.problems.push(`${current.id}: Zeile ${c[0] || j + 1} hat ${c.length} statt ${GOAL_COLUMNS.length} Spalten`);
+          continue;
+        }
+        const [id, title, owner, dependsRaw, place, tier, statusRaw, acceptance, ticket] = c;
+        current.packages.push({
+          id, title: title.replace(/`|\*\*/g, ""), owner, dependsRaw, dependsOn: [], place, tier,
+          status: goalStatus(statusRaw), statusRaw, acceptance,
+          tickets: ticket.split(/[\s,]+/).filter((t) => t && !/^[–-]$/.test(t)),
+          prNumbers: [...statusRaw.matchAll(/#(\d+)/g)].map((m) => Number(m[1])),
+        });
+      }
+    }
+    i = end;
+  }
+  const known = [...goals.map((g) => g.id), ...goals.flatMap((g) => g.packages.map((p) => p.id))];
+  for (const g of goals) {
+    if (!g.tables) g.problems.push(`${g.id}: keine Tabelle mit den Spalten ${GOAL_COLUMNS.join(" | ")} gefunden`);
+    for (const p of g.packages) {
+      p.dependsOn = known.filter((k) => k !== p.id && new RegExp(`(?<![\\w-])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(p.dependsRaw));
+    }
+    g.counts = Object.fromEntries([...PLAN_STATUS_VALUES, "invalid"].map((s) => [s, g.packages.filter((p) => p.status === s).length]));
+    g.total = g.packages.length;
+    delete g.tables;
+  }
+  return goals;
+}
+
 function extractBehebungPacket(blockText) {
   const packetMatch = blockText.match(/Behebung in (F\d+\S*?)\s*(?:[.,;:]|$)/);
   return packetMatch ? packetMatch[1] : null;

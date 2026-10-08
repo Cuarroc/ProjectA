@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { listedInStand, readSpecStatuses, reconcile } from "./lib/active-specs.mjs";
-import { parseNextGrip, parseSpecTable, buildNext, parseFindings, buildPackages, parseMilestones, applySpecStartable } from "./lib/hq-parse.mjs";
+import { parseNextGrip, parseSpecTable, buildNext, parseFindings, buildPackages, parseMilestones, parseGoals, applySpecStartable } from "./lib/hq-parse.mjs";
 import { lessonBadges, lessonStats, readLessonsFile } from "./lib/hq-lessons.mjs";
 
 function arg(flag, fallback) {
@@ -49,8 +49,11 @@ const reportF0 = reportFiles.map((f) => f.text).join("\n");
 const warnings = [...rec.warnings];
 const packages = buildPackages(standText, specs); // only gates buildNext; not part of the snapshot
 const planPath = join(root, "docs", "PLAN.md");
-const milestones = existsSync(planPath) ? parseMilestones(readFileSync(planPath, "utf8")) : [];
-if (!milestones.length) warnings.push("docs/PLAN.md: no milestone tables (### M<n> — …) found");
+const planText = existsSync(planPath) ? readFileSync(planPath, "utf8") : "";
+const goals = parseGoals(planText); // primary view: Z1–Z4
+const milestones = parseMilestones(planText); // legacy M1–M5, read while the section exists
+warnings.push(...goals.flatMap((g) => g.problems.map((p) => `docs/PLAN.md: ${p}`)));
+if (!goals.length && !milestones.length) warnings.push("docs/PLAN.md: no goal tables (## Z<n> — …) and no milestone tables (### M<n> — …) found");
 const findings = parseFindings(standText, { reportF0, reportFiles, warnings });
 const lessons = readLessonsFile(join(out, "lessons.json"));
 const citedReports = [...new Set(findings.map((f) => f.source).filter((s) => s.startsWith(".pa/")))];
@@ -68,6 +71,7 @@ const data = {
   nextGrip,
   specs,
   findings,
+  goals,
   milestones,
   next: buildNext(nextGrip, specs, packages),
   lessons: lessons.map((l) => ({ ...l, badges: lessonBadges(l) })),
