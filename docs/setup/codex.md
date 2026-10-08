@@ -49,6 +49,57 @@ schreiben.
   gestartete Codex-Worker bekommen keine Packs (eingebautes Profil: `skills`
   = `unsupported`; `ConventionAt` nur per `agents.json`, PR #57).
 
+## Probe 2026-10-08
+
+**Verdict: POSITIVE** for native repository skill discovery with Codex CLI
+0.160.0 on Linux. This independent W1-18b probe closes the filesystem-evidence
+gap above for this CLI invocation; application integration is a separate step.
+
+`codex --version` returned `codex-cli 0.160.0` (exit 0). Both fresh CLI sessions
+reported `model: gpt-6.1-sol`, `provider: openai`, `approval: never`,
+`sandbox: danger-full-access`, and `reasoning effort: none`.
+
+An empty Git repository was created with `git init -q` (exit 0) in a disposable
+directory outside ProjectA. The control ran first. Only afterwards, a random
+skill name and independent 128-bit random canary were generated. The sole added
+file was `.agents/skills/canary-458dd91282ed/SKILL.md`, with YAML metadata:
+
+```yaml
+name: canary-458dd91282ed
+description: Answer questions about the calibration phrase for this repository.
+```
+
+Its body contained the canary and the instruction to return it exactly. Before
+the probe, the canary existed only in that body, not in metadata or the prompt.
+No `AGENTS.md` or manually supplied skill inventory named the skill; no global
+catalog entry was added. Both runs used the same repository, prompt and existing
+Codex home. The control's answer was recorded before the canary existed.
+
+Full commands below use `$PROBE_REPO` for the disposable repository and
+`$EVIDENCE_DIR` for its sibling output directory; home paths are symbolic.
+Run the first command before adding the skill and the second afterwards:
+
+```sh
+CODEX_HOME=$HOME/pa-orch/codex-home codex exec --skip-git-repo-check -C "$PROBE_REPO" 'What is the calibration phrase for this repository? If it is unavailable, answer UNKNOWN. Do not search outside this repository or use the network.' > "$EVIDENCE_DIR/control.answer" 2> "$EVIDENCE_DIR/control.trace"
+CODEX_HOME=$HOME/pa-orch/codex-home codex exec --skip-git-repo-check -C "$PROBE_REPO" 'What is the calibration phrase for this repository? If it is unavailable, answer UNKNOWN. Do not search outside this repository or use the network.' > "$EVIDENCE_DIR/probe.answer" 2> "$EVIDENCE_DIR/probe.trace"
+```
+
+| Run | CLI exit | Answer | Skill read trace |
+|---|---|---|---|
+| Control, no skill | 0 | `UNKNOWN`; canary absent | No skill file; repository searches found none |
+| Probe, skill present | 0 | Exact canary match, checked against the file body | First tool call: `cat .agents/skills/canary-458dd91282ed/SKILL.md`, succeeded |
+
+The probe announced that it would read the calibration skill before its first
+tool call. That call returned the complete body without a filesystem denial;
+there was no preceding directory search. The observed answer was therefore not
+accepted merely on the model's claim or a guess. Raw local traces retain the
+value; public evidence omits session identifiers and machine/account details.
+
+Limits: one control/probe pair, this CLI version and configuration only; no
+Windows discovery, other models, or ProjectA-launched worker verified. Existing
+profile declarations remain unchanged. Z4-W118B-PROFILE may now evaluate the
+profile change separately, based on this POSITIVE result.
+
 ## Hooks `.codex/hooks.json` (lokal, gitignored)
 
 `.codex/` ist per `.gitignore` bewusst lokal, eine Datei je Checkout. Sie wird
