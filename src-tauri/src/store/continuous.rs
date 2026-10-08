@@ -1087,7 +1087,10 @@ pub(super) async fn begin_write(
     pool: &SqlitePool,
     label: &'static str,
 ) -> Result<Transaction<'static, Sqlite>, String> {
-    pool.begin_with("BEGIN IMMEDIATE").await.map_err(db(label))
+    // Shared callers rely on this original error; no audit transaction exists yet.
+    pool.begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(|error| format!("{label}: {error}"))
 }
 /// Commits `tx` on `Ok`, explicitly rolls it back on `Err`; `label` names
 /// the commit in its error.
