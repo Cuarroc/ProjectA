@@ -159,6 +159,11 @@ test("rejects settings commands in main.rs", () => {
   assert.match(result.stderr, /SETTINGS_COMMANDS_MOVED.*src-tauri\/src\/main\.rs/);
 });
 
+test("accepts settings-named methods inside ControlBackend for ApiBackend", () => {
+  const root = fixture({ "src-tauri/src/main.rs": "impl ControlBackend for ApiBackend {\n    fn get_digest_enabled() {}\n}\n" });
+  assert.equal(run(root, "check").status, 0);
+});
+
 test("contract: all 11 settings commands are properly moved to settings_cmds.rs and exported in main.rs", () => {
   const repoRoot = process.env.TEST_REPO_ROOT || dirname(dirname(dirname(fileURLToPath(import.meta.url))));
   const mainRs = readFileSync(join(repoRoot, "src-tauri/src/main.rs"), "utf8");

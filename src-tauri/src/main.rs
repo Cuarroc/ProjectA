@@ -2117,9 +2117,9 @@ async fn list_learnings(
 ///
 /// The token the four review routes of the control API ask for on top of the
 /// API token (see [`crate::api::VERDICT_TOKEN_HEADER`]). It is minted at
-/// startup and written to no file, so this command and the `--verdict-token`
-/// flag of `pa` are the only two ways to it - and this one answers the window,
-/// which is the surface that has a human in front of it.
+/// startup and written to no file, so this command, `--verdict-token` on `pa`,
+/// and [`verdict_token_from_app`] (`settings_cmds::enable_continuous_activation`)
+/// reach it - this one answers the window with a human in front of it.
 ///
 /// Without a running control API there is no token, and saying so is more
 /// useful than an empty string that would read as a valid one.
