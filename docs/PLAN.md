@@ -70,7 +70,7 @@ Größenausnahme. **D2** keine interne Agenten-ID im öffentlichen Code oder in 
 | DR-04 | Antworten, Quittungen, Benachrichtigungen; getrennte Schnitte DR-04a und DR-04b | bestehender DR-03-Ausführungsowner qfytpd; Root disponiert | freigegebener DR-03-Stack `c80456a`, danach DR-04a → DR-04b | PC; Gates Server | A | #666 `1e11bb8` Ready; #669 `dc34cae` Draft, zwei Fremdvendor-Approvals/Root-Abnahme laut Root und PR; Restbefund nach DR-04B-FU; Merge/Komposition getrennt | Tests für Antwort/Quittung/Dedupe grün; Quittungs-Wiederholung und v1-Ack laufen über die D2-Prüfung (Test) | 55ea21ce |
 | DR-04a | Antworten, Quittungen und Root-gebundene Acks | bestehender qfytpd; kein zweiter Owner | DR-03-Stack `c80456a` | PC; Gates Server | A | Ready #666 `1e11bb8`, 219 ALL; OpenAI + Google approve und review-ok laut Root, Ready aktuell beobachtet; kein Merge-/Integrationsbeleg | eigene prepush, zwei Fremdvendor-Belege am Kandidaten, Disposition und Root-Abnahme; D2-Ack fail-closed und 503 bei progressTransition | cffccf40 |
 | DR-04b | Pending, Inbox und Delivery in den Store übernehmen | bestehender qfytpd; kein zweiter Owner | DR-04a-Stack `1e11bb8` | PC; Gates Server | A | Draft #669 `dc34cae`; OpenAI + Google am Head und Root-Abnahme im PR; R669-O1-Rest/R669-G1 als DR-04B-FU, kein Blocker; Root richtet Base/Ready erst nach Vorgänger-Merge | ≤ 300 ALL; vollständige P1-Komposition, eigene prepush, zwei Fremdvendor-Belege mit Disposition und Root-Abnahme | a27e7eb0 |
-| DR-04B-FU | In `tools/denkraum/store/delivery.mjs::flushNotifications()` Root-Prüfung vor Transport-Prüfung: V2 ohne Root/Transport antwortet 503 statt `not-configured` | bestehende Denkraum-Lane qfytpd; alternativ Root-Serverjob nach eindeutiger Zuweisung, kein Doppelstart | Denkraum-Stack #666/#669/#671/#674/#676/#681 vollständig gemergt | Server | A | Pending; R669-O1-Rest (OpenAI medium) / R669-G1 (Google low) von Root als Follow-up disponiert, kein #669-Blocker | ≤ 50 ALL; kompilierender roter Test in `delivery.test.mjs`: rootloser V2-Store ohne Transport → 503, kein Write/Send; V1-Vertrag erhalten; grün, eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit Disposition und Root-Abnahme | a27e7eb0 |
+| DR-04B-FU | In `tools/denkraum/store/delivery.mjs::flushNotifications()` Root-Prüfung vor Transport-Prüfung: V2 ohne Root/Transport antwortet 503 statt `not-configured` | bestehende Denkraum-Lane qfytpd; alternativ Root-Serverjob nach eindeutiger Zuweisung, kein Doppelstart | #669 gemergt; unabhängiger Schnitt von Root am 08.10. 20:45Z vorgezogen; Basis `fc85e3d` | Server | A | Startvertrag im Reserve-Abschnitt; kein Dispatch; R669-O1-Rest (OpenAI medium) / R669-G1 (Google low) von Root als Follow-up disponiert, kein #669-Blocker | ≤ 50 ALL; kompilierender roter Test in `delivery.test.mjs`: rootloser V2-Store ohne Transport → 503, kein Write/Send; V1-Vertrag erhalten; grün, eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit Disposition und Root-Abnahme | a27e7eb0 |
 | DR-04c | Fehlende P1-Operationen putQuestion/putIdea/putPatch/putProgress verhaltensgleich auf DeliveryStore zusammensetzen; progressTransition an #progress, store.mjs-Reexport | bestehender qfytpd, Root-Option A/D1 | DR-04b-Stack `dc34cae` | eigener Worktree; Gates Server | A | Drafts #671 `5d31ef5` / #674 `39bc839`; zwei Fremdvendor-Approvals laut Root, aktuelle Heads geprüft; Base/Ready nach Vorgänger-Merge bei Root, Integration separat | P1 `store.mjs@592b309d` Zeilen 264–382/392–415 erhalten; kompilierendes Rot, eigene prepush, zwei Fremdvendor-Reviews/Disposition, Root-Abnahme | 1671ee11 |
 | DR-05 | P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, `userPriority`), vollständiger Testimport gemäß G1 α | Seniorentwickler | DR-06b (Store, Delivery, Server und CLI benötigt) | Server | C bei reinem Testdiff; sonst B, höhere Risiken nach Regel 5 | Geplant | Alle 16 Tests grün, P1-SHA-Mapping; Grenzfälle rot vor Fix; eigener vollständiger prepush Exit 0 | 55ea21ce |
 | DR-06 | HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: `DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed | bestehender qfytpd; Root disponiert | DR-04c; getrennte Lieferung DR-06a → DR-06b | PC; Gates Server | A | Server und CLI getrennt als Drafts #676/#681 geliefert; #676 zwei Fremdvendor-Approvals laut Root; #681-Abnahme und Stack-Integration getrennt | Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test | 672767c8, 55ea21ce |
@@ -171,6 +171,8 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 | Z2-PACER | Pacer läuft: Trigger mit Werkzeugen, aber nur lesend; Bericht alle 20 min | Stabschef | Inbox R5 | PC | C | Blockiert | drei Läufe nacheinander mit Bericht, keine Schreibaktion | – |
 | Z2-REVIEW | Zwei feste Fremdanbieter-Wege für Stufe A: Gemini/Cursor auf dem Server (Workspace Trust), Ollama Kimi K3 + GLM, Codex; je Weg eine Probe mit beobachtetem Modell | Root disponiert Fremdvendor-Reviews; Git-/CI-Owner qualifiziert Wege | Inbox WT | Server | C | Root übernimmt Tier-A-Zweitanbieter über vorhandenen Ollama-GLM/Kimi-Weg laut Übergabe; kein Google-Folgelauf, Modell-/Head-Belege weiter Pflicht | Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben | c77f6955 |
 | Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
+| Z2-RAM-SLOTS | Konfigurierten Warm-Slot-Root im bestehenden `build-slot` beachten; keine zweite RAM-Messung | Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/build-slot.mjs` und eigener Test | Basis `fc85e3d`, unabhängig von DR-04B-FU und HYGIENE | Server | A (Start-/Ressourcenempfehlung) | Startvertrag unten; geprüftes bestehendes Auswahlproblem, kein Dispatch | ≤ 180 ALL; kompilierendes Rot, Root-/Override-/Fehler- und belegte-Slot-Fälle; bestehende Schwellen/Heuristiken erhalten; eigene prepush + zwei Fremdvendor-Reviews am Kandidaten | – |
+| Z2-HYGIENE-STATUS | Aktuelle Draft-/Ready-/In-Arbeit-Zeilen im lesenden Hygiene-Werkzeug erkennen | Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/hygiene.mjs` und eigener Test | Basis `fc85e3d`, unabhängig von beiden anderen Reservepaketen | Server | B | Startvertrag unten; Dreizeilen-Statusprobe liefert bisher keine Einträge, kein Dispatch | ≤ 160 ALL; benanntes kompilierendes Rot, Kandidaten-PR-Nummern von Vorgänger-/historischen Nummern trennen; keine Board-/PLAN-/GitHub-Schreibwirkung; eigene prepush + Fremdreview am Kandidaten | – |
 | Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Stabschef Ausführung beobachtet/routet; keine eigenmächtige Quota-Regeländerung | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
 | Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef Ausführung: Ready-Reserve, Lane-/Blocker-Beobachtung; Chief nur PLAN | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
 
@@ -253,6 +255,98 @@ GOALS-A läuft leicht parallel zur Produktlieferung; GOALS-C nutzt vorhandene Ar
 GOALS-B und weitere PLAN-Edits sind beim Chief seriell. Z1 behält Vorrang;
 Prozessarbeit belegt keine Z1-Dateien oder Nähte. Native Goal-Ausgaben und Adoption
 stehen im Ticket, nicht in gespeicherten Profilen oder zugestellten Nachrichten.
+
+### Serverreserve: drei disjunkte Startverträge (Root 08.10., 20:45Z)
+
+Auftrag `msg-0mv00abqi-b5191dcb`: drei Pakete ohne Rust-Nähte mn/st/api liefern;
+Root übernimmt den Dispatch. Diese Verträge sind zur Abnahme vorgelegt, keine
+laufenden Worker oder bereits gefüllte native Ready-Queue. Gemeinsame geprüfte
+Basis ist `origin/main@fc85e3da33d163b9fd64c4f0163e1872940dae74`.
+Jedes Paket: eigener Branch/Worktree/PR, Dateieigentum nur im genannten Paar;
+keine gemeinsame Implementierungsdatei und keine Geschwister-Abhängigkeit.
+Vor einem tatsächlichen Start prüft Root Modell/Quota, RAM ≥ 1,5 GiB, Cargo-
+Prozesse/Buildslot und aktuelle Dateieigentümer erneut. Neue Quelle oder belegter
+Konflikt wird eingegrenzt; weder alte Lease noch zugestellte Mail beweist Ende.
+Bestehende Server-RED→GREEN→Review→Root-Kette je Einzelpaket wiederverwenden;
+keine neue Teamdefinition, kein zweiter Dispatcher und kein QA-Bot.
+
+**Ausführung/Reviewvertrag:** Root weist pro Paket einen vorhandenen Serverworker
+zu; ein geplanter Modellname ist kein Laufzeitbeleg. Stufe A braucht zwei Familien
+außerhalb des beobachteten Autors: OpenAI → Google + Anthropic; Google → OpenAI +
+Anthropic; Anthropic → OpenAI + Google. Stufe B braucht eine andere Familie
+(OpenAI → Google, Google/Anthropic → OpenAI). Vorhandene Root-Reviewwege:
+Codex/Astra, Cursor/Gemini und Anthropic/Sonnet, keine bezahlten API-Aufrufe.
+Befunde/Disposition und `NICHT ABGEDECKT` im PR, Root-Abnahme vor Ready; Mergify.
+Kein Paket verändert Budget, Quotenregeln, Profile, Hooks oder Automatisierung.
+
+**DR-04B-FU — rootloser V2-Store ohne Transport (≤ 50 ALL, Stufe A).**
+- Ziel: `flushNotifications()` prüft V2-Root vor der fehlenden Transportkonfiguration;
+  fehlende Root-Kennung → 503, ohne Write/Send. V1 bleibt rootlos lesbar; gültiger
+  V2-Root ohne Transport bleibt `not-configured`. Keine Erweiterung der Delivery-
+  Semantik, Server/CLI/UI, Dedupe oder Ledgergrenzen.
+- Eigentum: nur `tools/denkraum/store/delivery.mjs` und `delivery.test.mjs` im selben
+  Ordner. Root verwendet die vorhandene qfytpd-Lane oder genau einen vorhandenen
+  Serverworker. Keine zweite Delivery-Lane während aktiver gleicher Datei.
+- Vorgänger: #669 ist seit 16:35:44Z gemergt. Root zieht den disjunkten Schnitt
+  ausdrücklich vor; #676/#681 betreffen Server/CLI, #718 UI/Playwright. Die alte
+  Gesamtstack-Wartebedingung wird nur für dieses Folgepaket ersetzt.
+- RED auf Basis: benannter Test `delivery.test.mjs::rootless V2 without transport
+  refuses notification flush with 503`; bestehenden Store importieren/instanziieren,
+  synthetische V2-Daten, kein Transport, Reject mit Code 503 und unveränderte Bytes.
+  Bestehender `not-configured`-Fall muss zunächst scheitern, kein Importfehler.
+- Abnahme: `node --test tools/denkraum/store/delivery.test.mjs`,
+  `npm run test:denkraum`, eigene `bash scripts/ci/gates.sh lane prepush`, jeweils
+  Exit 0; negative/leere/fremde-event-ID-Fälle sowie V1/gültiger Root erhalten.
+  RED/GREEN am exakten Base/Head, zwei Fremdvendor-Reviews, Root-Abnahme.
+
+**Z2-RAM-SLOTS — tatsächlichen Warm-Slot-Root nutzen (≤ 180 ALL, Stufe A).**
+- Ziel: bestehendes `defaultSlots()`/CLI beachtet `PROJECTA_BUILD_SLOTS_ROOT`;
+  explizites `PA_BUILD_SLOTS` behält Vorrang. Bei gesetztem Root nur dortige
+  unmittelbare Verzeichnisse `projecta-a/b/c` oder `slot[1-9][0-9]*`, deterministisch;
+  Dateien/fremde Namen ignorieren. Fehlender/unlesbarer/leerer Root → nachvollziehbar
+  verweigern, kein stiller Main-/Home-Fallback. Ohne Root alte Defaults erhalten.
+- Eigentum: nur `scripts/dev/build-slot.mjs`, `scripts/lib/dev-build-slot.test.mjs`.
+  Read-only; keine Verzeichnisse anlegen, Slots reservieren, Prozesse starten/enden,
+  Wächter/Timer installieren, Hooks oder `agent-setup-check.mjs` ändern. Z2-RAM-
+  Gesamtziel/24-h-Messung bleibt offen. Die separate RAM-Messvermutung ist verworfen:
+  Node meldet auf dem geprüften Server bereits verfügbaren Speicher.
+- Beleg: CLI auf obiger Basis mit gesetztem Root listet Home-Defaults und empfiehlt
+  Main, obwohl die vorhandenen warmen Server-Slots im konfigurierten Root liegen.
+  Das ist ein Auswahlbefund, keine gemessene fehlerhafte RAM-/Belegtheitsmeldung.
+- RED: `dev-build-slot.test.mjs::configured slot root takes precedence over home
+  defaults`; bestehendes `defaultSlots()` mit synthetischem Root und injizierter
+  Verzeichnisliste aufrufen, erwartete Root-Pfade prüfen. Kein neues Symbol nötig,
+  bestehende Funktion ignoriert den Parameter: kompilierendes Assertion-RED.
+- Abnahme: `node --test scripts/lib/dev-build-slot.test.mjs` Exit 0; expliziter
+  Override gewinnt, gesetzter Root schlägt keine fremden/fehlenden Slots vor,
+  Standardfall/Windows-Pfade und busy/unknown/lock-Fälle bleiben konservativ.
+  `MIN_FREE_GB=2.5`, `MAX_PARALLEL=3` unverändert, keine Behauptung freien Slots aus
+  Prozesslücken/Lease. Eigene prepush Exit 0; readonly CLI-Beleg mit tatsächlichem
+  Root/Prozessen, Windows nur Fixture-Beleg; zwei Fremdvendor-Reviews/Root-Abnahme.
+
+**Z2-HYGIENE-STATUS — aktuelle PLAN-Statuswerte lesen (≤ 160 ALL, Stufe B).**
+- Ziel: `inProgressPackages()` erkennt neben alten `in Arbeit`/`PR #...` auch
+  `In Arbeit`, `Draft #n`, `Drafts #n/#m`, `Ready #n`; kandidatrelevante PR-Nummern
+  erfassen, keine Vorgänger-/historischen Nummern aus späteren Erläuterungen.
+  `Erledigt`, `Blockiert`, `Pending`, `Geplant`, geparkte/historische Zeilen nicht
+  als startbar oder laufend umdeuten. Keine Statuskorrektur/Promotion durchführen.
+- Eigentum: nur `scripts/dev/hygiene.mjs`, `scripts/lib/dev-hygiene.test.mjs`.
+  Keine PLAN-/STAND-Änderung, Fetch/Netzwerk-/GitHub-Schreibwirkung, Cache-/App-
+  Plumbing, neue Abhängigkeit oder andere Hygiene-Klassifikatoren in diesem Paket.
+- Beleg: bestehende Funktion auf obiger Basis liefert für drei synthetische aktuelle
+  Statuszeilen `Draft #1`, `Ready #2`, `In Arbeit` eine leere Liste (Node Exit 0).
+- RED: `dev-hygiene.test.mjs::current PLAN Draft Ready and In Arbeit statuses are
+  recognized`; vorhandene Funktion mit begrenzter Tabelle, drei erwartete Einträge,
+  Test kompiliert und scheitert gegen unveränderte Basis. Geschwister prüfen:
+  alte Statuswerte, zwei Kandidaten, erklärter Vorgänger und negative Statuswerte.
+- Abnahme: `node --test scripts/lib/dev-hygiene.test.mjs`, eigene prepush, Exit 0;
+  `collectHygiene`-Fixture mit offenem/fehlendem Kandidaten-PR erhält korrekte Befunde,
+  keine echten Remote-Schreibtests; ein Fremdvendor-Review und Root-Abnahme.
+
+Nicht als freie Reserve zählen: R19-09 benötigt die besetzte Store-Naht;
+DR-10-WIRE überschneidet sich mit der aktiven #718-UI-Dateiliste (index/ideas).
+DR-05/07 und DR-12 behalten ihre wirklichen Vorgänger. Die drei Verträge oben
+benötigen keine dieser Änderungen; nach Head-/Owner-Wechsel vor Dispatch neu prüfen.
 
 ### Anpassungsnachweis DR-15a und Übergaben (08.10. 04:40 UTC)
 
