@@ -107,6 +107,44 @@ test("a git read failure exits 2 without printing file content", () => {
   }
 });
 
+test("git diagnostics never escape the CLI output boundary", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const secret = join("private", AT, "example", ".", "org");
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: root, stdio: "pipe" });
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    const result = runChecker(root, undefined, {
+      GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: secret, GIT_CONFIG_VALUE_0: "opaque",
+    });
+    assert.ok(!(result.stdout + result.stderr).includes(secret), "git diagnostics must not expose the config key");
+    assert.equal(result.status, 2, "non-overflow git failures must also exit 2");
+    assert.equal(result.stdout, "");
+    assert.equal(result.stderr.trim(), "denkraum hygiene: cannot read tools/denkraum (128)");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the CLI preserves clean, findings and unreadable-repository exits", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  try {
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    assert.equal(runChecker(root).status, 2);
+    git("init", "-q");
+    assert.equal(runChecker(root).status, 0);
+    const secret = join("someone", AT, "example", ".", "org");
+    writeFileSync(joinPath(root, "tools/denkraum/a.txt"), secret);
+    git("add", "tools/denkraum/a.txt");
+    const result = runChecker(root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /tools\/denkraum\/a.txt:1: email/);
+    assert.ok(!(result.stdout + result.stderr).includes(secret));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("the check and its test are clean under their own rules", () => {
   const files = ["hygiene-check.mjs", "hygiene-check.test.mjs"].map((name) => ({
     path: `tools/denkraum/${name}`,
