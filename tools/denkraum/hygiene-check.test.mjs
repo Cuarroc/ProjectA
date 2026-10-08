@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as joinPath } from "node:path";
 import { test } from "node:test";
@@ -11,6 +11,31 @@ import { findViolations, scopeFiles } from "./hygiene-check.mjs";
 const join = (...parts) => parts.join("");
 const AT = String.fromCharCode(64);
 const rulesFor = (text, path = "tools/denkraum/x.mjs") => findViolations([{ path, text }]).map((f) => f.rule);
+
+// Run the actual CLI, including its entry point and complete process output.
+// A child-only buffer limit keeps the overflow fixture small on every base.
+function runChecker(root, maxBuffer, env = {}) {
+  const checker = joinPath(root, "tools/denkraum/hygiene-check.mjs");
+  copyFileSync(new URL("hygiene-check.mjs", import.meta.url), checker);
+  const script = `
+    import cp from "node:child_process";
+    import { syncBuiltinESMExports } from "node:module";
+    import { pathToFileURL } from "node:url";
+    const original = cp.execFileSync;
+    const maxBuffer = ${JSON.stringify(maxBuffer) ?? "undefined"};
+    if (maxBuffer !== undefined) {
+      cp.execFileSync = (file, args, options) => original(file, args, { ...options, maxBuffer });
+      syncBuiltinESMExports();
+    }
+    await import(pathToFileURL(process.argv[1]).href);
+  `;
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script, checker], {
+    encoding: "utf8", env: { ...process.env, ...env },
+  });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  return result;
+}
 
 test("flags each forbidden class and passes its clean twin", () => {
   const cases = [
@@ -59,6 +84,62 @@ test("scans staged content instead of the working tree", () => {
     put("c.txt", join("agent", "-", "2".repeat(13), "-", "xyz789"));
     const rules = findViolations(scopeFiles(root)).map((f) => `${f.path}:${f.rule}`).sort();
     assert.deepEqual(rules, ["tools/denkraum/a.txt:ipv4", "tools/denkraum/b.txt:email", "tools/denkraum/c.txt:agent-id"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a git read failure exits 2 without printing file content", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  const secret = join("someone", AT, "example", ".", "org");
+  try {
+    git("init", "-q");
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    writeFileSync(joinPath(root, "tools/denkraum/big.txt"), `${secret}\n`.repeat(50));
+    git("add", "tools");
+    const result = runChecker(root, 64);
+    assert.ok(!(result.stdout + result.stderr).includes(secret), "diagnostic must not carry file content");
+    assert.equal(result.status, 2, "a buffer overflow must fail with its own exit code");
+    assert.match(result.stderr, /cannot read tools\/denkraum \(ENOBUFS\)/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("git diagnostics never escape the CLI output boundary", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const secret = join("private", AT, "example", ".", "org");
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: root, stdio: "pipe" });
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    const result = runChecker(root, undefined, {
+      GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: secret, GIT_CONFIG_VALUE_0: "opaque",
+    });
+    assert.ok(!(result.stdout + result.stderr).includes(secret), "git diagnostics must not expose the config key");
+    assert.equal(result.status, 2, "non-overflow git failures must also exit 2");
+    assert.equal(result.stdout, "");
+    assert.equal(result.stderr.trim(), "denkraum hygiene: cannot read tools/denkraum (128)");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the CLI preserves clean, findings and unreadable-repository exits", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  const git = (...args) => execFileSync("git", args, { cwd: root, stdio: "pipe" });
+  try {
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    assert.equal(runChecker(root).status, 2);
+    git("init", "-q");
+    assert.equal(runChecker(root).status, 0);
+    const secret = join("someone", AT, "example", ".", "org");
+    writeFileSync(joinPath(root, "tools/denkraum/a.txt"), secret);
+    git("add", "tools/denkraum/a.txt");
+    const result = runChecker(root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /tools\/denkraum\/a.txt:1: email/);
+    assert.ok(!(result.stdout + result.stderr).includes(secret));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
