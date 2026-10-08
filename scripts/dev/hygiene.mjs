@@ -16,6 +16,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EXIT, RefusedError, makeRunner, gitIn, ghJson, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
 import { listedInStand } from "../lib/active-specs.mjs";
+import { parseGoals } from "../lib/hq-parse.mjs";
 
 const STALE_MS = 24 * 3_600_000;
 const SECTION = /^#{2,4}\s*Aktive Specs\s*$/;
@@ -157,6 +158,8 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
   else if (!standText.split(/\r?\n/).some((l) => SECTION.test(l))) notChecked.push('STAND.md: Abschnitt "Aktive Specs" nicht gefunden — aktive Specs nicht geprüft');
   if (planIn == null) notChecked.push('docs/PLAN.md fehlt — Pakete „in Arbeit“ nicht geprüft');
   else if (!hasStatusTable(planText)) notChecked.push('docs/PLAN.md: keine Tabelle mit den Spalten ID und Stand — Pakete „in Arbeit“ nicht geprüft');
+  // Malformed Z tables (docs/PLAN.md) would otherwise vanish from HQ unnoticed.
+  notChecked.push(...parseGoals(planText).flatMap((g) => g.problems.map((p) => `docs/PLAN.md: ${p}`)));
   if (erledigtIn == null) notChecked.push("docs/ERLEDIGT.md fehlt — Specs zu erledigten Paketen nur über PRs geprüft");
   else if (!/^\|\s*Datum\s*\|\s*ID\s*\|/m.test(erledigtText)) notChecked.push('docs/ERLEDIGT.md: keine Tabelle „| Datum | ID |“ — Specs zu erledigten Paketen nur über PRs geprüft');
   return { stalePrs, branchesWithoutPr, specsOfMergedPrs, inProgressWithoutPr, untracked, notChecked };
