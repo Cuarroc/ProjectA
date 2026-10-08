@@ -1953,8 +1953,6 @@ fn parse_stats_range(range: Option<&str>) -> Result<stats::StatsRange, String> {
     }
 }
 
-// -- P2-H diagnosis (log path, pack, Warum) --------------------------------
-
 /// F5 baseline: CPU/RAM/disk plus the OmniRoute token totals. No ceilings.
 #[tauri::command]
 async fn get_resource_snapshot(
@@ -1982,8 +1980,6 @@ async fn delete_session_buffers() -> Result<usize, String> {
         .await
         .map_err(|e| format!("deleting the session buffers did not finish: {e}"))?
 }
-
-// -- stuck diagnosis commands (Phase 18) -----------------------------------
 
 // -- provider commands (Phase 7.2) -----------------------------------------
 
