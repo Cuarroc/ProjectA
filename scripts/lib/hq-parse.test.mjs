@@ -529,3 +529,134 @@ test("dev-hq snapshot carries the PLAN.md milestones and no F-package DAG", () =
   assert.equal(data.packages, undefined, "the F0-F8 DAG is no longer emitted");
   assert.match(readFileSync(join(out, "data.js"), "utf8"), /"milestones"/);
 });
+
+// Condensed copy of the real "## Z1" … "## Z4" goal tables of docs/PLAN.md
+// (same header, same cell shapes: "Erledigt: …" prose, "wartet #632", "Draft #…",
+// a "Hängt ab von" cell with several IDs, a Ticket cell with several tickets).
+const GOAL_HEAD = ["| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |", "|---|---|---|---|---|---|---|---|---|"];
+const Z_FIXTURE = [
+  "# Plan", "", "## Statuswerte", "",
+  "Grundwerte je Paket: **Geplant**, **Bereit**, **In Arbeit**, **In Prüfung**,",
+  "**Erledigt**, **Blockiert**, **Verschoben**, **Entfallen**.", "",
+  "## Z1 — Denkraum release-fertig für v1.6.0", "", "Abnahme Z1: prose.", "", ...GOAL_HEAD,
+  "| DR-01 | Gerüst `tools/denkraum/` | Seniorentwickler | – | PC | B | Erledigt: #635 `e9f8ce8` gemergt | Gate Exit 0 | 55ea21ce |",
+  "| DR-02 | Ledger-Modell | Seniorentwickler | DR-01, DR-01a | Server | A | Erledigt: #636 gemergt | FIT | 55ea21ce, b0e90b72 |",
+  "| DR-09 | App-Teil Fragen | Implementierer · Codex | DR-01 | Server | B | Blockiert: Queue 656 scheiterte | Harness grün | 55ea21ce |",
+  "| DR-12 | B2 Kategorie | UX-Architekt | DR-11 (Kategorie-Tests) | egal | B | Geplant | roter Test | 98fa8267 |", "",
+  "## Z2 — Setup und Entwicklung", "", ...GOAL_HEAD,
+  "| Z2-PLANPARSER | `hq-parse.mjs` liest Z-Tabellen; danach Anhang B entfernen | Implementierer · Claude | Z2-PLAN-COMMIT | Server | B | Geplant | `npm run test:hq` Exit 0 | – |",
+  "| Z2-REGELN | Regelwerk 2.0 | Stabschef | – | egal | C | In Arbeit | Lane-C-PR gemergt | 77c993f3 |",
+  "| DOC-OPERATORS | Operatoren-Katalog | Root-Serverjob | #642 | Server | C | Draft #683 `d47274a` geliefert | ≤ 300 ALL | 77c993f3 |", "",
+  "## Z3 — Rest von v1.6.0", "", "Fertig heißt: prose.", "", ...GOAL_HEAD,
+  "| V16-ARCH-D4-05 | Queue-Routen aus `api.rs` | Codex | – | Server | A | angenommen, Mergify ausstehend | Merge | b9606dd4 |",
+  "| V16-ARCH-D7 | Einstellungen | Codex | V16-ARCH-D4-05 | Server | A | In Prüfung: Ready #632 | Merge | 782d9e58 |",
+  "| V16-NACHBEOB | Wochenmessungen | Stabschef | v1.6.0 | Server | C | Verschoben | Wochenberichte | b8b16ec8 |", "",
+  "## Z4 — Wichtig, aber liegen geblieben", "", ...GOAL_HEAD,
+  "| Z4-R19-09 | Audit-Envelopes Wartung | Codex | V16-ARCH-D7 | Server | A | wartet #632 (store.rs) | roter Test | – |",
+  "| Z4-E14 | Update-Signierschlüssel sichern | Elias | – | PC | – | Bereit | Sicherung vorhanden | – |",
+  "| Z4-M5-01 | Testerrunde | Elias | V16-03, E16 | egal | – | Entfallen | Rückmeldungen | – |", "",
+  "## Lanes (5 parallel)", "", "| Lane | Reihenfolge | Ort |", "|---|---|---|", "| A | x | y |", "",
+].join("\n");
+
+test("parseGoals reads Z1–Z4 with goal id and title and one entry per table row", () => {
+  const goals = parseAll.parseGoals(Z_FIXTURE);
+  assert.deepEqual(goals.map((g) => g.id), ["Z1", "Z2", "Z3", "Z4"]);
+  assert.equal(goals[0].title, "Denkraum release-fertig für v1.6.0");
+  assert.deepEqual(goals.map((g) => g.total), [4, 3, 3, 3]);
+  assert.deepEqual(goals[1].packages.map((p) => p.id), ["Z2-PLANPARSER", "Z2-REGELN", "DOC-OPERATORS"]);
+  assert.equal(goals[1].packages[0].title, "hq-parse.mjs liest Z-Tabellen; danach Anhang B entfernen");
+  assert.deepEqual(goals.flatMap((g) => g.problems), []);
+});
+
+test("parseGoals validates Status against the eight Statuswerte and keeps unknown values as invalid", () => {
+  const status = Object.fromEntries(parseAll.parseGoals(Z_FIXTURE).flatMap((g) => g.packages).map((p) => [p.id, p.status]));
+  assert.equal(status["DR-01"], "Erledigt");
+  assert.equal(status["DR-09"], "Blockiert");
+  assert.equal(status["DR-12"], "Geplant");
+  assert.equal(status["Z2-REGELN"], "In Arbeit");
+  assert.equal(status["V16-NACHBEOB"], "Verschoben");
+  assert.equal(status["Z4-M5-01"], "Entfallen");
+  assert.equal(status["Z4-E14"], "Bereit");
+  assert.equal(status["V16-ARCH-D7"], "In Prüfung");
+  assert.equal(status["V16-ARCH-D4-05"], "In Prüfung", "'angenommen, Mergify ausstehend' belongs to In Prüfung");
+  assert.equal(status["Z4-R19-09"], "Blockiert", "'wartet' belongs to Blockiert");
+  const draft = parseAll.parseGoals(Z_FIXTURE)[1].packages[2];
+  assert.equal(draft.status, "invalid", "an unknown value is explicit, never dropped");
+  assert.equal(draft.statusRaw, "Draft #683 `d47274a` geliefert");
+  assert.deepEqual(parseAll.PLAN_STATUS_VALUES, ["Geplant", "Bereit", "In Arbeit", "In Prüfung", "Erledigt", "Blockiert", "Verschoben", "Entfallen"]);
+});
+
+test("parseGoals extracts owner and dependencies and tickets", () => {
+  const pkg = Object.fromEntries(parseAll.parseGoals(Z_FIXTURE).flatMap((g) => g.packages).map((p) => [p.id, p]));
+  assert.equal(pkg["DR-02"].owner, "Seniorentwickler");
+  assert.deepEqual(pkg["DR-02"].dependsOn, ["DR-01"], "only IDs that name a package of the plan; DR-01a is not in the fixture");
+  assert.equal(pkg["DR-12"].dependsRaw, "DR-11 (Kategorie-Tests)");
+  assert.deepEqual(pkg["V16-ARCH-D7"].dependsOn, ["V16-ARCH-D4-05"]);
+  assert.deepEqual(pkg["DR-02"].tickets, ["55ea21ce", "b0e90b72"]);
+  assert.deepEqual(pkg["Z2-PLANPARSER"].tickets, [], "an en dash means no ticket");
+  assert.equal(pkg["Z2-PLANPARSER"].owner, "Implementierer · Claude");
+  assert.deepEqual(pkg["Z2-PLANPARSER"].dependsOn, [], "Z2-PLAN-COMMIT is not part of the fixture");
+});
+
+test("parseGoals counts packages per status for every goal", () => {
+  const [z1, z2, z3, z4] = parseAll.parseGoals(Z_FIXTURE);
+  assert.deepEqual(z1.counts, { Geplant: 1, Bereit: 0, "In Arbeit": 0, "In Prüfung": 0, Erledigt: 2, Blockiert: 1, Verschoben: 0, Entfallen: 0, invalid: 0 });
+  assert.equal(z2.counts.invalid, 1);
+  assert.equal(z2.counts["In Arbeit"], 1);
+  assert.equal(z3.counts["In Prüfung"], 2);
+  assert.equal(z4.counts.Blockiert + z4.counts.Bereit + z4.counts.Entfallen, 3);
+  for (const g of [z1, z2, z3, z4]) assert.equal(Object.values(g.counts).reduce((a, b) => a + b, 0), g.total);
+});
+
+test("parseGoals reports a missing table header and a wrong column count instead of dropping them", () => {
+  const noTable = "## Z1 — Ziel\n\nNur Prosa.\n\n## Z2 — Nächstes\n\n| ID | Ziel | Status |\n|---|---|---|\n| A | b | Geplant |\n";
+  const [z1, z2] = parseAll.parseGoals(noTable);
+  assert.match(z1.problems.join("\n"), /Z1.*keine Tabelle/);
+  assert.match(z2.problems.join("\n"), /Z2.*Kopfzeile/);
+  const short = Z_FIXTURE.replace("| Z2-REGELN | Regelwerk 2.0 | Stabschef | – | egal | C | In Arbeit | Lane-C-PR gemergt | 77c993f3 |", "| Z2-REGELN | Regelwerk 2.0 | Stabschef | – | egal | C | In Arbeit |");
+  const g = parseAll.parseGoals(short)[1];
+  assert.match(g.problems.join("\n"), /Z2-REGELN.*7 statt 9 Spalten/);
+  assert.equal(g.packages.some((p) => p.id === "Z2-REGELN"), false, "a broken row is not guessed into a package");
+});
+
+test("parseGoals parses the real docs/PLAN.md with Z1–Z4 and no structural problem and every table row counted", () => {
+  const plan = readFileSync(new URL("../../docs/PLAN.md", import.meta.url), "utf8");
+  const goals = parseAll.parseGoals(plan);
+  assert.deepEqual(goals.map((g) => g.id), ["Z1", "Z2", "Z3", "Z4"]);
+  assert.deepEqual(goals.flatMap((g) => g.problems), []);
+  for (const g of goals) {
+    const section = plan.split(new RegExp(`^## ${g.id} `, "m"))[1].split(/^## /m)[0];
+    const rows = section.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("| ID |")).length;
+    assert.equal(g.total, rows, `${g.id}: all rows parsed`);
+    assert.ok(g.packages.every((p) => p.id && p.owner !== undefined && PLAN_STATUS_OR_INVALID.includes(p.status)));
+  }
+  const statuswerte = plan.split(/^## Statuswerte/m)[1].split(/^## /m)[0];
+  for (const v of parseAll.PLAN_STATUS_VALUES) assert.ok(statuswerte.includes(v), `Statuswerte names ${v}`);
+});
+const PLAN_STATUS_OR_INVALID = ["Geplant", "Bereit", "In Arbeit", "In Prüfung", "Erledigt", "Blockiert", "Verschoben", "Entfallen", "invalid"];
+
+test("dev-hq snapshot carries the Z goals with counts next to the milestones", () => {
+  const root = mkdtempSync(join(tmpdir(), "hq-z-"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  writeFileSync(join(root, "STAND.md"), "# STAND\n\n## Aktive Specs\n\n| Spec | Paket | Lane |\n|---|---|---|\n");
+  writeFileSync(join(root, "docs", "PLAN.md"), Z_FIXTURE + "\n" + PLAN_FIXTURE);
+  const out = join(root, "docs", "dev-hq");
+  const r = spawnSync(process.execPath, ["scripts/dev-hq.mjs", "--root", root, "--out", out], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  const data = JSON.parse(readFileSync(join(out, "data.json"), "utf8"));
+  assert.deepEqual(data.goals.map((g) => g.id), ["Z1", "Z2", "Z3", "Z4"]);
+  assert.equal(data.goals[0].counts.Erledigt, 2);
+  assert.deepEqual(data.milestones.map((m) => m.id), ["M1", "M2", "M3"], "M1–M5 stay readable while the section exists");
+});
+
+test("dev-hq warns visibly when a Z table is malformed", () => {
+  const root = mkdtempSync(join(tmpdir(), "hq-zbad-"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  writeFileSync(join(root, "STAND.md"), "# STAND\n\n## Aktive Specs\n\n| Spec | Paket | Lane |\n|---|---|---|\n");
+  writeFileSync(join(root, "docs", "PLAN.md"), "## Z1 — Ziel\n\nNur Prosa.\n");
+  const out = join(root, "docs", "dev-hq");
+  const r = spawnSync(process.execPath, ["scripts/dev-hq.mjs", "--root", root, "--out", out], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  const data = JSON.parse(readFileSync(join(out, "data.json"), "utf8"));
+  assert.match(data.warnings.join("\n"), /Z1.*keine Tabelle/);
+});
