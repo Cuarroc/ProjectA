@@ -50,7 +50,8 @@ reference. Where a detail contradicts these ten, the ten win.
 
 ## Start with current evidence
 
-Read `STAND.md`, then `docs/PLAN.md` (the only plan: milestones M1–M4, parked
+Inside AgentsRoom, first read the project-memory note `lage-jetzt`; read
+`STAND.md`, then `docs/PLAN.md` (the only plan: milestones M1–M4, parked
 and cut work, decision inbox), then run `bash scripts/sync.sh start`. Check
 branch, worktrees and working changes. Preserve unrelated work. Historical
 status is not live evidence: take the live state from `gh pr list` and
