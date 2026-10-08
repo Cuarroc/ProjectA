@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { createServer as createPortProbe } from 'node:net';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +14,7 @@ const TOKEN = 'test-only-root-receipt-token-0123456789';
 const serverFile = fileURLToPath(new URL('./server.mjs', import.meta.url));
 const repoState = fileURLToPath(new URL('../../state.json', import.meta.url));
 const env = extra => ({ ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('DECISION_DESK_'))),
-  DECISION_DESK_ROOT_RECEIPT_TOKEN: TOKEN, ...extra });
+  DECISION_DESK_ROOT_RECEIPT_TOKEN: TOKEN, DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32), ...extra });
 function start(args, extra) {
   const child = spawn(process.execPath, [serverFile, ...args], { env: env(extra) }); let out = ''; let err = '';
   child.stdout.on('data', d => { out += d; }); child.stderr.on('data', d => { err += d; });
@@ -46,6 +47,26 @@ test('the start is refused without a state path or root agent id and names only 
   assert.match(err, /DECISION_DESK_STATE:/); assert.match(err, /DECISION_DESK_ROOT_AGENT_ID:/); assert.ok(!err.includes(TOKEN));
 });
 
+test('the server entry refuses to start without token/webhook secret', async () => {
+  const { statePath } = await ledger();
+  const ready = { DECISION_DESK_STATE: statePath, DECISION_DESK_ROOT_AGENT_ID: ROOT,
+    DECISION_DESK_PORT: '65432', DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32) };
+  for (const key of ['DECISION_DESK_ROOT_RECEIPT_TOKEN', 'DECISION_DESK_WEBHOOK_SECRET']) {
+    for (const value of [undefined, '', 'short']) {
+      const run = spawnSync(process.execPath, [serverFile], {
+        env: Object.fromEntries(Object.entries(env({ ...ready, [key]: value })).filter(([, v]) => v !== undefined)),
+        encoding: 'utf8', timeout: 2000,
+      });
+      assert.equal(run.status, 1);
+      assert.equal(run.stdout, '');
+      assert.match(run.stderr, new RegExp(`${key}:`));
+      for (const secret of [TOKEN, ready.DECISION_DESK_WEBHOOK_SECRET, statePath]) {
+        assert.ok(!run.stderr.includes(secret));
+      }
+    }
+  }
+});
+
 test('a state path inside the repository is refused even with a root agent id', async () => {
   const { code, out, err } = await start(['--root-agent-id', ROOT], { DECISION_DESK_STATE: repoState }).exited;
   assert.equal(code, 1); assert.equal(out, ''); assert.match(err, /DECISION_DESK_STATE: must be outside the repository/);
@@ -54,9 +75,20 @@ test('a state path inside the repository is refused even with a root agent id', 
 
 test('an outside state path and a root agent id from the environment start the server', async () => {
   const { statePath } = await ledger();
-  const run = start([], { DECISION_DESK_STATE: statePath, DECISION_DESK_ROOT_AGENT_ID: ROOT, DECISION_DESK_PORT: '0' });
-  try { assert.deepEqual(await (await fetch(`${await run.listening}/health`)).json(), { service: 'decision-desk', ok: true }); }
-  finally { run.child.kill(); await run.exited; }
+  for (const args of [[], ['--root-agent-id', ROOT]]) {
+    const probe = createPortProbe();
+    await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
+    const port = String(probe.address().port);
+    await new Promise(resolve => probe.close(resolve));
+    const run = start(args, { DECISION_DESK_STATE: statePath,
+      DECISION_DESK_ROOT_AGENT_ID: args.length ? 'invalid/id' : ROOT, DECISION_DESK_PORT: port });
+    try {
+      const base = await run.listening;
+      assert.deepEqual(await (await fetch(`${base}/health`)).json(), { service: 'decision-desk', ok: true });
+      assert.equal((await post(base, '/api/receipts', { eventRef: {} })).status, 400);
+      assert.match(await (await fetch(`${base}/index.html`)).text(), /content="test-root-agent"/);
+    } finally { run.child.kill(); await run.exited; }
+  }
 });
 
 test('without a root agent id the HTTP paths that need it answer 503 and the page carries no root id', async () => {
@@ -125,4 +157,24 @@ test('a symlinked asset that leaves the asset root is not served (R676-O2)', asy
       const r = await fetch(base + path); assert.equal(r.status, 404, path); assert.ok(!(await r.text()).includes('outside-secret'), path);
     }
   } finally { await close(); }
+});
+
+test('the server entry validates ports and explicit root overrides through the full config', async () => {
+  const { statePath } = await ledger();
+  const ready = { DECISION_DESK_STATE: statePath, DECISION_DESK_ROOT_AGENT_ID: ROOT };
+  for (const [args, extra, name] of [
+    [[], { DECISION_DESK_PORT: '0' }, 'PORT'],
+    [['--root-agent-id', 'invalid/id'], {}, 'ROOT_AGENT_ID'],
+    [['--root-agent-id'], {}, 'ROOT_AGENT_ID'],
+    [['--root-agent-id', ROOT], { DECISION_DESK_ROOT_AGENT_ID: '', DECISION_DESK_PORT: '0' }, 'PORT'],
+  ]) {
+    const run = spawnSync(process.execPath, [serverFile, ...args], {
+      env: env({ ...ready, ...extra }), encoding: 'utf8', timeout: 2000,
+    });
+    assert.equal(run.status, 1);
+    assert.equal(run.stdout, '');
+    assert.match(run.stderr, new RegExp(`DECISION_DESK_${name}:`));
+    if (name === 'PORT') assert.doesNotMatch(run.stderr, /ROOT_AGENT_ID/);
+    for (const value of [TOKEN, statePath, 'invalid/id']) assert.ok(!run.stderr.includes(value));
+  }
 });
