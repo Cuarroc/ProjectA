@@ -111,3 +111,10 @@ test("a unicode escape char literal does not confuse test mod stripping", () => 
   assert.equal(result.status, 1);
   assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
 });
+
+test("rejects diagnosis commands in main.rs", () => {
+  const root = fixture({ "src-tauri/src/main.rs": "fn get_reason_catalog() { }\n" });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DIAGNOSIS_COMMANDS_MOVED.*src-tauri\/src\/main\.rs/);
+});

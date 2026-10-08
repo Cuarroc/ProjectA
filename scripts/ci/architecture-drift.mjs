@@ -15,6 +15,7 @@ const rules = {
   RAW_EVENT_EMIT: "new event families need an owner and TypeScript wrapper",
   HQ_DIRECT_DB: "HQ must use the API rather than the SQLite database",
   HQ_RAW_AUTH_FETCH: "only the Node proxy may attach the API token",
+  DIAGNOSIS_COMMANDS_MOVED: "diagnosis commands belong in diagnosis_cmds.rs",
 };
 
 function files(dir = root) {
@@ -136,6 +137,7 @@ function scan() {
     if (path === "src-tauri/src/main.rs") {
       const backend = block(source, /impl\s+ControlBackend\s+for\s+ApiBackend/);
       add("API_STORE_BLOCK_ON", path, callHits(backend, /tauri::async_runtime::block_on\s*\(/g, /self\.store/));
+      add("DIAGNOSIS_COMMANDS_MOVED", path, regexHits(source, /fn\s+(?:get_log_path|get_panic_notice|get_reason_catalog|export_diagnosis|reveal_log_path|get_stuck_after_minutes|set_stuck_after_minutes)\s*\(/g));
     }
     if (path === "src-tauri/src/api.rs" || path.startsWith("src-tauri/src/api/"))
       add("ERROR_TEXT_CLASSIFIER", path, regexHits(source, /err(?:or)?\.(?:contains|starts_with)\s*\(/g));
