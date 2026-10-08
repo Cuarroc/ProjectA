@@ -317,6 +317,51 @@ when to reverse). Hand over at session end with
 `bash scripts/sync.sh note "<agent>" "<summary>"`. Keep secrets out of tracked
 files, PR texts and logs; back up before deleting or switching anything off.
 
+## Task operators
+
+Each brief names ONE main operator below, using its stable German uppercase token.
+
+| Operator | Meaning | May write / push / PR? | Required output |
+|---|---|---|---|
+| PRÜFEN | Read-only check | Report only / no / no | Verdict per item |
+| BELEGEN | Reproducible proof | Report only / no / no | Command, exit code, SHA |
+| MESSEN | Measure | Report only / no / no | Numbers with method and units |
+| RECHERCHIEREN | Research | Report only / no / no | Dated sources; hypotheses marked |
+| ERFRAGEN | Ask the owner or the user's assistant | Report only / no / no | Answer as information, never approval |
+| ENTWERFEN | Draft only; no sending | Draft only / no / no | Unsent draft |
+| VORSCHLAGEN | Recommend without deciding | Report only / no / no | 2–3 options and recommendation |
+| ENTSCHEIDEN | Named owner decides | Decision record only / no / no | Decision, authority and rationale |
+| UMSETZEN | Implement one package | Yes / yes / draft | Branch, red-first evidence, prepush, draft PR |
+| NACHBESSERN | Fix review findings on the same PR | Yes / yes / same PR | Fix evidence and disposition table |
+| REVIEWEN | Review a fixed head | Report only / no / no | Head SHA; findings with file:line; verdict |
+| INTEGRIEREN | Coordinator integrates | Authorized integration only / yes / manage | Ready, labels and Mergify queue evidence |
+| PFLEGEN | Owner maintains docs, plan or memory | Owned scope / yes / draft if repo changes | Current canonical record; no second truth |
+| BERICHTEN | Report status | Report only / no / no | ≤6 lines; named stage, source and time |
+| ÜBERGEBEN | Hand over unfinished work | WIP only / yes / existing or draft | WIP commit + push; checkpoint and next owner/step |
+| BLOCKIERT MELDEN | Stop and report blocker | Report only / no / no | Reason, evidence and resume condition |
+
+Rules 4 (push) and 7 (PR text = report) apply to UMSETZEN/NACHBESSERN/INTEGRIEREN.
+Read-only operators report in their last message or an uncommitted report file; never commit.
+REVIEWEN must never use the author's model family. INTEGRIEREN is coordinator-only.
+ENTSCHEIDEN belongs only to the named owner; money/install/delete/release/security/scope
+decisions belong to the user. No operator expands existing authority or the ten core rules.
+
+Minimal brief header (one line per field; state “none” where inapplicable):
+```text
+OPERATOR: <one token>
+AUTHORITY: <owner and authorization>
+GOAL: <result and benefit>
+NON-GOALS: <excluded work>
+BASE: <branch@SHA>
+FILES/SEAM: <owned files and serial seam>
+SIZE: <diff-line budget>
+RED-FIRST: <test/evidence or justified No-Test>
+ACCEPTANCE: <verifiable checks>
+TIER/REVIEW: <risk tier and reviewer requirements>
+REPORT: <PR text, last message or report file>
+OVERLAP: <other assignments and resolution>
+```
+
 ## Detailed operating reference
 
 `docs/development/WORKFLOW.md` is the reference for architecture, release
