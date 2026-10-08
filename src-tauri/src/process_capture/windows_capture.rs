@@ -1716,14 +1716,20 @@ fn execute_protocol_events(
     let capture_failure = terminal.as_ref().err().cloned();
     drop(events_tx);
     // Fail-closed: still bound the drain, but size it for sequential durable
-    // checkpoints. Launch/Process/Input/Receipt may still be pending when the
-    // child exits; each can wait up to Store::open busy_timeout (5s). A fixed
+    // checkpoints that can still be pending when the child exits. Launch must
+    // complete before input delivery, so only Process/Input/Receipt can overlap
+    // this window; each may wait up to Store::open busy_timeout (5s). A fixed
     // 5s window rejected a successful Receipt commit under that load (KI-30).
+    // Keep the total under the 20s parent bound used by host receipt-ack
+    // self-tests so a missing ack still fails closed as "receipt
+    // acknowledgement unavailable" rather than the parent's capture deadline.
     const CHECKPOINT_BUSY_BUDGET_SECS: u64 = 5;
-    const CHECKPOINT_STAGES: u64 = 4;
+    const DRAIN_OVERLAP_STAGES: u64 = 3;
     const DRAIN_MARGIN_SECS: u64 = 2;
     let drain_deadline = Instant::now()
-        + Duration::from_secs(CHECKPOINT_STAGES * CHECKPOINT_BUSY_BUDGET_SECS + DRAIN_MARGIN_SECS);
+        + Duration::from_secs(
+            DRAIN_OVERLAP_STAGES * CHECKPOINT_BUSY_BUDGET_SECS + DRAIN_MARGIN_SECS,
+        );
     let submitted = terminal_tx.send((terminal, drain_deadline));
     drop(terminal_tx);
     while !writer.is_finished() && Instant::now() < drain_deadline {
