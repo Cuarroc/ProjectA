@@ -6,6 +6,7 @@ let state = null, activeId = null, view = null, loading = false, posting = false
 let area = 'now', dataInvalid = false, ideaPosting = false;
 const transportError = error => error instanceof TypeError || ['TimeoutError', 'AbortError'].includes(error.name) ? 'Die Verbindung ist gerade nicht erreichbar.' : error.message;
 const storageKey = 'decision-desk.drafts.v1';
+const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content || null;
 let drafts = {}, storageAvailable = true;
 try { drafts = JSON.parse(localStorage.getItem(storageKey) || '{}'); if (!drafts || typeof drafts !== 'object' || Array.isArray(drafts)) drafts = {}; } catch { storageAvailable = false; }
 let persistedDrafts = JSON.stringify(drafts);
@@ -185,8 +186,7 @@ function openQuestion(id, focus = true) {
   function offerRetry() { confirm.hidden = false; confirm.replaceChildren(node('p', 'Der Ausgang der letzten Übertragung ist unklar. Wiederholen sendet exakt dieselbe Anfrage und erzeugt keine doppelte Antwort.'), button('Speicherung erneut prüfen', () => submit(d.pending.action), 'primary')); }
   async function submit(action) {
     if (posting || ideaPosting || (view.stale && !d.pending)) return;
-    const rootId = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content;
-    if (!rootId) { feedback.textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
+    if (!rootReceiver) { feedback.textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
     if (loading) { feedback.textContent = 'Der aktuelle Stand wird gerade geladen. Bitte danach erneut bestätigen.'; return; }
     if (!crypto.randomUUID) { feedback.textContent = 'Dieser Browser unterstützt keine sicheren Anfrage-IDs. Bitte einen aktuellen Browser auf localhost verwenden.'; return; }
     const retry = Boolean(d.pending), payload = d.pending || { questionId: q.id, questionRevision: q.revision, expectedAnswerId: view.baseAnswerId, requestId: crypto.randomUUID(), action, selected: action === 'answer' && !free ? [...d.selected] : [], note: d.note };

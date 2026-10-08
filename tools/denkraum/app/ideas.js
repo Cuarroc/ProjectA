@@ -3,7 +3,8 @@ try { $('idea').value = localStorage.getItem(ideaKey) || ''; } catch { $('idea-s
 $('idea').addEventListener('input', () => { try { localStorage.setItem(ideaKey, $('idea').value); $('idea-status').textContent = 'Entwurf geändert · noch nicht gespeichert.'; } catch { $('idea-status').textContent = 'Nur in dieser geöffneten Seite · bitte den Entwurf vor dem Schließen kopieren.'; } });
 window.addEventListener('storage', event => { if (event.key === storageKey && view) showChanged('Ein anderes Fenster hat lokale Entwürfe geändert. Deine Eingaben bleiben in diesem Fenster erhalten. Prüfe vor dem Senden den aktuellen Stand.'); });
 // DD3a target binding; absence of a route is not successful storage or delivery.
-const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content || null, ideaOperationKey = 'decision-desk.idea-operation.v1';
+// rootReceiver comes from questions.js (loaded first).
+const ideaOperationKey = 'decision-desk.idea-operation.v1';
 let ideaOperation = { id: null, expectedRevision: null, pending: null }, recoveryConfirmed = false, ideaRecovery = false;
 function ideaIdValid(value) { return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value); }
 function validIdeaPayload(payload) { return record(payload) && ideaIdValid(payload.requestId)
