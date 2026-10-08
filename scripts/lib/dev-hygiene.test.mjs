@@ -324,3 +324,75 @@ test("hygiene reports a malformed Z goal table of docs/PLAN.md instead of passin
   assert.match(broken.notChecked.join("\n"), /Z3.*keine Tabelle/);
   assert.ok(countFindings(broken) >= 2);
 });
+
+// Z2-HYGIENE-STATUS — current PLAN status tokens (Draft / Ready / In Arbeit).
+const Z_HEAD =
+  "| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |\n|---|---|---|---|---|---|---|---|---|\n";
+
+test("current PLAN Draft Ready and In Arbeit statuses are recognized", () => {
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    "| Z2-D1 | draft row | o | – | egal | B | Draft #1 | a | – |",
+    "| Z2-R2 | ready row | o | – | egal | B | Ready #2 | a | – |",
+    "| Z2-IA | running | o | – | egal | B | In Arbeit | a | – |",
+    // siblings: legacy tokens still recognized
+    "| Z2-OLD | legacy | o | – | egal | B | in Arbeit PR #10 | a | – |",
+    "| Z2-PR | legacy pr | o | – | egal | B | PR #11 | a | – |",
+    // two candidate PRs
+    "| Z2-DS | drafts | o | – | egal | B | Drafts #3/#4 | a | – |",
+    // explained predecessor / historical numbers must not become candidates
+    "| Z2-PRED | pred | o | – | egal | B | Draft #5 (Vorgänger PR #99; früher #88) | a | – |",
+    // negatives: not startable / not in progress
+    "| Z2-E | done | o | – | egal | B | Erledigt | a | – |",
+    "| Z2-B | blocked | o | – | egal | B | Blockiert | a | – |",
+    "| Z2-P | pending | o | – | egal | B | Pending | a | – |",
+    "| Z2-G | planned | o | – | egal | B | Geplant | a | – |",
+    "",
+  ].join("\n");
+
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(
+    rows.map((r) => [r.id, r.prNumbers]),
+    [
+      ["Z2-D1", [1]],
+      ["Z2-R2", [2]],
+      ["Z2-IA", []],
+      ["Z2-OLD", [10]],
+      ["Z2-PR", [11]],
+      ["Z2-DS", [3, 4]],
+      ["Z2-PRED", [5]],
+    ],
+  );
+
+  // collectHygiene: open candidate PR suppresses the finding; missing does not.
+  const openOk = collectHygiene({
+    ...input,
+    planText: plan,
+    prsOpen: [
+      { number: 1, title: "Z2-D1", headRefName: "cursor/z2-d1", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 2, title: "Z2-R2", headRefName: "cursor/z2-r2", updatedAt: "2026-09-25T11:00:00Z", isDraft: false },
+      { number: 3, title: "Z2-DS", headRefName: "cursor/z2-ds-a", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 4, title: "Z2-DS", headRefName: "cursor/z2-ds-b", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 5, title: "Z2-PRED", headRefName: "cursor/z2-pred", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
+      { number: 10, title: "Z2-OLD", headRefName: "cursor/z2-old", updatedAt: "2026-09-25T11:00:00Z", isDraft: false },
+      { number: 11, title: "Z2-PR", headRefName: "cursor/z2-pr", updatedAt: "2026-09-25T11:00:00Z", isDraft: false },
+    ],
+  });
+  assert.deepEqual(openOk.inProgressWithoutPr.map((r) => r.id), ["Z2-IA"]);
+
+  const missing = collectHygiene({
+    ...input,
+    planText: [
+      "## Z2 — Setup",
+      "",
+      Z_HEAD.trimEnd(),
+      "| Z2-MISS | missing draft | o | – | egal | B | Draft #9 | a | – |",
+      "",
+    ].join("\n"),
+    prsOpen: [],
+  });
+  assert.deepEqual(missing.inProgressWithoutPr.map((r) => r.id), ["Z2-MISS"]);
+  assert.deepEqual(missing.inProgressWithoutPr[0].prNumbers, [9]);
+});
