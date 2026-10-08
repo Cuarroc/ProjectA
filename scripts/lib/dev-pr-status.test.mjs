@@ -42,6 +42,23 @@ test("pr-status derives the queue state from Mergify labels draft and checks", (
   assert.deepEqual(r122.checks, { linux: "rot", windows: "läuft", redFirst: "ok" });
 });
 
+test("red merge protection prevents ready recommendation", () => {
+  const rows = buildRows([
+    {
+      number: 200,
+      title: "feat: protection red",
+      headRefName: "claude/w2-protection",
+      isDraft: false,
+      labels: [],
+      mergeStateStatus: "CLEAN",
+      statusCheckRollup: [...green, run("Mergify Merge Protections", "FAILURE")],
+      updatedAt: "2026-09-24T19:00:00Z",
+    },
+  ]);
+  assert.equal(rows.length, 1);
+  assert.notEqual(rows[0].queue, "bereit");
+});
+
 test("pr-status prints a markdown table with one row per PR", () => {
   const table = formatTable(buildRows(PRS));
   const lines = table.trim().split("\n");
