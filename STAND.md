@@ -1,55 +1,53 @@
-# Stand — Priorität 08.10.2026, übriger Snapshot 04.10.2026
+# STAND — Wegweiser und feste Grundlagen
 
-Wo wir stehen, in Kürze. Plan und Reihenfolge: [`docs/PLAN.md`](docs/PLAN.md).
-Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-09-24.md`.
+## Wo die aktuelle Lage steht
 
-## Wo wir stehen
+**STAND.md ist nicht der Live-Stand.** Die aktuelle Lage steht in der einen
+AgentsRoom-Projektnotiz `lage-jetzt`: für AgentsRoom-Agenten per `memory_get`
+mit dem Namen `lage-jetzt`, als Spiegel unter
+`.agentsroom/memory/features/lage-jetzt.md` (außerhalb von Git).
+Die Notiz wird an Ort und Stelle aktualisiert; keine Kopie im Branch pflegen.
+Ist der Spiegel im Arbeitsbaum nicht verfügbar, die Live-Quellen prüfen und
+fehlenden Notizzugriff ausdrücklich nennen.
 
-- **Aktuelle Priorität (08.10.):** Z1 Denkraum zuerst; die Z1–Z4-Tabellen in
-  `docs/PLAN.md` disponieren. IDEAS-L0-Ergebnisse bleiben erhalten. Die weiteren
-  Angaben hier sind der historische 04.10.-Snapshot, kein aktueller Livebeleg.
+Aktuelle Belege bei jedem Neustart neu lesen:
 
-- **Release:** v1.4.1 (22.09.) ist der jüngste; alles danach liegt nur auf `main`.
-  Nächster Release: v1.5.0 (Beta) als Abschluss von M3.
-- **Meilenstein M1** „Alles Laufende gelandet, App startbar“: erreicht
-  (26.09.2026, PLAN.md, Tabelle M1). Zuletzt gelandet: SEC-01 (PR #20),
-  CLEAN-02 (PR #25), W1-21d (PR #27), CI-04 (PR #28), W1-18b (PR #30),
-  CLEAN-01 (PR #31), W1-30 (PR #32), W1-10 (PR #33).
-- **App nicht starten:** Die Queue hat tote `dispatched`-Einträge, die echte
-  Worker auslösen können. W1-05b ist gelandet (PR #19);
-  die toten Einträge vorher read-only nachzählen und gezielt verwerfen.
-- **Continuous Mode:** aus und bis M4 eingefroren; `development_policy.rs` lehnt ihn ab.
-- **Merge** nur über die Mergify-Queue. CI kostet Minuten, Ziel 0 €.
-- **Live-Stand** kommt aus `gh pr list` und `git log origin/main`, bald aus OPS-01.
-- **Pakete Architektur-Rat (Status beobachtet 04.10.2026 13:50 UTC = 15:50 Berlin mit `gh pr list`/`gh pr view`; Quellstand `origin/main` effef1a, `ci`-Lauf 37194125481 grün):**
-  ARCH-08 (a–f), ARCH-03c (#256), ARCH-09a (#260), ARCH-09b (#264) und ARCH-10
-  sind gemergt, ebenso #262 (KI-30-Diagnose), #274, #275 und #279. Offen:
-  #269 ARCH-09c (Draft, `do-not-merge`), #270 OPS-02-Doku und #273 SETUP-09-Fix
-  (in der Queue), #282 SETUP-12-Rest (Draft). Einzelheiten und Nachweise:
-  `docs/PLAN.md`. Das ist ein Schnappschuss, kein Live-Stand.
+- `gh pr list` — offene Pull Requests.
+- `git fetch origin`, danach `git log origin/main -1` — jüngster Hauptstand.
+- Server: `~/pa-orch/events.log` — aktuelle Orchestrator-Ereignisse.
 
-## Nächster Griff
+### Nächster Griff
 
-1. Z1 nach den aktuellen Z-Tabellen in PLAN.md liefern; Owner und Vorgänger prüfen.
-   Historische M1–M5-Stände starten keine Jobs; Merge nur über Mergify.
-2. Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).
-3. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.
+1. `lage-jetzt` und die Live-Belege lesen; Ziel, Owner und nächsten Schritt
+   mit den Z1–Z4-Tabellen in `docs/PLAN.md` abgleichen.
 
-Historischer HQ-Snapshot (04.10.; keine Startfreigabe): „M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.“
-Der generierte Snapshot bleibt unverändert; aktuelle Starts folgen Z1–Z4 oben.
+Alte Paketlisten, PR-Schnappschüsse und Befunde sind Historie:
+`.pa/archiv/` und `git log -p -- STAND.md`. Sie erteilen keine Startfreigabe.
 
-## Offene Befunde (Details: `KNOWN_ISSUES.md`)
+## Feste Grundlagen (jeweils geprüft am 08.10.2026)
 
-- KI-30: sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 (gemergt) gibt nur Diagnose aus; neue Beobachtung 04.10. (Queue-Lauf 37196272431).
-- KI-24: SQLite-Lastklasse (`database is locked`), beobachten.
-- KI-27: `exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.
-- KI-20: doppelte Antwort auf `ESC[6n` behoben (W1-27): das Backend antwortet allein, die Anfrage wird aus Scrollback und UI entfernt.
+- **Release:** v1.5.1, veröffentlicht am 06.10.2026, ist laut
+  `gh release list --limit 5` das jüngste Release; v1.5.0 erschien am 05.10.2026.
+  Vor einer erneuten Release-Aussage den Befehl wiederholen.
+- **Merge:** ausschließlich über die Mergify-Queue, gemäß `AGENTS.md`.
+- **Continuous Mode:** bleibt ausgeschaltet und bis M4 eingefroren (`AGENTS.md`).
+- **Desktop-App nicht zur Inspektion starten:** ihre Queue kann sofort echte
+  Worker auslösen (`AGENTS.md`).
+- **Ziele:** Die Zielstruktur Z1–Z4 steht im einzigen Plan
+  [`docs/PLAN.md`](docs/PLAN.md); Regeln stehen in [`AGENTS.md`](AGENTS.md).
 
-## Aktive Specs
+### Historischer Prüfbestand (08.10.2026)
 
-Nur hier gelistete `.pa/task_*.md` mit `Status: aktiv` sind ausführbar; `npm run specs` prüft das.
-Neue Specs gibt es nur für M-Pakete; die Alt-Specs der S-Pakete W1-03e, W1-17 und W1-20 laufen mit ihrem Paket aus.
-Specs aus M3/M4 (`task_w1-10.md`, `task_hq2-02.md`, `task_ollama_worker_adapter.md`) stehen auf `Status: entwurf`, bis ihre Lane sie erreicht (Review PR #175, kimi-k3 F-7).
+Die folgenden Texte bleiben für bestehende Gates erhalten, nicht als Live-Lage:
+`hq-pages.test.mjs` bindet den gespeicherten HQ-Snapshot an diesen alten Satz:
+„M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.“
+Er ist historisch und keine Handlungsanweisung; die Mergify-Regeln gelten.
+
+### Aktive Specs
+
+Technisches Register für `spec-status-check.mjs`, die Hygiene-Tests und den
+HQ-Parser (geprüft 08.10.2026). Die Dateistatus werden damit abgeglichen;
+aktuelle Aufträge, Reihenfolge und Owner kommen aus `lage-jetzt` und `docs/PLAN.md`.
 
 | Spec | Paket | Lane |
 |---|---|---|
