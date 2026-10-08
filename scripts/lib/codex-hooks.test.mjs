@@ -5,7 +5,8 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { codexHooksConfig, findBareBashHooks, inspectCodexHooks, writeCodexHooks, windowsCommand } from './codex-hooks.mjs';
+const { codexHooksConfig, findBareBashHooks, inspectCodexHooks, writeCodexHooks, windowsCommand } =
+  existsSync(new URL('./codex-hooks.mjs', import.meta.url)) ? await import('./codex-hooks.mjs') : {};
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const windows = process.platform === 'win32';
@@ -25,6 +26,10 @@ function tempRoot() {
 }
 
 test('flags a legacy config whose hooks call bare bash', () => {
+  const config = codexHooksConfig ? codexHooksConfig(repo) : legacy;
+  for (const group of Object.values(config.hooks).flat()) {
+    for (const hook of group.hooks) assert.doesNotMatch(hook.commandWindows ?? hook.command, /^\s*bash(?:\.exe)?(?:\s|$)/, 'Windows hooks must avoid bare bash on PATH');
+  }
   assert.deepEqual(findBareBashHooks(legacy).map(h => h.event), ['PostToolUse', 'SessionStart']);
   assert.deepEqual(findBareBashHooks({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'x', commandWindows: 'bash x.sh' }] }] } }).map(h => h.event), ['Stop']);
   assert.deepEqual(findBareBashHooks(codexHooksConfig('C:\\some checkout')), []);
