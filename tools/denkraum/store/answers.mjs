@@ -4,9 +4,11 @@
 import { randomUUID } from 'node:crypto';
 import { DeskStore } from './core.mjs';
 import { activeEvents, answerRef, currentAnswer, ensure, id, latestAnswer, now, object, receiptFor, requireCurrentSource,
-  sameRef, text, validEventRef } from './model.mjs';
+  sameRef, text, validEventRef, validId } from './model.mjs';
 
 export class AnswerStore extends DeskStore {
+  // D2 for paths P1 let through (C-3): receipt replay and every acknowledgement need the configured root id.
+  #requireRoot() { ensure(validId(this.rootAgentId), 'Root-Agent-ID ist nicht konfiguriert; Empfangsprüfung abgelehnt.', 503); }
   answer(input) {
     object(input, 'Antwort');
     id(input.questionId); id(input.requestId);
@@ -48,6 +50,7 @@ export class AnswerStore extends DeskStore {
   async #receipt(state, input) {
     object(input, 'Quittierung'); object(input.eventRef, 'Ereignisreferenz');
     ensure(state.schemaVersion === 2, 'V2-Migration erforderlich.', 409);
+    this.#requireRoot();
     const ref = input.eventRef;
     ensure(validEventRef(ref), 'Ungültige typisierte Ereignisreferenz.');
     const eventRef = ref.kind === 'answer' ? answerRef({ id: ref.eventId, questionId: ref.questionId, questionRevision: ref.questionRevision })
@@ -83,6 +86,7 @@ export class AnswerStore extends DeskStore {
     object(input, 'Quittierung');
     id(input.answerId);
     return this.change(async state => {
+      this.#requireRoot();
       const a = currentAnswer(state, input.answerId);
       ensure(['received', 'applied'].includes(input.status), 'Ungültiger Status.');
       if (state.schemaVersion === 2) {

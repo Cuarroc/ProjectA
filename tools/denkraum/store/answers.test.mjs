@@ -90,3 +90,15 @@ test('V2 acknowledgement records a bound receipt and refuses implementation with
   await assert.rejects(s.ack({ answerId: a.id, status: 'applied' }), status(409));
   await assert.rejects(s.ack({ answerId: a.id, status: 'applied', progress: { eventRef: answerRef(a), to: 'applied' } }), status(503));
 });
+
+test('a stored receipt is not replayed without a configured root agent id (C-3)', async () => {
+  const s = await fresh(); const a = await s.answer(input()); await s.receipt(receiptInput(a)); const bytes = await readFile(s.file, 'utf8');
+  await assert.rejects(new AnswerStore(s.file, { verifyReceipt: verify(ROOT) }).receipt(receiptInput(a)), status(503));
+  assert.equal(await readFile(s.file, 'utf8'), bytes);
+});
+
+test('a V1 acknowledgement is refused without a configured root agent id (C-3)', async () => {
+  const s = await fresh({ v2: false }); const a = await s.answer(input()); const bytes = await readFile(s.file, 'utf8');
+  await assert.rejects(new AnswerStore(s.file).ack({ answerId: a.id, status: 'received', actor: 'Root', note: 'Beleg', deliveryReceipt: 'x' }), status(503));
+  assert.equal(await readFile(s.file, 'utf8'), bytes);
+});
