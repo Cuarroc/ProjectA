@@ -215,31 +215,33 @@ impl Store {
         source_goal_id: Option<String>,
         admit: bool,
     ) -> Result<ContinuousGoal, String> {
-        let objective = required_text(objective, "objective")?;
-        self.require_project(project_id).await?;
-        let loaded = if source_goal_id.is_none() {
-            let project = self
-                .get_project(project_id)
-                .await?
-                .ok_or("unknown project")?;
-            Some(development_policy::load(std::path::Path::new(
-                &project.repo_path,
-            ))?)
-        } else {
-            None
-        };
-        let mut tx = begin_write(&self.pool, "begin continuous goal").await?;
-        let outcome = Self::create_continuous_goal_body(
-            &mut tx,
-            project_id,
-            objective,
-            acceptance_criteria,
-            source_goal_id,
-            admit,
-            loaded,
-        )
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let objective = required_text(objective, "objective")?;
+            let repo_path = goal_task_project_path(&mut work, project_id).await?;
+            let loaded = if source_goal_id.is_none() {
+                Some(development_policy::load(std::path::Path::new(&repo_path))?)
+            } else {
+                None
+            };
+            Self::create_continuous_goal_body(
+                &mut work,
+                project_id,
+                objective,
+                acceptance_criteria,
+                source_goal_id,
+                admit,
+                loaded,
+            )
+            .await
+        }
         .await;
-        settle(tx, outcome, "commit continuous goal").await
+        let subject = outcome
+            .as_ref()
+            .map(|goal| goal.id.as_str())
+            .unwrap_or(project_id)
+            .to_string();
+        finish_goal_task_audit(work, outcome, "goal_create", &subject, Some(project_id)).await
     }
 
     async fn create_continuous_goal_body(
@@ -354,21 +356,26 @@ impl Store {
         owned_paths: Vec<String>,
         dependencies: Vec<String>,
     ) -> Result<ContinuousTask, String> {
-        let objective = required_text(objective, "objective")?;
-        let owned_paths = normalize_scopes(owned_paths)?;
-        let dependencies = normalize_ids(dependencies, "dependencies")?;
-        let mut tx = begin_write(&self.pool, "begin continuous task").await?;
-        let outcome = Self::create_continuous_task_body(
-            &mut tx,
-            goal_id,
-            objective,
-            profile_id,
-            owned_paths,
-            dependencies,
-        )
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let objective = required_text(objective, "objective")?;
+            let owned_paths = normalize_scopes(owned_paths)?;
+            let dependencies = normalize_ids(dependencies, "dependencies")?;
+            Self::create_continuous_task_body(
+                &mut work,
+                goal_id,
+                objective,
+                profile_id,
+                owned_paths,
+                dependencies,
+            )
+            .await
+        }
         .await;
-        let id = settle(tx, outcome, "commit continuous task").await?;
-        self.get_continuous_task(&id)
+        let subject = outcome.as_deref().unwrap_or(goal_id).to_string();
+        let outcome = finish_goal_task_audit(work, outcome, "task_create", &subject, None).await;
+        let value = outcome?;
+        self.get_continuous_task(&value)
             .await?
             .ok_or_else(|| "created continuous task disappeared".to_string())
     }
@@ -469,16 +476,15 @@ impl Store {
         escalation: bool,
         observe_capacity: impl FnOnce() -> capacity::Capacity,
     ) -> Result<ContinuousClaim, String> {
-        let owner = required_text(owner, "owner")?;
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(db("begin continuous claim"))?;
-        let outcome =
-            Self::claim_with_capacity_body(&mut tx, task_id, &owner, escalation, observe_capacity)
-                .await;
-        settle(tx, outcome, "commit continuous claim").await
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let owner = required_text(owner, "owner")?;
+            Self::claim_with_capacity_body(&mut work, task_id, &owner, escalation, observe_capacity)
+                .await
+        }
+        .await;
+        let subject = task_id;
+        finish_goal_task_audit(work, outcome, "task_claim", subject, None).await
     }
 
     async fn claim_with_capacity_body(
@@ -599,6 +605,8 @@ impl Store {
         status: Option<&str>,
         detail: Option<&str>,
     ) -> Result<ContinuousTask, String> {
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
         let owner = required_text(owner, "owner")?;
         let requested = status.unwrap_or(TASK_RUNNING);
         let retry = requested == "retry";
@@ -614,12 +622,14 @@ impl Store {
                     .to_string(),
             );
         }
-        let mut tx = begin_write(&self.pool, "begin continuous checkpoint").await?;
-        let outcome = Self::checkpoint_continuous_task_body(
-            &mut tx, task_id, &owner, fence, next, retry, detail,
+        Self::checkpoint_continuous_task_body(
+            &mut work, task_id, &owner, fence, next, retry, detail,
         )
-        .await;
-        settle(tx, outcome, "commit continuous checkpoint").await?;
+        .await
+        }.await;
+        let subject = task_id;
+        let outcome = finish_goal_task_audit(work, outcome, "task_checkpoint", subject, None).await;
+        outcome?;
         self.get_continuous_task(task_id)
             .await?
             .ok_or_else(|| "checkpointed continuous task disappeared".to_string())
@@ -701,27 +711,45 @@ impl Store {
         project_id: &str,
         action: &str,
     ) -> Result<ContinuousControl, String> {
-        self.require_project(project_id).await?;
-        let status = match action {
-            "pause" => CONTINUOUS_PAUSED,
-            "drain" => CONTINUOUS_DRAINING,
-            "cancel" => CONTINUOUS_PAUSED,
-            "resume" => {
-                return Err(
-                    "continuous runtime adapters are unattested; resume is fail-closed".to_string(),
-                )
-            }
-            _ => return Err("continuous action must be pause, drain, resume or cancel".to_string()),
-        };
-        let now = now_unix_secs();
-        let mut tx = begin_write(&self.pool, "begin continuous control").await?;
-        let outcome = Self::control_continuous_body(&mut tx, project_id, action, status, now).await;
-        settle(tx, outcome, "commit continuous control").await?;
-        Ok(ContinuousControl {
-            project_id: project_id.to_string(),
-            status: status.to_string(),
-            updated_at: now,
-        })
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            goal_task_project_path(&mut work, project_id).await?;
+            let status = match action {
+                "pause" => CONTINUOUS_PAUSED,
+                "drain" => CONTINUOUS_DRAINING,
+                "cancel" => CONTINUOUS_PAUSED,
+                "resume" => {
+                    return Err(
+                        "continuous runtime adapters are unattested; resume is fail-closed"
+                            .to_string(),
+                    )
+                }
+                _ => {
+                    return Err(
+                        "continuous action must be pause, drain, resume or cancel".to_string()
+                    )
+                }
+            };
+            let now = now_unix_secs();
+            let outcome =
+                Self::control_continuous_body(&mut work, project_id, action, status, now).await;
+            outcome?;
+            Ok(ContinuousControl {
+                project_id: project_id.to_string(),
+                status: status.to_string(),
+                updated_at: now,
+            })
+        }
+        .await;
+        let subject = project_id;
+        finish_goal_task_audit(
+            work,
+            outcome,
+            &format!("control_{action}"),
+            subject,
+            Some(project_id),
+        )
+        .await
     }
 
     async fn control_continuous_body(
@@ -895,6 +923,75 @@ impl Store {
             Err(format!("unknown project: {project_id}"))
         }
     }
+}
+
+async fn goal_task_project_path(
+    tx: &mut SqliteConnection,
+    project: &str,
+) -> Result<String, String> {
+    sqlx::query_scalar("SELECT repo_path FROM projects WHERE id=?")
+        .bind(project)
+        .fetch_optional(tx)
+        .await
+        .map_err(db("read goal/task project"))?
+        .ok_or_else(|| format!("unknown project: {project}"))
+}
+
+async fn begin_goal_task_audit(pool: &SqlitePool) -> Result<Transaction<'static, Sqlite>, String> {
+    let mut tx = begin_write(pool, "begin goal/task audit").await?;
+    sqlx::query("SAVEPOINT goal_task_change")
+        .execute(&mut *tx)
+        .await
+        .map_err(db("begin goal/task change"))?;
+    Ok(tx)
+}
+
+/// One operation, one envelope. A savepoint removes partial domain writes on
+/// refusal; the outer write transaction commits that refusal without a state change.
+/// `not-applicable` means no run exists, `unresolved` an unknown project scope.
+async fn finish_goal_task_audit<T>(
+    mut work: Transaction<'_, Sqlite>,
+    outcome: Result<T, String>,
+    action: &str,
+    subject: &str,
+    project: Option<&str>,
+) -> Result<T, String> {
+    let audit = async {
+    if outcome.is_err() {
+        sqlx::query("ROLLBACK TO goal_task_change")
+            .execute(&mut *work)
+            .await
+            .map_err(db("rollback goal/task change"))?;
+    }
+    let project = match project {
+        Some(project) if !project.trim().is_empty() => project.to_string(),
+        _ => sqlx::query_scalar::<_, String>("SELECT project_id FROM continuous_goals WHERE id=?1 UNION ALL SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?1 LIMIT 1")
+            .bind(subject).fetch_optional(&mut *work).await.map_err(db("resolve goal/task project"))?
+            .unwrap_or_else(|| "unresolved".into()),
+    };
+    let run: Option<String> = sqlx::query_scalar("SELECT r.id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id AND t.claim_fence=r.claim_fence WHERE t.id=?")
+        .bind(subject).fetch_optional(&mut *work).await.map_err(db("resolve goal/task run"))?;
+    let result = match &outcome {
+        Ok(_) => "accepted".into(),
+        Err(error) => format!("refused: {error}"),
+    };
+    super::audit::append_domain_audit_tx(
+        &mut work,
+        "store:continuous",
+        action,
+        subject,
+        &super::audit::AuditEnvelope {
+            project: &project,
+            run: run.as_deref().unwrap_or("not-applicable"),
+            result: &result,
+            source_ref: &format!("continuous:{action}:{subject}"),
+        },
+    )
+    .await?;
+    Ok(())
+    }.await;
+    settle(work, audit, "commit goal/task audit").await?;
+    outcome
 }
 
 async fn event(
@@ -1138,6 +1235,29 @@ mod tests {
         .unwrap();
         (dir, store, project.id)
     }
+    #[tokio::test]
+    async fn goal_task_audit_uses_one_connection() {
+        let (dir, mut store, project) = store().await;
+        store.pool.close().await;
+        store.pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(&format!(
+                "sqlite:{}",
+                dir.path().join("projecta.db").display()
+            ))
+            .await
+            .unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            store
+                .create_continuous_goal(&project, "goal", None, None, false)
+                .await
+                .unwrap();
+            store.control_continuous(&project, "cancel").await.unwrap();
+        })
+        .await
+        .expect("audit must not acquire a second pooled connection while holding the writer");
+    }
+
     async fn goal_task_envelopes(store: &Store) -> Vec<serde_json::Value> {
         sqlx::query_scalar::<_, String>("SELECT detail_json FROM audit_log ORDER BY id")
             .fetch_all(&store.pool)
