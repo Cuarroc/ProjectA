@@ -13,14 +13,16 @@ export const PACKAGE_BRANCH = /^(?:claude|codex|kimi|opencode|glm)\/(?:w\d+-|df\
 
 const section = (body, name) => new RegExp(`^###\\s+${name}\\s*$([\\s\\S]*?)(?=^#{1,3}\\s|(?![\\s\\S]))`, "m").exec(body || "")?.[1] ?? null;
 
-// null = no Prompt-Log section; filled=false = the template placeholders ("0-2", "n high") are still there.
+// null = no Prompt-Log section; filled=false = template placeholders ("0-2", "n high")
+// or a numeric rounds value without numeric findings (partial evidence).
 export function parsePromptLog(body) {
   const text = section(body, "Prompt-Log");
   if (text === null) return null;
   const rounds = /\*\*rounds:\*\*\s*([0-2])(?![-\d])/i.exec(text);
   if (!rounds) return { filled: false, rounds: null, high: null, other: null };
   const f = /\*\*findings:\*\*\s*(\d+)\s*high\s*\/\s*(\d+)\s*other/i.exec(text);
-  return { filled: true, rounds: Number(rounds[1]), high: f ? Number(f[1]) : 0, other: f ? Number(f[2]) : 0 };
+  if (!f) return { filled: false, rounds: null, high: null, other: null };
+  return { filled: true, rounds: Number(rounds[1]), high: Number(f[1]), other: Number(f[2]) };
 }
 const hasRework = (body) => (section(body, "Nacharbeit") ?? "").trim() !== "";
 

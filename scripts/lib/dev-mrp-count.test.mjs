@@ -18,6 +18,30 @@ test("parsePromptLog ignores the unfilled template placeholders", () => {
   assert.deepEqual(parsePromptLog(ok), { filled: true, rounds: 2, high: 1, other: 3 });
 });
 
+test("partial prompt log placeholders are not complete evidence", () => {
+  const partial = "### Prompt-Log\n\n- **rounds:** 1 · **findings:** n high / n other\n";
+  assert.deepEqual(parsePromptLog(partial), { filled: false, rounds: null, high: null, other: null });
+  const missing = "### Prompt-Log\n\n- **rounds:** 1 · **critic:** self\n";
+  assert.deepEqual(parsePromptLog(missing), { filled: false, rounds: null, high: null, other: null });
+  const zero = "### Prompt-Log\n\n- **rounds:** 0 · **findings:** 0 high / 0 other\n";
+  assert.deepEqual(parsePromptLog(zero), { filled: true, rounds: 0, high: 0, other: 0 });
+  const partialPrs = [
+    {
+      headRefName: "claude/w16-z2-partial",
+      mergedAt: "2026-10-03T10:00:00Z",
+      body: "## Report\n\n### Prompt-Log\n\n- **rounds:** 1 · **findings:** n high / n other\n\n### Nacharbeit\n\n- x.rs:1 exit 1\n",
+    },
+  ];
+  const m = countRp(partialPrs, win);
+  assert.equal(m.packagePrs, 1);
+  assert.equal(m.withPromptLog, 0);
+  assert.deepEqual(m.fixRounds.withLog, { prs: 0, withNacharbeit: 0 });
+  assert.deepEqual(m.fixRounds.withoutLog, { prs: 1, withNacharbeit: 1 });
+  const rows = Object.fromEntries(measure({ prs: fixture.prs, runs: [] }, win).rows.map((r) => [r.id, r]));
+  assert.deepEqual([rows.m_rp.num, rows.m_rp.den], [2, 5]);
+  assert.equal(rows.rp_fixround.num, 2);
+});
+
 test("countRp counts only merged package PRs in the window", () => {
   const m = countRp(fixture.prs, win);
   assert.equal(m.packagePrs, 5);
