@@ -1,36 +1,226 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand Kopf/Priorität: 07.10.2026, PLAN-L0-P0; Quellenbasis `3db340774ca84e60024b8b1e36d414f8ad9766e7`. Die übrigen M1–M5-Tabellen sind historische Paketstände, kein vollständiger Liveabgleich.
-Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
-Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
-unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
-`docs/archive/plaene-2026-09/`. Wer hier nichts findet, arbeitet an nichts.
+Stand: 08.10.2026 01:35 UTC (PLAN-C1, erster kohärenter Schnitt aus PR #642).
+Basis: `origin/main` 1c09ebb; PR-Köpfe und grüner main-CI-Lauf 37654347098
+am 08.10.2026 per `gh pr list`, `git ls-remote` und `gh run list` geprüft.
+Dieses Dokument ist der **einzige** Plan. Andere Plandateien
+sind untergeordnete Verträge oder Historie. Neue Arbeit entsteht nur
+hier. Wer hier nichts findet, arbeitet an nichts.
 
-> **Für Agenten:** Die Datei ist groß. Lies nur diesen Kopf und „Für den Nutzer",
-> suche dann dein Paket mit `grep -n "<ID>" docs/PLAN.md` und lies die Zeile
-> samt Lane-Schlüssel. Entscheidungs-Inbox und „Gestrichen/Geparkt" nur bei Bedarf.
+> **Für Agenten:** Lies „Für den Nutzer“, die Regeln und die Tabelle deines Ziels.
+> Suche dein Paket mit `grep -n "<ID>" docs/PLAN.md`. Der historische Vertrags- und Parserbestand unten bleibt erhalten;
+> dort entsteht keine neue Arbeit. Die aktuellen Z-Tabellen sind maßgeblich.
 
 ## Für den Nutzer
 
-1. **Jetzt zuerst IDEAS-L0:** eine erreichbare Ideensammlung: Text speichern,
-   nach Neuladen wiederfinden, bearbeiten, Kategorie/Priorität setzen und suchen/sortieren.
-   M2 und die übrigen Release-Meilensteine bleiben erhalten; ihre Häkchen sind kein Livebeleg.
-2. **Was du entscheiden musst:** die Entscheidungs-Inbox unten. Fragen kommen
-   gebündelt dorthin, nicht einzeln in den Chat.
-3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
-   W3-03, W3-07 und die Abnahme jedes Meilensteins.
+1. **Erstes Ziel (Z1): der Denkraum wird fertig und kommt mit v1.6.0 heraus.** Er zieht
+   als `tools/denkraum/` ins öffentliche ProjectA-Repo, in kleinen Paketen (DR-01 bis
+   DR-17, einschließlich DR-01a). Den Release selbst entscheidest du.
+2. **Danach (Z2): Setup und Entwicklung reparieren.** Regelwerk 2.0, Denkraum startet von
+   selbst, der Taktgeber (Pacer) läuft, Reviews durch fremde Anbieter haben feste Wege,
+   schwere Arbeit läuft auf dem Server, Agenten werden nach Verbrauchstempo verteilt.
+3. **Z3: der Rest von v1.6.0** (zwei PRs in Prüfung, `main.rs` kleiner machen, Changelog).
+4. **Z4: Wichtiges, das liegen geblieben ist** (Schlüssel-Sicherung, Server-Platte,
+   Windows-Testfehler, Audit-Reste).
+5. **Was du tun musst:** die Entscheidungs-Inbox unten. Dringend: E14 (Sicherung des
+   Update-Schlüssels) und V16-F3 (Start nach Update ohne Journal).
 
-4. **Priorität vom 07.10.: L0-Ideensammlung zuerst** ersetzt für diesen
-   ausdrücklich beauftragten Ausbau den alten 04.10.-Freeze. Erfassen einer Idee
-   genehmigt keine Umsetzung; neue Ideen starten keine automatischen Agentenjobs.
+Fünf Lanes ziehen parallel (siehe „Lanes“). Die vier Nahtstellen laufen nur seriell.
+Schwere Arbeit (Rust-Builds, Reviews, Playwright) läuft auf dem Server.
 
-**Release-Strang:** [v1.6.0](plan/v1.6.0/plan.md) bleibt mit allen übrigen
-Paketen, Sicherheitsgates und offener Langzeitnachbeobachtung erhalten.
-Dieser Prioritätsabgleich erteilt keine neue Tag-/Release-/Continuous-Freigabe.
+## Statuswerte
 
-**Ziel:** ProjectA und DevHQ werden im Alltag benutzbar; zuerst die Ideensammlung.
-Continuous bleibt bis zu seiner gesonderten Abnahme aus. Historische Releasebaselines
-und `STAND.md` (04.10.-Snapshot) ersetzen keine datierte Prüfung des aktuellen Kandidaten.
+Grundwerte je Paket: **Geplant**, **Bereit**, **In Arbeit**, **In Prüfung**,
+**Erledigt**, **Blockiert**, **Verschoben**, **Entfallen**. „Bereit“ heißt: Vorgänger
+erfüllt, kein offener PR, keine Dateikollision, Owner und Abnahme stehen fest.
+„Angenommen, Mergify ausstehend“ und „Entwurf“ gehören zu „In Prüfung“;
+„wartet“ gehört zu „Blockiert“. Angenommen heißt noch nicht gemergt.
+
+Stufe A/B/C nach AGENTS.md Regel 5. Ort: **PC**, **Server** oder **egal**.
+Jedes Paket ≤ 300 geänderte Zeilen einschließlich Tests und Hilfsdateien.
+
+## Z1 — Denkraum release-fertig für v1.6.0
+
+Abnahme Z1 (alles muss belegt sein):
+
+- P1-Store angenommen (DR-02 bis DR-07 gemergt, Gates grün).
+- Vollständige P2-Oberfläche mit Kategorie, Prioritäts-/Stationsfilter und Sortierung
+  (DR-08 bis DR-14), einschließlich R1-Fix (`app.js:349`, Neuaufbau beim Polling) mit
+  rotem Test zuerst.
+- P3-Live-Schaltung mit Schreibpause, Sicherung und metadatensicherem Rückweg (DR-16).
+  Rückweg = vollständige Pause, P1-Store und aktuelles Ledger bleiben; nie ein älteres
+  Ledger nach angenommenen Schreibvorgängen zurückspielen.
+- Start ohne manuelle Secret-Eingabe (DR-15).
+- Alles gemergt mit grünen Gates und den Reviews der Stufe.
+- Anleitung in 5 Schritten und Changelog-Eintrag (DR-17).
+- Der Release v1.6.0 ist Elias’ Entscheidung (V16-RELEASE).
+
+Root-Entscheide 07.10. 23:13 UTC: **D1** verhaltensgleicher Modul-Split, keine
+Größenausnahme. **D2** keine interne Agenten-ID im öffentlichen Code oder in Tests;
+`DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed; Umsetzung in DR-06.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| DR-01 | Gerüst `tools/denkraum/`, Gate-Zeile in `scripts/ci/gates.sh`, Hygiene-Check (LF-Regel in `.gitattributes`, kein State-Pfad im Repo) | Seniorentwickler | – | PC | B | Root-Abnahme am `e9f8ce8`; Ready, Mergify ausstehend (PR #635); DR-01a vor DR-02 | `bash scripts/ci/gates.sh lane prepush` Exit 0; neue Gate-Zeile läuft die Denkraum-Tests | 55ea21ce |
+| DR-01a | Überlauf im Hygiene-Check beheben, roter Test zuerst; vor DR-02 mergen | Seniorentwickler | DR-01 | Server | B | In Prüfung (PR #637, Entwurf) | Überlauf-Test vor Fix rot, danach grün; `bash scripts/ci/gates.sh lane prepush` Exit 0; Merge vor DR-02 | – |
+| DR-02 | Ledger-Modell als Modul, Split-Beweis (verhaltensgleich) | Seniorentwickler | DR-01, DR-01a | Server | A | In Prüfung (PR #636): Gemini PASS, Codex PASS mit Korrekturen; Root-Abnahme ausstehend | FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt | 55ea21ce, b0e90b72 |
+| DR-03 | DeskStore-Kern | Seniorentwickler | DR-02 | Server | A | Geplant | Store-Tests grün, Revision/Konflikt verlieren keine Daten; Folgepunkte aus DR-02: Längenlimit für Ledger-Listen, Antwort-Elemente prüfen (DeskError statt TypeError) | 55ea21ce |
+| DR-04 | Antworten, Quittungen, Benachrichtigungen | Seniorentwickler | DR-03 | Server | A | Geplant | Tests für Antwort/Quittung/Dedupe grün; Quittungs-Wiederholung und v1-Ack laufen über die D2-Prüfung (Test) | 55ea21ce |
+| DR-05 | P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, `userPriority`) | Seniorentwickler | DR-03 | Server | A | Geplant | Metadaten-Tests grün, Grenzfälle rot vor Fix | 55ea21ce |
+| DR-06 | HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: `DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed | Seniorentwickler | DR-04 | Server | A | Geplant | Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test | 55ea21ce |
+| DR-07 | Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import | Seniorentwickler | DR-06 | Server | C | Geplant | Testsuite grün im Gate | 55ea21ce |
+| DR-08 | UI-Hülle `index.html` + Style, byte-genau auf Stand B1 | UX-Architekt | FIT vorbereitet, Root-FIT-Abnahme; DR-01 | egal | B | In Prüfung (PR #640, Entwurf, `2c57bd3`; Push bestätigt) | Byte-Vergleich mit B1-Kandidat; prepush Exit 0 | 55ea21ce, 6713479b |
+| DR-09 | App-Teil Fragen (B1 `app.js` Zeilen 1–238, byte-genau) | Implementierer · Codex | DR-01 | Server | B | In Prüfung (PR #638, Entwurf) | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
+| DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | UX-Architekt | DR-08, DR-09 (gemeinsames `questions.js`) | egal | B | Geplant | Ideen-Ablauf wie B1, Harness grün | 55ea21ce, 5945accc |
+| DR-11 | UI-Harness auf `@playwright/test` portieren (nur relative Pfade) | UX-Architekt | DR-10 | Server | B | Geplant | Harness läuft im Gate auf dem Server | 55ea21ce |
+| DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-10 | egal | B | Geplant | roter Test vor Fix, danach grün; Auswahl bleibt über 15-s-Poll erhalten; Textfeld-Rand mit Kontrast ≥ 3:1 (Folgepunkt aus DR-08) | 98fa8267 |
+| DR-13 | Filter Priorität und Station | UX-Architekt | DR-12 | Server | B | Geplant | Filtertests grün | 98fa8267 |
+| DR-14 | Stabile Sortierung | UX-Architekt | DR-13 | Server | B | Geplant | Sortiertests grün | 98fa8267 |
+| DR-15 | Sicherer Start ohne manuelle Secret-Eingabe; 15a Startprüfung als Modul, 15b Einbindung nach DR-06 (Secrets über den Secret-Manager von AgentsRoom) | Implementierer · Codex | – (15b: DR-06) | Server | A | 15a In Prüfung (PR #639, Entwurf); 15b Geplant | Start ohne Eingabe; kein Secret in Datei/Log/Commit (Secret-Scan Exit 0) | 55ea21ce |
+| DR-16 | P3-Live-Schaltung: Schreibpause, Sicherung, metadatensicherer Rückweg | Stabschef | DR-07, DR-14, DR-15 | PC | A | Geplant | Drill: Pause → Sicherung → Umschalten → Rückweg ohne Datenverlust, protokolliert | b0e90b72 |
+| DR-17 | Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum | Technischer Autor | DR-16 | egal | C | Geplant | Trockenlauf der 5 Schritte im PR-Text | 55ea21ce |
+
+Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.test.mjs`
+(358) überschreiten je 300 Zeilen; D1 erzwingt deshalb den Split.
+
+## Z2 — Setup und Entwicklung
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| Z2-PLAN-COMMIT | P2: v3 in kohärenten Paketen übernehmen; PLAN-C1 stellt Z1–Z4 vor den unveränderten historischen Parserbestand, danach getrennte Archiv-/Bereinigungsschnitte ≤ 300 ALL | Stabschef | Root-Abnahme je Kandidat | egal | C | In Arbeit (PLAN-C1); #642 bleibt als Entwurf erhalten | ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen | 55ea21ce |
+| Z2-RULE10 | P2: konkrete bereits erteilte Nutzerfreigaben erhalten; keine Rechteausweitung; Geld, Passwörter und Releases bleiben beim Nutzer | Stabschef | PLAN-C1; gemeinsam mit GOALS-B | egal | C | Geplant | freigegebene Handlung nicht erneut erfragen; keine abgeleitete Pauschalfreigabe; eigene prepush-Lane Exit 0; Root-Abnahme | 52f46527 |
+| HOOK-WIN | P1: bestehende Windows-Hook-Reparatur übergeben; keine Wiederholung abgeschlossener Runtime-Reparaturen | Git- und CI-Spezialist; Ersatzstart durch Chief | vorhandene Runtime-Belege; ausführbarer red-first und Fremdreview fehlen | PC | B | In Prüfung (#641, `e3f7e3a`); Ersatzstart fehlgeschlagen, kein Arbeitsbeginn belegt | fehlende Testbasis korrigieren; eigener prepush Exit 0; unabhängiges Review am Kandidaten; Root-Abnahme; User-/AgentsRoom-Homes separat belegen | b14492cb |
+| GOALS-A | P1 jetzt: Ist-Abgleich früherer Aufträge, realer Native-Goals, laufender Owner und PLAN; verhindert Doppelstarts und unbelegte Abschlüsse | Stabschef; Root nimmt ab | bestehende Übergaben und eigene Goal-Werkzeuge je Session | egal | C | In Arbeit; Root und Chief nativ bestätigt, Worker-Belege werden im Ticket ergänzt | eine Zeile je Live-Agent: Ziel, eigener get/create-Beleg oder belegte Nichtverfügbarkeit plus Ticketziel, Meilenstein und Grenze; kein Plantext als Goal-Beleg | 52f46527 |
+| GOALS-B | P2: Rollen-Goals, Anpassung, Grenzen und selektive Rekursion in AGENTS.md, projecta-workflow und Übergabevorlage verankern; nur Prozessdoku, kein Runtime-Ausbau | Stabschef als Editor; Root nimmt ab | PLAN-C1; Z2-RULE10 im selben Dokumentationspaket | egal | C | Geplant; nächster Schritt: nach PLAN-C1 geprüfter Übergabe Regelpaket schreiben | ≤ 300 ALL; Anforderungen GOALS-01 2–7 erhalten; 1 zusätzliche Selbstprüfung, 2. nur konkreter Restmangel; Stops und unabhängige Reviews/Nutzerfreigaben unverändert; prepush Exit 0 | 52f46527 |
+| GOALS-C | P2 begleitend: drei vorhandene Praxisproben Lane F, DR-02 und HOOK-WIN auswerten; Stichprobe, kein Wirksamkeitsbeweis; keine neuen Jobs/QA/Benchmarks | ausführende Owner dokumentieren; Root bewertet | vorhandene Fix-, Review- und Runtimebelege | egal | C | In Arbeit; Lane F dokumentiert; DR-02 und HOOK-WIN nachführen, Messlücken offen nennen | je Ticket Mangel/kein Mangel, Bestätigung, beobachtete Regressionen, nur gemessener Zusatzaufwand; bei überwiegendem Aufwand Anwendung begrenzen | 52f46527, 55ea21ce, b14492cb |
+| Z2-REGELN | Regelwerk 2.0: Lane-A-Korrekturen (6) abschließen, Anweisungsdateien entschlacken (Lane C, Commit 6918bea), Altlasten-Audit liefert „Deine Regeln: bestätigen oder ändern“ | Stabschef + Codebase Archäologe | – | egal | C | In Arbeit | Lane-C-PR gemergt; `npm run dev:agent-check` Exit 0; Regel-Vorschläge R1–R5 in der Inbox entschieden | 77c993f3 |
+| Z2-PLANPARSER | `hq-parse.mjs`, `dev-hq.mjs` und `hygiene.mjs` lesen die Z-Tabellen (Spalte Status, 8 Werte); danach Anhang B entfernen | Implementierer · Claude | Z2-PLAN-COMMIT | Server | B | Geplant | `npm run test:hq` Exit 0; HQ zeigt Z1–Z4; prepush Exit 0 | – |
+| Z2-DOKSYNC | `KNOWN_ISSUES.md` „Offen“ bereinigen: KI-15, KI-16, KI-20 mit PR-Beleg; KI-33 bleibt „Kandidat“, bis ein Windows-Queue-Lauf mit der Änderung beobachtet ist | Stabschef | – | egal | C | Bereit | Jede verschobene Zeile nennt PR und Merge; KI-33 nur mit Windows-Queue-Lauf-ID und Dauer nach „Behoben“; precommit-Lane Exit 0 | – |
+| Z2-AUTOSTART | Denkraum startet nach der Windows-Anmeldung von selbst, ohne Secret-Eingabe | Desktop-App-Entwickler | DR-15, DR-06 | PC | A | Geplant | PC-Neustart → `127.0.0.1:4791` antwortet ohne Eingabe; kein Secret im Klartext | – |
+| Z2-PACER | Pacer läuft: Trigger mit Werkzeugen, aber nur lesend; Bericht alle 20 min | Stabschef | Inbox R5 | PC | C | Blockiert | drei Läufe nacheinander mit Bericht, keine Schreibaktion | – |
+| Z2-REVIEW | Zwei feste Fremdanbieter-Wege für Stufe A: Gemini/Cursor auf dem Server (Workspace Trust), Ollama Kimi K3 + GLM, Codex; je Weg eine Probe mit beobachtetem Modell | Git- und CI-Spezialist | Inbox WT | Server | C | Blockiert | Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben | c77f6955 |
+| Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
+| Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Architekt für Multi-Agenten-Systeme | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
+| Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
+
+Routing-Freigabe Elias 08.10.: Codex und vorhandene dynamische Workflows voll nutzen;
+bei tatsächlich beobachteten ≥ 98 % Wochenverbrauch den vorhandenen banked reset
+über den unterstützten nativen Weg verbrauchen, danach Kontingent neu prüfen.
+Kein Reset vor der Schwelle, keine Quota-Kappenänderung; RAM-, Prozess-, Naht-,
+Review- und Freigabegates bleiben bestehen. Root hat am 08.10. 01:43:49 UTC
+40 % und einen Full-reset-Credit beobachtet; damit ist noch kein Reset ausgeführt.
+
+## Z3 — Rest von v1.6.0
+
+Fertig heißt (Unterplan v1.6.0): alle Kernpakete gemergt und jede Naht unter
+Baseline. Gemessen 07.10. auf 1c09ebb: `api.rs` 7908 < 8091, `store.rs` 7224 < 7227,
+`bin/pa.rs` 6293 < 6490, **`main.rs` 5133, nicht unter 5133**.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| V16-ARCH-D4-05 | Queue-Routen aus `api.rs` (PR #631) | Implementierer · Codex, Abnahme Root | – | Server | A | angenommen, Mergify ausstehend | Merge über Mergify; `api.rs` 7858 | b9606dd4 |
+| V16-ARCH-D7 | Einstellungen nach `store/settings.rs` (PR #632) | Implementierer · Codex | V16-ARCH-D4-05 (Review seriell) | Server | A | Root-Abnahme am `e154e4d` gemeldet; Ready, Mergify ausstehend; frühere Zeitangabe falsch als UTC etikettiert, exakte UTC-Abnahme unbelegt | Merge über Mergify | 782d9e58 |
+| V16-06 | Start nach Update ohne Journal blockiert nicht stumm | MCP-Integrationsentwickler | Inbox V16-F3; Update-Drill | PC | A | Blockiert | roter Test zuerst; Drill Erfolg/Abbruch/Fehler | 2557db66 |
+| V16-UPD-CANCEL | Abbrechen-Knopf beim Update-Download (sonst ist der Drill „Abbruch“ unmöglich) | Desktop-App-Entwickler | – | PC | B | Geplant | roter Test zuerst; Drill „Abbruch“ möglich | – |
+| V16-ARCH-D2 | Doppelte Projektanlage in `main.rs` zusammenführen | Implementierer · Claude | V16-06 (Lane mn; Vorziehen: Inbox V16-D2) | Server | A | Geplant | `rg -c 'fn create_project' src-tauri/src/main.rs` → eine Umsetzung; `main.rs` < 5133 | – |
+| V16-ARCH-D5a | Diagnosebefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D2 | Server | A | Geplant | `main.rs` −150 Zeilen | – |
+| V16-ARCH-D5b | Einstellungsbefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D5a | Server | A | Geplant | `main.rs` −150 Zeilen | – |
+| V16-ARCH-D8a | Ereignisnamen als Konstanten in `main.rs` | Implementierer · Claude | V16-ARCH-D5b | Server | A | Geplant | `rg -n -F -e '"worker:status"' -e '"supervisor:notification"' src-tauri/src/main.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| V16-ARCH-D8b | Ereignisnamen in PTY | Implementierer · Claude | V16-ARCH-D8a | Server | A | Geplant | `rg -n -F -e '"pty:output:' -e '"pty:exit:' src-tauri/src/pty.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| V16-ARCH-D8c | Ereignisnamen im Frontend | Implementierer · Codex | V16-ARCH-D8b | egal | B | Geplant | `rg -n -e '["\x27\x60]worker:status' -e '["\x27\x60]supervisor:notification' -e '["\x27\x60]pty:output:' -e '["\x27\x60]pty:exit:' src` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `npm run typecheck` und `npm run test:unit` Exit 0 | – |
+| V16-ADR-A1 | ADR A1 (`ApiBackend` teilen) in `docs/decisions.md` entscheiden | Architekturberater Fable + Astra | – | egal | C | Bereit | `docs/decisions.md` A1 nicht mehr „Vorschlag (offen)“; precommit-Lane Exit 0 | – |
+| V16-ADR-A7 | ADR A7 (st-Lane teilen) | Architekturberater Fable + Architekturberater Astra | V16-NACHBEOB (zwei Wochenmessungen) | egal | C | Verschoben | Eintrag in `docs/decisions.md` | – |
+| V16-KI30 | KI-30 Windows-Flake: Restursache nach V16-01 | Performance- und Benchmark-Spezialist | – | Server | A | Geplant | neuer Beleg (Queue-Lauf-ID) vor Fix; danach 10 Queue-Läufe ohne KI-30 | – |
+| V16-03 | Tester-Kit: Installation, Rückmeldeformular, Grenzen | Implementierer · Codex | Inbox E16; frisches Windows-Konto (Nutzer) | PC | C | Blockiert | Trockenlauf im frischen Konto | – |
+| V16-CHANGELOG | CHANGELOG v1.6.0 und Release-Notiz | Stabschef | DR-17, alle Z3-Pakete | egal | C | Geplant | Eintrag `v1.6.0` über `v1.5.1` | – |
+| V16-RELEASE | Tag v1.6.0 (Beta-Regel x.y.0) | Elias | Z1, Z3 | PC | – | Geplant | Elias’ Entscheidung, danach Release-Pipeline grün | – |
+| V16-NACHBEOB | Zwei Wochenmessungen und 40 Queue-Läufe; Messgrößen-Leitfaden | Stabschef | v1.6.0 | Server | C | Verschoben | Wochenberichte BENCH-01/02 im Ticket | b8b16ec8 |
+
+## Z4 — Wichtig, aber liegen geblieben
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| Z4-ARCH-D1-REST | Vierten HTTP-Fehlertext-Klassifizierer `error_status` in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen | Implementierer · Codex | – | Server | B | Geplant | `rg -n "fn error_status" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| Z4-E14 | Update-Signierschlüssel offline sichern (verschlüsselter Export in deinen Passwort-Manager) | Elias | – | PC | – | Geplant | Sicherung vorhanden, Schlüssel nirgends im Klartext | – |
+| Z4-ARCH-11 | KI-24b: Test-DB-Wettlauf auf Windows reproduzieren und absichern (F6) | Implementierer · Claude | – | PC | A | Geplant | Vor Start betroffene Testdateien und RAM prüfen; bei `store.rs` auf V16-ARCH-D7 warten; roter Test auf Windows vor Fix, danach grün; prepush Exit 0 | – |
+| Z4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | Implementierer · Codex | V16-ARCH-D7 | Server | A | wartet #632 (store.rs) | roter Test zuerst; prepush Exit 0 | – |
+| Z4-R19-ST | Audit-Envelopes Ziel/Task, Claim/Checkpoint, Intent/Launch, Kandidat/Evidence/Review (M4-R19-02/03/04/07) | Implementierer · Codex | V16-ARCH-D7 (st-Naht) | Server | A | Geplant | je Pfad roter Test; je Paket ≤ 300 | – |
+| Z4-VERIFY | Offene Altzeilen prüfen: W1-03f-Rest, W3-03 (PC-Drills unbelegt), W3-07 (Produktionsschlüssel-Build), W1-18b (Codex-Probe), M4-Blocker-TOCTOU nach #306 | Codeprüfer · Claude | – | egal | C | Geplant | je Zeile Erledigt mit Beleg oder neues Paket | – |
+| Z4-SERVER-DISK | Server-Platte: alte Worktrees (~151 GB) aufräumen; erst Backup | Elias entscheidet, Stabschef führt aus | Inbox E17 | Server | – | Geplant | Platte < 60 %, Backup-Beleg | – |
+| Z4-RCLONE | Eigene rclone-`client_id` vor Ende 2026 | Elias | – | PC | – | Geplant | Backup läuft mit eigener ID | – |
+| Z4-SETUP-14 | Rest SETUP-14: tote Keys, Permission-Regeln | Elias | – | PC | – | Geplant | Liste abgehakt | – |
+| Z4-M5-01 | Testerrunde mit 3–5 externen Testern | Elias | V16-03, E16 | egal | – | Verschoben | Rückmeldungen festgehalten | – |
+| Z4-M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um | Root | Z1 | egal | – | Verschoben | Umfang festgelegt | – |
+
+## Lanes (5 parallel)
+
+| Lane | Reihenfolge | Ort |
+|---|---|---|
+| L1 Denkraum-Backend | DR-01 → DR-01a → DR-02 → DR-03 → DR-04 → DR-05 → DR-06 → DR-07; DR-15 | Server |
+| L2 Denkraum-UI | DR-08 → DR-09/DR-10 → DR-11 / DR-12 → DR-13 → DR-14; dann DR-16, DR-17 | egal / Server |
+| L3 Nähte (seriell) | api: #631 · st: #632 → Z4-R19-ST / Z4-R19-09 · mn: Z4-R19-09 **oder** V16-06 → D2 → D5a → D5b → D8a → D8b → D8c · pa: frei | Server |
+| L4 Setup/Dev | PLAN-C1 → GOALS-B mit Z2-RULE10; danach Archiv-/Bereinigungsschnitte und Z2-PLANPARSER; Z2-REGELN, Z2-DOKSYNC, Z2-BOARD, Z2-REVIEW, Z2-RAM, Z2-ROUTE, Z2-PACER, Z2-AUTOSTART | egal |
+| L5 Doku/PC | V16-ADR-A1, Z4-ARCH-11, V16-UPD-CANCEL, V16-KI30, V16-CHANGELOG | PC / egal |
+
+Nie zwei aktive Pakete auf derselben Naht (`api.rs`, `main.rs`, `store.rs` + `store/`,
+`bin/pa.rs`). Neue V2-Pakete starten vor Z1 nur, wenn eine Lane leer ist und Root zustimmt.
+
+GOALS-A läuft leicht parallel zur Produktlieferung; GOALS-C nutzt vorhandene Arbeit.
+GOALS-B und weitere PLAN-Edits sind beim Chief seriell. Z1 behält Vorrang;
+Prozessarbeit belegt keine Z1-Dateien oder Nähte. Native Goal-Ausgaben und Adoption
+stehen im Ticket, nicht in gespeicherten Profilen oder zugestellten Nachrichten.
+
+### Anpassungsnachweis PLAN-C1
+
+Anlass: Root-Prüfung von #642 am 6183605 meldet 2068 ALL > 300 und konkrete
+Status-/Regelwidersprüche. Vorher: ein kombinierter, nicht abgenommener Entwurf.
+Änderung: zuerst der vollständige aktive Z1–Z4-Kopf mit GOALS-A/B/C; alter Bestand
+bleibt wortgleich als Historie und Parserquelle im selben PLAN. #642 und Audits
+bleiben erhalten. Rest: Archivierung/Bereinigung in eigenen kleinen Paketen,
+GOALS-B samt Z2-RULE10 und betroffene Delta-Belege; Anforderungen bleiben gleich.
+Abnahme dieses Schnitts: DF-Bestand bytegleich, M1–M5 parsebar, Pointer in STAND
+zeigen Z1, ≤ 300 ALL und prepush Exit 0. Nächster Owner: Chief legt den Kandidaten
+Root vor; Root nimmt ab, erst danach Ready/Queue. Merge/Wirksamkeit separat melden.
+
+## Entscheidungs-Inbox
+
+| # | Frage | Empfehlung | Status |
+|---|---|---|---|
+| E14 | Update-Signierschlüssel offline sichern | ja, verschlüsselt in den Passwort-Manager; ohne Kopie geht das Update-Vertrauen bei Verlust verloren | offen, dringend |
+| V16-F3 | Start nach Update ohne Journal: gesperrt bleiben mit Anleitung, oder dem ersten Start vertrauen? | gesperrt mit Anleitung (fail-closed) | offen |
+| V16-F4 | Review-Fahrer auf den Server? | ja | offen |
+| V16-D2 | ARCH-D2 vor V16-06 ziehen, weil V16-06 auf V16-F3 wartet? | ja, Lane mn ist frei | offen (Root) |
+| WT | Gemini-/Cursor-Weg auf dem Server: Workspace Trust für den Review-Ordner | nur für den Review-Ordner | entschieden: Nutzerfreigabe F1 (08.10.) |
+| R1–R5 | Regel-Vorschläge: Stufe A neu fassen; 300-Zeilen-Grenze ohne Tests/Hilfsdateien; RAM-Gate nur für schwere Arbeit; Review-Bündel = Diff + Abhängigkeiten; Pacer-Trigger ohne Einschränkung, aber nur lesend | einzeln entscheiden | offen |
+| V2-OFFEN | v2.0-Fragen 5–9 und 11 | nach Z1 | offen |
+| PR-ALT | Draft-PRs #613, #614, #574 (Autor Grok bzw. alte UI-Richtung): schließen oder übernehmen? | #613 mit Z2-PLANPARSER abgleichen, dann schließen oder übernehmen; #614/#574 parken | offen |
+| E3 | Secrets in geschützte Environments, Required Reviewers für `release` | ja, einmal im Browser | offen |
+| E15 | Bleibt der gemietete Server? (laufende Kosten) | nach v1.6.0 mit Nutzen und Kosten bewerten | offen |
+| E16 | Lizenz und Geschäftsmodell vor externen Testern | vor V16-03 entscheiden | offen |
+| E17 | Alte Arbeitsbäume löschen (mit Backup) | ja, zusammen mit Z4-SERVER-DISK | offen |
+| M4-B | M4-Blocker `planning_access`: Projektrahmen mit #306 gemergt; ist die TOCTOU-Lücke damit erledigt? | über Z4-VERIFY prüfen, dann schließen | offen |
+| E18 | Matrixzeile 3: `resume` weiter gesperrt lassen oder urteilsgebunden bauen? | Sperre beibehalten, bis entschieden | offen; Nutzerbestätigung unbelegt |
+| E21 | Matrixzeile 2: Schalter gebaut und gesperrt; Einschalten später? | gesperrt lassen | offen; Nutzerbestätigung unbelegt |
+| E22 | Matrixzeile 16: unabhängigen Review im PR am selben Kandidaten anerkennen? | getrennt von einer App-Freigabe entscheiden | offen; Nutzerbestätigung unbelegt |
+| E23 | Benchmark mit fünf Aufgaben durchführen? Er verbraucht Abo-Kontingent | nur nach Nutzerfreigabe laufen lassen | offen; Nutzerfreigabe erforderlich |
+| TODO | Interne Liste des Koordinators: Copilot-Budget, Groq/OpenRouter-Keys (widerspricht „nur Abos“), Geldmodus | veraltete Punkte streichen | offen |
+
+## Entschiedene Fragen
+
+PLAN-1 ist durch PLAN-L0-SINGLE entschieden (07.10.): `docs/PLAN.md` bleibt
+der einzige Plan, v2.0 ist ein Unterplan. Q10 ist ersetzt; V2-FREEZE-1a/1b entfallen
+in ihrer alten Form, die Parser-Pflege übernimmt Z2-PLANPARSER.
+Der öffentliche Repo-Neustart ist erledigt: `c60f267` „Initial public release of ProjectA“.
+E1–E13 (außer E3), E19, E20, E24, E25, F1–F6, N1, N2, R19, W5-02b3 und
+ARCH-D4-PLAN stehen im Archiv und werden nicht neu gefragt.
+
+## Historischer Vertrags- und Parserbestand (Übergang)
+
+Die folgenden bisherigen Tabellen, Prioritäten und Inbox-Texte sind historisch.
+Sie begründen keine zusätzlichen Aufträge und ersetzen keine oben bestätigte
+Entscheidung. Bestehende Antworten/Verträge bleiben erhalten; M1–M5 und alle
+DF-Zeilen bleiben als Parserquelle wortgleich, bis ihre Leser gezielt umgestellt
+und die kohärenten Archivpakete geprüft sind. Nur die Z-Tabellen oben disponieren.
 
 ## Aktive Ziele und verbindlicher L0-Schnitt
 

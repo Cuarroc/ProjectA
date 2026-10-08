@@ -1,9 +1,13 @@
-# Stand — 04.10.2026
+# Stand — Priorität 08.10.2026, übriger Snapshot 04.10.2026
 
 Wo wir stehen, in Kürze. Plan und Reihenfolge: [`docs/PLAN.md`](docs/PLAN.md).
 Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-09-24.md`.
 
 ## Wo wir stehen
+
+- **Aktuelle Priorität (08.10.):** Z1 Denkraum zuerst; die Z1–Z4-Tabellen in
+  `docs/PLAN.md` disponieren. IDEAS-L0-Ergebnisse bleiben erhalten. Die weiteren
+  Angaben hier sind der historische 04.10.-Snapshot, kein aktueller Livebeleg.
 
 - **Release:** v1.4.1 (22.09.) ist der jüngste; alles danach liegt nur auf `main`.
   Nächster Release: v1.5.0 (Beta) als Abschluss von M3.
@@ -26,9 +30,13 @@ Regeln: [`AGENTS.md`](AGENTS.md). Die alte Langfassung: `.pa/archiv/STAND_2026-0
 
 ## Nächster Griff
 
-1. M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.
+1. Z1 nach den aktuellen Z-Tabellen in PLAN.md liefern; Owner und Vorgänger prüfen.
+   Historische M1–M5-Stände starten keine Jobs; Merge nur über Mergify.
 2. Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).
 3. Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.
+
+Historischer HQ-Snapshot (04.10.; keine Startfreigabe): „M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.“
+Der generierte Snapshot bleibt unverändert; aktuelle Starts folgen Z1–Z4 oben.
 
 ## Offene Befunde (Details: `KNOWN_ISSUES.md`)
 
