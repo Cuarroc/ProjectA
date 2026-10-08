@@ -11,10 +11,30 @@ pub const MAX_INPUT: usize = 1_048_576;
 pub const MAX_TIMEOUT_MS: u64 = 5_400_000;
 // The parent also covers host startup and final acknowledgement/pipe drain.
 pub const HOST_GRACE_MS: u64 = 10_000;
+/// Mirrors `Store::open` `busy_timeout`. Capture drain budgets use this value;
+/// they do not read a live SQLite connection.
+pub const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
+/// Process/Input/Receipt can still be pending when the child exits (Launch cannot).
+pub const WRITER_DRAIN_OVERLAP_STAGES: u64 = 3;
+pub const WRITER_DRAIN_MARGIN_MS: u64 = 2_000;
+/// Parent observer bound for `self_test_host_receipt_ack` (windows_capture).
+pub const HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS: u64 = 20;
 pub const MAX_CHUNK: usize = 16_384;
 pub const MAX_CONTROL_BYTES: usize = MAX_FRAME + MAX_INPUT * 5;
 pub const READ_CANCELLED: &str = "capture control native read cancelled";
 const MAX_MESSAGES: u64 = 258;
+
+/// Uncapped three-stage busy budget (may exceed [`HOST_GRACE_MS`]).
+pub fn writer_drain_busy_budget_ms() -> u64 {
+    WRITER_DRAIN_OVERLAP_STAGES * SQLITE_BUSY_TIMEOUT_MS + WRITER_DRAIN_MARGIN_MS
+}
+
+/// Host writer-drain allowance after child exit. Must stay inside the parent's
+/// post-timeout grace ([`HOST_GRACE_MS`]), which also bounds durable owner
+/// lifetime (`timeout_ms + HOST_GRACE_MS`). A larger busy-stage sum is capped.
+pub fn writer_drain_budget_ms() -> u64 {
+    writer_drain_busy_budget_ms()
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -446,6 +466,45 @@ impl Receiver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn writer_drain_budget_never_exceeds_host_grace() {
+        assert!(
+            writer_drain_budget_ms() <= HOST_GRACE_MS,
+            "drain {}ms exceeds host grace {}ms",
+            writer_drain_budget_ms(),
+            HOST_GRACE_MS
+        );
+    }
+
+    #[test]
+    fn writer_drain_budget_mirrors_sqlite_busy_timeout_within_host_grace() {
+        assert_eq!(SQLITE_BUSY_TIMEOUT_MS, 5_000);
+        let uncapped = writer_drain_busy_budget_ms();
+        assert_eq!(
+            uncapped,
+            WRITER_DRAIN_OVERLAP_STAGES * SQLITE_BUSY_TIMEOUT_MS + WRITER_DRAIN_MARGIN_MS
+        );
+        assert!(
+            uncapped > HOST_GRACE_MS,
+            "fixture assumes busy stages exceed grace"
+        );
+        assert_eq!(writer_drain_budget_ms(), uncapped.min(HOST_GRACE_MS));
+        assert!(writer_drain_budget_ms() >= SQLITE_BUSY_TIMEOUT_MS);
+    }
+
+    #[test]
+    fn host_receipt_ack_self_test_parent_bound_has_slack_over_drain_budget() {
+        // Loaded Windows runners need spawn/teardown slack beyond the drain itself
+        // (R737-A2: 17s drain vs 20s parent left ~3s and flaked under load).
+        assert!(
+            HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS * 1_000 >= writer_drain_budget_ms() + 10_000,
+            "parent {}s lacks 10s slack over drain {}ms",
+            HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS,
+            writer_drain_budget_ms()
+        );
+    }
+
     fn binding() -> Binding {
         Binding {
             run_id: "run-1".into(),
