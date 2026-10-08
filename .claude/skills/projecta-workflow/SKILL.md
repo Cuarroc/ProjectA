@@ -29,6 +29,9 @@ per provider: `docs/setup/README.md`. Check your machine with
    ticket/owner, scope/limits, acceptance, dependencies and next step. A checked
    worker handover may finish its goal; the parent stays open. Plan text is not
    native evidence; never complete an unmet goal just to replace it.
+   At relevant changes/milestones, re-check and update your native goal using
+   supported functions; unsupported objective edits go in the ticket with the
+   explicit tool limit. Complete only after actual fulfillment.
 6. Approved adaptation may change method/order/slicing/owner/location, not
    requirements. Record trigger/evidence, previous state, change, remaining
    acceptance duties and next owner/step in the ticket/PLAN. Preserve granted

@@ -144,6 +144,9 @@ documented ticket goal. Plan edits do not change native goals. Never complete
 an unmet goal merely to create another. Record a blocker's cause or hypothesis,
 evidence, impact, owner and next step; continue independent approved work,
 without blind retries, status loops or invented work.
+Re-check and update your own native goal at relevant changes and milestones;
+complete only after fulfillment. If objective editing is unsupported, record
+the change and tool limit in the ticket/handover; do not invent an API.
 
 Within approved work, Chief may change method, order, slicing, assignment or
 execution location. Record trigger and evidence, previous state, change,
