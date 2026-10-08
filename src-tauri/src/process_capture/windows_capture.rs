@@ -1304,7 +1304,7 @@ fn self_test_host_receipt_ack(
                 closed: Arc::new(AtomicBool::new(false)),
             },
             crate::host_events::MAX_WIRE_BYTES,
-            Duration::from_secs(20),
+            Duration::from_secs(crate::protocol::HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS),
             crate::host_events::MAX_WIRE_BYTES,
             Observer::Callback(&mut consume),
         )?;
@@ -1694,8 +1694,9 @@ fn execute_protocol_events(
             })?;
             if let Some(handshake) = &handshake {
                 // Durable receipt persistence shares the writer-drain deadline
-                // derived below from the SQLite busy_timeout budget. A shorter
-                // independent wait can reject a successful SQLite checkpoint.
+                // sized below from the mirrored SQLite busy_timeout budget
+                // (capped at HOST_GRACE_MS). A shorter independent wait can
+                // reject a successful SQLite checkpoint.
                 while !handshake.observed.load(Ordering::Acquire) {
                     if writer_stop.load(Ordering::Acquire) || Instant::now() >= deadline {
                         return Err("receipt acknowledgement unavailable".into());
@@ -1718,18 +1719,15 @@ fn execute_protocol_events(
     // Fail-closed: still bound the drain, but size it for sequential durable
     // checkpoints that can still be pending when the child exits. Launch must
     // complete before input delivery, so only Process/Input/Receipt can overlap
-    // this window; each may wait up to Store::open busy_timeout (5s). A fixed
-    // 5s window rejected a successful Receipt commit under that load (KI-30).
-    // Keep the total under the 20s parent bound used by host receipt-ack
-    // self-tests so a missing ack still fails closed as "receipt
-    // acknowledgement unavailable" rather than the parent's capture deadline.
-    const CHECKPOINT_BUSY_BUDGET_SECS: u64 = 5;
-    const DRAIN_OVERLAP_STAGES: u64 = 3;
-    const DRAIN_MARGIN_SECS: u64 = 2;
-    let drain_deadline = Instant::now()
-        + Duration::from_secs(
-            DRAIN_OVERLAP_STAGES * CHECKPOINT_BUSY_BUDGET_SECS + DRAIN_MARGIN_SECS,
-        );
+    // this window; each may wait up to the mirrored Store::open busy_timeout.
+    // A fixed 5s window rejected a successful Receipt commit under that load
+    // (KI-30). Cap at HOST_GRACE_MS so the host never outlives the parent's
+    // post-timeout grace / durable owner extension. Keep the total under the
+    // receipt-ack self-test parent bound so a missing ack still fails closed
+    // as "receipt acknowledgement unavailable" rather than the parent's
+    // capture deadline.
+    let drain_deadline =
+        Instant::now() + Duration::from_millis(crate::protocol::writer_drain_budget_ms());
     let submitted = terminal_tx.send((terminal, drain_deadline));
     drop(terminal_tx);
     while !writer.is_finished() && Instant::now() < drain_deadline {

@@ -157,14 +157,17 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                     let holder = if stage == Stage::Receipt {
                         let options = sqlx::sqlite::SqliteConnectOptions::new()
                             .filename(dir.path().join("projecta.db"))
-                            .busy_timeout(Duration::from_secs(5));
+                            .busy_timeout(Duration::from_millis(
+                                projecta_capture::protocol::SQLITE_BUSY_TIMEOUT_MS,
+                            ));
                         let mut connection = runtime.block_on(
                             sqlx::sqlite::SqliteConnection::connect_with(&options)).unwrap();
                         runtime.block_on(sqlx::query("BEGIN IMMEDIATE")
                             .execute(&mut connection)).unwrap();
                         Some(runtime.spawn(async move {
                             // Experimental load: exceeds the host's former
-                            // 3s receipt wait but stays inside SQLite's 5s wait.
+                            // short receipt wait but stays inside SQLite's
+                            // mirrored busy_timeout.
                             tokio::time::sleep(Duration::from_secs(4)).await;
                             sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
                         }))

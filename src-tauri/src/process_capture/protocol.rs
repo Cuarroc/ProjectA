@@ -18,7 +18,7 @@ pub const SQLITE_BUSY_TIMEOUT_MS: u64 = 5_000;
 pub const WRITER_DRAIN_OVERLAP_STAGES: u64 = 3;
 pub const WRITER_DRAIN_MARGIN_MS: u64 = 2_000;
 /// Parent observer bound for `self_test_host_receipt_ack` (windows_capture).
-pub const HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS: u64 = 20;
+pub const HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS: u64 = 30;
 pub const MAX_CHUNK: usize = 16_384;
 pub const MAX_CONTROL_BYTES: usize = MAX_FRAME + MAX_INPUT * 5;
 pub const READ_CANCELLED: &str = "capture control native read cancelled";
@@ -31,9 +31,11 @@ pub fn writer_drain_busy_budget_ms() -> u64 {
 
 /// Host writer-drain allowance after child exit. Must stay inside the parent's
 /// post-timeout grace ([`HOST_GRACE_MS`]), which also bounds durable owner
-/// lifetime (`timeout_ms + HOST_GRACE_MS`). A larger busy-stage sum is capped.
+/// lifetime (`timeout_ms + HOST_GRACE_MS`). A larger busy-stage sum is capped;
+/// the full three-checkpoint busy budget remains unsupported when a child
+/// finishes near its provider timeout and only grace remains.
 pub fn writer_drain_budget_ms() -> u64 {
-    writer_drain_busy_budget_ms()
+    writer_drain_busy_budget_ms().min(HOST_GRACE_MS)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
