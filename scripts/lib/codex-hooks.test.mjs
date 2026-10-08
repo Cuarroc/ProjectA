@@ -28,6 +28,10 @@ test('flags a legacy config whose hooks call bare bash', () => {
   assert.deepEqual(findBareBashHooks(legacy).map(h => h.event), ['PostToolUse', 'SessionStart']);
   assert.deepEqual(findBareBashHooks({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'x', commandWindows: 'bash x.sh' }] }] } }).map(h => h.event), ['Stop']);
   assert.deepEqual(findBareBashHooks(codexHooksConfig('C:\\some checkout')), []);
+  // A Windows override that is not bare bash wins over a bash `command`.
+  for (const commandWindows of ['echo hi', '', '"C:\\Program Files\\Git\\bin\\bash.exe" x.sh', 'bashful.exe']) {
+    assert.deepEqual(findBareBashHooks({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'bash x.sh', commandWindows }] }] } }), [], commandWindows);
+  }
 });
 
 const decode = command => Buffer.from(command.match(/^powershell\.exe -NoProfile -NonInteractive -EncodedCommand ([A-Za-z0-9+/=]+)$/)[1], 'base64').toString('utf16le');
