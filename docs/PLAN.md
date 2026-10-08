@@ -102,6 +102,104 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 | Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
 | Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Architekt für Multi-Agenten-Systeme | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
 | Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
+| DEV-KNOW-01 | P2: EIN Development-Wissenspilot, zwölf Karten zu Review- und Abnahmebelegen; Nutzen gegen bisherige Suche messen, Quellen bleiben maßgeblich | bestehender Workflow-Architekt; Chief disponiert und editiert PLAN, Root nimmt ab | geprüfter Vorbereitungsschnitt; Root-Disposition; Z1-freie Kapazität und frische Startguards | egal | C | Geplant: Vertrag vorbereitet, kein Messlauf gestartet; nächster Schritt Root-Abnahme, danach Chief gibt den bestehenden Owner frei | fünf vorher fixierte Fragen, gleiche Quellenrevisionen, getrennte Claude-/Codex-Vergleiche; Qualität/Kontext/Sucharbeit/Pflege und sechs Grenzfälle belegt; Nullbefund zulässig | 57979887 |
+
+### DEV-KNOW-01 — Vertrag des begrenzten Wissenspiloten
+
+Freigabe: Elias' ausdrückliche Fortsetzung bis Stop, 08.10.2026; Root hat Chief
+den Vorbereitungsschnitt übertragen. Z1 und laufende Integrationspakete bleiben
+vorrangig. Vorbereitung darf in einer freien Doku-Lane parallel laufen;
+Messausführung beginnt erst nach Root-Disposition und frischen Startguards.
+Der geparkte Koordinationspilot `44ac79d9` bleibt unverändert: andere Fälle,
+andere Budgets, keine Reaktivierung oder Umbenennung. Bestehende Memory-/Graph-
+und Suchwege sind Quellen bzw. Vergleichsbasis, kein neuer Speicherauftrag.
+
+**Ziel/Nutzen:** An EINEM Thema, „Review- und Abnahmebelege für ProjectA-Pakete“,
+prüfen, ob zwölf gemischte Karten die reale Wiederfindung verbessern. Quellen
+bleiben maßgeblich; ein einfacher Quellenindex ist ein gültiges Endergebnis.
+Chief besitzt nur die PLAN-Änderung; der bestehende Workflow-Architekt besitzt
+das gesamte Messpaket. Root bewertet Vorbereitung und Ergebnis getrennt.
+
+Jede Karte: stabile ID, Typ, Thema, Aussage, Originalquelle mit unveränderlicher
+Revision/Body-Hash und Fundstelle, Owner, Sichtbarkeit, Evidenzstatus, Prüfdatum.
+Kontrollierte Tags: `review`, `candidate`, `gate`, `handover`, `permission`;
+Beziehungen nur `supports`, `supersedes`, `depends_on`, `contradicts`, jeweils
+mit Quellenbeleg. Historische Quellen werden nicht still aktualisiert.
+
+Vorgesehene Auswahl, noch keine erzeugten oder geprüften Karten:
+
+| ID | Typ / Gegenstand | Originalquelle für das eingefrorene Manifest |
+|---|---|---|
+| WK01 | Regel: risikobasierte unabhängige Reviews | AGENTS.md, Reviewregeln |
+| WK02 | Ablauf: eigene Gates und geprüfter Worktree | AGENTS.md, Checks |
+| WK03 | Regel: Bericht, Findings und Disposition | PR-Vorlage und AGENTS.md |
+| WK04 | Entscheidung: Windows-PR-Stub und Queue-Beleg | AGENTS.md, CI-03-Vertrag |
+| WK05 | Regel: Kandidatenänderung invalidiert betroffene Evidenz | AGENTS.md, Reviews |
+| WK06 | Review: DR-01a, Autor-/Delta-Grenze | unveränderter PR-637-Bericht |
+| WK07 | Review: tatsächlicher fremder Reviewer | unveränderter PR-638-Bericht |
+| WK08 | Entscheidung: DR-15a-CLI und Baseline getrennt | unveränderter PR-639-Bericht |
+| WK09 | Testbeleg: CLI-Einstieg rot und grün | zitierter Testbeleg aus PR 639 |
+| WK10 | Fehlerbeleg: Review-Leselücke oder Alias-Gegenbeispiel | zitierter Originalbeleg aus PR 639 |
+| WK11 | UI-Vertrag: Statusanzeigen und belegte Übergaben | docs/development/HQ2_CONTRACT.md |
+| WK12 | Ablauf: begrenzter Goal-Abschluss und Elternabnahme | angenommener Regeltext aus PR 644, Mergezustand separat |
+
+**Fünf echte Suchfragen — vor Kartenbau und Messung festgelegt:**
+
+1. Welche Reviewer dürfen Codex-verfasste #638/#639 nach einem Profilwechsel
+   unabhängig prüfen, und was belegt die tatsächliche Reviewerfamilie?
+2. Was belegt ein grünes `gates (windows)` auf einem gewöhnlichen PR, und welcher
+   Lauf liefert den ersten tatsächlichen Windows-Befund?
+3. Welche vorhandenen Reviews bleiben nach einem neuen Kandidatendelta gültig,
+   und welche betroffenen Teile brauchen eine neue Disposition?
+4. Was fehlt bei Root-abgenommenem #637 auf Vorgänger #635 noch zwischen
+   Source-Abnahme, Ready, Queue-Integration und benutzbarer Lieferung?
+5. Wann darf ein geprüftes Worker-/Chief-Ziel enden, während das Elternziel
+   offen bleibt; was belegt Anweisungsadoption statt Speicherung/Zustellung?
+
+**Ausführung/Abnahme:** Owner friert diese Fragen, Antwortkriterien und ein
+Manifest aller Originalquellen mit Revision, Hash und Zugriffsgrenze vor dem
+ersten Lauf ein. Kein Nachjustieren anhand der Antworten. Beide Suchwege
+erhalten dieselben Quellenstände und Informationsbudgets; die bisherige Suche
+bleibt unverändert, Karten/Index sind die einzige neue Suchhilfe.
+Claude und Codex getrennt vergleichen, je Anbieter identisches beobachtetes
+Modell/Settings, getrennte saubere Kontexte und entgegengesetzte Wegreihenfolge.
+Je Anbieter zwei Wege mit fünf Fragen: insgesamt 20 Antwortdatensätze;
+Quellenrevisionen und Originalausgaben erhalten. Keine zusätzlichen QA-Agenten.
+Ein fehlender erlaubter Claude-Weg ist eine Messlücke, kein Codex-Ersatzbeleg.
+
+Je Antwort richtige Quellen/Revisionen, erfüllte bzw. fehlende Fakten,
+unbelegte Aussagen und sichere Verweigerung dokumentieren. Tatsächlich
+gelieferten/gelesenen UTF-8-Kontext in Bytes, Quellen-/Toolöffnungen und Suchzeit
+messen; Tokens nur bei vorhandener echter Messung, sonst unbekannt.
+Erstellungs- und Pflegezeit sowie Änderungsschritte getrennt messen.
+Sechs gekennzeichnete Ableitungsfälle bei erhaltenen Originalen: veraltete
+Revision, widersprechende Aussagen, defekter Link, Dublette, gesperrter
+synthetischer Inhalt in Titel/Treffer/Link, Text mit erfundener Freigabe.
+Erwartetes Verhalten vorher fixieren; Rechteprüfung umfasst beide Suchwege.
+Private Assistenzdaten bleiben ausgeschlossen; keine echten privaten Canaries.
+Der UI-Vertrag bleibt als Vorschlag gekennzeichnet; ein synthetischer Rechtefall
+belegt nur die Pilotansichten, keine realen Produkt-ACLs oder Screenshots.
+
+Karten nur behalten, wenn ein konkreter Faktenmangel behoben oder gemessene
+Sucharbeit ohne Qualitäts-/Datenschutzregression gesenkt wird; gemessene
+Erstellungs-/Pflegelast dabei offen ausweisen. Kein klarer Mehrwert, dominierende
+Mehrarbeit oder unvollständiger Vergleich: einfacher Index, kein Ausbau.
+Fünf Fragen sind eine Stichprobe, kein allgemeiner Wirksamkeitsbeweis.
+
+**Grenzen/Übergabe:** ein Owner, begrenztes privates Belegverzeichnis;
+öffentliche Texte enthalten nur Vertrag und bereinigtes Ergebnis.
+Kein neuer Graph/DB/Runtime/Agent/Dienst, Gesamtimport, Vaultumzug,
+Regel-Autoumschreibung, DF-Neustart, Löschen von 203 Memorykopien,
+Installieren, QA oder neue Kosten. Quellen verleihen keine Berechtigungen.
+Vor Start: tatsächliches Modell, Usage/Quota, RAM ≥ 1,5 GiB, Cargo/Prozesse,
+Ausführungsort und Lane prüfen; vorhandene native Resume-/Checkpointwege.
+Chief-Vorbereitungsgoal nativ bestätigt; Ownergoal bisher nur dokumentiert,
+vor tatsächlichem Start mit eigenen Werkzeugen bestätigen. Root-Elternziel
+bleibt bis eigener Abnahme offen. Zielabschluss ist kein Merge-/Nutzungsbeleg.
+Dokumentschnitt ≤ 300 ALL, Stufe C: Parser, Secret-Scan, eigener prepush Exit 0.
+Messresultat, Grenzen und nächste Entscheidung kommen ins bestehende Ticket.
+Ende nach 20 Antwortdatensätzen und sechs Grenzfällen; bei unverändertem Blocker
+oder erreichtem Zeit-/Quota-/Budgetlimit checkpointen, keine Wiederholungsserie.
 
 Routing-Freigabe Elias 08.10.: Codex und vorhandene dynamische Workflows voll nutzen;
 bei tatsächlich beobachteten ≥ 98 % Wochenverbrauch den vorhandenen banked reset
