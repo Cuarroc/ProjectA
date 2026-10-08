@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseLocaleNumber } from "./dev-tools.mjs";
-import { slotStatus, parseWindowsProcesses, defaultSlots, listCargoProcesses, main } from "../dev/build-slot.mjs";
+import { RefusedError } from "./dev-tools.mjs";
+import { slotStatus, parseWindowsProcesses, defaultSlots, listCargoProcesses, main, MIN_FREE_GB, MAX_PARALLEL } from "../dev/build-slot.mjs";
 
 const GB = 1024 ** 3;
 const NOW = Date.parse("2026-09-24T20:00:00Z");
@@ -107,6 +108,47 @@ test("configured slot root takes precedence over home defaults", () => {
     d.some((s) => s.path.includes("/home/defaults") || s.name === "main"),
     false,
   );
+});
+
+test("PA_BUILD_SLOTS wins over PROJECTA_BUILD_SLOTS_ROOT", () => {
+  let listed = false;
+  const d = defaultSlots({
+    home: "/h",
+    mainCheckout: "/r",
+    env: { PA_BUILD_SLOTS: "/x/one;/x/two", PROJECTA_BUILD_SLOTS_ROOT: "/warm/root" },
+    listDir: () => {
+      listed = true;
+      return ["slot5"];
+    },
+  });
+  assert.deepEqual(d.map((s) => s.path), ["/x/one", "/x/two"]);
+  assert.equal(listed, false);
+});
+
+test("configured slot root refuses missing unreadable or empty roots", () => {
+  assert.throws(
+    () => defaultSlots({ env: { PROJECTA_BUILD_SLOTS_ROOT: "/missing/root" }, listDir: () => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }); } }),
+    (err) => err instanceof RefusedError && /fehlt|unlesbar/.test(err.message),
+  );
+  assert.throws(
+    () => defaultSlots({ env: { PROJECTA_BUILD_SLOTS_ROOT: "/warm/empty" }, listDir: () => ["noise", "slot0", "projecta-ab"] }),
+    (err) => err instanceof RefusedError && /leer|ohne passende/.test(err.message),
+  );
+});
+
+test("configured slot root accepts Windows-style roots without home fallback", () => {
+  const d = defaultSlots({
+    home: "C:/Users/defaults",
+    mainCheckout: "C:/ProjectA",
+    env: { PROJECTA_BUILD_SLOTS_ROOT: "C:\\warm\\root\\" },
+    listDir: () => ["slot2", "projecta-c"],
+  });
+  assert.deepEqual(d.map((s) => s.path), ["C:/warm/root/projecta-c", "C:/warm/root/slot2"]);
+});
+
+test("build-slot thresholds stay at 2.5 GB and three parallel builds", () => {
+  assert.equal(MIN_FREE_GB, 2.5);
+  assert.equal(MAX_PARALLEL, 3);
 });
 
 test("build-slot CLI exits 3 when no slot is usable and 0 otherwise", async () => {

@@ -17,12 +17,13 @@ import { homedir, freemem, platform as osPlatform } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { EXIT, makeRunner, gitIn, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
+import { EXIT, makeRunner, gitIn, isMain, runCli, withExitCodes, RefusedError } from "../lib/dev-tools.mjs";
 
 export const MIN_FREE_GB = 2.5;
 export const MAX_PARALLEL = 3;
 const RECENT_MS = 120_000;
 const CARGO_BASE_NAMES = ["cargo", "rustc", "clippy-driver", "cargo-nextest", "cargo-clippy", "rustdoc", "build-script-build"];
+const CONFIGURED_SLOT_NAME = /^(?:projecta-[abc]|slot[1-9][0-9]*)$/;
 
 // The kernel truncates /proc/<pid>/comm to 15 characters, so a 15-character
 // name that prefixes a known cargo tool counts as that tool (G4/N3):
@@ -39,7 +40,8 @@ Aufruf:
   npm run dev:build-slot -- [--json]
 
 Slots: ~/cargo-targets/projecta-{a,b,c} und <Hauptcheckout>/src-tauri/target
-       (PA_BUILD_SLOTS="pfad;pfad" ersetzt die Liste).
+       (PA_BUILD_SLOTS="pfad;pfad" ersetzt die Liste; PROJECTA_BUILD_SLOTS_ROOT
+       nutzt nur projecta-a/b/c und slot[1-9]… dort, ohne Home-/Main-Fallback).
 Belegt: ein cargo/rustc-Prozess nennt den Slot in seiner Kommandozeile;
         ohne Prozessliste: .cargo-lock/deps juenger als 2 min (Heuristik).
 Regeln: hoechstens ${MAX_PARALLEL} Builds gleichzeitig, mindestens ${MIN_FREE_GB} GB freier RAM.
@@ -48,12 +50,60 @@ Exit-Codes: 0 Empfehlung vorhanden, 3 jetzt kein Slot (warten), 2 Aufruffehler.
 Setzt nie CARGO_PROFILE_* (das invalidiert den Cache).
 `;
 
-export function defaultSlots({ home = homedir(), mainCheckout, env = process.env }) {
+function normalizeSlotRoot(root) {
+  return String(root).replace(/\\/g, "/").replace(/\/+$/, "");
+}
+
+function sortConfiguredSlotNames(names) {
+  return [...names].sort((a, b) => {
+    const pa = /^projecta-([abc])$/.exec(a);
+    const pb = /^projecta-([abc])$/.exec(b);
+    if (pa && pb) return pa[1].localeCompare(pb[1]);
+    if (pa) return -1;
+    if (pb) return 1;
+    const sa = /^slot([1-9][0-9]*)$/.exec(a);
+    const sb = /^slot([1-9][0-9]*)$/.exec(b);
+    if (sa && sb) return Number(sa[1]) - Number(sb[1]);
+    return a.localeCompare(b);
+  });
+}
+
+function realListDir(root) {
+  return readdirSync(root, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+}
+
+function slotsFromConfiguredRoot(root, listDir) {
+  const normalized = normalizeSlotRoot(root);
+  let names;
+  try {
+    names = listDir(normalized);
+  } catch {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT fehlt oder unlesbar: ${normalized}`);
+  }
+  if (!Array.isArray(names)) {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT unlesbar: ${normalized}`);
+  }
+  const slots = sortConfiguredSlotNames(names.filter((n) => CONFIGURED_SLOT_NAME.test(String(n)))).map((name) => ({
+    name,
+    path: join(normalized, name).replace(/\\/g, "/"),
+  }));
+  if (!slots.length) {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT leer oder ohne passende Slots: ${normalized}`);
+  }
+  return slots;
+}
+
+export function defaultSlots({ home = homedir(), mainCheckout, env = process.env, listDir = realListDir } = {}) {
   if (env.PA_BUILD_SLOTS) {
     return env.PA_BUILD_SLOTS.split(";")
       .map((p) => p.trim())
       .filter(Boolean)
       .map((p) => ({ name: p.split(/[\\/]/).filter(Boolean).pop(), path: p }));
+  }
+  if (env.PROJECTA_BUILD_SLOTS_ROOT) {
+    return slotsFromConfiguredRoot(env.PROJECTA_BUILD_SLOTS_ROOT, listDir);
   }
   const slots = ["a", "b", "c"].map((x) => ({ name: `projecta-${x}`, path: join(home, "cargo-targets", `projecta-${x}`).replace(/\\/g, "/") }));
   if (mainCheckout) slots.push({ name: "main", path: join(mainCheckout, "src-tauri", "target").replace(/\\/g, "/") });
