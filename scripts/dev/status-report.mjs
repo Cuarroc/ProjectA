@@ -39,7 +39,7 @@ const KNOWN_GOOD = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
 const GH_CALLS = {
   openPrs: ["pr", "list", "--state", "open", "--limit", "100", "--json", "number,title,isDraft,headRefName,author,labels,mergeable,mergeStateStatus,statusCheckRollup"],
   mergedPrs: ["pr", "list", "--state", "merged", "--limit", "100", "--json", "number,title,mergedAt"],
-  mainRuns: ["run", "list", "--branch", "main", "--limit", "10", "--json", "status,conclusion,name,headSha,createdAt,url"],
+  mainRuns: ["run", "list", "--branch", "main", "--workflow", "ci", "--limit", "10", "--json", "status,conclusion,name,headSha,createdAt,url"],
 };
 
 // "failing" beats "pending" beats "green". NEUTRAL and SKIPPED checks (for
@@ -100,10 +100,10 @@ export function classify(data, { now = new Date(), timeZone } = {}) {
   }
   done.sort((a, b) => b.number - a.number);
 
-  // A red main outranks every PR. Only a *finished* run counts: an in-flight
-  // run on top of an older red one is not news, but the older red one still is.
+  // A red main outranks every PR. Only a *finished ci* run counts: an
+  // in-flight ci or a newer CodeQL run cannot clear an older ci failure.
   const finished = (data.mainRuns || [])
-    .filter((r) => String(r.status).toLowerCase() === "completed")
+    .filter((r) => r.name === "ci" && String(r.status).toLowerCase() === "completed")
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const latest = finished[0];
   const mainRed = Boolean(latest) && FAILING.has(String(latest.conclusion).toUpperCase());
