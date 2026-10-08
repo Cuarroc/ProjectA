@@ -10,7 +10,7 @@ const isInside = (root, path) => {
 };
 function physicalAncestor(path) {
   for (;;) {
-    try { return realpathSync(path); }
+    try { return realpathSync.native(path); }
     catch (error) {
       if (error.code !== "ENOENT" || dirname(path) === path) throw error;
       // An existing broken link is not an absent directory: do not skip it.
@@ -58,7 +58,7 @@ export function loadStartConfig(env, { repoRoot }) {
       error("STATE", "must be outside the repository after path resolution");
     } else {
       try {
-        if (isInside(realpathSync(repoRoot), physicalAncestor(statePath))) {
+        if (isInside(realpathSync.native(repoRoot), physicalAncestor(statePath))) {
           error("STATE", "must be outside the repository after physical path resolution");
         }
       } catch {
@@ -70,7 +70,18 @@ export function loadStartConfig(env, { repoRoot }) {
       || /[^0-9]/u.test(rawPort) || !Number.isInteger(port) || port < 1 || port > 65535)) {
     error("PORT", "must be an integer from 1 to 65535");
   }
-  const notifications = { enabled: true, reason: null };
+  const webhookUrl = env.DECISION_DESK_WEBHOOK_URL;
+  if (webhookUrl) {
+    let endpoint;
+    try { endpoint = new URL(webhookUrl); } catch { /* Fixed diagnostic below; never expose the URL. */ }
+    if (!endpoint || endpoint.protocol !== "https:" || endpoint.hostname !== "agentsroom.dev" || endpoint.port
+        || endpoint.username || endpoint.password || endpoint.search || endpoint.hash
+        || !/^\/api\/triggers\/t_[a-f0-9]+$/.test(endpoint.pathname)) {
+      error("WEBHOOK_URL", "must be an HTTPS AgentsRoom trigger URL without credentials, port, query or fragment");
+    }
+  }
+  const notifications = webhookUrl ? { enabled: true, reason: null }
+    : { enabled: false, reason: "DECISION_DESK_WEBHOOK_URL not set" };
   return {
     ok: errors.length === 0,
     config: errors.length ? null : { rootReceiptToken, webhookSecret, rootAgentId, statePath, port, notifications },
@@ -100,7 +111,8 @@ if (isCliEntry) {
       for (const suffix of ["ROOT_RECEIPT_TOKEN", "WEBHOOK_SECRET", "STATE", "PORT"]) {
         console.log(`DECISION_DESK_${suffix}: valid`);
       }
-      console.log(result.config.notifications.reason ?? "DECISION_DESK_ROOT_AGENT_ID: notifications enabled");
+      const { enabled, reason } = result.config.notifications;
+      console.log(enabled ? "DECISION_DESK_WEBHOOK_URL: notifications enabled" : `notifications disabled: ${reason}`);
     }
     process.exitCode = result.ok ? 0 : 1;
   }

@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createDeskServer } from './server.mjs';
+import { createDeskServer, createWebhookNotifier } from './server.mjs';
+import { loadStartConfig } from './config.mjs';
 import { DeskError, DeskStore } from './store.mjs';
 
 const ROOT = 'test-root-agent';
@@ -15,6 +16,32 @@ const serverFile = fileURLToPath(new URL('./server.mjs', import.meta.url));
 const repoState = fileURLToPath(new URL('../../state.json', import.meta.url));
 const env = extra => ({ ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('DECISION_DESK_'))),
   DECISION_DESK_ROOT_RECEIPT_TOKEN: TOKEN, DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32), ...extra });
+
+test('webhook preflight matches notifier URL rules and redacts invalid URLs at both entries', () => {
+  const url = 'https://agentsroom.dev/api/triggers/t_abc123';
+  const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+  for (const value of [url, url.replace('https:', 'http:'), url.replace('.dev', '.invalid'),
+    url.replace('.dev', '.dev:444'), url.replace('://', '://user:pass@'), `${url}?secret=synthetic`,
+    `${url}#synthetic`, `${url}/extra`, 'invalid-synthetic-url']) {
+    const ready = env({ DECISION_DESK_STATE: join(tmpdir(), 'synthetic-ledger.json'),
+      DECISION_DESK_ROOT_AGENT_ID: ROOT, DECISION_DESK_WEBHOOK_URL: value });
+    const result = loadStartConfig(ready, { repoRoot });
+    const valid = value === url;
+    assert.equal(result.ok, valid);
+    if (valid) {
+      assert.deepEqual(result.config.notifications, { enabled: true, reason: null });
+      assert.equal(typeof createWebhookNotifier({ url: value, secret: ready.DECISION_DESK_WEBHOOK_SECRET }), 'function');
+    } else assert.throws(() => createWebhookNotifier({ url: value, secret: ready.DECISION_DESK_WEBHOOK_SECRET }), DeskError);
+    for (const args of [[fileURLToPath(new URL('config.mjs', import.meta.url)), '--check'], ...valid ? [] : [[serverFile]]]) {
+      const run = spawnSync(process.execPath, args, { env: ready, encoding: 'utf8', timeout: 2000 });
+      assert.equal(run.error, undefined);
+      assert.equal(run.status, valid ? 0 : 1);
+      if (valid) assert.match(run.stdout, /DECISION_DESK_WEBHOOK_URL: notifications enabled/);
+      else assert.match(run.stderr, /^DECISION_DESK_WEBHOOK_URL: [^\n]+\n$/);
+      assert.ok(!(run.stdout + run.stderr).includes(value));
+    }
+  }
+});
 function start(args, extra) {
   const child = spawn(process.execPath, [serverFile, ...args], { env: env(extra) }); let out = ''; let err = '';
   child.stdout.on('data', d => { out += d; }); child.stderr.on('data', d => { err += d; });
