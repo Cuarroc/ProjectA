@@ -1,5 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 // Pure preflight: no file access, server start, or secret-source assumptions.
 // Only config contains values; errors and notification reasons are safe to print.
@@ -51,7 +51,7 @@ export function loadStartConfig(env, { repoRoot }) {
   };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (import.meta.main) {
   if (process.argv.length !== 3 || process.argv[2] !== "--check") {
     console.error("Usage: node tools/denkraum/config.mjs --check");
     process.exitCode = 1;
