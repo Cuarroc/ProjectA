@@ -43,17 +43,18 @@ Nur Abos, kein OpenRouter, keine zusätzlichen bezahlten API-Ausgaben.
 | Harness | `AGENTS.md` | Repo-Skills |
 |---|---|---|
 | Claude Code | über den Import `@AGENTS.md` in der ersten Zeile von `CLAUDE.md` (nicht von selbst) | `.claude/skills/` |
-| Codex CLI | automatisch (Konvention, Projektwurzel) | `.agents/skills/`, headless am 02.10.2026 mit Codex CLI 0.154.0 eingeschränkt geprobt: `projecta-workflow` gemeldet, direkte Dateisystemabfrage durch Read-only-Policy blockiert (W1-18b) |
+| Codex CLI | automatisch (Konvention, Projektwurzel) | `.agents/skills/`, native Skill-Discovery am 08.10.2026 mit Codex CLI 0.160.0 positiv geprobt (W1-18b, siehe [codex.md](codex.md)); ältere headless Sonde 02.10. mit 0.154.0 war eingeschränkt |
 | OpenCode | automatisch (Projektwurzel) | `.agents/skills/`, geprobt 25.09. mit OpenCode 1.18.32 (W1-18b, Beleg im PR-Text) |
 | Kimi Code CLI | automatisch | `--skills-dir <dir>` (so startet die App Kimi-Worker) |
 | Ollama-Reviewer | **nie** — sie sehen nur die Prompt-Datei | — |
 
 Die App stellt Skill-Packs für Claude (Konvention), Kimi (`--skills-dir`) und
 OpenCode (`conventionAt` `.agents/skills`, eingebautes Profil seit W1-18b)
-bereit; für Codex steht das eingebaute Profil weiter auf `unsupported`
-(`src-tauri/resources/agent-defaults.json`) — die Sonde vom 02.10.2026 war
-eingeschränkt, ein unabhängiger Dateisystem-Nachweis steht aus (W1-18b). Der
-Modus `ConventionAt` (PR #57) lässt sich zusätzlich per `agents.json` setzen.
+bereit; für Codex steht das eingebaute App-Profil weiter auf `unsupported`
+(`src-tauri/resources/agent-defaults.json`), die CLI-Skill-Discovery ist seit
+der positiven Sonde vom 08.10.2026 mit Codex CLI 0.160.0 belegt (W1-18b, siehe
+[codex.md](codex.md)). Der Modus `ConventionAt` (PR #57) lässt sich zusätzlich
+per `agents.json` setzen.
 
 Der Repo-Skill `projecta-workflow` ist die Kurzfassung der Arbeitsweise als
 Checkliste. Er liegt zweimal im Repo, byte-gleich bis auf Zeilenenden:

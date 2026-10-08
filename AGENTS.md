@@ -51,8 +51,9 @@ reference. Where a detail contradicts these ten, the ten win.
 ## Start with current evidence
 
 Inside AgentsRoom, first read the project-memory note `lage-jetzt`; read
-`STAND.md`, then `docs/PLAN.md` (the only plan: milestones M1–M4, parked
-and cut work, decision inbox), then run `bash scripts/sync.sh start`. Check
+`STAND.md`, then `docs/PLAN.md` (the only plan: goals Z1–Z4 (M1–M5 are
+historical), parked and cut work, decision inbox), then run
+`bash scripts/sync.sh start`. Check
 branch, worktrees and working changes. Preserve unrelated work. Historical
 status is not live evidence: take the live state from `gh pr list` and
 `git log origin/main`. Never launch the desktop app just to inspect it: its
@@ -163,7 +164,7 @@ restrict use if overhead dominates. No extra QA bots, test agents or benchmarks.
 ## Development loop
 
 The user-approved contract for continuous mode is
-`.pa/task_continuous_devhq.md`; defaults are in `projecta.dev.json`.
+`docs/development/CONTINUOUS.md`; defaults are in `projecta.dev.json`.
 Rust/SQLite owns runtime state. HQ is a host/proxy, not a second scheduler.
 Capability configuration is not capability evidence. Do not claim a provider,
 actual model, effort, billing source, or token measurement that has not been
@@ -210,6 +211,8 @@ text: the `#[cfg(unix)]` tests do not compile on Windows, the `#[cfg(windows)]`
 tests do not compile on Linux (`KNOWN_ISSUES` KI-7) — no single machine covers
 both halves. "All gates green" without that block is a claim, not evidence.
 The Linux half comes from WSL2 with the clone on ext4.
+Heavy builds/workers and the Linux lane also run on the project server via
+the pa-orch queue (see `STAND.md`); its future is an open user decision (E15).
 
 Rust tests are inline modules. App/CLI tests remain in their binary targets;
 the shared native capture tests run once in the `projecta_capture` library.
@@ -372,5 +375,5 @@ is historical (current provider setup: `docs/setup/`). All paths and commands th
 relative to the repository root. The local Node requirement is 24 or newer.
 The canonical architecture patterns live in
 [`docs/architecture-rules.md`](docs/architecture-rules.md); reviews check them
-and the drift gate `scripts/ci/architecture-drift.mjs` (package ARCH-G2, may
-not exist yet) enforces them.
+and the drift gate `scripts/ci/architecture-drift.mjs` (package ARCH-G2)
+enforces them.

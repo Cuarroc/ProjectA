@@ -39,7 +39,7 @@ ersten echten Paket einmal proben.
 
 | Anbieter (Abo) | Harness / Start | Status 25.09. | Stärkstes Modell | Arbeitspferd | Schnell / billig |
 |---|---|---|---|---|---|
-| OpenAI (ChatGPT-Abo) | Codex CLI 0.154 | geprüft | `gpt-6-astra` | `gpt-5.6-sol` | `gpt-5.6-luna` (Mitte: `gpt-5.6-terra`) |
+| OpenAI (ChatGPT-Abo) | Codex CLI 0.160 | geprüft (Skill-Sonde 08.10.2026 positiv, siehe [codex.md](codex.md)) | `gpt-6-astra` | `gpt-5.6-sol` | `gpt-5.6-luna` (Mitte: `gpt-5.6-terra`) |
 | Moonshot (Kimi-Code-Abo) | Kimi Code CLI 2.1 | **Abo abgelaufen (02.10.)**, nicht einplanen | — | — | — |
 | OpenCode Go (Abo) | OpenCode CLI | geprüft (Orca-Worker, GLM-5.3-Flash) | `opencode-go/glm-5.3`, `opencode-go/deepseek-v4-pro`, `opencode-go/qwen3.8-max` | `opencode-go/glm-5.3` | `opencode-go/glm-5.3-flash` |
 | Ollama Cloud (Abo) | `.pa/review_transport.py`, HTTP `localhost:11434` | geprüft | `kimi-k3:cloud` | `glm-5.2:cloud` | `deepseek-v4-flash:cloud` |
