@@ -207,13 +207,19 @@ pub fn skills_path(worktree: &Path) -> PathBuf {
 /// showed that swapping the two arguments of [`install`] compiles and that no
 /// test notices. It cannot be built except through [`skills_path_for`], so a
 /// destination that reached `install` has been through the containment check.
+///
+/// It also remembers whether the directory is ours to replace into: see
+/// [`skills_path_for`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SkillsDest(PathBuf);
+pub struct SkillsDest {
+    path: PathBuf,
+    keep_existing: bool,
+}
 
 impl SkillsDest {
     /// The directory itself, for callers that only need to look at it.
     pub fn path(&self) -> &Path {
-        &self.0
+        &self.path
     }
 }
 
@@ -232,6 +238,10 @@ pub fn skills_path_for(
     worktree: &Path,
     discovery: &SkillsDiscovery,
 ) -> Result<Option<SkillsDest>, String> {
+    // `.claude/skills` is a place ProjectA fills; a `ConventionAt` directory
+    // such as `.agents/skills` is shared with the repository, which may commit
+    // skills of its own - possibly under the name of a bundled pack.
+    let keep_existing = matches!(discovery, SkillsDiscovery::ConventionAt { .. });
     let candidate = match discovery {
         SkillsDiscovery::Unsupported => return Ok(None),
         // `Flag` still lands in the conventional directory; the flag only
@@ -246,7 +256,10 @@ pub fn skills_path_for(
             candidate.display()
         ));
     }
-    Ok(Some(SkillsDest(candidate)))
+    Ok(Some(SkillsDest {
+        path: candidate,
+        keep_existing,
+    }))
 }
 
 /// Whether `candidate` really lands outside `worktree` once the filesystem
@@ -313,8 +326,11 @@ fn contained_subdir(worktree: &Path, dir: &str) -> Option<PathBuf> {
 /// [`skills_path_for`] resolved for the worker's profile.
 ///
 /// Each pack is replaced wholesale rather than merged into, so a worktree that
-/// somehow already has one cannot end up with a half-updated copy. Returns the
-/// ids that were installed.
+/// somehow already has one cannot end up with a half-updated copy. The one
+/// exception is a destination the repository shares (`ConventionAt`): a pack
+/// directory that is already there belongs to the repository and is left
+/// untouched, never overwritten or trimmed. Returns the ids that were
+/// installed.
 pub fn install(
     src: &Path,
     dest: &SkillsDest,
@@ -327,19 +343,31 @@ pub fn install(
     }
 
     let dest_root = dest.path();
+    let keep_existing = dest.keep_existing;
     std::fs::create_dir_all(dest_root)
         .map_err(|e| format!("failed to create {}: {e}", dest_root.display()))?;
 
+    let mut installed = Vec::new();
     for id in &wanted {
         let dest = dest_root.join(id);
+        // `symlink_metadata`: a dangling link is still somebody's entry.
+        if keep_existing && dest.symlink_metadata().is_ok() {
+            crate::logf!(
+                "skills",
+                "pack {id} not installed: {} already exists and is left untouched",
+                dest.display()
+            );
+            continue;
+        }
         // A leftover from an older bundle must not survive underneath the new
         // one; `remove_dir_all` on a missing path is exactly what we want.
         let _ = std::fs::remove_dir_all(&dest);
         std::fs::create_dir_all(&dest)
             .map_err(|e| format!("failed to create {}: {e}", dest.display()))?;
         copy_dir_all(&src.join(id), &dest)?;
+        installed.push(id.clone());
     }
-    Ok(wanted)
+    Ok(installed)
 }
 
 /// Copy `src` into `dest` recursively, creating directories as needed.
@@ -589,6 +617,70 @@ mod tests {
         assert!(!dest.join("stale.md").exists(), "the old file survived");
     }
 
+    /// R678-O1: lifting Codex to `ConventionAt` made `install` run for it, and
+    /// `install` replaces a same-name directory wholesale. `.agents/skills` is
+    /// a place repositories commit their own skills to, so a built-in Codex
+    /// worker must leave an existing one alone - and still get the packs that
+    /// are missing.
+    #[test]
+    fn a_built_in_codex_worker_keeps_a_repository_skill_of_the_same_name() {
+        let dir = TempDir::new("skills-codex-keep");
+        let src = fake_bundle(dir.path(), &["taste-skill", "minimal"]);
+        let worktree = dir.path().join("worktree");
+        let own = worktree.join(".agents").join("skills").join("taste-skill");
+        std::fs::create_dir_all(&own).expect("mkdir");
+        std::fs::write(own.join(SKILL_FILE), "repository-specific instructions").expect("write");
+        std::fs::write(own.join("local-notes.md"), "ours").expect("write");
+
+        let codex = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "codex")
+            .expect("codex");
+        let dest = skills_path_for(&worktree, &codex.caps.skills)
+            .expect("accepted")
+            .expect("a destination");
+        let installed = install(&src, &dest, None).expect("install");
+
+        assert_eq!(installed, vec!["minimal".to_string()]);
+        assert_eq!(
+            std::fs::read_to_string(own.join(SKILL_FILE)).unwrap(),
+            "repository-specific instructions"
+        );
+        assert_eq!(
+            std::fs::read_to_string(own.join("local-notes.md")).unwrap(),
+            "ours"
+        );
+        assert!(!own.join("references").exists(), "bundled files leaked in");
+        assert!(dest.path().join("minimal").join(SKILL_FILE).is_file());
+    }
+
+    /// The protection above is for `ConventionAt` only: the other discovery
+    /// modes keep replacing a same-name pack, as before.
+    #[test]
+    fn the_claude_and_flag_destinations_still_replace_an_existing_pack() {
+        for discovery in [
+            SkillsDiscovery::Convention,
+            SkillsDiscovery::Flag {
+                flag: "--skills-dir".into(),
+            },
+        ] {
+            let dir = TempDir::new("skills-replace-others");
+            let src = fake_bundle(dir.path(), &["taste"]);
+            let worktree = dir.path().join("worktree");
+            let dest = skills_path_for(&worktree, &discovery)
+                .expect("accepted")
+                .expect("a destination");
+            let old = dest.path().join("taste");
+            std::fs::create_dir_all(&old).expect("mkdir");
+            std::fs::write(old.join("stale.md"), "old").expect("write");
+
+            install(&src, &dest, None).expect("install");
+
+            assert!(!old.join("stale.md").exists(), "{discovery:?} kept it");
+            assert!(old.join(SKILL_FILE).is_file());
+        }
+    }
+
     #[test]
     fn nothing_stored_and_nothing_enabled_both_mean_everything() {
         let available = vec!["a".to_string(), "b".to_string()];
@@ -653,7 +745,10 @@ mod tests {
                     dir: "./.agents/skills".into()
                 }
             ),
-            Ok(Some(SkillsDest(worktree.join(".agents").join("skills"))))
+            Ok(Some(SkillsDest {
+                path: worktree.join(".agents").join("skills"),
+                keep_existing: true,
+            }))
         );
     }
 
@@ -741,7 +836,10 @@ mod tests {
         let worktree = Path::new("/tmp/wt");
         assert_eq!(
             skills_path_for(worktree, &SkillsDiscovery::Convention),
-            Ok(Some(SkillsDest(skills_path(worktree))))
+            Ok(Some(SkillsDest {
+                path: skills_path(worktree),
+                keep_existing: false,
+            }))
         );
         // A flag says where to look, not where to put them.
         assert_eq!(
@@ -751,7 +849,10 @@ mod tests {
                     flag: "--skills-dir".into()
                 }
             ),
-            Ok(Some(SkillsDest(skills_path(worktree))))
+            Ok(Some(SkillsDest {
+                path: skills_path(worktree),
+                keep_existing: false,
+            }))
         );
         // Nothing to read means nothing to copy - the caller skips the work,
         // and this is `Ok`, not an error: it is the normal case for codex.
