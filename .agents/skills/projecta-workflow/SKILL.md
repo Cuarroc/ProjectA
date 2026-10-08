@@ -46,8 +46,9 @@ per provider: `docs/setup/README.md`. Check your machine with
   build slot: `export CARGO_TARGET_DIR=$HOME/cargo-targets/projecta-<a|b|c>`
   and `CARGO_BUILD_JOBS=1` or `2` (on the dev PC `$HOME` is `%USERPROFILE%`;
   slots elsewhere: point `CARGO_TARGET_DIR` there and set
-  `PROJECTA_BUILD_SLOTS_ROOT` so `dev:agent-check` finds them). At most 2–3
-  builds at once; check free RAM first. **Never set `CARGO_PROFILE_*`** — it invalidates the whole cache.
+  `PROJECTA_BUILD_SLOTS_ROOT` so `dev:agent-check` finds them). Build concurrency
+  follows AGENTS.md rule 9 and Build slots; check current RAM/processes/slot first.
+  **Never set `CARGO_PROFILE_*`** — it invalidates the whole cache.
 - Read exit codes unmasked: `| tail` swallows the status.
 
 ## 3. Red first — commit trailers
@@ -125,6 +126,5 @@ who asks the user.
    refresh it; only to resolve a real conflict — merge, never rebase or
    force-push. Labels: `do-not-merge` keeps a PR out of the queue; `priority`
    (coordinator only) moves it to the front; `conflict` is set and cleared by
-   Mergify. Workers never merge by hand; only the coordinator may, as an
-   emergency exception when the queue hangs or Mergify is down.
-   Details: `docs/setup/mergify.md`.
+   Mergify. Merge authority follows AGENTS.md's ten core rules; use Mergify,
+   never infer a manual bypass from this skill. Details: `docs/setup/mergify.md`.
