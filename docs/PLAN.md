@@ -1,305 +1,339 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand Kopf/Priorität: 07.10.2026, PLAN-L0-P0; Quellenbasis `3db340774ca84e60024b8b1e36d414f8ad9766e7`. Die übrigen M1–M5-Tabellen sind historische Paketstände, kein vollständiger Liveabgleich.
-Dieses Dokument ist der **einzige** Plan. `docs/MASTERPLAN.md` ist nur noch ein
-Verweis hierher; die alten Fassungen von PLAN, MASTERPLAN und STAND liegen
-unverändert unter `.pa/archiv/` (`*_2026-09-24.md`). Ältere Pläne:
-`docs/archive/plaene-2026-09/`. Wer hier nichts findet, arbeitet an nichts.
+Stand: 08.10.2026 (Entwurf v3). Git-Basis: `origin/main` 1c09ebb;
+PR-Zwischenstände nach Koordinator-Auftrag vom 08.10., ohne neue Online-Prüfung.
+Dieses Dokument ist der **einzige** Plan. Andere Plandateien
+sind untergeordnete Unterpläne oder Archiv (Liste am Ende). Neue Arbeit entsteht nur
+hier. Wer hier nichts findet, arbeitet an nichts.
 
-> **Für Agenten:** Die Datei ist groß. Lies nur diesen Kopf und „Für den Nutzer",
-> suche dann dein Paket mit `grep -n "<ID>" docs/PLAN.md` und lies die Zeile
-> samt Lane-Schlüssel. Entscheidungs-Inbox und „Gestrichen/Geparkt" nur bei Bedarf.
+> **Für Agenten:** Lies „Für den Nutzer“, die Regeln und die Tabelle deines Ziels.
+> Suche dein Paket mit `grep -n "<ID>" docs/PLAN.md`. Anhang A und B sind
+> maschinenlesbar und historisch; dort entsteht keine neue Arbeit.
 
 ## Für den Nutzer
 
-1. **Jetzt zuerst IDEAS-L0:** eine erreichbare Ideensammlung: Text speichern,
-   nach Neuladen wiederfinden, bearbeiten, Kategorie/Priorität setzen und suchen/sortieren.
-   M2 und die übrigen Release-Meilensteine bleiben erhalten; ihre Häkchen sind kein Livebeleg.
-2. **Was du entscheiden musst:** die Entscheidungs-Inbox unten. Fragen kommen
-   gebündelt dorthin, nicht einzeln in den Chat.
-3. **Was du am PC tun musst:** W1-20 (zweites Setup), SETUP-14, später W3-02,
-   W3-03, W3-07 und die Abnahme jedes Meilensteins.
+1. **Erstes Ziel (Z1): der Denkraum wird fertig und kommt mit v1.6.0 heraus.** Er zieht
+   als `tools/denkraum/` ins öffentliche ProjectA-Repo, in kleinen Paketen (DR-01 bis
+   DR-17, einschließlich DR-01a). Den Release selbst entscheidest du.
+2. **Danach (Z2): Setup und Entwicklung reparieren.** Regelwerk 2.0, Denkraum startet von
+   selbst, der Taktgeber (Pacer) läuft, Reviews durch fremde Anbieter haben feste Wege,
+   schwere Arbeit läuft auf dem Server, Agenten werden nach Verbrauchstempo verteilt.
+3. **Z3: der Rest von v1.6.0** (zwei PRs in Prüfung, `main.rs` kleiner machen, Changelog).
+4. **Z4: Wichtiges, das liegen geblieben ist** (Schlüssel-Sicherung, Server-Platte,
+   Windows-Testfehler, Audit-Reste).
+5. **Was du tun musst:** die Entscheidungs-Inbox unten. Dringend: E14 (Sicherung des
+   Update-Schlüssels) und V16-F3 (Start nach Update ohne Journal).
 
-4. **Priorität vom 07.10.: L0-Ideensammlung zuerst** ersetzt für diesen
-   ausdrücklich beauftragten Ausbau den alten 04.10.-Freeze. Erfassen einer Idee
-   genehmigt keine Umsetzung; neue Ideen starten keine automatischen Agentenjobs.
+Fünf Lanes ziehen parallel (siehe „Lanes“). Die vier Nahtstellen laufen nur seriell.
+Schwere Arbeit (Rust-Builds, Reviews, Playwright) läuft auf dem Server.
 
-**Release-Strang:** [v1.6.0](plan/v1.6.0/plan.md) bleibt mit allen übrigen
-Paketen, Sicherheitsgates und offener Langzeitnachbeobachtung erhalten.
-Dieser Prioritätsabgleich erteilt keine neue Tag-/Release-/Continuous-Freigabe.
+## Statuswerte
 
-**Ziel:** ProjectA und DevHQ werden im Alltag benutzbar; zuerst die Ideensammlung.
-Continuous bleibt bis zu seiner gesonderten Abnahme aus. Historische Releasebaselines
-und `STAND.md` (04.10.-Snapshot) ersetzen keine datierte Prüfung des aktuellen Kandidaten.
+Grundwerte je Paket: **Geplant**, **Bereit**, **In Arbeit**, **In Prüfung**,
+**Erledigt**, **Blockiert**, **Verschoben**, **Entfallen**. „Bereit“ heißt: Vorgänger
+erfüllt, kein offener PR, keine Dateikollision, Owner und Abnahme stehen fest.
+„Angenommen, Mergify ausstehend“ und „Entwurf“ gehören zu „In Prüfung“;
+„wartet“ gehört zu „Blockiert“. Angenommen heißt noch nicht gemergt.
 
-## Aktive Ziele und verbindlicher L0-Schnitt
+Stufe A/B/C nach AGENTS.md Regel 5. Ort: **PC**, **Server** oder **egal**.
+Jedes Paket ≤ 300 geänderte Zeilen einschließlich Tests und Hilfsdateien.
 
-[Ideenfließband V1.0](#ideas-l0-v1-0) steht vollständig mit unveränderten 198 Zeilen in diesem Dokument als historischer Anforderungs-/Übergabestand. Aktuellen Status, Freigaben und Verträge führt ausschließlich dieser Masterkopf. Cloud-/Assistentenfassungen sind historische Übergaben, keine synchronisierte zweite Planquelle; PA r05iwt erhält den bestätigten Ref erst nach Integration.
-Root-Auftrag und Site-Amende: Child `ec223b75-7972-4555-a442-43e0e32c8fcd`, Chief-Mail `msg-0muy8gvba-939fb23b`, 07.10.2026 14:59 UTC. PM besitzt nur diesen Dokumentenschnitt, Gesamtowner IDEAS-L0 ist Root; Chief disponiert, Root prüft FIT und nimmt ab.
-Vorhersage vor Vorbereitung: vorhandener Masterplan plus kompletter Teilplan spart eine neue Planarchitektur und macht L0 ohne Editor/Graph ausführbar. Unvalidiert; ein Dokumentabschluss beweist keine nutzbare Lieferung.
+## Z1 — Denkraum release-fertig für v1.6.0
 
-| Ziel / bestehender Auftrag | Wirkung, Umfang / Nichtziele | Owner / Vorgänger | Abnahme / Evidenz / Status | Nächster Schritt / Blocker / Stand UTC |
-|---|---|---|---|---|
-| IDEAS-L0 / PLAN-L0-P0 `ec223b75-7972-4555-a442-43e0e32c8fcd` | dauerhaft erfassen, bearbeiten, wiederfinden; kein Planeditor/Graph/Pilot/Autorecherche | Root Gesamtziel; PM cwqxbk Dokument; Backend mctdww; UI d567gh; Chief Integration/FIT an Root | P0 In Prüfung; Vorbereitung tatsächlich15:05:57Z, Source noch nicht gestartet; Produktlieferung offen; Quellbasis oben, V1.0-SHA329a53ca…124b2c; Zuweisung ist kein Runtime-Start | vollständiger Diff/Metadatenvertrag → Root; anschließend Backend/UI und echte Nutzerabnahme; 07.10.15:00:47 |
-| DD-RECEIPT `285001a5-ede9-4940-b039-42d0dd892e96` | bestehende Frage-Quittungsanzeige, disjunkt zu L0 | alleiniger UI d567gh; bestehender V2-Receiptvertrag | Verschoben nach L0; Child pending, Root15:10:09Z; 495 ALL NOT FIT, unimplementiert | ganze Programme/23 Fälle/Pins erhalten; keine zweite Revision/Integration; Frageanzeigebug blockiert Ideensammlung nicht |
-| V16-ARCH-D4 `b9606dd4-4dab-460c-9229-a47699702f6d` | restliche API-Entlastung; kein L0-Vorgänger/Releasebeleg | alleiniger API-Owner Root; Part4 Mergify #629 auf3db3407 | In Prüfung laut Root15:20Z: [PR631](https://github.com/Cuarroc/ProjectA/pull/631)/1d4b5bc, eigene Gates0, beide CI37631238380 erfolgreich, Sonnet ACCEPT; kein Merge | zweiter Vendor403, Reviewgate offen; keine frische PM-CI-/Sourceprüfung, Chief API seriell |
+Abnahme Z1 (alles muss belegt sein):
 
-Verbindliche acht Nutzerstatuswerte: Root-Original `msg-0muy9i618-c05a9ee8`, 07.10.2026 15:28:14.348 UTC, vollständig im P0-Child; Chief-Mail `msg-0muy9ivvz-44910681`. B-STATUS ist damit geklärt. Zuweisung allein ist nicht In Arbeit.
+- P1-Store angenommen (DR-02 bis DR-07 gemergt, Gates grün).
+- Vollständige P2-Oberfläche mit Kategorie, Prioritäts-/Stationsfilter und Sortierung
+  (DR-08 bis DR-14), einschließlich R1-Fix (`app.js:349`, Neuaufbau beim Polling) mit
+  rotem Test zuerst.
+- P3-Live-Schaltung mit Schreibpause, Sicherung und metadatensicherem Rückweg (DR-16).
+  Rückweg = vollständige Pause, P1-Store und aktuelles Ledger bleiben; nie ein älteres
+  Ledger nach angenommenen Schreibvorgängen zurückspielen.
+- Start ohne manuelle Secret-Eingabe (DR-15).
+- Alles gemergt mit grünen Gates und den Reviews der Stufe.
+- Anleitung in 5 Schritten und Changelog-Eintrag (DR-17).
+- Der Release v1.6.0 ist Elias’ Entscheidung (V16-RELEASE).
 
-| Status | Bedeutung |
+Root-Entscheide 07.10. 23:13 UTC: **D1** verhaltensgleicher Modul-Split, keine
+Größenausnahme. **D2** keine interne Agenten-ID im öffentlichen Code oder in Tests;
+`DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed; Umsetzung in DR-06.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| DR-01 | Gerüst `tools/denkraum/`, Gate-Zeile in `scripts/ci/gates.sh`, Hygiene-Check (LF-Regel in `.gitattributes`, kein State-Pfad im Repo) | Seniorentwickler | – | PC | B | angenommen, Mergify ausstehend (PR #635) | `bash scripts/ci/gates.sh lane prepush` Exit 0; neue Gate-Zeile läuft die Denkraum-Tests | 55ea21ce |
+| DR-01a | Überlauf im Hygiene-Check beheben, roter Test zuerst; vor DR-02 mergen | Seniorentwickler | DR-01 | Server | B | Geplant | Überlauf-Test vor Fix rot, danach grün; `bash scripts/ci/gates.sh lane prepush` Exit 0; Merge vor DR-02 | – |
+| DR-02 | Ledger-Modell als Modul, Split-Beweis (verhaltensgleich) | Seniorentwickler | DR-01, DR-01a | Server | A | In Prüfung (PR #636) | FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt | 55ea21ce, b0e90b72 |
+| DR-03 | DeskStore-Kern | Seniorentwickler | DR-02 | Server | A | Geplant | Store-Tests grün, Revision/Konflikt verlieren keine Daten | 55ea21ce |
+| DR-04 | Antworten, Quittungen, Benachrichtigungen | Seniorentwickler | DR-03 | Server | A | Geplant | Tests für Antwort/Quittung/Dedupe grün | 55ea21ce |
+| DR-05 | P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, `userPriority`) | Seniorentwickler | DR-03 | Server | A | Geplant | Metadaten-Tests grün, Grenzfälle rot vor Fix | 55ea21ce |
+| DR-06 | HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: `DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed | Seniorentwickler | DR-04 | Server | A | Geplant | Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test | 55ea21ce |
+| DR-07 | Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import | Seniorentwickler | DR-06 | Server | C | Geplant | Testsuite grün im Gate | 55ea21ce |
+| DR-08 | UI-Hülle `index.html` + Style, byte-genau auf Stand B1 | UX-Architekt | FIT vorbereitet, Root-FIT-Abnahme; DR-01 | egal | B | Geplant | Byte-Vergleich mit B1-Kandidat; prepush Exit 0 | 55ea21ce, 6713479b |
+| DR-09 | App-Teil Fragen | UX-Architekt | DR-08 | egal | B | Geplant | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
+| DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | UX-Architekt | DR-08 | egal | B | Geplant | Ideen-Ablauf wie B1, Harness grün | 55ea21ce, 5945accc |
+| DR-11 | UI-Harness auf `@playwright/test` portieren (nur relative Pfade) | UX-Architekt | DR-10 | Server | B | Geplant | Harness läuft im Gate auf dem Server | 55ea21ce |
+| DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-10 | egal | B | Geplant | roter Test vor Fix, danach grün; Auswahl bleibt über 15-s-Poll erhalten | 98fa8267 |
+| DR-13 | Filter Priorität und Station | UX-Architekt | DR-12 | Server | B | Geplant | Filtertests grün | 98fa8267 |
+| DR-14 | Stabile Sortierung | UX-Architekt | DR-13 | Server | B | Geplant | Sortiertests grün | 98fa8267 |
+| DR-15 | Sicherer Start ohne manuelle Secret-Eingabe | Seniorentwickler | – | Server | A | Geplant | Start ohne Eingabe; kein Secret in Datei/Log/Commit (Secret-Scan Exit 0) | 55ea21ce |
+| DR-16 | P3-Live-Schaltung: Schreibpause, Sicherung, metadatensicherer Rückweg | Stabschef | DR-07, DR-14, DR-15 | PC | A | Geplant | Drill: Pause → Sicherung → Umschalten → Rückweg ohne Datenverlust, protokolliert | b0e90b72 |
+| DR-17 | Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum | Technischer Autor | DR-16 | egal | C | Geplant | Trockenlauf der 5 Schritte im PR-Text | 55ea21ce |
+
+Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.test.mjs`
+(358) überschreiten je 300 Zeilen; D1 erzwingt deshalb den Split.
+
+## Z2 — Setup und Entwicklung
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| Z2-PLAN-COMMIT | Plan v3 und Archiv gemeinsam als `docs/PLAN.md` und `docs/archive/plan-2026-10-08.md` übernehmen | Stabschef | – | egal | C | Geplant | Anhang A bytegleich; M1–M5 parsebar; `npm run test:hq` Exit 0; beide Dateien in derselben PR | – |
+| Z2-RULE10 | AGENTS.md Regel 10: einen Satz zu Nutzerfreigaben aus der Projekt-Memory ergänzen; Geld, Passwörter und Releases bleiben beim Nutzer | Stabschef | – | egal | C | Geplant | Ein Satz mit dieser Regel in AGENTS.md; `bash scripts/ci/gates.sh lane precommit` Exit 0; eigene PR | – |
+| Z2-REGELN | Regelwerk 2.0: Lane-A-Korrekturen (6) abschließen, Anweisungsdateien entschlacken (Lane C, Commit 6918bea), Altlasten-Audit liefert „Deine Regeln: bestätigen oder ändern“ | Stabschef + Codebase Archäologe | – | egal | C | In Arbeit | Lane-C-PR gemergt; `npm run dev:agent-check` Exit 0; Regel-Vorschläge R1–R5 in der Inbox entschieden | 77c993f3 |
+| Z2-PLANPARSER | `hq-parse.mjs`, `dev-hq.mjs` und `hygiene.mjs` lesen die Z-Tabellen (Spalte Status, 8 Werte); danach Anhang B entfernen | Implementierer · Claude | Z2-PLAN-COMMIT | Server | B | Geplant | `npm run test:hq` Exit 0; HQ zeigt Z1–Z4; prepush Exit 0 | – |
+| Z2-DOKSYNC | `KNOWN_ISSUES.md` „Offen“ bereinigen: KI-15, KI-16, KI-20 mit PR-Beleg; KI-33 bleibt „Kandidat“, bis ein Windows-Queue-Lauf mit der Änderung beobachtet ist | Stabschef | – | egal | C | Bereit | Jede verschobene Zeile nennt PR und Merge; KI-33 nur mit Windows-Queue-Lauf-ID und Dauer nach „Behoben“; precommit-Lane Exit 0 | – |
+| Z2-AUTOSTART | Denkraum startet nach der Windows-Anmeldung von selbst, ohne Secret-Eingabe | Desktop-App-Entwickler | DR-15, DR-06 | PC | A | Geplant | PC-Neustart → `127.0.0.1:4791` antwortet ohne Eingabe; kein Secret im Klartext | – |
+| Z2-PACER | Pacer läuft: Trigger mit Werkzeugen, aber nur lesend; Bericht alle 20 min | Stabschef | Inbox R5 | PC | C | Blockiert | drei Läufe nacheinander mit Bericht, keine Schreibaktion | – |
+| Z2-REVIEW | Zwei feste Fremdanbieter-Wege für Stufe A: Gemini/Cursor auf dem Server (Workspace Trust), Ollama Kimi K3 + GLM, Codex; je Weg eine Probe mit beobachtetem Modell | Git- und CI-Spezialist | Inbox WT | Server | C | Blockiert | Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben | c77f6955 |
+| Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
+| Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Architekt für Multi-Agenten-Systeme | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
+| Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
+
+## Z3 — Rest von v1.6.0
+
+Fertig heißt (Unterplan v1.6.0): alle Kernpakete gemergt und jede Naht unter
+Baseline. Gemessen 07.10. auf 1c09ebb: `api.rs` 7908 < 8091, `store.rs` 7224 < 7227,
+`bin/pa.rs` 6293 < 6490, **`main.rs` 5133, nicht unter 5133**.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| V16-ARCH-D4-05 | Queue-Routen aus `api.rs` (PR #631) | Implementierer · Codex, Abnahme Root | – | Server | A | angenommen, Mergify ausstehend | Merge über Mergify; `api.rs` 7858 | b9606dd4 |
+| V16-ARCH-D7 | Einstellungen nach `store/settings.rs` (PR #632) | Implementierer · Codex | V16-ARCH-D4-05 (Review seriell) | Server | A | In Prüfung (Gemini PASS, vollständig gelesen; wartet Root-Abnahme); Entwurf | Root-Abnahme am Kandidaten `e154e4d`; dann Ready und Merge über Mergify | 782d9e58 |
+| V16-06 | Start nach Update ohne Journal blockiert nicht stumm | MCP-Integrationsentwickler | Inbox V16-F3; Update-Drill | PC | A | Blockiert | roter Test zuerst; Drill Erfolg/Abbruch/Fehler | 2557db66 |
+| V16-UPD-CANCEL | Abbrechen-Knopf beim Update-Download (sonst ist der Drill „Abbruch“ unmöglich) | Desktop-App-Entwickler | – | PC | B | Geplant | roter Test zuerst; Drill „Abbruch“ möglich | – |
+| V16-ARCH-D2 | Doppelte Projektanlage in `main.rs` zusammenführen | Implementierer · Claude | V16-06 (Lane mn; Vorziehen: Inbox V16-D2) | Server | A | Geplant | `rg -c 'fn create_project' src-tauri/src/main.rs` → eine Umsetzung; `main.rs` < 5133 | – |
+| V16-ARCH-D5a | Diagnosebefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D2 | Server | A | Geplant | `main.rs` −150 Zeilen | – |
+| V16-ARCH-D5b | Einstellungsbefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D5a | Server | A | Geplant | `main.rs` −150 Zeilen | – |
+| V16-ARCH-D8a | Ereignisnamen als Konstanten in `main.rs` | Implementierer · Claude | V16-ARCH-D5b | Server | A | Geplant | `rg -n -F -e '"worker:status"' -e '"supervisor:notification"' src-tauri/src/main.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| V16-ARCH-D8b | Ereignisnamen in PTY | Implementierer · Claude | V16-ARCH-D8a | Server | A | Geplant | `rg -n -F -e '"pty:output:' -e '"pty:exit:' src-tauri/src/pty.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| V16-ARCH-D8c | Ereignisnamen im Frontend | Implementierer · Codex | V16-ARCH-D8b | egal | B | Geplant | `rg -n -e '["\x27\x60]worker:status' -e '["\x27\x60]supervisor:notification' -e '["\x27\x60]pty:output:' -e '["\x27\x60]pty:exit:' src` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `npm run typecheck` und `npm run test:unit` Exit 0 | – |
+| V16-ADR-A1 | ADR A1 (`ApiBackend` teilen) in `docs/decisions.md` entscheiden | Architekturberater Fable + Astra | – | egal | C | Bereit | `docs/decisions.md` A1 nicht mehr „Vorschlag (offen)“; precommit-Lane Exit 0 | – |
+| V16-ADR-A7 | ADR A7 (st-Lane teilen) | Architekturberater Fable + Architekturberater Astra | V16-NACHBEOB (zwei Wochenmessungen) | egal | C | Verschoben | Eintrag in `docs/decisions.md` | – |
+| V16-KI30 | KI-30 Windows-Flake: Restursache nach V16-01 | Performance- und Benchmark-Spezialist | – | Server | A | Geplant | neuer Beleg (Queue-Lauf-ID) vor Fix; danach 10 Queue-Läufe ohne KI-30 | – |
+| V16-03 | Tester-Kit: Installation, Rückmeldeformular, Grenzen | Implementierer · Codex | Inbox E16; frisches Windows-Konto (Nutzer) | PC | C | Blockiert | Trockenlauf im frischen Konto | – |
+| V16-CHANGELOG | CHANGELOG v1.6.0 und Release-Notiz | Stabschef | DR-17, alle Z3-Pakete | egal | C | Geplant | Eintrag `v1.6.0` über `v1.5.1` | – |
+| V16-RELEASE | Tag v1.6.0 (Beta-Regel x.y.0) | Elias | Z1, Z3 | PC | – | Geplant | Elias’ Entscheidung, danach Release-Pipeline grün | – |
+| V16-NACHBEOB | Zwei Wochenmessungen und 40 Queue-Läufe; Messgrößen-Leitfaden | Stabschef | v1.6.0 | Server | C | Verschoben | Wochenberichte BENCH-01/02 im Ticket | b8b16ec8 |
+
+## Z4 — Wichtig, aber liegen geblieben
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| Z4-ARCH-D1-REST | Vierten HTTP-Fehlertext-Klassifizierer `error_status` in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen | Implementierer · Codex | – | Server | B | Geplant | `rg -n "fn error_status" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| Z4-E14 | Update-Signierschlüssel offline sichern (verschlüsselter Export in deinen Passwort-Manager) | Elias | – | PC | – | Geplant | Sicherung vorhanden, Schlüssel nirgends im Klartext | – |
+| Z4-ARCH-11 | KI-24b: Test-DB-Wettlauf auf Windows reproduzieren und absichern (F6) | Implementierer · Claude | – | PC | A | Geplant | Vor Start betroffene Testdateien und RAM prüfen; bei `store.rs` auf V16-ARCH-D7 warten; roter Test auf Windows vor Fix, danach grün; prepush Exit 0 | – |
+| Z4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | Implementierer · Codex | V16-ARCH-D7 | Server | A | wartet #632 (store.rs) | roter Test zuerst; prepush Exit 0 | – |
+| Z4-R19-ST | Audit-Envelopes Ziel/Task, Claim/Checkpoint, Intent/Launch, Kandidat/Evidence/Review (M4-R19-02/03/04/07) | Implementierer · Codex | V16-ARCH-D7 (st-Naht) | Server | A | Geplant | je Pfad roter Test; je Paket ≤ 300 | – |
+| Z4-VERIFY | Offene Altzeilen prüfen: W1-03f-Rest, W3-03 (PC-Drills unbelegt), W3-07 (Produktionsschlüssel-Build), W1-18b (Codex-Probe), M4-Blocker-TOCTOU nach #306 | Codeprüfer · Claude | – | egal | C | Geplant | je Zeile Erledigt mit Beleg oder neues Paket | – |
+| Z4-SERVER-DISK | Server-Platte: alte Worktrees (~151 GB) aufräumen; erst Backup | Elias entscheidet, Stabschef führt aus | Inbox E17 | Server | – | Geplant | Platte < 60 %, Backup-Beleg | – |
+| Z4-RCLONE | Eigene rclone-`client_id` vor Ende 2026 | Elias | – | PC | – | Geplant | Backup läuft mit eigener ID | – |
+| Z4-SETUP-14 | Rest SETUP-14: tote Keys, Permission-Regeln | Elias | – | PC | – | Geplant | Liste abgehakt | – |
+| Z4-M5-01 | Testerrunde mit 3–5 externen Testern | Elias | V16-03, E16 | egal | – | Verschoben | Rückmeldungen festgehalten | – |
+| Z4-M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um | Root | Z1 | egal | – | Verschoben | Umfang festgelegt | – |
+
+## Lanes (5 parallel)
+
+| Lane | Reihenfolge | Ort |
+|---|---|---|
+| L1 Denkraum-Backend | DR-01 → DR-01a → DR-02 → DR-03 → DR-04 → DR-05 → DR-06 → DR-07; DR-15 | Server |
+| L2 Denkraum-UI | DR-08 → DR-09/DR-10 → DR-11 / DR-12 → DR-13 → DR-14; dann DR-16, DR-17 | egal / Server |
+| L3 Nähte (seriell) | api: #631 · st: #632 → Z4-R19-ST / Z4-R19-09 · mn: Z4-R19-09 **oder** V16-06 → D2 → D5a → D5b → D8a → D8b → D8c · pa: frei | Server |
+| L4 Setup/Dev | Z2-PLAN-COMMIT → Z2-PLANPARSER; Z2-RULE10, Z2-REGELN, Z2-DOKSYNC, Z2-BOARD, Z2-REVIEW, Z2-RAM, Z2-ROUTE, Z2-PACER, Z2-AUTOSTART | egal |
+| L5 Doku/PC | V16-ADR-A1, Z4-ARCH-11, V16-UPD-CANCEL, V16-KI30, V16-CHANGELOG | PC / egal |
+
+Nie zwei aktive Pakete auf derselben Naht (`api.rs`, `main.rs`, `store.rs` + `store/`,
+`bin/pa.rs`). Neue V2-Pakete starten vor Z1 nur, wenn eine Lane leer ist und Root zustimmt.
+
+## Ready-Queue (Belegstand 07.10. 23:45 UTC)
+
+Bereit: V16-ADR-A1, Z2-DOKSYNC, Z2-BOARD. Für diese Zeilen sind keine
+Vorgänger, offenen PRs oder Dateikollisionen verzeichnet; Owner und Abnahme stehen
+fest. Belege: interne Liste des Koordinators. Vor jedem Start erneut prüfen.
+DR-01 und DR-02 sind in Prüfung; DR-08 wartet auf DR-01 und FIT-Abnahme.
+Z4-ARCH-11 braucht den Datei-/RAM-Check; Z4-R19-09 wartet auf #632.
+
+## Schnitt nötig (> 300 Zeilen)
+
+| Was | Größe | Nächster Schritt |
+|---|---|---|
+| ARCH-12 `ApiBackend` aus `main.rs` | ~715 | nach V16-ADR-A1 in Domänenports schneiden |
+| DD-RECEIPT Quittungsanzeige (285001a5) | 495 | Root wählt minimalen Schnitt nach Z1 |
+| Planeditor Teil02 (73aa18e3) | ≥ 315 | nach Z1 neu schneiden |
+| DD-R2-B2-02 Katalog-Grenze (31e75c00) | 340 | nach Z1 neu schneiden |
+
+## Park-Liste
+
+| Was | Wann wieder |
 |---|---|
-| Geplant | beschrieben, noch nicht ausführungsbereit |
-| Bereit | Voraussetzungen und Abnahme geklärt |
-| In Arbeit | tatsächliche Bearbeitung begonnen |
-| In Prüfung | Ergebnis vorhanden, Abnahme offen |
-| Erledigt | Abschlusskriterien erfüllt und belegt |
-| Blockiert | konkrete Voraussetzung verhindert Fortsetzung |
-| Verschoben | bewusst späteres Lieferfenster |
-| Entfallen | durch dokumentierte Entscheidung aus Umfang genommen |
-
-### L0-Mapping auf vorhandene Arbeit
-
-P0 im importierten V1.0-Text = PLAN-L0-P0; dieser Schnitt besitzt ausschließlich `docs/PLAN.md` (Tier C). Keine Runtime-/Gate-/Supportänderung; kompletter materialisierter Diff einschließlich Unterstützung muss ≤300 ALL sein.
-P1 = bestehender DD3b `b0e90b72-c328-4fe5-8c12-b158c8ab6e83`, alleiniger Backendowner mctdww: Store/API-Vertrag, Metadaten, Daten-/Replay-/CAS-Regressionen; keine UI-Dateien. Bestehende DD1/DD3a-Vorgänger done laut Ticket; DD3b insgesamt weiter offen.
-P2 = bestehender DD2 `6713479b-4e9b-46a6-98f4-3b8c0c76344f`, alleiniger UI-Owner d567gh: Eingabe/Liste/Detail, Suche/Filter/Sortierung, Entwürfe und Stationsband; keine Store-/Serverdateien. Start erst nach Root-FIT des P1-Vertrags und Chief-Abgrenzung der freigegebenen UI-Dateien; keine neue parallele Ticketserie.
-P3 = Chief/Root bestehende Betriebs-/Integrationsverantwortung nach P1/P2: Backup, kontrollierte Integration und tatsächlicher Nutzerzugriff. Ein neuer Child/Arbeitsbeginn ist hier nicht behauptet. HTTP200 lokal ist kein Handy-/Öffentlichkeitsbeleg.
-P4–P10 bleiben mit allen Originalanforderungen im folgenden V1.0-Abschnitt; keine vorgezogene Umsetzung. Teil02-A `73aa18e3-8f3b-4f92-93e8-279e858b6d01` ist nach L0 verschoben, Original/tests/transport/pins erhalten; kein dritter Lauf. Studio `7e16930a-2dee-449b-ad8c-7ed642d8bb7b` und Pilot `44ac79d9-48fb-4fb7-8eb7-ee35608bd964` sind keine L0-Abhängigkeiten.
-B3-Store ED6A560E und W3-r app51C5D7E8 sind Root-berichtete deployte Quellen, keine frisch hier auditierte oder synchronisierte Workbench/PlanDraft-Komposition. Angenommen, integriert, erreichbar und abgenommen bleiben getrennt. Backend/UI prüfen ihre vollständige tatsächliche Basis vor Source-Start.
-
-### Modellzuordnung: geplant, konfiguriert, wirksam, erfolgreich benutzt
-
-Direkter Nutzerauftrag/Root-Amende07.10.: nur Fable5.1, Opus5.5, Sonnet5.5 und Codex; kein älterer stiller Fallback. Pflege dieses Abschnitts Root/PM, Dispatch ausschließlich Chief. Kein Wechsel laufender PM-/Backend-/UI-Kontexte. Tabelle Stand Root-Beleg15:09Z/Chief-Mail `msg-0muy8wfxd-8b83643c`; Planung ist keine Ausführungs-/Qualitätszusage.
-| Rolle / vorhandener Owner | Geplant (Begründung) | Konfiguriert | Wirksame Sitzung | Erfolgreich benutzt / datierter Beleg |
-|---|---|---|---|---|
-| Root / Chief | Codex Sol/medium für Priorität/Integration, laufenden Kontext halten | kein Wechsel in diesem Paket | exakte neue Turn-/Startbelege beim jeweiligen Owner; hier nicht frisch geprüft | bisherige operative Arbeit; keine neue Modell-/Qualitätsmessung |
-| PM cwqxbk | Codex Sol; Sonnet5.5 nur bei Bedarf am sauberen Übergang für begrenzte Doku | unverändert; Ticketalias opus ist kein Threadbeleg | eigener turn_context07.10.15:25:49Z: gpt-6.1-sol/medium; served unbekannt | P0-255ALL-Materialisierung15:05:57Z, keine Sonnet-PM-Sitzung |
-| Backend mctdww / UI d567gh | laufendes Codex bis L0-Handoff, Autor-/Evidenzbindung erhalten | keine Umstellung | neue eigene Owner-Startbelege erforderlich | vorhandene Paketbelege bleiben kandidatengebunden; kein L0-Erfolg behauptet |
-| Reviewer jl1dcg | Sonnet5.5/high für fremde OpenAI-Kandidaten, vorhandenes R1 wiederverwenden | offline: Alias sonnet + cliOptions `--model claude-sonnet-5-5`, Effort high gespeichert/readback (Root) | neuer Sidebar-Start mit Pin unbewiesen | echtes Sonnet5.5-R1 laut Root; kein zweiter Vendor durch anderen Claude-Modellnamen |
-| Implementierer et2cqi | Opus5.5/medium für schwierige isolierte Umsetzung | offline: opus-5.5[1m] + `--model claude-opus-5-5`, Effort medium gespeichert/readback (Root) | neue Implementierersitzung unbewiesen | Root-Serverprobe15:05:08.355Z: actual0/MODEL_ACCESS_OK, modelUsage claude-opus-5-5/firstParty; Zugriff, keine Implementierungsqualität |
-| Architekturberater dga50i | Fable5.1/high für konkrete folgenreiche Architekturfrage | offline: fable + `--model claude-fable-5-1`, Effort high gespeichert/readback (Root) | neue Beratersitzung unbewiesen | Root-Serverprobe15:05:10.969Z: actual0/MODEL_ACCESS_OK, modelUsage claude-fable-5-1/firstParty; Zugriff, keine Beratungsqualität |
-Root-Beleg im P0-Child15:11:10Z: vorhandene PC/server CLIs2.1.291/2.1.287, Max/claude.ai/firstParty; native full-ID-Picker wurde abgewiesen, Alias blieb. cliOptions-Readback gilt nur für nächsten Start; keine wirksame Sitzung daraus. Proben/MCP-/Tool-/Writes deaktiviert; keine API-Key-/PAYG-/Installfreigabe.
-Kontingente sind datiert: PM native Codex21% USED/Session unbekannt; Root Claude27% Session/2% Woche (15:01Z), keine neue Quotenmessung hier. Vor jedem echten Start frische Auth/Quota/RAM/Naht-/Modellbelege. Zugriff auf Modell ist keine Source-Review/FIT-/Lieferabnahme.
-Alle Claude-Modelle gehören zum selben Anbieter. Tier A benötigt weiterhin zwei geeignete andere Anbieter als der Autor; zweiter Fremdanbieter ist laut Root offen (Zen/NVIDIA403, kein RAMfehler). Root qualifiziert bestehenden authentifizierten zulässigen Weg; bis tatsächlichem gebundenem Review sichtbarer Blocker. Keine zusätzlichen Reviewer/Agenten/Quota-/Runtimeänderungen.
-
-### Minimaler additiver Ideenmetadatenvertrag (Root-Disposition 07.10.15:20 UTC)
-
-Root15:20Z hat flache optionale Request-/Revisionsfelder genehmigt (ersetzt den früheren Envelope-Vorschlag): `category` = getrimmter Text ≤80 UTF-16-Codeunits, leer erlaubt; `userPriority` = `urgent|high|normal|later` (UI dringend/hoch/normal/später). Keine Pflichtoptionen zur Freitextidee, keine Metadaten im Originaltext und keine neue Schema-/Jobarchitektur.
-Fehlende historische Metadaten nur lesend als `category=""` (UI „Nicht eingeordnet“) / `userPriority="normal"` projizieren; alte gespeicherte Objekte, Originaltexte, Request-Payloads und Antwortbytes nicht rückwirkend umschreiben. `questionPriority` ist niemals `ideaPriority`/`userPriority`.
-Neue explizite Metadaten werden Teil der normalisierten Request-Identität und des neuen append-only Ideensnapshots; gleicher RequestId/geänderte Metadaten muss409 bleiben. Bei vollständig ausgelassenen Metadaten exakt den bisherigen kanonischen Replaypfad/Bytes erhalten; historische Replays bleiben historische Antworten.
-Neue CAS-Revisionen übernehmen bei ausgelassenen Feldern die aktuelle Kategorie/Priorität erst nach der bestehenden Replayprüfung; historischer Replay wird nicht neu ausgerechnet. Nur explizite Eingabe ändert Werte, kein Default-Reset. Neues Schreiben verlangt explizite CAS-Revision, veralteter neuer Edit409; vorhandene atomare Schreib-/Recoverypfade verwenden.
-Titel/Text/Quelle/Herkunft und alte Ideen-/Fragen-/Antwort-/Receipt-/Planreferenzen erhalten; `actor/source` sind Provenienz, niemals Freigabe. `incoming` heißt Eingang, nicht bereits geprüft; automatische Bewertungen bleiben sichtbar ungeprüft. Vormerken erzeugt keinen Agentenauftrag und keine Root-/Nutzerfreigabe.
-Pflichtkompatibilität P1: alte Requests/byteidentischer Replay nach Neustart; neue Defaults, alle vier Prioritäten, Kategoriegrenze; Metadaten-only Edit, omit-preserve, changed-request409, stale-CAS409; Fehlwrite/Retry ohne Datenverlust; unveränderte Geschwister/Receipt-/Provenienzfälle. Tatsächliche Tests erst im zuständigen Paket, nicht hier behauptet.
-P2 liest nur erkannte Felder, sucht Text/Titel, filtert Kategorie/Priorität/Station und sortiert stabil; zeigt Herkunft und „Noch nicht geprüft“ sowie vollständiges Stationsband mit unfertigen Stationen „Wird ergänzt“. Alte Inhalte ohne Felder bleiben bedienbar; Wechsel zur tatsächlich gewählten Idee gegen erhaltenen ungesicherten Entwurf prüfen, bevor Bearbeiten als geliefert gilt; kein Editor/Graph als Voraussetzung.
-L0-Abnahme: Elias speichert drei Ideen, bearbeitet eine samt Kategorie/Priorität, sucht/sortiert, lädt neu; Inhalt bleibt gleich. Speicherfehler erhält den Entwurf; CAS-Konflikt/replay/restart verlieren nichts. Funktionierender Nutzerlink mit Zugriffsvoraussetzungen und tatsächlicher Prüfung, relevante unabhängige Reviews und kontrollierte Integration sind erforderlich; P0-Dokuabschluss erfüllt dies nicht.
-
-<a id="ideas-l0-v1-0"></a>
-
-## Ideenfließband-Anforderungen und historischer Übergabestand (V1.0)
-
-Der folgende vollständige Originaltext ist unverändert importiert (SHA329a53ca…124b2c, 198 Zeilen). Sein Lieferprotokoll/Statuslog und seine Cloud-/Ticket-Pflegebeschreibung sind historischer Übergabestand; ausschließlich der obige PLAN-Kopf und aktuelle datierte Dispositionen führen Status/Freigaben. Unterpläne entstehen erst mit abhakbarem Umfang; hier wird keine weitere Plandatei angelegt.
-
-<!-- PLAN-L0-P0 V1.0 BEGIN -->
-# ProjectA: Ideenfließband – Umsetzungsplan
-Version 1.0 · 7. Oktober 2026 · Auftraggeber: Elias · Ausführungsverantwortung: bestehender ProjectA-Orchestrator
-
-## 1. Verbindlicher Auftrag und erste Lieferung
-
-Elias möchte jetzt möglichst bald Ideen im Denkraum erfassen, langfristig sammeln, geordnet wiederfinden und bereits erste Einordnungen sehen. Die Oberfläche soll während ihrer Weiterentwicklung benutzbar bleiben. Das vollständige Fließband wächst um diesen nutzbaren Kern herum. Neue Ideen sollen laufende Entwicklungsarbeit nicht unterbrechen.
-
-Diese Anweisung autorisiert den Orchestrator zur Umsetzung dieses Produktausbaus, zum Einsatz seiner Agenten, geeigneter Workflows und des vorhandenen Servers. Vorhandene Kosten-, Sicherheits- und Betriebsgrenzen bleiben verbindlich; „volle Power“ ist keine unbegrenzte Beschaffungserlaubnis. Der Orchestrator organisiert verfügbare Kapazitäten selbst und meldet konkrete Grenzen statt pauschal auf weitere Freigaben zu warten. Es wird keine neue QA-Bot-Delegation beauftragt.
-
-**Lieferziel L0: Elias kann die Website öffnen, eine Textidee speichern, nach Neuladen wiederfinden, bearbeiten und nach Kategorie, Wichtigkeit und Bearbeitungsstand sortieren.** Ein sichtbarer Abschnitt „Noch nicht geprüft“ verhindert, dass erste Vermutungen wie fertige Bewertungen erscheinen. Eine einfache Stationsübersicht zeigt, wo Ideen stehen. Die aufwendige Graphansicht, automatische Recherche und komplette Patchplanung dürfen diese erste Lieferung nicht blockieren.
-
-**Nach L0 folgen unmittelbar** dateibasierte Anhänge, nachvollziehbare automatische Einordnung und die Planungspipeline. Falls vorhandene Funktionen sichere Anhänge oder Kategorien bereits unterstützen, in L0 wiederverwenden; keine funktionsfähigen Teile künstlich zurückhalten.
-
-Für L0 zunächst den vorhandenen erreichbaren Denkraum nutzen. „Live“ bedeutet zuerst eine tatsächlich erreichbare, geprüfte Nutzeroberfläche auf dem vereinbarten Zugangsweg. Lokales HTTP200 beweist weder Zugriff vom Handy noch eine öffentliche Bereitstellung. Der Orchestrator nennt den funktionierenden Link und seine Zugriffsvoraussetzungen. Serverbetrieb bevorzugt vorhandene authentifizierte Verbindungen; private Inhalte werden nicht ungefragt öffentlich exponiert.
-
-## 2. Ausgangslage und Evidenzgrenze
-
-Dieser Plan baut auf ProjectA-Projektnotizen und Backlogständen sowie dem aktuellen Nutzerauftrag auf. Er ist kein neuer Quellcodeaudit und keine abgeschlossene visuelle Abnahme.
-
-Dokumentiert sind ein revisioniertes lokales DeskStore-Ledger, Workbench-Ausarbeitungen, Planentwürfe mit festen Ideenreferenzen sowie ein bestehender API-/UI-Unterbau. Die Notizen nennen GET /api/state, GET /api/inbox und POST /api/plan-drafts. Vor Erweiterungen prüft der jeweilige Owner den aktuellen Vertrag im tatsächlichen Quellstand; hier werden keine zusätzlichen Endpunkte als bereits vorhanden behauptet.
-
-Die Projektmemory vom 07.10.2026 berichtet wiederhergestellte Denkraum-Erreichbarkeit auf localhost:4791 mit HTTP200. Zugleich wurde Planeditor-Teil02 A-R1 wegen mindestens315 statt erlaubter300 ALL-Zeilen terminal als NOT FIT geparkt. Der vollständige Planeditor darf deshalb nicht stillschweigend Voraussetzung der ersten Ideensammlung werden. Die Root-Disposition für bestehende Paketregeln bleibt erforderlich. Bei einem Split funktionale Fälle und vollständige Transport-/Testbestandteile erhalten; keine versteckten Hilfsprogramme oder automatische weitere Vorbereitungsrunde.
-
-Bestehende Referenzen für die Arbeitszuordnung:
-- Planeditor-Gesamtumfang: 41e7c585-21e5-42b7-8085-5edb1c12402a.
-- Geparkter Teil02: 73aa18e3-8f3b-4f92-93e8-279e858b6d01.
-- Studio-Vorbereitung: 7e16930a-2dee-449b-ad8c-7ed642d8bb7b.
-- Begrenzter Koordinationspilot: 44ac79d9-48fb-4fb7-8eb7-ee35608bd964.
-
-Der Orchestrator prüft den aktuellen Status dieser Tickets vor Zuordnung. Vorhandene Arbeit fortsetzen oder ausdrücklich abgrenzen; keine doppelte Umsetzung und keine erledigten Tickets ohne Beleg wieder öffnen.
-
-## 3. Produktmodell: zwei miteinander verbundene Bereiche
-
-**Ideensammlung:** nahezu reibungsfreie Erfassung, Suche, Sortierung, langfristige Planung. Eine Idee ist noch kein Entwicklungsauftrag.
-
-**Fließband:** begrenzte Vorbereitung ausgewählter Ideen bis zum prüfbaren Plan, anschließend Nutzerfreigabe, Patchplanung und Ausführung. Ein Eingang mit vielen Ideen erzeugt nicht automatisch ebenso viele aktive Agentenaufträge.
-
-Eine Idee besitzt Originaltext, Anlagen, Herkunft und Versionen. Daneben stehen bearbeitbare Interpretation, Kategorien, Bewertungen, offene Fragen und Planstände. Der Originaltext bleibt erhalten. Agenten verbessern Formulierung und Struktur, verändern aber keine Nutzerabsicht unbemerkt. Ergänzungen heißen „Vorschlag“, Unsicherheiten „Hypothese“.
-
-### Stationen und eindeutige Austrittskriterien
-
-| Station | Ergebnis | Weiter, wenn |
-| --- | --- | --- |
-| Eingang | dauerhaft gespeicherter Originaltext und Herkunft | Speicherung bestätigt |
-| Einordnen | verständlicher Titel, Kategorie, Tags, erste Nutzen-/Risikoeinschätzung | Einordnung vorhanden, Unsicherheit sichtbar |
-| Prüfen | Machbarkeit, Abhängigkeiten, ähnliche Ideen, Stolperfallen | wesentliche Fragen beantwortet oder konkret markiert |
-| Ausarbeiten | recherchierter Kontext und nachvollziehbarer Planentwurf | Aufgaben, Umfang, Abnahme und offene Entscheidungen beschrieben |
-| Zur Entscheidung | lesbare, feste Planversion mit Alternativen | Elias genehmigt genau diese Version oder verlangt Änderung |
-| Bereit | genehmigter und ausführbarer Plan | Kapazität und Voraussetzungen für Patch vorhanden |
-| Eingeplant | verbindliches Paket mit Owner und Abhängigkeiten | Orchestrator startet tatsächlich |
-| Umsetzung | belegte Arbeitsstände und Ergebnisse | Integration und relevante Abnahme nachgewiesen |
-| Geliefert | erreichbare Funktion und Beleg | Ergebnis für Nutzer verfügbar |
-
-„Wartet auf Elias“, „Wartet auf Abhängigkeit“, „Blockiert“, „Zurück zur Ausarbeitung“ und „Geparkt“ sind zusätzliche Zustände, keine erfundenen Fortschrittsschritte. Eine große Idee kann mehrere Lieferteile und Patches haben. Der Elternstatus ergibt sich aus deren tatsächlichem Umfang.
-
-Die vollständige Stationsfolge wird zunächst angezeigt, auch wenn nur frühe Stationen arbeiten. Unfertige Stationen sind eindeutig als „Wird ergänzt“ gekennzeichnet. Gespeicherte Ideen bleiben dort vorgemerkt; nach Aktivierung verarbeitet ein kontrollierter Rückstandslauf sie ohne Neueingabe.
-
-## 4. Freigabe und Priorisierung
-
-Agenten und Orchestrator dürfen Ideen vorschlagen und bis zum entscheidungsreifen Plan vorbereiten. **Agentenideen dürfen erst nach ausdrücklicher Freigabe durch Elias verbindlich eingeplant oder umgesetzt werden.** Herkunft bleibt im UI sichtbar. Für Nutzerideen ist das Erfassen allein ebenfalls keine Umsetzungsfreigabe. Dieser Produktausbau selbst ist durch den aktuellen Auftrag autorisiert.
-
-Freigabe bindet Ideenrevision, Planversion und relevanten Umfang. Wesentliche Änderungen an Ziel, Aufwand, Risiko oder Abnahme machen eine alte Freigabe überprüfungsbedürftig. Empfang, Speichern, automatische Bewertung und Root-Quittierung ersetzen keine Freigabe.
-
-Erste Sortierung einfach und erklärbar:
-- Nutzerpriorität: dringend / hoch / normal / später; vom Nutzer jederzeit korrigierbar.
-- Nutzen: erwartete Wirkung plus kurze Begründung.
-- Aufwand: klein / mittel / groß / unbekannt; später Bandbreite mit Annahmen.
-- Risiko: niedrig / mittel / hoch / ungeprüft; konkrete Stolperfallen separat.
-- Abhängigkeiten und frühester sinnvoller Zeitpunkt.
-- Evidenz: ungeprüft / plausibel / belegt; Herkunft und Prüfdaten.
-
-„Schwere“ wird bei Fehlern als Schweregrad verwendet. Bei Featureideen heißt das Feld Risiko oder Komplexität; ein großes Feature ist nicht automatisch ein schwerer Fehler.
-
-Agenten geben Empfehlungen, Elias kann sie ändern. Keine undurchsichtige Gesamtnote als alleinige Wahrheit. Die Umsetzung berücksichtigt Nutzen, Dringlichkeit, Abhängigkeiten, Aufwand, Unsicherheit und verfügbare Kapazität. Große wertvolle Ideen werden bei Bedarf geteilt, nicht automatisch nach hinten verdrängt. Wartende Ideen regelmäßig neu ansehen, damit kleine schnelle Aufgaben sie nicht dauerhaft verdrängen.
-
-Langfristige Planung nutzt Jetzt / Als Nächstes / Später sowie Themen oder Zielhorizonte. Patchnummern werden nur bei realer Planung verbindlich. Überschreitet ein Paket seine Kapazität, benennt der Orchestrator den verschobenen Teil, Ursache, Auswirkung und neues Planungsfenster.
-
-## 5. UI und UX: schnell erfassen, gut überblicken, gezielt vertiefen
-
-Bestehende ProjectA-Komponenten, Navigation, Typografie, Abstände, Farben und Materialwirkung übernehmen. Keine unabhängige Designwelt daneben schaffen. Die erste Iteration poliert Hierarchie, Lesbarkeit und Zustandsführung; ein großer visueller Neubau gehört nicht auf den kritischen Pfad.
-
-**Desktop:** links kompakte Navigation mit Eingang, Sammlung, Fließband, Entscheidungen und Roadmap; in der Mitte filterbare Liste oder Board; rechts bei Auswahl der Ideendetailbereich. **Mobil:** zuerst Erfassung und Liste, Details auf eigener Ansicht; keine drei schmalen Spalten.
-
-Die primäre Aktion lautet „Idee festhalten“. Ein Textfeld genügt; Titel und Einordnung können später folgen. Mehrere Absätze dürfen mehrere Gedanken enthalten: Trennvorschläge anbieten, vor einer tatsächlichen Aufteilung bestätigen lassen. Enter in langen Texten erzeugt keinen überraschenden Versand.
-
-Eine kompakte Karte zeigt Titel, Herkunft, aktuelle Station, Nutzerpriorität, Nutzen, Risiken und nächste Aktion. Detailansicht ergänzt Original, Interpretation, Anlagen, Verlauf, Fragen, Quellen, Plan und Freigabe. Erweiterte Felder schrittweise offenlegen.
-
-Filter kombinieren: Kategorie, Tag, Priorität, Status, Herkunft, Zeitraum, Patch. Sortierung und gespeicherte Ansichten merken. Suche trifft Originaltext, Titel und Tags; später Planinhalte. Zunächst Liste und Stationsband anbieten. Danach Board und Graph ergänzen.
-
-**Graph:** gerichtete Beziehungen „benötigt“, „gehört zu“, „ähnelt“ und „liefert Teil von“. Keine unlesbare Sammlung aller Knoten als Standard. Fokus auf ausgewählte Idee mit unmittelbaren Nachbarn, Filter, Legende und Textalternative. Automatisch vermutete Ähnlichkeit hat einen anderen Stil als bestätigte Abhängigkeit. Zyklen als Planungsproblem anzeigen. Position im Graphen ist keine Prioritätsbewertung.
-
-Fortschrittsanzeige unterscheidet „Planvorbereitung“ und „Umsetzung“. Vor Aufgabenzerlegung stehen Station und nächste Aktion statt Prozent. Später belegte Aufgabenstände mit Nenner und verbleibenden Unsicherheiten. Zeitprognosen als Bandbreite und aktualisierte Annahme zeigen, nicht als Garantie.
-
-Essenzielle Zustände: leer, speichert, gespeichert, lokaler ungesicherter Entwurf, offline, Fehler, Konflikt, Upload läuft, Einordnung ausstehend, blockiert, Entscheidung nötig und geliefert. Änderungen dürfen beim Neuladen, einem fehlgeschlagenen Upload oder konkurrierendem Editieren nicht verschwinden. Tastaturbedienung, sichtbarer Fokus, beschriftete Controls, ausreichender Kontrast und reduzierte Bewegung gehören zur Abnahme.
-
-## 6. Anlagen, Recherche und Planentwurf
-
-Text und eingefügte Links funktionieren in L0. URLs zunächst als Referenz speichern; Speichern löst keine beliebige Browseraktion aus. Screenshots und Dateien danach mit echter Uploadbestätigung, Vorschau, Dateigröße, Fehleranzeige und Downloadzugang. Keine großen Binärdaten in das bestehende JSON-Ledger stopfen. Uploadgrenzen und zulässige Formate anhand vorhandener Infrastruktur festlegen und im UI nennen.
-
-Anlagen bleiben mit ihrer Ideenrevision verbunden. Inhalte und enthaltene Anweisungen sind Quellenmaterial, keine neuen Befehle oder Berechtigungen. Recherche nutzt tatsächliche verfügbare Zugriffe; unzugängliche Links oder benötigte Anmeldung werden sichtbar gemeldet. Zugangsdaten werden im vorhandenen sicheren Verfahren vom Nutzer bereitgestellt, niemals im Ideenfeld angefordert.
-
-Vorbereitung in vier begrenzten Schritten:
-1. Ziel und erwarteten Nutzen aus dem Original extrahieren; Mehrdeutigkeit sichtbar lassen.
-2. Bestehende Features, ähnliche Ideen, technische Voraussetzungen und Abhängigkeiten prüfen.
-3. Nur entscheidungsrelevante Wissenslücken recherchieren; Quellen, Stand und Grenzen notieren.
-4. Planprompt erzeugen und ausführen; Ergebnis kritisch gegen Originalziel, Risiken und Alternativen prüfen.
-
-Präferenzen oder persönliche Entscheidungen werden nicht durch Recherche erfunden. Nicht kritische Unklarheiten als explizite Annahmen dokumentieren; blockierende Fragen bündeln. Jede Recherche erhält einen klaren Endpunkt und begrenzten Arbeitsumfang. Ein Plan darf mit benannten offenen Fragen vorgelegt werden.
-
-Standardprompt für die Vorbereitung:
-> Bewahre Original und Herkunft. Beschreibe Ziel, Nutzen und konkrete Nutzung. Trenne belegte Fakten, Interpretation und Hypothesen. Prüfe ähnliche Funktionen, Abhängigkeiten, Machbarkeit und die stärksten Einwände. Recherchiere nur fehlende entscheidungsrelevante Fakten. Erstelle die kleinste nutzbare Lieferung und anschließende Ausbaustufen mit Aufgaben, Abnahmen und Risiken. Kennzeichne Annahmen und Agentenergänzungen. Binde Ergebnis an die aktuelle Ideenrevision. Beantrage keine Umsetzung und simuliere keine Nutzerfreigabe.
-
-Jeder gespeicherte Plan enthält Problem, Ziel, Nutzungsablauf, Umfang, Ausnahmen, vorhandene Grundlage, Alternativen, Tasks, Abhängigkeiten, Aufwandannahmen, Akzeptanzkriterien, Risiken, offene Entscheidungen, Quellen und genaue Version.
-
-## 7. Daten und technische Leitplanken
-
-Vorhandene Ledger-/Workbench-/PlanDraft-Verträge erweitern statt eine zweite Wahrheit einzuführen. Die folgenden Felder sind ein Vorschlag für die Vertragserweiterung und müssen gegen den aktuellen Quellstand geprüft werden:
-
-Idee: ID, Revision, Original, Titel, Herkunft, Kategorien/Tags, Nutzerpriorität, Bewertungsstände, Beziehungen, Anlagenreferenzen, Station, Wartegrund, nächste Aktion, Planreferenzen, Zeitpunkte. Plan: stabile ID, unveränderliche Version, Ideenreferenz, Aufgaben/Abnahmen, Freigabereferenz, Patchzuordnung. Job: Eingangsrevision, Typ, Status, Owner, Start/Ende, Wiederholungskennung, Fehler und Ergebnisreferenz.
-
-Bestehende Compare-and-swap-Prüfungen und atomare Schreibwege erhalten. Veraltete neue Schreibversuche erzeugen einen verständlichen Konflikt; nicht still überschreiben. Wiederholter Auftrag derselben Referenz erzeugt keine zweite Entscheidung oder doppelte Umsetzung. Event-Duplikate sind von einem ausdrücklich neuen Job zu unterscheiden.
-
-Die Sammlung muss vor Start automatischer Jobs bereits dauerhaft speichern. Ein fehlgeschlagener Agentenlauf darf die Idee nicht verlieren. Rückstandsläufe, Revisionen und Neustarts benötigen wiederaufnehmbare Zustände. Backup, Export und kontrolliertes Wiederherstellen vor Migrationen vorsehen. Kein vorschneller Datenbankwechsel nur wegen „vielen Ideen“; zunächst gemessene Grenzen bestimmen.
-
-Als vorgeschlagene Lastfälle 1.000 Ideen und anschließend 10.000 synthetische Ideen verwenden. Listen werden begrenzt geladen; Graphen zeigen fokussierte Ausschnitte. Rohdaten und lange Anlagen nicht für jede Karte vollständig laden. Produktionsähnliche Antwortzeiten messen und vom Owner begründete Grenzwerte vor Abnahme festhalten.
-
-## 8. Umsetzungspakete und Parallelisierung
-
-| Paket | Inhalt / Ownerrolle | Voraussetzung | Abnahme |
-| --- | --- | --- | --- |
-| P0 | Root + PM: Quellstand, Zugriff, bestehende Tickets und Paketgrenzen disponieren | aktueller Auftrag | Owner, erster kritischer Pfad, Blocker und Lieferprognose dokumentiert |
-| P1 | Backend: sichere Erfassung, Revision, Liste und Bearbeitung wiederverwenden/ergänzen | P0 | Idee überlebt Reload/Neustart; Konflikt und Fehlversuch verlieren keine Daten |
-| P2 | Frontend: Eingabe, Liste, Filter, Sortierung und Detail | P0, abgestimmter P1-Vertrag | Elias kann vollständigen L0-Ablauf bedienen |
-| P3 | Betrieb/Integration: erreichbarer Zugang, stabile Instanz, Backup und L0-Verifikation | P1/P2 | echter Nutzerlink, getesteter Speicherweg, Rückfallmöglichkeit |
-| P4 | Backend + Frontend: Anlagen und Vorschau | L0, Uploadvertrag | Datei bleibt zugeordnet; Fehler/Limit/Rechte verständlich |
-| P5 | Vorbereitung: Kategorien, Dublettenhinweise, Nutzen/Risiko mit Provenienz | P1, Jobvertrag | konkrete Einordnung sichtbar/korrigierbar; unbekannt bleibt unbekannt |
-| P6 | Pipeline: Jobs, begrenzte Recherche und revisionierter Plan | P5, bestehende PlanDraft-Verträge | Ergebnis referenziert richtige Revision; Retry erzeugt kein Duplikat |
-| P7 | Freigabe + Roadmap + Orchestrator-Handoff | P6 | exakte Planfreigabe; tatsächlicher Empfang/Start/Abschluss getrennt |
-| P8 | Board, fokussierter Graph, Langfristansichten | stabile Beziehungen aus P5/P7 | Filter/Textalternative/Zyklen; keine Verzögerung von L0 |
-| P9 | Last, Mobilpolitur, Export/Wiederherstellung | inkrementell nach L0 | gemessene Grenzen und bestandene relevante Regressionen |
-| P10 | Arbeitsregeln, Skills/Prompts/Trigger und begrenzter Kritikerpilot | bestehender Pilotauftrag | messbare Entlastung, keine neue dauerhafte Koordinationslast |
-
-P1 und P2 parallel nach einem kurzen verbindlichen Vertragsschritt. P3 kann Zugriff, Betrieb und Abnahmevorbereitung parallel bearbeiten. P5 fachlich vorbereiten, ohne vorzeitig eine konkurrierende Datenimplementierung zu beginnen. Gemeinsame Schema-/Integrationsänderungen seriell verantworten.
-
-Bestehende Regel „maximal drei parallele Implementierungen“ bleibt Ausgangspunkt, bis Root sie anhand aktueller Ressourcen und zulässiger Disposition verändert. Zusätzliche Kapazität kann konkrete Recherche, UX-Spezifikation, Regression, Betriebsarbeit und Review übernehmen. Auslastung ohne verwertbaren Output ist kein Erfolg.
-
-Der vorhandene Server darf für geeignete Builds, Prüfungen und Agentenarbeit genutzt werden. Vor Start Ressourcen, authentifizierten Zugang und Rückgabeweg feststellen. Keine neuen Server kaufen und keine zweite unkontrollierte Denkrauminstanz starten. Modelle und Reasoning nach Aufgabe wählen: anspruchsvolle Planung/Architektur starke Modelle; Routineausführung angemessen dimensionieren. „Superagent“ beschreibt Verantwortung und Fähigkeit, keine unbelegte Produkteigenschaft.
-
-Fast Mode für Führungsagenten muss bei ausdrücklichem Nutzerbefehl aktivierbar und als Präferenz festgehalten sein; Worker nicht pauschal aktivieren. Die jetzige Leistungsanforderung ersetzt keinen konkreten Fast-Schalterbefehl und keine Prüfung vorhandener Provider-/Kostenregeln.
-
-## 9. Blocker, Bestätigungen und Cloud-Dokument
-
-Kein Agent stoppt geräuschlos. Ein Blocker meldet betroffene Aufgabe, konkreten Grund, Zuständigkeit, bereits vorbereiteten nächsten Schritt und benötigte Nutzerhandlung. Fehlende Anmeldung soweit möglich vorbereiten; Elias führt nur den unvermeidbaren interaktiven Schritt aus. Danach funktionierenden Zugriff prüfen und Arbeit tatsächlich wieder aufnehmen.
-
-Der Orchestrator bestätigt:
-1. Dokument persönlich gelesen und Auftrag verstanden.
-2. Tatsächlichen Start mit Ticket/Owner und erster Lieferstufe.
-3. Erste nutzbare Lieferung mit funktionierendem Zugangslink.
-4. Spätere Paketabschlüsse oder konkrete Blocker mit Belegen.
-
-Dieser Cloud-Plan ist fachliche Referenz. Tickets bleiben die Ausführungsquelle und enthalten Owner, Status und Abhängigkeiten. Cloud-Zugriff wird geprüft, nicht aus dem Link angenommen. Eine lokale gleichlautende Markdown-Fassung dient als zugängliche Übergabe, falls Agenten keinen Cloud-Zugang haben.
-
-Dokumentpflege hat einen benannten Owner; andere Agenten schlagen gezielte Änderungen vor. Änderungen an Anforderungen, Beschlüssen und Abnahme werden versioniert. Reine Fortschrittsupdates stehen im Lieferprotokoll. Widersprüche zwischen Cloud, lokaler Fassung und Ticket werden ausdrücklich aufgelöst statt still übernommen.
-
-## 10. Die stärksten Einwände und ihre Behebung
-
-| Kritik | Konsequenz |
-| --- | --- |
-| „Ein komplexes System verhindert endlich nutzbare Ergebnisse.“ | L0 separat liefern; Graph, Rat und vollständige Planung nicht als Vorbedingung. |
-| „Automatische Ordnung ist nur Scheingenauigkeit.“ | Begründungen, Provenienz, Unsicherheit und Korrekturmöglichkeit; keine unbelegte Punktzahl. |
-| „Viele Ideen lösen teure Dauerrecherche aus.“ | Sammlung von aktiver Vorbereitung trennen; begrenzte Warteschlange und Priorität. |
-| „Die ersten Ideen gehen bei Umbauten verloren.“ | Dauerhafte IDs, Migration/Backup/Export; gespeicherte Rückstände nachziehen. |
-| „Agenten setzen ihre eigenen Wünsche durch.“ | Original/Herkunft erhalten, exakte Nutzerfreigabe für Agentenpläne. |
-| „Ein Graph ist hübsch, aber unbedienbar.“ | Fokussierte Beziehungen; Liste und Textalternative bleiben vollständig. |
-| „Volle Auslastung produziert Reviewstau und Konflikte.“ | Parallelität nach Abschlusskapazität; ein Integrationsowner pro Nahtstelle. |
-| „Der Kritiker produziert Kritik statt Nutzen.“ | Gemeinsame Ergebnisziele; nur belegte Fälle, begrenzter Pilot, Jury nur bei materieller Uneinigkeit. |
-| „Größenregeln sind inzwischen die Hauptarbeit.“ | Root entscheidet zulässigen funktionalen Split oder Parken; kein wiederholtes Zählen ohne Lieferweg. |
-| „Live bedeutet hier bloß lokaler Dienst.“ | Nutzerzugriff gesondert testen; echten Link und Reichweite nennen. |
-
-## 11. Abnahme, Erfolg und sofortiger Arbeitsauftrag
-
-Die erste reale Nutzerprüfung: Elias erfasst drei unterschiedliche Ideen, verändert eine, setzt Priorität und Kategorie, sucht sie wieder, lädt die Seite neu und findet denselben Inhalt. Mindestens eine Idee bleibt sichtbar als noch ungeprüft; ihre spätere Bearbeitung ist vorgemerkt. Ein simulierter Speicherfehler zeigt einen erhaltenen Entwurf statt einer falschen Erfolgsmeldung. Bestehende Inhalte und Quittierungswege bleiben funktionsfähig.
-
-Weitere Pflichtfälle der zuständigen Entwickler: konkurrierende Revisionen, wiederholtes Ereignis, Neustart während Job, alte Planfreigabe nach wesentlicher Änderung, Agentenidee ohne Freigabe, blockierte Abhängigkeit und abgeschlossene Lieferung mit tatsächlichem Beleg. Testumfang nach realer Änderung wählen; vorhandene passende Prüfungen verwenden. Es wird kein QA Bot gestartet.
-
-Erfolg zuerst messen an: Zeit bis zur ersten wirklich nutzbaren Sammlung, erfolgreich erhaltenen Eingaben, Zeit vom Erfassen bis Einordnen, Anteil nachvollziehbarer Bewertungen und sichtbar aufgelösten Blockern. Später Plan-Durchlaufzeit, Nacharbeit und gelieferter Nutzen ergänzen. Anzahl Agenten, Kritikpunkte oder Nachrichten ist keine Erfolgsmetrik.
-
-**An den Orchestrator:** Lies den Plan vollständig. Ordne ihn den bestehenden Tickets zu und benenne den kleinsten sicheren L0-Lieferweg. Dispone bestehende Paket-/Zugriffsblocker innerhalb deiner Befugnisse. Starte konkrete parallele Aufgaben mit eindeutigen Ownern und nutze den vorhandenen Server sinnvoll. Liefere zuerst die erreichbare, dauerhafte Ideensammlung; entwickle die übrigen Stationen danach weiter, während Elias bereits Ideen sammelt. Bestätige echten Empfang, tatsächlichen Start und den ersten benutzbaren Stand jeweils mit Belegen. Melde nur reale Grenzen; behauptete Ausführung ersetzt keine Lieferung.
-
-### Lieferprotokoll
-
-| Stand | Beleg | Status |
-| --- | --- | --- |
-| Plan V1.0 erstellt | Cloud-Seite und lokale Markdown-Fassung | Dokument fertig |
-| Root hat persönlich gelesen | noch einzutragen | nicht bestätigt |
-| L0 tatsächlich gestartet | Ticket / Owner / Arbeitsbeleg einzutragen | nicht bestätigt |
-| L0 für Elias erreichbar | Link / Zugriffsprüfung / Abnahme einzutragen | nicht bestätigt |
-
-<!-- PLAN-L0-P0 V1.0 END -->
-
-## Meilensteine
+| v2.0-Pakete (Unterplan v2.0), Draft-PRs #613 (V2-H2), #614 (README-Galerie), #574 (UI-v2-Richtungen) | nach Z1; Disposition der Drafts in der Inbox |
+| Ideenfließband P4 und P10 | nach Z1; bewusst geparkt (Koordinator, Priorität G2, 08.10.): Z1 zuerst |
+| Ideenfließband P5–P9 (Vorbereitung, Pipeline, Freigabe, Board, Last) | nach Z1 |
+| DD-RECEIPT, Planeditor, Studio S1a, DD-R2-Katalog, Pilot „Lernende Entwicklungskoordination“ (44ac79d9) | nach Z1 |
+| W5 außerhalb des Kerns, DEVFLOW-Motor und -Ausbau, HQ2-04 und HQ2-06–10 | nach der Oberflächen-Entscheidung |
+| W1-09c, W1-12, W4-03a, W3-09, W1-24c (KI-29), W2-02b-Rest, INV-SEC-PRIVATE-PATHS | bei Bedarf |
+| Einschalten des Dauerbetriebs (W4-03 gebaut und gesperrt) | Entscheidung des Nutzers |
+| „Später“-Themen vom 25.09. (Protokollsteuerung, Vorzeige-README, Prompt-Kompression, Command Palette, Remote-Board, hermes-agent, Dependabot-Majors, Tauri-Plugins, OmniRoute-Cutover) | wie bisher notiert |
+| Ideen aus AgentsRoom (UX, HQ, Sicherheit, Orchestrierung, Abhängigkeiten, Flakes) | interne Liste des Koordinators, Disposition `park` |
+| Offene HQ-Bugs in `docs/dev-hq/BUGS.md` (leere Worker, NT-17, TTL-Flake, ollama-coder, Capture) | nach Z2 |
+| Orchestrator-lokal: L1–L6, BENCH-03, Tagesradar T5 | interne Liste des Koordinators, kein Repo-Paket |
+
+## Später
+
+Agentenideen kommen hierher. Je Zeile: Nutzen / Aufwand / Risiko.
+Ein Ja des Nutzers macht daraus ein Paket.
+
+| ID | Vorschlag | Nutzen / Aufwand / Risiko |
+|---|---|---|
+| VOR-RUNNER-PIN | Linux-Läufe auf ein festes Runner-Image statt `ubuntu-latest` (**Frist 19.10.**; `ci-shape.sh:130` verlangt heute `ubuntu-latest`) | hoch / S / mittel (CI-Form ändern) |
+| VOR-HQ-CODEQL | HQ-Teil in CodeQL getrennt auswerten | mittel / S / niedrig |
+| VOR-HQ-GH | GitHub-Lage im HQ (rotes `main`, rote PRs, Konflikte) | mittel / M / niedrig |
+| VOR-STAND-CHECK | Check: STAND.md führt keine erledigten Pakete | mittel / S / niedrig |
+| VOR-MUTATION | Mutationstest-Pilot (1–2 Module) | mittel / M / Abo-Verbrauch |
+| VOR-ENTLASTUNG | 50 Punkte zur Entlastung des Orchestrators (Rollen trennen, weniger Mails, Kurzstand) | hoch / M / niedrig |
+| VOR-ULTRA | Regeln für Ultra-/Workflow-Einsatz mit Budget und Ledger | mittel / S / Kosten |
+| VOR-FE-HISTORY | `HistoryView.tsx:47` verschluckt den IPC-Fehler | niedrig / S / niedrig |
+| VOR-QUEUE-REST | `queue.rs`: blockierter Eintrag ohne Zeit, negative Worker-Limits, 30-s-Sweep | mittel / M / Runtime eingefroren |
+| VOR-FU-REST | Folgepunkte FU-521-a, FU-524-a, FU-535-b, FU-544-a, FU-PIPE-hotfix | niedrig / S je / niedrig |
+| VOR-API-DESCRIPTOR | Descriptor-Datei unter Unix privat anlegen | mittel / S / niedrig |
+| VOR-SPAETER-593…597 | Headless-Abschlussvertrag, sicheres Aktionsmuster, Startcheck-Doku, PTY-Diagnose, M4-W2-Merge-Vertrag (Texte im Archiv) | je mittel / S–M / niedrig |
+
+## Entscheidungs-Inbox
+
+| # | Frage | Empfehlung | Status |
+|---|---|---|---|
+| E14 | Update-Signierschlüssel offline sichern | ja, verschlüsselt in den Passwort-Manager; ohne Kopie geht das Update-Vertrauen bei Verlust verloren | offen, dringend |
+| V16-F3 | Start nach Update ohne Journal: gesperrt bleiben mit Anleitung, oder dem ersten Start vertrauen? | gesperrt mit Anleitung (fail-closed) | offen |
+| V16-F4 | Review-Fahrer auf den Server? | ja | offen |
+| V16-D2 | ARCH-D2 vor V16-06 ziehen, weil V16-06 auf V16-F3 wartet? | ja, Lane mn ist frei | offen (Root) |
+| WT | Gemini-/Cursor-Weg auf dem Server: Workspace Trust für den Review-Ordner | nur für den Review-Ordner | entschieden: Nutzerfreigabe F1 (08.10.) |
+| R1–R5 | Regel-Vorschläge: Stufe A neu fassen; 300-Zeilen-Grenze ohne Tests/Hilfsdateien; RAM-Gate nur für schwere Arbeit; Review-Bündel = Diff + Abhängigkeiten; Pacer-Trigger ohne Einschränkung, aber nur lesend | einzeln entscheiden | offen |
+| V2-OFFEN | v2.0-Fragen 5–9 und 11 | nach Z1 | offen |
+| PR-ALT | Draft-PRs #613, #614, #574 (Autor Grok bzw. alte UI-Richtung): schließen oder übernehmen? | #613 mit Z2-PLANPARSER abgleichen, dann schließen oder übernehmen; #614/#574 parken | offen |
+| E3 | Secrets in geschützte Environments, Required Reviewers für `release` | ja, einmal im Browser | offen |
+| E15 | Bleibt der gemietete Server? (laufende Kosten) | nach v1.6.0 mit Nutzen und Kosten bewerten | offen |
+| E16 | Lizenz und Geschäftsmodell vor externen Testern | vor V16-03 entscheiden | offen |
+| E17 | Alte Arbeitsbäume löschen (mit Backup) | ja, zusammen mit Z4-SERVER-DISK | offen |
+| M4-B | M4-Blocker `planning_access`: Projektrahmen mit #306 gemergt; ist die TOCTOU-Lücke damit erledigt? | über Z4-VERIFY prüfen, dann schließen | offen |
+| E18 | Matrixzeile 3: `resume` weiter gesperrt lassen oder urteilsgebunden bauen? | Sperre beibehalten, bis entschieden | offen; Nutzerbestätigung unbelegt |
+| E21 | Matrixzeile 2: Schalter gebaut und gesperrt; Einschalten später? | gesperrt lassen | offen; Nutzerbestätigung unbelegt |
+| E22 | Matrixzeile 16: unabhängigen Review im PR am selben Kandidaten anerkennen? | getrennt von einer App-Freigabe entscheiden | offen; Nutzerbestätigung unbelegt |
+| E23 | Benchmark mit fünf Aufgaben durchführen? Er verbraucht Abo-Kontingent | nur nach Nutzerfreigabe laufen lassen | offen; Nutzerfreigabe erforderlich |
+| TODO | Interne Liste des Koordinators: Copilot-Budget, Groq/OpenRouter-Keys (widerspricht „nur Abos“), Geldmodus | veraltete Punkte streichen | offen |
+
+## Entschiedene Fragen
+
+PLAN-1 ist durch PLAN-L0-SINGLE entschieden (07.10.): `docs/PLAN.md` bleibt
+der einzige Plan, v2.0 ist ein Unterplan. Q10 ist ersetzt; V2-FREEZE-1a/1b entfallen
+in ihrer alten Form, die Parser-Pflege übernimmt Z2-PLANPARSER.
+Der öffentliche Repo-Neustart ist erledigt: `c60f267` „Initial public release of ProjectA“.
+E1–E13 (außer E3), E19, E20, E24, E25, F1–F6, N1, N2, R19, W5-02b3 und
+ARCH-D4-PLAN stehen im Archiv und werden nicht neu gefragt.
+
+## Regeln für diesen Plan
+
+1. **Ein Plan.** Jedes Paket steht als eine Zeile in genau einer Z-Tabelle. Neue
+   Pakete entstehen nur hier; Unterpläne liefern Details, keine Pakete.
+2. **Freigabe.** Was Elias beauftragt oder angestoßen hat, gilt in Planreihenfolge als
+   freigegeben. Agentenideen kommen in den Abschnitt „Später“.
+3. **Größe.** ≤ 300 geänderte Zeilen einschließlich Tests und Hilfsdateien; Größeres
+   wird vor dem Dispatch geschnitten.
+4. **Nähte seriell**, Stufen nach AGENTS.md, roter Test zuerst bei jedem Bug.
+5. **Status nur mit Beleg** (Befehl, PR, Zeit). Historischer Text ist kein Live-Stand.
+6. **Keine Chronik hier.** Erledigtes kommt nach `docs/ERLEDIGT.md`, Geschichte ins Archiv.
+7. **Continuous bleibt eingefroren**, bis der Nutzer es freigibt.
+8. **CI-Geld:** Ziel 0 €; höchstens 20 € im Monat nur nach Freigabe.
+
+## Roadmap nach v1.6.0 (freigegeben 06.10.)
+
+Die freigegebene v2.0-Richtung bündelt die alten Etappen in einem großen Release.
+
+- v1.6.1: Fixrunde aus Testerrunde und Nachbeobachtung von v1.6.0.
+- v1.7.0: kein Zwischenrelease; Nähte und Erststart gehen in v2.0 auf.
+- v1.7.1: kein eigenes Endrelease der früheren v1.7-Etappe.
+- v1.8.0: kein Zwischenrelease; Projektrahmen und eine Oberfläche gehen in v2.0 auf.
+- v1.8.1: kein eigenes Endrelease der früheren v1.8-Etappe.
+- v1.9.0: kein Zwischenrelease; die frühere Betriebs-Etappe geht in v2.0 auf.
+- v1.9.1: kein eigenes Endrelease der früheren v1.9-Etappe.
+- v2.0.0: ein großes Release für eigene Entwicklung und Kundenaufträge; ein Core, drei Anbieter-Wege.
+
+## Unterpläne und Archiv
+
+| Datei | Rolle |
+|---|---|
+| `docs/plan/v1.6.0/plan.md` | Unterplan (Details zu Z3; keine eigenen Pakete) |
+| `docs/plan/v2.0/plan.md` | Freigegebener Unterplan nach Z1; PLAN-L0-SINGLE ersetzt Q10 |
+| `docs/plan/roadmap/` | Alter Fahrplan; Richtung in der kurzen Roadmap oben, Details durch v2.0 ersetzt |
+| `docs/MASTERPLAN.md` | Verweis; Archiv-Kandidat |
+| `docs/roadmap-2.0.md` | öffentliche Übersicht für Tester (bleibt, verweist hierher) |
+| [docs/archive/plan-2026-10-08.md](docs/archive/plan-2026-10-08.md) | Archiv: Ideenfließband V1.0, Modellzuordnung, Lieferprotokoll, Vision, Architektur-Rat, INV-Synthese, alte Inbox und Roadmap |
+| `.pa/task_continuous_devhq.md`, `.pa/continuous_acceptance_matrix.md`, `.pa/plan_projects_w5.md`, `docs/development/HQ2_CONTRACT.md`, `docs/ERLEDIGT.md` | Verträge und Belege, gelten weiter |
+
+Belegkorrektur zum historischen Anhang A: DF-00 bis DF-05 und DF-07 tragen
+`alt-` mit Codebeleg `src-tauri/src/development_plan.rs`. PR #70 ist ein
+geschlossener Queue-PR und kein Merge-Beleg für diese Pakete. Die eingefrorene
+Tabelle bleibt für den Parser unverändert; maßgeblich ist diese Korrektur.
+
+## Anhang A — DEVFLOW-Tabelle (Quelle des Planimports DF-04, unverändert)
+
+Der Planimport (`src-tauri/src/development_plan.rs`) liest genau diese Tabelle
+und erwartet alle 38 Zeilen DF-00 bis DF-37. Deshalb bleibt sie vollständig;
+der Status steht am Anfang der letzten Spalte. Die Zeilen sind nicht Teil der
+Meilensteine (DF-15b ist erledigt, PR #16).
+
+| ID | Paket / Agent / Scope | Nach | Konkretes Ergebnis und Abnahme |
+|---|---|---|---|
+| DF-00 | Bestandsabgleich · Architekt · DOC · S | — | Erledigt (PR #70). Live-Git, PR, offene HQ2/W-Gates, vorhandene Implementierungen und Fähigkeiten abgleichen; Pfad-Allowlist und Überlappungsmatrix für alle Pakete, keine doppelte Implementierung. |
+| DF-01 | Autonomie-Interview · Koordinator · DOC · S | DF-00 | Erledigt (PR #70). Entscheidungen zu Repo-Schreiben, Commit/Push, Merge/Release, Netzwerk/Installation, Secrets, destruktiven Aktionen, Isolation und Eskalation erfassen. |
+| DF-02 | Gemeinsame Desktop-Richtung · design-director · DOC · S | DF-00 | Erledigt (PR #70). Bestehende PC-Ansichten kritisch prüfen, Designvertrag mit Navigationshierarchie, Zuständen, Dichte und Live-Vorschau; Impeccable anwenden, Screenshots als Ausgangsevidenz. |
+| DF-03 | Domain-/Eventvertrag · Architekt · DOC · M | DF-00 | Erledigt (PR #70). Obige Verträge mit vorhandenen APIs abgleichen; Übergangstabelle, Fehlerfälle, Migration/Versionsstrategie und App/HQ-Parität festlegen; zwei unabhängige Reviews vor Integration der gemeinsamen Nahtstelle. |
+| DF-04 | Planimport · Backend · CORE · M | DF-03 | Erledigt (PR #70, DF-04a/b/c). Markdown-Pakete mit stabilen IDs und Quellenrevision projizieren; Tests für fehlende IDs, Zyklen, geänderte Quelle, Wiederimport ohne Duplikate. |
+| DF-05 | Plan-Lesezugriff · Integrator · SEAM/HOST · M | DF-04 | Erledigt (PR #70, DF-05a/b). Gemeinsamen lesenden App/HQ/CLI-Vertrag anbinden; identische Paketdaten und explizite Fehler statt leeren Erfolgs prüfen. |
+| DF-06 | Grafische Roadmap · Frontend · HQ · M | DF-02, DF-05 | **Geparkt (25.09.)** DF-06b hängt am Workflow-Motor (DF-11/16). DF-06a erledigt (PR #70). Ursprünglich: DF-06a erledigt (PR #70). Offen DF-06b: Ausführungszustände bereit/aktiv/erledigt nach DF-11/DF-16 mit belegter Paket-/Run-Bindung; bis dahin bleibt der Ausführungsstatus unbekannt. Hierarchie, Abhängigkeiten, kritischer Pfad, Quellenklick und Prioritätsgrund mit echtem Plan und leeren/fehlerhaften Daten prüfen. |
+| DF-07 | Desktop-Dichte · Frontend · HQ/APP · M | DF-02 | **Erledigt.** DF-07a–c über PR #70; DF-07d hat der Nutzer am 25.09. als erledigt bestätigt, die Sichtprüfung gehört zur M3-Abnahme. Ursprünglich: DF-07a–c erledigt (PR #70). Offen DF-07d: visueller PASS der React-Dichte (Code über PR #70 gemergt, `.pa/report_df07d_native_density.md`); DF-07 ist erst danach abgenommen. Komfortabel/Kompakt ändern messbar Zeilenhöhe, Abstand, Paneelgrößen und sichtbare Informationsmenge; Screenshots bei 1280×800 und 1920×1080, Tastatur und Zoom prüfen. |
+| DF-08 | Ausführungsidentität · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DF-08d hängt an DF-11. DF-08a–c erledigt (PR #70). Ursprünglich: DF-08a–c erledigt (PR #70). Offen DF-08d: native Modellbeobachtung, Adapter-/Profilbelege, Workflow-Anbindung nach DF-11. Provider, Modell/Familie, Adapter und Erscheinungsprofil getrennt führen; konfiguriert ist nicht beobachtet; Alias-/Unbekannt-Fälle testen. |
+| DF-09 | Profilwahl im Chat · Frontend · HQ/APP · M | DF-02, DF-08 | **Geparkt (25.09.)** DF-09b wäre ein Doppelbau (React neben HQ); erst nach der Entscheidung „HQ als Hauptbereich der App“. DF-09a erledigt (PR #100). Ursprünglich: DF-09a erledigt (PR #100, lokale Chat-Erscheinungen). Offen DF-09b: React-Parität und Admission-Kompatibilität. UI-Profil Codex/Claude/DeepSeek unabhängig vom belegten Modell wählen; unterstützte native Kombinationen von reiner Darstellung unterscheiden, inkompatible Starts verweigern. |
+| DF-10 | Chat-Modi und Interview · Integrator · CORE/SEAM/HQ/APP · M | DF-01, DF-03, DF-09 | **Geparkt (25.09.)** Zusammen mit HQ2-04; kommt mit der einen Oberfläche nach M4 zurück. Ursprünglich: Übernimmt HQ2-04 (beratende und aktive Sitzung getrennt sichtbar, manueller Providerwechsel mit Übergabe). Plan/Interview/aktive Ausführung mit konkreten Rückfragen und Projektkontext; Planmodus darf keine Schreibbefugnis erzeugen. Reale Sitzung mit Antwort belegen; Integration bei Bedarf in Kinder teilen. |
+| DF-11 | Workflow-Zustand · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** Workflow-Motor: zweite Steuerung neben dem fertigen Continuous-Kern. Ursprünglich: Persistente Stage-Zustände und append-only Übergangsereignisse auf vorhandener Queue; ungültige Übergänge und Neustart testen. |
+| DF-12 | Unabhängigkeitsgate · Backend · CORE · M | DF-08, DF-11 | **Gestrichen (25.09.)** Doppelung: die Autor-Familiensperre steckt in W2-01 ✓ und W5-02d. Ursprünglich: Kandidatenweite Autor-Familienmenge sperrt eigene Review-/Testbewertung, auch nach Handoff/Alias/Review-Fix; unbekannte Identität blockiert Attestation. Negativtests zwingend. |
+| DF-13 | Berechtigungsteam · Backend · CORE · M | DF-01, DF-11 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Versionierte, vom Nutzer festgelegte Policy auswerten; erlauben/ablehnen/eskalieren mit Gründen. Keine Selbst-Erweiterung, kein gefälschter Human-Verdict; Replay und Scopewechsel testen. |
+| DF-14 | Stationsübergabe · Backend · CORE · M | DF-12, DF-13 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Bestehende Admission/Claims für nächste Station nutzen; atomare Übergabe, Idempotenz, Fencing, Budget aller Nachfahren. Doppelzustellung und Crash vor/nach Spawn testen. |
+| DF-15 | Rücklauf und Recovery · Backend · CORE · M | DF-14 | **Geparkt (25.09.)** Workflow-Motor; DF-15a erledigt (PR #103), DF-15b erledigt (PR #16). Ursprünglich: Review→Fix→neuer Review, Pause/Cancel, Quota/Auth-Ausfall, begrenzte Wiederholung und Wiederaufnahme; Leaseablauf nie als Prozessende werten. Der frühe Provider-Exit vor dem Lesen des Task-Inputs ist als DF-15a erledigt (PR #103, Endzustand `exited_undelivered`, Migration 22); die dabei offen gebliebene Freigabe von Reservierung und Delivery ist als DF-15b erledigt (KNOWN_ISSUES KI-27: Reservierung `cancelled` und Delivery-Freigabe journalisiert, atomar im bewiesenen Exit-Commit, ohne neue Migration). |
+| DF-16 | Workflow-API · Integrator · SEAM/HOST · M | DF-15 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Start/Pause/Status/Decision über denselben Kern für App/HQ/CLI; Autorisierung, Konflikt und Event-Replay prüfen, kein Scheduler im Host. |
+| DF-17 | Team-/Stationsgraph · Frontend · HQ · M | DF-02, DF-16 | **Geparkt (25.09.)** hängt an DF-16. Ursprünglich: Ideen→Interview→Plan→Koordination→Architektur→Code/Design→Review→Test→Kritik mit konfigurierbaren Stationen, Rollen, Zuständen und Übergabegründen; native Teams/Lessons erhalten. |
+| DF-18 | Entscheidungs-Inbox · Frontend · HQ/APP · M | DF-16 | **Gestrichen (25.09.)** Doppelung mit W5-06/06b/08a/08b (die selbst geparkt sind). Ursprünglich: Nur echte Nutzerfragen/Freigaben, Kontext/Optionen/Auswirkung, Zielprojekt und Version sichtbar; doppelte/veraltete Entscheidung abweisen und auflösen. |
+| DF-19 | Prioritäten und Advisor · Backend · CORE · M | DF-08, DF-12, DF-03 | **Gestrichen (25.09.)** Routing ist dreifach geplant (DF-19/20, W5-30b/33, HQ2-07); später eine gemeinsame Fassung. Ursprünglich: Taskklasse, Abhängigkeiten, Evidenz, Benchmark/Erfahrung, Quota und Policy in erklärbare Empfehlungen für Priorität/Modell/Effort übersetzen; fehlende Daten und manuelle Overrides testen. |
+| DF-20 | Routing-Editor · Frontend · HQ/APP · M | DF-19 | **Gestrichen (25.09.)** wie DF-19. Ursprünglich: Anbieterreihenfolge, Regeln, Taskklassen, Reserven, Ausschlüsse, Fallbacks und Override editieren; Simulation erklärt Auswahl/Ablehnung, Revision verhindert verlorene Änderungen. |
+| DF-21 | Erweiterungskatalog · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: GitHub-Quellen zu Plugins/Skills auf feste Revision auflösen, Quelle/Kompatibilität/Rechte/Scope anzeigen; bestehende Installer wiederverwenden, untrusted Metadaten nicht ausführen. |
+| DF-22 | Installation und Rücknahme · Backend · CORE · M | DF-13, DF-21 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Kontrollierte Installation, Update, Deaktivierung und Rollback über geprüften Pfad; Traversal/Symlink, abgebrochenen Download und Versionswechsel testen; globale Änderungen nach Policy. |
+| DF-23 | Katalog-Bedienung · Frontend · HQ/APP · M | DF-22 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: GitHub-Link hinzufügen und ein Klick installieren, soweit Policy erlaubt; sonst begründete Entscheidung. Realer Installationszustand statt bloßer Prompt-Auswahl. |
+| DF-24 | Task-Preflight · Backend · CORE · M | DF-14, DF-22 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Vor Task und Scopewechsel erforderliche/hilfreiche Skills/Plugins auswählen; nur relevante laden, Auswahlgrund/Version/tatsächliche Verwendung protokollieren; fehlende Pflichtfähigkeit blockiert. |
+| DF-25 | Schneller Entwurfsbereich · Backend · CORE · M | DF-13, DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Worktree, isolierte Projektdaten und Live-Preview-Lebenszyklus; Start/Stop/Recovery, keine fremden Prozesse beenden. Klar als Arbeitsisolation kennzeichnen. |
+| DF-26 | Stärkere Sandbox · Backend · CORE · M | DF-25 | **Gestrichen (25.09.)** Container/VM ist auf 16 GB RAM unter Windows fraglich. Ursprünglich: Einen belegbar verfügbaren Container- oder VM-Adapter mit Filesystem-/Netzwerk-/Ressourcengrenzen integrieren; fehlende Voraussetzungen anzeigen, kein stiller schwacher Fallback. |
+| DF-27 | Architekturansicht · Frontend · HQ · M | DF-05, DF-25 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Reale Modul-/Abhängigkeitsdaten mit Quellen und Abdeckung visualisieren; Änderungsvorschlag→Diff→Test→Übernahme, unbekannte Analysebereiche sichtbar. |
+| DF-28 | Gemeinsames Design-Livebild · Frontend · HQ/APP · M | DF-17, DF-25 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Laufende echte App/Website, gewählter Schritt, Agentendelta und Feedback nebeneinander; Änderungen fortlaufend nachvollziehbar, Wiederverbindung/Fehler testen. |
+| DF-29 | Messereignisse · Backend · CORE · M | DF-11, DF-08 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Zyklus-/Wartezeit, Rework, Review/Test, Recovery, Routing und beobachtete Usage mit Quelle erfassen; Deduplikation, Einheit, fehlende Werte, Retention/Redaktion prüfen. |
+| DF-30 | Statistikprojektionen · Backend · CORE · M | DF-29, DF-24 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Filterbare Task-/Modell-/Provider-/Skill-Vergleiche, Stichproben und Qualitätsmetriken, API/Export; keine Gleichsetzung von Korrelation und Ursache oder Abo-Quoten. |
+| DF-31 | Statistik-Cockpit · Frontend · HQ/APP · M | DF-02, DF-30 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Große Analysefläche mit Trends, Verteilungen, Engpässen, Rework, Teststabilität, Kapazität, Quellen-Drilldown und Einstellungen; echte Daten plus kenntliche Fixture-Tests. |
+| DF-32 | Releaseprognose · Backend/Frontend · CORE/HQ · M | DF-06, DF-30 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Kritischen Pfad und beobachteten Durchsatz mit Unsicherheitsintervall verbinden; ohne ausreichende Daten kein Datum. Readiness separat aus offenen Gates, Reviews/Tests und Blockern anzeigen. |
+| DF-33 | Vorlagenkatalog · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Versionierte editierbare Templates für Idee/Projekt/Plan/Team/Harness/Review/Test/Policy/Release; Kontextvorschlag mit Vorschau, kein stilles Überschreiben. |
+| DF-34 | Vorlagen im Arbeitsfluss · Frontend · HQ/APP · M | DF-10, DF-18, DF-23, DF-33 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Passende Vorlagen an Eingabestellen anbieten; übernehmen/anpassen/verwerfen, Entwürfe bei Navigation erhalten und gleiche Semantik in App/HQ prüfen. |
+| DF-35 | Durchgängiger Runtime-Nachweis · Tester · DOC/Tests · M | DF-20, DF-24, DF-26, DF-27, DF-28, DF-31, DF-32, DF-34 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Isoliertes Projekt vom Plan bis zu modellunabhängigem Review/Test; reale Modellantwort, Übergaben, Rückfrage, Neustart und Datenparität messen; negative Gates mitprüfen. |
+| DF-36 | PC-Politur und Designabnahme · design-director · HQ/APP · M | DF-35, DF-07 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Impeccable-Kritik anhand echter Screenshots; leere/ladende/fehlerhafte/dichte Ansichten, Fokus, Zoom, Kontrast und Hell/Dunkel prüfen; Befunde nachvollziehbar schließen. |
+| DF-37 | Abschluss und Releaseentscheidung · Integrator/Reviewer · DOC · S | DF-36 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Zwei unabhängige Reviews für große/Shared-Seam-Änderungen, Dispositionen, aktuelle Gates und NICHT ABGEDECKT; Readinessbericht. Merge/Release/Continuous nur mit geltender menschlicher Freigabe. |
+
+Größen und Abschlussprotokoll der DEVFLOW-Pakete, Verträge und Scopes stehen in
+`.pa/archiv/PLAN_2026-09-24.md` (Abschnitt DEVFLOW).
+
+## Anhang B — Meilensteine M1–M5 (historisch; Stand-Spalte am 08.10. nachgeführt; bleibt für HQ maschinenlesbar bis Z2-PLANPARSER)
 
 | M | Titel | Abnahme in Alltagssprache |
 |---|---|---|
@@ -362,7 +396,7 @@ Nummern ohne Präfix in den Zeilen ab alt-#128 abwärts sind nicht einzeln nachg
 | W1-17 | HQ-Parser: prüfen, ob OPS-01 oder DF-06a ihn überholt haben; sonst auf die Meilenstein-Tabellen umstellen. Bis dahin zeigt der eingecheckte HQ-Snapshot (`docs/dev-hq/data.js`/`data.json`) die alten F-Meilensteine als „waiting“ — bekannter Zwischenstand, kein Datenfehler | S | hqL | ✓ #38 |
 | SETUP-09 | Lokaler Review-Lauf `scripts/review/run-local.sh` | S | doc | ✓ #39 |
 | SETUP-12 | Rest des Docs-only-Pfadfilters, soweit CI-02/CI-03 ihn nicht abdecken | S | ci | ✓ #36 |
-| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | teilweise: `ollama signin` und OpenCode-Modelle geprüft (02.10.); offen: tote Keys, Permission-Regeln |
+| SETUP-14 | Nutzer: tote Keys, OpenCode-Modelle, `ollama signin`, Permission-Regeln | S | N | teilweise: → Z4-SETUP-14 (tote Keys, Permission-Regeln) |
 | SETUP-15 | Abschlussreview der Setup-Doku, verkleinert | S | doc | ✓ #51 |
 
 PC-Setup außerhalb des Repos (Orchestrator, Nutzerentscheidungen 25.09.):
@@ -390,8 +424,8 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | gestrichen (Nutzer 04.10.: Kimi-Abo abgelaufen; Smoke ✓ #192) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | ✓ #381; Drill 8 PASS am 05.10. (Beleg: Datum aus `events.log`, lokal) |
-| ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
-| R-1 | Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | offen |
+| ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | offen → Z4-ARCH-11 |
+| R-1 | Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | ✓ v1.5.0 veröffentlicht 05.10. (`gh release list`) |
 
 **R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0` (Beta; E24: A) setzt voraus:
 
@@ -404,6 +438,9 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 **Versionsnamen (E24: A, 05.10.):** Die Beta trägt den Tag `v1.5.0`, das Endrelease ist `v1.5.1`, weil die Release-Pipeline nur x.y.z annimmt (`scripts/verify-windows-package.ps1:5`, `scripts/release.cmd:16`). In den Entscheidungszeilen und Notizen vom 04.10. meint „v1.5.0“ noch das Endrelease; gelesen als v1.5.1.
 
 ### M4 — Dauerbetrieb abgenommen, v1.5.1
+
+M4 ist offen: W3-07 und der TOCTOU-Blocker sind nicht belegt geschlossen.
+Ein veröffentlichtes v1.5.1 belegt die M4-Abnahme nicht.
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
@@ -419,11 +456,11 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
 | W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | ✓ #53 |
 | W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | ✓ #78 |
-| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt; echte Proben mit Claude/Codex/OpenCode dürfen Abo-Kontingent verbrauchen (Nutzer 04.10.) | M | fR + N | offen |
-| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe); Produktfrage entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten, Koordinatoren bleiben immer `strict`, profilspezifisches `passthrough` bleibt | M | st → api → fe | offen |
+| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt; echte Proben mit Claude/Codex/OpenCode dürfen Abo-Kontingent verbrauchen (Nutzer 04.10.) | M | fR + N | ✓ #289, #299, #318, #341 |
+| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe); Produktfrage entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten, Koordinatoren bleiben immer `strict`, profilspezifisches `passthrough` bleibt | M | st → api → fe | ✓ #336, #438, #442 |
 | W5-02b4 | Push aus dem Worker über den Runner-Host, danach `strict` als Voreinstellung | M | pty + wk | ✓ #65 |
 | W5-02b5 | Test für den `http.extraHeader`-Reset; GPG unter `strict` | S | fR | ✓ #17 |
-| W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | Teilpakete gemergt (#337 W1-03f-api, #301 W1-03f-a); Hauptpaket offen |
+| W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | offen → Z4-VERIFY (Teile ✓ #301, #337, #352) |
 | W3-01 | Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind) | M | st → mn | ✓ #285, #335, #402 |
 | W3-02 | Windows-Recovery-Helper | M | fR + N | ✓ (Teilpakete W3-02a bis W3-02k gemergt, zuletzt #475) |
 | W3-02a | Journal-Treiber, eine Aktion je Schritt | S | fR | ✓ #291 |
@@ -436,13 +473,13 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-02h | Release-Blocker R-1 (Beta): #411-Befund C1, die installierten Bytes und die Version an das Journal binden (`signed_artifact_sha256`, `candidate_version`; heute verwirft `InstallOnly` beide). Stufe A | M | mn | ✓ #457 |
 | W3-02j | Release-Blocker R-1 (Beta): Handshake-Identität nach dem Update. Die Startprüfung muss die laufende exe und die Live-Datenbank nach einem echten Update als Erbe des Journals anerkennen (Vertrauen beim ersten Start, siehe `docs/decisions.md`), sonst blockiert `IdentityMismatch` den Start. Befund aus #457. Stufe A | M | mn | ✓ #462 |
 | W3-02i | Release-Blocker R-1 (Beta): #411-Befund C2, Wartungs-Lease statt Momentaufnahme von `is_maintenance_active()`; berührt auch `store.rs` (Naht, nur seriell). Stufe A | M | mn | ✓ #471 |
-| W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | ✓ Drill-Kits #364, #376, #379, #382, #377, #380, #384 gemergt; die Läufe am PC stehen laut R-1-Voraussetzungen noch aus |
+| W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | unbelegt → Z4-VERIFY; Kits #364, #376, #379, #382, #377, #380, #384 gemergt, PC-Läufe nicht einzeln belegt |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | ✓ #119 |
-| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4) | S | N | offen |
+| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4) | S | N | offen → Z4-VERIFY |
 | W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | ✓ #73 |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5) | S | mn | ✓ #481 |
-| W4-04 | Release v1.5.1 (Endrelease) | S | N | offen |
+| W4-04 | Release v1.5.1 (Endrelease) | S | N | ✓ v1.5.1 veröffentlicht 06.10. (`gh release list`) |
 | M4-R7-01 | Scheduler-`dispatch_once` hinter einem Nur-Test-Permit (Matrixzeile 7) | S | wk | ✓ #340 |
 | M4-R7-02 | Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige `dispatch_once` auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall | S | wk | ✓ #412 (ersetzt #407) |
 | M4-ROW15-PROOF | HTTP-Beleg Zeile 15 (eingeengt): Bindung/Idempotenz Kandidat und Evidenz, Lesen nur im eigenen Run, fremde/stale Evidenz abgewiesen, veränderte Root-Policy ändert `policy_json` nicht und meldet fail-closed | S | api-Tests | ✓ #360 |
@@ -477,393 +514,20 @@ refactoring package“.
 
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
-| M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | offen, nach v1.5.1 |
-| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | offen, nach v1.5.1 |
+| M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | Verschoben → Z4-M5-01 |
+| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | ✓ #576 |
 | M5-03 | ARCH-G1 Regeldokument `docs/architecture-rules.md` + ARCH-G2 Drift-Gate in der CI | M | ci + doc | ✓ G1 #316, G2 #304 (04.10.) |
-| M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | offen, nach v1.5.1 |
-| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.1 |
-| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.1 |
-| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.1 |
-| ARCH-D4 | Restlicher API-Router mit 51 Zweigen: kleinere serielle Teil-PRs, insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs`; je PR ≤ 300 Gesamtdiffzeilen einschließlich Tests (ARCH-D4-PLAN) | M | api | offen, nach v1.5.1; Schnitt vor Dispatch messen |
-| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.1 |
-| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.1 |
-| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.1 |
-| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.1 |
-| M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
-| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
-| M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
-| M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
-| M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | offen, nach v1.5.1 (Nutzer 04.10.) |
-
-### Reihenfolge der seriellen Lanes (nach Meilensteinen)
-
-Ein Paket aus einem späteren Meilenstein startet nur, wenn seine Lane im
-früheren nichts mehr hat.
-
-- **st:** W1-05b(st) → W5-05 → W5-04a → W2-02b → W2-04c → W2-04d → W3-01(st) → W5-02b3(st) → W2-04g.
-- **api:** W1-05b(api) → CLEAN-02(api) → W5-02b3(api).
-- **mn:** CLEAN-02(mn) → W5-04b → W3-01(mn) → W4-03.
-- **pa:** W2-01d → W5-04c → W1-03f(pa).
-- **pty:** W1-01b → W1-27 → W5-02b4(pty).
-- **wk:** W1-03e → CLEAN-02(wk) → W5-02a → W2-04e → W1-18b → W2-09b → W5-02b4(wk) → W1-03f.
-- **hqL:** W1-17 → W1-10 → W5-02b7 → W2-10 → W3-04(hqL). **hqS:** HQ2-02 → HQ2-03.
-- **ci:** CI-02/CI-03 → SEC-01 → CI-04 → SETUP-12.
-- **Migrationen:** Nummern vergibt der Koordinator erst beim Dispatch.
-
-## Regeln für diesen Plan
-
-1. **Ein Plan.** Jedes Paket steht als eine Zeile in genau einer
-   Meilenstein-Tabelle. Neue Pakete entstehen nur hier.
-2. **Neue Ideen bis M4 auf „Später“.** Sie kommen in den Abschnitt unten, nicht
-   in M1–M4, außer der Nutzer entscheidet es.
-3. **Continuous-Code bis M4 eingefroren.** Keine neuen Migrationen und keine
-   neuen Funktionen für den Continuous Mode außerhalb der M4-Pakete.
-4. **Nichts doppelt bauen.** Neues entsteht an einer Stelle, HQ oder App, nicht
-   in beiden.
-5. **Status per Skript.** Die Stand-Spalte ist eine Momentaufnahme. Den
-   Live-Stand und den Tagesbericht erzeugt OPS-01 aus GitHub und git. Nach dem
-   Merge: `✓ #PR` hier, Zeile in `docs/ERLEDIGT.md` (`npm run dev:erledigt-row`).
-   Über die eigene Stand-Zeile hinaus schreiben `docs/PLAN.md`, `STAND.md` und
-   `docs/ERLEDIGT.md` nur der Koordinator oder ein Paket mit ausdrücklicher
-   Zuweisung.
-6. **Spec nur für M-Pakete.** Ein M-Paket bekommt beim Start
-   `.pa/task_<id>.md` (`Status: aktiv`) und eine Zeile unter „Aktive Specs“ in
-   `STAND.md`; `npm run specs` prüft beides. S-Pakete und Folgepakete aus einem
-   PR: der Auftrag steht im PR-Text.
-7. **Größen:** S ≤ 150, M ≤ 300 Diffzeilen einschließlich Tests. Was größer
-   wird, teilt der Koordinator vor dem Dispatch in Kinder.
-8. **CI-Geld:** Ziel 0 €. Wird die CI der Engpass, sind höchstens 20 € im Monat
-   erlaubt, und erst nach Freigabe des Nutzers.
-
-## Vision (Nutzer 25.09.)
-
-- **Eine Oberfläche:** Das Dev-HQ wird nach M3 der Hauptbereich im App-Fenster.
-  Ein Kern, ein Fenster. HQ2-02 legt die Richtung fest.
-- **Orca als Brücke:** Bis M3 wird mit Orca, Claude Code und Codex gearbeitet,
-  danach schrittweise mit ProjectA selbst.
-- **Agenten-Abteilungen mit Leitern:** Die erste Abteilung ist Prüfung/Reviews.
-  Sie startet klein nach M1, mit eigenem Budget.
-
-## Gestrichen/Geparkt (25.09.)
-
-„Gestrichen“ heißt: fällt weg, bei Bedarf neu einplanen. „Geparkt“ heißt: die
-ID bleibt, wird nicht gezählt und nicht dispatcht, und kommt erst nach M4
-zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten.
-
-### Gestrichen
-
-| Was | Grund |
-|---|---|
-| W5 Phase H: W5-26 Angriffs-Reviewer, W5-27 Mutationstest-Gate, W5-29 Anbieter-Wettbewerb | vervielfachen den Abo-Verbrauch und helfen dem Ziel nicht |
-| DF-12, DF-18, DF-19, DF-20, DF-26, DF-35, DF-36, DF-37 | DEVFLOW-Doppelungen: schon anderswo geplant oder gebaut (Gründe je Zeile in der DEVFLOW-Tabelle) |
-| Aliase auf gestrichene DF-Pakete | W5-08a/08b (Alias von DF-18) werden wieder eigene, geparkte W5-Pakete; HQ2-10 (Alias von DF-35–37) ist mit HQ2-06–10 geparkt |
-| `.github/workflows/review.yml`, `anthropic-wif-test.yml` | tote Workflows, in PLAN-01 gelöscht (git behält sie) |
-| Pflicht-Berichtsdatei, eingecheckte Review-Prompts, Spec für S-Pakete | ersetzt durch den PR-Text (AGENTS.md, Regel 7) |
-
-### Geparkt
-
-| Was | Grund | Wann wieder |
-|---|---|---|
-| **W5 außerhalb des Kerns:** W5-01a/b/c, 02c, 02d, 02e, 03, 06, 06b, 07, 08a, 08b, 09a/b/c, 10, 11, 12–16, 17–21, 23–25, 30a/b, 31a–c, 32–34, 35a–f, 36a/b, 37–39 | Das Projekt-System hilft dem Ziel nicht. Kern in M3/M4: W5-02a, W5-22, W5-28, W5-00b, W5-02b3–b5/b7, Not-Aus W5-04a–c, Prüfpfad W5-05 | nach M4; zuerst W5-31 (App zu, Worker laufen weiter); Phase J (autonomer Merge) erst nach vier Wochen Continuous ohne Rückschlag. Konzept: `.pa/plan_projects_w5.md` |
-| **DEVFLOW-Motor:** DF-11, DF-13–17, DF-06b, DF-08d | zweite Steuerung neben dem fertigen Continuous-Kern | nach M4 als Erweiterung des Continuous-Runtime neu schneiden |
-| **DEVFLOW-Ausbau:** DF-09b, DF-10, DF-21–25, DF-27–34 | hilft dem Ziel nicht; DF-09b wäre ein Doppelbau | nach M4 |
-| **HQ2-04, HQ2-06 bis HQ2-10** | große Pakete, jedes ein eigenes Projekt | nach der Oberflächen-Entscheidung (HQ2-02) neu planen |
-| W1-09c (KI-1 editierbar), W1-12 (Design-Reste) | Komfort, niedriger Nutzen | nach M4 |
-| W4-03a (Journal-Teil ohne Aktivierung) | nur für das geparkte W5-03 nötig (Nutzer 25.09.: später) | mit W5-03 |
-| W3-09 (Struktur-Split) | inaktiv, nur wenn W0-05 = zerlegen | bei Bedarf |
-
-### Später (neue Ideen und zurückgestellte Themen)
-
-| Thema | Wann wieder |
-|---|---|
-| Agenten per Protokoll statt Tippen steuern (strukturierte Schnittstellen der Anbieter) | nach M4 (Nutzer 25.09.: später) |
-| ADR, die die st-Lane für unabhängige `store/`-Module teilt | nach M1 (Nutzer 25.09.: später) |
-| Öffentlicher Neustart des Repos ohne Historie (Prüfung E) | nach M1; vorher Scan-Bericht, der Nutzer gibt frei (nicht umkehrbar) |
-| Vorzeige-README für die Bewerbung | später |
-| Prompt-Kompression, MCP-Injektion | wenn ein Worker nachweislich am Kontextlimit scheitert |
-| Command Palette, globale FTS-Suche, Fokusmodus | wenn der Nutzer sie im Alltag vermisst |
-| Remote-Board, Multi-Prozess-Deskriptor | wenn ein zweiter Rechner dazukommt |
-| Ideen-Pipeline, Zeitachse, Vorschlags-Tab | nach M4, mit Kostenschätzung |
-| hermes-agent, Multi-Harness | nach M4 (HQ2-06 ist geparkt) |
-| Dependabot-Majors (Vite 8 → eslint 10 → TS 7 → React 19 → sqlx 0.9) | einzeln, nach M4 |
-| Tauri-Plugins `dialog`, `notification`, `window-state` | wenn ein Paket sie braucht |
-| OmniRoute-Cutover in den Produktmodus | erst mit gemessenem Kostensieg |
-| Design Studio, Queen/Employee-Neuanlage | nie (gestrichen; der Anlegepfad fällt mit CLEAN-02) |
-| W2-02b-Rest „Merge-Ergebnis als Kandidat“ (der Vertrag der vertrauenswürdigen Upstream-Quelle ist ungeklärt; nur lesend geprüft am Kopf d1fce9c, kein Regressionstest ausgeführt) | nach M4 (Nutzer 04.10.: auf später verschoben) |
-| Vorschlag: Abschlussvertrag für Headless-Läufe: Gates und Push synchron im Vordergrund; „fertig“ nur mit Gate-Exit, Kandidaten-SHA, `ls-remote` und PR, nicht mit `JOBEXIT0` (echte Abbrüche beobachtet) | nach M4; Vorschlag, keine Freigabe |
-| Sicheres Aktionsmuster für Agenten (Anregung aus dem MIT-Projekt browser-use/jev-ultrafast, geprüft 04.10.): Die KI wählt nur aus einer nummerierten Liste erlaubter Aktionen/Ziele, die aus dem beobachteten Zustand erzeugt wird; Modellausgabe wird nie zu Selektoren, Koordinaten, Shell-Befehlen oder ausführbarem Code; jede gewählte Aktion wird vor der Ausführung gegen den aktuellen Zustand geprüft. Kein Code und keine Abhängigkeit übernommen (das Projekt braucht kostenpflichtige API-Schlüssel). Prüfen nach v1.5.0, z. B. für Agentenbefehle oder Freigaben. | nach v1.5.0 |
-| Vorschlag: Startcheck-Doku an die Wahrheit anpassen und nur lesend Abhängigkeits-Drift prüfen (nicht optionale installierte Pakete gegen die Kandidaten-Lock); OPS-02 #35 und SETUP-09 #56 bleiben gemergt, dies ist ein begrenzter Folgeschritt | nach M4; Vorschlag, kein Duplikat |
-| Vorschlag: PTY-Read/Emit-Diagnose erst nach eingespeistem Beweis; Drain und panikfreie Senke bewahren, den `eprintln`-Rückfall in `logging::log` nicht blind nutzen; Stderr-Verlust im Release ungemessen | nach M4, mit Laufzeitbeleg; ohne Graph-/Windows-Beleg |
-| Vorschlag: M4-W2-Merge-Vertrag: frische geschützte Upstream-Bestätigung, gebunden an Kandidat/Lauf/Fence/Scope; lokale Refs und Start-Pin genügen später nicht; Scope-Prüfung Basis → Kandidat auf dem End-Baum nach Merge oder Rebase (Quelle `6fb08b0`, `workers/candidate_scope.rs:56-112`); Continuous nicht aktivieren | nach M4; ohne Graph-/Laufzeit-/Windows-Beleg |
-| Plan für v1.6.0 (Pakete, Wellen, Arbeitsweise, Benchmark-Nachweis): [`docs/plan/v1.6.0/plan.md`](plan/v1.6.0/plan.md) | Nutzerentscheidung 06.10.2026: zwei Wochenmessungen und 40 Queue-Läufe bleiben offene Nachbeobachtung nach v1.6.0; Befunde für v1.6.1, kritische früher. Details und unveränderte Originalkriterien in Abschnitt 7a.1; weitere Planfragen und Pakete bleiben in ihrem bisherigen Zustand, nichts davon wird in M1–M4 aufgenommen. |
-| Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Entwurf, Nutzer entscheidet; nichts davon steht in M1–M4 |
-
-### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
-
-Die folgenden Pakete sind neue Ideen und bleiben nach AGENTS.md unter „Später“.
-ARCH-11 ist die Ausnahme: Es ist ein angenommener M3-Kandidat (Nutzer 04.10., F6
-und Zeile in der M3-Tabelle), ohne die M3-Abnahme-Tabelle zu ändern.
-
-| ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Reihenfolge |
-|---|---|---|---|---|---|---|---|
-| ARCH-01 | Toten Kleinkram in FE/HQ entfernen: `hqCapacity.ts` samt Test löschen, `setLandingPage`-Wrapper und Design-Studio-Mock entfernen; `hq-live.mjs` akzeptiert zusätzlich `PROJECTA_API_FILE`. | 4–5 Dateien, ~150 Diff | fe + hqL | nein | B | Test-First: `descriptorCandidates({PROJECTA_API_FILE})` liefert genau diesen Pfad; Löschungen No-Test | jetzt; Löschung mit Nutzer-Ja (F5) |
-| ARCH-02 | `queue.rs`: `enqueue` und `enqueue_with_enhancer` über gemeinsamen `insert_entry()`-Pfad führen; Test-Kopie entfernen. | `queue.rs`, Δ−35 | fR | nein | B | No-Test: mechanische Deduplizierung; 17 `queue::tests` decken Verhalten ab | nach Merge von PR #130 |
-| ARCH-03 | Einen atomaren `write_atomic`/`replace_file`-Pfad in `fsutil.rs` bündeln und in Retention, Provider und Delivery-Recovery verwenden; alten MSRV-Kommentar entfernen. `db_restore.rs:137` bleibt Folgepaket der pa-Lane. | 4 Dateien, ~220 Diff | fR | nein | A (Vault) | No-Test: Konsolidierung; bestehende Provider-, Retention- und Recovery-Tests | jetzt |
-| ARCH-04 | `retention::run_once` soll alte Sitzungsdateien über `sessionpersist::sweep(root, now)` löschen; globales Dead-Code-Allow entfernen, Item-Allow nur für `persist_draft` behalten. | `retention.rs`, `sessionpersist.rs`, ~120 Diff | fR | nein | B | Test-First: alte Sitzungsdatei verschwindet nach `run_once` | nach Inbox-Antwort F2 |
-| ARCH-05 | Binärmodule von `pub mod` auf `mod` umstellen und die dadurch sichtbaren Dead-Code-Warnungen einzeln mit Paket-ID erlauben. | `main.rs` + 2–3 Module, ~30 Diff | mn | ja | A (Naht) | No-Test: Sichtbarkeits-Lint; Force-Warn-Lauf vorher/nachher und Clippy | jetzt |
-| ARCH-06 | `AppAgentControl` und `PtyAgents` auf freie Funktionen umstellen; `ApiBackend::agents()` statt sieben `with_port`-Aufrufen verwenden. | `main.rs`, Δ−90 | mn | ja | A | No-Test: mechanische Deduplizierung; bestehende Worker-, API- und Main-Tests | nach ARCH-05, vor W5-04b |
-| ARCH-07 | Store-Kleinkram verschieben: `SRC_HOOK`/`SRC_HEURISTIC` löschen, Fehlercodes in neues `errors.rs` legen und die Rückkante store→workers entfernen. | `store.rs`, `store/queue_cancel.rs`, `workers.rs`, `errors.rs`, ~40 Diff | st | ja | A | No-Test: mechanische Verschiebung; bestehende Store-, Queue-Cancel- und API-Tests | nach #147/#44, gemäß st-Reihenfolge |
-| ARCH-08 | `SettingsView.tsx` je Tab in eigene Komponenten aufteilen. | `src/components/Settings*/`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; vorhandene Settings-Tests | nach PR #154 |
-| ARCH-09 | `ipc.ts` als Barrel behalten und PTY-, Projekt- und Worker-Domänenmodule auslagern. | `src/lib/ipc/*.ts`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; IPC- und Komponententests | nach ARCH-08, niedrige Priorität |
-| ARCH-10 | `/api/hq/v1/*` als Unter-Router mit 14 Armen aus `route()` in `api/hq_routes.rs` auslagern. | `api.rs`, `api/hq_routes.rs` | api | ja | A | No-Test: mechanische Verschiebung; FakeBackend-Servertests behalten Status, Body und Auth | vor W5-02b3 (api) |
-| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | M3-Kandidat angenommen (Nutzer 04.10.); Windows-Lauf nötig, der PC des Nutzers darf dafür genutzt werden |
-| ARCH-12 | `impl ControlBackend for ApiBackend` aus `main.rs` auslagern. Das Paket bleibt gesperrt, weil der Trait-Block als reine Verschiebung mehr als 300 Diffzeilen erzeugt. | `main.rs`, `api/backend.rs`, ~715 Z. | mn + api | ja | A | No-Test: mechanische Verschiebung erst nach ADR A1 | nach ADR A1; gesperrt |
-
-### Synthese der Bestandsaufnahmen INV-01..08 und des Architektur-Rats (03.10.2026)
-
-Quelle der Bestandsaufnahmen sind die PR-Texte (Abschnitt „Bestandsaufnahme“);
-sie liegen nicht als Dateien im Repo. Der Architektur-Rat ist die Tabelle oben.
-Alles hier ist **Quellenbefund oder Hypothese, kein reproduzierter Fehler**: ein
-Bugpaket braucht zuerst einen kompilierenden roten Test, eine Laufzeit- oder
-Performanceaussage eine Messung. Nichts davon ist in M1–M4 aufgenommen. Die
-Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
-`gh pr view` auf `origin/main` 1b38596; der Paketstand darunter ist am 04.10.2026 nachgeführt.
-
-**Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
-Status beobachtet 04.10.2026 13:50 UTC (15:50 Berlin), gelesen mit `gh pr list --state all`/`gh pr view <n>` auf `origin/main` effef1a (Merge #279 um 10:03:23 UTC, `ci`-Lauf 37194125481 grün). Gemergt (bis `cc95a57` Stand 03.10. 23:26 UTC, danach die Nachträge unten):
-ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
-überschritt die 300-Zeilen-Grenze), ARCH-03c #256 (`08faff8`, 23:04 UTC), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
-ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244, 08e #247 und 08f #252 (`f1a33de`, 22:31 UTC),
-ARCH-09a #260 (`cc95a57`), ARCH-10a #220, 10b #236, 10c #246 und 10d #250,
-W1-27 #140, W2-04c Teil 2 #222, PTY-READ-01 #206, PTY-RETIRE-01 #215,
-PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189, PLAN-sync-04 #258 (`070a1d5`, 22:49 UTC) und
-UX-03 als #199 (#186 ist geschlossen). Ersetzt: #152 → #172, #147 → #178,
-#130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 ist
-am 03.10. vom Nutzer freigegeben und der installationsfreie Starter auf dem Server
-eingespielt; Worker-Läufe über ihn haben seitdem PRs geliefert (siehe E13).
-**ARCH-03c** #256: die Windows-Bahn war per `workflow_dispatch` echt rot am
-Test-First-Commit `2b9fd1c` (Lauf 37155715659) und grün am Kopf `7af0aa5` (Lauf
-37156526153); danach gemergt. **ARCH-08** ist mit #252 vollständig.
-**ARCH-09:** 09a (Projekt-Wrapper in `ipc/projects.ts`) ist mit #260 gemergt;
-ARCH-09b (Worker-IPC) ist mit #264 gemergt (`db76682`, 03.10. 23:57:09 UTC);
-ARCH-09c (PTY-Wrapper, #269) ist Draft mit Label `do-not-merge`, nicht gemergt
-(`gh pr view 269`, 04.10. 13:50 UTC). **ARCH-10** ist
-vollständig: `src-tauri/src/api.rs:1384` delegiert nur noch an `hq_routes::route`,
-in `api.rs` steht kein `"hq", "v1"`-Arm mehr (`grep` leer); `api/hq_routes.rs:20-34`
-listet den Besitztest mit 15 Methode/Pfad-Kombinationen, `handle` hat 14 Arme
-(≥ 14 geplant). Die Produktions-Routenarme sind verschoben, die bestehenden
-Testpfade bleiben. Eine Aufschlüsselung der Servertests je Arm ist nicht geprüft.
-**Nachträge seit `cc95a57`** (`gh pr view <n>`, Merge-Zeit UTC): #262 (nur
-Diagnose zu KI-30) `e87b17e`, 03.10. 23:39:47; #264 ARCH-09b `db76682`, 23:57:09;
-#266 PLAN-sync-05 `7ea73b2`, 04.10. 00:08:49; #274 W1-17-Folgefix (`teilweise:`
-in der Stand-Zelle) `4846c84`, 09:21:50; #275 SETUP-15-Folgekorrektur `f33f40d`,
-09:47:29; #279 Mergify-Doku „explizit einreihen“ `effef1a`, 10:03:23.
-**Offen** (`gh pr list`, 04.10. 13:50 UTC): #269 ARCH-09c (Draft, `do-not-merge`);
-#270 OPS-02-Doku und #273 SETUP-09-Fix (beide Label `queued`, laufen als
-Queue-PR #283 zusammen); #282 SETUP-12-Rest (Draft). Queue-Lauf 37196272431 (#273
-allein, Queue-PR #281) scheiterte nur an einem KI-30-Test auf Windows, siehe
-`KNOWN_ISSUES.md`. Der Stand von Queue und CI ist neu zu lesen; er kann sich
-schon geändert haben.
-Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
-
-**Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
-Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
-
-| Lane | Reihenfolge |
-|---|---|
-| `mn` | ARCH-05 (#182) → ARCH-06 (#219) → ARCH-03: alle gelandet; die Vault-Quellenbefunde unten sind bewertet und behoben (#200, #225). |
-| `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
-| `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
-| `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220, 10c ✓ #246, 10d ✓ #250; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
-| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b ✓ #264, c Draft #269 (nicht gemergt); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
-
-ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
-roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
-Kandidat** und mit F6 am 04.10. in M3 aufgenommen. ARCH-12 bleibt
-gesperrt (> 300 Diffzeilen, F1). Abgelehnt bleibt: Rust↔TS-Codegen ohne
-belegten Vertragsbruch, ein neuer lib/store/`CoreError`-Split, der Review-Lock
-bleibt in-process, `delivery_recovery.rs` wird nicht gelöscht (W3-02).
-
-**Korrektur:** Die Behauptung „Vault- und CSP-Vorschläge durch #138 erledigt“ ist
-falsch. #138 hat nur `oneshot.rs` geändert (Unix-Verzeichnisprüfung).
-
-#### Später: getrennte Security-Kandidaten (neu zu prüfen, kein M4-Code)
-
-Je Kandidat zuerst Quelle neu bestätigen, dann ein roter Test, dann ein kleines
-Tier-A-Paket. Beobachtet am Kopf 90676c5 und am aktuellen Stand erneut gelesen
-(`providers.rs:867/728`, `tauri.conf.json:28`).
-
-| Kandidat | Quellenbefund | Voraussetzung |
-|---|---|---|
-| INV-SEC-VAULT-TEMP | `providers.rs:867` `write_atomic`: vorhersehbarer Tempname `provider-keys.json.tmp-<pid>`, `create(true).truncate(true)`; ein untergeschobener Symlink könnte den Schreibvorgang umleiten (Hypothese, nicht belegt). | ✓ #200 gemergt (03.10.); vorher roter Symlink-Test |
-| INV-SEC-VAULT-ARCHIVE | `providers.rs:728` `archive_corrupt`: Name aus Sekunde + PID; zwei Reparaturen in einer Sekunde könnten kollidieren. | ✓ #225 gemergt (03.10.); vorher roter Zwei-Reparaturen-Test |
-| INV-SEC-CSP-SPLIT | `tauri.conf.json:28`: die Release-CSP enthält `ws://localhost:1420/1421`. | ✓ #288 gemergt (04.10.): `devCsp` getrennt, Release-CSP ohne `ws://localhost` |
-| INV-SEC-CREDENTIAL-EXPIRY / -CLEANUP | `api/agent_access.rs:312/361`: abgelaufene Grants bleiben als Datei liegen, Löschfehler werden verschluckt (niedrig). | nach #158 (gelandet) neu lesen |
-| API-Descriptor | Private Erstellung/Ersetzung der Descriptor-Datei unter Unix prüfen. | nach #158 prüfen |
-| INV-SEC-PRIVATE-PATHS | Einheitliche no-follow-Erstellung privater Dateien (Idee). | nach M4 |
-
-**M4-Blocker** (siehe Inbox): `planning_access` ohne Projektrahmen und die
-TOCTOU-Lücke dort. Der eingefrorene Continuous-Code wird jetzt nicht erweitert.
-
-#### Später: weitere Quellenbefunde nach Bereich
-
-- **Frontend (stale Antworten):** `AttentionInbox.tsx:63`, `ActivityView.tsx:48`
-  (Digest), `HistoryView.tsx:36` (Worker-Wechsel), `HistoryView.tsx:25`
-  (verschluckter IPC-Fehler), `SessionRestorePanel.tsx:67` (Sprachmix),
-  überlappende Poll-Antworten. Zuerst gegen schon gelandete ähnliche Fixes
-  ausschließen: #133 (Empfehlungen), #134/#135 (Projektwechsel), #149
-  (History-Polling serialisiert). Dann ein roter Wechseltest je Fund; kein
-  allgemeiner Event-/Polling-Neubau.
-  **Stand 05.10. (V16-02):** ✓ gemergt: Inbox und History bei Projekt-/Worker-
-  Wechsel #194, Inbox und Digest #312, übrige Guards #345 und gemeinsamer
-  Poll-Guard #324, Sprachmix #199. Offen bleibt `HistoryView.tsx:47` (der
-  `catch` verschluckt den IPC-Fehler weiter).
-- **Queue (`queue.rs`):** unbegrenzt blockierter Eintrag ohne Zeit
-  (`status.rs:1474`), Dispatcher-Panik beendet den Thread, `launch` ohne
-  Zeitlimit, ungültige/negative Worker-Limits (`set_project_max_workers`),
-  30-s-Sweep. **Stand 05.10. (V16-02):** ✓ Dispatcher-Panik
-  (FJ-2, #319), ✓ `launch` ohne Zeitlimit (FJ-3, #450); die übrigen drei Punkte
-  sind ohne PR-Beleg offen. Änderungen am eingefrorenen Runtime nur in bestehenden M4-Paketen.
-- **HQ:** die Restzeitschätzung in `hq-live.mjs` (4 h je Spec) ist unbelegt;
-  fehlender `blocked`-Zustand (`hq-parse.mjs:240`); veraltete Abhängigkeitskanten
-  (`PACKAGE_EDGES`); Tages-/UTC-Grenzen (`hq-stats.mjs:6-22`); keine
-  Request-Body-Grenze. Konfiguration ist kein Beleg tatsächlicher Fähigkeiten.
-- **Tests/Plattform:** feste 4096-Byte-Seite (`resources.rs:128`), unlesbare
-  Unterordner zählen 0 (`resources.rs:38-56`), Linux-`None` bei Platte/CPU,
-  fehlende Gegenfälle in `native_launch`/`native_supervisor`/`native_runner`.
-  Timing-Flakes sind Hypothesen bis zur Messung.
-- **Performance (erst messen, dann ändern):** `useQuestions` ohne SQL-Limit,
-  Digest lädt alle Nachrichten, überlappende Attention-Batches.
-- **Ops-Prozess:** Mutex-/Budget-Recovery wird als Tier B statt A eingestuft;
-  eine Überschrift „Review disposition“ gilt schon als Reviewabschluss; ein
-  stiller Worker-/Watchdog-Neustart belegt nicht, dass der alte Prozess
-  gestoppt ist. Eine Pipeline-Änderung wäre ein eigenes, red-first getestetes
-  Ops-Paket, nicht Teil dieser Synthese.
-- **Wartezeit:** CI-06 (#170) prüft lokal nur `--plan` (Form und Referenzen),
-  **nicht** semantisch einen roten Test auf der Merge-Base. Folgeideen: engere
-  `pfad::testname`-Form, echte parallele unabhängige Reviews, Konfliktvorhersage.
-  Flake-Auswertung nur aus vorhandenen Logs; zusätzliche Actions-Läufe sind E11.
-- **Doku:** Link-Prüfer, README/KNOWN_ISSUES-Linkcheck, W2-02b-Teil „Merge-Ergebnis
-  als Kandidat“ nachweisen oder als eigenes Paket abtrennen.
-
-Nicht erfasst: Die Bestandsaufnahme in #132 (CI) enthält nur den dort behobenen
-SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
-#129–#133, #138, #142 und #149 gelesen.
-
-## Entscheidungs-Inbox
-
-Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Am 04.10. hat der Nutzer E1, E4, E5, E10, E11, E12, F1, F3 und F6 beantwortet (zwei
-neue Zeilen halten die Freigaben fest). Offen sind E3, der M4-Blocker, E14 (dringend), E15 und E16 (beide nach v1.5.0), E17 (niedrig, nicht auf dem v1.5.0-Pfad), E18 (hoch, auf dem v1.5.0-Pfad) sowie E21–E23; E20 hat der Nutzer am 04.10. entschieden (Option A); E19 ist als Beraterentscheid festgehalten und kann vom Nutzer überstimmt werden. Falls der Nutzer E21–E23 in der nächsten Sitzung nicht beantwortet, entscheiden Fable + Astra; der Nutzer kann überstimmen. F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
-Nachweis siehe E13) sind entschieden und werden nicht neu gefragt. Agenten
-unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
-(AGENTS.md, Regel 10).
-
-| # | Frage | Empfehlung | Wer entscheidet? | Status |
-|---|---|---|---|---|
-| PLAN-L0-SINGLE | Nur EIN Plandokument `docs/PLAN.md`; Masterplaninhalte an richtiger Stelle integrieren, Unterpläne erst bei abhakbarem Umfang. | Ganzen 198-Zeilen-V1.0-Text inline erhalten; 255/270-Zwei-Dateien-Kandidaten nur historische Übergaben, nicht integrieren. | Nutzerauftrag laut Root-Mail `msg-0muy9f100-5279e4be`, 07.10.15:25:47 UTC | Entschieden; finale Ein-Datei-Anwendung bleibt an Root-FIT und normale Gates gebunden; keine Cloud-Synchronisierung behauptet. |
-| ARCH-D4-PLAN | ARCH-D4a/D4b: das API-Abbauziel mit kleineren seriellen Teil-PRs erreichen? | Gesamtziel ≥ 300 Zeilen Netto-Abbau in `api.rs` beibehalten; je Teil-PR ≤ 300 Gesamtdiffzeilen einschließlich Tests. | Nutzer | ✓ entschieden (06.10.2026): `serial-total300`, Frage Revision 1; Antwort `6b733c02-a4ff-466e-aaf6-905511d5570c`, gespeichert 21:55:57.174 UTC, Rootempfang 21:57:52.126 UTC (State-Revision 7). Keine Vorgabe ≥ 150 je Teil-PR. Red-first, vollständige Gates, Tier A mit zwei anderen Anbietern und serielle API-Naht bleiben verbindlich. Umsetzungskriterien: `docs/plan/v1.6.0/plan.md`, Abschnitt 3. Empfang ist kein Umsetzungsbeleg. |
-| E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | ✓ entschieden (Nutzer 04.10.): Mix. Das Studio-Layout (`hq2-concept`/`hq2-studio`) ist die Richtung für „HQ als Hauptbereich der App“, dazu die Einleitungsleiste und die Entscheidungsbox „Dein Urteil ist gefragt“ aus der Demo (zweite Antwort ~17:15). HQ2-03 ist freigegeben und baut darauf auf. |
-| E1-Hinweis | HQ2-02/03 blockiert die Farbthemen T2–T5. | Erst HQ2-02 festlegen, dann die Farbthemen in HQ2-03 bearbeiten. | Nutzer | Hinweis |
-| E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | Nutzer | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
-| E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja; einmal im Browser klicken | Nutzer | offen (Nutzer) |
-| E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | Nutzer | ✓ entschieden (Nutzer 04.10.): der bestehende Updater-Schlüssel bleibt (passt zum Public Key in `src-tauri/tauri.conf.json`). Am 04.10. hat der Orchestrator die Environment-Secrets `TAURI_SIGNING_PRIVATE_KEY` und `UPDATES_MIRROR_TOKEN` aus dem früheren privaten Repository in das `release`-Environment dieses Repos kopiert (einmaliger Workflow, Werte nie angezeigt, temporärer Token und Branch danach entfernt). Damit kann v1.4.1 auf v1.5.0 automatisch aktualisieren. Beleg (nur Namen): `gh api repos/Cuarroc/ProjectA/environments/release/secrets --jq '.secrets[].name'` liefert beide Namen (04.10.). |
-| E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | Nutzer | ✓ entschieden (Nutzer 04.10.): der Aktivierungsschalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); der Nutzer schaltet selbst am Ende ein (Zeile 2). Das löst den Zirkel zwischen Matrixzeile 2 und der Entscheidungsregel von W4-03. |
-| E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | Nutzer | später (Nutzer 25.09.) |
-| E7 | W5-Kern: beschlossen waren W5-22, W5-28, W5-02a und Not-Aus; PLAN-01 hat zusätzlich W5-00b, W5-02b3–b5/b7 und den Prüfpfad W5-05 in M3/M4 eingeordnet | erweiterten Kern bestätigen | Nutzer | ✓ bestätigt (Nutzer 02.10.) |
-| E8 | Routing Nahtstellen/Security: `docs/setup/providers.md` routet primär auf Codex `gpt-6-astra`, Claude-Worker nur als Ausweichen — die alte Modellregel ist damit ersetzt | Routing bestätigen | Nutzer | ✓ bestätigt (Nutzer 02.10.) |
-| E9 | M3-01 und M3-02 wurden im Auftrag des Orchestrators in M3 vorgezogen. | Nur als bereits getroffene Reihenfolge vermerken. | Orchestrator | ✓ entschieden (03.10.) |
-| E10 | Soll der Landing-Page-/DesignStudio-Abschnitt in `src/App.tsx` (etwa Zeilen 1277–1280) entfernt werden? | Ja, Abschnitt löschen. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, entfernen, als eigenes `fe`-Paket. |
-| E11 | Soll die Windows-Flake-Erkennung weiterlaufen, obwohl sie Actions-Minuten kostet? | Kosten und Nutzen abwägen; Empfehlung: nur mit belegtem Nutzen behalten. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, behalten (öffentliches Repo, Actions-Minuten kosten nichts). |
-| F1 | Soll die große Verbindungsschicht `ApiBackend` mit etwa 715 Zeilen bis nach M4 in `main.rs` bleiben? | Ja; danach das Trait in Domänenports teilen. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, `ApiBackend` bleibt bis nach M4 in `main.rs`. |
-| F2 | Alte verschlüsselte Sitzungsdateien sollen mit derselben Frist wie die übrige Aufräumfunktion gelöscht werden. | Ja; Umsetzung als ARCH-04. | Nutzer | ✓ entschieden (03.10.) |
-| F3 | Die Audit-Tabelle bleibt bis zum Not-Aus in M4 leer. Ist das in Ordnung? | Ja, solange M4 die Audit-Abnahme enthält. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, leere Audit-Tabelle bis zum Not-Aus ist in Ordnung, solange M4 die Audit-Abnahme hat. |
-| F4 | Doppelte PRs schließen. | Ja; #112, #113, #115, #91 und #146 sind geschlossen. | Orchestrator | ✓ entschieden (03.10.) |
-| F5 | Toten Code löschen. | Ja; Umsetzung als ARCH-01b und ARCH-07. | Nutzer | ✓ entschieden (03.10.) |
-| F6 | KI-24b als ARCH-11 in M3 aufnehmen? | Ja, als M3-Kandidat mit Windows-Lauf. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, ARCH-11 (KI-24b) kommt in M3, mit Windows-Lauf (der PC des Nutzers darf genutzt werden). |
-| E12 | memorix und desktop-commander im Claude-Start abschalten (hängen teils mit `CONNECT_TIMEOUT`; PLAN M2 nennt memorix als Gedächtnis). | Nutzer entscheidet; keine Änderung ohne Ja. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja, in beiden abschalten im Claude-Start der Projekt-Agenten (vom Orchestrator außerhalb des Repos erledigt). |
-| E13 | Der externe Server-Starter führt `npm ci` selbst aus und verstößt damit gegen die Installationsregel; ARCH-10b war deshalb angehalten und ist inzwischen gemergt (#236). | Installationsfreien Starter einführen: nur vorhandene Abhängigkeiten, `CARGO_BUILD_JOBS=1`, kein Dienstneustart, keine Unterbrechung aktiver Sitzungen. Die Remote-Konfiguration wird erst nach getrennter Freigabe des Nutzers eingespielt. | Nutzer | freigegeben 03.10. (17:30 UTC, Nutzerantwort „ja er soll ersetzt werden“); Starter am 03.10. 19:38 auf dem Server eingespielt (SHA-Prüfung, `bash -n`, Backup des Originals). Beobachtet 04.10.: Worker-Läufe über den Starter haben PRs #244, #246, #247, #250 und #251 geliefert, alle über die Queue gemergt; PR #256 nennt im Text einen vollen `prepush`-Lauf (Exit 0) auf dem Server. Diese Sitzung (Sonnet 5.5) lief selbst über den Starter. Das Kontingent ist von hier nicht beobachtbar; die Angabe dazu liefert der Koordinator. Nicht belegt: je Modell eine Aufschlüsselung (Fable) der Läufe. |
-| N1 | Darf der Orchestrator v1.5.0-beta und v1.5.0 selbst taggen und veröffentlichen? | Ja, sobald alle Gates und die 27 Matrixzeilen belegt sind. | Nutzer | ✓ entschieden (Nutzer 04.10.): ja (R-1, W4-04). |
-| N2 | Echte Proben und Tests am PC | Erlauben. | Nutzer | ✓ entschieden (Nutzer 04.10.): echte Proben mit Claude/Codex/OpenCode sind erlaubt und dürfen Abo-Kontingent verbrauchen (HQ2-05b, P0); Agenten dürfen den PC des Nutzers für Tests nutzen und die ProjectA-App öffnen, bedienen und schließen. |
-| W5-02b3 | Produktfrage: Verhältnis der globalen Env-Stufe zur Isolation je Profil | Globale Stufe ersetzt die Profil-Isolation. | Nutzer | ✓ entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten; Koordinatoren bleiben immer `strict`; profilspezifisches `passthrough` bleibt. |
-| M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
-| E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | offen, Nutzer, dringend |
-| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.5.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.5.1 |
-| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor M5-01 entscheiden. | Nutzer | offen, nach v1.5.1 |
-| E17 | Alte Arbeitsbäume entfernen? 29 von 81 sind nachweislich sicher (PR gemergt oder geschlossen, 0 geänderte Dateien, 0 ungepushte Commits, 0 Commits außerhalb von main); Liste liegt beim Orchestrator. Löschen entscheidet der Nutzer, vorher Backup. | Niedrige Priorität; nicht auf dem v1.5.0-Pfad. | Nutzer | offen, niedrig |
-| E18 | Matrixzeile 3 (riskante Übergänge, `resume`): Für v1.5.0 einengen? Vorschlag (Empfehlung): `resume` ist in v1.5.0 nicht verfügbar; ein Laufzeittest mit echtem Store belegt, dass `resume` ohne, mit falschem und mit aktuellem Urteil abgelehnt wird und nichts verändert, auch nach Neustart (Paket M4-ROW3-A eingereiht). Alternative: urteilsgebundenes `resume` bauen (5 Pakete, davon 2 auf der st-Spur, v1.5.0 ca. 1–2 Tage später). Bis zur Antwort gilt der Vorschlag als Arbeitsannahme. | Hohe Priorität; v1.5.0-Pfad, Empfehlung annehmen. | Nutzer | offen, hoch |
-| E19 | Matrixzeilen 15 und 17 eingeengt statt neu gebaut (Berater Fable + Astra, 04.10., beide Empfehlung: einengen). Echte Policy-Revision je Kandidat (DF-13) und echte Freigabe-Widerrufung (W5-02d) werden in M5 nachgeprüft. Gilt als Beraterentscheid; der Nutzer kann widersprechen. | Hohe Priorität; v1.5.0-Pfad. | Nutzer | entschieden (Berater), Nutzer kann widersprechen |
-| E20 | Zeilen 18 und 27 blockieren v1.5.0 in der heutigen Fassung: `releaseEligible` verlangt Review-Befugnis (W5-02d, nach M4 geparkt) und zugleich eingeschalteten Dauerbetrieb, obwohl E5 sagt, der Dauerbetrieb bleibt bis nach der Abnahme aus. Optionen: (A, Empfehlung beider Berater) v1.5.0 = App-Release über den menschlich kontrollierten Weg PR -> Gates -> Merge-Queue; Dauerbetrieb wird aus und nicht releasefähig ausgeliefert; Zeile 18/27 und das Audit werden getrennt (App-Release vs. Dauerbetrieb), der Nutzer bestätigt die Abnahme selbst in einer Datei; (B) Review-Befugnis jetzt bauen (mehrere Stufe-A-Pakete an Nahtstellen, v1.5.0 deutlich später); (C) Release verschieben. | Höchste Priorität; v1.5.0-Blocker. | Nutzer | ✓ entschieden (Nutzer 04.10.): Option A — v1.5.0 = App-Release, Dauerbetrieb aus und nicht releasefähig, Abnahme per Nutzer-Attestierung |
-| E21 | Matrixzeile 2 (Aktivierung durch eine einzelne Nutzerentscheidung): Dauerbetrieb bleibt in v1.5.0 aus (E20). Optionen: (A, Empfehlung) Zeile 2 lautet für v1.5.0 „Schalter gebaut und gesperrt (W4-03), Einschalten erst nach v1.5.0“; (B) Zeile 2 nach M5 verschieben. | v1.5.0-Pfad klären. | Nutzer | offen, Nutzer |
-| E22 | Matrixzeile 16 (unabhängige Reviews): Heute laufen Reviews als PR-Text mit anderer Modellfamilie; eine Review-Freigabe in der App gibt es in v1.5.0 nicht (W5-02d nach M4 geparkt). Optionen: (A, Empfehlung) Zeile 16 für v1.5.0 auf „Review durch andere Modellfamilie im PR, an denselben Kandidaten gebunden“ verengen, echte App-Freigabe in M5; (B) offen lassen bis M5. | v1.5.0-Pfad klären. | Nutzer | offen, Nutzer |
-| E23 | Matrixzeile 24 (Benchmark 5 Aufgaben, W4-01 #73): Ein echter Lauf verbraucht Abo-Kontingent. Optionen: (A) freigeben, Lauf am PC mit den 5 bestätigten Aufgaben; (B) nach v1.5.0 verschieben. | Nutzerfreigabe vor dem Lauf. | Nutzer | offen, Nutzer |
-| E24 | Name der Beta: Die Release-Pipeline akzeptiert nur x.y.z (`scripts/verify-windows-package.ps1:5`, `scripts/release.cmd:16`). Beta heißt v1.5.0, Endrelease v1.5.1? | Empfehlung: ja (kein Umbau). Alternative: echte `-beta`-Tags = `release.yml`-Umbau (Stufe A). | Nutzer | entschieden (Nutzer 05.10.): A |
-| E25 | R-1 ist zirkulär: Update-Drill (success/cancel/fail) und W3-07 brauchen ein echtes veröffentlichtes Update (fester Endpoint `tauri.conf.json:54-56`), R-1 verlangt sie aber vor dem Tag. Sollen sie Teil der Beta-Abnahme werden statt Voraussetzung? | Empfehlung: ja; Drills 1-6 und 8 vorher auf lokal signiert gebautem Installer (`node scripts/build-signed-windows.mjs`). | Nutzer | entschieden (Nutzer 05.10.): A |
-| R19 | Matrix-Zeile 19 enger gefasst: v1.5.0 verlangt vollständige Audit-Envelopes nur für die sicherheitskritischen Pfade (M4-R19-01/-05/-06/-08); die übrigen Pfade (M4-R19-02/-03/-04/-07/-09) folgen nach v1.5.0 in M5. | Auf die sicherheitskritischen Pfade verengen; Rest in M5. | Nutzer | ✓ entschieden (Nutzer 04.10.) |
-
-Entschieden am 25.09. (Entscheidungsseite des Orchestrators, umgesetzt in
-PLAN-01): Meilensteine M1–M4; Streichen, Parken und Vereinfachen wie oben;
-Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; DF-07d erledigt; DF-15b ja;
-W2-08b ja; W1-27 entscheidet der Advisor; Spec nur für M-Pakete; gestufte
-Reviews; PR-Text ist der Bericht; CI nur bei „ready“ und in der Queue.
-Frühere Entscheidungen (Nr. 1–17): `.pa/archiv/PLAN_2026-09-24.md` §5 und
-`docs/decisions.md`.
-
-## Belege und Verträge, die weiter gelten
-
-- `.pa/task_continuous_devhq.md` — Vertrag für den Continuous Mode (10.09.).
-- `.pa/continuous_acceptance_matrix.md` — Abnahmematrix, 27 Zeilen.
-- `.pa/plan_projects_w5.md` — Konzept der Welle W5 (Pakete außerhalb des Kerns geparkt).
-- `docs/development/HQ2_CONTRACT.md` — Verträge von HQ, App und CLI (DF-03).
-- `docs/ERLEDIGT.md` — erledigte Pakete mit PR, Merge-SHA und Bericht.
-- `.pa/archiv/` — alte Plan- und Standfassungen, historische Specs, Review-Prompts.
-
-## DEVFLOW-Tabelle (Quelle des Planimports DF-04)
-
-Der Planimport (`src-tauri/src/development_plan.rs`) liest genau diese Tabelle
-und erwartet alle 38 Zeilen DF-00 bis DF-37. Deshalb bleibt sie vollständig;
-der Status steht am Anfang der letzten Spalte. Die Zeilen sind nicht Teil der
-Meilensteine (DF-15b ist erledigt, PR #16).
-
-| ID | Paket / Agent / Scope | Nach | Konkretes Ergebnis und Abnahme |
-|---|---|---|---|
-| DF-00 | Bestandsabgleich · Architekt · DOC · S | — | Erledigt (PR #70). Live-Git, PR, offene HQ2/W-Gates, vorhandene Implementierungen und Fähigkeiten abgleichen; Pfad-Allowlist und Überlappungsmatrix für alle Pakete, keine doppelte Implementierung. |
-| DF-01 | Autonomie-Interview · Koordinator · DOC · S | DF-00 | Erledigt (PR #70). Entscheidungen zu Repo-Schreiben, Commit/Push, Merge/Release, Netzwerk/Installation, Secrets, destruktiven Aktionen, Isolation und Eskalation erfassen. |
-| DF-02 | Gemeinsame Desktop-Richtung · design-director · DOC · S | DF-00 | Erledigt (PR #70). Bestehende PC-Ansichten kritisch prüfen, Designvertrag mit Navigationshierarchie, Zuständen, Dichte und Live-Vorschau; Impeccable anwenden, Screenshots als Ausgangsevidenz. |
-| DF-03 | Domain-/Eventvertrag · Architekt · DOC · M | DF-00 | Erledigt (PR #70). Obige Verträge mit vorhandenen APIs abgleichen; Übergangstabelle, Fehlerfälle, Migration/Versionsstrategie und App/HQ-Parität festlegen; zwei unabhängige Reviews vor Integration der gemeinsamen Nahtstelle. |
-| DF-04 | Planimport · Backend · CORE · M | DF-03 | Erledigt (PR #70, DF-04a/b/c). Markdown-Pakete mit stabilen IDs und Quellenrevision projizieren; Tests für fehlende IDs, Zyklen, geänderte Quelle, Wiederimport ohne Duplikate. |
-| DF-05 | Plan-Lesezugriff · Integrator · SEAM/HOST · M | DF-04 | Erledigt (PR #70, DF-05a/b). Gemeinsamen lesenden App/HQ/CLI-Vertrag anbinden; identische Paketdaten und explizite Fehler statt leeren Erfolgs prüfen. |
-| DF-06 | Grafische Roadmap · Frontend · HQ · M | DF-02, DF-05 | **Geparkt (25.09.)** DF-06b hängt am Workflow-Motor (DF-11/16). DF-06a erledigt (PR #70). Ursprünglich: DF-06a erledigt (PR #70). Offen DF-06b: Ausführungszustände bereit/aktiv/erledigt nach DF-11/DF-16 mit belegter Paket-/Run-Bindung; bis dahin bleibt der Ausführungsstatus unbekannt. Hierarchie, Abhängigkeiten, kritischer Pfad, Quellenklick und Prioritätsgrund mit echtem Plan und leeren/fehlerhaften Daten prüfen. |
-| DF-07 | Desktop-Dichte · Frontend · HQ/APP · M | DF-02 | **Erledigt.** DF-07a–c über PR #70; DF-07d hat der Nutzer am 25.09. als erledigt bestätigt, die Sichtprüfung gehört zur M3-Abnahme. Ursprünglich: DF-07a–c erledigt (PR #70). Offen DF-07d: visueller PASS der React-Dichte (Code über PR #70 gemergt, `.pa/report_df07d_native_density.md`); DF-07 ist erst danach abgenommen. Komfortabel/Kompakt ändern messbar Zeilenhöhe, Abstand, Paneelgrößen und sichtbare Informationsmenge; Screenshots bei 1280×800 und 1920×1080, Tastatur und Zoom prüfen. |
-| DF-08 | Ausführungsidentität · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DF-08d hängt an DF-11. DF-08a–c erledigt (PR #70). Ursprünglich: DF-08a–c erledigt (PR #70). Offen DF-08d: native Modellbeobachtung, Adapter-/Profilbelege, Workflow-Anbindung nach DF-11. Provider, Modell/Familie, Adapter und Erscheinungsprofil getrennt führen; konfiguriert ist nicht beobachtet; Alias-/Unbekannt-Fälle testen. |
-| DF-09 | Profilwahl im Chat · Frontend · HQ/APP · M | DF-02, DF-08 | **Geparkt (25.09.)** DF-09b wäre ein Doppelbau (React neben HQ); erst nach der Entscheidung „HQ als Hauptbereich der App“. DF-09a erledigt (PR #100). Ursprünglich: DF-09a erledigt (PR #100, lokale Chat-Erscheinungen). Offen DF-09b: React-Parität und Admission-Kompatibilität. UI-Profil Codex/Claude/DeepSeek unabhängig vom belegten Modell wählen; unterstützte native Kombinationen von reiner Darstellung unterscheiden, inkompatible Starts verweigern. |
-| DF-10 | Chat-Modi und Interview · Integrator · CORE/SEAM/HQ/APP · M | DF-01, DF-03, DF-09 | **Geparkt (25.09.)** Zusammen mit HQ2-04; kommt mit der einen Oberfläche nach M4 zurück. Ursprünglich: Übernimmt HQ2-04 (beratende und aktive Sitzung getrennt sichtbar, manueller Providerwechsel mit Übergabe). Plan/Interview/aktive Ausführung mit konkreten Rückfragen und Projektkontext; Planmodus darf keine Schreibbefugnis erzeugen. Reale Sitzung mit Antwort belegen; Integration bei Bedarf in Kinder teilen. |
-| DF-11 | Workflow-Zustand · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** Workflow-Motor: zweite Steuerung neben dem fertigen Continuous-Kern. Ursprünglich: Persistente Stage-Zustände und append-only Übergangsereignisse auf vorhandener Queue; ungültige Übergänge und Neustart testen. |
-| DF-12 | Unabhängigkeitsgate · Backend · CORE · M | DF-08, DF-11 | **Gestrichen (25.09.)** Doppelung: die Autor-Familiensperre steckt in W2-01 ✓ und W5-02d. Ursprünglich: Kandidatenweite Autor-Familienmenge sperrt eigene Review-/Testbewertung, auch nach Handoff/Alias/Review-Fix; unbekannte Identität blockiert Attestation. Negativtests zwingend. |
-| DF-13 | Berechtigungsteam · Backend · CORE · M | DF-01, DF-11 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Versionierte, vom Nutzer festgelegte Policy auswerten; erlauben/ablehnen/eskalieren mit Gründen. Keine Selbst-Erweiterung, kein gefälschter Human-Verdict; Replay und Scopewechsel testen. |
-| DF-14 | Stationsübergabe · Backend · CORE · M | DF-12, DF-13 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Bestehende Admission/Claims für nächste Station nutzen; atomare Übergabe, Idempotenz, Fencing, Budget aller Nachfahren. Doppelzustellung und Crash vor/nach Spawn testen. |
-| DF-15 | Rücklauf und Recovery · Backend · CORE · M | DF-14 | **Geparkt (25.09.)** Workflow-Motor; DF-15a erledigt (PR #103), DF-15b erledigt (PR #16). Ursprünglich: Review→Fix→neuer Review, Pause/Cancel, Quota/Auth-Ausfall, begrenzte Wiederholung und Wiederaufnahme; Leaseablauf nie als Prozessende werten. Der frühe Provider-Exit vor dem Lesen des Task-Inputs ist als DF-15a erledigt (PR #103, Endzustand `exited_undelivered`, Migration 22); die dabei offen gebliebene Freigabe von Reservierung und Delivery ist als DF-15b erledigt (KNOWN_ISSUES KI-27: Reservierung `cancelled` und Delivery-Freigabe journalisiert, atomar im bewiesenen Exit-Commit, ohne neue Migration). |
-| DF-16 | Workflow-API · Integrator · SEAM/HOST · M | DF-15 | **Geparkt (25.09.)** Workflow-Motor. Ursprünglich: Start/Pause/Status/Decision über denselben Kern für App/HQ/CLI; Autorisierung, Konflikt und Event-Replay prüfen, kein Scheduler im Host. |
-| DF-17 | Team-/Stationsgraph · Frontend · HQ · M | DF-02, DF-16 | **Geparkt (25.09.)** hängt an DF-16. Ursprünglich: Ideen→Interview→Plan→Koordination→Architektur→Code/Design→Review→Test→Kritik mit konfigurierbaren Stationen, Rollen, Zuständen und Übergabegründen; native Teams/Lessons erhalten. |
-| DF-18 | Entscheidungs-Inbox · Frontend · HQ/APP · M | DF-16 | **Gestrichen (25.09.)** Doppelung mit W5-06/06b/08a/08b (die selbst geparkt sind). Ursprünglich: Nur echte Nutzerfragen/Freigaben, Kontext/Optionen/Auswirkung, Zielprojekt und Version sichtbar; doppelte/veraltete Entscheidung abweisen und auflösen. |
-| DF-19 | Prioritäten und Advisor · Backend · CORE · M | DF-08, DF-12, DF-03 | **Gestrichen (25.09.)** Routing ist dreifach geplant (DF-19/20, W5-30b/33, HQ2-07); später eine gemeinsame Fassung. Ursprünglich: Taskklasse, Abhängigkeiten, Evidenz, Benchmark/Erfahrung, Quota und Policy in erklärbare Empfehlungen für Priorität/Modell/Effort übersetzen; fehlende Daten und manuelle Overrides testen. |
-| DF-20 | Routing-Editor · Frontend · HQ/APP · M | DF-19 | **Gestrichen (25.09.)** wie DF-19. Ursprünglich: Anbieterreihenfolge, Regeln, Taskklassen, Reserven, Ausschlüsse, Fallbacks und Override editieren; Simulation erklärt Auswahl/Ablehnung, Revision verhindert verlorene Änderungen. |
-| DF-21 | Erweiterungskatalog · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: GitHub-Quellen zu Plugins/Skills auf feste Revision auflösen, Quelle/Kompatibilität/Rechte/Scope anzeigen; bestehende Installer wiederverwenden, untrusted Metadaten nicht ausführen. |
-| DF-22 | Installation und Rücknahme · Backend · CORE · M | DF-13, DF-21 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Kontrollierte Installation, Update, Deaktivierung und Rollback über geprüften Pfad; Traversal/Symlink, abgebrochenen Download und Versionswechsel testen; globale Änderungen nach Policy. |
-| DF-23 | Katalog-Bedienung · Frontend · HQ/APP · M | DF-22 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: GitHub-Link hinzufügen und ein Klick installieren, soweit Policy erlaubt; sonst begründete Entscheidung. Realer Installationszustand statt bloßer Prompt-Auswahl. |
-| DF-24 | Task-Preflight · Backend · CORE · M | DF-14, DF-22 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Vor Task und Scopewechsel erforderliche/hilfreiche Skills/Plugins auswählen; nur relevante laden, Auswahlgrund/Version/tatsächliche Verwendung protokollieren; fehlende Pflichtfähigkeit blockiert. |
-| DF-25 | Schneller Entwurfsbereich · Backend · CORE · M | DF-13, DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Worktree, isolierte Projektdaten und Live-Preview-Lebenszyklus; Start/Stop/Recovery, keine fremden Prozesse beenden. Klar als Arbeitsisolation kennzeichnen. |
-| DF-26 | Stärkere Sandbox · Backend · CORE · M | DF-25 | **Gestrichen (25.09.)** Container/VM ist auf 16 GB RAM unter Windows fraglich. Ursprünglich: Einen belegbar verfügbaren Container- oder VM-Adapter mit Filesystem-/Netzwerk-/Ressourcengrenzen integrieren; fehlende Voraussetzungen anzeigen, kein stiller schwacher Fallback. |
-| DF-27 | Architekturansicht · Frontend · HQ · M | DF-05, DF-25 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Reale Modul-/Abhängigkeitsdaten mit Quellen und Abdeckung visualisieren; Änderungsvorschlag→Diff→Test→Übernahme, unbekannte Analysebereiche sichtbar. |
-| DF-28 | Gemeinsames Design-Livebild · Frontend · HQ/APP · M | DF-17, DF-25 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Laufende echte App/Website, gewählter Schritt, Agentendelta und Feedback nebeneinander; Änderungen fortlaufend nachvollziehbar, Wiederverbindung/Fehler testen. |
-| DF-29 | Messereignisse · Backend · CORE · M | DF-11, DF-08 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Zyklus-/Wartezeit, Rework, Review/Test, Recovery, Routing und beobachtete Usage mit Quelle erfassen; Deduplikation, Einheit, fehlende Werte, Retention/Redaktion prüfen. |
-| DF-30 | Statistikprojektionen · Backend · CORE · M | DF-29, DF-24 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Filterbare Task-/Modell-/Provider-/Skill-Vergleiche, Stichproben und Qualitätsmetriken, API/Export; keine Gleichsetzung von Korrelation und Ursache oder Abo-Quoten. |
-| DF-31 | Statistik-Cockpit · Frontend · HQ/APP · M | DF-02, DF-30 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Große Analysefläche mit Trends, Verteilungen, Engpässen, Rework, Teststabilität, Kapazität, Quellen-Drilldown und Einstellungen; echte Daten plus kenntliche Fixture-Tests. |
-| DF-32 | Releaseprognose · Backend/Frontend · CORE/HQ · M | DF-06, DF-30 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Kritischen Pfad und beobachteten Durchsatz mit Unsicherheitsintervall verbinden; ohne ausreichende Daten kein Datum. Readiness separat aus offenen Gates, Reviews/Tests und Blockern anzeigen. |
-| DF-33 | Vorlagenkatalog · Backend · CORE · M | DF-03 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Versionierte editierbare Templates für Idee/Projekt/Plan/Team/Harness/Review/Test/Policy/Release; Kontextvorschlag mit Vorschau, kein stilles Überschreiben. |
-| DF-34 | Vorlagen im Arbeitsfluss · Frontend · HQ/APP · M | DF-10, DF-18, DF-23, DF-33 | **Geparkt (25.09.)** DEVFLOW-Ausbau, hilft dem Ziel nicht. Ursprünglich: Passende Vorlagen an Eingabestellen anbieten; übernehmen/anpassen/verwerfen, Entwürfe bei Navigation erhalten und gleiche Semantik in App/HQ prüfen. |
-| DF-35 | Durchgängiger Runtime-Nachweis · Tester · DOC/Tests · M | DF-20, DF-24, DF-26, DF-27, DF-28, DF-31, DF-32, DF-34 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Isoliertes Projekt vom Plan bis zu modellunabhängigem Review/Test; reale Modellantwort, Übergaben, Rückfrage, Neustart und Datenparität messen; negative Gates mitprüfen. |
-| DF-36 | PC-Politur und Designabnahme · design-director · HQ/APP · M | DF-35, DF-07 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Impeccable-Kritik anhand echter Screenshots; leere/ladende/fehlerhafte/dichte Ansichten, Fokus, Zoom, Kontrast und Hell/Dunkel prüfen; Befunde nachvollziehbar schließen. |
-| DF-37 | Abschluss und Releaseentscheidung · Integrator/Reviewer · DOC · S | DF-36 | **Gestrichen (25.09.)** ersetzt durch die Abnahme je Meilenstein. Ursprünglich: Zwei unabhängige Reviews für große/Shared-Seam-Änderungen, Dispositionen, aktuelle Gates und NICHT ABGEDECKT; Readinessbericht. Merge/Release/Continuous nur mit geltender menschlicher Freigabe. |
-
-Größen und Abschlussprotokoll der DEVFLOW-Pakete, Verträge und Scopes stehen in
-`.pa/archiv/PLAN_2026-09-24.md` (Abschnitt DEVFLOW).
+| M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | Verschoben → Z4-M5-04 |
+| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen → Z4-ARCH-D1-REST; drei Klassifizierer mit #596 gebündelt |
+| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen → Z3 V16-ARCH-D2 |
+| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | ✓ #577, #587 |
+| ARCH-D4 | Restlicher API-Router mit 51 Zweigen: kleinere serielle Teil-PRs, insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs`; je PR ≤ 300 Gesamtdiffzeilen einschließlich Tests (ARCH-D4-PLAN) | M | api | offen → Z3 V16-ARCH-D4-05 (Teile 1–4 ✓ #623, #625, #627, #629) |
+| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen → Z3 V16-ARCH-D5a/b |
+| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | ✓ #579, #589 |
+| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen → Z3 V16-ARCH-D7 |
+| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen → Z3 V16-ARCH-D8a–c |
+| M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19) | S | st | offen → Z4-R19-ST |
+| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19) | S | st | offen → Z4-R19-ST |
+| M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | offen → Z4-R19-ST |
+| M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | offen → Z4-R19-ST |
+| M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | offen → Z4-R19-09 |
