@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -110,4 +110,44 @@ test("a unicode escape char literal does not confuse test mod stripping", () => 
   const result = run(root, "check");
   assert.equal(result.status, 1);
   assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
+});
+
+test("rejects diagnosis commands in main.rs", () => {
+  const root = fixture({ "src-tauri/src/main.rs": "fn get_reason_catalog() { }\n" });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /DIAGNOSIS_COMMANDS_MOVED.*src-tauri\/src\/main\.rs/);
+});
+
+test("contract: all 7 diagnosis commands are properly moved to diagnosis_cmds.rs and exported in main.rs", () => {
+  const repoRoot = process.env.TEST_REPO_ROOT || dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+  const mainRs = readFileSync(join(repoRoot, "src-tauri/src/main.rs"), "utf8");
+  let diagnosisRs = "";
+  try {
+    diagnosisRs = readFileSync(join(repoRoot, "src-tauri/src/diagnosis_cmds.rs"), "utf8");
+  } catch (e) {
+    // missing in older tree, handled below
+  }
+
+  const commands = [
+    "get_log_path",
+    "get_panic_notice",
+    "get_reason_catalog",
+    "export_diagnosis",
+    "reveal_log_path",
+    "get_stuck_after_minutes",
+    "set_stuck_after_minutes"
+  ];
+
+  for (const cmd of commands) {
+    assert.doesNotMatch(mainRs, new RegExp(`fn\\s+${cmd}\\s*\\(`), `Command ${cmd} should not be defined in main.rs`);
+    assert.match(diagnosisRs, new RegExp(`#\\[tauri::command\\]\\s*(?:(?:#\\[[^\\]]*\\]|\\/\\/.*|\\/\\*.*?\\*\\/)\\s*)*(?:pub\\s+)?(?:async\\s+)?fn\\s+${cmd}\\s*\\(`), `Command ${cmd} should be exported in diagnosis_cmds.rs`);
+  }
+
+  const handlerMatch = mainRs.match(/generate_handler!\[(.*?)\]/s);
+  assert.ok(handlerMatch, "generate_handler! not found in main.rs");
+  const handlerList = handlerMatch[1];
+  for (const cmd of commands) {
+    assert.match(handlerList, new RegExp(`\\b${cmd}\\b`), `Command ${cmd} should be listed in generate_handler!`);
+  }
 });
