@@ -168,6 +168,9 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                             tokio::time::sleep(Duration::from_secs(4)).await;
                             sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
                         }))
+                    } else if stage == Stage::Launch {
+                        std::thread::sleep(Duration::from_secs(2));
+                        None
                     } else { None };
                     let persist_start = start.elapsed();
                     let persisted = runtime.block_on(store.persist_native_checkpoint(owner, &request));
