@@ -28,7 +28,7 @@
     "hq": "node scripts/dev-hq.mjs",
     "hq:live": "node scripts/hq-live.mjs",
     "test:hq": "node --test scripts/lib/*.test.mjs",
-    "test:denkraum": "node --test \"tools/denkraum/**/*.test.mjs\" && node tools/denkraum/hygiene-check.mjs",
+    "test:denkraum": "playwright test -c tools/denkraum/playwright.config.mjs && node tools/denkraum/hygiene-check.mjs",
     "test:hq:visual": "node --test scripts/lib/hq-visual.browser.mjs",
     "tauri": "tauri",
     "hq:lesson": "node scripts/hq-lesson.mjs",

@@ -155,6 +155,7 @@ async function loadInbox() {
 }
 async function saveIdea() {
   if (ideaPosting || posting || loading) return;
+  if (!rootReceiver) { $('idea-status').textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
   if (dataInvalid || state?.schemaVersion !== 2) { $('idea-status').textContent = 'Kein geprüfter V2-Datenstand. Aktualisieren und danach erneut prüfen; dein Entwurf bleibt erhalten.'; return; }
   if (ideaRecovery) { updateIdeaControls(); return; }
   const text = $('idea').value.trim();
@@ -247,6 +248,7 @@ function appendWorkbench(item, idea) {
 }
 async function saveWorkbench() {
   const d = wbDrafts[wbActive]; if (!d || wbBusy || loading || posting || ideaPosting || dataInvalid || wbCorrupt || state?.schemaVersion !== 2) return;
+  if (!rootReceiver) { wbStatus.textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
   const value = wbValue({ ideaRef: d.ideaRef, actor: 'Browserentwurf', source: null, variants: d.variants.filter(v => v.title.trim() || v.description.trim()), openPoints: d.openPoints, nextSteps: d.nextSteps });
   if (!d.pending && (!value || !crypto.randomUUID || !wbRevisionValid(d.expectedRevision))) { wbStatus.textContent = 'Bitte mindestens einen vollständigen Inhalt eingeben: bis zu 16 Varianten (Titel 200, Beschreibung 2000 Zeichen), je 32 Punkte/Schritte, insgesamt höchstens 20000 Zeichen.'; return; }
   const payload = d.pending || { requestId: crypto.randomUUID(), expectedRevision: d.expectedRevision, ...value }; d.pending = payload; if (!persistWB()) { updateWB(); return; }
