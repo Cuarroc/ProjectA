@@ -1236,6 +1236,134 @@ mod tests {
         (dir, store, project.id)
     }
     #[tokio::test]
+    async fn goal_task_audit_policy_precedes_writer_lock() {
+        for change_path in [false, true] {
+            let (dir, store, project) = store().await;
+            let policy = dir.path().join(development_policy::POLICY_FILE);
+            let original = std::fs::read(&policy).unwrap();
+            if !change_path {
+                std::fs::write(&policy, "malformed").unwrap();
+            }
+            let mut writer = begin_write(&store.pool, "test writer").await.unwrap();
+            let create = store.create_continuous_goal(&project, "goal", None, None, false);
+            tokio::pin!(create);
+            assert!(
+                tokio::time::timeout(std::time::Duration::from_millis(100), &mut create)
+                    .await
+                    .is_err()
+            );
+            if change_path {
+                sqlx::query("UPDATE projects SET repo_path = repo_path || '/changed' WHERE id=?")
+                    .bind(&project)
+                    .execute(&mut *writer)
+                    .await
+                    .unwrap();
+            } else {
+                std::fs::write(&policy, original).unwrap();
+            }
+            writer.commit().await.unwrap();
+            let error = create.await.unwrap_err();
+            assert!(error.contains(if change_path {
+                "project path changed"
+            } else {
+                "invalid"
+            }));
+            assert!(store
+                .list_continuous_goals(&project)
+                .await
+                .unwrap()
+                .is_empty());
+            assert_eq!(goal_task_envelopes(&store).await.len(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_unknown_projects_are_unresolved() {
+        let (_dir, store, _) = store().await;
+        store
+            .create_continuous_goal("untrusted", "goal", None, None, false)
+            .await
+            .unwrap_err();
+        store
+            .control_continuous("untrusted", "pause")
+            .await
+            .unwrap_err();
+        let work = begin_goal_task_audit(&store.pool).await.unwrap();
+        finish_goal_task_audit(
+            work,
+            Err::<(), _>("refusal".into()),
+            "test",
+            "subject",
+            Some("untrusted"),
+        )
+        .await
+        .unwrap_err();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len(), 3);
+        for row in rows {
+            assert_eq!(row["project"], "unresolved");
+            assert!(row["result"].as_str().unwrap().starts_with("refused:"));
+        }
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_invalid_control_is_fixed() {
+        let (_dir, store, project) = store().await;
+        store
+            .control_continuous(&project, "untrusted-action")
+            .await
+            .unwrap_err();
+        let action: String = sqlx::query_scalar("SELECT action FROM audit_log")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(action, "control_invalid");
+        let rows = goal_task_envelopes(&store).await;
+        assert!(!rows[0].to_string().contains("untrusted-action"));
+        let status: String =
+            sqlx::query_scalar("SELECT status FROM continuous_projects WHERE project_id=?")
+                .bind(&project)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(status, CONTINUOUS_ENABLED);
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_infrastructure_errors_are_distinct() {
+        for io_error in [false, true] {
+            let (dir, store, project) = store().await;
+            if io_error {
+                std::fs::rename(
+                    dir.path().join(development_policy::POLICY_FILE),
+                    dir.path().join("policy-backup"),
+                )
+                .unwrap();
+            } else {
+                sqlx::query("CREATE TRIGGER fail_goal BEFORE INSERT ON continuous_goals BEGIN SELECT RAISE(ABORT, 'db unavailable'); END")
+                    .execute(&store.pool).await.unwrap();
+            }
+            store
+                .create_continuous_goal(&project, "goal", None, None, false)
+                .await
+                .unwrap_err();
+            let rows = goal_task_envelopes(&store).await;
+            assert_eq!(rows.len(), 1);
+            assert!(rows[0]["result"].as_str().unwrap().starts_with("error:"));
+            assert!(store
+                .list_continuous_goals(&project)
+                .await
+                .unwrap()
+                .is_empty());
+            let policies: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM continuous_root_policies")
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+            assert_eq!(policies, 0, "partial writes must roll back");
+        }
+    }
+
+    #[tokio::test]
     async fn goal_task_audit_uses_one_connection() {
         let (dir, mut store, project) = store().await;
         store.pool.close().await;
