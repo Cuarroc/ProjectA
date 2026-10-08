@@ -516,8 +516,9 @@ mod tests {
             .find(|profile| profile.id == "ollama")
             .expect("ollama");
         assert_eq!(ollama.caps, AgentCapabilities::default());
-        // Codex carries a captured readiness marker and the documented
-        // model-instructions file setting; other capabilities stay cautious.
+        // Codex carries a captured readiness marker, the documented
+        // model-instructions file setting and the probed repo skills
+        // directory; other capabilities stay cautious.
         let codex = default_profiles()
             .into_iter()
             .find(|profile| profile.id == "codex")
@@ -529,6 +530,9 @@ mod tests {
                     flag: "--config".into(),
                     key: "model_instructions_file".into(),
                     ext: "md".into(),
+                },
+                skills: SkillsDiscovery::ConventionAt {
+                    dir: ".agents/skills".into()
                 },
                 readiness_marker: Some("Ask Codex to do anything".into()),
                 ..AgentCapabilities::default()
@@ -583,9 +587,7 @@ mod tests {
     /// workspace's `.agents/skills` from `debug skill --pure` - an
     /// observation, not a configuration guess - so OpenCode profiles declare
     /// `ConventionAt`. Only the bare `opencode` invocation was probed; routed
-    /// variants use the same binary and `--pure` makes no model call. Codex stays
-    /// `Unsupported`: its re-probe waits out the rate limit (2026-09-30),
-    /// and this assert keeps anyone from lifting it along by accident.
+    /// variants use the same binary and `--pure` makes no model call.
     #[test]
     fn opencode_profiles_read_repo_skills_at_agents_skills() {
         for id in [
@@ -605,15 +607,41 @@ mod tests {
                 "{id}"
             );
         }
-        let codex = default_profiles()
-            .into_iter()
-            .find(|profile| profile.id == "codex")
-            .expect("codex");
+    }
+
+    /// Z4-W118B-PROFILE (probe 2026-10-08, Codex CLI 0.160.0): a control run
+    /// answered UNKNOWN, the run with a canary skill under `.agents/skills`
+    /// read that file first and returned the exact canary - an observation,
+    /// so the built-in Codex profile declares `ConventionAt`. Only Codex
+    /// changes; every other built-in profile keeps its previous discovery.
+    #[test]
+    fn the_codex_profile_reads_repo_skills_at_agents_skills() {
+        let profiles = default_profiles();
+        let skills_of = |id: &str| {
+            profiles
+                .iter()
+                .find(|profile| profile.id == id)
+                .expect(id)
+                .caps
+                .skills
+                .clone()
+        };
         assert_eq!(
-            codex.caps.skills,
-            SkillsDiscovery::Unsupported,
-            "codex is not re-probed yet (W1-18b, rate limit until 2026-09-30)"
+            skills_of("codex"),
+            SkillsDiscovery::ConventionAt {
+                dir: ".agents/skills".into()
+            }
         );
+        assert_eq!(skills_of("claude"), SkillsDiscovery::Convention);
+        assert_eq!(
+            skills_of("kimi"),
+            SkillsDiscovery::Flag {
+                flag: "--skills-dir".into()
+            }
+        );
+        for id in ["ollama", "ollama-coder"] {
+            assert_eq!(skills_of(id), SkillsDiscovery::Unsupported, "{id}");
+        }
     }
 
     /// The codex composer prompt "Ask Codex to do anything" and its echo of
