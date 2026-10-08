@@ -4,14 +4,17 @@
 import { randomUUID } from 'node:crypto';
 import { DeliveryStore } from './delivery.mjs';
 import { activeEvents, answerRef, ensure, id, now, object, receiptFor, sameRef, statuses, text, validEventRef,
-  validImplementationEvidence } from './model.mjs';
+  validId, validImplementationEvidence } from './model.mjs';
+
+// R671-O1: progress and patches are root-bound, so the root id is checked first, before input validation and replay.
+const requireRoot = rootAgentId => ensure(validId(rootAgentId), 'Root-Agent-ID ist nicht konfiguriert; Empfangsprüfung abgelehnt.', 503);
 
 export class ProgressStore extends DeliveryStore {
   // Binds the DR-04a hook: a V2 "applied" ack runs the same transition inside its own change.
   progressTransition(state, input) { return this.#progress(state, input); }
   putProgress(input) { return this.change(state => this.#progress(state, input)); }
   async #progress(state, input) {
-    object(input, 'Fortschritt'); ensure(state.schemaVersion === 2, 'Explizite V2-Migration erforderlich.', 409);
+    requireRoot(this.rootAgentId); object(input, 'Fortschritt'); ensure(state.schemaVersion === 2, 'Explizite V2-Migration erforderlich.', 409);
     const requestId = id(input.requestId); ensure(validEventRef(input.eventRef), 'Ungültige Ereignisreferenz.');
     const ref = input.eventRef;
     const eventRef = ref.kind === 'answer' ? answerRef({ id: ref.eventId, questionId: ref.questionId, questionRevision: ref.questionRevision })
@@ -60,7 +63,7 @@ export class ProgressStore extends DeliveryStore {
     p.history.push(h); p.progressRevision = h.progressRevision; p.currentStatus = h.to; return result(h);
   }
   async putPatch(input) {
-    object(input, 'Patch'); const requestId = id(input.requestId); const patchId = input.id === undefined ? null : id(input.id);
+    requireRoot(this.rootAgentId); object(input, 'Patch'); const requestId = id(input.requestId); const patchId = input.id === undefined ? null : id(input.id);
     ensure(patchId ? Number.isSafeInteger(input.expectedRevision) && input.expectedRevision > 0 : input.expectedRevision === null, 'Ungültige expectedRevision.');
     ensure(typeof input.windowText === 'string' && input.windowText.length <= 2000, 'Ungültiges Patchfenster.');
     ensure(Array.isArray(input.sourceRefs) && input.sourceRefs.length > 0 && input.sourceRefs.length <= 32 && input.sourceRefs.every(validEventRef), 'Typisierte Patchquellen erforderlich.');

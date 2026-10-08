@@ -1,13 +1,15 @@
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dirname, join, extname } from 'node:path';
+import { dirname, join, extname, relative, isAbsolute, sep } from 'node:path';
 import { DeskStore, DeskError } from './store.mjs';
 import { timingSafeEqual, createHmac } from 'node:crypto';
 import { validId } from './store/model.mjs';
 import { loadStartConfig } from './config.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
+// R676-O1: every route that reads or writes Root receipts needs a valid root id before the store is called.
+const rootBound = ['/api/pending', '/api/inbox', '/api/notifications/retry', '/api/progress', '/api/patches', '/api/receipts', '/api/ack'];
 const attribute = v => v.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 export function createWebhookNotifier({ url, secret, request = fetch, clock = Date.now } = {}) {
   if (!url || !secret) return undefined;
@@ -58,6 +60,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
       if (origin && origin !== `http://${req.headers.host}`) throw new DeskError('Fremde Herkunft nicht erlaubt.', 403);
       if (req.headers['sec-fetch-site'] === 'cross-site') throw new DeskError('Fremde Website nicht erlaubt.', 403);
       const url = new URL(req.url, `http://${req.headers.host}`);
+      if (rootBound.includes(url.pathname) && !validId(rootAgentId)) throw new DeskError('Root-Agent-ID ist nicht konfiguriert; Empfangsprüfung abgelehnt.', 503);
       if (req.method === 'GET') {
         if (url.pathname === '/health') return json(200, { service: 'decision-desk', ok: true });
         if (url.pathname === '/api/state') return json(200, await store.read());
@@ -66,7 +69,10 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
         const path = url.pathname === '/' ? '/index.html' : url.pathname;
         if (!['/index.html', '/app/questions.js', '/app/ideas.js', '/style.css'].includes(path) && !/^\/previews\/[a-zA-Z0-9_-]+\.(png|jpg|webp)$/.test(path)) throw new DeskError('Nicht gefunden.', 404);
         const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
-        let body = await readFile(join(assets, path.slice(1)));
+        // R676-O2: the allowlist names URLs; the resolved file must also stay physically inside the asset root (no symlink escape).
+        const file = await realpath(join(assets, path.slice(1))); const inside = relative(await realpath(assets), file);
+        if (!inside || inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside)) throw new DeskError('Nicht gefunden.', 404);
+        let body = await readFile(file);
         if (path === '/index.html' && validId(rootAgentId)) body = Buffer.from(String(body).replace('</head>',
           `  <meta name="decision-desk-root-agent-id" content="${attribute(rootAgentId)}">\n</head>`));
         res.writeHead(200, { 'Content-Type': mime[extname(path)] }); return res.end(body);

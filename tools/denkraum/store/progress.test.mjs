@@ -92,3 +92,13 @@ test('progress and patches fail closed without a configured root agent id', asyn
   assert.equal(await readFile(file, 'utf8'), bytes);
   assert.equal((await s.putProgress(step(a, { from: 'incoming', to: 'reviewed' }))).transition.actor, ROOT);
 });
+
+test('replayed progress and patch requests refuse a missing root agent id like new ones (R671-O1)', async () => {
+  const { s, file, answer, receive } = await fresh(); const a = await answer('E-1'); await receive(a);
+  await s.putProgress(step(a, { from: 'incoming', to: 'reviewed' })); await s.putPatch(patch(a));
+  const bytes = await readFile(file, 'utf8'); const rootless = new ProgressStore(file, verified);
+  await assert.rejects(rootless.putProgress(step(a, { from: 'incoming', to: 'reviewed' })), status(503), 'progress replay');
+  await assert.rejects(rootless.putPatch(patch(a)), status(503), 'patch replay');
+  await assert.rejects(rootless.putProgress({}), status(503), 'the root check comes before input validation');
+  assert.equal(await readFile(file, 'utf8'), bytes);
+});
