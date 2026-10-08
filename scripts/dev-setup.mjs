@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { readDevConfig } from './lib/dev-config.mjs';
+import { inspectCodexHooks, writeCodexHooks } from './lib/codex-hooks.mjs';
 
 const providers = ['claude', 'codex', 'kimi', 'opencode', 'ollama'];
 const manifestRelativePath = 'src-tauri/resources/agent-defaults.json';
@@ -54,6 +55,7 @@ export function doctor(root, probe = spawnSync) {
   }
   const git = command('git', ['config', '--get', 'core.hooksPath']);
   add('hooks', git.status === 0 && git.stdout.trim() === '.githooks' ? 'ok' : 'warn', 'Expected clone-local core.hooksPath=.githooks');
+  checks.push(inspectCodexHooks(root));
   const cargo = command('cargo', ['--version']);
   add('cargo', cargo.status === 0 ? 'ok' : 'warn', cargo.status === 0 ? cargo.stdout.trim() : 'Rust toolchain unavailable');
   const rust = command('rustc', ['--version']);
@@ -81,6 +83,8 @@ export function setup(root, probe = spawnSync) {
     if (result.status !== 0) throw new Error('Cannot set clone-local hooks path');
     changed.push('core.hooksPath');
   }
+  // Project Codex hooks, generated per checkout (HOOK-WIN): never bare bash.
+  if (writeCodexHooks(root).changed) changed.push('.codex/hooks.json');
   return { schemaVersion: 1, changed, continuousEnabled: false };
 }
 
