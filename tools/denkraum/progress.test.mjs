@@ -105,11 +105,14 @@ test('progress implementation replay is canonical across property order and API 
     return new Promise(resolve => server.emit('request', req, { socket: { localPort: 4791 }, setHeader() {}, writeHead(status) { this.status = status; },
       end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } })); };
   assert.equal((await invoke({ origin: 'http://127.0.0.1:4791' })).status, 403);
+  assert.equal((await invoke({ authorization: 'Bearer wrong' })).status, 403); // R732-K2: a wrong bearer is refused like a missing one
   const reviewed = await invoke({ authorization: `Bearer ${token}` }); assert.equal(reviewed.status, 200);
   const file = join(s.file, '..', 'progress.json'); await writeFile(file, JSON.stringify(review)); let sent;
   await runCli(['progress', file], { DECISION_DESK_ROOT_RECEIPT_TOKEN: token }, async (url, options) => {
     sent = { url: String(url), options }; return { ok: true, json: async () => reviewed.body };
   }); assert.equal(sent.url, 'http://127.0.0.1:4791/api/progress'); assert.equal(sent.options.redirect, 'error');
+  // R732-K1: the CLI sends the Root bearer and the unchanged request body.
+  assert.equal(sent.options.headers.Authorization, `Bearer ${token}`); assert.deepEqual(JSON.parse(sent.options.body), review);
   await s.putProgress(request('reviewed', 'planned', 2, { patchId: patch.id }));
   const applied = request('planned', 'applied', 3, { implementationEvidence: evidence }); const result = await s.putProgress(applied);
   const reordered = Object.fromEntries(Object.entries(evidence).reverse()); const bytes = await readFile(s.file, 'utf8');
