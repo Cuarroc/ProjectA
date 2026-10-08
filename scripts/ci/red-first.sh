@@ -442,6 +442,15 @@ run_spec() {
       ensure_node_modules "$tree"
       (cd "$tree" && npx playwright test "$path")
       ;;
+    tools/denkraum/*.spec.mjs)
+      # DR-11: Denkraum Playwright harness (config is not the repo-root e2e one).
+      ensure_node_modules "$tree"
+      if [ -n "$name" ]; then
+        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path" -g "$name")
+      else
+        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path")
+      fi
+      ;;
     *.ts|*.tsx)
       ensure_node_modules "$tree"
       if [ -n "$name" ]; then
@@ -504,6 +513,14 @@ classify_run() {
         return
       fi
       return 0
+      ;;
+    tools/denkraum/*.spec.mjs)
+      # Playwright list/github reporter: "N passed" with N > 0.
+      if printf '%s\n' "$out" | grep -E 'Datei fehlt:' >/dev/null; then
+        return 1
+      fi
+      printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g' |
+        grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
       ;;
     *.mjs|*.cjs)
       if printf '%s\n' "$out" | grep -E 'ℹ tests 0$|Datei fehlt:' >/dev/null; then
