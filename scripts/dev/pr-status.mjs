@@ -20,6 +20,8 @@ export const REQUIRED = [
   ["windows", "gates (windows)"],
   ["redFirst", "red-first"],
 ];
+// External Mergify check (not a ci.yml job): required for "bereit", kept out of REQUIRED.
+export const PROTECTION = "Mergify Merge Protections";
 const LIMIT = 200;
 const FIELDS = "number,title,headRefName,isDraft,labels,updatedAt,mergeStateStatus,statusCheckRollup";
 
@@ -30,18 +32,21 @@ Aufruf:
 
 Spalten: Draft, Queue (in Queue / bereit / wartet auf CI / rot / Konflikt /
 gesperrt (do-not-merge) / Draft (keine CI)), Labels, gates (linux),
-gates (windows), red-first (ok / rot / laeuft / uebersprungen / —).
+gates (windows), red-first, Mergify Merge Protections
+(ok / rot / laeuft / uebersprungen / —).
 Liest nur: gh pr list --state open --json ${FIELDS}
 
 Exit-Codes: 0 ok, 2 Aufruffehler, 3 gh-Fehler.
 `;
 
-const time = (c) => Date.parse(c.completedAt || c.startedAt || 0) || 0;
+// Prefer startedAt so a newer in-progress rerun is not hidden by an older
+// run that completed later. Fall back to completedAt for contexts without start.
+const time = (c) => Date.parse(c.startedAt || c.completedAt || 0) || 0;
 
-export function checkState(rollup, name) {
-  const runs = (rollup || []).filter((c) => (c.name || c.context) === name);
-  if (!runs.length) return "—";
-  const c = runs.sort((a, b) => time(b) - time(a))[0];
+// Lower rank = worse for readiness. Ties at the newest start keep the worst.
+const STATE_RANK = { rot: 0, "läuft": 1, "—": 2, "übersprungen": 3, ok: 4 };
+
+function singleRunState(c) {
   if (c.__typename === "StatusContext" || (c.state && !c.status)) {
     return { SUCCESS: "ok", PENDING: "läuft", EXPECTED: "läuft" }[c.state] || "rot";
   }
@@ -49,6 +54,18 @@ export function checkState(rollup, name) {
   if (c.conclusion === "SUCCESS") return "ok";
   if (c.conclusion === "SKIPPED" || c.conclusion === "NEUTRAL") return "übersprungen";
   return "rot";
+}
+
+function worseState(a, b) {
+  return (STATE_RANK[a] ?? 0) <= (STATE_RANK[b] ?? 0) ? a : b;
+}
+
+export function checkState(rollup, name) {
+  const runs = (rollup || []).filter((c) => (c.name || c.context) === name);
+  if (!runs.length) return "—";
+  const newest = Math.max(...runs.map(time));
+  // Newest start wins; equal timestamps take the worst outcome (order-independent).
+  return runs.filter((c) => time(c) === newest).map(singleRunState).reduce(worseState);
 }
 
 function queuedNumbers(prs) {
@@ -60,6 +77,10 @@ function queuedNumbers(prs) {
   return nums;
 }
 
+function isSatisfied(state) {
+  return state === "ok" || state === "übersprungen";
+}
+
 export function buildRows(prs) {
   const queued = queuedNumbers(prs);
   return prs
@@ -67,16 +88,17 @@ export function buildRows(prs) {
     .map((p) => {
       const labels = (p.labels || []).map((l) => l.name);
       const checks = Object.fromEntries(REQUIRED.map(([key, name]) => [key, checkState(p.statusCheckRollup, name)]));
+      const protection = checkState(p.statusCheckRollup, PROTECTION);
       const states = Object.values(checks);
       let queue;
       if (queued.has(p.number)) queue = "in Queue";
       else if (p.isDraft) queue = "Draft (keine CI)";
       else if (labels.includes("do-not-merge")) queue = "gesperrt (do-not-merge)";
       else if (labels.includes("conflict") || p.mergeStateStatus === "DIRTY") queue = "Konflikt";
-      else if (states.includes("rot")) queue = "rot";
-      else if (states.every((s) => s === "ok" || s === "übersprungen")) queue = "bereit";
+      else if (states.includes("rot") || protection === "rot") queue = "rot";
+      else if (states.every(isSatisfied) && isSatisfied(protection)) queue = "bereit";
       else queue = "wartet auf CI";
-      return { number: p.number, branch: p.headRefName, title: p.title, draft: Boolean(p.isDraft), queue, labels, checks, updatedAt: p.updatedAt };
+      return { number: p.number, branch: p.headRefName, title: p.title, draft: Boolean(p.isDraft), queue, labels, checks, protection, updatedAt: p.updatedAt };
     })
     .sort((a, b) => a.number - b.number);
 }
@@ -85,15 +107,15 @@ const cell = (s) => String(s).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 export function formatTable(rows) {
   const out = [
-    "| # | Branch | Draft | Queue | Labels | linux | windows | red-first | aktualisiert (UTC) |",
-    "|---|---|---|---|---|---|---|---|---|",
+    "| # | Branch | Draft | Queue | Labels | linux | windows | red-first | protection | aktualisiert (UTC) |",
+    "|---|---|---|---|---|---|---|---|---|---|",
   ];
   for (const r of rows) {
     out.push(
-      `| #${r.number} | ${cell(r.branch)} | ${r.draft ? "ja" : "nein"} | ${r.queue} | ${cell(r.labels.join(", ") || "—")} | ${r.checks.linux} | ${r.checks.windows} | ${r.checks.redFirst} | ${String(r.updatedAt || "").slice(0, 16).replace("T", " ")} |`,
+      `| #${r.number} | ${cell(r.branch)} | ${r.draft ? "ja" : "nein"} | ${r.queue} | ${cell(r.labels.join(", ") || "—")} | ${r.checks.linux} | ${r.checks.windows} | ${r.checks.redFirst} | ${r.protection} | ${String(r.updatedAt || "").slice(0, 16).replace("T", " ")} |`,
     );
   }
-  if (!rows.length) out.push("| — | keine offenen PRs | | | | | | | |");
+  if (!rows.length) out.push("| — | keine offenen PRs | | | | | | | | |");
   return out.join("\n") + "\n";
 }
 
