@@ -22,6 +22,19 @@ per provider: `docs/setup/README.md`. Check your machine with
    commit. Never `--no-verify`, never `--force` pushes.
 4. Only one lane at a time may edit the seams `src-tauri/src/api.rs`, `main.rs`,
    `store.rs`, `bin/pa.rs`. Declare ownership before touching them.
+5. Reconcile previous orders, live assignments and actual native goals first.
+   Root owns priority/acceptance, Chief alone dispatches; one execution owner.
+   Confirm your own native goal with real create/get output, or record verified
+   function unavailability plus the ticket goal. Include result/benefit, parent,
+   ticket/owner, scope/limits, acceptance, dependencies and next step. A checked
+   worker handover may finish its goal; the parent stays open. Plan text is not
+   native evidence; never complete an unmet goal just to replace it.
+6. Approved adaptation may change method/order/slicing/owner/location, not
+   requirements. Record trigger/evidence, previous state, change, remaining
+   acceptance duties and next owner/step in the ticket/PLAN. Preserve granted
+   authorizations; new scope/cost/permissions belong to Elias. Blockers need
+   cause/hypothesis, evidence, impact and next owner/step; continue independent
+   approved work without blind retries or invented work.
 
 ## 2. Build and gates
 
@@ -66,7 +79,15 @@ test first, then the fix.
   After round two the user decides. Everyday pair: `kimi-k3:cloud` +
   `glm-5.2:cloud` via Ollama Cloud and `.pa/review_transport.py` (setup and
   command: `docs/setup/ollama-reviewers.md`).
-- Recursive prompting (draft -> critique -> refine, at most two rounds, logged; `docs/development/prompting.md`) is mandatory for every task, worker brief and review prompt (user order 2026-10-05).
+- Use recursive prompting selectively for complex plans/dependencies, hard
+  diagnosis or demanding designs. Keep requirements/acceptance, necessary
+  subquestions, first solution, one neutral extra check (no defect is valid),
+  concrete fixes, then integration/interface check. A second extra round needs
+  a remaining concrete defect; stop at acceptance/no insight/unchanged blocker
+  or time/quota/budget limit. It replaces neither review nor user approval.
+  Record the three existing GOALS-C trials only, with confirmation, regressions
+  and measured extra effort; sample, not proof. Restrict if overhead dominates.
+  No extra QA, benchmark, agents/services or RLM runtime. See prompting.md.
 - Keep review prompts out of the repo. Record every finding in the PR text
   (ID, source, severity, finding, disposition: accepted with commit / rejected
   with reason / follow-up).
@@ -90,6 +111,8 @@ who asks the user.
    (command + exit code, gate lanes, `NICHT ABGEDECKT`), reviews + disposition,
    open points. If your harness cannot open the PR, return the report as text
    to the coordinator.
+   Handover includes goal/output evidence, candidate/base, distinct delivery
+   states, remaining limits and next owner/step; keep the parent's goal open.
 2. Commit and push after every green step. Open **one PR per package** as
    **draft** (drafts get no CI); it is marked ready (`gh pr ready <n>`) only
    when the report, disposition and `NICHT ABGEDECKT` are in. Every push to a

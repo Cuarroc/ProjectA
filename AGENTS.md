@@ -43,9 +43,10 @@ reference. Where a detail contradicts these ten, the ten win.
    free RAM, running cargo builds.
 10. **Safety stays with the user.** Secret scan before every commit; secrets
     never go into files, logs or commits. Money, installs, releases and
-    deleting are the user's call, and every cleanup starts with a backup.
-    Questions for the user go into the decision inbox in `docs/PLAN.md`, not
-    into the chat one by one.
+    deleting require a valid concrete user authorization, and every cleanup
+    starts with a backup. Preserve already granted authorizations; do not ask
+    again for routine execution within that scope. Bundle essential questions
+    in normal chat and record decisions in `docs/PLAN.md`; no AskUser windows.
 
 ## Start with current evidence
 
@@ -99,7 +100,15 @@ round two the user decides. Evidence is bound to the actual candidate; later
 changes invalidate the affected evidence, so review the delta again. A finding
 without `file:line` counts as unproven.
 
-Recursive prompting (draft -> critique -> refine, at most two rounds, logged; `docs/development/prompting.md`) is mandatory for every task, worker brief and review prompt (user order 2026-10-05).
+Use recursive prompting selectively for complex plans, dependencies, hard
+diagnosis or designs with checkable criteria (user order 2026-10-08), following
+`docs/development/prompting.md`. Preserve requirements and acceptance; ask only
+necessary subquestions, make a first solution, then one neutral extra check
+("no defect" is valid). Correct concrete defects and check the integrated result
+including interfaces. A second extra round needs a concrete remaining defect.
+Stop when acceptance is met, no new insight appears, the blocker is unchanged,
+or a time/quota/budget limit is reached. Self-check replaces neither independent
+review nor user approval; do not add an RLM runtime, agents or services for it.
 
 - **Everyday pair:** Kimi K3 (`kimi-k3:cloud`) + GLM 5.2 (`glm-5.2:cloud`) on
   Ollama Cloud through `.pa/review_transport.py`. Setup, call and prompt rules:
@@ -114,6 +123,38 @@ Recursive prompting (draft -> critique -> refine, at most two rounds, logged; `d
   Advisors do not replace the required reviews: when the author is a Claude
   model, Fable 5.1 does not count as an independent reviewer.
 - Subscriptions only: no OpenRouter, no API keys, no extra paid spending.
+
+## Bounded goals and approved adaptation
+
+Root owns delivery priority and acceptance; Chief alone dispatches and replans
+operations. Each package has one execution owner. First reconcile prior orders,
+actual native goals, running assignments and the canonical PLAN; stored rules,
+delivered mail and expired leases are not evidence of execution or process end.
+
+Each agent checks its own harness goal functions and confirms its own native
+goal: result and benefit, parent goal, ticket and owner, scope and limits,
+verifiable acceptance, dependencies and next step. Root's goal ends at its
+bounded acceptance; Chief's coordination goal derives worker goals. Avoid
+micro-goals and endless goals. A worker can complete at its checked handover;
+the parent stays open until its own acceptance. Implemented, tested, reviewed,
+accepted, merged and usable are distinct states.
+
+Record actual create/get output or verified function unavailability plus a
+documented ticket goal. Plan edits do not change native goals. Never complete
+an unmet goal merely to create another. Record a blocker's cause or hypothesis,
+evidence, impact, owner and next step; continue independent approved work,
+without blind retries, status loops or invented work.
+
+Within approved work, Chief may change method, order, slicing, assignment or
+execution location. Record trigger and evidence, previous state, change,
+remaining duties and acceptance, next step and owner in the ticket/PLAN.
+Never weaken acceptance to finish. New product goals, scope, cost and permissions
+remain Elias' decisions; do not reopen granted approvals.
+
+GOALS-C evaluates exactly three existing pending tasks, with ticket records of
+defect or missed requirement (or no defect), confirmation, observed regressions
+and only measured extra effort. Three tasks are a sample, not efficacy proof;
+restrict use if overhead dominates. No extra QA bots, test agents or benchmarks.
 
 ## Development loop
 
