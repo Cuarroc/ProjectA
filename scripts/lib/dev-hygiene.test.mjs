@@ -396,3 +396,66 @@ test("current PLAN Draft Ready and In Arbeit statuses are recognized", () => {
   assert.deepEqual(missing.inProgressWithoutPr.map((r) => r.id), ["Z2-MISS"]);
   assert.deepEqual(missing.inProgressWithoutPr[0].prNumbers, [9]);
 });
+
+test("In Arbeit candidate PRs exclude later historical PR mentions", () => {
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    "| Z2-IA1 | running | o | – | egal | B | In Arbeit PR #1; Vorgänger PR #99 | a | – |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(rows.map((r) => [r.id, r.prNumbers]), [["Z2-IA1", [1]]]);
+
+  // Only the unrelated predecessor is open — the status's own candidate #1 is missing.
+  const f = collectHygiene({
+    ...input,
+    planText: plan,
+    prsOpen: [{ number: 99, title: "other", headRefName: "cursor/other", updatedAt: "2026-09-25T11:00:00Z", isDraft: false }],
+  });
+  assert.deepEqual(f.inProgressWithoutPr.map((r) => r.id), ["Z2-IA1"]);
+  assert.deepEqual(f.inProgressWithoutPr[0].prNumbers, [1]);
+});
+
+test("Drafts candidates allow SHA and text between PR numbers", () => {
+  const status = "Drafts #671 `5d31ef5` / #674 `39bc839`; earlier note PR #12";
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    `| DR-04c | dual draft | o | – | egal | B | ${status} | a | – |`,
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(rows.map((r) => [r.id, r.prNumbers]), [["DR-04c", [671, 674]]]);
+
+  // One of the two candidates open — must not report "without open PR".
+  const f = collectHygiene({
+    ...input,
+    planText: plan,
+    prsOpen: [{ number: 674, title: "DR-04c", headRefName: "cursor/dr-04c-b", updatedAt: "2026-09-25T11:00:00Z", isDraft: true }],
+  });
+  assert.deepEqual(f.inProgressWithoutPr.map((r) => r.id), []);
+});
+
+test("Draft and Ready PR numbers require a boundary after the digits", () => {
+  const plan = [
+    "## Z2 — Setup",
+    "",
+    Z_HEAD.trimEnd(),
+    "| Z2-BAD-D | typo draft | o | – | egal | B | Draft #1oops | a | – |",
+    "| Z2-BAD-R | typo ready | o | – | egal | B | Ready #2oops | a | – |",
+    "| Z2-OK-D | ok draft | o | – | egal | B | Draft #1 | a | – |",
+    "| Z2-OK-R | ok ready | o | – | egal | B | Ready #2 | a | – |",
+    "",
+  ].join("\n");
+  const rows = inProgressPackages(plan);
+  assert.deepEqual(
+    rows.map((r) => [r.id, r.prNumbers]),
+    [
+      ["Z2-OK-D", [1]],
+      ["Z2-OK-R", [2]],
+    ],
+  );
+});
