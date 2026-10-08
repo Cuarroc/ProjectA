@@ -589,6 +589,70 @@ mod tests {
         assert!(!dest.join("stale.md").exists(), "the old file survived");
     }
 
+    /// R678-O1: lifting Codex to `ConventionAt` made `install` run for it, and
+    /// `install` replaces a same-name directory wholesale. `.agents/skills` is
+    /// a place repositories commit their own skills to, so a built-in Codex
+    /// worker must leave an existing one alone - and still get the packs that
+    /// are missing.
+    #[test]
+    fn a_built_in_codex_worker_keeps_a_repository_skill_of_the_same_name() {
+        let dir = TempDir::new("skills-codex-keep");
+        let src = fake_bundle(dir.path(), &["taste-skill", "minimal"]);
+        let worktree = dir.path().join("worktree");
+        let own = worktree.join(".agents").join("skills").join("taste-skill");
+        std::fs::create_dir_all(&own).expect("mkdir");
+        std::fs::write(own.join(SKILL_FILE), "repository-specific instructions").expect("write");
+        std::fs::write(own.join("local-notes.md"), "ours").expect("write");
+
+        let codex = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "codex")
+            .expect("codex");
+        let dest = skills_path_for(&worktree, &codex.caps.skills)
+            .expect("accepted")
+            .expect("a destination");
+        let installed = install(&src, &dest, None).expect("install");
+
+        assert_eq!(installed, vec!["minimal".to_string()]);
+        assert_eq!(
+            std::fs::read_to_string(own.join(SKILL_FILE)).unwrap(),
+            "repository-specific instructions"
+        );
+        assert_eq!(
+            std::fs::read_to_string(own.join("local-notes.md")).unwrap(),
+            "ours"
+        );
+        assert!(!own.join("references").exists(), "bundled files leaked in");
+        assert!(dest.path().join("minimal").join(SKILL_FILE).is_file());
+    }
+
+    /// The protection above is for `ConventionAt` only: the other discovery
+    /// modes keep replacing a same-name pack, as before.
+    #[test]
+    fn the_claude_and_flag_destinations_still_replace_an_existing_pack() {
+        for discovery in [
+            SkillsDiscovery::Convention,
+            SkillsDiscovery::Flag {
+                flag: "--skills-dir".into(),
+            },
+        ] {
+            let dir = TempDir::new("skills-replace-others");
+            let src = fake_bundle(dir.path(), &["taste"]);
+            let worktree = dir.path().join("worktree");
+            let dest = skills_path_for(&worktree, &discovery)
+                .expect("accepted")
+                .expect("a destination");
+            let old = dest.path().join("taste");
+            std::fs::create_dir_all(&old).expect("mkdir");
+            std::fs::write(old.join("stale.md"), "old").expect("write");
+
+            install(&src, &dest, None).expect("install");
+
+            assert!(!old.join("stale.md").exists(), "{discovery:?} kept it");
+            assert!(old.join(SKILL_FILE).is_file());
+        }
+    }
+
     #[test]
     fn nothing_stored_and_nothing_enabled_both_mean_everything() {
         let available = vec!["a".to_string(), "b".to_string()];
