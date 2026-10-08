@@ -363,3 +363,40 @@ test("formatReport: the simultaneous worst case (5 done, 6 running, 7 decide) fi
   assert.equal(lines.length, 25); // title + blank + 3 headings + 2 blanks + 5 + 6 + 7
   assert.ok(lines.length <= MAX_LINES);
 });
+
+test("unknown status context is pending rather than green", () => {
+  assert.equal(checkState([{ __typename: "StatusContext", state: "UNKNOWN" }]), "pending");
+  assert.equal(checkState([{ __typename: "StatusContext", state: "SUCCESS" }]), "green");
+  assert.equal(checkState([{ __typename: "StatusContext", state: "EXPECTED" }]), "pending");
+  assert.equal(checkState([{ __typename: "StatusContext", state: "FAILURE" }]), "failing");
+  assert.equal(
+    checkState([
+      { __typename: "StatusContext", state: "UNKNOWN" },
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "FAILURE" },
+    ]),
+    "failing",
+  );
+});
+
+test("classify: PR without checks is not reported as green waiting for the queue", () => {
+  assert.equal(checkState([]), "none");
+  assert.equal(checkState(undefined), "none");
+  const opts = { now: NOW, timeZone: TZ };
+  const model = classify(
+    data({
+      openPrs: [
+        pr(30, { statusCheckRollup: [] }),
+        pr(31, { statusCheckRollup: undefined }),
+      ],
+    }),
+    opts,
+  );
+  const lines = [...model.running, ...model.decide].map((i) => i.text);
+  for (const line of lines) {
+    assert.doesNotMatch(line, /grün, wartet auf die Queue/);
+  }
+  assert.equal(model.running.length, 2);
+  assert.match(model.running[0].text, /keine Checks|nicht geprüft|ohne Checks/);
+  const text = formatReport(model, opts);
+  assert.doesNotMatch(text, /grün, wartet auf die Queue/);
+});
