@@ -14,7 +14,7 @@
 // at once, never below 2.5 GB free. This tool never sets CARGO_PROFILE_*.
 import { statSync } from "node:fs";
 import { homedir, freemem, platform as osPlatform } from "node:os";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, win32 as pathWin32 } from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { EXIT, makeRunner, gitIn, isMain, runCli, withExitCodes, RefusedError } from "../lib/dev-tools.mjs";
@@ -50,8 +50,27 @@ Exit-Codes: 0 Empfehlung vorhanden, 3 jetzt kein Slot (warten), 2 Aufruffehler.
 Setzt nie CARGO_PROFILE_* (das invalidiert den Cache).
 `;
 
-function normalizeSlotRoot(root) {
-  return String(root).replace(/\\/g, "/").replace(/\/+$/, "");
+function absoluteConfiguredRoot(root, resolvePath) {
+  const raw = String(root);
+  if (typeof resolvePath === "function") return resolvePath(raw);
+  // Drive-letter / UNC paths need win32 resolve so a Linux host keeps C:\ semantics.
+  if (/^[A-Za-z]:/.test(raw) || raw.startsWith("\\\\")) {
+    return pathWin32.resolve(raw);
+  }
+  return resolve(raw);
+}
+
+// Resolve to an absolute path, keep POSIX "/" and Windows "C:/" roots, then
+// strip other trailing separators so occupancy matching sees real paths.
+function normalizeSlotRoot(root, resolvePath) {
+  let n = absoluteConfiguredRoot(root, resolvePath).replace(/\\/g, "/");
+  if (n === "/") return "/";
+  if (/^[A-Za-z]:\/?$/.test(n)) return `${n[0]}:/`;
+  n = n.replace(/\/+$/, "");
+  if (!n) {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT fehlt oder unlesbar: ${String(root)}`);
+  }
+  return n;
 }
 
 function sortConfiguredSlotNames(names) {
@@ -74,8 +93,8 @@ function realListDir(root) {
     .map((e) => e.name);
 }
 
-function slotsFromConfiguredRoot(root, listDir) {
-  const normalized = normalizeSlotRoot(root);
+function slotsFromConfiguredRoot(root, listDir, resolvePath) {
+  const normalized = normalizeSlotRoot(root, resolvePath);
   let names;
   try {
     names = listDir(normalized);
@@ -95,7 +114,7 @@ function slotsFromConfiguredRoot(root, listDir) {
   return slots;
 }
 
-export function defaultSlots({ home = homedir(), mainCheckout, env = process.env, listDir = realListDir } = {}) {
+export function defaultSlots({ home = homedir(), mainCheckout, env = process.env, listDir = realListDir, resolvePath } = {}) {
   if (env.PA_BUILD_SLOTS) {
     return env.PA_BUILD_SLOTS.split(";")
       .map((p) => p.trim())
@@ -103,7 +122,7 @@ export function defaultSlots({ home = homedir(), mainCheckout, env = process.env
       .map((p) => ({ name: p.split(/[\\/]/).filter(Boolean).pop(), path: p }));
   }
   if (env.PROJECTA_BUILD_SLOTS_ROOT) {
-    return slotsFromConfiguredRoot(env.PROJECTA_BUILD_SLOTS_ROOT, listDir);
+    return slotsFromConfiguredRoot(env.PROJECTA_BUILD_SLOTS_ROOT, listDir, resolvePath);
   }
   const slots = ["a", "b", "c"].map((x) => ({ name: `projecta-${x}`, path: join(home, "cargo-targets", `projecta-${x}`).replace(/\\/g, "/") }));
   if (mainCheckout) slots.push({ name: "main", path: join(mainCheckout, "src-tauri", "target").replace(/\\/g, "/") });
@@ -271,7 +290,12 @@ export const main = withExitCodes(async (argv, io, deps) => {
     return EXIT.OK;
   }
   const run = deps.run || makeRunner();
-  const slots = deps.slots || defaultSlots({ mainCheckout: mainCheckoutOf(run, resolve(process.cwd())) });
+  const slots = deps.slots || defaultSlots({
+    mainCheckout: mainCheckoutOf(run, resolve(process.cwd())),
+    env: deps.env || process.env,
+    listDir: deps.listDir,
+    resolvePath: deps.resolvePath,
+  });
   const s = slotStatus({
     slots,
     processes: deps.processes ? deps.processes() : listCargoProcesses({ run }),
