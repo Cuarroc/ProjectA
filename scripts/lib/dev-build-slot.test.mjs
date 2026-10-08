@@ -1,7 +1,7 @@
 // SETUP-08a: build-slot decides from injected processes, file times and RAM.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolve as pathResolve, win32 as pathWin32 } from "node:path";
+import { win32 as pathWin32, posix as pathPosix } from "node:path";
 import { parseLocaleNumber, RefusedError } from "./dev-tools.mjs";
 import { slotStatus, parseWindowsProcesses, defaultSlots, listCargoProcesses, main, MIN_FREE_GB, MAX_PARALLEL } from "../dev/build-slot.mjs";
 
@@ -99,6 +99,8 @@ test("configured slot root takes precedence over home defaults", () => {
     mainCheckout: "/main/checkout",
     env: { PROJECTA_BUILD_SLOTS_ROOT: "/warm/root" },
     listDir: () => listed,
+    // Explicit POSIX resolve so win32-bound hosts/simulations do not prefix a drive.
+    resolvePath: pathPosix.resolve,
   });
   assert.deepEqual(
     d.map((s) => s.path),
@@ -156,7 +158,7 @@ test("configured relative slot root resolves for process attribution", () => {
       listed.push(root);
       return ["slot1"];
     },
-    resolvePath: (p) => pathResolve("/fixture/cwd", p),
+    resolvePath: (p) => pathPosix.resolve("/fixture/cwd", p),
   });
   assert.deepEqual(listed, ["/fixture/warm/root"]);
   assert.deepEqual(d.map((s) => s.path), ["/fixture/warm/root/slot1"]);
@@ -179,6 +181,7 @@ test("configured slot root preserves POSIX filesystem root", () => {
       listed.push(root);
       return ["slot1"];
     },
+    resolvePath: pathPosix.resolve,
   });
   assert.deepEqual(listed, ["/"]);
   assert.deepEqual(d.map((s) => s.path), ["/slot1"]);
@@ -226,7 +229,7 @@ test("configured slot root refusal exits 3 with stderr message", async () => {
     now: () => NOW,
   });
   assert.equal(code, 3);
-  assert.match(err.join(""), /Abgelehnt:.*fehlt|unlesbar/i);
+  assert.match(err.join(""), /Abgelehnt:.*(fehlt|unlesbar)/i);
   assert.equal(out.join(""), "");
 });
 

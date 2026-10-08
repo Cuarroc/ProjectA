@@ -14,7 +14,7 @@
 // at once, never below 2.5 GB free. This tool never sets CARGO_PROFILE_*.
 import { statSync } from "node:fs";
 import { homedir, freemem, platform as osPlatform } from "node:os";
-import { join, resolve, dirname, win32 as pathWin32 } from "node:path";
+import { join, resolve, dirname, win32 as pathWin32, posix as pathPosix } from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { EXIT, makeRunner, gitIn, isMain, runCli, withExitCodes, RefusedError } from "../lib/dev-tools.mjs";
@@ -46,7 +46,8 @@ Belegt: ein cargo/rustc-Prozess nennt den Slot in seiner Kommandozeile;
         ohne Prozessliste: .cargo-lock/deps juenger als 2 min (Heuristik).
 Regeln: hoechstens ${MAX_PARALLEL} Builds gleichzeitig, mindestens ${MIN_FREE_GB} GB freier RAM.
 
-Exit-Codes: 0 Empfehlung vorhanden, 3 jetzt kein Slot (warten), 2 Aufruffehler.
+Exit-Codes: 0 Empfehlung vorhanden, 3 jetzt kein Slot (warten) oder Root abgelehnt
+       (Vorbedingung fehlt — nicht blind erneut versuchen), 2 Aufruffehler.
 Setzt nie CARGO_PROFILE_* (das invalidiert den Cache).
 `;
 
@@ -56,6 +57,11 @@ function absoluteConfiguredRoot(root, resolvePath) {
   // Drive-letter / UNC paths need win32 resolve so a Linux host keeps C:\ semantics.
   if (/^[A-Za-z]:/.test(raw) || raw.startsWith("\\\\")) {
     return pathWin32.resolve(raw);
+  }
+  // POSIX absolute paths keep POSIX semantics even when the host resolve is win32
+  // (native Windows or a win32-bound simulation with a drive cwd).
+  if (raw.startsWith("/")) {
+    return pathPosix.resolve(raw);
   }
   return resolve(raw);
 }
