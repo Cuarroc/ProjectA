@@ -80,23 +80,25 @@ export function hasStatusTable(md) {
 // Current PLAN tokens (Draft / Ready / In Arbeit) plus the legacy "in Arbeit" /
 // "PR #n" forms. Candidate PRs come from the leading status marker only —
 // bare "#n" or "PR #n" inside later explanations (Vorgänger, früher, …) is ignored.
-const IN_PROGRESS_STATUS = /^(?:in Arbeit|PR #\d|Drafts? #\d|Ready #\d)/i;
+// Digits must end at a non-alphanumeric boundary so "Draft #1oops" is not a match.
+const PR_NUM = String.raw`#(\d+)(?![0-9A-Za-z])`;
+const IN_PROGRESS_STATUS = new RegExp(String.raw`^(?:in Arbeit|PR ${PR_NUM}|Drafts? ${PR_NUM}|Ready ${PR_NUM})`, "i");
 
 function candidatePrNumbers(status) {
   const s = String(status);
-  let m = /^Drafts #(\d+)((?:\/#\d+)*)/i.exec(s);
+  // Drafts: take every #n in the leading candidate list (SHA/text between
+  // "/ #n" is allowed); stop before ";" or "(" explanations.
+  let m = new RegExp(String.raw`^Drafts ${PR_NUM}`, "i").exec(s);
   if (m) {
-    const out = [Number(m[1])];
-    for (const n of m[2].matchAll(/\/#(\d+)/g)) out.push(Number(n[1]));
-    return out;
+    const cut = s.search(/[;(]/);
+    const region = cut === -1 ? s : s.slice(0, cut);
+    return [...region.matchAll(new RegExp(PR_NUM, "g"))].map((x) => Number(x[1]));
   }
-  m = /^(?:Draft|Ready|PR) #(\d+)/i.exec(s);
+  m = new RegExp(String.raw`^(?:Draft|Ready|PR) ${PR_NUM}`, "i").exec(s);
   if (m) return [Number(m[1])];
-  if (/^in Arbeit/i.test(s)) {
-    // Drop parenthetical asides so "Vorgänger PR #99" inside them is not a candidate.
-    const head = s.replace(/\([^)]*\)/g, "");
-    return [...head.matchAll(/\bPR #(\d+)/gi)].map((x) => Number(x[1]));
-  }
+  // In Arbeit: only the optional PR immediately after the status token.
+  m = new RegExp(String.raw`^in Arbeit(?: PR ${PR_NUM})?`, "i").exec(s);
+  if (m) return m[1] ? [Number(m[1])] : [];
   return [];
 }
 
