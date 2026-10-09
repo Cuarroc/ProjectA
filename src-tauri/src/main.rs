@@ -3661,7 +3661,15 @@ fn main() {
             learnings::set_data_dir(&dir);
             // W3-02f: resolve an interrupted update first; a failure refuses
             // to open the database, so no write or dispatcher can start.
-            delivery_recovery::recover_at_startup(&dir)?;
+            // V16-06: every refusal surfaces German guidance, then stays closed.
+            match delivery_recovery::recover_startup(&dir) {
+                delivery_recovery::StartupRecovery::Open => {}
+                delivery_recovery::StartupRecovery::Refused { reason, guidance } => {
+                    crate::logf!("update", "update recovery refused at startup: {reason}");
+                    delivery_recovery::present_refused_guidance(&guidance);
+                    return Err(guidance.text.into());
+                }
+            }
             let store = init_store(&handle, &dir)?;
             let stopped = tauri::async_runtime::block_on(store.emergency_stop_active())
                 .unwrap_or_else(|error| {
@@ -4620,7 +4628,7 @@ mod tests {
         const SOURCE: &str = include_str!("main.rs");
         let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
         let at = |needle: &str| code.find(needle).expect("needle moved - fix the test");
-        let recovery = at("delivery_recovery::recover_at_startup(&dir)?");
+        let recovery = at("delivery_recovery::recover_startup(&dir)");
         assert!(recovery < at("init_store(&handle, &dir)?"));
         assert!(recovery < at("queue::start("));
     }
