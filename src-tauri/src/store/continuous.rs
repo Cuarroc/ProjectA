@@ -1576,17 +1576,21 @@ mod tests {
 
     #[tokio::test]
     async fn goal_task_audit_control_uses_one_connection() {
+        // Deadlock detector: with max_connections(1) a real second acquire hangs
+        // forever; 30s absorbs slow CI runners without masking a true deadlock.
+        const DEADLOCK_DETECT_BOUND: std::time::Duration = std::time::Duration::from_secs(30);
         let (dir, mut store, project) = store().await;
         store.pool.close().await;
         store.pool = sqlx::sqlite::SqlitePoolOptions::new()
             .max_connections(1)
+            .acquire_timeout(DEADLOCK_DETECT_BOUND)
             .connect(&format!(
                 "sqlite:{}",
                 dir.path().join("projecta.db").display()
             ))
             .await
             .unwrap();
-        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        tokio::time::timeout(DEADLOCK_DETECT_BOUND, async {
             store
                 .create_continuous_goal(&project, "goal", None, None, false)
                 .await
