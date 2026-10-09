@@ -1,8 +1,8 @@
 //! Visible German guidance when startup recovery refuses to open the database.
 //!
 //! Keeps the fail-closed contract: a refused recovery never opens the store.
-//! The exact English reason stays in the log; this module only builds and
-//! presents the user-facing text (paths, no-change statement, safe steps).
+//! The exact English reason stays in the log and in the setup `Err`; this
+//! module only builds and presents the user-facing text (paths, safe steps).
 
 use super::startup::recover_at_startup;
 use std::path::{Path, PathBuf};
@@ -46,12 +46,13 @@ pub fn guidance_for_refused_recovery(dir: &Path) -> StartupGuidance {
     let file_path = dir.join("update-recovery-ANLEITUNG.txt");
     let text = format!(
         "ProjectA konnte ein Update nicht verifizieren und hat den Start gesperrt.\n\n\
-         Es wurde nichts geändert und nichts gelöscht.\n\n\
+         Durch diese Anleitung wurde nichts geändert und nichts gelöscht.\n\
+         (Eine frühere Wiederherstellung aus dem Update-Journal kann trotzdem schon erfolgt sein.)\n\n\
          Journal: {}\n\
-         Datensicherung: {}\n\n\
+         Erwarteter Ort der Datensicherung (Existenz und Inhalt sind hier nicht geprüft): {}\n\n\
          Nächste sichere Schritte:\n\
          1. Diesen Ordner und die genannten Dateien behalten.\n\
-         2. Die zuletzt funktionierende Version neu installieren oder den Support kontaktieren.\n\
+         2. Die zuletzt funktionierende Version neu installieren und dabei diesen Datenordner behalten; keine alte Datenbank manuell zurückspielen. Oder den Support kontaktieren.\n\
          3. Die Journal-Datei nur nach einer Kopie der Datensicherung und nur auf Anweisung entfernen.\n\n\
          Die Anleitung liegt auch hier: {}\n",
         journal_path.display(),
@@ -68,30 +69,30 @@ pub fn guidance_for_refused_recovery(dir: &Path) -> StartupGuidance {
 
 /// Persist and surface the guidance; never opens the database.
 ///
-/// Visibility is the ANLEITUNG file (opened best-effort) plus the setup
-/// `Err` that carries the same German text. Application logs use `logf`.
+/// Write/open failures are logged only and never replace the recovery `Err`.
+/// The ANLEITUNG file is opened only after a successful atomic write.
 pub fn present_refused_guidance(guidance: &StartupGuidance) {
     match crate::fsutil::write_atomic(&guidance.file_path, guidance.text.as_bytes()) {
-        Ok(()) => crate::logf!(
-            "update",
-            "update recovery guidance written to {}",
-            guidance.file_path.display()
-        ),
+        Ok(()) => {
+            crate::logf!(
+                "update",
+                "update recovery guidance written to {}",
+                guidance.file_path.display()
+            );
+            reveal_guidance_file(&guidance.file_path);
+        }
         Err(error) => crate::logf!(
             "update",
             "update recovery guidance could not be written to {}: {error}",
             guidance.file_path.display()
         ),
     }
-    reveal_guidance_file(&guidance.file_path);
 }
 
 fn reveal_guidance_file(path: &Path) {
     #[cfg(windows)]
     {
-        let _ = crate::proc::command("cmd")
-            .args(["/C", "start", "", path.as_os_str()])
-            .spawn();
+        let _ = crate::proc::command("notepad.exe").arg(path).spawn();
     }
     #[cfg(not(windows))]
     {
@@ -119,6 +120,11 @@ mod tests {
             StartupRecovery::Open => panic!("refused recovery must not open"),
         }
         assert_eq!(std::fs::read(&db).unwrap(), before);
+        // A second start still refuses: presenting guidance must not unblock.
+        assert!(matches!(
+            recover_startup(dir.path()),
+            StartupRecovery::Refused { .. }
+        ));
     }
 
     #[test]
@@ -131,7 +137,8 @@ mod tests {
         assert!(guidance.text.contains(&backup));
         assert!(guidance
             .text
-            .contains("nichts geändert und nichts gelöscht"));
+            .contains("Durch diese Anleitung wurde nichts geändert und nichts gelöscht"));
+        assert!(guidance.text.contains("Erwarteter Ort der Datensicherung"));
         assert!(guidance.text.contains("behalten"));
         assert!(guidance.text.contains("neu installieren"));
         assert!(!guidance.text.to_lowercase().contains("panic"));

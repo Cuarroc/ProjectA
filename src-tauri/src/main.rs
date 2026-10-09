@@ -3667,7 +3667,9 @@ fn main() {
                 delivery_recovery::StartupRecovery::Refused { reason, guidance } => {
                     crate::logf!("update", "update recovery refused at startup: {reason}");
                     delivery_recovery::present_refused_guidance(&guidance);
-                    return Err(guidance.text.into());
+                    // Propagate the original recovery reason; write/open of the
+                    // ANLEITUNG must never replace it or unblock the start.
+                    return Err(format!("{}\n\n{reason}", guidance.text).into());
                 }
             }
             let store = init_store(&handle, &dir)?;
