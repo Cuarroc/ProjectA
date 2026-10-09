@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { writeSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, extname, relative, isAbsolute, sep } from 'node:path';
@@ -149,14 +150,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const server = createDeskServer({ statePath, rootAgentId, rootReceiptToken, notifyEvent: createWebhookNotifier({
       url: webhookUrl, secret: webhookSecret }) });
     server.on('error', e => { console.error(`Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}`); process.exitCode = 1; });
-    server.listen(port, '127.0.0.1', () => console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`));
+    let listening = false;
+    server.listen(port, '127.0.0.1', () => { listening = true; console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`); });
     // Stop by signal releases the ledger ownership before exit; a second signal while closing exits at once.
     let stopping = false;
     const stop = () => {
       if (stopping) process.exit(1);
       stopping = true;
       server.close(failure => {
-        if (failure && failure.code !== 'ERR_SERVER_NOT_RUNNING') { console.error(`Entscheidungsseite: Beenden fehlgeschlagen: ${failure.code ?? 'Fehler'}`); process.exit(1); }
+        // R872-K4: only a server that was listening may report a clean stop. R872-K3: the line is written
+        // synchronously so a pipe cannot lose it to the immediate exit.
+        if (failure || !listening) {
+          try { writeSync(2, `Entscheidungsseite: Beenden fehlgeschlagen: ${failure?.code ?? 'nicht gestartet'}\n`); } catch { /* stderr gone; the exit code still reports it */ }
+          process.exit(1);
+        }
         process.exit(0);
       });
     };

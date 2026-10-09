@@ -58,6 +58,24 @@ test('DRSEC-G4a: SIGTERM stop releases ownership and the next process can write'
 test('DRSEC-G4a: SIGINT stop releases ownership and the next process can write', posix, t => stopCase(t, 'SIGINT'));
 test('DRSEC-G4a: SIGHUP stop releases ownership and the next process can write', posix, t => stopCase(t, 'SIGHUP'));
 
+test('DRSEC-G4a: a stop after a failed listen exits non-zero', posix, async t => {
+  const blocker = createServer();
+  await new Promise(resolve => blocker.listen(0, '127.0.0.1', resolve));
+  t.after(() => blocker.close());
+  const env = { ...process.env, DECISION_DESK_STATE: await ledger(t), DECISION_DESK_PORT: String(blocker.address().port),
+    DECISION_DESK_ROOT_AGENT_ID: 'root-test', DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+  delete env.DECISION_DESK_WEBHOOK_URL;
+  // The preload keeps the event loop alive so the stop signal arrives while the process is still up after the failed listen.
+  const child = spawn(process.execPath, ['--import', 'data:text/javascript,setInterval(()=>{},1e6)', entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
+  let stderr = '';
+  const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
+  await new Promise(resolve => child.stderr.on('data', d => { stderr += d; if (stderr.includes('konnte nicht starten')) resolve(); }));
+  child.kill('SIGTERM');
+  const result = await exited;
+  assert.deepEqual(result, { code: 1, signal: null }, stderr);
+});
+
 test('DRSEC-G4a: a failing release on signal stop exits non-zero with a short stderr line', posix, async t => {
   const file = await ledger(t);
   const { child, exited } = await startEntry(t, file, 'q-fail');
