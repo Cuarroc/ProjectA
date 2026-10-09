@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { open, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { link, open, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { dirname } from 'node:path';
 export const OWNERSHIP_HELD = 'OWNERSHIP_HELD';
 export const OWNERSHIP_MALFORMED = 'OWNERSHIP_MALFORMED';
@@ -11,6 +11,10 @@ export class OwnershipError extends Error {
 }
 export const ownerRecordPath = ledgerPath => `${ledgerPath}.owner`;
 const releaseFlight = new Map();
+const releaseHooks = { beforeRename: null, beforeRestore: null };
+export function setOwnershipReleaseHooks(n = {}) {
+  releaseHooks.beforeRename = n.beforeRename ?? null; releaseHooks.beforeRestore = n.beforeRestore ?? null;
+}
 const ioFail = () => { throw new OwnershipError(OWNERSHIP_IO); };
 function parseRecord(raw) {
   let value;
@@ -43,14 +47,8 @@ export async function acquireOwnership(ledgerPath) {
     if (error && error.code === 'EEXIST') await refuseExisting(path);
     ioFail();
   }
-  try {
-    await handle.writeFile(`${JSON.stringify(record)}\n`, 'utf8');
-    await handle.close();
-  } catch {
-    await handle.close().catch(() => {});
-    await unlink(path).catch(() => {});
-    ioFail();
-  }
+  try { await handle.writeFile(`${JSON.stringify(record)}\n`, 'utf8'); await handle.close(); }
+  catch { await handle.close().catch(() => {}); await unlink(path).catch(() => {}); ioFail(); }
   return { nonce, pid: record.pid, heartbeatAt: record.heartbeatAt };
 }
 async function releaseOnce(path, nonce) {
@@ -62,7 +60,8 @@ async function releaseOnce(path, nonce) {
   }
   const record = parseRecord(raw);
   if (!record || record.nonce !== nonce) throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
-  const tomb = `${path}.${nonce}.tomb`;
+  const tomb = `${path}.${nonce}.${randomBytes(8).toString('hex')}.tomb`;
+  if (releaseHooks.beforeRename) await releaseHooks.beforeRename();
   try { await rename(path, tomb); }
   catch (error) {
     if (error && error.code === 'ENOENT') await mismatchOrIo(path);
@@ -72,7 +71,9 @@ async function releaseOnce(path, nonce) {
   try { tombRaw = await readFile(tomb, 'utf8'); } catch { ioFail(); }
   const tombRec = parseRecord(tombRaw);
   if (!tombRec || tombRec.nonce !== nonce) {
-    try { await rename(tomb, path); } catch { ioFail(); }
+    if (releaseHooks.beforeRestore) await releaseHooks.beforeRestore();
+    try { await link(tomb, path); await unlink(tomb); }
+    catch (e) { if (e?.code === 'EEXIST') await unlink(tomb).catch(() => {}); else ioFail(); }
     throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
   }
   try { await unlink(tomb); } catch { ioFail(); }
@@ -80,15 +81,11 @@ async function releaseOnce(path, nonce) {
 export async function releaseOwnership(ledgerPath, nonce) {
   const path = ownerRecordPath(ledgerPath);
   const pending = releaseFlight.get(nonce);
-  if (pending) {
-    await pending.catch(() => {});
-    throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
-  }
+  if (pending) { await pending.catch(() => {}); throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH); }
   let finish;
   const gate = new Promise(r => { finish = r; });
   releaseFlight.set(nonce, gate);
   try { await releaseOnce(path, nonce); }
   finally { releaseFlight.delete(nonce); finish(); }
 }
-/** G1 recovery stub: always refuse and leave the record. */
 export async function recoverOwnership() { throw new OwnershipError(OWNERSHIP_RECOVERY_REFUSED); }

@@ -29,8 +29,8 @@ async function joinChild(child, rl) {
   if (child.exitCode == null && child.signalCode == null) try { child.kill('SIGKILL'); } catch { /* ignore */ }
   await Promise.race([
     new Promise(r => (child.exitCode != null || child.signalCode != null ? r() : child.once('exit', r))),
-    new Promise((_, j) => setTimeout(() => j(new Error('join deadline')), 2000)),
-  ]).catch(() => {});
+    new Promise(r => setTimeout(r, 2000)),
+  ]);
   rl?.close();
 }
 async function holdChild(t, path) {
@@ -38,11 +38,11 @@ async function holdChild(t, path) {
   const rl = createInterface({ input: child.stdout });
   let done = false;
   t.after(async () => { if (!done) await joinChild(child, rl); });
-  const ready = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('ready timeout')), 2000);
-    rl.once('line', line => { clearTimeout(timer); resolve(JSON.parse(line)); });
-    child.once('error', reject);
-    child.once('exit', code => reject(new Error(`early exit ${code}`)));
+  const ready = await new Promise((res, rej) => {
+    const timer = setTimeout(() => rej(new Error('ready timeout')), 2000);
+    rl.once('line', line => { clearTimeout(timer); res(JSON.parse(line)); });
+    child.once('error', rej);
+    child.once('exit', code => rej(new Error(`early exit ${code}`)));
   });
   assert.equal(ready.ready, true);
   return {
@@ -52,14 +52,12 @@ async function holdChild(t, path) {
         new Promise((res, rej) => child.once('exit', c => (c === 0 ? res() : rej(new Error(`exit ${c}`))))),
         new Promise((_, rej) => setTimeout(() => rej(new Error('release deadline')), 2000)),
       ]);
-      done = true;
-      rl.close();
+      done = true; rl.close();
     },
   };
 }
 test('DRSEC: second process is refused while ownership is held', async t => {
-  const file = await ledger(t);
-  const child = await holdChild(t, file);
+  const file = await ledger(t), child = await holdChild(t, file);
   await assert.rejects(acquire(file), e => isDiag(e, HELD));
   const before = await readFile(ownerPath(file));
   await assert.rejects(acquire(file), e => isDiag(e, HELD));
@@ -68,16 +66,13 @@ test('DRSEC: second process is refused while ownership is held', async t => {
   await release(file, (await acquire(file)).nonce);
 });
 test('DRSEC: same-process second acquire with a different nonce is refused', async t => {
-  const file = await ledger(t);
-  const first = await acquire(file);
+  const file = await ledger(t), first = await acquire(file);
   await assert.rejects(acquire(file), e => isDiag(e, HELD));
   assert.equal(JSON.parse(await readFile(ownerPath(file), 'utf8')).nonce, first.nonce);
   await release(file, first.nonce);
 });
 test('DRSEC: stale heartbeat does not release ownership', async t => {
-  const file = await ledger(t);
-  const session = await acquire(file);
-  const path = ownerPath(file);
+  const file = await ledger(t), session = await acquire(file), path = ownerPath(file);
   const stale = { nonce: session.nonce, pid: session.pid, heartbeatAt: '2000-01-01T00:00:00.000Z' };
   await writeFile(path, JSON.stringify(stale), { mode: 0o600 });
   await assert.rejects(acquire(file), e => isDiag(e, HELD));
@@ -85,8 +80,7 @@ test('DRSEC: stale heartbeat does not release ownership', async t => {
   await release(file, session.nonce);
 });
 test('DRSEC: malformed owner record fails closed', async t => {
-  const file = await ledger(t);
-  const path = ownerPath(file);
+  const file = await ledger(t), path = ownerPath(file);
   for (const bytes of ['', '{', 'null', '{}', '{"nonce":1}', '{"nonce":"x","pid":"y","heartbeatAt":"z"}']) {
     await writeFile(path, bytes, { mode: 0o600 });
     await assert.rejects(acquire(file), e => isDiag(e, MALFORMED));
@@ -96,18 +90,17 @@ test('DRSEC: malformed owner record fails closed', async t => {
   }
 });
 test('DRSEC: release with foreign nonce keeps the record', async t => {
-  const file = await ledger(t);
-  const session = await acquire(file);
-  const path = ownerPath(file);
-  const before = await readFile(path);
+  const file = await ledger(t), session = await acquire(file), path = ownerPath(file), before = await readFile(path);
   await assert.rejects(release(file, 'foreign-nonce'), e => isDiag(e, MISMATCH));
   assert.deepEqual(await readFile(path), before);
   await release(file, session.nonce);
   await assert.rejects(readFile(path), e => e.code === 'ENOENT');
 });
+test('DRSEC: release of a missing record is a fixed mismatch', async t => {
+  await assert.rejects(release(await ledger(t), 'missing-nonce-value'), e => isDiag(e, MISMATCH));
+});
 test('DRSEC: owner record is created exclusively with mode 0600', posix, async t => {
-  const file = await ledger(t);
-  const umask = process.umask(0);
+  const file = await ledger(t), umask = process.umask(0);
   try {
     const session = await acquire(file);
     assert.equal((await stat(ownerPath(file))).mode & 0o777, 0o600);
@@ -115,19 +108,15 @@ test('DRSEC: owner record is created exclusively with mode 0600', posix, async t
   } finally { process.umask(umask); }
 });
 test('DRSEC: overlapping release cannot unlink a successor record', async t => {
-  const file = await ledger(t);
-  const owner = await acquire(file);
-  const orig = fs.unlink;
-  const gate = Promise.withResolvers();
-  const entered = Promise.withResolvers();
+  const file = await ledger(t), owner = await acquire(file), orig = fs.unlink;
+  const gate = Promise.withResolvers(), entered = Promise.withResolvers();
   fs.unlink = async p => { entered.resolve(); await gate.promise; return orig(p); };
   syncBuiltinESMExports();
   try {
     const r1 = release(file, owner.nonce);
     await entered.promise;
     const r2 = assert.rejects(release(file, owner.nonce), e => isDiag(e, MISMATCH));
-    gate.resolve();
-    await r1;
+    gate.resolve(); await r1;
     const successor = await acquire(file);
     await r2;
     assert.equal(JSON.parse(await readFile(ownerPath(file), 'utf8')).nonce, successor.nonce);
@@ -138,14 +127,13 @@ test('DRSEC: filesystem failures use fixed diagnostics without paths', async t =
   const dir = await mkdtemp(join(tmpdir(), 'denkraum-ownership-io-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await writeFile(join(dir, 'not-a-dir'), 'x');
-  for (const path of [join(dir, 'missing-parent', 'l.json'), join(dir, 'not-a-dir', 'l.json')]) {
-    await assert.rejects(acquire(path), e => isDiag(e, IO));
-    await assert.rejects(release(path, 'synthetic-nonce'), e => isDiag(e, IO));
+  for (const p of [join(dir, 'missing-parent', 'l.json'), join(dir, 'not-a-dir', 'l.json')]) {
+    await assert.rejects(acquire(p), e => isDiag(e, IO));
+    await assert.rejects(release(p, 'synthetic-nonce'), e => isDiag(e, IO));
   }
 });
 test('DRSEC: failed write after create removes the half-written record', async t => {
-  const file = await ledger(t);
-  const orig = fs.open;
+  const file = await ledger(t), orig = fs.open;
   fs.open = async (...args) => {
     const h = await orig(...args);
     if (args[1] === 'wx') h.writeFile = async () => { throw Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' }); };
@@ -157,9 +145,6 @@ test('DRSEC: failed write after create removes the half-written record', async t
     await assert.rejects(readFile(ownerPath(file)), e => e.code === 'ENOENT');
   } finally { fs.open = orig; syncBuiltinESMExports(); }
 });
-test('DRSEC: release of a missing record is a fixed mismatch', async t => {
-  await assert.rejects(release(await ledger(t), 'missing-nonce-value'), e => isDiag(e, MISMATCH));
-});
 test('DRSEC: fixture exits non-zero when stdin closes without release', async t => {
   const file = await ledger(t);
   const child = spawn(process.execPath, [fixture, file], { cwd: import.meta.dirname, stdio: ['pipe', 'pipe', 'inherit'] });
@@ -170,10 +155,33 @@ test('DRSEC: fixture exits non-zero when stdin closes without release', async t 
     rl.once('line', () => { clearTimeout(timer); res(); });
   });
   child.stdin.end();
-  const code = await Promise.race([
+  assert.notEqual(await Promise.race([
     new Promise(res => child.once('exit', res)),
     new Promise((_, rej) => setTimeout(() => rej(new Error('exit deadline')), 2000)),
-  ]);
-  assert.notEqual(code, 0);
+  ]), 0);
   assert.ok(await readFile(ownerPath(file)));
+});
+test('DRSEC: cross-instance stale release never overwrites a live owner', async t => {
+  const file = await ledger(t);
+  const a = await import('./ownership.mjs?a'), b = await import('./ownership.mjs?b');
+  const path = a.ownerRecordPath(file), old = await a.acquireOwnership(file);
+  const entered = Promise.withResolvers(), resume = Promise.withResolvers();
+  const restoring = Promise.withResolvers(), restoreGate = Promise.withResolvers();
+  t.after(() => { a.setOwnershipReleaseHooks(); b.setOwnershipReleaseHooks(); });
+  a.setOwnershipReleaseHooks({
+    beforeRename: async () => { entered.resolve(); await resume.promise; },
+    beforeRestore: async () => { restoring.resolve(); await restoreGate.promise; },
+  });
+  const stale = assert.rejects(a.releaseOwnership(file, old.nonce), e => e?.code === a.OWNERSHIP_RELEASE_MISMATCH);
+  await entered.promise;
+  await b.releaseOwnership(file, old.nonce);
+  const successor = await b.acquireOwnership(file);
+  resume.resolve(); await restoring.promise;
+  const third = await b.acquireOwnership(file);
+  restoreGate.resolve(); await stale;
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).nonce, third.nonce);
+  assert.notEqual(third.nonce, successor.nonce);
+  await assert.rejects(b.releaseOwnership(file, successor.nonce), e => e?.code === b.OWNERSHIP_RELEASE_MISMATCH);
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).nonce, third.nonce);
+  await b.releaseOwnership(file, third.nonce);
 });
