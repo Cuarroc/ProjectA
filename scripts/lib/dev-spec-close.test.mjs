@@ -5,7 +5,18 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listedInStand } from "./active-specs.mjs";
+import * as activeSpecs from "./active-specs.mjs";
 import { closeSpec, removeFromStand, specName, main } from "../dev/spec-close.mjs";
+
+test("SPEC-STATUS: closeSpec uses the canonical allowed statuses", () => {
+  assert.ok(activeSpecs.ERLAUBT instanceof Set);
+  const source = readFileSync(new URL("../dev/spec-close.mjs", import.meta.url), "utf8");
+  assert.match(source, /import\s*\{[^}]*\bERLAUBT\b[^}]*\}\s*from "\.\.\/lib\/active-specs\.mjs"/);
+  for (const status of activeSpecs.ERLAUBT) {
+    assert.equal(closeSpec(`Status: ${status}\n`).previous, status);
+  }
+  assert.throws(() => closeSpec("Status: unknown\n"), /unbekannt/);
+});
 
 const STAND = [
   "# Stand",
