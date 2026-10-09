@@ -112,10 +112,47 @@ fi
 cd "$TOP" || die 2 "kann nicht nach $TOP wechseln."
 [ -n "$out_dir" ] || out_dir=".pa"
 
+# Startup janitor: reclaim refs/pa-review/pr-* left behind by kill -9 / crash.
+# Per-PID refs (pr-<N>-<pid>): delete only when kill -0 reports "No such
+# process". Never delete a ref whose pid is still alive (including EPERM).
+# Legacy refs without a pid suffix (pr-<N>) are always removed.
+_reclaim_stale_pa_review_refs() {
+  local ref short pid err num
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    short="${ref#refs/pa-review/}"
+    case "$short" in
+      pr-*-*)
+        pid="${short##*-}"
+        case "$pid" in
+          '' | *[!0-9]*) continue ;;
+        esac
+        if kill -0 "$pid" 2>/dev/null; then
+          continue
+        fi
+        err="$(kill -0 "$pid" 2>&1 || true)"
+        case "$err" in
+          *"No such process"*)
+            git -C "$TOP" update-ref -d "$ref" 2>/dev/null || true
+            ;;
+        esac
+        ;;
+      pr-*)
+        num="${short#pr-}"
+        case "$num" in
+          '' | *[!0-9]*) ;;
+          *) git -C "$TOP" update-ref -d "$ref" 2>/dev/null || true ;;
+        esac
+        ;;
+    esac
+  done < <(git -C "$TOP" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+}
+_reclaim_stale_pa_review_refs
+
 # Private PR refs and the kilo workdir must not linger after EXIT (success or
 # failure). Per-process refs/pa-review/pr-<N>-$$ keep concurrent same-PR runs
 # from deleting each other's ref while still avoiding shared FETCH_HEAD (#814).
-# INT/TERM re-enter via exit so this EXIT cleanup still runs (Ctrl-C / kill).
+# INT/TERM/HUP re-enter via exit so this EXIT cleanup still runs (Ctrl-C / kill).
 pr_ref=""
 _kilo_work=""
 _run_local_cleanup() {
@@ -132,6 +169,7 @@ _run_local_cleanup() {
 trap '_run_local_cleanup' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 # --- Modelle ---------------------------------------------------------------
 # Die Standardpaare stehen an genau einer Stelle: REVIEWER_MODELS in

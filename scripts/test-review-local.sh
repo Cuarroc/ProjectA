@@ -522,8 +522,10 @@ else
 fi
 
 # 16. R877-K4: SIGTERM must run EXIT cleanup (exit 143, no leftover refs).
+#     Fake kilo must not `exec sleep` — otherwise `pkill -f …/kilo` matches
+#     nothing and bash defers the TERM trap until sleep ends (~60 s).
 mkdir -p "$tmp/bin-sleep"
-printf '#!/usr/bin/env bash\nexec sleep 60\n' > "$tmp/bin-sleep/kilo"
+printf '#!/usr/bin/env bash\nsleep 60\n' > "$tmp/bin-sleep/kilo"
 chmod +x "$tmp/bin-sleep/kilo"
 ( cd "$REPO" || exit 1
   export PATH="$tmp/bin-sleep:$PATH" REVIEW_KILO_TIMEOUT_S=0
@@ -538,8 +540,9 @@ done
 if [ -z "$leftover" ]; then
   bad "SIGTERM setup: refs/pa-review/pr-* never appeared"; kill "$term_pid" 2>/dev/null; wait "$term_pid" 2>/dev/null || true
 else
-  kill -TERM "$term_pid" 2>/dev/null; wait "$term_pid"; term_rc=$?
+  kill -TERM "$term_pid" 2>/dev/null
   pkill -f "$tmp/bin-sleep/kilo" 2>/dev/null || true
+  wait "$term_pid"; term_rc=$?
   leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
   if [ "$term_rc" -eq 143 ] && [ -z "$leftover" ]; then
     ok "SIGTERM during PR run: exit 143 and no refs/pa-review/pr-* remain"
@@ -608,6 +611,33 @@ if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "konnte Ref .* nicht loeschen
 else
   bad "update-ref diagnostic: rc=$rc"; echo "$out"
 fi
+# R887-K6: shimmed PATH left the PR ref behind; sweep with the real git.
+while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
+done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+
+# 19. R887-K1: startup janitor drops dead-pid and legacy refs; keeps live-pid.
+sleep 0.01 &
+dead_pid=$!
+wait "$dead_pid" 2>/dev/null || true
+plant_sha="$(git -C "$REPO" rev-parse HEAD)"
+live_ref="refs/pa-review/pr-9001-$$"
+dead_ref="refs/pa-review/pr-9002-$dead_pid"
+legacy_ref="refs/pa-review/pr-9003"
+git -C "$REPO" update-ref "$live_ref" "$plant_sha"
+git -C "$REPO" update-ref "$dead_ref" "$plant_sha"
+git -C "$REPO" update-ref "$legacy_ref" "$plant_sha"
+run bash "$RUN" --dry-run --models fake-a:cloud --out-dir "$tmp/janitor"
+have_live="$(git -C "$REPO" for-each-ref --format='%(refname)' "$live_ref")"
+have_dead="$(git -C "$REPO" for-each-ref --format='%(refname)' "$dead_ref")"
+have_legacy="$(git -C "$REPO" for-each-ref --format='%(refname)' "$legacy_ref")"
+if [ "$rc" -eq 0 ] && [ "$have_live" = "$live_ref" ] && [ -z "$have_dead" ] && [ -z "$have_legacy" ]; then
+  ok "startup janitor reclaims dead-pid refs and keeps live-pid refs"
+else
+  bad "janitor: rc=$rc live=[$have_live] dead=[$have_dead] legacy=[$have_legacy]"; echo "$out"
+fi
+git -C "$REPO" update-ref -d "$live_ref" 2>/dev/null || true
+while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
+done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
 
 echo
 if [ "$fails" -eq 0 ]; then
