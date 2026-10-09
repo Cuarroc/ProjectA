@@ -501,6 +501,61 @@ describe("SettingsView updates tab", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Download wurde abgebrochen/i)).not.toBeInTheDocument();
   });
+
+  it("surfaces a parked install error when phase leaves installing during cancel live-session re-check", async () => {
+    let rejectInstall!: (reason?: unknown) => void;
+    vi.mocked(installUpdateWhenIdle).mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectInstall = reject;
+        }),
+    );
+    let rejectInstallingState!: (reason: Error) => void;
+    setUpdaterState.mockImplementation((state: { phase: string }) => {
+      if (state.phase === "installing") {
+        return new Promise<void>((_resolve, reject) => {
+          rejectInstallingState = (reason) => reject(reason);
+        });
+      }
+      return Promise.resolve();
+    });
+
+    mocks.check.mockResolvedValue({
+      rid: 42, available: true, version: "1.3.1", body: "Fixture update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Download and install" }));
+    await waitFor(() => expect(installUpdateWhenIdle).toHaveBeenCalledWith(42));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
+
+    let releaseSessions!: (sessions: string[]) => void;
+    vi.mocked(listLiveSessions).mockImplementationOnce(
+      () => new Promise((resolve) => { releaseSessions = resolve; }),
+    );
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    await waitFor(() => expect(listLiveSessions).toHaveBeenCalledTimes(3));
+
+    rejectInstallingState(new Error("state store unavailable"));
+    await waitFor(() => expect(screen.getByText(/state store unavailable/)).toBeInTheDocument());
+
+    // rejectInstall BEFORE releaseSessions: under suppress the rejection is
+    // parked; early return after phase left installing must surface it once
+    // and clear the ref (no second paint of the same message).
+    rejectInstall(new Error("parked install failure before session release"));
+    releaseSessions([]);
+
+    expect(
+      await screen.findByText(/parked install failure before session release/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/parked install failure before session release/),
+    ).toHaveLength(1);
+    expect(screen.queryByText(/Download wurde abgebrochen/i)).not.toBeInTheDocument();
+  });
 });
 
 describe("SettingsView routing radiogroup", () => {
