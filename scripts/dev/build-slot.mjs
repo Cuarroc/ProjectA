@@ -14,15 +14,16 @@
 // at once, never below 2.5 GB free. This tool never sets CARGO_PROFILE_*.
 import { statSync } from "node:fs";
 import { homedir, freemem, platform as osPlatform } from "node:os";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, win32 as pathWin32, posix as pathPosix } from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { EXIT, makeRunner, gitIn, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
+import { EXIT, makeRunner, gitIn, isMain, runCli, withExitCodes, RefusedError } from "../lib/dev-tools.mjs";
 
 export const MIN_FREE_GB = 2.5;
 export const MAX_PARALLEL = 3;
 const RECENT_MS = 120_000;
 const CARGO_BASE_NAMES = ["cargo", "rustc", "clippy-driver", "cargo-nextest", "cargo-clippy", "rustdoc", "build-script-build"];
+const CONFIGURED_SLOT_NAME = /^(?:projecta-[abc]|slot[1-9][0-9]*)$/;
 
 // The kernel truncates /proc/<pid>/comm to 15 characters, so a 15-character
 // name that prefixes a known cargo tool counts as that tool (G4/N3):
@@ -39,21 +40,98 @@ Aufruf:
   npm run dev:build-slot -- [--json]
 
 Slots: ~/cargo-targets/projecta-{a,b,c} und <Hauptcheckout>/src-tauri/target
-       (PA_BUILD_SLOTS="pfad;pfad" ersetzt die Liste).
+       (PA_BUILD_SLOTS="pfad;pfad" ersetzt die Liste; PROJECTA_BUILD_SLOTS_ROOT
+       nutzt nur projecta-a/b/c und slot[1-9]… dort, ohne Home-/Main-Fallback).
 Belegt: ein cargo/rustc-Prozess nennt den Slot in seiner Kommandozeile;
         ohne Prozessliste: .cargo-lock/deps juenger als 2 min (Heuristik).
 Regeln: hoechstens ${MAX_PARALLEL} Builds gleichzeitig, mindestens ${MIN_FREE_GB} GB freier RAM.
 
-Exit-Codes: 0 Empfehlung vorhanden, 3 jetzt kein Slot (warten), 2 Aufruffehler.
+Exit-Codes: 0 Empfehlung vorhanden, 3 jetzt kein Slot (warten) oder Root abgelehnt
+       (Vorbedingung fehlt — nicht blind erneut versuchen), 2 Aufruffehler.
 Setzt nie CARGO_PROFILE_* (das invalidiert den Cache).
 `;
 
-export function defaultSlots({ home = homedir(), mainCheckout, env = process.env }) {
+function absoluteConfiguredRoot(root, resolvePath) {
+  const raw = String(root);
+  if (typeof resolvePath === "function") return resolvePath(raw);
+  // Drive-letter / UNC paths need win32 resolve so a Linux host keeps C:\ semantics.
+  // Forward-slash UNC (//host/share) must not use posix.resolve — that collapses the
+  // leading double slash into a local absolute path (R725-O4).
+  if (/^[A-Za-z]:/.test(raw) || raw.startsWith("\\\\") || /^\/\/[^/]/.test(raw)) {
+    return pathWin32.resolve(raw);
+  }
+  // POSIX absolute paths keep POSIX semantics even when the host resolve is win32
+  // (native Windows or a win32-bound simulation with a drive cwd).
+  if (raw.startsWith("/")) {
+    return pathPosix.resolve(raw);
+  }
+  return resolve(raw);
+}
+
+// Resolve to an absolute path, keep POSIX "/" and Windows "C:/" roots, then
+// strip other trailing separators so occupancy matching sees real paths.
+function normalizeSlotRoot(root, resolvePath) {
+  let n = absoluteConfiguredRoot(root, resolvePath).replace(/\\/g, "/");
+  if (n === "/") return "/";
+  if (/^[A-Za-z]:\/?$/.test(n)) return `${n[0]}:/`;
+  n = n.replace(/\/+$/, "");
+  if (!n) {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT fehlt oder unlesbar: ${String(root)}`);
+  }
+  return n;
+}
+
+function sortConfiguredSlotNames(names) {
+  return [...names].sort((a, b) => {
+    const pa = /^projecta-([abc])$/.exec(a);
+    const pb = /^projecta-([abc])$/.exec(b);
+    if (pa && pb) return pa[1].localeCompare(pb[1]);
+    if (pa) return -1;
+    if (pb) return 1;
+    const sa = /^slot([1-9][0-9]*)$/.exec(a);
+    const sb = /^slot([1-9][0-9]*)$/.exec(b);
+    if (sa && sb) return Number(sa[1]) - Number(sb[1]);
+    return a.localeCompare(b);
+  });
+}
+
+function realListDir(root) {
+  return readdirSync(root, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+}
+
+function slotsFromConfiguredRoot(root, listDir, resolvePath) {
+  const normalized = normalizeSlotRoot(root, resolvePath);
+  let names;
+  try {
+    names = listDir(normalized);
+  } catch {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT fehlt oder unlesbar: ${normalized}`);
+  }
+  if (!Array.isArray(names)) {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT unlesbar: ${normalized}`);
+  }
+  const slots = sortConfiguredSlotNames(names.filter((n) => CONFIGURED_SLOT_NAME.test(String(n)))).map((name) => ({
+    name,
+    // UNC roots need win32.join: posix join collapses the leading // (same as resolve).
+    path: (/^\/\/[^/]/.test(normalized) ? pathWin32.join(normalized, name) : join(normalized, name)).replace(/\\/g, "/"),
+  }));
+  if (!slots.length) {
+    throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT leer oder ohne passende Slots: ${normalized}`);
+  }
+  return slots;
+}
+
+export function defaultSlots({ home = homedir(), mainCheckout, env = process.env, listDir = realListDir, resolvePath } = {}) {
   if (env.PA_BUILD_SLOTS) {
     return env.PA_BUILD_SLOTS.split(";")
       .map((p) => p.trim())
       .filter(Boolean)
       .map((p) => ({ name: p.split(/[\\/]/).filter(Boolean).pop(), path: p }));
+  }
+  if (env.PROJECTA_BUILD_SLOTS_ROOT) {
+    return slotsFromConfiguredRoot(env.PROJECTA_BUILD_SLOTS_ROOT, listDir, resolvePath);
   }
   const slots = ["a", "b", "c"].map((x) => ({ name: `projecta-${x}`, path: join(home, "cargo-targets", `projecta-${x}`).replace(/\\/g, "/") }));
   if (mainCheckout) slots.push({ name: "main", path: join(mainCheckout, "src-tauri", "target").replace(/\\/g, "/") });
@@ -221,7 +299,12 @@ export const main = withExitCodes(async (argv, io, deps) => {
     return EXIT.OK;
   }
   const run = deps.run || makeRunner();
-  const slots = deps.slots || defaultSlots({ mainCheckout: mainCheckoutOf(run, resolve(process.cwd())) });
+  const slots = deps.slots || defaultSlots({
+    mainCheckout: mainCheckoutOf(run, resolve(process.cwd())),
+    env: deps.env || process.env,
+    listDir: deps.listDir,
+    resolvePath: deps.resolvePath,
+  });
   const s = slotStatus({
     slots,
     processes: deps.processes ? deps.processes() : listCargoProcesses({ run }),
