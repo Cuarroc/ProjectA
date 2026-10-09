@@ -22,7 +22,7 @@ Optionen:
 Exit-Codes: 0 alle Required Checks gruen (skipping zaehlt als erledigt),
             1 mindestens einer rot oder abgebrochen,
             2 Aufruffehler,
-            3 gh-Fehler oder der PR bekommt keine Required Checks (z. B. Draft: keine CI),
+            3 gh-Fehler, ungueltige Check-Eintraege oder der PR bekommt keine Required Checks (z. B. Draft: keine CI),
             4 Zeitlimit erreicht, Checks laufen noch.
 `;
 
@@ -44,6 +44,23 @@ function fetchChecks(run, pr) {
   }
 }
 
+/** Refuse null/primitive entries and missing or empty name/bucket before any summarize. */
+function malformedChecksError(checks) {
+  for (let i = 0; i < checks.length; i++) {
+    const entry = checks[i];
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      return `ungueltiger Check-Eintrag an Index ${i}`;
+    }
+    if (typeof entry.name !== "string" || entry.name.trim() === "") {
+      return `Check-Eintrag ohne Name an Index ${i}`;
+    }
+    if (typeof entry.bucket !== "string" || entry.bucket.trim() === "") {
+      return `Check-Eintrag ohne bucket an Index ${i}`;
+    }
+  }
+  return null;
+}
+
 function summarize(checks) {
   return checks.map((c) => `${c.name}: ${c.bucket}`).join(", ");
 }
@@ -56,6 +73,8 @@ export async function watchChecks({ run, pr, timeoutMs = 3_600_000, intervalMs =
     const res = fetchChecks(run, pr);
     if (res.error) return { code: EXIT.REFUSED, checks: last, summary: `gh: ${res.error}` };
     const checks = res.checks;
+    const shapeError = malformedChecksError(checks);
+    if (shapeError) return { code: EXIT.REFUSED, checks: last, summary: shapeError };
     last = checks;
     if (checks.length === 0) {
       // GitHub registers required checks (rulesets) only seconds to a minute
