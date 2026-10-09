@@ -53,6 +53,7 @@ const LEGACY_HINT = 'record without a valid host field (older version or damaged
 async function readJudged(path) {
   let raw;
   try { raw = await readFile(path, 'utf8'); }
+  // EACCES and other read errors cannot prove the owner dead: fail closed as HELD.
   catch (error) { if (error?.code === 'ENOENT') return null; throw new OwnershipError(OWNERSHIP_HELD); }
   const record = parseRecord(raw);
   if (!record) throw new OwnershipError(OWNERSHIP_MALFORMED);

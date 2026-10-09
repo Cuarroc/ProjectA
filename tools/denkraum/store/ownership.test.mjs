@@ -474,3 +474,29 @@ test('DRSEC-G6-FU: invalid host hints cover older and damaged records', async t 
     assert.equal(await readFile(ownerPath(file), 'utf8'), bytes);
   }
 });
+
+for (const failure of ['open', 'write', 'read']) test(`DRSEC-G6-FU: recovery ${failure} failure preserves the owner and cleans its lock`, async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const path = ownerPath(file), lock = `${path}.recover`, before = await readFile(path);
+  const origOpen = fs.open, origRead = fs.readFile;
+  const denied = () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }); };
+  let handle;
+  t.mock.method(fs, 'open', async (p, ...rest) => {
+    if (p === lock && failure === 'open') denied();
+    const h = await origOpen(p, ...rest);
+    if (p === lock && failure === 'write') { handle = h; t.mock.method(h, 'writeFile', denied); }
+    return h;
+  });
+  t.mock.method(fs, 'readFile', async (p, ...rest) => {
+    if (p === path && failure === 'read') denied();
+    return origRead(p, ...rest);
+  });
+  syncBuiltinESMExports();
+  try {
+    // An unreadable owner is not evidence of death: EACCES must keep it HELD.
+    await assert.rejects(acquire(file), e => isDiag(e, failure === 'read' ? HELD : IO));
+    assert.deepEqual(await origRead(path), before);
+    await assert.rejects(origRead(lock), e => e.code === 'ENOENT');
+    if (handle) assert.equal(handle.fd, -1, 'failed lock write closes its handle');
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
