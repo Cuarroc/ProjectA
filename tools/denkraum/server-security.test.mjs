@@ -237,3 +237,63 @@ test('DRSEC: invalid UTF-8 is rejected with a fixed diagnostic without a state w
     assert.deepEqual(await f.snapshot(), f.before);
   }
 });
+
+function get(base, path, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = request(`${base}${path}`, { method: 'GET', headers, signal: AbortSignal.timeout(3000) }, res => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('error', reject);
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function assertSecurityHeaders(response, label) {
+  const h = Object.fromEntries(Object.entries(response.headers).map(([k, v]) => [k.toLowerCase(), v]));
+  assert.equal(h['cache-control'], 'no-store', label);
+  assert.equal(h['x-content-type-options'], 'nosniff', label);
+  assert.equal(h['referrer-policy'], 'no-referrer', label);
+  const csp = h['content-security-policy'];
+  assert.ok(typeof csp === 'string' && csp.length > 0, `${label}: CSP missing`);
+  assert.match(csp, /frame-ancestors\s+'none'/, label);
+  assert.match(csp, /base-uri\s+'none'/, label);
+  assert.match(csp, /script-src\s+'self'/, label);
+  assert.match(csp, /connect-src\s+'self'/, label);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/, `${label}: no inline scripts`);
+  assert.doesNotMatch(csp, /script-src[^;]*\*|connect-src[^;]*\*/, `${label}: no wildcard script/connect`);
+  assert.equal(h['access-control-allow-origin'], undefined, `${label}: no CORS grant`);
+}
+
+test('DRSEC: security headers protect successful and rejected responses', { timeout: 20000 }, async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'denkraum-headers-'));
+  const server = createDeskServer({
+    statePath: join(dir, 'ledger.json'), rootAgentId,
+    rootReceiptToken: 'synthetic-root-token-for-security-tests',
+  });
+  t.after(async () => {
+    try {
+      if (server.listening) await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
+  const listening = once(server, 'listening');
+  server.listen(0, '127.0.0.1');
+  await listening;
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cases = [
+    ['index', await get(base, '/'), 200],
+    ['api state', await get(base, '/api/state'), 200],
+    ['static css', await get(base, '/style.css'), 200],
+    ['denied path', await get(base, '/app.js'), 404],
+    ['rejected host', await get(base, '/api/state', { host: 'evil.test' }), 403],
+    ['rejected origin mutation', await send(base, {
+      'content-type': 'application/json', origin: 'https://evil.test',
+    }, question('cors-probe')), 403],
+  ];
+  for (const [label, response, status] of cases) {
+    assert.equal(response.status, status, label);
+    assertSecurityHeaders(response, label);
+  }
+});
