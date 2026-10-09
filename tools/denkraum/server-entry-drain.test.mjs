@@ -29,23 +29,40 @@ async function freePort() {
   const probe = createServer(); probe.listen(0, '127.0.0.1'); await once(probe, 'listening');
   const { port } = probe.address(); await new Promise(r => probe.close(r)); return port;
 }
+// freePort() can race with another binder; retry EADDRINUSE ("konnte nicht starten") on a fresh port, like server-stop/lifecycle.
 async function startEntry(t, file, { webhook = false, args = [] } = {}) {
-  const port = await freePort();
-  const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-    DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
-  delete env.DECISION_DESK_WEBHOOK_URL;
-  if (webhook) env.DECISION_DESK_WEBHOOK_URL = 'https://agentsroom.dev/api/triggers/t_abc123';
-  const child = spawn(process.execPath, [...args, entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-  const out = { stdout: '', stderr: '' }, waiters = [];
-  const feed = (key, d) => { out[key] += d; for (const w of waiters) w(); };
-  child.stdout.on('data', d => feed('stdout', d)); child.stderr.on('data', d => feed('stderr', d));
-  const done = once(child, 'close').then(([code, signal]) => ({ code, signal, ...out }));
-  t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); await done; });
-  const output = (re, ms = 10000) => within(new Promise(resolve => {
-    const check = () => { if (re.test(out.stdout)) resolve(true); };
-    waiters.push(check); check();
-  }), ms);
-  return { child, done, port, output, out };
+  for (let attempt = 1; ; attempt++) {
+    const port = await freePort();
+    const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
+      DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+    delete env.DECISION_DESK_WEBHOOK_URL;
+    if (webhook) env.DECISION_DESK_WEBHOOK_URL = 'https://agentsroom.dev/api/triggers/t_abc123';
+    const child = spawn(process.execPath, [...args, entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = { stdout: '', stderr: '' }, waiters = [];
+    const feed = (key, d) => { out[key] += d; for (const w of waiters) w(); };
+    child.stdout.on('data', d => feed('stdout', d)); child.stderr.on('data', d => feed('stderr', d));
+    const done = once(child, 'close').then(([code, signal]) => ({ code, signal, ...out }));
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('entry start timed out')), 10000);
+        const finish = () => { clearTimeout(timer); resolve(); };
+        const check = () => { if (out.stdout.includes('http://')) finish(); };
+        waiters.push(check); check();
+        done.then(() => { clearTimeout(timer); reject(new Error(`entry exited early: ${out.stderr}`)); });
+      });
+    } catch (error) {
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      await done;
+      if (attempt < 5 && out.stderr.includes('EADDRINUSE')) continue;
+      throw error;
+    }
+    t.after(async () => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); await done; });
+    const output = (re, ms = 10000) => within(new Promise(resolve => {
+      const check = () => { if (re.test(out.stdout)) resolve(true); };
+      waiters.push(check); check();
+    }), ms);
+    return { child, done, port, output, out };
+  }
 }
 
 test('DRSEC-G4b: SIGTERM lets an in-flight request finish within the budget and exits 0 and removes the owner record', { skip: posixOnly }, async t => {
