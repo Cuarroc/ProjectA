@@ -1,8 +1,26 @@
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { lstatSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { validId } from "./store/model.mjs";
 
-// Pure preflight: no file access, server start, or secret-source assumptions.
+const isInside = (root, path) => {
+  const fromRoot = relative(root, path);
+  return !isAbsolute(fromRoot) && fromRoot !== ".." && !fromRoot.startsWith(`..${sep}`);
+};
+function physicalAncestor(path) {
+  for (;;) {
+    try { return realpathSync.native(path); }
+    catch (error) {
+      if (error.code !== "ENOENT" || dirname(path) === path) throw error;
+      // An existing broken link is not an absent directory: do not skip it.
+      if (lstatSync(path, { throwIfNoEntry: false })) throw error;
+      path = dirname(path);
+    }
+  }
+}
+
+// Read-only preflight; no server start or secret-source assumptions.
 // Only config contains values; errors and notification reasons are safe to print.
 export function loadStartConfig(env, { repoRoot }) {
   const errors = [];
@@ -24,27 +42,46 @@ export function loadStartConfig(env, { repoRoot }) {
   } else if (webhookSecret === rootReceiptToken) {
     error("WEBHOOK_SECRET", "must differ from DECISION_DESK_ROOT_RECEIPT_TOKEN");
   }
+  if (rootAgentId === null) error("ROOT_AGENT_ID", "required");
+  else if (!validId(rootAgentId) || rootAgentId !== rootAgentId.trim()) {
+    error("ROOT_AGENT_ID", "use 1–80 letters, digits, underscores or hyphens; start with a letter or digit");
+  }
 
   let statePath = null;
   if (typeof state !== "string" || !isAbsolute(state) || state.includes("\0")) {
     error("STATE", "required; use an absolute path");
   } else {
     statePath = resolve(state);
-    const fromRepo = relative(resolve(repoRoot), statePath);
     if (process.platform === "win32" && statePath.startsWith("\\\\")) {
       error("STATE", "Windows namespace and UNC state paths are not supported");
-    } else if (!isAbsolute(fromRepo) && fromRepo !== ".." && !fromRepo.startsWith(`..${sep}`)) {
+    } else if (isInside(resolve(repoRoot), statePath)) {
       error("STATE", "must be outside the repository after path resolution");
+    } else {
+      try {
+        if (isInside(realpathSync.native(repoRoot), physicalAncestor(statePath))) {
+          error("STATE", "must be outside the repository after physical path resolution");
+        }
+      } catch {
+        error("STATE", "physical path resolution failed");
+      }
     }
   }
   if (rawPort !== undefined && (typeof rawPort !== "string" || !rawPort
       || /[^0-9]/u.test(rawPort) || !Number.isInteger(port) || port < 1 || port > 65535)) {
     error("PORT", "must be an integer from 1 to 65535");
   }
-  const notifications = {
-    enabled: rootAgentId !== null,
-    reason: rootAgentId === null ? "DECISION_DESK_ROOT_AGENT_ID: missing; notifications disabled" : null,
-  };
+  const webhookUrl = env.DECISION_DESK_WEBHOOK_URL;
+  if (webhookUrl) {
+    let endpoint;
+    try { endpoint = new URL(webhookUrl); } catch { /* Fixed diagnostic below; never expose the URL. */ }
+    if (!endpoint || endpoint.protocol !== "https:" || endpoint.hostname !== "agentsroom.dev" || endpoint.port
+        || endpoint.username || endpoint.password || endpoint.search || endpoint.hash
+        || !/^\/api\/triggers\/t_[a-f0-9]+$/.test(endpoint.pathname)) {
+      error("WEBHOOK_URL", "must be an HTTPS AgentsRoom trigger URL without credentials, port, query or fragment");
+    }
+  }
+  const notifications = webhookUrl ? { enabled: true, reason: null }
+    : { enabled: false, reason: "DECISION_DESK_WEBHOOK_URL not set" };
   return {
     ok: errors.length === 0,
     config: errors.length ? null : { rootReceiptToken, webhookSecret, rootAgentId, statePath, port, notifications },
@@ -53,7 +90,7 @@ export function loadStartConfig(env, { repoRoot }) {
 }
 
 let isCliEntry = import.meta.main;
-// Node 24.0/24.1 lack import.meta.main; resolve only the CLI entry, never STATE.
+// Node 24.0/24.1 lack import.meta.main; resolve the CLI entry for those versions.
 if (isCliEntry === undefined && process.argv[1]
     && !process.execArgv.some((arg) => /^(?:--(?:eval|print)(?:=|$)|-[ep])/u.test(arg))) {
   try {
@@ -74,7 +111,8 @@ if (isCliEntry) {
       for (const suffix of ["ROOT_RECEIPT_TOKEN", "WEBHOOK_SECRET", "STATE", "PORT"]) {
         console.log(`DECISION_DESK_${suffix}: valid`);
       }
-      console.log(result.config.notifications.reason ?? "DECISION_DESK_ROOT_AGENT_ID: notifications enabled");
+      const { enabled, reason } = result.config.notifications;
+      console.log(enabled ? "DECISION_DESK_WEBHOOK_URL: notifications enabled" : `notifications disabled: ${reason}`);
     }
     process.exitCode = result.ok ? 0 : 1;
   }
