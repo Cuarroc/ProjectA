@@ -29,6 +29,7 @@ vi.mock("../lib/ipc", async () => {
     describeError: (e: unknown) => String(e),
     listLiveSessions: vi.fn(() => Promise.resolve([])),
     installUpdateWhenIdle: vi.fn(() => Promise.resolve()),
+    cancelUpdateDownload: vi.fn(() => Promise.resolve("notRunning" as const)),
     getUpdaterState: vi.fn(() => Promise.resolve({ phase: "idle" as const })),
     setUpdaterState: vi.fn(() => Promise.resolve()),
     getVersion: vi.fn(() => Promise.resolve("1.2.3")),
@@ -56,7 +57,7 @@ vi.mock("../lib/settings", async () => {
 
 const { check } = await import("@tauri-apps/plugin-updater");
 const ipc = await import("../lib/ipc");
-const { listLiveSessions, installUpdateWhenIdle } = ipc;
+const { listLiveSessions, installUpdateWhenIdle, cancelUpdateDownload } = ipc;
 const getUpdaterState = vi.mocked(
   (ipc as typeof ipc & { getUpdaterState: () => Promise<MockUpdaterState> })
     .getUpdaterState,
@@ -85,6 +86,7 @@ describe("SettingsView updates tab", () => {
     mocks.check.mockResolvedValue(null);
     vi.mocked(listLiveSessions).mockReset().mockResolvedValue([]);
     vi.mocked(installUpdateWhenIdle).mockReset().mockResolvedValue();
+    vi.mocked(cancelUpdateDownload).mockReset().mockResolvedValue("notRunning");
     getUpdaterState.mockReset().mockResolvedValue({ phase: "idle" });
     setUpdaterState.mockReset().mockResolvedValue();
   });
@@ -255,6 +257,72 @@ describe("SettingsView updates tab", () => {
     expect(
       screen.getByText(/update checks run anonymously/i),
     ).toBeInTheDocument();
+  });
+
+  async function startDownloadAndHoldInstall() {
+    let finishInstall!: () => void;
+    let rejectInstall!: (reason?: unknown) => void;
+    vi.mocked(installUpdateWhenIdle).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          finishInstall = () => resolve();
+          rejectInstall = reject;
+        }),
+    );
+    mocks.check.mockResolvedValue({
+      rid: 42, available: true, version: "1.3.1", body: "Fixture update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Download and install" }));
+    await waitFor(() => expect(installUpdateWhenIdle).toHaveBeenCalledWith(42));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
+    return { finishInstall, rejectInstall };
+  }
+
+  it("shows cancel while downloading and returns to available after cancelled", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    rejectInstall(new Error("Update download cancelled"));
+    expect(await screen.findByText(/Download wurde abgebrochen/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Download and install" })).toBeInTheDocument();
+    expect(screen.queryByText(/Update download cancelled/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Abbrechen" })).not.toBeInTheDocument();
+  });
+
+  it("too late cancel keeps install flow and hides the button", async () => {
+    const { finishInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("tooLate");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(await screen.findByText(/lässt sich nicht mehr abbrechen/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Abbrechen" })).not.toBeInTheDocument();
+    finishInstall();
+    expect(await screen.findByRole("button", { name: "Restart to apply" })).toBeInTheDocument();
+  });
+
+  it("not running cancel shows no error", async () => {
+    const { finishInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("notRunning");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
+    finishInstall();
+    expect(await screen.findByRole("button", { name: "Restart to apply" })).toBeInTheDocument();
+  });
+
+  it("cancel button is disabled while the cancel is pending", async () => {
+    await startDownloadAndHoldInstall();
+    let finishCancel!: (value: "cancelled" | "tooLate" | "notRunning") => void;
+    vi.mocked(cancelUpdateDownload).mockImplementationOnce(
+      () => new Promise((resolve) => { finishCancel = resolve; }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeDisabled();
+    finishCancel("cancelled");
+    expect(await screen.findByRole("button", { name: "Download and install" })).toBeInTheDocument();
   });
 });
 
