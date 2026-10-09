@@ -2,14 +2,55 @@
 // Ledger operations (questions, answers, receipts, progress, patches, delivery) compose
 // `change` in DR-04; the root agent id is injected and never defaulted here (D2).
 import { readFile, writeFile, rename, mkdir, chmod } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DeskError, ensure, ideaDefaults, migrateState, validateState } from './model.mjs';
+import { acquireOwnership, releaseOwnership, getOwnershipContext, ownerRecordPath,
+  OwnershipError, OWNERSHIP_RELEASE_MISMATCH } from './ownership.mjs';
 
 export class DeskStore {
-  #queue = Promise.resolve();
+  #context; #joined = false; #closed = false; #closing;
   constructor(file, { rootAgentId, ...io } = {}) {
-    this.file = file; this.rootAgentId = rootAgentId; this.io = { writeFile, rename, clock: Date.now, ...io };
+    this.file = resolve(file); this.#context = getOwnershipContext(this.file); this.rootAgentId = rootAgentId; this.io = { writeFile, rename, clock: Date.now, ...io };
+  }
+  #enqueue(fn) {
+    const work = this.#context.queue.then(fn);
+    this.#context.queue = work.catch(() => {}); return work;
+  }
+  async #owned(fn) {
+    const acquired = !this.#context.session;
+    if (acquired) {
+      await mkdir(dirname(this.file), { recursive: true });
+      this.#context.session = await acquireOwnership(this.file);
+    }
+    try { return await fn(); }
+    catch (error) {
+      if (acquired) {
+        await releaseOwnership(this.file, this.#context.session.nonce);
+        this.#context.session = null;
+      }
+      throw error;
+    }
+  }
+  async #assertOwnership() {
+    try {
+      const record = JSON.parse(await readFile(ownerRecordPath(this.file), 'utf8'));
+      if (record.nonce === this.#context.session?.nonce) return;
+    } catch { /* Missing, corrupt and unreadable ownership all fail closed. */ }
+    throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
+  }
+  // Drain accepted changes; the last joined store releases the process session.
+  close() {
+    if (this.#closing) return this.#closing;
+    this.#closed = true;
+    return this.#closing = this.#enqueue(async () => {
+      if (!this.#joined) return;
+      this.#joined = false;
+      if (--this.#context.users === 0 && this.#context.session) {
+        await releaseOwnership(this.file, this.#context.session.nonce);
+        this.#context.session = null;
+      }
+    });
   }
   async read(projectIdeas = true) {
     try {
@@ -24,11 +65,15 @@ export class DeskStore {
       throw e;
     }
   }
-  // Runs fn(state) after every earlier change; writes only when the state actually changed.
+  // All instances on this ledger share admission and the read-modify-write queue.
   change(fn) {
-    const work = this.#queue.then(async () => {
+    if (this.#closed) return Promise.reject(new OwnershipError(OWNERSHIP_RELEASE_MISMATCH));
+    if (!this.#joined) { this.#joined = true; this.#context.users++; }
+    return this.#enqueue(() => this.#owned(async () => {
+      await this.#assertOwnership();
       const state = await this.read(false); const before = JSON.stringify(state); const oldSchema = state.schemaVersion; const result = await fn(state);
       if (JSON.stringify(state) === before) return result;
+      await this.#assertOwnership();
       state.revision++;
       validateState(state);
       await mkdir(dirname(this.file), { recursive: true });
@@ -58,8 +103,7 @@ export class DeskStore {
       } catch (e) { if (e.code !== 'ENOENT') throw e; }
       await this.io.rename(temp, this.file);
       return result;
-    });
-    this.#queue = work.catch(() => {}); return work;
+    }));
   }
   migrate(expectedRevision) {
     ensure(Number.isSafeInteger(expectedRevision) && expectedRevision >= 0, 'Ungültige expectedRevision.');
