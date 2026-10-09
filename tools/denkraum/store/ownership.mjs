@@ -87,7 +87,11 @@ async function recoverDead(path) {
       // The dead record was already removed by someone else.
       if (error?.code !== OWNERSHIP_RELEASE_MISMATCH) throw error;
     }
-  } finally { await unlink(lockPath).catch(() => {}); }
+  } finally {
+    await unlink(lockPath).catch(() => {
+      console.error(`OWNERSHIP_IO: could not remove recovery lock ${basename(lockPath)}`);
+    });
+  }
 }
 async function mismatchOrIo(path) {
   try { if (!(await stat(dirname(path))).isDirectory()) ioFail(); }

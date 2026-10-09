@@ -440,3 +440,21 @@ for (const [name, persists] of [
     }
   } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });
+
+test('DRSEC-G6-FU: failed recovery lock cleanup emits one stderr diagnostic', async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const lock = `${ownerPath(file)}.recover`, origUnlink = fs.unlink, diagnostics = [];
+  t.mock.method(fs, 'unlink', async p => {
+    if (p === lock) throw Object.assign(new Error('sensitive error contents'), { code: 'EACCES' });
+    return origUnlink(p);
+  });
+  t.mock.method(process.stderr, 'write', chunk => { diagnostics.push(String(chunk)); return true; });
+  syncBuiltinESMExports();
+  try {
+    const session = await acquire(file);
+    assert.deepEqual(diagnostics, ['OWNERSHIP_IO: could not remove recovery lock ledger.json.owner.recover\n']);
+    assert.ok(await readFile(lock));
+    assert.equal(JSON.parse(await readFile(ownerPath(file))).nonce, session.nonce);
+    await release(file, session.nonce);
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
