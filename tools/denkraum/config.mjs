@@ -84,7 +84,7 @@ export function loadStartConfig(env, { repoRoot }) {
     : { enabled: false, reason: "DECISION_DESK_WEBHOOK_URL not set" };
   return {
     ok: errors.length === 0,
-    config: errors.length ? null : { rootReceiptToken, webhookSecret, rootAgentId, statePath, port, notifications },
+    config: errors.length ? null : { rootReceiptToken, webhookSecret, webhookUrl, rootAgentId, statePath, port, notifications },
     errors,
   };
 }

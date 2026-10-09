@@ -26,6 +26,19 @@ const configFor = (repoRoot, state) => loadStartConfig({ DECISION_DESK_STATE: st
   DECISION_DESK_ROOT_AGENT_ID: 'test-root', DECISION_DESK_ROOT_RECEIPT_TOKEN: 'a'.repeat(32),
   DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32) }, { repoRoot });
 
+test('DRSEC: config rejects physical repository aliases', {
+  skip: process.platform === 'win32' ? 'POSIX symlink fixture; Windows requires separate junction/ACL coverage' : false,
+}, async t => {
+  const dir = await fixture(t); const repoRoot = join(dir, 'repo');
+  await mkdir(repoRoot); await writeFile(join(repoRoot, 'ledger.json'), 'repository sentinel');
+  await symlink(repoRoot, join(dir, 'alias'));
+  await symlink(join(repoRoot, 'ledger.json'), join(dir, 'leaf.json'));
+  for (const [name, state] of [['leaf', join(dir, 'leaf.json')], ['directory', join(dir, 'alias', 'ledger.json')],
+    ['missing descendant', join(dir, 'alias', 'missing', 'ledger.json')]]) {
+    await t.test(name, () => assert.equal(configFor(repoRoot, state).ok, false, 'physical repository alias accepted'));
+  }
+});
+
 test('DRSEC: traversal identifiers cannot select files or mutate the ledger', async t => {
   const dir = await fixture(t); const ledgerDir = join(dir, 'state');
   await mkdir(ledgerDir); await writeFile(join(dir, 'sentinel'), 'untouched sibling');
