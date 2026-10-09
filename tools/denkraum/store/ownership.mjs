@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { link, open, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { hostname } from 'node:os';
+const host = `${hostname()}:${process.platform}`;
 export const OWNERSHIP_HELD = 'OWNERSHIP_HELD';
 export const OWNERSHIP_MALFORMED = 'OWNERSHIP_MALFORMED';
 export const OWNERSHIP_RELEASE_MISMATCH = 'OWNERSHIP_RELEASE_MISMATCH';
@@ -30,14 +32,28 @@ function parseRecord(raw) {
   if (typeof value.nonce !== 'string' || value.nonce.length < 8 || value.nonce.length > 128) return null;
   if (!Number.isInteger(value.pid) || value.pid <= 0) return null;
   if (typeof value.heartbeatAt !== 'string' || !Number.isFinite(Date.parse(value.heartbeatAt))) return null;
-  return { nonce: value.nonce, pid: value.pid, heartbeatAt: value.heartbeatAt };
+  return { nonce: value.nonce, pid: value.pid, heartbeatAt: value.heartbeatAt,
+    host: typeof value.host === 'string' ? value.host : null };
 }
-async function refuseExisting(path) {
+function isDead(record) {
+  if (record.pid === process.pid && registry.spent.has(record.nonce) && !registry.releasing.has(record.nonce)) return true;
+  if (record.host !== host) return false;
+  try { process.kill(record.pid, 0); }
+  catch (error) { return error?.code === 'ESRCH'; }
+  return false;
+}
+async function recoverDead(path) {
   let raw;
   try { raw = await readFile(path, 'utf8'); }
   catch { throw new OwnershipError(OWNERSHIP_HELD); }
-  if (!parseRecord(raw)) throw new OwnershipError(OWNERSHIP_MALFORMED);
-  throw new OwnershipError(OWNERSHIP_HELD);
+  const record = parseRecord(raw);
+  if (!record) throw new OwnershipError(OWNERSHIP_MALFORMED);
+  if (!isDead(record)) throw new OwnershipError(OWNERSHIP_HELD);
+  try { await releaseOnce(path, record.nonce); }
+  catch (error) {
+    // A competing starter may already have removed or replaced the dead record.
+    if (error?.code !== OWNERSHIP_RELEASE_MISMATCH) throw error;
+  }
 }
 async function mismatchOrIo(path) {
   try { if (!(await stat(dirname(path))).isDirectory()) ioFail(); }
@@ -47,12 +63,18 @@ async function mismatchOrIo(path) {
 export async function acquireOwnership(ledgerPath) {
   const path = ownerRecordPath(ledgerPath);
   const nonce = randomBytes(16).toString('hex');
-  const record = { nonce, pid: process.pid, heartbeatAt: new Date().toISOString() };
+  const record = { nonce, pid: process.pid, heartbeatAt: new Date().toISOString(), host };
   let handle;
   try { handle = await open(path, 'wx', 0o600); }
   catch (error) {
-    if (error && error.code === 'EEXIST') await refuseExisting(path);
-    ioFail();
+    if (error?.code !== 'EEXIST') ioFail();
+    await recoverDead(path);
+    // Exactly one fresh exclusive create; never recover a second owner here.
+    try { handle = await open(path, 'wx', 0o600); }
+    catch (retryError) {
+      if (retryError?.code === 'EEXIST') throw new OwnershipError(OWNERSHIP_HELD);
+      ioFail();
+    }
   }
   try { await handle.writeFile(`${JSON.stringify(record)}\n`, 'utf8'); await handle.close(); }
   catch { await handle.close().catch(() => {}); await unlink(path).catch(() => {}); ioFail(); }
