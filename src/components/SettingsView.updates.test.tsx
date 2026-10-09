@@ -371,6 +371,56 @@ describe("SettingsView updates tab", () => {
     expect(await screen.findByText(/install failed after too late/)).toBeInTheDocument();
     expect(screen.getAllByText(/install failed after too late/)).toHaveLength(1);
   });
+
+  it("ignores a late cancelled answer after install already finished", async () => {
+    const { finishInstall } = await startDownloadAndHoldInstall();
+    let finishCancel!: (value: "cancelled" | "tooLate" | "notRunning") => void;
+    vi.mocked(cancelUpdateDownload).mockImplementationOnce(
+      () => new Promise((resolve) => { finishCancel = resolve; }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    finishInstall();
+    expect(await screen.findByRole("button", { name: "Restart to apply" })).toBeInTheDocument();
+    finishCancel("cancelled");
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Restart to apply" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download and install" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Download wurde abgebrochen/i)).not.toBeInTheDocument();
+  });
+
+  it("can download and install again after a cancel", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    rejectInstall(new Error("Update download cancelled"));
+    expect(await screen.findByRole("button", { name: "Download and install" })).toBeInTheDocument();
+
+    vi.mocked(installUpdateWhenIdle).mockResolvedValueOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Download and install" }));
+    expect(await screen.findByRole("button", { name: "Restart to apply" })).toBeInTheDocument();
+    expect(installUpdateWhenIdle).toHaveBeenCalledTimes(2);
+  });
+
+  it("surfaces an install rejection after check resets cancel refs", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    let finishCancel!: (value: "cancelled" | "tooLate" | "notRunning") => void;
+    vi.mocked(cancelUpdateDownload).mockImplementationOnce(
+      () => new Promise((resolve) => { finishCancel = resolve; }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeDisabled();
+
+    mocks.check.mockResolvedValue({
+      rid: 43, available: true, version: "1.3.2", body: "Next update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText(/Version 1.3.2 is available/)).toBeInTheDocument();
+
+    rejectInstall(new Error("stale install rejection after check"));
+    expect(await screen.findByText(/stale install rejection after check/)).toBeInTheDocument();
+    finishCancel("notRunning");
+    expect(screen.getAllByText(/stale install rejection after check/)).toHaveLength(1);
+  });
 });
 
 describe("SettingsView routing radiogroup", () => {
