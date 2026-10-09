@@ -331,3 +331,18 @@ test('DR16H: missing primary ledger prints exactly one diagnostic line', async (
   assert.match(r.stderr, /ENOENT|ledger\.json/);
   assert.equal(JSON.parse(r.stdout).ok, false);
 });
+test('DR16H: diagnose handles thrown strings', async () => {
+  const { state } = await ledger('v1');
+  const listener = createServer();
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  await new Promise(r => listener.close(r));
+  const preload = `import { promises } from 'node:fs'; import { syncBuiltinESMExports } from 'node:module';
+    promises.readFile = async () => { throw 'string-throw-probe-dr16'; };
+    syncBuiltinESMExports();`;
+  const r = await run([`data:text/javascript,${encodeURIComponent(preload)}`, SWITCH,
+    'backup', '--state', state, '--out', await output(), '--port', String(port)], {}, '--import');
+  assert.equal(r.status, 4);
+  assert.match(r.stderr, /string-throw-probe-dr16/);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+});

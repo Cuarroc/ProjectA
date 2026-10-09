@@ -13,8 +13,8 @@ function diagnose(error) {
   // JSON parser excerpts and filesystem paths can contain ledger data or credentials.
   let message = error instanceof SyntaxError
     ? `Invalid JSON${error.message.match(/ at position \d+(?: \(line \d+ column \d+\))?/)?.[0] ?? ''}`
-    : error.message;
-  for (const path of [error.path, error.dest]) {
+    : String(error?.message ?? error);
+  for (const path of [error?.path, error?.dest]) {
     if (typeof path === 'string' && path) message = message.split(path).join(basename(path));
   }
   for (const [name, value] of Object.entries(process.env)) {
