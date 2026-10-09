@@ -91,7 +91,8 @@ async function backup(args) {
       return fail(2, 'Ausgabe darf nicht im Ledger-Verzeichnis liegen');
     }
   } catch (error) {
-    if (error.code !== 'ENOENT') { diagnose(error); return fail(4, 'nicht ruhend'); }
+    // Fail closed on EACCES/ELOOP/ENOTDIR with path wording, not "nicht ruhend".
+    if (error.code !== 'ENOENT') { diagnose(error); return fail(4, 'Ungültiger Pfad'); }
   }
   if (await healthUp(port)) return fail(3, 'Schreiber läuft noch');
   let names; try { names = await readdir(dirname(statePath)); } catch (error) { diagnose(error); names = []; }

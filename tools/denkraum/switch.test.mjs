@@ -269,6 +269,19 @@ test('R890-K2: backup refuses --out routed through a symlink into the ledger dir
   await assert.rejects(stat(out), e => e.code === 'ENOENT');
   assert.deepEqual(await readdir(dirname(state)), before);
 });
+test('R890-K3: guard ENOTDIR on --out uses invalid-path wording', async () => {
+  const { state } = await ledger('v1');
+  const fileComponent = join(await mkdtemp(join(tmpdir(), 'dr16-enotdir-')), 'not-a-dir');
+  await writeFile(fileComponent, 'x');
+  const out = join(fileComponent, 'nested', 'snap');
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.match(JSON.parse(r.stdout).error, /Pfad/);
+  assert.ok(!/nicht ruhend/.test(r.stdout));
+  // Parent path component is a file: nested children are unreachable (ENOTDIR).
+  await assert.rejects(stat(join(fileComponent, 'nested')), e => e.code === 'ENOTDIR');
+});
 test('DR16H: backup reports explicit and default probe ports', async () => {
   const { state } = await ledger();
   const listener = createServer();
