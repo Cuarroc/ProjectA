@@ -187,7 +187,7 @@ export async function installUpdateWhenIdle(updateRid: number): Promise<void> {
 export type CancelUpdateResult = "cancelled" | "tooLate" | "notRunning";
 
 export async function cancelUpdateDownload(): Promise<CancelUpdateResult> {
-  return "notRunning";
+  return invoke<CancelUpdateResult>("cancel_update_download");
 }
 
 export type UpdaterState =

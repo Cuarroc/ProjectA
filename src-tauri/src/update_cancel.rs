@@ -1,34 +1,128 @@
 //! Single-flight ownership and download cancellation, independent of the updater.
-use std::future::Future;
+use std::{
+    future::Future,
+    sync::{Arc, Mutex, MutexGuard},
+};
+use tokio::sync::{watch, Notify};
 
-#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CancelResult {
     Cancelled,
     TooLate,
     NotRunning,
 }
-
+#[derive(PartialEq)]
+enum Phase {
+    Downloading,
+    CancelRequested,
+    Installing,
+}
+struct Flight {
+    phase: Mutex<Phase>,
+    cancel: Notify,
+    done: watch::Receiver<Option<Result<CancelResult, String>>>,
+}
 #[derive(Default)]
-pub struct UpdateCancel;
-pub struct Install;
+pub struct UpdateCancel(Mutex<Option<Arc<Flight>>>);
+pub struct Install<'a> {
+    owner: &'a UpdateCancel,
+    flight: Arc<Flight>,
+    done: watch::Sender<Option<Result<CancelResult, String>>>,
+}
+fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {
+    mutex
+        .lock()
+        .map_err(|_| "update cancellation state unavailable".into())
+}
 impl UpdateCancel {
-    pub fn begin(&self) -> Result<Install, String> {
-        Ok(Install)
+    pub fn begin(&self) -> Result<Install<'_>, String> {
+        let mut slot = lock(&self.0)?;
+        if slot.is_some() {
+            return Err(format!(
+                "{}update install already running",
+                crate::errors::ERR_REFUSED
+            ));
+        }
+        let (done, receiver) = watch::channel(None);
+        let flight = Arc::new(Flight {
+            phase: Mutex::new(Phase::Downloading),
+            cancel: Notify::new(),
+            done: receiver,
+        });
+        *slot = Some(flight.clone());
+        Ok(Install {
+            owner: self,
+            flight,
+            done,
+        })
     }
     pub async fn cancel(&self) -> Result<CancelResult, String> {
-        Ok(CancelResult::Cancelled)
+        let mut done = {
+            let slot = lock(&self.0)?;
+            let Some(flight) = slot.as_ref() else {
+                return Ok(CancelResult::NotRunning);
+            };
+            let mut phase = lock(&flight.phase)?;
+            if *phase == Phase::Installing {
+                return Ok(CancelResult::TooLate);
+            }
+            *phase = Phase::CancelRequested;
+            flight.cancel.notify_one();
+            flight.done.clone()
+        };
+        let result = done
+            .wait_for(|result| result.is_some())
+            .await
+            .map_err(|_| "update interrupted; restart before retrying".to_string())?
+            .as_ref()
+            .unwrap()
+            .clone();
+        result
     }
 }
-impl Install {
+impl Install<'_> {
+    pub fn finish_unstarted(self) -> Result<(), String> {
+        *lock(&self.owner.0)? = None;
+        self.done.send_replace(Some(Ok(CancelResult::NotRunning)));
+        Ok(())
+    }
     pub async fn download<T>(
         &self,
         future: impl Future<Output = Result<T, String>>,
     ) -> Result<T, String> {
-        future.await
+        let mut future = std::pin::pin!(future);
+        let mut cancel = std::pin::pin!(self.flight.cancel.notified());
+        let result = std::future::poll_fn(|cx| {
+            if cancel.as_mut().poll(cx).is_ready() {
+                return std::task::Poll::Ready(Err("Update download cancelled".into()));
+            }
+            future.as_mut().poll(cx)
+        })
+        .await;
+        // Serialize cancellation with the boundary BEFORE any journal is produced.
+        let mut phase = lock(&self.flight.phase)?;
+        if *phase == Phase::CancelRequested {
+            return Err("Update download cancelled".into());
+        }
+        if result.is_ok() {
+            *phase = Phase::Installing;
+        }
+        result
     }
-    pub async fn finish(self, thaw: impl Future<Output = Result<(), String>>) {
-        let _ = thaw.await;
+    pub async fn finish(
+        self,
+        thaw: impl Future<Output = Result<(), String>>,
+    ) -> Result<(), String> {
+        let result = thaw.await;
+        let mut slot = lock(&self.owner.0)?;
+        // Failed thaw or an interrupted task keeps the slot occupied, fail-closed.
+        if result.is_ok() {
+            *slot = None;
+        }
+        self.done
+            .send_replace(Some(result.clone().map(|()| CancelResult::Cancelled)));
+        result
     }
 }
 
@@ -77,7 +171,7 @@ mod tests {
         assert!(is_pending(finish.as_mut()).await);
         assert!(is_pending(cancel.as_mut()).await);
         thaw.send(()).unwrap();
-        finish.await;
+        finish.await.unwrap();
         assert_eq!(cancel.await.unwrap(), CancelResult::Cancelled);
         assert!(state.begin().is_ok());
     }
@@ -92,13 +186,15 @@ mod tests {
         assert!(frozen.get());
         assert!(state.begin().is_err());
         // No thaw is scheduled once the install boundary has been crossed.
-        install.finish(ready(Ok(()))).await;
+        install.finish(ready(Ok(()))).await.unwrap();
         assert!(frozen.replace(false));
     }
 
     #[tokio::test]
     async fn cancel_without_running_install_reports_not_running() {
         let state = UpdateCancel::default();
+        assert_eq!(state.cancel().await.unwrap(), CancelResult::NotRunning);
+        state.begin().unwrap().finish_unstarted().unwrap();
         assert_eq!(state.cancel().await.unwrap(), CancelResult::NotRunning);
     }
 
@@ -121,8 +217,16 @@ mod tests {
         assert!(is_pending(finish.as_mut()).await);
         assert!(state.begin().is_err());
         thaw.send(()).unwrap();
-        finish.await;
+        finish.await.unwrap();
         assert_eq!(cancel.await.unwrap(), CancelResult::Cancelled);
-        assert!(state.begin().is_ok());
+        let retry = state.begin().unwrap();
+        let mut cancel = Box::pin(state.cancel());
+        assert!(is_pending(cancel.as_mut()).await);
+        assert!(retry
+            .finish(ready(Err("thaw failed".into())))
+            .await
+            .is_err());
+        assert_eq!(cancel.await.unwrap_err(), "thaw failed");
+        assert!(state.begin().is_err());
     }
 }
