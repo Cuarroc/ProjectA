@@ -109,6 +109,16 @@ function ideaFields(event) {
   const progress = state.progress.find(p => p.eventId === event.ref.eventId);
   return { category: ideaCategory(event), priority, station: !progress || progress.currentStatus === 'incoming' ? 'incoming' : 'unmapped' };
 }
+function compareIdeaEvents(a, b, mode) {
+  const rank = event => ({ urgent: 0, high: 1, normal: 2, later: 3 })[ideaFields(event).priority] ?? 4;
+  if (mode === 'priority' && rank(a) !== rank(b)) return rank(a) - rank(b);
+  if (mode !== 'title') {
+    const x = Date.parse(a.revision.createdAt), y = Date.parse(b.revision.createdAt);
+    if (Number.isFinite(x) !== Number.isFinite(y)) return Number.isFinite(x) ? -1 : 1;
+    if (Number.isFinite(x) && x !== y) return mode === 'oldest' ? x - y : y - x;
+  }
+  return a.title.localeCompare(b.title, 'de') || (a.idea.id < b.idea.id ? -1 : a.idea.id > b.idea.id ? 1 : 0);
+}
 function ideaMetadata(event) {
   const r = event.revision, { category, priority, station } = ideaFields(event);
   const names = { urgent: 'Dringend', high: 'Hoch', normal: 'Normal', later: 'Später' };
@@ -135,7 +145,14 @@ function renderIdeaState() {
     category.addEventListener('change', renderIdeaState);
     const count = node('p', '', 'muted'); count.id = 'idea-count'; count.setAttribute('role', 'status');
     const cards = node('div'); cards.id = 'idea-cards';
-    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), label, search, categoryLabel, category);
+    const sortLabel = node('label', 'Reihenfolge'); sortLabel.htmlFor = 'idea-sort';
+    const sort = node('select'); sort.id = 'idea-sort';
+    for (const [value, title] of [['stored', 'Gespeicherte Reihenfolge'], ['priority', 'Nutzerpriorität, dann neueste Fassung'],
+      ['newest', 'Neueste Fassung zuerst'], ['oldest', 'Älteste Fassung zuerst'], ['title', 'Titel, dann Ideen-ID']]) {
+      const option = node('option', title); option.value = value; sort.append(option);
+    }
+    sort.value = 'stored'; sort.addEventListener('change', renderIdeaState);
+    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), sortLabel, sort, label, search, categoryLabel, category);
     for (const [id, text, options] of [
       ['idea-priority', 'Nutzerpriorität', [['*', 'Alle Prioritäten'], ['urgent', 'Dringend'], ['high', 'Hoch'], ['normal', 'Normal'], ['later', 'Später'], ['unreadable', 'Nicht lesbar']]],
       ['idea-station', 'Belegte Zuordnung', [['*', 'Alle Zuordnungen'], ['incoming', 'Eingang · Aktuelle Fassung gespeichert'], ['unmapped', 'Noch nicht zugeordnet']]],
@@ -157,8 +174,10 @@ function renderIdeaState() {
       && (selectedCategory === '*' || JSON.stringify(fields.category) === selectedCategory)
       && (priority === '*' || (fields.priority ?? 'unreadable') === priority) && (station === '*' || fields.station === station);
   });
+  const mode = $('idea-sort').value;
+  const orderedIdeas = mode === 'stored' ? ideas : [...ideas].sort((a, b) => compareIdeaEvents(a, b, mode));
   const cards = $('idea-cards'); cards.replaceChildren(); $('idea-count').textContent = `${ideas.length} von ${all.length} gespeicherten Ideen`;
-  for (const event of ideas) {
+  for (const event of orderedIdeas) {
     const item = node('article', undefined, 'idea-card');
     item.dataset.ideaId = event.idea.id; item.append(node('h3', event.title), ideaMetadata(event));
     item.append(node('p', 'Eigene Einordnung fehlt · Nutzerangaben sind keine Belege für Rootempfang, Prüfung oder Freigabe.', 'muted'));
