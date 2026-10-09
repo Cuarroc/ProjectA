@@ -16,6 +16,7 @@ const stateWith = (rootAgentId, extra = {}) => ({
 });
 
 async function setupPage(page, metaContent, stateData, scriptError = false, { clock = false } = {}) {
+  await page.unroute('**/*');
   if (clock) await page.clock.install();
   await page.route('**/*', async route => {
     const url = route.request().url();
@@ -26,11 +27,7 @@ async function setupPage(page, metaContent, stateData, scriptError = false, { cl
       }
       await route.fulfill({ body: html, contentType: 'text/html' });
     } else if (url.includes('/api/state')) {
-      if (stateData === "network-error") {
-        await route.abort('failed');
-      } else {
-        await route.fulfill({ json: typeof stateData === 'function' ? stateData() : stateData });
-      }
+      await route.fulfill({ json: typeof stateData === 'function' ? stateData() : stateData });
     } else if (url.includes('/api/inbox')) {
       await route.fulfill({ status: 404 });
     } else if (url.includes('/api/ideas') || url.includes('/api/answers') || url.includes('/api/workbench')) {
@@ -153,10 +150,11 @@ test("validIdeaState rejects a receipt without a string root id", async ({ page 
   expect(await page.evaluate((state) => validIdeaState(state), stateWith(null))).toBe(false);
 });
 
-test("check console errors", async ({ page }) => {
-  page.on('console', msg => console.log('CONSOLE:', msg.text()));
-  page.on('pageerror', err => console.log('ERROR:', err.message));
+test("startup completes without page errors", async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', err => errors.push(err.message));
   await setupPage(page, "injected", stateWith("injected"));
+  expect(errors).toEqual([]);
 });
 
 test("invalid state is rejected", async ({ page }) => {
@@ -174,7 +172,7 @@ test("broken questions.js makes the test red", async ({ page }) => {
   expect(errorMsgs.some(msg => msg.includes('split script startup broken'))).toBe(true);
 });
 
-test("D4: a missing or empty root id blocks every POST action", async ({ page }) => {
+test("D4: a missing or empty or whitespace root id blocks every POST action and retry", async ({ page }) => {
   const reason = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.';
   const question = {
     id: 'Q1', title: 'Frage', context: 'C', owner: 'O', category: 'K', scope: 'S',
@@ -190,12 +188,11 @@ test("D4: a missing or empty root id blocks every POST action", async ({ page })
     posts.length = 0;
     await setupPage(page, meta, state);
     await run();
-    await page.waitForTimeout(300);
-    expect(posts, `meta=${JSON.stringify(meta)}`).toEqual([]);
     await expect(page.locator(statusSel)).toHaveText(reason);
+    expect(posts, `meta=${JSON.stringify(meta)}`).toEqual([]);
   }
 
-  for (const meta of [null, '']) {
+  for (const meta of [null, '', ' ']) {
     await expectBlocked(meta, async () => {
       await page.locator('#area-think').click();
       await page.locator('#idea').fill('Test idea');
@@ -226,14 +223,30 @@ test("D4: a missing or empty root id blocks every POST action", async ({ page })
       await page.locator('#wb-variant-description-0').fill('Beschreibung');
       await page.locator('#wb-save').click();
     }, '#wb-status');
+
+    await expectBlocked(meta, async () => {
+      await page.evaluate(() => {
+        drafts['Q1:1'] = {
+          selected: ['a'], note: '', baseAnswerId: null,
+          pending: { questionId: 'Q1', questionRevision: 1, expectedAnswerId: null,
+            requestId: 'unclear-request', action: 'answer', selected: ['a'], note: '' },
+        };
+        persist();
+      });
+      await page.reload();
+      await expect(page.locator('#detail')).toContainText('Der Ausgang der letzten Übertragung ist unklar.');
+      await page.getByRole('button', { name: 'Speicherung erneut prüfen' }).click();
+    }, '#detail .feedback');
+    await page.evaluate(() => localStorage.clear());
   }
 
   posts.length = 0;
   await setupPage(page, 'injected', state);
   await page.locator('#area-think').click();
   await page.locator('#idea').fill('Test idea');
+  const post = page.waitForRequest(req => req.method() === 'POST' && new URL(req.url()).pathname === '/api/ideas');
   await page.locator('#idea-save').click();
-  await page.waitForTimeout(300);
+  await post;
   expect(posts.some(p => p.includes('/api/ideas'))).toBe(true);
 });
 
@@ -418,35 +431,22 @@ test('DR12: real CSS gives field borders 3 to 1 contrast', async ({ page }) => {
     try { return [...s.cssRules].some(r => r.cssText?.includes('--line')); } catch { return false; }
   }));
   expect(sheets).toBe(true);
-  // Read rendered pixels: Chromium composes gradients, alpha layers and backdrop filters.
-  const contrastOf = async locator => page.evaluate(async base64 => {
-    const image = new Image(); image.src = `data:image/png;base64,${base64}`; await image.decode();
-    const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
-    const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
-    const pixel = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
-    const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
-    const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    // Midpoints avoid rounded corners; darkest of top 4 rows is the border after DPR/AA.
-    return [0.25, 0.5, 0.75].map(fraction => {
-      const x = Math.floor(image.width * fraction);
-      let border = pixel(x, 0), borderY = 0;
-      for (let y = 1; y < Math.min(4, image.height); y++) { const p = pixel(x, y); if (lum(p) < lum(border)) { border = p; borderY = y; } }
-      const fill = pixel(x, Math.min(image.height - 1, borderY + 2));
-      const [light, dark] = [lum(border), lum(fill)].sort((a, b) => b - a);
-      return { border, fill, contrast: (light + 0.05) / (dark + 0.05) };
-    });
-  }, (await locator.screenshot()).toString('base64'));
-  const report = await contrastOf(page.locator('#idea'));
+  const report = await renderedBorderContrast(page, '#idea');
   console.log('DR12 rendered contrast', JSON.stringify(report));
   expect(Math.min(...report.map(sample => sample.contrast))).toBeGreaterThanOrEqual(3);
   const hoverBtn = page.locator('.idea-edit').first();
   await hoverBtn.hover();
-  expect(Math.min(...(await contrastOf(hoverBtn)).map(s => s.contrast))).toBeGreaterThanOrEqual(3);
+  expect(Math.min(...(await renderedBorderContrast(page, '.idea-edit')).map(s => s.contrast))).toBeGreaterThanOrEqual(3);
 });
 
 async function renderedBorderContrast(page, selector) {
-  const image = await page.locator(selector).screenshot();
-  return page.evaluate(async base64 => {
+  const locator = page.locator(selector).first();
+  const geometry = await locator.evaluate(el => ({
+    height: el.getBoundingClientRect().height,
+    borderTop: parseFloat(getComputedStyle(el).borderTopWidth),
+  }));
+  const image = await locator.screenshot();
+  return page.evaluate(async ({ base64, geometry }) => {
     const image = new Image();
     image.src = `data:image/png;base64,${base64}`;
     await image.decode();
@@ -457,17 +457,34 @@ async function renderedBorderContrast(page, selector) {
     const pixel = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
     const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    // Midpoints avoid rounded corners; darkest of top 4 rows is the border after DPR/AA.
+    // Screenshot pixels can differ from CSS pixels; sample beyond the entire border.
+    const borderRows = Math.ceil(geometry.borderTop * image.height / geometry.height);
+    const fillY = Math.min(image.height - 1, borderRows + 1);
     return [0.25, 0.5, 0.75].map(fraction => {
       const x = Math.floor(image.width * fraction);
-      let border = pixel(x, 0), borderY = 0;
-      for (let y = 1; y < Math.min(4, image.height); y++) { const p = pixel(x, y); if (lum(p) < lum(border)) { border = p; borderY = y; } }
-      const fill = pixel(x, Math.min(image.height - 1, borderY + 2));
+      let border = pixel(x, 0);
+      for (let y = 1; y < Math.min(borderRows, image.height); y++) { const p = pixel(x, y); if (lum(p) < lum(border)) border = p; }
+      const fill = pixel(x, fillY);
       const [light, dark] = [lum(border), lum(fill)].sort((a, b) => b - a);
       return { border, fill, contrast: (light + 0.05) / (dark + 0.05) };
     });
-  }, image.toString('base64'));
+  }, { base64: image.toString('base64'), geometry });
 }
+
+test('DR12: contrast sampling clears a three pixel border', async ({ page }) => {
+  await setupPage(page, 'injected', categoryState([]));
+  await openIdeas(page);
+  await page.locator('#idea').evaluate(el => {
+    el.style.border = '3px solid rgb(0, 0, 0)';
+    el.style.background = 'rgb(255, 255, 255)';
+  });
+  const samples = await renderedBorderContrast(page, '#idea');
+  for (const sample of samples) {
+    expect(sample.border).toEqual([0, 0, 0]);
+    expect(sample.fill).toEqual([255, 255, 255]);
+    expect(sample.contrast).toBe(21);
+  }
+});
 
 test('DR12: category controls fit 1440 390 and 320', async ({ page }, testInfo) => {
   const ideas = [
