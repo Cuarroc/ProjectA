@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -126,4 +126,114 @@ test('DRSEC: CSRF guards reject cross-site and non-JSON mutations without writes
   const after = JSON.parse(await readFile(statePath));
   assert.equal(after.revision, revision + 2);
   assert.equal(after.questions.length, 3);
+});
+
+const bodyLimit = 128 * 1024;
+const bodyHeaders = { 'content-type': 'application/json', 'x-decision-desk': 'agent' };
+
+async function bodyFixture(t) {
+  const dir = await mkdtemp(join(tmpdir(), 'denkraum-body-'));
+  const statePath = join(dir, 'ledger.json');
+  const server = createDeskServer({ statePath, rootAgentId });
+  t.after(async () => {
+    try {
+      const closed = new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      server.closeAllConnections();
+      await closed;
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
+  const listening = once(server, 'listening');
+  server.listen(0, '127.0.0.1');
+  await listening;
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const seed = await send(base, bodyHeaders, question('seed'));
+  assert.equal(seed.status, 200, seed.body);
+  const snapshot = async () => {
+    const files = (await readdir(dir)).sort();
+    return Promise.all(files.map(async name => [name, await readFile(join(dir, name))]));
+  };
+  return { base, statePath, snapshot, before: await snapshot() };
+}
+
+// Keep wire bytes intact, including malformed UTF-8. A chunked producer can
+// deliberately leave the request unfinished until the server rejects it.
+function sendBytes(base, body, chunked = false) {
+  return new Promise((resolve, reject) => {
+    let response;
+    const req = request(`${base}/api/questions`, {
+      method: 'POST', agent: false, signal: AbortSignal.timeout(3000),
+      headers: { ...bodyHeaders, ...(chunked ? { 'transfer-encoding': 'chunked' } : { 'content-length': body.length }) },
+    }, res => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('error', reject);
+      res.on('end', () => {
+        response = { status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString()),
+          requestFinished: req.writableEnded };
+      });
+    });
+    req.on('error', reject);
+    req.on('close', () => response ? resolve(response) : reject(new Error('Connection closed without a complete HTTP response')));
+    if (chunked) {
+      for (let offset = 0; offset < body.length; offset += 16384) req.write(body.subarray(offset, offset + 16384));
+      // No end marker or remaining payload: rejection must precede those bytes.
+    } else req.end(body);
+  });
+}
+
+function paddedQuestion(id, bytes) {
+  // Multibyte text distinguishes a byte limit from a character limit; JSON
+  // whitespace reaches the exact boundary without hitting a field-size limit.
+  const json = Buffer.from(JSON.stringify({ ...question(id), title: 'Grenze ä 😀' }));
+  return Buffer.concat([json, Buffer.alloc(bytes - json.length, 0x20)]);
+}
+
+test('DRSEC: a fixed body over 128 KiB returns 413 without a state write', { timeout: 10000 }, async t => {
+  const f = await bodyFixture(t);
+  const response = await sendBytes(f.base, paddedQuestion('overflow', bodyLimit + 1));
+  assert.equal(response.status, 413);
+  assert.deepEqual(response.body, { error: 'Anfrage zu groß.' });
+  assert.deepEqual(await f.snapshot(), f.before, 'ledger, backups and file listing must remain unchanged');
+});
+
+test('DRSEC: a body exactly at 128 KiB is accepted and committed once', { timeout: 10000 }, async t => {
+  const f = await bodyFixture(t);
+  const body = paddedQuestion('boundary', bodyLimit);
+  assert.equal(body.length, 131072);
+  assert.ok(body.toString().length < body.length, 'fixture must contain multibyte UTF-8');
+  const before = JSON.parse(await readFile(f.statePath));
+  const response = await sendBytes(f.base, body);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.id, 'boundary');
+  const after = JSON.parse(await readFile(f.statePath));
+  assert.equal(after.revision, before.revision + 1);
+  assert.equal(after.questions.length, before.questions.length + 1);
+  assert.equal(after.questions.find(q => q.id === 'boundary').title, 'Grenze ä 😀');
+});
+
+test('DRSEC: chunked overflow is rejected before the whole body arrives without a state write', { timeout: 10000 }, async t => {
+  const f = await bodyFixture(t);
+  const response = await sendBytes(f.base, paddedQuestion('chunked-overflow', bodyLimit + 1), true);
+  assert.equal(response.status, 413);
+  assert.deepEqual(response.body, { error: 'Anfrage zu groß.' });
+  assert.equal(response.requestFinished, false, 'reject before the client ends or sends any remaining body');
+  assert.deepEqual(await f.snapshot(), f.before);
+  const recovery = await send(f.base, bodyHeaders, question('after-overflow'));
+  assert.equal(recovery.status, 200, recovery.body);
+  assert.equal(JSON.parse(await readFile(f.statePath)).revision, 2);
+});
+
+test('DRSEC: invalid UTF-8 is rejected with a fixed diagnostic without a state write', { timeout: 10000 }, async t => {
+  const f = await bodyFixture(t);
+  const json = JSON.stringify({ ...question('invalid-utf8'), title: 'MARKER' });
+  const [prefix, suffix] = json.split('MARKER');
+  for (const invalid of [[0xff], [0xc0, 0xaf], [0xe2, 0x82]]) {
+    // Replacement decoding would turn this into a valid, writable question.
+    const body = Buffer.concat([Buffer.from(prefix), Buffer.from(invalid), Buffer.from(suffix)]);
+    assert.doesNotThrow(() => JSON.parse(body.toString()));
+    const response = await sendBytes(f.base, body);
+    assert.equal(response.status, 400);
+    assert.deepEqual(response.body, { error: 'Ungültiges JSON oder UTF-8.' });
+    assert.deepEqual(await f.snapshot(), f.before);
+  }
 });
