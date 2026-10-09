@@ -124,7 +124,14 @@ review nor user approval; do not add an RLM runtime, agents or services for it.
   advisor raises go to the coordinator, who puts them into the decision inbox.
   Advisors do not replace the required reviews: when the author is a Claude
   model, Fable 5.1 does not count as an independent reviewer.
-- Subscriptions only: no OpenRouter, no API keys, no extra paid spending.
+- Subscriptions only: no OpenRouter, no extra paid spending, and no API keys.
+  One exception (user decision 2026-10-09): the monthly Anthropic API credits
+  included in the user's Max plan may be used. Conditions: one ProjectA key
+  from a dedicated Console workspace, with a spend limit; no payment method,
+  no purchased credits, no auto-reload; the key lives only in the AgentsRoom
+  secrets vault or a server secret store the user set up, and never appears
+  in files, logs, commands or PR text. When the credits run out, work falls
+  back to the subscriptions; nobody buys credits.
 
 ## Bounded goals and approved adaptation
 
