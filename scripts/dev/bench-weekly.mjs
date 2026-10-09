@@ -11,8 +11,8 @@ import { EXIT, UsageError, makeRunner, ghJson, isMain, runCli, withExitCodes } f
 
 // All counting patterns live here (benchmark.md section 5 lost them once).
 export const PATTERNS = {
-  // provider/<letters+digits>-<number>...: w3-02d-x -> w3-02, ki-30-x -> ki-30, ci-03-x -> ci-03
-  packageBranch: /^(?:claude|codex|kimi|opencode|glm)\/([a-z]+\d*-\d+)/i,
+  // Mergify package prefixes; retain task numbers: w3-02d-x -> w3-02, dr-14-sort -> dr-14.
+  packageBranch: /^(?:claude|codex|kimi|opencode|glm|cursor)\/((?:w\d+-|df\d+|ki-\d+|hq2-|dr-|z\d+-)\d*)/i,
   fixTitle: /\b(fix|hotfix|revert|regression)\b/i,
   hotfix: /^(?:hotfix|revert)\b|^(?:[^/]+\/)?(?:hotfix|revert)[-/]/i,
   reviewFixCommit: /^(?:fix|address|apply|resolve)\b.*\b(?:review|reviewer|finding|findings|feedback)\b/i,

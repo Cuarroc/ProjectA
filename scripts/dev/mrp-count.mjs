@@ -9,7 +9,7 @@ import { parseArgs } from "node:util";
 import { EXIT, UsageError, makeRunner, ghJson, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
 
 // Package branches as Mergify defines them (AGENTS.md, "Package PRs carry their report").
-export const PACKAGE_BRANCH = /^(?:claude|codex|kimi|opencode|glm)\/(?:w\d+-|df\d+|ki-\d+|hq2-)/i;
+export const PACKAGE_BRANCH = /^(?:claude|codex|kimi|opencode|glm|cursor)\/(?:w\d+-|df\d+|ki-\d+|hq2-|dr-|z\d+-)/i;
 
 const section = (body, name) => new RegExp(`^###\\s+${name}\\s*$([\\s\\S]*?)(?=^#{1,3}\\s|(?![\\s\\S]))`, "m").exec(body || "")?.[1] ?? null;
 
