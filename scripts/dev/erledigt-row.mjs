@@ -49,7 +49,13 @@ export function cleanTitle(title, id = "") {
 }
 
 export function makeRow({ pr, id, title, report }) {
+  if (typeof pr.mergedAt !== "string") {
+    throw new RefusedError("Ungueltiges Merge-Datum (mergedAt); ERLEDIGT bleibt unveraendert.");
+  }
   const d = new Date(pr.mergedAt);
+  if (!Number.isFinite(d.getTime())) {
+    throw new RefusedError("Ungueltiges Merge-Datum (mergedAt); ERLEDIGT bleibt unveraendert.");
+  }
   const date = `${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.`;
   const reports = report ? [report] : (pr.files || []).map((f) => f.path).filter((p) => /^\.pa\/report_[^/]+\.md$/.test(p));
   const sha = String(pr.mergeCommit?.oid || "").slice(0, 7);
