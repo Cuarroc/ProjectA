@@ -1,9 +1,17 @@
 # Changelog
 
-## v1.6.0 — unveröffentlicht (Entwurf)
+## v1.6.0 (Beta) — 10.10.2026
 
-Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
-(Stand `e3725be`). Dies ist noch keine Veröffentlichungsnotiz.
+> **Updater-Hinweis:** v1.5.1 aktualisiert automatisch auf v1.6.0 —
+> derselbe Signierschlüssel, kein manueller Schritt nötig.
+
+Beta nach der Regel für x.y.0-Versionen (wie v1.5.0). Diese Version fasst die
+seit v1.5.1 in `main` übernommenen, nutzer- oder sicherheitsrelevanten
+Änderungen zusammen.
+
+**Noch nicht enthalten / folgt:** Das Umstellen eines bestehenden persönlichen
+Denkraums im Live-Betrieb (DR-16b) geschieht nach dem Release gemeinsam mit
+dessen Besitzer; das Runbook dafür bleibt bestehen.
 
 **Zuverlässigkeit und Updates:**
 
@@ -20,7 +28,10 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
   ungestört weiter. Späte Abbruch- und Wartungsfehlerfälle (#833, #834)
   bleiben ebenfalls abgesichert. Wechselt die Phase während der
   Sitzungsprüfung beim Abbruch, erscheint ein abgelegter Install-Fehler
-  (#878).
+  (#878). Liegt noch das Journal des vorherigen erfolgreichen Updates vor,
+  gibt ein abgebrochener Download die App jetzt ebenfalls wieder frei (#910);
+  Schreibzugriffe und Terminalstarts bleiben nach einem begonnenen oder
+  unklaren Installationsvorgang gesperrt.
 - **Belege nach Update-Rücksetzungen bleiben erhalten** (PR #600): Jede
   Rücksetzung erhält einen eigenen Protokollnamen; eine weitere Rücksetzung
   überschreibt den vorherigen Beleg nicht mehr.
@@ -86,13 +97,44 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
   Sicherungen als reine Portprüfung; Vergleiche prüfen zuerst die Sicherung
   und die Schema-Version. Aufrufe über Symlinks funktionieren; auf dem
   Erfolgsweg bleibt er still, bei echten Fehlern eindeutig (#871). Die
-  Live-Migration (DR-16b) ist damit nicht erledigt.
+  Live-Migration (DR-16b) ist damit nicht erledigt. Ein Backup mit `--out`
+  innerhalb des Ledger-Verzeichnisses wird vor jeder Anlage abgewiesen
+  (Exit 2), damit keine Nebenverzeichnisse entstehen; Symlink-Nachbarn,
+  Alias-Pfade, ENOTDIR-Meldungen und die Groß-/Kleinschreibung unter Windows
+  sind abgedeckt (#890, #902, #914).
+- **Neue Denkräume starten mit Schema 2** (PR #912): Die erste Idee lässt sich
+  sofort speichern; strukturierte Empfangsbelege sind Pflicht, alte
+  Textbestätigungen werden abgelehnt. Die ausdrückliche Migration einer
+  fehlenden Quelldatei meldet wieder Fehler 404 und erzeugt weder Datendatei
+  noch Sicherung. Bestehende V1- und V2-Dateien behalten ihr bisheriges
+  Migrationsverhalten.
+- **Besitz-Wiederherstellung und sauberes Beenden** (PR #885, #896, #889,
+  #899, #908): Nach einem abgestürzten Besitzer kann der nächste Start auf
+  demselben Rechner die verwaiste Besitzmarke wieder übernehmen; lebende
+  Besitzer und unklare Zustände bleiben gesperrt, und eine fehlgeschlagene
+  eigene Freigabe blockiert den Neustart nicht mehr dauerhaft (#885). Die
+  Wiederherstellung wartet kurz auf einen belegten Recovery-Lock und meldet
+  Fehler beim Aufräumen (#896). Der Server prüft den Besitz vor dem Lauschen
+  und begrenzt die Wartezeit beim Beenden; ein wiederholter Startaufruf
+  behält den Besitz, ein Start nach dem Schließen wird klar zurückgewiesen,
+  und unbehandelte Startfehler beenden den Prozess sichtbar mit Fehlerstatus
+  (#889). Nach einem gescheiterten Start meldet er „Server läuft nicht“;
+  ein Beenden mitten im Start liefert nichts aus und hinterlässt keine
+  Besitzdatei (#899). Unter Windows endet der Server auch beim Schließen des
+  Konsolenfensters oder Tabs sowie bei Strg+Pause und gibt `<ledger>.owner`
+  frei; scheitert ein Start mit OWNERSHIP_HELD, steht eine kurze deutsche
+  Hinweiszeile dabei (#908).
 
 **Anleitungen:**
 
 - **Einstieg für Tester erweitert** (PR #609, #576): Die Projektübersicht
   erklärt den Schwerpunkt und die Grenzen; eine Anleitung mit sieben
   Testabläufen und eine deutsche Rückmeldevorlage sind hinzugekommen.
+- **Denkraum-Anleitung in fünf Schritten** (PR #785): README-Abschnitt und
+  Anleitung (`docs/denkraum/ANLEITUNG.md`) führen durch Starten, Seite
+  öffnen, Fragen beantworten, Status und Ideen lesen und Stoppen. Die
+  Schritte wurden auf einer frischen Wegwerf-Instanz durchgespielt; das
+  Umstellen eines bestehenden Denkraums steht in einem eigenen Runbook.
 
 Interne Entwicklungswerkzeuge: 69 Pakete (#560, #561, #567, #573, #577, #579, #585, #587, #588, #589, #590, #591, #596, #599, #601, #606, #611, #615, #619, #621, #623, #625, #627, #629, #631, #632, #633, #635, #637, #641, #643, #644, #645, #646, #660, #663, #664, #667, #668, #670, #675, #680, #683, #686, #690, #693, #695, #697, #700, #702, #704, #705, #711, #717, #722, #726, #731, #732, #733, #734, #738, #739, #742, #744, #745, #746, #751, #753, #755).
 Interne Werkzeuge und Prüfungen (seit `a1d9a5f`): #728, #749, #752, #764, #767, #768, #769, #772, #773, #777, #781, #782, #783, #784, #788, #790, #792, #795, #800, #804, #814, #818.
@@ -101,8 +143,13 @@ Playwright-Identität), #725 (Build-Slot-Root), #851 (Update-Freeze-Tests),
 #849 (PLAN/Changelog-Sync).
 Intern (seit `a071298` / nach #861): #874 (KI-30 geschlossen), #875
 (Webhook-Timeout-Test), #877 (Review-Refs aufräumen), #881 (PLAN-Sync).
+Intern (seit #894): #887 und #892 (Aufräumen privater Review-Refs in
+`run-local.sh`: Janitor für tote PIDs, HUP/INT/TERM über EXIT, sprachunabhängige
+Prüfung), #904 (Signal-Tests dazu), #897 (PLAN-Sync), #905, #911 und #914
+(robustere Denkraum-Tests), #918 (AGENTS.md: Ausnahme für enthaltene
+API-Guthaben), #894 (Changelog-Nachtrag).
 
-## v1.5.1 — (Datum folgt)
+## v1.5.1 — 05.10.2026
 
 > **Updater-Hinweis:** v1.5.0 aktualisiert automatisch auf v1.5.1 —
 > derselbe Signierschluessel, kein manueller Schritt noetig.
