@@ -254,6 +254,21 @@ test('R890-K1: backup refuses --out next to a symlinked state path', async t => 
   await assert.rejects(stat(out), e => e.code === 'ENOENT');
   assert.deepEqual(await readdir(linkDir), before);
 });
+test('R890-K2: backup refuses --out routed through a symlink into the ledger dir', async t => {
+  const { state } = await ledger('v1');
+  const aliasParent = await mkdtemp(join(tmpdir(), 'dr16-out-alias-'));
+  const alias = join(aliasParent, 'alias');
+  try { await symlink(dirname(state), alias); }
+  catch (error) { if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)'); throw error; }
+  const out = join(alias, 'snap');
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.match(r.stdout, /Ledger-Verzeichnis/);
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
 test('DR16H: backup reports explicit and default probe ports', async () => {
   const { state } = await ledger();
   const listener = createServer();
