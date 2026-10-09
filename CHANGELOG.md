@@ -3,14 +3,16 @@
 ## v1.6.0 — unveröffentlicht (Entwurf)
 
 Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
-(Stand `34f2b0b`). Dies ist noch keine Veröffentlichungsnotiz.
+(Stand `15b4f61`). Dies ist noch keine Veröffentlichungsnotiz.
 
 **Zuverlässigkeit und Updates:**
 
-- **Start nach Update bleibt sicher gesperrt** (PR #832): Scheitert die
+- **Start nach Update bleibt sicher gesperrt** (PR #832, #845): Scheitert die
   Update-Prüfung beim Start, öffnet die App die Datenbank nicht und zeigt
   eine deutsche Anleitung (Windows-Meldungsfenster sowie ANLEITUNG.txt im
-  Datenordner).
+  Datenordner). Auf Linux/macOS erscheint die Anleitung ohne Absturz bei
+  gestörtem stderr; Reihenfolge Schreiben → Öffnen → Anzeige ist abgesichert
+  (#845).
 - **Update-Download lässt sich abbrechen** (PR #813, #828, #830, #833, #834):
   Während ein Update heruntergeladen wird, erscheint in den Einstellungen
   „Abbrechen“. Ein Abbruch vor der Installation kehrt zur verfügbaren
@@ -59,6 +61,13 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
   fremden Texte preis; Sicherungs- und Wiederherstellungskopien erhalten
   unter POSIX private Rechte. Vorhandene Schutzmaßnahmen (lokale Bindung,
   CSRF, Größenlimits, UTF-8, Pfad-Aliase) sind abgesichert.
+- **Schreibsperre für das Ledger vorbereitet** (PR #811): Eine eigene
+  Sperrdatei neben dem Ledger lässt nur einen Schreibprozess zu; alte oder
+  kaputte Sperren werden abgelehnt, ohne stillschweigende Übernahme. Noch
+  nicht in Server oder Kern eingebunden.
+- **Oberflächen-Verdrahtung und UI-Tests** (PR #718): Der gemeinsame
+  Root-Empfänger ist vereinheitlicht; Playwright belegt, dass fehlende oder
+  leere Root-IDs jeden POST blockieren.
 
 **Anleitungen:**
 
@@ -68,6 +77,9 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
 
 Interne Entwicklungswerkzeuge: 69 Pakete (#560, #561, #567, #573, #577, #579, #585, #587, #588, #589, #590, #591, #596, #599, #601, #606, #611, #615, #619, #621, #623, #625, #627, #629, #631, #632, #633, #635, #637, #641, #643, #644, #645, #646, #660, #663, #664, #667, #668, #670, #675, #680, #683, #686, #690, #693, #695, #697, #700, #702, #704, #705, #711, #717, #722, #726, #731, #732, #733, #734, #738, #739, #742, #744, #745, #746, #751, #753, #755).
 Interne Werkzeuge und Prüfungen (seit `a1d9a5f`): #728, #749, #752, #764, #767, #768, #769, #772, #773, #777, #781, #782, #783, #784, #788, #790, #792, #795, #800, #804, #814, #818.
+Intern (seit `34f2b0b` / nach #835): #843 (Test-Timeout), #741 (red-first
+Playwright-Identität), #725 (Build-Slot-Root), #851 (Update-Freeze-Tests),
+#849 (PLAN/Changelog-Sync).
 
 ## v1.5.1 — (Datum folgt)
 
