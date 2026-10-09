@@ -1737,7 +1737,7 @@ mod tests {
 
     #[cfg(unix)]
     fn state_is_alive(state: char) -> bool {
-        state != 'Z'
+        !matches!(state, 'Z' | 'X' | 'x')
     }
 
     #[cfg(unix)]
