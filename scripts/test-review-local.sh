@@ -521,6 +521,94 @@ else
   bad "after failed PR leftover=[$leftover] rc=$rc"; echo "$out"
 fi
 
+# 16. R877-K4: SIGTERM must run EXIT cleanup (exit 143, no leftover refs).
+mkdir -p "$tmp/bin-sleep"
+printf '#!/usr/bin/env bash\nexec sleep 60\n' > "$tmp/bin-sleep/kilo"
+chmod +x "$tmp/bin-sleep/kilo"
+( cd "$REPO" || exit 1
+  export PATH="$tmp/bin-sleep:$PATH" REVIEW_KILO_TIMEOUT_S=0
+  exec bash "$RUN" 7 --via kilo --models stepfun/step-3.7-flash:free --out-dir "$tmp/term-out"
+) >"$tmp/term.log" 2>&1 &
+term_pid=$!
+leftover=""
+for _ in $(seq 1 100); do
+  leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+  [ -n "$leftover" ] && break; sleep 0.1
+done
+if [ -z "$leftover" ]; then
+  bad "SIGTERM setup: refs/pa-review/pr-* never appeared"; kill "$term_pid" 2>/dev/null; wait "$term_pid" 2>/dev/null || true
+else
+  kill -TERM "$term_pid" 2>/dev/null; wait "$term_pid"; term_rc=$?
+  pkill -f "$tmp/bin-sleep/kilo" 2>/dev/null || true
+  leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+  if [ "$term_rc" -eq 143 ] && [ -z "$leftover" ]; then
+    ok "SIGTERM during PR run: exit 143 and no refs/pa-review/pr-* remain"
+  else
+    bad "SIGTERM cleanup: rc=$term_rc leftover=[$leftover]"
+  fi
+fi
+while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
+done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+
+# 17. R877-K2: concurrent same-PR dry-runs must not share one ref.
+REAL_GIT="$(command -v git)"
+mkdir -p "$tmp/bin-hold" "$tmp/hold-fetched" "$tmp/hold-go"
+cat > "$tmp/bin-hold/git" <<EOF
+#!/usr/bin/env bash
+REAL_GIT=$(printf '%q' "$REAL_GIT"); FD=$(printf '%q' "$tmp/hold-fetched"); GD=$(printf '%q' "$tmp/hold-go")
+if [[ "\$*" == *fetch* && "\$*" == *refs/pa-review/pr-* ]]; then
+  "\$REAL_GIT" "\$@" || exit \$?; id=\$\$; touch "\$FD/\$id"
+  for _ in \$(seq 1 200); do [ -f "\$GD/\$id" ] && exit 0; sleep 0.05; done
+  exit 1
+fi
+exec "\$REAL_GIT" "\$@"
+EOF
+chmod +x "$tmp/bin-hold/git"
+rm -f "$tmp/hold-fetched/"* "$tmp/hold-go/"* "$tmp/parA.rc" "$tmp/parB.rc"
+(cd "$REPO" && PATH="$tmp/bin-hold:$PATH" bash "$RUN" 7 --dry-run --models fake-a:cloud --out-dir "$tmp/parA" >"$tmp/parA.out" 2>&1; echo $? >"$tmp/parA.rc") &
+parA_pid=$!
+(cd "$REPO" && PATH="$tmp/bin-hold:$PATH" bash "$RUN" 7 --dry-run --models fake-a:cloud --out-dir "$tmp/parB" >"$tmp/parB.out" 2>&1; echo $? >"$tmp/parB.rc") &
+parB_pid=$!
+for _ in $(seq 1 200); do
+  [ "$(find "$tmp/hold-fetched" -type f 2>/dev/null | wc -l | tr -d ' ')" -ge 2 ] && break; sleep 0.05
+done
+mapfile -t hold_ids < <(find "$tmp/hold-fetched" -type f -printf '%f\n' 2>/dev/null)
+if [ "${#hold_ids[@]}" -lt 2 ]; then
+  bad "concurrent same-PR setup: fetched gates missing"
+  touch "$tmp/hold-go/x"; wait "$parA_pid" "$parB_pid" 2>/dev/null || true
+else
+  touch "$tmp/hold-go/${hold_ids[0]}"
+  for _ in $(seq 1 200); do
+    c=0; [ -f "$tmp/parA.rc" ] && c=$((c + 1)); [ -f "$tmp/parB.rc" ] && c=$((c + 1))
+    [ "$c" -ge 1 ] && break; sleep 0.05
+  done
+  touch "$tmp/hold-go/${hold_ids[1]}"
+  wait "$parA_pid" "$parB_pid" 2>/dev/null || true
+  rcA="$(cat "$tmp/parA.rc" 2>/dev/null || echo x)"; rcB="$(cat "$tmp/parB.rc" 2>/dev/null || echo x)"
+  leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+  if [ "$rcA" = 0 ] && [ "$rcB" = 0 ] && [ -z "$leftover" ]; then
+    ok "concurrent same-PR dry-runs both succeed"
+  else
+    bad "concurrent same-PR: rcA=$rcA rcB=$rcB leftover=[$leftover]"
+  fi
+fi
+
+# 18. R877-K3: failed update-ref -d prints one diagnostic; exit status unchanged.
+mkdir -p "$tmp/bin-delfail"
+cat > "$tmp/bin-delfail/git" <<EOF
+#!/usr/bin/env bash
+REAL_GIT=$(printf '%q' "$REAL_GIT")
+[[ "\$*" == *update-ref* && "\$*" == *" -d "* ]] && { echo "simulated refuse" >&2; exit 1; }
+exec "\$REAL_GIT" "\$@"
+EOF
+chmod +x "$tmp/bin-delfail/git"
+run env PATH="$tmp/bin-delfail:$PATH" bash "$RUN" 7 --dry-run --models fake-a:cloud --out-dir "$tmp/delfail"
+if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "konnte Ref .* nicht loeschen"; then
+  ok "failed update-ref -d prints diagnostic and keeps exit 0"
+else
+  bad "update-ref diagnostic: rc=$rc"; echo "$out"
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."

@@ -113,8 +113,9 @@ cd "$TOP" || die 2 "kann nicht nach $TOP wechseln."
 [ -n "$out_dir" ] || out_dir=".pa"
 
 # Private PR refs and the kilo workdir must not linger after EXIT (success or
-# failure). Unique refs/pa-review/pr-<N> stay for the duration of the run so
-# concurrent PR fetches do not share FETCH_HEAD (#814).
+# failure). Per-process refs/pa-review/pr-<N>-$$ keep concurrent same-PR runs
+# from deleting each other's ref while still avoiding shared FETCH_HEAD (#814).
+# INT/TERM re-enter via exit so this EXIT cleanup still runs (Ctrl-C / kill).
 pr_ref=""
 _kilo_work=""
 _run_local_cleanup() {
@@ -123,11 +124,14 @@ _run_local_cleanup() {
     _kilo_work=""
   fi
   if [ -n "${pr_ref:-}" ]; then
-    git -C "$TOP" update-ref -d "$pr_ref" 2>/dev/null || true
+    git -C "$TOP" update-ref -d "$pr_ref" 2>/dev/null \
+      || echo "run-local: konnte Ref $pr_ref nicht loeschen." >&2
     pr_ref=""
   fi
 }
 trap '_run_local_cleanup' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # --- Modelle ---------------------------------------------------------------
 # Die Standardpaare stehen an genau einer Stelle: REVIEWER_MODELS in
@@ -269,10 +273,11 @@ git -C "$TOP" rev-parse --verify --quiet "$base^{commit}" > /dev/null \
   || die 2 "Basis $base nicht gefunden (git fetch origin main?)."
 
 if [ -n "$pr" ]; then
-  # Private ref per PR: concurrent runs in one checkout must not share FETCH_HEAD
-  # (a second fetch overwrites it before rev-parse). Force-update keeps the ref
-  # current when the same PR is reviewed again.
-  pr_ref="refs/pa-review/pr-$pr"
+  # Private ref per PR and process: concurrent runs must not share FETCH_HEAD
+  # (a second fetch overwrites it before rev-parse), and same-PR siblings must
+  # not delete each other's ref on EXIT. Force-update keeps this process ref
+  # current when the same process reviews the PR again.
+  pr_ref="refs/pa-review/pr-$pr-$$"
   git -C "$TOP" fetch --quiet origin "+pull/$pr/head:$pr_ref" 2> /dev/null \
     || die 2 "PR $pr nicht gefunden: 'git fetch origin +pull/$pr/head:$pr_ref' schlug fehl (Nummer falsch, origin nicht erreichbar oder kein Zugriff)."
   head_ref="$(git -C "$TOP" rev-parse --verify "$pr_ref^{commit}")" \
