@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createDeskServer } from './server.mjs';
 import { DeskStore } from './store.mjs';
 import { migrateState } from './store/model.mjs';
+import { isInside } from './switch.mjs';
 const ROOT = 'test-root-agent';
 const SWITCH = fileURLToPath(new URL('./switch.mjs', import.meta.url));
 const FIXTURE_TEXT = 'DR16-LEDGER-FIXTURE-TEXT-UNIQUE';
@@ -206,6 +207,90 @@ test('DR16: verify rejects traversal duplicate and ambiguous primary names', asy
   }
 });
 
+test('R871-A7: backup refuses --out equal to ledger sidecar path', async () => {
+  const { state } = await ledger('v1');
+  const out = `${state}.previous`;
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2);
+  assert.equal(r.stdout.trim().split('\n').length, 1);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
+test('R871-A7: backup refuses --out nested inside the ledger directory', async () => {
+  const { state } = await ledger();
+  const nested = join(dirname(state), 'sub');
+  const out = join(nested, 'bk');
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2);
+  assert.equal(r.stdout.trim().split('\n').length, 1);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  await assert.rejects(stat(nested), e => e.code === 'ENOENT');
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
+test('R871-A7: backup allows --out in a sibling directory', async () => {
+  const { state } = await ledger('v1');
+  const sibling = await mkdtemp(join(dirname(dirname(state)), 'dr16-sib-'));
+  const out = join(sibling, 'snap');
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout.trim().split('\n').at(-1)).ok, true);
+  assert.equal((await readdir(out)).includes('manifest.json'), true);
+});
+test('R890-K1: backup refuses --out next to a symlinked state path', async t => {
+  const { state } = await ledger('v1');
+  const linkDir = await mkdtemp(join(tmpdir(), 'dr16-state-link-'));
+  const linkState = join(linkDir, 'ledger.json');
+  try { await symlink(state, linkState); }
+  catch (error) { if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)'); throw error; }
+  const out = join(linkDir, 'ledger.json.previous');
+  const before = await readdir(linkDir);
+  const r = await run(['backup', '--state', linkState, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.match(r.stdout, /Ledger-Verzeichnis/);
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(linkDir), before);
+});
+test('R890-K2: backup refuses --out routed through a symlink into the ledger dir', async t => {
+  const { state } = await ledger('v1');
+  const aliasParent = await mkdtemp(join(tmpdir(), 'dr16-out-alias-'));
+  const alias = join(aliasParent, 'alias');
+  try { await symlink(dirname(state), alias); }
+  catch (error) { if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)'); throw error; }
+  const out = join(alias, 'snap');
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.match(r.stdout, /Ledger-Verzeichnis/);
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
+test('R890-K3: guard ENOTDIR on --out uses invalid-path wording', async () => {
+  const { state } = await ledger('v1');
+  const fileComponent = join(await mkdtemp(join(tmpdir(), 'dr16-enotdir-')), 'not-a-dir');
+  await writeFile(fileComponent, 'x');
+  const out = join(fileComponent, 'nested', 'snap');
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.match(JSON.parse(r.stdout).error, /Pfad/);
+  assert.ok(!/nicht ruhend/.test(r.stdout));
+  // Parent path component is a file: nested children are unreachable (ENOTDIR).
+  await assert.rejects(stat(join(fileComponent, 'nested')), e => e.code === 'ENOTDIR');
+});
+test('R890-G1: isInside folds case on win32 and stays case-sensitive elsewhere', () => {
+  const root = join('/Ledger', 'Dir');
+  const mixed = join('/ledger', 'dir', 'out');
+  assert.equal(isInside(root, mixed, 'win32'), true);
+  assert.equal(isInside(root, mixed, 'linux'), false);
+  assert.equal(isInside(root, join(root, 'out'), 'linux'), true);
+  assert.equal(isInside(root, join('/other', 'out'), 'win32'), false);
+});
 test('DR16H: backup reports explicit and default probe ports', async t => {
   const { state } = await ledger();
   const listener = createServer();
