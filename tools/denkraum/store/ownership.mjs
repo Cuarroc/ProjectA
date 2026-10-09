@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { link, open, readFile, rename, stat, unlink } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 export const OWNERSHIP_HELD = 'OWNERSHIP_HELD';
 export const OWNERSHIP_MALFORMED = 'OWNERSHIP_MALFORMED';
 export const OWNERSHIP_RELEASE_MISMATCH = 'OWNERSHIP_RELEASE_MISMATCH';
@@ -10,10 +10,17 @@ export class OwnershipError extends Error {
   constructor(code) { super(code); this.name = 'OwnershipError'; this.code = code; }
 }
 export const ownerRecordPath = ledgerPath => `${ledgerPath}.owner`;
-const releaseFlight = new Map();
-const releaseHooks = { beforeRename: null, beforeRestore: null };
+// Shared by independently imported module instances in this process.
+const registry = globalThis[Symbol.for('denkraum.ownership')] ??=
+  { releasing: new Set(), spent: new Set(), contexts: new Map() };
+export function getOwnershipContext(ledgerPath) {
+  const key = resolve(ledgerPath);
+  if (!registry.contexts.has(key)) registry.contexts.set(key, { queue: Promise.resolve(), session: null, users: 0 });
+  return registry.contexts.get(key);
+}
+const releaseHooks = { beforeRename: null };
 export function setOwnershipReleaseHooks(n = {}) {
-  releaseHooks.beforeRename = n.beforeRename ?? null; releaseHooks.beforeRestore = n.beforeRestore ?? null;
+  releaseHooks.beforeRename = n.beforeRename ?? null;
 }
 const ioFail = () => { throw new OwnershipError(OWNERSHIP_IO); };
 function parseRecord(raw) {
@@ -60,6 +67,7 @@ async function releaseOnce(path, nonce) {
   }
   const record = parseRecord(raw);
   if (!record || record.nonce !== nonce) throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
+  registry.spent.add(nonce);
   const tomb = `${path}.${nonce}.${randomBytes(8).toString('hex')}.tomb`;
   if (releaseHooks.beforeRename) await releaseHooks.beforeRename();
   try { await rename(path, tomb); }
@@ -71,24 +79,18 @@ async function releaseOnce(path, nonce) {
   try { tombRaw = await readFile(tomb, 'utf8'); } catch { ioFail(); }
   const tombRec = parseRecord(tombRaw);
   if (!tombRec || tombRec.nonce !== nonce) {
-    if (releaseHooks.beforeRestore) await releaseHooks.beforeRestore();
     try { await link(tomb, path); await unlink(tomb); }
     catch (e) { if (e?.code === 'EEXIST') await unlink(tomb).catch(() => {}); else ioFail(); }
     throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
   }
   try { await unlink(tomb); } catch { ioFail(); }
 }
-// PRECONDITION: each nonce released at most once by its owner. A second (stale)
-// release from another module instance/process is a caller bug; a live successor
-// may then lose its record (R811-O5/F1, E6b). Core (G2) enforces single release.
+// A valid nonce is consumed before any release hook/rename and never retried,
+// even after I/O failure. Concurrent duplicates fail immediately (E6b).
 export async function releaseOwnership(ledgerPath, nonce) {
-  const path = ownerRecordPath(ledgerPath);
-  const pending = releaseFlight.get(nonce);
-  if (pending) { await pending.catch(() => {}); throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH); }
-  let finish;
-  const gate = new Promise(r => { finish = r; });
-  releaseFlight.set(nonce, gate);
-  try { await releaseOnce(path, nonce); }
-  finally { releaseFlight.delete(nonce); finish(); }
+  if (registry.releasing.has(nonce) || registry.spent.has(nonce)) throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
+  registry.releasing.add(nonce);
+  try { await releaseOnce(ownerRecordPath(ledgerPath), nonce); }
+  finally { registry.releasing.delete(nonce); }
 }
 export async function recoverOwnership() { throw new OwnershipError(OWNERSHIP_RECOVERY_REFUSED); }
