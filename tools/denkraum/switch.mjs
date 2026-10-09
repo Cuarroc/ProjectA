@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateState } from './store/model.mjs';
 const ROLLBACK = 'Rückweg = vollständige Pause; älteren Stand nie zurückspielen.';
@@ -32,6 +32,22 @@ const abs = (value, label) => {
   }
   return resolve(value);
 };
+const isInside = (root, path) => {
+  const fromRoot = relative(root, path);
+  return !isAbsolute(fromRoot) && fromRoot !== '..' && !fromRoot.startsWith(`..${sep}`);
+};
+/** Realpath of path, or join(realpath(existing ancestor), remaining basenames). */
+function resolveExisting(path) {
+  const parts = [];
+  for (;;) {
+    try { return parts.reduce((acc, name) => join(acc, name), realpathSync.native(path)); }
+    catch (error) {
+      if (error.code !== 'ENOENT' || dirname(path) === path) throw error;
+      parts.unshift(basename(path));
+      path = dirname(path);
+    }
+  }
+}
 const digest = buf => createHash('sha256').update(buf).digest('hex');
 async function healthUp(port) {
   // free port is necessary, not sufficient; PID proof is DR-16b
@@ -65,6 +81,15 @@ async function backup(args) {
   if (typeof raw !== 'string' || !/^\d{1,5}$/.test(raw)) return fail(2, 'Ungültiger Port');
   const port = Number(raw);
   if (port < 1 || port > 65535) return fail(2, 'Ungültiger Port');
+  // Refuse before mkdir: an --out inside the ledger dir can create a sidecar-named directory.
+  try {
+    const ledgerDir = dirname(realpathSync.native(statePath));
+    if (isInside(ledgerDir, resolveExisting(out))) {
+      return fail(2, 'Ausgabe darf nicht im Ledger-Verzeichnis liegen');
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') { diagnose(error); return fail(4, 'nicht ruhend'); }
+  }
   if (await healthUp(port)) return fail(3, 'Schreiber läuft noch');
   let names; try { names = await readdir(dirname(statePath)); } catch (error) { diagnose(error); names = []; }
   const prefix = `${basename(statePath)}.`;

@@ -206,6 +206,39 @@ test('DR16: verify rejects traversal duplicate and ambiguous primary names', asy
   }
 });
 
+test('R871-A7: backup refuses --out equal to ledger sidecar path', async () => {
+  const { state } = await ledger('v1');
+  const out = `${state}.previous`;
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2);
+  assert.equal(r.stdout.trim().split('\n').length, 1);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
+test('R871-A7: backup refuses --out nested inside the ledger directory', async () => {
+  const { state } = await ledger();
+  const nested = join(dirname(state), 'sub');
+  const out = join(nested, 'bk');
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2);
+  assert.equal(r.stdout.trim().split('\n').length, 1);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  await assert.rejects(stat(nested), e => e.code === 'ENOENT');
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
+test('R871-A7: backup allows --out in a sibling directory', async () => {
+  const { state } = await ledger('v1');
+  const sibling = await mkdtemp(join(dirname(dirname(state)), 'dr16-sib-'));
+  const out = join(sibling, 'snap');
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout.trim().split('\n').at(-1)).ok, true);
+  assert.equal((await readdir(out)).includes('manifest.json'), true);
+});
 test('DR16H: backup reports explicit and default probe ports', async () => {
   const { state } = await ledger();
   const listener = createServer();
