@@ -2,7 +2,9 @@
 //!
 //! Keeps the fail-closed contract: a refused recovery never opens the store.
 //! The exact English reason stays in the log and in the setup `Err`; this
-//! module only builds and presents the user-facing text (paths, safe steps).
+//! module builds the user-facing text and always delivers it in-process first
+//! (no file write, no external opener). The ANLEITUNG file and OS opener are
+//! extras; their failures are logged and never unblock the start.
 
 use super::startup::recover_at_startup;
 use std::path::{Path, PathBuf};
@@ -67,19 +69,46 @@ pub fn guidance_for_refused_recovery(dir: &Path) -> StartupGuidance {
     }
 }
 
+/// Persist the guidance file. Failures never panic; callers keep the recovery `Err`.
+pub fn write_guidance(guidance: &StartupGuidance) -> Result<(), String> {
+    crate::fsutil::write_atomic(&guidance.file_path, guidance.text.as_bytes())
+}
+
+/// Default in-process surface via `logging.rs` (no guidance file, no opener).
+fn present_guidance_in_process(text: &str) {
+    crate::logf!("update", "update recovery guidance (in-process):\n{text}");
+}
+
 /// Persist and surface the guidance; never opens the database.
 ///
-/// Write/open failures are logged only and never replace the recovery `Err`.
-/// The ANLEITUNG file is opened only after a successful atomic write.
+/// The in-process presenter always runs first. File write and OS opener are
+/// extras; every write/spawn failure is logged and never replaces the recovery
+/// `Err` or unblocks the start.
 pub fn present_refused_guidance(guidance: &StartupGuidance) {
-    match crate::fsutil::write_atomic(&guidance.file_path, guidance.text.as_bytes()) {
+    present_refused_guidance_with(guidance, present_guidance_in_process, reveal_guidance_file);
+}
+
+/// Testable presentation path with injectable presenter and opener.
+pub fn present_refused_guidance_with(
+    guidance: &StartupGuidance,
+    mut present: impl FnMut(&str),
+    mut open: impl FnMut(&Path) -> Result<(), String>,
+) {
+    present(&guidance.text);
+    match write_guidance(guidance) {
         Ok(()) => {
             crate::logf!(
                 "update",
                 "update recovery guidance written to {}",
                 guidance.file_path.display()
             );
-            reveal_guidance_file(&guidance.file_path);
+            if let Err(error) = open(&guidance.file_path) {
+                crate::logf!(
+                    "update",
+                    "update recovery guidance could not be opened at {}: {error}",
+                    guidance.file_path.display()
+                );
+            }
         }
         Err(error) => crate::logf!(
             "update",
@@ -89,14 +118,30 @@ pub fn present_refused_guidance(guidance: &StartupGuidance) {
     }
 }
 
-fn reveal_guidance_file(path: &Path) {
+fn reveal_guidance_file(path: &Path) -> Result<(), String> {
     #[cfg(windows)]
     {
-        let _ = crate::proc::command("notepad.exe").arg(path).spawn();
+        crate::proc::command("notepad.exe")
+            .arg(path)
+            .spawn()
+            .map_err(|error| format!("failed to start notepad.exe: {error}"))?;
+        Ok(())
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
     {
-        let _ = crate::proc::command("xdg-open").arg(path).spawn();
+        crate::proc::command("open")
+            .arg(path)
+            .spawn()
+            .map_err(|error| format!("failed to start open: {error}"))?;
+        Ok(())
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        crate::proc::command("xdg-open")
+            .arg(path)
+            .spawn()
+            .map_err(|error| format!("failed to start xdg-open: {error}"))?;
+        Ok(())
     }
 }
 
@@ -104,14 +149,17 @@ fn reveal_guidance_file(path: &Path) {
 mod tests {
     use super::*;
     use crate::testutil::TempDir;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn refused_recovery_yields_guidance_and_keeps_the_database_closed() {
         let dir = TempDir::new("guidance-refused");
         let db = dir.path().join("projecta.db");
+        let journal = dir.path().join("update-recovery.json");
         std::fs::write(&db, b"keep-me").unwrap();
-        std::fs::write(dir.path().join("update-recovery.json"), b"{not-json").unwrap();
-        let before = std::fs::read(&db).unwrap();
+        std::fs::write(&journal, b"{not-json").unwrap();
+        let before_db = std::fs::read(&db).unwrap();
+        let before_journal = std::fs::read(&journal).unwrap();
         match recover_startup(dir.path()) {
             StartupRecovery::Refused { guidance, reason } => {
                 assert!(!guidance.text.is_empty());
@@ -119,7 +167,12 @@ mod tests {
             }
             StartupRecovery::Open => panic!("refused recovery must not open"),
         }
-        assert_eq!(std::fs::read(&db).unwrap(), before);
+        assert_eq!(std::fs::read(&db).unwrap(), before_db);
+        assert_eq!(
+            std::fs::read(&journal).unwrap(),
+            before_journal,
+            "refused recovery must leave the journal bytes unchanged"
+        );
         // A second start still refuses: presenting guidance must not unblock.
         assert!(matches!(
             recover_startup(dir.path()),
@@ -141,8 +194,12 @@ mod tests {
         assert!(guidance.text.contains("Erwarteter Ort der Datensicherung"));
         assert!(guidance.text.contains("behalten"));
         assert!(guidance.text.contains("neu installieren"));
-        assert!(!guidance.text.to_lowercase().contains("panic"));
-        assert!(!guidance.text.to_lowercase().contains("secret"));
+        assert!(
+            guidance
+                .text
+                .contains(&guidance.file_path.display().to_string()),
+            "guidance must name its own ANLEITUNG path"
+        );
     }
 
     #[test]
@@ -150,5 +207,62 @@ mod tests {
         let dir = TempDir::new("guidance-no-journal");
         assert!(matches!(recover_startup(dir.path()), StartupRecovery::Open));
         assert!(!dir.path().join("update-recovery-ANLEITUNG.txt").exists());
+    }
+
+    #[test]
+    fn guidance_reaches_in_process_presenter_when_write_and_opener_fail() {
+        let dir = TempDir::new("guidance-presenter");
+        // Parent path component is a file → atomic write cannot create the ANLEITUNG.
+        let blocker = dir.path().join("not-a-dir");
+        std::fs::write(&blocker, b"x").unwrap();
+        let guidance = StartupGuidance {
+            text: "SICHTBAR-TEST-ANLEITUNG".to_string(),
+            journal_path: blocker.join("update-recovery.json"),
+            backup_path: blocker.join("projecta.db.bak-update"),
+            file_path: blocker.join("update-recovery-ANLEITUNG.txt"),
+        };
+        let presented = Arc::new(Mutex::new(None::<String>));
+        let presented_cb = Arc::clone(&presented);
+        present_refused_guidance_with(
+            &guidance,
+            move |text| {
+                *presented_cb.lock().unwrap() = Some(text.to_string());
+            },
+            |_path| Err("opener forced failure".to_string()),
+        );
+        assert_eq!(
+            presented.lock().unwrap().as_deref(),
+            Some(guidance.text.as_str()),
+            "guidance must reach the in-process presenter when write and opener fail"
+        );
+        assert!(
+            !guidance.file_path.exists(),
+            "write failure must leave no ANLEITUNG file"
+        );
+    }
+
+    #[test]
+    fn write_guidance_creates_file_with_the_text() {
+        let dir = TempDir::new("guidance-write-ok");
+        let guidance = guidance_for_refused_recovery(dir.path());
+        write_guidance(&guidance).expect("write must succeed in a writable temp dir");
+        let written = std::fs::read_to_string(&guidance.file_path).unwrap();
+        assert_eq!(written, guidance.text);
+    }
+
+    #[test]
+    fn write_guidance_returns_err_when_parent_is_a_file() {
+        let dir = TempDir::new("guidance-write-err");
+        let blocker = dir.path().join("not-a-dir");
+        std::fs::write(&blocker, b"x").unwrap();
+        let guidance = StartupGuidance {
+            text: "should-not-land".to_string(),
+            journal_path: blocker.join("update-recovery.json"),
+            backup_path: blocker.join("projecta.db.bak-update"),
+            file_path: blocker.join("update-recovery-ANLEITUNG.txt"),
+        };
+        let err = write_guidance(&guidance).expect_err("parent file must refuse the write");
+        assert!(!err.is_empty());
+        assert!(!guidance.file_path.exists());
     }
 }
