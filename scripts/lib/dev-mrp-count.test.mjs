@@ -9,6 +9,22 @@ import { measure } from "../dev/bench-weekly.mjs";
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/mrp-count.json", import.meta.url), "utf8"));
 const win = { from: "2026-10-02", to: "2026-10-05" };
 
+test("countRp recognizes all current Mergify package branches", () => {
+  const providers = ["claude", "codex", "kimi", "opencode", "glm", "cursor"];
+  const packages = ["w3-02d-x", "df12-x", "ki-30-x", "hq2-03-x", "dr-14-sort", "z2-status-ci"];
+  const pr = (headRefName) => ({ headRefName, mergedAt: "2026-10-03T10:00:00Z" });
+  for (const provider of providers) {
+    for (const pkg of packages) {
+      const branch = `${provider}/${pkg}`;
+      assert.equal(countRp([pr(branch)], win).packagePrs, 1, branch);
+      assert.equal(countRp([pr(branch.toUpperCase())], win).packagePrs, 1, branch);
+    }
+  }
+  for (const branch of ["claude/plan-01-x", "codex/ci-03-x", "mergify/merge-queue/abc", "dependabot/dr-14-x", "unknown/z2-x", "cursor/z-status", "codex/z2x-status", "codex/w3x-status"]) {
+    assert.equal(countRp([pr(branch)], win).packagePrs, 0, branch);
+  }
+});
+
 test("parsePromptLog ignores the unfilled template placeholders", () => {
   assert.equal(parsePromptLog(null), null);
   assert.equal(parsePromptLog("## Report\n"), null);
