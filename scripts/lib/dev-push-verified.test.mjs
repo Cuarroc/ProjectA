@@ -34,6 +34,30 @@ function setup(t) {
 
 const noSleep = async () => {};
 
+test("PUSH-REMOTE: option-like remote refuses before push", async () => {
+  const calls = [];
+  const run = (cmd, args) => {
+    calls.push({ cmd, args });
+    return { code: 0, stdout: "", stderr: "" };
+  };
+  for (const remote of ["-x", "-f", "--force", "--receive-pack=example"]) {
+    assert.throws(
+      () => pushVerified({ run, cwd: ".", remote, branch: "feature", retries: 1, sleep: noSleep }),
+      UsageError,
+    );
+    assert.deepEqual(calls, [], "invalid remote must refuse before any git call");
+    for (const args of [["--remote", remote], [`--remote=${remote}`]]) {
+      const output = [];
+      const code = await main([...args, "--branch", "feature", "--retries", "1"], {
+        out: (s) => output.push(s), err: (s) => output.push(s),
+      }, { run, sleep: noSleep });
+      assert.equal(code, 2, "invalid remote is a usage error");
+      assert.ok(output.length > 0, "CLI explains the refusal");
+      assert.deepEqual(calls, [], "CLI must refuse before any git call");
+    }
+  }
+});
+
 test("push-verified pushes and confirms the remote SHA", async (t) => {
   const f = setup(t);
   const res = await pushVerified({ run: real, cwd: f.dir, sleep: noSleep });
