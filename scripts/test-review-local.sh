@@ -521,38 +521,55 @@ else
   bad "after failed PR leftover=[$leftover] rc=$rc"; echo "$out"
 fi
 
-# 16. R877-K4: SIGTERM must run EXIT cleanup (exit 143, no leftover refs).
-#     Fake kilo writes $$; kill by that pid (R887-r2-K3), not pkill -f.
-mkdir -p "$tmp/bin-sleep"
-printf '#!/usr/bin/env bash\necho $$ > %q\nsleep 60\n' "$tmp/kilo.pid" > "$tmp/bin-sleep/kilo"
-chmod +x "$tmp/bin-sleep/kilo"; rm -f "$tmp/kilo.pid"
-( cd "$REPO" || exit 1
-  export PATH="$tmp/bin-sleep:$PATH" REVIEW_KILO_TIMEOUT_S=0
-  exec bash "$RUN" 7 --via kilo --models stepfun/step-3.7-flash:free --out-dir "$tmp/term-out"
-) >"$tmp/term.log" 2>&1 &
-term_pid=$!
-leftover=""
-for _ in $(seq 1 100); do
-  leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
-  [ -n "$leftover" ] && break; sleep 0.1
-done
-if [ -z "$leftover" ]; then
-  bad "SIGTERM setup: refs/pa-review/pr-* never appeared"; kill "$term_pid" 2>/dev/null; wait "$term_pid" 2>/dev/null || true
-else
-  for _ in $(seq 1 50); do [ -f "$tmp/kilo.pid" ] && break; sleep 0.1; done
-  kilo_pid="$(cat "$tmp/kilo.pid" 2>/dev/null || true)"
-  kill -TERM "$term_pid" 2>/dev/null
-  [ -n "$kilo_pid" ] && kill -TERM "$kilo_pid" 2>/dev/null || true
-  wait "$term_pid"; term_rc=$?
-  leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
-  if [ "$term_rc" -eq 143 ] && [ -z "$leftover" ]; then
-    ok "SIGTERM during PR run: exit 143 and no refs/pa-review/pr-* remain"
+# 16. R877-K4 / R892-FU: SIGTERM/INT/HUP must run EXIT cleanup (no leftover refs).
+#     Fake kilo writes $$; wait until it exists (R887-r2-K3), then signal the
+#     process group (Ctrl-C style). Background `&` ignores SIGINT/SIGQUIT, so
+#     reset to SIG_DFL via Python and start under setsid before exec.
+#     Args: signal name, expected wait status, label for temp paths.
+assert_pr_run_signal_cleanup() {
+  local sig="$1" expect_rc="$2" label="$3"
+  local pid_file="$tmp/kilo-${label}.pid" out_dir="$tmp/${label}-out" log="$tmp/${label}.log"
+  local run_pid leftover run_rc
+  mkdir -p "$tmp/bin-sleep"
+  printf '#!/usr/bin/env bash\necho $$ > %q\nsleep 60\n' "$pid_file" > "$tmp/bin-sleep/kilo"
+  chmod +x "$tmp/bin-sleep/kilo"; rm -f "$pid_file"
+  setsid "$PY" - "$REPO" "$RUN" "$out_dir" "$tmp/bin-sleep" <<'PY' >"$log" 2>&1 &
+import os, signal, sys
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+repo, run, out, bindir = sys.argv[1:5]
+os.chdir(repo)
+os.environ["PATH"] = bindir + os.pathsep + os.environ.get("PATH", "")
+os.environ["REVIEW_KILO_TIMEOUT_S"] = "0"
+os.execvp("bash", ["bash", run, "7", "--via", "kilo",
+                   "--models", "stepfun/step-3.7-flash:free", "--out-dir", out])
+PY
+  run_pid=$!
+  leftover=""
+  for _ in $(seq 1 100); do
+    leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+    [ -n "$leftover" ] && break; sleep 0.1
+  done
+  if [ -z "$leftover" ]; then
+    bad "SIG${sig} setup: refs/pa-review/pr-* never appeared"
+    kill -TERM -- -"$run_pid" 2>/dev/null; wait "$run_pid" 2>/dev/null || true
   else
-    bad "SIGTERM cleanup: rc=$term_rc leftover=[$leftover]"
+    for _ in $(seq 1 50); do [ -f "$pid_file" ] && break; sleep 0.1; done
+    kill -"$sig" -- -"$run_pid" 2>/dev/null
+    wait "$run_pid"; run_rc=$?
+    leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+    if [ "$run_rc" -eq "$expect_rc" ] && [ -z "$leftover" ]; then
+      ok "SIG${sig} during PR run: exit ${expect_rc} and no refs/pa-review/pr-* remain"
+    else
+      bad "SIG${sig} cleanup: rc=$run_rc leftover=[$leftover]"
+    fi
   fi
-fi
-while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
-done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+  while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
+  done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+}
+assert_pr_run_signal_cleanup TERM 143 term
+assert_pr_run_signal_cleanup INT 130 int
+assert_pr_run_signal_cleanup HUP 129 hup
 
 # 17. R877-K2: concurrent same-PR dry-runs must not share one ref.
 REAL_GIT="$(command -v git)"
@@ -657,7 +674,7 @@ elif awk '/_reclaim_stale_pa_review_refs\(\)/,/^}/' "$RUN" | grep -q 'LC_ALL=C';
   locale -a 2>/dev/null | grep -qi de_DE \
     && echo "skip locale janitor runtime: de_DE present but kill ESRCH still English" \
     || echo "skip locale janitor runtime: de_DE not installed (locale -a)"
-  ok "startup janitor reclaims dead-pid refs under de_DE locale"
+  ok "static check: reclaim uses LC_ALL=C (not a runtime de_DE guarantee)"
 else bad "janitor kill -0 missing LC_ALL=C (locale-independent ESRCH)"; fi
 
 # 21. R887-r2-K2: janitor update-ref -d failure notes the dead-pid ref (reuse shim).
