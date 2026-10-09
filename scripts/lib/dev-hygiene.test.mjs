@@ -155,31 +155,53 @@ test("hygiene renders markdown with one section per check", () => {
   assert.match(md, /kimi\/lost-work/);
 });
 
-test("gather reads git and gh read-only and hygiene --strict exits 1 on findings", async () => {
+function commandArgs(cmd, args) {
+  let rest = args;
+  // git: drop global "-C <path>" / "-c <key=value>" so only the subcommand and its args are matched.
+  if (cmd === "git") while (rest[0] === "-C" || rest[0] === "-c") rest = rest.slice(2);
+  return rest;
+}
+
+async function assertReadOnlyHygiene(cwd = root) {
   const calls = [];
   const fake = (cmd, args) => {
     calls.push([cmd, ...args]);
-    const a = args.join(" ");
+    const a = commandArgs(cmd, args).join(" ");
     if (cmd === "gh" && a.includes("--state open")) return { code: 0, stdout: JSON.stringify(input.prsOpen), stderr: "" };
     if (cmd === "gh" && a.includes("--state all")) return { code: 0, stdout: JSON.stringify(input.prsAll), stderr: "" };
-    if (a.includes("worktree list")) return { code: 0, stdout: `worktree ${root}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
+    if (a.includes("worktree list")) return { code: 0, stdout: `worktree ${cwd}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
     if (a.includes("for-each-ref")) return { code: 0, stdout: "origin/main\norigin/HEAD\norigin/kimi/lost-work\n", stderr: "" };
     if (a.includes("merge-base")) return { code: 1, stdout: "", stderr: "" };
     if (a.includes("status")) return { code: 0, stdout: "?? MEMORY.md\n?? $OUT\n M tracked.txt\n", stderr: "" };
     return { code: 0, stdout: "", stderr: "" };
   };
-  const data = gather({ run: fake, cwd: root, now: NOW });
+  const data = gather({ run: fake, cwd, now: NOW });
+  assert.equal(data.root, cwd);
   assert.deepEqual(data.remoteBranches.map((b) => b.name), ["main", "kimi/lost-work"]);
   assert.deepEqual(data.untracked, ["MEMORY.md", "$OUT"]);
-  for (const c of calls) {
-    const a = c.join(" ");
+  for (const [cmd, ...args] of calls) {
+    const a = commandArgs(cmd, args).join(" ");
     assert.doesNotMatch(a, /\b(push|commit|checkout|reset|merge --|worktree remove|branch -d|pr (create|edit|merge))\b/);
   }
   const out = [];
   const io = { out: (s) => out.push(s), err: (s) => out.push(s) };
-  assert.equal(await main(["--no-fetch"], io, { run: fake, now: () => NOW }), 0);
-  assert.equal(await main(["--no-fetch", "--strict"], io, { run: fake, now: () => NOW }), 1);
+  assert.equal(await main(["--no-fetch", "--root", cwd], io, { run: fake, now: () => NOW }), 0);
+  assert.equal(await main(["--no-fetch", "--strict", "--root", cwd], io, { run: fake, now: () => NOW }), 1);
   assert.match(out.join(""), /# Hygiene/);
+}
+
+test("gather reads git and gh read-only and hygiene --strict exits 1 on findings", async () => {
+  await assertReadOnlyHygiene();
+});
+
+test("hygiene guards ignore push and status in the worktree path", async () => {
+  for (const path of ["/tmp/wt/srv-x-push", "/tmp/wt/srv-x-status", "/tmp/wt/srv-x-push-status"]) {
+    await assertReadOnlyHygiene(resolve(path));
+  }
+  const globals = ["-C", "/tmp/wt/srv-x-push-status", "-c", "alias.push=status"];
+  assert.deepEqual(commandArgs("git", [...globals, "rev-parse", "--show-toplevel"]), ["rev-parse", "--show-toplevel"]);
+  assert.deepEqual(commandArgs("git", [...globals, "push", "origin"]), ["push", "origin"]);
+  assert.deepEqual(commandArgs("gh", ["pr", "create"]), ["pr", "create"]);
 });
 
 test("hygiene --help exits 0", async () => {
@@ -192,10 +214,7 @@ test("hygiene --help exits 0", async () => {
 
 function fakeRun(over = {}) {
   return (cmd, args) => {
-    let rest = args;
-    // git: drop global "-C <path>" / "-c <key=value>" so only the subcommand and its args are matched.
-    if (cmd === "git") while (rest[0] === "-C" || rest[0] === "-c") rest = rest.slice(2);
-    const a = rest.join(" ");
+    const a = commandArgs(cmd, args).join(" ");
     for (const [needle, res] of Object.entries(over)) if (cmd === "git" ? a.startsWith(needle) : a.includes(needle)) return typeof res === "function" ? res(cmd, args) : res;
     if (cmd === "gh" && a.includes("--state open")) return { code: 0, stdout: JSON.stringify(input.prsOpen), stderr: "" };
     if (cmd === "gh" && a.includes("--state all")) return { code: 0, stdout: JSON.stringify(input.prsAll), stderr: "" };
