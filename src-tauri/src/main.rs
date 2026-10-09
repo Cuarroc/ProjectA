@@ -4796,7 +4796,30 @@ mod tests {
     /// manage call) grow together with the code.
     #[test]
     fn every_command_state_type_is_managed() {
-        const SOURCE: &str = include_str!("main.rs");
+        assert_command_state_types_are_managed(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "command state type `Foo` is not in the evidence table")]
+    fn command_state_guard_rejects_unmanaged_state_in_command_modules() {
+        let dir = crate::testutil::TempDir::new("command-state-guard");
+        std::fs::write(
+            dir.path().join("main.rs"),
+            "fn command(store: State<'_, Store>) {}\napp.manage(store);\nmod tests {}",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("future_cmds.rs"),
+            "fn moved_command(state: State<'_, Foo>) {}",
+        )
+        .unwrap();
+        assert_command_state_types_are_managed(dir.path());
+    }
+
+    fn assert_command_state_types_are_managed(source_dir: &std::path::Path) {
+        let source = std::fs::read_to_string(source_dir.join("main.rs")).expect("read main.rs");
 
         // Which manage line proves which type. Textual on purpose: the
         // variables are constructed a few lines above their manage call, and
@@ -4828,15 +4851,29 @@ mod tests {
             ),
         ];
 
-        // Scan only the code above this module, and build the marker at
-        // runtime - otherwise the scan finds the string literals of this very
-        // test and reads garbage after them.
-        let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
+        // Exclude test modules so fixture strings cannot become state types.
+        // Discover command modules instead of maintaining a second file list
+        // that silently loses coverage whenever commands move out of main.rs.
+        let code = &source[..source.find("mod tests").expect("this module exists")];
+        let mut command_code = code.to_owned();
+        for entry in std::fs::read_dir(source_dir).expect("read source directory") {
+            let path = entry.expect("read source entry").path();
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with("_cmds.rs"))
+            {
+                let module = std::fs::read_to_string(&path)
+                    .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+                command_code.push('\n');
+                command_code.push_str(module.split("mod tests").next().unwrap());
+            }
+        }
         let marker: String = ["State<'", "_, "].concat();
         let marker = marker.as_str();
 
         let mut wanted = std::collections::BTreeSet::new();
-        let mut rest = code;
+        let mut rest = command_code.as_str();
         while let Some(at) = rest.find(marker) {
             rest = &rest[at + marker.len()..];
             let mut depth = 1usize;
