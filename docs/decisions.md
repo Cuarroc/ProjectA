@@ -1630,3 +1630,18 @@ wall clock, linux + windows.
 - **Reverse when:** the update manifest gets signed or a build id exists that
   binds the installed bytes to the package; then the first run must be
   verified, not trusted.
+
+## 2026-10-09 - AGENTS-API-CREDITS: Max-plan included Anthropic API credits
+
+- **What:** narrow exception to "no API keys": the monthly Anthropic API
+  credits included in the user's Max plan may be used via one ProjectA key
+  from a dedicated Console workspace, with a spend limit; no payment method,
+  no purchased credits, no auto-reload; the key lives only in the AgentsRoom
+  secrets vault or a server secret store the user set up, and never in files,
+  logs, commands or PR text. When credits run out, work falls back to
+  subscriptions; nobody buys credits. OpenRouter stays forbidden.
+- **Why:** the credits are part of the plan already paid, expire monthly, and
+  spare the weekly Max limit. Exhausted credits stop requests at no charge
+  when there is no payment method or auto-reload.
+- **Reverse when:** any charge appears, Anthropic changes the terms, or the
+  user revokes.
