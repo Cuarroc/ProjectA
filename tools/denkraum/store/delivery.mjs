@@ -3,6 +3,7 @@
 // so on V2 every receipt lookup here fails closed with 503 while it is missing.
 import { randomUUID } from 'node:crypto';
 import { AnswerStore } from './answers.mjs';
+import { getOwnershipContext, OwnershipError, OWNERSHIP_RELEASE_MISMATCH } from './ownership.mjs';
 import { activeAnswers, activeEvents, ensure, isoTime, receiptFor, validId } from './model.mjs';
 
 // R669-O1: on V2 every path here checks the root id before reading events, so an empty ledger also answers 503.
@@ -10,7 +11,13 @@ const requireRoot = (state, rootAgentId) => ensure(state.schemaVersion !== 2 || 
   'Root-Agent-ID ist nicht konfiguriert; Empfangsprüfung abgelehnt.', 503);
 
 export class DeliveryStore extends AnswerStore {
-  #notificationQueue = Promise.resolve();
+  #notificationClosing;
+  // Retain core membership until accepted sends and their result commits settle.
+  close() {
+    if (this.#notificationClosing) return this.#notificationClosing;
+    const context = getOwnershipContext(this.file);
+    return this.#notificationClosing = (context.notificationQueue ?? Promise.resolve()).then(() => super.close());
+  }
   async pending() {
     const state = await this.read(); requireRoot(state, this.rootAgentId);
     return activeAnswers(state).filter(a => state.schemaVersion === 2
@@ -28,8 +35,11 @@ export class DeliveryStore extends AnswerStore {
     return { pending, received };
   }
   flushNotifications(eventId) {
-    const work = this.#notificationQueue.then(() => this.#deliver(eventId));
-    this.#notificationQueue = work.catch(() => {}); return work;
+    if (this.#notificationClosing) return Promise.reject(new OwnershipError(OWNERSHIP_RELEASE_MISMATCH));
+    const context = getOwnershipContext(this.file);
+    // Separate from the mutation queue: receipts can commit during transport I/O.
+    const work = (context.notificationQueue ?? Promise.resolve()).then(() => this.#deliver(eventId));
+    context.notificationQueue = work.catch(() => {}); return work;
   }
   async #deliver(eventId) {
     // DR-04B-FU: V2 root check before missing-transport, so rootless V2 answers 503 not not-configured.
