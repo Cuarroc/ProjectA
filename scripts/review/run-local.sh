@@ -113,9 +113,9 @@ cd "$TOP" || die 2 "kann nicht nach $TOP wechseln."
 [ -n "$out_dir" ] || out_dir=".pa"
 
 # Startup janitor: reclaim refs/pa-review/pr-* left behind by kill -9 / crash.
-# Per-PID refs (pr-<N>-<pid>): delete only when kill -0 reports "No such
-# process". Never delete a ref whose pid is still alive (including EPERM).
-# Legacy refs without a pid suffix (pr-<N>) are always removed.
+# Per-PID refs: delete only when LC_ALL=C kill -0 reports "No such process"
+# (ESRCH text is locale-dependent). Keep live pids (incl. EPERM). Legacy
+# refs without a pid suffix are always removed.
 _reclaim_stale_pa_review_refs() {
   local ref short pid err num
   while IFS= read -r ref; do
@@ -127,13 +127,14 @@ _reclaim_stale_pa_review_refs() {
         case "$pid" in
           '' | *[!0-9]*) continue ;;
         esac
-        if kill -0 "$pid" 2>/dev/null; then
+        if LC_ALL=C kill -0 "$pid" 2>/dev/null; then
           continue
         fi
-        err="$(kill -0 "$pid" 2>&1 || true)"
+        err="$(LC_ALL=C kill -0 "$pid" 2>&1 || true)"
         case "$err" in
           *"No such process"*)
-            git -C "$TOP" update-ref -d "$ref" 2>/dev/null || true
+            git -C "$TOP" update-ref -d "$ref" 2>/dev/null \
+              || echo "run-local: konnte Ref $ref nicht loeschen." >&2
             ;;
         esac
         ;;
@@ -141,7 +142,8 @@ _reclaim_stale_pa_review_refs() {
         num="${short#pr-}"
         case "$num" in
           '' | *[!0-9]*) ;;
-          *) git -C "$TOP" update-ref -d "$ref" 2>/dev/null || true ;;
+          *) git -C "$TOP" update-ref -d "$ref" 2>/dev/null \
+               || echo "run-local: konnte Ref $ref nicht loeschen." >&2 ;;
         esac
         ;;
     esac
