@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { runCli } from './cli.mjs';
 
 const cliUrl = new URL('./cli.mjs', import.meta.url);
 const cliPath = fileURLToPath(cliUrl);
@@ -56,4 +57,24 @@ test('DRSEC: CLI transport failures never print exception paths', async () => {
     assert.ok(!`${result.stdout}${result.stderr}`.includes(failure), 'exception path or URL leaked');
     assert.equal(result.stderr, 'Transport request failed\n');
   }
+});
+
+test('DRSEC: programmatic runCli rejection hides server body from message and enumerable fields', async () => {
+  const secret = 'sk-test-programmatic-runcli-body-secret';
+  const request = async () => ({
+    ok: false,
+    status: 403,
+    json: async () => ({ error: secret }),
+  });
+  await assert.rejects(
+    () => runCli(['state'], { DECISION_DESK_URL: 'http://127.0.0.1:9' }, request),
+    error => {
+      assert.equal(error.message, 'HTTP request failed (403)');
+      assert.ok(!error.message.includes(secret), 'message leaked server body');
+      for (const value of Object.values(error)) {
+        assert.ok(typeof value !== 'string' || !value.includes(secret), 'enumerable field leaked server body');
+      }
+      return true;
+    },
+  );
 });
