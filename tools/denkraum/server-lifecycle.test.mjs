@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, rm, readFile, access } from 'node:fs/promises';
-import { createServer, connect } from 'node:net';
+import net, { createServer, connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +47,12 @@ async function listen(server, port = 0) {
   const ready = once(server, 'listening'); server.listen(port, '127.0.0.1'); await ready;
 }
 const missing = file => access(file).then(() => false, e => { if (e.code === 'ENOENT') return true; throw e; });
+// Release uses async filesystem calls; yield until their completion, bounded by the same watchdog.
+async function ownerGone(file) {
+  let polling = true;
+  try { assert.equal(await bounded((async () => { do { await setImmediate(); } while (polling && !await missing(`${file}.owner`)); return true; })()), true); }
+  finally { polling = false; }
+}
 async function blocker(t) {
   const server = createServer(); await listen(server); t.after(() => new Promise(r => server.close(r))); return server;
 }
@@ -164,10 +170,7 @@ test('DRSEC-G4b: a failed bind after admission leaves no owner record', async t 
   const file = await ledger(t), port = (await blocker(t)).address().port, server = desk(t, file);
   const failed = once(server, 'error'); server.listen(port, '127.0.0.1');
   assert.equal((await failed)[0].code, 'EADDRINUSE');
-  // Release uses async filesystem calls; yield until their completion, bounded by the same watchdog.
-  let polling = true;
-  try { assert.equal(await bounded((async () => { do { await setImmediate(); } while (polling && !await missing(`${file}.owner`)); return true; })()), true); }
-  finally { polling = false; }
+  await ownerGone(file);
 });
 
 test('DRSEC-G4b: a failed CLI bind releases ownership so a second process can write', async t => {
@@ -183,4 +186,42 @@ test('DRSEC-G4b: a failed CLI bind releases ownership so a second process can wr
     });`;
   const second = await bounded(childRun(t, ['--input-type=module', '-e', script, file]).done);
   assert.equal(second.code, 0, second.stderr); assert.equal(second.stdout.trim(), '200'); assert.ok(await missing(`${file}.owner`));
+});
+
+async function freePort() {
+  const probe = createServer(); await listen(probe); const { port } = probe.address(); await new Promise(r => probe.close(r)); return port;
+}
+const refused = port => new Promise(resolve => {
+  const socket = connect(port, '127.0.0.1', () => { socket.destroy(); resolve('connected'); });
+  socket.on('error', e => resolve(e.code));
+});
+
+test('DRSEC-G4b: close during the bind window never serves and leaves no owner record', async t => {
+  const file = await ledger(t), port = await freePort(), realListen = net.Server.prototype.listen, parked = Promise.withResolvers(); let bind;
+  // createDeskServer captures server.listen at creation, so the stub must be installed before it (and after freePort).
+  t.mock.method(net.Server.prototype, 'listen', function (...args) { bind = () => realListen.apply(this, args); parked.resolve(); return this; });
+  const server = desk(t, file);
+  server.listen(port, '127.0.0.1'); await bounded(parked.promise);
+  assert.equal(await missing(`${file}.owner`), false, 'admission completed before the bind is parked');
+  assert.equal((await bounded(new Promise(r => server.close(r))))?.code, 'ERR_SERVER_NOT_RUNNING');
+  const bound = once(server, 'listening'); bind(); await bounded(bound);
+  assert.equal(server.listening, false); assert.equal(await refused(port), 'ECONNREFUSED');
+  assert.ok(await missing(`${file}.owner`));
+});
+
+test('DRSEC-G4b: a second listen after a failed bind rejects with ERR_SERVER_NOT_RUNNING', async t => {
+  const file = await ledger(t), port = (await blocker(t)).address().port, server = desk(t, file);
+  const failed = once(server, 'error'); server.listen(port, '127.0.0.1');
+  assert.equal((await bounded(failed))[0].code, 'EADDRINUSE');
+  const again = once(server, 'error'); server.listen(0, '127.0.0.1');
+  assert.equal((await bounded(again))[0]?.code, 'ERR_SERVER_NOT_RUNNING'); assert.equal(server.listening, false);
+  await ownerGone(file);
+});
+
+test('DRSEC-G4b: a double close releases the store once and prints nothing', async t => {
+  const file = await ledger(t), server = desk(t, file); await listen(server);
+  const storeClose = t.mock.method(DeskStore.prototype, 'close'), stderr = t.mock.method(console, 'error', () => {});
+  server.close(); await bounded(new Promise(r => server.close(r)));
+  assert.equal(storeClose.mock.callCount(), 1); assert.equal(stderr.mock.callCount(), 0);
+  assert.ok(await missing(`${file}.owner`));
 });
