@@ -52,3 +52,38 @@ test('DRSEC: new migration backup and ledger temp stay private with a permissive
     assert.equal(await readFile(`${file}.v1-backup`, 'utf8'), legacy);
   } finally { process.umask(previousUmask); }
 });
+
+test('DRSEC: previous recovery copy from a permissive legacy ledger is owner-only', posix, async t => {
+  const file = await fixture(t); const observed = [];
+  await writeFile(file, legacy); await chmod(file, 0o666);
+  const store = new DeskStore(file, { rename: async (from, to) => {
+    if (from.endsWith('.previous')) observed.push(await mode(from));
+    return rename(from, to);
+  } });
+  const previousUmask = process.umask(0);
+  try {
+    await store.migrate(0);
+    assert.equal(await mode(`${file}.previous`), 0o600);
+    assert.deepEqual(observed, [0o600]);
+    assert.equal(await readFile(`${file}.previous`, 'utf8'), legacy);
+    const migrated = await readFile(file, 'utf8');
+    await chmod(file, 0o666); await chmod(`${file}.previous`, 0o666);
+    await add(store);
+    assert.equal(await mode(`${file}.previous`), 0o600);
+    assert.deepEqual(observed, [0o600, 0o600]);
+    assert.equal(await readFile(`${file}.previous`, 'utf8'), migrated);
+  } finally { process.umask(previousUmask); }
+});
+
+test('DRSEC: a pre-existing permissive migration backup is secured or rejected', posix, async t => {
+  const file = await fixture(t);
+  await writeFile(file, legacy, { mode: 0o600 });
+  await writeFile(`${file}.v1-backup`, legacy); await chmod(`${file}.v1-backup`, 0o666);
+  const store = new DeskStore(file);
+  try { await store.migrate(0); } catch (error) {
+    assert.equal(error.status, 503); assert.equal(await readFile(file, 'utf8'), legacy); return;
+  }
+  assert.equal(await mode(`${file}.v1-backup`), 0o600);
+  assert.equal(await readFile(`${file}.v1-backup`, 'utf8'), legacy);
+  assert.equal((await store.read()).schemaVersion, 2);
+});
