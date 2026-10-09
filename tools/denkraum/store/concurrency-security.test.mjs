@@ -164,7 +164,8 @@ test('DRSEC: failed acquisition does not retain a user when the store is dropped
 test('DRSEC: a failed release no longer locks the same process out of its own ledger', async t => {
   const file = await ledger(t), store = new DeskStore(file), orig = fs.rename;
   await add(store, 'first'); const before = JSON.parse(await readFile(o.ownerRecordPath(file), 'utf8'));
-  fs.rename = async () => {
+  fs.rename = async (from, to) => {
+    if (from !== o.ownerRecordPath(file) || !to.startsWith(`${from}.`) || !to.endsWith('.tomb')) return orig(from, to);
     fs.rename = orig; syncBuiltinESMExports();
     throw Object.assign(new Error('rename failed'), { code: 'EIO' });
   };
