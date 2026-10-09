@@ -153,7 +153,7 @@ test("ERLEDIGT-META: only real ISO UTC timestamps may write", async (t) => {
     "2026-09-24T12:00:00", "2026-09-24T12:00:00+00:00", "2026-09-25T00:30:00+02:00",
     "2026-09-24t12:00:00z", "2026-09-24T12:00:00.1Z", "2026-09-24T12:00:00.1234Z",
     "2026-09-24T24:00:00Z", "2026-09-24T12:60:00Z", "2026-09-24T12:00:60Z",
-    "2026-09-24T12:00:00Z\n",
+    "2026-09-24T12:00:00Z\n", "2026-09-24T12:00:00Z\r", "2026-09-24T12:00:00Z\u2028",
   ]) {
     for (const flags of [[], ["--apply"]]) {
       const res = await runMain([...argv, ...flags], { ...PR, mergedAt });
@@ -188,7 +188,7 @@ test("ERLEDIGT-META: invalid merge date refuses without write", async (t) => {
     assert.throws(() => makeRow({ pr: { ...PR, mergedAt }, id: "W2-07" }), /mergedAt/);
   }
 
-  const valid = { ...PR, mergedAt: "2026-09-25T00:30:00+02:00" };
+  const valid = { ...PR, mergedAt: "2026-09-24T22:30:00Z" };
   const first = await runMain([...argv, "--apply"], valid);
   assert.equal(first.code, 0);
   const written = readFileSync(file, "utf8");
