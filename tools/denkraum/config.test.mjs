@@ -285,21 +285,25 @@ test("server startup uses the validated webhook URL without rereading the enviro
     import http from 'node:http';
     import { syncBuiltinESMExports } from 'node:module';
     import { pathToFileURL } from 'node:url';
-    let reads = 0; let scheduled = 0; const listeners = new Map();
+    const { EventEmitter } = await import('node:events');
+    const { DeskStore } = await import(new URL('./store.mjs', pathToFileURL(${JSON.stringify(script)})));
+    DeskStore.prototype.change = async () => undefined; // Admission stays in memory.
+    const ready = Promise.withResolvers();
+    let reads = 0; let scheduled = 0;
     const env = ${JSON.stringify(validEnv())};
     Object.defineProperty(env, 'DECISION_DESK_WEBHOOK_URL', { get() {
       return ++reads === 1 ? 'https://agentsroom.dev/api/triggers/t_abcdef' : 'invalid-after-validation';
     } });
     process.env = env;
     // Exercise the real CLI wiring without opening a listener or sending a webhook.
-    http.createServer = () => ({
-      on(event, callback) { listeners.set(event, callback); return this; },
-      listen() { listeners.get('listening')(); },
+    http.createServer = () => Object.assign(new EventEmitter(), {
+      listen() { this.emit('listening'); ready.resolve(); },
     });
     globalThis.setTimeout = () => { scheduled++; return { unref() {} }; };
     syncBuiltinESMExports();
     process.argv[1] = ${JSON.stringify(script)};
     await import(pathToFileURL(process.argv[1]).href);
+    await ready.promise;
     assert.equal(scheduled, 1, 'validated webhook must enable notification scheduling');
     assert.equal(reads, 1, 'startup must consume the validated URL snapshot');
   `], { encoding: "utf8", timeout: 10000 });
