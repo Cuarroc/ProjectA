@@ -4796,7 +4796,30 @@ mod tests {
     /// manage call) grow together with the code.
     #[test]
     fn every_command_state_type_is_managed() {
-        const SOURCE: &str = include_str!("main.rs");
+        assert_command_state_types_are_managed(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "command state type `Foo` is not in the evidence table")]
+    fn command_state_guard_rejects_unmanaged_state_in_command_modules() {
+        let dir = crate::testutil::TempDir::new("command-state-guard");
+        std::fs::write(
+            dir.path().join("main.rs"),
+            "fn command(store: State<'_, Store>) {}\napp.manage(store);\nmod tests {}",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("future_cmds.rs"),
+            "fn moved_command(state: State<'_, Foo>) {}",
+        )
+        .unwrap();
+        assert_command_state_types_are_managed(dir.path());
+    }
+
+    fn assert_command_state_types_are_managed(source_dir: &std::path::Path) {
+        let source = std::fs::read_to_string(source_dir.join("main.rs")).expect("read main.rs");
 
         // Which manage line proves which type. Textual on purpose: the
         // variables are constructed a few lines above their manage call, and
@@ -4831,7 +4854,7 @@ mod tests {
         // Scan only the code above this module, and build the marker at
         // runtime - otherwise the scan finds the string literals of this very
         // test and reads garbage after them.
-        let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
+        let code = &source[..source.find("mod tests").expect("this module exists")];
         let marker: String = ["State<'", "_, "].concat();
         let marker = marker.as_str();
 
