@@ -1251,6 +1251,7 @@ async fn cancel_update_download(
     cancel.cancel().await
 }
 
+#[cfg(test)]
 fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Result<(), String> {
     match (result, thaw) {
         (Err(error), Err(thaw)) => {
