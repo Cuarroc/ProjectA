@@ -1716,16 +1716,17 @@ fn execute_protocol_events(
         .and_then(|prepared| execute_protocol_settlement(prepared, observer, lifecycle));
     let capture_failure = terminal.as_ref().err().cloned();
     drop(events_tx);
-    // Fail-closed: still bound the drain, but size it for sequential durable
-    // checkpoints that can still be pending when the child exits. Launch must
-    // complete before input delivery, so only Process/Input/Receipt can overlap
-    // this window; each may wait up to the mirrored Store::open busy_timeout.
-    // A fixed 5s window rejected a successful Receipt commit under that load
-    // (KI-30). Cap at HOST_GRACE_MS so the host never outlives the parent's
-    // post-timeout grace / durable owner extension. Keep the total under the
-    // receipt-ack self-test parent bound so a missing ack still fails closed
-    // as "receipt acknowledgement unavailable" rather than the parent's
-    // capture deadline.
+    // Fail-closed: still bound the drain. The local allowance mirrors
+    // Store::open's busy_timeout and is capped at HOST_GRACE_MS so a short
+    // fixed window does not reject a successful Receipt commit under SQLite
+    // writer load (the KI-30 scenario). Launch completes before input
+    // delivery, so only Process/Input/Receipt can overlap this window. Cap
+    // alone does not guarantee the drain fits remaining parent/owner lifetime:
+    // the parent clock starts earlier, the owner deadline starts at
+    // reservation, and finish_writer / startup / cleanup can still consume
+    // time independently. Keep the drain under the receipt-ack self-test
+    // parent bound so a missing ack still fails closed as "receipt
+    // acknowledgement unavailable" rather than the parent's capture deadline.
     let drain_deadline =
         Instant::now() + Duration::from_millis(crate::protocol::writer_drain_budget_ms());
     let submitted = terminal_tx.send((terminal, drain_deadline));
