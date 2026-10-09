@@ -155,20 +155,21 @@ test("hygiene renders markdown with one section per check", () => {
   assert.match(md, /kimi\/lost-work/);
 });
 
-test("gather reads git and gh read-only and hygiene --strict exits 1 on findings", async () => {
+async function assertReadOnlyHygiene(cwd = root) {
   const calls = [];
   const fake = (cmd, args) => {
     calls.push([cmd, ...args]);
     const a = args.join(" ");
     if (cmd === "gh" && a.includes("--state open")) return { code: 0, stdout: JSON.stringify(input.prsOpen), stderr: "" };
     if (cmd === "gh" && a.includes("--state all")) return { code: 0, stdout: JSON.stringify(input.prsAll), stderr: "" };
-    if (a.includes("worktree list")) return { code: 0, stdout: `worktree ${root}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
+    if (a.includes("worktree list")) return { code: 0, stdout: `worktree ${cwd}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
     if (a.includes("for-each-ref")) return { code: 0, stdout: "origin/main\norigin/HEAD\norigin/kimi/lost-work\n", stderr: "" };
     if (a.includes("merge-base")) return { code: 1, stdout: "", stderr: "" };
     if (a.includes("status")) return { code: 0, stdout: "?? MEMORY.md\n?? $OUT\n M tracked.txt\n", stderr: "" };
     return { code: 0, stdout: "", stderr: "" };
   };
-  const data = gather({ run: fake, cwd: root, now: NOW });
+  const data = gather({ run: fake, cwd, now: NOW });
+  assert.equal(data.root, cwd);
   assert.deepEqual(data.remoteBranches.map((b) => b.name), ["main", "kimi/lost-work"]);
   assert.deepEqual(data.untracked, ["MEMORY.md", "$OUT"]);
   for (const c of calls) {
@@ -177,9 +178,19 @@ test("gather reads git and gh read-only and hygiene --strict exits 1 on findings
   }
   const out = [];
   const io = { out: (s) => out.push(s), err: (s) => out.push(s) };
-  assert.equal(await main(["--no-fetch"], io, { run: fake, now: () => NOW }), 0);
-  assert.equal(await main(["--no-fetch", "--strict"], io, { run: fake, now: () => NOW }), 1);
+  assert.equal(await main(["--no-fetch", "--root", cwd], io, { run: fake, now: () => NOW }), 0);
+  assert.equal(await main(["--no-fetch", "--strict", "--root", cwd], io, { run: fake, now: () => NOW }), 1);
   assert.match(out.join(""), /# Hygiene/);
+}
+
+test("gather reads git and gh read-only and hygiene --strict exits 1 on findings", async () => {
+  await assertReadOnlyHygiene();
+});
+
+test("hygiene guards ignore push and status in the worktree path", async () => {
+  for (const path of ["/tmp/wt/srv-x-push", "/tmp/wt/srv-x-status", "/tmp/wt/srv-x-push-status"]) {
+    await assertReadOnlyHygiene(resolve(path));
+  }
 });
 
 test("hygiene --help exits 0", async () => {
