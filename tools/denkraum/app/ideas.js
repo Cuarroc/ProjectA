@@ -103,16 +103,18 @@ function updateIdeaCategories(events) {
   }
   select.value = selected;
 }
-function ideaMetadata(event) {
+function ideaFields(event) {
   const r = event.revision, priorities = ['urgent', 'high', 'normal', 'later'];
-  const names = { urgent: 'Dringend', high: 'Hoch', normal: 'Normal', later: 'Später' };
-  const category = ideaCategory(event);
   const priority = !Object.hasOwn(r, 'userPriority') ? 'normal' : priorities.includes(r.userPriority) ? r.userPriority : null;
-  const source = r.source == null ? 'Nicht hinterlegt' : typeof r.source === 'string' && r.source.trim() && r.source.length <= 2000 ? r.source : 'Nicht lesbar';
   const progress = state.progress.find(p => p.eventId === event.ref.eventId);
-  const station = !progress || progress.currentStatus === 'incoming' ? 'Eingang · Aktuelle Fassung gespeichert' : 'Noch nicht zugeordnet';
+  return { category: ideaCategory(event), priority, station: !progress || progress.currentStatus === 'incoming' ? 'incoming' : 'unmapped' };
+}
+function ideaMetadata(event) {
+  const r = event.revision, { category, priority, station } = ideaFields(event);
+  const names = { urgent: 'Dringend', high: 'Hoch', normal: 'Normal', later: 'Später' };
+  const source = r.source == null ? 'Nicht hinterlegt' : typeof r.source === 'string' && r.source.trim() && r.source.length <= 2000 ? r.source : 'Nicht lesbar';
   return facts([['Kategorie · Nutzerangabe (ungeprüft)', category === null ? 'Nicht lesbar' : category || 'Keine Kategorie'],
-    ['Nutzerpriorität', priority === null ? 'Nicht lesbar' : names[priority]], ['Herkunft · Revisionsangabe (ungeprüft)', source], ['Station', station]]);
+    ['Nutzerpriorität', priority === null ? 'Nicht lesbar' : names[priority]], ['Herkunft · Revisionsangabe (ungeprüft)', source], ['Station', station === 'incoming' ? 'Eingang · Aktuelle Fassung gespeichert' : 'Noch nicht zugeordnet']]);
 }
 function ideaStations() {
   const band = node('ol'); band.id = 'idea-stations'; band.setAttribute('aria-label', 'Ideenstationen');
@@ -133,12 +135,28 @@ function renderIdeaState() {
     category.addEventListener('change', renderIdeaState);
     const count = node('p', '', 'muted'); count.id = 'idea-count'; count.setAttribute('role', 'status');
     const cards = node('div'); cards.id = 'idea-cards';
-    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), label, search, categoryLabel, category, count, cards);
+    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), label, search, categoryLabel, category);
+    for (const [id, text, options] of [
+      ['idea-priority', 'Nutzerpriorität', [['*', 'Alle Prioritäten'], ['urgent', 'Dringend'], ['high', 'Hoch'], ['normal', 'Normal'], ['later', 'Später'], ['unreadable', 'Nicht lesbar']]],
+      ['idea-station', 'Belegte Zuordnung', [['*', 'Alle Zuordnungen'], ['incoming', 'Eingang · Aktuelle Fassung gespeichert'], ['unmapped', 'Noch nicht zugeordnet']]],
+    ]) {
+      const filterLabel = node('label', text); filterLabel.htmlFor = id;
+      const select = node('select'); select.id = id;
+      for (const [value, title] of options) { const option = node('option', title); option.value = value; select.append(option); }
+      select.value = '*'; select.addEventListener('change', renderIdeaState); ideaEvents.append(filterLabel, select);
+    }
+    const help = node('p', 'Weitere Stationen werden ergänzt; ein Rootempfang ordnet keine Station zu.', 'muted'); help.id = 'idea-station-help';
+    $('idea-station').setAttribute('aria-describedby', help.id); ideaEvents.append(help, count, cards);
   }
   const term = $('idea-search').value.toLocaleLowerCase('de');
   updateIdeaCategories(all); const selectedCategory = $('idea-category').value || '*';
-  const ideas = all.filter(event => [event.title, event.revision.text].join(' ').toLocaleLowerCase('de').includes(term)
-    && (selectedCategory === '*' || JSON.stringify(ideaCategory(event)) === selectedCategory));
+  const priority = $('idea-priority').value, station = $('idea-station').value;
+  const ideas = all.filter(event => {
+    const fields = ideaFields(event);
+    return [event.title, event.revision.text].join(' ').toLocaleLowerCase('de').includes(term)
+      && (selectedCategory === '*' || JSON.stringify(fields.category) === selectedCategory)
+      && (priority === '*' || (fields.priority ?? 'unreadable') === priority) && (station === '*' || fields.station === station);
+  });
   const cards = $('idea-cards'); cards.replaceChildren(); $('idea-count').textContent = `${ideas.length} von ${all.length} gespeicherten Ideen`;
   for (const event of ideas) {
     const item = node('article', undefined, 'idea-card');
