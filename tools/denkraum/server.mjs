@@ -38,9 +38,18 @@ export function createWebhookNotifier({ url, secret, request = fetch, clock = Da
 // H2: no state default inside the repository. D2: the root agent id is injected; without it every
 // root-bound route answers 503 from the store and the page gets no root meta tag.
 /** Attach an error listener before listen(); create a new server after a failed bind. */
-// A stop waits this long for in-flight work, then up to 1 s more after closing connections: 6 s in total, inside
-// the ~10 s Windows grants after a console close event.
+// A stop waits this long for in-flight work, then up to 1 s more after closing connections: 6 s in total.
+// After a Windows console close event the process ends in about 10 s (Node docs) or about 5 s (SetConsoleCtrlHandler
+// docs), so those signals cap the whole drain at 4 s (3 s wait + 1 s forced close); see limitDrainForSignal.
 export const DRAIN_TIMEOUT_MS = 5000;
+export const FORCED_CLOSE_MS = 1000;
+export const CONSOLE_CLOSE_DRAIN_MS = 3000;
+export const CONSOLE_CLOSE_SIGNALS = ['SIGHUP', 'SIGBREAK'];
+export const drainBudget = (firstMs, signal) => {
+  const first = CONSOLE_CLOSE_SIGNALS.includes(signal) ? Math.min(firstMs, CONSOLE_CLOSE_DRAIN_MS) : firstMs;
+  return { first, forced: Math.min(first, FORCED_CLOSE_MS) };
+};
+export function limitDrainForSignal(server, signal) { server.drainBudget = drainBudget(server.drainBudget.first, signal); }
 export function createDeskServer({ statePath, rootAgentId, assets = root,
   rootReceiptToken = process.env.DECISION_DESK_ROOT_RECEIPT_TOKEN, notifyEvent, clock = Date.now, drainTimeoutMs = DRAIN_TIMEOUT_MS, timers = { setTimeout, clearTimeout } } = {}) {
   if (typeof statePath !== 'string' || !statePath) throw new DeskError('Datenpfad fehlt; Start abgelehnt.', 503);
@@ -170,6 +179,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     finally { timers.clearTimeout(deadline); }
   };
   const close = server.close;
+  server.drainBudget = drainBudget(drainTimeoutMs); // read at close time; the entry may shorten it per signal
   // A failed release goes to the callback, else to one stderr line; never to 'error' (no listener, no crash).
   let released;
   server.close = callback => {
@@ -178,9 +188,9 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     const native = new Promise(resolve => close.call(server, e => { error = e; resolve(); }));
     const drained = (async () => { await native; while (pending.size) await Promise.allSettled([...pending]); })();
     (async () => {
-      if (!await within(drained, drainTimeoutMs)) {
+      if (!await within(drained, server.drainBudget.first)) {
         server.closeAllConnections();
-        if (!await within(drained, Math.min(drainTimeoutMs, 1000)))
+        if (!await within(drained, server.drainBudget.forced))
           throw Object.assign(new Error('Server drain timed out'), { code: 'DRAIN_TIMEOUT' });
       }
       await (released ??= store.close()); // a repeated close shares the one release and its outcome
@@ -195,6 +205,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
 // SIGHUP is raised on Windows when the console window or tab closes (CTRL_CLOSE_EVENT, about 10 s grace) and
 // SIGBREAK on Ctrl+Break; without a listener the process dies at once, skips the drain and leaves <state>.owner.
 // Node accepts a listener for a signal the platform lacks, so the list is the same everywhere.
+// Residual: CTRL_LOGOFF and CTRL_SHUTDOWN have no Node signal; the owner-record recovery and the OWNERSHIP_HELD hint cover them.
 export const STOP_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'];
 export function registerStopSignals(stop, proc = process) { for (const signal of STOP_SIGNALS) proc.on(signal, stop); }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -218,9 +229,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     server.listen(port, '127.0.0.1', () => { listening = true; console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`); });
     // Stop by signal releases the ledger ownership before exit; a second signal while closing exits at once.
     let stopping = false;
-    const stop = () => {
+    const stop = signal => {
       if (stopping) process.exit(1);
       stopping = true;
+      limitDrainForSignal(server, signal);
       server.close(failure => {
         // R872-K4: only a server that was listening may report a clean stop. R872-K3: the line is written
         // synchronously so a pipe cannot lose it to the immediate exit.

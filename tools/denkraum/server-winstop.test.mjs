@@ -6,9 +6,10 @@ import { createServer } from 'node:net';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as desk from './server.mjs';
 
-const entry = new URL('./server.mjs', import.meta.url).pathname;
+const entry = fileURLToPath(new URL('./server.mjs', import.meta.url));
 const stopSignals = ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'];
 async function tempDir(t) {
   const dir = await mkdtemp(join(tmpdir(), 'denkraum-winstop-'));
@@ -47,9 +48,25 @@ test('DR-WIN-STOP: the real entry registers the stop listeners for SIGHUP and SI
   assert.deepEqual(counts, [1, 1]);
 });
 
-// Windows closes the process about 10 s after the close event: the drain budget must fit inside it.
-test('DR-WIN-STOP: the drain budget (first wait plus forced-close wait) fits the Windows 10 s close grace', () => {
-  assert.ok(desk.DRAIN_TIMEOUT_MS + Math.min(desk.DRAIN_TIMEOUT_MS, 1000) < 10_000);
+// Windows ends the process about 10 s (Node docs) or about 5 s (SetConsoleCtrlHandler docs) after a console close
+// event: the effective budget a stop really asks its timers for must stay at 4 s there, and unchanged for SIGINT/SIGTERM.
+test('DR-WIN-STOP: console-close signals cap the observed drain at 4 s while SIGINT and SIGTERM keep the full budget', async t => {
+  const observed = async signal => {
+    const dir = await tempDir(t), asked = [];
+    const timers = { setTimeout: (fn, ms) => { asked.push(ms); return setTimeout(fn, ms); }, clearTimeout };
+    const server = desk.createDeskServer({ statePath: join(dir, 'ledger.json'), rootAgentId: 'root-test', timers });
+    desk.limitDrainForSignal(server, signal);
+    await new Promise(resolve => server.close(resolve));
+    return asked;
+  };
+  for (const signal of ['SIGHUP', 'SIGBREAK']) {
+    const asked = await observed(signal);
+    assert.deepEqual(asked, [3000], signal);
+    assert.ok(asked[0] + 1000 <= 4000, signal); // plus at most 1000 ms for the forced close
+    assert.equal(desk.drainBudget(desk.DRAIN_TIMEOUT_MS, signal).forced, 1000);
+  }
+  for (const signal of ['SIGINT', 'SIGTERM']) assert.deepEqual(await observed(signal), [desk.DRAIN_TIMEOUT_MS], signal);
+  assert.deepEqual(desk.drainBudget(200, 'SIGHUP'), { first: 200, forced: 200 }); // never raises a smaller budget
 });
 
 test('DR-WIN-STOP: an OWNERSHIP_HELD start prints the code and one German hint naming only the owner file basename', async t => {
@@ -60,7 +77,10 @@ test('DR-WIN-STOP: an OWNERSHIP_HELD start prints the code and one German hint n
   t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
   let stderr = '';
   child.stderr.on('data', d => { stderr += d; });
-  const code = await new Promise(resolve => child.once('close', resolve));
+  const code = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no exit: ${stderr}`)), 5000);
+    child.once('close', c => { clearTimeout(timer); resolve(c); });
+  });
   assert.equal(code, 1, stderr);
   assert.match(stderr, /konnte nicht starten: OWNERSHIP_HELD\n/);
   const hints = stderr.split('\n').filter(line => line.startsWith('Hinweis:'));
