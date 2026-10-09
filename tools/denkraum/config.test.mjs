@@ -178,11 +178,16 @@ test("check CLI never prints synthetic environment values", () => {
   }
 });
 
-test("checks config through a real CLI directory alias without running on import", () => {
+test("checks config through a real CLI directory alias without running on import", (t) => {
   const script = fileURLToPath(new URL("config.mjs", import.meta.url));
   const fixture = mkdtempSync(join(tmpdir(), "denkraum-cli-alias-"));
   const alias = join(fixture, "alias");
-  symlinkSync(dirname(script), alias, process.platform === "win32" ? "junction" : "dir");
+  try {
+    symlinkSync(dirname(script), alias, process.platform === "win32" ? "junction" : "dir");
+  } catch (error) {
+    if (error.code === "EPERM") return t.skip("symlinks need extra rights on this machine");
+    throw error;
+  }
   const aliasedScript = join(alias, "config.mjs");
   const env = { ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: "invalid-token!",
     [name("STATE")]: join(fixture, "state.json") };
