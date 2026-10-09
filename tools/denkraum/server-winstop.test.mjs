@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:net';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as desk from './server.mjs';
@@ -71,8 +71,10 @@ test('DR-WIN-STOP: console-close signals cap the observed drain at 4 s while SIG
 
 test('DR-WIN-STOP: an OWNERSHIP_HELD start prints the code and one German hint naming only the owner file basename', async t => {
   const dir = await tempDir(t), file = join(dir, 'ledger.json');
-  // A live foreign PID (the parent) stands in for a stale record whose PID was reused.
-  await writeFile(`${file}.owner`, `${JSON.stringify({ nonce: 'n'.repeat(16), pid: process.pid, heartbeatAt: new Date().toISOString() })}\n`);
+  // A live foreign PID (the parent) on this host stands in for a stale record whose PID was reused;
+  // the host field keeps it out of the legacy-record branch added by #896 (c49c3510).
+  const host = `${hostname()}:${process.platform}`;
+  await writeFile(`${file}.owner`, `${JSON.stringify({ nonce: 'n'.repeat(16), pid: process.pid, heartbeatAt: new Date().toISOString(), host })}\n`);
   const child = spawn(process.execPath, [entry], { env: entryEnv(file, await freePort()), stdio: ['ignore', 'ignore', 'pipe'] });
   t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
   let stderr = '';
