@@ -3,15 +3,20 @@
 ## v1.6.0 — unveröffentlicht (Entwurf)
 
 Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
-(Stand `55c2238`). Dies ist noch keine Veröffentlichungsnotiz.
+(Stand `34f2b0b`). Dies ist noch keine Veröffentlichungsnotiz.
 
 **Zuverlässigkeit und Updates:**
 
-- **Update-Download lässt sich abbrechen** (PR #813, #828, #830): Während
-  ein Update heruntergeladen wird, erscheint in den Einstellungen
+- **Start nach Update bleibt sicher gesperrt** (PR #832): Scheitert die
+  Update-Prüfung beim Start, öffnet die App die Datenbank nicht und zeigt
+  eine deutsche Anleitung (Windows-Meldungsfenster sowie ANLEITUNG.txt im
+  Datenordner).
+- **Update-Download lässt sich abbrechen** (PR #813, #828, #830, #833, #834):
+  Während ein Update heruntergeladen wird, erscheint in den Einstellungen
   „Abbrechen“. Ein Abbruch vor der Installation kehrt zur verfügbaren
   Version zurück; ist die Installation schon zu weit, läuft sie ungestört
-  weiter.
+  weiter. Späte Abbruch- und Wartungsfehlerfälle (#833, #834) bleiben
+  ebenfalls abgesichert.
 - **Belege nach Update-Rücksetzungen bleiben erhalten** (PR #600): Jede
   Rücksetzung erhält einen eigenen Protokollnamen; eine weitere Rücksetzung
   überschreibt den vorherigen Beleg nicht mehr.
