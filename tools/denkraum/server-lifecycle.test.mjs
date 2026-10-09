@@ -50,11 +50,19 @@ const missing = file => access(file).then(() => false, e => { if (e.code === 'EN
 async function blocker(t) {
   const server = createServer(); await listen(server); t.after(() => new Promise(r => server.close(r))); return server;
 }
-function startEntry(t, file, port) {
-  const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-    DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
-  delete env.DECISION_DESK_WEBHOOK_URL;
-  return childRun(t, [fileURLToPath(entry)], env);
+async function startEntry(t, file, port) {
+  for (let attempt = 1; ; attempt++) {
+    let selected = port;
+    if (selected === undefined) {
+      const probe = createServer(); await listen(probe); selected = probe.address().port; await new Promise(r => probe.close(r));
+    }
+    const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(selected), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
+      DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+    delete env.DECISION_DESK_WEBHOOK_URL;
+    const result = await childRun(t, [fileURLToPath(entry)], env).done;
+    if (port === undefined && attempt < 5 && result.stderr.includes('EADDRINUSE')) continue;
+    return result;
+  }
 }
 
 async function duplicateListen(t, phase) {
@@ -85,6 +93,20 @@ test('DRSEC-G4b: unhandled admission and bind errors exit non-zero with their co
   }
 });
 
+test('DRSEC-G4b: listen after close rejects without admission including close during admission', async t => {
+  const change = t.mock.method(DeskStore.prototype, 'change');
+  for (const duringAdmission of [false, true]) {
+    const file = await ledger(t), server = desk(t, file);
+    if (duringAdmission) server.listen(0, '127.0.0.1');
+    assert.equal((await bounded(new Promise(r => server.close(r)))).code, 'ERR_SERVER_NOT_RUNNING');
+    const calls = change.mock.callCount(), failed = once(server, 'error');
+    server.listen(0, '127.0.0.1');
+    assert.equal((await bounded(failed))[0]?.code, 'ERR_SERVER_NOT_RUNNING');
+    assert.equal(change.mock.callCount(), calls); assert.equal(server.listening, false);
+    assert.ok(await missing(`${file}.owner`));
+  }
+});
+
 test('DRSEC-G4b: listen is refused with OWNERSHIP_HELD while a foreign process holds the ledger', async t => {
   const file = await ledger(t), release = await holdChild(t, file), server = desk(t, file);
   const failed = once(server, 'error').then(([e]) => e);
@@ -109,9 +131,8 @@ test('DRSEC-G4b: a listening server owns the ledger before its first write and a
 });
 
 test('DRSEC-G4b: the CLI entry exits 1 and never prints an address while another process owns the ledger', async t => {
-  const file = await ledger(t), release = await holdChild(t, file), probe = createServer();
-  await listen(probe); const port = probe.address().port; await new Promise(r => probe.close(r));
-  const result = await bounded(startEntry(t, file, port).done);
+  const file = await ledger(t), release = await holdChild(t, file);
+  const result = await bounded(startEntry(t, file));
   assert.equal(result.code, 1); assert.match(result.stderr, /konnte nicht starten: OWNERSHIP_HELD/);
   assert.doesNotMatch(result.stdout, /http:\/\//); await release();
 });
@@ -144,12 +165,14 @@ test('DRSEC-G4b: a failed bind after admission leaves no owner record', async t 
   const failed = once(server, 'error'); server.listen(port, '127.0.0.1');
   assert.equal((await failed)[0].code, 'EADDRINUSE');
   // Release uses async filesystem calls; yield until their completion, bounded by the same watchdog.
-  assert.equal(await bounded((async () => { do { await setImmediate(); } while (!await missing(`${file}.owner`)); return true; })()), true);
+  let polling = true;
+  try { assert.equal(await bounded((async () => { do { await setImmediate(); } while (polling && !await missing(`${file}.owner`)); return true; })()), true); }
+  finally { polling = false; }
 });
 
 test('DRSEC-G4b: a failed CLI bind releases ownership so a second process can write', async t => {
   const file = await ledger(t), port = (await blocker(t)).address().port;
-  const failed = await bounded(startEntry(t, file, port).done);
+  const failed = await bounded(startEntry(t, file, port));
   assert.equal(failed.code, 1); assert.match(failed.stderr, /konnte nicht starten: EADDRINUSE/);
   const script = `import { createDeskServer } from ${JSON.stringify(entry.href)};
     const s = createDeskServer({ statePath: process.argv[1] }); s.on('error', e => { throw e; });

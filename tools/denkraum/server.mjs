@@ -133,11 +133,15 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     }, delay);
     timer?.unref?.();
   };
-  server.on('listening', () => schedule(0));
+  server.on('listening', () => { if (closed) close.call(server); else schedule(0); });
   const stopTimer = () => { closed = true; if (timer) timers.clearTimeout(timer); timer = undefined; };
   server.on('close', stopTimer);
   const listen = server.listen;
   server.listen = (...args) => {
+    if (closed) {
+      process.nextTick(() => server.emit('error', Object.assign(new Error('Server is closed'), { code: 'ERR_SERVER_NOT_RUNNING' })));
+      return server;
+    }
     if (server.listening) return listen.apply(server, args);
     if (admitting) throw Object.assign(new Error('Listen already called'), { code: 'ERR_SERVER_ALREADY_LISTEN' });
     admitting = true;
