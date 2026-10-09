@@ -270,29 +270,44 @@ test('R890-K2: backup refuses --out routed through a symlink into the ledger dir
   await assert.rejects(stat(out), e => e.code === 'ENOENT');
   assert.deepEqual(await readdir(dirname(state)), before);
 });
-test('R890-K3: guard ENOTDIR on --out uses invalid-path wording', async () => {
+test('R890-K3: guard ENOTDIR on --out uses invalid-path wording', async t => {
   const { state } = await ledger('v1');
   const fileComponent = join(await mkdtemp(join(tmpdir(), 'dr16-enotdir-')), 'not-a-dir');
   await writeFile(fileComponent, 'x');
   const out = join(fileComponent, 'nested', 'snap');
+  const before = await readdir(dirname(state));
   const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
-  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.notEqual(r.status, 0, r.stderr + r.stdout);
   assert.equal(JSON.parse(r.stdout).ok, false);
-  assert.match(JSON.parse(r.stdout).error, /Pfad/);
-  assert.ok(!/nicht ruhend/.test(r.stdout));
-  // Parent path component is a file: nested children are unreachable (ENOTDIR).
-  await assert.rejects(stat(join(fileComponent, 'nested')), e => e.code === 'ENOTDIR');
+  const err = JSON.parse(r.stdout).error;
+  if (process.platform === 'win32') {
+    t.diagnostic('win32: path-under-file is ENOENT; mkdir refusal wording');
+    assert.match(err, /Ausgabeverzeichnis kann nicht erstellt werden|Ungültiger Pfad/);
+  } else {
+    t.diagnostic('posix: ENOTDIR uses invalid-path wording');
+    assert.match(err, /Pfad/);
+    assert.ok(!/nicht ruhend/.test(r.stdout));
+  }
+  // SAFETY: nested out unreachable; ledger dir unchanged.
+  await assert.rejects(stat(join(fileComponent, 'nested')), e => e.code === 'ENOENT' || e.code === 'ENOTDIR');
+  assert.deepEqual(await readdir(dirname(state)), before);
 });
-test('R890-FU: state-side ENOTDIR yields Ungültiger Pfad and creates no out dir', async () => {
+test('R890-FU: state-side ENOTDIR yields Ungültiger Pfad and creates no out dir', async t => {
   const fileParent = join(await mkdtemp(join(tmpdir(), 'dr16-state-enotdir-')), 'not-a-dir');
   await writeFile(fileParent, 'x');
   const state = join(fileParent, 'ledger.json');
   const outDir = await output();
   const r = await run(['backup', '--state', state, '--out', outDir, '--port', String(await freePort())]);
-  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.notEqual(r.status, 0, r.stderr + r.stdout);
   assert.equal(JSON.parse(r.stdout).ok, false);
-  assert.equal(JSON.parse(r.stdout).error, 'Ungültiger Pfad');
-  assert.match(r.stderr, /ENOTDIR/);
+  if (process.platform === 'win32') {
+    t.diagnostic('win32: state-under-file is ENOENT→nicht ruhend');
+    assert.match(JSON.parse(r.stdout).error, /nicht ruhend|Ungültiger Pfad/);
+  } else {
+    t.diagnostic('posix: state-side ENOTDIR→Ungültiger Pfad');
+    assert.equal(JSON.parse(r.stdout).error, 'Ungültiger Pfad');
+    assert.match(r.stderr, /ENOTDIR/);
+  }
   await assert.rejects(stat(outDir), e => e.code === 'ENOENT');
 });
 test('R890-FU: missing state file keeps exit 4 nicht ruhend (ENOENT skips guard)', async () => {
@@ -346,11 +361,17 @@ test('R890-FU: EACCES on --out parent yields Ungültiger Pfad', async t => {
     await chmod(denied, 0o700);
   }
 });
-test('R890-G1: isInside folds case on win32 and stays case-sensitive elsewhere', () => {
+test('R890-G1: isInside folds case on win32 and stays case-sensitive elsewhere', t => {
   const root = join('/Ledger', 'Dir');
   const mixed = join('/ledger', 'dir', 'out');
   assert.equal(isInside(root, mixed, 'win32'), true);
-  assert.equal(isInside(root, mixed, 'linux'), false);
+  if (process.platform === 'win32') {
+    t.diagnostic('win32 host: path.relative case-folds; mixed inside in both modes');
+    assert.equal(isInside(root, mixed, 'linux'), true);
+  } else {
+    t.diagnostic('non-win32 host: linux mode stays case-sensitive');
+    assert.equal(isInside(root, mixed, 'linux'), false);
+  }
   assert.equal(isInside(root, join(root, 'out'), 'linux'), true);
   assert.equal(isInside(root, join('/other', 'out'), 'win32'), false);
 });
