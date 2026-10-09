@@ -92,8 +92,12 @@ pub async fn enter_or_abort<'a>(
     enter: impl Future<Output = Result<(), String>>,
 ) -> Result<Install<'a>, String> {
     if let Err(error) = enter.await {
-        install.finish_unstarted()?;
-        return Err(error);
+        return match install.finish_unstarted() {
+            Ok(()) => Err(error),
+            Err(lock) => Err(format!(
+                "{error} (releasing the update slot also failed: {lock})"
+            )),
+        };
     }
     Ok(install)
 }
@@ -372,6 +376,27 @@ mod tests {
             "{message}"
         );
         assert!(state.begin().is_err());
+    }
+
+    #[tokio::test]
+    async fn poisoned_slot_keeps_maintenance_entry_error() {
+        let state = UpdateCancel::default();
+        let install = state.begin().unwrap();
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = state.0.lock().unwrap();
+            panic!("poison the update slot");
+        }));
+        assert!(state.0.is_poisoned());
+        let message = match enter_or_abort(install, ready(Err("drain failed".into()))).await {
+            Err(error) => error,
+            Ok(_) => panic!("entry failure must abort"),
+        };
+        assert!(
+            message.starts_with("drain failed")
+                && message.contains("update cancellation state unavailable")
+                && message.contains("releasing the update slot also failed"),
+            "{message}"
+        );
     }
 
     #[tokio::test]
