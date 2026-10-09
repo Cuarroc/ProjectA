@@ -45,6 +45,7 @@ function remoteSha(run, cwd, remote, branch) {
 // Not `async` on purpose: argument and precondition violations (UsageError)
 // throw synchronously, so callers and tests see them without awaiting.
 export function pushVerified({ run, cwd, remote = "origin", branch, retries = 3, delayMs = 5000, sleep = SLEEP, log = () => {} }) {
+  if (remote.startsWith("-")) throw new UsageError(`Remote unzulaessig: ${remote}`);
   const git = gitIn(run, cwd);
   const local = git.ok("rev-parse", "HEAD").trim();
   const sym = branch ? null : git("symbolic-ref", "--short", "HEAD");

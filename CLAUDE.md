@@ -29,9 +29,10 @@ der Skill `projecta-workflow` ist die Checkliste dazu). Ältere Betriebs-Gotchas
   Allow-/Deny-Regeln: [`docs/setup/permissions-proposal.md`](docs/setup/permissions-proposal.md)
   — der Nutzer entscheidet und trägt ein, kein Agent.
 - **MCP-Server und Plugins:** Der Start lädt MCP-Server, Plugins und Skills.
-  Das kostet Zeit; `ruflo` und `desktop-commander` können dabei mit
-  `CONNECT_TIMEOUT` hängen, ohne dass etwas kaputt ist (`memorix` verbindet in
-  der Regel). Das Zeitlimit setzt `MCP_TIMEOUT` in `~/.claude/settings.json`.
+  Das kostet Zeit; `desktop-commander` kann dabei mit `CONNECT_TIMEOUT`
+  hängen, ohne dass etwas kaputt ist (`memorix` verbindet in der Regel).
+  `ruflo` ist seit 25.09.2026 abgeschaltet (historisch). Das Zeitlimit setzt
+  `MCP_TIMEOUT` in `~/.claude/settings.json`.
 - **Worktrees:** Claude Code arbeitet oft in `.claude/worktrees/<name>` statt im
   Hauptcheckout. Der git-Stash-Stapel ist dabei **geteilt** — nie blankes
   `git stash` / `git stash pop` benutzen, sonst greifst du in die Arbeit einer
@@ -43,8 +44,9 @@ der Skill `projecta-workflow` ist die Checkliste dazu). Ältere Betriebs-Gotchas
   `git branch -d`. Aufräumen übernimmt der Nutzer. Ob eine Allow-Regel (etwa
   für ein Prune-Skript) den Klassifikator übersteuert, ist noch nicht belegt
   (Permission-Vorschlag, Hinweis 3).
-- **Subagenten und Berichte:** Schreibzugriffe von Subagenten auf
-  `.pa/report_*.md` können blockiert sein. Dann den Bericht als Text an den
-  Koordinator zurückgeben; der Koordinator committet ihn. Nicht umgehen.
+- **Subagenten und Berichte:** Der PR-Text ist der Bericht (AGENTS.md Regel 7).
+  Ein Subagent, der den PR nicht öffnen kann, gibt den vollständigen
+  Berichtstext an den Koordinator zurück; der Koordinator trägt ihn in den PR.
+  Schreibzugriffe auf `.pa/report_*.md` können blockiert sein — nicht umgehen.
 - **Gates laufen lokal und in Push-/PR-CI**; Installer-Builds nur auf `v*`-Tags.
   Exit-Codes ungemaskiert lesen — ein `| tail` verschluckt den Status.

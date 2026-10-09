@@ -113,6 +113,7 @@ test('a failed atomic replacement preserves committed state and can be retried',
 
 test('process termination during a partial temporary write preserves the last commit', async () => {
   const s = await fresh(); await s.putQuestion(question()); const before = await readFile(s.file, 'utf8');
+  await s.close(); // Hand off ownership before the child deliberately terminates.
   const source = `import { DeskStore } from './store.mjs'; import { writeFile } from 'node:fs/promises';
     const s = new DeskStore(process.argv[1], { writeFile: async (path, data) => {
       await writeFile(path, data.slice(0, 20)); process.exit(42);

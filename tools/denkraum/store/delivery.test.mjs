@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rename } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { setImmediate, setTimeout as delay } from 'node:timers/promises';
+import { getOwnershipContext, ownerRecordPath, OWNERSHIP_HELD, STORE_CLOSED } from './ownership.mjs';
+import { mkdtemp, readFile, rename, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -18,6 +22,7 @@ async function fresh({ v2 = true, ...config } = {}) {
   const file = join(await mkdtemp(join(tmpdir(), 'denkraum-delivery-')), 'ledger.json');
   const base = store(file); await base.change(state => { state.questions.push(question()); });
   if (v2) await base.migrate((await base.read()).revision);
+  await base.close();
   const s = store(file, config); return { s, file, a: await s.answer(input()) };
 }
 const receiptInput = a => ({ receiptId: 'rcpt-1', eventRef: answerRef(a), transportMessageId: 'mail-1', rootReplyId: 'reply-1' });
@@ -125,4 +130,93 @@ test('rootless V2 without transport refuses notification flush with 503', async 
   const { file } = await fresh(); const bytes = await readFile(file, 'utf8');
   await assert.rejects(() => new DeliveryStore(file).flushNotifications(), status(503));
   assert.equal(await readFile(file, 'utf8'), bytes);
+});
+
+// A send barrier holds A inside the transport; B's synchronous read and a core
+// queue checkpoint expose a competing selection without timing-based sleeps.
+async function competingFlush(t, loseResponse = false) {
+  const entered = Promise.withResolvers(), gate = Promise.withResolvers(), calls = [];
+  const { s: a, file, a: answer } = await fresh({ notifyEvent: async (event, id) => {
+    calls.push({ eventId: event.eventId, id }); entered.resolve(); await gate.promise;
+    if (loseResponse) throw new Error('response lost');
+  } });
+  const b = store(file, { notifyEvent: async (event, id) => calls.push({ eventId: event.eventId, id }) });
+  b.read = async () => JSON.parse(readFileSync(file, 'utf8'));
+  const first = a.flushNotifications(); await entered.promise;
+  const second = b.flushNotifications();
+  t.after(async () => { gate.resolve(); await Promise.allSettled([first, second]); await a.close(); await b.close(); });
+  await setImmediate(); await b.change(() => {});
+  return { a, b, answer, file, calls, first, second, release: gate.resolve };
+}
+
+test('DRSEC: two local stores serialize flush while a send is unresolved', async t => {
+  const f = await competingFlush(t);
+  assert.deepEqual(f.calls, [{ eventId: f.answer.id, id: f.answer.id }]);
+  f.release();
+  assert.equal((await f.first).status, 'queued'); assert.equal((await f.second).status, 'empty');
+  assert.equal(f.calls.length, 1);
+  assert.equal((await f.a.read()).answers[0].webhookDelivery.attempts, 1);
+});
+
+test('DRSEC: an ordinary receipt commits during an unresolved exclusive send', async t => {
+  const f = await competingFlush(t);
+  const receipt = await f.b.receipt(receiptInput(f.answer));
+  const before = await readFile(f.file, 'utf8');
+  assert.equal(JSON.parse(before).receipts[0].receiptId, receipt.receiptId);
+  assert.equal(f.calls.length, 1, 'B must not send before the receipt commits');
+  f.release();
+  assert.equal((await f.first).status, 'received'); assert.equal((await f.second).status, 'empty');
+  assert.equal(await readFile(f.file, 'utf8'), before);
+});
+
+test('DRSEC: serialized retry after a lost response reuses the same event ID', async t => {
+  const f = await competingFlush(t, true);
+  assert.equal(f.calls.length, 1, 'retry must wait for the unresolved first response');
+  f.release();
+  assert.equal((await f.first).status, 'pending'); assert.equal((await f.second).status, 'queued');
+  assert.deepEqual(f.calls, Array(2).fill({ eventId: f.answer.id, id: f.answer.id }));
+  assert.equal((await f.a.read()).answers[0].webhookDelivery.attempts, 2);
+});
+
+test('DRSEC: a second process cannot send while the closing owner has an unresolved send', async t => {
+  const entered = Promise.withResolvers(), gate = Promise.withResolvers();
+  const { s, file, a } = await fresh({ notifyEvent: async () => { entered.resolve(); await gate.promise; } });
+  const sending = s.flushNotifications(); await entered.promise;
+  const closing = s.close();
+  t.after(async () => { gate.resolve(); await Promise.allSettled([sending, closing]); });
+  // Drain core work already accepted by close; do not wait for the held send.
+  await getOwnershipContext(file).queue;
+  const script = `import { DeliveryStore } from ${JSON.stringify(new URL('./delivery.mjs', import.meta.url).href)};
+    let sends = 0, code = null;
+    const s = new DeliveryStore(process.argv[1], { rootAgentId: 'test-root-agent', notifyEvent: async () => { sends++; } });
+    try { await s.flushNotifications(); } catch (e) { code = e.code; }
+    await s.close(); process.stdout.write(JSON.stringify({ sends, code }));`;
+  const child = spawnSync(process.execPath, ['--input-type=module', '-e', script, file], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(child.status, 0, child.stderr);
+  assert.deepEqual(JSON.parse(child.stdout), { sends: 0, code: OWNERSHIP_HELD });
+  gate.resolve(); assert.equal((await sending).status, 'queued'); await closing;
+  const persisted = await store(file).read();
+  assert.equal(persisted.answers[0].webhookDelivery.deliveryId, a.id);
+  assert.equal(persisted.answers[0].webhookDelivery.attempts, 1);
+  await assert.rejects(s.flushNotifications(), e => e.code === STORE_CLOSED);
+});
+
+test('DRSEC: a same-file store cannot start a send once another store began closing', async t => {
+  const entered = Promise.withResolvers(), gate = Promise.withResolvers(), calls = [];
+  const { s: a, file } = await fresh({ notifyEvent: async () => { entered.resolve(); await gate.promise; } });
+  const b = store(file, { notifyEvent: async (event, id) => calls.push({ eventId: event.eventId, id }) });
+  const sending = a.flushNotifications(); await entered.promise;
+  const closing = a.close();
+  let late;
+  t.after(async () => { gate.resolve(); await Promise.allSettled([sending, closing, late]); await b.close(); });
+  // Without the guard B queues behind A's captured tail and stays pending here.
+  late = b.flushNotifications();
+  const outcome = await Promise.race([late.then(() => 'resolved', e => e.code), delay(50).then(() => 'pending')]);
+  assert.equal(outcome, STORE_CLOSED);
+  await stat(ownerRecordPath(file)); // ownership is held while A's send is unresolved
+  gate.resolve(); assert.equal((await sending).status, 'queued'); await closing;
+  assert.deepEqual(calls, [], 'B never sent');
+  await assert.rejects(stat(ownerRecordPath(file)), { code: 'ENOENT' });
+  // The closing window ends with the close: a fresh store flushes again.
+  assert.equal((await store(file, { notifyEvent: async () => {} }).flushNotifications()).status, 'empty');
 });

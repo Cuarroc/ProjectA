@@ -50,13 +50,14 @@ In `~/.claude/settings.json` (nur Namen):
   fährt `cargo check`) und vor den Gates einen Build-Slot setzen:
 
   ```sh
-  export CARGO_TARGET_DIR=%USERPROFILE%/cargo-targets/projecta-a   # oder -b, -c
+  export CARGO_TARGET_DIR=$HOME/cargo-targets/projecta-a   # oder -b, -c
   export CARGO_BUILD_JOBS=1
   bash scripts/ci/gates.sh lane prepush
   ```
 
   Höchstens 2–3 Builds gleichzeitig; vorher freien Arbeitsspeicher prüfen
-  (unter ~2,5 GB warten). `npm run dev:agent-check` sucht die Slots unter
+  (unter ~1.5 GB warten; Wert aus AGENTS.md Regel 9 / `dev:start-check`
+  `--min-free-gb` Default). `npm run dev:agent-check` sucht die Slots unter
   `~/cargo-targets/`; ein anderes Wurzelverzeichnis über
   `PROJECTA_BUILD_SLOTS_ROOT`. **Nie `CARGO_PROFILE_*` setzen** — das entwertet den
   ganzen Cache.

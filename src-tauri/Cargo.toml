@@ -81,7 +81,7 @@ tauri-plugin-single-instance = "2"
 # ProjectA needs without adding another runtime. `Win32_Security_Cryptography`
 # is the provider vault's DPAPI (`CryptProtectData`), `Win32_Storage_FileSystem`
 # its atomic replace (`MoveFileExW`).
-windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Pipes", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading"] }
+windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Pipes", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Nonblocking, no-follow opens keep repository guidance FIFOs from hanging reads.

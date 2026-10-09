@@ -34,7 +34,7 @@ test('corrupt or malformed ledgers fail reads and changes with 503 and unchanged
   }
 });
 
-// Serialization is per DeskStore instance; two instances or processes on one file are not locked (documented limit).
+// Serialization covers every joined store instance on the ledger.
 test('concurrent changes of one store are serialized, each counted once, and a failed change does not block the queue', async () => {
   const s = await fresh();
   const results = await Promise.allSettled([add(s, 'q1'), s.change(() => { throw new Error('rejected change'); }), add(s, 'q2'), add(s, 'q3')]);
@@ -69,6 +69,7 @@ test('a failed atomic replacement preserves committed state and can be retried',
 
 test('process termination during a partial temporary write preserves the last commit', async () => {
   const s = await fresh(); await add(s); const before = await readFile(s.file, 'utf8');
+  await s.close(); // Hand off ownership before the child deliberately terminates.
   const source = `import { DeskStore } from './core.mjs'; import { writeFile } from 'node:fs/promises';
     const s = new DeskStore(process.argv[1], { writeFile: async (path, data) => { await writeFile(path, data.slice(0, 20)); process.exit(42); } });
     await s.change(state => { state.questions.push({ id: 'E-2', revision: 1, options: [] }); });`;

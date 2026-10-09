@@ -104,6 +104,7 @@ mod routing;
 mod ruflo;
 mod scout;
 mod sessionpersist;
+mod settings_cmds;
 mod setupgate;
 mod skills;
 mod stats;
@@ -114,12 +115,13 @@ mod submit_guard;
 mod testgate;
 #[cfg(test)]
 mod testutil;
+mod update_cancel;
 mod web_interface;
 mod workers;
 mod worktree;
 
 use diagnosis_cmds::*;
-use std::collections::BTreeMap;
+use settings_cmds::*;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -741,61 +743,6 @@ async fn spawn_pty(
     Ok(SpawnPtyResponse { session_id })
 }
 
-/// The global environment stage for ordinary agents (`strict` without a row).
-#[tauri::command]
-async fn get_agent_env_isolation(store: State<'_, Store>) -> Result<String, String> {
-    Ok(store.agent_env_isolation().await?.as_str().to_string())
-}
-
-/// Set the global stage; it applies to the next spawn or respawn only. The
-/// window is the human; the Control API demands the verdict token instead.
-#[tauri::command]
-async fn set_agent_env_isolation(store: State<'_, Store>, stage: String) -> Result<(), String> {
-    let stage = stage
-        .parse::<profiles::EnvIsolation>()
-        .map_err(|e| e.to_string())?;
-    store.set_agent_env_isolation(stage).await
-}
-
-/// Read-only state of the continuous activation switch (locked by default).
-#[tauri::command]
-async fn get_continuous_activation(store: State<'_, Store>) -> Result<Value, String> {
-    workers::activation::Activation::status(&store, &workers::activation::NoMachineReadableEvidence)
-        .await
-}
-
-/// W4-03: turn the continuous switch on, fail-closed. Refused unless the
-/// verdict token matches, no emergency stop is active, rows 1-26 of the
-/// acceptance matrix are evidenced for `policy_revision` and it was not enabled
-/// before. The permit is only parked here: no dispatch loop is started yet.
-#[tauri::command]
-async fn enable_continuous_activation(
-    app: AppHandle,
-    store: State<'_, Store>,
-    activation: State<'_, workers::activation::Activation>,
-    held: State<'_, HeldSchedulerPermit>,
-    verdict_token: String,
-    policy_revision: u64,
-) -> Result<(), String> {
-    let expected = get_verdict_token(app)?;
-    let permit = activation
-        .enable(
-            &store,
-            &workers::activation::NoMachineReadableEvidence,
-            &expected,
-            &verdict_token,
-            policy_revision,
-        )
-        .await
-        .map_err(|refusal| format!("continuous activation refused: {refusal:?}"))?;
-    *held.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(permit);
-    Ok(())
-}
-
-/// The permit of an enabled switch; nothing else holds one.
-#[derive(Default)]
-struct HeldSchedulerPermit(std::sync::Mutex<Option<workers::scheduler::SchedulerPermit>>);
-
 #[tauri::command]
 fn write_pty(
     manager: State<'_, PtyManager>,
@@ -1259,6 +1206,7 @@ async fn leave_maintenance(
 async fn install_update_when_idle(
     webview: tauri::Webview,
     update_rid: tauri::ResourceId,
+    cancel: State<'_, update_cancel::UpdateCancel>,
 ) -> Result<(), String> {
     let update = webview
         .resources_table()
@@ -1271,35 +1219,36 @@ async fn install_update_when_idle(
         &dir.join("projecta.db"),
     )
     .map_err(|error| format!("update journal unavailable: {error}"))?;
-    enter_database_maintenance(
-        &app.state::<PtyManager>(),
-        &app.state::<Store>(),
-        MAINTENANCE_DRAIN_WAIT,
+    let install = update_cancel::enter_or_abort(
+        cancel.begin()?,
+        enter_database_maintenance(
+            &app.state::<PtyManager>(),
+            &app.state::<Store>(),
+            MAINTENANCE_DRAIN_WAIT,
+        ),
     )
     .await?;
-    let result = prepare_and_install(&app, &update, &dir, journal_store.clone()).await;
+    let result = prepare_and_install(&app, &update, &dir, journal_store.clone(), &install).await;
     // From `Installing` on, only the restart validation may thaw the app.
     // An unreadable journal counts as started: the app stays frozen.
     let installer_started = journal_store.path().exists()
         && journal_store.load().map_or(true, |journal| {
             !delivery_recovery::installer_not_started(journal.phase())
         });
-
-    if result.is_err() && !installer_started {
-        let thaw =
-            leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()).await;
-        return report_with_thaw(result, thaw);
-    }
-    result
+    update_cancel::finish_flight(
+        install,
+        result,
+        installer_started,
+        leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()),
+    )
+    .await
 }
 
-fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Result<(), String> {
-    match (result, thaw) {
-        (Err(error), Err(thaw)) => {
-            Err(format!("{error} (leaving maintenance also failed: {thaw})"))
-        }
-        (result, _) => result,
-    }
+#[tauri::command]
+async fn cancel_update_download(
+    cancel: State<'_, update_cancel::UpdateCancel>,
+) -> Result<update_cancel::CancelResult, String> {
+    cancel.cancel().await
 }
 
 /// Bound a download so a stalled network returns an error instead of keeping
@@ -1325,6 +1274,7 @@ async fn prepare_and_install(
     update: &tauri_plugin_updater::Update,
     dir: &Path,
     journal_store: delivery_recovery::JournalStore,
+    install: &update_cancel::Install<'_>,
 ) -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let database = dir.join("projecta.db");
@@ -1336,11 +1286,12 @@ async fn prepare_and_install(
         .try_install_lease()
         .map_err(|error| error.to_string())?;
     // The journal binds the bytes `install` will receive, so download first.
-    let bytes = bounded_download(
-        async { update.download(|_, _| {}, || {}).await },
-        UPDATE_DOWNLOAD_TIMEOUT,
-    )
-    .await?;
+    let bytes = install
+        .download(bounded_download(
+            async { update.download(|_, _| {}, || {}).await },
+            UPDATE_DOWNLOAD_TIMEOUT,
+        ))
+        .await?;
     let journal = delivery_recovery::produce_journal(
         &app.state::<PtyManager>(),
         &app.state::<Store>(),
@@ -1899,29 +1850,6 @@ async fn import_development_plan(
     .await
 }
 
-/// Whether the hourly digest writer runs at all. On unless switched off.
-#[tauri::command]
-async fn get_digest_enabled(store: State<'_, Store>) -> Result<bool, String> {
-    Ok(digest::enabled(&store).await)
-}
-
-#[tauri::command]
-async fn set_digest_enabled(store: State<'_, Store>, enabled: bool) -> Result<(), String> {
-    digest::set_enabled(&store, enabled).await
-}
-
-#[tauri::command]
-async fn get_routing_status(store: State<'_, Store>) -> Result<routing::RoutingStatus, String> {
-    Ok(routing::routing_status(&store).await)
-}
-
-#[tauri::command]
-async fn set_product_mode(store: State<'_, Store>, mode: String) -> Result<(), String> {
-    let parsed = routing::ProductMode::parse(&mode)
-        .ok_or_else(|| format!("unknown product mode: {mode}"))?;
-    routing::set_product_mode(&store, parsed).await
-}
-
 // -- project statistics (Phase 20) -----------------------------------------
 
 /// One project's statistics: overview, tokens, sessions, timeline, estimate.
@@ -2194,14 +2122,19 @@ async fn list_learnings(
 ///
 /// The token the four review routes of the control API ask for on top of the
 /// API token (see [`crate::api::VERDICT_TOKEN_HEADER`]). It is minted at
-/// startup and written to no file, so this command and the `--verdict-token`
-/// flag of `pa` are the only two ways to it - and this one answers the window,
-/// which is the surface that has a human in front of it.
+/// startup and written to no file, so this command, `--verdict-token` on `pa`,
+/// and [`verdict_token_from_app`] (`settings_cmds::enable_continuous_activation`)
+/// reach it - this one answers the window with a human in front of it.
 ///
 /// Without a running control API there is no token, and saying so is more
 /// useful than an empty string that would read as a valid one.
 #[tauri::command]
 fn get_verdict_token(app: AppHandle) -> Result<String, String> {
+    verdict_token_from_app(&app)
+}
+
+/// Shared read of the control-API verdict token for other command modules.
+pub(crate) fn verdict_token_from_app(app: &AppHandle) -> Result<String, String> {
     app.try_state::<ApiServer>()
         .map(|server| server.verdict_token().to_string())
         .ok_or_else(|| "the control api is not running; there is no verdict token".to_string())
@@ -2232,33 +2165,6 @@ async fn run_learning_critic(
     worker_id: String,
 ) -> Result<usize, String> {
     critic::run_critic(&app, &store, &worker_id).await
-}
-
-/// Turn learning on or off for one agent profile.
-#[tauri::command]
-async fn set_profile_enabled(
-    store: State<'_, Store>,
-    id: String,
-    enabled: bool,
-) -> Result<(), String> {
-    learnings::set_profile_enabled(&store, &id, enabled).await
-}
-
-/// Turn learning on or off for one agent category: worker, queen, orchestrator
-/// or scout.
-#[tauri::command]
-async fn set_category_learning(
-    store: State<'_, Store>,
-    category: String,
-    enabled: bool,
-) -> Result<(), String> {
-    learnings::set_learning_enabled(&store, &category, enabled).await
-}
-
-/// The per-category learning switches, one entry per known category.
-#[tauri::command]
-async fn get_learning_settings(store: State<'_, Store>) -> Result<BTreeMap<String, bool>, String> {
-    Ok(learnings::learning_settings(&store).await)
 }
 
 // -- question commands (Phase 21) ------------------------------------------
@@ -3708,6 +3614,7 @@ fn main() {
         // src/opener-config.test.ts holds crate, registration and scope together.
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(update_cancel::UpdateCancel::default())
         .manage(PtyManager::default())
         .manage(tokio::sync::Mutex::new(()))
         .manage(workers::activation::Activation::default())
@@ -3754,7 +3661,17 @@ fn main() {
             learnings::set_data_dir(&dir);
             // W3-02f: resolve an interrupted update first; a failure refuses
             // to open the database, so no write or dispatcher can start.
-            delivery_recovery::recover_at_startup(&dir)?;
+            // V16-06: every refusal surfaces German guidance, then stays closed.
+            match delivery_recovery::recover_startup(&dir) {
+                delivery_recovery::StartupRecovery::Open => {}
+                delivery_recovery::StartupRecovery::Refused { reason, guidance } => {
+                    crate::logf!("update", "update recovery refused at startup: {reason}");
+                    delivery_recovery::present_refused_guidance(&guidance);
+                    // Propagate the original recovery reason; write/open of the
+                    // ANLEITUNG must never replace it or unblock the start.
+                    return Err(format!("{}\n\n{reason}", guidance.text).into());
+                }
+            }
             let store = init_store(&handle, &dir)?;
             let stopped = tauri::async_runtime::block_on(store.emergency_stop_active())
                 .unwrap_or_else(|error| {
@@ -3987,6 +3904,7 @@ fn main() {
             list_workers,
             list_live_sessions,
             install_update_when_idle,
+            cancel_update_download,
             enter_maintenance,
             get_maintenance,
             leave_maintenance,
@@ -4131,14 +4049,6 @@ mod tests {
         assert!(installer_not_started(UpdatePhase::Maintenance));
         assert!(installer_not_started(UpdatePhase::BackupVerified));
         assert!(!installer_not_started(UpdatePhase::Installing));
-    }
-
-    #[test]
-    fn failed_thaw_does_not_hide_the_update_error() {
-        let both =
-            crate::report_with_thaw(Err("download failed".into()), Err("thaw failed".into()));
-        let message = both.unwrap_err();
-        assert!(message.starts_with("download failed") && message.contains("thaw failed"));
     }
 
     use super::{Duration, PtyManager};
@@ -4488,6 +4398,151 @@ mod tests {
             .expect_err("writes are refused during maintenance");
     }
 
+    /// Enter a single-flight install already under store/PTY maintenance.
+    async fn begin_install_under_maintenance<'a>(
+        state: &'a crate::update_cancel::UpdateCancel,
+        pty: &PtyManager,
+        store: &super::Store,
+    ) -> crate::update_cancel::Install<'a> {
+        crate::update_cancel::enter_or_abort(
+            state.begin().expect("begin install"),
+            super::enter_database_maintenance(pty, store, Duration::from_secs(1)),
+        )
+        .await
+        .expect("enter maintenance through cancel glue")
+    }
+
+    /// R821-M2: TooLate must keep the real store/PTY freeze, not only the
+    /// single-flight slot (`cancel_after_installer_started_is_too_late_and_keeps_freeze`).
+    #[tokio::test]
+    async fn too_late_after_installer_started_keeps_maintenance_freeze() {
+        use crate::update_cancel::{self, CancelResult};
+        use std::future::ready;
+
+        let (_dir, store) = seam_fixture("too-late-real-freeze").await;
+        let pty = PtyManager::default();
+        let state = update_cancel::UpdateCancel::default();
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
+        install
+            .download(ready(Ok(())))
+            .await
+            .expect("download marks Installing");
+        assert_eq!(
+            state.cancel().await.expect("cancel while Installing"),
+            CancelResult::TooLate
+        );
+        update_cancel::finish_flight(
+            install,
+            Ok(()),
+            true,
+            super::leave_database_maintenance(&pty, &store),
+        )
+        .await
+        .expect("installer-started finish keeps the freeze");
+        assert!(
+            store.is_maintenance_active(),
+            "store freeze must survive TooLate"
+        );
+        assert!(
+            pty.reserve_session().is_err(),
+            "PTY launches must stay refused after TooLate"
+        );
+        assert!(
+            pty.install_when_idle(|| Ok(())).is_err(),
+            "install_when_idle must stay refused after TooLate"
+        );
+        tokio::time::timeout(Duration::from_secs(8), store.create_project("frozen", "/f"))
+            .await
+            .expect("bounded wait")
+            .expect_err("writes must stay refused after TooLate");
+        let begin_err = state
+            .begin()
+            .map(|_| ())
+            .expect_err("single-flight slot must stay occupied after TooLate");
+        assert!(
+            begin_err.starts_with(crate::errors::ERR_REFUSED),
+            "{begin_err}"
+        );
+    }
+
+    /// Negative control for R821-M2: a body error before the installer starts
+    /// must fully thaw store/PTY maintenance and free the single-flight slot.
+    #[tokio::test]
+    async fn body_error_before_installer_started_releases_maintenance_freeze() {
+        use crate::update_cancel;
+
+        let (_dir, store) = seam_fixture("pre-installer-thaw").await;
+        let pty = PtyManager::default();
+        let state = update_cancel::UpdateCancel::default();
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
+        assert!(store.is_maintenance_active());
+        let err = update_cancel::finish_flight(
+            install,
+            Err("download failed".into()),
+            false,
+            super::leave_database_maintenance(&pty, &store),
+        )
+        .await
+        .expect_err("body error before installer must surface");
+        assert!(
+            err.contains("download failed"),
+            "surfaced error must carry the body text: {err}"
+        );
+        assert!(
+            !store.is_maintenance_active(),
+            "freeze must release when the installer never started"
+        );
+        let id = pty
+            .reserve_session()
+            .expect("PTY launches must work again after thaw");
+        pty.cancel_reservation(&id);
+        tokio::time::timeout(Duration::from_secs(8), store.create_project("after", "/a"))
+            .await
+            .expect("bounded wait")
+            .expect("writes must work again after thaw");
+        state
+            .begin()
+            .expect("single-flight slot must be free after thaw")
+            .finish_unstarted()
+            .expect("release probe install");
+    }
+
+    /// Off-diagonal: body error with installer_started=true keeps freeze and slot
+    /// (finish_flight only thaws when both body fails and installer never started).
+    #[tokio::test]
+    async fn body_error_after_installer_started_keeps_maintenance_freeze() {
+        use crate::update_cancel;
+
+        let (_dir, store) = seam_fixture("post-installer-body-err").await;
+        let pty = PtyManager::default();
+        let state = update_cancel::UpdateCancel::default();
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
+        let err = update_cancel::finish_flight(
+            install,
+            Err("download failed".into()),
+            true,
+            super::leave_database_maintenance(&pty, &store),
+        )
+        .await
+        .expect_err("body error must surface even when installer started");
+        assert!(
+            err.contains("download failed"),
+            "surfaced error must carry the body text: {err}"
+        );
+        assert!(
+            store.is_maintenance_active(),
+            "freeze must stay when installer_started is true"
+        );
+        assert!(
+            pty.reserve_session().is_err(),
+            "PTY launches must stay refused after installer-started body error"
+        );
+        assert!(
+            state.begin().is_err(),
+            "single-flight slot must stay occupied after installer-started body error"
+        );
+    }
+
     #[tokio::test]
     async fn leaving_maintenance_restores_launches_and_writes() {
         let (_dir, store) = seam_fixture("maintenance-leave").await;
@@ -4720,7 +4775,7 @@ mod tests {
         const SOURCE: &str = include_str!("main.rs");
         let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
         let at = |needle: &str| code.find(needle).expect("needle moved - fix the test");
-        let recovery = at("delivery_recovery::recover_at_startup(&dir)?");
+        let recovery = at("delivery_recovery::recover_startup(&dir)");
         assert!(recovery < at("init_store(&handle, &dir)?"));
         assert!(recovery < at("queue::start("));
     }
@@ -4895,7 +4950,30 @@ mod tests {
     /// manage call) grow together with the code.
     #[test]
     fn every_command_state_type_is_managed() {
-        const SOURCE: &str = include_str!("main.rs");
+        assert_command_state_types_are_managed(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "command state type `Foo` is not in the evidence table")]
+    fn command_state_guard_rejects_unmanaged_state_in_command_modules() {
+        let dir = crate::testutil::TempDir::new("command-state-guard");
+        std::fs::write(
+            dir.path().join("main.rs"),
+            "fn command(store: State<'_, Store>) {}\napp.manage(store);\nmod tests {}",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("future_cmds.rs"),
+            "fn moved_command(state: State<'_, Foo>) {}",
+        )
+        .unwrap();
+        assert_command_state_types_are_managed(dir.path());
+    }
+
+    fn assert_command_state_types_are_managed(source_dir: &std::path::Path) {
+        let source = std::fs::read_to_string(source_dir.join("main.rs")).expect("read main.rs");
 
         // Which manage line proves which type. Textual on purpose: the
         // variables are constructed a few lines above their manage call, and
@@ -4912,6 +4990,10 @@ mod tests {
             ),
             ("PtyManager", ".manage(PtyManager::default())"),
             (
+                "update_cancel::UpdateCancel",
+                ".manage(update_cancel::UpdateCancel::default())",
+            ),
+            (
                 "tokio::sync::Mutex<()>",
                 ".manage(tokio::sync::Mutex::new(()))",
             ),
@@ -4927,15 +5009,29 @@ mod tests {
             ),
         ];
 
-        // Scan only the code above this module, and build the marker at
-        // runtime - otherwise the scan finds the string literals of this very
-        // test and reads garbage after them.
-        let code = &SOURCE[..SOURCE.find("mod tests").expect("this module exists")];
+        // Exclude test modules so fixture strings cannot become state types.
+        // Discover command modules instead of maintaining a second file list
+        // that silently loses coverage whenever commands move out of main.rs.
+        let code = &source[..source.find("mod tests").expect("this module exists")];
+        let mut command_code = code.to_owned();
+        for entry in std::fs::read_dir(source_dir).expect("read source directory") {
+            let path = entry.expect("read source entry").path();
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with("_cmds.rs"))
+            {
+                let module = std::fs::read_to_string(&path)
+                    .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+                command_code.push('\n');
+                command_code.push_str(module.split("mod tests").next().unwrap());
+            }
+        }
         let marker: String = ["State<'", "_, "].concat();
         let marker = marker.as_str();
 
         let mut wanted = std::collections::BTreeSet::new();
-        let mut rest = code;
+        let mut rest = command_code.as_str();
         while let Some(at) = rest.find(marker) {
             rest = &rest[at + marker.len()..];
             let mut depth = 1usize;

@@ -5,7 +5,18 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listedInStand } from "./active-specs.mjs";
+import * as activeSpecs from "./active-specs.mjs";
 import { closeSpec, removeFromStand, specName, main } from "../dev/spec-close.mjs";
+
+test("SPEC-STATUS: closeSpec uses the canonical allowed statuses", () => {
+  assert.ok(activeSpecs.ERLAUBT instanceof Set);
+  const source = readFileSync(new URL("../dev/spec-close.mjs", import.meta.url), "utf8");
+  assert.match(source, /import\s*\{[^}]*\bERLAUBT\b[^}]*\}\s*from "\.\.\/lib\/active-specs\.mjs"/);
+  for (const status of activeSpecs.ERLAUBT) {
+    assert.equal(closeSpec(`Status: ${status}\n`).previous, status);
+  }
+  assert.throws(() => closeSpec("Status: unknown\n"), /unbekannt/);
+});
 
 const STAND = [
   "# Stand",
@@ -67,6 +78,33 @@ function repo(t) {
   writeFileSync(join(dir, ".pa/task_w1-22.md"), "# W1-22\n\nStatus: aktiv\n\nText\n");
   return dir;
 }
+
+test("SPEC-STATUS: unknown status refuses without write", async (t) => {
+  const dir = repo(t);
+  const specPath = join(dir, ".pa/task_w1-22.md");
+  const standPath = join(dir, "STAND.md");
+  for (const status of ["aktvi", "historic", "Aktiv", "unknown"]) {
+    for (const flags of [["--apply", "--hq"], []]) {
+      const text = `# W1-22\r\n\r\nStatus: ${status}\r\n\r\nText\r\n`;
+      writeFileSync(specPath, text);
+      const beforeSpec = readFileSync(specPath);
+      const beforeStand = readFileSync(standPath);
+      const errors = [];
+      const calls = [];
+      const run = (...args) => {
+        calls.push(args);
+        return { code: 0, stdout: "", stderr: "" };
+      };
+      const code = await main(["w1-22", "--root", dir, ...flags],
+        { out: () => {}, err: (s) => errors.push(s) }, { run });
+      assert.deepEqual(readFileSync(specPath), beforeSpec, `${status}: spec unchanged`);
+      assert.deepEqual(readFileSync(standPath), beforeStand, `${status}: STAND unchanged`);
+      assert.equal(code, 3);
+      assert.match(errors.join(""), /Status.*unbekannt/);
+      assert.deepEqual(calls, [], "refusal must not run HQ or git");
+    }
+  }
+});
 
 test("spec-close is a dry run by default and changes both files with --apply", async (t) => {
   const dir = repo(t);

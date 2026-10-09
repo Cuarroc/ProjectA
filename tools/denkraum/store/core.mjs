@@ -1,15 +1,59 @@
 // DeskStore core (DR-03): read, serialized atomic change and explicit V1->V2 migration.
 // Ledger operations (questions, answers, receipts, progress, patches, delivery) compose
 // `change` in DR-04; the root agent id is injected and never defaulted here (D2).
-import { readFile, writeFile, rename, mkdir, copyFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile, writeFile, rename, mkdir, chmod } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DeskError, ensure, ideaDefaults, migrateState, validateState } from './model.mjs';
+import { acquireOwnership, releaseOwnership, getOwnershipContext, ownerRecordPath,
+  OwnershipError, OWNERSHIP_RELEASE_MISMATCH } from './ownership.mjs';
 
 export class DeskStore {
-  #queue = Promise.resolve();
+  #context; #joined = false; #closed = false; #closing;
   constructor(file, { rootAgentId, ...io } = {}) {
-    this.file = file; this.rootAgentId = rootAgentId; this.io = { writeFile, rename, clock: Date.now, ...io };
+    this.file = resolve(file); this.#context = getOwnershipContext(this.file); this.rootAgentId = rootAgentId; this.io = { writeFile, rename, clock: Date.now, ...io };
+  }
+  #enqueue(fn) {
+    const work = this.#context.queue.then(fn);
+    this.#context.queue = work.catch(() => {}); return work;
+  }
+  async #owned(fn) {
+    const acquired = !this.#context.session;
+    if (acquired) {
+      await mkdir(dirname(this.file), { recursive: true });
+      this.#context.session = await acquireOwnership(this.file);
+    }
+    if (!this.#joined) { this.#joined = true; this.#context.users++; }
+    try { return await fn(); }
+    catch (error) {
+      if (acquired) {
+        try { await releaseOwnership(this.file, this.#context.session.nonce); }
+        catch (cause) { try { error.cause ??= cause; } catch { /* Preserve even immutable thrown values. */ } }
+        finally { this.#context.session = null; }
+      }
+      throw error;
+    }
+  }
+  async #assertOwnership() {
+    try {
+      const record = JSON.parse(await readFile(ownerRecordPath(this.file), 'utf8'));
+      if (record.nonce === this.#context.session?.nonce) return;
+    } catch { /* Missing, corrupt and unreadable ownership all fail closed. */ }
+    throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
+  }
+  // Drain accepted changes; the last joined store releases the process session.
+  // Release errors reject close, but clear the session so fresh stores attempt admission anew.
+  close() {
+    if (this.#closing) return this.#closing;
+    this.#closed = true;
+    return this.#closing = this.#enqueue(async () => {
+      if (!this.#joined) return;
+      this.#joined = false;
+      if (--this.#context.users === 0 && this.#context.session) {
+        try { await releaseOwnership(this.file, this.#context.session.nonce); }
+        finally { this.#context.session = null; }
+      }
+    });
   }
   async read(projectIdeas = true) {
     try {
@@ -24,11 +68,14 @@ export class DeskStore {
       throw e;
     }
   }
-  // Runs fn(state) after every earlier change; writes only when the state actually changed.
+  // All instances on this ledger share admission and the read-modify-write queue.
   change(fn) {
-    const work = this.#queue.then(async () => {
+    if (this.#closed) return Promise.reject(new OwnershipError(OWNERSHIP_RELEASE_MISMATCH));
+    return this.#enqueue(() => this.#owned(async () => {
+      await this.#assertOwnership();
       const state = await this.read(false); const before = JSON.stringify(state); const oldSchema = state.schemaVersion; const result = await fn(state);
       if (JSON.stringify(state) === before) return result;
+      await this.#assertOwnership();
       state.revision++;
       validateState(state);
       await mkdir(dirname(this.file), { recursive: true });
@@ -41,19 +88,24 @@ export class DeskStore {
         ensure(JSON.stringify(JSON.parse(original.toString('utf8').replace(/^﻿/, ''))) === before, 'Stand vor Migration verändert.', 409);
         const backup = `${this.file}.v1-backup`;
         try { await this.io.writeFile(backup, original, { flag: 'wx', mode: 0o600, flush: true }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+        // Secure existing backups before the equality reject path; Windows ACLs are not handled here.
+        if (process.platform !== 'win32') {
+          try { await chmod(backup, 0o600); }
+          catch { throw new DeskError('Migrationsbackup konnte nicht abgesichert werden.', 503); }
+        }
         ensure((await readFile(backup)).equals(original), 'Migrationsbackup stimmt nicht mit dem Altstand überein.', 503);
       }
       const temp = `${this.file}.${randomUUID()}.tmp`;
       await this.io.writeFile(temp, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600, flush: true });
       const backupTemp = `${temp}.previous`;
       try {
-        await copyFile(this.file, backupTemp);
+        // copyFile inherits legacy permissions; create the copy privately instead.
+        await writeFile(backupTemp, await readFile(this.file), { flag: 'wx', mode: 0o600, flush: true });
         await this.io.rename(backupTemp, `${this.file}.previous`);
       } catch (e) { if (e.code !== 'ENOENT') throw e; }
       await this.io.rename(temp, this.file);
       return result;
-    });
-    this.#queue = work.catch(() => {}); return work;
+    }));
   }
   migrate(expectedRevision) {
     ensure(Number.isSafeInteger(expectedRevision) && expectedRevision >= 0, 'Ungültige expectedRevision.');

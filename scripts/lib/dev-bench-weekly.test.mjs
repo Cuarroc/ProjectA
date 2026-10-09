@@ -11,9 +11,31 @@ const rows = () => Object.fromEntries(measure(fixture, { from: "2026-10-02", to:
 test("packageId reads the package from provider branches only", () => {
   assert.equal(packageId("claude/w3-02d-installer-adapter"), "w3-02");
   assert.equal(packageId("codex/ki-30-flake"), "ki-30");
-  assert.equal(packageId("claude/ci-03-queue"), "ci-03");
+  assert.equal(packageId("claude/ci-03-queue"), null);
   assert.equal(packageId("hotfix/ci-red"), null);
   assert.equal(packageId("mergify/merge-queue/abc"), null);
+});
+
+test("weekly package counts follow current Mergify prefixes and preserve package IDs", () => {
+  const packages = [["w3-02d-x", "w3-02"], ["df12-x", "df12"], ["ki-30-x", "ki-30"], ["hq2-03-x", "hq2-03"], ["dr-14-sort", "dr-14"], ["z2-status-ci", "z2-"]];
+  const branches = [];
+  for (const provider of ["claude", "codex", "kimi", "opencode", "glm", "cursor"]) {
+    for (const [pkg, id] of packages) {
+      const branch = `${provider}/${pkg}`;
+      assert.equal(packageId(branch), id, branch);
+      assert.equal(packageId(branch.toUpperCase()), id, branch);
+      branches.push(branch);
+    }
+  }
+  for (const branch of ["claude/plan-01-x", "codex/ci-03-x", "mergify/merge-queue/abc", "dependabot/dr-14-x", "unknown/z2-x", "cursor/z-status", "codex/z2x-status", "codex/w3x-status"]) {
+    assert.equal(packageId(branch), null, branch);
+    branches.push(branch);
+  }
+  const prs = branches.map((headRefName) => ({ headRefName, mergedAt: "2026-10-03T10:00:00Z" }));
+  const result = Object.fromEntries(measure({ prs, runs: [] }, { from: "2026-10-02", to: "2026-10-05" }).rows.map((r) => [r.id, r]));
+  assert.equal(result.thr_pkgs.num, 6);
+  assert.equal(result.rework_fix.den, 36);
+  assert.equal(result.m_rp.den, 36);
 });
 
 test("throughput counts merged PRs and code lines and packages per active day", () => {

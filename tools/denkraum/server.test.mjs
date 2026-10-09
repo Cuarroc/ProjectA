@@ -21,11 +21,11 @@ test('CLI received and applied commands require proof and persist their states',
   const run = (...args) => runCli(args, { ...process.env, DECISION_DESK_URL: base });
   assert.equal((await run('pending')).length, 1);
   await writeFile(file, JSON.stringify({ answerId: a.id, actor: 'Test', note: 'Bestätigt' }));
-  await assert.rejects(run('received', file), /Weitergabebeleg/);
+  await assert.rejects(run('received', file), /HTTP request failed \(400\)/);
   await writeFile(file, JSON.stringify({ answerId: a.id, actor: 'Test', note: 'Bestätigt', deliveryReceipt: 'msg-123 bestätigt' }));
   assert.equal((await run('received', file)).ack.status, 'received');
   assert.equal((await run('pending')).length, 0);
-  await assert.rejects(run('applied', file), /Umsetzungsbeleg/);
+  await assert.rejects(run('applied', file), /HTTP request failed \(400\)/);
   await writeFile(file, JSON.stringify({ answerId: a.id, actor: 'Test', note: 'Bestätigt', evidence: 'commit abc getestet' }));
   assert.equal((await run('applied', file)).ack.status, 'applied');
 });

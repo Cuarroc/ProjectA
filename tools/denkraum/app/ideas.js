@@ -3,7 +3,8 @@ try { $('idea').value = localStorage.getItem(ideaKey) || ''; } catch { $('idea-s
 $('idea').addEventListener('input', () => { try { localStorage.setItem(ideaKey, $('idea').value); $('idea-status').textContent = 'Entwurf geändert · noch nicht gespeichert.'; } catch { $('idea-status').textContent = 'Nur in dieser geöffneten Seite · bitte den Entwurf vor dem Schließen kopieren.'; } });
 window.addEventListener('storage', event => { if (event.key === storageKey && view) showChanged('Ein anderes Fenster hat lokale Entwürfe geändert. Deine Eingaben bleiben in diesem Fenster erhalten. Prüfe vor dem Senden den aktuellen Stand.'); });
 // DD3a target binding; absence of a route is not successful storage or delivery.
-const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content || null, ideaOperationKey = 'decision-desk.idea-operation.v1';
+// rootReceiver comes from questions.js (loaded first).
+const ideaOperationKey = 'decision-desk.idea-operation.v1';
 let ideaOperation = { id: null, expectedRevision: null, pending: null }, recoveryConfirmed = false, ideaRecovery = false;
 function ideaIdValid(value) { return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value); }
 function validIdeaPayload(payload) { return record(payload) && ideaIdValid(payload.requestId)
@@ -82,16 +83,48 @@ function eventSummary(ref, action) {
     return `${prefix} · Umgesetzt · ${implementation.artifactRef} · ${implementation.check} · ${implementation.observedResult} · ${implementation.actor} · ${date(implementation.observedAt)}`;
   return `${prefix} · Weitere Bearbeitung noch nicht belegt`;
 }
-function ideaMetadata(event) {
+function ideaCategory(event) {
+  const r = event.revision;
+  return !Object.hasOwn(r, 'category') ? '' : typeof r.category === 'string' && r.category.trim().length <= 80 ? r.category.trim() : null;
+}
+let ideaCategoryDescriptors = '';
+function updateIdeaCategories(events) {
+  const select = $('idea-category'), selected = select.value;
+  const categories = [...new Set(events.map(event => JSON.stringify(ideaCategory(event))))];
+  const label = value => value === 'null' ? 'Nicht lesbar' : JSON.parse(value) || 'Keine Kategorie';
+  const descriptors = [['*', 'Alle Kategorien'], ...categories.map(value => [value, label(value)])];
+  if (selected !== '*' && selected !== '' && !categories.includes(selected)) descriptors.push([selected, label(selected) + ' · derzeit nicht im Datenstand']);
+  const encoded = JSON.stringify(descriptors);
+  if (encoded === ideaCategoryDescriptors) return;
+  ideaCategoryDescriptors = encoded;
+  select.replaceChildren();
+  for (const [value, text] of descriptors) {
+    const option = node('option', text); option.value = value; select.append(option);
+  }
+  select.value = selected;
+}
+function ideaFields(event) {
   const r = event.revision, priorities = ['urgent', 'high', 'normal', 'later'];
-  const names = { urgent: 'Dringend', high: 'Hoch', normal: 'Normal', later: 'Später' };
-  const category = !Object.hasOwn(r, 'category') ? '' : typeof r.category === 'string' && r.category.trim().length <= 80 ? r.category.trim() : null;
   const priority = !Object.hasOwn(r, 'userPriority') ? 'normal' : priorities.includes(r.userPriority) ? r.userPriority : null;
-  const source = r.source == null ? 'Nicht hinterlegt' : typeof r.source === 'string' && r.source.trim() && r.source.length <= 2000 ? r.source : 'Nicht lesbar';
   const progress = state.progress.find(p => p.eventId === event.ref.eventId);
-  const station = !progress || progress.currentStatus === 'incoming' ? 'Eingang · Aktuelle Fassung gespeichert' : 'Noch nicht zugeordnet';
+  return { category: ideaCategory(event), priority, station: !progress || progress.currentStatus === 'incoming' ? 'incoming' : 'unmapped' };
+}
+function compareIdeaEvents(a, b, mode) {
+  const rank = event => ({ urgent: 0, high: 1, normal: 2, later: 3 })[ideaFields(event).priority] ?? 4;
+  if (mode === 'priority' && rank(a) !== rank(b)) return rank(a) - rank(b);
+  if (mode !== 'title') {
+    const x = Date.parse(a.revision.createdAt), y = Date.parse(b.revision.createdAt);
+    if (Number.isFinite(x) !== Number.isFinite(y)) return Number.isFinite(x) ? -1 : 1;
+    if (Number.isFinite(x) && x !== y) return mode === 'oldest' ? x - y : y - x;
+  }
+  return a.title.localeCompare(b.title, 'de') || (a.idea.id < b.idea.id ? -1 : a.idea.id > b.idea.id ? 1 : 0);
+}
+function ideaMetadata(event) {
+  const r = event.revision, { category, priority, station } = ideaFields(event);
+  const names = { urgent: 'Dringend', high: 'Hoch', normal: 'Normal', later: 'Später' };
+  const source = r.source == null ? 'Nicht hinterlegt' : typeof r.source === 'string' && r.source.trim() && r.source.length <= 2000 ? r.source : 'Nicht lesbar';
   return facts([['Kategorie · Nutzerangabe (ungeprüft)', category === null ? 'Nicht lesbar' : category || 'Keine Kategorie'],
-    ['Nutzerpriorität', priority === null ? 'Nicht lesbar' : names[priority]], ['Herkunft · Revisionsangabe (ungeprüft)', source], ['Station', station]]);
+    ['Nutzerpriorität', priority === null ? 'Nicht lesbar' : names[priority]], ['Herkunft · Revisionsangabe (ungeprüft)', source], ['Station', station === 'incoming' ? 'Eingang · Aktuelle Fassung gespeichert' : 'Noch nicht zugeordnet']]);
 }
 function ideaStations() {
   const band = node('ol'); band.id = 'idea-stations'; band.setAttribute('aria-label', 'Ideenstationen');
@@ -102,18 +135,49 @@ function ideaStations() {
 }
 function renderIdeaState() {
   const events = activeEvents(), all = events.filter(event => event.idea);
-  if (!$('idea-search')) {
+  if (document.getElementById('idea-search')?.id !== 'idea-search') {
     const label = node('label', 'Titel oder Originaltext durchsuchen'); label.htmlFor = 'idea-search';
     const search = node('input'); search.id = 'idea-search'; search.type = 'search';
     search.addEventListener('input', renderIdeaState);
+    const categoryLabel = node('label', 'Kategorie · Nutzerangabe (ungeprüft)'); categoryLabel.htmlFor = 'idea-category';
+    const category = node('select'); category.id = 'idea-category';
+    const every = node('option', 'Alle Kategorien'); every.value = '*'; category.append(every); category.value = '*';
+    category.addEventListener('change', renderIdeaState);
     const count = node('p', '', 'muted'); count.id = 'idea-count'; count.setAttribute('role', 'status');
     const cards = node('div'); cards.id = 'idea-cards';
-    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), label, search, count, cards);
+    const sortLabel = node('label', 'Reihenfolge'); sortLabel.htmlFor = 'idea-sort';
+    const sort = node('select'); sort.id = 'idea-sort';
+    for (const [value, title] of [['stored', 'Gespeicherte Reihenfolge'], ['priority', 'Nutzerpriorität, dann neueste Fassung'],
+      ['newest', 'Neueste Fassung zuerst'], ['oldest', 'Älteste Fassung zuerst'], ['title', 'Titel, dann Ideen-ID']]) {
+      const option = node('option', title); option.value = value; sort.append(option);
+    }
+    sort.value = 'stored'; sort.addEventListener('change', renderIdeaState);
+    ideaEvents.append(node('h3', 'Deine gespeicherten Ideen'), ideaStations(), sortLabel, sort, label, search, categoryLabel, category);
+    for (const [id, text, options] of [
+      ['idea-priority', 'Nutzerpriorität', [['*', 'Alle Prioritäten'], ['urgent', 'Dringend'], ['high', 'Hoch'], ['normal', 'Normal'], ['later', 'Später'], ['unreadable', 'Nicht lesbar']]],
+      ['idea-station', 'Belegte Zuordnung', [['*', 'Alle Zuordnungen'], ['incoming', 'Eingang · Aktuelle Fassung gespeichert'], ['unmapped', 'Noch nicht zugeordnet']]],
+    ]) {
+      const filterLabel = node('label', text); filterLabel.htmlFor = id;
+      const select = node('select'); select.id = id;
+      for (const [value, title] of options) { const option = node('option', title); option.value = value; select.append(option); }
+      select.value = '*'; select.addEventListener('change', renderIdeaState); ideaEvents.append(filterLabel, select);
+    }
+    const help = node('p', 'Weitere Stationen werden ergänzt; ein Rootempfang ordnet keine Station zu.', 'muted'); help.id = 'idea-station-help';
+    $('idea-station').setAttribute('aria-describedby', help.id); ideaEvents.append(help, count, cards);
   }
   const term = $('idea-search').value.toLocaleLowerCase('de');
-  const ideas = all.filter(event => [event.title, event.revision.text].join(' ').toLocaleLowerCase('de').includes(term));
+  updateIdeaCategories(all); const selectedCategory = $('idea-category').value || '*';
+  const priority = $('idea-priority').value, station = $('idea-station').value;
+  const ideas = all.filter(event => {
+    const fields = ideaFields(event);
+    return [event.title, event.revision.text].join(' ').toLocaleLowerCase('de').includes(term)
+      && (selectedCategory === '*' || JSON.stringify(fields.category) === selectedCategory)
+      && (priority === '*' || (fields.priority ?? 'unreadable') === priority) && (station === '*' || fields.station === station);
+  });
+  const mode = $('idea-sort').value;
+  const orderedIdeas = mode === 'stored' ? ideas : [...ideas].sort((a, b) => compareIdeaEvents(a, b, mode));
   const cards = $('idea-cards'); cards.replaceChildren(); $('idea-count').textContent = `${ideas.length} von ${all.length} gespeicherten Ideen`;
-  for (const event of ideas) {
+  for (const event of orderedIdeas) {
     const item = node('article', undefined, 'idea-card');
     item.dataset.ideaId = event.idea.id; item.append(node('h3', event.title), ideaMetadata(event));
     item.append(node('p', 'Eigene Einordnung fehlt · Nutzerangaben sind keine Belege für Rootempfang, Prüfung oder Freigabe.', 'muted'));
@@ -141,7 +205,7 @@ function renderIdeaState() {
     }
     cards.append(item);
   }
-  if (!ideas.length) cards.append(node('p', all.length ? 'Keine Ideen für diese Suche.' : 'Hier erscheinen deine gespeicherten Ideen. Beginne mit einem freien Gedanken.', 'muted'));
+  if (!ideas.length) cards.append(node('p', all.length ? 'Keine Ideen für diese Auswahl.' : 'Hier erscheinen deine gespeicherten Ideen. Beginne mit einem freien Gedanken.', 'muted'));
   ideaEvents.querySelector('.idea-answer-archive')?.remove();
   const answers = events.filter(event => !event.idea);
   if (answers.length) { const archive = node('details', undefined, 'idea-answer-archive'); archive.append(node('summary', `Gespeicherte Antworten (${answers.length})`)); for (const event of answers) archive.append(node('h3', event.title), node('p', eventSummary(event.ref, event.action))); ideaEvents.append(archive); }
@@ -155,6 +219,7 @@ async function loadInbox() {
 }
 async function saveIdea() {
   if (ideaPosting || posting || loading) return;
+  if (!rootReceiver) { $('idea-status').textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
   if (dataInvalid || state?.schemaVersion !== 2) { $('idea-status').textContent = 'Kein geprüfter V2-Datenstand. Aktualisieren und danach erneut prüfen; dein Entwurf bleibt erhalten.'; return; }
   if (ideaRecovery) { updateIdeaControls(); return; }
   const text = $('idea').value.trim();
@@ -247,6 +312,7 @@ function appendWorkbench(item, idea) {
 }
 async function saveWorkbench() {
   const d = wbDrafts[wbActive]; if (!d || wbBusy || loading || posting || ideaPosting || dataInvalid || wbCorrupt || state?.schemaVersion !== 2) return;
+  if (!rootReceiver) { wbStatus.textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
   const value = wbValue({ ideaRef: d.ideaRef, actor: 'Browserentwurf', source: null, variants: d.variants.filter(v => v.title.trim() || v.description.trim()), openPoints: d.openPoints, nextSteps: d.nextSteps });
   if (!d.pending && (!value || !crypto.randomUUID || !wbRevisionValid(d.expectedRevision))) { wbStatus.textContent = 'Bitte mindestens einen vollständigen Inhalt eingeben: bis zu 16 Varianten (Titel 200, Beschreibung 2000 Zeichen), je 32 Punkte/Schritte, insgesamt höchstens 20000 Zeichen.'; return; }
   const payload = d.pending || { requestId: crypto.randomUUID(), expectedRevision: d.expectedRevision, ...value }; d.pending = payload; if (!persistWB()) { updateWB(); return; }

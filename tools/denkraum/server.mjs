@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { writeSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, extname, relative, isAbsolute, sep } from 'node:path';
@@ -11,7 +12,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 // R676-O1: every route that reads or writes Root receipts needs a valid root id before the store is called.
 const rootBound = ['/api/pending', '/api/inbox', '/api/notifications/retry', '/api/progress', '/api/patches', '/api/receipts', '/api/ack'];
 const attribute = v => v.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-export function createWebhookNotifier({ url, secret, request = fetch, clock = Date.now } = {}) {
+export function createWebhookNotifier({ url, secret, request = fetch, clock = Date.now, timeoutMs = 3000 } = {}) {
   if (!url || !secret) return undefined;
   let endpoint;
   try { endpoint = new URL(url); } catch { throw new DeskError('Webhook-Konfiguration ungültig.', 503); }
@@ -25,8 +26,11 @@ export function createWebhookNotifier({ url, secret, request = fetch, clock = Da
     const body = JSON.stringify({ type: event.type, eventId: event.eventId, contentRevision: event.contentRevision });
     const timestamp = String(Math.floor(clock() / 1000));
     const signature = createHmac('sha256', secret).update(`v1:${timestamp}:${deliveryId}:${body}`).digest('hex');
-    const response = await request(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(3000), body,
-      headers: { 'Content-Type': 'application/json', 'X-AgentsRoom-Timestamp': timestamp, 'X-AgentsRoom-Delivery': deliveryId, 'X-AgentsRoom-Signature': `v1=${signature}` } });
+    let response;
+    try {
+      response = await request(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs), body,
+        headers: { 'Content-Type': 'application/json', 'X-AgentsRoom-Timestamp': timestamp, 'X-AgentsRoom-Delivery': deliveryId, 'X-AgentsRoom-Signature': `v1=${signature}` } });
+    } catch { throw new DeskError('Webhook-Übertragung fehlgeschlagen.', 503); }
     try { await response.body?.cancel(); } catch { /* Releasing the body cannot change delivery acceptance. */ }
     if (!response.ok) throw new DeskError('Webhook-Übertragung fehlgeschlagen.', 503);
   };
@@ -125,22 +129,46 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
   };
   server.on('listening', () => schedule(0));
   server.on('close', () => { closed = true; if (timer) timers.clearTimeout(timer); timer = undefined; });
+  const close = server.close;
+  // A failed release goes to the callback, else to one stderr line; never to 'error' (no listener, no crash).
+  server.close = callback => close.call(server, error => {
+    store.close().then(() => callback?.(error), failure => {
+      if (error) { try { failure.cause ??= error; } catch { /* Preserve even immutable thrown values. */ } }
+      if (callback) callback(failure); else console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${failure?.code ?? 'Fehler'}`);
+    });
+  });
   return server;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // DR-06 start gate: STATE via the DR-15a rule (absolute, outside the repository) plus a valid root agent id.
-  // Token and webhook stay optional as in P1 until DR-15b switches to the full loadStartConfig result.
   const flag = process.argv.indexOf('--root-agent-id');
-  const rootAgentId = flag > 1 ? process.argv[flag + 1] : process.env.DECISION_DESK_ROOT_AGENT_ID;
-  const errors = loadStartConfig(process.env, { repoRoot: join(root, '..', '..') }).errors.filter(e => e.name === 'DECISION_DESK_STATE');
-  if (!validId(rootAgentId)) errors.push({ name: 'DECISION_DESK_ROOT_AGENT_ID', reason: 'required; set it or pass --root-agent-id' });
+  const env = flag > 1 ? { ...process.env, DECISION_DESK_ROOT_AGENT_ID: process.argv[flag + 1] } : process.env;
+  const { config, errors } = loadStartConfig(env, { repoRoot: join(root, '..', '..') });
   for (const { name, reason } of errors) console.error(`${name}: ${reason}`);
   if (errors.length) process.exitCode = 1;
   else {
-    const port = Number(process.env.DECISION_DESK_PORT ?? 4791);
-    const server = createDeskServer({ statePath: process.env.DECISION_DESK_STATE, rootAgentId, notifyEvent: createWebhookNotifier({
-      url: process.env.DECISION_DESK_WEBHOOK_URL, secret: process.env.DECISION_DESK_WEBHOOK_SECRET }) });
+    const { port, statePath, rootAgentId, rootReceiptToken, webhookSecret, webhookUrl } = config;
+    const server = createDeskServer({ statePath, rootAgentId, rootReceiptToken, notifyEvent: createWebhookNotifier({
+      url: webhookUrl, secret: webhookSecret }) });
     server.on('error', e => { console.error(`Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}`); process.exitCode = 1; });
-    server.listen(port, '127.0.0.1', () => console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`));
+    let listening = false;
+    server.listen(port, '127.0.0.1', () => { listening = true; console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`); });
+    // Stop by signal releases the ledger ownership before exit; a second signal while closing exits at once.
+    let stopping = false;
+    const stop = () => {
+      if (stopping) process.exit(1);
+      stopping = true;
+      server.close(failure => {
+        // R872-K4: only a server that was listening may report a clean stop. R872-K3: the line is written
+        // synchronously so a pipe cannot lose it to the immediate exit.
+        if (failure || !listening) {
+          try { writeSync(2, `Entscheidungsseite: Beenden fehlgeschlagen: ${failure?.code ?? 'nicht gestartet'}\n`); } catch { /* stderr gone; the exit code still reports it */ }
+          process.exit(1);
+        }
+        process.exit(0);
+      });
+    };
+    process.on('SIGINT', stop); process.on('SIGTERM', stop);
+    // R872-K1: a closed terminal or ssh session sends SIGHUP; Windows cannot deliver it.
+    if (process.platform !== 'win32') process.on('SIGHUP', stop);
   }
 }
