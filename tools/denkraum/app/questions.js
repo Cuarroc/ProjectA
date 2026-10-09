@@ -6,7 +6,7 @@ let state = null, activeId = null, view = null, loading = false, posting = false
 let area = 'now', dataInvalid = false, ideaPosting = false;
 const transportError = error => error instanceof TypeError || ['TimeoutError', 'AbortError'].includes(error.name) ? 'Die Verbindung ist gerade nicht erreichbar.' : error.message;
 const storageKey = 'decision-desk.drafts.v1';
-const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content || null;
+const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content?.trim() || null;
 let drafts = {}, storageAvailable = true;
 try { drafts = JSON.parse(localStorage.getItem(storageKey) || '{}'); if (!drafts || typeof drafts !== 'object' || Array.isArray(drafts)) drafts = {}; } catch { storageAvailable = false; }
 let persistedDrafts = JSON.stringify(drafts);
