@@ -36,6 +36,7 @@ test("loads valid config with default and explicit ports", () => {
   assert.deepEqual(result.config, {
     rootReceiptToken: env[name("ROOT_RECEIPT_TOKEN")],
     webhookSecret: env[name("WEBHOOK_SECRET")],
+    webhookUrl: undefined,
     rootAgentId: env[name("ROOT_AGENT_ID")],
     statePath: env[name("STATE")], port: 4791,
     notifications: { enabled: false, reason: "DECISION_DESK_WEBHOOK_URL not set" },
@@ -217,11 +218,16 @@ test("checks config through a real CLI directory alias without running on import
   }
 });
 
-test("physical STATE checks resolve repository aliases and fail closed on broken links", () => {
+test("physical STATE checks resolve repository aliases and fail closed on broken links", (t) => {
   const alias = join(fixtureRoot, "repo-alias");
   const broken = join(fixtureRoot, "broken");
-  symlinkSync(repoRoot, alias, process.platform === "win32" ? "junction" : "dir");
-  symlinkSync(join(fixtureRoot, "missing"), broken, process.platform === "win32" ? "junction" : "dir");
+  try {
+    symlinkSync(repoRoot, alias, process.platform === "win32" ? "junction" : "dir");
+    symlinkSync(join(fixtureRoot, "missing"), broken, process.platform === "win32" ? "junction" : "dir");
+  } catch (error) {
+    if (error.code === "EPERM") return t.skip("symlinks need extra rights on this machine");
+    throw error;
+  }
   for (const state of [join(alias, "state.json"), join(broken, "state.json")]) {
     refuses("STATE", [state]);
   }
@@ -257,4 +263,59 @@ test("check reports notifications disabled without a webhook URL", () => {
   assert.equal(child.status, 0);
   assert.doesNotMatch(child.stdout, /notifications enabled/);
   assert.match(child.stdout, /notifications disabled: DECISION_DESK_WEBHOOK_URL not set/);
+});
+
+test("returns the validated webhook URL in start config", () => {
+  for (const url of [undefined, "", "https://agentsroom.dev/api/triggers/t_abcdef"]) {
+    const result = load({ ...validEnv(), [name("WEBHOOK_URL")]: url });
+    assert.equal(result.ok, true);
+    assert.equal(result.config.webhookUrl, url);
+  }
+});
+
+test("server startup uses the validated webhook URL without rereading the environment", () => {
+  const script = fileURLToPath(new URL("server.mjs", import.meta.url));
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import assert from 'node:assert/strict';
+    import http from 'node:http';
+    import { syncBuiltinESMExports } from 'node:module';
+    import { pathToFileURL } from 'node:url';
+    let reads = 0; let scheduled = 0; const listeners = new Map();
+    const env = ${JSON.stringify(validEnv())};
+    Object.defineProperty(env, 'DECISION_DESK_WEBHOOK_URL', { get() {
+      return ++reads === 1 ? 'https://agentsroom.dev/api/triggers/t_abcdef' : 'invalid-after-validation';
+    } });
+    process.env = env;
+    // Exercise the real CLI wiring without opening a listener or sending a webhook.
+    http.createServer = () => ({
+      on(event, callback) { listeners.set(event, callback); return this; },
+      listen() { listeners.get('listening')(); },
+    });
+    globalThis.setTimeout = () => { scheduled++; return { unref() {} }; };
+    syncBuiltinESMExports();
+    process.argv[1] = ${JSON.stringify(script)};
+    await import(pathToFileURL(process.argv[1]).href);
+    assert.equal(scheduled, 1, 'validated webhook must enable notification scheduling');
+    assert.equal(reads, 1, 'startup must consume the validated URL snapshot');
+  `], { encoding: "utf8", timeout: 10000 });
+  assert.equal(child.error, undefined);
+  assert.equal(child.status, 0, child.stderr);
+});
+
+test("physical STATE fixture skips when symlink creation is denied", () => {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const preload = `
+    import fs from 'node:fs';
+    import { syncBuiltinESMExports } from 'node:module';
+    fs.symlinkSync = () => { throw Object.assign(new Error('synthetic denial'), { code: 'EPERM' }); };
+    syncBuiltinESMExports();
+  `;
+  const child = spawnSync(process.execPath, ["--import", `data:text/javascript,${encodeURIComponent(preload)}`,
+    "--test", "--test-reporter=tap",
+    "--test-name-pattern=^physical STATE checks resolve repository aliases and fail closed on broken links$",
+    fileURLToPath(import.meta.url)], { env, encoding: "utf8", timeout: 10000 });
+  assert.equal(child.error, undefined);
+  assert.equal(child.status, 0, child.stdout + child.stderr);
+  assert.match(child.stdout, /# SKIP symlinks need extra rights on this machine/);
 });
