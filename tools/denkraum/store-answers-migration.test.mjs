@@ -18,6 +18,11 @@ const question = (id = 'E-test') => ({ id, title: 'Welche Grenze gilt?', categor
   { id: 'b', label: 'Weiter', rationale: 'Mehr Umfang.', impact: 'Mehr Testarbeit.',
     tradeoff: 'Mehr Aufwand.', effort: 'Hoch', reversible: 'Ja' }] });
 async function fresh() { const dir = await mkdtemp(join(tmpdir(), 'decision-desk-test-')); return new DeskStore(join(dir, 'state.json'), { rootAgentId: ROOT }); }
+async function legacyStore() {
+  const s = await fresh();
+  await writeFile(s.file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
+  return s;
+}
 const answer = (extra = {}) => ({ questionId: 'E-test', questionRevision: 1, expectedAnswerId: null,
   requestId: 'request-1', action: 'answer', selected: ['a'], note: '', ...extra });
 
@@ -59,7 +64,7 @@ test('multi choice permits a set but not an exclusive alternative combined with 
   await s.answer(answer({ selected: ['a', 'b'] }));
 });
 test('only the current answer is pending; acknowledgements are not execution', async () => {
-  const s = await fresh(); await s.putQuestion(question()); const a = await s.answer(answer());
+  const s = await legacyStore(); await s.putQuestion(question()); const a = await s.answer(answer());
   await s.ack({ answerId: a.id, status: 'received', actor: 'Interviewer', note: 'Weitergegeben.', deliveryReceipt: 'Orchestrator bestätigt msg-1' });
   assert.equal((await s.pending()).length, 0);
   assert.equal((await s.read()).answers[0].ack.status, 'received');
@@ -67,7 +72,7 @@ test('only the current answer is pending; acknowledgements are not execution', a
   await assert.rejects(s.ack({ answerId: a.id, status: 'applied', actor: 'Orchestrator', note: 'Umgesetzt.' }), /aktuell/);
 });
 test('defer and clarification are never approvals; malformed state is not overwritten', async () => {
-  const s = await fresh(); await s.putQuestion(question());
+  const s = await legacyStore(); await s.putQuestion(question());
   const a = await s.answer(answer({ action: 'defer', selected: [] }));
   await assert.rejects(s.ack({ answerId: a.id, status: 'applied', actor: 'Orchestrator', note: 'Nein' }), /Zustimmung/);
   await writeFile(s.file, '{broken'); await assert.rejects(s.putQuestion(question('second')));
@@ -87,7 +92,7 @@ test('duplicate answers do not write or increment the state revision', async () 
 });
 
 test('receipts require confirmed delivery and application requires evidence', async () => {
-  const s = await fresh(); await s.putQuestion(question()); const a = await s.answer(answer());
+  const s = await legacyStore(); await s.putQuestion(question()); const a = await s.answer(answer());
   const receipt = { answerId: a.id, status: 'received', actor: 'Orchestrator', note: 'Weitergegeben' };
   await assert.rejects(s.ack(receipt), /Weitergabebeleg/);
   await assert.rejects(s.ack({ ...receipt, status: 'applied', evidence: 'commit abc' }), /Empfang/);
@@ -125,7 +130,7 @@ test('process termination during a partial temporary write preserves the last co
 
 test('clarification and defer remain revision-bound and cannot be applied', async () => {
   for (const action of ['clarify', 'defer']) {
-    const s = await fresh(); await s.putQuestion(question());
+    const s = await legacyStore(); await s.putQuestion(question());
     const a = await s.answer(answer({ action, selected: [], note: 'Warum?' }));
     await assert.rejects(s.ack({ answerId: a.id, status: 'applied', actor: 'Test', note: 'Test', evidence: 'Test' }), e => e.status === 400);
     await assert.rejects(s.putQuestion({ ...question(), expectedRevision: 0 }), e => e.status === 409);
@@ -142,7 +147,7 @@ test('an update cannot silently create a question missing from restored state', 
 });
 
 test('V2 migration preserves legacy values and reading never migrates the file', async () => {
-  const s = await fresh(); await s.putQuestion(question()); const a = await s.answer(answer());
+  const s = await legacyStore(); await s.putQuestion(question()); const a = await s.answer(answer());
   await s.ack({ answerId: a.id, status: 'received', actor: 'Test', note: 'Legacy', deliveryReceipt: 'legacy text' });
   const legacy = await s.read(); legacy.extra = { untouched: true };
   const bytes = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n';
@@ -182,7 +187,7 @@ test('V2 reader rejects unknown versions and malformed additive arrays without w
 });
 
 test('migration backup or replacement failure retains the committed V1 bytes', async () => {
-  const s = await fresh(); await s.putQuestion(question());
+  const s = await legacyStore(); await s.putQuestion(question());
   const before = await readFile(s.file, 'utf8'); const revision = (await s.read()).revision;
   const failingBackup = new DeskStore(s.file, { rootAgentId: ROOT, writeFile: async (path, ...args) => {
     if (path.endsWith('.v1-backup')) throw new Error('backup unavailable');
@@ -202,7 +207,7 @@ test('migration backup or replacement failure retains the committed V1 bytes', a
 });
 
 test('migration refuses a mismatched permanent backup and stale revision', async () => {
-  const s = await fresh(); await s.putQuestion(question());
+  const s = await legacyStore(); await s.putQuestion(question());
   const before = await readFile(s.file, 'utf8'); const revision = (await s.read()).revision;
   await assert.rejects(s.migrate(revision - 1), e => e.status === 409);
   await writeFile(`${s.file}.v1-backup`, 'unrelated backup');

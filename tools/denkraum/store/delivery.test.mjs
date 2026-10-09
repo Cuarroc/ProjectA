@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setImmediate, setTimeout as delay } from 'node:timers/promises';
 import { getOwnershipContext, ownerRecordPath, OWNERSHIP_HELD, STORE_CLOSED } from './ownership.mjs';
-import { mkdtemp, readFile, rename, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -20,6 +20,7 @@ const store = (file, config) => new DeliveryStore(file, { rootAgentId: ROOT, ver
 const input = (extra = {}) => ({ questionId: 'E-1', questionRevision: 1, expectedAnswerId: null, requestId: 'req-1', action: 'answer', selected: ['a'], note: 'x', ...extra });
 async function fresh({ v2 = true, ...config } = {}) {
   const file = join(await mkdtemp(join(tmpdir(), 'denkraum-delivery-')), 'ledger.json');
+  if (!v2) await writeFile(file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
   const base = store(file); await base.change(state => { state.questions.push(question()); });
   if (v2) await base.migrate((await base.read()).revision);
   await base.close();

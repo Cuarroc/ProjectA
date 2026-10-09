@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -16,6 +16,7 @@ const store = (file, config) => new ProgressStore(file, { rootAgentId: ROOT, ...
 const status = code => e => e instanceof DeskError && e.status === code;
 async function fresh({ v2 = true } = {}) {
   const file = join(await mkdtemp(join(tmpdir(), 'denkraum-progress-')), 'ledger.json'); const s = store(file);
+  if (!v2) await writeFile(file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
   await s.change(state => { state.questions.push(question('E-1'), question('E-2')); });
   if (v2) await s.migrate((await s.read()).revision);
   const answer = (questionId, action = 'answer') => s.answer({ questionId, questionRevision: 1, expectedAnswerId: null, requestId: `req-${questionId}`,
