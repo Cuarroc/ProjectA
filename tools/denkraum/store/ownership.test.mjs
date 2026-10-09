@@ -162,7 +162,7 @@ test('DRSEC: fixture exits non-zero when stdin closes without release', async t 
   assert.ok(await readFile(ownerPath(file)));
 });
 // Proves third-owner record survives stale cross-instance restore; not "never two owners".
-test('DRSEC: cross-instance stale release never overwrites a third owner\'s record', async t => {
+test('DRSEC: cross-instance stale release never overwrites a live owner', async t => {
   const file = await ledger(t);
   const a = await import('./ownership.mjs?a'), b = await import('./ownership.mjs?b');
   const path = a.ownerRecordPath(file), old = await a.acquireOwnership(file);
