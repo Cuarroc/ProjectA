@@ -18,9 +18,9 @@ export function getOwnershipContext(ledgerPath) {
   if (!registry.contexts.has(key)) registry.contexts.set(key, { queue: Promise.resolve(), session: null, users: 0 });
   return registry.contexts.get(key);
 }
-const releaseHooks = { beforeRename: null, beforeRestore: null };
+const releaseHooks = { beforeRename: null };
 export function setOwnershipReleaseHooks(n = {}) {
-  releaseHooks.beforeRename = n.beforeRename ?? null; releaseHooks.beforeRestore = n.beforeRestore ?? null;
+  releaseHooks.beforeRename = n.beforeRename ?? null;
 }
 const ioFail = () => { throw new OwnershipError(OWNERSHIP_IO); };
 function parseRecord(raw) {
@@ -79,7 +79,6 @@ async function releaseOnce(path, nonce) {
   try { tombRaw = await readFile(tomb, 'utf8'); } catch { ioFail(); }
   const tombRec = parseRecord(tombRaw);
   if (!tombRec || tombRec.nonce !== nonce) {
-    if (releaseHooks.beforeRestore) await releaseHooks.beforeRestore();
     try { await link(tomb, path); await unlink(tomb); }
     catch (e) { if (e?.code === 'EEXIST') await unlink(tomb).catch(() => {}); else ioFail(); }
     throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);

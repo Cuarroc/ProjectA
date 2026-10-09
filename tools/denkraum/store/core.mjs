@@ -23,11 +23,13 @@ export class DeskStore {
       await mkdir(dirname(this.file), { recursive: true });
       this.#context.session = await acquireOwnership(this.file);
     }
+    if (!this.#joined) { this.#joined = true; this.#context.users++; }
     try { return await fn(); }
     catch (error) {
       if (acquired) {
-        await releaseOwnership(this.file, this.#context.session.nonce);
-        this.#context.session = null;
+        try { await releaseOwnership(this.file, this.#context.session.nonce); }
+        catch (cause) { try { error.cause = cause; } catch { /* Preserve even immutable thrown values. */ } }
+        finally { this.#context.session = null; }
       }
       throw error;
     }
@@ -40,6 +42,7 @@ export class DeskStore {
     throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
   }
   // Drain accepted changes; the last joined store releases the process session.
+  // Release errors reject close, but clear the session so fresh stores attempt admission anew.
   close() {
     if (this.#closing) return this.#closing;
     this.#closed = true;
@@ -47,8 +50,8 @@ export class DeskStore {
       if (!this.#joined) return;
       this.#joined = false;
       if (--this.#context.users === 0 && this.#context.session) {
-        await releaseOwnership(this.file, this.#context.session.nonce);
-        this.#context.session = null;
+        try { await releaseOwnership(this.file, this.#context.session.nonce); }
+        finally { this.#context.session = null; }
       }
     });
   }
@@ -68,7 +71,6 @@ export class DeskStore {
   // All instances on this ledger share admission and the read-modify-write queue.
   change(fn) {
     if (this.#closed) return Promise.reject(new OwnershipError(OWNERSHIP_RELEASE_MISMATCH));
-    if (!this.#joined) { this.#joined = true; this.#context.users++; }
     return this.#enqueue(() => this.#owned(async () => {
       await this.#assertOwnership();
       const state = await this.read(false); const before = JSON.stringify(state); const oldSchema = state.schemaVersion; const result = await fn(state);
