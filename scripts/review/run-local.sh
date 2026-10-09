@@ -112,9 +112,47 @@ fi
 cd "$TOP" || die 2 "kann nicht nach $TOP wechseln."
 [ -n "$out_dir" ] || out_dir=".pa"
 
+# Startup janitor: reclaim refs/pa-review/pr-* left behind by kill -9 / crash.
+# Per-PID refs (pr-<N>-<pid>): delete only when kill -0 reports "No such
+# process". Never delete a ref whose pid is still alive (including EPERM).
+# Legacy refs without a pid suffix (pr-<N>) are always removed.
+_reclaim_stale_pa_review_refs() {
+  local ref short pid err num
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    short="${ref#refs/pa-review/}"
+    case "$short" in
+      pr-*-*)
+        pid="${short##*-}"
+        case "$pid" in
+          '' | *[!0-9]*) continue ;;
+        esac
+        if kill -0 "$pid" 2>/dev/null; then
+          continue
+        fi
+        err="$(kill -0 "$pid" 2>&1 || true)"
+        case "$err" in
+          *"No such process"*)
+            git -C "$TOP" update-ref -d "$ref" 2>/dev/null || true
+            ;;
+        esac
+        ;;
+      pr-*)
+        num="${short#pr-}"
+        case "$num" in
+          '' | *[!0-9]*) ;;
+          *) git -C "$TOP" update-ref -d "$ref" 2>/dev/null || true ;;
+        esac
+        ;;
+    esac
+  done < <(git -C "$TOP" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+}
+_reclaim_stale_pa_review_refs
+
 # Private PR refs and the kilo workdir must not linger after EXIT (success or
-# failure). Unique refs/pa-review/pr-<N> stay for the duration of the run so
-# concurrent PR fetches do not share FETCH_HEAD (#814).
+# failure). Per-process refs/pa-review/pr-<N>-$$ keep concurrent same-PR runs
+# from deleting each other's ref while still avoiding shared FETCH_HEAD (#814).
+# INT/TERM/HUP re-enter via exit so this EXIT cleanup still runs (Ctrl-C / kill).
 pr_ref=""
 _kilo_work=""
 _run_local_cleanup() {
@@ -123,11 +161,15 @@ _run_local_cleanup() {
     _kilo_work=""
   fi
   if [ -n "${pr_ref:-}" ]; then
-    git -C "$TOP" update-ref -d "$pr_ref" 2>/dev/null || true
+    git -C "$TOP" update-ref -d "$pr_ref" 2>/dev/null \
+      || echo "run-local: konnte Ref $pr_ref nicht loeschen." >&2
     pr_ref=""
   fi
 }
 trap '_run_local_cleanup' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 # --- Modelle ---------------------------------------------------------------
 # Die Standardpaare stehen an genau einer Stelle: REVIEWER_MODELS in
@@ -269,10 +311,11 @@ git -C "$TOP" rev-parse --verify --quiet "$base^{commit}" > /dev/null \
   || die 2 "Basis $base nicht gefunden (git fetch origin main?)."
 
 if [ -n "$pr" ]; then
-  # Private ref per PR: concurrent runs in one checkout must not share FETCH_HEAD
-  # (a second fetch overwrites it before rev-parse). Force-update keeps the ref
-  # current when the same PR is reviewed again.
-  pr_ref="refs/pa-review/pr-$pr"
+  # Private ref per PR and process: concurrent runs must not share FETCH_HEAD
+  # (a second fetch overwrites it before rev-parse), and same-PR siblings must
+  # not delete each other's ref on EXIT. Force-update keeps this process ref
+  # current when the same process reviews the PR again.
+  pr_ref="refs/pa-review/pr-$pr-$$"
   git -C "$TOP" fetch --quiet origin "+pull/$pr/head:$pr_ref" 2> /dev/null \
     || die 2 "PR $pr nicht gefunden: 'git fetch origin +pull/$pr/head:$pr_ref' schlug fehl (Nummer falsch, origin nicht erreichbar oder kein Zugriff)."
   head_ref="$(git -C "$TOP" rev-parse --verify "$pr_ref^{commit}")" \
