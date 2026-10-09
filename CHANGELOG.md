@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.6.0 — unveröffentlicht (Entwurf)
+
+Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
+(Stand `a1d9a5f`). Dies ist noch keine Veröffentlichungsnotiz.
+
+**Zuverlässigkeit und Updates:**
+
+- **Belege nach Update-Rücksetzungen bleiben erhalten** (PR #600): Jede
+  Rücksetzung erhält einen eigenen Protokollnamen; eine weitere Rücksetzung
+  überschreibt den vorherigen Beleg nicht mehr.
+- **Windows-Agentenabschluss wartet auf die Speicherbestätigung** (PR #617):
+  Für die letzte Bestätigung gilt jetzt dieselbe Frist wie für das Speichern
+  der Ausgabe. So wird eine innerhalb dieser Frist gespeicherte Ausgabe
+  nicht wegen einer kürzeren Bestätigungsfrist abgewiesen.
+- **Fehler beim Entfernen alter Agenten-Zugangsdaten werden gemeldet**
+  (PR #578): Scheitert das Löschen einer Datei, bleibt das im Protokoll
+  sichtbar; der zugehörige Zugang ist trotzdem gesperrt.
+- **Codex-Profil für Projekt-Skills korrigiert** (PR #678): Das Profil
+  berücksichtigt den Skill-Ordner im Projekt. Beim Bereitstellen von Skills
+  bleiben dort bereits vorhandene Skill-Pakete erhalten.
+
+**Oberfläche — Denkraum im Aufbau:**
+
+- **Speicher für Fragen und Ideen übernommen** (PR #636, #661, #666, #669,
+  #671, #674): Fragen, Ideen, Antworten, Empfangsbestätigungen und Fortschritt
+  können gespeichert werden. Änderungen werden nacheinander geschrieben;
+  vor einer Datenformat-Umstellung entsteht eine Sicherung.
+- **Seite und Bedienlogik übernommen** (PR #640, #638, #665): Die Teile für
+  Fragen, Ideen und geplante Änderungen liegen im Projekt. Die Oberfläche
+  ist auf diesem Stand noch nicht vollständig verbunden.
+- **Webserver und Kommandozeile hinzugefügt** (PR #676, #681): Der Server
+  verlangt einen angegebenen Datenpfad; die Kommandozeile meldet fehlerhafte
+  Eingabedateien, ohne deren Inhalt oder Pfad auszugeben.
+- **Startangaben und Zustellung geprüft** (PR #647, #639, #727): Ungültige
+  Startangaben werden auch bei einem Aufruf über einen alternativen Pfad
+  erkannt. Fehlt im neuen Datenformat der zuständige Empfänger, wird die
+  Benachrichtigungszustellung ausdrücklich abgelehnt.
+
+**Anleitungen:**
+
+- **Einstieg für Tester erweitert** (PR #609, #576): Die Projektübersicht
+  erklärt den Schwerpunkt und die Grenzen; eine Anleitung mit sieben
+  Testabläufen und eine deutsche Rückmeldevorlage sind hinzugekommen.
+
+Interne Entwicklungswerkzeuge: 69 Pakete (#560, #561, #567, #573, #577, #579, #585, #587, #588, #589, #590, #591, #596, #599, #601, #606, #611, #615, #619, #621, #623, #625, #627, #629, #631, #632, #633, #635, #637, #641, #643, #644, #645, #646, #660, #663, #664, #667, #668, #670, #675, #680, #683, #686, #690, #693, #695, #697, #700, #702, #704, #705, #711, #717, #722, #726, #731, #732, #733, #734, #738, #739, #742, #744, #745, #746, #751, #753, #755).
+
 ## v1.5.1 — (Datum folgt)
 
 > **Updater-Hinweis:** v1.5.0 aktualisiert automatisch auf v1.5.1 —
