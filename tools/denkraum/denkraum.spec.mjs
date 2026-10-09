@@ -418,37 +418,38 @@ test('DR12: real CSS gives field borders 3 to 1 contrast', async ({ page }) => {
   }));
   expect(sheets).toBe(true);
   // Read rendered pixels: Chromium composes gradients, alpha layers and backdrop filters.
-  const image = await page.locator('#idea').screenshot();
-  const report = await page.evaluate(async base64 => {
-    const image = new Image();
-    image.src = `data:image/png;base64,${base64}`;
-    await image.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = image.width; canvas.height = image.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(image, 0, 0);
+  const contrastOf = async locator => page.evaluate(async base64 => {
+    const image = new Image(); image.src = `data:image/png;base64,${base64}`; await image.decode();
+    const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
     const pixel = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
     const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    // Midpoints avoid rounded corners; adjacent inner pixels avoid text and placeholder glyphs.
+    // Midpoints avoid rounded corners; darkest of top 4 rows is the border after DPR/AA.
     return [0.25, 0.5, 0.75].map(fraction => {
       const x = Math.floor(image.width * fraction);
-      const border = pixel(x, 0), fill = pixel(x, 2);
+      let border = pixel(x, 0), borderY = 0;
+      for (let y = 1; y < Math.min(4, image.height); y++) { const p = pixel(x, y); if (lum(p) < lum(border)) { border = p; borderY = y; } }
+      const fill = pixel(x, Math.min(image.height - 1, borderY + 2));
       const [light, dark] = [lum(border), lum(fill)].sort((a, b) => b - a);
       return { border, fill, contrast: (light + 0.05) / (dark + 0.05) };
     });
-  }, image.toString('base64'));
+  }, (await locator.screenshot()).toString('base64'));
+  const report = await contrastOf(page.locator('#idea'));
   console.log('DR12 rendered contrast', JSON.stringify(report));
   expect(Math.min(...report.map(sample => sample.contrast))).toBeGreaterThanOrEqual(3);
+  const hoverBtn = page.locator('.idea-edit').first();
+  await hoverBtn.hover();
+  expect(Math.min(...(await contrastOf(hoverBtn)).map(s => s.contrast))).toBeGreaterThanOrEqual(3);
 });
 
-test('DR12: category controls fit 1440 390 and 320', async ({ page }) => {
+test('DR12: category controls fit 1440 390 and 320', async ({ page }, testInfo) => {
   const ideas = [
     idea('long', 'L'.repeat(200), 'Text'.repeat(2000), { category: 'S'.repeat(80), source: 'S'.repeat(2000) }),
     idea('b', 'Beta', 'Text', { category: 'Technik' }),
     idea('a', 'Alpha', 'Other'),
   ];
-  const outDir = join('/tmp', `dr12-fit-${Date.now()}`);
+  const outDir = testInfo.outputDir;
   mkdirSync(outDir, { recursive: true });
   await setupPage(page, 'injected', categoryState(ideas));
   for (const width of [1440, 390, 320]) {

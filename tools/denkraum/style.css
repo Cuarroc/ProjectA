@@ -146,7 +146,7 @@ body{height:100dvh;min-height:600px;padding:12px;display:grid;grid-template-colu
 .page-header p{margin:4px 0 0;font-size:13px}
 button,input,select,textarea{border-radius:10px;min-height:44px;padding:8px 12px;background:#ffffff99;color:var(--text)}
 button{transition:background-color 120ms cubic-bezier(.2,.8,.2,1)}
-button:hover{background:#fff;border-color:#929dae}
+button:hover{background:#fff;border-color:var(--line)}
 button:active{background:#dde7fb}
 button:disabled{opacity:.55}
 .primary{background:var(--accent);border-color:transparent;color:#fff}
@@ -250,5 +250,4 @@ noscript{grid-column:2;grid-row:7}
 
 #idea-search{width:100%;min-width:0;max-width:100%}
 #idea-count,#idea-cards{min-width:0;overflow-wrap:anywhere}
-
 #idea-category{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
