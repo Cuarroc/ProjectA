@@ -224,20 +224,29 @@ test("D4: a missing or empty or whitespace root id blocks every POST action and 
       await page.locator('#wb-save').click();
     }, '#wb-status');
 
-    await expectBlocked(meta, async () => {
-      await page.evaluate(() => {
-        drafts['Q1:1'] = {
-          selected: ['a'], note: '', baseAnswerId: null,
-          pending: { questionId: 'Q1', questionRevision: 1, expectedAnswerId: null,
-            requestId: 'unclear-request', action: 'answer', selected: ['a'], note: '' },
-        };
-        persist();
-      });
-      await page.reload();
-      await expect(page.locator('#detail')).toContainText('Der Ausgang der letzten Übertragung ist unklar.');
-      await page.getByRole('button', { name: 'Speicherung erneut prüfen' }).click();
-    }, '#detail .feedback');
-    await page.evaluate(() => localStorage.clear());
+    // Replay actions from questions.js offerRetry → submit(d.pending.action): answer, defer, clarify.
+    for (const action of ['answer', 'defer', 'clarify']) {
+      await expectBlocked(meta, async () => {
+        await page.evaluate(pendingAction => {
+          drafts['Q1:1'] = {
+            selected: pendingAction === 'answer' ? ['a'] : [],
+            note: pendingAction === 'clarify' ? 'Rückfrage' : '',
+            baseAnswerId: null,
+            pending: {
+              questionId: 'Q1', questionRevision: 1, expectedAnswerId: null,
+              requestId: `unclear-request-${pendingAction}`, action: pendingAction,
+              selected: pendingAction === 'answer' ? ['a'] : [],
+              note: pendingAction === 'clarify' ? 'Rückfrage' : '',
+            },
+          };
+          persist();
+        }, action);
+        await page.reload();
+        await expect(page.locator('#detail')).toContainText('Der Ausgang der letzten Übertragung ist unklar.');
+        await page.getByRole('button', { name: 'Speicherung erneut prüfen' }).click();
+      }, '#detail .feedback');
+      await page.evaluate(() => localStorage.clear());
+    }
   }
 
   posts.length = 0;
@@ -431,11 +440,15 @@ test('DR12: real CSS gives field borders 3 to 1 contrast', async ({ page }) => {
     try { return [...s.cssRules].some(r => r.cssText?.includes('--line')); } catch { return false; }
   }));
   expect(sheets).toBe(true);
+  const ideaBorderTop = await page.locator('#idea').first().evaluate(el => parseFloat(getComputedStyle(el).borderTopWidth));
+  expect(ideaBorderTop, '#idea border-top-width must be > 0').toBeGreaterThan(0);
   const report = await renderedBorderContrast(page, '#idea');
   console.log('DR12 rendered contrast', JSON.stringify(report));
   expect(Math.min(...report.map(sample => sample.contrast))).toBeGreaterThanOrEqual(3);
   const hoverBtn = page.locator('.idea-edit').first();
   await hoverBtn.hover();
+  const editBorderTop = await page.locator('.idea-edit').first().evaluate(el => parseFloat(getComputedStyle(el).borderTopWidth));
+  expect(editBorderTop, '.idea-edit border-top-width must be > 0').toBeGreaterThan(0);
   expect(Math.min(...(await renderedBorderContrast(page, '.idea-edit')).map(s => s.contrast))).toBeGreaterThanOrEqual(3);
 });
 
