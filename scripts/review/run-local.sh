@@ -252,14 +252,19 @@ git -C "$TOP" rev-parse --verify --quiet "$base^{commit}" > /dev/null \
   || die 2 "Basis $base nicht gefunden (git fetch origin main?)."
 
 if [ -n "$pr" ]; then
-  git -C "$TOP" fetch --quiet origin "pull/$pr/head" 2> /dev/null \
-    || die 2 "PR $pr nicht gefunden: 'git fetch origin pull/$pr/head' schlug fehl (Nummer falsch, origin nicht erreichbar oder kein Zugriff)."
-  head_ref="$(git -C "$TOP" rev-parse FETCH_HEAD)" || die 2 "PR $pr: FETCH_HEAD nicht lesbar."
-  [ -n "$head_ref" ] || die 2 "PR $pr: FETCH_HEAD ist leer."
+  # Private ref per PR: concurrent runs in one checkout must not share FETCH_HEAD
+  # (a second fetch overwrites it before rev-parse). Force-update keeps the ref
+  # current when the same PR is reviewed again.
+  pr_ref="refs/pa-review/pr-$pr"
+  git -C "$TOP" fetch --quiet origin "+pull/$pr/head:$pr_ref" 2> /dev/null \
+    || die 2 "PR $pr nicht gefunden: 'git fetch origin +pull/$pr/head:$pr_ref' schlug fehl (Nummer falsch, origin nicht erreichbar oder kein Zugriff)."
+  head_ref="$(git -C "$TOP" rev-parse --verify "$pr_ref^{commit}")" \
+    || die 2 "PR $pr: Ref $pr_ref nicht lesbar."
+  [ -n "$head_ref" ] || die 2 "PR $pr: Ref $pr_ref ist leer."
   [ -n "$label" ] || label="pr$pr"
   subject="PR #$pr"
 else
-  head_ref="HEAD"
+  head_ref="$(git -C "$TOP" rev-parse --verify HEAD)" || die 2 "HEAD nicht lesbar."
   branch="$(git -C "$TOP" rev-parse --abbrev-ref HEAD 2> /dev/null)"
   if [ -z "$branch" ] || [ "$branch" = HEAD ]; then
     branch="head-$(git -C "$TOP" rev-parse --short HEAD)"
@@ -298,6 +303,8 @@ prompt_file="$out_dir/review_prompt_$label.md"
 {
   cat << EOF
 # Review request $label: $subject against $base
+
+Head: $head_ref
 
 You are an independent reviewer (not the author${author:+; the author is a $author model}).
 Review the change below for correctness bugs, gaps, and safety regressions.

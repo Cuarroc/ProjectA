@@ -1732,6 +1732,22 @@ mod tests {
                 .map(|s| s.success())
                 .unwrap_or(false);
         }
-        proc_state(pid).is_some_and(|state| state != 'Z')
+        proc_state(pid).is_some_and(state_is_alive)
+    }
+
+    #[cfg(unix)]
+    fn state_is_alive(state: char) -> bool {
+        !matches!(state, 'Z' | 'X' | 'x')
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn process_state_classification_rejects_zombies_and_dead_states() {
+        for state in ['Z', 'X', 'x'] {
+            assert!(!state_is_alive(state), "state {state} must count as dead");
+        }
+        for state in ['R', 'S', 'D'] {
+            assert!(state_is_alive(state), "state {state} must count as alive");
+        }
     }
 }
