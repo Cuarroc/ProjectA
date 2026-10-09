@@ -34,8 +34,10 @@ Lass das Terminal offen. Der Server meldet
 `Entscheidungsseite: http://127.0.0.1:4791`; hat die Einrichtung einen anderen
 Anschluss gesetzt, steht dort dessen Nummer, und sie gilt statt 4791 auch für
 die folgenden Schritte. Meldet er stattdessen eine Einstellung oder
-`Entscheidungsseite konnte nicht starten: EADDRINUSE` (Anschluss belegt), ist
-der Start nicht gelungen. Die Datendatei entsteht erst beim ersten Speichern.
+`Entscheidungsseite konnte nicht starten: EADDRINUSE` (Anschluss belegt) oder
+`… OWNERSHIP_HELD` (dieselbe Datendatei wird schon von einem laufenden Denkraum
+benutzt), ist der Start nicht gelungen. Die Datendatei entsteht erst beim ersten
+Speichern; solange der Server läuft, liegt neben ihr eine Datei `….owner`.
 Es gibt keinen Denkraum-Startbefehl in der Skriptliste von `npm run`.
 
 ## 2. Seite öffnen
@@ -100,7 +102,7 @@ Warte zuerst auf die Bestätigung einer laufenden Speicherung.
 Wechsle zum Terminal aus Schritt 1 und drücke **Strg+C**. Warte, bis die
 Eingabeaufforderung zurückkehrt; danach kannst du den Browser-Tab schließen.
 Nur den Tab zu schließen beendet den Server nicht. Bereits gespeicherte Daten
-bleiben erhalten; die Datei `<Datendatei>.owner` verschwindet beim Stoppen.
+bleiben erhalten; die Datei `….owner` neben der Datendatei verschwindet.
 Dieser Schritt gilt für den manuellen Start aus Schritt 1.
 
 Möchtest du den Stand sichern, etwa vor einer Aktualisierung, dann erst
