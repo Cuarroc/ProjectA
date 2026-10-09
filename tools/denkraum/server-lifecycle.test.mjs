@@ -72,6 +72,19 @@ async function duplicateListen(t, phase) {
 test('DRSEC-G4b: duplicate listen while admitting preserves ownership and writes', t => duplicateListen(t, 'admitting'));
 test('DRSEC-G4b: duplicate listen while listening preserves ownership and writes', t => duplicateListen(t, 'listening'));
 
+test('DRSEC-G4b: unhandled admission and bind errors exit non-zero with their code', async t => {
+  const file = await ledger(t), owner = desk(t, file); await listen(owner);
+  for (const code of ['OWNERSHIP_HELD', 'EADDRINUSE']) {
+    const target = code === 'OWNERSHIP_HELD' ? file : await ledger(t);
+    const port = code === 'EADDRINUSE' ? owner.address().port : 0;
+    const script = `import { createDeskServer } from ${JSON.stringify(entry.href)};
+      createDeskServer({ statePath: process.argv[1] }).listen(Number(process.argv[2]), '127.0.0.1');`;
+    const result = await bounded(childRun(t, ['--input-type=module', '-e', script, target, String(port)]).done);
+    assert.equal(result.code, 1, result.stderr); assert.match(result.stderr, new RegExp(code));
+    if (code === 'EADDRINUSE') assert.ok(await missing(`${target}.owner`));
+  }
+});
+
 test('DRSEC-G4b: listen is refused with OWNERSHIP_HELD while a foreign process holds the ledger', async t => {
   const file = await ledger(t), release = await holdChild(t, file), server = desk(t, file);
   const failed = once(server, 'error').then(([e]) => e);

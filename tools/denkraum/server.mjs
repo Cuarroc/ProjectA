@@ -37,7 +37,7 @@ export function createWebhookNotifier({ url, secret, request = fetch, clock = Da
 }
 // H2: no state default inside the repository. D2: the root agent id is injected; without it every
 // root-bound route answers 503 from the store and the page gets no root meta tag.
-/** Attach an error listener before listen(): admission and bind failures are emitted without listening. */
+/** Attach an error listener before listen(); create a new server after a failed bind. */
 export function createDeskServer({ statePath, rootAgentId, assets = root,
   rootReceiptToken = process.env.DECISION_DESK_ROOT_RECEIPT_TOKEN, notifyEvent, clock = Date.now, drainTimeoutMs = 5000, timers = { setTimeout, clearTimeout } } = {}) {
   if (typeof statePath !== 'string' || !statePath) throw new DeskError('Datenpfad fehlt; Start abgelehnt.', 503);
@@ -143,11 +143,17 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     admitting = true;
     track(store.change(() => undefined).then(() => {
       if (closed) return;
-      const release = () => { admitting = false; store.close().catch(e => console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${e?.code ?? 'Fehler'}`)); };
-      server.once('error', release);
-      server.once('listening', () => { admitting = false; server.removeListener('error', release); });
+      const admitted = () => { admitting = false; server.removeListener('error', release); };
+      const release = error => {
+        admitting = false; server.removeListener('listening', admitted);
+        const unhandled = server.listenerCount('error') === 0;
+        store.close().catch(e => console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${e?.code ?? 'Fehler'}`))
+          .then(() => { if (unhandled) process.nextTick(() => { throw error; }); });
+      };
+      server.prependOnceListener('error', release);
+      server.once('listening', admitted);
       listen.apply(server, args);
-    }).catch(error => { admitting = false; server.emit('error', error); }));
+    }).catch(error => { admitting = false; process.nextTick(() => server.emit('error', error)); }));
     return server;
   };
   const within = async (work, ms) => {
