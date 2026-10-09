@@ -101,3 +101,49 @@ test("ci-watch CLI validates its arguments", async () => {
   assert.equal(await main(["--help"], io), 0);
   assert.match(out.join(""), /ci-watch/);
 });
+
+test("malformed check entries refuse without polling", async () => {
+  const refuseOnce = async (stdout) => {
+    let calls = 0;
+    let sleeps = 0;
+    const run = () => {
+      calls += 1;
+      return { code: 0, stdout, stderr: "" };
+    };
+    const res = await watchChecks({
+      run,
+      pr: "42",
+      intervalMs: 1000,
+      timeoutMs: 60_000,
+      sleep: async () => {
+        sleeps += 1;
+      },
+      now: () => 0,
+    });
+    assert.equal(res.code, 3);
+    assert.equal(calls, 1);
+    assert.equal(sleeps, 0);
+    assert.match(res.summary, /Check|check|Eintrag|Name|bucket/i);
+    return res;
+  };
+
+  await refuseOnce("[null]");
+  await refuseOnce("[1]");
+  await refuseOnce("[true]");
+  await refuseOnce(JSON.stringify([{ name: "", bucket: "pass", state: "PASS", link: "https://example.invalid/x" }]));
+  await refuseOnce(JSON.stringify([{ name: "gates", bucket: "", state: "PASS", link: "https://example.invalid/x" }]));
+  await refuseOnce(JSON.stringify([{ bucket: "pass", state: "PASS", link: "https://example.invalid/x" }]));
+  await refuseOnce(JSON.stringify([{ name: "gates", state: "PASS", link: "https://example.invalid/x" }]));
+
+  const out = [];
+  const io = { out: (s) => out.push(s), err: (s) => out.push(s) };
+  const code = await main(["42", "--timeout", "1m", "--interval", "5s"], io, {
+    run: () => ({ code: 0, stdout: "[null]", stderr: "" }),
+    sleep: async () => {
+      throw new Error("sleep must not be called");
+    },
+    now: () => 0,
+  });
+  assert.equal(code, 3);
+  assert.match(out.join(""), /PR #42:/);
+});
