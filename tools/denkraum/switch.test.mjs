@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:net';
-import { mkdtemp, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -18,7 +18,8 @@ const output = async () => join(await mkdtemp(join(tmpdir(), 'dr16-backup-')), '
 const sha = buf => createHash('sha256').update(buf).digest('hex');
 function run(args, env = {}, entry = SWITCH) {
   return new Promise(resolve => {
-    const child = spawn(process.execPath, [entry, ...args], { env: { ...process.env, ...env } });
+    const childEnv = { ...process.env, ...env }; delete childEnv.NODE_TEST_CONTEXT;
+    const child = spawn(process.execPath, [entry, ...args], { env: childEnv });
     let stdout = '', stderr = '';
     child.stdout.on('data', d => { stdout += d; }); child.stderr.on('data', d => { stderr += d; });
     child.on('close', status => resolve({ status, stdout, stderr }));
@@ -127,10 +128,11 @@ test('DR16: drill log contains no ledger text or secrets', async () => {
   for (const line of text.split(/\r?\n/).filter(Boolean)) assert.doesNotThrow(() => JSON.parse(line));
   for (const forbidden of [FIXTURE_TEXT, SECRET, 'DECISION_DESK_']) assert.ok(!text.includes(forbidden));
 });
-test('DR16: CLI entry via symlink still runs backup', async () => {
+test('DR16: CLI entry via symlink still runs backup', async t => {
   const { state } = await ledger(), outDir = await output();
   const link = join(await mkdtemp(join(tmpdir(), 'dr16-link-')), 'sw.mjs');
-  await symlink(SWITCH, link);
+  try { await symlink(SWITCH, link); }
+  catch (error) { if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)'); throw error; }
   const r = await run(['backup', '--state', state, '--out', outDir], {}, link);
   assert.equal(r.status, 0, r.stderr + r.stdout);
   assert.match(r.stdout, /"cmd":"backup"/);
@@ -195,4 +197,114 @@ test('DR16: verify rejects traversal duplicate and ambiguous primary names', asy
     await writeFile(path, JSON.stringify({ ...man, files }));
     assert.equal((await run(['verify', '--backup', outDir])).status, 4);
   }
+});
+
+test('DR16H: backup reports explicit and default probe ports', async () => {
+  const { state } = await ledger();
+  const listener = createServer();
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  await new Promise(r => listener.close(r));
+  for (const args of [[], ['--port', String(port)]]) {
+    const r = await run(['backup', '--state', state, '--out', await output(), ...args]);
+    assert.equal(r.status, 0, r.stderr);
+    const result = JSON.parse(r.stdout);
+    assert.equal(result.port, args.length ? port : 4791);
+    assert.equal(result.defaultPort, !args.length);
+  }
+});
+test('DR16H: invalid paths emit exactly one JSON error', async () => {
+  for (const args of [['backup'], ['compare'], ['verify'], ['backup', '--state', 'relative', '--out', 'relative']]) {
+    const r = await run(args);
+    assert.equal(r.status, 2); assert.equal(r.stdout.trim().split('\n').length, 1);
+    assert.equal(JSON.parse(r.stdout).ok, false); assert.match(r.stderr, /Pfad/);
+  }
+});
+test('DR16H: filesystem and validation failures retain safe diagnostics', async () => {
+  const { state } = await ledger(), out = await bakOk(state);
+  for (const target of [out, join(out, 'missing', 'snap')]) {
+    const r = await run(['backup', '--state', state, '--out', target]);
+    assert.equal(r.status, 4); assert.match(JSON.parse(r.stdout).error, /Ausgabeverzeichnis/);
+    assert.match(r.stderr, target === out ? /EEXIST/ : /ENOENT/);
+  }
+  for (const cmd of ['backup', 'verify', 'compare']) {
+    const r = await run([cmd, '--state', join(out, 'missing'), '--out', await output(), '--backup', join(out, 'missing')]);
+    assert.equal(r.status, 4); assert.match(r.stderr, /ENOENT/); JSON.parse(r.stdout);
+  }
+  await writeFile(state, '{}');
+  const r = await run(['compare', '--backup', out, '--state', state]);
+  assert.equal(r.status, 4); assert.match(r.stderr, /Datendatei beschädigt/);
+});
+test('DR16H: parser diagnostics never expose ledger text or secrets', async () => {
+  const { state } = await ledger(), out = await bakOk(state);
+  for (const [file, args] of [[state, ['backup', '--state', state, '--out', await output()]],
+    [join(out, 'manifest.json'), ['verify', '--backup', out]]]) {
+    await writeFile(file, `{"${FIXTURE_TEXT}":"${SECRET}" BROKEN}`);
+    const r = await run(args, { DECISION_DESK_ROOT_RECEIPT_TOKEN: SECRET });
+    assert.equal(r.status, 4); assert.match(r.stderr, /JSON/); JSON.parse(r.stdout);
+    for (const value of [FIXTURE_TEXT, SECRET]) assert.ok(!(r.stdout + r.stderr).includes(value));
+  }
+});
+test('DR16H: entry guard uses native realpaths and tolerates failures', async () => {
+  for (const entry of [SWITCH, join(await output(), 'missing.mjs')]) {
+    const script = `import { realpathSync } from 'node:fs';
+      process.argv = [process.execPath, ${JSON.stringify(entry)}, 'unknown'];
+      realpathSync.native = () => { throw new Error('native realpath probe'); };
+      await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`;
+    const r = await run([script], {}, '-e');
+    assert.equal(r.status, entry === SWITCH ? 2 : 0, r.stderr);
+    assert.match(r.stderr, /native realpath probe/);
+    if (entry === SWITCH) assert.equal(JSON.parse(r.stdout).ok, false);
+    else assert.equal(r.stdout, '');
+  }
+});
+test('DR16H: compare accepts equal schema and revision', async () => {
+  const { state } = await ledger(), out = await bakOk(state);
+  const r = await run(['compare', '--backup', out, '--state', state]);
+  assert.equal(r.status, 0); assert.equal(JSON.parse(r.stdout).revision, 5);
+});
+test('DR16H: invalid port arguments are rejected before backup', async () => {
+  const { state } = await ledger();
+  for (const value of ['0', '-1', '65536', '1.5', 'NaN', '', undefined]) {
+    const out = await output(), args = value === undefined ? [] : [value];
+    const r = await run(['backup', '--state', state, '--out', out, '--port', ...args]);
+    assert.equal(r.status, 2, String(value)); assert.match(r.stdout, /Port/);
+    await assert.rejects(readdir(out), e => e.code === 'ENOENT');
+  }
+});
+test('DR16H: tmp warnings belong only to this ledger including previous temps', async () => {
+  const { state } = await ledger(), id = '12345678-1234-1234-1234-123456789abc';
+  const expected = [`ledger.json.${id}.tmp`, `ledger.json.${id}.tmp.previous`];
+  for (const name of [...expected, 'noise.tmp', `other.json.${id}.tmp.previous`, `ledger.json.other.${id}.tmp`]) {
+    await writeFile(join(dirname(state), name), 'temporary fixture');
+  }
+  const r = await run(['backup', '--state', state, '--out', await output()]);
+  assert.equal(r.status, 0);
+  const lines = r.stdout.trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(lines.filter(l => l.warn === 'tmp').map(l => l.name).sort(), expected.sort());
+  assert.equal(lines.at(-1).ok, true);
+});
+test('DR16H: backup directory is private on POSIX', { skip: process.platform === 'win32' }, async () => {
+  const { state } = await ledger(), out = await output();
+  const r = await run([`process.umask(0); process.argv = [process.execPath, ${JSON.stringify(SWITCH)},
+    'backup', '--state', ${JSON.stringify(state)}, '--out', ${JSON.stringify(out)}];
+    await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`], {}, '-e');
+  assert.equal(r.status, 0, r.stderr); assert.equal((await stat(out)).mode & 0o777, 0o700);
+});
+test('DR16H: symlink drill skips when the capability probe returns EPERM', async () => {
+  const preload = `import { promises } from 'node:fs'; import { syncBuiltinESMExports } from 'node:module';
+    promises.symlink = async () => { throw Object.assign(new Error('privilege unavailable'), { code: 'EPERM' }); };
+    syncBuiltinESMExports();`;
+  const r = await run([`data:text/javascript,${encodeURIComponent(preload)}`, '--test',
+    '--test-name-pattern=^DR16: CLI entry via symlink', fileURLToPath(import.meta.url)], {}, '--import');
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.match(r.stdout, /Symlink privilege unavailable \(EPERM\)/);
+});
+test('DR16H: top-level handler reports the original output failure', async () => {
+  const r = await run([`process.argv = [process.execPath, ${JSON.stringify(SWITCH)}, 'unknown'];
+    const write = process.stdout.write.bind(process.stdout); let calls = 0;
+    process.stdout.write = chunk => { if (++calls <= 2) throw new Error('output write probe'); return write(chunk); };
+    await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`], {}, '-e');
+  assert.equal(r.status, 4); assert.match(r.stderr, /output write probe/);
+  assert.equal(JSON.parse(r.stdout).ok, false);
 });
