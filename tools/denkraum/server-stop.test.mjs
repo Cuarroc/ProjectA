@@ -56,6 +56,7 @@ async function stopCase(t, signal) {
 }
 test('DRSEC-G4a: SIGTERM stop releases ownership and the next process can write', posix, t => stopCase(t, 'SIGTERM'));
 test('DRSEC-G4a: SIGINT stop releases ownership and the next process can write', posix, t => stopCase(t, 'SIGINT'));
+test('DRSEC-G4a: SIGHUP stop releases ownership and the next process can write', posix, t => stopCase(t, 'SIGHUP'));
 
 test('DRSEC-G4a: a failing release on signal stop exits non-zero with a short stderr line', posix, async t => {
   const file = await ledger(t);

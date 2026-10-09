@@ -161,5 +161,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       });
     };
     process.on('SIGINT', stop); process.on('SIGTERM', stop);
+    // R872-K1: a closed terminal or ssh session sends SIGHUP; Windows cannot deliver it.
+    if (process.platform !== 'win32') process.on('SIGHUP', stop);
   }
 }
