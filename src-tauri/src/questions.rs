@@ -626,7 +626,17 @@ mod tests {
             // those tasks can finish while Drop waits for the entire cleanup.
             tokio::task::block_in_place(|| {
                 std::thread::spawn(move || {
-                    runtime.block_on(store.close_test_pool());
+                    runtime.block_on(async {
+                        loop {
+                            store.close_test_pool().await;
+                            // SQLx can return an already-pinging connection to
+                            // the idle queue after close's final drain. Re-drain
+                            // until empty; the closed pool admits no new work.
+                            if store.pool_for_test().size() == 0 {
+                                break;
+                            }
+                        }
+                    });
                     // Outside a Tokio context, TempDir's Windows retry stays
                     // synchronous instead of queuing another blocking task.
                     drop(dir);
