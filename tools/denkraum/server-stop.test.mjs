@@ -33,11 +33,13 @@ async function startEntry(t, statePath, id) {
     t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
     let stdout = '', stderr = '';
     child.stderr.on('data', d => { stderr += d; });
-    const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal, stderr })));
+    const exited = new Promise(resolve => child.once('close', (code, signal) => resolve({ code, signal, stderr })));
     try {
       await new Promise((resolve, reject) => {
-        child.stdout.on('data', d => { stdout += d; if (stdout.includes('http://')) resolve(); });
-        exited.then(() => reject(new Error(`entry exited early: ${stderr}`)));
+        const timer = setTimeout(() => reject(new Error('entry start timed out')), 3000);
+        const finish = () => { clearTimeout(timer); resolve(); };
+        child.stdout.on('data', d => { stdout += d; if (stdout.includes('http://')) finish(); });
+        exited.then(() => { clearTimeout(timer); reject(new Error(`entry exited early: ${stderr}`)); });
       });
     } catch (error) {
       if (attempt < 5 && stderr.includes('EADDRINUSE')) continue;
@@ -77,8 +79,13 @@ test('DRSEC-G4a: a stop after a failed listen exits non-zero', posix, async t =>
   const child = spawn(process.execPath, ['--import', 'data:text/javascript,setInterval(()=>{},1e6)', entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
   let stderr = '';
-  const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
-  await new Promise(resolve => child.stderr.on('data', d => { stderr += d; if (stderr.includes('konnte nicht starten')) resolve(); }));
+  const exited = new Promise(resolve => child.once('close', (code, signal) => resolve({ code, signal })));
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('listen error timed out')), 3000);
+    child.stderr.on('data', d => { stderr += d; if (stderr.includes('konnte nicht starten')) { clearTimeout(timer); resolve(); } });
+    exited.then(() => { clearTimeout(timer); reject(new Error(`entry exited early: ${stderr}`)); });
+  });
+  assert.match(stderr, /konnte nicht starten: EADDRINUSE/);
   child.kill('SIGTERM');
   const result = await exited;
   assert.deepEqual(result, { code: 1, signal: null }, stderr);
