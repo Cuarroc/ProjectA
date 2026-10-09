@@ -128,18 +128,15 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
   return server;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  // DR-06 start gate: STATE via the DR-15a rule (absolute, outside the repository) plus a valid root agent id.
-  // Token and webhook stay optional as in P1 until DR-15b switches to the full loadStartConfig result.
   const flag = process.argv.indexOf('--root-agent-id');
-  const rootAgentId = flag > 1 ? process.argv[flag + 1] : process.env.DECISION_DESK_ROOT_AGENT_ID;
-  const errors = loadStartConfig(process.env, { repoRoot: join(root, '..', '..') }).errors.filter(e => e.name === 'DECISION_DESK_STATE');
-  if (!validId(rootAgentId)) errors.push({ name: 'DECISION_DESK_ROOT_AGENT_ID', reason: 'required; set it or pass --root-agent-id' });
+  const env = flag > 1 ? { ...process.env, DECISION_DESK_ROOT_AGENT_ID: process.argv[flag + 1] } : process.env;
+  const { config, errors } = loadStartConfig(env, { repoRoot: join(root, '..', '..') });
   for (const { name, reason } of errors) console.error(`${name}: ${reason}`);
   if (errors.length) process.exitCode = 1;
   else {
-    const port = Number(process.env.DECISION_DESK_PORT ?? 4791);
-    const server = createDeskServer({ statePath: process.env.DECISION_DESK_STATE, rootAgentId, notifyEvent: createWebhookNotifier({
-      url: process.env.DECISION_DESK_WEBHOOK_URL, secret: process.env.DECISION_DESK_WEBHOOK_SECRET }) });
+    const { port, statePath, rootAgentId, rootReceiptToken, webhookSecret } = config;
+    const server = createDeskServer({ statePath, rootAgentId, rootReceiptToken, notifyEvent: createWebhookNotifier({
+      url: process.env.DECISION_DESK_WEBHOOK_URL, secret: webhookSecret }) });
     server.on('error', e => { console.error(`Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}`); process.exitCode = 1; });
     server.listen(port, '127.0.0.1', () => console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`));
   }
