@@ -477,21 +477,26 @@ export default function SettingsView({
   }, []);
 
   const [updateState, setUpdateState] = useState<UpdaterState>({ phase: "idle" });
+  const updatePhaseRef = useRef<UpdaterState["phase"]>("idle");
   const updaterGeneration = useRef(0);
   const updaterTransitioned = useRef(false);
   const updaterPublish = useRef(Promise.resolve());
+  const applyUpdateState = (state: UpdaterState) => {
+    updatePhaseRef.current = state.phase;
+    setUpdateState(state);
+  };
   const publishUpdateState = (state: UpdaterState) => {
     const generation = updaterGeneration.current;
     if (generation !== latestUpdaterViewGeneration) return;
     updaterTransitioned.current = true;
-    setUpdateState(state);
+    applyUpdateState(state);
     updaterPublish.current = updaterPublish.current
       .then(() => generation === latestUpdaterViewGeneration
         ? setUpdaterState(state)
         : undefined)
       .catch((cause: unknown) => {
         if (generation === latestUpdaterViewGeneration) {
-          setUpdateState({ phase: "error", message: describeError(cause) });
+          applyUpdateState({ phase: "error", message: describeError(cause) });
         }
       });
   };
@@ -501,12 +506,12 @@ export default function SettingsView({
     void getUpdaterState()
       .then((state) => {
         if (generation === latestUpdaterViewGeneration && !updaterTransitioned.current) {
-          setUpdateState(state);
+          applyUpdateState(state);
         }
       })
       .catch((cause: unknown) => {
         if (generation === latestUpdaterViewGeneration) {
-          setUpdateState({ phase: "error", message: describeError(cause) });
+          applyUpdateState({ phase: "error", message: describeError(cause) });
         }
       });
     return () => {
@@ -524,6 +529,10 @@ export default function SettingsView({
 
   const handleCheckUpdates = () => {
     setCancelNote(null);
+    setCancelPending(false);
+    cancelPendingRef.current = false;
+    suppressInstallErrorRef.current = false;
+    pendingInstallErrorRef.current = null;
     publishUpdateState({ phase: "checking" });
     void (async () => {
       try {
@@ -604,8 +613,7 @@ export default function SettingsView({
   const handleCancelUpdateDownload = () => {
     if (updateState.phase !== "installing" || cancelPendingRef.current) return;
     const update = pendingUpdate.current;
-    const version = updateState.phase === "installing" ? updateState.version : null;
-    if (version === null) return;
+    const version = updateState.version;
     cancelPendingRef.current = true;
     setCancelPending(true);
     void (async () => {
@@ -614,12 +622,15 @@ export default function SettingsView({
         cancelPendingRef.current = false;
         setCancelPending(false);
         if (result === "cancelled") {
+          // Late cancel after install already left downloading — keep state.
+          if (updatePhaseRef.current !== "installing") return;
           suppressInstallErrorRef.current = true;
           pendingInstallErrorRef.current = null;
           setCancelNote("cancelled");
           // Re-check live workers the same way install does: a session may
           // have started during the download and must keep the install guard.
           const liveSessions = await listLiveSessions();
+          if (updatePhaseRef.current !== "installing") return;
           publishUpdateState({
             phase: "available",
             version,
