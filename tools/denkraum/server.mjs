@@ -134,9 +134,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   for (const { name, reason } of errors) console.error(`${name}: ${reason}`);
   if (errors.length) process.exitCode = 1;
   else {
-    const { port, statePath, rootAgentId, rootReceiptToken, webhookSecret } = config;
+    const { port, statePath, rootAgentId, rootReceiptToken, webhookSecret, webhookUrl } = config;
     const server = createDeskServer({ statePath, rootAgentId, rootReceiptToken, notifyEvent: createWebhookNotifier({
-      url: process.env.DECISION_DESK_WEBHOOK_URL, secret: webhookSecret }) });
+      url: webhookUrl, secret: webhookSecret }) });
     server.on('error', e => { console.error(`Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}`); process.exitCode = 1; });
     server.listen(port, '127.0.0.1', () => console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`));
   }
