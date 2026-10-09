@@ -3,7 +3,8 @@ try { $('idea').value = localStorage.getItem(ideaKey) || ''; } catch { $('idea-s
 $('idea').addEventListener('input', () => { try { localStorage.setItem(ideaKey, $('idea').value); $('idea-status').textContent = 'Entwurf geändert · noch nicht gespeichert.'; } catch { $('idea-status').textContent = 'Nur in dieser geöffneten Seite · bitte den Entwurf vor dem Schließen kopieren.'; } });
 window.addEventListener('storage', event => { if (event.key === storageKey && view) showChanged('Ein anderes Fenster hat lokale Entwürfe geändert. Deine Eingaben bleiben in diesem Fenster erhalten. Prüfe vor dem Senden den aktuellen Stand.'); });
 // DD3a target binding; absence of a route is not successful storage or delivery.
-const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content || null, ideaOperationKey = 'decision-desk.idea-operation.v1';
+// rootReceiver comes from questions.js (loaded first).
+const ideaOperationKey = 'decision-desk.idea-operation.v1';
 let ideaOperation = { id: null, expectedRevision: null, pending: null }, recoveryConfirmed = false, ideaRecovery = false;
 function ideaIdValid(value) { return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value); }
 function validIdeaPayload(payload) { return record(payload) && ideaIdValid(payload.requestId)
@@ -155,6 +156,7 @@ async function loadInbox() {
 }
 async function saveIdea() {
   if (ideaPosting || posting || loading) return;
+  if (!rootReceiver) { $('idea-status').textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
   if (dataInvalid || state?.schemaVersion !== 2) { $('idea-status').textContent = 'Kein geprüfter V2-Datenstand. Aktualisieren und danach erneut prüfen; dein Entwurf bleibt erhalten.'; return; }
   if (ideaRecovery) { updateIdeaControls(); return; }
   const text = $('idea').value.trim();
@@ -247,6 +249,7 @@ function appendWorkbench(item, idea) {
 }
 async function saveWorkbench() {
   const d = wbDrafts[wbActive]; if (!d || wbBusy || loading || posting || ideaPosting || dataInvalid || wbCorrupt || state?.schemaVersion !== 2) return;
+  if (!rootReceiver) { wbStatus.textContent = 'Nur in diesem Browser · noch nicht an den Orchestrator gesendet.'; return; }
   const value = wbValue({ ideaRef: d.ideaRef, actor: 'Browserentwurf', source: null, variants: d.variants.filter(v => v.title.trim() || v.description.trim()), openPoints: d.openPoints, nextSteps: d.nextSteps });
   if (!d.pending && (!value || !crypto.randomUUID || !wbRevisionValid(d.expectedRevision))) { wbStatus.textContent = 'Bitte mindestens einen vollständigen Inhalt eingeben: bis zu 16 Varianten (Titel 200, Beschreibung 2000 Zeichen), je 32 Punkte/Schritte, insgesamt höchstens 20000 Zeichen.'; return; }
   const payload = d.pending || { requestId: crypto.randomUUID(), expectedRevision: d.expectedRevision, ...value }; d.pending = payload; if (!persistWB()) { updateWB(); return; }
