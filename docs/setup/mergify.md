@@ -85,8 +85,10 @@ Setzen/Entfernen: `gh pr edit <n> --add-label do-not-merge`,
 
 Die Merge-Protection „Paket-PR bringt seinen Bericht mit" greift auf
 **Paket-Branches**: Name passt auf
-`^(claude|codex|kimi|opencode|glm)/(w<N>-|df<N>|ki-<N>|hq2-)` (ohne
-Groß-/Kleinschreibung), z. B. `claude/w2-07-credential-acl`. Ein solcher PR
+`^(claude|codex|kimi|opencode|glm|cursor)/(w<N>-|df<N>|ki-<N>|hq2-|dr-|z<N>-)`
+(ohne Groß-/Kleinschreibung), wobei `<N>` eine oder mehrere Ziffern bezeichnet,
+z. B. `claude/w2-07-credential-acl`, `cursor/dr-11-denkraum-playwright`,
+`codex/dr-13-filters` oder `cursor/z2-pr-protection`. Ein solcher PR
 muss im PR-Text einen Abschnitt tragen, der mit `## Report` beginnt
 (Vorlage: `.github/pull_request_template.md`), sonst bleibt der Check
 `Mergify Merge Protections` rot. Eine Berichtsdatei in `.pa/` ist seit
