@@ -104,6 +104,7 @@ mod routing;
 mod ruflo;
 mod scout;
 mod sessionpersist;
+mod settings_cmds;
 mod setupgate;
 mod skills;
 mod stats;
@@ -119,7 +120,7 @@ mod workers;
 mod worktree;
 
 use diagnosis_cmds::*;
-use std::collections::BTreeMap;
+use settings_cmds::*;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -740,61 +741,6 @@ async fn spawn_pty(
     let session_id = manager.spawn(&app, &profile, cwd, cols, rows, &[])?;
     Ok(SpawnPtyResponse { session_id })
 }
-
-/// The global environment stage for ordinary agents (`strict` without a row).
-#[tauri::command]
-async fn get_agent_env_isolation(store: State<'_, Store>) -> Result<String, String> {
-    Ok(store.agent_env_isolation().await?.as_str().to_string())
-}
-
-/// Set the global stage; it applies to the next spawn or respawn only. The
-/// window is the human; the Control API demands the verdict token instead.
-#[tauri::command]
-async fn set_agent_env_isolation(store: State<'_, Store>, stage: String) -> Result<(), String> {
-    let stage = stage
-        .parse::<profiles::EnvIsolation>()
-        .map_err(|e| e.to_string())?;
-    store.set_agent_env_isolation(stage).await
-}
-
-/// Read-only state of the continuous activation switch (locked by default).
-#[tauri::command]
-async fn get_continuous_activation(store: State<'_, Store>) -> Result<Value, String> {
-    workers::activation::Activation::status(&store, &workers::activation::NoMachineReadableEvidence)
-        .await
-}
-
-/// W4-03: turn the continuous switch on, fail-closed. Refused unless the
-/// verdict token matches, no emergency stop is active, rows 1-26 of the
-/// acceptance matrix are evidenced for `policy_revision` and it was not enabled
-/// before. The permit is only parked here: no dispatch loop is started yet.
-#[tauri::command]
-async fn enable_continuous_activation(
-    app: AppHandle,
-    store: State<'_, Store>,
-    activation: State<'_, workers::activation::Activation>,
-    held: State<'_, HeldSchedulerPermit>,
-    verdict_token: String,
-    policy_revision: u64,
-) -> Result<(), String> {
-    let expected = get_verdict_token(app)?;
-    let permit = activation
-        .enable(
-            &store,
-            &workers::activation::NoMachineReadableEvidence,
-            &expected,
-            &verdict_token,
-            policy_revision,
-        )
-        .await
-        .map_err(|refusal| format!("continuous activation refused: {refusal:?}"))?;
-    *held.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(permit);
-    Ok(())
-}
-
-/// The permit of an enabled switch; nothing else holds one.
-#[derive(Default)]
-struct HeldSchedulerPermit(std::sync::Mutex<Option<workers::scheduler::SchedulerPermit>>);
 
 #[tauri::command]
 fn write_pty(
@@ -1899,29 +1845,6 @@ async fn import_development_plan(
     .await
 }
 
-/// Whether the hourly digest writer runs at all. On unless switched off.
-#[tauri::command]
-async fn get_digest_enabled(store: State<'_, Store>) -> Result<bool, String> {
-    Ok(digest::enabled(&store).await)
-}
-
-#[tauri::command]
-async fn set_digest_enabled(store: State<'_, Store>, enabled: bool) -> Result<(), String> {
-    digest::set_enabled(&store, enabled).await
-}
-
-#[tauri::command]
-async fn get_routing_status(store: State<'_, Store>) -> Result<routing::RoutingStatus, String> {
-    Ok(routing::routing_status(&store).await)
-}
-
-#[tauri::command]
-async fn set_product_mode(store: State<'_, Store>, mode: String) -> Result<(), String> {
-    let parsed = routing::ProductMode::parse(&mode)
-        .ok_or_else(|| format!("unknown product mode: {mode}"))?;
-    routing::set_product_mode(&store, parsed).await
-}
-
 // -- project statistics (Phase 20) -----------------------------------------
 
 /// One project's statistics: overview, tokens, sessions, timeline, estimate.
@@ -2194,14 +2117,19 @@ async fn list_learnings(
 ///
 /// The token the four review routes of the control API ask for on top of the
 /// API token (see [`crate::api::VERDICT_TOKEN_HEADER`]). It is minted at
-/// startup and written to no file, so this command and the `--verdict-token`
-/// flag of `pa` are the only two ways to it - and this one answers the window,
-/// which is the surface that has a human in front of it.
+/// startup and written to no file, so this command, `--verdict-token` on `pa`,
+/// and [`verdict_token_from_app`] (`settings_cmds::enable_continuous_activation`)
+/// reach it - this one answers the window with a human in front of it.
 ///
 /// Without a running control API there is no token, and saying so is more
 /// useful than an empty string that would read as a valid one.
 #[tauri::command]
 fn get_verdict_token(app: AppHandle) -> Result<String, String> {
+    verdict_token_from_app(&app)
+}
+
+/// Shared read of the control-API verdict token for other command modules.
+pub(crate) fn verdict_token_from_app(app: &AppHandle) -> Result<String, String> {
     app.try_state::<ApiServer>()
         .map(|server| server.verdict_token().to_string())
         .ok_or_else(|| "the control api is not running; there is no verdict token".to_string())
@@ -2232,33 +2160,6 @@ async fn run_learning_critic(
     worker_id: String,
 ) -> Result<usize, String> {
     critic::run_critic(&app, &store, &worker_id).await
-}
-
-/// Turn learning on or off for one agent profile.
-#[tauri::command]
-async fn set_profile_enabled(
-    store: State<'_, Store>,
-    id: String,
-    enabled: bool,
-) -> Result<(), String> {
-    learnings::set_profile_enabled(&store, &id, enabled).await
-}
-
-/// Turn learning on or off for one agent category: worker, queen, orchestrator
-/// or scout.
-#[tauri::command]
-async fn set_category_learning(
-    store: State<'_, Store>,
-    category: String,
-    enabled: bool,
-) -> Result<(), String> {
-    learnings::set_learning_enabled(&store, &category, enabled).await
-}
-
-/// The per-category learning switches, one entry per known category.
-#[tauri::command]
-async fn get_learning_settings(store: State<'_, Store>) -> Result<BTreeMap<String, bool>, String> {
-    Ok(learnings::learning_settings(&store).await)
 }
 
 // -- question commands (Phase 21) ------------------------------------------

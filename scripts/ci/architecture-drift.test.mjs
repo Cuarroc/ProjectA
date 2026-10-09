@@ -151,3 +151,59 @@ test("contract: all 7 diagnosis commands are properly moved to diagnosis_cmds.rs
     assert.match(handlerList, new RegExp(`\\b${cmd}\\b`), `Command ${cmd} should be listed in generate_handler!`);
   }
 });
+
+test("rejects settings commands in main.rs", () => {
+  const root = fixture({ "src-tauri/src/main.rs": "fn get_agent_env_isolation() { }\n" });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /SETTINGS_COMMANDS_MOVED.*src-tauri\/src\/main\.rs/);
+});
+
+test("accepts settings-named methods inside ControlBackend for ApiBackend", () => {
+  const root = fixture({ "src-tauri/src/main.rs": "impl ControlBackend for ApiBackend {\n    fn get_digest_enabled() {}\n}\n" });
+  assert.equal(run(root, "check").status, 0);
+});
+
+test("contract: all 11 settings commands are properly moved to settings_cmds.rs and exported in main.rs", () => {
+  const repoRoot = process.env.TEST_REPO_ROOT || dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+  const mainRs = readFileSync(join(repoRoot, "src-tauri/src/main.rs"), "utf8");
+  let settingsRs = "";
+  try {
+    settingsRs = readFileSync(join(repoRoot, "src-tauri/src/settings_cmds.rs"), "utf8");
+  } catch (e) {
+    // missing in older tree, handled below
+  }
+
+  const commands = [
+    "get_agent_env_isolation",
+    "set_agent_env_isolation",
+    "get_continuous_activation",
+    "enable_continuous_activation",
+    "get_digest_enabled",
+    "set_digest_enabled",
+    "get_routing_status",
+    "set_product_mode",
+    "set_profile_enabled",
+    "set_category_learning",
+    "get_learning_settings",
+  ];
+
+  const commandDef = (cmd) =>
+    new RegExp(
+      `#\\[tauri::command\\]\\s*(?:(?:#\\[[^\\]]*\\]|\\/\\/.*|\\/\\*.*?\\*\\/)\\s*)*(?:pub(?:\\([^)]*\\))?\\s+)?(?:async\\s+)?fn\\s+${cmd}\\s*\\(`,
+    );
+
+  for (const cmd of commands) {
+    // ApiBackend keeps same-named trait methods in main.rs; only the Tauri
+    // command attribute must leave.
+    assert.doesNotMatch(mainRs, commandDef(cmd), `Command ${cmd} should not be defined in main.rs`);
+    assert.match(settingsRs, commandDef(cmd), `Command ${cmd} should be exported in settings_cmds.rs`);
+  }
+
+  const handlerMatch = mainRs.match(/generate_handler!\[(.*?)\]/s);
+  assert.ok(handlerMatch, "generate_handler! not found in main.rs");
+  const handlerList = handlerMatch[1];
+  for (const cmd of commands) {
+    assert.match(handlerList, new RegExp(`\\b${cmd}\\b`), `Command ${cmd} should be listed in generate_handler!`);
+  }
+});
