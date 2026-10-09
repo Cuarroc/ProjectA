@@ -33,7 +33,7 @@ pub struct Install<'a> {
     flight: Arc<Flight>,
     done: watch::Sender<Option<Result<CancelResult, String>>>,
     released: bool,
-    /// Set when `finish` starts awaiting thaw; Drop must not clear the slot.
+    /// True once `finish` awaits thaw; Drop must not clear the slot.
     finishing: bool,
 }
 fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {
@@ -130,9 +130,7 @@ impl Drop for Install<'_> {
             return;
         }
         self.released = true;
-        // Fail-closed by phase: Installing or an interrupted thaw keeps the
-        // slot (installer may run / app still frozen). Only a drop before or
-        // during download may clear it.
+        // Fail-closed: Installing / interrupted thaw keep the slot; download-phase drop may clear.
         let keep_slot = self.finishing
             || self
                 .flight
@@ -153,8 +151,7 @@ impl Drop for Install<'_> {
 
 impl Install<'_> {
     pub fn finish_unstarted(mut self) -> Result<(), String> {
-        // Set `released` only after the lock succeeds so Drop still signals
-        // when the mutex is poisoned (same ordering as `finish`).
+        // `released` only after lock ok — Drop still signals if the mutex is poisoned.
         *lock(&self.owner.0)? = None;
         self.released = true;
         self.done.send_replace(Some(Ok(CancelResult::NotRunning)));
@@ -373,9 +370,8 @@ mod tests {
     #[tokio::test]
     async fn failed_thaw_does_not_hide_the_update_error() {
         let state = UpdateCancel::default();
-        let install = state.begin().unwrap();
         let message = finish_flight(
-            install,
+            state.begin().unwrap(),
             Err("download failed".into()),
             false,
             ready(Err("thaw failed".into())),
@@ -383,17 +379,12 @@ mod tests {
         .await
         .unwrap_err();
         assert!(
-            message.starts_with("download failed") && message.contains("thaw failed"),
-            "combined message must keep the update error visible: {message}"
+            message.starts_with("download failed")
+                && message.contains("thaw failed")
+                && message.contains("leaving maintenance also failed"),
+            "{message}"
         );
-        assert!(
-            message.contains("leaving maintenance also failed"),
-            "production combine wording must appear: {message}"
-        );
-        assert!(
-            state.begin().is_err(),
-            "failed thaw keeps the slot occupied, fail-closed"
-        );
+        assert!(state.begin().is_err());
     }
 
     #[tokio::test]
@@ -402,15 +393,8 @@ mod tests {
         let install = state.begin().unwrap();
         install.download(ready(Ok(()))).await.unwrap();
         drop(install);
-        assert_eq!(
-            state.cancel().await.unwrap(),
-            CancelResult::TooLate,
-            "Installing drop must keep TooLate, not clear to NotRunning"
-        );
-        assert!(
-            state.begin().is_err(),
-            "slot must stay occupied after drop in Installing"
-        );
+        assert_eq!(state.cancel().await.unwrap(), CancelResult::TooLate);
+        assert!(state.begin().is_err());
     }
 
     #[tokio::test]
@@ -419,9 +403,9 @@ mod tests {
         let install = state.begin().unwrap();
         let mut cancel = Box::pin(state.cancel());
         assert!(is_pending(cancel.as_mut()).await);
-        let (_thaw_tx, thaw_rx) = oneshot::channel::<()>();
+        let (_tx, rx) = oneshot::channel::<()>();
         let mut finish = Box::pin(install.finish(async {
-            thaw_rx.await.unwrap();
+            rx.await.unwrap();
             Ok(())
         }));
         assert!(is_pending(finish.as_mut()).await);
@@ -430,10 +414,7 @@ mod tests {
             cancel.await.unwrap_err(),
             "update interrupted; restart before retrying"
         );
-        assert!(
-            state.begin().is_err(),
-            "slot must stay occupied when thaw did not complete"
-        );
+        assert!(state.begin().is_err());
     }
 
     #[tokio::test]
@@ -442,15 +423,11 @@ mod tests {
         let install = state.begin().unwrap();
         let mut cancel = Box::pin(state.cancel());
         assert!(is_pending(cancel.as_mut()).await);
-        // Still Downloading (no successful download boundary crossed).
         drop(install);
         assert_eq!(
             cancel.await.unwrap_err(),
             "update interrupted; restart before retrying"
         );
-        assert!(
-            state.begin().is_ok(),
-            "download-phase drop may clear the slot"
-        );
+        assert!(state.begin().is_ok());
     }
 }
