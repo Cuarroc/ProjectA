@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import fs, { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setImmediate } from 'node:timers/promises';
@@ -158,4 +159,37 @@ test('DRSEC: failed acquisition does not retain a user when the store is dropped
   await release();
   const next = new DeskStore(file); await add(next, 'retry'); await next.close();
   await assert.rejects(readFile(o.ownerRecordPath(file)), e => e.code === 'ENOENT');
+});
+
+test('DRSEC: a failed release no longer locks the same process out of its own ledger', async t => {
+  const file = await ledger(t), store = new DeskStore(file), orig = fs.rename;
+  await add(store, 'first'); const before = JSON.parse(await readFile(o.ownerRecordPath(file), 'utf8'));
+  fs.rename = async () => {
+    fs.rename = orig; syncBuiltinESMExports();
+    throw Object.assign(new Error('rename failed'), { code: 'EIO' });
+  };
+  syncBuiltinESMExports();
+  try { await assert.rejects(store.close(), e => e.code === o.OWNERSHIP_IO); }
+  finally { fs.rename = orig; syncBuiltinESMExports(); }
+  const next = new DeskStore(file); await add(next, 'second');
+  assert.notEqual(JSON.parse(await readFile(o.ownerRecordPath(file), 'utf8')).nonce, before.nonce);
+  assert.deepEqual((await next.read()).questions.map(q => q.id), ['first', 'second']);
+  await next.close(); await assert.rejects(readFile(o.ownerRecordPath(file)), e => e.code === 'ENOENT');
+});
+test('DRSEC-G6: a never-opened sibling mutation waits for closing and acquires a fresh session', async t => {
+  const file = await ledger(t), a = new DeskStore(file), b = new DeskStore(file);
+  await add(a, 'first'); const before = await readFile(o.ownerRecordPath(file));
+  const entered = Promise.withResolvers(), resume = Promise.withResolvers();
+  o.setOwnershipReleaseHooks({ beforeRename: async () => { entered.resolve(); await resume.promise; } });
+  const closing = a.close(); await entered.promise;
+  let mutated = false;
+  const mutation = b.change(s => { mutated = true; s.questions.push({ id: 'second', revision: 1, options: [] }); });
+  try {
+    await setImmediate(); assert.equal(mutated, false);
+    assert.deepEqual(await readFile(o.ownerRecordPath(file)), before);
+  } finally { resume.resolve(); await closing; o.setOwnershipReleaseHooks(); }
+  await mutation;
+  assert.notEqual(JSON.parse(await readFile(o.ownerRecordPath(file), 'utf8')).nonce, JSON.parse(before).nonce);
+  assert.deepEqual((await b.read()).questions.map(q => q.id), ['first', 'second']);
+  await b.close(); await assert.rejects(readFile(o.ownerRecordPath(file)), e => e.code === 'ENOENT');
 });
