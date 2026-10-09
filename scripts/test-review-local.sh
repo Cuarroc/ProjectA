@@ -504,6 +504,23 @@ else
   head -n 8 "$tmp/race8/review_prompt_pr8.md" 2>&1
 fi
 
+# 15. Private refs/pa-review/pr-<N> must not linger after the run ends
+#     (success or failure). Unique refs during the run stay (see 14).
+run bash "$RUN" 7 --dry-run --models fake-a:cloud --out-dir "$tmp/prune-ok"
+leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+if [ "$rc" -eq 0 ] && [ -z "$leftover" ]; then
+  ok "after PR run no refs/pa-review/pr-* remain"
+else
+  bad "after PR dry-run leftover=[$leftover] rc=$rc"; echo "$out"
+fi
+run bash "$RUN" 7 --models fake-a:cloud,fake-leer:cloud --out-dir "$tmp/prune-fail"
+leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
+if [ "$rc" -ne 0 ] && [ -z "$leftover" ]; then
+  ok "after failed PR run no refs/pa-review/pr-* remain"
+else
+  bad "after failed PR leftover=[$leftover] rc=$rc"; echo "$out"
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."
