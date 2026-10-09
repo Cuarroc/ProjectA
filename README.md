@@ -83,8 +83,8 @@ vorbereitet sein. Die Seite ist nur auf demselben Rechner unter
 Eine gespeicherte Antwort oder Idee startet noch keine Ausführung.
 
 Die [Anleitung in fünf Schritten](docs/denkraum/ANLEITUNG.md) ist ein Entwurf.
-Die Live-Schaltung (erscheint mit DR-16) und der anschließende Trockenlauf
-stehen noch aus; kommende Bedienmöglichkeiten sind in der Anleitung markiert.
+Sie beschreibt Kategorie, Filter und Sortierung der Ideen. Die Umschaltung des
+laufenden Denkraums (DR-16b) und der Trockenlauf der Anleitung stehen noch aus.
 
 ## Wo steht ProjectA?
 
