@@ -161,28 +161,31 @@ test('DRSEC: fixture exits non-zero when stdin closes without release', async t 
   ]), 0);
   assert.ok(await readFile(ownerPath(file)));
 });
-// Proves third-owner record survives stale cross-instance restore; not "never two owners".
-test('DRSEC: cross-instance stale release never overwrites a live owner', async t => {
+test('DRSEC: second release of a nonce is rejected and keeps the live owner record', async t => {
   const file = await ledger(t);
   const a = await import('./ownership.mjs?a'), b = await import('./ownership.mjs?b');
   const path = a.ownerRecordPath(file), old = await a.acquireOwnership(file);
   const entered = Promise.withResolvers(), resume = Promise.withResolvers();
-  const restoring = Promise.withResolvers(), restoreGate = Promise.withResolvers();
   t.after(() => { a.setOwnershipReleaseHooks(); b.setOwnershipReleaseHooks(); });
-  a.setOwnershipReleaseHooks({
-    beforeRename: async () => { entered.resolve(); await resume.promise; },
-    beforeRestore: async () => { restoring.resolve(); await restoreGate.promise; },
-  });
-  const stale = assert.rejects(a.releaseOwnership(file, old.nonce), e => e?.code === a.OWNERSHIP_RELEASE_MISMATCH);
+  a.setOwnershipReleaseHooks({ beforeRename: async () => { entered.resolve(); await resume.promise; } });
+  const first = a.releaseOwnership(file, old.nonce).then(() => null, error => error);
   await entered.promise;
-  await b.releaseOwnership(file, old.nonce);
-  const successor = await b.acquireOwnership(file);
-  resume.resolve(); await restoring.promise;
-  const third = await b.acquireOwnership(file);
-  restoreGate.resolve(); await stale;
-  assert.equal(JSON.parse(await readFile(path, 'utf8')).nonce, third.nonce);
+  try {
+    const before = await readFile(path);
+    await assert.rejects(b.releaseOwnership(file, old.nonce), e => e?.code === MISMATCH && e.message === MISMATCH);
+    assert.deepEqual(await readFile(path), before);
+    await assert.rejects(b.acquireOwnership(file), e => e?.code === HELD);
+  } finally { resume.resolve(); await first; a.setOwnershipReleaseHooks(); }
+  assert.equal(await first, null);
+  const successor = await b.acquireOwnership(file), before = await readFile(path);
+  await assert.rejects(a.releaseOwnership(file, old.nonce), e => e?.code === MISMATCH);
+  assert.deepEqual(await readFile(path), before);
+  await assert.rejects(b.acquireOwnership(file), e => e?.code === HELD);
+  await b.releaseOwnership(file, successor.nonce);
+  const third = await b.acquireOwnership(file), thirdBytes = await readFile(path);
   assert.notEqual(third.nonce, successor.nonce);
-  await assert.rejects(b.releaseOwnership(file, successor.nonce), e => e?.code === b.OWNERSHIP_RELEASE_MISMATCH);
+  await assert.rejects(b.releaseOwnership(file, successor.nonce), e => e?.code === MISMATCH);
   assert.equal(JSON.parse(await readFile(path, 'utf8')).nonce, third.nonce);
+  assert.deepEqual(await readFile(path), thirdBytes);
   await b.releaseOwnership(file, third.nonce);
 });

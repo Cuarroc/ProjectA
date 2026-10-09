@@ -128,6 +128,10 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
   };
   server.on('listening', () => schedule(0));
   server.on('close', () => { closed = true; if (timer) timers.clearTimeout(timer); timer = undefined; });
+  const close = server.close;
+  server.close = callback => close.call(server, error => {
+    store.close().then(() => callback?.(error), failure => { if (callback) callback(failure); else server.emit('error', failure); });
+  });
   return server;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
