@@ -1219,17 +1219,15 @@ async fn install_update_when_idle(
         &dir.join("projecta.db"),
     )
     .map_err(|error| format!("update journal unavailable: {error}"))?;
-    let install = cancel.begin()?;
-    if let Err(error) = enter_database_maintenance(
-        &app.state::<PtyManager>(),
-        &app.state::<Store>(),
-        MAINTENANCE_DRAIN_WAIT,
+    let install = update_cancel::enter_or_abort(
+        cancel.begin()?,
+        enter_database_maintenance(
+            &app.state::<PtyManager>(),
+            &app.state::<Store>(),
+            MAINTENANCE_DRAIN_WAIT,
+        ),
     )
-    .await
-    {
-        install.finish_unstarted()?;
-        return Err(error);
-    }
+    .await?;
     let result = prepare_and_install(&app, &update, &dir, journal_store.clone(), &install).await;
     // From `Installing` on, only the restart validation may thaw the app.
     // An unreadable journal counts as started: the app stays frozen.
@@ -1237,22 +1235,13 @@ async fn install_update_when_idle(
         && journal_store.load().map_or(true, |journal| {
             !delivery_recovery::installer_not_started(journal.phase())
         });
-
-    if result.is_err() && !installer_started {
-        let thaw = install
-            .finish(leave_database_maintenance(
-                &app.state::<PtyManager>(),
-                &app.state::<Store>(),
-            ))
-            .await;
-        return report_with_thaw(result, thaw);
-    }
-    let _ = install
-        .finish(std::future::ready(Err(
-            "installer may have started; restart before retrying".into(),
-        )))
-        .await;
-    result
+    update_cancel::finish_flight(
+        install,
+        result,
+        installer_started,
+        leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()),
+    )
+    .await
 }
 
 #[tauri::command]
