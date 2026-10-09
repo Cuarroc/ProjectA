@@ -4851,15 +4851,29 @@ mod tests {
             ),
         ];
 
-        // Scan only the code above this module, and build the marker at
-        // runtime - otherwise the scan finds the string literals of this very
-        // test and reads garbage after them.
+        // Exclude test modules so fixture strings cannot become state types.
+        // Discover command modules instead of maintaining a second file list
+        // that silently loses coverage whenever commands move out of main.rs.
         let code = &source[..source.find("mod tests").expect("this module exists")];
+        let mut command_code = code.to_owned();
+        for entry in std::fs::read_dir(source_dir).expect("read source directory") {
+            let path = entry.expect("read source entry").path();
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with("_cmds.rs"))
+            {
+                let module = std::fs::read_to_string(&path)
+                    .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+                command_code.push('\n');
+                command_code.push_str(module.split("mod tests").next().unwrap());
+            }
+        }
         let marker: String = ["State<'", "_, "].concat();
         let marker = marker.as_str();
 
         let mut wanted = std::collections::BTreeSet::new();
-        let mut rest = code;
+        let mut rest = command_code.as_str();
         while let Some(at) = rest.find(marker) {
             rest = &rest[at + marker.len()..];
             let mut depth = 1usize;
