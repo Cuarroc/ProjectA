@@ -464,3 +464,13 @@ test('DRSEC-G6-FU: failed recovery lock cleanup emits one stderr diagnostic', as
     await release(file, session.nonce);
   } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });
+
+test('DRSEC-G6-FU: invalid host hints cover older and damaged records', async t => {
+  const file = await ledger(t), dead = await killedOwner(t, file);
+  for (const host of [undefined, 17, null]) {
+    const bytes = JSON.stringify({ ...dead, host }); await writeFile(ownerPath(file), bytes);
+    await assert.rejects(acquire(file), e => isDiag(e, HELD)
+      && e.hint === 'record without a valid host field (older version or damaged); remove manually after checking that no server runs');
+    assert.equal(await readFile(ownerPath(file), 'utf8'), bytes);
+  }
+});

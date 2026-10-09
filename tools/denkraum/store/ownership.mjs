@@ -48,7 +48,7 @@ function isDead(record) {
   catch (error) { return error?.code === 'ESRCH'; }
   return false;
 }
-const LEGACY_HINT = 'record without host from an older version; remove manually after checking that no server runs';
+const LEGACY_HINT = 'record without a valid host field (older version or damaged); remove manually after checking that no server runs';
 // Null when the record is gone (released cleanly in the window).
 async function readJudged(path) {
   let raw;
