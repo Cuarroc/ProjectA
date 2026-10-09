@@ -1,5 +1,10 @@
 # Dev-HQ Bug Log
 
+Closures dated 2026-10-09 below cover historical code defects only. Evidence lines
+were checked at `origin/main` `03542ef9f53bb3f16b0750cef036167a887e7c8b`.
+They do not establish fresh provider/runtime acceptance or compatibility with newer
+CLI versions; historical queue records are not proof of current queue state.
+
 ## 2026-09-23 · Studio-Dichte verändert zu wenig und ist nur in Analyse erreichbar
 - **Wo:** concepts/studio-workspace.js, studio-workspace.css, hq2-studio.html.
 - **Was:** Nutzerbefund: Komfortabel/Kompakt ändert fast nichts; Desktop-Inspektion bestätigt nur geringe Abstandsänderungen.
@@ -48,23 +53,28 @@
 - **Repro:** unter Last `cargo test --bin projecta`; isoliert `cargo test --bin projecta native_handoff` → 3 passed in 24 s (grün). Dieselbe Klasse wie der `delivery_recovery`-Flake (W1-04).
 - **Schwere:** stört (blockiert Pushes über den Hook, kein Produktfehler).
 - **Queue:** Pending — App lief nicht (Mutex durch fremdes Debug-`projecta.exe`); kein Eintrag erfunden. Gehört zu W1-04.
-- **Status:** offen. Nächster Schritt: Fixture-TTL für Route-Tests entkoppeln (wie `test_route()` mit `OnceLock`-Zeitstempel und 3600 s) oder die Ablaufprüfung im Test mit injizierter Uhr fahren; roter Test zuerst.
+- **Status:** CLOSED 2026-10-09 — fixed in `c60f2679e222`; the native-route test overrides the generic 60-second fixture TTL.
+- **Evidence:** `src-tauri/src/workers/development_route.rs:472`, `:481`, `:483`: 3600-second TTL and a shared `OnceLock` observation timestamp.
 
 ## 2026-09-16 · Queue-Einträge für die offenen Punkte
 - **Wo:** Queue der installierten v1.4.0, Projekt `pj-1a05e752f9b-1` (ProjectA); Skript `scripts/hq-queue-open-points.mjs` (`POST /api/queue`).
 - **Was:** Die acht Punkte aus `.pa/report_devhq_setup_2026-09-15.md` §4a sind eingereiht (Prefix `HQ-Bug:`, Profil `claude`, angelegt 15.09. 21:35 UTC; korrigiert 21.09., vorher hier fälschlich „16.09. ~09:35“). Zuordnung Punkt → Queue-ID:
-  - Kimi-Zustellung (NT-17) → `tq-1a0a6ff70e8-1` (p3, dispatched → Worker `wk-1a0a6ffd562-9`, exited)
-  - OpenCode-Zustellung (NT-17) → `tq-1a0a6ff70ed-2` (p3, dispatched → `wk-1a0a7004f26-18`, exited)
+  - Kimi-Zustellung (NT-17) → `tq-1a0a6ff70e8-1` (p3, dispatched → Worker `wk-1a0a6ffd562-9`, exited) — CLOSED 2026-10-09; fixed in `c60f2679e222` (historical NT-17 defect).
+    - **Evidence:** `scripts/hq-queue-open-points.mjs:26` records the fix; `src-tauri/src/pty.rs:4931` retains the cursor-report regression based on the raw Kimi capture.
+  - OpenCode-Zustellung (NT-17) → `tq-1a0a6ff70ed-2` (p3, dispatched → `wk-1a0a7004f26-18`, exited) — CLOSED 2026-10-09; fixed in `c60f2679e222` (missing composer readiness).
+    - **Evidence:** `src-tauri/resources/agent-defaults.json:50` supplies `Ask anything`; `src-tauri/src/submit_guard.rs:998`, `:1056` exercise plain and ANSI prompt matching.
   - Baustein B Antwort-Marker → `tq-1a0a6ff70f2-3` (p2, dispatched → `wk-1a0a700c99b-27`, exited)
-  - Flake `delivery_recovery` → `tq-1a0a6ff70f7-4` (p2, dispatched → `wk-1a0a70143f9-36`, exited)
-  - Windows-PTY-Argumenttest CI 34721209783 → `tq-1a0a6ff70fc-5` (p2, ready)
+  - Flake `delivery_recovery` → `tq-1a0a6ff70f7-4` (p2, dispatched → `wk-1a0a70143f9-36`, exited) — CLOSED 2026-10-09; fixed in `c60f2679e222`, shared atomic-write path in `b904620`.
+    - **Evidence:** `src-tauri/src/delivery_recovery.rs:1251` retains the interruption regression; `:1061` uses `fsutil`; `src-tauri/src/fsutil.rs:8` documents bounded retry. W1-04 load acceptance in `KNOWN_ISSUES.md:40` is historical, not remeasured.
+  - Windows-PTY-Argumenttest CI 34721209783 → `tq-1a0a6ff70fc-5` (p2, ready) — CLOSED 2026-10-09; fixed in `c60f2679e222` (duplicate of closed KI-26).
+    - **Evidence:** `src-tauri/src/pty.rs:4865`, `:4871` retain the Node warm-up; `KNOWN_ISSUES.md:93` records the dated KI-26 observation, not a fresh Windows PASS.
   - Capture-Settlement Transport/Recovery-Vertrag (11.09.) → `tq-1a0a6ff7100-6` (p1, ready)
   - Cross-Project-Kapazität Ressourcendruck (11.09.) → `tq-1a0a6ff7105-7` (p1, ready)
   - Abnahmematrix-Tabelle → `tq-1a0a6ff710a-8` (p0, ready)
 - **Repro:** `task_queue` in `%APPDATA%\com.projecta.app\projecta.db` (read-only gelesen, `node:sqlite`); mit laufender App `npm run hq:queue-open-points` → „0 von 8 Punkten noch nicht in der Queue" erwartet.
 - **Schwere:** Buchhaltung; damit gelten die elf `Queue: Pending`-Einträge vom 10.–15.09. als eingereiht, soweit sie in §4a konsolidiert sind.
 - **Queue:** siehe Zuordnung oben. Die vier dispatchten `claude`-Worker endeten alle im Submit-Guard mit „task never echoed; manual Enter required" (`status_events`, 09:36–09:38 UTC) — kein Fix wurde ausgeführt. Laut Entscheidung 16.09. läuft Claude über das Abo der CLI (nicht mehr credit-blockiert); die vier `ready`-Einträge können beim nächsten App-Start weitere `claude`-Worker starten.
-- **Status:** eingereiht, nicht bearbeitet. Die beiden älteren dispatchten Einträge `tq-1a05a98c9e4-16` (QUEUE-TEST) und `tq-1a05e8af9b9-2` (task_p2a) sind Zombies und laut W0-Entscheidung 16.09. zu verwerfen (W1-05).
+- **Status:** Historical enqueueing record; the four code defects marked CLOSED above were subsequently fixed. Other items and current queue state remain unverified. Die beiden älteren dispatchten Einträge `tq-1a05a98c9e4-16` (QUEUE-TEST) und `tq-1a05e8af9b9-2` (task_p2a) sind Zombies und laut W0-Entscheidung 16.09. zu verwerfen (W1-05).
 
 ## 2026-09-16 · Profil `ollama-coder` zeigt auf ein zurückgezogenes Cloud-Modell
 - **Wo:** `src-tauri/resources/agent-defaults.json` Profil `ollama-coder` (`ollama run qwen3-coder:480b-cloud`), `docs/decisions.md` 15.09.
@@ -72,7 +82,8 @@
 - **Repro:** `ollama run qwen3-coder:480b-cloud "OK"` → Exit 1 nach 1 s, keine Anfrage an die Cloud.
 - **Schwere:** stört (ausgeliefertes Profil nicht lauffähig; Billing-Beleg der Cloud-Route unmöglich).
 - **Queue:** Pending — App lief nicht; kein Eintrag erfunden. Entscheidung über das Nachfolgemodell liegt beim Nutzer (Rücknahmebedingung in decisions.md ist eingetreten; lokal vorhandene Cloud-Modelle: `kimi-k2.7-code:cloud`, `glm-5.2:cloud`, `deepseek-v4-flash:cloud`, `kimi-k3:cloud`).
-- **Status:** offen. Beleg `.pa/report_devhq_setup_2026-09-15.md` §4c.
+- **Status:** CLOSED 2026-10-09 — retired-model default fixed in `c60f2679e222`; installed manifest and current provider availability remain unverified.
+- **Evidence:** `src-tauri/resources/agent-defaults.json:86` selects `deepseek-v4-flash:cloud` for `ollama-coder`.
 
 ## 2026-09-16 · Doctor-Manifest gegen installierte v1.4.0 bleibt `mismatch` (echt, nicht CRLF)
 - **Wo:** `scripts/dev-setup.mjs` `runtime.manifest`; `src-tauri/resources/agent-defaults.json`.
@@ -240,6 +251,8 @@ seit dem letzten Eintrag keiner *dokumentiert* wurde. Bei Zweifel: eintragen.
 - Review: zwei unabhaengige Reviewer, alle drei Befunde angenommen, Delta frei.
 - Beleg: .pa/report_pr38_followup_2026-09-22.md.
 - Queue: ausstehend, App am 22.09. offline; kein Queue-Eintrag erfunden.
+- **Status:** CLOSED 2026-10-09 — fixed in `c60f2679e222`; branch protection added by #370 / `c10cdf6`.
+- **Evidence:** `.githooks/post-merge:13`, `:17`, `:26`, `:42`, `:52`: branch guard, local-change checks, temporary generation and pair validation.
 
 ## Integrationsnachtrag 22.09.2026 — PR60
 
@@ -269,6 +282,8 @@ Manifest-Beleg bleiben offen; kein neuer Queue-Eintrag behauptet.
 - Ursache: Node-Runner und Klassifikation akzeptierten nur .mjs.
 - Fix: .cjs verwendet denselben node --test-Vertrag; Exit-Code-/Base-/Head-Prüfungen bleiben unverändert. Isolierte Regression in scripts/test-red-first.sh zuerst Exit 1, nach Fix grün.
 - Queue: ausstehend; normales Runtime-Projekt weiterhin nicht registriert. Kein Queue-Eintrag behauptet.
+- **Status:** CLOSED 2026-10-09 — unsupported-extension defect fixed in `c60f2679e222`; the separate Playwright identity issue (#741) is not covered.
+- **Evidence:** `scripts/ci/red-first.sh:453`, `:508` accept both `.mjs` and `.cjs`.
 
 ## 2026-09-23 · Neue Roadmap: Zustandsanzeige, Import-Rennen und überladene Tabelle
 - **Wo:** concepts/studio-roadmap.js, studio-workspace.js und Roadmap-CSS (DF06a, noch separater Worktree).
