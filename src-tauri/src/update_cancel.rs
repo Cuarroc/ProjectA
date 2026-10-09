@@ -33,6 +33,8 @@ pub struct Install<'a> {
     flight: Arc<Flight>,
     done: watch::Sender<Option<Result<CancelResult, String>>>,
     released: bool,
+    /// Set when `finish` starts awaiting thaw; Drop must not clear the slot.
+    finishing: bool,
 }
 fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {
     mutex
@@ -60,6 +62,7 @@ impl UpdateCancel {
             flight,
             done,
             released: false,
+            finishing: false,
         })
     }
     pub async fn cancel(&self) -> Result<CancelResult, String> {
@@ -127,8 +130,20 @@ impl Drop for Install<'_> {
             return;
         }
         self.released = true;
-        if let Ok(mut slot) = self.owner.0.lock() {
-            *slot = None;
+        // Fail-closed by phase: Installing or an interrupted thaw keeps the
+        // slot (installer may run / app still frozen). Only a drop before or
+        // during download may clear it.
+        let keep_slot = self.finishing
+            || self
+                .flight
+                .phase
+                .lock()
+                .map(|phase| *phase == Phase::Installing)
+                .unwrap_or(true);
+        if !keep_slot {
+            if let Ok(mut slot) = self.owner.0.lock() {
+                *slot = None;
+            }
         }
         let _ = self.done.send(Some(Err(
             "update interrupted; restart before retrying".into()
@@ -138,8 +153,10 @@ impl Drop for Install<'_> {
 
 impl Install<'_> {
     pub fn finish_unstarted(mut self) -> Result<(), String> {
-        self.released = true;
+        // Set `released` only after the lock succeeds so Drop still signals
+        // when the mutex is poisoned (same ordering as `finish`).
         *lock(&self.owner.0)? = None;
+        self.released = true;
         self.done.send_replace(Some(Ok(CancelResult::NotRunning)));
         Ok(())
     }
@@ -169,8 +186,10 @@ impl Install<'_> {
         mut self,
         thaw: impl Future<Output = Result<(), String>>,
     ) -> Result<(), String> {
+        self.finishing = true;
         let result = thaw.await;
         let mut slot = lock(&self.owner.0)?;
+        // Failed thaw or an interrupted task keeps the slot occupied, fail-closed.
         if result.is_ok() {
             *slot = None;
         }
@@ -349,5 +368,63 @@ mod tests {
             .unwrap();
         assert!(state.begin().is_err());
         assert_eq!(state.cancel().await.unwrap(), CancelResult::TooLate);
+    }
+
+    #[tokio::test]
+    async fn drop_while_installing_keeps_slot_and_signals_fixed_error() {
+        let state = UpdateCancel::default();
+        let install = state.begin().unwrap();
+        install.download(ready(Ok(()))).await.unwrap();
+        drop(install);
+        assert_eq!(
+            state.cancel().await.unwrap(),
+            CancelResult::TooLate,
+            "Installing drop must keep TooLate, not clear to NotRunning"
+        );
+        assert!(
+            state.begin().is_err(),
+            "slot must stay occupied after drop in Installing"
+        );
+    }
+
+    #[tokio::test]
+    async fn drop_while_thaw_pending_keeps_slot_and_signals_fixed_error() {
+        let state = UpdateCancel::default();
+        let install = state.begin().unwrap();
+        let mut cancel = Box::pin(state.cancel());
+        assert!(is_pending(cancel.as_mut()).await);
+        let (_thaw_tx, thaw_rx) = oneshot::channel::<()>();
+        let mut finish = Box::pin(install.finish(async {
+            thaw_rx.await.unwrap();
+            Ok(())
+        }));
+        assert!(is_pending(finish.as_mut()).await);
+        drop(finish);
+        assert_eq!(
+            cancel.await.unwrap_err(),
+            "update interrupted; restart before retrying"
+        );
+        assert!(
+            state.begin().is_err(),
+            "slot must stay occupied when thaw did not complete"
+        );
+    }
+
+    #[tokio::test]
+    async fn drop_during_download_still_clears_slot() {
+        let state = UpdateCancel::default();
+        let install = state.begin().unwrap();
+        let mut cancel = Box::pin(state.cancel());
+        assert!(is_pending(cancel.as_mut()).await);
+        // Still Downloading (no successful download boundary crossed).
+        drop(install);
+        assert_eq!(
+            cancel.await.unwrap_err(),
+            "update interrupted; restart before retrying"
+        );
+        assert!(
+            state.begin().is_ok(),
+            "download-phase drop may clear the slot"
+        );
     }
 }
