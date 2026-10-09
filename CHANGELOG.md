@@ -3,17 +3,27 @@
 ## v1.6.0 — unveröffentlicht (Entwurf)
 
 Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
-(Stand `a1d9a5f`). Dies ist noch keine Veröffentlichungsnotiz.
+(Stand `55c2238`). Dies ist noch keine Veröffentlichungsnotiz.
 
 **Zuverlässigkeit und Updates:**
 
+- **Update-Download lässt sich abbrechen** (PR #813, #828, #830): Während
+  ein Update heruntergeladen wird, erscheint in den Einstellungen
+  „Abbrechen“. Ein Abbruch vor der Installation kehrt zur verfügbaren
+  Version zurück; ist die Installation schon zu weit, läuft sie ungestört
+  weiter.
 - **Belege nach Update-Rücksetzungen bleiben erhalten** (PR #600): Jede
   Rücksetzung erhält einen eigenen Protokollnamen; eine weitere Rücksetzung
   überschreibt den vorherigen Beleg nicht mehr.
-- **Windows-Agentenabschluss wartet auf die Speicherbestätigung** (PR #617):
-  Für die letzte Bestätigung gilt jetzt dieselbe Frist wie für das Speichern
-  der Ausgabe. So wird eine innerhalb dieser Frist gespeicherte Ausgabe
-  nicht wegen einer kürzeren Bestätigungsfrist abgewiesen.
+- **Windows-Agentenabschluss wartet auf die Speicherbestätigung** (PR #617,
+  #737): Für die letzte Bestätigung gilt jetzt dieselbe Frist wie für das
+  Speichern der Ausgabe; unter Last folgt die lokale Wartezeit der
+  Busy-Timeout-Zahl und bleibt innerhalb der Host-Frist. So wird eine
+  innerhalb dieser Frist gespeicherte Ausgabe nicht wegen einer kürzeren
+  Bestätigungsfrist abgewiesen.
+- **Setup erkennt beendete Prozesse zuverlässiger** (PR #780): Die
+  Prozesszustände X und x gelten jetzt als beendet, damit ein toter Prozess
+  den Setup-Test nicht fälschlich als laufend blockiert.
 - **Fehler beim Entfernen alter Agenten-Zugangsdaten werden gemeldet**
   (PR #578): Scheitert das Löschen einer Datei, bleibt das im Protokoll
   sichtbar; der zugehörige Zugang ist trotzdem gesperrt.
@@ -33,10 +43,17 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
 - **Webserver und Kommandozeile hinzugefügt** (PR #676, #681): Der Server
   verlangt einen angegebenen Datenpfad; die Kommandozeile meldet fehlerhafte
   Eingabedateien, ohne deren Inhalt oder Pfad auszugeben.
-- **Startangaben und Zustellung geprüft** (PR #647, #639, #727): Ungültige
-  Startangaben werden auch bei einem Aufruf über einen alternativen Pfad
-  erkannt. Fehlt im neuen Datenformat der zuständige Empfänger, wird die
-  Benachrichtigungszustellung ausdrücklich abgelehnt.
+- **Startangaben und Zustellung geprüft** (PR #647, #639, #727, #750):
+  Ungültige Startangaben werden auch bei einem Aufruf über einen
+  alternativen Pfad erkannt; Windows-Kurznamen fließen in die Prüfung ein.
+  Fehlt im neuen Datenformat der zuständige Empfänger, wird die
+  Benachrichtigungszustellung ausdrücklich abgelehnt. Benachrichtigungen
+  ohne Webhook-Adresse gelten als ausgeschaltet.
+- **Denkraum-Sicherheit gehärtet** (PR #793, #796, #805, #806, #808, #809,
+  #819, #823, #824): Webhook- und CLI-Fehler geben keine Zieladressen oder
+  fremden Texte preis; Sicherungs- und Wiederherstellungskopien erhalten
+  unter POSIX private Rechte. Vorhandene Schutzmaßnahmen (lokale Bindung,
+  CSRF, Größenlimits, UTF-8, Pfad-Aliase) sind abgesichert.
 
 **Anleitungen:**
 
@@ -45,6 +62,7 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
   Testabläufen und eine deutsche Rückmeldevorlage sind hinzugekommen.
 
 Interne Entwicklungswerkzeuge: 69 Pakete (#560, #561, #567, #573, #577, #579, #585, #587, #588, #589, #590, #591, #596, #599, #601, #606, #611, #615, #619, #621, #623, #625, #627, #629, #631, #632, #633, #635, #637, #641, #643, #644, #645, #646, #660, #663, #664, #667, #668, #670, #675, #680, #683, #686, #690, #693, #695, #697, #700, #702, #704, #705, #711, #717, #722, #726, #731, #732, #733, #734, #738, #739, #742, #744, #745, #746, #751, #753, #755).
+Interne Werkzeuge und Prüfungen (seit `a1d9a5f`): #728, #749, #752, #764, #767, #768, #769, #772, #773, #777, #781, #782, #783, #784, #788, #790, #792, #795, #800, #804, #814, #818.
 
 ## v1.5.1 — (Datum folgt)
 
