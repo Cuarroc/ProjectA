@@ -298,8 +298,8 @@ node_name_run() {
 }
 
 # R741-A1: absence only via --list JSON without config grep/grepInvert (not source regex).
-# R741-A2: trailers name the leaf title; describe parents come from list JSON grepTitle.
-# R741-A3: load/import failure → INVALID (no clean absence), not base-red.
+# R741-A2: leaf title; classify matches list-line suffix › <leaf> (project/describe prefixes OK).
+# R741-A3: --list nonzero exit or JSON errors[] → INVALID; clean empty match → ABSENT.
 
 playwright_denkraum_list_unfiltered() {
   local path="$1" cfg_tmp
@@ -327,6 +327,7 @@ playwright_denkraum_resolve_identity() {
   process.stdin.on("end",()=>{
     const i=raw.indexOf("{"); if(i<0){console.log("INVALID"); return;}
     let j; try{j=JSON.parse(raw.slice(i));}catch{console.log("INVALID"); return;}
+    if(Array.isArray(j.errors)&&j.errors.length){console.log("INVALID"); return;}
     const hits=[];
     (function walk(suites,parents){for(const su of suites||[]){const path=parents.concat([su.title||""]);
       for(const sp of su.specs||[]){if(sp.title!==name)continue;
@@ -343,11 +344,13 @@ playwright_denkraum_resolve_identity() {
 
 playwright_denkraum_name_run() {
   # Exact case-sensitive --list identity, then both-end-anchored case-sensitive --grep.
-  local name="$1" path="$2" list_out identity grep_title
+  local name="$1" path="$2" list_out identity grep_title list_code
   set +e
   list_out="$(playwright_denkraum_list_unfiltered "$path" 2>/dev/null)"
+  list_code=$?
   set -e
   [ -n "$list_out" ] || { echo "red-first: playwright title identity invalid"; return 2; }
+  [ "$list_code" -eq 0 ] || { echo "red-first: playwright title identity invalid"; return 2; }
   identity="$(printf '%s' "$list_out" | playwright_denkraum_resolve_identity "$name")"
   case "$identity" in
     ABSENT) echo "red-first: playwright title absent from list"; return 1 ;;
@@ -568,9 +571,10 @@ classify_run() {
         printf '%s\n' "$plain" | grep -F 'red-first: playwright title absent from list' >/dev/null && return 1
         printf '%s\n' "$plain" | grep -E 'red-first: playwright title identity invalid|red-first: playwright title present but not discovered|No tests found' >/dev/null && return 2
         printf '%s\n' "$plain" | awk -v want="$expected" '
-          { line=$0; sub(/\r$/,"",line); i=index(line,"› "); if(!i) next;
-            t=substr(line,i+length("› ")); sub(/ \([0-9]+(\.[0-9]+)?m?s\)[[:space:]]*$/,"",t);
-            if(t==want) found=1 }
+          { line=$0; sub(/\r$/,"",line);
+            sub(/ \([0-9]+(\.[0-9]+)?m?s\)[[:space:]]*$/,"",line);
+            s="› " want; n=length(s);
+            if(n<=length(line) && substr(line,length(line)-n+1)==s) found=1 }
           END{ exit found?0:1 }' || return 2
         [ "$code" -eq 0 ] || return 1
         printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null || return 2

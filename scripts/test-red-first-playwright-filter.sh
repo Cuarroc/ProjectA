@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exact Playwright title identity for Denkraum red-first trailers (A1–A3 in red-first.sh).
+# Exact Playwright title identity for Denkraum red-first trailers (A1–A5 in red-first.sh).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source <(sed -n \
@@ -30,6 +30,7 @@ EOF
 write_spec() { cat > "$PROBE/tools/denkraum/evidence.spec.mjs"; }
 ln -s "$ROOT/node_modules" "$PROBE/node_modules"
 SPEC='tools/denkraum/evidence.spec.mjs::existing test (root)'
+PROJ=$'\n  projects: [{ name: \'chromium\' }],'
 fail=0
 expect_cls() {
   local label="$1" want="$2" out code cls
@@ -47,66 +48,44 @@ import { test } from '@playwright/test';
 test('existing test (root)', async () => {});
 test('existing test root', async () => {});
 EOF
-set +e
-out_exact="$(run_spec "$SPEC" "$PROBE" "$PROBE/target" 2>&1)"
-code_exact=$?
-set -e
-plain_exact="$(printf '%s\n' "$out_exact" | sed -E $'s/\033\\[[0-9;]*m//g')"
-if ! printf '%s\n' "$plain_exact" | grep -F '› existing test (root)' >/dev/null; then
-  echo 'FAIL: trailer existing test (root) did not run that exact Playwright title' >&2
-  fail=1
-elif ! classify_run "$out_exact" "$code_exact" "$SPEC"; then
-  echo 'FAIL: exact punctuation title existing test (root) was not classified green' >&2
-  fail=1
-else
-  echo 'ok   playwright-literal-punctuation-name'
-fi
-
+expect_cls playwright-literal-punctuation-name 0
 set +e
 out_near="$(run_spec 'tools/denkraum/evidence.spec.mjs::existing test' "$PROBE" "$PROBE/target" 2>&1)"
 code_near=$?
 set -e
 if classify_run "$out_near" "$code_near" 'tools/denkraum/evidence.spec.mjs::existing test'; then
-  echo 'FAIL: a near-match / prefix title counted as the named Playwright test' >&2
-  fail=1
-else
-  echo 'ok   playwright-rejects-near-match-name'
-fi
+  echo 'FAIL: near-match title counted as named test' >&2; fail=1
+else echo 'ok   playwright-rejects-near-match-name'; fi
 
 write_spec <<'EOF'
 import { test } from '@playwright/test';
 test('existing test (root) extra existing test (root)', async () => {});
 EOF
 expect_cls playwright-rejects-suffix-extra-title 1
-
 write_spec <<'EOF'
 import { test } from '@playwright/test';
 test('existing test (root)', async () => {});
 test('prefix existing test (root)', async () => {});
 EOF
 expect_cls playwright-exact-ignores-prefix-sibling 0
-
 write_cfg $'\n  grepInvert: /existing test/,'
 write_spec <<'EOF'
 import { test } from '@playwright/test';
 test('existing test (root)', async () => {});
 EOF
 expect_cls playwright-grepinvert-discovery-is-invalid 2
-
 write_cfg ''
 write_spec <<'EOF'
 import { test } from '@playwright/test';
 test('existing test (root) (extra evidence.spec.mjs existing test (root)', async () => {});
 EOF
 expect_cls playwright-rejects-basename-embedded-title 1
-
 write_spec <<'EOF'
 import { test } from '@playwright/test';
 test('existing test (root)', async () => {});
 test('EXISTING TEST (ROOT)', async () => { throw new Error('fail'); });
 EOF
 expect_cls playwright-case-sibling-stays-green 0
-
 write_cfg $'\n  grepInvert: /existing test/,'
 write_spec <<'EOF'
 import { test } from '@playwright/test';
@@ -114,19 +93,49 @@ test ('existing test (root)', async () => {});
 EOF
 expect_cls playwright-whitespace-decl-grepinvert-is-invalid 2
 
+# A4: named project list prefix; O5: nested describe — both via › <leaf> suffix.
+write_cfg "$PROJ"
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+test('existing test (root)', async () => {});
+EOF
+expect_cls playwright-project-chromium-pass-is-green 0
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+test('existing test (root)', async () => { throw new Error('x'); });
+EOF
+expect_cls playwright-project-chromium-fail-is-red 1
+write_cfg ''
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+test.describe('group', () => { test('existing test (root)', async () => {}); });
+EOF
+expect_cls playwright-nested-describe-pass-is-green 0
+
+# O4/A5: load/discovery failure → INVALID (2), never absence (1).
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+import './does-not-exist.mjs';
+test('existing test (root)', async () => {});
+EOF
+expect_cls playwright-missing-import-is-invalid 2
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+throw new Error('boom');
+test('existing test (root)', async () => {});
+EOF
+expect_cls playwright-toplevel-exception-is-invalid 2
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+test('existing test (root)', async () => {});
+test('existing test (root)', async () => {});
+EOF
+expect_cls playwright-duplicate-title-is-invalid 2
+
 no_tests=$'Error: No tests found\n'
-set +e
-classify_run "$no_tests" 1 "$SPEC"
-cls_no=$?
-set -e
-if [ "$cls_no" -ne 2 ]; then
-  echo 'FAIL: No tests found without absence proof must be INVALID (2), got '"$cls_no" >&2
-  fail=1
-fi
+set +e; classify_run "$no_tests" 1 "$SPEC"; cls_no=$?; set -e
+if [ "$cls_no" -ne 2 ]; then echo "FAIL: No tests found → want 2 got $cls_no" >&2; fail=1; fi
 wrong=$'  ✓  1 tools/denkraum/evidence.spec.mjs:3:1 › existing test root (1ms)\n\n  1 passed (100ms)\n'
-if classify_run "$wrong" 0 "$SPEC"; then
-  echo 'FAIL: a near-matching Playwright pass line counted as the named test' >&2
-  fail=1
-fi
+if classify_run "$wrong" 0 "$SPEC"; then echo 'FAIL: near-match pass line counted' >&2; fail=1; fi
 [ "$fail" -eq 0 ] || exit 1
 echo 'red-first playwright name filter classification: passed'
