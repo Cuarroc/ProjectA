@@ -9,14 +9,19 @@ import { DeskStore } from './core.mjs';
 import { DeskError, migrateState } from './model.mjs';
 
 const fresh = async io => new DeskStore(join(await mkdtemp(join(tmpdir(), 'denkraum-core-')), 'ledger.json'), io);
+async function legacyStore() {
+  const s = await fresh();
+  await writeFile(s.file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
+  return s;
+}
 const add = (s, id = 'E-1') => s.change(state => { state.questions.push({ id, revision: 1, options: [] }); return id; });
 const failRenameTo = file => async (from, to) => { if (to === file) throw new Error('simulated interruption'); return rename(from, to); };
 const is503 = e => e instanceof DeskError && e.status === 503;
 
-test('read returns an empty V1 ledger for a missing file, strips a BOM and never writes', async () => {
-  const s = await fresh();
+test('read preserves an existing empty V1 ledger, strips a BOM and never writes', async () => {
+  const s = await legacyStore();
   assert.deepEqual(await s.read(), { schemaVersion: 1, revision: 0, questions: [], answers: [] });
-  await assert.rejects(readFile(s.file), e => e.code === 'ENOENT');
+  assert.equal(JSON.parse(await readFile(s.file, 'utf8')).schemaVersion, 1);
   const bytes = '﻿' + JSON.stringify({ schemaVersion: 1, revision: 2, questions: [], answers: [], extra: 1 }) + '\r\n';
   await writeFile(s.file, bytes);
   assert.equal((await s.read()).extra, 1);
@@ -78,8 +83,22 @@ test('process termination during a partial temporary write preserves the last co
   assert.equal((await new DeskStore(s.file).read()).questions.length, 1);
 });
 
-test('migration requires an existing source and creates neither state nor backup without one', async () => {
-  const s = await fresh();
+test('migration rejects a nonexistent source with 404 and creates neither state nor backup', async t => {
+  const s = await fresh(); t.after(() => s.close());
+  await assert.rejects(s.migrate(0), e => e instanceof DeskError && e.status === 404
+    && e.message === 'Migrationsquelle fehlt; explizite Migration abgelehnt.');
+  await assert.rejects(readFile(s.file), e => e.code === 'ENOENT');
+  await assert.rejects(readFile(`${s.file}.v1-backup`), e => e.code === 'ENOENT');
+});
+
+test('migration rejects a disappearing V1 source and creates neither state nor backup', async () => {
+  const s = await legacyStore();
+  const read = s.read.bind(s);
+  s.read = async (...args) => {
+    const state = await read(...args);
+    await rename(s.file, `${s.file}.removed-source`);
+    return state;
+  };
   await assert.rejects(s.migrate(0), e => e.status === 404 && /Migrationsquelle/.test(e.message));
   await assert.rejects(readFile(s.file), e => e.code === 'ENOENT');
   await assert.rejects(readFile(`${s.file}.v1-backup`), e => e.code === 'ENOENT');
@@ -87,7 +106,7 @@ test('migration requires an existing source and creates neither state nor backup
 });
 
 test('migration keeps the exact V1 bytes as permanent backup and repeating it is a no-op', async () => {
-  const s = await fresh(); await add(s); const legacy = await s.read();
+  const s = await legacyStore(); await add(s); const legacy = await s.read();
   const bytes = '﻿' + JSON.stringify(legacy, null, 2) + '\r\n'; await writeFile(s.file, bytes);
   await s.migrate(legacy.revision);
   assert.equal(await readFile(`${s.file}.v1-backup`, 'utf8'), bytes);
@@ -100,7 +119,7 @@ test('migration keeps the exact V1 bytes as permanent backup and repeating it is
 });
 
 test('migration backup or replacement failure retains the committed V1 bytes', async () => {
-  const s = await fresh(); await add(s); const before = await readFile(s.file, 'utf8'); const { revision } = await s.read();
+  const s = await legacyStore(); await add(s); const before = await readFile(s.file, 'utf8'); const { revision } = await s.read();
   const noBackup = new DeskStore(s.file, { writeFile: async (path, ...args) => {
     if (path.endsWith('.v1-backup')) throw new Error('backup unavailable');
     return writeFile(path, ...args);
@@ -115,7 +134,7 @@ test('migration backup or replacement failure retains the committed V1 bytes', a
 });
 
 test('migration refuses a stale revision, a mismatched backup and colliding legacy fields', async () => {
-  const s = await fresh(); await add(s); const before = await readFile(s.file, 'utf8'); const { revision } = await s.read();
+  const s = await legacyStore(); await add(s); const before = await readFile(s.file, 'utf8'); const { revision } = await s.read();
   await assert.rejects(s.migrate(revision - 1), e => e.status === 409);
   await writeFile(`${s.file}.v1-backup`, 'unrelated backup');
   await assert.rejects(s.migrate(revision), is503);

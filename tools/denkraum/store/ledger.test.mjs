@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -15,6 +15,7 @@ const question = (extra = {}) => ({ id: 'E-1', title: 'T', context: 'C', owner: 
 const idea = (extra = {}) => ({ requestId: 'idea-1', expectedRevision: null, title: 'Idee', text: 'Beschreibung', ...extra });
 async function fresh({ v2 = true, ...config } = {}) {
   const s = new LedgerStore(join(await mkdtemp(join(tmpdir(), 'denkraum-ledger-')), 'ledger.json'), { rootAgentId: ROOT, ...config });
+  if (!v2) await writeFile(s.file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
   if (v2) { await s.putQuestion(question({ id: 'seed' })); await s.migrate((await s.read()).revision); }
   return s;
 }

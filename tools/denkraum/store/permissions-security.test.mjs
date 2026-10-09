@@ -29,6 +29,8 @@ test('DRSEC: new ledger temporary and recovery files are created with mode 0600'
   const previousUmask = process.umask(0);
   try {
     await add(store); assert.equal(await mode(file), 0o600);
+    // Exercise migration recovery separately from the new V2 bootstrap.
+    await writeFile(file, JSON.stringify({ schemaVersion: 1, revision: 1, questions: (await store.read()).questions, answers: [] }));
     const original = await readFile(file);
     await store.migrate(1);
     assert.deepEqual(observed, [['temp', 0o600], ['backup', 0o600], ['temp', 0o600], ['previous-temp', 0o600]]);
