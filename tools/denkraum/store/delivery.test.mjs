@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { setImmediate } from 'node:timers/promises';
-import { getOwnershipContext, OWNERSHIP_HELD } from './ownership.mjs';
-import { mkdtemp, readFile, rename } from 'node:fs/promises';
+import { setImmediate, setTimeout as delay } from 'node:timers/promises';
+import { getOwnershipContext, ownerRecordPath, OWNERSHIP_HELD, STORE_CLOSED } from './ownership.mjs';
+import { mkdtemp, readFile, rename, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -198,5 +198,25 @@ test('DRSEC: a second process cannot send while the closing owner has an unresol
   const persisted = await store(file).read();
   assert.equal(persisted.answers[0].webhookDelivery.deliveryId, a.id);
   assert.equal(persisted.answers[0].webhookDelivery.attempts, 1);
-  await assert.rejects(s.flushNotifications(), e => e.code === 'OWNERSHIP_RELEASE_MISMATCH');
+  await assert.rejects(s.flushNotifications(), e => e.code === STORE_CLOSED);
+});
+
+test('DRSEC: a same-file store cannot start a send once another store began closing', async t => {
+  const entered = Promise.withResolvers(), gate = Promise.withResolvers(), calls = [];
+  const { s: a, file } = await fresh({ notifyEvent: async () => { entered.resolve(); await gate.promise; } });
+  const b = store(file, { notifyEvent: async (event, id) => calls.push({ eventId: event.eventId, id }) });
+  const sending = a.flushNotifications(); await entered.promise;
+  const closing = a.close();
+  let late;
+  t.after(async () => { gate.resolve(); await Promise.allSettled([sending, closing, late]); await b.close(); });
+  // Without the guard B queues behind A's captured tail and stays pending here.
+  late = b.flushNotifications();
+  const outcome = await Promise.race([late.then(() => 'resolved', e => e.code), delay(50).then(() => 'pending')]);
+  assert.equal(outcome, STORE_CLOSED);
+  await stat(ownerRecordPath(file)); // ownership is held while A's send is unresolved
+  gate.resolve(); assert.equal((await sending).status, 'queued'); await closing;
+  assert.deepEqual(calls, [], 'B never sent');
+  await assert.rejects(stat(ownerRecordPath(file)), { code: 'ENOENT' });
+  // The closing window ends with the close: a fresh store flushes again.
+  assert.equal((await store(file, { notifyEvent: async () => {} }).flushNotifications()).status, 'empty');
 });

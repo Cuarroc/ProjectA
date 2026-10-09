@@ -3,7 +3,7 @@
 // so on V2 every receipt lookup here fails closed with 503 while it is missing.
 import { randomUUID } from 'node:crypto';
 import { AnswerStore } from './answers.mjs';
-import { getOwnershipContext, OwnershipError, OWNERSHIP_RELEASE_MISMATCH } from './ownership.mjs';
+import { getOwnershipContext, OwnershipError, STORE_CLOSED } from './ownership.mjs';
 import { activeAnswers, activeEvents, ensure, isoTime, receiptFor, validId } from './model.mjs';
 
 // R669-O1: on V2 every path here checks the root id before reading events, so an empty ledger also answers 503.
@@ -13,10 +13,15 @@ const requireRoot = (state, rootAgentId) => ensure(state.schemaVersion !== 2 || 
 export class DeliveryStore extends AnswerStore {
   #notificationClosing;
   // Retain core membership until accepted sends and their result commits settle.
+  // The closing count lives on the shared context: once any same-file store starts closing, no store
+  // can append to the notification queue, so the tail captured here is final and ownership is never
+  // released while a send is unresolved.
   close() {
     if (this.#notificationClosing) return this.#notificationClosing;
     const context = getOwnershipContext(this.file);
-    return this.#notificationClosing = (context.notificationQueue ?? Promise.resolve()).then(() => super.close());
+    context.notificationClosers = (context.notificationClosers ?? 0) + 1;
+    return this.#notificationClosing = (context.notificationQueue ?? Promise.resolve()).then(() => super.close())
+      .finally(() => { context.notificationClosers--; });
   }
   async pending() {
     const state = await this.read(); requireRoot(state, this.rootAgentId);
@@ -35,8 +40,8 @@ export class DeliveryStore extends AnswerStore {
     return { pending, received };
   }
   flushNotifications(eventId) {
-    if (this.#notificationClosing) return Promise.reject(new OwnershipError(OWNERSHIP_RELEASE_MISMATCH));
     const context = getOwnershipContext(this.file);
+    if (this.#notificationClosing || context.notificationClosers > 0) return Promise.reject(new OwnershipError(STORE_CLOSED));
     // Separate from the mutation queue: receipts can commit during transport I/O.
     const work = (context.notificationQueue ?? Promise.resolve()).then(() => this.#deliver(eventId));
     context.notificationQueue = work.catch(() => {}); return work;
