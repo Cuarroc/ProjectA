@@ -155,6 +155,36 @@ test("classify: main is not red while the latest finished run is green", () => {
   assert.equal(model.mainRed, false);
 });
 
+test("STATUS-CI: newer CodeQL cannot mask failing ci", () => {
+  const opts = { now: NOW, timeZone: TZ };
+  const ci = { status: "completed", conclusion: "failure", name: "ci", headSha: "aaaaaaa1234", url: "https://x/run/1", createdAt: "2026-09-25T08:00:00Z" };
+  const codeql = { status: "completed", conclusion: "success", name: "CodeQL", headSha: "bbbbbbb1234", url: "https://x/run/2", createdAt: "2026-09-25T09:00:00Z" };
+  const pending = { ...ci, status: "in_progress", conclusion: "", createdAt: "2026-09-25T09:30:00Z" };
+  for (const mainRuns of [[codeql, ci], [ci, codeql], [pending, codeql, ci]]) {
+    const model = classify(data({ mainRuns, openPrs: [pr(4, { labels: [{ name: "do-not-merge" }] })] }), opts);
+    assert.equal(model.mainRed, true);
+    assert.match(model.decide[0].text, /main ist rot.*aaaaaaa.*https:\/\/x\/run\/1/);
+    const report = formatReport(model, opts);
+    assert.match(report, /## Du entscheidest\n- main ist rot/);
+    assert.doesNotMatch(report, /bbbbbbb|https:\/\/x\/run\/2/);
+    assert.ok(report.trimEnd().split("\n").length <= MAX_LINES);
+  }
+  // Other workflows also cannot make a successful ci run look red.
+  assert.equal(classify(data({ mainRuns: [{ ...codeql, conclusion: "failure" }, { ...ci, conclusion: "success" }] }), opts).mainRed, false);
+  assert.equal(classify(data({ mainRuns: [{ ...codeql, conclusion: "failure" }] }), opts).mainRed, false);
+
+  // Filter before gh's limit, so unrelated runs cannot crowd ci out.
+  const calls = [];
+  const collected = collect({ run: (cmd, args) => {
+    calls.push([cmd, ...args]);
+    return { status: 0, stdout: JSON.stringify(args[0] === "run" ? [ci] : []), stderr: "" };
+  } });
+  const runCall = calls.find((call) => call[1] === "run");
+  assert.ok(runCall.includes("--workflow"));
+  assert.equal(runCall[runCall.indexOf("--workflow") + 1], "ci");
+  assert.equal(classify(collected, opts).mainRed, true);
+});
+
 test("formatReport: three German sections in a fixed order", () => {
   const text = formatReport(classify(data(), { now: NOW, timeZone: TZ }), { now: NOW, timeZone: TZ });
   const headings = text.split("\n").filter((l) => l.startsWith("## "));
