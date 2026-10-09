@@ -157,6 +157,9 @@ test('DRSEC: failed write after create removes the half-written record', async t
     await assert.rejects(readFile(ownerPath(file)), e => e.code === 'ENOENT');
   } finally { fs.open = orig; syncBuiltinESMExports(); }
 });
+test('DRSEC: release of a missing record is a fixed mismatch', async t => {
+  await assert.rejects(release(await ledger(t), 'missing-nonce-value'), e => isDiag(e, MISMATCH));
+});
 test('DRSEC: fixture exits non-zero when stdin closes without release', async t => {
   const file = await ledger(t);
   const child = spawn(process.execPath, [fixture, file], { cwd: import.meta.dirname, stdio: ['pipe', 'pipe', 'inherit'] });
