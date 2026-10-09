@@ -14,7 +14,7 @@
 - **Repro:** lesend aus `%APPDATA%\com.projecta.app\projecta.db`: `select id,status,worker_id from task_queue where id like 'tq-1a0a6ff7%'` → 8× `dispatched`; `select id,status from workers where id in (…)` → 8× `exited`; `select * from messages where worker_id=…` → je vier Systemzeilen. Zuordnung: `tq-1a0a6ff70e8-1` Kimi-Zustellung NT-17 (p3) → `wk-1a0a6ffd562-9` (15.09. 21:36 UTC); `tq-1a0a6ff70ed-2` OpenCode-Zustellung NT-17 (p3) → `wk-1a0a7004f26-18` (15.09. 21:36 UTC); `tq-1a0a6ff70f2-3` Baustein B Antwort-Marker (p2) → `wk-1a0a700c99b-27` (15.09. 21:37 UTC); `tq-1a0a6ff70f7-4` Flake delivery_recovery (p2) → `wk-1a0a70143f9-36` (15.09. 21:37 UTC); `tq-1a0a6ff70fc-5` Windows-PTY-Argumenttest (p2) → `wk-1a0af82bb67-1` (17.09. 13:16 UTC); `tq-1a0a6ff7100-6` Capture-Settlement (p1) → `wk-1a0af833c8c-10` (17.09. 13:16 UTC); `tq-1a0a6ff7105-7` Cross-Project-Kapazität (p1) → `wk-1a0af83bbd8-19` (17.09. 13:17 UTC); `tq-1a0a6ff710a-8` Abnahmematrix-Tabelle (p0) → `wk-1a0af84426e-28` (17.09. 13:17 UTC).
 - **Schwere:** blockierend für die Queue als Arbeitsweg — die offenen Punkte gelten als verteilt, bearbeitet wird keiner. Gleiche Klasse wie die zwei Zombie-Einträge aus W0-07 (`tq-1a05a98c9e4-16`, `tq-1a05e8af9b9-2`, `dispatched` seit 01.09., Worker `archived`).
 - **Queue:** Bewusst nicht eingereiht. Die App lief am 21.09. nicht (kein Deskriptor), und ein neuer Task liefe über denselben Dispatcher wieder in einen `claude`-Worker. Nächster Schritt am PC: die zehn toten `dispatched`-Einträge über `pa` verwerfen (W0-07/W1-05), die acht Punkte erst neu einreihen, wenn das Profil ausdrücklich auf einen Adapter mit belegter Zustellung zeigt (Codex), und diesen Eintrag dann selbst einreihen.
-- **Status:** offen. Nebenwirkung festgehalten: das `--apply` vom 15.09. hat acht Worker-Starts ausgelöst, obwohl STAND „Stehende Regeln" genau davor warnt; es entstanden keine Commits, keine Kosten sind belegt. Nachtrag zu den Vermerken „Einreihung am PC nachholen" weiter unten: die Einreihung ist am 15.09. 21:35 UTC erfolgt (zweiter Lauf 0 offen, idempotent), danach meldete `npm run dev:doctor -- --json` gegen die laufende App `manifest.state: matched` (f66ec09a… beidseitig). Diese Vermerke sind damit überholt, die Punkte selbst bleiben unbearbeitet. Beleg `.pa/report_devhq_setup_2026-09-15.md` §6 und §7.
+- **Status:** offen. Nebenwirkung festgehalten: das `--apply` vom 15.09. hat acht Worker-Starts ausgelöst, obwohl STAND „Stehende Regeln" genau davor warnt; es entstanden keine Commits, keine Kosten sind belegt. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator; Status nur als dry-run prüfen: `npm run hq:queue-open-points` (ohne `--apply`). Nachtrag zu den Vermerken „Einreihung am PC nachholen" weiter unten: die Einreihung ist am 15.09. 21:35 UTC erfolgt (zweiter Lauf 0 offen, idempotent), danach meldete `npm run dev:doctor -- --json` gegen die laufende App `manifest.state: matched` (f66ec09a… beidseitig). Diese Vermerke sind damit überholt, die Punkte selbst bleiben unbearbeitet. Beleg `.pa/report_devhq_setup_2026-09-15.md` §6 und §7.
 - **Nachtrag (Claude, 21.09.):** Zwei Punkte stimmen mit den Messungen vom 17.09. nicht überein. Erstens geht das Verwerfen über `pa` bzw. die API derzeit nicht: `POST /api/queue/<id>/cancel` antwortet für `dispatched`-Einträge mit `400 not queued or ready` (Eintrag 17.09. „Zombie-Queue-Einträge …“); vorher braucht es die Cancel-Regel in `api.rs`/`store.rs`. Zweitens ist die Abbruchursache belegt: alle acht Worker liefen im Submit-Guard in „task never echoed; manual Enter required“ (`status_events`, Eintrag 17.09. „Claude-Zustellung …“). Der Claude-Adapter läuft laut Entscheidung 16.09. über das Abo der CLI, nicht über API-Guthaben.
 
 ## 2026-09-16 · UI/UX-Audit gegen ui-ux-pro-max: 22 Befunde, alle umgesetzt
@@ -87,7 +87,7 @@
 - **Was:** Auf einem Windows-Checkout mit autocrlf meldete der Doctor gegen die frisch installierte v1.4.0 `manifest.state: mismatch` (lokal f2ae…, Runtime f66e…), obwohl Quellstand und Build identisch sind. Die Rust-Seite hasht CRLF-normalisiert, der Node-Doctor hashte die Rohbytes.
 - **Repro:** `scripts/lib/dev-runtime-crlf.test.mjs` (fehlt an der Merge-Base, rot vor dem Fix).
 - **Schwere:** stört (falscher "restart or rebuild"-Hinweis, Matrix-Beleg blockiert).
-- **Queue:** Pending; kein Queue-Eintrag aus der Remote-Sitzung erzeugt. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; kein Queue-Eintrag aus der Remote-Sitzung erzeugt. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** behoben und gemergt — PR #43 (`cbb280a`, Merge `cea7dbe`, 16.09.): Normalisierung wie Rust + `.gitattributes eol=lf` für das Manifest; Beleg `.pa/report_devhq_setup_2026-09-15.md` §4b. Am PC noch offen: `dev:doctor` nach `git pull` muss `matched` zeigen (docs/PLAN.md W0-01).
 
 ## 2026-09-15 · Statuskonsolidierung nach v1.4.0 (kein neuer Bug)
@@ -95,21 +95,21 @@
 - **Was:** Elf Einträge trugen `Queue: Pending`; sechs begründeten das mit einem HQ-v1-HTTP-404, das seit 14.09. widerlegt ist (die installierte v1.2.3 hatte kein HQ v1; ein Debug-Build antwortete 200/401, `.pa/report_hq_v1_runtime_migration.md`). Zwei Einträge ("Profile editing lost metadata", "Setup accepted Node 22") standen auf "review pending im uncommitted Branch": beide sind mit PR #40 (Merge `270a858`, 15.09., v1.4.0) auf main.
 - **Repro:** `git log --oneline 270a858 -1`; `grep -c "Queue: Pending" docs/dev-hq/BUGS.md`.
 - **Schwere:** kosmetisch (Dokumentationsstand), aber jeder Pending-Eintrag bleibt laut Regel unten eine Beobachtung ohne eingereihten Fix.
-- **Queue:** Weiterhin ausstehend. In der Remote-Sitzung war keine App erreichbar, daher wurde bewusst kein Queue-Eintrag erfunden. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43, `bfdeb2d`); es reiht die konsolidierten technisch offenen Punkte aus `.pa/report_devhq_setup_2026-09-15.md` §4a ein (Kimi/OpenCode-Zustellung NT-17, Antwort-Marker, Flake, Windows-PTY-Argumenttest, Capture-Settlement-Transport, Ressourcendruck, Matrix-Tabelle). Einträge, deren Fix bereits gemergt ist, bekommen keinen eigenen Task mehr — für sie ist die Queue-Zeile nur Buchhaltung.
+- **Queue:** Weiterhin ausstehend. In der Remote-Sitzung war keine App erreichbar, daher wurde bewusst kein Queue-Eintrag erfunden. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43, `bfdeb2d`); es reiht die konsolidierten technisch offenen Punkte aus `.pa/report_devhq_setup_2026-09-15.md` §4a ein (Kimi/OpenCode-Zustellung NT-17, Antwort-Marker, Flake, Windows-PTY-Argumenttest, Capture-Settlement-Transport, Ressourcendruck, Matrix-Tabelle). Einträge, deren Fix bereits gemergt ist, bekommen keinen eigenen Task mehr — für sie ist die Queue-Zeile nur Buchhaltung.
 - **Status:** Stand dokumentiert in `.pa/report_devhq_setup_2026-09-15.md`. Technisch noch offen (nicht nur Queue-Buchhaltung): Capture-Settlement-Transport/Recovery-Vertrag (11.09.), Ressourcendruck-Adaption (11.09. Capacity), Codex-Billing-Hinweis manuell (14.09.). Nachzug 17.09. (W1-05, `.pa/report_w1-05.md`): überholte Vermerke („uncommitted branch / review pending", „HTTP 404 / lacks HQ v1") in den Einträgen unten auf den gemergten Stand gebracht, Einträge streng absteigend nach Datum geordnet, die überholte Platzhalterzeile „noch keine Einträge" entfernt und die Vorlage ans Dateiende gestellt. Kein Eintrag wurde hinzugefügt oder gelöscht.
 
 ## 2026-09-14 · Terminal view crashes on live worker (xterm _isDisposed)
 - **Where:** App frontend, Agents/Terminal view of a running worker (debug build HEAD 630515a, vite dev URL).
 - **Observed:** Opening the terminal view of a live Codex worker reproducibly crashed the workspace: "Der Arbeitsbereich ist abgestürzt. Cannot read properties of undefined (reading '_isDisposed')". Reproducible across view reloads; Work/Attention views unaffected.
 - **Repro:** Start app against scratch data, spawn codex worker, open its card, click Terminal — crash within seconds. Screenshot evidence retained in session media.
-- **Queue:** Pending; no queue entry fabricated. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43); der Fix ist bereits in v1.4.0.
+- **Queue:** Pending; no queue entry fabricated. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43); der Fix ist bereits in v1.4.0.
 - **Status:** FIXED same day; released in v1.4.0 (`a7c262c`, Merge `270a858` via PR #40, 15.09.); the pin is additionally kept out of Dependabot since PR #43 (`9ce8396`, `f73d6a5`). Root cause: version mismatch — @xterm/addon-webgl 0.19.0 expects xterm 5.6 internals (`_core._store`) while xterm 5.5.0 is installed; the addon's dispose callback then reads `_isDisposed` on undefined. React StrictMode's dev double-mount runs the disposal immediately, so the view crashed on open. Fix: addon pinned to 0.18.0 (the 5.5.0 pairing) plus single shared renderer disposal in TerminalView.tsx (rot→grün regression tests in TerminalView.test.tsx). Live-verified: the terminal view now shows a running codex worker without crashing.
 
 ## 2026-09-14 · Codex PTY task submission not echoed (needs_you escalation)
 - **Where:** Production PTY launch path, codex profile, submit guard.
 - **Observed:** First real adapter smoke through the ProjectA launch path (scratch env, bounded file task): spawn, branch, worktree and PTY session succeeded; the codex CLI process ran but idle; the task was never submitted — the submit guard exhausted its rewrites and escalated to needs_you ("Eingabe wurde nicht abgeschickt"). No probe.txt; worker still running after 10 minutes.
 - **Assessment:** Same error class as NT-17 (OpenCode TUI does not echo guard writes); whether codex TUI echoed at all could not be visually confirmed because of the terminal-view crash above.
-- **Queue:** Pending. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43); the codex fix itself is in v1.4.0, the remaining NT-17 work for Kimi/OpenCode is what the script queues.
+- **Queue:** Pending. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43); the codex fix itself is in v1.4.0, the remaining NT-17 work for Kimi/OpenCode is what the script queues.
 - **Status:** FIXED same day; released in v1.4.0 (`a7c262c`, `bd0af1c`, Merge `270a858` via PR #40, 15.09.). True cause found via real TUI capture: not a missing echo (the codex composer echoes input fine) but codex's modal startup chain swallowing the task writes — directory trust, hooks review, then a usage-limit notice. Fix: CodexTrust + CodexHooksReview blocking dialogs with captured keystrokes, position-based dialog choice (latest marker in the tail wins, so the answered trust dialog is not re-answered while the hooks review is up), and the captured readiness marker "Ask Codex to do anything" on the codex profile. The billing notice is deliberately NOT auto-answered. Rerun passed end-to-end: probe.txt with the exact marker (`.pa/report_provider_adapter_smoke_codex.md`). Codex adapter acceptance through the production PTY path: passed (automated).
 
 ## 2026-09-12 · Scoped candidate submission did not verify worktree ownership
@@ -117,21 +117,21 @@
 - **Was:** An unlaunched run could bind an arbitrary commit; declared file ownership was not checked against Git.
 - **Repro:** Compiled regression `development_candidate_requires_backend_observed_worktree` failed before the service check. Independent review also reproduced hidden gitlinks; `submodule_ignore_configuration_cannot_hide_out_of_scope_gitlinks` failed before the explicit submodule diff override.
 - **Schwere:** blockierend for autonomous integration.
-- **Queue:** Pending; tracked by `.pa/task_continuous_devhq.md` and `.pa/report_candidate_ownership.md`. Die damalige Begründung „installed runtime's missing HQ v1" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. ist v1.4.0 installiert). No executing legacy queue task was fabricated. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; tracked by `.pa/task_continuous_devhq.md` and `.pa/report_candidate_ownership.md`. Die damalige Begründung „installed runtime's missing HQ v1" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. ist v1.4.0 installiert). No executing legacy queue task was fabricated. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** gemergt mit PR #40 (Merge `270a858`, 15.09.), released in v1.4.0; exact validation and independent review dispositions in `.pa/report_candidate_ownership.md`.
 
 ## 2026-09-11 · Capture settlement identity race
 - **Where:** store/development_codex_usage.rs and development_budget.rs.
 - **Observed:** A compiled SQLite writer-race regression allowed settlement after a competing route change committed.
 - **Repair:** Recheck exact route JSON and exit code under the settlement writer lock before accepting new usage or replay.
-- **Queue:** Pending under .pa/task_continuous_devhq.md; no running-app queue entry submitted. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43, Punkt `capture-settlement-transport`).
+- **Queue:** Pending under .pa/task_continuous_devhq.md; no running-app queue entry submitted. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43, Punkt `capture-settlement-transport`).
 - **Evidence:** .pa/report_continuous_capture_atomicity.md. Fix gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0). Native capture transport and its full identity/recovery contract remain open.
 
 ## 2026-09-11 · Run journal write contention
 - **Wo:** src-tauri/src/store/development_runs.rs.
 - **Was:** A deferred read-to-write transaction upgrade can fail immediately when another SQLite writer exists.
 - **Repro:** CI34633414526 reported database is locked; the compiled launch contention regression failed before BEGIN IMMEDIATE and passes afterward.
-- **Queue:** Pending under .pa/task_continuous_devhq.md; no running-app queue entry submitted. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending under .pa/task_continuous_devhq.md; no running-app queue entry submitted. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Repaired; gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0). Evidence: .pa/report_continuous_run_contention.md.
 
 ## 2026-09-11 · Cross-project worker capacity
@@ -139,7 +139,7 @@
 - **Observed:** With one active claim, two other projects both acquired a claim, exceeding the shared two-worker ceiling.
 - **Proof:** Compiling regression projects_share_capacity_across_races_restart_pause_and_expired_leases failed with two winners instead of one; passed after repair.
 - **Repair:** Count host-wide running claims in the existing serialized transaction, while retaining each project's frozen limit. Pause and lease expiry do not release capacity.
-- **Queue:** Pending; die damalige Begründung „installed HQv1 probe unavailable" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3; seit 15.09. v1.4.0). No queue entry or worker dispatch was fabricated. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43, Punkt `capacity-resource-pressure`).
+- **Queue:** Pending; die damalige Begründung „installed HQv1 probe unavailable" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3; seit 15.09. v1.4.0). No queue entry or worker dispatch was fabricated. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43, Punkt `capacity-resource-pressure`).
 - **Status:** Focused regression passed; full gates recorded in .pa/report_continuous_capacity.md. Gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0). Resource-pressure adaptation and operational dispatch remain open.
 
 ## 2026-09-11 · Supervisor notification failure and oversized checkpoint labels
@@ -147,7 +147,7 @@
 - **Observed:** An observer error suppressed authoritative limit checking; unbounded owner/worker labels could enlarge retained checkpoints.
 - **Proof:** Compiling observer regression failed with injected observer error; oversized-label regression checks 256-character limits and intact canonical ownership.
 - **Repair:** Observer is only a wake hint; store reconciliation continues with visible degraded health. Bounded display labels report truncation.
-- **Queue:** Pending; das damalige „HTTP404" der installierten App ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No queue entry fabricated or legacy worker dispatched. Tracked in .pa/report_continuous_policy_supervisor.md. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; das damalige „HTTP404" der installierten App ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No queue entry fabricated or legacy worker dispatched. Tracked in .pa/report_continuous_policy_supervisor.md. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Seven focused regressions and all final gates pass; both independent re-reviews return ship. Gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0). No continuous-mode activation. Full evidence in the report.
 
 ## 2026-09-11 · Runtime journal and context freshness
@@ -155,7 +155,7 @@
 - **Observed:** Run/evidence/review/launch writes had no change notices; resync and manual events could leave an older context timestamp.
 - **Proof:** Compiling regression first returned an empty run journal; migration freshness regression retained timestamp 1 after a new resync event.
 - **Repair:** Migration12 transactional runtime notices and a central journal snapshot stamp preserving commit/run identity.
-- **Queue:** Pending; das damalige „HTTP404" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No queue entry fabricated or legacy worker dispatched. Tracked in .pa/report_continuous_runtime_journal.md. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; das damalige „HTTP404" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No queue entry fabricated or legacy worker dispatched. Tracked in .pa/report_continuous_runtime_journal.md. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Four focused regressions pass and both independent re-reviews return ship; final gates recorded in the report. Gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0).
 
 ## 2026-09-11 · Token ceiling and legacy migration boundaries
@@ -163,21 +163,21 @@
 - **Observed:** Exact measured exhaustion left a root open; v4 policy backfill picked up newly added token defaults.
 - **Proof:** Both budget_boundary regressions compiled and failed before repair (open versus blocked; unexpected legacy allowance).
 - **Repair:** Block after measured exhaustion as well as overdrawn allocations; preserve tokens=None during legacy policy backfill.
-- **Queue:** Pending; das damalige „HTTP404" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No legacy task dispatched. Tracked in .pa/report_continuous_budgets.md. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; das damalige „HTTP404" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No legacy task dispatched. Tracked in .pa/report_continuous_budgets.md. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Fixed; both compiled regressions pass after repair. Full Rust/frontend/HQ gates and two independent re-reviews pass; evidence in the budget report. Gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0).
 
 ## 2026-09-11 · Test fixtures advertised as built-in agent profiles
 - **Wo:** HQ Teams/profile list, scripts/lib/hq-live-lib.mjs.
 - **Was:** Regex scanning profiles.rs included test-only claude-omni and claudeomni (command x); capability fields were omitted and variant inheritance differed from Rust.
 - **Repro:** hq-builtin-profiles.test.mjs failed before repair: eight profiles instead of the six shipped defaults.
-- **Queue:** Pending; das damalige „HQv1 HTTP404" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No legacy worker dispatched; work tracked in .pa/report_continuous_profiles.md. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; das damalige „HQv1 HTTP404" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No legacy worker dispatched; work tracked in .pa/report_continuous_profiles.md. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Fixed with a shared embedded JSON manifest, Rust-compatible HQ merging and runtime provenance warnings. HQ123/123, browser11/11 and two independent source reviews pass; full evidence in .pa/report_continuous_profiles.md. Gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0).
 
 ## 2026-09-11 · Run candidate provenance and retry conflict status
 - **Wo:** Rust HQ v1 run snapshot and task checkpoint API.
 - **Was:** Current candidate binding was absent from the run response; premature retry returned HTTP500 instead of409.
 - **Repro:** Snapshot binding/rebinding and retry conflict regressions in development_runs.rs and api.rs.
-- **Queue:** Pending; das damalige „running app lacks HQv1 (HTTP404)" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No legacy worker dispatched. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; das damalige „running app lacks HQv1 (HTTP404)" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3 ohne HQ v1; seit 15.09. v1.4.0). No legacy worker dispatched. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Fixed in this persistence checkpoint; evidence in .pa/report_continuous_runtime.md. Gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0).
 
 ## 2026-09-10 · Backend directory ownership lost overlap
@@ -185,7 +185,7 @@
 - **Was:** A protected ancestor became a sentinel and no longer conflicted with ordinary files below it.
 - **Repro:** Compiled Rust regression `protected_scopes_are_normalized_without_file_descendants` failed on queue.rs overlap before the fix.
 - **Schwere:** blockierend (exclusive ownership).
-- **Queue:** Pending; implementation tracked in .pa/task_continuous_devhq.md. No duplicate legacy worker dispatched. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; implementation tracked in .pa/task_continuous_devhq.md. No duplicate legacy worker dispatched. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Fixed; gemergt mit PR #40 (Merge `270a858`, 15.09., v1.4.0). Final verification in .pa/report_continuous_runtime.md.
 
 ## 2026-09-10 · Profile editing lost metadata and accepted corrupt input
@@ -193,7 +193,7 @@
 - **Was:** Wrapper metadata could be dropped on save; malformed input could become an empty profile set and then be overwritten.
 - **Repro:** scripts/lib/hq-profile-contract.test.mjs failed 3/3 before the fix and passes 3/3 after it.
 - **Schwere:** blockierend (configuration loss).
-- **Queue:** Pending; tracked by .pa/task_continuous_devhq.md. Das damalige „running app lacks HQ v1" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3; seit 15.09. v1.4.0). No duplicate executing legacy queue task was submitted. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; tracked by .pa/task_continuous_devhq.md. Das damalige „running app lacks HQ v1" ist durch `.pa/report_hq_v1_runtime_migration.md` aufgeklärt (installiert war v1.2.3; seit 15.09. v1.4.0). No duplicate executing legacy queue task was submitted. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Fixed; gemergt mit PR #40 (`codex/continuous-devhq`, Merge `270a858`, 15.09.), released in v1.4.0.
 
 ## 2026-09-10 · Setup accepted Node 22 despite the Node 24 contract
@@ -201,7 +201,7 @@
 - **Was:** The setup check advertised an unsupported toolchain as ready.
 - **Repro:** The Node 22 regression in scripts/lib/hq-continuous.test.mjs failed before the version floor was corrected.
 - **Schwere:** stört.
-- **Queue:** Pending; tracked by .pa/task_continuous_devhq.md, same implementation as above. Einreihung am PC nachholen: `npm run hq:queue-open-points -- --apply` gegen die laufende App (Skript aus PR #43).
+- **Queue:** Pending; tracked by .pa/task_continuous_devhq.md, same implementation as above. Status prüfen (dry-run): `npm run hq:queue-open-points` (ohne `--apply`) gegen die laufende App. Warnung: `--apply` gegen eine laufende App startet echte Worker und braucht ausdrücklich den Coordinator (Skript aus PR #43).
 - **Status:** Fixed; gemergt mit PR #40 (`codex/continuous-devhq`, Merge `270a858`, 15.09.), released in v1.4.0.
 
 ---
@@ -209,7 +209,8 @@
 Append-only. Wer im Live-Dev-HQ (`npm run hq:live`) einen Bug findet, trägt
 ihn **hier** ein und stellt zusätzlich einen echten Fix-Task in die Queue
 (HQ → Human Controls → „task to queue", `POST /api/queue` direkt, oder für
-die konsolidierten offenen Punkte `npm run hq:queue-open-points -- --apply`)
+die konsolidierten offenen Punkte zuerst dry-run `npm run hq:queue-open-points`;
+`--apply` nur mit ausdrücklichem Coordinator-Go, weil es echte Worker startet)
 — siehe `AGENTS.md` § „Record and learn". Ein Eintrag hier ohne Queue-Task
 ist eine Beobachtung, kein eingereihter Fix.
 

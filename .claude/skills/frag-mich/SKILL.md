@@ -27,9 +27,9 @@ Glossar oder `AGENTS.md`, gilt das Dokument, nicht der Skill.
    - *Roter Check* („Warum ist … rot?“) → **erst nachsehen, nicht raten:**
      `gh pr checks <n>`, dann `gh run view <id> --log-failed`. Den ersten
      Fehler nennen, nicht die Folgefehler.
-   - *Entscheidung* („Was soll ich entscheiden?“) → `STAND.md`, offene PRs
-     (`gh pr list --repo Cuarroc/ProjectA`) und den Fragebogen/die
-     Entscheidungs-Inbox (Spickzettel Nr. 13–14) ansehen. Nur nennen, was
+   - *Entscheidung* („Was soll ich entscheiden?“) → Entscheidungs-Inbox in
+     `docs/PLAN.md`, offene PRs (`gh pr list --repo Cuarroc/ProjectA`) und
+     den Fragebogen (Spickzettel Nr. 13–14) ansehen. Nur nennen, was
      wirklich beim Nutzer liegt.
    - *Anderes* → knapp beantworten; wenn du nichts Belegtes findest, sag das.
 2. **Antwort schreiben** im Format unten. Nichts behaupten, was du nicht
