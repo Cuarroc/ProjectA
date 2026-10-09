@@ -48,6 +48,13 @@ test('DR-WIN-STOP: the real entry registers the stop listeners for SIGHUP and SI
   assert.deepEqual(counts, [1, 1]);
 });
 
+test('DR-WIN-STOP: the drain budget (first wait plus forced-close wait) fits the Windows 10 s close grace', () => {
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+    const { first, forced } = desk.drainBudget(desk.DRAIN_TIMEOUT_MS, signal);
+    assert.ok(first + forced < 10_000, `${signal}: ${first} + ${forced}`);
+  }
+});
+
 // Windows ends the process about 10 s (Node docs) or about 5 s (SetConsoleCtrlHandler docs) after a console close
 // event: the effective budget a stop really asks its timers for must stay at 4 s there, and unchanged for SIGINT/SIGTERM.
 test('DR-WIN-STOP: console-close signals cap the observed drain at 4 s while SIGINT and SIGTERM keep the full budget', async t => {
