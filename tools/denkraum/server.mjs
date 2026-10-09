@@ -11,7 +11,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 // R676-O1: every route that reads or writes Root receipts needs a valid root id before the store is called.
 const rootBound = ['/api/pending', '/api/inbox', '/api/notifications/retry', '/api/progress', '/api/patches', '/api/receipts', '/api/ack'];
 const attribute = v => v.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-export function createWebhookNotifier({ url, secret, request = fetch, clock = Date.now } = {}) {
+export function createWebhookNotifier({ url, secret, request = fetch, clock = Date.now, timeoutMs = 3000 } = {}) {
   if (!url || !secret) return undefined;
   let endpoint;
   try { endpoint = new URL(url); } catch { throw new DeskError('Webhook-Konfiguration ungültig.', 503); }
@@ -27,7 +27,7 @@ export function createWebhookNotifier({ url, secret, request = fetch, clock = Da
     const signature = createHmac('sha256', secret).update(`v1:${timestamp}:${deliveryId}:${body}`).digest('hex');
     let response;
     try {
-      response = await request(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(3000), body,
+      response = await request(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs), body,
         headers: { 'Content-Type': 'application/json', 'X-AgentsRoom-Timestamp': timestamp, 'X-AgentsRoom-Delivery': deliveryId, 'X-AgentsRoom-Signature': `v1=${signature}` } });
     } catch { throw new DeskError('Webhook-Übertragung fehlgeschlagen.', 503); }
     try { await response.body?.cancel(); } catch { /* Releasing the body cannot change delivery acceptance. */ }

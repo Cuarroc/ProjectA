@@ -87,11 +87,11 @@ test('DRSEC: envelope contains only allowed fields and independently verifiable 
 
 test('DRSEC: timeout returns a fixed error without URL body or secrets', async () => {
   let reason;
-  const notify = createWebhookNotifier({ url, secret, request: async (destination, { signal, body }) => {
+  const notify = createWebhookNotifier({ url, secret, timeoutMs: 20, request: async (destination, { signal, body }) => {
     assert.ok(signal instanceof AbortSignal);
     // Keep the test alive while the real AbortSignal.timeout timer (unref'ed by Node) expires.
     reason = await new Promise((resolve, reject) => {
-      const guard = setTimeout(() => reject(new Error('timeout signal did not abort')), 10000);
+      const guard = setTimeout(() => reject(new Error('timeout signal did not abort')), 2000);
       signal.addEventListener('abort', () => { clearTimeout(guard); resolve(signal.reason); }, { once: true });
     });
     throw new DOMException(`synthetic timeout: ${destination} ${body} ${secret}`, 'TimeoutError');
