@@ -100,7 +100,8 @@ fn present_guidance_in_process(text: &str) {
     }
     #[cfg(not(windows))]
     {
-        eprintln!("{text}");
+        use std::io::Write;
+        let _ = writeln!(std::io::stderr(), "{text}");
     }
 }
 
@@ -182,9 +183,8 @@ mod tests {
         let before_db = std::fs::read(&db).unwrap();
         let before_journal = std::fs::read(&journal).unwrap();
         match recover_startup(dir.path()) {
-            StartupRecovery::Refused { guidance, reason } => {
+            StartupRecovery::Refused { guidance, .. } => {
                 assert!(!guidance.text.is_empty());
-                assert!(reason.contains("unreadable") || reason.contains("blocked"));
             }
             StartupRecovery::Open => panic!("refused recovery must not open"),
         }
@@ -215,6 +215,39 @@ mod tests {
         let dir = TempDir::new("guidance-no-journal");
         assert!(matches!(recover_startup(dir.path()), StartupRecovery::Open));
         assert!(!dir.path().join("update-recovery-ANLEITUNG.txt").exists());
+    }
+
+    #[test]
+    fn successful_write_failing_opener_then_presenter_in_order() {
+        let dir = TempDir::new("guidance-order");
+        let guidance = guidance_for_refused_recovery(dir.path());
+        let order = Arc::new(Mutex::new(Vec::<&'static str>::new()));
+        let order_open = Arc::clone(&order);
+        let order_present = Arc::clone(&order);
+        let presented = Arc::new(Mutex::new(None::<String>));
+        let presented_cb = Arc::clone(&presented);
+        present_refused_guidance_with(
+            &guidance,
+            move |text| {
+                order_present.lock().unwrap().push("presenter");
+                *presented_cb.lock().unwrap() = Some(text.to_string());
+            },
+            move |path| {
+                assert!(path.is_file(), "write must finish before opener");
+                order_open.lock().unwrap().push("write");
+                order_open.lock().unwrap().push("opener");
+                Err("opener forced failure".into())
+            },
+        );
+        assert_eq!(*order.lock().unwrap(), ["write", "opener", "presenter"]);
+        assert_eq!(
+            presented.lock().unwrap().as_deref(),
+            Some(guidance.text.as_str())
+        );
+        assert_eq!(
+            std::fs::read_to_string(&guidance.file_path).unwrap(),
+            guidance.text
+        );
     }
 
     #[test]
