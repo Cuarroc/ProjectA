@@ -48,6 +48,7 @@ export async function acquireOwnership(ledgerPath) {
     await handle.close();
   } catch {
     await handle.close().catch(() => {});
+    await unlink(path).catch(() => {});
     ioFail();
   }
   return { nonce, pid: record.pid, heartbeatAt: record.heartbeatAt };

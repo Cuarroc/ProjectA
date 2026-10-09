@@ -143,3 +143,17 @@ test('DRSEC: filesystem failures use fixed diagnostics without paths', async t =
     await assert.rejects(release(path, 'synthetic-nonce'), e => isDiag(e, IO));
   }
 });
+test('DRSEC: failed write after create removes the half-written record', async t => {
+  const file = await ledger(t);
+  const orig = fs.open;
+  fs.open = async (...args) => {
+    const h = await orig(...args);
+    if (args[1] === 'wx') h.writeFile = async () => { throw Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' }); };
+    return h;
+  };
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(acquire(file), e => isDiag(e, IO));
+    await assert.rejects(readFile(ownerPath(file)), e => e.code === 'ENOENT');
+  } finally { fs.open = orig; syncBuiltinESMExports(); }
+});
