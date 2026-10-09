@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import fs, { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { once } from 'node:events';
+import fs, { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
-import { tmpdir } from 'node:os';
+import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { test } from 'node:test';
@@ -35,6 +36,7 @@ async function joinChild(child, rl) {
 }
 async function holdChild(t, path) {
   const child = spawn(process.execPath, [fixture, path], { cwd: import.meta.dirname, stdio: ['pipe', 'pipe', 'inherit'] });
+  const exited = once(child, 'exit');
   const rl = createInterface({ input: child.stdout });
   let done = false;
   t.after(async () => { if (!done) await joinChild(child, rl); });
@@ -45,7 +47,7 @@ async function holdChild(t, path) {
     child.once('exit', code => rej(new Error(`early exit ${code}`)));
   });
   assert.equal(ready.ready, true);
-  return {
+  return { child, exited,
     async release() {
       child.stdin.write('release\n');
       await Promise.race([
@@ -188,4 +190,107 @@ test('DRSEC: second release of a nonce is rejected and keeps the live owner reco
   assert.equal(JSON.parse(await readFile(path, 'utf8')).nonce, third.nonce);
   assert.deepEqual(await readFile(path), thirdBytes);
   await b.releaseOwnership(file, third.nonce);
+});
+
+async function killedOwner(t, file) {
+  const owner = await holdChild(t, file), before = JSON.parse(await readFile(ownerPath(file), 'utf8'));
+  owner.child.kill('SIGKILL'); await owner.exited;
+  return before;
+}
+test('DRSEC-G6: a record left by a killed owner is recovered by the next acquire on this host', async t => {
+  const file = await ledger(t), before = await killedOwner(t, file);
+  const session = await acquire(file), record = JSON.parse(await readFile(ownerPath(file), 'utf8'));
+  assert.equal(record.pid, process.pid); assert.notEqual(record.nonce, before.nonce);
+  assert.equal(record.host, `${hostname()}:${process.platform}`);
+  await release(file, session.nonce);
+  await assert.rejects(readFile(ownerPath(file)), e => e.code === 'ENOENT');
+});
+test('DRSEC-G6: two starters after a crash admit exactly one', async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const contenders = [0, 1].map(() => {
+    const child = spawn(process.execPath, [fixture, file]);
+    const exited = once(child, 'exit'), rl = createInterface({ input: child.stdout });
+    t.after(() => joinChild(child, rl));
+    const outcome = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('contender deadline')), 5000);
+      rl.once('line', line => { clearTimeout(timer); resolve(JSON.parse(line).ready); });
+      child.once('exit', () => { clearTimeout(timer); resolve(false); });
+      child.once('error', reject);
+    });
+    return { child, exited, outcome };
+  });
+  const ready = await Promise.all(contenders.map(c => c.outcome));
+  assert.equal(ready.filter(Boolean).length, 1);
+  for (const [i, c] of contenders.entries()) {
+    if (ready[i]) c.child.stdin.write('release\n');
+    const [code] = await c.exited;
+    if (ready[i]) assert.equal(code, 0); else assert.notEqual(code, 0);
+  }
+  await assert.rejects(readFile(ownerPath(file)), e => e.code === 'ENOENT');
+});
+test('DRSEC-G6: a record from another host or an unknown pid state is never recovered', async t => {
+  const file = await ledger(t), dead = await killedOwner(t, file), orig = process.kill;
+  try {
+    for (const host of ['other-host:linux', undefined, null, 42, `${hostname()}:${process.platform}`]) {
+      const bytes = JSON.stringify({ ...dead, host });
+      await writeFile(ownerPath(file), bytes, { mode: 0o600 });
+      process.kill = host === `${hostname()}:${process.platform}`
+        ? () => { throw Object.assign(new Error('denied'), { code: 'EPERM' }); } : orig;
+      await assert.rejects(acquire(file), e => isDiag(e, HELD));
+      assert.equal(await readFile(ownerPath(file), 'utf8'), bytes);
+    }
+  } finally { process.kill = orig; }
+});
+test('DRSEC-G6: release restores a record that was replaced between read and rename', async t => {
+  const file = await ledger(t), session = await acquire(file);
+  const foreign = JSON.stringify({ nonce: 'foreign-record', pid: process.pid, heartbeatAt: new Date().toISOString() });
+  o.setOwnershipReleaseHooks({ beforeRename: () => writeFile(ownerPath(file), foreign) });
+  try {
+    await assert.rejects(release(file, session.nonce), e => isDiag(e, MISMATCH));
+    assert.equal(await readFile(ownerPath(file), 'utf8'), foreign);
+    assert.equal((await readdir(join(file, '..'))).some(n => n.endsWith('.tomb')), false);
+  } finally { o.setOwnershipReleaseHooks(); }
+});
+test('DRSEC-G6: a successor appearing during restore keeps the successor and drops the tomb', async t => {
+  const file = await ledger(t), session = await acquire(file), orig = fs.link;
+  const foreign = JSON.stringify({ nonce: 'foreign-record', pid: process.pid, heartbeatAt: new Date().toISOString() });
+  const successor = foreign.replace('foreign-record', 'live-successor');
+  o.setOwnershipReleaseHooks({ beforeRename: () => writeFile(ownerPath(file), foreign) });
+  fs.link = async (_from, to) => {
+    await writeFile(to, successor, { flag: 'wx', mode: 0o600 });
+    throw Object.assign(new Error('exists'), { code: 'EEXIST' });
+  };
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(release(file, session.nonce), e => isDiag(e, MISMATCH));
+    assert.equal(await readFile(ownerPath(file), 'utf8'), successor);
+    assert.equal((await readdir(join(file, '..'))).some(n => n.endsWith('.tomb')), false);
+  } finally { o.setOwnershipReleaseHooks(); fs.link = orig; syncBuiltinESMExports(); }
+});
+test('DRSEC-G6: a hard second-signal exit leaves an owner that the next start recovers', async t => {
+  const file = await ledger(t);
+  // Emit signal events through stdin for portability; pause close before the rename.
+  const script = `import * as o from ${JSON.stringify(new URL('./ownership.mjs', import.meta.url).href)};
+    import { createInterface } from 'node:readline';
+    const file = process.argv[1], session = await o.acquireOwnership(file);
+    o.setOwnershipReleaseHooks({ beforeRename: async () => {
+      console.log('closing'); await new Promise(() => {});
+    } });
+    let stopping = false;
+    process.on('SIGTERM', () => {
+      if (stopping) process.exit(1);
+      stopping = true; o.releaseOwnership(file, session.nonce).then(() => process.exit(0));
+    });
+    createInterface({ input: process.stdin }).on('line', () => process.emit('SIGTERM'));
+    console.log('ready');`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', script, file]);
+  const exited = once(child, 'exit'), rl = createInterface({ input: child.stdout });
+  t.after(() => joinChild(child, rl));
+  const line = () => once(rl, 'line', { signal: AbortSignal.timeout(5000) });
+  assert.deepEqual(await line(), ['ready']);
+  const before = JSON.parse(await readFile(ownerPath(file), 'utf8')), closing = line();
+  child.stdin.write('signal\n'); assert.deepEqual(await closing, ['closing']);
+  child.stdin.write('signal\n'); assert.deepEqual(await exited, [1, null]);
+  const session = await acquire(file); assert.notEqual(session.nonce, before.nonce);
+  await release(file, session.nonce);
 });
