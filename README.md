@@ -73,18 +73,19 @@ Dauerbetrieb selbst ist in v1.5.1 noch ausgeschaltet; siehe „Status und Grenze
 | Sitzungen wiederherstellen | Verlauf und Entwürfe überstehen einen Neustart (höchstens 7 Tage). |
 | Kommandozeile `pa` | Spricht mit der laufenden App über eine lokale, per Token geschützte API. |
 
-## Denkraum (Entwurf)
+## Denkraum
 
 Der Denkraum ist eine lokale Browserseite für Menschen, die Fragen ihrer
 Agenten beantworten, Ideen sammeln und deren Bearbeitungsstand lesen möchten.
 Du brauchst dafür keine Programmierkenntnisse; die Einrichtung muss bereits
 vorbereitet sein. Die Seite ist nur auf demselben Rechner unter
-`http://127.0.0.1:4791/` erreichbar, kein öffentliches Webangebot.
+`http://127.0.0.1:4791/` (Standardanschluss) erreichbar, kein öffentliches Webangebot.
 Eine gespeicherte Antwort oder Idee startet noch keine Ausführung.
 
-Die [Anleitung in fünf Schritten](docs/denkraum/ANLEITUNG.md) ist ein Entwurf.
-Sie beschreibt Kategorie, Filter und Sortierung der Ideen. Die Umschaltung des
-laufenden Denkraums (DR-16b) und der Trockenlauf der Anleitung stehen noch aus.
+Die [Anleitung in fünf Schritten](docs/denkraum/ANLEITUNG.md) führt von Start
+und Seite über eine Antwort und den Status bis zum Stoppen und Sichern; sie
+beschreibt auch Kategorie, Filter und Sortierung der Ideen. Einen bestehenden
+Denkraum auf die neue Fassung umzustellen folgt einem getrennten Runbook.
 
 ## Wo steht ProjectA?
 
