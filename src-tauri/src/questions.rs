@@ -650,6 +650,38 @@ mod tests {
         }
     }
 
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn store_fixture_drop_waits_for_connection_return_and_directory_removal() {
+        // Run on the only worker: the connection-return task cannot run until
+        // Drop either hands off the worker or returns to the executor.
+        tokio::spawn(async {
+            let fixture = fixture("questions-drop-completion").await;
+            let path = fixture._dir.as_ref().unwrap().path().to_path_buf();
+            let store = fixture.store.clone();
+            let connection = store.pool_for_test().acquire().await.unwrap();
+            let closed = store.pool_for_test().close_event();
+            let returned = tokio::spawn(async move {
+                closed.await;
+                connection.close().await.expect("close held connection");
+            });
+
+            drop(fixture);
+
+            assert_eq!(
+                store.pool_for_test().size(),
+                0,
+                "fixture Drop returned before all connections closed"
+            );
+            assert!(
+                !path.exists(),
+                "fixture Drop returned before directory removal"
+            );
+            returned.await.expect("connection-return task");
+        })
+        .await
+        .expect("fixture lifecycle task");
+    }
+
     #[test]
     fn store_fixture_closes_shared_pool_before_runtime_shutdown() {
         for reuse_blocking_worker in [false, true] {
