@@ -3,7 +3,7 @@
 ## v1.6.0 — unveröffentlicht (Entwurf)
 
 Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
-(Stand `15b4f61`). Dies ist noch keine Veröffentlichungsnotiz.
+(Stand `e3725be`). Dies ist noch keine Veröffentlichungsnotiz.
 
 **Zuverlässigkeit und Updates:**
 
@@ -13,12 +13,14 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
   Datenordner). Auf Linux/macOS erscheint die Anleitung ohne Absturz bei
   gestörtem stderr; Reihenfolge Schreiben → Öffnen → Anzeige ist abgesichert
   (#845).
-- **Update-Download lässt sich abbrechen** (PR #813, #828, #830, #833, #834):
-  Während ein Update heruntergeladen wird, erscheint in den Einstellungen
-  „Abbrechen“. Ein Abbruch vor der Installation kehrt zur verfügbaren
-  Version zurück; ist die Installation schon zu weit, läuft sie ungestört
-  weiter. Späte Abbruch- und Wartungsfehlerfälle (#833, #834) bleiben
-  ebenfalls abgesichert.
+- **Update-Download lässt sich abbrechen** (PR #813, #828, #830, #833, #834,
+  #878): Während ein Update heruntergeladen wird, erscheint in den
+  Einstellungen „Abbrechen“. Ein Abbruch vor der Installation kehrt zur
+  verfügbaren Version zurück; ist die Installation schon zu weit, läuft sie
+  ungestört weiter. Späte Abbruch- und Wartungsfehlerfälle (#833, #834)
+  bleiben ebenfalls abgesichert. Wechselt die Phase während der
+  Sitzungsprüfung beim Abbruch, erscheint ein abgelegter Install-Fehler
+  (#878).
 - **Belege nach Update-Rücksetzungen bleiben erhalten** (PR #600): Jede
   Rücksetzung erhält einen eigenen Protokollnamen; eine weitere Rücksetzung
   überschreibt den vorherigen Beleg nicht mehr.
@@ -61,13 +63,30 @@ Entwurf auf Basis der bis zum 09.10.2026 in `main` übernommenen Änderungen
   fremden Texte preis; Sicherungs- und Wiederherstellungskopien erhalten
   unter POSIX private Rechte. Vorhandene Schutzmaßnahmen (lokale Bindung,
   CSRF, Größenlimits, UTF-8, Pfad-Aliase) sind abgesichert.
-- **Schreibsperre für das Ledger vorbereitet** (PR #811): Eine eigene
+- **Schreibsperre für das Ledger** (PR #811, #866, #872, #873): Eine eigene
   Sperrdatei neben dem Ledger lässt nur einen Schreibprozess zu; alte oder
-  kaputte Sperren werden abgelehnt, ohne stillschweigende Übernahme. Noch
-  nicht in Server oder Kern eingebunden.
-- **Oberflächen-Verdrahtung und UI-Tests** (PR #718): Der gemeinsame
-  Root-Empfänger ist vereinheitlicht; Playwright belegt, dass fehlende oder
-  leere Root-IDs jeden POST blockieren.
+  kaputte Sperren werden abgelehnt, ohne stillschweigende Übernahme. Server
+  und Kern geben den Besitz beim Schließen wieder frei (#866); Beenden per
+  Signal (SIGINT/SIGTERM/SIGHUP) gibt die Marke frei und endet erst danach
+  (#872). Benachrichtigungen teilen sich je Ledger eine Versandwarteschlange;
+  ein laufender Versand hält die Schreibberechtigung bis zum gespeicherten
+  Ergebnis (#873). Absturz-Wiederherstellung und Admission vor dem Lauschen
+  folgen separat.
+- **Oberflächen-Verdrahtung und UI-Tests** (PR #718, #870, #882): Der
+  gemeinsame Root-Empfänger ist vereinheitlicht; Playwright belegt, dass
+  fehlende, leere oder nur aus Leerzeichen bestehende Root-IDs jeden POST
+  blockieren — auch erneute Prüfversuche (#870, #882).
+- **Ideen filtern und sortieren** (PR #759, #774): Gespeicherte Ideen lassen
+  sich nach Suche, Kategorie, Priorität und belegter Zuordnung filtern
+  (#759) sowie nach Priorität, Fassungsdatum oder Titel sortieren (#774);
+  gewählte Filter und Reihenfolge bleiben beim automatischen Aktualisieren
+  erhalten.
+- **Umschalt-Helfer für Portprüfung** (PR #863, #871): Der Helfer verweigert
+  Sicherungen bei unklarer Portprüfung und kennzeichnet erfolgreiche
+  Sicherungen als reine Portprüfung; Vergleiche prüfen zuerst die Sicherung
+  und die Schema-Version. Aufrufe über Symlinks funktionieren; auf dem
+  Erfolgsweg bleibt er still, bei echten Fehlern eindeutig (#871). Die
+  Live-Migration (DR-16b) ist damit nicht erledigt.
 
 **Anleitungen:**
 
@@ -80,6 +99,8 @@ Interne Werkzeuge und Prüfungen (seit `a1d9a5f`): #728, #749, #752, #764, #767,
 Intern (seit `34f2b0b` / nach #835): #843 (Test-Timeout), #741 (red-first
 Playwright-Identität), #725 (Build-Slot-Root), #851 (Update-Freeze-Tests),
 #849 (PLAN/Changelog-Sync).
+Intern (seit `a071298` / nach #861): #874 (KI-30 geschlossen), #875
+(Webhook-Timeout-Test), #877 (Review-Refs aufräumen), #881 (PLAN-Sync).
 
 ## v1.5.1 — (Datum folgt)
 
