@@ -115,6 +115,7 @@ mod submit_guard;
 mod testgate;
 #[cfg(test)]
 mod testutil;
+mod update_cancel;
 mod web_interface;
 mod workers;
 mod worktree;
@@ -1205,6 +1206,7 @@ async fn leave_maintenance(
 async fn install_update_when_idle(
     webview: tauri::Webview,
     update_rid: tauri::ResourceId,
+    cancel: State<'_, update_cancel::UpdateCancel>,
 ) -> Result<(), String> {
     let update = webview
         .resources_table()
@@ -1217,13 +1219,18 @@ async fn install_update_when_idle(
         &dir.join("projecta.db"),
     )
     .map_err(|error| format!("update journal unavailable: {error}"))?;
-    enter_database_maintenance(
+    let install = cancel.begin()?;
+    if let Err(error) = enter_database_maintenance(
         &app.state::<PtyManager>(),
         &app.state::<Store>(),
         MAINTENANCE_DRAIN_WAIT,
     )
-    .await?;
-    let result = prepare_and_install(&app, &update, &dir, journal_store.clone()).await;
+    .await
+    {
+        install.finish_unstarted()?;
+        return Err(error);
+    }
+    let result = prepare_and_install(&app, &update, &dir, journal_store.clone(), &install).await;
     // From `Installing` on, only the restart validation may thaw the app.
     // An unreadable journal counts as started: the app stays frozen.
     let installer_started = journal_store.path().exists()
@@ -1232,11 +1239,27 @@ async fn install_update_when_idle(
         });
 
     if result.is_err() && !installer_started {
-        let thaw =
-            leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()).await;
+        let thaw = install
+            .finish(leave_database_maintenance(
+                &app.state::<PtyManager>(),
+                &app.state::<Store>(),
+            ))
+            .await;
         return report_with_thaw(result, thaw);
     }
+    let _ = install
+        .finish(std::future::ready(Err(
+            "installer may have started; restart before retrying".into(),
+        )))
+        .await;
     result
+}
+
+#[tauri::command]
+async fn cancel_update_download(
+    cancel: State<'_, update_cancel::UpdateCancel>,
+) -> Result<update_cancel::CancelResult, String> {
+    cancel.cancel().await
 }
 
 fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Result<(), String> {
@@ -1271,6 +1294,7 @@ async fn prepare_and_install(
     update: &tauri_plugin_updater::Update,
     dir: &Path,
     journal_store: delivery_recovery::JournalStore,
+    install: &update_cancel::Install<'_>,
 ) -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let database = dir.join("projecta.db");
@@ -1282,11 +1306,12 @@ async fn prepare_and_install(
         .try_install_lease()
         .map_err(|error| error.to_string())?;
     // The journal binds the bytes `install` will receive, so download first.
-    let bytes = bounded_download(
-        async { update.download(|_, _| {}, || {}).await },
-        UPDATE_DOWNLOAD_TIMEOUT,
-    )
-    .await?;
+    let bytes = install
+        .download(bounded_download(
+            async { update.download(|_, _| {}, || {}).await },
+            UPDATE_DOWNLOAD_TIMEOUT,
+        ))
+        .await?;
     let journal = delivery_recovery::produce_journal(
         &app.state::<PtyManager>(),
         &app.state::<Store>(),
@@ -3609,6 +3634,7 @@ fn main() {
         // src/opener-config.test.ts holds crate, registration and scope together.
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(update_cancel::UpdateCancel::default())
         .manage(PtyManager::default())
         .manage(tokio::sync::Mutex::new(()))
         .manage(workers::activation::Activation::default())
@@ -3888,6 +3914,7 @@ fn main() {
             list_workers,
             list_live_sessions,
             install_update_when_idle,
+            cancel_update_download,
             enter_maintenance,
             get_maintenance,
             leave_maintenance,
@@ -4835,6 +4862,10 @@ mod tests {
                 ".manage(Mutex::new(WebInterfaceState::default()))",
             ),
             ("PtyManager", ".manage(PtyManager::default())"),
+            (
+                "update_cancel::UpdateCancel",
+                ".manage(update_cancel::UpdateCancel::default())",
+            ),
             (
                 "tokio::sync::Mutex<()>",
                 ".manage(tokio::sync::Mutex::new(()))",
