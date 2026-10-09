@@ -7,6 +7,7 @@ import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { test } from 'node:test';
+import timers from 'node:timers/promises';
 import * as o from './ownership.mjs';
 const {
   OWNERSHIP_HELD: HELD, OWNERSHIP_MALFORMED: MALFORMED, OWNERSHIP_RECOVERY_REFUSED: REFUSED,
@@ -410,4 +411,32 @@ for (const vanished of [false, true]) test(`DRSEC-G6-FU: revalidation ${vanished
     }
     await assert.rejects(origRead(lock), e => e.code === 'ENOENT');
   } finally { fs.readFile = origRead; fs.open = origOpen; syncBuiltinESMExports(); }
+});
+
+for (const [name, persists] of [
+  ['DRSEC-G6-FU: recovery lock disappearing after two polls allows acquisition', false],
+  ['DRSEC-G6-FU: recovery lock contention is bounded and explained', true],
+]) test(name, async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const path = ownerPath(file), lock = `${path}.recover`, before = await readFile(path);
+  await writeFile(lock, 'another recovery');
+  let polls = 0;
+  t.mock.method(timers, 'setTimeout', async ms => {
+    assert.equal(ms, 25); polls++;
+    if (!persists && polls === 2) await rm(lock);
+  });
+  syncBuiltinESMExports();
+  try {
+    if (persists) {
+      await assert.rejects(acquire(file), e => isDiag(e, HELD)
+        && e.hint.includes('recovery in progress or orphaned lock ledger.json.owner.recover'));
+      assert.equal(polls, 20);
+      assert.deepEqual(await readFile(path), before);
+      assert.equal(await readFile(lock, 'utf8'), 'another recovery');
+    } else {
+      const session = await acquire(file); assert.equal(polls, 2);
+      await assert.rejects(readFile(lock), e => e.code === 'ENOENT');
+      await release(file, session.nonce);
+    }
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });

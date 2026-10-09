@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { link, open, readFile, rename, stat, unlink } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { hostname } from 'node:os';
+import { setTimeout as delay } from 'node:timers/promises';
 const host = `${hostname()}:${process.platform}`;
 export const OWNERSHIP_HELD = 'OWNERSHIP_HELD';
 export const OWNERSHIP_MALFORMED = 'OWNERSHIP_MALFORMED';
@@ -66,10 +67,14 @@ async function recoverDead(path) {
   if (!isDead(record)) throw new OwnershipError(OWNERSHIP_HELD, record.host === null ? LEGACY_HINT : undefined);
   const lockPath = `${path}.recover`;
   let lock;
-  try { lock = await open(lockPath, 'wx', 0o600); }
-  catch (error) {
-    if (error?.code !== 'EEXIST') ioFail();
-    throw new OwnershipError(OWNERSHIP_HELD, `recovery lock ${basename(lockPath)} exists; remove manually if no start is running`);
+  for (let poll = 0; ; poll++) {
+    try { lock = await open(lockPath, 'wx', 0o600); break; }
+    catch (error) {
+      if (error?.code !== 'EEXIST') ioFail();
+      if (poll === 20) throw new OwnershipError(OWNERSHIP_HELD,
+        `recovery in progress or orphaned lock ${basename(lockPath)}; remove manually if no start is running`);
+      await delay(25);
+    }
   }
   try {
     try { await lock.writeFile(JSON.stringify({ pid: process.pid, host, nonce: randomBytes(16).toString('hex') }), 'utf8'); await lock.close(); }
