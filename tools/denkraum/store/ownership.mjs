@@ -6,6 +6,7 @@ export const OWNERSHIP_MALFORMED = 'OWNERSHIP_MALFORMED';
 export const OWNERSHIP_RELEASE_MISMATCH = 'OWNERSHIP_RELEASE_MISMATCH';
 export const OWNERSHIP_RECOVERY_REFUSED = 'OWNERSHIP_RECOVERY_REFUSED';
 export const OWNERSHIP_IO = 'OWNERSHIP_IO';
+export const STORE_CLOSED = 'STORE_CLOSED';
 export class OwnershipError extends Error {
   constructor(code) { super(code); this.name = 'OwnershipError'; this.code = code; }
 }
