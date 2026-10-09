@@ -110,8 +110,8 @@ test('a state path inside the repository is refused even with a root agent id', 
 });
 
 test('an outside state path and a root agent id from the environment start the server', async () => {
-  const { statePath } = await ledger();
   for (const args of [[], ['--root-agent-id', ROOT]]) {
+    const { statePath } = await ledger();
     const probe = createPortProbe();
     await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
     const port = String(probe.address().port);

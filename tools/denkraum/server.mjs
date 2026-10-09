@@ -37,8 +37,9 @@ export function createWebhookNotifier({ url, secret, request = fetch, clock = Da
 }
 // H2: no state default inside the repository. D2: the root agent id is injected; without it every
 // root-bound route answers 503 from the store and the page gets no root meta tag.
+/** Attach an error listener before listen(); create a new server after a failed bind. */
 export function createDeskServer({ statePath, rootAgentId, assets = root,
-  rootReceiptToken = process.env.DECISION_DESK_ROOT_RECEIPT_TOKEN, notifyEvent, clock = Date.now, timers = { setTimeout, clearTimeout } } = {}) {
+  rootReceiptToken = process.env.DECISION_DESK_ROOT_RECEIPT_TOKEN, notifyEvent, clock = Date.now, drainTimeoutMs = 5000, timers = { setTimeout, clearTimeout } } = {}) {
   if (typeof statePath !== 'string' || !statePath) throw new DeskError('Datenpfad fehlt; Start abgelehnt.', 503);
   const authorityConfigured = typeof rootReceiptToken === 'string' && /^[A-Za-z0-9_-]{32,256}$/.test(rootReceiptToken);
   const store = new DeskStore(statePath, { rootAgentId, notifyEvent, clock, verifyProgressEvidence: authorityConfigured ? async () => true : undefined, verifyPatchAuthority: authorityConfigured ? async () => true : undefined, verifyReceipt: authorityConfigured ? async (request, proof) => ({ ...request,
@@ -50,7 +51,11 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     if (req.headers.origin || req.headers['sec-fetch-site'] || actual.length !== expected.length || !timingSafeEqual(actual, expected))
       throw new DeskError('Lokale Root-Quittierungsautorität erforderlich; Browserzugriff ausgeschlossen.', 403);
   };
-  const server = createServer(async (req, res) => {
+  const pending = new Set();
+  const track = work => {
+    pending.add(work); work.then(() => pending.delete(work), () => pending.delete(work)); return work;
+  };
+  const handle = async (req, res) => {
     const port = res.socket.localPort;
     const hosts = [`127.0.0.1:${port}`, `localhost:${port}`];
     const json = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(body)); };
@@ -113,30 +118,73 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     } catch (e) {
       json(e.code === 'ENOENT' ? 404 : e.status ?? 500, { error: e instanceof DeskError ? e.message : e.code === 'ENOENT' ? 'Nicht gefunden.' : 'Speichern oder Laden fehlgeschlagen. Daten bleiben erhalten; bitte erneut versuchen.' });
     }
-  });
-  let timer; let running = false; let closed = false; let backoff = 1000;
+  };
+  const server = createServer((req, res) => { track(handle(req, res)); });
+  let timer; let running = false; let closed = false; let admitting = false; let backoff = 1000;
   const schedule = delay => {
     if (closed || running || timer || typeof notifyEvent !== 'function') return;
     timer = timers.setTimeout(async () => {
       timer = undefined; if (closed || running) return; running = true;
       let result;
-      try { result = await store.flushNotifications(); } catch { result = { status: 'pending' }; }
+      try { result = await track(store.flushNotifications()); } catch { result = { status: 'pending' }; }
       running = false;
       backoff = result.status === 'queued' ? 1000 : Math.min(backoff * 2, 60000);
       schedule(result.status === 'queued' ? 250 : backoff);
     }, delay);
     timer?.unref?.();
   };
-  server.on('listening', () => schedule(0));
-  server.on('close', () => { closed = true; if (timer) timers.clearTimeout(timer); timer = undefined; });
+  server.on('listening', () => { if (closed) close.call(server); else schedule(0); });
+  const stopTimer = () => { closed = true; if (timer) timers.clearTimeout(timer); timer = undefined; };
+  server.on('close', stopTimer);
+  const listen = server.listen;
+  server.listen = (...args) => {
+    if (closed) {
+      process.nextTick(() => server.emit('error', Object.assign(new Error('Server is closed'), { code: 'ERR_SERVER_NOT_RUNNING' })));
+      return server;
+    }
+    if (server.listening) return listen.apply(server, args);
+    if (admitting) throw Object.assign(new Error('Listen already called'), { code: 'ERR_SERVER_ALREADY_LISTEN' });
+    admitting = true;
+    track(store.change(() => undefined).then(() => {
+      if (closed) return;
+      const admitted = () => { admitting = false; server.removeListener('error', release); };
+      const release = error => {
+        admitting = false; server.removeListener('listening', admitted);
+        const unhandled = server.listenerCount('error') === 0;
+        store.close().catch(e => console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${e?.code ?? 'Fehler'}`))
+          .then(() => { if (unhandled) process.nextTick(() => { throw error; }); });
+      };
+      server.prependOnceListener('error', release);
+      server.once('listening', admitted);
+      listen.apply(server, args);
+    }).catch(error => { admitting = false; process.nextTick(() => server.emit('error', error)); }));
+    return server;
+  };
+  const within = async (work, ms) => {
+    let deadline;
+    try { return await Promise.race([work.then(() => true), new Promise(resolve => { deadline = timers.setTimeout(() => resolve(false), ms); })]); }
+    finally { timers.clearTimeout(deadline); }
+  };
   const close = server.close;
   // A failed release goes to the callback, else to one stderr line; never to 'error' (no listener, no crash).
-  server.close = callback => close.call(server, error => {
-    store.close().then(() => callback?.(error), failure => {
+  server.close = callback => {
+    stopTimer();
+    let error;
+    const native = new Promise(resolve => close.call(server, e => { error = e; resolve(); }));
+    const drained = (async () => { await native; while (pending.size) await Promise.allSettled([...pending]); })();
+    (async () => {
+      if (!await within(drained, drainTimeoutMs)) {
+        server.closeAllConnections();
+        if (!await within(drained, Math.min(drainTimeoutMs, 1000)))
+          throw Object.assign(new Error('Server drain timed out'), { code: 'DRAIN_TIMEOUT' });
+      }
+      await store.close();
+    })().then(() => callback?.(error), failure => {
       if (error) { try { failure.cause ??= error; } catch { /* Preserve even immutable thrown values. */ } }
       if (callback) callback(failure); else console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${failure?.code ?? 'Fehler'}`);
     });
-  });
+    return server;
+  };
   return server;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -149,7 +197,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const { port, statePath, rootAgentId, rootReceiptToken, webhookSecret, webhookUrl } = config;
     const server = createDeskServer({ statePath, rootAgentId, rootReceiptToken, notifyEvent: createWebhookNotifier({
       url: webhookUrl, secret: webhookSecret }) });
-    server.on('error', e => { console.error(`Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}`); process.exitCode = 1; });
+    server.on('error', e => {
+      try { writeSync(2, `Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}\n`); } catch { /* stderr gone */ }
+      process.exitCode = 1;
+    });
     let listening = false;
     server.listen(port, '127.0.0.1', () => { listening = true; console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`); });
     // Stop by signal releases the ledger ownership before exit; a second signal while closing exits at once.
