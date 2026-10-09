@@ -33,8 +33,6 @@ pub struct Install<'a> {
     flight: Arc<Flight>,
     done: watch::Sender<Option<Result<CancelResult, String>>>,
     released: bool,
-    /// True once `finish` awaits thaw; Drop must not clear the slot.
-    finishing: bool,
 }
 fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {
     mutex
@@ -62,7 +60,6 @@ impl UpdateCancel {
             flight,
             done,
             released: false,
-            finishing: false,
         })
     }
     pub async fn cancel(&self) -> Result<CancelResult, String> {
@@ -130,19 +127,10 @@ impl Drop for Install<'_> {
             return;
         }
         self.released = true;
-        // Fail-closed: Installing / interrupted thaw keep the slot; download-phase drop may clear.
-        let keep_slot = self.finishing
-            || self
-                .flight
-                .phase
-                .lock()
-                .map(|phase| *phase == Phase::Installing)
-                .unwrap_or(true);
-        if !keep_slot {
-            if let Ok(mut slot) = self.owner.0.lock() {
-                *slot = None;
-            }
-        }
+        // Fail-closed: Drop never clears the single-flight slot. After
+        // `enter_or_abort` has entered maintenance, no phase is known to be
+        // thawed; only `finish_unstarted` / successful `finish` clear the slot.
+        // Pending cancelers still get the fixed restart error.
         let _ = self.done.send(Some(Err(
             "update interrupted; restart before retrying".into()
         )));
@@ -183,7 +171,6 @@ impl Install<'_> {
         mut self,
         thaw: impl Future<Output = Result<(), String>>,
     ) -> Result<(), String> {
-        self.finishing = true;
         let result = thaw.await;
         let mut slot = lock(&self.owner.0)?;
         // Failed thaw or an interrupted task keeps the slot occupied, fail-closed.
@@ -210,6 +197,19 @@ mod tests {
 
     async fn is_pending<F: Future>(mut future: Pin<&mut F>) -> bool {
         poll_fn(|cx| Poll::Ready(future.as_mut().poll(cx).is_pending())).await
+    }
+
+    /// Drop during download/cancel: signal fixed error, keep slot (R821-A11).
+    async fn assert_drop_keeps_slot_until_restart(state: &UpdateCancel) {
+        let install = state.begin().unwrap();
+        let mut cancel = Box::pin(state.cancel());
+        assert!(is_pending(cancel.as_mut()).await);
+        drop(install);
+        assert_eq!(
+            cancel.await.unwrap_err(),
+            "update interrupted; restart before retrying"
+        );
+        assert!(state.begin().is_err());
     }
 
     #[tokio::test]
@@ -302,20 +302,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drop_clears_slot_and_signals_fixed_error() {
-        let state = UpdateCancel::default();
-        let install = state.begin().unwrap();
-        let mut cancel = Box::pin(state.cancel());
-        assert!(is_pending(cancel.as_mut()).await);
-        drop(install);
-        assert_eq!(
-            cancel.await.unwrap_err(),
-            "update interrupted; restart before retrying"
-        );
-        assert!(state.begin().is_ok());
-    }
-
-    #[tokio::test]
     async fn glue_entry_fail_abort_thaw_ack_and_keep_slot() {
         let state = UpdateCancel::default();
         // begin guard + finish_unstarted → NotRunning for pending cancel
@@ -327,7 +313,8 @@ mod tests {
             Ok(_) => panic!("entry failure must abort"),
         }
         assert_eq!(cancel.await.unwrap(), CancelResult::NotRunning);
-        assert!(state.begin().is_ok());
+        // Slot free after finish_unstarted; take-and-release (Drop no longer clears).
+        state.begin().unwrap().finish_unstarted().unwrap();
 
         // cancel during entry drain, then download honors Notify; thaw before ack
         let install = state.begin().unwrap();
@@ -418,16 +405,19 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn drop_during_download_keeps_slot_until_restart() {
+        assert_drop_keeps_slot_until_restart(&UpdateCancel::default()).await;
+    }
+
+    // Aliases retained so prior Test-First trailers still resolve at HEAD
+    // (history must not be rewritten). Same fail-closed keep as above.
+    #[tokio::test]
     async fn drop_during_download_still_clears_slot() {
-        let state = UpdateCancel::default();
-        let install = state.begin().unwrap();
-        let mut cancel = Box::pin(state.cancel());
-        assert!(is_pending(cancel.as_mut()).await);
-        drop(install);
-        assert_eq!(
-            cancel.await.unwrap_err(),
-            "update interrupted; restart before retrying"
-        );
-        assert!(state.begin().is_ok());
+        assert_drop_keeps_slot_until_restart(&UpdateCancel::default()).await;
+    }
+
+    #[tokio::test]
+    async fn drop_clears_slot_and_signals_fixed_error() {
+        assert_drop_keeps_slot_until_restart(&UpdateCancel::default()).await;
     }
 }
