@@ -120,7 +120,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     }
   };
   const server = createServer((req, res) => { track(handle(req, res)); });
-  let timer; let running = false; let closed = false; let backoff = 1000;
+  let timer; let running = false; let closed = false; let admitting = false; let backoff = 1000;
   const schedule = delay => {
     if (closed || running || timer || typeof notifyEvent !== 'function') return;
     timer = timers.setTimeout(async () => {
@@ -138,13 +138,16 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
   server.on('close', stopTimer);
   const listen = server.listen;
   server.listen = (...args) => {
+    if (server.listening) return listen.apply(server, args);
+    if (admitting) throw Object.assign(new Error('Listen already called'), { code: 'ERR_SERVER_ALREADY_LISTEN' });
+    admitting = true;
     track(store.change(() => undefined).then(() => {
       if (closed) return;
-      const release = () => { store.close().catch(e => console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${e?.code ?? 'Fehler'}`)); };
+      const release = () => { admitting = false; store.close().catch(e => console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${e?.code ?? 'Fehler'}`)); };
       server.once('error', release);
-      server.once('listening', () => server.removeListener('error', release));
+      server.once('listening', () => { admitting = false; server.removeListener('error', release); });
       listen.apply(server, args);
-    }).catch(error => server.emit('error', error)));
+    }).catch(error => { admitting = false; server.emit('error', error); }));
     return server;
   };
   const within = async (work, ms) => {

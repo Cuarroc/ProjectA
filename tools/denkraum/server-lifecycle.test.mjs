@@ -57,6 +57,21 @@ function startEntry(t, file, port) {
   return childRun(t, [fileURLToPath(entry)], env);
 }
 
+async function duplicateListen(t, phase) {
+  const file = await ledger(t), server = desk(t, file), ready = listen(server);
+  if (phase === 'listening') await ready;
+  try { assert.throws(() => server.listen(0, '127.0.0.1'), { code: 'ERR_SERVER_ALREADY_LISTEN' }); }
+  finally { await ready; }
+  assert.equal(await missing(`${file}.owner`), false);
+  const owner = await readFile(`${file}.owner`, 'utf8');
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/questions`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-decision-desk': 'agent' }, body: JSON.stringify(question('duplicate')) });
+  assert.equal(response.status, 200, await response.text());
+  assert.equal(await readFile(`${file}.owner`, 'utf8'), owner);
+}
+test('DRSEC-G4b: duplicate listen while admitting preserves ownership and writes', t => duplicateListen(t, 'admitting'));
+test('DRSEC-G4b: duplicate listen while listening preserves ownership and writes', t => duplicateListen(t, 'listening'));
+
 test('DRSEC-G4b: listen is refused with OWNERSHIP_HELD while a foreign process holds the ledger', async t => {
   const file = await ledger(t), release = await holdChild(t, file), server = desk(t, file);
   const failed = once(server, 'error').then(([e]) => e);
