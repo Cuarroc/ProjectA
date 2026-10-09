@@ -246,19 +246,26 @@ test('DR16H: parser diagnostics never expose ledger text or secrets', async () =
   }
 });
 test('DR16H: entry guard uses native realpaths and tolerates failures', async () => {
-  for (const entry of [SWITCH, join(await output(), 'missing.mjs')]) {
-    const script = `import { realpathSync } from 'node:fs';
-      process.argv = [process.execPath, ${JSON.stringify(entry)}, 'unknown'];
-      realpathSync.native = () => { throw new Error('native realpath probe'); };
-      await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`;
-    const r = await run([script], {}, '-e');
-    assert.equal(r.status, entry === SWITCH ? 2 : 0, r.stderr);
-    assert.match(r.stderr, /native realpath probe/);
-    if (entry === SWITCH) assert.equal(JSON.parse(r.stdout).ok, false);
-    else assert.equal(r.stdout, '');
-  }
+  const script = `import { realpathSync } from 'node:fs';
+    process.argv = [process.execPath, ${JSON.stringify(SWITCH)}, 'unknown'];
+    realpathSync.native = () => { throw new Error('native realpath probe'); };
+    await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`;
+  const r = await run([script], {}, '-e');
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /native realpath probe/);
+  assert.equal(JSON.parse(r.stdout).ok, false);
 });
-test('DR16H: compare accepts equal schema and revision', async () => {
+test('DR16H: entry guard fails closed when realpath misses', async () => {
+  const missing = join(await output(), 'missing.mjs');
+  const script = `import { realpathSync } from 'node:fs';
+    process.argv = [process.execPath, ${JSON.stringify(missing)}, 'unknown'];
+    realpathSync.native = () => { throw new Error('native realpath probe'); };
+    await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`;
+  const r = await run([script], {}, '-e');
+  assert.equal(r.status, 4, r.stderr);
+  assert.match(r.stderr, /native realpath probe/);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+});test('DR16H: compare accepts equal schema and revision', async () => {
   const { state } = await ledger(), out = await bakOk(state);
   const r = await run(['compare', '--backup', out, '--state', state]);
   assert.equal(r.status, 0); assert.equal(JSON.parse(r.stdout).revision, 5);

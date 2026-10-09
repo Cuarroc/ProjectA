@@ -123,7 +123,16 @@ function isEntry() {
   if (!process.argv[1]) return false;
   const here = fileURLToPath(import.meta.url);
   try { return realpathSync.native(here) === realpathSync.native(process.argv[1]); }
-  catch (error) { diagnose(error); return here === resolve(process.argv[1]); }
+  catch (error) {
+    diagnose(error);
+    const resolved = resolve(process.argv[1]);
+    const matched = process.platform === 'win32'
+      ? here.toLowerCase() === resolved.toLowerCase()
+      : here === resolved;
+    if (matched) return true;
+    fail(4, 'nicht ruhend');
+    return false;
+  }
 }
 if (isEntry()) {
   runSwitch(process.argv.slice(2)).catch(error => { diagnose(error); fail(4, 'nicht ruhend'); });
