@@ -124,6 +124,35 @@ test("old node fails, missing optional harness only warns", () => {
   assert.equal(exitCode(result), 1);
 });
 
+test("SETUP-VERSION: non-finite node major fails mandatory check", () => {
+  const binaries = { ...healthy.binaries, kimi: null, opencode: null };
+  for (const nodeVersion of [
+    "vInfinity.0.0", Infinity, "v1e309.0.0", "vNaN.0.0", NaN,
+    `v${"9".repeat(400)}.0.0`, "v9007199254740992.0.0",
+    "vinvalid.0.0", "v0x18.0.0", "v2e2.0.0", "v+24.0.0", "v 24.0.0",
+    "", null, undefined,
+  ]) {
+    const result = evaluate({ ...healthy, nodeVersion, binaries });
+    const check = byId(result, "node");
+    assert.equal(check.state, "fail", String(nodeVersion));
+    assert.equal(check.required, true);
+    assert.equal(result.ok, false);
+    assert.equal(result.counts.fail, 1);
+    assert.equal(exitCode(result), 1);
+    assert.equal(byId(result, "bin-kimi").state, "warn");
+    assert.equal(byId(result, "bin-opencode").state, "warn");
+  }
+  for (const nodeVersion of ["v24.0.0", healthy.nodeVersion, "24.19.0", "v25.0.0"]) {
+    const result = evaluate({ ...healthy, nodeVersion, binaries });
+    assert.equal(byId(result, "node").state, "ok", nodeVersion);
+    assert.equal(result.ok, true);
+    assert.equal(result.counts.fail, 0);
+    assert.equal(exitCode(result), 0);
+    assert.equal(byId(result, "bin-kimi").state, "warn");
+    assert.equal(byId(result, "bin-opencode").state, "warn");
+  }
+});
+
 test("missing reviewer model warns with the pull command and never fails", () => {
   const result = evaluate({ ...healthy, ollamaModels: ["kimi-k3:cloud"] });
   const check = byId(result, "reviewer-models");
