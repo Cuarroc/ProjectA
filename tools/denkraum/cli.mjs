@@ -40,9 +40,8 @@ export async function runCli(args, env = process.env, request = fetch) {
     const status = response.status;
     const diagnostic = Number.isInteger(status) && status >= 100 && status <= 599
       ? `HTTP request failed (${status})` : 'HTTP request failed';
-    // Preserve runCli's programmatic error contract, separate from terminal output.
-    const result = await response.json().catch(() => null);
-    throw new CliError(result?.error ?? diagnostic, diagnostic);
+    // Fixed rejection for programmatic callers; do not surface server body text.
+    throw new CliError(diagnostic, diagnostic);
   }
   return response.json();
 }
