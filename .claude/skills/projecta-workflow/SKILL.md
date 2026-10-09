@@ -21,7 +21,7 @@ per provider: `docs/setup/README.md`. Check your machine with
 3. Never `git stash` (the stash stack is shared by all worktrees) — use a WIP
    commit. Never `--no-verify`, never `--force` pushes.
 4. Only one lane at a time may edit the seams `src-tauri/src/api.rs`, `main.rs`,
-   `store.rs`, `bin/pa.rs`. Declare ownership before touching them.
+   `store.rs` + `store/`, `bin/pa.rs`. Declare ownership before touching them.
 5. Reconcile previous orders, live assignments and actual native goals first.
    Root owns priority/acceptance, Chief alone dispatches; one execution owner.
    Confirm your own native goal with real create/get output, or record verified
@@ -47,7 +47,7 @@ per provider: `docs/setup/README.md`. Check your machine with
 - Every gate run ends with a `NICHT ABGEDECKT` block; put it in the PR text.
 - Worktrees under `.claude/worktrees/` have no `target/`. Point cargo at a
   build slot: `export CARGO_TARGET_DIR=$HOME/cargo-targets/projecta-<a|b|c>`
-  and `CARGO_BUILD_JOBS=1` or `2` (on the dev PC `$HOME` is `%USERPROFILE%`;
+  and `CARGO_BUILD_JOBS=1` (on the dev PC `$HOME` is `%USERPROFILE%`;
   slots elsewhere: point `CARGO_TARGET_DIR` there and set
   `PROJECTA_BUILD_SLOTS_ROOT` so `dev:agent-check` finds them). Build concurrency
   follows AGENTS.md rule 9 and Build slots; check current RAM/processes/slot first.
@@ -127,7 +127,10 @@ who asks the user.
 3. `main` is merged by the **Mergify** merge queue (`.mergify.yml`,
    `AGENTS.md` "Merging"). Do not merge `main` into your branch just to
    refresh it; only to resolve a real conflict — merge, never rebase or
-   force-push. Labels: `do-not-merge` keeps a PR out of the queue; `priority`
+   force-push. The queue requires the `review-ok` label on the PR head
+   (`.mergify.yml` queue condition `label = review-ok`, CI-HARDEN-02); Root
+   or the coordinator sets it after the review disposition is complete.
+   Labels: `do-not-merge` keeps a PR out of the queue; `priority`
    (coordinator only) moves it to the front; `conflict` is set and cleared by
    Mergify. Merge authority follows AGENTS.md's ten core rules; use Mergify,
    never infer a manual bypass from this skill. Details: `docs/setup/mergify.md`.

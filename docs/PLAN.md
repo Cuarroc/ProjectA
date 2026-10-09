@@ -1,10 +1,11 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 08.10.2026 10:20 UTC (Chief-Fortschreibung; #643, #644, #641 und #645
-sind gemergt; dieser PLAN-Nachtrag benötigt eigene Gates und Root-Abnahme).
-Beobachtete main-Basis: `7e3a7af`; Paket-Mergebase `4032800`, nur PLAN geändert.
-GitHub-PR-Readbacks und CI `37750580401` (success auf `7e3a7af`) geprüft;
-`37750580524` ist CodeQL und kein Beleg der CI-Gates.
+Stand: 09.10.2026 00:59 UTC (PLAN-SYNC-0910b; GitHub-PRs live geprüft).
+Beobachtete main-Basis: `03542ef9f53bb3f16b0750cef036167a887e7c8b`; nur `docs/PLAN.md`.
+Chief abwesend: PLAN-Pflege interim durch Root (09.10.).
+Quelle: Root-Auftrag PLAN-SYNC-0910b vom 09.10.; exklusiver Editor `srv-plan-sync-e1e3`,
+nach #749 (MERGED 2026-10-09T00:33:48Z); nächste Abnahme bei Root.
+Prüfung, Root-Abnahme und Merge dieses Nachtrags bleiben getrennte Schritte.
 Dieses Dokument ist der **einzige** Plan. Andere Plandateien
 sind untergeordnete Verträge oder Historie. Neue Arbeit entsteht nur
 hier. Wer hier nichts findet, arbeitet an nichts.
@@ -21,11 +22,12 @@ hier. Wer hier nichts findet, arbeitet an nichts.
 2. **Danach (Z2): Setup und Entwicklung reparieren.** Regelwerk 2.0, Denkraum startet von
    selbst, der Taktgeber (Pacer) läuft, Reviews durch fremde Anbieter haben feste Wege,
    schwere Arbeit läuft auf dem Server, Agenten werden nach Verbrauchstempo verteilt.
-3. **Z3: der Rest von v1.6.0** (zwei PRs in Prüfung, `main.rs` kleiner machen, Changelog).
+3. **Z3: der Rest von v1.6.0** (#631/#632/#728 gemergt; KI-30, D5-GUARD, Update-Abbruch, V16-06 und Changelog offen).
 4. **Z4: Wichtiges, das liegen geblieben ist** (Schlüssel-Sicherung, Server-Platte,
    Windows-Testfehler, Audit-Reste).
-5. **Was du tun musst:** die Entscheidungs-Inbox unten. Dringend: E14 (Sicherung des
-   Update-Schlüssels) und V16-F3 (Start nach Update ohne Journal).
+5. **Was du tun musst:** den Update-Schlüssel finden und verschlüsselt sichern
+   (Anleitung auf deiner Handgriffe-Seite); jeden Release einzeln freigeben.
+   E1–E3 vom 09.10. sind beantwortet; Sicherungsbeleg und Release-Freigabe bleiben offen.
 
 Fünf Lanes ziehen parallel (siehe „Lanes“). Die vier Nahtstellen laufen nur seriell.
 Schwere Arbeit (Rust-Builds, Reviews, Playwright) läuft auf dem Server.
@@ -67,32 +69,67 @@ Größenausnahme. **D2** keine interne Agenten-ID im öffentlichen Code oder in 
 | DR-01a | Überlauf im Hygiene-Check beheben, roter Test zuerst; vor DR-02 mergen | Seniorentwickler | DR-01 | Server | A | Erledigt: #637 `a2dbf09` durch Mergify am 08.10. 07:56:31 UTC gemergt (`8f7c499`); Queue 655 / CI 37745165188 mit echtem Windows-PASS | Überlauf-Test vor Fix rot, danach grün; eigene prepush Exit 0; zwei unabhängige Vendor-Belege samt Disposition; Merge vor DR-02 | 55ea21ce |
 | DR-02 | Ledger-Modell als Modul, Split-Beweis (verhaltensgleich) | Seniorentwickler | DR-01, DR-01a | Server | A | Erledigt: #636 `4ef2ac2` durch Mergify am 08.10. 08:33:02 UTC gemergt (`7e3a7af`); Batch 659 / CI 37748898151 volle Windows-, Linux- und red-first-Gates grün; DR-03 folgt | FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt | 55ea21ce, b0e90b72 |
 | DR-03 | DeskStore-Kern; P1/Z1 nach integriertem Ledger-Modell | Seniorentwickler-Profil, ein nativer Ausführungsowner `qfytpd`; Chief disponiert | DR-02 gemergt; eigene Goal-/Laufzeitbelege, frische Guards | eigener Worktree; schwere Gates Server | A | Erledigt: #661 `c80456a` am 08.10. 14:22:17Z durch Mergify gemergt (`3003748`); F01 und reale DR-04-Komposition bleiben offen | Store-Tests grün, Revision/Konflikt verlieren keine Daten; Folgepunkte aus DR-02: Längenlimit für Ledger-Listen, Antwort-Elemente prüfen (DeskError statt TypeError); eigene prepush und zwei Fremdvendor-Reviews am Kandidaten, Root-Abnahme | ee12d457, 8fa3ef8e, 55ea21ce |
-| DR-04 | Antworten, Quittungen, Benachrichtigungen; getrennte Schnitte DR-04a und DR-04b | bestehender DR-03-Ausführungsowner qfytpd; Root disponiert | freigegebener DR-03-Stack `c80456a`, danach DR-04a → DR-04b | PC; Gates Server | A | #666 `1e11bb8` Ready; #669 `dc34cae` Draft, zwei Fremdvendor-Approvals/Root-Abnahme laut Root und PR; Restbefund nach DR-04B-FU; Merge/Komposition getrennt | Tests für Antwort/Quittung/Dedupe grün; Quittungs-Wiederholung und v1-Ack laufen über die D2-Prüfung (Test) | 55ea21ce |
-| DR-04a | Antworten, Quittungen und Root-gebundene Acks | bestehender qfytpd; kein zweiter Owner | DR-03-Stack `c80456a` | PC; Gates Server | A | Ready #666 `1e11bb8`, 219 ALL; OpenAI + Google approve und review-ok laut Root, Ready aktuell beobachtet; kein Merge-/Integrationsbeleg | eigene prepush, zwei Fremdvendor-Belege am Kandidaten, Disposition und Root-Abnahme; D2-Ack fail-closed und 503 bei progressTransition | cffccf40 |
-| DR-04b | Pending, Inbox und Delivery in den Store übernehmen | bestehender qfytpd; kein zweiter Owner | DR-04a-Stack `1e11bb8` | PC; Gates Server | A | Draft #669 `dc34cae`; OpenAI + Google am Head und Root-Abnahme im PR; R669-O1-Rest/R669-G1 als DR-04B-FU, kein Blocker; Root richtet Base/Ready erst nach Vorgänger-Merge | ≤ 300 ALL; vollständige P1-Komposition, eigene prepush, zwei Fremdvendor-Belege mit Disposition und Root-Abnahme | a27e7eb0 |
-| DR-04B-FU | In `tools/denkraum/store/delivery.mjs::flushNotifications()` Root-Prüfung vor Transport-Prüfung: V2 ohne Root/Transport antwortet 503 statt `not-configured` | bestehende Denkraum-Lane qfytpd; alternativ Root-Serverjob nach eindeutiger Zuweisung, kein Doppelstart | Denkraum-Stack #666/#669/#671/#674/#676/#681 vollständig gemergt | Server | A | Pending; R669-O1-Rest (OpenAI medium) / R669-G1 (Google low) von Root als Follow-up disponiert, kein #669-Blocker | ≤ 50 ALL; kompilierender roter Test in `delivery.test.mjs`: rootloser V2-Store ohne Transport → 503, kein Write/Send; V1-Vertrag erhalten; grün, eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit Disposition und Root-Abnahme | a27e7eb0 |
-| DR-04c | Fehlende P1-Operationen putQuestion/putIdea/putPatch/putProgress verhaltensgleich auf DeliveryStore zusammensetzen; progressTransition an #progress, store.mjs-Reexport | bestehender qfytpd, Root-Option A/D1 | DR-04b-Stack `dc34cae` | eigener Worktree; Gates Server | A | Drafts #671 `5d31ef5` / #674 `39bc839`; zwei Fremdvendor-Approvals laut Root, aktuelle Heads geprüft; Base/Ready nach Vorgänger-Merge bei Root, Integration separat | P1 `store.mjs@592b309d` Zeilen 264–382/392–415 erhalten; kompilierendes Rot, eigene prepush, zwei Fremdvendor-Reviews/Disposition, Root-Abnahme | 1671ee11 |
-| DR-05 | P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, `userPriority`), vollständiger Testimport gemäß G1 α | Seniorentwickler | DR-06b (Store, Delivery, Server und CLI benötigt) | Server | C bei reinem Testdiff; sonst B, höhere Risiken nach Regel 5 | Geplant | Alle 16 Tests grün, P1-SHA-Mapping; Grenzfälle rot vor Fix; eigener vollständiger prepush Exit 0 | 55ea21ce |
-| DR-06 | HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: `DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed | bestehender qfytpd; Root disponiert | DR-04c; getrennte Lieferung DR-06a → DR-06b | PC; Gates Server | A | Server und CLI getrennt als Drafts #676/#681 geliefert; #676 zwei Fremdvendor-Approvals laut Root; #681-Abnahme und Stack-Integration getrennt | Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test | 672767c8, 55ea21ce |
-| DR-06a | P1-Server mit D2/H2; externen physischen State-Pfad und Root-ID fail-closed prüfen | bestehender qfytpd | DR-04c | eigener Worktree; Gates Server | A | Draft #676 `3cf949b`; zwei Fremdvendor-Approvals laut Root am aktuell geprüften Head; Root disponiert Base/Ready nach Vorgänger-Merge; kein Integrationsbeleg | kompilierendes Rot, eigene prepush/zwei Fremdreviews; `/api/state.rootAgentId` nur bei tatsächlichem Frontend-Leser, sonst D2-Meta-Tag erhalten | c044dc2b |
-| DR-06b | P1-CLI verhaltensgleich nach Server übernehmen | bestehender Root-Serverjob, Claude Sonnet laut Root; qfytpd nur Fixrunde | DR-06a | Server | A | Draft #681 `72715ec`; eigene Lieferung beobachtet, Runtime-Modell und vollständige Abnahme getrennt | kompilierendes Rot, originale CLI-Verträge erhalten, eigene prepush/zwei Fremdreviews mit Disposition und Root-Abnahme | e4ad8296 |
-| DR-07 | Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import | Seniorentwickler | DR-06b | Server | C | Geplant | Testsuite grün im Gate | 55ea21ce |
+| DR-04 | Antworten, Quittungen, Benachrichtigungen; getrennte Schnitte DR-04a und DR-04b | bestehender DR-03-Ausführungsowner qfytpd; Root disponiert | freigegebener DR-03-Stack `c80456a`, danach DR-04a → DR-04b | PC; Gates Server | A | Erledigt #666 (merged 2026-10-08T16:04:16Z); Erledigt #669 (merged 2026-10-08T16:35:44Z) | Tests für Antwort/Quittung/Dedupe grün; Quittungs-Wiederholung und v1-Ack laufen über die D2-Prüfung (Test) | 55ea21ce |
+| DR-04a | Antworten, Quittungen und Root-gebundene Acks | bestehender qfytpd; kein zweiter Owner | DR-03-Stack `c80456a` | PC; Gates Server | A | Erledigt #666 (merged 2026-10-08T16:04:16Z) | eigene prepush, zwei Fremdvendor-Belege am Kandidaten, Disposition und Root-Abnahme; D2-Ack fail-closed und 503 bei progressTransition | cffccf40 |
+| DR-04b | Pending, Inbox und Delivery in den Store übernehmen | bestehender qfytpd; kein zweiter Owner | DR-04a-Stack `1e11bb8` | PC; Gates Server | A | Erledigt #669 (merged 2026-10-08T16:35:44Z) | ≤ 300 ALL; vollständige P1-Komposition, eigene prepush, zwei Fremdvendor-Belege mit Disposition und Root-Abnahme | a27e7eb0 |
+| DR-04B-FU | In `tools/denkraum/store/delivery.mjs::flushNotifications()` Root-Prüfung vor Transport-Prüfung: V2 ohne Root/Transport antwortet 503 statt `not-configured` | bestehende Denkraum-Lane qfytpd; alternativ Root-Serverjob nach eindeutiger Zuweisung, kein Doppelstart | #669 gemergt; unabhängiger Schnitt von Root am 08.10. 20:45Z vorgezogen; Basis `fc85e3d` | Server | A | Erledigt #727 (merged 2026-10-08T22:06:42Z) | ≤ 50 ALL; kompilierender roter Test in `delivery.test.mjs`: rootloser V2-Store ohne Transport → 503, kein Write/Send; V1-Vertrag erhalten; grün, eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit Disposition und Root-Abnahme | a27e7eb0 |
+| DR-04c | Fehlende P1-Operationen putQuestion/putIdea/putPatch/putProgress verhaltensgleich auf DeliveryStore zusammensetzen; progressTransition an #progress, store.mjs-Reexport | bestehender qfytpd, Root-Option A/D1 | DR-04b-Stack `dc34cae` | eigener Worktree; Gates Server | A | Erledigt #671 (merged 2026-10-08T17:43:49Z); Erledigt #674 (merged 2026-10-08T19:45:55Z) | P1 `store.mjs@592b309d` Zeilen 264–382/392–415 erhalten; kompilierendes Rot, eigene prepush, zwei Fremdvendor-Reviews/Disposition, Root-Abnahme | 1671ee11 |
+| DR-05 | P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, `userPriority`), vollständiger Testimport gemäß G1 α | Seniorentwickler | DR-06b (Store, Delivery, Server und CLI benötigt) | Server | C bei reinem Testdiff; sonst B, höhere Risiken nach Regel 5 | Erledigt #734 (merged 2026-10-08T23:30:05Z) | Alle 16 Tests grün, P1-SHA-Mapping; Grenzfälle rot vor Fix; eigener vollständiger prepush Exit 0 | 55ea21ce |
+| DR-06 | HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: `DECISION_DESK_ROOT_AGENT_ID` per ENV/Startparameter, fail-closed | bestehender qfytpd; Root disponiert | DR-04c; getrennte Lieferung DR-06a → DR-06b | PC; Gates Server | A | Erledigt #676 (merged 2026-10-08T20:56:05Z); Erledigt #681 (merged 2026-10-08T21:42:27Z) | Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test | 672767c8, 55ea21ce |
+| DR-06a | P1-Server mit D2/H2; externen physischen State-Pfad und Root-ID fail-closed prüfen | bestehender qfytpd | DR-04c | eigener Worktree; Gates Server | A | Erledigt #676 (merged 2026-10-08T20:56:05Z) | kompilierendes Rot, eigene prepush/zwei Fremdreviews; `/api/state.rootAgentId` nur bei tatsächlichem Frontend-Leser, sonst D2-Meta-Tag erhalten | c044dc2b |
+| DR-06b | P1-CLI verhaltensgleich nach Server übernehmen | bestehender Root-Serverjob, Claude Sonnet laut Root; qfytpd nur Fixrunde | DR-06a | Server | A | Erledigt #681 (merged 2026-10-08T21:42:27Z) | kompilierendes Rot, originale CLI-Verträge erhalten, eigene prepush/zwei Fremdreviews mit Disposition und Root-Abnahme | e4ad8296 |
+| DR-07 | Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import; ergänzende P1-Ports getrennt | bestehende Denkraum-Lane qfytpd; Root dispatcht/nimmt ab | DR-06b/#681 gemergt `85ab286` | Server | C, Root kann B verlangen | Erledigt #731 (merged 2026-10-08T23:14:56Z) (07a); Erledigt #732 (merged 2026-10-08T23:14:31Z) (07b); 07c/d/e1/e2 separat | Testsuite grün im Gate; P1-Digest/Test-Mapping und D2-Delta; eigene volle prepush; keine Scratch-/Gesamt-Abnahme ableiten | 55ea21ce |
+| DR-07c | P1-Sender-Tests portieren; HTTP-Verhalten gegen aktuellen Repo-Server belegen | bestehende Denkraum-Lane qfytpd nach Root-Zuweisung | #681 gemergt; Basis `85ab286`; unabhängig von 07d/e1/e2 | Server | C bei reinem Testport; Root kann B verlangen | Erledigt #752 (merged 2026-10-09T00:33:36Z) | nur sender.test.mjs; gemeldete 214 ALL/12 Tests; ≤ 300 tatsächlich; P1/D2-Mapping, Node/Suite/prepush grün, Root-Abnahme | 55ea21ce |
+| DR-07d | P1-Prioritäts-Tests portieren; ergänzt DR-05 | bestehende Denkraum-Lane qfytpd nach Root-Zuweisung | #681 gemergt; Basis `85ab286`; DR-05-Verknüpfung kein neuer Dateivorgänger | Server | C bei reinem Testport; Root kann B verlangen | Erledigt #753 (merged 2026-10-08T23:38:16Z) | nur priority.test.mjs; gemeldete 110 ALL/6 Tests; ≤ 300 tatsächlich; P1/D2-Mapping, Node/Suite/prepush grün, Root-Abnahme | 55ea21ce |
+| DR-07e1 | P1-Store-Receipt-/Recovery-Tests vollständig portieren | bestehende Denkraum-Lane qfytpd nach Root-Zuweisung | #681 gemergt; Basis `85ab286`; unabhängig von e2 | Server | C bei reinem Testport; Befund neu einstufen | Erledigt #751 (merged 2026-10-08T23:55:13Z) | nur store-receipts.test.mjs; gemeldete 169 ALL/10 Tests; ≤ 300 tatsächlich; eingefrorenes P1 1–34 + 35–169, Node/Suite/prepush grün | 55ea21ce |
+| DR-07e2 | P1-Store-Antwort-/Migrations-Tests vollständig portieren | bestehende Denkraum-Lane qfytpd nach Root-Zuweisung | #681 gemergt; Basis `85ab286`; unabhängig von e1 | Server | C bei reinem Testport; Befund neu einstufen | Erledigt #755 (merged 2026-10-08T23:55:06Z) | nur store-answers-migration.test.mjs; gemeldete 224 ALL/18 Tests; ≤ 300 tatsächlich; eingefrorenes P1 1–34 + 170–359, Child-Source unverändert, Node/Suite/prepush grün | 55ea21ce |
 | DR-08 | UI-Hülle `index.html` + Style, byte-genau auf Stand B1 | UX-Architekt | FIT vorbereitet, Root-FIT-Abnahme; DR-01 | egal | B | Erledigt: #640 `2c57bd3` durch Mergify am 08.10. 08:09:51 UTC gemergt (`cd64c1c`); benutzbare Gesamtlösung weiter offen | Byte-Vergleich mit B1-Kandidat; prepush Exit 0 | 55ea21ce, 6713479b |
-| DR-09 | App-Teil Fragen (B1 `app.js` Zeilen 1–238, byte-genau) | Implementierer · Codex | DR-01 | Server | B | Blockiert: Source #638 `b972766` abgenommen; Queue 656 / CI 37745186568 scheiterte im echten Windows-Fixture-Test; DR-09-WIN vor erneuter Admission, kein blinder Retry | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
-| DR-09-WIN | P1/Z1: Windows-Fixture schließt Ressourcen nachvollziehbar vor temporärer Verzeichnisentfernung; sicherer Queue-Beleg statt Zeitfenster-Vergrößerung | bestehender DR-01a-Owner; Chief disponiert, Root nimmt ab | Queue-656-Befund; frische Guards, Windows-Ort und freier Build-Slot | PC / vorhandener Windows-Ort | A | In Prüfung: Draft #660 `3dc6e29`, 57 ALL, Push-SHA bestätigt; Windows-RED 101, Fixgrün/21 Fragen-Tests und red-first 0; eigene Windows-prepush 22 Gates/390 s Exit 0; eigenes begrenztes Handovergoal COMPLETE berichtet; Anthropic-R1 APPROVE mit A1 Low/Abdeckungsgrenzen, Google-Ergebnis und Root-Abnahme offen; B/C tatsächlich freigegeben | ≤ 300 ALL; kompilierendes deterministisches Rot auf Basis und Grün am Kandidaten; originaler Cleanup-Test und eigene prepush Exit 0 auf Windows; zwei Fremdvendor-Reviews am Head; Root vor Ready, Mergify; historischer Lockhalter ungeklärt | 1d708b0f, a6677e75, 8fa3ef8e, 55ea21ce |
-| ARCH-D7-WIN | P1/Z1: tatsächlichen nativen Receipt-Fehler getrennt diagnostizieren und kontrolliert rot belegen; verlässliche Queue-Integration für #632 | bestehender DR-15a-Owner; Chief disponiert, Root nimmt ab | CI 37746602240 / Windowsjob 113209450490; Store-Lane frei, schwere Läufe nach DR-09-WIN | vorhandener Windows-Ort | A | In Arbeit: erster nativer Windows-Lauf 1 PASS; Channel-Gegenfall am `f1555662`-Sourcehash kompiliert/grün 1 PASS für frühe und absichtlich späte Verarbeitung, Originalreceipt geprüft; spätes DB-Commit bei failedsettlement und zurückgewiesenem Ack belegt; kein Runtimebug-RED/historischer Ursachen-/Fixbeleg; Native-Goal mangels Resume-Funktion ehrlich BLOCKED | ≤ 300 ALL; Host-/SQLite-/Writer-Zeitpunkte kausal unterscheiden, deterministischer kompilierender Rotnachweis; tatsächliche Windows-Prüfung und eigene prepush am Fix-Head; zwei Fremdvendor-Reviews und Root vor Ready; keine pauschalen Zeitfenster-/Retry-Erhöhungen | c4d05a97, 782d9e58 |
-| DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | Root-Job `srv-dr-10-opus`; kein zweiter UI-Owner | DR-09-Stack `b972766`; Verdrahtung getrennt als DR-10-WIRE | Server | B | Draft #665 `ee8c131`, 286 ALL; Google-Fremdreview offen; `index.html` fehlt auf der Stack-Basis, keine vollständige UI-Integration | Ideen-Ablauf wie B1, Harness grün; eigene prepush, Fremdreview/Disposition und Root-Abnahme; DR-10-WIRE separat | 08342807, 5945accc |
-| DR-10-WIRE | `ideas.js` in die vorhandene UI-Hülle verdrahten; nur `tools/denkraum/index.html` plus notwendiger begrenzter Test | UI/UX auf Claude Opus 5.5 (1M) xhigh; Chief weist einen Owner zu | #638 und #665 gemergt; danach exakter main-SHA | eigener Worktree | B | Blockiert bis beide Merges; kleiner separater Schnitt ≤ 300 ALL, kein Doppelstart von DR-10 | rote Verdrahtungsregression vor Fix; Ideen-Harness und inspiziertes Laufzeitbild, eigene prepush/Fremdreview/Disposition, Root-Abnahme | 4e0b5b37 |
-| DR-11 | UI-Harness auf `@playwright/test` portieren (nur relative Pfade), permanenter D4-Fall | UX-Architekt | DR-10 | Server | C bei reinem Testdiff; höhere Risiken nach Regel 5 | Geplant | B1-Harness und D4-Test: fehlende/leere Root-ID sperrt alle POST-Aktionen mit Grundtext und ohne Writes; Harness läuft im Gate auf dem Server | 55ea21ce |
-| DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-11 (Kategorie- und R1-Tests benötigen dessen Harness) | egal | B | Geplant | roter Test vor Fix, danach grün; unveränderte Optionen behalten ihre Nodes und Auswahl über 15-s-Poll; Textfeld-Rand mit Kontrast ≥ 3:1 (Folgepunkt aus DR-08) | 98fa8267 |
-| DR-13 | Filter Priorität und Station | UX-Architekt | DR-12 | Server | B | Geplant | Filtertests grün | 98fa8267 |
-| DR-14 | Stabile Sortierung | UX-Architekt | DR-13 | Server | B | Geplant | Sortiertests grün | 98fa8267 |
+| DR-09 | App-Teil Fragen (B1 `app.js` Zeilen 1–238, byte-genau) | Implementierer · Codex | DR-01 | Server | B | Erledigt #638 (merged 2026-10-08T14:46:25Z) | Fragen-Ablauf wie B1, Harness grün | 55ea21ce |
+| DR-09-WIN | P1/Z1: Windows-Fixture schließt Ressourcen nachvollziehbar vor temporärer Verzeichnisentfernung; sicherer Queue-Beleg statt Zeitfenster-Vergrößerung | bestehender DR-01a-Owner; Chief disponiert, Root nimmt ab | Queue-656-Befund; frische Guards, Windows-Ort und freier Build-Slot | PC / vorhandener Windows-Ort | A | Erledigt #660 (merged 2026-10-08T14:21:03Z) | ≤ 300 ALL; kompilierendes deterministisches Rot auf Basis und Grün am Kandidaten; originaler Cleanup-Test und eigene prepush Exit 0 auf Windows; zwei Fremdvendor-Reviews am Head; Root vor Ready, Mergify; historischer Lockhalter ungeklärt | 1d708b0f, a6677e75, 8fa3ef8e, 55ea21ce |
+| ARCH-D7-WIN | P1/Z1: tatsächlichen nativen Receipt-Fehler getrennt diagnostizieren und kontrolliert rot belegen; verlässliche Queue-Integration für #632 | bestehender DR-15a-Owner; Chief disponiert, Root nimmt ab | CI 37746602240 / Windowsjob 113209450490; Store-Lane frei, schwere Läufe nach DR-09-WIN | vorhandener Windows-Ort | A | Entfallen: aufgegangen in V16-KI30 #737 / Z4-ARCH-11 | ≤ 300 ALL; Host-/SQLite-/Writer-Zeitpunkte kausal unterscheiden, deterministischer kompilierender Rotnachweis; tatsächliche Windows-Prüfung und eigene prepush am Fix-Head; zwei Fremdvendor-Reviews und Root vor Ready; keine pauschalen Zeitfenster-/Retry-Erhöhungen | c4d05a97, 782d9e58 |
+| DR-10 | App-Teil Ideen + Werkbank auf Stand B1 | Root-Job `srv-dr-10-opus`; kein zweiter UI-Owner | DR-09/#638 gemergt; Verdrahtung in DR-11/#718 | Server | B | Erledigt #665 (merged 2026-10-08T19:59:10Z) | Ideen-Ablauf wie B1, Harness grün; eigene prepush, Fremdreview/Disposition und Root-Abnahme; Verdrahtung in DR-11/#718 | 08342807, 5945accc |
+| DR-10-WIRE | UI-Verdrahtung von ideas.js und app.js in DR-11/#718 enthalten | DR-11-Owner; kein separater Start | DR-11/#718 | eigener Worktree | B | Entfallen (Root 09.10.): Verdrahtung bleibt in #718 (DR-11) | rote Verdrahtungsregression, beide Skripte HTTP 200; inspiziertes Laufzeitbild, eigene prepush/Fremdreview/Root-Abnahme; ≤ 300 ALL | 4e0b5b37 |
+| HOTFIX-RF-PW | #741 red-first Playwright identity | bestehender Owner; Root disponiert die freigegebene Runde | –; Voraussetzung für DR-11 | Server | B | In Prüfung: Ready #741; E1 vom 09.10. erlaubt genau eine dritte Runde nur zum Delta | E1-Quelle: Root-Auftrag PLAN-SYNC-0910b; gebundene Gate-/Reviewbelege und Root-Abnahme vor DR-11-Integration | – |
+| DR-11 | UI-Harness auf `@playwright/test` portieren (nur relative Pfade), permanenter D4-Fall | UX-Architekt | DR-10/#665 und HOTFIX-RF-PW/#741 | Server | C bei reinem Testdiff; höhere Risiken nach Regel 5 | In Prüfung: Draft #718 | B1-Harness und D4-Test: fehlende/leere Root-ID sperrt alle POST-Aktionen mit Grundtext und ohne Writes; Harness läuft im Gate auf dem Server | 55ea21ce |
+| DR-12 | B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut `<select>` neu, `app.js:349`), roter Test zuerst | UX-Architekt | DR-11 (Kategorie- und R1-Tests benötigen dessen Harness) | egal | B | In Prüfung: Draft #740; auf DR-11/#718 gestapelt | roter Test vor Fix, danach grün; unveränderte Optionen behalten ihre Nodes und Auswahl über 15-s-Poll; Textfeld-Rand mit Kontrast ≥ 3:1 (Folgepunkt aus DR-08) | 98fa8267 |
+| DR-13 | Filter Priorität und Station | UX-Architekt | DR-12 | Server | B | In Prüfung: Draft #759; auf DR-12/#740 gestapelt | Filtertests grün | 98fa8267 |
+| DR-14 | Stabile Sortierung | UX-Architekt | DR-13 | Server | B | In Prüfung: Draft #774 (GitHub 09.10.) | Sortiertests grün | 98fa8267 |
 | DR-15 | Sicherer Start ohne manuelle Secret-Eingabe; 15a Basismodul und CLI-Korrektur getrennt, 15b Einbindung nach DR-06 (Secrets über den Secret-Manager von AgentsRoom) | Implementierer · Codex | DR-15a-BASE, DR-15a-CLI (15b: DR-06) | Server | A | In Prüfung: G1-Teilung tatsächlich geliefert, #647 und #639 gemergt; begrenzte 15a-Source gemeinsam integriert, 15b und gesamte Start-/Nutzerabnahme offen | Basismodul und korrigierter CLI-Aufruf zusammen integriert; Start ohne Eingabe; kein Secret in Datei/Log/Commit; physische STATE-Pfadprüfung bleibt 15b | 55ea21ce |
 | DR-15a-BASE | Z1: exakt geprüftes Startmodul `5f501f1` erhalten; lexikalische Prüfung ohne Dateisystemauflösung | vorhandener Implementierer · Codex | DR-01; gemeinsame Abnahme mit DR-15a-CLI | Server | A | Erledigt: #647 `5f501f1` durch Mergify am 08.10. 07:26:49 UTC gemergt (`cd3bffa`); Lieferung zusammen mit CLI, DR-15b offen | unveränderter Head `5f501f1`, alter eigener prepush 22/188s Exit 0 und Reviewbelege erhalten; Draft auf #635; Lieferung erst mit CLI-Korrektur erfüllt | 868dbc83 |
 | DR-15a-CLI | Z1: vorhandenen Alias-Entry-Fix getrennt abnehmen; bestehende Commits erhalten, keine Wiederholung | derselbe Implementierer · Codex | DR-15a-BASE | Server | A | Erledigt: #639 `3bf5a8b` durch Mergify am 08.10. 08:09:55 UTC gemergt (`7ac5985`); kombinierte Source-Abnahme erhalten, DR-15b offen | #639 auf Baseline retargetet, gleicher Head; Symlink/Junction und Node-24.0-Einstieg benannt rot→grün; eigener prepush am neuen Head Exit 0; Node >= 24 erhalten; zwei Vendoren außerhalb OpenAI am neuen Delta und Root-Abnahme | f1a2ade9 |
-| DR-15b | Startintegration nach Server; bestehendes Startmodul/Entry aus 15a, konkreten Dateischnitt vor Dispatch pinnen | Chief weist einen Codex-Owner zu | DR-06a und integrierte DR-15a-BASE/CLI | eigener Worktree | A | Pending; ≤ 300 ALL, sonst teilen; keine Wiederholung erledigter 15a-Arbeit | loadStartConfig bei fehlender ROOT_AGENT_ID an 06a angleichen: Start verweigern statt nur Benachrichtigungen abschalten; physischer externer STATE-Pfad/H2 und Secret-Manager-Vertrag erhalten; Rot, eigene prepush/zwei Fremdreviews | a463151a |
-| DR-16 | P3-Live-Schaltung: Schreibpause, Sicherung, metadatensicherer Rückweg | Stabschef | DR-07, DR-14, DR-15 | PC | A | Geplant | Drill: Pause → Sicherung → Umschalten → Rückweg ohne Datenverlust, protokolliert | b0e90b72 |
-| DR-17 | Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum | Technischer Autor | DR-16 | egal | C | Geplant | Trockenlauf der 5 Schritte im PR-Text | 55ea21ce |
+| DR-15b | Startintegration nach Server; bestehendes Startmodul/Entry aus 15a, konkreten Dateischnitt vor Dispatch pinnen | Chief weist einen Codex-Owner zu | DR-06a und integrierte DR-15a-BASE/CLI | eigener Worktree | A | In Prüfung: Draft #750 | loadStartConfig bei fehlender ROOT_AGENT_ID an 06a angleichen: Start verweigern statt nur Benachrichtigungen abschalten; physischer externer STATE-Pfad/H2 und Secret-Manager-Vertrag erhalten; Rot, eigene prepush/zwei Fremdreviews | a463151a |
+| DR-SEC-01a | Erster begrenzter Schnitt zum Denkraum-Sicherheitsbefund; Quelle Root-Disposition 09.10. | Root bindet einen Owner im Ticket | Dateischnitt und Startvertrag aus Ticket b0221f4a vor Umsetzung | Server | A | Erledigt als Bericht: Bedrohungsmodell + Testlückenkarte (Server-Job srv-dr-sec-01a 09.10. 02:30Z, Bericht `~/pa-orch/reports/dr-sec-01a-a1d9a5fba38d.md`); Folgeschnitte 01b–01i | Ticketbefunde mit Quellen disponieren; für Code Rot→Grün, eigene prepush und zwei Fremdvendor-Reviews; muss vor DR-16a landen | b0221f4a |
+| DR-SEC-01b | Zweiter begrenzter Schnitt zum Denkraum-Sicherheitsbefund; Quelle Root-Disposition 09.10. | Root bindet einen Owner im Ticket | Abgrenzung zu DR-SEC-01a im Ticket vor Umsetzung | Server | A | Erledigt #793 (gemergt 2026-10-09T01:38:35Z) | konkrete Abnahme im Ticket b0221f4a erhalten; für Code Rot→Grün, eigene prepush und zwei Fremdvendor-Reviews; muss vor DR-16a landen | b0221f4a |
+| DR-SEC-01c | Body-Limits und ungültiges UTF-8 absichern | Root bindet einen Owner im Ticket | DR-SEC-01b | Server | A | Erledigt #808 (gemergt 2026-10-09T03:36:26Z) | Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a | b0221f4a |
+| DR-SEC-01d | Restliche P3/P6-Startkontrollen und EPERM-Guards | Root bindet einen Owner im Ticket | DR-SEC-01c | Server | A | Erledigt #823 (gemergt 2026-10-09T04:39:42Z) | Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a | b0221f4a |
+| DR-SEC-01e | Pfad- und Rechtekontrollen absichern | Root bindet einen Owner im Ticket | DR-SEC-01b | Server | A | Erledigt #796 (gemergt 2026-10-09T01:45:37Z) | Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a | b0221f4a |
+| DR-SEC-01f | Untrusted Failure-Inhalte aus CLI-Ausgabe halten | Root bindet einen Owner im Ticket | DR-SEC-01e | Server | A | Erledigt #806 (gemergt 2026-10-09T02:48:29Z) | Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a | b0221f4a |
+| DR-SEC-01g-G1 | Ownership-Primitive für das Denkraum-Ledger (Option A) | Root bindet einen Owner im Ticket | DR-SEC-01a Bericht; Design dr-sec-01g-design-49fd851ecbb6 | Server | A | In Prüfung: Open #811 (Mergify-Queue; review-ok; gates linux IN_PROGRESS) | Prozess-Konkurrenten und fehlgeschlagenes Takeover rot→grün; eigene prepush, zwei Fremdvendor-Reviews | b0221f4a |
+| DR-SEC-01g-G2 | Core-Enforcement hinter Ownership | Root bindet einen Owner im Ticket | DR-SEC-01g-G1 | Server | A | Geplant; Quelle Design-Bericht dr-sec-01g-design-49fd851ecbb6 (Tabelle Z.115–119), seriell nach G1 | P9 Rot→Grün; Mutationen/Migration geschützt; Notification-Lücke bleibt explizit | b0221f4a |
+| DR-SEC-01g-G3 | Notification-Ownership | Root bindet einen Owner im Ticket | DR-SEC-01g-G2 | Server | A | Geplant; Quelle Design-Bericht dr-sec-01g-design-49fd851ecbb6 (Tabelle Z.115–119), seriell nach G1 | zweiter Prozess kann nicht senden; Flush serialisiert; bestehende Receipt-/Retry-Tests erhalten | b0221f4a |
+| DR-SEC-01g-G4 | Server-Lifecycle / Admission | Root bindet einen Owner im Ticket | DR-SEC-01g-G3 | Server | A | Geplant; Quelle Design-Bericht dr-sec-01g-design-49fd851ecbb6 (Tabelle Z.115–119), seriell nach G1 | zweiter Listener mutiert/sendet nicht; Drain vor Release; Interface für DR-16a | b0221f4a |
+| DR-SEC-01g-G5 | DR-16-Adapter (G4-Lifecycle nutzen) | DR-16a-Owner | DR-SEC-01g-G4 | Server | A | in DR-16a gefaltet | Root-Disposition 09.10.: kein eigener Schnitt; Abnahme über DR-16a | b0221f4a |
+| DR-SEC-01g-G6 | Recovery-/Portability-Abnahme | Root bindet einen Owner im Ticket | DR-SEC-01g-G4 | Server | A | nach G4 | beobachteter Exit/Alias; Windows-Beleg; fehlender Heartbeat ≠ Exit | b0221f4a |
+| DR-SEC-01h | P11/P12 UI- und Header-Tests | Root bindet einen Owner im Ticket | DR-11/#718 | Server | B | Geplant; nach #718 | UI-/Header-Kontrollen nach Harness-Port; eigene prepush | b0221f4a |
+| DR-SEC-01i | Webhook-Fehler sanitizen und Security-Controls abdecken | Root bindet einen Owner im Ticket | DR-SEC-01f | Server | A | Erledigt #824 (gemergt 2026-10-09T04:51:19Z) | Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a | b0221f4a |
+| DR-16a | Umschalt-Helfer + Drill-Tests; nur tools/denkraum/switch.mjs + switch.test.mjs, kein Restore | Root benennt einen vorhandenen Serverowner | DR-SEC-01a/b gemergt; DR-SEC-01g G4 und 01h gemergt; DR-07 einschließlich 07c/d/e1/e2 (#752/#753/#751/#755), DR-14, DR-15 einschließlich 15b/#750 und UI-Verdrahtung #718 gemergt | Server | A, zwei Fremdanbieter | Geplant; kein Start aus PLAN-Pflege | ≤ 300 ALL; benannte DR16:-Tests rot→grün, node --test --test-name-pattern='^DR16:', npm run test:denkraum, eigene volle prepush, zwei Fremdvendor-Reviews am SHA/Disposition, Root-Abnahme | b0e90b72 |
+| DR-16b | Live-Drill auf dem PC: Schreibpause, Sicherung, Umschalten, metadatensicherer Rückweg | Stabschef Ausführung, ein Owner | DR-16a gemergt sowie alle dessen Vorgänger; G6; Root-Livefreigabe für exakten SHA und Zeitfenster | PC | A plus unabhängiges Nachlesen | Blockiert bis G0; keine Livefreigabe durch Dokumentannahme | Gates G0–G7 im gebundenen Vertragsentwurf Ticket b0e90b72; G5 beide UI-Skripte HTTP 200; protokollierter Drill und unabhängige Prüfung; P1/aktuelles Ledger nach Writes erhalten, Root-Abnahme | b0e90b72 |
+| DR-17 | Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum | Technischer Autor | DR-17a-Entwurf laut Root 09.10. vorgezogen; Trockenlauf nach DR-16a-Merge und Root-Annahme des DR-16b-Protokolls | Server | C | In Prüfung: Entwurf separat #785; Trockenlauf und Gesamt-Abnahme offen | Trockenlauf der 5 Schritte im PR-Text; beide UI-Skripte HTTP 200; eigene prepush; No-Test: documentation only | 55ea21ce |
+| DR-17a | README-Abschnitt und Anleitung in fünf Schritten als Entwurf; Quelle Root-Disposition 09.10. / PR #785 | bestehender Owner `srv-dr-17a` | Draft vor DR-16 erlaubt; Trockenlauf erst nach DR-16a und angenommenem DR-16b-Protokoll | Server | C | In Prüfung: Draft #785 | ≤ 150 ALL; eigene prepush; kein Laufzeit-/Startbeleg aus dem Text, bis Trockenlauf erfolgt Draft halten | PLAN-SYNC-0910b |
+
+
+Root-Entscheide DR-16 D1–D3, 09.10. 01:16 CEST (Ticket b0e90b72):
+D1 teilt Helfer und Live-Drill; D2 umfasst alle vier ergänzenden DR-07-Ports;
+D3 belässt die UI-Verdrahtung (index.html lädt /app.js) bei DR-11/#718,
+ein Eigentümer. DR-10-WIRE entfällt laut Root 09.10.; kein eigener Start.
+G0 bindet Root-Livefreigabe an SHA/Zeitfenster; G1 erfasst alle Writer und pausiert
+Ingress; G2 wartet auf nachgewiesenes Prozessende; G3 sichert erst das stabile
+Ledger samt Metadaten; G4 prüft separate Staging-Dateien gegen den Manifest-SHA;
+G5 schaltet bei gestoppten Writern und prüft beide UI-Skripte auf HTTP 200 nach
+G6 (autorisierter Start, genau ein Writer/Listener); G7 prüft den begrenzten
+Abnahmevertrag und Rückweg unabhängig. Vollständiger Vertrag im Ticket;
+keine Produktionsmutation ohne separate begrenzte Freigabe. Nach neuen Writes
+bleiben P1 und aktuelles Ledger erhalten; Fehlerfall ist vollständige Pause.
 
 Historischer Fehlerabgleich 08.10. 08:24 UTC auf `013513b`: #631 bereits gemergt;
 die späteren Merges oben haben eigene Zeitbelege. #632 Source angenommen, aber nach Batch 658
@@ -103,8 +140,8 @@ Auslöser: SharingViolation 32, `questions.rs:651`; bisheriger Zustand: Source
 enger DR-09-WIN-Schnitt, Original-Source/Reviewbelege bleiben erhalten. Offen:
 kontrollierter Rotnachweis, Mechanismus, Windows-Gates, Fremdreviews, Root-Abnahme
 und Queue-Integration. Nächster Schritt/Eigentümer: DR-01a-Owner liefert nach
-bestätigtem Rot→Grün die volle prepush- und Draft-Rückgabe. Pilot DEV-KNOW-01 bleibt parallel leicht und nachrangig bei
-einem einzigen bestehenden Messowner; Chief hält PLAN-Publikation und Übergabe.
+bestätigtem Rot→Grün die volle prepush- und Draft-Rückgabe. Pilot DEV-KNOW-01 ist nach v1.6.0 verschoben (Elias 08.10.);
+bestehende Mess-/Abnahmebelege bleiben erhalten, kein erneuter Pilotstart.
 Keine Prozessarbeit reserviert dafür einen zweiten Z1-Build-Slot.
 Batch 658 bleibt getrennt: Rust 1922 PASS / 19 skip, nativ 9 PASS / 1 FAIL;
 Hostreturn 5,3108033 s, Receipt 5,771698 s, Owner nicht mehr wartend.
@@ -150,7 +187,7 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| Z2-PLAN-COMMIT | P2: v3 in kohärenten Paketen übernehmen; PLAN-C1 stellt Z1–Z4 vor den unveränderten historischen Parserbestand, danach getrennte Archiv-/Bereinigungsschnitte ≤ 300 ALL | Stabschef | Root-Abnahme je Kandidat | egal | C | In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 bleibt historischer Entwurf, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen | ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen | 55ea21ce |
+| Z2-PLAN-COMMIT | P2: v3 in kohärenten Paketen übernehmen; PLAN-C1 stellt Z1–Z4 vor den unveränderten historischen Parserbestand, danach getrennte Archiv-/Bereinigungsschnitte ≤ 300 ALL | Stabschef | Root-Abnahme je Kandidat | egal | C | In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 geschlossen als überholt (Elias 08.10.), Originaldelta bleibt Historie, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen | ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen | 55ea21ce |
 | MAIN-PROTECT-01 | P0 Sicherheit: geltenden Main-Mergevertrag mit effektivem GitHub-Schutz verankern; tatsächliche Wirkung abgenommen | vorhandener Git-/CI-Owner; Chief disponiert, Root nimmt ab | frische Schutz-/App-/Produkt-/Queuebelege; konkrete Root-Abnahme je Handlung; getrennt von GOALS-B | PC | A | Erledigt: Root-Finalabnahme 06:53:57 UTC; Rulesets A `24699347` und B `24700455` ACTIVE/exakt main, vier App-Checks ohne Checkbypass in A, nur App `10562` Update-Bypass in B; Chief-REST-Readback 10:20 bestätigt Konfiguration, Root-Beleg enthält tatsächliche geschützte Queue #635; keine erneute Produktivaktion | vor jeder Einstellung leere Queue und echte Akteur-/Label-/Dispatch-Pause; vorhandene Produkte erhalten; exakter vierter App-Kontext (nichtpassendes Doku-Paket nur belegtes NEUTRAL); voller Windows-Batch und getrennte Root-A/B-Abnahme | 52f46527 |
 | Z2-RULE10 | P2: konkrete bereits erteilte Nutzerfreigaben erhalten; keine Rechteausweitung; Geld, Passwörter und Releases bleiben beim Nutzer | Stabschef | PLAN-C1; gemeinsam mit GOALS-B | egal | C | Erledigt: Root-abgenommener #644 `4032800` am 08.10. 07:12:55 UTC gemergt, nach #643; allgemeine Sitzungsadoption nicht daraus abgeleitet | freigegebene Handlung nicht erneut erfragen; keine abgeleitete Pauschalfreigabe; eigene prepush-Lane Exit 0; Root-Abnahme | 52f46527 |
 | HOOK-WIN | P1: Windows-Hook-Reparatur und echte Unix-Quote-Korrektur integrieren; abgeschlossene Home-Reparaturen erhalten | vorhandener Implementierer · Claude; Chief koordiniert | vorhandene Runtime-/Rot-/Gate-/Vendor-Belege; finaler PR-Bericht vor Ready | PC | A | Erledigt: Root-abgenommene Source #641 `bf89c435`/292 ALL am 08.10. 06:10:42 UTC gemergt; Home-Wirksamkeit nur durch separate jeweilige Runtimebelege, keine neue pauschale Behauptung | eigene Windows-prepush 21/295s Exit 0; tatsächliche Google- und OpenAI-Reviews mit Autorgrenzen/Disposition; Root-Abnahme; Merge und Home-Wirksamkeit getrennt berichten | b14492cb |
@@ -158,83 +195,182 @@ Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.t
 | GOALS-A | P1 jetzt: Ist-Abgleich früherer Aufträge, realer Native-Goals, laufender Owner und PLAN; verhindert Doppelstarts und unbelegte Abschlüsse | Stabschef; Root nimmt ab | bestehende Übergaben und eigene Goal-Werkzeuge je Session | egal | C | Erledigt: begrenztes Ist-Abgleich-Handover von Root 02:56 UTC angenommen; Chief-Native-Abschluss 02:57:37 belegt, spätere Koordination hat eigenes aktives Ziel | eine Zeile je Live-Agent: Ziel, eigener get/create-Beleg oder belegte Nichtverfügbarkeit plus Ticketziel, Meilenstein und Grenze; kein Plantext als Goal-Beleg | 52f46527 |
 | GOALS-B | P2: Rollen-Goals, Anpassung, Grenzen und selektive Rekursion in AGENTS.md, projecta-workflow und Übergabevorlage verankern; nur Prozessdoku, kein Runtime-Ausbau | Stabschef als Editor; Root nimmt ab | PLAN-C1; Z2-RULE10 im selben Dokumentationspaket | egal | C | Erledigt: Root-abgenommenes Dokumentationspaket #644 `4032800` tatsächlich 07:12:55 UTC gemergt; vier bestehende Skills gespeichert/zurückgelesen; Adoption bleibt ausschließlich sitzungsweise belegt, keine allgemeine Wirksamkeitsbehauptung | ≤ 300 ALL; Anforderungen GOALS-01 2–7 erhalten; 1 zusätzliche Selbstprüfung, 2. nur konkreter Restmangel; Stops und unabhängige Reviews/Nutzerfreigaben unverändert; prepush Exit 0 | 52f46527 |
 | GOALS-C | P2 begleitend: drei vorhandene Praxisproben Lane F, DR-02 und HOOK-WIN auswerten; Stichprobe, kein Wirksamkeitsbeweis; keine neuen Jobs/QA/Benchmarks | ausführende Owner dokumentieren; Root bewertet | vorhandene Fix-, Review- und Runtimebelege | egal | C | Erledigt: genau drei Proben samt Messlücken von Root 02:56 UTC angenommen; selektive Nutzung, kein vierter Versuch aus späteren Fixes | je Ticket Mangel/kein Mangel, Bestätigung, beobachtete Regressionen, nur gemessener Zusatzaufwand; bei überwiegendem Aufwand Anwendung begrenzen | 52f46527, 55ea21ce, b14492cb |
-| DEV-KNOW-01 | P2: freigegebenen EIN-Thema-Wissenspilot begrenzt auswerten; Quellenindex gegen zwölf Karten, kein Ausbau ohne belegten Nutzen | einziger Messowner Implementierer · Codex `8qyt6d`; Chief übernimmt Bericht, Root nimmt ab | Vorbereitung #651 `1205081` angenommen; eingefrorene neun Quellen und fünf Fragen; Z1-Slots frei halten | private leichte Messroute | C | Erledigt: 20+6-Originalübergabe samt Korrekturappend Root-ACCEPT 09:22:35 (`198949e8`); rationale-only-Nachtrag separat ACCEPT 10:10:29 (`1dbb4ebb`, operative REPORT `8f3f0796`, Input `20c2571d`, Assessment `71d3d6df`, Handover `b5c7a645`), Originale erhalten; eigene Mess-/Koordinationsgoals COMPLETE; kein konsistenter Nettoqualitätsgewinn, Quellenindex empfohlen; keine neue Messung/automatische Übernahme | getrennte Claude-/Codex-Vergleiche, gleiche Fragen/Revisionen und Parameter je Anbieter; Qualität/Kontext/Sucharbeit/Pflege mit Messlücken, sechs begrenzte Fälle; Nullbefund zulässig, keine automatische Übernahme | 57979887 |
+| DEV-KNOW-01 | P2: freigegebenen EIN-Thema-Wissenspilot begrenzt auswerten; Quellenindex gegen zwölf Karten, kein Ausbau ohne belegten Nutzen | einziger Messowner Implementierer · Codex `8qyt6d`; Chief übernimmt Bericht, Root nimmt ab | Vorbereitung #651 `1205081` angenommen; eingefrorene neun Quellen und fünf Fragen; Z1-Slots frei halten | private leichte Messroute | C | Verschoben: nach v1.6.0, Elias 08.10.; bisheriger begrenzter Messschnitt erledigt: 20+6-Originalübergabe samt Korrekturappend Root-ACCEPT 09:22:35 (`198949e8`); rationale-only-Nachtrag separat ACCEPT 10:10:29 (`1dbb4ebb`, operative REPORT `8f3f0796`, Input `20c2571d`, Assessment `71d3d6df`, Handover `b5c7a645`), Originale erhalten; eigene Mess-/Koordinationsgoals COMPLETE; kein konsistenter Nettoqualitätsgewinn, Quellenindex empfohlen; keine neue Messung/automatische Übernahme | getrennte Claude-/Codex-Vergleiche, gleiche Fragen/Revisionen und Parameter je Anbieter; Qualität/Kontext/Sucharbeit/Pflege mit Messlücken, sechs begrenzte Fälle; Nullbefund zulässig, keine automatische Übernahme | 57979887 |
 | Z2-REGELN | Regelwerk 2.0: Lane-A-Korrekturen (6) abschließen, Anweisungsdateien entschlacken (Lane C, Commit 6918bea), Altlasten-Audit liefert „Deine Regeln: bestätigen oder ändern“ | Stabschef + Codebase Archäologe | – | egal | C | In Arbeit | Lane-C-PR gemergt; `npm run dev:agent-check` Exit 0; Regel-Vorschläge R1–R5 in der Inbox entschieden | 77c993f3 |
-| DOC-OPERATORS | Operatoren-Katalog und Briefvertrag in AGENTS.md und beiden projecta-workflow-Skills verankern | bestehender Root-Serverjob; kein zweiter Anweisungseditor | konkrete Disposition zu #642 erhalten | Server | C | Draft #683 `d47274a` geliefert; Root-Abnahme/Merge offen | nur Abschnitt vor Detailed operating reference und Skill-Dateiende; ≤ 300 ALL, eigene prepush, Regeln/Freigaben unverändert | 77c993f3 |
-| Z2-AGENTS-SLIM | AGENTS.md auf etwa ≤ 8 KB reduzieren: Kernregeln, Befehle und Merge-Kurzregel erhalten, Referenzdetails per eindeutigem Pfad auslagern | ein von Stabschef Ausführung benannter Doku-Owner; Chief pflegt nur PLAN | DOC-OPERATORS/#683 integriert; #642-Anweisungs-/Archivdelta ausdrücklich disponiert; keine Dateikollision | Server | C | Vorgeschlagen, blockiert; kein Ready-Kandidat vor Vorgängern und genauem Schnitt | AGENTS.md plus vorhandene docs/setup/ oder WORKFLOW-Referenzziele; globale CLAUDE/MEMORY und Standard-Skills ausgenommen; Regel-für-Regel-Mapping, Linkcheck, dev:agent-check und eigene prepush Exit 0; ≤ 300 ALL, sonst vor Start serielle Schnitte; Byteziel ist kein Token-/Wirksamkeitsbeleg | 77c993f3 |
+| DOC-OPERATORS | Operatoren-Katalog und Briefvertrag in AGENTS.md und beiden projecta-workflow-Skills verankern | bestehender Root-Serverjob; kein zweiter Anweisungseditor | konkrete Disposition zu #642 erhalten | Server | C | Erledigt #683 (merged 2026-10-08T15:42:28Z) | nur Abschnitt vor Detailed operating reference und Skill-Dateiende; ≤ 300 ALL, eigene prepush, Regeln/Freigaben unverändert | 77c993f3 |
+| Z2-AGENTS-SLIM | AGENTS.md auf etwa ≤ 8 KB reduzieren: Kernregeln, Befehle und Merge-Kurzregel erhalten, Referenzdetails per eindeutigem Pfad auslagern | ein von Stabschef Ausführung benannter Doku-Owner; Chief pflegt nur PLAN | DR-12 gemergt/abgenommen; DOC-OPERATORS integriert; #642 geschlossen (Elias 08.10.); frischer Dateischnitt/Owner | Server | C | Bereit nach DR-12; Owner/Guard und Root-Zuweisung vor Ausführung | AGENTS.md plus eindeutige docs/development/AGENTS_REFERENCE.md; bestehende Referenzen nur lesen; globale CLAUDE/MEMORY und Standard-Skills ausgenommen; Regel-für-Regel-Mapping, Linkcheck, dev:agent-check und eigene prepush Exit 0; ≤ 300 ALL, sonst vor Start serielle Schnitte; Byteziel ist kein Token-/Wirksamkeitsbeleg | 77c993f3 |
 | Z2-RECHTE | Konsolidiertes Rechtekonzept V3, Herkunft und Disposition erhalten | Konzeptowner lz0jwp; finale Konzeptabnahme Root | privates Bundle V3 `B368BB476E8E`; E1–E5 entschieden | bestehender Konzept-Arbeitsort | C | Konzept von Root nach Fable-CONCUR abgenommen (08.10., 15:23Z); E5 bestätigt 15:26Z; keine technische Aktivierung | vier Original-/Kopie-Paare gegen Manifest geprüft; Umsetzung nur über folgende getrennte Schnitte; E2-Schreibhost noch zu benennen | b2f36f8a |
 | Z2-RECHTE-P1 | Ein privater Quellen-/Rechte-/Dispositionseintrag für den ausgewählten Werkzeugfall; Originaltexte und Ersetzungslinks erhalten | bestehender Konzeptowner lz0jwp; Ausführungskoordination beim neuen Stabschef | V3 + E5; konkreter privater Zielpfad und Ausgangsdigest vor Start festhalten | privater bestehender Wissensbereich | C | Geschnitten, noch nicht gestartet; Dokumentation, keine Settings-/Rechteaktivierung | ≤ 300 ALL; Quelle/Datum/Digest, ursprünglicher Scope, geltende Disposition, Projektion, Owner, fehlende Belege und nächster Schritt; Reset-, alte RH-C9- und Force-push-Ersetzungen getrennt; QA bleibt ausdrücklich beauftragt; kein privater Wortlaut in Git/PR | b2f36f8a |
-| Z2-RECHTE-PILOT | Ein realer rust-analyzer/rust-src-Fall: manuelle Baseline gegen Shadow-Vorbereitung vergleichen | neuer Stabschef benennt bestehenden Werkzeugowner und genau einen tatsächlichen Schreibhost vor Zulassung; Root nimmt Shadow ab | P1; frischer Toolchain-/Client-/Komponenten-/PATH-/Home-Beleg, Quellenbindung und freie Eigentümerschaft | tatsächlicher Windows-Zielhost, noch ungebunden | C für Messbericht; technische Folgedeltas nach Dateien neu einstufen | Pending: Owner/Host und vergleichbare Ausgangslage fehlen; Shadow ohne Installation/Start/Reset/Triggeränderung | ≤ 300 ALL je Schnitt; ein gepaarter Nicht-Z2-Fall, Zeit-/Aufrufbelege einschließlich Vorbereitung/Prüfung/Nacharbeit/Recovery; Netto-Nutzen > 0 und > gemessene Vergleichsunsicherheit, sonst nicht belegt; negative Shadow-Fälle keine Laufzeit-PASS; tatsächlicher Effekt erst separat nach Shadow-Abnahme, danach installiert/geladen/funktional getrennt belegen | b2f36f8a |
-| Z2-PLANPARSER | `hq-parse.mjs`, `dev-hq.mjs` und `hygiene.mjs` lesen die Z-Tabellen (Spalte Status, 8 Werte); danach Anhang B entfernen | Implementierer · Claude | Z2-PLAN-COMMIT | Server | B | Geplant | `npm run test:hq` Exit 0; HQ zeigt Z1–Z4; prepush Exit 0 | – |
-| Z2-DOKSYNC | `KNOWN_ISSUES.md` „Offen“ bereinigen: KI-15, KI-16, KI-20 mit PR-Beleg; KI-33 bleibt „Kandidat“, bis ein Windows-Queue-Lauf mit der Änderung beobachtet ist | bestehender Root-Serverjob, kein zweiter Owner | – | Server | C | Root-abgenommen, Ready #670 `e13d003`; Queue laut Root; Merge separat beobachten | Jede verschobene Zeile nennt PR und Merge; KI-33 nur mit Windows-Queue-Lauf-ID und Dauer nach „Behoben“; precommit-Lane Exit 0 | 051bdfa0 |
+| Z2-RECHTE-PILOT | Ein realer rust-analyzer/rust-src-Fall: manuelle Baseline gegen Shadow-Vorbereitung vergleichen | neuer Stabschef benennt bestehenden Werkzeugowner und genau einen tatsächlichen Schreibhost vor Zulassung; Root nimmt Shadow ab | P1; frischer Toolchain-/Client-/Komponenten-/PATH-/Home-Beleg, Quellenbindung und freie Eigentümerschaft | tatsächlicher Windows-Zielhost, noch ungebunden | C für Messbericht; technische Folgedeltas nach Dateien neu einstufen | Verschoben: nach v1.6.0, Elias 08.10.; Owner/Host fehlen weiter; keine technische Aktivierung | ≤ 300 ALL je Schnitt; ein gepaarter Nicht-Z2-Fall, Zeit-/Aufrufbelege einschließlich Vorbereitung/Prüfung/Nacharbeit/Recovery; Netto-Nutzen > 0 und > gemessene Vergleichsunsicherheit, sonst nicht belegt; negative Shadow-Fälle keine Laufzeit-PASS; tatsächlicher Effekt erst separat nach Shadow-Abnahme, danach installiert/geladen/funktional getrennt belegen | b2f36f8a |
+| Z2-PLANPARSER | `hq-parse.mjs`, `dev-hq.mjs` und `hygiene.mjs` lesen die Z-Tabellen (Spalte Status, 8 Werte); danach Anhang B entfernen | Implementierer · Claude | Z2-PLAN-COMMIT | Server | B | Erledigt #697 (merged 2026-10-08T17:43:37Z) | `npm run test:hq` Exit 0; HQ zeigt Z1–Z4; prepush Exit 0 | – |
+| Z2-DOKSYNC | `KNOWN_ISSUES.md` „Offen“ bereinigen: KI-15, KI-16, KI-20 mit PR-Beleg; KI-33 bleibt „Kandidat“, bis ein Windows-Queue-Lauf mit der Änderung beobachtet ist | bestehender Root-Serverjob, kein zweiter Owner | – | Server | C | Erledigt #670 (merged 2026-10-08T14:34:08Z) | Jede verschobene Zeile nennt PR und Merge; KI-33 nur mit Windows-Queue-Lauf-ID und Dauer nach „Behoben“; precommit-Lane Exit 0 | 051bdfa0 |
 | Z2-AUTOSTART | Denkraum startet nach der Windows-Anmeldung von selbst, ohne Secret-Eingabe | Desktop-App-Entwickler | DR-15, DR-06 | PC | A | Geplant | PC-Neustart → `127.0.0.1:4791` antwortet ohne Eingabe; kein Secret im Klartext | – |
 | Z2-PACER | Pacer läuft: Trigger mit Werkzeugen, aber nur lesend; Bericht alle 20 min | Stabschef | Inbox R5 | PC | C | Blockiert | drei Läufe nacheinander mit Bericht, keine Schreibaktion | – |
-| Z2-REVIEW | Zwei feste Fremdanbieter-Wege für Stufe A: Gemini/Cursor auf dem Server (Workspace Trust), Ollama Kimi K3 + GLM, Codex; je Weg eine Probe mit beobachtetem Modell | Root disponiert Fremdvendor-Reviews; Git-/CI-Owner qualifiziert Wege | Inbox WT | Server | C | Root übernimmt Tier-A-Zweitanbieter über vorhandenen Ollama-GLM/Kimi-Weg laut Übergabe; kein Google-Folgelauf, Modell-/Head-Belege weiter Pflicht | Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben | c77f6955 |
+| Z2-REVIEW | Zwei feste Fremdanbieter-Wege für Stufe A: Gemini/Cursor auf dem Server (Workspace Trust), Ollama Kimi K3 + GLM, Codex; je Weg eine Probe mit beobachtetem Modell | Root disponiert Fremdvendor-Reviews; Git-/CI-Owner qualifiziert Wege | WT entschieden (F1, 08.10.); Modell-/Head-Belege weiter Pflicht | Server | C | Root übernimmt Tier-A-Zweitanbieter über vorhandenen Ollama-GLM/Kimi-Weg laut Übergabe; kein Google-Folgelauf, Modell-/Head-Belege weiter Pflicht | Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben | c77f6955 |
 | Z2-RAM | RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter | Autonomer Optimierungsarchitekt | – | PC + Server | C | Geplant | 24 h ohne „local heavy STOP“, Messung im Ticket | – |
+| Z2-RAM-SLOTS | Konfigurierten Warm-Slot-Root im bestehenden `build-slot` beachten; keine zweite RAM-Messung | Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/build-slot.mjs` und eigener Test | Basis `fc85e3d`, unabhängig von DR-04B-FU und HYGIENE | Server | A (Start-/Ressourcenempfehlung) | In Prüfung: Draft #725; E1 vom 09.10. erlaubt genau eine dritte Runde nur zum Delta | ≤ 180 ALL; kompilierendes Rot, Root-/Override-/Fehler- und belegte-Slot-Fälle; bestehende Schwellen/Heuristiken erhalten; eigene prepush + zwei Fremdvendor-Reviews am Kandidaten | – |
+| Z2-HYGIENE-STATUS | Aktuelle Draft-/Ready-/In-Arbeit-Zeilen im lesenden Hygiene-Werkzeug erkennen | Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/hygiene.mjs` und eigener Test | Basis `fc85e3d`, unabhängig von beiden anderen Reservepaketen | Server | B | Erledigt #726 (merged 2026-10-08T23:30:10Z) | ≤ 160 ALL; benanntes kompilierendes Rot, Kandidaten-PR-Nummern von Vorgänger-/historischen Nummern trennen; keine Board-/PLAN-/GitHub-Schreibwirkung; eigene prepush + Fremdreview am Kandidaten | – |
+| Z2-PR-PROTECTION | Merge-Protection in lesender PR-Bereitempfehlung berücksichtigen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Erledigt #738 (merged 2026-10-09T00:09:16Z) | ≤ 160 ALL; benanntes Rot, Protection-Fälle und Queue-Fakt; volle prepush und Fremdreview | 77c993f3 |
+| Z2-STATUS-UNKNOWN | Unbekannte CI-Kontexte und fehlende Checks nicht als grün darstellen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Erledigt #739 (merged 2026-10-08T22:50:42Z) | ≤ 140 ALL; benanntes Rot und Bericht-Fixtures; volle prepush und Fremdreview | 77c993f3 |
+| Z2-START-MEASURE | Ungültige RAM-/Usage-Messwerte und leere Usage-Datei verweigern | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig von RAM-SLOTS #725 | Server | A | Erledigt #742 (merged 2026-10-08T22:36:59Z) | ≤ 160 ALL; benanntes Rot, CLI Exit 1, gültige Defaults erhalten; volle prepush und zwei Fremdvendor-Reviews | 77c993f3 |
+| Z2-CIWATCH-SHAPE | Ungültige Check-Objekte als Lesefehler verweigern statt abstürzen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Erledigt #745 (merged 2026-10-09T00:09:09Z) | ≤ 140 ALL; benanntes Rot, Exit 3 ohne Folgepoll/Grün; volle prepush und Fremdreview | 77c993f3 |
+| Z2-MRP-COMPLETE | Teilweise ausgefülltes Prompt-Log nicht als vollständigen Messbeleg zählen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Erledigt #746 (merged 2026-10-08T22:55:35Z) | ≤ 120 ALL; benanntes Rot, Zähler-/Bench-Fixture, Nullbefund gültig; volle prepush und Fremdreview | 77c993f3 |
 | Z2-ROUTE | Verteilung nach Verbrauchstempo über `usage_overview`; Quota-Regeln erneuern; Officer-Routine neu anmelden | Stabschef Ausführung beobachtet/routet; keine eigenmächtige Quota-Regeländerung | Nutzer: Re-Login | PC | C | Geplant | eine Woche ohne Anbieter am Limit; Routing-Beleg je Start | 492a9e36 |
 | Z2-BOARD | Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen | Stabschef Ausführung: Ready-Reserve, Lane-/Blocker-Beobachtung; Chief nur PLAN | – | egal | – | Bereit | `backlog_list`: keine erledigten Tickets mehr offen | – |
+| MERGIFY-REPORT-REGEX | Berichtsschutz um aktuelle Paket-Branches erweitern | abgeschlossener Root-Job | – | Server | B laut Root-Abnahme #768 | Erledigt #768 (merged 2026-10-09T00:33:52Z) | Mergebeleg per gh pr view; Statistik-Folgepunkt getrennt in MRP-REGEX-SCRIPTS | aa1238e6 |
+| DOCS-SYNC-0910 | Agenten-Dokumentation und Queue-Hinweise angleichen | abgeschlossener Root-Job | – | Server | C | Erledigt #764 (merged 2026-10-09T00:33:57Z) | Mergebeleg per gh pr view; restliche BUGS-Zeilen bleiben eigener Schnitt | #764 |
+| HOTFIX-HYGIENE-VERBS | Git-Globaloptionen in Hygiene-Testguards vor Verbprüfung entfernen | abgeschlossener Root-Job | – | Server | C laut Root-Abnahme #777 | Erledigt #777 (merged 2026-10-09T00:33:23Z) | Mergebeleg per gh pr view; echte Schreibbefehle bleiben im Guard erkennbar | #777 |
+| MRP-REGEX-SCRIPTS | Paketregex in mrp-count und bench-weekly an #768 angleichen; Root-Disposition 09.10. | bestehender Owner `srv-mrp-regex-scripts` | MERGIFY-REPORT-REGEX/#768 | Server | B | In Prüfung: Draft #782 | benannte Regex-Regressionen rot→grün, Zählerverträge erhalten, eigene prepush/Fremdreview und Root-Abnahme | 46800384 |
+| MATRIX-RECONCILE | Alle 27 Matrixzeilen mit datierten Belegen und offenen Resten abgleichen; Root-Disposition 09.10. | bestehender Owner `srv-matrix-reconcile` | bestehende Belege; Continuous bleibt aus | Server | C | In Prüfung: Draft #781 | Anforderungen unverändert, kein erfundener Laufzeit-PASS; eigene prepush und Root-Abnahme | a6a28ae8 |
+| Z2-REVIEW-FOLLOWUPS-1 | Review-Folgepunkte gemäß Root-Disposition 09.10. bündeln und abgrenzen | Root bindet vorhandenen Owner | konkrete Findings, Dateien und Abnahme vor Dispatch binden | Server | nach Dateischnitt festlegen | Geplant; kein neuer Worker aus PLAN-Eintrag | jeder Folgepunkt mit Quelle/Disposition; ≤ 300 ALL je Paket, keine erneute Abnahmebehauptung | PLAN-SYNC-0910b |
 
-Routing-Freigabe Elias 08.10.: Codex und vorhandene dynamische Workflows voll nutzen;
-bei tatsächlich beobachteten ≥ 98 % Wochenverbrauch den vorhandenen banked reset
-über den unterstützten nativen Weg verbrauchen, danach Kontingent neu prüfen.
-Kein Reset vor der Schwelle, keine Quota-Kappenänderung; RAM-, Prozess-, Naht-,
-Review- und Freigabegates bleiben bestehen. Root hat am 08.10. 01:43:49 UTC
-40 % und einen Full-reset-Credit beobachtet; damit ist noch kein Reset ausgeführt.
+Routing-Freigabe Elias 08.10. ~21:25Z: Codex frei bis tatsächlich 98 % nutzen;
+bei etwa 97 % Elias informieren. Den Reset aktiviert ausschließlich Elias selbst;
+Agenten dürfen keinen Reset planen, auslösen oder verbrauchen. Die frühere automatische
+Resetfreigabe ist ersetzt. RAM-, Prozess-, Naht-, Review- und Quota-Gates bleiben.
+Ollama: vorhandenes freigegebenes Guthaben darf vollständig genutzt werden; Autoreload
+ist aus, keine Käufe. OpenRouter: nur vorhandenes Guthaben, keine Nachkäufe;
+vor Nutzung muss Auto-Top-up aus sein und Elias den Schlüssel selbst im Vault
+hinterlegen. OpenCode Zen ist nicht freigegeben.
+
+
+### Serverreserve 3 — begrenzte Werkzeug-Härtung
+
+Root-Auftrag 09.10. 00:52 CEST (msg-0mv04muwa), keine zweite Produktroadmap. Gemeinsame Basis `a8f00322b510dd48df67cc50ad0650b879902e40`; fünf unabhängige
+Dateipaare ohne Nähte/package.json/gemeinsame Helfer oder Gate-Änderungen. Owner jeweils EIN vorhandener, durch Root/Stabschef benannter Worker; kein Dispatch
+oder Fehlernachweis durch diesen Eintrag. Erst bestehenden Testbestand lesen,
+benanntes kompilierendes Rot vor Source-Fix; kein Befund/kein Zusatznutzen = Rückgabe
+mit Beleg statt erfundener Änderung. Jede Einheit ≤ 180 ALL, ein Worktree/PR.
+Hypothesen stammen aus begrenztem Source-Nachlesen; Graphzugang war nicht angeboten.
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| Z2-STATUS-CI | main-Gates nicht durch jüngeren grünen CodeQL-Lauf verdecken; gemischte Workflow-Fixture; exklusiv scripts/dev/status-report.mjs + scripts/lib/dev-status-report.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Codex Cloud Node 20 möglich; Server Node 24 | B | Erledigt #773 (merged 2026-10-09T00:48:18Z) | benanntes Rot: ältere rote CI + jüngeres grünes CodeQL bleibt sichtbarer CI-Blocker; bestehende Zeit-/Zeilenlimitfälle erhalten | 77c993f3 |
+| Z2-SETUP-VERSION | Nicht-endliche/ungültige Node-Versionsangaben dürfen Pflichtcheck nicht grün machen; exklusiv scripts/dev/agent-setup-check.mjs + scripts/lib/agent-setup-check.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Codex Cloud Node 20 möglich; Server Node 24 | B | Erledigt #772 (merged 2026-10-09T00:48:05Z) | benanntes Rot: Infinity/ungültige Majorversion fail; echte Node 24 bleibt ok, fehlende optionale Programme weiterhin nur Warnung | 77c993f3 |
+| Z2-ERLEDIGT-META | Fehlerhafte Merge-Metadaten vor Tabellenwrite ablehnen; exklusiv scripts/dev/erledigt-row.mjs + scripts/lib/dev-erledigt-row.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Codex Cloud Node 20 möglich; Server Node 24 | B | Erledigt #769 (merged 2026-10-09T00:48:09Z) | benanntes Rot: ungültiges mergedAt erzeugt keine NaN-Datumszeile/keinen Write; gültiges UTC-Datum/Replay erhalten; nur temporäre Fixture | 77c993f3 |
+| Z2-SPEC-STATUS | Unbekannten Spec-Status nicht still als historisch umschreiben; exklusiv scripts/dev/spec-close.mjs + scripts/lib/dev-spec-close.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Server | B | Erledigt #767 (merged 2026-10-09T00:33:27Z) | benanntes Rot: Status-Tippfehler verweigert ohne Änderung an Spec/STAND; erlaubte Statuswerte aus bestehendem Spec-Vertrag lesen/pinnen; dry-run und historische Wiederholung erhalten | 77c993f3 |
+| Z2-PUSH-REMOTE | Optionsähnlichen Remote-Wert vor Git-Aufruf abweisen; exklusiv scripts/dev/push-verified.mjs + scripts/lib/dev-push-verified.test.mjs | Root/Stabschef benennt einen vorhandenen Owner | main a8f0032; unabhängig | Server | A | In Prüfung: Draft #788 (GitHub 09.10.) | benanntes Rot: --remote -x verweigert ohne Push/Netzwerk; gültiger Remote/Branch sowie Remote-SHA-Beweis erhalten; nur injizierter Runner | 77c993f3 |
+
+Benannte Rotfälle (exakte neue Testnamen, je Zeile obiges Dateipaar):
+`STATUS-CI: newer CodeQL cannot mask failing ci`,
+`SETUP-VERSION: non-finite node major fails mandatory check`,
+`ERLEDIGT-META: invalid merge date refuses without write`,
+`SPEC-STATUS: unknown status refuses without write`,
+`PUSH-REMOTE: option-like remote refuses before push`.
+Für jedes Paar: `node --test --test-name-pattern='<exakter neuer Testname>' <Testdatei>`
+auf Basis rot und Kopf grün; danach `node --test <Testdatei>` und eigene vollständige
+`bash scripts/ci/gates.sh lane prepush` auf Server Node 24, Exitcodes unverdeckt.
+Cloud darf nur die isolierten Node-20-Fixtures ausführen; das senkt keine Projekt-
+Node-24-Voraussetzung. Keine realen GitHub-/Git-/Spec-/Ledger-Schreibtests.
+B: ein Reviewer außerhalb der Autorenfamilie; A: zwei andere Anbieter, jeweils
+an Kandidaten-SHA gebunden (OpenAI-Autor: Anthropic plus zulässiger Ollama-Weg
+nach frischem Laufzeit-/Creditbeleg). Fehlender Reviewer bleibt Blocker.
+Vor Start aktuelle offene PR-Dateien, Owner, Modell/Quote/RAM/Prozesse prüfen;
+vor Merge Root-Abnahme. Folgeumfang/unklare Vertragswerte an Root zurückgeben.
 
 ## Z3 — Rest von v1.6.0
 
 Fertig heißt (Unterplan v1.6.0): alle Kernpakete gemergt und jede Naht unter
-Baseline. Gemessen 07.10. auf 1c09ebb: `api.rs` 7908 < 8091, `store.rs` 7224 < 7227,
-`bin/pa.rs` 6293 < 6490, **`main.rs` 5133, nicht unter 5133**.
+Baseline. Gemessen 08.10.2026 23:45 UTC auf `ea6ca7e` mit `git show <SHA>:<Datei>` (Zeilen):
+`api.rs` 7934 < 8091, `store.rs` 7202 < 7227 (25 Zeilen Reserve),
+`bin/pa.rs` 6293 < 6490, `main.rs` 5041 < 5133; alle vier unter Baseline.
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| V16-ARCH-D4-05 | Queue-Routen aus `api.rs` (PR #631) | Implementierer · Codex, Abnahme Root | – | Server | A | angenommen, Mergify ausstehend | Merge über Mergify; `api.rs` 7858 | b9606dd4 |
-| V16-ARCH-D7 | Einstellungen nach `store/settings.rs` (PR #632) | Implementierer · Codex | V16-ARCH-D4-05 (Review seriell) | Server | A | Root-Abnahme am `e154e4d` gemeldet; Ready, Mergify ausstehend; frühere Zeitangabe falsch als UTC etikettiert, exakte UTC-Abnahme unbelegt | Merge über Mergify | 782d9e58 |
-| V16-06 | Start nach Update ohne Journal blockiert nicht stumm | MCP-Integrationsentwickler | Inbox V16-F3; Update-Drill | PC | A | Blockiert | roter Test zuerst; Drill Erfolg/Abbruch/Fehler | 2557db66 |
-| V16-UPD-CANCEL | Abbrechen-Knopf beim Update-Download (sonst ist der Drill „Abbruch“ unmöglich) | Desktop-App-Entwickler; Startzuweisung durch Ausführungs-Stabschef | V16-ARCH-D2 / #664 muss gemergt sein; mn neu zuweisen | PC-Drill; Gates Server möglich | A | Pending: `main.rs` ist die Update-/Installationsnaht, bis #664-Merge reserviert; Größenprognose 260–295 ALL laut Pin-Bericht, kein gemessener Diff | compiling RED vor Fix; Abbruch nur vor Installation autoritativ quittieren, Ende/Thaw vor Retry; Drill und Screenshot; eigene prepush + zwei Fremdvendor-Reviews; >300 ALL vor Start in Backend/IPC und nachgelagerte UI teilen | – |
-| V16-ARCH-D2 | Doppelte Projektanlage in `main.rs` zusammenführen | Root-Job `srv-v16-arch-d2`; mn bleibt bis Merge reserviert | vor V16-06 freigegeben (Inbox V16-D2) | Server | A | Draft #664 `b68c7da`, 13+/15-; OpenAI und Zweitanbieter GLM/Kimi bei Root; kein Google-Folgelauf; Root-Abnahme offen | `rg -c 'fn create_project' src-tauri/src/main.rs` → eine Umsetzung; `main.rs` < 5133; eigene prepush und zwei Fremdvendor-Belege mit Disposition | 257e3a7b |
-| V16-ARCH-D5a | Diagnosebefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D2 | Server | A | Geplant | `main.rs` −150 Zeilen | – |
-| V16-ARCH-D5b | Einstellungsbefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D5a | Server | A | Geplant | `main.rs` −150 Zeilen | – |
-| V16-ARCH-D8a | Ereignisnamen als Konstanten in `main.rs` | Implementierer · Claude | V16-ARCH-D5b | Server | A | Geplant | `rg -n -F -e '"worker:status"' -e '"supervisor:notification"' src-tauri/src/main.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
-| V16-ARCH-D8b | Ereignisnamen in PTY | Implementierer · Claude | V16-ARCH-D8a | Server | A | Geplant | `rg -n -F -e '"pty:output:' -e '"pty:exit:' src-tauri/src/pty.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
-| V16-ARCH-D8c | Ereignisnamen im Frontend | Implementierer · Codex | V16-ARCH-D8b | egal | B | Geplant | `rg -n -e '["\x27\x60]worker:status' -e '["\x27\x60]supervisor:notification' -e '["\x27\x60]pty:output:' -e '["\x27\x60]pty:exit:' src` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `npm run typecheck` und `npm run test:unit` Exit 0 | – |
-| V16-ADR-A1 | ADR A1 (`ApiBackend` teilen) in `docs/decisions.md` entscheiden | bestehender Root-Job `srv-v16-adr-a1`; Fable bei Root | – | Server | C | Root-abgenommen nach Fable F1–F5; Ready #667 `8096d88`, Queue laut Root; Merge offen | `docs/decisions.md` A1 nicht mehr „Vorschlag (offen)“; precommit-Lane Exit 0; Root-Abnahme am SHA | 72f47044 |
+| V16-ARCH-D4-05 | Queue-Routen aus `api.rs` (PR #631) | Implementierer · Codex, Abnahme Root | – | Server | A | Erledigt #631 (merged 2026-10-08T08:10:01Z) | Merge über Mergify; `api.rs` 7858 | b9606dd4 |
+| V16-ARCH-D7 | Einstellungen nach `store/settings.rs` (PR #632) | Implementierer · Codex | V16-ARCH-D4-05 (Review seriell) | Server | A | Erledigt #632 (merged 2026-10-08T15:25:08Z) | Merge über Mergify | 782d9e58 |
+| V16-06 | Start nach Update ohne Journal stoppt fail-closed mit Anleitung | MCP-Integrationsentwickler | E2/V16-F3 beantwortet 09.10.; mn nach D5-GUARD → V16-UPD-CANCEL; Update-Drill | PC | A | Erledigt #832 + Folgepaket #845 | roter Test zuerst; Drill Erfolg/Abbruch/Fehler | 2557db66 |
+| V16-UPD-CANCEL | Abbrechen-Knopf beim Update-Download (sonst ist der Drill „Abbruch“ unmöglich) | Desktop-App-Entwickler; Startzuweisung durch Ausführungs-Stabschef | V16-ARCH-D5b/#728 gemergt → D5-GUARD; mn danach neu zuweisen | PC-Drill; Gates Server möglich | A | Erledigt: #813 (78415d74), #828 (d0dc06d5), #830 (55c22381, re-cut von #821), #833 (9735583), #834 (34f2b0b), #851 (Freeze-Test) gemergt am 09.10. | compiling RED vor Fix; Abbruch nur vor Installation autoritativ quittieren, Ende/Thaw vor Retry; Drill und Screenshot; eigene prepush + zwei Fremdvendor-Reviews; Backend/IPC → UI vor Start in je ≤ 300 ALL schneiden | – |
+| V16-ARCH-D2 | Doppelte Projektanlage in `main.rs` zusammenführen | Implementierer; mn-Nachfolge gemäß L3 | vor V16-06 freigegeben (Inbox V16-D2) | Server | A | Erledigt #664 (merged 2026-10-08T16:13:04Z) | `rg -c 'fn create_project' src-tauri/src/main.rs` → eine Umsetzung; `main.rs` < 5133; eigene prepush und zwei Fremdvendor-Belege mit Disposition | 257e3a7b |
+| V16-ARCH-D5a | Diagnosebefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D2 | Server | A | Erledigt #704 (merged 2026-10-08T20:27:48Z) | `main.rs` −150 Zeilen | – |
+| V16-ARCH-D5b | Einstellungsbefehle aus `main.rs` lösen | Implementierer · Claude | V16-ARCH-D5a | Server | A | Erledigt #728 (merged 2026-10-09T00:33:32Z) | `main.rs` −150 Zeilen | – |
+| D5-GUARD | Guard-Folgeschnitt nach D5b; Quelle Root-Disposition 09.10. | Root weist einen exklusiven mn-Owner zu | V16-ARCH-D5b/#728 gemergt; vor V16-UPD-CANCEL | Server | A | Geplant; konkreter Startvertrag in Ticket 5e18c3e8 | mn (`main.rs`) seriell; Ticketabnahme erhalten, kompilierendes Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews und Root-Abnahme | 5e18c3e8 |
+| V16-ARCH-D8a | Ereignisnamen als Konstanten in `main.rs` | Implementierer · Claude | V16-ARCH-D5b | Server | A | Verschoben: nach v1.6.0 (Elias 08.10.) | `rg -n -F -e '"worker:status"' -e '"supervisor:notification"' src-tauri/src/main.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| V16-ARCH-D8b | Ereignisnamen in PTY | Implementierer · Claude | V16-ARCH-D8a | Server | A | Verschoben: nach v1.6.0 (Elias 08.10.) | `rg -n -F -e '"pty:output:' -e '"pty:exit:' src-tauri/src/pty.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0 | – |
+| V16-ARCH-D8c | Ereignisnamen im Frontend | Implementierer · Codex | V16-ARCH-D8b | egal | B | Verschoben: nach v1.6.0 (Elias 08.10.) | `rg -n -e '["\x27\x60]worker:status' -e '["\x27\x60]supervisor:notification' -e '["\x27\x60]pty:output:' -e '["\x27\x60]pty:exit:' src` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `npm run typecheck` und `npm run test:unit` Exit 0 | – |
+| V16-ADR-A1 | ADR A1 (`ApiBackend` teilen) in `docs/decisions.md` entscheiden | bestehender Root-Job `srv-v16-adr-a1`; Fable bei Root | – | Server | C | Erledigt #667 (merged 2026-10-08T14:34:03Z) | `docs/decisions.md` A1 nicht mehr „Vorschlag (offen)“; precommit-Lane Exit 0; Root-Abnahme am SHA | 72f47044 |
 | V16-ADR-A7 | ADR A7 (st-Lane teilen) | Architekturberater Fable + Architekturberater Astra | V16-NACHBEOB (zwei Wochenmessungen) | egal | C | Verschoben | Eintrag in `docs/decisions.md` | – |
-| V16-KI30 | KI-30 Windows-Flake: Restursache nach V16-01 | Performance- und Benchmark-Spezialist | – | Server | A | Geplant | neuer Beleg (Queue-Lauf-ID) vor Fix; danach 10 Queue-Läufe ohne KI-30 | – |
-| V16-03 | Tester-Kit: Installation, Rückmeldeformular, Grenzen | Implementierer · Codex | Inbox E16; frisches Windows-Konto (Nutzer) | PC | C | Blockiert | Trockenlauf im frischen Konto | – |
-| V16-CHANGELOG | CHANGELOG v1.6.0 und Release-Notiz | Stabschef | DR-17, alle Z3-Pakete | egal | C | Geplant | Eintrag `v1.6.0` über `v1.5.1` | – |
-| V16-RELEASE | Tag v1.6.0 (Beta-Regel x.y.0) | Elias | Z1, Z3 | PC | – | Geplant | Elias’ Entscheidung, danach Release-Pipeline grün | – |
+| V16-KI30 | KI-30 Windows-Flake: Restursache nach V16-01 | Performance- und Benchmark-Spezialist | st exklusiv für #737 bis zum Tag v1.6.0 | Server | A | #737 gemergt; Zählung läuft (Ziel 40 saubere Merge-Queue-Läufe) | neuer Beleg (Queue-Lauf-ID) vor Fix; 0 KI-30-Fehlschläge in 40 Queue-Läufen; Quellenkonflikt und unveränderte Nachbeobachtung siehe unten | – |
+| V16-03 | Tester-Kit: Installation, Rückmeldeformular, Grenzen | Implementierer · Codex | Inbox E16; kein Pflichtkonto | PC / erster externer Tester | C | Geplant: Konto entfällt laut Elias 08.10.; kein Release-Vorgänger | Trockenlauf in Windows Sandbox ODER beim ersten externen Tester; Sandbox-Aktivierung nicht freigegeben | – |
+| V16-CHANGELOG | CHANGELOG v1.6.0 und Release-Notiz | Stabschef | DR-17 und die release-blockierenden Pakete aus V16-RELEASE (ohne diesen CHANGELOG selbst) | egal | C | Geplant | Eintrag `v1.6.0` über `v1.5.1` | – |
+| V16-CHANGELOG-a | Unveröffentlichtes v1.6.0-Changelog-Gerüst; Quelle Root-Disposition 09.10. | bestehender Owner `srv-changelog-geruest` | nur an Basis gemergte Änderungen aufnehmen; unabhängig vom finalen Release-Text | Server | C | Erledigt #783 (gemergt 2026-10-09T01:02:31Z); Nachtrag #835 (gemergt 2026-10-09T10:05:01Z) | nur CHANGELOG.md, ≤ 120 ALL; eigene prepush; keine Tag-/Releasefreigabe; finale Aktualisierung bleibt V16-CHANGELOG | ed847e77 |
+| V16-RELEASE | Tag v1.6.0 (Beta-Regel x.y.0) | Nutzer | Z1 (bis DR-17), V16-KI30 (Fix-Abnahme), D5-GUARD, V16-UPD-CANCEL, V16-06, V16-CHANGELOG; #728 gemergt | PC | – | Geplant: E2/E3 beantwortet; konkrete Freigabe dieses Releases weiterhin offen | jeder Release braucht Nutzerfreigabe; Environment release mit Required Reviewer Cuarroc am 09.10. per gh api bestätigt; danach Release-Pipeline grün | – |
 | V16-NACHBEOB | Zwei Wochenmessungen und 40 Queue-Läufe; Messgrößen-Leitfaden | Stabschef | v1.6.0 | Server | C | Verschoben | Wochenberichte BENCH-01/02 im Ticket | b8b16ec8 |
+
+KI-30-Quellenkonflikt (Basis `03542ef`, geprüft 09.10.):
+- `KNOWN_ISSUES.md:231–233`: „Geschlossen wird KI-30 erst nach 0 Fehlschlägen in den nächsten 40 Queue-Läufen“; Quelle dort: V16-01 im Unterplan.
+- `docs/PLAN.md:268` an derselben Basis: „neuer Beleg (Queue-Lauf-ID) vor Fix; danach 10 Queue-Läufe ohne KI-30“.
+- `git log -p -G '10 Queue|40 Queue' -- docs/PLAN.md docs/decisions.md`: 10 seit `e7f7a56` (08.10.), ohne datierten Absenkungsentscheid in der geprüften Historie.
+Daher hier der strengere Wert 40. Die Nutzerentscheidung vom 06.10. in
+`docs/plan/v1.6.0/plan.md:11,50,182` bleibt erhalten: offene Nachbeobachtung nach
+v1.6.0, kein Vorab-Wartegate; das bestehende Beobachtungsfenster nicht neu starten.
+Fix-/Review-/Queue-Abnahme bleibt Release-Vorgänger; KI-30 wird nicht vorzeitig geschlossen.
 
 ## Z4 — Wichtig, aber liegen geblieben
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| Z4-ARCH-D1-REST | Vierten HTTP-Fehlertext-Klassifizierer `error_status` in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen | Root-Job `srv-z4-arch-d1-rest`; api bleibt bis Merge reserviert | – | Server | A | Draft #663 `c8f2b8f`, 182 ALL; OpenAI und Zweitanbieter GLM/Kimi bei Root; kein Google-Folgelauf; Allowlist18 und Rotnachweis prüfen, keine Abnahme | `rg -n "fn error_status" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; eigene prepush und zwei Fremdvendor-Belege mit Disposition | 7810a005 |
-| Z4-E14 | Update-Signierschlüssel offline sichern (verschlüsselter Export in deinen Passwort-Manager) | Elias | – | PC | – | Geplant | Sicherung vorhanden, Schlüssel nirgends im Klartext | – |
-| Z4-ARCH-11 | KI-24b: Test-DB-Wettlauf auf Windows reproduzieren und absichern; zusätzlich KI-30-Queue-Befund im Native-Receipt-Test | Implementierer · Claude; Ausführungs-Stabschef weist Lane zu | #632 / V16-ARCH-D7 gemergt (`b2769b8`, 08.10. 15:25Z); st durch `srv-r19-02-fix1` laut Root reserviert, vor Start neu zuweisen | Windows-PC für RED | A | Pending: D7-Vorgänger erfüllt; PC-RAM laut Root blockiert, vor Start aktuell messen; keine Windows-RED-/Ursachenmessung vorhanden | Dateien `testutil.rs`, `store/development_launches.rs`, `store.rs` vor Start binden; 180–280 ALL nur Prognose; kompilierende Windows-REDs für Launch-Drop/Reopen und getrennt Migration-Reopen; zusätzlich `real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout` (Queue-Runs 37810056116/37814405700) eingrenzen; Zuordnung zur Windows-Flake-Klasse ist keine bewiesene gemeinsame Ursache; API-Ursache offen, keine Blanket-Retries; Fix nur nach Beleg, >300 ALL trennen; eigene prepush + zwei Fremdvendor-Reviews | – |
-| Z4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | Implementierer · Codex | V16-ARCH-D7 | Server | A | wartet #632 (store.rs) | roter Test zuerst; prepush Exit 0 | – |
-| Z4-R19-ST | Audit-Envelopes Ziel/Task, Claim/Checkpoint, Intent/Launch, Kandidat/Evidence/Review (M4-R19-02/03/04/07) | bestehender Root-Job `srv-r19-02-fix1`; keine zweite st-Lane | #632/D7 gemergt; Store exklusiv bis Übergabe reserviert | Server | A | #698 (426 ALL) bleibt Referenz; ersetzt durch #702 (02a) und #705 (02b/03a), Fixrunde 1 laut Root; keine Gesamt-Abnahme | ≤ 300 ALL je Schnitt; vorhandene Envelopes wiederverwenden, übrige Pfade getrennt belegen; Rot/grün, eigene prepush, zwei Fremdvendor-Reviews/Disposition und Root-Abnahme | – |
-| M4-R19-02a | Ziel-/Task-Erstellung und gemeinsamer Audit-Helper atomar | bestehender Root-Job `srv-r19-02-fix1` | #632/D7 gemergt; st reserviert | Server | A | Draft #702 `a21d52f`, 295 ALL vor Fixrunde; Anthropic/Google-Disposition und Fixrunde laut Root, keine Abnahme | Erstellung/Audit und Rollback mit kompilierendem Rot/grün belegen; ≤ 300 ALL auch nach Fix; eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit vollständiger Disposition | – |
-| M4-R19-02b / M4-R19-03a | Task-/Projektsteuerung und vorhandene Claim-/Checkpoint-Audit-Envelopes aus #705 | derselbe bestehende Fixrundenowner; st seriell | #702 `a21d52f`; auf dessen Branch gestapelt | Server | A | Draft #705 `105b118`, 253 ALL vor Fixrunde; R705-A1 von Root als zusätzlicher R19-03a-Umfang disponiert; Fixrunde 1 laut Root | Helper aus 02a und Envelopes in späterem R19-03 wiederverwenden; keine doppelte Auditierung; Rot/grün und Rollbackbelege, ≤ 300 ALL nach Fix, eigene prepush/zwei Fremdvendor-Reviews/Disposition; #698 erst nach Root-Abnahme beider Schnitte disponieren | – |
+| Z4-ARCH-D1-REST | Vierten HTTP-Fehlertext-Klassifizierer `error_status` in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen | Implementierer; abgeschlossene api-Arbeit | – | Server | A | Erledigt #663 (merged 2026-10-08T20:55:57Z) | `rg -n "fn error_status" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; eigene prepush und zwei Fremdvendor-Belege mit Disposition | 7810a005 |
+| Z4-E14 | Update-Signierschlüssel finden und verschlüsselt sichern; Anleitung auf der Handgriffe-Seite | Nutzer | E3/E14 beantwortet 09.10.; kein Schlüsselmaterial im Repo | PC | – | Geplant: Sicherung beauftragt, Durchführung nicht belegt | verschlüsselte Sicherung durch Nutzer bestätigt; kein Schlüssel in Datei/Log/Commit | – |
+| FLAKE-Q-TMP | Fragen-Testfixture wartet bis Pool und temporäres Verzeichnis geschlossen sind; Root-Disposition 09.10. | bestehender Owner `srv-flake-q-tmp` | keine st-Änderung; #737 bleibt exklusiver st-Owner | Server / Windows-Beleg | B laut Auftrag #784 | In Prüfung: Draft #784 | deterministisches Rot→Grün, eigene prepush/Fremdreview; Windows-Fixture-PASS und fremden nativen Fehler getrennt bewerten (PR-Bericht) | e257cee3 |
+| KI25-SETUP-XDEAD | X/x im Setup-Test als beendete Prozesszustände erkennen; Root-Disposition 09.10. | bestehender Owner `srv-ki25-setup-xdead` | – | Server | B | In Prüfung: Draft #780 | benanntes kompilierendes Rot→Grün, gültige Zustände erhalten; eigene prepush/Fremdreview und Root-Abnahme | ca926ea3 |
+| KI-CLOSE-C | Dokumentierte KI-Abschlüsse mit Quellen abgleichen; Root-Disposition 09.10. | Root bindet vorhandenen Doku-Owner | datierte Abschlussbelege je betroffenem KI-Eintrag | Server | C | Geplant; Abschluss-/PR-Beleg hier nicht beobachtet | keine pauschale Schließung, konkrete Belege und offene Reste; eigene prepush bei Repo-Änderung | PLAN-SYNC-0910b |
+| KI-AUDIT-9-10 | KI-9 und KI-10 prüfen; Root-Disposition 09.10. | Root bindet vorhandenen Prüfowner | bestehende Quellen lesen; kein Fixauftrag aus Prüfung | Server | C für Bericht | Geplant; Prüfbericht hier nicht beobachtet | je KI datierte Quelle, Befund oder kein Befund, fehlende Nachweise und nächster Schritt | PLAN-SYNC-0910b |
+| Z4-ARCH-11 | KI-24b: Test-DB-Wettlauf auf Windows reproduzieren und absichern; zusätzlich KI-30-Queue-Befund im Native-Receipt-Test | Implementierer · Claude; Ausführungs-Stabschef weist Lane zu | V16-KI30/#737 und anschließender Queue-Beleg; st bis Tag v1.6.0 exklusiv für #737 | Windows-PC für RED | A | Blockiert: Start nur, wenn Queue-Belege nach #737 den Defekt weiter zeigen; keine gemeinsame Ursache unterstellen | Dateien `testutil.rs`, `store/development_launches.rs`, `store.rs` vor Start binden; 180–280 ALL nur Prognose; kompilierende Windows-REDs für Launch-Drop/Reopen und getrennt Migration-Reopen; zusätzlich `real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout` (Queue-Runs 37810056116/37814405700) eingrenzen; Zuordnung zur Windows-Flake-Klasse ist keine bewiesene gemeinsame Ursache; API-Ursache offen, keine Blanket-Retries; Fix nur nach Beleg, >300 ALL trennen; eigene prepush + zwei Fremdvendor-Reviews | 0e7793b4 |
+| Z4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19); ausschließlich mn | Implementierer · Codex | nach v1.6.0; mn frei und neu zugewiesen | Server | A | Verschoben nach v1.6.0; nur mn, keine st-Naht | roter Test zuerst; prepush Exit 0 | – |
+| Z4-R19-ST | Audit-Envelopes Ziel/Task, Claim/Checkpoint, Intent/Launch, Kandidat/Evidence/Review (M4-R19-02/03/04/07) | Chief weist verbleibende Schnitte nach v1.6.0 zu | nach v1.6.0; st bis zum Tag exklusiv für #737 | Server | A | Verschoben nach v1.6.0: Rest 03/04/07; #702/#705/#717 gemergt, keine Gesamt-Abnahme | ≤ 300 ALL je Schnitt; vorhandene Envelopes wiederverwenden, übrige Pfade getrennt belegen; Rot/grün, eigene prepush, zwei Fremdvendor-Reviews/Disposition und Root-Abnahme | – |
+| M4-R19-02a | Ziel-/Task-Erstellung und gemeinsamer Audit-Helper atomar | bestehender Root-Job `srv-r19-02-fix1` | #632/D7 gemergt; abgeschlossener st-Schnitt | Server | A | Erledigt #702 (merged 2026-10-08T20:13:18Z) | Erstellung/Audit und Rollback mit kompilierendem Rot/grün belegen; ≤ 300 ALL auch nach Fix; eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit vollständiger Disposition | – |
+| M4-R19-02b / M4-R19-03a | Task-/Projektsteuerung und vorhandene Claim-/Checkpoint-Audit-Envelopes aus #705 | derselbe bestehende Fixrundenowner; st seriell | #702 gemergt; abgeschlossener st-Schnitt | Server | A | Erledigt #705 (merged 2026-10-08T21:42:19Z) | Helper aus 02a und Envelopes in späterem R19-03 wiederverwenden; keine doppelte Auditierung; Rot/grün und Rollbackbelege, ≤ 300 ALL nach Fix, eigene prepush/zwei Fremdvendor-Reviews/Disposition; #698 erst nach Root-Abnahme beider Schnitte disponieren | – |
+| M4-R19-02c | Audit-Härtung für Ziel-/Task-Pfade | bestehender Implementierer; abgeschlossen | #702/#705 | Server | A | Erledigt #717 (merged 2026-10-08T22:19:06Z) | atomare Audit-/Rollbackbelege und Review-Disposition im PR; keine Gesamt-Abnahme der R19-Reste | – |
 | Z4-VERIFY | Fünf Altzeilen gegen aktuelle Quellen prüfen und begrenzt schneiden | Root-Job `srv-z4-verify`; Chief integriert | Quelle `a167486` | Server | C | Prüfbericht geliefert: `pa-orch/reports/z4-verify-20261008.md`, SHA256 `77341da8`; alle fünf Altzeilen NEUES PAKET, elf FITs unten; keine frischen Laufzeit-/Testbelege | Belege/Teilpässe erhalten; konkrete Reste und NICHT ABGEDECKT statt Altzeilen pauschal schließen | 77c993f3 |
 | Z4-W103F-WIRE | Produktionsadapter `agent_record_delivery` anbinden; `main.rs`, ggf. API-Integrationstest und notwendige Adapter-Allowlist; 120–220 ALL | Chief weist einen Codex-Implementierer zu | #664 gemergt; mn frei; bestehende #301/#337/#352 erhalten | eigener Worktree | A | Pending; PM prüft Startvertrag, kein neuer Worker | kompilierendes Produktionsadapter-Rot; danach done/blocked persistiert, wiederholtes done unverändert, falsche/veraltete Credentials abgewiesen; eigene prepush, zwei Fremdvendor-Reviews | 8e7b877f |
 | Z4-W103F-Z1 | Originaler PC-Zustellbeleg mit 20 Versuchen, nur bereinigter Bericht ≤ 120 Zeilen | Chief weist einen Messowner zu | WIRE integriert; PC/App/Default-opencode und MCP-Start > 30 s belegt | PC | C | Pending; reale Voraussetzungen und Zeitpunkt offen | je Versuch Version/Latenz/Marker/terminalbestätigter Empfang; 20/20 bzw. < 20/20 bestimmt Queue-Rest; keine erfundenen Pässe | 1c6d9ed8 |
 | Z4-W303-PC-REST | Fehlende Crash-/Kapazitäts-/Provider-Belege aus bestehenden Drills, nur Bericht ≤ 180 Zeilen | Chief weist einen Messowner zu | gültige M4-Aktivierung, PC-Rechte und HQ-Läufe | PC | C | Pending; M4-Freeze erhalten; #500-Teilpässe nicht wiederholen | Crash je spezifiziertem Übergang plus Kapazität/Provider mit Version/Befehl/Exit/Manifest; Singleton/Estop/Backup aus #500 erhalten | abf51cef |
 | Z4-W307-PC-UPDATE | Signiertes installiertes Client-Update und Neustart, nur Bericht ≤ 150 Zeilen | Chief weist einen Messowner zu | autorisierter Windows-PC, Backup/Rückweg, neuere veröffentlichte Version und Abbruchpfad | PC | C | Pending; Release-Build ist kein Client-Laufbeleg | cancel/fail/success in dieser Reihenfolge; alte/neue Version, echte Signaturprüfung/Neustart, Fall-Manifeste/Exits; kein neuer Schlüssel/Release | c58c630b |
-| Z4-W118B-PROBE | Native Codex-Skill-Erkennung mit unabhängigem Canary/Kontrolle; Setup-Doku ≤ 120 ALL | bestehender Root-Job; kein Doppelstart | eigener Harness-/Modell-/Startcheck, keine Installation | Server | C | Root-abgenommene positive Probe: Ready #675 `6cebda1`; Queue laut Root, Merge separat | Canary-Wert fehlt in Prompt/Katalog; reale Discovery-/Read-Spur und Kontrolle samt Befehl/Exit; gesperrter Zugriff ist kein PASS | e4bae87c |
-| Z4-W118B-PROFILE | Nur nachgewiesene Codex-Capability anheben; agent-defaults.json, profiles.rs und Setup-Doku, 80–160 ALL | bestehender Root-Serverjob, Claude Sonnet; kein Doppelstart | positive PROBE von Root abgenommen | eigener Worktree | B | Ready #678 `1b94e79`; OpenAI-Delta-Approve und review-ok laut Root (08.10.); Ready aktuell geprüft, Merge/Installation separat | kompilierendes Capability-/Pack-Rot, danach nachgewiesener Pfad; fremde Profile unverändert, eigene prepush und Fremdreview | 67c1ca17 |
-| Z4-M4B-0-AUTH | Transaktionslokale Run-/Owner-/Fence-/Rollen-/Projektautorisierung, store/development_runs.rs und ggf. development_launches.rs, 180–260 ALL | Chief weist einen Nahtowner zu | st nach #632 frei; freigegebene Sicherheitskorrektur bei deaktiviertem Continuous Mode | eigener Worktree | A | Pending; Helfer allein schließt M4-B nicht | dieselbe Schreibtransaktion, stale/fremd/falsche Rolle/fehlendes Ziel abweisen; keine neue Auth-Transaktion/Migration; Rot vor Fix, eigene prepush und zwei Fremdreviews | fea04970 |
-| Z4-M4B-1-GOAL | Atomare Autorisierung und Goal/Replan, continuous.rs plus api/planning_access/Tests/main, 220–290 ALL | ein serieller st/api/mn-Owner | AUTH und freie Nähte; freigegebene Sicherheitskorrektur ohne Continuous-Aktivierung | eigener Worktree | A | Pending; kein neuer Worker | deterministisches kompilierendes Fence-Interleaving-Rot; stale ohne Goal/Event, gültiger Coordinator erfolgreich; autonome Root operator-only, Operator/Audit erhalten; eigene prepush/zwei Fremdreviews | 2be81e2e |
-| Z4-M4B-2-TASK | Atomare Taskanlage, gleicher begrenzter Dateisatz wie GOAL, 180–270 ALL | ein serieller st/api/mn-Owner | AUTH und GOAL-Nahtübergabe | eigener Worktree | A | Pending; kein paralleler Nahtstart | Fence-Interleaving-Rot; stale ohne Task/Event; eigenes Projekt erfolgreich, fremde Goals/Dependencies abweisen, Operator erhalten; eigene prepush/zwei Fremdreviews | 8dbd5dc7 |
-| Z4-M4B-3-ASSIGN | Atomare Zuweisung, team_assignments.rs plus api/planning_access/Tests/main, 200–280 ALL | ein serieller st/api/mn-Owner | AUTH und TASK-Nahtübergabe | eigener Worktree | A | Pending; kein paralleler Nahtstart | Fence-Interleaving-Rot; stale ohne Assignment/Revision/Event; Selbsteskalation abweisen, gültige Zuweisung/Operator erhalten; eigene prepush/zwei Fremdreviews | 15d92066 |
-| Z4-M4B-4-IMPORT | Autorisierung nach Source-Laden im Import-Schreibvorgang, development_plan/access plus api/planning_access/Tests/main, 230–300 ALL | ein serieller st/api/mn-Owner | AUTH und ASSIGN-Nahtübergabe | eigener Worktree | A | Pending; M4-B erst nach vier integrierten Schreibpfaden abnehmen | Fence beim Source-Laden ändern; Rot vor Fix; stale ohne Projektion/Revision/Event, gültiger Import/CAS/Sourceprüfung erhalten; vier Pfade integriert prüfen, eigene prepush/zwei Fremdreviews | e7c9e018 |
+| Z4-W118B-PROBE | Native Codex-Skill-Erkennung mit unabhängigem Canary/Kontrolle; Setup-Doku ≤ 120 ALL | bestehender Root-Job; kein Doppelstart | eigener Harness-/Modell-/Startcheck, keine Installation | Server | C | Erledigt #675 (merged 2026-10-08T14:34:14Z) | Canary-Wert fehlt in Prompt/Katalog; reale Discovery-/Read-Spur und Kontrolle samt Befehl/Exit; gesperrter Zugriff ist kein PASS | e4bae87c |
+| Z4-W118B-PROFILE | Nur nachgewiesene Codex-Capability anheben; agent-defaults.json, profiles.rs und Setup-Doku, 80–160 ALL | bestehender Root-Serverjob, Claude Sonnet; kein Doppelstart | positive PROBE von Root abgenommen | eigener Worktree | B | Erledigt #678 (merged 2026-10-08T15:58:08Z) | kompilierendes Capability-/Pack-Rot, danach nachgewiesener Pfad; fremde Profile unverändert, eigene prepush und Fremdreview | 67c1ca17 |
+| Z4-M4B-0-AUTH | Transaktionslokale Run-/Owner-/Fence-/Rollen-/Projektautorisierung, store/development_runs.rs und ggf. development_launches.rs, 180–260 ALL | Chief weist einen Nahtowner zu | st nach #632 frei; freigegebene Sicherheitskorrektur bei deaktiviertem Continuous Mode | eigener Worktree | A | Verschoben: nach v1.6.0, Elias 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren | dieselbe Schreibtransaktion, stale/fremd/falsche Rolle/fehlendes Ziel abweisen; keine neue Auth-Transaktion/Migration; Rot vor Fix, eigene prepush und zwei Fremdreviews | fea04970 |
+| Z4-M4B-1-GOAL | Atomare Autorisierung und Goal/Replan, continuous.rs plus api/planning_access/Tests/main, 220–290 ALL | ein serieller st/api/mn-Owner | AUTH und freie Nähte; freigegebene Sicherheitskorrektur ohne Continuous-Aktivierung | eigener Worktree | A | Verschoben: nach v1.6.0, Elias 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren | deterministisches kompilierendes Fence-Interleaving-Rot; stale ohne Goal/Event, gültiger Coordinator erfolgreich; autonome Root operator-only, Operator/Audit erhalten; eigene prepush/zwei Fremdreviews | 2be81e2e |
+| Z4-M4B-2-TASK | Atomare Taskanlage, gleicher begrenzter Dateisatz wie GOAL, 180–270 ALL | ein serieller st/api/mn-Owner | AUTH und GOAL-Nahtübergabe | eigener Worktree | A | Verschoben: nach v1.6.0, Elias 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren | Fence-Interleaving-Rot; stale ohne Task/Event; eigenes Projekt erfolgreich, fremde Goals/Dependencies abweisen, Operator erhalten; eigene prepush/zwei Fremdreviews | 8dbd5dc7 |
+| Z4-M4B-3-ASSIGN | Atomare Zuweisung, team_assignments.rs plus api/planning_access/Tests/main, 200–280 ALL | ein serieller st/api/mn-Owner | AUTH und TASK-Nahtübergabe | eigener Worktree | A | Verschoben: nach v1.6.0, Elias 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren | Fence-Interleaving-Rot; stale ohne Assignment/Revision/Event; Selbsteskalation abweisen, gültige Zuweisung/Operator erhalten; eigene prepush/zwei Fremdreviews | 15d92066 |
+| Z4-M4B-4-IMPORT | Autorisierung nach Source-Laden im Import-Schreibvorgang, development_plan/access plus api/planning_access/Tests/main, 230–300 ALL | ein serieller st/api/mn-Owner | AUTH und ASSIGN-Nahtübergabe | eigener Worktree | A | Verschoben: nach v1.6.0, Elias 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren | Fence beim Source-Laden ändern; Rot vor Fix; stale ohne Projektion/Revision/Event, gültiger Import/CAS/Sourceprüfung erhalten; vier Pfade integriert prüfen, eigene prepush/zwei Fremdreviews | e7c9e018 |
 | Z4-SERVER-DISK | Server-Platte: alte Worktrees (~151 GB) aufräumen; erst Backup | Elias entscheidet, Stabschef führt aus | Inbox E17 | Server | – | Geplant | Platte < 60 %, Backup-Beleg | – |
 | Z4-RCLONE | Eigene rclone-`client_id` vor Ende 2026 | Elias | – | PC | – | Geplant | Backup läuft mit eigener ID | – |
 | Z4-SETUP-14 | Rest SETUP-14: tote Keys, Permission-Regeln | Elias | – | PC | – | Geplant | Liste abgehakt | – |
 | Z4-M5-01 | Testerrunde mit 3–5 externen Testern | Elias | V16-03, E16 | egal | – | Verschoben | Rückmeldungen festgehalten | – |
 | Z4-M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um | Root | Z1 | egal | – | Verschoben | Umfang festgelegt | – |
+
+
+### Release-Reihenfolge — Elias-Entscheid 08.10., Root 22:04Z
+
+1. KI-30-Fix zuerst: Queue-Stabilität; bestehender Owner, kein Doppelstart.
+2. Denkraum DR-11 → DR-12 → DR-13 → DR-14 → DR-16 → DR-17 ist der kritische Pfad;
+   DR-SEC-01a/b vor DR-16a → DR-16b; zusätzlich DR-07 inkl. 07c/d/e1/e2, DR-15b/#750 und UI-Verdrahtung #718 als echte Vorgänger.
+3. mn: D5b (#728 gemergt) → D5-GUARD → V16-UPD-CANCEL (Backend/IPC → UI) → V16-06; E2/V16-F3 beantwortet 09.10.; D8a–c nach v1.6.0.
+4. Z2-AGENTS-SLIM direkt nach DR-12; Produktlieferung und freie Nähte bleiben geschützt.
+5. Andere Z2-Werkzeugpakete nur als Lückenfüller; keine Vorrangumkehr durch Reserveverträge.
+
+V16-NACHBEOB, V16-ADR-A7, V16-03 und D8a–c sind keine Vorgänger von V16-RELEASE.
+Tester-Kit/Trockenlauf bleibt ein eigener offener Nachweis; die optionale Windows-Sandbox
+ist nicht aktiviert; ihre Aktivierung ist nicht freigegeben. E16 vor externen Testern bleibt offen.
+Wissenspilot/#651 bleibt Draft und nach v1.6.0 geparkt; der abgeschlossene Messschnitt
+wird nicht wiederholt. „Lernende Entwicklungskoordination“ ist ebenfalls nach v1.6.0
+verschoben (Elias 08.10.); im geprüften aktiven Z-Kopf fehlt eine eigene Paketzeile,
+daher kein neuer Ausführungsvertrag/Ticket aus diesem Namen. Z2-RECHTE-PILOT und
+Z4-M4B-0..4 bleiben geparkt; offene Sicherheitsbefunde sind dadurch nicht behoben,
+Continuous bleibt deaktiviert und eingefroren.
+#722 ist seit 21:28:34Z gemergt; dessen Reserven wurden geliefert (#725/#726/#727),
+kein erneuter Dispatch aus den historischen Startformulierungen unten.
+
+### Z2-AGENTS-SLIM — begrenzter Server-Startvertrag (C)
+
+- Ziel: AGENTS.md am Gesamtabschluss ≤ 8192 UTF-8-Bytes; die zehn Kernregeln wortgleich erhalten. Aktuelle Basis `072b4af16a9b265882665fbf881ce780552f4bec`: AGENTS.md 22274 Bytes/376 Zeilen; vor jedem Schnitt den wirklichen main-SHA pinnen.
+- Owner: bestehende Tabellenzuständigkeit, Ausführungs-Stabschef benennt EINEN vorhandenen Doku-Owner nach DR-12; Root pflegt PLAN interim gemäß Auftrag 09.10.
+- Exklusiv: AGENTS.md und `docs/development/AGENTS_REFERENCE.md` als eindeutig verlinkte Referenz; bestehende Referenzdateien nur lesen. Keine Skills, globale CLAUDE/MEMORY, PLAN, Hooks/Gates, Quota/Rechte oder Runtime ändern.
+- Vorbereitung im selben Worktree: Regeln/Abschnitte gegen bestehenden Reference-Stand mappen, jede ausgelagerte Pflicht per eindeutigem relativen Pfad/Anker erhalten. Vor Dispatch tatsächliche Diffprognose ≤ 300 ALL inklusive Referenz; kein 8-KB-Ziel als Größenausnahme. Falls nötig zwei serielle Doku-Schnitte S1/S2: S1 höchstens 130 bestehende Referenzzeilen bewegen plus Links, S2 nur nach dessen Root-Abnahme/Merge, jeweils ≤ 300 ALL. Reicht dies nicht, vor Start neu schneiden. Nie Referenz vor erfolgreicher Übertragung streichen; keine Regelabschaffung.
+- Nichtziele: Änderungen der GOALS-/Operator-/Freigabe-/Review-/Merge-Semantik, Aktivierung von Teams/Workern/Sandbox, Wirksamkeits-/Tokenersparnisbehauptungen.
+- Doku-Probe statt künstlichem RED: vorher/nachher UTF-8-Bytes, zehn Kernregeln bytegleich, vollständige Abschnitt→Pfad/Anker-Matrix im PR, Links existieren; `npm run dev:agent-check` und eigene volle `bash scripts/ci/gates.sh lane prepush` Exit 0. „AGENTS-check“ ist hier diese dokumentierte Prüfung plus vorhandener agent-check; kein zusätzlicher gleichnamiger Gate im geprüften gates.sh-Katalog.
+- Abnahme je S1/S2: normaler Secret-/Commit-/Pushhook, Remote-SHA bestätigt, eigener Draft-PR ≤ 300 ALL mit Report/NICHT ABGEDECKT, Tier C, Root-Kopfannahme vor Ready/Mergify. Endziel ≤ 8192 Bytes erst am letzten integrierten Schnitt.
+- Startgates: DR-12-Beleg, aktuelle Owner/Dateisperren, beobachtetes Modell/Quota, RAM ≥ 1,5 GiB, Cargo/Slot prüfen. Vorhandene Doku→Gate→Root-Kette wiederverwenden; kein neues Team/Agent/QA. Abbruch: fehlendes Mapping, Link oder Size-Cap stoppt den Schnitt. NICHT ABGEDECKT: allgemeine Adoption oder gemessene Tokenersparnis.
 
 ## Lanes (5 parallel)
 
@@ -242,9 +378,9 @@ Baseline. Gemessen 07.10. auf 1c09ebb: `api.rs` 7908 < 8091, `store.rs` 7224 < 7
 |---|---|---|
 | L1 Denkraum-Backend | DR-01 → DR-01a → DR-02 → DR-03 → DR-04a → DR-04b → DR-04c → DR-06a → DR-06b → DR-05 / DR-07; DR-15 | Server |
 | L2 Denkraum-UI | DR-08 → DR-09 → DR-10 → DR-11 → DR-12 → DR-13 → DR-14; dann DR-16, DR-17 | egal / Server |
-| L3 Nähte (seriell) | api: #631 · st: `srv-r19-02-fix1` (#702/#705, Root-Meldung 19:25Z) reserviert; #632 gemergt; Z4-ARCH-11 / weitere R19-Schnitte erst nach belegter Freigabe und frischer Zuweisung · mn: Z4-R19-09 **oder** V16-06 → D2 → D5a → D5b → D8a → D8b → D8c · pa: frei | Server |
+| L3 Nähte (seriell) | st: V16-KI30 #737 exklusiv bis Tag v1.6.0 · mn: #728 D5b gemergt → D5-GUARD → V16-UPD-CANCEL (vor Start Backend/IPC → UI teilen) → V16-06; E2 beantwortet · api: frei · pa: frei | Server |
 | L4 Setup/Dev | PLAN-C1 → GOALS-B mit Z2-RULE10; danach Archiv-/Bereinigungsschnitte und Z2-PLANPARSER; Z2-REGELN, Z2-DOKSYNC, Z2-BOARD, Z2-REVIEW, Z2-RAM, Z2-ROUTE, Z2-PACER, Z2-AUTOSTART | egal |
-| L5 Doku/PC | V16-ADR-A1, Z4-ARCH-11, V16-UPD-CANCEL, V16-KI30, V16-CHANGELOG | PC / egal |
+| L5 Doku/PC | V16-ADR-A1 (erledigt), V16-CHANGELOG | PC / egal |
 
 Nie zwei aktive Pakete auf derselben Naht (`api.rs`, `main.rs`, `store.rs` + `store/`,
 `bin/pa.rs`). Neue V2-Pakete starten vor Z1 nur, wenn eine Lane leer ist und Root zustimmt.
@@ -253,6 +389,295 @@ GOALS-A läuft leicht parallel zur Produktlieferung; GOALS-C nutzt vorhandene Ar
 GOALS-B und weitere PLAN-Edits sind beim Chief seriell. Z1 behält Vorrang;
 Prozessarbeit belegt keine Z1-Dateien oder Nähte. Native Goal-Ausgaben und Adoption
 stehen im Ticket, nicht in gespeicherten Profilen oder zugestellten Nachrichten.
+
+### DR-07c/d/e1/e2: vier weitere P1-Testports
+
+Chief-Disposition zum Root-Vorschlag `msg-0mv02koqa-49ce4f1b`:
+keine Ausnahme von 300 ALL. Ownerbelege `msg-0mv02o72m-1e798c11` (21:52Z)
+sind nur Scratch-Vorbereitung; nichts implementiert, kein Branch/Commit/Start.
+Basis für jeden unabhängigen Schnitt: `85ab28626a3fbccf0a262afc64fb57383222fb8b`
+(main, #681 am 08.10. 21:42:27Z gemergt). Die offenen #731/#732/#734 berühren
+andere Testdateien und werden nicht wiederholt. DR-07d ergänzt DR-05; vorhandene
+Ideen-Tests bleiben erhalten. Vollständiger Parent: `55ea21ce-1f3d-4fcb-9bf7-704db5660b19`;
+die abweichende UUID der Mail wurde nativ als nicht vorhanden erkannt.
+
+P1-Quellen `decision-desk`, rohe SHA256 unabhängig am 08.10. geprüft:
+- sender.test.mjs: `35d2c6f63b55bd6e7981f67bf7412ec40afec74aca8b7e83a2378df16044246c`.
+- priority.test.mjs: `233bfb172e03fe8ca50674790065bcb968a3ef3fe6c1769d491d9e724eca721b`.
+- store.test.mjs: `8d24458cf1a6b39754f7021f1b2381698ca42eb6656c43e21ee50d7e6dc54454`.
+Vor Port erneut rohe Hashes gegen dieses Manifest prüfen; Änderungen stoppen.
+Dateizeilen unten sind 1-basiert im hashgebundenen P1-Text; letzter leerer
+Split-Eintrag ist keine zusätzliche Testzeile. ALL ist der tatsächliche Git-Diff
+des neuen Zieltests einschließlich Imports, dupliziertem Header und ROOT-Zeile.
+
+| Paket | Einziger exklusiver Zielpfad | Vollständiger P1-Bereich | Owner meldet ALL / Tests |
+|---|---|---|---|
+| DR-07c | tools/denkraum/sender.test.mjs | sender ganz | 214 / 12 |
+| DR-07d | tools/denkraum/priority.test.mjs | priority ganz | 110 / 6 |
+| DR-07e1 | tools/denkraum/store-receipts.test.mjs | store 1–34 und 35–169 | 169 / 10 |
+| DR-07e2 | tools/denkraum/store-answers-migration.test.mjs | store 1–34 und 170–359 | 224 / 18 |
+
+Je Paket ≤ 300 ALL, eigenes Worktree/Branch/Draft-PR. Keine Runtime-/Delivery-/
+Playwright-/package.json-/Helper-Änderung und keine realen Agent-IDs im Ziel.
+Owner bleibt qfytpd, Root benennt den tatsächlichen Server-Ausführungsplatz nach
+frischem Modell-/Kontingent-/RAM-/Cargo-/Datei-/Slotcheck. Derselbe Owner arbeitet
+seine Pakete nacheinander; disjunkte Dateipaare erzeugen keine künstliche
+Implementierungsabhängigkeit. Keine neuen Agenten, kein QA-Bot/Dispatcher/Team.
+Vorhandene Port → Node/Suite/prepush → Root-Kette genügt; bei explizitem B-Review
+eine fremde Vendorfamilie zum tatsächlich beobachteten Autor am konkreten Kopf.
+
+Erlaubte D2-Abweichungen, sonst P1-Testkörper und Testnamen erhalten:
+1. Echter P1-Root-Literal wird synthetisch; `const ROOT = 'test-root-agent'`.
+2. `rootAgentId: ROOT` nur bei DeskStore-/Server-Fixture-Konstruktoren einfügen;
+   Klammern und `join(...)` korrekt beachten. Owner meldet sender 18, e1 13,
+   e2 8 Injektionen; priority verwendet reine Funktionen (0 Injektionen).
+3. Child-Process-Source im Test „process termination during a partial temporary
+   write preserves the last commit“ bleibt unverändert (Teststart P1:248,
+   Konstruktor im Source-String P1:251): Child hat kein ROOT, putQuestion braucht
+   keinen Root; äußere Fixture-Konstruktoren werden normal angepasst.
+4. CRLF nach LF; nur notwendige Rand-Blankzeilen an Splitgrenzen normalisieren.
+   Kein Test entfällt; keine gemeinsame Helper-Datei zur Größenumgehung.
+
+Quellenmapping der Store-Testblöcke unabhängig gelesen: e1 beginnt an P1-Zeilen
+35, 56, 71, 80, 100, 112, 124, 135, 145, 155 (10 vollständige Tests);
+e2 beginnt an 170, 176, 183, 190, 195, 203, 210, 216, 223, 234, 248, 259,
+271, 277, 305, 317, 337, 347 (18). Beide zusammen sind exakt alle 28 P1-Tests.
+Im jeweiligen PR vollständige Testnamen, Quellhash/Zeilen und erlaubte Änderungen
+ausweisen; e1/e2 zusammen keine ausgelassene oder doppelte Testidentität.
+
+Abnahme je Schnitt: kompilierender `node --test <Zielpfad>`, genaue 12/6/10/18
+Testidentitäten; `npm run test:denkraum` (inklusive Hygiene) und eigene vollständige
+`bash scripts/ci/gates.sh lane prepush` Exit 0. tatsächliche ALL mit git diff
+--numstat prüfen; unveränderter P1-/D2-Vergleich und kompletter kombinierter
+Testnamen-Vergleich im Report. Reiner Testport C benötigt keinen künstlichen
+Rotnachweis. Wenn er einen Befund zeigt: compiling RED festhalten, Root disponiert
+separaten Fix/Scope/Tier/Review; kein stiller Produktionsfix im Testport.
+Root nimmt Kandidaten ab; danach Ready, Mergify; kein Live-Deploy/Release.
+
+NICHT ABGEDECKT: Owner meldet 101/101 Scratch-Pässe mit altem P1-server.mjs und
+Root-Shim; das ist kein Pass gegen R676-Rootgate/Allowlist im Repo. Sender-HTTP
+(/api/notifications/retry und Website-Save) muss tatsächlich auf der komponierten
+Repo-Basis laufen. Noch keine Repo-Test-/prepush-/Review-/Abnahme-/Windowsbelege
+für diese vier Ports; diese PLAN-Dokumentation verändert keinen Runtime-Test.
+
+### Serverreserve: drei disjunkte Startverträge (Root 08.10., 20:45Z)
+
+Auftrag `msg-0mv00abqi-b5191dcb`: drei Pakete ohne Rust-Nähte mn/st/api liefern;
+Root übernimmt den Dispatch. Diese Verträge sind zur Abnahme vorgelegt, keine
+laufenden Worker oder bereits gefüllte native Ready-Queue. Gemeinsame geprüfte
+Basis ist `origin/main@fc85e3da33d163b9fd64c4f0163e1872940dae74`.
+Jedes Paket: eigener Branch/Worktree/PR, Dateieigentum nur im genannten Paar;
+keine gemeinsame Implementierungsdatei und keine Geschwister-Abhängigkeit.
+Vor einem tatsächlichen Start prüft Root Modell/Quota, RAM ≥ 1,5 GiB, Cargo-
+Prozesse/Buildslot und aktuelle Dateieigentümer erneut. Neue Quelle oder belegter
+Konflikt wird eingegrenzt; weder alte Lease noch zugestellte Mail beweist Ende.
+Bestehende Server-RED→GREEN→Review→Root-Kette je Einzelpaket wiederverwenden;
+keine neue Teamdefinition, kein zweiter Dispatcher und kein QA-Bot.
+
+**Ausführung/Reviewvertrag:** Root weist pro Paket einen vorhandenen Serverworker
+zu; ein geplanter Modellname ist kein Laufzeitbeleg. Stufe A braucht zwei Familien
+außerhalb des beobachteten Autors: OpenAI → Google + Anthropic; Google → OpenAI +
+Anthropic; Anthropic → OpenAI + Google. Stufe B braucht eine andere Familie
+(OpenAI → Google, Google/Anthropic → OpenAI). Vorhandene Root-Reviewwege:
+Codex/Astra, Cursor/Gemini und Anthropic/Sonnet, keine bezahlten API-Aufrufe.
+Befunde/Disposition und `NICHT ABGEDECKT` im PR, Root-Abnahme vor Ready; Mergify.
+Kein Paket verändert Budget, Quotenregeln, Profile, Hooks oder Automatisierung.
+
+**DR-04B-FU — rootloser V2-Store ohne Transport (≤ 50 ALL, Stufe A).**
+- Ziel: `flushNotifications()` prüft V2-Root vor der fehlenden Transportkonfiguration;
+  fehlende Root-Kennung → 503, ohne Write/Send. V1 bleibt rootlos lesbar; gültiger
+  V2-Root ohne Transport bleibt `not-configured`. Keine Erweiterung der Delivery-
+  Semantik, Server/CLI/UI, Dedupe oder Ledgergrenzen.
+- Eigentum: nur `tools/denkraum/store/delivery.mjs` und `delivery.test.mjs` im selben
+  Ordner. Root verwendet die vorhandene qfytpd-Lane oder genau einen vorhandenen
+  Serverworker. Keine zweite Delivery-Lane während aktiver gleicher Datei.
+- Vorgänger: #669 ist seit 16:35:44Z gemergt. Root zieht den disjunkten Schnitt
+  ausdrücklich vor; #676/#681 betreffen Server/CLI, #718 UI/Playwright. Die alte
+  Gesamtstack-Wartebedingung wird nur für dieses Folgepaket ersetzt.
+- RED auf Basis: benannter Test `delivery.test.mjs::rootless V2 without transport
+  refuses notification flush with 503`; bestehenden Store importieren/instanziieren,
+  synthetische V2-Daten, kein Transport, Reject mit Code 503 und unveränderte Bytes.
+  Bestehender `not-configured`-Fall muss zunächst scheitern, kein Importfehler.
+- Abnahme: `node --test tools/denkraum/store/delivery.test.mjs`,
+  `npm run test:denkraum`, eigene `bash scripts/ci/gates.sh lane prepush`, jeweils
+  Exit 0; negative/leere/fremde-event-ID-Fälle sowie V1/gültiger Root erhalten.
+  RED/GREEN am exakten Base/Head, zwei Fremdvendor-Reviews, Root-Abnahme.
+
+**Z2-RAM-SLOTS — tatsächlichen Warm-Slot-Root nutzen (≤ 180 ALL, Stufe A).**
+- Ziel: bestehendes `defaultSlots()`/CLI beachtet `PROJECTA_BUILD_SLOTS_ROOT`;
+  explizites `PA_BUILD_SLOTS` behält Vorrang. Bei gesetztem Root nur dortige
+  unmittelbare Verzeichnisse `projecta-a/b/c` oder `slot[1-9][0-9]*`, deterministisch;
+  Dateien/fremde Namen ignorieren. Fehlender/unlesbarer/leerer Root → nachvollziehbar
+  verweigern, kein stiller Main-/Home-Fallback. Ohne Root alte Defaults erhalten.
+- Eigentum: nur `scripts/dev/build-slot.mjs`, `scripts/lib/dev-build-slot.test.mjs`.
+  Read-only; keine Verzeichnisse anlegen, Slots reservieren, Prozesse starten/enden,
+  Wächter/Timer installieren, Hooks oder `agent-setup-check.mjs` ändern. Z2-RAM-
+  Gesamtziel/24-h-Messung bleibt offen. Die separate RAM-Messvermutung ist verworfen:
+  Node meldet auf dem geprüften Server bereits verfügbaren Speicher.
+- Beleg: CLI auf obiger Basis mit gesetztem Root listet Home-Defaults und empfiehlt
+  Main, obwohl die vorhandenen warmen Server-Slots im konfigurierten Root liegen.
+  Das ist ein Auswahlbefund, keine gemessene fehlerhafte RAM-/Belegtheitsmeldung.
+- RED: `dev-build-slot.test.mjs::configured slot root takes precedence over home
+  defaults`; bestehendes `defaultSlots()` mit synthetischem Root und injizierter
+  Verzeichnisliste aufrufen, erwartete Root-Pfade prüfen. Kein neues Symbol nötig,
+  bestehende Funktion ignoriert den Parameter: kompilierendes Assertion-RED.
+- Abnahme: `node --test scripts/lib/dev-build-slot.test.mjs` Exit 0; expliziter
+  Override gewinnt, gesetzter Root schlägt keine fremden/fehlenden Slots vor,
+  Standardfall/Windows-Pfade und busy/unknown/lock-Fälle bleiben konservativ.
+  `MIN_FREE_GB=2.5`, `MAX_PARALLEL=3` unverändert, keine Behauptung freien Slots aus
+  Prozesslücken/Lease. Eigene prepush Exit 0; readonly CLI-Beleg mit tatsächlichem
+  Root/Prozessen, Windows nur Fixture-Beleg; zwei Fremdvendor-Reviews/Root-Abnahme.
+
+**Z2-HYGIENE-STATUS — aktuelle PLAN-Statuswerte lesen (≤ 160 ALL, Stufe B).**
+- Ziel: `inProgressPackages()` erkennt neben alten `in Arbeit`/`PR #...` auch
+  `In Arbeit`, `Draft #n`, `Drafts #n/#m`, `Ready #n`; kandidatrelevante PR-Nummern
+  erfassen, keine Vorgänger-/historischen Nummern aus späteren Erläuterungen.
+  `Erledigt`, `Blockiert`, `Pending`, `Geplant`, geparkte/historische Zeilen nicht
+  als startbar oder laufend umdeuten. Keine Statuskorrektur/Promotion durchführen.
+- Eigentum: nur `scripts/dev/hygiene.mjs`, `scripts/lib/dev-hygiene.test.mjs`.
+  Keine PLAN-/STAND-Änderung, Fetch/Netzwerk-/GitHub-Schreibwirkung, Cache-/App-
+  Plumbing, neue Abhängigkeit oder andere Hygiene-Klassifikatoren in diesem Paket.
+- Beleg: bestehende Funktion auf obiger Basis liefert für drei synthetische aktuelle
+  Statuszeilen `Draft #1`, `Ready #2`, `In Arbeit` eine leere Liste (Node Exit 0).
+- RED: `dev-hygiene.test.mjs::current PLAN Draft Ready and In Arbeit statuses are
+  recognized`; vorhandene Funktion mit begrenzter Tabelle, drei erwartete Einträge,
+  Test kompiliert und scheitert gegen unveränderte Basis. Geschwister prüfen:
+  alte Statuswerte, zwei Kandidaten, erklärter Vorgänger und negative Statuswerte.
+- Abnahme: `node --test scripts/lib/dev-hygiene.test.mjs`, eigene prepush, Exit 0;
+  `collectHygiene`-Fixture mit offenem/fehlendem Kandidaten-PR erhält korrekte Befunde,
+  keine echten Remote-Schreibtests; ein Fremdvendor-Review und Root-Abnahme.
+
+Nicht als freie Reserve zählen: R19-09 benötigt die besetzte Store-Naht;
+DR-10-WIRE überschneidet sich mit der aktiven #718-UI-Dateiliste (index/ideas).
+DR-05/07 und DR-12 behalten ihre wirklichen Vorgänger. Die drei Verträge oben
+benötigen keine dieser Änderungen; nach Head-/Owner-Wechsel vor Dispatch neu prüfen.
+
+### Serverreserve 2: fünf zusätzliche Startverträge (Root 08.10., 21:27Z)
+
+Auftrag `msg-0mv01rpmz-e52b4baf`: ENTWERFEN/PFLEGEN; Root dispatcht.
+Gemeinsame geprüfte Basis: `9d9eaa78e2d135bc0144809ae9712e2cda51da31`
+(origin/main, #722 gemergt). Die drei #722-Umsetzungen bleiben bei den vorhandenen
+Eigentümern: #725 `94eca3b`, #726 `5cb73e1`, #727 `a4e0fc9`, laut Root in Prüfung.
+Sie zählen nicht als fünf neue Verträge; keine Wiederholung dieser Arbeit.
+
+Je folgendem Paket genau ein von Root benannter bestehender Serverworker,
+eigener Branch/Worktree/PR. Die fünf Dateipaare sind untereinander und zu den
+beobachteten offenen Paket-PRs disjunkt. Keine Rust-Naht, package.json, gemeinsamen
+Helfer oder Gates ändern; kein ausstehender Implementierungsvorgänger.
+Root prüft vor Dispatch frische Datei-/Prozessbesitzer, tatsächliches Modell,
+Kontingent, RAM ≥ 1,5 GiB, Cargo und freien Build-Slot. Lease/Queue/Mail beweisen
+kein Prozessende/Start. Kein neuer Agent, kein zweiter Dispatcher.
+Vorhandene einzelne RED → GREEN → unabhängiges Review → Root-Ketten reichen;
+ein neues Team würde bei diesen einstufigen Dateipaaren keine Übergabelücke lösen.
+
+Root routet Codex unter 98 %, Cursor auto, Claude sparsam. A bei OpenAI-Autor:
+Kimi und GLM über den von Root freigegebenen bestehenden Ollama-Credit-Weg;
+bei Anthropic-Autor OpenAI plus Kimi oder GLM. B: eine andere Vendorfamilie.
+Bei Cursor auto zuerst tatsächlichen Autorenvendor belegen, dann andere wählen;
+Transportname ist kein Vendor-/Modellbeleg. Je Review Kandidaten-SHA, beobachtetes
+Modell, Befunde mit Datei:Zeile und Disposition. Keine Kappen-/Reset-/Installations-
+oder zusätzliche API-Ausgabenentscheidung. Root nimmt Kopf ab; danach Ready,
+Merge nur Mergify. Diese Dokumentation selbst ist C, keine Umsetzung/Abnahme.
+
+**Z2-PR-PROTECTION — ehrliche Bereitempfehlung (≤ 160 ALL, B).**
+- Ziel/Beleg: `buildRows` liefert auf der Basis bei drei grünen CI-Jobs plus
+  roter `Mergify Merge Protections` trotzdem „bereit“. Fehlende/rote/laufende
+  Protection darf keine Bereitempfehlung ergeben.
+- Exklusiv: `scripts/dev/pr-status.mjs`, `scripts/lib/dev-pr-status.test.mjs`.
+  Nichtziele: YAML/Branch-Protection/CI/Ready/Labels ändern. Die `REQUIRED`-Liste
+  der drei YAML-Jobs separat erhalten; externe Protection zusätzlich prüfen,
+  keinen erfundenen CI-Job in den bestehenden YAML-Shape-Test aufnehmen.
+- Kompilierendes Rot zuerst: `dev-pr-status.test.mjs::red merge protection
+  prevents ready recommendation`; bestehendes `buildRows` mit drei SUCCESS-
+  CheckRuns plus roter Protection aufrufen, „bereit“ ausschließen.
+- Abnahme: Protection fehlt/pending/rot/grün; unbekannt ist keine Freigabe,
+  NEUTRAL/SKIPPED nur gemäß tatsächlichem Schutzvertrag. Beobachteter Queue-PR
+  bleibt „in Queue“ ohne Mergeversprechen. Draft/do-not-merge/Konflikt-Prioritäten
+  erhalten; Protection in Tabelle/JSON, Shapes nur im eigenen Test anpassen.
+  `node --test scripts/lib/dev-pr-status.test.mjs`, eigene volle prepush Exit 0,
+  ein Fremdvendor-Review; NICHT ABGEDECKT: tatsächliche Queue-Zulassung.
+
+**Z2-STATUS-UNKNOWN — unbekannt ist kein Grün (≤ 140 ALL, B).**
+- Ziel/Beleg: `checkState` liefert für `StatusContext.state=UNKNOWN` derzeit
+  `green`. Unbekannt/leerer Kontext wird pending; `classify` nennt PRs ohne
+  Checks nicht „grün, wartet auf die Queue“.
+- Exklusiv: `scripts/dev/status-report.mjs`,
+  `scripts/lib/dev-status-report.test.mjs`. Nichtziele: pr-status, GH_CALLS,
+  Limits, Tagesgrenze, Output-Pfad oder Remote-Zustand ändern.
+- Kompilierendes Rot zuerst: `dev-status-report.test.mjs::unknown status
+  context is pending rather than green`; vorhandenes `checkState` mit UNKNOWN
+  aufrufen, pending erwarten. Zweites Rot für Bericht ohne Checks.
+- Abnahme: SUCCESS/PENDING/EXPECTED/FAILURE/ERROR, leer/unbekannt, CheckRun-
+  Schlusswerte, fehlende Rollups; failing vor pending. Leere Checks bleiben
+  `none`; Bericht behauptet keine Prüfung. Main-Rot, Draft-/Queue-/Konflikt-
+  Zählung und 25-Zeilen-Grenze erhalten. `node --test scripts/lib/dev-status-report.test.mjs`,
+  eigene volle prepush Exit 0, ein Fremdvendor-Review;
+  NICHT ABGEDECKT: live GitHub-Gesamtzustand.
+
+**Z2-START-MEASURE — kaputte Messwerte stoppen (≤ 160 ALL, A).**
+- Ziel/Beleg: `checkRam(NaN)` und `checkUsage({})` liefern auf der Basis `ok`.
+  Nicht endliche/negative RAM-Werte, leere oder inhaltlich ungültige vorhandene
+  Usage-Daten müssen STOPP ergeben, kein OK/Exit 0 als Messbeleg.
+- Exklusiv: `scripts/dev/start-check.mjs`, `scripts/lib/dev-start-check.test.mjs`.
+  Nichtziele: build-slot/#725, Defaults/Grenzen/Kontingente ändern, neue
+  Messquelle, Prozessaktion, Hook/Scheduler. Kein --usage/fehlende Datei behalten
+  dokumentierten Warnmodus; Root muss Pflichtbelege separat einholen.
+- Kompilierendes Rot zuerst: `dev-start-check.test.mjs::invalid measurements
+  cannot pass start check`; bestehendes `checkRam` mit NaN muss stopp liefern;
+  getrennte Rotprobe für vorhandenes leeres Objekt über `checkUsage`.
+- Abnahme: NaN/Infinity/negative RAM-Werte, leeres Usage-Objekt, negative/nicht
+  endliche Prozentwerte; gültige Null/Schwellen und normale CLI-Aufrufe erhalten.
+  Injizierter kaputter CLI-Messwert gibt Exit 1/JSON `ok:false`. Warnungen nicht
+  als gemessene Freigabe ausgeben. `node --test scripts/lib/dev-start-check.test.mjs`,
+  eigene volle prepush Exit 0, zwei Fremdvendor-Reviews;
+  NICHT ABGEDECKT: 24-h-RAM-Ziel, realer Start und vollständige Gateautomatisierung.
+
+**Z2-CIWATCH-SHAPE — kaputte Check-Liste verweigern (≤ 140 ALL, B).**
+- Ziel/Beleg: `watchChecks` stürzt bei syntaktisch gültigem JSON `[null]` mit
+  TypeError ab. Ungültige Check-Einträge müssen kontrolliert Exit 3 liefern,
+  keine grüne Aussage, kein Folgepoll und kein ungefangener Absturz.
+- Exklusiv: `scripts/dev/ci-watch.mjs`, `scripts/lib/dev-ci-watch.test.mjs`.
+  Nichtziele: echter Watcher/Command/Workflow starten, gh-Aufruf/Pollbudget,
+  Standardintervalle, Karenz oder Status-/Quota-/Retrypolitik ändern.
+- Kompilierendes Rot zuerst: `dev-ci-watch.test.mjs::malformed check entries
+  refuse without polling`; vorhandenes `watchChecks` mit injiziertem Runner
+  (code 0, stdout `[null]`) aufrufen, Ergebniscode 3 statt Rejection erwarten;
+  Schlaf darf nicht aufgerufen werden, Runner genau einmal.
+- Abnahme: null/primitive Einträge, fehlender/leerer Name oder bucket geben
+  Exit 3 mit begrenzter Diagnose. Gültige pass/fail/cancel/skipping/pending-
+  Fixtures, leere Liste/Karenz, Timeout und unbekannter nichtleerer bucket als
+  pending behalten ihren Vertrag; kein vorschnelles Grün. CLI mit Fake-Runner
+  bestätigt Exit 3. `node --test scripts/lib/dev-ci-watch.test.mjs`, eigene
+  volle prepush Exit 0, ein Fremdvendor-Review;
+  NICHT ABGEDECKT: live GitHub-Fehler oder tatsächlicher Langzeit-Watchlauf.
+
+**Z2-MRP-COMPLETE — unfertiges Log nicht mitzählen (≤ 120 ALL, B).**
+- Ziel/Beleg: rounds 1 plus `n high / n other` liefert derzeit `filled:true`/0/0.
+  Nur numerische rounds UND findings sind gefüllt; Platzhalter sind kein Nullbefund.
+- Exklusiv: `scripts/dev/mrp-count.mjs`, `scripts/lib/dev-mrp-count.test.mjs`.
+  Nichtziele: Template/Bench/Workflow/Paketbranch-Regel ändern oder neue
+  Prompt-Pflichten; nur vorhandene M-RP-Messdefinition korrekt lesen.
+- Kompilierendes Rot zuerst: `dev-mrp-count.test.mjs::partial prompt log
+  placeholders are not complete evidence`; bestehendes `parsePromptLog` mit
+  rounds 1/Platzhalter-findings aufrufen, `filled:false` erwarten.
+- Abnahme: fehlende/teilweise/nichtnumerische findings nicht withLog; gültige
+  0 high / 0 other, rounds 0–2 und vollständige Logs bleiben gültig. `countRp`
+  und vorhandener `measure`-Fixture-Aufruf belegen Zähler/Nenner/Fixrunden-
+  Zuordnung ohne Bench-Datei-/Netzwerkänderung. `node --test scripts/lib/dev-mrp-count.test.mjs`,
+  eigene volle prepush Exit 0, ein Fremdvendor-Review;
+  NICHT ABGEDECKT: allgemeine Prompt-Adoption oder Wirksamkeit.
+
+Evidenzgrenze: vier ausführbare Assertions und die ungültige Check-Probe waren RED;
+explorative Proben, keine committed Test-First-/Fixbelege. Worker schreiben zuerst
+die benannten Regressionstests und binden Rot/Grün an ihre Basis/Köpfe.
+Graphwerkzeuge waren nach Tool-Katalog-/Runtime-Prüfung nicht gebunden; bekannte
+Hilfsdateien und Tests wurden direkt gelesen. W118B-PROFILE #678 ist seit
+15:58:08Z gemergt, kein neuer Start. DR-13/14 bleiben nach DR-12, KI-30 beim
+laufenden Owner; kein Sibling-Fix ohne Eigentumsabgrenzung. Der ebenfalls belegte
+Multi-Naht-Parserfall zählt nicht mit: #574 ist als überholt geschlossen
+(Elias 08.10.); daraus entsteht kein neuer Parserauftrag. CIWATCH ersetzt ihn mit einem unabhängigen Dateipaar.
+Diese fünf Z2-Paare
+benötigen keinen der blockierten Pfade.
 
 ### Anpassungsnachweis DR-15a und Übergaben (08.10. 04:40 UTC)
 
@@ -279,8 +704,8 @@ HOOK-Anleitung läuft im eigenen P2-Dokumentationspaket parallel ohne Z1-Dateien
 Anlass: Root-Prüfung von #642 am 6183605 meldet 2068 ALL > 300 und konkrete
 Status-/Regelwidersprüche. Vorher: ein kombinierter, nicht abgenommener Entwurf.
 Änderung: zuerst der vollständige aktive Z1–Z4-Kopf mit GOALS-A/B/C; alter Bestand
-bleibt wortgleich als Historie und Parserquelle im selben PLAN. #642 und Audits
-bleiben erhalten. Rest: Archivierung/Bereinigung in eigenen kleinen Paketen,
+bleibt wortgleich als Historie und Parserquelle im selben PLAN. #642 ist als überholt geschlossen (Elias 08.10.); Audit- und
+Originalbelege bleiben erhalten. Rest: Archivierung/Bereinigung in eigenen kleinen Paketen,
 GOALS-B samt Z2-RULE10 und betroffene Delta-Belege; Anforderungen bleiben gleich.
 Abnahme dieses Schnitts: DF-Bestand bytegleich, M1–M5 parsebar, Pointer in STAND
 zeigen Z1, ≤ 300 ALL und prepush Exit 0. Nächster Owner: Chief legt den Kandidaten
@@ -288,19 +713,31 @@ Root vor; Root nimmt ab, erst danach Ready/Queue. Merge/Wirksamkeit separat meld
 
 ## Entscheidungs-Inbox
 
+Quelle E1–E3 (09.10.): Nutzerantwort „allen empfehlungen folgen“ auf Roots
+„Planprüfung bis 2.0“, überliefert im Root-Auftrag PLAN-SYNC-0910b vom 09.10.
+Diese drei Karten sind von den historischen E-Nummern im Anhang zu unterscheiden.
+Root-Dispositionen mit Ticketkürzeln in den Z-Tabellen stammen aus demselben Auftrag;
+ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abgeleitet.
+
 | # | Frage | Empfehlung | Status |
 |---|---|---|---|
-| E14 | Update-Signierschlüssel offline sichern | ja, verschlüsselt in den Passwort-Manager; ohne Kopie geht das Update-Vertrauen bei Verlust verloren | offen, dringend |
+| V16-03-KONTO | Neues Windows-Konto für Tester-Kit erforderlich? | Konto entfällt; Trockenlauf Windows Sandbox ODER erster externer Tester; Sandbox-Aktivierung bleibt separate Nutzerentscheidung | entschieden: Elias „ich folge deiner Empfehlung“, laut Root 08.10. ~22:05Z (`msg-0mv02tqb5-b9086a5d`); V16-03 kein Release-Blocker, E16 bleibt |
+| V16-AUFRAEUM | Wissenspilot, Lernende Koordination, RECHTE-PILOT, M4B parken; AGENTS-SLIM vorziehen | nach v1.6.0; AGENTS-SLIM direkt nach DR-12; #574/#613/#614/#642 schließen | entschieden: Elias-Ja laut Root 08.10. (`msg-0mv02yra0-8109df33`); vorhandene Belege/Originale erhalten |
+| V16-D8 | D8a–c hinter v1.6.0 schieben? | ja; mn für Release nur D5b → UPD-CANCEL, CHANGELOG wartet nicht auf D8 | entschieden: Elias-Ja laut Root 08.10. ~22:03Z (`msg-0mv030gs2-3e987ffc`); Zeilen/Reihenfolge erhalten |
+| E1 (09.10.) | Dritte Review-Runde für #741, #737 und #725; st-Belegung | genau eine Runde 3 nur zum Delta; st exklusiv für #737 bis Tag v1.6.0 | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b; Reviews/Abnahme bleiben auszuführen |
+| E2 (09.10.) | Verhalten bei Updatefehlern / V16-F3 und Start von V16-06 | fail-closed mit Anleitung; D5-GUARD → V16-UPD-CANCEL → V16-06 | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b |
+| E3 (09.10.) | Signierschlüssel sichern und jeden Release freigeben | Nutzer findet den Schlüssel und sichert ihn verschlüsselt; Anleitung auf Handgriffe-Seite, kein Schlüsselmaterial im Repo; jeder Release braucht Nutzerfreigabe | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b; Environment release / Required Reviewer Cuarroc am 09.10. per gh api bestätigt; Sicherung selbst noch unbelegt |
+| E14 | Update-Signierschlüssel offline sichern | gemäß E3 (09.10.) finden und verschlüsselt sichern; Anleitung auf Handgriffe-Seite | beantwortet: Nutzer 09.10. laut PLAN-SYNC-0910b; Durchführung bei Z4-E14 offen |
 | DR03-F01 | Gesamtgröße des Ledgers begrenzen: WRITE-/Listenlimits getrennt von harter SAFE-READ-/Vor-Parse-Bytegrenze, alle Top-Level-/Nested-Listen, Bestandslesen/503 und spätere Konfigänderungen disponieren | neue übergroße Writes nichtdestruktiv ablehnen; keine Trunkierung/Archivierung/Retention; keine Lesbarkeitszusage jenseits sicherer Lesegrenze; erst repräsentative reale Ledgerform/-größe/-kosten, keine erfundenen Grenzwerte | offen; Interview-Vorbereitung im bestehenden Ticket, Empfehlungen keine Entscheidung; zwei Nutzerfragen bis Belegbasis bei Root geparkt, gesamte DR-03-Abnahme offen |
-| V16-F3 | Start nach Update ohne Journal: gesperrt bleiben mit Anleitung, oder dem ersten Start vertrauen? | gesperrt mit Anleitung (fail-closed) | offen |
+| V16-F3 | Start nach Update ohne Journal: gesperrt bleiben mit Anleitung, oder dem ersten Start vertrauen? | gesperrt mit Anleitung (fail-closed) | beantwortet: E2, Nutzer 09.10. laut PLAN-SYNC-0910b; V16-06 nach D5-GUARD → V16-UPD-CANCEL |
 | V16-F4 | Review-Fahrer auf den Server? | ja | offen |
 | V16-D2 | ARCH-D2 vor V16-06 ziehen, weil V16-06 auf V16-F3 wartet? | ja, Lane mn ist frei | entschieden: Root-JA, Übergabe vom 08.10. `msg-0muzkavts-72d53e4b`; `srv-v16-arch-d2` ist exklusiver mn-Owner; Start ist keine Abnahme |
 | WT | Gemini-/Cursor-Weg auf dem Server: Workspace Trust für den Review-Ordner | nur für den Review-Ordner | entschieden: Nutzerfreigabe F1 (08.10.) |
-| Z2-RECHTE-E5 | Veraltete Reset-/RH-C9-/Force-push-Regeln durch geltende V3-Disposition ersetzen | Originale erhalten, aktuelle Quellenbindung dokumentieren | entschieden: Elias-Ja laut Root (08.10., 15:26Z; `msg-0muzow0w0-d9db7d39`); 98-%-Resetfreigabe samt Ergänzung gilt unter ihren Bedingungen; alte RH-C9 ersetzt; Force-push weiterhin verboten. E1–E4 entschieden; E2-Hostbindung ist verbleibende Pilot-Zulassung, keine erneut offene Grundsatzfrage |
+| Z2-RECHTE-E5 | Veraltete Reset-/RH-C9-/Force-push-Regeln durch geltende V3-Disposition ersetzen | Originale erhalten, aktuelle Quellenbindung dokumentieren | entschieden: Elias-Ja laut Root (08.10., 15:26Z; `msg-0muzow0w0-d9db7d39`); ersetzt durch Routing-Freigabe 08.10. ~21:25Z: Warnung bei etwa 97 %, Nutzung bis 98 %, Reset ausschließlich durch den Nutzer; alte RH-C9 ersetzt; Force-push weiterhin verboten. E1–E4 entschieden; E2-Hostbindung ist verbleibende Pilot-Zulassung, keine erneut offene Grundsatzfrage |
 | R1–R5 | Regel-Vorschläge: Stufe A neu fassen; 300-Zeilen-Grenze ohne Tests/Hilfsdateien; RAM-Gate nur für schwere Arbeit; Review-Bündel = Diff + Abhängigkeiten; Pacer-Trigger ohne Einschränkung, aber nur lesend | einzeln entscheiden | offen |
 | V2-OFFEN | v2.0-Fragen 5–9 und 11 | nach Z1 | offen |
-| PR-ALT | Draft-PRs #613, #614, #574 (Autor Grok bzw. alte UI-Richtung): schließen oder übernehmen? | #613 mit Z2-PLANPARSER abgleichen, dann schließen oder übernehmen; #614/#574 parken | offen |
-| E3 | Secrets in geschützte Environments, Required Reviewers für `release` | ja, einmal im Browser | offen |
+| PR-ALT | Überholte PRs #613, #614, #574 und #642 | schließen, Originalbelege erhalten | entschieden: Elias-Ja laut Root 08.10. (`msg-0mv02yra0-8109df33`); GitHub CLOSED unabhängig bestätigt, kein Merge |
+| E3 (Altfrage) | Secrets in geschützte Environments, Required Reviewers für `release` | Releasefreigabe durch Nutzer beibehalten | Required Reviewer Cuarroc für release am 09.10. per gh api bestätigt; kein Nachweis über einzelne Secret-Inhalte aus dieser Prüfung |
 | E15 | Bleibt der gemietete Server? (laufende Kosten) | nach v1.6.0 mit Nutzen und Kosten bewerten | offen |
 | E16 | Lizenz und Geschäftsmodell vor externen Testern | vor V16-03 entscheiden | offen |
 | E17 | Alte Arbeitsbäume löschen (mit Backup) | ja, zusammen mit Z4-SERVER-DISK | offen |
@@ -310,6 +747,15 @@ Root vor; Root nimmt ab, erst danach Ready/Queue. Merge/Wirksamkeit separat meld
 | E22 | Matrixzeile 16: unabhängigen Review im PR am selben Kandidaten anerkennen? | getrennt von einer App-Freigabe entscheiden | offen; Nutzerbestätigung unbelegt |
 | E23 | Benchmark mit fünf Aufgaben durchführen? Er verbraucht Abo-Kontingent | nur nach Nutzerfreigabe laufen lassen | offen; Nutzerfreigabe erforderlich |
 | TODO | Interne Liste des Koordinators: Copilot-Budget, Groq/OpenRouter-Keys (widerspricht „nur Abos“), Geldmodus | veraltete Punkte streichen | offen |
+
+GitHub-Quellen zum Statusabgleich (09.10.2026 00:59 UTC):
+`gh pr view <n> --json state,mergedAt` für #749, #738, #745, #751, #755, #752,
+#728, #767, #768, #764, #777, #769, #772 und #773: alle MERGED; Zeitpunkte stehen an den Paketzeilen.
+`gh pr list --state merged --search 'merged:>=2026-10-09T00:33:48Z' --limit 100 --json number,state,mergedAt`:
+nach #749 die Merges #768, #764, #769, #772 und #773 beobachtet. Offene Draft-/Ready-Stände aus `gh pr list`
+und den jeweiligen PR-Berichten; Merge ist keine neue Laufzeitabnahme.
+`gh api repos/Cuarroc/ProjectA/environments/release`: Regel `required_reviewers`,
+Typ User, Login Cuarroc. Kein Secret gelesen, keine Environment-Einstellung geändert.
 
 ## Entschiedene Fragen
 
@@ -687,7 +1133,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | ✓ #381; Drill 8 PASS am 05.10. (Beleg: Datum aus `events.log`, lokal) |
 | ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
-| R-1 | Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | offen |
+| R-1 | Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | ✓ v1.5.0 (05.10.) |
 
 **R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0` (Beta; E24: A) setzt voraus:
 
@@ -738,7 +1184,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | ✓ #73 |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5) | S | mn | ✓ #481 |
-| W4-04 | Release v1.5.1 (Endrelease) | S | N | offen |
+| W4-04 | Release v1.5.1 (Endrelease) | S | N | ✓ v1.5.1 (06.10.) |
 | M4-R7-01 | Scheduler-`dispatch_once` hinter einem Nur-Test-Permit (Matrixzeile 7) | S | wk | ✓ #340 |
 | M4-R7-02 | Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige `dispatch_once` auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall | S | wk | ✓ #412 (ersetzt #407) |
 | M4-ROW15-PROOF | HTTP-Beleg Zeile 15 (eingeengt): Bindung/Idempotenz Kandidat und Evidenz, Lesen nur im eigenen Run, fremde/stale Evidenz abgewiesen, veränderte Root-Policy ändert `policy_json` nicht und meldet fail-closed | S | api-Tests | ✓ #360 |
@@ -785,11 +1231,11 @@ refactoring package“.
 | ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.1 |
 | ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.1 |
 | ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.1 |
-| M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19); zugeschnitten in 02a #702 und 02b/03a #705, #698 Referenz | S | st | Fixrunde 1 laut Root (08.10. 19:25Z); ursprüngliche Nach-v1.5.1-Zuordnung erhalten, keine Gesamt-Abnahme |
-| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19); 03a bereits im #705-Zuschnitt, vorhandene Envelopes wiederverwenden, Restumfang vor Dispatch prüfen | S | st | Rest offen; #705-Fixrunde/Abnahme getrennt, keine doppelte Implementierung; ursprüngliche Nach-v1.5.1-Zuordnung erhalten |
-| M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
-| M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | offen, nach v1.5.1 (Nutzer 04.10.) |
-| M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | offen, nach v1.5.1 (Nutzer 04.10.) |
+| M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19); zugeschnitten in 02a #702 und 02b/03a #705, #698 Referenz | S | st | Erledigt: #702/#705/#717 gemergt; R19-Reste separat |
+| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19); 03a bereits im #705-Zuschnitt, vorhandene Envelopes wiederverwenden, Restumfang vor Dispatch prüfen | S | st | Verschoben nach v1.6.0; #705-Teilumfang bleibt erledigt |
+| M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | Verschoben nach v1.6.0 |
+| M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | Verschoben nach v1.6.0 |
+| M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | Verschoben nach v1.6.0 |
 
 ### Reihenfolge der seriellen Lanes (nach Meilensteinen)
 
@@ -1050,7 +1496,7 @@ Nicht erfasst: Die Bestandsaufnahme in #132 (CI) enthält nur den dort behobenen
 SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 #129–#133, #138, #142 und #149 gelesen.
 
-## Entscheidungs-Inbox
+## Entscheidungs-Inbox (historisch 04.10., nicht maßgeblich)
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Am 04.10. hat der Nutzer E1, E4, E5, E10, E11, E12, F1, F3 und F6 beantwortet (zwei
 neue Zeilen halten die Freigaben fest). Offen sind E3, der M4-Blocker, E14 (dringend), E15 und E16 (beide nach v1.5.0), E17 (niedrig, nicht auf dem v1.5.0-Pfad), E18 (hoch, auf dem v1.5.0-Pfad) sowie E21–E23; E20 hat der Nutzer am 04.10. entschieden (Option A); E19 ist als Beraterentscheid festgehalten und kann vom Nutzer überstimmt werden. Falls der Nutzer E21–E23 in der nächsten Sitzung nicht beantwortet, entscheiden Fable + Astra; der Nutzer kann überstimmen. F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
@@ -1087,14 +1533,14 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | W5-02b3 | Produktfrage: Verhältnis der globalen Env-Stufe zur Isolation je Profil | Globale Stufe ersetzt die Profil-Isolation. | Nutzer | ✓ entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten; Koordinatoren bleiben immer `strict`; profilspezifisches `passthrough` bleibt. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
 | E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | offen, Nutzer, dringend |
-| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.5.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.5.1 |
-| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor M5-01 entscheiden. | Nutzer | offen, nach v1.5.1 |
+| E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.6.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.6.0 |
+| E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor V16-03 entscheiden. | Nutzer | offen, vor externen Testern |
 | E17 | Alte Arbeitsbäume entfernen? 29 von 81 sind nachweislich sicher (PR gemergt oder geschlossen, 0 geänderte Dateien, 0 ungepushte Commits, 0 Commits außerhalb von main); Liste liegt beim Orchestrator. Löschen entscheidet der Nutzer, vorher Backup. | Niedrige Priorität; nicht auf dem v1.5.0-Pfad. | Nutzer | offen, niedrig |
-| E18 | Matrixzeile 3 (riskante Übergänge, `resume`): Für v1.5.0 einengen? Vorschlag (Empfehlung): `resume` ist in v1.5.0 nicht verfügbar; ein Laufzeittest mit echtem Store belegt, dass `resume` ohne, mit falschem und mit aktuellem Urteil abgelehnt wird und nichts verändert, auch nach Neustart (Paket M4-ROW3-A eingereiht). Alternative: urteilsgebundenes `resume` bauen (5 Pakete, davon 2 auf der st-Spur, v1.5.0 ca. 1–2 Tage später). Bis zur Antwort gilt der Vorschlag als Arbeitsannahme. | Hohe Priorität; v1.5.0-Pfad, Empfehlung annehmen. | Nutzer | offen, hoch |
+| E18 | Matrixzeile 3 (riskante Übergänge, `resume`): Für v1.5.0 einengen? Vorschlag (Empfehlung): `resume` ist in v1.5.0 nicht verfügbar; ein Laufzeittest mit echtem Store belegt, dass `resume` ohne, mit falschem und mit aktuellem Urteil abgelehnt wird und nichts verändert, auch nach Neustart (Paket M4-ROW3-A eingereiht). Alternative: urteilsgebundenes `resume` bauen (5 Pakete, davon 2 auf der st-Spur, v1.5.0 ca. 1–2 Tage später). Bis zur Antwort gilt der Vorschlag als Arbeitsannahme. | Hohe Priorität; v1.5.0-Pfad, Empfehlung annehmen. | Nutzer | v1.5.x ausgeliefert — neu zu formulieren |
 | E19 | Matrixzeilen 15 und 17 eingeengt statt neu gebaut (Berater Fable + Astra, 04.10., beide Empfehlung: einengen). Echte Policy-Revision je Kandidat (DF-13) und echte Freigabe-Widerrufung (W5-02d) werden in M5 nachgeprüft. Gilt als Beraterentscheid; der Nutzer kann widersprechen. | Hohe Priorität; v1.5.0-Pfad. | Nutzer | entschieden (Berater), Nutzer kann widersprechen |
 | E20 | Zeilen 18 und 27 blockieren v1.5.0 in der heutigen Fassung: `releaseEligible` verlangt Review-Befugnis (W5-02d, nach M4 geparkt) und zugleich eingeschalteten Dauerbetrieb, obwohl E5 sagt, der Dauerbetrieb bleibt bis nach der Abnahme aus. Optionen: (A, Empfehlung beider Berater) v1.5.0 = App-Release über den menschlich kontrollierten Weg PR -> Gates -> Merge-Queue; Dauerbetrieb wird aus und nicht releasefähig ausgeliefert; Zeile 18/27 und das Audit werden getrennt (App-Release vs. Dauerbetrieb), der Nutzer bestätigt die Abnahme selbst in einer Datei; (B) Review-Befugnis jetzt bauen (mehrere Stufe-A-Pakete an Nahtstellen, v1.5.0 deutlich später); (C) Release verschieben. | Höchste Priorität; v1.5.0-Blocker. | Nutzer | ✓ entschieden (Nutzer 04.10.): Option A — v1.5.0 = App-Release, Dauerbetrieb aus und nicht releasefähig, Abnahme per Nutzer-Attestierung |
-| E21 | Matrixzeile 2 (Aktivierung durch eine einzelne Nutzerentscheidung): Dauerbetrieb bleibt in v1.5.0 aus (E20). Optionen: (A, Empfehlung) Zeile 2 lautet für v1.5.0 „Schalter gebaut und gesperrt (W4-03), Einschalten erst nach v1.5.0“; (B) Zeile 2 nach M5 verschieben. | v1.5.0-Pfad klären. | Nutzer | offen, Nutzer |
-| E22 | Matrixzeile 16 (unabhängige Reviews): Heute laufen Reviews als PR-Text mit anderer Modellfamilie; eine Review-Freigabe in der App gibt es in v1.5.0 nicht (W5-02d nach M4 geparkt). Optionen: (A, Empfehlung) Zeile 16 für v1.5.0 auf „Review durch andere Modellfamilie im PR, an denselben Kandidaten gebunden“ verengen, echte App-Freigabe in M5; (B) offen lassen bis M5. | v1.5.0-Pfad klären. | Nutzer | offen, Nutzer |
+| E21 | Matrixzeile 2 (Aktivierung durch eine einzelne Nutzerentscheidung): Dauerbetrieb bleibt in v1.5.0 aus (E20). Optionen: (A, Empfehlung) Zeile 2 lautet für v1.5.0 „Schalter gebaut und gesperrt (W4-03), Einschalten erst nach v1.5.0“; (B) Zeile 2 nach M5 verschieben. | v1.5.0-Pfad klären. | Nutzer | v1.5.x ausgeliefert — neu zu formulieren |
+| E22 | Matrixzeile 16 (unabhängige Reviews): Heute laufen Reviews als PR-Text mit anderer Modellfamilie; eine Review-Freigabe in der App gibt es in v1.5.0 nicht (W5-02d nach M4 geparkt). Optionen: (A, Empfehlung) Zeile 16 für v1.5.0 auf „Review durch andere Modellfamilie im PR, an denselben Kandidaten gebunden“ verengen, echte App-Freigabe in M5; (B) offen lassen bis M5. | v1.5.0-Pfad klären. | Nutzer | v1.5.x ausgeliefert — neu zu formulieren |
 | E23 | Matrixzeile 24 (Benchmark 5 Aufgaben, W4-01 #73): Ein echter Lauf verbraucht Abo-Kontingent. Optionen: (A) freigeben, Lauf am PC mit den 5 bestätigten Aufgaben; (B) nach v1.5.0 verschieben. | Nutzerfreigabe vor dem Lauf. | Nutzer | offen, Nutzer |
 | E24 | Name der Beta: Die Release-Pipeline akzeptiert nur x.y.z (`scripts/verify-windows-package.ps1:5`, `scripts/release.cmd:16`). Beta heißt v1.5.0, Endrelease v1.5.1? | Empfehlung: ja (kein Umbau). Alternative: echte `-beta`-Tags = `release.yml`-Umbau (Stufe A). | Nutzer | entschieden (Nutzer 05.10.): A |
 | E25 | R-1 ist zirkulär: Update-Drill (success/cancel/fail) und W3-07 brauchen ein echtes veröffentlichtes Update (fester Endpoint `tauri.conf.json:54-56`), R-1 verlangt sie aber vor dem Tag. Sollen sie Teil der Beta-Abnahme werden statt Voraussetzung? | Empfehlung: ja; Drills 1-6 und 8 vorher auf lokal signiert gebautem Installer (`node scripts/build-signed-windows.mjs`). | Nutzer | entschieden (Nutzer 05.10.): A |

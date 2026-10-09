@@ -157,17 +157,28 @@ async fn real_native_completed_receipt_survives_sqlite_writer_within_busy_timeou
                     let holder = if stage == Stage::Receipt {
                         let options = sqlx::sqlite::SqliteConnectOptions::new()
                             .filename(dir.path().join("projecta.db"))
-                            .busy_timeout(Duration::from_secs(5));
+                            .busy_timeout(Duration::from_millis(
+                                projecta_capture::protocol::SQLITE_BUSY_TIMEOUT_MS,
+                            ));
                         let mut connection = runtime.block_on(
                             sqlx::sqlite::SqliteConnection::connect_with(&options)).unwrap();
                         runtime.block_on(sqlx::query("BEGIN IMMEDIATE")
                             .execute(&mut connection)).unwrap();
                         Some(runtime.spawn(async move {
                             // Experimental load: exceeds the host's former
-                            // 3s receipt wait but stays inside SQLite's 5s wait.
+                            // short receipt wait but stays inside SQLite's
+                            // mirrored busy_timeout.
                             tokio::time::sleep(Duration::from_secs(4)).await;
                             sqlx::query("ROLLBACK").execute(&mut connection).await.unwrap();
                         }))
+                    } else if stage == Stage::Process {
+                        // Process does not gate host progress, so this delay
+                        // overlaps the host drain window that starts at child
+                        // exit. Launch delay would only shift the whole run
+                        // and leave the 5s receipt budget intact (CI run
+                        // 37840356500 stayed green).
+                        std::thread::sleep(Duration::from_secs(2));
+                        None
                     } else { None };
                     let persist_start = start.elapsed();
                     let persisted = runtime.block_on(store.persist_native_checkpoint(owner, &request));

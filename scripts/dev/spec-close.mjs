@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EXIT, UsageError, RefusedError, makeRunner, gitIn, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
-import { listedInStand } from "../lib/active-specs.mjs";
+import { ERLAUBT, listedInStand } from "../lib/active-specs.mjs";
 
 const SECTION = /^#{2,4}\s*Aktive Specs\s*$/; // same rule as scripts/lib/active-specs.mjs
 const HEAD_LINES = 8; // same rule as scripts/lib/active-specs.mjs
@@ -48,6 +48,7 @@ export function closeSpec(text) {
   const value = /^Status:\s*(\S+)\s*$/.exec(line);
   if (!value) throw new RefusedError(`Status-Zeile nicht im Format "Status: <Wert>" (ein Wort, kein Zusatz): ${line.trim()}`);
   const previous = value[1];
+  if (!ERLAUBT.has(previous)) throw new RefusedError(`Status "${previous}" unbekannt; erlaubt: ${[...ERLAUBT].join(", ")}.`);
   if (previous === "historisch") return { text, changed: false, previous };
   lines[i] = "Status: historisch";
   return { text: lines.join(eol), changed: true, previous };

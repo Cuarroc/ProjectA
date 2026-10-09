@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   approveSetupTrust,
+  cancelUpdateDownload,
   describeError,
   getDevelopmentPlan,
   getOmniRouteUsage,
@@ -27,6 +28,14 @@ vi.mock("@tauri-apps/api/event", () => ({
 describe("IPC audit regressions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("cancels update download through the typed command", async () => {
+    for (const result of ["cancelled", "tooLate", "notRunning"] as const) {
+      vi.mocked(invoke).mockResolvedValue(result);
+      await expect(cancelUpdateDownload()).resolves.toBe(result);
+      expect(invoke).toHaveBeenCalledWith("cancel_update_download");
+    }
   });
 
   it("rejects malformed session inventory instead of permitting an idle update", async () => {

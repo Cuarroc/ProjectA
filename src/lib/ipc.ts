@@ -184,6 +184,13 @@ export async function installUpdateWhenIdle(updateRid: number): Promise<void> {
   await invoke("install_update_when_idle", { updateRid });
 }
 
+/** cancelled = thaw-before-ack; tooLate = no thaw; notRunning = no/aborted flight (serde camelCase). */
+export type CancelUpdateResult = "cancelled" | "tooLate" | "notRunning";
+
+export async function cancelUpdateDownload(): Promise<CancelUpdateResult> {
+  return invoke<CancelUpdateResult>("cancel_update_download");
+}
+
 export type UpdaterState =
   | { phase: "idle" }
   | { phase: "checking" }

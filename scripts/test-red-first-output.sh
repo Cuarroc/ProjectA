@@ -70,4 +70,5 @@ if ! classify_run 'suite passed' 0 scripts/example.sh; then
 fi
 bash "$ROOT/scripts/test-red-first-vitest-filter.sh"
 bash "$ROOT/scripts/test-red-first-mjs-filter.sh"
+bash "$ROOT/scripts/test-red-first-playwright-filter.sh"
 echo 'red-first output classification: passed'
