@@ -134,3 +134,12 @@ test('DRSEC: overlapping release cannot unlink a successor record', async t => {
     await release(file, successor.nonce);
   } finally { fs.unlink = orig; syncBuiltinESMExports(); }
 });
+test('DRSEC: filesystem failures use fixed diagnostics without paths', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'denkraum-ownership-io-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, 'not-a-dir'), 'x');
+  for (const path of [join(dir, 'missing-parent', 'l.json'), join(dir, 'not-a-dir', 'l.json')]) {
+    await assert.rejects(acquire(path), e => isDiag(e, IO));
+    await assert.rejects(release(path, 'synthetic-nonce'), e => isDiag(e, IO));
+  }
+});
