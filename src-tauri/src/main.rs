@@ -115,6 +115,7 @@ mod submit_guard;
 mod testgate;
 #[cfg(test)]
 mod testutil;
+mod update_cancel;
 mod web_interface;
 mod workers;
 mod worktree;
