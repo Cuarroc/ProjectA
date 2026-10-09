@@ -16,6 +16,13 @@ const FIXTURE_TEXT = 'DR16-LEDGER-FIXTURE-TEXT-UNIQUE';
 const SECRET = 'synth-secret-token-dr16-0123456789abcdef';
 const output = async () => join(await mkdtemp(join(tmpdir(), 'dr16-backup-')), 'snap');
 const sha = buf => createHash('sha256').update(buf).digest('hex');
+async function freePort() {
+  const listener = createServer();
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  await new Promise(r => listener.close(r));
+  return port;
+}
 function run(args, env = {}, entry = SWITCH) {
   return new Promise(resolve => {
     const childEnv = { ...process.env, ...env }; delete childEnv.NODE_TEST_CONTEXT;
@@ -48,8 +55,8 @@ async function serve(statePath) {
   return { port, base: `http://127.0.0.1:${port}`, close: () => new Promise(r => server.close(r)) };
 }
 async function bakOk(state) {
-  const outDir = await output();
-  assert.equal((await run(['backup', '--state', state, '--out', outDir])).status, 0);
+  const outDir = await output(), port = await freePort();
+  assert.equal((await run(['backup', '--state', state, '--out', outDir, '--port', String(port)])).status, 0);
   return outDir;
 }
 test('DR16: backup refuses while the desk server is listening', async () => {
@@ -76,7 +83,7 @@ test('DR16: quiescent backup verifies hashes schema and revision', async () => {
       assert.equal(bytes.length, f.bytes); assert.equal(sha(bytes), f.sha256);
     }
     assert.equal((await run(['verify', '--backup', outDir])).status, 0);
-    assert.notEqual((await run(['backup', '--state', state, '--out', outDir])).status, 0);
+    assert.notEqual((await run(['backup', '--state', state, '--out', outDir, '--port', String(await freePort())])).status, 0);
     const target = join(outDir, manifest.files[0].name);
     await writeFile(target, Buffer.concat([await readFile(target), Buffer.from('x')]));
     assert.equal((await run(['verify', '--backup', outDir])).status, 4);
@@ -116,9 +123,9 @@ test('DR16: rollback never restores an older ledger', async () => {
 test('DR16: drill log contains no ledger text or secrets', async () => {
   const { state } = await ledger();
   await writeFile(`${state}.previous`, JSON.stringify({ schemaVersion: 1, revision: 1, questions: [], answers: [], note: FIXTURE_TEXT }));
-  const outDir = await output(), chunks = [];
+  const outDir = await output(), chunks = [], port = await freePort();
   for (const args of [
-    ['backup', '--state', state, '--out', outDir],
+    ['backup', '--state', state, '--out', outDir, '--port', String(port)],
     ['verify', '--backup', outDir],
     ['compare', '--backup', outDir, '--state', state],
     ['restore', '--backup', outDir, '--state', state],
@@ -133,7 +140,7 @@ test('DR16: CLI entry via symlink still runs backup', async t => {
   const link = join(await mkdtemp(join(tmpdir(), 'dr16-link-')), 'sw.mjs');
   try { await symlink(SWITCH, link); }
   catch (error) { if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)'); throw error; }
-  const r = await run(['backup', '--state', state, '--out', outDir], {}, link);
+  const r = await run(['backup', '--state', state, '--out', outDir, '--port', String(await freePort())], {}, link);
   assert.equal(r.status, 0, r.stderr + r.stdout);
   assert.match(r.stdout, /"cmd":"backup"/);
   assert.equal(JSON.parse(r.stdout).proof, 'port-only');
@@ -223,12 +230,13 @@ test('DR16H: invalid paths emit exactly one JSON error', async () => {
 test('DR16H: filesystem and validation failures retain safe diagnostics', async () => {
   const { state } = await ledger(), out = await bakOk(state);
   for (const target of [out, join(out, 'missing', 'snap')]) {
-    const r = await run(['backup', '--state', state, '--out', target]);
+    const r = await run(['backup', '--state', state, '--out', target, '--port', String(await freePort())]);
     assert.equal(r.status, 4); assert.match(JSON.parse(r.stdout).error, /Ausgabeverzeichnis/);
     assert.match(r.stderr, target === out ? /EEXIST/ : /ENOENT/);
   }
   for (const cmd of ['backup', 'verify', 'compare']) {
-    const r = await run([cmd, '--state', join(out, 'missing'), '--out', await output(), '--backup', join(out, 'missing')]);
+    const r = await run([cmd, '--state', join(out, 'missing'), '--out', await output(), '--backup', join(out, 'missing'),
+      '--port', String(await freePort())]);
     assert.equal(r.status, 4); assert.match(r.stderr, /ENOENT/); JSON.parse(r.stdout);
   }
   await writeFile(state, '{}');
@@ -237,7 +245,7 @@ test('DR16H: filesystem and validation failures retain safe diagnostics', async 
 });
 test('DR16H: parser diagnostics never expose ledger text or secrets', async () => {
   const { state } = await ledger(), out = await bakOk(state);
-  for (const [file, args] of [[state, ['backup', '--state', state, '--out', await output()]],
+  for (const [file, args] of [[state, ['backup', '--state', state, '--out', await output(), '--port', String(await freePort())]],
     [join(out, 'manifest.json'), ['verify', '--backup', out]]]) {
     await writeFile(file, `{"${FIXTURE_TEXT}":"${SECRET}" BROKEN}`);
     const r = await run(args, { DECISION_DESK_ROOT_RECEIPT_TOKEN: SECRET });
@@ -285,16 +293,16 @@ test('DR16H: tmp warnings belong only to this ledger including previous temps', 
   for (const name of [...expected, 'noise.tmp', `other.json.${id}.tmp.previous`, `ledger.json.other.${id}.tmp`]) {
     await writeFile(join(dirname(state), name), 'temporary fixture');
   }
-  const r = await run(['backup', '--state', state, '--out', await output()]);
+  const r = await run(['backup', '--state', state, '--out', await output(), '--port', String(await freePort())]);
   assert.equal(r.status, 0);
   const lines = r.stdout.trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(lines.filter(l => l.warn === 'tmp').map(l => l.name).sort(), expected.sort());
   assert.equal(lines.at(-1).ok, true);
 });
 test('DR16H: backup directory is private on POSIX', { skip: process.platform === 'win32' }, async () => {
-  const { state } = await ledger(), out = await output();
+  const { state } = await ledger(), out = await output(), port = await freePort();
   const r = await run([`process.umask(0); process.argv = [process.execPath, ${JSON.stringify(SWITCH)},
-    'backup', '--state', ${JSON.stringify(state)}, '--out', ${JSON.stringify(out)}];
+    'backup', '--state', ${JSON.stringify(state)}, '--out', ${JSON.stringify(out)}, '--port', ${JSON.stringify(String(port))}];
     await import(${JSON.stringify(new URL('./switch.mjs', import.meta.url).href)});`], {}, '-e');
   assert.equal(r.status, 0, r.stderr); assert.equal((await stat(out)).mode & 0o777, 0o700);
 });
