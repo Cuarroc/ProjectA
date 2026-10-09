@@ -5,11 +5,12 @@ import { mkdtemp, rm, access } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createDeskServer } from './server.mjs';
 import { DeskStore } from './store.mjs';
 import { ownerRecordPath, OWNERSHIP_RELEASE_MISMATCH } from './store/ownership.mjs';
 
-const entry = new URL('./server.mjs', import.meta.url).pathname;
+const entry = fileURLToPath(new URL('./server.mjs', import.meta.url));
 const question = id => ({ id, title: 'T', context: 'C', owner: 'O', category: 'K', scope: 'S', source: 'Q', uncertainty: 'U',
   recommendation: { optionIds: ['a'], rationale: 'R' }, options: ['a', 'b'].map(o => ({ id: o, label: o, rationale: 'R', impact: 'I', tradeoff: 'T', effort: 'E', reversible: 'Y' })) });
 const gone = path => access(path).then(() => false, e => e.code === 'ENOENT');
