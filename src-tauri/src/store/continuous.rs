@@ -203,7 +203,7 @@ async fn root_policy(tx: &mut SqliteConnection, root: &str) -> Result<Developmen
             .fetch_one(&mut *tx)
             .await
             .map_err(db("read immutable root policy"))?;
-    development_policy::parse(&row.0)
+    development_policy::parse(&row.0).map_err(|error| format!("error: {error}"))
 }
 
 impl Store {
@@ -215,31 +215,62 @@ impl Store {
         source_goal_id: Option<String>,
         admit: bool,
     ) -> Result<ContinuousGoal, String> {
-        let objective = required_text(objective, "objective")?;
-        self.require_project(project_id).await?;
-        let loaded = if source_goal_id.is_none() {
-            let project = self
-                .get_project(project_id)
-                .await?
-                .ok_or("unknown project")?;
-            Some(development_policy::load(std::path::Path::new(
-                &project.repo_path,
-            ))?)
+        // File I/O precedes the writer lock; freeze this policy snapshot only if
+        // the project still resolves to the same path under the lock.
+        let prepared = self
+            .prepare_goal_policy(project_id, source_goal_id.is_none())
+            .await;
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let objective = required_text(objective, "objective")?;
+            let (repo_path, loaded) = prepared?;
+            if goal_task_project_path(&mut work, project_id).await? != repo_path {
+                return Err("project path changed while loading policy; retry".into());
+            }
+            Self::create_continuous_goal_body(
+                &mut work,
+                project_id,
+                objective,
+                acceptance_criteria,
+                source_goal_id,
+                admit,
+                loaded,
+            )
+            .await
+        }
+        .await;
+        let subject = outcome
+            .as_ref()
+            .map(|goal| goal.id.as_str())
+            .unwrap_or(project_id)
+            .to_string();
+        finish_goal_task_audit(work, outcome, "goal_create", &subject, Some(project_id)).await
+    }
+
+    async fn prepare_goal_policy(
+        &self,
+        project: &str,
+        root: bool,
+    ) -> Result<(String, Option<development_policy::LoadedPolicy>), String> {
+        let path = goal_task_project_path(
+            &mut *self.pool.acquire().await.map_err(db("read project"))?,
+            project,
+        )
+        .await?;
+        let loaded = if root {
+            Some(
+                development_policy::load(std::path::Path::new(&path)).map_err(|error| {
+                    if error.starts_with("cannot read ") {
+                        format!("error: {error}")
+                    } else {
+                        error
+                    }
+                })?,
+            )
         } else {
             None
         };
-        let mut tx = begin_write(&self.pool, "begin continuous goal").await?;
-        let outcome = Self::create_continuous_goal_body(
-            &mut tx,
-            project_id,
-            objective,
-            acceptance_criteria,
-            source_goal_id,
-            admit,
-            loaded,
-        )
-        .await;
-        settle(tx, outcome, "commit continuous goal").await
+        Ok((path, loaded))
     }
 
     async fn create_continuous_goal_body(
@@ -324,7 +355,7 @@ impl Store {
         };
         if let Some(loaded) = loaded {
             let encoded = serde_json::to_string(&loaded.policy)
-                .map_err(|e| format!("encode root policy: {e}"))?;
+                .map_err(|e| format!("error: encode root policy: {e}"))?;
             sqlx::query("INSERT INTO continuous_root_policies(root_goal_id, policy_json, source, observed_at) VALUES(?, ?, ?, ?)")
                 .bind(&root_goal_id).bind(encoded).bind(&loaded.source).bind(now).execute(&mut *tx).await.map_err(db("freeze root policy"))?;
         }
@@ -354,21 +385,26 @@ impl Store {
         owned_paths: Vec<String>,
         dependencies: Vec<String>,
     ) -> Result<ContinuousTask, String> {
-        let objective = required_text(objective, "objective")?;
-        let owned_paths = normalize_scopes(owned_paths)?;
-        let dependencies = normalize_ids(dependencies, "dependencies")?;
-        let mut tx = begin_write(&self.pool, "begin continuous task").await?;
-        let outcome = Self::create_continuous_task_body(
-            &mut tx,
-            goal_id,
-            objective,
-            profile_id,
-            owned_paths,
-            dependencies,
-        )
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let objective = required_text(objective, "objective")?;
+            let owned_paths = normalize_scopes(owned_paths)?;
+            let dependencies = normalize_ids(dependencies, "dependencies")?;
+            Self::create_continuous_task_body(
+                &mut work,
+                goal_id,
+                objective,
+                profile_id,
+                owned_paths,
+                dependencies,
+            )
+            .await
+        }
         .await;
-        let id = settle(tx, outcome, "commit continuous task").await?;
-        self.get_continuous_task(&id)
+        let subject = outcome.as_deref().unwrap_or(goal_id).to_string();
+        let outcome = finish_goal_task_audit(work, outcome, "task_create", &subject, None).await;
+        let value = outcome?;
+        self.get_continuous_task(&value)
             .await?
             .ok_or_else(|| "created continuous task disappeared".to_string())
     }
@@ -428,10 +464,10 @@ impl Store {
         }
         let now = now_unix_secs();
         let id = new_id("ct");
-        let owned_paths_json =
-            serde_json::to_string(&owned_paths).map_err(|e| format!("encode owned paths: {e}"))?;
+        let owned_paths_json = serde_json::to_string(&owned_paths)
+            .map_err(|e| format!("error: encode owned paths: {e}"))?;
         let dependencies_json = serde_json::to_string(&dependencies)
-            .map_err(|e| format!("encode dependencies: {e}"))?;
+            .map_err(|e| format!("error: encode dependencies: {e}"))?;
         sqlx::query("INSERT INTO continuous_tasks(id, goal_id, objective, profile_id, owned_paths_json, dependencies_json, status, created_at, updated_at) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)")
             .bind(&id).bind(goal_id).bind(&objective).bind(&profile_id).bind(&owned_paths_json).bind(&dependencies_json).bind(TASK_OPEN).bind(now)
             .execute(&mut *tx).await.map_err(db("create continuous task"))?;
@@ -469,16 +505,15 @@ impl Store {
         escalation: bool,
         observe_capacity: impl FnOnce() -> capacity::Capacity,
     ) -> Result<ContinuousClaim, String> {
-        let owner = required_text(owner, "owner")?;
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(db("begin continuous claim"))?;
-        let outcome =
-            Self::claim_with_capacity_body(&mut tx, task_id, &owner, escalation, observe_capacity)
-                .await;
-        settle(tx, outcome, "commit continuous claim").await
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            let owner = required_text(owner, "owner")?;
+            Self::claim_with_capacity_body(&mut work, task_id, &owner, escalation, observe_capacity)
+                .await
+        }
+        .await;
+        let subject = task_id;
+        finish_goal_task_audit(work, outcome, "task_claim", subject, None).await
     }
 
     async fn claim_with_capacity_body(
@@ -565,7 +600,7 @@ impl Store {
                 .await
                 .map_err(db("read continuous dependencies"))?;
         let deps: Vec<String> = serde_json::from_str(&deps_json.0)
-            .map_err(|e| format!("continuous dependencies are corrupt: {e}"))?;
+            .map_err(|e| format!("error: continuous dependencies are corrupt: {e}"))?;
         check_claim_dependencies(tx, &project_id, &deps).await?;
         let now = now_unix_secs();
         let fence = prior_fence + 1;
@@ -599,6 +634,27 @@ impl Store {
         status: Option<&str>,
         detail: Option<&str>,
     ) -> Result<ContinuousTask, String> {
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = Self::checkpoint_continuous_task_checked(
+            &mut work, task_id, owner, fence, status, detail,
+        )
+        .await;
+        let subject = task_id;
+        let outcome = finish_goal_task_audit(work, outcome, "task_checkpoint", subject, None).await;
+        outcome?;
+        self.get_continuous_task(task_id)
+            .await?
+            .ok_or_else(|| "checkpointed continuous task disappeared".to_string())
+    }
+
+    async fn checkpoint_continuous_task_checked(
+        work: &mut SqliteConnection,
+        task_id: &str,
+        owner: &str,
+        fence: i64,
+        status: Option<&str>,
+        detail: Option<&str>,
+    ) -> Result<(), String> {
         let owner = required_text(owner, "owner")?;
         let requested = status.unwrap_or(TASK_RUNNING);
         let retry = requested == "retry";
@@ -614,15 +670,8 @@ impl Store {
                     .to_string(),
             );
         }
-        let mut tx = begin_write(&self.pool, "begin continuous checkpoint").await?;
-        let outcome = Self::checkpoint_continuous_task_body(
-            &mut tx, task_id, &owner, fence, next, retry, detail,
-        )
-        .await;
-        settle(tx, outcome, "commit continuous checkpoint").await?;
-        self.get_continuous_task(task_id)
-            .await?
-            .ok_or_else(|| "checkpointed continuous task disappeared".to_string())
+        Self::checkpoint_continuous_task_body(work, task_id, &owner, fence, next, retry, detail)
+            .await
     }
 
     async fn checkpoint_continuous_task_body(
@@ -701,27 +750,49 @@ impl Store {
         project_id: &str,
         action: &str,
     ) -> Result<ContinuousControl, String> {
-        self.require_project(project_id).await?;
-        let status = match action {
-            "pause" => CONTINUOUS_PAUSED,
-            "drain" => CONTINUOUS_DRAINING,
-            "cancel" => CONTINUOUS_PAUSED,
-            "resume" => {
-                return Err(
-                    "continuous runtime adapters are unattested; resume is fail-closed".to_string(),
-                )
-            }
-            _ => return Err("continuous action must be pause, drain, resume or cancel".to_string()),
+        let action = match action {
+            "pause" | "drain" | "cancel" | "resume" => action,
+            _ => "invalid",
         };
-        let now = now_unix_secs();
-        let mut tx = begin_write(&self.pool, "begin continuous control").await?;
-        let outcome = Self::control_continuous_body(&mut tx, project_id, action, status, now).await;
-        settle(tx, outcome, "commit continuous control").await?;
-        Ok(ContinuousControl {
-            project_id: project_id.to_string(),
-            status: status.to_string(),
-            updated_at: now,
-        })
+        let mut work = begin_goal_task_audit(&self.pool).await?;
+        let outcome = async {
+            goal_task_project_path(&mut work, project_id).await?;
+            let status = match action {
+                "pause" => CONTINUOUS_PAUSED,
+                "drain" => CONTINUOUS_DRAINING,
+                "cancel" => CONTINUOUS_PAUSED,
+                "resume" => {
+                    return Err(
+                        "continuous runtime adapters are unattested; resume is fail-closed"
+                            .to_string(),
+                    )
+                }
+                _ => {
+                    return Err(
+                        "continuous action must be pause, drain, resume or cancel".to_string()
+                    )
+                }
+            };
+            let now = now_unix_secs();
+            let outcome =
+                Self::control_continuous_body(&mut work, project_id, action, status, now).await;
+            outcome?;
+            Ok(ContinuousControl {
+                project_id: project_id.to_string(),
+                status: status.to_string(),
+                updated_at: now,
+            })
+        }
+        .await;
+        let subject = project_id;
+        finish_goal_task_audit(
+            work,
+            outcome,
+            &format!("control_{action}"),
+            subject,
+            Some(project_id),
+        )
+        .await
     }
 
     async fn control_continuous_body(
@@ -897,6 +968,97 @@ impl Store {
     }
 }
 
+async fn goal_task_project_path(
+    tx: &mut SqliteConnection,
+    project: &str,
+) -> Result<String, String> {
+    sqlx::query_scalar("SELECT repo_path FROM projects WHERE id=?")
+        .bind(project)
+        .fetch_optional(tx)
+        .await
+        .map_err(db("read goal/task project"))?
+        .ok_or_else(|| "unknown project".into())
+}
+
+async fn begin_goal_task_audit(pool: &SqlitePool) -> Result<Transaction<'static, Sqlite>, String> {
+    let mut tx = begin_write(pool, "begin goal/task audit").await?;
+    sqlx::query("SAVEPOINT goal_task_change")
+        .execute(&mut *tx)
+        .await
+        .map_err(db("begin goal/task change"))?;
+    Ok(tx)
+}
+
+/// One operation, one envelope. A savepoint removes partial domain writes on
+/// refusal; the outer write transaction commits that refusal without a state change.
+/// `not-applicable` means no run exists, `unresolved` an unknown project scope.
+async fn finish_goal_task_audit<T>(
+    mut work: Transaction<'_, Sqlite>,
+    outcome: Result<T, String>,
+    action: &str,
+    subject: &str,
+    project: Option<&str>,
+) -> Result<T, String> {
+    let audit = append_goal_task_audit(&mut work, &outcome, action, subject, project).await;
+    settle(work, audit, "commit goal/task audit").await?;
+    outcome
+}
+
+async fn append_goal_task_audit<T>(
+    work: &mut Transaction<'_, Sqlite>,
+    outcome: &Result<T, String>,
+    action: &str,
+    subject: &str,
+    project: Option<&str>,
+) -> Result<(), String> {
+    if outcome.is_err() {
+        sqlx::query("ROLLBACK TO goal_task_change")
+            .execute(&mut **work)
+            .await
+            .map_err(db("rollback goal/task change"))?;
+    }
+    let project = sqlx::query_scalar::<_, String>(concat!(
+        "SELECT id FROM projects WHERE id = COALESCE(?1, (",
+        "SELECT project_id FROM continuous_goals WHERE id=?2 UNION ALL ",
+        "SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ",
+        "ON g.id=t.goal_id WHERE t.id=?2 LIMIT 1))"
+    ))
+    .bind(project)
+    .bind(subject)
+    .fetch_optional(&mut **work)
+    .await
+    .map_err(db("resolve goal/task project"))?
+    .unwrap_or_else(|| "unresolved".into());
+    let subject =
+        if project == "unresolved" && (action.starts_with("control_") || action == "goal_create") {
+            "unresolved"
+        } else {
+            subject
+        };
+    // development_runs enforces UNIQUE(task_id, claim_fence), so at most one row matches.
+    let run: Option<String> = sqlx::query_scalar("SELECT r.id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id AND t.claim_fence=r.claim_fence WHERE t.id=?")
+        .bind(subject).fetch_optional(&mut **work).await.map_err(db("resolve goal/task run"))?;
+    let result = match &outcome {
+        Ok(_) => "accepted".into(),
+        Err(error) if error.starts_with("error:") => error.clone(),
+        Err(error) => format!("refused: {error}"),
+    };
+    super::audit::append_domain_audit_tx(
+        work,
+        "store:continuous",
+        action,
+        subject,
+        &super::audit::AuditEnvelope {
+            project: &project,
+            run: run.as_deref().unwrap_or("not-applicable"),
+            result: &result,
+            source_ref: &format!("continuous:{action}:{subject}"),
+        },
+    )
+    .await?;
+    Ok(())
+}
+
 async fn event(
     tx: &mut SqliteConnection,
     project_id: &str,
@@ -910,7 +1072,7 @@ async fn event(
     Ok(())
 }
 fn db(label: &'static str) -> impl FnOnce(sqlx::Error) -> String {
-    move |e| format!("{label}: {e}")
+    move |e| format!("error: {label}: {e}")
 }
 /// Opens a transaction that holds SQLite's writer lock from its first
 /// statement (`BEGIN IMMEDIATE`). Every writer here reads before it writes;
@@ -925,7 +1087,10 @@ pub(super) async fn begin_write(
     pool: &SqlitePool,
     label: &'static str,
 ) -> Result<Transaction<'static, Sqlite>, String> {
-    pool.begin_with("BEGIN IMMEDIATE").await.map_err(db(label))
+    // Shared callers rely on this original error; no audit transaction exists yet.
+    pool.begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(|error| format!("{label}: {error}"))
 }
 /// Commits `tx` on `Ok`, explicitly rolls it back on `Err`; `label` names
 /// the commit in its error.
@@ -1138,6 +1303,441 @@ mod tests {
         .unwrap();
         (dir, store, project.id)
     }
+    #[tokio::test]
+    async fn goal_task_audit_policy_precedes_writer_lock() {
+        for change_path in [false, true] {
+            let (dir, store, project) = store().await;
+            let policy = dir.path().join(development_policy::POLICY_FILE);
+            let original = std::fs::read(&policy).unwrap();
+            if !change_path {
+                std::fs::write(&policy, "malformed").unwrap();
+            }
+            let mut writer = begin_write(&store.pool, "test writer").await.unwrap();
+            let create = store.create_continuous_goal(&project, "goal", None, None, false);
+            tokio::pin!(create);
+            assert!(
+                tokio::time::timeout(std::time::Duration::from_millis(100), &mut create)
+                    .await
+                    .is_err()
+            );
+            if change_path {
+                sqlx::query("UPDATE projects SET repo_path = repo_path || '/changed' WHERE id=?")
+                    .bind(&project)
+                    .execute(&mut *writer)
+                    .await
+                    .unwrap();
+            } else {
+                std::fs::write(&policy, original).unwrap();
+            }
+            writer.commit().await.unwrap();
+            let error = create.await.unwrap_err();
+            assert!(error.contains(if change_path {
+                "project path changed"
+            } else {
+                "invalid"
+            }));
+            assert!(store
+                .list_continuous_goals(&project)
+                .await
+                .unwrap()
+                .is_empty());
+            assert_eq!(goal_task_envelopes(&store).await.len(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_unknown_projects_are_unresolved() {
+        let (_dir, store, _) = store().await;
+        store
+            .create_continuous_goal("untrusted", "goal", None, None, false)
+            .await
+            .unwrap_err();
+        store
+            .control_continuous("untrusted", "pause")
+            .await
+            .unwrap_err();
+        let work = begin_goal_task_audit(&store.pool).await.unwrap();
+        finish_goal_task_audit(
+            work,
+            Err::<(), _>("refusal".into()),
+            "test",
+            "subject",
+            Some("untrusted"),
+        )
+        .await
+        .unwrap_err();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len(), 3);
+        for row in rows {
+            assert_eq!(row["project"], "unresolved");
+            assert!(row["result"].as_str().unwrap().starts_with("refused:"));
+        }
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_invalid_control_is_fixed() {
+        let (_dir, store, project) = store().await;
+        store
+            .control_continuous(&project, "untrusted-action")
+            .await
+            .unwrap_err();
+        let action: String = sqlx::query_scalar("SELECT action FROM audit_log")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(action, "control_invalid");
+        let rows = goal_task_envelopes(&store).await;
+        assert!(!rows[0].to_string().contains("untrusted-action"));
+        let status: String =
+            sqlx::query_scalar("SELECT status FROM continuous_projects WHERE project_id=?")
+                .bind(&project)
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!(status, CONTINUOUS_ENABLED);
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_infrastructure_errors_are_distinct() {
+        for io_error in [false, true] {
+            let (dir, store, project) = store().await;
+            if io_error {
+                std::fs::rename(
+                    dir.path().join(development_policy::POLICY_FILE),
+                    dir.path().join("policy-backup"),
+                )
+                .unwrap();
+            } else {
+                sqlx::query("CREATE TRIGGER fail_goal BEFORE INSERT ON continuous_goals BEGIN SELECT RAISE(ABORT, 'db unavailable'); END")
+                    .execute(&store.pool).await.unwrap();
+            }
+            store
+                .create_continuous_goal(&project, "goal", None, None, false)
+                .await
+                .unwrap_err();
+            let rows = goal_task_envelopes(&store).await;
+            assert_eq!(rows.len(), 1);
+            assert!(rows[0]["result"].as_str().unwrap().starts_with("error:"));
+            assert!(store
+                .list_continuous_goals(&project)
+                .await
+                .unwrap()
+                .is_empty());
+            let policies: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM continuous_root_policies")
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+            assert_eq!(policies, 0, "partial writes must roll back");
+        }
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_uses_one_connection() {
+        let (dir, mut store, project) = store().await;
+        store.pool.close().await;
+        store.pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(&format!(
+                "sqlite:{}",
+                dir.path().join("projecta.db").display()
+            ))
+            .await
+            .unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            store
+                .create_continuous_goal(&project, "goal", None, None, false)
+                .await
+                .unwrap();
+            assert_eq!(goal_task_envelopes(&store).await.len(), 1);
+        })
+        .await
+        .expect("audit must not acquire a second pooled connection while holding the writer");
+    }
+
+    async fn goal_task_envelopes(store: &Store) -> Vec<serde_json::Value> {
+        sqlx::query_scalar::<_, String>("SELECT detail_json FROM audit_log ORDER BY id")
+            .fetch_all(&store.pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|row| serde_json::from_str(&row).unwrap())
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_creation_success() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let _task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len(), 2, "one envelope per operation");
+        for row in rows {
+            assert_eq!(row["project"], project);
+            assert_eq!(row["result"], "accepted");
+            assert!(!row["run"].as_str().unwrap().is_empty());
+            assert!(row["sourceRef"]
+                .as_str()
+                .unwrap()
+                .starts_with("continuous:"));
+        }
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_creation_refusals_leave_state_unchanged() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["src".into()], vec![])
+            .await
+            .unwrap();
+        let _claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        let before = store.get_continuous_task(&task.id).await.unwrap();
+        let count = goal_task_envelopes(&store).await.len();
+        store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap_err();
+        store
+            .create_continuous_goal(&project, " ", None, None, false)
+            .await
+            .unwrap_err();
+        store
+            .create_continuous_task("unknown", "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap_err();
+        store
+            .create_continuous_task(&goal.id, "conflict", None, vec!["src".into()], vec![])
+            .await
+            .unwrap_err();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len() - count, 4);
+        assert_eq!(rows[count + 2]["project"], "unresolved");
+        assert_eq!(rows[count + 2]["run"], "not-applicable");
+        for row in &rows[count..] {
+            assert!(row["result"].as_str().unwrap().starts_with("refused:"));
+            for key in ["project", "run", "sourceRef"] {
+                assert!(!row[key].as_str().unwrap().is_empty());
+            }
+        }
+        assert_eq!(store.get_continuous_task(&task.id).await.unwrap(), before);
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap().len(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_creation_failure_rolls_back() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap();
+        let before = store.get_continuous_task(&task.id).await.unwrap();
+        let rows = goal_task_envelopes(&store).await;
+        sqlx::query("CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END")
+            .execute(&store.pool).await.unwrap();
+        assert!(store
+            .create_continuous_goal(&project, "draft", None, None, false)
+            .await
+            .is_err());
+        assert!(store
+            .create_continuous_task(&goal.id, "new", None, vec!["owned".into()], vec![])
+            .await
+            .is_err());
+        assert_eq!(goal_task_envelopes(&store).await, rows);
+        assert_eq!(store.get_continuous_task(&task.id).await.unwrap(), before);
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap(),
+            vec![goal]
+        );
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM continuous_tasks")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_control_uses_one_connection() {
+        // Deadlock detector: with max_connections(1) a real second acquire hangs
+        // forever; 30s absorbs slow CI runners without masking a true deadlock.
+        const DEADLOCK_DETECT_BOUND: std::time::Duration = std::time::Duration::from_secs(30);
+        let (dir, mut store, project) = store().await;
+        store.pool.close().await;
+        store.pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .acquire_timeout(DEADLOCK_DETECT_BOUND)
+            .connect(&format!(
+                "sqlite:{}",
+                dir.path().join("projecta.db").display()
+            ))
+            .await
+            .unwrap();
+        tokio::time::timeout(DEADLOCK_DETECT_BOUND, async {
+            store
+                .create_continuous_goal(&project, "goal", None, None, false)
+                .await
+                .unwrap();
+            store.control_continuous(&project, "cancel").await.unwrap();
+            assert_eq!(goal_task_envelopes(&store).await.len(), 2);
+        })
+        .await
+        .expect("audit must not acquire a second pooled connection while holding the writer");
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_success_covers_creation_transition_and_close() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        store
+            .checkpoint_continuous_task(&task.id, "worker", claim.fence, Some("completed"), None)
+            .await
+            .unwrap();
+        store.control_continuous(&project, "cancel").await.unwrap();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len(), 5, "one envelope per operation");
+        for row in rows {
+            assert_eq!(row["project"], project);
+            assert_eq!(row["result"], "accepted");
+            assert!(!row["run"].as_str().unwrap().is_empty());
+            assert!(row["sourceRef"]
+                .as_str()
+                .unwrap()
+                .starts_with("continuous:"));
+        }
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap()[0].status,
+            "cancelled"
+        );
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_transition_refusals_leave_state_unchanged() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["src".into()], vec![])
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        let before = store.get_continuous_task(&task.id).await.unwrap();
+        let count = goal_task_envelopes(&store).await.len();
+        store
+            .claim_continuous_task(&task.id, "other", false)
+            .await
+            .unwrap_err();
+        store
+            .checkpoint_continuous_task(
+                &task.id,
+                "worker",
+                claim.fence + 1,
+                Some("completed"),
+                None,
+            )
+            .await
+            .unwrap_err();
+        store
+            .control_continuous(&project, "resume")
+            .await
+            .unwrap_err();
+        let rows = goal_task_envelopes(&store).await;
+        assert_eq!(rows.len() - count, 3);
+        for row in &rows[count..] {
+            assert!(row["result"].as_str().unwrap().starts_with("refused:"));
+            for key in ["project", "run", "sourceRef"] {
+                assert!(!row[key].as_str().unwrap().is_empty());
+            }
+        }
+        assert_eq!(store.get_continuous_task(&task.id).await.unwrap(), before);
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap().len(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn goal_task_audit_transition_failure_rolls_back() {
+        let (_dir, store, project) = store().await;
+        let goal = store
+            .create_continuous_goal(&project, "goal", None, None, true)
+            .await
+            .unwrap();
+        let task = store
+            .create_continuous_task(&goal.id, "task", None, vec!["owned".into()], vec![])
+            .await
+            .unwrap();
+        let claim = store
+            .claim_continuous_task(&task.id, "worker", false)
+            .await
+            .unwrap();
+        let before = store.get_continuous_task(&task.id).await.unwrap();
+        let pending = store
+            .create_continuous_task(&goal.id, "pending", None, vec!["other".into()], vec![])
+            .await
+            .unwrap();
+        let rows = goal_task_envelopes(&store).await;
+        sqlx::query("CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END")
+            .execute(&store.pool).await.unwrap();
+        assert!(store
+            .checkpoint_continuous_task(&task.id, "worker", claim.fence, Some("completed"), None)
+            .await
+            .is_err());
+        assert!(store.control_continuous(&project, "cancel").await.is_err());
+        assert!(store
+            .claim_continuous_task(&pending.id, "worker", false)
+            .await
+            .is_err());
+        assert_eq!(
+            store.get_continuous_task(&pending.id).await.unwrap(),
+            Some(pending)
+        );
+        assert_eq!(goal_task_envelopes(&store).await, rows);
+        assert_eq!(store.get_continuous_task(&task.id).await.unwrap(), before);
+        assert_eq!(
+            store.list_continuous_goals(&project).await.unwrap(),
+            vec![goal]
+        );
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM continuous_tasks")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn event_pages_report_overflow_without_skipping_project_events() {
         let (dir, store, project) = store().await;

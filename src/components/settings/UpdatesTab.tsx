@@ -9,8 +9,11 @@ export interface UpdatesTabProps {
   versionFailed: boolean;
   updateState: UpdaterState;
   relaunchFailed: boolean;
+  cancelPending: boolean;
+  cancelNote: "cancelled" | "tooLate" | null;
   handleCheckUpdates: () => void;
   handleInstallUpdate: () => void;
+  handleCancelUpdateDownload: () => void;
   handleRelaunch: () => void;
 }
 
@@ -19,8 +22,11 @@ export default function UpdatesTab({
   versionFailed,
   updateState,
   relaunchFailed,
+  cancelPending,
+  cancelNote,
   handleCheckUpdates,
   handleInstallUpdate,
+  handleCancelUpdateDownload,
   handleRelaunch,
 }: UpdatesTabProps) {
   return (
@@ -66,6 +72,11 @@ export default function UpdatesTab({
                 {updateState.notes === null ? null : (
                   <pre className="masterprompt-preview">{updateState.notes}</pre>
                 )}
+                {cancelNote === "cancelled" ? (
+                  <p className="settings-hint" role="status">
+                    Der Download wurde abgebrochen. Sie können erneut installieren.
+                  </p>
+                ) : null}
                 {updateState.activeWorkers > 0 ? (
                   <p className="settings-hint">
                     {updateState.activeWorkers}{" "}
@@ -86,9 +97,28 @@ export default function UpdatesTab({
               </>
             ) : null}
             {updateState.phase === "installing" ? (
-              <p className="settings-hint">
-                Downloading and installing {updateState.version}…
-              </p>
+              <>
+                <p className="settings-hint">
+                  Downloading and installing {updateState.version}…
+                </p>
+                {cancelNote === "tooLate" ? (
+                  <p className="settings-hint" role="status">
+                    Die Installation hat bereits begonnen und lässt sich nicht mehr
+                    abbrechen.
+                  </p>
+                ) : (
+                  <div>
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      disabled={cancelPending}
+                      onClick={handleCancelUpdateDownload}
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                )}
+              </>
             ) : null}
             {updateState.phase === "ready" ? (
               <>

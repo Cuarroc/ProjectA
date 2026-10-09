@@ -43,6 +43,25 @@ test("checkRam stops below the threshold and passes at it", () => {
   assert.match(checkRam({ freeBytes: 1 * GB, minFreeGb: 1.5 }).text, /1\.0 GB/);
 });
 
+// Z2-START-MEASURE: non-finite/negative RAM and empty/invalid usage must STOP,
+// never pass as a measured OK clearance.
+test("invalid measurements cannot pass start check", async () => {
+  assert.equal(checkRam({ freeBytes: NaN, minFreeGb: 1.5 }).status, "stopp");
+  assert.equal(checkRam({ freeBytes: Infinity, minFreeGb: 1.5 }).status, "stopp");
+  assert.equal(checkRam({ freeBytes: -1, minFreeGb: 1.5 }).status, "stopp");
+  assert.equal(checkUsage({ usage: {}, cap: 85, sessionCap: 85 }).status, "stopp");
+  assert.equal(checkUsage({ usage: { a: { woche: -1, session: 0 } }, cap: 85, sessionCap: 85 }).status, "stopp");
+  assert.equal(checkUsage({ usage: { a: { woche: Infinity, session: 0 } }, cap: 85, sessionCap: 85 }).status, "stopp");
+  assert.equal(checkRam({ freeBytes: 0, minFreeGb: 1.5 }).status, "stopp");
+  assert.equal(checkUsage({ usage: { a: { woche: 0, session: 0 } }, cap: 85, sessionCap: 85 }).status, "ok");
+  const nanCli = await run(["--json"], { freeBytes: () => NaN });
+  assert.equal(nanCli.code, 1);
+  assert.equal(JSON.parse(nanCli.out).ok, false);
+  const emptyUsage = await run(["--json", "--usage", "u.json"], { readFile: () => "{}" });
+  assert.equal(emptyUsage.code, 1);
+  assert.equal(JSON.parse(emptyUsage.out).ok, false);
+});
+
 test("countBuilds counts build roots, not the rustup proxy or rustc children", () => {
   // cargo proxy -> real cargo -> two rustc; a second, independent cargo build
   const list = [

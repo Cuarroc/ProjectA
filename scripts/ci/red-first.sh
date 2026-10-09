@@ -297,6 +297,70 @@ node_name_run() {
   node --test --test-reporter=spec --test-name-pattern="^$(regex_escape "$1")\$" "$2"
 }
 
+# R741-A1: absence only via --list JSON without config grep/grepInvert (not source regex).
+# R741-A2: leaf title; classify matches list-line suffix › <leaf> (project/describe prefixes OK).
+# R741-A3: --list nonzero exit or JSON errors[] → INVALID; clean empty match → ABSENT.
+
+playwright_denkraum_list_unfiltered() {
+  local path="$1" cfg_tmp
+  cfg_tmp="$(mktemp --suffix=.mjs tools/denkraum/red-first-list.XXXXXX)"
+  # Indented so sed /^}/ extractors do not cut early.
+  printf '%s\n' \
+    "  import base from './playwright.config.mjs';" \
+    "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
+    "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
+    "  return o;} export default strip(base);" > "$cfg_tmp"
+  set +e
+  npx playwright test -c "$cfg_tmp" "$path" --list --reporter=json
+  local code=$?
+  set -e
+  rm -f "$cfg_tmp"
+  return "$code"
+}
+
+playwright_denkraum_resolve_identity() {
+  # stdin: --list JSON; argv: leaf title. stdout: ABSENT | INVALID | OK <grepTitle>
+  node -e '
+  const name=process.argv[1]; let raw="";
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data",c=>raw+=c);
+  process.stdin.on("end",()=>{
+    const i=raw.indexOf("{"); if(i<0){console.log("INVALID"); return;}
+    let j; try{j=JSON.parse(raw.slice(i));}catch{console.log("INVALID"); return;}
+    if(Array.isArray(j.errors)&&j.errors.length){console.log("INVALID"); return;}
+    const hits=[];
+    (function walk(suites,parents){for(const su of suites||[]){const path=parents.concat([su.title||""]);
+      for(const sp of su.specs||[]){if(sp.title!==name)continue;
+        for(const t of (sp.tests&&sp.tests.length?sp.tests:[{projectName:""}]))
+          hits.push({projectName:t.projectName||"",suitePath:path});}
+      walk(su.suites,path);}})(j.suites||[],[]);
+    if(hits.length===0){console.log("ABSENT"); return;}
+    if(hits.length!==1){console.log("INVALID"); return;}
+    const h=hits[0];
+    console.log("OK "+[h.projectName].concat(h.suitePath).concat([name]).join(" "));
+  });
+  ' "$1"
+}
+
+playwright_denkraum_name_run() {
+  # Exact case-sensitive --list identity, then both-end-anchored case-sensitive --grep.
+  local name="$1" path="$2" list_out identity grep_title list_code
+  set +e
+  list_out="$(playwright_denkraum_list_unfiltered "$path" 2>/dev/null)"
+  list_code=$?
+  set -e
+  [ -n "$list_out" ] || { echo "red-first: playwright title identity invalid"; return 2; }
+  [ "$list_code" -eq 0 ] || { echo "red-first: playwright title identity invalid"; return 2; }
+  identity="$(printf '%s' "$list_out" | playwright_denkraum_resolve_identity "$name")"
+  case "$identity" in
+    ABSENT) echo "red-first: playwright title absent from list"; return 1 ;;
+    OK\ *) grep_title="${identity#OK }" ;;
+    *) echo "red-first: playwright title identity invalid"; return 2 ;;
+  esac
+  npx playwright test -c tools/denkraum/playwright.config.mjs "$path" \
+    --grep="/^$(regex_escape "$grep_title")\$/" --reporter=list
+}
+
 ensure_node_modules() {
   local tree="$1"
   if [ ! -d "$tree/node_modules" ] && [ -f "$tree/package.json" ]; then
@@ -443,12 +507,22 @@ run_spec() {
       (cd "$tree" && npx playwright test "$path")
       ;;
     tools/denkraum/*.spec.mjs)
-      # DR-11: Denkraum Playwright harness (config is not the repo-root e2e one).
       ensure_node_modules "$tree"
       if [ -n "$name" ]; then
-        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path" -g "$name")
+        local pw_out pw_code
+        set +e
+        pw_out="$(cd "$tree" && playwright_denkraum_name_run "$name" "$path" 2>&1)"
+        pw_code=$?
+        set -e
+        printf '%s\n' "$pw_out"
+        if printf '%s\n' "$pw_out" | sed -E $'s/\033\\[[0-9;]*m//g' | grep -E 'No tests found' >/dev/null \
+          && ! printf '%s\n' "$pw_out" | grep -F 'red-first: playwright title' >/dev/null; then
+          echo "red-first: playwright title present but not discovered"
+          return 2
+        fi
+        return "$pw_code"
       else
-        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path")
+        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path" --reporter=list)
       fi
       ;;
     *.ts|*.tsx)
@@ -480,13 +554,40 @@ run_spec() {
 classify_run() {
   # 0 = gruen (Tests gelaufen und ok)
   # 1 = rot (fehlgeschlagen, Datei fehlt, 0 Tests, Compile-Fehler)
+  # 2 = ungueltiger Beweis (Mehrdeutigkeit / Discovery-Ausschluss)
   local out="$1" code="$2" spec="$3" path
-  if [ "$code" -ne 0 ]; then
-    return 1
-  fi
   path="${spec%%::*}"
   if [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]]; then
     path="src-tauri/src/main.rs"
+  fi
+  # Denkraum named: absent-from-unfiltered-list=red(1); else invalid(2) / green(0).
+  case "$path" in
+    tools/denkraum/*.spec.mjs)
+      local plain expected
+      plain="$(printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g')"
+      printf '%s\n' "$plain" | grep -F 'Datei fehlt:' >/dev/null && return 1
+      if [[ "$spec" == *::* ]]; then
+        expected="${spec#*::}"
+        printf '%s\n' "$plain" | grep -F 'red-first: playwright title absent from list' >/dev/null && return 1
+        printf '%s\n' "$plain" | grep -E 'red-first: playwright title identity invalid|red-first: playwright title present but not discovered|No tests found' >/dev/null && return 2
+        printf '%s\n' "$plain" | awk -v want="$expected" '
+          { line=$0; sub(/\r$/,"",line);
+            sub(/ \([0-9]+(\.[0-9]+)?m?s\)[[:space:]]*$/,"",line);
+            s="› " want; n=length(s);
+            if(n<=length(line) && substr(line,length(line)-n+1)==s) found=1 }
+          END{ exit found?0:1 }' || return 2
+        [ "$code" -eq 0 ] || return 1
+        printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null || return 2
+        return 0
+      fi
+      printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null && return 1
+      [ "$code" -eq 0 ] || return 1
+      printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
+      return
+      ;;
+  esac
+  if [ "$code" -ne 0 ]; then
+    return 1
   fi
   case "$path" in
     src-tauri/*|*.rs)
@@ -513,14 +614,6 @@ classify_run() {
         return
       fi
       return 0
-      ;;
-    tools/denkraum/*.spec.mjs)
-      # Playwright list/github reporter: "N passed" with N > 0.
-      if printf '%s\n' "$out" | grep -E 'Datei fehlt:' >/dev/null; then
-        return 1
-      fi
-      printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g' |
-        grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
       ;;
     *.mjs|*.cjs)
       if printf '%s\n' "$out" | grep -E 'ℹ tests 0$|Datei fehlt:' >/dev/null; then
@@ -621,16 +714,27 @@ for spec in "${SPECS[@]}"; do
   code=$?
   set -e
   printf '%s\n' "$out"
-  if classify_run "$out" "$code" "$spec"; then
-    if grep -qxF -- "$spec" <<< "$PROVEN_ON_MAIN"; then
-      echo "red-first: $spec ist an der Merge-Base gruen, aber already proven on main (identischer Test-First-Trailer in der Historie der Merge-Base) - kein Fehler; der Kopf muss weiter gruen sein."
-    else
-      echo "red-first: $spec war an der Merge-Base GRUEN — das ist kein Test-First-Beleg." >&2
+  set +e
+  classify_run "$out" "$code" "$spec"
+  cls=$?
+  set -e
+  case "$cls" in
+    0)
+      if grep -qxF -- "$spec" <<< "$PROVEN_ON_MAIN"; then
+        echo "red-first: $spec ist an der Merge-Base gruen, aber already proven on main (identischer Test-First-Trailer in der Historie der Merge-Base) - kein Fehler; der Kopf muss weiter gruen sein."
+      else
+        echo "red-first: $spec war an der Merge-Base GRUEN — das ist kein Test-First-Beleg." >&2
+        red_ok=0
+      fi
+      ;;
+    1)
+      echo "red-first: $spec ist an der Merge-Base rot/fehlend (erwartet)."
+      ;;
+    *)
+      echo "red-first: $spec liefert an der Merge-Base keinen gueltigen Rot-Beweis (ungueltig/mehrdeutig)." >&2
       red_ok=0
-    fi
-  else
-    echo "red-first: $spec ist an der Merge-Base rot/fehlend (erwartet)."
-  fi
+      ;;
+  esac
 done
 
 head_ok=1
@@ -643,7 +747,11 @@ for spec in "${SPECS[@]}"; do
   code=$?
   set -e
   printf '%s\n' "$out"
-  if ! classify_run "$out" "$code" "$spec"; then
+  set +e
+  classify_run "$out" "$code" "$spec"
+  cls=$?
+  set -e
+  if [ "$cls" -ne 0 ]; then
     echo "red-first: $spec ist am Kopf nicht gruen." >&2
     head_ok=0
   else

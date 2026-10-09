@@ -1119,7 +1119,9 @@ impl Store {
             .create_if_missing(true)
             .journal_mode(SqliteJournalMode::Wal)
             .synchronous(SqliteSynchronous::Full)
-            .busy_timeout(Duration::from_secs(5))
+            .busy_timeout(Duration::from_millis(
+                projecta_capture::protocol::SQLITE_BUSY_TIMEOUT_MS,
+            ))
             // SQLite's own default, which sqlx otherwise overrides. `workers`
             // declares the reference to `projects` for documentation, but
             // `remove_project` intentionally outlives its workers: it drops the

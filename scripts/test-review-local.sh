@@ -450,6 +450,60 @@ else
   bad "kilo-Protokollname kollidiert: rc=$rc"; echo "$out"; ls "$tmp/k8" 2>&1
 fi
 
+# 14. Parallel PR fetches must not share FETCH_HEAD. A git wrapper overwrites
+#     FETCH_HEAD after a bare `pull/N/head` fetch (the old pattern); a private
+#     destination ref must keep each prompt on its own PR head.
+(
+  cd "$REPO" || exit 1
+  git checkout -q -b pr8-branch main
+  echo "MARKER_PR8_ONLY" > pr8.txt
+  git add pr8.txt && git commit -q -m pr8
+  git push -q origin HEAD:refs/pull/8/head
+  git checkout -q claude/demo-branch
+)
+sha7="$(git -C "$REPO" ls-remote origin refs/pull/7/head | awk '{print $1}')"
+sha8="$(git -C "$REPO" ls-remote origin refs/pull/8/head | awk '{print $1}')"
+REAL_GIT="$(command -v git)"
+mkdir -p "$tmp/bin-race"
+cat > "$tmp/bin-race/git" <<EOF
+#!/usr/bin/env bash
+REAL_GIT=$(printf '%q' "$REAL_GIT")
+joined="\$*"
+if [[ "\$joined" == *fetch* && "\$joined" =~ pull/([0-9]+)/head ]] \\
+  && [[ ! "\$joined" =~ pull/[0-9]+/head: ]]; then
+  "\$REAL_GIT" "\$@" || exit \$?
+  n="\${BASH_REMATCH[1]}"
+  other=8
+  [ "\$n" = 8 ] && other=7
+  if [ "\$1" = "-C" ]; then
+    "\$REAL_GIT" -C "\$2" fetch --quiet origin "pull/\$other/head"
+  else
+    "\$REAL_GIT" fetch --quiet origin "pull/\$other/head"
+  fi
+  exit \$?
+fi
+exec "\$REAL_GIT" "\$@"
+EOF
+chmod +x "$tmp/bin-race/git"
+run env PATH="$tmp/bin-race:$PATH" bash "$RUN" 7 --dry-run --models fake-a:cloud --out-dir "$tmp/race7"
+rc7=$rc; out7=$out
+run env PATH="$tmp/bin-race:$PATH" bash "$RUN" 8 --dry-run --models fake-a:cloud --out-dir "$tmp/race8"
+rc8=$rc; out8=$out
+if [ "$rc7" -eq 0 ] && [ "$rc8" -eq 0 ] \
+  && grep -q "MARKER_LINE two" "$tmp/race7/review_prompt_pr7.md" 2>/dev/null \
+  && ! grep -q "MARKER_PR8_ONLY" "$tmp/race7/review_prompt_pr7.md" 2>/dev/null \
+  && grep -q "MARKER_PR8_ONLY" "$tmp/race8/review_prompt_pr8.md" 2>/dev/null \
+  && ! grep -q "MARKER_LINE" "$tmp/race8/review_prompt_pr8.md" 2>/dev/null \
+  && grep -q "^Head: $sha7\$" "$tmp/race7/review_prompt_pr7.md" 2>/dev/null \
+  && grep -q "^Head: $sha8\$" "$tmp/race8/review_prompt_pr8.md" 2>/dev/null; then
+  ok "parallel PR fetches keep distinct diffs (no shared FETCH_HEAD)"
+else
+  bad "parallel PR FETCH_HEAD race: rc7=$rc7 rc8=$rc8"; echo "$out7"; echo "$out8"
+  ls "$tmp/race7" "$tmp/race8" 2>&1
+  head -n 8 "$tmp/race7/review_prompt_pr7.md" 2>&1
+  head -n 8 "$tmp/race8/review_prompt_pr8.md" 2>&1
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."

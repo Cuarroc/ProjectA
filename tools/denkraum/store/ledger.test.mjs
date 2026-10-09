@@ -49,6 +49,26 @@ test('ideas replay by request id and refuse conflicting reuse, stale or unknown 
   await assert.rejects((await fresh({ v2: false })).putIdea(idea()), status(409));
 });
 
+test('a new question uses one clock read for createdAt and updatedAt', async () => {
+  const RealDate = Date;
+  let tick = RealDate.parse('2026-10-09T12:00:00.000Z');
+  class TickingDate extends RealDate {
+    constructor(...args) {
+      if (args.length === 0) { super(tick); tick += 1; }
+      else super(...args);
+    }
+    static now() { const t = tick; tick += 1; return t; }
+  }
+  globalThis.Date = TickingDate;
+  try {
+    const s = await fresh({ v2: false });
+    const created = await s.putQuestion(question({ id: 'clock-1' }));
+    assert.equal(created.createdAt, created.updatedAt);
+  } finally {
+    globalThis.Date = RealDate;
+  }
+});
+
 test('questions are created and revised only against the current revision; imports replay by request id', async () => {
   const s = await fresh({ v2: false });
   const created = await s.putQuestion(question());

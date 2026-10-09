@@ -16,6 +16,7 @@ import { EXIT, UsageError, RefusedError, makeRunner, gitIn, ghJson, isMain, runC
 const REPO_URL = "https://github.com/Cuarroc/ProjectA/pull/";
 const ID = /^[A-Za-z0-9][A-Za-z0-9 .,/()–-]*$/;
 const GH_FILES_LIMIT = 100; // `gh pr view --json files` returns at most 100 files
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 const HELP = `erledigt-row — ERLEDIGT-Zeile fuer einen gemergten PR erzeugen und oben einfuegen
 
@@ -49,7 +50,13 @@ export function cleanTitle(title, id = "") {
 }
 
 export function makeRow({ pr, id, title, report }) {
+  if (typeof pr.mergedAt !== "string" || !ISO_UTC.test(pr.mergedAt) || pr.mergedAt.trim() !== pr.mergedAt) {
+    throw new RefusedError("Ungueltiges Merge-Datum (mergedAt); ERLEDIGT bleibt unveraendert.");
+  }
   const d = new Date(pr.mergedAt);
+  if (!Number.isFinite(d.getTime()) || d.toISOString().slice(0, 10) !== pr.mergedAt.slice(0, 10)) {
+    throw new RefusedError("Ungueltiges Merge-Datum (mergedAt); ERLEDIGT bleibt unveraendert.");
+  }
   const date = `${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.`;
   const reports = report ? [report] : (pr.files || []).map((f) => f.path).filter((p) => /^\.pa\/report_[^/]+\.md$/.test(p));
   const sha = String(pr.mergeCommit?.oid || "").slice(0, 7);
