@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createDeskServer } from './server.mjs';
 import { DeskStore } from './store.mjs';
 import { migrateState } from './store/model.mjs';
+import { isInside } from './switch.mjs';
 const ROOT = 'test-root-agent';
 const SWITCH = fileURLToPath(new URL('./switch.mjs', import.meta.url));
 const FIXTURE_TEXT = 'DR16-LEDGER-FIXTURE-TEXT-UNIQUE';
@@ -281,6 +282,14 @@ test('R890-K3: guard ENOTDIR on --out uses invalid-path wording', async () => {
   assert.ok(!/nicht ruhend/.test(r.stdout));
   // Parent path component is a file: nested children are unreachable (ENOTDIR).
   await assert.rejects(stat(join(fileComponent, 'nested')), e => e.code === 'ENOTDIR');
+});
+test('R890-G1: isInside folds case on win32 and stays case-sensitive elsewhere', () => {
+  const root = join('/Ledger', 'Dir');
+  const mixed = join('/ledger', 'dir', 'out');
+  assert.equal(isInside(root, mixed, 'win32'), true);
+  assert.equal(isInside(root, mixed, 'linux'), false);
+  assert.equal(isInside(root, join(root, 'out'), 'linux'), true);
+  assert.equal(isInside(root, join('/other', 'out'), 'win32'), false);
 });
 test('DR16H: backup reports explicit and default probe ports', async () => {
   const { state } = await ledger();

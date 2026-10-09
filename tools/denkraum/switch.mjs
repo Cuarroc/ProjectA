@@ -32,10 +32,13 @@ const abs = (value, label) => {
   }
   return resolve(value);
 };
-const isInside = (root, path) => {
-  const fromRoot = relative(root, path);
+/** True when path is root or a descendant. On win32, compare case-insensitively. */
+export function isInside(root, path, platform = process.platform) {
+  const a = platform === 'win32' ? String(root).toLowerCase() : root;
+  const b = platform === 'win32' ? String(path).toLowerCase() : path;
+  const fromRoot = relative(a, b);
   return !isAbsolute(fromRoot) && fromRoot !== '..' && !fromRoot.startsWith(`..${sep}`);
-};
+}
 /** Realpath of path, or join(realpath(existing ancestor), remaining basenames). */
 function resolveExisting(path) {
   const parts = [];
