@@ -68,6 +68,7 @@ async function ledger({ answered = true } = {}) {
     recommendation: { optionIds: ['a'], rationale: 'R' }, options: ['a', 'b'].map(id => ({ id, label: id, rationale: 'r', impact: 'i', tradeoff: 't', effort: 'e', reversible: 'ja' })) });
   await s.migrate((await s.read()).revision);
   if (answered) await s.answer({ questionId: 'E-1', questionRevision: 1, expectedAnswerId: null, requestId: 'req-1', action: 'answer', selected: ['a'], note: '' });
+  await s.close(); // Release fixture ownership before a child server opens the ledger.
   return { dir, statePath };
 }
 async function serve(options) {
