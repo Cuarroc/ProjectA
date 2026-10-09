@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -13,6 +13,7 @@ const question = () => ({ ...validateQuestion({ id: 'E-1', title: 'T', context: 
 const verify = root => async request => ({ ...request, rootAgentId: root, rootAcknowledgedAt: '2026-10-08T12:00:00.000Z', observedProof: 'synthetic proof' });
 async function fresh({ v2 = true, ...config } = {}) {
   const s = new AnswerStore(join(await mkdtemp(join(tmpdir(), 'denkraum-answers-')), 'ledger.json'), { rootAgentId: ROOT, verifyReceipt: verify(ROOT), ...config });
+  if (!v2) await writeFile(s.file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
   await s.change(state => { state.questions.push(question()); });
   if (v2) await s.migrate((await s.read()).revision);
   return s;

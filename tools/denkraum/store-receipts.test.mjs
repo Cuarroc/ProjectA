@@ -18,6 +18,11 @@ const question = (id = 'E-test') => ({ id, title: 'Welche Grenze gilt?', categor
   { id: 'b', label: 'Weiter', rationale: 'Mehr Umfang.', impact: 'Mehr Testarbeit.',
     tradeoff: 'Mehr Aufwand.', effort: 'Hoch', reversible: 'Ja' }] });
 async function fresh() { const dir = await mkdtemp(join(tmpdir(), 'decision-desk-test-')); return new DeskStore(join(dir, 'state.json'), { rootAgentId: ROOT }); }
+async function legacyStore() {
+  const s = await fresh();
+  await writeFile(s.file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
+  return s;
+}
 const answer = (extra = {}) => ({ questionId: 'E-test', questionRevision: 1, expectedAnswerId: null,
   requestId: 'request-1', action: 'answer', selected: ['a'], note: '', ...extra });
 
@@ -28,14 +33,14 @@ const receiptInput = a => ({ receiptId: 'receipt-1', eventRef: { kind: 'answer',
 const verifiedReceipt = async input => ({ ...input, rootAgentId,
   rootAcknowledgedAt: '2026-10-06T17:00:00.000Z', observedProof: 'Root reply body binds the exact event and revision.' });
 async function receiptFixture(extra = {}) {
-  const legacy = await fresh(); await legacy.putQuestion(question()); const a = await legacy.answer(answer(extra));
+  const legacy = await legacyStore(); await legacy.putQuestion(question()); const a = await legacy.answer(answer(extra));
   await legacy.migrate((await legacy.read()).revision);
   return { s: new DeskStore(legacy.file, { rootAgentId: ROOT, verifyReceipt: verifiedReceipt }), a, input: receiptInput(a) };
 }
 
 test('RCPT-1 legacy received and applied preserve inbox semantics across migration and restart without fabricated receipt or execution queue', async () => {
   for (const status of ['received', 'applied']) {
-    const s = await fresh(); await s.putQuestion(question()); const a = await s.answer(answer());
+    const s = await legacyStore(); await s.putQuestion(question()); const a = await s.answer(answer());
     await s.ack({ answerId: a.id, status: 'received', actor: 'Root', note: 'Legacy receipt', deliveryReceipt: 'old text' });
     if (status === 'applied') await s.ack({ answerId: a.id, status, actor: 'Root', note: 'Legacy done', evidence: 'old observed artifact' });
     const legacy = await s.read(); const v1Inbox = await new DeskStore(s.file, { rootAgentId: ROOT }).inbox();
@@ -69,11 +74,19 @@ test('RCPT-2 malformed receipt and progress entries fail shared reads and mutati
   }
 });
 
-test('explicit migration rejects a missing source without creating state or backup and normal bootstrap still works', async () => {
-  const s = await fresh();
+test('explicit migration rejects a disappearing V1 source and works after restoring that source', async () => {
+  const s = await legacyStore();
+  const read = s.read.bind(s);
+  s.read = async (...args) => {
+    const state = await read(...args);
+    await rename(s.file, `${s.file}.removed-source`);
+    return state;
+  };
   await assert.rejects(s.migrate(0), e => e.status === 404 && /Migrationsquelle/.test(e.message));
   await assert.rejects(readFile(s.file), e => e.code === 'ENOENT');
   await assert.rejects(readFile(`${s.file}.v1-backup`), e => e.code === 'ENOENT');
+  s.read = read;
+  await rename(`${s.file}.removed-source`, s.file);
   await s.putQuestion(question()); assert.equal((await s.read()).schemaVersion, 1);
   await s.migrate((await s.read()).revision); assert.equal((await s.read()).schemaVersion, 2);
 });
@@ -111,7 +124,7 @@ test('exact receipt concurrent replay is byte-identical and payload or event uni
 });
 
 test('exact receipt recovery retains received unprocessed events and legacy text stays pending', async () => {
-  const legacy = await fresh(); await legacy.putQuestion(question()); const a = await legacy.answer(answer());
+  const legacy = await legacyStore(); await legacy.putQuestion(question()); const a = await legacy.answer(answer());
   await legacy.ack({ answerId: a.id, status: 'received', actor: 'Root', note: 'Legacy', deliveryReceipt: 'unverified text' });
   await legacy.migrate((await legacy.read()).revision); const s = new DeskStore(legacy.file, { rootAgentId: ROOT, verifyReceipt: verifiedReceipt });
   assert.equal((await s.pending()).length, 1); assert.equal((await s.inbox()).pending.length, 1);

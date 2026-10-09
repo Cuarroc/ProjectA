@@ -13,7 +13,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 test('CLI received and applied commands require proof and persist their states', async t => {
-  const base = await start(t); const dir = await tmp(t);
+  const base = await start(t, { v1: true }); const dir = await tmp(t);
   const post = (route, body) => fetch(`${base}/api/${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(body) });
   await post('questions', q());
   const a = await (await post('answers', { questionId: 'utf8', questionRevision: 1, expectedAnswerId: null, requestId: 'cli-1', action: 'answer', selected: ['a'], note: '' })).json();
@@ -93,8 +93,9 @@ async function tmp(t, server = () => null) {
   return dir;
 }
 
-async function start(t) {
+async function start(t, { v1 = false } = {}) {
   let server; const dir = await tmp(t, () => server);
+  if (v1) await writeFile(join(dir, 'state.json'), JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [] }));
   server = createDeskServer({ statePath: join(dir, 'state.json'), rootAgentId: 'root-test' });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return `http://127.0.0.1:${server.address().port}`;

@@ -63,7 +63,7 @@ export class DeskStore {
         Object.assign(revision, ideaDefaults(revision));
       return data;
     } catch (e) {
-      if (e.code === 'ENOENT') return { schemaVersion: 1, revision: 0, questions: [], answers: [] };
+      if (e.code === 'ENOENT') return migrateState({ schemaVersion: 1, revision: 0, questions: [], answers: [] });
       if (e instanceof SyntaxError) throw new DeskError('Datendatei nicht lesbar. Sie wurde nicht überschrieben.', 503);
       throw e;
     }
