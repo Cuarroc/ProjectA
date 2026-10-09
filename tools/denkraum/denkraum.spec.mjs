@@ -368,6 +368,7 @@ test('DR12: category refresh preserves draft and pending guards', async ({ page 
   await category.selectOption(JSON.stringify('Technik'));
   expect(await page.locator('.idea-edit:enabled').count()).toBe(1);
   await category.focus();
+  for (const id of ['priority', 'station']) { await page.keyboard.press('Tab'); await expect(page.locator(`#idea-${id}`)).toBeFocused(); }
   await page.keyboard.press('Tab');
   expect(await page.locator('.idea-card[data-idea-id="b"] .idea-edit').evaluate(n => document.activeElement === n)).toBe(true);
   await page.locator('.idea-card[data-idea-id="b"] .idea-edit').click();
@@ -443,6 +444,31 @@ test('DR12: real CSS gives field borders 3 to 1 contrast', async ({ page }) => {
   expect(Math.min(...(await contrastOf(hoverBtn)).map(s => s.contrast))).toBeGreaterThanOrEqual(3);
 });
 
+async function renderedBorderContrast(page, selector) {
+  const image = await page.locator(selector).screenshot();
+  return page.evaluate(async base64 => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width; canvas.height = image.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    const pixel = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
+    const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    // Midpoints avoid rounded corners; darkest of top 4 rows is the border after DPR/AA.
+    return [0.25, 0.5, 0.75].map(fraction => {
+      const x = Math.floor(image.width * fraction);
+      let border = pixel(x, 0), borderY = 0;
+      for (let y = 1; y < Math.min(4, image.height); y++) { const p = pixel(x, y); if (lum(p) < lum(border)) { border = p; borderY = y; } }
+      const fill = pixel(x, Math.min(image.height - 1, borderY + 2));
+      const [light, dark] = [lum(border), lum(fill)].sort((a, b) => b - a);
+      return { border, fill, contrast: (light + 0.05) / (dark + 0.05) };
+    });
+  }, image.toString('base64'));
+}
+
 test('DR12: category controls fit 1440 390 and 320', async ({ page }, testInfo) => {
   const ideas = [
     idea('long', 'L'.repeat(200), 'Text'.repeat(2000), { category: 'S'.repeat(80), source: 'S'.repeat(2000) }),
@@ -468,5 +494,165 @@ test('DR12: category controls fit 1440 390 and 320', async ({ page }, testInfo) 
     const shot = join(outDir, `${width}.png`);
     await page.screenshot({ path: shot, fullPage: true });
     expect(readFileSync(shot).length).toBeGreaterThan(1000);
+  }
+});
+
+test('DR13: priority projection is strict and missing defaults normal', async ({ page }) => {
+  const values = ['urgent', 'high', 'normal', 'later', undefined, null, '', ' ', 7, 'unknown'];
+  const ids = values.map((_, i) => `p${i}`);
+  await setupPage(page, 'injected', categoryState(values.map((value, i) =>
+    idea(ids[i], 'Title', 'Text', value === undefined ? {} : { userPriority: value }))));
+  await openIdeas(page);
+  const priority = page.getByLabel('Nutzerpriorität', { exact: true });
+  await expect(priority).toHaveCount(1);
+  expect(await priority.locator('option').allTextContents()).toEqual(['Alle Prioritäten', 'Dringend', 'Hoch', 'Normal', 'Später', 'Nicht lesbar']);
+  for (const [value, expected, label] of [
+    ['urgent', ['p0'], 'Dringend'], ['high', ['p1'], 'Hoch'], ['normal', ['p2', 'p4'], 'Normal'],
+    ['later', ['p3'], 'Später'], ['unreadable', ids.slice(5), 'Nicht lesbar'], ['*', ids, null],
+  ]) {
+    await priority.selectOption(value);
+    expect(await ideaIds(page)).toEqual(expected);
+    if (label) await expect(page.locator('.idea-card dt').filter({ hasText: /^Nutzerpriorität$/ }).locator('..').locator('dd')).toHaveText(expected.map(() => label));
+  }
+});
+
+test('DR13: station filter uses only current event projection', async ({ page }) => {
+  const old = { ...idea('old', 'Old', 'Old', { userPriority: 'urgent' }).revisions[0], eventId: 'old-event' };
+  const data = categoryState(['absent', 'incoming', 'reviewed', 'planned', 'applied', 'receipt', 'old'].map(id =>
+    idea(id, id, 'Current text', {}, id === 'old' ? [old] : [])));
+  data.progress = ['incoming', 'reviewed', 'planned', 'applied'].map(status => ({ eventId: `e-${status}`, currentStatus: status, history: [] }));
+  data.progress.unshift({ eventId: 'old-event', currentStatus: 'applied', history: [] });
+  data.receipts = [['e-receipt', 'receipt', 1], ['old-event', 'old', 1]].map(([eventId, ideaId, ideaRevision]) => ({
+    eventRef: { kind: 'idea', eventId, ideaId, ideaRevision }, rootAgentId: 'injected', rootAcknowledgedAt: stamp, observedProof: 'Receipt only',
+  }));
+  await setupPage(page, 'injected', data);
+  await openIdeas(page);
+  const station = page.getByLabel('Belegte Zuordnung', { exact: true });
+  await expect(station).toHaveCount(1);
+  expect(await station.locator('option').allTextContents()).toEqual(['Alle Zuordnungen', 'Eingang · Aktuelle Fassung gespeichert', 'Noch nicht zugeordnet']);
+  await expect(station).toHaveAccessibleDescription('Weitere Stationen werden ergänzt; ein Rootempfang ordnet keine Station zu.');
+  for (const [value, expected, label] of [
+    ['incoming', ['absent', 'incoming', 'receipt', 'old'], 'Eingang · Aktuelle Fassung gespeichert'],
+    ['unmapped', ['reviewed', 'planned', 'applied'], 'Noch nicht zugeordnet'],
+  ]) {
+    await station.selectOption(value);
+    expect(await ideaIds(page)).toEqual(expected);
+    await expect(page.locator('.idea-card dt').filter({ hasText: /^Station$/ }).locator('..').locator('dd')).toHaveText(expected.map(() => label));
+  }
+  await station.selectOption('*');
+  await page.locator('#idea-priority').selectOption('urgent');
+  expect(await ideaIds(page)).toEqual([]);
+});
+
+test('DR13: all four filters intersect and reset without reordering', async ({ page }) => {
+  const data = categoryState([
+    idea('z', 'ÄPFEL', 'Original', { category: ' Technik ', userPriority: 'high' }),
+    idea('b', 'Beta', 'Äpfel Original', { category: 'Technik', userPriority: 'high' }),
+    idea('a', 'Äpfel', 'Original', { category: 'Technik', userPriority: 'later' }),
+    idea('c', 'Äpfel', 'Original', { category: 'Plan', userPriority: 'high' }),
+    idea('d', 'Äpfel', 'Original', { category: 'Technik', userPriority: 'high' }),
+    idea('e', 'Other', 'Original', { category: 'Technik', userPriority: 'high' }),
+  ]);
+  data.progress = [{ eventId: 'e-d', currentStatus: 'planned', history: [] }];
+  await setupPage(page, 'injected', data);
+  await openIdeas(page);
+  for (const id of ['category', 'priority', 'station']) await expect(page.locator(`#idea-${id}`)).toHaveValue('*');
+  await expect(page.locator('#idea-search')).toHaveValue('');
+  await page.locator('#idea-search').fill('äPFEL');
+  await page.locator('#idea-category').selectOption(JSON.stringify('Technik'));
+  await page.locator('#idea-priority').selectOption('high');
+  await page.locator('#idea-station').selectOption('incoming');
+  expect(await ideaIds(page)).toEqual(['z', 'b']);
+  await expect(page.locator('#idea-count')).toHaveText('2 von 6 gespeicherten Ideen');
+  await page.locator('#idea-search').fill('  äPFEL');
+  expect(await ideaIds(page)).toEqual([]);
+  await expect(page.locator('#idea-count')).toHaveText('0 von 6 gespeicherten Ideen');
+  await expect(page.locator('#idea-cards')).toHaveText('Keine Ideen für diese Auswahl.');
+  await page.locator('#idea-search').fill('');
+  for (const id of ['category', 'priority', 'station']) await page.locator(`#idea-${id}`).selectOption('*');
+  expect(await ideaIds(page)).toEqual(data.ideas.map(i => i.id));
+  await expect(page.locator('#idea-count')).toHaveText('6 von 6 gespeicherten Ideen');
+});
+
+test('DR13: filter polling preserves drafts pending and control nodes', async ({ page }) => {
+  const data = categoryState([idea('b', 'Beta', 'Original', { category: 'Technik', userPriority: 'high', source: null })]);
+  const errors = [], posts = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (request.method() === 'POST') posts.push(request.url()); });
+  await setupPage(page, 'injected', data, false, { clock: true });
+  await openIdeas(page);
+  await expect(page.locator('.idea-edit:enabled')).toHaveCount(1);
+  await page.locator('.idea-edit').click();
+  await page.locator('#idea').fill('Ungesicherter Entwurf');
+  await page.locator('#idea').evaluate(n => n.setSelectionRange(3, 6));
+  const pending = { id: 'b', expectedRevision: 1, requestId: 'pending', title: 'Pending', text: 'Unbestätigter Text', source: null };
+  for (const isPending of [false, true]) {
+    if (isPending) {
+      await page.evaluate(value => localStorage.setItem('decision-desk.idea-operation.v1', JSON.stringify({ id: 'b', expectedRevision: 1, pending: value })), pending);
+      await page.reload();
+      await page.waitForFunction(() => state && !loading);
+      await openIdeas(page);
+      await page.locator('#idea').evaluate(n => n.setSelectionRange(3, 6));
+    }
+    await page.locator('#idea-search').fill('Original');
+    await page.locator('#idea-search').evaluate(n => n.setSelectionRange(1, 4));
+    await page.locator('#idea-category').selectOption(JSON.stringify('Technik'));
+    await page.locator('#idea-priority').selectOption('high');
+    await page.locator('#idea-station').selectOption('incoming');
+    await page.locator('#idea-priority').focus();
+    const saved = await page.evaluate(() => {
+      window.dr13Nodes = [...document.querySelectorAll('#idea-search,#idea-category,#idea-priority,#idea-station,#idea-events option')];
+      return JSON.stringify({ ideaOperation, storage: { ...localStorage }, binding: $('idea-binding').textContent });
+    });
+    const second = page.waitForResponse(r => r.url().endsWith('/api/state') && r.ok());
+    await page.clock.fastForward(15000);
+    await second;
+    await page.waitForFunction(() => !loading);
+    expect(await page.evaluate(() => (() => { const nodes = [...document.querySelectorAll('#idea-search,#idea-category,#idea-priority,#idea-station,#idea-events option')]; return nodes.length === window.dr13Nodes.length && nodes.every((n, i) => n === window.dr13Nodes[i]); })())).toBe(true);
+    expect(await page.evaluate(() => JSON.stringify({ ideaOperation, storage: { ...localStorage }, binding: $('idea-binding').textContent }))).toBe(saved);
+    expect(await page.evaluate(() => document.activeElement.id)).toBe('idea-priority');
+    for (const [id, value] of [['search', 'Original'], ['category', JSON.stringify('Technik')], ['priority', 'high'], ['station', 'incoming']]) await expect(page.locator(`#idea-${id}`)).toHaveValue(value);
+    await expect(page.locator('#idea')).toHaveValue('Ungesicherter Entwurf');
+    expect(await page.locator('#idea').evaluate(n => [n.selectionStart, n.selectionEnd])).toEqual([3, 6]);
+    expect(await page.locator('#idea-search').evaluate(n => [n.selectionStart, n.selectionEnd])).toEqual([1, 4]);
+    expect(await page.locator('#idea').isDisabled()).toBe(isPending);
+    await expect(page.locator('.idea-edit')).toHaveCount(1);
+    expect(await page.locator('.idea-edit').isDisabled()).toBe(isPending);
+    if (isPending) expect(await page.evaluate(() => ideaOperation.pending)).toEqual(pending);
+    expect(await ideaIds(page)).toEqual(['b']);
+  }
+  expect(posts).toEqual([]);
+  expect(errors).toEqual([]);
+  for (const endpoint of ['ideas', 'answers', 'workbench']) await page.evaluate(endpoint => fetch(`/api/${endpoint}`, { method: 'POST' }), endpoint);
+  expect(posts).toHaveLength(3);
+});
+
+test('DR13: filter controls remain usable at 1440 390 and 320', async ({ page }, testInfo) => {
+  await setupPage(page, 'injected', categoryState([idea('long', 'L'.repeat(200), 'Text'.repeat(2000), { category: 'S'.repeat(80), source: 'S'.repeat(2000) })]));
+  await openIdeas(page);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByLabel('Nutzerpriorität', { exact: true })).toHaveCount(1);
+    await expect(page.getByLabel('Belegte Zuordnung', { exact: true })).toHaveCount(1);
+    await page.locator('#idea-category').focus();
+    for (const id of ['priority', 'station']) {
+      await page.keyboard.press('Tab');
+      const control = page.locator(`#idea-${id}`);
+      await expect(control).toBeFocused();
+      expect(await control.evaluate(n => { const s = getComputedStyle(n); return n.matches(':focus-visible') && s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2; })).toBe(true);
+      await control.selectOption(id === 'priority' ? 'normal' : 'incoming');
+      await control.blur();
+      const contrast = await renderedBorderContrast(page, `#idea-${id}`);
+      console.log(`DR13 ${width} ${id} rendered contrast`, JSON.stringify(contrast));
+      expect(Math.min(...contrast.map(s => s.contrast))).toBeGreaterThanOrEqual(3);
+      await control.focus();
+    }
+    expect(await ideaIds(page)).toEqual(['long']);
+    const bounds = await page.locator('#idea-search,#idea-category,#idea-priority,#idea-station,.idea-card').evaluateAll(nodes => nodes.map(n => {
+      const b = n.getBoundingClientRect(), p = document.getElementById('thinking').getBoundingClientRect();
+      return b.left >= p.left && b.right <= p.right && n.scrollWidth <= n.clientWidth + 1;
+    }));
+    expect(bounds.every(Boolean)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`dr13-${width}.png`) });
   }
 });
