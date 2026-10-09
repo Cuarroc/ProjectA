@@ -158,6 +158,7 @@ RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetblockon{profile_id
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotlistworkers:{err}");
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotreaditssettings:{err}");
 RAW_APP_LOG	src-tauri/src/budget.rs	eprintln!("projecta:budgetwatchercouldnotrecordthepause:{err}");
+RAW_APP_LOG	src-tauri/src/delivery_recovery/guidance.rs	eprintln!("{text}");
 RAW_APP_LOG	src-tauri/src/digest.rs	Err(err)=>eprintln!("projecta:digestfor{}notwritten:{err}",project.id),
 RAW_APP_LOG	src-tauri/src/digest.rs	eprintln!("projecta:digestfor{}failed:{err}",project.id);
 RAW_APP_LOG	src-tauri/src/digest.rs	println!("projecta:digestwrittento{}",path.display());

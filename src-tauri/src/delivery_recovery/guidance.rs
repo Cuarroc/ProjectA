@@ -1,10 +1,6 @@
-//! Visible German guidance when startup recovery refuses to open the database.
-//!
-//! Keeps the fail-closed contract: a refused recovery never opens the store.
-//! The exact English reason stays in the log and in the setup `Err`; this
-//! module builds the user-facing text and always delivers it in-process first
-//! (no file write, no external opener). The ANLEITUNG file and OS opener are
-//! extras; their failures are logged and never unblock the start.
+//! German guidance when startup recovery refuses to open the database.
+//! Order: write ANLEITUNG → OS opener (non-blocking) → in-process presenter
+//! (blocking MessageBox on Windows; log + stderr elsewhere). Failures never unblock.
 
 use super::startup::recover_at_startup;
 use std::path::{Path, PathBuf};
@@ -74,27 +70,51 @@ pub fn write_guidance(guidance: &StartupGuidance) -> Result<(), String> {
     crate::fsutil::write_atomic(&guidance.file_path, guidance.text.as_bytes())
 }
 
-/// Default in-process surface via `logging.rs` (no guidance file, no opener).
+/// Default in-process surface: always log; MessageBox on Windows, stderr elsewhere.
 fn present_guidance_in_process(text: &str) {
     crate::logf!("update", "update recovery guidance (in-process):\n{text}");
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            MessageBoxW, MB_ICONERROR, MB_OK, MB_SETFOREGROUND,
+        };
+        let wide = |s: &str| -> Vec<u16> {
+            std::ffi::OsStr::new(s)
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect()
+        };
+        let body = wide(text);
+        let title = wide("ProjectA – Start angehalten");
+        // SAFETY: null HWND is valid for process-modal MessageBoxW; body/title
+        // are NUL-terminated UTF-16 and outlive the call.
+        unsafe {
+            MessageBoxW(
+                std::ptr::null_mut(),
+                body.as_ptr(),
+                title.as_ptr(),
+                MB_OK | MB_ICONERROR | MB_SETFOREGROUND,
+            );
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        eprintln!("{text}");
+    }
 }
 
 /// Persist and surface the guidance; never opens the database.
-///
-/// The in-process presenter always runs first. File write and OS opener are
-/// extras; every write/spawn failure is logged and never replaces the recovery
-/// `Err` or unblocks the start.
 pub fn present_refused_guidance(guidance: &StartupGuidance) {
     present_refused_guidance_with(guidance, present_guidance_in_process, reveal_guidance_file);
 }
 
-/// Testable presentation path with injectable presenter and opener.
+/// Testable path: write → opener → injectable presenter (always last).
 pub fn present_refused_guidance_with(
     guidance: &StartupGuidance,
     mut present: impl FnMut(&str),
     mut open: impl FnMut(&Path) -> Result<(), String>,
 ) {
-    present(&guidance.text);
     match write_guidance(guidance) {
         Ok(()) => {
             crate::logf!(
@@ -116,6 +136,7 @@ pub fn present_refused_guidance_with(
             guidance.file_path.display()
         ),
     }
+    present(&guidance.text);
 }
 
 fn reveal_guidance_file(path: &Path) -> Result<(), String> {
@@ -168,12 +189,7 @@ mod tests {
             StartupRecovery::Open => panic!("refused recovery must not open"),
         }
         assert_eq!(std::fs::read(&db).unwrap(), before_db);
-        assert_eq!(
-            std::fs::read(&journal).unwrap(),
-            before_journal,
-            "refused recovery must leave the journal bytes unchanged"
-        );
-        // A second start still refuses: presenting guidance must not unblock.
+        assert_eq!(std::fs::read(&journal).unwrap(), before_journal);
         assert!(matches!(
             recover_startup(dir.path()),
             StartupRecovery::Refused { .. }
@@ -183,23 +199,15 @@ mod tests {
     #[test]
     fn guidance_names_journal_and_backup_paths_and_safe_steps() {
         let dir = TempDir::new("guidance-text");
-        let guidance = guidance_for_refused_recovery(dir.path());
-        let journal = guidance.journal_path.display().to_string();
-        let backup = guidance.backup_path.display().to_string();
-        assert!(guidance.text.contains(&journal));
-        assert!(guidance.text.contains(&backup));
-        assert!(guidance
+        let g = guidance_for_refused_recovery(dir.path());
+        assert!(g.text.contains(&g.journal_path.display().to_string()));
+        assert!(g.text.contains(&g.backup_path.display().to_string()));
+        assert!(g
             .text
             .contains("Durch diese Anleitung wurde nichts geändert und nichts gelöscht"));
-        assert!(guidance.text.contains("Erwarteter Ort der Datensicherung"));
-        assert!(guidance.text.contains("behalten"));
-        assert!(guidance.text.contains("neu installieren"));
-        assert!(
-            guidance
-                .text
-                .contains(&guidance.file_path.display().to_string()),
-            "guidance must name its own ANLEITUNG path"
-        );
+        assert!(g.text.contains("Erwarteter Ort der Datensicherung"));
+        assert!(g.text.contains("behalten") && g.text.contains("neu installieren"));
+        assert!(g.text.contains(&g.file_path.display().to_string()));
     }
 
     #[test]
@@ -212,7 +220,6 @@ mod tests {
     #[test]
     fn guidance_reaches_in_process_presenter_when_write_and_opener_fail() {
         let dir = TempDir::new("guidance-presenter");
-        // Parent path component is a file → atomic write cannot create the ANLEITUNG.
         let blocker = dir.path().join("not-a-dir");
         std::fs::write(&blocker, b"x").unwrap();
         let guidance = StartupGuidance {
@@ -235,10 +242,7 @@ mod tests {
             Some(guidance.text.as_str()),
             "guidance must reach the in-process presenter when write and opener fail"
         );
-        assert!(
-            !guidance.file_path.exists(),
-            "write failure must leave no ANLEITUNG file"
-        );
+        assert!(!guidance.file_path.exists());
     }
 
     #[test]
@@ -246,8 +250,10 @@ mod tests {
         let dir = TempDir::new("guidance-write-ok");
         let guidance = guidance_for_refused_recovery(dir.path());
         write_guidance(&guidance).expect("write must succeed in a writable temp dir");
-        let written = std::fs::read_to_string(&guidance.file_path).unwrap();
-        assert_eq!(written, guidance.text);
+        assert_eq!(
+            std::fs::read_to_string(&guidance.file_path).unwrap(),
+            guidance.text
+        );
     }
 
     #[test]
@@ -261,8 +267,9 @@ mod tests {
             backup_path: blocker.join("projecta.db.bak-update"),
             file_path: blocker.join("update-recovery-ANLEITUNG.txt"),
         };
-        let err = write_guidance(&guidance).expect_err("parent file must refuse the write");
-        assert!(!err.is_empty());
+        assert!(!write_guidance(&guidance)
+            .expect_err("parent file")
+            .is_empty());
         assert!(!guidance.file_path.exists());
     }
 }
