@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:net';
-import { mkdtemp, readFile, readdir, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, readdir, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -282,6 +282,69 @@ test('R890-K3: guard ENOTDIR on --out uses invalid-path wording', async () => {
   assert.ok(!/nicht ruhend/.test(r.stdout));
   // Parent path component is a file: nested children are unreachable (ENOTDIR).
   await assert.rejects(stat(join(fileComponent, 'nested')), e => e.code === 'ENOTDIR');
+});
+test('R890-FU: state-side ENOTDIR yields Ungültiger Pfad and creates no out dir', async () => {
+  const fileParent = join(await mkdtemp(join(tmpdir(), 'dr16-state-enotdir-')), 'not-a-dir');
+  await writeFile(fileParent, 'x');
+  const state = join(fileParent, 'ledger.json');
+  const outDir = await output();
+  const r = await run(['backup', '--state', state, '--out', outDir, '--port', String(await freePort())]);
+  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.equal(JSON.parse(r.stdout).error, 'Ungültiger Pfad');
+  assert.match(r.stderr, /ENOTDIR/);
+  await assert.rejects(stat(outDir), e => e.code === 'ENOENT');
+});
+test('R890-FU: missing state file keeps exit 4 nicht ruhend (ENOENT skips guard)', async () => {
+  const state = join(await mkdtemp(join(tmpdir(), 'dr16-miss-state-')), 'ledger.json');
+  const outDir = await output();
+  const r = await run(['backup', '--state', state, '--out', outDir, '--port', String(await freePort())]);
+  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).error, 'nicht ruhend');
+  assert.match(r.stderr, /ENOENT/);
+  assert.ok(!/Ungültiger Pfad/.test(r.stdout));
+  await assert.rejects(stat(outDir), e => e.code === 'ENOENT');
+});
+test('R890-FU: ELOOP on --out parent yields Ungültiger Pfad', async t => {
+  if (process.platform === 'win32') return t.skip('symlink loops are POSIX-oriented');
+  const { state } = await ledger('v1');
+  const loopDir = await mkdtemp(join(tmpdir(), 'dr16-eloop-'));
+  const a = join(loopDir, 'a');
+  const b = join(loopDir, 'b');
+  try {
+    await symlink(a, b);
+    await symlink(b, a);
+  } catch (error) {
+    if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)');
+    throw error;
+  }
+  const out = join(a, 'snap');
+  const before = await readdir(dirname(state));
+  const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 4, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).error, 'Ungültiger Pfad');
+  assert.match(r.stderr, /ELOOP/);
+  assert.deepEqual(await readdir(dirname(state)), before);
+});
+test('R890-FU: EACCES on --out parent yields Ungültiger Pfad', async t => {
+  if (process.platform === 'win32') return t.skip('POSIX mode bits unavailable on win32');
+  if (typeof process.getuid === 'function' && process.getuid() === 0) {
+    return t.skip('running as root; EACCES not observable');
+  }
+  const { state } = await ledger('v1');
+  const denied = await mkdtemp(join(tmpdir(), 'dr16-eacces-'));
+  const out = join(denied, 'snap');
+  await chmod(denied, 0o000);
+  try {
+    const before = await readdir(dirname(state));
+    const r = await run(['backup', '--state', state, '--out', out, '--port', String(await freePort())]);
+    assert.equal(r.status, 4, r.stderr + r.stdout);
+    assert.equal(JSON.parse(r.stdout).error, 'Ungültiger Pfad');
+    assert.match(r.stderr, /EACCES/);
+    assert.deepEqual(await readdir(dirname(state)), before);
+  } finally {
+    await chmod(denied, 0o700);
+  }
 });
 test('R890-G1: isInside folds case on win32 and stays case-sensitive elsewhere', () => {
   const root = join('/Ledger', 'Dir');
