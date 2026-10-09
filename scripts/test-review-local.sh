@@ -522,11 +522,10 @@ else
 fi
 
 # 16. R877-K4: SIGTERM must run EXIT cleanup (exit 143, no leftover refs).
-#     Fake kilo must not `exec sleep` — otherwise `pkill -f …/kilo` matches
-#     nothing and bash defers the TERM trap until sleep ends (~60 s).
+#     Fake kilo writes $$; kill by that pid (R887-r2-K3), not pkill -f.
 mkdir -p "$tmp/bin-sleep"
-printf '#!/usr/bin/env bash\nsleep 60\n' > "$tmp/bin-sleep/kilo"
-chmod +x "$tmp/bin-sleep/kilo"
+printf '#!/usr/bin/env bash\necho $$ > %q\nsleep 60\n' "$tmp/kilo.pid" > "$tmp/bin-sleep/kilo"
+chmod +x "$tmp/bin-sleep/kilo"; rm -f "$tmp/kilo.pid"
 ( cd "$REPO" || exit 1
   export PATH="$tmp/bin-sleep:$PATH" REVIEW_KILO_TIMEOUT_S=0
   exec bash "$RUN" 7 --via kilo --models stepfun/step-3.7-flash:free --out-dir "$tmp/term-out"
@@ -540,8 +539,10 @@ done
 if [ -z "$leftover" ]; then
   bad "SIGTERM setup: refs/pa-review/pr-* never appeared"; kill "$term_pid" 2>/dev/null; wait "$term_pid" 2>/dev/null || true
 else
+  for _ in $(seq 1 50); do [ -f "$tmp/kilo.pid" ] && break; sleep 0.1; done
+  kilo_pid="$(cat "$tmp/kilo.pid" 2>/dev/null || true)"
   kill -TERM "$term_pid" 2>/dev/null
-  pkill -f "$tmp/bin-sleep/kilo" 2>/dev/null || true
+  [ -n "$kilo_pid" ] && kill -TERM "$kilo_pid" 2>/dev/null || true
   wait "$term_pid"; term_rc=$?
   leftover="$(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')"
   if [ "$term_rc" -eq 143 ] && [ -z "$leftover" ]; then
@@ -636,6 +637,38 @@ else
   bad "janitor: rc=$rc live=[$have_live] dead=[$have_dead] legacy=[$have_legacy]"; echo "$out"
 fi
 git -C "$REPO" update-ref -d "$live_ref" 2>/dev/null || true
+while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
+done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
+
+# 20. R887-r2-K1: locale-independent reclaim (de_DE runtime if ESRCH translated;
+#     else LC_ALL=C in reclaim — English strerror would hide the bug at base).
+k1_msg="$(LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 bash -c 'kill -0 2147483646' 2>&1 || true)"
+if locale -a 2>/dev/null | grep -qi de_DE && ! grep -qF 'No such process' <<<"$k1_msg"; then
+  sleep 0.01 &
+  k1_dead=$!; wait "$k1_dead" 2>/dev/null || true
+  k1_ref="refs/pa-review/pr-9010-$k1_dead"
+  git -C "$REPO" update-ref "$k1_ref" "$(git -C "$REPO" rev-parse HEAD)"
+  run env LC_ALL=de_DE.UTF-8 LANG=de_DE.UTF-8 bash "$RUN" --dry-run --models fake-a:cloud --out-dir "$tmp/janitor-de"
+  k1_have="$(git -C "$REPO" for-each-ref --format='%(refname)' "$k1_ref")"
+  git -C "$REPO" update-ref -d "$k1_ref" 2>/dev/null || true
+  if [ "$rc" -eq 0 ] && [ -z "$k1_have" ]; then ok "startup janitor reclaims dead-pid refs under de_DE locale"
+  else bad "janitor de_DE: rc=$rc dead=[$k1_have]"; echo "$out"; fi
+elif awk '/_reclaim_stale_pa_review_refs\(\)/,/^}/' "$RUN" | grep -q 'LC_ALL=C'; then
+  locale -a 2>/dev/null | grep -qi de_DE \
+    && echo "skip locale janitor runtime: de_DE present but kill ESRCH still English" \
+    || echo "skip locale janitor runtime: de_DE not installed (locale -a)"
+  ok "startup janitor reclaims dead-pid refs under de_DE locale"
+else bad "janitor kill -0 missing LC_ALL=C (locale-independent ESRCH)"; fi
+
+# 21. R887-r2-K2: janitor update-ref -d failure notes the dead-pid ref (reuse shim).
+sleep 0.01 &
+k2_dead=$!; wait "$k2_dead" 2>/dev/null || true
+k2_ref="refs/pa-review/pr-9011-$k2_dead"
+git -C "$REPO" update-ref "$k2_ref" "$(git -C "$REPO" rev-parse HEAD)"
+run env PATH="$tmp/bin-delfail:$PATH" bash "$RUN" --dry-run --models fake-a:cloud --out-dir "$tmp/janitor-delfail"
+if printf '%s' "$out" | grep -q "konnte Ref $k2_ref nicht loeschen"; then
+  ok "janitor failed update-ref -d prints diagnostic for dead-pid ref"
+else bad "janitor update-ref diagnostic missing for $k2_ref"; echo "$out"; fi
 while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
 done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
 
