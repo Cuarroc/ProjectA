@@ -18,7 +18,9 @@ function diagnose(error) {
     if (typeof path === 'string' && path) message = message.split(path).join(basename(path));
   }
   for (const [name, value] of Object.entries(process.env)) {
-    if (/TOKEN|SECRET|PASSWORD|KEY/i.test(name) && value) message = message.split(value).join('[redacted]');
+    if (/TOKEN|SECRET|PASSWORD|KEY/i.test(name) && value && value.length >= 8) {
+      message = message.split(value).join('[redacted]');
+    }
   }
   process.stderr.write(`${message}\n`);
 }

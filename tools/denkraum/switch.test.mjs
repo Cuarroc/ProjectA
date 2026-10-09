@@ -353,3 +353,26 @@ test('DR16H: diagnose handles thrown strings', async () => {
   assert.match(r.stderr, /string-throw-probe-dr16/);
   assert.equal(JSON.parse(r.stdout).ok, false);
 });
+test('DR16H: env redaction applies to non-SyntaxError diagnostics', async () => {
+  const { state } = await ledger('v1');
+  const listener = createServer();
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  await new Promise(r => listener.close(r));
+  const shortToken = 'short7c';
+  const preload = `import { promises } from 'node:fs'; import { syncBuiltinESMExports } from 'node:module';
+    promises.readFile = async () => {
+      throw new Error('leak ' + process.env.DECISION_DESK_ROOT_RECEIPT_TOKEN + ' and ' + process.env.DR16_SHORT_TOKEN);
+    };
+    syncBuiltinESMExports();`;
+  const r = await run([`data:text/javascript,${encodeURIComponent(preload)}`, SWITCH,
+    'backup', '--state', state, '--out', await output(), '--port', String(port)], {
+    DECISION_DESK_ROOT_RECEIPT_TOKEN: SECRET,
+    DR16_SHORT_TOKEN: shortToken,
+  }, '--import');
+  assert.equal(r.status, 4);
+  assert.match(r.stderr, /\[redacted\]/);
+  assert.ok(!r.stderr.includes(SECRET), 'long secret must be redacted');
+  assert.match(r.stderr, new RegExp(shortToken), 'values shorter than 8 stay visible');
+  assert.equal(JSON.parse(r.stdout).ok, false);
+});
