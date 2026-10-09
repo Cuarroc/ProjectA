@@ -157,3 +157,20 @@ test('DRSEC: failed write after create removes the half-written record', async t
     await assert.rejects(readFile(ownerPath(file)), e => e.code === 'ENOENT');
   } finally { fs.open = orig; syncBuiltinESMExports(); }
 });
+test('DRSEC: fixture exits non-zero when stdin closes without release', async t => {
+  const file = await ledger(t);
+  const child = spawn(process.execPath, [fixture, file], { cwd: import.meta.dirname, stdio: ['pipe', 'pipe', 'inherit'] });
+  const rl = createInterface({ input: child.stdout });
+  t.after(() => joinChild(child, rl));
+  await new Promise((res, rej) => {
+    const timer = setTimeout(() => rej(new Error('ready timeout')), 2000);
+    rl.once('line', () => { clearTimeout(timer); res(); });
+  });
+  child.stdin.end();
+  const code = await Promise.race([
+    new Promise(res => child.once('exit', res)),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('exit deadline')), 2000)),
+  ]);
+  assert.notEqual(code, 0);
+  assert.ok(await readFile(ownerPath(file)));
+});
