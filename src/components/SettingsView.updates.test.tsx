@@ -421,6 +421,141 @@ describe("SettingsView updates tab", () => {
     finishCancel("notRunning");
     expect(screen.getAllByText(/stale install rejection after check/)).toHaveLength(1);
   });
+
+  it("drops a deferred install error when a new update check starts", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    let finishCancel!: (value: "cancelled" | "tooLate" | "notRunning") => void;
+    vi.mocked(cancelUpdateDownload).mockImplementationOnce(
+      () => new Promise((resolve) => { finishCancel = resolve; }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeDisabled();
+
+    // Reject while cancel is still pending → error is parked in pendingInstallErrorRef.
+    rejectInstall(new Error("deferred install error before check"));
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    expect(screen.queryByText(/deferred install error before check/)).not.toBeInTheDocument();
+
+    mocks.check.mockResolvedValue({
+      rid: 43, available: true, version: "1.3.2", body: "Next update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText(/Version 1.3.2 is available/)).toBeInTheDocument();
+
+    // Check cleared the parked error; notRunning would otherwise surface it.
+    finishCancel("notRunning");
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    expect(screen.queryByText(/deferred install error before check/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Version 1.3.2 is available/)).toBeInTheDocument();
+  });
+
+  it("clears suppress and cancelled note when install finishes during cancel live-session re-check", async () => {
+    let rejectInstall!: (reason?: unknown) => void;
+    vi.mocked(installUpdateWhenIdle).mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectInstall = reject;
+        }),
+    );
+    // Leave the install promise pending while flipping phase via a late
+    // setUpdaterState rejection — that hits the early return after listLiveSessions
+    // without the success path clearing cancelNote.
+    let rejectInstallingState!: (reason: Error) => void;
+    setUpdaterState.mockImplementation((state: { phase: string }) => {
+      if (state.phase === "installing") {
+        return new Promise<void>((_resolve, reject) => {
+          rejectInstallingState = (reason) => reject(reason);
+        });
+      }
+      return Promise.resolve();
+    });
+
+    mocks.check.mockResolvedValue({
+      rid: 42, available: true, version: "1.3.1", body: "Fixture update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Download and install" }));
+    await waitFor(() => expect(installUpdateWhenIdle).toHaveBeenCalledWith(42));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
+
+    let releaseSessions!: (sessions: string[]) => void;
+    vi.mocked(listLiveSessions).mockImplementationOnce(
+      () => new Promise((resolve) => { releaseSessions = resolve; }),
+    );
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    await waitFor(() => expect(listLiveSessions).toHaveBeenCalledTimes(3));
+
+    rejectInstallingState(new Error("state store unavailable"));
+    await waitFor(() => expect(screen.getByText(/state store unavailable/)).toBeInTheDocument());
+
+    releaseSessions([]);
+    // Early-return path must clear suppress + cancelled note; otherwise the
+    // still-pending install rejection is swallowed and the note stays set.
+    rejectInstall(new Error("deferred install failure after phase flip"));
+    expect(
+      await screen.findByText(/deferred install failure after phase flip/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Download wurde abgebrochen/i)).not.toBeInTheDocument();
+  });
+
+  it("surfaces a parked install error when phase leaves installing during cancel live-session re-check", async () => {
+    let rejectInstall!: (reason?: unknown) => void;
+    vi.mocked(installUpdateWhenIdle).mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectInstall = reject;
+        }),
+    );
+    let rejectInstallingState!: (reason: Error) => void;
+    setUpdaterState.mockImplementation((state: { phase: string }) => {
+      if (state.phase === "installing") {
+        return new Promise<void>((_resolve, reject) => {
+          rejectInstallingState = (reason) => reject(reason);
+        });
+      }
+      return Promise.resolve();
+    });
+
+    mocks.check.mockResolvedValue({
+      rid: 42, available: true, version: "1.3.1", body: "Fixture update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    renderSettings();
+    fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Download and install" }));
+    await waitFor(() => expect(installUpdateWhenIdle).toHaveBeenCalledWith(42));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
+
+    let releaseSessions!: (sessions: string[]) => void;
+    vi.mocked(listLiveSessions).mockImplementationOnce(
+      () => new Promise((resolve) => { releaseSessions = resolve; }),
+    );
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    await waitFor(() => expect(listLiveSessions).toHaveBeenCalledTimes(3));
+
+    rejectInstallingState(new Error("state store unavailable"));
+    await waitFor(() => expect(screen.getByText(/state store unavailable/)).toBeInTheDocument());
+
+    // rejectInstall BEFORE releaseSessions: under suppress the rejection is
+    // parked; early return after phase left installing must surface it once
+    // and clear the ref (no second paint of the same message).
+    rejectInstall(new Error("parked install failure before session release"));
+    releaseSessions([]);
+
+    expect(
+      await screen.findByText(/parked install failure before session release/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/parked install failure before session release/),
+    ).toHaveLength(1);
+    expect(screen.queryByText(/Download wurde abgebrochen/i)).not.toBeInTheDocument();
+  });
 });
 
 describe("SettingsView routing radiogroup", () => {
