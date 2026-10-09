@@ -141,6 +141,33 @@ async function runMain(argv, pr) {
   return { code, out: out.join(""), err: err.join("") };
 }
 
+test("ERLEDIGT-META: only real ISO UTC timestamps may write", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "dev-erledigt-iso-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const file = join(dir, "ERLEDIGT.md");
+  writeFileSync(file, HEAD2);
+  const argv = ["106", "W2-07", "--file", file];
+  for (const mergedAt of [
+    "2026-02-30T12:00:00Z", "2026-02-29T12:00:00Z", "2026-04-31T12:00:00Z",
+    "2026-09-24", "September 24, 2026", "2026-09-24 12:00:00Z",
+    "2026-09-24T12:00:00", "2026-09-24T12:00:00+00:00", "2026-09-25T00:30:00+02:00",
+    "2026-09-24t12:00:00z", "2026-09-24T12:00:00.1Z", "2026-09-24T12:00:00.1234Z",
+    "2026-09-24T24:00:00Z", "2026-09-24T12:60:00Z", "2026-09-24T12:00:60Z",
+    "2026-09-24T12:00:00Z\n", "2026-09-24T12:00:00Z\r", "2026-09-24T12:00:00Z\u2028",
+  ]) {
+    for (const flags of [[], ["--apply"]]) {
+      const res = await runMain([...argv, ...flags], { ...PR, mergedAt });
+      assert.equal(res.code, 3, mergedAt);
+      assert.equal(res.out, "");
+      assert.match(res.err, /mergedAt/);
+      assert.equal(readFileSync(file, "utf8"), HEAD2);
+    }
+  }
+  for (const mergedAt of ["2024-02-29T23:59:59Z", "2024-02-29T23:59:59.123Z"]) {
+    assert.match(makeRow({ pr: { ...PR, mergedAt }, id: "X-1" }), /^\| 29\.02\. \|/);
+  }
+});
+
 test("ERLEDIGT-META: invalid merge date refuses without write", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "dev-erledigt-meta-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -161,7 +188,7 @@ test("ERLEDIGT-META: invalid merge date refuses without write", async (t) => {
     assert.throws(() => makeRow({ pr: { ...PR, mergedAt }, id: "W2-07" }), /mergedAt/);
   }
 
-  const valid = { ...PR, mergedAt: "2026-09-25T00:30:00+02:00" };
+  const valid = { ...PR, mergedAt: "2026-09-24T22:30:00Z" };
   const first = await runMain([...argv, "--apply"], valid);
   assert.equal(first.code, 0);
   const written = readFileSync(file, "utf8");

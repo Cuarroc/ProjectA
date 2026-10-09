@@ -56,6 +56,16 @@ const healthy = {
 
 const byId = (result, id) => result.checks.find((c) => c.id === id);
 
+test("SETUP-VERSION: negative and uppercase node prefixes are rejected", () => {
+  for (const nodeVersion of ["v-1.0.0", "V24.0.0"]) {
+    const result = evaluate({ ...healthy, nodeVersion });
+    assert.equal(byId(result, "node").state, "fail", nodeVersion);
+    assert.equal(byId(result, "node").required, true);
+    assert.equal(result.ok, false);
+    assert.equal(exitCode(result), 1);
+  }
+});
+
 test("healthy machine passes every mandatory check", () => {
   const result = evaluate(healthy);
   assert.equal(result.ok, true);

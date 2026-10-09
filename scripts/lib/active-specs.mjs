@@ -4,7 +4,7 @@ const ABSCHNITT = /^#{2,4}\s*Aktive Specs\s*$/;
 // abgeschlossen, `entwurf` = in Arbeit am Text, noch kein Auftrag — ein
 // Entwurf ist weder ausführbar noch abgeschlossen und blockiert niemanden
 // (F4-Rest r24: task_f_core3_delivery.md legte den dritten Zustand an).
-const ERLAUBT = new Set(["aktiv", "historisch", "entwurf"]);
+export const ERLAUBT = new Set(["aktiv", "historisch", "entwurf"]);
 const HEAD_LINES = 8;
 
 export function listedInStand(standText) {
