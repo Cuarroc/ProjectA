@@ -1304,7 +1304,7 @@ fn self_test_host_receipt_ack(
                 closed: Arc::new(AtomicBool::new(false)),
             },
             crate::host_events::MAX_WIRE_BYTES,
-            Duration::from_secs(20),
+            Duration::from_secs(crate::protocol::HOST_RECEIPT_ACK_SELF_TEST_PARENT_SECS),
             crate::host_events::MAX_WIRE_BYTES,
             Observer::Callback(&mut consume),
         )?;
@@ -1693,9 +1693,10 @@ fn execute_protocol_events(
                 receipt: Box::new(receipt),
             })?;
             if let Some(handshake) = &handshake {
-                // Durable receipt persistence shares the existing writer-drain
-                // deadline. A shorter independent wait can reject a successful
-                // SQLite checkpoint; a new wait here would extend the budget.
+                // Durable receipt persistence shares the writer-drain deadline
+                // sized below from the mirrored SQLite busy_timeout budget
+                // (capped at HOST_GRACE_MS). A shorter independent wait can
+                // reject a successful SQLite checkpoint.
                 while !handshake.observed.load(Ordering::Acquire) {
                     if writer_stop.load(Ordering::Acquire) || Instant::now() >= deadline {
                         return Err("receipt acknowledgement unavailable".into());
@@ -1715,7 +1716,19 @@ fn execute_protocol_events(
         .and_then(|prepared| execute_protocol_settlement(prepared, observer, lifecycle));
     let capture_failure = terminal.as_ref().err().cloned();
     drop(events_tx);
-    let drain_deadline = Instant::now() + Duration::from_secs(5);
+    // Fail-closed: still bound the drain. The local allowance mirrors
+    // Store::open's busy_timeout and is capped at HOST_GRACE_MS so a short
+    // fixed window does not reject a successful Receipt commit under SQLite
+    // writer load (the KI-30 scenario). Launch completes before input
+    // delivery, so only Process/Input/Receipt can overlap this window. Cap
+    // alone does not guarantee the drain fits remaining parent/owner lifetime:
+    // the parent clock starts earlier, the owner deadline starts at
+    // reservation, and finish_writer / startup / cleanup can still consume
+    // time independently. Keep the drain under the receipt-ack self-test
+    // parent bound so a missing ack still fails closed as "receipt
+    // acknowledgement unavailable" rather than the parent's capture deadline.
+    let drain_deadline =
+        Instant::now() + Duration::from_millis(crate::protocol::writer_drain_budget_ms());
     let submitted = terminal_tx.send((terminal, drain_deadline));
     drop(terminal_tx);
     while !writer.is_finished() && Instant::now() < drain_deadline {

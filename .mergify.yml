@@ -133,7 +133,7 @@ merge_protections:
   # der PR-Text ist der Bericht, keine Pflicht-Berichtsdatei mehr; Vorlage
   # .github/pull_request_template.md). Paket-Branches erkennt die Regel am Namen:
   # Anbieter-Praefix plus Paket-ID aus docs/PLAN.md - w<N>-, df<N>, ki-<N>,
-  # hq2-. Gross-/Kleinschreibung egal.
+  # hq2-, dr-, z<N>-. Gross-/Kleinschreibung egal.
   #
   # Bewusst NICHT erfasst (kein Paket, kein Bericht verlangt):
   #   - Doku-/Infra-Branches desselben Anbieters, z. B. claude/masterplan,
@@ -143,11 +143,11 @@ merge_protections:
   # Die Regel steht auch in AGENTS.md, damit Worker sie kennen.
   - name: Paket-PR bringt seinen Bericht mit
     description: >-
-      Package branches (w<N>-, df<N>, ki-<N>, hq2-) must carry their report
+      Package branches (w<N>-, df<N>, ki-<N>, hq2-, dr-, z<N>-) must carry their report
       in the PR body, in a section that starts with "## Report".
     if:
       - base = main
-      - head ~= (?i)^(claude|codex|kimi|opencode|glm)/(w\d+-|df\d+|ki-\d+|hq2-)
+      - head ~= (?i)^(claude|codex|kimi|opencode|glm|cursor)/(w\d+-|df\d+|ki-\d+|hq2-|dr-|z\d+-)
     # Kein Uebergang: eine .pa/report_*.md erfuellt die Regel nicht mehr
     # (Review kimi-k3 F-6: ein Uebergang ohne Ende ist ein permanenter
     # Bypass). Jeder offene Paket-PR muss den Abschnitt im PR-Text tragen.

@@ -15,6 +15,7 @@ import {
   listAgentProfiles,
   listLiveSessions,
   installUpdateWhenIdle,
+  cancelUpdateDownload,
   getUpdaterState,
   setUpdaterState,
   setBudget,
@@ -476,21 +477,26 @@ export default function SettingsView({
   }, []);
 
   const [updateState, setUpdateState] = useState<UpdaterState>({ phase: "idle" });
+  const updatePhaseRef = useRef<UpdaterState["phase"]>("idle");
   const updaterGeneration = useRef(0);
   const updaterTransitioned = useRef(false);
   const updaterPublish = useRef(Promise.resolve());
+  const applyUpdateState = (state: UpdaterState) => {
+    updatePhaseRef.current = state.phase;
+    setUpdateState(state);
+  };
   const publishUpdateState = (state: UpdaterState) => {
     const generation = updaterGeneration.current;
     if (generation !== latestUpdaterViewGeneration) return;
     updaterTransitioned.current = true;
-    setUpdateState(state);
+    applyUpdateState(state);
     updaterPublish.current = updaterPublish.current
       .then(() => generation === latestUpdaterViewGeneration
         ? setUpdaterState(state)
         : undefined)
       .catch((cause: unknown) => {
         if (generation === latestUpdaterViewGeneration) {
-          setUpdateState({ phase: "error", message: describeError(cause) });
+          applyUpdateState({ phase: "error", message: describeError(cause) });
         }
       });
   };
@@ -500,12 +506,12 @@ export default function SettingsView({
     void getUpdaterState()
       .then((state) => {
         if (generation === latestUpdaterViewGeneration && !updaterTransitioned.current) {
-          setUpdateState(state);
+          applyUpdateState(state);
         }
       })
       .catch((cause: unknown) => {
         if (generation === latestUpdaterViewGeneration) {
-          setUpdateState({ phase: "error", message: describeError(cause) });
+          applyUpdateState({ phase: "error", message: describeError(cause) });
         }
       });
     return () => {
@@ -515,8 +521,18 @@ export default function SettingsView({
   // The update object is the core's download handle, not something to render.
   const pendingUpdate = useRef<Update | null>(null);
   const [relaunchFailed, setRelaunchFailed] = useState(false);
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelNote, setCancelNote] = useState<"cancelled" | "tooLate" | null>(null);
+  const cancelPendingRef = useRef(false);
+  const suppressInstallErrorRef = useRef(false);
+  const pendingInstallErrorRef = useRef<unknown>(null);
 
   const handleCheckUpdates = () => {
+    setCancelNote(null);
+    setCancelPending(false);
+    cancelPendingRef.current = false;
+    suppressInstallErrorRef.current = false;
+    pendingInstallErrorRef.current = null;
     publishUpdateState({ phase: "checking" });
     void (async () => {
       try {
@@ -552,6 +568,13 @@ export default function SettingsView({
     const update = pendingUpdate.current;
     if (update === null || updateState.phase !== "available") return;
     const version = updateState.version;
+    const notes =
+      update.body !== undefined && update.body.trim() !== "" ? update.body : null;
+    setCancelNote(null);
+    setCancelPending(false);
+    cancelPendingRef.current = false;
+    suppressInstallErrorRef.current = false;
+    pendingInstallErrorRef.current = null;
     publishUpdateState({ phase: "installing", version });
     void (async () => {
       try {
@@ -563,7 +586,7 @@ export default function SettingsView({
           publishUpdateState({
             phase: "available",
             version,
-            notes: update.body !== undefined && update.body.trim() !== "" ? update.body : null,
+            notes,
             activeWorkers: liveSessions.length,
           });
           return;
@@ -571,8 +594,72 @@ export default function SettingsView({
         await installUpdateWhenIdle(update.rid);
         pendingUpdate.current = null;
         setRelaunchFailed(false);
+        setCancelNote(null);
         publishUpdateState({ phase: "ready", version });
       } catch (cause: unknown) {
+        if (suppressInstallErrorRef.current) {
+          suppressInstallErrorRef.current = false;
+          return;
+        }
+        if (cancelPendingRef.current) {
+          pendingInstallErrorRef.current = cause;
+          return;
+        }
+        publishUpdateState({ phase: "error", message: describeError(cause) });
+      }
+    })();
+  };
+
+  const handleCancelUpdateDownload = () => {
+    if (updateState.phase !== "installing" || cancelPendingRef.current) return;
+    const update = pendingUpdate.current;
+    const version = updateState.version;
+    cancelPendingRef.current = true;
+    setCancelPending(true);
+    void (async () => {
+      try {
+        const result = await cancelUpdateDownload();
+        cancelPendingRef.current = false;
+        setCancelPending(false);
+        if (result === "cancelled") {
+          // Late cancel after install already left downloading — keep state.
+          if (updatePhaseRef.current !== "installing") return;
+          suppressInstallErrorRef.current = true;
+          pendingInstallErrorRef.current = null;
+          setCancelNote("cancelled");
+          // Re-check live workers the same way install does: a session may
+          // have started during the download and must keep the install guard.
+          const liveSessions = await listLiveSessions();
+          if (updatePhaseRef.current !== "installing") return;
+          publishUpdateState({
+            phase: "available",
+            version,
+            notes:
+              update?.body !== undefined && update.body.trim() !== ""
+                ? update.body
+                : null,
+            activeWorkers: liveSessions.length,
+          });
+          return;
+        }
+        if (result === "tooLate") {
+          setCancelNote("tooLate");
+          const stalled = pendingInstallErrorRef.current;
+          pendingInstallErrorRef.current = null;
+          if (stalled !== null) {
+            publishUpdateState({ phase: "error", message: describeError(stalled) });
+          }
+          return;
+        }
+        // notRunning: follow the install promise; surface a stalled rejection.
+        const stalled = pendingInstallErrorRef.current;
+        pendingInstallErrorRef.current = null;
+        if (stalled !== null) {
+          publishUpdateState({ phase: "error", message: describeError(stalled) });
+        }
+      } catch (cause: unknown) {
+        cancelPendingRef.current = false;
+        setCancelPending(false);
         publishUpdateState({ phase: "error", message: describeError(cause) });
       }
     })();
@@ -903,8 +990,11 @@ export default function SettingsView({
             versionFailed={versionFailed}
             updateState={updateState}
             relaunchFailed={relaunchFailed}
+            cancelPending={cancelPending}
+            cancelNote={cancelNote}
             handleCheckUpdates={handleCheckUpdates}
             handleInstallUpdate={handleInstallUpdate}
+            handleCancelUpdateDownload={handleCancelUpdateDownload}
             handleRelaunch={handleRelaunch}
           />
         ) : (

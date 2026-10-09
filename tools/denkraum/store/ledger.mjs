@@ -59,7 +59,8 @@ export class LedgerStore extends ProgressStore {
       ensure(old || input.expectedRevision === undefined, 'Frage fehlt für diese Revision. Erst neu laden.', 409);
       ensure(!old || input.expectedRevision === old.revision, 'Frage wurde inzwischen geändert. Erst neu laden.', 409);
       if (old?.recommendationDetail && q.sourceRef && !sameRef(old.sourceRef, q.sourceRef) && q.recommendationDetail === undefined) q.recommendationDetail = undefined;
-      const next = { ...old, ...q, revision: (old?.revision ?? 0) + 1, createdAt: old?.createdAt ?? now(), updatedAt: now() };
+      const at = now();
+      const next = { ...old, ...q, revision: (old?.revision ?? 0) + 1, createdAt: old?.createdAt ?? at, updatedAt: at };
       if (old) state.questions[index] = next; else state.questions.push(next);
       if (requestId) { state.questionImports ??= []; state.questionImports.push({ requestId, payload, result: structuredClone(next) }); }
       return next;

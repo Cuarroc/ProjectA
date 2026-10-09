@@ -61,6 +61,9 @@ const fmt1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
 const check = (id, label, status, text) => ({ id, label, status, text });
 
 export function checkRam({ freeBytes, minFreeGb }) {
+  if (typeof freeBytes !== "number" || !Number.isFinite(freeBytes) || freeBytes < 0) {
+    return check("ram", "RAM", "stopp", `Messwert ungueltig (${String(freeBytes)}), kein RAM-Beleg`);
+  }
   const gb = freeBytes / 1024 ** 3;
   if (gb < minFreeGb) return check("ram", "RAM", "stopp", `nur ${fmt1(gb)} GB frei (Schwelle ${minFreeGb} GB)`);
   return check("ram", "RAM", "ok", `${fmt1(gb)} GB frei (Schwelle ${minFreeGb} GB)`);
@@ -92,12 +95,16 @@ export function parseUsage(text) {
   return data;
 }
 
-const isPercent = (v) => typeof v === "number" && Number.isFinite(v);
+const isPercent = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0;
 
 // usage: parsed object, null = file missing, undefined = no --usage given
 export function checkUsage({ usage, cap, sessionCap, file }) {
   if (usage === undefined) return check("limit", "Limit", "warn", "keine --usage-Datei angegeben, Anbieter-Limit nicht geprueft");
   if (usage === null) return check("limit", "Limit", "warn", `Nutzungsdatei fehlt (${file}), Anbieter-Limit nicht geprueft`);
+  const names = Object.keys(usage);
+  if (names.length === 0) {
+    return check("limit", "Limit", "stopp", "Nutzungsdatei ohne Anbieter, kein Limit-Beleg");
+  }
   const over = [];
   for (const [name, u] of Object.entries(usage)) {
     for (const [key, limit] of [["woche", cap], ["session", sessionCap]]) {
@@ -108,8 +115,7 @@ export function checkUsage({ usage, cap, sessionCap, file }) {
     }
   }
   if (over.length) return check("limit", "Limit", "stopp", over.join("; "));
-  const n = Object.keys(usage).length;
-  return check("limit", "Limit", "ok", `${n} Anbieter unter ${cap} % (Woche) und ${sessionCap} % (Session)`);
+  return check("limit", "Limit", "ok", `${names.length} Anbieter unter ${cap} % (Woche) und ${sessionCap} % (Session)`);
 }
 
 export function checkObserve({ stat, file, sinceSec, now }) {

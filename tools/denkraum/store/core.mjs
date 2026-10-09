@@ -1,7 +1,7 @@
 // DeskStore core (DR-03): read, serialized atomic change and explicit V1->V2 migration.
 // Ledger operations (questions, answers, receipts, progress, patches, delivery) compose
 // `change` in DR-04; the root agent id is injected and never defaulted here (D2).
-import { readFile, writeFile, rename, mkdir, copyFile } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, chmod } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DeskError, ensure, ideaDefaults, migrateState, validateState } from './model.mjs';
@@ -41,13 +41,19 @@ export class DeskStore {
         ensure(JSON.stringify(JSON.parse(original.toString('utf8').replace(/^﻿/, ''))) === before, 'Stand vor Migration verändert.', 409);
         const backup = `${this.file}.v1-backup`;
         try { await this.io.writeFile(backup, original, { flag: 'wx', mode: 0o600, flush: true }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
+        // Secure existing backups before the equality reject path; Windows ACLs are not handled here.
+        if (process.platform !== 'win32') {
+          try { await chmod(backup, 0o600); }
+          catch { throw new DeskError('Migrationsbackup konnte nicht abgesichert werden.', 503); }
+        }
         ensure((await readFile(backup)).equals(original), 'Migrationsbackup stimmt nicht mit dem Altstand überein.', 503);
       }
       const temp = `${this.file}.${randomUUID()}.tmp`;
       await this.io.writeFile(temp, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600, flush: true });
       const backupTemp = `${temp}.previous`;
       try {
-        await copyFile(this.file, backupTemp);
+        // copyFile inherits legacy permissions; create the copy privately instead.
+        await writeFile(backupTemp, await readFile(this.file), { flag: 'wx', mode: 0o600, flush: true });
         await this.io.rename(backupTemp, `${this.file}.previous`);
       } catch (e) { if (e.code !== 'ENOENT') throw e; }
       await this.io.rename(temp, this.file);

@@ -930,16 +930,17 @@ impl DurableJournal {
 }
 
 mod driver;
+mod guidance;
 mod install;
 mod installer;
 mod restore;
 mod staging;
 mod startup;
 
+pub use guidance::{present_refused_guidance, recover_startup, StartupRecovery};
 pub use install::{
     install_through_journal, installer_not_started, produce_journal, Announced, Staged,
 };
-pub use startup::recover_at_startup;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(dead_code)] // W3-02
