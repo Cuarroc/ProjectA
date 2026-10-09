@@ -324,6 +324,53 @@ describe("SettingsView updates tab", () => {
     finishCancel("cancelled");
     expect(await screen.findByRole("button", { name: "Download and install" })).toBeInTheDocument();
   });
+
+  it("cancelled while a worker is live shows the worker guard not the install button", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(listLiveSessions).mockResolvedValueOnce(["live-during-download"]);
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    rejectInstall(new Error("Update download cancelled"));
+    expect(await screen.findByText(/Download wurde abgebrochen/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 worker is active/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download and install" })).not.toBeInTheDocument();
+  });
+
+  it("clears a stale cancel note when checking for updates again", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("cancelled");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    rejectInstall(new Error("Update download cancelled"));
+    expect(await screen.findByText(/Download wurde abgebrochen/i)).toBeInTheDocument();
+
+    mocks.check.mockResolvedValue({
+      rid: 43, available: true, version: "1.3.2", body: "Next update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText(/Version 1.3.2 is available/)).toBeInTheDocument();
+    expect(screen.queryByText(/Download wurde abgebrochen/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a fixed error when cancelUpdateDownload rejects", async () => {
+    await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockRejectedValueOnce(new Error("cancel ipc failed"));
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    const error = await screen.findByText(/cancel ipc failed/);
+    expect(error).toBeInTheDocument();
+    expect(error.closest(".settings-error")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Abbrechen" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/at Object\./)).not.toBeInTheDocument();
+  });
+
+  it("surfaces a late install rejection after tooLate exactly once", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    vi.mocked(cancelUpdateDownload).mockResolvedValueOnce("tooLate");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(await screen.findByText(/lässt sich nicht mehr abbrechen/i)).toBeInTheDocument();
+    rejectInstall(new Error("install failed after too late"));
+    expect(await screen.findByText(/install failed after too late/)).toBeInTheDocument();
+    expect(screen.getAllByText(/install failed after too late/)).toHaveLength(1);
+  });
 });
 
 describe("SettingsView routing radiogroup", () => {

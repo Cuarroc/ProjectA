@@ -523,6 +523,7 @@ export default function SettingsView({
   const pendingInstallErrorRef = useRef<unknown>(null);
 
   const handleCheckUpdates = () => {
+    setCancelNote(null);
     publishUpdateState({ phase: "checking" });
     void (async () => {
       try {
@@ -616,6 +617,9 @@ export default function SettingsView({
           suppressInstallErrorRef.current = true;
           pendingInstallErrorRef.current = null;
           setCancelNote("cancelled");
+          // Re-check live workers the same way install does: a session may
+          // have started during the download and must keep the install guard.
+          const liveSessions = await listLiveSessions();
           publishUpdateState({
             phase: "available",
             version,
@@ -623,7 +627,7 @@ export default function SettingsView({
               update?.body !== undefined && update.body.trim() !== ""
                 ? update.body
                 : null,
-            activeWorkers: 0,
+            activeWorkers: liveSessions.length,
           });
           return;
         }
