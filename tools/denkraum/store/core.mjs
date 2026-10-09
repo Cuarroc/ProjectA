@@ -28,7 +28,7 @@ export class DeskStore {
     catch (error) {
       if (acquired) {
         try { await releaseOwnership(this.file, this.#context.session.nonce); }
-        catch (cause) { try { error.cause = cause; } catch { /* Preserve even immutable thrown values. */ } }
+        catch (cause) { try { error.cause ??= cause; } catch { /* Preserve even immutable thrown values. */ } }
         finally { this.#context.session = null; }
       }
       throw error;
