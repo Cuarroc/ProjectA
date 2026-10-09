@@ -598,7 +598,11 @@ export default function SettingsView({
         publishUpdateState({ phase: "ready", version });
       } catch (cause: unknown) {
         if (suppressInstallErrorRef.current) {
+          // Park rather than drop: the cancel path may early-return after
+          // listLiveSessions once the phase has already left "installing",
+          // and that path must still be able to surface this rejection.
           suppressInstallErrorRef.current = false;
+          pendingInstallErrorRef.current = cause;
           return;
         }
         if (cancelPendingRef.current) {
@@ -632,9 +636,15 @@ export default function SettingsView({
           const liveSessions = await listLiveSessions();
           if (updatePhaseRef.current !== "installing") {
             // Install finished (or left installing) while we re-checked sessions:
-            // drop the cancel suppress flag and note so they cannot stick.
+            // drop the cancel suppress flag and note so they cannot stick, and
+            // surface any rejection parked during the await.
             suppressInstallErrorRef.current = false;
             setCancelNote(null);
+            const stalled = pendingInstallErrorRef.current;
+            pendingInstallErrorRef.current = null;
+            if (stalled !== null) {
+              publishUpdateState({ phase: "error", message: describeError(stalled) });
+            }
             return;
           }
           publishUpdateState({
@@ -646,6 +656,9 @@ export default function SettingsView({
                 : null,
             activeWorkers: liveSessions.length,
           });
+          // Successful cancel back to available: discard a cancel-induced
+          // rejection parked while suppress was set during the re-check.
+          pendingInstallErrorRef.current = null;
           return;
         }
         if (result === "tooLate") {
