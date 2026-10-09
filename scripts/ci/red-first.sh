@@ -297,18 +297,65 @@ node_name_run() {
   node --test --test-reporter=spec --test-name-pattern="^$(regex_escape "$1")\$" "$2"
 }
 
-playwright_title_in_source() {
-  # Exact test()/test.only|skip|fix() string title present in the source file.
-  node -e 'const fs=require("fs");const n=process.argv[2];const s=fs.readFileSync(process.argv[1],"utf8");const re=/test(?:\.(?:skip|only|fix))?\(\s*(["'\''`])((?:\\.|(?!\1).)*)\1/g;let m;while((m=re.exec(s))){if(m[2]===n)process.exit(0);}process.exit(1);' "$1" "$2"
+# R741-A1: absence only via --list JSON without config grep/grepInvert (not source regex).
+# R741-A2: trailers name the leaf title; describe parents come from list JSON grepTitle.
+# R741-A3: load/import failure → INVALID (no clean absence), not base-red.
+
+playwright_denkraum_list_unfiltered() {
+  local path="$1" cfg_tmp
+  cfg_tmp="$(mktemp --suffix=.mjs tools/denkraum/red-first-list.XXXXXX)"
+  # Indented so sed /^}/ extractors do not cut early.
+  printf '%s\n' \
+    "  import base from './playwright.config.mjs';" \
+    "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
+    "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
+    "  return o;} export default strip(base);" > "$cfg_tmp"
+  set +e
+  npx playwright test -c "$cfg_tmp" "$path" --list --reporter=json
+  local code=$?
+  set -e
+  rm -f "$cfg_tmp"
+  return "$code"
+}
+
+playwright_denkraum_resolve_identity() {
+  # stdin: --list JSON; argv: leaf title. stdout: ABSENT | INVALID | OK <grepTitle>
+  node -e '
+  const name=process.argv[1]; let raw="";
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data",c=>raw+=c);
+  process.stdin.on("end",()=>{
+    const i=raw.indexOf("{"); if(i<0){console.log("INVALID"); return;}
+    let j; try{j=JSON.parse(raw.slice(i));}catch{console.log("INVALID"); return;}
+    const hits=[];
+    (function walk(suites,parents){for(const su of suites||[]){const path=parents.concat([su.title||""]);
+      for(const sp of su.specs||[]){if(sp.title!==name)continue;
+        for(const t of (sp.tests&&sp.tests.length?sp.tests:[{projectName:""}]))
+          hits.push({projectName:t.projectName||"",suitePath:path});}
+      walk(su.suites,path);}})(j.suites||[],[]);
+    if(hits.length===0){console.log("ABSENT"); return;}
+    if(hits.length!==1){console.log("INVALID"); return;}
+    const h=hits[0];
+    console.log("OK "+[h.projectName].concat(h.suitePath).concat([name]).join(" "));
+  });
+  ' "$1"
 }
 
 playwright_denkraum_name_run() {
-  # `-g` matches space-joined grepTitle (`basename title`) with flags `gi`.
-  # Anchor basename+title so suffix/prefix siblings cannot satisfy the trailer.
-  local name="$1" path="$2" base
-  base="$(basename "$path")"
+  # Exact case-sensitive --list identity, then both-end-anchored case-sensitive --grep.
+  local name="$1" path="$2" list_out identity grep_title
+  set +e
+  list_out="$(playwright_denkraum_list_unfiltered "$path" 2>/dev/null)"
+  set -e
+  [ -n "$list_out" ] || { echo "red-first: playwright title identity invalid"; return 2; }
+  identity="$(printf '%s' "$list_out" | playwright_denkraum_resolve_identity "$name")"
+  case "$identity" in
+    ABSENT) echo "red-first: playwright title absent from list"; return 1 ;;
+    OK\ *) grep_title="${identity#OK }" ;;
+    *) echo "red-first: playwright title identity invalid"; return 2 ;;
+  esac
   npx playwright test -c tools/denkraum/playwright.config.mjs "$path" \
-    -g "$(regex_escape "$base") $(regex_escape "$name")$" --reporter=list
+    --grep="/^$(regex_escape "$grep_title")\$/" --reporter=list
 }
 
 ensure_node_modules() {
@@ -457,7 +504,6 @@ run_spec() {
       (cd "$tree" && npx playwright test "$path")
       ;;
     tools/denkraum/*.spec.mjs)
-      # Denkraum Playwright harness (config is not the repo-root e2e one).
       ensure_node_modules "$tree"
       if [ -n "$name" ]; then
         local pw_out pw_code
@@ -466,13 +512,10 @@ run_spec() {
         pw_code=$?
         set -e
         printf '%s\n' "$pw_out"
-        if printf '%s\n' "$pw_out" | sed -E $'s/\033\\[[0-9;]*m//g' |
-          grep -E 'No tests found' >/dev/null; then
-          if playwright_title_in_source "$tree/$path" "$name"; then
-            echo "red-first: playwright title present but not discovered"
-          else
-            echo "red-first: playwright title absent from source"
-          fi
+        if printf '%s\n' "$pw_out" | sed -E $'s/\033\\[[0-9;]*m//g' | grep -E 'No tests found' >/dev/null \
+          && ! printf '%s\n' "$pw_out" | grep -F 'red-first: playwright title' >/dev/null; then
+          echo "red-first: playwright title present but not discovered"
+          return 2
         fi
         return "$pw_code"
       else
@@ -514,38 +557,26 @@ classify_run() {
   if [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]]; then
     path="src-tauri/src/main.rs"
   fi
-  # Named Denkraum runs classify on non-zero exits too: absent title = red (1);
-  # discovery exclusion / ambiguity = INVALID (2).
+  # Denkraum named: absent-from-unfiltered-list=red(1); else invalid(2) / green(0).
   case "$path" in
     tools/denkraum/*.spec.mjs)
       local plain expected
       plain="$(printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g')"
-      if printf '%s\n' "$plain" | grep -F 'Datei fehlt:' >/dev/null; then
-        return 1
-      fi
+      printf '%s\n' "$plain" | grep -F 'Datei fehlt:' >/dev/null && return 1
       if [[ "$spec" == *::* ]]; then
         expected="${spec#*::}"
-        if printf '%s\n' "$plain" |
-          grep -F 'red-first: playwright title present but not discovered' >/dev/null; then
-          return 2
-        fi
-        if printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null; then
-          if printf '%s\n' "$plain" |
-            grep -F 'red-first: playwright title absent from source' >/dev/null; then
-            return 1
-          fi
-          return 2
-        fi
-        if ! printf '%s\n' "$plain" | grep -F -- "› ${expected} (" >/dev/null; then
-          return 2
-        fi
+        printf '%s\n' "$plain" | grep -F 'red-first: playwright title absent from list' >/dev/null && return 1
+        printf '%s\n' "$plain" | grep -E 'red-first: playwright title identity invalid|red-first: playwright title present but not discovered|No tests found' >/dev/null && return 2
+        printf '%s\n' "$plain" | awk -v want="$expected" '
+          { line=$0; sub(/\r$/,"",line); i=index(line,"› "); if(!i) next;
+            t=substr(line,i+length("› ")); sub(/ \([0-9]+(\.[0-9]+)?m?s\)[[:space:]]*$/,"",t);
+            if(t==want) found=1 }
+          END{ exit found?0:1 }' || return 2
         [ "$code" -eq 0 ] || return 1
         printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null || return 2
         return 0
       fi
-      if printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null; then
-        return 1
-      fi
+      printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null && return 1
       [ "$code" -eq 0 ] || return 1
       printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
       return
