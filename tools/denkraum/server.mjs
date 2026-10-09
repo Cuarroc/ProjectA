@@ -129,8 +129,12 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
   server.on('listening', () => schedule(0));
   server.on('close', () => { closed = true; if (timer) timers.clearTimeout(timer); timer = undefined; });
   const close = server.close;
+  // A failed release goes to the callback, else to one stderr line; never to 'error' (no listener, no crash).
   server.close = callback => close.call(server, error => {
-    store.close().then(() => callback?.(error), failure => { if (callback) callback(failure); else server.emit('error', failure); });
+    store.close().then(() => callback?.(error), failure => {
+      if (error) { try { failure.cause ??= error; } catch { /* Preserve even immutable thrown values. */ } }
+      if (callback) callback(failure); else console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${failure?.code ?? 'Fehler'}`);
+    });
   });
   return server;
 }
@@ -146,5 +150,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       url: webhookUrl, secret: webhookSecret }) });
     server.on('error', e => { console.error(`Entscheidungsseite konnte nicht starten: ${e.code ?? e.message}`); process.exitCode = 1; });
     server.listen(port, '127.0.0.1', () => console.log(`Entscheidungsseite: http://127.0.0.1:${server.address().port}`));
+    // Stop by signal releases the ledger ownership before exit; a second signal while closing exits at once.
+    let stopping = false;
+    const stop = () => {
+      if (stopping) process.exit(1);
+      stopping = true;
+      server.close(failure => {
+        if (failure && failure.code !== 'ERR_SERVER_NOT_RUNNING') { console.error(`Entscheidungsseite: Beenden fehlgeschlagen: ${failure.code ?? 'Fehler'}`); process.exit(1); }
+        process.exit(0);
+      });
+    };
+    process.on('SIGINT', stop); process.on('SIGTERM', stop);
   }
 }
