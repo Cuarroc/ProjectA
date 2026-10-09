@@ -25,8 +25,11 @@ export function createWebhookNotifier({ url, secret, request = fetch, clock = Da
     const body = JSON.stringify({ type: event.type, eventId: event.eventId, contentRevision: event.contentRevision });
     const timestamp = String(Math.floor(clock() / 1000));
     const signature = createHmac('sha256', secret).update(`v1:${timestamp}:${deliveryId}:${body}`).digest('hex');
-    const response = await request(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(3000), body,
-      headers: { 'Content-Type': 'application/json', 'X-AgentsRoom-Timestamp': timestamp, 'X-AgentsRoom-Delivery': deliveryId, 'X-AgentsRoom-Signature': `v1=${signature}` } });
+    let response;
+    try {
+      response = await request(endpoint, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(3000), body,
+        headers: { 'Content-Type': 'application/json', 'X-AgentsRoom-Timestamp': timestamp, 'X-AgentsRoom-Delivery': deliveryId, 'X-AgentsRoom-Signature': `v1=${signature}` } });
+    } catch { throw new DeskError('Webhook-Übertragung fehlgeschlagen.', 503); }
     try { await response.body?.cancel(); } catch { /* Releasing the body cannot change delivery acceptance. */ }
     if (!response.ok) throw new DeskError('Webhook-Übertragung fehlgeschlagen.', 503);
   };
