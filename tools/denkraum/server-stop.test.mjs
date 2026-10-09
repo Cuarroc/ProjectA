@@ -21,25 +21,33 @@ async function ledger(t) {
 const freePort = () => new Promise((resolve, reject) => {
   const probe = createServer().once('error', reject).listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); });
 });
-// Starts the real CLI entry, waits until it listens and writes one question through HTTP.
+// Starts the real CLI entry, waits until it listens and writes one question through HTTP. The probed port can be
+// taken by a parallel process before the child binds it; that EADDRINUSE start is retried on a fresh port.
 async function startEntry(t, statePath, id) {
-  const port = await freePort();
-  const env = { ...process.env, DECISION_DESK_STATE: statePath, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-    DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
-  delete env.DECISION_DESK_WEBHOOK_URL;
-  const child = spawn(process.execPath, [entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-  t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
-  let stdout = '', stderr = '';
-  child.stderr.on('data', d => { stderr += d; });
-  const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal, stderr })));
-  await new Promise((resolve, reject) => {
-    child.stdout.on('data', d => { stdout += d; if (stdout.includes('http://')) resolve(); });
-    exited.then(() => reject(new Error(`entry exited early: ${stderr}`)));
-  });
-  const response = await fetch(`http://127.0.0.1:${port}/api/questions`, {
-    method: 'POST', headers: { 'content-type': 'application/json', 'x-decision-desk': 'agent' }, body: JSON.stringify(question(id)) });
-  assert.equal(response.status, 200, await response.text());
-  return { child, exited };
+  for (let attempt = 1; ; attempt++) {
+    const port = await freePort();
+    const env = { ...process.env, DECISION_DESK_STATE: statePath, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
+      DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+    delete env.DECISION_DESK_WEBHOOK_URL;
+    const child = spawn(process.execPath, [entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
+    let stdout = '', stderr = '';
+    child.stderr.on('data', d => { stderr += d; });
+    const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal, stderr })));
+    try {
+      await new Promise((resolve, reject) => {
+        child.stdout.on('data', d => { stdout += d; if (stdout.includes('http://')) resolve(); });
+        exited.then(() => reject(new Error(`entry exited early: ${stderr}`)));
+      });
+    } catch (error) {
+      if (attempt < 5 && stderr.includes('EADDRINUSE')) continue;
+      throw error;
+    }
+    const response = await fetch(`http://127.0.0.1:${port}/api/questions`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-decision-desk': 'agent' }, body: JSON.stringify(question(id)) });
+    assert.equal(response.status, 200, await response.text());
+    return { child, exited };
+  }
 }
 
 const posix = { skip: process.platform === 'win32' && 'POSIX signals differ on Windows' };
