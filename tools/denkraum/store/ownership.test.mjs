@@ -259,7 +259,8 @@ test('DRSEC-G6: a successor appearing during restore keeps the successor and dro
   const foreign = JSON.stringify({ nonce: 'foreign-record', pid: process.pid, heartbeatAt: new Date().toISOString() });
   const successor = foreign.replace('foreign-record', 'live-successor');
   o.setOwnershipReleaseHooks({ beforeRename: () => writeFile(ownerPath(file), foreign) });
-  fs.link = async (_from, to) => {
+  fs.link = async (from, to) => {
+    if (to !== ownerPath(file) || !from.startsWith(`${to}.`) || !from.endsWith('.tomb')) return orig(from, to);
     await writeFile(to, successor, { flag: 'wx', mode: 0o600 });
     throw Object.assign(new Error('exists'), { code: 'EEXIST' });
   };
@@ -363,7 +364,7 @@ test('DRSEC-G6: a live successor created right after recovery wins and is kept',
   const origUnlink = fs.unlink, successor = JSON.stringify({ nonce: 'live-successor', pid: process.pid, heartbeatAt: new Date().toISOString(), host: `${hostname()}:${process.platform}` });
   fs.unlink = async p => {
     await origUnlink(p);
-    if (String(p).endsWith('.tomb')) await writeFile(ownerPath(file), successor, { flag: 'wx', mode: 0o600 });
+    if (String(p).startsWith(`${ownerPath(file)}.`) && String(p).endsWith('.tomb')) await writeFile(ownerPath(file), successor, { flag: 'wx', mode: 0o600 });
   };
   syncBuiltinESMExports();
   try { await assert.rejects(acquire(file), e => isDiag(e, HELD)); }
@@ -373,7 +374,12 @@ test('DRSEC-G6: a live successor created right after recovery wins and is kept',
 test('DRSEC-G6: an I/O failure while removing the dead record surfaces and keeps it', async t => {
   const file = await ledger(t), dead = await killedOwner(t, file), origRename = fs.rename;
   const before = await readFile(ownerPath(file), 'utf8');
-  fs.rename = async () => { throw Object.assign(new Error('EIO'), { code: 'EIO' }); };
+  fs.rename = async (from, to) => {
+    if (from === ownerPath(file) && to.startsWith(`${from}.`) && to.endsWith('.tomb')) {
+      throw Object.assign(new Error('EIO'), { code: 'EIO' });
+    }
+    return origRename(from, to);
+  };
   syncBuiltinESMExports();
   try { await assert.rejects(acquire(file), e => isDiag(e, IO)); }
   finally { fs.rename = origRename; syncBuiltinESMExports(); }
