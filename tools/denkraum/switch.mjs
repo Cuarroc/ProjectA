@@ -82,9 +82,12 @@ async function backup(args) {
   const port = Number(raw);
   if (port < 1 || port > 65535) return fail(2, 'Ungültiger Port');
   // Refuse before mkdir: an --out inside the ledger dir can create a sidecar-named directory.
+  // Check both the unresolved state dirname (symlink neighbor) and the realpath dirname.
   try {
-    const ledgerDir = dirname(realpathSync.native(statePath));
-    if (isInside(ledgerDir, resolveExisting(out))) {
+    const resolvedOut = resolveExisting(out);
+    const lexicalDir = resolveExisting(dirname(statePath));
+    const realDir = dirname(realpathSync.native(statePath));
+    if (isInside(lexicalDir, resolvedOut) || isInside(realDir, resolvedOut)) {
       return fail(2, 'Ausgabe darf nicht im Ledger-Verzeichnis liegen');
     }
   } catch (error) {

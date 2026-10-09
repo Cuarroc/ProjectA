@@ -239,6 +239,21 @@ test('R871-A7: backup allows --out in a sibling directory', async () => {
   assert.equal(JSON.parse(r.stdout.trim().split('\n').at(-1)).ok, true);
   assert.equal((await readdir(out)).includes('manifest.json'), true);
 });
+test('R890-K1: backup refuses --out next to a symlinked state path', async t => {
+  const { state } = await ledger('v1');
+  const linkDir = await mkdtemp(join(tmpdir(), 'dr16-state-link-'));
+  const linkState = join(linkDir, 'ledger.json');
+  try { await symlink(state, linkState); }
+  catch (error) { if (error.code === 'EPERM') return t.skip('Symlink privilege unavailable (EPERM)'); throw error; }
+  const out = join(linkDir, 'ledger.json.previous');
+  const before = await readdir(linkDir);
+  const r = await run(['backup', '--state', linkState, '--out', out, '--port', String(await freePort())]);
+  assert.equal(r.status, 2, r.stderr + r.stdout);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  assert.match(r.stdout, /Ledger-Verzeichnis/);
+  await assert.rejects(stat(out), e => e.code === 'ENOENT');
+  assert.deepEqual(await readdir(linkDir), before);
+});
 test('DR16H: backup reports explicit and default probe ports', async () => {
   const { state } = await ledger();
   const listener = createServer();
