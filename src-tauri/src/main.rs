@@ -1229,12 +1229,7 @@ async fn install_update_when_idle(
     )
     .await?;
     let result = prepare_and_install(&app, &update, &dir, journal_store.clone(), &install).await;
-    // From `Installing` on, only the restart validation may thaw the app.
-    // An unreadable journal counts as started: the app stays frozen.
-    let installer_started = journal_store.path().exists()
-        && journal_store.load().map_or(true, |journal| {
-            !delivery_recovery::installer_not_started(journal.phase())
-        });
+    let installer_started = update_installer_started(&journal_store);
     update_cancel::finish_flight(
         install,
         result,
@@ -1242,6 +1237,15 @@ async fn install_update_when_idle(
         leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()),
     )
     .await
+}
+
+// An unfinished install belongs to restart recovery; a completed old one does not.
+// An unreadable journal counts as started: the app stays frozen.
+fn update_installer_started(journal_store: &delivery_recovery::JournalStore) -> bool {
+    journal_store.path().exists()
+        && journal_store
+            .load()
+            .map_or(true, |journal| !journal.can_start_update())
 }
 
 #[tauri::command]
@@ -4040,9 +4044,9 @@ mod tests {
     }
 
     /// The download runs before `produce_journal` (`prepare_and_install`), so at
-    /// a timeout no journal exists or one at most at `BackupVerified`; either
-    /// way `install_update_when_idle` takes the thaw branch via
-    /// `installer_not_started`.
+    /// a timeout the journal may be absent, pre-install, or left by a completed
+    /// previous update. `update_installer_started` also checks write resumption;
+    /// these assertions cover the pre-install phases of its shared predicate.
     #[test]
     fn download_time_journal_phases_take_the_thaw_path() {
         use crate::delivery_recovery::{installer_not_started, UpdatePhase};
@@ -4410,6 +4414,113 @@ mod tests {
         )
         .await
         .expect("enter maintenance through cancel glue")
+    }
+
+    #[tokio::test]
+    async fn cancel_with_completed_previous_journal_thaws_app() {
+        use crate::delivery_recovery::*;
+        use crate::update_cancel::{self, CancelResult};
+
+        let (dir, store) = seam_fixture("cancel-previous-journal").await;
+        let pty = PtyManager::default();
+        super::enter_database_maintenance(&pty, &store, Duration::from_secs(1))
+            .await
+            .unwrap();
+        let database = dir.path().join("projecta.db");
+        let exe = dir.path().join("app");
+        std::fs::write(&exe, b"binary").unwrap();
+        let journal_store =
+            JournalStore::new(dir.path().join("update-recovery.json"), &database).unwrap();
+        let mut journal = produce_journal(
+            &pty,
+            &store,
+            journal_store.clone(),
+            &Announced {
+                exe: &exe,
+                database: &database,
+                version: "1.6.0",
+                bytes: b"installer",
+                manifest: "{}",
+            },
+        )
+        .await
+        .unwrap();
+        journal.begin_install().unwrap();
+        assert!(super::update_installer_started(&journal_store));
+        journal.begin_validation().unwrap();
+        let RecoveryAction::ValidateCandidate { candidate, nonce } = journal.next_action() else {
+            panic!("candidate validation expected");
+        };
+        journal
+            .accept_handshake(&InstanceHandshake {
+                binary: candidate.binary,
+                database: candidate.database,
+                nonce,
+                process: ProcessIdentity {
+                    process_id: 4242,
+                    started_at_unix_millis: 1,
+                },
+                validation: ValidationProof {
+                    validation: ValidationAssertion::CandidateReady,
+                    health: HealthAssertion::Healthy,
+                    validation_evidence_id: "validated".into(),
+                    health_evidence_id: "healthy".into(),
+                },
+            })
+            .unwrap();
+        assert!(super::update_installer_started(&journal_store));
+        journal
+            .resume_writes(WriteResumption {
+                evidence_id: "resumed".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            journal_store.load().unwrap().phase(),
+            UpdatePhase::Installed
+        );
+        assert!(journal_store.load().unwrap().can_accept_writes());
+        super::leave_database_maintenance(&pty, &store)
+            .await
+            .unwrap();
+
+        let state = update_cancel::UpdateCancel::default();
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
+        let body = async {
+            // The next flight fails during download, before it can replace the old journal.
+            let result = install
+                .download(std::future::pending::<std::result::Result<(), String>>())
+                .await;
+            update_cancel::finish_flight(
+                install,
+                result,
+                super::update_installer_started(&journal_store),
+                super::leave_database_maintenance(&pty, &store),
+            )
+            .await
+        };
+        let (result, cancelled) = tokio::time::timeout(Duration::from_secs(8), async {
+            tokio::join!(body, state.cancel())
+        })
+        .await
+        .expect("cancel and finish must return");
+        assert!(result.unwrap_err().contains("cancelled"));
+        assert!(
+            !store.is_maintenance_active(),
+            "completed old journal must not keep the app frozen"
+        );
+        assert!(!pty.is_maintenance_active());
+        store
+            .create_project("after", "/a")
+            .await
+            .expect("writes accepted");
+        let id = pty.reserve_session().expect("launches accepted");
+        pty.cancel_reservation(&id);
+        state
+            .begin()
+            .expect("flight slot free")
+            .finish_unstarted()
+            .unwrap();
+        assert_eq!(cancelled, Ok(CancelResult::Cancelled));
     }
 
     /// R821-M2: TooLate must keep the real store/PTY freeze, not only the
