@@ -31,8 +31,13 @@ test('DRSEC: config rejects physical repository aliases', {
 }, async t => {
   const dir = await fixture(t); const repoRoot = join(dir, 'repo');
   await mkdir(repoRoot); await writeFile(join(repoRoot, 'ledger.json'), 'repository sentinel');
-  await symlink(repoRoot, join(dir, 'alias'));
-  await symlink(join(repoRoot, 'ledger.json'), join(dir, 'leaf.json'));
+  try {
+    await symlink(repoRoot, join(dir, 'alias'));
+    await symlink(join(repoRoot, 'ledger.json'), join(dir, 'leaf.json'));
+  } catch (e) {
+    if (e.code === 'EPERM') return t.skip('symlinks need extra rights on this machine');
+    throw e;
+  }
   for (const [name, state] of [['leaf', join(dir, 'leaf.json')], ['directory', join(dir, 'alias', 'ledger.json')],
     ['missing descendant', join(dir, 'alias', 'missing', 'ledger.json')]]) {
     await t.test(name, () => assert.equal(configFor(repoRoot, state).ok, false, 'physical repository alias accepted'));
@@ -100,7 +105,8 @@ test('DRSEC: config accepts a symlink alias whose ledger stays outside the repos
   const dir = await fixture(t); const repoRoot = join(dir, 'repo'); const external = join(dir, 'external');
   await mkdir(repoRoot); await mkdir(external);
   await writeFile(join(external, 'ledger.json'), 'external sentinel');
-  await symlink(external, join(dir, 'alias'));
+  try { await symlink(external, join(dir, 'alias')); }
+  catch (e) { if (e.code === 'EPERM') return t.skip('symlinks need extra rights on this machine'); throw e; }
   const before = await snapshot(dir);
   for (const state of [join(external, 'ledger.json'), join(dir, 'alias', 'ledger.json')]) {
     const result = configFor(repoRoot, state);

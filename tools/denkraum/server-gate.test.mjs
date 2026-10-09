@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createServer as createPortProbe } from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -12,10 +12,18 @@ import { DeskError, DeskStore } from './store.mjs';
 
 const ROOT = 'test-root-agent';
 const TOKEN = 'test-only-root-receipt-token-0123456789';
+const WEBHOOK = 'b'.repeat(32);
 const serverFile = fileURLToPath(new URL('./server.mjs', import.meta.url));
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const repoState = fileURLToPath(new URL('../../state.json', import.meta.url));
 const env = extra => ({ ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('DECISION_DESK_'))),
-  DECISION_DESK_ROOT_RECEIPT_TOKEN: TOKEN, DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32), ...extra });
+  DECISION_DESK_ROOT_RECEIPT_TOKEN: TOKEN, DECISION_DESK_WEBHOOK_SECRET: WEBHOOK, ...extra });
+async function snapshot(dir) {
+  const names = (await readdir(dir, { recursive: true })).sort();
+  const files = [];
+  for (const name of names) files.push([name, await readFile(join(dir, name)).catch(() => null)]);
+  return { names, files };
+}
 
 test('webhook preflight matches notifier URL rules and redacts invalid URLs at both entries', () => {
   const url = 'https://agentsroom.dev/api/triggers/t_abc123';
@@ -204,4 +212,58 @@ test('the server entry validates ports and explicit root overrides through the f
     if (name === 'PORT') assert.doesNotMatch(run.stderr, /ROOT_AGENT_ID/);
     for (const value of [TOKEN, statePath, 'invalid/id']) assert.ok(!run.stderr.includes(value));
   }
+});
+
+// P3 residual: entrypoint cases only proven at config.mjs before (#750/#809).
+test('DRSEC: startup applies all secret and port preflight failures before listening', async () => {
+  const { dir, statePath } = await ledger();
+  const before = await snapshot(dir);
+  const ready = { DECISION_DESK_STATE: statePath, DECISION_DESK_ROOT_AGENT_ID: ROOT, DECISION_DESK_PORT: '65432' };
+  for (const [key, value, name] of [
+    ['DECISION_DESK_ROOT_RECEIPT_TOKEN', `${TOKEN}!`, 'ROOT_RECEIPT_TOKEN'],
+    ['DECISION_DESK_WEBHOOK_SECRET', `${WEBHOOK}\n`, 'WEBHOOK_SECRET'],
+    ['DECISION_DESK_WEBHOOK_SECRET', TOKEN, 'WEBHOOK_SECRET'],
+    ['DECISION_DESK_PORT', '65536', 'PORT'],
+  ]) {
+    const run = spawnSync(process.execPath, [serverFile], {
+      env: Object.fromEntries(Object.entries(env({ ...ready, [key]: value })).filter(([, v]) => v !== undefined)),
+      encoding: 'utf8', timeout: 2000,
+    });
+    assert.equal(run.status, 1, name);
+    assert.equal(run.stdout, '');
+    assert.doesNotMatch(run.stdout + run.stderr, /http:\/\/127\.0\.0\.1/);
+    assert.match(run.stderr, new RegExp(`DECISION_DESK_${name}:`));
+    for (const secret of [TOKEN, WEBHOOK, `${TOKEN}!`, statePath]) assert.ok(!(run.stdout + run.stderr).includes(secret));
+  }
+  assert.deepEqual(await snapshot(dir), before);
+});
+
+// P6 residual: config-level physical aliases are covered; this asserts the server entry.
+test('DRSEC: startup rejects physical state aliases into the repository', async t => {
+  const fixture = await mkdtemp(join(tmpdir(), 'denkraum-p6-'));
+  const alias = join(fixture, 'into-repo');
+  try { await symlink(repoRoot, alias, 'dir'); }
+  catch (e) { if (e.code === 'EPERM') return t.skip('symlinks need extra rights on this machine'); throw e; }
+  const external = join(fixture, 'external'); await mkdir(external);
+  // Top-level only: recursive readdir would follow the repo alias.
+  const before = [(await readdir(fixture)).sort(), await readdir(external)];
+  for (const state of [join(alias, 'ledger.json'), join(alias, 'missing', 'nested', 'ledger.json')]) {
+    const run = spawnSync(process.execPath, [serverFile], {
+      env: env({ DECISION_DESK_STATE: state, DECISION_DESK_ROOT_AGENT_ID: ROOT, DECISION_DESK_PORT: '65432' }),
+      encoding: 'utf8', timeout: 2000,
+    });
+    assert.equal(run.status, 1);
+    assert.equal(run.stdout, '');
+    assert.doesNotMatch(run.stdout + run.stderr, /http:\/\/127\.0\.0\.1/);
+    assert.match(run.stderr, /DECISION_DESK_STATE: must be outside the repository/);
+    for (const value of [state, alias, repoRoot, fixture]) assert.ok(!(run.stdout + run.stderr).includes(value));
+  }
+  assert.deepEqual([(await readdir(fixture)).sort(), await readdir(external)], before);
+  const ok = spawnSync(process.execPath, [serverFile], {
+    env: env({ DECISION_DESK_STATE: join(external, 'ledger.json'), DECISION_DESK_ROOT_AGENT_ID: ROOT, DECISION_DESK_PORT: '0' }),
+    encoding: 'utf8', timeout: 2000,
+  });
+  assert.equal(ok.status, 1);
+  assert.match(ok.stderr, /DECISION_DESK_PORT:/);
+  assert.doesNotMatch(ok.stderr, /DECISION_DESK_STATE:/);
 });
