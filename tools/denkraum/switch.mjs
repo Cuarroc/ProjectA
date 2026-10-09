@@ -14,7 +14,9 @@ function diagnose(error) {
   let message = error instanceof SyntaxError
     ? `Invalid JSON${error.message.match(/ at position \d+(?: \(line \d+ column \d+\))?/)?.[0] ?? ''}`
     : error.message;
-  for (const path of [error.path, error.dest]) if (typeof path === 'string' && path) message = message.split(path).join('[path]');
+  for (const path of [error.path, error.dest]) {
+    if (typeof path === 'string' && path) message = message.split(path).join(basename(path));
+  }
   for (const [name, value] of Object.entries(process.env)) {
     if (/TOKEN|SECRET|PASSWORD|KEY/i.test(name) && value) message = message.split(value).join('[redacted]');
   }
@@ -32,7 +34,11 @@ const digest = buf => createHash('sha256').update(buf).digest('hex');
 async function healthUp(port) {
   // free port is necessary, not sufficient; PID proof is DR-16b
   try { await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(800) }); return true; }
-  catch (error) { diagnose(error); return error.cause?.code !== 'ECONNREFUSED'; }
+  catch (error) {
+    // Quiescent writer (ECONNREFUSED) is the happy path; do not diagnose it.
+    if (error.cause?.code !== 'ECONNREFUSED') diagnose(error);
+    return error.cause?.code !== 'ECONNREFUSED';
+  }
 }
 function sidecars(statePath) {
   return ['', '.previous', '.v1-backup'].map(suffix => ({ name: basename(statePath) + suffix, path: statePath + suffix, required: !suffix }));
@@ -42,7 +48,7 @@ async function hashTree(statePath) {
   for (const entry of sidecars(statePath)) {
     let buf;
     try { buf = await readFile(entry.path); }
-    catch (e) { diagnose(e); if (e.code === 'ENOENT' && !entry.required) continue; throw e; }
+    catch (e) { if (e.code === 'ENOENT' && !entry.required) continue; throw e; }
     files.push({ name: entry.name, bytes: buf.length, sha256: digest(buf) });
   }
   return files;

@@ -308,3 +308,26 @@ test('DR16H: top-level handler reports the original output failure', async () =>
   assert.equal(r.status, 4); assert.match(r.stderr, /output write probe/);
   assert.equal(JSON.parse(r.stdout).ok, false);
 });
+test('DR16H: happy-path backup with no sidecars has empty stderr', async () => {
+  const { state } = await ledger('v1');
+  const listener = createServer();
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  await new Promise(r => listener.close(r));
+  const r = await run(['backup', '--state', state, '--out', await output(), '--port', String(port)]);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.equal(r.stderr, '');
+  assert.equal(JSON.parse(r.stdout).ok, true);
+});
+test('DR16H: missing primary ledger prints exactly one diagnostic line', async () => {
+  const state = join(await mkdtemp(join(tmpdir(), 'dr16-missing-')), 'ledger.json');
+  const listener = createServer();
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  await new Promise(r => listener.close(r));
+  const r = await run(['backup', '--state', state, '--out', await output(), '--port', String(port)]);
+  assert.equal(r.status, 4);
+  assert.equal(r.stderr.trim().split(/\r?\n/).filter(Boolean).length, 1);
+  assert.match(r.stderr, /ENOENT|ledger\.json/);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+});
