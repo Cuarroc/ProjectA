@@ -73,10 +73,12 @@ Unter „Geplant“ erscheint ein Termin erst, wenn eine passende Planung vorlie
 Wechsle zu „Ideen“, um gespeicherte Ideen und deren aktuelle Fassung zu lesen.
 Ein Text im Entwurfsfeld ist noch keine gespeicherte Idee; erst „Idee
 speichern“ legt sie ab. Beachte die Meldung unter dem Feld: „Gespeichert · …“
-bestätigt die Ablage. Steht dort „diese Backendversion hat noch keinen
-Ideenspeicher“, ist der Datenstand noch nicht umgestellt und Ideen lassen sich
-nicht speichern; die Umstellung gehört zum Umschaltungs-Runbook. Über deinen
-gespeicherten Ideen helfen dir diese Auswahlfelder:
+bestätigt die Ablage. Ein neu angelegter Denkraum beginnt bereits mit dem
+neuen Datenformat (Schema 2), sodass du die erste Idee sofort speichern
+kannst. Steht dort „diese Backendversion hat noch keinen Ideenspeicher“, ist
+es eine alte Datendatei (Schema 1); sie braucht weiterhin die ausdrückliche
+Umstellung aus dem Umschaltungs-Runbook, bevor sich Ideen speichern lassen.
+Über deinen gespeicherten Ideen helfen dir diese Auswahlfelder:
 
 - **Reihenfolge:** Voreingestellt ist „Gespeicherte Reihenfolge“. Daneben gibt
   es „Nutzerpriorität, dann neueste Fassung“, „Neueste Fassung zuerst“,
