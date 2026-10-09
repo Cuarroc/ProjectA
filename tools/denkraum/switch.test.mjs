@@ -206,18 +206,40 @@ test('DR16: verify rejects traversal duplicate and ambiguous primary names', asy
   }
 });
 
-test('DR16H: backup reports explicit and default probe ports', async () => {
+test('DR16H: backup reports explicit and default probe ports', async t => {
   const { state } = await ledger();
   const listener = createServer();
   await new Promise(r => listener.listen(0, '127.0.0.1', r));
   const port = listener.address().port;
   await new Promise(r => listener.close(r));
-  for (const args of [[], ['--port', String(port)]]) {
-    const r = await run(['backup', '--state', state, '--out', await output(), ...args]);
+  const explicit = await run(['backup', '--state', state, '--out', await output(), '--port', String(port)]);
+  assert.equal(explicit.status, 0, explicit.stderr);
+  const explicitResult = JSON.parse(explicit.stdout);
+  assert.equal(explicitResult.port, port);
+  assert.equal(explicitResult.defaultPort, false);
+  const probe = createServer();
+  let defaultBusy = false;
+  try {
+    await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(4791, '127.0.0.1', resolve); });
+    await new Promise(r => probe.close(r));
+  } catch (error) {
+    if (error.code !== 'EADDRINUSE') throw error;
+    defaultBusy = true;
+  }
+  const r = await run(['backup', '--state', state, '--out', await output()]);
+  if (defaultBusy) {
+    t.diagnostic('4791 busy: asserted refusal path');
+    assert.equal(r.status, 3, r.stderr + r.stdout);
+    const result = JSON.parse(r.stdout);
+    assert.equal(result.ok, false);
+    assert.match(result.error, /Schreiber läuft noch/);
+    if ('port' in result) assert.equal(result.port, 4791);
+    if ('defaultPort' in result) assert.equal(result.defaultPort, true);
+  } else {
     assert.equal(r.status, 0, r.stderr);
     const result = JSON.parse(r.stdout);
-    assert.equal(result.port, args.length ? port : 4791);
-    assert.equal(result.defaultPort, !args.length);
+    assert.equal(result.port, 4791);
+    assert.equal(result.defaultPort, true);
   }
 });
 test('DR16H: invalid paths emit exactly one JSON error', async () => {
