@@ -371,6 +371,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn failed_thaw_does_not_hide_the_update_error() {
+        let state = UpdateCancel::default();
+        let install = state.begin().unwrap();
+        let message = finish_flight(
+            install,
+            Err("download failed".into()),
+            false,
+            ready(Err("thaw failed".into())),
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            message.starts_with("download failed") && message.contains("thaw failed"),
+            "combined message must keep the update error visible: {message}"
+        );
+        assert!(
+            message.contains("leaving maintenance also failed"),
+            "production combine wording must appear: {message}"
+        );
+        assert!(
+            state.begin().is_err(),
+            "failed thaw keeps the slot occupied, fail-closed"
+        );
+    }
+
+    #[tokio::test]
     async fn drop_while_installing_keeps_slot_and_signals_fixed_error() {
         let state = UpdateCancel::default();
         let install = state.begin().unwrap();

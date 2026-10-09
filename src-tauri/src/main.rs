@@ -1251,16 +1251,6 @@ async fn cancel_update_download(
     cancel.cancel().await
 }
 
-#[cfg(test)]
-fn report_with_thaw(result: Result<(), String>, thaw: Result<(), String>) -> Result<(), String> {
-    match (result, thaw) {
-        (Err(error), Err(thaw)) => {
-            Err(format!("{error} (leaving maintenance also failed: {thaw})"))
-        }
-        (result, _) => result,
-    }
-}
-
 /// Bound a download so a stalled network returns an error instead of keeping
 /// the app frozen; the caller's thaw path then runs.
 async fn bounded_download<F, E: std::fmt::Display>(
@@ -4049,14 +4039,6 @@ mod tests {
         assert!(installer_not_started(UpdatePhase::Maintenance));
         assert!(installer_not_started(UpdatePhase::BackupVerified));
         assert!(!installer_not_started(UpdatePhase::Installing));
-    }
-
-    #[test]
-    fn failed_thaw_does_not_hide_the_update_error() {
-        let both =
-            crate::report_with_thaw(Err("download failed".into()), Err("thaw failed".into()));
-        let message = both.unwrap_err();
-        assert!(message.starts_with("download failed") && message.contains("thaw failed"));
     }
 
     use super::{Duration, PtyManager};
