@@ -1239,13 +1239,13 @@ async fn install_update_when_idle(
     .await
 }
 
-// From `Installing` on, only the restart validation may thaw the app.
+// An unfinished install belongs to restart recovery; a completed old one does not.
 // An unreadable journal counts as started: the app stays frozen.
 fn update_installer_started(journal_store: &delivery_recovery::JournalStore) -> bool {
     journal_store.path().exists()
-        && journal_store.load().map_or(true, |journal| {
-            !delivery_recovery::installer_not_started(journal.phase())
-        })
+        && journal_store
+            .load()
+            .map_or(true, |journal| !journal.can_start_update())
 }
 
 #[tauri::command]
@@ -4044,9 +4044,9 @@ mod tests {
     }
 
     /// The download runs before `produce_journal` (`prepare_and_install`), so at
-    /// a timeout no journal exists or one at most at `BackupVerified`; either
-    /// way `install_update_when_idle` takes the thaw branch via
-    /// `installer_not_started`.
+    /// a timeout the journal may be absent, pre-install, or left by a completed
+    /// previous update. `update_installer_started` also checks write resumption;
+    /// these assertions cover the pre-install phases of its shared predicate.
     #[test]
     fn download_time_journal_phases_take_the_thaw_path() {
         use crate::delivery_recovery::{installer_not_started, UpdatePhase};
