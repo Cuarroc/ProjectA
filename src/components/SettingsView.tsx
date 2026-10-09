@@ -630,7 +630,13 @@ export default function SettingsView({
           // Re-check live workers the same way install does: a session may
           // have started during the download and must keep the install guard.
           const liveSessions = await listLiveSessions();
-          if (updatePhaseRef.current !== "installing") return;
+          if (updatePhaseRef.current !== "installing") {
+            // Install finished (or left installing) while we re-checked sessions:
+            // drop the cancel suppress flag and note so they cannot stick.
+            suppressInstallErrorRef.current = false;
+            setCancelNote(null);
+            return;
+          }
           publishUpdateState({
             phase: "available",
             version,
