@@ -146,10 +146,11 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
     if (admitting) throw Object.assign(new Error('Listen already called'), { code: 'ERR_SERVER_ALREADY_LISTEN' });
     admitting = true;
     track(store.change(() => undefined).then(() => {
-      if (closed) return;
+      if (closed) { admitting = false; return; }
       const admitted = () => { admitting = false; server.removeListener('error', release); };
       const release = error => {
-        admitting = false; server.removeListener('listening', admitted);
+        // The store is closed below, so this server can never admit again; later listen() calls must say so.
+        admitting = false; closed = true; server.removeListener('listening', admitted);
         const unhandled = server.listenerCount('error') === 0;
         store.close().catch(e => console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${e?.code ?? 'Fehler'}`))
           .then(() => { if (unhandled) process.nextTick(() => { throw error; }); });
@@ -167,6 +168,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
   };
   const close = server.close;
   // A failed release goes to the callback, else to one stderr line; never to 'error' (no listener, no crash).
+  let released;
   server.close = callback => {
     stopTimer();
     let error;
@@ -178,7 +180,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
         if (!await within(drained, Math.min(drainTimeoutMs, 1000)))
           throw Object.assign(new Error('Server drain timed out'), { code: 'DRAIN_TIMEOUT' });
       }
-      await store.close();
+      await (released ??= store.close()); // a repeated close shares the one release and its outcome
     })().then(() => callback?.(error), failure => {
       if (error) { try { failure.cause ??= error; } catch { /* Preserve even immutable thrown values. */ } }
       if (callback) callback(failure); else console.error(`Entscheidungsseite: Speicher nicht freigegeben: ${failure?.code ?? 'Fehler'}`);
