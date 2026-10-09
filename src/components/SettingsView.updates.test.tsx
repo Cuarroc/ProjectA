@@ -421,6 +421,33 @@ describe("SettingsView updates tab", () => {
     finishCancel("notRunning");
     expect(screen.getAllByText(/stale install rejection after check/)).toHaveLength(1);
   });
+
+  it("drops a deferred install error when a new update check starts", async () => {
+    const { rejectInstall } = await startDownloadAndHoldInstall();
+    let finishCancel!: (value: "cancelled" | "tooLate" | "notRunning") => void;
+    vi.mocked(cancelUpdateDownload).mockImplementationOnce(
+      () => new Promise((resolve) => { finishCancel = resolve; }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeDisabled();
+
+    // Reject while cancel is still pending → error is parked in pendingInstallErrorRef.
+    rejectInstall(new Error("deferred install error before check"));
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    expect(screen.queryByText(/deferred install error before check/)).not.toBeInTheDocument();
+
+    mocks.check.mockResolvedValue({
+      rid: 43, available: true, version: "1.3.2", body: "Next update",
+    } as unknown as Awaited<ReturnType<typeof check>>);
+    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    expect(await screen.findByText(/Version 1.3.2 is available/)).toBeInTheDocument();
+
+    // Check cleared the parked error; notRunning would otherwise surface it.
+    finishCancel("notRunning");
+    await waitFor(() => expect(cancelUpdateDownload).toHaveBeenCalled());
+    expect(screen.queryByText(/deferred install error before check/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Version 1.3.2 is available/)).toBeInTheDocument();
+  });
 });
 
 describe("SettingsView routing radiogroup", () => {
