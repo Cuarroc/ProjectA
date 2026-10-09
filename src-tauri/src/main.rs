@@ -4398,6 +4398,20 @@ mod tests {
             .expect_err("writes are refused during maintenance");
     }
 
+    /// Enter a single-flight install already under store/PTY maintenance.
+    async fn begin_install_under_maintenance<'a>(
+        state: &'a crate::update_cancel::UpdateCancel,
+        pty: &PtyManager,
+        store: &super::Store,
+    ) -> crate::update_cancel::Install<'a> {
+        crate::update_cancel::enter_or_abort(
+            state.begin().expect("begin install"),
+            super::enter_database_maintenance(pty, store, Duration::from_secs(1)),
+        )
+        .await
+        .expect("enter maintenance through cancel glue")
+    }
+
     /// R821-M2: TooLate must keep the real store/PTY freeze, not only the
     /// single-flight slot (`cancel_after_installer_started_is_too_late_and_keeps_freeze`).
     #[tokio::test]
@@ -4408,12 +4422,7 @@ mod tests {
         let (_dir, store) = seam_fixture("too-late-real-freeze").await;
         let pty = PtyManager::default();
         let state = update_cancel::UpdateCancel::default();
-        let install = update_cancel::enter_or_abort(
-            state.begin().expect("begin install"),
-            super::enter_database_maintenance(&pty, &store, Duration::from_secs(1)),
-        )
-        .await
-        .expect("enter maintenance through cancel glue");
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
         install
             .download(ready(Ok(())))
             .await
@@ -4438,18 +4447,26 @@ mod tests {
             pty.reserve_session().is_err(),
             "PTY launches must stay refused after TooLate"
         );
+        assert!(
+            pty.install_when_idle(|| Ok(())).is_err(),
+            "install_when_idle must stay refused after TooLate"
+        );
         tokio::time::timeout(Duration::from_secs(8), store.create_project("frozen", "/f"))
             .await
             .expect("bounded wait")
             .expect_err("writes must stay refused after TooLate");
+        let begin_err = state
+            .begin()
+            .map(|_| ())
+            .expect_err("single-flight slot must stay occupied after TooLate");
         assert!(
-            state.begin().is_err(),
-            "single-flight slot must stay occupied after TooLate"
+            begin_err.starts_with(crate::errors::ERR_REFUSED),
+            "{begin_err}"
         );
     }
 
     /// Negative control for R821-M2: a body error before the installer starts
-    /// must thaw store maintenance again.
+    /// must fully thaw store/PTY maintenance and free the single-flight slot.
     #[tokio::test]
     async fn body_error_before_installer_started_releases_maintenance_freeze() {
         use crate::update_cancel;
@@ -4457,14 +4474,9 @@ mod tests {
         let (_dir, store) = seam_fixture("pre-installer-thaw").await;
         let pty = PtyManager::default();
         let state = update_cancel::UpdateCancel::default();
-        let install = update_cancel::enter_or_abort(
-            state.begin().expect("begin install"),
-            super::enter_database_maintenance(&pty, &store, Duration::from_secs(1)),
-        )
-        .await
-        .expect("enter maintenance through cancel glue");
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
         assert!(store.is_maintenance_active());
-        let _ = update_cancel::finish_flight(
+        let err = update_cancel::finish_flight(
             install,
             Err("download failed".into()),
             false,
@@ -4473,8 +4485,61 @@ mod tests {
         .await
         .expect_err("body error before installer must surface");
         assert!(
+            err.contains("download failed"),
+            "surfaced error must carry the body text: {err}"
+        );
+        assert!(
             !store.is_maintenance_active(),
             "freeze must release when the installer never started"
+        );
+        let id = pty
+            .reserve_session()
+            .expect("PTY launches must work again after thaw");
+        pty.cancel_reservation(&id);
+        tokio::time::timeout(Duration::from_secs(8), store.create_project("after", "/a"))
+            .await
+            .expect("bounded wait")
+            .expect("writes must work again after thaw");
+        state
+            .begin()
+            .expect("single-flight slot must be free after thaw")
+            .finish_unstarted()
+            .expect("release probe install");
+    }
+
+    /// Off-diagonal: body error with installer_started=true keeps freeze and slot
+    /// (finish_flight only thaws when both body fails and installer never started).
+    #[tokio::test]
+    async fn body_error_after_installer_started_keeps_maintenance_freeze() {
+        use crate::update_cancel;
+
+        let (_dir, store) = seam_fixture("post-installer-body-err").await;
+        let pty = PtyManager::default();
+        let state = update_cancel::UpdateCancel::default();
+        let install = begin_install_under_maintenance(&state, &pty, &store).await;
+        let err = update_cancel::finish_flight(
+            install,
+            Err("download failed".into()),
+            true,
+            super::leave_database_maintenance(&pty, &store),
+        )
+        .await
+        .expect_err("body error must surface even when installer started");
+        assert!(
+            err.contains("download failed"),
+            "surfaced error must carry the body text: {err}"
+        );
+        assert!(
+            store.is_maintenance_active(),
+            "freeze must stay when installer_started is true"
+        );
+        assert!(
+            pty.reserve_session().is_err(),
+            "PTY launches must stay refused after installer-started body error"
+        );
+        assert!(
+            state.begin().is_err(),
+            "single-flight slot must stay occupied after installer-started body error"
         );
     }
 
