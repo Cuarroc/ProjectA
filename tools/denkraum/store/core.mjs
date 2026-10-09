@@ -41,12 +41,12 @@ export class DeskStore {
         ensure(JSON.stringify(JSON.parse(original.toString('utf8').replace(/^﻿/, ''))) === before, 'Stand vor Migration verändert.', 409);
         const backup = `${this.file}.v1-backup`;
         try { await this.io.writeFile(backup, original, { flag: 'wx', mode: 0o600, flush: true }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
-        ensure((await readFile(backup)).equals(original), 'Migrationsbackup stimmt nicht mit dem Altstand überein.', 503);
-        // Existing backups must satisfy the same permission contract as new ones.
+        // Secure existing backups before the equality reject path; Windows ACLs are not handled here.
         if (process.platform !== 'win32') {
           try { await chmod(backup, 0o600); }
           catch { throw new DeskError('Migrationsbackup konnte nicht abgesichert werden.', 503); }
         }
+        ensure((await readFile(backup)).equals(original), 'Migrationsbackup stimmt nicht mit dem Altstand überein.', 503);
       }
       const temp = `${this.file}.${randomUUID()}.tmp`;
       await this.io.writeFile(temp, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600, flush: true });

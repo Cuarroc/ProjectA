@@ -87,3 +87,15 @@ test('DRSEC: a pre-existing permissive migration backup is secured or rejected',
   assert.equal(await readFile(`${file}.v1-backup`, 'utf8'), legacy);
   assert.equal((await store.read()).schemaVersion, 2);
 });
+
+test('DRSEC: mismatching permissive v1-backup is mode 0600 after 503 rejection', posix, async t => {
+  const file = await fixture(t);
+  const mismatch = JSON.stringify({ schemaVersion: 1, revision: 99, questions: [{ id: 'stale' }], answers: [] });
+  await writeFile(file, legacy, { mode: 0o600 });
+  await writeFile(`${file}.v1-backup`, mismatch); await chmod(`${file}.v1-backup`, 0o666);
+  const store = new DeskStore(file);
+  await assert.rejects(() => store.migrate(0), error => error.status === 503);
+  assert.equal(await mode(`${file}.v1-backup`), 0o600);
+  assert.equal(await readFile(file, 'utf8'), legacy);
+  assert.equal(await readFile(`${file}.v1-backup`, 'utf8'), mismatch);
+});
