@@ -98,7 +98,7 @@ test('API CLI inbox and receipt IO are testable without a server or subprocess a
   await assert.rejects(cli.runCli(['receipt', file], { ...env, DECISION_DESK_URL: 'https://evil.test' }, request), /Loopback/);
   await assert.rejects(cli.runCli(['receipt', file], { DECISION_DESK_URL: env.DECISION_DESK_URL }, request), /Root/);
   await assert.rejects(cli.runCli(['inbox', file], env, request), /Aufruf/);
-  await assert.rejects(cli.runCli(['state'], env, async () => ({ ok: false, json: async () => ({ error: 'offline' }) })), /offline/);
+  await assert.rejects(cli.runCli(['state'], env, async () => ({ ok: false, status: 503, json: async () => ({ error: 'offline' }) })), /HTTP request failed \(503\)/);
   assert.equal(calls.length, 2);
   for (const command of ['state', 'pending', 'inbox']) { // R731-K2: reads never send the Root bearer, so a followed redirect cannot leak it
     let sent; await cli.runCli([command], env, async (url, options) => { sent = options; return { ok: true, json: async () => ({}) }; });
