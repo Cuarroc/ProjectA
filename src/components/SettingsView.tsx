@@ -15,6 +15,7 @@ import {
   listAgentProfiles,
   listLiveSessions,
   installUpdateWhenIdle,
+  cancelUpdateDownload,
   getUpdaterState,
   setUpdaterState,
   setBudget,
@@ -515,6 +516,11 @@ export default function SettingsView({
   // The update object is the core's download handle, not something to render.
   const pendingUpdate = useRef<Update | null>(null);
   const [relaunchFailed, setRelaunchFailed] = useState(false);
+  const [cancelPending, setCancelPending] = useState(false);
+  const [cancelNote, setCancelNote] = useState<"cancelled" | "tooLate" | null>(null);
+  const cancelPendingRef = useRef(false);
+  const suppressInstallErrorRef = useRef(false);
+  const pendingInstallErrorRef = useRef<unknown>(null);
 
   const handleCheckUpdates = () => {
     publishUpdateState({ phase: "checking" });
@@ -552,6 +558,13 @@ export default function SettingsView({
     const update = pendingUpdate.current;
     if (update === null || updateState.phase !== "available") return;
     const version = updateState.version;
+    const notes =
+      update.body !== undefined && update.body.trim() !== "" ? update.body : null;
+    setCancelNote(null);
+    setCancelPending(false);
+    cancelPendingRef.current = false;
+    suppressInstallErrorRef.current = false;
+    pendingInstallErrorRef.current = null;
     publishUpdateState({ phase: "installing", version });
     void (async () => {
       try {
@@ -563,7 +576,7 @@ export default function SettingsView({
           publishUpdateState({
             phase: "available",
             version,
-            notes: update.body !== undefined && update.body.trim() !== "" ? update.body : null,
+            notes,
             activeWorkers: liveSessions.length,
           });
           return;
@@ -571,8 +584,67 @@ export default function SettingsView({
         await installUpdateWhenIdle(update.rid);
         pendingUpdate.current = null;
         setRelaunchFailed(false);
+        setCancelNote(null);
         publishUpdateState({ phase: "ready", version });
       } catch (cause: unknown) {
+        if (suppressInstallErrorRef.current) {
+          suppressInstallErrorRef.current = false;
+          return;
+        }
+        if (cancelPendingRef.current) {
+          pendingInstallErrorRef.current = cause;
+          return;
+        }
+        publishUpdateState({ phase: "error", message: describeError(cause) });
+      }
+    })();
+  };
+
+  const handleCancelUpdateDownload = () => {
+    if (updateState.phase !== "installing" || cancelPendingRef.current) return;
+    const update = pendingUpdate.current;
+    const version = updateState.phase === "installing" ? updateState.version : null;
+    if (version === null) return;
+    cancelPendingRef.current = true;
+    setCancelPending(true);
+    void (async () => {
+      try {
+        const result = await cancelUpdateDownload();
+        cancelPendingRef.current = false;
+        setCancelPending(false);
+        if (result === "cancelled") {
+          suppressInstallErrorRef.current = true;
+          pendingInstallErrorRef.current = null;
+          setCancelNote("cancelled");
+          publishUpdateState({
+            phase: "available",
+            version,
+            notes:
+              update?.body !== undefined && update.body.trim() !== ""
+                ? update.body
+                : null,
+            activeWorkers: 0,
+          });
+          return;
+        }
+        if (result === "tooLate") {
+          setCancelNote("tooLate");
+          const stalled = pendingInstallErrorRef.current;
+          pendingInstallErrorRef.current = null;
+          if (stalled !== null) {
+            publishUpdateState({ phase: "error", message: describeError(stalled) });
+          }
+          return;
+        }
+        // notRunning: follow the install promise; surface a stalled rejection.
+        const stalled = pendingInstallErrorRef.current;
+        pendingInstallErrorRef.current = null;
+        if (stalled !== null) {
+          publishUpdateState({ phase: "error", message: describeError(stalled) });
+        }
+      } catch (cause: unknown) {
+        cancelPendingRef.current = false;
+        setCancelPending(false);
         publishUpdateState({ phase: "error", message: describeError(cause) });
       }
     })();
@@ -903,8 +975,11 @@ export default function SettingsView({
             versionFailed={versionFailed}
             updateState={updateState}
             relaunchFailed={relaunchFailed}
+            cancelPending={cancelPending}
+            cancelNote={cancelNote}
             handleCheckUpdates={handleCheckUpdates}
             handleInstallUpdate={handleInstallUpdate}
+            handleCancelUpdateDownload={handleCancelUpdateDownload}
             handleRelaunch={handleRelaunch}
           />
         ) : (
