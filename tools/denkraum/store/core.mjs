@@ -1,7 +1,7 @@
 // DeskStore core (DR-03): read, serialized atomic change and explicit V1->V2 migration.
 // Ledger operations (questions, answers, receipts, progress, patches, delivery) compose
 // `change` in DR-04; the root agent id is injected and never defaulted here (D2).
-import { readFile, writeFile, rename, mkdir, chmod } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, chmod, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DeskError, ensure, ideaDefaults, migrateState, validateState } from './model.mjs';
@@ -109,7 +109,11 @@ export class DeskStore {
   }
   migrate(expectedRevision) {
     ensure(Number.isSafeInteger(expectedRevision) && expectedRevision >= 0, 'Ungültige expectedRevision.');
-    return this.change(state => {
+    return this.change(async state => {
+      try { await stat(this.file); } catch (e) {
+        if (e.code === 'ENOENT') throw new DeskError('Migrationsquelle fehlt; explizite Migration abgelehnt.', 404);
+        throw e;
+      }
       if (state.schemaVersion === 2) return state;
       ensure(state.revision === expectedRevision, 'Stand vor Migration verändert.', 409);
       Object.assign(state, migrateState(state));

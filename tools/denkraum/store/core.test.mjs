@@ -83,6 +83,14 @@ test('process termination during a partial temporary write preserves the last co
   assert.equal((await new DeskStore(s.file).read()).questions.length, 1);
 });
 
+test('migration rejects a nonexistent source with 404 and creates neither state nor backup', async t => {
+  const s = await fresh(); t.after(() => s.close());
+  await assert.rejects(s.migrate(0), e => e instanceof DeskError && e.status === 404
+    && e.message === 'Migrationsquelle fehlt; explizite Migration abgelehnt.');
+  await assert.rejects(readFile(s.file), e => e.code === 'ENOENT');
+  await assert.rejects(readFile(`${s.file}.v1-backup`), e => e.code === 'ENOENT');
+});
+
 test('migration rejects a disappearing V1 source and creates neither state nor backup', async () => {
   const s = await legacyStore();
   const read = s.read.bind(s);
