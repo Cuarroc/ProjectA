@@ -112,6 +112,23 @@ fi
 cd "$TOP" || die 2 "kann nicht nach $TOP wechseln."
 [ -n "$out_dir" ] || out_dir=".pa"
 
+# Private PR refs and the kilo workdir must not linger after EXIT (success or
+# failure). Unique refs/pa-review/pr-<N> stay for the duration of the run so
+# concurrent PR fetches do not share FETCH_HEAD (#814).
+pr_ref=""
+_kilo_work=""
+_run_local_cleanup() {
+  if [ -n "${_kilo_work:-}" ]; then
+    rm -rf "$_kilo_work"
+    _kilo_work=""
+  fi
+  if [ -n "${pr_ref:-}" ]; then
+    git -C "$TOP" update-ref -d "$pr_ref" 2>/dev/null || true
+    pr_ref=""
+  fi
+}
+trap '_run_local_cleanup' EXIT
+
 # --- Modelle ---------------------------------------------------------------
 # Die Standardpaare stehen an genau einer Stelle: REVIEWER_MODELS in
 # agent-setup-check.mjs (dieselbe Liste prueft `npm run dev:agent-check`).
@@ -390,8 +407,8 @@ fi
 # kilo: ein Lauf je Modell, in einem leeren Wegwerfverzeichnis, damit der
 # Agent der CLI nichts im Repo anfassen kann. Das Protokoll hat dasselbe
 # Format wie das des Transports.
-work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+_kilo_work="$(mktemp -d)"
+work="$_kilo_work"
 cp "$prompt_file" "$work/prompt.md" || die 2 "kann den Prompt nicht nach $work kopieren."
 # Zeitlimit: REVIEW_KILO_TIMEOUT_S (Sekunden, 0 = keins). Ohne timeout/gtimeout
 # (gtimeout: coreutils auf macOS) laeuft kilo ohne Limit - mit Warnung. Bewusst
