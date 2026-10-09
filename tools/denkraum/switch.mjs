@@ -61,8 +61,11 @@ async function readValidated(path) {
 }
 async function backup(args) {
   const statePath = abs(arg(args, '--state'), 'state'), out = abs(arg(args, '--out'), 'out');
-  const defaultPort = !args.includes('--port'), port = Number(defaultPort ? 4791 : arg(args, '--port'));
-  if (!Number.isInteger(port) || port < 1 || port > 65535) return fail(2, 'Ungültiger Port');
+  const defaultPort = !args.includes('--port');
+  const raw = defaultPort ? '4791' : arg(args, '--port');
+  if (typeof raw !== 'string' || !/^\d{1,5}$/.test(raw)) return fail(2, 'Ungültiger Port');
+  const port = Number(raw);
+  if (port < 1 || port > 65535) return fail(2, 'Ungültiger Port');
   if (await healthUp(port)) return fail(3, 'Schreiber läuft noch');
   let names; try { names = await readdir(dirname(statePath)); } catch (error) { diagnose(error); names = []; }
   const prefix = `${basename(statePath)}.`;

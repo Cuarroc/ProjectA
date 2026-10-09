@@ -287,6 +287,31 @@ test('DR16H: invalid port arguments are rejected before backup', async () => {
     await assert.rejects(readdir(out), e => e.code === 'ENOENT');
   }
 });
+test('DR16H: non-digit port forms are rejected', async () => {
+  const { state } = await ledger();
+  for (const value of ['+1', '1e3', '655350']) {
+    const out = await output();
+    const r = await run(['backup', '--state', state, '--out', out, '--port', value]);
+    assert.equal(r.status, 2, String(value)); assert.match(r.stdout, /Ungültiger Port/);
+    await assert.rejects(readdir(out), e => e.code === 'ENOENT');
+  }
+});
+test('DR16H: valid boundary ports are accepted', async () => {
+  const { state } = await ledger('v1');
+  for (const port of ['1', '65535']) {
+    const r = await run(['backup', '--state', state, '--out', await output(), '--port', port]);
+    // Hosts may have listeners on 1/65535; acceptance means not a port-validation failure.
+    assert.notEqual(r.status, 2, r.stdout + r.stderr);
+    assert.ok(!/Ungültiger Port/.test(r.stdout));
+    const line = r.stdout.trim().split('\n').map(l => JSON.parse(l)).at(-1);
+    if (r.status === 0) {
+      assert.equal(line.port, Number(port));
+      assert.equal(line.defaultPort, false);
+    } else {
+      assert.equal(line.ok, false);
+    }
+  }
+});
 test('DR16H: tmp warnings belong only to this ledger including previous temps', async () => {
   const { state } = await ledger(), id = '12345678-1234-1234-1234-123456789abc';
   const expected = [`ledger.json.${id}.tmp`, `ledger.json.${id}.tmp.previous`];
