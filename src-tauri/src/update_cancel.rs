@@ -86,7 +86,9 @@ impl UpdateCancel {
     }
 }
 
-/// After `begin`, run maintenance entry; on failure release as `NotRunning`.
+/// After `begin`, run maintenance entry. On entry failure, release is attempted;
+/// if releasing fails too, both errors are returned and Drop signals the fixed
+/// restart error.
 pub async fn enter_or_abort<'a>(
     install: Install<'a>,
     enter: impl Future<Output = Result<(), String>>,
