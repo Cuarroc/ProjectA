@@ -230,15 +230,17 @@ test('DRSEC-G6: two starters after a crash admit exactly one', async t => {
 });
 test('DRSEC-G6: a record from another host or an unknown pid state is never recovered', async t => {
   const file = await ledger(t), dead = await killedOwner(t, file), orig = process.kill;
+  let epermCalls = 0;
   try {
     for (const host of ['other-host:linux', undefined, null, 42, `${hostname()}:${process.platform}`]) {
       const bytes = JSON.stringify({ ...dead, host });
       await writeFile(ownerPath(file), bytes, { mode: 0o600 });
       process.kill = host === `${hostname()}:${process.platform}`
-        ? () => { throw Object.assign(new Error('denied'), { code: 'EPERM' }); } : orig;
+        ? () => { epermCalls++; throw Object.assign(new Error('denied'), { code: 'EPERM' }); } : orig;
       await assert.rejects(acquire(file), e => isDiag(e, HELD));
       assert.equal(await readFile(ownerPath(file), 'utf8'), bytes);
     }
+    assert.ok(epermCalls > 0, 'the EPERM mock was consulted');
   } finally { process.kill = orig; }
 });
 test('DRSEC-G6: release restores a record that was replaced between read and rename', async t => {
@@ -292,5 +294,84 @@ test('DRSEC-G6: a hard second-signal exit leaves an owner that the next start re
   child.stdin.write('signal\n'); assert.deepEqual(await closing, ['closing']);
   child.stdin.write('signal\n'); assert.deepEqual(await exited, [1, null]);
   const session = await acquire(file); assert.notEqual(session.nonce, before.nonce);
+  await release(file, session.nonce);
+});
+
+const settle = p => p.then(session => ({ session }), error => ({ error }));
+test('DRSEC-G6: a stale starter never removes a live successor record (three starters and one winner)', async t => {
+  const file = await ledger(t), dead = await killedOwner(t, file), path = ownerPath(file);
+  const entered = Promise.withResolvers(), resume = Promise.withResolvers(), origRename = fs.rename;
+  let first = true, armed = false, third;
+  o.setOwnershipReleaseHooks({ beforeRename: async () => { if (first) { first = false; entered.resolve(); await resume.promise; } } });
+  // C starts right after the first rename took the record away, before its verification.
+  fs.rename = async (from, to) => {
+    await origRename(from, to);
+    if (armed) { armed = false; third = await settle(acquire(file)); }
+  };
+  syncBuiltinESMExports();
+  try {
+    const b = settle(acquire(file)); await entered.promise;
+    const a = await settle(acquire(file));
+    armed = true; resume.resolve();
+    const results = [a, await b, third ?? await settle(acquire(file))];
+    const winners = results.filter(r => r.session);
+    assert.equal(winners.length, 1, 'at most one session holds the record');
+    const onDisk = JSON.parse(await readFile(path, 'utf8'));
+    assert.equal(onDisk.nonce, winners[0].session.nonce);
+    assert.notEqual(onDisk.nonce, dead.nonce);
+    for (const r of results.filter(x => x.error)) assert.equal(r.error.code, HELD);
+    await release(file, winners[0].session.nonce);
+  } finally { o.setOwnershipReleaseHooks(); fs.rename = origRename; syncBuiltinESMExports(); }
+});
+test('DRSEC-G6: an orphaned recovery lock keeps the record held and names the lock file', async t => {
+  const file = await ledger(t), dead = await killedOwner(t, file), lock = `${ownerPath(file)}.recover`;
+  const before = await readFile(ownerPath(file), 'utf8');
+  await writeFile(lock, JSON.stringify({ pid: 1, host: 'x', nonce: 'orphan-lock-nonce' }), { mode: 0o600 });
+  await assert.rejects(acquire(file), e => isDiag(e, HELD) && e.hint.includes('ledger.json.owner.recover'));
+  assert.equal(await readFile(ownerPath(file), 'utf8'), before);
+  await rm(lock);
+  const session = await acquire(file); assert.notEqual(session.nonce, dead.nonce);
+  await release(file, session.nonce);
+  assert.equal((await readdir(join(file, '..'))).some(n => n.endsWith('.recover')), false);
+});
+test('DRSEC-G6: a record released cleanly while recovery starts lets the starter create its own', async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const origRead = fs.readFile; let armed = true;
+  fs.readFile = async (p, ...rest) => {
+    if (armed && String(p) === ownerPath(file)) { armed = false; await rm(p); }
+    return origRead(p, ...rest);
+  };
+  syncBuiltinESMExports();
+  try { const session = await acquire(file); await release(file, session.nonce); }
+  finally { fs.readFile = origRead; syncBuiltinESMExports(); }
+});
+test('DRSEC-G6: a hostless legacy record is held with a manual-removal hint', async t => {
+  const file = await ledger(t), dead = await killedOwner(t, file), { host, ...legacy } = dead;
+  const bytes = JSON.stringify(legacy); await writeFile(ownerPath(file), bytes, { mode: 0o600 });
+  await assert.rejects(acquire(file), e => isDiag(e, HELD) && /older version.*remove manually/.test(e.hint));
+  assert.equal(await readFile(ownerPath(file), 'utf8'), bytes);
+});
+test('DRSEC-G6: a live successor created right after recovery wins and is kept', async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const origUnlink = fs.unlink, successor = JSON.stringify({ nonce: 'live-successor', pid: process.pid, heartbeatAt: new Date().toISOString(), host: `${hostname()}:${process.platform}` });
+  fs.unlink = async p => {
+    await origUnlink(p);
+    if (String(p).endsWith('.tomb')) await writeFile(ownerPath(file), successor, { flag: 'wx', mode: 0o600 });
+  };
+  syncBuiltinESMExports();
+  try { await assert.rejects(acquire(file), e => isDiag(e, HELD)); }
+  finally { fs.unlink = origUnlink; syncBuiltinESMExports(); }
+  assert.equal(await readFile(ownerPath(file), 'utf8'), successor);
+});
+test('DRSEC-G6: an I/O failure while removing the dead record surfaces and keeps it', async t => {
+  const file = await ledger(t), dead = await killedOwner(t, file), origRename = fs.rename;
+  const before = await readFile(ownerPath(file), 'utf8');
+  fs.rename = async () => { throw Object.assign(new Error('EIO'), { code: 'EIO' }); };
+  syncBuiltinESMExports();
+  try { await assert.rejects(acquire(file), e => isDiag(e, IO)); }
+  finally { fs.rename = origRename; syncBuiltinESMExports(); }
+  assert.equal(await readFile(ownerPath(file), 'utf8'), before);
+  assert.equal((await readdir(join(file, '..'))).some(n => n.endsWith('.recover')), false);
+  const session = await acquire(file); assert.notEqual(session.nonce, dead.nonce);
   await release(file, session.nonce);
 });
