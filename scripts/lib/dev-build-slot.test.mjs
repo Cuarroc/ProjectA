@@ -203,6 +203,30 @@ test("configured slot root preserves Windows drive root", () => {
   assert.deepEqual(d.map((s) => s.path), ["C:/slot1"]);
 });
 
+test("configured forward-slash UNC root stays a share path under win32 resolve", () => {
+  // No resolvePath injector: exercises absoluteConfiguredRoot. Under win32 bindings
+  // with cwd C:/fixture/cwd, posix.resolve would collapse //host/... to a local path.
+  const previousCwd = process.cwd;
+  process.cwd = () => "C:/fixture/cwd";
+  try {
+    const listed = [];
+    const d = defaultSlots({
+      home: "C:/Users/defaults",
+      mainCheckout: "C:/ProjectA",
+      env: { PROJECTA_BUILD_SLOTS_ROOT: "//fixture-server/share/warm" },
+      listDir: (root) => {
+        listed.push(root);
+        return ["slot1"];
+      },
+    });
+    assert.deepEqual(listed, ["//fixture-server/share/warm"]);
+    assert.deepEqual(d.map((s) => s.path), ["//fixture-server/share/warm/slot1"]);
+    assert.equal(pathWin32.resolve(listed[0]), "\\\\fixture-server\\share\\warm");
+  } finally {
+    process.cwd = previousCwd;
+  }
+});
+
 test("empty PROJECTA_BUILD_SLOTS_ROOT keeps the old default slots", () => {
   const home = "/home/defaults";
   const mainCheckout = "/main/checkout";

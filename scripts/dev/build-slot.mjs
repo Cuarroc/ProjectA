@@ -55,7 +55,9 @@ function absoluteConfiguredRoot(root, resolvePath) {
   const raw = String(root);
   if (typeof resolvePath === "function") return resolvePath(raw);
   // Drive-letter / UNC paths need win32 resolve so a Linux host keeps C:\ semantics.
-  if (/^[A-Za-z]:/.test(raw) || raw.startsWith("\\\\")) {
+  // Forward-slash UNC (//host/share) must not use posix.resolve — that collapses the
+  // leading double slash into a local absolute path (R725-O4).
+  if (/^[A-Za-z]:/.test(raw) || raw.startsWith("\\\\") || /^\/\/[^/]/.test(raw)) {
     return pathWin32.resolve(raw);
   }
   // POSIX absolute paths keep POSIX semantics even when the host resolve is win32
@@ -112,7 +114,8 @@ function slotsFromConfiguredRoot(root, listDir, resolvePath) {
   }
   const slots = sortConfiguredSlotNames(names.filter((n) => CONFIGURED_SLOT_NAME.test(String(n)))).map((name) => ({
     name,
-    path: join(normalized, name).replace(/\\/g, "/"),
+    // UNC roots need win32.join: posix join collapses the leading // (same as resolve).
+    path: (/^\/\/[^/]/.test(normalized) ? pathWin32.join(normalized, name) : join(normalized, name)).replace(/\\/g, "/"),
   }));
   if (!slots.length) {
     throw new RefusedError(`PROJECTA_BUILD_SLOTS_ROOT leer oder ohne passende Slots: ${normalized}`);
