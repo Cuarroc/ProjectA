@@ -37,8 +37,7 @@ async function healthUp(port) {
   // free port is necessary, not sufficient; PID proof is DR-16b
   try { await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(800) }); return true; }
   catch (error) {
-    // Quiescent writer (ECONNREFUSED) is the happy path; do not diagnose it.
-    if (error.cause?.code !== 'ECONNREFUSED') diagnose(error);
+    if (error.cause?.code !== 'ECONNREFUSED') diagnose(error); // quiet on ECONNREFUSED
     return error.cause?.code !== 'ECONNREFUSED';
   }
 }
