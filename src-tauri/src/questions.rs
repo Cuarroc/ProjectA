@@ -622,14 +622,18 @@ mod tests {
             let dir = self._dir.take().expect("fixture directory");
             let store = self.store.clone();
             let runtime = tokio::runtime::Handle::current();
-            let (started, start) = std::sync::mpsc::sync_channel(0);
-            drop(tokio::task::spawn_blocking(move || {
-                started.send(()).expect("start fixture cleanup");
-                runtime.block_on(store.close_test_pool());
-                drop(dir);
-            }));
-            // Shutdown waits for running blocking tasks but may cancel queued ones.
-            start.recv().expect("fixture cleanup task started");
+            // SQLx returns connections in runtime tasks. Hand off this worker so
+            // those tasks can finish while Drop waits for the entire cleanup.
+            tokio::task::block_in_place(|| {
+                std::thread::spawn(move || {
+                    runtime.block_on(store.close_test_pool());
+                    // Outside a Tokio context, TempDir's Windows retry stays
+                    // synchronous instead of queuing another blocking task.
+                    drop(dir);
+                })
+                .join()
+                .expect("fixture cleanup completed");
+            });
         }
     }
 
@@ -685,7 +689,8 @@ mod tests {
     #[test]
     fn store_fixture_closes_shared_pool_before_runtime_shutdown() {
         for reuse_blocking_worker in [false, true] {
-            let runtime = tokio::runtime::Builder::new_current_thread()
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(1)
                 .enable_all()
                 .max_blocking_threads(1)
                 .build()
@@ -712,7 +717,7 @@ mod tests {
     }
 
     #[cfg(windows)]
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn store_fixture_removes_its_temp_dir_on_drop() {
         let fixture = fixture("questions-temp-cleanup").await;
         let path = fixture
@@ -723,11 +728,6 @@ mod tests {
             .to_path_buf();
 
         drop(fixture);
-
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(1);
-        while path.exists() && tokio::time::Instant::now() < deadline {
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
 
         assert!(
             !path.exists(),
@@ -805,7 +805,7 @@ mod tests {
         panic!("{worker_id} never logged {what}");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn asking_records_the_question_and_raises_the_card() {
         let fx = fixture("ask-raises").await;
         let worker_id = fx.worker("wk-1").await;
@@ -852,7 +852,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn a_preflight_question_has_no_worker_and_no_card() {
         let fx = fixture("ask-preflight").await;
 
@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(question.status, QUESTION_OPEN);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn asking_refuses_what_it_cannot_file() {
         let fx = fixture("ask-refuses").await;
         let worker_id = fx.worker("wk-1").await;
@@ -928,7 +928,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn the_fourth_open_question_is_answered_on_the_spot() {
         let fx = fixture("ask-budget").await;
         let worker_id = fx.worker("wk-1").await;
@@ -999,7 +999,7 @@ mod tests {
         assert_eq!(fifth.status, QUESTION_OPEN);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn the_budget_is_counted_per_worker() {
         let fx = fixture("ask-budget-per-worker").await;
         let busy = fx.worker("wk-busy").await;
@@ -1034,7 +1034,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn answering_types_into_the_terminal_and_clears_the_card() {
         let fx = fixture("answer-delivers").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1112,7 +1112,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn an_answer_is_delivered_through_the_guard() {
         // F-CORE-3 T7 (B.1): die Antwort geht ueber start_task_delivery -
         // den Guard mit Write-Baseline und Marker (Baustein A) - und nicht
@@ -1161,7 +1161,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn the_card_stays_up_while_another_question_waits() {
         let fx = fixture("answer-partial").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1208,7 +1208,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn a_question_is_answered_once() {
         let fx = fixture("answer-once").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1268,7 +1268,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn a_worker_without_an_agent_is_still_answered() {
         let fx = fixture("answer-no-session").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1311,7 +1311,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn a_terminal_that_refuses_the_write_is_written_down() {
         let fx = fixture("answer-write-fails").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1349,7 +1349,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn a_preflight_answer_touches_no_terminal() {
         let fx = fixture("answer-preflight").await;
         let agents = Typist::default();
@@ -1381,7 +1381,7 @@ mod tests {
 
     /// `status` says what happened to a question; `answered_by` says who made
     /// it happen, and only a caller can be one. The clock is not a who.
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn the_row_records_who_answered_and_leaves_it_empty_when_nobody_did() {
         let fx = fixture("questions-answered-by").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1467,7 +1467,7 @@ mod tests {
         assert_eq!(swept.answered_by, None);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn a_question_nobody_answered_expires_into_an_auto_answer() {
         let fx = fixture("expire").await;
         let worker_id = fx.worker("wk-1").await;
@@ -1523,7 +1523,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn an_answer_reaches_a_write_only_control_via_the_blind_fallback() {
         // C-01 (Review DeepSeek, hoch): ein Control, das nur `write`
         // implementiert (kein Guard), muss die Antwort trotzdem zustellen -
@@ -1560,7 +1560,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn the_user_turn_is_logged_only_after_proven_delivery() {
         // C-2 (Review Claude, hoch): MSG_USER stand hinter dem Guard-*Start* -
         // Ok(()) heisst nur "Guard-Thread laeuft" -, nicht hinter der
@@ -1650,7 +1650,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn an_answered_question_never_expires() {
         let fx = fixture("expire-answered").await;
         let worker_id = fx.worker("wk-1").await;
