@@ -78,6 +78,9 @@ async function releaseOnce(path, nonce) {
   }
   try { await unlink(tomb); } catch { ioFail(); }
 }
+// PRECONDITION: each nonce released at most once by its owner. A second (stale)
+// release from another module instance/process is a caller bug; a live successor
+// may then lose its record (R811-O5/F1, E6b). Core (G2) enforces single release.
 export async function releaseOwnership(ledgerPath, nonce) {
   const path = ownerRecordPath(ledgerPath);
   const pending = releaseFlight.get(nonce);
