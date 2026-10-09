@@ -65,6 +65,14 @@ pub fn installer_not_started(phase: UpdatePhase) -> bool {
     )
 }
 
+impl UpdateJournal {
+    /// Safe to replace for a new flight: no installer ran, or startup recovery
+    /// completed the previous update and resumed writes.
+    pub fn can_start_update(&self) -> bool {
+        super::installer_not_started(self.phase()) || self.can_accept_writes()
+    }
+}
+
 /// Creates the journal at `BackupVerified` before the download. Needs the
 /// live drain facts (`require_live_evidence`); a stale journal that never
 /// reached `Installing` or a completed one (writes resumed) is replaced, any
@@ -78,7 +86,7 @@ pub async fn produce_journal(
     require_live_evidence(pty, store.is_maintenance_active())?;
     if journal_store.path().exists() {
         let stale = journal_store.load().map_err(|e| e.to_string())?;
-        if !installer_not_started(stale.phase()) && !stale.can_accept_writes() {
+        if !stale.can_start_update() {
             return Err(format!(
                 "update journal is in phase {:?}; refusing to start another update",
                 stale.phase()
