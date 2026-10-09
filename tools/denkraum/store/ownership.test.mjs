@@ -301,17 +301,22 @@ const settle = p => p.then(session => ({ session }), error => ({ error }));
 test('DRSEC-G6: a stale starter never removes a live successor record (three starters and one winner)', async t => {
   const file = await ledger(t), dead = await killedOwner(t, file), path = ownerPath(file);
   const entered = Promise.withResolvers(), resume = Promise.withResolvers(), origRename = fs.rename;
-  let first = true, armed = false, third;
+  let first = true, armed = false, observing = true, third;
   o.setOwnershipReleaseHooks({ beforeRename: async () => { if (first) { first = false; entered.resolve(); await resume.promise; } } });
   // C starts right after the first rename took the record away, before its verification.
   fs.rename = async (from, to) => {
+    if (observing && from === path && to.endsWith('.tomb')) {
+      assert.equal(JSON.parse(await readFile(path, 'utf8')).nonce, dead.nonce, 'never rename a live record');
+    }
     await origRename(from, to);
-    if (armed) { armed = false; third = await settle(acquire(file)); }
+    if (armed && from === path && to.endsWith('.tomb')) { armed = false; third = await settle(acquire(file)); }
   };
   syncBuiltinESMExports();
   try {
     const b = settle(acquire(file)); await entered.promise;
+    assert.ok(await readFile(`${path}.recover`), 'B holds the recovery lock');
     const a = await settle(acquire(file));
+    assert.equal(a.error?.code, HELD, 'A must acquire through the public API while B holds the lock');
     armed = true; resume.resolve();
     const results = [a, await b, third ?? await settle(acquire(file))];
     const winners = results.filter(r => r.session);
@@ -320,7 +325,8 @@ test('DRSEC-G6: a stale starter never removes a live successor record (three sta
     assert.equal(onDisk.nonce, winners[0].session.nonce);
     assert.notEqual(onDisk.nonce, dead.nonce);
     for (const r of results.filter(x => x.error)) assert.equal(r.error.code, HELD);
-    await release(file, winners[0].session.nonce);
+    assert.deepEqual(await readdir(join(file, '..')), ['ledger.json.owner']);
+    observing = false; await release(file, winners[0].session.nonce);
   } finally { o.setOwnershipReleaseHooks(); fs.rename = origRename; syncBuiltinESMExports(); }
 });
 test('DRSEC-G6: an orphaned recovery lock keeps the record held and names the lock file', async t => {
@@ -374,4 +380,34 @@ test('DRSEC-G6: an I/O failure while removing the dead record surfaces and keeps
   assert.equal((await readdir(join(file, '..'))).some(n => n.endsWith('.recover')), false);
   const session = await acquire(file); assert.notEqual(session.nonce, dead.nonce);
   await release(file, session.nonce);
+});
+
+for (const vanished of [false, true]) test(`DRSEC-G6-FU: revalidation ${vanished ? 'retries a vanished record' : 'preserves a swapped live nonce'}`, async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const path = ownerPath(file), lock = `${path}.recover`, origRead = fs.readFile, origOpen = fs.open;
+  const live = JSON.stringify({ nonce: 'swapped-live-nonce', pid: process.pid,
+    heartbeatAt: new Date().toISOString(), host: `${hostname()}:${process.platform}` });
+  let reads = 0, creates = 0;
+  fs.open = async (p, ...rest) => { if (p === path && rest[0] === 'wx') creates++; return origOpen(p, ...rest); };
+  fs.readFile = async (p, ...rest) => {
+    if (p === path && ++reads === 2) {
+      assert.ok(await origRead(lock), 'revalidation happens under the lock');
+      if (vanished) await rm(path); else await writeFile(path, live);
+    }
+    return origRead(p, ...rest);
+  };
+  syncBuiltinESMExports();
+  try {
+    if (vanished) {
+      const session = await acquire(file);
+      assert.equal(creates, 2, 'one initial create and exactly one retry');
+      assert.equal(JSON.parse(await origRead(path)).nonce, session.nonce);
+      await release(file, session.nonce);
+    } else {
+      await assert.rejects(acquire(file), e => isDiag(e, HELD));
+      assert.equal(await origRead(path, 'utf8'), live);
+      assert.equal(creates, 1, 'no retry after nonce mismatch');
+    }
+    await assert.rejects(origRead(lock), e => e.code === 'ENOENT');
+  } finally { fs.readFile = origRead; fs.open = origOpen; syncBuiltinESMExports(); }
 });
