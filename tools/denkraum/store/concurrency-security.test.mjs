@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -115,4 +115,47 @@ test('DRSEC: failed first mutation releases its new ownership and leaves the led
   await assert.rejects(readFile(o.ownerRecordPath(file)), e => e.code === 'ENOENT');
   const next = await o.acquireOwnership(file); await o.releaseOwnership(file, next.nonce);
   await add(store, 'retry'); assert.equal((await store.read()).revision, 1); await store.close();
+});
+
+test('DRSEC: closed child server releases ownership for the next process', async t => {
+  const file = await ledger(t);
+  const script = `import { createDeskServer } from ${JSON.stringify(new URL('../server.mjs', import.meta.url).href)};
+    const server = createDeskServer({ statePath: process.argv[1] });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const body = { id: 'q-' + process.pid, title: 'T', context: 'C', owner: 'O', category: 'K', scope: 'S', source: 'Q', uncertainty: 'U',
+      recommendation: { optionIds: ['a'], rationale: 'R' }, options: ['a', 'b'].map(id => ({ id, label: id, rationale: 'R', impact: 'I', tradeoff: 'T', effort: 'E', reversible: 'Y' })) };
+    const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/questions', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-decision-desk': 'agent' }, body: JSON.stringify(body) });
+    if (response.status !== 200) throw new Error('write status ' + response.status);
+    await response.text(); await new Promise(r => server.close(r));
+    if ((await import('node:fs')).existsSync(process.argv[1] + '.owner')) throw new Error('close left ownership held');`;
+  for (let i = 0; i < 2; i++) {
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', script, file], { encoding: 'utf8', timeout: 10000 });
+    assert.equal(run.status, 0, run.stderr);
+  }
+  assert.equal(JSON.parse(await readFile(file)).revision, 2);
+});
+
+test('DRSEC: release failure preserves the mutation error and clears the session', async t => {
+  const file = await ledger(t), store = new DeskStore(file);
+  await assert.rejects(store.change(async () => { await rm(o.ownerRecordPath(file)); throw new Error('orig'); }),
+    e => e.message === 'orig' && e.cause?.code === o.OWNERSHIP_RELEASE_MISMATCH);
+  await store.close();
+  const next = new DeskStore(file); await add(next, 'retry'); await next.close();
+});
+
+test('DRSEC: rejected close clears the session for a fresh store', async t => {
+  const file = await ledger(t), next = new DeskStore(file); await add(next, 'first');
+  await rm(o.ownerRecordPath(file));
+  await assert.rejects(next.close(), e => e.code === o.OWNERSHIP_RELEASE_MISMATCH);
+  const last = new DeskStore(file); await assert.doesNotReject(add(last, 'after-close-error')); await last.close();
+  await assert.rejects(readFile(o.ownerRecordPath(file)), e => e.code === 'ENOENT');
+});
+
+test('DRSEC: failed acquisition does not retain a user when the store is dropped', async t => {
+  const file = await ledger(t), release = await holdChild(t, file);
+  await assert.rejects(add(new DeskStore(file), 'blocked'), e => e.code === o.OWNERSHIP_HELD);
+  await release();
+  const next = new DeskStore(file); await add(next, 'retry'); await next.close();
+  await assert.rejects(readFile(o.ownerRecordPath(file)), e => e.code === 'ENOENT');
 });
