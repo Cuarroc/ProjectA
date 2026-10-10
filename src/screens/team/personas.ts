@@ -1,19 +1,11 @@
 import type { AgentProfile } from "../../types";
-
-const CLI_LABELS: Record<string, string> = {
-  claude: "Claude Code",
-  codex: "Codex",
-  kimi: "Kimi CLI",
-  opencode: "OpenCode",
-  gemini: "Gemini CLI",
-  ollama: "Ollama",
-};
+import { T } from "./texts";
 
 /** Executable name of the profile's command, without folder and extension. */
 export const cliKey = (command: string) =>
   (command.split(/[\\/]/).pop() ?? command).replace(/\.(exe|cmd|bat)$/i, "").toLowerCase();
 
-export const cliLabel = (command: string) => CLI_LABELS[cliKey(command)] ?? cliKey(command);
+export const cliLabel = (command: string) => T.cli[cliKey(command)] ?? cliKey(command);
 
 /** The model a profile pins on its command line, or null when it states none. */
 export function modelOf(args: string[]): string | null {
