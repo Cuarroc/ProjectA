@@ -266,6 +266,40 @@ mod tests {
     }
 
     #[test]
+    fn a_multi_line_snippet_never_matches() {
+        // Both lines are present and adjacent, but the rule is one line only.
+        let ev = file_line("src/x.rs", 2, "b\nlet gate = serial();");
+        let tree = MemTree::default().with_file("src/x.rs", SRC);
+        assert_eq!(
+            recheck(&note(vec![ev.clone()]), &tree),
+            NoteState::Stale(vec![ev])
+        );
+    }
+
+    #[test]
+    fn the_nearest_of_two_matches_in_the_window_wins() {
+        // Matches on lines 2 and 6; the claim says 5, so line 6 (distance 1)
+        // beats line 2 (distance 3).
+        let ev = file_line("src/x.rs", 5, "hit");
+        let tree = MemTree::default().with_file("src/x.rs", "x\nhit\nx\nx\nx\nhit\nx\n");
+        assert_eq!(
+            recheck(&note(vec![ev]), &tree),
+            NoteState::Confirmed(vec![file_line("src/x.rs", 6, "hit")])
+        );
+    }
+
+    #[test]
+    fn on_equal_distance_the_earlier_line_wins() {
+        // Matches on lines 4 and 6, both one away from the claimed line 5.
+        let ev = file_line("src/x.rs", 5, "hit");
+        let tree = MemTree::default().with_file("src/x.rs", "x\nx\nx\nhit\nx\nhit\nx\n");
+        assert_eq!(
+            recheck(&note(vec![ev]), &tree),
+            NoteState::Confirmed(vec![file_line("src/x.rs", 4, "hit")])
+        );
+    }
+
+    #[test]
     fn a_commit_holds_only_while_the_tree_knows_it() {
         let ev = Evidence::Commit {
             sha: "abc123".into(),
