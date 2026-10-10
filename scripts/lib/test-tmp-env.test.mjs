@@ -86,3 +86,10 @@ test('every node --test script in package.json loads the temp-dir preload', () =
     assert.ok(part.includes(`--import ${PRELOAD}`), `${name} must run node --test with --import ${PRELOAD}`);
   }
 });
+
+test('node test runners for scripts/lib and tools/denkraum load the temp-dir preload', () => {
+  const scripts = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts;
+  for (const name of ['test:hq', 'test:denkraum']) {
+    assert.ok(scripts[name].includes(`--import ${PRELOAD}`), `${name} must run node --test with --import ${PRELOAD}`);
+  }
+});
