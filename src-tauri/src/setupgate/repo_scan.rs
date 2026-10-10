@@ -67,14 +67,22 @@ fn main_branch(repo: &Path) -> Option<String> {
     let packed = fs::read_to_string(common.join("packed-refs")).unwrap_or_default();
     ["main", "master"].into_iter().find_map(|name| {
         let loose = common.join("refs/heads").join(name).is_file();
-        let suffix = format!(" refs/heads/{name}");
-        let in_packed = packed.lines().any(|line| line.ends_with(&suffix));
+        let branch_ref = format!("refs/heads/{name}");
+        let in_packed = packed
+            .lines()
+            .filter(|line| !line.starts_with('#'))
+            .any(|line| {
+                line.split_once(' ')
+                    .is_some_and(|(_, r)| r.trim_end() == branch_ref)
+            });
         (loose || in_packed).then(|| name.to_string())
     })
 }
 
 /// Backticked paths of the first `AGENTS.md` block that mentions "seam" and
-/// contains any. Blocks are separated by blank lines or a new list item.
+/// contains any. Blocks are separated by blank lines, headings or a new list
+/// item (`1.`, `-`, `*`, `+`). Heuristic: a backticked token counts as a path
+/// when it contains `/` or ends in an alphabetic file extension.
 fn parse_seam_files(agents_md: &str) -> Vec<String> {
     let mut blocks: Vec<String> = Vec::new();
     let mut current = String::new();
@@ -83,7 +91,9 @@ fn parse_seam_files(agents_md: &str) -> Vec<String> {
             .trim_start()
             .split_once(". ")
             .is_some_and(|(n, _)| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
-            || line.starts_with("- ")
+            || ["- ", "* ", "+ "]
+                .iter()
+                .any(|bullet| line.starts_with(bullet))
             || line.starts_with('#');
         if line.trim().is_empty() || starts_item {
             blocks.push(std::mem::take(&mut current));
@@ -100,13 +110,25 @@ fn parse_seam_files(agents_md: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Path-like: contains a `/`, or ends in a file extension that starts with a
+/// letter (`build.rs`, not `v1.2` or `e.g.`).
+fn is_path_like(token: &str) -> bool {
+    if token.contains(char::is_whitespace) {
+        return false;
+    }
+    token.contains('/')
+        || token.rsplit_once('.').is_some_and(|(stem, ext)| {
+            !stem.is_empty()
+                && ext.starts_with(|c: char| c.is_ascii_alphabetic())
+                && ext.chars().all(|c| c.is_ascii_alphanumeric())
+        })
+}
+
 fn backticked_paths(text: &str) -> Vec<String> {
     text.split('`')
         .skip(1)
         .step_by(2)
-        .filter(|token| {
-            !token.contains(char::is_whitespace) && (token.contains('/') || token.contains('.'))
-        })
+        .filter(|token| is_path_like(token))
         .map(str::to_string)
         .collect()
 }
