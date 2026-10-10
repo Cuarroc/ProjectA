@@ -34,4 +34,18 @@ describe("sidebar layout (NT-2)", () => {
     expect(blockOf("\\.reco-section")).toMatch(/flex:\s*0\s+0\s+auto/);
     expect(blockOf("\\.reco-section")).toMatch(/overflow:\s*visible/);
   });
+
+  it("queue sticky actions use space-2 padding", () => {
+    expect(blockOf("\\.queue-section \\.queue-actions-sticky")).toMatch(
+      /padding-block:\s*var\(--space-2\)/,
+    );
+  });
+
+  it("learn section does not clip with overflow hidden", () => {
+    expect(blockOf("\\.learn-section")).toMatch(/overflow:\s*visible/);
+  });
+
+  it("settings body keeps its own vertical scroll", () => {
+    expect(blockOf("\\.settings-body")).toMatch(/overflow-y:\s*auto/);
+  });
 });
