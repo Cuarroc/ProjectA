@@ -27,16 +27,9 @@ test("focused project row shows all four inset ring edges inside project-list", 
     const oo = Number.parseFloat(s.outlineOffset) || 0;
     const inset = ow + Math.max(0, -oo);
     return {
-      outlineStyle: s.outlineStyle,
-      outlineWidth: ow,
-      outlineOffset: oo,
+      outlineStyle: s.outlineStyle, outlineWidth: ow, outlineOffset: oo,
       list: { top: lb.top, right: lb.right, bottom: lb.bottom, left: lb.left },
-      ring: {
-        top: bb.top + inset,
-        right: bb.right - inset,
-        bottom: bb.bottom - inset,
-        left: bb.left + inset,
-      },
+      ring: { top: bb.top + inset, right: bb.right - inset, bottom: bb.bottom - inset, left: bb.left + inset },
     };
   });
 
