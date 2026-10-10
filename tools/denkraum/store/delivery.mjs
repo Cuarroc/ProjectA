@@ -61,12 +61,20 @@ export class DeliveryStore extends AnswerStore {
       const eligible = activeEvents(state).filter(e => (eventId === undefined || e.eventRef.eventId === eventId)
         && !receiptFor(state, e, this.rootAgentId)
         && !(e.eventRef.kind === 'answer' && legacyAckReceived(e.content)));
+      // Legacy pending-at-cap: treat as terminal failed on the next write that touches the entry.
+      let cappedFailed = null;
+      for (const e of eligible) {
+        const wd = e.content.webhookDelivery;
+        if (wd?.status === 'pending' && (wd.attempts ?? 0) >= MAX_DELIVERY_ATTEMPTS) {
+          wd.status = 'failed'; wd.lastError ??= 'transport-failed'; cappedFailed ??= wd;
+        }
+      }
       const a = eligible.map(e => e.content).filter(a =>
         a.webhookDelivery?.status !== 'failed'
         && (a.webhookDelivery?.attempts ?? 0) < MAX_DELIVERY_ATTEMPTS
         && (a.webhookDelivery?.status !== 'queued' || isoTime(a.webhookDelivery.queuedAt) && at - Date.parse(a.webhookDelivery.queuedAt) >= 7 * 86400000))
         .sort((x, y) => (Date.parse(x.webhookDelivery?.lastAttemptAt) || 0) - (Date.parse(y.webhookDelivery?.lastAttemptAt) || 0))[0];
-      if (!a) return null;
+      if (!a) return cappedFailed ? { cappedFailed: true, delivery: cappedFailed } : null;
       const ref = eligible.find(e => e.content === a).eventRef;
       if (!Object.hasOwn(a, 'webhookDelivery')) a.webhookDelivery = { status: 'pending', attempts: 0, lastAttemptAt: null, queuedAt: null, lastError: null };
       if (a.webhookDelivery?.status === 'queued') {
@@ -79,6 +87,7 @@ export class DeliveryStore extends AnswerStore {
       return { type: 'decision-desk.event', eventId: ref.eventId, contentRevision: ref.kind === 'answer' ? ref.questionRevision : ref.ideaRevision, deliveryId: a.webhookDelivery.deliveryId };
     });
     if (!event) return { status: 'empty' };
+    if (event.cappedFailed) return event.delivery;
     let queued = false;
     try { await this.io.notifyEvent(event, event.deliveryId); queued = true; } catch { /* Persist only a fixed error code, never transport secrets. */ }
     return this.change(state => {

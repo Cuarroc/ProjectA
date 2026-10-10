@@ -248,3 +248,47 @@ test('NOT-3: a V1 legacy-received answer is not re-notified after migration', as
   // Still listed in pending so a V2 receipt can be attached; only webhook delivery is skipped.
   assert.equal((await s.pending()).length, 1);
 });
+
+test('NOT-3: a V1 legacy-applied answer is not re-notified after migration', async () => {
+  const v1 = await fresh({ v2: false });
+  await v1.s.ack({ answerId: v1.a.id, status: 'received', actor: 'Root', note: 'Beleg', deliveryReceipt: 'weitergegeben' });
+  await v1.s.ack({ answerId: v1.a.id, status: 'applied', actor: 'Root', note: 'Umgesetzt', evidence: 'Beleg beobachtet' });
+  await v1.s.migrate((await v1.s.read()).revision); await v1.s.close();
+  const calls = [];
+  const s = store(v1.file, { notifyEvent: async event => calls.push(event) });
+  const before = await readFile(v1.file, 'utf8');
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.deepEqual(calls, []); assert.equal(await readFile(v1.file, 'utf8'), before);
+  assert.equal((await s.pending()).length, 0);
+});
+
+test('NOT-2: a legacy pending entry already at the cap is reported as failed and never sent', async () => {
+  let calls = 0;
+  const { s, file } = await fresh({ notifyEvent: async () => { calls++; } });
+  await s.change(state => {
+    const a = state.answers[0];
+    a.webhookDelivery = { status: 'pending', attempts: MAX_DELIVERY_ATTEMPTS, lastAttemptAt: '2026-10-08T12:00:00.000Z',
+      queuedAt: null, lastError: 'transport-failed', deliveryId: a.id };
+  });
+  const failed = await s.flushNotifications();
+  assert.equal(failed.status, 'failed'); assert.equal(failed.attempts, MAX_DELIVERY_ATTEMPTS);
+  assert.equal(failed.lastError, 'transport-failed'); assert.equal(calls, 0);
+  assert.equal((await s.read()).answers[0].webhookDelivery.status, 'failed');
+  const after = await readFile(file, 'utf8');
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.equal(calls, 0); assert.equal(await readFile(file, 'utf8'), after);
+});
+
+test('NOT-2: an answer that fails three times then succeeds is delivered and stops being eligible', async () => {
+  let calls = 0;
+  const { s } = await fresh({ notifyEvent: async () => { calls++; if (calls <= 3) throw new Error('offline'); } });
+  for (let i = 1; i <= 3; i++) {
+    const last = await s.flushNotifications();
+    assert.equal(last.status, 'pending'); assert.equal(last.attempts, i); assert.equal(last.lastError, 'transport-failed');
+  }
+  const queued = await s.flushNotifications();
+  assert.equal(queued.status, 'queued'); assert.equal(queued.attempts, 4); assert.equal(queued.lastError, null);
+  assert.equal(calls, 4);
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.equal(calls, 4);
+});
