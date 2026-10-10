@@ -684,6 +684,27 @@ function optionalCount(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+export interface WatchdogFinding {
+  runId: string;
+  label: string;
+  kind: "steht" | "fertig";
+  /** German sentence, written by the core. */
+  sentence: string;
+  /** Unix milliseconds of the last activity the run showed. */
+  since: number;
+}
+
+/** V2-B22 read-only: runs of the project that stand still. A failed read rejects; it is never an empty list. */
+export async function getWatchdogReport(projectId: string): Promise<WatchdogFinding[]> {
+  const raw = await invoke<unknown>("watchdog_report", { projectId });
+  if (!Array.isArray(raw)) throw new Error("watchdog_report: unexpected answer");
+  return raw.flatMap((r: Record<string, unknown>) =>
+    typeof r?.runId === "string" && typeof r.sentence === "string" && (r.kind === "steht" || r.kind === "fertig")
+      ? [{ runId: r.runId, label: typeof r.label === "string" ? r.label : r.runId, kind: r.kind, sentence: r.sentence, since: typeof r.since === "number" ? r.since : 0 }]
+      : [],
+  );
+}
+
 /** F5 baseline: CPU/RAM/disk plus OmniRoute token totals. Missing is not zero. */
 export async function getResourceSnapshot(): Promise<ResourceSnapshot> {
   const raw = await invoke<Record<string, unknown>>("get_resource_snapshot");

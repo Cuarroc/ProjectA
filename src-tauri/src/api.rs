@@ -2302,6 +2302,115 @@ pub async fn scan_setup_repo(path: String) -> Result<RepoScan, String> {
     scan_within(SCAN_TIMEOUT, move || scan_setup_repo_at(&path)).await
 }
 
+/// One Wachhund finding for the Betrieb panel (V2-B22).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchdogFinding {
+    pub run_id: String,
+    pub label: String,
+    /// `"steht"` or `"fertig"`.
+    pub kind: &'static str,
+    pub sentence: String,
+    /// Unix milliseconds: the last activity the run showed.
+    pub since: u64,
+}
+
+/// "Steht seit 15 Minuten" / "Steht seit 2 Stunden 5 Minuten".
+fn watchdog_span(ms: u64) -> String {
+    let minutes = ms / 60_000;
+    let unit = |n: u64, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
+    match (minutes / 60, minutes % 60) {
+        (0, m) => unit(m, "Minute", "Minuten"),
+        (h, 0) => unit(h, "Stunde", "Stunden"),
+        (h, m) => format!(
+            "{} {}",
+            unit(h, "Stunde", "Stunden"),
+            unit(m, "Minute", "Minuten")
+        ),
+    }
+}
+
+/// Run the pure watchdog core over the running workers. A run counts as quiet
+/// only when output *and* worktree are both known and old, the same
+/// conjunction as the stuck verdict; a worktree never probed is not judged.
+/// The dedupe state starts empty on purpose: this is a snapshot for the panel,
+/// not a notification, so a standing run is listed on every read.
+fn watchdog_findings(
+    workers: &[Worker],
+    engine: &crate::status::StatusEngine,
+    now: u64,
+    stalled_after: Duration,
+) -> Vec<WatchdogFinding> {
+    use crate::stuck::watchdog::{evaluate, Dedupe, NoticeKind, Run, RunState, Thresholds};
+    let ago =
+        |age: Duration| now.saturating_sub(u64::try_from(age.as_millis()).unwrap_or(u64::MAX));
+    let running: Vec<&Worker> = workers
+        .iter()
+        .filter(|w| w.status == crate::store::STATUS_RUNNING)
+        .collect();
+    let runs: Vec<Run> = running
+        .iter()
+        .map(|w| {
+            let (output, worktree) = match engine.activity_ages(&w.id) {
+                (Some(output), Some(worktree)) => (Some(ago(output)), Some(ago(worktree))),
+                _ => (None, None),
+            };
+            Run {
+                id: w.id.clone(),
+                state: RunState::Running,
+                last_output_at: output,
+                last_commit_at: worktree,
+                exited_at: None,
+            }
+        })
+        .collect();
+    let (notices, _) = evaluate(
+        &runs,
+        now,
+        &Thresholds { stalled_after },
+        &Dedupe::default(),
+    );
+    notices
+        .into_iter()
+        .filter_map(|n| {
+            let worker = running.iter().find(|w| w.id == n.run_id)?;
+            let (kind, sentence) = match n.kind {
+                NoticeKind::Steht => (
+                    "steht",
+                    format!(
+                        "Steht seit {}: keine Ausgabe, keine Änderung im Arbeitsbaum.",
+                        watchdog_span(now.saturating_sub(n.since))
+                    ),
+                ),
+                NoticeKind::Fertig => ("fertig", "Der Lauf ist beendet.".to_string()),
+            };
+            Some(WatchdogFinding {
+                label: crate::status::worker_label(worker),
+                run_id: n.run_id,
+                kind,
+                sentence,
+                since: n.since,
+            })
+        })
+        .collect()
+}
+
+/// Read-only (V2-B22): which running workers of a project stand still.
+#[tauri::command]
+pub async fn watchdog_report(
+    project_id: String,
+    store: tauri::State<'_, crate::store::Store>,
+    engine: tauri::State<'_, Arc<crate::status::StatusEngine>>,
+) -> Result<Vec<WatchdogFinding>, String> {
+    let workers = store
+        .list_workers(Some(&project_id))
+        .await
+        .map_err(|_| "Der Wachhund konnte die Läufe nicht lesen.".to_string())?;
+    let stalled_after = crate::stuck::threshold(&store).await;
+    let now_ms = crate::store::now_unix_secs().max(0).unsigned_abs() * 1000;
+    Ok(watchdog_findings(&workers, &engine, now_ms, stalled_after))
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -2553,6 +2662,51 @@ pub(crate) mod tests {
     /// `(profileId, fiveHourPct, sevenDayPct)` of one budget write, with both
     /// windows still three-valued: absent, cleared, or set.
     type BudgetWrite = (String, Option<Option<u8>>, Option<Option<u8>>);
+
+    #[test]
+    fn watchdog_reports_a_stalled_run_and_nothing_for_a_healthy_one() {
+        use crate::status::StatusEngine;
+        use std::time::Instant;
+        let engine = StatusEngine::default();
+        let (stalled, healthy) = (worker("wk-stalled"), worker("wk-healthy"));
+        let (mut exited, blind) = (worker("wk-exited"), worker("wk-blind"));
+        exited.status = crate::store::STATUS_EXITED.to_string();
+        let now = Instant::now();
+        let long_ago = now
+            .checked_sub(Duration::from_secs(15 * 60))
+            .expect("clock");
+        for w in [&stalled, &healthy, &exited, &blind] {
+            engine.observe_worker(w);
+        }
+        for w in [&stalled, &healthy] {
+            engine.note_git_activity_at(&w.id, "fp", long_ago);
+        }
+        // Never probed: quiet output alone is not judged.
+        engine.note_output_at(&blind.id, "z", long_ago);
+        engine.note_output_at(&stalled.id, "x", long_ago);
+        engine.note_output_at(&healthy.id, "y", now);
+        let workers = [stalled, healthy.clone(), exited, blind];
+        let now_ms = 1_000_000_000_u64;
+        let found = watchdog_findings(&workers, &engine, now_ms, Duration::from_secs(600));
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].run_id, "wk-stalled");
+        assert_eq!(found[0].kind, "steht");
+        assert!(
+            found[0].sentence.starts_with("Steht seit 15 Minuten"),
+            "{}",
+            found[0].sentence
+        );
+        // `Instant` ages are real time: allow a few seconds of test-machine jitter.
+        let quiet_since = now_ms - 15 * 60_000;
+        assert!(
+            (quiet_since - 5_000..=quiet_since).contains(&found[0].since),
+            "{}",
+            found[0].since
+        );
+        assert!(
+            watchdog_findings(&[healthy], &engine, now_ms, Duration::from_secs(600)).is_empty()
+        );
+    }
 
     fn worker(id: &str) -> Worker {
         Worker {
