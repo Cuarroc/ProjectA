@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import { QUOTA_POLL_MS, useQuotaState } from "../lib/quota";
 import type { TerminalSession } from "../types";
 
@@ -60,7 +61,7 @@ export default function StatusBar({
         title="Provider-Übersicht öffnen"
         aria-label="Provider-Übersicht öffnen"
       >
-        <span aria-hidden="true">🔌</span>
+        <Icon name="plug" size={14} />
       </button>
       {error ? (
         <button
