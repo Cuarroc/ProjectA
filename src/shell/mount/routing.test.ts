@@ -25,5 +25,13 @@ describe("goal and route mapping (ia.md section 4)", () => {
   it("only rewrites the hash when the old UI left the route", () => {
     expect(hashForGoal("work", "/leitstand/verlauf")).toBeNull();
     expect(hashForGoal("review", "/leitstand")).toBe("#/beweise");
+    expect(hashForGoal("attention", "/leitstand/verlauf")).toBeNull();
+    expect(hashForGoal("agents", "/leitstand")).toBeNull();
+  });
+
+  it("writes the route of the goal the old UI switched to", () => {
+    expect(hashForGoal("insights", "/leitstand/verlauf")).toBe("#/steuerung");
+    expect(hashForGoal("settings", "/leitstand")).toBe("#/einstellungen");
+    expect(hashForGoal("work", "/beweise/diff")).toBe("#/leitstand");
   });
 });

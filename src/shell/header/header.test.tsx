@@ -48,6 +48,40 @@ describe("command palette", () => {
   });
 });
 
+describe("command palette details", () => {
+  const platform = (value: string) => Object.defineProperty(navigator, "platform", { value, configurable: true });
+  afterEach(() => platform("Linux x86_64"));
+
+  it("only points aria-controls at a list that exists", () => {
+    render(<CommandPalette />);
+    ctrlK();
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveAttribute("aria-controls", screen.getByRole("listbox").id);
+    fireEvent.change(input, { target: { value: "xyzzy" } });
+    expect(input).not.toHaveAttribute("aria-controls");
+  });
+
+  it("resets query and selection when Ctrl K closes the palette", () => {
+    render(<CommandPalette />);
+    ctrlK();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "beweise" } });
+    ctrlK();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    ctrlK();
+    expect(screen.getByRole("combobox")).toHaveValue("");
+  });
+
+  it("labels the shortcut for the platform", () => {
+    platform("MacIntel");
+    const mac = render(<CommandPalette />);
+    expect(screen.getByRole("button", { name: /Seiten und Befehle suchen/ }).textContent).toContain("⌘ K");
+    mac.unmount();
+    platform("Linux x86_64");
+    render(<CommandPalette />);
+    expect(screen.getByRole("button", { name: /Seiten und Befehle suchen/ }).textContent).toContain("Strg K");
+  });
+});
+
 describe("quota bar and bell", () => {
   it("shows the quota as not connected without any number or meter", () => {
     render(<QuotaBar />);
@@ -79,6 +113,32 @@ describe("stop band", () => {
     await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Fortsetzen" })));
     expect(setEmergencyStop).toHaveBeenCalledWith(false);
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("shows the error and keeps the band when Fortsetzen fails", async () => {
+    stopped.mockResolvedValue(true);
+    vi.mocked(setEmergencyStop).mockRejectedValue("kein Zugriff");
+    await mount();
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Fortsetzen" })));
+    expect(screen.getByRole("alert")).toHaveTextContent("kein Zugriff");
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("ignores a poll that was in flight while Fortsetzen succeeded", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      stopped.mockResolvedValue(true);
+      await mount();
+      let answer: (v: boolean) => void = () => {};
+      stopped.mockReturnValueOnce(new Promise<boolean>((r) => { answer = r; }));
+      await act(async () => void vi.advanceTimersByTime(5000));
+      await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Fortsetzen" })));
+      expect(screen.queryByRole("status")).toBeNull();
+      await act(async () => answer(true));
+      expect(screen.queryByRole("status")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("treats an unreadable state as active", async () => {
