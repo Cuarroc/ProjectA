@@ -1,0 +1,295 @@
+//! Failover stage "lokal" (V2-B2b, core only, not wired yet): whether the
+//! local Ollama can take over, and what the chain of V2-B2a does with that.
+//! The probe itself (HTTP to the local server) is not part of this module.
+//!
+//! The local stage cannot be switched off, and when it is reached without
+//! being ready the answer is "Pause statt Rechnung", never an API-key path.
+
+use std::collections::HashMap;
+
+use super::failover_rules::{ProviderState, RuleSet};
+use crate::providers::{self, KIND_LOCAL};
+
+/// Whether `id` is the local stage: the registry says it is a local provider
+/// (the same source of truth as the B2a chain walk), not a hard-coded id.
+fn is_local(id: &str) -> bool {
+    providers::find(id).is_some_and(|spec| spec.kind == KIND_LOCAL)
+}
+
+/// What a probe of the local Ollama found.
+#[derive(Debug, Clone, Default)]
+pub struct LocalProbe {
+    pub reachable: bool,
+    pub models: Vec<String>,
+    pub chosen_model: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Readiness {
+    Bereit { model: String },
+    NichtBereit { reason: String },
+}
+
+/// What to do next with the chain.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Step<'a> {
+    /// Work on this provider (never the local one, never billed per call).
+    Provider(&'a str),
+    Local {
+        model: String,
+    },
+    Pause {
+        reason: String,
+    },
+}
+
+pub struct LocalReadiness;
+
+impl LocalReadiness {
+    pub fn from_probe(probe: LocalProbe) -> Readiness {
+        let not_ready = |reason: String| Readiness::NichtBereit { reason };
+        if !probe.reachable {
+            return not_ready("Ollama ist nicht erreichbar.".into());
+        }
+        let chosen = probe.chosen_model.as_deref().map_or("", str::trim);
+        if chosen.is_empty() {
+            return not_ready("Es ist kein lokales Modell gewählt.".into());
+        }
+        // Ollama reads a name whose last path segment has no tag as ":latest"
+        // (a ":" before the last "/" is a registry port, not a tag).
+        let last_segment = chosen.rsplit('/').next().unwrap_or(chosen);
+        let latest = format!("{chosen}:latest");
+        let present = probe
+            .models
+            .iter()
+            .any(|m| m == chosen || (!last_segment.contains(':') && *m == latest));
+        if present {
+            Readiness::Bereit {
+                model: chosen.to_string(),
+            }
+        } else {
+            not_ready(format!(
+                "Das gewählte Modell „{chosen}“ ist in Ollama nicht vorhanden."
+            ))
+        }
+    }
+}
+
+/// The local stage as a switch: always on.
+pub struct LocalStage;
+
+impl LocalStage {
+    pub fn set_enabled(&self, enabled: bool) -> Result<(), String> {
+        if enabled {
+            Ok(())
+        } else {
+            Err("Die lokale Stufe bleibt immer an".into())
+        }
+    }
+
+    /// Walk `chain` with `rules` (see [`RuleSet::resolve`]); reaching the local
+    /// provider uses it when `readiness` is `Bereit` and pauses otherwise.
+    pub fn resolve<'a>(
+        rules: &RuleSet,
+        chain: &[&'a str],
+        states: &HashMap<String, ProviderState>,
+        readiness: &Readiness,
+    ) -> Step<'a> {
+        let Some(id) = rules.resolve(chain, states) else {
+            return Step::Pause {
+                reason: "Pause statt Rechnung: Kein Anbieter ist frei.".into(),
+            };
+        };
+        if !is_local(id) {
+            return Step::Provider(id);
+        }
+        // The local stage is only ever `Local` or `Pause`, never `Provider`.
+        match readiness {
+            Readiness::Bereit { model } => Step::Local {
+                model: model.clone(),
+            },
+            Readiness::NichtBereit { reason } => Step::Pause {
+                reason: format!("Pause statt Rechnung: {reason}"),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::budget::failover_rules::Rule;
+
+    const CHAIN: [&str; 3] = ["claude", "codex", "ollama"];
+
+    fn probe(reachable: bool, models: &[&str], chosen: Option<&str>) -> LocalProbe {
+        LocalProbe {
+            reachable,
+            models: models.iter().map(|m| m.to_string()).collect(),
+            chosen_model: chosen.map(String::from),
+        }
+    }
+
+    fn blocked(ids: &[&str]) -> HashMap<String, ProviderState> {
+        let state = ProviderState {
+            blocked: true,
+            ..Default::default()
+        };
+        ids.iter()
+            .map(|id| (id.to_string(), state.clone()))
+            .collect()
+    }
+
+    fn ready() -> Readiness {
+        LocalReadiness::from_probe(probe(true, &["qwen3:8b"], Some("qwen3:8b")))
+    }
+
+    fn not_ready(probe: LocalProbe) -> String {
+        match LocalReadiness::from_probe(probe) {
+            Readiness::NichtBereit { reason } => reason,
+            other => panic!("expected NichtBereit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn claude_and_codex_blocked_with_a_ready_local_model_use_local() {
+        let step = LocalStage::resolve(
+            &RuleSet::new(),
+            &CHAIN,
+            &blocked(&["claude", "codex"]),
+            &ready(),
+        );
+        assert_eq!(
+            step,
+            Step::Local {
+                model: "qwen3:8b".into()
+            }
+        );
+        let step = LocalStage::resolve(&RuleSet::new(), &CHAIN, &blocked(&["claude"]), &ready());
+        assert_eq!(step, Step::Provider("codex"));
+    }
+
+    #[test]
+    fn local_not_ready_is_a_pause_never_an_api_key_provider() {
+        let down = LocalReadiness::from_probe(probe(false, &[], None));
+        let all = blocked(&["claude", "codex"]);
+        for chain in [
+            CHAIN.as_slice(),
+            &["claude", "codex", "ollama", "openrouter"],
+        ] {
+            match LocalStage::resolve(&RuleSet::new(), chain, &all, &down) {
+                Step::Pause { reason } => {
+                    assert!(reason.starts_with("Pause statt Rechnung: Ollama"))
+                }
+                other => panic!("expected a pause, got {other:?}"),
+            }
+        }
+        let mut rules = RuleSet::new();
+        let to_local = "Wenn Claude blockiert ist, dann weiter mit dem lokalen Modell.";
+        rules.add(Rule::parse(to_local).unwrap()).unwrap();
+        let step = LocalStage::resolve(&rules, &CHAIN, &blocked(&["claude"]), &down);
+        assert!(matches!(step, Step::Pause { .. }), "{step:?}");
+    }
+
+    #[test]
+    fn a_missing_chosen_model_names_the_model_in_the_reason() {
+        let reason = not_ready(probe(true, &["llama3:8b"], Some("qwen3:8b")));
+        assert_eq!(
+            reason,
+            "Das gewählte Modell „qwen3:8b“ ist in Ollama nicht vorhanden."
+        );
+        assert!(not_ready(probe(true, &["llama3:8b"], None)).contains("kein lokales Modell"));
+        assert!(not_ready(probe(true, &["a"], Some("  "))).contains("kein lokales Modell"));
+        assert!(not_ready(probe(false, &["a"], Some("a"))).contains("nicht erreichbar"));
+    }
+
+    #[test]
+    fn an_untagged_model_name_matches_latest() {
+        let found = LocalReadiness::from_probe(probe(true, &["llama3:latest"], Some("llama3")));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: "llama3".into()
+            }
+        );
+        assert!(not_ready(probe(true, &["llama3:8b"], Some("llama3"))).contains("llama3"));
+    }
+
+    #[test]
+    fn a_padded_chosen_model_name_is_trimmed_before_matching() {
+        let found = LocalReadiness::from_probe(probe(true, &["qwen3:8b"], Some("qwen3:8b ")));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: "qwen3:8b".into()
+            }
+        );
+        let found = LocalReadiness::from_probe(probe(true, &["llama3:latest"], Some(" llama3 ")));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: "llama3".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_host_port_without_a_tag_still_matches_latest() {
+        let model = "meinhost:5000/foo";
+        let found =
+            LocalReadiness::from_probe(probe(true, &["meinhost:5000/foo:latest"], Some(model)));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: model.into()
+            }
+        );
+        let tagged = probe(
+            true,
+            &["meinhost:5000/foo:latest"],
+            Some("meinhost:5000/foo:7b"),
+        );
+        assert!(not_ready(tagged).contains("foo:7b"));
+    }
+
+    #[test]
+    fn a_rule_to_the_local_model_with_a_ready_local_model_uses_local() {
+        let mut rules = RuleSet::new();
+        let to_local = "Wenn Claude blockiert ist, dann weiter mit dem lokalen Modell.";
+        rules.add(Rule::parse(to_local).unwrap()).unwrap();
+        let step = LocalStage::resolve(&rules, &CHAIN, &blocked(&["claude"]), &ready());
+        assert_eq!(
+            step,
+            Step::Local {
+                model: "qwen3:8b".into()
+            }
+        );
+    }
+
+    #[test]
+    fn any_local_kind_provider_is_the_local_stage_never_a_plain_provider() {
+        let chain = ["claude", "omniroute"];
+        let states = blocked(&["claude"]);
+        let down = LocalReadiness::from_probe(probe(false, &[], None));
+        let step = LocalStage::resolve(&RuleSet::new(), &chain, &states, &down);
+        assert!(matches!(step, Step::Pause { .. }), "{step:?}");
+        let step = LocalStage::resolve(&RuleSet::new(), &chain, &states, &ready());
+        assert!(matches!(step, Step::Local { .. }), "{step:?}");
+    }
+
+    #[test]
+    fn the_local_stage_cannot_be_disabled() {
+        assert!(LocalStage
+            .set_enabled(false)
+            .unwrap_err()
+            .contains("bleibt immer an"));
+        assert!(LocalStage.set_enabled(true).is_ok());
+    }
+
+    #[test]
+    fn no_free_provider_is_a_pause() {
+        let all = blocked(&CHAIN);
+        let step = LocalStage::resolve(&RuleSet::new(), &CHAIN, &all, &ready());
+        assert!(matches!(step, Step::Pause { .. }), "{step:?}");
+    }
+}
