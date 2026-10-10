@@ -148,7 +148,7 @@ describe("unstyled buttons", () => {
     expect(pressed).toMatch(/background:\s*var\(--color-pressed\)/);
   });
 
-  it("maintenance confirmation pair shares weight, radius and padding", () => {
+  it("maintenance confirmation pair shares weight radius and padding", () => {
     const css = readFileSync(STYLES, "utf8");
     const danger = ruleBody(css, ".button-danger");
     const ghost = ruleBody(css, ".settings-port-row .button-ghost");
@@ -169,7 +169,7 @@ describe("unstyled buttons", () => {
     expect(block).toMatch(/color:\s*var\(--color-text-tertiary\)/);
   });
 
-  it("button-danger hover uses a semantic token in both modes, no raw colour", () => {
+  it("button-danger hover uses a semantic token in both modes without a raw colour", () => {
     const css = readFileSync(STYLES, "utf8");
     expect(css.match(/--color-danger-solid-hover:/g)?.length).toBe(2);
     const hover = ruleBody(css, ".button-danger:hover:not(:disabled)");

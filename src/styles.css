@@ -68,6 +68,7 @@
   /* Solid danger fill for Not-Aus (PKG-U); separate from state-danger text. */
   --color-danger-solid: #b91c1c;
   --color-on-danger: #ffffff;
+  --color-danger-solid-hover: color-mix(in srgb, var(--color-danger-solid) 78%, #000000);
 
   /* ---- legacy names ----------------------------------------------------
      The codebase names these six in over 300 places. They stay, but now
@@ -232,6 +233,7 @@
     --color-focus-ring: #0a6cdd;
     --color-danger-solid: #c1000f;
     --color-on-danger: #ffffff;
+    --color-danger-solid-hover: color-mix(in srgb, var(--color-danger-solid) 78%, #000000);
 
     /* The state colours sit on slightly grey content here rather than on
        white. That costs a tenth of contrast, so they run a shade deeper
@@ -4960,8 +4962,8 @@ scripts/contrast-check.mjs. */
 }
 
 .button-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-danger-solid) 78%, #000000);
-  border-color: color-mix(in srgb, var(--color-danger-solid) 78%, #000000);
+  background: var(--color-danger-solid-hover);
+  border-color: var(--color-danger-solid-hover);
   color: var(--color-on-danger);
 }
 
@@ -4983,14 +4985,34 @@ scripts/contrast-check.mjs. */
 }
 
 /* Bordered secondary for paired settings actions (lift / Wartungsmodus).
-   Border role uses separator token until P00/T2 ship --color-control-border;
-   color is restated so the edge stays ≥ readable on both modes. */
+   Border role uses the tertiary text token until P00/T2 ship
+   --color-control-border. Weight, radius and padding match .button-danger so
+   the confirmation pair reads as one group. The hover, pressed and disabled
+   rules below carry the extra specificity this rule would otherwise shadow
+   from .button-ghost:hover and button:disabled. */
 .settings-port-row .button-ghost {
   min-height: var(--ui-control-min);
-  border: 1px solid var(--border);
-  border-color: var(--color-text-tertiary);
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
   background: var(--color-elevated);
   color: var(--fg);
+  font-weight: 600;
+}
+
+.settings-port-row .button-ghost:hover:not(:disabled) {
+  background: var(--color-selection-unfocused);
+}
+
+.settings-port-row .button-ghost:active:not(:disabled) {
+  background: var(--color-pressed);
+}
+
+.settings-port-row .button-ghost:disabled {
+  background: var(--color-elevated);
+  border-color: transparent;
+  color: var(--color-text-tertiary);
+  opacity: 1;
 }
 
 .settings-body {
