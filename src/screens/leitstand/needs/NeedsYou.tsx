@@ -4,12 +4,13 @@ import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
 import { Input } from "../../../design/inputs/Input";
 import { StateGlyph } from "../../../design/state/StateMark";
+import { fill } from "../leitstand";
+import { useT } from "../../../i18n/useT";
 import { describeError } from "../../../lib/ipc";
 import type { QuestionsState } from "../../../lib/useQuestions";
 import type { Question, Worker } from "../../../types";
 import "../../../design/glass.css";
 import "./needs.css";
-import { T } from "./texts";
 
 /** How many "answered" lines stay under the list. */
 const SAID_LIMIT = 20;
@@ -24,13 +25,14 @@ function parseOptions(json: string | null): string[] {
   }
 }
 
-function age(createdAt: number, nowMs: number): string {
+function age(createdAt: number, nowMs: number, t: ReturnType<typeof useT>): string {
   const minutes = Math.max(0, Math.floor((nowMs / 1000 - createdAt) / 60));
-  if (minutes < 1) return T.justNow;
-  return minutes < 60 ? T.minutes(minutes) : T.hours(Math.floor(minutes / 60));
+  if (minutes < 1) return t("needs.justNow");
+  return minutes < 60 ? fill(t("needs.minutes"), { n: minutes }) : fill(t("needs.hours"), { n: Math.floor(minutes / 60) });
 }
 
 function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: (id: string, text: string) => Promise<void> }) {
+  const t = useT();
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +62,9 @@ function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: 
   return (
     <li className="n-ask">
       <div className="n-from">
-        <b>{worker?.branch ?? (preflight ? T.preflight : T.noAgent)}</b>
+        <b>{worker?.branch ?? (preflight ? t("needs.preflight") : t("needs.noAgent"))}</b>
         {worker?.task}
-        <span className="n-age">{age(q.createdAt, Date.now())}</span>
+        <span className="n-age">{age(q.createdAt, Date.now(), t)}</span>
       </div>
       <p>{q.question}</p>
       <div className="n-opts">
@@ -75,20 +77,20 @@ function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: 
       <div className="n-compose">
         <Input
           compact
-          aria-label={T.answerLabel}
+          aria-label={t("needs.answerLabel")}
           aria-invalid={error !== null || undefined}
-          placeholder={preflight ? T.placeholderPreflight : T.placeholder}
+          placeholder={preflight ? t("needs.placeholderPreflight") : t("needs.placeholder")}
           value={draft}
           disabled={busy}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
         />
         <Button size="sm" variant="tint" disabled={busy || draft.trim() === ""} onClick={() => void send(draft)}>
-          {busy ? T.sending : T.send}
+          {busy ? t("needs.sending") : t("needs.send")}
         </Button>
       </div>
       {error !== null && <p className="n-error" role="alert">{error}</p>}
-      <p className="n-note">{preflight ? T.keys : `${T.direct} ${T.keys}`}</p>
+      <p className="n-note">{preflight ? t("needs.keys") : `${t("needs.direct")} ${t("needs.keys")}`}</p>
     </li>
   );
 }
@@ -101,6 +103,7 @@ export interface NeedsYouProps {
 
 /** The "Braucht dich" area of the Leitstand: open questions with an inline answer. */
 export function NeedsYou({ questions, workers }: NeedsYouProps) {
+  const t = useT();
   const { open, loading, error, answer } = questions;
   // Answers given here, newest first: the stream line stays after the item left the list.
   // Capped, and keyed by a counter: the same question can be answered twice.
@@ -112,12 +115,12 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
   };
 
   let body;
-  if (error !== null && open.length === 0) body = <HonestState kind="offline" hint={T.offlineHint} />;
-  else if (loading && open.length === 0) body = <p className="n-note">{T.loading}</p>;
-  else if (open.length === 0) body = <HonestState kind="empty" title={T.emptyTitle} hint={T.emptyHint} />;
+  if (error !== null && open.length === 0) body = <HonestState kind="offline" hint={t("needs.offlineHint")} />;
+  else if (loading && open.length === 0) body = <p className="n-note">{t("needs.loading")}</p>;
+  else if (open.length === 0) body = <HonestState kind="empty" title={t("needs.emptyTitle")} hint={t("needs.emptyHint")} />;
   else
     body = (
-      <ul className="n-list" aria-label={T.title}>
+      <ul className="n-list" aria-label={t("state.need")}>
         {open.map((q) => (
           <Ask key={q.id} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={onAnswer} />
         ))}
@@ -128,14 +131,14 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
     <aside className="g-glass n-pane" aria-labelledby="n-title">
       <div className="n-head">
         <StateGlyph form="need" />
-        <h2 id="n-title">{T.title}</h2>
-        <span className="n-count">{open.length > 0 ? T.open(open.length) : T.none}</span>
+        <h2 id="n-title">{t("state.need")}</h2>
+        <span className="n-count">{open.length > 0 ? fill(t("needs.open"), { n: open.length }) : t("needs.none")}</span>
       </div>
       {body}
       {said.map((s) => (
         <p key={s.key} className="n-answered" role="status">
           <StateGlyph form="done" />
-          {T.answered(s.text)}
+          {fill(t("needs.answered"), { text: s.text })}
         </p>
       ))}
     </aside>
