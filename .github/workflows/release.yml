@@ -78,6 +78,7 @@ jobs:
       # Frueher Abbruch: ein Tag, der nicht zur App-Version passt, wuerde sonst
       # erst nach Gates und Installer-Build am fehlenden Installer scheitern.
       - name: Check tag matches the app version
+        shell: bash
         run: |
           tag_version="${GITHUB_REF_NAME#[vV]}"
           conf_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
@@ -197,8 +198,14 @@ jobs:
             if ($stagingCreated) {
               gh release delete $stagingTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
               if ($LASTEXITCODE -eq 0) { $cleanup = "Staging-Release entfernt" } else {
-                $cleanup = "Staging-Cleanup fehlgeschlagen (gh exit $LASTEXITCODE)"
-                Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $LASTEXITCODE); vor einem Re-Run manuell loeschen"
+                $deleteExit = $LASTEXITCODE
+                # Ein Create, das nie angelegt hat, hinterlaesst nichts: nur warnen,
+                # wenn der Release noch existiert.
+                gh release view $stagingTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                  $cleanup = "Staging-Cleanup fehlgeschlagen (gh exit $deleteExit)"
+                  Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $deleteExit); vor einem Re-Run manuell loeschen"
+                } else { $cleanup = "kein Staging-Release angelegt" }
               }
             } else { $cleanup = "kein Staging-Release erstellt" }
             throw "Staging-Verify fehlgeschlagen ($cleanup): $($_.Exception.Message)"
@@ -232,7 +239,11 @@ jobs:
             # Der Staging-Kandidat ist nach einem gescheiterten Lauf wertlos und
             # wuerde den Re-Run am "Staging existiert bereits"-Guard stoppen.
             gh release delete $stagingTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
-            if ($LASTEXITCODE -ne 0) { Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $LASTEXITCODE); vor einem Re-Run manuell loeschen" }
+            if ($LASTEXITCODE -ne 0) {
+              $deleteExit = $LASTEXITCODE
+              gh release view $stagingTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
+              if ($LASTEXITCODE -eq 0) { Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $deleteExit); vor einem Re-Run manuell loeschen" }
+            }
             throw $failure
           }
           # Native gh-Aufrufe stoppen pwsh NICHT bei Fehlern — jeder Exit-Code
@@ -240,9 +251,12 @@ jobs:
           # stabiler Tag wird nicht ueberschrieben.
           gh release view $stableTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
           if ($LASTEXITCODE -eq 0) { throw "stabiler Release $stableTag existiert bereits; kein Clobber" }
+          # Der Guard oben ist bestanden: der Tag gehoert ab hier diesem Lauf. Das
+          # Flag steht VOR dem Create, damit auch ein Create mit Exit != 0, das den
+          # Release trotzdem angelegt hat, vom trap entfernt wird.
+          $stableCreated = $true
           gh release create $stableTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version" --notes "Auto-Update-Kanal (Spiegel). Quellcode: github.com/Cuarroc/ProjectA (privat)." --prerelease
           if ($LASTEXITCODE -ne 0) { throw "gh release create fehlgeschlagen (exit $LASTEXITCODE)" }
-          $stableCreated = $true
           gh release upload $stableTag $exe "$exe.sig" --repo Cuarroc/ProjectA-updates --clobber
           if ($LASTEXITCODE -ne 0) { throw "gh release upload installer fehlgeschlagen (exit $LASTEXITCODE)" }
           $assetUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stableTag/ProjectA_${version}_x64-setup.exe"

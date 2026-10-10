@@ -19,7 +19,7 @@ test('stable promotion cleans up a newly-created prerelease on failure', () => {
   const step = promotionStep();
   assert.match(step, /\$stableCreated = \$false[\s\S]*?trap \{/);
   assert.match(step, /gh release delete \$stableTag[\s\S]*?throw \$failure/);
-  assert.match(step, /gh release create \$stableTag[\s\S]*?\$stableCreated = \$true/);
+  assert.match(step, /\$stableCreated = \$true[\s\S]*?gh release create \$stableTag/);
   assert.match(step, /gh release edit \$stableTag[\s\S]*?\$stableCreated = \$false/);
 });
 
@@ -82,6 +82,30 @@ test('REL-4: a failed staging upload removes the staging mirror release', () => 
   assert.match(step, /existiert bereits; kein Clobber[\s\S]*?\$stagingCreated = \$true/);
 });
 
+test('REL-4: a stable create that fails after creating still lets the trap remove it', () => {
+  const step = promotionStep();
+  // The flag is set before the create, so a create that exits non-zero after
+  // creating the release is removed by the trap.
+  assert.match(step, /\$stableCreated = \$true[\s\S]*?gh release create \$stableTag/);
+  // The guard for a pre-existing stable release must not mark it as ours.
+  assert.match(step, /existiert bereits; kein Clobber[\s\S]*?\$stableCreated = \$true/);
+  // The flag must not be set only after a successful create.
+  const afterCreate = step.slice(step.indexOf('gh release create $stableTag'));
+  assert.doesNotMatch(
+    afterCreate.split('gh release upload')[0],
+    /\$stableCreated = \$true/,
+    'the flag must not be set after the create',
+  );
+});
+
+test('REL-4: cleanup warnings only claim a release when it still exists', () => {
+  const rollback = stagingStep().slice(stagingStep().lastIndexOf('} catch {'));
+  assert.match(rollback, /gh release view \$stagingTag[\s\S]*?::warning::Staging-Release/);
+  const step = promotionStep();
+  const trap = step.slice(step.indexOf('trap {'), step.indexOf('# Native gh-Aufrufe'));
+  assert.match(trap, /gh release view \$stagingTag[\s\S]*?::warning::Staging-Release/);
+});
+
 test('REL-4: tag version is checked against tauri.conf.json before the gates', () => {
   const check = workflow.indexOf('- name: Check tag matches the app version');
   const gates = workflow.indexOf('- name: Gates (release)', workflow.indexOf('windows-installer:'));
@@ -89,4 +113,5 @@ test('REL-4: tag version is checked against tauri.conf.json before the gates', (
   const step = workflow.slice(check, gates);
   assert.match(step, /src-tauri\/tauri\.conf\.json/);
   assert.match(step, /exit 1/);
+  assert.match(step, /shell: bash/);
 });
