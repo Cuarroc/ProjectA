@@ -43,6 +43,7 @@ import {
   setMasterPromptEnabled,
   type UiDensity,
 } from "../lib/settings";
+import ChangelogView from "./ChangelogView";
 import GeneralTab from "./settings/GeneralTab";
 import MasterPromptTab from "./settings/MasterPromptTab";
 import MaintenancePanel from "./settings/MaintenancePanel";
@@ -53,13 +54,14 @@ import { useRefreshOnResume } from "../lib/useRefreshOnResume";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { AgentCategoryConfig, AgentProfile, Budget, Project } from "../types";
 
-type SettingsTab = "allgemein" | "masterprompt" | "agenten" | "updates";
+type SettingsTab = "allgemein" | "masterprompt" | "agenten" | "updates" | "neuigkeiten";
 
 const TABS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
   { id: "allgemein", label: "Allgemein" },
   { id: "masterprompt", label: "Masterprompt" },
   { id: "agenten", label: "Agent-Kategorien" },
   { id: "updates", label: "Updates" },
+  { id: "neuigkeiten", label: "Neuigkeiten" },
 ];
 
 /**
@@ -1016,6 +1018,8 @@ export default function SettingsView({
             handleCancelUpdateDownload={handleCancelUpdateDownload}
             handleRelaunch={handleRelaunch}
           />
+        ) : tab === "neuigkeiten" ? (
+          <ChangelogView currentVersion={appVersion} />
         ) : (
           <>
           <CategoriesPanel
