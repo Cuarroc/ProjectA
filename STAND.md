@@ -26,9 +26,9 @@ Alte Paketlisten, PR-Schnappschüsse und Befunde sind Historie:
 
 ## Feste Grundlagen (jeweils geprüft am 08.10.2026)
 
-- **Release:** v1.5.1, veröffentlicht am 06.10.2026, ist laut
-  `gh release list --limit 5` das jüngste Release; v1.5.0 erschien am 05.10.2026.
-  Vor einer erneuten Release-Aussage den Befehl wiederholen.
+- **Release:** v1.6.0 (Tag `d2582ceb`, geprüft 09.10.2026) ist das jüngste
+  Release; Release-Run 38004103979 grün, anonymous `latest.json` 1.6.0.
+  Vor einer erneuten Release-Aussage `gh release list --limit 5` wiederholen.
 - **Merge:** ausschließlich über die Mergify-Queue, gemäß `AGENTS.md`.
 - **Continuous Mode:** bleibt ausgeschaltet und bis M4 eingefroren (`AGENTS.md`).
 - **Desktop-App nicht zur Inspektion starten:** ihre Queue kann sofort echte
