@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>V2-F7 shot fixture</title>
+  <style>
+    :root { color-scheme: light; --accent: #1F57D6; --ground: #E9EDF3; --ink: #121826; }
+    @media (prefers-color-scheme: dark) {
+      :root { color-scheme: dark; --accent: #6E9BFF; --ground: #0D1219; --ink: #E8ECF2; }
+    }
+    body { margin: 0; background: var(--ground); color: var(--ink); font: 400 13px/1.5 system-ui, sans-serif; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    main { padding: 24px; display: flex; gap: 12px; }
+    button, a, input {
+      height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(18,24,38,.11);
+      background: rgba(255,255,255,.92); color: inherit; font: inherit; text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <main data-route="fixture">
+    <a href="#primary">Zur Primäraktion</a>
+    <button type="button" id="primary">Primär</button>
+    <input type="text" aria-label="Suche" placeholder="Suche" />
+  </main>
+</body>
+</html>
