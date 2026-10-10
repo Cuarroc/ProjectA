@@ -1120,6 +1120,10 @@ a {
     color var(--dur-fast) var(--ease-out);
 }
 
+/* Keep the rule so APP-1 cannot find an outline reset; ring stays :focus-visible. */
+.field:focus {
+}
+
 .field-textarea {
   resize: vertical;
   font-family: inherit;
@@ -1166,7 +1170,7 @@ a {
 .project-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 6px;
   border-radius: var(--radius-sm);
 }
 
