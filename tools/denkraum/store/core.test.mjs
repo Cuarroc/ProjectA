@@ -192,6 +192,71 @@ test('NOT-1: a held temp file is unlinked after a retry', async t => {
   }
 });
 
+test('NOT-1: a non-retryable rename code is thrown without sleeping', async t => {
+  const s = await fresh(); t.after(() => s.close());
+  await add(s); const before = await readFile(s.file); const delays = [];
+  const enospc = Object.assign(new Error('no space'), { code: 'ENOSPC' });
+  s.io.sleep = async ms => { delays.push(ms); throw new Error(`unexpected sleep ${ms}`); };
+  s.io.rename = async (from, to) => {
+    if (to === s.file) throw enospc;
+    return rename(from, to);
+  };
+  await assert.rejects(add(s, 'E-2'), error => error === enospc);
+  assert.deepEqual(delays, []);
+  assert.deepEqual(await readFile(s.file), before);
+  assert.deepEqual((await readdir(dirname(s.file))).filter(f => f.includes('.tmp')), []);
+});
+
+test('NOT-1: concurrent changes during a rename retry both commit in order', async t => {
+  const s = await fresh(); t.after(() => s.close());
+  await add(s); const delays = []; let attempts = 0; let releaseSleep;
+  const gate = new Promise(resolve => { releaseSleep = resolve; });
+  let enteredSleep;
+  const sawSleep = new Promise(resolve => { enteredSleep = resolve; });
+  s.io.sleep = async ms => {
+    delays.push(ms);
+    if (delays.length === 1) { enteredSleep(); await gate; }
+  };
+  s.io.rename = async (from, to) => {
+    if (to === s.file && ++attempts === 1)
+      throw Object.assign(new Error('reader holds file'), { code: 'EPERM' });
+    return rename(from, to);
+  };
+  const first = add(s, 'E-2');
+  await sawSleep;
+  const second = add(s, 'E-3');
+  releaseSleep();
+  assert.deepEqual(await Promise.all([first, second]), ['E-2', 'E-3']);
+  assert.deepEqual(delays, [10]);
+  assert.equal(attempts, 3); // one EPERM retry, then both commits rename onto the ledger
+  const state = await s.read();
+  assert.equal(state.revision, 3);
+  assert.deepEqual(state.questions.map(q => q.id), ['E-1', 'E-2', 'E-3']);
+});
+
+test('NOT-1: previous stays loadable after a permanent rename failure', async t => {
+  const s = await fresh(); t.after(() => s.close());
+  await add(s); const before = await readFile(s.file); const delays = [];
+  const original = Object.assign(new Error('reader holds file'), { code: 'EPERM' });
+  s.io.sleep = async ms => { delays.push(ms); };
+  s.io.rename = async (from, to) => {
+    if (to === s.file) throw original;
+    return rename(from, to);
+  };
+  await assert.rejects(add(s, 'E-2'), error => error === original);
+  assert.deepEqual(delays, [10, 20, 40, 80, 100]);
+  assert.deepEqual(await readFile(s.file), before);
+  const previous = await readFile(`${s.file}.previous`, 'utf8');
+  assert.equal(previous, before.toString('utf8'));
+  const snapshot = JSON.parse(previous);
+  assert.equal(snapshot.revision, 1);
+  assert.deepEqual(snapshot.questions.map(q => q.id), ['E-1']);
+  const previousStore = new DeskStore(`${s.file}.previous`);
+  t.after(() => previousStore.close());
+  assert.deepEqual(await previousStore.read(), await s.read());
+  assert.deepEqual((await readdir(dirname(s.file))).filter(f => f.includes('.tmp')), []);
+});
+
 test('process termination during a partial temporary write preserves the last commit', async () => {
   const s = await fresh(); await add(s); const before = await readFile(s.file, 'utf8');
   await s.close(); // Hand off ownership before the child deliberately terminates.
