@@ -845,7 +845,7 @@ a {
   cursor: pointer;
 }
 
-.bootstrap-retry:hover {
+.bootstrap-retry:hover:not(:disabled) {
   background: var(--color-accent-hover);
 }
 
@@ -1136,7 +1136,7 @@ a {
   color: var(--fg-muted);
 }
 
-.button-ghost:hover {
+.button-ghost:hover:not(:disabled) {
   background: var(--color-selection-unfocused);
   color: var(--fg);
 }
@@ -3064,7 +3064,7 @@ scripts/contrast-check.mjs. */
   color: var(--color-on-accent);
 }
 
-.empty-action:hover {
+.empty-action:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 
@@ -3075,7 +3075,7 @@ scripts/contrast-check.mjs. */
   color: var(--fg-muted);
 }
 
-.empty-action-ghost:hover {
+.empty-action-ghost:hover:not(:disabled) {
   border-color: var(--fg-muted);
   color: var(--fg);
 }
@@ -5089,9 +5089,9 @@ scripts/contrast-check.mjs. */
 }
 
 .button-danger:disabled {
-  background: var(--color-elevated);
+  background: var(--color-disabled-bg);
   border-color: transparent;
-  color: var(--color-text-tertiary);
+  color: var(--color-disabled-fg);
   opacity: 1;
 }
 
@@ -5122,7 +5122,7 @@ scripts/contrast-check.mjs. */
 .settings-port-row .button-ghost:disabled {
   background: var(--color-elevated);
   border-color: transparent;
-  color: var(--color-text-tertiary);
+  color: var(--color-disabled-fg);
   opacity: 1;
 }
 
