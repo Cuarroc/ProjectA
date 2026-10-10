@@ -45,10 +45,11 @@ describe("ThemeBackdrop", () => {
     expect(css).toMatch(/\.theme-backdrop\s*\{[^}]*z-index:\s*-1/);
   });
 
-  it("theme index imports empty glas liquid and mesh sheets", () => {
+  it("theme index imports glas liquid and mesh sheets, liquid and mesh still empty", () => {
     const index = readFileSync(themesCss, "utf8").replace(/\r\n/g, "\n");
     for (const name of ["glas", "liquid", "mesh"] as const) {
       expect(index).toMatch(new RegExp(`@import\\s+["']\\./${name}\\.css["']`));
+      if (name === "glas") continue; // filled by TH2
       const body = readFileSync(resolve(__dirname, `../design/themes/${name}.css`), "utf8");
       expect(body.trimStart().startsWith("/*")).toBe(true);
       expect(body.replace(/\/\*[\s\S]*?\*\//g, "").trim()).toBe("");
