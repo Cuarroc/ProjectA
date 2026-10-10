@@ -37,9 +37,9 @@ const POLL_INTERVAL_MS = 10_000;
  */
 const BUDGET_REASON_PREFIX = "Budget:";
 
-/** A ceiling as a cell, or an em dash where there is none. */
+/** A ceiling as a cell, or quiet copy where there is none. */
 function budgetCell(percent: number | null): string {
-  return percent === null ? "—" : `${percent} %`;
+  return percent === null ? "nicht gemessen" : `${percent} %`;
 }
 
 /** How many ledger rows the section lists. The rest stay in the database. */
@@ -250,10 +250,32 @@ export default function UsageView({ profiles, cards, workers }: UsageViewProps) 
                       ) : null}
                     </div>
                   ) : null}
-                  <span className="usage-budget" title="Budget-Schwellen: 5-Stunden- und 7-Tage-Fenster">
-                    {budget === undefined
-                      ? "kein Budget"
-                      : `Budget 5h ${budgetCell(budget.fiveHourPct)} · 7d ${budgetCell(budget.sevenDayPct)}`}
+                  <span
+                    className="usage-budget"
+                    title="Budget-Schwellen: 5-Stunden- und 7-Tage-Fenster"
+                  >
+                    {budget === undefined ? (
+                      "kein Budget"
+                    ) : (
+                      <>
+                        Budget 5h{" "}
+                        <span
+                          className={
+                            budget.fiveHourPct === null ? "insights-quiet" : undefined
+                          }
+                        >
+                          {budgetCell(budget.fiveHourPct)}
+                        </span>
+                        {" · 7d "}
+                        <span
+                          className={
+                            budget.sevenDayPct === null ? "insights-quiet" : undefined
+                          }
+                        >
+                          {budgetCell(budget.sevenDayPct)}
+                        </span>
+                      </>
+                    )}
                   </span>
                   {quota?.state === "blocked" ? (
                     <span className="usage-detail">
@@ -343,9 +365,13 @@ export default function UsageView({ profiles, cards, workers }: UsageViewProps) 
                     <span className="usage-detail">
                       {event.tokensIn.toLocaleString()} ein / {event.tokensOut.toLocaleString()} aus
                     </span>
-                    <span className="usage-budget">
+                    <span
+                      className={`usage-budget${event.costUsd === null ? " insights-quiet" : ""}`}
+                    >
                       {/* Never a 0,00 $: OmniRoutes Zeilen-Log kennt keinen Preis. */}
-                      {event.costUsd === null ? "— $" : `${event.costUsd.toFixed(4)} $`}
+                      {event.costUsd === null
+                        ? "nicht gemessen"
+                        : `${event.costUsd.toFixed(4)} $`}
                     </span>
                     <span className="usage-budget" title="Zuordnung nur, wenn ein Profil dieses Modell festlegt">
                       {event.profileId ?? "kein Profil zuordenbar"}

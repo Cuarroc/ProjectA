@@ -3403,11 +3403,12 @@ scripts/contrast-check.mjs. */
 
 .usage-view {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
-  gap: 1px;
-  height: 100%;
-  background: var(--border);
-  overflow: hidden;
+  /* UM-4: wrap below ~1100px. min 320 keeps ≤2 columns at Insights ~940 (1440vw). */
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 0;
+  min-height: 100%;
+  /* Empty auto-fit tracks must not paint --border (R998-A1 slab). */
+  background: var(--bg);
 }
 
 .usage-section {
@@ -3416,6 +3417,8 @@ scripts/contrast-check.mjs. */
   min-height: 0;
   min-width: 0;
   background: var(--bg);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .usage-head {
@@ -4999,7 +5002,7 @@ scripts/contrast-check.mjs. */
 
 .insights-heading {
   margin: 0 0 6px;
-  font-size: calc(var(--text-base) + 1px);
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
@@ -5018,6 +5021,10 @@ scripts/contrast-check.mjs. */
 .insights-resources dd {
   margin: 2px 0 0;
   font-variant-numeric: tabular-nums;
+}
+
+.insights-quiet {
+  color: var(--fg-muted);
 }
 
 .settings-diagnose {
@@ -6683,7 +6690,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diagnose-path {
-  font-family: ui-monospace, var(--font-mono);
+  font-family: var(--font-mono);
   font-size: var(--text-md);
   word-break: break-all;
   margin: 0 0 12px;

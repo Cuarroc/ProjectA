@@ -48,10 +48,12 @@ describe("UsageView", () => {
     reads.getOmniRouteUsage.mockResolvedValueOnce(usage).mockRejectedValueOnce(new Error("usage unavailable"));
     render(<UsageView profiles={[profile]} cards={[]} workers={[]} />);
     await act(async () => undefined);
-    expect(screen.getByText("Budget 5h 50 % · 7d 80 %")).toBeInTheDocument();
+    const budget = () =>
+      screen.getByTitle("Budget-Schwellen: 5-Stunden- und 7-Tage-Fenster");
+    expect(budget().textContent).toBe("Budget 5h 50 % · 7d 80 %");
     expect(screen.getByText("1.2500 $ seit Beginn")).toBeInTheDocument();
     await act(async () => vi.advanceTimersByTimeAsync(10_000));
-    expect(screen.getByText("Budget 5h 50 % · 7d 80 %")).toBeInTheDocument();
+    expect(budget().textContent).toBe("Budget 5h 50 % · 7d 80 %");
     expect(screen.getByText("1.2500 $ seit Beginn")).toBeInTheDocument();
   });
 });

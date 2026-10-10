@@ -26,4 +26,15 @@ describe("UX-02: the monospace font is one token", () => {
   it("routes scalable app copy through the text tokens", () => {
     expect(css).not.toMatch(/(?:\.insights-heading|\.diagnose-panel h2|\.diagnose-lede|\.diagnose-table)\s*\{[^}]*font-size:\s*\d/);
   });
+
+  it("peer Insights and Diagnose headings use --text-lg", () => {
+    expect(css).toMatch(/\.insights-heading\s*\{[^}]*font-size:\s*var\(--text-lg\)/);
+    expect(css).toMatch(/\.diagnose-panel h2\s*\{[^}]*font-size:\s*var\(--text-lg\)/);
+    expect(css).not.toMatch(/\.insights-heading\s*\{[^}]*font-size:\s*calc\(/);
+  });
+
+  it("diagnose-path uses the shared --font-mono token only", () => {
+    expect(css).toMatch(/\.diagnose-path\s*\{[^}]*font-family:\s*var\(--font-mono\)/);
+    expect(css).not.toMatch(/\.diagnose-path\s*\{[^}]*ui-monospace/);
+  });
 });
