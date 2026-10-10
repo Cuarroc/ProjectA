@@ -1,3 +1,4 @@
+import { de } from "../../i18n/de";
 import type { BoardColumn } from "../../types";
 
 // V2-F3: six state forms and one dictionary (word, shape, color). Not
@@ -10,14 +11,14 @@ export type StateForm = "run" | "need" | "rev" | "ok" | "done" | "bad";
 /** Display order of the board's filter chips. */
 export const STATE_FORMS: readonly StateForm[] = ["run", "need", "rev", "ok", "done", "bad"];
 
-/** The word of each form (hard-wired German until the V2-F6 dictionary). */
+/** The word of each form — single source: `src/i18n/de.ts`. */
 export const STATE_WORDS: Record<StateForm, string> = {
-  run: "Läuft",
-  need: "Braucht dich",
-  rev: "In Prüfung",
-  ok: "Bereit zum Mergen",
-  done: "Erledigt",
-  bad: "Fehler",
+  run: de["state.run"],
+  need: de["state.need"],
+  rev: de["state.rev"],
+  ok: de["state.ok"],
+  done: de["state.done"],
+  bad: de["state.bad"],
 };
 
 /** `status.rs` COL_* values. `bad` has no column: it marks a reason, not a place. */
