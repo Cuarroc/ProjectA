@@ -64,14 +64,24 @@ export default function EmergencyStop() {
 
   return (
     <div className="settings-field" data-testid="emergency-stop">
-      <span className="settings-label">Not-Aus</span>
+      <span className="field-label">Not-Aus</span>
       <div className="settings-port-row">
         {active ? (
-          <button type="button" disabled={busy} onClick={() => change(false)}>
+          <button
+            type="button"
+            className="button-ghost"
+            disabled={busy}
+            onClick={() => change(false)}
+          >
             Not-Aus aufheben
           </button>
         ) : (
-          <button type="button" disabled={busy || active === null} onClick={() => change(true)}>
+          <button
+            type="button"
+            className="button-danger"
+            disabled={busy || active === null}
+            onClick={() => change(true)}
+          >
             Not-Aus auslösen
           </button>
         )}
