@@ -1,10 +1,10 @@
 // SETUP-08b: hygiene checks, fed with fixed inputs (no network, no gh).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { collectHygiene, countFindings, formatHygiene, inProgressPackages, activeSpecIds, gather, main } from "../dev/hygiene.mjs";
+import { collectHygiene, countFindings, formatHygiene, inProgressPackages, activeSpecIds, gather, main, shellRedirectAccidents } from "../dev/hygiene.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const NOW = Date.parse("2026-09-25T12:00:00Z");
@@ -245,6 +245,42 @@ test("hygiene lists untracked files with non-ASCII names unescaped (glm #3, kimi
   const data = gather({ run, cwd: root, now: NOW });
   assert.deepEqual(data.untracked, ["Möbel.md"]);
   assert.ok(calls[0].join(" ").includes("core.quotePath=false"), calls[0].join(" "));
+});
+
+test("zero-byte untracked root files are flagged as likely shell-redirect accidents", () => {
+  // Path must not contain "status" (see assertReadOnlyHygiene / fakeRun matching).
+  const dir = mkdtempSync(join(tmpdir(), "hygiene-redir-"));
+  try {
+    writeFileSync(join(dir, "100"), "");
+    writeFileSync(join(dir, "e"), "");
+    writeFileSync(join(dir, "kept.txt"), "not empty\n");
+    mkdirSync(join(dir, "subdir"));
+    writeFileSync(join(dir, "subdir", "empty"), "");
+
+    const untracked = ["100", "e", "kept.txt", "subdir/empty"];
+    const accidents = shellRedirectAccidents(dir, untracked);
+    assert.deepEqual(
+      accidents.map((a) => a.path).sort(),
+      ["100", "e"],
+    );
+    for (const a of accidents) {
+      assert.match(a.mtime, /^\d{4}-\d{2}-\d{2}T/);
+    }
+
+    const f = collectHygiene({
+      ...input,
+      untracked,
+      shellRedirectAccidents: accidents,
+    });
+    assert.equal(f.shellRedirectAccidents.length, 2);
+    const md = formatHygiene(f);
+    assert.match(md, /`100` — likely shell-redirect accident \(mtime /);
+    assert.match(md, /`e` — likely shell-redirect accident \(mtime /);
+    assert.doesNotMatch(md, /`kept\.txt` — likely shell-redirect/);
+    assert.doesNotMatch(md, /subdir\/empty` — likely shell-redirect/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("fakeRun matches the git subcommand and ignores -C path and -c values", () => {
