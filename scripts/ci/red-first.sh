@@ -5,6 +5,7 @@
 #   BASE_SHA  Merge-Base (PR-Base oder origin/main)
 #   HEAD_SHA  PR-Kopf (nicht der Merge-Commit des pull_request-Events)
 #   PR_BODY   optional, zusaetzliche Trailer aus dem PR-Text
+#   RF_BASE_BRANCH optional, current PR base branch (preferred over BASE_SHA)
 set -euo pipefail
 
 # --plan: nur ermitteln, OB es etwas zu tun gibt, ohne einen einzigen Build.
@@ -96,9 +97,13 @@ if [ -n "$COMMIT_MSG_FILE" ]; then
 else
 HEAD_SHA="${HEAD_SHA:-$(git rev-parse HEAD)}"
 BASE_REF="${BASE_SHA:-origin/main}"
-if [ -z "${BASE_SHA:-}" ]; then
+if [ -n "${RF_BASE_BRANCH:-}" ] &&
+  git show-ref --verify --quiet "refs/remotes/origin/$RF_BASE_BRANCH"; then
+  BASE_REF="refs/remotes/origin/$RF_BASE_BRANCH"
+elif [ -z "${BASE_SHA:-}" ]; then
   git rev-parse --verify origin/main >/dev/null 2>&1 || git fetch --depth=1 origin main
 fi
+echo "red-first: base source=$BASE_REF"
 BASE_SHA="$(git merge-base "$HEAD_SHA" "$BASE_REF")"
 fi
 
