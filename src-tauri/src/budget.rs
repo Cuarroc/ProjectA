@@ -41,7 +41,7 @@ use std::time::Duration;
 use serde::Serialize;
 
 use crate::quota::QuotaTracker;
-use crate::status::{StatusEngine, StatusLineUsage};
+use crate::status::{RateWindowUsage, StatusEngine, StatusLineUsage};
 use crate::store::{now_unix_secs, Store, MSG_SYSTEM, SRC_BUDGET, STATUS_RUNNING};
 use crate::workers::{self, AgentControl};
 
@@ -65,6 +65,9 @@ pub const EVENT_PAUSED: &str = "budget_paused";
 
 const FIVE_HOUR_SECS: i64 = 5 * 60 * 60;
 const SEVEN_DAY_SECS: i64 = 7 * 24 * 60 * 60;
+/// A month is 30 days here: the provider's `resets_at` is what ends a real
+/// window, and this is only the ceiling and the fallback (see [`evaluate_window`]).
+const MONTH_SECS: i64 = 30 * 24 * 60 * 60;
 
 static STOP_OBSERVATION_POISON_LOGGED: AtomicBool = AtomicBool::new(false);
 
@@ -84,6 +87,10 @@ fn stop_observations(mutex: &Mutex<HashMap<String, i64>>) -> MutexGuard<'_, Hash
 pub enum Window {
     FiveHour,
     SevenDay,
+    /// Not part of [`BudgetLimits`] (that struct is built literally in the
+    /// seam files): its threshold is read with [`month_limit_of`].
+    #[allow(dead_code)] // V2-B1: wired by the seam packages (V2-S05a)
+    Month,
 }
 
 impl Window {
@@ -93,6 +100,7 @@ impl Window {
         match self {
             Window::FiveHour => ".five_hour_pct",
             Window::SevenDay => ".seven_day_pct",
+            Window::Month => ".month_pct",
         }
     }
 
@@ -102,6 +110,7 @@ impl Window {
         match self {
             Window::FiveHour => "5-Stunden-Fenster",
             Window::SevenDay => "7-Tage-Fenster",
+            Window::Month => "Monats-Fenster",
         }
     }
 
@@ -113,6 +122,7 @@ impl Window {
         match self {
             Window::FiveHour => FIVE_HOUR_SECS,
             Window::SevenDay => SEVEN_DAY_SECS,
+            Window::Month => MONTH_SECS,
         }
     }
 }
@@ -146,6 +156,8 @@ impl BudgetLimits {
         match window {
             Window::FiveHour => self.five_hour_pct,
             Window::SevenDay => self.seven_day_pct,
+            // Carried by the month setting, not by this struct.
+            Window::Month => None,
         }
     }
 }
@@ -202,6 +214,17 @@ pub fn parse_percent(raw: &str) -> Result<u8, String> {
     Ok(value as u8)
 }
 
+/// The profile's entry in `out`, added empty when it is not there yet.
+fn entry_for<'a>(out: &'a mut Vec<BudgetLimits>, profile_id: &str) -> &'a mut BudgetLimits {
+    match out.iter().position(|e| e.profile_id == profile_id) {
+        Some(index) => &mut out[index],
+        None => {
+            out.push(BudgetLimits::none(profile_id));
+            out.last_mut().expect("just pushed")
+        }
+    }
+}
+
 /// Fold a flat `key = value` list into one entry per profile, newest wording
 /// of the keys only. Unparsable values are dropped rather than guessed at: a
 /// threshold nobody can read is no threshold, and blocking on one would be the
@@ -225,16 +248,12 @@ pub fn limits_from_settings(settings: &[(String, String)]) -> Vec<BudgetLimits> 
         let Ok(percent) = parse_percent(value) else {
             continue;
         };
-        let entry = match out.iter_mut().find(|e| e.profile_id == profile_id) {
-            Some(entry) => entry,
-            None => {
-                out.push(BudgetLimits::none(profile_id));
-                out.last_mut().expect("just pushed")
-            }
-        };
+        // The row is created per arm, so a window this view does not carry
+        // (the month) can never leave an all-None row behind.
         match window {
-            Window::FiveHour => entry.five_hour_pct = Some(percent),
-            Window::SevenDay => entry.seven_day_pct = Some(percent),
+            Window::FiveHour => entry_for(&mut out, profile_id).five_hour_pct = Some(percent),
+            Window::SevenDay => entry_for(&mut out, profile_id).seven_day_pct = Some(percent),
+            Window::Month => {}
         }
     }
     out.sort_by(|a, b| a.profile_id.cmp(&b.profile_id));
@@ -262,9 +281,19 @@ pub async fn limits_of(store: &Store, profile_id: &str) -> Result<BudgetLimits, 
         match window {
             Window::FiveHour => limits.five_hour_pct = Some(percent),
             Window::SevenDay => limits.seven_day_pct = Some(percent),
+            Window::Month => {}
         }
     }
     Ok(limits)
+}
+
+/// One profile's monthly threshold, `None` when unset or unreadable.
+#[allow(dead_code)] // V2-B1: wired by the seam packages (V2-S05a)
+pub async fn month_limit_of(store: &Store, profile_id: &str) -> Result<Option<u8>, String> {
+    let raw = store
+        .get_setting(&setting_key(profile_id, Window::Month))
+        .await?;
+    Ok(raw.and_then(|raw| parse_percent(&raw).ok()))
 }
 
 /// Write (`Some`) or clear (`None`) one threshold.
@@ -340,35 +369,51 @@ pub fn evaluate(
         let observed = match window {
             Window::FiveHour => usage.five_hour,
             Window::SevenDay => usage.seven_day,
+            // The statusLine payload carries no month figure, and the loop
+            // above only names the two rate windows: nothing to rate here.
+            Window::Month => continue,
         };
-        let Some(observed) = observed else { continue };
-        let Some(percent) = observed.percent else {
-            continue;
-        };
-        if percent < limit {
-            continue;
+        if let Some(stop) = evaluate_window(&limits.profile_id, window, limit, observed, now) {
+            return Some(stop);
         }
-        // A `resets_at` in the past is a stale payload, not an expired block:
-        // treating it as one would block and release on every single sweep.
-        // And one further out than a full window is not a window at all: the
-        // figure comes from the statusline, which any process of this user can
-        // write, so it is clamped rather than trusted (F-SEC-9). The window's
-        // own length is both the fallback and the ceiling.
-        let ceiling = now.saturating_add(window.length_secs());
-        let blocked_until = observed
-            .resets_at
-            .filter(|reset| *reset > now)
-            .map(|reset| reset.min(ceiling))
-            .unwrap_or(ceiling);
-        return Some(BudgetStop {
-            profile_id: limits.profile_id.clone(),
-            window,
-            percent,
-            limit,
-            blocked_until,
-        });
     }
     None
+}
+
+/// One window against one threshold: the part of [`evaluate`] that does not
+/// care which window it is, so the month (whose figure the statusLine payload
+/// does not carry yet) rates the same way as the other two.
+pub fn evaluate_window(
+    profile_id: &str,
+    window: Window,
+    limit: u8,
+    observed: Option<RateWindowUsage>,
+    now: i64,
+) -> Option<BudgetStop> {
+    let observed = observed?;
+    let percent = observed.percent?;
+    if percent < limit {
+        return None;
+    }
+    // A `resets_at` in the past is a stale payload, not an expired block:
+    // treating it as one would block and release on every single sweep.
+    // And one further out than a full window is not a window at all: the
+    // figure comes from the statusline, which any process of this user can
+    // write, so it is clamped rather than trusted (F-SEC-9). The window's
+    // own length is both the fallback and the ceiling.
+    let ceiling = now.saturating_add(window.length_secs());
+    let blocked_until = observed
+        .resets_at
+        .filter(|reset| *reset > now)
+        .map(|reset| reset.min(ceiling))
+        .unwrap_or(ceiling);
+    Some(BudgetStop {
+        profile_id: profile_id.to_string(),
+        window,
+        percent,
+        limit,
+        blocked_until,
+    })
 }
 
 /// The budget watcher: the settings, the usage figures and the quota map.
@@ -631,6 +676,78 @@ mod tests {
             }),
             observed_at: 1,
         }
+    }
+
+    #[test]
+    fn the_month_window_rates_against_its_own_length() {
+        let now = 1_000_000;
+        let month = |percent, resets_at| {
+            let observed = Some(RateWindowUsage {
+                percent: Some(percent),
+                resets_at,
+            });
+            evaluate_window("claude", Window::Month, 90, observed, now)
+        };
+
+        assert_eq!(month(89, None), None, "below the limit");
+        let stop = month(90, None).expect("at the limit");
+        assert_eq!(stop.window, Window::Month);
+        assert_eq!(stop.blocked_until, now + 30 * 24 * 60 * 60);
+        assert!(stop.reason().starts_with(REASON_PREFIX));
+        assert!(stop.reason().contains("Monats-Fenster"));
+        // The provider's own reset wins when sooner, a forged far one is clamped.
+        assert_eq!(
+            month(95, Some(now + 3600)).unwrap().blocked_until,
+            now + 3600
+        );
+        assert_eq!(
+            month(95, Some(now + 400 * 24 * 60 * 60))
+                .unwrap()
+                .blocked_until,
+            now + 30 * 24 * 60 * 60
+        );
+        assert_eq!(Window::Month.suffix(), ".month_pct");
+    }
+
+    #[tokio::test]
+    async fn the_month_threshold_is_read_apart_from_the_two_rate_windows() {
+        let (_dir, store, _project) = fixture().await;
+        assert_eq!(month_limit_of(&store, "claude").await.unwrap(), None);
+        store
+            .set_setting(&setting_key("claude", Window::Month), "85")
+            .await
+            .unwrap();
+        assert_eq!(month_limit_of(&store, "claude").await.unwrap(), Some(85));
+        store
+            .set_setting(&setting_key("claude", Window::Month), "0")
+            .await
+            .unwrap();
+        assert_eq!(month_limit_of(&store, "claude").await.unwrap(), None);
+        // The month key adds no row to the two-window view.
+        assert!(list_limits(&store).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_valid_month_threshold_adds_no_row_to_the_two_window_view() {
+        let (_dir, store, _project) = fixture().await;
+        store
+            .set_setting(&setting_key("claude", Window::Month), "85")
+            .await
+            .unwrap();
+        assert_eq!(month_limit_of(&store, "claude").await.unwrap(), Some(85));
+        assert!(
+            list_limits(&store).await.unwrap().is_empty(),
+            "a month-only profile must not show as an all-None row"
+        );
+        // Next to a real rate-window threshold it adds nothing either.
+        store
+            .set_setting(&setting_key("claude", Window::FiveHour), "70")
+            .await
+            .unwrap();
+        let rows = list_limits(&store).await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].five_hour_pct, Some(70));
+        assert_eq!(rows[0].seven_day_pct, None);
     }
 
     async fn fixture() -> (TempDir, Store, String) {
