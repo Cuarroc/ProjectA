@@ -5,6 +5,7 @@
  * (no Rust/store table).
  */
 
+import { de } from "../i18n/de";
 import { readString, writeString } from "../lib/settings";
 
 /** localStorage key prefix; mirrors `projecta.settings.*` from settings.ts. */
@@ -18,23 +19,10 @@ export const FEATURE_FLAG_IDS = [
 
 export type FeatureFlagId = (typeof FEATURE_FLAG_IDS)[number];
 
-/**
- * TODO(V2-F6): move these German strings into the i18n dictionary once V2-F6 merges.
- * Until then keep one sentence of plain German per switch for V2-S10a.
- */
 const FEATURE_FLAG_COPY: Record<FeatureFlagId, { label: string; description: string }> = {
-  d1_neue_oberflaeche: {
-    label: "Neue Oberfläche (Vorschau)",
-    description: "Zeigt die neue Oberfläche als Vorschau; sie ist noch nicht fertig.",
-  },
-  fernansicht: {
-    label: "Fernansicht",
-    description: "Zeigt die Fernansicht; ausgeschaltet bleibt sie unsichtbar.",
-  },
-  kundenprojekte: {
-    label: "Kundenprojekte",
-    description: "Zeigt Kundenprojekte mit Datenschutz; ausgeschaltet bleiben sie unsichtbar.",
-  },
+  d1_neue_oberflaeche: { label: de["flag.d1.label"], description: de["flag.d1.description"] },
+  fernansicht: { label: de["flag.fernansicht.label"], description: de["flag.fernansicht.description"] },
+  kundenprojekte: { label: de["flag.kundenprojekte.label"], description: de["flag.kundenprojekte.description"] },
 };
 
 export type FeatureFlag = {

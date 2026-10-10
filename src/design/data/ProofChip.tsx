@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { de } from "../../i18n/de";
 import "./data.css";
 
 export type GateTick = "pass" | "fail" | "wip" | "none";
@@ -14,11 +15,11 @@ export interface ProofChipProps {
 
 /** Signature chip: gate ticks, "Gates n/m" in words, optional verdict and commit.
     The ticks are colour only, so the count and the verdict are always text.
-    German is hard-wired until the V2-F6 dictionary. */
+    Word from `src/i18n/de.ts`. */
 export function ProofChip({ gates, verdict, sha, href }: ProofChipProps) {
   const passed = gates.filter((g) => g === "pass").length;
   const parts: ReactNode[] = [
-    `Gates ${passed}/${gates.length}`,
+    `${de["proof.gates"]} ${passed}/${gates.length}`,
     verdict && <span key="v" className={`g-proof__${verdict.tone}`}>{verdict.text}</span>,
     sha && <code key="s">{sha.slice(0, 7)}</code>,
   ].filter(Boolean);
