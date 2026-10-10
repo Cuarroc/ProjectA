@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { chromium, type Browser } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * V161-UI-F2 — pressed surfaces (UM-17), field/row transitions, APP-3 hit
- * areas for the UM-15 glyph classes. Scans only the owned motion and APP-3
- * slices of styles.css.
+ * areas for the UM-15 glyph classes. Scans the owned motion and APP-3 slices
+ * and measures hit areas in Chromium (review R1000-A1).
  */
 const css = readFileSync(resolve(__dirname, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
@@ -17,9 +18,14 @@ const app3Start = css.indexOf("/* APP-3");
 const app3End = css.indexOf("\n.goal-passthrough {", app3Start);
 const app3 = css.slice(app3Start, app3End === -1 ? undefined : app3End);
 
+const rootBlock = css.slice(0, css.indexOf("@media (prefers-color-scheme: light)"));
+const lightBlock = css.slice(
+  css.indexOf("@media (prefers-color-scheme: light)"),
+  css.indexOf("\n}", css.indexOf(":root", css.indexOf("@media (prefers-color-scheme: light)"))),
+);
+
 /** Base class from a compound selector like `.tab:hover:not(.tab-active)`. */
 function baseClass(selector: string): string | null {
-  // Pressed rules may be scoped as `.app .segment:active…`.
   const trimmed = selector.trim().replace(/^\.app\s+/, "");
   const match = trimmed.match(/^\.([\w-]+)/);
   return match ? `.${match[1]}` : null;
@@ -31,6 +37,18 @@ function selectorList(block: string): string[] {
     .map((part) => part.trim())
     .filter(Boolean);
 }
+
+const UM15_CLASSES = [
+  ".worker-action",
+  ".panel-tab",
+  ".rail-collapse",
+  ".rail-title",
+  ".status-item",
+  ".status-provider-action",
+  ".command-chat-expand",
+  ".question-worker",
+  ".digest-toggle",
+] as const;
 
 describe("V161-UI-F2 states", () => {
   it("every class in the shared hover list also has :active pressed surface", () => {
@@ -45,6 +63,10 @@ describe("V161-UI-F2 states", () => {
         .filter((value): value is string => Boolean(value)),
     );
     expect([...hoverClasses].length).toBeGreaterThanOrEqual(8);
+    // Cards with chips keep border-only hover (R1000-A3); no wash under badges.
+    expect(hoverClasses.has(".board-card"), ".board-card must not use the shared hover wash").toBe(
+      false,
+    );
 
     const activeRule = motion.match(
       /((?:\.[\w-:()>.\s]+,\s*)+\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/,
@@ -65,23 +87,62 @@ describe("V161-UI-F2 states", () => {
       ".project-button",
       ".worker-row",
       ".rail-item",
-      ".board-card",
       ".tab",
       ".segment",
       ".panel-tab",
       ".settings-tab",
       ".queue-row",
       ".question-option",
+      ".tab-select",
+      ".worker-open",
+      ".board-card-main",
     ]) {
       expect(activeClasses.has(required), `${required} missing from :active pressed list`).toBe(true);
     }
+    expect(activeClasses.has(".board-card"), ".board-card must not use the shared pressed wash").toBe(
+      false,
+    );
+  });
+
+  it("container :active skips when a child button is pressed", () => {
+    const activeRule = motion.match(
+      /((?:\.[\w-:()>.\s]+,\s*)+\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/,
+    );
+    expect(activeRule).not.toBeNull();
+    const selectors = selectorList(activeRule![1]);
+    for (const host of [".worker-row", ".tab"]) {
+      const hit = selectors.find((s) => s.includes(host) && s.includes(":active"));
+      expect(hit, `${host} :active selector missing`).toBeTruthy();
+      expect(hit!, `${host} must ignore nested button presses`).toMatch(/:not\(:has\(button:active\)\)/);
+    }
+    for (const primary of [".tab-select", ".worker-open", ".board-card-main"]) {
+      expect(
+        selectors.some((s) => s.includes(primary) && s.includes(":active")),
+        `${primary} must carry its own pressed wash`,
+      ).toBe(true);
+    }
+  });
+
+  it("pressed list excludes already-selected surfaces", () => {
+    const activeRule = motion.match(
+      /((?:\.[\w-:()>.\s]+,\s*)+\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/,
+    );
+    expect(activeRule).not.toBeNull();
+    const joined = activeRule![1];
+    expect(joined).toMatch(/\.tab:active:not\(\.tab-active\)/);
+    expect(joined).toMatch(/\.segment:active:not\(\.segment-active\)/);
+    expect(joined).toMatch(/\.panel-tab:active:not\(\.panel-tab-active\)/);
+    expect(joined).toMatch(/\.worker-row:active:not\(\.worker-row-active\)/);
+  });
+
+  it("hover and pressed colour tokens are defined in both modes", () => {
+    expect(rootBlock).toMatch(/--color-hover:\s*rgba\([^)]+\)/);
+    expect(rootBlock).toMatch(/--color-pressed:\s*rgba\([^)]+\)/);
+    expect(lightBlock).toMatch(/--color-hover:\s*rgba\([^)]+\)/);
+    expect(lightBlock).toMatch(/--color-pressed:\s*rgba\([^)]+\)/);
   });
 
   it("surface and field transitions never touch layout properties", () => {
-    const transitionRule = motion.match(
-      /((?:\.[\w-]+,\s*)+\.[\w-]+)\s*\{\s*transition:\s*([^}]+)\}/,
-    );
-    // Prefer the selection/state group that includes .field once present.
     const fieldGroup = [...motion.matchAll(/((?:\.[\w-]+,\s*)+\.[\w-]+)\s*\{\s*transition:\s*([^}]+)\}/g)].find(
       (match) => selectorList(match[1]).includes(".field"),
     );
@@ -115,7 +176,6 @@ describe("V161-UI-F2 states", () => {
     expect(props).not.toContain("height");
     expect(props).not.toContain("padding");
     expect(props).not.toContain("margin");
-    expect(transitionRule).not.toBeNull();
   });
 
   it("each UM-15 class reaches 24x24 through the APP-3 hit-area overlay", () => {
@@ -128,17 +188,147 @@ describe("V161-UI-F2 states", () => {
     const afterSelectors = selectorList(after![1]).map((s) => s.replace(/\s+/g, ""));
     expect(after![2]).toMatch(/inset:\s*-3px/);
 
-    for (const cls of [".rail-collapse", ".command-chat-expand"]) {
+    for (const cls of UM15_CLASSES) {
       expect(anchored, `${cls} not anchored`).toContain(cls);
-      expect(afterSelectors, `${cls} missing ::after overlay`).toContain(`${cls}::after`);
+      expect(
+        afterSelectors.includes(`${cls}::after`) || app3.includes(`${cls}::after`),
+        `${cls} missing ::after overlay`,
+      ).toBe(true);
     }
 
-    expect(anchored, ".status-provider-action not anchored").toContain(".status-provider-action");
-    // 12px-tall status provider needs a deeper inset than the shared -3px.
-    const deep = app3.match(/\.status-provider-action::after\s*\{([^}]*)\}/);
-    expect(deep, ".status-provider-action::after depth override missing").not.toBeNull();
-    expect(deep![1]).toMatch(/content:\s*""/);
-    expect(deep![1]).toMatch(/position:\s*absolute/);
-    expect(deep![1]).toMatch(/inset:\s*-6px/);
+    // Short status / text targets need deeper insets than the shared -3px.
+    for (const cls of [".status-provider-action", ".status-item", ".rail-title", ".question-worker", ".digest-toggle"]) {
+      const deep = app3.match(new RegExp(`\\${cls}::after\\s*\\{([^}]*)\\}`));
+      expect(deep, `${cls}::after depth override missing`).not.toBeNull();
+      expect(deep![1]).toMatch(/content:\s*""/);
+      expect(deep![1]).toMatch(/position:\s*absolute/);
+      expect(deep![1]).toMatch(/inset:\s*-\d+px/);
+    }
   });
+});
+
+describe("V161-UI-F2 measured hit areas", () => {
+  let browser: Browser;
+
+  beforeAll(async () => {
+    browser = await chromium.launch({ headless: true });
+  }, 60_000);
+
+  afterAll(async () => {
+    await browser?.close();
+  });
+
+  it("Chromium measures every UM-15 hit area at least 24x24", async () => {
+    const page = await browser.newPage();
+    const fixture = `<!DOCTYPE html>
+<html><head><style>${css}
+body { margin: 0; background: #111; color: #fff; font: 12px sans-serif; }
+.app { min-height: 100vh; }
+.probe-row { display: flex; flex-wrap: wrap; gap: 24px; padding: 32px; align-items: center; }
+.status-bar { display: flex; align-items: center; gap: 14px; height: 24px; overflow: hidden; }
+</style></head>
+<body><div class="app"><div class="probe-row">
+  <button type="button" class="worker-action">Beenden</button>
+  <button type="button" class="panel-tab">Lernen</button>
+  <button type="button" class="rail-collapse">‹</button>
+  <button type="button" class="rail-title">BOARD</button>
+  <div class="status-bar">
+    <span class="status-item">Sitzung abc</span>
+    <button type="button" class="status-action status-provider-action">🔌</button>
+  </div>
+  <button type="button" class="command-chat-expand">⤢</button>
+  <button type="button" class="question-worker">feature/x</button>
+  <button type="button" class="digest-toggle">Tagesüberblick</button>
+</div></div></body></html>`;
+    await page.setContent(fixture, { waitUntil: "load" });
+
+    const sizes = await page.evaluate((classes) => {
+      const parsePx = (value: string) => {
+        const n = Number.parseFloat(value);
+        return Number.isFinite(n) ? Math.abs(n) : 0;
+      };
+      return classes.map((cls) => {
+        const el = document.querySelector(cls);
+        if (!el) return { cls, ok: false, w: 0, h: 0, reason: "missing" };
+        const box = el.getBoundingClientRect();
+        const after = getComputedStyle(el, "::after");
+        const hasAfter = after.content && after.content !== "none" && after.position === "absolute";
+        let w = box.width;
+        let h = box.height;
+        if (hasAfter) {
+          // inset:-Npx → used top/right/bottom/left are -Npx; expand the painted box.
+          w += parsePx(after.left) + parsePx(after.right);
+          h += parsePx(after.top) + parsePx(after.bottom);
+        }
+        return { cls, ok: w >= 24 && h >= 24, w, h, reason: hasAfter ? "after" : "box" };
+      });
+    }, [...UM15_CLASSES]);
+
+    await page.close();
+
+    for (const sample of sizes) {
+      expect(sample.ok, `${sample.cls} hit ${sample.w.toFixed(1)}x${sample.h.toFixed(1)} (${sample.reason})`).toBe(
+        true,
+      );
+    }
+  }, 60_000);
+
+  it("pressing a nested button does not wash the host container", async () => {
+    const page = await browser.newPage();
+    await page.setContent(
+      `<!DOCTYPE html><html><head><style>${css}
+body{margin:0;background:#1c1c1e}
+.app{padding:40px}
+.tab{display:flex;height:28px;background:transparent}
+.tab-select{flex:1;background:transparent;border:0;color:#fff;padding:4px 8px}
+.tab-close{width:18px;height:18px;border:0;background:transparent;color:#fff}
+.worker-row{display:flex;background:transparent}
+.worker-open{flex:1;background:transparent;border:0;color:#fff;text-align:left;padding:6px 8px}
+.worker-action{border:0;background:transparent;color:#fff;padding:3px 6px}
+</style></head><body><div class="app">
+  <div class="tab"><button type="button" class="tab-select">Tab</button><button type="button" class="tab-close">×</button></div>
+  <div class="worker-row"><button type="button" class="worker-open">Task</button><button type="button" class="worker-action">Beenden</button></div>
+</div></body></html>`,
+      { waitUntil: "load" },
+    );
+
+    const isClear = (bg: string) =>
+      /transparent/i.test(bg) || /\/\s*0\s*\)/.test(bg) || /^rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)$/.test(bg);
+
+    // Press the nested close control: the host must stay clear (R1000-A2).
+    const closeBox = await page.locator(".tab-close").boundingBox();
+    expect(closeBox).toBeTruthy();
+    await page.mouse.move(closeBox!.x + closeBox!.width / 2, closeBox!.y + closeBox!.height / 2);
+    await page.mouse.down();
+    const tabWhileChild = await page.locator(".tab").evaluate((el) => getComputedStyle(el).backgroundColor);
+    await page.mouse.up();
+
+    // Press the primary select: the host stays clear, the primary takes the wash.
+    const selectBox = await page.locator(".tab-select").boundingBox();
+    expect(selectBox).toBeTruthy();
+    await page.mouse.move(selectBox!.x + selectBox!.width / 2, selectBox!.y + selectBox!.height / 2);
+    await page.mouse.down();
+    const [tabWhilePrimary, selectWhilePrimary] = await Promise.all([
+      page.locator(".tab").evaluate((el) => getComputedStyle(el).backgroundColor),
+      page.locator(".tab-select").evaluate((el) => getComputedStyle(el).backgroundColor),
+    ]);
+    await page.mouse.up();
+
+    const actionBox = await page.locator(".worker-action").boundingBox();
+    expect(actionBox).toBeTruthy();
+    await page.mouse.move(actionBox!.x + actionBox!.width / 2, actionBox!.y + actionBox!.height / 2);
+    await page.mouse.down();
+    const rowWhileChild = await page
+      .locator(".worker-row")
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    await page.mouse.up();
+    await page.close();
+
+    expect(isClear(tabWhileChild), `tab washed while close pressed: ${tabWhileChild}`).toBe(true);
+    expect(isClear(tabWhilePrimary), `tab washed while select pressed: ${tabWhilePrimary}`).toBe(true);
+    expect(isClear(selectWhilePrimary), `tab-select missing pressed wash: ${selectWhilePrimary}`).toBe(
+      false,
+    );
+    expect(isClear(rowWhileChild), `worker-row washed while action pressed: ${rowWhileChild}`).toBe(true);
+  }, 60_000);
 });
