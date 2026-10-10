@@ -42,6 +42,25 @@ const GOAL_LABEL: Record<InboxEntry["goal"], string> = {
   review: "Review",
 };
 
+/** German label for a wire code; the raw code stays in `title` (UM-25). */
+const CODE_LABEL: Record<string, string> = {
+  quota_blocked: "Kontingent blockiert", decision_pending: "Entscheidung offen",
+  approval_required: "Freigabe nötig", tests_stale: "Tests veraltet",
+  conflicting: "Merge-Konflikt", session_ended: "Sitzung beendet",
+  review_pending: "Prüfung offen", changes_requested: "Änderungen verlangt",
+  recommendation: "Empfehlung", review_stale: "Review veraltet",
+  checks_pending: "Checks laufen", dirty: "Uncommittete Dateien",
+  base_changed: "Basis geändert", git_unsupported: "Git nicht unterstützt",
+  setup_failed: "Setup fehlgeschlagen", agent_running: "Agent läuft noch",
+  agent_exited: "Agent beendet", budget_reached: "Kontingent erreicht",
+  profile_disabled: "Profil deaktiviert", unknown_profile: "Unbekanntes Profil",
+  review_draft: "PR-Entwurf", comments_open: "Kommentare offen",
+};
+
+function labelForCode(code: string): string {
+  return CODE_LABEL[code] ?? "Statusmeldung";
+}
+
 /**
  * One inbox for questions, errors, recommendations and merge blockers.
  * Dismiss is not offered: hiding a row would look like the blocker was gone.
@@ -56,6 +75,8 @@ export default function AttentionInbox({
 }: AttentionInboxProps) {
   const [recos, setRecos] = useState<Recommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [recosSettled, setRecosSettled] = useState(projectId === null);
+  const [trackedProject, setTrackedProject] = useState(projectId);
   const [activeIndex, setActiveIndex] = useState(0);
   const prevInbox = useRef<InboxEntry[]>([]);
   const sink = useMemo(() => webviewNotifySink(), []);
@@ -65,10 +86,20 @@ export default function AttentionInbox({
   // write after unmount. Same pattern as ActivityView.
   const tokenRef = useRef(0);
 
+  // Adjust settled state during render so a project switch never paints the
+  // previous project's empty copy for one frame (A6).
+  if (trackedProject !== projectId) {
+    setTrackedProject(projectId);
+    setRecos([]);
+    setError(null);
+    setRecosSettled(projectId === null);
+  }
+
   const refreshRecos = useCallback(async () => {
     const mine = ++tokenRef.current;
     if (projectId === null) {
       setRecos([]);
+      setRecosSettled(true);
       return;
     }
     try {
@@ -76,15 +107,15 @@ export default function AttentionInbox({
       if (tokenRef.current !== mine) return;
       setRecos(next);
       setError(null);
+      setRecosSettled(true);
     } catch (cause) {
       if (tokenRef.current !== mine) return;
       setError(describeError(cause));
+      setRecosSettled(true);
     }
   }, [projectId]);
 
   useEffect(() => {
-    setRecos([]);
-    setError(null);
     void refreshRecos();
     if (projectId === null) return;
     const timer = window.setInterval(() => void refreshRecos(), POLL_MS);
@@ -141,16 +172,16 @@ export default function AttentionInbox({
   const activeId = entries[activeIndex] ? `attention-${entries[activeIndex].key}` : undefined;
 
   return (
-    <section className="attention-inbox" aria-label="Attention-Inbox">
-      <div className="attention-inbox-head">
-        <h2 className="section-title">Attention</h2>
+    <section className="attention-inbox" aria-label="Für dich">
+      <div className="view-head">
+        <h2 className="section-title">Für dich</h2>
         {entries.length > 0 ? (
           <span className="state-chip state-needs-you" aria-label={`${entries.length} Einträge`}>
             {entries.length}
           </span>
         ) : null}
         <p className="attention-inbox-lede">
-          Dieselbe Liste wie F1-Codes und F4-Blocker. Ausblenden ändert keinen Zustand.
+          Dieselbe Liste wie Blockaden und Hinweise. Ausblenden ändert keinen Zustand.
         </p>
       </div>
       {blockersError || error ? (
@@ -159,12 +190,18 @@ export default function AttentionInbox({
         </p>
       ) : null}
       {entries.length === 0 ? (
-        <p className="attention-inbox-empty">Nichts wartet — kein zweiter Kanal.</p>
+        !recosSettled ? (
+          <p className="attention-inbox-empty" aria-busy="true">
+            Einträge werden geladen …
+          </p>
+        ) : error || blockersError ? null : (
+          <p className="attention-inbox-empty">Nichts wartet — kein zweiter Kanal.</p>
+        )
       ) : (
         <ul
           className="attention-inbox-list"
           role="listbox"
-          aria-label="Attention-Einträge"
+          aria-label="Einträge für dich"
           tabIndex={0}
           aria-activedescendant={activeId}
           onKeyDown={onKeyDown}
@@ -177,13 +214,17 @@ export default function AttentionInbox({
                 role="option"
                 tabIndex={-1}
                 aria-selected={index === activeIndex}
-                aria-label={`${GRADE_LABEL[entry.grade]} ${entry.code} — ${entry.title}. Öffnet ${GOAL_LABEL[entry.goal]}.`}
+                aria-label={`${GRADE_LABEL[entry.grade]} ${labelForCode(entry.code)} — ${entry.title}. Öffnet ${GOAL_LABEL[entry.goal]}.`}
                 className={`attention-inbox-row grade-${entry.grade}${index === activeIndex ? " is-active" : ""}`}
                 onClick={() => onOpen(entry)}
               >
-                <span className={`attention-grade grade-${entry.grade}`}>{entry.grade}</span>
+                <span className={`attention-grade grade-${entry.grade}`} title={entry.grade}>
+                  {GRADE_LABEL[entry.grade]}
+                </span>
                 <span className="attention-inbox-body">
-                  <code className="attention-code">{entry.code}</code>
+                  <span className="attention-code" title={entry.code}>
+                    {labelForCode(entry.code)}
+                  </span>
                   <span className="attention-title">{entry.title}</span>
                   {entry.count > 1 ? (
                     <span className="attention-count">{entry.count} Worker</span>

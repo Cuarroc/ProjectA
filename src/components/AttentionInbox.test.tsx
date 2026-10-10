@@ -53,8 +53,8 @@ describe("AttentionInbox", () => {
       />,
     );
 
-    const row = await screen.findByRole("option", { name: /quota_blocked/i });
-    expect(row).toHaveAccessibleName(/Blockade quota_blocked/);
+    const row = await screen.findByRole("option", { name: /Kontingent blockiert/i });
+    expect(row).toHaveAccessibleName(/Blockade Kontingent blockiert/);
     expect(row).toHaveAccessibleName(/Öffnet Agents/);
     fireEvent.click(row);
     expect(onOpen).toHaveBeenCalledTimes(1);
@@ -83,7 +83,7 @@ describe("AttentionInbox", () => {
       />,
     );
 
-    const inbox = await screen.findByRole("listbox", { name: "Attention-Einträge" });
+    const inbox = await screen.findByRole("listbox", { name: "Einträge für dich" });
     inbox.focus();
     fireEvent.keyDown(inbox, { key: "Enter" });
     await waitFor(() => expect(onOpen).toHaveBeenCalled());
@@ -113,7 +113,7 @@ describe("AttentionInbox", () => {
         onOpen={onOpen}
       />,
     );
-    const inbox = await screen.findByRole("listbox", { name: "Attention-Einträge" });
+    const inbox = await screen.findByRole("listbox", { name: "Einträge für dich" });
     inbox.focus();
     fireEvent.keyDown(inbox, { key: "End" });
     fireEvent.keyDown(inbox, { key: "Enter" });
@@ -130,6 +130,24 @@ describe("AttentionInbox", () => {
     );
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Kontingent");
+  });
+
+  it("labels producer codes in German and keeps the wire code in title", async () => {
+    vi.mocked(listRecommendations).mockResolvedValue([reco("r1", "Repo X prüfen")]);
+    const b = (id: string, code: string) =>
+      ({ kind: "blocker" as const, workerId: id, projectId: "pj-1", code, message: code, nextStep: "x", observedAt: 1 });
+    render(
+      <AttentionInbox
+        cards={[]}
+        projectId="pj-1"
+        blockers={[b("wk-1", "dirty"), b("wk-2", "review_stale"), b("wk-3", "checks_pending")]}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("Empfehlung")).toHaveAttribute("title", "recommendation");
+    expect(screen.getByText("Uncommittete Dateien")).toHaveAttribute("title", "dirty");
+    expect(screen.getByText("Review veraltet")).toHaveAttribute("title", "review_stale");
+    expect(screen.getByText("Checks laufen")).toHaveAttribute("title", "checks_pending");
   });
 
   it("ignores a late recommendation reply for the previous project", async () => {
@@ -161,7 +179,7 @@ describe("AttentionInbox", () => {
     });
 
     expect(screen.queryByText(/Stale tip/)).toBeNull();
-    expect(screen.getByText(/Nichts wartet/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/Nichts wartet/)).toBeTruthy());
   });
 });
 
@@ -238,12 +256,12 @@ describe("AttentionInbox listbox wiring (APP-8)", () => {
         onOpen={vi.fn()}
       />,
     );
-    const listbox = await screen.findByRole("listbox", { name: "Attention-Einträge" });
+    const listbox = await screen.findByRole("listbox", { name: "Einträge für dich" });
     expect(listbox).toHaveAttribute("tabindex", "0");
     const options = screen.getAllByRole("option");
     expect(listbox.getAttribute("aria-activedescendant")).toBe(options[0].id);
     expect(options.every((option) => option.parentElement?.getAttribute("role") === "presentation")).toBe(true);
-    expect(screen.getByRole("region", { name: "Attention-Inbox" })).not.toHaveAttribute("aria-activedescendant");
+    expect(screen.getByRole("region", { name: "Für dich" })).not.toHaveAttribute("aria-activedescendant");
     fireEvent.keyDown(listbox, { key: "ArrowDown" });
     expect(listbox.getAttribute("aria-activedescendant")).toBe(options[1].id);
   });
