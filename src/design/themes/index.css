@@ -4,9 +4,17 @@
    Later packages fill per-style tokens, motion and backdrop effects here.
    Hooks reserved: [data-theme-style="glas"|"liquid"|"mesh"]. */
 
+@import "./glas.css";
+@import "./liquid.css";
+@import "./mesh.css";
+
+.app[data-theme-style] {
+  isolation: isolate;
+}
+
 .theme-backdrop {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
