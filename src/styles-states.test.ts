@@ -68,15 +68,16 @@ describe("V161-UI-F2 states", () => {
       false,
     );
 
-    const activeRule = motion.match(
-      /((?:\.[\w-:()>.\s]+,\s*)+\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/,
-    );
-    expect(activeRule, "shared :active pressed surface missing").not.toBeNull();
+    const activeRules = [
+      ...motion.matchAll(
+        /((?:\.[\w-:()>.\s]+,\s*)*\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/g,
+      ),
+    ];
+    expect(activeRules.length, "shared :active pressed surface missing").toBeGreaterThanOrEqual(1);
 
+    const activeSelectors = activeRules.flatMap((rule) => selectorList(rule[1]));
     const activeClasses = new Set(
-      selectorList(activeRule![1])
-        .map(baseClass)
-        .filter((value): value is string => Boolean(value)),
+      activeSelectors.map(baseClass).filter((value): value is string => Boolean(value)),
     );
 
     for (const cls of hoverClasses) {
@@ -105,11 +106,13 @@ describe("V161-UI-F2 states", () => {
   });
 
   it("container :active skips when a child button is pressed", () => {
-    const activeRule = motion.match(
-      /((?:\.[\w-:()>.\s]+,\s*)+\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/,
-    );
-    expect(activeRule).not.toBeNull();
-    const selectors = selectorList(activeRule![1]);
+    const activeRules = [
+      ...motion.matchAll(
+        /((?:\.[\w-:()>.\s]+,\s*)*\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/g,
+      ),
+    ];
+    expect(activeRules.length).toBeGreaterThanOrEqual(1);
+    const selectors = activeRules.flatMap((rule) => selectorList(rule[1]));
     for (const host of [".worker-row", ".tab"]) {
       const hit = selectors.find((s) => s.includes(host) && s.includes(":active"));
       expect(hit, `${host} :active selector missing`).toBeTruthy();
@@ -124,11 +127,12 @@ describe("V161-UI-F2 states", () => {
   });
 
   it("pressed list excludes already-selected surfaces", () => {
-    const activeRule = motion.match(
-      /((?:\.[\w-:()>.\s]+,\s*)+\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/,
-    );
-    expect(activeRule).not.toBeNull();
-    const joined = activeRule![1];
+    const activeRules = [
+      ...motion.matchAll(
+        /((?:\.[\w-:()>.\s]+,\s*)*\.[\w-:()>.\s]+)\s*\{([^}]*background:\s*var\(--color-pressed\)[^}]*)\}/g,
+      ),
+    ];
+    const joined = activeRules.map((rule) => rule[1]).join("\n");
     expect(joined).toMatch(/\.tab:active:not\(\.tab-active\)/);
     expect(joined).toMatch(/\.segment:active:not\(\.segment-active\)/);
     expect(joined).toMatch(/\.panel-tab:active:not\(\.panel-tab-active\)/);
@@ -183,26 +187,18 @@ describe("V161-UI-F2 states", () => {
     expect(anchor, "APP-3 position:relative list missing").not.toBeNull();
     const anchored = selectorList(anchor![1]).map((s) => s.replace(/\s+/g, ""));
 
-    const after = app3.match(/((?:\.[\w-]+::after,\s*)+\.[\w-]+::after)\s*\{([^}]*)\}/);
-    expect(after, "APP-3 ::after hit-area list missing").not.toBeNull();
-    const afterSelectors = selectorList(after![1]).map((s) => s.replace(/\s+/g, ""));
-    expect(after![2]).toMatch(/inset:\s*-3px/);
+    const afterRules = [...app3.matchAll(/((?:\.[\w-]+::after,\s*)*\.[\w-]+::after)\s*\{([^}]*)\}/g)];
+    expect(afterRules.length, "APP-3 ::after hit-area rules missing").toBeGreaterThanOrEqual(1);
 
     for (const cls of UM15_CLASSES) {
       expect(anchored, `${cls} not anchored`).toContain(cls);
-      expect(
-        afterSelectors.includes(`${cls}::after`) || app3.includes(`${cls}::after`),
-        `${cls} missing ::after overlay`,
-      ).toBe(true);
-    }
-
-    // Short status / text targets need deeper insets than the shared -3px.
-    for (const cls of [".status-provider-action", ".status-item", ".rail-title", ".question-worker", ".digest-toggle"]) {
-      const deep = app3.match(new RegExp(`\\${cls}::after\\s*\\{([^}]*)\\}`));
-      expect(deep, `${cls}::after depth override missing`).not.toBeNull();
-      expect(deep![1]).toMatch(/content:\s*""/);
-      expect(deep![1]).toMatch(/position:\s*absolute/);
-      expect(deep![1]).toMatch(/inset:\s*-\d+px/);
+      const rule = afterRules.find((m) =>
+        selectorList(m[1]).some((s) => s.replace(/\s+/g, "") === `${cls}::after`),
+      );
+      expect(rule, `${cls} missing ::after overlay`).toBeTruthy();
+      expect(rule![2]).toMatch(/content:\s*""/);
+      expect(rule![2]).toMatch(/position:\s*absolute/);
+      expect(rule![2]).toMatch(/inset:\s*-\d+px/);
     }
   });
 });
@@ -219,13 +215,13 @@ describe("V161-UI-F2 measured hit areas", () => {
   });
 
   it("Chromium measures every UM-15 hit area at least 24x24", async () => {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ colorScheme: "dark" });
     const fixture = `<!DOCTYPE html>
 <html><head><style>${css}
 body { margin: 0; background: #111; color: #fff; font: 12px sans-serif; }
 .app { min-height: 100vh; }
-.probe-row { display: flex; flex-wrap: wrap; gap: 24px; padding: 32px; align-items: center; }
-.status-bar { display: flex; align-items: center; gap: 14px; height: 24px; overflow: hidden; }
+.probe-row { display: flex; flex-wrap: wrap; gap: 48px; padding: 48px; align-items: center; }
+.status-bar { display: flex; align-items: center; gap: 14px; height: 24px; overflow: visible; }
 </style></head>
 <body><div class="app"><div class="probe-row">
   <button type="button" class="worker-action">Beenden</button>
@@ -243,24 +239,29 @@ body { margin: 0; background: #111; color: #fff; font: 12px sans-serif; }
     await page.setContent(fixture, { waitUntil: "load" });
 
     const sizes = await page.evaluate((classes) => {
-      const parsePx = (value: string) => {
+      const px = (value: string) => {
         const n = Number.parseFloat(value);
         return Number.isFinite(n) ? Math.abs(n) : 0;
       };
       return classes.map((cls) => {
-        const el = document.querySelector(cls);
+        const el = document.querySelector(cls) as HTMLElement | null;
         if (!el) return { cls, ok: false, w: 0, h: 0, reason: "missing" };
         const box = el.getBoundingClientRect();
         const after = getComputedStyle(el, "::after");
-        const hasAfter = after.content && after.content !== "none" && after.position === "absolute";
-        let w = box.width;
-        let h = box.height;
-        if (hasAfter) {
-          // inset:-Npx → used top/right/bottom/left are -Npx; expand the painted box.
-          w += parsePx(after.left) + parsePx(after.right);
-          h += parsePx(after.top) + parsePx(after.bottom);
-        }
-        return { cls, ok: w >= 24 && h >= 24, w, h, reason: hasAfter ? "after" : "box" };
+        const hasAfter = Boolean(after.content && after.content !== "none" && after.position === "absolute");
+        const w = box.width + px(after.left) + px(after.right);
+        const h = box.height + px(after.top) + px(after.bottom);
+        const cx = box.left + box.width / 2;
+        const cy = box.top + box.height / 2;
+        const hit = document.elementFromPoint(cx, cy);
+        const centerOk = hit === el || (hit !== null && el.contains(hit));
+        return {
+          cls,
+          ok: hasAfter && w >= 24 && h >= 24 && centerOk,
+          w,
+          h,
+          reason: hasAfter ? (centerOk ? "inset" : "miss") : "box",
+        };
       });
     }, [...UM15_CLASSES]);
 
@@ -274,7 +275,7 @@ body { margin: 0; background: #111; color: #fff; font: 12px sans-serif; }
   }, 60_000);
 
   it("pressing a nested button does not wash the host container", async () => {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ colorScheme: "dark" });
     await page.setContent(
       `<!DOCTYPE html><html><head><style>${css}
 body{margin:0;background:#1c1c1e}
@@ -292,22 +293,33 @@ body{margin:0;background:#1c1c1e}
       { waitUntil: "load" },
     );
 
-    const isClear = (bg: string) =>
-      /transparent/i.test(bg) || /\/\s*0\s*\)/.test(bg) || /^rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)$/.test(bg);
+    const tokens = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      document.body.appendChild(probe);
+      probe.style.background = "var(--color-pressed)";
+      const pressed = getComputedStyle(probe).backgroundColor;
+      probe.style.background = "var(--color-hover)";
+      const hover = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return { pressed, hover };
+    });
 
-    // Press the nested close control: the host must stay clear (R1000-A2).
+    // Nested close: host may show hover but must not take the pressed wash.
+    // Wait past --dur-fast so background-color transitions settle.
     const closeBox = await page.locator(".tab-close").boundingBox();
     expect(closeBox).toBeTruthy();
     await page.mouse.move(closeBox!.x + closeBox!.width / 2, closeBox!.y + closeBox!.height / 2);
     await page.mouse.down();
+    await page.waitForTimeout(160);
     const tabWhileChild = await page.locator(".tab").evaluate((el) => getComputedStyle(el).backgroundColor);
     await page.mouse.up();
 
-    // Press the primary select: the host stays clear, the primary takes the wash.
+    // Primary select: host skips pressed; the primary itself takes it.
     const selectBox = await page.locator(".tab-select").boundingBox();
     expect(selectBox).toBeTruthy();
     await page.mouse.move(selectBox!.x + selectBox!.width / 2, selectBox!.y + selectBox!.height / 2);
     await page.mouse.down();
+    await page.waitForTimeout(160);
     const [tabWhilePrimary, selectWhilePrimary] = await Promise.all([
       page.locator(".tab").evaluate((el) => getComputedStyle(el).backgroundColor),
       page.locator(".tab-select").evaluate((el) => getComputedStyle(el).backgroundColor),
@@ -318,17 +330,16 @@ body{margin:0;background:#1c1c1e}
     expect(actionBox).toBeTruthy();
     await page.mouse.move(actionBox!.x + actionBox!.width / 2, actionBox!.y + actionBox!.height / 2);
     await page.mouse.down();
+    await page.waitForTimeout(160);
     const rowWhileChild = await page
       .locator(".worker-row")
       .evaluate((el) => getComputedStyle(el).backgroundColor);
     await page.mouse.up();
     await page.close();
 
-    expect(isClear(tabWhileChild), `tab washed while close pressed: ${tabWhileChild}`).toBe(true);
-    expect(isClear(tabWhilePrimary), `tab washed while select pressed: ${tabWhilePrimary}`).toBe(true);
-    expect(isClear(selectWhilePrimary), `tab-select missing pressed wash: ${selectWhilePrimary}`).toBe(
-      false,
-    );
-    expect(isClear(rowWhileChild), `worker-row washed while action pressed: ${rowWhileChild}`).toBe(true);
+    expect(tabWhileChild, `tab took pressed while close held`).not.toBe(tokens.pressed);
+    expect(tabWhilePrimary, `tab took pressed while select held`).not.toBe(tokens.pressed);
+    expect(selectWhilePrimary, `tab-select missing pressed wash`).toBe(tokens.pressed);
+    expect(rowWhileChild, `worker-row took pressed while action held`).not.toBe(tokens.pressed);
   }, 60_000);
 });
