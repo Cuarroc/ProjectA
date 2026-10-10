@@ -3801,10 +3801,11 @@ scripts/contrast-check.mjs. */
 .detailbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 30px;
-  padding: 0 8px 0 12px;
-  background: var(--bg-elevated);
+  gap: var(--space-5);
+  height: var(--shell-bar-h);
+  padding: 0 var(--space-4) 0 var(--space-6);
+  background: var(--surface-chrome);
+  backdrop-filter: var(--material-chrome-filter);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
@@ -3832,8 +3833,8 @@ scripts/contrast-check.mjs. */
 .diff-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 8px 7px 12px;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
@@ -3841,7 +3842,7 @@ scripts/contrast-check.mjs. */
 .diff-base {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-3);
   min-width: 0;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -3859,7 +3860,7 @@ scripts/contrast-check.mjs. */
 .diff-totals {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-3);
   font-size: var(--text-sm);
 }
 
@@ -3900,10 +3901,10 @@ scripts/contrast-check.mjs. */
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 12px 8px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6) var(--space-4);
   border-bottom: 1px solid var(--border);
-  background: var(--bg-elevated);
+  background: var(--surface-card);
 }
 
 .diff-readiness:focus-visible {
@@ -3914,48 +3915,48 @@ scripts/contrast-check.mjs. */
 .diff-readiness-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .diff-verdict {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .diff-setup-trust {
-  margin-top: 8px;
-  padding: 6px 8px;
-  border: 1px solid var(--border, currentColor);
-  border-radius: 6px;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-size: var(--text-xs);
 }
 
 .diff-setup-granted,
 .diff-setup-lead {
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-2);
   color: var(--fg-muted);
 }
 
 /* The binding note under the approve button: what the grant actually
    authorises (review-F4-r16, Opus Fund 2 — the display must say it). */
 .diff-setup-note {
-  margin: 6px 0 0;
+  margin: var(--space-3) 0 0;
   color: var(--fg-muted);
-  font-size: 0.92em;
+  font-size: var(--text-sm);
 }
 
 .diff-setup-inputs {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .diff-setup-row {
   display: grid;
   grid-template-columns: minmax(4rem, auto) 1fr;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: baseline;
 }
 
@@ -3986,7 +3987,7 @@ scripts/contrast-check.mjs. */
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   max-height: 7.5rem;
   overflow-y: auto;
 }
@@ -3994,10 +3995,10 @@ scripts/contrast-check.mjs. */
 .diff-readiness-row {
   display: grid;
   grid-template-columns: minmax(7rem, auto) 1fr auto;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: baseline;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
 }
 
@@ -4059,8 +4060,8 @@ scripts/contrast-check.mjs. */
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 4px;
-  background: var(--bg-elevated);
+  padding: var(--space-2);
+  background: var(--surface-chrome);
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -4068,9 +4069,9 @@ scripts/contrast-check.mjs. */
 .diff-file {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 5px 7px;
-  border-radius: 3px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
   text-align: left;
 }
 
@@ -4093,13 +4094,13 @@ scripts/contrast-check.mjs. */
 .diff-file-counts {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-3);
   font-size: var(--text-xs);
 }
 
 .diff-file-notes {
-  padding: 0 5px;
-  border-radius: 8px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-round);
   background: var(--state-working-bg);
   color: var(--state-working-fg);
 }
@@ -4107,14 +4108,14 @@ scripts/contrast-check.mjs. */
 .diff-pane {
   min-width: 0;
   min-height: 0;
-  padding: 6px 0 10px;
+  padding: var(--space-3) 0 var(--space-5);
   background: var(--bg);
   overflow: auto;
   scrollbar-width: thin;
 }
 
 .diff-pane-empty {
-  margin: 12px;
+  margin: var(--space-6);
   color: var(--fg-muted);
 }
 
@@ -4122,11 +4123,11 @@ scripts/contrast-check.mjs. */
   /* The rows are `min-content` wide, so a long line scrolls the whole hunk
      rather than clipping against the pane. */
   min-width: min-content;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-5);
 }
 
 .diff-hunk-header {
-  padding: 3px 10px;
+  padding: var(--space-2) var(--space-5);
   background: var(--state-working-bg);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -4175,7 +4176,7 @@ scripts/contrast-check.mjs. */
 .diff-gutter {
   flex: 0 0 auto;
   width: 42px;
-  padding-right: 8px;
+  padding-right: var(--space-4);
   text-align: right;
   font-size: var(--text-sm);
   color: var(--color-text-tertiary);
@@ -4209,7 +4210,7 @@ scripts/contrast-check.mjs. */
 
 .diff-text {
   flex: 1 1 auto;
-  padding-right: 12px;
+  padding-right: var(--space-6);
   white-space: pre;
   tab-size: 4;
 }
@@ -4218,22 +4219,22 @@ scripts/contrast-check.mjs. */
 .diff-comment-box {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-3);
   position: sticky;
   left: 0;
   width: min(680px, 100%);
-  margin: 4px 0 6px 56px;
-  padding: 8px;
+  margin: var(--space-2) 0 var(--space-3) 56px;
+  padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
 }
 
 .diff-comment-box-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .diff-comment-box-actions .empty-hint {
@@ -4246,14 +4247,14 @@ scripts/contrast-check.mjs. */
   flex-direction: column;
   max-height: 34%;
   border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
+  background: var(--surface-card);
 }
 
 .diff-comments-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 7px 12px 5px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6) var(--space-3);
 }
 
 .diff-comments-head .section-title {
@@ -4275,7 +4276,7 @@ scripts/contrast-check.mjs. */
 
 .diff-comments-empty {
   margin: 0;
-  padding: 0 12px 10px;
+  padding: 0 var(--space-6) var(--space-5);
   font-size: var(--text-md);
   color: var(--fg-muted);
 }
@@ -4283,7 +4284,7 @@ scripts/contrast-check.mjs. */
 .diff-comment-list {
   list-style: none;
   margin: 0;
-  padding: 0 6px 6px;
+  padding: 0 var(--space-3) var(--space-3);
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -4291,9 +4292,9 @@ scripts/contrast-check.mjs. */
 .diff-comment {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 2px 4px;
-  border-radius: 3px;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 .diff-comment:hover {
@@ -4304,9 +4305,9 @@ scripts/contrast-check.mjs. */
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0;
-  padding: 4px 6px;
+  padding: var(--space-2) var(--space-3);
   text-align: left;
 }
 
@@ -4328,8 +4329,8 @@ scripts/contrast-check.mjs. */
 .diff-comment-meta {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding-top: 4px;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
 }
 
 .badge-sent {
@@ -4381,8 +4382,8 @@ scripts/contrast-check.mjs. */
 
 /* Git prints no hunks for a binary file, so the row says so up front. */
 .diff-file-binary {
-  padding: 0 5px;
-  border-radius: 8px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-round);
   background: var(--color-pressed);
   color: var(--fg-muted);
 }
@@ -4390,13 +4391,13 @@ scripts/contrast-check.mjs. */
 /* Review class (AGENTS.md rule 5): neutral on purpose, no colour says "safe". */
 .diff-review-class {
   margin: 0;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--color-border, currentColor);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
   color: var(--fg-muted);
 }
 .diff-file-class {
-  padding: 0 5px;
-  border-radius: 8px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-round);
   border: 1px solid var(--fg-muted);
   color: var(--fg-muted);
 }
@@ -5554,8 +5555,8 @@ scripts/contrast-check.mjs. */
 /* The one action on a card that changes the repository, so it carries the
    accent the other card buttons deliberately do without. */
 .board-card-merge {
-  padding: 3px 10px;
-  border-radius: 3px;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-sm);
   background: var(--accent);
   color: var(--status-fg);
   font-size: var(--text-sm);
@@ -5568,9 +5569,9 @@ scripts/contrast-check.mjs. */
 /* Blocked by the test gate: still readable, but clearly not a button that is
    waiting to be pressed. */
 .board-card-merge:disabled {
-  background: transparent;
+  background: var(--color-disabled-bg);
   border: 1px solid var(--border);
-  color: var(--fg-muted);
+  color: var(--color-disabled-fg);
 }
 
 .merge-route,
@@ -6971,7 +6972,7 @@ scripts/contrast-check.mjs. */
 .diff-verdict-choice {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .diff-verdict-detail {

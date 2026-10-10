@@ -47,11 +47,11 @@ describe("DiffView review class", () => {
     state.files = [mk("docs/PLAN.md"), mk("src/lib/diff.ts"), mk("src-tauri/src/store.rs")];
     render(<DiffView workerId="wk-1" branch="nacht/wk-1" />);
     const overall = screen.getByRole("status");
-    expect(overall).toHaveTextContent("Prüfstufe A: braucht zwei Prüfer anderer Anbieter");
+    expect(overall).toHaveTextContent("Prüfstufe Streng: braucht zwei Prüfer anderer Anbieter");
     const badges = Array.from(document.querySelectorAll(".diff-file-class")).map(
       (el) => el.textContent,
     );
-    expect(badges).toEqual(["C", "B", "A"]);
+    expect(badges).toEqual(["Leicht", "Normal", "Streng"]);
   });
 
   it("says 'unbekannt' instead of guessing for an unmatched path", () => {
@@ -63,6 +63,14 @@ describe("DiffView review class", () => {
   it("counts a rename out of a seam with its old path", () => {
     state.files = [{ ...mk("src-tauri/src/other.rs"), oldPath: "src-tauri/src/store.rs" }];
     render(<DiffView workerId="wk-1" branch="nacht/wk-1" />);
-    expect(screen.getByRole("status")).toHaveTextContent("Prüfstufe A");
+    expect(screen.getByRole("status")).toHaveTextContent("Prüfstufe Streng");
+  });
+
+  it("names the tier in German and keeps the class code in the title", () => {
+    state.files = [mk("docs/PLAN.md"), mk("src-tauri/src/store.rs")];
+    render(<DiffView workerId="wk-1" branch="nacht/wk-1" />);
+    expect(screen.getByRole("status").textContent).not.toMatch(/Prüfstufe [ABC?]\b/);
+    expect(screen.getByText("Prüfstufe Streng:")).toHaveAttribute("title", "Prüfstufe A");
+    expect(screen.getByText("Leicht")).toHaveAttribute("title", expect.stringMatching(/^Prüfstufe C: /));
   });
 });
