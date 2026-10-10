@@ -283,4 +283,69 @@ stray\n";
             Uncovered::Lines(vec!["Windows".into(), "#12 bleibt offen".into()])
         );
     }
+
+    #[test]
+    fn marker_must_end_at_a_word_boundary() {
+        assert_eq!(
+            parse_uncovered("## Nicht abgedeckte Fälle\n- x\n"),
+            Uncovered::Missing
+        );
+        assert_eq!(
+            parse_uncovered("NICHT ABGEDECKTES Problem\n- x\n"),
+            Uncovered::Missing
+        );
+        assert_eq!(
+            parse_uncovered("**NICHT ABGEDECKT:** a"),
+            Uncovered::Lines(vec!["a".into()])
+        );
+        assert_eq!(
+            parse_uncovered("## NICHT ABGEDECKT\n- a"),
+            Uncovered::Lines(vec!["a".into()])
+        );
+    }
+
+    #[test]
+    fn marker_inside_a_fenced_code_block_is_ignored() {
+        assert_eq!(
+            parse_uncovered("## Template\n```md\n## NICHT ABGEDECKT\n- x\n```\n"),
+            Uncovered::Missing
+        );
+        assert_eq!(
+            parse_uncovered("~~~\nNICHT ABGEDECKT: x\n~~~\n"),
+            Uncovered::Missing
+        );
+        assert_eq!(
+            parse_uncovered("```\ncode\n```\n## NICHT ABGEDECKT\n- real\n"),
+            Uncovered::Lines(vec!["real".into()])
+        );
+    }
+
+    #[test]
+    fn heading_inside_a_fence_does_not_end_the_block() {
+        assert_eq!(
+            parse_uncovered(
+                "## NICHT ABGEDECKT\n- a\n```\n## not a heading\n```\n- b\n## Review\nx"
+            ),
+            Uncovered::Lines(vec!["a".into(), "## not a heading".into(), "b".into()])
+        );
+    }
+
+    #[test]
+    fn heading_with_tab_after_hashes_ends_the_block() {
+        assert_eq!(
+            parse_uncovered("## NICHT ABGEDECKT\n- a\n##\tReview\nnope"),
+            Uncovered::Lines(vec!["a".into()])
+        );
+    }
+
+    #[test]
+    fn green_then_red_rerun_at_head_is_rot() {
+        let proof = set(&[r("fmt", 0, "b"), r("clippy", 0, "b"), r("clippy", 1, "b")]);
+        assert_eq!(
+            proof.status("b"),
+            ProofStatus::Rot {
+                gate: "clippy".into()
+            }
+        );
+    }
 }
