@@ -189,6 +189,7 @@ use crate::http_util::{
 use crate::omniroute::UsageReport;
 use crate::providers::ProviderOverview;
 use crate::quota::QuotaStateRow;
+use crate::setupgate::repo_scan::RepoScan;
 use crate::status::WorkerBoardState;
 use crate::store::{
     ActivityEntry, ContinuousClaim, ContinuousContext, ContinuousControl, ContinuousGoal,
@@ -2242,6 +2243,63 @@ pub fn parse_request(head: &str, body: String) -> Option<Request> {
         headers,
         body,
     })
+}
+
+/// V2-S11: the first-run screen's read-only repository scan.
+///
+/// The path comes from the window, so it is judged in its canonical form
+/// (`..` and links resolved): absolute, a folder, the top of a git work tree
+/// (the same [`crate::worktree::ensure_git_repo`] check project registration
+/// uses). The backend cannot tell a picked folder from a typed one; it only
+/// returns the facts of [`RepoScan`], never file contents. Errors are fixed
+/// sentences without the path.
+pub(crate) fn scan_setup_repo_at(path: &str) -> Result<RepoScan, String> {
+    use crate::setupgate::repo_scan::{resolve_inside, scan_repo, simplified};
+    // Trimmed for the emptiness check only: a folder name may end in a blank.
+    let given = Path::new(path);
+    if path.trim().is_empty() || !given.is_absolute() {
+        return Err("the repository path must be absolute".to_string());
+    }
+    // Without `\\?\`: git rejects it and the containment checks compare plain paths.
+    let root = std::fs::canonicalize(given)
+        .map(|real| simplified(&real))
+        .map_err(|_| "the repository folder does not exist or cannot be read".to_string())?;
+    if !root.is_dir() {
+        return Err("the chosen path is not a folder".to_string());
+    }
+    // A `.git` link that leaves the folder is "not present", like in the scan.
+    if resolve_inside(&root, ".git").is_none() {
+        return Err("the chosen folder is not the top of a git repository".to_string());
+    }
+    crate::worktree::ensure_git_repo(&root.to_string_lossy())
+        .map_err(|_| "the chosen folder is not a usable git repository".to_string())?;
+    scan_repo(&root).map_err(|_| "the repository scan failed".to_string())
+}
+
+/// How long the first-run screen waits for the scan (not the 5-minute setup
+/// command limit in `setupgate`: this is a few file reads and one `git` call).
+const SCAN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Run `job` off the calling thread and give up after `limit`. The thread
+/// itself cannot be cancelled and finishes in the background; only the wait ends.
+/// A timed-out job may leave its `git` child running until that ends on its
+/// own: the bound is on the wait, not on the work.
+async fn scan_within<T: Send + 'static>(
+    limit: std::time::Duration,
+    job: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    let handle = tauri::async_runtime::spawn_blocking(job);
+    match tokio::time::timeout(limit, handle).await {
+        Err(_) => Err("the repository scan took too long".to_string()),
+        Ok(joined) => joined.map_err(|_| "the repository scan did not finish".to_string())?,
+    }
+}
+
+/// Read-only: what the first-run screen shows about a repository folder.
+#[tauri::command]
+pub async fn scan_setup_repo(path: String) -> Result<RepoScan, String> {
+    // File reads and one git child process: off the thread serving the UI.
+    scan_within(SCAN_TIMEOUT, move || scan_setup_repo_at(&path)).await
 }
 
 #[cfg(test)]
@@ -7930,5 +7988,157 @@ pub(crate) mod tests {
         );
         assert_eq!(status, 404, "{body}");
         assert_eq!(body["error"], "unknown worker: wk-tippfehler");
+    }
+
+    fn scan_fixture(label: &str) -> TempDir {
+        let dir = TempDir::new(label);
+        crate::testutil::init_repo(dir.path());
+        std::fs::create_dir_all(dir.path().join("scripts/ci")).unwrap();
+        std::fs::write(dir.path().join("scripts/ci/gates.sh"), "#!/bin/sh\n").unwrap();
+        std::fs::write(dir.path().join(".mergify.yml"), "queue_rules: []\n").unwrap();
+        std::fs::write(
+            dir.path().join("AGENTS.md"),
+            "6. **Seams only serially:** `src/api.rs`, `src/main.rs`.\n",
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn scan_setup_repo_returns_the_main_branch_and_gate_flags_as_json() {
+        let dir = scan_fixture("scan-setup-ok");
+        let scan = scan_setup_repo_at(dir.path().to_str().unwrap()).expect("scan");
+        let json = serde_json::to_value(&scan).unwrap();
+        assert_eq!(json["mainBranch"], "main");
+        assert_eq!(json["hasGatesSh"], true);
+        assert_eq!(json["hasMergify"], true);
+        assert_eq!(json["hasAgentsMd"], true);
+        assert_eq!(json["seamFiles"], json!(["src/api.rs", "src/main.rs"]));
+        let mut keys: Vec<_> = json.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            [
+                "freeRamBytes",
+                "hasAgentsMd",
+                "hasGatesSh",
+                "hasMergify",
+                "mainBranch",
+                "seamFiles"
+            ]
+        );
+    }
+
+    #[test]
+    fn scan_setup_repo_rejects_files_missing_relative_and_empty_paths() {
+        let dir = scan_fixture("scan-setup-bad");
+        let file = dir.path().join("AGENTS.md");
+        let missing = dir.path().join("nope");
+        let relative = Path::new("scan-setup-relative");
+        for bad in [
+            file.as_path(),
+            missing.as_path(),
+            relative,
+            Path::new(""),
+            Path::new("  "),
+        ] {
+            let err = scan_setup_repo_at(bad.to_str().unwrap()).expect_err("must refuse");
+            assert!(!err.contains(dir.path().to_str().unwrap()), "{err}");
+        }
+    }
+
+    #[test]
+    fn scan_setup_repo_judges_the_canonical_path_so_dotdot_cannot_escape() {
+        let dir = scan_fixture("scan-setup-dotdot");
+        let plain = dir.path().join("plain");
+        std::fs::create_dir_all(dir.path().join("sub")).unwrap();
+        std::fs::create_dir_all(&plain).unwrap();
+        let root = dir.path().to_str().unwrap();
+        // A subfolder is not a repository root, and `..` out of the repository
+        // lands in a folder the app does not know.
+        let sub = format!("{root}/sub");
+        let escape = format!("{root}/sub/../plain");
+        for bad in [&sub, &escape] {
+            let err = scan_setup_repo_at(bad).expect_err("must refuse");
+            assert!(!err.contains(root), "{err}");
+        }
+        // `..` that comes back to the root is the root.
+        assert!(scan_setup_repo_at(&format!("{root}/sub/..")).is_ok());
+    }
+
+    /// Replace `rel` of the fixture by a link to `target`.
+    #[cfg(unix)]
+    fn relink(root: &Path, rel: &str, target: &Path) {
+        let link = root.join(rel);
+        if link.is_dir() {
+            std::fs::remove_dir_all(&link).unwrap();
+        } else {
+            std::fs::remove_file(&link).unwrap();
+        }
+        std::os::unix::fs::symlink(target, &link).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn scan_setup_repo_does_not_follow_links_out_of_the_root() {
+        let outside = scan_fixture("scan-setup-outside");
+        let out = outside.path();
+        // The bait must be there, or "not present" would prove nothing.
+        assert!(std::fs::read_to_string(out.join("AGENTS.md"))
+            .unwrap()
+            .contains("src/api.rs"));
+        assert!(out.join(".mergify.yml").is_file());
+        assert!(out.join("scripts/ci/gates.sh").is_file());
+        for rel in ["AGENTS.md", ".mergify.yml", "scripts"] {
+            let dir = scan_fixture("scan-setup-link");
+            relink(dir.path(), rel, &out.join(rel));
+            let scan = scan_setup_repo_at(dir.path().to_str().unwrap()).expect(rel);
+            let seen = match rel {
+                "AGENTS.md" => scan.has_agents_md || !scan.seam_files.is_empty(),
+                ".mergify.yml" => scan.has_mergify,
+                _ => scan.has_gates_sh,
+            };
+            assert!(!seen, "{rel} outside the root must count as not present");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn scan_setup_repo_refuses_a_dot_git_link_that_points_outside_the_root() {
+        let outside = scan_fixture("scan-setup-outside-git");
+        let dir = scan_fixture("scan-setup-link-git");
+        // The outside `.git` is a real repository, so only containment refuses.
+        assert!(outside.path().join(".git").is_dir());
+        crate::worktree::ensure_git_repo(outside.path().to_str().unwrap()).expect("bait is a repo");
+        relink(dir.path(), ".git", &outside.path().join(".git"));
+        let err = scan_setup_repo_at(dir.path().to_str().unwrap()).expect_err("must refuse");
+        assert!(!err.contains(outside.path().to_str().unwrap()), "{err}");
+    }
+
+    // Windows strips a trailing blank from a folder name.
+    #[cfg(unix)]
+    #[test]
+    fn scan_setup_repo_scans_the_path_as_given_not_trimmed() {
+        let dir = TempDir::new("scan-setup-space");
+        // Legal on Unix: a folder name that ends in a blank.
+        let repo = crate::testutil::init_repo(&dir.path().join("repo "));
+        let given = format!("{}", repo.display());
+        assert!(given.ends_with(' '));
+        scan_setup_repo_at(&given).expect("the folder with the blank is the one picked");
+        assert!(scan_setup_repo_at(&format!("  {given}")).is_err());
+    }
+
+    #[test]
+    fn scan_within_gives_up_on_a_scan_that_outlives_its_limit() {
+        use std::time::Duration;
+        let slow = || {
+            std::thread::sleep(Duration::from_millis(600));
+            Ok(1)
+        };
+        let err = tauri::async_runtime::block_on(scan_within(Duration::from_millis(50), slow))
+            .expect_err("must time out");
+        assert_eq!(err, "the repository scan took too long");
+        let quick = tauri::async_runtime::block_on(scan_within(Duration::from_secs(5), || Ok(7)));
+        assert_eq!(quick, Ok(7));
     }
 }
