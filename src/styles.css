@@ -51,6 +51,14 @@
   --color-pressed: rgba(255, 255, 255, 0.1);
   --color-selection-unfocused: rgba(255, 255, 255, 0.11);
 
+  /* Control outline for editable fields and equivalent inputs (≥3:1 on
+     content/elevated/raised). Decorative dividers keep --color-separator. */
+  --color-control-border: #808087;
+  /* Terminal pane ground — matches TerminalView THEME.background; not content. */
+  --color-terminal-ground: #1e1e1e;
+  /* Modal and dialog dimmer over the app shell. */
+  --color-scrim: rgba(0, 0, 0, 0.5);
+
   /* System blue carries the controls; `accent-text` is the same accent used
      as a text colour. In dark mode those cannot be one value: a blue that
      carries white at 4.5:1 is too dark to read on the content. */
@@ -95,6 +103,12 @@
   --space-6: 12px;
   --space-7: 16px;
   --space-8: 24px;
+  /* Shared density recipes for later packages: control 6×12, row 6×10, card 8. */
+  --space-control-y: var(--space-3);
+  --space-control-x: var(--space-6);
+  --space-row-y: var(--space-3);
+  --space-row-x: var(--space-5);
+  --space-card: var(--space-4);
 
   /* ---- type ------------------------------------------------------------
      Five sizes, from the smallest label to the one heading size. Body text
@@ -104,6 +118,11 @@
   --text-md: 12px;
   --text-base: 13px;
   --text-lg: 15px;
+  /* Recurring type roles: copy/meta line height, label tracking, semibold. */
+  --line-copy: 1.5;
+  --line-meta: 1.4;
+  --tracking-label: 0.04em;
+  --weight-semibold: 600;
 
   /* Monospace for code, paths and ids. The terminal has its own setting. */
   --font-mono: "Cascadia Mono", Consolas, monospace;
@@ -220,6 +239,9 @@
     --color-hover: rgba(0, 0, 0, 0.05);
     --color-pressed: rgba(0, 0, 0, 0.08);
     --color-selection-unfocused: rgba(0, 0, 0, 0.09);
+
+    /* Same control-boundary role as dark; calibrated for light surfaces. */
+    --color-control-border: #7f7f87;
 
     --color-accent: #004fc4;
     --color-accent-hover: #0046ad;
