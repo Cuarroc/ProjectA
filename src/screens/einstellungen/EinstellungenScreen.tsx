@@ -19,8 +19,8 @@ const TABS = ROUTES.find((r) => r.id === "einstellungen")!.tabs.map((t) => ({
   label: t.label,
 }));
 
-const Section = ({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) => (
-  <section className="es-sec g-glass" aria-label={title}>
+const Section = ({ title, hint, className = "", children }: { title: string; hint?: string; className?: string; children: ReactNode }) => (
+  <section className={`es-sec g-glass ${className}`.trim()} aria-label={title}>
     <h2>{title}</h2>
     {hint ? <p className="es-note">{hint}</p> : null}
     {children}
@@ -39,11 +39,10 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
             <div className="es-grid">
               <Section title={T.appearance} hint={T.appearanceHint}>
                 <AppearanceControl />
-                {/* TODO(V2-TH-VAR-2): the glass-style switch (Stil) goes here, beside Hell/Dunkel/System. */}
               </Section>
               <Section title={T.preview}><PreviewToggle /></Section>
               <Section title={T.version}><VersionUpdates /></Section>
-              <Section title={T.stop}><EmergencyStop /></Section>
+              <Section title={T.stop} className="es-sec--stop"><EmergencyStop /></Section>
               <Section title={T.more} hint={T.moreHint}>
                 <Button size="sm" onClick={onOpenClassic}>{T.moreOpen}</Button>
               </Section>
