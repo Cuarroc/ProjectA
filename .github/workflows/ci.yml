@@ -256,12 +256,15 @@ jobs:
         continue-on-error: true
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RF_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           # Base and head explicitly: the checkout above is refs/pull/N/merge,
           # base.sha may no longer be reachable from it once main moved.
           git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          # Retargeted PR payloads may retain a stale base.sha.
+          git fetch --no-tags origin "+refs/heads/$RF_BASE_BRANCH:refs/remotes/origin/$RF_BASE_BRANCH"
           # Erst in eine Datei, dann anhaengen - eine Pipe nach $GITHUB_OUTPUT
           # verschluckt den Exit-Code links davon (scripts/ci/no-masked-output.sh).
           bash scripts/ci/red-first.sh --plan > "$RUNNER_TEMP/rf-plan.out"
@@ -363,10 +366,12 @@ jobs:
         timeout-minutes: 25
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RF_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_BODY: ${{ github.event.pull_request.body }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          git fetch --no-tags origin "+refs/heads/$RF_BASE_BRANCH:refs/remotes/origin/$RF_BASE_BRANCH"
           merge_sha="$(git rev-parse HEAD)"
           git checkout --quiet --force --detach "$HEAD_SHA"
           # node_modules came from `npm ci` on the merge commit. If the PR's
