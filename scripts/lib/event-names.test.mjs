@@ -85,3 +85,17 @@ test("event names match between Rust and TypeScript", () => {
   assert.deepEqual(rust, expected, "Keep existing wire event names unchanged");
   assert.deepEqual(ts, rust);
 });
+
+test("event literal scan needs no external search tool", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "event-names-no-search-"));
+  const originalPath = process.env.PATH;
+  try {
+    writeFileSync(join(fixture, "Leak.tsx"), `const name = "${expected.WORKER_STATUS}";\n`);
+    process.env.PATH = "";
+    assert.equal(eventLiteralHits(fixture).length, 1);
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
