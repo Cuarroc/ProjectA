@@ -224,7 +224,7 @@ export default function QueuePanel({
               />
               <span>Beim Einreihen schärfen</span>
             </label>
-            <div className="queue-actions">
+            <div className="queue-actions queue-actions-sticky">
               <button
                 type="button"
                 className="button-subtle queue-sharpen-now"
