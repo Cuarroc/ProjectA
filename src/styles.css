@@ -423,16 +423,19 @@ a {
   background: var(--color-hover);
 }
 
-.project-button:active:not(:disabled),
-.worker-row:active,
-.rail-item:active,
-.board-card:active,
-.tab:active,
-.segment:active:not(:disabled),
-.panel-tab:active,
-.settings-tab:active,
-.queue-row:active,
-.question-option:active:not(:disabled) {
+/* Scoped under .app so pressed wins over later view :hover rules (same
+   specificity otherwise leaves the wash stuck on hover while the button
+   is held). */
+.app .project-button:active:not(:disabled),
+.app .worker-row:active,
+.app .rail-item:active,
+.app .board-card:active,
+.app .tab:active,
+.app .segment:active:not(:disabled),
+.app .panel-tab:active,
+.app .settings-tab:active,
+.app .queue-row:active,
+.app .question-option:active:not(:disabled) {
   background: var(--color-pressed);
 }
 

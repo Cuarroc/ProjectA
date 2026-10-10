@@ -19,7 +19,9 @@ const app3 = css.slice(app3Start, app3End === -1 ? undefined : app3End);
 
 /** Base class from a compound selector like `.tab:hover:not(.tab-active)`. */
 function baseClass(selector: string): string | null {
-  const match = selector.trim().match(/^\.([\w-]+)/);
+  // Pressed rules may be scoped as `.app .segment:active…`.
+  const trimmed = selector.trim().replace(/^\.app\s+/, "");
+  const match = trimmed.match(/^\.([\w-]+)/);
   return match ? `.${match[1]}` : null;
 }
 
