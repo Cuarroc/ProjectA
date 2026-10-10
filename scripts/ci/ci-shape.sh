@@ -18,7 +18,9 @@
 #      green with Linux results.
 #   4. red-first runs inside the linux job (plan and proof) and the job
 #      `red-first` only evaluates it: `needs: linux`, the verdict script, and
-#      no setup-linux of its own.
+#      no setup-linux of its own. Both red-first steps pin RF_BASE_BRANCH to
+#      github.event.pull_request.base.ref and fetch refs/heads/$RF_BASE_BRANCH
+#      (V161-FU-3 / R934-A2).
 #   5. CI-04: the job `main-red` exists, waits for BOTH gate jobs, fires
 #      only on refs/heads/main (exact `==`, with always(), or a red gates
 #      job would skip it), calls scripts/ci/main-red-guard.sh, reads the
@@ -94,7 +96,13 @@ mg_list() {
   ' "$MG"
 }
 
-has() { grep -qF -- "$2" <<< "$1"; }
+# Fixed-string match that ignores full-line comments (first non-blank is #),
+# so a comment quoting a guard or fetch cannot satisfy the check (R953-A3).
+has() {
+  local body
+  body="$(grep -vE '^[[:space:]]*#' <<< "$1" || true)"
+  grep -qF -- "$2" <<< "$body"
+}
 
 linux="$(job linux)"
 windows="$(job windows)"
@@ -149,6 +157,36 @@ has "$redfirst" "setup-linux" && err "job red-first: has its own setup-linux aga
 # The proof never starts on an empty count (review PR #149, glm-5.2 F2).
 proof_if="$(step "red-first - proof against merge base" <<< "$linux" | grep -E '^        if:')"
 has "$proof_if" "steps.rf_plan.outputs.count != ''" || err "job linux: proof step 'if' lacks steps.rf_plan.outputs.count != '': $proof_if"
+# V161-FU-3 / R934-A2: both red-first steps pin the current PR base branch
+# (RF_BASE_BRANCH) and fetch refs/heads/$RF_BASE_BRANCH so a retargeted or
+# stale payload base.sha cannot silently drop the preferred base.
+rf_base_env='RF_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}'
+for rf_step in "red-first - plan" "red-first - proof against merge base"; do
+  rf_body="$(step "$rf_step" <<< "$linux")"
+  [ -n "$rf_body" ] || { err "job linux: step '$rf_step' missing"; continue; }
+  has "$rf_body" "$rf_base_env" ||
+    err "job linux: step '$rf_step' lacks RF_BASE_BRANCH: \${{ github.event.pull_request.base.ref }}"
+  has "$rf_body" 'refs/heads/$RF_BASE_BRANCH' ||
+    err "job linux: step '$rf_step' missing red-first base branch fetch (refs/heads/\$RF_BASE_BRANCH)"
+done
+# V161-FU-3 / R953-A1: plan step HEAD_SHA fetch stays fatal; BASE_SHA fetch
+# stays non-fatal (|| ) so a stale payload base.sha cannot abort the plan.
+rf_plan="$(step "red-first - plan" <<< "$linux")"
+if [ -n "$rf_plan" ]; then
+  rf_plan_code="$(grep -vE '^[[:space:]]*#' <<< "$rf_plan" || true)"
+  head_fetch="$(grep -F 'git fetch' <<< "$rf_plan_code" | grep -F '"$HEAD_SHA"' || true)"
+  base_fetch="$(grep -F 'git fetch' <<< "$rf_plan_code" | grep -F '"$BASE_SHA"' || true)"
+  if [ -z "$head_fetch" ]; then
+    err "job linux: step 'red-first - plan' missing HEAD_SHA fetch"
+  elif grep -qF '||' <<< "$head_fetch"; then
+    err "job linux: step 'red-first - plan' HEAD_SHA fetch must be fatal (no ||)"
+  fi
+  if [ -z "$base_fetch" ]; then
+    err "job linux: step 'red-first - plan' missing BASE_SHA fetch"
+  elif ! grep -qF '||' <<< "$base_fetch"; then
+    err "job linux: step 'red-first - plan' BASE_SHA fetch must be non-fatal (|| )"
+  fi
+fi
 
 # 5. CI-04: the main-red guard job - a red main opens an issue and freezes
 # the Mergify queue, a proven-green main lifts both.
