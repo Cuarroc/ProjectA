@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { promisify } from 'node:util';
 import { DeskStore } from './core.mjs';
@@ -72,6 +72,48 @@ test('a failed atomic replacement preserves committed state and can be retried',
   assert.equal(await readFile(`${s.file}.previous`, 'utf8'), before);
 });
 
+test('NOT-1: rename EPERM twice then success commits and leaves no temp file', async t => {
+  for (const code of ['EPERM', 'EACCES', 'EBUSY']) {
+    const s = await fresh(); t.after(() => s.close());
+    await add(s); const before = await readFile(s.file);
+    const attempts = new Map(); const delays = [];
+    s.io.sleep = async ms => { delays.push(ms); };
+    s.io.rename = async (from, to) => {
+      const count = (attempts.get(to) ?? 0) + 1; attempts.set(to, count);
+      if (count <= 2) throw Object.assign(new Error('reader holds file'), { code });
+      return rename(from, to);
+    };
+    assert.equal(await add(s, 'E-2'), 'E-2');
+    assert.deepEqual([...attempts.values()], [3, 3]);
+    assert.deepEqual(delays, [10, 20, 10, 20]);
+    assert.equal((await s.read()).revision, 2);
+    assert.deepEqual((await s.read()).questions.map(q => q.id), ['E-1', 'E-2']);
+    assert.deepEqual(await readFile(`${s.file}.previous`), before);
+    assert.deepEqual((await readdir(dirname(s.file))).filter(f => f.includes('.tmp')), []);
+  }
+});
+
+test('NOT-1: permanent EPERM rejects and keeps committed bytes and removes the temp file', async t => {
+  for (const suffix of ['', '.previous']) {
+    const s = await fresh(); t.after(() => s.close());
+    await add(s); const before = await readFile(s.file); const delays = []; let attempts = 0;
+    const original = Object.assign(new Error('reader holds file'), { code: 'EPERM' });
+    s.io.sleep = async ms => { delays.push(ms); };
+    s.io.rename = async (from, to) => {
+      if (to === `${s.file}${suffix}`) {
+        attempts++;
+        throw attempts === 1 ? original : Object.assign(new Error('still busy'), { code: 'EPERM' });
+      }
+      return rename(from, to);
+    };
+    await assert.rejects(add(s, 'E-2'), error => error === original);
+    assert.deepEqual(await readFile(s.file), before);
+    assert.deepEqual((await readdir(dirname(s.file))).filter(f => f.includes('.tmp')), []);
+    assert.equal(attempts, 6);
+    assert.deepEqual(delays, [10, 20, 40, 80, 100]);
+  }
+});
+
 test('process termination during a partial temporary write preserves the last commit', async () => {
   const s = await fresh(); await add(s); const before = await readFile(s.file, 'utf8');
   await s.close(); // Hand off ownership before the child deliberately terminates.
@@ -89,6 +131,29 @@ test('migration rejects a nonexistent source with 404 and creates neither state 
     && e.message === 'Migrationsquelle fehlt; explizite Migration abgelehnt.');
   await assert.rejects(readFile(s.file), e => e.code === 'ENOENT');
   await assert.rejects(readFile(`${s.file}.v1-backup`), e => e.code === 'ENOENT');
+});
+
+test('R912-FU-1: migrate on a source deleted between read and callback still rejects 404 without stat', async t => {
+  for (const recreate of [true, false]) {
+    const s = await legacyStore(); t.after(() => s.close());
+    const original = await readFile(s.file); let reads = 0;
+    s.io.readFile = async (path, ...args) => {
+      if (path !== s.file || ++reads !== 1) return readFile(path, ...args);
+      await rename(s.file, `${s.file}.removed-source`);
+      if (!recreate) return original.toString('utf8');
+      try { return await readFile(path, ...args); }
+      finally { await writeFile(s.file, original); }
+    };
+    await assert.rejects(s.migrate(0), error => error instanceof DeskError && error.status === 404
+      && error.message === 'Migrationsquelle fehlt; explizite Migration abgelehnt.');
+    assert.ok(reads > 0, 'migration must use the injected read hook');
+    await assert.rejects(readFile(`${s.file}.v1-backup`), error => error.code === 'ENOENT');
+    if (recreate) assert.deepEqual(await readFile(s.file), original);
+    else await assert.rejects(readFile(s.file), error => error.code === 'ENOENT');
+    const state = await s.read();
+    assert.equal(Object.hasOwn(state, 'existed'), false);
+    assert.equal(Object.hasOwn(state, 'state'), false);
+  }
 });
 
 test('migration rejects a disappearing V1 source and creates neither state nor backup', async () => {
