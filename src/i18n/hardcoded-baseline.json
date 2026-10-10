@@ -1,6 +1,8 @@
 [
   "src/screens/einstellungen/VersionUpdates.tsx: \"ProjectA \"",
+  "src/screens/leitstand/LeitstandRoute.tsx: \"Agenten konnten nicht geladen werden\"",
   "src/screens/leitstand/LeitstandRoute.tsx: \"Ansichten\"",
+  "src/screens/leitstand/LeitstandRoute.tsx: \"Die Karten zeigen vorerst die Profil-Kennung.\"",
   "src/screens/leitstand/LeitstandRoute.tsx: \"Haupt\"",
   "src/screens/leitstand/LeitstandRoute.tsx: \"Klassisch\"",
   "src/screens/leitstand/LeitstandRoute.tsx: \"Leitstand\"",
