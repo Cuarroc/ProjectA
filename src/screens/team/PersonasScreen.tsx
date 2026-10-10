@@ -71,6 +71,9 @@ export function PersonasView({ load, onRetry }: { load: Load; onRetry: () => voi
       {load.status === "error" && <HonestState kind="offline" title={T.errorTitle} action={{ label: T.retry, onClick: onRetry }} />}
       {load.status === "loading" && <HonestState kind="empty" title={T.loading} />}
       {load.status === "ready" && profiles.length === 0 && <HonestState kind="empty" title={T.emptyTitle} hint={T.emptyHint} />}
+      {profiles.length > 0 && shown.length === 0 && (
+        <HonestState kind="empty" title={T.noneInFilter} action={{ label: T.showAll, onClick: () => setFilter(null) }} />
+      )}
       {shown.length > 0 && (
         <section className="ps-gallery" aria-label={T.gallery}>
           {shown.map((p) => <PersonaCard key={p.id} profile={p} profiles={profiles} />)}
