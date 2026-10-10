@@ -27,6 +27,54 @@ function walkTs(dir: string): string[] {
   return out;
 }
 
+function isKeyOrCodeAccess(expr: ts.Expression): boolean {
+  return (
+    ts.isPropertyAccessExpression(expr) &&
+    (expr.name.text === "key" || expr.name.text === "code")
+  );
+}
+
+/** KeyboardEvent name literals (`e.key === "Home"`, `case "Escape"` on `.key`). */
+function isKeyboardEventNameLiteral(node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral): boolean {
+  const parent = node.parent;
+  if (ts.isBinaryExpression(parent)) {
+    const op = parent.operatorToken.kind;
+    if (
+      op === ts.SyntaxKind.EqualsEqualsEqualsToken ||
+      op === ts.SyntaxKind.EqualsEqualsToken ||
+      op === ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+      op === ts.SyntaxKind.ExclamationEqualsToken
+    ) {
+      const other = parent.left === node ? parent.right : parent.left;
+      if (isKeyOrCodeAccess(other)) return true;
+    }
+  }
+  if (ts.isCaseClause(parent) && parent.expression === node) {
+    const switchStmt = parent.parent.parent;
+    if (ts.isSwitchStatement(switchStmt) && isKeyOrCodeAccess(switchStmt.expression)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isTypePositionLiteral(node: ts.Node): boolean {
+  return ts.isLiteralTypeNode(node.parent);
+}
+
+function isClassNameAttributeValue(node: ts.Node): boolean {
+  let cur: ts.Node | undefined = node;
+  while (cur) {
+    if (ts.isJsxAttribute(cur)) {
+      const name = cur.name;
+      return ts.isIdentifier(name) && name.text === "className";
+    }
+    if (ts.isSourceFile(cur)) break;
+    cur = cur.parent;
+  }
+  return false;
+}
+
 /** Collect string-like UI candidates via the TypeScript AST (JSX text, literals, template parts). */
 function collectCandidateStrings(source: string, fileName = "fixture.tsx"): string[] {
   const kind = fileName.endsWith(".ts") && !fileName.endsWith(".tsx")
@@ -47,11 +95,19 @@ function collectCandidateStrings(source: string, fileName = "fixture.tsx"): stri
     if (ts.isJsxText(node)) {
       pushJsxText(node.getText(sf));
     } else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      pushLiteral(node.text);
+      if (
+        !isKeyboardEventNameLiteral(node) &&
+        !isTypePositionLiteral(node) &&
+        !isClassNameAttributeValue(node)
+      ) {
+        pushLiteral(node.text);
+      }
     } else if (ts.isTemplateExpression(node)) {
-      pushLiteral(node.head.text);
-      for (const span of node.templateSpans) {
-        pushLiteral(span.literal.text);
+      if (!isClassNameAttributeValue(node)) {
+        pushLiteral(node.head.text);
+        for (const span of node.templateSpans) {
+          pushLiteral(span.literal.text);
+        }
       }
     }
     ts.forEachChild(node, visit);
