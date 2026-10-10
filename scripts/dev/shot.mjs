@@ -109,7 +109,8 @@ async function checkTab(page) {
 
 /** Capture light+dark shots (and optional tab check) for one route.
  *  `path` is the URL path to open (defaults to `route`). Fixture mode opens `/`
- *  and keeps `route` only for the PNG slug. */
+ *  and keeps `route` only for the PNG slug. With `variant`, `applied` reports the
+ *  glass style found on <html> per scheme ({ light, dark }). */
 export async function captureRoute({ base, route, path, outDir, checkTabOrder = false, variant = null }) {
   mkdirSync(outDir, { recursive: true });
   const slug = variant ? `${routeSlug(route)}-${variant}` : routeSlug(route);
@@ -118,7 +119,7 @@ export async function captureRoute({ base, route, path, outDir, checkTabOrder = 
   const browser = await chromium.launch({ headless: true });
   const files = [];
   let tab = null;
-  let applied = null;
+  const applied = {};
   try {
     for (const scheme of ["light", "dark"]) {
       const page = await browser.newPage({
@@ -134,7 +135,7 @@ export async function captureRoute({ base, route, path, outDir, checkTabOrder = 
         }, [VARIANT_KEY, variant]);
       }
       await page.goto(url, { waitUntil: "networkidle" });
-      if (variant) applied = await page.evaluate(() => document.documentElement.dataset.glassVariant ?? "glas");
+      if (variant) applied[scheme] = await page.evaluate(() => document.documentElement.dataset.glassVariant ?? "glas");
       if (checkTabOrder && scheme === "light") tab = await checkTab(page);
       const dest = join(outDir, `${slug}-${scheme}.png`);
       await page.screenshot({ path: dest, fullPage: false });
