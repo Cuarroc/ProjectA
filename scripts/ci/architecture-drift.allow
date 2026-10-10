@@ -248,7 +248,7 @@ RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!(
 RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!("projecta:worker{worker_id}:noskillpacksinstalled:{err}");
 RAW_APP_LOG	src-tauri/src/workers.rs	eprintln!("projecta:{err}");
 RAW_APP_LOG	src-tauri/src/workers/development.rs	eprintln!(
-RAW_EVENT_EMIT	src-tauri/src/main.rs	let_=notice_app.emit("supervisor:notification",notice);
+RAW_EVENT_EMIT	src-tauri/src/main.rs	let_=notice_app.emit(event_names::SUPERVISOR_NOTIFICATION,notice);
 RAW_TAURI_TRANSPORT	src/components/SettingsView.tsx	voidinvoke("plugin:process|restart").catch(()=>setRelaunchFailed(true));
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(api::planning_access::audit(&self.store,run,result,source_ref,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(workers::activation::Activation::status(&self.store,&workers::activation::NoMachineReadableEvidence,),)
