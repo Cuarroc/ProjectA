@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
 import AttentionInbox from "./components/AttentionInbox";
@@ -64,6 +64,9 @@ import {
   type UiThemeStyle,
 } from "./lib/settings";
 import { GOAL_LABELS, type AppGoal } from "./lib/goals";
+import { useFeatureFlag } from "./flags/useFeatureFlag";
+import { goalForPath } from "./shell/mount/routing";
+import type { LegacyRouteProps } from "./shell/mount/ShellMount";
 import type { InboxEntry } from "./lib/attentionInbox";
 import { shortTask } from "./lib/text";
 import { useOrchestratorChat } from "./lib/orchestratorChat";
@@ -157,7 +160,10 @@ function writeStoredProjectId(projectId: string | null): void {
   }
 }
 
-function AppContent() {
+// Loaded on demand so the Glass styles never reach the window while the preview is off.
+const ShellMount = lazy(() => import("./shell/mount/ShellMount"));
+
+function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) {
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
   // Setter stays local until the picker package wires Settings → here.
   const [themeStyle, setThemeStyle] = useState<UiThemeStyle>(loadUiThemeStyle);
@@ -167,6 +173,16 @@ function AppContent() {
   // "what is going on", not "which cards exist".
   const [goal, setGoal] = useState<AppGoal>("work");
   const [workSurface, setWorkSurface] = useState<"dialog" | "board">("dialog");
+  // Inside the Glass shell (V2-F9) the route picks the view and a view change updates the route.
+  const lastGoal = useRef(goal);
+  useEffect(() => {
+    if (routePath !== undefined) setGoal((current) => goalForPath(routePath, current));
+  }, [routePath]);
+  useEffect(() => {
+    if (lastGoal.current === goal) return;
+    lastGoal.current = goal;
+    onGoalRoute?.(goal);
+  }, [goal, onGoalRoute]);
   // Terminal or diff for the worker whose tab is in front. The choice outlives
   // a tab switch: reviewing two workers in a row should not need two clicks.
   const [detailView, setDetailView] = useState<WorkerDetailView>("terminal");
@@ -1520,9 +1536,16 @@ function AppContent() {
  * window. The default export keeps the name `App`, so main.tsx is untouched.
  */
 export default function App() {
+  const [preview] = useFeatureFlag("d1_neue_oberflaeche");
   return (
     <ErrorBoundary>
-      <AppContent />
+      {preview ? (
+        <Suspense fallback={null}>
+          <ShellMount>{(route) => <AppContent {...route} />}</ShellMount>
+        </Suspense>
+      ) : (
+        <AppContent />
+      )}
     </ErrorBoundary>
   );
 }
