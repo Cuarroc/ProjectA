@@ -10,6 +10,12 @@ interface HistoryViewProps {
 const POLL_INTERVAL_MS = 10_000;
 const MESSAGE_LIMIT = 200;
 
+/** One state value: hint vs empty vs list cannot depend on loading/loadFailed flush order. */
+type HistoryState =
+  | { status: "loading"; messages: WorkerMessage[] }
+  | { status: "ok"; messages: WorkerMessage[] }
+  | { status: "failed"; messages: WorkerMessage[] };
+
 /** A quiet empty state that looks intentional, not broken. */
 function EmptyHistory() {
   return (
@@ -34,9 +40,7 @@ function HistoryLoadHint() {
  * messages are loaded; once messages are shown, a failed poll leaves them be.
  */
 export default function HistoryView({ workerId }: HistoryViewProps) {
-  const [messages, setMessages] = useState<WorkerMessage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const [state, setState] = useState<HistoryState>({ status: "loading", messages: [] });
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingWorkersRef = useRef(new Set<string>());
@@ -54,23 +58,24 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
     try {
       const next = await listWorkerMessages(workerId, MESSAGE_LIMIT);
       if (activeWorkerRef.current === workerId) {
-        setMessages(next);
-        setLoadFailed(false);
+        setState({ status: "ok", messages: next });
       }
     } catch {
       // Keep the previous messages (if any); the next poll retries.
-      if (activeWorkerRef.current === workerId) setLoadFailed(true);
+      if (activeWorkerRef.current === workerId) {
+        setState((prev) =>
+          prev.messages.length > 0 ? prev : { status: "failed", messages: [] },
+        );
+      }
     } finally {
       pendingWorkersRef.current.delete(workerId);
     }
   }, [workerId]);
 
   useEffect(() => {
-    setMessages([]);
-    setLoadFailed(false);
+    setState({ status: "loading", messages: [] });
     userScrolledUp.current = false;
-    setLoading(true);
-    refresh().finally(() => setLoading(false));
+    void refresh();
   }, [workerId, refresh]);
 
   useEffect(() => {
@@ -84,7 +89,7 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
     if (!container) return;
     if (userScrolledUp.current) return;
     container.scrollTop = container.scrollHeight;
-  }, [messages.length]);
+  }, [state.messages.length]);
 
   const handleScroll = useCallback(() => {
     const container = scrollRef.current;
@@ -95,15 +100,13 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
 
   return (
     <div className="history-view">
-      {messages.length === 0 && !loading ? (
-        loadFailed ? (
-          <HistoryLoadHint />
-        ) : (
-          <EmptyHistory />
-        )
+      {state.status === "failed" ? (
+        <HistoryLoadHint />
+      ) : state.messages.length === 0 && state.status !== "loading" ? (
+        <EmptyHistory />
       ) : (
         <div className="history-list" ref={scrollRef} onScroll={handleScroll}>
-          {messages.map((message) => (
+          {state.messages.map((message) => (
             <div key={message.id} className={`history-entry history-entry-${message.role}`}>
               <span className="history-meta">
                 <span className="history-role">{roleLabel(message.role)}</span>
