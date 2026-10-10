@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, rm, writeFile, access } from 'node:fs/promises';
@@ -12,6 +13,7 @@ import { DeskStore } from './store.mjs';
 // The CLI entry has no drain-budget knob (drainTimeoutMs stays at its 5 s default and no flag may be added),
 // so the timeout case waits out the real budget (5 s + 1 s abort grace) with a notifier that never answers.
 const entry = fileURLToPath(new URL('./server.mjs', import.meta.url));
+const strongSecret = () => randomBytes(24).toString('hex');
 const posixOnly = process.platform === 'win32' ? 'SIGTERM is not delivered to Node on Windows' : false;
 const question = id => ({ id, title: 'T', context: 'C', owner: 'O', category: 'K', scope: 'S', source: 'Q', uncertainty: 'U',
   recommendation: { optionIds: ['a'], rationale: 'R' }, options: ['a', 'b'].map(o => ({ id: o, label: o, rationale: 'R', impact: 'I', tradeoff: 'T', effort: 'E', reversible: 'Y' })) });
@@ -34,7 +36,7 @@ async function startEntry(t, file, { webhook = false, args = [] } = {}) {
   for (let attempt = 1; ; attempt++) {
     const port = await freePort();
     const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-      DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+      DECISION_DESK_ROOT_RECEIPT_TOKEN: strongSecret(), DECISION_DESK_WEBHOOK_SECRET: strongSecret() };
     delete env.DECISION_DESK_WEBHOOK_URL;
     if (webhook) env.DECISION_DESK_WEBHOOK_URL = 'https://agentsroom.dev/api/triggers/t_abc123';
     const child = spawn(process.execPath, [...args, entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });

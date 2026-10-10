@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { createServer as createPortProbe } from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readdir, readFile, symlink, writeFile } from 'node:fs/promises';
@@ -12,7 +13,7 @@ import { DeskError, DeskStore } from './store.mjs';
 
 const ROOT = 'test-root-agent';
 const TOKEN = 'test-only-root-receipt-token-0123456789';
-const WEBHOOK = 'b'.repeat(32);
+const WEBHOOK = randomBytes(24).toString('hex');
 const serverFile = fileURLToPath(new URL('./server.mjs', import.meta.url));
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const repoState = fileURLToPath(new URL('../../state.json', import.meta.url));
@@ -86,7 +87,7 @@ test('the start is refused without a state path or root agent id and names only 
 test('the server entry refuses to start without token/webhook secret', async () => {
   const { statePath } = await ledger();
   const ready = { DECISION_DESK_STATE: statePath, DECISION_DESK_ROOT_AGENT_ID: ROOT,
-    DECISION_DESK_PORT: '65432', DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32) };
+    DECISION_DESK_PORT: '65432', DECISION_DESK_WEBHOOK_SECRET: WEBHOOK };
   for (const key of ['DECISION_DESK_ROOT_RECEIPT_TOKEN', 'DECISION_DESK_WEBHOOK_SECRET']) {
     for (const value of [undefined, '', 'short']) {
       const run = spawnSync(process.execPath, [serverFile], {
