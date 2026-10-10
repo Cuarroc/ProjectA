@@ -260,6 +260,139 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_ids_are_rejected_for_every_occurrence() {
+        let queue = [
+            task("a", &[], &[]),
+            task("b", &[], &[]),
+            task("a", &[], &[]),
+        ];
+        let doppelt = wartet("Auftrag a steht doppelt in der Warteschlange");
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [doppelt.clone(), QueueState::Startbar, doppelt]
+        );
+    }
+
+    #[test]
+    fn each_duplicate_id_gets_its_own_reason() {
+        let queue = [
+            task("a", &[], &[]),
+            task("b", &[], &[]),
+            task("a", &[], &[]),
+            task("b", &[], &[]),
+        ];
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [
+                wartet("Auftrag a steht doppelt in der Warteschlange"),
+                wartet("Auftrag b steht doppelt in der Warteschlange"),
+                wartet("Auftrag a steht doppelt in der Warteschlange"),
+                wartet("Auftrag b steht doppelt in der Warteschlange"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rejected_duplicate_takes_no_seam_and_holds_back_its_dependants() {
+        let queue = [
+            task("a", &[], &[Seam::Api]),
+            task("a", &[], &[Seam::Api]),
+            task("b", &["a"], &[]),
+            task("c", &[], &[Seam::Api]),
+        ];
+        let doppelt = wartet("Auftrag a steht doppelt in der Warteschlange");
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [
+                doppelt.clone(),
+                doppelt,
+                wartet("Vorgänger a ist noch offen"),
+                QueueState::Startbar,
+            ]
+        );
+    }
+
+    #[test]
+    fn duplicate_beats_cycle_missing_open_and_seam() {
+        let queue = [
+            task("a", &["a", "ghost"], &[Seam::Main]),
+            task("a", &["b"], &[Seam::Main]),
+            task("b", &[], &[]),
+        ];
+        let doppelt = wartet("Auftrag a steht doppelt in der Warteschlange");
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Main, "runner")]),
+            [doppelt.clone(), doppelt, QueueState::Startbar]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_cycle_before_missing() {
+        let queue = [task("a", &["ghost", "b"], &[]), task("b", &["a"], &[])];
+        let cycle = wartet("Zyklus: a → b → a");
+        assert_eq!(run(&queue, &[], &[]), [cycle.clone(), cycle]);
+    }
+
+    #[test]
+    fn reason_precedence_missing_before_open() {
+        // The open predecessor comes first in the list, the missing one wins.
+        let queue = [task("a", &[], &[]), task("c", &["a", "ghost"], &[])];
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [
+                QueueState::Startbar,
+                wartet("Vorgänger ghost fehlt in der Warteschlange")
+            ]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_open_before_seam() {
+        let queue = [task("a", &[], &[]), task("b", &["a"], &[Seam::Api])];
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Api, "runner")]),
+            [QueueState::Startbar, wartet("Vorgänger a ist noch offen")]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_cycle_before_seam() {
+        let queue = [
+            task("a", &["b"], &[Seam::Store]),
+            task("b", &["a"], &[Seam::Store]),
+        ];
+        let cycle = wartet("Zyklus: a → b → a");
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Store, "runner")]),
+            [cycle.clone(), cycle]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_all_four_at_once() {
+        // a <-> b is a cycle; b also lacks "ghost" and holds a seam that is
+        // busy; the cycle is what b reports. d lacks "ghost", waits for open
+        // "a" and wants a busy seam: missing wins. e waits for open "a" and
+        // wants the busy seam: open wins.
+        let queue = [
+            task("a", &["b"], &[]),
+            task("b", &["a", "ghost"], &[Seam::Api]),
+            task("d", &["a", "ghost"], &[Seam::Api]),
+            task("e", &["a"], &[Seam::Api]),
+        ];
+        let cycle = wartet("Zyklus: a → b → a");
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Api, "runner")]),
+            [
+                cycle.clone(),
+                cycle,
+                wartet("Vorgänger ghost fehlt in der Warteschlange"),
+                wartet("Vorgänger a ist noch offen"),
+            ]
+        );
+    }
+
+    #[test]
     fn dependency_cycle_waits_with_the_cycle_and_never_panics() {
         let queue = [
             task("a", &["b"], &[]),
