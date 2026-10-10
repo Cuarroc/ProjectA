@@ -1,5 +1,12 @@
 //! First-run repository scan: the facts the first-run screen shows about a
-//! repository path. Read-only, no `git` subprocess, no network.
+//! repository path. Read-only file reads: this module starts no process and
+//! uses no network (the `api.rs` command checks the git work tree first).
+//!
+//! Every file the scan reads is resolved first and must stay inside its base
+//! folder; a link that leads out counts as "not present", so the answer does
+//! not reveal whether the target exists. This is by design: a monorepo whose
+//! gate files are links to a shared folder outside the repository is
+//! under-detected (follow-up V2-FU-S11C: tell the user in the screen copy).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -8,9 +15,8 @@ use crate::preflight;
 
 /// What the scan found. Every field is a plain observation; absent means "not
 /// found", never "guessed".
-// V2-S11 (first-run screen) is the consumer; until it lands only tests call this.
-#[cfg_attr(not(test), allow(dead_code))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RepoScan {
     pub main_branch: Option<String>,
     pub has_gates_sh: bool,
@@ -22,51 +28,89 @@ pub struct RepoScan {
 }
 
 /// Scan the repository at `path`. Errors only when `path` is not a directory.
-#[cfg_attr(not(test), allow(dead_code))]
 pub fn scan_repo(path: &Path) -> Result<RepoScan, String> {
     if !path.is_dir() {
         return Err(format!("not a directory: {}", path.display()));
     }
-    let agents = fs::read_to_string(path.join("AGENTS.md")).ok();
+    let agents = read_inside(path, "AGENTS.md");
     Ok(RepoScan {
         main_branch: main_branch(path),
-        has_gates_sh: path.join("scripts/ci/gates.sh").is_file(),
-        has_mergify: path.join(".mergify.yml").is_file(),
+        has_gates_sh: resolve_inside(path, "scripts/ci/gates.sh").is_some_and(|p| p.is_file()),
+        has_mergify: resolve_inside(path, ".mergify.yml").is_some_and(|p| p.is_file()),
         has_agents_md: agents.is_some(),
         seam_files: agents.as_deref().map(parse_seam_files).unwrap_or_default(),
         free_ram_bytes: preflight::free_ram_bytes(),
     })
 }
 
-/// The git directory: `.git`, or the target of a worktree's `.git` file.
+/// Windows `canonicalize` yields `\\?\C:\x` / `\\?\UNC\srv\x`, which git and
+/// string comparisons against user-typed paths do not accept; other paths stay.
+pub(crate) fn strip_verbatim_prefix(path: &str) -> String {
+    if let Some(unc) = path.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{unc}")
+    } else if let Some(drive) = path.strip_prefix(r"\\?\") {
+        let is_drive = drive.as_bytes().get(1) == Some(&b':');
+        if is_drive {
+            drive.to_string()
+        } else {
+            path.to_string()
+        }
+    } else {
+        path.to_string()
+    }
+}
+
+pub(crate) fn simplified(path: &Path) -> PathBuf {
+    path.to_str().map_or_else(
+        || path.to_path_buf(),
+        |p| PathBuf::from(strip_verbatim_prefix(p)),
+    )
+}
+
+/// `base/rel` with every link resolved, only when it stays inside `base`.
+pub(crate) fn resolve_inside(base: &Path, rel: &str) -> Option<PathBuf> {
+    let base = simplified(&fs::canonicalize(base).ok()?);
+    let real = simplified(&fs::canonicalize(base.join(rel)).ok()?);
+    real.starts_with(&base).then_some(real)
+}
+
+/// Reads the resolved path, not `base/rel`, so a link swapped in after the
+/// check is not followed (only a swap inside the check-to-open gap remains).
+fn read_inside(base: &Path, rel: &str) -> Option<String> {
+    fs::read_to_string(resolve_inside(base, rel)?).ok()
+}
+
+/// The git directory: `.git`, or the target of a worktree's `.git` file. A
+/// linked worktree's gitdir lives outside the folder by design (git follows it
+/// too); `.git` itself must not be a link that leaves the folder.
 fn git_dir(repo: &Path) -> Option<PathBuf> {
-    let dot_git = repo.join(".git");
+    let dot_git = resolve_inside(repo, ".git")?;
     if dot_git.is_dir() {
         return Some(dot_git);
     }
     let text = fs::read_to_string(&dot_git).ok()?;
     let target = text.trim().strip_prefix("gitdir:")?.trim();
-    let dir = repo.join(target);
+    let dir = simplified(&fs::canonicalize(repo.join(target)).ok()?);
     dir.is_dir().then_some(dir)
 }
 
 fn main_branch(repo: &Path) -> Option<String> {
     let dir = git_dir(repo)?;
     // Refs live in the common dir when `dir` is a linked worktree's git dir.
-    let common = fs::read_to_string(dir.join("commondir"))
-        .ok()
-        .map(|rel| dir.join(rel.trim()))
-        .unwrap_or_else(|| dir.clone());
-    if let Ok(head) = fs::read_to_string(common.join("refs/remotes/origin/HEAD")) {
+    let common = read_inside(&dir, "commondir")
+        .and_then(|rel| fs::canonicalize(dir.join(rel.trim())).ok())
+        .map_or_else(|| dir.clone(), |c| simplified(&c));
+    if let Some(head) = read_inside(&common, "refs/remotes/origin/HEAD") {
         if let Some(name) = head.trim().strip_prefix("ref: refs/remotes/origin/") {
             if !name.is_empty() {
                 return Some(name.to_string());
             }
         }
     }
-    let packed = fs::read_to_string(common.join("packed-refs")).unwrap_or_default();
+    let packed = read_inside(&common, "packed-refs").unwrap_or_default();
     ["main", "master"].into_iter().find_map(|name| {
-        let loose = common.join("refs/heads").join(name).is_file();
+        let loose =
+            resolve_inside(&common, &format!("refs/heads/{name}")).is_some_and(|p| p.is_file());
         let branch_ref = format!("refs/heads/{name}");
         let in_packed = packed
             .lines()
@@ -282,5 +326,19 @@ mod tests {
         );
         let scan = scan_repo(dir.path()).unwrap();
         assert_eq!(scan.seam_files, ["src/api.rs", "build.rs"]);
+    }
+
+    #[test]
+    fn verbatim_prefixes_are_stripped_for_git_and_other_paths_stay() {
+        for (given, want) in [
+            (r"\\?\C:\x", r"C:\x"),
+            (r"\\?\UNC\srv\x", r"\\srv\x"),
+            (r"C:\x", r"C:\x"),
+            (r"\\srv\x", r"\\srv\x"),
+            ("/home/x", "/home/x"),
+            (r"\\?\Volume{1}\x", r"\\?\Volume{1}\x"),
+        ] {
+            assert_eq!(strip_verbatim_prefix(given), want, "{given}");
+        }
     }
 }
