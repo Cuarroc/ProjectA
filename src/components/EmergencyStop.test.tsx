@@ -83,4 +83,23 @@ describe("EmergencyStop", () => {
     await act(async () => vi.advanceTimersByTimeAsync(5000));
     expect(ipc.getEmergencyStop).toHaveBeenCalledTimes(2);
   });
+
+  it("keeps the classic lift button by default", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(true);
+    render(<EmergencyStop />);
+    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
+    expect(lift.className.split(/\s+/)).toEqual(["button-ghost"]);
+  });
+
+  it("renders the lift button as a Glass button with appearance glass and lifts the same way", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(true);
+    ipc.setEmergencyStop.mockResolvedValue(undefined);
+    render(<EmergencyStop appearance="glass" />);
+    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
+    expect(lift.className.split(/\s+/)).toContain("g-btn");
+    expect(lift.className).not.toContain("button-ghost");
+    fireEvent.click(lift);
+    expect(await screen.findByRole("button", { name: "Not-Aus auslösen" })).toBeTruthy();
+    expect(ipc.setEmergencyStop).toHaveBeenCalledWith(false);
+  });
 });
