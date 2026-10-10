@@ -1,6 +1,7 @@
 // scripts/lib/readme-version-bump.mjs <readme> <x.y.z>
 // Rewrites the "- **App-Version:** `vX.Y.Z`" line; exits 1 when it is missing
-// (String.replace would silently succeed). Called by scripts/release.cmd.
+// (String.replace would silently succeed). Run by hand in the version-bump
+// PR (template PR #922; docs/ci-lokal.md).
 import { readFileSync, writeFileSync } from "node:fs";
 
 const [file, version] = process.argv.slice(2);
