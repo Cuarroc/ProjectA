@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Segmented } from "../design/controls/Segmented";
+import { useT } from "../i18n/useT";
 import { GLASS_VARIANTS, useGlassVariant } from "../design/variants/useGlassVariant";
 import { GLASS_THEME_OPTIONS, loadGlassTheme, saveGlassTheme, type GlassTheme } from "./theme";
-import { MENU_LABEL, STYLE_LABEL, THEME_LABEL, VARIANT_LABELS } from "./texts";
+import { COMPACT_QUERY, STYLE_LABEL, THEME_LABEL, VARIANT_LABELS } from "./texts";
 
 const VARIANT_OPTIONS = GLASS_VARIANTS.map((value) => ({ value, label: VARIANT_LABELS[value] }));
-
-/** Below this viewport width the two segmented groups no longer fit next to Not-Aus and collapse into one menu. */
-export const COMPACT_QUERY = "(max-width: 1599px)";
 
 /** Live match of a media query; without `matchMedia` (old webviews, tests) it never matches. */
 function useMediaQuery(query: string): boolean {
@@ -35,6 +33,7 @@ function Groups() {
 
 /** One "Darstellung" button that opens the groups in a panel; Escape or a click outside closes it. */
 function CompactMenu() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -51,7 +50,7 @@ function CompactMenu() {
       onKeyDown={(e) => { if (e.key === "Escape" && open) { setOpen(false); button.current?.focus(); } }}
     >
       <button ref={button} type="button" className="g-app-menu__btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {MENU_LABEL}
+        {t("shell.appearance")}
       </button>
       {open ? <div className="g-app-menu__panel"><Groups /></div> : null}
     </div>

@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppearanceControl, COMPACT_QUERY } from "../AppearanceControl";
+import { AppearanceControl } from "../AppearanceControl";
+import { COMPACT_QUERY } from "../texts";
 import { Shell } from "../Shell";
 
 vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), describeError: String }));

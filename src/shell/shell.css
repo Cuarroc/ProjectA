@@ -47,7 +47,7 @@
 .g-shell-panel h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }
 .g-shell-note { color: var(--g-muted); max-width: 76ch; }
 .g-shell-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--g-tint); border: 1px solid var(--g-hair); max-width: 100%; overflow-x: auto; }
-/* Compact appearance: one button, the groups open in a panel under it (below COMPACT_QUERY in AppearanceControl). */
+/* Compact appearance: one button, the groups open in a panel under it (below COMPACT_QUERY in texts.ts). */
 .g-app-menu { position: relative; }
 .g-app-menu__btn {
   min-height: 44px; padding: 0 12px; border: 1px solid var(--g-line); border-radius: 12px; background: var(--g-tint);

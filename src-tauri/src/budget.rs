@@ -45,6 +45,9 @@ use crate::status::{RateWindowUsage, StatusEngine, StatusLineUsage};
 use crate::store::{now_unix_secs, Store, MSG_SYSTEM, SRC_BUDGET, STATUS_RUNNING};
 use crate::workers::{self, AgentControl};
 
+#[allow(dead_code)] // V2-B2a: core only, wired by the seam packages
+mod failover_rules;
+
 /// How often the watcher looks. Same beat as the other background pollers: a
 /// budget is a ceiling, not a stopwatch, and a minute of overshoot is cheaper
 /// than a poll that competes with the dispatcher.
