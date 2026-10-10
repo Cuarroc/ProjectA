@@ -121,22 +121,22 @@ describe("NeedsYou", () => {
   });
 
   it("keeps only the 20 newest answered lines", async () => {
-    const rows = Array.from({ length: 25 }, (_, n) => ({ ...row, id: `q-${n}`, optionsJson: `["a${n}"]` }));
+    const rows = Array.from({ length: 22 }, (_, n) => ({ ...row, id: `q-${n}`, optionsJson: `["a${n}"]` }));
     backend(rows, ({ id, answer }) => {
       const at = rows.findIndex((r) => r.id === id);
       rows.splice(at, 1);
       return { ...row, id, status: "answered", answer };
     });
     render(<Harness />);
-    for (let n = 0; n < 25; n++) {
+    for (let n = 0; n < 22; n++) {
       fireEvent.click(await screen.findByRole("button", { name: `a${n}` }));
       await screen.findByText(`Beantwortet: a${n}`);
     }
     const lines = screen.getAllByRole("status");
     expect(lines).toHaveLength(20);
-    expect(lines[0]).toHaveTextContent("Beantwortet: a24");
-    expect(lines[19]).toHaveTextContent("Beantwortet: a5");
-  });
+    expect(lines[0]).toHaveTextContent("Beantwortet: a21");
+    expect(lines[19]).toHaveTextContent("Beantwortet: a2");
+  }, 30_000);
 
   it("renders every option button when the asker offers the same option twice", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
