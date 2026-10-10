@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export type ToastTone = "info" | "ok" | "bad";
 
@@ -9,10 +9,13 @@ export interface ToastItem {
 }
 
 function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; onDismiss: (id: number) => void }) {
+  // Keep the latest callback in a ref so a new identity does not restart the countdown.
+  const dismiss = useRef(onDismiss);
+  useEffect(() => { dismiss.current = onDismiss; });
   useEffect(() => {
-    const timer = setTimeout(() => onDismiss(toast.id), ttl);
+    const timer = setTimeout(() => dismiss.current(toast.id), ttl);
     return () => clearTimeout(timer);
-  }, [toast.id, ttl, onDismiss]);
+  }, [toast.id, ttl]);
   return (
     <div className={`g-toast g-toast--${toast.tone}`} role={toast.tone === "bad" ? "alert" : "status"}>
       <span>{toast.text}</span>

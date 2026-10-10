@@ -44,6 +44,15 @@ describe("Tabs", () => {
     fireEvent.keyDown(items[0], { key: "End" });
     expect(items[2]).toHaveFocus();
   });
+
+  it("jumps to the first tab with Home", () => {
+    render(<Harness />);
+    const items = screen.getAllByRole("tab");
+    fireEvent.keyDown(items[0], { key: "End" });
+    fireEvent.keyDown(items[2], { key: "Home" });
+    expect(items[0]).toHaveFocus();
+    expect(items[0]).toHaveAttribute("aria-selected", "true");
+  });
 });
 
 describe("Sheet", () => {
@@ -78,6 +87,17 @@ describe("Sheet", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(opener).toHaveFocus();
   });
+
+  it("closes on a scrim mousedown but not on a mousedown inside the sheet", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Öffnen" }));
+    const dialog = screen.getByRole("dialog", { name: "Agent starten" });
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Eins" }));
+    fireEvent.mouseDown(dialog);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.mouseDown(dialog.parentElement as HTMLElement);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });
 
 describe("Toast", () => {
@@ -96,13 +116,35 @@ describe("Toast", () => {
     act(() => { vi.advanceTimersByTime(1000); });
     expect(screen.queryByRole("status")).toBeNull();
   });
+
+  it("keeps the countdown of a toast when another toast is added and the callback identity changes", () => {
+    vi.useFakeTimers();
+    const Harness = () => {
+      const [list, setList] = useState([{ id: 1, text: "Erste", tone: "ok" as const }]);
+      return (
+        <>
+          <button onClick={() => setList((l) => [...l, { id: 2, text: "Zweite", tone: "ok" as const }])}>Neu</button>
+          <ToastRegion toasts={list} ttl={1000} onDismiss={(id) => setList((l) => l.filter((t) => t.id !== id))} />
+        </>
+      );
+    };
+    render(<Harness />);
+    act(() => { vi.advanceTimersByTime(600); });
+    fireEvent.click(screen.getByRole("button", { name: "Neu" }));
+    expect(screen.getByText("Zweite")).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(500); });
+    expect(screen.queryByText("Erste")).toBeNull();
+    expect(screen.getByText("Zweite")).toBeInTheDocument();
+  });
 });
 
 describe("layout.css", () => {
   it("uses only defined tokens and no shadow on the selected tab and no animation for reduced motion", () => {
     const used = new Set(Array.from(css.matchAll(/var\((--g-[\w-]+)/g), (m) => m[1]));
     expect([...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-1|dur-2|ease)$/.test(n))).toEqual([]);
-    expect(css.split("}").find((r) => r.trim().startsWith('.g-tabs button[aria-selected="true"]'))).not.toMatch(/box-shadow|filter|gradient/);
+    const selected = /\.g-tabs button\[aria-selected="true"\]\s*\{([^}]*)\}/.exec(css);
+    expect(selected).not.toBeNull();
+    expect(selected?.[1]).not.toMatch(/box-shadow|filter|gradient/);
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce\)\s*\{[^@]*\.g-sheet[^}]*animation:\s*none/);
   });
 });
