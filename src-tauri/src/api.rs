@@ -2254,38 +2254,50 @@ pub fn parse_request(head: &str, body: String) -> Option<Request> {
 /// returns the facts of [`RepoScan`], never file contents. Errors are fixed
 /// sentences without the path.
 pub(crate) fn scan_setup_repo_at(path: &str) -> Result<RepoScan, String> {
-    let given = Path::new(path.trim());
-    if !given.is_absolute() {
+    use crate::setupgate::repo_scan::{resolve_inside, scan_repo, simplified};
+    // Trimmed for the emptiness check only: a folder name may end in a blank.
+    let given = Path::new(path);
+    if path.trim().is_empty() || !given.is_absolute() {
         return Err("the repository path must be absolute".to_string());
     }
+    // Without `\\?\`: git rejects it and the containment checks compare plain paths.
     let root = std::fs::canonicalize(given)
+        .map(|real| simplified(&real))
         .map_err(|_| "the repository folder does not exist or cannot be read".to_string())?;
     if !root.is_dir() {
         return Err("the chosen path is not a folder".to_string());
     }
-    if !root.join(".git").exists() {
+    // A `.git` link that leaves the folder is "not present", like in the scan.
+    if resolve_inside(&root, ".git").is_none() {
         return Err("the chosen folder is not the top of a git repository".to_string());
     }
     crate::worktree::ensure_git_repo(&root.to_string_lossy())
         .map_err(|_| "the chosen folder is not a usable git repository".to_string())?;
-    // `AGENTS.md` is the one file the scan parses; a link must not make it
-    // read something outside the repository.
-    if let Ok(agents) = std::fs::canonicalize(root.join("AGENTS.md")) {
-        if !agents.starts_with(&root) {
-            return Err("AGENTS.md points outside the repository".to_string());
-        }
+    scan_repo(&root).map_err(|_| "the repository scan failed".to_string())
+}
+
+/// How long the first-run screen waits for the scan (not the 5-minute setup
+/// command limit in `setupgate`: this is a few file reads and one `git` call).
+const SCAN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Run `job` off the calling thread and give up after `limit`. The thread
+/// itself cannot be cancelled and finishes in the background; only the wait ends.
+async fn scan_within<T: Send + 'static>(
+    limit: std::time::Duration,
+    job: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    let handle = tauri::async_runtime::spawn_blocking(job);
+    match tokio::time::timeout(limit, handle).await {
+        Err(_) => Err("the repository scan took too long".to_string()),
+        Ok(joined) => joined.map_err(|_| "the repository scan did not finish".to_string())?,
     }
-    crate::setupgate::repo_scan::scan_repo(&root)
-        .map_err(|_| "the repository scan failed".to_string())
 }
 
 /// Read-only: what the first-run screen shows about a repository folder.
 #[tauri::command]
 pub async fn scan_setup_repo(path: String) -> Result<RepoScan, String> {
     // File reads and one git child process: off the thread serving the UI.
-    tauri::async_runtime::spawn_blocking(move || scan_setup_repo_at(&path))
-        .await
-        .map_err(|e| format!("the repository scan did not finish: {e}"))?
+    scan_within(SCAN_TIMEOUT, move || scan_setup_repo_at(&path)).await
 }
 
 #[cfg(test)]
@@ -8052,16 +8064,68 @@ pub(crate) mod tests {
         assert!(scan_setup_repo_at(&format!("{root}/sub/..")).is_ok());
     }
 
+    /// Replace `rel` of the fixture by a link to `target`.
+    #[cfg(unix)]
+    fn relink(root: &Path, rel: &str, target: &Path) {
+        let link = root.join(rel);
+        if link.is_dir() {
+            std::fs::remove_dir_all(&link).unwrap();
+        } else {
+            std::fs::remove_file(&link).unwrap();
+        }
+        std::os::unix::fs::symlink(target, &link).unwrap();
+    }
+
     #[cfg(unix)]
     #[test]
-    fn scan_setup_repo_refuses_an_agents_md_that_points_outside_the_root() {
-        let dir = scan_fixture("scan-setup-link");
-        let outside = TempDir::new("scan-setup-outside");
-        std::fs::write(outside.path().join("secret.md"), "`/etc/passwd`\n").unwrap();
-        let link = dir.path().join("AGENTS.md");
-        std::fs::remove_file(&link).unwrap();
-        std::os::unix::fs::symlink(outside.path().join("secret.md"), &link).unwrap();
+    fn scan_setup_repo_does_not_follow_links_out_of_the_root() {
+        let outside = scan_fixture("scan-setup-outside");
+        let out = outside.path();
+        for rel in ["AGENTS.md", ".mergify.yml", "scripts"] {
+            let dir = scan_fixture("scan-setup-link");
+            relink(dir.path(), rel, &out.join(rel));
+            let scan = scan_setup_repo_at(dir.path().to_str().unwrap()).expect(rel);
+            let seen = match rel {
+                "AGENTS.md" => scan.has_agents_md || !scan.seam_files.is_empty(),
+                ".mergify.yml" => scan.has_mergify,
+                _ => scan.has_gates_sh,
+            };
+            assert!(!seen, "{rel} outside the root must count as not present");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn scan_setup_repo_refuses_a_dot_git_link_that_points_outside_the_root() {
+        let outside = scan_fixture("scan-setup-outside-git");
+        let dir = scan_fixture("scan-setup-link-git");
+        relink(dir.path(), ".git", &outside.path().join(".git"));
         let err = scan_setup_repo_at(dir.path().to_str().unwrap()).expect_err("must refuse");
         assert!(!err.contains(outside.path().to_str().unwrap()), "{err}");
+    }
+
+    #[test]
+    fn scan_setup_repo_scans_the_path_as_given_not_trimmed() {
+        let dir = TempDir::new("scan-setup-space");
+        // Legal on Unix: a folder name that ends in a blank.
+        let repo = crate::testutil::init_repo(&dir.path().join("repo "));
+        let given = format!("{}", repo.display());
+        assert!(given.ends_with(' '));
+        scan_setup_repo_at(&given).expect("the folder with the blank is the one picked");
+        assert!(scan_setup_repo_at(&format!("  {given}")).is_err());
+    }
+
+    #[test]
+    fn scan_within_gives_up_on_a_scan_that_outlives_its_limit() {
+        use std::time::Duration;
+        let slow = || {
+            std::thread::sleep(Duration::from_millis(600));
+            Ok(1)
+        };
+        let err = tauri::async_runtime::block_on(scan_within(Duration::from_millis(50), slow))
+            .expect_err("must time out");
+        assert_eq!(err, "the repository scan took too long");
+        let quick = tauri::async_runtime::block_on(scan_within(Duration::from_secs(5), || Ok(7)));
+        assert_eq!(quick, Ok(7));
     }
 }
