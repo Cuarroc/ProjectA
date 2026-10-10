@@ -106,6 +106,8 @@ describe("UT-P00 token foundation", () => {
     expect(resolveVar(dark, dark["space-1"])).toBe("2px");
     expect(resolveVar(dark, dark["space-3"])).toBe("6px");
     expect(resolveVar(dark, dark["space-5"])).toBe("10px");
+    expect(resolveVar(dark, dark["space-9"])).toBe("32px");
+    expect(resolveVar(dark, dark["space-10"])).toBe("40px");
     expect(resolveVar(dark, dark["space-control-y"])).toBe("6px");
     expect(resolveVar(dark, dark["space-control-x"])).toBe("12px");
     expect(resolveVar(dark, dark["space-row-y"])).toBe("6px");
