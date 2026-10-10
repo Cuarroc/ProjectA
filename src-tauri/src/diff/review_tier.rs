@@ -147,10 +147,17 @@ mod tests {
 
     #[test]
     fn review_tier_matches_shared_fixture() {
+        // Deliberate cross-tree include: the fixture lives in the frontend tree so
+        // both classifiers read one file. Monorepo, test cfg only: the crate is
+        // never packaged or built standalone.
         let rows: Vec<Row> =
             serde_json::from_str(include_str!("../../../src/lib/review-tier-fixture.json"))
                 .unwrap();
-        assert!(rows.len() > 30, "fixture must not shrink silently");
+        assert_eq!(
+            rows.len(),
+            53,
+            "fixture row count changed: update both tests"
+        );
         for row in rows {
             let paths: Vec<&str> = row.paths.iter().map(String::as_str).collect();
             assert_eq!(
