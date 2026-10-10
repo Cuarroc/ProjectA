@@ -4,6 +4,11 @@
 //! `Nutzer entscheidet` after three failed fix attempts. Every transition takes
 //! evidence values; nothing here runs a test, reads git or persists anything.
 //! A rejection carries one German sentence for the user.
+//!
+//! Shas are opaque and unordered here: the core only demands that a green fix
+//! run is at a commit other than the red proof (and other than any failing
+//! attempt). That the commit is actually newer on the branch is the caller's
+//! job (follow-up: V2-B14b).
 #![allow(dead_code)] // pure core; the first caller arrives with the Eingang/Bugs wiring
 
 /// Failed or rejected fix attempts before the user has to decide.
@@ -59,7 +64,8 @@ pub struct Rejection(pub String);
 pub struct Bug {
     state: BugState,
     red: Option<TestRun>,
-    /// Sha of the newest evidence for the red test; a fix must be newer.
+    /// Sha of the latest complete run of the red test (`red.sha` stays the
+    /// permanent anchor); a green fix run must be at neither.
     last_sha: String,
     attempts: u8,
 }
@@ -93,22 +99,27 @@ impl Bug {
         self.advance(BugState::Reproduziert, BugState::InArbeit)
     }
 
-    /// `In Arbeit -> Fix belegt`: the SAME test, exit code 0, at a newer sha.
-    /// Every rejected or failing run counts an attempt; the third moves the bug
-    /// to `Nutzer entscheidet`.
+    /// `In Arbeit -> Fix belegt`: the SAME test, exit code 0, at a sha other
+    /// than the red proof's and the latest failing run's.
+    /// Incomplete runs and runs of another test are refused without any state
+    /// change or attempt. Every other rejected or failing run counts an
+    /// attempt; the third moves the bug to `Nutzer entscheidet`.
     pub fn submit_fix(&mut self, run: TestRun) -> Result<BugState, Rejection> {
         if self.state != BugState::InArbeit {
             return Err(self.wrong_state());
         }
         let red = self.red.as_ref().expect("In Arbeit implies a red test");
-        let reason = if let Err(rejection) = check_complete(&run) {
-            rejection.0
-        } else if (&run.path, &run.name) != (&red.path, &red.name) {
-            format!("Ein anderer Test als „{}“ belegt den Fix nicht.", red.name)
-        } else if run.exit_code != 0 {
+        check_complete(&run)?;
+        if (&run.path, &run.name) != (&red.path, &red.name) {
+            return Err(Rejection(format!(
+                "Ein anderer Test als „{}“ belegt den Fix nicht.",
+                red.name
+            )));
+        }
+        let reason = if run.exit_code != 0 {
             format!("Der Test ist weiterhin rot (Exit-Code {}).", run.exit_code)
-        } else if run.sha == self.last_sha {
-            "Der grüne Lauf stammt nicht von einem neueren Stand.".into()
+        } else if run.sha == red.sha || run.sha == self.last_sha {
+            "Der grüne Lauf stammt nicht von einem anderen Stand als der rote Beweis.".into()
         } else {
             self.last_sha = run.sha;
             self.state = BugState::FixBelegt;
@@ -244,9 +255,14 @@ mod tests {
     fn green_run_of_a_different_test_does_not_prove_the_fix() {
         let mut bug = working();
         assert!(reason(bug.submit_fix(run("other", 0, "bbb"))).contains("anderer Test"));
-        assert_eq!((bug.state(), bug.attempts()), (BugState::InArbeit, 1));
-        assert!(reason(bug.submit_fix(run("t", 0, "aaa"))).contains("neueren Stand"));
-        assert_eq!(bug.attempts(), 2);
+        assert_eq!((bug.state(), bug.attempts()), (BugState::InArbeit, 0));
+        let message = reason(bug.submit_fix(run("t", 0, "aaa")));
+        assert!(
+            message.contains("anderen Stand als der rote Beweis"),
+            "{message}"
+        );
+        assert!(!message.contains("neuer"), "{message}");
+        assert_eq!(bug.attempts(), 1);
     }
 
     #[test]
@@ -261,7 +277,7 @@ mod tests {
     fn three_failed_fixes_hand_over_to_the_user() {
         let mut bug = working();
         bug.submit_fix(run("t", 1, "b")).unwrap_err();
-        bug.submit_fix(run("other", 0, "c")).unwrap_err();
+        bug.submit_fix(run("t", 0, "aaa")).unwrap_err();
         assert!(reason(bug.submit_fix(run("t", 1, "d"))).contains("entscheidet der Nutzer"));
         assert_eq!(
             (bug.state(), bug.attempts()),
