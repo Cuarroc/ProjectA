@@ -2,11 +2,19 @@
 //! its department, and an agent never widens its own rights.
 //!
 //! [`check_change`] is the one gate for changing a persona's [`Rechte`].
-//! Removing rights always passes. Adding rights passes only for a user, only
-//! inside the department ceiling, and never for [`Recht::Mergen`] on an agent
-//! persona: merging goes through the Mergify queue alone. An agent that asks
-//! for more rights is refused whoever the persona is, because the check cannot
-//! tell a lie about "own" from the truth and a refusal costs nothing.
+//! Adding rights passes only for a user, only inside the department ceiling,
+//! and never for [`Recht::Mergen`] on an agent persona: merging goes through the
+//! Mergify queue alone, and an agent persona that still holds it must lose it
+//! in the same change. An agent that asks for more rights is refused whoever
+//! the persona is, because the check cannot tell a lie about "own" from the
+//! truth and a refusal costs nothing. An agent may always narrow.
+//!
+//! **Trusted user path.** [`Anfrager`] has no public variants: a user request is
+//! built only by [`Anfrager::nutzer_aus_oberflaeche`], which needs an
+//! [`OberflaechenBeleg`]. That proof is minted in exactly one place,
+//! [`OberflaechenBeleg::aus_klick`], and only the handler of a real UI click
+//! may call it. Data an agent supplied (a tool call, a CLI argument, a request
+//! body) must never reach it; at wiring time that call site is the one to review.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -55,10 +63,39 @@ pub struct Persona {
     pub rechte: Rechte,
 }
 
-/// Who asks for the change.
-pub enum Anfrager {
+/// Zero-sized proof that a request came from a UI click. Not `Clone`: one
+/// click, one proof. The private field stops construction outside this module.
+#[derive(Debug)]
+pub struct OberflaechenBeleg(());
+
+impl OberflaechenBeleg {
+    /// The one place a proof is minted. Call it only from the handler of a
+    /// real UI click, never from agent-supplied data (see the module doc).
+    pub(crate) fn aus_klick() -> Self {
+        Self(())
+    }
+}
+
+/// Who asks for the change; built only through the constructors below.
+pub struct Anfrager(Quelle);
+
+enum Quelle {
     Nutzer,
     Agent { persona_id: String },
+}
+
+impl Anfrager {
+    /// The user, proven by a UI click.
+    pub fn nutzer_aus_oberflaeche(_beleg: OberflaechenBeleg) -> Self {
+        Self(Quelle::Nutzer)
+    }
+
+    /// An agent acting for the persona `persona_id`; it can never widen.
+    pub fn agent(persona_id: impl Into<String>) -> Self {
+        Self(Quelle::Agent {
+            persona_id: persona_id.into(),
+        })
+    }
 }
 
 /// Why a change was refused.
@@ -68,6 +105,7 @@ pub enum Ablehnung {
     AgentErweitertSichSelbst,
     AgentVergibtRechte,
     MergenNurUeberMergify,
+    AgentPersonaHaeltMergen,
 }
 
 impl fmt::Display for Ablehnung {
@@ -87,34 +125,50 @@ impl fmt::Display for Ablehnung {
             Ablehnung::MergenNurUeberMergify => f.write_str(
                 "Mergen wird einer Agent-Persona nie gewährt; gemergt wird nur über Mergify.",
             ),
+            Ablehnung::AgentPersonaHaeltMergen => {
+                f.write_str("Agent-Persona hält noch Mergen – zuerst entfernen")
+            }
         }
     }
 }
 
 /// May `anfrager` set `persona` to `neue_rechte` inside `abteilung`?
 ///
-/// Order matters: a pure removal passes before anything else is looked at, so
-/// a persona that is already too wide can always be narrowed. For a widening
-/// the actor comes first, then the Mergen rule, then the ceiling (checked
-/// against the whole new set, so the result is valid, not just the delta).
+/// An unchanged set passes. An agent may only narrow (any pure removal
+/// passes), everything else it asks is refused. For the user the Mergen rule
+/// comes first: an agent persona never ends up holding Mergen, so a newly
+/// granted one and a retained one are refused, each with its own reason. Then
+/// a pure removal passes, so a persona that is already too wide can always be
+/// narrowed; a widening is checked against the ceiling as a whole new set, so
+/// the result is valid, not just the delta.
 pub fn check_change(
     anfrager: &Anfrager,
     persona: &Persona,
     neue_rechte: &Rechte,
     abteilung: &Abteilung,
 ) -> Result<(), Ablehnung> {
-    if neue_rechte.is_subset(&persona.rechte) {
+    if *neue_rechte == persona.rechte {
         return Ok(());
     }
-    if let Anfrager::Agent { persona_id } = anfrager {
-        return Err(if *persona_id == persona.id {
-            Ablehnung::AgentErweitertSichSelbst
+    let nur_entfernt = neue_rechte.is_subset(&persona.rechte);
+    if let Quelle::Agent { persona_id } = &anfrager.0 {
+        return if nur_entfernt {
+            Ok(())
+        } else if *persona_id == persona.id {
+            Err(Ablehnung::AgentErweitertSichSelbst)
         } else {
-            Ablehnung::AgentVergibtRechte
-        });
+            Err(Ablehnung::AgentVergibtRechte)
+        };
     }
     if persona.ist_agent && neue_rechte.contains(&Recht::Mergen) {
-        return Err(Ablehnung::MergenNurUeberMergify);
+        return Err(if persona.rechte.contains(&Recht::Mergen) {
+            Ablehnung::AgentPersonaHaeltMergen
+        } else {
+            Ablehnung::MergenNurUeberMergify
+        });
+    }
+    if nur_entfernt {
+        return Ok(());
     }
     match neue_rechte.difference(&abteilung.obergrenze).next() {
         Some(&recht) => Err(Ablehnung::UeberAbteilung {
@@ -149,15 +203,17 @@ mod tests {
     }
 
     fn agent(id: &str) -> Anfrager {
-        Anfrager::Agent {
-            persona_id: id.into(),
-        }
+        Anfrager::agent(id)
+    }
+
+    fn nutzer() -> Anfrager {
+        Anfrager::nutzer_aus_oberflaeche(OberflaechenBeleg::aus_klick())
     }
 
     #[test]
     fn persona_above_department_is_rejected_naming_the_right() {
         let err = check_change(
-            &Anfrager::Nutzer,
+            &nutzer(),
             &persona(false, &[Recht::Lesen]),
             &rechte(&[Recht::Lesen, Recht::Server]),
             &abteilung(),
@@ -207,7 +263,7 @@ mod tests {
     #[test]
     fn user_widening_within_the_ceiling_is_ok() {
         let ok = check_change(
-            &Anfrager::Nutzer,
+            &nutzer(),
             &persona(true, &[Recht::Lesen]),
             &rechte(&[Recht::Lesen, Recht::Schreiben, Recht::Pushen]),
             &abteilung(),
@@ -219,7 +275,7 @@ mod tests {
     fn removal_is_always_ok() {
         let wide = persona(true, &[Recht::Lesen, Recht::Server, Recht::Mergen]);
         let narrower = rechte(&[Recht::Lesen, Recht::Server]);
-        for who in [Anfrager::Nutzer, agent("p1"), agent("p2")] {
+        for who in [nutzer(), agent("p1"), agent("p2")] {
             assert_eq!(check_change(&who, &wide, &narrower, &abteilung()), Ok(()));
             assert_eq!(
                 check_change(&who, &wide, &Rechte::new(), &abteilung()),
@@ -231,7 +287,7 @@ mod tests {
     #[test]
     fn merge_on_an_agent_persona_is_rejected_with_its_own_reason() {
         let err = check_change(
-            &Anfrager::Nutzer,
+            &nutzer(),
             &persona(true, &[Recht::Lesen]),
             &rechte(&[Recht::Lesen, Recht::Mergen]),
             &abteilung(),
@@ -243,7 +299,7 @@ mod tests {
 
     #[test]
     fn merge_on_a_non_agent_persona_follows_the_ceiling() {
-        let who = Anfrager::Nutzer;
+        let who = nutzer();
         let p = persona(false, &[Recht::Lesen]);
         let new = rechte(&[Recht::Lesen, Recht::Mergen]);
         assert_eq!(check_change(&who, &p, &new, &abteilung()), Ok(()));
@@ -263,9 +319,132 @@ mod tests {
     #[test]
     fn unchanged_rights_pass_even_when_the_persona_is_already_too_wide() {
         let p = persona(false, &[Recht::Lesen, Recht::Server]);
+        assert_eq!(check_change(&nutzer(), &p, &p.rechte, &abteilung()), Ok(()));
+    }
+
+    #[test]
+    fn swap_by_an_agent_is_rejected_as_a_widening() {
+        let p = persona(true, &[Recht::Lesen, Recht::Schreiben]);
+        let swapped = rechte(&[Recht::Lesen, Recht::Pushen]);
         assert_eq!(
-            check_change(&Anfrager::Nutzer, &p, &p.rechte, &abteilung()),
+            check_change(&agent("p1"), &p, &swapped, &abteilung()),
+            Err(Ablehnung::AgentErweitertSichSelbst)
+        );
+        assert_eq!(
+            check_change(&agent("p2"), &p, &swapped, &abteilung()),
+            Err(Ablehnung::AgentVergibtRechte)
+        );
+    }
+
+    #[test]
+    fn swap_by_the_user_to_an_over_ceiling_right_is_rejected() {
+        let err = check_change(
+            &nutzer(),
+            &persona(false, &[Recht::Lesen, Recht::Schreiben]),
+            &rechte(&[Recht::Lesen, Recht::Server]),
+            &abteilung(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            Ablehnung::UeberAbteilung {
+                recht: Recht::Server,
+                abteilung: "Entwicklung".into()
+            }
+        );
+    }
+
+    #[test]
+    fn narrowing_an_agent_persona_that_keeps_merge_names_the_retained_merge() {
+        let p = persona(true, &[Recht::Lesen, Recht::Schreiben, Recht::Mergen]);
+        let err = check_change(
+            &nutzer(),
+            &p,
+            &rechte(&[Recht::Lesen, Recht::Mergen]),
+            &abteilung(),
+        )
+        .unwrap_err();
+        assert_eq!(err, Ablehnung::AgentPersonaHaeltMergen);
+        assert_eq!(
+            err.to_string(),
+            "Agent-Persona hält noch Mergen – zuerst entfernen"
+        );
+        // Adding another right while Mergen stays is the same cause, not "newly granted".
+        let wider = rechte(&[Recht::Lesen, Recht::Schreiben, Recht::Pushen, Recht::Mergen]);
+        assert_eq!(
+            check_change(&nutzer(), &p, &wider, &abteilung()),
+            Err(Ablehnung::AgentPersonaHaeltMergen)
+        );
+        // Dropping Mergen (with or without other changes) passes.
+        let dropped = rechte(&[Recht::Lesen]);
+        assert_eq!(check_change(&nutzer(), &p, &dropped, &abteilung()), Ok(()));
+    }
+
+    #[test]
+    fn an_agent_may_always_narrow_its_persona_even_keeping_merge() {
+        let p = persona(true, &[Recht::Lesen, Recht::Schreiben, Recht::Mergen]);
+        let narrower = rechte(&[Recht::Lesen, Recht::Mergen]);
+        assert_eq!(
+            check_change(&agent("p1"), &p, &narrower, &abteilung()),
             Ok(())
         );
+    }
+
+    #[test]
+    fn every_right_has_a_name_and_a_ceiling_check() {
+        // The exhaustive match breaks the build when a variant is added: extend ALLE then.
+        fn name(r: Recht) -> &'static str {
+            match r {
+                Recht::Lesen => "Lesen",
+                Recht::Schreiben => "Schreiben",
+                Recht::Pushen => "Pushen",
+                Recht::PrOeffnen => "PR öffnen",
+                Recht::Mergen => "Mergen",
+                Recht::Netz => "Netz",
+                Recht::Server => "Server",
+                Recht::Geheimnisse => "Geheimnisse",
+            }
+        }
+        const ALLE: [Recht; 8] = [
+            Recht::Lesen,
+            Recht::Schreiben,
+            Recht::Pushen,
+            Recht::PrOeffnen,
+            Recht::Mergen,
+            Recht::Netz,
+            Recht::Server,
+            Recht::Geheimnisse,
+        ];
+        assert_eq!(ALLE.iter().copied().collect::<Rechte>().len(), ALLE.len());
+        let leer = Abteilung {
+            name: "Leer".into(),
+            obergrenze: Rechte::new(),
+        };
+        for r in ALLE {
+            assert_eq!(r.name(), name(r));
+            let neu = rechte(&[r]);
+            let voll = Abteilung {
+                name: "Voll".into(),
+                obergrenze: neu.clone(),
+            };
+            let err = check_change(&nutzer(), &persona(false, &[]), &neu, &leer);
+            assert_eq!(
+                err,
+                Err(Ablehnung::UeberAbteilung {
+                    recht: r,
+                    abteilung: "Leer".into()
+                })
+            );
+            assert!(err.unwrap_err().to_string().contains(name(r)));
+            let human = check_change(&nutzer(), &persona(false, &[]), &neu, &voll);
+            assert_eq!(human, Ok(()));
+            let agent_p = check_change(&nutzer(), &persona(true, &[]), &neu, &voll);
+            let want = if r == Recht::Mergen {
+                Err(Ablehnung::MergenNurUeberMergify)
+            } else {
+                Ok(())
+            };
+            assert_eq!(agent_p, want);
+        }
     }
 }
