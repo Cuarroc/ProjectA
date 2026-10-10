@@ -39,6 +39,16 @@ describe("Input and Select", () => {
     expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
+  it("renders the compact select with the small height class", () => {
+    render(<Select aria-label="Size" compact><option>A</option></Select>);
+    expect(screen.getByRole("combobox", { name: "Size" })).toHaveClass("g-inp", "g-inp--sm");
+  });
+
+  it("marks a mono textarea with the mono class", () => {
+    render(<Textarea aria-label="Log" mono />);
+    expect(screen.getByRole("textbox", { name: "Log" })).toHaveClass("g-inp--area", "g-inp--mono");
+  });
+
   it("paints invalid and disabled states and a focus ring and keeps width 100% inside its cell", () => {
     expect(rule(".g-inp")).toMatch(/box-sizing:\s*border-box/);
     expect(css).toMatch(/\.g-inp\[aria-invalid="true"\]\s*\{[^}]*--g-danger-line/);
@@ -59,6 +69,35 @@ describe("Kbd, Avatar and Lamp", () => {
     expect(screen.getByText("AB")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByText("AB")).toHaveClass("g-ava", "g-ava--lg", "g-ava--c3");
     expect(screen.getByRole("img", { name: "Lead agent" })).toHaveClass("g-ava--lead");
+  });
+
+  it("maps the owner and sys tones to their classes", () => {
+    render(<><Avatar initials="OW" tone="owner" /><Avatar initials="SY" tone="sys" /></>);
+    expect(screen.getByText("OW")).toHaveClass("g-ava--owner");
+    expect(screen.getByText("SY")).toHaveClass("g-ava--sys");
+  });
+
+  it("keeps a labelled avatar named when the caller passes aria-hidden or its own role", () => {
+    render(<Avatar initials="X" label="Agent X" aria-hidden role="presentation" aria-label="other" />);
+    const ava = screen.getByRole("img", { name: "Agent X" });
+    expect(ava).not.toHaveAttribute("aria-hidden");
+  });
+
+  it("keeps a decorative avatar hidden when the caller passes a role or name", () => {
+    render(<Avatar initials="Y" role="img" aria-label="loud" />);
+    const ava = screen.getByText("Y");
+    expect(ava).toHaveAttribute("aria-hidden", "true");
+    expect(ava).not.toHaveAttribute("role");
+    expect(ava).not.toHaveAttribute("aria-label");
+  });
+
+  it("keeps a labelled lamp named and a decorative lamp hidden whatever the caller passes", () => {
+    render(<><Lamp label="Online" aria-hidden role="presentation" /><Lamp aria-label="loud" role="img" data-testid="deco" /></>);
+    expect(screen.getByRole("img", { name: "Online" })).not.toHaveAttribute("aria-hidden");
+    const deco = screen.getByTestId("deco");
+    expect(deco).toHaveAttribute("aria-hidden", "true");
+    expect(deco).not.toHaveAttribute("aria-label");
+    expect(deco).not.toHaveAttribute("role");
   });
 
   it("gives every lamp state a shape besides its colour", () => {
@@ -83,6 +122,16 @@ describe("Meter", () => {
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "100");
     rerender(<Meter aria-label="Quota" value={Number.NaN} />);
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "0");
+  });
+});
+
+describe("Meter a11y", () => {
+  it("keeps the computed range and value when the caller passes aria-value attributes", () => {
+    render(<Meter aria-label="Quota" value={50} aria-valuenow={999} aria-valuemin={-5} aria-valuemax={7} />);
+    const m = screen.getByRole("meter", { name: "Quota" });
+    expect(m).toHaveAttribute("aria-valuenow", "50");
+    expect(m).toHaveAttribute("aria-valuemin", "0");
+    expect(m).toHaveAttribute("aria-valuemax", "100");
   });
 });
 

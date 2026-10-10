@@ -10,6 +10,9 @@ export interface LampProps extends HTMLAttributes<HTMLSpanElement> {
 
 /** Colour never carries the state alone: warn is a diamond, busy a ring, bad a triangle. */
 export function Lamp({ state = "ok", label, className, ...rest }: LampProps) {
-  const a11y = label ? { role: "img", "aria-label": label } : { "aria-hidden": true };
-  return <span className={["g-lamp", state !== "ok" && `g-lamp--${state}`, className].filter(Boolean).join(" ")} {...a11y} {...rest} />;
+  // Spread after rest: the label alone decides the accessibility, a caller cannot override it.
+  const a11y = label
+    ? { role: "img", "aria-label": label, "aria-hidden": undefined }
+    : { role: undefined, "aria-label": undefined, "aria-hidden": true };
+  return <span className={["g-lamp", state !== "ok" && `g-lamp--${state}`, className].filter(Boolean).join(" ")} {...rest} {...a11y} />;
 }
