@@ -27,7 +27,8 @@
 .g-shell-link[aria-current="page"] .g-shell-ic { stroke: var(--g-accent); }
 @media (hover: hover) and (pointer: fine) { .g-shell-link:hover { background: var(--g-tint); } }
 .g-shell-main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.g-shell-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; }
+.g-shell-top { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 8px; position: relative; z-index: 2; }
+.g-shell-top > :is(.g-shell-pick, .g-shell-divider, .g-seg, .g-app-menu) { flex: none; }
 .g-shell-spacer { flex: 1 1 0; }
 .g-shell-divider { width: 1px; height: 24px; background: var(--g-line); margin: 0 4px; }
 .g-shell-pick {
@@ -35,12 +36,25 @@
   background: transparent; color: var(--g-muted); font: 600 13px/1.3 var(--g-font-sans); cursor: not-allowed;
 }
 /* EmergencyStop is reused unchanged; this only compacts its old-UI markup into the bar. */
+.g-shell-estop { flex: 0 .1 auto; min-width: 0; }
 .g-shell-estop .settings-field { display: flex; flex-wrap: nowrap; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
 .g-shell-estop .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.g-shell-estop .settings-hint { max-width: 28ch; margin: 0; font-size: 11px; line-height: 1.3; color: var(--g-muted); }
+.g-shell-estop .settings-hint { max-width: 28ch; min-width: 8ch; margin: 0; font-size: 11px; line-height: 1.3; color: var(--g-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-shell-estop .settings-port-row, .g-shell-estop button { flex: none; white-space: nowrap; }
 .g-shell-estop button { min-height: 44px; }
 .g-shell-content { flex: 1; min-width: 0; display: flex; }
 .g-shell-panel { flex: 1; padding: var(--g-pad); display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .g-shell-panel h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }
 .g-shell-note { color: var(--g-muted); max-width: 76ch; }
 .g-shell-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--g-tint); border: 1px solid var(--g-hair); max-width: 100%; overflow-x: auto; }
+/* Compact appearance: one button, the groups open in a panel under it (below COMPACT_QUERY in AppearanceControl). */
+.g-app-menu { position: relative; }
+.g-app-menu__btn {
+  min-height: 44px; padding: 0 12px; border: 1px solid var(--g-line); border-radius: 12px; background: var(--g-tint);
+  color: var(--g-ink2); font: 500 13px/1 var(--g-font-sans); cursor: pointer;
+}
+.g-app-menu__btn[aria-expanded="true"] { background: var(--g-tint-hi); color: var(--g-ink); }
+.g-app-menu__panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 3; width: max-content; display: flex; flex-direction: column; gap: 8px; padding: 8px;
+  border: 1px solid var(--g-line); border-radius: var(--g-r-card); background: var(--g-ground); box-shadow: var(--g-shadow-pop);
+}

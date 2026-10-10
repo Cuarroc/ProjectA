@@ -3,6 +3,8 @@
 import type { GlassVariant } from "../design/variants/useGlassVariant";
 
 export const STYLE_LABEL = "Stil";
+export const THEME_LABEL = "Farbschema";
+export const MENU_LABEL = "Darstellung";
 
 export const VARIANT_LABELS: Record<GlassVariant, string> = {
   glas: "Glas", klar: "Klar", nebel: "Nebel", abend: "Abend",
