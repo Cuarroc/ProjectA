@@ -100,7 +100,7 @@ Denkraum auf die neue Fassung umzustellen folgt einem getrennten Runbook.
 ## Status und Grenzen
 
 - **App-Version:** `v1.6.0` – diese Version baut der Quellcode auf `main`.
-- **Veröffentlicht:** zuletzt `v1.5.1`.
+- **Veröffentlicht:** zuletzt `v1.6.0` (Beta, 10.10.2026).
   Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
 - Aktives persönliches Projekt. Windows ist das einzige paketierte Ziel.
   Plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
