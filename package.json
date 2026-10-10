@@ -29,7 +29,7 @@
     "hq:live": "node scripts/hq-live.mjs",
     "test:hq": "node --import ./scripts/lib/test-tmp-env.mjs --test scripts/lib/*.test.mjs",
     "test:denkraum": "node --import ./scripts/lib/test-tmp-env.mjs --test \"tools/denkraum/**/*.test.mjs\" && playwright test -c tools/denkraum/playwright.config.mjs && node tools/denkraum/hygiene-check.mjs",
-    "test:hq:visual": "node --test scripts/lib/hq-visual.browser.mjs",
+    "test:hq:visual": "node --import ./scripts/lib/test-tmp-env.mjs --test scripts/lib/hq-visual.browser.mjs",
     "tauri": "tauri",
     "hq:lesson": "node scripts/hq-lesson.mjs",
     "hq:queue-open-points": "node scripts/hq-queue-open-points.mjs",

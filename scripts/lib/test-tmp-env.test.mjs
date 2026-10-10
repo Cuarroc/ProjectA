@@ -53,9 +53,36 @@ test('test-tmp preload cleans up when the test process fails', () => {
   assert.deepEqual(left, []);
 });
 
-test('node test runners for scripts/lib and tools/denkraum load the temp-dir preload', () => {
+test('test-tmp preload removes a sandbox that holds an unreadable (mode 000) directory', { skip: process.platform === 'win32' && 'chmod 000 has no effect on Windows' }, () => {
+  const { run, left } = runWithPreload(`
+    const fs = require('node:fs'); const os = require('node:os'); const path = require('node:path');
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'locked-'));
+    fs.mkdirSync(path.join(d, 'inner', 'deep'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'inner', 'f'), 'x');
+    fs.chmodSync(path.join(d, 'inner', 'deep'), 0o000);
+    fs.chmodSync(path.join(d, 'inner'), 0o000);
+    console.log(d);
+  `);
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(left, [], 'sandbox with mode-000 subdirectories is removed');
+  assert.equal(existsSync(run.stdout.trim()), false);
+});
+
+// A forgotten `--import` silently brings the leak back, so every node test
+// runner in package.json is checked, not a hand-picked list.
+test('every node --test script in package.json loads the temp-dir preload', () => {
   const scripts = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts;
-  for (const name of ['test:hq', 'test:denkraum']) {
-    assert.ok(scripts[name].includes(`--import ${PRELOAD}`), `${name} must run node --test with --import ${PRELOAD}`);
+  const runners = [];
+  for (const [name, cmd] of Object.entries(scripts)) {
+    for (const part of cmd.split('&&')) {
+      if (/\bnode\b[^&|]*\s--test\b/.test(part)) runners.push([name, part]);
+    }
+  }
+  const names = runners.map(([name]) => name);
+  for (const expected of ['test:hq', 'test:denkraum', 'test:hq:visual']) {
+    assert.ok(names.includes(expected), `${expected} runs node --test (guard would be vacuous otherwise)`);
+  }
+  for (const [name, part] of runners) {
+    assert.ok(part.includes(`--import ${PRELOAD}`), `${name} must run node --test with --import ${PRELOAD}`);
   }
 });

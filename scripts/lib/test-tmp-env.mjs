@@ -5,7 +5,9 @@ import { mkdtempSync, rmSync, chmodSync, readdirSync, lstatSync, realpathSync } 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const sandbox = mkdtempSync(join(realpathSync(tmpdir()), 'pa-test-'));
+let base = tmpdir();
+try { base = realpathSync(base); } catch { /* keep the unresolved path */ }
+const sandbox = mkdtempSync(join(base, 'pa-test-'));
 process.env.TMPDIR = process.env.TMP = process.env.TEMP = sandbox;
 
 // A test may leave a mode-000 dir behind; make it removable first.
@@ -22,4 +24,7 @@ function unlock(dir) {
 process.on('exit', () => {
   try { rmSync(sandbox, { recursive: true, force: true }); } catch { unlock(sandbox); try { rmSync(sandbox, { recursive: true, force: true }); } catch { /* leave it */ } }
 });
+// Without a handler Node dies on SIGINT/SIGTERM without running 'exit' listeners,
+// which would leak the sandbox; exiting with the conventional 128+n code runs them.
+// `once`, so a second signal still terminates immediately.
 for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143]]) process.once(sig, () => process.exit(code));
