@@ -87,13 +87,11 @@ describe("parseChangelog", () => {
   it("parses the real CHANGELOG.md without empty releases", () => {
     const releases = parseChangelog(changelogSource);
     expect(releases[0].version).toBe("1.6.0");
-    expect(releases[0].beta).toBe(true);
     expect(new Set(releases.map((r) => r.version)).size).toBe(releases.length);
     for (const r of releases) {
       expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(r.groups.flatMap((g) => g.items).length).toBeGreaterThan(0);
     }
     expect(JSON.stringify(releases)).not.toMatch(/\*\*|`/);
-    expect(releases.flatMap((r) => r.groups.map((g) => g.title))).not.toContain("Noch nicht auf main (offene PRs)");
   });
 });

@@ -453,13 +453,14 @@ fi
 real_spec="$(cd "$HERE" && ls .pa/task_*.md 2> /dev/null | head -1)"
 real_heavy=(STAND.md docs/PLAN.md docs/agents-json.md docs/dev-hq/BUGS.md docs/dev-hq/data.json
             AGENTS.md CLAUDE.md README.md .pa/HQ-START.md
+            CHANGELOG.md # src/lib/changelog.test.ts liest es per ?raw-Import
             .pa/report_f0.md ${real_spec:+"$real_spec"})
 real_light=(.pa/report_ci-01.md docs/decisions.md
             # SETUP-12 (Rest): die drei nennen nur eine Datei, statt sie zu
             # lesen - eine Release-Beschreibung, der NICHT-ABGEDECKT-Block von
             # gates.sh und der Werkzeugreport von doctor.sh. Sie muessen leicht
             # bleiben, sonst kostet eine reine Textkorrektur dort eine volle Bahn.
-            CHANGELOG.md KNOWN_ISSUES.md docs/ci-lokal.md)
+            KNOWN_ISSUES.md docs/ci-lokal.md)
 (cd "$HERE" && bash "$PLAN" --classify "${real_heavy[@]}" "${real_light[@]}") > "$tmp/classify" 2>&1
 real_expect() { # erwartet datei
   if grep -qxF "$1 $2" "$tmp/classify" || grep -qF "$1 $2 - " "$tmp/classify"; then
