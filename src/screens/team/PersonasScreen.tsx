@@ -14,7 +14,7 @@ import { cliKey, cliLabel, modelOf, providerCounts } from "./personas";
 import { T } from "./texts";
 import "./personas.css";
 
-type Load = { status: "loading" } | { status: "error" } | { status: "ready"; profiles: AgentProfile[] };
+export type Load = { status: "loading" } | { status: "error" } | { status: "ready"; profiles: AgentProfile[] };
 
 function Fact({ label, children }: { label: string; children?: string }) {
   return (
@@ -49,19 +49,9 @@ function PersonaCard({ profile, profiles }: { profile: AgentProfile; profiles: A
   );
 }
 
-/** Team › Personas: one Glass card per agent profile, read-only. Not mounted yet (V2-S07b-1). */
-export function PersonasScreen() {
-  const [load, setLoad] = useState<Load>({ status: "loading" });
+/** The screen body for one load state; the provider filter lives here. */
+export function PersonasView({ load, onRetry }: { load: Load; onRetry: () => void }) {
   const [filter, setFilter] = useState<string | null>(null);
-  const fetchProfiles = useCallback(() => {
-    setLoad({ status: "loading" });
-    listAgentProfiles().then(
-      (profiles) => setLoad({ status: "ready", profiles }),
-      () => setLoad({ status: "error" }),
-    );
-  }, []);
-  useEffect(fetchProfiles, [fetchProfiles]);
-
   const profiles = load.status === "ready" ? load.profiles : [];
   const shown = filter ? profiles.filter((p) => cliKey(p.command) === filter) : profiles;
   return (
@@ -78,7 +68,7 @@ export function PersonasScreen() {
           ))}
         </div>
       )}
-      {load.status === "error" && <HonestState kind="offline" title={T.errorTitle} action={{ label: T.retry, onClick: fetchProfiles }} />}
+      {load.status === "error" && <HonestState kind="offline" title={T.errorTitle} action={{ label: T.retry, onClick: onRetry }} />}
       {load.status === "loading" && <HonestState kind="empty" title={T.loading} />}
       {load.status === "ready" && profiles.length === 0 && <HonestState kind="empty" title={T.emptyTitle} hint={T.emptyHint} />}
       {shown.length > 0 && (
@@ -88,4 +78,18 @@ export function PersonasScreen() {
       )}
     </div>
   );
+}
+
+/** Team › Personas: one Glass card per agent profile, read-only. Not mounted yet (V2-S07b-1). */
+export function PersonasScreen() {
+  const [load, setLoad] = useState<Load>({ status: "loading" });
+  const fetchProfiles = useCallback(() => {
+    setLoad({ status: "loading" });
+    listAgentProfiles().then(
+      (profiles) => setLoad({ status: "ready", profiles }),
+      () => setLoad({ status: "error" }),
+    );
+  }, []);
+  useEffect(fetchProfiles, [fetchProfiles]);
+  return <PersonasView load={load} onRetry={fetchProfiles} />;
 }
