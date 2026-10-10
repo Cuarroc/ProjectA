@@ -46,6 +46,15 @@ describe("FilterChip", () => {
     fireEvent.click(chip);
     expect(chip).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("lets a consumer onClick that calls preventDefault suppress the toggle", () => {
+    const onPressedChange = vi.fn();
+    render(
+      <FilterChip pressed={false} onClick={(e) => e.preventDefault()} onPressedChange={onPressedChange}>Open</FilterChip>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(onPressedChange).not.toHaveBeenCalled();
+  });
 });
 
 describe("Switch", () => {
@@ -59,6 +68,13 @@ describe("Switch", () => {
     rerender(<Switch aria-label="Sound" checked disabled onCheckedChange={onCheckedChange} />);
     fireEvent.click(screen.getByRole("switch"));
     expect(onCheckedChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a consumer onClick that calls preventDefault suppress the toggle", () => {
+    const onCheckedChange = vi.fn();
+    render(<Switch aria-label="Sound" checked={false} onClick={(e) => e.preventDefault()} onCheckedChange={onCheckedChange} />);
+    fireEvent.click(screen.getByRole("switch"));
+    expect(onCheckedChange).not.toHaveBeenCalled();
   });
 });
 
@@ -82,6 +98,30 @@ describe("Segmented", () => {
     expect(radios[2]).toHaveAttribute("aria-checked", "true");
     fireEvent.keyDown(radios[2], { key: "Home" });
     expect(radios[0]).toHaveFocus();
+  });
+
+  it("selects an option on click", () => {
+    render(<Harness />);
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[1]);
+    expect(radios[1]).toHaveAttribute("aria-checked", "true");
+    expect(radios[0]).toHaveAttribute("aria-checked", "false");
+    expect(radios.map((r) => r.tabIndex)).toEqual([-1, 0, -1]);
+  });
+
+  it("ignores keys instead of throwing when there are no options", () => {
+    const onChange = vi.fn();
+    render(<Segmented aria-label="Empty" options={[]} value={"" as never} onChange={onChange} />);
+    const group = screen.getByRole("radiogroup");
+    for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) fireEvent.keyDown(group, { key });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("makes the first option the single checked tab stop when the value matches no option", () => {
+    render(<Segmented aria-label="Theme" options={options} value={"x" as never} onChange={() => {}} />);
+    const radios = screen.getAllByRole("radio");
+    expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual(["true", "false", "false"]);
+    expect(radios.map((r) => r.tabIndex)).toEqual([0, -1, -1]);
   });
 });
 
