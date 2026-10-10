@@ -42,6 +42,19 @@
   --color-chrome: rgba(35, 35, 37, 0.78);
   --color-chrome-solid: #252527;
 
+  /* Classic surface API; themes override roles, never state colours. */
+  --surface-window: var(--color-window);
+  --surface-chrome: var(--color-elevated);
+  --surface-content: var(--color-content);
+  --surface-card: var(--color-elevated);
+  --surface-overlay: var(--color-elevated);
+  --surface-edge: var(--color-separator);
+  --surface-spec: transparent;
+  --material-chrome-filter: none;
+  --material-overlay-filter: none;
+  --color-disabled-fg: var(--color-text-tertiary);
+  --color-disabled-bg: var(--color-hover);
+
   --color-text-primary: rgba(255, 255, 255, 0.88);
   --color-text-secondary: rgba(255, 255, 255, 0.6);
   --color-text-tertiary: rgba(255, 255, 255, 0.5);
@@ -107,6 +120,8 @@
   --space-6: 12px;
   --space-7: 16px;
   --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
   /* Shared density recipes for later packages: control 6×12, row 6×10, card 8. */
   --space-control-y: var(--space-3);
   --space-control-x: var(--space-6);
@@ -122,6 +137,12 @@
   --text-md: 12px;
   --text-base: 13px;
   --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --line-tight: 1.25;
+  --tracking-eyebrow: 0.06em;
   /* Recurring type roles: copy/meta line height, label tracking, semibold. */
   --line-copy: 1.5;
   --line-meta: 1.4;
@@ -134,6 +155,7 @@
   /* ---- radii -----------------------------------------------------------
      The platform-native sequence: the larger the surface, the softer the
      corner. The three old names stay and move to their role in it. */
+  --radius-xs: 4px;
   --radius-selection: 5px;
   --radius-sm: 6px; /* Controls, Chips */
   --radius-search: 7px;
@@ -165,8 +187,17 @@
   --ease-spatial: var(--ease-out);
   --press-scale: 0.97;
 
-  --shadow-card: none;
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --elev-0: none;
+  --elev-1: none;
+  --elev-2: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --elev-3: var(--elev-2);
+  --shadow-card: var(--elev-1);
+  --shadow-popover: var(--elev-2);
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-popover: 50;
+  --z-modal: 100;
+  --z-toast: 200;
 
   /* ---- syntax ----------------------------------------------------------
      Four roles for the diff view. They sat in the rules as hard VS Code
@@ -200,6 +231,7 @@
   --state-paused-bg: var(--color-hover);
   --state-danger-fg: #ff7b72;
   --state-danger-bg: rgba(255, 123, 114, 0.13);
+  --state-danger-line: var(--state-danger-fg);
 
   /* ---- shell metrics ---------------------------------------------------
      The three columns of the conversation layout. Kept as tokens so the
@@ -246,6 +278,7 @@
 
     /* Same control-boundary role as dark; calibrated for light surfaces. */
     --color-control-border: #7f7f87;
+    --color-scrim: rgba(0, 0, 0, 0.32);
 
     --color-accent: #004fc4;
     --color-accent-hover: #0046ad;
@@ -277,8 +310,8 @@
     --state-danger-fg: #c1000f;
     --state-danger-bg: rgba(193, 0, 15, 0.08);
 
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.06);
-    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.16);
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --elev-2: 0 8px 24px rgba(0, 0, 0, 0.16);
 
     /* The same four roles, computed against white instead of black. */
     --code-keyword: #a626a4;
@@ -335,9 +368,30 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+:where(button):disabled {
   cursor: default;
-  opacity: 0.5;
+  color: var(--color-disabled-fg);
+  opacity: 1;
+}
+
+/* Filled controls keep a disabled plate; ghost/link/icon stay transparent. */
+.button-primary:disabled,
+.button-subtle:disabled,
+.convo-send:disabled,
+.empty-action:disabled,
+.bootstrap-retry:disabled,
+.command-chat-send:disabled,
+.question-send:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-fg);
+}
+
+.button-ghost:disabled,
+.convo-sharpen:disabled,
+.empty-action-ghost:disabled,
+.viewbar-action:disabled,
+.worker-action:disabled {
+  color: var(--color-disabled-fg);
 }
 
 /* ---- motion -----------------------------------------------------------
@@ -3163,7 +3217,7 @@ scripts/contrast-check.mjs. */
   align-items: flex-start;
   justify-content: center;
   padding-top: 12vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-scrim);
   /* The ground darkens without moving — it is the room the sheet appears in,
      not an object itself. */
   animation: scrim-in var(--motion-popover-in) var(--ease-standard);
@@ -6825,13 +6879,19 @@ scripts/contrast-check.mjs. */
 .app {
   --ui-control-min: 40px;
   --ui-row-min: 44px;
-  --ui-panel-pad: 22px;
+  --ui-panel-pad: var(--space-8);
+  --ui-bar-control: 28px;
+  /* Resolve compatibility aliases where theme overrides live. */
+  --shadow-card: var(--elev-1);
+  --shadow-popover: var(--elev-2);
+  accent-color: var(--color-accent);
 }
 
 .app[data-density="compact"] {
   --ui-control-min: 32px;
   --ui-row-min: 32px;
-  --ui-panel-pad: 14px;
+  --ui-panel-pad: var(--space-7);
+  --ui-bar-control: 24px;
 }
 
 /* UI text size: only the type tokens move; "normal" is the :root default. */
@@ -6841,6 +6901,8 @@ scripts/contrast-check.mjs. */
   --text-md: 11px;
   --text-base: 12px;
   --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 21px;
   font-size: var(--text-base);
 }
 
@@ -6850,15 +6912,20 @@ scripts/contrast-check.mjs. */
   --text-md: 14px;
   --text-base: 15px;
   --text-lg: 18px;
+  --text-xl: 21px;
+  --text-2xl: 28px;
   font-size: var(--text-base);
 }
 
 .app .field,
 .app .button-primary,
-.app .button-ghost,
+.app .button-ghost {
+  min-height: var(--ui-control-min);
+}
+
 .app .convo-action,
 .app .segment {
-  min-height: var(--ui-control-min);
+  min-height: var(--ui-bar-control);
 }
 
 .app .project-button,
@@ -6877,7 +6944,7 @@ scripts/contrast-check.mjs. */
 
 /* The statistics seams stay edge-to-edge; Diagnosis keeps its scroll end. */
 .app .diagnose-panel {
-  padding: var(--ui-panel-pad) var(--ui-panel-pad) 40px;
+  padding: var(--ui-panel-pad) var(--ui-panel-pad) var(--space-10);
 }
 
 .app .settings-tabs {
@@ -6894,7 +6961,7 @@ scripts/contrast-check.mjs. */
 .settings-density-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 22px;
+  gap: var(--space-4) var(--space-8);
 }
 
 .settings-density-options .settings-check {
