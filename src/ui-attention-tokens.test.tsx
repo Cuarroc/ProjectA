@@ -93,13 +93,28 @@ describe("UT-P03 attention tokens", () => {
     expect(/var\(--[\w-]+,\s*#[0-9a-fA-F]{3,8}\)/.test(slice)).toBe(false);
     expect(/var\(--[\w-]+,\s*var\(--color-accent/.test(slice)).toBe(false);
     const { dark, light } = themeVars();
-    for (const name of ["state-needs-fg", "state-danger-fg", "color-elevated", "color-hover"]) {
+    for (const name of [
+      "state-needs-fg",
+      "state-danger-fg",
+      "color-elevated",
+      "color-hover",
+      "color-content",
+      "space-6",
+      "space-7",
+      "weight-semibold",
+      "tracking-label",
+      "line-copy",
+    ]) {
       expect(resolveVar(dark, dark[name]), `dark --${name}`).toBeTruthy();
       expect(resolveVar(light, light[name]), `light --${name}`).toBeTruthy();
     }
     expect(slice).toMatch(/var\(--state-needs-fg\)/);
-    expect(slice).toMatch(/\.view-head\b/);
+    expect(slice).toMatch(
+      /\.view-head\s*\{[^}]*padding:\s*var\(--space-6\)\s+var\(--space-7\)/s,
+    );
     expect(slice).toMatch(/\.question-send\s*\{[^}]*min-height:\s*var\(--ui-control-min\)/s);
+    expect(slice).toMatch(/\.question-option\s*\{[^}]*min-height:\s*24px/s);
+    expect(slice).toMatch(/\.attention-grade\s*\{[^}]*font-weight:\s*var\(--weight-semibold\)/s);
   });
 
   it("needs text meets 4.5 to 1 on elevated and hover in both modes", () => {
@@ -109,20 +124,23 @@ describe("UT-P03 attention tokens", () => {
       ["light", light],
     ] as const) {
       const needs = resolveVar(vars, vars["state-needs-fg"]);
+      const danger = resolveVar(vars, vars["state-danger-fg"]);
       const elevated = resolveVar(vars, vars["color-elevated"]);
-      const hover = compositeOver(resolveVar(vars, vars["color-hover"]), elevated);
-      expect(contrast(needs, elevated), `${mode} normal`).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(needs, hover), `${mode} hover`).toBeGreaterThanOrEqual(4.5);
+      const content = resolveVar(vars, vars["color-content"]);
+      const hover = compositeOver(resolveVar(vars, vars["color-hover"]), content);
+      expect(contrast(needs, elevated), `${mode} needs normal`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(needs, hover), `${mode} needs hover`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(danger, elevated), `${mode} danger normal`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(danger, hover), `${mode} danger hover`).toBeGreaterThanOrEqual(4.5);
     }
   });
 
   it("shows no empty copy before the first recommendations load", async () => {
-    vi.mocked(listRecommendations).mockImplementation(
-      () => new Promise(() => {}),
-    );
+    vi.mocked(listRecommendations).mockImplementation(() => new Promise(() => {}));
     render(<AttentionInbox cards={[]} projectId="pj-1" onOpen={vi.fn()} />);
     await act(async () => {});
     expect(screen.queryByText(/Nichts wartet/)).toBeNull();
+    expect(screen.getByText(/werden geladen/)).toBeTruthy();
     expect(listRecommendations).toHaveBeenCalledWith("pj-1");
   });
 });
@@ -136,5 +154,19 @@ describe("UT-P03 attention load settle", () => {
     vi.mocked(listRecommendations).mockResolvedValue([]);
     render(<AttentionInbox cards={[]} projectId="pj-1" onOpen={vi.fn()} />);
     await waitFor(() => expect(screen.getByText(/Nichts wartet/)).toBeTruthy());
+  });
+
+  it("keeps empty copy hidden while a blockers error is visible", async () => {
+    vi.mocked(listRecommendations).mockResolvedValue([]);
+    render(
+      <AttentionInbox
+        cards={[]}
+        projectId="pj-1"
+        blockersError="Readiness fehlt"
+        onOpen={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Readiness fehlt"));
+    expect(screen.queryByText(/Nichts wartet/)).toBeNull();
   });
 });
