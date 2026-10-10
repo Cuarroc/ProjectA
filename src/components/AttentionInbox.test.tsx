@@ -134,24 +134,13 @@ describe("AttentionInbox", () => {
 
   it("labels producer codes in German and keeps the wire code in title", async () => {
     vi.mocked(listRecommendations).mockResolvedValue([reco("r1", "Repo X prüfen")]);
-    const blocker = (id: string, code: string) => ({
-      kind: "blocker" as const,
-      workerId: id,
-      projectId: "pj-1",
-      code,
-      message: code,
-      nextStep: "x",
-      observedAt: 1,
-    });
+    const b = (id: string, code: string) =>
+      ({ kind: "blocker" as const, workerId: id, projectId: "pj-1", code, message: code, nextStep: "x", observedAt: 1 });
     render(
       <AttentionInbox
         cards={[]}
         projectId="pj-1"
-        blockers={[
-          blocker("wk-1", "dirty"),
-          blocker("wk-2", "review_stale"),
-          blocker("wk-3", "checks_pending"),
-        ]}
+        blockers={[b("wk-1", "dirty"), b("wk-2", "review_stale"), b("wk-3", "checks_pending")]}
         onOpen={vi.fn()}
       />,
     );

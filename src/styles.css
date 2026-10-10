@@ -5974,7 +5974,7 @@ scripts/contrast-check.mjs. */
   flex-wrap: wrap;
   gap: var(--space-4) var(--space-5);
   min-height: var(--shell-bar-h);
-  padding: var(--space-7) var(--space-8);
+  padding: var(--space-6) var(--space-7);
   border-bottom: 1px solid var(--border);
 }
 
@@ -6045,8 +6045,8 @@ scripts/contrast-check.mjs. */
 
 .attention-grade {
   font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
@@ -6130,7 +6130,7 @@ scripts/contrast-check.mjs. */
 }
 
 .questions-scope .segment {
-  padding: 2px var(--space-4);
+  padding: var(--space-1) var(--space-4);
   font-size: var(--text-xs);
 }
 
@@ -6291,8 +6291,10 @@ scripts/contrast-check.mjs. */
 
 /* An offered answer is one click, and the click sends it — so it reads as a
    choice, not as a filter. */
-/* Chip recipe: same inset and pill as `.state-chip`. */
+/* Chip look with contract hit area ≥24×24 (interactive, not display-only). */
 .question-option {
+  min-height: 24px;
+  min-width: 24px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--state-fg);
   border-radius: var(--radius-pill);

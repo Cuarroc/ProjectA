@@ -44,18 +44,21 @@ const GOAL_LABEL: Record<InboxEntry["goal"], string> = {
 
 /** German label for a wire code; the raw code stays in `title` (UM-25). */
 const CODE_LABEL: Record<string, string> = {
-  quota_blocked: "Kontingent blockiert",
-  decision_pending: "Entscheidung offen",
-  approval_required: "Freigabe nötig",
-  tests_stale: "Tests veraltet",
-  conflicting: "Merge-Konflikt",
-  session_ended: "Sitzung beendet",
-  review_pending: "Prüfung offen",
-  changes_requested: "Änderungen verlangt",
+  quota_blocked: "Kontingent blockiert", decision_pending: "Entscheidung offen",
+  approval_required: "Freigabe nötig", tests_stale: "Tests veraltet",
+  conflicting: "Merge-Konflikt", session_ended: "Sitzung beendet",
+  review_pending: "Prüfung offen", changes_requested: "Änderungen verlangt",
+  recommendation: "Empfehlung", review_stale: "Review veraltet",
+  checks_pending: "Checks laufen", dirty: "Uncommittete Dateien",
+  base_changed: "Basis geändert", git_unsupported: "Git nicht unterstützt",
+  setup_failed: "Setup fehlgeschlagen", agent_running: "Agent läuft noch",
+  agent_exited: "Agent beendet", budget_reached: "Kontingent erreicht",
+  profile_disabled: "Profil deaktiviert", unknown_profile: "Unbekanntes Profil",
+  review_draft: "PR-Entwurf", comments_open: "Kommentare offen",
 };
 
 function labelForCode(code: string): string {
-  return CODE_LABEL[code] ?? code.split("_").join(" ");
+  return CODE_LABEL[code] ?? "Statusmeldung";
 }
 
 /**
@@ -73,6 +76,7 @@ export default function AttentionInbox({
   const [recos, setRecos] = useState<Recommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [recosSettled, setRecosSettled] = useState(projectId === null);
+  const [trackedProject, setTrackedProject] = useState(projectId);
   const [activeIndex, setActiveIndex] = useState(0);
   const prevInbox = useRef<InboxEntry[]>([]);
   const sink = useMemo(() => webviewNotifySink(), []);
@@ -81,6 +85,15 @@ export default function AttentionInbox({
   // for the same project must not overwrite a newer reply, and nothing may
   // write after unmount. Same pattern as ActivityView.
   const tokenRef = useRef(0);
+
+  // Adjust settled state during render so a project switch never paints the
+  // previous project's empty copy for one frame (A6).
+  if (trackedProject !== projectId) {
+    setTrackedProject(projectId);
+    setRecos([]);
+    setError(null);
+    setRecosSettled(projectId === null);
+  }
 
   const refreshRecos = useCallback(async () => {
     const mine = ++tokenRef.current;
@@ -103,9 +116,6 @@ export default function AttentionInbox({
   }, [projectId]);
 
   useEffect(() => {
-    setRecos([]);
-    setError(null);
-    setRecosSettled(projectId === null);
     void refreshRecos();
     if (projectId === null) return;
     const timer = window.setInterval(() => void refreshRecos(), POLL_MS);
@@ -180,9 +190,13 @@ export default function AttentionInbox({
         </p>
       ) : null}
       {entries.length === 0 ? (
-        recosSettled ? (
+        !recosSettled ? (
+          <p className="attention-inbox-empty" aria-busy="true">
+            Einträge werden geladen …
+          </p>
+        ) : error || blockersError ? null : (
           <p className="attention-inbox-empty">Nichts wartet — kein zweiter Kanal.</p>
-        ) : null
+        )
       ) : (
         <ul
           className="attention-inbox-list"
