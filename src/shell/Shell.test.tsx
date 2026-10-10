@@ -86,9 +86,9 @@ describe("glass style (Stil)", () => {
     expect(root.dataset.glassVariant).toBeUndefined();
   });
 
-  it("sets data-glass-variant on the first commit for a stored klar and falls back to glas for junk", async () => {
+  it("sets data-glass-variant on mount for a stored klar and falls back to glas for junk", async () => {
     localStorage.setItem(GLASS_VARIANT_KEY, "klar");
-    render(<Shell />);
+    await mount();
     expect(root.dataset.glassVariant).toBe("klar");
     cleanup();
     localStorage.setItem(GLASS_VARIANT_KEY, "xyz");

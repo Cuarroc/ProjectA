@@ -53,6 +53,16 @@ describe("KeyValue", () => {
     expect(Array.from(container.querySelectorAll("dd"), (d) => d.textContent)).toEqual(["one", "two"]);
     expect(calls.filter((m) => /key/i.test(m))).toEqual([]);
   });
+
+  it("takes a stable rowKey so reordered rows keep their nodes", () => {
+    const items = [{ label: "Tag", value: "one", rowKey: "a" }, { label: "Tag", value: "two", rowKey: "b" }];
+    const { container, rerender } = render(<KeyValue items={items} />);
+    const [first, second] = Array.from(container.querySelectorAll("dd"));
+    rerender(<KeyValue items={[items[1]!, items[0]!]} />);
+    const after = Array.from(container.querySelectorAll("dd"));
+    expect(after[0]).toBe(second);
+    expect(after[1]).toBe(first);
+  });
 });
 
 describe("ProofChip", () => {
