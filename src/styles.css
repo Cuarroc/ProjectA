@@ -399,11 +399,11 @@ a {
 }
 
 /* A visible keyboard focus is mandatory, and it must not look like a
-   second selection: a ring on the outside, never a filled surface. */
+   second selection: a ring on the outside, never a filled surface.
+   No border-radius here — the ring must not reshape the control (UM-14). */
 :focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-  border-radius: var(--radius-selection);
 }
 
 /* Arriving: surface and blur together, so a popover lands as a material
@@ -1910,7 +1910,7 @@ a {
   align-items: center;
   gap: var(--space-3);
   flex: 0 0 auto;
-  padding: 3px var(--space-5);
+  padding: var(--space-1) var(--space-5);
   font-size: var(--text-md);
   color: var(--fg-muted);
   white-space: nowrap;
@@ -1925,9 +1925,16 @@ a {
   color: var(--fg);
 }
 
+/* Selected = card surface + accent text + 2px indicator; never a solid fill. */
 .segment-active {
-  background: var(--accent);
-  color: var(--color-on-accent);
+  background: var(--bg);
+  color: var(--color-accent-text);
+  box-shadow: inset 0 -2px 0 0 var(--color-accent);
+}
+
+/* Overflow clips an outer ring; draw the focus inset (UM-5). */
+.segmented .segment:focus-visible {
+  outline-offset: -2px;
 }
 
 .viewbar-action {
@@ -6365,9 +6372,10 @@ scripts/contrast-check.mjs. */
 /* A count on the Fragen segment. It carries its own colour rather than the
    segment's, so it reads the same on the active tab and beside it. */
 .segment-badge {
+  /* 15px optical badge box (geometry exception; not on the space scale). */
   min-width: 15px;
   padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-round);
   background: var(--state-needs-bg);
   color: var(--state-needs-fg);
   font-size: var(--text-xs);
