@@ -68,11 +68,30 @@ describe("V161-UI-R rail contract", () => {
     expect(app?.[1]).toMatch(/grid-template-columns:\s*var\(--shell-sidebar-w\)\s+var\(--shell-rail-w\)\s+1fr/);
     expect(css).toMatch(/\.app\.app-rail-motion\s*\{[^}]*transition:\s*grid-template-columns\s+var\(--dur-slow\)\s+var\(--ease-move\)/);
     expect(css).toMatch(/\.app:not\(\.app-railed\)\s*\{[^}]*--shell-rail-w:\s*0(?:px)?/);
-    expect([...css.matchAll(/\.rail\s*\{([^}]*)\}/g)][0]?.[1]).toMatch(/background:\s*var\(--surface-chrome/);
-    expect(css).toMatch(/--size-state-mark:\s*12px/);
-    expect(css).toMatch(/\.state-in-review\s*>\s*\.state-mark::before[\s\S]{0,120}?inset:\s*3px\s+1px/);
-    expect(css).toMatch(/\.state-chip\.state-needs-you::before[\s\S]{0,80}?scale\(0\.78\)/);
-    expect(css).toMatch(/\.state-chip\.state-in-review::before[\s\S]{0,80}?scale\(0\.86\)/);
+    expect([...css.matchAll(/\.rail\s*\{([^}]*)\}/g)][0]?.[1]).toMatch(/background:\s*var\(--surface-content,\s*var\(--bg\)\)/);
+    expect(css).toMatch(/:root\s*\{[^}]*--size-state-mark:\s*12px/);
+    expect(css).toMatch(/\.state-mark::before[\s\S]{0,200}?box-sizing:\s*border-box/);
+    expect(css).toMatch(/\.state-needs-you[\s\S]{0,200}?::before[\s\S]{0,120}?(?:width|height):\s*8\.5px/);
+    expect(css).toMatch(/\.state-in-review[\s\S]{0,200}?::before[\s\S]{0,120}?(?:width|height):\s*8\.5px/);
+    expect(css).not.toMatch(/\.state-chip\.state-needs-you::before[\s\S]{0,80}?scale\(/);
+    expect(css).not.toMatch(/\.state-chip\.state-in-review::before[\s\S]{0,80}?scale\(/);
+  });
+
+  it("keeps the rail on the content surface not chrome", () => {
+    const rail = [...css.matchAll(/\.rail\s*\{([^}]*)\}/g)][0]?.[1] ?? "";
+    expect(rail).toMatch(/background:\s*var\(--surface-content,\s*var\(--bg\)\)/);
+    expect(rail).not.toMatch(/--surface-chrome/);
+    expect(rail).not.toMatch(/backdrop-filter/);
+  });
+
+  it("drops the closed-rail right border seam", () => {
+    expect(css).toMatch(/\.app:not\(\.app-railed\)\s+\.rail\s*\{[^}]*border-right-width:\s*0/);
+  });
+
+  it("defines --size-state-mark once on :root", () => {
+    const root = css.match(/:root\s*\{([\s\S]*?)\n\}/);
+    expect(root?.[1]).toMatch(/--size-state-mark:\s*12px/);
+    expect(css).not.toMatch(/\.state-mark,\s*\n\.rail-label,\s*\n\.state-chip\s*\{\s*\n\s*--size-state-mark:/);
   });
 
   function stubMatchMedia(opts: { narrow?: boolean; reducedMotion?: boolean }) {
