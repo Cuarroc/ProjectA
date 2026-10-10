@@ -1,4 +1,5 @@
-import { createPauseState, type PauseReason } from "./guards";
+import type { UiThemeStyle } from "../../../lib/settings";
+import { createBudget, createPauseState, DOWNGRADE_STEPS, percentile, type Downgrade, type PauseReason } from "./guards";
 
 /** One drawing back end; the runtime owns the canvas, the clock and every guard. */
 export interface BackdropRenderer {
@@ -15,6 +16,19 @@ export interface BackdropCandidate {
   webgl?: boolean;
   create(): BackdropRenderer;
 }
+export interface BackdropStats {
+  fps: number;
+  frameMsP50: number;
+  frameMsP95: number;
+  kind: string;
+  pauseReason: PauseReason | null;
+  downgrades: Downgrade[];
+}
+declare global {
+  interface Window {
+    __PA_BACKDROP_STATS__?: BackdropStats;
+  }
+}
 export interface BackdropOptions {
   host: HTMLElement;
   candidates: readonly BackdropCandidate[];
@@ -24,27 +38,50 @@ export interface BackdropOptions {
   now?: () => number;
   raf?: (cb: () => void) => number;
   caf?: (id: number) => void;
+  /** Dev only: publish `window.__PA_BACKDROP_STATS__`. */
+  exposeStats?: boolean;
 }
 export interface BackdropRuntime {
-  /** Kind of the renderer that claimed the canvas, or "css" when none did. */
-  kind: string;
-  pauseReason(): PauseReason | null;
+  stats: BackdropStats;
+  hold(): void;
+  release(): void;
   setOverlay(open: boolean): void;
   dispose(): void;
 }
 
+const MIN_FPS = 12;
 const BASE_SCALE = Math.sqrt(1 / 8); // 1/8 of the viewport area; CSS upscales
 const STATIC_QUERY =
   "(prefers-reduced-motion: reduce), (prefers-contrast: more), (prefers-reduced-transparency: reduce)";
+
+const registry: Partial<Record<UiThemeStyle, readonly BackdropCandidate[]>> = {};
+const live = new Set<BackdropRuntime>();
+
+/** Theme packages register their renderers (best first); Klassisch has none. */
+export const registerBackdrop = (style: UiThemeStyle, c: readonly BackdropCandidate[]) => void (registry[style] = c);
+export const backdropCandidates = (style: UiThemeStyle) => registry[style] ?? [];
+
+/** Freeze every backdrop (TH5 view transition); the returned function releases once. */
+export function holdBackdrop(): () => void {
+  const held = [...live];
+  held.forEach((r) => r.hold());
+  return () => held.splice(0).forEach((r) => r.release());
+}
 
 export function createBackdropRuntime(o: BackdropOptions): BackdropRuntime {
   const now = o.now ?? (() => performance.now());
   const raf = o.raf ?? ((cb: () => void) => requestAnimationFrame(cb));
   const pause = createPauseState(now);
+  const overBudget = createBudget();
+  const costs: number[] = [];
+  const stamps: number[] = [];
+  const downgrades: Downgrade[] = [];
   const media = typeof matchMedia === "function" ? matchMedia(STATIC_QUERY) : null;
   const offs: Array<() => void> = [];
-  const fps = o.fps ?? 30;
-  const scale = o.scale ?? BASE_SCALE;
+  let fps = o.fps ?? 30;
+  let scale = o.scale ?? BASE_SCALE;
+  let slowStatic = false;
+  let size = { w: 0, h: 0 };
   let lastAt = -Infinity;
   let disposed = false;
   let rafId: number | null = null;
@@ -70,17 +107,38 @@ export function createBackdropRuntime(o: BackdropOptions): BackdropRuntime {
   }
 
   // Reduce / high contrast / reduced transparency: one frame, never a loop.
-  const isStatic = () => media?.matches ?? false;
-  const draw = () => {
-    lastAt = now();
-    renderer?.frame(lastAt);
-  };
-  const setSize = (w: number, h: number) => {
+  const isStatic = () => slowStatic || (media?.matches ?? false);
+  const apply = () => {
     if (!renderer || !canvas) return;
-    canvas.width = Math.max(1, Math.round(w * scale));
-    canvas.height = Math.max(1, Math.round(h * scale));
+    canvas.width = Math.max(1, Math.round(size.w * scale));
+    canvas.height = Math.max(1, Math.round(size.h * scale));
     renderer.resize(canvas.width, canvas.height);
     if (isStatic()) draw(); // resizing clears the canvas; a static theme redraws once
+  };
+  const setSize = (w: number, h: number) => {
+    size = { w, h };
+    apply();
+  };
+  // Slow frames (mean over budget for 2 s) step down: scale, then fps, then a static frame.
+  const draw = () => {
+    const t0 = now();
+    renderer?.frame(t0);
+    const cost = now() - t0;
+    lastAt = t0;
+    stamps.push(t0);
+    while (t0 - stamps[0] > 1000) stamps.shift();
+    costs.push(cost);
+    if (costs.length > 120) costs.shift();
+    if (!overBudget(cost, t0)) return;
+    const step = DOWNGRADE_STEPS[downgrades.length];
+    if (!step) return;
+    downgrades.push(step);
+    if (step === "scale") {
+      scale *= 0.7;
+      apply();
+    }
+    if (step === "fps") fps = Math.max(MIN_FPS, Math.round(fps / 2));
+    if (step === "static") slowStatic = true;
   };
   const schedule = () => {
     if (rafId === null && !disposed && renderer && !isStatic()) rafId = raf(tick);
@@ -99,7 +157,27 @@ export function createBackdropRuntime(o: BackdropOptions): BackdropRuntime {
     offs.push(() => target.removeEventListener(type, fn, capture));
   };
 
+  const stats = {
+    get fps() {
+      return stamps.filter((t) => now() - t <= 1000).length;
+    },
+    get frameMsP50() {
+      return percentile(costs, 0.5);
+    },
+    get frameMsP95() {
+      return percentile(costs, 0.95);
+    },
+    kind,
+    get pauseReason() {
+      return pause.reason();
+    },
+    get downgrades() {
+      return [...downgrades];
+    },
+  } satisfies BackdropStats;
+
   if (renderer && canvas) {
+    canvas.style.cssText = "display:block;width:100%;height:100%"; // the backing store is scaled down
     o.host.append(canvas);
     bind(document, "visibilitychange", () => (pause.set("hidden", document.visibilityState === "hidden"), schedule()));
     bind(window, "blur", () => pause.set("blur", true));
@@ -119,9 +197,12 @@ export function createBackdropRuntime(o: BackdropOptions): BackdropRuntime {
     schedule(); // a static theme already drew its one frame in setSize()
   }
 
-  return {
-    kind,
-    pauseReason: pause.reason,
+  if (o.exposeStats) window.__PA_BACKDROP_STATS__ = stats;
+
+  const runtime: BackdropRuntime = {
+    stats,
+    hold: pause.hold,
+    release: () => (pause.release(), schedule()),
     setOverlay: (open) => (pause.set("overlay", open), schedule()),
     dispose() {
       if (disposed) return;
@@ -130,6 +211,10 @@ export function createBackdropRuntime(o: BackdropOptions): BackdropRuntime {
       offs.forEach((off) => off());
       renderer?.dispose();
       canvas?.remove();
+      if (window.__PA_BACKDROP_STATS__ === stats) delete window.__PA_BACKDROP_STATS__;
+      live.delete(runtime);
     },
   };
+  live.add(runtime);
+  return runtime;
 }
