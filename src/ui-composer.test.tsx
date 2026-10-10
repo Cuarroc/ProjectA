@@ -106,10 +106,28 @@ describe("V161-UI-K composer contract", () => {
       [c, ".convo-sharpen"],
       [k, ".command-chat-input"],
       [k, ".command-chat-send"],
+      [k, ".command-chat-toggle"],
+      [k, ".command-chat-expand"],
     ] as const) {
       expect(body(src, sel)).toMatch(/min-height:\s*var\(--ui-control-min\)/);
     }
     expect(body(c, ".convo-head")).toMatch(/height:\s*var\(--shell-bar-h\)/);
+  });
+
+  it("disabled composer inputs keep a solid surface ground", () => {
+    const c = convo();
+    const k = cmd();
+    for (const [src, sel] of [
+      [c, ".convo-input:disabled"],
+      [k, ".command-chat-input:disabled"],
+    ] as const) {
+      expect(body(src, sel)).toMatch(/background:\s*var\(--surface-content\)/);
+      expect(body(src, sel)).not.toMatch(/--color-disabled-bg/);
+    }
+    for (const t of theme()) {
+      const ground = resolveVar(t, t["surface-content"] ?? t["color-content"]);
+      expect(ground.startsWith("#"), ground).toBe(true);
+    }
   });
 
   it("timestamp pairs meet 4.5 to 1 without opacity fading", () => {
@@ -145,5 +163,20 @@ describe("V161-UI-K composer contract", () => {
       />,
     );
     expect(screen.queryByText(/Noch keine Nachrichten/)).toBeNull();
+    expect(document.querySelector(".convo-empty")?.textContent).toMatch(/wird geladen/);
+  });
+
+  it("renders the disabled conversation empty state with a headline", () => {
+    render(
+      <ConversationView
+        chat={chat({ disabled: true })}
+        projectId={null}
+        projectName={null}
+        onOpenOrchestrator={vi.fn()}
+        onOpenQuestions={vi.fn()}
+      />,
+    );
+    expect(document.querySelector(".convo-empty-title")?.textContent).toBe("Kein Projekt");
+    expect(screen.getByText(/Wähle links ein Projekt/)).toBeTruthy();
   });
 });
