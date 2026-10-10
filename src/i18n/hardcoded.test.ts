@@ -1,9 +1,11 @@
 // Rule: new UI words go into `src/i18n/de.ts` (read through `t()`/`useT()`), never into
-// components. `hardcoded-baseline.json` records the literals that existed when the ratchet
+// components (a file named exactly `texts.ts` is a transitional dictionary module and is not
+// scanned; follow-ups fold those into `de.ts`). `hardcoded-baseline.json` records the literals that existed when the ratchet
 // was introduced; it only shrinks. Follow-up packages move its entries into the dictionary
 // and delete them here. Entries that no longer occur are allowed; new offenders fail.
 // `HARDCODED_REPORT=1` prints the current offender list (for regenerating the baseline).
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { renderHook } from "@testing-library/react";
 import ts from "typescript";
@@ -14,6 +16,9 @@ import { t, useT } from "./useT";
 const ROOT = join(__dirname, "..", "..");
 const SCAN_DIRS = ["src/design", "src/shell", "src/flags", "src/screens", "src/i18n"];
 const DICT_FILE = "de.ts";
+// Per-screen `texts.ts` modules are the transitional home of v2 words until follow-ups fold
+// them into `de.ts`. They are dictionary sources like `de.ts`, so they are not scanned.
+const TEXTS_MODULE_FILE = "texts.ts";
 const BASELINE_FILE = join(__dirname, "hardcoded-baseline.json");
 const UI_RE = /[ÄÖÜäöüß]|\s|[A-ZÄÖÜ][a-zäöüß]{2,}/;
 
@@ -27,7 +32,7 @@ function walkTs(dir: string): string[] {
       continue;
     }
     if (!/\.tsx?$/.test(name) || /\.test\.tsx?$/.test(name)) continue;
-    if (name === DICT_FILE) continue;
+    if (name === DICT_FILE || name === TEXTS_MODULE_FILE) continue;
     out.push(path);
   }
   return out;
@@ -394,4 +399,25 @@ it("scanner still flags aria-label UI copy", () => {
   }`;
   const found = findHardcodedUi(fixture, dictValues);
   expect(found).toEqual(expect.arrayContaining(["Schließen", "Hinweis", "Name", "Bild"]));
+});
+
+it("scanner treats per-screen texts.ts as a dictionary source but still scans sibling components", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hardcoded-texts-"));
+  try {
+    const screen = join(dir, "screen");
+    mkdirSync(screen);
+    writeFileSync(join(screen, "texts.ts"), `export const TEXTS = { title: "Neuer Hinweis" };\n`);
+    writeFileSync(join(screen, "Panel.tsx"), `export const Panel = () => <p>Neuer Hinweis</p>;\n`);
+    const files = walkTs(dir).map((file) => relative(dir, file).split("\\").join("/")).sort();
+    expect(files).toEqual(["screen/Panel.tsx"]);
+    const dictValues = new Set(Object.values(de));
+    const reported = walkTs(dir).flatMap((file) =>
+      findHardcodedUi(readFileSync(file, "utf8"), dictValues, file).map(
+        (text) => `${relative(dir, file).split("\\").join("/")}: ${JSON.stringify(text)}`,
+      ),
+    );
+    expect(reported).toEqual(['screen/Panel.tsx: "Neuer Hinweis"']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
