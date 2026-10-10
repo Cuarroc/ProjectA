@@ -1,5 +1,80 @@
 # Changelog
 
+## v1.6.1 (Beta) — 10.10.2026
+
+**Neue Oberfläche (Vorschau).** In Einstellungen › Allgemein lässt sich die
+neue Glas-Oberfläche einschalten. Der Schalter ist standardmäßig aus; beim
+Umschalten lädt die Oberfläche neu. Die bisherigen Ansichten wohnen darin
+unverändert, neue Bildschirme folgen in späteren Versionen.
+
+**Neu in der Vorschau:**
+
+- **Schalter „Neue Oberfläche (Vorschau)“ und Schale eingehängt** (PR #1055):
+  Seitenleiste und Kopfleiste der neuen Oberfläche umschließen die alten
+  Ansichten. Ist der Schalter aus, sieht die App aus wie bisher.
+- **Kopfleiste mit Befehlspalette, Kontingent, Glocke und Not-Aus-Band**
+  (PR #1054): Kontingent und Glocke sagen ehrlich „noch nicht verbunden“, bis
+  es eine Datenquelle gibt; das Not-Aus-Band erscheint bei aktivem Not-Aus und
+  lässt sich mit „Fortsetzen“ aufheben.
+- **Braucht dich im neuen Leitstand** (PR #1049): Offene Fragen der Agenten
+  lassen sich direkt im Feld beantworten.
+- **Aufräumen an Daten-Bausteinen** (PR #1056): Eindeutige Schlüssel in der
+  Schlüssel/Wert-Liste und im Nachweis-Chip, ohne sichtbare Änderung.
+- **Stil-Schalter in der Kopfleiste** (PR #1062): Die Oberfläche lässt sich
+  zwischen Glas, Klar, Nebel und Abend umschalten.
+
+**Neue Oberfläche — Bausteine, bereits übernommen:**
+
+- **Vorbereitung** (PR #1011, #1018, #1039): Aufbau der Bildschirme
+  beschrieben, Schalterregister für die neue Oberfläche (standardmäßig aus)
+  und der Rahmen mit Seitenleiste, Kopfleiste und Routen.
+- **Leitstand** (PR #1050): Karten und Filter nach Zustand.
+- **Ersteinrichtung und Meldungen** (PR #1042, #1045): Ein Scan liest, was
+  ein Projekt zum Start braucht, und ein Meldungs-Kern entscheidet, wie laut
+  eine Meldung ankommt (mit Ruhezeit); beides noch nicht in der Oberfläche
+  verbunden.
+- **Bedienelemente** (PR #1015, #1022, #1034, #1035): Knöpfe, Chips,
+  Schalter, Segmente und Eingabefelder im Glas-Stil.
+- **Zustände, Layout und Daten** (PR #1017, #1023, #1033): Sechs Zustandsformen
+  mit Textvorrat, Tabs, Sheet und Toast, Tabelle, Schlüssel/Wert,
+  Nachweis-Chip.
+- **Bewegung** (PR #976, #1020): Einheitliche Bewegungswerte; bei reduzierter
+  Bewegung stehen Animationen still.
+- **Hell, Dunkel und Varianten** (PR #1031, #1032, #1048): Eindeutiger
+  Hell/Dunkel-Schalter sowie die Varianten Klar, Nebel und Abend mit
+  Lesbarkeitsgrenze.
+- **Farben und Stil der bisherigen Oberfläche** (PR #974, #975, #977, #978,
+  #979, #982, #986, #989, #991, #997): Gestaltungswerte, Fokusring,
+  Hover-Zustände, Symbole, Aufmerksamkeits-Ansicht und Feinschliff an Not-Aus-
+  und Wartungsknöpfen.
+
+**Neuigkeiten, Kontingent und Ideen:**
+
+- **Neuigkeiten-Reiter** (PR #970, #973): Dieses Änderungsprotokoll lässt sich
+  in der App lesen.
+- **Kontingent und Vorabprüfung** (PR #1024, #1025): Monatsfenster für das
+  Kontingent mit Freischalt-Probe; die Vorabprüfung liefert Fakten über den
+  Rechner.
+- **Ideen werden eingeordnet** (PR #1044): Deterministischer Kern für die
+  Einordnung von Ideen; noch nicht in der Oberfläche verbunden.
+- **Verlauf zeigt einen Hinweis, wenn das Laden scheitert** (PR #940, #962).
+
+**Zuverlässigkeit und Sicherheit:**
+
+- **Update-Rücksetzung hält den Update-Kanal konsistent** (PR #929, #937).
+- **Denkraum** (PR #927, #928, #930, #931, #941, #952): Zu einfache Token und
+  Geheimnisse werden abgelehnt; Webhook-Wiederholungen sind begrenzt;
+  Besitzerangabe und Einstieg sind robuster; Umbenennen von Ledger-Dateien
+  ist unter Windows sicher.
+- **Datenordner-Größe bleibt ehrlich** (PR #948, #965): Ein unlesbarer Eintrag
+  verfälscht die Summe nicht mehr.
+- **Protokoll für Beanspruchen und Prüfpunkte** (PR #956): Prüfumschläge auch
+  auf diesen Wegen.
+
+Intern (seit v1.6.0): #924, #926, #933, #934, #935, #936, #938, #944, #945,
+#946, #950, #953, #955, #958, #960, #964, #1006, #1013, #1028, #1036,
+#1041.
+
 ## v1.6.0 (Beta) — 10.10.2026
 
 > **Updater-Hinweis:** v1.5.1 aktualisiert automatisch auf v1.6.0 —
