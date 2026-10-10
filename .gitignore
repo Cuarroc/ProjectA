@@ -3,6 +3,8 @@
 /coverage
 /playwright-report
 /test-results
+# Default output of scripts/dev/shot.mjs (V2-F7); keep PNGs out of git add -A.
+/shots/
 # JUnit-Berichte fuer Mergify Test Insights (CI-01, vitest.config.ts)
 /.junit
 /src-tauri/target
