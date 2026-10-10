@@ -136,19 +136,21 @@ test("settings tabs stay pinned while body scrolls at 1024x500", async ({ page }
     if (!(tabs instanceof HTMLElement) || !(body instanceof HTMLElement) || !(area instanceof HTMLElement)) {
       throw new Error("settings fixtures missing");
     }
+    area.scrollTop = 0;
     body.scrollTop = body.scrollHeight;
-    area.scrollTop = area.scrollHeight;
     const tabsBox = tabs.getBoundingClientRect();
     return {
       tabsTop: tabsBox.top,
       tabsBottom: tabsBox.bottom,
       bodyScrolls: body.scrollHeight > body.clientHeight + 1,
       bodyOverflowY: getComputedStyle(body).overflowY,
+      areaScrollTop: area.scrollTop,
     };
   });
 
   expect(metrics.bodyOverflowY).toBe("auto");
   expect(metrics.bodyScrolls).toBe(true);
+  expect(metrics.areaScrollTop).toBe(0);
   expect(metrics.tabsTop).toBeGreaterThanOrEqual(-0.5);
   expect(metrics.tabsBottom).toBeGreaterThan(16);
 });
