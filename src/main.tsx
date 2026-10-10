@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 
 import App from "./App";
 import "./styles.css";
+import "./design/themes/index.css";
 
 // Browser E2E runs outside Tauri. The mock is loaded before React mounts so
 // every boot-time invoke/listen crosses the same public Tauri API as production.

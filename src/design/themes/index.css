@@ -1,0 +1,12 @@
+/* Theme style hooks (v1.6.1).
+   data-theme-style on .app selects Klassisch / Glas / Liquid / Verlaufsnetz.
+   This file stays visually empty for the default (klassisch): placeholders only.
+   Later packages fill per-style tokens, motion and backdrop effects here.
+   Hooks reserved: [data-theme-style="glas"|"liquid"|"mesh"]. */
+
+.theme-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}

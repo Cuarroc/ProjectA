@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadUiDensity, saveUiDensity } from "./settings";
+import {
+  loadUiDensity,
+  loadUiThemeStyle,
+  saveUiDensity,
+  saveUiThemeStyle,
+  UI_THEME_STYLES,
+  type UiThemeStyle,
+} from "./settings";
 
 describe("UI density preference", () => {
   beforeEach(() => localStorage.clear());
@@ -23,5 +30,23 @@ describe("UI density preference", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("denied"); });
     expect(loadUiDensity()).toBe("comfortable");
     expect(() => saveUiDensity("compact")).not.toThrow();
+  });
+});
+
+describe("UI theme style preference", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("loadUiThemeStyle falls back to klassisch for unknown values", () => {
+    expect(loadUiThemeStyle()).toBe("klassisch");
+    localStorage.setItem("projecta.settings.themeStyle", "neon");
+    expect(loadUiThemeStyle()).toBe("klassisch");
+  });
+
+  it("saveUiThemeStyle round-trips every style", () => {
+    const styles = UI_THEME_STYLES.map((entry) => entry.id) as UiThemeStyle[];
+    for (const style of styles) {
+      saveUiThemeStyle(style);
+      expect(loadUiThemeStyle()).toBe(style);
+    }
   });
 });
