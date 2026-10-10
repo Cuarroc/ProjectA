@@ -6,6 +6,12 @@ it("nested materials use tint without blur or shadow while outer materials keep 
   const style = document.createElement("style");
   style.textContent = readFileSync(resolve(__dirname, "glass.css"), "utf8");
   const fixture = document.createElement("div");
+  // jsdom drops vendor-prefixed declarations even from CSSOM. Preserve their
+  // source blocks and match their selectors against the same DOM fixture.
+  const rules = Array.from(style.textContent.replace(/\/\*[\s\S]*?\*\//g, "")
+    .matchAll(/([^{}]+)\{([^{}]*)\}/g), ([, selector, body]) => ({
+    selector: selector.trim(), body,
+  }));
   document.head.append(style);
   document.body.append(fixture);
   try {
@@ -32,20 +38,13 @@ it("nested materials use tint without blur or shadow while outer materials keep 
         expect(outerStyle.background, pair).toBe(`var(--g-${role}-bg)`);
         expect(outerStyle.boxShadow, pair).toBe("var(--g-spec), var(--g-shadow)");
 
-        // jsdom omits the vendor property from computed styles. Inspect the
-        // matching nested rule in CSSOM as well to protect WebKit consumers.
-        const nestedRule = Array.from(style.sheet!.cssRules)
-          .filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule)
-          .find((rule) => inner.matches(rule.selectorText)
-            && rule.style.getPropertyValue("backdrop-filter") === "none");
-        expect(nestedRule?.style.getPropertyValue("-webkit-backdrop-filter"), pair)
-          .toBe("none");
-        expect(nestedRule && outer.matches(nestedRule.selectorText), pair).toBe(false);
-        const outerRule = Array.from(style.sheet!.cssRules)
-          .find((rule) => rule instanceof CSSStyleRule
-            && rule.selectorText === `.g-${outerMaterial}`) as CSSStyleRule;
-        expect(outerRule.style.getPropertyValue("-webkit-backdrop-filter"), pair)
-          .toBe(`var(--g-${role}-blur)`);
+        const nestedRule = rules.find((rule) => inner.matches(rule.selector)
+          && /(?:^|;)\s*backdrop-filter:\s*none\s*;/.test(rule.body));
+        expect(nestedRule?.body, pair).toMatch(/-webkit-backdrop-filter:\s*none\s*;/);
+        expect(nestedRule && outer.matches(nestedRule.selector), pair).toBe(false);
+        const outerRule = rules.find((rule) => rule.selector === `.g-${outerMaterial}`);
+        expect(outerRule?.body, pair)
+          .toContain(`-webkit-backdrop-filter: var(--g-${role}-blur)`);
       }
     }
   } finally {
