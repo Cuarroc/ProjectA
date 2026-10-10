@@ -36,6 +36,8 @@
 //! date arithmetic in the app, and a second copy of it here would be a second
 //! chance to get leap years wrong.
 
+mod ledger;
+
 use std::collections::BTreeMap;
 
 use serde::Serialize;
