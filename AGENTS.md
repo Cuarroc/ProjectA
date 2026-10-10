@@ -12,7 +12,9 @@ reference. Where a detail contradicts these ten, the ten win.
 
 1. **One package = one branch = one agent = one worktree = one PR.** At most
    300 diff lines including tests (size M, `docs/PLAN.md` rule 7); bigger work
-   is split before dispatch.
+   is split before dispatch. A fix round forced by a review may take the
+   package to at most 400 lines; the PR report records the overrun and the
+   forcing finding IDs.
 2. **Red test first for every bug** (red-first): a compiling, failing
    regression test, then the fix. Only pure documentation is exempt. A visual
    claim needs an inspected screenshot, a runtime claim a measurement.
@@ -27,7 +29,9 @@ reference. Where a detail contradicts these ten, the ten win.
    concurrency, PTY, database): two reviewers from other vendors. Tier B (other
    Rust/TS code): one reviewer who is not the author's model family. Tier C
    (docs, tests, snapshots, config without runtime effect): no external review,
-   the gates suffice. After round two the user decides: merge, split or drop.
+   the gates suffice. After round two the coordinator (Root) decides merge,
+   split or drop and records the decision in the PR report; the user is
+   informed.
 6. **The four seams only serially:** `src-tauri/src/api.rs`, `main.rs`,
    `store.rs` (with `store/`), `bin/pa.rs`. Never two agents on one at once.
 7. **The PR text is the report.** It opens with three German sentences for the
@@ -44,7 +48,10 @@ reference. Where a detail contradicts these ten, the ten win.
 10. **Safety stays with the user.** Secret scan before every commit; secrets
     never go into files, logs or commits. Money, installs, releases and
     deleting require a valid concrete user authorization, and every cleanup
-    starts with a backup. Preserve already granted authorizations; do not ask
+    starts with a backup. A release needs the user's yes, unless a standing
+    written approval of the user covers it (e.g. patch releases), recorded in
+    the coordinator's permission record; minor and major releases always need
+    a fresh yes. Preserve already granted authorizations; do not ask
     again for routine execution within that scope. Bundle essential questions
     in normal chat and record decisions in `docs/PLAN.md`; no AskUser windows.
 
@@ -98,7 +105,8 @@ concurrency, PTY or database/migration change makes it tier A. Never let the
 author's model family judge its own candidate. Record every finding and its
 disposition (accepted with commit, rejected with reason, follow-up) in the PR
 text. A second round only when round one had a high-severity finding; after
-round two the user decides. Evidence is bound to the actual candidate; later
+round two the coordinator (Root) decides merge, split or drop and records it in
+the PR report; no third review round. Evidence is bound to the actual candidate; later
 changes invalidate the affected evidence, so review the delta again. A finding
 without `file:line` counts as unproven.
 
@@ -136,7 +144,8 @@ review nor user approval; do not add an RLM runtime, agents or services for it.
 ## Bounded goals and approved adaptation
 
 Root owns delivery priority and acceptance; Chief alone dispatches and replans
-operations. Each package has one execution owner. First reconcile prior orders,
+operations. While the Chief is unavailable (e.g. its provider is out of quota),
+the coordinator (Root) may edit `docs/PLAN.md`. Each package has one execution owner. First reconcile prior orders,
 actual native goals, running assignments and the canonical PLAN; stored rules,
 delivered mail and expired leases are not evidence of execution or process end.
 
@@ -256,6 +265,10 @@ only after the user approves it.
   for everything else the task lives in the PR text.
 - Do not merge `main` into your branch without a reason (see Merging); do not
   press "update branch".
+- **Stacked packages:** a package may start on top of an unmerged predecessor
+  branch: its DRAFT PR has that branch as base and `main` is not merged into
+  it. The coordinator retargets it to `main` after the base merges. Review
+  diffs of a stacked PR use `git diff <base-branch>...<head>`.
 
 ## Merging (Mergify queue, since 2026-09-24)
 
