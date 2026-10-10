@@ -38,6 +38,7 @@ describe("goal and route mapping (ia.md section 4)", () => {
   it("gives the new Leitstand exactly /leitstand and leaves the rest to the old view", () => {
     expect(isNewLeitstand("/leitstand")).toBe(true);
     expect(isNewLeitstand("/leitstand/")).toBe(true);
+    expect(isNewLeitstand("/leitstand/betrieb")).toBe(true);
     expect(isNewLeitstand("/leitstand/klassisch")).toBe(false);
     expect(isNewLeitstand("/beweise")).toBe(false);
     expect(hasLegacyPanel("/leitstand/klassisch")).toBe(true);

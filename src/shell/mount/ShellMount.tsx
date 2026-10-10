@@ -57,7 +57,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
       {host
         ? createPortal(
             <>
-              {fresh ? <LeitstandRoute /> : null}
+              {fresh ? <LeitstandRoute path={path} /> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
                 {children({ routePath: path, onGoalRoute })}
