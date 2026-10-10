@@ -11,6 +11,7 @@ const KEYS = {
   masterPromptEnabled: "projecta.settings.masterPromptEnabled",
   agentCategories: "projecta.settings.agentCategories",
   density: "projecta.settings.density",
+  themeStyle: "projecta.settings.themeStyle",
   uiFontSize: "projecta.settings.uiFontSize",
   terminalFont: "projecta.settings.terminalFont",
   terminalFontSize: "projecta.settings.terminalFontSize",
@@ -33,6 +34,28 @@ export function loadUiDensity(): UiDensity {
 
 export function saveUiDensity(density: UiDensity): void {
   writeString(KEYS.density, density === "compact" ? "compact" : null);
+}
+
+export type UiThemeStyle = "klassisch" | "glas" | "liquid" | "mesh";
+
+/** German labels for the theme-style picker (wired by a later package). */
+export const UI_THEME_STYLES: ReadonlyArray<{ id: UiThemeStyle; label: string }> = [
+  { id: "klassisch", label: "Klassisch" },
+  { id: "glas", label: "Glas" },
+  { id: "liquid", label: "Liquid" },
+  { id: "mesh", label: "Verlaufsnetz" },
+];
+
+const THEME_STYLE_IDS: ReadonlySet<string> = new Set(UI_THEME_STYLES.map((entry) => entry.id));
+
+/** Visual style of the whole UI shell; unknown values keep the classic default. */
+export function loadUiThemeStyle(): UiThemeStyle {
+  const raw = readString(KEYS.themeStyle);
+  return raw !== null && THEME_STYLE_IDS.has(raw) ? (raw as UiThemeStyle) : "klassisch";
+}
+
+export function saveUiThemeStyle(style: UiThemeStyle): void {
+  writeString(KEYS.themeStyle, style === "klassisch" ? null : style);
 }
 
 export type UiFontSize = "small" | "normal" | "large";
