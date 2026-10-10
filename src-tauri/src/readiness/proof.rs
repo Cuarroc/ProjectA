@@ -122,8 +122,17 @@ pub enum Uncovered {
 }
 
 fn is_heading(line: &str) -> bool {
-    let hashes = line.trim_start().bytes().take_while(|b| *b == b'#').count();
-    (1..=6).contains(&hashes) && line.trim_start()[hashes..].starts_with(' ')
+    let line = line.trim_start();
+    let hashes = line.bytes().take_while(|b| *b == b'#').count();
+    (1..=6).contains(&hashes) && line[hashes..].starts_with([' ', '\t'])
+}
+
+/// The fence character if `line` opens or closes a fenced code block.
+fn fence_char(line: &str) -> Option<char> {
+    let line = line.trim_start();
+    ['`', '~']
+        .into_iter()
+        .find(|c| line.starts_with(&c.to_string().repeat(3)))
 }
 
 /// Label line without heading hashes or bold/italic marks.
@@ -146,10 +155,27 @@ const MARKER: &str = "NICHT ABGEDECKT";
 /// Text from the heading/label line `NICHT ABGEDECKT` (any `#` level, bold or
 /// plain, optional `:`) up to the next heading, one entry per non-empty line
 /// with list markers removed. Text on the label line itself counts as a line.
+/// The marker must not run into a longer word, and fenced code blocks (``` or
+/// ~~~) never hold a marker or a heading.
 pub fn parse_uncovered(body: &str) -> Uncovered {
     let mut lines = Vec::new();
     let mut inside = false;
+    let mut fence: Option<char> = None;
     for raw in body.lines() {
+        if let Some(c) = fence_char(raw) {
+            match fence {
+                None => fence = Some(c),
+                Some(open) if open == c => fence = None,
+                Some(_) => {}
+            }
+            continue;
+        }
+        if fence.is_some() {
+            if inside && !item(raw).is_empty() {
+                lines.push(item(raw).to_string());
+            }
+            continue;
+        }
         if inside {
             if is_heading(raw) {
                 break;
@@ -157,16 +183,23 @@ pub fn parse_uncovered(body: &str) -> Uncovered {
             if !item(raw).is_empty() {
                 lines.push(item(raw).to_string());
             }
-        } else if let Some(head) = label(raw)
+            continue;
+        }
+        let label = label(raw);
+        let Some(head) = label
             .get(..MARKER.len())
             .filter(|h| h.eq_ignore_ascii_case(MARKER))
-        {
-            inside = true;
-            let rest = label(raw)[head.len()..]
-                .trim_start_matches(|c: char| [':', '*', '_', ' '].contains(&c));
-            if !rest.is_empty() {
-                lines.push(rest.to_string());
-            }
+        else {
+            continue;
+        };
+        let rest = &label[head.len()..];
+        if rest.chars().next().is_some_and(char::is_alphanumeric) {
+            continue;
+        }
+        inside = true;
+        let rest = rest.trim_start_matches([':', '*', '_', ' ']);
+        if !rest.is_empty() {
+            lines.push(rest.to_string());
         }
     }
     if lines.is_empty() {
