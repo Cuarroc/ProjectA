@@ -1,4 +1,10 @@
 [
+  "src/screens/einstellungen/VersionUpdates.tsx: \"ProjectA \"",
+  "src/screens/leitstand/LeitstandRoute.tsx: \"Ansichten\"",
+  "src/screens/leitstand/LeitstandRoute.tsx: \"Haupt\"",
+  "src/screens/leitstand/LeitstandRoute.tsx: \"Klassisch\"",
+  "src/screens/leitstand/LeitstandRoute.tsx: \"Leitstand\"",
+  "src/screens/start/ErsteinrichtungScreen.tsx: \", \"",
   "src/shell/header/CommandPalette.tsx: \" · \"",
   "src/shell/header/CommandPalette.tsx: \"Befehlspalette\"",
   "src/shell/header/CommandPalette.tsx: \"Bisher sind nur Seiten durchsuchbar.\"",
@@ -8,6 +14,7 @@
   "src/shell/header/CommandPalette.tsx: \"Strg K\"",
   "src/shell/header/CommandPalette.tsx: \"Suchen oder Befehl eingeben\"",
   "src/shell/header/CommandPalette.tsx: \"Treffer\"",
+  "src/shell/header/CommandPalette.tsx: \"⌘ K\"",
   "src/shell/header/QuotaBell.tsx: \"Benachrichtigungen: noch nicht verbunden\"",
   "src/shell/header/QuotaBell.tsx: \"Kontingente: noch nicht verbunden\"",
   "src/shell/header/StopBand.tsx: \"Fortsetzen\"",
