@@ -15,7 +15,8 @@ function useMediaQuery(query: string): boolean {
     list?.addEventListener("change", notify);
     return () => list?.removeEventListener("change", notify);
   }, [list]);
-  return useSyncExternalStore(subscribe, () => list?.matches ?? false);
+  const getSnapshot = useCallback(() => list?.matches ?? false, [list]);
+  return useSyncExternalStore(subscribe, getSnapshot);
 }
 
 function Groups() {

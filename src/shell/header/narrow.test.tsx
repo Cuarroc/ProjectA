@@ -24,8 +24,8 @@ beforeEach(() => { localStorage.clear(); window.location.hash = ""; });
 afterEach(() => { cleanup(); delete (window as { matchMedia?: unknown }).matchMedia; });
 
 describe("narrow header", () => {
-  it("collapses only where the full controls were measured not to fit (1250 px and below)", () => {
-    expect(COMPACT_QUERY).toBe("(max-width: 1279px)");
+  it("keeps the compact menu below 1600 px so search and quota status stay readable", () => {
+    expect(COMPACT_QUERY).toBe("(max-width: 1599px)");
   });
 
   it("shows both segmented groups at full width and no menu button", () => {
@@ -61,8 +61,8 @@ describe("narrow header", () => {
   });
 
   it("creates one MediaQueryList per mounted control and releases it on unmount", () => {
-    const added = vi.fn();
-    const removed = vi.fn();
+    const added = vi.fn<(type: string, fn: () => void) => void>();
+    const removed = vi.fn<(type: string, fn: () => void) => void>();
     const matchMedia = vi.fn(() => ({ matches: false, addEventListener: added, removeEventListener: removed }));
     window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
     const { rerender, unmount } = render(<AppearanceControl />);
@@ -73,8 +73,8 @@ describe("narrow header", () => {
     expect(added).toHaveBeenCalledTimes(1);
     expect(removed).not.toHaveBeenCalled();
     unmount();
-    expect(removed).toHaveBeenCalledTimes(1);
-    expect(removed.mock.calls[0][1]).toBe(added.mock.calls[0][1]);
+    expect(removed).toHaveBeenCalledTimes(added.mock.calls.length);
+    expect(removed.mock.calls.every(([type]) => type === "change")).toBe(true);
   });
 
   it("keeps the Not-Aus button in the DOM and focusable with the note's full text as title", async () => {

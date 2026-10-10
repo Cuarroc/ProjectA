@@ -3,8 +3,8 @@
 import type { GlassVariant } from "../design/variants/useGlassVariant";
 
 /** Below this viewport width the two segmented groups no longer fit next to Not-Aus and collapse into one menu (not a UI word; lives here because the i18n scanner skips this file).
- *  Measured (dark, D1 on, full controls): they stop fitting at 1250 px (Not-Aus clips); 1279 keeps ~25 px of room for font differences. */
-export const COMPACT_QUERY = "(max-width: 1279px)";
+ *  Kept at 1600 on purpose: the full controls fit from 1253 px, but then search loses its label and shortcut and the quota status disappears (follow-up V2-FU-HEADER-SPACE). */
+export const COMPACT_QUERY = "(max-width: 1599px)";
 export const STYLE_LABEL = "Stil";
 export const THEME_LABEL = "Farbschema";
 
