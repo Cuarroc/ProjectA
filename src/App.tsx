@@ -197,7 +197,33 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(readStoredProjectId);
   const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
+  const [viewportNarrow, setViewportNarrow] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 1099px)").matches,
+  );
+  const [narrowForceOpen, setNarrowForceOpen] = useState(false);
+  const [railMotion, setRailMotion] = useState(false);
+  const railMotionTimer = useRef<number | null>(null);
+  const appShellRef = useRef<HTMLDivElement | null>(null);
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>("loading");
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 1099px)");
+    const apply = () => {
+      setViewportNarrow(mq.matches);
+      if (mq.matches) setNarrowForceOpen(false);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (railMotionTimer.current !== null) window.clearTimeout(railMotionTimer.current);
+    },
+    [],
+  );
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workersLoading, setWorkersLoading] = useState(false);
@@ -257,10 +283,9 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
     [],
   );
 
-  // The rail shows the board beside every other view, so the full board no
-  // longer needs one of its own — and hiding it there keeps the two from
-  // saying the same thing twice in one window.
-  const railVisible = railOpen && !(goal === "work" && workSurface === "board");
+  const railExpanded =
+    !(goal === "work" && workSurface === "board") &&
+    (viewportNarrow ? narrowForceOpen : railOpen);
 
   // Initial fetch, `worker:status` updates and the polling fallback all live in
   // here. It used to sleep on the Workers view; it no longer can. The rail and
@@ -793,12 +818,53 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
    * A card stands for a running terminal, so opening one means going to that
    * terminal — the board hands the workspace over rather than embedding it.
    */
-  const toggleRail = useCallback(() => {
-    setRailOpen((open) => {
-      writeStoredRailOpen(!open);
-      return !open;
-    });
+  const clearRailMotion = useCallback(() => {
+    if (railMotionTimer.current !== null) {
+      window.clearTimeout(railMotionTimer.current);
+      railMotionTimer.current = null;
+    }
+    setRailMotion(false);
   }, []);
+
+  const toggleRail = useCallback(() => {
+    // Board surface keeps the rail track closed; reduced motion snaps with no
+    // transitionend — never arm `app-rail-motion` when the grid will not animate.
+    const onBoard = goal === "work" && workSurface === "board";
+    const reducedMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!onBoard && !reducedMotion) {
+      setRailMotion(true);
+      if (railMotionTimer.current !== null) window.clearTimeout(railMotionTimer.current);
+      // --dur-slow is 320ms; margin covers late frames / cancelled paths.
+      railMotionTimer.current = window.setTimeout(clearRailMotion, 400);
+    }
+    if (onBoard) return;
+    if (railExpanded) {
+      writeStoredRailOpen(false);
+      setRailOpen(false);
+      setNarrowForceOpen(false);
+      return;
+    }
+    writeStoredRailOpen(true);
+    setRailOpen(true);
+    if (viewportNarrow) setNarrowForceOpen(true);
+  }, [clearRailMotion, goal, railExpanded, viewportNarrow, workSurface]);
+
+  useEffect(() => {
+    const shell = appShellRef.current;
+    if (!shell) return;
+    const onSettled = (event: TransitionEvent) => {
+      if (event.target !== shell || event.propertyName !== "grid-template-columns") return;
+      clearRailMotion();
+    };
+    shell.addEventListener("transitionend", onSettled);
+    shell.addEventListener("transitioncancel", onSettled);
+    return () => {
+      shell.removeEventListener("transitionend", onSettled);
+      shell.removeEventListener("transitioncancel", onSettled);
+    };
+  }, [bootstrapReady, clearRailMotion]);
 
   const handleOpenCard = useCallback(
     (worker: Worker) => {
@@ -1122,7 +1188,13 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   }
 
   return (
-    <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density} data-theme-style={themeStyle} data-ui-font-size={fonts.uiFontSize}>
+    <div
+      ref={appShellRef}
+      className={`app${railExpanded ? " app-railed" : ""}${railMotion ? " app-rail-motion" : ""}`}
+      data-density={density}
+      data-theme-style={themeStyle}
+      data-ui-font-size={fonts.uiFontSize}
+    >
       <ThemeBackdrop style={themeStyle} />
       <Sidebar
         projects={projects}
@@ -1167,13 +1239,13 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
           />
         ) : null}
       </Sidebar>
-      {railVisible ? (
-        <BoardRail
+      <BoardRail
           cards={board.cards}
           activeWorkerId={activeSession?.workerId ?? restoreWorkerId}
           hasProject={activeProject !== null}
           loading={board.loading}
           error={board.error}
+          collapsed={!railExpanded}
           onOpen={handleOpenCard}
           onOpenBoard={() => {
             setWorkSurface("board");
@@ -1184,7 +1256,6 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
           onOpenQuestions={() => setGoal("attention")}
           onCollapse={toggleRail}
         />
-      ) : null}
       <main className="main">
         <LiveStatus
           view={GOAL_LABELS[goal]}
@@ -1206,7 +1277,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
           questionsFleetWide={questions.scope === "all"}
           onNewWorker={openWorkerDialog}
           newWorkerDisabled={activeProject === null || !isCategoryActive("worker")}
-          railOpen={railOpen}
+          railOpen={railExpanded}
           onToggleRail={toggleRail}
         />
         {goal === "work" && workSurface === "dialog" ? (

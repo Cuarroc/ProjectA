@@ -240,6 +240,9 @@
   --shell-sidebar-w: 248px;
   --shell-rail-w: 236px;
   --shell-bar-h: 38px;
+  /* Drawn box for ring/dot marks; diamond and eye use ~8.5px so the
+     rotated bbox stays inside this size. */
+  --size-state-mark: 12px;
   /* Prose stops being readable long before a wide window ends. */
   --stream-max-w: 880px;
 
@@ -603,15 +606,16 @@ a {
 .state-mark {
   position: relative;
   flex: 0 0 auto;
-  width: var(--size-state-mark, 12px);
-  height: var(--size-state-mark, 12px);
+  width: var(--size-state-mark);
+  height: var(--size-state-mark);
   color: var(--state-fg, var(--fg-muted));
 }
 
 .state-mark::before {
   content: "";
   position: absolute;
-  inset: var(--space-1);
+  box-sizing: border-box;
+  inset: 0;
   border: var(--space-1) solid currentColor;
 }
 
@@ -621,9 +625,10 @@ a {
 .rail-label::before {
   content: "";
   display: inline-block;
+  box-sizing: border-box;
   position: relative;
-  width: var(--size-state-mark, 12px);
-  height: var(--size-state-mark, 12px);
+  width: var(--size-state-mark);
+  height: var(--size-state-mark);
   margin-right: var(--space-3);
   vertical-align: -2px;
   border: var(--space-1) solid currentColor;
@@ -637,21 +642,45 @@ a {
   border-right-color: transparent;
 }
 
-/* needs you: the diamond is the only shape with points. */
+/* needs you: the diamond is the only shape with points.
+   Side ~8.5px → rotated bbox ≈ 12px (= --size-state-mark). */
 .state-needs-you > .state-mark::before,
-.state-needs-you.state-mark::before,
-.state-needs-you > .rail-label::before {
+.state-needs-you.state-mark::before {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 8.5px;
+  height: 8.5px;
   border-radius: 1px;
-  transform: rotate(45deg);
+  transform: translate(-50%, -50%) rotate(45deg);
 }
 
-/* in Review: ein zur Seite gekipptes Auge. */
+.state-needs-you > .rail-label::before {
+  width: 8.5px;
+  height: 8.5px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  vertical-align: 0;
+}
+
+/* in Review: ein zur Seite gekipptes Auge; same optical bbox as the diamond. */
 .state-in-review > .state-mark::before,
-.state-in-review.state-mark::before,
+.state-in-review.state-mark::before {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 8.5px;
+  height: 8.5px;
+  border-radius: var(--radius-round) 1px;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
 .state-in-review > .rail-label::before {
-  inset: 3px 1px;
+  width: 8.5px;
+  height: 8.5px;
   border-radius: var(--radius-round) 1px;
   transform: rotate(45deg);
+  vertical-align: 0;
 }
 
 /* ready to merge and done: the same check, once in the state colour and
@@ -667,7 +696,7 @@ a {
   inset: auto;
   border: 0;
   font-size: var(--text-base);
-  line-height: var(--size-state-mark, 12px);
+  line-height: var(--size-state-mark);
   font-weight: 600;
 }
 
@@ -679,7 +708,7 @@ a {
   inset: auto;
   border: 0;
   font-size: var(--text-base);
-  line-height: var(--size-state-mark, 12px);
+  line-height: var(--size-state-mark);
   font-weight: 600;
 }
 
@@ -724,9 +753,10 @@ a {
 .state-chip.state-danger::before {
   content: "";
   position: relative;
+  box-sizing: border-box;
   flex: 0 0 auto;
-  width: var(--size-state-mark, 12px);
-  height: var(--size-state-mark, 12px);
+  width: var(--size-state-mark);
+  height: var(--size-state-mark);
   border: var(--space-1) solid currentColor;
 }
 
@@ -736,13 +766,17 @@ a {
 }
 
 .state-chip.state-needs-you::before {
+  width: 8.5px;
+  height: 8.5px;
   border-radius: 1px;
-  transform: rotate(45deg) scale(0.78);
+  transform: rotate(45deg);
 }
 
 .state-chip.state-in-review::before {
+  width: 8.5px;
+  height: 8.5px;
   border-radius: var(--radius-round) 1px;
-  transform: rotate(45deg) scale(0.86);
+  transform: rotate(45deg);
 }
 
 .state-chip.state-ready-to-merge::before,
@@ -771,12 +805,23 @@ a {
 
 .app {
   display: grid;
-  /* The rail slides open and shut rather than appearing and vanishing. It is
-     the only travel in the window that moves a column width — so it stays
-     short and runs on the same curve as everything that opens and closes. */
-  transition: grid-template-columns var(--motion-pane) var(--ease-spatial);
-  grid-template-columns: var(--shell-sidebar-w) 1fr;
+  /* Three tracks; --shell-rail-w moves 0↔open. Motion class set only on toggle. */
+  grid-template-columns: var(--shell-sidebar-w) var(--shell-rail-w) 1fr;
   height: 100%;
+}
+
+.app:not(.app-railed) {
+  --shell-rail-w: 0px;
+}
+
+.app.app-rail-motion {
+  transition: grid-template-columns var(--dur-slow) var(--ease-move);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app.app-rail-motion {
+    transition: none;
+  }
 }
 
 /* The first rendered state has no project context yet. Keep it calm and
@@ -867,12 +912,7 @@ a {
   }
 }
 
-/* Variant B's three columns: projects, the board as a rail, the conversation.
-   The rail is a column of the shell rather than of the main area so it keeps
-   its own scroll and never rides along with a view switch. */
-.app-railed {
-  grid-template-columns: var(--shell-sidebar-w) var(--shell-rail-w) 1fr;
-}
+/* Variant B: `.app-railed` keeps open `--shell-rail-w`; closed sets 0. */
 
 /* ---- board rail ------------------------------------------------------- */
 
@@ -881,11 +921,14 @@ a {
   grid-template-rows: auto 1fr;
   min-width: 0;
   min-height: 0;
-  background: var(--bg);
+  overflow: hidden;
+  /* Content surface (not chrome/card) so rail items stay readable after T2. */
+  background: var(--surface-content, var(--bg));
   border-right: 1px solid var(--border);
-  /* The content fades in while the column opens — otherwise the finished
-     rail would already stand there before it has room. */
-  animation: pane-in var(--motion-pane) var(--ease-spatial);
+}
+
+.app:not(.app-railed) .rail {
+  border-right-width: 0;
 }
 
 .rail-head {

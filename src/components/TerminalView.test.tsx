@@ -8,6 +8,8 @@ const WebglAddonContexts = () => mocks.webglContexts;
 
 const mocks = vi.hoisted(() => ({
   fit: vi.fn(),
+  fitBumpsCols: false,
+  liveTerm: null as { cols: number; rows: number } | null,
   focus: vi.fn(),
   open: vi.fn(),
   refresh: vi.fn(),
@@ -53,6 +55,7 @@ vi.mock("@xterm/xterm", () => ({
       this.options = { ...options };
       this.tracker = { disposed: 0, options: this.options };
       mocks.terminals.push(this.tracker);
+      mocks.liveTerm = this;
     }
     loadAddon() {}
     open(container: HTMLElement) {
@@ -112,6 +115,7 @@ vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
     fit() {
       mocks.fit();
+      if (mocks.fitBumpsCols && mocks.liveTerm) mocks.liveTerm.cols += 1;
     }
   },
 }));
@@ -154,6 +158,8 @@ class ResizeObserverStub {
 describe("TerminalView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.fitBumpsCols = false;
+    mocks.liveTerm = null;
     vi.stubGlobal("ResizeObserver", ResizeObserverStub);
     WebglAddonContexts().length = 0;
     mocks.customKeyEventHandler = null;
@@ -729,6 +735,67 @@ describe("TerminalView", () => {
         expect.objectContaining({ caseSensitive: true, regex: false }),
       );
     });
+  });
+
+  it("refits when the shell grid finishes a rail transition", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <div className="app">
+          <TerminalView sessionId="session-a" onError={vi.fn()} />
+        </div>,
+      );
+      const shell = container.querySelector(".app");
+      const fitsBefore = mocks.fit.mock.calls.length;
+      act(() => {
+        shell!.dispatchEvent(
+          new TransitionEvent("transitionend", { bubbles: true, propertyName: "grid-template-columns" }),
+        );
+        vi.advanceTimersByTime(32);
+      });
+      expect(mocks.fit.mock.calls.length).toBeGreaterThan(fitsBefore);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("skips ResizeObserver refits while app-rail-motion is set", () => {
+    let observerCb: (() => void) | null = null;
+    class CapturingRO {
+      constructor(cb: () => void) {
+        observerCb = cb;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("ResizeObserver", CapturingRO);
+    mocks.fitBumpsCols = true;
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <div className="app app-rail-motion">
+          <TerminalView sessionId="session-a" onError={vi.fn()} />
+        </div>,
+      );
+      expect(observerCb).toBeTypeOf("function");
+      const resizesAfterMount = mocks.resizePty.mock.calls.length;
+      act(() => {
+        for (let i = 0; i < 8; i++) observerCb!();
+      });
+      expect(mocks.resizePty.mock.calls.length).toBe(resizesAfterMount);
+      const shell = container.querySelector(".app")!;
+      shell.classList.remove("app-rail-motion");
+      act(() => {
+        shell.dispatchEvent(
+          new TransitionEvent("transitionend", { bubbles: true, propertyName: "grid-template-columns" }),
+        );
+        vi.advanceTimersByTime(32);
+      });
+      expect(mocks.resizePty.mock.calls.length).toBeLessThanOrEqual(resizesAfterMount + 1);
+      expect(mocks.resizePty.mock.calls.length).toBeGreaterThan(resizesAfterMount);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   describe("Kontrast der Treffer-Hervorhebung", () => {

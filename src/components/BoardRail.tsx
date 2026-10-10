@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 import {
   BOARD_COLUMNS,
@@ -17,6 +17,8 @@ interface BoardRailProps {
   hasProject: boolean;
   loading: boolean;
   error: string | null;
+  /** When true the shell track is 0-wide; keep mounted and mark inert. */
+  collapsed?: boolean;
   /** Open the worker's workspace, same jump a board card makes. */
   onOpen: (worker: Worker) => void;
   /** Leave the rail for the full board, where a card can be acted on. */
@@ -50,6 +52,7 @@ export default function BoardRail({
   hasProject,
   loading,
   error,
+  collapsed = false,
   onOpen,
   onOpenBoard,
   openQuestions,
@@ -74,9 +77,30 @@ export default function BoardRail({
   );
 
   const needsYou = workerCards.filter((card) => card.column === "needs_you").length;
+  const railRef = useRef<HTMLElement | null>(null);
+
+  // Move focus out before inert so the keyboard user lands on the ViewBar
+  // toggle rather than on <body> when the rail collapses under them.
+  useLayoutEffect(() => {
+    const node = railRef.current;
+    if (!node) return;
+    if (collapsed) {
+      if (node.contains(document.activeElement)) {
+        document.querySelector<HTMLElement>(".viewbar-rail-toggle")?.focus();
+      }
+      node.setAttribute("inert", "");
+    } else {
+      node.removeAttribute("inert");
+    }
+  }, [collapsed]);
 
   return (
-    <aside className="rail" aria-label="Board">
+    <aside
+      className="rail"
+      aria-label="Board"
+      aria-hidden={collapsed || undefined}
+      ref={railRef}
+    >
       <div className="rail-head">
         <button
           type="button"
