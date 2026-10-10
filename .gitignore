@@ -29,6 +29,8 @@
 !.pa/task_*.md
 !.pa/report_*.md
 !.pa/review_*.md
+# Re-ignore prompts written by run-local.sh; keep other !.pa/review_* reports.
+.pa/review_prompt_*.md
 !.pa/review_*.py
 !.pa/patches/
 !.pa/patches/*.diff
@@ -37,6 +39,12 @@
 !.pa/release_attestation_v1.5.1.json
 # Archiv alter Plan-, Stand-, Spec- und Review-Prompt-Dateien (PLAN-01, 25.09.).
 !.pa/archiv/
+# Agent-local configs (may hold secrets); handoffs and sessions stay local.
+.mcp.json
+.cursor/mcp.json
+.grok/config.toml
+.agentsroom/handoff-*
+.agentsroom/sessions/
 .omc/
 .pa-scout.jsonl
 .playwright-cli/
