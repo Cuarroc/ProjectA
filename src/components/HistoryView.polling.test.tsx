@@ -70,4 +70,40 @@ describe("HistoryView polling", () => {
     expect(screen.getByText("new worker text")).toBeTruthy();
     view.unmount();
   });
+
+  it("shows a load hint when listWorkerMessages rejects with no messages", async () => {
+    mocks.listWorkerMessages.mockRejectedValue(new Error("ipc down"));
+
+    const view = render(<HistoryView workerId="worker-1" />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const hint = screen.getByRole("status");
+    expect(hint.textContent).toContain("Verlauf konnte nicht geladen werden");
+    view.unmount();
+  });
+
+  it("a failed later poll keeps the earlier messages", async () => {
+    mocks.listWorkerMessages
+      .mockResolvedValueOnce([
+        { id: "m1", workerId: "worker-1", role: "agent", content: "kept text", createdAt: 1 },
+      ])
+      .mockRejectedValue(new Error("ipc down"));
+
+    const view = render(<HistoryView workerId="worker-1" />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByText("kept text")).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(mocks.listWorkerMessages).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("kept text")).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
+    view.unmount();
+  });
 });
