@@ -6,7 +6,8 @@
 // so the gate log cannot leak what it found.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntry } from "./entry.mjs";
 
 const SCOPE = "tools/denkraum";
 
@@ -63,6 +64,6 @@ export function run(root, log = console, maxBuffer) {
   return found.length ? 1 : 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntry(import.meta.url, import.meta)) {
   process.exit(run(fileURLToPath(new URL("../..", import.meta.url))));
 }
