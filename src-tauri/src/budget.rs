@@ -214,6 +214,17 @@ pub fn parse_percent(raw: &str) -> Result<u8, String> {
     Ok(value as u8)
 }
 
+/// The profile's entry in `out`, added empty when it is not there yet.
+fn entry_for<'a>(out: &'a mut Vec<BudgetLimits>, profile_id: &str) -> &'a mut BudgetLimits {
+    match out.iter().position(|e| e.profile_id == profile_id) {
+        Some(index) => &mut out[index],
+        None => {
+            out.push(BudgetLimits::none(profile_id));
+            out.last_mut().expect("just pushed")
+        }
+    }
+}
+
 /// Fold a flat `key = value` list into one entry per profile, newest wording
 /// of the keys only. Unparsable values are dropped rather than guessed at: a
 /// threshold nobody can read is no threshold, and blocking on one would be the
@@ -237,16 +248,11 @@ pub fn limits_from_settings(settings: &[(String, String)]) -> Vec<BudgetLimits> 
         let Ok(percent) = parse_percent(value) else {
             continue;
         };
-        let entry = match out.iter_mut().find(|e| e.profile_id == profile_id) {
-            Some(entry) => entry,
-            None => {
-                out.push(BudgetLimits::none(profile_id));
-                out.last_mut().expect("just pushed")
-            }
-        };
+        // The row is created per arm, so a window this view does not carry
+        // (the month) can never leave an all-None row behind.
         match window {
-            Window::FiveHour => entry.five_hour_pct = Some(percent),
-            Window::SevenDay => entry.seven_day_pct = Some(percent),
+            Window::FiveHour => entry_for(&mut out, profile_id).five_hour_pct = Some(percent),
+            Window::SevenDay => entry_for(&mut out, profile_id).seven_day_pct = Some(percent),
             Window::Month => {}
         }
     }
@@ -362,7 +368,10 @@ pub fn evaluate(
         };
         let observed = match window {
             Window::FiveHour => usage.five_hour,
-            _ => usage.seven_day,
+            Window::SevenDay => usage.seven_day,
+            // The statusLine payload carries no month figure, and the loop
+            // above only names the two rate windows: nothing to rate here.
+            Window::Month => continue,
         };
         if let Some(stop) = evaluate_window(&limits.profile_id, window, limit, observed, now) {
             return Some(stop);
@@ -716,6 +725,29 @@ mod tests {
         assert_eq!(month_limit_of(&store, "claude").await.unwrap(), None);
         // The month key adds no row to the two-window view.
         assert!(list_limits(&store).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_valid_month_threshold_adds_no_row_to_the_two_window_view() {
+        let (_dir, store, _project) = fixture().await;
+        store
+            .set_setting(&setting_key("claude", Window::Month), "85")
+            .await
+            .unwrap();
+        assert_eq!(month_limit_of(&store, "claude").await.unwrap(), Some(85));
+        assert!(
+            list_limits(&store).await.unwrap().is_empty(),
+            "a month-only profile must not show as an all-None row"
+        );
+        // Next to a real rate-window threshold it adds nothing either.
+        store
+            .set_setting(&setting_key("claude", Window::FiveHour), "70")
+            .await
+            .unwrap();
+        let rows = list_limits(&store).await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].five_hour_pct, Some(70));
+        assert_eq!(rows[0].seven_day_pct, None);
     }
 
     async fn fixture() -> (TempDir, Store, String) {
