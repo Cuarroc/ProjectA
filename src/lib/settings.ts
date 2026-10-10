@@ -17,7 +17,8 @@ const KEYS = {
   terminalFontSize: "projecta.settings.terminalFontSize",
 } as const;
 
-function readString(key: string): string | null {
+/** Shared localStorage read used by settings and feature flags. */
+export function readString(key: string): string | null {
   try {
     return localStorage.getItem(key);
   } catch {
@@ -111,7 +112,8 @@ export function saveTerminalFontSize(size: number): void {
   writeString(KEYS.terminalFontSize, size === TERMINAL_FONT_SIZE_DEFAULT ? null : String(size));
 }
 
-function writeString(key: string, value: string | null): void {
+/** Shared localStorage write used by settings and feature flags. */
+export function writeString(key: string, value: string | null): void {
   try {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
