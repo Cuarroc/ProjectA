@@ -26,8 +26,7 @@ describe("active project", () => {
   it("survives disabled storage", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("denied"); });
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("denied"); });
-    const cb = vi.fn();
-    subscribeActiveProject(cb);
+    const cb = vi.fn(); subscribeActiveProject(cb);
     expect(readActiveProjectId()).toBeNull();
     expect(() => writeActiveProjectId("p-1")).not.toThrow();
     expect(cb).toHaveBeenCalledWith("p-1");

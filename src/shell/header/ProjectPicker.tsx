@@ -18,7 +18,8 @@ export function ProjectPicker() {
   const [activeId, setActiveId] = useState(readActiveProjectId);
   const [index, setIndex] = useState(0);
   const base = useId();
-  const [root, button] = [useRef<HTMLDivElement>(null), useRef<HTMLButtonElement>(null)];
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const projects = load.state === "ready" ? load.projects : [];
 
   const refresh = useCallback(() => {
