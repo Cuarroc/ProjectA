@@ -67,6 +67,10 @@ pub mod development_route;
 // dispatch_order/PlannedPackage are test-only until a scheduler consumes them (W5-25).
 pub mod lane_guard;
 
+#[path = "workers/queue_order.rs"]
+#[allow(dead_code)] // V2-B4a: pure core; the scheduler wiring is a later package.
+pub mod queue_order;
+
 #[path = "workers/native_launch.rs"]
 #[allow(dead_code)] // Platform adapters must explicitly supply verified resources.
 pub mod native_launch;
