@@ -6,7 +6,18 @@
 @media (min-width: 760px) { .g-mount .g-shell { flex-wrap: nowrap; } }
 .g-mount .g-shell-main { min-height: 0; }
 .g-mount .g-shell-content { min-height: 0; }
-.g-mount[data-legacy="on"] .g-shell-panel { display: none; }
+.g-mount[data-legacy="on"] .g-shell-panel, .g-mount[data-fresh="on"] .g-shell-panel { display: none; }
 .g-mount-legacy { flex: 1; min-width: 0; min-height: 0; display: flex; overflow: hidden; border-radius: 14px; background: var(--color-window, var(--g-ground)); }
 .g-mount-legacy[hidden] { display: none; }
 .g-mount-legacy > .app { flex: 1; min-width: 0; height: 100%; }
+/* V2-S01a-M: the new Leitstand and the tab strip above the old Work view (Klassisch). */
+.g-mount-legacy[data-tabs] { flex-direction: column; gap: 8px; padding: 8px 0 0; }
+.g-mount-legacy[data-tabs] > .g-shell-tabs { flex: none; align-self: flex-start; margin-left: 8px; }
+.g-mount-legacy[data-tabs] > .app { height: auto; min-height: 0; }
+.g-lr { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.g-lr-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 4px 4px 0; }
+.g-lr-head h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }
+.g-lr-body { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; flex: 1; min-height: 0; }
+.g-lr-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.g-lr-side { flex: 1 1 320px; max-width: 100%; min-width: 0; }
+@media (min-width: 900px) { .g-lr-side { max-width: 360px; } }
