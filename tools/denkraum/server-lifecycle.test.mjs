@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, rm, readFile, access } from 'node:fs/promises';
@@ -12,6 +13,7 @@ import { createDeskServer } from './server.mjs';
 import { DeskStore } from './store.mjs';
 
 const entry = new URL('./server.mjs', import.meta.url);
+const strongSecret = () => randomBytes(24).toString('hex');
 const question = id => ({ id, title: 'T', context: 'C', owner: 'O', category: 'K', scope: 'S', source: 'Q', uncertainty: 'U',
   recommendation: { optionIds: ['a'], rationale: 'R' }, options: ['a', 'b'].map(o => ({ id: o, label: o, rationale: 'R', impact: 'I', tradeoff: 'T', effort: 'E', reversible: 'Y' })) });
 async function ledger(t) {
@@ -63,7 +65,7 @@ async function startEntry(t, file, port) {
       const probe = createServer(); await listen(probe); selected = probe.address().port; await new Promise(r => probe.close(r));
     }
     const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(selected), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-      DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+      DECISION_DESK_ROOT_RECEIPT_TOKEN: strongSecret(), DECISION_DESK_WEBHOOK_SECRET: strongSecret() };
     delete env.DECISION_DESK_WEBHOOK_URL;
     const result = await childRun(t, [fileURLToPath(entry)], env).done;
     if (port === undefined && attempt < 5 && result.stderr.includes('EADDRINUSE')) continue;
