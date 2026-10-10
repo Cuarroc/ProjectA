@@ -15,7 +15,11 @@ no gaps:
     REVIEWER_<n>_KEY    optional bearer token; never written anywhere
 
 Result: <out-dir>/review_<label>_<name>.md per reviewer, with "Status: ok"
-or "Status: failed".
+or "Status: failed". Each protocol is written as soon as that reviewer
+finishes; the final stdout summary stays in configuration order.
+
+Concurrency: at most 2 workers. Worst-case wall time per reviewer is
+2×timeout + 30 s (one Retry-After sleep, capped at 30 s).
 
 Exit 0 only when EVERY configured reviewer answered with text. Exit 1 when at
 least one reviewer gave no verdict - its protocol records the failure, and
@@ -29,7 +33,7 @@ cannot pass for a failed provider (docs/decisions.md).
 """
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
 from email.utils import parsedate_to_datetime
 import hashlib
@@ -83,12 +87,14 @@ def retry_delay(value):
 
 
 def post_json(url, payload, key, timeout):
+    """POST JSON. Return (parsed body, retried_http_code_or_None)."""
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = f"Bearer {key}"
     request = urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
     )
+    retried_code = None
     for attempt in range(2):
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -98,16 +104,20 @@ def post_json(url, payload, key, timeout):
             with error:
                 if attempt == 0 and error.code in (429, 502, 503):
                     delay = retry_delay(error.headers.get("Retry-After"))
+                    retried_code = error.code
                 else:
                     detail = error.read(500).decode("utf-8", "replace").strip()
-                    raise ReviewerError(f"HTTP {error.code}: {detail or error.reason}") from None
+                    suffix = " after one retry" if retried_code is not None else ""
+                    raise ReviewerError(
+                        f"HTTP {error.code}: {detail or error.reason}{suffix}"
+                    ) from None
             time.sleep(delay)
         except urllib.error.URLError as error:
             raise ReviewerError(f"not reachable: {error.reason}") from None
         except TimeoutError:
             raise ReviewerError(f"no answer within {timeout} s") from None
     try:
-        return json.loads(raw.decode("utf-8", "replace"))
+        return json.loads(raw.decode("utf-8", "replace")), retried_code
     except json.JSONDecodeError:
         start = raw[:200].decode("utf-8", "replace").strip()
         raise ReviewerError(f"answer is not JSON: {start!r}") from None
@@ -124,7 +134,7 @@ def require_text(text, where):
 
 
 def ask(reviewer, prompt, timeout):
-    """Return (verdict text, reported model). Raises ReviewerError."""
+    """Return (verdict text, reported model, retried_http_code_or_None). Raises ReviewerError."""
     if not reviewer["url"] or not reviewer["model"]:
         raise ReviewerError("URL or MODEL not configured")
     if reviewer["kind"] == "ollama":
@@ -133,7 +143,7 @@ def ask(reviewer, prompt, timeout):
         payload = {"model": reviewer["model"], "messages": [{"role": "user", "content": prompt}]}
     else:
         raise ReviewerError(f"unknown KIND {reviewer['kind']!r} (openai | ollama)")
-    out = post_json(reviewer["url"], payload, reviewer["key"], timeout)
+    out, retried_code = post_json(reviewer["url"], payload, reviewer["key"], timeout)
     if not isinstance(out, dict):
         raise ReviewerError(f"answer is JSON {type(out).__name__}, not an object")
     if out.get("error"):
@@ -142,17 +152,17 @@ def ask(reviewer, prompt, timeout):
         raise ReviewerError(f"provider error: {message}")
     model = out.get("model") or reviewer["model"]
     if reviewer["kind"] == "ollama":
-        return require_text(out.get("response"), "response"), model
+        return require_text(out.get("response"), "response"), model, retried_code
     choices = out.get("choices")
     if not choices:
         raise ReviewerError("answer has no choices - no verdict")
     # Deliberately unguarded beyond this point: a shape nobody anticipated
     # surfaces as an unexpected error with traceback, not as a provider outage.
     content = choices[0]["message"]["content"]
-    return require_text(content, "choices[0].message.content"), model
+    return require_text(content, "choices[0].message.content"), model, retried_code
 
 
-def protocol(reviewer, label, author, prompt_path, prompt, status, reported_model, body):
+def protocol(reviewer, label, author, prompt_path, prompt, status, reported_model, body, retried_code=None):
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
     lines = [
@@ -165,12 +175,16 @@ def protocol(reviewer, label, author, prompt_path, prompt, status, reported_mode
         f"- Author of the candidate: {author or '-'}",
         f"- Prompt: {prompt_path} ({len(prompt)} chars, sha256 {digest})",
         f"- Time: {now}",
+    ]
+    if retried_code is not None:
+        lines.append(f"- Note: retried once after HTTP {retried_code}")
+    lines.extend([
         "",
         "---",
         "",
         body.rstrip(),
         "",
-    ]
+    ])
     return "\n".join(lines)
 
 
@@ -203,8 +217,9 @@ def main(argv=None):
 
     def review(reviewer):
         reported_model = None
+        retried_code = None
         try:
-            verdict, reported_model = ask(reviewer, prompt, timeout)
+            verdict, reported_model, retried_code = ask(reviewer, prompt, timeout)
             status, body = "ok", verdict
         except ReviewerError as error:
             status, body = "failed", f"Reviewer failure: {error}\n\nNo verdict. Run again; this is not a review."
@@ -215,18 +230,33 @@ def main(argv=None):
                 "Reviewer-Ausfall, sondern ein Fehler in review_transport.py.\n\n"
                 "```\n" + traceback.format_exc() + "```"
             )
-        return status, reported_model, body
+        return status, reported_model, body, retried_code
+
+    def write_protocol(reviewer, status, reported_model, body, retried_code):
+        path = os.path.join(args.out_dir, f"review_{args.label}_{slug(reviewer['name'])}.md")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(protocol(
+                reviewer, args.label, args.author, args.prompt, prompt,
+                status, reported_model, body, retried_code=retried_code,
+            ))
+        return path
 
     failed = 0
+    summaries = {}
     with ThreadPoolExecutor(max_workers=2) as pool:
-        # map preserves configuration order; keep file writes and stdout serial.
-        for reviewer, result in zip(reviewers, pool.map(review, reviewers)):
-            status, reported_model, body = result
-            path = os.path.join(args.out_dir, f"review_{args.label}_{slug(reviewer['name'])}.md")
-            with open(path, "w", encoding="utf-8") as handle:
-                handle.write(protocol(reviewer, args.label, args.author, args.prompt, prompt, status, reported_model, body))
+        futures = {pool.submit(review, reviewer): reviewer for reviewer in reviewers}
+        # Write each protocol as soon as that reviewer finishes so a finished
+        # verdict is not lost if a slower peer is killed.
+        for future in as_completed(futures):
+            reviewer = futures[future]
+            status, reported_model, body, retried_code = future.result()
+            path = write_protocol(reviewer, status, reported_model, body, retried_code)
+            summaries[reviewer["index"]] = (reviewer, status, path)
             if status != "ok":
                 failed += 1
+        # Final summary order stays as configured.
+        for reviewer in reviewers:
+            _, status, path = summaries[reviewer["index"]]
             print(f"{reviewer['name']}: {status} -> {path}")
 
     if failed:

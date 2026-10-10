@@ -183,7 +183,7 @@ retry_out="$tmp/out-$retry_name"
 mkdir -p "$retry_out"
 (
   export REVIEWER_1_NAME=r1 REVIEWER_1_KIND=openai \
-         REVIEWER_1_URL="http://127.0.0.1:$port/retry-429" REVIEWER_1_MODEL=modell-1
+         REVIEWER_1_URL="http://127.0.0.1:$port/retry-note-429" REVIEWER_1_MODEL=modell-1
   "$PY" .pa/review_transport.py "$tmp/prompt.md" "$retry_out" probe --author selbsttest
 ) > "$tmp/$retry_name.log" 2>&1
 retry_got=$?
@@ -241,7 +241,9 @@ for header, expected in [("2", 2), ("120", 30), (future, 12), ("bad", 1), (None,
     response.__enter__.return_value.read.return_value = b'{"response": "verdict"}'
     with patch.object(transport.urllib.request, "urlopen", side_effect=[error, response]) as send, \
             patch.object(time, "sleep") as sleep, patch.object(time, "time", return_value=now):
-        assert transport.post_json("http://localhost", {}, "", 10) == {"response": "verdict"}
+        body, retried = transport.post_json("http://localhost", {}, "", 10)
+        assert body == {"response": "verdict"}
+        assert retried == 429
         assert send.call_count == 2
         sleep.assert_called_once_with(expected)
 print("ok   Retry-After seconds, HTTP date, fallback and cap")
