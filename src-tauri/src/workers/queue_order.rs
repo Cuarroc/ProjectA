@@ -49,17 +49,102 @@ fn seam_file(seam: Seam) -> &'static str {
     }
 }
 
+/// The shortest chain of queued predecessors that leads from `start` back to
+/// itself, as ids (`a`, `b` for a -> b -> a), or `None`. Breadth-first, so it
+/// needs no recursion and cannot overflow the stack on a long queue.
+fn cycle_from<'a>(
+    start: usize,
+    queue: &'a [QueuedTask],
+    index: &BTreeMap<&str, usize>,
+) -> Option<Vec<&'a str>> {
+    let mut parent: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut todo = VecDeque::from([start]);
+    while let Some(at) = todo.pop_front() {
+        for dep in queue[at]
+            .depends_on
+            .iter()
+            .filter_map(|d| index.get(d.as_str()))
+        {
+            if *dep == start {
+                let mut chain = vec![queue[at].id.as_str()];
+                let mut node = at;
+                while node != start {
+                    node = parent[&node];
+                    chain.push(queue[node].id.as_str());
+                }
+                chain.reverse();
+                return Some(chain);
+            }
+            if *dep != at && !parent.contains_key(dep) {
+                parent.insert(*dep, at);
+                todo.push_back(*dep);
+            }
+        }
+    }
+    None
+}
+
+/// The cycle text for a task on a cycle, rotated to begin at the member that
+/// is earliest in the queue so every member shows the same sentence.
+fn cycle_reason(chain: &[&str], index: &BTreeMap<&str, usize>) -> String {
+    let first = (0..chain.len())
+        .min_by_key(|i| index[chain[*i]])
+        .unwrap_or(0);
+    let mut ring: Vec<&str> = chain[first..]
+        .iter()
+        .chain(&chain[..first])
+        .copied()
+        .collect();
+    ring.push(ring[0]);
+    format!("Zyklus: {}", ring.join(" → "))
+}
+
 /// The verdict for every queued task, in queue order.
 pub fn queue_order(
     queue: &[QueuedTask],
     finished: &BTreeSet<String>,
     held: &[SeamHold],
 ) -> Vec<(String, QueueState)> {
-    let _ = (finished, held);
-    queue
-        .iter()
-        .map(|task| (task.id.clone(), QueueState::Startbar))
-        .collect()
+    let mut index: BTreeMap<&str, usize> = BTreeMap::new();
+    for (at, task) in queue.iter().enumerate() {
+        index.entry(task.id.as_str()).or_insert(at);
+    }
+    // Seam -> startable queued task that took it.
+    let mut taken: BTreeMap<Seam, &str> = BTreeMap::new();
+    let mut out = Vec::with_capacity(queue.len());
+    for (at, task) in queue.iter().enumerate() {
+        let open = |dep: &&String| !finished.contains(*dep);
+        let missing = task
+            .depends_on
+            .iter()
+            .filter(open)
+            .find(|d| !index.contains_key(d.as_str()));
+        let reason = if let Some(chain) = cycle_from(at, queue, &index) {
+            Some(cycle_reason(&chain, &index))
+        } else if let Some(dep) = missing {
+            Some(format!("Vorgänger {dep} fehlt in der Warteschlange"))
+        } else if let Some(dep) = task.depends_on.iter().find(open) {
+            Some(format!("Vorgänger {dep} ist noch offen"))
+        } else {
+            task.seams.iter().find_map(|seam| {
+                let holder = held
+                    .iter()
+                    .find(|hold| hold.seam == *seam)
+                    .map(|hold| hold.holder.as_str())
+                    .or_else(|| taken.get(seam).copied())?;
+                Some(format!("Naht {} ist belegt von {holder}", seam_file(*seam)))
+            })
+        };
+        let state = match reason {
+            Some(grund) => QueueState::Wartet { grund },
+            None => {
+                taken.extend(task.seams.iter().map(|seam| (*seam, task.id.as_str())));
+                QueueState::Startbar
+            }
+        };
+        out.push((task.id.clone(), state));
+    }
+    out
 }
 
 #[cfg(test)]
