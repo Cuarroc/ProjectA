@@ -29,6 +29,7 @@ use crate::store::{
 };
 use crate::workers;
 
+mod trigger_core;
 mod webhook_sig;
 
 /// The default cap on concurrently running *employees* of one project, used

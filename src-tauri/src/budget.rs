@@ -47,6 +47,8 @@ use crate::workers::{self, AgentControl};
 
 #[allow(dead_code)] // V2-B2a: core only, wired by the seam packages
 mod failover_rules;
+#[allow(dead_code)] // V2-B2b: core only, wired by the seam packages
+mod local_stage;
 
 /// How often the watcher looks. Same beat as the other background pollers: a
 /// budget is a ceiling, not a stopwatch, and a minute of overshoot is cheaper

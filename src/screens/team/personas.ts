@@ -5,7 +5,10 @@ import { T } from "./texts";
 export const cliKey = (command: string) =>
   (command.split(/[\\/]/).pop() ?? command).replace(/\.(exe|cmd|bat)$/i, "").toLowerCase();
 
-export const cliLabel = (command: string) => T.cli[cliKey(command)] ?? cliKey(command);
+export const cliLabel = (command: string) => {
+  const key = cliKey(command);
+  return Object.hasOwn(T.cli, key) ? (T.cli[key] ?? key) : key;
+};
 
 /** The model a profile pins on its command line, or null when it states none. */
 export function modelOf(args: string[]): string | null {
@@ -13,7 +16,9 @@ export function modelOf(args: string[]): string | null {
     const a = args[i];
     const inline = /^--model=(.+)$/.exec(a);
     if (inline) return inline[1];
-    if ((a === "--model" || a === "-m") && args[i + 1]) return args[i + 1];
+    const next = args[i + 1];
+    // A following flag is not a model: `--model --verbose` pins nothing.
+    if ((a === "--model" || a === "-m") && next && !next.startsWith("-")) return next;
   }
   return null;
 }

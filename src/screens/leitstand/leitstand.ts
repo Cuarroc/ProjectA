@@ -1,7 +1,7 @@
 import { isCoordinatorKind } from "../../lib/board";
 import type { BoardCard } from "../../types";
 import { formForColumn, formForReason, STATE_FORMS, type StateForm } from "../../design/state/states";
-import { T } from "./texts";
+import { t } from "../../i18n/useT";
 
 export type Filter = "all" | StateForm;
 
@@ -20,11 +20,16 @@ export function countByFilter(cards: readonly BoardCard[]): Record<Filter, numbe
   return counts;
 }
 
+/** Fills `{name}` slots of a dictionary text in one pass, so a value is never read as a slot. */
+export const fill = (template: string, values: Record<string, string | number>) =>
+  template.replace(/\{(\w+)\}/g, (slot, name: string) => (name in values ? String(values[name]) : slot));
+
 export function ageText(createdAt: number, now: number): string {
   const min = Math.max(0, Math.floor((now - createdAt) / 60));
-  if (min < 1) return T.justNow;
-  if (min < 60) return T.since(T.min(min));
-  return T.since(min < 1440 ? T.hours(Math.floor(min / 60)) : T.days(Math.floor(min / 1440)));
+  const since = (age: string) => fill(t("leitstand.since"), { age });
+  if (min < 1) return t("leitstand.justNow");
+  if (min < 60) return since(fill(t("leitstand.min"), { n: min }));
+  return since(min < 1440 ? fill(t("leitstand.hours"), { n: Math.floor(min / 60) }) : fill(t("leitstand.days"), { n: Math.floor(min / 1440) }));
 }
 
 export const initials = (name: string) =>
