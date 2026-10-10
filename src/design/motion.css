@@ -77,15 +77,32 @@
   transition: width var(--g-dur-3) var(--g-ease-out);
 }
 
+/* Board mixes .97 and .98 on :active; normalised to one press value (.98). */
+.g-press {
+  transition: transform var(--g-dur) var(--g-ease);
+}
+
+.g-press:active {
+  transform: scale(var(--g-press-scale));
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --g-press-scale: 1;
   }
 
+  /* Portal roots carry data-g-portal (sheets/toasts outside .g-app). */
   .g-app *,
   .g-app *::before,
-  .g-app *::after {
+  .g-app *::after,
+  [data-g-portal],
+  [data-g-portal]::before,
+  [data-g-portal]::after,
+  [data-g-portal] *,
+  [data-g-portal] *::before,
+  [data-g-portal] *::after {
     animation: none !important;
     transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
   }
 }
