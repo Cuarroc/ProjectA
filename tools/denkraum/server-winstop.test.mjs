@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { createServer } from 'node:net';
@@ -11,6 +12,7 @@ import * as desk from './server.mjs';
 
 const entry = fileURLToPath(new URL('./server.mjs', import.meta.url));
 const stopSignals = ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'];
+const strongSecret = () => randomBytes(24).toString('hex');
 async function tempDir(t) {
   const dir = await mkdtemp(join(tmpdir(), 'denkraum-winstop-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -21,7 +23,7 @@ const freePort = () => new Promise((resolve, reject) => {
 });
 const entryEnv = (statePath, port) => {
   const env = { ...process.env, DECISION_DESK_STATE: statePath, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-    DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+    DECISION_DESK_ROOT_RECEIPT_TOKEN: strongSecret(), DECISION_DESK_WEBHOOK_SECRET: strongSecret() };
   delete env.DECISION_DESK_WEBHOOK_URL;
   return env;
 };

@@ -20,6 +20,20 @@ function physicalAncestor(path) {
   }
 }
 
+// Reject low-entropy secrets: fewer than 10 distinct characters, or an exact
+// repetition of a unit of length 1–8 (e.g. "abcabcabc…"). Never echo the value.
+const LOW_ENTROPY_REASON =
+  "zu wenig Entropie; mindestens 10 unterschiedliche Zeichen und kein Wiederholungsmuster (Einheit höchstens 8 Zeichen)";
+function hasLowEntropy(value) {
+  if (new Set(value).size < 10) return true;
+  const n = value.length;
+  for (let period = 1; period <= 8; period++) {
+    if (n % period !== 0 || n / period < 2) continue;
+    if (value === value.slice(0, period).repeat(n / period)) return true;
+  }
+  return false;
+}
+
 // Read-only preflight; no server start or secret-source assumptions.
 // Only config contains values; errors and notification reasons are safe to print.
 export function loadStartConfig(env, { repoRoot }) {
@@ -36,9 +50,13 @@ export function loadStartConfig(env, { repoRoot }) {
   if (typeof rootReceiptToken !== "string" || rootReceiptToken.length < 32
       || rootReceiptToken.length > 256 || /[^A-Za-z0-9_-]/u.test(rootReceiptToken)) {
     error("ROOT_RECEIPT_TOKEN", "required; use 32–256 letters, digits, underscores or hyphens");
+  } else if (hasLowEntropy(rootReceiptToken)) {
+    error("ROOT_RECEIPT_TOKEN", LOW_ENTROPY_REASON);
   }
   if (typeof webhookSecret !== "string" || webhookSecret.length < 32 || /\p{Cc}/u.test(webhookSecret)) {
     error("WEBHOOK_SECRET", "required; use at least 32 characters without control characters");
+  } else if (hasLowEntropy(webhookSecret)) {
+    error("WEBHOOK_SECRET", LOW_ENTROPY_REASON);
   } else if (webhookSecret === rootReceiptToken) {
     error("WEBHOOK_SECRET", "must differ from DECISION_DESK_ROOT_RECEIPT_TOKEN");
   }

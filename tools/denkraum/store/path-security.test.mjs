@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,8 +24,8 @@ const question = { id: 'question-1', requestId: 'import-1', title: 'Title', cont
   category: 'Category', scope: 'Scope', source: 'Source', uncertainty: 'Unknown', options: [option('a'), option('b')],
   recommendation: { optionIds: ['a'], rationale: 'Reason' } };
 const configFor = (repoRoot, state) => loadStartConfig({ DECISION_DESK_STATE: state,
-  DECISION_DESK_ROOT_AGENT_ID: 'test-root', DECISION_DESK_ROOT_RECEIPT_TOKEN: 'a'.repeat(32),
-  DECISION_DESK_WEBHOOK_SECRET: 'b'.repeat(32) }, { repoRoot });
+  DECISION_DESK_ROOT_AGENT_ID: 'test-root', DECISION_DESK_ROOT_RECEIPT_TOKEN: randomBytes(24).toString('hex'),
+  DECISION_DESK_WEBHOOK_SECRET: randomBytes(24).toString('hex') }, { repoRoot });
 
 test('DRSEC: config rejects physical repository aliases', {
   skip: process.platform === 'win32' ? 'POSIX symlink fixture; Windows requires separate junction/ACL coverage' : false,

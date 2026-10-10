@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,9 +12,11 @@ const fixtureRoot = mkdtempSync(join(tmpdir(), "denkraum-config-"));
 const repoRoot = join(fixtureRoot, "synthetic-repository");
 mkdirSync(repoRoot);
 const name = (suffix) => `DECISION_DESK_${suffix}`;
+// High-entropy fixtures at runtime (never a high-entropy literal — secret scan).
+const strongSecret = () => randomBytes(24).toString("hex");
 const validEnv = () => ({
-  [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32),
-  [name("WEBHOOK_SECRET")]: "b".repeat(32),
+  [name("ROOT_RECEIPT_TOKEN")]: strongSecret(),
+  [name("WEBHOOK_SECRET")]: strongSecret(),
   [name("ROOT_AGENT_ID")]: "synthetic-" + "agent",
   [name("STATE")]: join(fixtureRoot, "synthetic-state", "ledger.json"),
 });
@@ -49,7 +52,11 @@ test("loads valid config with default and explicit ports", () => {
 test("enforces root receipt token boundaries and alphabet", () => {
   refuses("ROOT_RECEIPT_TOKEN", [undefined, "", "a".repeat(31), "a".repeat(257),
     "a".repeat(32) + "!", "a".repeat(32) + "\n", "é".repeat(32)]);
-  for (const token of ["Z_9-".repeat(8), "a".repeat(256)]) {
+  for (const token of [
+    strongSecret(),
+    `${strongSecret()}${strongSecret()}${strongSecret()}${strongSecret()}`.slice(0, 256),
+  ]) {
+    assert.equal(token.length >= 32 && token.length <= 256, true);
     assert.equal(load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: token }).ok, true);
   }
 });
@@ -57,11 +64,16 @@ test("enforces root receipt token boundaries and alphabet", () => {
 test("rejects short or control-bearing webhook secrets", () => {
   refuses("WEBHOOK_SECRET", [undefined, "", "b".repeat(31),
     ...[0, 9, 10, 13, 31, 127, 128, 159].map((code) => "b".repeat(32) + String.fromCharCode(code))]);
-  assert.equal(load({ ...validEnv(), [name("WEBHOOK_SECRET")]: "é! ".repeat(20) }).ok, true);
+  assert.equal(load({ ...validEnv(), [name("WEBHOOK_SECRET")]: `é!@#€%&*()_+-=[]{};':",.<>/?\`~${strongSecret()}` }).ok, true);
 });
 
 test("refuses identical root and webhook secrets", () => {
-  refuses("WEBHOOK_SECRET", [validEnv()[name("ROOT_RECEIPT_TOKEN")]]);
+  const env = validEnv();
+  const result = load({ ...env, [name("WEBHOOK_SECRET")]: env[name("ROOT_RECEIPT_TOKEN")] });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("WEBHOOK_SECRET")]);
+  assert.equal(typeof result.errors[0].reason, "string");
 });
 
 test("missing root agent id is a start error", () => {
@@ -200,7 +212,7 @@ test("checks config through a real CLI directory alias without running on import
       "DECISION_DESK_ROOT_RECEIPT_TOKEN: required; use 32–256 letters, digits, underscores or hyphens\n");
     for (const value of Object.values(env)) assert.equal(child.stderr.includes(value), false);
     const valid = spawnSync(process.execPath, [entry, "--check"],
-      { env: { ...env, [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32) }, encoding: "utf8" });
+      { env: { ...env, [name("ROOT_RECEIPT_TOKEN")]: strongSecret() }, encoding: "utf8" });
     assert.equal(valid.error, undefined);
     assert.equal(valid.status, 0);
     assert.equal(valid.stderr, "");
@@ -309,6 +321,37 @@ test("server startup uses the validated webhook URL without rereading the enviro
   `], { encoding: "utf8", timeout: 10000 });
   assert.equal(child.error, undefined);
   assert.equal(child.status, 0, child.stderr);
+});
+
+test("SRV-3: a 32-times-a root token is rejected", () => {
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32) });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("ROOT_RECEIPT_TOKEN")]);
+  assert.match(result.errors[0].reason, /Entropie|Wiederholung|unterschiedlich/i);
+  assert.equal(result.errors[0].reason.includes("a".repeat(32)), false);
+});
+
+test("SRV-3: a repeated-pattern webhook secret is rejected", () => {
+  const secret = "abc".repeat(12);
+  assert.equal(secret.length, 36);
+  const result = load({ ...validEnv(), [name("WEBHOOK_SECRET")]: secret });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("WEBHOOK_SECRET")]);
+  assert.match(result.errors[0].reason, /Entropie|Wiederholung|unterschiedlich/i);
+  assert.equal(result.errors[0].reason.includes(secret), false);
+});
+
+test("SRV-3: a random 32-char token is accepted", () => {
+  // Use runtime randomness — never a high-entropy literal (secret scan).
+  const token = randomBytes(16).toString("hex");
+  assert.equal(token.length, 32);
+  assert.ok(new Set(token).size >= 10);
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: token });
+  assert.equal(result.ok, true);
+  assert.equal(result.config.rootReceiptToken, token);
+  assert.deepEqual(result.errors, []);
 });
 
 test("physical STATE fixture skips when symlink creation is denied", () => {
