@@ -10,8 +10,8 @@
 .kt-who p { margin: 0; font-size: 12px; color: var(--g-muted); }
 .kt-head .g-chip { margin-left: auto; }
 .kt-bars { display: flex; flex-direction: column; gap: 4px; }
-.kt-bar { display: grid; grid-template-columns: 44px minmax(40px, 1fr) 36px 104px; align-items: center; gap: 8px; min-height: 20px; font-size: 12px; font-variant-numeric: tabular-nums; }
-.kt-k { color: var(--g-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kt-bar { display: grid; grid-template-columns: 80px minmax(40px, 1fr) 36px 104px; align-items: center; gap: 8px; min-height: 20px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.kt-k { color: var(--g-muted); font-weight: 500; line-height: 1.2; overflow-wrap: anywhere; }
 .kt-pct { font-weight: 600; text-align: right; }
 .kt-reset { color: var(--g-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kt-bar .g-hs { grid-column: 2 / -1; grid-auto-flow: column; justify-content: start; padding: 2px 8px; gap: 6px; border-radius: 999px; text-align: left; }
