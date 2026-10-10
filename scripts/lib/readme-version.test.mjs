@@ -1,8 +1,8 @@
 // scripts/lib/readme-version.test.mjs
-// README.md names the app version in its status section. scripts/release.cmd
-// bumps the version files and rewrites that line in the same commit; this
-// test keeps the two from drifting (the README said v1.4.1 while the app
-// was already 1.5.0).
+// README.md names the app version in its status section. A version-bump PR
+// (template PR #922; docs/ci-lokal.md) bumps the version files and rewrites
+// that line in the same commit; this test keeps the two from drifting (the
+// README said v1.4.1 while the app was already 1.5.0).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -21,7 +21,7 @@ test("README status names the app version of package.json and tauri.conf.json", 
 });
 
 // F1 (review #513): the release rewrite must fail loudly when the line is gone,
-// otherwise release.cmd would tag a release whose README names the old version.
+// otherwise a bump PR would tag a release whose README names the old version.
 test("readme-version-bump rewrites the App-Version line and fails when it is missing", async () => {
   const { spawnSync } = await import("node:child_process");
   const { mkdtempSync, writeFileSync, readFileSync: rf } = await import("node:fs");
