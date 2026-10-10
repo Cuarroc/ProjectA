@@ -94,9 +94,24 @@ describe("V161-UI-P13a insights tokens", () => {
   it("usage-view wraps with auto-fit minmax so Insights fits a 1024 viewport", () => {
     const body = ruleBody(".usage-view");
     expect(body).toMatch(
-      /grid-template-columns:\s*repeat\(\s*auto-fit\s*,\s*minmax\(\s*min\(\s*280px\s*,\s*100%\s*\)\s*,\s*1fr\s*\)\s*\)/,
+      /grid-template-columns:\s*repeat\(\s*auto-fit\s*,\s*minmax\(\s*min\(\s*320px\s*,\s*100%\s*\)\s*,\s*1fr\s*\)\s*\)/,
     );
-    expect(body).not.toMatch(/minmax\(\s*320px/);
+    expect(body).not.toMatch(/minmax\(\s*min\(\s*280px/);
+  });
+
+  it("usage-view does not paint gap tracks with the border colour", () => {
+    const view = ruleBody(".usage-view");
+    expect(view).not.toMatch(/background:\s*var\(--border\)/);
+    expect(view).toMatch(/background:\s*var\(--bg\)/);
+    const section = ruleBody(".usage-section");
+    expect(section).toMatch(/border-right:\s*1px\s+solid\s+var\(--border\)/);
+    expect(section).toMatch(/border-bottom:\s*1px\s+solid\s+var\(--border\)/);
+  });
+
+  it("insights-quiet uses muted foreground without opacity", () => {
+    const body = ruleBody(".insights-quiet");
+    expect(body).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(body).not.toMatch(/opacity\s*:/);
   });
 
   it("peer headings insights-heading and diagnose-panel h2 resolve --text-lg", () => {
@@ -126,11 +141,35 @@ describe("V161-UI-P13a insights tokens", () => {
     ]);
     render(<UsageView profiles={[profile]} cards={[]} workers={[]} />);
     await act(async () => undefined);
-    expect(screen.getByText(/Budget 5h nicht gemessen · 7d nicht gemessen/)).toBeInTheDocument();
-    expect(screen.getAllByText("nicht gemessen").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Budget 5h/)).toBeInTheDocument();
+    expect(screen.getAllByText("nicht gemessen").length).toBeGreaterThanOrEqual(2);
     // Placeholder cells only — prose em dashes in German copy stay.
     expect(screen.queryByText("— $")).not.toBeInTheDocument();
     expect(screen.queryByText(/^—$/)).not.toBeInTheDocument();
+  });
+
+  it("mutes only missing budget values not the measured sibling", async () => {
+    const profile: AgentProfile = {
+      id: "codex",
+      name: "Codex",
+      command: "codex",
+      args: [],
+      env: {},
+      fallback: null,
+      enabled: true,
+    };
+    reads.getBudgets.mockResolvedValueOnce([
+      { profileId: "codex", fiveHourPct: 50, sevenDayPct: null },
+    ]);
+    render(<UsageView profiles={[profile]} cards={[]} workers={[]} />);
+    await act(async () => undefined);
+    const budget = screen.getByTitle("Budget-Schwellen: 5-Stunden- und 7-Tage-Fenster");
+    expect(budget.textContent).toContain("50 %");
+    expect(budget.textContent).toContain("nicht gemessen");
+    expect(budget.classList.contains("insights-quiet")).toBe(false);
+    const quietBits = budget.querySelectorAll(".insights-quiet");
+    expect(quietBits).toHaveLength(1);
+    expect(quietBits[0]?.textContent).toBe("nicht gemessen");
   });
 
   it("nicht gemessen uses quiet text on Insights resources", async () => {
