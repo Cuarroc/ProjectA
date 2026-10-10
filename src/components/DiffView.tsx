@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { commentLineOf, fileLabel, useWorkerDiff } from "../lib/diff";
-import { classifyDiff, reviewClassInfo } from "../lib/reviewClass";
+import { classifyDiff, reviewClassInfo, type ReviewClass } from "../lib/reviewClass";
 import {
   addDiffComment,
   approveSetupTrust,
@@ -37,9 +37,11 @@ function statSummary(stat: string): string | null {
   return lines.length === 0 ? null : lines[lines.length - 1];
 }
 
-function fileClassInfo(file: DiffFile) {
-  const cls = classifyDiff(file.oldPath ? [file.path, file.oldPath] : [file.path]);
-  return reviewClassInfo(cls ?? "unknown");
+/** The word the person reads; the class code stays in a `title` (UM-25). */
+const TIER_NAME: Record<ReviewClass, string> = { A: "Streng", B: "Normal", C: "Leicht", unknown: "Unklar" };
+
+function fileClass(file: DiffFile): ReviewClass {
+  return classifyDiff(file.oldPath ? [file.path, file.oldPath] : [file.path]) ?? "unknown";
 }
 
 function lineKey(file: string, line: number): string {
@@ -471,7 +473,8 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
       </header>
       {overallClass && overallInfo ? (
         <p className="diff-review-class" role="status" data-review-class={overallClass}>
-          <strong>Prüfstufe {overallInfo.label}:</strong> {overallInfo.explanation}
+          <strong title={`Prüfstufe ${overallInfo.label}`}>Prüfstufe {TIER_NAME[overallClass]}:</strong>{" "}
+          {overallInfo.explanation}
         </p>
       ) : null}
 
@@ -705,9 +708,9 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
                   <span className="diff-file-counts">
                     <span
                       className="diff-file-class"
-                      title={`Prüfstufe ${fileClassInfo(file).label}: ${fileClassInfo(file).explanation}`}
+                      title={`Prüfstufe ${reviewClassInfo(fileClass(file)).label}: ${reviewClassInfo(fileClass(file)).explanation}`}
                     >
-                      {fileClassInfo(file).label}
+                      {TIER_NAME[fileClass(file)]}
                     </span>
                     <span className="diff-add-count">+{file.additions}</span>
                     <span className="diff-del-count">-{file.deletions}</span>
