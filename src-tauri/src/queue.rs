@@ -29,6 +29,8 @@ use crate::store::{
 };
 use crate::workers;
 
+mod trigger_core;
+
 /// The default cap on concurrently running *employees* of one project, used
 /// when the project has no `max_workers` of its own. Coordinators -
 /// orchestrators, queens, scouts - never count against it: they must be able to
