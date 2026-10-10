@@ -19,14 +19,24 @@ function EmptyHistory() {
   );
 }
 
+/** Shown when loading failed and nothing is loaded yet; polling retries by itself. */
+function HistoryLoadHint() {
+  return (
+    <div className="history-empty" role="status">
+      <p>Verlauf konnte nicht geladen werden. Er wird automatisch erneut versucht.</p>
+    </div>
+  );
+}
+
 /**
  * Worker message history. Oldest messages come first; we poll for updates and
- * reload when the worker changes. IPC failures are swallowed: the command may
- * not exist yet, and an empty state is better than a red error block.
+ * reload when the worker changes. A failed load shows a quiet hint while no
+ * messages are loaded; once messages are shown, a failed poll leaves them be.
  */
 export default function HistoryView({ workerId }: HistoryViewProps) {
   const [messages, setMessages] = useState<WorkerMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingWorkersRef = useRef(new Set<string>());
@@ -43,10 +53,13 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
     pendingWorkersRef.current.add(workerId);
     try {
       const next = await listWorkerMessages(workerId, MESSAGE_LIMIT);
-      if (activeWorkerRef.current === workerId) setMessages(next);
+      if (activeWorkerRef.current === workerId) {
+        setMessages(next);
+        setLoadFailed(false);
+      }
     } catch {
-      // The command may still be missing on the Rust side. Keep the previous
-      // messages (if any) or stay in the quiet empty state.
+      // Keep the previous messages (if any); the next poll retries.
+      if (activeWorkerRef.current === workerId) setLoadFailed(true);
     } finally {
       pendingWorkersRef.current.delete(workerId);
     }
@@ -54,6 +67,7 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
 
   useEffect(() => {
     setMessages([]);
+    setLoadFailed(false);
     userScrolledUp.current = false;
     setLoading(true);
     refresh().finally(() => setLoading(false));
@@ -82,7 +96,11 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
   return (
     <div className="history-view">
       {messages.length === 0 && !loading ? (
-        <EmptyHistory />
+        loadFailed ? (
+          <HistoryLoadHint />
+        ) : (
+          <EmptyHistory />
+        )
       ) : (
         <div className="history-list" ref={scrollRef} onScroll={handleScroll}>
           {messages.map((message) => (
