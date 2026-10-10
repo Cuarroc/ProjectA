@@ -192,4 +192,73 @@ mod tests {
         write(none.path(), ".git/refs/heads/feature", "abc\n");
         assert_eq!(scan_repo(none.path()).unwrap().main_branch, None);
     }
+
+    #[test]
+    fn packed_refs_comment_lines_never_name_a_branch() {
+        let dir = TempDir::new("repo-scan-packed-comment");
+        write(
+            dir.path(),
+            ".git/packed-refs",
+            "# note refs/heads/main\nabc refs/heads/feature\n^def\n",
+        );
+        assert_eq!(scan_repo(dir.path()).unwrap().main_branch, None);
+    }
+
+    /// A linked worktree: `wt/.git` is a file, refs live in `main/.git`.
+    fn worktree_fixture(root: &Path, gitdir: &str, commondir: &str) {
+        write(
+            root,
+            "main/.git/refs/remotes/origin/HEAD",
+            "ref: refs/remotes/origin/trunk\n",
+        );
+        write(root, "main/.git/worktrees/wt/HEAD", "ref: refs/heads/x\n");
+        write(root, "main/.git/worktrees/wt/commondir", commondir);
+        write(root, "wt/.git", &format!("gitdir: {gitdir}\n"));
+    }
+
+    #[test]
+    fn a_worktree_with_a_relative_gitdir_resolves_main_through_commondir() {
+        let dir = TempDir::new("repo-scan-wt-rel");
+        worktree_fixture(dir.path(), "../main/.git/worktrees/wt", "../..\n");
+        let scan = scan_repo(&dir.path().join("wt")).expect("scan");
+        assert_eq!(scan.main_branch.as_deref(), Some("trunk"));
+    }
+
+    #[test]
+    fn a_worktree_with_an_absolute_gitdir_and_commondir_resolves_main() {
+        let dir = TempDir::new("repo-scan-wt-abs");
+        let common = dir.path().join("main/.git");
+        let gitdir = common.join("worktrees/wt");
+        worktree_fixture(
+            dir.path(),
+            &gitdir.display().to_string(),
+            &common.display().to_string(),
+        );
+        let scan = scan_repo(&dir.path().join("wt")).expect("scan");
+        assert_eq!(scan.main_branch.as_deref(), Some("trunk"));
+    }
+
+    #[test]
+    fn star_and_plus_bullets_end_the_seam_paragraph() {
+        let dir = TempDir::new("repo-scan-bullets");
+        write(
+            dir.path(),
+            "AGENTS.md",
+            "* **Seams only serially:** `src/api.rs`\n* Other `src/main.rs`\n+ More `src/store.rs`\n",
+        );
+        let scan = scan_repo(dir.path()).unwrap();
+        assert_eq!(scan.seam_files, ["src/api.rs"]);
+    }
+
+    #[test]
+    fn backticked_words_that_are_not_paths_are_not_seam_files() {
+        let dir = TempDir::new("repo-scan-shape");
+        write(
+            dir.path(),
+            "AGENTS.md",
+            "6. **Seams** since `v1.2` (`e.g.`): `src/api.rs`, `build.rs`.\n",
+        );
+        let scan = scan_repo(dir.path()).unwrap();
+        assert_eq!(scan.seam_files, ["src/api.rs", "build.rs"]);
+    }
 }
