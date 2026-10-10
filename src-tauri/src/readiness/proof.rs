@@ -163,7 +163,7 @@ pub fn parse_uncovered(body: &str) -> Uncovered {
         {
             inside = true;
             let rest = label(raw)[head.len()..]
-                .trim_start_matches(|c: char| matches!(c, ':' | '*' | '_' | ' '));
+                .trim_start_matches(|c: char| [':', '*', '_', ' '].contains(&c));
             if !rest.is_empty() {
                 lines.push(rest.to_string());
             }
