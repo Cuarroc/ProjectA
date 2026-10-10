@@ -379,6 +379,14 @@ button {
   color: var(--color-disabled-fg);
 }
 
+.button-ghost:disabled,
+.convo-sharpen:disabled,
+.empty-action-ghost:disabled,
+.viewbar-action:disabled,
+.worker-action:disabled {
+  color: var(--color-disabled-fg);
+}
+
 /* ---- motion -----------------------------------------------------------
    Four rules the rest follows from:
 

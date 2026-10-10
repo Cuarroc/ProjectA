@@ -112,6 +112,9 @@ it("scopes disabled fill to filled controls only", () => {
     /\.button-primary:disabled[\s\S]*?\.button-subtle:disabled[\s\S]*?\{[^}]*background: var\(--color-disabled-bg\);/,
   );
   expect(css).toMatch(
+    /\.button-ghost:disabled[\s\S]*?\{[^}]*color: var\(--color-disabled-fg\);/,
+  );
+  expect(css).toMatch(
     /\.modal-backdrop\s*\{[^}]*background: var\(--color-scrim\);/,
   );
 });
