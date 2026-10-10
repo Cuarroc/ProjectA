@@ -104,6 +104,18 @@ export const de = {
   "needs.justNow": "gerade eben",
   "needs.minutes": "vor {n} min",
   "needs.hours": "vor {n} h",
+  "start.scan.idleTitle": "Kein Projekt gewählt",
+  "start.scan.idleHint": "Lege ein Projekt an, dann liest ProjectA seine Regeln.",
+  "start.scan.reading": "Projektregeln werden gelesen",
+  "start.scan.errorTitle": "Projektregeln konnten nicht gelesen werden",
+  "start.scan.aria": "Gefundene Projektregeln",
+  "start.scan.branch": "Hauptzweig: {name}",
+  "start.scan.branchMissing": "Hauptzweig",
+  "start.scan.gates": "gates.sh",
+  "start.scan.mergify": "Mergify-Konfiguration",
+  "start.scan.agents": "AGENTS.md",
+  "start.scan.found": "Gefunden",
+  "start.scan.missing": "Fehlt",
 } as const;
 
 export type MessageKey = keyof typeof de;

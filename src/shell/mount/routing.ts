@@ -18,6 +18,9 @@ const trim = (path: string) => path.replace(/\/+$/, "");
 /** The new Leitstand (V2-S01a) owns exactly `/leitstand`; everything below it stays the old view. */
 export const isNewLeitstand = (path: string) => trim(path) === "/leitstand";
 
+/** The Ersteinrichtung (V2-S11-M) owns exactly `/start`; it has no sidebar entry and no old view. */
+export const isStart = (path: string) => trim(path) === "/start";
+
 /** True when an old view is housed under this route (others still show the shell placeholder). */
 export function hasLegacyPanel(path: string): boolean {
   return Object.values(GOAL_ROUTE).includes(base(path));
