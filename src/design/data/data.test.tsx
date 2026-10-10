@@ -43,6 +43,16 @@ describe("KeyValue", () => {
     expect(container.querySelectorAll("dd")[1]).not.toHaveAttribute("title");
     expect(container.firstElementChild).toHaveClass("g-kv", "g-kv--box");
   });
+
+  it("renders rows with a repeated label without a React key warning", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { container } = render(<KeyValue items={[{ label: "Tag", value: "one" }, { label: "Tag", value: "two" }]} />);
+    const calls = error.mock.calls.map((c) => c.join(" "));
+    error.mockRestore();
+    expect(container.querySelectorAll("dt")).toHaveLength(2);
+    expect(Array.from(container.querySelectorAll("dd"), (d) => d.textContent)).toEqual(["one", "two"]);
+    expect(calls.filter((m) => /key/i.test(m))).toEqual([]);
+  });
 });
 
 describe("ProofChip", () => {
@@ -60,6 +70,15 @@ describe("ProofChip", () => {
     expect(link).toHaveAttribute("href", "#proof");
     expect(link).toHaveTextContent("Gates 1/2");
     expect(within(link).getByText("7c1e0b3")).toBeInTheDocument();
+  });
+
+  it("renders verdict and commit together without a React key warning", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { container } = render(<ProofChip gates={["pass"]} verdict={{ tone: "yes", text: "Freigegeben" }} sha="7c1e0b3a9f" />);
+    const calls = error.mock.calls.map((c) => c.join(" "));
+    error.mockRestore();
+    expect(container.querySelectorAll(".g-proof__sep")).toHaveLength(2);
+    expect(calls.filter((m) => /key/i.test(m))).toEqual([]);
   });
 });
 

@@ -48,5 +48,10 @@
   "src/shell/header/QuotaBell.tsx: \"Kontingente: noch nicht verbunden\"",
   "src/shell/header/StopBand.tsx: \"Fortsetzen\"",
   "src/shell/header/StopBand.tsx: \"Not-Aus ist aktiv: neue Aufgaben sind gesperrt.\"",
-  "src/shell/mount/PreviewToggle.tsx: \"Beim Umschalten lädt die Oberfläche neu.\""
+  "src/shell/mount/PreviewToggle.tsx: \"Beim Umschalten lädt die Oberfläche neu.\"",
+  "src/shell/texts.ts: \"Abend\"",
+  "src/shell/texts.ts: \"Glas\"",
+  "src/shell/texts.ts: \"Klar\"",
+  "src/shell/texts.ts: \"Nebel\"",
+  "src/shell/texts.ts: \"Stil\""
 ]

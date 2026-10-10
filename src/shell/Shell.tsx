@@ -3,9 +3,12 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import EmergencyStop from "../components/EmergencyStop";
 import "../design/tokens.css";
 import "../design/glass.css";
+import "../design/variants/variants.css";
 import "../design/controls/controls.css";
 import { useT } from "../i18n/useT";
+import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
+import { HeaderTools, StopBand } from "./header";
 import { pathFromHash, resolveRoute, ROUTES, type ShellRoute } from "./routes";
 import { applyStoredGlassTheme } from "./theme";
 import "./shell.css";
@@ -47,11 +50,11 @@ function Placeholder({ path }: { path: string }) {
   );
 }
 
-/** Glass shell frame (V2-F8a). Palette, quota bar, bell and stop band follow in V2-F8b. */
+/** Glass shell frame (V2-F8a). Palette, quota bar, bell and stop band: `header/` (V2-F8b). */
 export function Shell() {
   const t = useT();
   const [path, setPath] = useState(() => pathFromHash(window.location.hash));
-  useLayoutEffect(applyStoredGlassTheme, []);
+  useLayoutEffect(() => { applyStoredGlassTheme(); applyStoredGlassVariant(); }, []);
   useEffect(() => {
     const onHash = () => setPath(pathFromHash(window.location.hash));
     window.addEventListener("hashchange", onHash);
@@ -65,11 +68,12 @@ export function Shell() {
       <div className="g-shell-main">
         <header className="g-shell-top g-chrome">
           <button type="button" className="g-shell-pick" disabled aria-label={t("shell.projectOffline")}>{t("shell.project")}</button>
-          <span className="g-shell-spacer" />
+          <HeaderTools />
           <AppearanceControl />
           <span className="g-shell-divider" aria-hidden="true" />
           <div className="g-shell-estop"><EmergencyStop /></div>
         </header>
+        <StopBand />
         <main className="g-shell-content"><Placeholder path={path} /></main>
       </div>
     </div>

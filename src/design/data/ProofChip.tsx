@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { de } from "../../i18n/de";
 import "./data.css";
 
@@ -28,7 +28,9 @@ export function ProofChip({ gates, verdict, sha, href }: ProofChipProps) {
       <span className="g-proof__ticks" aria-hidden="true">
         {gates.map((g, i) => <i key={i} className={`g-proof__t--${g}`} />)}
       </span>
-      {parts.map((p, i) => (i === 0 ? <span key="g">{p}</span> : [<span key={`sep${i}`} className="g-proof__sep" />, p]))}
+      {parts.map((p, i) => (i === 0 ? <span key="g">{p}</span> : (
+        <Fragment key={`p${i}`}><span className="g-proof__sep" />{p}</Fragment>
+      )))}
     </>
   );
   return href ? <a className="g-proof" href={href}>{body}</a> : <span className="g-proof">{body}</span>;

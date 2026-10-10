@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>V2-TH-VAR-2 shot variant fixture</title>
+  <script>
+    // Mimics the shell: the stored glass style becomes data-glass-variant before first paint.
+    const v = localStorage.getItem("projecta.settings.glassVariant");
+    if (v) document.documentElement.dataset.glassVariant = v;
+  </script>
+</head>
+<body><main>variant fixture</main></body>
+</html>
