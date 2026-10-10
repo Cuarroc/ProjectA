@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 use crate::store::{now_unix_secs, Store, Worker, MSG_SYSTEM, TEST_FAIL, TEST_PASS, TEST_RUNNING};
 use crate::workers;
 
+mod bug_state;
 mod candidate;
 
 /// How long a single gate run may take before it is killed.
