@@ -4938,6 +4938,32 @@ scripts/contrast-check.mjs. */
   color: var(--state-merge-fg);
 }
 
+/* Danger surface for Not-Aus / irreversible settings actions (PKG-U / UM-6). */
+.button-danger {
+  padding: 5px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--state-danger-fg);
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--state-danger-fg);
+  color: var(--color-on-accent, #fff);
+  border-color: var(--state-danger-fg);
+}
+
+.button-danger:focus-visible {
+  outline: 2px solid var(--state-danger-fg);
+  outline-offset: 2px;
+}
+
+.button-danger:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .settings-body {
   flex: 1;
   min-height: 0;
