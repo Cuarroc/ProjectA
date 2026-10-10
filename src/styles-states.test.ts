@@ -117,8 +117,6 @@ describe("V161-UI-F2 states", () => {
   });
 
   it("each UM-15 class reaches 24x24 through the APP-3 hit-area overlay", () => {
-    const um15 = [".rail-collapse", ".command-chat-expand", ".status-provider-action"];
-
     const anchor = app3.match(/((?:\.[\w-]+,\s*)+\.[\w-]+)\s*\{\s*position:\s*relative;\s*\}/);
     expect(anchor, "APP-3 position:relative list missing").not.toBeNull();
     const anchored = selectorList(anchor![1]).map((s) => s.replace(/\s+/g, ""));
@@ -128,14 +126,17 @@ describe("V161-UI-F2 states", () => {
     const afterSelectors = selectorList(after![1]).map((s) => s.replace(/\s+/g, ""));
     expect(after![2]).toMatch(/inset:\s*-3px/);
 
-    for (const cls of um15) {
+    for (const cls of [".rail-collapse", ".command-chat-expand"]) {
       expect(anchored, `${cls} not anchored`).toContain(cls);
       expect(afterSelectors, `${cls} missing ::after overlay`).toContain(`${cls}::after`);
     }
 
+    expect(anchored, ".status-provider-action not anchored").toContain(".status-provider-action");
     // 12px-tall status provider needs a deeper inset than the shared -3px.
     const deep = app3.match(/\.status-provider-action::after\s*\{([^}]*)\}/);
     expect(deep, ".status-provider-action::after depth override missing").not.toBeNull();
+    expect(deep![1]).toMatch(/content:\s*""/);
+    expect(deep![1]).toMatch(/position:\s*absolute/);
     expect(deep![1]).toMatch(/inset:\s*-6px/);
   });
 });

@@ -382,20 +382,58 @@ a {
 }
 
 /* Selection and state surfaces change a little more calmly than hover, so
-   a click that moves the selection does not read as a flash. */
+   a click that moves the selection does not read as a flash. Fields and
+   list rows join the same colour transitions (UM-18 within F2). */
 .project-button,
 .worker-row,
 .rail-item,
 .board-card,
 .tab,
+.segment,
 .panel-tab,
 .settings-tab,
-.queue-row {
+.queue-row,
+.question-option,
+.field,
+.convo-input,
+.command-chat-input,
+.question-input,
+.project-row,
+.queue-entry,
+.usage-row {
   transition:
     background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
+}
+
+/* Shared hover wash for rows, tabs and segments — later view rules may
+   refine the colour; every class here must also answer on :active (UM-17). */
+.project-button:hover:not(:disabled),
+.worker-row:hover,
+.rail-item:hover,
+.board-card:hover,
+.tab:hover:not(.tab-active),
+.segment:hover:not(.segment-active),
+.panel-tab:hover:not(.panel-tab-active),
+.settings-tab:hover:not(.settings-tab-active),
+.queue-row:hover,
+.question-option:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.project-button:active:not(:disabled),
+.worker-row:active,
+.rail-item:active,
+.board-card:active,
+.tab:active,
+.segment:active:not(:disabled),
+.panel-tab:active,
+.settings-tab:active,
+.queue-row:active,
+.question-option:active:not(:disabled) {
+  background: var(--color-pressed);
 }
 
 /* A visible keyboard focus is mandatory, and it must not look like a
@@ -6658,14 +6696,18 @@ scripts/contrast-check.mjs. */
 
 /* APP-3 (ui-ux-pro-max audit): WCAG 2.2 asks for 24x24 CSS px pointer targets.
    The glyph buttons stay as small as the density wants them; the hit area is a
-   transparent overlay reaching 3px beyond every edge (18px + 6px = 24px). */
+   transparent overlay reaching 3px beyond every edge (18px + 6px = 24px).
+   UM-15 adds the remaining sub-24 glyph classes to the same overlay. */
 .section-action,
 .project-remove,
 .project-github,
 .viewbar-rail-toggle,
 .board-card-menu-button,
 .tab-close,
-.project-gear {
+.project-gear,
+.rail-collapse,
+.command-chat-expand,
+.status-provider-action {
   position: relative;
 }
 
@@ -6675,10 +6717,19 @@ scripts/contrast-check.mjs. */
 .viewbar-rail-toggle::after,
 .board-card-menu-button::after,
 .tab-close::after,
-.project-gear::after {
+.project-gear::after,
+.rail-collapse::after,
+.command-chat-expand::after {
   content: "";
   position: absolute;
   inset: -3px;
+}
+
+/* Status provider is ~12px tall; -3px only reaches 18px — deepen to 24px. */
+.status-provider-action::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
 }
 
 /* A tabpanel element for the goals whose view has no wrapper of its own
