@@ -6,9 +6,9 @@
 //! A rejection carries one German sentence for the user.
 //!
 //! Shas are opaque and unordered here: the core only demands that a green fix
-//! run is at a commit other than the red proof (and other than any failing
-//! attempt). That the commit is actually newer on the branch is the caller's
-//! job (follow-up: V2-B14b).
+//! run is at a commit other than the red proof (and other than every failing
+//! attempt of the same test). That the commit is actually newer on the branch
+//! is the caller's job (follow-up: V2-B14b).
 #![allow(dead_code)] // pure core; the first caller arrives with the Eingang/Bugs wiring
 
 /// Failed or rejected fix attempts before the user has to decide.
@@ -64,9 +64,10 @@ pub struct Rejection(pub String);
 pub struct Bug {
     state: BugState,
     red: Option<TestRun>,
-    /// Sha of the latest complete run of the red test (`red.sha` stays the
-    /// permanent anchor); a green fix run must be at neither.
-    last_sha: String,
+    /// Shas of every failing run of the red test since the red proof
+    /// (`red.sha` stays the permanent anchor); a green fix run must be at none
+    /// of them. Bounded by the attempts, so a handful of entries at most.
+    failed_shas: Vec<String>,
     attempts: u8,
 }
 
@@ -88,7 +89,6 @@ impl Bug {
         if run.exit_code == 0 {
             return Err(reject("Der Test ist grün (Exit-Code 0)."));
         }
-        self.last_sha = run.sha.clone();
         self.red = Some(run);
         self.state = BugState::Reproduziert;
         Ok(self.state)
@@ -100,7 +100,7 @@ impl Bug {
     }
 
     /// `In Arbeit -> Fix belegt`: the SAME test, exit code 0, at a sha other
-    /// than the red proof's and the latest failing run's.
+    /// than the red proof's and any failing run's.
     /// Incomplete runs and runs of another test are refused without any state
     /// change or attempt. Every other rejected or failing run counts an
     /// attempt; the third moves the bug to `Nutzer entscheidet`.
@@ -117,17 +117,18 @@ impl Bug {
             )));
         }
         let reason = if run.exit_code != 0 {
+            if !self.failed_shas.contains(&run.sha) {
+                self.failed_shas.push(run.sha);
+            }
             format!("Der Test ist weiterhin rot (Exit-Code {}).", run.exit_code)
-        } else if run.sha == red.sha || run.sha == self.last_sha {
-            "Der grüne Lauf stammt nicht von einem anderen Stand als der rote Beweis.".into()
+        } else if run.sha == red.sha {
+            "Der grüne Lauf stammt vom selben Stand wie der rote Beweis.".into()
+        } else if self.failed_shas.contains(&run.sha) {
+            "Der grüne Lauf stammt von einem Stand, an dem der Test schon rot war.".into()
         } else {
-            self.last_sha = run.sha;
             self.state = BugState::FixBelegt;
             return Ok(self.state);
         };
-        if run.exit_code != 0 {
-            self.last_sha = run.sha;
-        }
         self.attempts += 1;
         let tail = if self.attempts < MAX_FIX_ATTEMPTS {
             format!("Versuch {} von {MAX_FIX_ATTEMPTS}.", self.attempts)
