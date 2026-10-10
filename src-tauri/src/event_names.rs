@@ -12,3 +12,14 @@ pub fn pty_output(id: &str) -> String {
 pub fn pty_exit(id: &str) -> String {
     format!("{PTY_EXIT_PREFIX}{id}")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pty_helpers_compose_the_wire_format() {
+        assert_eq!(pty_output("abc"), "pty:output:abc");
+        assert_eq!(pty_exit("abc"), "pty:exit:abc");
+    }
+}

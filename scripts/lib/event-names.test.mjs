@@ -20,7 +20,9 @@ const expected = {
 const CODE_GLOBS = [
   "-g", "*.rs",
   "-g", "*.ts",
-  // Fix round keeps *.tsx / src js+mjs out until the red fixture test lands.
+  "-g", "*.tsx",
+  "-g", "src/**/*.js",
+  "-g", "src/**/*.mjs",
 ];
 
 /**
