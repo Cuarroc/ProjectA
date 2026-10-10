@@ -1,4 +1,4 @@
-# Known Issues — v1.4.1
+# Known Issues — v1.6.0
 
 Bewusst offen gelassene Befunde. Quelle ist die Batch-D-Neuprüfung gegen den
 Post-U2/Q2-Stand (Re-Triage-Bericht, 2026-08-28; Einstufungen von dort) plus
