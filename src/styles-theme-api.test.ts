@@ -32,27 +32,23 @@ function value(
 it("resolves the classic theme contract in both modes", () => {
   const aliases = {
     "surface-window": "color-window",
-    "surface-chrome": "color-chrome-solid",
+    "surface-chrome": "color-elevated",
     "surface-content": "color-content",
     "surface-card": "color-elevated",
     "surface-overlay": "color-elevated",
     "surface-edge": "color-separator",
     "shadow-card": "elev-1",
     "shadow-popover": "elev-2",
+    "color-disabled-fg": "color-text-tertiary",
+    "color-disabled-bg": "color-hover",
+    "state-danger-line": "state-danger-fg",
   };
   for (const tokens of [dark, light]) {
     for (const [alias, target] of Object.entries(aliases))
       expect(value(tokens, alias)).toBe(value(tokens, target));
-    for (const role of [
-      "surface-spec",
-      "color-disabled-fg",
-      "color-disabled-bg",
-      "state-danger-line",
-      "elev-0",
-      "elev-3",
-    ]) {
-      expect(value(tokens, role)).toBeTruthy();
-    }
+    expect(value(tokens, "surface-spec")).toBe("transparent");
+    expect(value(tokens, "elev-0")).toBe("none");
+    expect(value(tokens, "elev-3")).toBe(value(tokens, "elev-2"));
     for (const [key, expected] of Object.entries({
       "material-chrome-filter": "none",
       "material-overlay-filter": "none",
@@ -72,6 +68,13 @@ it("resolves the classic theme contract in both modes", () => {
       expect(value(tokens, key)).toBe(expected);
     }
   }
+  expect(value(dark, "elev-1")).toBe("none");
+  expect(value(dark, "elev-2")).toBe("0 8px 24px rgba(0, 0, 0, 0.32)");
+  expect(value(light, "elev-1")).toBe("0 1px 2px rgba(0, 0, 0, 0.06)");
+  expect(value(light, "elev-2")).toBe("0 8px 24px rgba(0, 0, 0, 0.16)");
+  expect(value(dark, "color-scrim").replace(/\s/g, "")).toBe(
+    "rgba(0,0,0,0.5)",
+  );
   expect(value(light, "color-scrim").replace(/\s/g, "")).toBe(
     "rgba(0,0,0,0.32)",
   );
@@ -81,8 +84,10 @@ it("separates bar and form heights in both densities", () => {
   const density = css.slice(css.indexOf("/* Native desktop density"));
   const comfortable = vars(density.split("}")[0]);
   const compact = vars(block('.app[data-density="compact"]'));
+  expect(comfortable["shell-bar-h"]).toBeUndefined();
+  expect(value(dark, "shell-bar-h")).toBe("38px");
   for (const [tokens, heights] of [
-    [comfortable, [44, 28, 40, 24]],
+    [comfortable, [38, 28, 40, 24]],
     [compact, [38, 24, 32, 16]],
   ] as const) {
     ["shell-bar-h", "ui-bar-control", "ui-control-min", "ui-panel-pad"].forEach(
@@ -95,8 +100,19 @@ it("separates bar and form heights in both densities", () => {
     /\.app \.convo-action,\s*\.app \.segment\s*\{\s*min-height: var\(--ui-bar-control\)/,
   );
   expect(density).toContain("accent-color: var(--color-accent)");
+});
+
+it("scopes disabled fill to filled controls only", () => {
   expect(css).toMatch(
-    /button:disabled\s*\{[^}]*color: var\(--color-disabled-fg\);[^}]*background: var\(--color-disabled-bg\);[^}]*opacity: 1;/,
+    /:where\(button\):disabled\s*\{[^}]*cursor: default;[^}]*color: var\(--color-disabled-fg\);[^}]*opacity: 1;/,
+  );
+  const base = css.slice(css.indexOf(":where(button):disabled")).split("}")[0];
+  expect(base).not.toMatch(/background:/);
+  expect(css).toMatch(
+    /\.button-primary:disabled[\s\S]*?\.button-subtle:disabled[\s\S]*?\{[^}]*background: var\(--color-disabled-bg\);/,
+  );
+  expect(css).toMatch(
+    /\.modal-backdrop\s*\{[^}]*background: var\(--color-scrim\);/,
   );
 });
 
