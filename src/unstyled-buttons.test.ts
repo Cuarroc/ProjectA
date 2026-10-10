@@ -63,6 +63,55 @@ describe("unstyled buttons", () => {
     expect(css).toMatch(/--state-danger-fg/);
   });
 
+  it("button-danger uses contrast-safe solid danger fill tokens", () => {
+    const css = readFileSync(STYLES, "utf8");
+    expect(css).toMatch(/--color-danger-solid:\s*#[0-9a-fA-F]{6}/);
+    expect(css).toMatch(/--color-on-danger:\s*#[0-9a-fA-F]{6}/);
+    const block = css.match(/\.button-danger\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toMatch(/background:\s*var\(--color-danger-solid\)/);
+    expect(block).toMatch(/color:\s*var\(--color-on-danger\)/);
+    expect(block).not.toMatch(/background:\s*var\(--state-danger-fg\)/);
+    const hover = css.match(/\.button-danger:hover:not\(:disabled\)\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(hover).not.toMatch(/--state-danger-bg/);
+    expect(hover).toMatch(/color-mix|var\(--color-danger-solid\)/);
+    const gate = readFileSync(join(__dirname, "..", "scripts", "contrast-check.mjs"), "utf8");
+    expect(gate).toMatch(/on-danger \/ danger-solid/);
+  });
+
+  it("button-danger disabled uses neutral disabled treatment at full opacity", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const block = css.match(/\.button-danger:disabled\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toMatch(/opacity:\s*1/);
+    expect(block).toMatch(/background:\s*var\(--color-elevated\)/);
+    expect(block).toMatch(/color:\s*var\(--color-text-tertiary\)/);
+  });
+
+  it("button-danger focus ring uses the shared focus token", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const block = css.match(/\.button-danger:focus-visible\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toMatch(/outline:\s*2px\s+solid\s+var\(--color-focus-ring\)/);
+    expect(block).not.toMatch(/--state-danger-fg/);
+  });
+
+  it("button-danger geometry and press use shared control tokens", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const block = css.match(/\.button-danger\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toMatch(/padding:\s*var\(--space-3\)\s+var\(--space-6\)/);
+    expect(block).toMatch(/border-radius:\s*var\(--radius-sm\)/);
+    expect(block).toMatch(/min-height:\s*var\(--ui-control-min\)/);
+    expect(block).not.toMatch(/padding:\s*6px\s+14px/);
+    const active = css.match(/\.button-danger:active:not\(:disabled\)\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(active).toMatch(/scale\(var\(--press-scale\)\)/);
+    expect(active).not.toMatch(/scale\(0\.97\)/);
+  });
+
+  it("settings port ghost buttons use a bordered secondary treatment", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const block = css.match(/\.settings-port-row\s+\.button-ghost\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(block).toMatch(/border:\s*1px\s+solid\s+var\(--border\)/);
+    expect(block).toMatch(/min-height:\s*var\(--ui-control-min\)/);
+  });
+
   it("no new unstyled buttons appear outside the allowlist", () => {
     const offenders: string[] = [];
     for (const file of sourceFiles(COMPONENTS)) {
