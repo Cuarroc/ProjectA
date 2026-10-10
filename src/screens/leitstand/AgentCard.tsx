@@ -34,7 +34,7 @@ export function AgentCard({ card, name, now, onOpen }: AgentCardProps) {
       </div>
       <p className="ls-task" title={worker.task}>{worker.task}</p>
       <div className="ls-foot">
-        <HonestState kind="offline" title={T.proofTitle} />
+        <div className="ls-proof"><HonestState kind="offline" title={T.proofTitle} /></div>
         <Button size="sm" aria-label={T.openLabel(name)} onClick={() => onOpen(card)}>{T.open}</Button>
       </div>
     </article>
