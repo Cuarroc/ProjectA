@@ -1418,8 +1418,17 @@ a {
 /* Deliberately shrinkable - and then the content scrolls inside
    the section instead of spilling over the next one (NT-2). */
 .queue-section {
-  flex: 0 1 310px;
-  overflow-y: auto;
+  /* Sidebar is the only scroll owner (UM-3); do not shrink or nest-scroll. */
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.queue-section .queue-actions-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 1; /* --z-sticky lands with T2; keep 1 until then */
+  background: var(--bg-elevated);
+  padding-block: var(--space-2);
 }
 
 .queue-form {
@@ -2936,6 +2945,9 @@ scripts/contrast-check.mjs. */
   justify-content: center;
   gap: 12px;
   height: 100%;
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-8);
   color: var(--fg-muted);
 }
 
@@ -4406,8 +4418,9 @@ scripts/contrast-check.mjs. */
 /* Like the queue above it: compact by default, scrollable when a scout has
    been busy, and never at the expense of the worker list. */
 .reco-section {
-  flex: 0 1 320px;
-  overflow-y: auto;
+  /* Sidebar is the only scroll owner (UM-3); do not shrink or nest-scroll. */
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .reco-form {
@@ -4578,7 +4591,9 @@ scripts/contrast-check.mjs. */
 /* The critic's inbox sits under the recommendations and shares their shape,
    but its entries are read in full, so it is given a little more room. */
 .learn-section {
-  flex: 0 1 360px;
+  /* Sidebar is the only scroll owner (UM-3); content-sized, no nested clip. */
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .badge-learn-new {
