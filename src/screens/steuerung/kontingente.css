@@ -1,0 +1,23 @@
+/* V2-S05a-1 Kontingente. Not imported by the app yet. --g-* tokens only. */
+.kt-screen { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: var(--g-pad); }
+.kt-top h1 { margin: 0; font: 600 20px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.kt-top p, .kt-note { margin: 0; font-size: 12px; color: var(--g-muted); }
+.kt-provs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; }
+.kt-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; min-width: 0; }
+.kt-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.kt-who { min-width: 0; }
+.kt-who h3 { margin: 0; font: 600 13px/1.3 var(--g-font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kt-who p { margin: 0; font-size: 12px; color: var(--g-muted); }
+.kt-head .g-chip { margin-left: auto; }
+.kt-bars { display: flex; flex-direction: column; gap: 4px; }
+.kt-bar { display: grid; grid-template-columns: 44px minmax(40px, 1fr) 36px 104px; align-items: center; gap: 8px; min-height: 20px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.kt-k { color: var(--g-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kt-pct { font-weight: 600; text-align: right; }
+.kt-reset { color: var(--g-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kt-bar .g-hs { grid-column: 2 / -1; grid-auto-flow: column; justify-content: start; padding: 2px 8px; gap: 6px; border-radius: 999px; text-align: left; }
+.kt-probe { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--g-hair); font-size: 12px; color: var(--g-muted); }
+.kt-probe .g-btn { margin-left: auto; }
+.kt-lower { display: flex; flex-wrap: wrap; gap: 12px; }
+.kt-pane { flex: 1 1 320px; display: flex; flex-direction: column; gap: 8px; padding: 16px; min-width: 0; }
+.kt-pane h2 { margin: 0; font: 600 13px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.kt-pane .g-hs { grid-auto-flow: column; justify-content: start; padding: 6px 12px; gap: 8px; text-align: left; }
