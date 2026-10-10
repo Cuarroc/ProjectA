@@ -7,7 +7,7 @@ neue Glas-Oberfläche einschalten. Der Schalter ist standardmäßig aus; beim
 Umschalten lädt die Oberfläche neu. Die bisherigen Ansichten wohnen darin
 unverändert, neue Bildschirme folgen in späteren Versionen.
 
-**Kommt mit diesem Release, sobald gemergt:**
+**Neu in der Vorschau:**
 
 - **Schalter „Neue Oberfläche (Vorschau)“ und Schale eingehängt** (PR #1055):
   Seitenleiste und Kopfleiste der neuen Oberfläche umschließen die alten
@@ -20,6 +20,8 @@ unverändert, neue Bildschirme folgen in späteren Versionen.
   lassen sich direkt im Feld beantworten.
 - **Aufräumen an Daten-Bausteinen** (PR #1056): Eindeutige Schlüssel in der
   Schlüssel/Wert-Liste und im Nachweis-Chip, ohne sichtbare Änderung.
+- **Stil-Schalter in der Kopfleiste** (PR #1062): Die Oberfläche lässt sich
+  zwischen Glas, Klar, Nebel und Abend umschalten.
 
 **Neue Oberfläche — Bausteine, bereits übernommen:**
 
@@ -27,6 +29,10 @@ unverändert, neue Bildschirme folgen in späteren Versionen.
   beschrieben, Schalterregister für die neue Oberfläche (standardmäßig aus)
   und der Rahmen mit Seitenleiste, Kopfleiste und Routen.
 - **Leitstand** (PR #1050): Karten und Filter nach Zustand.
+- **Ersteinrichtung und Meldungen** (PR #1042, #1045): Ein Scan liest, was
+  ein Projekt zum Start braucht, und ein Meldungs-Kern entscheidet, wie laut
+  eine Meldung ankommt (mit Ruhezeit); beides noch nicht in der Oberfläche
+  verbunden.
 - **Bedienelemente** (PR #1015, #1022, #1034, #1035): Knöpfe, Chips,
   Schalter, Segmente und Eingabefelder im Glas-Stil.
 - **Zustände, Layout und Daten** (PR #1017, #1023, #1033): Sechs Zustandsformen
@@ -66,7 +72,8 @@ unverändert, neue Bildschirme folgen in späteren Versionen.
   auf diesen Wegen.
 
 Intern (seit v1.6.0): #924, #926, #933, #934, #935, #936, #938, #944, #945,
-#946, #950, #953, #955, #958, #960, #964, #1006, #1013, #1028, #1036.
+#946, #950, #953, #955, #958, #960, #964, #1006, #1013, #1028, #1036,
+#1041.
 
 ## v1.6.0 (Beta) — 10.10.2026
 
