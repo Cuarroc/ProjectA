@@ -53,6 +53,40 @@ describe("BetriebPanel", () => {
     expect(queue.queryByText(/preflight/)).toBeNull();
   });
 
+  it("prints a visible state word for every stage and not only the waiting ones", async () => {
+    backend([
+      entry("a", { status: "sharpening" }), entry("b", { status: "ready" }), entry("c", { status: "dispatching" }),
+      entry("d", { status: "dispatched" }), entry("e", { status: "done" }),
+    ]);
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const queue = within(section("Warteschlange"));
+    await queue.findByText("Task a");
+    for (const word of ["Schärft", "Bereit", "Startet", "Läuft", "Erledigt"]) {
+      expect(queue.getByText(word)).toBeVisible();
+    }
+  });
+
+  it("polls every 10 seconds and stops after unmount", async () => {
+    vi.useFakeTimers();
+    try {
+      backend([entry("t5")]);
+      const { unmount } = render(<BetriebPanel projectId="p1" profiles={profiles} />);
+      const reads = () => mocks.invoke.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(0);
+      const first = reads();
+      expect(first).toBe(2);
+      await vi.advanceTimersByTimeAsync(9_999);
+      expect(reads()).toBe(first);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(reads()).toBe(first + 2);
+      unmount();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(reads()).toBe(first + 2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows the empty state only after a successful read of an empty queue", async () => {
     backend([]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
