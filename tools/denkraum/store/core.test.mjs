@@ -114,6 +114,48 @@ test('NOT-1: permanent EPERM rejects and keeps committed bytes and removes the t
   }
 });
 
+test('NOT-1: a non-retryable error on a later rename attempt is thrown instead of the first one', async t => {
+  for (const failAt of [2, 6]) {
+    const s = await fresh(); t.after(() => s.close());
+    await add(s); const before = await readFile(s.file); const delays = []; let attempts = 0;
+    const first = Object.assign(new Error('reader holds file'), { code: 'EPERM' });
+    const last = Object.assign(new Error('source disappeared'), { code: 'ENOENT' });
+    s.io.sleep = async ms => { delays.push(ms); };
+    s.io.rename = async (from, to) => {
+      if (to !== s.file) return rename(from, to);
+      throw ++attempts === failAt ? last : first;
+    };
+    await assert.rejects(add(s, 'E-2'), error => {
+      assert.equal(error, last);
+      assert.equal(error.cause, first);
+      return true;
+    });
+    assert.equal(attempts, failAt);
+    assert.deepEqual(delays, [10, 20, 40, 80, 100].slice(0, failAt - 1));
+    assert.deepEqual(await readFile(s.file), before);
+    assert.deepEqual((await readdir(dirname(s.file))).filter(f => f.includes('.tmp')), []);
+  }
+});
+
+test('NOT-1: an ENOENT after EPERM during the previous rotation is tolerated and the commit succeeds', async t => {
+  const s = await fresh(); t.after(() => s.close());
+  await add(s); const delays = []; let attempts = 0;
+  s.io.sleep = async ms => { delays.push(ms); };
+  s.io.rename = async (from, to) => {
+    if (to !== `${s.file}.previous`) return rename(from, to);
+    if (++attempts === 1) throw Object.assign(new Error('reader holds file'), { code: 'EPERM' });
+    await s.io.unlink(from);
+    throw Object.assign(new Error('source disappeared'), { code: 'ENOENT' });
+  };
+  assert.equal(await add(s, 'E-2'), 'E-2');
+  assert.equal(attempts, 2);
+  assert.deepEqual(delays, [10]);
+  const state = await s.read();
+  assert.equal(state.revision, 2);
+  assert.deepEqual(state.questions.map(q => q.id), ['E-1', 'E-2']);
+  assert.deepEqual((await readdir(dirname(s.file))).filter(f => f.includes('.tmp')), []);
+});
+
 test('process termination during a partial temporary write preserves the last commit', async () => {
   const s = await fresh(); await add(s); const before = await readFile(s.file, 'utf8');
   await s.close(); // Hand off ownership before the child deliberately terminates.

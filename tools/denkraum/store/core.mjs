@@ -85,7 +85,13 @@ export class DeskStore {
       try { return await this.io.rename(from, to); }
       catch (error) {
         original ??= error;
-        if (!['EPERM', 'EACCES', 'EBUSY'].includes(error.code) || retry === delays.length) throw original;
+        if (!['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) {
+          if (error !== original) {
+            try { error.cause = original; } catch { /* Preserve even immutable errors. */ }
+          }
+          throw error;
+        }
+        if (retry === delays.length) throw original;
         await this.io.sleep(delays[retry]);
       }
     }
