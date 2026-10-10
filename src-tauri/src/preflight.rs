@@ -323,13 +323,51 @@ pub fn parse_mem_available(meminfo: &str) -> Option<u64> {
     Some(kb.saturating_mul(1024))
 }
 
-/// How many of these process names are `cargo` itself.
+/// Cargo subcommands that compile: the ones `dev:start-check` means by a build.
+/// `cargo tauri dev` and `cargo run` are not in it - they idle for hours.
+const BUILD_SUBCOMMANDS: [&str; 9] = [
+    "build", "b", "test", "t", "clippy", "check", "c", "nextest", "rustc",
+];
+
+/// The subcommand of a `cargo` argv (`argv[0]` is cargo itself), skipping a
+/// `+toolchain` and the global flags that come before it.
+fn cargo_subcommand<S: AsRef<str>>(argv: &[S]) -> Option<&str> {
+    let mut args = argv.iter().skip(1).map(AsRef::as_ref);
+    while let Some(arg) = args.next() {
+        if matches!(arg, "-Z" | "-C" | "--config" | "--color") {
+            args.next();
+        } else if !arg.starts_with('+') && !arg.starts_with('-') {
+            return Some(arg);
+        }
+    }
+    None
+}
+
+/// How many of these `(comm, argv)` pairs are a running cargo *build*.
 #[allow(dead_code)] // V2-B3: no runtime caller until the seam bundle wires it
-pub fn count_cargo<'a>(names: impl IntoIterator<Item = &'a str>) -> u32 {
-    names
+pub fn count_cargo_builds<N, A, S>(processes: impl IntoIterator<Item = (N, A)>) -> u32
+where
+    N: AsRef<str>,
+    A: AsRef<[S]>,
+    S: AsRef<str>,
+{
+    processes
         .into_iter()
-        .filter(|name| name.trim().trim_end_matches(".exe") == "cargo")
+        .filter(|(comm, argv)| {
+            comm.as_ref().trim().trim_end_matches(".exe") == "cargo"
+                && cargo_subcommand(argv.as_ref())
+                    .is_some_and(|sub| BUILD_SUBCOMMANDS.contains(&sub))
+        })
         .count() as u32
+}
+
+/// `/proc/<pid>/cmdline` bytes (NUL-separated) as an argv.
+#[allow(dead_code)] // V2-B3: no runtime caller until the seam bundle wires it
+pub fn parse_cmdline(raw: &[u8]) -> Vec<String> {
+    raw.split(|byte| *byte == 0)
+        .filter(|arg| !arg.is_empty())
+        .map(|arg| String::from_utf8_lossy(arg).into_owned())
+        .collect()
 }
 
 /// Free RAM now, or `None` where this platform cannot say.
@@ -361,11 +399,23 @@ pub fn free_ram_bytes() -> Option<u64> {
 #[allow(dead_code)] // V2-B3: no runtime caller until the seam bundle wires it
 #[cfg(target_os = "linux")]
 pub fn running_cargo_builds() -> Option<u32> {
-    let names: Vec<String> = std::fs::read_dir("/proc")
+    let processes: Vec<(String, Vec<String>)> = std::fs::read_dir("/proc")
         .ok()?
-        .filter_map(|entry| std::fs::read_to_string(entry.ok()?.path().join("comm")).ok())
+        .filter_map(|entry| {
+            let dir = entry.ok()?.path();
+            let comm = std::fs::read_to_string(dir.join("comm")).ok()?;
+            // Only cargo's argv is worth reading; a process that exits between
+            // the two reads simply drops out of the count.
+            if comm.trim() != "cargo" {
+                return None;
+            }
+            Some((
+                comm,
+                parse_cmdline(&std::fs::read(dir.join("cmdline")).ok()?),
+            ))
+        })
         .collect();
-    Some(count_cargo(names.iter().map(String::as_str)))
+    Some(count_cargo_builds(processes))
 }
 
 #[allow(dead_code)] // V2-B3: no runtime caller until the seam bundle wires it
@@ -569,14 +619,90 @@ mod tests {
     }
 
     #[test]
-    fn the_readers_parse_meminfo_and_count_cargo_processes() {
+    fn the_readers_parse_meminfo_and_cmdline() {
         let meminfo = "MemTotal:       16000000 kB\nMemAvailable:    1572864 kB\n";
         assert_eq!(parse_mem_available(meminfo), Some(1536 * 1024 * 1024));
         assert_eq!(parse_mem_available("MemTotal: 1 kB\n"), None);
         assert_eq!(parse_mem_available("MemAvailable: lots kB\n"), None);
         assert_eq!(
-            count_cargo(["cargo\n", "rustc", "cargo.exe", "cargo-nextest"]),
-            2
+            parse_cmdline(b"cargo\0build\0--release\0"),
+            ["cargo", "build", "--release"]
         );
+        assert!(parse_cmdline(b"").is_empty());
+    }
+
+    #[test]
+    fn cargo_build_is_counted() {
+        let procs: [(&str, &[&str]); 5] = [
+            ("cargo\n", &["cargo", "build"]),
+            ("cargo.exe", &["cargo.exe", "test", "-p", "x"]),
+            (
+                "cargo",
+                &["cargo", "+nightly", "-Z", "unstable-options", "clippy"],
+            ),
+            ("rustc", &["rustc", "--crate-name", "x"]),
+            ("cargo-nextest", &["cargo-nextest", "nextest", "run"]),
+        ];
+        assert_eq!(count_cargo_builds(procs), 3);
+    }
+
+    #[test]
+    fn cargo_tauri_dev_and_run_are_not_counted() {
+        let procs: [(&str, &[&str]); 4] = [
+            ("cargo", &["cargo", "tauri", "dev"]),
+            ("cargo", &["cargo", "run", "--bin", "pa"]),
+            ("cargo", &["cargo"]),
+            ("cargo", &[]),
+        ];
+        assert_eq!(count_cargo_builds(procs), 0);
+    }
+
+    #[test]
+    fn a_dev_session_does_not_trip_the_builds_limit() {
+        let dev: [(&str, &[&str]); 2] = [
+            ("cargo", &["cargo", "tauri", "dev"]),
+            ("cargo", &["cargo", "run"]),
+        ];
+        let host = HostFacts {
+            running_builds: Some(count_cargo_builds(dev)),
+            ..HostFacts::default()
+        };
+        assert!(evaluate_host(&host).is_empty());
+    }
+
+    #[test]
+    fn low_ram_busy_builds_and_an_occupied_seam_are_all_reported() {
+        let host = HostFacts {
+            free_ram_bytes: Some(GIB),
+            running_builds: Some(MAX_RUNNING_BUILDS),
+            occupied_seams: vec![SeamHold {
+                seam: Seam::Store,
+                holder: "task-a".to_string(),
+            }],
+            wanted_seams: BTreeSet::from([Seam::Store]),
+        };
+        let codes: Vec<&str> = evaluate_host(&host).iter().map(|b| b.code).collect();
+        assert_eq!(codes, [CODE_LOW_RAM, CODE_BUILDS_BUSY, CODE_SEAM_OCCUPIED]);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_linux_readers_answer_without_panicking() {
+        assert!(free_ram_bytes().is_some_and(|bytes| bytes > 0));
+        assert!(running_cargo_builds().is_some());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn the_windows_ram_reader_answers_and_builds_are_unread() {
+        assert!(free_ram_bytes().is_some_and(|bytes| bytes > 0));
+        assert_eq!(running_cargo_builds(), None);
+    }
+
+    #[cfg(not(any(target_os = "linux", windows)))]
+    #[test]
+    fn the_other_platform_readers_say_none() {
+        assert_eq!(free_ram_bytes(), None);
+        assert_eq!(running_cargo_builds(), None);
     }
 }
