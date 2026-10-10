@@ -49,21 +49,31 @@ function isDead(record) {
   catch (error) { return error?.code === 'ESRCH'; }
   return false;
 }
+// Recovery lock contention: RECOVERY_LOCK_POLLS waits of RECOVERY_LOCK_POLL_MS each.
+export const RECOVERY_LOCK_POLLS = 20;
+export const RECOVERY_LOCK_POLL_MS = 25;
+const MALFORMED_HINT = 'Der Eigentümer-Eintrag ist leer oder beschädigt; prüfen, dass kein Server läuft, dann die Datei <ledger>.owner von Hand entfernen';
+// Only a plain error code is quoted; never a message, path or file content.
+const codeOf = error => (typeof error?.code === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(error.code) ? error.code : 'unbekannt');
 const LEGACY_HINT = 'record without a valid host field (older version or damaged); remove manually after checking that no server runs';
 // Null when the record is gone (released cleanly in the window).
 async function readJudged(path) {
   let raw;
   try { raw = await readFile(path, 'utf8'); }
   // EACCES and other read errors cannot prove the owner dead: fail closed as HELD.
-  catch (error) { if (error?.code === 'ENOENT') return null; throw new OwnershipError(OWNERSHIP_HELD); }
+  catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw new OwnershipError(OWNERSHIP_HELD,
+      `Der Eigentümer-Eintrag konnte nicht gelesen werden (Fehlercode ${codeOf(error)}); Zugriffsrechte und Datenträger prüfen`);
+  }
   const record = parseRecord(raw);
-  if (!record) throw new OwnershipError(OWNERSHIP_MALFORMED);
+  if (!record) throw new OwnershipError(OWNERSHIP_MALFORMED, MALFORMED_HINT);
   return record;
 }
 // Recovery is serialized by an exclusive `<owner>.recover` lock so that a
 // stale starter can never rename a live successor record. A lock left behind
 // by a crash stays held; it is removed manually (no automatic stale logic).
-async function recoverDead(path) {
+async function recoverDead(path, logger) {
   const record = await readJudged(path);
   if (!record) return; // released in the window: go straight to the retry
   if (!isDead(record)) throw new OwnershipError(OWNERSHIP_HELD, record.host === null ? LEGACY_HINT : undefined);
@@ -73,9 +83,9 @@ async function recoverDead(path) {
     try { lock = await open(lockPath, 'wx', 0o600); break; }
     catch (error) {
       if (error?.code !== 'EEXIST') ioFail();
-      if (poll === 20) throw new OwnershipError(OWNERSHIP_HELD,
+      if (poll === RECOVERY_LOCK_POLLS) throw new OwnershipError(OWNERSHIP_HELD,
         `recovery in progress or orphaned lock ${basename(lockPath)}; remove manually if no start is running`);
-      await delay(25);
+      await delay(RECOVERY_LOCK_POLL_MS);
     }
   }
   try {
@@ -90,8 +100,8 @@ async function recoverDead(path) {
       if (error?.code !== OWNERSHIP_RELEASE_MISMATCH) throw error;
     }
   } finally {
-    await unlink(lockPath).catch(() => {
-      console.error(`OWNERSHIP_IO: could not remove recovery lock ${basename(lockPath)}`);
+    await unlink(lockPath).catch(error => {
+      logger(`OWNERSHIP_IO: could not remove recovery lock ${basename(lockPath)} (${codeOf(error)}); an orphaned lock blocks the next start, remove it manually if no start is running`);
     });
   }
 }
@@ -100,7 +110,8 @@ async function mismatchOrIo(path) {
   catch (e) { if (e instanceof OwnershipError) throw e; ioFail(); }
   throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
 }
-export async function acquireOwnership(ledgerPath) {
+const defaultLogger = line => console.error(line);
+export async function acquireOwnership(ledgerPath, { logger = defaultLogger } = {}) {
   const path = ownerRecordPath(ledgerPath);
   const nonce = randomBytes(16).toString('hex');
   const record = { nonce, pid: process.pid, heartbeatAt: new Date().toISOString(), host };
@@ -108,7 +119,7 @@ export async function acquireOwnership(ledgerPath) {
   try { handle = await open(path, 'wx', 0o600); }
   catch (error) {
     if (error?.code !== 'EEXIST') ioFail();
-    await recoverDead(path);
+    await recoverDead(path, logger);
     // Exactly one fresh exclusive create; never recover a second owner here.
     try { handle = await open(path, 'wx', 0o600); }
     catch (retryError) {
@@ -116,7 +127,8 @@ export async function acquireOwnership(ledgerPath) {
       ioFail();
     }
   }
-  try { await handle.writeFile(`${JSON.stringify(record)}\n`, 'utf8'); await handle.close(); }
+  // Sync before close: after a crash an empty record would fail every start.
+  try { await handle.writeFile(`${JSON.stringify(record)}\n`, 'utf8'); await handle.sync(); await handle.close(); }
   catch { await handle.close().catch(() => {}); await unlink(path).catch(() => {}); ioFail(); }
   return { nonce, pid: record.pid, heartbeatAt: record.heartbeatAt };
 }

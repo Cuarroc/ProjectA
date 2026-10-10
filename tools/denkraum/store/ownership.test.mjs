@@ -458,7 +458,9 @@ test('DRSEC-G6-FU: failed recovery lock cleanup emits one stderr diagnostic', as
   syncBuiltinESMExports();
   try {
     const session = await acquire(file);
-    assert.deepEqual(diagnostics, ['OWNERSHIP_IO: could not remove recovery lock ledger.json.owner.recover\n']);
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0], /^OWNERSHIP_IO: could not remove recovery lock ledger\.json\.owner\.recover \(EACCES\); an orphaned lock blocks the next start, remove it manually.*\n$/);
+    assert.ok(!diagnostics[0].includes('sensitive'));
     assert.ok(await readFile(lock));
     assert.equal(JSON.parse(await readFile(ownerPath(file))).nonce, session.nonce);
     await release(file, session.nonce);
@@ -498,5 +500,90 @@ for (const failure of ['open', 'write', 'read']) test(`DRSEC-G6-FU: recovery ${f
     assert.deepEqual(await origRead(path), before);
     await assert.rejects(origRead(lock), e => e.code === 'ENOENT');
     if (handle) assert.equal(handle.fd, -1, 'failed lock write closes its handle');
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
+
+test('OWN-3: an empty owner record gives OWNERSHIP_MALFORMED with a hint', async t => {
+  const file = await ledger(t), path = ownerPath(file);
+  for (const bytes of ['', '{']) {
+    await writeFile(path, bytes, { mode: 0o600 });
+    await assert.rejects(acquire(file), e => isDiag(e, MALFORMED)
+      && /leer oder beschädigt/.test(e.hint) && /kein Server läuft/.test(e.hint) && e.hint.includes('<ledger>.owner'));
+    assert.equal(await readFile(path, 'utf8'), bytes, 'no automatic deletion');
+  }
+});
+test('OWN-3: acquire syncs the owner record before closing it', async t => {
+  const file = await ledger(t), origOpen = fs.open, events = [];
+  t.mock.method(fs, 'open', async (p, ...rest) => {
+    const h = await origOpen(p, ...rest);
+    if (p === ownerPath(file) && rest[0] === 'wx') {
+      for (const name of ['writeFile', 'sync', 'close']) {
+        const orig = h[name].bind(h);
+        h[name] = async (...args) => { events.push(name); return orig(...args); };
+      }
+    }
+    return h;
+  });
+  syncBuiltinESMExports();
+  try {
+    const session = await acquire(file);
+    assert.deepEqual(events, ['writeFile', 'sync', 'close']);
+    await release(file, session.nonce);
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
+test('R896-K1: a non-ENOENT read error gives OWNERSHIP_HELD with an I/O hint', async t => {
+  const file = await ledger(t), path = ownerPath(file), origRead = fs.readFile;
+  await writeFile(path, '{}', { mode: 0o600 });
+  t.mock.method(fs, 'readFile', async (p, ...rest) => {
+    if (p === path) throw Object.assign(new Error('denied'), { code: 'EACCES' });
+    return origRead(p, ...rest);
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(acquire(file), e => isDiag(e, HELD) && /nicht gelesen/.test(e.hint) && e.hint.includes('EACCES'));
+    assert.equal(await origRead(path, 'utf8'), '{}');
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
+test('R896-F1: a denial on the second read under the recovery lock removes the lock and keeps the owner', async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const path = ownerPath(file), lock = `${path}.recover`, before = await readFile(path), origRead = fs.readFile;
+  let reads = 0;
+  t.mock.method(fs, 'readFile', async (p, ...rest) => {
+    if (p === path && ++reads === 2) {
+      assert.ok(await origRead(lock), 'the second read happens under the lock');
+      throw Object.assign(new Error('denied'), { code: 'EACCES' });
+    }
+    return origRead(p, ...rest);
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(acquire(file), e => isDiag(e, HELD) && e.hint.includes('EACCES'));
+    assert.equal(reads, 2);
+    assert.deepEqual(await origRead(path), before);
+    await assert.rejects(origRead(lock), e => e.code === 'ENOENT');
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
+test('R896-F2: the recovery poll limits are named exported constants', () => {
+  assert.equal(o.RECOVERY_LOCK_POLLS, 20);
+  assert.equal(o.RECOVERY_LOCK_POLL_MS, 25);
+});
+test('R896-F3: a failed recovery lock cleanup goes to the injected logger and names the code and the manual removal', async t => {
+  const file = await ledger(t); await killedOwner(t, file);
+  const lock = `${ownerPath(file)}.recover`, origUnlink = fs.unlink, lines = [];
+  t.mock.method(fs, 'unlink', async p => {
+    if (p === lock) throw Object.assign(new Error('sensitive error contents'), { code: 'EACCES' });
+    return origUnlink(p);
+  });
+  const stderr = t.mock.method(process.stderr, 'write', () => true);
+  syncBuiltinESMExports();
+  try {
+    const session = await acquire(file, { logger: line => lines.push(line) });
+    assert.equal(stderr.mock.callCount(), 0);
+    assert.equal(lines.length, 1);
+    assert.match(lines[0], /OWNERSHIP_IO.*ledger\.json\.owner\.recover.*EACCES/);
+    assert.match(lines[0], /blocks the next start.*remove it manually/);
+    assert.ok(!/sensitive|[\\/]/.test(lines[0]));
+    await origUnlink(lock);
+    await release(file, session.nonce);
   } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });
