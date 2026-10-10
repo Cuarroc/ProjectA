@@ -1,0 +1,53 @@
+/* V2-F4b inputs. Not imported by the app. Consumes --g-* from tokens.css.
+   Motion tokens belong to V2-F2; until they exist the fallbacks are the board values.
+   Rules: equal sizes inside a group, no shadow or highlight on a solid fill. */
+
+.g-inp {
+  box-sizing: border-box; width: 100%; height: 40px; border-radius: var(--g-r-ctl); border: 1px solid var(--g-line);
+  background: var(--g-tint); padding: 0 12px; font: 400 13px var(--g-font-sans); color: var(--g-ink);
+}
+.g-inp--area { height: auto; min-height: 88px; padding: 8px 12px; line-height: 1.5; resize: vertical; }
+.g-inp--mono { font-family: var(--g-font-mono); font-size: 12px; }
+.g-inp--sm { height: 36px; }
+.g-inp::placeholder { color: var(--g-faint); }
+.g-inp[aria-invalid="true"] { border-color: var(--g-danger-line); }
+.g-inp:disabled { opacity: .5; cursor: not-allowed; }
+.g-inp:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
+.g-selw { position: relative; display: flex; align-items: center; min-width: 0; }
+.g-selw select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
+.g-selw select option { background: var(--g-ground); color: var(--g-ink); }
+.g-selw__ic { position: absolute; right: 12px; color: var(--g-muted); pointer-events: none; }
+.g-kbd {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 6px;
+  border: 1px solid var(--g-line); background: var(--g-tint-hi); font: 500 11px/1 var(--g-font-mono); color: var(--g-muted);
+}
+.g-ava {
+  width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  font: 600 12px/1 var(--g-font-sans); color: var(--g-ink); background: var(--g-tint-hi); border: 1px solid var(--g-line);
+}
+.g-ava--sm { width: 24px; height: 24px; border-radius: 8px; font-size: 11px; }
+.g-ava--lg { width: 48px; height: 48px; border-radius: 14px; font-size: 15px; }
+.g-ava--owner { border-radius: 50%; background: var(--g-ink); color: var(--g-ground); border-color: transparent; }
+.g-ava--lead { background: var(--g-accent); color: var(--g-on-accent); border-color: transparent; }
+.g-ava--sys { background: transparent; border: 1px dashed var(--g-line); color: var(--g-muted); }
+.g-ava--c1 { background: var(--g-av1); border-color: transparent; }
+.g-ava--c2 { background: var(--g-av2); border-color: transparent; }
+.g-ava--c3 { background: var(--g-av3); border-color: transparent; }
+.g-ava--c4 { background: var(--g-av4); border-color: transparent; }
+.g-ava--c5 { background: var(--g-av5); border-color: transparent; }
+.g-ava--c6 { background: var(--g-av6); border-color: transparent; }
+.g-lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--g-ok); flex: none; }
+.g-lamp--off { background: var(--g-done); }
+.g-lamp--warn { width: 7px; height: 7px; margin: 0 .5px; border-radius: 2px; transform: rotate(45deg); background: var(--g-need); }
+.g-lamp--busy { background: none; border: 2px solid var(--g-run); border-right-color: transparent; }
+.g-lamp--bad { border-radius: 0; background: var(--g-bad); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.g-meter { display: block; height: 4px; border-radius: 2px; background: var(--g-line); overflow: hidden; }
+.g-meter b {
+  display: block; height: 100%; border-radius: 2px; background: var(--g-ink2);
+  transition: width var(--g-dur-3, 320ms) var(--g-ease, cubic-bezier(.2, .8, .2, 1));
+}
+.g-meter .g-meter--accent { background: var(--g-accent); }
+.g-meter .g-meter--hot { background: var(--g-need); }
+.g-meter .g-meter--lock { background: var(--g-bad); }
+.g-meter .g-meter--good { background: var(--g-ok); }
+@media (prefers-reduced-motion: reduce) { .g-meter b { transition: none; } }
