@@ -49,9 +49,10 @@ npx --yes license-checker-rseidelsohn@5.0.1 --production --json   # npm section
   below. Allowed by a narrow `[[licenses.exceptions]]` entry in
   `src-tauri/deny.toml` (orchestrator decision 2026-09-25), not by the
   global allowlist.
-- **Project-owned artwork**: `assets/banner.svg`, `src-tauri/icons/*` and the
-  diagrams under `docs/dev-hq/concepts/` are original ProjectA artwork, not
-  third-party material.
+- **Project-owned artwork**: `assets/banner.svg`, `src-tauri/icons/*`, the
+  diagrams under `docs/dev-hq/concepts/`, and the inline UI stroke icons in
+  `src/components/Icon.tsx` are original ProjectA artwork, not third-party
+  material.
 
 The placeholder skills under `src-tauri/resources/skills/` (karpathy-guidelines,
 minimalist-skill, planning-with-files, ui-ux-pro-max, web-design-guidelines)

@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import GitHubLinkDialog from "./GitHubLinkDialog";
+import Icon from "./Icon";
 import SkillPackDialog from "./SkillPackDialog";
 import { archiveWorker, describeError, listWorkers } from "../lib/ipc";
 import { isMasterPromptEnabled, loadMasterPrompt } from "../lib/settings";
@@ -209,7 +210,7 @@ export default function Sidebar({
             aria-label={formOpen ? "Abbrechen" : "Projekt hinzufügen"}
             onClick={() => setFormOpen((open) => !open)}
           >
-            {formOpen ? "×" : "+"}
+            {formOpen ? <Icon name="close" size={12} /> : "+"}
           </button>
         </div>
 
@@ -284,7 +285,7 @@ export default function Sidebar({
                     title="Skill-Packs"
                     onClick={() => setSettingsId(project.id)}
                   >
-                    ⚙
+                    <Icon name="gear" size={12} />
                   </button>
                   {confirming ? (
                     <span className="confirm">
@@ -314,7 +315,7 @@ export default function Sidebar({
                       title="Projekt entfernen"
                       onClick={() => setConfirmingId(project.id)}
                     >
-                      ×
+                      <Icon name="close" size={12} />
                     </button>
                   )}
                 </li>
