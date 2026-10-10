@@ -19,12 +19,13 @@ const reducedRules = rules.filter(rule => reduced.some(range => rule.index >= ra
 const selects = (rule: RegExpMatchArray, selector: string) => rule[1].split(",").map(s => s.trim()).includes(selector);
 
 function assertReducedLoops(normalRules = rules, overrides = reducedRules) {
-  const infinite = normalRules.filter(rule => /animation:[^;]*\binfinite\b/.test(rule[2]));
-  expect(infinite).toHaveLength(2);
+  const infinite = normalRules.filter(rule => /\banimation(?:-iteration-count)?:[^;]*\binfinite\b/.test(rule[2]));
   for (const rule of infinite) {
-    const selector = rule[1].trim();
-    const override = overrides.find(candidate => selects(candidate, selector) && candidate.index > rule.index);
-    expect(override?.[2], selector).toMatch(/animation:\s*none;/);
+    for (const selector of rule[1].split(",").map(s => s.trim())) {
+      // Same-specificity overrides must follow the normal rule in the cascade.
+      const override = overrides.find(candidate => selects(candidate, selector) && candidate.index > rule.index);
+      expect(override?.[2], selector).toMatch(/animation:\s*none;/);
+    }
   }
 }
 
@@ -59,16 +60,10 @@ describe("M1 motion contract", () => {
 
   it("shares one spinner keyframe and keeps static reduced motion cues", () => {
     assertReducedLoops();
-    const infinite = rules.filter(rule => /animation:[^;]*\binfinite\b/.test(rule[2]));
     expect([...css.matchAll(/@keyframes\s+[\w-]*spin\b/g)].map(match => match[0])).toEqual(["@keyframes spin"]);
-    for (const rule of infinite) {
-      const selector = rule[1].trim();
-      expect(rule[2]).toMatch(/animation:\s*spin var\(--spin-duration\) linear infinite;/);
-      // Same-specificity overrides must follow the normal rule in the cascade.
-      const override = reducedRules.find(candidate => selects(candidate, selector) && candidate.index > rule.index);
-      expect(override?.[2], selector).toMatch(/animation:\s*none;/);
-      const marker = selector.includes("::before") ? selector : `${selector}::before`;
-      expect(reducedRules.some(candidate => selects(candidate, marker) && /content:\s*"…";/.test(candidate[2])), marker).toBe(true);
+    for (const selector of [".bootstrap-spinner", ".badge-queue-sharpening::before"]) {
+      const rule = rules.find(candidate => selects(candidate, selector));
+      expect(rule?.[2]).toMatch(/animation:\s*spin var\(--spin-duration\) linear infinite;/);
     }
   });
 

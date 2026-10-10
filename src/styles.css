@@ -780,13 +780,7 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .bootstrap-spinner {
     animation: none;
-    border: 0;
-    color: var(--color-accent-text);
-    display: grid;
-    place-items: center;
-  }
-  .bootstrap-spinner::before {
-    content: "…";
+    display: none;
   }
 }
 
@@ -1579,11 +1573,7 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .badge-queue-sharpening::before {
     animation: none;
-    content: "…";
-    border: 0;
-    width: auto;
-    height: auto;
-    line-height: 1;
+    display: none;
   }
 }
 
