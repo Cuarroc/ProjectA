@@ -6,19 +6,14 @@ import { parseChangelog } from "./changelog";
 describe("parseChangelog", () => {
   it("parses the v1.6.0 release heading with Beta flag and German date", () => {
     const [release] = parseChangelog("# Changelog\n\n## v1.6.0 (Beta) — 10.10.2026\n\n- Etwas.\n");
-    expect(release.version).toBe("1.6.0");
-    expect(release.beta).toBe(true);
-    expect(release.date).toBe("2026-10-10");
+    expect([release.version, release.beta, release.date]).toEqual(["1.6.0", true, "2026-10-10"]);
   });
 
   it("parses ISO dates and hyphen separators", () => {
     const releases = parseChangelog(
       "## v1.5.0 (Beta) — 2026-10-05\n\n- a\n\n## v1.2.1 - 2026-08-31\n\n- b\n\n## v1.2.1 — 2026-08-31\n\n- c\n",
     );
-    expect(releases.map((r) => [r.version, r.beta, r.date])).toEqual([
-      ["1.5.0", true, "2026-10-05"],
-      ["1.2.1", false, "2026-08-31"],
-    ]);
+    expect(releases.map((r) => [r.version, r.beta, r.date])).toEqual([["1.5.0", true, "2026-10-05"], ["1.2.1", false, "2026-08-31"]]);
     expect(releases[1].groups[0].items[0].text).toBe("b"); // duplicate heading: first wins
   });
 
@@ -81,7 +76,15 @@ describe("parseChangelog", () => {
       ].join("\n"),
     );
     expect(releases[0].groups.flatMap((g) => g.items.map((i) => i.text))).toEqual(["shipped"]);
+    const [bold] = parseChangelog("## v1.0.0 — 2026-08-28\n- a\n**Noch nicht auf `main`:**\n- b\n**Behoben:**\n- c");
+    expect(bold.groups.flatMap((g) => g.items.map((i) => i.text))).toEqual(["a", "c"]);
     expect(releases[1].notes).toEqual(["Updater-Hinweis: Kein manueller Schritt.", "Fließtext der Version."]);
+  });
+
+  it("keeps an indented paragraph after a blank line inside its bullet", () => {
+    const [release] = parseChangelog("## v1.0.0 — 2026-08-28\n- A\n\n  B (#42)\n- next\n\nNote.");
+    expect(release.groups[0].items.map((i) => [i.text, i.prs])).toEqual([["A B", [42]], ["next", []]]);
+    expect(release.notes).toEqual(["Note."]);
   });
 
   it("parses the real CHANGELOG.md without empty releases", () => {
