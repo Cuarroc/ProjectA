@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderHook } from "@testing-library/react";
+import ts from "typescript";
 import { expect, it } from "vitest";
 import { catalogs, de, type MessageKey } from "./de";
 import { t, useT } from "./useT";
@@ -8,7 +9,6 @@ import { t, useT } from "./useT";
 const ROOT = join(__dirname, "..", "..");
 const SCAN_DIRS = ["src/design", "src/shell", "src/i18n"];
 const DICT_FILE = "de.ts";
-const LITERAL_RE = /(?<![\w$])(["'`])((?:\\.|(?!\1).)*)\1/g;
 const UI_RE = /[ÄÖÜäöüß]|\s|[A-ZÄÖÜ][a-zäöüß]{2,}/;
 
 function walkTs(dir: string): string[] {
@@ -27,26 +27,51 @@ function walkTs(dir: string): string[] {
   return out;
 }
 
-function literals(source: string): string[] {
-  const bare = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+/** Collect string-like UI candidates via the TypeScript AST (JSX text, literals, template parts). */
+function collectCandidateStrings(source: string, fileName = "fixture.tsx"): string[] {
+  const kind = fileName.endsWith(".ts") && !fileName.endsWith(".tsx")
+    ? ts.ScriptKind.TS
+    : ts.ScriptKind.TSX;
+  const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, kind);
   const found: string[] = [];
-  for (const match of bare.matchAll(LITERAL_RE)) {
-    const raw = match[2];
-    if (match[1] === "`" && raw.includes("${")) continue;
-    const text = raw.replace(/\\([\\'"nrt])/g, (_, c: string) =>
-      ({ "\\": "\\", "'": "'", '"': '"', n: "\n", r: "\r", t: "\t" })[c] ?? c);
-    found.push(text);
-  }
+
+  const pushLiteral = (text: string) => {
+    if (text.length > 0) found.push(text);
+  };
+  const pushJsxText = (text: string) => {
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (normalized.length > 0) found.push(normalized);
+  };
+
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxText(node)) {
+      pushJsxText(node.getText(sf));
+    } else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      pushLiteral(node.text);
+    } else if (ts.isTemplateExpression(node)) {
+      pushLiteral(node.head.text);
+      for (const span of node.templateSpans) {
+        pushLiteral(span.literal.text);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
   return found;
 }
 
 function isHardcodedUi(text: string, dictValues: Set<string>): boolean {
   if (text.length < 2) return false;
   if (/^[./\\]|https?:|\.(ts|tsx|css|json)$/.test(text)) return false;
-  if (/^[a-z0-9_./:-]+$/i.test(text) && !dictValues.has(text)) return false;
+  // Lowercase identifier / path-ish tokens only (no `i` flag): "Abbrechen" stays UI.
+  if (/^[a-z0-9_./:-]+$/.test(text) && !dictValues.has(text)) return false;
   return dictValues.has(text) || UI_RE.test(text);
+}
+
+function findHardcodedUi(source: string, dictValues: Set<string>, fileName = "fixture.tsx"): string[] {
+  return collectCandidateStrings(source, fileName).filter((text) =>
+    isHardcodedUi(text, dictValues),
+  );
 }
 
 it("hook returns German dictionary strings", () => {
@@ -65,16 +90,13 @@ it("catalog structure reserves a second locale slot", () => {
   expect(keys).toContain("shell.estop");
 });
 
-function findHardcodedUi(source: string, dictValues: Set<string>): string[] {
-  return literals(source).filter((text) => isHardcodedUi(text, dictValues));
-}
-
 it("new v2 code has no hardcoded UI strings outside the dictionary", () => {
   const dictValues = new Set(Object.values(de));
   const offenders: string[] = [];
   for (const rel of SCAN_DIRS) {
     for (const file of walkTs(join(ROOT, rel))) {
-      for (const text of findHardcodedUi(readFileSync(file, "utf8"), dictValues)) {
+      const source = readFileSync(file, "utf8");
+      for (const text of findHardcodedUi(source, dictValues, relative(ROOT, file))) {
         offenders.push(`${relative(ROOT, file)}: ${JSON.stringify(text)}`);
       }
     }
