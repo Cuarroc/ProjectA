@@ -4,9 +4,15 @@
 //! Pure core, not wired yet: keys arrive as bytes from the caller (vault
 //! wiring comes later) and the clock is injected as unix seconds. Keys never
 //! appear in reasons, `Debug` output or logs.
+//!
+//! A valid signature proves origin and integrity, not freshness: a captured
+//! request replays with its signature intact. The receiver must therefore
+//! also dedupe on the delivery id (see [`ZustellungsBuch`]) or check a signed
+//! timestamp.
 
-#![allow(dead_code)] // trigger core part 2; the HTTP receiver wires it later
+#![allow(dead_code)] // the HTTP receiver wires it later
 
+use std::collections::{HashSet, VecDeque};
 use std::fmt;
 
 use sha2::{Digest, Sha256};
@@ -81,16 +87,39 @@ impl Grund {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Pruefung {
-    Gueltig { schluessel: Schluessel },
-    Abgelehnt { grund: Grund },
+    /// The signature matches. Not a freshness proof: replays still pass.
+    SignaturGueltig {
+        schluessel: Schluessel,
+    },
+    Abgelehnt {
+        grund: Grund,
+    },
+}
+
+/// Key bytes, overwritten with zeros when retired or dropped (best effort,
+/// no new crate: `black_box` keeps the write from being optimised away).
+struct Geheimnis(Vec<u8>);
+
+impl Geheimnis {
+    fn wische(&mut self) {
+        self.0.fill(0);
+        std::hint::black_box(&self.0);
+    }
+}
+
+impl Drop for Geheimnis {
+    fn drop(&mut self) {
+        self.wische();
+    }
 }
 
 /// The current key plus, after a rotation, the previous one with its expiry.
-#[derive(Clone, PartialEq, Eq)]
+/// Not `Clone` and the keys are private, so key bytes only leave through
+/// `pruefe`.
 pub struct Schluesselring {
-    pub aktuell: Vec<u8>,
+    aktuell: Geheimnis,
     /// Previous key and `gueltig_bis` (unix seconds, exclusive).
-    pub vorher: Option<(Vec<u8>, u64)>,
+    vorher: Option<(Geheimnis, u64)>,
 }
 
 impl fmt::Debug for Schluesselring {
@@ -109,26 +138,32 @@ impl Pruefung {
     }
 
     const fn gueltig(schluessel: Schluessel) -> Self {
-        Self::Gueltig { schluessel }
+        Self::SignaturGueltig { schluessel }
     }
 }
 
 impl Schluesselring {
     pub fn neu(aktuell: Vec<u8>) -> Self {
         Self {
-            aktuell,
+            aktuell: Geheimnis(aktuell),
             vorher: None,
         }
     }
 
-    /// Installs `neu`; the old key stays valid until `jetzt` + 24 h.
+    /// Installs `neu`; the old key stays valid until `jetzt` + 24 h. Only one
+    /// predecessor is kept: a second rotation inside that window ends the
+    /// older key at once (its bytes are zeroed).
     pub fn rotiere(&mut self, neu: Vec<u8>, jetzt: u64) {
-        let alt = std::mem::replace(&mut self.aktuell, neu);
+        let alt = std::mem::replace(&mut self.aktuell, Geheimnis(neu));
         self.vorher = Some((alt, jetzt.saturating_add(UEBERLAPPUNG_SEKUNDEN)));
     }
 
     /// Checks `header` (`sha256=<hex>`, `None` if absent) against the raw
     /// `body` at time `jetzt` (unix seconds). An empty key never matches.
+    ///
+    /// Replay: `SignaturGueltig` says nothing about freshness. The caller
+    /// MUST also dedupe on the delivery id (e.g. `X-GitHub-Delivery`) via
+    /// [`ZustellungsBuch`], or check a signed timestamp.
     pub fn pruefe(&self, header: Option<&str>, body: &[u8], jetzt: u64) -> Pruefung {
         let Some(header) = header else {
             return Pruefung::abgelehnt(Grund::SignaturFehlt);
@@ -136,8 +171,11 @@ impl Schluesselring {
         let Some(gegeben) = parse_header(header) else {
             return Pruefung::abgelehnt(Grund::FormatUngueltig);
         };
-        let passt = |key: &[u8]| !key.is_empty() && gleich(&hmac_sha256(key, body), &gegeben);
-        // Evaluate both keys so timing does not reveal which one matched.
+        let passt =
+            |key: &Geheimnis| !key.0.is_empty() && gleich(&hmac_sha256(&key.0, body), &gegeben);
+        // Both configured keys are always evaluated, so timing does not
+        // depend on which one matched. An unset previous-key slot skips the
+        // HMAC, which reveals only whether a previous key exists.
         let aktuell = passt(&self.aktuell);
         let vorher = self.vorher.as_ref().map(|(key, bis)| (passt(key), *bis));
         if aktuell {
@@ -151,27 +189,37 @@ impl Schluesselring {
     }
 }
 
-/// Key bytes that are overwritten with zeros when they are retired.
-struct Geheimnis(Vec<u8>);
-
-impl Geheimnis {
-    fn wische(&mut self) {}
-}
-
 /// Bounded memory of the most recent delivery ids (replay guard).
 pub const ZUSTELLUNGEN_MAX: usize = 1024;
 
 #[derive(Default)]
 pub struct ZustellungsBuch {
-    reihenfolge: std::collections::VecDeque<String>,
+    reihenfolge: VecDeque<String>,
+    menge: HashSet<String>,
 }
 
 impl ZustellungsBuch {
-    pub fn schon_gesehen(&mut self, _id: &str) -> bool {
+    /// `true` if `id` was recorded before; otherwise records it (evicting the
+    /// oldest id beyond [`ZUSTELLUNGEN_MAX`]) and returns `false`. Call it
+    /// only after the signature checked out, so forged ids cannot push real
+    /// ones out. An id older than the last N deliveries is forgotten, so
+    /// that window needs a signed timestamp on top.
+    pub fn schon_gesehen(&mut self, id: &str) -> bool {
+        if self.menge.contains(id) {
+            return true;
+        }
+        if self.reihenfolge.len() >= ZUSTELLUNGEN_MAX {
+            if let Some(alt) = self.reihenfolge.pop_front() {
+                self.menge.remove(&alt);
+            }
+        }
+        self.reihenfolge.push_back(id.to_owned());
+        self.menge.insert(id.to_owned());
         false
     }
 
-    pub fn len(&self) -> usize {
+    #[cfg(test)]
+    fn len(&self) -> usize {
         self.reihenfolge.len()
     }
 }
