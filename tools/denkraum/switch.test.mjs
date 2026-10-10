@@ -82,12 +82,7 @@ test('SRV-4: backup refuses with exit 3 while an owner record exists', async () 
 });
 test('SRV-4: backup probes DECISION_DESK_PORT when --port is absent', async () => {
   const { state } = await ledger(), outDir = await output();
-  const sockets = new Set();
-  const listener = createServer(socket => {
-    sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.resume();
-  });
-  await new Promise(r => listener.listen(0, '127.0.0.1', r));
-  const port = listener.address().port;
+  const { port, close } = await serve(state);
   try {
     const r = await run(['backup', '--state', state, '--out', outDir], {
       DECISION_DESK_PORT: String(port),
@@ -96,9 +91,19 @@ test('SRV-4: backup probes DECISION_DESK_PORT when --port is absent', async () =
     assert.match(r.stdout, /Schreiber läuft noch/);
     assert.equal(JSON.parse(r.stdout).ok, false);
     await assert.rejects(readdir(outDir), e => e.code === 'ENOENT');
-  } finally {
-    for (const socket of sockets) socket.destroy();
-    await new Promise(r => listener.close(r));
+  } finally { await close(); }
+});
+test('SRV-4: an invalid DECISION_DESK_PORT is refused with exit 2', async () => {
+  const { state } = await ledger();
+  for (const value of ['abc', '70000']) {
+    const outDir = await output();
+    const r = await run(['backup', '--state', state, '--out', outDir], {
+      DECISION_DESK_PORT: value,
+    });
+    assert.equal(r.status, 2, String(value));
+    assert.match(r.stdout, /Ungültiger Port/);
+    assert.equal(JSON.parse(r.stdout).ok, false);
+    await assert.rejects(readdir(outDir), e => e.code === 'ENOENT');
   }
 });
 test('DR16: quiescent backup verifies hashes schema and revision', async () => {
