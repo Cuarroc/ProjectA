@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { invoke } from "@tauri-apps/api/core";
-import { PersonasScreen } from "./PersonasScreen";
+import { PersonasScreen, PersonasView } from "./PersonasScreen";
 import { modelOf } from "./personas";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -87,4 +87,23 @@ it("shows the failover target the profile actually carries", async () => {
   const row = (await card("Umsetzer")).getByText("Failover").closest(".ps-fact") as HTMLElement;
   expect(within(row).getByText("Planer")).toBeInTheDocument();
   await waitFor(() => expect(invoke).toHaveBeenCalledWith("list_agent_profiles"));
+});
+
+it("does not take a following flag as the model", () => {
+  expect(modelOf(["--model", "--verbose"])).toBeNull();
+  expect(modelOf(["-m", "-x"])).toBeNull();
+  expect(modelOf(["--model", "--verbose", "--model=ok-1"])).toBe("ok-1");
+});
+
+it("says so and offers Alle zeigen when the chosen provider is gone after a reload", () => {
+  const ready = (profiles: unknown[]) => ({ status: "ready" as const, profiles: profiles as never });
+  const view = render(<PersonasView load={ready(ROSTER)} onRetry={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: /Codex\s*1/ }));
+  view.rerender(<PersonasView load={ready([ROSTER[0], ROSTER[1]])} onRetry={() => {}} />);
+  expect(screen.queryByRole("article")).toBeNull();
+  expect(screen.getByText("Keine Persona bei diesem Anbieter.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Alle zeigen" }));
+  expect(screen.getAllByRole("article")).toHaveLength(2);
+  expect(screen.queryByText("Keine Persona bei diesem Anbieter.")).toBeNull();
+  expect(screen.getByRole("button", { name: /Alle\s*2/ })).toHaveAttribute("aria-pressed", "true");
 });
