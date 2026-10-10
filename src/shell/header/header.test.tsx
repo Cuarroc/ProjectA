@@ -90,6 +90,11 @@ describe("quota bar and bell", () => {
     expect(screen.getByText(/noch nicht verbunden/).textContent).not.toMatch(/\d/);
   });
 
+  it("gives the quota link the not-connected text as its title", () => {
+    render(<QuotaBar />);
+    expect(screen.getByRole("link", { name: /Kontingente/ })).toHaveAttribute("title", "Kontingente: noch nicht verbunden");
+  });
+
   it("links the bell to the notification settings and shows no count", () => {
     render(<Bell />);
     const bell = screen.getByRole("link", { name: /Benachrichtigungen/ });
