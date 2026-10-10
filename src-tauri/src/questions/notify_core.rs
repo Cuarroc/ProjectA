@@ -12,7 +12,8 @@
 //! 4. Otherwise the user's level applies; a kind missing from the stored
 //!    settings falls back to the board default.
 
-// Consumed by V2-F8b (bell) and V2-S10c (Benachrichtigungen settings tab).
+// Consumed by V2-F8b (bell) and V2-S10c (Benachrichtigungen settings tab);
+// whichever of them wires this up first removes the allow below.
 #![cfg_attr(not(test), allow(dead_code))]
 
 use serde::{Deserialize, Serialize};
@@ -174,6 +175,19 @@ mod tests {
             decide(EventKind::QuotaHigh, &settings, at(23, 0)),
             Level::Quiet
         );
+    }
+
+    #[test]
+    fn user_quiet_level_stays_quiet_inside_and_outside_quiet_hours() {
+        let mut settings = overnight();
+        settings
+            .per_kind
+            .insert(EventKind::AgentStuck, Level::Quiet);
+        settings.per_kind.insert(EventKind::PrMerged, Level::Quiet);
+        for kind in [EventKind::AgentStuck, EventKind::PrMerged] {
+            assert_eq!(decide(kind, &settings, at(23, 0)), Level::Quiet);
+            assert_eq!(decide(kind, &settings, at(12, 0)), Level::Quiet);
+        }
     }
 
     #[test]
