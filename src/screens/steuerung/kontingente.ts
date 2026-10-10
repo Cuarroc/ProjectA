@@ -82,5 +82,5 @@ export function blockedNote(provider: Provider, quota: QuotaState | undefined): 
   const reason = quotaBlocked ? (quota.reason ?? T.exhausted) : provider.detail;
   const free = formatFreeAt((quotaBlocked ? quota.blockedUntil : null) ?? provider.blockedUntil ?? Number.NaN);
   if (free === null) return reason;
-  return reason ? `${reason} — ${T.free(free)}` : T.freeCap(free);
+  return reason ? T.reasonFree(reason, free) : T.freeCap(free);
 }
