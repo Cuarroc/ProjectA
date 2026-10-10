@@ -65,16 +65,40 @@ it("catalog structure reserves a second locale slot", () => {
   expect(keys).toContain("shell.estop");
 });
 
+function findHardcodedUi(source: string, dictValues: Set<string>): string[] {
+  return literals(source).filter((text) => isHardcodedUi(text, dictValues));
+}
+
 it("new v2 code has no hardcoded UI strings outside the dictionary", () => {
   const dictValues = new Set(Object.values(de));
   const offenders: string[] = [];
   for (const rel of SCAN_DIRS) {
     for (const file of walkTs(join(ROOT, rel))) {
-      for (const text of literals(readFileSync(file, "utf8"))) {
-        if (!isHardcodedUi(text, dictValues)) continue;
+      for (const text of findHardcodedUi(readFileSync(file, "utf8"), dictValues)) {
         offenders.push(`${relative(ROOT, file)}: ${JSON.stringify(text)}`);
       }
     }
   }
   expect(offenders).toEqual([]);
+});
+
+it("scanner flags known-bad fixture strings for JSX text single-word and template", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export function Bad({ name }: { name: string }) {
+      const label = "Abbrechen";
+      const greet = \`Hallo \${name} Welt\`;
+      return <button aria-label="Speichern">Speichern und weiter</button>;
+    }
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).toEqual(
+    expect.arrayContaining([
+      "Speichern und weiter",
+      "Speichern",
+      "Abbrechen",
+      "Hallo ",
+      " Welt",
+    ]),
+  );
 });
