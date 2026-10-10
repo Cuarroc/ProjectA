@@ -8,6 +8,10 @@
 // `#fragment`/`?query` part of a path, and anything inside fenced code blocks
 // or inline code spans.
 //
+// Known approximation: an inline link is recognised by the `](` that follows
+// the link text, not by parsing the text itself. A literal `](` outside a real
+// link (e.g. `a[i](x)` in prose) is therefore read as a link target.
+//
 // Excluded trees (a stated reason each, change them only with a reason):
 //   .pa/                  agent working papers and review logs, frozen history;
 //                         they cite paths of branches that no longer exist
