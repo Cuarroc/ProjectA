@@ -23,6 +23,7 @@
 
 .g-glass .g-glass,
 .g-chrome .g-glass,
+.g-chrome .g-chrome,
 .g-glass .g-chrome {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
