@@ -1898,6 +1898,8 @@ a {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow-x: auto;
+  /* Outer focus rings need room inside the overflow clip (R986-A1). */
+  padding: 4px;
   scrollbar-width: none;
 }
 
@@ -1925,16 +1927,17 @@ a {
   color: var(--fg);
 }
 
-/* Selected = card surface + accent text + 2px indicator; never a solid fill. */
+/* Selected = card surface + primary text + 2px accent indicator; never a solid fill. */
 .segment-active {
-  background: var(--bg);
-  color: var(--color-accent-text);
-  box-shadow: inset 0 -2px 0 0 var(--color-accent);
+  background: var(--color-elevated);
+  color: var(--color-text-primary);
+  /* accent-text keeps ≥3:1 non-text contrast on the card in dark and light. */
+  box-shadow: inset 0 -2px 0 0 var(--color-accent-text);
 }
 
-/* Overflow clips an outer ring; draw the focus inset (UM-5). */
+/* Outer ring stays clear of the inset indicator; padding above absorbs it. */
 .segmented .segment:focus-visible {
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .viewbar-action {
