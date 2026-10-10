@@ -33,7 +33,8 @@ test('DRSEC: new ledger temporary and recovery files are created with mode 0600'
     await writeFile(file, JSON.stringify({ schemaVersion: 1, revision: 1, questions: (await store.read()).questions, answers: [] }));
     const original = await readFile(file);
     await store.migrate(1);
-    assert.deepEqual(observed, [['temp', 0o600], ['backup', 0o600], ['temp', 0o600], ['previous-temp', 0o600]]);
+    // temp, v1-backup, ledger temp, previous-temp write (io seam), previous-temp rename probe
+    assert.deepEqual(observed, [['temp', 0o600], ['backup', 0o600], ['temp', 0o600], ['temp', 0o600], ['previous-temp', 0o600]]);
     for (const path of [file, `${file}.previous`, `${file}.v1-backup`]) assert.equal(await mode(path), 0o600);
     for (const path of [`${file}.previous`, `${file}.v1-backup`]) assert.deepEqual(await readFile(path), original);
     assert.equal((await store.read()).schemaVersion, 2);
@@ -49,7 +50,8 @@ test('DRSEC: new migration backup and ledger temp stay private with a permissive
   const previousUmask = process.umask(0);
   try {
     await store.migrate(0);
-    assert.deepEqual(observed, [0o600, 0o600]);
+    // v1-backup, ledger temp, and previous-temp write all go through the io seam
+    assert.deepEqual(observed, [0o600, 0o600, 0o600]);
     assert.equal(await mode(file), 0o600); assert.equal(await mode(`${file}.v1-backup`), 0o600);
     assert.equal(await readFile(`${file}.v1-backup`, 'utf8'), legacy);
   } finally { process.umask(previousUmask); }
