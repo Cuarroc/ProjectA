@@ -80,7 +80,10 @@ test first, then the fix.
 - Tier A (seam, security, concurrency, PTY, database): two reviewers from other
   vendors. Tier B (other Rust/TS): one reviewer outside the author's model
   family. Tier C (docs, tests, snapshots, config without runtime effect): none.
-  After round two the user decides. Everyday pair: `kimi-k3:cloud` +
+  After round two the coordinator (Root) decides merge, split or drop and
+  records it in the PR report; the user is informed. A fix round forced by a
+  review may take the package to at most 400 diff lines (initial dispatch stays
+  300); record the overrun and the forcing finding IDs. Everyday pair: `kimi-k3:cloud` +
   `glm-5.2:cloud` via Ollama Cloud and `.pa/review_transport.py` (setup and
   command: `docs/setup/ollama-reviewers.md`).
 - Use recursive prompting selectively for complex plans/dependencies, hard
@@ -124,7 +127,11 @@ who asks the user.
    push exit code. Package branches (`<vendor>/w<N>-…`, `df<N>`, `ki-<N>`,
    `hq2-`) need a `## Report` section in the PR body, or Mergify's merge
    protection stays red. A red `main` stops the queue.
-3. `main` is merged by the **Mergify** merge queue (`.mergify.yml`,
+3. Stacked package: it may start on an unmerged predecessor branch (DRAFT PR
+   with that branch as base, no merge of `main` into it); the coordinator
+   retargets it to `main` after the base merges. Review diff:
+   `git diff <base-branch>...<head>`.
+4. `main` is merged by the **Mergify** merge queue (`.mergify.yml`,
    `AGENTS.md` "Merging"). Do not merge `main` into your branch just to
    refresh it; only to resolve a real conflict — merge, never rebase or
    force-push. The queue requires the `review-ok` label on the PR head
