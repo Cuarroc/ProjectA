@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { Segmented } from "../design/controls/Segmented";
 import { useT } from "../i18n/useT";
@@ -8,15 +8,14 @@ import { COMPACT_QUERY, STYLE_LABEL, THEME_LABEL, VARIANT_LABELS } from "./texts
 
 const VARIANT_OPTIONS = GLASS_VARIANTS.map((value) => ({ value, label: VARIANT_LABELS[value] }));
 
-/** Live match of a media query; without `matchMedia` (old webviews, tests) it never matches. */
+/** Live match of a media query; without `matchMedia` (old webviews, tests) it never matches. One list per query, released on unmount. */
 function useMediaQuery(query: string): boolean {
-  const mq = () => (typeof window.matchMedia === "function" ? window.matchMedia(query) : null);
-  const subscribe = (notify: () => void) => {
-    const list = mq();
+  const list = useMemo(() => (typeof window.matchMedia === "function" ? window.matchMedia(query) : null), [query]);
+  const subscribe = useCallback((notify: () => void) => {
     list?.addEventListener("change", notify);
     return () => list?.removeEventListener("change", notify);
-  };
-  return useSyncExternalStore(subscribe, () => mq()?.matches ?? false);
+  }, [list]);
+  return useSyncExternalStore(subscribe, () => list?.matches ?? false);
 }
 
 function Groups() {

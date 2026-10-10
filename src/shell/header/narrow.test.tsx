@@ -24,6 +24,10 @@ beforeEach(() => { localStorage.clear(); window.location.hash = ""; });
 afterEach(() => { cleanup(); delete (window as { matchMedia?: unknown }).matchMedia; });
 
 describe("narrow header", () => {
+  it("collapses only where the full controls were measured not to fit (1250 px and below)", () => {
+    expect(COMPACT_QUERY).toBe("(max-width: 1279px)");
+  });
+
   it("shows both segmented groups at full width and no menu button", () => {
     viewport(false);
     render(<AppearanceControl />);
@@ -54,6 +58,23 @@ describe("narrow header", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
     resize(false);
     expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+  });
+
+  it("creates one MediaQueryList per mounted control and releases it on unmount", () => {
+    const added = vi.fn();
+    const removed = vi.fn();
+    const matchMedia = vi.fn(() => ({ matches: false, addEventListener: added, removeEventListener: removed }));
+    window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
+    const { rerender, unmount } = render(<AppearanceControl />);
+    rerender(<AppearanceControl />);
+    rerender(<AppearanceControl />);
+    expect(matchMedia).toHaveBeenCalledTimes(1);
+    expect(matchMedia).toHaveBeenCalledWith(COMPACT_QUERY);
+    expect(added).toHaveBeenCalledTimes(1);
+    expect(removed).not.toHaveBeenCalled();
+    unmount();
+    expect(removed).toHaveBeenCalledTimes(1);
+    expect(removed.mock.calls[0][1]).toBe(added.mock.calls[0][1]);
   });
 
   it("keeps the Not-Aus button in the DOM and focusable with the note's full text as title", async () => {

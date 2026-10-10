@@ -2,8 +2,9 @@
 // moving these into the dictionary later is mechanical (one key per entry).
 import type { GlassVariant } from "../design/variants/useGlassVariant";
 
-/** Below this viewport width the two segmented groups no longer fit next to Not-Aus and collapse into one menu (not a UI word; lives here because the i18n scanner skips this file). */
-export const COMPACT_QUERY = "(max-width: 1599px)";
+/** Below this viewport width the two segmented groups no longer fit next to Not-Aus and collapse into one menu (not a UI word; lives here because the i18n scanner skips this file).
+ *  Measured (dark, D1 on, full controls): they stop fitting at 1250 px (Not-Aus clips); 1279 keeps ~25 px of room for font differences. */
+export const COMPACT_QUERY = "(max-width: 1279px)";
 export const STYLE_LABEL = "Stil";
 export const THEME_LABEL = "Farbschema";
 
