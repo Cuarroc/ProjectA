@@ -3276,7 +3276,7 @@ scripts/contrast-check.mjs. */
 
 .button-subtle:hover:not(:disabled) {
   border-color: var(--accent-hover);
-  color: var(--fg);
+  color: var(--color-text-primary);
 }
 
 .enhance-note {
@@ -3309,7 +3309,7 @@ scripts/contrast-check.mjs. */
 }
 
 .link-button:hover {
-  color: var(--fg);
+  color: var(--color-text-primary);
 }
 
 /* Why a profile in the picker above is not selectable. */
@@ -3329,7 +3329,8 @@ scripts/contrast-check.mjs. */
   color: var(--state-needs-fg);
 }
 
-/* Picker-only list: Settings owns `.profile-field .profile-list` (UT-6). */
+/* Picker list/name/command stay under `.modal` (UT-6). `.profile-item` stays
+   unscoped so later `.profile-item-variant { padding-left }` (P08) can win. */
 .modal .profile-list {
   list-style: none;
   margin: 0;
@@ -3338,7 +3339,7 @@ scripts/contrast-check.mjs. */
   overflow-y: auto;
 }
 
-.modal .profile-item {
+.profile-item {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);

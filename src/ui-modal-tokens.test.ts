@@ -132,7 +132,7 @@ describe("UT-P02 modal tokens", () => {
     const horiz = (pad: string) => {
       const parts = pad.trim().split(/\s+/);
       if (parts.length === 1) return parts[0];
-      if (parts.length === 2) return parts[1];
+      if (parts.length === 2 || parts.length === 3) return parts[1];
       if (parts.length === 4) return parts[1];
       return parts[parts.length - 1];
     };
@@ -145,10 +145,27 @@ describe("UT-P02 modal tokens", () => {
     const slice = modalCss();
     expect(slice).toMatch(/\.modal\s+\.profile-list\s*\{/);
     expect(slice).toMatch(/\.modal\s+\.profile-name\s*\{/);
+    expect(slice).toMatch(/\.modal\s+\.profile-command\s*\{/);
+    // Base row stays unscoped so `.profile-item-variant` padding-left can win.
+    expect(slice).toMatch(/(?:^|\n)\.profile-item\s*\{/);
+    expect(slice).not.toMatch(/(?:^|\n)\.modal\s+\.profile-item\s*\{/);
     expect(slice).not.toMatch(/(?:^|\n)\.profile-list\s*\{/);
     expect(slice).not.toMatch(/(?:^|\n)\.profile-name\s*\{/);
+    expect(slice).not.toMatch(/(?:^|\n)\.profile-command\s*\{/);
     const list = ruleBlock(slice, ".modal .profile-list");
     expect(decl(list, "padding")).toMatch(/var\(--space-/);
     expect(decl(list, "max-height")).toBe("50vh");
+  });
+
+  it("footer control tokens resolve for equal height and weight", () => {
+    const slice = modalCss();
+    const footer = ruleBlock(slice, ".modal-actions button");
+    expect(decl(footer, "min-height")).toBe("var(--ui-control-min)");
+    expect(decl(footer, "font-weight")).toBe("var(--weight-medium)");
+    // `--weight-medium` lives on `:root`; `--ui-control-min` on `.app` (T2).
+    expect(css).toMatch(/--weight-medium\s*:\s*\d/);
+    expect(css).toMatch(/--ui-control-min\s*:\s*\d+px/);
+    const { dark } = themeVars();
+    expect(resolveVar(dark, dark["weight-medium"])).toMatch(/^\d/);
   });
 });
