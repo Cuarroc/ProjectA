@@ -1,1 +1,56 @@
-/* Glas theme tokens and surfaces — filled by TH2. Empty placeholder only. */
+/* Glas theme (TH2): token overrides only, no new rules for components.
+   Values come from the V2-F1 --g-* layer; a container picks them up once it
+   paints with a surface role. State colours, text, focus ring and motion
+   timings stay Klassisch. Dark is the base, light follows the OS scheme.
+   Contrast: glas.pairs.json lists the pairs scripts/contrast-check.mjs
+   composites over the darkest and lightest backdrop stop. */
+
+@import "../tokens.css";
+
+.app[data-theme-style="glas"] {
+  --surface-window: var(--g-ground);
+  --surface-chrome: var(--g-chrome-bg);
+  --surface-content: var(--g-content-bg);
+  --surface-card: var(--g-tint);
+  --surface-overlay: var(--g-content-bg);
+  --surface-edge: var(--g-line);
+  --surface-spec: var(--g-spec-line);
+  --material-chrome-filter: var(--g-chrome-blur);
+  --material-overlay-filter: var(--g-content-blur);
+
+  /* Control 8, card 12, panel and sheet 14. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-popover: 14px;
+  --radius-window: 14px;
+
+  --elev-1: var(--g-shadow);
+  --elev-2: var(--g-shadow-pop);
+  --elev-3: var(--g-shadow-pop);
+  --shadow-card: var(--elev-1);
+  --shadow-popover: var(--elev-2);
+}
+
+/* Static ambient fields; no script, no animation. */
+.app[data-theme-style="glas"] .theme-backdrop {
+  background:
+    radial-gradient(60% 50% at 12% 8%, var(--g-amb1), transparent 70%),
+    radial-gradient(50% 45% at 88% 18%, var(--g-amb2), transparent 70%),
+    radial-gradient(55% 50% at 60% 100%, var(--g-amb3), transparent 70%),
+    var(--g-ground);
+}
+
+/* Solid materials: the readability floor for people who ask for it. */
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .app[data-theme-style="glas"] {
+    --surface-window: var(--color-window);
+    --surface-chrome: var(--color-chrome-solid);
+    --surface-content: var(--color-content);
+    --surface-card: var(--color-elevated);
+    --surface-overlay: var(--color-elevated);
+    --surface-edge: var(--color-separator);
+    --surface-spec: transparent;
+    --material-chrome-filter: none;
+    --material-overlay-filter: none;
+  }
+}

@@ -1,4 +1,4 @@
-/* V2-F1 design tokens. Not imported by the app.
+/* V2-F1 design tokens. Imported by the Glas theme (themes/glas.css).
    Values are the glass Leitstand token block (light on :root, dark in the
    media query). Geist is a local family name; the font file is not here.
    Durations and easing belong to the motion package. */
@@ -19,7 +19,7 @@
   --g-on-accent: #fff;
   --g-accent-soft: rgba(31, 87, 214, 0.1);
   --g-accent-line: rgba(31, 87, 214, 0.45);
-  --g-sw-on: #1F57D6;
+  --g-sw-on: var(--g-accent);
   --g-sw-off: #7F8794;
   --g-run: #08679E;
   --g-run-bg: #DDEEF8;
@@ -39,7 +39,8 @@
   --g-chrome-blur: blur(32px) saturate(180%);
   --g-content-bg: rgba(255, 255, 255, 0.74);
   --g-content-blur: blur(20px) saturate(140%);
-  --g-spec: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --g-spec-line: rgba(255, 255, 255, 0.9);
+  --g-spec: inset 0 1px 0 var(--g-spec-line);
   --g-shadow: 0 1px 2px rgba(20, 24, 40, 0.06), 0 8px 24px -12px rgba(20, 24, 40, 0.18);
   --g-shadow-pop: 0 1px 2px rgba(20, 24, 40, 0.08), 0 24px 56px -20px rgba(20, 24, 40, 0.32);
   --g-amb1: #CADCFA;
@@ -87,14 +88,15 @@
     --g-rev-bg: rgba(192, 166, 255, 0.15);
     --g-ok: #66D392;
     --g-ok-bg: rgba(102, 211, 146, 0.14);
-    --g-done: #A2ACBB;
+    --g-done: var(--g-muted);
     --g-done-bg: rgba(162, 172, 187, 0.13);
     --g-bad: #FF8388;
     --g-bad-bg: rgba(255, 131, 136, 0.14);
     --g-danger-line: rgba(255, 131, 136, 0.42);
     --g-chrome-bg: rgba(20, 26, 36, 0.56);
     --g-content-bg: rgba(27, 33, 45, 0.8);
-    --g-spec: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --g-spec-line: rgba(255, 255, 255, 0.07);
+    --g-spec: inset 0 1px 0 var(--g-spec-line);
     --g-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -12px rgba(0, 0, 0, 0.55);
     --g-shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.35), 0 28px 64px -20px rgba(0, 0, 0, 0.7);
     --g-amb1: #16264A;

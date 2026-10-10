@@ -1,6 +1,6 @@
 // Prüft die Farbpaarungen aus src/styles.css gegen WCAG 2.1 AA.
-// V2-F1: src/design/tokens.css is checked as well. Its colours are not
-// imported by the app; the pairs below are the new light and dark text.
+// V2-F1: src/design/tokens.css is checked as well; the Glas theme imports it.
+// TH2: every src/design/themes/<id>.css is checked through its pairs file.
 //
 // Warum es das gibt: Die Oberfläche hat zwei Modi, und ein Token, das im
 // Dunkeln gut aussieht, kann im Hellen durchfallen — genau das ist der Grund,
@@ -19,7 +19,7 @@
 // modes: dark (default), light (prefers-color-scheme: light) and each of them
 // with prefers-contrast: more overrides applied.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -511,6 +511,62 @@ if (designDarkAt < 0) {
       }
     } catch (err) {
       fails.push(`${mode.trim()}: ${err.message}`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Themes (src/design/themes/<id>.css + <id>.pairs.json). Text never sits on the
+// backdrop itself: every pair is composited through its material stack over
+// the darkest and the lightest backdrop stop, in light, dark and the solid
+// prefers-contrast: more mode. A theme that sets surface roles needs a pairs file.
+// ---------------------------------------------------------------------------
+
+function splitMedia(src, head) {
+  const at = src.indexOf(head);
+  if (at < 0) return [src, ""];
+  const [from, to] = mediaSpan(src, at);
+  return [src.slice(0, from) + src.slice(to), src.slice(from, to)];
+}
+
+const themeDir = join(here, "..", "src", "design", "themes");
+if (designDarkAt >= 0 && existsSync(themeDir)) {
+  const gLight = parseVars(designCss.slice(0, designDarkAt));
+  const gDark = { ...gLight, ...parseVars(designCss.slice(designDarkAt)) };
+  for (const file of readdirSync(themeDir).filter((f) => f.endsWith(".css") && f !== "index.css").sort()) {
+    const id = file.slice(0, -4);
+    const src = readFileSync(join(themeDir, file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    let spec;
+    try {
+      spec = JSON.parse(readFileSync(join(themeDir, `${id}.pairs.json`), "utf8"));
+    } catch {
+      if (/--surface-/.test(src)) fails.push(`theme ${id}: ${id}.pairs.json fehlt oder ist kaputt`);
+      continue;
+    }
+    const [noMore, more] = splitMedia(src, "@media (prefers-contrast: more)");
+    const [base, lightBlock] = splitMedia(noMore, "@media (prefers-color-scheme: light)");
+    for (const [mode, klass, g, scheme] of [
+      ["hell  ", light, gLight, lightBlock],
+      ["dunkel", dark, gDark, ""],
+    ]) {
+      for (const solid of [false, true]) {
+        const name = `${id} ${mode}${solid ? "+" : " "}`;
+        const vars = { ...klass, ...g, ...parseVars(base), ...parseVars(scheme), ...(solid ? parseVars(more) : {}) };
+        try {
+          const stops = spec.backdrop.map((t) => color(vars, t)).sort((a, b) => lum(a) - lum(b));
+          for (const [stopName, stop] of [["Stop min", stops[0]], ["Stop max", stops.at(-1)]]) {
+            for (const stack of spec.stacks) {
+              const surface = stack.reduce((below, layer) => over(color(vars, layer), below), stop);
+              const where = `${stack.map((l) => l.replace(/^(surface|color)-/, "")).join("+") || "Backdrop"} auf ${stopName}`;
+              for (const t of spec.text) check(name, `${t.replace(/^(color|state)-/, "")} / ${where}`, color(vars, t), surface);
+              // Controls never sit on the bare backdrop; text must hold there until its container migrates.
+              for (const t of stack.length ? spec.nonText : []) check(name, `${t.replace(/^color-/, "")} / ${where} (Nicht-Text)`, color(vars, t), surface, 3);
+            }
+          }
+        } catch (err) {
+          fails.push(`${name.trim()}: ${err.message}`);
+        }
+      }
     }
   }
 }

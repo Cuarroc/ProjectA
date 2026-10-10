@@ -1,0 +1,23 @@
+{
+  "backdrop": ["g-ground", "g-amb1", "g-amb2", "g-amb3"],
+  "text": [
+    "color-text-primary",
+    "color-text-secondary",
+    "color-text-tertiary",
+    "color-accent-text",
+    "state-working-fg",
+    "state-needs-fg",
+    "state-review-fg",
+    "state-merge-fg",
+    "state-danger-fg"
+  ],
+  "nonText": ["color-focus-ring", "color-control-border"],
+  "stacks": [
+    [],
+    ["surface-chrome"],
+    ["surface-content"],
+    ["surface-content", "surface-card"],
+    ["surface-chrome", "surface-card"],
+    ["color-scrim", "surface-overlay"]
+  ]
+}
