@@ -13,6 +13,8 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
+mod rewind_plan;
+
 /// Directory holding all worktrees, created next to the repository.
 pub const WORKTREES_DIR: &str = ".projecta-worktrees";
 
