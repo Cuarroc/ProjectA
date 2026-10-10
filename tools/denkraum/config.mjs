@@ -20,12 +20,13 @@ function physicalAncestor(path) {
   }
 }
 
-// Reject low-entropy secrets: fewer than 10 distinct characters, or an exact
-// repetition of a unit of length 1–8 (e.g. "abcabcabc…"). Never echo the value.
+// Placeholder guard (not an entropy measure): fewer than 8 distinct characters,
+// or an exact repetition of a unit of length 1–8 (e.g. "abcabcabc…").
+// Never echo the value.
 const LOW_ENTROPY_REASON =
-  "zu wenig Entropie; mindestens 10 unterschiedliche Zeichen und kein Wiederholungsmuster (Einheit höchstens 8 Zeichen)";
+  "zu wenig Entropie; mindestens 8 unterschiedliche Zeichen und kein Wiederholungsmuster (Einheit höchstens 8 Zeichen)";
 function hasLowEntropy(value) {
-  if (new Set(value).size < 10) return true;
+  if (new Set(value).size < 8) return true;
   const n = value.length;
   for (let period = 1; period <= 8; period++) {
     if (n % period !== 0 || n / period < 2) continue;
