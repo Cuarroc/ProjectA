@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::readiness::{normalize_command, trust_status, TrustGrant, TrustStatus};
 
-mod repo_scan;
+pub(crate) mod repo_scan;
 mod ssh_trust;
 
 /// How long a setup command may run before the process tree is killed.

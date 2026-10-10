@@ -33,6 +33,9 @@ use crate::store::{
     ROLE_REJECTED,
 };
 
+#[allow(dead_code)] // V2-B17a: core only, wired by the seam packages
+mod persona_rights;
+
 /// Name of the bundled skill, used both as its directory and in the prompt.
 pub const SKILL_NAME: &str = "role-distiller";
 
