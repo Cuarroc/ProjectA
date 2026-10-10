@@ -72,15 +72,21 @@ cat > "$tmp/bin/gh" <<'SHIM'
 #!/usr/bin/env bash
 printf '%s\n' "gh $*" | tr '\n' ' ' >> "$MOCK_LOG"
 echo >> "$MOCK_LOG"
+# Permanent failure for a matched subcommand (every invocation).
+if [ -n "${MOCK_GH_FAIL_ALWAYS_ON:-}" ] && [[ "$*" == *"$MOCK_GH_FAIL_ALWAYS_ON"* ]]; then
+  echo "${MOCK_GH_FAIL_MSG:-gh: HTTP 503: Service Unavailable}" >&2
+  exit "${MOCK_GH_FAIL_EC:-1}"
+fi
 # One-shot transient failure for a matched subcommand (file flag survives
 # across gh process invocations). Used to prove read retries without
-# touching create/comment/close.
+# touching create/comment/close. Message/exit override via MOCK_GH_FAIL_MSG /
+# MOCK_GH_FAIL_EC (defaults keep the original HTTP 503 behaviour).
 if [ -n "${MOCK_GH_FAIL_ONCE_ON:-}" ] && [[ "$*" == *"$MOCK_GH_FAIL_ONCE_ON"* ]]; then
   flag="${MOCK_GH_FAIL_ONCE_FLAG:?}"
   if [ ! -f "$flag" ]; then
     : > "$flag"
-    echo "gh: HTTP 503: Service Unavailable" >&2
-    exit 1
+    echo "${MOCK_GH_FAIL_MSG:-gh: HTTP 503: Service Unavailable}" >&2
+    exit "${MOCK_GH_FAIL_EC:-1}"
   fi
 fi
 case "$*" in
@@ -347,7 +353,53 @@ else
   sed 's/^/    /' "$tmp/log"
   fails=$((fails + 1))
 fi
-unset MOCK_GH_FAIL_ONCE_ON MOCK_GH_FAIL_ONCE_FLAG
+unset MOCK_GH_FAIL_ONCE_ON MOCK_GH_FAIL_ONCE_FLAG MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
+
+# --- 10. issue number 512 in a 404 must not look like a transient 5xx ------
+# R935-A2: an over-broad `\b5[0-9]{2}\b` would treat "512" as HTTP 512.
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[]' > "$tmp/issues.json"
+name="an issue number 512 in a 404 message is not treated as transient"
+MOCK_GH_FAIL_ALWAYS_ON="issue list" \
+MOCK_GH_FAIL_MSG="gh: HTTP 404: Not Found (looking up issue 512)" \
+MAIN_RED_GUARD_BACKOFF_1=0 \
+MAIN_RED_GUARD_BACKOFF_2=0 \
+run_case "$name" "${RED_MAIN[@]}" 0
+ec=$?
+list_n="$(grep -cE 'gh issue list' "$tmp/log" || true)"
+if [ "$ec" -ne 0 ] && [ "$list_n" -eq 1 ]; then
+  echo "ok   $name (exit $ec, no retry)"
+else
+  echo "FEHLER $name: exit=$ec (want !=0), issue list=$list_n (want 1)"
+  sed 's/^/    /' "$tmp/out"
+  sed 's/^/    /' "$tmp/log"
+  fails=$((fails + 1))
+fi
+unset MOCK_GH_FAIL_ALWAYS_ON MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
+
+# --- 11. real gh network failure text is transient (R935-A3) ----------------
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[]' > "$tmp/issues.json"
+rm -f "$tmp/gh-fail-once"
+name="error connecting to on issue list is retried and the guard still creates exactly one issue"
+MOCK_GH_FAIL_ONCE_ON="issue list" \
+MOCK_GH_FAIL_ONCE_FLAG="$tmp/gh-fail-once" \
+MOCK_GH_FAIL_MSG="gh: error connecting to api.github.com" \
+MAIN_RED_GUARD_BACKOFF_1=0 \
+MAIN_RED_GUARD_BACKOFF_2=0 \
+run_case "$name" "${RED_MAIN[@]}" 0
+ec=$?
+list_n="$(grep -cE 'gh issue list' "$tmp/log" || true)"
+create_n="$(grep -cE 'gh issue create' "$tmp/log" || true)"
+if [ "$ec" -eq 0 ] && [ "$list_n" -ge 2 ] && [ "$create_n" -eq 1 ]; then
+  echo "ok   $name (exit 0)"
+else
+  echo "FEHLER $name: exit=$ec, issue list=$list_n (want >=2), issue create=$create_n (want 1)"
+  sed 's/^/    /' "$tmp/out"
+  sed 's/^/    /' "$tmp/log"
+  fails=$((fails + 1))
+fi
+unset MOCK_GH_FAIL_ONCE_ON MOCK_GH_FAIL_ONCE_FLAG MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
 
 if [ "$fails" -gt 0 ]; then
   echo "test-main-red-guard: $fails Fehler"
