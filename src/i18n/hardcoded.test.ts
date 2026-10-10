@@ -1,3 +1,8 @@
+// Rule: new UI words go into `src/i18n/de.ts` (read through `t()`/`useT()`), never into
+// components. `hardcoded-baseline.json` records the literals that existed when the ratchet
+// was introduced; it only shrinks. Follow-up packages move its entries into the dictionary
+// and delete them here. Entries that no longer occur are allowed; new offenders fail.
+// `HARDCODED_REPORT=1` prints the current offender list (for regenerating the baseline).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { renderHook } from "@testing-library/react";
@@ -9,6 +14,7 @@ import { t, useT } from "./useT";
 const ROOT = join(__dirname, "..", "..");
 const SCAN_DIRS = ["src/design", "src/shell", "src/flags", "src/screens", "src/i18n"];
 const DICT_FILE = "de.ts";
+const BASELINE_FILE = join(__dirname, "hardcoded-baseline.json");
 const UI_RE = /[ÄÖÜäöüß]|\s|[A-ZÄÖÜ][a-zäöüß]{2,}/;
 
 function walkTs(dir: string): string[] {
@@ -203,18 +209,75 @@ it("catalog structure reserves a second locale slot", () => {
   expect(keys).toContain("shell.estop");
 });
 
-it("new v2 code has no hardcoded UI strings outside the dictionary", () => {
+function scanOffenders(): string[] {
   const dictValues = new Set(Object.values(de));
   const offenders: string[] = [];
   for (const rel of SCAN_DIRS) {
     for (const file of walkTs(join(ROOT, rel))) {
       const source = readFileSync(file, "utf8");
       for (const text of findHardcodedUi(source, dictValues, relative(ROOT, file))) {
-        offenders.push(`${relative(ROOT, file)}: ${JSON.stringify(text)}`);
+        offenders.push(`${relative(ROOT, file).split("\\").join("/")}: ${JSON.stringify(text)}`);
       }
     }
   }
-  expect(offenders).toEqual([]);
+  return offenders;
+}
+
+function loadBaseline(): string[] {
+  return JSON.parse(readFileSync(BASELINE_FILE, "utf8")) as string[];
+}
+
+/** Reported entries that the baseline does not list: these are the new violations. */
+function newOffenders(offenders: string[], baseline: string[]): string[] {
+  const known = new Set(baseline);
+  return offenders.filter((entry) => !known.has(entry));
+}
+
+/** Empty when the baseline is strictly ascending (sorted, no duplicates). */
+function baselineProblems(baseline: string[]): string[] {
+  const problems: string[] = [];
+  for (let i = 1; i < baseline.length; i++) {
+    if (baseline[i] === baseline[i - 1]) problems.push(`duplicate: ${baseline[i]}`);
+    else if (baseline[i] < baseline[i - 1]) problems.push(`unsorted: ${baseline[i]}`);
+  }
+  return problems;
+}
+
+it("new v2 code has no hardcoded UI strings outside the dictionary", () => {
+  const offenders = scanOffenders();
+  if (process.env.HARDCODED_REPORT === "1") {
+    const list = [...new Set(offenders)].sort();
+    console.log(`<<<HARDCODED-REPORT\n${JSON.stringify(list, null, 2)}\nHARDCODED-REPORT>>>`);
+    return;
+  }
+  expect(newOffenders(offenders, loadBaseline())).toEqual([]);
+});
+
+it("hardcoded baseline is sorted and has no duplicates", () => {
+  expect(baselineProblems(loadBaseline())).toEqual([]);
+});
+
+it("ratchet fails a fixture literal that is not in the baseline", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `export const label = "Neuer Hinweis";`;
+  const offenders = findHardcodedUi(fixture, dictValues, "src/screens/x/new.ts").map(
+    (text) => `src/screens/x/new.ts: ${JSON.stringify(text)}`,
+  );
+  expect(offenders).toEqual(['src/screens/x/new.ts: "Neuer Hinweis"']);
+  expect(newOffenders(offenders, [])).toEqual(offenders);
+  expect(newOffenders(offenders, ['src/screens/x/other.ts: "Neuer Hinweis"'])).toEqual(offenders);
+});
+
+it("ratchet passes a fixture literal that is in the baseline", () => {
+  const entry = 'src/screens/x/old.ts: "Alter Hinweis"';
+  expect(newOffenders([entry], [entry])).toEqual([]);
+  expect(newOffenders([], [entry])).toEqual([]);
+});
+
+it("ratchet rejects an unsorted or duplicated baseline", () => {
+  expect(baselineProblems(["a: \"x\"", "b: \"y\""])).toEqual([]);
+  expect(baselineProblems(["b: \"y\"", "a: \"x\""])).toHaveLength(1);
+  expect(baselineProblems(["a: \"x\"", "a: \"x\""])).toHaveLength(1);
 });
 
 it("scanner flags known-bad fixture strings for JSX text single-word and template", () => {
