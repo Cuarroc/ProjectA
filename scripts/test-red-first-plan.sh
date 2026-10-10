@@ -95,4 +95,42 @@ git commit -q -m "docs: stale evidence path" \
   -m "Test-First: scripts/test-removed.sh::removed_behavior"
 expect_plan_failure "missing Test-First path" "existiert am HEAD nicht"
 
+# A stacked PR is retargeted after its parent has landed on the base branch.
+git switch -q -c parent
+printf '# merged parent\n' >> README.md
+git add README.md
+git commit -q -m "docs: parent evidence" \
+  -m "Test-First: scripts/existing-test.sh::parent test"
+PARENT="$(git rev-parse HEAD)"
+git switch -q main
+git merge -q --no-ff parent -m "Merge parent"
+git update-ref refs/remotes/origin/main HEAD
+git switch -q -c stacked-pr "$PARENT"
+printf '# child\n' >> README.md
+git add README.md
+git commit -q -m "docs: child without new test evidence"
+HEAD="$(git rev-parse HEAD)"
+LABEL="stale payload base after retarget does not re-count a merged parent's Test-First"
+BASE_SHA="$BASE" HEAD_SHA="$HEAD" RF_BASE_BRANCH=main PR_BODY="" \
+  bash scripts/ci/red-first.sh --plan >"$TMP/out" 2>&1
+if ! grep -Fxq 'count=0' "$TMP/out" ||
+  ! grep -Fxq "red-first: BASE=$PARENT" "$TMP/out" ||
+  ! grep -Fxq 'red-first: base source=refs/remotes/origin/main' "$TMP/out"; then
+  cat "$TMP/out" >&2
+  echo "FAIL: $LABEL (expected count=0)" >&2
+  exit 1
+fi
+# Without a fetched base branch, the explicit payload remains the fallback.
+for branch in '' missing-branch; do
+  BASE_SHA="$BASE" HEAD_SHA="$HEAD" RF_BASE_BRANCH="$branch" PR_BODY="" \
+    bash scripts/ci/red-first.sh --plan >"$TMP/out" 2>&1
+  if ! grep -Fxq 'count=1' "$TMP/out" ||
+    ! grep -Fxq "red-first: BASE=$BASE" "$TMP/out"; then
+    cat "$TMP/out" >&2
+    echo "FAIL: payload fallback changed (RF_BASE_BRANCH=$branch)" >&2
+    exit 1
+  fi
+done
+echo "ok   $LABEL"
+
 echo "test-red-first-plan: passed"
