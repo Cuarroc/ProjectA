@@ -157,3 +157,18 @@ it("shows only the reason on a blocked card whose reset time has passed", async 
   expect(c.getByText("Wochenlimit")).toHaveClass("kt-note");
   expect(c.queryByText(/frei/i)).toBeNull();
 });
+
+it("maps non-ASCII window labels only when the whole word is a window name", () => {
+  expect(windowSlot("Wöchentlich")).toBeNull();
+  expect(windowSlot("Monatsübersicht")).toBeNull();
+  expect(windowSlot("ÄMonat")).toBeNull();
+  expect(windowSlot("Monat")).toBe("month");
+});
+
+it("keeps the initials fallback in the same capitalised style when every candidate is taken", () => {
+  const twins = ["ab", "Ab", "aB"].map((id) => ({ id, name: "Ab" }));
+  const [first, second, third] = [...providerInitials(twins).values()];
+  expect([first, second]).toEqual(["Ab", "AB"]);
+  expect(third).toMatch(/^[A-Z]/);
+  expect(new Set([first, second, third]).size).toBe(3);
+});
