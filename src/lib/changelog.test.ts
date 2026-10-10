@@ -89,7 +89,8 @@ describe("parseChangelog", () => {
 
   it("parses the real CHANGELOG.md without empty releases", () => {
     const releases = parseChangelog(changelogSource);
-    expect(releases[0].version).toBe("1.6.0");
+    expect(releases[0].version).toBe("1.6.1");
+    expect(releases[1].version).toBe("1.6.0");
     expect(new Set(releases.map((r) => r.version)).size).toBe(releases.length);
     for (const r of releases) {
       expect(r.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
