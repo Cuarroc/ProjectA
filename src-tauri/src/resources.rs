@@ -18,6 +18,8 @@ pub struct ResourceSnapshot {
     pub ram_process_bytes: Option<u64>,
     pub ram_total_bytes: Option<u64>,
     pub disk_app_bytes: Option<u64>,
+    /// `true` when some entries were unreadable: `disk_app_bytes` is a lower bound.
+    pub disk_app_partial: bool,
     pub disk_free_bytes: Option<u64>,
     pub tokens_in: i64,
     pub tokens_out: i64,
@@ -25,20 +27,48 @@ pub struct ResourceSnapshot {
 
 /// Build one snapshot for `app_data` and the ledger totals the caller read.
 pub fn snapshot(app_data: &Path, tokens_in: i64, tokens_out: i64, now: i64) -> ResourceSnapshot {
+    let disk_app = dir_size(app_data);
     ResourceSnapshot {
         observed_at: now,
         cpu_permille: cpu_since_start_permille(),
         ram_process_bytes: process_ram_bytes(),
         ram_total_bytes: system_ram_bytes(),
-        disk_app_bytes: dir_size(app_data),
+        disk_app_bytes: disk_app.map(|d| d.bytes),
+        disk_app_partial: disk_app.is_some_and(|d| d.partial),
         disk_free_bytes: disk_free_bytes(app_data),
         tokens_in,
         tokens_out,
     }
 }
 
-fn dir_size(root: &Path) -> Option<u64> {
-    fn walk(path: &Path) -> Option<u64> {
+/// Bytes found under a directory, and whether every entry could be read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DirSize {
+    bytes: u64,
+    /// `true` when an entry was skipped, so `bytes` is a lower bound.
+    partial: bool,
+}
+
+type DirEntries = std::io::Result<Vec<std::io::Result<std::path::PathBuf>>>;
+
+fn list_dir(path: &Path) -> DirEntries {
+    Ok(std::fs::read_dir(path)?
+        .map(|entry| entry.map(|e| e.path()))
+        .collect())
+}
+
+fn dir_size(root: &Path) -> Option<DirSize> {
+    dir_size_with(root, &list_dir)
+}
+
+/// Sum file sizes below `root`; `list` reads one directory (injectable).
+fn dir_size_with(root: &Path, list: &dyn Fn(&Path) -> DirEntries) -> Option<DirSize> {
+    fn walk(
+        path: &Path,
+        list: &dyn Fn(&Path) -> DirEntries,
+        partial: &mut bool,
+        is_root: bool,
+    ) -> Option<u64> {
         let meta = std::fs::symlink_metadata(path).ok()?;
         if meta.file_type().is_symlink() {
             return Some(0);
@@ -50,13 +80,30 @@ fn dir_size(root: &Path) -> Option<u64> {
             return Some(0);
         }
         let mut total = 0u64;
-        for entry in std::fs::read_dir(path).ok()? {
-            let entry = entry.ok()?;
-            total = total.saturating_add(walk(&entry.path()).unwrap_or(0));
+        // The root must be listable; below it an unreadable entry is skipped
+        // and marked, so readable siblings still count (a lower bound).
+        let entries = match list(path) {
+            Ok(entries) => entries,
+            Err(_) if is_root => return None,
+            Err(_) => {
+                *partial = true;
+                return Some(0);
+            }
+        };
+        for entry in entries {
+            match entry {
+                Ok(child) => match walk(&child, list, partial, false) {
+                    Some(bytes) => total = total.saturating_add(bytes),
+                    None => *partial = true,
+                },
+                Err(_) => *partial = true,
+            }
         }
         Some(total)
     }
-    walk(root)
+    let mut partial = false;
+    let bytes = walk(root, list, &mut partial, true)?;
+    Some(DirSize { bytes, partial })
 }
 
 #[cfg(windows)]
@@ -137,7 +184,14 @@ fn process_ram_bytes() -> Option<u64> {
     Some(pages.saturating_mul(page_size()))
 }
 
-#[cfg(not(windows))]
+#[cfg(unix)]
+fn page_size() -> u64 {
+    // SAFETY: sysconf has no preconditions.
+    let size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+    u64::try_from(size).ok().filter(|&p| p > 0).unwrap_or(4096)
+}
+
+#[cfg(not(any(unix, windows)))]
 fn page_size() -> u64 {
     4096
 }
@@ -212,6 +266,10 @@ mod tests {
     use super::*;
     use crate::testutil::TempDir;
 
+    fn bytes_of(size: Option<DirSize>) -> Option<u64> {
+        size.map(|d| d.bytes)
+    }
+
     #[test]
     fn snapshot_counts_app_data_bytes_and_keeps_token_totals() {
         let dir = TempDir::new("resource-snap");
@@ -234,15 +292,15 @@ mod tests {
         std::fs::write(dir.path().join("top.bin"), vec![0u8; 10]).unwrap();
         std::fs::write(dir.path().join("a/mid.bin"), vec![0u8; 20]).unwrap();
         std::fs::write(dir.path().join("a/b/deep.bin"), vec![0u8; 30]).unwrap();
-        assert_eq!(dir_size(dir.path()), Some(60));
+        assert_eq!(bytes_of(dir_size(dir.path())), Some(60));
     }
 
     #[test]
     fn dir_size_of_empty_dir_is_zero_and_of_missing_path_is_none() {
         let dir = TempDir::new("resource-empty");
-        assert_eq!(dir_size(dir.path()), Some(0));
+        assert_eq!(bytes_of(dir_size(dir.path())), Some(0));
         // Missing data is honest: None, not a fake zero.
-        assert_eq!(dir_size(&dir.path().join("does-not-exist")), None);
+        assert_eq!(bytes_of(dir_size(&dir.path().join("does-not-exist"))), None);
     }
 
     #[cfg(unix)]
@@ -255,7 +313,7 @@ mod tests {
         std::os::unix::fs::symlink(outside.path(), dir.path().join("dir-link")).unwrap();
         std::os::unix::fs::symlink(outside.path().join("big.bin"), dir.path().join("file-link"))
             .unwrap();
-        assert_eq!(dir_size(dir.path()), Some(5));
+        assert_eq!(bytes_of(dir_size(dir.path())), Some(5));
     }
 
     #[cfg(target_os = "linux")]
@@ -276,5 +334,51 @@ mod tests {
             (snap.tokens_in, snap.tokens_out, snap.observed_at),
             (-1, 7, 42)
         );
+    }
+
+    #[test]
+    fn dir_size_keeps_readable_siblings_when_one_entry_fails() {
+        let dir = TempDir::new("resource-partial");
+        std::fs::create_dir_all(dir.path().join("locked")).unwrap();
+        std::fs::write(dir.path().join("a.bin"), vec![0u8; 10]).unwrap();
+        std::fs::write(dir.path().join("b.bin"), vec![0u8; 20]).unwrap();
+        std::fs::write(dir.path().join("locked/hidden.bin"), vec![0u8; 99]).unwrap();
+        let locked = dir.path().join("locked");
+        let flaky = |path: &Path| -> DirEntries {
+            if path == locked {
+                return Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
+            }
+            let mut entries = list_dir(path)?;
+            if path == dir.path() {
+                entries.insert(0, Err(std::io::Error::from(std::io::ErrorKind::Other)));
+            }
+            Ok(entries)
+        };
+        let size = dir_size_with(dir.path(), &flaky).expect("root is readable");
+        assert_eq!(
+            size,
+            DirSize {
+                bytes: 30,
+                partial: true
+            }
+        );
+        // A fully readable tree is reported complete.
+        let clean = dir_size_with(dir.path(), &list_dir).unwrap();
+        assert_eq!(
+            clean,
+            DirSize {
+                bytes: 129,
+                partial: false
+            }
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn page_size_matches_sysconf() {
+        // SAFETY: sysconf has no preconditions.
+        let expected = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+        assert!(expected > 0, "{expected}");
+        assert_eq!(page_size(), expected as u64);
     }
 }
