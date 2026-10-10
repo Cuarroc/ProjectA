@@ -31,7 +31,7 @@
 arbeiten können, ohne dass du sie aus den Augen verlieren musst. Dafür gibt es
 den Not-Aus (alles sofort stoppen), Budgetgrenzen als Kostenkontrolle und ein
 nachvollziehbares Protokoll in der lokalen Datenbank. Der automatische
-Dauerbetrieb selbst ist in v1.6.0 noch ausgeschaltet; siehe „Status und Grenzen“.
+Dauerbetrieb selbst ist in v1.6.1 noch ausgeschaltet; siehe „Status und Grenzen“.
 
 - **Parallel statt nacheinander:** Jede Aufgabe läuft als eigener Worker mit
   eigenem Git-Branch und Worktree – die Agenten kommen sich nicht in die Quere.
@@ -89,7 +89,7 @@ Denkraum auf die neue Fassung umzustellen folgt einem getrennten Runbook.
 
 ## Wo steht ProjectA?
 
-- **Aktuelle Version: `v1.6.0`.** Was sich ändert, steht im
+- **Aktuelle Version: `v1.6.1`.** Was sich ändert, steht im
   [`CHANGELOG.md`](CHANGELOG.md).
 - **Der Plan für Version 2.0 ist am 06.10.2026 freigegeben.** Die verständliche
   Kurzfassung steht in [`docs/roadmap-2.0.md`](docs/roadmap-2.0.md), der
@@ -99,13 +99,13 @@ Denkraum auf die neue Fassung umzustellen folgt einem getrennten Runbook.
 
 ## Status und Grenzen
 
-- **App-Version:** `v1.6.0` – diese Version baut der Quellcode auf `main`.
+- **App-Version:** `v1.6.1` – diese Version baut der Quellcode auf `main`.
 - **Veröffentlicht:** zuletzt `v1.6.0` (Beta, 10.10.2026).
   Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
 - Aktives persönliches Projekt. Windows ist das einzige paketierte Ziel.
   Plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
   Linux beziehungsweise WSL2; ein Linux- oder macOS-Paket gibt es nicht.
-- Der Dauerbetrieb (Continuous) ist in v1.6.0 ausgeschaltet und nicht
+- Der Dauerbetrieb (Continuous) ist in v1.6.1 ausgeschaltet und nicht
   freigegeben.
 - Agent-CLIs und Anbieterzugänge bringst du selbst mit (siehe oben).
 - Interne Projektunterlagen sind überwiegend auf Deutsch.
