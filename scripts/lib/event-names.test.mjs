@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,35 +16,38 @@ const expected = {
   PTY_EXIT_PREFIX: "pty:exit:",
 };
 
-/** Globs for code that must not hard-code wire event names. */
-const CODE_GLOBS = [
-  "-g", "*.rs",
-  "-g", "*.ts",
-  "-g", "*.tsx",
-  "-g", "src/**/*.js",
-  "-g", "src/**/*.mjs",
-];
+function candidateFiles(searchRoot, relativeDir = "") {
+  return readdirSync(join(searchRoot, relativeDir), { withFileTypes: true }).flatMap((entry) => {
+    const path = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return candidateFiles(searchRoot, path);
+    return entry.isFile() ? [path] : [];
+  });
+}
 
 /**
  * Search `searchRoot` for quoted event-name literals outside the shared modules.
  * Comment and doc-comment lines are ignored (R960-A3: "0 hits" is for code).
  */
-function eventLiteralHits(searchRoot, globs = CODE_GLOBS) {
-  const patterns = Object.values(expected).flatMap((value) => [
-    "-e", `["\\x27\\x60]${value}`,
-  ]);
-  const result = spawnSync("rg", [
-    "-n", "--no-heading", "--color=never",
-    ...globs,
-    "-g", `!${rustModule}`, "-g", `!${tsModule}`,
-    ...patterns, ".",
-  ], { cwd: searchRoot, encoding: "utf8" });
-  assert.ifError(result.error);
-  assert.ok(result.status === 0 || result.status === 1, result.stderr);
-  return result.stdout.split(/\r?\n/).filter(Boolean).filter((line) => {
-    const source = line.match(/^.*?:\d+:(.*)$/)?.[1];
-    assert.notEqual(source, undefined, `Unexpected rg output: ${line}`);
-    return !/^\s*(\/\/|\/\*|\*)/.test(source);
+function eventLiteralHits(searchRoot) {
+  let files;
+  if (searchRoot === root) {
+    const result = spawnSync("git", ["ls-files", "-z"], { cwd: searchRoot, encoding: "utf8" });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    files = result.stdout.split("\0").filter(Boolean);
+  } else {
+    files = candidateFiles(searchRoot);
+  }
+  const pattern = new RegExp(`["'\x60](?:${Object.values(expected).join("|")})`);
+  return files.filter((path) =>
+    (/\.(rs|ts|tsx)$/.test(path) || /^src\/.*\.(js|mjs)$/.test(path)) &&
+    path !== rustModule && path !== tsModule,
+  ).flatMap((path) => {
+    const lines = readFileSync(join(searchRoot, path), "utf8").split(/\r?\n/);
+    return lines.flatMap((source, index) =>
+      pattern.test(source) && !/^\s*(\/\/|\/\*|\*)/.test(source)
+        ? [`./${path}:${index + 1}:${source}`] : [],
+    );
   });
 }
 
