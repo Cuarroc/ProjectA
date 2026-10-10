@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::readiness::{normalize_command, trust_status, TrustGrant, TrustStatus};
 
+mod repo_scan;
+
 /// How long a setup command may run before the process tree is killed.
 pub const TIMEOUT: Duration = Duration::from_secs(5 * 60);
 

@@ -478,6 +478,10 @@ async fn log(store: &Store, worker_id: &str, role: &str, content: &str) {
     }
 }
 
+// Notification levels for "decisions for you" and the other bell events; a
+// child of this module so no seam file gains a `mod` line (V2-B11).
+pub(crate) mod notify_core;
+
 #[cfg(test)]
 mod tests {
     use super::*;
