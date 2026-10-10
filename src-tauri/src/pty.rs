@@ -1051,7 +1051,10 @@ impl PtyManager {
                         "projecta: session {exit_id} retirement requires reconciliation: {error}"
                     );
                 }
-                let _ = exit_app.emit(&format!("pty:exit:{exit_id}"), ExitPayload { code });
+                let _ = exit_app.emit(
+                    &crate::event_names::pty_exit(&exit_id),
+                    ExitPayload { code },
+                );
                 // A slow reader is not a dead one: keep the entry `Retiring`
                 // and finish the removal when its confirmation arrives late.
                 if reader_timed_out && persisted {
@@ -1970,7 +1973,7 @@ fn spawn_reader_thread(
     replier: std::sync::Weak<Session>,
 ) -> std::sync::mpsc::Receiver<()> {
     track_reader_retirement(move || {
-        let event = format!("pty:output:{session_id}");
+        let event = crate::event_names::pty_output(&session_id);
         let mut decoder = Utf8Stream::new();
         let mut buf = vec![0u8; READ_CHUNK];
         let mut cursor_reports = CursorReportScanner::default();
