@@ -165,7 +165,7 @@ describe("V161-UI-P06 tabs and terminal chrome", () => {
     const searchInput = ruleBlock(slice, ".terminal-search-input");
     expect(decl(searchInput, "min-height")).toBe("var(--ui-bar-control)");
     expect(slice).toMatch(
-      /\.terminal-search-btn\.button-ghost\s*\{[^}]*min-height:\s*var\(--ui-bar-control\)/s,
+      /\.app\s+\.terminal-search-btn\.button-ghost\s*\{[^}]*min-height:\s*var\(--ui-bar-control\)/s,
     );
   });
 });

@@ -2991,7 +2991,8 @@ a {
   font-size: var(--text-sm);
 }
 
-.terminal-search-btn.button-ghost {
+/* Beat `.app .button-ghost { min-height: var(--ui-control-min) }` later in the file. */
+.app .terminal-search-btn.button-ghost {
   min-height: var(--ui-bar-control);
   padding: var(--space-1) var(--space-4);
 }
