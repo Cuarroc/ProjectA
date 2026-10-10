@@ -58,30 +58,48 @@ function serveFile(filePath) {
 }
 
 async function checkTab(page) {
+  // Identity keys via data-pa-shot-id; one stop per radio name; stop after a cycle.
   const expected = await page.evaluate(() => {
-    const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    return [...document.querySelectorAll(sel)].filter((el) => {
+    const vis = (el) => {
       const s = getComputedStyle(el);
       return s.visibility !== "hidden" && s.display !== "none" && el.getClientRects().length > 0;
-    }).length;
+    };
+    for (const el of document.querySelectorAll("[data-pa-shot-id]")) el.removeAttribute("data-pa-shot-id");
+    const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const groups = new Set();
+    let n = 0, stops = 0;
+    for (const el of [...document.querySelectorAll(sel)].filter(vis)) {
+      const id = String(++n);
+      el.setAttribute("data-pa-shot-id", id);
+      if (el instanceof HTMLInputElement && el.type === "radio") {
+        const g = el.name || `anon-${id}`;
+        if (groups.has(g)) continue;
+        groups.add(g);
+      }
+      stops++;
+    }
+    return stops;
   });
   await page.locator("body").click({ position: { x: 1, y: 1 } });
-  const seen = new Set();
-  let missingFocusRing = 0;
-  for (let i = 0; i < expected + 2; i++) {
+  const seen = new Set(), missing = new Set();
+  for (let i = 0; i < Math.max(expected + 2, 2); i++) {
     await page.keyboard.press("Tab");
     const info = await page.evaluate(() => {
       const el = document.activeElement;
       if (!el || el === document.body || el === document.documentElement) return null;
       const s = getComputedStyle(el);
       const outline = Number.parseFloat(s.outlineWidth) > 0 && s.outlineStyle !== "none";
-      const key = el.id || el.getAttribute("aria-label") || el.tagName + (el.textContent || "").trim().slice(0, 24);
+      const id = el.getAttribute("data-pa-shot-id");
+      if (!id) return null;
+      const key = el instanceof HTMLInputElement && el.type === "radio" ? `radio:${el.name || id}` : id;
       return { key, outline };
     });
     if (!info) continue;
-    if (!info.outline) missingFocusRing++;
+    if (seen.has(info.key)) break;
     seen.add(info.key);
+    if (!info.outline) missing.add(info.key);
   }
+  const missingFocusRing = missing.size;
   return { ok: seen.size >= expected && missingFocusRing === 0, visited: seen.size, expected, missingFocusRing };
 }
 
@@ -112,13 +130,6 @@ export async function captureRoute({ base, route, path, outDir, checkTabOrder = 
     }
   } finally {
     await browser.close();
-  }
-  if (checkTabOrder && (!tab || !tab.ok)) {
-    const err = new Error(
-      `tab check failed: visited=${tab?.visited ?? 0}/${tab?.expected ?? "?"} missingFocusRing=${tab?.missingFocusRing ?? "?"}`,
-    );
-    err.tab = tab;
-    throw err;
   }
   return { route, files, tab, viewport: VIEWPORT };
 }
@@ -162,15 +173,22 @@ export const main = withExitCodes(async (argv, io) => {
     closer = srv.close;
   }
   try {
+    const checkTabOrder = Boolean(values["check-tab"]);
     const report = await captureRoute({
       base,
       route: values.route,
       // Fixture HTML is always at "/"; --route only names the output files.
       path: values.fixture ? "/" : values.route,
       outDir,
-      checkTabOrder: Boolean(values["check-tab"]),
+      checkTabOrder,
     });
     io.out(JSON.stringify(report, null, 2) + "\n");
+    if (checkTabOrder && (!report.tab || !report.tab.ok)) {
+      io.err(
+        `tab check failed: visited=${report.tab?.visited ?? 0}/${report.tab?.expected ?? "?"} missingFocusRing=${report.tab?.missingFocusRing ?? "?"}\n`,
+      );
+      return EXIT.FAIL;
+    }
     return EXIT.OK;
   } finally {
     if (closer) await closer();
