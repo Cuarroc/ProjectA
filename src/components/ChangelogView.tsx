@@ -15,9 +15,14 @@ const TAGS: ReadonlyArray<{ tag: ChangelogTag; label: string; hint: string }> = 
 ];
 const LABEL = Object.fromEntries(TAGS.map((t) => [t.tag, t.label])) as Record<ChangelogTag, string>;
 
-function germanDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}.${m}.${y}`;
+/** `dd.mm.yyyy` for a real calendar date in ISO form, otherwise null. */
+function germanDate(iso: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const real = new Date(Date.UTC(y, mo - 1, d));
+  if (real.getUTCFullYear() !== y || real.getUTCMonth() !== mo - 1 || real.getUTCDate() !== d) return null;
+  return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
 function PrRefs({ prs }: { prs: number[] }) {
@@ -47,11 +52,12 @@ function Entry({ item }: { item: ChangelogItem }) {
 function ReleaseSection({ release, installed }: { release: Release; installed: boolean }) {
   const id = `changelog-v${release.version}`;
   const count = release.groups.reduce((n, g) => n + g.items.length, 0);
+  const date = germanDate(release.date);
   return (
     <section className={`changelog-release${installed ? " changelog-installed" : ""}`} aria-labelledby={id}>
       <div className="changelog-rail">
         <h2 id={id}>v{release.version}</h2>
-        <time dateTime={release.date}>{germanDate(release.date)}</time>
+        {date ? <time dateTime={release.date}>{date}</time> : <time>Datum unbekannt</time>}
         <span className="changelog-pills">
           {release.beta ? <span className="changelog-pill changelog-pill-beta">Beta</span> : null}
           {installed ? <span className="changelog-pill changelog-pill-installed">Installiert</span> : null}
@@ -102,26 +108,44 @@ function Highlights({ release }: { release: Release }) {
 }
 
 /** The app's changelog ("Neuigkeiten"), rendered from the repository's CHANGELOG.md. */
-export default function ChangelogView({ currentVersion }: { currentVersion?: string | null }) {
-  const releases = useMemo(() => parseChangelog(changelogSource), []);
+export default function ChangelogView({
+  currentVersion,
+  source = changelogSource,
+}: {
+  currentVersion?: string | null;
+  source?: string;
+}) {
+  const releases = useMemo(() => parseChangelog(source), [source]);
   const [showOlder, setShowOlder] = useState(false);
   const shown = showOlder ? releases : releases.slice(0, OPEN_RELEASES);
   const older = releases.length - OPEN_RELEASES;
   return (
     <div className="changelog">
-      {releases[0] ? <Highlights release={releases[0]} /> : null}
-      <ul className="changelog-legend" aria-label="Legende">
-        {TAGS.map((t) => (
-          <li key={t.tag}>
-            <span className={`changelog-tag changelog-tag-${t.tag}`}>{t.label}</span> {t.hint}
-          </li>
-        ))}
-      </ul>
+      <header className="view-head changelog-head">
+        <h2>Neuigkeiten</h2>
+      </header>
+      {releases.length === 0 ? (
+        <p className="changelog-empty" role="status">
+          <strong>Keine Neuigkeiten vorhanden</strong>
+          Der Änderungsverlauf ist leer oder konnte nicht gelesen werden. Die Neuigkeiten erscheinen mit der nächsten Version.
+        </p>
+      ) : (
+        <>
+          <Highlights release={releases[0]} />
+          <ul className="changelog-legend" aria-label="Legende">
+            {TAGS.map((t) => (
+              <li key={t.tag}>
+                <span className={`changelog-tag changelog-tag-${t.tag}`}>{t.label}</span> {t.hint}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {shown.map((release) => (
         <ReleaseSection key={release.version} release={release} installed={release.version === currentVersion} />
       ))}
       {older > 0 && !showOlder ? (
-        <button type="button" className="button-ghost changelog-more" onClick={() => setShowOlder(true)}>
+        <button type="button" className="button-subtle changelog-more" onClick={() => setShowOlder(true)}>
           Ältere Versionen anzeigen ({older})
         </button>
       ) : null}
