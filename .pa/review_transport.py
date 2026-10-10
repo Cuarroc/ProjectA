@@ -18,13 +18,18 @@ Result: <out-dir>/review_<label>_<name>.md per reviewer, with "Status: ok"
 or "Status: failed". Each protocol is written as soon as that reviewer
 finishes; the final stdout summary stays in configuration order.
 
-Concurrency: at most 2 workers. Worst-case wall time per reviewer is
-2×timeout + 30 s (one Retry-After sleep, capped at 30 s).
+Concurrency: at most 2 workers. Typical wall time per reviewer is about
+2×timeout + 30 s (one Retry-After sleep, capped at 30 s). That bound is not
+guaranteed: it excludes DNS lookup, connect retries across dual-stack or
+multi-A addresses, and trickling / partial reads (urllib's timeout is per
+socket operation). With more than 2 reviewers, total wall time is about
+ceil(n/2) times the per-reviewer bound.
 
 Exit 0 only when EVERY configured reviewer answered with text. Exit 1 when at
 least one reviewer gave no verdict - its protocol records the failure, and
-the remaining reviewers still run. Exit 2 for a usage error or when no
-reviewer is configured: a run without reviewers is not a review.
+the remaining reviewers still run. Exit 2 for a usage error, duplicate
+reviewer slugs, or when no reviewer is configured: a run without reviewers
+is not a review.
 
 A reviewer failure (HTTP error, timeout, no JSON, an error object, no text)
 is a finding and is recorded as a plain message. Any other exception may be a
@@ -51,6 +56,10 @@ DEFAULT_TIMEOUT_S = 600
 
 class ReviewerError(Exception):
     """The reviewer did not deliver a verdict. Not a bug in this script."""
+
+    def __init__(self, message, retried_code=None):
+        super().__init__(message)
+        self.retried_code = retried_code
 
 
 def configured_reviewers(env):
@@ -109,27 +118,47 @@ def post_json(url, payload, key, timeout):
                     detail = error.read(500).decode("utf-8", "replace").strip()
                     suffix = " after one retry" if retried_code is not None else ""
                     raise ReviewerError(
-                        f"HTTP {error.code}: {detail or error.reason}{suffix}"
+                        f"HTTP {error.code}: {detail or error.reason}{suffix}",
+                        retried_code=retried_code,
                     ) from None
             time.sleep(delay)
         except urllib.error.URLError as error:
-            raise ReviewerError(f"not reachable: {error.reason}") from None
+            suffix = " after one retry" if retried_code is not None else ""
+            raise ReviewerError(
+                f"not reachable: {error.reason}{suffix}", retried_code=retried_code
+            ) from None
         except TimeoutError:
-            raise ReviewerError(f"no answer within {timeout} s") from None
+            suffix = " after one retry" if retried_code is not None else ""
+            raise ReviewerError(
+                f"no answer within {timeout} s{suffix}", retried_code=retried_code
+            ) from None
     try:
         return json.loads(raw.decode("utf-8", "replace")), retried_code
     except json.JSONDecodeError:
         start = raw[:200].decode("utf-8", "replace").strip()
-        raise ReviewerError(f"answer is not JSON: {start!r}") from None
+        suffix = " after one retry" if retried_code is not None else ""
+        raise ReviewerError(
+            f"answer is not JSON: {start!r}{suffix}", retried_code=retried_code
+        ) from None
 
 
-def require_text(text, where):
+def _retry_suffix(retried_code):
+    return " after one retry" if retried_code is not None else ""
+
+
+def require_text(text, where, retried_code=None):
+    suffix = _retry_suffix(retried_code)
     if text is None:
-        raise ReviewerError(f"{where} is null - no verdict")
+        raise ReviewerError(f"{where} is null - no verdict{suffix}", retried_code=retried_code)
     if not isinstance(text, str):
-        raise ReviewerError(f"{where} is {type(text).__name__}, not text - no verdict")
+        raise ReviewerError(
+            f"{where} is {type(text).__name__}, not text - no verdict{suffix}",
+            retried_code=retried_code,
+        )
     if not text.strip():
-        raise ReviewerError(f"{where} is empty - no verdict")
+        raise ReviewerError(
+            f"{where} is empty - no verdict{suffix}", retried_code=retried_code
+        )
     return text
 
 
@@ -144,22 +173,34 @@ def ask(reviewer, prompt, timeout):
     else:
         raise ReviewerError(f"unknown KIND {reviewer['kind']!r} (openai | ollama)")
     out, retried_code = post_json(reviewer["url"], payload, reviewer["key"], timeout)
+    suffix = _retry_suffix(retried_code)
     if not isinstance(out, dict):
-        raise ReviewerError(f"answer is JSON {type(out).__name__}, not an object")
+        raise ReviewerError(
+            f"answer is JSON {type(out).__name__}, not an object{suffix}",
+            retried_code=retried_code,
+        )
     if out.get("error"):
         error = out["error"]
         message = error.get("message") if isinstance(error, dict) else error
-        raise ReviewerError(f"provider error: {message}")
+        raise ReviewerError(
+            f"provider error: {message}{suffix}", retried_code=retried_code
+        )
     model = out.get("model") or reviewer["model"]
     if reviewer["kind"] == "ollama":
-        return require_text(out.get("response"), "response"), model, retried_code
+        return require_text(out.get("response"), "response", retried_code), model, retried_code
     choices = out.get("choices")
     if not choices:
-        raise ReviewerError("answer has no choices - no verdict")
+        raise ReviewerError(
+            f"answer has no choices - no verdict{suffix}", retried_code=retried_code
+        )
     # Deliberately unguarded beyond this point: a shape nobody anticipated
     # surfaces as an unexpected error with traceback, not as a provider outage.
     content = choices[0]["message"]["content"]
-    return require_text(content, "choices[0].message.content"), model, retried_code
+    return (
+        require_text(content, "choices[0].message.content", retried_code),
+        model,
+        retried_code,
+    )
 
 
 def protocol(reviewer, label, author, prompt_path, prompt, status, reported_model, body, retried_code=None):
@@ -200,6 +241,18 @@ def main(argv=None):
     if not reviewers:
         print("review_transport: no reviewer configured (REVIEWER_1_NAME is unset) - no review.", file=sys.stderr)
         return 2
+    seen_slugs = {}
+    for reviewer in reviewers:
+        name_slug = slug(reviewer["name"])
+        prior = seen_slugs.get(name_slug)
+        if prior is not None:
+            print(
+                f"review_transport: duplicate reviewer slug {name_slug!r} "
+                f"(REVIEWER_{prior}_NAME and REVIEWER_{reviewer['index']}_NAME) - no review.",
+                file=sys.stderr,
+            )
+            return 2
+        seen_slugs[name_slug] = reviewer["index"]
     try:
         with open(args.prompt, encoding="utf-8") as handle:
             prompt = handle.read()
@@ -222,6 +275,7 @@ def main(argv=None):
             verdict, reported_model, retried_code = ask(reviewer, prompt, timeout)
             status, body = "ok", verdict
         except ReviewerError as error:
+            retried_code = error.retried_code
             status, body = "failed", f"Reviewer failure: {error}\n\nNo verdict. Run again; this is not a review."
         except Exception as error:  # noqa: BLE001 - reported, not hidden
             status = "failed"
@@ -250,7 +304,18 @@ def main(argv=None):
         for future in as_completed(futures):
             reviewer = futures[future]
             status, reported_model, body, retried_code = future.result()
-            path = write_protocol(reviewer, status, reported_model, body, retried_code)
+            try:
+                path = write_protocol(reviewer, status, reported_model, body, retried_code)
+            except OSError as error:
+                failed += 1
+                path = f"(unwritable: {error.strerror or type(error).__name__})"
+                summaries[reviewer["index"]] = (reviewer, "failed", path)
+                print(
+                    f"review_transport: cannot write protocol for {reviewer['name']}: "
+                    f"{error.strerror or type(error).__name__}",
+                    file=sys.stderr,
+                )
+                continue
             summaries[reviewer["index"]] = (reviewer, status, path)
             if status != "ok":
                 failed += 1
