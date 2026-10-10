@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
+// Consumer: V2-S04b (Eingang & Plan, tab Ideen). Pure triage logic, unused until then.
+#[cfg_attr(not(test), allow(dead_code))]
+mod idea_triage;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanProjection {
