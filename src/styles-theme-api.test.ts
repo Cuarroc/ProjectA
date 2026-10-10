@@ -53,3 +53,11 @@ it("disabled buttons use readable tokens without opacity and native controls inh
   expect(disabled).toContain("opacity: 1");
   expect(css).toMatch(/\.app\s*\{[^}]*accent-color: var\(--color-accent\)/);
 });
+
+it("legacy shadow aliases resolve at the app theme boundary", () => {
+  const app = vars(css.match(/\.app\s*\{[^}]*--ui-control-min[^}]*\}/)![0]);
+  for (const [legacy, role] of [["shadow-card", "elev-1"], ["shadow-popover", "elev-2"]]) {
+    expect(app[legacy]).toBe(`var(--${role})`);
+    expect(value({ ...dark, ...app, [role]: "none" }, legacy)).toBe("none");
+  }
+});
