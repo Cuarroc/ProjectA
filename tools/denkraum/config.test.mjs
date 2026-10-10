@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,9 +12,11 @@ const fixtureRoot = mkdtempSync(join(tmpdir(), "denkraum-config-"));
 const repoRoot = join(fixtureRoot, "synthetic-repository");
 mkdirSync(repoRoot);
 const name = (suffix) => `DECISION_DESK_${suffix}`;
+// High-entropy fixtures at runtime (never a high-entropy literal — secret scan).
+const strongSecret = () => randomBytes(24).toString("hex");
 const validEnv = () => ({
-  [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32),
-  [name("WEBHOOK_SECRET")]: "b".repeat(32),
+  [name("ROOT_RECEIPT_TOKEN")]: strongSecret(),
+  [name("WEBHOOK_SECRET")]: strongSecret(),
   [name("ROOT_AGENT_ID")]: "synthetic-" + "agent",
   [name("STATE")]: join(fixtureRoot, "synthetic-state", "ledger.json"),
 });
@@ -49,7 +52,10 @@ test("loads valid config with default and explicit ports", () => {
 test("enforces root receipt token boundaries and alphabet", () => {
   refuses("ROOT_RECEIPT_TOKEN", [undefined, "", "a".repeat(31), "a".repeat(257),
     "a".repeat(32) + "!", "a".repeat(32) + "\n", "é".repeat(32)]);
-  for (const token of ["Z_9-".repeat(8), "a".repeat(256)]) {
+  const upper = randomBytes(128).toString("hex");
+  assert.equal(upper.length, 256);
+  for (const token of [strongSecret(), upper]) {
+    assert.equal(token.length >= 32 && token.length <= 256, true);
     assert.equal(load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: token }).ok, true);
   }
 });
@@ -57,11 +63,16 @@ test("enforces root receipt token boundaries and alphabet", () => {
 test("rejects short or control-bearing webhook secrets", () => {
   refuses("WEBHOOK_SECRET", [undefined, "", "b".repeat(31),
     ...[0, 9, 10, 13, 31, 127, 128, 159].map((code) => "b".repeat(32) + String.fromCharCode(code))]);
-  assert.equal(load({ ...validEnv(), [name("WEBHOOK_SECRET")]: "é! ".repeat(20) }).ok, true);
+  assert.equal(load({ ...validEnv(), [name("WEBHOOK_SECRET")]: `é!@#€%&*()_+-=[]{};':",.<>/?\`~${strongSecret()}` }).ok, true);
 });
 
 test("refuses identical root and webhook secrets", () => {
-  refuses("WEBHOOK_SECRET", [validEnv()[name("ROOT_RECEIPT_TOKEN")]]);
+  const env = validEnv();
+  const result = load({ ...env, [name("WEBHOOK_SECRET")]: env[name("ROOT_RECEIPT_TOKEN")] });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("WEBHOOK_SECRET")]);
+  assert.equal(typeof result.errors[0].reason, "string");
 });
 
 test("missing root agent id is a start error", () => {
@@ -200,7 +211,7 @@ test("checks config through a real CLI directory alias without running on import
       "DECISION_DESK_ROOT_RECEIPT_TOKEN: required; use 32–256 letters, digits, underscores or hyphens\n");
     for (const value of Object.values(env)) assert.equal(child.stderr.includes(value), false);
     const valid = spawnSync(process.execPath, [entry, "--check"],
-      { env: { ...env, [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32) }, encoding: "utf8" });
+      { env: { ...env, [name("ROOT_RECEIPT_TOKEN")]: strongSecret() }, encoding: "utf8" });
     assert.equal(valid.error, undefined);
     assert.equal(valid.status, 0);
     assert.equal(valid.stderr, "");
@@ -309,6 +320,76 @@ test("server startup uses the validated webhook URL without rereading the enviro
   `], { encoding: "utf8", timeout: 10000 });
   assert.equal(child.error, undefined);
   assert.equal(child.status, 0, child.stderr);
+});
+
+const PLACEHOLDER_GUARD_REASON =
+  /mindestens 8 unterschiedliche Zeichen und kein Wiederholungsmuster/;
+
+test("SRV-3: a 32-times-a root token is rejected", () => {
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: "a".repeat(32) });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("ROOT_RECEIPT_TOKEN")]);
+  assert.match(result.errors[0].reason, PLACEHOLDER_GUARD_REASON);
+  assert.equal(result.errors[0].reason.includes("a".repeat(32)), false);
+});
+
+test("SRV-3: a repeated-pattern webhook secret is rejected", () => {
+  // 8 distinct chars: passes the distinct-count check at threshold 8, so the
+  // repeated-unit loop must reject it (dead under the old "< 10" threshold).
+  const secret = "abcdefgh".repeat(4);
+  assert.equal(secret.length, 32);
+  assert.equal(new Set(secret).size, 8);
+  const result = load({ ...validEnv(), [name("WEBHOOK_SECRET")]: secret });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("WEBHOOK_SECRET")]);
+  assert.match(result.errors[0].reason, PLACEHOLDER_GUARD_REASON);
+  assert.equal(result.errors[0].reason.includes(secret), false);
+});
+
+test("SRV-3: a random 32-char token is accepted", () => {
+  // 48 hex chars — no random distinct-count precondition (can flake).
+  const token = randomBytes(24).toString("hex");
+  assert.equal(token.length, 48);
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: token });
+  assert.equal(result.ok, true);
+  assert.equal(result.config.rootReceiptToken, token);
+  assert.deepEqual(result.errors, []);
+});
+
+test("SRV-3: exactly 7 distinct characters are rejected", () => {
+  const token = "abcdefg".repeat(5); // 35 chars, 7 distinct
+  assert.equal(new Set(token).size, 7);
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: token });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("ROOT_RECEIPT_TOKEN")]);
+  assert.match(result.errors[0].reason, PLACEHOLDER_GUARD_REASON);
+  assert.equal(result.errors[0].reason.includes(token), false);
+});
+
+test("SRV-3: a high-entropy 8-distinct non-repeating value is accepted", () => {
+  // Exactly 8 distinct, length 32, not a pure unit repetition of period 1–8.
+  const token = "abcdefghgfedcbabcdefghgfedcbabcd";
+  assert.equal(token.length, 32);
+  assert.equal(new Set(token).size, 8);
+  assert.notEqual(token, token.slice(0, 8).repeat(4));
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: token });
+  assert.equal(result.ok, true);
+  assert.equal(result.config.rootReceiptToken, token);
+  assert.deepEqual(result.errors, []);
+});
+
+test("SRV-3: a too-short value keeps its length reason", () => {
+  const short = "a".repeat(31);
+  const result = load({ ...validEnv(), [name("ROOT_RECEIPT_TOKEN")]: short });
+  assert.equal(result.ok, false);
+  assert.equal(result.config, null);
+  assert.deepEqual(result.errors.map((error) => error.name), [name("ROOT_RECEIPT_TOKEN")]);
+  assert.match(result.errors[0].reason, /32–256/);
+  assert.doesNotMatch(result.errors[0].reason, PLACEHOLDER_GUARD_REASON);
+  assert.equal(result.errors[0].reason.includes(short), false);
 });
 
 test("physical STATE fixture skips when symlink creation is denied", () => {

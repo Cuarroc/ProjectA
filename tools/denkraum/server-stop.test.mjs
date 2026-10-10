@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, access } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -11,6 +12,7 @@ import { DeskStore } from './store.mjs';
 import { ownerRecordPath, OWNERSHIP_RELEASE_MISMATCH } from './store/ownership.mjs';
 
 const entry = fileURLToPath(new URL('./server.mjs', import.meta.url));
+const strongSecret = () => randomBytes(24).toString('hex');
 const question = id => ({ id, title: 'T', context: 'C', owner: 'O', category: 'K', scope: 'S', source: 'Q', uncertainty: 'U',
   recommendation: { optionIds: ['a'], rationale: 'R' }, options: ['a', 'b'].map(o => ({ id: o, label: o, rationale: 'R', impact: 'I', tradeoff: 'T', effort: 'E', reversible: 'Y' })) });
 const gone = path => access(path).then(() => false, e => e.code === 'ENOENT');
@@ -28,7 +30,7 @@ async function startEntry(t, statePath, id) {
   for (let attempt = 1; ; attempt++) {
     const port = await freePort();
     const env = { ...process.env, DECISION_DESK_STATE: statePath, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
-      DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+      DECISION_DESK_ROOT_RECEIPT_TOKEN: strongSecret(), DECISION_DESK_WEBHOOK_SECRET: strongSecret() };
     delete env.DECISION_DESK_WEBHOOK_URL;
     const child = spawn(process.execPath, [entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     t.after(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); });
@@ -74,7 +76,7 @@ test('DRSEC-G4a: a stop after a failed listen exits non-zero', posix, async t =>
   await new Promise(resolve => blocker.listen(0, '127.0.0.1', resolve));
   t.after(() => blocker.close());
   const env = { ...process.env, DECISION_DESK_STATE: await ledger(t), DECISION_DESK_PORT: String(blocker.address().port),
-    DECISION_DESK_ROOT_AGENT_ID: 'root-test', DECISION_DESK_ROOT_RECEIPT_TOKEN: 'r'.repeat(40), DECISION_DESK_WEBHOOK_SECRET: 'w'.repeat(40) };
+    DECISION_DESK_ROOT_AGENT_ID: 'root-test', DECISION_DESK_ROOT_RECEIPT_TOKEN: strongSecret(), DECISION_DESK_WEBHOOK_SECRET: strongSecret() };
   delete env.DECISION_DESK_WEBHOOK_URL;
   // The preload keeps the event loop alive so the stop signal arrives while the process is still up after the failed listen.
   const child = spawn(process.execPath, ['--import', 'data:text/javascript,setInterval(()=>{},1e6)', entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
