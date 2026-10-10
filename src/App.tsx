@@ -186,6 +186,8 @@ function AppContent() {
   );
   const [narrowForceOpen, setNarrowForceOpen] = useState(false);
   const [railMotion, setRailMotion] = useState(false);
+  const railMotionTimer = useRef<number | null>(null);
+  const appShellRef = useRef<HTMLDivElement | null>(null);
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>("loading");
 
   useEffect(() => {
@@ -199,6 +201,13 @@ function AppContent() {
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (railMotionTimer.current !== null) window.clearTimeout(railMotionTimer.current);
+    },
+    [],
+  );
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workersLoading, setWorkersLoading] = useState(false);
@@ -793,8 +802,28 @@ function AppContent() {
    * A card stands for a running terminal, so opening one means going to that
    * terminal — the board hands the workspace over rather than embedding it.
    */
+  const clearRailMotion = useCallback(() => {
+    if (railMotionTimer.current !== null) {
+      window.clearTimeout(railMotionTimer.current);
+      railMotionTimer.current = null;
+    }
+    setRailMotion(false);
+  }, []);
+
   const toggleRail = useCallback(() => {
-    setRailMotion(true);
+    // Board surface keeps the rail track closed; reduced motion snaps with no
+    // transitionend — never arm `app-rail-motion` when the grid will not animate.
+    const onBoard = goal === "work" && workSurface === "board";
+    const reducedMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!onBoard && !reducedMotion) {
+      setRailMotion(true);
+      if (railMotionTimer.current !== null) window.clearTimeout(railMotionTimer.current);
+      // --dur-slow is 320ms; margin covers late frames / cancelled paths.
+      railMotionTimer.current = window.setTimeout(clearRailMotion, 400);
+    }
+    if (onBoard) return;
     if (railExpanded) {
       writeStoredRailOpen(false);
       setRailOpen(false);
@@ -804,14 +833,22 @@ function AppContent() {
     writeStoredRailOpen(true);
     setRailOpen(true);
     if (viewportNarrow) setNarrowForceOpen(true);
-  }, [railExpanded, viewportNarrow]);
-  const onAppTransitionEnd = useCallback(
-    (event: { target: EventTarget; currentTarget: HTMLDivElement; propertyName: string }) => {
-      if (event.target !== event.currentTarget || event.propertyName !== "grid-template-columns") return;
-      setRailMotion(false);
-    },
-    [],
-  );
+  }, [clearRailMotion, goal, railExpanded, viewportNarrow, workSurface]);
+
+  useEffect(() => {
+    const shell = appShellRef.current;
+    if (!shell) return;
+    const onSettled = (event: TransitionEvent) => {
+      if (event.target !== shell || event.propertyName !== "grid-template-columns") return;
+      clearRailMotion();
+    };
+    shell.addEventListener("transitionend", onSettled);
+    shell.addEventListener("transitioncancel", onSettled);
+    return () => {
+      shell.removeEventListener("transitionend", onSettled);
+      shell.removeEventListener("transitioncancel", onSettled);
+    };
+  }, [bootstrapReady, clearRailMotion]);
 
   const handleOpenCard = useCallback(
     (worker: Worker) => {
@@ -1136,11 +1173,11 @@ function AppContent() {
 
   return (
     <div
+      ref={appShellRef}
       className={`app${railExpanded ? " app-railed" : ""}${railMotion ? " app-rail-motion" : ""}`}
       data-density={density}
       data-theme-style={themeStyle}
       data-ui-font-size={fonts.uiFontSize}
-      onTransitionEnd={onAppTransitionEnd}
     >
       <ThemeBackdrop style={themeStyle} />
       <Sidebar

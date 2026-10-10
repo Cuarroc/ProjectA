@@ -364,6 +364,9 @@ export default function TerminalView({
     });
 
     const resizeObserver = new ResizeObserver(() => {
+      // While the shell rail animates, every frame resizes the host; defer
+      // fit/PTY resize to transitionend/cancel so we do not storm SIGWINCH.
+      if (container.closest(".app")?.classList.contains("app-rail-motion")) return;
       applyFit();
       repaint();
     });
@@ -463,16 +466,18 @@ export default function TerminalView({
     const shell = containerRef.current?.closest(".app");
     if (!shell) return;
     let timer = 0;
-    const onEnd = (event: Event) => {
+    const onRailGridSettled = (event: Event) => {
       const te = event as TransitionEvent;
       if (te.target !== shell || te.propertyName !== "grid-template-columns") return;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => refitRef.current(), 16);
     };
-    shell.addEventListener("transitionend", onEnd);
+    shell.addEventListener("transitionend", onRailGridSettled);
+    shell.addEventListener("transitioncancel", onRailGridSettled);
     return () => {
       window.clearTimeout(timer);
-      shell.removeEventListener("transitionend", onEnd);
+      shell.removeEventListener("transitionend", onRailGridSettled);
+      shell.removeEventListener("transitioncancel", onRailGridSettled);
     };
   }, [sessionId]);
 

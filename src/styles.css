@@ -594,6 +594,7 @@ a {
 .state-in-review > .state-mark::before,
 .state-in-review.state-mark::before,
 .state-in-review > .rail-label::before {
+  inset: 3px 1px;
   border-radius: var(--radius-round) 1px;
   transform: rotate(45deg);
 }
@@ -681,12 +682,12 @@ a {
 
 .state-chip.state-needs-you::before {
   border-radius: 1px;
-  transform: rotate(45deg);
+  transform: rotate(45deg) scale(0.78);
 }
 
 .state-chip.state-in-review::before {
   border-radius: var(--radius-round) 1px;
-  transform: rotate(45deg);
+  transform: rotate(45deg) scale(0.86);
 }
 
 .state-chip.state-ready-to-merge::before,

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -70,6 +70,73 @@ describe("V161-UI-R rail contract", () => {
     expect(css).toMatch(/\.app:not\(\.app-railed\)\s*\{[^}]*--shell-rail-w:\s*0(?:px)?/);
     expect([...css.matchAll(/\.rail\s*\{([^}]*)\}/g)][0]?.[1]).toMatch(/background:\s*var\(--surface-chrome/);
     expect(css).toMatch(/--size-state-mark:\s*12px/);
-    expect(css).not.toMatch(/state-chip\.state-needs-you::before[\s\S]{0,80}?scale\(/);
+    expect(css).toMatch(/\.state-in-review\s*>\s*\.state-mark::before[\s\S]{0,120}?inset:\s*3px\s+1px/);
+    expect(css).toMatch(/\.state-chip\.state-needs-you::before[\s\S]{0,80}?scale\(0\.78\)/);
+    expect(css).toMatch(/\.state-chip\.state-in-review::before[\s\S]{0,80}?scale\(0\.86\)/);
+  });
+
+  function stubMatchMedia(opts: { narrow?: boolean; reducedMotion?: boolean }) {
+    const narrow = opts.narrow ?? false;
+    const reduced = opts.reducedMotion ?? false;
+    const idle = {
+      matches: false,
+      media: "",
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent: () => false,
+      onchange: null,
+    } as MediaQueryList;
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((q: string) => {
+        if (q.includes("prefers-reduced-motion")) {
+          return { ...idle, matches: reduced, media: q };
+        }
+        if (q.includes("1099") || q.includes("1100")) {
+          return { ...idle, matches: narrow, media: q };
+        }
+        return { ...idle, media: q };
+      }),
+    );
+  }
+
+  it("does not leave app-rail-motion stuck under reduced motion", async () => {
+    localStorage.setItem("projecta.railOpen", "true");
+    stubMatchMedia({ reducedMotion: true });
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector(".app-railed")).toBeTruthy());
+    fireEvent.click(container.querySelector(".viewbar-rail-toggle")!);
+    await waitFor(() => expect(container.querySelector(".app-railed")).toBeNull());
+    expect(container.querySelector(".app-rail-motion")).toBeNull();
+  });
+
+  it("clears app-rail-motion on transitioncancel", async () => {
+    localStorage.setItem("projecta.railOpen", "true");
+    stubMatchMedia({});
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector(".app-railed")).toBeTruthy());
+    fireEvent.click(container.querySelector(".viewbar-rail-toggle")!);
+    await waitFor(() => expect(container.querySelector(".app-rail-motion")).toBeTruthy());
+    fireEvent.transitionCancel(container.querySelector(".app")!, {
+      propertyName: "grid-template-columns",
+    });
+    await waitFor(() => expect(container.querySelector(".app-rail-motion")).toBeNull());
+  });
+
+  it("moves focus to the ViewBar rail toggle before inert on collapse", async () => {
+    localStorage.setItem("projecta.railOpen", "true");
+    stubMatchMedia({});
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector(".rail-collapse")).toBeTruthy());
+    const collapse = container.querySelector(".rail-collapse") as HTMLButtonElement;
+    collapse.focus();
+    expect(document.activeElement).toBe(collapse);
+    fireEvent.click(collapse);
+    await waitFor(() => {
+      expect(container.querySelector(".rail")?.hasAttribute("inert")).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector(".viewbar-rail-toggle"));
+    });
   });
 });
