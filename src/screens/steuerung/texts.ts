@@ -18,6 +18,9 @@ export const T = {
   rulesFollow: "Folgt mit V2-B2a.",
   logFollow: "Folgt mit V2-B2a, sobald Regeln auslösen.",
   meterLabel: (slot: string, percent: number) => `${slot}: ${percent} Prozent verbraucht`,
+  exhausted: "Kontingent erschöpft",
+  free: (at: string) => `frei ${at}`,
+  freeCap: (at: string) => `Frei ${at}`,
   percent: (n: number) => `${n} %`,
   providerLamp: { ok: "OK", blocked: "Blockiert", unknown: "Unbekannt" },
 } as const;
