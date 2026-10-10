@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewLeitstand } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
   it("keeps Work Attention and Agents under the Leitstand", () => {
@@ -25,5 +25,13 @@ describe("goal and route mapping (ia.md section 4)", () => {
   it("only rewrites the hash when the old UI left the route", () => {
     expect(hashForGoal("work", "/leitstand/verlauf")).toBeNull();
     expect(hashForGoal("review", "/leitstand")).toBe("#/beweise");
+  });
+
+  it("gives the new Leitstand exactly /leitstand and leaves the rest to the old view", () => {
+    expect(isNewLeitstand("/leitstand")).toBe(true);
+    expect(isNewLeitstand("/leitstand/")).toBe(true);
+    expect(isNewLeitstand("/leitstand/klassisch")).toBe(false);
+    expect(isNewLeitstand("/beweise")).toBe(false);
+    expect(hasLegacyPanel("/leitstand/klassisch")).toBe(true);
   });
 });
