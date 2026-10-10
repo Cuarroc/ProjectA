@@ -48,7 +48,7 @@ bad() { echo "FEHLER $*"; fails=$((fails + 1)); }
 
 # Ein Server, ein Pfad je Krankheitsbild.
 cat > "$tmp/server.py" <<'PYEOF'
-import json, sys, threading
+import json, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 barrier = threading.Barrier(2)
@@ -56,6 +56,8 @@ attempts = {}
 lock = threading.Lock()
 # Slow reviewer blocks until /early-release; fast reviewer answers at once.
 early_release = threading.Event()
+# Separate latch for the unwritable-protocol race (R958-A4).
+write_fail_release = threading.Event()
 
 ANTWORTEN = {
     "/null":   {"choices": [{"message": {"content": None}}], "model": "m-null"},
@@ -74,8 +76,11 @@ class H(BaseHTTPRequestHandler):
         self.rfile.read(int(self.headers.get("Content-Length", 0)))
         status = 200
         path = self.path
-        if path == "/early-release":
-            early_release.set()
+        if path in ("/early-release", "/write-fail-release"):
+            if path == "/early-release":
+                early_release.set()
+            else:
+                write_fail_release.set()
             body = b'{"ok": true}'
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -87,6 +92,10 @@ class H(BaseHTTPRequestHandler):
             if not early_release.wait(timeout=15):
                 status = 408
             path = "/gut" if status == 200 else path
+        elif path == "/write-fail-slow":
+            if not write_fail_release.wait(timeout=15):
+                status = 408
+            path = "/gut" if status == 200 else path
         elif path == "/early-fast":
             path = "/gut"
         elif path in ("/parallel-a", "/parallel-b"):
@@ -95,6 +104,25 @@ class H(BaseHTTPRequestHandler):
                 path = "/gut"
             except threading.BrokenBarrierError:
                 status = 408
+        # First response is a retryable HTTP error; the second attempt hangs
+        # until the client socket timeout fires (R958-A1).
+        if path.startswith("/retry-then-hang-"):
+            with lock:
+                attempts[path] = attempts.get(path, 0) + 1
+                attempt = attempts[path]
+            if attempt == 1:
+                code = int(path.rsplit("-", 1)[1])
+                status = code
+                body = json.dumps({"attempts": attempt}).encode()
+                self.send_response(status)
+                self.send_header("Retry-After", "0")
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            time.sleep(60)
+            return
         if path.startswith("/retry-") or path.startswith("/always-"):
             with lock:
                 attempts[path] = attempts.get(path, 0) + 1
@@ -203,6 +231,28 @@ if [ "$retry_got" -eq 0 ] && grep -q "retried once after HTTP 429" "$retry_ok_da
 else
   bad "$retry_name"
   sed 's/^/    /' "$tmp/$retry_name.log" "$tmp/$retry_name-fail.log" 2>/dev/null || true
+fi
+# R958-A1: a timeout after a retryable first response must still show the
+# retry Note and "after one retry" (not only the HTTP-error-on-second-attempt path).
+timeout_retry_name="a retry followed by a timeout still records the retry"
+timeout_retry_out="$tmp/out-$timeout_retry_name"
+mkdir -p "$timeout_retry_out"
+(
+  export REVIEWER_TIMEOUT_S=1 \
+         REVIEWER_1_NAME=r1 REVIEWER_1_KIND=openai \
+         REVIEWER_1_URL="http://127.0.0.1:$port/retry-then-hang-429" REVIEWER_1_MODEL=modell-1
+  "$PY" .pa/review_transport.py "$tmp/prompt.md" "$timeout_retry_out" probe --author selbsttest
+) > "$tmp/$timeout_retry_name.log" 2>&1
+timeout_retry_got=$?
+timeout_retry_datei="$timeout_retry_out/review_probe_r1.md"
+if [ "$timeout_retry_got" -eq 1 ] &&
+   grep -q "retried once after HTTP 429" "$timeout_retry_datei" 2>/dev/null &&
+   grep -q "after one retry" "$timeout_retry_datei" 2>/dev/null; then
+  ok "$timeout_retry_name"
+else
+  bad "$timeout_retry_name (exit=$timeout_retry_got)"
+  sed 's/^/    /' "$tmp/$timeout_retry_name.log" 2>/dev/null || true
+  [ -f "$timeout_retry_datei" ] && sed 's/^/    /' "$timeout_retry_datei" || true
 fi
 for code in 502 503; do
   lauf "retry-$code" 0 "/retry-$code"
@@ -339,11 +389,85 @@ done
   > /dev/null 2>&1 || true
 wait "$early_pid"
 early_got=$?
-if [ "$saw_fast" -eq 1 ] && grep -q "Status: ok" "$fast_proto" 2>/dev/null && [ "$early_got" -eq 0 ]; then
+slow_proto="$early_out/review_probe_r1.md"
+# R958-A5: stdout summary stays in configuration order; slow peer's protocol
+# must also exist once the run finishes.
+r1_line="$(grep -n '^r1: ' "$tmp/$early_name.log" 2>/dev/null | head -n1 | cut -d: -f1)"
+r2_line="$(grep -n '^r2: ' "$tmp/$early_name.log" 2>/dev/null | head -n1 | cut -d: -f1)"
+order_ok=0
+if [ -n "$r1_line" ] && [ -n "$r2_line" ] && [ "$r1_line" -lt "$r2_line" ]; then
+  order_ok=1
+fi
+if [ "$saw_fast" -eq 1 ] && grep -q "Status: ok" "$fast_proto" 2>/dev/null &&
+   [ "$early_got" -eq 0 ] && [ "$order_ok" -eq 1 ] &&
+   [ -f "$slow_proto" ] && grep -q "Status: ok" "$slow_proto" 2>/dev/null; then
   ok "$early_name"
 else
-  bad "$early_name (saw_fast=$saw_fast exit=$early_got)"
+  bad "$early_name (saw_fast=$saw_fast exit=$early_got order_ok=$order_ok)"
   sed 's/^/    /' "$tmp/$early_name.log" 2>/dev/null || true
+fi
+
+# R958-A3: duplicate slugs must be refused before any protocol is written.
+dup_name="duplicate reviewer slugs are refused with exit 2"
+dup_out="$tmp/out-$dup_name"
+mkdir -p "$dup_out"
+(
+  export REVIEWER_1_NAME=r1 REVIEWER_1_KIND=openai \
+         REVIEWER_1_URL="http://127.0.0.1:$port/gut" REVIEWER_1_MODEL=modell-1 \
+         REVIEWER_2_NAME=r1 REVIEWER_2_KIND=openai \
+         REVIEWER_2_URL="http://127.0.0.1:$port/gut" REVIEWER_2_MODEL=modell-2
+  "$PY" .pa/review_transport.py "$tmp/prompt.md" "$dup_out" probe --author selbsttest
+) > "$tmp/$dup_name.log" 2>&1
+dup_got=$?
+if [ "$dup_got" -eq 2 ] &&
+   grep -qi "duplicate" "$tmp/$dup_name.log" 2>/dev/null &&
+   [ ! -f "$dup_out/review_probe_r1.md" ]; then
+  ok "$dup_name"
+else
+  bad "$dup_name (exit=$dup_got)"
+  sed 's/^/    /' "$tmp/$dup_name.log" 2>/dev/null || true
+fi
+
+# R958-A4: a write OSError for one reviewer must not drop the other's protocol.
+# r1 finishes first on an unwritable path; r2 stays blocked until release so a
+# missing write-guard aborts before r2's protocol is written.
+unwritable_name="an unwritable protocol does not lose the other verdict"
+unwritable_out="$tmp/out-$unwritable_name"
+mkdir -p "$unwritable_out"
+# Make r1's protocol path a directory so open-for-write fails with EISDIR.
+mkdir "$unwritable_out/review_probe_r1.md"
+(
+  export REVIEWER_1_NAME=r1 REVIEWER_1_KIND=openai \
+         REVIEWER_1_URL="http://127.0.0.1:$port/gut" REVIEWER_1_MODEL=modell-1 \
+         REVIEWER_2_NAME=r2 REVIEWER_2_KIND=openai \
+         REVIEWER_2_URL="http://127.0.0.1:$port/write-fail-slow" REVIEWER_2_MODEL=modell-2
+  "$PY" .pa/review_transport.py "$tmp/prompt.md" "$unwritable_out" probe --author selbsttest
+) > "$tmp/$unwritable_name.log" 2>&1 &
+unwritable_pid=$!
+# Let r1 hit the write failure (or abort) before releasing r2.
+for _ in $(seq 1 30); do
+  if ! kill -0 "$unwritable_pid" 2>/dev/null; then
+    break
+  fi
+  # With the write guard the process stays alive waiting for r2.
+  if grep -q 'r1: failed' "$tmp/$unwritable_name.log" 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+"$PY" -c "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:$port/write-fail-release', data=b'{}', method='POST'), timeout=5)" \
+  > /dev/null 2>&1 || true
+wait "$unwritable_pid"
+unwritable_got=$?
+unwritable_r2="$unwritable_out/review_probe_r2.md"
+if [ "$unwritable_got" -eq 1 ] &&
+   [ -f "$unwritable_r2" ] && grep -q "Status: ok" "$unwritable_r2" 2>/dev/null &&
+   grep -q "ANNEHMEN: alles gut." "$unwritable_r2" 2>/dev/null &&
+   ! grep -q "Traceback" "$tmp/$unwritable_name.log" 2>/dev/null; then
+  ok "$unwritable_name"
+else
+  bad "$unwritable_name (exit=$unwritable_got)"
+  sed 's/^/    /' "$tmp/$unwritable_name.log" 2>/dev/null || true
 fi
 
 # Ohne Reviewer ist der Lauf kein Review: Exit 2, nicht 0.
