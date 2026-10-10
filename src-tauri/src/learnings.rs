@@ -59,6 +59,8 @@ use std::sync::OnceLock;
 use crate::profiles::AgentProfile;
 use crate::store::{Store, LEARNING_APPROVED, LEARNING_PENDING, LEARNING_REJECTED};
 
+pub(crate) mod note_check;
+
 /// The playbook mirror's file name, in the project's repository root.
 ///
 /// A mirror only: it is written so a person can read the playbook in a diff,
