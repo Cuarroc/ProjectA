@@ -28,7 +28,8 @@ impl Schedule {
     /// Fields: minute hour day-of-month month day-of-week. Each accepts `*`,
     /// numbers, `a-b`, `*/n`, `a-b/n` and comma lists; day-of-week is 0-7
     /// with 0 and 7 = Sunday. As in Vixie cron, when both day fields are
-    /// restricted a day matches if either does.
+    /// restricted a day matches if either does; if either starts with `*`
+    /// (`*/2` included) both must match.
     pub fn parse(expr: &str) -> Result<Schedule, String> {
         let f: Vec<&str> = expr.split_whitespace().collect();
         if f.len() != 5 {
@@ -54,11 +55,12 @@ impl Schedule {
 
     fn day_matches(&self, day: u32, weekday: u32) -> bool {
         let (d, w) = (self.days >> day & 1 == 1, self.weekdays >> weekday & 1 == 1);
-        match (self.days_star, self.weekdays_star) {
-            (false, false) => d || w,
-            (false, true) => d,
-            (true, false) => w,
-            (true, true) => true,
+        // Vixie rule: a field that starts with `*` (so `*/2` too) makes the
+        // two masks combine with AND; only two restricted fields use OR.
+        if self.days_star || self.weekdays_star {
+            d && w
+        } else {
+            d || w
         }
     }
 
@@ -154,6 +156,7 @@ pub enum Decision {
 }
 
 /// Rolling-hour limiter: a run at `t` occupies its slot until `t + 3600`.
+/// `runs` is kept sorted ascending (see `fire`).
 #[derive(Debug, Default, Clone)]
 pub struct RateLimiter {
     runs: VecDeque<u64>,
@@ -182,7 +185,10 @@ impl RateLimiter {
         let d = self.test_run(now);
         if d == Decision::Erlaubt {
             self.runs.retain(|r| r.saturating_add(WINDOW_SECS) > now);
-            self.runs.push_back(now);
+            // Keep `runs` ascending even if `now` arrives out of order:
+            // `test_run` reads the oldest live run by position.
+            let at = self.runs.partition_point(|&r| r <= now);
+            self.runs.insert(at, now);
         }
         d
     }
