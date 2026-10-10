@@ -30,6 +30,8 @@ use std::time::Duration;
 use crate::budget::BudgetLimits;
 use crate::workers::lane_guard::Seam;
 
+mod location;
+
 /// How long a report may be reused when nothing it depends on has changed.
 ///
 /// Short: the facts behind it are settings and quota rows that a background
