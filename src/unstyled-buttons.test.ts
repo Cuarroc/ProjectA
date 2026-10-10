@@ -43,6 +43,27 @@ function unstyledButtonsIn(file: string): number[] {
   return lines;
 }
 
+/** Body of the first rule whose selector list is exactly `selector`. */
+function ruleBody(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return css.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+}
+
+/** Value of the last declaration in `block` whose property matches `prop`. */
+function lastDeclaration(block: string, prop: RegExp): string {
+  let value = "";
+  for (const m of block.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([\w-]+)\s*:\s*([^;]+);/g)) {
+    if (prop.test(m[1])) value = m[2].trim();
+  }
+  return value;
+}
+
+/** Class + pseudo-class count; `:not()` counts its argument, not itself. */
+function specificity(selector: string): number {
+  const parts = selector.match(/\.[\w-]+|:(?!:)[\w-]+/g) ?? [];
+  return parts.filter((p) => p !== ":not").length;
+}
+
 describe("unstyled buttons", () => {
   it("EmergencyStop and MaintenancePanel buttons carry a style class", () => {
     const offenders: string[] = [];
@@ -73,7 +94,7 @@ describe("unstyled buttons", () => {
     expect(block).not.toMatch(/background:\s*var\(--state-danger-fg\)/);
     const hover = css.match(/\.button-danger:hover:not\(:disabled\)\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(hover).not.toMatch(/--state-danger-bg/);
-    expect(hover).toMatch(/color-mix|var\(--color-danger-solid\)/);
+    expect(hover).toMatch(/var\(--color-danger-solid-hover\)/);
     const gate = readFileSync(join(__dirname, "..", "scripts", "contrast-check.mjs"), "utf8");
     expect(gate).toMatch(/on-danger \/ danger-solid/);
   });
@@ -107,9 +128,56 @@ describe("unstyled buttons", () => {
 
   it("settings port ghost buttons use a bordered secondary treatment", () => {
     const css = readFileSync(STYLES, "utf8");
-    const block = css.match(/\.settings-port-row\s+\.button-ghost\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(block).toMatch(/border:\s*1px\s+solid\s+var\(--border\)/);
+    const block = ruleBody(css, ".settings-port-row .button-ghost");
+    // The declaration that wins is the last one touching the border colour.
+    const edge = lastDeclaration(block, /^border(-color)?$/);
+    expect(edge).toMatch(/var\(--color-text-tertiary\)/);
     expect(block).toMatch(/min-height:\s*var\(--ui-control-min\)/);
+  });
+
+  it("settings port ghost buttons keep a hover and pressed fill that wins the cascade", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const base = ".settings-port-row .button-ghost";
+    const hoverSel = ".settings-port-row .button-ghost:hover:not(:disabled)";
+    const hover = ruleBody(css, hoverSel);
+    expect(hover).toMatch(/background:\s*var\(--color-selection-unfocused\)/);
+    expect(hover).not.toMatch(/background:\s*var\(--color-elevated\)/);
+    expect(specificity(hoverSel)).toBeGreaterThan(specificity(base));
+    expect(specificity(hoverSel)).toBeGreaterThan(specificity(".button-ghost:hover"));
+    const pressed = ruleBody(css, ".settings-port-row .button-ghost:active:not(:disabled)");
+    expect(pressed).toMatch(/background:\s*var\(--color-pressed\)/);
+  });
+
+  it("maintenance confirmation pair shares weight radius and padding", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const danger = ruleBody(css, ".button-danger");
+    const ghost = ruleBody(css, ".settings-port-row .button-ghost");
+    for (const prop of ["font-weight", "border-radius", "padding", "min-height"]) {
+      const a = lastDeclaration(danger, new RegExp(`^${prop}$`));
+      const b = lastDeclaration(ghost, new RegExp(`^${prop}$`));
+      expect(a, `${prop} on .button-danger`).not.toBe("");
+      expect(b, `${prop} on the secondary`).toBe(a);
+    }
+  });
+
+  it("disabled settings ghost buttons use the same disabled recipe as button-danger", () => {
+    const css = readFileSync(STYLES, "utf8");
+    const block = ruleBody(css, ".settings-port-row .button-ghost:disabled");
+    expect(block).toMatch(/opacity:\s*1/);
+    expect(block).toMatch(/background:\s*var\(--color-elevated\)/);
+    expect(block).toMatch(/border-color:\s*transparent/);
+    expect(block).toMatch(/color:\s*var\(--color-text-tertiary\)/);
+  });
+
+  it("button-danger hover uses a semantic token in both modes without a raw colour", () => {
+    const css = readFileSync(STYLES, "utf8");
+    expect(css.match(/--color-danger-solid-hover:/g)?.length).toBe(2);
+    const hover = ruleBody(css, ".button-danger:hover:not(:disabled)");
+    expect(hover).toMatch(/background:\s*var\(--color-danger-solid-hover\)/);
+    expect(hover).toMatch(/border-color:\s*var\(--color-danger-solid-hover\)/);
+    expect(hover).not.toMatch(/#[0-9a-fA-F]{3,8}\b|color-mix/);
+    const gate = readFileSync(join(__dirname, "..", "scripts", "contrast-check.mjs"), "utf8");
+    expect(gate).toMatch(/on-danger \/ danger-solid-hover/);
   });
 
   it("no new unstyled buttons appear outside the allowlist", () => {
