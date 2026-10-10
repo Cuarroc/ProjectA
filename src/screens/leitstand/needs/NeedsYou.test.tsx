@@ -83,6 +83,70 @@ describe("NeedsYou", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "final" });
   });
 
+  it("sends an offered option as the answer without touching the draft", async () => {
+    backend([row], ({ id, answer }) => ({ ...row, id, status: "answered", answer }));
+    render(<Harness />);
+    fireEvent.click(await screen.findByRole("button", { name: "Only this case" }));
+    await screen.findByText(/Beantwortet: Only this case/);
+    expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "Only this case" });
+    expect(mocks.invoke.mock.calls.filter(([cmd]) => cmd === "answer_question")).toHaveLength(1);
+  });
+
+  it("disables the option buttons while an option answer is pending", async () => {
+    let finish: (v: unknown) => void = () => {};
+    backend([row], () => new Promise((resolve) => (finish = resolve)));
+    render(<Harness />);
+    const option = await screen.findByRole("button", { name: "Only this case" });
+    fireEvent.click(option);
+    await waitFor(() => expect(option).toBeDisabled());
+    fireEvent.click(option);
+    expect(mocks.invoke.mock.calls.filter(([cmd]) => cmd === "answer_question")).toHaveLength(1);
+    finish({ ...row, status: "answered", answer: "Only this case" });
+    await screen.findByText(/Beantwortet: Only this case/);
+  });
+
+  it("unlocks the inputs when an answer succeeds but the question stays open", async () => {
+    // The core returns a row nobody can read; the card stays until the next poll.
+    backend([row], () => ({}));
+    render(<Harness />);
+    fireEvent.change(await screen.findByRole("textbox", { name: "Antwort" }), { target: { value: "first" } });
+    fireEvent.click(send());
+    await screen.findByText(/Beantwortet: first/);
+    await waitFor(() => expect(field()).toBeEnabled());
+    fireEvent.change(field(), { target: { value: "second" } });
+    expect(send()).toBeEnabled();
+    fireEvent.click(send());
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "second" }));
+    await waitFor(() => expect(screen.getAllByRole("status")).toHaveLength(2));
+  });
+
+  it("keeps only the 20 newest answered lines", async () => {
+    const rows = Array.from({ length: 25 }, (_, n) => ({ ...row, id: `q-${n}`, optionsJson: `["a${n}"]` }));
+    backend(rows, ({ id, answer }) => {
+      const at = rows.findIndex((r) => r.id === id);
+      rows.splice(at, 1);
+      return { ...row, id, status: "answered", answer };
+    });
+    render(<Harness />);
+    for (let n = 0; n < 25; n++) {
+      fireEvent.click(await screen.findByRole("button", { name: `a${n}` }));
+      await screen.findByText(`Beantwortet: a${n}`);
+    }
+    const lines = screen.getAllByRole("status");
+    expect(lines).toHaveLength(20);
+    expect(lines[0]).toHaveTextContent("Beantwortet: a24");
+    expect(lines[19]).toHaveTextContent("Beantwortet: a5");
+  });
+
+  it("renders every option button when the asker offers the same option twice", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    backend([{ ...row, optionsJson: '["Yes","Yes"]' }], () => null);
+    render(<Harness />);
+    expect(await screen.findAllByRole("button", { name: "Yes" })).toHaveLength(2);
+    expect(spy.mock.calls.filter(([msg]) => String(msg).includes("same key"))).toHaveLength(0);
+    spy.mockRestore();
+  });
+
   it("shows an honest empty state without digits when nothing is open", async () => {
     backend([], () => null);
     const { container } = render(<Harness />);

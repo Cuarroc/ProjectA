@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 
 import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
@@ -10,6 +10,9 @@ import type { Question, Worker } from "../../../types";
 import "../../../design/glass.css";
 import "./needs.css";
 import { T } from "./texts";
+
+/** How many "answered" lines stay under the list. */
+const SAID_LIMIT = 20;
 
 /** The asker's offered answers; a string that will not parse means none. */
 function parseOptions(json: string | null): string[] {
@@ -41,6 +44,8 @@ function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: 
       await onAnswer(q.id, text);
     } catch (cause) {
       setError(describeError(cause));
+    } finally {
+      // The card may outlive a successful answer until the next poll.
       setBusy(false);
     }
   };
@@ -98,10 +103,12 @@ export interface NeedsYouProps {
 export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const { open, loading, error, answer } = questions;
   // Answers given here, newest first: the stream line stays after the item left the list.
-  const [said, setSaid] = useState<{ id: string; text: string }[]>([]);
+  // Capped, and keyed by a counter: the same question can be answered twice.
+  const [said, setSaid] = useState<{ key: number; text: string }[]>([]);
+  const seq = useRef(0);
   const onAnswer = async (id: string, text: string) => {
     await answer(id, text);
-    setSaid((prev) => [{ id, text }, ...prev]);
+    setSaid((prev) => [{ key: seq.current++, text }, ...prev].slice(0, SAID_LIMIT));
   };
 
   let body;
@@ -126,7 +133,7 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
       </div>
       {body}
       {said.map((s) => (
-        <p key={s.id} className="n-answered" role="status">
+        <p key={s.key} className="n-answered" role="status">
           <StateGlyph form="done" />
           {T.answered(s.text)}
         </p>
