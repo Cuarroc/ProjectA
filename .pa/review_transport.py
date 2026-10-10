@@ -29,12 +29,15 @@ cannot pass for a failed provider (docs/decisions.md).
 """
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import datetime
+from email.utils import parsedate_to_datetime
 import hashlib
 import json
 import os
 import re
 import sys
+import time
 import traceback
 import urllib.error
 import urllib.request
@@ -67,6 +70,18 @@ def slug(name):
     return re.sub(r"[^A-Za-z0-9._-]", "-", name) or "reviewer"
 
 
+def retry_delay(value):
+    """Honor seconds or an HTTP date, with a bounded fallback for bad headers."""
+    try:
+        seconds = int(value)
+    except (TypeError, ValueError):
+        try:
+            seconds = parsedate_to_datetime(value).timestamp() - time.time()
+        except (TypeError, ValueError, OverflowError):
+            seconds = 1
+    return max(0, min(30, seconds))
+
+
 def post_json(url, payload, key, timeout):
     headers = {"Content-Type": "application/json"}
     if key:
@@ -74,16 +89,23 @@ def post_json(url, payload, key, timeout):
     request = urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read()
-    except urllib.error.HTTPError as error:
-        detail = error.read(500).decode("utf-8", "replace").strip()
-        raise ReviewerError(f"HTTP {error.code}: {detail or error.reason}") from None
-    except urllib.error.URLError as error:
-        raise ReviewerError(f"not reachable: {error.reason}") from None
-    except TimeoutError:
-        raise ReviewerError(f"no answer within {timeout} s") from None
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                raw = response.read()
+            break
+        except urllib.error.HTTPError as error:
+            with error:
+                if attempt == 0 and error.code in (429, 502, 503):
+                    delay = retry_delay(error.headers.get("Retry-After"))
+                else:
+                    detail = error.read(500).decode("utf-8", "replace").strip()
+                    raise ReviewerError(f"HTTP {error.code}: {detail or error.reason}") from None
+            time.sleep(delay)
+        except urllib.error.URLError as error:
+            raise ReviewerError(f"not reachable: {error.reason}") from None
+        except TimeoutError:
+            raise ReviewerError(f"no answer within {timeout} s") from None
     try:
         return json.loads(raw.decode("utf-8", "replace"))
     except json.JSONDecodeError:
@@ -179,8 +201,7 @@ def main(argv=None):
     except ValueError:
         timeout = DEFAULT_TIMEOUT_S
 
-    failed = 0
-    for reviewer in reviewers:
+    def review(reviewer):
         reported_model = None
         try:
             verdict, reported_model = ask(reviewer, prompt, timeout)
@@ -194,12 +215,19 @@ def main(argv=None):
                 "Reviewer-Ausfall, sondern ein Fehler in review_transport.py.\n\n"
                 "```\n" + traceback.format_exc() + "```"
             )
-        path = os.path.join(args.out_dir, f"review_{args.label}_{slug(reviewer['name'])}.md")
-        with open(path, "w", encoding="utf-8") as handle:
-            handle.write(protocol(reviewer, args.label, args.author, args.prompt, prompt, status, reported_model, body))
-        if status != "ok":
-            failed += 1
-        print(f"{reviewer['name']}: {status} -> {path}")
+        return status, reported_model, body
+
+    failed = 0
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        # map preserves configuration order; keep file writes and stdout serial.
+        for reviewer, result in zip(reviewers, pool.map(review, reviewers)):
+            status, reported_model, body = result
+            path = os.path.join(args.out_dir, f"review_{args.label}_{slug(reviewer['name'])}.md")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(protocol(reviewer, args.label, args.author, args.prompt, prompt, status, reported_model, body))
+            if status != "ok":
+                failed += 1
+            print(f"{reviewer['name']}: {status} -> {path}")
 
     if failed:
         print(f"review_transport: {failed} of {len(reviewers)} reviewer(s) without a verdict.", file=sys.stderr)
