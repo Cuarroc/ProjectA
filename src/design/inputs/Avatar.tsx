@@ -13,6 +13,9 @@ export interface AvatarProps extends Omit<HTMLAttributes<HTMLSpanElement>, "chil
 export function Avatar({ initials, size = "md", tone, label, className, ...rest }: AvatarProps) {
   const toneCls = tone === undefined ? undefined : typeof tone === "number" ? `g-ava--c${tone}` : `g-ava--${tone}`;
   const cls = ["g-ava", size !== "md" && `g-ava--${size}`, toneCls, className];
-  const a11y = label ? { role: "img", "aria-label": label } : { "aria-hidden": true };
-  return <span className={cls.filter(Boolean).join(" ")} {...a11y} {...rest}>{initials}</span>;
+  // Spread after rest: the label alone decides the accessibility, a caller cannot override it.
+  const a11y = label
+    ? { role: "img", "aria-label": label, "aria-hidden": undefined }
+    : { role: undefined, "aria-label": undefined, "aria-hidden": true };
+  return <span className={cls.filter(Boolean).join(" ")} {...rest} {...a11y}>{initials}</span>;
 }
