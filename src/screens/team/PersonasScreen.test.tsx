@@ -107,3 +107,10 @@ it("says so and offers Alle zeigen when the chosen provider is gone after a relo
   expect(screen.queryByText("Keine Persona bei diesem Anbieter.")).toBeNull();
   expect(screen.getByRole("button", { name: /Alle\s*2/ })).toHaveAttribute("aria-pressed", "true");
 });
+
+it("shows an unknown CLI by its own name and invents no label", async () => {
+  feed([profile("p-x", "Eigenbau", "/opt/bin/mycli")]);
+  render(<PersonasScreen />);
+  expect((await card("Eigenbau")).getByText("mycli")).toBeInTheDocument();
+  expect(within(screen.getByRole("group", { name: "Nach Anbieter filtern" })).getByRole("button", { name: /mycli\s*1/ })).toBeInTheDocument();
+});
