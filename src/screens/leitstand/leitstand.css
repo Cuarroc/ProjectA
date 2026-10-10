@@ -11,8 +11,12 @@
 .ls-who h3, .ls-who p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-task { margin: 0; min-height: 36px; font-size: 13px; line-height: 1.4; color: var(--g-ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ls-foot { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-top: auto; min-width: 0; }
-.ls-foot .g-hs { flex: 1 1 0; min-width: 0; grid-auto-flow: column; justify-content: start; padding: 4px 8px; gap: 6px; border-radius: 999px; text-align: left; }
-.ls-foot .g-hs__title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The slot scopes the pill: HonestState has no className prop, and an unscoped selector would reach every kind.
+   Two explicit columns (icon, text) so the text track can shrink to an ellipsis without running under the icon. */
+.ls-proof { flex: 1 1 0; min-width: 0; display: flex; }
+.ls-proof .g-hs { flex: 1 1 auto; min-width: 0; grid-template-columns: auto minmax(0, 1fr); justify-items: start; align-items: center; padding: 4px 8px; gap: 6px; border-radius: 999px; text-align: left; }
+.ls-proof .g-hs__mark { flex: none; }
+.ls-proof .g-hs__title { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ls-foot .g-btn { margin-left: auto; }
 .ls-none { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: var(--g-muted); font-size: 13px; }
 .ls-none p { margin: 0; }
