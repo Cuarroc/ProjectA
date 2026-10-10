@@ -162,8 +162,19 @@ function collectCandidateStrings(source: string, fileName = "fixture.tsx"): stri
   return found;
 }
 
+/** SVG path grammar: only path commands, numbers and separators, with at least one digit. */
+function isSvgPathData(text: string): boolean {
+  return /^[MmLlHhVvCcSsQqTtAaZz0-9.,\-\s]+$/.test(text) && /\d/.test(text);
+}
+
+/** Dotted identifier without whitespace (storage key, i18n key): `projecta.settings.glassTheme`. */
+function isDottedIdentifier(text: string): boolean {
+  return /^[a-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(text);
+}
+
 function isHardcodedUi(text: string, dictValues: Set<string>): boolean {
   if (text.length < 2) return false;
+  if (isSvgPathData(text) || isDottedIdentifier(text)) return false;
   if (/^[./\\]|https?:|\.(ts|tsx|css|json)$/.test(text)) return false;
   // Lowercase identifier / path-ish tokens only (no `i` flag): "Abbrechen" stays UI.
   if (/^[a-z0-9_./:-]+$/.test(text) && !dictValues.has(text)) return false;
@@ -283,6 +294,32 @@ it("scanner ignores querySelector family selector strings while still flagging U
     "button:not(:disabled)",
   ]) expect(found).not.toContain(s);
   expect(found).toContain("Abbrechen");
+});
+
+it("scanner skips SVG path data strings while still flagging UI words", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export const icon = "M3.5 13.5a6.5 6.5 0 1 1 13 0";
+    export const arc = "M3 10a7 7 0 1 1 14 0 7 7 0 0 1-14 0ZM10 10V6M10 10l3 2";
+    export const word = "Leitstand";
+    export const lookalike = "Hall";
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).not.toContain("M3.5 13.5a6.5 6.5 0 1 1 13 0");
+  expect(found).not.toContain("M3 10a7 7 0 1 1 14 0 7 7 0 0 1-14 0ZM10 10V6M10 10l3 2");
+  expect(found).toContain("Leitstand");
+  expect(found).toContain("Hall");
+});
+
+it("scanner skips dotted storage keys while still flagging dictionary-style words", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export const KEY = "projecta.settings.glassTheme";
+    export const word = "Gedächtnis";
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).not.toContain("projecta.settings.glassTheme");
+  expect(found).toContain("Gedächtnis");
 });
 
 it("scanner still flags aria-label UI copy", () => {
