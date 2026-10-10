@@ -1,3 +1,4 @@
+import Icon from "./Icon";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 import type { TerminalSession } from "../types";
 
@@ -82,7 +83,7 @@ export default function TabBar({
               title={session.workerId ? "Tab lösen (der Agent läuft weiter)" : "Sitzung schließen"}
               onClick={() => onClose(session.sessionId)}
             >
-              ×
+              <Icon name="close" size={12} />
             </button>
           </div>
         );
@@ -102,7 +103,7 @@ export default function TabBar({
         disabled={!splitOpen && !splitEnabled}
         onClick={onToggleSplit}
       >
-        ⧉
+        <Icon name="split" size={16} />
       </button>
       <button
         type="button"
