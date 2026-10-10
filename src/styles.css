@@ -2040,10 +2040,10 @@ a {
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  height: 34px;
+  height: var(--shell-bar-h);
   padding: 0 var(--space-6);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--surface-edge);
+  background: var(--surface-chrome);
 }
 
 .convo-title {
@@ -2085,14 +2085,35 @@ a {
   align-content: start;
   max-width: var(--stream-max-w);
   margin: 0 auto;
+  min-height: 100%;
 }
 
 .convo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
   margin: 0;
-  padding: var(--space-8) 0;
+  min-height: 100%;
+  padding: var(--space-8);
   text-align: center;
   color: var(--fg-muted);
-  line-height: 1.6;
+  line-height: var(--line-copy);
+}
+
+.convo-empty-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-tight);
+  color: var(--fg);
+}
+
+.convo-empty-copy {
+  margin: 0;
+  max-width: 36em;
+  font-size: var(--text-md);
 }
 
 .convo-msg {
@@ -2112,6 +2133,10 @@ a {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.convo-msg-time {
+  color: var(--color-text-tertiary);
 }
 
 .convo-msg-body {
@@ -2148,8 +2173,8 @@ a {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-5) var(--space-7);
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
+  border-top: 1px solid var(--surface-edge);
+  background: var(--surface-chrome);
 }
 
 .convo-composer-row {
@@ -2161,10 +2186,11 @@ a {
 .convo-input {
   flex: 1;
   min-width: 0;
+  min-height: var(--ui-control-min);
   resize: none;
   padding: var(--space-4) var(--space-5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-md);
   background: var(--bg);
   color: var(--fg);
   font: inherit;
@@ -2176,7 +2202,8 @@ a {
 }
 
 .convo-input:disabled {
-  opacity: 0.6;
+  color: var(--color-disabled-fg);
+  background: var(--color-disabled-bg);
 }
 
 .convo-composer-actions {
@@ -2186,6 +2213,7 @@ a {
 }
 
 .convo-send {
+  min-height: var(--ui-control-min);
   padding: var(--space-3) var(--space-7);
   border-radius: var(--radius-sm);
   background: var(--accent);
@@ -2198,8 +2226,9 @@ a {
 }
 
 .convo-sharpen {
+  min-height: var(--ui-control-min);
   padding: var(--space-3) var(--space-7);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   font-size: var(--text-md);
   color: var(--fg-muted);
@@ -5265,8 +5294,8 @@ scripts/contrast-check.mjs. */
   flex-direction: column;
   flex: none;
   min-height: 0;
-  background: var(--bg-elevated);
-  border-top: 1px solid var(--border);
+  background: var(--surface-chrome);
+  border-top: 1px solid var(--surface-edge);
 }
 
 .command-chat-history {
@@ -5279,13 +5308,24 @@ scripts/contrast-check.mjs. */
 }
 
 .command-chat-empty {
-  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-7);
   color: var(--fg-muted);
   text-align: center;
 }
 
 .command-chat-empty p {
   margin: 0;
+}
+
+.command-chat-empty-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-tight);
+  color: var(--fg);
 }
 
 .command-chat-list {
@@ -5318,7 +5358,6 @@ scripts/contrast-check.mjs. */
 
 .command-chat-entry-system {
   border-left-color: var(--fg-muted);
-  opacity: 0.85;
 }
 
 .command-chat-meta {
@@ -5344,8 +5383,7 @@ scripts/contrast-check.mjs. */
 }
 
 .command-chat-time {
-  color: var(--fg-muted);
-  opacity: 0.8;
+  color: var(--color-text-tertiary);
 }
 
 .command-chat-content {
@@ -5374,19 +5412,20 @@ scripts/contrast-check.mjs. */
 
 .command-chat-bar {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 8px 12px;
+  align-items: stretch;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
 }
 
 .command-chat-toggle {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-3);
   align-self: stretch;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  min-height: var(--ui-control-min);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
   font-size: var(--text-md);
   color: var(--fg-muted);
   white-space: nowrap;
@@ -5404,9 +5443,10 @@ scripts/contrast-check.mjs. */
 .command-chat-input {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  min-height: var(--ui-control-min);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-md);
   background: var(--bg);
   color: var(--fg);
   font: inherit;
@@ -5419,11 +5459,13 @@ scripts/contrast-check.mjs. */
 }
 
 .command-chat-input:disabled {
-  opacity: 0.5;
+  color: var(--color-disabled-fg);
+  background: var(--color-disabled-bg);
 }
 
 .command-chat-expand {
-  width: 26px;
+  min-width: var(--ui-bar-control);
+  min-height: var(--ui-control-min);
   border-radius: var(--radius-sm);
   color: var(--fg-muted);
 }
@@ -5435,10 +5477,11 @@ scripts/contrast-check.mjs. */
 
 .command-chat-send {
   align-self: stretch;
-  padding: 0 14px;
-  border-radius: 3px;
+  min-height: var(--ui-control-min);
+  padding: 0 var(--space-7);
+  border-radius: var(--radius-sm);
   background: var(--accent);
-  color: var(--status-fg);
+  color: var(--color-on-accent);
   font-size: var(--text-md);
   white-space: nowrap;
 }
