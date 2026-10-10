@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn plans_never_contain_a_stash_and_always_end_with_the_reset() {
-        let ungepusht = vec![C3.to_string()];
+        let ungepusht = [C3.to_string()];
         for (ziel, liste, schmutzig) in [
             (C1, &ungepusht[..], false),
             (C2, &[][..], true),
