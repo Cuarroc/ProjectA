@@ -103,8 +103,8 @@ describe("unstyled buttons", () => {
     const css = readFileSync(STYLES, "utf8");
     const block = css.match(/\.button-danger:disabled\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(block).toMatch(/opacity:\s*1/);
-    expect(block).toMatch(/background:\s*var\(--color-elevated\)/);
-    expect(block).toMatch(/color:\s*var\(--color-text-tertiary\)/);
+    expect(block).toMatch(/background:\s*var\(--color-disabled-bg\)/);
+    expect(block).toMatch(/color:\s*var\(--color-disabled-fg\)/);
   });
 
   it("button-danger focus ring uses the shared focus token", () => {
@@ -166,7 +166,7 @@ describe("unstyled buttons", () => {
     expect(block).toMatch(/opacity:\s*1/);
     expect(block).toMatch(/background:\s*var\(--color-elevated\)/);
     expect(block).toMatch(/border-color:\s*transparent/);
-    expect(block).toMatch(/color:\s*var\(--color-text-tertiary\)/);
+    expect(block).toMatch(/color:\s*var\(--color-disabled-fg\)/);
   });
 
   it("button-danger hover uses a semantic token in both modes without a raw colour", () => {
