@@ -96,7 +96,13 @@ mg_list() {
   ' "$MG"
 }
 
-has() { grep -qF -- "$2" <<< "$1"; }
+# Fixed-string match that ignores full-line comments (first non-blank is #),
+# so a comment quoting a guard or fetch cannot satisfy the check (R953-A3).
+has() {
+  local body
+  body="$(grep -vE '^[[:space:]]*#' <<< "$1" || true)"
+  grep -qF -- "$2" <<< "$body"
+}
 
 linux="$(job linux)"
 windows="$(job windows)"
@@ -163,6 +169,24 @@ for rf_step in "red-first - plan" "red-first - proof against merge base"; do
   has "$rf_body" 'refs/heads/$RF_BASE_BRANCH' ||
     err "job linux: step '$rf_step' missing red-first base branch fetch (refs/heads/\$RF_BASE_BRANCH)"
 done
+# V161-FU-3 / R953-A1: plan step HEAD_SHA fetch stays fatal; BASE_SHA fetch
+# stays non-fatal (|| ) so a stale payload base.sha cannot abort the plan.
+rf_plan="$(step "red-first - plan" <<< "$linux")"
+if [ -n "$rf_plan" ]; then
+  rf_plan_code="$(grep -vE '^[[:space:]]*#' <<< "$rf_plan" || true)"
+  head_fetch="$(grep -F 'git fetch' <<< "$rf_plan_code" | grep -F '"$HEAD_SHA"' || true)"
+  base_fetch="$(grep -F 'git fetch' <<< "$rf_plan_code" | grep -F '"$BASE_SHA"' || true)"
+  if [ -z "$head_fetch" ]; then
+    err "job linux: step 'red-first - plan' missing HEAD_SHA fetch"
+  elif grep -qF '||' <<< "$head_fetch"; then
+    err "job linux: step 'red-first - plan' HEAD_SHA fetch must be fatal (no ||)"
+  fi
+  if [ -z "$base_fetch" ]; then
+    err "job linux: step 'red-first - plan' missing BASE_SHA fetch"
+  elif ! grep -qF '||' <<< "$base_fetch"; then
+    err "job linux: step 'red-first - plan' BASE_SHA fetch must be non-fatal (|| )"
+  fi
+fi
 
 # 5. CI-04: the main-red guard job - a red main opens an issue and freezes
 # the Mergify queue, a proven-green main lifts both.
