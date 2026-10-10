@@ -4,8 +4,8 @@ import "../../design/inputs/inputs.css";
 import { Avatar } from "../../design/inputs/Avatar";
 import { StateMark } from "../../design/state/StateMark";
 import type { BoardCard } from "../../types";
-import { ageText, cardForm, initials, toneFor } from "./leitstand";
-import { T } from "./texts";
+import { useT } from "../../i18n/useT";
+import { ageText, cardForm, fill, initials, toneFor } from "./leitstand";
 
 export interface AgentCardProps {
   card: BoardCard;
@@ -18,6 +18,7 @@ export interface AgentCardProps {
 
 /** One running agent. The proof slot stays an honest "not connected" until V2-B9 delivers gates. */
 export function AgentCard({ card, name, now, onOpen }: AgentCardProps) {
+  const t = useT();
   const { worker } = card;
   return (
     <article className="g-glass ls-card">
@@ -34,8 +35,8 @@ export function AgentCard({ card, name, now, onOpen }: AgentCardProps) {
       </div>
       <p className="ls-task" title={worker.task}>{worker.task}</p>
       <div className="ls-foot">
-        <div className="ls-proof"><HonestState kind="offline" title={T.proofTitle} /></div>
-        <Button size="sm" aria-label={T.openLabel(name)} onClick={() => onOpen(card)}>{T.open}</Button>
+        <div className="ls-proof"><HonestState kind="offline" title={t("leitstand.proofTitle")} /></div>
+        <Button size="sm" aria-label={fill(t("leitstand.openLabel"), { name })} onClick={() => onOpen(card)}>{t("leitstand.open")}</Button>
       </div>
     </article>
   );
