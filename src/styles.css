@@ -3374,11 +3374,12 @@ scripts/contrast-check.mjs. */
 
 .usage-view {
   display: grid;
-  /* UM-4: wrap below ~1100px instead of clipping the second column. */
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-  gap: 1px;
+  /* UM-4: wrap below ~1100px. min 320 keeps ≤2 columns at Insights ~940 (1440vw). */
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 0;
   min-height: 100%;
-  background: var(--border);
+  /* Empty auto-fit tracks must not paint --border (R998-A1 slab). */
+  background: var(--bg);
 }
 
 .usage-section {
@@ -3387,6 +3388,8 @@ scripts/contrast-check.mjs. */
   min-height: 0;
   min-width: 0;
   background: var(--bg);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .usage-head {

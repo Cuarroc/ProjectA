@@ -251,17 +251,31 @@ export default function UsageView({ profiles, cards, workers }: UsageViewProps) 
                     </div>
                   ) : null}
                   <span
-                    className={`usage-budget${
-                      budget !== undefined &&
-                      (budget.fiveHourPct === null || budget.sevenDayPct === null)
-                        ? " insights-quiet"
-                        : ""
-                    }`}
+                    className="usage-budget"
                     title="Budget-Schwellen: 5-Stunden- und 7-Tage-Fenster"
                   >
-                    {budget === undefined
-                      ? "kein Budget"
-                      : `Budget 5h ${budgetCell(budget.fiveHourPct)} · 7d ${budgetCell(budget.sevenDayPct)}`}
+                    {budget === undefined ? (
+                      "kein Budget"
+                    ) : (
+                      <>
+                        Budget 5h{" "}
+                        <span
+                          className={
+                            budget.fiveHourPct === null ? "insights-quiet" : undefined
+                          }
+                        >
+                          {budgetCell(budget.fiveHourPct)}
+                        </span>
+                        {" · 7d "}
+                        <span
+                          className={
+                            budget.sevenDayPct === null ? "insights-quiet" : undefined
+                          }
+                        >
+                          {budgetCell(budget.sevenDayPct)}
+                        </span>
+                      </>
+                    )}
                   </span>
                   {quota?.state === "blocked" ? (
                     <span className="usage-detail">
