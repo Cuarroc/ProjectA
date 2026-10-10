@@ -106,4 +106,29 @@ describe("HistoryView polling", () => {
     expect(screen.queryByRole("status")).toBeNull();
     view.unmount();
   });
+
+  it("a later successful poll clears the load hint", async () => {
+    mocks.listWorkerMessages
+      .mockRejectedValueOnce(new Error("ipc down"))
+      .mockResolvedValueOnce([
+        { id: "m1", workerId: "worker-1", role: "agent", content: "recovered text", createdAt: 1 },
+      ]);
+
+    const view = render(<HistoryView workerId="worker-1" />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const hint = screen.getByRole("status");
+    expect(hint.textContent).toContain("Verlauf konnte nicht geladen werden");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(mocks.listWorkerMessages).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByText("recovered text")).toBeTruthy();
+    view.unmount();
+  });
 });
