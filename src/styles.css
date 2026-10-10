@@ -4982,10 +4982,14 @@ scripts/contrast-check.mjs. */
   opacity: 1;
 }
 
-/* Bordered secondary for paired settings actions (lift / Wartungsmodus). */
+/* Bordered secondary for paired settings actions (lift / Wartungsmodus).
+   Border role uses separator token until P00/T2 ship --color-control-border;
+   color is restated so the edge stays ≥ readable on both modes. */
 .settings-port-row .button-ghost {
   min-height: var(--ui-control-min);
   border: 1px solid var(--border);
+  border-color: var(--color-text-tertiary);
+  background: var(--color-elevated);
   color: var(--fg);
 }
 
