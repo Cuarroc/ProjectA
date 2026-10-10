@@ -48,9 +48,14 @@ pub fn resolve(
     let levels = [("Start", start), ("Persona", persona), ("Projekt", projekt)];
     for (stufe, vorgabe) in levels {
         if let Vorgabe::Explizit(ort) = vorgabe {
+            let mut grund = format!("{stufe} legt den Ort fest");
+            if matches!(ort, Ort::Server { .. }) {
+                // This core probes nothing; the connect step does.
+                grund.push_str("; ob der Server erreichbar ist, wird beim Verbinden geprüft");
+            }
             return Entscheidung {
                 ort: ort.clone(),
-                grund: format!("{stufe} legt den Ort fest"),
+                grund,
             };
         }
     }
@@ -58,32 +63,51 @@ pub fn resolve(
 }
 
 fn automatisch(host_facts: &HostFacts, server_available: Option<&str>) -> Entscheidung {
-    let pc = |grund: &str| Entscheidung {
-        ort: Ort::Pc,
-        grund: grund.to_string(),
-    };
-    match host_facts.free_ram_bytes {
-        None => pc("RAM unbekannt, PC als Vorgabe"),
-        Some(frei) if frei < MIN_FREE_RAM_BYTES => match server_available {
-            Some(name) => Entscheidung {
-                ort: Ort::Server {
-                    name: name.to_string(),
-                },
-                grund: "weniger als 1,5 GiB frei".to_string(),
-            },
-            None => pc("weniger als 1,5 GiB frei, aber kein Server verfügbar"),
-        },
-        Some(_) => pc("mindestens 1,5 GiB frei, PC reicht"),
-    }
+    automatisch_with_min(MIN_FREE_RAM_BYTES, host_facts, server_available)
 }
 
 /// `automatisch` with an explicit RAM threshold, so a test can pick one.
 fn automatisch_with_min(
-    _min_free_ram_bytes: u64,
+    min_free_ram_bytes: u64,
     host_facts: &HostFacts,
     server_available: Option<&str>,
 ) -> Entscheidung {
-    automatisch(host_facts, server_available)
+    let pc = |grund: String| Entscheidung {
+        ort: Ort::Pc,
+        grund,
+    };
+    let schwelle = gib_text(min_free_ram_bytes);
+    match host_facts.free_ram_bytes {
+        None => pc("RAM unbekannt, PC als Vorgabe".to_string()),
+        Some(frei) if frei < min_free_ram_bytes => {
+            // An empty name is no server: there is nothing to connect to.
+            match server_available.filter(|name| !name.trim().is_empty()) {
+                Some(name) => Entscheidung {
+                    ort: Ort::Server {
+                        name: name.to_string(),
+                    },
+                    grund: format!("weniger als {schwelle} GiB frei"),
+                },
+                None => pc(format!(
+                    "weniger als {schwelle} GiB frei, aber kein Server verfügbar"
+                )),
+            }
+        }
+        Some(_) => pc(format!("mindestens {schwelle} GiB frei, PC reicht")),
+    }
+}
+
+/// GiB as German text with at most two decimals and no trailing zeros
+/// (1,5 / 2 / 0,25), rounded to the nearest hundredth.
+fn gib_text(bytes: u64) -> String {
+    const GIB: u128 = 1024 * 1024 * 1024;
+    let hundredths = (u128::from(bytes) * 100 + GIB / 2) / GIB;
+    let (whole, frac) = (hundredths / 100, hundredths % 100);
+    match frac {
+        0 => whole.to_string(),
+        f if f % 10 == 0 => format!("{whole},{}", f / 10),
+        f => format!("{whole},{f:02}"),
+    }
 }
 
 #[cfg(test)]

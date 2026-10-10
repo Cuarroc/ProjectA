@@ -7,8 +7,11 @@
 //! no store and starts nothing. The scheduler wiring is a later package.
 //!
 //! Rules, per task in queue order:
+//! 0. A task id that appears more than once is ambiguous: every occurrence
+//!    waits with its own reason and takes no seam. This outranks all below.
 //! 1. A predecessor that is neither finished nor queued is missing; a queued
 //!    one is still open; predecessors that form a cycle wait on each other.
+//!    Reason precedence: cycle, then missing, then open.
 //! 2. A seam held by a running task blocks the start.
 //! 3. Two queued tasks on one seam: the earlier startable one takes it, the
 //!    later one waits. Only startable tasks take a seam, so a task that waits
@@ -109,6 +112,12 @@ pub fn queue_order(
     for (at, task) in queue.iter().enumerate() {
         index.entry(task.id.as_str()).or_insert(at);
     }
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    let duplicated: BTreeSet<&str> = queue
+        .iter()
+        .map(|task| task.id.as_str())
+        .filter(|id| !seen.insert(id))
+        .collect();
     // Seam -> startable queued task that took it.
     let mut taken: BTreeMap<Seam, &str> = BTreeMap::new();
     let mut out = Vec::with_capacity(queue.len());
@@ -119,7 +128,12 @@ pub fn queue_order(
             .iter()
             .filter(open)
             .find(|d| !index.contains_key(d.as_str()));
-        let reason = if let Some(chain) = cycle_from(at, queue, &index) {
+        let reason = if duplicated.contains(task.id.as_str()) {
+            Some(format!(
+                "Auftrag {} steht doppelt in der Warteschlange",
+                task.id
+            ))
+        } else if let Some(chain) = cycle_from(at, queue, &index) {
             Some(cycle_reason(&chain, &index))
         } else if let Some(dep) = missing {
             Some(format!("Vorgänger {dep} fehlt in der Warteschlange"))
