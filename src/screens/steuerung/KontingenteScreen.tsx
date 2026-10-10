@@ -7,11 +7,11 @@ import { HonestState } from "../../design/data/HonestState";
 import { Avatar } from "../../design/inputs/Avatar";
 import { Lamp, type LampState } from "../../design/inputs/Lamp";
 import { Meter } from "../../design/inputs/Meter";
-import { PROVIDER_POLL_MS, formatProviderResetsAt, providerDetailText, providerKindLabel, useProviderOverview } from "../../lib/providers";
-import { QUOTA_POLL_MS, blockedLabel, useQuotaState } from "../../lib/quota";
+import { PROVIDER_POLL_MS, formatProviderResetsAt, providerKindLabel, useProviderOverview } from "../../lib/providers";
+import { QUOTA_POLL_MS, useQuotaState } from "../../lib/quota";
 import type { Provider, QuotaState } from "../../types";
-import { initials, toneFor } from "../leitstand/leitstand";
-import { isMeasured, windowRows, type WindowRow } from "./kontingente";
+import { toneFor } from "../leitstand/leitstand";
+import { blockedNote, isMeasured, providerInitials, windowRows, type WindowRow } from "./kontingente";
 import { T } from "./texts";
 import "./kontingente.css";
 
@@ -37,18 +37,19 @@ function Bar({ row }: { row: WindowRow }) {
   );
 }
 
-function ProviderCard({ provider, quota, onProbe }: { provider: Provider; quota: QuotaState | undefined; onProbe: () => void }) {
+function ProviderCard({ provider, quota, avatar, onProbe }: { provider: Provider; quota: QuotaState | undefined; avatar: string; onProbe: () => void }) {
   const blocked = provider.quotaState === "blocked" || quota?.state === "blocked";
-  const note = quota?.state === "blocked" ? blockedLabel(quota) : providerDetailText(provider);
+  const note = blockedNote(provider, quota);
+  const state = blocked ? "blocked" : provider.quotaState;
   return (
     <article className="g-glass kt-card" aria-label={provider.name}>
       <div className="kt-head">
-        <Avatar initials={initials(provider.name)} tone={toneFor(provider.id)} />
+        <Avatar initials={avatar} tone={toneFor(provider.id)} />
         <div className="kt-who">
           <h3 title={provider.name}>{provider.name}</h3>
           <p>{providerKindLabel(provider.kind)}</p>
         </div>
-        <Chip><Lamp state={LAMP[blocked ? "blocked" : provider.quotaState]} />{T.providerLamp[blocked ? "blocked" : provider.quotaState]}</Chip>
+        <Chip><Lamp state={LAMP[state]} />{T.providerLamp[state]}</Chip>
       </div>
       {note && <p className="kt-note">{note}</p>}
       <div className="kt-bars">{windowRows(provider).map((row) => <Bar key={row.key} row={row} />)}</div>
@@ -76,6 +77,7 @@ function Placeholder({ id, title, follow }: { id: string; title: string; follow:
 export function KontingenteScreen() {
   const { providers, loading, error, refresh } = useProviderOverview(PROVIDER_POLL_MS);
   const { byProfile } = useQuotaState(QUOTA_POLL_MS);
+  const avatars = providerInitials(providers);
   return (
     <div className="kt-screen">
       <header className="kt-top">
@@ -85,7 +87,7 @@ export function KontingenteScreen() {
       {error !== null && <HonestState kind="offline" title={error} />}
       {providers.length > 0 ? (
         <div className="kt-provs">
-          {providers.map((p) => <ProviderCard key={p.id} provider={p} quota={byProfile.get(p.id)} onProbe={refresh} />)}
+          {providers.map((p) => <ProviderCard key={p.id} provider={p} quota={byProfile.get(p.id)} avatar={avatars.get(p.id) ?? "?"} onProbe={refresh} />)}
         </div>
       ) : loading ? (
         <p className="kt-note" role="status">{T.loading}</p>
