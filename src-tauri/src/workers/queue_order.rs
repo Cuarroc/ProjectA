@@ -370,19 +370,6 @@ mod tests {
     }
 
     #[test]
-    fn reason_precedence_cycle_before_seam() {
-        let queue = [
-            task("a", &["b"], &[Seam::Store]),
-            task("b", &["a"], &[Seam::Store]),
-        ];
-        let cycle = wartet("Zyklus: a → b → a");
-        assert_eq!(
-            run(&queue, &[], &[(Seam::Store, "runner")]),
-            [cycle.clone(), cycle]
-        );
-    }
-
-    #[test]
     fn reason_precedence_all_four_at_once() {
         // a <-> b is a cycle; b also lacks "ghost" and holds a seam that is
         // busy; the cycle is what b reports. d lacks "ghost", waits for open
