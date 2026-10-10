@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
@@ -75,4 +76,16 @@ it("an empty board is said in words and shows no chips", () => {
   render(<LeitstandCards cards={[]} profiles={[]} now={NOW} onOpen={() => {}} />);
   expect(screen.getByText("Noch kein Agent")).toBeInTheDocument();
   expect(screen.queryByRole("group")).toBeNull();
+});
+
+it("the offline proof sits in its own scoped slot and no bare HonestState override is left", async () => {
+  const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  const slots = container.querySelectorAll(".ls-foot > .ls-proof > .g-hs--offline");
+  expect(slots).toHaveLength(3);
+  // The override must not reach other HonestState kinds: every rule on `.g-hs` goes through `.ls-proof`.
+  const css = readFileSync("src/screens/leitstand/leitstand.css", "utf8");
+  const selectors = css.replace(/\/\*[\s\S]*?\*\//g, "").match(/[^{}]+(?=\{)/g) ?? [];
+  expect(selectors.length).toBeGreaterThan(5);
+  expect(selectors.filter((sel) => /\.g-hs\b/.test(sel) && !/\.ls-proof\b/.test(sel))).toEqual([]);
+  expect(css).not.toMatch(/\.ls-foot\s+\.g-hs/);
 });
