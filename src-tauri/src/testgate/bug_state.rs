@@ -292,4 +292,61 @@ mod tests {
         assert!(reason(bug.finish()).contains("In Arbeit"));
         assert_eq!(bug.state(), BugState::InArbeit);
     }
+
+    fn run_at(path: &str, name: &str, exit_code: i32, sha: &str) -> TestRun {
+        TestRun {
+            path: path.into(),
+            name: name.into(),
+            exit_code,
+            sha: sha.into(),
+        }
+    }
+
+    #[test]
+    fn green_at_the_red_sha_is_rejected_after_a_failing_attempt() {
+        let mut bug = working();
+        bug.submit_fix(run("t", 101, "bbb")).unwrap_err();
+        assert!(reason(bug.submit_fix(run("t", 0, "aaa"))).contains("Versuch 2 von 3"));
+        assert_eq!((bug.state(), bug.attempts()), (BugState::InArbeit, 2));
+        assert_eq!(bug.submit_fix(run("t", 0, "ccc")), Ok(BugState::FixBelegt));
+    }
+
+    #[test]
+    fn green_at_the_sha_of_a_failing_attempt_is_rejected() {
+        let mut bug = working();
+        bug.submit_fix(run("t", 101, "bbb")).unwrap_err();
+        bug.submit_fix(run("t", 0, "bbb")).unwrap_err();
+        assert_eq!((bug.state(), bug.attempts()), (BugState::InArbeit, 2));
+    }
+
+    #[test]
+    fn run_of_a_different_test_does_not_move_the_anchor() {
+        let mut bug = working();
+        bug.submit_fix(run("other", 1, "bbb")).unwrap_err();
+        assert_eq!(bug.submit_fix(run("t", 0, "bbb")), Ok(BugState::FixBelegt));
+    }
+
+    #[test]
+    fn incomplete_run_does_not_move_the_anchor() {
+        let mut bug = working();
+        bug.submit_fix(run_at("", "t", 1, "bbb")).unwrap_err();
+        bug.submit_fix(run_at("a.rs", " ", 1, "bbb")).unwrap_err();
+        assert_eq!(bug.submit_fix(run("t", 0, "bbb")), Ok(BugState::FixBelegt));
+    }
+
+    #[test]
+    fn malformed_or_unrelated_runs_cost_no_attempt() {
+        let mut bug = working();
+        let before = bug.clone();
+        for bad in [
+            run_at("", "t", 0, "bbb"),
+            run_at("a.rs", "t", 0, ""),
+            run("other", 0, "bbb"),
+        ] {
+            let message = reason(bug.submit_fix(bad));
+            assert!(!message.contains("Versuch"), "{message}");
+            assert_eq!(bug, before);
+        }
+        assert_eq!(bug.attempts(), 0);
+    }
 }
