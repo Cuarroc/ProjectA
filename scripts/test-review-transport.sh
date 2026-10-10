@@ -48,8 +48,12 @@ bad() { echo "FEHLER $*"; fails=$((fails + 1)); }
 
 # Ein Server, ein Pfad je Krankheitsbild.
 cat > "$tmp/server.py" <<'PYEOF'
-import json, sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import json, sys, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+barrier = threading.Barrier(2)
+attempts = {}
+lock = threading.Lock()
 
 ANTWORTEN = {
     "/null":   {"choices": [{"message": {"content": None}}], "model": "m-null"},
@@ -66,11 +70,28 @@ ANTWORTEN = {
 class H(BaseHTTPRequestHandler):
     def do_POST(self):
         self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        status = 200
+        path = self.path
+        if path in ("/parallel-a", "/parallel-b"):
+            try:
+                barrier.wait(timeout=5)
+                path = "/gut"
+            except threading.BrokenBarrierError:
+                status = 408
+        if path.startswith("/retry-") or path.startswith("/always-"):
+            with lock:
+                attempts[path] = attempts.get(path, 0) + 1
+                attempt = attempts[path]
+            code = int(path.rsplit("-", 1)[1])
+            status = code if attempt == 1 or path.startswith("/always-") else 200
+            path = "/gut" if status == 200 else path
         if self.path == "/html":            # JSON erwartet, HTML bekommen
             body = b"<html>502 Bad Gateway</html>"
         else:
-            body = json.dumps(ANTWORTEN.get(self.path, {})).encode()
-        self.send_response(200)
+            body = json.dumps(ANTWORTEN.get(path, {"attempts": attempts.get(path)})).encode()
+        self.send_response(status)
+        if status in (429, 502, 503):
+            self.send_header("Retry-After", "0")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -78,7 +99,7 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-s = HTTPServer(("127.0.0.1", 0), H)
+s = ThreadingHTTPServer(("127.0.0.1", 0), H)
 print(s.server_port, flush=True)
 s.serve_forever()
 PYEOF
@@ -123,6 +144,63 @@ lauf() {
   fi
   return 0
 }
+
+if lauf "two reviewers run concurrently" 0 /parallel-a /parallel-b; then
+  for reviewer in r1 r2; do
+    datei="$tmp/out-two reviewers run concurrently/review_probe_$reviewer.md"
+    grep -q "Status: ok" "$datei" && grep -q "ANNEHMEN: alles gut." "$datei" &&
+      ok "$reviewer: concurrent verdict recorded" || bad "$reviewer: concurrent verdict missing"
+  done
+fi
+
+if lauf "429 then 200 yields a verdict" 0 /retry-429; then
+  datei="$tmp/out-429 then 200 yields a verdict/review_probe_r1.md"
+  grep -q "Status: ok" "$datei" && grep -q "ANNEHMEN: alles gut." "$datei" &&
+    ok "retried verdict recorded" || bad "retried verdict missing"
+fi
+for code in 502 503; do
+  lauf "retry-$code" 0 "/retry-$code"
+done
+for code in 429 502 503 401; do
+  if lauf "always-$code" 1 "/always-$code" /gut; then
+    attempts=2
+    [ "$code" -eq 401 ] && attempts=1
+    datei="$tmp/out-always-$code/review_probe_r1.md"
+    grep -q "HTTP $code:.*\"attempts\": $attempts" "$datei" &&
+      ok "$code: bounded attempts" || bad "$code: wrong attempt count"
+    grep -q "Status: ok" "$tmp/out-always-$code/review_probe_r2.md" &&
+      ok "$code: second reviewer succeeded" || bad "$code: second reviewer lost"
+  fi
+done
+
+# Check Retry-After without actually waiting up to the 30-second cap.
+if "$PY" - <<'PYEOF'
+import datetime, importlib.util, io, time, urllib.error
+from email.utils import format_datetime
+from unittest.mock import patch, MagicMock
+
+spec = importlib.util.spec_from_file_location("transport", ".pa/review_transport.py")
+transport = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(transport)
+now = 1800000000
+future = format_datetime(datetime.datetime.fromtimestamp(now + 12, datetime.timezone.utc))
+for header, expected in [("2", 2), ("120", 30), (future, 12), ("bad", 1), (None, 1), ("-1", 0)]:
+    error = urllib.error.HTTPError("http://localhost", 429, "busy",
+                                   {"Retry-After": header}, io.BytesIO(b"busy"))
+    response = MagicMock()
+    response.__enter__.return_value.read.return_value = b'{"response": "verdict"}'
+    with patch.object(transport.urllib.request, "urlopen", side_effect=[error, response]) as send, \
+            patch.object(time, "sleep") as sleep, patch.object(time, "time", return_value=now):
+        assert transport.post_json("http://localhost", {}, "", 10) == {"response": "verdict"}
+        assert send.call_count == 2
+        sleep.assert_called_once_with(expected)
+print("ok   Retry-After seconds, HTTP date, fallback and cap")
+PYEOF
+then
+  ok "Retry-After handling"
+else
+  bad "Retry-After handling"
+fi
 
 # Jede Art, NICHT zu antworten, ist ein Fehlschlag mit Protokoll — kein Absturz.
 for fall in null:content-null leer:leere-antwort zahl:kein-text keine:leere-choices \
