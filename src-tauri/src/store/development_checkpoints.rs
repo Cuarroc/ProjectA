@@ -161,3 +161,150 @@ impl Store {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn input() -> CheckpointInput {
+        CheckpointInput {
+            idempotency_key: "checkpoint-1".into(),
+            expected_revision: 0,
+            completed: vec!["private narrative".into()],
+            remaining: vec![],
+            failed_approaches: vec![],
+            evidence_ids: vec![],
+        }
+    }
+
+    async fn fixture() -> (crate::testutil::TempDir, Store, String) {
+        let (dir, store, _, task) = super::super::tests::fixture().await;
+        let run = store
+            .record_development_run_intent(&task, "worker-a", 7)
+            .await
+            .unwrap();
+        (dir, store, run.id)
+    }
+
+    async fn envelopes(store: &Store) -> Vec<Value> {
+        sqlx::query_scalar::<_, String>(
+            "SELECT detail_json FROM audit_log WHERE action='run_checkpoint' ORDER BY id",
+        )
+        .fetch_all(&store.pool)
+        .await
+        .unwrap()
+        .iter()
+        .map(|raw| serde_json::from_str(raw).unwrap())
+        .collect()
+    }
+
+    fn envelope(run: &str, result: &str) -> Value {
+        serde_json::json!({"project":"project", "run":run, "result":result,
+            "sourceRef":format!("development:checkpoint:{run}")})
+    }
+
+    async fn counts(store: &Store) -> (i64, i64) {
+        sqlx::query_as("SELECT (SELECT COUNT(*) FROM development_checkpoints), (SELECT COUNT(*) FROM continuous_events WHERE kind='run_checkpoint')")
+            .fetch_one(&store.pool).await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn r19_03b_agent_checkpoint_writes_full_envelope_on_success() {
+        let (dir, store, run) = fixture().await;
+        let saved = store
+            .record_agent_checkpoint(&run, "worker-a", 7, input())
+            .await
+            .unwrap();
+        assert_eq!(saved["revision"], 1);
+        assert_eq!(
+            store
+                .record_agent_checkpoint(&run, "worker-a", 7, input())
+                .await
+                .unwrap(),
+            saved
+        );
+        let reopened = Store::open(&dir.path().join("projecta.db")).await.unwrap();
+        assert_eq!(counts(&reopened).await, (1, 1));
+        assert_eq!(
+            envelopes(&reopened).await,
+            vec![envelope(&run, "accepted"); 2]
+        );
+    }
+
+    #[tokio::test]
+    async fn r19_03b_agent_checkpoint_writes_full_envelope_on_rejection() {
+        let (_dir, store, run) = fixture().await;
+        store
+            .record_agent_checkpoint(&run, "worker-a", 7, input())
+            .await
+            .unwrap();
+        for case in 0..8 {
+            let mut request = input();
+            let mut owner = "worker-a";
+            let mut fence = 7;
+            match case {
+                0 => owner = "foreign",
+                1 => fence = 8,
+                2 => request.idempotency_key.clear(),
+                3 => request.expected_revision = -1,
+                4 => request.idempotency_key = "stale-revision".into(),
+                5 => {
+                    request.idempotency_key = "bad-evidence".into();
+                    request.expected_revision = 1;
+                    request.evidence_ids.push("missing".into());
+                }
+                6 => request.completed = vec!["changed content".into()],
+                _ => request.remaining = vec!["x".repeat(2049)],
+            }
+            assert!(store
+                .record_agent_checkpoint(&run, owner, fence, request)
+                .await
+                .is_err());
+            assert_eq!(counts(&store).await, (1, 1));
+            let audits = envelopes(&store).await;
+            assert_eq!(audits.len(), case + 2);
+            assert_eq!(audits.last().unwrap(), &envelope(&run, "rejected"));
+        }
+        for unknown in ["missing-run", " "] {
+            assert!(store
+                .record_agent_checkpoint(unknown, "worker-a", 7, input())
+                .await
+                .is_err());
+            assert_eq!(
+                envelopes(&store).await.last().unwrap(),
+                &serde_json::json!({
+                    "project":"unresolved", "run":"unresolved", "result":"rejected",
+                    "sourceRef":"development:checkpoint:unresolved"
+                })
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn r19_03b_agent_checkpoint_audit_failure_rolls_back() {
+        let (_dir, store, run) = fixture().await;
+        sqlx::query("CREATE TRIGGER reject_checkpoint_audit BEFORE INSERT ON audit_log BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END")
+            .execute(&store.pool).await.unwrap();
+        let error = store
+            .record_agent_checkpoint(&run, "worker-a", 7, input())
+            .await
+            .unwrap_err();
+        assert!(error.contains("audit unavailable"), "{error}");
+        assert_eq!(counts(&store).await, (0, 0));
+        assert!(envelopes(&store).await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn r19_03b_agent_checkpoint_journal_failure_audits_without_partial_state() {
+        let (_dir, store, run) = fixture().await;
+        sqlx::query("CREATE TRIGGER reject_checkpoint_event BEFORE INSERT ON continuous_events WHEN NEW.kind='run_checkpoint' BEGIN SELECT RAISE(ABORT, 'journal unavailable'); END")
+            .execute(&store.pool).await.unwrap();
+        let error = store
+            .record_agent_checkpoint(&run, "worker-a", 7, input())
+            .await
+            .unwrap_err();
+        assert!(error.contains("journal unavailable"), "{error}");
+        assert_eq!(counts(&store).await, (0, 0));
+        assert_eq!(envelopes(&store).await, vec![envelope(&run, "rejected")]);
+    }
+}
