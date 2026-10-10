@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "../../design/controls/Button";
 import { describeError, getEmergencyStop, setEmergencyStop } from "../../lib/ipc";
@@ -11,8 +11,14 @@ export function StopBand() {
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Bumped when a resume starts and when it ends: a poll that spans either is stale and must not flip the band back.
+  const resumeGen = useRef(0);
+  const resuming = useRef(false);
+
   const refresh = useCallback(() => {
-    getEmergencyStop().then((v) => setActive(v === true), () => setActive(true));
+    const gen = resumeGen.current;
+    const apply = (next: boolean) => { if (!resuming.current && gen === resumeGen.current) setActive(next); };
+    getEmergencyStop().then((v) => apply(v === true), () => apply(true));
   }, []);
   useEffect(() => {
     refresh();
@@ -23,7 +29,10 @@ export function StopBand() {
   if (!active) return null;
   const resume = () => {
     setError(null);
-    setEmergencyStop(false).then(() => setActive(false), (e) => setError(describeError(e)));
+    resuming.current = true;
+    resumeGen.current += 1;
+    const settled = () => { resuming.current = false; resumeGen.current += 1; };
+    setEmergencyStop(false).then(() => { settled(); setActive(false); }, (e) => { settled(); setError(describeError(e)); });
   };
   return (
     <div className="g-hdr-stop" role="status">

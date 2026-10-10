@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 
 import { HonestState } from "../../design/data/HonestState";
 import { Kbd } from "../../design/inputs/Kbd";
@@ -19,6 +19,12 @@ export const matchCommands = (query: string): Command[] => {
   return COMMANDS.filter((c) => words.every((w) => c.label.toLowerCase().includes(w)));
 };
 
+/** Key hint for the shortcut: Cmd on Apple platforms, Strg elsewhere. */
+const shortcutLabel = (): string => {
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  return /mac|iphone|ipad/i.test(nav.userAgentData?.platform || nav.platform || "") ? "⌘ K" : "Strg K";
+};
+
 /** Search field in the header (Strg K / Cmd K) that opens the palette on the Sheet. */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -27,18 +33,18 @@ export function CommandPalette() {
   const base = useId();
   const hits = useMemo(() => matchCommands(query), [query]);
 
+  const close = useCallback(() => { setOpen(false); setQuery(""); setIndex(0); }, []);
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((v) => !v);
+        if (open) close(); else setOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [open, close]);
 
-  const close = () => { setOpen(false); setQuery(""); setIndex(0); };
   const run = (c: Command | undefined) => {
     if (!c) return;
     window.location.hash = `#${c.path}`;
@@ -59,13 +65,13 @@ export function CommandPalette() {
       <button type="button" className="g-hdr-search" aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M9 3.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11ZM13.5 13.5 17 17" /></svg>
         <span>Seiten und Befehle suchen</span>
-        <Kbd>Strg K</Kbd>
+        <Kbd>{shortcutLabel()}</Kbd>
       </button>
       <Sheet open={open} onClose={close} aria-label="Befehlspalette">
         <div className="g-hdr-pal" onKeyDown={onKeyDown}>
           <input
             type="search" className="g-hdr-pal__in" placeholder="Seite suchen" aria-label="Suchen oder Befehl eingeben"
-            role="combobox" aria-expanded="true" aria-controls={`${base}-list`}
+            role="combobox" aria-expanded="true" aria-controls={hits.length ? `${base}-list` : undefined}
             aria-activedescendant={hits[index] ? `${base}-${index}` : undefined}
             value={query} onChange={(e) => { setQuery(e.target.value); setIndex(0); }}
           />
