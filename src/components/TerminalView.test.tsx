@@ -731,6 +731,28 @@ describe("TerminalView", () => {
     });
   });
 
+  it("refits when the shell grid finishes a rail transition", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <div className="app">
+          <TerminalView sessionId="session-a" onError={vi.fn()} />
+        </div>,
+      );
+      const shell = container.querySelector(".app");
+      const fitsBefore = mocks.fit.mock.calls.length;
+      act(() => {
+        shell!.dispatchEvent(
+          new TransitionEvent("transitionend", { bubbles: true, propertyName: "grid-template-columns" }),
+        );
+        vi.advanceTimersByTime(32);
+      });
+      expect(mocks.fit.mock.calls.length).toBeGreaterThan(fitsBefore);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   describe("Kontrast der Treffer-Hervorhebung", () => {
     // #RRGGBB, weil addon-search laut Typings nur dieses Format akzeptiert
     // (Alpha wird stillschweigend verworfen) — eine transluzente Farbe wäre

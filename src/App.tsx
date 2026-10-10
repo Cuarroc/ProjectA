@@ -181,7 +181,24 @@ function AppContent() {
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(readStoredProjectId);
   const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
+  const [viewportNarrow, setViewportNarrow] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 1099px)").matches,
+  );
+  const [narrowForceOpen, setNarrowForceOpen] = useState(false);
+  const [railMotion, setRailMotion] = useState(false);
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>("loading");
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 1099px)");
+    const apply = () => {
+      setViewportNarrow(mq.matches);
+      if (mq.matches) setNarrowForceOpen(false);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [workersLoading, setWorkersLoading] = useState(false);
@@ -241,10 +258,9 @@ function AppContent() {
     [],
   );
 
-  // The rail shows the board beside every other view, so the full board no
-  // longer needs one of its own — and hiding it there keeps the two from
-  // saying the same thing twice in one window.
-  const railVisible = railOpen && !(goal === "work" && workSurface === "board");
+  const railExpanded =
+    !(goal === "work" && workSurface === "board") &&
+    (viewportNarrow ? narrowForceOpen : railOpen);
 
   // Initial fetch, `worker:status` updates and the polling fallback all live in
   // here. It used to sleep on the Workers view; it no longer can. The rail and
@@ -778,11 +794,24 @@ function AppContent() {
    * terminal — the board hands the workspace over rather than embedding it.
    */
   const toggleRail = useCallback(() => {
-    setRailOpen((open) => {
-      writeStoredRailOpen(!open);
-      return !open;
-    });
-  }, []);
+    setRailMotion(true);
+    if (railExpanded) {
+      writeStoredRailOpen(false);
+      setRailOpen(false);
+      setNarrowForceOpen(false);
+      return;
+    }
+    writeStoredRailOpen(true);
+    setRailOpen(true);
+    if (viewportNarrow) setNarrowForceOpen(true);
+  }, [railExpanded, viewportNarrow]);
+  const onAppTransitionEnd = useCallback(
+    (event: { target: EventTarget; currentTarget: HTMLDivElement; propertyName: string }) => {
+      if (event.target !== event.currentTarget || event.propertyName !== "grid-template-columns") return;
+      setRailMotion(false);
+    },
+    [],
+  );
 
   const handleOpenCard = useCallback(
     (worker: Worker) => {
@@ -1106,7 +1135,13 @@ function AppContent() {
   }
 
   return (
-    <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density} data-theme-style={themeStyle} data-ui-font-size={fonts.uiFontSize}>
+    <div
+      className={`app${railExpanded ? " app-railed" : ""}${railMotion ? " app-rail-motion" : ""}`}
+      data-density={density}
+      data-theme-style={themeStyle}
+      data-ui-font-size={fonts.uiFontSize}
+      onTransitionEnd={onAppTransitionEnd}
+    >
       <ThemeBackdrop style={themeStyle} />
       <Sidebar
         projects={projects}
@@ -1151,13 +1186,13 @@ function AppContent() {
           />
         ) : null}
       </Sidebar>
-      {railVisible ? (
-        <BoardRail
+      <BoardRail
           cards={board.cards}
           activeWorkerId={activeSession?.workerId ?? restoreWorkerId}
           hasProject={activeProject !== null}
           loading={board.loading}
           error={board.error}
+          collapsed={!railExpanded}
           onOpen={handleOpenCard}
           onOpenBoard={() => {
             setWorkSurface("board");
@@ -1168,7 +1203,6 @@ function AppContent() {
           onOpenQuestions={() => setGoal("attention")}
           onCollapse={toggleRail}
         />
-      ) : null}
       <main className="main">
         <LiveStatus
           view={GOAL_LABELS[goal]}
@@ -1190,7 +1224,7 @@ function AppContent() {
           questionsFleetWide={questions.scope === "all"}
           onNewWorker={openWorkerDialog}
           newWorkerDisabled={activeProject === null || !isCategoryActive("worker")}
-          railOpen={railOpen}
+          railOpen={railExpanded}
           onToggleRail={toggleRail}
         />
         {goal === "work" && workSurface === "dialog" ? (

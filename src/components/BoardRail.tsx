@@ -17,6 +17,8 @@ interface BoardRailProps {
   hasProject: boolean;
   loading: boolean;
   error: string | null;
+  /** When true the shell track is 0-wide; keep mounted and mark inert. */
+  collapsed?: boolean;
   /** Open the worker's workspace, same jump a board card makes. */
   onOpen: (worker: Worker) => void;
   /** Leave the rail for the full board, where a card can be acted on. */
@@ -50,6 +52,7 @@ export default function BoardRail({
   hasProject,
   loading,
   error,
+  collapsed = false,
   onOpen,
   onOpenBoard,
   openQuestions,
@@ -76,7 +79,16 @@ export default function BoardRail({
   const needsYou = workerCards.filter((card) => card.column === "needs_you").length;
 
   return (
-    <aside className="rail" aria-label="Board">
+    <aside
+      className="rail"
+      aria-label="Board"
+      aria-hidden={collapsed || undefined}
+      ref={(node) => {
+        if (!node) return;
+        if (collapsed) node.setAttribute("inert", "");
+        else node.removeAttribute("inert");
+      }}
+    >
       <div className="rail-head">
         <button
           type="button"
