@@ -119,3 +119,15 @@ describe("UT-P00 token foundation", () => {
     expect(resolveVar(dark, dark["weight-semibold"])).toBe("600");
   });
 });
+
+it("bar controls and panel padding follow both density recipes", () => {
+  const normal = css.match(/\.app\s*\{[^}]*--ui-control-min[^}]*\}/)![0];
+  const compact = css.match(/\.app\[data-density="compact"\]\s*\{[^}]*\}/)![0];
+  for (const [block, bar, shell, pad] of [[normal, "28px", "44px", "24px"], [compact, "24px", "38px", "16px"]]) {
+    const tokens = { ...themeVars().dark, ...parseVars(block) };
+    expect(resolveVar(tokens, tokens["ui-bar-control"])).toBe(bar);
+    expect(resolveVar(tokens, tokens["shell-bar-h"])).toBe(shell);
+    expect(resolveVar(tokens, tokens["ui-panel-pad"])).toBe(pad);
+  }
+  expect(css).toMatch(/\.app \.convo-action,\s*\.app \.segment\s*\{\s*min-height: var\(--ui-bar-control\)/);
+});
