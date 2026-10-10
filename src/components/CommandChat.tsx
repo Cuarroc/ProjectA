@@ -21,7 +21,17 @@ interface CommandChatProps {
 function EmptyChat() {
   return (
     <div className="command-chat-empty">
-      <p>Noch keine Nachrichten. Schick dem Orchestrator eine Aufgabe.</p>
+      <p className="command-chat-empty-title">Noch keine Nachrichten</p>
+      <p>Schick dem Orchestrator eine Aufgabe.</p>
+    </div>
+  );
+}
+
+/** Shown while the shared orchestrator history is still in flight. */
+function LoadingChat() {
+  return (
+    <div className="command-chat-empty" aria-live="polite">
+      <p>Verlauf wird geladen…</p>
     </div>
   );
 }
@@ -102,7 +112,9 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
     <div className="command-chat">
       {historyOpen ? (
         <div className="command-chat-history">
-          {chat.messages.length === 0 ? (
+          {chat.messages.length === 0 && chat.loading ? (
+            <LoadingChat />
+          ) : chat.messages.length === 0 ? (
             <EmptyChat />
           ) : (
             <div className="command-chat-list" ref={scrollRef} onScroll={handleScroll}>

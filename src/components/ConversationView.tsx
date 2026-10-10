@@ -115,18 +115,26 @@ export default function ConversationView({
       <div className="convo-stream" ref={scrollRef} onScroll={handleScroll}>
         <div className="convo-thread">
           {chat.disabled ? (
-            <p className="convo-empty">
-              Wähle links ein Projekt, um mit seinem Orchestrator zu sprechen.
-            </p>
+            <div className="convo-empty">
+              <p className="convo-empty-title">Kein Projekt</p>
+              <p className="convo-empty-copy">
+                Wähle links ein Projekt, um mit seinem Orchestrator zu sprechen.
+              </p>
+            </div>
           ) : chat.messages.length === 0 && chat.loading ? (
             // The history read is still out — "noch keine Nachrichten" would
             // claim a thread was empty that simply was never read.
-            <p className="convo-empty">Verlauf wird geladen…</p>
+            <div className="convo-empty" aria-live="polite">
+              Verlauf wird geladen…
+            </div>
           ) : chat.messages.length === 0 ? (
-            <p className="convo-empty">
-              Noch keine Nachrichten. Sag unten, was als Nächstes passieren soll — der
-              Orchestrator verteilt die Arbeit auf Worker.
-            </p>
+            <div className="convo-empty">
+              <p className="convo-empty-title">Noch keine Nachrichten</p>
+              <p className="convo-empty-copy">
+                Sag unten, was als Nächstes passieren soll — der Orchestrator verteilt die
+                Arbeit auf Worker.
+              </p>
+            </div>
           ) : (
             chat.messages.map((message) => <Bubble key={message.id} message={message} />)
           )}
