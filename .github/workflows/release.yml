@@ -75,6 +75,18 @@ jobs:
       # Same setup as release-gates-dry-run (Node, Rust, lane tools, Chromium).
       - uses: ./.github/actions/setup-windows-release
 
+      # Frueher Abbruch: ein Tag, der nicht zur App-Version passt, wuerde sonst
+      # erst nach Gates und Installer-Build am fehlenden Installer scheitern.
+      - name: Check tag matches the app version
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#[vV]}"
+          conf_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [ "$tag_version" != "$conf_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} passt nicht zu src-tauri/tauri.conf.json (version ${conf_version})"
+            exit 1
+          fi
+
       # Bis zum 09.09. stand hier eine eigene Gate-Liste — und sie war die
       # SCHWAECHSTE im Repo: kein `lint`, kein `test:e2e`, kein
       # `no-masked-output`, und `cargo test` statt `cargo nextest run
@@ -147,9 +159,12 @@ jobs:
           try {
             gh release view $stagingTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
             if ($LASTEXITCODE -eq 0) { throw "Staging-Release $stagingTag existiert bereits; kein Clobber" }
+            # Der Guard oben ist bestanden: der Tag gehoert ab hier diesem Lauf. Das
+            # Flag steht VOR dem Create, damit auch ein Create mit Exit != 0, das den
+            # Release trotzdem angelegt hat, im catch aufgeraeumt wird.
+            $stagingCreated = $true
             gh release create $stagingTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version (staging)" --notes "Unveroeffentlichter Update-Kandidat; wird erst nach anonymem Verify stabil." --prerelease
             if ($LASTEXITCODE -ne 0) { throw "gh release create staging fehlgeschlagen (exit $LASTEXITCODE)" }
-            $stagingCreated = $true
             gh release upload $stagingTag $exe "$exe.sig" --repo Cuarroc/ProjectA-updates --clobber
             if ($LASTEXITCODE -ne 0) { throw "gh release upload staging installer fehlgeschlagen (exit $LASTEXITCODE)" }
             $assetUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stagingTag/ProjectA_${version}_x64-setup.exe"
@@ -182,7 +197,16 @@ jobs:
           } catch {
             if ($stagingCreated) {
               gh release delete $stagingTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
-              $cleanup = if ($LASTEXITCODE -eq 0) { "Staging-Release entfernt" } else { "Staging-Cleanup fehlgeschlagen (gh exit $LASTEXITCODE)" }
+              if ($LASTEXITCODE -eq 0) { $cleanup = "Staging-Release entfernt" } else {
+                $deleteExit = $LASTEXITCODE
+                # Ein Create, das nie angelegt hat, hinterlaesst nichts: nur warnen,
+                # wenn der Release noch existiert.
+                gh release view $stagingTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                  $cleanup = "Staging-Cleanup fehlgeschlagen (gh exit $deleteExit)"
+                  Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $deleteExit); vor einem Re-Run manuell loeschen"
+                } else { $cleanup = "kein Staging-Release angelegt" }
+              }
             } else { $cleanup = "kein Staging-Release erstellt" }
             throw "Staging-Verify fehlgeschlagen ($cleanup): $($_.Exception.Message)"
           }
@@ -205,11 +229,20 @@ jobs:
           $sig = (Get-Content "$exe.sig" -Raw).Trim()
           $env:GH_TOKEN = $env:MIRROR_TOKEN
           $stableTag = "v$version"
+          $stagingTag = "v$version-staging"
           $stableCreated = $false
           trap {
             $failure = $_
             if ($stableCreated) {
               gh release delete $stableTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+            }
+            # Der Staging-Kandidat ist nach einem gescheiterten Lauf wertlos und
+            # wuerde den Re-Run am "Staging existiert bereits"-Guard stoppen.
+            gh release delete $stagingTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+              $deleteExit = $LASTEXITCODE
+              gh release view $stagingTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
+              if ($LASTEXITCODE -eq 0) { Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $deleteExit); vor einem Re-Run manuell loeschen" }
             }
             throw $failure
           }
@@ -218,9 +251,12 @@ jobs:
           # stabiler Tag wird nicht ueberschrieben.
           gh release view $stableTag --repo Cuarroc/ProjectA-updates 2>$null | Out-Null
           if ($LASTEXITCODE -eq 0) { throw "stabiler Release $stableTag existiert bereits; kein Clobber" }
+          # Der Guard oben ist bestanden: der Tag gehoert ab hier diesem Lauf. Das
+          # Flag steht VOR dem Create, damit auch ein Create mit Exit != 0, das den
+          # Release trotzdem angelegt hat, vom trap entfernt wird.
+          $stableCreated = $true
           gh release create $stableTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version" --notes "Auto-Update-Kanal (Spiegel). Quellcode: github.com/Cuarroc/ProjectA (privat)." --prerelease
           if ($LASTEXITCODE -ne 0) { throw "gh release create fehlgeschlagen (exit $LASTEXITCODE)" }
-          $stableCreated = $true
           gh release upload $stableTag $exe "$exe.sig" --repo Cuarroc/ProjectA-updates --clobber
           if ($LASTEXITCODE -ne 0) { throw "gh release upload installer fehlgeschlagen (exit $LASTEXITCODE)" }
           $assetUrl = "https://github.com/Cuarroc/ProjectA-updates/releases/download/$stableTag/ProjectA_${version}_x64-setup.exe"
@@ -260,11 +296,18 @@ jobs:
           gh release edit $stableTag --repo Cuarroc/ProjectA-updates --prerelease=false --latest
           if ($LASTEXITCODE -ne 0) { throw "stabiler Release konnte nicht promoted werden (exit $LASTEXITCODE)" }
           $stableCreated = $false
+          # Der Staging-Release hat ausgedient; sonst scheitert ein Re-Run am
+          # Guard im Staging-Schritt. Best effort: der stabile Release ist schon
+          # live, ein Cleanup-Fehler darf den Lauf nicht mehr rot machen (pwsh
+          # gibt sonst den letzten nativen Exit-Code als Schritt-Status aus).
+          gh release delete $stagingTag --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) { Write-Host "::warning::Staging-Release $stagingTag nicht entfernt (gh exit $LASTEXITCODE); vor einem Re-Run manuell loeschen" }
+          $global:LASTEXITCODE = 0
 
       # Anonymes Verify-Gate: exakt die Requests, die die App stellt — OHNE
       # jeden Auth-Header. Repo-Regel: Endpoint-Verifikation nie mit
       # Credentials, die das Produkt nicht hat. Faengt den 31.08.-Befund.
-      # MIRROR_TOKEN nur fuer den Rollback-Pfad (delete-asset bei Fehlschlag).
+      # MIRROR_TOKEN nur fuer den Rollback-Pfad (Release-Delete bei Fehlschlag).
       - name: Verify updater channel anonymously (app-identical requests)
         shell: pwsh
         env:
@@ -336,12 +379,22 @@ jobs:
             Write-Host "OK: Manifest + Asset (GET) + Signatur (identisch) anonym erreichbar, version=$version"
           } catch {
             # Rollback: ein kaputtes Manifest darf NICHT live bleiben — Clients
-            # wuerden sonst ein scheiterndes Update starten. Ohne Manifest
-            # sehen Clients nur "kein Update gefunden".
+            # wuerden sonst ein scheiterndes Update starten. Nur latest.json zu
+            # loeschen reicht nicht: releases/latest zeigt dann auf einen Release
+            # OHNE Manifest, und Clients bekommen einen Fehler statt "kein
+            # Update". Deshalb den gerade promoteten stabilen Release loeschen;
+            # releases/latest faellt auf den vorherigen stabilen Release zurueck.
             Write-Host "VERIFY FEHLGESCHLAGEN: $($_.Exception.Message)"
-            Write-Host "Rollback: latest.json vom Mirror-Release entfernen"
+            Write-Host "Rollback: stabilen Mirror-Release v$version entfernen (releases/latest faellt auf den Vorgaenger zurueck)"
             $env:GH_TOKEN = $env:MIRROR_TOKEN
-            gh release delete-asset "v$version" latest.json --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
-            $rollback = if ($LASTEXITCODE -eq 0) { "latest.json entfernt" } else { "Rollback fehlgeschlagen (gh exit $LASTEXITCODE)" }
+            gh release delete "v$version" --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+              $rollback = "stabiler Mirror-Release v$version entfernt"
+            } else {
+              $deleteExit = $LASTEXITCODE
+              # Notnagel: wenigstens das Manifest entfernen.
+              gh release delete-asset "v$version" latest.json --repo Cuarroc/ProjectA-updates --yes 2>$null | Out-Null
+              $rollback = if ($LASTEXITCODE -eq 0) { "Release-Delete fehlgeschlagen (gh exit $deleteExit), nur latest.json entfernt" } else { "Rollback fehlgeschlagen (gh exit $deleteExit/$LASTEXITCODE)" }
+            }
             throw "Anonymes Verify-Gate fehlgeschlagen ($rollback): $($_.Exception.Message)"
           }
