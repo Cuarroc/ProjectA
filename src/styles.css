@@ -6757,6 +6757,9 @@ scripts/contrast-check.mjs. */
   --ui-row-min: 44px;
   --ui-panel-pad: var(--space-8);
   --ui-bar-control: 28px;
+  /* Rebind inherited aliases where a theme overrides the elevation slots. */
+  --shadow-card: var(--elev-1);
+  --shadow-popover: var(--elev-2);
   accent-color: var(--color-accent);
 }
 
