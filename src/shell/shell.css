@@ -1,0 +1,46 @@
+/* V2-F8a shell frame: layout only. Colours, radii and blur come from tokens.css / glass.css.
+   Text in the content area sits on a .g-glass container, never on the backdrop. */
+.g-shell {
+  min-height: 100vh; display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; box-sizing: border-box;
+  color: var(--g-ink); font: 400 13px/1.5 var(--g-font-sans);
+  background: radial-gradient(900px 640px at 0% 0%, var(--g-amb1), transparent 66%),
+    radial-gradient(780px 600px at 100% 120px, var(--g-amb2), transparent 66%),
+    radial-gradient(1000px 520px at 50% 900px, var(--g-amb3), transparent 66%), var(--g-ground);
+}
+.g-shell *, .g-shell *::before, .g-shell *::after { box-sizing: border-box; }
+.g-shell :focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
+.g-shell h1, .g-shell p { margin: 0; }
+.g-shell-side { flex: 1 1 224px; display: flex; flex-direction: column; gap: 16px; padding: 12px 8px; }
+@media (min-width: 760px) { .g-shell-side { max-width: 232px; } }
+.g-shell-brand { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; }
+.g-shell-brand b { font: 600 15px/1 var(--g-font-sans); }
+.g-shell-brand small { font: 500 11px/1 var(--g-font-mono); color: var(--g-muted); }
+.g-shell-nav { display: flex; flex-direction: column; }
+.g-shell-foot { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--g-hair); }
+.g-shell-link, .g-shell-tabs a {
+  display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; border-radius: 10px;
+  color: var(--g-ink2); text-decoration: none; font: 500 13px/1.3 var(--g-font-sans);
+}
+.g-shell-link:active { transform: scale(.98); }
+.g-shell [aria-current="page"] { background: var(--g-tint-hi); color: var(--g-ink); box-shadow: 0 0 0 1px var(--g-line); }
+.g-shell-ic { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--g-muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.g-shell-link[aria-current="page"] .g-shell-ic { stroke: var(--g-accent); }
+@media (hover: hover) and (pointer: fine) { .g-shell-link:hover { background: var(--g-tint); } }
+.g-shell-main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.g-shell-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; }
+.g-shell-spacer { flex: 1 1 0; }
+.g-shell-divider { width: 1px; height: 24px; background: var(--g-line); margin: 0 4px; }
+.g-shell-pick {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--g-muted); font: 600 13px/1.3 var(--g-font-sans); cursor: not-allowed;
+}
+/* EmergencyStop is reused unchanged; this only compacts its old-UI markup into the bar. */
+.g-shell-estop .settings-field { display: flex; flex-wrap: nowrap; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+.g-shell-estop .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.g-shell-estop .settings-hint { max-width: 28ch; margin: 0; font-size: 11px; line-height: 1.3; color: var(--g-muted); }
+.g-shell-estop button { min-height: 44px; }
+.g-shell-content { flex: 1; min-width: 0; display: flex; }
+.g-shell-panel { flex: 1; padding: var(--g-pad); display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.g-shell-panel h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }
+.g-shell-note { color: var(--g-muted); max-width: 76ch; }
+.g-shell-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--g-tint); border: 1px solid var(--g-hair); max-width: 100%; overflow-x: auto; }
