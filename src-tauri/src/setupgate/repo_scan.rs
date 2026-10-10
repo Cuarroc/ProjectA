@@ -4,7 +4,9 @@
 //!
 //! Every file the scan reads is resolved first and must stay inside its base
 //! folder; a link that leads out counts as "not present", so the answer does
-//! not reveal whether the target exists.
+//! not reveal whether the target exists. This is by design: a monorepo whose
+//! gate files are links to a shared folder outside the repository is
+//! under-detected (follow-up V2-FU-S11C: tell the user in the screen copy).
 
 use std::fs;
 use std::path::{Path, PathBuf};

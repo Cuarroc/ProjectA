@@ -2282,6 +2282,8 @@ const SCAN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
 
 /// Run `job` off the calling thread and give up after `limit`. The thread
 /// itself cannot be cancelled and finishes in the background; only the wait ends.
+/// A timed-out job may leave its `git` child running until that ends on its
+/// own: the bound is on the wait, not on the work.
 async fn scan_within<T: Send + 'static>(
     limit: std::time::Duration,
     job: impl FnOnce() -> Result<T, String> + Send + 'static,
@@ -8081,6 +8083,12 @@ pub(crate) mod tests {
     fn scan_setup_repo_does_not_follow_links_out_of_the_root() {
         let outside = scan_fixture("scan-setup-outside");
         let out = outside.path();
+        // The bait must be there, or "not present" would prove nothing.
+        assert!(std::fs::read_to_string(out.join("AGENTS.md"))
+            .unwrap()
+            .contains("src/api.rs"));
+        assert!(out.join(".mergify.yml").is_file());
+        assert!(out.join("scripts/ci/gates.sh").is_file());
         for rel in ["AGENTS.md", ".mergify.yml", "scripts"] {
             let dir = scan_fixture("scan-setup-link");
             relink(dir.path(), rel, &out.join(rel));
@@ -8099,11 +8107,16 @@ pub(crate) mod tests {
     fn scan_setup_repo_refuses_a_dot_git_link_that_points_outside_the_root() {
         let outside = scan_fixture("scan-setup-outside-git");
         let dir = scan_fixture("scan-setup-link-git");
+        // The outside `.git` is a real repository, so only containment refuses.
+        assert!(outside.path().join(".git").is_dir());
+        crate::worktree::ensure_git_repo(outside.path().to_str().unwrap()).expect("bait is a repo");
         relink(dir.path(), ".git", &outside.path().join(".git"));
         let err = scan_setup_repo_at(dir.path().to_str().unwrap()).expect_err("must refuse");
         assert!(!err.contains(outside.path().to_str().unwrap()), "{err}");
     }
 
+    // Windows strips a trailing blank from a folder name.
+    #[cfg(unix)]
     #[test]
     fn scan_setup_repo_scans_the_path_as_given_not_trimmed() {
         let dir = TempDir::new("scan-setup-space");
