@@ -26,7 +26,7 @@ afterEach(() => { cleanup(); delete (window as { matchMedia?: unknown }).matchMe
 describe("narrow header", () => {
   // The name is referenced by a pushed Test-First trailer and cannot change. Root decision: the breakpoint stays 1599 px
   // (the controls fit from 1253 px, but search label/shortcut and quota status would disappear; V2-FU-HEADER-SPACE).
-  it("collapses only where the full controls were measured not to fit (1250 px and below)", () => {
+  it("collapses only where the full controls were measured not to fit 1250 px and below", () => {
     expect(COMPACT_QUERY).toBe("(max-width: 1599px)");
   });
 
