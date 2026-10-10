@@ -156,6 +156,14 @@ case_m main-red-without-ran-wiring ci 's#\$\{\{ needs\.linux\.outputs\.lane_run 
 # run can freeze again after a newer green run lifted it (S-5/O-5).
 case_m main-red-without-concurrency ci '/^  main-red:/,$ s/^      group: main-red-guard$//' \
   "main-red.*concurrency"
+# V161-FU-3 / R934-A2: both red-first steps must pin RF_BASE_BRANCH and fetch
+# refs/heads/$RF_BASE_BRANCH — removing either must turn ci-shape red.
+case_m "ci-shape fails when a red-first step lacks RF_BASE_BRANCH" ci \
+  '/RF_BASE_BRANCH:/d' \
+  "RF_BASE_BRANCH"
+case_m "ci-shape fails when the red-first base branch fetch is missing" ci \
+  '/refs\/heads\/\$RF_BASE_BRANCH/d' \
+  "base branch fetch"
 
 # Call errors are errors, not a silent pass.
 check missing-file fail "$tmp/does-not-exist.yml" "$MG" "not found"
