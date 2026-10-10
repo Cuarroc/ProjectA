@@ -100,3 +100,27 @@ describe("APP-17: state tints come from the token layer the contrast gate sees",
     expect(coloured, "coloured rgba backgrounds").toEqual([]);
   });
 });
+
+describe("V161-UI-F1: focus ring and selected segment", () => {
+  it("the global focus rule has no border-radius", () => {
+    expect(blockOf(":focus-visible")).not.toMatch(/border-radius\s*:/);
+  });
+
+  it(".segmented with overflow has an inset focus rule", () => {
+    expect(blockOf(".segmented")).toMatch(/overflow-x:\s*auto/);
+    const inset = css.match(
+      /\.segmented\s+\.segment:focus-visible\s*\{([^}]*)\}/,
+    );
+    expect(inset, "segmented inset focus rule missing").not.toBeNull();
+    expect(inset![1]).toMatch(/outline-offset:\s*-2px/);
+  });
+
+  it(".segment-active has no solid accent fill", () => {
+    const active = blockOf(".segment-active");
+    expect(active).not.toMatch(
+      /background:\s*var\(--(?:color-)?accent\)/,
+    );
+    expect(active).toMatch(/background:\s*var\(--bg\)/);
+    expect(active).toMatch(/box-shadow:\s*inset\s+0\s+-2px/);
+  });
+});
