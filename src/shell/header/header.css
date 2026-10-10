@@ -1,18 +1,24 @@
 /* V2-F8b header tools: layout only, colours and radii from tokens. Mirrors Main.dc.html .search/.qm/.bell/.stopband. */
-.g-hdr-tools { flex: 1 1 320px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+/* Shrink order in the header: the search first, then the quota bar, then (in shell.css) the Not-Aus note. */
+.g-hdr-tools { flex: 1 1 360px; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 148px; container-type: inline-size; }
 .g-hdr-search {
-  flex: 1 1 240px; display: flex; align-items: center; gap: 8px; min-width: 0; height: 44px; padding: 0 12px;
+  flex: 1 4 240px; display: flex; align-items: center; gap: 8px; min-width: 44px; height: 44px; padding: 0 12px; container-type: inline-size;
   border: 1px solid var(--g-line); border-radius: 12px; background: var(--g-tint); color: var(--g-faint);
   font: 400 13px/1 var(--g-font-sans); cursor: pointer; text-align: left;
 }
 .g-hdr-search span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-hdr-search kbd { flex: none; white-space: nowrap; }
+@container (max-width: 239px) { .g-hdr-search kbd { display: none; } }
+@container (max-width: 119px) { .g-hdr-search span { display: none; } }
+@container (max-width: 359px) { .g-hdr-quota .g-hs__title { display: none; } }
 .g-hdr-quota, .g-hdr-bell {
   display: inline-flex; align-items: center; justify-content: center; height: 44px; border-radius: 12px;
   color: var(--g-ink2); text-decoration: none;
 }
-.g-hdr-bell { width: 44px; }
-.g-hdr-quota .g-hs { padding: 0 12px; grid-auto-flow: column; gap: 8px; border: 0; background: transparent; }
-.g-hdr-quota .g-hs__title { font-size: 11px; color: var(--g-muted); white-space: nowrap; }
+.g-hdr-quota { flex: 0 1 auto; min-width: 44px; overflow: hidden; }
+.g-hdr-bell { width: 44px; flex: none; }
+.g-hdr-quota .g-hs { min-width: 0; padding: 0 12px; grid-template-columns: auto minmax(0, 1fr); justify-items: start; gap: 8px; border: 0; background: transparent; }
+.g-hdr-quota .g-hs__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--g-muted); white-space: nowrap; }
 .g-hdr-search:active, .g-hdr-quota:active, .g-hdr-bell:active { transform: scale(.97); }
 @media (hover: hover) and (pointer: fine) { .g-hdr-quota:hover, .g-hdr-bell:hover { background: var(--g-tint); } }
 .g-hdr-pal { display: flex; flex-direction: column; gap: 12px; font: 400 13px/1.5 var(--g-font-sans); }
