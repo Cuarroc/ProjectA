@@ -1,7 +1,8 @@
 // DeskStore core (DR-03): read, serialized atomic change and explicit V1->V2 migration.
 // Ledger operations (questions, answers, receipts, progress, patches, delivery) compose
 // `change` in DR-04; the root agent id is injected and never defaulted here (D2).
-import { readFile, writeFile, rename, mkdir, chmod, stat } from 'node:fs/promises';
+import { readFile, writeFile, rename, unlink, mkdir, chmod } from 'node:fs/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { DeskError, ensure, ideaDefaults, migrateState, validateState } from './model.mjs';
@@ -10,8 +11,10 @@ import { acquireOwnership, releaseOwnership, getOwnershipContext, ownerRecordPat
 
 export class DeskStore {
   #context; #joined = false; #closed = false; #closing;
+  #missingStates = new WeakSet();
   constructor(file, { rootAgentId, ...io } = {}) {
-    this.file = resolve(file); this.#context = getOwnershipContext(this.file); this.rootAgentId = rootAgentId; this.io = { writeFile, rename, clock: Date.now, ...io };
+    this.file = resolve(file); this.#context = getOwnershipContext(this.file); this.rootAgentId = rootAgentId;
+    this.io = { readFile, writeFile, rename, unlink, sleep, clock: Date.now, ...io };
   }
   #enqueue(fn) {
     const work = this.#context.queue.then(fn);
@@ -36,7 +39,7 @@ export class DeskStore {
   }
   async #assertOwnership() {
     try {
-      const record = JSON.parse(await readFile(ownerRecordPath(this.file), 'utf8'));
+      const record = JSON.parse(await this.io.readFile(ownerRecordPath(this.file), 'utf8'));
       if (record.nonce === this.#context.session?.nonce) return;
     } catch { /* Missing, corrupt and unreadable ownership all fail closed. */ }
     throw new OwnershipError(OWNERSHIP_RELEASE_MISMATCH);
@@ -57,15 +60,40 @@ export class DeskStore {
   }
   async read(projectIdeas = true) {
     try {
-      const data = JSON.parse((await readFile(this.file, 'utf8')).replace(/^﻿/, ''));
+      const data = JSON.parse((await this.io.readFile(this.file, 'utf8')).replace(/^﻿/, ''));
       validateState(data);
       if (projectIdeas) for (const idea of data.ideas ?? []) for (const revision of idea.revisions)
         Object.assign(revision, ideaDefaults(revision));
       return data;
     } catch (e) {
-      if (e.code === 'ENOENT') return migrateState({ schemaVersion: 1, revision: 0, questions: [], answers: [] });
+      if (e.code === 'ENOENT') {
+        const state = migrateState({ schemaVersion: 1, revision: 0, questions: [], answers: [] });
+        this.#missingStates.add(state); return state;
+      }
       if (e instanceof SyntaxError) throw new DeskError('Datendatei nicht lesbar. Sie wurde nicht überschrieben.', 503);
       throw e;
+    }
+  }
+  async #readWithMeta() {
+    // Preserve read overrides; provenance belongs to this state, not the latest concurrent read.
+    const state = await this.read(false);
+    return { state, existed: !this.#missingStates.has(state) };
+  }
+  async #rename(from, to) {
+    const delays = [10, 20, 40, 80, 100]; let original;
+    for (let retry = 0; ; retry++) {
+      try { return await this.io.rename(from, to); }
+      catch (error) {
+        original ??= error;
+        if (!['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) {
+          if (error !== original) {
+            try { error.cause = original; } catch { /* Preserve even immutable errors. */ }
+          }
+          throw error;
+        }
+        if (retry === delays.length) throw original;
+        await this.io.sleep(delays[retry]);
+      }
     }
   }
   // All instances on this ledger share admission and the read-modify-write queue.
@@ -73,7 +101,8 @@ export class DeskStore {
     if (this.#closed) return Promise.reject(new OwnershipError(OWNERSHIP_RELEASE_MISMATCH));
     return this.#enqueue(() => this.#owned(async () => {
       await this.#assertOwnership();
-      const state = await this.read(false); const before = JSON.stringify(state); const oldSchema = state.schemaVersion; const result = await fn(state);
+      const { state, existed } = await this.#readWithMeta();
+      const before = JSON.stringify(state); const oldSchema = state.schemaVersion; const result = await fn(state, existed);
       if (JSON.stringify(state) === before) return result;
       await this.#assertOwnership();
       state.revision++;
@@ -81,7 +110,7 @@ export class DeskStore {
       await mkdir(dirname(this.file), { recursive: true });
       if (oldSchema === 1 && state.schemaVersion === 2) {
         let original;
-        try { original = await readFile(this.file); } catch (e) {
+        try { original = await this.io.readFile(this.file); } catch (e) {
           if (e.code === 'ENOENT') throw new DeskError('Migrationsquelle fehlt; explizite Migration abgelehnt.', 404);
           throw e;
         }
@@ -93,27 +122,36 @@ export class DeskStore {
           try { await chmod(backup, 0o600); }
           catch { throw new DeskError('Migrationsbackup konnte nicht abgesichert werden.', 503); }
         }
-        ensure((await readFile(backup)).equals(original), 'Migrationsbackup stimmt nicht mit dem Altstand überein.', 503);
+        ensure((await this.io.readFile(backup)).equals(original), 'Migrationsbackup stimmt nicht mit dem Altstand überein.', 503);
       }
       const temp = `${this.file}.${randomUUID()}.tmp`;
-      await this.io.writeFile(temp, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600, flush: true });
       const backupTemp = `${temp}.previous`;
       try {
-        // copyFile inherits legacy permissions; create the copy privately instead.
-        await writeFile(backupTemp, await readFile(this.file), { flag: 'wx', mode: 0o600, flush: true });
-        await this.io.rename(backupTemp, `${this.file}.previous`);
-      } catch (e) { if (e.code !== 'ENOENT') throw e; }
-      await this.io.rename(temp, this.file);
+        await this.io.writeFile(temp, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600, flush: true });
+        try {
+          // copyFile inherits legacy permissions; create the copy privately instead.
+          await writeFile(backupTemp, await this.io.readFile(this.file), { flag: 'wx', mode: 0o600, flush: true });
+          await this.#rename(backupTemp, `${this.file}.previous`);
+        } catch (e) { if (e.code !== 'ENOENT') throw e; }
+        await this.#rename(temp, this.file);
+      } catch (error) {
+        for (const path of [temp, backupTemp]) {
+          try { await this.io.unlink(path); }
+          catch (cause) {
+            if (cause.code !== 'ENOENT') {
+              try { error.cause ??= cause; } catch { /* Preserve the original failure. */ }
+            }
+          }
+        }
+        throw error;
+      }
       return result;
     }));
   }
   migrate(expectedRevision) {
     ensure(Number.isSafeInteger(expectedRevision) && expectedRevision >= 0, 'Ungültige expectedRevision.');
-    return this.change(async state => {
-      try { await stat(this.file); } catch (e) {
-        if (e.code === 'ENOENT') throw new DeskError('Migrationsquelle fehlt; explizite Migration abgelehnt.', 404);
-        throw e;
-      }
+    return this.change((state, existed) => {
+      if (!existed) throw new DeskError('Migrationsquelle fehlt; explizite Migration abgelehnt.', 404);
       if (state.schemaVersion === 2) return state;
       ensure(state.revision === expectedRevision, 'Stand vor Migration verändert.', 409);
       Object.assign(state, migrateState(state));
