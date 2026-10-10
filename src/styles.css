@@ -4940,18 +4940,18 @@ scripts/contrast-check.mjs. */
 
 /* Danger surface for Not-Aus / irreversible settings actions (PKG-U / UM-6). */
 .button-danger {
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 3px;
   border: 1px solid var(--state-danger-fg);
-  background: var(--state-danger-bg);
-  color: var(--state-danger-fg);
+  background: var(--state-danger-fg);
+  color: var(--color-on-accent);
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
 }
 
 .button-danger:hover:not(:disabled) {
-  background: var(--state-danger-fg);
-  color: var(--color-on-accent, #fff);
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
   border-color: var(--state-danger-fg);
 }
 
