@@ -145,6 +145,6 @@ it("rejects unreadable control disabled and scrim pairs", () => {
       encoding: "utf8",
     });
     expect(run.status, token).toBe(1);
-    expect(run.stderr, token).toContain("Kontrast");
+    expect(run.stdout, token).toContain("NICHT BESTANDEN");
   }
 });
