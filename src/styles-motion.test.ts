@@ -33,14 +33,14 @@ describe("M1 motion contract", () => {
     for (const rule of rules) {
       for (const declaration of rule[2].matchAll(/\b((?:transition|animation)[\w-]*):\s*([^;]+);/g)) {
         expect(declaration[2], rule[1]).not.toMatch(/\b\d*\.?\d+m?s\b/);
-        if (declaration[1] !== "transition") continue;
+        if (!["transition", "transition-property"].includes(declaration[1])) continue;
         // PKG-R owns the existing shell grid transition outside M1's ranges.
         if (rule[1].trim() === ".app") {
           expect(declaration[2]).toBe("grid-template-columns var(--motion-pane) var(--ease-spatial)");
           continue;
         }
         for (const part of declaration[2].split(",")) {
-          expect(part.trim().split(/\s+/)[0]).toMatch(/^(background(?:-color)?|border-color|color|opacity|transform|box-shadow)$/);
+          expect(part.trim().split(/\s+/)[0]).toMatch(/^(background(?:-color)?|border-color|color|opacity|transform|box-shadow|none)$/);
         }
       }
     }

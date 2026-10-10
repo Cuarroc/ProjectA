@@ -123,18 +123,23 @@
   /* ---- motion ----------------------------------------------------------
      Short, functional distances. The principle: the answer starts on the
      press, not on the release, and nothing showing numbers or log lines is
-     ever moved through space. `spatial` is the curve for anything that
-     arrives or leaves — quick out, soft in, no settle-back. */
-  --motion-hover: 100ms;
-  --motion-press: 90ms;
-  --motion-selection: 120ms;
-  --motion-popover-in: 160ms;
-  --motion-popover-out: 120ms;
-  --motion-pane: 200ms;
+     ever moved through space. Arrivals ease out without settle-back;
+     departures ease in, and movement has its own curve. */
+  --dur-instant: 90ms;
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --spin-duration: 900ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-move: cubic-bezier(0.2, 0, 0, 1);
   --motion-distance: 6px;
-  --ease-standard: ease-out;
-  --ease-exit: ease-in;
-  --ease-spatial: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Compatibility for shell, rail, view and modal rules owned by later packages. */
+  --motion-selection: var(--dur-fast);
+  --motion-popover-in: var(--dur-base);
+  --motion-pane: var(--dur-base);
+  --ease-standard: var(--ease-out);
+  --ease-spatial: var(--ease-out);
   --press-scale: 0.97;
 
   --shadow-card: none;
@@ -258,12 +263,10 @@
    change would give no sign that anything happened at all. */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-hover: 80ms;
-    --motion-press: 80ms;
-    --motion-selection: 80ms;
-    --motion-popover-in: 80ms;
-    --motion-popover-out: 80ms;
-    --motion-pane: 80ms;
+    --dur-instant: 80ms;
+    --dur-fast: 80ms;
+    --dur-base: 80ms;
+    --dur-slow: 80ms;
     --motion-distance: 0px;
     --press-scale: 1;
   }
@@ -325,10 +328,10 @@ button:disabled {
 button,
 a {
   transition:
-    background-color var(--motion-hover) var(--ease-standard),
-    border-color var(--motion-hover) var(--ease-standard),
-    color var(--motion-hover) var(--ease-standard),
-    opacity var(--motion-hover) var(--ease-standard);
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
 /* Compact controls answer a press with a hint of shrink. List rows and
@@ -352,10 +355,10 @@ a {
 .learn-actions button,
 .modal-actions button {
   transition:
-    background-color var(--motion-hover) var(--ease-standard),
-    border-color var(--motion-hover) var(--ease-standard),
-    color var(--motion-hover) var(--ease-standard),
-    transform var(--motion-press) var(--ease-standard);
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-instant) var(--ease-out);
 }
 
 .button-primary:active:not(:disabled),
@@ -375,7 +378,7 @@ a {
 .learn-actions button:active:not(:disabled),
 .modal-actions button:active:not(:disabled) {
   transform: scale(var(--press-scale));
-  transition-duration: var(--motion-press);
+  transition-duration: var(--dur-instant);
 }
 
 /* Selection and state surfaces change a little more calmly than hover, so
@@ -389,10 +392,10 @@ a {
 .settings-tab,
 .queue-row {
   transition:
-    background-color var(--motion-selection) var(--ease-standard),
-    border-color var(--motion-selection) var(--ease-standard),
-    color var(--motion-selection) var(--ease-standard),
-    box-shadow var(--motion-selection) var(--ease-standard);
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
 /* A visible keyboard focus is mandatory, and it must not look like a
@@ -744,7 +747,7 @@ a {
   border: 2px solid var(--color-separator);
   border-top-color: var(--color-accent-text);
   border-radius: var(--radius-round);
-  animation: bootstrap-spin 0.9s linear infinite;
+  animation: spin var(--spin-duration) linear infinite;
 }
 
 .bootstrap-retry {
@@ -768,16 +771,22 @@ a {
   outline-offset: 3px;
 }
 
-@keyframes bootstrap-spin {
+@keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bootstrap-spinner,
-  .badge-queue-sharpening::before {
+  .bootstrap-spinner {
     animation: none;
+    border: 0;
+    color: var(--color-accent-text);
+    display: grid;
+    place-items: center;
+  }
+  .bootstrap-spinner::before {
+    content: "…";
   }
 }
 
@@ -1229,7 +1238,7 @@ a {
   height: 14px;
   border-radius: 8px;
   background: var(--color-raised);
-  transition: background 0.15s ease;
+  transition: background-color var(--dur-instant) var(--ease-out);
 }
 
 .orchestrator-thumb {
@@ -1240,7 +1249,13 @@ a {
   height: 10px;
   border-radius: 50%;
   background: var(--color-text-secondary);
-  transition: transform 0.15s ease;
+  transition: transform var(--dur-instant) var(--ease-move);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orchestrator-thumb {
+    transition-property: none;
+  }
 }
 
 .orchestrator-toggle-on {
@@ -1552,7 +1567,7 @@ a {
   border-right-color: transparent;
   border-radius: 50%;
   content: "";
-  animation: queue-spin 0.9s linear infinite;
+  animation: spin var(--spin-duration) linear infinite;
 }
 
 .queue-cancel {
@@ -1561,9 +1576,14 @@ a {
   margin-right: 3px;
 }
 
-@keyframes queue-spin {
-  to {
-    transform: rotate(360deg);
+@media (prefers-reduced-motion: reduce) {
+  .badge-queue-sharpening::before {
+    animation: none;
+    content: "…";
+    border: 0;
+    width: auto;
+    height: auto;
+    line-height: 1;
   }
 }
 
