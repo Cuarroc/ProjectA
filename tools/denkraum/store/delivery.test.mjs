@@ -7,7 +7,7 @@ import { mkdtemp, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { DeliveryStore } from './delivery.mjs';
+import { DeliveryStore, MAX_DELIVERY_ATTEMPTS } from './delivery.mjs';
 import { answerRef, DeskError, validateQuestion } from './model.mjs';
 
 const ROOT = 'test-root-agent';
@@ -220,4 +220,75 @@ test('DRSEC: a same-file store cannot start a send once another store began clos
   await assert.rejects(stat(ownerRecordPath(file)), { code: 'ENOENT' });
   // The closing window ends with the close: a fresh store flushes again.
   assert.equal((await store(file, { notifyEvent: async () => {} }).flushNotifications()).status, 'empty');
+});
+
+test('NOT-2: after 10 failed attempts the entry is failed and flush sends nothing', async () => {
+  assert.equal(MAX_DELIVERY_ATTEMPTS, 10);
+  let calls = 0;
+  const { s, file } = await fresh({ notifyEvent: async () => { calls++; throw new Error('offline'); } });
+  let last;
+  for (let i = 0; i < MAX_DELIVERY_ATTEMPTS; i++) last = await s.flushNotifications();
+  assert.equal(last.status, 'failed'); assert.equal(last.attempts, MAX_DELIVERY_ATTEMPTS);
+  assert.equal(last.lastError, 'transport-failed'); assert.equal(calls, MAX_DELIVERY_ATTEMPTS);
+  assert.equal((await s.read()).answers[0].webhookDelivery.status, 'failed');
+  const before = await readFile(file, 'utf8');
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.equal(calls, MAX_DELIVERY_ATTEMPTS); assert.equal(await readFile(file, 'utf8'), before);
+});
+
+test('NOT-3: a V1 legacy-received answer is not re-notified after migration', async () => {
+  const v1 = await fresh({ v2: false });
+  await v1.s.ack({ answerId: v1.a.id, status: 'received', actor: 'Root', note: 'Beleg', deliveryReceipt: 'weitergegeben' });
+  await v1.s.migrate((await v1.s.read()).revision); await v1.s.close();
+  const calls = [];
+  const s = store(v1.file, { notifyEvent: async event => calls.push(event) });
+  const before = await readFile(v1.file, 'utf8');
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.deepEqual(calls, []); assert.equal(await readFile(v1.file, 'utf8'), before);
+  // Still listed in pending so a V2 receipt can be attached; only webhook delivery is skipped.
+  assert.equal((await s.pending()).length, 1);
+});
+
+test('NOT-3: a V1 legacy-applied answer is not re-notified after migration', async () => {
+  const v1 = await fresh({ v2: false });
+  await v1.s.ack({ answerId: v1.a.id, status: 'received', actor: 'Root', note: 'Beleg', deliveryReceipt: 'weitergegeben' });
+  await v1.s.ack({ answerId: v1.a.id, status: 'applied', actor: 'Root', note: 'Umgesetzt', evidence: 'Beleg beobachtet' });
+  await v1.s.migrate((await v1.s.read()).revision); await v1.s.close();
+  const calls = [];
+  const s = store(v1.file, { notifyEvent: async event => calls.push(event) });
+  const before = await readFile(v1.file, 'utf8');
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.deepEqual(calls, []); assert.equal(await readFile(v1.file, 'utf8'), before);
+  assert.equal((await s.pending()).length, 0);
+});
+
+test('NOT-2: a legacy pending entry already at the cap is reported as failed and never sent', async () => {
+  let calls = 0;
+  const { s, file } = await fresh({ notifyEvent: async () => { calls++; } });
+  await s.change(state => {
+    const a = state.answers[0];
+    a.webhookDelivery = { status: 'pending', attempts: MAX_DELIVERY_ATTEMPTS, lastAttemptAt: '2026-10-08T12:00:00.000Z',
+      queuedAt: null, lastError: 'transport-failed', deliveryId: a.id };
+  });
+  const failed = await s.flushNotifications();
+  assert.equal(failed.status, 'failed'); assert.equal(failed.attempts, MAX_DELIVERY_ATTEMPTS);
+  assert.equal(failed.lastError, 'transport-failed'); assert.equal(calls, 0);
+  assert.equal((await s.read()).answers[0].webhookDelivery.status, 'failed');
+  const after = await readFile(file, 'utf8');
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.equal(calls, 0); assert.equal(await readFile(file, 'utf8'), after);
+});
+
+test('NOT-2: an answer that fails three times then succeeds is delivered and stops being eligible', async () => {
+  let calls = 0;
+  const { s } = await fresh({ notifyEvent: async () => { calls++; if (calls <= 3) throw new Error('offline'); } });
+  for (let i = 1; i <= 3; i++) {
+    const last = await s.flushNotifications();
+    assert.equal(last.status, 'pending'); assert.equal(last.attempts, i); assert.equal(last.lastError, 'transport-failed');
+  }
+  const queued = await s.flushNotifications();
+  assert.equal(queued.status, 'queued'); assert.equal(queued.attempts, 4); assert.equal(queued.lastError, null);
+  assert.equal(calls, 4);
+  assert.equal((await s.flushNotifications()).status, 'empty');
+  assert.equal(calls, 4);
 });
