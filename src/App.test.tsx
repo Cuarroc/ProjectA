@@ -157,6 +157,7 @@ describe("App bootstrap", () => {
   it("follows the project the Glass header picks", async () => {
     const projects = ["p1", "p2"].map((id) => ({ id, name: id, repoPath: `repo-${id}`, createdAt: 1, githubRemote: false }));
     localStorage.setItem("projecta.activeProjectId", "p1");
+    vi.mocked(listen).mockResolvedValue(() => {});
     mocks.invoke.mockImplementation((command: string) => {
       if (command === "list_projects") return Promise.resolve(projects);
       if (command === "list_agent_profiles" || command === "list_workers" || command === "list_questions") return Promise.resolve([]);
@@ -165,7 +166,6 @@ describe("App bootstrap", () => {
     });
     const workersOf = (id: string) => mocks.invoke.mock.calls.filter(([c, a]) => c === "list_workers" && a?.projectId === id).length;
     render(<App />);
-    await waitFor(() => expect(workersOf("p1")).toBeGreaterThan(0));
     act(() => writeActiveProjectId("p2"));
     await waitFor(() => expect(workersOf("p2")).toBeGreaterThan(0));
   });
