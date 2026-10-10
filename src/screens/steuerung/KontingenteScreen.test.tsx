@@ -2,10 +2,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { invoke } from "@tauri-apps/api/core";
-import { blockedLabel, formatBlockedUntil } from "../../lib/quota";
 import type { QuotaState } from "../../types";
 import { KontingenteScreen } from "./KontingenteScreen";
-import { windowSlot } from "./kontingente";
+import { formatFreeAt, providerInitials, windowSlot } from "./kontingente";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
@@ -33,14 +32,60 @@ it("maps a window label to its slot and leaves unknown labels unmapped", () => {
   expect(windowSlot("Tagesfenster")).toBeNull();
 });
 
+it("anchors the window patterns so look-alike labels stay unmapped", () => {
+  for (const label of ["Wochenende", "Monatsende", "15-Stunden-Fenster", "17-Tage-Fenster"]) expect(windowSlot(label)).toBeNull();
+  expect(windowSlot("Woche")).toBe("week");
+  expect(windowSlot("5h")).toBe("five");
+});
+
+it("never gives two providers the same avatar initials", async () => {
+  const names = [["claude", "Claude Code"], ["codex", "Codex CLI"], ["copilot", "Copilot"], ["opencode", "OpenCode"], ["omniroute", "OmniRoute"], ["openrouter", "OpenRouter"], ["ollama", "Ollama"]];
+  const ps = names.map(([id, name]) => provider(id, name) as never);
+  const all = [...providerInitials(ps).values()];
+  expect(new Set(all).size).toBe(ps.length);
+  feed(ps);
+  const { container } = render(<KontingenteScreen />);
+  await screen.findByRole("article", { name: "Copilot" });
+  const shown = [...container.querySelectorAll(".kt-head .g-ava")].map((a) => a.textContent);
+  expect(shown).toHaveLength(ps.length);
+  expect(new Set(shown).size).toBe(ps.length);
+});
+
+const localAt = (dayOffset: number, h: number, m: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  d.setHours(h, m, 0, 0);
+  return Math.floor(d.getTime() / 1000);
+};
+
+it("writes the free-again time as 24-hour German time instead of 12-hour English", async () => {
+  const until = localAt(1, 17, 5);
+  const q: QuotaState = { profileId: "codex", state: "blocked", blockedUntil: until, reason: "Wochenlimit", omniRouteOnline: true };
+  feed([provider("codex", "Codex", { quotaState: "blocked", blockedUntil: until })], [q]);
+  render(<KontingenteScreen />);
+  const note = (await card("Codex")).getByText(/^Wochenlimit — frei/);
+  expect(note.textContent).toMatch(/ — frei \d{2}\.\d{2}\. 17:05$/);
+  expect(note.textContent).not.toMatch(/[AP]M/i);
+});
+
+it("explains a block the provider reports even when the quota feed is not blocked", async () => {
+  const until = localAt(1, 9, 30);
+  const q: QuotaState = { profileId: "codex", state: "ok", blockedUntil: null, reason: null, omniRouteOnline: true };
+  feed([provider("codex", "Codex", { quotaState: "blocked", blockedUntil: until, detail: "Wochenlimit erreicht" })], [q]);
+  render(<KontingenteScreen />);
+  const c = await card("Codex");
+  expect(c.getByText("Blockiert")).toBeInTheDocument();
+  expect(c.getByText(/^Wochenlimit erreicht — frei \d{2}\.\d{2}\. 09:30$/)).toBeInTheDocument();
+  expect(c.getByRole("button", { name: "Jetzt prüfen" })).toBeInTheDocument();
+});
+
 it("shows the blocked label and reset time of a blocked provider", async () => {
   const until = now() + 2 * 3600;
   const q: QuotaState = { profileId: "codex", state: "blocked", blockedUntil: until, reason: "Wochenlimit", omniRouteOnline: true };
   feed([provider("codex", "Codex", { quotaState: "blocked", blockedUntil: until })], [q]);
   render(<KontingenteScreen />);
   const c = await card("Codex");
-  expect(c.getByText(blockedLabel(q))).toBeInTheDocument();
-  expect(blockedLabel(q)).toContain(formatBlockedUntil(until)!);
+  expect(c.getByText(`Wochenlimit — frei ${formatFreeAt(until)}`)).toBeInTheDocument();
 });
 
 it("shows a measured window as a meter and the others as honest not-connected without digits", async () => {
