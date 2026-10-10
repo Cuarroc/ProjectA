@@ -79,10 +79,10 @@ export class DeskStore {
     const state = await this.read(false);
     return { state, existed: !this.#missingStates.has(state) };
   }
-  async #rename(from, to) {
+  async #withBoundedBusyRetry(op) {
     const delays = [10, 20, 40, 80, 100]; let original;
     for (let retry = 0; ; retry++) {
-      try { return await this.io.rename(from, to); }
+      try { return await op(); }
       catch (error) {
         original ??= error;
         if (!['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) {
@@ -95,6 +95,11 @@ export class DeskStore {
         await this.io.sleep(delays[retry]);
       }
     }
+  }
+  #rename(from, to) { return this.#withBoundedBusyRetry(() => this.io.rename(from, to)); }
+  async #unlink(path) {
+    try { return await this.#withBoundedBusyRetry(() => this.io.unlink(path)); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
   // All instances on this ledger share admission and the read-modify-write queue.
   change(fn) {
@@ -130,17 +135,15 @@ export class DeskStore {
         await this.io.writeFile(temp, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600, flush: true });
         try {
           // copyFile inherits legacy permissions; create the copy privately instead.
-          await writeFile(backupTemp, await this.io.readFile(this.file), { flag: 'wx', mode: 0o600, flush: true });
+          await this.io.writeFile(backupTemp, await this.io.readFile(this.file), { flag: 'wx', mode: 0o600, flush: true });
           await this.#rename(backupTemp, `${this.file}.previous`);
         } catch (e) { if (e.code !== 'ENOENT') throw e; }
         await this.#rename(temp, this.file);
       } catch (error) {
         for (const path of [temp, backupTemp]) {
-          try { await this.io.unlink(path); }
+          try { await this.#unlink(path); }
           catch (cause) {
-            if (cause.code !== 'ENOENT') {
-              try { error.cause ??= cause; } catch { /* Preserve the original failure. */ }
-            }
+            try { error.cause ??= cause; } catch { /* Preserve the original failure. */ }
           }
         }
         throw error;
