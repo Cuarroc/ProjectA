@@ -647,6 +647,61 @@ mod tests {
     }
 
     #[test]
+    fn a_manifest_path_before_the_subcommand_is_not_taken_for_it() {
+        let procs: [(&str, &[&str]); 2] = [
+            (
+                "cargo",
+                &["cargo", "--manifest-path", "../Cargo.toml", "build"],
+            ),
+            (
+                "cargo",
+                &["cargo", "--manifest-path", "x/Cargo.toml", "run"],
+            ),
+        ];
+        assert_eq!(count_cargo_builds(procs), 1);
+    }
+
+    #[test]
+    fn a_target_before_the_subcommand_is_not_taken_for_it() {
+        let procs: [(&str, &[&str]); 2] = [
+            (
+                "cargo",
+                &["cargo", "--target", "x86_64-unknown-linux-gnu", "test"],
+            ),
+            (
+                "cargo",
+                &[
+                    "cargo",
+                    "--target",
+                    "x86_64-pc-windows-msvc",
+                    "tauri",
+                    "dev",
+                ],
+            ),
+        ];
+        assert_eq!(count_cargo_builds(procs), 1);
+    }
+
+    #[test]
+    fn a_target_dir_before_the_subcommand_is_not_taken_for_it() {
+        let procs: [(&str, &[&str]); 2] = [
+            ("cargo", &["cargo", "--target-dir", "/tmp/slot", "clippy"]),
+            ("cargo", &["cargo", "--target-dir=/tmp/slot", "check"]),
+        ];
+        assert_eq!(count_cargo_builds(procs), 2);
+    }
+
+    #[test]
+    fn jobs_before_the_subcommand_are_not_taken_for_it() {
+        let procs: [(&str, &[&str]); 3] = [
+            ("cargo", &["cargo", "-j", "2", "build"]),
+            ("cargo", &["cargo", "--jobs", "2", "nextest", "run"]),
+            ("cargo", &["cargo", "--jobs", "2", "run"]),
+        ];
+        assert_eq!(count_cargo_builds(procs), 2);
+    }
+
+    #[test]
     fn cargo_tauri_dev_and_run_are_not_counted() {
         let procs: [(&str, &[&str]); 4] = [
             ("cargo", &["cargo", "tauri", "dev"]),
