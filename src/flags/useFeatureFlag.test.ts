@@ -21,4 +21,21 @@ describe("useFeatureFlag", () => {
     expect(result.current[0]).toBe(false);
     expect(isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(false);
   });
+
+  it("syncs a second hook when the first toggles the same flag", () => {
+    const first = renderHook(() => useFeatureFlag("d1_neue_oberflaeche"));
+    const second = renderHook(() => useFeatureFlag("d1_neue_oberflaeche"));
+    expect(first.result.current[0]).toBe(false);
+    expect(second.result.current[0]).toBe(false);
+    act(() => {
+      first.result.current[1](true);
+    });
+    expect(first.result.current[0]).toBe(true);
+    expect(second.result.current[0]).toBe(true);
+    act(() => {
+      second.result.current[1](false);
+    });
+    expect(first.result.current[0]).toBe(false);
+    expect(second.result.current[0]).toBe(false);
+  });
 });

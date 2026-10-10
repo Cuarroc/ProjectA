@@ -14,7 +14,6 @@ describe("featureFlags registry", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("defaults every registered flag to off including D1", () => {
-    expect(FEATURE_FLAGS.length).toBeGreaterThanOrEqual(1);
     for (const flag of FEATURE_FLAGS) {
       expect(flag.defaultEnabled).toBe(false);
       expect(isFeatureFlagEnabled(flag.id)).toBe(false);
@@ -46,20 +45,33 @@ describe("featureFlags registry", () => {
     expect(() => setFeatureFlagEnabled("fernansicht", true)).not.toThrow();
   });
 
-  it("lists every flag with German copy and gates routes only when on", () => {
+  it("allowsRoute and allowsBackend mirror isFeatureFlagEnabled", () => {
     const listed = listFeatureFlags();
     expect(listed.map((f) => f.id).sort()).toEqual(
       (["d1_neue_oberflaeche", "fernansicht", "kundenprojekte"] as FeatureFlagId[]).sort(),
     );
     for (const flag of listed) {
-      expect(flag.label.length).toBeGreaterThan(0);
-      expect(flag.description.length).toBeGreaterThan(0);
-      expect(flag.allowsRoute()).toBe(false);
-      expect(flag.allowsBackend()).toBe(false);
+      expect(flag.allowsRoute()).toBe(isFeatureFlagEnabled(flag.id));
+      expect(flag.allowsBackend()).toBe(isFeatureFlagEnabled(flag.id));
     }
     setFeatureFlagEnabled("kundenprojekte", true);
     const kp = listFeatureFlags().find((f) => f.id === "kundenprojekte");
     expect(kp?.allowsRoute()).toBe(true);
     expect(kp?.allowsBackend()).toBe(true);
+    expect(isFeatureFlagEnabled("kundenprojekte")).toBe(true);
+  });
+
+  it("keeps exactly one plain-German sentence per switch description", () => {
+    for (const flag of listFeatureFlags()) {
+      expect(flag.label.length).toBeGreaterThan(0);
+      const terminals = [...flag.description.matchAll(/[.!?]/g)];
+      expect(terminals).toHaveLength(1);
+      expect(flag.description.endsWith(".") || flag.description.endsWith("!") || flag.description.endsWith("?")).toBe(
+        true,
+      );
+    }
+    expect(listFeatureFlags().find((f) => f.id === "d1_neue_oberflaeche")?.description).toBe(
+      "Zeigt die neue Oberfläche als Vorschau; sie ist noch nicht fertig.",
+    );
   });
 });
