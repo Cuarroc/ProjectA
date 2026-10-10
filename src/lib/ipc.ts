@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import { isBoardColumn } from "./board";
+import { SUPERVISOR_NOTIFICATION, WORKER_STATUS } from "./eventNames";
 import { nonEmpty } from "./ipc/shared";
 import { toWorker, toWorkerKind, type RawWorker } from "./ipc/workers";
 import type {
@@ -2081,7 +2082,7 @@ export function onWorkerStatus(
     attentionCode?: string | null;
     attentionGrade?: string | null;
     attentionObservedAt?: number | null;
-  }>("worker:status", (event) => {
+  }>(WORKER_STATUS, (event) => {
     const {
       workerId,
       column,
@@ -2183,7 +2184,7 @@ function toSupervisorNotification(raw: unknown): SupervisorNotification | null {
 export function onSupervisorNotification(
   handler: (payload: SupervisorNotification) => void,
 ): Promise<UnlistenFn> {
-  return listen<unknown>("supervisor:notification", (event) => {
+  return listen<unknown>(SUPERVISOR_NOTIFICATION, (event) => {
     const notice = toSupervisorNotification(event.payload);
     if (notice) handler(notice);
   });

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type { PtyExitPayload, SpawnPtyResult } from "../../types";
+import { ptyExit, ptyOutput } from "../eventNames";
 
 export async function spawnPty(args: {
   profileId: string;
@@ -38,12 +39,12 @@ export function onPtyOutput(
   sessionId: string,
   handler: (chunk: string) => void,
 ): Promise<UnlistenFn> {
-  return listen<string>(`pty:output:${sessionId}`, (event) => handler(event.payload));
+  return listen<string>(ptyOutput(sessionId), (event) => handler(event.payload));
 }
 
 export function onPtyExit(
   sessionId: string,
   handler: (payload: PtyExitPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<PtyExitPayload>(`pty:exit:${sessionId}`, (event) => handler(event.payload));
+  return listen<PtyExitPayload>(ptyExit(sessionId), (event) => handler(event.payload));
 }
