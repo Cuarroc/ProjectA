@@ -16,6 +16,7 @@ import {
 } from "../../lib/settings";
 import type { Project } from "../../types";
 import EmergencyStop from "../EmergencyStop";
+import PreviewToggle from "../../shell/mount/PreviewToggle";
 
 /**
  * State and handlers stay in `SettingsView` (they share effects with the other
@@ -111,6 +112,7 @@ export default function GeneralTab({
   return (
     <>
       <EmergencyStop />
+      <PreviewToggle />
 
       <fieldset className="settings-field settings-density">
         <legend className="field-label">Darstellungsdichte</legend>
