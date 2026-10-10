@@ -621,7 +621,7 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
                 <button
                   type="button"
                   className="worker-action"
-                  disabled={busy || loading || !diff?.code || setupTreeDiverges}
+                  disabled={busy || loading || !diff?.code || setupTreeDiverges}
                   title="Genau die angezeigten Inputs freigeben, gebunden an den gelesenen Diff; jede Änderung verfällt"
                   onClick={approveSetup}
                 >
@@ -643,7 +643,13 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
               className="worker-action"
               disabled={busy || loading || !diff?.code}
               aria-label="Review freigeben"
-              title="Freigabe an den angezeigten Merge-Tree binden"
+              title={
+                !diff?.code
+                  ? "Kein Merge-Tree geladen — Freigabe erst nach dem Laden möglich"
+                  : busy || loading
+                    ? "Freigabe wartet auf den geladenen Diff"
+                    : "Freigabe an den angezeigten Merge-Tree binden"
+              }
               onClick={() => submitVerdict("approved")}
             >
               Freigeben
@@ -657,7 +663,13 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
               className="worker-action"
               disabled={busy || loading || !diff?.code}
               aria-label="Änderungen anfordern"
-              title="Änderungsgesuch an den angezeigten Merge-Tree binden"
+              title={
+                !diff?.code
+                  ? "Kein Merge-Tree geladen — Änderungsgesuch erst nach dem Laden möglich"
+                  : busy || loading
+                    ? "Änderungsgesuch wartet auf den geladenen Diff"
+                    : "Änderungsgesuch an den angezeigten Merge-Tree binden"
+              }
               onClick={() => submitVerdict("changes_requested")}
             >
               Änderungen anfordern

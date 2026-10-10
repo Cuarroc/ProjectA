@@ -182,6 +182,7 @@ for (const [mode, vars] of [["hell  ", light], ["dunkel", dark]]) {
 
   for (const step of ["accent", "accent-hover", "accent-pressed"])
     check(mode, `on-accent / ${step}`, c("color-on-accent"), c(`color-${step}`));
+  check(mode, "on-danger / danger-solid", c("color-on-danger"), c("color-danger-solid"));
   check(mode, "accent-text / Inhalt", c("color-accent-text"), surfaces.Inhalt);
   // Die eigenen Chat-Zeilen (.convo-msg-user .convo-msg-body): die Textfarbe
   // erbt `--fg` von body (= text-primary), die Fläche ist der accent-tint —
