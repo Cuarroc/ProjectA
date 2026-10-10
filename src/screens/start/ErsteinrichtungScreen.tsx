@@ -5,6 +5,7 @@ import { HonestState } from "../../design/data/HonestState";
 import { StateMark } from "../../design/state/StateMark";
 import type { StateForm } from "../../design/state/states";
 import { PROVIDER_POLL_MS, useProviderOverview } from "../../lib/providers";
+import { currentStepIndex } from "./current";
 import { T } from "./texts";
 import "./start.css";
 
@@ -13,7 +14,10 @@ export type StartStepId = "welcome" | "tools" | "subs" | "project" | "team" | "d
 export interface ErsteinrichtungScreenProps {
   /** Whether at least one project exists (the same signal as FirstRunChecklist). */
   hasProject: boolean;
-  /** One action per step; the host decides what it opens. */
+  /**
+   * One action per step; the host decides what it opens. Every button reports
+   * its step, the tools button too (it also re-reads the provider overview).
+   */
   onAction: (step: StartStepId) => void;
 }
 
@@ -71,8 +75,7 @@ export function ErsteinrichtungScreen({ hasProject, onAction }: ErsteinrichtungS
       form: ready && hasProject ? "ok" : "need", chip: ready && hasProject ? T.chip.ready : T.chip.open,
     },
   ];
-  // The first step that is neither ready nor done is "the current one".
-  const current = rows.findIndex((r) => r.form === "need" || r.form === "bad" || r.form === "run");
+  const current = currentStepIndex(rows.map((r) => r.form));
 
   return (
     <main className="st-screen">
@@ -90,7 +93,10 @@ export function ErsteinrichtungScreen({ hasProject, onAction }: ErsteinrichtungS
               {r.id === "project" && <HonestState kind="offline" title={T.scanTitle} hint={T.scanHint} />}
             </div>
             <StateMark form={r.form} label={r.chip} />
-            <Button variant={r.primary ? "primary" : "secondary"} onClick={() => (r.id === "tools" ? refresh() : onAction(r.id))}>
+            <Button variant={r.primary ? "primary" : "secondary"} onClick={() => {
+              if (r.id === "tools") refresh();
+              onAction(r.id);
+            }}>
               {r.action}
             </Button>
           </li>

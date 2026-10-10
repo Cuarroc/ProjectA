@@ -1,3 +1,4 @@
+import { de } from "../i18n/de";
 import { readString, writeString } from "../lib/settings";
 
 // V2-F8a theme contract: only `data-theme` on <html> ("light" | "dark"; System removes it).
@@ -7,7 +8,8 @@ export type GlassTheme = "light" | "dark" | "system";
 export const GLASS_THEME_KEY = "projecta.settings.glassTheme";
 
 export const GLASS_THEME_OPTIONS: readonly { value: GlassTheme; label: string }[] = [
-  { value: "light", label: "Hell" }, { value: "dark", label: "Dunkel" }, { value: "system", label: "System" },
+  { value: "light", label: de["theme.light"] }, { value: "dark", label: de["theme.dark"] },
+  { value: "system", label: de["theme.system"] },
 ];
 
 export function loadGlassTheme(): GlassTheme {

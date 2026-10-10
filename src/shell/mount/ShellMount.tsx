@@ -4,7 +4,8 @@ import { createPortal } from "react-dom";
 import type { AppGoal } from "../../lib/goals";
 import { Shell } from "../Shell";
 import { pathFromHash } from "../routes";
-import { hasLegacyPanel, hashForGoal } from "./routing";
+import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
+import { hasLegacyPanel, hashForGoal, isNewLeitstand } from "./routing";
 import "./mount.css";
 
 export interface LegacyRouteProps {
@@ -48,13 +49,20 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
     if (hash !== null) window.location.hash = hash;
   }, []);
 
-  const legacy = hasLegacyPanel(path);
+  const fresh = isNewLeitstand(path);
+  const legacy = hasLegacyPanel(path) && !fresh;
   return (
-    <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"}>
+    <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
       <Shell />
       {host
         ? createPortal(
-            <div className="g-mount-legacy" hidden={!legacy}>{children({ routePath: path, onGoalRoute })}</div>,
+            <>
+              {fresh ? <LeitstandRoute /> : null}
+              <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
+                {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
+                {children({ routePath: path, onGoalRoute })}
+              </div>
+            </>,
             host,
           )
         : null}

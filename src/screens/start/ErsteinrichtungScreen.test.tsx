@@ -46,6 +46,34 @@ it("shows the repo scan as not connected and never a count", () => {
   expect(within(step(4)).queryByText(/Prüfungen|Lanes|gefunden/)).toBeNull();
 });
 
+it("shows the reading state on the tool and sign-in steps while the overview loads", () => {
+  setProviders([], { loading: true });
+  render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
+  for (const n of [2, 3]) {
+    expect(within(step(n)).getByText("Liest")).toHaveClass("g-st--run");
+    expect(within(step(n)).queryByText("Erledigt")).toBeNull();
+  }
+});
+
+it("shows the error state with the read-failure detail when the overview fails", () => {
+  setProviders([], { error: "boom" });
+  render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
+  for (const n of [2, 3]) {
+    expect(within(step(n)).getByText("Fehler")).toHaveClass("g-st--bad");
+    expect(within(step(n)).getByText("Der Anbieter-Status konnte nicht gelesen werden.")).toBeInTheDocument();
+  }
+});
+
+it("reports the tools step to the host and still re-reads the overview", () => {
+  const onAction = vi.fn();
+  const refresh = vi.fn();
+  setProviders([provider("Claude Code", true)], { refresh });
+  render(<ErsteinrichtungScreen hasProject onAction={onAction} />);
+  fireEvent.click(within(step(2)).getByRole("button"));
+  expect(onAction).toHaveBeenCalledWith("tools");
+  expect(refresh).toHaveBeenCalledTimes(1);
+});
+
 it("reaches every step action by Tab in step order and reports the step id", () => {
   const onAction = vi.fn();
   render(<ErsteinrichtungScreen hasProject onAction={onAction} />);

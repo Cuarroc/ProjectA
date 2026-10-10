@@ -112,7 +112,7 @@ test("shot tab check fails when focus ring is removed", async () => {
   }
 });
 
-test("shot --variant stores the glass style before load and names the PNGs", async () => {
+test("shot --variant reports the applied glass style per scheme and names the PNGs", async () => {
   const fixture = join(ROOT, "../dev/fixtures/shot-variant.html");
   const out = mkdtempSync(join(tmpdir(), "v2-thvar2-shot-"));
   try {
@@ -121,7 +121,7 @@ test("shot --variant stores the glass style before load and names the PNGs", asy
       assert.equal(code, 0, stdout);
       const report = JSON.parse(stdout);
       assert.equal(report.variant, variant);
-      assert.equal(report.applied, applied);
+      assert.deepEqual(report.applied, { light: applied, dark: applied });
       assert.ok(existsSync(join(out, `fixture-${variant}-dark.png`)));
     }
   } finally {

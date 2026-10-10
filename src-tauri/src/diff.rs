@@ -24,6 +24,8 @@ use serde::Serialize;
 use crate::store::{self, DiffComment, Store, Worker, KIND_ORCHESTRATOR, MSG_USER};
 use crate::workers;
 
+mod review_tier;
+
 /// A line that exists only on the new side.
 pub const LINE_ADD: &str = "add";
 /// A line that exists only on the old side.

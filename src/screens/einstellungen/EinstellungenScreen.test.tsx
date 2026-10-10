@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,6 +12,7 @@ vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
 vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), describeError: String }));
 
+const css = readFileSync(resolve(__dirname, "einstellungen.css"), "utf8");
 const TABS = ROUTES.find((r) => r.id === "einstellungen")!.tabs.map((t) => t.label);
 const open = vi.fn();
 beforeEach(() => {
@@ -56,6 +59,27 @@ describe("tab Allgemein", () => {
     show();
     fireEvent.click(screen.getByRole("radio", { name: "Dunkel" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("offers the glass style switch under Hell/Dunkel/System and applies the choice", () => {
+    show();
+    const card = screen.getByRole("region", { name: "Darstellung" });
+    const style = within(card).getByRole("radiogroup", { name: "Stil" });
+    for (const name of ["Glas", "Klar", "Nebel", "Abend"]) expect(within(style).getByRole("radio", { name })).toBeInTheDocument();
+    fireEvent.click(within(style).getByRole("radio", { name: "Nebel" }));
+    expect(document.documentElement.dataset.glassVariant).toBe("nebel");
+    delete document.documentElement.dataset.glassVariant;
+  });
+
+  it("hides the repeated classic field label in the Not-Aus section only", () => {
+    show();
+    const stop = screen.getByRole("region", { name: "Not-Aus" });
+    expect(stop.className).toContain("es-sec--stop");
+    for (const name of ["Darstellung", "Neue Oberfläche (Vorschau)", "Version & Updates", "Weitere Einstellungen"]) {
+      expect(screen.getByRole("region", { name }).className).not.toContain("es-sec--stop");
+    }
+    expect(css).toMatch(/\.es-sec--stop \.field-label\s*\{\s*display:\s*none/);
+    expect(css).not.toMatch(/\.es-sec \.field-label/);
   });
 
   it("shows the version from the app lib call", async () => {

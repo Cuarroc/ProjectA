@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
@@ -83,7 +85,7 @@ it("the offline proof sits in its own scoped slot and no bare HonestState overri
   const slots = container.querySelectorAll(".ls-foot > .ls-proof > .g-hs--offline");
   expect(slots).toHaveLength(3);
   // The override must not reach other HonestState kinds: every rule on `.g-hs` goes through `.ls-proof`.
-  const css = readFileSync("src/screens/leitstand/leitstand.css", "utf8");
+  const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "leitstand.css"), "utf8");
   const selectors = css.replace(/\/\*[\s\S]*?\*\//g, "").match(/[^{}]+(?=\{)/g) ?? [];
   expect(selectors.length).toBeGreaterThan(5);
   expect(selectors.filter((sel) => /\.g-hs\b/.test(sel) && !/\.ls-proof\b/.test(sel))).toEqual([]);

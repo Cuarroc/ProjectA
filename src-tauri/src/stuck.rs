@@ -36,6 +36,10 @@ use crate::status::{StatusEngine, COL_WORKING, STUCK_AFTER};
 use crate::store::{Store, MSG_SYSTEM, SRC_GIT, STATUS_RUNNING};
 use crate::workers;
 
+// V2-B22a: pure watchdog core; wired by a later package.
+#[allow(dead_code)]
+mod watchdog;
+
 /// How often the worktrees are probed. One minute: a git probe per running
 /// worker is cheap but not free, and the threshold it feeds is measured in
 /// tens of minutes.

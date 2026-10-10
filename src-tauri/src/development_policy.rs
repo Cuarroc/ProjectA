@@ -12,6 +12,10 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+// Consumer: V2-B11 (review gate). Pure rule core, unused until then.
+#[cfg_attr(not(test), allow(dead_code))]
+mod review_rule;
+
 pub const POLICY_FILE: &str = "projecta.dev.json";
 pub const SCHEMA_VERSION: u32 = 1;
 pub const DEFAULT_MAX_WORKERS: u8 = 2;

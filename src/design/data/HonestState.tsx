@@ -1,3 +1,4 @@
+import { de } from "../../i18n/de";
 import { Button } from "../controls/Button";
 import "./data.css";
 
@@ -11,9 +12,9 @@ export interface HonestStateProps {
 }
 
 const WORDS: Record<HonestKind, string> = {
-  empty: "Noch nichts da",
-  offline: "Nicht verbunden",
-  locked: "Gesperrt",
+  empty: de["honest.empty"],
+  offline: de["honest.offline"],
+  locked: de["honest.locked"],
 };
 
 // A placeholder for missing data must never look like a measurement: a "0" or
