@@ -1395,9 +1395,9 @@ a {
 .queue-section .queue-actions-sticky {
   position: sticky;
   bottom: 0;
-  z-index: 1;
+  z-index: 1; /* --z-sticky lands with T2; keep 1 until then */
   background: var(--bg-elevated);
-  padding-block: 4px;
+  padding-block: var(--space-2);
 }
 
 .queue-form {
@@ -4559,9 +4559,9 @@ scripts/contrast-check.mjs. */
 /* The critic's inbox sits under the recommendations and shares their shape,
    but its entries are read in full, so it is given a little more room. */
 .learn-section {
-  /* Sidebar is the only scroll owner (UM-3); clip paint under the next section. */
+  /* Sidebar is the only scroll owner (UM-3); content-sized, no nested clip. */
   flex: 0 0 auto;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .badge-learn-new {
@@ -4956,8 +4956,7 @@ scripts/contrast-check.mjs. */
 .settings-body {
   flex: 1;
   min-height: 0;
-  /* `.settings-area` already scrolls; a second overflow here doubles the bars. */
-  overflow-y: visible;
+  overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
