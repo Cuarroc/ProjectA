@@ -1,0 +1,89 @@
+/* V2-TH-VAR-1 glass variants. Not imported by the app; V2-TH-VAR-2 adds the switch.
+   <html data-glass-variant="klar|nebel|abend">; absent = Glas (tokens.css).
+   A variant sets only ground, amb1..3, chrome/content bg and blur. The contrast
+   gate allowlists those keys and fixes the blur radii (32px chrome, 20px glass).
+   Dark is keyed twice with the same values: OS dark unless data-theme="light",
+   and an explicit data-theme="dark". Never the media query alone. */
+
+/* Klar: thinner glass, stronger saturate. Backdrop stays Glas. */
+:root[data-glass-variant="klar"] {
+  --g-chrome-bg: rgba(255, 255, 255, 0.4); --g-content-bg: rgba(255, 255, 255, 0.66);
+  --g-chrome-blur: blur(32px) saturate(200%); --g-content-blur: blur(20px) saturate(170%);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-glass-variant="klar"]:not([data-theme="light"]) {
+    --g-chrome-bg: rgba(20, 26, 36, 0.52); --g-content-bg: rgba(27, 33, 45, 0.72);
+    --g-chrome-blur: blur(32px) saturate(200%); --g-content-blur: blur(20px) saturate(170%);
+  }
+}
+:root[data-theme="dark"][data-glass-variant="klar"] {
+  --g-chrome-bg: rgba(20, 26, 36, 0.52); --g-content-bg: rgba(27, 33, 45, 0.72);
+  --g-chrome-blur: blur(32px) saturate(200%); --g-content-blur: blur(20px) saturate(170%);
+}
+
+/* Nebel: frosted, calmer backdrop and denser material. */
+:root[data-glass-variant="nebel"] {
+  --g-ground: #ECEFF3; --g-amb1: #D8E0EE; --g-amb2: #DAE7E2; --g-amb3: #EBE3DB;
+  --g-chrome-bg: rgba(255, 255, 255, 0.68); --g-content-bg: rgba(255, 255, 255, 0.86);
+  --g-chrome-blur: blur(32px) saturate(130%); --g-content-blur: blur(20px) saturate(115%);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-glass-variant="nebel"]:not([data-theme="light"]) {
+    --g-ground: #0F1318; --g-amb1: #19223A; --g-amb2: #152826; --g-amb3: #29211C;
+    --g-chrome-bg: rgba(20, 26, 36, 0.74); --g-content-bg: rgba(27, 33, 45, 0.9);
+    --g-chrome-blur: blur(32px) saturate(130%); --g-content-blur: blur(20px) saturate(115%);
+  }
+}
+:root[data-theme="dark"][data-glass-variant="nebel"] {
+  --g-ground: #0F1318; --g-amb1: #19223A; --g-amb2: #152826; --g-amb3: #29211C;
+  --g-chrome-bg: rgba(20, 26, 36, 0.74); --g-content-bg: rgba(27, 33, 45, 0.9);
+  --g-chrome-blur: blur(32px) saturate(130%); --g-content-blur: blur(20px) saturate(115%);
+}
+
+/* Abend: warm fields (peach, rose, lilac); material stays Glas. */
+:root[data-glass-variant="abend"] {
+  --g-ground: #EFEBE7; --g-amb1: #F5D9C4; --g-amb2: #F2D3DD; --g-amb3: #E4DBF2;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-glass-variant="abend"]:not([data-theme="light"]) {
+    --g-ground: #14110F; --g-amb1: #3B2516; --g-amb2: #3A1E2B; --g-amb3: #251E3C;
+  }
+}
+:root[data-theme="dark"][data-glass-variant="abend"] {
+  --g-ground: #14110F; --g-amb1: #3B2516; --g-amb2: #3A1E2B; --g-amb3: #251E3C;
+}
+
+/* Readability floor, every variant: opaque Glas composites over the ground, no
+   blur, flat fields. The attribute form exists because the WebView2 mapping of
+   prefers-reduced-transparency is not observed. The selectors out-rank the
+   variant blocks above (0,3,0 for dark) and come after them. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root:root:root {
+    --g-chrome-bg: #F4F6F9; --g-content-bg: #F9FAFC; --g-chrome-blur: none; --g-content-blur: none;
+    --g-amb1: var(--g-ground); --g-amb2: var(--g-ground); --g-amb3: var(--g-ground);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:root:root:not([data-theme="light"]) {
+      --g-chrome-bg: #11171F; --g-content-bg: #181E29; --g-chrome-blur: none; --g-content-blur: none;
+      --g-amb1: var(--g-ground); --g-amb2: var(--g-ground); --g-amb3: var(--g-ground);
+    }
+  }
+  :root:root:root[data-theme="dark"] {
+    --g-chrome-bg: #11171F; --g-content-bg: #181E29; --g-chrome-blur: none; --g-content-blur: none;
+    --g-amb1: var(--g-ground); --g-amb2: var(--g-ground); --g-amb3: var(--g-ground);
+  }
+}
+:root:root[data-reduce-transparency] {
+  --g-chrome-bg: #F4F6F9; --g-content-bg: #F9FAFC; --g-chrome-blur: none; --g-content-blur: none;
+  --g-amb1: var(--g-ground); --g-amb2: var(--g-ground); --g-amb3: var(--g-ground);
+}
+@media (prefers-color-scheme: dark) {
+  :root:root[data-reduce-transparency]:not([data-theme="light"]) {
+    --g-chrome-bg: #11171F; --g-content-bg: #181E29; --g-chrome-blur: none; --g-content-blur: none;
+    --g-amb1: var(--g-ground); --g-amb2: var(--g-ground); --g-amb3: var(--g-ground);
+  }
+}
+:root:root[data-reduce-transparency][data-theme="dark"] {
+  --g-chrome-bg: #11171F; --g-content-bg: #181E29; --g-chrome-blur: none; --g-content-blur: none;
+  --g-amb1: var(--g-ground); --g-amb2: var(--g-ground); --g-amb3: var(--g-ground);
+}
