@@ -10,6 +10,10 @@ import { EXIT, UsageError, isMain, runCli, withExitCodes } from "../lib/dev-tool
 
 export const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 
+// V2-TH-VAR-2: glass style preference (mirror of src/design/variants/useGlassVariant.ts).
+export const VARIANTS = Object.freeze(["glas", "klar", "nebel", "abend"]);
+export const VARIANT_KEY = "projecta.settings.glassVariant";
+
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -106,14 +110,15 @@ async function checkTab(page) {
 /** Capture light+dark shots (and optional tab check) for one route.
  *  `path` is the URL path to open (defaults to `route`). Fixture mode opens `/`
  *  and keeps `route` only for the PNG slug. */
-export async function captureRoute({ base, route, path, outDir, checkTabOrder = false }) {
+export async function captureRoute({ base, route, path, outDir, checkTabOrder = false, variant = null }) {
   mkdirSync(outDir, { recursive: true });
-  const slug = routeSlug(route);
+  const slug = variant ? `${routeSlug(route)}-${variant}` : routeSlug(route);
   const openPath = path ?? route;
   const url = new URL(openPath.startsWith("http") ? openPath : openPath, base.endsWith("/") ? base : `${base}/`).href;
   const browser = await chromium.launch({ headless: true });
   const files = [];
   let tab = null;
+  let applied = null;
   try {
     for (const scheme of ["light", "dark"]) {
       const page = await browser.newPage({
@@ -121,7 +126,15 @@ export async function captureRoute({ base, route, path, outDir, checkTabOrder = 
         colorScheme: scheme,
         reducedMotion: "reduce",
       });
+      // The stored preference must be in place before the app's first script runs.
+      if (variant) {
+        await page.addInitScript(([key, id]) => {
+          if (id === "glas") localStorage.removeItem(key);
+          else localStorage.setItem(key, id);
+        }, [VARIANT_KEY, variant]);
+      }
       await page.goto(url, { waitUntil: "networkidle" });
+      if (variant) applied = await page.evaluate(() => document.documentElement.dataset.glassVariant ?? "glas");
       if (checkTabOrder && scheme === "light") tab = await checkTab(page);
       const dest = join(outDir, `${slug}-${scheme}.png`);
       await page.screenshot({ path: dest, fullPage: false });
@@ -131,18 +144,19 @@ export async function captureRoute({ base, route, path, outDir, checkTabOrder = 
   } finally {
     await browser.close();
   }
-  return { route, files, tab, viewport: VIEWPORT };
+  return { route, files, tab, viewport: VIEWPORT, ...(variant ? { variant, applied } : {}) };
 }
 
 const HELP = `shot — V2-F7 screenshots (1440×900 light/dark) and optional tab check
 
 Usage:
-  node scripts/dev/shot.mjs --route <path> [--base <url>] [--out <dir>] [--fixture <html>] [--check-tab]
+  node scripts/dev/shot.mjs --route <path> [--base <url>] [--out <dir>] [--fixture <html>] [--check-tab] [--variant <id>]
 
   --route      App path (also names the PNG files), e.g. / or /settings
   --base       Running origin (default http://127.0.0.1:1420)
   --fixture    Local HTML file served instead of --base (tests / offline)
   --out        Output directory (default ./shots)
+  --variant    Glass style stored before load: glas, klar, nebel or abend (PNGs get -<id> in the name)
   --check-tab  Fail unless every focusable control is reached with a visible focus ring
 
 Exit: 0 ok, 1 capture/tab failure, 2 bad arguments.
@@ -157,11 +171,15 @@ export const main = withExitCodes(async (argv, io) => {
       out: { type: "string" },
       fixture: { type: "string" },
       "check-tab": { type: "boolean" },
+      variant: { type: "string" },
       help: { type: "boolean" },
     },
   });
   if (values.help) return io.out(HELP), EXIT.OK;
   if (!values.route) throw new UsageError("--route is required");
+  if (values.variant !== undefined && !VARIANTS.includes(values.variant)) {
+    throw new UsageError(`--variant must be one of ${VARIANTS.join(", ")}`);
+  }
   const outDir = resolve(values.out || "shots");
   let base = values.base || "http://127.0.0.1:1420";
   let closer = null;
@@ -181,6 +199,7 @@ export const main = withExitCodes(async (argv, io) => {
       path: values.fixture ? "/" : values.route,
       outDir,
       checkTabOrder,
+      variant: values.variant ?? null,
     });
     io.out(JSON.stringify(report, null, 2) + "\n");
     if (checkTabOrder && (!report.tab || !report.tab.ok)) {
