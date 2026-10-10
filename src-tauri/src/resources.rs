@@ -283,6 +283,7 @@ mod tests {
             "{:?}",
             snap.disk_app_bytes
         );
+        assert!(!snap.disk_app_partial);
     }
 
     #[test]
@@ -330,6 +331,7 @@ mod tests {
         let dir = TempDir::new("resource-missing");
         let snap = snapshot(&dir.path().join("gone"), -1, 7, 42);
         assert_eq!(snap.disk_app_bytes, None);
+        assert!(!snap.disk_app_partial);
         assert_eq!(
             (snap.tokens_in, snap.tokens_out, snap.observed_at),
             (-1, 7, 42)
