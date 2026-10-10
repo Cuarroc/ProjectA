@@ -7,7 +7,7 @@ import { catalogs, de, type MessageKey } from "./de";
 import { t, useT } from "./useT";
 
 const ROOT = join(__dirname, "..", "..");
-const SCAN_DIRS = ["src/design", "src/shell", "src/i18n"];
+const SCAN_DIRS = ["src/design", "src/shell", "src/flags", "src/screens", "src/i18n"];
 const DICT_FILE = "de.ts";
 const UI_RE = /[ÄÖÜäöüß]|\s|[A-ZÄÖÜ][a-zäöüß]{2,}/;
 
@@ -167,9 +167,9 @@ function isSvgPathData(text: string): boolean {
   return /^[MmLlHhVvCcSsQqTtAaZz0-9.,\-\s]+$/.test(text) && /\d/.test(text);
 }
 
-/** Dotted identifier without whitespace (storage key, i18n key): `projecta.settings.glassTheme`. */
+/** Dotted identifier without whitespace (storage key or prefix): `projecta.settings.glassTheme`. */
 function isDottedIdentifier(text: string): boolean {
-  return /^[a-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(text);
+  return /^[a-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]*)+$/.test(text);
 }
 
 function isHardcodedUi(text: string, dictValues: Set<string>): boolean {
@@ -315,10 +315,12 @@ it("scanner skips dotted storage keys while still flagging dictionary-style word
   const dictValues = new Set(Object.values(de));
   const fixture = `
     export const KEY = "projecta.settings.glassTheme";
+    export const PREFIX = "projecta.settings.featureFlag.";
     export const word = "Gedächtnis";
   `;
   const found = findHardcodedUi(fixture, dictValues);
   expect(found).not.toContain("projecta.settings.glassTheme");
+  expect(found).not.toContain("projecta.settings.featureFlag.");
   expect(found).toContain("Gedächtnis");
 });
 
