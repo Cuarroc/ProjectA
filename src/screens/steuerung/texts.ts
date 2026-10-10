@@ -1,0 +1,23 @@
+// Every UI word of the Kontingente screen. Moves into the dictionary (src/i18n)
+// once V2-F6 is on main; until then German is hard-wired in this one file.
+export const T = {
+  title: "Kontingente",
+  lead: "Alle Anbieter gleichmäßig nutzen und vor jeder Grenze ausweichen.",
+  five: "5 h",
+  week: "Woche",
+  month: "Monat",
+  notConnected: "noch nicht verbunden",
+  noPercent: "kein Prozentwert gemeldet",
+  noProviderTitle: "Noch kein Anbieter",
+  noProviderHint: "Sobald der Kern Anbieter meldet, erscheint hier je einer als Karte.",
+  loading: "Kontingente werden geladen …",
+  probe: "Jetzt prüfen",
+  probeHint: "Liest den Stand jetzt neu aus dem Kern.",
+  rules: "Failover-Regeln",
+  log: "Failover-Protokoll",
+  rulesFollow: "Folgt mit V2-B2a.",
+  logFollow: "Folgt mit V2-B2a, sobald Regeln auslösen.",
+  meterLabel: (slot: string, percent: number) => `${slot}: ${percent} Prozent verbraucht`,
+  percent: (n: number) => `${n} %`,
+  providerLamp: { ok: "OK", blocked: "Blockiert", unknown: "Unbekannt" },
+} as const;
