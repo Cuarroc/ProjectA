@@ -88,6 +88,8 @@ Alte Ansichten können **unverändert** im neuen Shell-Rahmen wohnen, bis ihr
 eigenes Screen-Paket sie ersetzt. Kein Feature-Schalter fürs Fundament; sichtbar
 erst mit V2-F9.
 
+Ausbau-Inventar und Reihenfolge je alter Teil: [`retire.md`](retire.md) (V2-RETIRE-0).
+
 | Alte Ansicht | Heute (Rev-9) | v2-Route / Fläche | Unverändert in neuer Schale bis … |
 |---|---|---|---|
 | Work | Goal `work` (Dialog + Board) | `/leitstand` | S01a / S01b |
