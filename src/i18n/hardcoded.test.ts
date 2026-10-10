@@ -203,3 +203,62 @@ it("scanner ignores KeyboardEvent key and code literals while still flagging UI 
   expect(found).not.toContain("Tab");
   expect(found).toContain("Abbrechen");
 });
+
+it("scanner ignores SVG presentation attribute values while still flagging UI copy", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export function Icon() {
+      return (
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="m5 8 5 5 5-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+          <polygon points="0,0 10,10" />
+        </svg>
+      );
+    }
+    export function Bad() {
+      return <button aria-label="Speichern">Abbrechen</button>;
+    }
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).not.toContain("0 0 20 20");
+  expect(found).not.toContain("m5 8 5 5 5-5");
+  expect(found).not.toContain("currentColor");
+  expect(found).not.toContain("0,0 10,10");
+  expect(found).toContain("Speichern");
+  expect(found).toContain("Abbrechen");
+});
+
+it("scanner ignores querySelector family selector strings while still flagging UI copy", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export function focusTrap(root: Element, el: Element) {
+      const FOCUSABLE = 'a[href], button:not(:disabled)';
+      root.querySelectorAll(FOCUSABLE);
+      root.querySelector("input:not(:disabled)");
+      el.matches('[tabindex]:not([tabindex="-1"])');
+      el.closest("button:not(:disabled)");
+      const label = "Abbrechen";
+      return label;
+    }
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).not.toContain("a[href], button:not(:disabled)");
+  expect(found).not.toContain("input:not(:disabled)");
+  expect(found).not.toContain('[tabindex]:not([tabindex="-1"])');
+  expect(found).not.toContain("button:not(:disabled)");
+  expect(found).toContain("Abbrechen");
+});
+
+it("scanner still flags aria-label UI copy", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export function Close() {
+      return <button aria-label="Schließen" title="Hinweis" placeholder="Name" alt="Bild">x</button>;
+    }
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).toContain("Schließen");
+  expect(found).toContain("Hinweis");
+  expect(found).toContain("Name");
+  expect(found).toContain("Bild");
+});
