@@ -52,7 +52,9 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   }, [projectId]);
 
   const nameOf = (id: string | null) => (id === null ? T.autoProfile : profiles.find((p) => p.id === id)?.name ?? id);
-  const ramKnown = resources?.ramProcessBytes != null && resources.ramTotalBytes != null;
+  const ram = resources?.ramProcessBytes != null && resources.ramTotalBytes != null
+    ? { used: resources.ramProcessBytes, total: resources.ramTotalBytes }
+    : null;
 
   return (
     <div className="bt-panel">
@@ -78,8 +80,8 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
       <section className="g-glass bt-card" aria-label={T.check}>
         <h2 className="bt-h">{T.check}</h2>
         <HonestState kind="offline" title={T.slotsOffline} hint={T.slotsHint} />
-        {resources === undefined ? <p className="bt-note">{T.loading}</p> : ramKnown ? (
-          <KeyValue box items={[{ label: T.ramOfApp, value: T.ramOf(gb(resources!.ramProcessBytes!), gb(resources!.ramTotalBytes!)) }]} />
+        {resources === undefined ? <p className="bt-note">{T.loading}</p> : ram ? (
+          <KeyValue box items={[{ label: T.ramOfApp, value: T.ramOf(gb(ram.used), gb(ram.total)) }]} />
         ) : (
           <HonestState kind="offline" title={T.ramOffline} hint={T.ramHint} />
         )}
