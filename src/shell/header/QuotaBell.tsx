@@ -4,7 +4,7 @@ import "./header.css";
 /** Quota bar: no backend yet, so it says so instead of drawing meters (HonestState never shows a number). */
 export function QuotaBar() {
   return (
-    <a className="g-hdr-quota" href="#/steuerung" aria-label="Kontingente: noch nicht verbunden">
+    <a className="g-hdr-quota" href="#/steuerung" aria-label="Kontingente: noch nicht verbunden" title="Kontingente: noch nicht verbunden">
       <HonestState kind="offline" title="Kontingente: noch nicht verbunden" />
     </a>
   );
