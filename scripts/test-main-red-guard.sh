@@ -72,6 +72,17 @@ cat > "$tmp/bin/gh" <<'SHIM'
 #!/usr/bin/env bash
 printf '%s\n' "gh $*" | tr '\n' ' ' >> "$MOCK_LOG"
 echo >> "$MOCK_LOG"
+# One-shot transient failure for a matched subcommand (file flag survives
+# across gh process invocations). Used to prove read retries without
+# touching create/comment/close.
+if [ -n "${MOCK_GH_FAIL_ONCE_ON:-}" ] && [[ "$*" == *"$MOCK_GH_FAIL_ONCE_ON"* ]]; then
+  flag="${MOCK_GH_FAIL_ONCE_FLAG:?}"
+  if [ ! -f "$flag" ]; then
+    : > "$flag"
+    echo "gh: HTTP 503: Service Unavailable" >&2
+    exit 1
+  fi
+fi
 case "$*" in
   *"api repos"*) echo "${MOCK_MAIN_HEAD_SHA:-deadbeefcafe}" ;;
   *"issue list"*) cat "$MOCK_ISSUES_JSON" ;;
@@ -312,6 +323,31 @@ echo '[]' > "$tmp/issues.json"
 expect_ok not-main refs/heads/claude/ci-04 failure failure true true mut-fake 0
 log_lacks not-main-no-issue 'gh issue create'
 log_lacks not-main-no-freeze 'curl'
+
+# --- 9. transient 503 on issue list: retry the read, still one create ------
+# KI-32: a one-off GitHub 503 on `gh issue list` must not turn the guard red
+# and must not create a duplicate issue after the successful retry.
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[]' > "$tmp/issues.json"
+rm -f "$tmp/gh-fail-once"
+name="transient 503 on issue list is retried and the guard still creates exactly one issue"
+MOCK_GH_FAIL_ONCE_ON="issue list" \
+MOCK_GH_FAIL_ONCE_FLAG="$tmp/gh-fail-once" \
+MAIN_RED_GUARD_BACKOFF_1=0 \
+MAIN_RED_GUARD_BACKOFF_2=0 \
+run_case "$name" "${RED_MAIN[@]}" 0
+ec=$?
+list_n="$(grep -cE 'gh issue list' "$tmp/log" || true)"
+create_n="$(grep -cE 'gh issue create' "$tmp/log" || true)"
+if [ "$ec" -eq 0 ] && [ "$list_n" -ge 2 ] && [ "$create_n" -eq 1 ]; then
+  echo "ok   $name (exit 0)"
+else
+  echo "FEHLER $name: exit=$ec, issue list=$list_n (want >=2), issue create=$create_n (want 1)"
+  sed 's/^/    /' "$tmp/out"
+  sed 's/^/    /' "$tmp/log"
+  fails=$((fails + 1))
+fi
+unset MOCK_GH_FAIL_ONCE_ON MOCK_GH_FAIL_ONCE_FLAG
 
 if [ "$fails" -gt 0 ]; then
   echo "test-main-red-guard: $fails Fehler"

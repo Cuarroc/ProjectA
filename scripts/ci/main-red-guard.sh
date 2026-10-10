@@ -93,9 +93,56 @@ freeze_ids() {
   '
 }
 
+# gh_read_is_transient <exit-code> <stderr> — true for 5xx / timeout-like
+# failures only. Non-transient errors (4xx, auth, usage) must fail loud.
+gh_read_is_transient() {
+  local ec="$1" err="$2"
+  case "$ec" in
+    124|28) return 0 ;; # timeout-like (timeout(1) / curl)
+  esac
+  printf '%s' "$err" | grep -qiE \
+    'HTTP[[:space:]]*5[0-9][0-9]|status[[:space:]]*5[0-9][0-9]|\b5[0-9]{2}\b|timeout|temporar|connection (reset|refused)|TLS handshake|i/o timeout|EOF'
+}
+
+# gh_read <gh-args...> — retry idempotent GitHub reads (issue list, api get).
+# 3 attempts, backoff 2s then 5s (overridable via MAIN_RED_GUARD_BACKOFF_1/2
+# for the self-test), only on transient failures. Never wrap create/comment/
+# close — those are not idempotent and would duplicate issues (KI-32).
+gh_read() {
+  local attempt=1 max=3 ec=0 out err errf
+  local backoff_1="${MAIN_RED_GUARD_BACKOFF_1:-2}"
+  local backoff_2="${MAIN_RED_GUARD_BACKOFF_2:-5}"
+  errf="$(mktemp "${TMPDIR:-/tmp}/main-red-guard-gh.XXXXXX")"
+  while [ "$attempt" -le "$max" ]; do
+    ec=0
+    out="$(gh "$@" 2>"$errf")" || ec=$?
+    err="$(cat "$errf" 2>/dev/null || true)"
+    if [ "$ec" -eq 0 ]; then
+      rm -f "$errf"
+      printf '%s\n' "$out"
+      return 0
+    fi
+    if [ "$attempt" -ge "$max" ] || ! gh_read_is_transient "$ec" "$err"; then
+      printf '%s\n' "$err" >&2
+      rm -f "$errf"
+      return "$ec"
+    fi
+    # stderr only: stdout is JSON for the caller (often piped into node).
+    echo "::notice title=main-red-guard::transient GitHub read failure (attempt $attempt/$max), retrying: ${err%%$'\n'*}" >&2
+    if [ "$attempt" -eq 1 ]; then
+      sleep "$backoff_1"
+    else
+      sleep "$backoff_2"
+    fi
+    attempt=$((attempt + 1))
+  done
+  rm -f "$errf"
+  return "$ec"
+}
+
 # open_ci_red_issues — numbers of open issues with label ci-red, one/line.
 open_ci_red_issues() {
-  gh issue list --repo "$REPO" --label ci-red --state open --json number --limit 50 |
+  gh_read issue list --repo "$REPO" --label ci-red --state open --json number --limit 50 |
     node -e '
       const d = JSON.parse(require("fs").readFileSync(0, "utf8"));
       for (const i of d) console.log(i.number);
@@ -159,7 +206,7 @@ if [ "$red" = "true" ]; then
   # A stale run (its SHA is no longer the main head) must not freeze again:
   # main runs do not cancel each other, so a slow old red run could finish
   # after a newer run already went green (review predecessor PR, S-5 / O-5).
-  head="$(gh api "repos/$REPO/commits/main" --jq .sha)" ||
+  head="$(gh_read api "repos/$REPO/commits/main" --jq .sha)" ||
     fail "gh api commits/main fehlgeschlagen"
   if [ "$head" != "$SHA" ]; then
     note "ueberholter Lauf: $SHA ist nicht mehr der main-Kopf ($head) - kein neuer Freeze."
