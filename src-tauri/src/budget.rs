@@ -89,6 +89,7 @@ pub enum Window {
     SevenDay,
     /// Not part of [`BudgetLimits`] (that struct is built literally in the
     /// seam files): its threshold is read with [`month_limit_of`].
+    #[allow(dead_code)] // V2-B1: wired by the seam packages (V2-S05a)
     Month,
 }
 
@@ -281,6 +282,7 @@ pub async fn limits_of(store: &Store, profile_id: &str) -> Result<BudgetLimits, 
 }
 
 /// One profile's monthly threshold, `None` when unset or unreadable.
+#[allow(dead_code)] // V2-B1: wired by the seam packages (V2-S05a)
 pub async fn month_limit_of(store: &Store, profile_id: &str) -> Result<Option<u8>, String> {
     let raw = store
         .get_setting(&setting_key(profile_id, Window::Month))

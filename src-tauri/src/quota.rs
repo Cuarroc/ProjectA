@@ -49,6 +49,7 @@ pub struct QuotaStateRow {
 
 /// What an unlock probe observed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)] // V2-B1: the probe caller lands with the seam packages (V2-S05a)
 pub enum ProbeOutcome {
     /// The provider served a real request.
     Success,
@@ -199,6 +200,7 @@ impl QuotaTracker {
     /// reason starts with `protected_prefix` belongs to another subsystem
     /// (the user's own budget ceiling) and a provider answering says nothing
     /// about it. Returns whether the block was lifted.
+    #[allow(dead_code)] // V2-B1: the probe caller lands with the seam packages (V2-S05a)
     pub fn apply_probe(
         &self,
         profile_id: &str,
