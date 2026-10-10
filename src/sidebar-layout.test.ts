@@ -27,10 +27,11 @@ describe("sidebar layout (NT-2)", () => {
     expect(blockOf("\\.sidebar-section")).toMatch(/flex-shrink:\s*0/);
   });
 
-  it("the deliberately shrinkable sections (queue, recommendations) scroll internally", () => {
-    // flex: 0 1 Npx squeezes these below their content height — the content
-    // must scroll inside the section, not spill over the next one.
-    expect(blockOf("\\.queue-section")).toMatch(/overflow-y:\s*auto/);
-    expect(blockOf("\\.reco-section")).toMatch(/overflow-y:\s*auto/);
+  it("queue and recommendation sections do not nest-scroll or shrink", () => {
+    // UM-3: nested section scroll clipped Einreihen; the sidebar scrolls alone.
+    expect(blockOf("\\.queue-section")).toMatch(/flex:\s*0\s+0\s+auto/);
+    expect(blockOf("\\.queue-section")).toMatch(/overflow:\s*visible/);
+    expect(blockOf("\\.reco-section")).toMatch(/flex:\s*0\s+0\s+auto/);
+    expect(blockOf("\\.reco-section")).toMatch(/overflow:\s*visible/);
   });
 });
