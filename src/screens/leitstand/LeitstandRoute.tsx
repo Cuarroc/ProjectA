@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { listAgentProfiles } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
+import { HonestState } from "../../design/data/HonestState";
 import type { AgentProfile } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
 import { NeedsYou } from "./needs/NeedsYou";
 
 // Words of the route frame. Moves into the dictionary (src/i18n) once V2-F6 is on main.
-const T = { title: "Leitstand", tabs: "Ansichten", main: "Haupt", classic: "Klassisch" } as const;
+const T = { title: "Leitstand", tabs: "Ansichten", main: "Haupt", classic: "Klassisch", profilesFailed: "Agenten konnten nicht geladen werden", profilesHint: "Die Karten zeigen vorerst die Profil-Kennung." } as const;
 
 export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
@@ -46,10 +47,14 @@ export default function LeitstandRoute() {
   const board = useBoard(projectId, true);
   const questions = useQuestions(projectId, true);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const [profilesFailed, setProfilesFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now() / 1000);
   useEffect(() => {
     let live = true;
-    listAgentProfiles().then((list) => live && setProfiles(list), () => {});
+    listAgentProfiles().then(
+      (list) => live && setProfiles(list),
+      () => live && setProfilesFailed(true),
+    );
     const timer = window.setInterval(() => setNow(Date.now() / 1000), TICK_MS);
     return () => {
       live = false;
@@ -62,6 +67,7 @@ export default function LeitstandRoute() {
       <div className="g-lr-head"><h1>{T.title}</h1><LeitstandTabs path={MAIN_PATH} /></div>
       <div className="g-lr-body">
         <div className="g-lr-main">
+          {profilesFailed && <div role="status"><HonestState kind="offline" title={T.profilesFailed} hint={T.profilesHint} /></div>}
           <LeitstandCards
             cards={board.cards}
             profiles={profiles}

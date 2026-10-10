@@ -48,6 +48,19 @@ describe("Leitstand route behind D1", () => {
     expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
   });
 
+  it("says so when the agent profiles cannot be loaded and keeps the cards usable", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    const base = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "list_agent_profiles" ? Promise.reject(new Error("backend down")) : base(command));
+    render(<App />);
+    const agents = await screen.findByRole("region", { name: "Agenten" });
+    expect(await screen.findByText("Agenten konnten nicht geladen werden")).toBeInTheDocument();
+    // Without profiles the card falls back to the profile id as its name.
+    expect(await within(agents).findByRole("heading", { name: "claude" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("1");
+  });
+
   it("picks up the project the old app chooses after this route has mounted", async () => {
     localStorage.removeItem("projecta.activeProjectId");
     localStorage.setItem(FLAG_KEY, "1");
