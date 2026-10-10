@@ -14,6 +14,8 @@
 
 #![allow(dead_code)]
 
+pub(crate) mod proof;
+
 use std::path::Path;
 use std::process::Output;
 
