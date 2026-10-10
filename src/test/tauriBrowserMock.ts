@@ -1,5 +1,36 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 
+// The 25 commands that were unmocked across the ui-shots baseline (index
+// aggregates). Rich mode must answer each without throwing so showcase views
+// (provider, settings, insights, review) render data instead of raw errors.
+export const RICH_SHOWCASE_COMMANDS = [
+  "get_activity",
+  "get_agent_env_isolation",
+  "get_budgets",
+  "get_digest_enabled",
+  "get_emergency_stop",
+  "get_free_tier_summary",
+  "get_learning_settings",
+  "get_log_path",
+  "get_maintenance",
+  "get_omniroute_key_sync",
+  "get_omniroute_usage",
+  "get_project_setup_command",
+  "get_project_skill_packs",
+  "get_project_stats",
+  "get_provider_overview",
+  "get_reason_catalog",
+  "get_resource_snapshot",
+  "get_routing_status",
+  "get_setup_trust_view",
+  "get_stuck_after_minutes",
+  "get_updater_state",
+  "get_worker_diff",
+  "list_diff_comments",
+  "list_skill_packs",
+  "plugin:app|version",
+] as const;
+
 // PR45 screenshot fixtures: one active project with a GitHub remote, one
 // running worker with test badges on the board, one queued entry with an
 // error label, two agent profiles for ad-hoc terminal tabs. The empty
@@ -148,6 +179,15 @@ const BOOT_RESPONSES: Readonly<Record<string, unknown>> = {
   list_live_sessions: [],
 };
 
+/** Resolve a mocked IPC answer; throws the same error the browser smoke uses. */
+export function lookupMockResponse(command: string, rich: boolean): unknown {
+  const table = rich ? { ...BOOT_RESPONSES, ...RICH_RESPONSES } : BOOT_RESPONSES;
+  if (!Object.prototype.hasOwnProperty.call(table, command)) {
+    throw new Error(`browser smoke: unmocked command ${command}`);
+  }
+  return table[command];
+}
+
 declare global {
   interface Window {
     __PROJECTA_E2E_IPC_CALLS__?: string[];
@@ -176,13 +216,12 @@ mockIPC(
       return null;
     }
     const rich = window.__PROJECTA_E2E_RICH__ === true;
-    const table = rich ? { ...BOOT_RESPONSES, ...RICH_RESPONSES } : BOOT_RESPONSES;
-    if (Object.prototype.hasOwnProperty.call(table, command)) {
-      return table[command];
+    try {
+      return lookupMockResponse(command, rich);
+    } catch (cause) {
+      unknown.push(command);
+      throw cause;
     }
-
-    unknown.push(command);
-    throw new Error(`browser smoke: unmocked command ${command}`);
   },
   { shouldMockEvents: true },
 );
