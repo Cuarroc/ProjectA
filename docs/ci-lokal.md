@@ -134,10 +134,12 @@ Belegpfad. Und `--bind` bitte nicht — es schreibt mit Container-UID in das ech
 
 - **`release.yml`** hält den Tauri-Signing-Key und den Mirror-PAT.
 
-Der Release-*Build* selbst ist lokal machbar (`npx tauri build`,
-`scripts/release.cmd`). Das anonyme Verify-Gate steht noch inline in
-`release.yml`; es nach `scripts/` auszulagern ist ein offener Punkt (in dieser
-Umgebung stand kein pwsh zur Verfügung, um die Auslagerung zu belegen).
+Der Release-*Build* selbst ist lokal machbar (`npx tauri build`).
+Versions-Bump und Tag laufen nicht mehr über `scripts/release.cmd` (Stub,
+REL-3): Bump-PR wie Vorlage PR #922, Tag nach dem Mergify-Merge.
+Das anonyme Verify-Gate steht noch inline in `release.yml`; es nach
+`scripts/` auszulagern ist ein offener Punkt (in dieser Umgebung stand kein
+pwsh zur Verfügung, um die Auslagerung zu belegen).
 
 ## Was „grün" für W3-08 nicht belegt: der installierte HQ-v1-Stand
 
