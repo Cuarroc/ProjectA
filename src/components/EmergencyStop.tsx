@@ -62,6 +62,12 @@ export default function EmergencyStop() {
     }
   }
 
+  const hint = active
+    ? confirmed
+      ? "Not-Aus ist aktiv: keine neuen Aufgaben, alle Agenten sind beendet."
+      : "Not-Aus ist aktiv: neue Aufgaben sind gesperrt; der Stillstand ist nicht bestätigt."
+    : "Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben.";
+
   return (
     <div className="settings-field" data-testid="emergency-stop">
       <span className="field-label">Not-Aus</span>
@@ -86,12 +92,8 @@ export default function EmergencyStop() {
           </button>
         )}
       </div>
-      <p className="settings-hint" role="status">
-        {active
-          ? confirmed
-            ? "Not-Aus ist aktiv: keine neuen Aufgaben, alle Agenten sind beendet."
-            : "Not-Aus ist aktiv: neue Aufgaben sind gesperrt; der Stillstand ist nicht bestätigt."
-          : "Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben."}
+      <p className="settings-hint" role="status" title={hint}>
+        {hint}
       </p>
       {error ? <span className="settings-error" role="alert">{error}</span> : null}
     </div>
