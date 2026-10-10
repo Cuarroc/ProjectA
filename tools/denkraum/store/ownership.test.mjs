@@ -531,6 +531,37 @@ test('OWN-3: acquire syncs the owner record before closing it', async t => {
     await release(file, session.nonce);
   } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });
+test('OWN-3: a failing sync removes the partial owner record and reports OWNERSHIP_IO', async t => {
+  const file = await ledger(t), path = ownerPath(file), origOpen = fs.open, events = [];
+  let handle, failSync = true;
+  t.mock.method(fs, 'open', async (p, ...rest) => {
+    const h = await origOpen(p, ...rest);
+    if (p === path && rest[0] === 'wx') {
+      handle = h;
+      for (const name of ['writeFile', 'sync', 'close']) {
+        const orig = h[name].bind(h);
+        h[name] = async (...args) => {
+          events.push(name);
+          if (name === 'sync' && failSync) {
+            failSync = false;
+            throw Object.assign(new Error('sync failed'), { code: 'EIO' });
+          }
+          return orig(...args);
+        };
+      }
+    }
+    return h;
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(acquire(file), e => isDiag(e, IO));
+    assert.deepEqual(events, ['writeFile', 'sync', 'close']);
+    assert.equal(handle.fd, -1, 'failed sync closes its handle');
+    await assert.rejects(readFile(path), e => e.code === 'ENOENT');
+    const session = await acquire(file);
+    await release(file, session.nonce);
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});
 test('R896-K1: a non-ENOENT read error gives OWNERSHIP_HELD with an I/O hint', async t => {
   const file = await ledger(t), path = ownerPath(file), origRead = fs.readFile;
   await writeFile(path, '{}', { mode: 0o600 });
