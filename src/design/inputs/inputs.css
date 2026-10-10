@@ -15,6 +15,7 @@
 .g-inp:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
 .g-selw { position: relative; display: flex; align-items: center; min-width: 0; }
 .g-selw select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
+/* Option styling is best effort: some engines (WebKit) ignore it and draw native options. */
 .g-selw select option { background: var(--g-ground); color: var(--g-ink); }
 .g-selw__ic { position: absolute; right: 12px; color: var(--g-muted); pointer-events: none; }
 .g-kbd {
