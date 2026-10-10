@@ -1,0 +1,14 @@
+/* V2-S10a-1 Einstellungen, tab Allgemein. Not imported by the app yet. --g-* tokens only. */
+.es { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.es-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 12px; align-content: start; }
+.es-sec { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: var(--g-pad); min-width: 0; }
+.es-sec h2 { margin: 0; font: 600 15px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.es-note, .es-val, .es-err { margin: 0; font-size: 12px; line-height: 1.45; color: var(--g-muted); }
+.es-val { font-size: 13px; color: var(--g-ink2); }
+.es-err { color: var(--g-bad); }
+.es-note:empty { display: none; }
+/* the classic controls keep their own classes; only tie their text to the Glass tokens here */
+.es-sec .settings-hint { margin: 0; font-size: 12px; color: var(--g-muted); }
+.es-sec .settings-check { color: var(--g-ink); font-size: 13px; }
+/* the section heading already names Not-Aus; the classic label repeats it and is unreadable in dark */
+.es-sec .field-label { display: none; }
