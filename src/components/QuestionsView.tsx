@@ -433,7 +433,7 @@ export default function QuestionsView({
 
   return (
     <div className="questions-view">
-      <div className="questions-head">
+      <div className="view-head">
         <h2 className="section-title">Fragen</h2>
         {open.length > 0 ? (
           <span className="state-chip state-needs-you">{open.length}</span>
