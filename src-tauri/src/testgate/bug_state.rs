@@ -257,10 +257,7 @@ mod tests {
         assert!(reason(bug.submit_fix(run("other", 0, "bbb"))).contains("anderer Test"));
         assert_eq!((bug.state(), bug.attempts()), (BugState::InArbeit, 0));
         let message = reason(bug.submit_fix(run("t", 0, "aaa")));
-        assert!(
-            message.contains("anderen Stand als der rote Beweis"),
-            "{message}"
-        );
+        assert!(message.contains(SAME_AS_RED), "{message}");
         assert!(!message.contains("neuer"), "{message}");
         assert_eq!(bug.attempts(), 1);
     }
@@ -308,6 +305,10 @@ mod tests {
         assert!(reason(bug.finish()).contains("In Arbeit"));
         assert_eq!(bug.state(), BugState::InArbeit);
     }
+
+    const SAME_AS_RED: &str = "Der grüne Lauf stammt vom selben Stand wie der rote Beweis.";
+    const SAME_AS_FAILED: &str =
+        "Der grüne Lauf stammt von einem Stand, an dem der Test schon rot war.";
 
     fn run_at(path: &str, name: &str, exit_code: i32, sha: &str) -> TestRun {
         TestRun {
@@ -364,5 +365,29 @@ mod tests {
             assert_eq!(bug, before);
         }
         assert_eq!(bug.attempts(), 0);
+    }
+
+    #[test]
+    fn green_at_an_older_failing_sha_is_rejected() {
+        let mut bug = working();
+        bug.submit_fix(run("t", 1, "bbb")).unwrap_err();
+        bug.submit_fix(run("t", 1, "ccc")).unwrap_err();
+        let message = reason(bug.submit_fix(run("t", 0, "bbb")));
+        assert!(message.contains(SAME_AS_FAILED), "{message}");
+        assert_eq!(bug.state(), BugState::NutzerEntscheidet);
+        // the failing shas outlive the user's decision to keep trying
+        bug.decide(UserDecision::KeepTrying).unwrap();
+        assert!(reason(bug.submit_fix(run("t", 0, "ccc"))).contains(SAME_AS_FAILED));
+        assert_eq!(bug.submit_fix(run("t", 0, "ddd")), Ok(BugState::FixBelegt));
+    }
+
+    #[test]
+    fn rejection_text_names_the_red_proof_or_the_failing_attempt() {
+        let mut bug = working();
+        let at_red = reason(bug.submit_fix(run("t", 0, "aaa")));
+        assert!(at_red.starts_with(SAME_AS_RED), "{at_red}");
+        bug.submit_fix(run("t", 1, "bbb")).unwrap_err();
+        let at_failed = reason(bug.submit_fix(run("t", 0, "bbb")));
+        assert!(at_failed.starts_with(SAME_AS_FAILED), "{at_failed}");
     }
 }
