@@ -44,7 +44,7 @@
 
   /* Classic surface API; themes override roles, never state colours. */
   --surface-window: var(--color-window);
-  --surface-chrome: var(--color-chrome-solid);
+  --surface-chrome: var(--color-elevated);
   --surface-content: var(--color-content);
   --surface-card: var(--color-elevated);
   --surface-overlay: var(--color-elevated);
@@ -52,8 +52,8 @@
   --surface-spec: transparent;
   --material-chrome-filter: none;
   --material-overlay-filter: none;
-  --color-disabled-fg: var(--color-text-secondary);
-  --color-disabled-bg: var(--color-raised);
+  --color-disabled-fg: var(--color-text-tertiary);
+  --color-disabled-bg: var(--color-hover);
 
   --color-text-primary: rgba(255, 255, 255, 0.88);
   --color-text-secondary: rgba(255, 255, 255, 0.6);
@@ -235,7 +235,7 @@
      grid. */
   --shell-sidebar-w: 248px;
   --shell-rail-w: 236px;
-  --shell-bar-h: 44px;
+  --shell-bar-h: 38px;
   /* Prose stops being readable long before a wide window ends. */
   --stream-max-w: 880px;
 
@@ -361,11 +361,22 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+:where(button):disabled {
   cursor: default;
   color: var(--color-disabled-fg);
-  background: var(--color-disabled-bg);
   opacity: 1;
+}
+
+/* Filled controls keep a disabled plate; ghost/link/icon stay transparent. */
+.button-primary:disabled,
+.button-subtle:disabled,
+.convo-send:disabled,
+.empty-action:disabled,
+.bootstrap-retry:disabled,
+.command-chat-send:disabled,
+.question-send:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-fg);
 }
 
 /* ---- motion -----------------------------------------------------------
@@ -3169,7 +3180,7 @@ scripts/contrast-check.mjs. */
   align-items: flex-start;
   justify-content: center;
   padding-top: 12vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-scrim);
   /* The ground darkens without moving — it is the room the sheet appears in,
      not an object itself. */
   animation: scrim-in var(--motion-popover-in) var(--ease-standard);
@@ -6754,7 +6765,6 @@ scripts/contrast-check.mjs. */
   --ui-control-min: 40px;
   --ui-row-min: 44px;
   --ui-panel-pad: var(--space-8);
-  --shell-bar-h: 44px;
   --ui-bar-control: 28px;
   /* Resolve compatibility aliases where theme overrides live. */
   --shadow-card: var(--elev-1);
@@ -6766,7 +6776,6 @@ scripts/contrast-check.mjs. */
   --ui-control-min: 32px;
   --ui-row-min: 32px;
   --ui-panel-pad: var(--space-7);
-  --shell-bar-h: 38px;
   --ui-bar-control: 24px;
 }
 

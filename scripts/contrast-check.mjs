@@ -182,8 +182,15 @@ for (const [mode, vars] of [["hell  ", light], ["dunkel", dark]]) {
 
   for (const surface of [surfaces.Inhalt, surfaces.Karte, c("color-raised")])
     check(mode, "control border / surface", c("color-control-border"), surface, 3);
-  // Disabled text remains readable; no whole-button opacity is composed here.
-  check(mode, "disabled text / fill", c("color-disabled-fg"), c("color-disabled-bg"));
+  // Disabled text remains readable on the disabled plate (product floor 3:1;
+  // WCAG exempts disabled controls). Compose hover-alpha plates over the card.
+  check(
+    mode,
+    "disabled text / fill",
+    c("color-disabled-fg"),
+    over(c("color-disabled-bg"), surfaces.Karte),
+    3,
+  );
   // The dimmer must visibly separate the background (product floor, not WCAG).
   for (const surface of Object.values(surfaces))
     check(mode, "scrim / surface", over(c("color-scrim"), surface), surface, 1.05);
