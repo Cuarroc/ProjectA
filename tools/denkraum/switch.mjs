@@ -2,7 +2,7 @@
 // DR-16a: pause → backup → switch way-back helper. Stdout is JSON lines only.
 import { createHash } from 'node:crypto';
 import { realpathSync } from 'node:fs';
-import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateState } from './store/model.mjs';
@@ -80,7 +80,10 @@ async function readValidated(path) {
 async function backup(args) {
   const statePath = abs(arg(args, '--state'), 'state'), out = abs(arg(args, '--out'), 'out');
   const defaultPort = !args.includes('--port');
-  const raw = defaultPort ? '4791' : arg(args, '--port');
+  // Without --port: honour DECISION_DESK_PORT when set (same digit/range checks as --port / config.mjs).
+  const raw = defaultPort
+    ? (process.env.DECISION_DESK_PORT !== undefined ? process.env.DECISION_DESK_PORT : '4791')
+    : arg(args, '--port');
   if (typeof raw !== 'string' || !/^\d{1,5}$/.test(raw)) return fail(2, 'Ungültiger Port');
   const port = Number(raw);
   if (port < 1 || port > 65535) return fail(2, 'Ungültiger Port');
@@ -98,6 +101,11 @@ async function backup(args) {
     if (error.code !== 'ENOENT') { diagnose(error); return fail(4, 'Ungültiger Pfad'); }
   }
   if (await healthUp(port)) return fail(3, 'Schreiber läuft noch');
+  // A live server leaves <state>.owner beside the ledger even if the probe port is free.
+  try { await access(`${statePath}.owner`); return fail(3, 'Besitzerdatei vorhanden'); }
+  catch (error) {
+    if (error.code !== 'ENOENT') { diagnose(error); return fail(4, 'Ungültiger Pfad'); }
+  }
   let names; try { names = await readdir(dirname(statePath)); } catch (error) { diagnose(error); names = []; }
   const prefix = `${basename(statePath)}.`;
   for (const name of names) if (name.startsWith(prefix)
