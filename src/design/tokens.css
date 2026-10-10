@@ -1,9 +1,12 @@
 /* V2-F1 design tokens. Not imported by the app.
    Values are the glass Leitstand token block (light on :root, dark in the
-   media query). Geist is a local family name; the font file is not here.
+   media query). An explicit <html data-theme="light|dark"> wins over the OS;
+   no attribute follows the OS. Keep the two dark blocks identical.
+   Geist is a local family name; the font file is not here.
    Durations and easing belong to the motion package. */
 
 :root {
+  color-scheme: light;
   --g-ground: #E9EDF3;
   --g-ink: #121826;
   --g-ink2: #2F3747;
@@ -60,7 +63,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --g-ground: #0D1219;
     --g-ink: #E8ECF2;
     --g-ink2: #C9D0DA;
@@ -74,7 +78,7 @@
     --g-accent: #6E9BFF;
     --g-accent-hover: #8AAEFF;
     --g-on-accent: #0A1022;
-    --g-accent-soft: rgba(110, 155, 255, 0.16);
+    --g-accent-soft: rgba(110, 155, 255, 0.12);
     --g-accent-line: rgba(110, 155, 255, 0.55);
     --g-sw-on: #3A6FE0;
     --g-sw-off: #687284;
@@ -107,4 +111,53 @@
     --g-av5: #432936;
     --g-av6: #2B323C;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --g-ground: #0D1219;
+  --g-ink: #E8ECF2;
+  --g-ink2: #C9D0DA;
+  --g-muted: #A2ACBB;
+  --g-faint: #8D97A7;
+  --g-line: rgba(255, 255, 255, 0.11);
+  --g-hair: rgba(255, 255, 255, 0.07);
+  --g-tint: rgba(255, 255, 255, 0.05);
+  --g-tint-hi: rgba(255, 255, 255, 0.1);
+  --g-hover: rgba(255, 255, 255, 0.14);
+  --g-accent: #6E9BFF;
+  --g-accent-hover: #8AAEFF;
+  --g-on-accent: #0A1022;
+  --g-accent-soft: rgba(110, 155, 255, 0.12);
+  --g-accent-line: rgba(110, 155, 255, 0.55);
+  --g-sw-on: #3A6FE0;
+  --g-sw-off: #687284;
+  --g-run: #66C5F2;
+  --g-run-bg: rgba(102, 197, 242, 0.14);
+  --g-need: #FFB16A;
+  --g-need-bg: rgba(255, 177, 106, 0.14);
+  --g-on-need: #1D1206;
+  --g-rev: #C0A6FF;
+  --g-rev-bg: rgba(192, 166, 255, 0.15);
+  --g-ok: #66D392;
+  --g-ok-bg: rgba(102, 211, 146, 0.14);
+  --g-done: #A2ACBB;
+  --g-done-bg: rgba(162, 172, 187, 0.13);
+  --g-bad: #FF8388;
+  --g-bad-bg: rgba(255, 131, 136, 0.14);
+  --g-danger-line: rgba(255, 131, 136, 0.42);
+  --g-chrome-bg: rgba(20, 26, 36, 0.56);
+  --g-content-bg: rgba(27, 33, 45, 0.8);
+  --g-spec: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --g-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+  --g-shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.35), 0 28px 64px -20px rgba(0, 0, 0, 0.7);
+  --g-amb1: #16264A;
+  --g-amb2: #0F322D;
+  --g-amb3: #33231A;
+  --g-av1: #25324F;
+  --g-av2: #1F3B37;
+  --g-av3: #3D3122;
+  --g-av4: #33294A;
+  --g-av5: #432936;
+  --g-av6: #2B323C;
 }
