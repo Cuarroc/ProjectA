@@ -202,6 +202,68 @@ mod tests {
     }
 
     #[test]
+    fn a_padded_chosen_model_name_is_trimmed_before_matching() {
+        let found = LocalReadiness::from_probe(probe(true, &["qwen3:8b"], Some("qwen3:8b ")));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: "qwen3:8b".into()
+            }
+        );
+        let found = LocalReadiness::from_probe(probe(true, &["llama3:latest"], Some(" llama3 ")));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: "llama3".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_host_port_without_a_tag_still_matches_latest() {
+        let model = "meinhost:5000/foo";
+        let found =
+            LocalReadiness::from_probe(probe(true, &["meinhost:5000/foo:latest"], Some(model)));
+        assert_eq!(
+            found,
+            Readiness::Bereit {
+                model: model.into()
+            }
+        );
+        let tagged = probe(
+            true,
+            &["meinhost:5000/foo:latest"],
+            Some("meinhost:5000/foo:7b"),
+        );
+        assert!(not_ready(tagged).contains("foo:7b"));
+    }
+
+    #[test]
+    fn a_rule_to_the_local_model_with_a_ready_local_model_uses_local() {
+        let mut rules = RuleSet::new();
+        let to_local = "Wenn Claude blockiert ist, dann weiter mit dem lokalen Modell.";
+        rules.add(Rule::parse(to_local).unwrap()).unwrap();
+        let step = LocalStage::resolve(&rules, &CHAIN, &blocked(&["claude"]), &ready());
+        assert_eq!(
+            step,
+            Step::Local {
+                model: "qwen3:8b".into()
+            }
+        );
+    }
+
+    #[test]
+    fn any_local_kind_provider_is_the_local_stage_never_a_plain_provider() {
+        let chain = ["claude", "omniroute"];
+        let states = blocked(&["claude"]);
+        let down = LocalReadiness::from_probe(probe(false, &[], None));
+        let step = LocalStage::resolve(&RuleSet::new(), &chain, &states, &down);
+        assert!(matches!(step, Step::Pause { .. }), "{step:?}");
+        let step = LocalStage::resolve(&RuleSet::new(), &chain, &states, &ready());
+        assert!(matches!(step, Step::Local { .. }), "{step:?}");
+    }
+
+    #[test]
     fn the_local_stage_cannot_be_disabled() {
         assert!(LocalStage
             .set_enabled(false)
