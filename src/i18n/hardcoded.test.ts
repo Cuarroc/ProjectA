@@ -62,17 +62,66 @@ function isTypePositionLiteral(node: ts.Node): boolean {
   return ts.isLiteralTypeNode(node.parent);
 }
 
-function isClassNameAttributeValue(node: ts.Node): boolean {
-  let cur: ts.Node | undefined = node;
-  while (cur) {
-    if (ts.isJsxAttribute(cur)) {
-      const name = cur.name;
-      return ts.isIdentifier(name) && name.text === "className";
-    }
-    if (ts.isSourceFile(cur)) break;
-    cur = cur.parent;
+/** Explicit presentation/geometry JSX attrs — not "any attribute". */
+const SVG_PRESENTATION_ATTRS = new Set([
+  "viewBox", "d", "fill", "stroke", "points", "xmlns",
+  "strokeLinecap", "strokeLinejoin", "strokeWidth",
+]);
+const DOM_SELECTOR_METHODS = new Set(["querySelector", "querySelectorAll", "matches", "closest"]);
+
+function jsxAttributeName(node: ts.Node): string | undefined {
+  for (let cur: ts.Node | undefined = node; cur && !ts.isSourceFile(cur); cur = cur.parent) {
+    if (ts.isJsxAttribute(cur) && ts.isIdentifier(cur.name)) return cur.name.text;
   }
-  return false;
+  return undefined;
+}
+
+function isClassNameAttributeValue(node: ts.Node): boolean {
+  return jsxAttributeName(node) === "className";
+}
+
+function isSvgPresentationAttributeValue(node: ts.Node): boolean {
+  const name = jsxAttributeName(node);
+  return name !== undefined && SVG_PRESENTATION_ATTRS.has(name);
+}
+
+function callMethodName(expr: ts.Expression): string | undefined {
+  if (ts.isPropertyAccessExpression(expr) || ts.isPropertyAccessChain(expr)) return expr.name.text;
+  return ts.isIdentifier(expr) ? expr.text : undefined;
+}
+
+/** Direct selector args, or same-file const string initializers passed to those methods. */
+function collectDomSelectorLiteralNodes(sf: ts.SourceFile): Set<ts.Node> {
+  const skipped = new Set<ts.Node>();
+  const constInit = new Map<string, ts.Node>();
+  const noteConsts = (node: ts.Node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      (ts.isStringLiteral(node.initializer) || ts.isNoSubstitutionTemplateLiteral(node.initializer))
+    ) {
+      constInit.set(node.name.text, node.initializer);
+    }
+    ts.forEachChild(node, noteConsts);
+  };
+  noteConsts(sf);
+  const visit = (node: ts.Node) => {
+    if ((ts.isCallExpression(node) || ts.isCallChain(node)) && node.arguments.length > 0) {
+      const method = callMethodName(node.expression);
+      if (method && DOM_SELECTOR_METHODS.has(method)) {
+        const arg = node.arguments[0];
+        if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) skipped.add(arg);
+        else if (ts.isIdentifier(arg)) {
+          const init = constInit.get(arg.text);
+          if (init) skipped.add(init);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return skipped;
 }
 
 /** Collect string-like UI candidates via the TypeScript AST (JSX text, literals, template parts). */
@@ -81,15 +130,15 @@ function collectCandidateStrings(source: string, fileName = "fixture.tsx"): stri
     ? ts.ScriptKind.TS
     : ts.ScriptKind.TSX;
   const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, kind);
+  const selectorLiterals = collectDomSelectorLiteralNodes(sf);
   const found: string[] = [];
-
-  const pushLiteral = (text: string) => {
-    if (text.length > 0) found.push(text);
-  };
+  const pushLiteral = (text: string) => { if (text.length > 0) found.push(text); };
   const pushJsxText = (text: string) => {
     const normalized = text.replace(/\s+/g, " ").trim();
     if (normalized.length > 0) found.push(normalized);
   };
+  const skipAttr = (node: ts.Node) =>
+    isClassNameAttributeValue(node) || isSvgPresentationAttributeValue(node);
 
   const visit = (node: ts.Node) => {
     if (ts.isJsxText(node)) {
@@ -98,17 +147,14 @@ function collectCandidateStrings(source: string, fileName = "fixture.tsx"): stri
       if (
         !isKeyboardEventNameLiteral(node) &&
         !isTypePositionLiteral(node) &&
-        !isClassNameAttributeValue(node)
+        !skipAttr(node) &&
+        !selectorLiterals.has(node)
       ) {
         pushLiteral(node.text);
       }
-    } else if (ts.isTemplateExpression(node)) {
-      if (!isClassNameAttributeValue(node)) {
-        pushLiteral(node.head.text);
-        for (const span of node.templateSpans) {
-          pushLiteral(span.literal.text);
-        }
-      }
+    } else if (ts.isTemplateExpression(node) && !skipAttr(node)) {
+      pushLiteral(node.head.text);
+      for (const span of node.templateSpans) pushLiteral(span.literal.text);
     }
     ts.forEachChild(node, visit);
   };
@@ -208,24 +254,13 @@ it("scanner ignores SVG presentation attribute values while still flagging UI co
   const dictValues = new Set(Object.values(de));
   const fixture = `
     export function Icon() {
-      return (
-        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-          <path d="m5 8 5 5 5-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
-          <polygon points="0,0 10,10" />
-        </svg>
-      );
+      return <svg viewBox="0 0 20 20"><path d="m5 8 5 5 5-5" stroke="currentColor" points="0,0 10,10" /></svg>;
     }
-    export function Bad() {
-      return <button aria-label="Speichern">Abbrechen</button>;
-    }
+    export function Bad() { return <button aria-label="Speichern">Abbrechen</button>; }
   `;
   const found = findHardcodedUi(fixture, dictValues);
-  expect(found).not.toContain("0 0 20 20");
-  expect(found).not.toContain("m5 8 5 5 5-5");
-  expect(found).not.toContain("currentColor");
-  expect(found).not.toContain("0,0 10,10");
-  expect(found).toContain("Speichern");
-  expect(found).toContain("Abbrechen");
+  for (const s of ["0 0 20 20", "m5 8 5 5 5-5", "currentColor", "0,0 10,10"]) expect(found).not.toContain(s);
+  expect(found).toEqual(expect.arrayContaining(["Speichern", "Abbrechen"]));
 });
 
 it("scanner ignores querySelector family selector strings while still flagging UI copy", () => {
@@ -237,28 +272,24 @@ it("scanner ignores querySelector family selector strings while still flagging U
       root.querySelector("input:not(:disabled)");
       el.matches('[tabindex]:not([tabindex="-1"])');
       el.closest("button:not(:disabled)");
-      const label = "Abbrechen";
-      return label;
+      return "Abbrechen";
     }
   `;
   const found = findHardcodedUi(fixture, dictValues);
-  expect(found).not.toContain("a[href], button:not(:disabled)");
-  expect(found).not.toContain("input:not(:disabled)");
-  expect(found).not.toContain('[tabindex]:not([tabindex="-1"])');
-  expect(found).not.toContain("button:not(:disabled)");
+  for (const s of [
+    "a[href], button:not(:disabled)",
+    "input:not(:disabled)",
+    '[tabindex]:not([tabindex="-1"])',
+    "button:not(:disabled)",
+  ]) expect(found).not.toContain(s);
   expect(found).toContain("Abbrechen");
 });
 
 it("scanner still flags aria-label UI copy", () => {
   const dictValues = new Set(Object.values(de));
-  const fixture = `
-    export function Close() {
-      return <button aria-label="Schließen" title="Hinweis" placeholder="Name" alt="Bild">x</button>;
-    }
-  `;
+  const fixture = `export function Close() {
+    return <button aria-label="Schließen" title="Hinweis" placeholder="Name" alt="Bild">x</button>;
+  }`;
   const found = findHardcodedUi(fixture, dictValues);
-  expect(found).toContain("Schließen");
-  expect(found).toContain("Hinweis");
-  expect(found).toContain("Name");
-  expect(found).toContain("Bild");
+  expect(found).toEqual(expect.arrayContaining(["Schließen", "Hinweis", "Name", "Bild"]));
 });

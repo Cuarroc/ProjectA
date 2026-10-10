@@ -28,6 +28,11 @@ export const de = {
   "theme.light": "Hell",
   "theme.dark": "Dunkel",
   "theme.system": "System",
+  "action.close": "Schließen",
+  "honest.empty": "Noch nichts da",
+  "honest.offline": "Nicht verbunden",
+  "honest.locked": "Gesperrt",
+  "proof.gates": "Gates",
 } as const;
 
 export type MessageKey = keyof typeof de;

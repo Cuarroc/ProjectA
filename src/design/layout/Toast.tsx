@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { de } from "../../i18n/de";
 
 export type ToastTone = "info" | "ok" | "bad";
 
@@ -19,7 +20,7 @@ function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; o
   return (
     <div className={`g-toast g-toast--${toast.tone}`} role={toast.tone === "bad" ? "alert" : "status"}>
       <span>{toast.text}</span>
-      <button type="button" className="g-toast__x" aria-label="Schließen" onClick={() => onDismiss(toast.id)}>×</button>
+      <button type="button" className="g-toast__x" aria-label={de["action.close"]} onClick={() => onDismiss(toast.id)}>×</button>
     </div>
   );
 }
