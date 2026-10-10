@@ -535,9 +535,6 @@ function checkVariants(designLight, designDark) {
   const check1 = (mode, vars) => {
     const c = (n) => color(vars, n);
     const stops = ["g-ground", "g-amb1", "g-amb2", "g-amb3"].map((n) => [n.slice(2), c(n)]);
-    // Pending V2-TH-0: dark accent-soft is .16 on main, which puts the pressed
-    // filter chip at 4.45:1. This exclusion ends once tokens.css carries .12.
-    const pendingSoft = mode.endsWith("dunkel") && c("g-accent-soft").a > 0.12;
     const satOf = (blur) => +(vars[blur].match(/saturate\((\d+)%\)/)?.[1] ?? 100);
     const mat = (stop, bg, blur) => over(c(bg), satTable(stop, satOf(blur)));
     const on = (token, base) => over(c(token), base);
@@ -563,10 +560,6 @@ function checkVariants(designLight, designDark) {
           if (!worst || r < worst.r) worst = { r, stopName, bg };
         }
         const name = `${label} ${fg.slice(2)} @${worst.stopName}`;
-        if (pendingSoft && label === "pressed filter chip" && worst.r < 4.5) {
-          rows.push(`${mode}  ${name.padEnd(44)} ${worst.r.toFixed(2).padStart(6)}:1  ausstehend (V2-TH-0)`);
-          continue;
-        }
         check(mode, name, c(fg), worst.bg, min);
       }
     }
