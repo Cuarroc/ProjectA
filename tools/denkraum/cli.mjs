@@ -9,11 +9,13 @@ class CliError extends Error {
 }
 
 // The Root bearer may only go to a listener that identifies itself as the desk.
-// Injected transports (tests, programmatic callers) are trusted and not probed.
+// The probe runs only when the global fetch is used; an injected transport
+// (tests, programmatic callers) is trusted and not probed.
 // Full mutual authentication of the desk is parked (SRV-5).
 async function assertDeskService(url, request) {
+  const unreachable = new CliError('Decision Desk nicht erreichbar; es wurde kein Token gesendet.');
   const refuse = () => new CliError('Der Dienst am Loopback-Port ist nicht der Decision Desk; es wurde kein Token gesendet.');
-  const reply = await request(new URL('/health', url), { signal: AbortSignal.timeout(5000), redirect: 'error' }).catch(() => { throw refuse(); });
+  const reply = await request(new URL('/health', url), { signal: AbortSignal.timeout(5000), redirect: 'error' }).catch(() => { throw unreachable; });
   const health = reply.ok ? await reply.json().catch(() => null) : null;
   if (health?.service !== 'decision-desk') throw refuse();
 }

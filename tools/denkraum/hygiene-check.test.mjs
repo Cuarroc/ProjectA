@@ -149,7 +149,7 @@ test("the CLI preserves clean, findings and unreadable-repository exits", () => 
 });
 
 test("the check and its test are clean under their own rules", () => {
-  const files = ["hygiene-check.mjs", "hygiene-check.test.mjs"].map((name) => ({
+  const files = ["hygiene-check.mjs", "hygiene-check.test.mjs", "entry.mjs"].map((name) => ({
     path: `tools/denkraum/${name}`,
     text: readFileSync(new URL(name, import.meta.url), "utf8"),
   }));
