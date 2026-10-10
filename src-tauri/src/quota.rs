@@ -47,6 +47,17 @@ pub struct QuotaStateRow {
     pub omni_route_online: bool,
 }
 
+/// What an unlock probe observed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProbeOutcome {
+    /// The provider served a real request.
+    Success,
+    /// The provider refused again (the line it said).
+    Refused(String),
+    /// No answer at all: offline, timeout, probe not run. Not a success.
+    Unanswered,
+}
+
 /// Where quota changes are persisted. The app writes them to SQLite; tests
 /// record them.
 pub trait QuotaSink: Send + Sync {
@@ -177,6 +188,41 @@ impl QuotaTracker {
             });
         }
         expired
+    }
+
+    /// Apply the result of an unlock probe: a real, minimal call to the
+    /// provider made by the caller (the tracker makes none itself).
+    ///
+    /// Only [`ProbeOutcome::Success`] lifts a block - the clock alone is no
+    /// evidence the provider took the account back, and a failed or
+    /// unanswered probe leaves the row exactly as it was. A block whose
+    /// reason starts with `protected_prefix` belongs to another subsystem
+    /// (the user's own budget ceiling) and a provider answering says nothing
+    /// about it. Returns whether the block was lifted.
+    pub fn apply_probe(
+        &self,
+        profile_id: &str,
+        outcome: &ProbeOutcome,
+        protected_prefix: &str,
+    ) -> bool {
+        if *outcome != ProbeOutcome::Success {
+            return false;
+        }
+        let mut lifted = false;
+        self.write(profile_id, |row| {
+            let protected = row
+                .reason
+                .as_deref()
+                .is_some_and(|reason| reason.starts_with(protected_prefix));
+            if row.state != QUOTA_BLOCKED || protected {
+                return;
+            }
+            row.state = QUOTA_OK.to_string();
+            row.reason = None;
+            row.blocked_until = None;
+            lifted = true;
+        });
+        lifted
     }
 
     /// Apply `edit` and persist, but only if it actually changed something.
@@ -377,6 +423,44 @@ mod tests {
         let omni = Arc::new(OmniRoute::new(addr));
         omni.probe_once();
         QuotaTracker::new(omni)
+    }
+
+    #[test]
+    fn a_probe_lifts_a_block_only_on_an_observed_success() {
+        let (tracker, recorder) = tracker();
+        // `blocked_until` already passed: the clock alone must not matter here.
+        tracker.note_blocked("claude", "usage limit reached", Some(10));
+
+        for outcome in [
+            ProbeOutcome::Refused("usage limit reached".to_string()),
+            ProbeOutcome::Unanswered,
+        ] {
+            assert!(!tracker.apply_probe("claude", &outcome, "Budget: "));
+            assert!(tracker.is_blocked("claude"), "{outcome:?} lifted the block");
+        }
+        assert_eq!(recorder.states(), vec![QUOTA_BLOCKED]);
+
+        assert!(tracker.apply_probe("claude", &ProbeOutcome::Success, "Budget: "));
+        let row = tracker.state_of("claude").expect("row");
+        assert_eq!(row.state, QUOTA_OK);
+        assert!(row.reason.is_none() && row.blocked_until.is_none());
+        assert_eq!(recorder.states(), vec![QUOTA_BLOCKED, QUOTA_OK]);
+        // Nothing left to lift: no second write.
+        assert!(!tracker.apply_probe("claude", &ProbeOutcome::Success, "Budget: "));
+        assert_eq!(recorder.states().len(), 2);
+    }
+
+    #[test]
+    fn a_probe_success_does_not_lift_the_users_own_budget_block() {
+        let (tracker, _recorder) = tracker();
+        tracker.note_blocked(
+            "claude",
+            "Budget: Monats-Fenster bei 95 % (Limit 90 %)",
+            None,
+        );
+        assert!(!tracker.apply_probe("claude", &ProbeOutcome::Success, "Budget: "));
+        assert!(tracker.is_blocked("claude"));
+        assert!(!tracker.apply_probe("never-seen", &ProbeOutcome::Success, "Budget: "));
     }
 
     #[test]
