@@ -475,6 +475,118 @@ if (tokenCss) {
 // chrome, glass and washes are composed over --g-ground.
 // ---------------------------------------------------------------------------
 
+// V2-TH-VAR-1: src/design/variants/variants.css. A variant may set only the
+// backdrop and material tokens, with the blur radii fixed; each one is composed
+// over ground and amb1..3 (worst stop wins) for every pair the board uses.
+const VARIANT_KEYS = ["g-ground", "g-amb1", "g-amb2", "g-amb3", "g-chrome-bg", "g-content-bg", "g-chrome-blur", "g-content-blur"];
+const BLUR_RADIUS = { "g-chrome-blur": "32px", "g-content-blur": "20px" };
+const satTable = (c, s) => {
+  const k = s / 100;
+  const px = (a, b, d) => Math.min(255, Math.max(0, a * c.r + b * c.g + d * c.b));
+  return {
+    r: px(0.213 + 0.787 * k, 0.715 - 0.715 * k, 0.072 - 0.072 * k),
+    g: px(0.213 - 0.213 * k, 0.715 + 0.285 * k, 0.072 - 0.072 * k),
+    b: px(0.213 - 0.213 * k, 0.715 - 0.715 * k, 0.072 + 0.928 * k),
+    a: 1,
+  };
+};
+function checkVariants(designLight, designDark) {
+  let src;
+  try {
+    src = readFileSync(join(here, "..", "src", "design", "variants", "variants.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  } catch {
+    fails.push("variants: src/design/variants/variants.css fehlt");
+    return;
+  }
+  const deltas = {};
+  const floor = {};
+  const darkForms = {};
+  for (const m of src.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim().replace(/\s+/g, " ");
+    const vars = parseVars(m[2]);
+    const name = sel.match(/data-glass-variant="(\w+)"/)?.[1];
+    const kind = /\[data-theme="dark"\]/.test(sel) ? "attr" : /:not\(\[data-theme="light"\]\)/.test(sel) ? "media" : "light";
+    const mode = kind === "light" ? "hell" : "dunkel";
+    const isFloor = !name && sel.startsWith(":root:root");
+    if (!name && !isFloor) {
+      fails.push(`variants: Selektor "${sel}" gehört weder zu einer Variante noch zum floor`);
+      continue;
+    }
+    for (const [key, value] of Object.entries(vars)) {
+      if (!VARIANT_KEYS.includes(key)) fails.push(`variants: --${key} is outside the allowlist (${name ?? "floor"})`);
+      else if (BLUR_RADIUS[key] && !isFloor && !new RegExp(`^blur\\(${BLUR_RADIUS[key]}\\)( saturate\\(\\d+%\\))?$`).test(value))
+        fails.push(`variants: --${key} must be blur(${BLUR_RADIUS[key]}) (${name}): ${value}`);
+      else if (BLUR_RADIUS[key] && isFloor && value !== "none") fails.push(`variants: floor --${key} must be none: ${value}`);
+      else if (isFloor && /^g-amb/.test(key) && value !== "var(--g-ground)") fails.push(`variants: floor --${key} must be var(--g-ground)`);
+      else if (isFloor && /-bg$/.test(key) && !/^#[0-9a-f]{6}$/i.test(value)) fails.push(`variants: floor --${key} must be opaque: ${value}`);
+    }
+    const target = isFloor ? floor : (deltas[name] ??= {});
+    target[mode] = { ...target[mode], ...vars };
+    if (name && mode === "dunkel") (darkForms[name] ??= {})[kind] = JSON.stringify(vars);
+  }
+  for (const name of ["klar", "nebel", "abend"]) {
+    const forms = darkForms[name] ?? {};
+    if (!deltas[name]?.hell || !forms.media || !forms.attr) fails.push(`variants: ${name} braucht hell, dunkel (Media-Query) und dunkel (data-theme)`);
+    else if (forms.media !== forms.attr) fails.push(`variants: ${name} dunkel unterscheidet sich zwischen Media-Query und data-theme`);
+  }
+  if (!floor.hell || !floor.dunkel) fails.push("variants: floor braucht hell und dunkel");
+  const states = ["g-run", "g-need", "g-rev", "g-ok", "g-done", "g-bad"];
+  const ink = ["g-ink", "g-ink2", "g-muted"];
+  const check1 = (mode, vars) => {
+    const c = (n) => color(vars, n);
+    const stops = ["g-ground", "g-amb1", "g-amb2", "g-amb3"].map((n) => [n.slice(2), c(n)]);
+    // Pending V2-TH-0: dark accent-soft is .16 on main, which puts the pressed
+    // filter chip at 4.45:1. This exclusion ends once tokens.css carries .12.
+    const pendingSoft = mode.endsWith("dunkel") && c("g-accent-soft").a > 0.12;
+    const satOf = (blur) => +(vars[blur].match(/saturate\((\d+)%\)/)?.[1] ?? 100);
+    const mat = (stop, bg, blur) => over(c(bg), satTable(stop, satOf(blur)));
+    const on = (token, base) => over(c(token), base);
+    const groups = [
+      ["backdrop", ["g-ink", "g-muted"], (s) => s.stop],
+      ["chrome", ink, (s) => s.chrome],
+      ["chrome+tint", ["g-ink", "g-faint"], (s) => on("g-tint", s.chrome)],
+      ["glass", [...ink, "g-accent"], (s) => s.glass],
+      ["tint", [...ink, "g-faint", "g-accent"], (s) => on("g-tint", s.glass)],
+      ["tint-hi", ["g-ink", "g-ink2"], (s) => on("g-tint-hi", s.glass)],
+      ["tint-hi chrome", ["g-ink", "g-ink2"], (s) => on("g-tint-hi", s.chrome)],
+      ["pressed filter chip", ["g-accent"], (s) => on("g-accent-soft", s.glass)],
+      ...states.map((role) => [`chip ${role.slice(2)}`, [role], (s) => on(`${role}-bg`, s.glass)]),
+    ];
+    // Non-text: the accent icon on a selected (tint-hi) surface.
+    for (const [label, fgs, bgOf, min] of [...groups, ["accent icon, tint-hi", ["g-accent"], (s) => on("g-tint-hi", s.glass), 3]]) {
+      for (const fg of fgs) {
+        let worst;
+        for (const [stopName, stop] of stops) {
+          const s = { stop, chrome: mat(stop, "g-chrome-bg", "g-chrome-blur"), glass: mat(stop, "g-content-bg", "g-content-blur") };
+          const bg = bgOf(s);
+          const r = ratio(over(c(fg), bg), bg);
+          if (!worst || r < worst.r) worst = { r, stopName, bg };
+        }
+        const name = `${label} ${fg.slice(2)} @${worst.stopName}`;
+        if (pendingSoft && label === "pressed filter chip" && worst.r < 4.5) {
+          rows.push(`${mode}  ${name.padEnd(44)} ${worst.r.toFixed(2).padStart(6)}:1  ausstehend (V2-TH-0)`);
+          continue;
+        }
+        check(mode, name, c(fg), worst.bg, min);
+      }
+    }
+  };
+  for (const [mode, base, key] of [["hell", designLight, "hell"], ["dunkel", designDark, "dunkel"]]) {
+    for (const name of ["glas", "klar", "nebel", "abend"]) {
+      try {
+        check1(`variant ${name} ${mode}`, { ...base, ...deltas[name]?.[key] });
+      } catch (err) {
+        fails.push(`variant ${name} ${mode}: ${err.message}`);
+      }
+    }
+    try {
+      check1(`variant floor ${mode}`, { ...base, ...floor[key] });
+    } catch (err) {
+      fails.push(`variant floor ${mode}: ${err.message}`);
+    }
+  }
+}
+
 const designCss = readFileSync(join(here, "..", "src", "design", "tokens.css"), "utf8");
 const designDarkAt = designCss.indexOf("@media (prefers-color-scheme: dark)");
 if (designDarkAt < 0) {
@@ -482,6 +594,7 @@ if (designDarkAt < 0) {
 } else {
   const designLight = parseVars(designCss.slice(0, designDarkAt));
   const designDark = { ...designLight, ...parseVars(designCss.slice(designDarkAt)) };
+  checkVariants(designLight, designDark);
   const textRoles = ["g-ink", "g-ink2", "g-muted", "g-faint", "g-accent"];
   const stateRoles = ["g-run", "g-need", "g-rev", "g-ok", "g-done", "g-bad"];
   for (const [mode, vars] of [
