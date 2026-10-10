@@ -124,9 +124,9 @@ export default function ConversationView({
           ) : chat.messages.length === 0 && chat.loading ? (
             // The history read is still out — "noch keine Nachrichten" would
             // claim a thread was empty that simply was never read.
-            <p className="convo-empty" aria-live="polite">
+            <div className="convo-empty" aria-live="polite">
               Verlauf wird geladen…
-            </p>
+            </div>
           ) : chat.messages.length === 0 ? (
             <div className="convo-empty">
               <p className="convo-empty-title">Noch keine Nachrichten</p>

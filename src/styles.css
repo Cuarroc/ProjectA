@@ -2059,7 +2059,7 @@ a {
 
 .convo-action {
   padding: var(--space-2) var(--space-5);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   font-size: var(--text-md);
   color: var(--fg-muted);
@@ -2071,21 +2071,28 @@ a {
 }
 
 .convo-stream {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   padding: var(--space-7) var(--space-8);
+  box-sizing: border-box;
 }
 
 /* Prose stops being readable long before a wide window ends, so the thread
-   keeps its own measure and does not stretch with the app. */
+   keeps its own measure and does not stretch with the app. Flex fill lets the
+   empty headline centre in the stream (percentage min-height does not). */
 .convo-thread {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
   gap: var(--space-7);
-  align-content: start;
   max-width: var(--stream-max-w);
+  width: 100%;
   margin: 0 auto;
-  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .convo-empty {
@@ -2095,7 +2102,7 @@ a {
   justify-content: center;
   gap: var(--space-4);
   margin: 0;
-  min-height: 100%;
+  flex: 1 0 auto;
   padding: var(--space-8);
   text-align: center;
   color: var(--fg-muted);
@@ -2203,7 +2210,8 @@ a {
 
 .convo-input:disabled {
   color: var(--color-disabled-fg);
-  background: var(--color-disabled-bg);
+  /* Composer textarea stays solid in every theme (contract §1); disabled-bg is translucent hover. */
+  background: var(--surface-content);
 }
 
 .convo-composer-actions {
@@ -5460,7 +5468,8 @@ scripts/contrast-check.mjs. */
 
 .command-chat-input:disabled {
   color: var(--color-disabled-fg);
-  background: var(--color-disabled-bg);
+  /* Composer textarea stays solid in every theme (contract §1); disabled-bg is translucent hover. */
+  background: var(--surface-content);
 }
 
 .command-chat-expand {
