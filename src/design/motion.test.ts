@@ -49,11 +49,21 @@ describe("V2-F2 motion contract", () => {
     );
   });
 
+  it("exposes a shared g-press active scale using the press token", () => {
+    expect(css).toMatch(
+      /\.g-press\s*\{[^}]*transition:\s*transform\s+var\(--g-dur\)\s+var\(--g-ease\)/,
+    );
+    expect(css).toMatch(
+      /\.g-press:active\s*\{[^}]*transform:\s*scale\(\s*var\(--g-press-scale\)\s*\)/,
+    );
+  });
+
   it("turns off every animation and transition under prefers-reduced-motion", () => {
     const reduced = mediaBody(css, "prefers-reduced-motion:\\s*reduce");
-    expect(reduced).toMatch(/\.g-app\s+\*\s*,\s*\.g-app\s+\*::before\s*,\s*\.g-app\s+\*::after/);
-    expect(reduced).toMatch(/animation:\s*none\s*!important/);
-    expect(reduced).toMatch(/transition-duration:\s*0ms\s*!important/);
     expect(reduced).toMatch(/--g-press-scale:\s*1;/);
+    // Selector list and kill-switch declarations must share one rule (incl. portal roots).
+    expect(reduced).toMatch(
+      /\.g-app \*,\s*\.g-app \*::before,\s*\.g-app \*::after,\s*\[data-g-portal\],\s*\[data-g-portal\]::before,\s*\[data-g-portal\]::after,\s*\[data-g-portal\] \*,\s*\[data-g-portal\] \*::before,\s*\[data-g-portal\] \*::after\s*\{[^}]*animation:\s*none\s*!important[^}]*transition-duration:\s*0ms\s*!important[^}]*transition-delay:\s*0ms\s*!important/,
+    );
   });
 });
