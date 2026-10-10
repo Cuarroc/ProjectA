@@ -189,6 +189,7 @@ use crate::http_util::{
 use crate::omniroute::UsageReport;
 use crate::providers::ProviderOverview;
 use crate::quota::QuotaStateRow;
+use crate::setupgate::repo_scan::RepoScan;
 use crate::status::WorkerBoardState;
 use crate::store::{
     ActivityEntry, ContinuousClaim, ContinuousContext, ContinuousControl, ContinuousGoal,
@@ -2242,6 +2243,49 @@ pub fn parse_request(head: &str, body: String) -> Option<Request> {
         headers,
         body,
     })
+}
+
+/// V2-S11: the first-run screen's read-only repository scan.
+///
+/// The path comes from the window, so it is judged in its canonical form
+/// (`..` and links resolved): absolute, a folder, the top of a git work tree
+/// (the same [`crate::worktree::ensure_git_repo`] check project registration
+/// uses). The backend cannot tell a picked folder from a typed one; it only
+/// returns the facts of [`RepoScan`], never file contents. Errors are fixed
+/// sentences without the path.
+pub(crate) fn scan_setup_repo_at(path: &str) -> Result<RepoScan, String> {
+    let given = Path::new(path.trim());
+    if !given.is_absolute() {
+        return Err("the repository path must be absolute".to_string());
+    }
+    let root = std::fs::canonicalize(given)
+        .map_err(|_| "the repository folder does not exist or cannot be read".to_string())?;
+    if !root.is_dir() {
+        return Err("the chosen path is not a folder".to_string());
+    }
+    if !root.join(".git").exists() {
+        return Err("the chosen folder is not the top of a git repository".to_string());
+    }
+    crate::worktree::ensure_git_repo(&root.to_string_lossy())
+        .map_err(|_| "the chosen folder is not a usable git repository".to_string())?;
+    // `AGENTS.md` is the one file the scan parses; a link must not make it
+    // read something outside the repository.
+    if let Ok(agents) = std::fs::canonicalize(root.join("AGENTS.md")) {
+        if !agents.starts_with(&root) {
+            return Err("AGENTS.md points outside the repository".to_string());
+        }
+    }
+    crate::setupgate::repo_scan::scan_repo(&root)
+        .map_err(|_| "the repository scan failed".to_string())
+}
+
+/// Read-only: what the first-run screen shows about a repository folder.
+#[tauri::command]
+pub async fn scan_setup_repo(path: String) -> Result<RepoScan, String> {
+    // File reads and one git child process: off the thread serving the UI.
+    tauri::async_runtime::spawn_blocking(move || scan_setup_repo_at(&path))
+        .await
+        .map_err(|e| format!("the repository scan did not finish: {e}"))?
 }
 
 #[cfg(test)]
@@ -7930,5 +7974,94 @@ pub(crate) mod tests {
         );
         assert_eq!(status, 404, "{body}");
         assert_eq!(body["error"], "unknown worker: wk-tippfehler");
+    }
+
+    fn scan_fixture(label: &str) -> TempDir {
+        let dir = TempDir::new(label);
+        crate::testutil::init_repo(dir.path());
+        std::fs::create_dir_all(dir.path().join("scripts/ci")).unwrap();
+        std::fs::write(dir.path().join("scripts/ci/gates.sh"), "#!/bin/sh\n").unwrap();
+        std::fs::write(dir.path().join(".mergify.yml"), "queue_rules: []\n").unwrap();
+        std::fs::write(
+            dir.path().join("AGENTS.md"),
+            "6. **Seams only serially:** `src/api.rs`, `src/main.rs`.\n",
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn scan_setup_repo_returns_the_main_branch_and_gate_flags_as_json() {
+        let dir = scan_fixture("scan-setup-ok");
+        let scan = scan_setup_repo_at(dir.path().to_str().unwrap()).expect("scan");
+        let json = serde_json::to_value(&scan).unwrap();
+        assert_eq!(json["mainBranch"], "main");
+        assert_eq!(json["hasGatesSh"], true);
+        assert_eq!(json["hasMergify"], true);
+        assert_eq!(json["hasAgentsMd"], true);
+        assert_eq!(json["seamFiles"], json!(["src/api.rs", "src/main.rs"]));
+        let mut keys: Vec<_> = json.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            [
+                "freeRamBytes",
+                "hasAgentsMd",
+                "hasGatesSh",
+                "hasMergify",
+                "mainBranch",
+                "seamFiles"
+            ]
+        );
+    }
+
+    #[test]
+    fn scan_setup_repo_rejects_files_missing_relative_and_empty_paths() {
+        let dir = scan_fixture("scan-setup-bad");
+        let file = dir.path().join("AGENTS.md");
+        let missing = dir.path().join("nope");
+        let relative = Path::new("scan-setup-relative");
+        for bad in [
+            file.as_path(),
+            missing.as_path(),
+            relative,
+            Path::new(""),
+            Path::new("  "),
+        ] {
+            let err = scan_setup_repo_at(bad.to_str().unwrap()).expect_err("must refuse");
+            assert!(!err.contains(dir.path().to_str().unwrap()), "{err}");
+        }
+    }
+
+    #[test]
+    fn scan_setup_repo_judges_the_canonical_path_so_dotdot_cannot_escape() {
+        let dir = scan_fixture("scan-setup-dotdot");
+        let plain = dir.path().join("plain");
+        std::fs::create_dir_all(dir.path().join("sub")).unwrap();
+        std::fs::create_dir_all(&plain).unwrap();
+        let root = dir.path().to_str().unwrap();
+        // A subfolder is not a repository root, and `..` out of the repository
+        // lands in a folder the app does not know.
+        let sub = format!("{root}/sub");
+        let escape = format!("{root}/sub/../plain");
+        for bad in [&sub, &escape] {
+            let err = scan_setup_repo_at(bad).expect_err("must refuse");
+            assert!(!err.contains(root), "{err}");
+        }
+        // `..` that comes back to the root is the root.
+        assert!(scan_setup_repo_at(&format!("{root}/sub/..")).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn scan_setup_repo_refuses_an_agents_md_that_points_outside_the_root() {
+        let dir = scan_fixture("scan-setup-link");
+        let outside = TempDir::new("scan-setup-outside");
+        std::fs::write(outside.path().join("secret.md"), "`/etc/passwd`\n").unwrap();
+        let link = dir.path().join("AGENTS.md");
+        std::fs::remove_file(&link).unwrap();
+        std::os::unix::fs::symlink(outside.path().join("secret.md"), &link).unwrap();
+        let err = scan_setup_repo_at(dir.path().to_str().unwrap()).expect_err("must refuse");
+        assert!(!err.contains(outside.path().to_str().unwrap()), "{err}");
     }
 }

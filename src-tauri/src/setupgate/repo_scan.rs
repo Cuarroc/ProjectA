@@ -8,9 +8,8 @@ use crate::preflight;
 
 /// What the scan found. Every field is a plain observation; absent means "not
 /// found", never "guessed".
-// V2-S11 (first-run screen) is the consumer; until it lands only tests call this.
-#[cfg_attr(not(test), allow(dead_code))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RepoScan {
     pub main_branch: Option<String>,
     pub has_gates_sh: bool,
@@ -22,7 +21,6 @@ pub struct RepoScan {
 }
 
 /// Scan the repository at `path`. Errors only when `path` is not a directory.
-#[cfg_attr(not(test), allow(dead_code))]
 pub fn scan_repo(path: &Path) -> Result<RepoScan, String> {
     if !path.is_dir() {
         return Err(format!("not a directory: {}", path.display()));
