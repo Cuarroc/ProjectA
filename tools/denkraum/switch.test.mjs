@@ -27,6 +27,7 @@ async function freePort() {
 function run(args, env = {}, entry = SWITCH) {
   return new Promise(resolve => {
     const childEnv = { ...process.env, ...env }; delete childEnv.NODE_TEST_CONTEXT;
+    for (const [k, v] of Object.entries(env)) if (v == null) delete childEnv[k];
     const child = spawn(process.execPath, [entry, ...args], { env: childEnv });
     let stdout = '', stderr = '';
     child.stdout.on('data', d => { stdout += d; }); child.stderr.on('data', d => { stderr += d; });
@@ -67,6 +68,38 @@ test('DR16: backup refuses while the desk server is listening', async () => {
     assert.equal(r.status, 3); assert.match(r.stdout, /Schreiber läuft noch/);
     await assert.rejects(readdir(outDir), e => e.code === 'ENOENT');
   } finally { await close(); }
+});
+test('SRV-4: backup refuses with exit 3 while an owner record exists', async () => {
+  const { state } = await ledger(), outDir = await output();
+  await writeFile(`${state}.owner`, JSON.stringify({
+    nonce: 'n'.repeat(16), pid: process.pid, heartbeatAt: new Date().toISOString(), host: 'fixture',
+  }));
+  const r = await run(['backup', '--state', state, '--out', outDir, '--port', String(await freePort())]);
+  assert.equal(r.status, 3, r.stderr + r.stdout);
+  assert.match(r.stdout, /Besitzerdatei vorhanden/);
+  assert.equal(JSON.parse(r.stdout).ok, false);
+  await assert.rejects(readdir(outDir), e => e.code === 'ENOENT');
+});
+test('SRV-4: backup probes DECISION_DESK_PORT when --port is absent', async () => {
+  const { state } = await ledger(), outDir = await output();
+  const sockets = new Set();
+  const listener = createServer(socket => {
+    sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.resume();
+  });
+  await new Promise(r => listener.listen(0, '127.0.0.1', r));
+  const port = listener.address().port;
+  try {
+    const r = await run(['backup', '--state', state, '--out', outDir], {
+      DECISION_DESK_PORT: String(port),
+    });
+    assert.equal(r.status, 3, r.stderr + r.stdout);
+    assert.match(r.stdout, /Schreiber läuft noch/);
+    assert.equal(JSON.parse(r.stdout).ok, false);
+    await assert.rejects(readdir(outDir), e => e.code === 'ENOENT');
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    await new Promise(r => listener.close(r));
+  }
 });
 test('DR16: quiescent backup verifies hashes schema and revision', async () => {
   for (const kind of ['v1', 'v2']) {
@@ -115,7 +148,9 @@ test('DR16: rollback never restores an older ledger', async () => {
   const r = await run(['restore', '--backup', outDir, '--state', state]);
   assert.equal(r.status, 2); assert.match(r.stdout, /Rückweg = vollständige Pause/);
   assert.deepEqual(await readFile(state), before);
-  await new DeskStore(state, { rootAgentId: ROOT }).putIdea({ requestId: 'dr16-newer', expectedRevision: null, title: 'Bump', text: 'raise revision' });
+  const store = new DeskStore(state, { rootAgentId: ROOT });
+  await store.putIdea({ requestId: 'dr16-newer', expectedRevision: null, title: 'Bump', text: 'raise revision' });
+  await store.close();
   const newer = await bakOk(state);
   await writeFile(state, before);
   const cmp = await run(['compare', '--backup', newer, '--state', state]);
@@ -395,7 +430,7 @@ test('DR16H: backup reports explicit and default probe ports', async t => {
     if (error.code !== 'EADDRINUSE') throw error;
     defaultBusy = true;
   }
-  const r = await run(['backup', '--state', state, '--out', await output()]);
+  const r = await run(['backup', '--state', state, '--out', await output()], { DECISION_DESK_PORT: undefined });
   if (defaultBusy) {
     t.diagnostic('4791 busy: asserted refusal path');
     assert.equal(r.status, 3, r.stderr + r.stdout);
