@@ -95,19 +95,22 @@ freeze_ids() {
 
 # gh_read_is_transient <exit-code> <stderr> — true for 5xx / timeout-like
 # failures only. Non-transient errors (4xx, auth, usage) must fail loud.
+# HTTP status is anchored (HTTP/status + digits); bare issue numbers like
+# 512 must not match. EOF is a word. Real gh network phrases are included.
 gh_read_is_transient() {
   local ec="$1" err="$2"
   case "$ec" in
     124|28) return 0 ;; # timeout-like (timeout(1) / curl)
   esac
   printf '%s' "$err" | grep -qiE \
-    'HTTP[[:space:]]*5[0-9][0-9]|status[[:space:]]*5[0-9][0-9]|\b5[0-9]{2}\b|timeout|temporar|connection (reset|refused)|TLS handshake|i/o timeout|EOF'
+    'HTTP[[:space:]]+5[0-9]{2}|status[[:space:]]+5[0-9]{2}|timeout|temporar|connection (reset|refused)|TLS handshake|i/o timeout|\bEOF\b|error connecting to|no such host|could not resolve host'
 }
 
 # gh_read <gh-args...> — retry idempotent GitHub reads (issue list, api get).
 # 3 attempts, backoff 2s then 5s (overridable via MAIN_RED_GUARD_BACKOFF_1/2
 # for the self-test), only on transient failures. Never wrap create/comment/
 # close — those are not idempotent and would duplicate issues (KI-32).
+# When `timeout` exists, each attempt is capped at 60s so exit 124 is live.
 gh_read() {
   local attempt=1 max=3 ec=0 out err errf
   local backoff_1="${MAIN_RED_GUARD_BACKOFF_1:-2}"
@@ -115,7 +118,11 @@ gh_read() {
   errf="$(mktemp "${TMPDIR:-/tmp}/main-red-guard-gh.XXXXXX")"
   while [ "$attempt" -le "$max" ]; do
     ec=0
-    out="$(gh "$@" 2>"$errf")" || ec=$?
+    if command -v timeout >/dev/null 2>&1; then
+      out="$(timeout 60 gh "$@" 2>"$errf")" || ec=$?
+    else
+      out="$(gh "$@" 2>"$errf")" || ec=$?
+    fi
     err="$(cat "$errf" 2>/dev/null || true)"
     if [ "$ec" -eq 0 ]; then
       rm -f "$errf"

@@ -355,6 +355,72 @@ else
 fi
 unset MOCK_GH_FAIL_ONCE_ON MOCK_GH_FAIL_ONCE_FLAG MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
 
+# --- 9b. transient 503 on commits/main api read: retry, guard exits 0 ------
+# R935-A1: same fault injection as issue list, matched on the api subcommand.
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[]' > "$tmp/issues.json"
+rm -f "$tmp/gh-fail-once"
+name="transient 503 on commits/main api read is retried and the guard exits 0"
+MOCK_GH_FAIL_ONCE_ON="commits/main" \
+MOCK_GH_FAIL_ONCE_FLAG="$tmp/gh-fail-once" \
+MAIN_RED_GUARD_BACKOFF_1=0 \
+MAIN_RED_GUARD_BACKOFF_2=0 \
+run_case "$name" "${RED_MAIN[@]}" 0
+ec=$?
+api_n="$(grep -cE 'gh api .*commits/main' "$tmp/log" || true)"
+create_n="$(grep -cE 'gh issue create' "$tmp/log" || true)"
+if [ "$ec" -eq 0 ] && [ "$api_n" -ge 2 ] && [ "$create_n" -eq 1 ]; then
+  echo "ok   $name (exit 0)"
+else
+  echo "FEHLER $name: exit=$ec, api commits/main=$api_n (want >=2), issue create=$create_n (want 1)"
+  sed 's/^/    /' "$tmp/out"
+  sed 's/^/    /' "$tmp/log"
+  fails=$((fails + 1))
+fi
+unset MOCK_GH_FAIL_ONCE_ON MOCK_GH_FAIL_ONCE_FLAG MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
+
+# --- 9c. a 404 on issue list is not retried (R935-A1) -----------------------
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[]' > "$tmp/issues.json"
+name="a 404 on issue list is not retried"
+MOCK_GH_FAIL_ALWAYS_ON="issue list" \
+MOCK_GH_FAIL_MSG="gh: HTTP 404: Not Found" \
+MAIN_RED_GUARD_BACKOFF_1=0 \
+MAIN_RED_GUARD_BACKOFF_2=0 \
+run_case "$name" "${RED_MAIN[@]}" 0
+ec=$?
+list_n="$(grep -cE 'gh issue list' "$tmp/log" || true)"
+if [ "$ec" -ne 0 ] && [ "$list_n" -eq 1 ]; then
+  echo "ok   $name (exit $ec)"
+else
+  echo "FEHLER $name: exit=$ec (want !=0), issue list=$list_n (want 1)"
+  sed 's/^/    /' "$tmp/out"
+  sed 's/^/    /' "$tmp/log"
+  fails=$((fails + 1))
+fi
+unset MOCK_GH_FAIL_ALWAYS_ON MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
+
+# --- 9d. permanent 503 on issue list fails loud after the retries (R935-A1) -
+echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
+echo '[]' > "$tmp/issues.json"
+name="a permanent 503 on issue list fails loud after the retries"
+MOCK_GH_FAIL_ALWAYS_ON="issue list" \
+MOCK_GH_FAIL_MSG="gh: HTTP 503: Service Unavailable" \
+MAIN_RED_GUARD_BACKOFF_1=0 \
+MAIN_RED_GUARD_BACKOFF_2=0 \
+run_case "$name" "${RED_MAIN[@]}" 0
+ec=$?
+list_n="$(grep -cE 'gh issue list' "$tmp/log" || true)"
+if [ "$ec" -ne 0 ] && [ "$list_n" -eq 3 ]; then
+  echo "ok   $name (exit $ec)"
+else
+  echo "FEHLER $name: exit=$ec (want !=0), issue list=$list_n (want 3)"
+  sed 's/^/    /' "$tmp/out"
+  sed 's/^/    /' "$tmp/log"
+  fails=$((fails + 1))
+fi
+unset MOCK_GH_FAIL_ALWAYS_ON MOCK_GH_FAIL_MSG MOCK_GH_FAIL_EC
+
 # --- 10. issue number 512 in a 404 must not look like a transient 5xx ------
 # R935-A2: an over-broad `\b5[0-9]{2}\b` would treat "512" as HTTP 512.
 echo '{"scheduled_freezes":[]}' > "$tmp/freezes.json"
