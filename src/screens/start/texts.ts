@@ -1,0 +1,25 @@
+// Every UI word of the first-run screen. Moves into the dictionary (src/i18n)
+// once V2-F6 is on main; until then German is hard-wired in this one file.
+export const T = {
+  title: "Ersteinrichtung",
+  lead: "Sechs Schritte, dann weiß ProjectA, womit es arbeiten darf.",
+  steps: "Schritte der Einrichtung",
+  foot: "ProjectA installiert nichts, löscht nichts und gibt kein Geld aus. Was fehlt, zeigt es dir mit Anleitung.",
+  welcome: { title: "Willkommen", hint: "Was ProjectA für dich tut", action: "Los geht’s" },
+  tools: { title: "Programme finden", action: "Neu suchen" },
+  subs: { title: "Abos prüfen", action: "Anbieter öffnen" },
+  project: { title: "Projekt wählen", action: "Projekt wählen" },
+  team: { title: "Team aufstellen", hint: "Ein Vorschlag für den Anfang", action: "Team ansehen" },
+  done: { title: "Fertig", hint: "Der Leitstand zeigt, wer arbeitet", action: "ProjectA öffnen" },
+  scanTitle: "Noch nicht verbunden",
+  scanHint: "Das Lesen der Projektregeln ist noch nicht angebunden.",
+  chip: { ready: "Bereit", done: "Erledigt", open: "Offen", reading: "Liest", failed: "Fehler" },
+  stepOf: (n: number) => `Schritt ${n}`,
+  signedIn: (names: string) => `Angemeldet: ${names}`,
+  missing: (names: string) => `Noch nicht angemeldet: ${names}`,
+  known: (names: string) => `Bekannt: ${names}`,
+  noProviders: "Kein Anbieter bekannt.",
+  readFailed: "Der Anbieter-Status konnte nicht gelesen werden.",
+  projectDone: "Ein Projekt ist angelegt.",
+  projectOpen: "Noch kein Projekt angelegt.",
+} as const;
