@@ -2777,7 +2777,8 @@ a {
 .tabbar {
   display: flex;
   align-items: stretch;
-  background: var(--bg-elevated);
+  background: var(--surface-chrome);
+  backdrop-filter: var(--material-chrome-filter);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: thin;
@@ -2786,9 +2787,9 @@ a {
 .tab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px 0 12px;
-  height: 34px;
+  gap: var(--space-4);
+  padding: 0 var(--space-4) 0 var(--space-6);
+  height: var(--ui-bar-control);
   max-width: 220px;
   border-right: 1px solid var(--border);
   background: var(--bg-chrome);
@@ -2825,9 +2826,10 @@ a {
   box-shadow: inset 2px 0 0 0 var(--status-bg);
 }
 
+/* Exited label keeps secondary text without opacity (UT-5 ≥4.5:1). */
 .tab-exited .tab-label {
   text-decoration: line-through;
-  opacity: 0.7;
+  color: var(--color-text-secondary);
 }
 
 /* APP-9: the tab is a button inside the styled .tab shell. It takes the
@@ -2835,7 +2837,7 @@ a {
 .tab-select {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
   height: 100%;
   padding: 0;
@@ -2858,15 +2860,16 @@ a {
 .tab-badge {
   font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
   color: var(--danger);
 }
 
 .tab-close {
+  /* 18px glyph hit; APP-3 overlay expands to 24 (geometry exception ≤18). */
   width: 18px;
   height: 18px;
   line-height: 16px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   text-align: center;
   color: var(--fg-muted);
 }
@@ -2878,9 +2881,9 @@ a {
 
 .tab-new,
 .tab-split {
-  width: 34px;
-  height: 34px;
-  font-size: 18px;
+  width: var(--ui-bar-control);
+  height: var(--ui-bar-control);
+  font-size: var(--text-xl);
   color: var(--fg-muted);
 }
 
@@ -2938,8 +2941,8 @@ a {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  padding: 6px 8px;
-  background: #1e1e1e;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-terminal-ground);
 }
 
 .terminal-host .xterm {
@@ -2972,10 +2975,11 @@ a {
 
 .terminal-search-input {
   width: 180px;
-  padding: 3px var(--space-5);
+  min-height: var(--ui-bar-control);
+  padding: var(--space-1) var(--space-5);
   background: var(--color-window);
   color: var(--color-text-primary);
-  border: 1px solid var(--color-separator);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   font-size: var(--text-base);
 }
@@ -2988,7 +2992,8 @@ a {
 }
 
 .terminal-search-btn.button-ghost {
-  padding: 3px var(--space-4);
+  min-height: var(--ui-bar-control);
+  padding: var(--space-1) var(--space-4);
 }
 
 /* "Pressed" look for the case/regex toggles: the same accent-tint /

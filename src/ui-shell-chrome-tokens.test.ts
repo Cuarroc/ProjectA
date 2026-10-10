@@ -119,37 +119,32 @@ describe("V161-UI-P06 tabs and terminal chrome", () => {
 
     const tab = ruleBlock(slice, ".tab");
     const tabBgToken = decl(tab, "background");
-    expect(tabBgToken).toBeTruthy();
-    const labelColorToken = decl(exited, "color") ?? decl(tab, "color");
-    expect(labelColorToken).toBeTruthy();
+    const labelColorToken = decl(exited, "color");
+    expect(tabBgToken).toMatch(/^var\(--[\w-]+\)$/);
+    expect(labelColorToken).toMatch(/^var\(--[\w-]+\)$/);
 
+    const tokenName = (ref: string) => ref.match(/^var\(--([\w-]+)\)$/)![1];
     const { dark, light } = themeVars();
     for (const [mode, vars] of [
       ["dark", dark],
       ["light", light],
     ] as const) {
-      const bgRaw = resolveVar(vars, tabBgToken!.replace(/^var\(--([\w-]+)\)$/, (_, k) => vars[k] ?? tabBgToken!));
-      // Resolve background via token name when written as var(--…).
-      let bgHex: string;
-      const bgVar = tabBgToken!.match(/^var\(--([\w-]+)\)$/);
-      if (bgVar) {
-        bgHex = resolveVar(vars, vars[bgVar[1]]);
-      } else {
-        bgHex = resolveVar(vars, bgRaw);
-      }
+      const bgHex = resolveVar(vars, vars[tokenName(tabBgToken!)]);
       expect(bgHex.startsWith("#"), `${mode} tab bg`).toBe(true);
-
-      let fgRaw: string;
-      const fgVar = labelColorToken!.match(/^var\(--([\w-]+)\)$/);
-      if (fgVar) {
-        fgRaw = resolveVar(vars, vars[fgVar[1]]);
-      } else {
-        fgRaw = resolveVar(vars, labelColorToken!);
-      }
-      const text = fgRaw.startsWith("rgba") || fgRaw.startsWith("rgb")
-        ? compositeOver(fgRaw, bgHex)
-        : fgRaw;
+      const fgRaw = resolveVar(vars, vars[tokenName(labelColorToken!)]);
+      const text =
+        fgRaw.startsWith("rgba") || fgRaw.startsWith("rgb")
+          ? compositeOver(fgRaw, bgHex)
+          : fgRaw;
       expect(contrast(text, bgHex), mode).toBeGreaterThanOrEqual(4.5);
+
+      // Active tab paints content; secondary must still clear 4.5:1 there.
+      const content = resolveVar(vars, vars["color-content"]);
+      const onContent =
+        fgRaw.startsWith("rgba") || fgRaw.startsWith("rgb")
+          ? compositeOver(fgRaw, content)
+          : fgRaw;
+      expect(contrast(onContent, content), `${mode} active`).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -162,8 +157,6 @@ describe("V161-UI-P06 tabs and terminal chrome", () => {
     const tab = ruleBlock(slice, ".tab");
     expect(decl(tab, "height")).toBe("var(--ui-bar-control)");
 
-    const newSplit = ruleBlock(slice, ".tab-new,\n.tab-split") || ruleBlock(slice, ".tab-new");
-    // Combined selector may be `.tab-new,\n.tab-split`.
     const pair = slice.match(/\.tab-new,\s*\.tab-split\s*\{([^}]*)\}/);
     expect(pair, ".tab-new/.tab-split rule").not.toBeNull();
     expect(decl(pair![1], "width")).toBe("var(--ui-bar-control)");
@@ -174,6 +167,5 @@ describe("V161-UI-P06 tabs and terminal chrome", () => {
     expect(slice).toMatch(
       /\.terminal-search-btn\.button-ghost\s*\{[^}]*min-height:\s*var\(--ui-bar-control\)/s,
     );
-    void newSplit;
   });
 });
