@@ -177,6 +177,19 @@ for (const [mode, vars] of [["hell  ", light], ["dunkel", dark]]) {
     Chrome: c("color-chrome-solid"),
   };
 
+  for (const surface of ["color-content", "color-elevated", "color-raised"])
+    check(mode, `control border / ${surface}`, c("color-control-border"), c(surface), 3);
+  check(mode, "disabled text / disabled fill", c("color-disabled-fg"), c("color-disabled-bg"));
+  // Modal text remains readable on its surface over the composited scrim.
+  const scrim = c("color-scrim");
+  const expectedAlpha = vars === light ? 0.32 : 0.5;
+  if (scrim.a !== expectedAlpha) fails.push(`${mode}: scrim alpha must be ${expectedAlpha}`);
+  for (const [name, surface] of Object.entries(surfaces)) {
+    const overlay = over(c("surface-overlay"), over(scrim, surface));
+    check(mode, `overlay text / scrim on ${name}`, c("color-text-primary"), overlay);
+    check(mode, `overlay secondary / scrim on ${name}`, c("color-text-secondary"), overlay);
+  }
+
   for (const role of ["primary", "secondary", "tertiary"])
     for (const [sn, s] of Object.entries(surfaces)) check(mode, `Text ${role} / ${sn}`, c(`color-text-${role}`), s);
 
