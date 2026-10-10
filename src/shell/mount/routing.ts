@@ -13,6 +13,11 @@ export const GOAL_ROUTE: Record<AppGoal, string> = {
 
 const base = (path: string) => `/${path.split("/")[1] ?? ""}`;
 
+const trim = (path: string) => path.replace(/\/+$/, "");
+
+/** The new Leitstand (V2-S01a) owns exactly `/leitstand`; everything below it stays the old view. */
+export const isNewLeitstand = (path: string) => trim(path) === "/leitstand";
+
 /** True when an old view is housed under this route (others still show the shell placeholder). */
 export function hasLegacyPanel(path: string): boolean {
   return Object.values(GOAL_ROUTE).includes(base(path));
