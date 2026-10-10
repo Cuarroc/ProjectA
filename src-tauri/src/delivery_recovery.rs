@@ -394,6 +394,10 @@ impl UpdateJournal {
     pub fn records(&self) -> &ImmutableRecords {
         &self.records
     }
+    /// Persisted proof that startup recovery completed and resumed writes.
+    /// Until then, an installer-started journal must keep the app frozen.
+    /// Pre-install cancellation may thaw without this proof; see
+    /// `can_start_update`. Neither predicate changes the live store/PTY freeze.
     #[allow(dead_code)] // W3-02
     pub fn can_accept_writes(&self) -> bool {
         matches!(self.phase, UpdatePhase::Installed | UpdatePhase::Promoted) && self.writes_resumed

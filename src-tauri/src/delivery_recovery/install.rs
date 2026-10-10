@@ -68,12 +68,27 @@ pub fn installer_not_started(phase: UpdatePhase) -> bool {
 impl UpdateJournal {
     /// Safe to replace for a new flight: no installer ran, or startup recovery
     /// completed the previous update and resumed writes.
+    /// A failed/cancelled flight may thaw only in these cases. All other phases
+    /// keep the store/PTY frozen for startup recovery. This persisted predicate
+    /// does not replace the live freeze/drain checks before producing a journal.
     pub fn can_start_update(&self) -> bool {
         super::installer_not_started(self.phase()) || self.can_accept_writes()
     }
 }
 
-/// Creates the journal at `BackupVerified` before the download. Needs the
+impl JournalStore {
+    /// An unfinished install belongs to restart recovery; a completed old one
+    /// does not. An unreadable journal counts as started: the app stays frozen.
+    pub fn installer_started(&self) -> bool {
+        self.path().exists()
+            && self
+                .load()
+                .map_or(true, |journal| !journal.can_start_update())
+    }
+}
+
+/// Creates the journal at `BackupVerified` after the download, binding the
+/// downloaded bytes before the installer is allowed to run. Needs the
 /// live drain facts (`require_live_evidence`); a stale journal that never
 /// reached `Installing` or a completed one (writes resumed) is replaced, any
 /// other is left to startup recovery.
@@ -443,6 +458,35 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(journal.journal().phase(), UpdatePhase::BackupVerified);
+    }
+
+    #[test]
+    fn can_start_update_covers_every_phase_and_resume_flag() {
+        use UpdatePhase::*;
+        for (phase, before_resume, after_resume) in [
+            (Available, true, true),
+            (Downloaded, true, true),
+            (WaitingIdle, true, true),
+            (Maintenance, true, true),
+            (BackupVerified, true, true),
+            (Installing, false, false),
+            (Validating, false, false),
+            (Installed, false, true),
+            (Promoted, false, true),
+            (RecoveryNeeded, false, false),
+        ] {
+            for (writes_resumed, expected) in [(false, before_resume), (true, after_resume)] {
+                let mut journal = UpdateJournal::new(bound_offer()).unwrap();
+                // Exercise the predicate even for flag/phase pairs rejected on load.
+                journal.phase = phase;
+                journal.writes_resumed = writes_resumed;
+                assert_eq!(
+                    journal.can_start_update(),
+                    expected,
+                    "phase={phase:?}, writes_resumed={writes_resumed}"
+                );
+            }
+        }
     }
 
     #[test]
