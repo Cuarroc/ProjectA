@@ -318,7 +318,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn install_command_produces_journal_at_backup_verified_before_download() {
+    async fn install_command_produces_journal_at_backup_verified_after_download() {
         let dir = TempDir::new("install-producer");
         let (live, database) = live_db(&dir).await;
         live.enter_maintenance().await.unwrap();
