@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as joinPath } from "node:path";
 import { test } from "node:test";
@@ -12,24 +12,27 @@ const join = (...parts) => parts.join("");
 const AT = String.fromCharCode(64);
 const rulesFor = (text, path = "tools/denkraum/x.mjs") => findViolations([{ path, text }]).map((f) => f.rule);
 
-// Run the actual CLI, including its entry point and complete process output.
-// A child-only buffer limit keeps the overflow fixture small on every base.
-function runChecker(root, maxBuffer, env = {}) {
+function installChecker(root) {
   const checker = joinPath(root, "tools/denkraum/hygiene-check.mjs");
   copyFileSync(new URL("hygiene-check.mjs", import.meta.url), checker);
-  const script = `
+  copyFileSync(new URL("entry.mjs", import.meta.url), joinPath(root, "tools/denkraum/entry.mjs"));
+  return checker;
+}
+
+// Run the actual CLI, including its entry point and complete process output.
+// A child-only buffer limit (preloaded, so the checker stays the real entry
+// module) keeps the overflow fixture small on every base.
+function runChecker(root, maxBuffer, env = {}) {
+  const checker = installChecker(root);
+  const preload = `
     import cp from "node:child_process";
     import { syncBuiltinESMExports } from "node:module";
-    import { pathToFileURL } from "node:url";
     const original = cp.execFileSync;
-    const maxBuffer = ${JSON.stringify(maxBuffer) ?? "undefined"};
-    if (maxBuffer !== undefined) {
-      cp.execFileSync = (file, args, options) => original(file, args, { ...options, maxBuffer });
-      syncBuiltinESMExports();
-    }
-    await import(pathToFileURL(process.argv[1]).href);
+    cp.execFileSync = (file, args, options) => original(file, args, { ...options, maxBuffer: ${JSON.stringify(maxBuffer)} });
+    syncBuiltinESMExports();
   `;
-  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script, checker], {
+  const flags = maxBuffer === undefined ? [] : ["--import", `data:text/javascript,${encodeURIComponent(preload)}`];
+  const result = spawnSync(process.execPath, [...flags, checker], {
     encoding: "utf8", env: { ...process.env, ...env },
   });
   assert.ifError(result.error);
@@ -151,4 +154,20 @@ test("the check and its test are clean under their own rules", () => {
     text: readFileSync(new URL(name, import.meta.url), "utf8"),
   }));
   assert.deepEqual(findViolations(files), []);
+});
+
+test("SRV-2: hygiene-check.mjs started through an alias runs its check", () => {
+  const root = mkdtempSync(joinPath(tmpdir(), "denkraum-hygiene-"));
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: root, stdio: "pipe" });
+    mkdirSync(joinPath(root, "tools/denkraum"), { recursive: true });
+    installChecker(root);
+    const alias = joinPath(root, "alias");
+    symlinkSync(joinPath(root, "tools/denkraum"), alias, process.platform === "win32" ? "junction" : "dir");
+    const result = spawnSync(process.execPath, [joinPath(alias, "hygiene-check.mjs")], { cwd: root, encoding: "utf8" });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /^denkraum hygiene: \d+ files, 0 findings\n$/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
