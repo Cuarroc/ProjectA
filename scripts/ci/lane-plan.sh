@@ -296,6 +296,17 @@ NOT_A_READ=(
   #   Ausgabezeile, kein Lesezugriff - CI-Lokal.md wird sonst nie gelesen.
   "docs/ci-lokal.md|scripts/ci/gates.sh"
   "docs/ci-lokal.md|scripts/ci/doctor.sh"
+  # V161-ROOT-GUARD: root-entries.test.mjs allowlists top-level names as
+  # string literals only (name compare, no file read). Beleg: CI-Lauf
+  # 38017326741, selftest-lane-plan rot an CHANGELOG.md / KNOWN_ISSUES.md.
+  "AGENTS.md|scripts/lib/root-entries.test.mjs"
+  "CHANGELOG.md|scripts/lib/root-entries.test.mjs"
+  "CLAUDE.md|scripts/lib/root-entries.test.mjs"
+  "KNOWN_ISSUES.md|scripts/lib/root-entries.test.mjs"
+  "PRODUCT.md|scripts/lib/root-entries.test.mjs"
+  "README.md|scripts/lib/root-entries.test.mjs"
+  "SECURITY.md|scripts/lib/root-entries.test.mjs"
+  "STAND.md|scripts/lib/root-entries.test.mjs"
 )
 
 # Literale Doku-Verweise: `irgendwas.md` und `docs/...` bzw. `.pa/...`.
