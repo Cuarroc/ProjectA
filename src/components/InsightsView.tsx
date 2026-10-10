@@ -95,23 +95,33 @@ function ResourceBaseline() {
         <dl className="insights-resources">
           <div>
             <dt>CPU</dt>
-            <dd>{formatCpu(snap.cpuPermille)}</dd>
+            <dd className={snap.cpuPermille === null ? "insights-quiet" : undefined}>
+              {formatCpu(snap.cpuPermille)}
+            </dd>
           </div>
           <div>
             <dt>RAM Prozess</dt>
-            <dd>{formatBytes(snap.ramProcessBytes)}</dd>
+            <dd className={snap.ramProcessBytes === null ? "insights-quiet" : undefined}>
+              {formatBytes(snap.ramProcessBytes)}
+            </dd>
           </div>
           <div>
             <dt>RAM gesamt</dt>
-            <dd>{formatBytes(snap.ramTotalBytes)}</dd>
+            <dd className={snap.ramTotalBytes === null ? "insights-quiet" : undefined}>
+              {formatBytes(snap.ramTotalBytes)}
+            </dd>
           </div>
           <div>
             <dt>Disk AppData</dt>
-            <dd>{formatBytes(snap.diskAppBytes)}</dd>
+            <dd className={snap.diskAppBytes === null ? "insights-quiet" : undefined}>
+              {formatBytes(snap.diskAppBytes)}
+            </dd>
           </div>
           <div>
             <dt>Disk frei</dt>
-            <dd>{formatBytes(snap.diskFreeBytes)}</dd>
+            <dd className={snap.diskFreeBytes === null ? "insights-quiet" : undefined}>
+              {formatBytes(snap.diskFreeBytes)}
+            </dd>
           </div>
           <div>
             <dt>Tokens</dt>

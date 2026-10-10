@@ -3374,11 +3374,11 @@ scripts/contrast-check.mjs. */
 
 .usage-view {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.2fr);
+  /* UM-4: wrap below ~1100px instead of clipping the second column. */
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 1px;
-  height: 100%;
+  min-height: 100%;
   background: var(--border);
-  overflow: hidden;
 }
 
 .usage-section {
@@ -4967,7 +4967,7 @@ scripts/contrast-check.mjs. */
 
 .insights-heading {
   margin: 0 0 6px;
-  font-size: calc(var(--text-base) + 1px);
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
@@ -4986,6 +4986,10 @@ scripts/contrast-check.mjs. */
 .insights-resources dd {
   margin: 2px 0 0;
   font-variant-numeric: tabular-nums;
+}
+
+.insights-quiet {
+  color: var(--fg-muted);
 }
 
 .settings-diagnose {
@@ -6576,7 +6580,7 @@ scripts/contrast-check.mjs. */
 }
 
 .diagnose-path {
-  font-family: ui-monospace, var(--font-mono);
+  font-family: var(--font-mono);
   font-size: var(--text-md);
   word-break: break-all;
   margin: 0 0 12px;
