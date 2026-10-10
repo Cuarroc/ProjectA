@@ -8,9 +8,13 @@
 use std::collections::HashMap;
 
 use super::failover_rules::{ProviderState, RuleSet};
+use crate::providers::{self, KIND_LOCAL};
 
-/// Registry id of the local stage's provider.
-const LOCAL_ID: &str = "ollama";
+/// Whether `id` is the local stage: the registry says it is a local provider
+/// (the same source of truth as the B2a chain walk), not a hard-coded id.
+fn is_local(id: &str) -> bool {
+    providers::find(id).is_some_and(|spec| spec.kind == KIND_LOCAL)
+}
 
 /// What a probe of the local Ollama found.
 #[derive(Debug, Clone, Default)]
@@ -47,17 +51,22 @@ impl LocalReadiness {
         if !probe.reachable {
             return not_ready("Ollama ist nicht erreichbar.".into());
         }
-        let Some(chosen) = probe.chosen_model.filter(|m| !m.trim().is_empty()) else {
+        let chosen = probe.chosen_model.as_deref().map_or("", str::trim);
+        if chosen.is_empty() {
             return not_ready("Es ist kein lokales Modell gewählt.".into());
-        };
-        // Ollama reads a name without a tag as ":latest".
+        }
+        // Ollama reads a name whose last path segment has no tag as ":latest"
+        // (a ":" before the last "/" is a registry port, not a tag).
+        let last_segment = chosen.rsplit('/').next().unwrap_or(chosen);
         let latest = format!("{chosen}:latest");
         let present = probe
             .models
             .iter()
-            .any(|m| *m == chosen || (!chosen.contains(':') && *m == latest));
+            .any(|m| m == chosen || (!last_segment.contains(':') && *m == latest));
         if present {
-            Readiness::Bereit { model: chosen }
+            Readiness::Bereit {
+                model: chosen.to_string(),
+            }
         } else {
             not_ready(format!(
                 "Das gewählte Modell „{chosen}“ ist in Ollama nicht vorhanden."
@@ -86,17 +95,22 @@ impl LocalStage {
         states: &HashMap<String, ProviderState>,
         readiness: &Readiness,
     ) -> Step<'a> {
-        match (rules.resolve(chain, states), readiness) {
-            (None, _) => Step::Pause {
+        let Some(id) = rules.resolve(chain, states) else {
+            return Step::Pause {
                 reason: "Pause statt Rechnung: Kein Anbieter ist frei.".into(),
-            },
-            (Some(LOCAL_ID), Readiness::Bereit { model }) => Step::Local {
+            };
+        };
+        if !is_local(id) {
+            return Step::Provider(id);
+        }
+        // The local stage is only ever `Local` or `Pause`, never `Provider`.
+        match readiness {
+            Readiness::Bereit { model } => Step::Local {
                 model: model.clone(),
             },
-            (Some(LOCAL_ID), Readiness::NichtBereit { reason }) => Step::Pause {
+            Readiness::NichtBereit { reason } => Step::Pause {
                 reason: format!("Pause statt Rechnung: {reason}"),
             },
-            (Some(id), _) => Step::Provider(id),
         }
     }
 }
