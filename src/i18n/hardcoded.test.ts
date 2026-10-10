@@ -124,3 +124,26 @@ it("scanner flags known-bad fixture strings for JSX text single-word and templat
     ]),
   );
 });
+
+it("scanner ignores KeyboardEvent key and code literals while still flagging UI copy", () => {
+  const dictValues = new Set(Object.values(de));
+  const fixture = `
+    export function onKey(e: KeyboardEvent) {
+      if (e.key === "Home") return;
+      if ("End" === e.key) return;
+      switch (e.key) {
+        case "Escape":
+          break;
+      }
+      if (e.code === "Tab") return;
+      const label = "Abbrechen";
+      return label;
+    }
+  `;
+  const found = findHardcodedUi(fixture, dictValues);
+  expect(found).not.toContain("Home");
+  expect(found).not.toContain("End");
+  expect(found).not.toContain("Escape");
+  expect(found).not.toContain("Tab");
+  expect(found).toContain("Abbrechen");
+});
