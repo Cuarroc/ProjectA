@@ -6,9 +6,14 @@ import { AnswerStore } from './answers.mjs';
 import { getOwnershipContext, OwnershipError, STORE_CLOSED } from './ownership.mjs';
 import { activeAnswers, activeEvents, ensure, isoTime, receiptFor, validId } from './model.mjs';
 
+/** Cap for webhook delivery attempts; after this many failures the outbox entry is terminal `failed`. */
+export const MAX_DELIVERY_ATTEMPTS = 10;
+
 // R669-O1: on V2 every path here checks the root id before reading events, so an empty ledger also answers 503.
 const requireRoot = (state, rootAgentId) => ensure(state.schemaVersion !== 2 || validId(rootAgentId),
   'Root-Agent-ID ist nicht konfiguriert; Empfangsprüfung abgelehnt.', 503);
+// NOT-3: V1 ack 'received'/'applied' survives migration on the answer; treat as already received for delivery.
+const legacyAckReceived = a => a?.ack?.status === 'received' || a?.ack?.status === 'applied';
 
 export class DeliveryStore extends AnswerStore {
   #notificationClosing;
@@ -53,9 +58,13 @@ export class DeliveryStore extends AnswerStore {
     const event = await this.change(state => {
       if (state.schemaVersion !== 2) return null;
       requireRoot(state, this.rootAgentId); const at = this.io.clock();
-      const eligible = activeEvents(state).filter(e => (eventId === undefined || e.eventRef.eventId === eventId) && !receiptFor(state, e, this.rootAgentId));
+      const eligible = activeEvents(state).filter(e => (eventId === undefined || e.eventRef.eventId === eventId)
+        && !receiptFor(state, e, this.rootAgentId)
+        && !(e.eventRef.kind === 'answer' && legacyAckReceived(e.content)));
       const a = eligible.map(e => e.content).filter(a =>
-        (a.webhookDelivery?.status !== 'queued' || isoTime(a.webhookDelivery.queuedAt) && at - Date.parse(a.webhookDelivery.queuedAt) >= 7 * 86400000))
+        a.webhookDelivery?.status !== 'failed'
+        && (a.webhookDelivery?.attempts ?? 0) < MAX_DELIVERY_ATTEMPTS
+        && (a.webhookDelivery?.status !== 'queued' || isoTime(a.webhookDelivery.queuedAt) && at - Date.parse(a.webhookDelivery.queuedAt) >= 7 * 86400000))
         .sort((x, y) => (Date.parse(x.webhookDelivery?.lastAttemptAt) || 0) - (Date.parse(y.webhookDelivery?.lastAttemptAt) || 0))[0];
       if (!a) return null;
       const ref = eligible.find(e => e.content === a).eventRef;
@@ -63,7 +72,7 @@ export class DeliveryStore extends AnswerStore {
       if (a.webhookDelivery?.status === 'queued') {
         a.webhookDelivery.status = 'pending'; a.webhookDelivery.deliveryId = randomUUID(); a.webhookDelivery.queuedAt = null;
       }
-      ensure(a.webhookDelivery && a.webhookDelivery.status === 'pending' && Number.isSafeInteger(a.webhookDelivery.attempts) && a.webhookDelivery.attempts >= 0 && a.webhookDelivery.attempts < Number.MAX_SAFE_INTEGER, 'Outbox beschädigt.', 503);
+      ensure(a.webhookDelivery && a.webhookDelivery.status === 'pending' && Number.isSafeInteger(a.webhookDelivery.attempts) && a.webhookDelivery.attempts >= 0 && a.webhookDelivery.attempts < MAX_DELIVERY_ATTEMPTS, 'Outbox beschädigt.', 503);
       a.webhookDelivery.deliveryId ??= ref.eventId;
       ensure(validId(a.webhookDelivery.deliveryId), 'Outbox-Zustellungs-ID beschädigt.', 503);
       a.webhookDelivery.attempts++; a.webhookDelivery.lastAttemptAt = new Date(at).toISOString();
@@ -75,10 +84,10 @@ export class DeliveryStore extends AnswerStore {
     return this.change(state => {
       const current = activeEvents(state).find(e => e.eventRef.eventId === event.eventId);
       if (!current) return { status: 'superseded' };
-      if (receiptFor(state, current, this.rootAgentId)) return { status: 'received' };
+      if (receiptFor(state, current, this.rootAgentId) || legacyAckReceived(current.content)) return { status: 'received' };
       const a = current.content;
       ensure(a.webhookDelivery, 'Outboxereignis fehlt.', 409);
-      a.webhookDelivery.status = queued ? 'queued' : 'pending';
+      a.webhookDelivery.status = queued ? 'queued' : (a.webhookDelivery.attempts >= MAX_DELIVERY_ATTEMPTS ? 'failed' : 'pending');
       a.webhookDelivery.queuedAt = queued ? new Date(this.io.clock()).toISOString() : null; a.webhookDelivery.lastError = queued ? null : 'transport-failed';
       return a.webhookDelivery;
     });
