@@ -61,14 +61,17 @@ it("shows one card per agent with an honest proof slot and filters by state", as
   expect(within(list).getAllByRole("article")).toHaveLength(3);
 });
 
-it("tab order is seven chips then one open button per card", async () => {
+it("tab order is seven chips then open and archive per running card", async () => {
   const onOpen = vi.fn();
   const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={onOpen} />);
   const tabbable = [...container.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), [tabindex]")];
   expect(tabbable.every((el) => el.tabIndex === 0)).toBe(true);
-  expect(tabbable.map((el) => el.tagName)).toEqual(Array(10).fill("BUTTON"));
+  expect(tabbable.map((el) => el.tagName)).toEqual(Array(13).fill("BUTTON"));
   expect(tabbable.slice(0, 7).map((el) => el.textContent)).toEqual(
     ["Alle 3", "Läuft 1", "Braucht dich 1", "In Prüfung 0", "Bereit zum Mergen 0", "Erledigt 0", "Fehler 1"],
+  );
+  expect(tabbable.slice(7).map((el) => el.getAttribute("aria-label"))).toEqual(
+    ["Claude Code öffnen", "Claude Code archivieren", "Claude Code öffnen", "Claude Code archivieren", "Claude Code öffnen", "Claude Code archivieren"],
   );
   fireEvent.click(tabbable[7]!);
   expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ worker: expect.objectContaining({ id: "w1" }) }));
