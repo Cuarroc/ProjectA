@@ -329,12 +329,29 @@ const BUILD_SUBCOMMANDS: [&str; 9] = [
     "build", "b", "test", "t", "clippy", "check", "c", "nextest", "rustc",
 ];
 
+/// Options that take a separate value and may precede the subcommand. The
+/// `--flag=value` spelling is one token and needs no entry. Cargo itself only
+/// accepts the first four before the subcommand (observed: the rest are
+/// rejected), but a rejected invocation is no build either way, so listing them
+/// keeps the value from being mistaken for the subcommand.
+const VALUE_OPTIONS: [&str; 9] = [
+    "-Z",
+    "-C",
+    "--config",
+    "--color",
+    "--manifest-path",
+    "--target",
+    "--target-dir",
+    "-j",
+    "--jobs",
+];
+
 /// The subcommand of a `cargo` argv (`argv[0]` is cargo itself), skipping a
-/// `+toolchain` and the global flags that come before it.
+/// `+toolchain` and the global options (with their values) before it.
 fn cargo_subcommand<S: AsRef<str>>(argv: &[S]) -> Option<&str> {
     let mut args = argv.iter().skip(1).map(AsRef::as_ref);
     while let Some(arg) = args.next() {
-        if matches!(arg, "-Z" | "-C" | "--config" | "--color") {
+        if VALUE_OPTIONS.contains(&arg) {
             args.next();
         } else if !arg.starts_with('+') && !arg.starts_with('-') {
             return Some(arg);
@@ -404,8 +421,9 @@ pub fn running_cargo_builds() -> Option<u32> {
         .filter_map(|entry| {
             let dir = entry.ok()?.path();
             let comm = std::fs::read_to_string(dir.join("comm")).ok()?;
-            // Only cargo's argv is worth reading; a process that exits between
-            // the two reads simply drops out of the count.
+            // Only cargo's argv is worth reading. A process that exits between
+            // the two reads drops out of the count; a PID reused in that tiny
+            // window could be counted wrongly (at most +-1, a snapshot anyway).
             if comm.trim() != "cargo" {
                 return None;
             }
