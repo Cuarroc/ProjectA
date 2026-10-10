@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import { classifyDiff, classifyPath, reviewClassInfo } from "./reviewClass";
+import tierFixture from "./review-tier-fixture.json";
+
+// The same file is read by the Rust test `diff::review_tier::tests`, so the two
+// classifiers cannot drift apart without one of the two suites failing.
+describe("shared review-tier fixture", () => {
+  it.each(tierFixture.map((row) => [JSON.stringify(row.paths), row] as const))(
+    "classifies %s like the Rust mirror",
+    (_label, row) => {
+      expect(classifyDiff(row.paths)).toBe(row.tier);
+    },
+  );
+});
 
 describe("classifyPath", () => {
   it.each([
