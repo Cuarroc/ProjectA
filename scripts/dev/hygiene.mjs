@@ -6,12 +6,13 @@
 //   3. specs under STAND.md "Aktive Specs" whose package already has a merged PR
 //   4. PLAN.md milestone rows in progress (Stand "PR #n") without an open PR
 //   5. untracked files in the main checkout
+//   5b. zero-byte untracked root files (likely shell-redirect accidents)
 //
 // Nothing is changed. The only write is `git fetch --prune origin`, which
 // updates remote-tracking refs; --no-fetch skips it. Findings are hints for a
 // human ("pruefen"), not verdicts: package IDs are matched against branch
 // names and PR titles.
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EXIT, RefusedError, makeRunner, gitIn, ghJson, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
@@ -35,6 +36,7 @@ Prueft:
   3. aktive Specs (STAND.md) zu Paketen mit gemergtem PR
   4. Pakete in Arbeit (docs/PLAN.md, Stand "PR #n") ohne offenen PR
   5. ungetrackte Dateien im Hauptcheckout
+     (0-Byte-Dateien in der Wurzel: likely shell-redirect accident + mtime)
   + "Nicht geprueft": fehlende/unlesbare Eingaben (STAND.md, docs/PLAN.md,
     ERLEDIGT.md) und gh-Listen am Limit; zaehlt als Befund fuer --strict
 
@@ -179,7 +181,27 @@ function erledigtRows(md) {
     });
 }
 
-export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText: standIn, planText: planIn, erledigtText: erledigtIn, untracked, limits = [] }) {
+// Zero-byte untracked files at the repository root are almost always agent
+// shell-redirect accidents (`cmd > 100`, `cmd > e`, …). Never delete them —
+// only flag with mtime so a human can decide.
+export function shellRedirectAccidents(root, untracked) {
+  const out = [];
+  for (const rel of untracked) {
+    if (!rel || rel.includes("/") || rel.includes("\\") || rel.endsWith("/")) continue;
+    const full = join(root, rel);
+    try {
+      const st = statSync(full);
+      if (st.isFile() && st.size === 0) {
+        out.push({ path: rel, mtime: st.mtime.toISOString() });
+      }
+    } catch {
+      // Missing path: still listed as untracked elsewhere; skip the flag.
+    }
+  }
+  return out.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText: standIn, planText: planIn, erledigtText: erledigtIn, untracked, shellRedirectAccidents: accidentsIn, limits = [] }) {
   const [standText, planText, erledigtText] = [standIn ?? "", planIn ?? "", erledigtIn ?? ""];
   const humanOpen = prsOpen.filter((p) => !MACHINE_BRANCH.test(p.headRefName));
   const stalePrs = humanOpen
@@ -217,7 +239,8 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
   notChecked.push(...parseGoals(planText).flatMap((g) => g.problems.map((p) => `docs/PLAN.md: ${p}`)));
   if (erledigtIn == null) notChecked.push("docs/ERLEDIGT.md fehlt — Specs zu erledigten Paketen nur über PRs geprüft");
   else if (!/^\|\s*Datum\s*\|\s*ID\s*\|/m.test(erledigtText)) notChecked.push('docs/ERLEDIGT.md: keine Tabelle „| Datum | ID |“ — Specs zu erledigten Paketen nur über PRs geprüft');
-  return { stalePrs, branchesWithoutPr, specsOfMergedPrs, inProgressWithoutPr, untracked, notChecked };
+  const shellRedirectAccidents = accidentsIn ?? [];
+  return { stalePrs, branchesWithoutPr, specsOfMergedPrs, inProgressWithoutPr, untracked, shellRedirectAccidents, notChecked };
 }
 
 export function countFindings(f) {
@@ -238,7 +261,12 @@ export function formatHygiene(f, { now = Date.now() } = {}) {
   section("Branches ohne PR", [...openB, ...mergedB], (b) => `\`${b.name}\` — ${b.merged ? "in main enthalten, löschbar" : "nicht in main, prüfen"}`);
   section("Aktive Specs zu gemergten PRs", f.specsOfMergedPrs, (s) => `\`.pa/${s.spec}\` (${s.id}) — ${s.via}; ggf. \`npm run dev:spec-close -- ${s.spec.replace(/^task_|\.md$/g, "")}\``);
   section("Pakete „in Arbeit“ ohne offenen PR (docs/PLAN.md)", f.inProgressWithoutPr, (r) => `${r.id} — ${r.status}`);
-  section("Ungetrackte Dateien im Hauptcheckout", f.untracked, (p) => `\`${p}\``);
+  const accidentByPath = new Map((f.shellRedirectAccidents || []).map((a) => [a.path, a]));
+  section("Ungetrackte Dateien im Hauptcheckout", f.untracked, (p) => {
+    const acc = accidentByPath.get(p);
+    if (acc) return `\`${p}\` — likely shell-redirect accident (mtime ${acc.mtime})`;
+    return `\`${p}\``;
+  });
   section("Nicht geprüft", f.notChecked || [], (n) => n);
   return out.join("\n");
 }
@@ -275,6 +303,8 @@ export function gather({ run, cwd, now = Date.now() }) {
     .split(/\r?\n/)
     .filter((l) => l.startsWith("?? "))
     .map((l) => l.slice(3).replace(/^"(.*)"$/, "$1"));
+  // Stat on the main checkout path (where untracked files live), not --root.
+  const accidents = shellRedirectAccidents(mainPath, untracked);
 
   return {
     now,
@@ -284,6 +314,7 @@ export function gather({ run, cwd, now = Date.now() }) {
     prsAll,
     remoteBranches,
     untracked,
+    shellRedirectAccidents: accidents,
     limits,
     standText: readOrNull(join(root, "STAND.md")),
     planText: readOrNull(join(root, "docs", "PLAN.md")),
