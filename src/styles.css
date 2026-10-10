@@ -465,20 +465,69 @@ a {
 }
 
 /* Selection and state surfaces change a little more calmly than hover, so
-   a click that moves the selection does not read as a flash. */
+   a click that moves the selection does not read as a flash. Fields and
+   list rows join the same colour transitions (UM-18 within F2). */
 .project-button,
 .worker-row,
 .rail-item,
 .board-card,
 .tab,
+.segment,
 .panel-tab,
 .settings-tab,
-.queue-row {
+.queue-row,
+.question-option,
+.field,
+.convo-input,
+.command-chat-input,
+.question-input,
+.project-row,
+.queue-entry,
+.usage-row {
   transition:
     background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
+}
+
+/* Shared hover wash for rows, tabs and segments — later view rules may
+   refine the colour; every class here must also answer on :active (UM-17).
+   .board-card keeps border-only hover (chips stay ≥4.5 on the card, R1000-A3). */
+.project-button:hover:not(:disabled),
+.worker-row:hover,
+.rail-item:hover,
+.tab:hover:not(.tab-active),
+.segment:hover:not(.segment-active),
+.panel-tab:hover:not(.panel-tab-active),
+.settings-tab:hover:not(.settings-tab-active),
+.queue-row:hover,
+.question-option:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+/* Scoped under .app so pressed wins over later view :hover rules (same
+   specificity otherwise leaves the wash stuck on hover while the button
+   is held). Containers that hold child buttons ignore nested presses
+   (R1000-A2). Selected surfaces keep their selection colour (R1000-A4). */
+.app .project-button:active:not(:disabled),
+.app .worker-row:active:not(.worker-row-active):not(:has(button:active)),
+.app .rail-item:active,
+.app .tab:active:not(.tab-active):not(:has(button:active)),
+.app .segment:active:not(.segment-active):not(:disabled),
+.app .panel-tab:active:not(.panel-tab-active),
+.app .settings-tab:active:not(.settings-tab-active),
+.app .queue-row:active,
+.app .question-option:active:not(:disabled) {
+  background: var(--color-pressed);
+}
+
+/* Primary children of those containers — kept out of the :has() list so a
+   forgiving-selector drop cannot clear the pressed wash on the control. */
+.app .tab-select:active,
+.app .worker-open:active,
+.app .board-card-main:active:not(:disabled) {
+  background: var(--color-pressed);
 }
 
 /* A visible keyboard focus is mandatory, and it must not look like a
@@ -3129,6 +3178,9 @@ scripts/contrast-check.mjs. */
 }
 
 .status-item {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -6830,14 +6882,24 @@ scripts/contrast-check.mjs. */
 
 /* APP-3 (ui-ux-pro-max audit): WCAG 2.2 asks for 24x24 CSS px pointer targets.
    The glyph buttons stay as small as the density wants them; the hit area is a
-   transparent overlay reaching 3px beyond every edge (18px + 6px = 24px). */
+   transparent overlay reaching 3px beyond every edge (18px + 6px = 24px).
+   UM-15: all nine audit classes share the overlay (R1000-A1). */
 .section-action,
 .project-remove,
 .project-github,
 .viewbar-rail-toggle,
 .board-card-menu-button,
 .tab-close,
-.project-gear {
+.project-gear,
+.rail-collapse,
+.command-chat-expand,
+.worker-action,
+.panel-tab,
+.rail-title,
+.status-item,
+.status-provider-action,
+.question-worker,
+.digest-toggle {
   position: relative;
 }
 
@@ -6847,10 +6909,41 @@ scripts/contrast-check.mjs. */
 .viewbar-rail-toggle::after,
 .board-card-menu-button::after,
 .tab-close::after,
-.project-gear::after {
+.project-gear::after,
+.rail-collapse::after,
+.worker-action::after {
   content: "";
   position: absolute;
   inset: -3px;
+}
+
+/* UM-15 short targets: deepen inset so painted + 2×inset ≥ 24 (R1000-A1/A5).
+   Use inset (not transform pads) so the expanded box stays pointer-hittable. */
+.command-chat-expand::after,
+.panel-tab::after,
+.rail-title::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.status-item::after,
+.digest-toggle::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.question-worker::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.status-provider-action::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
 }
 
 /* A tabpanel element for the goals whose view has no wrapper of its own
