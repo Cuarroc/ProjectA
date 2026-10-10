@@ -27,6 +27,21 @@ const WINDOWS: [(Window, &str); 3] = [
     (Window::Month, "Monat"),
 ];
 
+fn local_position(chain: &[&str]) -> Option<usize> {
+    chain
+        .iter()
+        .position(|c| providers::find(c).is_some_and(|s| s.kind == KIND_LOCAL))
+}
+
+/// Where in `chain` a switch or local action leads; `None` if nowhere.
+fn target(chain: &[&str], action: Action) -> Option<usize> {
+    match action {
+        Action::Switch(to) => chain.iter().position(|c| *c == to.0),
+        Action::Local => local_position(chain),
+        Action::Pause => None,
+    }
+}
+
 /// A registered provider that is not billed per call.
 fn usable(id: &str) -> bool {
     providers::find(id).is_some_and(|spec| spec.kind != KIND_API_KEY)
@@ -78,6 +93,14 @@ pub struct ProviderState {
 }
 
 impl Condition {
+    fn provider(self) -> Provider {
+        match self {
+            Condition::WindowAtLeast(p, ..) | Condition::Blocked(p) | Condition::ProbeFailed(p) => {
+                p
+            }
+        }
+    }
+
     fn holds(self, id: &str, state: &ProviderState) -> bool {
         match self {
             Condition::WindowAtLeast(p, window, pct) => {
@@ -104,7 +127,9 @@ impl Condition {
         }
         let bad = || format!("Bedingung nicht verstanden: {text}");
         let (left, right) = text.split_once(" ≥ ").ok_or_else(bad)?;
-        let pct = right.strip_suffix(" %").and_then(|n| n.parse().ok());
+        let canonical = |n: &&str| n.bytes().all(|b| b.is_ascii_digit()) && !n.starts_with('0');
+        let pct = right.strip_suffix(" %").filter(canonical);
+        let pct = pct.and_then(|n| n.parse().ok());
         let pct = pct.filter(|n| (1..=100).contains(n)).ok_or_else(bad)?;
         let (window, label) = WINDOWS
             .iter()
@@ -185,14 +210,56 @@ impl Rule {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleSet(Vec<(Rule, bool)>);
 
+impl Default for RuleSet {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuleSet {
     pub fn new() -> Self {
         Self(vec![(Rule::PauseInsteadOfBill, true)])
     }
 
+    /// One German error per rule that cannot work with `chain`: it sends to
+    /// a provider that is not in the chain, to its own condition's provider,
+    /// or to a local model when the chain has none.
+    pub fn validate(&self, chain: &[&str]) -> Result<(), Vec<String>> {
+        let errors: Vec<String> = self
+            .0
+            .iter()
+            .filter_map(|(rule, _)| {
+                let Rule::Failover(when, action) = rule else {
+                    return None;
+                };
+                let problem = match action {
+                    Action::Switch(to) if to.0 == when.provider().0 => {
+                        format!("{} kann nicht auf sich selbst verweisen", to.1)
+                    }
+                    Action::Switch(to) if !chain.contains(&to.0) => {
+                        format!("{} ist nicht in der Kette", to.1)
+                    }
+                    Action::Local if local_position(chain).is_none() => {
+                        "In der Kette ist kein lokales Modell".to_string()
+                    }
+                    _ => return None,
+                };
+                Some(format!("„{}“: {problem}", rule.sentence()))
+            })
+            .collect();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
     pub fn add(&mut self, rule: Rule) -> Result<(), String> {
         if rule == Rule::PauseInsteadOfBill {
             return Err("Die Regel „Pause statt Rechnung“ gibt es schon".into());
+        }
+        if self.0.iter().any(|(have, _)| *have == rule) {
+            return Err(format!("Die Regel „{}“ gibt es schon", rule.sentence()));
         }
         self.0.push((rule, true));
         Ok(())
@@ -224,8 +291,11 @@ impl RuleSet {
     /// Walk `chain` (provider ids in preference order) from the front and
     /// name the provider to work on; `None` means pause. One is passed over
     /// when it is blocked or when an enabled rule about it holds and sends
-    /// the walk elsewhere. Providers billed per call (and unknown ids) are
-    /// never chosen; running out of chain, or a loop, is a pause.
+    /// the walk elsewhere. A rule whose target is not in the chain is
+    /// skipped (the walk goes on with the next member), and one that names
+    /// its own healthy provider changes nothing. Providers billed per call
+    /// (and unknown ids) are never chosen; a pause rule, running out of
+    /// chain, or a loop is a pause.
     pub fn resolve<'a>(
         &self,
         chain: &[&'a str],
@@ -251,10 +321,11 @@ impl RuleSet {
                 None if !state.blocked => return Some(id),
                 None => at + 1,
                 Some(Action::Pause) => return None,
-                Some(Action::Local) => chain
-                    .iter()
-                    .position(|c| providers::find(c).is_some_and(|s| s.kind == KIND_LOCAL))?,
-                Some(Action::Switch(to)) => chain.iter().position(|c| *c == to.0)?,
+                Some(action) => match target(chain, action) {
+                    Some(to) if to == at && !state.blocked => return Some(id),
+                    Some(to) => to,
+                    None => at + 1,
+                },
             };
         }
         None
@@ -267,9 +338,13 @@ mod tests {
 
     const CHAIN: [&str; 3] = ["claude", "codex", "ollama"];
 
-    fn states(flagged: &[&str], probe_failed: bool) -> HashMap<String, ProviderState> {
+    fn states(
+        flagged: &[&str],
+        blocked: bool,
+        probe_failed: bool,
+    ) -> HashMap<String, ProviderState> {
         let state = ProviderState {
-            blocked: !probe_failed,
+            blocked,
             probe_failed,
             ..Default::default()
         };
@@ -328,21 +403,24 @@ mod tests {
         let rules = RuleSet::new();
         assert_eq!(rules.resolve(&CHAIN, &HashMap::new()), Some("claude"));
         assert_eq!(
-            rules.resolve(&CHAIN, &states(&["claude"], false)),
+            rules.resolve(&CHAIN, &states(&["claude"], true, false)),
             Some("codex")
         );
         assert_eq!(
-            rules.resolve(&CHAIN, &states(&["claude", "codex"], false)),
+            rules.resolve(&CHAIN, &states(&["claude", "codex"], true, false)),
             Some("ollama")
         );
-        assert_eq!(rules.resolve(&CHAIN, &states(&CHAIN, false)), None);
+        assert_eq!(rules.resolve(&CHAIN, &states(&CHAIN, true, false)), None);
     }
 
     #[test]
     fn chain_never_ends_on_an_api_key_path() {
         let rules = RuleSet::new();
         let chain = ["claude", "openrouter", "omniroute-management"];
-        assert_eq!(rules.resolve(&chain, &states(&["claude"], false)), None);
+        assert_eq!(
+            rules.resolve(&chain, &states(&["claude"], true, false)),
+            None
+        );
         assert_eq!(rules.resolve(&["openrouter"], &HashMap::new()), None);
     }
 
@@ -362,20 +440,107 @@ mod tests {
         assert_eq!(rules.resolve(&CHAIN, &at(94)), Some("claude"));
         assert_eq!(rules.resolve(&CHAIN, &at(95)), Some("ollama"));
         let mut both = at(95);
-        both.extend(states(&["ollama"], false));
+        both.extend(states(&["ollama"], true, false));
         assert_eq!(rules.resolve(&CHAIN, &both), None);
     }
 
     #[test]
     fn disabled_rules_do_not_fire_and_loops_end_in_a_pause() {
         let mut rules = set(&["Wenn die Prüfung von Claude fehlschlägt, dann Pause."]);
-        assert_eq!(rules.resolve(&CHAIN, &states(&["claude"], true)), None);
+        assert_eq!(
+            rules.resolve(&CHAIN, &states(&["claude"], false, true)),
+            None
+        );
         rules.set_enabled(1, false).unwrap();
         assert_eq!(
-            rules.resolve(&CHAIN, &states(&["claude"], true)),
+            rules.resolve(&CHAIN, &states(&["claude"], false, true)),
             Some("claude")
         );
         let looping = set(&["Wenn Claude blockiert ist, dann weiter mit Claude."]);
-        assert_eq!(looping.resolve(&CHAIN, &states(&["claude"], false)), None);
+        assert_eq!(
+            looping.resolve(&CHAIN, &states(&["claude"], true, false)),
+            None
+        );
+    }
+
+    #[test]
+    fn a_rule_with_an_unresolvable_target_is_skipped_not_a_pause() {
+        let not_in_chain = set(&["Wenn Claude Woche ≥ 95 %, dann weiter mit Kimi."]);
+        let at_95 = HashMap::from([(
+            "claude".to_string(),
+            ProviderState {
+                used_pct: vec![(Window::SevenDay, 95)],
+                ..Default::default()
+            },
+        )]);
+        assert_eq!(not_in_chain.resolve(&CHAIN, &at_95), Some("codex"));
+        let local = set(&["Wenn Claude blockiert ist, dann weiter mit dem lokalen Modell."]);
+        let blocked = states(&["claude"], true, false);
+        assert_eq!(local.resolve(&CHAIN, &blocked), Some("ollama"));
+        assert_eq!(local.resolve(&["claude", "codex"], &blocked), Some("codex"));
+        assert_eq!(local.resolve(&["claude"], &blocked), None);
+    }
+
+    #[test]
+    fn a_self_target_keeps_a_healthy_provider() {
+        let rules = set(&["Wenn Claude Woche ≥ 95 %, dann weiter mit Claude."]);
+        let state = ProviderState {
+            used_pct: vec![(Window::SevenDay, 95)],
+            ..Default::default()
+        };
+        let states = HashMap::from([("claude".to_string(), state)]);
+        assert_eq!(rules.resolve(&CHAIN, &states), Some("claude"));
+    }
+
+    #[test]
+    fn probe_failed_and_blocked_are_independent_conditions() {
+        let rules = set(&["Wenn die Prüfung von Claude fehlschlägt, dann weiter mit Codex."]);
+        let probe = states(&["claude"], false, true);
+        assert_eq!(rules.resolve(&CHAIN, &probe), Some("codex"));
+        let both = states(&["claude"], true, true);
+        assert_eq!(rules.resolve(&CHAIN, &both), Some("codex"));
+        let blocked = states(&["claude"], true, false);
+        assert_eq!(rules.resolve(&CHAIN, &blocked), Some("codex"));
+        let pause = set(&["Wenn die Prüfung von Claude fehlschlägt, dann Pause."]);
+        assert_eq!(pause.resolve(&CHAIN, &blocked), Some("codex"));
+        assert_eq!(pause.resolve(&CHAIN, &probe), None);
+        assert_eq!(rules.resolve(&CHAIN, &HashMap::new()), Some("claude"));
+    }
+
+    #[test]
+    fn validate_names_each_rule_that_cannot_work_with_the_chain() {
+        let rules = set(&[
+            "Wenn Codex blockiert ist, dann weiter mit Ollama.",
+            "Wenn Claude Woche ≥ 95 %, dann weiter mit Kimi.",
+            "Wenn Claude blockiert ist, dann weiter mit Claude.",
+            "Wenn Codex Monat ≥ 90 %, dann weiter mit dem lokalen Modell.",
+        ]);
+        let errors = rules.validate(&CHAIN).unwrap_err();
+        assert_eq!(errors.len(), 2, "{errors:?}");
+        assert!(errors[0].contains("Kimi") && errors[0].contains("nicht in der Kette"));
+        assert!(errors[1].contains("Claude") && errors[1].contains("sich selbst"));
+        let errors = rules.validate(&["claude", "codex"]).unwrap_err();
+        assert_eq!(errors.len(), 4, "{errors:?}");
+        assert!(RuleSet::new().validate(&[]).is_ok());
+    }
+
+    #[test]
+    fn percent_numerals_must_be_canonical() {
+        for bad in ["+95", "095", "00", "9 5", "-5"] {
+            let sentence = format!("Wenn Claude Woche ≥ {bad} %, dann Pause.");
+            assert!(Rule::parse(&sentence).is_err(), "{sentence}");
+        }
+        assert!(Rule::parse("Wenn Claude Woche ≥ 100 %, dann Pause.").is_ok());
+    }
+
+    #[test]
+    fn an_identical_rule_is_rejected_and_default_is_new() {
+        let mut rules = set(&["Wenn Claude blockiert ist, dann Pause."]);
+        let same = Rule::parse("Wenn Claude blockiert ist, dann Pause.").unwrap();
+        assert!(rules.add(same).is_err());
+        assert_eq!(rules.0.len(), 2);
+        let other = Rule::parse("Wenn Claude blockiert ist, dann weiter mit Codex.").unwrap();
+        assert!(rules.add(other).is_ok());
+        assert_eq!(RuleSet::default(), RuleSet::new());
     }
 }
