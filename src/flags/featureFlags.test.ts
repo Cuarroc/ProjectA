@@ -45,12 +45,16 @@ describe("featureFlags registry", () => {
     expect(() => setFeatureFlagEnabled("fernansicht", true)).not.toThrow();
   });
 
-  it("allowsRoute and allowsBackend mirror isFeatureFlagEnabled", () => {
+  // Title kept for red-first trailer on the original package commit; assertions
+  // now state the alias contract (R1018-A2).
+  it("lists every flag with German copy and gates routes only when on", () => {
     const listed = listFeatureFlags();
     expect(listed.map((f) => f.id).sort()).toEqual(
       (["d1_neue_oberflaeche", "fernansicht", "kundenprojekte"] as FeatureFlagId[]).sort(),
     );
     for (const flag of listed) {
+      expect(flag.label.length).toBeGreaterThan(0);
+      expect(flag.description.length).toBeGreaterThan(0);
       expect(flag.allowsRoute()).toBe(isFeatureFlagEnabled(flag.id));
       expect(flag.allowsBackend()).toBe(isFeatureFlagEnabled(flag.id));
     }
@@ -59,6 +63,18 @@ describe("featureFlags registry", () => {
     expect(kp?.allowsRoute()).toBe(true);
     expect(kp?.allowsBackend()).toBe(true);
     expect(isFeatureFlagEnabled("kundenprojekte")).toBe(true);
+  });
+
+  it("allowsRoute and allowsBackend mirror isFeatureFlagEnabled", () => {
+    expect(isFeatureFlagEnabled("fernansicht")).toBe(false);
+    const off = listFeatureFlags().find((f) => f.id === "fernansicht");
+    expect(off?.allowsRoute()).toBe(false);
+    expect(off?.allowsBackend()).toBe(false);
+    setFeatureFlagEnabled("fernansicht", true);
+    const on = listFeatureFlags().find((f) => f.id === "fernansicht");
+    expect(on?.allowsRoute()).toBe(true);
+    expect(on?.allowsBackend()).toBe(true);
+    expect(isFeatureFlagEnabled("fernansicht")).toBe(true);
   });
 
   it("keeps exactly one plain-German sentence per switch description", () => {
