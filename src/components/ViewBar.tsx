@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import Icon from "./Icon";
 import { APP_GOALS, GOAL_LABELS, GOAL_TITLES, type AppGoal } from "../lib/goals";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 
@@ -72,7 +73,7 @@ export default function ViewBar({
         title={railTitle}
         aria-label={railTitle}
       >
-        ▤
+        <Icon name="rail" size={14} />
       </button>
       <span className="viewbar-project" title={projectName ?? undefined}>
         {projectName ?? "Kein Projekt"}
