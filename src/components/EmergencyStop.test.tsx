@@ -25,6 +25,14 @@ describe("EmergencyStop", () => {
     expect(ipc.setEmergencyStop).toHaveBeenCalledWith(true);
   });
 
+  it("styles the raise control as a danger button", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    const raise = await screen.findByRole("button", { name: "Not-Aus auslösen" });
+    expect(raise.className.split(/\s+/)).toContain("button-danger");
+    expect(screen.getByText("Not-Aus").className.split(/\s+/)).toContain("field-label");
+  });
+
   it("treats an unreadable state as stopped", async () => {
     ipc.getEmergencyStop.mockRejectedValue("db down");
     render(<EmergencyStop />);

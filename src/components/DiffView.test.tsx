@@ -399,6 +399,22 @@ describe("DiffView", { timeout: 15000 }, () => {
     }
   });
 
+  it("explains why Freigeben stays disabled without a merge tree", async () => {
+    diffState.code = null;
+    try {
+      getWorkerReadiness.mockResolvedValue(readiness);
+      render(<DiffView workerId="wk-1" branch="nacht/wk-1" />);
+      const approve = await screen.findByRole("button", { name: "Review freigeben" });
+      expect(approve).toBeDisabled();
+      expect(approve.getAttribute("title")).toMatch(/Kein Merge-Tree/i);
+      const request = screen.getByRole("button", { name: "Änderungen anfordern" });
+      expect(request).toBeDisabled();
+      expect(request.getAttribute("title")).toMatch(/Kein Merge-Tree/i);
+    } finally {
+      diffState.code = DIFF_CODE;
+    }
+  });
+
   it("locks the approval when panel and diff show different candidate trees", async () => {
     // Review-F4-r19 (Opus Fund 1): panel and diff are two independent
     // measurements. If they diverge, the approval must lock with a visible

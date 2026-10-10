@@ -51,22 +51,42 @@ export default function MaintenancePanel() {
       <p className="settings-hint">
         Hält neue Arbeit an und sperrt Schreibzugriffe, damit ein Backup sicher ist.
       </p>
-      <div>
+      <div className="settings-port-row">
         {active === true ? (
-          <button type="button" disabled={busy} onClick={() => void change(false)}>
+          <button
+            type="button"
+            className="button-ghost"
+            disabled={busy}
+            onClick={() => void change(false)}
+          >
             Wartungsmodus beenden
           </button>
         ) : asking ? (
           <>
-            <button type="button" disabled={busy} onClick={() => void change(true)}>
+            <button
+              type="button"
+              className="button-danger"
+              disabled={busy}
+              onClick={() => void change(true)}
+            >
               Ja, Wartungsmodus starten
             </button>
-            <button type="button" disabled={busy} onClick={() => setAsking(false)}>
+            <button
+              type="button"
+              className="button-ghost"
+              disabled={busy}
+              onClick={() => setAsking(false)}
+            >
               Abbrechen
             </button>
           </>
         ) : (
-          <button type="button" disabled={busy || active === null} onClick={() => setAsking(true)}>
+          <button
+            type="button"
+            className="button-ghost"
+            disabled={busy || active === null}
+            onClick={() => setAsking(true)}
+          >
             Wartungsmodus starten
           </button>
         )}

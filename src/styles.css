@@ -73,6 +73,9 @@
   --color-accent-tint: rgba(64, 156, 255, 0.13);
   --color-focus-ring: #0a84ff;
   --color-on-accent: #ffffff;
+  /* Solid danger fill for Not-Aus (PKG-U); separate from state-danger text. */
+  --color-danger-solid: #b91c1c;
+  --color-on-danger: #ffffff;
 
   /* ---- legacy names ----------------------------------------------------
      The codebase names these six in over 300 places. They stay, but now
@@ -254,6 +257,8 @@
        a shape there; dark mode's lighter system blue does not manage that
        against #e8e8ec. */
     --color-focus-ring: #0a6cdd;
+    --color-danger-solid: #c1000f;
+    --color-on-danger: #ffffff;
 
     /* The state colours sit on slightly grey content here rather than on
        white. That costs a tenth of contrast, so they run a shade deeper
@@ -4983,6 +4988,56 @@ scripts/contrast-check.mjs. */
 .settings-saved {
   font-size: var(--text-sm);
   color: var(--state-merge-fg);
+}
+
+/* Danger surface for Not-Aus / irreversible settings actions (PKG-U / UM-6). */
+.button-danger {
+  min-height: var(--ui-control-min);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-danger-solid);
+  background: var(--color-danger-solid);
+  color: var(--color-on-danger);
+  font-weight: 600;
+  transition:
+    background-color var(--motion-hover) var(--ease-standard),
+    border-color var(--motion-hover) var(--ease-standard),
+    color var(--motion-hover) var(--ease-standard),
+    transform var(--motion-press) var(--ease-standard);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger-solid) 78%, #000000);
+  border-color: color-mix(in srgb, var(--color-danger-solid) 78%, #000000);
+  color: var(--color-on-danger);
+}
+
+.button-danger:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.button-danger:active:not(:disabled) {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--motion-press);
+}
+
+.button-danger:disabled {
+  background: var(--color-elevated);
+  border-color: transparent;
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+/* Bordered secondary for paired settings actions (lift / Wartungsmodus).
+   Border role uses separator token until P00/T2 ship --color-control-border;
+   color is restated so the edge stays ≥ readable on both modes. */
+.settings-port-row .button-ghost {
+  min-height: var(--ui-control-min);
+  border: 1px solid var(--border);
+  border-color: var(--color-text-tertiary);
+  background: var(--color-elevated);
+  color: var(--fg);
 }
 
 .settings-body {

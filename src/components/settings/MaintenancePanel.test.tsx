@@ -26,6 +26,12 @@ describe("MaintenancePanel", () => {
     expect(ipc.getMaintenance).toHaveBeenCalledOnce();
   });
 
+  it("styles the start control as a ghost button", async () => {
+    render(<MaintenancePanel />);
+    const start = await screen.findByRole("button", { name: "Wartungsmodus starten" });
+    expect(start.className.split(/\s+/)).toContain("button-ghost");
+  });
+
   it("enters maintenance only after confirmation and shows the badge", async () => {
     ipc.enterMaintenance.mockResolvedValue(undefined);
     render(<MaintenancePanel />);
