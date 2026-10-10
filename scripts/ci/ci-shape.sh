@@ -18,7 +18,9 @@
 #      green with Linux results.
 #   4. red-first runs inside the linux job (plan and proof) and the job
 #      `red-first` only evaluates it: `needs: linux`, the verdict script, and
-#      no setup-linux of its own.
+#      no setup-linux of its own. Both red-first steps pin RF_BASE_BRANCH to
+#      github.event.pull_request.base.ref and fetch refs/heads/$RF_BASE_BRANCH
+#      (V161-FU-3 / R934-A2).
 #   5. CI-04: the job `main-red` exists, waits for BOTH gate jobs, fires
 #      only on refs/heads/main (exact `==`, with always(), or a red gates
 #      job would skip it), calls scripts/ci/main-red-guard.sh, reads the
@@ -149,6 +151,18 @@ has "$redfirst" "setup-linux" && err "job red-first: has its own setup-linux aga
 # The proof never starts on an empty count (review PR #149, glm-5.2 F2).
 proof_if="$(step "red-first - proof against merge base" <<< "$linux" | grep -E '^        if:')"
 has "$proof_if" "steps.rf_plan.outputs.count != ''" || err "job linux: proof step 'if' lacks steps.rf_plan.outputs.count != '': $proof_if"
+# V161-FU-3 / R934-A2: both red-first steps pin the current PR base branch
+# (RF_BASE_BRANCH) and fetch refs/heads/$RF_BASE_BRANCH so a retargeted or
+# stale payload base.sha cannot silently drop the preferred base.
+rf_base_env='RF_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}'
+for rf_step in "red-first - plan" "red-first - proof against merge base"; do
+  rf_body="$(step "$rf_step" <<< "$linux")"
+  [ -n "$rf_body" ] || { err "job linux: step '$rf_step' missing"; continue; }
+  has "$rf_body" "$rf_base_env" ||
+    err "job linux: step '$rf_step' lacks RF_BASE_BRANCH: \${{ github.event.pull_request.base.ref }}"
+  has "$rf_body" 'refs/heads/$RF_BASE_BRANCH' ||
+    err "job linux: step '$rf_step' missing red-first base branch fetch (refs/heads/\$RF_BASE_BRANCH)"
+done
 
 # 5. CI-04: the main-red guard job - a red main opens an issue and freezes
 # the Mergify queue, a proven-green main lifts both.

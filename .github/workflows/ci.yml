@@ -262,7 +262,10 @@ jobs:
         run: |
           # Base and head explicitly: the checkout above is refs/pull/N/merge,
           # base.sha may no longer be reachable from it once main moved.
-          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          # HEAD_SHA is required; a stale/unfetchable BASE_SHA must not abort
+          # the step (R934-A1) — red-first.sh still falls back as before.
+          git fetch --no-tags origin "$HEAD_SHA"
+          git fetch --no-tags origin "$BASE_SHA" || echo "::notice::red-first: BASE_SHA fetch failed (stale or unfetchable payload); continuing with branch fetch"
           # Retargeted PR payloads may retain a stale base.sha.
           git fetch --no-tags origin "+refs/heads/$RF_BASE_BRANCH:refs/remotes/origin/$RF_BASE_BRANCH"
           # Erst in eine Datei, dann anhaengen - eine Pipe nach $GITHUB_OUTPUT
