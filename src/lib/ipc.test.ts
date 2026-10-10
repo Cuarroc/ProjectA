@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SUPERVISOR_NOTIFICATION } from "./eventNames";
 
 import {
   approveSetupTrust,
@@ -333,7 +334,7 @@ describe("supervisor notification IPC", () => {
     });
     const seen: SupervisorNotification[] = [];
     await onSupervisorNotification((notice) => seen.push(notice));
-    expect(listen).toHaveBeenCalledWith("supervisor:notification", expect.any(Function));
+    expect(listen).toHaveBeenCalledWith(SUPERVISOR_NOTIFICATION, expect.any(Function));
     for (const payload of payloads) emit?.({ payload });
     return seen;
   }

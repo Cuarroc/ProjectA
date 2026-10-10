@@ -75,6 +75,7 @@ mod digest;
 mod enhance;
 mod errors;
 mod estop;
+mod event_names;
 mod freetier;
 mod fs_replace;
 mod fsutil;
@@ -3485,7 +3486,7 @@ struct EventSink {
 
 impl StatusSink for EventSink {
     fn publish(&self, payload: StatusPayload) {
-        let _ = self.app.emit("worker:status", payload);
+        let _ = self.app.emit(event_names::WORKER_STATUS, payload);
     }
 }
 
@@ -3697,7 +3698,7 @@ fn main() {
             // notifications; the payload holds ids and reason codes only.
             let notice_app = handle.clone();
             let notifier: store::supervisor::Notifier = Arc::new(move |notice| {
-                let _ = notice_app.emit("supervisor:notification", notice);
+                let _ = notice_app.emit(event_names::SUPERVISOR_NOTIFICATION, notice);
             });
             let policy_supervisor = tauri::async_runtime::block_on(store::supervisor::start(store.clone(), Some(notifier)));
             app.manage(policy_supervisor);
