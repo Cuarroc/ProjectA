@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import type { QuotaState } from "../../types";
 import { KontingenteScreen } from "./KontingenteScreen";
-import { formatFreeAt, providerInitials, windowSlot } from "./kontingente";
+import { blockedNote, formatFreeAt, providerInitials, windowSlot } from "./kontingente";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
@@ -126,4 +126,34 @@ it("says so when no provider is known", async () => {
   feed([]);
   render(<KontingenteScreen />);
   expect(await screen.findByText("Noch kein Anbieter")).toBeInTheDocument();
+});
+
+it("shows a non-blocked provider's detail as its note and nothing when it has none", async () => {
+  const ok = provider("claude", "Claude Code", { detail: "Anmeldung läuft ab" }) as never;
+  const bare = provider("codex", "Codex") as never;
+  expect(blockedNote(ok, undefined)).toBe("Anmeldung läuft ab");
+  expect(blockedNote(bare, undefined)).toBeNull();
+  feed([ok, bare]);
+  render(<KontingenteScreen />);
+  const c = await card("Claude Code");
+  expect(c.getByText("Anmeldung läuft ab")).toHaveClass("kt-note");
+  expect((await card("Codex")).queryByText(/frei/i)).toBeNull();
+});
+
+it("returns no free-again time for an expired instant or NaN", () => {
+  const at = new Date(2026, 9, 10, 12, 0, 0);
+  const secs = (d: Date) => Math.floor(d.getTime() / 1000);
+  expect(formatFreeAt(secs(at) - 60, at)).toBeNull();
+  expect(formatFreeAt(secs(at), at)).toBeNull();
+  expect(formatFreeAt(Number.NaN, at)).toBeNull();
+  expect(formatFreeAt(secs(at) + 60, at)).toBe("12:01");
+});
+
+it("shows only the reason on a blocked card whose reset time has passed", async () => {
+  const q: QuotaState = { profileId: "codex", state: "blocked", blockedUntil: now() - 600, reason: "Wochenlimit", omniRouteOnline: true };
+  feed([provider("codex", "Codex", { quotaState: "blocked", blockedUntil: now() - 600 })], [q]);
+  render(<KontingenteScreen />);
+  const c = await card("Codex");
+  expect(c.getByText("Wochenlimit")).toHaveClass("kt-note");
+  expect(c.queryByText(/frei/i)).toBeNull();
 });
