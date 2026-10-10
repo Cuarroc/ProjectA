@@ -156,6 +156,29 @@ case_m main-red-without-ran-wiring ci 's#\$\{\{ needs\.linux\.outputs\.lane_run 
 # run can freeze again after a newer green run lifted it (S-5/O-5).
 case_m main-red-without-concurrency ci '/^  main-red:/,$ s/^      group: main-red-guard$//' \
   "main-red.*concurrency"
+# V161-FU-3 / R934-A2: both red-first steps must pin RF_BASE_BRANCH and fetch
+# refs/heads/$RF_BASE_BRANCH — removing either must turn ci-shape red.
+case_m "ci-shape fails when a red-first step lacks RF_BASE_BRANCH" ci \
+  '/RF_BASE_BRANCH:/d' \
+  "RF_BASE_BRANCH"
+case_m "ci-shape fails when the red-first base branch fetch is missing" ci \
+  '/refs\/heads\/\$RF_BASE_BRANCH/d' \
+  "base branch fetch"
+# V161-FU-3 / R953-A2: per-step mutations (range-scoped), not both steps at once.
+case_m "ci-shape fails when only the proof step lacks the base branch fetch" ci \
+  '/^      - name: red-first - proof against merge base$/,/^  [a-z]/ { /refs\/heads\/\$RF_BASE_BRANCH/d }' \
+  "proof against merge base.*base branch fetch"
+case_m "ci-shape fails when only the plan step lacks RF_BASE_BRANCH" ci \
+  '/^      - name: red-first - plan$/,/^      - / { /RF_BASE_BRANCH:/d }' \
+  "red-first - plan' lacks RF_BASE_BRANCH"
+# V161-FU-3 / R953-A1: plan step must keep HEAD_SHA fetch fatal and BASE_SHA
+# fetch non-fatal (|| ); a single combined fatal fetch must not stay green.
+case_m "ci-shape fails when the BASE_SHA fetch in the plan step is fatal again" ci \
+  '/^      - name: red-first - plan$/,/^      - / s#(git fetch --no-tags origin "\$BASE_SHA") \|\| echo.*#\1#' \
+  "BASE_SHA fetch must be non-fatal"
+case_m "ci-shape fails when the HEAD_SHA fetch in the plan step becomes non-fatal" ci \
+  '/^      - name: red-first - plan$/,/^      - / s#git fetch --no-tags origin "\$HEAD_SHA"#git fetch --no-tags origin "\$HEAD_SHA" || true#' \
+  "HEAD_SHA fetch must be fatal"
 
 # Call errors are errors, not a silent pass.
 check missing-file fail "$tmp/does-not-exist.yml" "$MG" "not found"
