@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { invoke } from "@tauri-apps/api/core";
 
@@ -23,7 +23,6 @@ describe("FeatureGate", () => {
     localStorage.clear();
     vi.mocked(invoke).mockClear();
   });
-  afterEach(() => vi.restoreAllMocks());
 
   it("hides children and skips invoke when off; shows children when on", () => {
     render(

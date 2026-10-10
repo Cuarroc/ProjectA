@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 
 import type { FeatureFlagId } from "./featureFlags";
+import { useFeatureFlag } from "./useFeatureFlag";
 
 /**
- * Temporary ungated stub for the red-first commit (R1018-A2).
- * Always renders children so the FeatureGate test fails until the real gate lands.
+ * Renders children only when the named feature flag is on.
+ * Off: no children (and no effects inside them), so gated invokes never run.
  */
-export function FeatureGate({ children }: { id: FeatureFlagId; children: ReactNode }) {
+export function FeatureGate({ id, children }: { id: FeatureFlagId; children: ReactNode }) {
+  const [enabled] = useFeatureFlag(id);
+  if (!enabled) return null;
   return <>{children}</>;
 }

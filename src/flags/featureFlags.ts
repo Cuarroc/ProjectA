@@ -5,6 +5,8 @@
  * (no Rust/store table).
  */
 
+import { readString, writeString } from "../lib/settings";
+
 /** localStorage key prefix; mirrors `projecta.settings.*` from settings.ts. */
 export const FEATURE_FLAG_STORAGE_PREFIX = "projecta.settings.featureFlag." as const;
 
@@ -23,16 +25,15 @@ export type FeatureFlagId = (typeof FEATURE_FLAG_IDS)[number];
 const FEATURE_FLAG_COPY: Record<FeatureFlagId, { label: string; description: string }> = {
   d1_neue_oberflaeche: {
     label: "Neue Oberfläche (Vorschau)",
-    description:
-      "Schaltet die Glass-UI-v2-Schale ein. Standard aus, damit v1.6.0 aus main keine halbe neue Oberfläche trägt.",
+    description: "Zeigt die neue Oberfläche als Vorschau; sie ist noch nicht fertig.",
   },
   fernansicht: {
     label: "Fernansicht",
-    description: "Erlaubt die Fernansicht und ihre Kopplung; aus = Route fehlt, kein Backend-Aufruf.",
+    description: "Zeigt die Fernansicht; ausgeschaltet bleibt sie unsichtbar.",
   },
   kundenprojekte: {
     label: "Kundenprojekte",
-    description: "Zeigt Kundenprojekte mit Datenschutz-Schleuse; aus = Route fehlt, kein Backend-Aufruf.",
+    description: "Zeigt Kundenprojekte mit Datenschutz; ausgeschaltet bleiben sie unsichtbar.",
   },
 };
 
@@ -47,32 +48,41 @@ export type FeatureFlag = {
   allowsBackend(): boolean;
 };
 
-function readRaw(id: FeatureFlagId): string | null {
-  try {
-    return localStorage.getItem(`${FEATURE_FLAG_STORAGE_PREFIX}${id}`);
-  } catch {
-    return null;
-  }
+const listeners = new Set<() => void>();
+
+function emitFeatureFlagChange(): void {
+  for (const listener of listeners) listener();
 }
 
-function writeRaw(id: FeatureFlagId, value: string | null): void {
-  try {
-    const key = `${FEATURE_FLAG_STORAGE_PREFIX}${id}`;
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-  } catch {
-    // Storage disabled — keep the in-memory default (off).
-  }
+/** Subscribe to local flag changes (and cross-tab `storage` events). */
+export function subscribeFeatureFlags(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === null || event.key.startsWith(FEATURE_FLAG_STORAGE_PREFIX)) {
+      emitFeatureFlagChange();
+    }
+  });
+}
+
+function storageKey(id: FeatureFlagId): string {
+  return `${FEATURE_FLAG_STORAGE_PREFIX}${id}`;
 }
 
 /** True only when the user explicitly turned the switch on. */
 export function isFeatureFlagEnabled(id: FeatureFlagId): boolean {
-  return readRaw(id) === "1";
+  return readString(storageKey(id)) === "1";
 }
 
 /** Persist on/off; `false` removes the key so the default (off) wins. */
 export function setFeatureFlagEnabled(id: FeatureFlagId, enabled: boolean): void {
-  writeRaw(id, enabled ? "1" : null);
+  writeString(storageKey(id), enabled ? "1" : null);
+  emitFeatureFlagChange();
 }
 
 function toFlag(id: FeatureFlagId): FeatureFlag {
@@ -95,5 +105,5 @@ function toFlag(id: FeatureFlagId): FeatureFlag {
 export const FEATURE_FLAGS: readonly FeatureFlag[] = FEATURE_FLAG_IDS.map(toFlag);
 
 export function listFeatureFlags(): FeatureFlag[] {
-  return FEATURE_FLAG_IDS.map(toFlag);
+  return [...FEATURE_FLAGS];
 }
