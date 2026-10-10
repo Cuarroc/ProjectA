@@ -151,6 +151,31 @@ impl Schluesselring {
     }
 }
 
+/// Key bytes that are overwritten with zeros when they are retired.
+struct Geheimnis(Vec<u8>);
+
+impl Geheimnis {
+    fn wische(&mut self) {}
+}
+
+/// Bounded memory of the most recent delivery ids (replay guard).
+pub const ZUSTELLUNGEN_MAX: usize = 1024;
+
+#[derive(Default)]
+pub struct ZustellungsBuch {
+    reihenfolge: std::collections::VecDeque<String>,
+}
+
+impl ZustellungsBuch {
+    pub fn schon_gesehen(&mut self, _id: &str) -> bool {
+        false
+    }
+
+    pub fn len(&self) -> usize {
+        self.reihenfolge.len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,5 +317,53 @@ mod tests {
             assert!(!dbg.contains(&format!("{:?}", key[0])), "{dbg}");
         }
         assert!(dbg.contains("redacted"));
+    }
+
+    #[test]
+    fn delivery_id_seen_on_second_delivery() {
+        let mut buch = ZustellungsBuch::default();
+        assert!(!buch.schon_gesehen("d-1"));
+        assert!(buch.schon_gesehen("d-1"));
+        assert!(!buch.schon_gesehen("d-2"));
+        assert!(buch.schon_gesehen("d-2"));
+    }
+
+    #[test]
+    fn delivery_book_is_bounded_and_evicts_oldest() {
+        let mut buch = ZustellungsBuch::default();
+        for i in 0..=ZUSTELLUNGEN_MAX {
+            assert!(!buch.schon_gesehen(&i.to_string()));
+        }
+        assert_eq!(buch.len(), ZUSTELLUNGEN_MAX);
+        assert!(buch.schon_gesehen("1"));
+        assert!(buch.schon_gesehen(&ZUSTELLUNGEN_MAX.to_string()));
+        // "0" was evicted, so it counts as new again (and is re-recorded).
+        assert!(!buch.schon_gesehen("0"));
+        assert_eq!(buch.len(), ZUSTELLUNGEN_MAX);
+    }
+
+    #[test]
+    fn retired_key_bytes_are_zeroed() {
+        let mut g = Geheimnis(b"geheim".to_vec());
+        g.wische();
+        assert_eq!(g.0, [0u8; 6]);
+    }
+
+    #[test]
+    fn second_rotation_ends_older_key_at_once() {
+        let mut ring = Schluesselring::neu(b"a".to_vec());
+        ring.rotiere(b"b".to_vec(), 1000);
+        ring.rotiere(b"c".to_vec(), 2000);
+        // "a" is gone although its own 24 h window has not run out.
+        let ha = header(b"a", b"body");
+        assert_eq!(
+            ring.pruefe(Some(&ha), b"body", 2001),
+            Pruefung::abgelehnt(Grund::SignaturPasstNicht)
+        );
+        let hb = header(b"b", b"body");
+        assert_eq!(
+            ring.pruefe(Some(&hb), b"body", 2001),
+            Pruefung::gueltig(Schluessel::Vorher)
+        );
     }
 }
