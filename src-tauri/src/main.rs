@@ -1198,10 +1198,10 @@ async fn leave_maintenance(
     leave_database_maintenance(&pty, &store).await
 }
 
-/// Drain, enter store maintenance, take the verified backup and persist the
-/// journal up to `BackupVerified` - all before the download - then install
-/// through the journal (W3-02e/g). Any failure before the installer started
-/// leaves maintenance again and refuses.
+/// Drain, enter store maintenance and download, then take the verified backup
+/// and persist the journal up to `BackupVerified` before installing through it
+/// (W3-02e/g). A failure before the installer started leaves maintenance again
+/// unless an unfinished previous journal requires startup recovery.
 #[tauri::command]
 async fn install_update_when_idle(
     webview: tauri::Webview,
@@ -1229,23 +1229,31 @@ async fn install_update_when_idle(
     )
     .await?;
     let result = prepare_and_install(&app, &update, &dir, journal_store.clone(), &install).await;
-    let installer_started = update_installer_started(&journal_store);
-    update_cancel::finish_flight(
+    finish_install_flight(
         install,
         result,
-        installer_started,
-        leave_database_maintenance(&app.state::<PtyManager>(), &app.state::<Store>()),
+        &journal_store,
+        &app.state::<PtyManager>(),
+        &app.state::<Store>(),
     )
     .await
 }
 
-// An unfinished install belongs to restart recovery; a completed old one does not.
-// An unreadable journal counts as started: the app stays frozen.
-fn update_installer_started(journal_store: &delivery_recovery::JournalStore) -> bool {
-    journal_store.path().exists()
-        && journal_store
-            .load()
-            .map_or(true, |journal| !journal.can_start_update())
+/// Use the persisted journal to decide whether to thaw before acknowledging cancel.
+async fn finish_install_flight(
+    install: update_cancel::Install<'_>,
+    result: Result<(), String>,
+    journal_store: &delivery_recovery::JournalStore,
+    pty: &PtyManager,
+    store: &Store,
+) -> Result<(), String> {
+    update_cancel::finish_flight(
+        install,
+        result,
+        journal_store.installer_started(),
+        leave_database_maintenance(pty, store),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -4045,7 +4053,7 @@ mod tests {
 
     /// The download runs before `produce_journal` (`prepare_and_install`), so at
     /// a timeout the journal may be absent, pre-install, or left by a completed
-    /// previous update. `update_installer_started` also checks write resumption;
+    /// previous update. `JournalStore::installer_started` also checks write resumption;
     /// these assertions cover the pre-install phases of its shared predicate.
     #[test]
     fn download_time_journal_phases_take_the_thaw_path() {
@@ -4446,7 +4454,7 @@ mod tests {
         .await
         .unwrap();
         journal.begin_install().unwrap();
-        assert!(super::update_installer_started(&journal_store));
+        assert!(journal_store.installer_started());
         journal.begin_validation().unwrap();
         let RecoveryAction::ValidateCandidate { candidate, nonce } = journal.next_action() else {
             panic!("candidate validation expected");
@@ -4468,7 +4476,7 @@ mod tests {
                 },
             })
             .unwrap();
-        assert!(super::update_installer_started(&journal_store));
+        assert!(journal_store.installer_started());
         journal
             .resume_writes(WriteResumption {
                 evidence_id: "resumed".into(),
@@ -4486,17 +4494,11 @@ mod tests {
         let state = update_cancel::UpdateCancel::default();
         let install = begin_install_under_maintenance(&state, &pty, &store).await;
         let body = async {
-            // The next flight fails during download, before it can replace the old journal.
+            // Cancel the next flight during download, before it can replace the old journal.
             let result = install
                 .download(std::future::pending::<std::result::Result<(), String>>())
                 .await;
-            update_cancel::finish_flight(
-                install,
-                result,
-                super::update_installer_started(&journal_store),
-                super::leave_database_maintenance(&pty, &store),
-            )
-            .await
+            super::finish_install_flight(install, result, &journal_store, &pty, &store).await
         };
         let (result, cancelled) = tokio::time::timeout(Duration::from_secs(8), async {
             tokio::join!(body, state.cancel())
@@ -4521,6 +4523,27 @@ mod tests {
             .finish_unstarted()
             .unwrap();
         assert_eq!(cancelled, Ok(CancelResult::Cancelled));
+
+        let retry = begin_install_under_maintenance(&state, &pty, &store).await;
+        let next = produce_journal(
+            &pty,
+            &store,
+            journal_store,
+            &Announced {
+                exe: &exe,
+                database: &database,
+                version: "1.6.1",
+                bytes: b"next installer",
+                manifest: "{}",
+            },
+        )
+        .await
+        .expect("a cancelled download must allow the next update journal");
+        assert_eq!(next.journal().phase(), UpdatePhase::BackupVerified);
+        retry
+            .finish(super::leave_database_maintenance(&pty, &store))
+            .await
+            .unwrap();
     }
 
     /// R821-M2: TooLate must keep the real store/PTY freeze, not only the
