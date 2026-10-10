@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ROUTES, pathFromHash, resolveRoute } from "./routes";
 import { Shell } from "./Shell";
+import { GLASS_VARIANT_KEY } from "../design/variants/useGlassVariant";
 import { GLASS_THEME_KEY } from "./theme";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), describeError: String }));
@@ -14,7 +15,7 @@ const mount = () => act(async () => void render(<Shell />));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const root = document.documentElement;
 
-beforeEach(() => { localStorage.clear(); delete root.dataset.theme; window.location.hash = ""; });
+beforeEach(() => { localStorage.clear(); delete root.dataset.theme; delete root.dataset.glassVariant; window.location.hash = ""; });
 afterEach(cleanup);
 
 describe("sidebar and route registry", () => {
@@ -72,5 +73,40 @@ describe("light / dark / system toggle", () => {
     await mount();
     expect(root.dataset.theme).toBe("dark");
     expect(screen.getByRole("radio", { name: "Dunkel" })).toBeChecked();
+  });
+});
+
+describe("glass style (Stil)", () => {
+  const stil = () => screen.getByRole("radiogroup", { name: "Stil" });
+
+  it("offers Glas, Klar, Nebel and Abend and starts on Glas", async () => {
+    await mount();
+    expect(within(stil()).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Glas", "Klar", "Nebel", "Abend"]);
+    expect(screen.getByRole("radio", { name: "Glas" })).toBeChecked();
+    expect(root.dataset.glassVariant).toBeUndefined();
+  });
+
+  it("sets data-glass-variant on the first commit for a stored klar and falls back to glas for junk", async () => {
+    localStorage.setItem(GLASS_VARIANT_KEY, "klar");
+    render(<Shell />);
+    expect(root.dataset.glassVariant).toBe("klar");
+    cleanup();
+    localStorage.setItem(GLASS_VARIANT_KEY, "xyz");
+    await mount();
+    expect(root.dataset.glassVariant).toBeUndefined();
+    expect(screen.getByRole("radio", { name: "Glas" })).toBeChecked();
+  });
+
+  it("switches with the arrow keys and persists without touching data-theme", async () => {
+    await mount();
+    const glas = screen.getByRole("radio", { name: "Glas" });
+    glas.focus();
+    fireEvent.keyDown(glas, { key: "ArrowRight" });
+    expect(root.dataset.glassVariant).toBe("klar");
+    expect(localStorage.getItem(GLASS_VARIANT_KEY)).toBe("klar");
+    expect(screen.getByRole("radio", { name: "Klar" })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("radio", { name: "Klar" }), { key: "End" });
+    expect(root.dataset.glassVariant).toBe("abend");
+    expect(root.dataset.theme).toBeUndefined();
   });
 });

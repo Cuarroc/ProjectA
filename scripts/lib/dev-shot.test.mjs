@@ -111,3 +111,25 @@ test("shot tab check fails when focus ring is removed", async () => {
     rmSync(out, { recursive: true, force: true });
   }
 });
+
+test("shot --variant stores the glass style before load and names the PNGs", async () => {
+  const fixture = join(ROOT, "../dev/fixtures/shot-variant.html");
+  const out = mkdtempSync(join(tmpdir(), "v2-thvar2-shot-"));
+  try {
+    for (const [variant, applied] of [["klar", "klar"], ["glas", "glas"]]) {
+      const { code, stdout } = await runShot(["--route", "/fixture", "--fixture", fixture, "--out", out, "--variant", variant]);
+      assert.equal(code, 0, stdout);
+      const report = JSON.parse(stdout);
+      assert.equal(report.variant, variant);
+      assert.equal(report.applied, applied);
+      assert.ok(existsSync(join(out, `fixture-${variant}-dark.png`)));
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("shot --variant rejects an unknown style with exit 2", async () => {
+  const { code } = await runShot(["--route", "/fixture", "--variant", "xyz"]);
+  assert.equal(code, 2);
+});

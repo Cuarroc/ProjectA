@@ -3,7 +3,9 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import EmergencyStop from "../components/EmergencyStop";
 import "../design/tokens.css";
 import "../design/glass.css";
+import "../design/variants/variants.css";
 import "../design/controls/controls.css";
+import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
 import { HeaderTools, StopBand } from "./header";
 import { pathFromHash, resolveRoute, ROUTES, type ShellRoute } from "./routes";
@@ -48,7 +50,7 @@ function Placeholder({ path }: { path: string }) {
 /** Glass shell frame (V2-F8a). Palette, quota bar, bell and stop band: `header/` (V2-F8b). */
 export function Shell() {
   const [path, setPath] = useState(() => pathFromHash(window.location.hash));
-  useLayoutEffect(applyStoredGlassTheme, []);
+  useLayoutEffect(() => { applyStoredGlassTheme(); applyStoredGlassVariant(); }, []);
   useEffect(() => {
     const onHash = () => setPath(pathFromHash(window.location.hash));
     window.addEventListener("hashchange", onHash);
