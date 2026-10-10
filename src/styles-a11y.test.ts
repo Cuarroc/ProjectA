@@ -106,13 +106,17 @@ describe("V161-UI-F1: focus ring and selected segment", () => {
     expect(blockOf(":focus-visible")).not.toMatch(/border-radius\s*:/);
   });
 
+  // Name kept for red-first trailers on earlier commits; ring is outer inside padding (R986-A1).
   it(".segmented with overflow has an inset focus rule", () => {
-    expect(blockOf(".segmented")).toMatch(/overflow-x:\s*auto/);
-    const inset = css.match(
+    const segmented = blockOf(".segmented");
+    expect(segmented).toMatch(/overflow-x:\s*auto/);
+    expect(segmented).toMatch(/padding:\s*4px/);
+    const focus = css.match(
       /\.segmented\s+\.segment:focus-visible\s*\{([^}]*)\}/,
     );
-    expect(inset, "segmented inset focus rule missing").not.toBeNull();
-    expect(inset![1]).toMatch(/outline-offset:\s*-2px/);
+    expect(focus, "segmented focus rule missing").not.toBeNull();
+    expect(focus![1]).toMatch(/outline-offset:\s*2px/);
+    expect(focus![1]).not.toMatch(/outline-offset:\s*-/);
   });
 
   it(".segment-active has no solid accent fill", () => {
@@ -120,7 +124,24 @@ describe("V161-UI-F1: focus ring and selected segment", () => {
     expect(active).not.toMatch(
       /background:\s*var\(--(?:color-)?accent\)/,
     );
-    expect(active).toMatch(/background:\s*var\(--bg\)/);
-    expect(active).toMatch(/box-shadow:\s*inset\s+0\s+-2px/);
+    // Card surface + primary text; accent only in the 2px indicator (≥3:1 on card).
+    expect(active).toMatch(/background:\s*var\(--color-elevated\)/);
+    expect(active).toMatch(/color:\s*var\(--color-text-primary\)/);
+    expect(active).toMatch(
+      /box-shadow:\s*inset\s+0\s+-2px\s+0\s+0\s+var\(--color-accent-text\)/,
+    );
+  });
+
+  it("focused selected segment keeps the indicator clear of the focus ring", () => {
+    const active = blockOf(".segment-active");
+    expect(active).toMatch(
+      /box-shadow:\s*inset\s+0\s+-2px\s+0\s+0\s+var\(--color-accent-text\)/,
+    );
+    const focus = css.match(
+      /\.segmented\s+\.segment:focus-visible\s*\{([^}]*)\}/,
+    );
+    expect(focus, "segmented focus rule missing").not.toBeNull();
+    // Outer ring (positive offset) does not paint over the inset indicator.
+    expect(focus![1]).toMatch(/outline-offset:\s*2px/);
   });
 });
