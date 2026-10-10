@@ -287,4 +287,81 @@ mod tests {
         );
         assert!(err("5/10 * * * *").starts_with("Feld Minute:"));
     }
+
+    const OCT_1: u64 = 1_790_812_800; // 2026-10-01 00:00 UTC, a Thursday
+    const DAY: u64 = 86_400;
+
+    /// The next `n` firings after `after`, each fed back in as the new `after`.
+    fn firings(expr: &str, after: u64, n: usize) -> Vec<u64> {
+        let s = Schedule::parse(expr).unwrap();
+        let mut at = after;
+        (0..n)
+            .map(|_| {
+                at = s.next_after(at).unwrap();
+                at
+            })
+            .collect()
+    }
+
+    #[test]
+    fn stepped_star_in_day_of_month_skips_even_days() {
+        let days: Vec<u32> = firings("0 0 */2 * *", OCT_1, 5)
+            .into_iter()
+            .map(|t| civil((t / DAY) as i64).2)
+            .collect();
+        assert_eq!(days, [3, 5, 7, 9, 11]);
+    }
+
+    #[test]
+    fn stepped_star_day_of_month_is_anded_with_the_weekday() {
+        // Mondays in Oct/Nov 2026: 5, 12, 19, 26, Nov 2, Nov 9 - only odd days count.
+        assert_eq!(
+            firings("0 0 */2 * 1", OCT_1, 3),
+            [OCT_1 + 4 * DAY, OCT_1 + 18 * DAY, OCT_1 + 39 * DAY] // Oct 5, Oct 19, Nov 9
+        );
+    }
+
+    #[test]
+    fn plain_star_day_fields_keep_their_single_restriction() {
+        assert_eq!(
+            firings("0 0 * * 1", OCT_1, 2),
+            [OCT_1 + 4 * DAY, OCT_1 + 11 * DAY]
+        );
+        assert_eq!(
+            firings("0 0 1 * *", OCT_1, 2),
+            [OCT_1 + 31 * DAY, OCT_1 + 61 * DAY] // Nov 1, Dec 1
+        );
+    }
+
+    #[test]
+    fn two_restricted_day_fields_fire_on_either() {
+        assert_eq!(
+            firings("0 0 1 * 1", OCT_1, 6),
+            [4, 11, 18, 25, 31, 32].map(|d| OCT_1 + d * DAY) // Oct 5/12/19/26, Nov 1, Nov 2
+        );
+    }
+
+    #[test]
+    fn range_with_step_picks_every_nth_inside_the_range() {
+        assert_eq!(
+            firings("0-30/15 * * * *", MON_0900, 4),
+            [900, 1800, 3600, 4500].map(|s| MON_0900 + s) // 09:15, 09:30, 10:00, 10:15
+        );
+    }
+
+    #[test]
+    fn frei_ab_is_the_oldest_run_even_when_recorded_out_of_order() {
+        let mut l = RateLimiter::default();
+        for _ in 0..5 {
+            assert_eq!(l.fire(2000), Decision::Erlaubt);
+        }
+        // A late-arriving earlier timestamp: 1000 is now the oldest run.
+        assert_eq!(l.fire(1000), Decision::Erlaubt);
+        assert_eq!(
+            l.test_run(2500),
+            Decision::Gedrosselt {
+                frei_ab: 1000 + 3600
+            }
+        );
+    }
 }
