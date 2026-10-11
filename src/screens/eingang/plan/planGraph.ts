@@ -1,7 +1,7 @@
 import type { DevelopmentPlanPackage } from "../../../types";
 
 /** `unknown`: dependency ids that name no live package; they never raise the Ebene. */
-export interface PlanNode { id: string; title: string; dependencyIds: string[]; noNewDispatch: boolean; unknown: string[] }
+export interface PlanNode { id: string; title: string; dependencyIds: string[]; noNewDispatch: boolean; unknown: string[]; removedDeps: string[] }
 
 /** `levels[n]` = Ebene n (sorted by id); `cycle` has no Ebene; `critical` = longest chain, empty below two packages. */
 export interface PlanLayout { levels: PlanNode[][]; cycle: PlanNode[]; critical: string[]; removed: number }
@@ -15,6 +15,7 @@ export function layoutPlan(packages: readonly DevelopmentPlanPackage[]): PlanLay
   const nodes = new Map<string, PlanNode>([...live].map(([id, p]) => [id, {
     id, title: p.title, dependencyIds: p.dependencyIds, noNewDispatch: p.noNewDispatch,
     unknown: [...new Set(p.dependencyIds)].filter((d) => !live.has(d)),
+    removedDeps: [],
   }]));
   // A package is on a cycle when it can reach itself along its dependencies.
   const onCycle = (id: string) => {
