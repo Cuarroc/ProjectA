@@ -119,8 +119,8 @@ Gemeinsame Regel: Der Kern liegt in einer neuen Datei oder einer Nicht-Naht-Date
 | V2-B6b | Start auf dem Server (Worktree dort, Ausgabe zurück, Ergebnis über Push und PR), Not-Aus erreicht den Server-Lauf | pty + wk | – | A | M | V2-B6a, V2-DOC-SRV, MN-A | astra | Beleg: ein echter Lauf auf dem eigenen Server (Lauf-ID), Not-Aus-Messung ≤ 10 s |
 | V2-B6c | Cloud-Ausführung je Anbieter, der einen Abo-Cloud-Modus hat (Umfang aus V2-LOC-0) | wk | – | A | M je Anbieter | V2-LOC-0, MN-A | astra | Beleg je Anbieter: Lauf-ID, Ausgabe; ohne Beleg bleibt der Ort im Start-Sheet grau mit „nicht verfügbar“ |
 | V2-B8 | Checkpoints nach jedem Agentenschritt (Referenz im Worktree), Diff A/B, **Rückspulen** mit Sicherungsreferenz vorweg | fR | – | A | M | G0 | astra | Test: Rückspulen verliert nie einen ungepushten Commit (Sicherungsreferenz bleibt); `rg -i rewind` ist heute ohne Treffer |
-| V2-B9 | Beweis am Commit: Gate-Ergebnis (Lane, Gate, Exit-Code, SHA), Entwertung bei neuem Commit, Risikostufe A/B/C aus Dateipfaden in Rust (Spiegel von `src/lib/reviewClass.ts:14,34`), Block NICHT ABGEDECKT aus dem PR-Text | fR | – | A | M | G0 | astra | Test: neuer Commit macht Beleg ungültig (Vorbild `store/development_runs.rs:207`); Stufe A für jede der vier Nahtdateien; gemeinsame Fixture (Pfad → Stufe), die `src/lib/reviewClass.test.ts` und der Rust-Test beide lesen, damit der Spiegel nicht auseinanderläuft |
-| V2-B10 | Fremd-Review-Regel für Worker-PRs: Familie je Modell, „kein Modell prüft die eigene Familie“ (Vorbild `store/development_runs.rs:1322`) | fR | – | A | S | V2-B9 | astra | Test: gleiche Familie → abgelehnt |
+| V2-B9 | Beweis am Commit: Gate-Ergebnis (Lane, Gate, Exit-Code, SHA), Entwertung bei neuem Commit, Risikostufe A/B/C aus Dateipfaden in Rust (Spiegel von `src/lib/reviewClass.ts:14,34`), Block NICHT ABGEDECKT aus dem PR-Text | fR | – | A | M | G0 | astra | Test: neuer Commit macht Beleg ungültig (Vorbild `store/development_runs.rs:206`, Reviews `:208`); Stufe A für jede der vier Nahtdateien; gemeinsame Fixture (Pfad → Stufe), die `src/lib/reviewClass.test.ts` und der Rust-Test beide lesen, damit der Spiegel nicht auseinanderläuft |
+| V2-B10 | Fremd-Review-Regel für Worker-PRs: Familie je Modell, „kein Modell prüft die eigene Familie“ (Vorbild `attest_reviewer`, `store/development_runs.rs:1273`) | fR | – | A | S | V2-B9 | astra | Test: gleiche Familie → abgelehnt |
 | V2-B11 | Benachrichtigungs-Kern: Ereignisarten, laut/leise/stumm, Ruhezeit, zwei Pflicht-„laut“ | fR | – | B | S | G0 | sol | Test: Pflichtereignis ist in der Ruhezeit laut |
 | V2-B12 | Gedächtnis: Notiz mit Quelle, Prüfdatum, Bestätigung; erneute Prüfung der Belege gegen `main` (Datei:Zeile existiert noch) | fR | – | B | M | G0 | sol | Test: verschobene Zeile → „veraltet“ |
 | V2-B13 | Ideen-Triage: Dubletten, Größe, Meilenstein, Prüfstufe stehen vor dem Ticket fest | fR | – | B | M | G0 | sol | Test mit Fixture-Ideen; Antwort eines Modells nur als Vorschlag |
@@ -206,7 +206,7 @@ Alle Bildschirm-Pakete: U, hängen am Schalter D1 und an V2-F1 bis V2-F9 und V2-
 | V2-S01a | **Leitstand** (Main): Karten, Filter, „Braucht dich“ mit Antwort im Stream, Beweis je Karte; ersetzt `BoardView`/`WorkerPanel`-Optik, restylt `QuestionsView` | fe | – | B | 3×M | F9, V2-B9 (Beweis-Chip nur mit Daten, sonst `HonestState`) | terra | `get_board_state` (`main.rs:1720`), `answer_question`; Antwort erreicht das Terminal (Test) |
 | V2-S01b | Leitstand, Betrieb: Warteschlange, Startprüfung, Wachhund, Sicherer Start; „Grenzen je Job“ nur mit dem Schalter von V2-B23 (sonst ausgeblendet) | fe | – | B | M | S01a, MN-A, V2-B3, V2-B4, V2-B22 | terra | Test: Auftrag mit Vorgänger zeigt den Grund |
 | V2-S01c | Leitstand, Tab **Verlauf** (TeamLauf, Aktivitaet): Orchestrator-Chat, Teams, Naht-Spur, Übergaben, Protokoll, Wiederholung | fe | – | B | 3×M | S01a, MN-B, V2-RUN-2, V2-B25 | terra | Chat nutzt `CommandChat.tsx:38`; Dauerbetrieb-Zustand ehrlich (Abschnitt 5); Prüfpfad `store/audit.rs:11-13` angezeigt; „Als Lektion merken“ schreibt ins Gedächtnis |
-| V2-S02 | **Agent starten** (AgentStarten), Sheet: Persona, Ort, Weg (Claude, Codex, lokal), Modell, Aufwand, MCP, Failover, Startprüfung | fe | – | B | 3×M | MN-A, V2-B5, V2-CLI-1, V2-LOCAL-1, V2-CTX | terra | Modellname „beim Start beobachtet“ (`status.rs:1888`); Ort grau, wenn nicht verfügbar; Weg „lokal“ grau, wenn Ollama nicht erreichbar |
+| V2-S02 | **Agent starten** (AgentStarten), Sheet: Persona, Ort, Weg (Claude, Codex, lokal), Modell, Aufwand, MCP, Failover, Startprüfung | fe | – | B | 3×M | MN-A, V2-B5, V2-CLI-1, V2-LOCAL-1, V2-CTX | terra | Modellname „beim Start beobachtet“ (`status.rs:1905-1953`, Statusline `model.display_name`; gilt als „gemeldet“, nicht „bestätigt“, siehe 3.15); Ort grau, wenn nicht verfügbar; Weg „lokal“ grau, wenn Ollama nicht erreichbar |
 | V2-S03a | **Beweise** (Beweise): Kette, Gates je Lane, Fremd-Review, NICHT ABGEDECKT, Queue-Position | fe | – | A | 3×M | MN-B (Scheibe B-Kern), V2-MQ1, V2-B9, V2-B10, V2-RUN-3 | terra | Beleg am Commit (Test: neuer Commit → „stale“); Knopf „In die Warteschlange“ reiht ein, kein direkter Merge |
 | V2-S03b | Beweise, Tab **Diff** (Diff): Dateibaum, Zeilenkommentare, Checkpoints, Rückspulen mit Bestätigung | fe | – | A | 2×M | S03a, MN-B, V2-B8 | terra | Rückspulen am Testarbeitsbaum, nichts geht verloren |
 | V2-S04a | **Eingang & Plan**, Tab Plan (Plan, größtes Board mit 1572 Zeilen): Roadmap, Graph, Board, Entscheidungen; kritischer Pfad und Vorhersage aus echtem Durchsatz | fe | – | B | 4×M | MN-B, V2-H2 | terra | Quelle `docs/PLAN.md`; Vorhersage nur mit ≥ 4 Wochen Durchsatz, sonst „zu wenig Daten“ |
@@ -316,7 +316,7 @@ Begründung und Belege: [`dev-hq.md`](dev-hq.md). **Runde 3:** Das Dev-HQ ist **
 | Fremd-Review | V2-B10 |
 | Merge-Queue | V2-MQ1 (Anker im Inventar `gh.rs:429` ist falsch: dort steht `build_pr_create_args`; der Merge ist `gh.rs:444` und `:632`; `KI-29` meint den OmniRoute-Sync, `KNOWN_ISSUES.md:45`) |
 | Risikostufe | V2-B9 |
-| Beleg am Commit | V2-B9, V2-ST-B1 (das Datenmodell gibt es schon teilweise: `store/development_runs.rs:207`) |
+| Beleg am Commit | V2-B9, V2-ST-B1 (das Datenmodell gibt es schon teilweise: `store/development_runs.rs:206`) |
 | NICHT ABGEDECKT | V2-B9, V2-S03a |
 | red-first | V2-B14, V2-S04b |
 | Not-Aus in 10 s | V2-F8 (Frist ist gebaut: `estop.rs:9`, W5-04b ✓ #125), V2-H4 (Fernstopp) |
@@ -462,6 +462,68 @@ Der Verkauf der App an Dritte ist geparkt. Nichts davon wird gebaut, bis der Nut
 **Ziel „etwa 120 bis 160“.** Erreicht ist es für den **Kern mit Übernommenen (142, unter Regel 600: 135)**, also für das, was bis v2.0 fertig sein muss. Die **Gesamtzahl (210)** liegt darüber und sank gegenüber Runde 2 nur wenig: Die Richtungsentscheidung streicht oder verschmilzt netto 33 Pakete, bringt aber neue (+21). Von den 68 Paketen nach dem Kern sind 12 Kundenprojekte und Schleuse, 3 die Fernansicht, 31 Bildschirme hinter Schaltern; das sind die Hebel, wenn der Nutzer die Gesamtzahl weiter senken will (Frage 2). Die Zahl 230 bis 300 aus der Vorgabe ist mit diesem Zählverfahren nicht nachrechenbar: Runde 2 ergibt 221.
 
 **Zeitrahmen.** Eine Aussage in Wochen ist **nicht berechenbar**, solange V2-CAP-1 keine Token-Messung hat (`benchmark.md` enthält keine Token-Zahlen). Gemessen ist nur der Durchsatz der letzten zehn Tage (301 gemergte PRs, Median 124 Zeilen, `size-evidence.md`); daraus folgt keine Terminzusage. V2-CAP-1 rechnet später Pakete gegen die Wochenlimits der drei Anbieter-Wege und gibt eine Spanne mit Stichprobengröße aus.
+
+### 3.15 Beobachtung statt Konfiguration (E10, 11.10.2026)
+
+**E10 (11.10.2026), Ideen A3/A4.** Elias 11.10. ~03:20Z: „Bei den Entscheidungen
+folge ich den Empfehlungen“. Schnittplan: Server-Bericht `v2-obs-0` (nur lesend,
+Head `20785579`). Für jeden Lauf zeigt die App drei Dinge:
+
+- welches Modell wirklich lief;
+- woher Modell und Aufwand kommen (Aufgabe > Persona/Profil > Projekt > Global;
+  Projekt/Global erst mit V2-ST-A2);
+- welche MCP-Server verbunden waren oder eine Anmeldung brauchen.
+
+Quelle und Grenze stehen jeweils dabei. Selbstauskunft des Agenten (Statusline)
+heißt „gemeldet“, nie „bestätigt“. Was nicht beobachtbar ist (heute Codex,
+OpenCode, Kimi), steht als „nicht beobachtbar“.
+
+| ID | Paket | Stufe | Naht | Abhängigkeit |
+|---|---|---|---|---|
+| V2-OBS-1 | Die Karte zeigt das gemeldete Modell | A (eine Testzeile in `api.rs`) | api | – |
+| V2-OBS-2 | Reiner Parser für `modelUsage` und `system/init`/MCP-Status, mit echter Aufnahme | B | – | – |
+| V2-OBS-3 | Herkunft der Einstellung in die Lauf-Identität | A | store | nach V2-OBS-2 |
+
+Reihenfolge: OBS-1 ∥ OBS-2 → OBS-3. Die Anzeige im Starten-Sheet gehört zu
+V2-S02, die auf Beweise zu V2-S03a. Der MCP-Status im Lauf wartet zusätzlich auf
+einen Claude-nativen Startweg und auf V2-B19.
+
+### 3.16 Später: Kandidaten (nicht in v2.0 oder v2.1)
+
+Nichts hiervon ist eingereiht. Einreihen erst nach dem Claude-Reset am 14.10.,
+über Root.
+
+- **A1 (E10):** Persona-Export in jedes CLI-Format. Braucht je CLI eine
+  beobachtete Formatbeschreibung (V2-CLI-0); gehört hinter V2-S07.
+- **A2 (E10):** Korrektur → Regelvorschlag, wirksam erst nach OK des Nutzers
+  (gehört zu V2-S09 Lernen/Gedächtnis).
+
+**Kandidaten aus der Paperclip-Studie.** Elias 11.10. ~04:05Z (wörtlich in
+`user-standing-permissions`): „Im Prinzip will ich ja so etwas wie Paperclip
+langfristig mit projectA nur in besser und funktionierend…“. Das ist Richtung,
+kein neuer Umfang. Quellen (nur lesende Server-Studien):
+`pa-orch/wissen/02-recherchen/2026-10-11_comp-paperclip-0-quellstudie.md`
+(Abschnitt 8: 10 Ideen, Abschnitt 9: Nicht übernehmen) und
+`…-1-issues.md` (8 Schwächen). Der Katalog mit IDs und Wellen steht in
+`docs/PLAN.md`, Abschnitt „Paperclip-Kandidaten“.
+
+| # | Kandidat | Größe | Anschluss |
+|---|---|---|---|
+| 1 | „Absicht“-Pflichtformular plus Rückfrage vor dem Start | M | neu; heute nicht im v2-Plan |
+| 2 | Beleg-Klassifikator accepted/missing/rejected/unverifiable; „Null-Zug-Erfolg“ ist ein Fehler | S–M | V2-RUN-1, V2-B10 |
+| 3 | Kostenbuch in Kontingent-% je Lauf, beobachtet/geschätzt/unbekannt; „unbekannt“ sperrt | S | V2-B21, V2-S05b |
+| 4 | Reservierung vor dem Start plus Zustellgarantie des Budget-Stopps | S+M | V2-B1, V2-B18, V2-B2a |
+| 5 | Schutzschalter: gleicher Fehler N-mal → Stopp | S | Queue/Wachhund |
+| 6 | Trigger nur bei vorhandener Arbeit, Vorprüfung ohne Modell | S | V2-B15 |
+| 7 | Täglicher Probelauf je CLI („Kanarienvogel“) | M | V2-CLI-0, V2-CLI-1 |
+| 8 | Einmal-Zustimmung an Inhalts-Hash | – | V2-B17, Core |
+| 9 | MCP-Quarantäne an Schema-Hash | – | V2-B19 |
+| 10 | Secret-Zugriffsprotokoll je Lauf | – | V2-B19, V2-ST-A2 |
+
+Zeilen 1–7 sind Roots Auswahl mit dem größten Wert für „Grün heißt bewiesen“;
+8–10 stammen zusätzlich aus der Quellstudie. Nicht übernehmen (Abschnitt 9 der
+Quellstudie): `agent_claim_policy`, gefährliche Flags als Standard, ein
+CEO-Agent rund um die Uhr, Geld als Maßstab.
 
 ## 4. Wellen und Tore
 
