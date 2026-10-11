@@ -29,7 +29,8 @@ pub struct McpServer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamObservation {
     pub models: Vec<ObservedModel>,
-    /// True when no `modelUsage` was seen; `models` is then empty, not a guess.
+    /// True when `modelUsage` was not reported or the last result omitted a valid
+    /// object; `models` is then empty, not a guess.
     pub models_not_reported: bool,
     pub mcp_servers: Vec<McpServer>,
     /// True when no `mcp_servers` list was seen in an init event.
@@ -60,8 +61,15 @@ pub fn parse_stream(stdout: &[u8]) -> StreamObservation {
 }
 
 /// Absorb one already-decoded event (a stream line or a `--output-format json` result).
-/// A later `result` or `init` replaces the earlier list.
+/// The last `result` wins: missing or non-object `modelUsage` clears earlier
+/// models and sets `models_not_reported`; an empty object is a reported empty list.
+/// Models are sorted by id independently of JSON map ordering. A later `init`
+/// with an `mcp_servers` list replaces the earlier server list.
 pub fn absorb_event(obs: &mut StreamObservation, event: &serde_json::Value) {
+    if event.get("type").and_then(|v| v.as_str()) == Some("result") {
+        obs.models.clear();
+        obs.models_not_reported = true;
+    }
     if let Some(usage) = event.get("modelUsage").and_then(|v| v.as_object()) {
         let text = |entry: &serde_json::Value, key: &str| {
             entry.get(key).and_then(|v| v.as_str()).map(str::to_owned)
@@ -74,6 +82,7 @@ pub fn absorb_event(obs: &mut StreamObservation, event: &serde_json::Value) {
                 provider: text(entry, "provider"),
             })
             .collect();
+        obs.models.sort_by(|a, b| a.id.cmp(&b.id));
         obs.models_not_reported = false;
     }
     let is_init = event.get("type").and_then(|v| v.as_str()) == Some("system")
@@ -176,5 +185,56 @@ mod tests {
         assert!(obs.models.is_empty());
         assert!(obs.models_not_reported);
         assert!(obs.mcp_not_reported);
+    }
+
+    #[test]
+    fn last_result_without_model_usage_clears_previous_models() {
+        for last in [
+            r#"{"type":"result"}"#,
+            r#"{"type":"result","modelUsage":null}"#,
+            r#"{"type":"result","modelUsage":[]}"#,
+        ] {
+            let stream = format!("{STREAM}\n{last}\n");
+            let obs = parse_stream(stream.as_bytes());
+            assert!(obs.models.is_empty(), "stale models after {last}");
+            assert!(obs.models_not_reported, "missing usage after {last}");
+            assert_eq!(obs.mcp_servers, parse_stream(STREAM.as_bytes()).mcp_servers);
+            assert!(!obs.mcp_not_reported);
+        }
+    }
+
+    #[test]
+    fn last_result_replaces_models_in_id_order() {
+        let stream = format!(
+            "{STREAM}\n{}\n{}\n",
+            r#"{"type":"result","modelUsage":{"z-model":{"provider":"last"},"a-model":{"canonicalModel":"canonical-a"},"m-model":{}}}"#,
+            r#"{"type":"assistant","message":"done"}"#,
+        );
+        let obs = parse_stream(stream.as_bytes());
+        assert_eq!(
+            obs.models,
+            vec![
+                ObservedModel {
+                    id: "a-model".into(),
+                    canonical: Some("canonical-a".into()),
+                    provider: None,
+                },
+                ObservedModel {
+                    id: "m-model".into(),
+                    canonical: None,
+                    provider: None,
+                },
+                ObservedModel {
+                    id: "z-model".into(),
+                    canonical: None,
+                    provider: Some("last".into()),
+                },
+            ]
+        );
+        assert!(!obs.models_not_reported);
+        let empty = format!("{stream}\n{}", r#"{"type":"result","modelUsage":{}}"#);
+        let obs = parse_stream(empty.as_bytes());
+        assert!(obs.models.is_empty());
+        assert!(!obs.models_not_reported);
     }
 }
