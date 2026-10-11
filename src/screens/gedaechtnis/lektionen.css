@@ -1,0 +1,14 @@
+/* V2-S09-2 Gedächtnis › Lektionen-Freigabe. Not imported by the app yet. --g-* tokens only. */
+.lk { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: var(--g-pad); }
+.lk-top h2 { margin: 0; font: 600 15px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.lk-top p, .lk-note, .lk-err { margin: 0; font-size: 12px; line-height: 1.45; color: var(--g-muted); }
+.lk-err { color: var(--g-bad); }
+.lk-note:empty { display: none; }
+.lk-msgs { display: flex; flex-direction: column; gap: 4px; }
+.lk-msgs:not(:has(:not(:empty))) { display: none; }
+.lk-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.lk-row { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; min-width: 0; }
+.lk-row[aria-busy="true"] { opacity: 0.7; }
+.lk-content { margin: 0; font-size: 13px; line-height: 1.5; color: var(--g-ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+.lk-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; align-self: stretch; }
+.lk-actions .lk-note { margin-right: auto; }
