@@ -1,8 +1,8 @@
 # "ProjectA Dev": an unsigned preview installer of the checked-out ref, built
-# on demand: gh workflow run dev-build.yml
+# after every push to main or on demand: gh workflow run dev-build.yml
 #
 # Deliberately small and inert (checked by scripts/ci/dev-build-shape.sh):
-# manual trigger only, read-only token, no environment, no secrets, no signing,
+# main push or manual trigger, read-only token, no environment, no secrets, no signing,
 # no release. The overlay src-tauri/tauri.dev-channel.conf.json gives the build
 # its own identifier and switches the updater off, so it can never update into
 # the stable channel. The installers are an artifact, not a release.
@@ -16,6 +16,13 @@ name: dev-build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+
+# Keep the active build; newer pushes replace the single pending build.
+concurrency:
+  group: dev-build
+  cancel-in-progress: false
 
 # Wie release.yml: `bash -eo pipefail`, damit keine Pipe einen Fehler maskiert.
 # Alle `uses:` sind auf einen Commit-SHA gepinnt (docs/decisions.md, 09.09.).
