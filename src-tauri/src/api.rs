@@ -2526,6 +2526,41 @@ pub async fn watchdog_report(
 #[cfg(test)]
 pub(crate) mod tests {
     #[test]
+    fn frontend_error_log_redacts_the_route() {
+        for token in ["0".repeat(32), format!("sk-{}", "x".repeat(24))] {
+            let mut lines = Vec::new();
+            super::FrontendErrorLog::default().write(
+                std::time::Instant::now(),
+                "failed",
+                "at render",
+                &format!("/token/{token}?private=value#fragment"),
+                |line| lines.push(line),
+            );
+            assert_eq!(
+                lines,
+                [r#"ERROR message="failed" stack="at render" route="/token/[redacted]""#]
+            );
+        }
+    }
+
+    #[test]
+    fn frontend_error_log_caps_raw_fields_before_redaction() {
+        let raw = format!("sk-{}界tail", "x".repeat(8188));
+        let mut lines = Vec::new();
+        super::FrontendErrorLog::default().write(
+            std::time::Instant::now(),
+            &raw,
+            &raw,
+            &raw,
+            |line| lines.push(line),
+        );
+        assert_eq!(
+            lines,
+            [r#"ERROR message="[redacted]" stack="[redacted]" route="[redacted]""#]
+        );
+    }
+
+    #[test]
     fn frontend_error_log_masks_secrets() {
         // Synthetic shapes only: never use live credentials in fixtures.
         for token in ["0".repeat(32), format!("sk-{}", "x".repeat(24))] {
