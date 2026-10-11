@@ -92,9 +92,12 @@ describe("LektionenFreigabe", () => {
     expect((within(row("a")).getByRole("button", { name: T.reject }) as HTMLButtonElement).disabled).toBe(true);
     expect((within(row("b")).getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(false);
     expect(listLearnings).toHaveBeenCalledTimes(1);
+    expect(within(row("a")).getByText(T.working)).toBeTruthy();
+    expect(within(row("b")).queryByText(T.working)).toBeNull();
 
     await act(async () => { pending.resolve(); await pending.promise; });
     await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.queryByText(T.working)).toBeNull();
     expect(listLearnings).toHaveBeenCalledTimes(2);
     expect(screen.getByText(T.approved)).toBeTruthy();
     expect(screen.getByText("content of b")).toBeTruthy();
@@ -121,6 +124,74 @@ describe("LektionenFreigabe", () => {
     expect(screen.queryByText("denied by core")).toBeNull();
     expect((screen.getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(false);
     expect(listLearnings).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the row and shows a German sentence when a rejection fails", async () => {
+    vi.mocked(listLearnings).mockResolvedValue([learning("a")]);
+    vi.mocked(rejectLearning).mockRejectedValue(new Error("denied by core"));
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+    fireEvent.click(screen.getByRole("button", { name: T.reject }));
+    expect(await screen.findByText(T.rejectFailed)).toBeTruthy();
+    expect(screen.queryByText("denied by core")).toBeNull();
+    expect((screen.getByRole("button", { name: T.reject }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText(T.working)).toBeNull();
+    expect(listLearnings).toHaveBeenCalledTimes(1);
+  });
+
+  describe("a verdict that outlives a project switch", () => {
+    const setup = () => {
+      const late = deferred<void>();
+      const fresh = deferred<void>();
+      vi.mocked(listLearnings).mockImplementation(async (id: string) => [learning("a", { projectId: id })]);
+      vi.mocked(approveLearning).mockReturnValueOnce(late.promise).mockReturnValueOnce(fresh.promise);
+      return { late, fresh };
+    };
+    const startApprove = () => fireEvent.click(screen.getByRole("button", { name: T.approve }));
+    const settle = (d: { resolve: () => void; promise: Promise<void> }) => act(async () => { d.resolve(); await d.promise; });
+
+    it("does not touch the state of the new project", async () => {
+      const { late, fresh } = setup();
+      const view = render(<LektionenFreigabe projectId="p1" />);
+      await screen.findByText("content of a");
+      startApprove();
+      view.rerender(<LektionenFreigabe projectId="p2" />);
+      await waitFor(() => expect(listLearnings).toHaveBeenCalledWith("p2"));
+      await screen.findByText("content of a");
+      startApprove();
+      await waitFor(() => expect((screen.getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(true));
+
+      await settle(late);
+      expect(screen.queryByText(T.approved)).toBeNull();
+      expect((screen.getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(true);
+      expect(listLearnings).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("content of a")).toBeTruthy();
+
+      await settle(fresh);
+      await waitFor(() => expect(screen.getByText(T.approved)).toBeTruthy());
+    });
+
+    it("ignores a late reply after the round trip p1 -> p2 -> p1", async () => {
+      const { late, fresh } = setup();
+      const view = render(<LektionenFreigabe projectId="p1" />);
+      await screen.findByText("content of a");
+      startApprove();
+      view.rerender(<LektionenFreigabe projectId="p2" />);
+      await waitFor(() => expect(listLearnings).toHaveBeenCalledWith("p2"));
+      view.rerender(<LektionenFreigabe projectId="p1" />);
+      await waitFor(() => expect(listLearnings).toHaveBeenCalledTimes(3));
+      await screen.findByText("content of a");
+      startApprove();
+      await waitFor(() => expect((screen.getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(true));
+
+      await settle(late);
+      expect(screen.queryByText(T.approved)).toBeNull();
+      expect((screen.getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(true);
+      expect(listLearnings).toHaveBeenCalledTimes(3);
+
+      await settle(fresh);
+      await waitFor(() => expect(screen.getByText(T.approved)).toBeTruthy());
+    });
   });
 
   it("does not poll on its own", async () => {
