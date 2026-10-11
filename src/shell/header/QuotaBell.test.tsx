@@ -41,6 +41,10 @@ it("shows observed quota blocks in the header instead of a placeholder", async (
   await poll();
   expect(link()).toHaveTextContent(/Verfügbar/);
   expect(screen.queryByRole("meter")).toBeNull();
+  vi.mocked(getProviderOverview).mockResolvedValue([provider({ usage: usage(null) })]);
+  await poll();
+  expect(link()).toHaveTextContent(/Verfügbar/);
+  expect(screen.queryByRole("meter")).toBeNull();
   vi.mocked(getProviderOverview).mockResolvedValue([provider({ usage: usage(0) })]);
   await poll();
   expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "0");
@@ -53,8 +57,8 @@ it("shows observed quota blocks in the header instead of a placeholder", async (
   expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "60");
   expect(link()).toHaveTextContent("Weiterer · 7 Tage · 60 % verbraucht");
   expect(link()).not.toHaveTextContent("85");
-  expect(getQuotaState).toHaveBeenCalledTimes(5);
-  expect(getProviderOverview).toHaveBeenCalledTimes(5);
+  expect(getQuotaState).toHaveBeenCalledTimes(6);
+  expect(getProviderOverview).toHaveBeenCalledTimes(6);
 });
 
 it("never renders unknown or failed quota data as zero percent", async () => {
