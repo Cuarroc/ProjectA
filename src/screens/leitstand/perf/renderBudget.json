@@ -1,0 +1,9 @@
+{
+  "measuredAt": "2026-10-11",
+  "sourceHead": "36bee03c87779477ae9644496f3bd7b040767f3c",
+  "ceilings": {
+    "mount": { "commits": 1, "cardRenders": 40 },
+    "refresh": { "commits": 1, "cardRenders": 40 },
+    "filter": { "commits": 1, "cardRenders": 19 }
+  }
+}
