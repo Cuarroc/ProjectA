@@ -27,7 +27,7 @@ test("review bound to an older head escalates", () => {
 test("seam file needs two review families", () => {
   const data = pr(); data.files[0].path = "src-tauri/src/store/tasks.rs";
   assert.equal(evaluate(data).exit, 2);
-  assert.equal(evaluate(data, [review(), { ...review(), name: name.replace("glm-5.2", "glm-5.1") }]).exit, 2);
+  assert.equal(evaluate(data, [review(), { name: name.replace("glm-5.2", "glm-5.1"), text: review().text.replaceAll("glm-5.2", "glm-5.1") }]).exit, 2);
   assert.equal(evaluate(data, [review(), { name: name.replace("glm-5.2", "kimi-k3"), text: review().text.replaceAll("glm-5.2", "kimi-k3") }]).exit, 0);
 });
 for (const [title, before, after] of [
@@ -80,4 +80,26 @@ test("cli reads github only through injected argument runner", async () => {
   assert.equal(await main(["42", "--reviews", directory], { out: text => output += text }, { run }), 0);
   assert.match(output, /AUTO-OK/);
   assert.equal(await main(["42", "--reviews", directory], { out() {} }, { run: () => ({ code: 1 }) }), 2);
+});
+test("review formatting and family evidence stay conservative", () => {
+  for (const verdict of ["approve", "## Verdict\n\napprove"]) {
+    assert.equal(evaluate(pr(), [{ ...review(), text: review().text.replace("Verdict: approve", verdict) }]).exit, 0);
+  }
+  for (const text of ["```\n" + review().text + "```", review().text.replace("Reviewer: glm-5.2", "Reviewer: kimi-k3")]) {
+    assert.equal(evaluate(pr(), [{ ...review(), text }]).exit, 2);
+  }
+});
+test("all risk paths need two families even when named as tests", () => {
+  for (const path of ["src-tauri/src/api.rs", "src-tauri/src/main.rs", "src-tauri/src/store.rs", "src-tauri/src/bin/pa.rs", "scripts/pty.test.mjs", "migrations/001.sql", ".github/workflows/ci.yml"]) {
+    const data = pr(); data.files[0].path = path;
+    assert.equal(evaluate(data).exit, 2, path);
+  }
+});
+test("pending checks and inconsistent size evidence escalate", () => {
+  const data = pr(); data.statusCheckRollup = [{ state: "PENDING" }];
+  assert.equal(evaluate(data).exit, 2);
+  data.statusCheckRollup = [{ state: "SUCCESS" }];
+  assert.equal(evaluate(data).exit, 0);
+  data.files[0].additions = 0;
+  assert.equal(evaluate(data).exit, 2);
 });
