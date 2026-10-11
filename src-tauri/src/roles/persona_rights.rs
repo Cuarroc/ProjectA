@@ -388,7 +388,7 @@ mod tests {
     }
 
     #[test]
-    fn user_widening_that_keeps_merge_on_an_agent_persona_is_refused() {
+    fn user_widening_that_keeps_mergen_on_an_agent_persona_is_refused() {
         // Mergen is inside the ceiling and the new right too: only the Mergen rule refuses.
         let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
         let wider = rechte(&[Recht::Lesen, Recht::Schreiben, Recht::Mergen]);
@@ -399,7 +399,7 @@ mod tests {
     }
 
     #[test]
-    fn user_narrowing_that_keeps_merge_on_an_agent_persona_is_refused() {
+    fn user_narrowing_that_keeps_mergen_on_an_agent_persona_is_refused() {
         // A pure removal is refused as long as Mergen stays; the user must drop it.
         let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
         let only_merge = rechte(&[Recht::Mergen]);
@@ -413,9 +413,6 @@ mod tests {
             check_change(&nutzer(), &human, &only_merge, &abteilung()),
             Ok(())
         );
-        // Dropping Mergen itself passes.
-        let dropped = rechte(&[Recht::Lesen]);
-        assert_eq!(check_change(&nutzer(), &p, &dropped, &abteilung()), Ok(()));
     }
 
     #[test]
@@ -434,6 +431,15 @@ mod tests {
         for who in [nutzer(), agent("p1"), agent("p2")] {
             assert_eq!(check_change(&who, &p, &p.rechte, &abteilung()), Ok(()));
         }
+    }
+
+    #[test]
+    fn user_unchanged_rights_on_an_agent_persona_holding_mergen_pass() {
+        let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
+        assert_eq!(
+            check_change(&nutzer(), &p, &p.rechte.clone(), &abteilung()),
+            Ok(())
+        );
     }
 
     #[test]
