@@ -26,7 +26,7 @@ pub struct McpServer {
     pub status: McpStatus,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamObservation {
     pub models: Vec<ObservedModel>,
     /// True when no `modelUsage` was seen; `models` is then empty, not a guess.
@@ -36,13 +36,75 @@ pub struct StreamObservation {
     pub mcp_not_reported: bool,
 }
 
+impl Default for StreamObservation {
+    fn default() -> Self {
+        Self {
+            models: Vec::new(),
+            models_not_reported: true,
+            mcp_servers: Vec::new(),
+            mcp_not_reported: true,
+        }
+    }
+}
+
 /// Parse a complete stream-json capture (one JSON event per line).
-pub fn parse_stream(_stdout: &[u8]) -> StreamObservation {
-    StreamObservation::default()
+/// Lines that are not JSON are skipped; nothing is inferred from them.
+pub fn parse_stream(stdout: &[u8]) -> StreamObservation {
+    let mut obs = StreamObservation::default();
+    for line in stdout.split(|byte| *byte == b'\n') {
+        if let Ok(event) = serde_json::from_slice(line) {
+            absorb_event(&mut obs, &event);
+        }
+    }
+    obs
 }
 
 /// Absorb one already-decoded event (a stream line or a `--output-format json` result).
-pub fn absorb_event(_obs: &mut StreamObservation, _event: &serde_json::Value) {}
+/// A later `result` or `init` replaces the earlier list.
+pub fn absorb_event(obs: &mut StreamObservation, event: &serde_json::Value) {
+    if let Some(usage) = event.get("modelUsage").and_then(|v| v.as_object()) {
+        let text = |entry: &serde_json::Value, key: &str| {
+            entry.get(key).and_then(|v| v.as_str()).map(str::to_owned)
+        };
+        obs.models = usage
+            .iter()
+            .map(|(id, entry)| ObservedModel {
+                id: id.clone(),
+                canonical: text(entry, "canonicalModel"),
+                provider: text(entry, "provider"),
+            })
+            .collect();
+        obs.models_not_reported = false;
+    }
+    let is_init = event.get("type").and_then(|v| v.as_str()) == Some("system")
+        && event.get("subtype").and_then(|v| v.as_str()) == Some("init");
+    if let (true, Some(list)) = (is_init, event.get("mcp_servers").and_then(|v| v.as_array())) {
+        obs.mcp_servers = list
+            .iter()
+            .filter_map(|entry| {
+                let name = entry.get("name")?.as_str()?.to_owned();
+                let raw = entry.get("status").and_then(|v| v.as_str()).unwrap_or("");
+                Some(McpServer {
+                    name,
+                    status: McpStatus::from_raw(raw),
+                })
+            })
+            .collect();
+        obs.mcp_not_reported = false;
+    }
+}
+
+impl McpStatus {
+    fn from_raw(raw: &str) -> Self {
+        match raw {
+            "connected" => Self::Connected,
+            "failed" => Self::Failed,
+            "needs-auth" => Self::NeedsAuth,
+            "pending" => Self::Pending,
+            other => Self::Unknown(other.to_owned()),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
