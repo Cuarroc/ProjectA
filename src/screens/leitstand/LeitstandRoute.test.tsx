@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 
@@ -18,6 +18,11 @@ const question = { id: "q1", projectId: "p1", workerId: "w1", scope: "worker", q
 /** The tab row of the Leitstand itself; the shell frame has its own "Haupt" link. */
 const tabs = () => within(screen.getByRole("navigation", { name: "Ansichten" }));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
+
+// App loads the shell through React.lazy. Its first import transforms the whole shell module graph,
+// which under CPU load outran the 1 s findBy default of whichever test rendered first. Pay that
+// once here (hookTimeout), so every test measures only the IPC round trips.
+beforeAll(async () => { await import("../../shell/mount/ShellMount"); });
 
 beforeEach(() => {
   localStorage.clear();
@@ -48,7 +53,7 @@ describe("Leitstand route behind D1", () => {
     const { container } = render(<App />);
     const agents = await screen.findByRole("region", { name: "Agenten" });
     expect(await within(agents).findByRole("heading", { name: "Claude Code" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("1");
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("1"));
     const needs = await screen.findByRole("complementary", { name: "Braucht dich" });
     expect(await within(needs).findByText("Cover only this case?")).toBeInTheDocument();
     expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
@@ -64,7 +69,7 @@ describe("Leitstand route behind D1", () => {
     expect(await screen.findByText("Agenten konnten nicht geladen werden")).toBeInTheDocument();
     // Without profiles the card falls back to the profile id as its name.
     expect(await within(agents).findByRole("heading", { name: "claude" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("1");
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("1"));
   });
 
   it("picks up the project the old app chooses after this route has mounted", async () => {
