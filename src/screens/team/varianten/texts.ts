@@ -18,6 +18,7 @@ export const T = {
   rejectFailed: "Verwerfen fehlgeschlagen:",
   loading: "Rollen-Vorschläge werden geladen …",
   loadFailed: "Rollen-Vorschläge konnten nicht geladen werden",
+  reloadFailed: "Liste konnte nicht aktualisiert werden.",
   retry: "Erneut laden",
   emptyTitle: "Keine offenen Rollen-Vorschläge",
   emptyHint: "Sobald der Kern eine neue Rolle vorschlägt, erscheint sie hier zur Prüfung.",

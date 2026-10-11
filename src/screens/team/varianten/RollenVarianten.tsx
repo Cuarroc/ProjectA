@@ -66,26 +66,32 @@ export function RollenVarianten({ projectId }: { projectId: string }) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [note, setNote] = useState<Note | null>(null);
-  const shown = useRef(projectId);
-  shown.current = projectId;
+  const [reloadFailed, setReloadFailed] = useState(false);
+  // Counts project changes: a reply is only taken while its token is current,
+  // so a late reply of an earlier visit to the same project is dropped too.
+  const generation = useRef(0);
 
-  /** A silent reload keeps the cards on screen; a failed one is only a note. */
+  /** A silent reload keeps the cards on screen; a failed one is only a quiet line. */
   const fetchVariants = useCallback(async (silent: boolean) => {
+    const mine = generation.current;
     if (!silent) setLoad({ status: "loading" });
     try {
       const all = await listRoleVariants(projectId);
-      if (shown.current !== projectId) return;
+      if (generation.current !== mine) return;
+      setReloadFailed(false);
       setLoad({ status: "ready", variants: all.filter((v) => v.status === "pending") });
     } catch {
-      if (shown.current !== projectId) return;
-      if (silent) setNote({ kind: "error", text: T.loadFailed });
+      if (generation.current !== mine) return;
+      if (silent) setReloadFailed(true);
       else setLoad({ status: "error" });
     }
   }, [projectId]);
 
   useEffect(() => {
+    generation.current += 1;
     setBusy(new Set());
     setNote(null);
+    setReloadFailed(false);
     void fetchVariants(false);
   }, [fetchVariants]);
 
@@ -98,20 +104,22 @@ export function RollenVarianten({ projectId }: { projectId: string }) {
     });
 
   const decide = async (variant: RoleVariant, verdict: Verdict) => {
-    const target = projectId;
+    const mine = generation.current;
     setBusyFor(variant.id, true);
     setNote(null);
     try {
       await (verdict === "approve" ? approveRoleVariant : rejectRoleVariant)(variant.id);
-      if (shown.current !== target) return;
+      if (generation.current !== mine) return;
       setNote({ kind: "ok", text: verdict === "approve" ? T.approved : T.rejected });
+      // Decided is decided: drop the card now so a failed reload cannot leave it clickable.
+      setLoad((prev) => (prev.status === "ready" ? { status: "ready", variants: prev.variants.filter((v) => v.id !== variant.id) } : prev));
       await fetchVariants(true);
     } catch (cause) {
-      if (shown.current === target) {
+      if (generation.current === mine) {
         setNote({ kind: "error", text: `${verdict === "approve" ? T.approveFailed : T.rejectFailed} ${describeError(cause)}` });
       }
     } finally {
-      if (shown.current === target) setBusyFor(variant.id, false);
+      if (generation.current === mine) setBusyFor(variant.id, false);
     }
   };
 
@@ -124,6 +132,7 @@ export function RollenVarianten({ projectId }: { projectId: string }) {
       </header>
       {note?.kind === "ok" && <p role="status">{note.text}</p>}
       {note?.kind === "error" && <p role="alert" style={{ margin: 0, color: "var(--g-bad)" }}>{note.text}</p>}
+      {reloadFailed && <p style={{ margin: 0, color: "var(--g-muted)" }}>{T.reloadFailed}</p>}
       {load.status === "loading" && <HonestState kind="empty" title={T.loading} />}
       {load.status === "error" && <HonestState kind="offline" title={T.loadFailed} action={{ label: T.retry, onClick: () => void fetchVariants(false) }} />}
       {load.status === "ready" && variants.length === 0 && <HonestState kind="empty" title={T.emptyTitle} hint={T.emptyHint} />}
