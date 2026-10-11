@@ -34,9 +34,21 @@ ov() { sed "$1" "$OV" > "$tmp/$2.json"; echo "$tmp/$2.json"; }
 check real-files-pass pass "$WF" "$OV"
 
 check workflow-reading-a-secret-fails fail \
-  "$(wf 's/^    timeout-minutes: 90$/&\n    env:\n      K: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}/' secret)" "$OV" "references secrets\."
+  "$(wf 's/^    timeout-minutes: 90$/&\n    env:\n      K: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}/' secret)" "$OV" "mentions secrets"
+check workflow-with-secrets-index-syntax-fails fail \
+  "$(wf "s/^    timeout-minutes: 90\$/&\n    env:\n      K: \${{ secrets['TAURI_SIGNING_PRIVATE_KEY'] }}/" secidx)" "$OV" "mentions secrets"
+check workflow-with-secrets-inherit-fails fail \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    secrets: inherit/' secinherit)" "$OV" "mentions secrets"
+check workflow-with-job-level-uses-fails fail \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    uses: .\/.github\/workflows\/release.yml/' jobuses)" "$OV" "job-level uses"
 check workflow-with-write-permission-fails fail \
   "$(wf 's/^      contents: read$/      contents: write/' write)" "$OV" "write permission"
+check workflow-with-write-on-other-scope-fails fail \
+  "$(wf 's/^      contents: read$/      contents: read\n      id-token: write/' writeid)" "$OV" "write permission"
+check workflow-with-write-all-permissions-fails fail \
+  "$(wf 's/^    permissions:$/    permissions: write-all/;/^      contents: read$/d' writeall)" "$OV" "write permission"
+check workflow-with-write-key-outside-permissions-passes pass \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    env:\n      mode: write/' writeenv)" "$OV"
 check workflow-with-environment-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    environment: release/' env)" "$OV" "has an environment"
 check workflow-with-push-trigger-fails fail \
@@ -47,9 +59,13 @@ check workflow-without-dispatch-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/  pull_request:/' nodispatch)" "$OV" "trigger other than workflow_dispatch"
 
 check overlay-with-stable-identifier-fails fail \
-  "$WF" "$(ov 's/"com\.projecta\.dev"/"com.projecta.app"/' stable)" "stable identifier"
+  "$WF" "$(ov 's/"com\.projecta\.dev"/"com.projecta.app"/' stable)" "identifier must be"
+check overlay-with-third-identifier-fails fail \
+  "$WF" "$(ov 's/"com\.projecta\.dev"/"com.projecta.other"/' third)" "identifier must be"
 check overlay-with-updater-artifacts-true-fails fail \
   "$WF" "$(ov 's/"createUpdaterArtifacts": false/"createUpdaterArtifacts": true/' artifacts)" "createUpdaterArtifacts"
+check overlay-without-updater-artifacts-flag-fails fail \
+  "$WF" "$(ov '/"createUpdaterArtifacts"/d' noflag)" "createUpdaterArtifacts"
 check overlay-with-updater-endpoint-fails fail \
   "$WF" "$(ov 's/"endpoints": \[\]/"endpoints": ["https:\/\/example.invalid\/latest.json"]/' endpoint)" "updater is not inert"
 

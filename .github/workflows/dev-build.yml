@@ -49,7 +49,9 @@ jobs:
         run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       # SHA of actions/upload-artifact v7.0.2: not pinned in any workflow of
-      # this repo yet, taken from the upstream release tag (lightweight tag).
+      # this repo yet. Verified 2026-10-11 against upstream: `git ls-remote
+      # https://github.com/actions/upload-artifact refs/tags/v7.0.2` returns
+      # exactly this commit (lightweight tag, so no `^{}` peel line).
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: projecta-dev-${{ steps.sha.outputs.short }}
