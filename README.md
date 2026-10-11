@@ -2,137 +2,182 @@
 
 <div align="center">
   <img src="assets/banner.svg" alt="ProjectA" width="100%" />
-  <p><em>An agentic terminal for Windows: many AI coding agents, one calm cockpit.</em></p>
-  <p><strong>Mehrere KI-Coding-Agenten parallel arbeiten lassen – jeder in seinem eigenen Terminal, Branch und Worktree.</strong></p>
-  <p><strong>Fertig ist nur, was bewiesen ist: Grün heißt bewiesen, kein Modell prüft sich selbst, der Mensch behält die Kontrolle.</strong></p>
-  <p><strong>Dazu gehören Not-Aus, Kostenkontrolle über Budgetgrenzen und ein nachvollziehbares Protokoll.</strong></p>
+
+  <h3>Viele KI-Coding-Agenten. Ein ruhiges Cockpit. Grün heißt bewiesen.</h3>
+
+  <p><em>An agentic terminal for Windows: many AI coding agents, one calm cockpit — and nothing counts as done until it is proven.</em></p>
 
   <a href="https://github.com/Cuarroc/ProjectA-updates/releases/latest"><img alt="Neueste Version" src="https://img.shields.io/github/v/release/Cuarroc/ProjectA-updates?label=Version" /></a>
-  <a href="LICENSE"><img alt="Lizenz: MIT" src="https://img.shields.io/github/license/Cuarroc/ProjectA?label=Lizenz" /></a>
   <a href="https://github.com/Cuarroc/ProjectA/actions/workflows/ci.yml?query=branch%3Amain"><img alt="CI auf main" src="https://img.shields.io/github/actions/workflow/status/Cuarroc/ProjectA/ci.yml?branch=main&label=CI" /></a>
   <img alt="Plattform: Windows" src="https://img.shields.io/badge/Plattform-Windows-0078D6" />
+  <img alt="Gebaut mit Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB" />
+  <a href="LICENSE"><img alt="Lizenz: MIT" src="https://img.shields.io/github/license/Cuarroc/ProjectA?label=Lizenz" /></a>
+
+  <p>
+    <a href="#schnellstart"><strong>Schnellstart</strong></a> ·
+    <a href="#so-arbeitet-projecta"><strong>So arbeitet ProjectA</strong></a> ·
+    <a href="#funktionen"><strong>Funktionen</strong></a> ·
+    <a href="#die-neue-oberfläche-v20"><strong>v2.0</strong></a> ·
+    <a href="#für-entwickler"><strong>Für Entwickler</strong></a>
+  </p>
 </div>
 
-## Inhalt
+---
 
-- [Warum ProjectA?](#warum-projecta)
-- [Schnellstart](#schnellstart)
-- [Funktionen](#funktionen)
-- [Wo steht ProjectA?](#wo-steht-projecta)
-- [Status und Grenzen](#status-und-grenzen)
-- [Mitmachen als Tester](#mitmachen-als-tester)
-- [Dokumentation](#dokumentation)
-- [Für Entwickler](#für-entwickler)
-- [Lizenz](#lizenz)
+ProjectA lässt mehrere KI-Coding-Agenten **gleichzeitig** für dich arbeiten:
+jeden in seinem eigenen Terminal, mit eigenem Git-Branch und eigenem Worktree.
+Du siehst alles in einem Fenster und behältst die Kontrolle: Not-Aus,
+Budgetgrenzen und ein lückenloses Protokoll.
+
+> **Unser Grundsatz:** Fertig ist nur, was bewiesen ist. Grün heißt: Die Tests
+> liefen wirklich. Kein Modell prüft sich selbst. Was zählt, entscheidet der
+> Mensch.
 
 ## Warum ProjectA?
 
-**Unser Fokus ist sicherer Dauerbetrieb:** Agenten sollen lange für dich
-arbeiten können, ohne dass du sie aus den Augen verlieren musst. Dafür gibt es
-den Not-Aus (alles sofort stoppen), Budgetgrenzen als Kostenkontrolle und ein
-nachvollziehbares Protokoll in der lokalen Datenbank. Der automatische
-Dauerbetrieb selbst ist in v1.6.3 noch ausgeschaltet; siehe „Status und Grenzen“.
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h4>⚡ Parallel statt nacheinander</h4>
+      Jede Aufgabe wird ein eigener Worker mit eigenem Branch und Worktree.
+      Die Agenten kommen sich nicht in die Quere, und du wartest nicht auf einen
+      nach dem anderen.
+    </td>
+    <td width="33%" valign="top">
+      <h4>🛡️ Du behältst die Kontrolle</h4>
+      Ein Not-Aus stoppt binnen zehn Sekunden alle Agenten, auch über Neustarts.
+      Budgetgrenzen und Rollen legen fest, was ein Agent darf und wie viel er
+      verbrauchen darf.
+    </td>
+    <td width="33%" valign="top">
+      <h4>🔍 Nachvollziehbar und lokal</h4>
+      Laufzeitdaten liegen in einer lokalen SQLite-Datenbank. Vor jeder
+      Migration entsteht ein Backup. Du siehst jederzeit, wer was gemacht hat.
+    </td>
+  </tr>
+</table>
 
-- **Parallel statt nacheinander:** Jede Aufgabe läuft als eigener Worker mit
-  eigenem Git-Branch und Worktree – die Agenten kommen sich nicht in die Quere.
-- **Alles auf einem Board:** Terminals, Warteschlange, Diffs und
-  Projektstatus in einem Fenster statt verteilt über viele Konsolen.
-- **Deine Agenten, deine Zugänge:** ProjectA startet die Agent-CLIs, die du
-  schon nutzt (zum Beispiel Claude Code, Codex CLI, Kimi CLI, OpenCode, Ollama).
-  Es bringt kein eigenes Modell und keine Anbieterzugänge mit.
-- **Du behältst die Kontrolle:** Ein Not-Aus beendet binnen zehn Sekunden alle
-  laufenden Agenten; Budgetgrenzen und Rollen begrenzen, was ein Agent darf.
-- **Lokal und nachvollziehbar:** Laufzeitdaten liegen in einer lokalen
-  SQLite-Datenbank; vor jeder Datenbank-Migration entsteht ein Backup.
+**Deine Agenten, deine Zugänge:** ProjectA startet die Agent-CLIs, die du schon
+nutzt, zum Beispiel Claude Code, Codex CLI, Kimi CLI, OpenCode oder Ollama. Es
+bringt kein eigenes Modell und keine Anbieterzugänge mit.
+
+## So arbeitet ProjectA
+
+Auftrag, Arbeit, Beweis, Fremdprüfung, Freigabe und Ausliefern sind **ein**
+Ablauf. Jeder Schritt hinterlässt einen Beleg.
+
+```mermaid
+flowchart LR
+    A["📝 Auftrag<br/><small>du beschreibst,<br/>was passieren soll</small>"] --> B["🤖 Worker<br/><small>eigenes Terminal,<br/>Branch und Worktree</small>"]
+    B --> C["✅ Beweis<br/><small>Tests und Prüfungen<br/>laufen wirklich</small>"]
+    C --> D["👀 Fremdprüfung<br/><small>ein anderes Modell<br/>prüft die Arbeit</small>"]
+    D --> E["🙋 Freigabe<br/><small>der Mensch<br/>entscheidet</small>"]
+    E --> F["🚀 Ausliefern"]
+    C -. rot .-> B
+    D -. Befund .-> B
+```
 
 ## Schnellstart
 
-1. Den Installer `ProjectA_<Version>_x64-setup.exe` von der
+1. **Installieren:** den Installer `ProjectA_<Version>_x64-setup.exe` von der
    [Release-Seite](https://github.com/Cuarroc/ProjectA-updates/releases/latest)
    laden und ausführen. Spätere Updates kommen über den eingebauten, mit
    Minisign signierten Updater.
-2. Mindestens eine Agent-CLI installieren und dort anmelden; die Einrichtung
-   je Anbieter steht unter [`docs/setup/`](docs/setup/README.md).
-3. In ProjectA links unter „Projekte“ mit „+“ ein Git-Repository hinzufügen.
-4. Mit „Neuer Worker“ eine Aufgabe beschreiben und ein Agenten-Profil wählen.
-   Den Fortschritt zeigen Board, Terminal und Diff.
+2. **Agent einrichten:** mindestens eine Agent-CLI installieren und dort
+   anmelden. Die Einrichtung je Anbieter steht unter
+   [`docs/setup/`](docs/setup/README.md).
+3. **Projekt hinzufügen:** in ProjectA links unter „Projekte“ mit „+“ ein
+   Git-Repository wählen.
+4. **Loslegen:** mit „Neuer Worker“ eine Aufgabe beschreiben und ein
+   Agenten-Profil wählen. Den Fortschritt zeigen Board, Terminal und Diff.
+
+Unbekannte Begriffe erklärt das [Glossar](docs/hilfe/glossar.md); die
+wichtigsten Handgriffe stehen im [Spickzettel](docs/hilfe/spickzettel.md).
 
 ## Funktionen
 
-| Funktion | Was sie tut |
+| | Funktion | Was sie tut |
+| --- | --- | --- |
+| **Arbeiten** | Agenten-Terminals | Jeder Worker läuft in einem echten Terminal (PTY) mit eigenem Verlauf. |
+| | Worktree je Aufgabe | Eigener Branch und Git-Worktree pro Worker. |
+| | Board und Warteschlange | Aufgaben einreihen; gestartet wird erst, wenn Kapazität frei ist. |
+| | Orchestrator-Chat | Wünsche in Worte fassen; der Orchestrator verteilt die Arbeit. |
+| **Prüfen** | Diff und Review | Änderungen eines Workers ansehen und zeilenweise kommentieren. |
+| | Learnings | Was Agenten im Projekt gelernt haben; ein Mensch gibt es frei. |
+| **Kontrolle** | Not-Aus | Stoppt alle Agenten binnen 10 s und blockiert neue Aufträge, auch über Neustarts. |
+| | Budget und Rollen | Schwellen auf die Nutzungsfenster der Anbieter; Rechte je Rolle. |
+| **Unterwegs** | Web-Interface | Board und Learnings nur lesend im Browser, etwa auf dem Handy. |
+| | Sitzungen wiederherstellen | Verlauf und Entwürfe überstehen einen Neustart (höchstens 7 Tage). |
+| **Automatisieren** | Kommandozeile `pa` | Spricht mit der laufenden App über eine lokale, per Token geschützte API. |
+
+### Denkraum
+
+Der Denkraum ist eine lokale Browserseite für Menschen: Fragen der Agenten
+beantworten, Ideen sammeln und deren Bearbeitungsstand lesen, ganz ohne
+Programmierkenntnisse. Er ist nur auf deinem Rechner unter
+`http://127.0.0.1:4791/` erreichbar, kein öffentliches Webangebot. Eine
+gespeicherte Antwort oder Idee startet noch keine Ausführung.
+Die [Anleitung in fünf Schritten](docs/denkraum/ANLEITUNG.md) führt durch
+Start, Antwort, Status, Stoppen und Sichern.
+
+## Die neue Oberfläche (v2.0)
+
+ProjectA bekommt eine neue, ruhige Glas-Oberfläche: aus 25 Ansichten werden
+10 klare Bildschirme, in hell und dunkel, mit echten Daten hinter jedem Knopf.
+Sie entsteht schrittweise und in drei Releases:
+
+| Release | Inhalt |
 | --- | --- |
-| Agenten-Terminals | Jeder Worker läuft in einem echten Terminal (PTY) mit eigenem Verlauf. |
-| Worktree je Aufgabe | Eigener Branch und Git-Worktree pro Worker. |
-| Board und Warteschlange | Aufgaben einreihen; gestartet wird erst, wenn Kapazität frei ist. |
-| Diff und Review | Änderungen eines Workers ansehen und zeilenweise kommentieren. |
-| Orchestrator-Chat | Wünsche in Worte fassen; der Orchestrator verteilt die Arbeit. |
-| Not-Aus | Stoppt alle Agenten binnen 10 s und blockiert neue Aufträge, auch über Neustarts. |
-| Budget und Rollen | Schwellen auf die Nutzungsfenster der Anbieter; Rechte je Rolle. |
-| Learnings | Was Agenten im Projekt gelernt haben; ein Mensch gibt es frei. |
-| Web-Interface | Board und Learnings nur lesend im Browser, etwa auf dem Handy. |
-| Sitzungen wiederherstellen | Verlauf und Entwürfe überstehen einen Neustart (höchstens 7 Tage). |
-| Kommandozeile `pa` | Spricht mit der laufenden App über eine lokale, per Token geschützte API. |
+| **v2.0** | Neue Hülle und **Leitstand**: alle Agenten auf einen Blick, mit Grund, Alter und Auftrag; die neue Oberfläche wird Standard und bleibt jederzeit zurückschaltbar. |
+| **v2.1** | Start, Beweise, Kontingente und der Verlauf. |
+| **v2.2** | Der übrige Umfang. |
 
-## Denkraum
-
-Der Denkraum ist eine lokale Browserseite für Menschen, die Fragen ihrer
-Agenten beantworten, Ideen sammeln und deren Bearbeitungsstand lesen möchten.
-Du brauchst dafür keine Programmierkenntnisse; die Einrichtung muss bereits
-vorbereitet sein. Die Seite ist nur auf demselben Rechner unter
-`http://127.0.0.1:4791/` (Standardanschluss) erreichbar, kein öffentliches Webangebot.
-Eine gespeicherte Antwort oder Idee startet noch keine Ausführung.
-
-Die [Anleitung in fünf Schritten](docs/denkraum/ANLEITUNG.md) führt von Start
-und Seite über eine Antwort und den Status bis zum Stoppen und Sichern; sie
-beschreibt auch Kategorie, Filter und Sortierung der Ideen. Einen bestehenden
-Denkraum auf die neue Fassung umzustellen folgt einem getrennten Runbook.
-
-## Wo steht ProjectA?
-
-- **Aktuelle Version: `v1.6.3`.** Was sich ändert, steht im
-  [`CHANGELOG.md`](CHANGELOG.md).
-- **Der Plan für Version 2.0 ist am 06.10.2026 freigegeben.** Die verständliche
-  Kurzfassung steht in [`docs/roadmap-2.0.md`](docs/roadmap-2.0.md), der
-  vollständige Plan in [`docs/plan/v2.0/plan.md`](docs/plan/v2.0/plan.md).
-- Der automatische Dauerbetrieb bleibt bis auf Weiteres ausgeschaltet; er wird
-  erst nach belegter Abnahme und nur durch den Menschen freigegeben.
+Schon heute kannst du sie ausprobieren: **Einstellungen › Allgemein ›
+„Neue Oberfläche (Vorschau)“**. Die Kurzfassung des Plans steht in
+[`docs/roadmap-2.0.md`](docs/roadmap-2.0.md), der vollständige Plan in
+[`docs/plan/v2.0/plan.md`](docs/plan/v2.0/plan.md).
 
 ## Status und Grenzen
 
 - **App-Version:** `v1.6.3` – diese Version baut der Quellcode auf `main`.
-- **Veröffentlicht:** zuletzt `v1.6.0` (Beta, 10.10.2026).
-  Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
-- Aktives persönliches Projekt. Windows ist das einzige paketierte Ziel.
-  Plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
-  Linux beziehungsweise WSL2; ein Linux- oder macOS-Paket gibt es nicht.
-- Der Dauerbetrieb (Continuous) ist in v1.6.3 ausgeschaltet und nicht
-  freigegeben.
-- Agent-CLIs und Anbieterzugänge bringst du selbst mit (siehe oben).
+- **Veröffentlicht:** `v1.6.3` (11.10.2026). Was sich ändert, steht im
+  [`CHANGELOG.md`](CHANGELOG.md).
+- Aktives persönliches Projekt. **Windows** ist das einzige paketierte Ziel;
+  plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
+  Linux beziehungsweise WSL2. Ein Linux- oder macOS-Paket gibt es nicht.
+- Der automatische Dauerbetrieb (Continuous) ist ausgeschaltet. Er wird erst
+  nach belegter Abnahme und nur durch den Menschen freigegeben.
+- Agent-CLIs und Anbieterzugänge bringst du selbst mit.
 - Interne Projektunterlagen sind überwiegend auf Deutsch.
 
 ## Mitmachen als Tester
 
-Du möchtest ProjectA ausprobieren? Installiere die aktuelle Version von der
+Installiere die aktuelle Version von der
 [Release-Seite](https://github.com/Cuarroc/ProjectA-updates/releases/latest)
 und arbeite die kurze Klickliste in [`docs/TESTEN.md`](docs/TESTEN.md) durch.
 Deine Beobachtungen meldest du am besten über die Issue-Vorlage
-„Tester-Feedback“ – sie fragt genau das ab, was wir zur Fehlersuche brauchen.
+„Tester-Feedback“; sie fragt genau das ab, was wir zur Fehlersuche brauchen.
 
 ## Dokumentation
 
-- [`docs/setup/`](docs/setup/README.md) – Agent-CLIs und Anbieter einrichten
-- [`docs/drills/`](docs/drills/README.md) – Prüfabläufe für die installierte App
-- [`CHANGELOG.md`](CHANGELOG.md) – Änderungen je Version
-- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) – bekannte offene Befunde
-- [`SECURITY.md`](SECURITY.md) – Sicherheitslücken vertraulich melden
+| | |
+| --- | --- |
+| [`docs/setup/`](docs/setup/README.md) | Agent-CLIs und Anbieter einrichten |
+| [`docs/hilfe/glossar.md`](docs/hilfe/glossar.md) | Begriffe einfach erklärt |
+| [`docs/drills/`](docs/drills/README.md) | Prüfabläufe für die installierte App |
+| [`CHANGELOG.md`](CHANGELOG.md) | Änderungen je Version |
+| [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Bekannte offene Befunde |
+| [`SECURITY.md`](SECURITY.md) | Sicherheitslücken vertraulich melden |
 
 ## Für Entwickler
 
-ProjectA ist mit [Tauri 2](https://v2.tauri.app/) gebaut. Der Rust-Kern
-verwaltet Laufzeitdaten in SQLite, die Oberfläche verwendet React und
-TypeScript. Die folgenden Abschnitte richten sich an Mitwirkende.
+ProjectA ist mit [Tauri 2](https://v2.tauri.app/) gebaut: Ein Rust-Kern
+verwaltet die Laufzeitdaten in SQLite, die Oberfläche ist React mit
+TypeScript. An diesem Repository arbeiten Menschen und mehrere KI-Agenten
+parallel, deshalb sind die Regeln streng und überall gleich.
 
-### Voraussetzungen
+<details>
+<summary><strong>Voraussetzungen</strong></summary>
 
 - Node.js 24 oder neuer
 - Rust 1.89 oder neuer (stable) und Cargo
@@ -144,7 +189,10 @@ TypeScript. Die folgenden Abschnitte richten sich an Mitwirkende.
 Die anbieterspezifische Einrichtung steht unter
 [`docs/setup/`](docs/setup/README.md).
 
-### Lokal einrichten und prüfen
+</details>
+
+<details>
+<summary><strong>Lokal einrichten und prüfen</strong></summary>
 
 ```sh
 npm ci
@@ -170,7 +218,10 @@ Die Desktop-App wird mit `npm run tauri dev` gestartet. Dabei können vorhandene
 Queue-Einträge echte Agenten starten. Starte sie deshalb nur bewusst; für eine
 Entwicklungssitzung ohne Dispatcher kann `PROJECTA_QUEUE=off` gesetzt werden.
 
-### Sicher beitragen
+</details>
+
+<details>
+<summary><strong>Sicher beitragen</strong></summary>
 
 1. Vor Beginn `STAND.md` und `docs/PLAN.md` lesen und den Live-Stand von
    `origin/main` und den offenen Pull Requests prüfen.
@@ -188,17 +239,23 @@ Entwicklungssitzung ohne Dispatcher kann `PROJECTA_QUEUE=off` gesetzt werden.
 
 Die vollständigen, verbindlichen Regeln stehen in [`AGENTS.md`](AGENTS.md).
 
-### Orientierung
+</details>
+
+<details>
+<summary><strong>Orientierung im Repository</strong></summary>
 
 | Datei | Zweck |
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | Verbindliche Arbeits-, Prüf- und PR-Regeln |
 | [`STAND.md`](STAND.md) | Kurzer aktueller Projektstand |
-| [`docs/PLAN.md`](docs/PLAN.md) | Einziger Plan: M1–M4, geparkte Arbeit und Entscheidungen |
+| [`docs/PLAN.md`](docs/PLAN.md) | Einziger Plan: Meilensteine, geparkte Arbeit und Entscheidungen |
+| [`docs/decisions.md`](docs/decisions.md) | Entscheidungen mit Begründung und Rückweg |
 | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Bekannte offene Befunde |
 | [`docs/setup/README.md`](docs/setup/README.md) | Einrichtung der Agent-Werkzeuge |
 | [`docs/ci-lokal.md`](docs/ci-lokal.md) | Lokale Gates und Plattformgrenzen |
 | [`SECURITY.md`](SECURITY.md) | Vertrauliches Melden von Sicherheitslücken |
+
+</details>
 
 ## Lizenz
 
