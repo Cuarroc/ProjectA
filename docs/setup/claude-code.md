@@ -10,10 +10,14 @@ Zurück zur Übersicht: [README.md](README.md).
 - **`CLAUDE.md`** — eine eigene Zeile `@AGENTS.md` (hier die erste). Ohne diesen Import lädt Claude
   Code `AGENTS.md` **nicht**; `npm run dev:agent-check` prüft die Zeile.
 - **`.claude/settings.json`** — Allow-Liste nur für lesende git-, cargo- und
-  npm-Befehle; zwei Hooks:
+  npm-Befehle; drei Hooks:
   - `SessionStart` → `bash scripts/install-hooks.sh` (setzt `core.hooksPath`)
   - `PostToolUse` (Write|Edit) → `bash .claude/hooks/red-first.sh` — warnt, wenn
     Quellcode ohne Test-Diff geändert wurde; blockiert nicht.
+  - `PreToolUse` (Bash|PowerShell) → `node scripts/lib/rules-guard.mjs` — blockiert (Exit 2) `--no-verify`
+    bei git commit/push/merge, `git stash` außer `list`/`show`, `CARGO_PROFILE_*=`, erzwungenes `git push`
+    und `gates.sh | tail|head` ohne `PIPESTATUS`/`pipefail`. Die Meldung `BLOCKED: …` nennt die Regelquelle
+    (AGENTS.md/CLAUDE.md): Befehl ohne das Muster neu aufrufen. Nur Claude Code; Guard-Fehler lassen durch.
 - **`.claude/skills/projecta-workflow/SKILL.md`** — Kopie von
   `.agents/skills/projecta-workflow/SKILL.md`; nur die `.agents`-Fassung
   bearbeiten, dann kopieren.
