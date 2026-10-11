@@ -4,6 +4,8 @@ export const T = {
   title: "Verlauf",
   list: "Nachrichten mit dem Orchestrator",
   inputLabel: "Nachricht an den Orchestrator",
+  recipient: "Empfänger: Orchestrator des gewählten Projekts.",
+  firstSendHint: "Der erste Versand kann den Orchestrator starten.",
   placeholder: "Sag dem Orchestrator, was als Nächstes passieren soll …",
   noProject: "Kein Projekt aktiv",
   noProjectHint: "Wähle ein Projekt, um mit seinem Orchestrator zu sprechen.",

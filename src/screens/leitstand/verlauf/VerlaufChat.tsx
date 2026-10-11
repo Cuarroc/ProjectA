@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
@@ -32,6 +32,7 @@ function messageTime(seconds: number): string {
  */
 export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
   const [draft, setDraft] = useState("");
+  const recipientHintId = useId();
   // Counts project switches: a send that finishes after a switch must not clear the new project's draft.
   const generation = useRef(0);
   useEffect(() => {
@@ -98,9 +99,15 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
           <HonestState kind="offline" title={T.errorTitle} hint={chat.error} action={{ label: T.errorHide, onClick: chat.clearError }} />
         </div>
       )}
+      <p className="vc-note" id={recipientHintId}>
+        {chat.disabled ? T.noProjectHint : (
+          <>{T.recipient}{chat.orchestratorId === null && <> {T.firstSendHint}</>}</>
+        )}
+      </p>
       <div className="vc-compose">
         <Textarea
           aria-label={T.inputLabel}
+          aria-describedby={recipientHintId}
           placeholder={chat.disabled ? T.noProject : T.placeholder}
           rows={2}
           value={draft}
