@@ -18,6 +18,9 @@ const trim = (path: string) => path.replace(/\/+$/, "");
 /** The new Leitstand owns `/leitstand` (V2-S01a) and `/leitstand/betrieb` (V2-S01b); the rest below it stays the old view. */
 export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb"].includes(trim(path));
 
+/** The new Steuerung (V2-S05a) owns `/steuerung` and its tabs: Kontingente plus two honest placeholders. */
+export const isNewSteuerung = (path: string) => base(trim(path)) === "/steuerung";
+
 /** The Ersteinrichtung (V2-S11-M) owns exactly `/start`; it has no sidebar entry and no old view. */
 export const isStart = (path: string) => trim(path) === "/start";
 
