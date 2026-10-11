@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 #[cfg_attr(not(test), allow(dead_code))]
-mod approval_gate;
+// Consumer: store::approval_grants; execution enforcement follows in PC-TRUST-14.
+pub(crate) mod approval_gate;
 // Consumer: V2-B11 (review gate). Pure rule core, unused until then.
 #[cfg_attr(not(test), allow(dead_code))]
 mod review_rule;
