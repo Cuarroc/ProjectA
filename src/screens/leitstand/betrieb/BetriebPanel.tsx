@@ -8,6 +8,7 @@ import { getResourceSnapshot, getWatchdogReport, listQueue, type ResourceSnapsho
 import { shortTask } from "../../../lib/text";
 import type { AgentProfile, QueueEntry, QueueEntryStatus } from "../../../types";
 import { T } from "./texts";
+import { SharpenedBrief } from "./SharpenedBrief";
 import "./betrieb.css";
 
 export interface BetriebPanelProps {
@@ -76,6 +77,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
                 <span className="bt-task" title={e.rawText}>{shortTask(e.rawText, 80)}</span>
                 <span className="bt-profile">{nameOf(e.profileId)}</span>
                 {e.error?.trim() ? <p className="bt-reason">{e.error}</p> : null}
+                <SharpenedBrief entry={e} />
               </li>
             ))}
           </ul>
