@@ -108,6 +108,7 @@ describe("time-dependent formatting", () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("formatProviderResetsAt covers unknown, past and each unit", () => {
@@ -136,14 +137,21 @@ describe("time-dependent formatting", () => {
     expect(isUsageStale(usage(301))).toBe(true);
   });
 
-  it("formatProviderObservedAt shows the time today, date and time otherwise", () => {
+  it("formatProviderObservedAt keeps German date and time under en-US defaults", () => {
+    const timeString = Date.prototype.toLocaleTimeString;
+    const dateString = Date.prototype.toLocaleDateString;
+    vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(function (this: Date, locale, options) {
+      return timeString.call(this, locale ?? "en-US", options);
+    });
+    vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementation(function (this: Date, locale, options) {
+      return dateString.call(this, locale ?? "en-US", options);
+    });
     const earlier = new Date(2026, 9, 2, 8, 15, 0);
     const older = new Date(2026, 7, 27, 8, 15, 0);
-    const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-    expect(formatProviderObservedAt(unix(earlier))).toBe(time(earlier));
-    const text = formatProviderObservedAt(unix(older));
-    expect(text).toContain(time(older));
-    expect(text).toContain(older.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }));
+    expect(formatProviderObservedAt(unix(earlier))).toBe("08:15");
+    expect(formatProviderObservedAt(unix(older))).toBe("27.08. 08:15");
+    expect(formatProviderObservedAt(unix(new Date(2026, 9, 2, 0, 5)))).toBe("00:05");
+    expect(formatProviderObservedAt(unix(new Date(2026, 9, 2, 17, 5)))).toBe("17:05");
     expect(formatProviderObservedAt(Number.NaN)).toBe("unbekannt");
   });
 
