@@ -75,3 +75,59 @@ it("shows an honest error with a retry when the project list cannot be read", as
   await waitFor(() => expect(within(step(4)).getByText("Erledigt")).toBeInTheDocument());
   expect(calls()).toBe(2);
 });
+
+/** list_projects and scan_setup_repo answer from mutable switches, so one test can script a retry. */
+function scripted() {
+  const state = { listFails: false, scanFails: true };
+  mocks.invoke.mockImplementation((command: string) => {
+    if (command === "list_projects") return state.listFails ? Promise.reject("db locked") : Promise.resolve([project]);
+    if (command === "scan_setup_repo") return state.scanFails ? Promise.reject("not a folder") : Promise.resolve(scan);
+    if (command === "get_provider_overview") return Promise.resolve([]);
+    return new Promise(() => {});
+  });
+  return state;
+}
+const retryButton = () => within(step(4)).getByRole("button", { name: "Erneut versuchen" });
+const scanCalls = () => mocks.invoke.mock.calls.filter(([c]) => c === "scan_setup_repo").length;
+
+it("scans again when the retry of a scan error is clicked", async () => {
+  const state = scripted();
+  render(<StartRoute />);
+  expect(await within(step(4)).findByText("not a folder")).toBeInTheDocument();
+  expect(scanCalls()).toBe(1);
+  state.scanFails = false;
+  fireEvent.click(retryButton());
+  await waitFor(() => expect(within(step(4)).getByText("Erledigt")).toBeInTheDocument());
+  expect(scanCalls()).toBe(2);
+  expect(within(step(4)).queryByText("not a folder")).toBeNull();
+});
+
+it("keeps the list error instead of the old scan error when a scan retry finds the project list unreadable", async () => {
+  const state = scripted();
+  render(<StartRoute />);
+  expect(await within(step(4)).findByText("Projektregeln konnten nicht gelesen werden")).toBeInTheDocument();
+  state.listFails = true;
+  fireEvent.click(retryButton());
+  expect(await within(step(4)).findByText("Projekte konnten nicht gelesen werden")).toBeInTheDocument();
+  expect(within(step(4)).getByText("db locked")).toBeInTheDocument();
+  expect(within(step(4)).queryByText("Projektregeln konnten nicht gelesen werden")).toBeNull();
+  expect(within(step(4)).queryByText("not a folder")).toBeNull();
+  // The list retry is still offered and recovers into a fresh scan of the project.
+  state.listFails = false;
+  state.scanFails = false;
+  fireEvent.click(retryButton());
+  await waitFor(() => expect(within(step(4)).getByText("Erledigt")).toBeInTheDocument());
+});
+
+it("forgets the projects when the list read fails so no stale project is reported", async () => {
+  const state = scripted();
+  render(<StartRoute />);
+  expect(await within(step(4)).findByText("not a folder")).toBeInTheDocument();
+  expect(within(step(4)).getByText("Ein Projekt ist angelegt.")).toBeInTheDocument();
+  state.listFails = true;
+  fireEvent.click(retryButton());
+  expect(await within(step(4)).findByText("db locked")).toBeInTheDocument();
+  expect(within(step(4)).queryByText("Ein Projekt ist angelegt.")).toBeNull();
+  expect(within(step(4)).queryByText("Erledigt")).toBeNull();
+  expect(within(step(6)).queryByText("Bereit")).toBeNull();
+});
