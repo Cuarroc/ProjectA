@@ -69,6 +69,7 @@ export const de = {
   "flag.kundenprojekte.description": "Zeigt Kundenprojekte mit Datenschutz; ausgeschaltet bleiben sie unsichtbar.",
   "leitstand.tabs": "Ansichten",
   "leitstand.tab.classic": "Klassisch",
+  "leitstand.tab.tools": "Werkzeuge",
   "leitstand.tab.betrieb": "Betrieb",
   "leitstand.profilesFailed": "Agenten konnten nicht geladen werden",
   "leitstand.profilesHint": "Die Karten zeigen vorerst die Profil-Kennung.",

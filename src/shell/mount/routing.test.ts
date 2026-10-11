@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
+  it("resolves the werkzeuge tab under leitstand", () => {
+    for (const path of ["/leitstand/werkzeuge", "/leitstand/werkzeuge/"]) {
+      expect(hasLegacyPanel(path)).toBe(true);
+      expect(isNewLeitstand(path)).toBe(false);
+      // Opening tools must not replace the view that owns the existing session.
+      expect(goalForPath(path, "review")).toBe("review");
+      expect(goalForPath(path, "agents")).toBe("agents");
+      expect(goalForPath(path, "settings")).toBe("settings");
+    }
+  });
+
   it("keeps Work Attention and Agents under the Leitstand", () => {
     expect(goalForPath("/leitstand", "attention")).toBe("attention");
     expect(goalForPath("/leitstand/verlauf", "agents")).toBe("agents");
