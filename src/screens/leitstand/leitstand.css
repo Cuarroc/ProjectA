@@ -9,7 +9,13 @@
 .ls-who h3 { margin: 0; font: 600 13px/1.3 var(--g-font-sans); }
 .ls-who p { margin: 0; font-size: 12px; line-height: 1.3; color: var(--g-muted); }
 .ls-who h3, .ls-who p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ls-task { margin: 0; min-height: 36px; font-size: 13px; line-height: 1.4; color: var(--g-ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ls-who .ls-branch { white-space: normal; overflow-wrap: anywhere; }
+.ls-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.ls-attention { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-ink2); overflow-wrap: anywhere; }
+.ls-attention-age { color: var(--g-muted); }
+.ls-task { margin: 0; min-height: 36px; font-size: 13px; line-height: 1.4; color: var(--g-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ls-task--collapsed { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ls-task-toggle { align-self: flex-start; }
 .ls-foot { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-top: auto; min-width: 0; }
 /* The slot scopes the pill: HonestState has no className prop, and an unscoped selector would reach every kind.
    Two explicit columns (icon, text) so the text track can shrink to an ellipsis without running under the icon. */

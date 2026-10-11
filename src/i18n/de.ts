@@ -80,6 +80,8 @@ export const de = {
   "leitstand.emptyHint": "Sobald ein Agent läuft, erscheint hier seine Karte.",
   "leitstand.proofTitle": "Beweis nicht verbunden",
   "leitstand.modelReported": "{model} · gemeldet vom Agenten",
+  "leitstand.taskShowAll": "Ganzen Auftrag zeigen",
+  "leitstand.taskLess": "Weniger",
   "leitstand.open": "Öffnen",
   "leitstand.openLabel": "{name} öffnen",
   "leitstand.restart": "Neu starten",
