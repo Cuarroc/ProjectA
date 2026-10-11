@@ -75,6 +75,15 @@ Every commit that changes source (`src/`, `src-tauri/`, `scripts/`,
 Several pieces of evidence = several lines, never a list. Commit the failing
 test first, then the fix.
 
+### Test quality (adapted from mattpocock/skills `tdd`, MIT, © 2026 Matt Pocock)
+
+- Test behaviour through the public interface (a test boundary), never internals: no mocks of your own modules, no private-method tests, no verifying through a side channel (e.g. querying the database instead of the interface). Mock only at system boundaries (providers, network, time, randomness; the Tauri browser mock).
+- Expected values come from an independent source (a literal, a worked example, the spec), never recomputed the way the code computes them (tautological test).
+- Work in vertical slices: one test → minimal code → green → commit with its trailer → next slice. No "all tests first, then all code".
+- You pick the test boundaries yourself and list them in the PR report; do not ask the user. "Seam" in this sense is a test boundary, not one of the four serial seam files.
+- Refactoring is not part of the red → green loop; it belongs to review/follow-up.
+- Hard bug? Use the AgentsRoom skill `projecta-diagnosing-bugs` (tight red loop first).
+
 ## 4. Reviews by risk (at most two rounds)
 
 - Tier A (seam, security, concurrency, PTY, database): two reviewers from other
