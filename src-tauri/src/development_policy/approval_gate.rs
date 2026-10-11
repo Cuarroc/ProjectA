@@ -1,4 +1,4 @@
-//! Pure approval matching; persistence and execution enforcement are separate.
+//! Approval matching and in-memory nonce consumption; durable consumption lives in the store.
 
 use std::collections::HashSet;
 
@@ -49,6 +49,7 @@ pub(crate) enum Denial {
     WrongRun,
     Expired,
     AlreadyUsed,
+    DuplicateNonce,
     Unknown,
     Storage,
 }
@@ -103,10 +104,10 @@ mod tests {
     #[test]
     fn matching_request_consumes_nonce_atomically() {
         let (grant, request) = fixture();
-        let mut used = HashSet::from(["DEMO-NONCE".to_string()]);
+        let mut used = HashSet::new();
         assert_eq!(check(&grant, &request, &mut used), Ok(()));
         assert_eq!(check(&grant, &request, &mut used), Err(Denial::AlreadyUsed));
-        assert_eq!(used.len(), 2);
+        assert_eq!(used, HashSet::from(["demo-nonce".to_string()]));
     }
 
     #[test]
