@@ -21,6 +21,42 @@ describe("BeweisKette", () => {
     mocks.invoke.mockReset();
   });
 
+  it("summarizes the first blocker without claiming complete proof", async () => {
+    for (const first of [blocker("tests_stale", "Tests sind veraltet", "Tests neu starten"), blocker("new_code", "Neuer Grund", "Grund prüfen"), blocker("new_code", " ", "")]) {
+      serve(readiness({ blockers: [first, blocker("dirty", "Späterer Grund")] }));
+      const { unmount } = render(<BeweisKette workerId="w1" />);
+      const summary = within(await screen.findByRole("region", { name: "Ergebnis des Bereitschaftschecks" }));
+      expect(await summary.findByText("Bereitschaftscheck blockiert")).toBeInTheDocument();
+      expect(summary.getByText(/Erster Grund:/)).toHaveTextContent(first.message.trim() || "Unbekannter Grund");
+      expect(summary.getByText(/Nächster Schritt:/)).toHaveTextContent(first.nextStep || "Grund klären und danach neu prüfen.");
+      expect(summary.queryByText(/Späterer Grund/)).toBeNull();
+      expect(summary.getByText(/Geprüft:/)).toHaveTextContent("Code-Stand: abcdef0");
+      expect(screen.queryByText(/Alles bewiesen|Bereit zum Mergen/i)).toBeNull();
+      expect(within(step("Arbeit")).getByText("Späterer Grund")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("keeps unavailable gates visible even when readiness is ready", async () => {
+    serve(readiness({ readiness: "ready" }));
+    render(<BeweisKette workerId="w1" />);
+    expect(await screen.findByText("Bereitschaftscheck bestanden")).toBeInTheDocument();
+    const summary = within(screen.getByRole("region", { name: "Ergebnis des Bereitschaftschecks" }));
+    expect(summary.getByText("Dieser Check ersetzt keine Gates, kein Fremd-Review und keine Prüfung der Queue.")).toBeInTheDocument();
+    const sources = within(screen.getByRole("region", { name: "Fehlende Belegquellen" }));
+    expect(sources.getAllByRole("term")).toHaveLength(4);
+    for (const title of ["Gates je Lane", "Fremd-Review", "NICHT ABGEDECKT", "Queue-Position"]) {
+      expect(sources.getByText(`${title} noch nicht verbunden`)).toBeVisible();
+    }
+    for (const detail of sources.getAllByText("Technischer Anschluss")) {
+      expect(detail.closest("details")).not.toHaveAttribute("open");
+    }
+    expect(screen.queryByText(/Alles bewiesen|Bereit zum Mergen/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Neu prüfen" }));
+    await act(async () => {});
+    expect(mocks.invoke.mock.calls.map((c) => c[0])).toEqual(["get_worker_readiness", "get_worker_readiness"]);
+  });
+
   it("a blocker lands in its step with message and next step", async () => {
     serve(readiness({ blockers: [blocker("tests_stale", "Tests sind veraltet", "Tests neu starten")] }));
     render(<BeweisKette workerId="w1" />);
