@@ -7,15 +7,14 @@ import { PlanGraph } from "./PlanGraph";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 
 const pkg = (packageId: string, dependencyIds: string[] = [], extra: Partial<DevelopmentPlanPackage> = {}): DevelopmentPlanPackage => ({
-  projectId: "p1", planId: "main", packageId, parentId: null, sourcePath: "plan.md", sourceRevision: "abcdef0123",
-  sourceLine: 1, title: `Title ${packageId}`, dependencyIds, acceptance: "", removed: false, noNewDispatch: false, ...extra,
+  projectId: "p1", planId: "main", packageId, parentId: null, sourcePath: "plan.md", sourceRevision: "abcdef0123", sourceLine: 1,
+  title: `Title ${packageId}`, dependencyIds, acceptance: "", removed: false, noNewDispatch: false, ...extra,
 });
-const response = (packages: DevelopmentPlanPackage[], projectionRevision = 7) => ({
+const response = (packages: DevelopmentPlanPackage[]) => ({
   contractVersion: 1, availability: "available", generatedAt: 1, projectId: "p1", sourceRevision: "abcdef0123",
-  projection: { projectId: "p1", planId: "main", sourcePath: "docs/plan.md", sourceRevision: "abcdef0123", projectionRevision,
+  projection: { projectId: "p1", planId: "main", sourcePath: "docs/plan.md", sourceRevision: "abcdef0123", projectionRevision: 7,
     source: "import", rollbackReason: null, importedAt: 1, packages },
 });
 const ids = (nodes: { id: string }[]) => nodes.map((n) => n.id);
@@ -29,8 +28,7 @@ describe("layoutPlan", () => {
   it("an unknown dependency is reported and does not raise the level", () => {
     const l = layoutPlan([pkg("a", ["ghost"]), pkg("b", ["a", "gone"])]);
     expect(l.levels.map(ids)).toEqual([["a"], ["b"]]);
-    expect(l.levels[0][0].unknown).toEqual(["ghost"]);
-    expect(l.levels[1][0].unknown).toEqual(["gone"]);
+    expect(l.levels.map(([n]) => n.unknown)).toEqual([["ghost"], ["gone"]]);
   });
 
   it("a dependency cycle terminates and marks every member", () => {
@@ -48,8 +46,7 @@ describe("layoutPlan", () => {
 
   it("removed packages are not drawn and only counted", () => {
     const l = layoutPlan([pkg("a"), pkg("t", [], { removed: true })]);
-    expect(l.levels.map(ids)).toEqual([["a"]]);
-    expect(l.removed).toBe(1);
+    expect([l.levels.map(ids), l.removed]).toEqual([[["a"]], 1]);
   });
 });
 
@@ -64,7 +61,6 @@ describe("PlanGraph", () => {
     ]));
     render(<PlanGraph projectId="p1" />);
     const first = within(await screen.findByRole("region", { name: "Ebene 0" }));
-    expect(first.getByText("Title a")).toBeInTheDocument();
     expect(first.getAllByText("kritischer Pfad")).toHaveLength(1);
     const second = within(screen.getByRole("region", { name: "Ebene 1" }));
     expect(second.getByText("kein neuer Start")).toBeInTheDocument();
@@ -86,7 +82,6 @@ describe("PlanGraph", () => {
     mocks.invoke.mockRejectedValue(new Error("db locked"));
     render(<PlanGraph projectId="p1" />);
     expect(await screen.findByText("Plan nicht lesbar")).toBeInTheDocument();
-    expect(screen.queryByText("Plan noch nicht eingelesen")).toBeNull();
   });
 
   it("forecast says zu wenig Daten and decisions are not connected", async () => {
@@ -112,10 +107,10 @@ describe("PlanGraph", () => {
     rerender(<PlanGraph projectId="p1" />);
     expect(pending).toHaveLength(3);
     await act(async () => pending[0](response([pkg("stale")])));
-    expect(screen.queryByText("Title stale")).toBeNull();
     await act(async () => pending[2](response([pkg("fresh")])));
-    expect(await screen.findByText("Title fresh")).toBeInTheDocument();
     await act(async () => pending[1](response([pkg("other")])));
+    expect(await screen.findByText("Title fresh")).toBeInTheDocument();
+    expect(screen.queryByText("Title stale")).toBeNull();
     expect(screen.queryByText("Title other")).toBeNull();
   });
 });

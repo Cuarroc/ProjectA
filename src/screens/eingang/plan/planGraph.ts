@@ -1,23 +1,10 @@
 import type { DevelopmentPlanPackage } from "../../../types";
 
-export interface PlanNode {
-  id: string;
-  title: string;
-  dependencyIds: string[];
-  noNewDispatch: boolean;
-  /** Dependency ids that name no live package; they never raise the level. */
-  unknown: string[];
-}
+/** `unknown`: dependency ids that name no live package; they never raise the Ebene. */
+export interface PlanNode { id: string; title: string; dependencyIds: string[]; noNewDispatch: boolean; unknown: string[] }
 
-export interface PlanLayout {
-  /** Index = Ebene; each column sorted by package id. */
-  levels: PlanNode[][];
-  /** Packages on a dependency cycle (they have no Ebene), sorted by id. */
-  cycle: PlanNode[];
-  /** Longest dependency chain, first predecessor first; empty without a chain of two. */
-  critical: string[];
-  removed: number;
-}
+/** `levels[n]` = Ebene n (sorted by id); `cycle` has no Ebene; `critical` = longest chain, empty below two packages. */
+export interface PlanLayout { levels: PlanNode[][]; cycle: PlanNode[]; critical: string[]; removed: number }
 
 const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -25,13 +12,10 @@ const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 export function layoutPlan(packages: readonly DevelopmentPlanPackage[]): PlanLayout {
   const live = new Map(packages.filter((p) => !p.removed).map((p) => [p.packageId, p]));
   const known = (id: string) => [...new Set(live.get(id)!.dependencyIds)].filter((d) => live.has(d));
-  const nodes = new Map<string, PlanNode>();
-  for (const [id, p] of live) {
-    nodes.set(id, {
-      id, title: p.title, dependencyIds: p.dependencyIds, noNewDispatch: p.noNewDispatch,
-      unknown: [...new Set(p.dependencyIds)].filter((d) => !live.has(d)),
-    });
-  }
+  const nodes = new Map<string, PlanNode>([...live].map(([id, p]) => [id, {
+    id, title: p.title, dependencyIds: p.dependencyIds, noNewDispatch: p.noNewDispatch,
+    unknown: [...new Set(p.dependencyIds)].filter((d) => !live.has(d)),
+  }]));
   // A package is on a cycle when it can reach itself along its dependencies.
   const onCycle = (id: string) => {
     const seen = new Set<string>();
@@ -71,7 +55,7 @@ export function layoutPlan(packages: readonly DevelopmentPlanPackage[]): PlanLay
     }
   }
   return {
-    levels: Array.from(levels, (col) => col ?? []),
+    levels,
     cycle: [...cyclic].sort(byId).map((id) => nodes.get(id)!),
     critical,
     removed: packages.length - live.size,

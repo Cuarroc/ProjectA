@@ -14,7 +14,7 @@ export interface PlanGraphProps {
   planId?: string;
 }
 
-type Read = { kind: "loading" } | { kind: "ready"; plan: DevelopmentPlanProjection } | { kind: "unimported" } | { kind: "failed" };
+type Read = { kind: "loading" | "unimported" | "failed" } | { kind: "ready"; plan: DevelopmentPlanProjection };
 
 /** Plan graph: one column per Ebene and the critical path, read-only. Never imports; not mounted yet. */
 export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
@@ -27,11 +27,8 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
     setRead({ kind: "loading" });
     getDevelopmentPlan(projectId, planId).then(
       (r) => generation.current === mine && setRead({ kind: "ready", plan: r.projection }),
-      (e) => {
-        if (generation.current !== mine) return;
-        const text = String(e instanceof Error ? e.message : e);
-        setRead({ kind: text.includes(T.unimportedMarker) ? "unimported" : "failed" });
-      },
+      (e) => generation.current === mine
+        && setRead({ kind: String(e instanceof Error ? e.message : e).includes(T.unimportedMarker) ? "unimported" : "failed" }),
     );
   }, [projectId, planId]);
 
@@ -51,10 +48,9 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
       )}
     </li>
   );
-  const column = (name: string, nodes: PlanNode[], hint?: string) => (
+  const column = (name: string, nodes: PlanNode[]) => (
     <section key={name} className="g-glass pg-col" aria-label={name}>
       <h3 className="pg-h">{name}</h3>
-      {hint && <p className="pg-note">{hint}</p>}
       <ul className="pg-list">{nodes.map(card)}</ul>
     </section>
   );
@@ -68,10 +64,9 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
         <>
           <p className="pg-note">{T.source(read.plan.sourcePath, read.plan.sourceRevision.slice(0, 7), read.plan.projectionRevision)}</p>
           {layout.removed > 0 && <p className="pg-note">{T.removed(layout.removed)}</p>}
-          {layout.levels.length === 0 && layout.cycle.length === 0 && <HonestState kind="empty" title={T.empty} />}
           <div className="pg-board">
             {layout.levels.map((nodes, i) => column(T.level(i), nodes))}
-            {layout.cycle.length > 0 && column(T.cycle, layout.cycle, T.cycleHint)}
+            {layout.cycle.length > 0 && column(T.cycle, layout.cycle)}
           </div>
         </>
       )}
