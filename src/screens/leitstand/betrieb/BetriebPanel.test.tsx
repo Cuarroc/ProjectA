@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AgentProfile } from "../../../types";
@@ -35,6 +35,59 @@ const section = (name: string) => screen.getByRole("region", { name });
 describe("BetriebPanel", () => {
   beforeEach(() => {
     mocks.invoke.mockReset();
+  });
+
+  it("shows original and sharpened queue text without changing dispatch", async () => {
+    const raw = "Original line\n" + "long-text".repeat(300) + "\n<img src=x onerror=alert(1)>";
+    backend([
+      entry("different", { rawText: raw, sharpenedText: "Precise task", status: "ready" }),
+      entry("same", { rawText: "Same task", sharpenedText: "Same task" }),
+    ]);
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    await screen.findByText("Same task");
+    const rows = within(section("Warteschlange")).getAllByRole("listitem");
+    for (const row of rows) {
+      const disclosure = within(row).getByText("Auftrag ansehen");
+      expect(disclosure.tagName).toBe("SUMMARY");
+      expect(disclosure.parentElement).not.toHaveAttribute("open");
+      fireEvent.click(disclosure);
+    }
+    const first = rows[0].querySelector("details")!;
+    expect(await within(first).findByText("Precise task")).toBeVisible();
+    expect(within(first).getByText("Original")).toBeVisible();
+    expect(within(first).getByText("Geschärft")).toBeVisible();
+    expect(within(first).getByText((_, el) => el?.tagName === "P" && el.textContent === raw)).toBeVisible();
+    expect(first.querySelector("img")).toBeNull();
+    const same = rows[1].querySelector("details")!;
+    expect(await within(same).findByText("Original und geschärfter Text sind gleich.")).toBeVisible();
+    expect(within(same).getAllByText("Same task")).toHaveLength(1);
+    fireEvent.click(within(first).getByText("Auftrag ansehen"));
+    expect(first).not.toHaveAttribute("open");
+    expect(mocks.invoke.mock.calls.map(([cmd]) => cmd)).toEqual([
+      "list_queue", "get_resource_snapshot", "watchdog_report",
+    ]);
+  });
+
+  it("does not describe an unstarted raw queue entry as already started", async () => {
+    const states = ["queued", "sharpening", "ready", "dispatching", "dispatched", "done", "failed"];
+    backend(states.map((status) => entry(status, {
+      status, error: status === "failed" ? "preflight: no slot" : null,
+    })));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    await screen.findByText("Task queued");
+    const rows = within(section("Warteschlange")).getAllByRole("listitem");
+    for (const [index, row] of rows.entries()) {
+      fireEvent.click(within(row).getByText("Auftrag ansehen"));
+      const details = within(row.querySelector("details")!);
+      expect(await details.findByText("Original")).toBeVisible();
+      expect(details.getByText(`Task ${states[index]}`)).toBeVisible();
+      const hint = states[index] === "sharpening"
+        ? "Der Auftrag wird gerade vorbereitet."
+        : "Kein geschärfter Text vorhanden. Hier steht der Originaltext.";
+      expect(details.getByText(hint)).toBeVisible();
+      expect(row.querySelector("details")!.textContent).not.toMatch(/gestartet|empfangen|geprüft/i);
+    }
+    expect(within(rows[6]).getByText("preflight: no slot")).toBeVisible();
   });
 
   it("shows the preflight reason of a held task with its state chip and profile", async () => {
