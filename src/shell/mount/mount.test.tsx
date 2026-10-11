@@ -45,6 +45,8 @@ describe("Glass shell mount behind D1", () => {
       return fallback(command);
     });
     const { container } = render(<App />);
+    // Finish the lazy shell import before starting the DOM query timeout under coverage.
+    await act(async () => { await vi.dynamicImportSettled(); });
     expect(await screen.findByRole("link", { name: "Werkzeuge" })).toHaveAttribute("aria-current", "page");
     const sidebar = await screen.findByRole("complementary", { name: "Projekte und Panels" });
     fireEvent.click(within(sidebar).getByRole("switch", { name: "Orchestrator" }));
