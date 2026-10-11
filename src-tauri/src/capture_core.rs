@@ -2,6 +2,8 @@
 //! The library owns no app state, scheduler, credentials or database services.
 #[path = "process_capture/checkpoints.rs"]
 pub mod checkpoints;
+#[path = "process_capture/claude_stream.rs"]
+pub mod claude_stream;
 #[path = "process_capture/events.rs"]
 pub mod host_events;
 #[path = "process_capture/host_reply.rs"]
