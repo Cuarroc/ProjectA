@@ -172,3 +172,28 @@ it("keeps the initials fallback in the same capitalised style when every candida
   expect(third).toMatch(/^[A-Z]/);
   expect(new Set([first, second, third]).size).toBe(3);
 });
+
+
+it("groups all unknown quota windows into one readable note", async () => {
+  feed([provider("unknown", "Anbieter ohne Messwerte", { quotaState: "unknown" })]);
+  render(<KontingenteScreen />);
+  const c = await card("Anbieter ohne Messwerte");
+  const note = c.getByRole("note", { name: "Unbekannte Kontingentfenster" });
+  expect(note).toHaveTextContent("5 h, Woche, Monat");
+  expect(within(note).getByText("noch nicht verbunden")).toBeInTheDocument();
+  expect(c.getAllByRole("note")).toHaveLength(1);
+  expect(c.getAllByText("noch nicht verbunden")).toHaveLength(1);
+  expect(c.queryByRole("meter")).toBeNull();
+  expect(note).not.toHaveTextContent(/0\s*%/);
+});
+
+it("keeps measured quota windows and names only the missing windows", async () => {
+  feed([provider("zero", "Gemessene Null", { usage: usage("5-Stunden-Fenster", 0) })]);
+  render(<KontingenteScreen />);
+  const c = await card("Gemessene Null");
+  expect(c.getByRole("meter", { name: "5 h: 0 Prozent verbraucht" })).toHaveAttribute("aria-valuenow", "0");
+  const note = c.getByRole("note", { name: "Unbekannte Kontingentfenster" });
+  expect(note).toHaveTextContent("Woche, Monat");
+  expect(note).not.toHaveTextContent("5 h");
+  expect(c.getAllByText("noch nicht verbunden")).toHaveLength(1);
+});
