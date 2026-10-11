@@ -2,7 +2,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DevelopmentPlanPackage } from "../../../types";
-import { layoutPlan } from "./planGraph";
+import { layoutPlan } from "./planGraphModel";
 import { PlanGraph } from "./PlanGraph";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
