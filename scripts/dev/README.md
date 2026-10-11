@@ -161,6 +161,7 @@ npm run dev:start-check -- --observe-log .pa/worker-w2-03.log --since-sec 300
 | npm-Skript | Zweck | ändert etwas? |
 |---|---|---|
 | `dev:pr-status` | offene PRs als Kompakttabelle: Draft, Queue-Zustand (in Queue / bereit / wartet auf CI / rot / Konflikt / gesperrt / Draft), Labels, die drei Required Checks | nein |
+| `dev:brief-lint` | Brief oder PR-Text deterministisch prüfen; Exit 0 annehmbar, 2 Root/LLM nötig, 3 Nutzerentscheidung nötig (Vorrang) | nein |
 | `dev:erledigt-row` | aus PR-Nummer und Paket-ID die `docs/ERLEDIGT.md`-Zeile bauen (Datum = `mergedAt` UTC, 7-stelliger Merge-SHA, vom PR berührte `.pa/report_*.md`) und oben einfügen; idempotent, nur für gemergte PRs | nur mit `--apply` |
 | `dev:spec-close` | `.pa/task_<id>.md` auf `Status: historisch` setzen und die Zeile unter „Aktive Specs“ in `STAND.md` entfernen; danach `npm run hq` (oder `--hq`) | nur mit `--apply` |
 | `dev:hygiene` | read-only Bericht als Markdown: offene PRs > 24 h ohne Aktivität, Remote-Branches ohne PR, aktive Specs zu gemergten PRs, Pakete „in Arbeit“ (Spalte „Stand“ = `PR #n` in den Meilenstein-Tabellen von `docs/PLAN.md`) ohne offenen PR, ungetrackte Dateien im Hauptcheckout; `--strict` → Exit 1 bei Befunden | nein (nur `git fetch --prune`, abschaltbar mit `--no-fetch`) |
@@ -192,6 +193,19 @@ Verhalten an den Rändern (Review SETUP-08b):
   sauber“, nie „nicht geprüft“.
 - `pr-status.mjs` führt die drei Required Checks als Liste; ein Test vergleicht
   sie mit `.mergify.yml` (`check-success`) und den Job-Namen in `ci.yml`.
+
+### brief-lint
+
+`npm run dev:brief-lint -- <file> [--repo <dir>] [--json]` prüft Pflichtfelder,
+Operator, BASE-SHA (optional lokaler Git-Commit), FILES-Pfad, Naht, Größe ≤ 300
+und Test-Trailer. Felder stehen als `NAME: Wert` oder mit eingerückten bzw.
+Aufzählungs-Folgezeilen; `FILES (exclusive)` und `TIER/REVIEW` sind erlaubt.
+`--pr-body <file>` prüft Report, NICHT ABGEDECKT, Trailer und ausstehende Reviews.
+Freigabewörter (exportierte `APPROVAL_WORDS`) außerhalb NON-GOALS-Zeilen und
+Codeblöcken ergeben Exit 3, auch in Zitaten. Jeder Fund nennt Wort und Zeile.
+Die reinen Exporte `parseBrief(text)` und `lint(text, {prBody, baseExists})`
+lesen nichts; `lint` liefert `{exit, reasons, approvals}` wie `--json`.
+Keine Inhaltsbewertung, keine Modell-/Netzaufrufe; Aufruf-/Lesefehler ergeben 2.
 
 ### Beispiele
 
