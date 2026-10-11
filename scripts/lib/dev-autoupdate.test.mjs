@@ -110,6 +110,79 @@ function updateRunner({ installFails = false, restartFails = false, onList = () 
   };
 }
 
+test('removes the download folder after every run', t => {
+  const folder = fs.mkdtempSync(join(tmpdir(), 'dev-cleanup-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  fs.writeFileSync(join(folder, 'keep'), 'state');
+  for (const outcome of ['success', 'download', 'install', 'restart', 'busy', 'inventory', 'save']) {
+    const base = updateRunner({ installFails: outcome === 'install', restartFails: outcome === 'restart' });
+    let inventories = 0, download;
+    const run = (cmd, args) => {
+      if (args.includes('download')) {
+        download = args.at(-1);
+        assert.equal(fs.existsSync(download), true);
+        if (outcome === 'download') return { code: 19 };
+      }
+      if (args.at(-1).includes('ConvertTo-Json') && ++inventories === 2) {
+        if (outcome === 'inventory') return { code: 0, stdout: '{}' };
+        if (outcome === 'busy') return { code: 0, stdout: JSON.stringify([
+          { ProcessId: 20, ParentProcessId: 1, Name: 'projecta.exe', ExecutablePath: 'stable.exe' },
+        ]) };
+      }
+      return base(cmd, args);
+    };
+    const execute = () => update({}, { folder, run, save: () => { if (outcome === 'save') throw new Error('save failed'); } });
+    if (outcome === 'success') assert.equal(execute(), 'installed');
+    else if (outcome === 'busy') assert.equal(execute(), 'busy, retry next run');
+    else assert.throws(execute, /failed|inventory/);
+    assert.ok(download);
+    assert.equal(fs.existsSync(download), false, outcome);
+    assert.deepEqual(fs.readdirSync(folder), ['keep']);
+    assert.equal(fs.readFileSync(join(folder, 'keep'), 'utf8'), 'state');
+  }
+});
+
+test('refuses an artifact without exactly one installer', t => {
+  const folder = fs.mkdtempSync(join(tmpdir(), 'dev-artifact-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  for (const names of [[], ['ProjectA_1.2.3_x64-setup.exe'],
+    ['ProjectA Dev_1.2.3_x64-setup.exe', 'ProjectA Dev_1.2.3_arm64-setup.exe']]) {
+    const base = updateRunner();
+    const run = (cmd, args) => {
+      assert.equal(args.includes('/S') || args.at(-1).includes('CloseMainWindow'), false);
+      if (!args.includes('download')) return base(cmd, args);
+      for (const name of names) fs.writeFileSync(join(args.at(-1), name), 'fixture');
+      return { code: 0, stdout: '' };
+    };
+    assert.throws(() => update({}, { folder, run }), /expected exactly one Dev NSIS installer/);
+    assert.deepEqual(fs.readdirSync(folder), []);
+  }
+});
+
+test('refuses invalid inventories and unreadable app process paths', () => {
+  for (const inventory of [{}, [{ ProcessId: '10', ParentProcessId: 1 }],
+    [{ ProcessId: 10, ParentProcessId: null }], [{ ProcessId: 10, ParentProcessId: 1, Name: 'projecta.exe' }]]) {
+    const base = updateRunner();
+    const run = (cmd, args) => cmd === 'powershell.exe'
+      ? { code: 0, stdout: JSON.stringify(inventory) } : base(cmd, args);
+    assert.throws(() => update({}, { run }), /invalid process inventory|unreadable app process path/);
+  }
+});
+
+test('keeps a successful exit when the run log cannot be appended', t => {
+  const root = fs.mkdtempSync(join(tmpdir(), 'dev-run-log-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const env = { LOCALAPPDATA: root, APPDATA: root, USERPROFILE: root };
+  const folder = join(root, 'projecta-dev-autoupdate');
+  fs.mkdirSync(join(folder, 'runs.log'), { recursive: true });
+  let stderr = '';
+  t.mock.method(process.stderr, 'write', chunk => { stderr += chunk; return true; });
+  assert.equal(main({ env, platform: 'win32', run: updateRunner() }), 0);
+  assert.match(stderr, /runs\.log/);
+  assert.equal(JSON.parse(fs.readFileSync(join(folder, 'state.json'))).sha, 'a'.repeat(40));
+  assert.equal(fs.existsSync(join(folder, 'running.lock')), false);
+});
+
 test('reports a failed restart without masking the install result', t => {
   const folder = fs.mkdtempSync(join(tmpdir(), 'dev-restart-'));
   t.after(() => fs.rmSync(folder, { recursive: true, force: true }));

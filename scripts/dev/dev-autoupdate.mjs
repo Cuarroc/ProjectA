@@ -36,14 +36,14 @@ export function update(state, { run, folder, save = () => {} }) {
   if (latest.headSha === state.sha) return 'up to date';
   if (busy(processes(run))) return 'busy, retry next run';
   const download = fs.mkdtempSync(join(folder, 'download-'));
-  checked(run, 'gh', ['run', 'download', String(latest.databaseId), '--repo', repo, '--name', `projecta-dev-${latest.headSha.slice(0, 7)}`, '--dir', download]);
-  const installers = fs.readdirSync(download, { recursive: true }).filter(p => /^ProjectA[ _]Dev_.+_(?:x64|arm64|x86)-setup\.exe$/i.test(p.split(/[\\/]/).at(-1)));
-  if (installers.length !== 1) throw new StepError('expected exactly one Dev NSIS installer');
-  const current = processes(run);
-  if (busy(current)) return 'busy, retry next run';
   const closed = [];
   let installed = false;
   try {
+    checked(run, 'gh', ['run', 'download', String(latest.databaseId), '--repo', repo, '--name', `projecta-dev-${latest.headSha.slice(0, 7)}`, '--dir', download]);
+    const installers = fs.readdirSync(download, { recursive: true }).filter(p => /^ProjectA[ _]Dev_.+_(?:x64|arm64|x86)-setup\.exe$/i.test(p.split(/[\\/]/).at(-1)));
+    if (installers.length !== 1) throw new StepError('expected exactly one Dev NSIS installer');
+    const current = processes(run);
+    if (busy(current)) return 'busy, retry next run';
     for (const app of devApps(current)) {
       const exe = psQuote(app.ExecutablePath);
       // Recheck identity and children immediately before requesting a graceful close.
@@ -58,12 +58,16 @@ export function update(state, { run, folder, save = () => {} }) {
     save();
     installed = true;
   } finally {
-    let restartFailed = false;
-    for (const exe of closed) {
-      try { powershell(run, `Start-Process -FilePath ${psQuote(exe)}`); }
-      catch { restartFailed = true; }
+    try {
+      let restartFailed = false;
+      for (const exe of closed) {
+        try { powershell(run, `Start-Process -FilePath ${psQuote(exe)}`); }
+        catch { restartFailed = true; }
+      }
+      if (installed && restartFailed) throw new StepError('installed, restart failed');
+    } finally {
+      fs.rmSync(download, { recursive: true, force: true });
     }
-    if (installed && restartFailed) throw new StepError('installed, restart failed');
   }
   return 'installed';
 }
@@ -168,7 +172,8 @@ export function main({ env = process.env, platform = process.platform, run = mak
   } finally {
     if (lock !== undefined) { fs.closeSync(lock); fs.unlinkSync(join(folder, 'running.lock')); }
     const line = `${new Date().toISOString()} exit=${code} ${result}\n`;
-    try { if (folder) fs.appendFileSync(join(folder, 'runs.log'), line); } catch { code = 2; }
+    try { if (folder) fs.appendFileSync(join(folder, 'runs.log'), line); }
+    catch { process.stderr.write('Could not append runs.log\n'); }
     process.stdout.write(line);
   }
   return code;
