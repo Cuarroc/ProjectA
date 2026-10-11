@@ -7,8 +7,14 @@ import { isMain, makeRunner, runCli } from "../lib/dev-tools.mjs";
 const FIELDS = "headRefOid,isDraft,additions,deletions,files,body,statusCheckRollup,labels";
 const count = n => Number.isSafeInteger(n) && n >= 0;
 const lock = path => /(?:^|\/)package-lock\.json$|\.lock$/.test(path);
+const riskPredicates = [
+  function seam(path) { return /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store\.rs$|store\/|bin\/pa\.rs$)/i.test(path); },
+  function pty(path) { return /(?:^|[\/._-])pty(?:[\/._-]|$)/i.test(path); },
+  function migration(path) { return /(?:^|[\/._-])migrations?(?:[\/._-]|$)|\.sql$/i.test(path); },
+  function workflow(path) { return /^\.github\/workflows\//i.test(path); },
+];
 export function tierFor(paths) {
-  if (paths.some(p => /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store\.rs$|store\/|bin\/pa\.rs$)|pty|migration|\.sql$|^\.github\/workflows\//i.test(p))) return "A";
+  if (paths.some(path => riskPredicates.some(isRisk => isRisk(path)))) return "A";
   return paths.every(p => /\.(?:md|mdx|rst|txt)$|(?:^|\/)(?:tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(p)) ? "C" : "B";
 }
 export function familyFor(model) {
