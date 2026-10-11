@@ -197,8 +197,20 @@ use crate::store::{
     Worker, KIND_ORCHESTRATOR, KIND_QUEEN, KIND_SCOUT,
 };
 
-fn frontend_error_field(value: &str, _max_bytes: usize) -> String {
-    value.to_owned()
+fn frontend_error_field(value: &str, max_bytes: usize) -> String {
+    let mut field = String::new();
+    for ch in value.chars() {
+        let ch = if ch.is_control() || matches!(ch, '\u{2028}' | '\u{2029}') {
+            ' '
+        } else {
+            ch
+        };
+        if field.len() + ch.len_utf8() > max_bytes {
+            break;
+        }
+        field.push(ch);
+    }
+    field
 }
 
 #[tauri::command]

@@ -1,16 +1,19 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { installFrontendErrorHandlers, reportFrontendError } from "./reportFrontendError";
+let reportFrontendError: typeof import("./reportFrontendError").reportFrontendError;
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn().mockResolvedValue(undefined) }));
 let dispose: () => void;
 const prevent = (event: Event) => event.preventDefault();
-beforeEach(() => {
+beforeEach(async () => {
+  vi.resetModules();
+  const reporter = await import("./reportFrontendError");
+  reportFrontendError = reporter.reportFrontendError;
   vi.useFakeTimers();
   vi.setSystemTime(0);
   vi.mocked(invoke).mockClear();
   window.history.replaceState(null, "", "/?private=value#leitstand");
   window.addEventListener("error", prevent);
-  dispose = installFrontendErrorHandlers();
+  dispose = reporter.installFrontendErrorHandlers();
 });
 afterEach(() => { dispose(); window.removeEventListener("error", prevent); vi.useRealTimers(); });
 it("writes one log line per uncaught error", () => {
