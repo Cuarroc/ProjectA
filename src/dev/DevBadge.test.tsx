@@ -5,12 +5,31 @@ import { listFeatureFlags, isFeatureFlagEnabled, setFeatureFlagEnabled } from ".
 import { DevBadge } from "./DevBadge";
 
 vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: vi.fn() }));
+const info = vi.hoisted(() => ({ sha: "123456789abcdef", time: "2026-10-11T12:00:00.000Z" }));
+vi.mock("./buildInfo", () => ({ buildInfo: () => info }));
 beforeEach(() => {
   localStorage.clear();
+  info.sha = "123456789abcdef";
   vi.stubGlobal("__BUILD_SHA__", "123456789abcdef");
   vi.stubGlobal("__BUILD_TIME__", "2026-10-11T12:00:00.000Z");
 });
 afterEach(() => { vi.mocked(getIdentifier).mockReset(); vi.unstubAllGlobals(); });
+
+it("shows the build commit from build info", async () => {
+  info.sha = "fedcba987654321";
+  vi.mocked(getIdentifier).mockResolvedValue("com.projecta.dev");
+  render(<DevBadge />);
+  fireEvent.click(await screen.findByRole("button", { name: "DEV · fedcba9" }));
+  expect(screen.getByText("fedcba987654321")).toBeVisible();
+});
+
+it("localizes the local build fallback", async () => {
+  info.sha = "local";
+  vi.mocked(getIdentifier).mockResolvedValue("com.projecta.dev");
+  render(<DevBadge />);
+  fireEvent.click(await screen.findByRole("button", { name: "DEV · lokal" }));
+  expect(screen.getByText("lokal")).toBeVisible();
+});
 
 it("renders nothing outside the dev channel", async () => {
   for (const identifier of ["com.projecta.app", "com.projecta.dev.other", ""]) {
