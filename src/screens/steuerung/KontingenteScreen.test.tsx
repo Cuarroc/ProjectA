@@ -8,6 +8,7 @@ import { blockedNote, formatFreeAt, providerInitials, windowSlot } from "./konti
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: async () => "com.projecta.app" }));
 
 const now = () => Math.floor(Date.now() / 1000);
 const provider = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
@@ -119,6 +120,7 @@ it("refreshes the overview on 'Jetzt prüfen' and marks the placeholders for rul
   for (const name of ["Failover-Regeln", "Failover-Protokoll"]) {
     const section = screen.getByRole("region", { name });
     expect(within(section).getByText("noch nicht verbunden")).toBeInTheDocument();
+    expect(within(section).queryByText(/V2-/)).toBeNull();
   }
 });
 

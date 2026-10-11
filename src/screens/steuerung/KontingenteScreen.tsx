@@ -4,6 +4,7 @@ import "../../design/inputs/inputs.css";
 import { Button } from "../../design/controls/Button";
 import { Chip } from "../../design/controls/Chip";
 import { HonestState } from "../../design/data/HonestState";
+import { DevNote } from "../../design/data/DevNote";
 import { Avatar } from "../../design/inputs/Avatar";
 import { Lamp, type LampState } from "../../design/inputs/Lamp";
 import { Meter } from "../../design/inputs/Meter";
@@ -68,7 +69,7 @@ function Placeholder({ id, title, follow }: { id: string; title: string; follow:
     <section className="g-glass kt-pane" aria-labelledby={id}>
       <h2 id={id}>{title}</h2>
       <HonestState kind="offline" title={T.notConnected} />
-      <p className="kt-note">{follow}</p>
+      <DevNote className="kt-note">{follow}</DevNote>
     </section>
   );
 }
