@@ -1,10 +1,10 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 
 import App from "../../App";
@@ -27,11 +27,90 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Glass shell mount behind D1", () => {
+  it("switching to the tools tab keeps the shell mounted", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand";
+    render(<App />);
+    await act(async () => { await vi.dynamicImportSettled(); });
+    const header = screen.getByRole("banner");
+    expect(header).toBeVisible();
+    // The App's lazy tools tabs have never rendered: observe the pending import.
+    fireEvent.click(screen.getByRole("link", { name: "Werkzeuge" }));
+    act(() => {
+      window.location.hash = "#/leitstand/werkzeuge";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(header).toBeInTheDocument();
+    expect(header).toBeVisible();
+    await act(async () => { await vi.dynamicImportSettled(); });
+    expect(screen.getByRole("banner")).toBe(header);
+    expect(screen.getByRole("link", { name: "Werkzeuge" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("orchestrator draft survives switching tabs", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/werkzeuge";
+    const fallback = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "list_projects") return Promise.resolve([{
+        id: "project-sample", name: "Sample", repoPath: "fixture-repo", createdAt: 1,
+        githubRemote: false, maxWorkers: null, testCommand: null,
+      }]);
+      if (command === "list_workers") return Promise.resolve([{
+        id: "worker-sample", projectId: "project-sample", task: "Inspect sample",
+        profileId: "sample", branch: "sample", worktreePath: "fixture-worktree",
+        sessionId: "session-sample", status: "running", kind: "worker",
+        spawnedBy: null, pausedReason: null, createdAt: 1,
+      }]);
+      return fallback(command);
+    });
+    const { container } = render(<App />);
+    // Finish the lazy shell import before starting the DOM query timeout under coverage.
+    await act(async () => { await vi.dynamicImportSettled(); });
+    expect(await screen.findByRole("link", { name: "Werkzeuge" })).toHaveAttribute("aria-current", "page");
+    const sidebar = await screen.findByRole("complementary", { name: "Projekte und Panels" });
+    fireEvent.click(within(sidebar).getByRole("switch", { name: "Orchestrator" }));
+    const draft = within(sidebar).getByRole("textbox", { name: "Prompt für den Orchestrator" });
+    fireEvent.change(draft, { target: { value: "Keep this unfinished prompt" } });
+    expect(within(sidebar).getByRole("heading", { name: "Workers" })).toBeInTheDocument();
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Archivieren" }));
+
+    for (const tab of ["Haupt", "Klassisch"]) {
+      fireEvent.click(within(screen.getByRole("navigation", { name: "Ansichten" })).getByRole("link", { name: tab }));
+      await waitFor(() => expect(sidebar).not.toBeVisible());
+      expect(sidebar.closest("[hidden]")).not.toBeNull();
+      expect(draft).toBeInTheDocument();
+      fireEvent.click(await screen.findByRole("link", { name: "Werkzeuge" }));
+      await waitFor(() => expect(sidebar).toBeVisible());
+      expect(screen.getByRole("textbox", { name: "Prompt für den Orchestrator" })).toBe(draft);
+      expect(draft).toHaveValue("Keep this unfinished prompt");
+      expect(within(sidebar).getByRole("button", { name: "Ja, endgültig archivieren" })).toBeInTheDocument();
+    }
+
+    // Opening a worker must return to its terminal even if Agents was already selected.
+    for (let visit = 0; visit < 2; visit++) {
+      fireEvent.click(within(sidebar).getByRole("button", { name: /Inspect sample/ }));
+      await waitFor(() => expect(window.location.hash).toBe("#/leitstand/klassisch"));
+      expect(await screen.findByRole("tab", { name: "Inspect sample" })).toHaveAttribute("aria-selected", "true");
+      const session = container.querySelector('[title$=" — session-sample"]');
+      expect(session).not.toBeNull();
+      await go("#/leitstand");
+      expect(session).toBeInTheDocument();
+      await go("#/leitstand/werkzeuge");
+      expect(container.querySelector('[title$=" — session-sample"]')).toBe(session);
+      expect(draft).toHaveValue("Keep this unfinished prompt");
+    }
+    expect(mocks.invoke.mock.calls.some(([command]) => command === "kill_pty")).toBe(false);
+    expect(mocks.invoke.mock.calls.some(([command]) => command === "spawn_pty")).toBe(false);
+  });
+
   it("renders the old app alone while the switch is off", async () => {
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     expect(container.querySelector(".g-shell")).toBeNull();
     expect(container.querySelector(".g-mount")).toBeNull();
+    expect(screen.getByRole("complementary", { name: "Projekte und Panels" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Werkzeuge" })).toBeNull();
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
 
