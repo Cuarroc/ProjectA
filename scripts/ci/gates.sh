@@ -77,6 +77,8 @@ GATES=(
   # sync with .mergify.yml, the Windows job guarded against running its lane
   # on Linux, red-first sharing the linux setup.
   "ci-shape|linux|.|bash scripts/ci/ci-shape.sh"
+  # CI-SEC-01: no secret in a job that runs PR code (allowlist: main-red).
+  "pr-secrets|linux,release|.|bash scripts/ci/pr-secrets.sh"
   # Every tool a release-lane gate needs is installed by the composite both
   # release.yml jobs use; the dry-run job can neither sign nor publish.
   "release-shape|linux,release|.|bash scripts/ci/release-shape.sh"
@@ -85,7 +87,7 @@ GATES=(
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-dev-build-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh"
+  "selftest-gates|linux|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-dev-build-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh && bash scripts/test-pr-secrets.sh"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
