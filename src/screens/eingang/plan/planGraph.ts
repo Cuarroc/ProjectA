@@ -1,7 +1,7 @@
 import type { DevelopmentPlanPackage } from "../../../types";
 
-/** `unknown`: dependency ids that name no live package; they never raise the Ebene. */
-export interface PlanNode { id: string; title: string; dependencyIds: string[]; noNewDispatch: boolean; unknown: string[] }
+/** `unknown`: dependency ids that name no package at all, `removedDeps`: ids of tombstoned packages; neither raises the Ebene. */
+export interface PlanNode { id: string; title: string; dependencyIds: string[]; noNewDispatch: boolean; unknown: string[]; removedDeps: string[] }
 
 /** `levels[n]` = Ebene n (sorted by id); `cycle` has no Ebene; `critical` = longest chain, empty below two packages. */
 export interface PlanLayout { levels: PlanNode[][]; cycle: PlanNode[]; critical: string[]; removed: number }
@@ -11,15 +11,18 @@ const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 /** Pure layout of a plan projection: Ebenen, cycles and the critical path. Tombstones are counted, never placed. */
 export function layoutPlan(packages: readonly DevelopmentPlanPackage[]): PlanLayout {
   const live = new Map(packages.filter((p) => !p.removed).map((p) => [p.packageId, p]));
-  const known = (id: string) => [...new Set(live.get(id)!.dependencyIds)].filter((d) => live.has(d));
+  const dead = new Set(packages.filter((p) => p.removed).map((p) => p.packageId));
+  const edges = new Map([...live].map(([id, p]) => [id, [...new Set(p.dependencyIds)].filter((d) => live.has(d))]));
+  const known = (id: string) => edges.get(id)!;
   const nodes = new Map<string, PlanNode>([...live].map(([id, p]) => [id, {
     id, title: p.title, dependencyIds: p.dependencyIds, noNewDispatch: p.noNewDispatch,
-    unknown: [...new Set(p.dependencyIds)].filter((d) => !live.has(d)),
+    unknown: [...new Set(p.dependencyIds)].filter((d) => !live.has(d) && !dead.has(d)),
+    removedDeps: [...new Set(p.dependencyIds)].filter((d) => !live.has(d) && dead.has(d)),
   }]));
   // A package is on a cycle when it can reach itself along its dependencies.
   const onCycle = (id: string) => {
     const seen = new Set<string>();
-    const stack = known(id);
+    const stack = [...known(id)];
     while (stack.length) {
       const next = stack.pop()!;
       if (next === id) return true;

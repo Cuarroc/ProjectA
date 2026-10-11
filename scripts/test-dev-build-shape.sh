@@ -12,9 +12,10 @@ trap 'rm -rf "$tmp"' EXIT
 fails=0
 [ -f "$SHAPE" ] || { echo "FEHLER: $SHAPE fehlt"; exit 1; }
 
+# CHECK_PATH, when set, replaces PATH for the guard (forced tool failures).
 check() { # name expected(pass|fail) dev-build.yml overlay.json [reason-regex]
   local got
-  if bash "$SHAPE" "$3" "$4" > "$tmp/out" 2>&1; then got=pass; else got=fail; fi
+  if PATH="${CHECK_PATH:-$PATH}" bash "$SHAPE" "$3" "$4" > "$tmp/out" 2>&1; then got=pass; else got=fail; fi
   if [ "$got" != "$2" ]; then
     echo "FEHLER $1: $got, expected $2"
     sed 's/^/    /' "$tmp/out"
@@ -49,14 +50,38 @@ check workflow-with-write-all-permissions-fails fail \
   "$(wf 's/^    permissions:$/    permissions: write-all/;/^      contents: read$/d' writeall)" "$OV" "write permission"
 check workflow-with-write-key-outside-permissions-passes pass \
   "$(wf 's/^    timeout-minutes: 90$/&\n    env:\n      mode: write/' writeenv)" "$OV"
+check workflow-with-toplevel-write-all-fails fail \
+  "$(wf 's/^name: dev-build$/&\npermissions: write-all/' topwrite)" "$OV" "write permission"
+check workflow-with-permissions-text-in-run-script-passes pass \
+  "$(wf 's/^        run: echo "short=.*$/        run: |\n          echo hi\n          permissions:\n            contents: write/' runperm)" "$OV"
+check workflow-with-spaced-uses-key-fails fail \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    uses : .\/.github\/workflows\/release.yml/' spaceduses)" "$OV" "job-level uses"
+check workflow-with-quoted-uses-key-fails fail \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    "uses": .\/.github\/workflows\/release.yml/' quoteduses)" "$OV" "job-level uses"
+check workflow-with-flow-style-job-fails fail \
+  "$(wf 's/^  dev-build:$/  dev-build: {uses: .\/.github\/workflows\/release.yml}/' flowjob)" "$OV" "flow style"
+check workflow-reindented-to-four-spaces-passes pass \
+  "$(wf 's/^\( *\)/\1\1/' indent4)" "$OV"
+check workflow-reindented-with-job-level-uses-fails fail \
+  "$(wf 's/^\( *\)/\1\1/;s/^        timeout-minutes: 90$/&\n        uses: .\/.github\/workflows\/release.yml/' indent4uses)" "$OV" "job-level uses"
 check workflow-with-environment-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    environment: release/' env)" "$OV" "has an environment"
+check workflow-with-spaced-environment-key-fails fail \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    environment : release/' envspaced)" "$OV" "has an environment"
 check workflow-with-push-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/&\n  push:\n    branches: [main]/' push)" "$OV" "trigger other than workflow_dispatch"
 check workflow-with-schedule-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/&\n  schedule:\n    - cron: "0 3 * * *"/' sched)" "$OV" "trigger other than workflow_dispatch"
 check workflow-without-dispatch-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/  pull_request:/' nodispatch)" "$OV" "trigger other than workflow_dispatch"
+
+# Forced tool failures: the permissions extraction must fail closed, not pass.
+mkdir "$tmp/failbin" "$tmp/silentbin"
+printf '#!/bin/sh\nexit 1\n' > "$tmp/failbin/awk"
+printf '#!/bin/sh\nexit 0\n' > "$tmp/silentbin/awk"
+chmod +x "$tmp/failbin/awk" "$tmp/silentbin/awk"
+CHECK_PATH="$tmp/failbin:$PATH" check permissions-extraction-failure-fails fail "$WF" "$OV" "permissions extraction failed"
+CHECK_PATH="$tmp/silentbin:$PATH" check permissions-extraction-empty-output-fails fail "$WF" "$OV" "permissions extraction"
 
 check overlay-with-stable-identifier-fails fail \
   "$WF" "$(ov 's/"com\.projecta\.dev"/"com.projecta.app"/' stable)" "identifier must be"

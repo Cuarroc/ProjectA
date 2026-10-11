@@ -31,6 +31,12 @@ describe("layoutPlan", () => {
     expect(l.levels.map(([n]) => n.unknown)).toEqual([["ghost"], ["gone"]]);
   });
 
+  it("a dependency on a removed package is reported apart from an unknown one", () => {
+    const l = layoutPlan([pkg("a", ["t", "t", "ghost"]), pkg("t", [], { removed: true })]);
+    const [node] = l.levels[0];
+    expect([node.removedDeps, node.unknown, l.levels.length]).toEqual([["t"], ["ghost"], 1]);
+  });
+
   it("a dependency cycle terminates and marks every member", () => {
     const l = layoutPlan([pkg("a", ["c"]), pkg("b", ["a"]), pkg("c", ["b"]), pkg("s", ["s"]), pkg("x", ["a"])]);
     expect(ids(l.cycle)).toEqual(["a", "b", "c", "s"]);
@@ -68,6 +74,41 @@ describe("PlanGraph", () => {
     expect(screen.getByText(/docs\/plan\.md.*abcdef0.*7/)).toBeInTheDocument();
     expect(screen.getByText(/1 Paket entfernt/)).toBeInTheDocument();
     expect(mocks.invoke).toHaveBeenCalledWith("get_development_plan", { projectId: "p1", planId: "main", revision: null });
+  });
+
+  it("a removed predecessor reads Vorgänger entfernt instead of Unbekannter Vorgänger", async () => {
+    mocks.invoke.mockResolvedValue(response([pkg("a", ["t"]), pkg("t", [], { removed: true })]));
+    render(<PlanGraph projectId="p1" />);
+    const col = within(await screen.findByRole("region", { name: "Ebene 0" }));
+    expect(col.getByText("Vorgänger entfernt: t")).toBeInTheDocument();
+    expect(col.queryByText(/Unbekannter Vorgänger/)).toBeNull();
+  });
+
+  it("a dependency cycle gets its own Kreis column next to the levels", async () => {
+    mocks.invoke.mockResolvedValue(response([pkg("a", ["b"]), pkg("b", ["a"]), pkg("c")]));
+    render(<PlanGraph projectId="p1" />);
+    const cycle = within(await screen.findByRole("region", { name: "Kreis" }));
+    expect(cycle.getByText("Title a")).toBeInTheDocument();
+    expect(cycle.getByText("Title b")).toBeInTheDocument();
+    expect(cycle.queryByText("Title c")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Ebene 0" })).getByText("Title c")).toBeInTheDocument();
+  });
+
+  it("an empty package list says Plan ohne Pakete and draws no column", async () => {
+    mocks.invoke.mockResolvedValue(response([]));
+    render(<PlanGraph projectId="p1" />);
+    expect(await screen.findByText("Plan ohne Pakete")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Ebene|Kreis/ })).toBeNull();
+    expect(screen.queryByText(/entfernt/)).toBeNull();
+  });
+
+  it("a projection with only removed packages says Alle Pakete entfernt", async () => {
+    mocks.invoke.mockResolvedValue(response([pkg("t", [], { removed: true }), pkg("u", ["t"], { removed: true })]));
+    render(<PlanGraph projectId="p1" />);
+    expect(await screen.findByText("Alle Pakete entfernt")).toBeInTheDocument();
+    expect(screen.queryByText("Plan ohne Pakete")).toBeNull();
+    expect(screen.queryByRole("region", { name: /Ebene|Kreis/ })).toBeNull();
+    expect(screen.getByText(/2 Pakete entfernt/)).toBeInTheDocument();
   });
 
   it("an unimported plan shows Plan noch nicht eingelesen and no column", async () => {

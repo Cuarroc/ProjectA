@@ -12,5 +12,7 @@
 .bw-step > .bw-note, .bw-step > .g-st { grid-column: 2; justify-self: start; }
 .bw-msg, .bw-next { grid-column: 2; margin: 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
 .bw-next { color: var(--g-muted); font-size: 12px; }
+.bw-tech { grid-column: 2; color: var(--g-muted); font-size: 12px; }
+.bw-tech summary { cursor: pointer; }
 .bw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
 @media (max-width: 900px) { .bw-grid { grid-template-columns: minmax(0, 1fr); } }

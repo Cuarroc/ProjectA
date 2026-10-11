@@ -49,6 +49,7 @@ describe("quota formatting", () => {
     vi.setSystemTime(NOW);
   });
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -71,16 +72,24 @@ describe("quota formatting", () => {
   it("formatBlockedUntil shows the time only for today and adds the date otherwise", () => {
     const today = new Date(2026, 9, 2, 18, 30, 0);
     const tomorrow = new Date(2026, 9, 3, 9, 5, 0);
-    expect(formatBlockedUntil(unix(today))).toBe(
-      today.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
-    );
-    const later = formatBlockedUntil(unix(tomorrow));
-    expect(later).toContain(
-      tomorrow.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" }),
-    );
-    expect(later).toContain(
-      tomorrow.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
-    );
+    expect(formatBlockedUntil(unix(today))).toBe("18:30");
+    expect(formatBlockedUntil(unix(tomorrow))).toBe("03.10. 09:05");
+  });
+
+  it("formatBlockedUntil renders German 24-hour time even when the host locale is en-US", () => {
+    const original = Date.prototype.toLocaleTimeString;
+    vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(function (
+      this: Date,
+      _locale,
+      options,
+    ) {
+      return original.call(this, "en-US", options);
+    });
+    const evening = new Date(2026, 9, 2, 17, 5, 0);
+    const later = new Date(2026, 9, 3, 5, 31, 0);
+    expect(formatBlockedUntil(unix(evening))).toBe("17:05");
+    expect(formatBlockedUntil(unix(later))).toBe("03.10. 05:31");
+    expect(formatBlockedUntil(unix(later))).not.toMatch(/AM|PM/i);
   });
 
   it("formatRelativeUntil picks seconds, minutes, hours and days", () => {
