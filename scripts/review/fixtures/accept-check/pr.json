@@ -1,0 +1,1 @@
+{"headRefOid":"0123456789abcdef0123456789abcdef01234567","isDraft":false,"additions":20,"deletions":5,"files":[{"path":"src/example.ts","additions":20,"deletions":5}],"body":"Drei Sätze. Für den Nutzer. Zum Prüfen.\n\n## Report\nImplementation verified.\n\nNICHT ABGEDECKT: Windows\n","statusCheckRollup":[{"name":"linux","status":"COMPLETED","conclusion":"SUCCESS"}],"labels":[]}
