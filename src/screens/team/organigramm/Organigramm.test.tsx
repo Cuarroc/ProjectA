@@ -41,7 +41,9 @@ function backend(over: Record<string, unknown> = {}) {
 const nodeOf = (title: string) => screen.getByRole("heading", { name: title }).closest("li")!;
 
 describe("Organigramm", () => {
-  beforeEach(() => mocks.invoke.mockReset());
+  beforeEach(() => {
+    mocks.invoke.mockReset();
+  });
 
   it("agents hang under the coordinator that controls them", async () => {
     backend();
