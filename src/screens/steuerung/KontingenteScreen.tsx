@@ -19,14 +19,7 @@ import "./kontingente.css";
 const LAMP: Record<Provider["quotaState"], LampState> = { ok: "ok", blocked: "bad", unknown: "off" };
 
 function Bar({ row }: { row: WindowRow }) {
-  if (!isMeasured(row)) {
-    return (
-      <div className="kt-bar">
-        <span className="kt-k" title={row.label}>{row.label}</span>
-        <HonestState kind="offline" title={row.key === "other" ? T.noPercent : T.notConnected} />
-      </div>
-    );
-  }
+  if (!isMeasured(row)) return null;
   const reset = formatProviderResetsAt(row.resetsAt);
   return (
     <div className="kt-bar">
@@ -34,6 +27,26 @@ function Bar({ row }: { row: WindowRow }) {
       <Meter value={row.percent} tone={row.percent >= 95 ? "hot" : "neutral"} aria-label={T.meterLabel(row.label, row.percent)} />
       <span className="kt-pct">{T.percent(row.percent)}</span>
       <span className="kt-reset" title={reset ?? undefined}>{reset}</span>
+    </div>
+  );
+}
+
+export function QuotaWindows({ rows }: { rows: WindowRow[] }) {
+  const missing = rows.filter((row) => !isMeasured(row));
+  return (
+    <div className="kt-bars">
+      {rows.filter(isMeasured).map((row) => <Bar key={row.key} row={row} />)}
+      {missing.length > 0 && (
+        <div className="kt-bar kt-unknown" role="note" aria-label={T.unknownWindows}>
+          <span className="kt-k">
+            {missing.map((row, index) => {
+              const reset = formatProviderResetsAt(row.resetsAt);
+              return <span key={row.key}>{index > 0 && T.windowSeparator}<span>{row.label}</span>{reset && T.windowReset(reset)}</span>;
+            })}
+          </span>
+          <HonestState kind="offline" title={missing.some((row) => row.key === "other") ? T.noPercent : T.notConnected} />
+        </div>
+      )}
     </div>
   );
 }
@@ -53,7 +66,7 @@ function ProviderCard({ provider, quota, avatar, onProbe }: { provider: Provider
         <Chip><Lamp state={LAMP[state]} />{T.providerLamp[state]}</Chip>
       </div>
       {note && <p className="kt-note">{note}</p>}
-      <div className="kt-bars">{windowRows(provider).map((row) => <Bar key={row.key} row={row} />)}</div>
+      <QuotaWindows rows={windowRows(provider)} />
       {blocked && (
         <div className="kt-probe">
           <span>{T.probeHint}</span>
