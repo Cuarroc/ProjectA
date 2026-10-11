@@ -28,7 +28,9 @@ pub type Millis = u64;
 pub enum RunState {
     Running,
     /// The lease ran out but no exit was observed: the process may live on.
+    #[allow(dead_code)] // not fed by `api::watchdog_report` yet
     LeaseExpired,
+    #[allow(dead_code)] // not fed by `api::watchdog_report` yet
     Exited,
 }
 

@@ -19,10 +19,14 @@ const snapshot = (extra: Record<string, unknown> = {}) => ({
   diskAppBytes: null, diskFreeBytes: null, tokensIn: 0, tokensOut: 0, ...extra,
 });
 
-function backend(queue: unknown[], resources: unknown = snapshot()) {
+function backend(queue: unknown[], resources: unknown = snapshot(), watchdog: unknown = []) {
   mocks.invoke.mockImplementation(async (cmd: string) => {
     if (cmd === "list_queue") return queue;
     if (cmd === "get_resource_snapshot") return resources;
+    if (cmd === "watchdog_report") {
+      if (watchdog instanceof Error) throw watchdog.message;
+      return watchdog;
+    }
     throw new Error(`unexpected ${cmd}`);
   });
 }
@@ -74,14 +78,14 @@ describe("BetriebPanel", () => {
       const reads = () => mocks.invoke.mock.calls.length;
       await vi.advanceTimersByTimeAsync(0);
       const first = reads();
-      expect(first).toBe(2);
+      expect(first).toBe(3);
       await vi.advanceTimersByTimeAsync(9_999);
       expect(reads()).toBe(first);
       await vi.advanceTimersByTimeAsync(1);
-      expect(reads()).toBe(first + 2);
+      expect(reads()).toBe(first + 3);
       unmount();
       await vi.advanceTimersByTimeAsync(60_000);
-      expect(reads()).toBe(first + 2);
+      expect(reads()).toBe(first + 3);
     } finally {
       vi.useRealTimers();
     }
@@ -115,12 +119,29 @@ describe("BetriebPanel", () => {
     expect(await within(section("Startprüfung")).findByText("2 GB von 16 GB")).toBeInTheDocument();
   });
 
-  it("marks the watchdog as not connected and names its package", async () => {
+  it("shows a stalled run of the watchdog with its label and sentence", async () => {
+    backend([], snapshot(), [{ runId: "w1", label: "Fix the login", kind: "steht", sentence: "Steht seit 15 Minuten: keine Ausgabe, keine Änderung im Arbeitsbaum.", since: 1 }]);
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const dog = within(section("Wachhund"));
+    expect(await dog.findByText("Fix the login")).toBeInTheDocument();
+    expect(dog.getByText(/Steht seit 15 Minuten/)).toBeInTheDocument();
+    expect(dog.queryByText("Keine Auffälligkeiten")).toBeNull();
+  });
+
+  it("says there is nothing to see only after the watchdog read an empty list", async () => {
     backend([]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
-    const dog = section("Wachhund");
-    expect(within(dog).getByText("Wachhund noch nicht verbunden")).toBeInTheDocument();
-    expect(dog).toHaveTextContent("V2-B22");
+    const dog = within(section("Wachhund"));
+    expect(dog.getByText("Wird gelesen …")).toBeInTheDocument();
+    expect(await dog.findByText("Keine Auffälligkeiten")).toBeInTheDocument();
+  });
+
+  it("shows the core's error sentence and never the empty sentence when the watchdog fails", async () => {
+    backend([], snapshot(), new Error("Der Wachhund konnte die Läufe nicht lesen."));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const dog = within(section("Wachhund"));
+    expect(await dog.findByText("Der Wachhund konnte die Läufe nicht lesen.")).toBeInTheDocument();
+    expect(dog.queryByText("Keine Auffälligkeiten")).toBeNull();
   });
 
   it("has no button and invokes only read commands and never enqueue or dispatch", async () => {
@@ -130,6 +151,6 @@ describe("BetriebPanel", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     const commands = mocks.invoke.mock.calls.map(([cmd]) => cmd);
     expect(commands.length).toBeGreaterThan(0);
-    for (const cmd of commands) expect(["list_queue", "get_resource_snapshot"]).toContain(cmd);
+    for (const cmd of commands) expect(["list_queue", "get_resource_snapshot", "watchdog_report"]).toContain(cmd);
   });
 });

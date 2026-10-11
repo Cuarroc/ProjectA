@@ -689,6 +689,17 @@ else bad "janitor update-ref diagnostic missing for $k2_ref"; echo "$out"; fi
 while read -r r; do [ -n "$r" ] && git -C "$REPO" update-ref -d "$r" 2>/dev/null || true
 done < <(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/pa-review/pr-*')
 
+# 22. TOOL-MP-1: the prompt asks for two axes and carries the smell baseline.
+run bash "$RUN" --dry-run --models fake-a:cloud --out-dir "$tmp/smell"
+sp="$tmp/smell/review_prompt_${label}.md"
+if [ "$rc" -eq 0 ] && grep -q "Smell baseline" "$sp" 2>/dev/null \
+  && grep -q "^### Correctness / spec$" "$sp" 2>/dev/null \
+  && grep -q "^### Smells (judgement calls)$" "$sp" 2>/dev/null \
+  && grep -q "^## Output format$" "$sp" 2>/dev/null \
+  && grep -q "approve / approve with" "$sp" 2>/dev/null; then
+  ok "review prompt carries the smell baseline and both output headings"
+else bad "smell baseline or output headings missing in $sp (rc=$rc)"; echo "$out"; fi
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "test-review-local: alles gruen."

@@ -13,6 +13,8 @@ const FLAG_KEY = "projecta.settings.featureFlag.d1_neue_oberflaeche";
 const NOW = Math.floor(Date.now() / 1000);
 const worker = { id: "w1", projectId: "p1", task: "Fix the start block", profileId: "claude", branch: "claude/w1", worktreePath: "wt", sessionId: null, status: "running", createdAt: NOW - 600 };
 const question = { id: "q1", projectId: "p1", workerId: "w1", scope: "worker", question: "Cover only this case?", optionsJson: '["Only this case"]', status: "open", answer: null, createdAt: NOW - 240, expiresAt: null };
+/** The tab row of the Leitstand itself; the shell frame has its own "Haupt" link. */
+const tabs = () => within(screen.getByRole("navigation", { name: "Ansichten" }));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
 beforeEach(() => {
@@ -29,6 +31,8 @@ beforeEach(() => {
     if (command === "get_board_state") {
       return Promise.resolve({ cards: [{ worker, column: "needs_you", attention_reason: "Fragt", attention_code: "agent_reported", attention_grade: "blocking", pr_url: null }], coordinators: [] });
     }
+    if (command === "list_queue") return Promise.resolve([]);
+    if (command === "get_resource_snapshot") return Promise.resolve({ observedAt: 1, cpuPermille: null, ramProcessBytes: null, ramTotalBytes: null, diskAppBytes: null, diskFreeBytes: null, tokensIn: 0, tokensOut: 0 });
     if (command === "get_panic_notice") return Promise.resolve({ current: null, previous: null });
     if (command === "get_reason_catalog") return Promise.resolve([]);
     return new Promise(() => {});
@@ -87,6 +91,39 @@ describe("Leitstand route behind D1", () => {
     expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
     await go("#/leitstand");
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
+  });
+
+  it("renders the Betrieb panel at /leitstand/betrieb and marks its tab as the current one", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/betrieb";
+    const { container } = render(<App />);
+    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+    expect(tabs().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Haupt" })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
+    expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
+  });
+
+  it("reaches Betrieb from Haupt by its tab link and goes back", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    render(<App />);
+    await screen.findByRole("region", { name: "Agenten" });
+    expect(tabs().getByRole("link", { name: "Haupt" })).toHaveAttribute("aria-current", "page");
+    fireEvent.click(tabs().getByRole("link", { name: "Betrieb" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/leitstand/betrieb"));
+    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+    fireEvent.click(tabs().getByRole("link", { name: "Haupt" }));
+    expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
+  });
+
+  it("offers no Betrieb route while the switch is off", async () => {
+    window.location.hash = "#/leitstand/betrieb";
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
+    expect(container.querySelector(".g-mount")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Betrieb" })).toBeNull();
   });
 
   it("renders no new Leitstand while the switch is off", async () => {

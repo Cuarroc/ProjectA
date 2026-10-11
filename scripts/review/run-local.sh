@@ -395,6 +395,12 @@ You only see this prompt, not the repository.
 - Do not claim provider, model, effort, billing or token facts that were not
   observed.
 
+## Smell baseline: two axes and smells (adapted from mattpocock/skills \`code-review\`, MIT, © 2026 Matt Pocock)
+
+Report two axes separately and do not rerank across them:
+- **Correctness / spec**: bugs, missing or partial requirements of the brief, behaviour nobody asked for (scope creep), safety regressions. Severity high/medium/low.
+- **Smells** (always judgement calls, label as "possible <smell>", severity low unless it causes a bug; a documented repo rule overrides; skip what lint/fmt gates enforce): Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, Shotgun Surgery, Divergent Change, Speculative Generality, Message Chains, Middle Man, Refused Bequest — each with file:line and the one-line fix (rename / extract / move / bundle into a type / delete / inline).
+
 ## Commits
 
 $log_text
@@ -413,9 +419,15 @@ EOF
 
 ## Output format
 
-Findings, one per block: ID (F1, F2, ...), severity (high/medium/low),
-file:line, reason. End with a verdict line: approve / approve with
-conditions / reject.
+Group the findings under two headings, in this order, and write "none" under
+a heading without findings. Each finding is one block: ID (F1, F2, ...),
+severity (high/medium/low), file:line, reason.
+
+### Correctness / spec
+
+### Smells (judgement calls)
+
+End with a verdict line: approve / approve with conditions / reject.
 EOF
 } > "$prompt_file" || die 2 "kann $prompt_file nicht schreiben."
 
