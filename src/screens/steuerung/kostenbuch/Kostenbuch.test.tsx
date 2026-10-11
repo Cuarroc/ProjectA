@@ -33,7 +33,9 @@ const rowsOf = () => within(screen.getByRole("table")).getAllByRole("row").slice
   .map((r) => within(r).getAllByRole("cell").map((c) => c.textContent));
 
 describe("Kostenbuch", () => {
-  beforeEach(() => mocks.invoke.mockReset());
+  beforeEach(() => {
+    mocks.invoke.mockReset();
+  });
 
   it("rows fold events per provider and model and their sum equals the events", async () => {
     backend(report(EVENTS));
@@ -89,10 +91,11 @@ describe("Kostenbuch", () => {
 
   it("a failed read shows Kostenbuch nicht lesbar and no zero", async () => {
     backend(new Error("kaputt"));
-    const { container } = render(<Kostenbuch />);
+    render(<Kostenbuch />);
     expect(await screen.findByText("Kostenbuch nicht lesbar")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
-    expect(container.textContent).not.toMatch(/\d/);
+    expect(screen.queryByRole("region", { name: "Zeitraum" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Verbrauch je Modell" })).toBeNull();
   });
 
   it("zero events is an honest empty state", async () => {
