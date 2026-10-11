@@ -21,14 +21,12 @@ pub(crate) struct ExecutionRequest<'a> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct UnixSeconds(pub i64);
-
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Scope<'a> {
     pub content_hash: &'a str,
     pub target: &'a str,
     pub run_id: &'a str,
 }
-
 impl Scope<'_> {
     fn first_mismatch(&self, other: &Self) -> Result<(), Denial> {
         if self.content_hash != other.content_hash {
