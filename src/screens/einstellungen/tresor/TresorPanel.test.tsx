@@ -28,7 +28,11 @@ function backend(overview: unknown, presence: Presence = {}) {
   });
 }
 const section = (name: string) => screen.getByRole("region", { name });
-const row = (name: string) => within(screen.getByRole("row", { name: new RegExp(name) }));
+const rowOf = (name: string) => ({ name: new RegExp(name) });
+const row = (name: string) => ({
+  findByText: async (text: string) => within(await screen.findByRole("row", rowOf(name))).findByText(text),
+  getByText: (text: string) => within(screen.getByRole("row", rowOf(name))).getByText(text),
+});
 const calls = (cmd: string) => mocks.invoke.mock.calls.filter(([c]) => c === cmd);
 
 describe("TresorPanel", () => {

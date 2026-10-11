@@ -1,0 +1,24 @@
+// German words of the Tresor panel. Moves into the dictionary (src/i18n) once
+// the Einstellungen mount lands.
+export const T = {
+  vault: "Tresor",
+  vaultTable: "Anbieter und Zugang",
+  loading: "Wird gelesen …",
+  offline: "Tresor nicht lesbar",
+  offlineHint: "Der Kern antwortet gerade nicht.",
+  empty: "Keine Anbieter bekannt",
+  emptyHint: "Sobald der Kern einen Anbieter meldet, erscheint er hier.",
+  colProvider: "Anbieter",
+  colKind: "Art",
+  colAccess: "Zugang",
+  subscription: "Anmeldung über die CLI, kein Schlüssel im Tresor",
+  local: "kein Schlüssel nötig",
+  present: "Schlüssel hinterlegt",
+  absent: "kein Schlüssel hinterlegt",
+  checking: "wird geprüft",
+  unknown: "nicht prüfbar",
+  mcp: "MCP-Server",
+  mcpOffline: "MCP-Server noch nicht verbunden",
+  mcpHint: "Die Oberfläche bekommt diese Angabe noch nicht vom Kern.",
+  mcpPackage: "V2-B19 (noch nicht gebaut)",
+} as const;
