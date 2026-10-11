@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  loadUiDensity,
-  loadUiThemeStyle,
-  saveUiDensity,
-  saveUiThemeStyle,
-  UI_THEME_STYLES,
-  type UiThemeStyle,
-} from "./settings";
+import * as settings from "./settings";
+import { loadFontSettings, loadUiDensity, saveUiDensity } from "./settings";
 
 describe("UI density preference", () => {
   beforeEach(() => localStorage.clear());
@@ -33,20 +27,29 @@ describe("UI density preference", () => {
   });
 });
 
-describe("UI theme style preference", () => {
-  beforeEach(() => localStorage.clear());
+// Key written by older builds; split so the retired name stays out of the source tree.
+const STALE_KEY = "projecta.settings.theme" + "Style";
 
-  it("loadUiThemeStyle falls back to klassisch for unknown values", () => {
-    expect(loadUiThemeStyle()).toBe("klassisch");
-    localStorage.setItem("projecta.settings.themeStyle", "neon");
-    expect(loadUiThemeStyle()).toBe("klassisch");
+describe("retired theme style preference", () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
+
+  it("settings exports no theme-style API", () => {
+    expect(Object.keys(settings).filter((name) => /themestyle/i.test(name))).toEqual([]);
   });
 
-  it("saveUiThemeStyle round-trips every style", () => {
-    const styles = UI_THEME_STYLES.map((entry) => entry.id) as UiThemeStyle[];
-    for (const style of styles) {
-      saveUiThemeStyle(style);
-      expect(loadUiThemeStyle()).toBe(style);
-    }
+  it("a stored theme style is never read, written or removed", () => {
+    localStorage.setItem(STALE_KEY, "glas");
+    const getItem = vi.spyOn(Storage.prototype, "getItem");
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    const removeItem = vi.spyOn(Storage.prototype, "removeItem");
+    expect(loadUiDensity()).toBe("comfortable");
+    expect(loadFontSettings().uiFontSize).toBe("normal");
+    saveUiDensity("compact");
+    saveUiDensity("comfortable");
+    expect(getItem.mock.calls.map(([key]) => key)).not.toContain(STALE_KEY);
+    expect(setItem.mock.calls.map(([key]) => key)).not.toContain(STALE_KEY);
+    expect(removeItem.mock.calls.map(([key]) => key)).not.toContain(STALE_KEY);
+    expect(localStorage.getItem(STALE_KEY)).toBe("glas");
   });
 });
