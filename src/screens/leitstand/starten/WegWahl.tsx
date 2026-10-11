@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import "../../../design/glass.css";
+import "../../../design/inputs/inputs.css";
 import { HonestState } from "../../../design/data/HonestState";
 import { Avatar } from "../../../design/inputs/Avatar";
 import { Lamp, type LampState } from "../../../design/inputs/Lamp";
