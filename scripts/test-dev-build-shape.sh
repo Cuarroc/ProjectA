@@ -54,6 +54,8 @@ check workflow-with-toplevel-write-all-fails fail \
   "$(wf 's/^name: dev-build$/&\npermissions: write-all/' topwrite)" "$OV" "write permission"
 check workflow-with-permissions-text-in-run-script-passes pass \
   "$(wf 's/^        run: echo "short=.*$/        run: |\n          echo hi\n          permissions:\n            contents: write/' runperm)" "$OV"
+check workflow-with-environment-text-in-run-script-passes pass \
+  "$(wf 's/^        run: echo "short=.*$/        run: |\n          echo hi\n          environment: release/' runenv)" "$OV"
 check workflow-with-spaced-uses-key-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    uses : .\/.github\/workflows\/release.yml/' spaceduses)" "$OV" "job-level uses"
 check workflow-with-quoted-uses-key-fails fail \
@@ -68,6 +70,8 @@ check workflow-with-environment-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    environment: release/' env)" "$OV" "has an environment"
 check workflow-with-spaced-environment-key-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    environment : release/' envspaced)" "$OV" "has an environment"
+check workflow-with-quoted-job-environment-key-fails fail \
+  "$(wf 's/^    timeout-minutes: 90$/&\n    "environment": release/' envquoted)" "$OV" "has an environment"
 check workflow-with-push-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/&\n  push:\n    branches: [main]/' push)" "$OV" "trigger other than workflow_dispatch"
 check workflow-with-schedule-trigger-fails fail \
@@ -82,6 +86,10 @@ printf '#!/bin/sh\nexit 0\n' > "$tmp/silentbin/awk"
 chmod +x "$tmp/failbin/awk" "$tmp/silentbin/awk"
 CHECK_PATH="$tmp/failbin:$PATH" check permissions-extraction-failure-fails fail "$WF" "$OV" "permissions extraction failed"
 CHECK_PATH="$tmp/silentbin:$PATH" check permissions-extraction-empty-output-fails fail "$WF" "$OV" "permissions extraction"
+mkdir "$tmp/grepfailbin"
+printf '#!/bin/sh\nexit 2\n' > "$tmp/grepfailbin/grep"
+chmod +x "$tmp/grepfailbin/grep"
+CHECK_PATH="$tmp/grepfailbin:$PATH" check grep-tool-failure-fails fail "$WF" "$OV" "permissions extraction failed"
 
 check overlay-with-stable-identifier-fails fail \
   "$WF" "$(ov 's/"com\.projecta\.dev"/"com.projecta.app"/' stable)" "identifier must be"
