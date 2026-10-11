@@ -10,10 +10,10 @@ export function readActiveProjectId(): string | null {
   }
 }
 
-/** Stores the id and tells subscribers; a write that changes nothing stays silent. */
+/** Stores the id and tells subscribers; a write that changes nothing in a working storage stays silent. */
 export function writeActiveProjectId(id: string | null): void {
-  if (readActiveProjectId() === id) return;
   try {
+    if (localStorage.getItem(KEY) === id) return;
     if (id === null) localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, id);
   } catch {
