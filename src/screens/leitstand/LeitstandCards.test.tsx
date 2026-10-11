@@ -75,10 +75,11 @@ it("unchanged card data still receives new display props and action callbacks", 
   await waitFor(() => expect(nextChanged).toHaveBeenCalledTimes(1));
   expect(onChanged).not.toHaveBeenCalled();
 
+  view.rerender(<LeitstandCards {...props} />);
   const renamed = [{ ...profiles[0]!, name: "Renamed fixture" }];
   view.rerender(<LeitstandCards {...props} profiles={renamed} />);
   expect(screen.getByRole("heading", { name: "Renamed fixture" })).toBeInTheDocument();
-  view.rerender(<LeitstandCards {...props} now={NOW + 60} />);
+  view.rerender(<LeitstandCards {...props} profiles={renamed} now={NOW + 60} />);
   expect(screen.getByText("seit 39 min")).toBeInTheDocument();
 });
 

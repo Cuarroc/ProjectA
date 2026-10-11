@@ -4,6 +4,6 @@
   "ceilings": {
     "mount": { "commits": 1, "cardRenders": 40 },
     "refresh": { "commits": 1, "cardRenders": 1 },
-    "filter": { "commits": 1, "cardRenders": 19 }
+    "filter": { "commits": 1, "cardRenders": 0 }
   }
 }

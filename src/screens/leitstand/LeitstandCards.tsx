@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import "../../design/controls/controls.css";
 import "../../design/glass.css";
 import { FilterChip } from "../../design/controls/FilterChip";
@@ -11,6 +11,9 @@ import type { AgentProfile, BoardCard } from "../../types";
 import { AgentCard } from "./AgentCard";
 import { agentCards, cardForm, countByFilter, type Filter } from "./leitstand";
 import "./leitstand.css";
+
+// Compare every prop, including callbacks and time, so changed inputs stay visible.
+const MemoizedAgentCard = memo(AgentCard);
 
 export interface LeitstandCardsProps {
   /** `cards` of `useBoard` / `get_board_state`, coordinators included. */
@@ -42,7 +45,7 @@ export function LeitstandCards({ cards, profiles, now, onOpen, onChanged }: Leit
         ))}
       </div>
       <section className="ls-agents" aria-label={t("leitstand.agents")}>
-        {shown.map((c) => <AgentCard key={c.worker.id} card={c} name={nameOf(c)} now={now} onOpen={onOpen} onChanged={onChanged} />)}
+        {shown.map((c) => <MemoizedAgentCard key={c.worker.id} card={c} name={nameOf(c)} now={now} onOpen={onOpen} onChanged={onChanged} />)}
         {shown.length === 0 && (
           <div className="ls-none"><p>{t("leitstand.none")}</p><Button size="sm" variant="tint" onClick={() => setFilter("all")}>{t("leitstand.showAll")}</Button></div>
         )}
