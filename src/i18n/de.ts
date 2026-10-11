@@ -79,6 +79,7 @@ export const de = {
   "leitstand.emptyTitle": "Noch kein Agent",
   "leitstand.emptyHint": "Sobald ein Agent läuft, erscheint hier seine Karte.",
   "leitstand.proofTitle": "Beweis nicht verbunden",
+  "leitstand.modelReported": "{model} · gemeldet vom Agenten",
   "leitstand.open": "Öffnen",
   "leitstand.openLabel": "{name} öffnen",
   "leitstand.restart": "Neu starten",

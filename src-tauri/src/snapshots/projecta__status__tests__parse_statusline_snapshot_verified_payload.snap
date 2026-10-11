@@ -34,5 +34,8 @@ StatusLineUsage {
             ),
         },
     ),
+    model: Some(
+        "Opus 5",
+    ),
     observed_at: 42,
 }

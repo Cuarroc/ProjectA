@@ -679,6 +679,7 @@ mod tests {
                 percent: Some(percent),
                 resets_at,
             }),
+            model: None,
             observed_at: 1,
         }
     }
