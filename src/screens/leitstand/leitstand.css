@@ -20,6 +20,8 @@
 .ls-foot .g-btn { margin-left: auto; }
 .ls-none { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; color: var(--g-muted); font-size: 13px; }
 .ls-none p { margin: 0; }
-.ls-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.ls-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.ls-acts .g-btn { flex: 1 1 auto; min-width: 0; }
+.ls-acts .g-btn--ghost { border-color: var(--g-line); }
 .ls-ask { margin: 0; flex: 1 1 100%; font-size: 12px; line-height: 1.4; color: var(--g-ink2); }
 .ls-err { margin: 0; padding: 6px 10px; border: 1px solid var(--g-danger-line); border-radius: 8px; background: var(--g-bad-bg); color: var(--g-bad); font-size: 12px; line-height: 1.4; }
