@@ -40,8 +40,9 @@ describe("layoutPlan", () => {
   });
 
   it("the critical path is the longest chain with a stable tie break", () => {
-    const l = layoutPlan([pkg("z"), pkg("m", ["z"]), pkg("y"), pkg("n", ["y"]), pkg("solo")]);
-    expect(l.critical).toEqual(["y", "n"]);
+    const l = layoutPlan([pkg("n", ["y"]), pkg("y"), pkg("m", ["z"]), pkg("z"), pkg("solo")]);
+    expect(l.critical).toEqual(["z", "m"]);
+    expect(layoutPlan([pkg("d", ["c", "b"]), pkg("c"), pkg("b")]).critical).toEqual(["b", "d"]);
     expect(layoutPlan([pkg("only"), pkg("other")]).critical).toEqual([]);
   });
 
@@ -67,9 +68,9 @@ describe("PlanGraph", () => {
     expect(first.getAllByText("kritischer Pfad")).toHaveLength(1);
     const second = within(screen.getByRole("region", { name: "Ebene 1" }));
     expect(second.getByText("kein neuer Start")).toBeInTheDocument();
-    expect(second.getByText(/ghost/)).toBeInTheDocument();
+    expect(second.getByText("Unbekannter Vorgänger: ghost")).toBeInTheDocument();
     expect(screen.getByText(/docs\/plan\.md.*abcdef0.*7/)).toBeInTheDocument();
-    expect(screen.getByText(/1 entfernt/)).toBeInTheDocument();
+    expect(screen.getByText(/1 Paket entfernt/)).toBeInTheDocument();
     expect(mocks.invoke).toHaveBeenCalledWith("get_development_plan", { projectId: "p1", planId: "main", revision: null });
   });
 
