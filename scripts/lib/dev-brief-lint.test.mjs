@@ -28,6 +28,27 @@ test("approval word outside non-goals exits 3", () => {
   assert.deepEqual(r.approvals, [{ word: "Secret", line: 1 }]);
   assert.ok(r.reasons.length > 0);
 });
+test("approval word in a non-goals continuation line does not exit 3", () => {
+  for (const prefix of ["- ", "* ", "  "]) {
+    const text = brief.replace(/^NON-GOALS:.*$/m, `NON-GOALS:\n${prefix}install\n${prefix}delete`);
+    assert.deepEqual(lint(text), { exit: 0, reasons: [], approvals: [] });
+  }
+  for (const following of ["GOAL: Secret", "\n- Secret", "Secret", "No-Test: Secret"]) {
+    const text = brief.replace(/^NON-GOALS:.*$/m, `NON-GOALS:\n- install\n${following}`);
+    assert.deepEqual(lint(text).approvals, [{ word: "Secret", line: following.startsWith("\n") ? 6 : 5 }]);
+  }
+});
+test("trailer inside a fenced code block in a pr body is ignored", () => {
+  for (const fence of ["```", "~~~"]) {
+    for (const word of ["Test-First", "Regression-For", "No-Test"]) {
+      const example = `${fence}text\n${word}: example\n${fence}\n`;
+      assert.deepEqual(lint(example + pr, { prBody: true }), { exit: 0, reasons: [], approvals: [] });
+      const outside = lint(`${example}${word}: example\n${pr}`, { prBody: true });
+      assert.equal(outside.exit, 2);
+      assert.deepEqual(outside.reasons, ["Zeile 4: Commit-Trailer im PR-Text"]);
+    }
+  }
+});
 test("pr body line starting with a trailer word exits 2", () => {
   for (const word of ["Test-First", "Regression-For", "No-Test"]) {
     const r = lint(`${word}: example\n${pr}`, { prBody: true });
