@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "../../../design/glass.css";
+import "../../../design/controls/controls.css";
 import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
 import { KeyValue } from "../../../design/data/KeyValue";
