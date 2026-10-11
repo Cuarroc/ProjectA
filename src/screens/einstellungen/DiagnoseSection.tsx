@@ -16,14 +16,16 @@ import { T } from "./texts";
 type Read<V> = { s: "loading" } | { s: "ok"; v: V } | { s: "off" };
 
 const LOADING: Read<never> = { s: "loading" };
+const RESULT_MS = 4000;
 
 /** Same IPC as the classic DiagnosticsPanel; every read fails on its own, so one gap never blanks the rest. */
 export function DiagnoseSection() {
   const [path, setPath] = useState<Read<string>>(LOADING);
   const [crash, setCrash] = useState<Read<string | null>>(LOADING);
   const [catalog, setCatalog] = useState<Read<ReasonExplanation[]>>(LOADING);
-  const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
-  const [exp, setExp] = useState<"idle" | "busy" | "saved">("idle");
+  /** Result of the LAST copy/export action only; a new action replaces it and it fades after RESULT_MS. */
+  const [result, setResult] = useState<"copied" | "failed" | "saved" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,14 +41,28 @@ export function DiagnoseSection() {
     return () => { live = false; };
   }, []);
 
+  useEffect(() => {
+    if (!result) return;
+    const timer = setTimeout(() => setResult(null), RESULT_MS);
+    return () => clearTimeout(timer);
+  }, [result]);
+
   const pathText = path.s === "ok" ? path.v : null;
   const copyPath = () => {
     if (!pathText) return;
-    navigator.clipboard.writeText(pathText).then(() => setCopy("copied"), () => setCopy("failed"));
+    setResult(null);
+    // No clipboard (insecure context, old webview) is the same outcome as a refusal: copy failed.
+    const write = navigator.clipboard?.writeText(pathText);
+    if (!write) {
+      setResult("failed");
+      return;
+    }
+    write.then(() => setResult("copied"), () => setResult("failed"));
   };
   const reveal = () => revealLogPath().then(() => setError(null), (e: unknown) => setError(describeError(e)));
   const download = async () => {
-    setExp("busy");
+    setBusy(true);
+    setResult(null);
     try {
       const url = URL.createObjectURL(new Blob([await exportDiagnosis()], { type: "application/json" }));
       const link = document.createElement("a");
@@ -54,11 +70,12 @@ export function DiagnoseSection() {
       link.download = "projecta-diagnosis.json";
       link.click();
       URL.revokeObjectURL(url);
-      setExp("saved");
+      setResult("saved");
       setError(null);
     } catch (e) {
-      setExp("idle");
       setError(describeError(e));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -74,13 +91,13 @@ export function DiagnoseSection() {
       <p className="es-val">{T.logPath}</p>
       <p className="es-path" data-testid="log-path">{path.s === "off" ? T.diagOff : (pathText ?? "…")}</p>
       <div className="es-row">
-        <Button size="sm" disabled={!pathText} onClick={copyPath}>{copy === "copied" ? T.copied : T.copy}</Button>
+        <Button size="sm" disabled={!pathText} onClick={copyPath}>{result === "copied" ? T.copied : T.copy}</Button>
         <Button size="sm" disabled={!pathText} onClick={() => void reveal()}>{T.reveal}</Button>
-        <Button size="sm" variant="tint" disabled={exp === "busy"} onClick={() => void download()}>
-          {exp === "busy" ? T.exporting : T.export}
+        <Button size="sm" variant="tint" disabled={busy} onClick={() => void download()}>
+          {busy ? T.exporting : T.export}
         </Button>
       </div>
-      <p className="es-note" role="status">{copy === "failed" ? T.copyFailed : exp === "saved" ? T.exported : ""}</p>
+      <p className="es-note" role="status">{result === "failed" ? T.copyFailed : result === "saved" ? T.exported : ""}</p>
       {error ? <p className="es-err" role="alert">{error}</p> : null}
       {catalog.s === "off" ? <p className="es-note">{T.whyOff}</p> : null}
       {catalog.s === "loading" ? <p className="es-note">…</p> : null}

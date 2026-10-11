@@ -168,6 +168,7 @@ describe("DiagnoseSection actions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Diagnosepaket exportieren" }));
     expect(screen.getByRole("button", { name: "Pfad kopieren" })).toBeInTheDocument();
     await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole("alert")).toHaveTextContent("disk full");
   });
 
   it("reveals the log folder and shows a refusal as an alert", async () => {
