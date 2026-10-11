@@ -56,13 +56,40 @@ it("buttons are disabled with a busy label while a call runs", async () => {
   vi.mocked(respawnWorker).mockReturnValue(call.promise);
   view("exited");
   fireEvent.click(screen.getByRole("button", { name: "Claude Code neu starten" }));
-  const busy = await screen.findByRole("button", { name: /Startet/ });
+  const busy = await screen.findByRole("button", { name: "Claude Code neu starten" });
   expect(busy).toBeDisabled();
+  expect(busy).toHaveTextContent(/Startet/);
   expect(screen.getByRole("button", { name: "Claude Code öffnen" })).toBeEnabled();
   fireEvent.click(busy);
   expect(respawnWorker).toHaveBeenCalledTimes(1);
   call.resolve({} as Worker);
   await waitFor(() => expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeEnabled());
+});
+
+it("a busy button keeps its accessible name and sets aria-busy", async () => {
+  const call = pending<Worker>();
+  vi.mocked(archiveWorker).mockReturnValue(call.promise);
+  view("running");
+  const idle = screen.getByRole("button", { name: "Claude Code archivieren" });
+  expect(idle).not.toHaveAttribute("aria-busy");
+  fireEvent.click(idle);
+  fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
+  const busy = await screen.findByRole("button", { name: "Claude Code archivieren" });
+  expect(busy).toHaveAttribute("aria-busy", "true");
+  expect(busy).toBeDisabled();
+  call.resolve({} as Worker);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Claude Code archivieren" })).not.toHaveAttribute("aria-busy"));
+});
+
+it("reopening the archive confirmation clears the previous error", async () => {
+  vi.mocked(archiveWorker).mockRejectedValue(new Error("boom"));
+  view("running");
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  expect(screen.getByText(/Der Arbeitsbaum bleibt/)).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 it("a rejected call shows a German sentence in the card and the button works again", async () => {
