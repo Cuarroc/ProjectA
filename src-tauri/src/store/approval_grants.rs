@@ -23,7 +23,13 @@ impl Store {
             .map_err(storage)?;
         sqlx::query("INSERT INTO approval_grants(nonce,content_hash,target,run_id,expires_at) VALUES(?,?,?,?,?)")
             .bind(grant.nonce).bind(grant.scope.content_hash).bind(grant.scope.target)
-            .bind(grant.scope.run_id).bind(grant.expires_at.0).execute(&mut *tx).await.map_err(storage)?;
+            .bind(grant.scope.run_id).bind(grant.expires_at.0).execute(&mut *tx).await.map_err(|error| {
+                if error.as_database_error().is_some_and(|db| db.is_unique_violation()) {
+                    Denial::DuplicateNonce
+                } else {
+                    storage(error)
+                }
+            })?;
         tx.commit().await.map_err(storage)
     }
     /// Trusted time and request identity come from the caller; only a committed use yields a permit.
@@ -60,12 +66,13 @@ impl Store {
     }
 }
 async fn rollback_denial(tx: Transaction<'_, Sqlite>, denial: Denial) -> Denial {
-    match tx.rollback().await {
-        Ok(()) => denial,
-        Err(error) => storage(error),
+    if let Err(error) = tx.rollback().await {
+        storage(error);
     }
+    denial
 }
-fn storage(_: impl std::fmt::Display) -> Denial {
+fn storage(error: impl std::fmt::Display) -> Denial {
+    crate::logf!("approval_grants", "storage error: {error}");
     Denial::Storage
 }
 #[cfg(test)]
@@ -118,6 +125,8 @@ mod tests {
             store.consume(grant().nonce, &REQUEST).await,
             Err(AlreadyUsed)
         );
+        store.pool.close().await;
+        assert_eq!(store.record_grant(&grant()).await, Err(Denial::Storage));
     }
     #[tokio::test]
     async fn rollback_failure_preserves_original_denial() {
