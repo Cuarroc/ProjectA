@@ -1,0 +1,7 @@
+/* V2-S05b-1 Steuerung Kostenbuch. Not imported by the app yet. --g-* tokens only. */
+.kb-panel { font-family: var(--g-font-sans); display: flex; flex-direction: column; gap: 12px; }
+.kb-bar { display: flex; justify-content: flex-end; }
+.kb-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
+.kb-h { margin: 0; font: 600 14px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.kb-note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-muted); }
+.kb-frozen { margin: 0; font-size: 13px; line-height: 1.4; color: var(--g-ink); }
