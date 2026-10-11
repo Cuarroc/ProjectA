@@ -127,6 +127,7 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
         <h1 id="st-title">{T.title}</h1>
         <p>{T.lead}</p>
       </header>
+      <p className="st-notice" role="note" aria-label={T.noticeLabel}>{T.notice}</p>
       <ol className="st-steps" aria-label={T.steps}>
         {rows.map((r, i) => (
           <li key={r.id} className="g-glass st-step" aria-current={i === current ? "step" : undefined}>
@@ -146,7 +147,6 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
           </li>
         ))}
       </ol>
-      <p className="st-foot">{T.foot}</p>
     </section>
   );
 }
