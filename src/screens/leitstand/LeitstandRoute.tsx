@@ -7,10 +7,12 @@ import { HonestState } from "../../design/data/HonestState";
 import { useT } from "../../i18n/useT";
 import type { AgentProfile } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
+import { BetriebPanel } from "./betrieb/BetriebPanel";
 import { NeedsYou } from "./needs/NeedsYou";
 
 export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
+export const BETRIEB_PATH = "/leitstand/betrieb";
 
 /** Same key the old app writes; the Glass shell has no project picker yet. */
 const ACTIVE_PROJECT_KEY = "projecta.activeProjectId";
@@ -26,17 +28,18 @@ const PROJECT_POLL_MS = 500;
 /** Relative ages ("seit 4 min") move on minute scale. */
 const TICK_MS = 30_000;
 
-/** Haupt and Klassisch: the old Work view stays reachable until S01a-3 retires it. */
+/** Haupt, Betrieb and Klassisch: the old Work view stays reachable until S01a-3 retires it. */
 export function LeitstandTabs({ path }: { path: string }) {
   const t = useT();
   const tab = (target: string, label: string) => (
     <a href={`#${target}`} aria-current={target === path ? "page" : undefined}>{label}</a>
   );
-  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}</nav>;
+  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(BETRIEB_PATH, t("leitstand.tab.betrieb"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}</nav>;
 }
 
-/** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich", on the real board and question data. */
-export default function LeitstandRoute() {
+/** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the read-only Betrieb panel beside it. */
+export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) {
+  const betrieb = path === BETRIEB_PATH;
   const t = useT();
   const [projectId, setProjectId] = useState(readProjectId);
   useEffect(() => {
@@ -44,8 +47,8 @@ export default function LeitstandRoute() {
     const timer = window.setInterval(() => setProjectId(readProjectId()), PROJECT_POLL_MS);
     return () => window.clearInterval(timer);
   }, [projectId]);
-  const board = useBoard(projectId, true);
-  const questions = useQuestions(projectId, true);
+  const board = useBoard(projectId, !betrieb);
+  const questions = useQuestions(projectId, !betrieb);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [profilesFailed, setProfilesFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now() / 1000);
@@ -61,6 +64,16 @@ export default function LeitstandRoute() {
       window.clearInterval(timer);
     };
   }, []);
+
+  if (betrieb) {
+    return (
+      <div className="g-lr">
+        <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={BETRIEB_PATH} /></div>
+        {/* No project yet: the poll above picks it up as soon as the old app has chosen one. */}
+        {projectId !== null && <BetriebPanel projectId={projectId} profiles={profiles} />}
+      </div>
+    );
+  }
 
   return (
     <div className="g-lr">
