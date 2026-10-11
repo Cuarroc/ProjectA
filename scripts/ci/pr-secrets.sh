@@ -3,18 +3,8 @@
 # request can trigger. Such a job runs PR code, so any secret reference there
 # hands the secret to code from a fork or a branch.
 #
-# Rule (fail closed): in every workflow file with a `pull_request` (or
-# `pull_request_target`) trigger, ANY occurrence of the word `secrets` inside a
-# `${{ ... }}` expression fails the gate (`secrets.X`, `secrets['X']`,
-# `${{ secrets }}`, `toJSON(secrets)`, also in a comment-looking line or an
-# expression that spans lines), and so do `secrets: inherit` and a job-level
-# `uses:` (a reusable workflow call, which is how a workflow_call file becomes
-# reachable from a PR). Exception: the jobs in ALLOW, and only while the job's
-# one-line `if:` compares `github.ref == 'refs/heads/main'` (or
-# `github.ref_name == 'main'`) and has no `!=`, `||`, `!(` or `pull_request` -
-# `main-red` never executes PR code. A `jobs:` block this awk parser cannot
-# read (flow style, no job keys, no `jobs:`) is an error, never green. The
-# parser takes the indentation from the file; it is not tied to 2 spaces.
+# PR workflows reject expression secrets, inherited secrets and reusable calls.
+# Only plain main-only ALLOW jobs are exempt; unsupported syntax fails closed.
 # Also: test-insights.yml must wait for the workflow named in ci.yml.
 #
 # Selftest: scripts/test-pr-secrets.sh
@@ -29,17 +19,19 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
   [ -f "$f" ] || continue
   found=$((found + 1))
   # Only a PR-triggered workflow is in scope (top-level `on:` block).
-  if ! awk '
+  scope="$(awk '
       /^[[:space:]]*#/ { next }
       { sub(/[[:space:]]+#.*$/, "") }
+      /^["\047]?on["\047]?:/ { v = $0; sub(/^[^:]*:[[:space:]]*/, "", v)
+        if (v ~ /^[|>]/ || gsub(/\[/, "", v) != gsub(/\]/, "", v) || gsub(/\{/, "", v) != gsub(/\}/, "", v)) unparsable = 1 }
       /^["\047]?on["\047]?:[[:space:]]*$/ { in_on = 1; next }
       /^["\047]?on["\047]?:.*pull_request/ { found = 1 }
       in_on && /^[^[:space:]]/ { in_on = 0 }
       in_on && /pull_request/ { found = 1 }
-      END { exit(found ? 0 : 1) }
-    ' "$f"; then
-    continue
-  fi
+      END { print (unparsable ? 2 : found + 0) }
+    ' "$f")" || scope=2
+  if [ "$scope" = 0 ]; then continue; fi
+  if [ "$scope" != 1 ]; then echo "  $f: on: trigger cannot be parsed (multiline flow or block scalar)"; bad=$((bad + 1)); continue; fi
   # Hits are printed at the END as "job:line:text", once the job's `if:` is
   # known: an ALLOW job passes only with a plain main-only job `if:`.
   while IFS=: read -r job lineno text; do
@@ -47,11 +39,12 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
     bad=$((bad + 1))
   done < <(awk -v allow="$ALLOW" '
       function hit(j, t) { n++; hj[n] = j; hl[n] = NR; ht[n] = t }
-      # 1 if the word `secrets` (any case) sits inside a ${{ }} expression;
-      # `inx` carries an expression open across lines.
+      # Match expression secrets across lines; unmatched delimiters fail closed.
       function expr_hit(s,   h, p, q, seg) {
         while (length(s)) {
-          if (!inx) { p = index(s, "${{"); if (!p) break; s = substr(s, p + 3); inx = 1 }
+          if (!inx) { p = index(s, "${{"); q = index(s, "}}")
+            if (q && (!p || q < p)) malformed = 1
+            if (!p) break; s = substr(s, p + 3); inx = 1 }
           q = index(s, "}}")
           if (q) { seg = substr(s, 1, q - 1); s = substr(s, q + 2); inx = 0 } else { seg = s; s = "" }
           if (tolower(seg) ~ /(^|[^a-z0-9_-])secrets([^a-z0-9_-]|$)/) h = 1
@@ -90,6 +83,7 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
         if (e) { sub(/^[[:space:]]+/, "", t); hit(job, t) }
       }
       END {
+        if (inx || malformed) hit("(parse)", "unmatched expression delimiter")
         if (!sawjobs) hit("(parse)", "no top-level jobs: block")
         else if (unparsable || !njobs) hit("(parse)", "jobs: block cannot be parsed (flow style, sequence or no job key)")
         for (i = 1; i <= n; i++) {
