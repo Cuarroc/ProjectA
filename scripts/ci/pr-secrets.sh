@@ -5,6 +5,8 @@
 #
 # PR workflows reject expression secrets, inherited secrets and reusable calls.
 # Only plain main-only ALLOW jobs are exempt; unsupported syntax fails closed.
+# Bare }} before any ${{ is literal (JSON, jq, mustache). After an expression
+# has started, a stray }} fails closed; dangling ${{ always fails closed.
 # Also: test-insights.yml must wait for the workflow named in ci.yml.
 #
 # Selftest: scripts/test-pr-secrets.sh
@@ -23,6 +25,12 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
       /^[[:space:]]*#/ { next }
       { sub(/[[:space:]]+#.*$/, "") }
       /^["\047]?on["\047]?:/ { v = $0; sub(/^[^:]*:[[:space:]]*/, "", v)
+        sub(/[[:space:]]+$/, "", v)
+        if (v != "" && v !~ /^\[.*\]$/ && v !~ /^\{.*\}$/) {
+          scalar = v
+          if (scalar ~ /^"[^"]*"$/ || scalar ~ /^\047[^\047]*\047$/) scalar = substr(scalar, 2, length(scalar) - 2)
+          if (scalar !~ /^(branch_protection_rule|check_run|check_suite|create|delete|deployment|deployment_status|discussion|discussion_comment|fork|gollum|issue_comment|issues|label|merge_group|milestone|page_build|public|pull_request|pull_request_review|pull_request_review_comment|pull_request_target|push|registry_package|release|repository_dispatch|schedule|status|watch|workflow_call|workflow_dispatch|workflow_run)$/) unparsable = 1
+        }
         if (v ~ /^[|>]/ || gsub(/\[/, "", v) != gsub(/\]/, "", v) || gsub(/\{/, "", v) != gsub(/\}/, "", v)) unparsable = 1 }
       /^["\047]?on["\047]?:[[:space:]]*$/ { in_on = 1; next }
       /^["\047]?on["\047]?:.*pull_request/ { found = 1 }
@@ -31,20 +39,20 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
       END { print (unparsable ? 2 : found + 0) }
     ' "$f")" || scope=2
   if [ "$scope" = 0 ]; then continue; fi
-  if [ "$scope" != 1 ]; then echo "  $f: on: trigger cannot be parsed (multiline flow or block scalar)"; bad=$((bad + 1)); continue; fi
+  if [ "$scope" != 1 ]; then echo "  $f: on: trigger cannot be parsed (unsupported scalar, multiline flow or block scalar)"; bad=$((bad + 1)); continue; fi
   # Hits are printed at the END as "job:line:text", once the job's `if:` is
   # known: an ALLOW job passes only with a plain main-only job `if:`.
   while IFS=: read -r job lineno text; do
     echo "  $f:$lineno  job '$job'  $text"
     bad=$((bad + 1))
   done < <(awk -v allow="$ALLOW" '
-      function hit(j, t) { n++; hj[n] = j; hl[n] = NR; ht[n] = t }
+      function hit(j, t, line) { n++; hj[n] = j; hl[n] = line ? line : NR; ht[n] = t }
       # Match expression secrets across lines; unmatched delimiters fail closed.
       function expr_hit(s,   h, p, q, seg) {
         while (length(s)) {
           if (!inx) { p = index(s, "${{"); q = index(s, "}}")
-            if (q && (!p || q < p)) malformed = 1
-            if (!p) break; s = substr(s, p + 3); inx = 1 }
+            if (seen_expr && q && (!p || q < p)) hit("(parse)", "unmatched expression delimiter: " $0)
+            if (!p) break; s = substr(s, p + 3); inx = seen_expr = 1; xline = NR; xtext = $0 }
           q = index(s, "}}")
           if (q) { seg = substr(s, 1, q - 1); s = substr(s, q + 2); inx = 0 } else { seg = s; s = "" }
           if (tolower(seg) ~ /(^|[^a-z0-9_-])secrets([^a-z0-9_-]|$)/) h = 1
@@ -83,7 +91,7 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
         if (e) { sub(/^[[:space:]]+/, "", t); hit(job, t) }
       }
       END {
-        if (inx || malformed) hit("(parse)", "unmatched expression delimiter")
+        if (inx) hit("(parse)", "unmatched expression delimiter: " xtext, xline)
         if (!sawjobs) hit("(parse)", "no top-level jobs: block")
         else if (unparsable || !njobs) hit("(parse)", "jobs: block cannot be parsed (flow style, sequence or no job key)")
         for (i = 1; i <= n; i++) {

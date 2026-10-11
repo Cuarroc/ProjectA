@@ -8,12 +8,14 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 fails=0
 
-check() { # name expected_exit dir
-  local name="$1" want="$2" d="$3"
+check() { # name expected_exit dir [expected diagnostic]
+  local name="$1" want="$2" d="$3" diagnostic="${4:-}"
   bash scripts/ci/pr-secrets.sh "$d" > "$tmp/$name.log" 2>&1
   local got=$?
   if [ "$got" -ne "$want" ]; then
     echo "FAIL $name: exit $got, expected $want"; sed 's/^/    /' "$tmp/$name.log"; fails=$((fails + 1))
+  elif [ -n "$diagnostic" ] && ! grep -Fq -- "$diagnostic" "$tmp/$name.log"; then
+    echo "FAIL $name: missing diagnostic: $diagnostic"; cat "$tmp/$name.log"; fails=$((fails + 1))
   else
     echo "ok   $name (exit $got)"
   fi
@@ -162,6 +164,30 @@ check "folded-on-is-error"           1 "$(mk folded $'on: >\n  pull_request\njob
 check "literal-on-is-error"          1 "$(mk literal $'on: |\n  pull_request_target\njobs:\n  build:\n    steps: []')"
 check "quoted-expression-close-is-error" 1 "$(mk quoted $'on: [pull_request]\njobs:\n  build:\n    env:\n      T: ${{ format(\'}} {0}\', secrets.X) }}')"
 check "dangling-expression-is-error" 1 "$(mk dangling $'on: [pull_request]\njobs:\n  main-red:\n    if: github.ref_name == \'main\'\n    env:\n      T: ${{ github.ref')"
+# R1208-K2-1/4: literal closes before expressions are harmless; desync is not.
+check "literal-closes-without-expression-is-green" 0 "$(mk closes "$PR_ON
+jobs:
+  build:
+    steps:
+      - run: |
+          echo '{\"outer\": {\"inner\": 1}}'
+          jq '{outer: {inner: .}}'
+          echo '{{template}}'")"
+check "literal-close-before-expression-is-green" 0 "$(mk before "$PR_ON
+jobs:
+  build:
+    steps:
+      - run: echo '{{template}}' \${{ github.ref }}")"
+check "stray-close-reports-source-line" 1 "$(mk stray $'on: [pull_request]\njobs:\n  build:\n    steps:\n      - run: echo ${{ github.ref }}\n      - run: echo }}\n      - run: echo last')" \
+  "w.yml:6  job '(parse)'  unmatched expression delimiter:       - run: echo }}"
+check "quoted-close-reports-source-line" 1 "$(mk qline $'on: [pull_request]\njobs:\n  build:\n    steps:\n      - run: echo ${{ format(\'}} {0}\', github.ref) }}\n      - run: echo last')" \
+  "w.yml:5  job '(parse)'  unmatched expression delimiter:       - run: echo \${{ format('}} {0}', github.ref) }}"
+check "dangling-open-reports-source-line" 1 "$(mk openline $'on: [pull_request]\njobs:\n  build:\n    env:\n      COMPLETE: ${{ github.ref }}\n      OPEN: ${{ github.ref\n    steps:\n      - run: echo last')" \
+  "w.yml:6  job '(parse)'  unmatched expression delimiter:       OPEN: \${{ github.ref"
+# R1208-K2-3: unsupported scalar triggers must not silently escape inspection.
+check "alias-on-is-error" 1 "$(mk alias $'on: *alias\njobs:\n  build:\n    steps: []')"
+check "unknown-scalar-on-is-error" 1 "$(mk scalar $'on: unknown_event\njobs:\n  build:\n    steps: []')"
+check "known-scalar-on-is-green" 0 "$(mk push $'on: "push"\njobs:\n  build:\n    steps:\n      - run: echo ${{ secrets.X }}')"
 # R1171b-K6: any indentation; an unparsable jobs block is an error, never green.
 check "four-space-indent-is-red"     1 "$(mk four $'on:\n    pull_request:\njobs:\n    build:\n        steps:\n            - run: echo ${{ secrets.X }}')"
 check "four-space-allowlist-is-green" 0 "$(mk four2 $'on:\n    pull_request:\njobs:\n    main-red:\n        if: github.ref == \'refs/heads/main\'\n        env:\n            T: ${{ secrets.X }}')"
