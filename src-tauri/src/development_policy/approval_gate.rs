@@ -30,17 +30,17 @@ pub(crate) struct Scope<'a> {
 }
 
 impl Scope<'_> {
-    fn first_mismatch(&self, other: &Self) -> Option<Denial> {
-        [
-            (
-                self.content_hash != other.content_hash,
-                Denial::ContentChanged,
-            ),
-            (self.target != other.target, Denial::WrongTarget),
-            (self.run_id != other.run_id, Denial::WrongRun),
-        ]
-        .into_iter()
-        .find_map(|(mismatch, denial)| mismatch.then_some(denial))
+    fn first_mismatch(&self, other: &Self) -> Result<(), Denial> {
+        if self.content_hash != other.content_hash {
+            return Err(Denial::ContentChanged);
+        }
+        if self.target != other.target {
+            return Err(Denial::WrongTarget);
+        }
+        if self.run_id != other.run_id {
+            return Err(Denial::WrongRun);
+        }
+        Ok(())
     }
 }
 
@@ -66,13 +66,11 @@ pub(crate) fn check(
     request: &ExecutionRequest<'_>,
     consumed: &mut HashSet<String>,
 ) -> Result<(), Denial> {
-    if let Some(denial) = grant.scope.first_mismatch(&request.scope) {
-        return Err(denial);
-    }
+    grant.scope.first_mismatch(&request.scope)?;
     if request.now >= grant.expires_at {
         return Err(Denial::Expired);
     }
-    if consumed.contains(grant.nonce) {
+    if !consumed.insert(grant.nonce.to_string()) {
         return Err(Denial::AlreadyUsed);
     }
     Ok(())
@@ -107,13 +105,10 @@ mod tests {
     #[test]
     fn matching_request_consumes_nonce_atomically() {
         let (grant, request) = fixture();
-        let mut consumed = HashSet::from(["DEMO-NONCE".to_string()]);
-        assert_eq!(check(&grant, &request, &mut consumed), Ok(()));
-        assert_eq!(
-            check(&grant, &request, &mut consumed),
-            Err(Denial::AlreadyUsed)
-        );
-        assert_eq!(consumed.len(), 2);
+        let mut used = HashSet::from(["DEMO-NONCE".to_string()]);
+        assert_eq!(check(&grant, &request, &mut used), Ok(()));
+        assert_eq!(check(&grant, &request, &mut used), Err(Denial::AlreadyUsed));
+        assert_eq!(used.len(), 2);
     }
 
     #[test]
@@ -187,43 +182,31 @@ mod tests {
     #[test]
     fn denies_reuse_of_a_consumed_grant() {
         let (grant, request) = fixture();
-        let mut consumed = HashSet::new();
-        assert_eq!(check(&grant, &request, &mut consumed), Ok(()));
-        assert_eq!(
-            check(&grant, &request, &mut consumed),
-            Err(Denial::AlreadyUsed)
-        );
-        assert_eq!(consumed.len(), 1);
+        let mut used = HashSet::new();
+        assert_eq!(check(&grant, &request, &mut used), Ok(()));
+        assert_eq!(check(&grant, &request, &mut used), Err(Denial::AlreadyUsed));
+        assert_eq!(used.len(), 1);
     }
 
     #[test]
     fn returns_first_denial_in_documented_order() {
         let (grant, mut request) = fixture();
-        let mut consumed = HashSet::from([grant.nonce.to_string()]);
+        let mut used = HashSet::from([grant.nonce.to_string()]);
         request.scope.content_hash = "changed";
         request.scope.target = "other-target";
         request.scope.run_id = "other-run";
         request.now = UnixSeconds(100);
         assert_eq!(
-            check(&grant, &request, &mut consumed),
+            check(&grant, &request, &mut used),
             Err(Denial::ContentChanged)
         );
         request.scope.content_hash = grant.scope.content_hash;
-        assert_eq!(
-            check(&grant, &request, &mut consumed),
-            Err(Denial::WrongTarget)
-        );
+        assert_eq!(check(&grant, &request, &mut used), Err(Denial::WrongTarget));
         request.scope.target = grant.scope.target;
-        assert_eq!(
-            check(&grant, &request, &mut consumed),
-            Err(Denial::WrongRun)
-        );
+        assert_eq!(check(&grant, &request, &mut used), Err(Denial::WrongRun));
         request.scope.run_id = grant.scope.run_id;
-        assert_eq!(check(&grant, &request, &mut consumed), Err(Denial::Expired));
+        assert_eq!(check(&grant, &request, &mut used), Err(Denial::Expired));
         request.now = UnixSeconds(99);
-        assert_eq!(
-            check(&grant, &request, &mut consumed),
-            Err(Denial::AlreadyUsed)
-        );
+        assert_eq!(check(&grant, &request, &mut used), Err(Denial::AlreadyUsed));
     }
 }

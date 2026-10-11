@@ -21,7 +21,6 @@ use serde::Serialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::{FromRow, Sqlite, SqlitePool, Transaction};
 
-#[allow(dead_code)] // App control and process termination follow in W5-04b.
 mod approval_grants;
 #[allow(dead_code)] // The first writers (kill switch, W5-04a) land in later packages.
 pub mod audit;
@@ -48,6 +47,7 @@ pub mod development_plan;
 pub mod development_runs;
 #[path = "store/discovery.rs"]
 pub mod discovery;
+#[allow(dead_code)] // App control and process termination follow in W5-04b.
 mod emergency_stop;
 #[cfg(test)]
 #[path = "store/emergency_stop_tests.rs"]
