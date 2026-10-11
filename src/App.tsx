@@ -1057,7 +1057,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
       {/* Keep the sidebar slot until RT-1d; tools span the frame on their own route. */}
       <div style={routePath === undefined ? { display: "contents" } : { minHeight: 0, gridColumn: tools ? "1 / -1" : undefined }}>
       <div hidden={routePath !== undefined && !tools} style={tools ? { display: "grid", height: "100%", minHeight: 0, gridTemplateRows: "auto minmax(0, 1fr)" } : routePath === undefined ? { display: "contents" } : undefined}>
-      {tools ? <LeitstandTabs path={routePath!} /> : null}
+      {tools ? <Suspense fallback={null}><LeitstandTabs path={routePath!} /></Suspense> : null}
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}

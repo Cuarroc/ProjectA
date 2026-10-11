@@ -13,7 +13,7 @@ export const GOAL_ROUTE: Record<AppGoal, string> = {
 
 const base = (path: string) => `/${path.split("/")[1] ?? ""}`;
 
-const trim = (path: string) => path.replace(/\/+$/, "");
+export const trim = (path: string) => path.replace(/\/+$/, "");
 
 export const TOOLS_PATH = "/leitstand/werkzeuge";
 export const isTools = (path: string) => trim(path) === TOOLS_PATH;

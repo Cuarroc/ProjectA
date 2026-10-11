@@ -10,7 +10,7 @@ import type { AgentProfile } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
 import { BetriebPanel } from "./betrieb/BetriebPanel";
 import { NeedsYou } from "./needs/NeedsYou";
-import { TOOLS_PATH } from "../../shell/mount/routing";
+import { TOOLS_PATH, trim } from "../../shell/mount/routing";
 
 export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
@@ -23,7 +23,7 @@ const TICK_MS = 30_000;
 export function LeitstandTabs({ path }: { path: string }) {
   const t = useT();
   const tab = (target: string, label: string) => (
-    <a href={`#${target}`} aria-current={target === path.replace(/\/+$/, "") ? "page" : undefined}>{label}</a>
+    <a href={`#${target}`} aria-current={target === trim(path) ? "page" : undefined}>{label}</a>
   );
   return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(BETRIEB_PATH, t("leitstand.tab.betrieb"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}{tab(TOOLS_PATH, t("leitstand.tab.tools"))}</nav>;
 }
