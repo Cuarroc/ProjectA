@@ -2,7 +2,7 @@ import { Meter } from "../../design/inputs/Meter";
 import "../../design/inputs/inputs.css";
 import { PROVIDER_POLL_MS, useProviderOverview } from "../../lib/providers";
 import { QUOTA_POLL_MS, useQuotaState } from "../../lib/quota";
-import { quotaSummary } from "./quotaTexts";
+import { quotaSummary } from "./texts";
 import "./quotaBar.css";
 import "./header.css";
 
