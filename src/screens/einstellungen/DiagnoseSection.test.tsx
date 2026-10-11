@@ -28,9 +28,15 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
 });
+const ownClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+const setClipboard = (value: unknown) =>
+  Object.defineProperty(navigator, "clipboard", { value, configurable: true });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
+  if (ownClipboard) Object.defineProperty(navigator, "clipboard", ownClipboard);
+  else Reflect.deleteProperty(navigator, "clipboard");
 });
 
 const deferred = <T,>() => {
@@ -119,13 +125,49 @@ describe("DiagnoseSection actions", () => {
 
   it("copies the path and says so, or says copying failed", async () => {
     const write = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("denied"));
-    Object.defineProperty(navigator, "clipboard", { value: { writeText: write }, configurable: true });
+    setClipboard({ writeText: write });
     render(<DiagnoseSection />);
     fireEvent.click(await screen.findByRole("button", { name: "Pfad kopieren" }));
     expect(await screen.findByRole("button", { name: "Kopiert" })).toBeInTheDocument();
     expect(write).toHaveBeenCalledWith("logs/projecta.log");
     fireEvent.click(screen.getByRole("button", { name: "Kopiert" }));
     expect(await screen.findByText("Kopieren nicht möglich.")).toBeInTheDocument();
+  });
+
+  it("lets the last action win the status line: a later export replaces a failed copy", async () => {
+    setClipboard({ writeText: vi.fn().mockRejectedValue(new Error("denied")) });
+    render(<DiagnoseSection />);
+    fireEvent.click(await screen.findByRole("button", { name: "Pfad kopieren" }));
+    expect(await screen.findByText("Kopieren nicht möglich.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Diagnosepaket exportieren" }));
+    expect(await screen.findByText("Paket gespeichert.")).toBeInTheDocument();
+    expect(screen.queryByText("Kopieren nicht möglich.")).toBeNull();
+  });
+
+  it("says copying failed when the clipboard is missing instead of throwing", async () => {
+    setClipboard(undefined);
+    render(<DiagnoseSection />);
+    fireEvent.click(await screen.findByRole("button", { name: "Pfad kopieren" }));
+    expect(await screen.findByText("Kopieren nicht möglich.")).toBeInTheDocument();
+  });
+
+  it("clears the copy result after a short time and when the next action starts", async () => {
+    setClipboard({ writeText: vi.fn().mockResolvedValue(undefined) });
+    render(<DiagnoseSection />);
+    const copy = await screen.findByRole("button", { name: "Pfad kopieren" });
+    vi.useFakeTimers();
+    fireEvent.click(copy);
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole("button", { name: "Kopiert" })).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(screen.getByRole("button", { name: "Pfad kopieren" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pfad kopieren" }));
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole("button", { name: "Kopiert" })).toBeInTheDocument();
+    vi.mocked(exportDiagnosis).mockRejectedValueOnce(new Error("disk full"));
+    fireEvent.click(screen.getByRole("button", { name: "Diagnosepaket exportieren" }));
+    expect(screen.getByRole("button", { name: "Pfad kopieren" })).toBeInTheDocument();
+    await act(async () => { await Promise.resolve(); });
   });
 
   it("reveals the log folder and shows a refusal as an alert", async () => {
