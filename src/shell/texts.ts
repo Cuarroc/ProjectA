@@ -11,3 +11,11 @@ export const THEME_LABEL = "Farbschema";
 export const VARIANT_LABELS: Record<GlassVariant, string> = {
   glas: "Glas", klar: "Klar", nebel: "Nebel", abend: "Abend",
 };
+
+export const PICK_TEXT = {
+  choose: "Projekt wählen",
+  label: (action: string, name: string) => `${action}: ${name}`,
+  loading: "Projekte werden geladen …",
+  empty: "Noch kein Projekt – lege eins in den Einstellungen an",
+  failed: "Projekte konnten nicht geladen werden.",
+};

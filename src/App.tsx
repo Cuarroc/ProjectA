@@ -68,6 +68,7 @@ import { useFeatureFlag } from "./flags/useFeatureFlag";
 import { goalForPath } from "./shell/mount/routing";
 import type { LegacyRouteProps } from "./shell/mount/ShellMount";
 import type { InboxEntry } from "./lib/attentionInbox";
+import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "./lib/activeProject";
 import { shortTask } from "./lib/text";
 import { useOrchestratorChat } from "./lib/orchestratorChat";
 import { useAttentionBlockers } from "./lib/useAttentionBlockers";
@@ -89,9 +90,6 @@ import type {
  */
 const INITIAL_COLS = 80;
 const INITIAL_ROWS = 24;
-
-/** The active project survives a restart; nothing else in the UI does. */
-const ACTIVE_PROJECT_KEY = "projecta.activeProjectId";
 
 /** Whether the board rail is open. A layout choice, so it outlives a restart. */
 const RAIL_OPEN_KEY = "projecta.railOpen";
@@ -125,14 +123,6 @@ const DETAIL_VIEWS: ReadonlyArray<{ id: WorkerDetailView; label: string }> = [
   { id: "history", label: "Verlauf" },
 ];
 
-function readStoredProjectId(): string | null {
-  try {
-    return localStorage.getItem(ACTIVE_PROJECT_KEY);
-  } catch {
-    return null; // storage disabled — the app works, it just forgets.
-  }
-}
-
 function readStoredRailOpen(): boolean {
   try {
     // Absent means "never chosen", and the rail is what makes the board
@@ -148,15 +138,6 @@ function writeStoredRailOpen(open: boolean): void {
     localStorage.setItem(RAIL_OPEN_KEY, open ? "true" : "false");
   } catch {
     // Storage disabled — the rail just forgets between runs.
-  }
-}
-
-function writeStoredProjectId(projectId: string | null): void {
-  try {
-    if (projectId === null) localStorage.removeItem(ACTIVE_PROJECT_KEY);
-    else localStorage.setItem(ACTIVE_PROJECT_KEY, projectId);
-  } catch {
-    // Storage disabled — nothing to do.
   }
 }
 
@@ -195,7 +176,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(readStoredProjectId);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(readActiveProjectId);
   const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>("loading");
 
@@ -511,8 +492,10 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   }, [loadProjects]);
 
   useEffect(() => {
-    writeStoredProjectId(activeProjectId);
+    writeActiveProjectId(activeProjectId);
   }, [activeProjectId]);
+  // The Glass header's project picker publishes its choice through this module.
+  useEffect(() => subscribeActiveProject(setActiveProjectId), []);
 
   const handleCreateProject = useCallback(async (name: string, repoPath: string) => {
     setProjectsError(null);
