@@ -4,17 +4,19 @@
 //! [`check_change`] is the one gate for changing a persona's [`Rechte`].
 //! Adding rights passes only for a user, only inside the department ceiling,
 //! and never for [`Recht::Mergen`] on an agent persona: merging goes through the
-//! Mergify queue alone, and an agent persona that still holds it must lose it
-//! in the same change. An agent that asks for more rights is refused whoever
+//! Mergify queue alone, and a user change that leaves Mergen on an agent
+//! persona is refused until it drops it. Agent-driven changes may only narrow,
+//! which never grants Mergen, so that rule does not apply to them. An agent that asks for more rights is refused whoever
 //! the persona is, because the check cannot tell a lie about "own" from the
 //! truth and a refusal costs nothing. An agent may always narrow.
 //!
 //! **Trusted user path.** [`Anfrager`] has no public variants: a user request is
 //! built only by [`Anfrager::nutzer_aus_oberflaeche`], which needs an
-//! [`OberflaechenBeleg`]. That proof is minted in exactly one place,
-//! [`OberflaechenBeleg::aus_klick`], and only the handler of a real UI click
-//! may call it. Data an agent supplied (a tool call, a CLI argument, a request
-//! body) must never reach it; at wiring time that call site is the one to review.
+//! [`OberflaechenBeleg`]. That proof can only be minted inside this module
+//! (`aus_klick` is private), so the future click-handler wiring must live in or
+//! behind this module. The proof carries no click binding yet: data an agent
+//! supplied (a tool call, a CLI argument, a request body) must never reach the
+//! code that mints it; at wiring time that call site is the one to review.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -63,15 +65,16 @@ pub struct Persona {
     pub rechte: Rechte,
 }
 
-/// Zero-sized proof that a request came from a UI click. Not `Clone`: one
-/// click, one proof. The private field stops construction outside this module.
+/// Zero-sized proof that a request came from a UI click. It carries no click
+/// binding yet; the private field and private mint stop construction outside
+/// this module.
 #[derive(Debug)]
 pub struct OberflaechenBeleg(());
 
 impl OberflaechenBeleg {
-    /// The one place a proof is minted. Call it only from the handler of a
-    /// real UI click, never from agent-supplied data (see the module doc).
-    pub(crate) fn aus_klick() -> Self {
+    /// The one place a proof is minted, private to this module. Call it only
+    /// from the handler of a real UI click, never from agent-supplied data.
+    fn aus_klick() -> Self {
         Self(())
     }
 }
@@ -388,6 +391,21 @@ mod tests {
             check_change(&agent("p1"), &p, &narrower, &abteilung()),
             Ok(())
         );
+    }
+
+    #[test]
+    fn an_unchanged_set_keeping_merge_on_an_agent_persona_passes() {
+        let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
+        for who in [nutzer(), agent("p1"), agent("p2")] {
+            assert_eq!(check_change(&who, &p, &p.rechte, &abteilung()), Ok(()));
+        }
+    }
+
+    #[test]
+    fn user_dropping_merge_while_widening_within_the_ceiling_is_ok() {
+        let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
+        let new = rechte(&[Recht::Lesen, Recht::Schreiben, Recht::Pushen]);
+        assert_eq!(check_change(&nutzer(), &p, &new, &abteilung()), Ok(()));
     }
 
     #[test]
