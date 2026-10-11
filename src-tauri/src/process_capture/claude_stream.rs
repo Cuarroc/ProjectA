@@ -177,4 +177,55 @@ mod tests {
         assert!(obs.models_not_reported);
         assert!(obs.mcp_not_reported);
     }
+
+    #[test]
+    fn last_result_without_model_usage_clears_previous_models() {
+        for last in [
+            r#"{"type":"result"}"#,
+            r#"{"type":"result","modelUsage":null}"#,
+            r#"{"type":"result","modelUsage":[]}"#,
+        ] {
+            let stream = format!("{STREAM}\n{last}\n");
+            let obs = parse_stream(stream.as_bytes());
+            assert!(obs.models.is_empty(), "stale models after {last}");
+            assert!(obs.models_not_reported, "missing usage after {last}");
+            assert_eq!(obs.mcp_servers, parse_stream(STREAM.as_bytes()).mcp_servers);
+            assert!(!obs.mcp_not_reported);
+        }
+    }
+
+    #[test]
+    fn last_result_replaces_models_in_id_order() {
+        let stream = format!(
+            "{STREAM}\n{}\n{}\n",
+            r#"{"type":"result","modelUsage":{"z-model":{"provider":"last"},"a-model":{"canonicalModel":"canonical-a"},"m-model":{}}}"#,
+            r#"{"type":"assistant","message":"done"}"#,
+        );
+        let obs = parse_stream(stream.as_bytes());
+        assert_eq!(
+            obs.models,
+            vec![
+                ObservedModel {
+                    id: "a-model".into(),
+                    canonical: Some("canonical-a".into()),
+                    provider: None,
+                },
+                ObservedModel {
+                    id: "m-model".into(),
+                    canonical: None,
+                    provider: None,
+                },
+                ObservedModel {
+                    id: "z-model".into(),
+                    canonical: None,
+                    provider: Some("last".into()),
+                },
+            ]
+        );
+        assert!(!obs.models_not_reported);
+        let empty = format!("{stream}\n{}", r#"{"type":"result","modelUsage":{}}"#);
+        let obs = parse_stream(empty.as_bytes());
+        assert!(obs.models.is_empty());
+        assert!(!obs.models_not_reported);
+    }
 }
