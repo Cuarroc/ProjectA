@@ -6,6 +6,7 @@ import { WegWahl } from "./WegWahl";
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: async () => "com.projecta.app" }));
 
 const profile = (id: string, name: string, command: string, extra: Record<string, unknown> = {}) => ({
   id, name, command, args: [], env: {}, fallback: null, enabled: true, ...extra,
@@ -108,8 +109,7 @@ describe("WegWahl", () => {
     for (const word of ["Ort noch nicht verbunden", "Aufwand noch nicht verbunden", "MCP noch nicht verbunden"]) {
       expect(screen.getByText(word)).toBeInTheDocument();
     }
-    expect(screen.getByText("V2-B5 Kern gemergt, nicht verdrahtet")).toBeInTheDocument();
-    expect(screen.getByText("V2-B19")).toBeInTheDocument();
+    expect(screen.queryByText(/V2-/)).toBeNull();
     const honest = container.querySelectorAll(".g-hs");
     expect(honest).toHaveLength(3);
     for (const el of honest) expect(el.textContent).not.toMatch(/\d/);

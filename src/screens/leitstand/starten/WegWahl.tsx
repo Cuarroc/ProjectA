@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import "../../../design/glass.css";
 import "../../../design/inputs/inputs.css";
 import { HonestState } from "../../../design/data/HonestState";
+import { DevNote } from "../../../design/data/DevNote";
 import { Avatar } from "../../../design/inputs/Avatar";
 import { Lamp, type LampState } from "../../../design/inputs/Lamp";
 import { listAgentProfiles } from "../../../lib/ipc";
@@ -88,7 +89,7 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
         <div className="wg-extra">
           <span className="wg-label">{T.place}</span>
           <HonestState kind="offline" title={T.placeOffline} />
-          <p className="wg-note">{T.placeNote}</p>
+          <DevNote className="wg-note">{T.placeNote}</DevNote>
         </div>
         <div className="wg-extra">
           <span className="wg-label">{T.effort}</span>
@@ -97,7 +98,7 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
         <div className="wg-extra">
           <span className="wg-label">{T.mcp}</span>
           <HonestState kind="offline" title={T.mcpOffline} />
-          <p className="wg-note">{T.mcpNote}</p>
+          <DevNote className="wg-note">{T.mcpNote}</DevNote>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import "../../../design/glass.css";
 import "../../../design/controls/controls.css";
 import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
+import { DevNote } from "../../../design/data/DevNote";
 import { KeyValue } from "../../../design/data/KeyValue";
 import { Table, type Column } from "../../../design/data/Table";
 import { getOmniRouteUsage } from "../../../lib/ipc";
@@ -104,7 +105,7 @@ export function Kostenbuch() {
       <section className="g-glass kb-card" aria-label={T.reports}>
         <h2 className="kb-h">{T.reports}</h2>
         <HonestState kind="offline" title={T.reportsOffline} />
-        <p className="kb-note">{T.reportsNote}</p>
+        <DevNote className="kb-note">{T.reportsNote}</DevNote>
       </section>
     </div>
   );
