@@ -10,10 +10,8 @@ vi.mock("./buildInfo", () => ({ buildInfo: () => info }));
 beforeEach(() => {
   localStorage.clear();
   info.sha = "123456789abcdef";
-  vi.stubGlobal("__BUILD_SHA__", "123456789abcdef");
-  vi.stubGlobal("__BUILD_TIME__", "2026-10-11T12:00:00.000Z");
 });
-afterEach(() => { vi.mocked(getIdentifier).mockReset(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.mocked(getIdentifier).mockReset(); });
 
 it("shows the build commit from build info", async () => {
   info.sha = "fedcba987654321";

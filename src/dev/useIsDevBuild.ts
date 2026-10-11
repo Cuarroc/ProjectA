@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getIdentifier } from "@tauri-apps/api/app";
 
 /** The native identifier is also the injection boundary for isolated UI fixtures. */
+// Keep readIdentifier stable across renders so the effect does not restart.
 export function useIsDevBuild(readIdentifier = getIdentifier) {
   const [isDevBuild, setIsDevBuild] = useState(false);
   useEffect(() => {

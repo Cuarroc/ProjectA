@@ -4,6 +4,7 @@ import { listFeatureFlags, type FeatureFlag } from "../flags/featureFlags";
 import { useFeatureFlag } from "../flags/useFeatureFlag";
 import { DEV_TEXT } from "../shell/header/texts";
 import { useIsDevBuild } from "./useIsDevBuild";
+import { buildInfo } from "./buildInfo";
 import "../design/controls/controls.css";
 import "./dev.css";
 
@@ -31,17 +32,19 @@ export function DevBadge() {
     return () => document.removeEventListener("mousedown", outside);
   }, [open]);
   if (!isDevBuild) return null;
+  const { sha, time } = buildInfo();
+  const commit = sha === "local" ? DEV_TEXT.local : sha;
   return (
     <div className="g-dev" ref={root} onKeyDown={(e) => {
       if (e.key === "Escape") { setOpen(false); button.current?.focus(); e.stopPropagation(); }
     }} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
       <button className="g-dev-badge" type="button" ref={button} aria-expanded={open}
         aria-controls={open ? panelId : undefined} onClick={() => setOpen(!open)}>
-        {DEV_TEXT.badge(__BUILD_SHA__)}
+        {DEV_TEXT.badge(commit)}
       </button>
       {open && <section id={panelId} className="g-dev-panel" aria-label={DEV_TEXT.experiments}>
-        <dl><dt>{DEV_TEXT.commit}</dt><dd>{__BUILD_SHA__}</dd>
-          <dt>{DEV_TEXT.time}</dt><dd><time dateTime={__BUILD_TIME__}>{__BUILD_TIME__}</time></dd></dl>
+        <dl><dt>{DEV_TEXT.commit}</dt><dd>{commit}</dd>
+          <dt>{DEV_TEXT.time}</dt><dd><time dateTime={time}>{time}</time></dd></dl>
         <h2>{DEV_TEXT.experiments}</h2>
         {listFeatureFlags().map((flag) => <Experiment key={flag.id} flag={flag} />)}
       </section>}

@@ -34,6 +34,7 @@ export function quotaSummary(quota: QuotaSnapshot, overview: ProviderSnapshot) {
 }
 
 export const DEV_TEXT = {
+  local: "lokal",
   badge: (sha: string) => `DEV · ${sha.slice(0, 7)}`,
   experiments: "Experimente",
   commit: "Build-Commit",
