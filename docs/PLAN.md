@@ -1352,6 +1352,75 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Plan für v1.6.0 (Pakete, Wellen, Arbeitsweise, Benchmark-Nachweis): [`docs/plan/v1.6.0/plan.md`](plan/v1.6.0/plan.md) | Nutzerentscheidung 06.10.2026: zwei Wochenmessungen und 40 Queue-Läufe bleiben offene Nachbeobachtung nach v1.6.0; Befunde für v1.6.1, kritische früher. Details und unveränderte Originalkriterien in Abschnitt 7a.1; weitere Planfragen und Pakete bleiben in ihrem bisherigen Zustand, nichts davon wird in M1–M4 aufgenommen. |
 | Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Entwurf, Nutzer entscheidet; nichts davon steht in M1–M4 |
 | Werkbank je Projekt (V2-WEG/TRES/CMD/SKL/DB): Dev-Befehle, Datenbanken, Feintuning, Server, Trigger, Automationen, Tresor, Skills-Bibliothek, Bewährte Wege → [`docs/plan/v2.0/werkbank.md`](plan/v2.0/werkbank.md) | Entscheid Elias 11.10. E1–E4 (`docs/decisions.md`); Wege-Pilot jetzt ohne App-Code als Thema von DEV-KNOW-01, Tresor vor V2-B6a-2/V2-B19, Rest nach v2.0 hinter Schaltern; nichts davon steht in M1–M4 |
+| Paperclip-Kandidaten (COMP-PAPERCLIP-3) → Block direkt darunter | Elias 11.10. ~04:30Z: einreihen erlaubt; Richtung, kein neuer Meilenstein; nichts davon steht in M1–M4 oder ändert die v2-Release-Reihenfolge |
+
+#### Paperclip-Kandidaten (Elias 11.10. ~04:30Z: einreihen erlaubt)
+
+Quelle: `pa-orch/wissen/02-recherchen/2026-10-11_comp-paperclip-3-synthese.md`
+(Abschnitte „Katalog und Wertung“, „Wellen“, „Nicht übernehmen“). Alle `PC-…`
+sind Kandidaten. Wert, Größe (S ≤150, M ≤300 Diffzeilen) und Naht stehen
+dort je Zeile. Root prüft jede Einreihung erneut am aktuellen main.
+
+**Welle 1: acht Briefe, schon als Server-Jobs eingereiht** (Briefe:
+`~/pa-orch/reports/comp-paperclip-3-specs/<PC-ID>.md`; events.log 08:40:27
+lokale Zeit, Codex; keine Naht, Stufe B). Beobachtet 11.10. 08:44 lokale Zeit:
+89–93 laufen, 94/95 in `queue/`, 96 in `hold/ready`. Live-Stand nur aus `events.log`.
+
+| Job | Brief | Titel | Bedingung |
+|---|---|---|---|
+| 89 | PC-UX-4 | Einrichtung erklärt Grenzen vor Schritt 1 | – |
+| 90 | PC-UI-3 | Unbekannte Kontingentfenster bündeln | – |
+| 91 | PC-UI-1 | Bewegung anschließen, reduzierte Bewegung respektieren | – |
+| 92 | PC-UI-4 | Kontingent-Kopf an vorhandene Quelle anschließen | – |
+| 93 | PC-UX-1 | Original und geschärften Auftrag vergleichen | – |
+| 94 | PC-BUDGET-1 | Bekannte Claude-Sperre vor Critic-Aufruf beachten | – |
+| 95 | PC-UX-8 | Empfänger und Startwirkung am Chatfeld | wartet auf #1215 |
+| 96 | PC-UI-2 | Beweiskette mit ehrlichem Ergebnis-Kopf | wartet auf #1210 |
+
+**Welle 2: nur Kandidaten.** Reine Kerne dürfen vorbereitet werden. Die
+Anschlüsse laufen seriell durch die betroffenen Nähte. SQLite, PTY, Rechte und
+Nebenläufigkeit sind Stufe A. Ein Eingriff in eingefrorenen Continuous-Code
+braucht vorher Roots Bestätigung des genehmigten v2-/M4-Pakets.
+
+- Abschlussnachweise:
+  - PC-TRUST-1: Abnahmekriterium als accepted/missing/rejected/unverifiable klassifizieren.
+  - PC-TRUST-2: Done von geprüft/angenommen im gespeicherten Lauf trennen.
+  - PC-TRUST-11: Abschlussbelege über Read-only-IPC bereitstellen.
+  - PC-TRUST-12: Echte Abschlussbelege in Beweiskette/Chip anzeigen.
+- Zustand und Wiederherstellung:
+  - PC-ARCH-1: Kleines Zustandsmodell mit Frist, Besitzer und erreichbarem Ausgang.
+  - PC-ARCH-2: Echte Queue gegen das Modell prüfen; Gegenbeispiele aufzeichnen.
+  - PC-ARCH-3: Schema: eine Wiederherstellungsakte je Quelle/Fingerprint.
+  - PC-ARCH-4: Verwaistes Schärfen nach Neustart sicher wieder auffindbar machen.
+  - PC-ARCH-12: Wiederherstellungsakte mit geprüften Übergängen bedienen.
+- Aufrufschutz, Grenzen, Stopps:
+  - PC-BUDGET-2: Schärfen ebenfalls vor bekanntem Limit stoppen.
+  - PC-BUDGET-3: Leeres Critic-Ergebnis und Versuch dauerhaft merken.
+  - PC-BUDGET-7: Reservierungs-Ledger für gemeinsame Kontingente.
+  - PC-BUDGET-8: Ledger für versuchte und quittierte Budget-Stopps.
+  - PC-BUDGET-14: Startpfad an Quota-Reservierung anbinden.
+  - PC-BUDGET-15: Offene Stoppzustellung wiederaufnehmen und quittieren.
+  - PC-BUDGET-16: Fehler-Fingerprint und Versuchszähler dauerhaft anbinden.
+
+**Welle 3: offene Entscheidungen.** Sie gehen erst an Elias, wenn sie reif
+sind. Die Prioritätstabelle nimmt keine davon vorweg.
+
+- Soll das Critic-Signaltor tatsächlich sperren? Erst messen, ohne Sperrwirkung (PC-BUDGET-4).
+- Welche Warnschwellen bekommen die Kontingent-Meter (PC-BUDGET-12)?
+- Detailblatt oder nichtmodaler Inspector? Empfehlung: zuerst das vorhandene zugängliche Sheet.
+- Onboarding: Empfehlung ist eine modellfreie Beispielkarte vor einem bewusst gestarteten Probeauftrag.
+- Unklare Queue-Aufträge: Empfehlung ist sichtbares Parken statt Autostart mit ungeprüftem Rohtext.
+- Mobile Nutzung, Marketing, Import und weitere Plattformen.
+- Echte Verbrauchsmessungen.
+
+**Nicht übernehmen** (Langfassung in der Quelle):
+
+- CEO-/Manager-Agenten, die ungefragt Unteragenten oder neue Produktziele erzeugen.
+- Modellbehauptung, Prosa, Exit 0 oder teilgrüne Zeilen gelten nicht als Abschlussbeweis.
+- Keine Zeitgeber, die ohne vorhandene Arbeit Modelle wecken. Keine unbegrenzten Retries.
+- Unbekannter Verbrauch gilt nie als 0. Ein beobachtetes Modell wird nie aus der Konfiguration abgeleitet.
+- Keine Freigaben ohne geprüften Umfang und keine stille Rechteerweiterung. Agentengenerierte Skills wirken erst nach Freigabe.
+- Firmen-, HR-, Gantt- oder Plugin-Welten nicht als Navigation kopieren. Keine zweiten Scheduler, Datenbanken oder Dienste nur zur Nachahmung.
 
 ### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
 
