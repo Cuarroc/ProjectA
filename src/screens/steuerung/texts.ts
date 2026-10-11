@@ -7,6 +7,8 @@ export const T = {
   week: "Woche",
   month: "Monat",
   notConnected: "noch nicht verbunden",
+  windowSeparator: ", ",
+  windowReset: (reset: string) => ` (${reset})`,
   unknownWindows: "Unbekannte Kontingentfenster",
   noPercent: "kein Prozentwert gemeldet",
   noProviderTitle: "Noch kein Anbieter",

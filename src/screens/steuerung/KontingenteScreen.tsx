@@ -40,7 +40,7 @@ export function QuotaWindows({ rows }: { rows: WindowRow[] }) {
           <span className="kt-k">
             {missing.map((row, index) => {
               const reset = formatProviderResetsAt(row.resetsAt);
-              return <span key={row.key}>{index > 0 && ", "}<span>{row.label}</span>{reset && ` (${reset})`}</span>;
+              return <span key={row.key}>{index > 0 && T.windowSeparator}<span>{row.label}</span>{reset && T.windowReset(reset)}</span>;
             })}
           </span>
           <HonestState kind="offline" title={missing.some((row) => row.key === "other") ? T.noPercent : T.notConnected} />
