@@ -574,7 +574,7 @@ jobs:
     # always(): auch nach roten Gates laufen (genau dann gibt es etwas zu
     # tun). Nur main, nie PRs und nie Queue-Branches - das Skript selbst
     # prueft den Ref zusaetzlich (doppelte Absicherung).
-    if: ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    if: ${{ always() && github.ref == 'refs/heads/main' }}
     # Main runs do not cancel each other (SHA-scoped group above), so two
     # guards could interleave freeze/unfreeze (review predecessor PR, S-5/O-5).
     # Serialize them; never cancel a RUNNING guard. GitHub still drops an

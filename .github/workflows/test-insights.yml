@@ -4,7 +4,8 @@
 #
 # `workflow_run` always runs the workflow file from the default branch, with
 # access to secrets, and starts only after `ci` has completed. This job checks
-# nothing out and executes nothing from the run: it downloads the artifacts
+# out only the default branch's picker script and executes nothing from the
+# run: it downloads the artifacts
 # `junit-linux` / `junit-windows` (untrusted XML, treated as data only) and
 # hands the files to the uploader. Without the secret MERGIFY_TOKEN the upload
 # steps are skipped (env flag, never the secret itself) and the job stays
@@ -35,10 +36,21 @@ jobs:
     continue-on-error: true
     permissions:
       actions: read
+      contents: read
     env:
       # Only "true"/"false", so no step besides the uploaders sees the token.
       MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
     steps:
+      # `workflow_run` checks out the DEFAULT branch, never the PR head: only
+      # the trusted picker script is needed, no history, no credentials.
+      - name: Check out the picker script
+        if: env.MERGIFY_UPLOAD == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts/ci
+          persist-credentials: false
+
       - name: Download JUnit artifacts of the ci run
         if: env.MERGIFY_UPLOAD == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -48,26 +60,11 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
-      # Artifact layout depends on the upload roots; look the files up by name.
+      # The picker is a script of the default branch (see the checkout above),
+      # so it has a selftest: scripts/test-test-insights-pick.sh.
       - name: Collect reports
         if: env.MERGIFY_UPLOAD == 'true'
-        run: |
-          mkdir -p reports
-          pick() { # artifact-dir file-name target
-            local f
-            if [ ! -d "artifacts/$1" ]; then
-              echo "::notice::no artifact $1 in this ci run"
-              return 0
-            fi
-            # -quit instead of `| head`: no SIGPIPE under pipefail, and find
-            # errors stay visible.
-            f="$(find "artifacts/$1" -type f -name "$2" -print -quit)"
-            if [ -n "$f" ]; then cp "$f" "reports/$3"; fi
-          }
-          pick junit-linux junit.xml linux-nextest.xml
-          pick junit-linux vitest.xml linux-vitest.xml
-          pick junit-windows junit.xml windows-nextest.xml
-          ls reports
+        run: bash scripts/ci/test-insights-pick.sh artifacts reports
 
       - name: Test Insights - linux nextest
         if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/linux-nextest.xml') != '' }}
