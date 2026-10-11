@@ -2713,6 +2713,39 @@ pub(crate) mod tests {
         assert!(watchdog_findings(&[healthy], &engine, now_ms, at, stalled_after).is_empty());
     }
 
+    /// `watchdog_report` returns a bare `Vec<WatchdogFinding>`, so the wire
+    /// value is a JSON array of these objects. `src/lib/ipc.ts` accepts exactly
+    /// these five camelCase keys: a snake_case or renamed field would make the
+    /// panel reject the whole read.
+    #[test]
+    fn watchdog_finding_serializes_to_the_camel_case_shape_ipc_accepts() {
+        let finding = WatchdogFinding {
+            run_id: "wk-1".to_string(),
+            label: "Worker 1".to_string(),
+            kind: "steht",
+            sentence: "Steht seit 15 Minuten: keine Ausgabe, keine Änderung im Arbeitsbaum."
+                .to_string(),
+            since: 1_700_000_000_000,
+        };
+        let want = serde_json::json!({
+            "runId": "wk-1",
+            "label": "Worker 1",
+            "kind": "steht",
+            "sentence": "Steht seit 15 Minuten: keine Ausgabe, keine Änderung im Arbeitsbaum.",
+            "since": 1_700_000_000_000_u64,
+        });
+        assert_eq!(serde_json::to_value(&finding).unwrap(), want);
+        // The command's return value: an array, empty when nothing stands.
+        assert_eq!(
+            serde_json::to_value(vec![finding.clone(), finding]).unwrap(),
+            serde_json::json!([want, want])
+        );
+        assert_eq!(
+            serde_json::to_value(Vec::<WatchdogFinding>::new()).unwrap(),
+            serde_json::json!([])
+        );
+    }
+
     #[test]
     fn watchdog_span_names_minutes_and_hours_in_singular_and_plural() {
         for (ms, want) in [

@@ -411,4 +411,18 @@ describe("getWatchdogReport", () => {
     vi.mocked(invoke).mockResolvedValue({ not: "a list" });
     await expect(getWatchdogReport("pj-1")).rejects.toThrow("Der Wachhund hat eine unlesbare Antwort bekommen.");
   });
+
+  it("rejects a non-string label", async () => {
+    for (const label of [7, null, undefined, ["Worker 1"]]) {
+      vi.mocked(invoke).mockResolvedValue([{ ...good, label }]);
+      await expect(getWatchdogReport("pj-1")).rejects.toThrow("Der Wachhund hat eine unlesbare Antwort bekommen.");
+    }
+  });
+
+  it("rejects a non-number since", async () => {
+    for (const since of ["5", null, undefined, { ms: 5 }]) {
+      vi.mocked(invoke).mockResolvedValue([{ ...good, since }]);
+      await expect(getWatchdogReport("pj-1")).rejects.toThrow("Der Wachhund hat eine unlesbare Antwort bekommen.");
+    }
+  });
 });
