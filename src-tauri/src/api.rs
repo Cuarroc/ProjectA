@@ -2874,6 +2874,7 @@ pub(crate) mod tests {
             // Phase 12: this fixture's worker has never been through the gate.
             test_status: None,
             tested_at: None,
+            observed_model: None,
         }
     }
 

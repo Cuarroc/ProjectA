@@ -301,6 +301,8 @@ export interface BoardCard {
   testStatus: TestStatus | null;
   /** Unix seconds of that test run, or `null` when it never ran. */
   testedAt: number | null;
+  /** Model name the agent itself reported on its statusline; self-reported, never confirmed. Absent or `null` while it reported none. */
+  observedModel?: string | null;
 }
 
 /**
