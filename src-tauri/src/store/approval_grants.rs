@@ -55,11 +55,14 @@ impl Store {
                 tx.commit().await.map_err(storage)?;
                 Ok(Permit(()))
             }
-            Err(denial) => {
-                tx.rollback().await.map_err(storage)?;
-                Err(denial)
-            }
+            Err(denial) => Err(rollback_denial(tx, denial).await),
         }
+    }
+}
+async fn rollback_denial(tx: Transaction<'_, Sqlite>, denial: Denial) -> Denial {
+    match tx.rollback().await {
+        Ok(()) => denial,
+        Err(error) => storage(error),
     }
 }
 fn storage(_: impl std::fmt::Display) -> Denial {
@@ -69,7 +72,7 @@ fn storage(_: impl std::fmt::Display) -> Denial {
 mod tests {
     use super::*;
     use crate::testutil::TempDir;
-    use Denial::{AlreadyUsed, ContentChanged, Expired, Unknown};
+    use Denial::{AlreadyUsed, ContentChanged, DuplicateNonce, Expired, Unknown};
     const REQUEST: ExecutionRequest<'static> = ExecutionRequest {
         scope: Scope {
             content_hash: "ab12",
@@ -100,8 +103,33 @@ mod tests {
             reopened.consume(grant().nonce, &REQUEST).await,
             Err(AlreadyUsed)
         );
-        assert!(reopened.record_grant(&grant()).await.is_err());
+        assert_eq!(reopened.record_grant(&grant()).await, Err(DuplicateNonce));
         assert_eq!(reopened.consume("unknown", &REQUEST).await, Err(Unknown));
+    }
+    #[tokio::test]
+    async fn duplicate_nonce_is_reported_as_duplicate() {
+        let (_dir, store) = fixture().await;
+        let mut duplicate = grant();
+        duplicate.scope.content_hash = "changed";
+        assert_eq!(store.record_grant(&duplicate).await, Err(DuplicateNonce));
+        assert!(store.consume(grant().nonce, &REQUEST).await.is_ok());
+        assert_eq!(store.record_grant(&duplicate).await, Err(DuplicateNonce));
+        assert_eq!(
+            store.consume(grant().nonce, &REQUEST).await,
+            Err(AlreadyUsed)
+        );
+    }
+    #[tokio::test]
+    async fn rollback_failure_preserves_original_denial() {
+        for denial in [Unknown, ContentChanged, Expired, AlreadyUsed] {
+            let (_dir, store) = fixture().await;
+            let mut tx = begin_write(&store.pool, "approval rollback test")
+                .await
+                .unwrap();
+            // End the SQLite transaction behind sqlx to make its rollback fail.
+            sqlx::query("ROLLBACK").execute(&mut *tx).await.unwrap();
+            assert_eq!(rollback_denial(tx, denial).await, denial);
+        }
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn concurrent_consumes_yield_exactly_one_permit() {

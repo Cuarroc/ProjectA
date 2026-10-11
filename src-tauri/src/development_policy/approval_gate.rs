@@ -49,6 +49,7 @@ pub(crate) enum Denial {
     WrongRun,
     Expired,
     AlreadyUsed,
+    DuplicateNonce,
     Unknown,
     Storage,
 }
