@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
 import "../../design/inputs/inputs.css";
@@ -31,6 +31,10 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const t = useT();
   const { worker } = card;
   const model = modelText(card);
+  const taskId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const canExpand = worker.task.length > 160;
+  const branch = worker.branch.length > 32 ? `…${worker.branch.slice(-32)}` : worker.branch;
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<Action | null>(null);
   const [failed, setFailed] = useState<Action | null>(null);
@@ -66,11 +70,27 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
         <Avatar initials={initials(name)} tone={toneFor(worker.profileId)} />
         <div className="ls-who-t">
           <h3 title={name}>{name}</h3>
-          <p title={worker.branch}>{worker.branch}</p>
+          <p className="ls-branch" title={worker.branch}>
+            <span aria-hidden="true">{branch}</span>
+            <span className="ls-sr-only">{worker.branch}</span>
+          </p>
           {model !== null && <p title={model}>{model}</p>}
         </div>
       </div>
-      <p className="ls-task" title={worker.task}>{worker.task}</p>
+      {card.attentionReason != null && (
+        <p className="ls-attention">
+          <span>{card.attentionReason}</span>
+          {card.attentionObservedAt != null && <span className="ls-attention-age">{ageText(card.attentionObservedAt, now)}</span>}
+        </p>
+      )}
+      <p id={taskId} className={`ls-task${canExpand && !expanded ? " ls-task--collapsed" : ""}`}>
+        {canExpand && !expanded ? `${worker.task.slice(0, 160)}…` : worker.task}
+      </p>
+      {canExpand && (
+        <Button size="sm" variant="ghost" className="ls-task-toggle" aria-expanded={expanded} aria-controls={taskId} onClick={() => setExpanded(!expanded)}>
+          {t(expanded ? "leitstand.taskLess" : "leitstand.taskShowAll")}
+        </Button>
+      )}
       <div className="ls-foot">
         <div className="ls-proof" title={t("leitstand.proofTitle")}><HonestState kind="offline" title={t("leitstand.proofTitle")} /></div>
         <Button size="sm" aria-label={fill(t("leitstand.openLabel"), { name })} onClick={() => onOpen(card)}>{t("leitstand.open")}</Button>

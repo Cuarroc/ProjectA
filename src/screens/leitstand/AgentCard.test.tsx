@@ -162,3 +162,60 @@ it("shows no model line when the agent reported none", () => {
     cleanup();
   }
 });
+
+
+it("shows the attention reason with its age when the card needs attention", () => {
+  const attention = { ...card("running"), column: "needs_you" as const,
+    attentionReason: "Approval required", attentionObservedAt: NOW - 300 };
+  render(<AgentCard card={attention} name="Fixture" now={NOW} onOpen={() => {}} />);
+  expect(screen.getByText("Approval required").parentElement).toHaveTextContent("seit 5 min");
+});
+
+it("expands the full task text on request", () => {
+  const task = "Inspect the component and verify its behavior. ".repeat(8) + "Final acceptance detail.";
+  const item = card("running");
+  item.worker.task = task;
+  render(<AgentCard card={item} name="Fixture" now={NOW} onOpen={() => {}} />);
+  const expand = screen.getByRole("button", { name: "Ganzen Auftrag zeigen" });
+  expect(expand).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByText(task)).toBeNull();
+  fireEvent.click(expand);
+  expect(screen.getByText(task)).toBeInTheDocument();
+  const collapse = screen.getByRole("button", { name: "Weniger" });
+  expect(collapse).toHaveAttribute("aria-expanded", "true");
+  fireEvent.click(collapse);
+  expect(screen.queryByText(task)).toBeNull();
+  expect(screen.getByRole("button", { name: "Ganzen Auftrag zeigen" })).toHaveAttribute("aria-expanded", "false");
+});
+
+it("keeps the end of a long branch name visible", () => {
+  const item = card("running");
+  item.worker.branch = "fixture/a-long-shared-prefix-for-tasks/fix-distinctive-ending";
+  render(<AgentCard card={item} name="Fixture" now={NOW} onOpen={() => {}} />);
+  const suffix = screen.getByText(/….*fix-distinctive-ending$/);
+  expect(suffix).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getByTitle(item.worker.branch)).toContainElement(suffix);
+  expect(screen.getByText(item.worker.branch)).not.toHaveAttribute("aria-hidden", "true");
+});
+
+it("omits the attention line when no reason exists", () => {
+  const item = { ...card("running"), attentionReason: null, attentionObservedAt: NOW - 300 };
+  const { container } = render(<AgentCard card={item} name="Fixture" now={NOW} onOpen={() => {}} />);
+  expect(container.querySelector(".ls-attention")).toBeNull();
+  expect(screen.queryByText("seit 5 min")).toBeNull();
+});
+
+it("offers expansion only beyond the fixed task length threshold", () => {
+  for (const length of [160, 161]) {
+    const item = card("running");
+    item.worker.task = "x".repeat(length);
+    render(<AgentCard card={item} name="Fixture" now={NOW} onOpen={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Ganzen Auftrag zeigen" }) !== null).toBe(length > 160);
+    cleanup();
+  }
+});
+
+it("does not invent an attention age when the observation time is missing", () => {
+  render(<AgentCard card={{ ...card("running"), attentionReason: "Approval required" }} name="Fixture" now={NOW} onOpen={() => {}} />);
+  expect(screen.getByText("Approval required").parentElement).not.toHaveTextContent(/seit/);
+});
