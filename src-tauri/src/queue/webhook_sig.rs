@@ -9,8 +9,9 @@
 //! request replays with its signature intact. The receiver must therefore
 //! also dedupe on the delivery id (see [`ZustellungsBuch`]) or check a signed
 //! timestamp.
-
-#![allow(dead_code)] // the HTTP receiver wires it later
+//!
+//! Not reachable from the app yet: the items the future HTTP receiver will
+//! call carry an item-level `allow(dead_code)`; everything else is used.
 
 use std::collections::{HashSet, VecDeque};
 use std::fmt;
@@ -75,6 +76,7 @@ pub enum Grund {
 }
 
 impl Grund {
+    #[allow(dead_code)] // the HTTP receiver wires it later
     pub fn text(self) -> &'static str {
         match self {
             Grund::SignaturFehlt => "Signatur fehlt",
@@ -96,8 +98,10 @@ pub enum Pruefung {
     },
 }
 
-/// Key bytes, overwritten with zeros when retired or dropped (best effort,
-/// no new crate: `black_box` keeps the write from being optimised away).
+/// Key bytes, overwritten with zeros when retired or dropped. Best effort on
+/// the stored key allocation only: stack copies made during verification
+/// (the HMAC block and pads) and any copy the caller keeps are not wiped. No
+/// new crate: `black_box` keeps the write from being optimised away.
 struct Geheimnis(Vec<u8>);
 
 impl Geheimnis {
@@ -116,6 +120,7 @@ impl Drop for Geheimnis {
 /// The current key plus, after a rotation, the previous one with its expiry.
 /// Not `Clone` and the keys are private, so key bytes only leave through
 /// `pruefe`.
+#[allow(dead_code)] // the HTTP receiver wires it later
 pub struct Schluesselring {
     aktuell: Geheimnis,
     /// Previous key and `gueltig_bis` (unix seconds, exclusive).
@@ -142,6 +147,7 @@ impl Pruefung {
     }
 }
 
+#[allow(dead_code)] // the HTTP receiver wires it later
 impl Schluesselring {
     pub fn neu(aktuell: Vec<u8>) -> Self {
         Self {
@@ -189,22 +195,38 @@ impl Schluesselring {
     }
 }
 
-/// Bounded memory of the most recent delivery ids (replay guard).
+/// Bounded memory of the most recent delivery ids (replay guard). The bound is
+/// on the entry COUNT; the id length is capped by [`MAX_ID_LEN`].
+///
+/// The book lives in memory only: after a restart every captured delivery can
+/// be replayed again, so the receiver must also check a signed timestamp
+/// window.
 pub const ZUSTELLUNGEN_MAX: usize = 1024;
+/// Longest delivery id (bytes) the book accepts.
+pub const MAX_ID_LEN: usize = 128;
 
+#[allow(dead_code)] // the HTTP receiver wires it later
 #[derive(Default)]
 pub struct ZustellungsBuch {
     reihenfolge: VecDeque<String>,
     menge: HashSet<String>,
 }
 
+#[allow(dead_code)] // the HTTP receiver wires it later
 impl ZustellungsBuch {
     /// `true` if `id` was recorded before; otherwise records it (evicting the
     /// oldest id beyond [`ZUSTELLUNGEN_MAX`]) and returns `false`. Call it
     /// only after the signature checked out, so forged ids cannot push real
     /// ones out. An id older than the last N deliveries is forgotten, so
     /// that window needs a signed timestamp on top.
+    ///
+    /// An id longer than [`MAX_ID_LEN`] bytes fails closed: it returns `true`
+    /// ("do not process") and is not recorded, so memory stays bounded by
+    /// count times length. Callers should reject such ids before this call.
     pub fn schon_gesehen(&mut self, id: &str) -> bool {
+        if id.len() > MAX_ID_LEN {
+            return true;
+        }
         if self.menge.contains(id) {
             return true;
         }
@@ -388,6 +410,21 @@ mod tests {
         // "0" was evicted, so it counts as new again (and is re-recorded).
         assert!(!buch.schon_gesehen("0"));
         assert_eq!(buch.len(), ZUSTELLUNGEN_MAX);
+    }
+
+    #[test]
+    fn overlong_delivery_id_is_rejected_and_not_recorded() {
+        let mut buch = ZustellungsBuch::default();
+        let ok = "a".repeat(MAX_ID_LEN);
+        let zu_lang = "a".repeat(MAX_ID_LEN + 1);
+        // Fail closed: "true" means "do not process", and nothing is stored.
+        assert!(buch.schon_gesehen(&zu_lang));
+        assert_eq!(buch.len(), 0);
+        assert!(buch.schon_gesehen(&zu_lang));
+        // The limit itself is still accepted (and then seen as a replay).
+        assert!(!buch.schon_gesehen(&ok));
+        assert!(buch.schon_gesehen(&ok));
+        assert_eq!(buch.len(), 1);
     }
 
     #[test]
