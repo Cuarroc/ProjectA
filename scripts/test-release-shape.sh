@@ -61,6 +61,40 @@ check dry-run-without-permissions-fails fail \
 check installer-without-environment-fails fail "$(wf '/^    environment: release$/d' noenv)" "$ACT" "lost environment: release"
 check installer-without-push-guard-fails fail "$(wf "/^    if: github.event_name == 'push'\$/d" nopush)" "$ACT" "not limited to push"
 
+# REL-HARD-01: least privilege and provenance for the tag build.
+check toplevel-write-permission-fails fail \
+  "$(wf "s/^  contents: read\$/  contents: write/" topwrite)" "$ACT" "top-level permissions grant write"
+check checkout-with-persisted-credentials-fails fail \
+  "$(wf '/persist-credentials: false/d' persist)" "$ACT" "checkout without persist-credentials: false"
+check installer-without-attestation-fails fail \
+  "$(wf 's#uses: actions/attest-build-provenance@#uses: actions/other@#' noattest)" "$ACT" "windows-installer does not run attest-build-provenance"
+check toplevel-permissions-deleted-fails fail \
+  "$(wf '/^permissions:$/,/^  contents: read$/d' topnoperm)" "$ACT" "release.yml declares no top-level permissions"
+check toplevel-write-all-fails fail \
+  "$(wf '/^permissions:$/{s/.*/permissions: write-all/;n;d}' topwriteall)" "$ACT" "top-level permissions grant write"
+
+# Same file, every checkout rewritten to the two-line step style
+# (`- name:` first, `uses:` on the next line); $1 = drop the first persist line.
+twoline() {
+  awk -v drop="$1" '
+    /^      - uses: actions\/checkout@/ { print "      - name: Checkout"; sub(/^      - /, "        "); print; next }
+    drop == 1 && /persist-credentials: false/ && !dropped { dropped = 1; next }
+    { print }' "$WF" > "$tmp/twoline$1.yml"
+  echo "$tmp/twoline$1.yml"
+}
+check two-line-checkout-with-persist-passes pass "$(twoline 0)" "$ACT"
+check two-line-checkout-without-persist-fails fail "$(twoline 1)" "$ACT" "1 checkout without persist-credentials"
+
+# The attestation comes after the MSI inventory check, so a rejected artifact
+# never gets one. Mutation: move the attest step back in front of SHA256SUMS.
+awk 'NR == FNR { if (/- name: Attest installer provenance/) a = 1; else if (a && /^$/) a = 0; if (a) blk = blk $0 "\n"; next }
+  /- name: Attest installer provenance/ { skip = 1 }
+  skip && /^$/ { skip = 0; next }
+  skip { next }
+  /- name: Write SHA256SUMS.txt/ { printf "%s\n", blk }
+  { print }' "$WF" "$WF" > "$tmp/attestfirst.yml"
+check attestation-before-inventory-check-fails fail "$tmp/attestfirst.yml" "$ACT" "attest-build-provenance must come after"
+
 # gates.sh must not run `git merge-base origin/main` while loading its list:
 # a tag checkout has no origin/main ("fatal: Not a valid object name").
 list="$(bash "$HERE/scripts/ci/gates.sh" --list)"

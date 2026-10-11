@@ -7,6 +7,9 @@
 #   3. windows-installer: push only, keeps `environment: release`.
 #   4. Other jobs: no environment, no secret, job-level permissions without
 #      write; dry run dispatch-only (block YAML).
+#   5. Least privilege and provenance (REL-HARD-01): no top-level write
+#      permission, every checkout sets persist-credentials: false,
+#      windows-installer runs actions/attest-build-provenance.
 # Usage: release-shape.sh [release.yml] [action.yml]
 # Self-test: scripts/test-release-shape.sh
 set -uo pipefail
@@ -85,6 +88,29 @@ while IFS= read -r j; do
   grep -qE '^    permissions:' <<< "$body" || err "job $j declares no job-level permissions"
   grep -qE '^      [a-z-]+:[[:space:]]*write' <<< "$body" && err "job $j has a write permission (only windows-installer may)"
 done <<< "$jobs"
+
+# Top-level permissions: declared, and no write scope or write-all.
+top="$(nocomment "$WF" | awk '/^permissions:/ { on = 1; print; next } on && /^[^ ]/ { exit } on { print }')"
+[ -n "$top" ] || err "release.yml declares no top-level permissions"
+grep -qE ':[[:space:]]*write|write-all' <<< "$top" && err "top-level permissions grant write (only windows-installer may, at job level)"
+
+# Every checkout drops the token from .git/config (it would sit on disk
+# during npm ci, the build and the tests). Step = from its `- ` line to the
+# next step or job; `uses:` may be the first line or follow `- name:`.
+bad_checkouts="$(nocomment "$WF" | awk '
+  function close_step() { if (co && !ok) bad++; co = 0; ok = 0 }
+  /^      - / || /^  [A-Za-z0-9_-]+:/ { close_step() }
+  /^ +(- )?uses: actions\/checkout@/ { co = 1 }
+  /^          persist-credentials: false[[:space:]]*$/ { ok = 1 }
+  END { close_step(); print bad + 0 }')"
+[ "$bad_checkouts" -eq 0 ] || err "$bad_checkouts checkout without persist-credentials: false"
+
+grep -qE '^ +(- )?uses: actions/attest-build-provenance@' <<< "$inst" ||
+  err "windows-installer does not run attest-build-provenance"
+# Attest only what the MSI inventory check accepted.
+awk '/verify-windows-package\.ps1/ { v = NR } /uses: actions\/attest-build-provenance@/ { a = NR }
+  END { exit !(v && a > v) }' <<< "$inst" ||
+  err "attest-build-provenance must come after verify-windows-package.ps1 in windows-installer"
 
 if [ "$errors" -gt 0 ]; then
   echo "release-shape: $errors error(s)"
