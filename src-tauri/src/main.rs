@@ -3909,6 +3909,7 @@ fn main() {
             get_setup_trust_view,
             approve_setup_trust,
             api::scan_setup_repo,
+            api::watchdog_report,
             run_worker_tests,
             start_web_interface,
             stop_web_interface,
