@@ -95,18 +95,22 @@ top="$(nocomment "$WF" | awk '/^permissions:/ { on = 1; print; next } on && /^[^
 grep -qE ':[[:space:]]*write|write-all' <<< "$top" && err "top-level permissions grant write (only windows-installer may, at job level)"
 
 # Every checkout drops the token from .git/config (it would sit on disk
-# during npm ci, the build and the tests). Step = from its `- uses:` line to
-# the next step or job.
+# during npm ci, the build and the tests). Step = from its `- ` line to the
+# next step or job; `uses:` may be the first line or follow `- name:`.
 bad_checkouts="$(nocomment "$WF" | awk '
-  function close_step() { if (open && !ok) bad++; open = 0 }
+  function close_step() { if (co && !ok) bad++; co = 0; ok = 0 }
   /^      - / || /^  [A-Za-z0-9_-]+:/ { close_step() }
-  /^      - uses: actions\/checkout@/ { open = 1; ok = 0 }
-  open && /^          persist-credentials: false[[:space:]]*$/ { ok = 1 }
+  /^ +(- )?uses: actions\/checkout@/ { co = 1 }
+  /^          persist-credentials: false[[:space:]]*$/ { ok = 1 }
   END { close_step(); print bad + 0 }')"
 [ "$bad_checkouts" -eq 0 ] || err "$bad_checkouts checkout without persist-credentials: false"
 
 grep -qE '^ +(- )?uses: actions/attest-build-provenance@' <<< "$inst" ||
   err "windows-installer does not run attest-build-provenance"
+# Attest only what the MSI inventory check accepted.
+awk '/verify-windows-package\.ps1/ { v = NR } /uses: actions\/attest-build-provenance@/ { a = NR }
+  END { exit !(v && a > v) }' <<< "$inst" ||
+  err "attest-build-provenance must come after verify-windows-package.ps1 in windows-installer"
 
 if [ "$errors" -gt 0 ]; then
   echo "release-shape: $errors error(s)"
