@@ -7,8 +7,11 @@
 //! no store and starts nothing. The scheduler wiring is a later package.
 //!
 //! Rules, per task in queue order:
+//! 0. A task id that appears more than once is ambiguous: every occurrence
+//!    waits with its own reason and takes no seam. This outranks all below.
 //! 1. A predecessor that is neither finished nor queued is missing; a queued
 //!    one is still open; predecessors that form a cycle wait on each other.
+//!    Reason precedence: cycle, then missing, then open.
 //! 2. A seam held by a running task blocks the start.
 //! 3. Two queued tasks on one seam: the earlier startable one takes it, the
 //!    later one waits. Only startable tasks take a seam, so a task that waits
@@ -109,6 +112,12 @@ pub fn queue_order(
     for (at, task) in queue.iter().enumerate() {
         index.entry(task.id.as_str()).or_insert(at);
     }
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    let duplicated: BTreeSet<&str> = queue
+        .iter()
+        .map(|task| task.id.as_str())
+        .filter(|id| !seen.insert(id))
+        .collect();
     // Seam -> startable queued task that took it.
     let mut taken: BTreeMap<Seam, &str> = BTreeMap::new();
     let mut out = Vec::with_capacity(queue.len());
@@ -119,7 +128,12 @@ pub fn queue_order(
             .iter()
             .filter(open)
             .find(|d| !index.contains_key(d.as_str()));
-        let reason = if let Some(chain) = cycle_from(at, queue, &index) {
+        let reason = if duplicated.contains(task.id.as_str()) {
+            Some(format!(
+                "Auftrag {} steht doppelt in der Warteschlange",
+                task.id
+            ))
+        } else if let Some(chain) = cycle_from(at, queue, &index) {
             Some(cycle_reason(&chain, &index))
         } else if let Some(dep) = missing {
             Some(format!("Vorgänger {dep} fehlt in der Warteschlange"))
@@ -256,6 +270,126 @@ mod tests {
         assert_eq!(
             run(&queue, &[], &[]),
             [wartet("Vorgänger b ist noch offen"), QueueState::Startbar]
+        );
+    }
+
+    #[test]
+    fn duplicate_ids_are_rejected_for_every_occurrence() {
+        let queue = [
+            task("a", &[], &[]),
+            task("b", &[], &[]),
+            task("a", &[], &[]),
+        ];
+        let doppelt = wartet("Auftrag a steht doppelt in der Warteschlange");
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [doppelt.clone(), QueueState::Startbar, doppelt]
+        );
+    }
+
+    #[test]
+    fn each_duplicate_id_gets_its_own_reason() {
+        let queue = [
+            task("a", &[], &[]),
+            task("b", &[], &[]),
+            task("a", &[], &[]),
+            task("b", &[], &[]),
+        ];
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [
+                wartet("Auftrag a steht doppelt in der Warteschlange"),
+                wartet("Auftrag b steht doppelt in der Warteschlange"),
+                wartet("Auftrag a steht doppelt in der Warteschlange"),
+                wartet("Auftrag b steht doppelt in der Warteschlange"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rejected_duplicate_takes_no_seam_and_holds_back_its_dependants() {
+        let queue = [
+            task("a", &[], &[Seam::Api]),
+            task("a", &[], &[Seam::Api]),
+            task("b", &["a"], &[]),
+            task("c", &[], &[Seam::Api]),
+        ];
+        let doppelt = wartet("Auftrag a steht doppelt in der Warteschlange");
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [
+                doppelt.clone(),
+                doppelt,
+                wartet("Vorgänger a ist noch offen"),
+                QueueState::Startbar,
+            ]
+        );
+    }
+
+    #[test]
+    fn duplicate_beats_cycle_missing_open_and_seam() {
+        let queue = [
+            task("a", &["a", "ghost"], &[Seam::Main]),
+            task("a", &["b"], &[Seam::Main]),
+            task("b", &[], &[]),
+        ];
+        let doppelt = wartet("Auftrag a steht doppelt in der Warteschlange");
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Main, "runner")]),
+            [doppelt.clone(), doppelt, QueueState::Startbar]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_cycle_before_missing() {
+        let queue = [task("a", &["ghost", "b"], &[]), task("b", &["a"], &[])];
+        let cycle = wartet("Zyklus: a → b → a");
+        assert_eq!(run(&queue, &[], &[]), [cycle.clone(), cycle]);
+    }
+
+    #[test]
+    fn reason_precedence_missing_before_open() {
+        // The open predecessor comes first in the list, the missing one wins.
+        let queue = [task("a", &[], &[]), task("c", &["a", "ghost"], &[])];
+        assert_eq!(
+            run(&queue, &[], &[]),
+            [
+                QueueState::Startbar,
+                wartet("Vorgänger ghost fehlt in der Warteschlange")
+            ]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_open_before_seam() {
+        let queue = [task("a", &[], &[]), task("b", &["a"], &[Seam::Api])];
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Api, "runner")]),
+            [QueueState::Startbar, wartet("Vorgänger a ist noch offen")]
+        );
+    }
+
+    #[test]
+    fn reason_precedence_all_four_at_once() {
+        // a <-> b is a cycle; b also lacks "ghost" and holds a seam that is
+        // busy; the cycle is what b reports. d lacks "ghost", waits for open
+        // "a" and wants a busy seam: missing wins. e waits for open "a" and
+        // wants the busy seam: open wins.
+        let queue = [
+            task("a", &["b"], &[]),
+            task("b", &["a", "ghost"], &[Seam::Api]),
+            task("d", &["a", "ghost"], &[Seam::Api]),
+            task("e", &["a"], &[Seam::Api]),
+        ];
+        let cycle = wartet("Zyklus: a → b → a");
+        assert_eq!(
+            run(&queue, &[], &[(Seam::Api, "runner")]),
+            [
+                cycle.clone(),
+                cycle,
+                wartet("Vorgänger ghost fehlt in der Warteschlange"),
+                wartet("Vorgänger a ist noch offen"),
+            ]
         );
     }
 
