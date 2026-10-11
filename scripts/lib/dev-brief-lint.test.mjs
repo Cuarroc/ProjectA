@@ -47,7 +47,7 @@ test("brief structure rejects empty fields invalid operators bases sizes and tra
   assert.equal(lint(brief.replace("UMSETZEN", "PRÜFEN").replace(/^SIZE:.*$|^Test-First:.*$/gm, "")).exit, 0);
 });
 test("seam files require a seam declaration", () => {
-  for (const path of ["api.rs", "src-tauri/src/main.rs", "store.rs", "src-tauri/src/store/test.rs", "bin/pa.rs"]) {
+  for (const path of ["api.rs", "src-tauri/src/main.rs", "store.rs", "store/", "src-tauri/src/store/test.rs", "bin/pa.rs"]) {
     const r = lint(brief.replace("scripts/dev/brief-lint.mjs", path));
     assert.equal(r.exit, 2);
     assert.ok(r.reasons.includes("Naht in FILES, aber SEAM: no"));
@@ -66,6 +66,7 @@ test("pr reports require report uncovered block and completed review", () => {
     assert.equal(lint(text, { prBody: true }).exit, 2);
   }
   assert.ok(lint(pr.replace("abgeschlossen", "ausstehend"), { prBody: true }).reasons.includes("Review fehlt"));
+  assert.equal(lint(pr.replace("Review: abgeschlossen (Stufe B)", "### Review\nausstehend (Stufe B)"), { prBody: true }).exit, 2);
 });
 test("json cli and repo validation preserve exit codes and argument arrays", async () => {
   const cli = fileURLToPath(new URL("../dev/brief-lint.mjs", import.meta.url));
