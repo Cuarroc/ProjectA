@@ -60,6 +60,9 @@
   transition: background-color var(--g-t), transform var(--g-t);
 }
 .g-seg button:active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) {
+  .g-btn:active, .g-fchip:active, .g-seg button:active { transform: none; }
+}
 .g-seg button[aria-checked="true"] { background: var(--g-tint-hi); border-color: var(--g-line); color: var(--g-ink); }
 @media (hover: hover) and (pointer: fine) {
   .g-btn:hover { background: var(--g-hover); }

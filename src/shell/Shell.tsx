@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import EmergencyStop from "../components/EmergencyStop";
 import "../design/tokens.css";
 import "../design/glass.css";
+import "../design/motion.css";
 import "../design/variants/variants.css";
 import "../design/controls/controls.css";
 import { useT } from "../i18n/useT";
