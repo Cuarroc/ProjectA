@@ -57,6 +57,17 @@ describe("Steuerung route behind D1", () => {
     }
   });
 
+  it("falls back to the Kontingente tab for an unknown sub-path without rewriting the URL", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    const { container } = render(<App />);
+    await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
+    await go("#/steuerung/xyz");
+    expect(await screen.findByRole("heading", { level: 1, name: "Kontingente" })).toBeInTheDocument();
+    expect(route(container).getByRole("link", { name: "Kontingente" })).toHaveAttribute("aria-current", "page");
+    expect(route(container).getAllByRole("link")).toHaveLength(3);
+    expect(window.location.hash).toBe("#/steuerung/xyz");
+  });
+
   it("leaves /steuerung to the old Insights view while the switch is off", async () => {
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
