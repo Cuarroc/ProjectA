@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { invoke } from "@tauri-apps/api/core";
@@ -36,6 +36,51 @@ async function cards(): Promise<BoardCard[]> {
 }
 
 beforeEach(() => vi.mocked(invoke).mockReset());
+
+it("a changed card renders its new state and opens the updated data", async () => {
+  const initial = (await cards()).slice(0, 1);
+  const onOpen = vi.fn();
+  const props = { profiles, now: NOW, onOpen };
+  const view = render(<LeitstandCards {...props} cards={initial} />);
+  expect(screen.getByRole("button", { name: "Claude Code archivieren" })).toBeInTheDocument();
+  const updated: BoardCard = {
+    ...initial[0]!,
+    worker: { ...initial[0]!.worker, status: "exited", task: "Updated fixture task" },
+    column: "needs_you",
+    attentionReason: "Updated fixture attention",
+  };
+  view.rerender(<LeitstandCards {...props} cards={[updated]} />);
+  expect(screen.queryByRole("button", { name: "Claude Code archivieren" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeInTheDocument();
+  expect(screen.getByText("Updated fixture task")).toBeInTheDocument();
+  expect(screen.getByText("Updated fixture attention")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code öffnen" }));
+  expect(onOpen).toHaveBeenCalledWith(updated);
+});
+
+it("unchanged card data still receives new display props and action callbacks", async () => {
+  const initial = (await cards()).slice(0, 1);
+  const onOpen = vi.fn();
+  const onChanged = vi.fn();
+  const props = { cards: initial, profiles, now: NOW, onOpen, onChanged };
+  const view = render(<LeitstandCards {...props} />);
+  const nextOpen = vi.fn();
+  const nextChanged = vi.fn();
+  view.rerender(<LeitstandCards {...props} onOpen={nextOpen} onChanged={nextChanged} />);
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code öffnen" }));
+  expect(nextOpen).toHaveBeenCalledWith(initial[0]);
+  expect(onOpen).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
+  await waitFor(() => expect(nextChanged).toHaveBeenCalledTimes(1));
+  expect(onChanged).not.toHaveBeenCalled();
+
+  const renamed = [{ ...profiles[0]!, name: "Renamed fixture" }];
+  view.rerender(<LeitstandCards {...props} profiles={renamed} />);
+  expect(screen.getByRole("heading", { name: "Renamed fixture" })).toBeInTheDocument();
+  view.rerender(<LeitstandCards {...props} now={NOW + 60} />);
+  expect(screen.getByText("seit 39 min")).toBeInTheDocument();
+});
 
 it("derives forms and counts from the real get_board_state shape and leaves coordinators out", async () => {
   const list = agentCards(await cards());
