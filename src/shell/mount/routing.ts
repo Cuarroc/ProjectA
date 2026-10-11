@@ -15,8 +15,8 @@ const base = (path: string) => `/${path.split("/")[1] ?? ""}`;
 
 const trim = (path: string) => path.replace(/\/+$/, "");
 
-/** The new Leitstand (V2-S01a) owns exactly `/leitstand`; everything below it stays the old view. */
-export const isNewLeitstand = (path: string) => trim(path) === "/leitstand";
+/** The new Leitstand owns `/leitstand` (V2-S01a) and `/leitstand/betrieb` (V2-S01b); the rest below it stays the old view. */
+export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb"].includes(trim(path));
 
 /** The new Einstellungen (V2-S10a) owns exactly `/einstellungen`; its classic button opens the old Settings below it. */
 export const SETTINGS_PATH = "/einstellungen";
