@@ -197,6 +197,23 @@ use crate::store::{
     Worker, KIND_ORCHESTRATOR, KIND_QUEEN, KIND_SCOUT,
 };
 
+fn frontend_error_field(value: &str, _max_bytes: usize) -> String {
+    value.to_owned()
+}
+
+#[tauri::command]
+pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
+    crate::logging::log(
+        "frontend",
+        &format!(
+            "ERROR message={} stack={} route={}",
+            frontend_error_field(&message, 2048),
+            frontend_error_field(&stack_frame, 512),
+            frontend_error_field(&route, 256),
+        ),
+    );
+}
+
 /// Name of the descriptor file written into the app data directory.
 pub const DESCRIPTOR_FILE: &str = "projecta-api.json";
 
@@ -2424,6 +2441,19 @@ pub async fn watchdog_report(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn frontend_error_log_is_bounded() {
+        for limit in [2048, 512, 256] {
+            let bounded = super::frontend_error_field(&"界".repeat(3000), limit);
+            assert!(bounded.len() <= limit);
+            assert!(bounded.len() >= limit - 2);
+        }
+        assert_eq!(
+            super::frontend_error_field("a\r\nb\t\u{2028}c", 256),
+            "a  b  c"
+        );
+    }
+
     use super::*;
 
     /// `redact::looks_secret`/`mask_token_runs` mask exactly-32-character,
