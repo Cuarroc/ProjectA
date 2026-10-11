@@ -90,9 +90,18 @@ test("review formatting and family evidence stay conservative", () => {
   }
 });
 test("all risk paths need two families even when named as tests", () => {
-  for (const path of ["src-tauri/src/api.rs", "src-tauri/src/main.rs", "src-tauri/src/store.rs", "src-tauri/src/bin/pa.rs", "scripts/pty.test.mjs", "migrations/001.sql", ".github/workflows/ci.yml"]) {
+  for (const path of ["src-tauri/src/api.rs", "src-tauri/src/main.rs", "src-tauri/src/store.rs", "src-tauri/src/bin/pa.rs", "scripts/pty.test.mjs", "migrations/001.sql", ".github/workflows/ci.yml",
+    "src/pty/reader.rs", "src/pty_bridge.rs", "src/pty-host.ts", "src/PTY.rs", "src/migrations/runner.rs", "src/migration.rs", "src/migration-plan.ts", "schema/change.sql"]) {
     const data = pr(); data.files[0].path = path;
     assert.equal(evaluate(data).exit, 2, path);
+  }
+});
+test("benign paths containing pty or migration stay tier b", () => {
+  for (const path of ["src/copy.ts", "src/empty.ts", "src/safety.rs", "src/empty/view.ts", "src/ptycho.ts", "src/immigration.ts", "src/transmigration/view.ts", "src/migrationStats.ts"]) {
+    const data = pr(); data.files[0].path = path;
+    const result = evaluate(data);
+    assert.equal(result.exit, 0, path);
+    assert.match(result.output, /Tier: B/, path);
   }
 });
 test("pending checks and inconsistent size evidence escalate", () => {
