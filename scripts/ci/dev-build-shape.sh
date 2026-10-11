@@ -26,31 +26,60 @@ err() {
 
 body="$(grep -v -E '^[[:space:]]*#' "$WF")"
 
+# Trade-off: the bare word also matches a harmless `secrets` in a run script or
+# a step name; that false positive is accepted (fail closed), a miss is not.
 grep -qiE '\<secrets\>' <<< "$body" && err "workflow mentions secrets (secrets.X, secrets['X'], secrets: inherit)"
-# A reusable-workflow call (job-level uses:, indent 4) would run foreign code
-# with whatever it inherits; step-level uses: sit under `steps:` and stay allowed.
-grep -qE '^ {4}uses:' <<< "$body" && err "workflow has a job-level uses (reusable workflow call)"
-grep -qE '^[[:space:]]*environment:' <<< "$body" && err "workflow has an environment"
-# Only the permissions: blocks (inline value or indented children) are read, so
-# a plain key with the value `write` elsewhere does not trip the check.
-perms="$(awk '
-  /^[[:space:]]*permissions:/ {
-    match($0, /^ */); ind = RLENGTH; inb = 1
-    rest = $0; sub(/^[[:space:]]*permissions:[[:space:]]*/, "", rest)
-    if (rest != "") print rest
-    next }
-  inb && /^[[:space:]]*$/ { next }
-  inb { match($0, /^ */); if (RLENGTH <= ind) inb = 0; else print }' <<< "$body")"
-grep -qE '\<write' <<< "$perms" && err "workflow has a write permission"
-grep -qE '^[[:space:]]+permissions:' <<< "$body" || err "job declares no job-level permissions"
+grep -qE '^[[:space:]]*environment[[:space:]]*:' <<< "$body" && err "workflow has an environment"
 
-# Triggers: `on:` is either inline (`on: workflow_dispatch`) or a block whose
-# keys (indent 2) must all be workflow_dispatch.
-triggers="$(awk '
-  /^on:[[:space:]]*$/ { on = 1; next }
-  /^on:/ { sub(/^on:[[:space:]]*/, ""); print; next }
-  on && /^[^ ]/ { exit }
-  on && /^  [A-Za-z_-]+:/ { sub(/:.*/, ""); sub(/^  /, ""); print }' <<< "$body")"
+# One structural pass instead of indentation-bound greps. The awk keeps a stack
+# of key columns (so any indentation works), skips block-scalar bodies (`run: |`
+# text is not YAML structure) and prints one tag per fact:
+#   JOBUSES    a job (not step) has a uses key, i.e. a reusable-workflow call
+#   JOBOPAQUE  jobs/a job is flow style or uses a merge key; not checkable
+#   JOBPERMS   a job declares permissions
+#   PERMS ...  a key or value at or below a workflow/job-level permissions key
+#   TRIGGER x  a key (or inline value) of `on:`
+#   END        sentinel: the awk ran to the end
+shape="$(awk '
+  /^(---|\.\.\.)([ \t]|$)/ { n = 0; blk = -1; next }
+  /^[ \t]*$/ { next }
+  {
+    match($0, /^ */); ind = RLENGTH
+    if (blk >= 0) { if (ind > blk) next; blk = -1 }
+    col = ind; t = substr($0, ind + 1)
+    while (match(t, /^-([ ]+|$)/)) { col += RLENGTH; t = substr(t, RLENGTH + 1) }
+    if (t ~ /^[|>][-+0-9]*[ \t]*$/) { blk = ind; next }
+    if (!match(t, /^("[^"]*"|'"'"'[^'"'"']*'"'"'|[A-Za-z0-9_.<-]+)[ \t]*:([ \t]|$)/)) next
+    key = substr(t, 1, RLENGTH); val = substr(t, RLENGTH + 1)
+    sub(/[ \t]*:[ \t]*$/, "", key); gsub(/^["'"'"']|["'"'"']$/, "", key)
+    sub(/^[ \t]+/, "", val); sub(/(^|[ \t]+)#.*$/, "", val); sub(/[ \t]+$/, "", val)
+    while (n > 0 && c[n] >= col) n--
+    n++; c[n] = col; p[n] = key
+    if (val ~ /^[|>][-+0-9]*$/) blk = col
+    inj = (p[1] == "jobs")
+    if (n == 1 && key == "jobs" && val != "") print "JOBOPAQUE"
+    if (inj && n == 2 && val != "") print "JOBOPAQUE"
+    if (inj && n == 3 && key == "<<") print "JOBOPAQUE"
+    if (inj && n == 3 && key == "uses") print "JOBUSES"
+    if (inj && n == 3 && key == "permissions") print "JOBPERMS"
+    if ((p[1] == "permissions") || (inj && n >= 3 && p[3] == "permissions")) print "PERMS " key ": " val
+    if (p[1] == "on" && n == 1 && val != "") print "TRIGGER " val
+    if (p[1] == "on" && n == 2) print "TRIGGER " key
+  }
+  END { print "END" }' <<< "$body")" || err "permissions extraction failed (awk exit $?)"
+grep -qx END <<< "$shape" || err "permissions extraction failed (no end marker)"
+
+grep -qx JOBUSES <<< "$shape" && err "workflow has a job-level uses (reusable workflow call)"
+grep -qx JOBOPAQUE <<< "$shape" && err "workflow declares jobs in flow style or with a merge key (not checkable)"
+perms="$(grep '^PERMS ' <<< "$shape")"
+grep -qE '\<write' <<< "$perms" && err "workflow has a write permission"
+grep -qx JOBPERMS <<< "$shape" || err "job declares no job-level permissions"
+if grep -qE 'permissions[[:space:]]*:' <<< "$body" && [ -z "$perms" ]; then
+  err "permissions extraction found nothing although the workflow has a permissions: key"
+fi
+
+# Triggers: every key of `on:` (or its inline value) must be workflow_dispatch.
+triggers="$(sed -n 's/^TRIGGER //p' <<< "$shape")"
 [ -n "$triggers" ] && [ "$(sort -u <<< "$triggers")" = workflow_dispatch ] ||
   err "trigger other than workflow_dispatch (found: $(tr '\n' ' ' <<< "$triggers"))"
 
