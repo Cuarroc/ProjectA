@@ -1646,6 +1646,17 @@ wall clock, linux + windows.
 - **Reverse when:** any charge appears, Anthropic changes the terms, or the
   user revokes.
 
+## 2026-10-11 - DEV-AUTO-1: build Dev installers after each main push
+
+- **What:** `dev-build.yml` runs on pushes restricted to `main` and on manual
+  dispatch. The shared `dev-build` concurrency group keeps the active run
+  (`cancel-in-progress: false`); only the newest pending run waits.
+- **Why:** preview installers should follow merged changes automatically so
+  new features can be tested promptly. The unsigned artifact, read-only token
+  and inert updater overlay remain unchanged; this does not publish a release.
+- **Reverse when:** automatic previews are no longer wanted: remove the `push`
+  key and restore the shape gate and tests to the manual-only trigger contract.
+
 ## 2026-10-11 - Werkbank je Projekt und Bewährte Wege (E1–E4)
 
 - **What:** the user accepted all four recommendations (cards E1–E4 of the
