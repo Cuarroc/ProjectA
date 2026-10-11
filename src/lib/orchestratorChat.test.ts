@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useOrchestratorChat } from "./orchestratorChat";
+import { formatMessageTime, useOrchestratorChat } from "./orchestratorChat";
 import * as ipc from "./ipc";
 
 vi.mock("./ipc", () => ({
@@ -57,5 +57,30 @@ describe("useOrchestratorChat audit regressions", () => {
     });
 
     expect(result.current.error).toBe("database unavailable");
+  });
+});
+
+describe("formatMessageTime", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("formatMessageTime renders German 24-hour time even when the host locale is en-US", () => {
+    const original = Date.prototype.toLocaleTimeString;
+    vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(function (
+      this: Date,
+      _locale,
+      options,
+    ) {
+      return original.call(this, "en-US", options);
+    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 11, 20, 0, 0));
+    const unix = (date: Date) => Math.floor(date.getTime() / 1000);
+
+    expect(formatMessageTime(unix(new Date(2026, 9, 11, 17, 5, 0)))).toBe("17:05");
+    expect(formatMessageTime(unix(new Date(2026, 9, 10, 5, 31, 0)))).toBe("10.10. 05:31");
+    expect(formatMessageTime(0)).toBe("");
   });
 });
