@@ -1,11 +1,20 @@
-import { HonestState } from "../../design/data/HonestState";
+import { Meter } from "../../design/inputs/Meter";
+import "../../design/inputs/inputs.css";
+import { PROVIDER_POLL_MS, useProviderOverview } from "../../lib/providers";
+import { QUOTA_POLL_MS, useQuotaState } from "../../lib/quota";
+import { quotaSummary } from "./texts";
+import "./quotaBar.css";
 import "./header.css";
 
-/** Quota bar: no backend yet, so it says so instead of drawing meters (HonestState never shows a number). */
+/** Read-only observations from the existing hooks and their polling cadence. */
 export function QuotaBar() {
+  const quota = useQuotaState(QUOTA_POLL_MS);
+  const overview = useProviderOverview(PROVIDER_POLL_MS);
+  const summary = quotaSummary(quota, overview);
   return (
-    <a className="g-hdr-quota" href="#/steuerung" aria-label="Kontingente: noch nicht verbunden" title="Kontingente: noch nicht verbunden">
-      <HonestState kind="offline" title="Kontingente: noch nicht verbunden" />
+    <a className="g-hdr-quota g-quota-observed" data-blocked={summary.blocked || undefined} href="#/steuerung" aria-label={summary.text} title={summary.text}>
+      <span>{summary.text}</span>
+      {summary.percent !== null && <Meter value={summary.percent} aria-label={summary.text} />}
     </a>
   );
 }
