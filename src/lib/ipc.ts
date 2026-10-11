@@ -694,15 +694,20 @@ export interface WatchdogFinding {
   since: number;
 }
 
-/** V2-B22 read-only: runs of the project that stand still. A failed read rejects; it is never an empty list. */
+const WATCHDOG_UNREADABLE = "Der Wachhund hat eine unlesbare Antwort bekommen.";
+
+function watchdogFinding(r: unknown): WatchdogFinding {
+  const f = (r ?? {}) as Record<string, unknown>;
+  if (typeof f.runId !== "string" || typeof f.label !== "string" || typeof f.sentence !== "string") throw new Error(WATCHDOG_UNREADABLE);
+  if ((f.kind !== "steht" && f.kind !== "fertig") || typeof f.since !== "number") throw new Error(WATCHDOG_UNREADABLE);
+  return { runId: f.runId, label: f.label, kind: f.kind, sentence: f.sentence, since: f.since };
+}
+
+/** V2-B22 read-only: runs of the project that stand still. A failed or malformed read rejects with a German sentence; it is never an empty list. */
 export async function getWatchdogReport(projectId: string): Promise<WatchdogFinding[]> {
   const raw = await invoke<unknown>("watchdog_report", { projectId });
-  if (!Array.isArray(raw)) throw new Error("watchdog_report: unexpected answer");
-  return raw.flatMap((r: Record<string, unknown>) =>
-    typeof r?.runId === "string" && typeof r.sentence === "string" && (r.kind === "steht" || r.kind === "fertig")
-      ? [{ runId: r.runId, label: typeof r.label === "string" ? r.label : r.runId, kind: r.kind, sentence: r.sentence, since: typeof r.since === "number" ? r.since : 0 }]
-      : [],
-  );
+  if (!Array.isArray(raw)) throw new Error(WATCHDOG_UNREADABLE);
+  return raw.map(watchdogFinding);
 }
 
 /** F5 baseline: CPU/RAM/disk plus OmniRoute token totals. Missing is not zero. */

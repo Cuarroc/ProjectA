@@ -38,7 +38,6 @@ use crate::workers;
 
 // V2-B22a: pure watchdog core, read by `api::watchdog_report`. Exited and
 // LeaseExpired runs are not fed to it yet.
-#[allow(dead_code)]
 pub(crate) mod watchdog;
 
 /// How often the worktrees are probed. One minute: a git probe per running

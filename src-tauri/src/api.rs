@@ -2334,11 +2334,14 @@ fn watchdog_span(ms: u64) -> String {
 /// only when output *and* worktree are both known and old, the same
 /// conjunction as the stuck verdict; a worktree never probed is not judged.
 /// The dedupe state starts empty on purpose: this is a snapshot for the panel,
-/// not a notification, so a standing run is listed on every read.
+/// not a notification, so a standing run is listed on every read. `now` (Unix
+/// milliseconds) and `at` (the monotonic clock) are the same moment, passed in
+/// so a test fixes both.
 fn watchdog_findings(
     workers: &[Worker],
     engine: &crate::status::StatusEngine,
     now: u64,
+    at: std::time::Instant,
     stalled_after: Duration,
 ) -> Vec<WatchdogFinding> {
     use crate::stuck::watchdog::{evaluate, Dedupe, NoticeKind, Run, RunState, Thresholds};
@@ -2351,7 +2354,7 @@ fn watchdog_findings(
     let runs: Vec<Run> = running
         .iter()
         .map(|w| {
-            let (output, worktree) = match engine.activity_ages(&w.id) {
+            let (output, worktree) = match engine.activity_ages(&w.id, at) {
                 (Some(output), Some(worktree)) => (Some(ago(output)), Some(ago(worktree))),
                 _ => (None, None),
             };
@@ -2382,6 +2385,7 @@ fn watchdog_findings(
                         watchdog_span(now.saturating_sub(n.since))
                     ),
                 ),
+                // Unreachable until Exited/LeaseExpired runs are fed to the core.
                 NoticeKind::Fertig => ("fertig", "Der Lauf ist beendet.".to_string()),
             };
             Some(WatchdogFinding {
@@ -2402,13 +2406,20 @@ pub async fn watchdog_report(
     store: tauri::State<'_, crate::store::Store>,
     engine: tauri::State<'_, Arc<crate::status::StatusEngine>>,
 ) -> Result<Vec<WatchdogFinding>, String> {
-    let workers = store
-        .list_workers(Some(&project_id))
-        .await
-        .map_err(|_| "Der Wachhund konnte die Läufe nicht lesen.".to_string())?;
+    let workers = store.list_workers(Some(&project_id)).await.map_err(|err| {
+        crate::logf!("watchdog", "could not list workers of {project_id}: {err}");
+        "Der Wachhund konnte die Läufe nicht lesen.".to_string()
+    })?;
     let stalled_after = crate::stuck::threshold(&store).await;
     let now_ms = crate::store::now_unix_secs().max(0).unsigned_abs() * 1000;
-    Ok(watchdog_findings(&workers, &engine, now_ms, stalled_after))
+    let at = std::time::Instant::now();
+    Ok(watchdog_findings(
+        &workers,
+        &engine,
+        now_ms,
+        at,
+        stalled_after,
+    ))
 }
 
 #[cfg(test)]
@@ -2671,23 +2682,25 @@ pub(crate) mod tests {
         let (stalled, healthy) = (worker("wk-stalled"), worker("wk-healthy"));
         let (mut exited, blind) = (worker("wk-exited"), worker("wk-blind"));
         exited.status = crate::store::STATUS_EXITED.to_string();
-        let now = Instant::now();
-        let long_ago = now
-            .checked_sub(Duration::from_secs(15 * 60))
-            .expect("clock");
+        // No `checked_sub`: an `Instant` in the past panics on a machine that
+        // booted a minute ago. The quiet moment is `base`, the read happens 15
+        // minutes after it.
+        let base = Instant::now();
+        let at = base + Duration::from_secs(15 * 60);
         for w in [&stalled, &healthy, &exited, &blind] {
             engine.observe_worker(w);
         }
         for w in [&stalled, &healthy] {
-            engine.note_git_activity_at(&w.id, "fp", long_ago);
+            engine.note_git_activity_at(&w.id, "fp", base);
         }
         // Never probed: quiet output alone is not judged.
-        engine.note_output_at(&blind.id, "z", long_ago);
-        engine.note_output_at(&stalled.id, "x", long_ago);
-        engine.note_output_at(&healthy.id, "y", now);
+        engine.note_output_at(&blind.id, "z", base);
+        engine.note_output_at(&stalled.id, "x", base);
+        engine.note_output_at(&healthy.id, "y", at);
         let workers = [stalled, healthy.clone(), exited, blind];
         let now_ms = 1_000_000_000_u64;
-        let found = watchdog_findings(&workers, &engine, now_ms, Duration::from_secs(600));
+        let stalled_after = Duration::from_secs(600);
+        let found = watchdog_findings(&workers, &engine, now_ms, at, stalled_after);
         assert_eq!(found.len(), 1, "{found:?}");
         assert_eq!(found[0].run_id, "wk-stalled");
         assert_eq!(found[0].kind, "steht");
@@ -2696,16 +2709,23 @@ pub(crate) mod tests {
             "{}",
             found[0].sentence
         );
-        // `Instant` ages are real time: allow a few seconds of test-machine jitter.
-        let quiet_since = now_ms - 15 * 60_000;
-        assert!(
-            (quiet_since - 5_000..=quiet_since).contains(&found[0].since),
-            "{}",
-            found[0].since
-        );
-        assert!(
-            watchdog_findings(&[healthy], &engine, now_ms, Duration::from_secs(600)).is_empty()
-        );
+        assert_eq!(found[0].since, now_ms - 15 * 60_000);
+        assert!(watchdog_findings(&[healthy], &engine, now_ms, at, stalled_after).is_empty());
+    }
+
+    #[test]
+    fn watchdog_span_names_minutes_and_hours_in_singular_and_plural() {
+        for (ms, want) in [
+            (59_999, "0 Minuten"),
+            (60_000, "1 Minute"),
+            (59 * 60_000, "59 Minuten"),
+            (60 * 60_000, "1 Stunde"),
+            (61 * 60_000, "1 Stunde 1 Minute"),
+            (125 * 60_000, "2 Stunden 5 Minuten"),
+            (120 * 60_000, "2 Stunden"),
+        ] {
+            assert_eq!(watchdog_span(ms), want, "{ms} ms");
+        }
     }
 
     fn worker(id: &str) -> Worker {

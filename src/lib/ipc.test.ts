@@ -8,6 +8,7 @@ import {
   getDevelopmentPlan,
   getOmniRouteUsage,
   getSetupTrustView,
+  getWatchdogReport,
   importDevelopmentPlan,
   listProjects,
   listLiveSessions,
@@ -389,5 +390,25 @@ describe("supervisor notification IPC", () => {
       kind: "blocked", projectId: "pj-1", rootGoalId: "g-1", reason, observedAt: 1,
     })));
     expect(seen.map((notice) => notice.kind === "blocked" && notice.reason)).toEqual(reasons);
+  });
+});
+
+describe("getWatchdogReport", () => {
+  const good = { runId: "r1", label: "Worker 1", kind: "steht", sentence: "Steht seit 15 Minuten.", since: 5 };
+
+  it("returns well-formed findings and an honest empty list", async () => {
+    vi.mocked(invoke).mockResolvedValue([good]);
+    await expect(getWatchdogReport("pj-1")).resolves.toEqual([good]);
+    vi.mocked(invoke).mockResolvedValue([]);
+    await expect(getWatchdogReport("pj-1")).resolves.toEqual([]);
+  });
+
+  it("rejects the whole read with a German sentence when any entry is malformed", async () => {
+    for (const bad of [{ ...good, kind: "weg" }, { ...good, runId: 7 }, { ...good, sentence: undefined }, null, "x"]) {
+      vi.mocked(invoke).mockResolvedValue([good, bad]);
+      await expect(getWatchdogReport("pj-1")).rejects.toThrow("Der Wachhund hat eine unlesbare Antwort bekommen.");
+    }
+    vi.mocked(invoke).mockResolvedValue({ not: "a list" });
+    await expect(getWatchdogReport("pj-1")).rejects.toThrow("Der Wachhund hat eine unlesbare Antwort bekommen.");
   });
 });
