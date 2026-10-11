@@ -39,10 +39,25 @@ pub enum Denial {
 /// mark it consumed before execution; this function provides no synchronization.
 /// The caller also owns hash generation, grant authenticity and trusted time.
 pub fn check(
-    _grant: &ApprovalGrant<'_>,
-    _request: &ExecutionRequest<'_>,
-    _consumed: &HashSet<String>,
+    grant: &ApprovalGrant<'_>,
+    request: &ExecutionRequest<'_>,
+    consumed: &HashSet<String>,
 ) -> Result<(), Denial> {
+    if grant.content_hash != request.content_hash {
+        return Err(Denial::ContentChanged);
+    }
+    if grant.target != request.target {
+        return Err(Denial::WrongTarget);
+    }
+    if grant.run_id != request.run_id {
+        return Err(Denial::WrongRun);
+    }
+    if request.now >= grant.expires_at {
+        return Err(Denial::Expired);
+    }
+    if consumed.contains(grant.nonce) {
+        return Err(Denial::AlreadyUsed);
+    }
     Ok(())
 }
 
