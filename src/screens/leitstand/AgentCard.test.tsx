@@ -110,6 +110,31 @@ it("a restart error says restart and not archive", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Neu starten hat nicht geklappt. Bitte noch einmal versuchen.");
 });
 
+it("starting another restart clears the previous error while the retry is pending", async () => {
+  const retry = pending<Worker>();
+  vi.mocked(respawnWorker).mockRejectedValueOnce(new Error("boom")).mockReturnValueOnce(retry.promise);
+  const onChanged = view("exited");
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code neu starten" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Neu starten hat nicht geklappt. Bitte noch einmal versuchen.");
+  expect(onChanged).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code neu starten" }));
+  expect(respawnWorker).toHaveBeenNthCalledWith(2, "w1");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeDisabled();
+  expect(onChanged).not.toHaveBeenCalled();
+
+  retry.resolve({} as Worker);
+  await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeEnabled();
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("the proof chip exposes its full text in a native tooltip", () => {
+  view("running");
+  expect(screen.getByTitle("Beweis nicht verbunden")).toContainElement(screen.getByText("Beweis nicht verbunden"));
+});
+
 it("offers only the action the old worker list allows for the state", () => {
   const names = (status: Worker["status"]) => {
     cleanup();
