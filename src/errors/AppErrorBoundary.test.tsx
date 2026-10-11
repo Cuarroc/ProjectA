@@ -14,7 +14,7 @@ it("reports the component stack of a render error", () => {
       message: "component stack crash",
       stackFrame: expect.stringContaining("AppErrorBoundary"),
     }));
-  } finally { cleanup(); noise.mockRestore(); }
+  } finally { cleanup(); noise.mockRestore(); vi.mocked(invoke).mockClear(); }
 });
 it("logs a root render failure once and contains the crash", () => {
   const noise = vi.spyOn(console, "error").mockImplementation(() => {});

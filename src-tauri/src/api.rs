@@ -234,7 +234,7 @@ impl FrontendErrorLog {
     ) {
         self.recent
             .retain(|(at, _)| now.duration_since(*at).as_secs() < 60);
-        let message = frontend_error_field(message, 2048);
+        let message = frontend_error_field(&crate::redact::redact(message), 2048);
         let summary_due = now
             .duration_since(*self.summary_at.get_or_insert(now))
             .as_secs()
@@ -256,7 +256,7 @@ impl FrontendErrorLog {
         emit(format!(
             "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
             message,
-            frontend_error_field(stack_frame, 512),
+            frontend_error_field(&crate::redact::redact(stack_frame), 512),
             frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256),
         ));
         self.recent.push((now, Some(message)));
@@ -280,10 +280,21 @@ fn emit_frontend_error(
     message: &str,
     stack_frame: &str,
     route: &str,
-    emit: impl FnMut(String),
+    mut emit: impl FnMut(String),
 ) {
-    if let Ok(mut limiter) = limiter.lock() {
-        limiter.write(std::time::Instant::now(), message, stack_frame, route, emit);
+    let mut lines = Vec::new();
+    {
+        let mut limiter = limiter.lock().unwrap_or_else(|e| e.into_inner());
+        limiter.write(
+            std::time::Instant::now(),
+            message,
+            stack_frame,
+            route,
+            |line| lines.push(line),
+        );
+    }
+    for line in lines {
+        emit(line);
     }
 }
 
