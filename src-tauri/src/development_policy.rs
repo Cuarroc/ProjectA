@@ -12,6 +12,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+#[cfg_attr(not(test), allow(dead_code))]
+mod approval_gate;
 // Consumer: V2-B11 (review gate). Pure rule core, unused until then.
 #[cfg_attr(not(test), allow(dead_code))]
 mod review_rule;
