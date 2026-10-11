@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import "../../design/controls/controls.css";
 import "../../design/glass.css";
@@ -24,6 +24,8 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const begin = usePolledResource(projectId);
+  // Bumped on every project change; a plain id would be accepted again after p1 -> p2 -> p1.
+  const epoch = useRef(0);
 
   const refresh = useCallback(async () => {
     if (projectId === null) return;
@@ -40,6 +42,7 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
   }, [begin, projectId]);
 
   useEffect(() => {
+    epoch.current += 1;
     setLoad({ status: "loading" });
     setBusy(new Set());
     setNotice(null);
@@ -48,19 +51,23 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
   }, [refresh]);
 
   const decide = async (id: string, act: () => Promise<void>, done: string, failed: string) => {
-    const target = projectId;
+    const token = epoch.current;
+    const live = () => epoch.current === token;
     setBusy((cur) => new Set(cur).add(id));
     setFailure(null);
     try {
       await act();
+      if (!live()) return;
       setNotice(done);
       await refresh();
     } catch {
-      setNotice(null);
-      setFailure(failed);
+      if (live()) {
+        setNotice(null);
+        setFailure(failed);
+      }
     } finally {
       // A verdict that outlives a project switch must not free a row of the new one.
-      if (target === projectId) setBusy((cur) => { const next = new Set(cur); next.delete(id); return next; });
+      if (live()) setBusy((cur) => { const next = new Set(cur); next.delete(id); return next; });
     }
   };
 
