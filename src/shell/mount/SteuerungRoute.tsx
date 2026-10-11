@@ -8,15 +8,17 @@ export default function SteuerungRoute({ path }: { path: string }) {
   const t = useT();
   const found = resolveRoute(path);
   const tabs = found?.route.tabs ?? [];
-  const title = found?.tab?.label ?? found?.route.label ?? "";
+  // An unknown sub-path shows the first tab (Kontingente) instead of an unselected strip; the URL stays as typed.
+  const active = found?.tab ?? tabs[0];
+  const title = active?.label ?? found?.route.label ?? "";
   return (
     <div className="g-sr">
       <nav className="g-shell-tabs" aria-label={t("tab.aria")}>
         {tabs.map((tab) => (
-          <a key={tab.path} href={`#${tab.path}`} aria-current={tab === found?.tab ? "page" : undefined}>{tab.label}</a>
+          <a key={tab.path} href={`#${tab.path}`} aria-current={tab === active ? "page" : undefined}>{tab.label}</a>
         ))}
       </nav>
-      {found?.tab?.path === "/steuerung" ? (
+      {active?.path === "/steuerung" ? (
         <KontingenteScreen />
       ) : (
         <section className="g-glass g-sr-pane" aria-labelledby="g-sr-title">
