@@ -308,18 +308,21 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
 
   // -- sessions -------------------------------------------------------------
 
-  const { subscribeExit, unsubscribeExit, markExited } = useSessionSubscriptions(setSessions, (sessionId) => {
-    setWorkers((prev) =>
-      prev.map((worker) =>
-        worker.sessionId === sessionId
-          ? { ...worker, sessionId: null, status: "exited" as const }
-          : worker,
-      ),
-    );
-    // The card's status dot and column both hang off this; do not make the
-    // board wait for the next poll.
-    refreshBoardRef.current();
-  });
+  const { subscribeExit, unsubscribeExit, markExited } = useSessionSubscriptions(
+    setSessions,
+    (sessionId) => {
+      setWorkers((prev) =>
+        prev.map((worker) =>
+          worker.sessionId === sessionId
+            ? { ...worker, sessionId: null, status: "exited" as const }
+            : worker,
+        ),
+      );
+      // The card's status dot and column both hang off this; do not make the
+      // board wait for the next poll.
+      refreshBoardRef.current();
+    },
+  );
 
   /** Drop the tab. The session itself is somebody else's business. */
   const dropTab = useCallback((sessionId: string) => {

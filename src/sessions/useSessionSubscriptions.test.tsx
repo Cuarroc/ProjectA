@@ -34,7 +34,7 @@ beforeEach(() => {
     if (["list_projects", "list_workers", "list_questions", "get_reason_catalog"].includes(command)) return [];
     if (command === "get_board_state") return { cards: [], coordinators: [] };
     if (command === "get_panic_notice") return { current: null, previous: null };
-    if (command === "spawn_pty") return { sessionId: "session-a" };
+    if (command === "spawn_pty") return { sessionId: mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty").length === 1 ? "session-a" : "session-b" };
     if (command === "get_scrollback") {
       [...mocks.listeners].reverse().find((entry) => entry.event === "pty:output:session-a")?.handler({ payload: "live" });
       return "history";
@@ -55,26 +55,42 @@ describe.each([false, true])("session subscriptions with D1=%s", (d1) => {
     const view = render(<App />);
     fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
     fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
-    fireEvent.click(await screen.findByRole("button", { name: /Shell/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
     await waitFor(() => expect(active("pty:output:session-a")).toHaveLength(1));
     expect(active("pty:exit:session-a")).toHaveLength(1);
     expect(mocks.writes).toEqual(["history", "live"]);
     fireEvent.click(screen.getByRole("tab", { name: "Shell" }));
     if (d1) {
-      go("#/einstellungen"); go("#/leitstand"); go("#/leitstand/klassisch");
+      go("#/einstellungen");
+      await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" });
+      go("#/leitstand"); go("#/leitstand/klassisch");
+      fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
     } else {
       fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
       fireEvent.click(screen.getByRole("tab", { name: "Agents" }));
     }
     await waitFor(() => expect(active("pty:output:session-a")).toHaveLength(1));
+    expect(mocks.writes).toEqual(["history", "live", "history", "live"]);
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "get_scrollback")).toHaveLength(2);
     expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
     expect(mocks.invoke.mock.calls.filter(([command]) => command === "spawn_pty")).toHaveLength(1);
     expect(mocks.invoke.mock.calls.some(([command]) => command === "kill_pty")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Neue Sitzung" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
+    await waitFor(() => expect(active("pty:output:session-b")).toHaveLength(1));
+    expect(active("pty:output:session-a")).toHaveLength(0);
+    fireEvent.click(screen.getAllByRole("tab", { name: "Shell" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Terminal teilen" }));
+    await waitFor(() => expect(active("pty:output:session-b")).toHaveLength(1));
+    expect(active("pty:output:session-a")).toHaveLength(1);
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(2);
     act(() => active("pty:exit:session-a")[0].handler({ payload: { code: 0 } }));
-    expect(screen.getByRole("tab", { name: "Shell beendet" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Shellbeendet" })).toHaveAttribute("aria-selected", "true");
     expect(active("pty:exit:session-a")).toHaveLength(0);
     view.unmount();
     expect(active("pty:output:session-a")).toHaveLength(0);
+    expect(active("pty:output:session-b")).toHaveLength(0);
+    expect(active("pty:exit:session-b")).toHaveLength(0);
   });
 });
 
@@ -87,6 +103,8 @@ it("tears down every subscription on unmount", async () => {
   mocks.listen.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
   let pending!: Promise<void>;
   act(() => { pending = hook.result.current.subscribeExit("pending"); });
+  await act(() => hook.result.current.subscribeExit("pending"));
+  expect(mocks.listen).toHaveBeenCalledTimes(2);
   hook.unmount();
   expect(mocks.listeners).toHaveLength(1);
   expect(mocks.listeners[0].stop).toHaveBeenCalledTimes(1);
