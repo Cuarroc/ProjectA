@@ -198,8 +198,14 @@ use crate::store::{
 };
 
 fn frontend_error_field(value: &str, max_bytes: usize) -> String {
+    // Bound redaction work before applying the final escaped log-field limit.
+    let mut end = value.len().min(8192);
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    let redacted = crate::redact::redact(&value[..end]);
     let mut field = String::new();
-    for ch in value.chars() {
+    for ch in redacted.chars() {
         let ch = if ch.is_control() || matches!(ch, '\u{2028}' | '\u{2029}') {
             ' '
         } else {
@@ -270,14 +276,31 @@ pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
         suppressed: 0,
         summary_at: None,
     });
-    if let Ok(mut limiter) = LIMITER.lock() {
+    emit_frontend_error(&LIMITER, &message, &stack_frame, &route, |line| {
+        crate::logging::log("frontend", &line)
+    });
+}
+
+fn emit_frontend_error(
+    limiter: &std::sync::Mutex<FrontendErrorLog>,
+    message: &str,
+    stack_frame: &str,
+    route: &str,
+    mut emit: impl FnMut(String),
+) {
+    let mut lines = Vec::new();
+    {
+        let mut limiter = limiter.lock().unwrap_or_else(|e| e.into_inner());
         limiter.write(
             std::time::Instant::now(),
-            &message,
-            &stack_frame,
-            &route,
-            |line| crate::logging::log("frontend", &line),
+            message,
+            stack_frame,
+            route,
+            |line| lines.push(line),
         );
+    }
+    for line in lines {
+        emit(line);
     }
 }
 
@@ -2508,6 +2531,86 @@ pub async fn watchdog_report(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn frontend_error_log_redacts_the_route() {
+        for token in ["0".repeat(32), format!("sk-{}", "x".repeat(24))] {
+            let mut lines = Vec::new();
+            super::FrontendErrorLog::default().write(
+                std::time::Instant::now(),
+                "failed",
+                "at render",
+                &format!("/token/{token}?private=value#fragment"),
+                |line| lines.push(line),
+            );
+            assert_eq!(
+                lines,
+                [r#"ERROR message="failed" stack="at render" route="/token/[redacted]""#]
+            );
+        }
+    }
+
+    #[test]
+    fn frontend_error_log_caps_raw_fields_before_redaction() {
+        let raw = format!("sk-{}界tail", "x".repeat(8188));
+        let mut lines = Vec::new();
+        super::FrontendErrorLog::default().write(
+            std::time::Instant::now(),
+            &raw,
+            &raw,
+            &raw,
+            |line| lines.push(line),
+        );
+        assert_eq!(
+            lines,
+            [r#"ERROR message="[redacted]" stack="[redacted]" route="[redacted]""#]
+        );
+    }
+
+    #[test]
+    fn frontend_error_log_masks_secrets() {
+        // Synthetic shapes only: never use live credentials in fixtures.
+        for token in ["0".repeat(32), format!("sk-{}", "x".repeat(24))] {
+            let mut limiter = super::FrontendErrorLog::default();
+            let mut lines = Vec::new();
+            limiter.write(
+                std::time::Instant::now(),
+                &format!("failed token={token}"),
+                &format!("at render (key={token})"),
+                "/",
+                |line| lines.push(line),
+            );
+            assert_eq!(
+                lines,
+                [
+                    r#"ERROR message="failed token=[redacted]" stack="at render (key=[redacted])" route="/""#
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn frontend_error_log_releases_and_recovers_mutex() {
+        let limiter = std::sync::Mutex::new(super::FrontendErrorLog::default());
+        for poisoned in [false, true] {
+            if poisoned {
+                assert!(std::panic::catch_unwind(|| {
+                    let _guard = limiter.lock().unwrap();
+                    panic!("synthetic poison");
+                })
+                .is_err());
+            }
+            let mut lines = Vec::new();
+            super::emit_frontend_error(&limiter, &format!("error {poisoned}"), "", "/", |line| {
+                assert!(!matches!(
+                    limiter.try_lock(),
+                    Err(std::sync::TryLockError::WouldBlock)
+                ));
+                lines.push(line);
+            });
+            assert_eq!(lines.len(), 1);
+        }
+    }
+
     #[test]
     fn frontend_error_log_is_rate_limited() {
         use std::time::{Duration, Instant};

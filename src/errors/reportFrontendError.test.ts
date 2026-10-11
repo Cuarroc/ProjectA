@@ -16,6 +16,18 @@ beforeEach(async () => {
   dispose = reporter.installFrontendErrorHandlers();
 });
 afterEach(() => { dispose(); window.removeEventListener("error", prevent); vi.useRealTimers(); });
+it("keeps the js frame next to the component stack", () => {
+  const error = new Error("render failed");
+  error.stack = "Error: render failed\n    at render (app.js:10:2)\n    at ignored";
+  for (const [componentStack, suffix] of [["\n    at Widget", " | \n    at Widget"],
+    [undefined, ""], ["", ""], ["界".repeat(300), ` | ${"界".repeat(162)}`]]) {
+    reportFrontendError(error, componentStack);
+    const { stackFrame } = vi.mocked(invoke).mock.lastCall?.[1] as { stackFrame: string };
+    expect(stackFrame).toBe(`at render (app.js:10:2)${suffix}`);
+    expect(new TextEncoder().encode(stackFrame).length).toBeLessThanOrEqual(512);
+    vi.advanceTimersByTime(10_000);
+  }
+});
 it("writes one log line per uncaught error", () => {
   const error = new Error("boom");
   error.stack = "Error: boom\n    at render (app.js:10:2)\n    at ignored";

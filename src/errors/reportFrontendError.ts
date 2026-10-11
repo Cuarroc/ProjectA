@@ -15,7 +15,7 @@ function bounded(value: string, bytes: number): string {
   }
   return result;
 }
-export function reportFrontendError(error: unknown): void {
+export function reportFrontendError(error: unknown, componentStack?: string | null): void {
   try {
     let message = text(error), stackFrame = "";
     try {
@@ -25,7 +25,7 @@ export function reportFrontendError(error: unknown): void {
       }
     } catch { /* Thrown proxies and hostile accessors must not break reporting. */ }
     message = bounded(message, 2048);
-    stackFrame = bounded(stackFrame, 512);
+    stackFrame = bounded([stackFrame, componentStack].filter(Boolean).join(" | "), 512);
     const route = bounded(window.location.pathname, 256);
     const signature = JSON.stringify([message, stackFrame, route]);
     const now = performance.now();
