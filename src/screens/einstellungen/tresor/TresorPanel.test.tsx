@@ -6,6 +6,7 @@ import { TresorPanel } from "./TresorPanel";
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: async () => "com.projecta.app" }));
 
 const provider = (id: string, kind: string, extra: Record<string, unknown> = {}) => ({
   id, name: `Anbieter ${id}`, kind, connected: true, detail: null, quotaState: "ok",
@@ -102,12 +103,12 @@ describe("TresorPanel", () => {
     expect(await screen.findByText("Keine Anbieter bekannt")).toBeInTheDocument();
   });
 
-  it("MCP servers are not connected and name their package", async () => {
+  it("MCP servers stay honest without an internal package note", async () => {
     backend([]);
     render(<TresorPanel />);
     const mcp = within(section("MCP-Server"));
     expect(mcp.getByText("MCP-Server noch nicht verbunden")).toBeInTheDocument();
-    expect(mcp.getByText("V2-B19 (noch nicht gebaut)")).toBeInTheDocument();
+    expect(mcp.queryByText(/V2-/)).toBeNull();
   });
 
   it("only get_provider_overview and has_provider_key are invoked and the panel has no button", async () => {
