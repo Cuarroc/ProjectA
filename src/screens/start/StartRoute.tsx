@@ -38,7 +38,7 @@ export default function StartRoute() {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   useEffect(() => {
     let live = true;
-    listProjects().then((list) => live && (setListError(null), setProjects(list)), (cause) => live && setListError(describeError(cause)));
+    listProjects().then((list) => live && (setListError(null), setProjects(list)), (cause) => live && (setProjects([]), setListError(describeError(cause))));
     return () => { live = false; };
   }, [attempt]);
   const project = projects.find((p) => p.id === readProjectId()) ?? projects[0] ?? null;
@@ -54,7 +54,8 @@ export default function StartRoute() {
     return () => { live = false; };
   }, [path, attempt, retry]);
 
-  // A failed project list outranks the scan: without projects the scan would only say "no project".
+  // A failed list read forgets the projects, so the scan goes idle and only the list error (with its retry) stays.
+  // It outranks the scan: without projects the scan would only say "no project".
   const shown: ScanState = listError === null
     ? scan
     : { status: "error", message: listError, title: t("start.projects.errorTitle"), onRetry: retry };
