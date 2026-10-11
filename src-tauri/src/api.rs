@@ -197,6 +197,90 @@ use crate::store::{
     Worker, KIND_ORCHESTRATOR, KIND_QUEEN, KIND_SCOUT,
 };
 
+fn frontend_error_field(value: &str, max_bytes: usize) -> String {
+    let mut field = String::new();
+    for ch in value.chars() {
+        let ch = if ch.is_control() || matches!(ch, '\u{2028}' | '\u{2029}') {
+            ' '
+        } else {
+            ch
+        };
+        let escape = matches!(ch, '"' | '\\');
+        if field.len() + ch.len_utf8() + usize::from(escape) > max_bytes {
+            break;
+        }
+        if escape {
+            field.push('\\');
+        }
+        field.push(ch);
+    }
+    field
+}
+
+#[derive(Default)]
+struct FrontendErrorLog {
+    recent: Vec<(std::time::Instant, Option<String>)>,
+    suppressed: u64,
+    summary_at: Option<std::time::Instant>,
+}
+impl FrontendErrorLog {
+    fn write(
+        &mut self,
+        now: std::time::Instant,
+        message: &str,
+        stack_frame: &str,
+        route: &str,
+        mut emit: impl FnMut(String),
+    ) {
+        self.recent
+            .retain(|(at, _)| now.duration_since(*at).as_secs() < 60);
+        let message = frontend_error_field(message, 2048);
+        let summary_due = now
+            .duration_since(*self.summary_at.get_or_insert(now))
+            .as_secs()
+            >= 60;
+        if self.suppressed > 0 && self.recent.len() < 50 && summary_due {
+            let suppressed = std::mem::take(&mut self.suppressed);
+            emit(format!("ERROR suppressed {suppressed} frontend errors"));
+            self.recent.push((now, None));
+            self.summary_at = Some(now);
+        }
+        if self.recent.len() >= 50
+            || self.recent.iter().any(|(at, previous)| {
+                previous.as_ref() == Some(&message) && now.duration_since(*at).as_secs() < 10
+            })
+        {
+            self.suppressed = self.suppressed.saturating_add(1);
+            return;
+        }
+        emit(format!(
+            "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
+            message,
+            frontend_error_field(stack_frame, 512),
+            frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256),
+        ));
+        self.recent.push((now, Some(message)));
+    }
+}
+
+#[tauri::command]
+pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
+    static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog {
+        recent: Vec::new(),
+        suppressed: 0,
+        summary_at: None,
+    });
+    if let Ok(mut limiter) = LIMITER.lock() {
+        limiter.write(
+            std::time::Instant::now(),
+            &message,
+            &stack_frame,
+            &route,
+            |line| crate::logging::log("frontend", &line),
+        );
+    }
+}
+
 /// Name of the descriptor file written into the app data directory.
 pub const DESCRIPTOR_FILE: &str = "projecta-api.json";
 
@@ -2424,6 +2508,63 @@ pub async fn watchdog_report(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn frontend_error_log_is_rate_limited() {
+        use std::time::{Duration, Instant};
+        let mut limiter = super::FrontendErrorLog::default();
+        let mut lines = Vec::new();
+        let start = Instant::now();
+        let mut send = |ms, message: &str, frame: &str| {
+            limiter.write(
+                start + Duration::from_millis(ms),
+                message,
+                frame,
+                "/?private=value#fragment",
+                |line| lines.push(line),
+            );
+            lines.len()
+        };
+        assert_eq!(send(0, "repeat", "first"), 1);
+        assert_eq!(send(9999, "repeat", "different"), 1);
+        assert_eq!(send(10000, "repeat", "first"), 2);
+        for i in 0..48 {
+            assert_eq!(send(10000, &format!("error {i}"), ""), i + 3);
+        }
+        assert_eq!(send(59999, "overflow", ""), 50);
+        // Only one slot expires: the summary consumes it, preserving the rolling cap.
+        assert_eq!(send(60000, "later", ""), 51);
+        assert_eq!(send(60001, "later", ""), 51);
+        assert_eq!(send(70000, "later", ""), 52);
+        assert_eq!(send(120000, "next", ""), 54);
+        assert_eq!(
+            lines[0],
+            r#"ERROR message="repeat" stack="first" route="/""#
+        );
+        assert_eq!(lines[50], "ERROR suppressed 2 frontend errors");
+        assert_eq!(lines[52], "ERROR suppressed 2 frontend errors");
+    }
+    #[test]
+    fn frontend_error_fields_escape_delimiters() {
+        assert_eq!(
+            super::frontend_error_field("a\\\" route=forged", 256),
+            "a\\\\\\\" route=forged"
+        );
+        assert_eq!(super::frontend_error_field("\"", 1), "");
+    }
+
+    #[test]
+    fn frontend_error_log_is_bounded() {
+        for limit in [2048, 512, 256] {
+            let bounded = super::frontend_error_field(&"界".repeat(3000), limit);
+            assert!(bounded.len() <= limit);
+            assert!(bounded.len() >= limit - 2);
+        }
+        assert_eq!(
+            super::frontend_error_field("a\r\nb\t\u{2028}c", 256),
+            "a  b  c"
+        );
+    }
+
     use super::*;
 
     /// `redact::looks_secret`/`mask_token_runs` mask exactly-32-character,
