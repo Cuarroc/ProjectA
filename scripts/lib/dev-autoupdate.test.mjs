@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeRunner } from './dev-tools.mjs';
-import { update, scrub, group, collect } from '../dev/dev-autoupdate.mjs';
+import { update, scrub, group, collect, main } from '../dev/dev-autoupdate.mjs';
 
 test('skips install while the dev app has child processes', () => {
   const calls = [];
@@ -88,5 +88,64 @@ test('installs only a Dev setup and restarts a gracefully closed app after succe
     assert.equal(restarted, true);
     assert.equal(saved, !fail);
     assert.equal(state.sha, fail ? undefined : 'a'.repeat(40));
+  }
+});
+
+function updateRunner({ installFails = false, restartFails = false, onList = () => {} } = {}) {
+  let closed = false;
+  return (cmd, args) => {
+    if (args.includes('list')) {
+      onList();
+      return { code: 0, stdout: JSON.stringify([{ databaseId: 7, headSha: 'a'.repeat(40) }]) };
+    }
+    if (args.includes('download')) fs.writeFileSync(join(args.at(-1), 'ProjectA Dev_1.2.3_x64-setup.exe'), 'fixture');
+    if (cmd === 'powershell.exe') {
+      const script = args.at(-1);
+      if (script.includes('ConvertTo-Json')) return { code: 0, stdout: JSON.stringify(closed ? [] : [{ ProcessId: 10, ParentProcessId: 1, Name: 'projecta.exe', ExecutablePath: ['X:', 'Apps', 'ProjectA Dev', 'projecta.exe'].join('\\') }]) };
+      if (script.includes('CloseMainWindow')) closed = true;
+      if (script.includes('Start-Process') && restartFails) return { code: 23 };
+    }
+    if (args.includes('/S') && installFails) return { code: 17 };
+    return { code: 0, stdout: '' };
+  };
+}
+
+test('reports a failed restart without masking the install result', t => {
+  const folder = fs.mkdtempSync(join(tmpdir(), 'dev-restart-'));
+  t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+  for (const installFails of [true, false]) {
+    const state = {};
+    let saved = false;
+    assert.throws(() => update(state, { folder, run: updateRunner({ installFails, restartFails: true }), save: () => { saved = true; } }),
+      { message: installFails ? 'process step failed (17)' : 'installed, restart failed' });
+    assert.equal(saved, !installFails);
+    assert.equal(state.sha, installFails ? undefined : 'a'.repeat(40));
+  }
+});
+
+test('main removes its lock file and maps failures to exit 2', t => {
+  const root = fs.mkdtempSync(join(tmpdir(), 'dev-main-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const env = { LOCALAPPDATA: join(root, 'local'), APPDATA: join(root, 'roaming'), USERPROFILE: root };
+  const folder = join(env.LOCALAPPDATA, 'projecta-dev-autoupdate'), lock = join(folder, 'running.lock');
+  const noWork = () => assert.fail('unexpected external work');
+  assert.equal(main({ env, platform: 'linux', run: noWork }), 2);
+  assert.equal(fs.existsSync(env.LOCALAPPDATA), false);
+  for (const [installFails, restartFails] of [[true, true], [true, false], [false, true], [false, false]]) {
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(join(folder, 'state.json'), '{}');
+    const run = updateRunner({ installFails, restartFails, onList: () => {
+      assert.equal(fs.existsSync(lock), true);
+      assert.equal(main({ env, platform: 'win32', run: noWork }), 2);
+      assert.equal(fs.existsSync(lock), true);
+    } });
+    const code = installFails || restartFails ? 2 : 0;
+    assert.equal(main({ env, platform: 'win32', run }), code);
+    assert.equal(fs.existsSync(lock), false);
+    assert.equal(JSON.parse(fs.readFileSync(join(folder, 'state.json'))).sha, installFails ? undefined : 'a'.repeat(40));
+    const lines = fs.readFileSync(join(folder, 'runs.log'), 'utf8').trim().split('\n');
+    assert.match(lines.at(-2), /exit=2 setup failed \(EEXIST\)/);
+    assert.match(lines.at(-1), new RegExp(`exit=${code} `));
+    assert.ok(lines.at(-1).endsWith(installFails ? 'process step failed (17)' : restartFails ? 'installed, restart failed' : 'installed'));
   }
 });
