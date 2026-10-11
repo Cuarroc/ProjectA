@@ -71,6 +71,9 @@ pub fn plane(eingabe: &Eingabe, ist_vorfahre: impl Fn(&str, &str) -> bool) -> Er
     if !sha_gueltig(eingabe.head) || !sha_gueltig(eingabe.ziel) {
         return abgelehnt("Ungültige Commit-Kennung (erwartet: 7 bis 64 Hex-Zeichen)");
     }
+    if !eingabe.ungepusht.iter().all(|c| sha_gueltig(c)) {
+        return abgelehnt("Ungültige Commit-Kennung in der Liste der ungepushten Commits");
+    }
     let name = format!(
         "refs/projecta/sicherung/{}/{}",
         eingabe.lauf, eingabe.sicherung_nr
@@ -238,6 +241,48 @@ mod tests {
                 "{sha:?}"
             );
         }
+    }
+
+    #[test]
+    fn invalid_head_is_rejected_even_with_a_valid_target() {
+        for sha in ["", "--hard", "zzzzzzz", "abc"] {
+            let e = Eingabe {
+                head: sha,
+                ..eingabe(C1, &[], false)
+            };
+            assert!(
+                matches!(plane(&e, |_, _| true), Ergebnis::Abgelehnt { .. }),
+                "{sha:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_unpushed_entries_are_rejected() {
+        for sha in ["", "--hard", "zzzzzzz", "abc"] {
+            let ungepusht = vec![C2.to_string(), sha.to_string()];
+            for (ziel, schmutzig) in [(C1, false), (C3, false), (C3, true)] {
+                let ergebnis = plane(&eingabe(ziel, &ungepusht, schmutzig), linear);
+                let grund = "Ungültige Commit-Kennung in der Liste der ungepushten Commits";
+                let erwartet = Ergebnis::Abgelehnt {
+                    grund: grund.to_string(),
+                };
+                assert_eq!(ergebnis, erwartet, "{sha:?} {ziel} {schmutzig}");
+            }
+        }
+    }
+
+    #[test]
+    fn dirty_tree_and_lost_commits_share_one_backup_of_the_wip_head() {
+        let ungepusht = vec![C3.to_string(), C2.to_string()];
+        let plan = schritte(plane(&eingabe(C1, &ungepusht, true), linear));
+        let backup = Schritt::SicherungsrefAnlegen {
+            name: ref_name(),
+            sha: "HEAD".to_string(),
+        };
+        // The WIP commit sits on top of the unpushed commits, so the one
+        // backup of `HEAD` pins the dirty tree and the lost commits together.
+        assert_eq!(plan, vec![Schritt::WipCommit, backup, reset(C1)]);
     }
 
     #[test]

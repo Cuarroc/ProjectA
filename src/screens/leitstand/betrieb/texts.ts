@@ -23,7 +23,8 @@ export const T = {
   gigabytes: (n: string) => `${n} GB`,
   ramOf: (used: string, total: string) => `${used} von ${total}`,
   watchdog: "Wachhund",
-  watchdogOffline: "Wachhund noch nicht verbunden",
-  watchdogHint: "Der Kern ist fertig, die Anbindung fehlt noch.",
-  watchdogRef: "V2-B22 (Kern gemergt, noch nicht verdrahtet)",
+  watchdogEmpty: "Keine Auffälligkeiten",
+  watchdogEmptyHint: "Kein laufender Lauf steht still.",
+  watchdogOffline: "Wachhund nicht lesbar",
+  watchdogOfflineHint: "Der Kern antwortet gerade nicht.",
 } as const;

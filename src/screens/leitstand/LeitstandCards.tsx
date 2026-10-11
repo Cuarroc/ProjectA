@@ -18,10 +18,12 @@ export interface LeitstandCardsProps {
   profiles: readonly AgentProfile[];
   now: number;
   onOpen: (card: BoardCard) => void;
+  /** Refetches the board after a card action; pass `useBoard().refresh`. */
+  onChanged?: () => void;
 }
 
 /** Filter chips and one card per agent. Not mounted yet: the route comes with V2-F9. */
-export function LeitstandCards({ cards, profiles, now, onOpen }: LeitstandCardsProps) {
+export function LeitstandCards({ cards, profiles, now, onOpen, onChanged }: LeitstandCardsProps) {
   const t = useT();
   const [filter, setFilter] = useState<Filter>("all");
   const agents = agentCards(cards);
@@ -40,7 +42,7 @@ export function LeitstandCards({ cards, profiles, now, onOpen }: LeitstandCardsP
         ))}
       </div>
       <section className="ls-agents" aria-label={t("leitstand.agents")}>
-        {shown.map((c) => <AgentCard key={c.worker.id} card={c} name={nameOf(c)} now={now} onOpen={onOpen} />)}
+        {shown.map((c) => <AgentCard key={c.worker.id} card={c} name={nameOf(c)} now={now} onOpen={onOpen} onChanged={onChanged} />)}
         {shown.length === 0 && (
           <div className="ls-none"><p>{t("leitstand.none")}</p><Button size="sm" variant="tint" onClick={() => setFilter("all")}>{t("leitstand.showAll")}</Button></div>
         )}

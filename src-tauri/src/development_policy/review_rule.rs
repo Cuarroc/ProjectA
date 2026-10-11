@@ -36,6 +36,11 @@ pub enum RuleError {
 
 /// User-facing error texts (German), the single place to change them.
 pub mod texts {
+    /// Fallback for a `needed` other than 1 or 2 (not reachable from
+    /// `check_reviewers`); `{needed}` and `{found}` are replaced by the counts.
+    pub const TOO_FEW_TEMPLATE: &str =
+        "Es fehlen Prüfer aus anderen Modellfamilien: benötigt {needed}, nachgewiesen {found}.";
+
     pub const UNKNOWN_AUTHOR: &str = "Die Modellfamilie des Autors ist unbekannt. Ohne sie kann keine unabhängige Prüfung nachgewiesen werden.";
     pub const NEED_ONE: &str = "Es fehlt ein Prüfer aus einer anderen Modellfamilie als der des Autors. Unbekannte Modelle und gleiche Familien zählen nicht.";
     pub const NEED_TWO: &str = "Stufe A braucht zwei Prüfer aus zwei verschiedenen Modellfamilien, die beide nicht die des Autors sind. Unbekannte Modelle und gleiche Familien zählen nicht.";
@@ -47,15 +52,18 @@ impl RuleError {
             Self::UnknownAuthor => Cow::Borrowed(texts::UNKNOWN_AUTHOR),
             Self::TooFewForeign { needed: 1, .. } => Cow::Borrowed(texts::NEED_ONE),
             Self::TooFewForeign { needed: 2, .. } => Cow::Borrowed(texts::NEED_TWO),
-            Self::TooFewForeign { needed, found } => Cow::Owned(format!(
-                "Es fehlen Prüfer aus anderen Modellfamilien: benötigt {needed}, nachgewiesen {found}."
-            )),
+            Self::TooFewForeign { needed, found } => Cow::Owned(
+                texts::TOO_FEW_TEMPLATE
+                    .replace("{needed}", &needed.to_string())
+                    .replace("{found}", &found.to_string()),
+            ),
         }
     }
 }
 
 /// First-word prefixes per family. Prefixes of different families must never
-/// overlap (`prefixes_of_different_families_never_overlap`), so the lookup
+/// overlap, and no prefix of another family may shadow the o-series rule in
+/// `family_of` (`prefixes_of_different_families_never_overlap`), so the lookup
 /// order cannot change which family a name belongs to.
 const PREFIXES: &[(&str, Family)] = &[
     ("claude", Family::Anthropic),
@@ -73,6 +81,17 @@ const PREFIXES: &[(&str, Family)] = &[
     ("ollama", Family::Meta),
 ];
 
+/// The o-series rule's family (`o3-mini`); checked before `PREFIXES`.
+const O_SERIES_FAMILY: Family = Family::OpenAi;
+
+/// `o` followed by digits only (also bare `o`). Every first word of the
+/// o-series starts with a string of this shape, so a table prefix of this
+/// shape could match o-series words.
+fn o_series_shape(text: &str) -> bool {
+    text.strip_prefix('o')
+        .is_some_and(|digits| digits.bytes().all(|b| b.is_ascii_digit()))
+}
+
 /// Vendor family of a model name; `None` when the name is not recognised.
 /// Matches the first word of the last path segment (`ollama/llama3` -> `llama3`)
 /// case-insensitively, so tags like `:cloud` or `-20251001` do not matter.
@@ -84,10 +103,8 @@ pub fn family_of(model: &str) -> Option<Family> {
         .next()
         .unwrap_or_default();
     // o-series: `o` plus digits only (o1, o3, o4), never `orca` or `ocean`.
-    let o_series =
-        word.len() > 1 && word.starts_with('o') && word[1..].bytes().all(|b| b.is_ascii_digit());
-    if o_series {
-        return Some(Family::OpenAi);
+    if word.len() > 1 && o_series_shape(word) {
+        return Some(O_SERIES_FAMILY);
     }
     PREFIXES
         .iter()
@@ -278,17 +295,51 @@ mod tests {
             too_few(3, 1).user_text(),
             "Es fehlen Prüfer aus anderen Modellfamilien: benötigt 3, nachgewiesen 1."
         );
+        assert!(
+            texts::TOO_FEW_TEMPLATE.contains("{needed}")
+                && texts::TOO_FEW_TEMPLATE.contains("{found}")
+        );
+    }
+
+    /// First conflict in a prefix table: two prefixes of different families
+    /// where one starts with the other, or a prefix of another family than the
+    /// o-series that could match an o-series word (`o`, `o3`, ...).
+    fn find_overlap(table: &[(&str, Family)]) -> Option<String> {
+        for (a, family_a) in table {
+            if *family_a != O_SERIES_FAMILY && (a.is_empty() || o_series_shape(a)) {
+                return Some(format!("{a} ({family_a:?}) shadows the o-series rule"));
+            }
+            for (b, family_b) in table {
+                if family_a != family_b && a.starts_with(b) {
+                    return Some(format!("{a} ({family_a:?}) overlaps {b} ({family_b:?})"));
+                }
+            }
+        }
+        None
     }
 
     #[test]
     fn prefixes_of_different_families_never_overlap() {
-        for (a, family_a) in PREFIXES {
-            for (b, family_b) in PREFIXES {
-                assert!(
-                    family_a == family_b || !a.starts_with(b),
-                    "{a} ({family_a:?}) overlaps {b} ({family_b:?})"
-                );
-            }
+        assert_eq!(find_overlap(PREFIXES), None);
+    }
+
+    #[test]
+    fn overlap_check_catches_a_prefix_shadowed_by_the_o_series_rule() {
+        for bad in ["o", "o3", "o12"] {
+            let table = [("grok", Family::Xai), (bad, Family::Meta)];
+            let found = find_overlap(&table).unwrap_or_default();
+            assert!(found.contains("o-series"), "{bad}: {found:?}");
         }
+        // Same family as the o-series, or not of the `o<digits>` shape: fine.
+        assert_eq!(find_overlap(&[("o3", Family::OpenAi)]), None);
+        assert_eq!(find_overlap(&[("orca", Family::Meta)]), None);
+    }
+
+    #[test]
+    fn overlap_check_catches_prefixes_of_different_families() {
+        let table = [("gem", Family::Google), ("gemma", Family::Meta)];
+        assert!(find_overlap(&table).is_some());
+        let same_family = [("gem", Family::Google), ("gemini", Family::Google)];
+        assert_eq!(find_overlap(&same_family), None);
     }
 }
