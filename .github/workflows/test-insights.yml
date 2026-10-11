@@ -9,6 +9,10 @@
 # hands the files to the uploader. Without the secret MERGIFY_TOKEN the upload
 # steps are skipped (env flag, never the secret itself) and the job stays
 # green; this workflow is never a merge gate.
+#
+# Open (CI-SEC-01 review K2): gha-mergify-ci has no head-sha/branch input for
+# `junit-process` (only `job_name`); which commit Mergify attributes in the
+# `workflow_run` context is observable only after the merge.
 name: test-insights
 
 on:
@@ -51,7 +55,13 @@ jobs:
           mkdir -p reports
           pick() { # artifact-dir file-name target
             local f
-            f="$(find "artifacts/$1" -type f -name "$2" 2>/dev/null | head -n 1)"
+            if [ ! -d "artifacts/$1" ]; then
+              echo "::notice::no artifact $1 in this ci run"
+              return 0
+            fi
+            # -quit instead of `| head`: no SIGPIPE under pipefail, and find
+            # errors stay visible.
+            f="$(find "artifacts/$1" -type f -name "$2" -print -quit)"
             if [ -n "$f" ]; then cp "$f" "reports/$3"; fi
           }
           pick junit-linux junit.xml linux-nextest.xml
