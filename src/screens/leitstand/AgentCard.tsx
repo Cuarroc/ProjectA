@@ -7,7 +7,7 @@ import { StateMark } from "../../design/state/StateMark";
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
 import { useT } from "../../i18n/useT";
-import { ageText, cardForm, fill, initials, toneFor } from "./leitstand";
+import { ageText, cardForm, fill, initials, modelText, toneFor } from "./leitstand";
 
 export interface AgentCardProps {
   card: BoardCard;
@@ -30,6 +30,7 @@ type Action = "restart" | "archive";
 export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps) {
   const t = useT();
   const { worker } = card;
+  const model = modelText(card);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<Action | null>(null);
   const [failed, setFailed] = useState<Action | null>(null);
@@ -66,6 +67,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
         <div className="ls-who-t">
           <h3 title={name}>{name}</h3>
           <p title={worker.branch}>{worker.branch}</p>
+          {model !== null && <p title={model}>{model}</p>}
         </div>
       </div>
       <p className="ls-task" title={worker.task}>{worker.task}</p>

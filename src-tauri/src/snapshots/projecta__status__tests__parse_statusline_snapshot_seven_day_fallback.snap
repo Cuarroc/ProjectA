@@ -23,5 +23,6 @@ StatusLineUsage {
             ),
         },
     ),
+    model: None,
     observed_at: 42,
 }
