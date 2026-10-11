@@ -26,6 +26,38 @@ const type = (text: string) => fireEvent.change(box(), { target: { value: text }
 describe("VerlaufChat", () => {
   beforeEach(() => mocks.invoke.mockReset());
 
+  it("shows the project orchestrator as recipient before sending", () => {
+    const chat = chatWith();
+    const { rerender } = render(<VerlaufChat chat={chat} projectId="p-1" />);
+    expect(screen.getByText("Empfänger: Orchestrator des gewählten Projekts.")).toBeVisible();
+    expect(box()).toHaveAccessibleDescription("Empfänger: Orchestrator des gewählten Projekts.");
+    expect(screen.queryByText(/Der erste Versand/)).toBeNull();
+    expect(chat.send).not.toHaveBeenCalled();
+
+    rerender(<VerlaufChat chat={chatWith({ disabled: true, orchestratorId: null })} projectId={null} />);
+    expect(box()).toBeDisabled();
+    expect(box()).toHaveAccessibleDescription("Wähle ein Projekt, um mit seinem Orchestrator zu sprechen.");
+    expect(screen.queryByText(/Empfänger:|Der erste Versand/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Senden" })).toBeDisabled();
+  });
+
+  it("explains that the first send may start an orchestrator without claiming delivery", () => {
+    const chat = chatWith({ orchestratorId: null });
+    const { rerender } = render(<VerlaufChat chat={chat} projectId="p-1" />);
+    const states: Partial<OrchestratorChat>[] = [{}, { sending: true }, { error: "Versand fehlgeschlagen." }];
+    for (const state of states) {
+      rerender(<VerlaufChat chat={{ ...chat, ...state }} projectId="p-1" />);
+      expect(screen.getByText(/Der erste Versand kann den Orchestrator starten\./)).toBeVisible();
+      expect(box()).toHaveAccessibleDescription(
+        "Empfänger: Orchestrator des gewählten Projekts. Der erste Versand kann den Orchestrator starten.",
+      );
+      expect(screen.queryByText(/zugestellt|erfolgreich gesendet/i)).toBeNull();
+    }
+    expect(screen.getByRole("alert")).toHaveTextContent("Versand fehlgeschlagen.");
+    expect(chat.send).not.toHaveBeenCalled();
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
   it("renders the messages of the chat object with their speaker", () => {
     const chat = chatWith({ messages: [msg("1", "user", "Fix the bug"), msg("2", "agent", "On it")] });
     render(<VerlaufChat chat={chat} projectId="p-1" />);
