@@ -15,6 +15,22 @@ const step = (n: number) => within(screen.getByRole("list", { name: "Schritte de
 
 beforeEach(() => setProviders([provider("Claude Code", true), provider("Kimi CLI", false)]));
 
+it("shows setup permissions before the first setup step", () => {
+  render(<ErsteinrichtungScreen hasProject={false} onAction={() => {}} />);
+  const notice = screen.getByRole("note", { name: "Was diese Einrichtung macht" });
+  const list = screen.getByRole("list", { name: "Schritte der Einrichtung" });
+  expect(notice.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(notice).toHaveTextContent("Diese Einrichtung sucht Programme und zeigt fehlende Voraussetzungen.");
+  expect(notice).toHaveTextContent("Installieren, Löschen und Geldausgeben brauchen deine Freigabe");
+  expect(within(list).getAllByRole("heading", { level: 2 })).toHaveLength(6);
+});
+
+it("does not claim that project actions can never install or delete", () => {
+  render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
+  expect(screen.queryByText(/ProjectA installiert nichts, löscht nichts/)).toBeNull();
+  expect(screen.getByRole("note")).toHaveTextContent("dieser Dialog führt sie nicht aus.");
+});
+
 it("lists the six steps in order as an ordered list", () => {
   render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
   const list = screen.getByRole("list", { name: "Schritte der Einrichtung" });
