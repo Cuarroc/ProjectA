@@ -1,8 +1,14 @@
-/** Placeholder that still follows the host locale; replaced by the German formatters in the fix commit. */
+// Clock times and dates in the app are German: 24-hour "17:05" and "dd.mm.",
+// never the host locale (en-US would show "05:05 PM").
+const CLOCK = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const DAY_MONTH = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit" });
+
+/** German 24-hour clock time, e.g. "05:31" or "17:05". */
 export function formatClock(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return CLOCK.format(date);
 }
 
+/** German day and month, e.g. "03.10.". */
 export function formatDayMonth(date: Date): string {
-  return date.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+  return DAY_MONTH.format(date);
 }

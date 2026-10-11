@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { describeError, listWorkerMessages, sendToOrchestrator } from "./ipc";
+import { formatClock, formatDayMonth } from "./time";
 import type { WorkerMessage } from "../types";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -190,8 +191,8 @@ export function formatMessageTime(seconds: number): string {
     at.getMonth() === now.getMonth() &&
     at.getDate() === now.getDate();
 
-  const time = at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const time = formatClock(at);
   if (sameDay) return time;
-  const day = at.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+  const day = formatDayMonth(at);
   return `${day} ${time}`;
 }
