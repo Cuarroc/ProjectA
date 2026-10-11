@@ -2,7 +2,9 @@
 //! access. Decides whether a host key matches its pin ([`check_host`]), whether
 //! a key is only a vault reference ([`TresorRef`]) and whether a host entry
 //! carries a password ([`HostEintrag`]). Reasons are German and never echo the
-//! rejected value, so a pasted key or password cannot reach a log.
+//! rejected value, and an observation that fails [`pruefe_fingerprint`] is never
+//! retained in an outcome (`Ungueltig` has no payload), so a pasted key or
+//! password cannot reach a log or a `Debug` print.
 
 use base64::engine::general_purpose::STANDARD_NO_PAD;
 use base64::Engine;
@@ -18,6 +20,9 @@ pub struct HostPin {
 impl HostPin {
     pub fn neu(host: &str, port: u16, fp: &str) -> Result<HostPin, String> {
         pruefe_host(host)?;
+        if port == 0 {
+            return Err(PORT_FEHLER.into());
+        }
         pruefe_fingerprint(fp)?;
         Ok(HostPin {
             host: host.into(),
@@ -36,16 +41,22 @@ pub enum Vertrauen {
     Abweichend { erwartet: String, gesehen: String },
     /// First contact, nothing pinned: the caller must ask the user.
     Neu { gesehen: String },
+    /// The observation (or the pin) is no valid fingerprint; carries no payload.
+    Ungueltig,
 }
 
-/// `Bekannt` only for an equal, well-formed fingerprint; garbage is never known.
+/// `Bekannt` only for an equal, well-formed fingerprint. An observation (or a
+/// hand-built pin) that is no valid fingerprint is `Ungueltig`, fail closed and
+/// payload-free: only validated `SHA256:` values ever reach `Neu`/`Abweichend`.
 pub fn check_host(pin: Option<&HostPin>, observed: &str) -> Vertrauen {
+    if pruefe_fingerprint(observed).is_err() {
+        return Vertrauen::Ungueltig;
+    }
     let gesehen = observed.to_string();
     match pin {
         None => Vertrauen::Neu { gesehen },
-        Some(p) if pruefe_fingerprint(observed).is_ok() && gleich(&p.fingerprint, observed) => {
-            Vertrauen::Bekannt
-        }
+        Some(p) if pruefe_fingerprint(&p.fingerprint).is_err() => Vertrauen::Ungueltig,
+        Some(p) if gleich(&p.fingerprint, observed) => Vertrauen::Bekannt,
         Some(p) => Vertrauen::Abweichend {
             erwartet: p.fingerprint.clone(),
             gesehen,
@@ -64,8 +75,7 @@ fn gleich(a: &str, b: &str) -> bool {
 
 /// Accept only `SHA256:` + 43 base64 characters decoding to 32 bytes.
 pub fn pruefe_fingerprint(fp: &str) -> Result<(), String> {
-    let hex_paare = fp.len() == 47 && fp.bytes().filter(|b| *b == b':').count() == 15;
-    if hex_paare || fp.to_ascii_uppercase().starts_with("MD5:") {
+    if ist_md5_hex(fp) || fp.to_ascii_uppercase().starts_with("MD5:") {
         return Err("MD5-Fingerabdrücke sind unsicher; nur SHA256:<base64> ist erlaubt".into());
     }
     let Some(b64) = fp.strip_prefix("SHA256:") else {
@@ -76,6 +86,17 @@ pub fn pruefe_fingerprint(fp: &str) -> Result<(), String> {
         _ => Err("SHA256-Fingerabdruck ist ungültig (43 Base64-Zeichen ohne Auffüllung)".into()),
     }
 }
+
+/// MD5 colon form: 16 pairs of hex digits (`aa:bb:…`), not merely that length.
+fn ist_md5_hex(fp: &str) -> bool {
+    let paare: Vec<&str> = fp.split(':').collect();
+    paare.len() == 16
+        && paare
+            .iter()
+            .all(|p| p.len() == 2 && p.bytes().all(|b| b.is_ascii_hexdigit()))
+}
+
+const PORT_FEHLER: &str = "Port muss 1 bis 65535 sein";
 
 /// Vault reference `tresor://<name>`; holds the name only, so `Debug` shows only that.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,6 +150,12 @@ impl HostEintrag {
         {
             return Err("Unbekanntes Feld im Host-Eintrag".into());
         }
+        // Lookup is case-insensitive, so a repeated name would be ambiguous.
+        let mut namen: Vec<String> = felder.iter().map(|f| f.0.to_lowercase()).collect();
+        namen.sort();
+        if namen.windows(2).any(|w| w[0] == w[1]) {
+            return Err("Feld doppelt im Host-Eintrag".into());
+        }
         let feld = |n: &str| {
             felder
                 .iter()
@@ -139,11 +166,7 @@ impl HostEintrag {
         pruefe_host(host)?;
         let port = match feld("port") {
             None => 22,
-            Some(p) => p
-                .parse()
-                .ok()
-                .filter(|n| *n != 0)
-                .ok_or("Port muss 1 bis 65535 sein")?,
+            Some(p) => p.parse().ok().filter(|n| *n != 0).ok_or(PORT_FEHLER)?,
         };
         let schluessel = TresorRef::parse(feld("schluessel").ok_or("Schlüssel fehlt")?)?;
         Ok(HostEintrag {
@@ -213,7 +236,76 @@ mod tests {
     fn unreadable_observation_never_counts_as_bekannt() {
         for kaputt in [FP_A.trim_end_matches('g'), ""] {
             let v = check_host(Some(&pin()), kaputt);
-            assert!(matches!(v, Vertrauen::Abweichend { .. }), "{kaputt}");
+            assert_eq!(v, Vertrauen::Ungueltig, "{kaputt}");
+        }
+    }
+
+    #[test]
+    fn pasted_secret_is_never_retained_in_the_outcome() {
+        let secret = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXk";
+        for pin in [None, Some(pin())] {
+            let text = format!("{:?}", check_host(pin.as_ref(), secret));
+            assert!(
+                !text.contains("PRIVATE") && !text.contains("b3Blbn"),
+                "{text}"
+            );
+        }
+        assert!(!pruefe_fingerprint(secret).unwrap_err().contains("PRIVATE"));
+    }
+
+    #[test]
+    fn invalid_observation_is_ungueltig_with_or_without_pin() {
+        let pin = pin();
+        for kaputt in ["", "SHA256:abc", MD5, "key"] {
+            for p in [None, Some(&pin)] {
+                assert_eq!(check_host(p, kaputt), Vertrauen::Ungueltig, "{kaputt}");
+            }
+        }
+    }
+
+    #[test]
+    fn hand_built_pin_with_bad_fingerprint_is_ungueltig() {
+        let bad = HostPin {
+            host: "example.test".into(),
+            port: 22,
+            fingerprint: "SHA256:abc".into(),
+        };
+        assert_eq!(check_host(Some(&bad), FP_B), Vertrauen::Ungueltig);
+    }
+
+    #[test]
+    fn pin_with_port_zero_is_rejected() {
+        assert!(HostPin::neu("example.test", 0, FP_A).is_err());
+        assert!(HostPin::neu("example.test", 1, FP_A).is_ok());
+        assert!(HostPin::neu("example.test", 65535, FP_A).is_ok());
+    }
+
+    #[test]
+    fn md5_message_only_for_real_hex_colon_shape() {
+        // 16 pairs, 47 chars, 15 colons, but not hex: generic reason, no MD5 claim.
+        let not_hex = "zz:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99";
+        let why = pruefe_fingerprint(not_hex).unwrap_err();
+        assert!(!why.contains("MD5") && why.contains("SHA256:"), "{why}");
+        let upper = MD5.to_ascii_uppercase();
+        assert!(pruefe_fingerprint(&upper).unwrap_err().contains("MD5"));
+    }
+
+    #[test]
+    fn duplicate_field_names_are_rejected_fail_closed() {
+        let base = [
+            ("host", "example.test"),
+            ("port", "22"),
+            ("schluessel", "tresor://k"),
+        ];
+        assert!(HostEintrag::pruefen(&base).is_ok());
+        for dup in [
+            ("host", "other.test"),
+            ("HOST", "other.test"),
+            ("port", "2222"),
+            ("Schluessel", "tresor://m"),
+        ] {
+            let f = [&base[..], &[dup][..]].concat();
+            assert!(HostEintrag::pruefen(&f).is_err(), "{dup:?}");
         }
     }
 
