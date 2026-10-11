@@ -21,12 +21,12 @@ vi.mock("@tauri-apps/plugin-updater", () => ({ check: () => new Promise(() => {}
 
 describe("ChangelogView", () => {
   it("renders the newest release first with its Beta pill", () => {
-    render(<ChangelogView currentVersion="1.6.1" />);
+    render(<ChangelogView currentVersion="1.6.2" />);
     const [first] = screen.getAllByRole("region", { name: /^v\d/ });
-    expect(within(first).getByRole("heading", { level: 2 })).toHaveTextContent("v1.6.1");
+    expect(within(first).getByRole("heading", { level: 2 })).toHaveTextContent("v1.6.2");
     expect(within(first).getByText("Beta")).toBeInTheDocument();
     expect(within(first).getByText("Installiert")).toBeInTheDocument();
-    expect(within(first).getByText("10.10.2026")).toHaveAttribute("datetime", "2026-10-10");
+    expect(within(first).getByText("11.10.2026")).toHaveAttribute("datetime", "2026-10-11");
   });
 
   it("shows tag chips with German labels", () => {

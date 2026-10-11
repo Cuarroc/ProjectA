@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.6.2 (Beta) — 11.10.2026
+
+**Neue Oberfläche (Vorschau):**
+
+- **Leitstand mit echten Daten** (PR #1067): Agenten-Karten, Zustandsfilter und „Braucht dich“ sind eingebunden; die bisherige Arbeitsansicht bleibt im Reiter „Klassisch“ erreichbar.
+- **Projektwahl in der Kopfleiste** (PR #1133, #1176): Projekte lassen sich wechseln; der Leitstand folgt dem Wechsel, veraltete Antworten werden verworfen.
+- **Kopfleiste für schmale Fenster** (PR #1085, #1116): Darstellungs-Schalter werden kompakt, Suche und Not-Aus bleiben erreichbar.
+- **Betrieb im Leitstand** (PR #1100, #1136): Ein zusätzlicher Reiter zeigt Warteschlange und Startprüfung; fehlende Angaben sind als „noch nicht verbunden“ markiert.
+- **Wachhund verbunden** (PR #1083, #1135): Im Betrieb erscheinen laufende Agenten, die seit zehn Minuten weder Ausgabe noch Änderungen im Arbeitsbaum liefern; die Anzeige greift nicht ein.
+- **Kontingente erreichbar** (PR #1074, #1130): Unter „Steuerung“ gibt es eine Karte je Anbieter; fehlende Kontingentfenster werden nicht geschätzt.
+- **Kontingente verständlicher** (PR #1091, #1128, #1196): Zeitfenster und Anbieter-Kürzel sind eindeutiger; unbekannte Unterseiten zeigen den Kontingente-Reiter.
+- **Einstellungen im Glas-Stil** (PR #1089, #1123, #1134): Darstellung und Not-Aus sind in der neuen Einstellungsseite erreichbar; die klassischen Einstellungen lassen sich weiterhin öffnen.
+- **Diagnose in den Einstellungen** (PR #1162): Logdatei, Absturzhinweis und Fehlergründe lassen sich nachsehen, ein Diagnosepaket lässt sich exportieren.
+- **Ersteinrichtung eingebunden** (PR #1076, #1078, #1131, #1179): Der Startbereich prüft den Projektordner und zeigt gefundene oder fehlende Grundlagen; nach einem Lesefehler bleibt kein altes Projekt als „angelegt“ stehen.
+- **Deutsche Uhrzeiten** (PR #1200): Gemeinsame Zeitanzeigen verwenden das 24-Stunden-Format ohne AM/PM, unabhängig von der Sprache des Rechners.
+- **Agenten-Aktionen vorbereitet** (PR #1144, #1188): Karten bieten Neustart und Archivieren mit Rückfrage, Fehlertext und zugänglichem Wartezustand; die Verbindung zur Leitstand-Route steht noch aus.
+- **Einreihen vorbereitet** (PR #1154): Ein Formular zum Einreihen und Entfernen wartender Aufgaben berücksichtigt Not-Aus und Fehler; es ist noch nicht eingebaut.
+- **Verlauf vorbereitet** (PR #1153): Eine neue Chat-Ansicht mit Nachrichten, Eingabefeld und Fehlerzuständen ist gebaut, aber noch nicht eingebunden.
+- **Agenten-Auswahl vorbereitet** (PR #1168): Persona und Ausführungsweg lassen sich im neuen Baustein auswählen; er ist noch nicht eingebaut und startet nichts.
+- **Beweiskette vorbereitet** (PR #1182, #1203): Fünf Prüfschritte unterscheiden gemessene Ergebnisse von „noch nicht geprüft“; technische Fehlercodes stehen aufklappbar dahinter, die Ansicht ist noch nicht eingebunden.
+- **Plan-Ansicht vorbereitet** (PR #1181, #1201): Abhängigkeiten, längster Pfad, entfernte Vorgänger und leere Pläne werden dargestellt; die nur lesende Ansicht ist noch nicht eingebunden.
+- **Team-Ansichten vorbereitet** (PR #1095, #1107, #1177): Persona-Karten mit Filtern und ein Team-Baum mit Budgetgrenzen sind gebaut, aber noch nicht eingebunden.
+- **Freigabelisten vorbereitet** (PR #1158, #1160): Rollen-Vorschläge und Lektionen lassen sich in neuen Bausteinen annehmen oder verwerfen; beide Listen sind noch nicht eingebunden.
+- **Verbrauchsansicht vorbereitet** (PR #1163): Anfragen und Tokens werden nach Anbieter und Modell zusammengefasst; die Ansicht ist noch nicht eingebunden.
+- **Tresor-Übersicht vorbereitet** (PR #1167): Ein nur lesender Baustein zeigt, ob Schlüssel hinterlegt sind, niemals ihren Inhalt; er ist noch nicht eingebunden.
+
+**Sicherheit und Zuverlässigkeit:**
+
+- **Geheimnisse von PR-Code getrennt** (PR #1171): Die automatischen PR-Prüfungen bekommen keine Geheimnisse mehr; Testberichte werden getrennt weitergegeben.
+- **SSH-Vertrauen vorbereitet** (PR #1122, #1198): Ein noch nicht angeschlossener Prüfkern vergleicht Host-Fingerabdrücke, lehnt Passwörter ab und behält keine ungültigen Schlüsselangaben.
+- **Webhook-Prüfung vorbereitet** (PR #1117, #1189): Ein noch nicht angeschlossener Kern prüft Signaturen und begrenzt Zustellungskennungen; alte Schlüssel gelten nach einem Wechsel höchstens 24 Stunden.
+- **Persona-Rechte vorbereitet** (PR #1111, #1129, #1194): Der noch nicht angeschlossene Kern begrenzt Rechte und verhindert, dass Agenten ihre eigenen Rechte erweitern.
+- **Rückspulen vorbereitet** (PR #1120, #1148): Der Planer berücksichtigt Sicherungen für ungespeicherte Änderungen und ungepushte Commits und lehnt ungültige Kennungen ab; er führt noch keine Git-Aktion aus.
+- **Prüfstufen genauer** (PR #1080, #1121, #1157): Rust und Oberfläche teilen dieselben Regeln; ähnliche Wörter wie „clock“ werden nicht mehr versehentlich als sicherheitskritisches „lock“ eingestuft.
+
+**Unter der Haube:**
+
+- **Weitere Grundlagen, noch nicht angeschlossen** (PR #1073, #1081, #1090, #1092, #1094, #1098, #1101, #1108, #1109, #1112, #1113, #1125, #1139, #1150, #1164, #1187, #1197): Kerne für Ausweichregeln, fremde Prüfer, belegte Notizen, Fehlerbearbeitung, Warteschlangen, Ausführungsorte, Auslöser, Nutzungsnachweise und Terminal-Tabs; ein Leser für gemeldete Modelle und Verbindungszustände ist ebenfalls vorbereitet.
+- **Entwicklung und Absicherung** (PR #1012, #1082, #1099, #1132, #1140, #1141, #1147, #1149, #1159, #1161, #1192, #1193, #1206): Gemeinsame deutsche Texte, ergänzte Tests, Regeln für Entwicklungsbefehle, ein aufgeräumter Themenpfad und die Vorlage für getrennte Vorschau-Builds; Pläne beschreiben den weiteren Umbau.
+
 ## v1.6.1 (Beta) — 10.10.2026
 
 **Neue Oberfläche (Vorschau).** In Einstellungen › Allgemein lässt sich die
