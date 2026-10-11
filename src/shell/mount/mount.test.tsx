@@ -27,6 +27,26 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Glass shell mount behind D1", () => {
+  it("switching to the tools tab keeps the shell mounted", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand";
+    render(<App />);
+    await act(async () => { await vi.dynamicImportSettled(); });
+    const header = screen.getByRole("banner");
+    expect(header).toBeVisible();
+    // The App's lazy tools tabs have never rendered: observe the pending import.
+    fireEvent.click(screen.getByRole("link", { name: "Werkzeuge" }));
+    act(() => {
+      window.location.hash = "#/leitstand/werkzeuge";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(header).toBeInTheDocument();
+    expect(header).toBeVisible();
+    await act(async () => { await vi.dynamicImportSettled(); });
+    expect(screen.getByRole("banner")).toBe(header);
+    expect(screen.getByRole("link", { name: "Werkzeuge" })).toHaveAttribute("aria-current", "page");
+  });
+
   it("orchestrator draft survives switching tabs", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     window.location.hash = "#/leitstand/werkzeuge";
