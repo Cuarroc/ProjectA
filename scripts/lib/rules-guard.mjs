@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const base = (word) => word.replace(/^.*[\\/]/, '').replace(/\.exe$/i, '');
 const WRAPPERS = new Set(['env', 'command', 'sudo', 'exec', 'time', 'nice', 'nohup', 'builtin']);
-const SHELLS = new Set(['bash', 'sh', 'zsh', 'pwsh', 'powershell']);
+const SHELLS = new Set(['bash', 'sh', 'zsh', 'pwsh', 'powershell', 'cmd']);
+const HOOKS_REASON = 'BLOCKED: disabling hooks via core.hooksPath (git -c / GIT_CONFIG_*) skips the gates; green means prepush (AGENTS.md rule 3).';
 const NEEDS_ARG = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace']);
 
 // Bodies of heredocs are free text (commit messages); drop them before scanning.
@@ -63,7 +64,9 @@ function gitReason(rest) {
   let i = 0;
   while (i < texts.length && texts[i].startsWith('-')) i += NEEDS_ARG.has(texts[i]) ? 2 : 1;
   const sub = texts[i];
+  const hooksOff = texts.slice(0, i).some((g) => /^(--config-env=)?core\.hookspath(=|$)/i.test(g));
   const args = texts.slice(i + 1);
+  if (hooksOff && ['commit', 'push', 'merge'].includes(sub)) return HOOKS_REASON;
   if (['commit', 'push', 'merge'].includes(sub) && args.includes('--no-verify')) {
     return 'BLOCKED: --no-verify on git commit/push/merge skips the hooks; green means prepush (AGENTS.md rule 3).';
   }
@@ -82,9 +85,12 @@ function segmentReason(words, depth) {
   while (at < texts.length && (/^\w+=/.test(texts[at]) || WRAPPERS.has(texts[at]))) at++;
   const tool = texts[at] === undefined ? '' : base(texts[at]);
   if (tool === 'git') return gitReason(words.slice(at + 1));
-  const flag = texts.findIndex((t, k) => k > at && /^-(c|command)$/i.test(t));
-  if (SHELLS.has(tool.toLowerCase()) && flag > 0 && texts[flag + 1] !== undefined && depth < 3) {
-    return reasonFor(texts[flag + 1], depth + 1);
+  const lower = tool.toLowerCase();
+  const flag = lower === 'eval' ? at : texts.findIndex((t, k) => k > at && /^(-(c|command)|\/[ck])$/i.test(t));
+  if ((SHELLS.has(lower) || lower === 'eval') && flag >= 0 && words[flag + 1] && depth < 3) {
+    // A quoted command is one word; an unquoted one spans all remaining words.
+    const next = words[flag + 1].bare ? words.slice(flag + 1).map((w) => (w.bare ? w.t : JSON.stringify(w.t))).join(' ') : texts[flag + 1];
+    return reasonFor(next, depth + 1);
   }
   return null;
 }
@@ -97,6 +103,8 @@ function reasonFor(command, depth = 0) {
   }
   for (const seg of segments) {
     const hit = seg.words.find((w) => w.bare && (/^CARGO_PROFILE_\w+=/.test(w.t) || /^\$env:CARGO_PROFILE_/i.test(w.t)));
+    const hooks = seg.words.find((w) => w.bare && /^(\$env:)?(GIT_CONFIG_KEY_\d+=core\.hookspath$|GIT_CONFIG_PARAMETERS=.*core\.hookspath)/i.test(w.t));
+    if (hooks) return HOOKS_REASON;
     if (hit) return 'BLOCKED: CARGO_PROFILE_* variables invalidate the whole dependency cache; never set them (AGENTS.md "Build slots", CLAUDE.md Build-Slots).';
     const why = segmentReason(seg.words, depth);
     if (why) return why;

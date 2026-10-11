@@ -87,6 +87,19 @@ test('commands nested in bash -c and heredoc bodies are handled', () => {
   assert.equal(blocked('git commit -m "$(cat <<\'EOF\'\nfix: x\n\nsay "git stash" and --no-verify\nEOF\n)"'), false);
 });
 
+test('rule 6 blocks disabling hooks through core.hooksPath', () => {
+  for (const cmd of ['git -c core.hooksPath=/dev/null commit -m x', 'git -c core.hookspath=x push', 'git -C ../x -c core.hooksPath= merge topic', 'git --config-env=core.hooksPath=HP commit', 'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git commit', 'export GIT_CONFIG_KEY_0=core.hooksPath', "GIT_CONFIG_PARAMETERS=\"'core.hooksPath=/dev/null'\" git push", 'env GIT_CONFIG_KEY_1=core.hookspath git commit']) {
+    assert.equal(blocked(cmd), true, cmd);
+    assert.match(check(cmd).reason, /core\.hooksPath.*AGENTS\.md rule 3/);
+  }
+  for (const cmd of ['git -c user.name=a commit -m x', 'git config core.hooksPath', 'git commit -m "core.hooksPath=x in prose"', 'GIT_CONFIG_KEY_0=user.name git commit']) assert.equal(blocked(cmd), false, cmd);
+});
+
+test('shells with unquoted commands plus eval and cmd /c are checked', () => {
+  for (const cmd of ['pwsh -Command git stash', 'powershell -Command git push --force', 'pwsh -c git commit --no-verify -m x', 'eval "git stash"', 'cmd /c "git stash"', 'cmd.exe /C git push -f']) assert.equal(blocked(cmd), true, cmd);
+  for (const cmd of ['pwsh -Command git status', 'eval "git status"', 'cmd /c "git stash list"', 'pwsh -Command git commit -m "no --no-verify here"']) assert.equal(blocked(cmd), false, cmd);
+});
+
 test('cli blocks with exit 2 and a one-line reason on stderr', () => {
   const r = run(JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git stash' } }));
   assert.equal(r.status, 2);
