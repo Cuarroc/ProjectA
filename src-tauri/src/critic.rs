@@ -21,12 +21,14 @@
 //!   become an error string somebody logs, and the board carries on.
 
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::diff::{DiffFile, LINE_ADD, LINE_DEL, NO_WORKTREE};
 use crate::oneshot;
+use crate::quota::QuotaTracker;
 use crate::store::{self, Learning, Store, LEARNING_PENDING};
 
 /// Name of the bundled skill, used both as its directory and in the prompt.
@@ -315,6 +317,29 @@ async fn read_messages(store: &Store, worker_id: &str) -> Result<String, String>
 /// Distil 0-3 durable learnings out of one finished worker's run.
 /// Returns how many learnings were stored as `pending`.
 pub async fn run_critic(app: &AppHandle, store: &Store, worker_id: &str) -> Result<usize, String> {
+    let quota = app.try_state::<Arc<QuotaTracker>>();
+    run_critic_with_runner(
+        store,
+        worker_id,
+        quota.as_deref().map(Arc::as_ref),
+        |evidence| async move {
+            let skill = oneshot::bundled_skill_dir(app, SKILL_NAME)?;
+            run_skill(&skill, &evidence).await
+        },
+    )
+    .await
+}
+
+async fn run_critic_with_runner<F, Fut>(
+    store: &Store,
+    worker_id: &str,
+    _quota: Option<&QuotaTracker>,
+    runner: F,
+) -> Result<usize, String>
+where
+    F: FnOnce(Evidence) -> Fut,
+    Fut: std::future::Future<Output = Result<String, String>>,
+{
     let worker = store
         .get_worker(worker_id)
         .await?
@@ -341,8 +366,7 @@ pub async fn run_critic(app: &AppHandle, store: &Store, worker_id: &str) -> Resu
         messages: read_messages(store, &worker.id).await?,
     };
 
-    let skill = oneshot::bundled_skill_dir(app, SKILL_NAME)?;
-    let raw = run_skill(&skill, &evidence).await?;
+    let raw = runner(evidence).await?;
 
     let mut stored = 0usize;
     for candidate in parse_candidates(&raw) {
@@ -386,6 +410,101 @@ async fn run_skill(skill: &Path, evidence: &Evidence) -> Result<String, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    async fn check_critic_runner(quota: Option<&QuotaTracker>, profile: &str, error: Option<&str>) {
+        let dir = crate::testutil::TempDir::new("critic-quota");
+        let store = Store::open(&dir.path().join("test.db")).await.unwrap();
+        let project = store.create_project("test", ".").await.unwrap();
+        let worker = store::WorkerRow {
+            id: store::new_id("w"),
+            project_id: project.id.clone(),
+            task: "Review the finished run".into(),
+            profile_id: profile.into(),
+            branch: String::new(),
+            worktree_path: String::new(),
+            status: store::STATUS_EXITED.into(),
+            kind: store::KIND_ORCHESTRATOR.into(),
+            pr_url: None,
+            spawned_by: None,
+            test_status: None,
+            tested_at: None,
+            role_variant_id: None,
+            paused_reason: None,
+            created_at: 0,
+        };
+        store.insert_worker(&worker).await.unwrap();
+        let calls = std::cell::Cell::new(0);
+        let runner = |evidence: Evidence| {
+            calls.set(calls.get() + 1);
+            assert_eq!(evidence.task, "Review the finished run");
+            std::future::ready(Ok("LEARNING: Keep regression tests.".into()))
+        };
+        let result = run_critic_with_runner(&store, &worker.id, quota, runner).await;
+        if error.is_none() {
+            assert_eq!(
+                run_critic_with_runner(&store, &worker.id, quota, runner).await,
+                Ok(0)
+            );
+        }
+        let learnings = store.list_learnings(Some(&project.id), None).await.unwrap();
+        store.close_test_pool().await;
+        assert_eq!(calls.get(), usize::from(error.is_none()), "runner calls");
+        if let Some(error) = error {
+            assert_eq!(result, Err(error.into()));
+            assert!(
+                learnings.is_empty(),
+                "skips must not create pending learnings"
+            );
+        } else {
+            assert_eq!(result, Ok(1));
+            assert_eq!(learnings.len(), 1);
+            assert_eq!(learnings[0].profile_id, profile);
+            assert_eq!(learnings[0].status, LEARNING_PENDING);
+        }
+    }
+
+    #[tokio::test]
+    async fn blocked_claude_skips_the_critic_runner() {
+        let quota = QuotaTracker::default();
+        quota.note_blocked("claude", "fixture block", None);
+        check_critic_runner(
+            Some(&quota),
+            "claude",
+            Some("learning critic skipped: claude is blocked"),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn critic_guard_uses_the_oneshot_profile_not_the_worker_profile() {
+        let quota = QuotaTracker::default();
+        quota.note_ok("codex");
+        quota.note_blocked("claude", "fixture block", None);
+        check_critic_runner(
+            Some(&quota),
+            "codex",
+            Some("learning critic skipped: claude is blocked"),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn missing_quota_state_skips_the_optional_critic() {
+        check_critic_runner(
+            None,
+            "codex",
+            Some("learning critic skipped: quota state unavailable"),
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn healthy_claude_runs_even_if_the_worker_profile_is_blocked() {
+        let quota = QuotaTracker::default();
+        quota.note_ok("claude");
+        quota.note_blocked("codex", "fixture block", None);
+        check_critic_runner(Some(&quota), "codex", None).await;
+    }
 
     fn one(pattern: Option<&str>, content: &str) -> Candidate {
         Candidate {
