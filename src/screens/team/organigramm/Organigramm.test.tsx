@@ -111,6 +111,57 @@ describe("Organigramm", () => {
     expect(await screen.findByText("Noch kein Agent im Team")).toBeInTheDocument();
   });
 
+  it("coordinator kinds read in German and an English word never reaches the screen", async () => {
+    backend({
+      get_board_state: {
+        cards: [],
+        coordinators: [
+          { workerId: "q", kind: "queen", label: "Nord", status: "running", sessionId: null },
+          { workerId: "s", kind: "scout", label: "Sued", status: "running", sessionId: null },
+          { workerId: "o", kind: "orchestrator", label: "Mitte", status: "running", sessionId: null },
+        ],
+      },
+    });
+    const { container } = render(<Organigramm projectId="p1" />);
+    expect(await screen.findByText("♛ Königin")).toBeInTheDocument();
+    expect(screen.getByText("🔍 Späher")).toBeInTheDocument();
+    expect(screen.getByText("◆ Orchestrator")).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/Queen|Scout/);
+  });
+
+  it("the kind badge is hidden when the label already is the kind name", async () => {
+    backend({
+      get_board_state: {
+        cards: [],
+        coordinators: [{ workerId: "q", kind: "queen", label: "Königin", status: "running", sessionId: null }],
+      },
+    });
+    render(<Organigramm projectId="p1" />);
+    expect(await screen.findByRole("heading", { name: "Königin" })).toBeInTheDocument();
+    expect(screen.queryByText(/♛/)).toBeNull();
+  });
+
+  it("an unknown coordinator kind from the backend shows its name without a badge", async () => {
+    backend({
+      get_board_state: {
+        cards: [],
+        coordinators: [{ workerId: "x", kind: "wizard", label: "Merlin", status: "running", sessionId: null }],
+      },
+    });
+    render(<Organigramm projectId="p1" />);
+    expect(await screen.findByRole("heading", { name: "Merlin" })).toBeInTheDocument();
+    expect(document.querySelector(".og-kind")).toBeNull();
+  });
+
+  it("coordinator and Direkt bei dir sit one heading level below Du", async () => {
+    backend();
+    render(<Organigramm projectId="p1" />);
+    await waitFor(() => nodeOf("Du"));
+    expect(screen.getByRole("heading", { name: "Du", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Alpha", level: 4 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Direkt bei dir", level: 4 })).toBeInTheDocument();
+  });
+
   it("departments are not connected and name their package", async () => {
     backend();
     render(<Organigramm projectId="p1" />);
