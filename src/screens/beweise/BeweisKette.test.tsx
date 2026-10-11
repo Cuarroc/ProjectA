@@ -40,15 +40,7 @@ describe("BeweisKette", () => {
     expect(marks(container)).toBe(0);
   });
 
-  it("an unmapped blocker code is listed verbatim under Weitere Gründe", async () => {
-    serve(readiness({ blockers: [blocker("quota_gone", "Kontingent leer", "Später")] }));
-    render(<BeweisKette workerId="w1" />);
-    const more = within(await screen.findByRole("region", { name: "Weitere Gründe" }));
-    expect(more.getByText("quota_gone")).toBeInTheDocument();
-    expect(more.getByText("Kontingent leer")).toBeInTheDocument();
-  });
-
-  it("the raw reason code is not visible text but sits in a closed Technischer Code detail", async () => {
+  it("an unmapped blocker code sits in a Technischer Code disclosure closed by default under Weitere Gründe", async () => {
     serve(readiness({ blockers: [blocker("quota_gone", "Kontingent leer", "Später")] }));
     render(<BeweisKette workerId="w1" />);
     const more = within(await screen.findByRole("region", { name: "Weitere Gründe" }));
@@ -60,12 +52,14 @@ describe("BeweisKette", () => {
     expect(more.queryByText("Unbekannter Grund")).toBeNull();
   });
 
-  it("an unmapped blocker without a German sentence shows Unbekannter Grund and keeps the code in the detail", async () => {
+  it("an unmapped blocker without a German sentence shows Unbekannter Grund and keeps the code in a disclosure closed by default", async () => {
     serve(readiness({ blockers: [blocker("zz_new_code", "  ", "")] }));
     render(<BeweisKette workerId="w1" />);
     const more = within(await screen.findByRole("region", { name: "Weitere Gründe" }));
     expect(more.getByText("Unbekannter Grund").closest("details")).toBeNull();
-    expect(more.getByText("zz_new_code").closest("details")).not.toBeNull();
+    const detail = more.getByText("zz_new_code").closest("details");
+    expect(detail).not.toBeNull();
+    expect(detail).not.toHaveAttribute("open");
   });
 
   it("a mapped blocker shows no Technischer Code detail", async () => {
