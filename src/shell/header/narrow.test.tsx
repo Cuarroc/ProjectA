@@ -5,7 +5,7 @@ import { AppearanceControl } from "../AppearanceControl";
 import { COMPACT_QUERY } from "../texts";
 import { Shell } from "../Shell";
 
-vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), describeError: String }));
+vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
 /** jsdom has no layout: stand in for the viewport by answering the compact query. */
 function viewport(compact: boolean) {

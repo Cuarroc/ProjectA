@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ROUTES, pathFromHash, resolveRoute } from "./routes";
 import { Shell } from "./Shell";
+import { getQuotaState } from "../lib/ipc";
 import { GLASS_VARIANT_KEY } from "../design/variants/useGlassVariant";
 import { GLASS_THEME_KEY } from "./theme";
 
-vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), describeError: String }));
+vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
 const NINE = ["Leitstand", "Eingang & Plan", "Beweise", "Team", "Automatik", "Core", "Core · Steuerung", "Gedächtnis", "Einstellungen"];
 const allPaths = ROUTES.flatMap((r) => [r.path, ...r.tabs.map((t) => t.path)]);
@@ -15,7 +16,7 @@ const mount = () => act(async () => void render(<Shell />));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const root = document.documentElement;
 
-beforeEach(() => { localStorage.clear(); delete root.dataset.theme; delete root.dataset.glassVariant; window.location.hash = ""; });
+beforeEach(() => { vi.mocked(getQuotaState).mockResolvedValue([]); localStorage.clear(); delete root.dataset.theme; delete root.dataset.glassVariant; window.location.hash = ""; });
 afterEach(cleanup);
 
 describe("sidebar and route registry", () => {
@@ -42,10 +43,12 @@ describe("sidebar and route registry", () => {
   });
 
   it("shows Not-Aus and a glass placeholder on every route", async () => {
+    vi.mocked(getQuotaState).mockResolvedValue([{ profileId: "sample", state: "blocked", blockedUntil: null, reason: null, omniRouteOnline: false }]);
     for (const path of [...allPaths, "/nirgends"]) {
       window.location.hash = `#${path}`;
       await mount();
       expect(screen.getByTestId("emergency-stop"), path).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Kontingente: Blockiert" }), path).toBeInTheDocument();
       expect(screen.getByRole("region"), path).toHaveClass("g-glass");
       expect(screen.getByText(/Noch nicht verbunden|gibt es nicht/), path).toBeInTheDocument();
       cleanup();
