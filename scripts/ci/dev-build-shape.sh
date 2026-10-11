@@ -29,7 +29,6 @@ body="$(grep -v -E '^[[:space:]]*#' "$WF")"
 # Trade-off: the bare word also matches a harmless `secrets` in a run script or
 # a step name; that false positive is accepted (fail closed), a miss is not.
 grep -qiE '\<secrets\>' <<< "$body" && err "workflow mentions secrets (secrets.X, secrets['X'], secrets: inherit)"
-grep -qE '^[[:space:]]*environment[[:space:]]*:' <<< "$body" && err "workflow has an environment"
 
 # One structural pass instead of indentation-bound greps. The awk keeps a stack
 # of key columns (so any indentation works), skips block-scalar bodies (`run: |`
@@ -37,6 +36,7 @@ grep -qE '^[[:space:]]*environment[[:space:]]*:' <<< "$body" && err "workflow ha
 #   JOBUSES    a job (not step) has a uses key, i.e. a reusable-workflow call
 #   JOBOPAQUE  jobs/a job is flow style or uses a merge key; not checkable
 #   JOBPERMS   a job declares permissions
+#   JOBENV     a job declares an environment
 #   PERMS ...  a key or value at or below a workflow/job-level permissions key
 #   TRIGGER x  a key (or inline value) of `on:`
 #   END        sentinel: the awk ran to the end
@@ -62,6 +62,7 @@ shape="$(awk '
     if (inj && n == 3 && key == "<<") print "JOBOPAQUE"
     if (inj && n == 3 && key == "uses") print "JOBUSES"
     if (inj && n == 3 && key == "permissions") print "JOBPERMS"
+    if (inj && n == 3 && key == "environment") print "JOBENV"
     if ((p[1] == "permissions") || (inj && n >= 3 && p[3] == "permissions")) print "PERMS " key ": " val
     if (p[1] == "on" && n == 1 && val != "") print "TRIGGER " val
     if (p[1] == "on" && n == 2) print "TRIGGER " key
@@ -71,6 +72,7 @@ grep -qx END <<< "$shape" || err "permissions extraction failed (no end marker)"
 
 grep -qx JOBUSES <<< "$shape" && err "workflow has a job-level uses (reusable workflow call)"
 grep -qx JOBOPAQUE <<< "$shape" && err "workflow declares jobs in flow style or with a merge key (not checkable)"
+grep -qx JOBENV <<< "$shape" && err "workflow has an environment"
 perms="$(grep '^PERMS ' <<< "$shape")"
 grep -qE '\<write' <<< "$perms" && err "workflow has a write permission"
 grep -qx JOBPERMS <<< "$shape" || err "job declares no job-level permissions"
