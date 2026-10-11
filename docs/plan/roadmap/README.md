@@ -1,3 +1,5 @@
+Ersetzt durch `docs/plan/v2.0/plan.md` (Entscheid 06.10.: v2.0 als ein Release ohne v1.7–v1.9) — historischer Entwurf
+
 # Fahrplan v1.6.1 bis v2.0.0 (Entwurf, der Nutzer entscheidet)
 
 Basis `origin/main` `d01bc55` (05.10.2026). Dieser Fahrplan setzt `docs/plan/v1.6.0/plan.md` fort und ändert M1–M4 nicht (`docs/PLAN.md`, Regel 2). Pakete stehen je Release in [`v1.7.md`](v1.7.md), [`v1.8.md`](v1.8.md), [`v1.9.md`](v1.9.md), [`v2.0.md`](v2.0.md); v1.6.1 steht unten. Alle `Datei:Zeile`-Belege sind an `d01bc55` geprüft; Größen sind Schätzungen und werden vor dem Start gemessen.

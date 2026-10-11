@@ -110,7 +110,7 @@ Komponenten-Tests mit und tragen Verschiebungen im PR-Text ein. Wo ein Glass-Ers
 | RT-1b | Klassisch-Leiste (3 Ziele, Neuer Worker, Zähler) | neu `shell/mount/ClassicBar.tsx` + Test, `App.tsx`, `de.ts` | RT-1a | Wechsel Work/Attention/Agents ohne `ViewBar`; Neuer Worker öffnet Dialog |
 | RT-1c | Karte → Worker-Tab | `screens/leitstand/LeitstandRoute.tsx`, `AgentCard.tsx`, `App.tsx` (`handleOpenCard`-Anschluss), Tests | RT-1b | Test: Klick auf Karte wählt genau diesen Worker; Sitzungsliste unverändert |
 | RT-1d | Rahmen aus bei `routePath` | `App.tsx`, `shell/mount/mount.css` | RT-1a–c, V2-F8-PROJ (mit Folge-Test) | Test: bei `routePath` kein `.sidebar`, `.board-rail`, `.view-bar`; ohne `routePath` unverändert; Screenshot Leitstand |
-| RT-2 | D1 Standard an (Schalter-Standard, Migration gespeicherter Wahl) | `flags/featureFlags.ts`, Test | RT-1d; **Elias-Entscheidung D1** | Release-Frage: Minor mit eigenem Ja (AGENTS.md Regel 10) |
+| RT-2 | D1 Standard an (Schalter-Standard, Migration gespeicherter Wahl) | `flags/featureFlags.ts`, Test | RT-1d; **D1 entschieden 11.10.: ja, mit v2.0** | Ja liegt vor (11.10.); jederzeit zurückschaltbar ([Entscheid](../../decisions.md#2026-10-11---v20-schnitt-hülle--leitstand-d1-standard-an-verlauf-in-v21)) |
 | RT-3 | Pfad ohne Schale entfernen: `App()` nur noch `ShellMount`, `routePath` Pflicht, `PreviewToggle` und Schalter-Zweig weg | `App.tsx`, `flags/*`, `shell/mount/PreviewToggle.tsx`, `EinstellungenScreen.tsx` (Abschnitt), Tests | RT-2 | `App.test.tsx`, `App.audit.test.tsx` auf Schale umgestellt; Schalter-Test angepasst |
 | RT-4a | `BoardRail` + `railOpen`-Zustand löschen | `BoardRail.tsx`, `App.tsx`, `styles.css` (Rail-Regeln) | RT-3 | `sidebar-layout.test.ts` angepasst |
 | RT-4b | `ThemeBackdrop` + `themeStyle` löschen | `ThemeBackdrop.tsx` (+ Test), `App.tsx`, `lib/settings.ts` (Stil-Leser) | RT-3 | `styles-theme-api.test.ts` grün |
@@ -134,6 +134,9 @@ Komponenten-Tests mit und tragen Verschiebungen im PR-Text ein. Wo ein Glass-Ers
 | RT-8 | Reste: `AppContent` leer, `lib/goals.ts`, `useAttentionBlockers`/`useQuestions`-Aufrufer, tote `styles.css`-Regeln | `App.tsx`, `lib/*`, `styles.css` (in Scheiben) | RT-5f, RT-6a–i, RT-7 | `rg` nach den gelöschten Namen leer; `hardcoded-baseline.json` schrumpft |
 | RT-9 | `ErrorBoundary`-Netz in die Schale, `App.tsx` nur noch Eingang | `App.tsx`, `shell/*` | RT-8 | `ErrorBoundary.test.tsx` grün |
 
+Das Ja zu RT-2 gilt für D1 mit Rückschaltmöglichkeit. Der spätere Vorschlag RT-3, den Schalter und den Rückweg
+zu entfernen, ist davon nicht gedeckt; seine Freigabe muss diese Grenze vorher auflösen.
+
 Große Dateien (`BoardView` 968, `DiffView` 955, `SettingsView` 1050, `styles.css` 7077 Zeilen): reine Löschungen zählen als
 Diff, deshalb jeweils eigenes Paket oder Scheibe; zählt ein Paket über 300, teilt Chief vor dem Dispatch.
 
@@ -147,8 +150,8 @@ V2-RETIRE-1a, 1b, 1c, 1d, 2, 3, 4a, 4b, 4c, 5a, 5b, 5c, 5d, 5e, 5f, 6a, 6b, 6c, 
 - V2-S01a-4 Karten-Aktionen (neu starten, archivieren, verschieben) und Blocker/Quota in „Braucht dich“.
 - V2-S09-2 / V2-S07b-2 Freigabe von Lektionen und Rollenvarianten.
 - V2-S10d Rest der Einstellungen (Profile, Kategorien, Master-Prompt, Wartung, Diagnose, Anbieter).
-- Entscheidungen für den Nutzer: D1 Standard an (RT-2, Minor-Release), Web-Interface (behalten bis Fernansicht oder „entfällt“),
-  Heimat der Empfehlungen.
+- D1 Standard an (RT-2): entschieden 11.10.: ja, mit v2.0; Ja liegt vor (11.10.), jederzeit zurückschaltbar.
+  Offen bleiben Web-Interface (behalten bis Fernansicht oder „entfällt“) und Heimat der Empfehlungen.
 
 ## 6. Sitzungen (PTY) bleiben am Leben
 
