@@ -1,3 +1,4 @@
+import { formatClock, formatDayMonth } from "../../lib/time";
 import type { Provider, QuotaState } from "../../types";
 import { initials } from "../leitstand/leitstand";
 import { T } from "./texts";
@@ -77,9 +78,9 @@ function freeVariant(base: string, taken: ReadonlySet<string>): string {
 export function formatFreeAt(unixSeconds: number, now: Date = new Date()): string | null {
   const at = new Date(unixSeconds * 1000);
   if (Number.isNaN(at.getTime()) || at.getTime() <= now.getTime()) return null;
-  const time = at.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const time = formatClock(at);
   if (at.toDateString() === now.toDateString()) return time;
-  return `${at.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} ${time}`;
+  return `${formatDayMonth(at)} ${time}`;
 }
 
 /**
