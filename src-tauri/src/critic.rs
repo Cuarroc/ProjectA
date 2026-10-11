@@ -333,7 +333,7 @@ pub async fn run_critic(app: &AppHandle, store: &Store, worker_id: &str) -> Resu
 async fn run_critic_with_runner<F, Fut>(
     store: &Store,
     worker_id: &str,
-    _quota: Option<&QuotaTracker>,
+    quota: Option<&QuotaTracker>,
     runner: F,
 ) -> Result<usize, String>
 where
@@ -366,6 +366,12 @@ where
         messages: read_messages(store, &worker.id).await?,
     };
 
+    // oneshot::run uses the Claude profile, regardless of the worker's dialect.
+    // This reads the known state, not an atomic reservation against later blocks.
+    let quota = quota.ok_or("learning critic skipped: quota state unavailable")?;
+    if quota.is_blocked("claude") {
+        return Err("learning critic skipped: claude is blocked".into());
+    }
     let raw = runner(evidence).await?;
 
     let mut stored = 0usize;
