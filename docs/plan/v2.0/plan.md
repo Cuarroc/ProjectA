@@ -4,6 +4,19 @@ Stand 06.10.2026, Basis `origin/main` 01a0bf7 (`git fetch` am 06.10.; Zeilennumm
 
 Nutzerentscheidungen vom 06.10.2026 (verbindlich): (1) v2.0 ist der Entwurf mit echter Funktion, als **ein** großes Release, keine Zwischenreleases v1.7 bis v1.9; (2) das Fundament startet **parallel** zu v1.6.0, ohne die vier Nahtstellen und ohne Dateien offener PRs; (3) die Paketgrößenregel darf sich ändern; (4) jeder Agent läuft wahlweise auf diesem PC, in der Cloud des Anbieters oder auf einem eigenen Server über SSH; (5) v2.0 bekommt **eine** App-KI mit Rechten, den Core ([`core.md`](core.md)); (6) die Ausführung läuft in AgentsRoom ohne Leerlauf (Abschnitt 4a); (7) alle 36 Ergänzungen sind aufgenommen (die auf Verkauf zielenden sind durch (8) geparkt, Abschnitt 3.13), und dieser Plan wird nach der Freigabe das **einzige** Plandokument (Abschnitt 9); (8) **Richtungsentscheidung (Punkt 39, hat Vorrang, wo sie Früheres ändert):** v2.0 ist das Werkzeug des Nutzers für die eigene Entwicklung **und** für Kundenaufträge (Webseiten, Shops). Der Verkauf der App an Dritte ist **geparkt bis echte Nachfrage** (Mac/Linux-Builds, Code-Signatur, App-Lizenz und Preis, englische Oberfläche, Demo-Modus für Fremde). Voll unterstützt sind **drei Anbieter-Wege**: Claude, Codex und ein lokales Modell (Ollama lokal), das bei Anbietersperre oder Limit als Pflicht-Ersatz einspringt; weitere CLIs sind geparkt. Das Dev-HQ geht in der App auf (keine eigene Oberfläche), die Systemkarte ist Doku. Aus 25 Boards werden **10 Bildschirme** (Abschnitt 3.4). Auftrag, Arbeit, Beweis, Fremdprüfung, Freigabe und Ausliefern sind **eine** Maschine (Abschnitt 3.5). Kundenprojekte (3.12) kommen hinter einem Schalter nach dem Kern, geschützt durch die Datenschutz-Schleuse (Stufe A).
 
+## Release-Schnitt v2.0 / v2.1 / v2.2
+
+Verbindlicher Schnitt vom 10.10., ergänzt um die Nutzerentscheide vom 11.10.:
+
+- **v2.0:** Hülle + Leitstand; D1 (Glass-Oberfläche) standardmäßig an, jederzeit zurückschaltbar.
+- **v2.1:** Start, Beweise, Kontingente und der Verlauf-Tab **V2-S01c**.
+- **v2.2:** der übrige Umfang.
+
+Quelle, Wortlaut und Rückweg: [Entscheidungsprotokoll vom 11.10.](../../decisions.md#2026-10-11---v20-schnitt-hülle--leitstand-d1-standard-an-verlauf-in-v21).
+Dieser Schnitt hat Vorrang vor älteren Release-Zuordnungen im folgenden Entwurf.
+Er ändert keine Paketinhalte oder Abnahmekriterien und setzt keine Termine.
+Verlauf wird verschoben, nicht gestrichen; die Veröffentlichung ist damit nicht freigegeben.
+
 ## 1. Ziel und „fertig“
 
 **Ziel.** Die 10 Bildschirme des Entwurfs (zusammengelegt aus den 25 Boards, Abschnitt 3.4) sind in der App echt: gleiche Sprache (Glas, hell und dunkel, sechs Zustandsformen, Bewegung), echte Daten aus Rust und SQLite, und hinter jedem Knopf eine Funktion, die ihre Wirkung belegt. Ein Bildschirm mit erfundenen Daten ist nie fertig: Gibt es das Backend noch nicht, zeigt der Bildschirm den ehrlichen Zustand („noch nicht verbunden“, „aus, gesperrt bis …“).
