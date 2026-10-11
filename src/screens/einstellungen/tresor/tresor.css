@@ -1,0 +1,8 @@
+/* V2-S10b-1 Einstellungen, Tresor. Not imported by the app yet. --g-* tokens only. */
+.tr-panel { font-family: var(--g-font-sans); display: flex; flex-direction: column; gap: 12px; }
+.tr-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
+.tr-h { margin: 0; font: 600 14px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.tr-note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-muted); }
+.tr-alert { margin: 0; padding: 10px 12px; border: 1px solid var(--g-bad); border-radius: 8px; font-size: 13px; line-height: 1.4; color: var(--g-bad); overflow-wrap: anywhere; }
+.tr-access { font-size: 13px; color: var(--g-ink); }
+.tr-access--quiet { color: var(--g-muted); }
