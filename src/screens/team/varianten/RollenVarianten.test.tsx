@@ -106,6 +106,59 @@ it("shows a German error with the reason and frees the row when the verdict fail
   expect(screen.queryByRole("status")).toBeNull();
 });
 
+it("keeps the ok note and drops the decided card when only the silent reload fails", async () => {
+  vi.mocked(ipc.listRoleVariants).mockResolvedValueOnce([variant("a"), variant("b")]).mockRejectedValue(new Error("offline"));
+  vi.mocked(ipc.approveRoleVariant).mockResolvedValue(undefined);
+  render(<RollenVarianten projectId="project-a" />);
+  await screen.findByRole("article", { name: "Rolle a" });
+  fireEvent.click(row("Rolle a").getByRole("button", { name: "Annehmen" }));
+  expect(await screen.findByText("Liste konnte nicht aktualisiert werden.")).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Rolle angenommen.");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByRole("article", { name: "Rolle a" })).toBeNull();
+  expect(row("Rolle b").getByRole("button", { name: "Annehmen" })).toBeEnabled();
+  expect(ipc.approveRoleVariant).toHaveBeenCalledTimes(1);
+});
+
+it("ignores a late reply of an earlier visit when the project goes p1 to p2 to p1", async () => {
+  const late: { resolve: (rows: RoleVariant[]) => void } = { resolve: () => {} };
+  vi.mocked(ipc.listRoleVariants)
+    .mockReturnValueOnce(new Promise<RoleVariant[]>((resolve) => { late.resolve = resolve; }))
+    .mockResolvedValueOnce([variant("q")])
+    .mockResolvedValue([variant("fresh")]);
+  const { rerender } = render(<RollenVarianten projectId="p1" />);
+  rerender(<RollenVarianten projectId="p2" />);
+  await screen.findByRole("article", { name: "Rolle q" });
+  rerender(<RollenVarianten projectId="p1" />);
+  await screen.findByRole("article", { name: "Rolle fresh" });
+  late.resolve([variant("stale")]);
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(screen.queryByRole("article", { name: "Rolle stale" })).toBeNull();
+  expect(screen.getByRole("article", { name: "Rolle fresh" })).toBeInTheDocument();
+});
+
+it("shows no note and leaks no busy state when a verdict returns after the project went away and back", async () => {
+  vi.mocked(ipc.listRoleVariants).mockResolvedValue([variant("a")]);
+  let finish: () => void = () => {};
+  vi.mocked(ipc.approveRoleVariant).mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+  const { rerender } = render(<RollenVarianten projectId="p1" />);
+  await screen.findByRole("article", { name: "Rolle a" });
+  fireEvent.click(row("Rolle a").getByRole("button", { name: "Annehmen" }));
+  await waitFor(() => expect(row("Rolle a").getByRole("button", { name: "Läuft …" })).toBeDisabled());
+  rerender(<RollenVarianten projectId="p2" />);
+  await waitFor(() => expect(row("Rolle a").getByRole("button", { name: "Annehmen" })).toBeEnabled());
+  rerender(<RollenVarianten projectId="p1" />);
+  await waitFor(() => expect(row("Rolle a").getByRole("button", { name: "Annehmen" })).toBeEnabled());
+  const loads = vi.mocked(ipc.listRoleVariants).mock.calls.length;
+  finish();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(row("Rolle a").getByRole("button", { name: "Annehmen" })).toBeEnabled();
+  expect(ipc.listRoleVariants).toHaveBeenCalledTimes(loads);
+});
+
 it("shows the empty state in words", async () => {
   feed([]);
   render(<RollenVarianten projectId="project-a" />);
