@@ -37,3 +37,9 @@ export const initials = (name: string) =>
 
 /** A stable avatar tone 1..6 per profile, so one agent keeps its colour. */
 export const toneFor = (id: string) => ([...id].reduce((h, c) => h + c.charCodeAt(0), 0) % 6 + 1) as 1 | 2 | 3 | 4 | 5 | 6;
+
+/** The model the agent reported about itself, labelled as such; `null` when it reported none (no placeholder). */
+export function modelText(card: BoardCard): string | null {
+  const model = card.observedModel?.trim();
+  return model ? fill(t("leitstand.modelReported"), { model }) : null;
+}

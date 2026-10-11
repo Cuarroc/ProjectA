@@ -24,6 +24,10 @@ const pending = <T,>() => {
   return { promise, ...settle };
 };
 
+const withModel = (observedModel?: string | null) => {
+  render(<AgentCard card={{ ...card("running"), observedModel }} name="Claude Code" now={NOW} onOpen={() => {}} />);
+};
+
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
@@ -119,4 +123,17 @@ it("offers only the action the old worker list allows for the state", () => {
   expect(names("running")).toEqual(["Claude Code öffnen", "Claude Code archivieren"]);
   expect(names("exited")).toEqual(["Claude Code öffnen", "Claude Code neu starten"]);
   expect(names("archived")).toEqual(["Claude Code öffnen"]);
+});
+
+it("shows the self-reported model with its source label", () => {
+  withModel("Opus 5");
+  expect(screen.getByText("Opus 5 · gemeldet vom Agenten")).toBeInTheDocument();
+});
+
+it("shows no model line when the agent reported none", () => {
+  for (const absent of [undefined, null, "  "]) {
+    withModel(absent);
+    expect(screen.queryByText(/gemeldet vom Agenten/)).toBeNull();
+    cleanup();
+  }
 });

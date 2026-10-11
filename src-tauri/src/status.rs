@@ -398,6 +398,9 @@ pub struct WorkerBoardState {
     pub test_status: Option<String>,
     /// Unix seconds at which `test_status` was written.
     pub tested_at: Option<i64>,
+    /// The model name the worker's agent reported on its statusline, or `None`
+    /// while it reported none. Self-reported, never confirmed: the card says so.
+    pub observed_model: Option<String>,
 }
 
 /// Who ordered this worker, resolved from `spawned_by` for the board badge.
@@ -562,6 +565,10 @@ pub struct StatusLineUsage {
     /// `None` means the payload said nothing about that window.
     pub five_hour: Option<RateWindowUsage>,
     pub seven_day: Option<RateWindowUsage>,
+    /// The model name the agent's own statusline reports (`model.display_name`).
+    /// A self-report, not a confirmation: nothing here checks which model
+    /// actually answers. `None` when the payload carried none.
+    pub model: Option<String>,
     /// When this snapshot was parsed; used to pick the freshest observation.
     pub observed_at: i64,
 }
@@ -1790,6 +1797,9 @@ impl StatusEngine {
                     controlled_by: controlled_by(worker, workers),
                     test_status: worker.test_status.clone(),
                     tested_at: worker.tested_at,
+                    observed_model: state
+                        .and_then(|s| s.statusline.as_ref())
+                        .and_then(|usage| usage.model.clone()),
                     worker: worker.clone(),
                 }
             })
@@ -1868,6 +1878,8 @@ fn merge_statusline(previous: StatusLineUsage, incoming: StatusLineUsage) -> Sta
         resets_at,
         five_hour,
         seven_day,
+        // A payload without a model leaves the last reported one standing.
+        model: incoming.model.or(previous.model),
         observed_at: incoming.observed_at,
     }
 }
@@ -1947,7 +1959,6 @@ struct CurrentUsage {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[allow(dead_code)]
 struct ModelInfo {
     display_name: Option<String>,
 }
@@ -2001,8 +2012,29 @@ fn parse_statusline(payload: &str, observed_at: i64) -> Option<StatusLineUsage> 
         resets_at,
         five_hour: primary.map(window_usage),
         seven_day: fallback.map(window_usage),
+        model: payload
+            .model
+            .and_then(|model| model.display_name)
+            .and_then(|name| clean_model_name(&name)),
         observed_at,
     })
+}
+
+/// Longest model name kept; a display name is a few words, anything longer is
+/// not one.
+const MODEL_NAME_MAX_CHARS: usize = 64;
+
+/// A model name the agent reported, made safe to show: trimmed, control
+/// characters dropped, capped. `None` when nothing printable is left, so a
+/// card never shows an empty label.
+fn clean_model_name(raw: &str) -> Option<String> {
+    let name: String = raw
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(MODEL_NAME_MAX_CHARS)
+        .collect();
+    let name = name.trim();
+    (!name.is_empty()).then(|| name.to_string())
 }
 
 /// A parsed window, with an out-of-range percentage dropped the same way the
@@ -3422,6 +3454,60 @@ mod tests {
         assert_eq!(usage.resets_at, Some(1_787_793_000));
         assert!(usage.used.is_none());
         assert_eq!(usage.limit.as_deref(), Some("1,0 M Tokens"));
+    }
+
+    #[test]
+    fn statusline_model_display_name_reaches_the_board_card() {
+        let engine = StatusEngine::new(IDLE_AFTER);
+        let wk = worker("wk-1", STATUS_RUNNING);
+        let card_model = || {
+            engine.board(std::slice::from_ref(&wk))[0]
+                .observed_model
+                .clone()
+        };
+        engine.observe_worker(&wk);
+        assert_eq!(card_model(), None, "no payload, no model and no guess");
+
+        engine.note_statusline_at(
+            "wk-1",
+            r#"{"rate_limits":{"five_hour":{"used_percentage":5}},"model":{"display_name":"Opus 5"}}"#,
+            1,
+        );
+        assert_eq!(card_model().as_deref(), Some("Opus 5"));
+
+        // A later payload without the field keeps the old value ...
+        engine.note_statusline_at(
+            "wk-1",
+            r#"{"rate_limits":{"five_hour":{"used_percentage":6}}}"#,
+            2,
+        );
+        assert_eq!(card_model().as_deref(), Some("Opus 5"));
+        // ... and a later one with the field replaces it.
+        engine.note_statusline_at(
+            "wk-1",
+            r#"{"rate_limits":{"five_hour":{"used_percentage":7}},"model":{"display_name":"Sonnet 5.5"}}"#,
+            3,
+        );
+        assert_eq!(card_model().as_deref(), Some("Sonnet 5.5"));
+    }
+
+    #[test]
+    fn statusline_model_name_is_cleaned_and_empty_means_none() {
+        let model = |name: &str| {
+            let payload = serde_json::json!({
+                "rate_limits": {"five_hour": {"used_percentage": 1}},
+                "model": {"display_name": name},
+            });
+            parse_statusline(&payload.to_string(), 1)
+                .expect("parses")
+                .model
+        };
+        assert_eq!(model("  Opus\n5 \u{1b}[0m ").as_deref(), Some("Opus5 [0m"));
+        assert_eq!(model("   "), None);
+        assert_eq!(
+            model(&"x".repeat(200)).map(|m| m.chars().count()),
+            Some(MODEL_NAME_MAX_CHARS)
+        );
     }
 
     #[test]
