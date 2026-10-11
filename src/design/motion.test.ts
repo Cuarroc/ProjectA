@@ -25,6 +25,32 @@ function mediaBody(source: string, query: string): string {
 }
 
 describe("V2-F2 motion contract", () => {
+  it("loads the motion stylesheet in the mounted glass shell", () => {
+    const shell = readFileSync(resolve(__dirname, "../shell/Shell.tsx"), "utf8");
+    expect(shell.match(/import\s+["']\.\.\/design\/motion\.css["'];/g)).toHaveLength(1);
+    expect(shell).toContain('className="g-shell"');
+  });
+
+  it("covers shell descendants and pressed controls in reduced motion", () => {
+    const reduced = mediaBody(css, "prefers-reduced-motion:\\s*reduce");
+    const rule = reduced.match(/([^{}]+)\{[^{}]*animation:\s*none\s*!important[^{}]*\}/);
+    expect(rule, "reduced-motion animation rule").toBeTruthy();
+    const selectors = rule![1].split(",").map((selector) => selector.trim());
+    for (const root of [".g-shell", "[data-g-portal]"]) {
+      for (const suffix of ["", "::before", "::after", " *", " *::before", " *::after"]) {
+        expect(selectors, `${root}${suffix}`).toContain(`${root}${suffix}`);
+      }
+    }
+    expect(rule![0]).toMatch(/transition-duration:\s*0ms\s*!important/);
+    expect(rule![0]).toMatch(/transition-delay:\s*0ms\s*!important/);
+    const controls = readFileSync(resolve(__dirname, "controls/controls.css"), "utf8");
+    const reducedControls = mediaBody(controls, "prefers-reduced-motion:\\s*reduce");
+    for (const selector of [".g-btn:active", ".g-fchip:active", ".g-seg button:active"]) {
+      expect(reducedControls).toContain(selector);
+    }
+    expect(reducedControls).toMatch(/\{\s*transform:\s*none;/);
+  });
+
   it("defines motion duration easing and press tokens under the g namespace", () => {
     const root = rootBlock(css);
     expect(root).toMatch(/--g-dur-1:\s*120ms;/);
