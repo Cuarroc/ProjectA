@@ -44,8 +44,12 @@ export function parseBrief(text) {
 export function lint(text, { prBody = false, baseExists = true } = {}) {
   const lines = proseLines(text);
   const reasons = [], approvals = [];
+  let current;
   lines.forEach((line, i) => {
-    if (/^\s*NON-GOALS(?:\s+\([^)]*\))?:/i.test(line) || /^(?: {4}|\t)/.test(line)) return;
+    const field = /^\s*([A-Z][A-Z/-]*)(?:[ \t]+\([^)]*\))?:[ \t]*(.*)$/.exec(line);
+    if (field) current = field[1];
+    else if (!/^(?:\s+\S|[-*] )/.test(line) || TRAILER.test(line)) current = undefined;
+    if (current === "NON-GOALS" || /^\s*NON-GOALS(?:\s+\([^)]*\))?:/i.test(line) || /^(?: {4}|\t)/.test(line)) return;
     for (const word of APPROVAL_WORDS) {
       const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${word.replaceAll(" ", "[ \\t]+")}(?![\\p{L}\\p{N}_])`, "giu");
       for (const match of line.matchAll(pattern)) approvals.push({ word: match[0], line: i + 1 });
@@ -54,7 +58,7 @@ export function lint(text, { prBody = false, baseExists = true } = {}) {
   if (prBody) {
     if (!lines.some((l) => /^## Report\s*$/.test(l))) reasons.push("## Report fehlt");
     if (!lines.some((l) => /\bNICHT ABGEDECKT\b/.test(l))) reasons.push("NICHT ABGEDECKT fehlt");
-    text.split(/\r?\n/).forEach((line, i) => {
+    lines.forEach((line, i) => {
       if (TRAILER.test(line)) reasons.push(`Zeile ${i + 1}: Commit-Trailer im PR-Text`);
     });
     let reviewSection = false;
