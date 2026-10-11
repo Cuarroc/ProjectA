@@ -1673,3 +1673,28 @@ wall clock, linux + windows.
   app package is built); the user wants model training or customer databases (a
   new explicit yes); or B6a-2/B19 land in the v2.0 core, in which case TRES-1/2
   move there with them.
+
+## 2026-10-11 - v2.0-Schnitt: Hülle + Leitstand, D1 Standard an, Verlauf in v2.1
+
+- **What:** v2.0 delivers the shell (Hülle) and Leitstand; v2.1 delivers Start,
+  Beweise, Kontingente and the Verlauf tab (V2-S01c); v2.2 covers the remaining
+  scope. E-V2-D1 is **yes**: Glass becomes the default with v2.0, with the option
+  to switch back at any time. E-V2-S01C is **no** to Verlauf in v2.0: it moves to
+  v2.1. This release cut takes precedence over older release assignments in
+  [the v2.0 subplan](plan/v2.0/plan.md).
+- **Source:** the user said “ich folge deinen Empfehlungen bei den Entscheidungen”
+  on 2026-10-11 at approximately 10:50Z, accepting Root's two cards from
+  approximately 10:35Z (D1: yes, reversible; S01c: no, v2.1), as supplied in
+  the PLAN-V2-SCOPE dispatch at approximately 10:55Z. The cut itself was accepted
+  on 2026-10-10 at approximately 08:56Z (“klingt gut”), already recorded in
+  [werkbank.md](plan/v2.0/werkbank.md).
+- **Why:** make Glass the normal interface while preserving the user's way
+  back; keep the initial release focused on shell and Leitstand instead of
+  extending it with the additional Verlauf work.
+- **Way back:** D1 remains switchable; S01c is postponed, not dropped. Removing
+  the fallback is not covered by this yes. Revisit the cut only through a new
+  user decision.
+- **Not covered:** no new packages, replanning, delivery dates, package-content
+  or acceptance-criteria changes, implementation, or release publication.
+  This mandatory user decision record is exempt from the plan freeze in
+  `werkbank.md`; it records an existing authorization rather than new planning.
