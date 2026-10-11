@@ -47,10 +47,44 @@ describe("Glass shell mount behind D1", () => {
     localStorage.setItem(FLAG_KEY, "1");
     render(<App />);
     await screen.findByRole("navigation", { name: "Hauptnavigation" });
-    await go("#/einstellungen");
+    await go("#/einstellungen/klassisch");
     expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("tab", { name: "Review" }));
     await waitFor(() => expect(window.location.hash).toBe("#/beweise"));
+  });
+
+  it("shows the Glass Einstellungen at /einstellungen and keeps the old app hidden behind it", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/einstellungen";
+    const { container } = render(<App />);
+    expect(await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" })).toBeInTheDocument();
+    expect(container.querySelector(".g-shell-content .es")).not.toBeNull();
+    expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
+    expect(container.querySelector(".g-mount-legacy > .app")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Einstellungen" })).toHaveAttribute("aria-current", "page");
+    fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
+    expect(await screen.findByText("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.")).toBeInTheDocument();
+  });
+
+  it("opens the old Settings inside the shell from the classic button", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/einstellungen";
+    const { container } = render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/einstellungen/klassisch"));
+    expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
+    expect(container.querySelector(".es")).toBeNull();
+    expect(container.querySelector(".g-mount-legacy")).not.toHaveAttribute("hidden");
+    expect(container.querySelector(".g-shell-content .g-mount-legacy > .app")).not.toBeNull();
+  });
+
+  it("leaves /einstellungen to the old Settings alone while the switch is off", async () => {
+    window.location.hash = "#/einstellungen";
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
+    expect(await screen.findByRole("tab", { name: "Settings" })).toBeInTheDocument();
+    expect(container.querySelector(".g-mount")).toBeNull();
+    expect(container.querySelector(".es")).toBeNull();
   });
 
   it("keeps the old app mounted behind a route without an old view", async () => {
