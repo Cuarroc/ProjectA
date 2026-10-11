@@ -48,6 +48,68 @@ describe("BeweisKette", () => {
     expect(more.getByText("Kontingent leer")).toBeInTheDocument();
   });
 
+  it("the raw reason code is not visible text but sits in a closed Technischer Code detail", async () => {
+    serve(readiness({ blockers: [blocker("quota_gone", "Kontingent leer", "Später")] }));
+    render(<BeweisKette workerId="w1" />);
+    const more = within(await screen.findByRole("region", { name: "Weitere Gründe" }));
+    const detail = more.getByText("quota_gone").closest("details");
+    expect(detail).not.toBeNull();
+    expect(detail).not.toHaveAttribute("open");
+    expect(within(detail as HTMLElement).getByText("Technischer Code")).toBeInTheDocument();
+    expect(more.getByText("Kontingent leer").closest("details")).toBeNull();
+    expect(more.queryByText("Unbekannter Grund")).toBeNull();
+  });
+
+  it("an unmapped blocker without a German sentence shows Unbekannter Grund and keeps the code in the detail", async () => {
+    serve(readiness({ blockers: [blocker("zz_new_code", "  ", "")] }));
+    render(<BeweisKette workerId="w1" />);
+    const more = within(await screen.findByRole("region", { name: "Weitere Gründe" }));
+    expect(more.getByText("Unbekannter Grund").closest("details")).toBeNull();
+    expect(more.getByText("zz_new_code").closest("details")).not.toBeNull();
+  });
+
+  it("a mapped blocker shows no Technischer Code detail", async () => {
+    serve(readiness({ blockers: [blocker("dirty", "Offene Änderungen")] }));
+    render(<BeweisKette workerId="w1" />);
+    await screen.findByText("Offene Änderungen");
+    expect(screen.queryByText("Technischer Code")).toBeNull();
+  });
+
+  it("a blocked chain marks exactly the blocked steps open and the rest fulfilled", async () => {
+    serve(readiness({ blockers: [blocker("dirty"), blocker("comments_open"), blocker("changes_requested"), blocker("base_changed")] }));
+    render(<BeweisKette workerId="w1" />);
+    await screen.findByText("msg dirty");
+    const state = (name: string) => within(step(name));
+    expect(state("Arbeit").getByText("Offen")).toBeInTheDocument();
+    expect(state("Prüfung").getAllByText("Offen")).toHaveLength(2);
+    expect(state("Basis").getByText("Offen")).toBeInTheDocument();
+    for (const fine of ["Einrichtung", "Tests"]) {
+      expect(state(fine).getByText("erfüllt")).toBeInTheDocument();
+      expect(state(fine).queryByText("Offen")).toBeNull();
+    }
+    expect(screen.getAllByText("erfüllt")).toHaveLength(2);
+  });
+
+  it("an unmeasured chain says nicht geprüft on all five steps and no mark", async () => {
+    serve(readiness({ readiness: "unknown", checkedAt: 0, code: null }));
+    const { container } = render(<BeweisKette workerId="w1" />);
+    await screen.findByText("Noch nicht geprüft");
+    expect(screen.getAllByText("nicht geprüft")).toHaveLength(5);
+    expect(within(step("Tests")).queryByText("erfüllt")).toBeNull();
+    expect(marks(container)).toBe(0);
+  });
+
+  it("a verdict without a check time and a check time without a verdict stay unmeasured", async () => {
+    for (const odd of [{ readiness: "ready", checkedAt: 0 }, { readiness: "unknown", checkedAt: 100 }]) {
+      serve(readiness(odd));
+      const { unmount } = render(<BeweisKette workerId="w1" />);
+      await screen.findByText("Noch nicht geprüft");
+      expect(screen.queryByText("erfüllt")).toBeNull();
+      expect(screen.getAllByText("nicht geprüft")).toHaveLength(5);
+      unmount();
+    }
+  });
+
   it("ready shows five fulfilled steps and the short head sha", async () => {
     serve(readiness({ readiness: "ready" }));
     render(<BeweisKette workerId="w1" />);
@@ -120,5 +182,32 @@ describe("BeweisKette", () => {
     await act(async () => pending["w1#0"](readiness({ blockers: [blocker("dirty", "von eins alt")] })));
     expect(screen.queryByText("von eins alt")).toBeNull();
     expect(screen.getByText("von eins neu")).toBeInTheDocument();
+  });
+
+  it("a stale reply of an earlier call stays dropped while the newer call of a round trip is pending", async () => {
+    const pending: Array<(v: unknown) => void> = [];
+    mocks.invoke.mockImplementation(() => new Promise((resolve) => { pending.push(resolve); }));
+    const { rerender } = render(<BeweisKette workerId="w1" />);
+    rerender(<BeweisKette workerId="w2" />);
+    rerender(<BeweisKette workerId="w1" />);
+    expect(pending).toHaveLength(3);
+    await act(async () => pending[0](readiness({ blockers: [blocker("dirty", "von eins alt")] })));
+    await act(async () => pending[1](readiness({ blockers: [blocker("dirty", "von zwei alt")] })));
+    expect(screen.queryByText("von eins alt")).toBeNull();
+    expect(screen.queryByText("von zwei alt")).toBeNull();
+    expect(screen.getByText("Wird gelesen …")).toBeInTheDocument();
+    await act(async () => pending[2](readiness({ blockers: [blocker("dirty", "von eins neu")] })));
+    expect(screen.getByText("von eins neu")).toBeInTheDocument();
+  });
+
+  it("a stale failure of an earlier call does not replace the newer result", async () => {
+    const pending: Array<{ ok: (v: unknown) => void; fail: (e: unknown) => void }> = [];
+    mocks.invoke.mockImplementation(() => new Promise((ok, fail) => { pending.push({ ok, fail }); }));
+    const { rerender } = render(<BeweisKette workerId="w1" />);
+    rerender(<BeweisKette workerId="w2" />);
+    await act(async () => pending[1].ok(readiness({ blockers: [blocker("dirty", "von zwei")] })));
+    await act(async () => pending[0].fail("alt kaputt"));
+    expect(screen.queryByText("Beweise nicht lesbar")).toBeNull();
+    expect(screen.getByText("von zwei")).toBeInTheDocument();
   });
 });
