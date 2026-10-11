@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -9,6 +9,7 @@ vi.mock("./components/TerminalView", () => ({ default: () => null }));
 
 import { listen } from "@tauri-apps/api/event";
 import App from "./App";
+import { writeActiveProjectId } from "./lib/activeProject";
 
 function invokeCalls(command: string): number {
   return mocks.invoke.mock.calls.filter(([called]) => called === command).length;
@@ -151,5 +152,21 @@ describe("App bootstrap", () => {
     await waitFor(() => expect(invokeCalls("get_provider_overview")).toBeGreaterThan(0));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByRole("list", { name: "Erste Schritte" })).toBeNull();
+  });
+
+  it("follows the project the Glass header picks", async () => {
+    const projects = ["p1", "p2"].map((id) => ({ id, name: id, repoPath: `repo-${id}`, createdAt: 1, githubRemote: false }));
+    localStorage.setItem("projecta.activeProjectId", "p1");
+    vi.mocked(listen).mockResolvedValue(() => {});
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "list_projects") return Promise.resolve(projects);
+      if (command === "list_agent_profiles" || command === "list_workers" || command === "list_questions") return Promise.resolve([]);
+      if (command === "get_board_state") return Promise.resolve({ cards: [], coordinators: [] });
+      return Promise.resolve(undefined);
+    });
+    const workersOf = (id: string) => mocks.invoke.mock.calls.filter(([c, a]) => c === "list_workers" && a?.projectId === id).length;
+    render(<App />);
+    act(() => writeActiveProjectId("p2"));
+    await waitFor(() => expect(workersOf("p2")).toBeGreaterThan(0));
   });
 });
