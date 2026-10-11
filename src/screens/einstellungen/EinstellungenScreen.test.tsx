@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { check } from "@tauri-apps/plugin-updater";
+import { getEmergencyStop } from "../../lib/ipc";
 import { getVersion } from "@tauri-apps/api/app";
 import { ROUTES } from "../../shell/routes";
 import { EinstellungenScreen } from "./EinstellungenScreen";
@@ -114,5 +115,13 @@ describe("tab Allgemein", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Not-Aus auslösen" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Klassische Einstellungen öffnen" }));
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the Not-Aus lift button as a Glass button", async () => {
+    vi.mocked(getEmergencyStop).mockResolvedValueOnce(true);
+    show();
+    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
+    expect(lift.className.split(/\s+/)).toContain("g-btn");
+    expect(lift.className).not.toContain("button-ghost");
   });
 });

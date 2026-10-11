@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewLeitstand, isNewSteuerung } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
   it("keeps Work Attention and Agents under the Leitstand", () => {
@@ -49,5 +49,15 @@ describe("goal and route mapping (ia.md section 4)", () => {
     expect(isNewSteuerung("/steuerung/autonomie")).toBe(true);
     expect(isNewSteuerung("/steuerungx")).toBe(false);
     expect(isNewSteuerung("/leitstand")).toBe(false);
+  });
+});
+
+describe("new Einstellungen route (V2-S10a)", () => {
+  it("owns exactly /einstellungen and leaves the classic and tab paths to the old view", () => {
+    expect(isNewEinstellungen("/einstellungen")).toBe(true);
+    expect(isNewEinstellungen("/einstellungen/")).toBe(true);
+    expect(isNewEinstellungen("/einstellungen/klassisch")).toBe(false);
+    expect(isNewEinstellungen("/einstellungen/mcp")).toBe(false);
+    expect(hasLegacyPanel("/einstellungen/klassisch")).toBe(true);
   });
 });

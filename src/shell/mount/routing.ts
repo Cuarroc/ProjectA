@@ -21,6 +21,11 @@ export const isNewLeitstand = (path: string) => trim(path) === "/leitstand";
 /** The new Steuerung (V2-S05a) owns `/steuerung` and its tabs: Kontingente plus two honest placeholders. */
 export const isNewSteuerung = (path: string) => base(trim(path)) === "/steuerung";
 
+/** The new Einstellungen (V2-S10a) owns exactly `/einstellungen`; its classic button opens the old Settings below it. */
+export const SETTINGS_PATH = "/einstellungen";
+export const SETTINGS_CLASSIC_PATH = "/einstellungen/klassisch";
+export const isNewEinstellungen = (path: string) => trim(path) === SETTINGS_PATH;
+
 /** True when an old view is housed under this route (others still show the shell placeholder). */
 export function hasLegacyPanel(path: string): boolean {
   return Object.values(GOAL_ROUTE).includes(base(path));
