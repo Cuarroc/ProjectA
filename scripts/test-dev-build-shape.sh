@@ -72,12 +72,41 @@ check workflow-with-spaced-environment-key-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    environment : release/' envspaced)" "$OV" "has an environment"
 check workflow-with-quoted-job-environment-key-fails fail \
   "$(wf 's/^    timeout-minutes: 90$/&\n    "environment": release/' envquoted)" "$OV" "has an environment"
-check workflow-with-push-trigger-fails fail \
-  "$(wf 's/^  workflow_dispatch:$/&\n  push:\n    branches: [main]/' push)" "$OV" "trigger other than workflow_dispatch"
+# A fixed trigger/concurrency fixture works before and after the workflow change.
+awk '/^on:/ {
+  print "on:\n  workflow_dispatch:\n  push:\n    branches: [main]\n\nconcurrency:\n  group: dev-build\n  cancel-in-progress: false\n"
+  skip=1
+} /^defaults:/ { skip=0 } !skip' "$WF" > "$tmp/auto.yml"
+auto() { sed "$1" "$tmp/auto.yml" > "$tmp/$2.yml"; echo "$tmp/$2.yml"; }
+check "accepts push to main with workflow_dispatch" pass "$tmp/auto.yml" "$OV"
+check "pull_request trigger is still rejected" fail \
+  "$(auto 's/^  workflow_dispatch:$/&\n  pull_request:/' pr)" "$OV" "triggers must be"
+check rejects-pull-request-target fail \
+  "$(auto 's/^  workflow_dispatch:$/&\n  pull_request_target:/' prtarget)" "$OV" "triggers must be"
+check rejects-unrestricted-push fail \
+  "$(auto '/^    branches: /d' unrestricted)" "$OV" "triggers must be"
+check rejects-other-push-branch fail \
+  "$(auto 's/branches: \[main\]/branches: [dev]/' otherbranch)" "$OV" "triggers must be"
+check rejects-extra-push-branch fail \
+  "$(auto 's/branches: \[main\]/branches: [main, dev]/' extrabranch)" "$OV" "triggers must be"
+check rejects-push-tags fail \
+  "$(auto 's/branches: \[main\]/branches: [main]\n    tags: [preview]/' tags)" "$OV" "triggers must be"
+check rejects-missing-push fail \
+  "$(auto '/^  push:/d; /^    branches:/d' nopush)" "$OV" "triggers must be"
+check rejects-duplicate-trigger fail \
+  "$(auto 's/^  workflow_dispatch:$/&\n  workflow_dispatch:/' duplicate)" "$OV" "triggers must be"
+check rejects-inline-triggers fail \
+  "$(auto '/^on:/,/^$/c\on: [push, workflow_dispatch]\n' inline)" "$OV" "triggers must be"
+check rejects-cancelling-active-build fail \
+  "$(auto 's/cancel-in-progress: false/cancel-in-progress: true/' cancel)" "$OV" "concurrency must be"
+check rejects-ref-specific-concurrency fail \
+  "$(auto 's/group: dev-build/group: dev-build-${{ github.ref }}/' group)" "$OV" "concurrency must be"
+check rejects-missing-concurrency fail \
+  "$(auto '/^concurrency:/,/^$/d' noconcurrency)" "$OV" "concurrency must be"
 check workflow-with-schedule-trigger-fails fail \
-  "$(wf 's/^  workflow_dispatch:$/&\n  schedule:\n    - cron: "0 3 * * *"/' sched)" "$OV" "trigger other than workflow_dispatch"
+  "$(wf 's/^  workflow_dispatch:$/&\n  schedule:\n    - cron: "0 3 * * *"/' sched)" "$OV" "triggers must be"
 check workflow-without-dispatch-trigger-fails fail \
-  "$(wf 's/^  workflow_dispatch:$/  pull_request:/' nodispatch)" "$OV" "trigger other than workflow_dispatch"
+  "$(wf 's/^  workflow_dispatch:$/  pull_request:/' nodispatch)" "$OV" "triggers must be"
 
 # Forced tool failures: the permissions extraction must fail closed, not pass.
 mkdir "$tmp/failbin" "$tmp/silentbin"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # dev-build-shape.sh - what keeps the "ProjectA Dev" preview build harmless.
-#   1. dev-build.yml: manual trigger only, read-only permissions, no
+#   1. dev-build.yml: main push + manual triggers, serialized builds, read-only permissions, no
 #      environment, no secret, no reusable-workflow call.
 #   2. The overlay: exactly the identifier com.projecta.dev (never the stable
 #      com.projecta.app), createUpdaterArtifacts present and false, updater
@@ -38,7 +38,7 @@ grep -qiE '\<secrets\>' <<< "$body" && err "workflow mentions secrets (secrets.X
 #   JOBPERMS   a job declares permissions
 #   JOBENV     a job declares an environment
 #   PERMS ...  a key or value at or below a workflow/job-level permissions key
-#   TRIGGER x  a key (or inline value) of `on:`
+#   POLICY    a full path/value at or below on/concurrency (canonical block YAML)
 #   END        sentinel: the awk ran to the end
 shape="$(awk '
   /^(---|\.\.\.)([ \t]|$)/ { n = 0; blk = -1; next }
@@ -64,8 +64,10 @@ shape="$(awk '
     if (inj && n == 3 && key == "permissions") print "JOBPERMS"
     if (inj && n == 3 && key == "environment") print "JOBENV"
     if ((p[1] == "permissions") || (inj && n >= 3 && p[3] == "permissions")) print "PERMS " key ": " val
-    if (p[1] == "on" && n == 1 && val != "") print "TRIGGER " val
-    if (p[1] == "on" && n == 2) print "TRIGGER " key
+    if (p[1] == "on" || p[1] == "concurrency") {
+      path = p[1]; for (i = 2; i <= n; i++) path = path "/" p[i]
+      print "POLICY " path ":" val
+    }
   }
   END { print "END" }' <<< "$body")" || err "permissions extraction failed (awk exit $?)"
 grep -qx END <<< "$shape" || err "permissions extraction failed (no end marker)"
@@ -80,10 +82,14 @@ if grep -qE 'permissions[[:space:]]*:' <<< "$body" && [ -z "$perms" ]; then
   err "permissions extraction found nothing although the workflow has a permissions: key"
 fi
 
-# Triggers: every key of `on:` (or its inline value) must be workflow_dispatch.
-triggers="$(sed -n 's/^TRIGGER //p' <<< "$shape")"
-[ -n "$triggers" ] && [ "$(sort -u <<< "$triggers")" = workflow_dispatch ] ||
-  err "trigger other than workflow_dispatch (found: $(tr '\n' ' ' <<< "$triggers"))"
+# Fail closed for extra/duplicate keys and opaque YAML (flow maps, aliases).
+# Require the canonical inline branch list; indentation and key order may vary.
+triggers="$(sed -n 's/^POLICY on/on/p' <<< "$shape" | LC_ALL=C sort)"
+[ "$triggers" = $'on/push/branches:[main]\non/push:\non/workflow_dispatch:\non:' ] ||
+  err "triggers must be exactly workflow_dispatch and push with branches: [main]"
+concurrency="$(sed -n 's/^POLICY concurrency/concurrency/p' <<< "$shape" | LC_ALL=C sort)"
+[ "$concurrency" = $'concurrency/cancel-in-progress:false\nconcurrency/group:dev-build\nconcurrency:' ] ||
+  err "concurrency must be group: dev-build and cancel-in-progress: false"
 
 # The overlay is JSON: node is part of the toolchain (Node 24+, AGENTS.md).
 verdict="$(node -e '
@@ -102,4 +108,4 @@ if [ "$errors" -gt 0 ]; then
   echo "dev-build-shape: $errors error(s)"
   exit 1
 fi
-echo "dev-build-shape: manual trigger, read-only, no secrets; overlay has its own identifier and an inert updater"
+echo "dev-build-shape: main push + manual triggers, serialized builds, read-only, no secrets; overlay has its own identifier and an inert updater"
