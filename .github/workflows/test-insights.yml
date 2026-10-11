@@ -1,0 +1,84 @@
+# Test Insights upload (CI-SEC-01): the JUnit reports of a finished `ci` run
+# go to Mergify from HERE, not from the PR jobs of ci.yml. Those jobs execute
+# PR code, so no secret may be reachable there (gate scripts/ci/pr-secrets.sh).
+#
+# `workflow_run` always runs the workflow file from the default branch, with
+# access to secrets, and starts only after `ci` has completed. This job checks
+# nothing out and executes nothing from the run: it downloads the artifacts
+# `junit-linux` / `junit-windows` (untrusted XML, treated as data only) and
+# hands the files to the uploader. Without the secret MERGIFY_TOKEN the upload
+# steps are skipped (env flag, never the secret itself) and the job stays
+# green; this workflow is never a merge gate.
+name: test-insights
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+# No default rights; the single job asks for what it needs.
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  upload:
+    name: Test Insights upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      actions: read
+    env:
+      # Only "true"/"false", so no step besides the uploaders sees the token.
+      MERGIFY_UPLOAD: ${{ secrets.MERGIFY_TOKEN != '' }}
+    steps:
+      - name: Download JUnit artifacts of the ci run
+        if: env.MERGIFY_UPLOAD == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: junit-*
+          path: artifacts
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      # Artifact layout depends on the upload roots; look the files up by name.
+      - name: Collect reports
+        if: env.MERGIFY_UPLOAD == 'true'
+        run: |
+          mkdir -p reports
+          pick() { # artifact-dir file-name target
+            local f
+            f="$(find "artifacts/$1" -type f -name "$2" 2>/dev/null | head -n 1)"
+            if [ -n "$f" ]; then cp "$f" "reports/$3"; fi
+          }
+          pick junit-linux junit.xml linux-nextest.xml
+          pick junit-linux vitest.xml linux-vitest.xml
+          pick junit-windows junit.xml windows-nextest.xml
+          ls reports
+
+      - name: Test Insights - linux nextest
+        if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/linux-nextest.xml') != '' }}
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          job_name: gates (linux)
+          report_path: reports/linux-nextest.xml
+
+      - name: Test Insights - linux vitest
+        if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/linux-vitest.xml') != '' }}
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          job_name: gates (linux)
+          report_path: reports/linux-vitest.xml
+
+      - name: Test Insights - windows nextest
+        if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/windows-nextest.xml') != '' }}
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          job_name: gates (windows)
+          report_path: reports/windows-nextest.xml
