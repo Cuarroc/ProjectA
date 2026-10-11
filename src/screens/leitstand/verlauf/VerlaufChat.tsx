@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
 import { Textarea } from "../../../design/inputs/Input";
-import { formatMessageTime, roleLabel, type OrchestratorChat } from "../../../lib/orchestratorChat";
+import { roleLabel, type OrchestratorChat } from "../../../lib/orchestratorChat";
 import "../../../design/glass.css";
 import { T } from "./texts";
 import "./verlauf.css";
@@ -13,6 +13,15 @@ export interface VerlaufChatProps {
   chat: OrchestratorChat;
   /** Only read to notice a project switch: an unsent draft must not follow the user into another project. */
   projectId: string | null;
+}
+
+/** German 24-hour clock time of a message, with day and month when it is not from today. */
+function messageTime(seconds: number): string {
+  const at = new Date(seconds * 1000);
+  if (!Number.isFinite(seconds) || seconds <= 0 || Number.isNaN(at.getTime())) return "";
+  const time = at.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  if (at.toDateString() === new Date().toDateString()) return time;
+  return `${at.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} ${time}`;
 }
 
 /**
@@ -30,22 +39,31 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
   }, [projectId]);
 
   const stream = useRef<HTMLDivElement>(null);
+  // A streamed answer grows the last message without adding one, so its length is a scroll trigger too.
+  const lastLength = chat.messages[chat.messages.length - 1]?.content.length ?? 0;
   const stuck = useRef(true);
   useEffect(() => {
     const el = stream.current;
     if (el && stuck.current) el.scrollTop = el.scrollHeight;
-  }, [chat.messages.length]);
+  }, [chat.messages.length, lastLength]);
   const onScroll = () => {
     const el = stream.current;
     if (el) stuck.current = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
   };
 
   const canSend = !chat.disabled && !chat.sending && draft.trim() !== "";
+  // `sending` only flips after the parent re-renders, so a second Enter or click can slip in before it.
+  const inFlight = useRef(false);
   const submit = async () => {
-    if (!canSend) return;
+    if (!canSend || inFlight.current) return;
+    inFlight.current = true;
     const started = generation.current;
-    const sent = await chat.send(draft);
-    if (sent && generation.current === started) setDraft("");
+    try {
+      const sent = await chat.send(draft);
+      if (sent && generation.current === started) setDraft("");
+    } finally {
+      inFlight.current = false;
+    }
   };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "Enter" || e.shiftKey) return;
@@ -62,7 +80,7 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
       <article key={m.id} className={`vc-msg vc-msg--${m.role}`}>
         <div className="vc-who">
           <b>{roleLabel(m.role)}</b>
-          <span>{formatMessageTime(m.createdAt)}</span>
+          <span>{messageTime(m.createdAt)}</span>
         </div>
         <p>{m.content}</p>
       </article>
