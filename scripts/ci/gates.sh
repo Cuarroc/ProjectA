@@ -145,6 +145,9 @@ GATES=(
   # V161-DOC-LINKS: broken relative links in tracked Markdown. Local lanes only:
   # lane-plan HEAVY_DOCS would turn every docs PR into a Linux CI run.
   "doc-links|precommit,prepush|.|node --test scripts/ci/doc-links.test.mjs && node scripts/ci/doc-links.mjs check"
+  # Deterministic suppression counts may not exceed their checked-in ceilings.
+  # Explicit updates lower ceilings only; every lane also tests the ratchet.
+  "ratchet|precommit,prepush,linux|.|node --test scripts/ci/ratchet.test.mjs && node scripts/ci/ratchet.mjs check"
 
   # CI-06: the trailers of the new commits against origin/main, with the very
   # same red-first.sh --plan the PR CI runs (no second implementation, no
