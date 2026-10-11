@@ -4,6 +4,7 @@ import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
 import { Textarea } from "../../../design/inputs/Input";
 import { roleLabel, type OrchestratorChat } from "../../../lib/orchestratorChat";
+import { formatClock, formatDayMonth } from "../../../lib/time";
 import "../../../design/glass.css";
 import { T } from "./texts";
 import "./verlauf.css";
@@ -19,9 +20,9 @@ export interface VerlaufChatProps {
 function messageTime(seconds: number): string {
   const at = new Date(seconds * 1000);
   if (!Number.isFinite(seconds) || seconds <= 0 || Number.isNaN(at.getTime())) return "";
-  const time = at.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const time = formatClock(at);
   if (at.toDateString() === new Date().toDateString()) return time;
-  return `${at.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} ${time}`;
+  return `${formatDayMonth(at)} ${time}`;
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   setProviderKey,
 } from "./ipc";
 import { formatBlockedUntil } from "./quota";
+import { formatClock, formatDayMonth } from "./time";
 import { usePolledResource } from "./usePolledResource";
 import type {
   AgentProfile,
@@ -313,9 +314,9 @@ export function formatProviderObservedAt(observedAt: number): string {
     at.getMonth() === now.getMonth() &&
     at.getDate() === now.getDate();
 
-  const time = at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const time = formatClock(at);
   if (sameDay) return time;
-  const day = at.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+  const day = formatDayMonth(at);
   return `${day} ${time}`;
 }
 

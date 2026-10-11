@@ -107,13 +107,22 @@ describe("VerlaufChat", () => {
   });
 
   it("shows message times as German 24-hour clock without AM/PM", () => {
-    const at = new Date();
-    at.setHours(14, 5, 0, 0);
-    const chat = chatWith({ messages: [{ ...msg("1", "agent", "On it"), createdAt: at.getTime() / 1000 }] });
-    render(<VerlaufChat chat={chat} projectId="p-1" />);
-    const article = screen.getByRole("article");
-    expect(article).toHaveTextContent("14:05");
-    expect(article.textContent).not.toMatch(/AM|PM/i);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 2, 16, 0));
+    try {
+      const times = [new Date(2026, 9, 2, 14, 5), new Date(2026, 0, 3, 0, 5)];
+      const messages = times.map((at, i) => ({
+        ...msg(String(i), "agent", "On it"), createdAt: at.getTime() / 1000,
+      }));
+      render(<VerlaufChat chat={chatWith({ messages })} projectId="p-1" />);
+      expect(screen.getByText("14:05", { exact: true })).toBeInTheDocument();
+      expect(screen.getByText("03.01. 00:05", { exact: true })).toBeInTheDocument();
+      for (const article of screen.getAllByRole("article")) {
+        expect(article.textContent).not.toMatch(/AM|PM/i);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("sends once when Enter is pressed twice before the parent reports sending", () => {
