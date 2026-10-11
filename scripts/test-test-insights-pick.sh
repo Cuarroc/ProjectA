@@ -37,5 +37,8 @@ run "pick-no-artifacts-at-all" "$tmp/none" -linux-nextest.xml -windows-nextest.x
 mkdir -p "$tmp/empty/junit-linux"
 run "pick-artifact-without-file" "$tmp/empty" -linux-nextest.xml -linux-vitest.xml
 
+mkdir -p "$tmp/pick-copy-failure.out/linux-nextest.xml/junit.xml"
+run "pick-copy-failure" "$tmp/nested" exit=1
+
 [ "$fails" -eq 0 ] && echo "all cases green" || echo "$fails case(s) red"
 [ "$fails" -eq 0 ]

@@ -156,6 +156,12 @@ jobs:
           echo hi")"
 # R1171b-K4: a comment on the inline `on:` line is no trigger.
 check "inline-on-comment-is-green"   0 "$(mk ioc $'on: [push] # pull_request later\njobs:\n  build:\n    steps:\n      - run: echo ${{ secrets.X }}')"
+check "multiline-flow-on-is-error"   1 "$(mk mflow $'on: [push,\n  pull_request]\njobs:\n  build:\n    steps: []')"
+check "multiline-map-on-is-error"    1 "$(mk mmap $'on: {push: null,\n  workflow_call: null}\njobs:\n  build:\n    steps: []')"
+check "folded-on-is-error"           1 "$(mk folded $'on: >\n  pull_request\njobs:\n  build:\n    steps: []')"
+check "literal-on-is-error"          1 "$(mk literal $'on: |\n  pull_request_target\njobs:\n  build:\n    steps: []')"
+check "quoted-expression-close-is-error" 1 "$(mk quoted $'on: [pull_request]\njobs:\n  build:\n    env:\n      T: ${{ format(\'}} {0}\', secrets.X) }}')"
+check "dangling-expression-is-error" 1 "$(mk dangling $'on: [pull_request]\njobs:\n  main-red:\n    if: github.ref_name == \'main\'\n    env:\n      T: ${{ github.ref')"
 # R1171b-K6: any indentation; an unparsable jobs block is an error, never green.
 check "four-space-indent-is-red"     1 "$(mk four $'on:\n    pull_request:\njobs:\n    build:\n        steps:\n            - run: echo ${{ secrets.X }}')"
 check "four-space-allowlist-is-green" 0 "$(mk four2 $'on:\n    pull_request:\njobs:\n    main-red:\n        if: github.ref == \'refs/heads/main\'\n        env:\n            T: ${{ secrets.X }}')"
