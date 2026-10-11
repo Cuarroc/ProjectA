@@ -2,13 +2,17 @@
 //! its department, and an agent never widens its own rights.
 //!
 //! [`check_change`] is the one gate for changing a persona's [`Rechte`].
-//! Adding rights passes only for a user, only inside the department ceiling,
-//! and never for [`Recht::Mergen`] on an agent persona: merging goes through the
-//! Mergify queue alone, and a user change that leaves Mergen on an agent
-//! persona is refused until it drops it. Agent-driven changes may only narrow,
-//! which never grants Mergen, so that rule does not apply to them. An agent that asks for more rights is refused whoever
-//! the persona is, because the check cannot tell a lie about "own" from the
-//! truth and a refusal costs nothing. An agent may always narrow.
+//! Adding rights passes only for a user and only inside the department
+//! ceiling. For an agent persona the user path has one more rule: the result
+//! must not hold [`Recht::Mergen`], because merging goes through the Mergify
+//! queue alone. So a user change that leaves Mergen on an agent persona is
+//! refused until it drops Mergen, whether it widens the set or narrows it
+//! (`{Lesen, Mergen}` to `{Mergen}` is refused too); only an unchanged set
+//! passes. An agent never widens: it asks for more rights and is refused
+//! whoever the persona is, because the check cannot tell a lie about "own"
+//! from the truth and a refusal costs nothing. An agent may always narrow,
+//! even keeping Mergen; a narrowing never grants it, so the Mergen rule is
+//! not applied to agent-driven changes.
 //!
 //! **Trusted user path.** [`Anfrager`] has no public variants: a user request is
 //! built only by [`Anfrager::nutzer_aus_oberflaeche`], which needs an
@@ -379,6 +383,37 @@ mod tests {
             Err(Ablehnung::AgentPersonaHaeltMergen)
         );
         // Dropping Mergen (with or without other changes) passes.
+        let dropped = rechte(&[Recht::Lesen]);
+        assert_eq!(check_change(&nutzer(), &p, &dropped, &abteilung()), Ok(()));
+    }
+
+    #[test]
+    fn user_widening_that_keeps_merge_on_an_agent_persona_is_refused() {
+        // Mergen is inside the ceiling and the new right too: only the Mergen rule refuses.
+        let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
+        let wider = rechte(&[Recht::Lesen, Recht::Schreiben, Recht::Mergen]);
+        assert_eq!(
+            check_change(&nutzer(), &p, &wider, &abteilung()),
+            Err(Ablehnung::AgentPersonaHaeltMergen)
+        );
+    }
+
+    #[test]
+    fn user_narrowing_that_keeps_merge_on_an_agent_persona_is_refused() {
+        // A pure removal is refused as long as Mergen stays; the user must drop it.
+        let p = persona(true, &[Recht::Lesen, Recht::Mergen]);
+        let only_merge = rechte(&[Recht::Mergen]);
+        assert_eq!(
+            check_change(&nutzer(), &p, &only_merge, &abteilung()),
+            Err(Ablehnung::AgentPersonaHaeltMergen)
+        );
+        // Same narrowing on a non-agent persona is an ordinary removal.
+        let human = persona(false, &[Recht::Lesen, Recht::Mergen]);
+        assert_eq!(
+            check_change(&nutzer(), &human, &only_merge, &abteilung()),
+            Ok(())
+        );
+        // Dropping Mergen itself passes.
         let dropped = rechte(&[Recht::Lesen]);
         assert_eq!(check_change(&nutzer(), &p, &dropped, &abteilung()), Ok(()));
     }
