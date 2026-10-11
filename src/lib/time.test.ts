@@ -15,17 +15,30 @@ describe("German time helpers", () => {
     expect(formatDayMonth(new Date(2026, 11, 24, 9, 0, 0))).toBe("24.12.");
   });
 
-  it("both helpers ignore the host locale", () => {
-    const original = Date.prototype.toLocaleTimeString;
-    vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(function (
-      this: Date,
-      _locale,
-      options,
-    ) {
-      return original.call(this, "en-US", options);
-    });
-    expect(formatClock(new Date(2026, 9, 2, 17, 5, 0))).toBe("17:05");
-    expect(formatDayMonth(new Date(2026, 9, 2, 17, 5, 0))).toBe("02.10.");
-    vi.restoreAllMocks();
+  it("both helpers ignore the host locale", async () => {
+    const DateTimeFormat = Intl.DateTimeFormat;
+    const timeString = Date.prototype.toLocaleTimeString;
+    const dateString = Date.prototype.toLocaleDateString;
+    vi.resetModules();
+    try {
+      vi.spyOn(Intl, "DateTimeFormat").mockImplementation(function (locale, options) {
+        return new DateTimeFormat(locale ?? "en-US", options);
+      });
+      vi.spyOn(Date.prototype, "toLocaleTimeString").mockImplementation(function (this: Date, locale, options) {
+        return timeString.call(this, locale ?? "en-US", options);
+      });
+      vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementation(function (this: Date, locale, options) {
+        return dateString.call(this, locale ?? "en-US", options);
+      });
+      const at = new Date(2026, 9, 2, 17, 5, 0);
+      // Prove the hostile default before constructing the module's cached formatters.
+      expect(new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "2-digit" }).format(at)).toBe("10/02");
+      const helpers = await import("./time");
+      expect(helpers.formatClock(at)).toBe("17:05");
+      expect(helpers.formatDayMonth(at)).toBe("02.10.");
+    } finally {
+      vi.restoreAllMocks();
+      vi.resetModules();
+    }
   });
 });
