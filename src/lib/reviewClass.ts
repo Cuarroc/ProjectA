@@ -25,7 +25,8 @@ const SEAM_FILES = [
 const A_PREFIXES = ["src-tauri/src/store/", "src-tauri/src/pty/", "src-tauri/src/process_capture/", "src-tauri/capabilities/"];
 // Whole name tokens of the file stem, joined with `_` (see `nameTokens`); an entry with
 // `_` is a token sequence. `clock`, `blockingQueue` and `deadlock` do not contain the
-// token `lock`, so they stay B.
+// token `lock`, so they stay B. Inflections the old substring matcher caught (`locked`,
+// `redactions`, `secrecy`, ...) are listed one by one.
 const A_NAMES = [
   "capability",
   "capabilities",
@@ -50,6 +51,23 @@ const A_NAMES = [
   "mutex",
   "lock",
   "locks",
+  "locked",
+  "locking",
+  "locker",
+  "lockers",
+  "redacts",
+  "redacting",
+  "redactions",
+  "redactors",
+  "secrecy",
+  "credentialed",
+  "concurrently",
+  "concurrencies",
+  "supervisors",
+  "mutexes",
+  "estops",
+  "setup_gates",
+  "setupgates",
 ];
 const A_DIR = /(^|\/)migrations\//;
 

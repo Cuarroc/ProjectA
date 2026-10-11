@@ -37,8 +37,9 @@ const A_PREFIXES: [&str; 4] = [
 ];
 /// Whole name tokens of the file stem, joined with `_` (see `name_tokens`); an entry with
 /// `_` is a token sequence. `clock`, `blockingQueue` and `deadlock` do not contain the
-/// token `lock`, so they stay B.
-const A_NAMES: [&str; 23] = [
+/// token `lock`, so they stay B. Inflections the old substring matcher caught (`locked`,
+/// `redactions`, `secrecy`, ...) are listed one by one.
+const A_NAMES: [&str; 40] = [
     "capability",
     "capabilities",
     "credential",
@@ -62,6 +63,23 @@ const A_NAMES: [&str; 23] = [
     "mutex",
     "lock",
     "locks",
+    "locked",
+    "locking",
+    "locker",
+    "lockers",
+    "redacts",
+    "redacting",
+    "redactions",
+    "redactors",
+    "secrecy",
+    "credentialed",
+    "concurrently",
+    "concurrencies",
+    "supervisors",
+    "mutexes",
+    "estops",
+    "setup_gates",
+    "setupgates",
 ];
 
 /// True when `path` starts with, or contains after a `/`, the directory `dir/`.
@@ -203,7 +221,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             rows.len(),
-            60,
+            73,
             "fixture row count changed: update both tests"
         );
         for row in rows {
@@ -240,6 +258,31 @@ mod tests {
             "src-tauri/src/DBRestore.rs",
         ] {
             assert_eq!(review_tier(&[p]), Some(Tier::A), "{p}");
+        }
+    }
+
+    #[test]
+    fn review_tier_name_inflections_are_a() {
+        for p in [
+            "src-tauri/src/locked.rs",
+            "src/lib/locking.ts",
+            "src/lib/FileLocked.ts",
+            "src-tauri/src/lock_.rs",
+            "src-tauri/src/_lock.rs",
+            "src-tauri/src/redactions.rs",
+            "src/lib/secrecy.ts",
+            "src-tauri/src/mutexes.rs",
+            "src-tauri/src/concurrently.rs",
+            "src-tauri/src/supervisors.rs",
+        ] {
+            assert_eq!(review_tier(&[p]), Some(Tier::A), "{p}");
+        }
+        for p in [
+            "src-tauri/src/clocked.rs",
+            "src-tauri/src/blocked.rs",
+            "src-tauri/src/unlocked.rs",
+        ] {
+            assert_eq!(review_tier(&[p]), Some(Tier::B), "{p}");
         }
     }
 

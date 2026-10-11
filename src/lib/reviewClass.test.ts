@@ -7,7 +7,7 @@ import tierFixture from "./review-tier-fixture.json";
 // classifiers cannot drift apart without one of the two suites failing.
 describe("shared review-tier fixture", () => {
   it("keeps the pinned row count (update together with the Rust test)", () => {
-    expect(tierFixture.length).toBe(60);
+    expect(tierFixture.length).toBe(73);
   });
 
   it.each(tierFixture.map((row) => [JSON.stringify(row.paths), row] as const))(
@@ -53,6 +53,26 @@ describe("classifyPath", () => {
       expect(classifyPath(path), path).toBe("A");
     }
     expect(classifyPath("src-tauri/src/pty_reader.rs")).toBe("B");
+  });
+
+  it("matches inflected A names and trailing-separator stems", () => {
+    for (const path of [
+      "src-tauri/src/locked.rs",
+      "src/lib/locking.ts",
+      "src/lib/FileLocked.ts",
+      "src-tauri/src/lock_.rs",
+      "src-tauri/src/_lock.rs",
+      "src-tauri/src/redactions.rs",
+      "src/lib/secrecy.ts",
+      "src-tauri/src/mutexes.rs",
+      "src-tauri/src/concurrently.rs",
+      "src-tauri/src/supervisors.rs",
+    ]) {
+      expect(classifyPath(path), path).toBe("A");
+    }
+    for (const path of ["src-tauri/src/clocked.rs", "src-tauri/src/blocked.rs", "src-tauri/src/unlocked.rs"]) {
+      expect(classifyPath(path), path).toBe("B");
+    }
   });
 
   it("treats a migration as class A", () => {
