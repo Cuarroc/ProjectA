@@ -87,3 +87,9 @@ it("reaches every step action by Tab in step order and reports the step id", () 
   fireEvent.click(buttons[2]);
   expect(onAction).toHaveBeenCalledWith("subs");
 });
+
+it("is a named region inside the shell main landmark and not a second main", () => {
+  render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
+  expect(screen.getByRole("region", { name: "Ersteinrichtung" })).toBeInTheDocument();
+  expect(screen.queryByRole("main")).toBeNull();
+});

@@ -4,9 +4,10 @@ import { createPortal } from "react-dom";
 import type { AppGoal } from "../../lib/goals";
 import { Shell } from "../Shell";
 import { pathFromHash } from "../routes";
+import StartRoute from "../../screens/start/StartRoute";
 import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
 import { EinstellungenScreen } from "../../screens/einstellungen/EinstellungenScreen";
-import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand } from "./routing";
+import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isStart } from "./routing";
 import "./mount.css";
 
 export interface LegacyRouteProps {
@@ -51,8 +52,9 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   }, []);
   const openClassicSettings = useCallback(() => void (window.location.hash = `#${SETTINGS_CLASSIC_PATH}`), []);
 
+  const start = isStart(path);
   const freshSettings = isNewEinstellungen(path);
-  const fresh = isNewLeitstand(path) || freshSettings;
+  const fresh = isNewLeitstand(path) || freshSettings || start;
   const legacy = hasLegacyPanel(path) && !fresh;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
@@ -61,6 +63,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
         ? createPortal(
             <>
               {isNewLeitstand(path) ? <LeitstandRoute path={path} /> : null}
+              {start ? <StartRoute /> : null}
               {freshSettings ? <EinstellungenScreen onOpenClassic={openClassicSettings} /> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
