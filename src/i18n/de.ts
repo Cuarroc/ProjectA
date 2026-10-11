@@ -116,6 +116,8 @@ export const de = {
   "start.scan.agents": "AGENTS.md",
   "start.scan.found": "Gefunden",
   "start.scan.missing": "Fehlt",
+  "start.projects.errorTitle": "Projekte konnten nicht gelesen werden",
+  "start.retry": "Erneut versuchen",
 } as const;
 
 export type MessageKey = keyof typeof de;

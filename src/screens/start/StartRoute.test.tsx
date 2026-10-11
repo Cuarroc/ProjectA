@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -55,4 +55,23 @@ it("scans the project the old app selected and does not scan without a project",
   render(<StartRoute />);
   expect(await within(step(4)).findByText("Kein Projekt gewählt")).toBeInTheDocument();
   expect(mocks.invoke).not.toHaveBeenCalledWith("scan_setup_repo", expect.anything());
+});
+
+it("shows an honest error with a retry when the project list cannot be read", async () => {
+  let fail = true;
+  mocks.invoke.mockImplementation((command: string) => {
+    if (command === "list_projects") return fail ? Promise.reject("db locked") : Promise.resolve([project]);
+    if (command === "scan_setup_repo") return Promise.resolve(scan);
+    if (command === "get_provider_overview") return Promise.resolve([]);
+    return new Promise(() => {});
+  });
+  render(<StartRoute />);
+  expect(await within(step(4)).findByText("Projekte konnten nicht gelesen werden")).toBeInTheDocument();
+  expect(within(step(4)).getByText("db locked")).toBeInTheDocument();
+  expect(within(step(4)).queryByText("Noch kein Projekt angelegt.")).toBeNull();
+  const calls = () => mocks.invoke.mock.calls.filter(([c]) => c === "list_projects").length;
+  fail = false;
+  fireEvent.click(within(step(4)).getByRole("button", { name: "Erneut versuchen" }));
+  await waitFor(() => expect(within(step(4)).getByText("Erledigt")).toBeInTheDocument());
+  expect(calls()).toBe(2);
 });

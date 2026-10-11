@@ -18,7 +18,7 @@ export type ScanState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "ok"; scan: SetupScan }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; title?: string; onRetry?: () => void };
 
 export interface ErsteinrichtungScreenProps {
   /** Whether at least one project exists (the same signal as FirstRunChecklist). */
@@ -48,7 +48,10 @@ function ScanResult({ scan }: { scan: ScanState }) {
   const t = useT();
   if (scan.status === "idle") return <HonestState kind="empty" title={t("start.scan.idleTitle")} hint={t("start.scan.idleHint")} />;
   if (scan.status === "loading") return <HonestState kind="empty" title={t("start.scan.reading")} />;
-  if (scan.status === "error") return <HonestState kind="offline" title={t("start.scan.errorTitle")} hint={scan.message} />;
+  if (scan.status === "error") {
+    const action = scan.onRetry && { label: t("start.retry"), onClick: scan.onRetry };
+    return <HonestState kind="offline" title={scan.title ?? t("start.scan.errorTitle")} hint={scan.message} action={action} />;
+  }
   const { mainBranch, hasGatesSh, hasMergify, hasAgentsMd } = scan.scan;
   const items: [string, boolean][] = [
     [mainBranch ? t("start.scan.branch").replace("{name}", mainBranch) : t("start.scan.branchMissing"), mainBranch !== null],
@@ -108,7 +111,7 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
     { id: "subs", title: T.subs.title, action: T.subs.action, ...subsRow },
     {
       id: "project", title: T.project.title, action: T.project.action,
-      detail: hasProject ? T.projectDone : T.projectOpen, ...projectRow,
+      detail: hasProject ? T.projectDone : scan?.status === "error" ? "" : T.projectOpen, ...projectRow,
     },
     { id: "team", title: T.team.title, detail: T.team.hint, form: "need", chip: T.chip.open, action: T.team.action },
     {
@@ -119,9 +122,9 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
   const current = currentStepIndex(rows.map((r) => r.form));
 
   return (
-    <div className="st-screen">
+    <section className="st-screen" aria-labelledby="st-title">
       <header className="st-head">
-        <h1>{T.title}</h1>
+        <h1 id="st-title">{T.title}</h1>
         <p>{T.lead}</p>
       </header>
       <ol className="st-steps" aria-label={T.steps}>
@@ -144,6 +147,6 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
         ))}
       </ol>
       <p className="st-foot">{T.foot}</p>
-    </div>
+    </section>
   );
 }

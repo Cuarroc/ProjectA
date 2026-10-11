@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { describeError, listProjects } from "../../lib/ipc";
 import { scanSetupRepo } from "../../lib/setupScan";
 import ProviderDialog from "../../components/ProviderDialog";
 import type { Project } from "../../types";
+import { useT } from "../../i18n/useT";
 import { ErsteinrichtungScreen, type ScanState, type StartStepId } from "./ErsteinrichtungScreen";
 
 /** Same key the old app writes when it picks a project (the Glass shell has no picker yet). */
@@ -31,11 +32,15 @@ export default function StartRoute() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [scan, setScan] = useState<ScanState>({ status: "idle" });
   const [providers, setProviders] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const t = useT();
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
   useEffect(() => {
     let live = true;
-    listProjects().then((list) => live && setProjects(list), () => {});
+    listProjects().then((list) => live && (setListError(null), setProjects(list)), (cause) => live && setListError(describeError(cause)));
     return () => { live = false; };
-  }, []);
+  }, [attempt]);
   const project = projects.find((p) => p.id === readProjectId()) ?? projects[0] ?? null;
   const path = project?.repoPath ?? null;
   useEffect(() => {
@@ -44,11 +49,15 @@ export default function StartRoute() {
     setScan({ status: "loading" });
     scanSetupRepo(path).then(
       (result) => live && setScan({ status: "ok", scan: result }),
-      (cause) => live && setScan({ status: "error", message: describeError(cause) }),
+      (cause) => live && setScan({ status: "error", message: describeError(cause), onRetry: retry }),
     );
     return () => { live = false; };
-  }, [path]);
+  }, [path, attempt, retry]);
 
+  // A failed project list outranks the scan: without projects the scan would only say "no project".
+  const shown: ScanState = listError === null
+    ? scan
+    : { status: "error", message: listError, title: t("start.projects.errorTitle"), onRetry: retry };
   const onAction = (step: StartStepId) => {
     if (step === "subs") setProviders(true);
     const hash = STEP_HASH[step];
@@ -56,7 +65,7 @@ export default function StartRoute() {
   };
   return (
     <>
-      <ErsteinrichtungScreen hasProject={projects.length > 0} scan={scan} onAction={onAction} />
+      <ErsteinrichtungScreen hasProject={projects.length > 0} scan={shown} onAction={onAction} />
       {providers ? <ProviderDialog onClose={() => setProviders(false)} /> : null}
     </>
   );
