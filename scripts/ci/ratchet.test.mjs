@@ -67,6 +67,8 @@ test('empty and incomplete ceilings fail closed', t => {
   const { put, run } = fixture(t, {});
   assert.equal(run().status, 1);
   assert.match(run().stderr, /keine Zähler/);
+  put('scripts/ci/ratchets.json', '');
+  assert.match(run().stderr, /keine Zähler/);
   for (const value of ['', '{', '{"ts-suppress": 9}', JSON.stringify({ ...defaults, 'ts-any': -1 })]) {
     put('scripts/ci/ratchets.json', value);
     assert.equal(run().status, 1);
@@ -95,9 +97,10 @@ test('pure counters honor paths and occurrences and test exclusions', async () =
     ['src-tauri/src/a.rs', '#[allow(dead_code)] #![allow(unused)]'],
     ['other/a.ts', '@ts-ignore : any'], ['scripts/a.ts', 'eslint\u002ddisable'],
     ['src/no.ts', 'let x: anyone; x as anything;'],
+    ['src/folder.test.data/production.ts', 'let x: any;'],
   ];
   assert.deepEqual(Object.fromEntries(Object.entries(countFiles(files)).map(([k, v]) => [k, v.length])),
-    { 'ts-suppress': 3, 'eslint\u002ddisable': 3, 'rust-allow': 2, 'ts-any': 2 });
+    { 'ts-suppress': 3, 'eslint\u002ddisable': 3, 'rust-allow': 2, 'ts-any': 3 });
   assert.deepEqual(countFiles(files), countFiles([...files].reverse()));
   assert.equal(counters.length, 4);
   assert.ok(counters.every(c => c.name && c.pathFilter && c.regex && c.reason));

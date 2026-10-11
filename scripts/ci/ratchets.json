@@ -1,0 +1,6 @@
+{
+  "ts-suppress": 0,
+  "eslint-disable": 0,
+  "rust-allow": 227,
+  "ts-any": 2
+}
