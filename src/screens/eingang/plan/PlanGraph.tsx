@@ -5,7 +5,7 @@ import { Chip } from "../../../design/controls/Chip";
 import { HonestState } from "../../../design/data/HonestState";
 import { getDevelopmentPlan } from "../../../lib/ipc";
 import type { DevelopmentPlanProjection } from "../../../types";
-import { layoutPlan, type PlanNode } from "./planGraph";
+import { layoutPlan, type PlanNode } from "./planGraphModel";
 import { T } from "./texts";
 import "./plan.css";
 
