@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { UnlistenFn } from "@tauri-apps/api/event";
+import { useSessionSubscriptions } from "./sessions/useSessionSubscriptions";
 
 import AttentionInbox from "./components/AttentionInbox";
 import BoardRail from "./components/BoardRail";
@@ -42,7 +42,6 @@ import {
   listProjects,
   listWorkers,
   getPanicNotice,
-  onPtyExit,
   removeProject,
   mergeWorker,
   respawnWorker,
@@ -295,11 +294,6 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
     };
   }, []);
 
-  // Exit subscriptions live for as long as the session does, independently of
-  // whether it currently has a tab: a detached worker still has to flip to
-  // `exited` when its agent ends.
-  const exitUnlisteners = useRef(new Map<string, UnlistenFn>());
-
   // Mirrors for callbacks that must not re-bind on every state change.
   const sessionsRef = useRef<TerminalSession[]>(sessions);
   sessionsRef.current = sessions;
@@ -314,12 +308,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
 
   // -- sessions -------------------------------------------------------------
 
-  const markExited = useCallback((sessionId: string, code: number | null) => {
-    setSessions((prev) =>
-      prev.map((session) =>
-        session.sessionId === sessionId ? { ...session, exited: true, exitCode: code } : session,
-      ),
-    );
+  const { subscribeExit, unsubscribeExit, markExited } = useSessionSubscriptions(setSessions, (sessionId) => {
     setWorkers((prev) =>
       prev.map((worker) =>
         worker.sessionId === sessionId
@@ -330,41 +319,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
     // The card's status dot and column both hang off this; do not make the
     // board wait for the next poll.
     refreshBoardRef.current();
-  }, []);
-
-  const subscribeExit = useCallback(
-    async (sessionId: string) => {
-      if (exitUnlisteners.current.has(sessionId)) return;
-      // The exit event is the last thing this channel ever carries: once it
-      // arrives, the listener's job is done. `exitSeen` covers the window
-      // where the event fires before `listen` has even resolved.
-      let exitSeen = false;
-      const unlisten = await onPtyExit(sessionId, (payload) => {
-        markExited(sessionId, payload.code);
-        exitSeen = true;
-        if (exitUnlisteners.current.delete(sessionId)) unlisten();
-      });
-      // A concurrent call may have won the race while we awaited.
-      if (exitUnlisteners.current.has(sessionId)) {
-        unlisten();
-        return;
-      }
-      if (exitSeen) {
-        unlisten();
-        return;
-      }
-      exitUnlisteners.current.set(sessionId, unlisten);
-    },
-    [markExited],
-  );
-
-  const unsubscribeExit = useCallback((sessionId: string) => {
-    const unlisten = exitUnlisteners.current.get(sessionId);
-    if (unlisten) {
-      unlisten();
-      exitUnlisteners.current.delete(sessionId);
-    }
-  }, []);
+  });
 
   /** Drop the tab. The session itself is somebody else's business. */
   const dropTab = useCallback((sessionId: string) => {
@@ -412,15 +367,6 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
     },
     [dropTab, unsubscribeExit],
   );
-
-  // Drop every event subscription when the app itself goes away.
-  useEffect(() => {
-    const registry = exitUnlisteners.current;
-    return () => {
-      for (const unlisten of registry.values()) unlisten();
-      registry.clear();
-    };
-  }, []);
 
   // -- profiles -------------------------------------------------------------
 
