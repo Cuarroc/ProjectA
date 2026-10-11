@@ -16,6 +16,8 @@ export const T = {
   stepReview: "Prüfung",
   stepBase: "Basis",
   more: "Weitere Gründe",
+  unknownReason: "Unbekannter Grund",
+  techCode: "Technischer Code",
   codeStand: "Code-Stand",
   codeUnmeasured: "Code-Stand nicht gemessen",
   codeUnmeasuredHint: "Für diesen Worker liegt noch kein gemessener Stand vor.",
