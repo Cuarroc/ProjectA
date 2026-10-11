@@ -8,6 +8,8 @@
 //! The order is **Start > Persona > Projekt > automatisch**: the first
 //! explicit value wins. "Automatisch" looks at free RAM and never picks the
 //! cloud; [`Ort::Cloud`] exists as a value an explicit choice may carry.
+//! An explicit server with an empty name is refused like the automatic path:
+//! the run stays on the PC and the reason says no server is available.
 
 // V2-B5a: no runtime caller until the seam bundle wires it.
 #![allow(dead_code)]
@@ -36,6 +38,9 @@ pub struct Entscheidung {
     pub grund: String,
 }
 
+/// Why no server is used: none was named or the name is empty.
+const KEIN_SERVER: &str = "kein Server verfügbar";
+
 /// Resolve the location. `server_available` is the name of a reachable
 /// server, `None` when there is none.
 pub fn resolve(
@@ -49,7 +54,14 @@ pub fn resolve(
     for (stufe, vorgabe) in levels {
         if let Vorgabe::Explizit(ort) = vorgabe {
             let mut grund = format!("{stufe} legt den Ort fest");
-            if matches!(ort, Ort::Server { .. }) {
+            if let Ort::Server { name } = ort {
+                if name.trim().is_empty() {
+                    // Like the automatic path: an empty name is no server.
+                    return Entscheidung {
+                        ort: Ort::Pc,
+                        grund: format!("{stufe} legt einen Server fest, aber {KEIN_SERVER}"),
+                    };
+                }
                 // This core probes nothing; the connect step does.
                 grund.push_str("; ob der Server erreichbar ist, wird beim Verbinden geprüft");
             }
@@ -89,7 +101,7 @@ fn automatisch_with_min(
                     grund: format!("weniger als {schwelle} GiB frei"),
                 },
                 None => pc(format!(
-                    "weniger als {schwelle} GiB frei, aber kein Server verfügbar"
+                    "weniger als {schwelle} GiB frei, aber {KEIN_SERVER}"
                 )),
             }
         }
@@ -203,6 +215,40 @@ mod tests {
         );
         assert_eq!(e.ort, server("b"));
         assert_eq!(e.grund, format!("Projekt legt den Ort fest{CHECK_LATER}"));
+    }
+
+    #[test]
+    fn explicit_server_with_blank_name_is_refused_like_the_automatic_path() {
+        let a = Vorgabe::Automatisch;
+        for name in ["", " ", " \t\n"] {
+            // On every level, with a reachable server on offer: still no server.
+            let blank = explizit(server(name));
+            let levels = [
+                ("Start", [&blank, &a, &a]),
+                ("Persona", [&a, &blank, &a]),
+                ("Projekt", [&a, &a, &blank]),
+            ];
+            for (stufe, [s, p, j]) in levels {
+                let e = resolve(s, p, j, &host(Some(64 * GIB)), Some("srv"));
+                assert_eq!(e.ort, Ort::Pc, "{stufe} {name:?}");
+                assert!(e.grund.contains("kein Server verfügbar"), "{}", e.grund);
+                assert!(e.grund.starts_with(stufe), "{}", e.grund);
+                assert!(!e.grund.contains("beim Verbinden"), "{}", e.grund);
+            }
+        }
+    }
+
+    #[test]
+    fn explicit_server_with_a_name_keeps_the_check_later_note() {
+        let e = resolve(
+            &explizit(server(" srv ")),
+            &Vorgabe::Automatisch,
+            &Vorgabe::Automatisch,
+            &host(None),
+            None,
+        );
+        assert_eq!(e.ort, server(" srv "));
+        assert_eq!(e.grund, format!("Start legt den Ort fest{CHECK_LATER}"));
     }
 
     fn auto(frei: Option<u64>, server_name: Option<&str>) -> Entscheidung {
