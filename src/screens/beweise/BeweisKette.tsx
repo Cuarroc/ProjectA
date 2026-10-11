@@ -39,11 +39,15 @@ function Reason({ b, raw = false }: { b: ReadinessBlocker; raw?: boolean }) {
 
 function NotConnected({ label, source }: { label: string; source: string }) {
   return (
-    <section className="g-glass bw-card" aria-label={label}>
-      <h2 className="bw-h">{label}</h2>
-      <HonestState kind="offline" title={T.notConnected(label)} hint={T.notConnectedHint} />
-      <p className="bw-note">{source}</p>
-    </section>
+    <div className="bw-source" role="region" aria-label={label}>
+      <dt>{T.notConnected(label)}</dt>
+      <dd>
+        <details className="bw-tech">
+          <summary>{T.techSource}</summary>
+          <p className="bw-note">{source}</p>
+        </details>
+      </dd>
+    </div>
   );
 }
 
@@ -73,6 +77,10 @@ export function BeweisKette({ workerId }: { workerId: string }) {
   const measured = ready != null && ready.checkedAt > 0 && (ready.readiness === "ready" || ready.readiness === "blocked");
   const byStep = (codes: readonly string[]): ReadinessBlocker[] => (ready?.blockers ?? []).filter((b) => codes.includes(b.code));
   const rest = (ready?.blockers ?? []).filter((b) => !KNOWN.has(b.code));
+  const first = ready?.blockers[0];
+  const blocked = ready?.readiness === "blocked" || first !== undefined;
+  const result = ready === undefined ? T.loading : ready === null ? T.unreadable
+    : !measured ? T.unmeasured : blocked ? T.checkBlocked : T.checkReady;
 
   return (
     <div className="bw-root">
@@ -80,12 +88,25 @@ export function BeweisKette({ workerId }: { workerId: string }) {
         <h1 className="bw-title">{T.title}</h1>
         <Button size="sm" onClick={load}>{T.recheck}</Button>
       </header>
-      {ready === undefined ? <p className="bw-note">{T.loading}</p> : ready === null ? (
-        <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} />
-      ) : (
-        <>
-          <section className="g-glass bw-card" aria-label={T.title}>
-            {!measured && <HonestState kind="empty" title={T.unmeasured} hint={T.unmeasuredHint} />}
+      <section className="g-glass bw-card bw-result" aria-label={T.result} aria-live="polite">
+        <h2 className="bw-result-title">{result}</h2>
+        {ready === null ? <p className="bw-note">{T.unreadableHint} {T.readAgain}</p> : ready !== undefined && (
+          <>
+            {!measured && <p className="bw-note">{T.unmeasuredHint}</p>}
+            {first ? (
+              <>
+                <p className="bw-summary-text">{T.firstReason}: {first.message.trim() || T.unknownReason}</p>
+                <p className="bw-summary-text">{T.nextStep}: {first.nextStep.trim() || T.clarifyReason}</p>
+              </>
+            ) : measured && blocked && <p className="bw-summary-text">{T.missingReason} {T.clarifyReason}</p>}
+            {measured && <p className="bw-note">{T.checked}: <time dateTime={new Date(ready.checkedAt * 1000).toISOString()}>{new Date(ready.checkedAt * 1000).toLocaleString("de-DE")}</time> · {T.codeStand}: {ready.code ? short(ready.code.workerHeadSha) : T.stepUnmeasured}</p>}
+          </>
+        )}
+        <p className="bw-note">{T.checkScope}</p>
+      </section>
+      {ready != null && (
+        <div className="bw-evidence">
+          <section className="g-glass bw-card bw-chain" aria-label={T.title}>
             <ol className="bw-steps">
               {STEPS.map((s) => {
                 const hits = byStep(s.codes);
@@ -99,12 +120,12 @@ export function BeweisKette({ workerId }: { workerId: string }) {
             </ol>
           </section>
           {rest.length > 0 && (
-            <section className="g-glass bw-card" aria-label={T.more}>
+            <section className="g-glass bw-card bw-more" aria-label={T.more}>
               <h2 className="bw-h">{T.more}</h2>
               {rest.map((b, i) => <Reason key={`${b.code}-${i}`} b={b} raw />)}
             </section>
           )}
-          <section className="g-glass bw-card" aria-label={T.codeStand}>
+          <section className="g-glass bw-card bw-code-card" aria-label={T.codeStand}>
             <h2 className="bw-h">{T.codeStand}</h2>
             {ready.code === null ? (
               <HonestState kind="empty" title={T.codeUnmeasured} hint={T.codeUnmeasuredHint} />
@@ -117,14 +138,18 @@ export function BeweisKette({ workerId }: { workerId: string }) {
               ]} />
             )}
           </section>
-        </>
+        </div>
       )}
-      <div className="bw-grid">
-        <NotConnected label={T.gates} source={T.sourceProof} />
-        <NotConnected label={T.review} source={T.sourceReview} />
-        <NotConnected label={T.uncovered} source={T.sourceProof} />
-        <NotConnected label={T.queue} source={T.sourceQueue} />
-      </div>
+      <section className="g-glass bw-card" aria-label={T.missingSources}>
+        <h2 className="bw-h">{T.missingSources}</h2>
+        <p className="bw-note">{T.notConnectedHint}</p>
+        <dl className="bw-sources">
+          <NotConnected label={T.gates} source={T.sourceProof} />
+          <NotConnected label={T.review} source={T.sourceReview} />
+          <NotConnected label={T.uncovered} source={T.sourceProof} />
+          <NotConnected label={T.queue} source={T.sourceQueue} />
+        </dl>
+      </section>
     </div>
   );
 }
