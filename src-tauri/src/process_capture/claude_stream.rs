@@ -29,7 +29,8 @@ pub struct McpServer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamObservation {
     pub models: Vec<ObservedModel>,
-    /// True when no `modelUsage` was seen; `models` is then empty, not a guess.
+    /// True when `modelUsage` was not reported or the last result omitted a valid
+    /// object; `models` is then empty, not a guess.
     pub models_not_reported: bool,
     pub mcp_servers: Vec<McpServer>,
     /// True when no `mcp_servers` list was seen in an init event.
@@ -60,8 +61,15 @@ pub fn parse_stream(stdout: &[u8]) -> StreamObservation {
 }
 
 /// Absorb one already-decoded event (a stream line or a `--output-format json` result).
-/// A later `result` or `init` replaces the earlier list.
+/// The last `result` wins: missing or non-object `modelUsage` clears earlier
+/// models and sets `models_not_reported`; an empty object is a reported empty list.
+/// Models are sorted by id independently of JSON map ordering. A later `init`
+/// with an `mcp_servers` list replaces the earlier server list.
 pub fn absorb_event(obs: &mut StreamObservation, event: &serde_json::Value) {
+    if event.get("type").and_then(|v| v.as_str()) == Some("result") {
+        obs.models.clear();
+        obs.models_not_reported = true;
+    }
     if let Some(usage) = event.get("modelUsage").and_then(|v| v.as_object()) {
         let text = |entry: &serde_json::Value, key: &str| {
             entry.get(key).and_then(|v| v.as_str()).map(str::to_owned)
@@ -74,6 +82,7 @@ pub fn absorb_event(obs: &mut StreamObservation, event: &serde_json::Value) {
                 provider: text(entry, "provider"),
             })
             .collect();
+        obs.models.sort_by(|a, b| a.id.cmp(&b.id));
         obs.models_not_reported = false;
     }
     let is_init = event.get("type").and_then(|v| v.as_str()) == Some("system")
