@@ -1,5 +1,6 @@
 import { logFrontendError } from "../lib/ipc/frontendErrors";
 
+const encoder = new TextEncoder();
 let recent: { signature: string; at: number }[] = [];
 function text(value: unknown): string {
   try { return String(value); } catch { return "Unknown frontend error"; }
@@ -7,7 +8,7 @@ function text(value: unknown): string {
 function bounded(value: string, bytes: number): string {
   let result = "";
   for (const char of value) {
-    const size = new TextEncoder().encode(char).length;
+    const size = encoder.encode(char).length;
     if (size > bytes) break;
     result += char;
     bytes -= size;
@@ -25,7 +26,7 @@ export function reportFrontendError(error: unknown): void {
     } catch { /* Thrown proxies and hostile accessors must not break reporting. */ }
     message = bounded(message, 2048);
     stackFrame = bounded(stackFrame, 512);
-    const route = bounded(window.location.pathname + window.location.hash.split("?")[0], 256);
+    const route = bounded(window.location.pathname, 256);
     const signature = JSON.stringify([message, stackFrame, route]);
     const now = performance.now();
     recent = recent.filter(entry => now - entry.at < 60_000);

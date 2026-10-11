@@ -205,8 +205,12 @@ fn frontend_error_field(value: &str, max_bytes: usize) -> String {
         } else {
             ch
         };
-        if field.len() + ch.len_utf8() > max_bytes {
+        let escape = matches!(ch, '"' | '\\');
+        if field.len() + ch.len_utf8() + usize::from(escape) > max_bytes {
             break;
+        }
+        if escape {
+            field.push('\\');
         }
         field.push(ch);
     }
@@ -214,28 +218,58 @@ fn frontend_error_field(value: &str, max_bytes: usize) -> String {
 }
 
 #[derive(Default)]
-struct FrontendErrorLog;
+struct FrontendErrorLog {
+    recent: Vec<(std::time::Instant, Option<String>)>,
+    suppressed: u64,
+    summary_at: Option<std::time::Instant>,
+}
 impl FrontendErrorLog {
     fn write(
         &mut self,
-        _now: std::time::Instant,
+        now: std::time::Instant,
         message: &str,
         stack_frame: &str,
         route: &str,
         mut emit: impl FnMut(String),
     ) {
+        self.recent
+            .retain(|(at, _)| now.duration_since(*at).as_secs() < 60);
+        let message = frontend_error_field(message, 2048);
+        let summary_due = now
+            .duration_since(*self.summary_at.get_or_insert(now))
+            .as_secs()
+            >= 60;
+        if self.suppressed > 0 && self.recent.len() < 50 && summary_due {
+            let suppressed = std::mem::take(&mut self.suppressed);
+            emit(format!("ERROR suppressed {suppressed} frontend errors"));
+            self.recent.push((now, None));
+            self.summary_at = Some(now);
+        }
+        if self.recent.len() >= 50
+            || self.recent.iter().any(|(at, previous)| {
+                previous.as_ref() == Some(&message) && now.duration_since(*at).as_secs() < 10
+            })
+        {
+            self.suppressed = self.suppressed.saturating_add(1);
+            return;
+        }
         emit(format!(
-            "ERROR message={} stack={} route={}",
-            frontend_error_field(message, 2048),
+            "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
+            message,
             frontend_error_field(stack_frame, 512),
-            frontend_error_field(route, 256),
+            frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256),
         ));
+        self.recent.push((now, Some(message)));
     }
 }
 
 #[tauri::command]
 pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
-    static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog);
+    static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog {
+        recent: Vec::new(),
+        suppressed: 0,
+        summary_at: None,
+    });
     if let Ok(mut limiter) = LIMITER.lock() {
         limiter.write(
             std::time::Instant::now(),
@@ -2485,7 +2519,7 @@ pub(crate) mod tests {
                 start + Duration::from_millis(ms),
                 message,
                 frame,
-                "/",
+                "/?private=value#fragment",
                 |line| lines.push(line),
             );
             lines.len()
@@ -2502,10 +2536,13 @@ pub(crate) mod tests {
         assert_eq!(send(60001, "later", ""), 51);
         assert_eq!(send(70000, "later", ""), 52);
         assert_eq!(send(120000, "next", ""), 54);
+        assert_eq!(
+            lines[0],
+            r#"ERROR message="repeat" stack="first" route="/""#
+        );
         assert_eq!(lines[50], "ERROR suppressed 2 frontend errors");
         assert_eq!(lines[52], "ERROR suppressed 2 frontend errors");
     }
-
     #[test]
     fn frontend_error_fields_escape_delimiters() {
         assert_eq!(

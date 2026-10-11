@@ -11,7 +11,7 @@ it("logs a root render failure once and contains the crash", () => {
     const view = render(<AppErrorBoundary><Bomb /></AppErrorBoundary>);
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith("log_frontend_error", expect.objectContaining({ message: "root crash" }));
-    expect(view.container).toBeEmptyDOMElement();
+    expect(view.getByRole("alert")).toHaveTextContent("Etwas ist schiefgelaufen.");
   } finally { cleanup(); noise.mockRestore(); }
 });
 it("shows a reload fallback after a render error", () => {
