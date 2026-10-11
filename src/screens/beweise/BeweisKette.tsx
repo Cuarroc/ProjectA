@@ -25,9 +25,14 @@ function Reason({ b, raw = false }: { b: ReadinessBlocker; raw?: boolean }) {
   return (
     <div className="bw-reason">
       <StateMark form="need" label={T.open} />
-      {raw && <code className="bw-code">{b.code}</code>}
-      <p className="bw-msg">{b.message}</p>
+      <p className="bw-msg">{raw && b.message.trim() === "" ? T.unknownReason : b.message}</p>
       <p className="bw-next">{b.nextStep}</p>
+      {raw && (
+        <details className="bw-tech">
+          <summary>{T.techCode}</summary>
+          <code className="bw-code">{b.code}</code>
+        </details>
+      )}
     </div>
   );
 }
