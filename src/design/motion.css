@@ -1,4 +1,4 @@
-/* V2-F2 motion. Not imported by the app.
+/* V2-F2 motion. Imported once by the Glass shell.
    Board: Main.dc.html:33-34,255-267. Tokens under --g-*; classes under .g-*. */
 
 :root {
@@ -50,6 +50,7 @@
 }
 
 .g-app [role="tabpanel"],
+.g-shell [role="tabpanel"],
 .g-view {
   animation: g-fade var(--g-dur-2) var(--g-ease-out);
 }
@@ -91,7 +92,13 @@
     --g-press-scale: 1;
   }
 
-  /* Portal roots carry data-g-portal (sheets/toasts outside .g-app). */
+  /* Portal roots carry data-g-portal (sheets/toasts outside the shell). */
+  .g-shell,
+  .g-shell::before,
+  .g-shell::after,
+  .g-shell *,
+  .g-shell *::before,
+  .g-shell *::after,
   .g-app *,
   .g-app *::before,
   .g-app *::after,
