@@ -1,6 +1,16 @@
 # Changelog
 
+## v1.6.3 (Beta) — 11.10.2026
+
+Behebt den Windows-Build von v1.6.2 (gleich benannte Dateien im Plan-Baustein); v1.6.2 wurde nicht veröffentlicht.
+
+Enthält zusätzlich alle Änderungen aus v1.6.2 (siehe unten)
+
+- **PR-Prüfungen besser abgesichert** (PR #1208): Die Geheimnis-Prüfung weist unklare Workflow-Angaben zurück; Testberichte werden über einen getrennt geprüften Baustein ausgewählt.
+- **Beweiskette genauer geprüft** (PR #1210): Tests sichern auch bei unbekannten Fehlercodes ab, dass technische Details zunächst zugeklappt bleiben.
+
 ## v1.6.2 (Beta) — 11.10.2026
+_Nicht veröffentlicht: Der Windows-Build schlug fehl; alle Änderungen sind in v1.6.3 enthalten._
 
 **Neue Oberfläche (Vorschau):**
 
