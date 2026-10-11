@@ -3,15 +3,10 @@
 # request can trigger. Such a job runs PR code, so any secret reference there
 # hands the secret to code from a fork or a branch.
 #
-# Rule: in every workflow file with a `pull_request` (or `pull_request_target`)
-# trigger, these fail the gate, in a job or at workflow level (`env:` ...):
-# `secrets.`, `secrets[`, `secrets: inherit`, and a job-level `uses:` (a
-# reusable workflow call). Exception: the jobs in ALLOW, and only while the job
-# has a one-line `if:` naming `refs/heads/main` - `main-red` never executes PR
-# code.
+# PR workflows reject expression secrets, inherited secrets and reusable calls.
+# Only plain main-only ALLOW jobs are exempt; unsupported syntax fails closed.
 # Also: test-insights.yml must wait for the workflow named in ci.yml.
 #
-# Comment lines are ignored: this very explanation names `secrets.`.
 # Selftest: scripts/test-pr-secrets.sh
 # Usage: scripts/ci/pr-secrets.sh [workflow-dir]   (default: .github/workflows)
 set -uo pipefail
@@ -24,42 +19,80 @@ for f in "$dir"/*.yml "$dir"/*.yaml; do
   [ -f "$f" ] || continue
   found=$((found + 1))
   # Only a PR-triggered workflow is in scope (top-level `on:` block).
-  if ! awk '
+  scope="$(awk '
       /^[[:space:]]*#/ { next }
-      /^on:[[:space:]]*(#.*)?$/ { in_on = 1; next }
-      /^on:.*pull_request/ { found = 1 }
+      { sub(/[[:space:]]+#.*$/, "") }
+      /^["\047]?on["\047]?:/ { v = $0; sub(/^[^:]*:[[:space:]]*/, "", v)
+        if (v ~ /^[|>]/ || gsub(/\[/, "", v) != gsub(/\]/, "", v) || gsub(/\{/, "", v) != gsub(/\}/, "", v)) unparsable = 1 }
+      /^["\047]?on["\047]?:[[:space:]]*$/ { in_on = 1; next }
+      /^["\047]?on["\047]?:.*pull_request/ { found = 1 }
       in_on && /^[^[:space:]]/ { in_on = 0 }
-      in_on && /^[[:space:]]+pull_request(_target)?:/ { found = 1 }
-      in_on && /^[[:space:]]+-[[:space:]]*pull_request(_target)?[[:space:]]*(#.*)?$/ { found = 1 }
-      END { exit(found ? 0 : 1) }
-    ' "$f"; then
-    continue
-  fi
-  # A job key is a 2-space-indented key below `jobs:`; its block runs to the
-  # next job key. Lines of other top-level blocks count as "(workflow-level)".
+      in_on && /pull_request/ { found = 1 }
+      END { print (unparsable ? 2 : found + 0) }
+    ' "$f")" || scope=2
+  if [ "$scope" = 0 ]; then continue; fi
+  if [ "$scope" != 1 ]; then echo "  $f: on: trigger cannot be parsed (multiline flow or block scalar)"; bad=$((bad + 1)); continue; fi
   # Hits are printed at the END as "job:line:text", once the job's `if:` is
-  # known: an ALLOW job passes only with a main-only one-line job `if:`.
+  # known: an ALLOW job passes only with a plain main-only job `if:`.
   while IFS=: read -r job lineno text; do
     echo "  $f:$lineno  job '$job'  $text"
     bad=$((bad + 1))
   done < <(awk -v allow="$ALLOW" '
-      /^[[:space:]]*#/ { next }
-      /^[^[:space:]]/ {
-        sec = $0; sub(/:.*/, "", sec)
-        job = (sec == "jobs") ? "" : "(workflow-level)"
+      function hit(j, t) { n++; hj[n] = j; hl[n] = NR; ht[n] = t }
+      # Match expression secrets across lines; unmatched delimiters fail closed.
+      function expr_hit(s,   h, p, q, seg) {
+        while (length(s)) {
+          if (!inx) { p = index(s, "${{"); q = index(s, "}}")
+            if (q && (!p || q < p)) malformed = 1
+            if (!p) break; s = substr(s, p + 3); inx = 1 }
+          q = index(s, "}}")
+          if (q) { seg = substr(s, 1, q - 1); s = substr(s, q + 2); inx = 0 } else { seg = s; s = "" }
+          if (tolower(seg) ~ /(^|[^a-z0-9_-])secrets([^a-z0-9_-]|$)/) h = 1
+        }
+        return h
       }
-      sec == "jobs" && /^  [A-Za-z0-9_-]+:[[:space:]]*(#.*)?$/ { job = $1; sub(/:$/, "", job); next }
-      job == "" { next }
-      sec == "jobs" && /^    if:.*refs\/heads\/main/ { guard[job] = 1 }
-      /secrets\./ || /secrets\[/ || /secrets:[[:space:]]*inherit/ || (sec == "jobs" && /^    uses:/) {
-        t = $0; sub(/^[[:space:]]+/, "", t)
-        n++; hj[n] = job; hl[n] = NR; ht[n] = t
+      function guard_ok(v) {
+        sub(/^[[:space:]]*if:[[:space:]]*/, "", v); v = tolower(v)
+        if (v ~ /!=|\|\||!\(|pull_request/) return 0
+        return (v ~ /github\.ref[[:space:]]*==[[:space:]]*[\047"]refs\/heads\/main[\047"]/ ||
+                v ~ /github\.ref_name[[:space:]]*==[[:space:]]*[\047"]main[\047"]/)
+      }
+      {
+        e = expr_hit($0)
+        if ($0 ~ /^[[:space:]]*$/) next
+        t = $0; sub(/[[:space:]]+#.*$/, "", t)
+        c = ($0 ~ /^[[:space:]]*#/)
+        if (!c) {
+          match(t, /^ */); ind = RLENGTH
+          if (ind == 0) {
+            sec = t; sub(/:.*/, "", sec); jind = -1; job = "(workflow-level)"
+            if (sec == "jobs") { sawjobs = 1; job = "(jobs)"; if (t !~ /^jobs:[[:space:]]*$/) unparsable = 1 }
+          } else if (sec == "jobs") {
+            if (jind < 0) jind = ind
+            if (ind == jind) {
+              if (t ~ /^ *["\047]?[A-Za-z0-9_-]+["\047]?:[[:space:]]*$/) { job = t; gsub(/[ :"\047]/, "", job); njobs++; find = -1 }
+              else unparsable = 1
+            } else if (ind > jind) {
+              if (find < 0) find = ind
+              if (ind == find && t ~ /^ *if:/) iff[job] = t
+              if (ind == find && t ~ /^ *uses:/) hit(job, t)
+            }
+          }
+          if (t ~ /secrets:[[:space:]]*inherit/) hit(job, t)
+        }
+        if (e) { sub(/^[[:space:]]+/, "", t); hit(job, t) }
       }
       END {
+        if (inx || malformed) hit("(parse)", "unmatched expression delimiter")
+        if (!sawjobs) hit("(parse)", "no top-level jobs: block")
+        else if (unparsable || !njobs) hit("(parse)", "jobs: block cannot be parsed (flow style, sequence or no job key)")
         for (i = 1; i <= n; i++) {
-          if (index(allow, " " hj[i] " ") && guard[hj[i]]) continue
-          if (index(allow, " " hj[i] " ")) ht[i] = "(allowlisted, but no one-line job if: with refs/heads/main) " ht[i]
-          print hj[i] ":" hl[i] ":" ht[i]
+          j = hj[i]
+          if (index(allow, " " j " ")) {
+            if (guard_ok(iff[j])) continue
+            ht[i] = "(allowlisted, but job if: is not a plain main-only guard) " ht[i]
+          }
+          print j ":" hl[i] ":" ht[i]
         }
       }
     ' "$f")
@@ -68,11 +101,25 @@ done
 # test-insights.yml runs on `workflow_run`; a renamed ci.yml would silently
 # stop the upload, so the waited-for name must equal ci.yml's `name:`.
 if [ -f "$dir/test-insights.yml" ]; then
-  want="$(awk '/^name:/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*#.*/, ""); gsub(/["\047]/, ""); print; exit }' "$dir/ci.yml" 2>/dev/null)"
-  got="$(sed -nE 's/^[[:space:]]*workflows:[[:space:]]*\[(.*)\][[:space:]]*(#.*)?$/\1/p' "$dir/test-insights.yml" | tr -d " \"'")"
-  if [ -z "$want" ] || [ "$got" != "$want" ]; then
-    echo "  $dir/test-insights.yml: workflow_run.workflows is '$got', ci.yml name is '$want'"
+  if [ ! -f "$dir/ci.yml" ]; then
+    echo "  $dir/ci.yml not found: cannot check test-insights.yml workflow_run.workflows"
     bad=$((bad + 1))
+  else
+    want="$(awk '/^name:/ { sub(/^name:[[:space:]]*/, ""); sub(/[[:space:]]*#.*/, ""); gsub(/["\047]/, ""); print; exit }' "$dir/ci.yml")"
+    # Flow list (one or many entries) or block list; one name per line.
+    got="$(awk '
+        /^[[:space:]]*#/ { next }
+        { sub(/[[:space:]]+#.*$/, "") }
+        blk { if (/^[[:space:]]*-/) { sub(/^[[:space:]]*-[[:space:]]*/, ""); print; next } if (/^[[:space:]]*$/) next; blk = 0 }
+        /^[[:space:]]*workflows:/ {
+          sub(/^[[:space:]]*workflows:[[:space:]]*/, "")
+          if ($0 == "") { blk = 1; next }
+          gsub(/^\[|\]$/, ""); n = split($0, a, ","); for (i = 1; i <= n; i++) print a[i]
+        }' "$dir/test-insights.yml" | tr -d " \"'")"
+    if [ -z "$want" ] || ! printf '%s\n' "$got" | grep -Fxq -- "$want"; then
+      echo "  $dir/test-insights.yml: workflow_run.workflows is [$(printf '%s' "$got" | tr '\n' ' ')], ci.yml name is '$want'"
+      bad=$((bad + 1))
+    fi
   fi
 fi
 
