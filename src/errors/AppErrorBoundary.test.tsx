@@ -1,4 +1,4 @@
-import { render, cleanup } from "@testing-library/react";
+import { render, cleanup, fireEvent } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { AppErrorBoundary } from "./AppErrorBoundary";
@@ -13,4 +13,16 @@ it("logs a root render failure once and contains the crash", () => {
     expect(invoke).toHaveBeenCalledWith("log_frontend_error", expect.objectContaining({ message: "root crash" }));
     expect(view.container).toBeEmptyDOMElement();
   } finally { cleanup(); noise.mockRestore(); }
+});
+it("shows a reload fallback after a render error", () => {
+  const noise = vi.spyOn(console, "error").mockImplementation(() => {});
+  const reload = vi.fn();
+  vi.stubGlobal("location", { pathname: "/", reload });
+  function Bomb(): never { throw new Error("fallback crash"); }
+  try {
+    const view = render(<AppErrorBoundary><Bomb /></AppErrorBoundary>);
+    expect(view.getByRole("alert")).toHaveTextContent("Etwas ist schiefgelaufen.");
+    fireEvent.click(view.getByRole("button", { name: "Neu laden" }));
+    expect(reload).toHaveBeenCalledOnce();
+  } finally { cleanup(); noise.mockRestore(); vi.unstubAllGlobals(); }
 });

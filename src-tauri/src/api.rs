@@ -213,17 +213,38 @@ fn frontend_error_field(value: &str, max_bytes: usize) -> String {
     field
 }
 
+#[derive(Default)]
+struct FrontendErrorLog;
+impl FrontendErrorLog {
+    fn write(
+        &mut self,
+        _now: std::time::Instant,
+        message: &str,
+        stack_frame: &str,
+        route: &str,
+        mut emit: impl FnMut(String),
+    ) {
+        emit(format!(
+            "ERROR message={} stack={} route={}",
+            frontend_error_field(message, 2048),
+            frontend_error_field(stack_frame, 512),
+            frontend_error_field(route, 256),
+        ));
+    }
+}
+
 #[tauri::command]
 pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
-    crate::logging::log(
-        "frontend",
-        &format!(
-            "ERROR message={} stack={} route={}",
-            frontend_error_field(&message, 2048),
-            frontend_error_field(&stack_frame, 512),
-            frontend_error_field(&route, 256),
-        ),
-    );
+    static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog);
+    if let Ok(mut limiter) = LIMITER.lock() {
+        limiter.write(
+            std::time::Instant::now(),
+            &message,
+            &stack_frame,
+            &route,
+            |line| crate::logging::log("frontend", &line),
+        );
+    }
 }
 
 /// Name of the descriptor file written into the app data directory.
@@ -2453,6 +2474,47 @@ pub async fn watchdog_report(
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn frontend_error_log_is_rate_limited() {
+        use std::time::{Duration, Instant};
+        let mut limiter = super::FrontendErrorLog::default();
+        let mut lines = Vec::new();
+        let start = Instant::now();
+        let mut send = |ms, message: &str, frame: &str| {
+            limiter.write(
+                start + Duration::from_millis(ms),
+                message,
+                frame,
+                "/",
+                |line| lines.push(line),
+            );
+            lines.len()
+        };
+        assert_eq!(send(0, "repeat", "first"), 1);
+        assert_eq!(send(9999, "repeat", "different"), 1);
+        assert_eq!(send(10000, "repeat", "first"), 2);
+        for i in 0..48 {
+            assert_eq!(send(10000, &format!("error {i}"), ""), i + 3);
+        }
+        assert_eq!(send(59999, "overflow", ""), 50);
+        // Only one slot expires: the summary consumes it, preserving the rolling cap.
+        assert_eq!(send(60000, "later", ""), 51);
+        assert_eq!(send(60001, "later", ""), 51);
+        assert_eq!(send(70000, "later", ""), 52);
+        assert_eq!(send(120000, "next", ""), 54);
+        assert_eq!(lines[50], "ERROR suppressed 2 frontend errors");
+        assert_eq!(lines[52], "ERROR suppressed 2 frontend errors");
+    }
+
+    #[test]
+    fn frontend_error_fields_escape_delimiters() {
+        assert_eq!(
+            super::frontend_error_field("a\\\" route=forged", 256),
+            "a\\\\\\\" route=forged"
+        );
+        assert_eq!(super::frontend_error_field("\"", 1), "");
+    }
+
     #[test]
     fn frontend_error_log_is_bounded() {
         for limit in [2048, 512, 256] {

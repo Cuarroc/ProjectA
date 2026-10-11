@@ -25,15 +25,17 @@ it("writes one log line per uncaught error", () => {
   window.dispatchEvent(rejection);
   expect(invoke).toHaveBeenCalledTimes(2);
   expect(invoke).toHaveBeenNthCalledWith(1, "log_frontend_error", {
-    message: "boom", stackFrame: "at render (app.js:10:2)", route: "/#leitstand",
+    message: "boom", stackFrame: "at render (app.js:10:2)", route: "/",
   });
   expect(invoke).toHaveBeenNthCalledWith(2, "log_frontend_error", {
-    message: "rejected", stackFrame: "", route: "/#leitstand",
+    message: "rejected", stackFrame: "", route: "/",
   });
 });
 it("rate limits a repeated error signature", () => {
   reportFrontendError("repeat");
+  const before = performance.now();
   vi.advanceTimersByTime(9_999);
+  expect(performance.now() - before).toBe(9_999);
   reportFrontendError("repeat");
   expect(invoke).toHaveBeenCalledTimes(1);
   vi.advanceTimersByTime(1);
