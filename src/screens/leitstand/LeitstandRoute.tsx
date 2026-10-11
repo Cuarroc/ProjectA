@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { readActiveProjectId, subscribeActiveProject } from "../../lib/activeProject";
 import { listAgentProfiles } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
@@ -14,17 +15,6 @@ export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
 export const BETRIEB_PATH = "/leitstand/betrieb";
 
-/** Same key the old app writes; the Glass shell has no project picker yet. */
-const ACTIVE_PROJECT_KEY = "projecta.activeProjectId";
-const readProjectId = () => {
-  try {
-    return localStorage.getItem(ACTIVE_PROJECT_KEY);
-  } catch {
-    return null;
-  }
-};
-/** The old app, mounted behind this route, writes the key once it has picked a project. */
-const PROJECT_POLL_MS = 500;
 /** Relative ages ("seit 4 min") move on minute scale. */
 const TICK_MS = 30_000;
 
@@ -41,12 +31,12 @@ export function LeitstandTabs({ path }: { path: string }) {
 export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) {
   const betrieb = path === BETRIEB_PATH;
   const t = useT();
-  const [projectId, setProjectId] = useState(readProjectId);
+  const [projectId, setProjectId] = useState(readActiveProjectId);
+  // The picker and the old app publish a choice through the module's event.
   useEffect(() => {
-    if (projectId !== null) return;
-    const timer = window.setInterval(() => setProjectId(readProjectId()), PROJECT_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [projectId]);
+    setProjectId(readActiveProjectId());
+    return subscribeActiveProject(setProjectId);
+  }, []);
   const board = useBoard(projectId, !betrieb);
   const questions = useQuestions(projectId, !betrieb);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
@@ -69,7 +59,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
     return (
       <div className="g-lr">
         <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={BETRIEB_PATH} /></div>
-        {/* No project yet: the poll above picks it up as soon as the old app has chosen one. */}
+        {/* No project yet: the subscription above picks it up as soon as a project is chosen. */}
         {projectId !== null && <BetriebPanel projectId={projectId} profiles={profiles} />}
       </div>
     );
