@@ -1645,3 +1645,31 @@ wall clock, linux + windows.
   when there is no payment method or auto-reload.
 - **Reverse when:** any charge appears, Anthropic changes the terms, or the
   user revokes.
+
+## 2026-10-11 - Werkbank je Projekt und Bewährte Wege (E1–E4)
+
+- **What:** the user accepted all four recommendations (cards E1–E4 of the
+  coordinator's overview). E1: one collective entry, `docs/plan/v2.0/werkbank.md`
+  (nine areas: dev commands, databases, fine-tuning, server, triggers,
+  automations, secrets and vault, skills library, proven recipes), linked from
+  `docs/PLAN.md` "Später". The recipe pilot starts now without app code as a topic
+  of DEV-KNOW-01 (`kind: recipe` in the existing hq-lessons tool, no new script).
+  Order: vault (v2.1, before V2-B6a-2 and V2-B19) → skills, commands, recipe app
+  (v2.2, recipe app only if the pilot passes) → database (later). E2:
+  fine-tuning means configuring agents (model, effort, skills, rights) with
+  measurement plus Ollama Modelfile presets; no model training. E3: only the
+  user's own development databases, read-only; customer databases stay blocked
+  (V2-PRIV-3). E4: before larger Glass UI packages the coordinator generates 2-3
+  ArtCraft variants from a screenshot or sketch, the user picks one, the image goes
+  into the package order (about 50 credits per screen from the Basic plan).
+- **Why:** the vault store has no plan row yet although SSH, MCP, webhooks,
+  commands and the database depend on it; a cross-check of the proposal found 21
+  defects (vault after its consumers, agents able to read vault values, prompt
+  injection through recipes, a second lessons tool) and each high or medium one is
+  handled in the werkbank file. The v2.0/v2.1/v2.2 cut is the user's decision of
+  2026-10-10. Training a model needs a paid API or a GPU, which breaks
+  "subscriptions only".
+- **Reverse when:** the pilot shows no gain in review rounds and fix commits (no
+  app package is built); the user wants model training or customer databases (a
+  new explicit yes); or B6a-2/B19 land in the v2.0 core, in which case TRES-1/2
+  move there with them.
