@@ -145,4 +145,43 @@ describe("EinreihenForm", () => {
     expect(task().value).toBe("Draft of project two");
     expect(submit().disabled).toBe(false);
   });
+
+  it("does not publish a late enqueue or cancel reply after a round trip back to the same project", async () => {
+    const enqueue = deferred<QueueEntry>();
+    const cancel = deferred<void>();
+    backend({ enqueue: () => enqueue.promise, cancel: () => cancel.promise });
+    const cb = { onEnqueued: vi.fn(), onCancelled: vi.fn() };
+    const { rerender } = render(form({ entries: [entry("a")], ...cb }));
+    type("Task of the first visit");
+    fireEvent.click(submit());
+    fireEvent.click(cancelBtn("a"));
+    await waitFor(() => expect(callsOf("cancel_queued_task")).toHaveLength(1));
+    rerender(form(cb, "p2"));
+    rerender(form({ entries: [entry("a")], ...cb }, "p1"));
+    type("Draft of the second visit");
+    await act(async () => { enqueue.resolve(entry("new")); cancel.resolve(); });
+    expect(cb.onEnqueued).not.toHaveBeenCalled();
+    expect(cb.onCancelled).not.toHaveBeenCalled();
+    expect(task().value).toBe("Draft of the second visit");
+    expect(submit().disabled).toBe(false);
+    expect(cancelBtn("a").disabled).toBe(false);
+  });
+
+  it("polls Not-Aus every five seconds and closes the gate once it turns active", async () => {
+    vi.useFakeTimers();
+    try {
+      let stopped = false;
+      backend({ stop: () => stopped });
+      render(form());
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      type("Task");
+      expect(submit().disabled).toBe(false);
+      stopped = true;
+      await act(async () => { await vi.advanceTimersByTimeAsync(4999); });
+      expect(submit().disabled).toBe(false);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(submit().disabled).toBe(true);
+      expect(screen.getByText(T.reasonStopped)).toBeTruthy();
+    } finally { vi.useRealTimers(); }
+  });
 });
