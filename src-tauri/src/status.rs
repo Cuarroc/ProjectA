@@ -1530,6 +1530,28 @@ impl StatusEngine {
         )
     }
 
+    /// How long before `now` this worker last printed and last changed its
+    /// worktree, as `(output, worktree)`. The worktree clock is the one the
+    /// stuck verdict uses: the last change, or the first probe where nothing
+    /// changed yet. `None` is "never observed", which is not the same as "just
+    /// now". `now` is passed in so a test never has to build an `Instant` in
+    /// the past, which panics on a machine that booted a minute ago.
+    pub fn activity_ages(
+        &self,
+        worker_id: &str,
+        now: Instant,
+    ) -> (Option<Duration>, Option<Duration>) {
+        let workers = recover(&self.workers);
+        let Some(state) = workers.get(worker_id) else {
+            return (None, None);
+        };
+        let age = |at: Option<Instant>| at.map(|at| now.saturating_duration_since(at));
+        (
+            age(state.last_output),
+            age(state.last_git_change.or(state.git_since)),
+        )
+    }
+
     /// The task prompt remained silent through all synthetic Enter retries.
     /// This is a stronger and more specific signal than the ordinary idle
     /// heuristic, and stays until output, exit, or archive changes the facts.
