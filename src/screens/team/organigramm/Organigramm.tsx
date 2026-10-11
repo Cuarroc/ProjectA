@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "../../../design/glass.css";
 import { HonestState } from "../../../design/data/HonestState";
+import { DevNote } from "../../../design/data/DevNote";
 import { StateMark } from "../../../design/state/StateMark";
 import { kindIcon } from "../../../lib/board";
 import { getBoardState, getBudgets, listAgentProfiles, type BoardStateResult } from "../../../lib/ipc";
@@ -113,7 +114,7 @@ export function Organigramm({ projectId }: { projectId: string }) {
       <section className="g-glass og-card" aria-label={T.departments}>
         <h2 className="og-h">{T.departments}</h2>
         <HonestState kind="offline" title={T.departmentsOffline} />
-        <p className="og-note">{T.departmentsPackage}</p>
+        <DevNote className="og-note">{T.departmentsPackage}</DevNote>
       </section>
     </div>
   );

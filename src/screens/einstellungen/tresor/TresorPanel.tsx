@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "../../../design/glass.css";
 import { HonestState } from "../../../design/data/HonestState";
+import { DevNote } from "../../../design/data/DevNote";
 import { Table, type Column } from "../../../design/data/Table";
 import { hasProviderKey } from "../../../lib/ipc";
 import { providerKindLabel, useProviderOverview, vaultErrorText } from "../../../lib/providers";
@@ -65,7 +66,7 @@ export function TresorPanel() {
       <section className="g-glass tr-card" aria-label={T.mcp}>
         <h2 className="tr-h">{T.mcp}</h2>
         <HonestState kind="offline" title={T.mcpOffline} hint={T.mcpHint} />
-        <p className="tr-note">{T.mcpPackage}</p>
+        <DevNote className="tr-note">{T.mcpPackage}</DevNote>
       </section>
     </div>
   );
