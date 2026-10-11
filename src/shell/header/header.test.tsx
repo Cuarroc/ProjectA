@@ -6,7 +6,7 @@ import { Shell } from "../Shell";
 import { Bell, CommandPalette, QuotaBar, StopBand } from "./index";
 import { matchCommands } from "./CommandPalette";
 
-vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn(), setEmergencyStop: vi.fn(), describeError: String }));
+vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn(), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
 const stopped = vi.mocked(getEmergencyStop);
 beforeEach(() => { window.location.hash = ""; stopped.mockReset().mockResolvedValue(false); vi.mocked(setEmergencyStop).mockReset().mockResolvedValue(undefined); });
