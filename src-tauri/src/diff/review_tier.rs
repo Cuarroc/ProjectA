@@ -35,26 +35,74 @@ const A_PREFIXES: [&str; 4] = [
     "src-tauri/src/process_capture/",
     "src-tauri/capabilities/",
 ];
-const A_NAMES: [&str; 14] = [
-    "capabilit",
+/// Whole name tokens of the file stem, joined with `_` (see `name_tokens`); an entry with
+/// `_` is a token sequence. `clock`, `blockingQueue` and `deadlock` do not contain the
+/// token `lock`, so they stay B.
+const A_NAMES: [&str; 23] = [
+    "capability",
+    "capabilities",
     "credential",
+    "credentials",
     "agent_access",
     "security",
     "secret",
+    "secrets",
     "redact",
+    "redacted",
+    "redaction",
+    "redactor",
     "setupgate",
+    "setup_gate",
     "estop",
     "emergency_stop",
     "db_restore",
     "supervisor",
-    "concurren",
+    "concurrency",
+    "concurrent",
     "mutex",
     "lock",
+    "locks",
 ];
 
 /// True when `path` starts with, or contains after a `/`, the directory `dir/`.
 fn in_dir(path: &str, dirs: &[&str]) -> bool {
     path.split('/').rev().skip(1).any(|seg| dirs.contains(&seg))
+}
+
+/// Lower-case tokens of a file stem, split on `.`, `_`, `-` and camelCase boundaries
+/// (`DBRestore` -> `db`, `restore`), joined by `_`. Mirror of `nameTokens` in the TS side.
+fn name_tokens(file_name: &str) -> String {
+    let stem = file_name
+        .rsplit_once('.')
+        .map_or(file_name, |(stem, _)| stem);
+    let chars: Vec<char> = stem.chars().collect();
+    let mut out = String::new();
+    for (i, &c) in chars.iter().enumerate() {
+        if !c.is_ascii_alphanumeric() {
+            if !out.ends_with('_') {
+                out.push('_');
+            }
+            continue;
+        }
+        let prev = i.checked_sub(1).map(|j| chars[j]);
+        let next = chars.get(i + 1).copied();
+        let lower_to_upper = c.is_ascii_uppercase()
+            && prev.is_some_and(|p| p.is_ascii_lowercase() || p.is_ascii_digit());
+        let acronym_end = c.is_ascii_uppercase()
+            && prev.is_some_and(|p| p.is_ascii_uppercase())
+            && next.is_some_and(|n| n.is_ascii_lowercase());
+        if (lower_to_upper || acronym_end) && !out.ends_with('_') {
+            out.push('_');
+        }
+        out.push(c.to_ascii_lowercase());
+    }
+    out
+}
+
+/// True when a whole name token (sequence) of `file_name` is in `A_NAMES`.
+fn has_a_name(file_name: &str) -> bool {
+    let tokens = format!("_{}_", name_tokens(file_name));
+    A_NAMES.iter().any(|n| tokens.contains(&format!("_{n}_")))
 }
 
 /// Non-empty stem before `ext` (the TS regexes use `.+`).
@@ -83,7 +131,7 @@ pub fn classify_path(raw: &str) -> Tier {
     if SEAM_FILES.contains(&path)
         || A_PREFIXES.iter().any(|p| path.starts_with(p))
         || in_dir(path, &["migrations"])
-        || (code_ext && A_NAMES.iter().any(|n| name.contains(n)))
+        || (code_ext && has_a_name(name))
     {
         return Tier::A;
     }
@@ -155,7 +203,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             rows.len(),
-            53,
+            60,
             "fixture row count changed: update both tests"
         );
         for row in rows {
@@ -166,6 +214,32 @@ mod tests {
                 "paths {:?}",
                 row.paths
             );
+        }
+    }
+
+    #[test]
+    fn review_tier_name_match_is_whole_token() {
+        for p in [
+            "src-tauri/src/clock.rs",
+            "src/lib/blockingQueue.ts",
+            "src/lib/deadlock.ts",
+            "src/lib/unlock.ts",
+            "src-tauri/src/pty_reader.rs",
+        ] {
+            assert_eq!(review_tier(&[p]), Some(Tier::B), "{p}");
+        }
+        for p in [
+            "src-tauri/src/lock.rs",
+            "src-tauri/src/file_lock.rs",
+            "src/lib/secretStore.ts",
+            "src/lib/SecretStore.ts",
+            "src/lib/file-lock.ts",
+            "src-tauri/src/concurrency.rs",
+            "src/lib/Concurrent.ts",
+            "src/lib/SetupGate.ts",
+            "src-tauri/src/DBRestore.rs",
+        ] {
+            assert_eq!(review_tier(&[p]), Some(Tier::A), "{p}");
         }
     }
 

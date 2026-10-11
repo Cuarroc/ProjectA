@@ -42,7 +42,7 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
               </Section>
               <Section title={T.preview}><PreviewToggle /></Section>
               <Section title={T.version}><VersionUpdates /></Section>
-              <Section title={T.stop} className="es-sec--stop"><EmergencyStop /></Section>
+              <Section title={T.stop} className="es-sec--stop"><EmergencyStop appearance="glass" /></Section>
               <Section title={T.more} hint={T.moreHint}>
                 <Button size="sm" onClick={onOpenClassic}>{T.moreOpen}</Button>
               </Section>

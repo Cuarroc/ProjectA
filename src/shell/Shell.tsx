@@ -9,6 +9,7 @@ import { useT } from "../i18n/useT";
 import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
 import { HeaderTools, StopBand } from "./header";
+import { ProjectPicker } from "./header/ProjectPicker";
 import { pathFromHash, resolveRoute, ROUTES, type ShellRoute } from "./routes";
 import { applyStoredGlassTheme } from "./theme";
 import "./shell.css";
@@ -52,7 +53,6 @@ function Placeholder({ path }: { path: string }) {
 
 /** Glass shell frame (V2-F8a). Palette, quota bar, bell and stop band: `header/` (V2-F8b). */
 export function Shell() {
-  const t = useT();
   const [path, setPath] = useState(() => pathFromHash(window.location.hash));
   useLayoutEffect(() => { applyStoredGlassTheme(); applyStoredGlassVariant(); }, []);
   useEffect(() => {
@@ -67,7 +67,7 @@ export function Shell() {
       <Sidebar active={active} />
       <div className="g-shell-main">
         <header className="g-shell-top g-chrome">
-          <button type="button" className="g-shell-pick" disabled aria-label={t("shell.projectOffline")}>{t("shell.project")}</button>
+          <ProjectPicker />
           <HeaderTools />
           <AppearanceControl />
           <span className="g-shell-divider" aria-hidden="true" />

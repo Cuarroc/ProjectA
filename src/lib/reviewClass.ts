@@ -23,13 +23,56 @@ const SEAM_FILES = [
   "src-tauri/src/bin/pa.rs",
 ];
 const A_PREFIXES = ["src-tauri/src/store/", "src-tauri/src/pty/", "src-tauri/src/process_capture/", "src-tauri/capabilities/"];
-const A_NAME = /(capabilit|credential|agent_access|security|secret|redact|setupgate|estop|emergency_stop|db_restore|supervisor|concurren|mutex|lock)/;
+// Whole name tokens of the file stem, joined with `_` (see `nameTokens`); an entry with
+// `_` is a token sequence. `clock`, `blockingQueue` and `deadlock` do not contain the
+// token `lock`, so they stay B.
+const A_NAMES = [
+  "capability",
+  "capabilities",
+  "credential",
+  "credentials",
+  "agent_access",
+  "security",
+  "secret",
+  "secrets",
+  "redact",
+  "redacted",
+  "redaction",
+  "redactor",
+  "setupgate",
+  "setup_gate",
+  "estop",
+  "emergency_stop",
+  "db_restore",
+  "supervisor",
+  "concurrency",
+  "concurrent",
+  "mutex",
+  "lock",
+  "locks",
+];
 const A_DIR = /(^|\/)migrations\//;
 
 const TEST_NAME = /(\.test\.[jt]sx?|_tests?\.rs|\.snap)$/;
 const TEST_DIR = /(^|\/)(tests|__snapshots__|snapshots)\//;
 
 const RANK: Record<ReviewClass, number> = { C: 0, B: 1, unknown: 2, A: 3 };
+
+/** Lower-case tokens of a file stem, split on `.`, `_`, `-` and camelCase boundaries, joined by `_`. */
+function nameTokens(fileName: string): string {
+  const stem = fileName.replace(/\.[^.]*$/, "");
+  const spaced = stem.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+  return spaced
+    .split(/[^A-Za-z0-9]+/)
+    .filter((token) => token !== "")
+    .join("_")
+    .toLowerCase();
+}
+
+function hasAName(fileName: string): boolean {
+  const tokens = `_${nameTokens(fileName)}_`;
+  return A_NAMES.some((name) => tokens.includes(`_${name}_`));
+}
 
 export function classifyPath(rawPath: string): ReviewClass {
   const path = rawPath.replace(/\\/g, "/").replace(/^\.\//, "");
@@ -38,7 +81,7 @@ export function classifyPath(rawPath: string): ReviewClass {
     SEAM_FILES.includes(path) ||
     A_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
     A_DIR.test(path) ||
-    (/\.(rs|ts|tsx|sql)$/.test(path) && A_NAME.test(path.slice(path.lastIndexOf("/") + 1)))
+    (/\.(rs|ts|tsx|sql)$/.test(path) && hasAName(path.slice(path.lastIndexOf("/") + 1)))
   ) {
     return "A";
   }

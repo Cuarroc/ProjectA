@@ -11,11 +11,14 @@ export const SLOTS: readonly WindowSlot[] = ["five", "week", "month"];
  * the others stay unmapped rather than guessed.
  */
 export function windowSlot(label: string): WindowSlot | null {
-  if (/\b5[- ]?(stunden|h)\b/i.test(label)) return "five";
-  if (/\b(7[- ]?tage|wochen?)\b/i.test(label)) return "week";
-  if (/\bmonat(s|e)?\b/i.test(label)) return "month";
+  if (inWords(/5[- ]?(stunden|h)/).test(label)) return "five";
+  if (inWords(/(7[- ]?tage|wochen?)/).test(label)) return "week";
+  if (inWords(/monat(s|e)?/).test(label)) return "month";
   return null;
 }
+
+/** `\b` only knows ASCII letters ("Monatsübersicht" would pass), so bound by Unicode letters and digits. */
+const inWords = (pattern: RegExp) => new RegExp(`(?<![\\p{L}\\p{N}_])${pattern.source}(?![\\p{L}\\p{N}_])`, "iu");
 
 export interface WindowRow {
   key: string;
@@ -56,11 +59,18 @@ export function providerInitials(providers: readonly Pick<Provider, "id" | "name
     const letters = name.replace(/[^\p{L}\p{N}]/gu, "");
     const words = initials(name);
     const candidates = [words.length > 1 ? words : "", ...[2, 3, 4].map((n) => letters.slice(0, n)), id.toUpperCase()];
-    const pick = candidates.map((c) => c && c[0]!.toUpperCase() + c.slice(1)).find((c) => c && !taken.has(c)) ?? `${id}`;
+    const pick = candidates.map((c) => c && c[0]!.toUpperCase() + c.slice(1)).find((c) => c && !taken.has(c)) ?? freeVariant(id.toUpperCase(), taken);
     taken.add(pick);
     out.set(id, pick);
   }
   return out;
+}
+
+/** Last resort: the upper-case id with a counter, so it stays unique and in the same case style. */
+function freeVariant(base: string, taken: ReadonlySet<string>): string {
+  let n = 2;
+  while (taken.has(`${base}${n}`)) n += 1;
+  return `${base}${n}`;
 }
 
 /** 24-hour German clock time, with the day and month when it is not today. */

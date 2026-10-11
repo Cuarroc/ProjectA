@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Button } from "../design/controls/Button";
 import { describeError, getEmergencyStop, setEmergencyStop } from "../lib/ipc";
 import { useRefreshOnResume } from "../lib/useRefreshOnResume";
 
@@ -8,8 +9,9 @@ const POLL_INTERVAL_MS = 5000;
 /**
  * Not-Aus: stops every running agent (within 10 s) and blocks new dispatches
  * until it is lifted. An unreadable state is shown as "stopped", never as free.
+ * `appearance="glass"` (opt-in) draws the lift button with the Glass Button; the default keeps the classic look.
  */
-export default function EmergencyStop() {
+export default function EmergencyStop({ appearance = "classic" }: { appearance?: "classic" | "glass" }) {
   const [active, setActive] = useState<boolean | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -73,14 +75,18 @@ export default function EmergencyStop() {
       <span className="field-label">Not-Aus</span>
       <div className="settings-port-row">
         {active ? (
-          <button
-            type="button"
-            className="button-ghost"
-            disabled={busy}
-            onClick={() => change(false)}
-          >
-            Not-Aus aufheben
-          </button>
+          appearance === "glass" ? (
+            <Button disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
+          ) : (
+            <button
+              type="button"
+              className="button-ghost"
+              disabled={busy}
+              onClick={() => change(false)}
+            >
+              Not-Aus aufheben
+            </button>
+          )
         ) : (
           <button
             type="button"
