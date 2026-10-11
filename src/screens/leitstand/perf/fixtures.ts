@@ -7,7 +7,7 @@ export function boardFixture(): BoardCard[] {
   return Array.from({ length: 40 }, (_, index) => ({
     worker: {
       id: `fixture-worker-${index}`, projectId: "fixture-project",
-      profileId: `fixture-profile-${index}`, task: `Deterministic fixture task ${index}`,
+      profileId: `fixture-profile-${index}`, task: `fixture-task-${index}`,
       branch: `fixture/task-${index}`, worktreePath: "fixture-worktree",
       sessionId: null, status: "running", kind: "worker", spawnedBy: null,
       pausedReason: null, createdAt: NOW - (index + 1) * 60,
