@@ -169,6 +169,18 @@ mod tests {
     }
 
     #[test]
+    fn family_of_o_series_call_site_is_pinned() {
+        // `o` plus digits only is the o-series; the first word decides.
+        assert_eq!(family_of("o3-mini"), Some(Family::OpenAi));
+        assert_eq!(family_of("openai/o4:latest"), Some(Family::OpenAi));
+        // Bare `o` is too short for the o-series rule and matches no prefix.
+        assert_eq!(family_of("o"), None);
+        // `orca` is not `o<digits>`; it must not count as OpenAI.
+        assert_ne!(family_of("orca"), Some(Family::OpenAi));
+        assert_eq!(family_of("orca"), None);
+    }
+
+    #[test]
     fn family_of_unknown_is_none() {
         for model in ["", "  ", "mystery-1", "ocean-2", "o", "orca"] {
             assert_eq!(family_of(model), None, "{model:?}");
@@ -301,13 +313,20 @@ mod tests {
         );
     }
 
-    /// First conflict in a prefix table: two prefixes of different families
-    /// where one starts with the other, or a prefix of another family than the
-    /// o-series that could match an o-series word (`o`, `o3`, ...).
+    /// First conflict in a prefix table: an empty prefix (matches every word),
+    /// two prefixes of different families where one starts with the other, or a
+    /// prefix of another family than the o-series that is `o<digits>`-shaped
+    /// (`o`, `o3`, ...) and would misclassify non-o-series words starting with
+    /// it. The o-series rule is checked before `PREFIXES`, so nothing shadows it.
     fn find_overlap(table: &[(&str, Family)]) -> Option<String> {
         for (a, family_a) in table {
-            if *family_a != O_SERIES_FAMILY && (a.is_empty() || o_series_shape(a)) {
-                return Some(format!("{a} ({family_a:?}) shadows the o-series rule"));
+            if a.is_empty() {
+                return Some(format!("empty prefix matches every word ({family_a:?})"));
+            }
+            if *family_a != O_SERIES_FAMILY && o_series_shape(a) {
+                return Some(format!(
+                    "{a} ({family_a:?}) would misclassify non-o-series words starting with it"
+                ));
             }
             for (b, family_b) in table {
                 if family_a != family_b && a.starts_with(b) {
@@ -324,15 +343,30 @@ mod tests {
     }
 
     #[test]
-    fn overlap_check_catches_a_prefix_shadowed_by_the_o_series_rule() {
+    fn overlap_check_flags_an_o_series_shaped_prefix_of_another_family() {
         for bad in ["o", "o3", "o12"] {
             let table = [("grok", Family::Xai), (bad, Family::Meta)];
             let found = find_overlap(&table).unwrap_or_default();
-            assert!(found.contains("o-series"), "{bad}: {found:?}");
+            assert!(
+                found.contains("misclassify non-o-series words"),
+                "{bad}: {found:?}"
+            );
         }
         // Same family as the o-series, or not of the `o<digits>` shape: fine.
         assert_eq!(find_overlap(&[("o3", Family::OpenAi)]), None);
         assert_eq!(find_overlap(&[("orca", Family::Meta)]), None);
+    }
+
+    #[test]
+    fn overlap_check_names_an_empty_prefix_as_matching_every_word() {
+        for family in [Family::Xai, Family::OpenAi] {
+            let found = find_overlap(&[("", family)]).unwrap_or_default();
+            assert!(
+                found.contains("empty prefix matches every word"),
+                "{family:?}: {found:?}"
+            );
+            assert!(!found.contains("o-series"), "{family:?}: {found:?}");
+        }
     }
 
     #[test]
