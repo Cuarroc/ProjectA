@@ -1,0 +1,21 @@
+.g-dev { position: relative; flex: none; }
+.g-dev-badge {
+  min-height: 32px; padding: 0 10px; border: 1px solid var(--g-line); border-radius: 8px;
+  background: var(--g-accent-soft); color: var(--g-accent); cursor: pointer;
+  font: 600 11px/1 var(--g-font-sans); white-space: nowrap;
+}
+.g-dev-badge:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
+.g-dev-panel {
+  position: absolute; z-index: 40; right: 0; top: calc(100% + 12px);
+  width: min(360px, calc(100vw - 32px)); max-height: calc(100vh - 100px); overflow: auto;
+  padding: 16px; border: 1px solid var(--g-line); border-radius: var(--g-r-card);
+  background: var(--g-ground); color: var(--g-ink); box-shadow: var(--g-shadow-pop);
+  font: 400 12px/1.5 var(--g-font-sans);
+}
+.g-dev-panel dl { margin: 0 0 16px; }
+.g-dev-panel dt, .g-dev-experiment p { color: var(--g-muted); }
+.g-dev-panel dd { margin: 0 0 8px; overflow-wrap: anywhere; }
+.g-dev-panel h2 { font-size: 14px; margin: 0 0 8px; }
+.g-dev-experiment { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-top: 1px solid var(--g-hair); }
+.g-dev-experiment > div { flex: 1; }
+.g-dev-experiment p { margin: 4px 0 0; }
