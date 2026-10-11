@@ -5,7 +5,7 @@ import { StateMark } from "../../../design/state/StateMark";
 import { kindIcon } from "../../../lib/board";
 import { getBoardState, getBudgets, listAgentProfiles, type BoardStateResult } from "../../../lib/ipc";
 import { shortTask } from "../../../lib/text";
-import type { AgentProfile, Budget, BoardCard } from "../../../types";
+import type { AgentProfile, Budget, BoardCard, WorkerKind } from "../../../types";
 import { agentCards, cardForm } from "../../leitstand/leitstand";
 import { T } from "./texts";
 import "./organigramm.css";
@@ -14,6 +14,16 @@ interface Reads {
   board: BoardStateResult | null;
   profiles: readonly AgentProfile[] | null;
   budgets: readonly Budget[] | null;
+}
+
+// Keyed by plain string: the backend may send a kind this build does not know yet.
+const kindNames = new Map<string, string>(Object.entries(T.kind));
+
+/** The badge for a coordinator kind; none when the kind is unknown or the label already says it. */
+export function KindBadge({ kind, label }: { kind: WorkerKind; label: string }) {
+  const name = kindNames.get(kind);
+  if (name === undefined || label.toLowerCase() === name.toLowerCase()) return null;
+  return <span className="og-kind">{`${kindIcon(kind)} ${name}`.trim()}</span>;
 }
 
 const pctText = (pct: number | null) => (pct === null ? T.noLimit : T.percent(pct));
@@ -84,16 +94,14 @@ export function Organigramm({ projectId }: { projectId: string }) {
               <ul className="og-list">
                 {board.coordinators.map((co) => (
                   <li key={co.workerId} className="og-node">
-                    <h3 className="og-title">{co.label}</h3>
-                    {co.label.toLowerCase() !== T.kind[co.kind].toLowerCase() && (
-                      <span className="og-kind">{`${kindIcon(co.kind)} ${T.kind[co.kind]}`.trim()}</span>
-                    )}
+                    <h4 className="og-title">{co.label}</h4>
+                    <KindBadge kind={co.kind} label={co.label} />
                     <Agents cards={agents.filter((c) => c.controlledBy?.workerId === co.workerId)} reads={reads} />
                   </li>
                 ))}
                 {direct.length > 0 && (
                   <li className="og-node">
-                    <h3 className="og-title">{T.direct}</h3>
+                    <h4 className="og-title">{T.direct}</h4>
                     <Agents cards={direct} reads={reads} />
                   </li>
                 )}

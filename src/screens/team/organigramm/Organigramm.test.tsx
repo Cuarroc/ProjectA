@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Organigramm } from "./Organigramm";
+import type { WorkerKind } from "../../../types";
+import { KindBadge, Organigramm } from "./Organigramm";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
@@ -142,6 +143,9 @@ describe("Organigramm", () => {
   });
 
   it("an unknown coordinator kind from the backend shows its name without a badge", async () => {
+    // The ipc layer folds an unknown kind into "worker"; the component must also survive one that slips through.
+    const { container } = render(<KindBadge kind={"wizard" as WorkerKind} label="Merlin" />);
+    expect(container).toBeEmptyDOMElement();
     backend({
       get_board_state: {
         cards: [],
@@ -150,7 +154,6 @@ describe("Organigramm", () => {
     });
     render(<Organigramm projectId="p1" />);
     expect(await screen.findByRole("heading", { name: "Merlin" })).toBeInTheDocument();
-    expect(document.querySelector(".og-kind")).toBeNull();
   });
 
   it("coordinator and Direkt bei dir sit one heading level below Du", async () => {

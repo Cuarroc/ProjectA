@@ -18,5 +18,5 @@ export const T = {
   noLimit: "keine Grenze",
   windows: (five: string, seven: string) => `5 Stunden: ${five}, 7 Tage: ${seven}`,
   percent: (n: number) => `${n} %`,
-  kind: { worker: "Agent", orchestrator: "Orchestrator", queen: "Queen", scout: "Scout" },
+  kind: { worker: "Agent", orchestrator: "Orchestrator", queen: "Königin", scout: "Späher" },
 } as const;
