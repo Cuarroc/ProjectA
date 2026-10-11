@@ -39,6 +39,7 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
       <span className="pg-id">{n.id}</span>
       <span className="pg-title">{n.title}</span>
       {n.dependencyIds.length > 0 && <span className="pg-note">{T.after(n.dependencyIds)}</span>}
+      {n.removedDeps.length > 0 && <span className="pg-note pg-warn">{T.removedDep(n.removedDeps)}</span>}
       {n.unknown.length > 0 && <span className="pg-note pg-warn">{T.unknown(n.unknown)}</span>}
       {(onPath.has(n.id) || n.noNewDispatch) && (
         <span className="pg-chips">
@@ -64,6 +65,9 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
         <>
           <p className="pg-note">{T.source(read.plan.sourcePath, read.plan.sourceRevision.slice(0, 7), read.plan.projectionRevision)}</p>
           {layout.removed > 0 && <p className="pg-note">{T.removed(layout.removed)}</p>}
+          {layout.levels.length + layout.cycle.length === 0 && (layout.removed > 0
+            ? <HonestState kind="empty" title={T.allRemoved} hint={T.allRemovedHint} />
+            : <HonestState kind="empty" title={T.empty} hint={T.emptyHint} />)}
           <div className="pg-board">
             {layout.levels.map((nodes, i) => column(T.level(i), nodes))}
             {layout.cycle.length > 0 && column(T.cycle, layout.cycle)}
