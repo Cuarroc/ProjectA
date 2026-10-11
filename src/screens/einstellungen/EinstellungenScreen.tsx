@@ -10,6 +10,7 @@ import { TabPanel, Tabs } from "../../design/layout/Tabs";
 import { AppearanceControl } from "../../shell/AppearanceControl";
 import PreviewToggle from "../../shell/mount/PreviewToggle";
 import { ROUTES } from "../../shell/routes";
+import { DiagnoseSection } from "./DiagnoseSection";
 import { T } from "./texts";
 import { VersionUpdates } from "./VersionUpdates";
 import "./einstellungen.css";
@@ -42,6 +43,7 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
               </Section>
               <Section title={T.preview}><PreviewToggle /></Section>
               <Section title={T.version}><VersionUpdates /></Section>
+              <Section title={T.diag} hint={T.diagHint}><DiagnoseSection /></Section>
               <Section title={T.stop} className="es-sec--stop"><EmergencyStop appearance="glass" /></Section>
               <Section title={T.more} hint={T.moreHint}>
                 <Button size="sm" onClick={onOpenClassic}>{T.moreOpen}</Button>
