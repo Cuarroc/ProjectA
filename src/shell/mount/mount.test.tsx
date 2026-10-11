@@ -51,9 +51,10 @@ describe("Glass shell mount behind D1", () => {
     const draft = within(sidebar).getByRole("textbox", { name: "Prompt für den Orchestrator" });
     fireEvent.change(draft, { target: { value: "Keep this unfinished prompt" } });
     expect(within(sidebar).getByRole("heading", { name: "Workers" })).toBeInTheDocument();
+    fireEvent.click(within(sidebar).getByRole("button", { name: "Archivieren" }));
 
     for (const tab of ["Haupt", "Klassisch"]) {
-      fireEvent.click(screen.getByRole("link", { name: tab }));
+      fireEvent.click(within(screen.getByRole("navigation", { name: "Ansichten" })).getByRole("link", { name: tab }));
       await waitFor(() => expect(sidebar).not.toBeVisible());
       expect(sidebar.closest("[hidden]")).not.toBeNull();
       expect(draft).toBeInTheDocument();
@@ -61,6 +62,7 @@ describe("Glass shell mount behind D1", () => {
       await waitFor(() => expect(sidebar).toBeVisible());
       expect(screen.getByRole("textbox", { name: "Prompt für den Orchestrator" })).toBe(draft);
       expect(draft).toHaveValue("Keep this unfinished prompt");
+      expect(within(sidebar).getByRole("button", { name: "Ja, endgültig archivieren" })).toBeInTheDocument();
     }
 
     // Opening a worker must return to its terminal even if Agents was already selected.
@@ -85,6 +87,8 @@ describe("Glass shell mount behind D1", () => {
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     expect(container.querySelector(".g-shell")).toBeNull();
     expect(container.querySelector(".g-mount")).toBeNull();
+    expect(screen.getByRole("complementary", { name: "Projekte und Panels" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Werkzeuge" })).toBeNull();
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
 

@@ -61,7 +61,7 @@ import {
 } from "./lib/settings";
 import { GOAL_LABELS, type AppGoal } from "./lib/goals";
 import { useFeatureFlag } from "./flags/useFeatureFlag";
-import { goalForPath } from "./shell/mount/routing";
+import { goalForPath, isTools } from "./shell/mount/routing";
 import type { LegacyRouteProps } from "./shell/mount/ShellMount";
 import type { InboxEntry } from "./lib/attentionInbox";
 import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "./lib/activeProject";
@@ -139,6 +139,7 @@ function writeStoredRailOpen(open: boolean): void {
 
 // Loaded on demand so the Glass styles never reach the window while the preview is off.
 const ShellMount = lazy(() => import("./shell/mount/ShellMount"));
+const LeitstandTabs = lazy(() => import("./screens/leitstand/LeitstandRoute").then((m) => ({ default: m.LeitstandTabs })));
 
 function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) {
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
@@ -991,6 +992,11 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
 
   // -- render ---------------------------------------------------------------
 
+  const tools = routePath !== undefined && isTools(routePath);
+  const openClassicFromTools = () => {
+    if (tools) window.location.hash = "#/leitstand/klassisch";
+  };
+
   const activeSession = sessions.find((session) => session.sessionId === activeSessionId) ?? null;
   const splitSession = sessions.find((session) => session.sessionId === splitSessionId) ?? null;
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null;
@@ -1048,6 +1054,10 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
 
   return (
     <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density} data-ui-font-size={fonts.uiFontSize}>
+      {/* Keep the sidebar slot until RT-1d; tools span the frame on their own route. */}
+      <div style={routePath === undefined ? { display: "contents" } : { minHeight: 0, gridColumn: tools ? "1 / -1" : undefined }}>
+      <div hidden={routePath !== undefined && !tools} style={tools ? { display: "grid", height: "100%", minHeight: 0, gridTemplateRows: "auto minmax(0, 1fr)" } : routePath === undefined ? { display: "contents" } : undefined}>
+      {tools ? <LeitstandTabs path={routePath!} /> : null}
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
@@ -1056,7 +1066,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
         onCreate={handleCreateProject}
         onSelect={setActiveProjectId}
         onRemove={handleRemoveProject}
-        onOpenOrchestrator={handleOpenOrchestrator}
+        onOpenOrchestrator={(id) => { handleOpenOrchestrator(id); openClassicFromTools(); }}
         onSendToOrchestrator={handleSendToOrchestrator}
         liveOrchestratorProjectIds={liveOrchestratorProjectIds}
         busyOrchestratorProjectId={busyOrchestratorProjectId}
@@ -1066,16 +1076,16 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
           projectId={activeProjectId}
           profiles={profiles}
           profilesLoading={profilesLoading}
-          onFocusWorker={handleFocusQueuedWorker}
-          onOpenQuestions={() => setGoal("attention")}
+          onFocusWorker={(id) => { handleFocusQueuedWorker(id); openClassicFromTools(); }}
+          onOpenQuestions={() => { setGoal("attention"); openClassicFromTools(); }}
         />
-        <RecommendationsPanel projectId={activeProjectId} onOpenWorker={handleOpenScout} />
+        <RecommendationsPanel projectId={activeProjectId} onOpenWorker={(worker) => { handleOpenScout(worker); openClassicFromTools(); }} />
         {/* Below the suggestions on purpose: the same inbox rhythm, one step later. */}
         <LearningsPanel projectId={activeProjectId} />
         {/* A switch, not a view: the interface itself opens in the browser. */}
         <WebInterfacePanel />
-        {/* The board supersedes the panel; only one of them is on screen. */}
-        {goal === "agents" || goal === "review" ? (
+        {/* Glass tools keep the worker panel mounted across every tab and goal. */}
+        {routePath !== undefined || goal === "agents" || goal === "review" ? (
           <WorkerPanel
             workers={workers}
             profiles={profiles}
@@ -1084,13 +1094,16 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
             loading={workersLoading}
             error={workersError}
             busyWorkerId={busyWorkerId}
-            onNew={openWorkerDialog}
-            onOpen={handleOpenCard}
-            onRespawn={handleRespawnWorker}
+            onNew={() => { openWorkerDialog(); openClassicFromTools(); }}
+            onOpen={(worker) => { handleOpenCard(worker); openClassicFromTools(); }}
+            onRespawn={(worker) => { handleRespawnWorker(worker); openClassicFromTools(); }}
             onArchive={handleArchiveWorker}
           />
         ) : null}
       </Sidebar>
+      </div>
+      </div>
+      <div hidden={tools} style={tools ? undefined : { display: "contents" }}>
       {railVisible ? (
         <BoardRail
           cards={board.cards}
@@ -1424,6 +1437,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
           onOpenProviders={() => setProviderDialogOpen(true)}
         />
       </main>
+      </div>
       {pickerOpen ? (
         <ProfilePicker
           profiles={profiles}
