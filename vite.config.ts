@@ -2,20 +2,20 @@ import { execFileSync } from "node:child_process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { devCsp } from "./src/dev-csp";
+import { buildSha } from "./src/dev/buildSha";
 
 // `TAURI_DEV_HOST` is set by the Tauri CLI when developing against a device on
 // the local network. Everything else is a plain Vite setup.
 const host = process.env.TAURI_DEV_HOST;
 
-function buildSha() {
-  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
+function gitSha() {
   try { return execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); }
-  catch { return "lokal"; }
+  catch { return undefined; }
 }
 
 export default defineConfig({
   define: {
-    __BUILD_SHA__: JSON.stringify(buildSha()),
+    __BUILD_SHA__: JSON.stringify(buildSha(process.env.GITHUB_SHA, process.env.GITHUB_SHA ? undefined : gitSha())),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   plugins: [react(), devCsp()],
