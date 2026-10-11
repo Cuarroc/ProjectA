@@ -72,7 +72,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
       </div>
       <p className="ls-task" title={worker.task}>{worker.task}</p>
       <div className="ls-foot">
-        <div className="ls-proof"><HonestState kind="offline" title={t("leitstand.proofTitle")} /></div>
+        <div className="ls-proof" title={t("leitstand.proofTitle")}><HonestState kind="offline" title={t("leitstand.proofTitle")} /></div>
         <Button size="sm" aria-label={fill(t("leitstand.openLabel"), { name })} onClick={() => onOpen(card)}>{t("leitstand.open")}</Button>
       </div>
       {confirming ? (
