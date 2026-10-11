@@ -61,6 +61,14 @@ check dry-run-without-permissions-fails fail \
 check installer-without-environment-fails fail "$(wf '/^    environment: release$/d' noenv)" "$ACT" "lost environment: release"
 check installer-without-push-guard-fails fail "$(wf "/^    if: github.event_name == 'push'\$/d" nopush)" "$ACT" "not limited to push"
 
+# REL-HARD-01: least privilege and provenance for the tag build.
+check toplevel-write-permission-fails fail \
+  "$(wf "s/^  contents: read\$/  contents: write/" topwrite)" "$ACT" "top-level permissions grant write"
+check checkout-with-persisted-credentials-fails fail \
+  "$(wf '/persist-credentials: false/d' persist)" "$ACT" "checkout without persist-credentials: false"
+check installer-without-attestation-fails fail \
+  "$(wf 's#uses: actions/attest-build-provenance@#uses: actions/other@#' noattest)" "$ACT" "windows-installer does not run attest-build-provenance"
+
 # gates.sh must not run `git merge-base origin/main` while loading its list:
 # a tag checkout has no origin/main ("fatal: Not a valid object name").
 list="$(bash "$HERE/scripts/ci/gates.sh" --list)"
