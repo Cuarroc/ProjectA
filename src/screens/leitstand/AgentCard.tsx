@@ -46,8 +46,12 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
       setFailed(action);
     }
   };
+  const openConfirm = () => {
+    setFailed(null);
+    setConfirming(true);
+  };
   const act = (action: Action, label: string, busyText: string) => (
-    <Button size="sm" variant="ghost" disabled={busy !== null} aria-label={busy === action ? undefined : fill(label, { name })} onClick={() => (action === "archive" ? setConfirming(true) : void run(action))}>
+    <Button size="sm" variant="ghost" disabled={busy !== null} aria-label={fill(label, { name })} aria-busy={busy === action ? true : undefined} onClick={() => (action === "archive" ? openConfirm() : void run(action))}>
       {busy === action ? busyText : t(action === "restart" ? "leitstand.restart" : "leitstand.archive")}
     </Button>
   );
