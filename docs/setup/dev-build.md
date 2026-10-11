@@ -44,3 +44,26 @@ auf die Daten der normalen App zu. Die Liste (Prüfung, nichts repariert):
 
 Die Version des Dev-Builds ist dieselbe wie die der normalen App (`tauri.conf.json:4`);
 weil Produktname und Kennung abweichen, sind das zwei getrennte Installationen.
+
+## Automatische Aktualisierung vorbereiten (DEV-AUTO-2)
+
+`node scripts/dev/dev-autoupdate.mjs` erledigt genau einen Durchlauf unter Windows.
+Root richtet nach Merge und Windows-Abnahme die Aufgabe alle fünf Minuten ein;
+die oben genannten offenen Isolationspunkte bleiben Voraussetzung für den Einsatz.
+Benötigt werden Node 24, angemeldetes `gh`, PowerShell und das vorhandene Gitleaks
+mit der Repo-Konfiguration. Das Skript installiert keine Werkzeuge.
+Installer-Vertrauen beruht ausschließlich auf dem GitHub-Artefakt eines `main`-Laufs; eine zusätzliche Signatur wird nicht geprüft.
+Es lädt nur den neuesten erfolgreichen `dev-build.yml`-Lauf auf `main` und dessen
+Dev-NSIS-Artefakt. Dev-Prozesse mit Kindern und eine offene stabile App verschieben
+das Update; unbekannte Prozesspfade führen zum Aufschub. Ein geschlossenes, zuvor
+ruhendes Dev-Fenster wird nach dem Installationsversuch wieder gestartet.
+Die Prozessprüfung ist eine Momentaufnahme, keine Sperre gegen neue App-Starts.
+Zustand und einzeilige Laufprotokolle liegen unter `%LOCALAPPDATA%/projecta-dev-autoupdate`.
+Ein verbliebener `running.lock` nach einem Absturz erfordert manuelle Prüfung.
+Downloads und Fingerabdrücke bleiben erhalten; es gibt keine automatische Bereinigung.
+Neue Fehler aus `%APPDATA%/com.projecta.dev` werden lokal nach bereinigter Meldung
+gruppiert. Gitleaks-Fundzeilen, Pfade und Benutzerkennung werden entfernt;
+je Signatur bleiben höchstens 40 Fehlerzeilen. `PA_CRASH_INBOX` überschreibt
+`%USERPROFILE%/pa-orch/crash-inbox`. Es gibt keinen Upload und keine automatische Reparatur.
+Exit 0 bedeutet erledigt/aufgeschoben, Exit 2 einen fehlgeschlagenen Schritt.
+Stoppen: `schtasks /Delete /TN ProjectA-Dev-Autoupdate`.
