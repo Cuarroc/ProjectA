@@ -11,7 +11,16 @@ import { EinstellungenScreen } from "./EinstellungenScreen";
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
-vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), describeError: String }));
+vi.mock("../../lib/ipc", () => ({
+  getEmergencyStop: vi.fn().mockResolvedValue(false),
+  setEmergencyStop: vi.fn(),
+  describeError: String,
+  getLogPath: vi.fn().mockResolvedValue("logs/projecta.log"),
+  getPanicNotice: vi.fn().mockResolvedValue({ current: null, previous: null }),
+  getReasonCatalog: vi.fn().mockResolvedValue([{ code: "quota_blocked", grade: "blocking", line: "Kontingent erreicht" }]),
+  exportDiagnosis: vi.fn(),
+  revealLogPath: vi.fn(),
+}));
 
 const css = readFileSync(resolve(__dirname, "einstellungen.css"), "utf8");
 const TABS = ROUTES.find((r) => r.id === "einstellungen")!.tabs.map((t) => t.label);
@@ -50,10 +59,11 @@ describe("tab strip", () => {
 });
 
 describe("tab Allgemein", () => {
-  it("shows the five sections", () => {
+  it("shows the six sections", async () => {
     show();
     const heads = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(heads).toEqual(["Darstellung", "Neue Oberfläche (Vorschau)", "Version & Updates", "Not-Aus", "Weitere Einstellungen"]);
+    expect(heads).toEqual(["Darstellung", "Neue Oberfläche (Vorschau)", "Version & Updates", "Diagnose", "Not-Aus", "Weitere Einstellungen"]);
+    expect(await screen.findByText("logs/projecta.log")).toBeInTheDocument();
   });
 
   it("switches the theme through the shell's theme module", () => {
