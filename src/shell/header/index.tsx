@@ -1,3 +1,4 @@
+import { DevBadge } from "../../dev/DevBadge";
 import { CommandPalette } from "./CommandPalette";
 import { Bell, QuotaBar } from "./QuotaBell";
 
@@ -12,6 +13,7 @@ export function HeaderTools() {
       <CommandPalette />
       <QuotaBar />
       <Bell />
+      <DevBadge />
     </div>
   );
 }

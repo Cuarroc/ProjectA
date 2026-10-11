@@ -32,3 +32,10 @@ export function quotaSummary(quota: QuotaSnapshot, overview: ProviderSnapshot) {
   const unknown = profiles.some((p) => p.state === "unknown") || overview.providers.some((p) => p.quotaState === "unknown");
   return { text: known && !hasUnreadableUsage ? `Kontingente: Verfügbar beobachtet${unknown ? " · teils unbekannt" : ""}` : UNKNOWN, percent: null };
 }
+
+export const DEV_TEXT = {
+  badge: (sha: string) => `DEV · ${sha.slice(0, 7)}`,
+  experiments: "Experimente",
+  commit: "Build-Commit",
+  time: "Build-Zeit",
+};
