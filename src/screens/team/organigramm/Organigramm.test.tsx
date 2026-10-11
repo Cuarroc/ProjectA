@@ -7,6 +7,7 @@ import { KindBadge, Organigramm } from "./Organigramm";
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: async () => "com.projecta.app" }));
 
 const worker = (id: string, extra: Record<string, unknown> = {}) => ({
   id, projectId: "p1", task: `Task ${id}`, profileId: "pa", branch: `b-${id}`, worktreePath: "w",
@@ -165,12 +166,12 @@ describe("Organigramm", () => {
     expect(screen.getByRole("heading", { name: "Direkt bei dir", level: 4 })).toBeInTheDocument();
   });
 
-  it("departments are not connected and name their package", async () => {
+  it("departments stay honest without an internal package note", async () => {
     backend();
     render(<Organigramm projectId="p1" />);
     const section = within(await screen.findByRole("region", { name: "Abteilungen" }));
     expect(section.getByText("Abteilungen noch nicht verbunden")).toBeInTheDocument();
-    expect(section.getByText("V2-B18 (noch nicht gebaut)")).toBeInTheDocument();
+    expect(section.queryByText(/V2-/)).toBeNull();
   });
 
   it("only the three read commands are invoked and never set_budget", async () => {

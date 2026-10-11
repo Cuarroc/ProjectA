@@ -6,6 +6,7 @@ import { Kostenbuch } from "./Kostenbuch";
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: async () => "com.projecta.app" }));
 
 const ev = (id: string, provider: string, model: string, tokensIn: number, tokensOut: number) => ({
   id, ts: 1, profileId: null, provider, model, tokensIn, tokensOut, costUsd: 12.34, rawJson: "{}",
@@ -106,13 +107,13 @@ describe("Kostenbuch", () => {
     expect(screen.getByRole("region", { name: "Zeitraum" }).textContent).toContain("2.500.000");
   });
 
-  it("Zeugnisse are not connected and name their package", async () => {
+  it("Zeugnisse stay honest without an internal package note", async () => {
     backend(report(EVENTS));
     render(<Kostenbuch />);
     await screen.findByRole("table");
     const section = screen.getByRole("region", { name: "Zeugnisse" });
     expect(within(section).getByText("Zeugnisse noch nicht verbunden")).toBeTruthy();
-    expect(within(section).getByText(/V2-B21b offen/)).toBeTruthy();
+    expect(within(section).queryByText(/V2-/)).toBeNull();
   });
 
   it("Neu lesen reads again and only get_omniroute_usage is invoked", async () => {
