@@ -105,4 +105,43 @@ describe("VerlaufChat", () => {
     await waitFor(() => expect(chat.send).toHaveBeenCalled());
     expect(mocks.invoke).not.toHaveBeenCalled();
   });
+
+  it("shows message times as German 24-hour clock without AM/PM", () => {
+    const at = new Date();
+    at.setHours(14, 5, 0, 0);
+    const chat = chatWith({ messages: [{ ...msg("1", "agent", "On it"), createdAt: at.getTime() / 1000 }] });
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    const article = screen.getByRole("article");
+    expect(article).toHaveTextContent("14:05");
+    expect(article.textContent).not.toMatch(/AM|PM/i);
+  });
+
+  it("sends once when Enter is pressed twice before the parent reports sending", () => {
+    const chat = chatWith({ send: vi.fn(() => new Promise<boolean>(() => {})) });
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    type("Ship it");
+    fireEvent.keyDown(box(), { key: "Enter" });
+    fireEvent.keyDown(box(), { key: "Enter" });
+    expect(chat.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the user send again after a send that did not go out", async () => {
+    const chat = chatWith({ send: vi.fn(async () => false) });
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    type("Ship it");
+    fireEvent.keyDown(box(), { key: "Enter" });
+    await waitFor(() => expect(chat.send).toHaveBeenCalledTimes(1));
+    fireEvent.keyDown(box(), { key: "Enter" });
+    await waitFor(() => expect(chat.send).toHaveBeenCalledTimes(2));
+  });
+
+  it("follows a streamed append to the last message while the user is at the bottom", () => {
+    const first = chatWith({ messages: [msg("1", "agent", "Working")] });
+    const { rerender } = render(<VerlaufChat chat={first} projectId="p-1" />);
+    const log = screen.getByRole("log");
+    Object.defineProperty(log, "scrollHeight", { configurable: true, value: 500 });
+    expect(log.scrollTop).toBe(0);
+    rerender(<VerlaufChat chat={chatWith({ messages: [msg("1", "agent", "Working on it, still going")] })} projectId="p-1" />);
+    expect(log.scrollTop).toBe(500);
+  });
 });
