@@ -48,6 +48,7 @@ check "real-ci-yml-is-green"         0 .github/workflows
 check "only-allowlisted-job-green"   0 "$(mk allow "$PR_ON
 jobs:
   main-red:
+    if: \${{ always() && github.ref == 'refs/heads/main' }}
     steps:
       - env:
           T: \${{ secrets.X }}")"
@@ -69,6 +70,49 @@ jobs:
     steps:
       # never use secrets.X here
       - run: echo hi")"
+# R1171-K1: other ways to hand a PR job a secret.
+check "secrets-inherit-is-red"       1 "$(mk inherit "$PR_ON
+jobs:
+  build:
+    secrets: inherit")"
+check "secrets-index-is-red"         1 "$(mk index "$PR_ON
+jobs:
+  build:
+    steps:
+      - run: echo \${{ secrets['X'] }}")"
+check "job-level-uses-is-red"        1 "$(mk reuse "$PR_ON
+jobs:
+  call:
+    uses: ./.github/workflows/r.yml")"
+check "step-level-uses-is-green"     0 "$(mk stepuses "$PR_ON
+jobs:
+  build:
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000")"
+# R1171-G1: a workflow-level env block reaches every job.
+check "workflow-env-secret-is-red"   1 "$(mk wenv "$PR_ON
+env:
+  T: \${{ secrets.X }}
+jobs:
+  build:
+    steps:
+      - run: echo hi")"
+# R1171-K5: a trailing comment on the on:/jobs: anchor must not hide the scan.
+check "commented-on-anchor-is-red"   1 "$(mk conn $'on: # triggers\n  pull_request:\njobs:\n  build:\n    steps:\n      - run: echo ${{ secrets.X }}')"
+check "commented-jobs-anchor-is-red" 1 "$(mk cjobs $'on:\n  pull_request:\njobs: # all jobs\n  build:\n    steps:\n      - run: echo ${{ secrets.X }}')"
+# R1171-G3/K4: the allowlisted job must carry a one-line main-only `if:`.
+check "main-red-without-main-if-is-red" 1 "$(mk noguard "$PR_ON
+jobs:
+  main-red:
+    steps:
+      - env:
+          T: \${{ secrets.X }}")"
+# R1171-K3: test-insights.yml must follow the real name of ci.yml.
+mkdir -p "$tmp/wrname"
+printf 'name: ci\non:\n  push:\njobs:\n  a:\n    steps: []\n' > "$tmp/wrname/ci.yml"
+printf 'name: ti\non:\n  workflow_run:\n    workflows: [build]\n    types: [completed]\n' > "$tmp/wrname/test-insights.yml"
+check "workflow-run-name-mismatch-is-red" 1 "$tmp/wrname"
+
 mkdir -p "$tmp/leer"
 check "empty-dir-is-exit-2"          2 "$tmp/leer"
 
