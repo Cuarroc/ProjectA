@@ -21,3 +21,9 @@
 .g-lr-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .g-lr-side { flex: 1 1 320px; max-width: 100%; min-width: 0; }
 @media (min-width: 900px) { .g-lr-side { max-width: 360px; } }
+/* V2-S05a-M: Steuerung tab strip above the Kontingente screen or the honest placeholder. */
+.g-sr { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 4px 0 0; }
+.g-sr > .g-shell-tabs { flex: none; margin-left: 4px; }
+.g-sr > .kt-screen { align-self: stretch; }
+.g-sr-pane { align-self: stretch; padding: var(--g-pad); display: flex; flex-direction: column; gap: 12px; }
+.g-sr-pane h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }
