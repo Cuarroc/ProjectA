@@ -22,15 +22,18 @@ export function ProjectPicker() {
   const button = useRef<HTMLButtonElement>(null);
   const projects = load.state === "ready" ? load.projects : [];
 
+  const cancelLoad = useRef<() => void>(() => {});
+  /** Asks for the list; an answer to an earlier ask, or one after unmount, is dropped. */
   const refresh = useCallback(() => {
+    cancelLoad.current();
     let live = true;
+    cancelLoad.current = () => { live = false; };
     listProjects().then(
       (list) => { if (live) setLoad({ state: "ready", projects: list }); },
       () => { if (live) setLoad({ state: "error" }); },
     );
-    return () => { live = false; };
   }, []);
-  useEffect(() => refresh(), [refresh]);
+  useEffect(() => { refresh(); return () => cancelLoad.current(); }, [refresh]);
   useEffect(() => subscribeActiveProject(setActiveId), []);
 
   const close = useCallback((refocus: boolean) => { setOpen(false); if (refocus) button.current?.focus(); }, []);

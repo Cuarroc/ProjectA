@@ -1,0 +1,20 @@
+// German words of the Einreihen form. Moves into the dictionary (src/i18n) once the Leitstand mount lands.
+export const T = {
+  title: "Aufgabe einreihen",
+  task: "Aufgabe",
+  taskPlaceholder: "Was soll erledigt werden?",
+  profile: "Agent-Profil",
+  profileAuto: "Profil automatisch wählen",
+  sharpen: "Beim Einreihen schärfen",
+  sharpenHint: "Der Dispatcher schärft die Aufgabe, wenn er sie aufnimmt, ohne Rückfragen.",
+  submit: "Einreihen",
+  submitting: "Reihe ein …",
+  cancel: "Abbrechen",
+  cancelling: "Breche ab …",
+  cancelOne: (task: string) => `Aufgabe aus der Warteschlange entfernen: ${task}`,
+  reasonStopped: "Not-Aus ist aktiv: neue Aufgaben sind gesperrt.",
+  reasonEmpty: "Zuerst die Aufgabe eintippen.",
+  reasonBusy: "Die Aufgabe wird gerade eingereiht.",
+  enqueueFailed: (detail: string) => `Die Aufgabe wurde nicht eingereiht: ${detail}`,
+  cancelFailed: (detail: string) => `Die Aufgabe konnte nicht entfernt werden: ${detail}`,
+} as const;

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { subscribeActiveProject } from "../../lib/activeProject";
@@ -29,13 +29,30 @@ describe("project picker", () => {
 
   it("choosing a project writes the key and fires the event", async () => {
     const seen: Array<string | null> = [];
-    subscribeActiveProject((id) => seen.push(id));
+    const off = subscribeActiveProject((id) => seen.push(id));
     render(<ProjectPicker />);
     fireEvent.click(trigger());
     fireEvent.click(await screen.findByRole("option", { name: "Gamma" }));
+    off();
     expect(localStorage.getItem("projecta.activeProjectId")).toBe("c");
     expect(seen).toEqual(["c"]);
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("drops the answer of an earlier load once a newer one has been asked for", async () => {
+    let first!: (list: Project[]) => void;
+    let second!: (list: Project[]) => void;
+    list.mockReset()
+      .mockResolvedValueOnce([])
+      .mockReturnValueOnce(new Promise((r) => { first = r; }))
+      .mockReturnValueOnce(new Promise((r) => { second = r; }));
+    render(<ProjectPicker />);
+    fireEvent.click(trigger());
+    fireEvent.click(trigger());
+    fireEvent.click(trigger());
+    await act(async () => { second(THREE); });
+    await act(async () => { first([]); });
+    expect(screen.getAllByRole("option")).toHaveLength(3);
   });
 
   it("moves with the arrow keys and picks with Enter and Escape returns focus", async () => {

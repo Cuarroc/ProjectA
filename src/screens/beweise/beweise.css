@@ -1,0 +1,16 @@
+/* V2-S03a-1 Beweise: Beweiskette. Not imported by the app yet. --g-* tokens only. */
+.bw-root { font-family: var(--g-font-sans); display: flex; flex-direction: column; gap: 12px; color: var(--g-ink); }
+.bw-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bw-title { margin: 0; font: 600 18px/1.3 var(--g-font-sans); }
+.bw-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
+.bw-h, .bw-step-h { margin: 0; font: 600 14px/1.3 var(--g-font-sans); color: var(--g-ink); }
+.bw-note, .bw-code { font-family: inherit; margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-muted); }
+.bw-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.bw-step { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: start; gap: 4px 12px; padding: 10px 0; font-size: 13px; }
+.bw-step + .bw-step { border-top: 1px solid var(--g-hair); }
+.bw-reason { grid-column: 2; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 12px; }
+.bw-step > .bw-note, .bw-step > .g-st { grid-column: 2; justify-self: start; }
+.bw-msg, .bw-next { grid-column: 2; margin: 0; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.bw-next { color: var(--g-muted); font-size: 12px; }
+.bw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .bw-grid { grid-template-columns: minmax(0, 1fr); } }

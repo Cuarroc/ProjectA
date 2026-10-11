@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
   it("keeps Work Attention and Agents under the Leitstand", () => {
@@ -42,6 +42,14 @@ describe("goal and route mapping (ia.md section 4)", () => {
     expect(isNewLeitstand("/leitstand/klassisch")).toBe(false);
     expect(isNewLeitstand("/beweise")).toBe(false);
     expect(hasLegacyPanel("/leitstand/klassisch")).toBe(true);
+  });
+
+  it("gives the new Steuerung every path under /steuerung and nothing else", () => {
+    expect(isNewSteuerung("/steuerung")).toBe(true);
+    expect(isNewSteuerung("/steuerung/")).toBe(true);
+    expect(isNewSteuerung("/steuerung/autonomie")).toBe(true);
+    expect(isNewSteuerung("/steuerungx")).toBe(false);
+    expect(isNewSteuerung("/leitstand")).toBe(false);
   });
 });
 

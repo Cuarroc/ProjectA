@@ -1,0 +1,25 @@
+// Every UI word of the role-variant approval list (Team › Personas). Moves into
+// the dictionary (src/i18n) with the other per-screen texts modules.
+export const T = {
+  title: "Rollen-Vorschläge",
+  lead: "Vorgeschlagene Rollen, die auf einem Profil aufbauen. Erst nach Annehmen sind sie startbar.",
+  list: "Offene Rollen-Vorschläge",
+  base: "Basis",
+  pattern: "Muster",
+  newer: "neue Version",
+  newerHint: "Löst die bisherige Version dieser Rolle ab",
+  promptLabel: "Prompt-Zusatz der Rolle",
+  approve: "Annehmen",
+  reject: "Verwerfen",
+  working: "Läuft …",
+  approved: "Rolle angenommen.",
+  rejected: "Vorschlag verworfen.",
+  approveFailed: "Annehmen fehlgeschlagen:",
+  rejectFailed: "Verwerfen fehlgeschlagen:",
+  loading: "Rollen-Vorschläge werden geladen …",
+  loadFailed: "Rollen-Vorschläge konnten nicht geladen werden",
+  reloadFailed: "Liste konnte nicht aktualisiert werden.",
+  retry: "Erneut laden",
+  emptyTitle: "Keine offenen Rollen-Vorschläge",
+  emptyHint: "Sobald der Kern eine neue Rolle vorschlägt, erscheint sie hier zur Prüfung.",
+} as const;

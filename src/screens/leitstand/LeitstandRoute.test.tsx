@@ -8,6 +8,8 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(()
 vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 
 import App from "../../App";
+import { writeActiveProjectId } from "../../lib/activeProject";
+import LeitstandRoute from "./LeitstandRoute";
 
 const FLAG_KEY = "projecta.settings.featureFlag.d1_neue_oberflaeche";
 const NOW = Math.floor(Date.now() / 1000);
@@ -38,7 +40,7 @@ beforeEach(() => {
     return new Promise(() => {});
   });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("Leitstand route behind D1", () => {
   it("shows the cards and the Braucht dich list from the real board and question data at /leitstand", async () => {
@@ -70,6 +72,17 @@ describe("Leitstand route behind D1", () => {
     localStorage.setItem(FLAG_KEY, "1");
     render(<App />);
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
+  });
+
+  it("follows the active-project event without a single polling timer", async () => {
+    localStorage.removeItem("projecta.activeProjectId");
+    vi.useFakeTimers();
+    render(<LeitstandRoute />);
+    await act(async () => {});
+    expect(mocks.invoke).not.toHaveBeenCalledWith("list_questions", expect.anything());
+    expect(vi.getTimerCount()).toBe(1); // only the age tick; no project poll
+    await act(async () => { writeActiveProjectId("p1"); });
+    expect(mocks.invoke).toHaveBeenCalledWith("list_questions", expect.objectContaining({ projectId: "p1" }));
   });
 
   it("keeps the old Work view reachable as the tab Klassisch", async () => {

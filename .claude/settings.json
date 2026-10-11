@@ -54,6 +54,17 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/lib/rules-guard.mjs"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [

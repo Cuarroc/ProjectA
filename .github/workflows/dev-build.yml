@@ -1,0 +1,62 @@
+# "ProjectA Dev": an unsigned preview installer of the checked-out ref, built
+# on demand: gh workflow run dev-build.yml
+#
+# Deliberately small and inert (checked by scripts/ci/dev-build-shape.sh):
+# manual trigger only, read-only token, no environment, no secrets, no signing,
+# no release. The overlay src-tauri/tauri.dev-channel.conf.json gives the build
+# its own identifier and switches the updater off, so it can never update into
+# the stable channel. The installers are an artifact, not a release.
+#
+# No gates lane here: the commit on main already passed the merge queue (both
+# lanes). This job only proves that the installer can be built.
+#
+# NOT safe next to the normal app until the isolation inventory is fixed:
+# docs/setup/dev-build.md.
+name: dev-build
+
+on:
+  workflow_dispatch:
+
+# Wie release.yml: `bash -eo pipefail`, damit keine Pipe einen Fehler maskiert.
+# Alle `uses:` sind auf einen Commit-SHA gepinnt (docs/decisions.md, 09.09.).
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  dev-build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-windows-release
+
+      # `tauri build` runs `npm run build` through beforeBuildCommand. Without
+      # TAURI_SIGNING_* the build is unsigned; the overlay turns the updater
+      # artifacts off, which would otherwise demand the key.
+      - name: Build installers (unsigned, Dev overlay)
+        run: npx tauri build --config src-tauri/tauri.dev-channel.conf.json
+        env:
+          PROJECTA_BUILD_COMMIT: ${{ github.sha }}
+
+      - name: Short commit id
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # SHA of actions/upload-artifact v7.0.2: not pinned in any workflow of
+      # this repo yet. Verified 2026-10-11 against upstream: `git ls-remote
+      # https://github.com/actions/upload-artifact refs/tags/v7.0.2` returns
+      # exactly this commit (lightweight tag, so no `^{}` peel line).
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: projecta-dev-${{ steps.sha.outputs.short }}
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+          retention-days: 14

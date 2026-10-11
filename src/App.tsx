@@ -27,7 +27,6 @@ import Sidebar from "./components/Sidebar";
 import StatusBar from "./components/StatusBar";
 import TabBar from "./components/TabBar";
 import TerminalView from "./components/TerminalView";
-import ThemeBackdrop from "./components/ThemeBackdrop";
 import ViewBar from "./components/ViewBar";
 import WebInterfacePanel from "./components/WebInterfacePanel";
 import WorkerPanel from "./components/WorkerPanel";
@@ -59,9 +58,7 @@ import {
   isCategoryActive,
   loadFontSettings,
   loadUiDensity,
-  loadUiThemeStyle,
   type UiDensity,
-  type UiThemeStyle,
 } from "./lib/settings";
 import { GOAL_LABELS, type AppGoal } from "./lib/goals";
 import { useFeatureFlag } from "./flags/useFeatureFlag";
@@ -146,9 +143,6 @@ const ShellMount = lazy(() => import("./shell/mount/ShellMount"));
 
 function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) {
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
-  // Setter stays local until the picker package wires Settings → here.
-  const [themeStyle, setThemeStyle] = useState<UiThemeStyle>(loadUiThemeStyle);
-  void setThemeStyle;
   const [fonts, setFonts] = useState(loadFontSettings);
   // Variant B opens on the conversation: the first question the app answers is
   // "what is going on", not "which cards exist".
@@ -1094,8 +1088,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
 
   if (!bootstrapReady) {
     return (
-      <div className="app" data-density={density} data-theme-style={themeStyle} data-ui-font-size={fonts.uiFontSize}>
-        <ThemeBackdrop style={themeStyle} />
+      <div className="app" data-density={density} data-ui-font-size={fonts.uiFontSize}>
         <BootstrapScreen
           error={bootstrapState === "error"}
           onRetry={() => void loadProjects("bootstrap")}
@@ -1105,8 +1098,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   }
 
   return (
-    <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density} data-theme-style={themeStyle} data-ui-font-size={fonts.uiFontSize}>
-      <ThemeBackdrop style={themeStyle} />
+    <div className={`app${railVisible ? " app-railed" : ""}`} data-density={density} data-ui-font-size={fonts.uiFontSize}>
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
