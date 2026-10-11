@@ -17,12 +17,21 @@ describe("EmergencyStop", () => {
   });
 
   it("raises the stop and shows it active", async () => {
-    ipc.getEmergencyStop.mockResolvedValue(false);
+    let resolveInitial!: (active: boolean) => void;
+    ipc.getEmergencyStop.mockReturnValue(new Promise<boolean>((resolve) => {
+      resolveInitial = resolve;
+    }));
     ipc.setEmergencyStop.mockResolvedValue(undefined);
     render(<EmergencyStop />);
-    fireEvent.click(await screen.findByRole("button", { name: "Not-Aus auslösen" }));
+    const raise = await screen.findByRole("button", { name: "Not-Aus auslösen" });
+    expect(raise).toBeDisabled();
+    expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
+    // The button exists during loading; only an enabled button accepts the click.
+    await act(async () => resolveInitial(false));
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    await waitFor(() => expect(ipc.setEmergencyStop).toHaveBeenCalledWith(true));
     expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
-    expect(ipc.setEmergencyStop).toHaveBeenCalledWith(true);
   });
 
   it("styles the raise control as a danger button", async () => {
