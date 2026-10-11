@@ -42,10 +42,11 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   const ids = useId();
 
   // A write that finishes after a project switch must not publish rows, errors or busy state under the new project.
-  const shown = useRef(projectId);
-  shown.current = projectId;
+  // A counter, not the id: a round trip p1 -> p2 -> p1 must still void the first visit's replies.
+  const generation = useRef(0);
 
   useEffect(() => {
+    generation.current += 1;
     setTask(""); setProfileId(""); setSharpen(false); setSubmitting(false); setCancellingId(null); setError(null);
   }, [projectId]);
 
@@ -62,11 +63,11 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
 
   /** Runs one write; its outcome only counts while the project it started in is still shown. */
   const write = <V,>(call: Promise<V>, ok: (value: V) => void, failed: (detail: string) => string, done: () => void) => {
-    const target = projectId;
+    const started = generation.current;
     setError(null);
     call.then(
-      (value) => { if (shown.current === target) { done(); ok(value); } },
-      (cause) => { if (shown.current === target) { done(); setError(failed(describeError(cause))); } },
+      (value) => { if (generation.current === started) { done(); ok(value); } },
+      (cause) => { if (generation.current === started) { done(); setError(failed(describeError(cause))); } },
     );
   };
 
