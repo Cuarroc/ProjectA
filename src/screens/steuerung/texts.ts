@@ -7,6 +7,7 @@ export const T = {
   week: "Woche",
   month: "Monat",
   notConnected: "noch nicht verbunden",
+  unknownWindows: "Unbekannte Kontingentfenster",
   noPercent: "kein Prozentwert gemeldet",
   noProviderTitle: "Noch kein Anbieter",
   noProviderHint: "Sobald der Kern Anbieter meldet, erscheint hier je einer als Karte.",

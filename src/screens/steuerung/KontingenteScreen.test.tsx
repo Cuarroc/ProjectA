@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 import { invoke } from "@tauri-apps/api/core";
 import type { QuotaState } from "../../types";
-import { KontingenteScreen } from "./KontingenteScreen";
+import { KontingenteScreen, QuotaWindows } from "./KontingenteScreen";
 import { blockedNote, formatFreeAt, providerInitials, windowSlot } from "./kontingente";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -196,4 +196,36 @@ it("keeps measured quota windows and names only the missing windows", async () =
   expect(note).toHaveTextContent("Woche, Monat");
   expect(note).not.toHaveTextContent("5 h");
   expect(c.getAllByText("noch nicht verbunden")).toHaveLength(1);
+});
+
+
+it("renders fully measured windows including zero without a missing note", () => {
+  render(<QuotaWindows rows={[
+    { key: "five", label: "5 h", percent: 0, resetsAt: now() + 10800 },
+    { key: "week", label: "Woche", percent: 38, resetsAt: null },
+    { key: "month", label: "Monat", percent: 98, resetsAt: null },
+  ]} />);
+  expect(screen.getAllByRole("meter").map((m) => m.getAttribute("aria-valuenow"))).toEqual(["0", "38", "98"]);
+  expect(screen.queryByRole("note")).toBeNull();
+  expect(screen.getByText("Reset in 3 h")).toBeInTheDocument();
+});
+
+it("keeps a custom missing window and its reset in the grouped note", async () => {
+  feed([provider("custom", "Anbieter mit einem besonders langen sichtbaren Anzeigenamen", { usage: usage("Tagesfenster", null) })]);
+  render(<KontingenteScreen />);
+  const c = await card("Anbieter mit einem besonders langen sichtbaren Anzeigenamen");
+  const note = c.getByRole("note", { name: "Unbekannte Kontingentfenster" });
+  expect(note).toHaveTextContent("5 h, Woche, Monat, Tagesfenster (Reset in 3 h)");
+  expect(within(note).getByText("kein Prozentwert gemeldet")).toBeInTheDocument();
+  expect(c.queryByRole("meter")).toBeNull();
+});
+
+it("keeps overview load errors visible without invented measurements", async () => {
+  vi.mocked(invoke).mockImplementation(async (cmd) => {
+    if (cmd === "get_provider_overview") throw "Anbieter konnten nicht geladen werden";
+    return [];
+  });
+  render(<KontingenteScreen />);
+  expect(await screen.findByText("Anbieter konnten nicht geladen werden")).toBeInTheDocument();
+  expect(screen.queryByRole("meter")).toBeNull();
 });
