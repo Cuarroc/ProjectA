@@ -42,6 +42,7 @@ export function update(state, { run, folder, save = () => {} }) {
   const current = processes(run);
   if (busy(current)) return 'busy, retry next run';
   const closed = [];
+  let installed = false;
   try {
     for (const app of devApps(current)) {
       const exe = psQuote(app.ExecutablePath);
@@ -55,8 +56,14 @@ export function update(state, { run, folder, save = () => {} }) {
     state.sha = latest.headSha;
     state.installedAt = new Date().toISOString();
     save();
+    installed = true;
   } finally {
-    for (const exe of closed) powershell(run, `Start-Process -FilePath ${psQuote(exe)}`);
+    let restartFailed = false;
+    for (const exe of closed) {
+      try { powershell(run, `Start-Process -FilePath ${psQuote(exe)}`); }
+      catch { restartFailed = true; }
+    }
+    if (installed && restartFailed) throw new StepError('installed, restart failed');
   }
   return 'installed';
 }

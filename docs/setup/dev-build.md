@@ -52,6 +52,7 @@ Root richtet nach Merge und Windows-Abnahme die Aufgabe alle fünf Minuten ein;
 die oben genannten offenen Isolationspunkte bleiben Voraussetzung für den Einsatz.
 Benötigt werden Node 24, angemeldetes `gh`, PowerShell und das vorhandene Gitleaks
 mit der Repo-Konfiguration. Das Skript installiert keine Werkzeuge.
+Installer-Vertrauen beruht ausschließlich auf dem GitHub-Artefakt eines `main`-Laufs; eine zusätzliche Signatur wird nicht geprüft.
 Es lädt nur den neuesten erfolgreichen `dev-build.yml`-Lauf auf `main` und dessen
 Dev-NSIS-Artefakt. Dev-Prozesse mit Kindern und eine offene stabile App verschieben
 das Update; unbekannte Prozesspfade führen zum Aufschub. Ein geschlossenes, zuvor
