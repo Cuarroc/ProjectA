@@ -113,6 +113,70 @@ printf 'name: ci\non:\n  push:\njobs:\n  a:\n    steps: []\n' > "$tmp/wrname/ci.
 printf 'name: ti\non:\n  workflow_run:\n    workflows: [build]\n    types: [completed]\n' > "$tmp/wrname/test-insights.yml"
 check "workflow-run-name-mismatch-is-red" 1 "$tmp/wrname"
 
+# R1171b-K1: the word `secrets` anywhere inside an expression is a leak path.
+check "tojson-secrets-is-red"        1 "$(mk tojson "$PR_ON
+jobs:
+  build:
+    steps:
+      - run: echo \${{ toJSON(secrets) }}")"
+check "bare-secrets-is-red"          1 "$(mk bare "$PR_ON
+jobs:
+  build:
+    env:
+      ALL: \${{ secrets }}")"
+check "multiline-expression-is-red"  1 "$(mk multi "$PR_ON
+jobs:
+  build:
+    env:
+      T: \${{
+        secrets.X }}")"
+# R1171b-K2: only a plain main-only guard unlocks the allowlisted job.
+guard() { # name if-line
+  mk "$1" "$PR_ON
+jobs:
+  main-red:
+    $2
+    steps:
+      - env:
+          T: \${{ secrets.X }}"
+}
+check "guard-ref-name-is-green"      0 "$(guard g1 "if: github.ref_name == 'main'")"
+check "guard-or-is-red"              1 "$(guard g2 "if: \${{ github.ref == 'refs/heads/main' || always() }}")"
+check "guard-neq-is-red"             1 "$(guard g3 "if: github.ref != 'refs/heads/main'")"
+check "guard-negated-is-red"         1 "$(guard g4 "if: \${{ !(github.ref == 'refs/heads/main') }}")"
+check "guard-pull-request-is-red"    1 "$(guard g5 "if: github.event_name == 'pull_request' && github.ref == 'refs/heads/main'")"
+check "guard-only-mentions-main-is-red" 1 "$(guard g6 "if: contains(github.ref, 'refs/heads/main')")"
+# R1171b-K3: inside `run: |` a comment-looking line is still interpolated.
+check "comment-looking-expression-is-red" 1 "$(mk cexpr "$PR_ON
+jobs:
+  build:
+    steps:
+      - run: |
+          # \${{ secrets.X }}
+          echo hi")"
+# R1171b-K4: a comment on the inline `on:` line is no trigger.
+check "inline-on-comment-is-green"   0 "$(mk ioc $'on: [push] # pull_request later\njobs:\n  build:\n    steps:\n      - run: echo ${{ secrets.X }}')"
+# R1171b-K6: any indentation; an unparsable jobs block is an error, never green.
+check "four-space-indent-is-red"     1 "$(mk four $'on:\n    pull_request:\njobs:\n    build:\n        steps:\n            - run: echo ${{ secrets.X }}')"
+check "four-space-allowlist-is-green" 0 "$(mk four2 $'on:\n    pull_request:\njobs:\n    main-red:\n        if: github.ref == \'refs/heads/main\'\n        env:\n            T: ${{ secrets.X }}')"
+check "four-space-job-uses-is-red"   1 "$(mk four3 $'on:\n    pull_request:\njobs:\n    call:\n        uses: ./.github/workflows/r.yml')"
+check "flow-jobs-is-error"           1 "$(mk flow $'on:\n  pull_request:\njobs: {build: {runs-on: x}}')"
+check "no-jobs-is-error"             1 "$(mk nojobs $'on:\n  pull_request:\nenv:\n  A: b')"
+# R1171b-K5/G3: the workflows: cross-check reads block and multi-entry lists.
+ti() { # name ci-name workflows-lines
+  mkdir -p "$tmp/$1"
+  printf 'name: %s\non:\n  push:\njobs:\n  a:\n    steps: []\n' "$2" > "$tmp/$1/ci.yml"
+  printf 'name: ti\non:\n  workflow_run:\n%s\n    types: [completed]\n' "$3" > "$tmp/$1/test-insights.yml"
+  echo "$tmp/$1"
+}
+check "workflows-block-list-is-green" 0 "$(ti tb ci $'    workflows:\n      - ci')"
+check "workflows-multi-entry-is-green" 0 "$(ti tm ci '    workflows: [build, "ci"]')"
+check "workflows-block-mismatch-is-red" 1 "$(ti tx ci $'    workflows:\n      - build')"
+mkdir -p "$tmp/noci"
+printf 'name: ti\non:\n  workflow_run:\n    workflows: [ci]\n' > "$tmp/noci/test-insights.yml"
+check "missing-ci-yml-is-red"        1 "$tmp/noci"
+grep -q "ci.yml not found" "$tmp/missing-ci-yml-is-red.log" && echo "ok   missing-ci-yml-message" || { echo "FAIL missing-ci-yml-message"; fails=$((fails + 1)); }
+
 mkdir -p "$tmp/leer"
 check "empty-dir-is-exit-2"          2 "$tmp/leer"
 
