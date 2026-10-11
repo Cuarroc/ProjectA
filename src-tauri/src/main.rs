@@ -3880,6 +3880,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            api::log_frontend_error,
             spawn_pty,
             get_agent_env_isolation,
             set_agent_env_isolation,
