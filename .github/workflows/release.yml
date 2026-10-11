@@ -10,8 +10,16 @@ on:
   # Pre-tag dry run (job release-gates-dry-run): gh workflow run release.yml --ref <branch>
   workflow_dispatch:
 
+# Least privilege (REL-HARD-01): the workflow default is read-only; only
+# windows-installer raises its own token (release upload, attestation).
 permissions:
-  contents: write
+  contents: read
+
+# One tag build per ref; a running build is never cancelled, because it may
+# already have staged or promoted updater bytes.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 # `run:`-Schritte laufen ohne diese Zeilen als `bash -e {0}` — OHNE `pipefail`.
 # Der Status einer Pipe ist dann der ihres LETZTEN Glieds, und ein
@@ -55,6 +63,12 @@ jobs:
   windows-installer:
     if: github.event_name == 'push'
     runs-on: windows-latest
+    # Einziger Job mit Schreibrechten: contents fuer den Release-Upload,
+    # id-token + attestations fuer die Build-Provenance (Sigstore).
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     # Dieser Job haelt den Tauri-Signing-Key UND den Mirror-PAT, und er wird
     # von einem Tag-Push ausgeloest — den jeder mit Push-Recht machen kann.
     # Dieselbe Klasse wie der review.yml-Befund vom 06.09.
@@ -70,7 +84,11 @@ jobs:
     # Release-Baus (ci.yml: Windows-Bahn 35 Minuten).
     timeout-minutes: 90
     steps:
+      # No token on disk during npm ci, the build and the tests; the gh calls
+      # below pass their own GH_TOKEN.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Same setup as release-gates-dry-run (Node, Rust, lane tools, Chromium).
       - uses: ./.github/actions/setup-windows-release
@@ -111,6 +129,21 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
+      # Build provenance for the two installers (Sigstore attestation bound to
+      # this run; verify with `gh attestation verify <file> --repo <owner>/<repo>`).
+      - name: Attest installer provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Write SHA256SUMS.txt
+        run: |
+          cd src-tauri/target/release/bundle
+          sha256sum nsis/*.exe msi/*.msi > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       # Read-only MSI inventory, not NSIS payload or installed-app acceptance.
       - name: Verify MSI app, CLI and capture-host inventory
         shell: pwsh
@@ -121,22 +154,24 @@ jobs:
           & ./scripts/verify-windows-package.ps1 -Package $packages[0].FullName -ExpectedVersion $version -RequireNativeResources
 
       # Der Updater auf Windows nutzt die .exe selbst als Update-Bundle
-      # (kein .nsis.zip in Tauri v2). Das Hauptrepo-Release bleibt die
-      # private, vollstaendige Ablage; der oeffentliche Update-Kanal laeuft
-      # ueber das Mirror-Repo (naechster Schritt).
-      - name: Attach installers to the private GitHub release
+      # (kein .nsis.zip in Tauri v2). Das Hauptrepo-Release ist die
+      # vollstaendige Ablage (Installer, Signatur, Pruefsummen); der
+      # Update-Kanal der App laeuft ueber das Mirror-Repo (naechster Schritt).
+      - name: Attach installers to the GitHub release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/nsis/*.exe.sig
             src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/SHA256SUMS.txt
           body: "Details: CHANGELOG.md und KNOWN_ISSUES.md im Repo."
 
-      # Das Hauptrepo ist PRIVAT — rohe URLs und api-Asset-URLs liefern
-      # anonym 404 (Befund 31.08.: Updater-Fehler "Could not fetch a valid
-      # release JSON"). Deshalb: Manifest + Installer ins OEFFENTLICHE
-      # Mirror-Repo Cuarroc/ProjectA-updates spiegeln. Zuerst liegt der
+      # Das Hauptrepo war bei Einfuehrung des Updaters PRIVAT (rohe URLs und
+      # api-Asset-URLs lieferten anonym 404; Befund 31.08.: Updater-Fehler
+      # "Could not fetch a valid release JSON") und ist inzwischen oeffentlich.
+      # Der Update-Kanal bleibt trotzdem beim Mirror: Manifest + Installer ins
+      # OEFFENTLICHE Mirror-Repo Cuarroc/ProjectA-updates spiegeln. Zuerst liegt der
       # Kandidat unter einem Prerelease-Tag; dadurch bleibt releases/latest
       # unveraendert, bis anonyme Byte-/Manifest-/Signaturpruefungen bestanden.
       - name: Stage and verify updater candidate anonymously
@@ -255,7 +290,7 @@ jobs:
           # Flag steht VOR dem Create, damit auch ein Create mit Exit != 0, das den
           # Release trotzdem angelegt hat, vom trap entfernt wird.
           $stableCreated = $true
-          gh release create $stableTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version" --notes "Auto-Update-Kanal (Spiegel). Quellcode: github.com/Cuarroc/ProjectA (privat)." --prerelease
+          gh release create $stableTag --repo Cuarroc/ProjectA-updates --title "ProjectA v$version" --notes "Auto-Update-Kanal (Spiegel). Quellcode: github.com/Cuarroc/ProjectA." --prerelease
           if ($LASTEXITCODE -ne 0) { throw "gh release create fehlgeschlagen (exit $LASTEXITCODE)" }
           gh release upload $stableTag $exe "$exe.sig" --repo Cuarroc/ProjectA-updates --clobber
           if ($LASTEXITCODE -ne 0) { throw "gh release upload installer fehlgeschlagen (exit $LASTEXITCODE)" }
