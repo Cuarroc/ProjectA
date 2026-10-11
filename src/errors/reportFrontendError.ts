@@ -25,7 +25,7 @@ export function reportFrontendError(error: unknown, componentStack?: string | nu
       }
     } catch { /* Thrown proxies and hostile accessors must not break reporting. */ }
     message = bounded(message, 2048);
-    stackFrame = bounded(componentStack ?? stackFrame, 512);
+    stackFrame = bounded([stackFrame, componentStack].filter(Boolean).join(" | "), 512);
     const route = bounded(window.location.pathname, 256);
     const signature = JSON.stringify([message, stackFrame, route]);
     const now = performance.now();

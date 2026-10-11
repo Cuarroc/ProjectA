@@ -198,8 +198,14 @@ use crate::store::{
 };
 
 fn frontend_error_field(value: &str, max_bytes: usize) -> String {
+    // Bound redaction work before applying the final escaped log-field limit.
+    let mut end = value.len().min(8192);
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    let redacted = crate::redact::redact(&value[..end]);
     let mut field = String::new();
-    for ch in value.chars() {
+    for ch in redacted.chars() {
         let ch = if ch.is_control() || matches!(ch, '\u{2028}' | '\u{2029}') {
             ' '
         } else {
@@ -234,7 +240,7 @@ impl FrontendErrorLog {
     ) {
         self.recent
             .retain(|(at, _)| now.duration_since(*at).as_secs() < 60);
-        let message = frontend_error_field(&crate::redact::redact(message), 2048);
+        let message = frontend_error_field(message, 2048);
         let summary_due = now
             .duration_since(*self.summary_at.get_or_insert(now))
             .as_secs()
@@ -256,7 +262,7 @@ impl FrontendErrorLog {
         emit(format!(
             "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
             message,
-            frontend_error_field(&crate::redact::redact(stack_frame), 512),
+            frontend_error_field(stack_frame, 512),
             frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256),
         ));
         self.recent.push((now, Some(message)));
