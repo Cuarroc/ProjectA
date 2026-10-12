@@ -3305,6 +3305,13 @@ const ENV_APP_DATA: &str = "PROJECTA_APP_DATA";
 /// `PROJECTA_APP_DATA` wins so a packaged proof can use a throwaway directory
 /// instead of the production queue. The single-instance mutex still uses the
 /// bundle id — do not run a proof while a production window is open.
+///
+/// The build-identifier check runs before that override on purpose: `pa` and
+/// the hooks directory keep using the embedded identifier even when
+/// `PROJECTA_APP_DATA` isolates the database, so a mismatched build is wrong
+/// in every mode. Every startup path resolves its data directory here, which
+/// makes this the one place that refuses such a build. The helper is tested
+/// directly; this call site needs an `AppHandle` and has no unit test.
 fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     check_build_identifier(&app.config().identifier, build_identifier::IDENTIFIER)?;
     let dir = resolve_app_data_dir(
