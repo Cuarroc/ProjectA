@@ -67,6 +67,28 @@ test('collects only new errors locally and uses the real repository secret scann
   assert.throws(() => collect(state, { ...deps, run: () => ({ code: 127 }) }), /scanner/);
 });
 
+test('turns a feedback entry into a feedback inbox file', t => {
+  const dir = fs.mkdtempSync(join(tmpdir(), 'dev-autoupdate-feedback-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const logs = join(dir, 'logs'), inbox = join(dir, 'inbox'), state = { sha: 'a'.repeat(40) };
+  fs.mkdirSync(logs);
+  const home = ['C:', 'Users', 'fixture-user'].join('\\');
+  const line = `2026-10-12T12:00:00Z [frontend] FEEDBACK message="Button tat nichts in ${home}\\app" expected="Menü" route="/leitstand" context="sha=\\"abc123\\""`;
+  fs.writeFileSync(join(logs, 'projecta.log'), `${line}\nERROR ordinary failure\n`);
+  const deps = { run: makeRunner(), appData: dir, inbox, env: { USERPROFILE: home, USERNAME: 'fixture-user' } };
+  collect(state, deps);
+  const feedbackDir = join(inbox, 'feedback');
+  assert.equal(fs.readdirSync(feedbackDir).length, 1);
+  const name = fs.readdirSync(feedbackDir)[0];
+  const record = JSON.parse(fs.readFileSync(join(feedbackDir, name), 'utf8'));
+  assert.match(record.context.join('\n'), /FEEDBACK/);
+  assert.equal(record.context.join('\n').includes('fixture-user'), false);
+  assert.equal(fs.readdirSync(inbox).filter(n => n.endsWith('.json')).length, 1);
+  collect(state, deps);
+  assert.equal(fs.readdirSync(feedbackDir).length, 1);
+  assert.equal(JSON.parse(fs.readFileSync(join(feedbackDir, name), 'utf8')).count, 1);
+});
+
 test('installs only a Dev setup and restarts a gracefully closed app after success or failure', t => {
   const folder = fs.mkdtempSync(join(tmpdir(), 'dev-update-'));
   t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
