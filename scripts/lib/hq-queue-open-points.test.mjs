@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { OPEN_POINT_TASKS, buildQueueRequests, chooseProject } from '../hq-queue-open-points.mjs';
 
 test('every open point becomes one HQ-Bug queue request that names the bug log', () => {
@@ -31,4 +32,11 @@ test('the project is taken from --project, else the single registered one, else 
   assert.equal(chooseProject([{ id: 'pj-1' }], null).id, 'pj-1');
   assert.throws(() => chooseProject([{ id: 'pj-1' }, { id: 'pj-2' }], null), /--project/);
   assert.throws(() => chooseProject([{ id: 'pj-1' }], 'pj-9'), /pj-9/);
+});
+
+// Dev-build isolation (docs/setup/dev-build.md, row 7): the queue tool must
+// also find the descriptor of a running Dev build.
+test('the descriptor search list also covers the dev build identifier', () => {
+  const source = readFileSync(new URL('../hq-queue-open-points.mjs', import.meta.url), 'utf8');
+  assert.ok(source.includes('com.projecta.dev'), 'descriptor candidates must include com.projecta.dev');
 });

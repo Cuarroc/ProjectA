@@ -6032,6 +6032,23 @@ mod tests {
         );
     }
 
+    /// Dev-build isolation (docs/setup/dev-build.md, row 1): the Dev build's
+    /// `pa.exe` must not open the stable app's database or descriptor. The
+    /// identifier comes from the build, shared with the app through
+    /// `build_identifier`, never a hard-coded constant in this file.
+    #[test]
+    fn dev_identifier_selects_dev_data_dir() {
+        let source = include_str!("pa.rs");
+        assert!(
+            !source.contains("const IDENTIFIER: &str = \"com.projecta.app\""),
+            "IDENTIFIER must come from the build, not a hard-coded constant"
+        );
+        assert!(
+            source.contains("build_identifier::IDENTIFIER"),
+            "pa must share the build identifier from src-tauri/src/build_identifier.rs"
+        );
+    }
+
     #[test]
     fn a_worker_renders_as_labelled_lines() {
         let worker = json!({

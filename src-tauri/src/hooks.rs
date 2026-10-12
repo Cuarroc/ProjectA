@@ -936,6 +936,23 @@ mod tests {
         Arc::new(StatusEngine::default())
     }
 
+    /// Dev-build isolation (docs/setup/dev-build.md, row 2): a Dev build's
+    /// hooks directory must not land in the stable app's data directory, so
+    /// the app-data base is joined with the shared build identifier, never
+    /// with a hard-coded "com.projecta.app".
+    #[test]
+    fn hooks_dir_follows_the_build_identifier() {
+        let source = include_str!("hooks.rs");
+        assert!(
+            !source.contains("join(\"com.projecta.app\")"),
+            "app_data_dir must join the build identifier, never a hard-coded com.projecta.app"
+        );
+        assert!(
+            source.contains("build_identifier::IDENTIFIER"),
+            "hooks must share the build identifier from src-tauri/src/build_identifier.rs"
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn generated_worker_files_do_not_follow_preplaced_symlinks() {
