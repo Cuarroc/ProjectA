@@ -107,6 +107,8 @@ check workflow-with-schedule-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/&\n  schedule:\n    - cron: "0 3 * * *"/' sched)" "$OV" "triggers must be"
 check workflow-without-dispatch-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/  pull_request:/' nodispatch)" "$OV" "triggers must be"
+check workflow-without-identifier-env-fails fail \
+  "$(wf '/^[[:space:]]*PROJECTA_IDENTIFIER: com\.projecta\.dev[[:space:]]*$/d' noident)" "$OV" "PROJECTA_IDENTIFIER"
 
 # Forced tool failures: the permissions extraction must fail closed, not pass.
 mkdir "$tmp/failbin" "$tmp/silentbin"

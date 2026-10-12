@@ -92,8 +92,11 @@ export async function inspectRuntime(env = process.env, request = fetch, root = 
   const candidates = env.PROJECTA_API_DESCRIPTOR ? [env.PROJECTA_API_DESCRIPTOR] : env.PROJECTA_APP_DATA ? [join(env.PROJECTA_APP_DATA, 'projecta-api.json')] : [
     env.PROJECTA_APP_DATA && join(env.PROJECTA_APP_DATA, 'projecta-api.json'),
     env.APPDATA && join(env.APPDATA, 'com.projecta.app', 'projecta-api.json'),
+    env.APPDATA && join(env.APPDATA, 'com.projecta.dev', 'projecta-api.json'),
     join(env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'com.projecta.app', 'projecta-api.json'),
-    join(homedir(), 'Library', 'Application Support', 'com.projecta.app', 'projecta-api.json')].filter(Boolean);
+    join(env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'com.projecta.dev', 'projecta-api.json'),
+    join(homedir(), 'Library', 'Application Support', 'com.projecta.app', 'projecta-api.json'),
+    join(homedir(), 'Library', 'Application Support', 'com.projecta.dev', 'projecta-api.json')].filter(Boolean);
   const path = candidates.find(candidate => existsSync(candidate));
   if (!path) return { id: 'runtime', state: 'warn', detail: 'No running-app descriptor found; ProjectA was not started.' };
   try {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { inspectRuntime, sha256File } from '../dev-setup.mjs';
@@ -33,4 +33,20 @@ test('runtime doctor reports the shipped agent manifest identity and rejects a m
   const mismatch = await inspectRuntime({ PROJECTA_API_DESCRIPTOR: descriptor }, async () => ({ ok: true, json: async () => ({ apiVersion: 1, provenance: { builtinManifestSha256: '0'.repeat(64) } }) }), process.cwd());
   assert.equal(mismatch.state, 'warn');
   assert.equal(mismatch.manifest.state, 'mismatch');
+});
+
+// Dev-build isolation (docs/setup/dev-build.md, row 7): with only a Dev build
+// running, the doctor must find its descriptor under the dev identifier.
+test('runtime doctor also finds the descriptor of a running dev build', async t => {
+  const root = mkdtempSync(join(tmpdir(), 'hq-runtime-dev-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const devDir = join(root, 'com.projecta.dev');
+  mkdirSync(devDir, { recursive: true });
+  writeFileSync(join(devDir, 'projecta-api.json'), JSON.stringify({ port: 34125, token: 'private-test-token' }));
+  const result = await inspectRuntime({ APPDATA: root }, async url => {
+    assert.equal(url, 'http://127.0.0.1:34125/api/hq/v1/runtime');
+    return { ok: true, json: async () => ({ apiVersion: 1 }) };
+  });
+  assert.equal(result.state, 'ok');
+  assert.equal(JSON.stringify(result).includes('private-test-token'), false);
 });

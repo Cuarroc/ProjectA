@@ -115,6 +115,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
+#[path = "../build_identifier.rs"]
+mod build_identifier;
 #[path = "../db_restore.rs"]
 mod db_restore;
 #[path = "../fs_replace.rs"]
@@ -129,8 +131,10 @@ use render_ops::{render_diagnosis, render_emergency_stop, render_quota};
 /// Descriptor written by the app on startup.
 const DESCRIPTOR_FILE: &str = "projecta-api.json";
 
-/// Tauri bundle identifier; the app data directory is named after it.
-const IDENTIFIER: &str = "com.projecta.app";
+/// The bundle identifier this build carries; the app data directory is named
+/// after it. Embedded by the build and shared with the app: the Dev build
+/// gets `com.projecta.dev`, everything else falls back to the stable one.
+use build_identifier::IDENTIFIER;
 
 /// Header carrying the shared token.
 const TOKEN_HEADER: &str = "x-projecta-token";
@@ -1034,11 +1038,17 @@ fn run_db_restore(from: Option<String>, dest: Option<String>, yes: bool) -> Resu
     Ok(())
 }
 
+/// `<base>/<identifier>/<file>` — the one place a build identifier becomes a
+/// data path, so the DB and the descriptor can never disagree.
+fn data_path_in(base: &std::path::Path, identifier: &str, file: &str) -> PathBuf {
+    base.join(identifier).join(file)
+}
+
 fn default_db_path() -> Result<PathBuf, String> {
     if let Some(dir) = std::env::var_os(ENV_APP_DATA).filter(|path| !path.is_empty()) {
         return Ok(PathBuf::from(dir).join("projecta.db"));
     }
-    Ok(app_data_dir()?.join(IDENTIFIER).join("projecta.db"))
+    Ok(data_path_in(&app_data_dir()?, IDENTIFIER, "projecta.db"))
 }
 
 /// One invocation of `pa`.
@@ -2758,7 +2768,7 @@ fn descriptor_path() -> Result<PathBuf, String> {
     if let Some(dir) = std::env::var_os(ENV_APP_DATA).filter(|path| !path.is_empty()) {
         return Ok(PathBuf::from(dir).join(DESCRIPTOR_FILE));
     }
-    Ok(app_data_dir()?.join(IDENTIFIER).join(DESCRIPTOR_FILE))
+    Ok(data_path_in(&app_data_dir()?, IDENTIFIER, DESCRIPTOR_FILE))
 }
 
 /// The same directory `AppHandle::path().app_data_dir()` resolves to, minus the
@@ -6029,6 +6039,40 @@ mod tests {
         assert_eq!(
             dir_override,
             PathBuf::from("D:/scratch/projecta-f8").join(DESCRIPTOR_FILE)
+        );
+    }
+
+    /// Dev-build isolation (docs/setup/dev-build.md, row 1): the Dev build's
+    /// `pa.exe` must not open the stable app's database or descriptor. The
+    /// identifier comes from the build, shared with the app through
+    /// `build_identifier`, never a hard-coded constant in this file.
+    #[test]
+    fn dev_identifier_selects_dev_data_dir() {
+        assert_eq!(
+            build_identifier::resolve_build_identifier(Some("com.projecta.dev")),
+            "com.projecta.dev"
+        );
+        assert_eq!(
+            build_identifier::resolve_build_identifier(None),
+            "com.projecta.app"
+        );
+        let base = PathBuf::from("data-root");
+        assert_eq!(
+            data_path_in(
+                &base,
+                build_identifier::resolve_build_identifier(Some("com.projecta.dev")),
+                "projecta.db"
+            ),
+            base.join("com.projecta.dev").join("projecta.db")
+        );
+        let source = include_str!("pa.rs");
+        assert!(
+            !source.contains("const IDENTIFIER: &str = \"com.projecta.app\""),
+            "IDENTIFIER must come from the build, not a hard-coded constant"
+        );
+        assert!(
+            source.contains("build_identifier::IDENTIFIER"),
+            "pa must share the build identifier from src-tauri/src/build_identifier.rs"
         );
     }
 

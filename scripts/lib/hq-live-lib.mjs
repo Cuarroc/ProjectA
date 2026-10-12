@@ -14,13 +14,18 @@ export function descriptorCandidates(env = process.env) {
   if (env.PROJECTA_API_DESCRIPTOR) return [env.PROJECTA_API_DESCRIPTOR];
   if (env.PROJECTA_APP_DATA) return [join(env.PROJECTA_APP_DATA, "projecta-api.json")];
   // Tauri's app_data_dir on Windows is %APPDATA% (Roaming) — checked before
-  // LOCALAPPDATA, which never holds the descriptor.
+  // LOCALAPPDATA, which never holds the descriptor. Each base is searched for
+  // the stable app first, then the Dev build (docs/setup/dev-build.md).
   if (env.APPDATA) candidates.push(join(env.APPDATA, "com.projecta.app", "projecta-api.json"));
+  if (env.APPDATA) candidates.push(join(env.APPDATA, "com.projecta.dev", "projecta-api.json"));
   if (env.LOCALAPPDATA) candidates.push(join(env.LOCALAPPDATA, "com.projecta.app", "projecta-api.json"));
+  if (env.LOCALAPPDATA) candidates.push(join(env.LOCALAPPDATA, "com.projecta.dev", "projecta-api.json"));
   const xdgDataHome = env.XDG_DATA_HOME || (env.HOME ? join(env.HOME, ".local", "share") : null);
   if (xdgDataHome) candidates.push(join(xdgDataHome, "com.projecta.app", "projecta-api.json"));
+  if (xdgDataHome) candidates.push(join(xdgDataHome, "com.projecta.dev", "projecta-api.json"));
   const home = env.HOME || homedir();
   if (home) candidates.push(join(home, "Library", "Application Support", "com.projecta.app", "projecta-api.json"));
+  if (home) candidates.push(join(home, "Library", "Application Support", "com.projecta.dev", "projecta-api.json"));
   return candidates;
 }
 
