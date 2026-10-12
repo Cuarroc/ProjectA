@@ -6,6 +6,8 @@
 #      com.projecta.app), createUpdaterArtifacts present and false, updater
 #      endpoints empty (the plugin then refuses to check:
 #      Error::EmptyEndpoints), so the build cannot update into stable.
+#   3. The build step embeds PROJECTA_IDENTIFIER=com.projecta.dev so the
+#      built binaries never fall back to the stable app's data directories.
 # Usage: dev-build-shape.sh [dev-build.yml] [overlay.json]
 # Self-test: scripts/test-dev-build-shape.sh
 set -uo pipefail
@@ -90,6 +92,12 @@ triggers="$(sed -n 's/^POLICY on/on/p' <<< "$shape" | LC_ALL=C sort)"
 concurrency="$(sed -n 's/^POLICY concurrency/concurrency/p' <<< "$shape" | LC_ALL=C sort)"
 [ "$concurrency" = $'concurrency/cancel-in-progress:false\nconcurrency/group:dev-build\nconcurrency:' ] ||
   err "concurrency must be group: dev-build and cancel-in-progress: false"
+
+# Without the embedded identifier the Dev build's pa.exe and hooks directory
+# silently fall back to the stable app's data (docs/setup/dev-build.md rows
+# 1-2). Anchored on the env value, not on a step name.
+grep -qE '^[[:space:]]+PROJECTA_IDENTIFIER:[[:space:]]*com\.projecta\.dev[[:space:]]*$' <<< "$body" ||
+  err "build step must set PROJECTA_IDENTIFIER to com.projecta.dev"
 
 # The overlay is JSON: node is part of the toolchain (Node 24+, AGENTS.md).
 verdict="$(node -e '

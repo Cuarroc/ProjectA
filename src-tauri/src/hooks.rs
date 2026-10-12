@@ -57,6 +57,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
+use crate::build_identifier::IDENTIFIER;
 use crate::http_util::{
     answer_overloaded, connection_limiter, token_eq, try_acquire_connection, ConnectionLimiter,
     MAX_BODY, MAX_HEAD,
@@ -500,7 +501,7 @@ fn app_data_dir() -> Option<PathBuf> {
         .or_else(|| {
             std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share"))
         });
-    base.map(|dir| dir.join("com.projecta.app"))
+    base.map(|dir| dir.join(IDENTIFIER))
 }
 
 #[cfg(test)]
@@ -942,6 +943,14 @@ mod tests {
     /// with a hard-coded "com.projecta.app".
     #[test]
     fn hooks_dir_follows_the_build_identifier() {
+        assert_eq!(
+            crate::build_identifier::resolve_build_identifier(Some("com.projecta.dev")),
+            "com.projecta.dev"
+        );
+        assert_eq!(
+            crate::build_identifier::resolve_build_identifier(None),
+            "com.projecta.app"
+        );
         let source = include_str!("hooks.rs");
         assert!(
             !source.contains("join(\"com.projecta.app\")"),
