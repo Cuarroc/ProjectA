@@ -236,6 +236,8 @@ impl FrontendErrorLog {
         message: &str,
         stack_frame: &str,
         route: &str,
+        kind: Option<&str>,
+        context: Option<&str>,
         mut emit: impl FnMut(String),
     ) {
         self.recent
@@ -259,26 +261,49 @@ impl FrontendErrorLog {
             self.suppressed = self.suppressed.saturating_add(1);
             return;
         }
-        emit(format!(
-            "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
-            message,
-            frontend_error_field(stack_frame, 512),
-            frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256),
-        ));
+        let route = frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256);
+        if kind == Some("feedback") {
+            emit(format!(
+                "FEEDBACK message=\"{}\" expected=\"{}\" route=\"{}\" context=\"{}\"",
+                message,
+                frontend_error_field(stack_frame, 1024),
+                route,
+                frontend_error_field(context.unwrap_or_default(), 2048),
+            ));
+        } else {
+            emit(format!(
+                "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
+                message,
+                frontend_error_field(stack_frame, 512),
+                route,
+            ));
+        }
         self.recent.push((now, Some(message)));
     }
 }
 
 #[tauri::command]
-pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
+pub fn log_frontend_error(
+    message: String,
+    stack_frame: String,
+    route: String,
+    kind: Option<String>,
+    context: Option<String>,
+) {
     static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog {
         recent: Vec::new(),
         suppressed: 0,
         summary_at: None,
     });
-    emit_frontend_error(&LIMITER, &message, &stack_frame, &route, |line| {
-        crate::logging::log("frontend", &line)
-    });
+    emit_frontend_error(
+        &LIMITER,
+        &message,
+        &stack_frame,
+        &route,
+        kind.as_deref(),
+        context.as_deref(),
+        |line| crate::logging::log("frontend", &line),
+    );
 }
 
 fn emit_frontend_error(
@@ -286,6 +311,8 @@ fn emit_frontend_error(
     message: &str,
     stack_frame: &str,
     route: &str,
+    kind: Option<&str>,
+    context: Option<&str>,
     mut emit: impl FnMut(String),
 ) {
     let mut lines = Vec::new();
@@ -296,6 +323,8 @@ fn emit_frontend_error(
             message,
             stack_frame,
             route,
+            kind,
+            context,
             |line| lines.push(line),
         );
     }
@@ -2540,6 +2569,8 @@ pub(crate) mod tests {
                 "failed",
                 "at render",
                 &format!("/token/{token}?private=value#fragment"),
+                None,
+                None,
                 |line| lines.push(line),
             );
             assert_eq!(
@@ -2547,6 +2578,22 @@ pub(crate) mod tests {
                 [r#"ERROR message="failed" stack="at render" route="/token/[redacted]""#]
             );
         }
+    }
+
+    #[test]
+    fn frontend_feedback_log_line_carries_context() {
+        let mut lines = Vec::new();
+        super::FrontendErrorLog::default().write(
+            std::time::Instant::now(),
+            "Button tat nichts",
+            "Menü erwartet",
+            "/leitstand?private=value",
+            Some("feedback"),
+            Some("sha=\"abc123\" recent=\"boom @ at render\""),
+            |line| lines.push(line),
+        );
+        let expected = "FEEDBACK message=\"Button tat nichts\" expected=\"Menü erwartet\" route=\"/leitstand\" context=\"sha=\\\"abc123\\\" recent=\\\"boom @ at render\\\"\"";
+        assert_eq!(lines, [expected]);
     }
 
     #[test]
@@ -2558,6 +2605,8 @@ pub(crate) mod tests {
             &raw,
             &raw,
             &raw,
+            None,
+            None,
             |line| lines.push(line),
         );
         assert_eq!(
@@ -2577,6 +2626,8 @@ pub(crate) mod tests {
                 &format!("failed token={token}"),
                 &format!("at render (key={token})"),
                 "/",
+                None,
+                None,
                 |line| lines.push(line),
             );
             assert_eq!(
@@ -2600,13 +2651,21 @@ pub(crate) mod tests {
                 .is_err());
             }
             let mut lines = Vec::new();
-            super::emit_frontend_error(&limiter, &format!("error {poisoned}"), "", "/", |line| {
-                assert!(!matches!(
-                    limiter.try_lock(),
-                    Err(std::sync::TryLockError::WouldBlock)
-                ));
-                lines.push(line);
-            });
+            super::emit_frontend_error(
+                &limiter,
+                &format!("error {poisoned}"),
+                "",
+                "/",
+                None,
+                None,
+                |line| {
+                    assert!(!matches!(
+                        limiter.try_lock(),
+                        Err(std::sync::TryLockError::WouldBlock)
+                    ));
+                    lines.push(line);
+                },
+            );
             assert_eq!(lines.len(), 1);
         }
     }
@@ -2623,6 +2682,8 @@ pub(crate) mod tests {
                 message,
                 frame,
                 "/?private=value#fragment",
+                None,
+                None,
                 |line| lines.push(line),
             );
             lines.len()
