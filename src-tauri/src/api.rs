@@ -236,8 +236,7 @@ impl FrontendErrorLog {
         message: &str,
         stack_frame: &str,
         route: &str,
-        kind: Option<&str>,
-        context: Option<&str>,
+        feedback: Option<&str>,
         mut emit: impl FnMut(String),
     ) {
         self.recent
@@ -262,13 +261,13 @@ impl FrontendErrorLog {
             return;
         }
         let route = frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256);
-        if kind == Some("feedback") {
+        if let Some(context) = feedback {
             emit(format!(
                 "FEEDBACK message=\"{}\" expected=\"{}\" route=\"{}\" context=\"{}\"",
                 message,
                 frontend_error_field(stack_frame, 1024),
                 route,
-                frontend_error_field(context.unwrap_or_default(), 2048),
+                frontend_error_field(context, 2048),
             ));
         } else {
             emit(format!(
@@ -295,15 +294,13 @@ pub fn log_frontend_error(
         suppressed: 0,
         summary_at: None,
     });
-    emit_frontend_error(
-        &LIMITER,
-        &message,
-        &stack_frame,
-        &route,
-        kind.as_deref(),
-        context.as_deref(),
-        |line| crate::logging::log("frontend", &line),
-    );
+    let feedback = match kind.as_deref() {
+        Some("feedback") => Some(context.as_deref().unwrap_or("")),
+        _ => None,
+    };
+    emit_frontend_error(&LIMITER, &message, &stack_frame, &route, feedback, |line| {
+        crate::logging::log("frontend", &line)
+    });
 }
 
 fn emit_frontend_error(
@@ -311,8 +308,7 @@ fn emit_frontend_error(
     message: &str,
     stack_frame: &str,
     route: &str,
-    kind: Option<&str>,
-    context: Option<&str>,
+    feedback: Option<&str>,
     mut emit: impl FnMut(String),
 ) {
     let mut lines = Vec::new();
@@ -323,8 +319,7 @@ fn emit_frontend_error(
             message,
             stack_frame,
             route,
-            kind,
-            context,
+            feedback,
             |line| lines.push(line),
         );
     }
@@ -2570,7 +2565,6 @@ pub(crate) mod tests {
                 "at render",
                 &format!("/token/{token}?private=value#fragment"),
                 None,
-                None,
                 |line| lines.push(line),
             );
             assert_eq!(
@@ -2606,7 +2600,6 @@ pub(crate) mod tests {
             &raw,
             &raw,
             None,
-            None,
             |line| lines.push(line),
         );
         assert_eq!(
@@ -2626,7 +2619,6 @@ pub(crate) mod tests {
                 &format!("failed token={token}"),
                 &format!("at render (key={token})"),
                 "/",
-                None,
                 None,
                 |line| lines.push(line),
             );
@@ -2682,7 +2674,6 @@ pub(crate) mod tests {
                 message,
                 frame,
                 "/?private=value#fragment",
-                None,
                 None,
                 |line| lines.push(line),
             );
