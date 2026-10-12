@@ -39,4 +39,9 @@ export const DEV_TEXT = {
   experiments: "Experimente",
   commit: "Build-Commit",
   time: "Build-Zeit",
+  feedback: "Fehler melden",
+  feedbackWhat: "Was ist passiert?",
+  feedbackExpected: "Was hättest du erwartet? (optional)",
+  feedbackSubmit: "Meldung speichern",
+  feedbackSaved: "Gespeichert – wird beim nächsten Abgleich übernommen",
 };
