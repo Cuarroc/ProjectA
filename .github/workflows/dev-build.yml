@@ -50,6 +50,10 @@ jobs:
         run: npx tauri build --config src-tauri/tauri.dev-channel.conf.json
         env:
           PROJECTA_BUILD_COMMIT: ${{ github.sha }}
+          # Bakes the overlay's identifier into the binaries (pa.rs,
+          # hooks.rs read it through build_identifier.rs), so the Dev build
+          # never opens the stable app's data directory.
+          PROJECTA_IDENTIFIER: com.projecta.dev
 
       - name: Short commit id
         id: sha

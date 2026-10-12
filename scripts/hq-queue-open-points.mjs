@@ -90,9 +90,12 @@ function descriptorCandidates(env = process.env) {
   if (env.PROJECTA_APP_DATA) return [join(env.PROJECTA_APP_DATA, 'projecta-api.json')];
   const candidates = [];
   if (env.APPDATA) candidates.push(join(env.APPDATA, 'com.projecta.app', 'projecta-api.json'));
+  if (env.APPDATA) candidates.push(join(env.APPDATA, 'com.projecta.dev', 'projecta-api.json'));
   const xdg = env.XDG_DATA_HOME || (env.HOME ? join(env.HOME, '.local', 'share') : null);
   if (xdg) candidates.push(join(xdg, 'com.projecta.app', 'projecta-api.json'));
+  if (xdg) candidates.push(join(xdg, 'com.projecta.dev', 'projecta-api.json'));
   candidates.push(join(env.HOME || homedir(), 'Library', 'Application Support', 'com.projecta.app', 'projecta-api.json'));
+  candidates.push(join(env.HOME || homedir(), 'Library', 'Application Support', 'com.projecta.dev', 'projecta-api.json'));
   return candidates;
 }
 

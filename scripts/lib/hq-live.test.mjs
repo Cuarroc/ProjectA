@@ -44,6 +44,23 @@ test("descriptor candidates prefer APPDATA over LOCALAPPDATA", () => {
   assert.ok(existsSync(join("scripts", "hq-live.mjs")));
 });
 
+// Dev-build isolation (docs/setup/dev-build.md, row 7): the proxy must also
+// find the descriptor of a running Dev build; the stable app stays first.
+test("descriptor candidates also cover the dev build identifier", () => {
+  const candidates = descriptorCandidates({
+    APPDATA: "/roaming",
+    LOCALAPPDATA: "/local",
+    XDG_DATA_HOME: "/xdg",
+    HOME: "/home",
+  });
+  for (const base of ["/roaming", "/local", "/xdg", "/home/Library/Application Support"]) {
+    const stable = join(base, "com.projecta.app", "projecta-api.json");
+    const dev = join(base, "com.projecta.dev", "projecta-api.json");
+    assert.ok(candidates.includes(dev), `missing dev candidate ${dev}`);
+    assert.ok(candidates.indexOf(stable) < candidates.indexOf(dev), `stable must sort before dev for ${base}`);
+  }
+});
+
 // Tauri's app_data_dir on Linux/macOS never lives under APPDATA/LOCALAPPDATA
 // — without these, `npm run hq:live` always reported hq_api_unavailable on
 // those platforms even with the app running.
