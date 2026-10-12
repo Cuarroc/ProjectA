@@ -3306,6 +3306,7 @@ const ENV_APP_DATA: &str = "PROJECTA_APP_DATA";
 /// instead of the production queue. The single-instance mutex still uses the
 /// bundle id — do not run a proof while a production window is open.
 fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    check_build_identifier(&app.config().identifier, build_identifier::IDENTIFIER)?;
     let dir = resolve_app_data_dir(
         app.path()
             .app_data_dir()
@@ -3314,6 +3315,22 @@ fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("failed to create {}: {e}", dir.display()))?;
     Ok(dir)
+}
+
+/// The Tauri identifier (from the config overlay) and the one the build
+/// embedded for `pa` and the hooks directory must agree. A local
+/// `tauri build` with the Dev overlay but without `PROJECTA_IDENTIFIER` (or
+/// the reverse) would otherwise let the Dev app and the stable app share one
+/// database — so the app refuses to start on that data directory.
+fn check_build_identifier(runtime: &str, embedded: &str) -> Result<(), String> {
+    if runtime == embedded {
+        Ok(())
+    } else {
+        Err(format!(
+            "build identifier mismatch: the app runs as {runtime}, but pa and the hooks were \
+             built for {embedded}; rebuild with PROJECTA_IDENTIFIER={runtime}"
+        ))
+    }
 }
 
 fn resolve_app_data_dir(tauri_dir: PathBuf) -> PathBuf {
@@ -4888,6 +4905,41 @@ mod tests {
             !text.contains("confirmed"),
             "byte progress is not a confirmed delivery: {text}"
         );
+    }
+
+    /// R1290-C1: a Dev app whose `pa` and hooks were built for the stable
+    /// identifier (or the reverse) would share the stable database. The app
+    /// refuses to pick a data directory instead of drifting silently.
+    #[test]
+    fn mismatched_build_identifier_refuses_the_app_data_dir() {
+        assert_eq!(
+            super::check_build_identifier("com.projecta.dev", "com.projecta.dev"),
+            Ok(())
+        );
+        let err = super::check_build_identifier("com.projecta.dev", "com.projecta.app")
+            .expect_err("a mismatch must be refused");
+        assert!(
+            err.contains("com.projecta.dev") && err.contains("com.projecta.app"),
+            "the error names both identifiers: {err}"
+        );
+    }
+
+    /// R1290-C2: an empty or path-like `PROJECTA_IDENTIFIER` must never become
+    /// a path segment of the app-data directory.
+    #[test]
+    fn unusable_embedded_identifier_falls_back_to_stable() {
+        use crate::build_identifier::resolve_build_identifier;
+        assert_eq!(
+            resolve_build_identifier(Some("com.projecta.dev")),
+            "com.projecta.dev"
+        );
+        for bad in ["", "..", "a/b", "a\\b", "com projecta"] {
+            assert_eq!(
+                resolve_build_identifier(Some(bad)),
+                "com.projecta.app",
+                "{bad:?}"
+            );
+        }
     }
 
     #[test]

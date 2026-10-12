@@ -8,13 +8,32 @@
 //! the identifier the build embedded through `PROJECTA_IDENTIFIER` here, from
 //! one shared source.
 
-/// What the build embedded, or the stable identifier when nothing was
-/// embedded (local builds, the release pipeline).
+/// What the build embedded, or the stable identifier when nothing usable was
+/// embedded (local builds, the release pipeline). An empty or path-like value
+/// would become a path segment of the app-data directory, so it is ignored;
+/// the app's startup check then reports the mismatch with the Tauri config.
 pub(crate) const fn resolve_build_identifier(embedded: Option<&'static str>) -> &'static str {
     match embedded {
-        Some(identifier) => identifier,
-        None => "com.projecta.app",
+        Some(identifier) if is_plain_identifier(identifier) => identifier,
+        _ => "com.projecta.app",
     }
+}
+
+/// Letters, digits, `.`, `-` and `_`, with at least one letter or digit.
+const fn is_plain_identifier(identifier: &str) -> bool {
+    let bytes = identifier.as_bytes();
+    let mut has_alphanumeric = false;
+    let mut i = 0;
+    while i < bytes.len() {
+        let byte = bytes[i];
+        if byte.is_ascii_alphanumeric() {
+            has_alphanumeric = true;
+        } else if !matches!(byte, b'.' | b'-' | b'_') {
+            return false;
+        }
+        i += 1;
+    }
+    has_alphanumeric
 }
 
 /// The identifier of this build. The dev-build workflow sets
