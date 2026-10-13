@@ -35,6 +35,20 @@ const type = (text: string) => fireEvent.change(task(), { target: { value: text 
 const form = (extra = {}, projectId = "p1") => <EinreihenForm projectId={projectId} profiles={profiles} entries={[]} {...extra} />;
 describe("EinreihenForm", () => {
   beforeEach(() => { mocks.invoke.mockReset(); });
+  it("explains that enqueue stays closed while the emergency stop is still unread", async () => {
+    const pending = deferred<boolean>();
+    backend({ stop: () => pending.promise });
+    render(form());
+    type("Task");
+    expect(submit()).toBeDisabled();
+    expect(screen.getByText(T.reasonStopPending)).toBeTruthy();
+    expect(screen.queryByText(T.reasonStopped)).toBeNull();
+    await act(async () => pending.resolve(false));
+    expect(screen.queryByText(T.reasonStopPending)).toBeNull();
+    expect(screen.queryByText(T.reasonStopped)).toBeNull();
+    expect(submit().disabled).toBe(false);
+  });
+
   it("keeps enqueue disabled until emergency stop has been read", async () => {
     for (const answer of [false, undefined, new Error("offline")]) {
       const pending = deferred<boolean>();

@@ -37,8 +37,8 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   const [submitting, setSubmitting] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Not-Aus reads as active when unreadable, like the stop band: a failed read must not open the gate.
-  const [stopped, setStopped] = useState(true);
+  // `null` = Not-Aus has not been read yet. Unreadable or active stays blocked; only an explicit false opens the gate.
+  const [stopped, setStopped] = useState<boolean | null>(null);
   const ids = useId();
 
   // A write that finishes after a project switch must not publish rows, errors or busy state under the new project.
@@ -60,7 +60,7 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   }, []);
 
   const text = task.trim();
-  const reason = stopped ? T.reasonStopped : submitting ? T.reasonBusy : text === "" ? T.reasonEmpty : null;
+  const reason = stopped === null ? T.reasonStopPending : stopped ? T.reasonStopped : submitting ? T.reasonBusy : text === "" ? T.reasonEmpty : null;
 
   /** Runs one write; its outcome only counts while the project it started in is still shown. */
   const write = <V,>(call: Promise<V>, ok: (value: V) => void, failed: (detail: string) => string, done: () => void) => {
