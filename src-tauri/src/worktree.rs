@@ -93,13 +93,45 @@ pub fn add_worktree(repo_path: &str, worker_id: &str) -> Result<PathBuf, String>
     Ok(path)
 }
 
-/// Record the current commit under a create-only checkpoint reference.
+/// Pin `HEAD^{commit}` at `refs/projecta/checkpoints/<run>/<step>`.
+///
+/// Identifiers are single ref components using the rewind planner's validation.
+/// The reference must be absent, even when an existing checkpoint has the same
+/// commit. HEAD, index and working files are untouched; dirty work is not saved.
 #[cfg_attr(
     not(test),
     expect(dead_code, reason = "V2-B8b: step integration follows")
 )]
-pub fn checkpoint(_worktree: &str, _run: &str, _step: &str) -> Result<String, String> {
-    Ok(String::new())
+pub fn checkpoint(worktree: &str, run: &str, step: &str) -> Result<String, String> {
+    for (label, id) in [("run", run), ("step", step)] {
+        if id.contains('/') || !rewind_plan::ref_name_gueltig(id) {
+            return Err(format!("invalid checkpoint {label} identifier"));
+        }
+    }
+    let reference = format!("refs/projecta/checkpoints/{run}/{step}");
+    ensure_git_repo(worktree)?;
+    let format = git(["-C", worktree, "rev-parse", "--show-object-format"])?;
+    let oid_len = match format.trim() {
+        "sha1" => 40,
+        "sha256" => 64,
+        other => return Err(format!("unsupported repository object format: {other}")),
+    };
+    let head = git(["-C", worktree, "rev-parse", "--verify", "HEAD^{commit}"])?;
+    let oid = head.trim();
+    if oid.len() != oid_len || !oid.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err("git returned an invalid HEAD commit ID".to_owned());
+    }
+    // Compare-and-create under git's ref lock; never follow a symbolic ref.
+    git([
+        "-C",
+        worktree,
+        "update-ref",
+        "--no-deref",
+        &reference,
+        oid,
+        &"0".repeat(oid_len),
+    ])?;
+    Ok(oid.to_owned())
 }
 
 /// Remove a worktree and its checkout directory. The branch is left alone.
@@ -274,6 +306,16 @@ mod tests {
             checkpoint_oid(&repo, "refs/projecta/checkpoints/run-1/1"),
             first
         );
+        for target in ["refs/heads/missing", "HEAD"] {
+            let reference = "refs/projecta/checkpoints/run-1/symbolic";
+            checkpoint_git(&repo, &["symbolic-ref", reference, target]);
+            assert!(checkpoint(&path, "run-1", "symbolic").is_err());
+            assert_eq!(
+                checkpoint_git(&repo, &["symbolic-ref", "--no-recurse", reference]),
+                format!("{target}\n").as_bytes()
+            );
+            assert_eq!(checkpoint_oid(&repo, "HEAD^{commit}"), second);
+        }
     }
 
     #[test]
