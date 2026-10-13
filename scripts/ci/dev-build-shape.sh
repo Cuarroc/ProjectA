@@ -95,8 +95,9 @@ concurrency="$(sed -n 's/^POLICY concurrency/concurrency/p' <<< "$shape" | LC_AL
 
 # Without the embedded identifier the Dev build's pa.exe and hooks directory
 # silently fall back to the stable app's data (docs/setup/dev-build.md rows
-# 1-2). The env var only reaches the build when it sits in the SAME step that
-# runs `tauri build` (R1290-C4) — anywhere else in the file it is dead text.
+# 1-2). We deliberately require step-level env on the `tauri build` step
+# (R1290-C4). GitHub Actions also exports job/workflow-level env, but this
+# guard requires the identifier next to the build command for explicitness.
 # The awk splits the workflow into step items (a new item starts at the first
 # `- ` indent below `steps:`) and prints one verdict per step that builds:
 # OK (carries the identifier) or MISSING.
@@ -110,7 +111,7 @@ build_steps="$(awk '
   {
     match($0, /^ */); ind = RLENGTH
     if (!in_steps) {
-      if ($0 ~ /^[ \t]*steps:[ \t]*$/) { in_steps = 1; steps_ind = ind }
+      if ($0 ~ /^[ \t]*steps:[ \t]*$/) { in_steps = 1; steps_ind = ind; item_ind = -1 }
       next
     }
     if (ind <= steps_ind) { flush(); in_steps = 0; next }
