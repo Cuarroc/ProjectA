@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -54,7 +54,7 @@ describe("Steuerung route behind D1", () => {
     const period = await book.findByRole("region", { name: "Zeitraum" });
     expect(within(period).getByText("8 Anfragen · 9.000 Tokens rein · 700 Tokens raus")).toBeInTheDocument();
     expect(within(period).getByText("40 Anfragen · 52.000 Tokens rein · 18.000 Tokens raus")).toBeInTheDocument();
-    const rows = within(book.getByRole("table", { name: "Verbrauch je Modell" })).getAllByRole("row").slice(1);
+    const rows = within(book.getByRole("table")).getAllByRole("row").slice(1);
     expect(rows.map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent))).toEqual([
       ["anthropic", "demo-a", "1", "1.000", "200"],
       ["openai", "demo-b", "1", "500", "50"],
@@ -87,6 +87,7 @@ describe("Steuerung route behind D1", () => {
     localStorage.removeItem(FLAG_KEY);
     mocks.invoke.mockClear();
     const legacy = render(<App />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Insights" }));
     await screen.findByTestId("insights");
     expect(legacy.container.querySelector(".kb-panel")).toBeNull();
     expect(legacy.container.querySelector(".g-shell")).toBeNull();
