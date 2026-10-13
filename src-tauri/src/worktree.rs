@@ -215,6 +215,62 @@ mod tests {
     }
 
     #[test]
+    fn checkpoint_writes_reflog_without_committer_identity() {
+        const CHILD_REPO: &str = "PROJECTA_CHECKPOINT_IDENTITY_TEST_REPO";
+        if let Some(repo) = std::env::var_os(CHILD_REPO) {
+            checkpoint(&repo.to_string_lossy(), "run-1", "step-1").unwrap();
+            return;
+        }
+        let dir = TempDir::new("checkpoint-identity");
+        let repo = init_repo(&dir.path().join("repo"));
+        checkpoint_git(&repo, &["config", "core.logAllRefUpdates", "always"]);
+        for key in ["user.name", "user.email"] {
+            checkpoint_git(&repo, &["config", key, ""]);
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "worktree::tests::checkpoint_writes_reflog_without_committer_identity",
+                "--nocapture",
+            ])
+            .env(CHILD_REPO, &repo)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", dir.path().join("missing-config"))
+            .env("GIT_AUTHOR_NAME", "")
+            .env("GIT_AUTHOR_EMAIL", "")
+            .env("GIT_COMMITTER_NAME", "")
+            .env("GIT_COMMITTER_EMAIL", "")
+            .env("EMAIL", "")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let reference = "refs/projecta/checkpoints/run-1/step-1";
+        assert_eq!(
+            checkpoint_oid(&repo, reference),
+            checkpoint_oid(&repo, "HEAD")
+        );
+        assert_eq!(
+            checkpoint_git(&repo, &["reflog", "show", "--format=%gn <%ge>", reference]),
+            b"ProjectA <noreply@projecta.local>\n"
+        );
+    }
+
+    #[test]
+    fn checkpoint_validation_error_names_rejected_value() {
+        for invalid in [
+            "", "a/b", "..", "a..b", ".hidden", "x.lock", "a.", "a b", "a\tb", "a\nb", "a\0b",
+            "a~b", "a^b", "a:b", "a?b", "a*b", "a[b", "a\\b", "a@{b",
+        ] {
+            for (label, run, step) in [("run", invalid, "1"), ("step", "run-1", invalid)] {
+                assert_eq!(
+                    checkpoint("unused", run, step).unwrap_err(),
+                    format!("invalid checkpoint {label} identifier: {invalid:?}")
+                );
+            }
+        }
+    }
+
+    #[test]
     fn checkpoint_records_head_without_changing_worktree() {
         for format in ["sha1", "sha256"] {
             let dir = TempDir::new("checkpoint-preserve");
