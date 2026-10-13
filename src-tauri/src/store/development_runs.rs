@@ -1442,6 +1442,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn typed_gate_evidence_ignores_malformed_untrusted_rows() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 1)
+            .await
+            .unwrap();
+        let expected = vec![gate_result("fmt", 101), gate_result("fmt", 0)];
+        for (time, result) in [(3, &expected[1]), (2, &expected[0])] {
+            store
+                .record_development_gate_result(
+                    &run,
+                    "worker-a",
+                    7,
+                    &time.to_string(),
+                    time,
+                    result.clone(),
+                )
+                .await
+                .unwrap();
+        }
+        let mut agent = evidence(COMMIT_A);
+        agent.payload = serde_json::json!({"kind":"gate-result", "schemaVersion":1,
+            "lane":" ", "gate":"agent", "exitCode":"0"});
+        store
+            .record_development_evidence(&run, "worker-a", 7, agent)
+            .await
+            .unwrap();
+        assert_eq!(
+            store.list_development_gate_results(&run).await.unwrap(),
+            expected
+        );
+    }
+
+    #[tokio::test]
+    async fn typed_gate_evidence_rejects_short_sha_before_writing() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        let mut result = gate_result("fmt", 0);
+        result.sha = "abc1234".into();
+        let error = store
+            .record_development_gate_result(&run, "worker-a", 7, "short-sha", 2, result)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error,
+            "candidateCommit must be a full Git commit ID in lower case"
+        );
+        assert!(store
+            .list_development_evidence(&run)
+            .await
+            .unwrap()
+            .is_empty());
+    }
+
+    #[tokio::test]
     async fn typed_gate_evidence_round_trips_without_promoting_agent_claims() {
         let (_dir, store, _root, task) = fixture().await;
         let run = launched_run(&store, &task, "worker-a", 7, Some("claude")).await;
