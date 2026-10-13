@@ -171,3 +171,49 @@ test('package size accepts the PR size exception label', t => {
     if (name === 'size-exception') assert.match(result.stdout, /package-size: exception label present/);
   }
 });
+
+test('package size exception preserves validation and measurement', async t => {
+  for (const [name, path, content, status] of [
+    ['numeric limit', 'large.txt', 'line\n'.repeat(417), 0],
+    ['binary', 'binary.dat', Buffer.from([0, 1, 2]), 1],
+    ['raised limit', configPath, JSON.stringify({ ...config, maximumLines: 999 }), 2],
+    ['widened exclusions', configPath, JSON.stringify({ ...config, excludedPaths: ['*'] }), 2],
+    ['missing base', 'large.txt', 'line\n', 2],
+  ]) await t.test(name, t => {
+    const { cwd, put, commit, run, env } = fixture(t);
+    put(path, content);
+    commit();
+    env.GITHUB_EVENT_NAME = 'pull_request';
+    env.GITHUB_EVENT_PATH = join(cwd, 'event.json');
+    put('event.json', JSON.stringify({ pull_request: { labels: [{ name: 'size-exception' }] } }));
+    if (name === 'missing base') delete env.BASE_SHA;
+    const result = run();
+    assert.equal(result.status, status, result.stdout + result.stderr);
+    if (name === 'numeric limit') expectResult(result, 0, 417, 0);
+    if (name === 'binary') assert.match(result.stderr, /not numerically measurable/);
+    if (name === 'raised limit' || name === 'widened exclusions') assert.match(result.stderr, /widened above base/);
+    if (name === 'missing base') assert.match(result.stderr, /requires a PR base SHA/);
+  });
+});
+
+test('package size reports numeric and binary violations in English', t => {
+  const { put, commit, run } = fixture(t);
+  put('large.txt', 'line\n'.repeat(301));
+  commit();
+  const numeric = run();
+  expectResult(numeric, 1, 301, 0);
+  assert.match(numeric.stderr, /package-size: BLOCKED: total=301 exceeds maximumLines=300/);
+  put('binary.dat', Buffer.from([0, 1, 2]));
+  commit();
+  const binary = run();
+  assert.equal(binary.status, 1);
+  assert.match(binary.stderr, /package-size: BLOCKED: diff not numerically measurable/);
+});
+
+test('package size fixtures ignore inherited commit signing', t => {
+  const { git, commit, run } = fixture(t);
+  git('config', 'commit.gpgsign', 'true');
+  git('config', 'gpg.program', 'missing-package-size-fixture-signer');
+  commit();
+  expectResult(run(), 0, 0, 0);
+});
