@@ -108,9 +108,12 @@ describe("terminal route", () => {
   it("selects Glass tabs while mounting only the focused session", async () => {
     const view = render(<App />);
     await openShellTab();
+    await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     fireEvent.click(screen.getByRole("button", { name: "Neue Sitzung" }));
     fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
     await waitFor(() => expect(active(ptyOutput("session-b"))).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: "Terminal teilen" }));
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(2);
     go("#/leitstand/terminal");
     const tabs = within(await screen.findByRole("tablist", { name: "Terminal-Sitzungen" })).getAllByRole("tab");
     expect(tabs[1]).toHaveAttribute("aria-selected", "true");

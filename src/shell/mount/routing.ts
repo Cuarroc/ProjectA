@@ -18,6 +18,8 @@ export const trim = (path: string) => path.replace(/\/+$/, "");
 export const TOOLS_PATH = "/leitstand/werkzeuge";
 export const isTools = (path: string) => trim(path) === TOOLS_PATH;
 
+export const isTerminal = (path: string) => trim(path) === "/leitstand/terminal";
+
 /** The new Leitstand owns `/leitstand` (V2-S01a) and `/leitstand/betrieb` (V2-S01b); the rest below it stays the old view. */
 export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb"].includes(trim(path));
 
@@ -39,7 +41,7 @@ export function hasLegacyPanel(path: string): boolean {
 
 /** Goal to show for a route; the current one is kept while it already belongs there. */
 export function goalForPath(path: string, current: AppGoal): AppGoal {
-  if (isTools(path)) return current;
+  if (isTools(path) || isTerminal(path)) return current;
   if (GOAL_ROUTE[current] === base(path)) return current;
   const goal = (Object.keys(GOAL_ROUTE) as AppGoal[]).find((g) => GOAL_ROUTE[g] === base(path));
   return goal ?? current;
