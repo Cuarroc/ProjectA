@@ -61,6 +61,68 @@ const openShellTab = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
 };
 
+const workers = ["one", "two"].map((id) => ({ id, projectId: "p1", task: `Task ${id}`, profileId: "shell",
+  branch: id, worktreePath: "wt", sessionId: `pty-${id}`, status: "running", createdAt: 1 }));
+function workerData(restore = false) {
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation(async (command: string, args: unknown) => {
+    const list = restore ? workers.map((w) => ({ ...w, sessionId: null, status: "exited" })) : workers;
+    if (command === "list_workers") return list;
+    if (command === "get_board_state") return { cards: list.map((worker) => ({ worker, column: "working" })), coordinators: [] };
+    if (command === "get_session_restore") return { scrollback: "saved output", liveSession: false };
+    return base(command, args);
+  });
+  localStorage.setItem("projecta.activeProjectId", "p1");
+}
+
+it("opens the selected card worker without changing other session tabs", async () => {
+  workerData();
+  const view = render(<App />);
+  await openShellTab();
+  for (const index of [0, 1, 0]) {
+    go("#/leitstand");
+    const cards = within(await screen.findByRole("region", { name: "Agenten" })).getAllByRole("article");
+    fireEvent.click(within(cards[index]).getByRole("button", { name: "Shell öffnen" }));
+    const tabs = within(await screen.findByRole("tablist", { name: "Terminal-Sitzungen" }));
+    await waitFor(() => expect(tabs.getByRole("tab", { name: `Task ${workers[index].id}` })).toHaveAttribute("aria-selected", "true"));
+    expect(tabs.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(index === 0 && tabs.getAllByRole("tab").length === 2
+      ? ["Shell", "Task one"] : ["Shell", "Task one", "Task two"]);
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  }
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some(([name]) => name === "kill_pty")).toBe(false);
+});
+
+it("opens deep linked workers on initial load and hash changes", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=two";
+  const view = render(<App />);
+  expect(await screen.findByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+  go("#/leitstand/terminal?worker=one");
+  expect(await screen.findByRole("tab", { name: "Task one" })).toHaveAttribute("aria-selected", "true");
+  fireEvent.click(screen.getByRole("tab", { name: "Task two" }));
+  expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some(([name]) => ["spawn_pty", "kill_pty"].includes(name))).toBe(false);
+});
+
+it("opens restore for a card without a live session while retaining existing tabs", async () => {
+  workerData(true);
+  const view = render(<App />);
+  await openShellTab();
+  go("#/leitstand");
+  fireEvent.click((await screen.findAllByRole("button", { name: "Shell öffnen" }))[1]);
+  expect(await screen.findByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeVisible();
+  expect(await screen.findByText("saved output")).toBeVisible();
+  expect(mocks.invoke).toHaveBeenCalledWith("get_session_restore", { workerId: "two" });
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(0);
+  fireEvent.click(screen.getByRole("tab", { name: "Shell" }));
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  expect(screen.queryByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeNull();
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some(([name]) => ["respawn_worker", "kill_pty"].includes(name))).toBe(false);
+});
+
 // Real App, SessionProvider, ShellMount and TerminalView; mock only IPC and xterm.
 describe("terminal route", () => {
   // Keep the historical test name for the existing red-first trailer; tools may hide the viewer.
