@@ -93,6 +93,15 @@ pub fn add_worktree(repo_path: &str, worker_id: &str) -> Result<PathBuf, String>
     Ok(path)
 }
 
+/// Record the current commit under a create-only checkpoint reference.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "V2-B8b: step integration follows")
+)]
+pub fn checkpoint(_worktree: &str, _run: &str, _step: &str) -> Result<String, String> {
+    Ok(String::new())
+}
+
 /// Remove a worktree and its checkout directory. The branch is left alone.
 pub fn remove_worktree(repo_path: &str, worktree_path: &Path) -> Result<(), String> {
     git([
@@ -153,6 +162,161 @@ where
 mod tests {
     use super::*;
     use crate::testutil::{init_repo, TempDir};
+
+    // Independent git observations; do not use the production runner as the oracle.
+    fn checkpoint_git(repo: &Path, args: &[&str]) -> Vec<u8> {
+        let output = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .output()
+            .expect("run fixture git");
+        assert!(output.status.success(), "{:?}", output);
+        output.stdout
+    }
+
+    fn checkpoint_oid(repo: &Path, revision: &str) -> String {
+        String::from_utf8(checkpoint_git(repo, &["rev-parse", "--verify", revision]))
+            .unwrap()
+            .trim()
+            .to_owned()
+    }
+
+    #[test]
+    fn checkpoint_records_head_without_changing_worktree() {
+        for format in ["sha1", "sha256"] {
+            let dir = TempDir::new("checkpoint-preserve");
+            let repo = dir.path().join("repo");
+            std::fs::create_dir_all(&repo).unwrap();
+            checkpoint_git(&repo, &["init", &format!("--object-format={format}")]);
+            init_repo(&repo);
+            std::fs::write(repo.join("tracked"), b"committed\n").unwrap();
+            checkpoint_git(&repo, &["add", "tracked"]);
+            checkpoint_git(&repo, &["commit", "--no-gpg-sign", "-m", "tracked"]);
+            let tree = add_worktree(&repo.to_string_lossy(), "checkpoint-worker").unwrap();
+            std::fs::write(tree.join("tracked"), b"staged\n").unwrap();
+            checkpoint_git(&tree, &["add", "tracked"]);
+            std::fs::write(tree.join("tracked"), b"unstaged\0bytes\n").unwrap();
+            std::fs::write(tree.join("untracked"), b"untracked\0bytes\n").unwrap();
+            let head = checkpoint_oid(&tree, "HEAD^{commit}");
+            let index =
+                String::from_utf8(checkpoint_git(&tree, &["rev-parse", "--git-path", "index"]))
+                    .unwrap();
+            let index = tree.join(index.trim());
+            let head_file =
+                String::from_utf8(checkpoint_git(&tree, &["rev-parse", "--git-path", "HEAD"]))
+                    .unwrap();
+            let head_file = tree.join(head_file.trim());
+            let status = checkpoint_git(&tree, &["status", "--porcelain=v1", "-z"]);
+            let index_before = std::fs::read(&index).unwrap();
+            let head_before = std::fs::read(&head_file).unwrap();
+            let tracked = std::fs::read(tree.join("tracked")).unwrap();
+            let untracked = std::fs::read(tree.join("untracked")).unwrap();
+
+            let oid = checkpoint(&tree.to_string_lossy(), "run-1", "step-1").unwrap();
+
+            assert_eq!(oid, head);
+            assert_eq!(head.len(), if format == "sha1" { 40 } else { 64 });
+            assert_eq!(
+                checkpoint_oid(&repo, "refs/projecta/checkpoints/run-1/step-1"),
+                head
+            );
+            assert_eq!(checkpoint_oid(&tree, "HEAD^{commit}"), head);
+            assert_eq!(std::fs::read(head_file).unwrap(), head_before);
+            assert_eq!(std::fs::read(index).unwrap(), index_before);
+            assert_eq!(std::fs::read(tree.join("tracked")).unwrap(), tracked);
+            assert_eq!(std::fs::read(tree.join("untracked")).unwrap(), untracked);
+            assert_eq!(
+                checkpoint_git(&tree, &["status", "--porcelain=v1", "-z"]),
+                status
+            );
+        }
+    }
+
+    #[test]
+    fn checkpoint_ref_collision_preserves_the_first_commit() {
+        let dir = TempDir::new("checkpoint-collision");
+        let repo = init_repo(&dir.path().join("repo"));
+        let path = repo.to_string_lossy();
+        let first = checkpoint_oid(&repo, "HEAD^{commit}");
+        checkpoint(&path, "run-1", "1").unwrap();
+        checkpoint_git(
+            &repo,
+            &["commit", "--allow-empty", "--no-gpg-sign", "-m", "advance"],
+        );
+        let second = checkpoint_oid(&repo, "HEAD^{commit}");
+        assert_ne!(first, second);
+
+        assert!(
+            checkpoint(&path, "run-1", "1").is_err(),
+            "occupied ref must fail"
+        );
+        assert_eq!(
+            checkpoint_oid(&repo, "refs/projecta/checkpoints/run-1/1"),
+            first
+        );
+        assert_eq!(checkpoint_oid(&repo, "HEAD^{commit}"), second);
+        assert_eq!(checkpoint(&path, "run-1", "2").unwrap(), second);
+        assert_eq!(
+            checkpoint_oid(&repo, "refs/projecta/checkpoints/run-1/2"),
+            second
+        );
+        assert!(
+            checkpoint(&path, "run-1", "2").is_err(),
+            "same OID is still a collision"
+        );
+        checkpoint_git(&repo, &["pack-refs", "--all"]);
+        assert!(
+            checkpoint(&path, "run-1", "1").is_err(),
+            "packed ref must fail"
+        );
+        assert_eq!(
+            checkpoint_oid(&repo, "refs/projecta/checkpoints/run-1/1"),
+            first
+        );
+    }
+
+    #[test]
+    fn checkpoint_rejects_invalid_identity_and_unborn_head() {
+        let dir = TempDir::new("checkpoint-invalid");
+        let repo = init_repo(&dir.path().join("repo"));
+        let path = repo.to_string_lossy();
+        for invalid in [
+            "", "a/b", "..", "a..b", ".hidden", "x.lock", "a.", "a b", "a\tb", "a\nb", "a\0b",
+            "a~b", "a^b", "a:b", "a?b", "a*b", "a[b", "a\\b", "a@{b",
+        ] {
+            for (run, step) in [(invalid, "1"), ("run-1", invalid)] {
+                assert!(
+                    checkpoint(&path, run, step).is_err(),
+                    "accepted {run:?}/{step:?}"
+                );
+            }
+        }
+        assert!(checkpoint_git(&repo, &["for-each-ref", "refs/projecta/checkpoints/"]).is_empty());
+        // Option-looking components are names below the fixed namespace, never git flags.
+        let head = checkpoint_oid(&repo, "HEAD^{commit}");
+        assert_eq!(checkpoint(&path, "--help", "--delete").unwrap(), head);
+        assert_eq!(
+            checkpoint_oid(&repo, "refs/projecta/checkpoints/--help/--delete"),
+            head
+        );
+        let unborn = dir.path().join("unborn");
+        std::fs::create_dir_all(&unborn).unwrap();
+        checkpoint_git(&unborn, &["init"]);
+        assert!(checkpoint(&unborn.to_string_lossy(), "run-1", "1").is_err());
+        assert!(checkpoint_git(&unborn, &["for-each-ref"]).is_empty());
+        assert!(checkpoint(&dir.path().to_string_lossy(), "run-1", "1").is_err());
+        // A real update-ref failure (namespace conflict) must propagate.
+        checkpoint_git(
+            &repo,
+            &["update-ref", "refs/projecta/checkpoints/blocked", &head],
+        );
+        assert!(checkpoint(&path, "blocked", "1").is_err());
+        assert_eq!(
+            checkpoint_oid(&repo, "refs/projecta/checkpoints/blocked"),
+            head
+        );
+    }
 
     #[test]
     fn paths_and_branches_follow_the_convention() {
