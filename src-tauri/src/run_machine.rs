@@ -55,7 +55,8 @@ pub struct BoundRecord {
     pub reference: String,
 }
 pub enum Action {
-    Work,
+    /// Authenticated click scoped to this order; the adapter still owns fresh admission/spawn.
+    Work(Option<String>),
     Prove(Vec<GateResult>),
     Review(ReviewReport),
     Approve(BoundRecord),
@@ -192,8 +193,9 @@ impl Run {
                 self.approval = None;
                 Stale
             }
-            (Ordered | Waiting | Stale | Reviewing, Work) => {
-                if self.order.start_authority.trim().is_empty()
+            (Ordered | Waiting | Stale | Reviewing, Work(click)) => {
+                if click.as_deref() != Some(self.order.start_authority.as_str())
+                    || self.order.start_authority.trim().is_empty()
                     || self.sha.trim().is_empty()
                     || self.order.template.trim().is_empty()
                 {
@@ -292,7 +294,8 @@ mod tests {
         }
     }
     fn reviewing(run: &mut Run) {
-        run.transition(Action::Work).unwrap();
+        run.transition(Action::Work(Some("click-1".into())))
+            .unwrap();
         run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
         run.transition(Action::Review(report("a", run.order().risk)))
             .unwrap();
@@ -385,8 +388,16 @@ mod tests {
                 }
                 assert_eq!(run.state(), state);
                 let before = run.clone();
-                assert_eq!(run.transition(Action::Work), Err(Refusal::InvalidInput));
-                assert_eq!(run, before);
+                for click in [None, Some(""), Some(" \n"), Some("click-2")] {
+                    assert_eq!(
+                        run.transition(Action::Work(click.map(String::from))),
+                        Err(Refusal::InvalidInput)
+                    );
+                    assert_eq!(run, before);
+                }
+                run.transition(Action::Work(Some("click-1".into())))
+                    .unwrap();
+                assert_eq!(run.state(), Working);
             }
         }
     }
@@ -492,9 +503,12 @@ mod tests {
                 match state {
                     Waiting => run.transition(Action::Wait).unwrap(),
                     Stale => run.transition(Action::Candidate("b".into())).unwrap(),
-                    Working => run.transition(Action::Work).unwrap(),
+                    Working => run
+                        .transition(Action::Work(Some("click-1".into())))
+                        .unwrap(),
                     Evidenced => {
-                        run.transition(Action::Work).unwrap();
+                        run.transition(Action::Work(Some("click-1".into())))
+                            .unwrap();
                         run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
                     }
                     Reviewing | Approved | Delivered => {
@@ -542,7 +556,8 @@ mod tests {
         invalid.push(blank);
         for review in invalid {
             let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
-            run.transition(Action::Work).unwrap();
+            run.transition(Action::Work(Some("click-1".into())))
+                .unwrap();
             run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
             for state in [Evidenced, Reviewing] {
                 if state == Reviewing {
@@ -568,7 +583,8 @@ mod tests {
         let mut approved = run.clone();
         approved.transition(Action::Approve(record("a"))).unwrap();
         assert_eq!(approved.state(), Approved);
-        run.transition(Action::Work).unwrap();
+        run.transition(Action::Work(Some("click-1".into())))
+            .unwrap();
         assert_eq!(run.state(), Working);
         assert_eq!(
             run.transition(Action::Approve(record("a"))),
@@ -614,7 +630,9 @@ mod tests {
                 );
                 assert_eq!(run.order().kind, kind);
                 assert_eq!(run.evidence_status(), ProofStatus::Belegt);
-                assert!(run.transition(Action::Work).is_err());
+                assert!(run
+                    .transition(Action::Work(Some("click-1".into())))
+                    .is_err());
             }
         }
     }
@@ -632,10 +650,13 @@ mod tests {
             assert_eq!(run, before);
         }
         run.transition(Action::Wait).unwrap();
-        run.transition(Action::Work).unwrap();
+        run.transition(Action::Work(Some("click-1".into())))
+            .unwrap();
         run.transition(Action::Reject).unwrap();
         assert_eq!(run.state(), Step::Rejected);
-        assert!(run.transition(Action::Work).is_err());
+        assert!(run
+            .transition(Action::Work(Some("click-1".into())))
+            .is_err());
     }
     #[test]
     fn new_commit_stales_evidence_and_revokes_approval() {
@@ -646,7 +667,8 @@ mod tests {
         assert_eq!(run.state(), Step::Stale);
         assert_eq!(run.evidence_status(), ProofStatus::Veraltet);
         assert!(run.transition(Action::Deliver(record("a"))).is_err());
-        run.transition(Action::Work).unwrap();
+        run.transition(Action::Work(Some("click-1".into())))
+            .unwrap();
         run.transition(Action::Prove(vec![gate("b", 0)])).unwrap();
         assert_eq!(
             run.transition(Action::Review(report("a", run.order().risk))),
@@ -659,7 +681,8 @@ mod tests {
     fn no_approval_without_current_successful_evidence() {
         for gates in [vec![], vec![gate("a", 1)], vec![gate("old", 0)]] {
             let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
-            run.transition(Action::Work).unwrap();
+            run.transition(Action::Work(Some("click-1".into())))
+                .unwrap();
             let before = run.clone();
             assert_eq!(
                 run.transition(Action::Prove(gates)),
