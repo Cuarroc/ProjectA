@@ -26,6 +26,7 @@ pub enum RiskClass {
 #[derive(Debug)]
 pub struct Setting {
     pub key: &'static str,
+    pub scope: &'static str,
     pub owner: Option<Owner>,
     pub area: &'static str,
     pub risk_class: RiskClass,
@@ -201,6 +202,7 @@ mod tests {
     fn setting(owner: Option<Owner>) -> Setting {
         Setting {
             key: "queue.limit",
+            scope: "app",
             owner,
             area: "places",
             risk_class: RiskClass::Ordinary,
@@ -395,5 +397,55 @@ mod tests {
         }
         assert_eq!(r.journal(), before);
         r.transition(id, Checked, &a, 3).unwrap();
+    }
+    #[test]
+    fn same_key_different_scopes_register_independently() {
+        let a = actor(Some(Owner::User));
+        let project_setting = Setting {
+            scope: "project",
+            ..setting(a.authority)
+        };
+        let app_setting = Setting {
+            scope: "app",
+            ..setting(a.authority)
+        };
+        let settings = [project_setting, app_setting];
+        let mut r = Register::new(&settings);
+        let mut project_change = request(0);
+        project_change.scope = "project".into();
+        let mut app_change = request(0);
+        app_change.scope = "app".into();
+        let project_id = r.submit(project_change, &a, 1).unwrap();
+        let app_id = r.submit(app_change, &a, 2).unwrap();
+        r.transition(project_id, Checked, &a, 3).unwrap();
+        r.transition(app_id, Checked, &a, 4).unwrap();
+        assert_eq!(r.journal()[0].change.scope, "project");
+        assert_eq!(r.journal()[1].change.scope, "app");
+        let mut dup_scope = setting(a.authority);
+        dup_scope.scope = "app";
+        let dup_settings = [setting(a.authority), dup_scope];
+        let mut r2 = Register::new(&dup_settings);
+        assert_eq!(r2.submit(request(0), &a, 1), Err(Error::InvalidRegistry));
+    }
+    #[test]
+    fn blank_request_fields_are_rejected() {
+        let a = actor(Some(Owner::User));
+        let settings = [setting(a.authority)];
+        let cases: [(&str, &dyn Fn(&mut Request)); 3] = [
+            ("scope", &|c: &mut Request| c.scope = "  ".into()),
+            ("reason", &|c: &mut Request| c.reason = "".into()),
+            ("evidence", &|c: &mut Request| c.evidence = "  ".into()),
+        ];
+        for (label, mutate) in cases {
+            let mut r = Register::new(&settings);
+            let mut change = request(0);
+            mutate(&mut change);
+            assert_eq!(
+                r.submit(change, &a, 1),
+                Err(Error::InvalidRegistry),
+                "blank {label} should be rejected"
+            );
+            assert!(r.journal().is_empty(), "blank {label} must not journal");
+        }
     }
 }
