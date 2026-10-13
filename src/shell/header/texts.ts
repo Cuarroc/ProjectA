@@ -43,5 +43,6 @@ export const DEV_TEXT = {
   feedbackWhat: "Was ist passiert?",
   feedbackExpected: "Was hättest du erwartet? (optional)",
   feedbackSubmit: "Meldung speichern",
-  feedbackSaved: "Gespeichert – wird beim nächsten Abgleich übernommen",
+  feedbackSaved: "Meldung angenommen – wird beim nächsten Abgleich übernommen",
+  feedbackFailed: "Meldung nicht angenommen. Bitte erneut versuchen.",
 };

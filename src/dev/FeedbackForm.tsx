@@ -7,21 +7,24 @@ export function FeedbackForm() {
   const [what, setWhat] = useState("");
   const [expected, setExpected] = useState("");
   const [saved, setSaved] = useState(false);
+  const [pending, setPending] = useState(false), [failed, setFailed] = useState(false);
   const whatId = useId(), expectedId = useId();
   if (saved) return <p role="status">{DEV_TEXT.feedbackSaved}</p>;
   return (
-    <form className="g-dev-experiment" onSubmit={(event) => {
+    <form className="g-dev-experiment" onSubmit={async (event) => {
       event.preventDefault();
-      if (!what.trim()) return;
-      reportFrontendFeedback(what.trim(), expected.trim());
-      setSaved(true);
+      if (!what.trim() || pending) return;
+      setPending(true); setFailed(false);
+      const accepted = await reportFrontendFeedback(what.trim(), expected.trim());
+      setSaved(accepted); setFailed(!accepted); setPending(false);
     }}>
       <div>
         <p><label className="field-label" htmlFor={whatId}>{DEV_TEXT.feedbackWhat}</label></p>
         <p><textarea id={whatId} className="field field-textarea" value={what} onChange={(event) => setWhat(event.target.value)} required rows={3} /></p>
         <p><label className="field-label" htmlFor={expectedId}>{DEV_TEXT.feedbackExpected}</label></p>
         <p><textarea id={expectedId} className="field field-textarea" value={expected} onChange={(event) => setExpected(event.target.value)} rows={2} /></p>
-        <p><Button type="submit" variant="primary" size="sm">{DEV_TEXT.feedbackSubmit}</Button></p>
+        {failed && <p role="alert">{DEV_TEXT.feedbackFailed}</p>}
+        <p><Button type="submit" variant="primary" size="sm" disabled={pending}>{DEV_TEXT.feedbackSubmit}</Button></p>
       </div>
     </form>
   );

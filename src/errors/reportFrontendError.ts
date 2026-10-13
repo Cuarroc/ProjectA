@@ -43,23 +43,23 @@ export function recentErrorSignatures(): string[] {
   return [...signatures];
 }
 /** Write one user feedback entry through the frontend error log path. */
-export function reportFrontendFeedback(what: string, expected: string): void {
+export function reportFrontendFeedback(what: string, expected: string): Promise<boolean> {
   try {
     // buildInfo is dev-only code: load it lazily so the production error
     // handlers above never depend on it at module-load time.
-    void import("../dev/buildInfo").then(({ buildInfo }) => {
+    return import("../dev/buildInfo").then(({ buildInfo }) => {
       const context = bounded(
         `sha="${buildInfo().sha}" at="${new Date().toISOString()}" recent="${signatures.join(" | ")}"`,
         2048,
       );
-      void logFrontendFeedback(
+      return logFrontendFeedback(
         bounded(what, 2048),
         bounded(expected, 1024),
         bounded(window.location.pathname, 256),
         context,
-      ).catch(() => {});
-    }).catch(() => {});
-  } catch { /* Feedback is best effort, including when the IPC bridge is absent. */ }
+      );
+    }).catch(() => false);
+  } catch { return Promise.resolve(false); }
 }
 export function installFrontendErrorHandlers(): () => void {
   const onError = (event: ErrorEvent) => reportFrontendError(event.error ?? event.message);
