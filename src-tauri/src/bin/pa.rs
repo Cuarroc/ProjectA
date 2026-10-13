@@ -6098,7 +6098,7 @@ mod tests {
             Some(value) => std::env::set_var(ENV_APP_DATA, value),
             None => std::env::remove_var(ENV_APP_DATA),
         }
-        let db = resolved.expect("the test host has APPDATA/HOME");
+        let db = resolved.expect("the platform app-data base is available");
         assert_eq!(
             db.file_name().and_then(|name| name.to_str()),
             Some("projecta.db")

@@ -978,7 +978,7 @@ mod tests {
         let dir = resolved.expect("the test host has APPDATA/HOME");
         assert_eq!(
             dir.file_name().and_then(|name| name.to_str()),
-            Some(IDENTIFIER),
+            Some(crate::build_identifier::IDENTIFIER),
             "the app-data directory ends with the embedded build identifier: {}",
             dir.display()
         );
