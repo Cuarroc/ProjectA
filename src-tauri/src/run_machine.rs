@@ -2,7 +2,9 @@
 //! Callers supply trusted plans and authenticated authority scoped to this order (ADR-V2-03).
 //! RUN-2/3/4 own execution/review/delivery; ST-C1 owns persistence.
 #![cfg_attr(not(test), allow(dead_code))] // Unwired until RUN-2/3/4; tests exercise it.
+use crate::preflight::{self, Blocker, Facts, HostFacts, Report};
 use crate::readiness::proof::{GateResult, LanePlan, ProofSet, ProofStatus};
+use crate::workers::queue_order::QueueState;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OrderKind {
     ProjectPackage,
@@ -69,6 +71,23 @@ pub enum Refusal {
     EvidenceRequired,
     ReviewRequired,
 }
+/// Admission is only a proposal; a future executor must supply a real spawn receipt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartProposal {
+    pub profile: Report,
+    /// None means not observed, not proven capacity (B3).
+    pub free_ram_bytes: Option<u64>,
+    pub running_builds: Option<u32>,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AdmissionRefusal {
+    MissingClick,
+    MismatchedClick,
+    NotStartable(Step),
+    InvalidOrder,
+    Preflight(Vec<Blocker>),
+    QueueWaiting { grund: String },
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Run {
     order: Order,
@@ -112,6 +131,19 @@ impl Run {
             })
             .collect();
         ProofSet::new(&self.plan, &self.lane, &gates).status(&self.sha)
+    }
+    /// Trusted adapter supplies an authenticated click scoped to this order, fresh
+    /// profile/host facts and this order's verdict from queue_order::queue_order.
+    /// Events/timers cannot provide click authority; no cached report is accepted.
+    pub fn propose_start(
+        &self,
+        _click: Option<&str>,
+        _facts: &Facts,
+        _host: &HostFacts,
+        _queue: &QueueState,
+        _now: i64,
+    ) -> Result<StartProposal, AdmissionRefusal> {
+        Err(AdmissionRefusal::MissingClick)
     }
     pub fn transition(&mut self, action: Action) -> Result<(), Refusal> {
         use Action::*;
@@ -233,6 +265,222 @@ mod tests {
         run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
         run.transition(Action::Review(report("a", run.order().risk)))
             .unwrap();
+    }
+    fn start_facts() -> Facts {
+        Facts {
+            profile_id: "worker".into(),
+            known: true,
+            enabled: true,
+            quota_state: "ok".into(),
+            quota_reason: None,
+            blocked_until: None,
+            budget: None,
+        }
+    }
+    fn queued(id: &str) -> crate::workers::queue_order::QueuedTask {
+        crate::workers::queue_order::QueuedTask {
+            id: id.into(),
+            depends_on: vec![],
+            seams: Default::default(),
+        }
+    }
+    fn startable() -> QueueState {
+        crate::workers::queue_order::queue_order(&[queued("order")], &Default::default(), &[])
+            .remove(0)
+            .1
+    }
+    fn admission(
+        run: &Run,
+        click: Option<&str>,
+        facts: &Facts,
+        host: &HostFacts,
+        queue: &QueueState,
+    ) -> Result<StartProposal, AdmissionRefusal> {
+        let before = run.clone();
+        let result = run.propose_start(click, facts, host, queue, 100);
+        assert_eq!(*run, before, "admission must not change any run data");
+        result
+    }
+    #[test]
+    fn admission_requires_a_matching_explicit_click() {
+        for kind in [OrderKind::ProjectPackage, OrderKind::CustomerOrder] {
+            let mut run = run(kind, RiskTier::A);
+            let check = |run: &Run, click| {
+                admission(
+                    run,
+                    click,
+                    &start_facts(),
+                    &HostFacts::default(),
+                    &startable(),
+                )
+            };
+            for click in [None, Some(""), Some(" \n")] {
+                assert_eq!(check(&run, click), Err(AdmissionRefusal::MissingClick));
+            }
+            assert_eq!(
+                check(&run, Some("click-2")),
+                Err(AdmissionRefusal::MismatchedClick)
+            );
+            assert!(check(&run, Some("click-1")).is_ok());
+            run.order.start_authority = " ".into();
+            assert_eq!(
+                check(&run, Some("click-1")),
+                Err(AdmissionRefusal::MismatchedClick)
+            );
+            run.order.start_authority = "click-1".into();
+            run.order.template.clear();
+            assert_eq!(
+                check(&run, Some("click-1")),
+                Err(AdmissionRefusal::InvalidOrder)
+            );
+            run.order.template = "standard".into();
+            run.sha.clear();
+            assert_eq!(
+                check(&run, Some("click-1")),
+                Err(AdmissionRefusal::InvalidOrder)
+            );
+        }
+    }
+    #[test]
+    fn admission_reports_profile_and_host_blockers_without_starting() {
+        let run = run(OrderKind::ProjectPackage, RiskTier::A);
+        let mut facts = start_facts();
+        let mut host = HostFacts::default();
+        facts.enabled = false;
+        let profile = Blocker {
+            code: "profile_disabled",
+            message: "Agent-Profil 'worker' ist in den Einstellungen aus".into(),
+            repair: "In Einstellungen > Agent-Kategorien > Profile wieder aktivieren".into(),
+            transient: true,
+        };
+        let check = |facts: &Facts, host: &HostFacts| {
+            admission(&run, Some("click-1"), facts, host, &startable())
+        };
+        assert_eq!(
+            check(&facts, &host),
+            Err(AdmissionRefusal::Preflight(vec![profile.clone()]))
+        );
+        host.free_ram_bytes = Some(0);
+        let ram = Blocker {
+            code: "low_ram",
+            message: "Nur 0.0 GiB RAM frei (Schwelle 1.5 GiB)".into(),
+            repair: "Warten oder andere Programme beenden; der Start wird danach neu geprueft"
+                .into(),
+            transient: true,
+        };
+        assert_eq!(
+            check(&facts, &host),
+            Err(AdmissionRefusal::Preflight(vec![profile, ram.clone()]))
+        );
+        facts.enabled = true;
+        assert_eq!(
+            check(&facts, &host),
+            Err(AdmissionRefusal::Preflight(vec![ram]))
+        );
+        host.free_ram_bytes = Some(preflight::MIN_FREE_RAM_BYTES);
+        host.running_builds = Some(0);
+        let proposal = check(&facts, &host).unwrap();
+        assert!(proposal.profile.is_clear());
+        assert_eq!(proposal.profile.checked_at, 100);
+        assert_eq!(proposal.free_ram_bytes, Some(preflight::MIN_FREE_RAM_BYTES));
+        assert_eq!(proposal.running_builds, Some(0));
+    }
+    #[test]
+    fn admission_preserves_queue_predecessor_and_seam_wait_reasons() {
+        use crate::workers::{lane_guard::Seam, queue_order::queue_order};
+        let run = run(OrderKind::ProjectPackage, RiskTier::A);
+        let mut first = queued("first");
+        let mut second = queued("second");
+        second.depends_on.push("first".into());
+        let check = |queue: &QueueState| {
+            admission(
+                &run,
+                Some("click-1"),
+                &start_facts(),
+                &HostFacts::default(),
+                queue,
+            )
+        };
+        let verdicts = queue_order(&[first.clone(), second.clone()], &Default::default(), &[]);
+        assert!(check(&verdicts[0].1).is_ok());
+        assert_eq!(
+            check(&verdicts[1].1),
+            Err(AdmissionRefusal::QueueWaiting {
+                grund: "Vorgänger first ist noch offen".into(),
+            })
+        );
+        second.depends_on.clear();
+        first.seams.insert(Seam::Store);
+        second.seams.insert(Seam::Store);
+        let verdicts = queue_order(&[first, second.clone()], &Default::default(), &[]);
+        assert!(check(&verdicts[0].1).is_ok());
+        assert_eq!(
+            check(&verdicts[1].1),
+            Err(AdmissionRefusal::QueueWaiting {
+                grund: "Naht src-tauri/src/store.rs ist belegt von first".into(),
+            })
+        );
+        let held = [preflight::SeamHold {
+            seam: Seam::Store,
+            holder: "running".into(),
+        }];
+        let verdicts = queue_order(&[second], &Default::default(), &held);
+        assert_eq!(
+            check(&verdicts[0].1),
+            Err(AdmissionRefusal::QueueWaiting {
+                grund: "Naht src-tauri/src/store.rs ist belegt von running".into(),
+            })
+        );
+    }
+    #[test]
+    fn admission_is_idempotent_and_never_marks_a_process_started() {
+        for kind in [OrderKind::ProjectPackage, OrderKind::CustomerOrder] {
+            for state in [
+                Ordered, Waiting, Stale, Working, Evidenced, Reviewing, Approved, Delivered,
+                Rejected,
+            ] {
+                let mut run = run(kind, RiskTier::A);
+                match state {
+                    Waiting => run.transition(Action::Wait).unwrap(),
+                    Stale => run.transition(Action::Candidate("b".into())).unwrap(),
+                    Working => run.transition(Action::Work).unwrap(),
+                    Evidenced => {
+                        run.transition(Action::Work).unwrap();
+                        run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
+                    }
+                    Reviewing | Approved | Delivered => {
+                        reviewing(&mut run);
+                        if state != Reviewing {
+                            run.transition(Action::Approve(record("a"))).unwrap();
+                        }
+                        if state == Delivered {
+                            run.transition(Action::Deliver(record("a"))).unwrap();
+                        }
+                    }
+                    Rejected => run.transition(Action::Reject).unwrap(),
+                    _ => {}
+                }
+                assert_eq!(run.state(), state);
+                let check = || {
+                    admission(
+                        &run,
+                        Some("click-1"),
+                        &start_facts(),
+                        &HostFacts::default(),
+                        &startable(),
+                    )
+                };
+                let result = check();
+                assert_eq!(result, check());
+                if matches!(state, Ordered | Waiting | Stale | Reviewing) {
+                    let proposal = result.unwrap();
+                    assert_eq!(proposal.free_ram_bytes, None);
+                    assert_eq!(proposal.running_builds, None);
+                } else {
+                    assert_eq!(result, Err(AdmissionRefusal::NotStartable(state)));
+                }
+            }
+        }
     }
     #[test]
     fn invalid_reviews_leave_evidence_and_state_unchanged() {
