@@ -106,10 +106,16 @@ impl<'a> Register<'a> {
         }
     }
     pub fn setting(&self, key: &str) -> Result<&Setting, Error> {
-        self.settings
-            .iter()
-            .find(|s| s.key == key)
-            .ok_or(Error::Unregistered)
+        let mut matches = self.settings.iter().filter(|s| s.key == key);
+        let setting = matches.next().ok_or(Error::Unregistered)?;
+        if matches.next().is_some()
+            || setting.owner.is_none()
+            || setting.area.trim().is_empty()
+            || setting.effect_site.trim().is_empty()
+        {
+            return Err(Error::InvalidRegistry);
+        }
+        Ok(setting)
     }
     pub fn journal(&self) -> &[JournalEntry] {
         &self.journal
@@ -147,8 +153,42 @@ impl<'a> Register<'a> {
         actor: &Actor,
         timestamp: u64,
     ) -> Result<(), Error> {
-        let _ = (id, state, actor, timestamp);
-        Err(Error::InvalidTransition)
+        let mut entry = self.requests.get(id).ok_or(Error::UnknownRequest)?.clone();
+        if actor.authority.is_none() || actor.authority != self.setting(&entry.change.key)?.owner {
+            return Err(Error::Forbidden);
+        }
+        if self.requests[..id].iter().any(|earlier| {
+            earlier.change.scope == entry.change.scope
+                && earlier.change.key == entry.change.key
+                && !earlier.state.terminal()
+        }) {
+            return Err(Error::Waiting);
+        }
+        use State::*;
+        if !matches!(
+            (entry.state, state),
+            (Requested, Checked | Rejected)
+                | (Checked, Applied | Rejected)
+                | (Applied, Confirmed | RolledBack)
+        ) {
+            return Err(Error::InvalidTransition);
+        }
+        let key = (entry.change.scope.clone(), entry.change.key.clone());
+        let revision = self.revisions.get(&key).copied().unwrap_or(0);
+        if state == Applied && entry.change.expected_revision != revision {
+            return Err(Error::StaleRevision);
+        }
+        if matches!(state, Applied | RolledBack) {
+            self.revisions
+                .insert(key, revision.checked_add(1).ok_or(Error::StaleRevision)?);
+        }
+        entry.id = self.journal.len() + 1;
+        entry.actor = actor.clone();
+        entry.timestamp = timestamp;
+        entry.state = state;
+        self.requests[id] = entry.clone();
+        self.journal.push(entry);
+        Ok(())
     }
 }
 
@@ -184,6 +224,20 @@ mod tests {
     }
     #[test]
     fn key_without_owner_cannot_be_changed() {
+        use RiskClass::*;
+        for owner in [Owner::User, Owner::Core, Owner::Rule] {
+            for risk in [
+                Ordinary, Money, Rights, Security, Deletion, Release, OwnLevel,
+            ] {
+                let settings = [Setting {
+                    risk_class: risk,
+                    ..setting(Some(owner))
+                }];
+                let mut r = Register::new(&settings);
+                r.submit(request(0), &actor(Some(owner)), 1).unwrap();
+                assert_eq!(r.journal()[0].risk_class, risk);
+            }
+        }
         let a = actor(Some(Owner::User));
         for settings in [
             vec![],
@@ -220,6 +274,14 @@ mod tests {
         assert_eq!(applied[1].rollback.value, json!(1));
         assert_eq!(applied[1].rollback.effect_site, "queue::limit");
         assert_eq!(r.journal()[0].state, Requested);
+        r.transition(second, RolledBack, &a, 8).unwrap();
+        let stale = r.submit(request(2), &a, 9).unwrap();
+        r.transition(stale, Checked, &a, 10).unwrap();
+        assert_eq!(
+            r.transition(stale, Applied, &a, 11),
+            Err(Error::StaleRevision)
+        );
+        r.transition(stale, Rejected, &a, 12).unwrap();
     }
     #[test]
     fn helper_can_request_but_cannot_apply() {
