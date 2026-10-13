@@ -122,6 +122,21 @@ describe("VerlaufChat", () => {
     expect(chat.clearError).toHaveBeenCalled();
   });
 
+  it("offers a read-again action in the failed-history alert", () => {
+    const chat = chatWith({ error: "Der Verlauf kam unvollständig an." });
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    expect(screen.getByRole("button", { name: "Erneut lesen" })).toBeVisible();
+  });
+
+  it("rereads the history on demand through the chat object", () => {
+    const reload = vi.fn();
+    const chat = { ...chatWith({ error: "Der Verlauf kam unvollständig an." }), reload } as OrchestratorChat;
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Erneut lesen" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Der Verlauf kam unvollständig an.");
+  });
+
   it("drops an unsent draft when another project is shown", () => {
     const { rerender } = render(<VerlaufChat chat={chatWith()} projectId="p-1" />);
     type("For project one");
