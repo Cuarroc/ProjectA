@@ -66,6 +66,7 @@ const workers = ["one", "two"].map((id) => ({ id, projectId: "p1", task: `Task $
 function workerData(restore = false) {
   const base = mocks.invoke.getMockImplementation()!;
   mocks.invoke.mockImplementation(async (command: string, args: unknown) => {
+    if (command === "list_projects") return [{ id: "p1", name: "Demo", path: "demo", createdAt: 1 }];
     const list = restore ? workers.map((w) => ({ ...w, sessionId: null, status: "exited" })) : workers;
     if (command === "list_workers") return list;
     if (command === "get_board_state") return { cards: list.map((worker) => ({ worker, column: "working" })), coordinators: [] };
@@ -79,13 +80,13 @@ it("opens the selected card worker without changing other session tabs", async (
   workerData();
   const view = render(<App />);
   await openShellTab();
-  for (const index of [0, 1, 0]) {
+  for (const [step, index] of [0, 1, 0].entries()) {
     go("#/leitstand");
     const cards = within(await screen.findByRole("region", { name: "Agenten" })).getAllByRole("article");
     fireEvent.click(within(cards[index]).getByRole("button", { name: "Shell öffnen" }));
     const tabs = within(await screen.findByRole("tablist", { name: "Terminal-Sitzungen" }));
     await waitFor(() => expect(tabs.getByRole("tab", { name: `Task ${workers[index].id}` })).toHaveAttribute("aria-selected", "true"));
-    expect(tabs.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(index === 0 && tabs.getAllByRole("tab").length === 2
+    expect(tabs.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(step === 0
       ? ["Shell", "Task one"] : ["Shell", "Task one", "Task two"]);
     expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
   }
@@ -104,6 +105,22 @@ it("opens deep linked workers on initial load and hash changes", async () => {
   expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
   expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
   expect(mocks.invoke.mock.calls.some(([name]) => ["spawn_pty", "kill_pty"].includes(name))).toBe(false);
+});
+
+it("ignores late worker results after leaving a pending deep link", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=two";
+  const view = render(<App />);
+  await screen.findByRole("tab", { name: "Task two" });
+  const base = mocks.invoke.getMockImplementation()!;
+  let resolve!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers"
+    ? new Promise((done) => { resolve = done; }) : base(command, args));
+  go("#/leitstand/terminal?worker=one");
+  go("#/leitstand/terminal");
+  await act(async () => { resolve(workers); });
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task two"]);
 });
 
 it("opens restore for a card without a live session while retaining existing tabs", async () => {

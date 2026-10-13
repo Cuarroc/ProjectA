@@ -76,7 +76,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
             cards={board.cards}
             profiles={profiles}
             now={now}
-            onOpen={() => void (window.location.hash = `#${CLASSIC_PATH}`)}
+            onOpen={({ worker }) => void (window.location.hash = `#/leitstand/terminal?worker=${encodeURIComponent(worker.id)}`)}
           />
         </div>
         <div className="g-lr-side">
