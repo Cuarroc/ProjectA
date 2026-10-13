@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { invoke } from "@tauri-apps/api/core";
-import type { QuotaState } from "../../types";
+import type { Provider, ProviderUsage, QuotaState } from "../../types";
 import { KontingenteScreen, QuotaWindows } from "./KontingenteScreen";
 import { blockedNote, formatFreeAt, providerInitials, windowSlot } from "./kontingente";
 
@@ -11,11 +11,11 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 vi.mock("@tauri-apps/api/app", () => ({ getIdentifier: async () => "com.projecta.app" }));
 
 const now = () => Math.floor(Date.now() / 1000);
-const provider = (id: string, name: string, extra: Record<string, unknown> = {}) => ({
+const provider = (id: string, name: string, extra: Partial<Provider> = {}): Provider => ({
   id, name, kind: "subscription", connected: true, detail: null, quotaState: "ok", blockedUntil: null,
   omniRouteOnline: true, usage: null, vaultError: null, ...extra,
 });
-const usage = (windowLabel: string, percent: number | null, extra: Record<string, unknown> = {}) => ({
+const usage = (windowLabel: string, percent: number | null, extra: Partial<ProviderUsage> = {}): ProviderUsage => ({
   percent, used: null, limit: null, windowLabel, resetsAt: now() + 3 * 3600, source: "api", observedAt: now(), ...extra,
 });
 
@@ -24,7 +24,7 @@ function feed(providers: unknown[], quotas: unknown[] = []) {
 }
 const card = async (name: string) => within(await screen.findByRole("article", { name }));
 
-beforeEach(() => vi.mocked(invoke).mockReset());
+beforeEach(() => { vi.mocked(invoke).mockReset(); });
 
 it("maps a window label to its slot and leaves unknown labels unmapped", () => {
   expect(windowSlot("5-Stunden-Fenster")).toBe("five");
@@ -230,4 +230,88 @@ it("keeps overview load errors visible without invented measurements", async () 
   render(<KontingenteScreen />);
   expect(await screen.findByText("Anbieter konnten nicht geladen werden")).toBeInTheDocument();
   expect(screen.queryByRole("meter")).toBeNull();
+});
+
+
+it("does not show an empty provider inventory after an overview failure", async () => {
+  let fail = true;
+  vi.mocked(invoke).mockImplementation(async (cmd) => {
+    if (cmd === "get_provider_overview" && fail) throw new Error("Anbieter konnten nicht geladen werden");
+    if (cmd === "get_provider_overview" || cmd === "get_quota_state") return [];
+    throw new Error(`Unexpected command: ${cmd}`);
+  });
+  render(<KontingenteScreen />);
+  expect(await screen.findByText("Anbieter konnten nicht geladen werden")).toBeInTheDocument();
+  expect(screen.queryByText("Noch kein Anbieter")).toBeNull();
+  expect(screen.queryByRole("meter")).toBeNull();
+  fail = false;
+  fireEvent.focus(window);
+  expect(await screen.findByText("Noch kein Anbieter")).toBeInTheDocument();
+  expect(screen.queryByText("Anbieter konnten nicht geladen werden")).toBeNull();
+});
+
+it("shows unread quota status while provider measurements are available", async () => {
+  let rejectQuota!: (error: Error) => void;
+  const pending = new Promise<QuotaState[]>((_, reject) => { rejectQuota = reject; });
+  const measured = provider("claude", "Claude Code", { usage: usage("5-Stunden-Fenster", 38) });
+  const blocked = provider("codex", "Codex", { quotaState: "blocked" });
+  vi.mocked(invoke).mockImplementation(async (cmd) => {
+    if (cmd === "get_provider_overview") return [measured, blocked];
+    if (cmd === "get_quota_state") return pending;
+    throw new Error(`Unexpected command: ${cmd}`);
+  });
+  render(<KontingenteScreen />);
+  const c = await card("Claude Code");
+  expect(c.getByRole("meter")).toHaveAttribute("aria-valuenow", "38");
+  expect(screen.getByRole("status")).toHaveTextContent("Sperrstatus wird gelesen");
+  expect(c.queryByText("OK")).toBeNull();
+  expect((await card("Codex")).getByText("Blockiert")).toBeInTheDocument();
+  await act(async () => { rejectQuota(new Error("quota read failed")); });
+  expect(screen.getByRole("status")).toHaveTextContent("Sperrstatus gerade nicht prüfbar");
+  expect(screen.queryByText(/Sperrstatus wird gelesen/)).toBeNull();
+  expect(screen.queryByText(/Letzter gelesener Sperrstatus/)).toBeNull();
+  expect(c.getByRole("meter")).toHaveAttribute("aria-valuenow", "38");
+  expect(c.queryByText("OK")).toBeNull();
+  expect((await card("Codex")).getByText("Blockiert")).toBeInTheDocument();
+  expect(new Set(vi.mocked(invoke).mock.calls.map(([cmd]) => cmd)))
+    .toEqual(new Set(["get_provider_overview", "get_quota_state"]));
+});
+
+it("marks retained quota observations as stale after a failed poll", async () => {
+  vi.useFakeTimers();
+  let reads = 0;
+  const q: QuotaState = { profileId: "claude", state: "blocked", blockedUntil: null, reason: "Wochenlimit", omniRouteOnline: true };
+  vi.mocked(invoke).mockImplementation(async (cmd) => {
+    if (cmd === "get_provider_overview") return [provider("claude", "Claude Code", { usage: usage("5-Stunden-Fenster", 38) })];
+    if (cmd === "get_quota_state") {
+      if (++reads === 2) throw new Error("quota poll failed");
+      return [q];
+    }
+    throw new Error(`Unexpected command: ${cmd}`);
+  });
+  const view = render(<KontingenteScreen />);
+  try {
+    await act(async () => {});
+    expect(screen.getByText("Blockiert")).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(screen.getByRole("status")).toHaveTextContent("Sperrstatus gerade nicht prüfbar");
+    expect(screen.getByRole("status")).toHaveTextContent("Letzter gelesener Sperrstatus; seitdem nicht bestätigt.");
+    expect(screen.getByText("Blockiert")).toBeInTheDocument();
+    expect(screen.getByText("Wochenlimit")).toBeInTheDocument();
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "38");
+    fireEvent.click(screen.getByRole("button", { name: "Jetzt prüfen" }));
+    await act(async () => {});
+    expect(reads).toBe(2);
+    expect(screen.getByRole("status")).toHaveTextContent("Letzter gelesener Sperrstatus");
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(reads).toBe(3);
+    expect(screen.queryByText(/Sperrstatus gerade nicht prüfbar/)).toBeNull();
+    expect(screen.queryByText(/Letzter gelesener Sperrstatus/)).toBeNull();
+    expect(screen.getByText("Blockiert")).toBeInTheDocument();
+    expect(new Set(vi.mocked(invoke).mock.calls.map(([cmd]) => cmd)))
+      .toEqual(new Set(["get_provider_overview", "get_quota_state"]));
+  } finally {
+    view.unmount();
+    vi.useRealTimers();
+  }
 });
