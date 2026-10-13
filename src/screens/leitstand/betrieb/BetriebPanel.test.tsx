@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AgentProfile } from "../../../types";
 import { BetriebPanel } from "./BetriebPanel";
+import { T as F } from "./einreihen/texts";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
@@ -32,9 +33,85 @@ function backend(queue: unknown[], resources: unknown = snapshot(), watchdog: un
 }
 const section = (name: string) => screen.getByRole("region", { name });
 
+const deferred = <V,>() => {
+  const d = {} as { promise: Promise<V>; resolve: (v: V) => void };
+  d.promise = new Promise<V>((resolve) => { d.resolve = resolve; });
+  return d;
+};
+const callsOf = (cmd: string) => mocks.invoke.mock.calls.filter(([name]) => name === cmd);
+
 describe("BetriebPanel", () => {
   beforeEach(() => {
     mocks.invoke.mockReset();
+  });
+
+  it("enqueues from Betrieb and rereads the confirmed project queue", async () => {
+    const initial = deferred<unknown[]>();
+    const saved = deferred<unknown>();
+    backend([]);
+    const read = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((cmd, args) => {
+      if (cmd === "list_queue") return callsOf(cmd).length === 1 ? initial.promise : Promise.resolve([entry("confirmed")]);
+      if (cmd === "get_emergency_stop") return Promise.resolve(false);
+      if (cmd === "enqueue_task") return saved.promise;
+      return read(cmd, args);
+    });
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    expect(screen.queryByRole("textbox", { name: F.task })).toBeNull();
+    await act(async () => initial.resolve([]));
+    expect(screen.queryByRole("textbox", { name: F.task })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: F.task }), { target: { value: "  Fix the build  " } });
+    fireEvent.change(screen.getByRole("combobox", { name: F.profile }), { target: { value: "claude" } });
+    expect(screen.getByRole("switch", { name: F.sharpen })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("switch", { name: F.sharpen }));
+    fireEvent.click(screen.getByRole("button", { name: F.submit }));
+    expect(callsOf("enqueue_task")).toEqual([["enqueue_task", {
+      projectId: "p1", rawText: "Fix the build", profileId: "claude", sharpen: true, priority: undefined,
+    }]]);
+    expect(callsOf("list_queue")).toHaveLength(1);
+    await act(async () => saved.resolve(entry("write-reply")));
+    expect(callsOf("list_queue")).toEqual([["list_queue", { projectId: "p1" }], ["list_queue", { projectId: "p1" }]]);
+    expect(within(section("Warteschlange")).getByText("Task confirmed")).toBeVisible();
+    expect(screen.queryByText("Task write-reply")).toBeNull();
+    expect(mocks.invoke.mock.calls.map(([cmd]) => cmd)).toEqual([
+      "list_queue", "get_resource_snapshot", "watchdog_report", "get_emergency_stop", "enqueue_task", "list_queue",
+    ]);
+  });
+
+  it("does not restore cancelled rows from an older queue read", async () => {
+    vi.useFakeTimers();
+    try {
+      const older = deferred<unknown[]>();
+      const refresh = deferred<unknown[]>();
+      const newer = deferred<unknown[]>();
+      backend([entry("a"), entry("b", { status: "ready" }), entry("c", { status: "dispatching" })]);
+      const read = mocks.invoke.getMockImplementation()!;
+      let fail = true;
+      mocks.invoke.mockImplementation((cmd, args) => {
+        if (cmd === "list_queue") return [null, older, refresh, newer][callsOf(cmd).length - 1]?.promise ?? read(cmd, args);
+        if (cmd === "get_emergency_stop") return Promise.resolve(false);
+        if (cmd === "cancel_queued_task") return fail ? Promise.reject(new Error("claimed")) : Promise.resolve();
+        return read(cmd, args);
+      });
+      render(<BetriebPanel projectId="p1" profiles={profiles} />);
+      await act(async () => {});
+      expect(screen.queryAllByRole("button", { name: /Aufgabe aus der Warteschlange entfernen/ })).toHaveLength(2);
+      const cancel = () => fireEvent.click(screen.getByRole("button", { name: F.cancelOne("Task a") }));
+      await act(async () => cancel());
+      expect(screen.getByRole("alert")).toHaveTextContent("claimed");
+      expect(within(section("Warteschlange")).getByText("Task a")).toBeVisible();
+      expect(callsOf("list_queue")).toHaveLength(1);
+      fail = false;
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      await act(async () => cancel());
+      expect(callsOf("cancel_queued_task").at(-1)).toEqual(["cancel_queued_task", { id: "a" }]);
+      expect(callsOf("list_queue")).toHaveLength(3);
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      await act(async () => newer.resolve([]));
+      await act(async () => { refresh.resolve([entry("a")]); older.resolve([entry("a")]); });
+      expect(within(section("Warteschlange")).getByText("Warteschlange leer")).toBeVisible();
+      expect(screen.queryByText("Task a")).toBeNull();
+    } finally { vi.useRealTimers(); }
   });
 
   it("shows original and sharpened queue text without changing dispatch", async () => {

@@ -35,6 +35,24 @@ const type = (text: string) => fireEvent.change(task(), { target: { value: text 
 const form = (extra = {}, projectId = "p1") => <EinreihenForm projectId={projectId} profiles={profiles} entries={[]} {...extra} />;
 describe("EinreihenForm", () => {
   beforeEach(() => { mocks.invoke.mockReset(); });
+  it("keeps enqueue disabled until emergency stop has been read", async () => {
+    for (const answer of [false, undefined, new Error("offline")]) {
+      const pending = deferred<boolean>();
+      backend({ stop: () => pending.promise });
+      const { unmount } = render(form());
+      type("Task");
+      expect(submit()).toBeDisabled();
+      fireEvent.submit(submit().closest("form")!);
+      expect(callsOf("enqueue_task")).toHaveLength(0);
+      await act(async () => {
+        if (answer instanceof Error) pending.reject(answer);
+        else pending.resolve(answer as boolean);
+      });
+      expect(submit().disabled).toBe(answer !== false);
+      unmount();
+    }
+  });
+
   it("enqueues the trimmed text with the chosen profile and sharpen flag and clears the draft", async () => {
     backend();
     const onEnqueued = vi.fn();
