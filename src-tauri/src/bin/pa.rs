@@ -6014,11 +6014,18 @@ mod tests {
         assert_eq!(encode("a/b"), "a%2Fb");
     }
 
+    /// Tests that mutate the process-wide environment hold this lock for their
+    /// duration: cargo runs tests in parallel threads, and two mutators
+    /// interleaving would flake both.
+    static ENV_OVERRIDE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn the_descriptor_can_be_pointed_somewhere_else() {
         // Reading the environment is process-wide, so this test owns both
-        // override variables for its duration and puts them back. Sibling
-        // tests must not touch them in parallel.
+        // override variables for its duration and puts them back.
+        let _guard = ENV_OVERRIDE_LOCK
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         let previous_file = std::env::var_os(ENV_DESCRIPTOR);
         let previous_dir = std::env::var_os(ENV_APP_DATA);
         std::env::set_var(ENV_DESCRIPTOR, "C:/tmp/elsewhere.json");
@@ -6070,9 +6077,39 @@ mod tests {
             !source.contains("const IDENTIFIER: &str = \"com.projecta.app\""),
             "IDENTIFIER must come from the build, not a hard-coded constant"
         );
-        assert!(
-            source.contains("build_identifier::IDENTIFIER"),
-            "pa must share the build identifier from src-tauri/src/build_identifier.rs"
+    }
+
+    /// Dev-build isolation (docs/setup/dev-build.md, row 1), the behaviour
+    /// half: the resolved database path ends with the embedded build
+    /// identifier, so a Dev build's `pa.exe` opens the Dev database, never
+    /// the stable one. (R1290-C3: a source-text assertion here was satisfied
+    /// by its own assertion message.)
+    #[test]
+    fn dev_identifier_resolves_the_database_under_the_build_identifier() {
+        // `default_db_path` reads PROJECTA_APP_DATA process-wide: own it for
+        // the duration of the call and put it back.
+        let _guard = ENV_OVERRIDE_LOCK
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        let previous_dir = std::env::var_os(ENV_APP_DATA);
+        std::env::remove_var(ENV_APP_DATA);
+        let resolved = default_db_path();
+        match previous_dir {
+            Some(value) => std::env::set_var(ENV_APP_DATA, value),
+            None => std::env::remove_var(ENV_APP_DATA),
+        }
+        let db = resolved.expect("the test host has APPDATA/HOME");
+        assert_eq!(
+            db.file_name().and_then(|name| name.to_str()),
+            Some("projecta.db")
+        );
+        assert_eq!(
+            db.parent()
+                .and_then(|dir| dir.file_name())
+                .and_then(|name| name.to_str()),
+            Some(build_identifier::IDENTIFIER),
+            "the database lives under the embedded build identifier: {}",
+            db.display()
         );
     }
 
