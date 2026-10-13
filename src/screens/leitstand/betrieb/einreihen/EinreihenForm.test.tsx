@@ -57,6 +57,7 @@ describe("EinreihenForm", () => {
     backend();
     const onEnqueued = vi.fn();
     render(form({ onEnqueued }));
+    await act(async () => {});
     expect(submit().disabled).toBe(true);
     expect(screen.getByText(T.reasonEmpty)).toBeTruthy();
     type("  Fix the build  ");
@@ -72,6 +73,7 @@ describe("EinreihenForm", () => {
     const pending = deferred<QueueEntry>();
     backend({ enqueue: () => pending.promise });
     render(form());
+    await act(async () => {});
     type("Task");
     fireEvent.click(submit());
     await waitFor(() => expect(submit().disabled).toBe(true));
@@ -101,6 +103,7 @@ describe("EinreihenForm", () => {
     backend({ enqueue: () => Promise.reject(new Error("db locked")) });
     const onEnqueued = vi.fn();
     render(form({ onEnqueued }));
+    await act(async () => {});
     type("Task");
     fireEvent.click(submit());
     expect((await screen.findByRole("alert")).textContent).toBe(T.enqueueFailed("db locked"));
@@ -137,6 +140,7 @@ describe("EinreihenForm", () => {
   it("drops the draft and the error when the project switches", async () => {
     backend({ enqueue: () => Promise.reject(new Error("boom")) });
     const { rerender } = render(form());
+    await act(async () => {});
     type("half-typed draft");
     fireEvent.click(submit());
     await screen.findByRole("alert");
@@ -151,6 +155,7 @@ describe("EinreihenForm", () => {
     backend({ enqueue: () => enqueue.promise, cancel: () => cancel.promise });
     const cb = { onEnqueued: vi.fn(), onCancelled: vi.fn() };
     const { rerender } = render(form({ entries: [entry("a")], ...cb }));
+    await act(async () => {});
     type("Task of project one");
     fireEvent.click(submit());
     fireEvent.click(cancelBtn("a"));
@@ -170,6 +175,7 @@ describe("EinreihenForm", () => {
     backend({ enqueue: () => enqueue.promise, cancel: () => cancel.promise });
     const cb = { onEnqueued: vi.fn(), onCancelled: vi.fn() };
     const { rerender } = render(form({ entries: [entry("a")], ...cb }));
+    await act(async () => {});
     type("Task of the first visit");
     fireEvent.click(submit());
     fireEvent.click(cancelBtn("a"));

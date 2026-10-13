@@ -29,7 +29,7 @@ const S = {
   task: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 } satisfies Record<string, CSSProperties>;
 
-/** Adds a task to the project's queue and removes one that has not started; the sharpening question loop stays in the old panel. Not mounted yet. */
+/** Adds a task to the project's queue and removes one that has not started; the sharpening question loop stays in the old panel. */
 export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCancelled }: EinreihenFormProps) {
   const [task, setTask] = useState("");
   const [profileId, setProfileId] = useState("");
@@ -38,7 +38,7 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Not-Aus reads as active when unreadable, like the stop band: a failed read must not open the gate.
-  const [stopped, setStopped] = useState(false);
+  const [stopped, setStopped] = useState(true);
   const ids = useId();
 
   // A write that finishes after a project switch must not publish rows, errors or busy state under the new project.
@@ -48,11 +48,12 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   useEffect(() => {
     generation.current += 1;
     setTask(""); setProfileId(""); setSharpen(false); setSubmitting(false); setCancellingId(null); setError(null);
+    return () => { generation.current += 1; };
   }, [projectId]);
 
   useEffect(() => {
     let live = true;
-    const read = () => { getEmergencyStop().then((v) => live && setStopped(v === true), () => live && setStopped(true)); };
+    const read = () => { getEmergencyStop().then((v) => live && setStopped(v !== false), () => live && setStopped(true)); };
     read();
     const timer = window.setInterval(read, 5000);
     return () => { live = false; window.clearInterval(timer); };

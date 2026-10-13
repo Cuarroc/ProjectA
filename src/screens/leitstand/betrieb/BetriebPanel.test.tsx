@@ -23,6 +23,7 @@ const snapshot = (extra: Record<string, unknown> = {}) => ({
 function backend(queue: unknown[], resources: unknown = snapshot(), watchdog: unknown = []) {
   mocks.invoke.mockImplementation(async (cmd: string) => {
     if (cmd === "list_queue") return queue;
+    if (cmd === "get_emergency_stop") return false;
     if (cmd === "get_resource_snapshot") return resources;
     if (cmd === "watchdog_report") {
       if (watchdog instanceof Error) throw watchdog.message;
@@ -88,7 +89,7 @@ describe("BetriebPanel", () => {
       const read = mocks.invoke.getMockImplementation()!;
       let fail = true;
       mocks.invoke.mockImplementation((cmd, args) => {
-        if (cmd === "list_queue") return [null, older, refresh, newer][callsOf(cmd).length - 1]?.promise ?? read(cmd, args);
+        if (cmd === "list_queue") return callsOf(cmd).length === 5 ? Promise.resolve([]) : [null, older, refresh, newer][callsOf(cmd).length - 1]?.promise ?? read(cmd, args);
         if (cmd === "get_emergency_stop") return Promise.resolve(false);
         if (cmd === "cancel_queued_task") return fail ? Promise.reject(new Error("claimed")) : Promise.resolve();
         return read(cmd, args);
@@ -106,12 +107,44 @@ describe("BetriebPanel", () => {
       await act(async () => cancel());
       expect(callsOf("cancel_queued_task").at(-1)).toEqual(["cancel_queued_task", { id: "a" }]);
       expect(callsOf("list_queue")).toHaveLength(3);
-      await act(async () => vi.advanceTimersByTimeAsync(10_000));
-      await act(async () => newer.resolve([]));
-      await act(async () => { refresh.resolve([entry("a")]); older.resolve([entry("a")]); });
+      await act(async () => refresh.resolve([]));
+      await act(async () => older.resolve([entry("a")]));
+      expect(screen.queryByText("Task a")).toBeNull();
+      await act(async () => vi.advanceTimersByTimeAsync(20_000));
+      await act(async () => newer.resolve([entry("a")]));
       expect(within(section("Warteschlange")).getByText("Warteschlange leer")).toBeVisible();
       expect(screen.queryByText("Task a")).toBeNull();
     } finally { vi.useRealTimers(); }
+  });
+
+  it("ignores writes and queue replies after switching away and back", async () => {
+    const saved = deferred<unknown>();
+    const cancelled = deferred<void>();
+    const oldRead = deferred<unknown[]>();
+    backend([entry("a")]);
+    const read = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((cmd, args) => {
+      if (cmd === "enqueue_task") return saved.promise;
+      if (cmd === "cancel_queued_task") return cancelled.promise;
+      if (cmd === "list_queue" && callsOf(cmd).length === 2) return oldRead.promise;
+      return read(cmd, args);
+    });
+    const { rerender } = render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    await act(async () => {});
+    fireEvent.change(screen.getByRole("textbox", { name: F.task }), { target: { value: "Old draft" } });
+    fireEvent.click(screen.getByRole("button", { name: F.submit }));
+    fireEvent.click(screen.getByRole("button", { name: F.cancelOne("Task a") }));
+    rerender(<BetriebPanel projectId="p2" profiles={profiles} />);
+    expect(screen.queryByRole("textbox", { name: F.task })).toBeNull();
+    rerender(<BetriebPanel projectId="p1" profiles={profiles} />);
+    await act(async () => {});
+    expect(screen.getByRole("textbox", { name: F.task })).toHaveValue("");
+    fireEvent.change(screen.getByRole("textbox", { name: F.task }), { target: { value: "New draft" } });
+    await act(async () => { saved.resolve(entry("old")); cancelled.resolve(); oldRead.resolve([entry("wrong-project")]); });
+    expect(callsOf("list_queue")).toHaveLength(3);
+    expect(screen.getByRole("textbox", { name: F.task })).toHaveValue("New draft");
+    expect(screen.queryByText("Task wrong-project")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("shows original and sharpened queue text without changing dispatch", async () => {
@@ -121,7 +154,7 @@ describe("BetriebPanel", () => {
       entry("same", { rawText: "Same task", sharpenedText: "Same task" }),
     ]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
-    await screen.findByText("Same task");
+    await within(section("Warteschlange")).findByText("Same task");
     const rows = within(section("Warteschlange")).getAllByRole("listitem");
     for (const row of rows) {
       const disclosure = within(row).getByText("Auftrag ansehen");
@@ -141,7 +174,7 @@ describe("BetriebPanel", () => {
     fireEvent.click(within(first).getByText("Auftrag ansehen"));
     expect(first).not.toHaveAttribute("open");
     expect(mocks.invoke.mock.calls.map(([cmd]) => cmd)).toEqual([
-      "list_queue", "get_resource_snapshot", "watchdog_report",
+      "list_queue", "get_resource_snapshot", "watchdog_report", "get_emergency_stop",
     ]);
   });
 
@@ -151,7 +184,7 @@ describe("BetriebPanel", () => {
       status, error: status === "failed" ? "preflight: no slot" : null,
     })));
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
-    await screen.findByText("Task queued");
+    await within(section("Warteschlange")).findByText("Task queued");
     const rows = within(section("Warteschlange")).getAllByRole("listitem");
     for (const [index, row] of rows.entries()) {
       fireEvent.click(within(row).getByText("Auftrag ansehen"));
@@ -205,13 +238,13 @@ describe("BetriebPanel", () => {
     try {
       backend([entry("t5")]);
       const { unmount } = render(<BetriebPanel projectId="p1" profiles={profiles} />);
-      const reads = () => mocks.invoke.mock.calls.length;
-      await vi.advanceTimersByTimeAsync(0);
+      const reads = () => mocks.invoke.mock.calls.filter(([cmd]) => cmd !== "get_emergency_stop").length;
+      await act(async () => vi.advanceTimersByTimeAsync(0));
       const first = reads();
       expect(first).toBe(3);
-      await vi.advanceTimersByTimeAsync(9_999);
+      await act(async () => vi.advanceTimersByTimeAsync(9_999));
       expect(reads()).toBe(first);
-      await vi.advanceTimersByTimeAsync(1);
+      await act(async () => vi.advanceTimersByTimeAsync(1));
       expect(reads()).toBe(first + 3);
       unmount();
       await vi.advanceTimersByTimeAsync(60_000);
@@ -232,6 +265,7 @@ describe("BetriebPanel", () => {
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
     expect(await within(section("Warteschlange")).findByText("Warteschlange nicht lesbar")).toBeInTheDocument();
     expect(screen.queryByText("Warteschlange leer")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: F.task })).toBeNull();
   });
 
   it("shows a missing RAM fact as an honest state without any number", async () => {
@@ -274,13 +308,13 @@ describe("BetriebPanel", () => {
     expect(dog.queryByText("Keine Auffälligkeiten")).toBeNull();
   });
 
-  it("has no button and invokes only read commands and never enqueue or dispatch", async () => {
+  it("invokes only read commands on mount and never enqueue or dispatch", async () => {
     backend([entry("t3"), entry("t4", { status: "ready" })]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
-    await screen.findByText("Task t3");
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    await within(section("Warteschlange")).findByText("Task t3");
+    expect(screen.getByRole("button", { name: F.submit })).toBeDisabled();
     const commands = mocks.invoke.mock.calls.map(([cmd]) => cmd);
     expect(commands.length).toBeGreaterThan(0);
-    for (const cmd of commands) expect(["list_queue", "get_resource_snapshot", "watchdog_report"]).toContain(cmd);
+    for (const cmd of commands) expect(["list_queue", "get_resource_snapshot", "watchdog_report", "get_emergency_stop"]).toContain(cmd);
   });
 });
