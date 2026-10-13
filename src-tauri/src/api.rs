@@ -2699,6 +2699,23 @@ pub(crate) mod tests {
         assert_eq!(lines[52], "ERROR suppressed 2 frontend errors");
     }
     #[test]
+    fn frontend_feedback_budget_is_bounded_and_independent() {
+        let mut limiter = super::FrontendErrorLog::default();
+        let (mut lines, now) = (Vec::new(), std::time::Instant::now());
+        for _ in 0..1000 {
+            limiter.write(now, "feedback", "", "/", Some("ctx"), |l| lines.push(l));
+        }
+        assert_eq!(lines.len(), 10);
+        for i in 0..50 {
+            limiter.write(now, &i.to_string(), "", "/", None, |l| lines.push(l));
+        }
+        assert_eq!(lines.len(), 60);
+        let later = now + std::time::Duration::from_secs(60);
+        limiter.write(later, "feedback", "", "/", Some("ctx"), |l| lines.push(l));
+        assert_eq!(lines.len(), 61);
+    }
+
+    #[test]
     fn frontend_feedback_is_not_rate_limited() {
         use std::time::{Duration, Instant};
         let mut limiter = super::FrontendErrorLog::default();
