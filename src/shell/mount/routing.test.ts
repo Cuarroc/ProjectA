@@ -3,6 +3,15 @@ import { describe, expect, it } from "vitest";
 import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
+  it("keeps the legacy goal when entering the terminal route", () => {
+    for (const path of ["/leitstand/terminal", "/leitstand/terminal/"]) {
+      expect(goalForPath(path, "review")).toBe("review");
+      expect(goalForPath(path, "settings")).toBe("settings");
+      expect(isNewLeitstand(path)).toBe(false);
+      expect(hashForGoal("agents", path)).toBeNull();
+    }
+  });
+
   it("resolves the werkzeuge tab under leitstand", () => {
     for (const path of ["/leitstand/werkzeuge", "/leitstand/werkzeuge/"]) {
       expect(hasLegacyPanel(path)).toBe(true);
