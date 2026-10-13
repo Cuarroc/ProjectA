@@ -120,8 +120,13 @@ export function collect(state, { run, appData, inbox, env, now = new Date().toIS
     entry.count++; bucket.set(key, entry);
   };
   for (const name of names) for (const line of read(join(logDir, name)).split(/\r?\n/)) {
-    if (/\[frontend\] FEEDBACK /.test(line)) add(feedback, line);
-    else if (/\[panic\]|\bERROR\b/.test(line)) { add(occurrences, line); if (/\[panic\]/.test(line)) panicMessages.add(hash(message(line))); }
+    const envelope = line.replace(stamp, '');
+    const panic = /^\[panic\] /.test(envelope);
+    if (/^\[frontend\] FEEDBACK /.test(envelope)) add(feedback, line);
+    else if (panic || /^(?:\[[^\]\r\n]+\] )?ERROR\b/.test(envelope)) {
+      add(occurrences, line);
+      if (panic) panicMessages.add(hash(message(line)));
+    }
   }
   for (const name of ['.panic-last', '.panic-previous']) {
     const marker = read(join(appData, name)).trim();
