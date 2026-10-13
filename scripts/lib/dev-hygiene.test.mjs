@@ -42,6 +42,7 @@ const ERLEDIGT = "| Datum | ID | Titel | PR | Merge-SHA | Report |\n|---|---|---
 
 const input = {
   now: NOW,
+  mainDivergence: { ahead: 0, behind: 0, reason: null },
   prsOpen: [
     { number: 107, title: "W2-05 Discovery", headRefName: "claude/w2-05-discovery", updatedAt: "2026-09-24T01:00:00Z", isDraft: false },
     { number: 125, title: "SETUP-B", headRefName: "claude/setup-b-dev-scripts", updatedAt: "2026-09-25T11:00:00Z", isDraft: true },
@@ -172,7 +173,7 @@ async function assertReadOnlyHygiene(cwd = root) {
     if (a.includes("worktree list")) return { code: 0, stdout: `worktree ${cwd}\nHEAD abc\nbranch refs/heads/main\n\n`, stderr: "" };
     if (a.includes("for-each-ref")) return { code: 0, stdout: "origin/main\norigin/HEAD\norigin/kimi/lost-work\n", stderr: "" };
     if (a.includes("merge-base")) return { code: 1, stdout: "", stderr: "" };
-    if (a.includes("status")) return { code: 0, stdout: "?? MEMORY.md\n?? $OUT\n M tracked.txt\n", stderr: "" };
+    if (a.includes("ls-files")) return { code: 0, stdout: "MEMORY.md\0$OUT\0", stderr: "" };
     return { code: 0, stdout: "", stderr: "" };
   };
   const data = gather({ run: fake, cwd, now: NOW });
@@ -241,10 +242,10 @@ test("hygiene refuses with exit 3 when git fetch fails and does not report stale
 
 test("hygiene lists untracked files with non-ASCII names unescaped (glm #3, kimi #7)", () => {
   const calls = [];
-  const run = fakeRun({ status: (cmd, args) => (calls.push(args), { code: 0, stdout: "?? Möbel.md\n", stderr: "" }) });
+  const run = fakeRun({ "ls-files": (cmd, args) => (calls.push(args), { code: 0, stdout: "Möbel.md\0", stderr: "" }) });
   const data = gather({ run, cwd: root, now: NOW });
   assert.deepEqual(data.untracked, ["Möbel.md"]);
-  assert.ok(calls[0].join(" ").includes("core.quotePath=false"), calls[0].join(" "));
+  assert.ok(calls[0].includes("-z"), calls[0].join(" "));
 });
 
 test("zero-byte untracked root files are flagged as likely shell-redirect accidents", () => {
