@@ -19,6 +19,8 @@ export interface OrchestratorChat {
   disabled: boolean;
   /** Sends a prompt; resolves `true` when it went out and the draft may clear. */
   send: (text: string) => Promise<boolean>;
+  /** Reads the history again, so a failed read can be retried without waiting for the poll. */
+  reload: () => void;
   clearError: () => void;
 }
 
@@ -155,6 +157,14 @@ export function useOrchestratorChat(
 
   const clearError = useCallback(() => setError(null), []);
 
+  // A failed read leaves the thread on its old state; the user retries it in
+  // place instead of waiting out the poll interval. Before the orchestrator is
+  // known there is nothing to read, so this is a no-op.
+  const reload = useCallback(() => {
+    if (activeOrchestratorId === null) return;
+    void loadMessages(activeOrchestratorId, projectId);
+  }, [activeOrchestratorId, projectId, loadMessages]);
+
   return {
     orchestratorId: activeOrchestratorId,
     messages,
@@ -163,6 +173,7 @@ export function useOrchestratorChat(
     error,
     disabled: projectId === null,
     send,
+    reload,
     clearError,
   };
 }

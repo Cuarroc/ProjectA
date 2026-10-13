@@ -16,7 +16,7 @@ const msg = (id: string, role: WorkerMessage["role"], content: string): WorkerMe
 function chatWith(patch: Partial<OrchestratorChat> = {}): OrchestratorChat {
   return {
     orchestratorId: "w-1", messages: [], loading: false, sending: false, error: null, disabled: false,
-    send: vi.fn(async () => true), clearError: vi.fn(), ...patch,
+    send: vi.fn(async () => true), reload: vi.fn(), clearError: vi.fn(), ...patch,
   };
 }
 
