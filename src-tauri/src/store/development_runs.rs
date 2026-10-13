@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, Sqlite, Transaction};
 
-use crate::readiness::proof::GateResult;
+use crate::readiness::proof::{GateResult, LanePlan, ProofStatus};
 
 use super::continuous::begin_write;
 use super::development_launches::{run_role, DispatchRole};
@@ -102,6 +102,15 @@ pub struct CandidateBinding {
     pub source: String,
     pub observed_at: i64,
     pub invalidated_records: u64,
+}
+
+/// Unavailable verdict means the known run has no persisted candidate yet.
+#[derive(Debug, PartialEq)]
+pub(crate) struct GateProofSnapshot {
+    pub candidate: Option<String>,
+    pub lane: String,
+    pub verdict: Option<ProofStatus>,
+    pub gates: Vec<(GateResult, DevelopmentEvidence)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -705,6 +714,20 @@ impl Store {
             }
         }
         Ok(results)
+    }
+
+    pub(crate) async fn development_gate_proof_snapshot(
+        &self,
+        _run_id: &str,
+        lane: &str,
+        _plan: &LanePlan,
+    ) -> Result<GateProofSnapshot, String> {
+        Ok(GateProofSnapshot {
+            candidate: None,
+            lane: lane.into(),
+            verdict: None,
+            gates: Vec::new(),
+        })
     }
 
     pub async fn list_development_reviews(
@@ -1438,6 +1461,152 @@ mod tests {
             gate: gate.into(),
             exit_code,
             sha: COMMIT_A.into(),
+        }
+    }
+
+    async fn proof(store: &Store, run: &str) -> GateProofSnapshot {
+        let plan = LanePlan::from_list("fmt prepush cmd\nrust-suite prepush cmd");
+        store
+            .development_gate_proof_snapshot(run, "prepush", &plan)
+            .await
+            .unwrap()
+    }
+
+    async fn save_gate(store: &Store, run: &str, key: &str, at: i64, gate: &str, exit: i32) {
+        store
+            .record_development_gate_result(run, "worker-a", 7, key, at, gate_result(gate, exit))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn gate_proof_snapshot_distinguishes_missing_red_current_and_stale() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        assert_eq!(proof(&store, &run).await.verdict, None);
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 1)
+            .await
+            .unwrap();
+        assert_eq!(proof(&store, &run).await.verdict, Some(ProofStatus::Fehlt));
+        save_gate(&store, &run, "fmt", 2, "fmt", 0).await;
+        assert_eq!(proof(&store, &run).await.verdict, Some(ProofStatus::Fehlt));
+        save_gate(&store, &run, "suite", 2, "rust-suite", 0).await;
+        let green = proof(&store, &run).await;
+        assert_eq!(green.verdict, Some(ProofStatus::Belegt));
+        assert_eq!(green.candidate.as_deref(), Some(COMMIT_A));
+        assert_eq!(green.lane, "prepush");
+        assert_eq!(green.gates.len(), 2);
+        assert!(green
+            .gates
+            .iter()
+            .all(|(_, e)| e.trusted_test_source && e.source == "test-gate"));
+        save_gate(&store, &run, "rerun", 3, "fmt", 101).await;
+        let red = Some(ProofStatus::Rot { gate: "fmt".into() });
+        assert_eq!(proof(&store, &run).await.verdict, red);
+        save_gate(&store, &run, "tied-green", 3, "fmt", 0).await;
+        assert_eq!(proof(&store, &run).await.verdict, red);
+        // A backdated insertion cannot replace the newest attempt.
+        save_gate(&store, &run, "late-old", 2, "fmt", 0).await;
+        assert_eq!(proof(&store, &run).await.verdict, red);
+        save_gate(&store, &run, "new-green", 4, "fmt", 0).await;
+        assert_eq!(proof(&store, &run).await.verdict, Some(ProofStatus::Belegt));
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_B, "git", 5)
+            .await
+            .unwrap();
+        assert_eq!(
+            proof(&store, &run).await.verdict,
+            Some(ProofStatus::Veraltet)
+        );
+    }
+
+    #[tokio::test]
+    async fn gate_proof_snapshot_never_revives_invalidated_or_untrusted_results() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 1)
+            .await
+            .unwrap();
+        let mut agent = evidence(COMMIT_A);
+        agent.payload = serde_json::json!({"kind":"gate-result", "schemaVersion":1,
+            "lane":"prepush", "gate":"fmt", "exitCode":0});
+        agent.measurement = EvidenceMeasurement::Measured { value: 0.into() };
+        store
+            .record_development_evidence(&run, "worker-a", 7, agent)
+            .await
+            .unwrap();
+        let mut legacy = evidence(COMMIT_A);
+        legacy.idempotency_key = "legacy".into();
+        store
+            .record_trusted_development_test_evidence(&run, "worker-a", 7, legacy)
+            .await
+            .unwrap();
+        let other = GateResult {
+            lane: "linux".into(),
+            ..gate_result("fmt", 0)
+        };
+        store
+            .record_development_gate_result(&run, "worker-a", 7, "other", 2, other)
+            .await
+            .unwrap();
+        assert_eq!(proof(&store, &run).await.verdict, Some(ProofStatus::Fehlt));
+        assert!(proof(&store, &run).await.gates.is_empty());
+        save_gate(&store, &run, "fmt", 2, "fmt", 0).await;
+        save_gate(&store, &run, "suite", 2, "rust-suite", 0).await;
+        for (sha, at) in [(COMMIT_B, 3), (COMMIT_A, 4)] {
+            store
+                .bind_development_run_candidate(&run, "worker-a", 7, sha, "git", at)
+                .await
+                .unwrap();
+            let stale = proof(&store, &run).await;
+            assert_eq!(stale.verdict, Some(ProofStatus::Veraltet));
+            assert!(stale.gates.iter().all(|(_, e)| e.invalidated_at.is_some()));
+        }
+        save_gate(&store, &run, "fresh-fmt", 5, "fmt", 0).await;
+        assert_ne!(proof(&store, &run).await.verdict, Some(ProofStatus::Belegt));
+        save_gate(&store, &run, "fresh-suite", 5, "rust-suite", 0).await;
+        assert_eq!(proof(&store, &run).await.verdict, Some(ProofStatus::Belegt));
+        assert_eq!(
+            store.list_development_evidence(&run).await.unwrap().len(),
+            7
+        );
+    }
+
+    #[tokio::test]
+    async fn gate_proof_snapshot_is_candidate_consistent_and_fails_closed_on_corruption() {
+        let (_dir, store, _root, task) = fixture().await;
+        assert!(store
+            .development_gate_proof_snapshot("unknown", "prepush", &LanePlan::default())
+            .await
+            .is_err());
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 1)
+            .await
+            .unwrap();
+        save_gate(&store, &run, "fmt", 2, "fmt", 0).await;
+        save_gate(&store, &run, "suite", 2, "rust-suite", 0).await;
+        let before = proof(&store, &run).await;
+        // Hold the real rebind transaction uncommitted; readers see its prior state.
+        let mut writer = begin_write(&store.pool, "test rebind").await.unwrap();
+        bind_candidate(&mut writer, &run, COMMIT_B, "git", 3)
+            .await
+            .unwrap();
+        assert_eq!(proof(&store, &run).await, before);
+        writer.commit().await.unwrap();
+        let after = proof(&store, &run).await;
+        assert_eq!(after.candidate.as_deref(), Some(COMMIT_B));
+        assert_eq!(after.verdict, Some(ProofStatus::Veraltet));
+        assert!(after.gates.iter().all(|(_, e)| e.invalidated_at == Some(3)));
+        for payload in ["{", r#"{"kind":"gate-result","schemaVersion":2}"#] {
+            sqlx::query("UPDATE development_run_evidence SET payload_json = ? WHERE idempotency_key = 'fmt'")
+                .bind(payload).execute(&store.pool).await.unwrap();
+            assert!(store
+                .development_gate_proof_snapshot(&run, "prepush", &LanePlan::default())
+                .await
+                .is_err());
         }
     }
 
