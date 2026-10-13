@@ -7,6 +7,7 @@ import { isMain, makeRunner } from '../lib/dev-tools.mjs';
 const repo = 'Cuarroc/ProjectA';
 const config = fileURLToPath(new URL('../../.gitleaks.toml', import.meta.url));
 const hash = text => createHash('sha256').update(text).digest('hex');
+// logging.rs emits UTC seconds; also accept fractional UTC seconds and unstamped input.
 const stamp = /^\d{4}-\d\d-\d\dT[\d:.]+Z\s*/;
 const message = line => line.replace(stamp, '').replace(/^\[panic\]\s*/, '');
 const paths = /(?:[A-Za-z]:[\\/]|\\\\|\/|(?:[\w.-]+[\\/]))[^\s"'<>]+/g;
@@ -120,6 +121,7 @@ export function collect(state, { run, appData, inbox, env, now = new Date().toIS
     entry.count++; bucket.set(key, entry);
   };
   for (const name of names) for (const line of read(join(logDir, name)).split(/\r?\n/)) {
+    // logging.rs emits one [component]/[target] tag; panic hooks always add a detail.
     const envelope = line.replace(stamp, '');
     const panic = /^\[panic\] /.test(envelope);
     if (/^\[frontend\] FEEDBACK /.test(envelope)) add(feedback, line);

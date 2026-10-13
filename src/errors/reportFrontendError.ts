@@ -1,6 +1,8 @@
 import { logFrontendError, logFrontendFeedback } from "../lib/ipc/frontendErrors";
 
 const encoder = new TextEncoder();
+const SEPARATOR_BYTES = encoder.encode(" | ").length;
+const ELLIPSIS_BYTES = encoder.encode("…").length;
 let recent: { signature: string; at: number }[] = [];
 const signatures: string[] = [];
 function text(value: unknown): string {
@@ -52,15 +54,15 @@ export function reportFrontendFeedback(what: string, expected: string): Promise<
       // Share the remainder across the ring so the newest entries always survive.
       const prefix = `sha="${bounded(buildInfo().sha, 64, true)}" at="${new Date().toISOString()}" recent="`;
       const overhead = encoder.encode(`${prefix}"`.replace(/["\\]/g, "\\$&")).length;
-      const perSignature = Math.floor((2048 - overhead - Math.max(0, signatures.length - 1) * 3) / Math.max(1, signatures.length));
+      const perSignature = Math.floor((2048 - overhead - Math.max(0, signatures.length - 1) * SEPARATOR_BYTES) / Math.max(1, signatures.length));
       const entries = signatures.map(signature => {
         const full = bounded(signature, perSignature, true);
-        return full === signature ? full : `${bounded(signature, perSignature - 3, true)}…`;
+        return full === signature ? full : `${bounded(signature, perSignature - ELLIPSIS_BYTES, true)}…`;
       });
       const context = `${prefix}${entries.join(" | ")}"`;
       return logFrontendFeedback(
-        bounded(what, 2048),
-        bounded(expected, 1024),
+        bounded(what, 2048, true),
+        bounded(expected, 1024, true),
         bounded(window.location.pathname, 256),
         context,
       );
