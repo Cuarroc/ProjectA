@@ -160,19 +160,22 @@ describe("TresorPanel", () => {
     backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
     render(<TresorPanel />);
     const refresh = screen.getByRole("button", { name: "Neu lesen" });
-    expect(refresh).toBeDisabled();
+    expect(refresh).toBeEnabled();
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(refresh);
+    expect(calls("get_provider_overview")).toHaveLength(1);
     fireEvent.click(refresh);
     expect(calls("get_provider_overview")).toHaveLength(1);
     await act(async () => { resolveOverview([]); });
-    expect(refresh).toBeEnabled();
+    expect(refresh).toHaveAttribute("aria-busy", "false");
     refresh.focus();
     backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
     fireEvent.click(refresh);
-    expect(refresh).toBeDisabled();
+    expect(refresh).toHaveAttribute("aria-busy", "true");
     fireEvent.click(refresh);
     expect(calls("get_provider_overview")).toHaveLength(2);
     await act(async () => { resolveOverview([]); });
-    expect(refresh).toBeEnabled();
+    expect(refresh).toHaveAttribute("aria-busy", "false");
     expect(refresh).toHaveFocus();
   });
 

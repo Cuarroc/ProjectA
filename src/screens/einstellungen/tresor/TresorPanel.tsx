@@ -76,7 +76,7 @@ export function TresorPanel() {
     <div className="tr-panel">
       <section className="g-glass tr-card" aria-label={T.vault}>
         <h2 className="tr-h">{T.vault}</h2>
-        <div><Button size="sm" disabled={loading} onClick={reread}>{T.reread}</Button></div>
+        <div><Button size="sm" aria-busy={loading} onClick={reread}>{T.reread}</Button></div>
         <VaultRead key={read} onLoading={setLoading} />
       </section>
       <section className="g-glass tr-card" aria-label={T.mcp}>
