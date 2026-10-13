@@ -85,7 +85,10 @@ export function chooseProject(projects, wanted) {
   throw new Error(`Mehrere Projekte registriert, bitte --project <id> angeben: ${projects.map(p => `${p.id} (${p.name ?? '?'})`).join(', ') || 'keins'}`);
 }
 
-function descriptorCandidates(env = process.env) {
+// Exported for the behaviour test (scripts/lib/hq-queue-open-points.test.mjs):
+// the first existing candidate wins, so the stable app is listed before the
+// Dev build for every base (docs/setup/dev-build.md, row 7).
+export function descriptorCandidates(env = process.env) {
   if (env.PROJECTA_API_DESCRIPTOR) return [env.PROJECTA_API_DESCRIPTOR];
   if (env.PROJECTA_APP_DATA) return [join(env.PROJECTA_APP_DATA, 'projecta-api.json')];
   const candidates = [];

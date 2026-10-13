@@ -9,6 +9,12 @@ use crate::store::new_id;
 #[cfg(windows)]
 use windows_sys::Win32::Foundation::ERROR_SHARING_VIOLATION;
 
+/// Serializes tests that mutate the process-wide environment
+/// (`PROJECTA_APP_DATA`): cargo runs tests in parallel threads, and two
+/// mutators interleaving would flake both. Lock it poison-tolerantly, the way
+/// `hooks::secrets()` does.
+pub static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// A directory under the system temp dir, deleted when the guard drops.
 pub struct TempDir {
     path: PathBuf,
