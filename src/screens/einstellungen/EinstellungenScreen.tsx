@@ -7,8 +7,9 @@ import EmergencyStop from "../../components/EmergencyStop";
 import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
 import { TabPanel, Tabs } from "../../design/layout/Tabs";
+import { listFeatureFlags, type FeatureFlag } from "../../flags/featureFlags";
+import { useFeatureFlag } from "../../flags/useFeatureFlag";
 import { AppearanceControl } from "../../shell/AppearanceControl";
-import PreviewToggle from "../../shell/mount/PreviewToggle";
 import { ROUTES } from "../../shell/routes";
 import { DiagnoseSection } from "./DiagnoseSection";
 import { T } from "./texts";
@@ -28,7 +29,25 @@ const Section = ({ title, hint, className = "", children }: { title: string; hin
   </section>
 );
 
-/** Einstellungen of the Glass shell: tab strip and the tab Allgemein. Not mounted yet: the route comes with a later package. */
+function PreviewFlagRow({ flag }: { flag: FeatureFlag }) {
+  const [enabled, setEnabled] = useFeatureFlag(flag.id);
+  const id = `es-preview-${flag.id}`;
+  return (
+    <li className="es-preview-row">
+      <div className="es-preview-control">
+        <label className="settings-check" htmlFor={id}>
+          <input id={id} type="checkbox" checked={enabled} aria-describedby={`${id}-description`}
+            onChange={(event) => setEnabled(event.target.checked)} />
+          <span>{flag.label}</span>
+        </label>
+        <span className="es-note">{enabled ? T.previewOn : T.previewOff}</span>
+      </div>
+      <p className="es-note" id={`${id}-description`}>{flag.description}</p>
+    </li>
+  );
+}
+
+/** Einstellungen of the Glass shell: tab strip and the tab Allgemein. */
 export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => void }) {
   const [tab, setTab] = useState(TABS[0].id);
   return (
@@ -41,7 +60,11 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
               <Section title={T.appearance} hint={T.appearanceHint}>
                 <AppearanceControl />
               </Section>
-              <Section title={T.preview}><PreviewToggle /></Section>
+              <Section title={T.preview}>
+                <ul className="es-preview-list">
+                  {listFeatureFlags().map((flag) => <PreviewFlagRow key={flag.id} flag={flag} />)}
+                </ul>
+              </Section>
               <Section title={T.version}><VersionUpdates /></Section>
               <Section title={T.diag} hint={T.diagHint}><DiagnoseSection /></Section>
               <Section title={T.stop} className="es-sec--stop"><EmergencyStop appearance="glass" /></Section>
