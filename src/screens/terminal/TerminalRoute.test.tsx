@@ -1,19 +1,24 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
+import TerminalRoute from "./TerminalRoute";
+import * as sessionProvider from "../../sessions/SessionProvider";
+import { saveTerminalFont, saveTerminalFontSize } from "../../lib/settings";
+import { CLASSIC_PATH } from "../leitstand/LeitstandRoute";
 import { FEATURE_FLAG_STORAGE_PREFIX } from "../../flags/featureFlags";
 import { ptyOutput } from "../../lib/eventNames";
 
 const D1_FLAG_KEY = `${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`;
 
 const mocks = vi.hoisted(() => ({
-  invoke: vi.fn(), listen: vi.fn(), writes: [] as string[],
+  invoke: vi.fn(), listen: vi.fn(), writes: [] as string[], fonts: [] as Array<{ fontFamily: string; fontSize: number }>,
   listeners: [] as Array<{ event: string; handler: (event: { payload: unknown }) => void; stop: ReturnType<typeof vi.fn> }>,
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@xterm/xterm", () => ({ Terminal: class {
   cols = 80; rows = 24; options = {}; element = document.createElement("div");
+  constructor(options: { fontFamily: string; fontSize: number }) { mocks.fonts.push(options); }
   open(container: HTMLElement) { this.element.className = "xterm"; container.append(this.element); }
   write(chunk: string) { mocks.writes.push(chunk); }
   loadAddon() {} focus() {} refresh() {} attachCustomKeyEventHandler() {} dispose() {}
@@ -28,7 +33,7 @@ vi.mock("@xterm/addon-webgl", () => ({ WebglAddon: class { onContextLoss() {} di
 beforeEach(() => {
   localStorage.clear(); localStorage.setItem(D1_FLAG_KEY, "1");
   window.location.hash = "#/leitstand/klassisch";
-  mocks.listeners = []; mocks.writes = []; mocks.invoke.mockReset(); mocks.listen.mockReset();
+  mocks.listeners = []; mocks.writes = []; mocks.fonts = []; mocks.invoke.mockReset(); mocks.listen.mockReset();
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   mocks.listen.mockImplementation(async (event, handler) => {
     const stop = vi.fn(); mocks.listeners.push({ event, handler, stop }); return stop;
@@ -46,7 +51,7 @@ beforeEach(() => {
     return null;
   });
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.restoreAllMocks(); cleanup(); vi.unstubAllGlobals(); });
 const active = (event: string) => mocks.listeners.filter((entry) => entry.event === event && entry.stop.mock.calls.length === 0);
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
@@ -58,6 +63,49 @@ const openShellTab = async () => {
 
 // Real App, SessionProvider, ShellMount and TerminalView; mock only IPC and xterm.
 describe("terminal route", () => {
+  it("keeps one visible viewer on werkzeuge and legacy sibling routes", async () => {
+    const view = render(<App />);
+    await openShellTab();
+    await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+    for (const path of ["/leitstand/werkzeuge", "/leitstand/verlauf", CLASSIC_PATH, "/leitstand/terminal"]) {
+      go(`#${path}`);
+      const viewers = view.container.querySelectorAll(".xterm");
+      expect(viewers).toHaveLength(1);
+      expect(viewers[0]).toBeVisible();
+      await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+    }
+    expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
+  });
+
+  it("shows existing session tabs when no session is selected", async () => {
+    const noop = vi.fn();
+    vi.spyOn(sessionProvider, "useSessions").mockReturnValue({
+      sessions: [{ sessionId: "session-a", title: "Shell", profileId: "shell", profileName: "Shell",
+        workerId: null, projectId: null, kind: "worker", exited: false, exitCode: null }],
+      activeSessionId: null, splitOpen: false, splitSessionId: null, splitPrimary: true, restoreWorkerId: null,
+      select: noop, openWorker: noop, openAdHoc: async () => {}, close: noop, drop: noop, toggleSplit: noop,
+      showRestore: noop, subscribeExit: async () => {}, unsubscribeExit: noop, markExited: noop, onExit: () => noop,
+    });
+    const view = render(<TerminalRoute />);
+    expect(screen.getByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText("Keine Terminal-Sitzung geöffnet.")).toBeNull();
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+    await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+  });
+
+  it("preserves configured terminal typography across classic and Glass routes", async () => {
+    saveTerminalFont("jetbrains"); saveTerminalFontSize(17);
+    render(<App />);
+    await openShellTab();
+    await waitFor(() => expect(mocks.fonts).toHaveLength(1));
+    go("#/leitstand/terminal");
+    await waitFor(() => expect(mocks.fonts).toHaveLength(2));
+    expect(mocks.fonts.map(({ fontFamily }) => fontFamily)).toEqual([
+      '"JetBrains Mono", "Cascadia Mono", Consolas, monospace', '"JetBrains Mono", "Cascadia Mono", Consolas, monospace',
+    ]);
+    expect(mocks.fonts[1].fontSize).toBe(17);
+  });
+
   it("replays the same session after settings and leitstand without respawning", async () => {
     const view = render(<App />);
     await openShellTab();
