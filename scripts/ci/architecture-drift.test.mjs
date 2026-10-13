@@ -1,12 +1,129 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { test } from "node:test";
 
 const scanner = join(dirname(fileURLToPath(import.meta.url)), "architecture-drift.mjs");
+
+const seams = ["api.rs", "main.rs", "store.rs", "bin/pa.rs"].map(name => `src-tauri/src/${name}`);
+const budgetPath = "scripts/ci/seam-budget.json";
+const budget = (maxLines = 2) => ({ schemaVersion: 1, seams: seams.map(path => ({ path, maxLines })) });
+const fixtureEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+
+function git(root, ...args) {
+  const result = spawnSync("git", args, { cwd: root, env: fixtureEnv, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function budgetFixture(withBudget = true) {
+  const root = fixture(Object.fromEntries(seams.map(path => [path, "// seam\n\n"])));
+  if (withBudget) writeFileSync(join(root, budgetPath), JSON.stringify(budget()));
+  git(root, "init", "-q");
+  git(root, "config", "core.autocrlf", "false");
+  git(root, "config", "core.hooksPath", join(root, "empty-hooks"));
+  git(root, "config", "user.name", "Fixture");
+  git(root, "config", "user.email", "noreply@example.com");
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "baseline");
+  git(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+  return root;
+}
+
+function checkBudget(root, args = [], env = fixtureEnv) {
+  return spawnSync(process.execPath, [scanner, "check", ...args], { cwd: root, env, encoding: "utf8" });
+}
+
+function expectBudget(root, status, diagnostic, args = [], env = fixtureEnv) {
+  const result = checkBudget(root, args, env);
+  assert.equal(result.status, status, result.stdout + result.stderr);
+  if (diagnostic) assert.match(result.stderr, diagnostic);
+}
+
+test("seam budget rejects growth and accepts unchanged or smaller seams", () => {
+  const root = budgetFixture();
+  expectBudget(root, 0);
+  for (const path of seams) {
+    writeFileSync(join(root, path), "// seam\n\n// growth\n");
+    expectBudget(root, 1, /seam budget.*exceeds/);
+    writeFileSync(join(root, path), "// smaller\n");
+    expectBudget(root, 0);
+  }
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(1)));
+  expectBudget(root, 0);
+  // Both checks must run through the real CLI.
+  writeFileSync(join(root, seams[0]), 'fn f() { sqlx::query("SELECT 1"); }\n');
+  expectBudget(root, 1, /SQL_OUTSIDE_STORE/);
+});
+
+test("seam budget rejects raised or malformed ceilings", () => {
+  const root = budgetFixture();
+  const base = git(root, "rev-parse", "HEAD");
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(3)));
+  writeFileSync(join(root, seams[0]), "// seam\n\n// growth\n");
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "raise candidate budget");
+  expectBudget(root, 1, /seam budget.*raised/);
+  expectBudget(root, 1, /seam budget.*raised/, ["--base", base]);
+  const malformed = [null, {}, { ...budget(), schemaVersion: 2 }, { ...budget(), seams: [] }];
+  for (const value of [-1, 1.5, "2", null, 9007199254740992]) {
+    malformed.push(budget(value));
+  }
+  malformed.push({ ...budget(), seams: budget().seams.slice(1) });
+  malformed.push({ ...budget(), seams: [...budget().seams, { path: "extra.rs", maxLines: 2 }] });
+  malformed.push({ ...budget(), seams: [budget().seams[0], ...budget().seams.slice(0, 3)] });
+  for (const value of malformed) {
+    writeFileSync(join(root, budgetPath), JSON.stringify(value));
+    expectBudget(root, 1, /seam budget/);
+  }
+  writeFileSync(join(root, budgetPath), "{");
+  expectBudget(root, 1, /seam budget/);
+  const bootstrap = budgetFixture(false);
+  writeFileSync(join(bootstrap, budgetPath), JSON.stringify(budget()));
+  expectBudget(bootstrap, 0);
+  writeFileSync(join(bootstrap, budgetPath), JSON.stringify(budget(3)));
+  expectBudget(bootstrap, 1, /seam budget.*raised/);
+  const invalidBase = budgetFixture();
+  writeFileSync(join(invalidBase, budgetPath), "{}");
+  git(invalidBase, "add", ".");
+  git(invalidBase, "-c", "commit.gpgsign=false", "commit", "-qm", "malformed baseline");
+  git(invalidBase, "update-ref", "refs/remotes/origin/main", "HEAD");
+  writeFileSync(join(invalidBase, budgetPath), JSON.stringify(budget()));
+  expectBudget(invalidBase, 1, /seam budget.*invalid schema/);
+});
+
+test("seam budget rejects missing files and counts CRLF consistently", () => {
+  const root = budgetFixture();
+  for (const source of ["", "\n", "// one\r\n// two\r\n", "// one\n// two", "// one\r\n// two"]) {
+    writeFileSync(join(root, seams[0]), source);
+    expectBudget(root, 0);
+  }
+  for (const source of ["// one\r\n// two\r\n// three", "// one\n// two\n// three\n"]) {
+    writeFileSync(join(root, seams[0]), source);
+    expectBudget(root, 1, /seam budget.*exceeds/);
+  }
+  writeFileSync(join(root, seams[0]), "// one\n");
+  expectBudget(root, 1, /seam budget/, ["--base", "missing-ref"]);
+  expectBudget(root, 1, /seam budget/, ["--base"]);
+  expectBudget(root, 0, undefined, ["--base", "origin/main"]);
+  const unrelated = git(root, "-c", "commit.gpgsign=false", "commit-tree", "HEAD^{tree}", "-m", "unrelated");
+  expectBudget(root, 1, /seam budget/, ["--base", unrelated]);
+  expectBudget(root, 1, /seam budget/, [], { ...fixtureEnv, PATH: join(root, "no-git") });
+  for (const path of [...seams, budgetPath]) {
+    renameSync(join(root, path), join(root, `${path}.saved`));
+    expectBudget(root, 1, /seam budget/);
+    renameSync(join(root, `${path}.saved`), join(root, path));
+  }
+  renameSync(join(root, seams[0]), join(root, `${seams[0]}.saved`));
+  mkdirSync(join(root, seams[0]));
+  expectBudget(root, 1, /seam budget/);
+  const nonGit = fixture(Object.fromEntries(seams.map(path => [path, "// seam\n"])));
+  writeFileSync(join(nonGit, budgetPath), JSON.stringify(budget()));
+  expectBudget(nonGit, 1, /seam budget/);
+});
 
 function fixture(files) {
   const root = mkdtempSync(join(tmpdir(), "projecta-architecture-drift-"));
@@ -21,7 +138,10 @@ function fixture(files) {
 }
 
 function run(root, command) {
-  return spawnSync(process.execPath, [scanner, command, ...(command === "snapshot" ? ["--stdout"] : [])], {
+  const args = command === "check"
+    ? ["--input-type=module", "-e", `import { checkPatterns } from ${JSON.stringify(pathToFileURL(scanner).href)}; checkPatterns();`]
+    : [scanner, command, ...(command === "snapshot" ? ["--stdout"] : [])];
+  return spawnSync(process.execPath, args, {
     cwd: root,
     encoding: "utf8",
   });

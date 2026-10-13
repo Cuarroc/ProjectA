@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const root = process.cwd();
 const allowPath = join(root, "scripts/ci/architecture-drift.allow");
@@ -162,12 +164,7 @@ function scan() {
   return [...new Set(rows)].sort();
 }
 
-const [command, option] = process.argv.slice(2);
-if (command === "explain" && option in rules) {
-  console.log(`${option}: ${rules[option]}`);
-} else if (command === "snapshot" && option === "--stdout") {
-  console.log(scan().join("\n"));
-} else if (command === "check") {
+export function checkPatterns() {
   if (!existsSync(allowPath)) throw new Error(`missing allowlist: ${allowPath}`);
   const allowed = new Set(readFileSync(allowPath, "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#")));
   const added = scan().filter((row) => !allowed.has(row));
@@ -176,7 +173,70 @@ if (command === "explain" && option in rules) {
     added.forEach((row) => console.error(row));
     process.exitCode = 1;
   } else console.log("architecture drift: no new occurrences");
-} else {
-  console.error("usage: architecture-drift.mjs check | snapshot --stdout | explain RULE");
-  process.exitCode = 2;
+}
+
+const seamPaths = ["api.rs", "main.rs", "store.rs", "bin/pa.rs"].map(name => `src-tauri/src/${name}`);
+const budgetPath = "scripts/ci/seam-budget.json";
+// Physical lines include comments, tests and blanks; CRLF and LF count alike.
+const lines = source => source === "" ? 0 : source.split("\n").length - Number(source.endsWith("\n"));
+
+function parseBudget(source) {
+  const value = JSON.parse(source);
+  if (!value || value.schemaVersion !== 1 || Object.keys(value).length !== 2 ||
+      !Array.isArray(value.seams) || value.seams.length !== seamPaths.length) {
+    throw new Error("invalid schema: expected schemaVersion 1 and four seams");
+  }
+  const ceilings = new Map();
+  for (const entry of value.seams) {
+    if (!entry || Object.keys(entry).length !== 2 || !seamPaths.includes(entry.path) ||
+        ceilings.has(entry.path) || !Number.isSafeInteger(entry.maxLines) || entry.maxLines < 0) {
+      throw new Error("invalid, duplicate or missing seam path/ceiling");
+    }
+    ceilings.set(entry.path, entry.maxLines);
+  }
+  return ceilings;
+}
+
+export function checkSeamBudget(args = []) {
+  try {
+    if (args.length && (args.length !== 2 || args[0] !== "--base" || !args[1])) {
+      throw new Error("expected check [--base REF]");
+    }
+    const git = (...argv) => execFileSync("git", argv, {
+      cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],
+    });
+    const base = args.length
+      ? git("rev-parse", "--verify", "--end-of-options", `${args[1]}^{commit}`).trim()
+      : git("merge-base", "origin/main", "HEAD").trim();
+    git("merge-base", "--is-ancestor", base, "HEAD");
+    const current = parseBudget(readFileSync(join(root, budgetPath), "utf8"));
+    const tracked = git("ls-tree", "--name-only", base, "--", budgetPath).trim();
+    const baseline = tracked ? parseBudget(git("show", `${base}:${budgetPath}`)) :
+      new Map(seamPaths.map(path => [path, lines(git("show", `${base}:${path}`))]));
+    for (const path of seamPaths) {
+      const ceiling = current.get(path);
+      if (ceiling > baseline.get(path)) throw new Error(`${path}: ceiling raised (${ceiling} > ${baseline.get(path)})`);
+      const count = lines(readFileSync(join(root, path), "utf8"));
+      if (count > ceiling) throw new Error(`${path}: ${count} lines exceeds ceiling ${ceiling}`);
+      console.log(`seam budget: ${path}: ${count} <= ${ceiling}`);
+    }
+  } catch (error) {
+    console.error(`seam budget: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [command, option, ...rest] = process.argv.slice(2);
+  if (command === "explain" && option in rules) {
+    console.log(`${option}: ${rules[option]}`);
+  } else if (command === "snapshot" && option === "--stdout") {
+    console.log(scan().join("\n"));
+  } else if (command === "check") {
+    checkSeamBudget(option === undefined ? [] : [option, ...rest]);
+    checkPatterns();
+  } else {
+    console.error("usage: architecture-drift.mjs check [--base REF] | snapshot --stdout | explain RULE");
+    process.exitCode = 2;
+  }
 }
