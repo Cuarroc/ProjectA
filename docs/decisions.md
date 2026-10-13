@@ -195,7 +195,7 @@ that require authorized rereads, not replayable state or approval attestations.
 **Decision.** `workflow/model.rs` (RUN-1) owns one transition function;
 `workflow/runner.rs`, `workflow/review.rs`, `workflow/delivery.rs` implement
 RUN-2/3/4. ST-C1 adds `workflow_orders`, `workflow_steps`,
-`workflow_approvals`, `workflow_deliveries`; ST-B1 extends the existing
+`workflow_approvals`, `workflow_deliveries`, `workflow_events`; ST-B1 extends the existing
 `development_run_*` evidence tables, with an explicit workflow/run association
 and migration compatibility tests. No second evidence ledger or scheduler.
 Existing continuous task/goal foreign keys must be mapped explicitly;
@@ -212,6 +212,11 @@ state; reconnect uses cursor/snapshot. Replay never grants approval or starts
 a worker. The durable event ID also deduplicates notifications/attention items.
 **Consequences.** Reviewer identity/family and tier checks precede approval;
 A needs two other vendors, B another model family, C its required gates.
+RUN-1's pure model trusts RUN-3's `ReviewReport.accepted` attestation and
+does not structurally represent reviewer identity or vendor diversity; RUN-3
+must enforce the two-distinct-vendor (A), other-family (B) and gate (C)
+requirements before any approval path is wired. Reviewer identity fields in
+`ReviewReport` are deferred to RUN-3 as an explicit evidence-contract change.
 `review-ok` needs full disposition and no open high finding. Delivery adapters
 enqueue Mergify or deliver a customer test copy; live delivery needs its bound
 user approval. Click/start checks, seam ownership and restart pause are shared;
@@ -226,7 +231,7 @@ V2-MQ1, V2-H2, V2-S03a, V2-CORE-AT, V2-O0, V2-DOG-1.
 
 ### ADR-V2-07 — ADR-A7: separate modules, one serial store lane
 
-**Context.** A7 above is an open proposal pending four weeks of OPS-01 data.
+**Context.** The A7 st-Lane proposal (2026-10-03, below) is an open proposal pending four weeks of OPS-01 data.
 `src-tauri/src/store.rs:875` owns the migration sequence; `:1222` backs up
 before migration and `:1367` dispatches migration steps. Module boundaries
 do not separate the schema, maintenance barrier or migration ordering.
