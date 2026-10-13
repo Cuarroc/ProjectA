@@ -1680,6 +1680,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn typed_gate_listing_matches_snapshot_on_conflicting_timestamp_ties() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 1)
+            .await
+            .unwrap();
+        save_gate(&store, &run, "red", 3, "fmt", 101).await;
+        save_gate(&store, &run, "green", 3, "fmt", 0).await;
+        // Force IDs to favor green under the raw SQL ordering.
+        sqlx::query("UPDATE development_run_evidence SET id = CASE idempotency_key WHEN 'red' THEN '000-red' ELSE 'zzz-green' END WHERE run_id = ?")
+            .bind(&run).execute(&store.pool).await.unwrap();
+        assert_eq!(
+            store.list_development_gate_results(&run).await.unwrap(),
+            vec![gate_result("fmt", 0), gate_result("fmt", 101)]
+        );
+        assert_eq!(
+            proof(&store, &run).await.verdict,
+            Some(ProofStatus::Rot { gate: "fmt".into() })
+        );
+        save_gate(&store, &run, "new-green", 4, "fmt", 0).await;
+        save_gate(&store, &run, "backdated-red", 2, "fmt", 101).await;
+        let listed = store.list_development_gate_results(&run).await.unwrap();
+        assert_eq!(
+            listed,
+            vec![
+                gate_result("fmt", 101),
+                gate_result("fmt", 0),
+                gate_result("fmt", 101),
+                gate_result("fmt", 0)
+            ]
+        );
+        let snapshot = proof(&store, &run).await;
+        assert_eq!(
+            listed,
+            snapshot
+                .gates
+                .into_iter()
+                .map(|(gate, _)| gate)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[tokio::test]
     async fn typed_gate_evidence_ignores_malformed_untrusted_rows() {
         let (_dir, store, _root, task) = fixture().await;
         let run = launched_run(&store, &task, "worker-a", 7, None).await;
