@@ -18,7 +18,7 @@ async function boot(page, data) {
     if (path === '/api/state') return route.fulfill({ json: data() });
     if (path.startsWith('/api/')) return route.fulfill({ status: 404 });
     const body = path === '/' ? read('index.html').replace('<head>', '<head><meta name="decision-desk-root-agent-id" content="receiver">')
-      : path === '/design/glass.css' ? read('../../src/design/tokens.css') + read('../../src/design/motion.css') : read(`.${path}`);
+      : path === '/design/glass.css' ? read('../../src/design/tokens.css') + '\n' + read('../../src/design/motion.css') : read(`.${path}`);
     return route.fulfill({ body, contentType: path.endsWith('.css') ? 'text/css' : path.endsWith('.js') ? 'application/javascript' : 'text/html' });
   });
   await page.goto('http://127.0.0.1/');
@@ -71,6 +71,37 @@ test('DR2 start limits attention to three current questions', async ({ page }, i
   await page.evaluate(() => document.documentElement.dataset.theme = 'dark');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 18, 25)');
   await page.screenshot({ path: info.outputPath('after-empty-dark-1280.png') });
+});
+test('DR2 clarification stays gated until a keyboard-accessible note exists', async ({ page }) => {
+  await boot(page, fixture); await page.locator('#area-now').click();
+  const clarify = page.getByRole('button', { name: 'Rückfrage stellen' });
+  await expect(page.locator('#note')).toBeHidden(); await expect(clarify).toBeDisabled();
+  await page.getByText('Notiz hinzufügen', { exact: true }).focus(); await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab'); await expect(page.locator('#note')).toBeFocused();
+  await page.locator('#note').fill('  '); await expect(clarify).toBeDisabled();
+  await page.locator('#note').fill('Warum?'); await clarify.click();
+  await expect(page.getByRole('button', { name: 'Rückfrage senden' })).toBeFocused();
+  await expect(page.locator('form .notice')).toContainText('keine Zustimmung');
+});
+test('DR2 malformed recommendation details preserve the basic recommendation', async ({ page }) => {
+  const data = fixture(); data.questions[2].recommendationDetail.observation = null;
+  await boot(page, () => data); await page.locator('#area-now').click();
+  await expect(page.locator('#detail > .recommendation')).toHaveCount(1);
+  await expect(page.locator('#detail > .recommendation strong')).toHaveText('Empfehlung: Übernehmen');
+  await page.getByText('Warum diese Empfehlung?', { exact: true }).click();
+  await expect(page.locator('#detail > .recommendation')).toContainText('Ausführliche Empfehlung');
+});
+test('DR2 confirmation omits non-text recommendation consequences', async ({ page }) => {
+  const data = fixture(); data.questions[2].recommendationDetail.consequences = { invalid: true };
+  await boot(page, () => data); await page.locator('#area-now').click();
+  await page.locator('#option-a-yes').check(); await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
+  await expect(page.locator('form .notice')).toContainText('Die Einstellung gilt für alle Projekte.');
+  await expect(page.locator('form .notice')).not.toContainText('[object Object]');
+  await expect(page.getByRole('button', { name: 'Auswahl verbindlich speichern' })).toBeFocused();
+});
+test('DR2 declares both supported color schemes before styles load', async ({ page }) => {
+  await boot(page, fixture);
+  await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'light dark');
 });
 test('DR2 compact text keeps originals and confirmation reachable', async ({ page }, info) => {
   const data = fixture(); await boot(page, () => data); await page.locator('#area-now').click();

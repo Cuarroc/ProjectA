@@ -38,7 +38,7 @@ function badge(text, cls) { return node('span', text, `badge ${cls || ''}`); }
 function detailedRecommendation(q) {
   if (!q.recommendationDetail) return null;
   const r = q.recommendationDetail, o = r.observation, rec = node('section', undefined, 'recommendation'); rec.setAttribute('aria-label', 'Empfehlung');
-  if (!record(r) || !record(o) || !strings(o.evidenceRefs) || !strings(r.authorityRefs) || !['statement'].every(k => typeof o[k] === 'string') || !['hypothesis', 'consequences', 'reversibility'].every(k => typeof r[k] === 'string')) { rec.append(node('p', 'Empfehlungsdetails nicht prüfbar.')); return rec; }
+  if (!record(r) || !record(o) || !strings(o.evidenceRefs) || !strings(r.authorityRefs) || !['statement'].every(k => typeof o[k] === 'string') || !['hypothesis', 'consequences', 'reversibility'].every(k => typeof r[k] === 'string')) return null;
   const observed = o.evidenceRefs.some(ref => ref.trim()) && typeof o.observedAt === 'string' && Number.isFinite(Date.parse(o.observedAt));
   const heading = sourceCurrent(q) && state.questions.some(current => current.id === q.id && current.revision === q.revision) ? 'Empfehlung' : 'Historische Empfehlung';
   rec.append(node('strong', q.mode === 'free' ? heading : `${heading}: ${q.options.filter(o => q.recommendation.optionIds.includes(o.id)).map(o => o.label).join(' + ')}`));
@@ -198,7 +198,7 @@ function openQuestion(id, focus = true) {
     if (action === 'clarify' && !d.note.trim()) { feedback.textContent = 'Bitte trage deine Rückfrage in das Notizfeld ein.'; note.focus(); return; }
     const summary = action === 'answer' ? free ? 'Du speicherst deine Antwort. Daraus entsteht kein Ausführungsauftrag.' : `Du bestätigst: ${q.options.filter(o => d.selected.includes(o.id)).map(o => o.label).join(' + ')}` : action === 'defer' ? 'Du stellst diese Frage zurück. Das ist keine Zustimmung.' : 'Du sendest eine Rückfrage. Das ist keine Zustimmung.';
     confirm.replaceChildren(node('strong', summary));
-    if (action === 'answer' && !free) { for (const o of q.options.filter(o => d.selected.includes(o.id))) confirm.append(facts([['Auswirkungen', o.impact], ['Abwägung', o.tradeoff], ['Aufwand', o.effort], ['Umkehrbarkeit', o.reversible]])); if (q.recommendationDetail) confirm.append(node('p', q.recommendationDetail.consequences)); }
+    if (action === 'answer' && !free) { for (const o of q.options.filter(o => d.selected.includes(o.id))) confirm.append(facts([['Auswirkungen', o.impact], ['Abwägung', o.tradeoff], ['Aufwand', o.effort], ['Umkehrbarkeit', o.reversible]])); if (typeof q.recommendationDetail?.consequences === 'string') confirm.append(node('p', q.recommendationDetail.consequences)); }
     if (d.note.trim()) confirm.append(node('p', d.note));
     const send = button(action === 'answer' ? free ? 'Antwort speichern' : 'Auswahl verbindlich speichern' : action === 'defer' ? 'Zurückstellung speichern' : 'Rückfrage senden', () => submit(action), 'primary'); confirm.append(send, button('Zurück zum Entwurf', () => { confirm.hidden = true; choose.focus(); })); confirm.hidden = false; send.focus();
   }

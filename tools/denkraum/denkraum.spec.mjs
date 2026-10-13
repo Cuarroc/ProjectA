@@ -33,7 +33,7 @@ async function setupPage(page, metaContent, stateData, scriptError = false, { cl
     } else if (url.includes('/api/ideas') || url.includes('/api/answers') || url.includes('/api/workbench')) {
       await route.fulfill({ json: {} });
     } else if (url.includes('/design/glass.css')) {
-      await route.fulfill({ body: readFileSync(join(__dirname, '../../src/design/tokens.css'), 'utf8') + readFileSync(join(__dirname, '../../src/design/motion.css'), 'utf8'), contentType: 'text/css' });
+      await route.fulfill({ body: readFileSync(join(__dirname, '../../src/design/tokens.css'), 'utf8') + '\n' + readFileSync(join(__dirname, '../../src/design/motion.css'), 'utf8'), contentType: 'text/css' });
     } else if (url.includes('/style.css')) {
       await route.fulfill({ body: readFileSync(join(__dirname, 'style.css'), 'utf8'), contentType: 'text/css' });
     } else if (url.includes('/app/questions.js')) {
