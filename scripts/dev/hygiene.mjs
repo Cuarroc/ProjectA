@@ -25,6 +25,7 @@ const SECTION = /^#{2,4}\s*Aktive Specs\s*$/;
 const MACHINE_BRANCH = /^(?:main|HEAD|origin)$|^(?:mergify|gh-readonly-queue)\//;
 const OPEN_LIMIT = 200;
 const ALL_LIMIT = 1000;
+export const SUSPICIOUS_NAME_CHARS = /[!$`;&|<>()]/;
 
 const HELP = `hygiene — Buchfuehrung des Repos pruefen (read-only), Ausgabe als Markdown
 
@@ -275,7 +276,8 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
 }
 
 export function countFindings(f) {
-  return f.stalePrs.length + f.branchesWithoutPr.length + f.specsOfMergedPrs.length + f.inProgressWithoutPr.length + f.untracked.length + (f.suspiciousNames?.length || 0) + (f.mainDivergence?.behind > 0 ? 1 : 0) + (f.notChecked?.length || 0);
+  const fileCount = new Set([...f.untracked, ...(f.suspiciousNames || [])]).size;
+  return f.stalePrs.length + f.branchesWithoutPr.length + f.specsOfMergedPrs.length + f.inProgressWithoutPr.length + fileCount + (f.mainDivergence?.behind > 0 ? 1 : 0) + (f.notChecked?.length || 0);
 }
 
 export function formatHygiene(f, { now = Date.now() } = {}) {
@@ -335,7 +337,7 @@ export function gather({ run, cwd, now = Date.now() }) {
   // NUL records preserve newlines, quotes and non-ASCII names verbatim.
   const paths = gitIn(run, mainPath).ok("ls-files", "--others", "--exclude-standard", "--directory", "-z");
   const untracked = paths.split("\0").filter(Boolean);
-  const suspiciousNames = untracked.filter((p) => !p.includes("/") && /[!$`;&|<>()]/.test(p));
+  const suspiciousNames = untracked.filter((p) => !p.includes("/") && SUSPICIOUS_NAME_CHARS.test(p));
   const mainDivergence = mainCheckoutDivergence(run, mainPath);
   // Stat on the main checkout path (where untracked files live), not --root.
   const accidents = shellRedirectAccidents(mainPath, untracked);

@@ -580,6 +580,29 @@ function checkoutFixture(t, { names = [], divergence = { code: 0, stdout: "0\t0\
   return { caller, mainPath, calls, run, cli };
 }
 
+test("hygiene counts suspicious untracked root files once", async (t) => {
+  const f = checkoutFixture(t, { names: ["name!"] });
+  const { report } = await f.cli(false);
+  assert.deepEqual(report.untracked, ["name!"]);
+  assert.deepEqual(report.suspiciousNames, ["name!"]);
+  assert.equal(countFindings(report), 1);
+  assert.match((await f.cli(false, false)).report, /Befunde: 1 /);
+  assert.equal((await f.cli(true)).code, 1);
+  assert.equal(countFindings({ ...report, untracked: ["name!", "normal.txt"] }), 2);
+  assert.equal(countFindings({ ...report, untracked: [] }), 1);
+  assert.equal(countFindings({ ...report, suspiciousNames: undefined }), 1);
+});
+
+test("hygiene exports the suspicious filename character pattern", async () => {
+  const { SUSPICIOUS_NAME_CHARS } = await import("../dev/hygiene.mjs");
+  assert.ok(SUSPICIOUS_NAME_CHARS instanceof RegExp);
+  for (const char of ['!', '$', '`', ';', '&', '|', '<', '>', '(', ')']) {
+    assert.equal(SUSPICIOUS_NAME_CHARS.test(`name${char}`), true);
+    assert.equal(SUSPICIOUS_NAME_CHARS.test(`name${char}`), true, "repeated tests remain stable");
+  }
+  assert.equal(SUSPICIOUS_NAME_CHARS.test("normal-file_1.txt"), false);
+});
+
 test("hygiene reports nonempty shell metacharacter filenames without executing them", async (t) => {
   const suspicious = ['!fs.existsSync(dir', 'line\n"$OUT', ...['!', '$', '`', ';', '&', '|', '<', '>', '(', ')'].map((c) => `name${c}`)];
   const names = [...suspicious, "normal.txt", "empty", "subdir/!nested"];
