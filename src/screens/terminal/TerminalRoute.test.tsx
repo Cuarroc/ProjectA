@@ -63,17 +63,26 @@ const openShellTab = async () => {
 
 // Real App, SessionProvider, ShellMount and TerminalView; mock only IPC and xterm.
 describe("terminal route", () => {
+  // Keep the historical test name for the existing red-first trailer; tools may hide the viewer.
   it("keeps one visible viewer on werkzeuge and legacy sibling routes", async () => {
     const view = render(<App />);
     await openShellTab();
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
-    for (const path of ["/leitstand/werkzeuge", "/leitstand/verlauf", CLASSIC_PATH, "/leitstand/terminal"]) {
+    const output = active(ptyOutput("session-a"))[0];
+    const viewer = view.container.querySelector(".xterm");
+    for (const path of ["/leitstand/werkzeuge", "/leitstand/verlauf", CLASSIC_PATH]) {
       go(`#${path}`);
       const viewers = view.container.querySelectorAll(".xterm");
       expect(viewers).toHaveLength(1);
-      expect(viewers[0]).toBeVisible();
+      expect(viewers[0]).toBe(viewer);
+      expect(output.stop).not.toHaveBeenCalled();
       await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     }
+    go("#/leitstand/terminal");
+    await waitFor(() => expect(view.container.querySelectorAll(".xterm")).toHaveLength(1));
+    expect(view.container.querySelector(".g-mount-legacy .xterm")).toBeNull();
+    await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+    expect(mocks.invoke.mock.calls.some(([name]) => name === "kill_pty")).toBe(false);
     expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
   });
 
