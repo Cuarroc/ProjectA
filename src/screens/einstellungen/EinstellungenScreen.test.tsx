@@ -1,16 +1,17 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { check } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
 import { FEATURE_FLAGS, FEATURE_FLAG_STORAGE_PREFIX, isFeatureFlagEnabled } from "../../flags/featureFlags";
-import { getVersion } from "@tauri-apps/api/app";
+import { getIdentifier, getVersion } from "@tauri-apps/api/app";
 import { ROUTES } from "../../shell/routes";
 import { EinstellungenScreen } from "./EinstellungenScreen";
 
-vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: async () => "com.projecta.app" }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 let emergencyStopped = false;
@@ -47,13 +48,24 @@ beforeEach(() => {
     }
   });
   vi.mocked(getVersion).mockReset().mockResolvedValue("9.8.7");
+  vi.mocked(getIdentifier).mockReset().mockResolvedValue("com.projecta.app");
   vi.mocked(check).mockReset().mockResolvedValue(null);
   open.mockReset();
   localStorage.clear();
   delete document.documentElement.dataset.theme;
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(cleanup);
 const show = () => render(<EinstellungenScreen onOpenClassic={open} />);
+
+/** Key material must not survive as visible text or as any DOM attribute. */
+function expectSecretAbsent(secret: string) {
+  expect(document.body).not.toHaveTextContent(secret);
+  for (const el of document.querySelectorAll("*")) {
+    for (const name of el.getAttributeNames()) {
+      expect(el.getAttribute(name), name).not.toContain(secret);
+    }
+  }
+}
 
 describe("tab strip", () => {
   it("is a tablist of the route's tabs with Allgemein active and arrow-key navigation", () => {
@@ -79,6 +91,32 @@ describe("tab strip", () => {
 });
 
 describe("tab MCP & Tresor", () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("shows the vault before the overview answers", () => {
+    overview = new Promise(() => {});
+    show();
+    vaultTab();
+    const panel = screen.getByRole("tabpanel");
+    expect(screen.getByRole("region", { name: "Tresor" })).toBeVisible();
+    expect(screen.getByText("Wird gelesen …")).toBeVisible();
+    expect(panel).not.toHaveTextContent("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.");
+  });
+
+  it("shows the internal package note only for the dev app identifier", async () => {
+    overview = [];
+    show();
+    vaultTab();
+    expect(await screen.findByText("Keine Anbieter bekannt")).toBeVisible();
+    expect(screen.queryByText("V2-B19 (noch nicht gebaut)")).toBeNull();
+    expect(getIdentifier).toHaveBeenCalled();
+    cleanup();
+    vi.mocked(getIdentifier).mockResolvedValue("com.projecta.dev");
+    show();
+    vaultTab();
+    expect(await screen.findByText("V2-B19 (noch nicht gebaut)")).toBeVisible();
+  });
+
   it("mounts the read only vault only after selecting the MCP tab", async () => {
     show();
     await screen.findByText("logs/projecta.log");
@@ -109,7 +147,7 @@ describe("tab MCP & Tresor", () => {
     expect(await screen.findByText("Tresor nicht lesbar")).toBeVisible();
     expect(screen.queryByRole("table")).toBeNull();
     expect(calls("has_provider_key")).toHaveLength(0);
-    expect(document.body).not.toHaveTextContent(privateDetail);
+    expectSecretAbsent(privateDetail);
     fireEvent.click(screen.getByRole("tab", { name: TABS[2] }));
     overview = [provider("api", "api_key", "vault_corrupt"), provider("invalid", "api_key"), provider("failed", "api_key")];
     presence = { api: false, invalid: privateDetail, failed: new Error(privateDetail) };
@@ -118,7 +156,16 @@ describe("tab MCP & Tresor", () => {
     await waitFor(() => expect(screen.getAllByText("nicht prüfbar")).toHaveLength(3));
     expect(screen.queryByText("kein Schlüssel hinterlegt")).toBeNull();
     expect(screen.queryByText("Keine Anbieter bekannt")).toBeNull();
-    expect(document.body).not.toHaveTextContent(privateDetail);
+    expectSecretAbsent(privateDetail);
+  });
+
+  it("keeps a vault error detail out of DOM attributes", async () => {
+    const privateDetail = "synthetic-private-response";
+    overview = new Error(privateDetail);
+    show();
+    vaultTab();
+    expect(await screen.findByText("Tresor nicht lesbar")).toBeVisible();
+    expectSecretAbsent(privateDetail);
   });
 
   it("leaves and reopens the vault tab without retaining its previous rows", async () => {
@@ -135,8 +182,7 @@ describe("tab MCP & Tresor", () => {
     });
     expect(calls("get_provider_overview")).toHaveLength(before);
     vi.useRealTimers();
-    let finishOld: (rows: unknown) => void = () => {};
-    overview = new Promise((resolve) => { finishOld = resolve; });
+    overview = new Promise(() => {});
     vaultTab();
     expect(screen.getByText("Wird gelesen …")).toBeVisible();
     expect(screen.queryByText("Anbieter api")).toBeNull();
@@ -144,11 +190,30 @@ describe("tab MCP & Tresor", () => {
     overview = [provider("neu", "local")];
     fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" });
     expect(await screen.findByText("Anbieter neu")).toBeVisible();
-    await act(async () => { finishOld([provider("veraltet", "api_key")]); });
-    expect(screen.queryByText("Anbieter veraltet")).toBeNull();
     expect(screen.queryByText("Anbieter api")).toBeNull();
     expect(calls("get_provider_overview")).toHaveLength(before + 2);
     expect(calls("has_provider_key").map(([, args]) => args)).toEqual([{ providerId: "api" }]);
+  });
+
+  it("drops an older vault read that resolves after a newer one", async () => {
+    let finishOld: (rows: unknown) => void = () => {};
+    let reads = 0;
+    const base = vi.mocked(invoke).getMockImplementation();
+    if (base === undefined) throw new Error("invoke mock missing");
+    vi.mocked(invoke).mockImplementation(async (command, args) => {
+      if (command === "get_provider_overview") {
+        reads += 1;
+        if (reads === 1) return await new Promise((resolve) => { finishOld = resolve; });
+        return [provider("neu", "local")];
+      }
+      return base(command, args);
+    });
+    render(<StrictMode><EinstellungenScreen onOpenClassic={open} /></StrictMode>);
+    vaultTab();
+    expect(await screen.findByText("Anbieter neu")).toBeVisible();
+    await act(async () => { finishOld([provider("veraltet", "api_key")]); });
+    expect(screen.queryByText("Anbieter veraltet")).toBeNull();
+    expect(screen.getByText("Anbieter neu")).toBeVisible();
   });
 });
 

@@ -146,6 +146,25 @@ describe("Glass shell mount behind D1", () => {
     expect(screen.getByText("Wird gelesen …")).toBeVisible();
   });
 
+  it("renders the vault when the overview returns nothing", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/einstellungen";
+    const fallback = mocks.invoke.getMockImplementation();
+    if (fallback === undefined) throw new Error("invoke mock missing");
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "get_provider_overview") return Promise.resolve(null);
+      return fallback(command);
+    });
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
+    expect(await screen.findByRole("region", { name: "Tresor" })).toBeInTheDocument();
+    expect(await screen.findByText("Keine Anbieter bekannt")).toBeVisible();
+    expect(screen.queryByText("Wird gelesen …")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "MCP-Server" })).toBeVisible();
+  });
+
   it("opens the old Settings inside the shell from the classic button", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     window.location.hash = "#/einstellungen";
