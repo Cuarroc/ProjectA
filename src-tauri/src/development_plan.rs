@@ -566,19 +566,74 @@ pub struct V2Dependencies {
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn resolve_v2_dependencies(
     packages: &[V2Package],
-    _known_ids: &BTreeSet<String>,
+    known_ids: &BTreeSet<String>,
 ) -> Vec<V2Dependencies> {
     packages
         .iter()
-        .map(|p| V2Dependencies {
-            package_id: p.package_id.clone(),
-            source_path: p.source_path.clone(),
-            source_line: p.source_line,
-            raw_dependencies: p.raw_dependencies.clone(),
-            dependency_ids: Vec::new(),
-            unresolved_fragments: Vec::new(),
+        .map(|p| {
+            let mut row = V2Dependencies {
+                package_id: p.package_id.clone(),
+                source_path: p.source_path.clone(),
+                source_line: p.source_line,
+                raw_dependencies: p.raw_dependencies.clone(),
+                dependency_ids: Vec::new(),
+                unresolved_fragments: Vec::new(),
+            };
+            if matches!(p.raw_dependencies.trim(), "" | "–" | "—") {
+                return row;
+            }
+            for fragment in v2_dependency_fragments(&p.raw_dependencies) {
+                let token = fragment.trim();
+                let gate = token
+                    .strip_prefix('G')
+                    .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+                let alias = (!token.starts_with("V2-"))
+                    .then(|| format!("V2-{token}"))
+                    .and_then(|id| known_ids.get(&id));
+                let resolved = match (known_ids.get(token), alias) {
+                    (Some(id), None) | (None, Some(id))
+                        if valid_id(token) && !gate && id != &p.package_id =>
+                    {
+                        Some(id)
+                    }
+                    _ => None,
+                };
+                if let Some(id) = resolved {
+                    if !row.dependency_ids.contains(id) {
+                        row.dependency_ids.push(id.clone());
+                    }
+                } else if !row.unresolved_fragments.iter().any(|s| s == fragment) {
+                    row.unresolved_fragments.push(fragment.to_owned());
+                }
+            }
+            row
         })
         .collect()
+}
+
+fn v2_dependency_fragments(raw: &str) -> Vec<&str> {
+    let (mut depth, mut start) = (0usize, 0);
+    let mut fragments = Vec::new();
+    for (i, c) in raw.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => match depth.checked_sub(1) {
+                Some(d) => depth = d,
+                None => return vec![raw],
+            },
+            ',' if depth == 0 => {
+                fragments.push(&raw[start..i]);
+                start = i + 1;
+            }
+            _ => (),
+        }
+    }
+    // Unbalanced conditions cannot establish independent simple references.
+    if depth != 0 {
+        return vec![raw];
+    }
+    fragments.push(&raw[start..]);
+    fragments
 }
 
 fn milestone_heading(line: &str) -> Option<(&str, &str)> {
