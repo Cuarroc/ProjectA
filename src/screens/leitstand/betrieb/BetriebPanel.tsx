@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../../../design/glass.css";
 import { HonestState } from "../../../design/data/HonestState";
 import { KeyValue } from "../../../design/data/KeyValue";
@@ -42,21 +42,32 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   // `string` = the read failed and this is the core's sentence.
   const [dog, setDog] = useState<readonly WatchdogFinding[] | string | undefined>(undefined);
 
-  const queueGeneration = useRef(0);
-  const readQueue = useCallback(() => {
-    const mine = ++queueGeneration.current;
-    listQueue(projectId).then(
-      (rows) => mine === queueGeneration.current && (setQueue(Array.isArray(rows) ? rows : null), setQueueSeen(true)),
-      () => mine === queueGeneration.current && setQueue(null),
-    );
-  }, [projectId]);
+  // Installed by the project effect. Writes call this ref so the effect depends only
+  // on projectId: a new callback must not clear `queueSeen` and unmount the form.
+  const readQueueRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let live = true;
+    let generation = 0;
     setQueue(undefined);
     setQueueSeen(false);
     setResources(undefined);
     setDog(undefined);
+    const readQueue = () => {
+      const mine = ++generation;
+      listQueue(projectId).then(
+        (rows) => {
+          if (!live || mine !== generation) return;
+          setQueue(Array.isArray(rows) ? rows : null);
+          setQueueSeen(true);
+        },
+        () => {
+          if (!live || mine !== generation) return;
+          setQueue(null);
+        },
+      );
+    };
+    readQueueRef.current = readQueue;
     const read = () => {
       readQueue();
       getResourceSnapshot().then((r) => live && setResources(r), () => live && setResources(null));
@@ -66,10 +77,13 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
     const timer = window.setInterval(read, POLL_MS);
     return () => {
       live = false;
-      queueGeneration.current += 1;
+      generation += 1;
+      readQueueRef.current = () => {};
       window.clearInterval(timer);
     };
-  }, [projectId, readQueue]);
+  }, [projectId]);
+
+  const readQueue = () => { readQueueRef.current(); };
 
   const nameOf = (id: string | null) => (id === null ? T.autoProfile : profiles.find((p) => p.id === id)?.name ?? id);
   const ram = resources?.ramProcessBytes != null && resources.ramTotalBytes != null
@@ -78,7 +92,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
 
   return (
     <div className="bt-panel">
-      <div className="bt-queue" style={{ display: "grid", gap: 12, minWidth: 0 }}>
+      <div className="bt-queue">
         <section className="g-glass bt-card" aria-label={T.queue}>
           <h2 className="bt-h">{T.queue}</h2>
           {queue === undefined ? <p className="bt-note">{T.loading}</p> : queue === null ? (

@@ -87,9 +87,17 @@ describe("BetriebPanel", () => {
       const newer = deferred<unknown[]>();
       backend([entry("a"), entry("b", { status: "ready" }), entry("c", { status: "dispatching" })]);
       const read = mocks.invoke.getMockImplementation()!;
+      const held: Promise<unknown[]>[] = [older.promise, refresh.promise, newer.promise];
+      let heldReads = 0;
+      let holdReads = false;
       let fail = true;
       mocks.invoke.mockImplementation((cmd, args) => {
-        if (cmd === "list_queue") return callsOf(cmd).length === 5 ? Promise.resolve([]) : [null, older, refresh, newer][callsOf(cmd).length - 1]?.promise ?? read(cmd, args);
+        if (cmd === "list_queue") {
+          if (!holdReads) return read(cmd, args);
+          const next = held[heldReads] ?? Promise.resolve([]);
+          heldReads += 1;
+          return next;
+        }
         if (cmd === "get_emergency_stop") return Promise.resolve(false);
         if (cmd === "cancel_queued_task") return fail ? Promise.reject(new Error("claimed")) : Promise.resolve();
         return read(cmd, args);
@@ -102,8 +110,11 @@ describe("BetriebPanel", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("claimed");
       expect(within(section("Warteschlange")).getByText("Task a")).toBeVisible();
       expect(callsOf("list_queue")).toHaveLength(1);
+      expect(heldReads).toBe(0);
       fail = false;
+      holdReads = true;
       await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      expect(heldReads).toBe(1);
       await act(async () => cancel());
       expect(callsOf("cancel_queued_task").at(-1)).toEqual(["cancel_queued_task", { id: "a" }]);
       expect(callsOf("list_queue")).toHaveLength(3);
@@ -115,6 +126,18 @@ describe("BetriebPanel", () => {
       expect(within(section("Warteschlange")).getByText("Warteschlange leer")).toBeVisible();
       expect(screen.queryByText("Task a")).toBeNull();
     } finally { vi.useRealTimers(); }
+  });
+
+  it("keeps the typed enqueue draft when Betrieb rerenders the same project", async () => {
+    backend([]);
+    const { rerender } = render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    await act(async () => {});
+    fireEvent.change(screen.getByRole("textbox", { name: F.task }), { target: { value: "half-typed draft" } });
+    const reads = callsOf("list_queue").length;
+    rerender(<BetriebPanel projectId="p1" profiles={[...profiles]} />);
+    expect(screen.getByRole("textbox", { name: F.task })).toHaveValue("half-typed draft");
+    expect(within(section("Warteschlange")).queryByText("Wird gelesen …")).toBeNull();
+    expect(callsOf("list_queue")).toHaveLength(reads);
   });
 
   it("ignores writes and queue replies after switching away and back", async () => {
