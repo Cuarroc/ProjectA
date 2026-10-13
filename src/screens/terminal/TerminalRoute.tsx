@@ -26,7 +26,7 @@ export default function TerminalRoute() {
       showRestore(worker.id); setRestore(worker); return;
     }
     openWorker({ sessionId: worker.sessionId, workerId: worker.id, projectId: worker.projectId,
-      profileId: worker.profileId, profileName: worker.profileId, kind: worker.kind,
+      profileId: worker.profileId, profileName: "", kind: worker.kind,
       title: shortTask(worker.task), exited: false, exitCode: null });
     setRestore(null);
   }, [openWorker, showRestore]);
@@ -63,6 +63,8 @@ export default function TerminalRoute() {
           value={restore ? `restore:${restore.id}` : active.sessionId} onChange={(id) => {
             if (id === `restore:${restore?.id}`) return;
             request.current = Symbol(); setOpening(false); setRestarting(false); setError(null); setRestore(null); select(id);
+            window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
+            setHash(window.location.hash);
           }} />
         {sessions.map((session) => (
           <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId}
