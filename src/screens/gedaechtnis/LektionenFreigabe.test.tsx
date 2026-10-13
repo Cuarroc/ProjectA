@@ -206,3 +206,48 @@ describe("LektionenFreigabe", () => {
     }
   });
 });
+
+  it("removes a decided lesson before its follow-up read settles", async () => {
+    const deferredRefresh = deferred<Learning[]>();
+    const approved = deferred<void>();
+    vi.mocked(listLearnings).mockResolvedValueOnce([learning("a"), learning("b")]).mockReturnValue(deferredRefresh.promise);
+    vi.mocked(approveLearning).mockReturnValue(approved.promise);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    await waitFor(() => expect((within(row("a")).getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(true));
+
+    await act(async () => { approved.resolve(); await approved.promise; });
+    await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(listLearnings).toHaveBeenCalledTimes(2);
+
+    await act(async () => { deferredRefresh.resolve([learning("b")]); });
+    await waitFor(() => expect(screen.getByText("content of b")).toBeTruthy());
+  });
+
+  it("keeps remaining lessons when the post-decision read fails", async () => {
+    vi.mocked(listLearnings).mockResolvedValueOnce([learning("a"), learning("b")]).mockRejectedValueOnce(new Error("read failed"));
+    vi.mocked(approveLearning).mockResolvedValue(undefined);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(await screen.findByText(T.loadFailed)).toBeTruthy();
+    expect(listLearnings).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries only the lesson read after a confirmed decision", async () => {
+    vi.mocked(listLearnings).mockResolvedValueOnce([learning("a"), learning("b")]).mockResolvedValueOnce([learning("b")]);
+    vi.mocked(approveLearning).mockResolvedValue(undefined);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(listLearnings).toHaveBeenCalledTimes(2);
+  });

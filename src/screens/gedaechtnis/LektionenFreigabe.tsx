@@ -59,7 +59,22 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
       await act();
       if (!live()) return;
       setNotice(done);
-      await refresh();
+      // Remove the decided entry before refresh
+      setLoad((cur) => (cur.status === "ready" ? { status: "ready", entries: cur.entries.filter((e) => e.id !== id) } : cur));
+      try {
+        if (projectId === null) return;
+        const request = begin(true);
+        if (request === null) return;
+        const all = await listLearnings(projectId);
+        if (live() && request.current()) {
+          setLoad({ status: "ready", entries: all.filter((e) => e.status === "pending") });
+        }
+        request.finish();
+      } catch {
+        if (live()) {
+          setFailure(T.loadFailed);
+        }
+      }
     } catch {
       if (live()) {
         setNotice(null);
@@ -70,7 +85,6 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
       if (live()) setBusy((cur) => { const next = new Set(cur); next.delete(id); return next; });
     }
   };
-
   return (
     <section className="lk" aria-label={T.title}>
       <header className="lk-top">
