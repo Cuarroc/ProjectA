@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import "../../../design/glass.css";
+import { Button } from "../../../design/controls/Button";
+import "../../../design/controls/controls.css";
 import { HonestState } from "../../../design/data/HonestState";
 import { DevNote } from "../../../design/data/DevNote";
 import { Table, type Column } from "../../../design/data/Table";
@@ -29,9 +31,10 @@ function KeyAccess({ providerId, vaultBroken }: { providerId: string; vaultBroke
   return <span className={present === undefined || text === T.unknown ? "tr-access tr-access--quiet" : "tr-access"}>{text}</span>;
 }
 
-/** Tresor and MCP servers, read-only: shows whether a key is on file, never the key, and changes nothing. Not mounted yet. */
-export function TresorPanel() {
+/** One read generation owns both the overview and its key-presence checks. */
+function VaultRead({ onLoading }: { onLoading: (loading: boolean) => void }) {
   const { providers, loading, error, vaultError } = useProviderOverview();
+  useEffect(() => { onLoading(loading); }, [loading, onLoading]);
   const columns: Column<Provider>[] = [
     { key: "name", header: T.colProvider, cell: (p) => p.name },
     { key: "kind", header: T.colKind, cell: (p) => providerKindLabel(p.kind) },
@@ -44,24 +47,37 @@ export function TresorPanel() {
     },
   ];
 
+  if (loading) return <p className="tr-note">{T.loading}</p>;
+  if (error !== null) return <HonestState kind="offline" title={T.offline} hint={T.offlineHint} />;
+  return (
+    <>
+      {vaultError !== null ? <p className="tr-alert" role="alert">{vaultErrorText(vaultError)}</p> : null}
+      <Table
+        label={T.vaultTable}
+        columns={columns}
+        rows={providers}
+        rowKey={(p) => p.id}
+        empty={<HonestState kind="empty" title={T.empty} hint={T.emptyHint} />}
+      />
+    </>
+  );
+}
+
+/** Tresor and MCP servers, read-only: shows whether a key is on file, never the key, and changes nothing. Not mounted yet. */
+export function TresorPanel() {
+  const [read, setRead] = useState(0);
+  const [loading, setLoading] = useState(true);
+  function reread() {
+    if (loading) return;
+    setLoading(true);
+    setRead((value) => value + 1);
+  }
   return (
     <div className="tr-panel">
       <section className="g-glass tr-card" aria-label={T.vault}>
         <h2 className="tr-h">{T.vault}</h2>
-        {loading ? <p className="tr-note">{T.loading}</p> : error !== null ? (
-          <HonestState kind="offline" title={T.offline} hint={T.offlineHint} />
-        ) : (
-          <>
-            {vaultError !== null ? <p className="tr-alert" role="alert">{vaultErrorText(vaultError)}</p> : null}
-            <Table
-              label={T.vaultTable}
-              columns={columns}
-              rows={providers}
-              rowKey={(p) => p.id}
-              empty={<HonestState kind="empty" title={T.empty} hint={T.emptyHint} />}
-            />
-          </>
-        )}
+        <div><Button size="sm" disabled={loading} onClick={reread}>{T.reread}</Button></div>
+        <VaultRead key={read} onLoading={setLoading} />
       </section>
       <section className="g-glass tr-card" aria-label={T.mcp}>
         <h2 className="tr-h">{T.mcp}</h2>
