@@ -1,15 +1,17 @@
 import { logFrontendError, logFrontendFeedback } from "../lib/ipc/frontendErrors";
 
 const encoder = new TextEncoder();
+const SEPARATOR_BYTES = encoder.encode(" | ").length;
+const ELLIPSIS_BYTES = encoder.encode("…").length;
 let recent: { signature: string; at: number }[] = [];
 const signatures: string[] = [];
 function text(value: unknown): string {
   try { return String(value); } catch { return "Unknown frontend error"; }
 }
-function bounded(value: string, bytes: number): string {
+function bounded(value: string, bytes: number, escaped = false): string {
   let result = "";
   for (const char of value) {
-    const size = encoder.encode(char).length;
+    const size = encoder.encode(char).length + (escaped && (char === '"' || char === "\\") ? 1 : 0);
     if (size > bytes) break;
     result += char;
     bytes -= size;
@@ -48,13 +50,19 @@ export function reportFrontendFeedback(what: string, expected: string): Promise<
     // buildInfo is dev-only code: load it lazily so the production error
     // handlers above never depend on it at module-load time.
     return import("../dev/buildInfo").then(({ buildInfo }) => {
-      const context = bounded(
-        `sha="${buildInfo().sha}" at="${new Date().toISOString()}" recent="${signatures.join(" | ")}"`,
-        2048,
-      );
+      // Reserve the native field's escaped bytes, including metadata and separators.
+      // Share the remainder across the ring so the newest entries always survive.
+      const prefix = `sha="${bounded(buildInfo().sha, 64, true)}" at="${new Date().toISOString()}" recent="`;
+      const overhead = encoder.encode(`${prefix}"`.replace(/["\\]/g, "\\$&")).length;
+      const perSignature = Math.floor((2048 - overhead - Math.max(0, signatures.length - 1) * SEPARATOR_BYTES) / Math.max(1, signatures.length));
+      const entries = signatures.map(signature => {
+        const full = bounded(signature, perSignature, true);
+        return full === signature ? full : `${bounded(signature, perSignature - ELLIPSIS_BYTES, true)}…`;
+      });
+      const context = `${prefix}${entries.join(" | ")}"`;
       return logFrontendFeedback(
-        bounded(what, 2048),
-        bounded(expected, 1024),
+        bounded(what, 2048, true),
+        bounded(expected, 1024, true),
         bounded(window.location.pathname, 256),
         context,
       );
