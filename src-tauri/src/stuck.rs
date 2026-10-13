@@ -27,10 +27,11 @@
 //! Nothing here spawns, kills or writes to a worktree. It reads git, and it
 //! writes notes.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::status::{StatusEngine, COL_WORKING, STUCK_AFTER};
 use crate::store::{Store, MSG_SYSTEM, SRC_GIT, STATUS_RUNNING};
@@ -258,6 +259,18 @@ pub async fn probe_once(store: &Store, engine: &StatusEngine) {
     }
 }
 
+/// Per-session state belongs to this observer, never to the API snapshot.
+#[derive(Default)]
+struct WatchdogObserver {
+    runs: BTreeMap<(String, String), watchdog::Dedupe>,
+}
+
+impl WatchdogObserver {
+    async fn observe(&mut self, store: &Store, engine: &StatusEngine, now: u64, at: Instant) {
+        let _ = (&self.runs, store, engine, now, at);
+    }
+}
+
 /// Start the always-on git probe.
 ///
 /// The same shape as the dispatcher and the budget watcher: a plain OS thread
@@ -374,6 +387,185 @@ mod tests {
         let store = Store::open(&dir.path().join("projecta.db")).await.unwrap();
         let project = store.create_project("one", "C:/repo/one").await.unwrap();
         (dir, store, project.id)
+    }
+
+    async fn observer_fixture() -> (TempDir, Store, StatusEngine, Instant) {
+        let (dir, store, project) = fixture().await;
+        store
+            .insert_worker(&WorkerRow {
+                id: "observed".into(),
+                project_id: project,
+                task: "work".into(),
+                profile_id: "test".into(),
+                branch: "test/observed".into(),
+                worktree_path: "missing-worktree".into(),
+                status: STATUS_RUNNING.into(),
+                kind: KIND_WORKER.into(),
+                pr_url: None,
+                spawned_by: None,
+                test_status: None,
+                tested_at: None,
+                role_variant_id: None,
+                paused_reason: None,
+                created_at: 1,
+            })
+            .await
+            .unwrap();
+        store.bind_session("observed", "session-1").await;
+        set_threshold_minutes(&store, Some(2)).await.unwrap();
+        let engine = StatusEngine::default();
+        let at = Instant::now();
+        engine.note_output_at("observed", "private terminal content", at);
+        engine.note_git_activity_at("observed", "baseline", at);
+        (dir, store, engine, at)
+    }
+
+    async fn observer_tick(
+        observer: &mut WatchdogObserver,
+        store: &Store,
+        engine: &StatusEngine,
+        at: Instant,
+        seconds: u64,
+    ) {
+        observer
+            .observe(
+                store,
+                engine,
+                1_000_000 + seconds * 1000,
+                at + Duration::from_secs(seconds),
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn watchdog_observer_records_one_stall_message_across_three_ticks() {
+        let (_dir, store, engine, at) = observer_fixture().await;
+        let mut observer = WatchdogObserver::default();
+        observer_tick(&mut observer, &store, &engine, at, 119).await;
+        assert!(store
+            .list_messages("observed", None)
+            .await
+            .unwrap()
+            .is_empty());
+        for seconds in [120, 180, 240] {
+            observer_tick(&mut observer, &store, &engine, at, seconds).await;
+        }
+        let messages = store.list_messages("observed", None).await.unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].role, MSG_SYSTEM);
+        assert_eq!(messages[0].content,
+            "Der Lauf steht: seit mindestens 2 Minuten keine Ausgabe und keine Änderung im Arbeitsbaum.");
+        store
+            .set_worker_status("observed", crate::store::STATUS_EXITED)
+            .await
+            .unwrap();
+        observer_tick(&mut WatchdogObserver::default(), &store, &engine, at, 300).await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            1
+        );
+        store
+            .set_worker_status("observed", STATUS_RUNNING)
+            .await
+            .unwrap();
+        let reopened = Store::open(&_dir.path().join("projecta.db")).await.unwrap();
+        assert!(reopened.session_for_worker("observed").is_none());
+        observer_tick(
+            &mut WatchdogObserver::default(),
+            &reopened,
+            &engine,
+            at,
+            300,
+        )
+        .await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn watchdog_observer_rearms_only_after_observed_activity() {
+        let (_dir, store, engine, at) = observer_fixture().await;
+        let mut observer = WatchdogObserver::default();
+        observer_tick(&mut observer, &store, &engine, at, 120).await;
+        engine.note_output_at("observed", "more output", at + Duration::from_secs(150));
+        observer_tick(&mut observer, &store, &engine, at, 180).await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            1
+        );
+        for seconds in [270, 300] {
+            observer_tick(&mut observer, &store, &engine, at, seconds).await;
+        }
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            2
+        );
+        engine.note_git_activity_at("observed", "changed", at + Duration::from_secs(310));
+        observer_tick(&mut observer, &store, &engine, at, 320).await;
+        observer_tick(&mut observer, &store, &engine, at, 430).await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            3
+        );
+        store.bind_session("observed", "session-2").await;
+        for seconds in [480, 540] {
+            observer_tick(&mut observer, &store, &engine, at, seconds).await;
+        }
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            4
+        );
+    }
+
+    #[tokio::test]
+    async fn watchdog_observer_keeps_unknown_samples_and_retries_failed_writes() {
+        let (dir, store, engine, at) = observer_fixture().await;
+        let mut observer = WatchdogObserver::default();
+        let db = sqlx::SqlitePool::connect(&format!(
+            "sqlite:{}",
+            dir.path().join("projecta.db").display()
+        ))
+        .await
+        .unwrap();
+        sqlx::query("CREATE TRIGGER reject_stall BEFORE INSERT ON messages BEGIN SELECT RAISE(FAIL, 'test write failure'); END")
+            .execute(&db).await.unwrap();
+        observer_tick(&mut observer, &store, &engine, at, 120).await;
+        assert!(store
+            .list_messages("observed", None)
+            .await
+            .unwrap()
+            .is_empty());
+        sqlx::query("DROP TRIGGER reject_stall")
+            .execute(&db)
+            .await
+            .unwrap();
+        observer_tick(&mut observer, &store, &engine, at, 180).await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            1
+        );
+        let unknown = StatusEngine::default();
+        observer_tick(&mut observer, &store, &unknown, at, 240).await;
+        unknown.note_output_at("observed", "output without git evidence", at);
+        observer_tick(&mut observer, &store, &unknown, at, 300).await;
+        sqlx::query("ALTER TABLE workers RENAME COLUMN task TO unavailable_task")
+            .execute(&db)
+            .await
+            .unwrap();
+        assert!(store.list_workers(None).await.is_err());
+        observer_tick(&mut observer, &store, &engine, at, 360).await;
+        sqlx::query("ALTER TABLE workers RENAME COLUMN unavailable_task TO task")
+            .execute(&db)
+            .await
+            .unwrap();
+        observer_tick(&mut observer, &store, &engine, at, 420).await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            1
+        );
+        db.close().await;
     }
 
     #[tokio::test]
