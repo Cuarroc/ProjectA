@@ -168,6 +168,16 @@ test("seam budget rejects missing files and counts CRLF consistently", () => {
   const nonGit = fixture(Object.fromEntries(seams.map(path => [path, "// seam\n"])));
   writeFileSync(join(nonGit, budgetPath), JSON.stringify(budget()));
   expectBudget(nonGit, 1, /seam budget/);
+  expectBudget(nonGit, 0, undefined, ["--patterns-only"]);
+});
+
+test("check reports a clean diagnostic when the allowlist is missing", () => {
+  const root = budgetFixture();
+  renameSync(join(root, "scripts/ci/architecture-drift.allow"), join(root, "scripts/ci/architecture-drift.allow.bak"));
+  const result = checkBudget(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /architecture drift: missing allowlist/);
+  assert.doesNotMatch(result.stderr, /at checkPatterns/);
 });
 
 function fixture(files) {

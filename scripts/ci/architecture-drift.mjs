@@ -238,10 +238,19 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else if (command === "snapshot" && option === "--stdout") {
     console.log(scan().join("\n"));
   } else if (command === "check") {
-    checkSeamBudget(option === undefined ? [] : [option, ...rest]);
-    checkPatterns();
+    // --patterns-only skips the seam budget so the pattern scan can run in
+    // shallow checkouts or source exports that lack origin/main or .git.
+    if (option !== "--patterns-only") {
+      checkSeamBudget(option === undefined ? [] : [option, ...rest]);
+    }
+    try {
+      checkPatterns();
+    } catch (error) {
+      console.error(`architecture drift: ${error.message}`);
+      process.exitCode = 1;
+    }
   } else {
-    console.error("usage: architecture-drift.mjs check [--base REF] | snapshot --stdout | explain RULE");
+    console.error("usage: architecture-drift.mjs check [--base REF | --patterns-only] | snapshot --stdout | explain RULE");
     process.exitCode = 2;
   }
 }
