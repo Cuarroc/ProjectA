@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
+vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 
 import App from "../../App";
 import type { UsageReport } from "../../types";
@@ -48,6 +49,7 @@ describe("Steuerung route behind D1", () => {
     await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
     await go("#/steuerung");
     await waitFor(() => expect(container.querySelectorAll(".kb-panel")).toHaveLength(1));
+    expect(usageCalls().map(([, args]) => args)).toContainEqual({ limit: undefined });
     const ledger = container.querySelector<HTMLElement>(".kb-panel")!;
     expect(ledger.previousElementSibling).toHaveClass("kt-screen");
     const book = within(ledger);
@@ -60,9 +62,9 @@ describe("Steuerung route behind D1", () => {
       ["openai", "demo-b", "1", "500", "50"],
       ["Summe", "", "2", "1.500", "250"],
     ]);
-    expect(ledger.textContent).not.toMatch(/[$€]|USD|EUR|12,34|98,76|55,5/);
+    expect(ledger.textContent).not.toMatch(/[$€]|USD|EUR|12[.,]34|98[.,]76|55[.,]5/);
     expect(book.getByText("Zeugnisse noch nicht verbunden")).toBeInTheDocument();
-    expect(route(container).getAllByRole("link")).toHaveLength(3);
+    expect(within(container.querySelector(".g-shell-tabs")!).getAllByRole("link")).toHaveLength(3);
     await go("#/steuerung/xyz");
     expect(container.querySelectorAll(".kb-panel")).toHaveLength(1);
     expect(window.location.hash).toBe("#/steuerung/xyz");
@@ -145,7 +147,7 @@ describe("Steuerung route behind D1", () => {
     await go("#/steuerung/xyz");
     expect(await screen.findByRole("heading", { level: 1, name: "Kontingente" })).toBeInTheDocument();
     expect(route(container).getByRole("link", { name: "Kontingente" })).toHaveAttribute("aria-current", "page");
-    expect(route(container).getAllByRole("link")).toHaveLength(3);
+    expect(within(container.querySelector(".g-shell-tabs")!).getAllByRole("link")).toHaveLength(3);
     expect(window.location.hash).toBe("#/steuerung/xyz");
   });
 
