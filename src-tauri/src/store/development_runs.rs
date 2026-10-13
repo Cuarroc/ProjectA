@@ -675,8 +675,9 @@ impl Store {
             .await
     }
 
-    /// Returns only trusted results; any malformed trusted row fails the whole listing.
-    /// Repeated recordings of a gate are returned in observed_at order; callers take the latest.
+    /// Returns active trusted results; malformed active trusted gate rows fail the listing.
+    /// Unknown runs return an empty list; use the proof snapshot to validate run existence.
+    /// Callers take the last result per gate: time orders attempts, failure wins time ties.
     pub(crate) async fn list_development_gate_results(
         &self,
         run_id: &str,
@@ -732,6 +733,14 @@ impl Store {
                 evidence,
             ));
         }
+        // At equal observation times, failure wins; IDs only break equivalent ties.
+        results.sort_by(|(a, ea), (b, eb)| {
+            (ea.observed_at, a.exit_code != 0, &ea.id).cmp(&(
+                eb.observed_at,
+                b.exit_code != 0,
+                &eb.id,
+            ))
+        });
         Ok(results)
     }
 
@@ -758,14 +767,6 @@ impl Store {
             .collect();
         let mut gates = Self::decode_gate_results(evidence)?;
         gates.retain(|(gate, _)| gate.lane == lane);
-        // At equal observation times, failure wins; IDs only break equivalent ties.
-        gates.sort_by(|(a, ea), (b, eb)| {
-            (ea.observed_at, a.exit_code != 0, &ea.id).cmp(&(
-                eb.observed_at,
-                b.exit_code != 0,
-                &eb.id,
-            ))
-        });
         let verdict = candidate.as_ref().map(|sha| {
             let active: Vec<_> = gates
                 .iter()
