@@ -373,6 +373,24 @@ mod tests {
         }
     }
     #[test]
+    fn work_requires_a_matching_explicit_click_without_mutation() {
+        for kind in [OrderKind::ProjectPackage, OrderKind::CustomerOrder] {
+            for state in [Ordered, Waiting, Stale, Reviewing] {
+                let mut run = run(kind, RiskTier::A);
+                match state {
+                    Waiting => run.transition(Action::Wait).unwrap(),
+                    Stale => run.transition(Action::Candidate("b".into())).unwrap(),
+                    Reviewing => reviewing(&mut run),
+                    _ => {}
+                }
+                assert_eq!(run.state(), state);
+                let before = run.clone();
+                assert_eq!(run.transition(Action::Work), Err(Refusal::InvalidInput));
+                assert_eq!(run, before);
+            }
+        }
+    }
+    #[test]
     fn admission_reports_profile_and_host_blockers_without_starting() {
         let run = run(OrderKind::ProjectPackage, RiskTier::A);
         let mut facts = start_facts();
