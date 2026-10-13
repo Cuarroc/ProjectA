@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
 import TerminalRoute from "./TerminalRoute";
 import * as sessionProvider from "../../sessions/SessionProvider";
@@ -31,6 +31,8 @@ vi.mock("@xterm/addon-search", () => ({ SearchAddon: class {
 } }));
 vi.mock("@xterm/addon-webgl", () => ({ WebglAddon: class { onContextLoss() {} dispose() {} } }));
 
+// Load the real lazy shell before query deadlines start in isolated test runs.
+beforeAll(async () => { await import("../../shell/mount/ShellMount"); });
 beforeEach(() => {
   localStorage.clear(); localStorage.setItem(D1_FLAG_KEY, "1");
   window.location.hash = "#/leitstand/klassisch";
