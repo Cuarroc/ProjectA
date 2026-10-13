@@ -36,10 +36,6 @@ function main() {
   let pr;
   if (event === 'pull_request' && process.env.GITHUB_EVENT_PATH) {
     pr = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')).pull_request;
-    if (pr?.labels?.some(label => label.name === 'size-exception')) {
-      console.log('package-size: exception label present');
-      return 0;
-    }
   }
   const { values } = parseArgs({ options: {
     base: { type: 'string' },
@@ -99,10 +95,18 @@ function main() {
     return 0;
   }
   if (binary.length) {
-    console.error(`BLOCKIERT: diff not numerically measurable (binary): ${binary.map(path => JSON.stringify(path)).join(', ')}`);
+    console.error(`package-size: BLOCKED: diff not numerically measurable (binary): ${binary.map(path => JSON.stringify(path)).join(', ')}`);
     return 1;
   }
-  return total > candidate.maximumLines ? 1 : 0;
+  if (pr?.labels?.some(label => label.name === 'size-exception')) {
+    console.log('package-size: exception label present');
+    return 0;
+  }
+  if (total > candidate.maximumLines) {
+    console.error(`package-size: BLOCKED: total=${total} exceeds maximumLines=${candidate.maximumLines}`);
+    return 1;
+  }
+  return 0;
 }
 
 try { process.exitCode = main(); }

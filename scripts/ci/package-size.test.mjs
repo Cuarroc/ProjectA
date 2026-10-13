@@ -21,7 +21,7 @@ function fixture(t, bootstrap = false, overrides = {}) {
   const commit = () => {
     git('add', '.');
     git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@noreply.local',
-      'commit', '-qm', 'fixture', '--allow-empty');
+      '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture', '--allow-empty');
     return git('rev-parse', 'HEAD');
   };
   const run = (...args) => spawnSync(process.execPath, [script, ...args], { cwd, env, encoding: 'utf8' });
@@ -79,7 +79,7 @@ test('package size fails closed for raised limits binary changes and invalid ref
   commit();
   const binary = run();
   assert.equal(binary.status, 1);
-  assert.match(binary.stderr, /BLOCKIERT.*not numerically measurable.*binary.dat/);
+  assert.match(binary.stderr, /BLOCKED.*not numerically measurable.*binary.dat/);
   assert.match(binary.stdout, /additions=unmeasurable deletions=unmeasurable total=unmeasurable/);
   git('checkout', '-q', '--detach', base);
   for (const content of [JSON.stringify({ ...config, maximumLines: 301 }),
