@@ -659,6 +659,7 @@ impl Store {
     ) -> Result<DevelopmentEvidence, String> {
         required(&result.lane, "lane")?;
         required(&result.gate, "gate")?;
+        require_full_commit_id(&result.sha)?;
         let input = EvidenceInput {
             idempotency_key: key.into(),
             source: "test-gate".into(),
@@ -674,6 +675,8 @@ impl Store {
             .await
     }
 
+    /// Returns only trusted results; any malformed trusted row fails the whole listing.
+    /// Repeated recordings of a gate are returned in observed_at order; callers take the latest.
     pub(crate) async fn list_development_gate_results(
         &self,
         run_id: &str,
@@ -703,7 +706,7 @@ impl Store {
         }
         let mut results = Vec::new();
         for evidence in evidence {
-            if evidence.payload["kind"] != "gate-result" {
+            if !evidence.trusted_test_source || evidence.payload["kind"] != "gate-result" {
                 continue;
             }
             let payload: Payload = serde_json::from_value(evidence.payload.clone())
@@ -719,17 +722,15 @@ impl Store {
             required(&payload.lane, "lane")?;
             required(&payload.gate, "gate")?;
             require_full_commit_id(&evidence.candidate_commit)?;
-            if evidence.trusted_test_source {
-                results.push((
-                    GateResult {
-                        lane: payload.lane,
-                        gate: payload.gate,
-                        exit_code: payload.exit_code,
-                        sha: evidence.candidate_commit.clone(),
-                    },
-                    evidence,
-                ));
-            }
+            results.push((
+                GateResult {
+                    lane: payload.lane,
+                    gate: payload.gate,
+                    exit_code: payload.exit_code,
+                    sha: evidence.candidate_commit.clone(),
+                },
+                evidence,
+            ));
         }
         Ok(results)
     }
@@ -1679,6 +1680,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn typed_gate_evidence_ignores_malformed_untrusted_rows() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        store
+            .bind_development_run_candidate(&run, "worker-a", 7, COMMIT_A, "git", 1)
+            .await
+            .unwrap();
+        let expected = vec![gate_result("fmt", 101), gate_result("fmt", 0)];
+        for (time, result) in [(3, &expected[1]), (2, &expected[0])] {
+            store
+                .record_development_gate_result(
+                    &run,
+                    "worker-a",
+                    7,
+                    &time.to_string(),
+                    time,
+                    result.clone(),
+                )
+                .await
+                .unwrap();
+        }
+        let mut agent = evidence(COMMIT_A);
+        agent.payload = serde_json::json!({"kind":"gate-result", "schemaVersion":1,
+            "lane":" ", "gate":"agent", "exitCode":"0"});
+        store
+            .record_development_evidence(&run, "worker-a", 7, agent)
+            .await
+            .unwrap();
+        assert_eq!(
+            store.list_development_gate_results(&run).await.unwrap(),
+            expected
+        );
+    }
+
+    #[tokio::test]
+    async fn typed_gate_evidence_rejects_short_sha_before_writing() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = launched_run(&store, &task, "worker-a", 7, None).await;
+        let mut result = gate_result("fmt", 0);
+        result.sha = "abc1234".into();
+        let error = store
+            .record_development_gate_result(&run, "worker-a", 7, "short-sha", 2, result)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error,
+            "candidateCommit must be a full Git commit ID in lower case"
+        );
+        assert!(store
+            .list_development_evidence(&run)
+            .await
+            .unwrap()
+            .is_empty());
+    }
+
+    #[tokio::test]
     async fn typed_gate_evidence_round_trips_without_promoting_agent_claims() {
         let (_dir, store, _root, task) = fixture().await;
         let run = launched_run(&store, &task, "worker-a", 7, Some("claude")).await;
@@ -1736,7 +1793,7 @@ mod tests {
             3
         );
 
-        // Declaring a gate result makes malformed payloads an error, even from an agent.
+        // Malformed trusted gate results fail the whole listing closed.
         for (field, value) in [
             ("schemaVersion", serde_json::json!(2)),
             ("lane", serde_json::json!(" ")),
@@ -1754,7 +1811,7 @@ mod tests {
             malformed.idempotency_key = format!("{field}-{value}");
             malformed.payload[field] = value;
             store
-                .record_development_evidence(&other, field, 1, malformed)
+                .record_trusted_development_test_evidence(&other, field, 1, malformed)
                 .await
                 .unwrap();
             assert!(store.list_development_gate_results(&other).await.is_err());
@@ -1816,7 +1873,7 @@ mod tests {
             reason: "not run".into(),
         };
         store
-            .record_development_evidence(&run, "worker-a", 7, unavailable)
+            .record_trusted_development_test_evidence(&run, "worker-a", 7, unavailable)
             .await
             .unwrap();
         assert!(store.list_development_gate_results(&run).await.is_err());
