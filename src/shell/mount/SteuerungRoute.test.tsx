@@ -25,6 +25,16 @@ const usage: UsageReport = {
   ],
 };
 const usageCalls = () => mocks.invoke.mock.calls.filter(([command]) => command === "get_omniroute_usage");
+/** `{}` has no `limit` key; only an own key proves the unbounded read was passed on purpose. */
+const usageArgShapes = () => usageCalls().map(([, args]) => {
+  if (args === null || typeof args !== "object") return { keys: [] as string[], limit: undefined as unknown };
+  const record = args as { limit?: unknown };
+  return { keys: Object.keys(record).sort(), limit: record.limit };
+});
+const bothSeparators = (amount: string) => {
+  const [whole, frac] = amount.split(".");
+  return [`${whole}.${frac}`, `${whole},${frac}`];
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -49,9 +59,16 @@ describe("Steuerung route behind D1", () => {
     await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
     await go("#/steuerung");
     await waitFor(() => expect(container.querySelectorAll(".kb-panel")).toHaveLength(1));
-    expect(usageCalls().map(([, args]) => args)).toContainEqual({ limit: undefined });
+    expect(usageArgShapes()).toContainEqual({ keys: ["limit"], limit: undefined });
     const ledger = container.querySelector<HTMLElement>(".kb-panel")!;
-    expect(ledger.previousElementSibling).toHaveClass("kt-screen");
+    const routeEl = container.querySelector<HTMLElement>(".g-sr")!;
+    const quotas = routeEl.querySelector<HTMLElement>(".kt-screen");
+    expect(quotas).not.toBeNull();
+    expect(routeEl.contains(ledger)).toBe(true);
+    expect(
+      quotas!.compareDocumentPosition(ledger) & Node.DOCUMENT_POSITION_FOLLOWING,
+      "usage ledger follows Kontingente in the route",
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     const book = within(ledger);
     const period = await book.findByRole("region", { name: "Zeitraum" });
     expect(within(period).getByText("8 Anfragen · 9.000 Tokens rein · 700 Tokens raus")).toBeInTheDocument();
@@ -62,7 +79,18 @@ describe("Steuerung route behind D1", () => {
       ["openai", "demo-b", "1", "500", "50"],
       ["Summe", "", "2", "1.500", "250"],
     ]);
-    expect(ledger.textContent).not.toMatch(/[$€]|USD|EUR|12[.,]34|98[.,]76|55[.,]5/);
+    const ledgerText = ledger.textContent ?? "";
+    const hiddenMoney = [
+      "$", "€", "USD", "EUR",
+      ...bothSeparators("12.34"),
+      ...bothSeparators("98.76"),
+      ...bothSeparators("55.5"),
+      ...bothSeparators("55.50"),
+      ...bothSeparators("24.68"),
+      ...bothSeparators("111.10"),
+      ...bothSeparators("110.68"),
+    ];
+    for (const token of hiddenMoney) expect(ledgerText, token).not.toContain(token);
     expect(book.getByText("Zeugnisse noch nicht verbunden")).toBeInTheDocument();
     expect(within(container.querySelector(".g-shell-tabs")!).getAllByRole("link")).toHaveLength(3);
     await go("#/steuerung/xyz");
@@ -97,21 +125,68 @@ describe("Steuerung route behind D1", () => {
     expect(usageCalls().map(([, args]) => args)).toEqual([{ limit: 12 }]);
   });
 
+  it("ignores a usage reply that arrives after leaving the quota tab", async () => {
+    const fallback = mocks.invoke.getMockImplementation()!;
+    const queued: Array<{ limit: unknown; resolve: (value: UsageReport) => void }> = [];
+    mocks.invoke.mockImplementation((command: string, args?: { limit?: unknown }) => {
+      if (command !== "get_omniroute_usage") return fallback(command);
+      const limit = args !== null && typeof args === "object" && Object.prototype.hasOwnProperty.call(args, "limit") ? args.limit : "missing";
+      return new Promise<UsageReport>((resolve) => { queued.push({ limit, resolve }); });
+    });
+    const ledgerReads = () => queued.filter((entry) => entry.limit === undefined);
+    localStorage.setItem(FLAG_KEY, "1");
+    const { container } = render(<App />);
+    await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
+    await go("#/steuerung");
+    expect(await route(container).findByText("Wird gelesen …")).toBeInTheDocument();
+    expect(ledgerReads()).toHaveLength(1);
+    await go("#/steuerung/verbesserungen");
+    expect(container.querySelector(".kb-panel")).toBeNull();
+    await go("#/steuerung");
+    expect(await route(container).findByText("Wird gelesen …")).toBeInTheDocument();
+    expect(ledgerReads()).toHaveLength(2);
+    const fresh: UsageReport = {
+      ...usage,
+      events: [{ id: "z", ts: 3, profileId: null, provider: "openai", model: "fresh-model", tokensIn: 7, tokensOut: 1, costUsd: 12.34, rawJson: "{}" }],
+    };
+    const [stale, current] = ledgerReads();
+    await act(async () => { stale.resolve(usage); });
+    expect(route(container).queryByText("demo-a")).toBeNull();
+    expect(route(container).getByText("Wird gelesen …")).toBeInTheDocument();
+    await act(async () => { current.resolve(fresh); });
+    expect(await route(container).findByText("fresh-model")).toBeInTheDocument();
+    expect(route(container).queryByText("demo-a")).toBeNull();
+    expect(container.querySelectorAll(".kb-panel")).toHaveLength(1);
+  });
+
   it("shows an unreadable usage ledger without replacing Kontingente", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      unhandled.push(event.reason);
+      event.preventDefault();
+    };
+    window.addEventListener("unhandledrejection", onUnhandled);
     const fallback = mocks.invoke.getMockImplementation()!;
     mocks.invoke.mockImplementation((command: string) => command === "get_omniroute_usage"
       ? Promise.reject(new Error("unavailable")) : fallback(command));
     localStorage.setItem(FLAG_KEY, "1");
     const { container } = render(<App />);
-    await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
-    await go("#/steuerung");
-    expect(await route(container).findByText("Kostenbuch nicht lesbar")).toBeInTheDocument();
-    expect(route(container).getByRole("heading", { level: 1, name: "Kontingente" })).toBeInTheDocument();
-    expect(await route(container).findByRole("article", { name: "Claude Code" })).toBeInTheDocument();
-    const book = within(container.querySelector<HTMLElement>(".kb-panel")!);
-    expect(book.queryByRole("table")).toBeNull();
-    expect(book.queryByRole("region", { name: "Zeitraum" })).toBeNull();
-    expect(book.getByText("Zeugnisse noch nicht verbunden")).toBeInTheDocument();
+    try {
+      await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
+      await go("#/steuerung");
+      expect(await route(container).findByText("Kostenbuch nicht lesbar")).toBeInTheDocument();
+      expect(route(container).getByText("Der Kern antwortet gerade nicht.")).toBeInTheDocument();
+      expect(route(container).getByRole("heading", { level: 1, name: "Kontingente" })).toBeInTheDocument();
+      expect(await route(container).findByRole("article", { name: "Claude Code" })).toBeInTheDocument();
+      const book = within(container.querySelector<HTMLElement>(".kb-panel")!);
+      expect(book.queryByRole("table")).toBeNull();
+      expect(book.queryByRole("region", { name: "Zeitraum" })).toBeNull();
+      expect(book.getByText("Zeugnisse noch nicht verbunden")).toBeInTheDocument();
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      expect(unhandled).toEqual([]);
+    } finally {
+      window.removeEventListener("unhandledrejection", onUnhandled);
+    }
   });
 
   it("shows the Kontingente screen at /steuerung when the switch is on", async () => {
