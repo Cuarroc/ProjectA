@@ -41,8 +41,11 @@ impl AreaPolicy {
         scope: String,
         area: String,
         level: Level,
-        _user: &Actor,
+        user: &Actor,
     ) -> Result<Self, Error> {
+        if user.authority != Some(Owner::User) {
+            return Err(Error::Forbidden);
+        }
         Ok(Self { scope, area, level })
     }
 }
@@ -169,6 +172,25 @@ impl<'a> Register<'a> {
         }
         Ok(setting)
     }
+    fn level(&self, scope: &str, area: &str) -> Level {
+        let mut policies = self
+            .policies
+            .iter()
+            .filter(|p| p.scope == scope && p.area == area);
+        match (policies.next(), policies.next()) {
+            (Some(policy), None) => policy.level,
+            _ => Level::Off,
+        }
+    }
+    fn may_self_apply(&self, change: &Request, setting: &Setting) -> bool {
+        let mut effects = self.effects.iter().filter(|e| e.key == setting.key);
+        matches!((effects.next(), effects.next()), (Some(effect), None)
+            if effect.class == EffectClass::Ordinary
+                && effect.area == setting.area
+                && effect.effect_site == setting.effect_site)
+            && setting.risk_class == RiskClass::Ordinary
+            && self.level(&change.scope, setting.area) == Level::SelfWithReport
+    }
     pub fn journal(&self) -> &[JournalEntry] {
         &self.journal
     }
@@ -179,6 +201,11 @@ impl<'a> Register<'a> {
         timestamp: u64,
     ) -> Result<usize, Error> {
         let setting = self.setting(&change.key)?;
+        if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
+            && self.level(&change.scope, setting.area) == Level::Off
+        {
+            return Err(Error::Forbidden);
+        }
         let entry = JournalEntry {
             id: self.journal.len() + 1,
             request_id: self.requests.len(),
@@ -206,7 +233,15 @@ impl<'a> Register<'a> {
         timestamp: u64,
     ) -> Result<(), Error> {
         let mut entry = self.requests.get(id).ok_or(Error::UnknownRequest)?.clone();
-        if actor.authority.is_none() || actor.authority != self.setting(&entry.change.key)?.owner {
+        let setting = self.setting(&entry.change.key)?;
+        if actor.authority.is_none() || actor.authority != setting.owner {
+            return Err(Error::Forbidden);
+        }
+        // Recheck at apply as well as check; refused proposals remain Requested.
+        if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
+            && matches!(state, State::Checked | State::Applied)
+            && !self.may_self_apply(&entry.change, setting)
+        {
             return Err(Error::Forbidden);
         }
         if self.requests[..id].iter().any(|earlier| {
@@ -317,6 +352,7 @@ mod tests {
             let effects = [capability(EffectClass::Ordinary)];
             for level in [Level::Off, Level::Propose, Level::SelfWithReport] {
                 let policies = [policy(level)];
+                let revoked = [[policy(Level::Off)], [policy(Level::Propose)]];
                 let mut r = Register::new(&settings, &policies, &effects);
                 if level == Level::Off {
                     assert_eq!(r.submit(request(0), &a, 1), Err(Error::Forbidden));
@@ -331,7 +367,17 @@ mod tests {
                     denied(&mut r, id, &a);
                     assert_eq!(r.journal()[0].state, Requested);
                 } else {
-                    for state in [Checked, Applied, RolledBack] {
+                    r.transition(id, Checked, &a, 2).unwrap();
+                    // Model a trusted adapter refreshing policy/capabilities after check.
+                    for updated in &revoked {
+                        r.policies = updated;
+                        denied(&mut r, id, &a);
+                        r.policies = &policies;
+                    }
+                    r.effects = &[];
+                    denied(&mut r, id, &a);
+                    r.effects = &effects;
+                    for state in [Applied, RolledBack] {
                         r.transition(id, state, &a, 2).unwrap();
                     }
                     assert_eq!(r.journal().len(), 4);
@@ -493,7 +539,8 @@ mod tests {
                     risk_class: risk,
                     ..setting(Some(owner))
                 }];
-                let mut r = Register::new(&settings, &[], &[]);
+                let policies = [policy(Level::Propose)];
+                let mut r = Register::new(&settings, &policies, &[]);
                 r.submit(request(0), &actor(Some(owner)), 1).unwrap();
                 assert_eq!(r.journal()[0].risk_class, risk);
             }
