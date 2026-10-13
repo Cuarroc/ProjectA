@@ -956,9 +956,31 @@ mod tests {
             !source.contains("join(\"com.projecta.app\")"),
             "app_data_dir must join the build identifier, never a hard-coded com.projecta.app"
         );
-        assert!(
-            source.contains("build_identifier::IDENTIFIER"),
-            "hooks must share the build identifier from src-tauri/src/build_identifier.rs"
+    }
+
+    /// Row 2, the behaviour half (R1290-C3: the positive source-text
+    /// assertion was satisfied by its own assertion message): the resolved
+    /// app-data directory ends with the embedded build identifier, so a Dev
+    /// build's hooks directory lands under `com.projecta.dev`.
+    #[test]
+    fn hooks_dir_lives_under_the_build_identifier() {
+        // `app_data_dir` reads PROJECTA_APP_DATA process-wide: own it for the
+        // duration of the call and put it back.
+        let _guard = crate::testutil::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        let previous = std::env::var_os(ENV_APP_DATA);
+        std::env::remove_var(ENV_APP_DATA);
+        let resolved = app_data_dir();
+        if let Some(value) = previous {
+            std::env::set_var(ENV_APP_DATA, value);
+        }
+        let dir = resolved.expect("the test host has APPDATA/HOME");
+        assert_eq!(
+            dir.file_name().and_then(|name| name.to_str()),
+            Some(crate::build_identifier::IDENTIFIER),
+            "the app-data directory ends with the embedded build identifier: {}",
+            dir.display()
         );
     }
 

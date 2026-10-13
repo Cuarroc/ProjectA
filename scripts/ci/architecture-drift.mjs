@@ -205,10 +205,15 @@ export function checkSeamBudget(args = []) {
     const git = (...argv) => execFileSync("git", argv, {
       cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],
     });
+    // Commit hooks inspect the pending merge tree before HEAD includes its other parent.
+    const parents = ["HEAD"];
+    if (!args.length && existsSync(resolve(root, git("rev-parse", "--git-path", "MERGE_HEAD").trim()))) {
+      parents.push("MERGE_HEAD");
+    }
     const base = args.length
       ? git("rev-parse", "--verify", "--end-of-options", `${args[1]}^{commit}`).trim()
-      : git("merge-base", "origin/main", "HEAD").trim();
-    git("merge-base", "--is-ancestor", base, "HEAD");
+      : git("merge-base", "origin/main", ...parents).trim();
+    git("merge-base", "--is-ancestor", base, args.length ? "HEAD" : "origin/main");
     const current = parseBudget(readFileSync(join(root, budgetPath), "utf8"));
     const tracked = git("ls-tree", "--name-only", base, "--", budgetPath).trim();
     const baseline = tracked ? parseBudget(git("show", `${base}:${budgetPath}`)) :
