@@ -638,23 +638,73 @@ impl Store {
         rows.into_iter().map(EvidenceRow::into_evidence).collect()
     }
 
+    /// Only the internal test service may supply these measured gate results.
     pub(crate) async fn record_development_gate_result(
         &self,
-        _run_id: &str,
-        _owner: &str,
-        _fence: i64,
-        _key: &str,
-        _observed_at: i64,
-        _result: GateResult,
+        run_id: &str,
+        owner: &str,
+        fence: i64,
+        key: &str,
+        observed_at: i64,
+        result: GateResult,
     ) -> Result<DevelopmentEvidence, String> {
-        Err("typed gate evidence not implemented".into())
+        required(&result.lane, "lane")?;
+        required(&result.gate, "gate")?;
+        let input = EvidenceInput {
+            idempotency_key: key.into(),
+            source: "test-gate".into(),
+            observed_at,
+            candidate_commit: result.sha,
+            measurement: EvidenceMeasurement::Measured {
+                value: result.exit_code.into(),
+            },
+            payload: serde_json::json!({"kind": "gate-result", "schemaVersion": 1,
+                "lane": result.lane, "gate": result.gate, "exitCode": result.exit_code}),
+        };
+        self.record_trusted_development_test_evidence(run_id, owner, fence, input)
+            .await
     }
 
     pub(crate) async fn list_development_gate_results(
         &self,
-        _run_id: &str,
+        run_id: &str,
     ) -> Result<Vec<GateResult>, String> {
-        Ok(Vec::new())
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Payload {
+            schema_version: u32,
+            lane: String,
+            gate: String,
+            exit_code: i32,
+        }
+        let mut results = Vec::new();
+        for evidence in self.list_development_evidence(run_id).await? {
+            if evidence.invalidated_at.is_some() || evidence.payload["kind"] != "gate-result" {
+                continue;
+            }
+            let payload: Payload = serde_json::from_value(evidence.payload)
+                .map_err(|e| format!("invalid gate-result payload: {e}"))?;
+            if payload.schema_version != 1
+                || !matches!(evidence.measurement,
+                EvidenceMeasurement::Measured { value } if value == Value::from(payload.exit_code))
+            {
+                return Err(
+                    "gate-result requires schemaVersion 1 and matching measured exitCode".into(),
+                );
+            }
+            required(&payload.lane, "lane")?;
+            required(&payload.gate, "gate")?;
+            require_full_commit_id(&evidence.candidate_commit)?;
+            if evidence.trusted_test_source {
+                results.push(GateResult {
+                    lane: payload.lane,
+                    gate: payload.gate,
+                    exit_code: payload.exit_code,
+                    sha: evidence.candidate_commit,
+                });
+            }
+        }
+        Ok(results)
     }
 
     pub async fn list_development_reviews(
@@ -1457,7 +1507,8 @@ mod tests {
             ("exitCode", serde_json::json!("0")),
             ("exitCode", serde_json::json!(101)),
         ] {
-            let other = launched_run(&store, field, field, 1, None).await;
+            let task = format!("{field}-{value}");
+            let other = launched_run(&store, &task, field, 1, None).await;
             store
                 .bind_development_run_candidate(&other, field, 1, COMMIT_A, "git", 1)
                 .await
@@ -1507,8 +1558,9 @@ mod tests {
                 "gate" => changed.gate.clear(),
                 _ => changed.exit_code = 101,
             }
+            let key = if field == "exit" { "key" } else { field };
             assert!(store
-                .record_development_gate_result(&run, "worker-a", 7, "key", 2, changed)
+                .record_development_gate_result(&run, "worker-a", 7, key, 2, changed)
                 .await
                 .is_err());
         }
@@ -1593,20 +1645,14 @@ mod tests {
         assert_eq!((after_evidence.len(), after_reviews.len()), (2, 2));
         for (mut after, before) in after_evidence.into_iter().zip(before_evidence) {
             assert_eq!(after.invalidated_at.take(), Some(9));
-            assert_eq!(
-                after.invalidated_by_commit.take().as_deref(),
-                Some(COMMIT_B)
-            );
+            assert_eq!(after.invalidated_by_commit.take(), Some(COMMIT_B.into()));
             assert_eq!(after, before);
         }
         for (mut after, before) in after_reviews.into_iter().zip(before_reviews) {
             assert_eq!(after.status, "invalidated");
             after.status = "valid".into();
             assert_eq!(after.invalidated_at.take(), Some(9));
-            assert_eq!(
-                after.invalidated_by_commit.take().as_deref(),
-                Some(COMMIT_B)
-            );
+            assert_eq!(after.invalidated_by_commit.take(), Some(COMMIT_B.into()));
             assert_eq!(after, before);
         }
         reopened.pool.close().await;
