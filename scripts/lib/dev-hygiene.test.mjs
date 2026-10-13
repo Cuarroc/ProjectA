@@ -539,3 +539,123 @@ test("Drafts candidates exclude later historical PR mentions after a comma", () 
   assert.equal(hints.length, 1);
   assert.deepEqual(hints[0].prNumbers, [1, 2]);
 });
+
+function checkoutFixture(t, { names = [], divergence = { code: 0, stdout: "0\t0\n", stderr: "" } } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "hygiene-checkout-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const caller = join(dir, "caller");
+  const mainPath = join(dir, "main");
+  mkdirSync(join(caller, "docs"), { recursive: true });
+  mkdirSync(mainPath);
+  writeFileSync(join(caller, "STAND.md"), "## Aktive Specs\n");
+  writeFileSync(join(caller, "docs/PLAN.md"), "| ID | Title | Status |\n|---|---|---|\n");
+  writeFileSync(join(caller, "docs/ERLEDIGT.md"), "| Datum | ID |\n");
+  for (const name of names) {
+    mkdirSync(join(mainPath, name, ".."), { recursive: true });
+    writeFileSync(join(mainPath, name), name === "empty" ? "" : "nonempty\n");
+  }
+  const calls = [];
+  const run = (cmd, args, opts) => {
+    calls.push({ cmd, args, opts });
+    const a = commandArgs(cmd, args);
+    let stdout = "";
+    if (cmd === "gh") stdout = "[]";
+    else if (a[0] === "rev-parse") stdout = caller;
+    else if (a[0] === "worktree") stdout = `worktree ${mainPath}\nHEAD abc\nbranch refs/heads/main\n\nworktree ${caller}\nHEAD def\nbranch refs/heads/topic\n\n`;
+    else if (a[0] === "ls-files") stdout = names.length ? names.join("\0") + "\0" : "";
+    else if (a[0] === "rev-list") {
+      if (divergence instanceof Error) throw divergence;
+      return divergence;
+    } else if (a[0] === "status") stdout = names.map((n) => `?? ${JSON.stringify(n)}`).join("\n");
+    else if (a[0] !== "for-each-ref") assert.fail(`Unexpected command: ${cmd} ${JSON.stringify(args)}`);
+    return { code: 0, stdout, stderr: "" };
+  };
+  const cli = async (strict, json = true) => {
+    const out = [];
+    const code = await main(["--no-fetch", "--root", caller, ...(strict ? ["--strict"] : []), ...(json ? ["--json"] : [])],
+      { out: (s) => out.push(s), err: (s) => assert.fail(s) }, { run, now: () => NOW });
+    return { code, report: json ? JSON.parse(out.join("")) : out.join("") };
+  };
+  return { caller, mainPath, calls, run, cli };
+}
+
+test("hygiene reports nonempty shell metacharacter filenames without executing them", async (t) => {
+  const suspicious = ['!fs.existsSync(dir', 'line\n"$OUT', ...['!', '$', '`', ';', '&', '|', '<', '>', '(', ')'].map((c) => `name${c}`)];
+  const names = [...suspicious, "normal.txt", "empty", "subdir/!nested"];
+  const f = checkoutFixture(t, { names });
+  const data = gather({ run: f.run, cwd: f.caller, now: NOW });
+  assert.deepEqual(data.untracked, names, "NUL records preserve embedded newlines and quotes");
+  assert.deepEqual(data.suspiciousNames, suspicious);
+  assert.deepEqual(data.shellRedirectAccidents.map((a) => a.path), ["empty"]);
+  assert.match(data.shellRedirectAccidents[0].mtime, /^\d{4}-\d{2}-\d{2}T/);
+  const findings = collectHygiene(data);
+  assert.deepEqual(findings.suspiciousNames, suspicious);
+  assert.equal(countFindings({ ...findings, untracked: [] }), suspicious.length);
+  assert.deepEqual(f.calls.find((c) => c.args.includes("ls-files")), {
+    cmd: "git", args: ["-C", f.mainPath, "ls-files", "--others", "--exclude-standard", "--directory", "-z"], opts: undefined,
+  });
+  const md = formatHygiene(findings);
+  assert.ok(md.includes('line\\n\\"$OUT'), "Markdown escapes newline and quote");
+  assert.ok(md.includes("name&#96;"));
+  assert.ok(md.includes("name&lt;"));
+  assert.ok(md.includes("name&amp;"));
+  assert.ok(!md.includes('line\n"$OUT'));
+  assert.match(md, /Verdächtige Dateinamen/);
+  assert.match(md, /`empty` — likely shell-redirect accident \(mtime /);
+  const normal = await f.cli(false);
+  assert.equal(normal.code, 0);
+  assert.deepEqual(normal.report.suspiciousNames, suspicious);
+  assert.ok(JSON.stringify(normal.report).includes('line\\n\\"$OUT'));
+  assert.equal((await f.cli(true)).code, 1);
+  for (const c of f.calls) {
+    assert.ok(["git", "gh"].includes(c.cmd));
+    assert.ok(!c.args.some((arg) => suspicious.includes(arg)), "filenames are never command arguments");
+    assert.notEqual(commandArgs(c.cmd, c.args)[0], "fetch");
+  }
+});
+
+test("hygiene reports divergence of the main checkout rather than the caller", async (t) => {
+  const f = checkoutFixture(t, { divergence: { code: 0, stdout: "2\t7\n", stderr: "" } });
+  const data = gather({ run: f.run, cwd: f.caller, now: NOW });
+  assert.deepEqual(data.mainDivergence, { ahead: 2, behind: 7, reason: null });
+  assert.deepEqual(f.calls.find((c) => c.args.includes("rev-list")), {
+    cmd: "git", args: ["rev-list", "--left-right", "--count", "HEAD...origin/main"], opts: { cwd: f.mainPath },
+  });
+  const findings = collectHygiene(data);
+  assert.deepEqual(findings.mainDivergence, data.mainDivergence);
+  assert.equal(countFindings(findings), 1);
+  assert.match(formatHygiene(findings), /Hauptcheckout gegen origin\/main/);
+  assert.match(formatHygiene(findings), /ahead: 2, behind: 7/);
+  assert.equal((await f.cli(true)).code, 1);
+  const normal = await f.cli(false);
+  assert.equal(normal.code, 0);
+  assert.deepEqual(normal.report.mainDivergence, { ahead: 2, behind: 7, reason: null });
+});
+
+test("hygiene preserves unknown divergence and strict finding semantics", async (t) => {
+  for (const [stdout, ahead, behind] of [["2\t0\n", 2, 0], ["0\t0\n", 0, 0]]) {
+    const f = checkoutFixture(t, { divergence: { code: 0, stdout, stderr: "" } });
+    const { code, report } = await f.cli(true);
+    assert.equal(code, 0);
+    assert.deepEqual(report.mainDivergence, { ahead, behind, reason: null });
+    assert.equal(countFindings(report), 0);
+    assert.match((await f.cli(false, false)).report, new RegExp(`ahead: ${ahead}, behind: 0`));
+  }
+  for (const divergence of [
+    { code: 128, stdout: "", stderr: "fatal: unknown revision origin/main" },
+    { code: 127, stdout: "", stderr: "git unavailable" },
+    { code: 0, stdout: "invalid counts", stderr: "" },
+    new Error("runner unavailable"),
+  ]) {
+    const f = checkoutFixture(t, { divergence });
+    const { code, report } = await f.cli(false);
+    assert.equal(code, 0);
+    assert.equal(report.mainDivergence.ahead, null);
+    assert.equal(report.mainDivergence.behind, null);
+    assert.match(report.mainDivergence.reason, /git rev-list/);
+    assert.ok(report.notChecked.some((n) => n.includes(report.mainDivergence.reason)));
+    assert.equal(countFindings(report), 1);
+    assert.match((await f.cli(false, false)).report, /unbekannt/);
+    assert.equal((await f.cli(true)).code, 1);
+  }
+});
