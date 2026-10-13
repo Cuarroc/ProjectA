@@ -1,4 +1,5 @@
 {
   "schemaVersion": 1,
-  "maximumLines": 300
+  "maximumLines": 300,
+  "excludedPaths": ["package-lock.json", "Cargo.lock", "src-tauri/Cargo.lock", "docs/dev-hq/data.js", "docs/dev-hq/data.json"]
 }

@@ -105,9 +105,9 @@ test('package size fails closed for raised limits binary changes and invalid ref
 });
 
 test('package size skips merge_group and other non PR events', t => {
-  const { put, commit, run, env } = fixture(t);
+  const { cwd, put, commit, run, env, base } = fixture(t);
   put('large.txt', 'line\n'.repeat(417));
-  commit();
+  const head = commit();
   for (const event of ['merge_group', 'push', 'schedule', 'workflow_dispatch']) {
     env.GITHUB_EVENT_NAME = event;
     const result = run();
@@ -118,6 +118,10 @@ test('package size skips merge_group and other non PR events', t => {
   assert.equal(run().status, 1);
   delete env.BASE_SHA;
   assert.equal(run().status, 2);
+  env.GITHUB_EVENT_PATH = join(cwd, 'event.json');
+  put('event.json', JSON.stringify({ pull_request: { base: { sha: base }, head: { sha: head } } }));
+  env.PA_SIZE_BASE = head;
+  expectResult(run('--base', head, '--head', base), 1, 417, 0);
 });
 
 test('package size warns locally without an explicit base', t => {

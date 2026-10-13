@@ -142,7 +142,7 @@ GATES=(
   # match it against a "\n" literal must normalise CRLF (Windows broke on 05.10.).
   "crlf-source-compare|precommit,prepush,linux|.|node --test scripts/ci/crlf-source-compare.test.mjs && node scripts/ci/crlf-source-compare.mjs check"
   "architecture-drift|precommit,prepush,linux|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
-  "package-size|prepush,linux|.|node --test scripts/ci/package-size.test.mjs && node scripts/ci/package-size.mjs --base \"\${BASE_SHA:-origin/main}\" --head \"\${HEAD_SHA:-HEAD}\""
+  "package-size|prepush,linux|.|node --test scripts/ci/package-size.test.mjs && node scripts/ci/package-size.mjs"
   # V161-DOC-LINKS: broken relative links in tracked Markdown. Local lanes only:
   # lane-plan HEAVY_DOCS would turn every docs PR into a Linux CI run.
   "doc-links|precommit,prepush|.|node --test scripts/ci/doc-links.test.mjs && node scripts/ci/doc-links.mjs check"
