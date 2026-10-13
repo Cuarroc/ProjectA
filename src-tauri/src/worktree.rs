@@ -178,7 +178,13 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    git_output(crate::proc::command("git").args(args))
+    // Worktree creation and rollback must not depend on user reflog identity.
+    git_output(
+        crate::proc::command("git")
+            .env("GIT_COMMITTER_NAME", "ProjectA")
+            .env("GIT_COMMITTER_EMAIL", "noreply@projecta.local")
+            .args(args),
+    )
 }
 
 fn git_output(command: &mut std::process::Command) -> Result<String, String> {
@@ -280,6 +286,14 @@ mod tests {
 
     #[test]
     fn checkpoint_writes_reflog_without_committer_identity() {
+        let version = String::from_utf8(checkpoint_git(Path::new("."), &["--version"])).unwrap();
+        let mut parts = version.trim_start_matches("git version ").split('.');
+        let major: u32 = parts.next().unwrap().parse().unwrap();
+        let minor: u32 = parts.next().unwrap().parse().unwrap();
+        if (major, minor) < (2, 32) {
+            eprintln!("Skipping checkpoint identity test: Git 2.32+ required for GIT_CONFIG_GLOBAL isolation; found {version}");
+            return;
+        }
         const CHILD_REPO: &str = "PROJECTA_CHECKPOINT_IDENTITY_TEST_REPO";
         if let Some(repo) = std::env::var_os(CHILD_REPO) {
             checkpoint(&repo.to_string_lossy(), "run-1", "step-1").unwrap();
