@@ -35,6 +35,9 @@ const POLL_MS = 10_000;
 export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   // `undefined` = not read yet, `null` = the read failed: neither may claim "empty" or show a number.
   const [queue, setQueue] = useState<readonly QueueEntry[] | null | undefined>(undefined);
+  // `true` once the queue has been read at least once for this project; a later transient
+  // read failure must not unmount the form and destroy the user's half-typed draft.
+  const [queueSeen, setQueueSeen] = useState(false);
   const [resources, setResources] = useState<ResourceSnapshot | null | undefined>(undefined);
   // `string` = the read failed and this is the core's sentence.
   const [dog, setDog] = useState<readonly WatchdogFinding[] | string | undefined>(undefined);
@@ -43,7 +46,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   const readQueue = useCallback(() => {
     const mine = ++queueGeneration.current;
     listQueue(projectId).then(
-      (rows) => mine === queueGeneration.current && setQueue(Array.isArray(rows) ? rows : null),
+      (rows) => mine === queueGeneration.current && (setQueue(Array.isArray(rows) ? rows : null), setQueueSeen(true)),
       () => mine === queueGeneration.current && setQueue(null),
     );
   }, [projectId]);
@@ -51,6 +54,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   useEffect(() => {
     let live = true;
     setQueue(undefined);
+    setQueueSeen(false);
     setResources(undefined);
     setDog(undefined);
     const read = () => {
@@ -95,7 +99,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
             </ul>
           )}
         </section>
-        {queue != null && <EinreihenForm key={projectId} projectId={projectId} profiles={profiles} entries={queue} onEnqueued={readQueue} onCancelled={readQueue} />}
+        {queueSeen && <EinreihenForm key={projectId} projectId={projectId} profiles={profiles} entries={queue ?? []} onEnqueued={readQueue} onCancelled={readQueue} />}
       </div>
       <section className="g-glass bt-card" aria-label={T.check}>
         <h2 className="bt-h">{T.check}</h2>

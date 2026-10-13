@@ -254,6 +254,29 @@ describe("BetriebPanel", () => {
     }
   });
 
+  it("keeps the form and its draft when a transient queue read fails mid-session", async () => {
+    vi.useFakeTimers();
+    try {
+      backend([]);
+      const read = mocks.invoke.getMockImplementation()!;
+      let failNext = false;
+      mocks.invoke.mockImplementation((cmd, args) => {
+        if (cmd === "list_queue" && failNext) return Promise.reject(new Error("db locked"));
+        return read(cmd, args);
+      });
+      render(<BetriebPanel projectId="p1" profiles={profiles} />);
+      await act(async () => vi.advanceTimersByTimeAsync(0));
+      const textarea = screen.getByRole("textbox", { name: F.task });
+      fireEvent.change(textarea, { target: { value: "half-typed draft" } });
+      failNext = true;
+      await act(async () => vi.advanceTimersByTimeAsync(10_000));
+      expect(screen.getByRole("textbox", { name: F.task })).toHaveValue("half-typed draft");
+      expect(within(section("Warteschlange")).getByText("Warteschlange nicht lesbar")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows the empty state only after a successful read of an empty queue", async () => {
     backend([]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
