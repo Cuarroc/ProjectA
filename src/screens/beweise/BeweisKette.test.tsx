@@ -86,6 +86,38 @@ describe("BeweisKette", () => {
     }
   });
 
+  it("closes an open code disclosure on recheck so the new full tuple stays hidden until reopened", async () => {
+    const tupleA = { workerHeadSha: "aaaaaaa111", baseTipSha: "bbbbbbb222", mergeTreeOid: "ccccccc333" };
+    const tupleB = { workerHeadSha: "ddddddd444", baseTipSha: "eeeeeee555", mergeTreeOid: "fffffff666" };
+    serve(readiness({ readiness: "ready", code: tupleA }));
+    const { unmount } = render(<BeweisKette workerId="w1" />);
+    await screen.findByText("Bereitschaftscheck bestanden");
+    let stand = within(screen.getByRole("region", { name: "Code-Stand" }));
+    let summary = stand.getByText("Vollständiger Code-Stand");
+    fireEvent.click(summary);
+    await act(async () => {});
+    let disclosure = summary.closest("details")!;
+    expect(disclosure).toHaveAttribute("open");
+    expect(within(disclosure).getByText(tupleA.workerHeadSha)).toBeVisible();
+    serve(readiness({ readiness: "ready", code: tupleB }));
+    fireEvent.click(screen.getByRole("button", { name: "Neu prüfen" }));
+    await screen.findByText("Bereitschaftscheck bestanden");
+    stand = within(screen.getByRole("region", { name: "Code-Stand" }));
+    summary = stand.getByText("Vollständiger Code-Stand");
+    disclosure = summary.closest("details")!;
+    expect(disclosure).not.toHaveAttribute("open");
+    expect(stand.queryByText(tupleB.workerHeadSha)).toBeNull();
+    expect(stand.queryByText(tupleB.baseTipSha)).toBeNull();
+    expect(stand.queryByText(tupleB.mergeTreeOid)).toBeNull();
+    expect(stand.queryByText(tupleA.workerHeadSha)).toBeNull();
+    fireEvent.click(summary);
+    await act(async () => {});
+    expect(disclosure).toHaveAttribute("open");
+    expect(within(disclosure).getByText(tupleB.workerHeadSha)).toBeVisible();
+    expect(stand.queryByText(tupleA.workerHeadSha)).toBeNull();
+    unmount();
+  });
+
   it("does not restore old proof when an earlier recheck finishes last", async () => {
     for (const staleFailure of [false, true]) {
       serve(readiness({ readiness: "ready" }));
