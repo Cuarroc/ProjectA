@@ -129,6 +129,25 @@ it("an empty board is said in words and shows no chips", () => {
   expect(screen.queryByRole("group")).toBeNull();
 });
 
+it("announces the empty filter result as a status", async () => {
+  render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  // "Fehler" filter has 1 card, "In Prüfung" has 0
+  fireEvent.click(screen.getByRole("button", { name: /^In Prüfung/ }));
+  expect(screen.getByRole("status")).toHaveTextContent("Kein Agent in diesem Zustand.");
+  expect(screen.getByRole("button", { name: "Alle zeigen" })).toBeInTheDocument();
+});
+
+it("announces the empty result again after switching to another empty filter", async () => {
+  render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  // Both "In Prüfung" and "Bereit zum Mergen" have 0 cards
+  fireEvent.click(screen.getByRole("button", { name: /^In Prüfung/ }));
+  const firstStatus = screen.getByRole("status");
+  expect(firstStatus).toHaveTextContent("Kein Agent in diesem Zustand.");
+  fireEvent.click(screen.getByRole("button", { name: /^Bereit zum Mergen/ }));
+  // Status should be announced again (new live region or updated content)
+  expect(screen.getByRole("status")).toHaveTextContent("Kein Agent in diesem Zustand.");
+});
+
 it("the offline proof sits in its own scoped slot and no bare HonestState override is left", async () => {
   const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
   const slots = container.querySelectorAll(".ls-foot > .ls-proof > .g-hs--offline");
