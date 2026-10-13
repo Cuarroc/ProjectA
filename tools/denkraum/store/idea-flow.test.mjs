@@ -3,6 +3,7 @@ import { mkdtemp, readFile, writeFile, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { DeskStore } from '../store.mjs';
 const root = { role: 'root', rootAgentId: 'test-root' };
 const idea = extra => ({ requestId: 'idea', expectedRevision: null, title: 'T'.repeat(200), text: 'Original', ...extra });
@@ -37,6 +38,7 @@ test('DR2 flow rejects stale turns and preserves replay', async t => {
   await assert.rejects(s.putIdeaFlow(command('reserve', 0), { ...root, rootAgentId: 'other' }), status(403));
   await assert.rejects(send('reserve', 0, { ideaRef: { ...ref(i), ideaId: 'missing' } }), status(404));
   await assert.rejects(send('started', 0, { startProof: 'process observed' }), status(409));
+  await assert.rejects(send('reserve', 0, { mode: 'invalid' }), status(400));
   const race = await Promise.allSettled(['a', 'b'].map(requestId => send('reserve', 0, { requestId, mode: 'dialog' })));
   assert.equal(race.filter(r => r.status === 'fulfilled').length, 1); assert.equal(race.find(r => r.status === 'rejected').reason.status, 409);
   await assert.rejects(send('reserve', 1), status(409));
@@ -100,4 +102,47 @@ test('DR2 flow validates the transition matrix and bounded history', async t => 
   const bytes = await readFile(s.file, 'utf8'); await assert.rejects(call('reserve', { expectedFlowRevision: -1 }), status(400)); assert.equal(await readFile(s.file, 'utf8'), bytes);
   const legacy = await fresh(t); await writeFile(legacy.file, JSON.stringify({ schemaVersion: 1, revision: 0, questions: [], answers: [], unknown: { kept: true } }));
   await legacy.migrate(0); assert.deepEqual((await legacy.read()).unknown, { kept: true }); assert.deepEqual((await legacy.read()).ideas, []);
+});
+test('DR2 returned flow events cannot poison later transactions', async t => {
+  const s = await fresh(t); const i = await s.putIdea(idea({ mode: 'dialog' }));
+  const input = { command: 'reserve', requestId: 'reserve', ideaRef: ref(i), expectedFlowRevision: 0, turnId: 'turn', jobId: 'job' };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const event = await s.putIdeaFlow(input, root);
+    assert.notEqual(event, (await s.read()).ideas[0].revisions[0].flow.events[0]);
+    event.command = 'corrupt'; event.ideaRef.ideaId = 'corrupt';
+    assert.equal((await s.read()).ideas[0].revisions[0].flow.events[0].command, 'reserve');
+  }
+  await s.putIdea(idea({ requestId: 'other' }));
+  await s.putIdeaFlow({ ...input, command: 'started', requestId: 'started', expectedFlowRevision: 1, startProof: 'observed' }, root);
+  await s.close(); const reopened = new DeskStore(s.file, root); t.after(() => reopened.close());
+  assert.equal((await reopened.read()).ideas[0].revisions[0].flow.events.length, 2);
+});
+test('DR2 asked accepts deferred or clarified questions but rejects answers', async t => {
+  for (const action of ['defer', 'clarify', 'answer']) {
+    const s = await fresh(t); const i = await s.putIdea(idea({ mode: 'dialog' }));
+    const q = await s.putQuestion({ id: 'question', mode: 'free', title: 'Why?', context: 'C', owner: 'O', category: 'K', scope: 'S', source: 'Q', uncertainty: 'U', sourceRef: ref(i), contentOrigin: { actor: 'agent', sourceRefText: 'idea' } });
+    await s.answer({ questionId: q.id, questionRevision: 1, requestId: 'answer', expectedAnswerId: null, action, selected: [], note: 'Note' });
+    const input = { ideaRef: ref(i), turnId: 'turn', jobId: 'job' };
+    await s.putIdeaFlow({ ...input, command: 'reserve', requestId: 'reserve', expectedFlowRevision: 0 }, root);
+    await s.putIdeaFlow({ ...input, command: 'started', requestId: 'started', expectedFlowRevision: 1, startProof: 'observed' }, root);
+    const asked = s.putIdeaFlow({ ...input, command: 'asked', requestId: 'asked', expectedFlowRevision: 2, questionRef: { questionId: q.id, questionRevision: 1 } }, root);
+    if (action === 'answer') await assert.rejects(asked, status(409));
+    else assert.equal((await asked).phase, 'awaiting_user');
+  }
+});
+test('DR2 corrupt flow retains its diagnostic cause', async t => {
+  const s = await fresh(t); await s.putIdea(idea({ mode: 'dialog' }));
+  const state = await s.read(); state.ideas[0].revisions[0].flow.version = 2;
+  await writeFile(s.file, JSON.stringify(state));
+  await assert.rejects(s.read(), e => e.status === 503 && e.cause?.message === 'Ungültige Ablaufversion/-revision.');
+});
+test('DR2 flow loads through either module entry order', () => {
+  for (const entry of ['model', 'idea-flow']) {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+      await import('./tools/denkraum/store/${entry}.mjs');
+      const { newIdeaFlow, validateIdeaFlow } = await import('./tools/denkraum/store/idea-flow.mjs');
+      if (validateIdeaFlow(newIdeaFlow('dialog'), {}, { answers: [] }).phase !== 'submitted') throw Error('invalid phase');
+    `], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  }
 });

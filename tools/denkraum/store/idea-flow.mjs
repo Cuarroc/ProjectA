@@ -66,7 +66,7 @@ export function validateIdeaFlow(flow, ideaRef, state) {
       advance(s, e); ensure(e.phase === s.phase, 'Ungültige Ablaufphase.');
     }
     return s;
-  } catch { throw new DeskError('Datendatei beschädigt: Ideenablauf. Sie wurde nicht überschrieben.', 503); }
+  } catch (cause) { throw Object.assign(new DeskError('Datendatei beschädigt: Ideenablauf. Sie wurde nicht überschrieben.', 503), { cause }); }
 }
 export function appendIdeaFlow(state, input, trustedContext, rootAgentId) {
   ensure(validId(rootAgentId), 'Root ist nicht konfiguriert.', 503);
@@ -90,7 +90,7 @@ export function appendIdeaFlow(state, input, trustedContext, rootAgentId) {
     const q = state.questions.find(q => q.id === r.questionRef.questionId);
     ensure(q, 'Frage nicht gefunden.', 404);
     ensure(q.revision === r.questionRef.questionRevision && q.mode === 'free' && sameRef(q.sourceRef, r.ideaRef), 'Frage ist nicht aktuell oder anders gebunden.', 409);
-    ensure(!state.answers.some(a => a.questionId === q.id && a.questionRevision === q.revision), 'Frage ist bereits beantwortet.', 409);
+    ensure(!state.answers.some(a => a.action === 'answer' && a.questionId === q.id && a.questionRevision === q.revision), 'Frage ist bereits beantwortet.', 409);
     contribution = text(q.title, 'Frage', 4000);
   }
   if (r.command === 'answered') {
