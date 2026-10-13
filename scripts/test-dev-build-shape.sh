@@ -109,6 +109,11 @@ check workflow-without-dispatch-trigger-fails fail \
   "$(wf 's/^  workflow_dispatch:$/  pull_request:/' nodispatch)" "$OV" "triggers must be"
 check workflow-without-identifier-env-fails fail \
   "$(wf '/^[[:space:]]*PROJECTA_IDENTIFIER: com\.projecta\.dev[[:space:]]*$/d' noident)" "$OV" "PROJECTA_IDENTIFIER"
+# R1290-C4: the identifier env var in a *different* step than the one running
+# `tauri build` never reaches the build; the guard must look at the step, not
+# the file.
+check identifier-moved-to-another-step-fails fail \
+  "$(wf '/^[[:space:]]*PROJECTA_IDENTIFIER: com\.projecta\.dev[[:space:]]*$/d; s/^        run: echo "short=.*$/&\n        env:\n          PROJECTA_IDENTIFIER: com.projecta.dev/' movedident)" "$OV" "PROJECTA_IDENTIFIER"
 
 # Forced tool failures: the permissions extraction must fail closed, not pass.
 mkdir "$tmp/failbin" "$tmp/silentbin"
