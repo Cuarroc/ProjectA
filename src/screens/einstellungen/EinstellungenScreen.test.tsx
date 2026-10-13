@@ -10,18 +10,35 @@ import { getVersion } from "@tauri-apps/api/app";
 import { ROUTES } from "../../shell/routes";
 import { EinstellungenScreen } from "./EinstellungenScreen";
 
-vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn() }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: async () => "com.projecta.app" }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 let emergencyStopped = false;
+const provider = (id: string, kind: string, vaultError: string | null = null) => ({
+  id, name: `Anbieter ${id}`, kind, connected: true, vaultError,
+});
+let overview: unknown;
+let presence: Record<string, unknown>;
+const calls = (command: string) => vi.mocked(invoke).mock.calls.filter(([c]) => c === command);
+const vaultTab = () => fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
 
 const css = readFileSync(resolve(__dirname, "einstellungen.css"), "utf8");
 const TABS = ROUTES.find((r) => r.id === "einstellungen")!.tabs.map((t) => t.label);
 const open = vi.fn();
 beforeEach(() => {
   emergencyStopped = false;
-  vi.mocked(invoke).mockReset().mockImplementation(async (command) => {
+  overview = [provider("abo", "subscription"), provider("lokal", "local"), provider("api", "api_key")];
+  presence = { api: true };
+  vi.mocked(invoke).mockReset().mockImplementation(async (command, args) => {
     switch (command) {
+      case "get_provider_overview":
+        if (overview instanceof Error) throw overview;
+        return overview;
+      case "has_provider_key": {
+        const answer = presence[(args as { providerId: string }).providerId];
+        if (answer instanceof Error) throw answer;
+        return answer;
+      }
       case "get_emergency_stop": return emergencyStopped;
       case "get_log_path": return "logs/projecta.log";
       case "get_panic_notice": return { current: null, previous: null };
@@ -35,7 +52,7 @@ beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 const show = () => render(<EinstellungenScreen onOpenClassic={open} />);
 
 describe("tab strip", () => {
@@ -50,14 +67,88 @@ describe("tab strip", () => {
     expect(screen.getByRole("tab", { name: "Allgemein" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("shows the honest not-connected state and never a number on the other three tabs", () => {
+  it("shows the honest not-connected state and never a number on the two remaining placeholder tabs", () => {
     show();
-    for (const label of TABS.slice(1)) {
+    for (const label of TABS.slice(2)) {
       fireEvent.click(screen.getByRole("tab", { name: label }));
       const panel = screen.getByRole("tabpanel");
       expect(panel.querySelector(".g-hs--offline")).not.toBeNull();
       expect(panel.textContent).not.toMatch(/\d/);
     }
+  });
+});
+
+describe("tab MCP & Tresor", () => {
+  it("mounts the read only vault only after selecting the MCP tab", async () => {
+    show();
+    await screen.findByText("logs/projecta.log");
+    expect(calls("get_provider_overview")).toHaveLength(0);
+    expect(calls("has_provider_key")).toHaveLength(0);
+    expect(screen.queryByRole("region", { name: "Tresor" })).toBeNull();
+    vi.mocked(invoke).mockClear();
+    vaultTab();
+    expect(await screen.findByText("Schlüssel hinterlegt")).toBeVisible();
+    const table = within(screen.getByRole("region", { name: "Anbieter und Zugang" }));
+    expect(table.getByRole("row", { name: /Anbieter abo/ })).toHaveTextContent("Anmeldung über die CLI, kein Schlüssel im Tresor");
+    expect(table.getByRole("row", { name: /Anbieter lokal/ })).toHaveTextContent("kein Schlüssel nötig");
+    expect(calls("get_provider_overview")).toHaveLength(1);
+    expect(calls("has_provider_key").map(([, args]) => args)).toEqual([{ providerId: "api" }]);
+    // Every other IPC is forbidden on this read-only surface, including future write commands.
+    expect(vi.mocked(invoke).mock.calls.filter(([c]) => !["get_provider_overview", "has_provider_key"].includes(c))).toEqual([]);
+    const panel = within(screen.getByRole("tabpanel"));
+    expect(panel.getByText("MCP-Server noch nicht verbunden")).toBeVisible();
+    expect(panel.queryAllByRole("button")).toHaveLength(0);
+    expect(panel.queryAllByRole("textbox")).toHaveLength(0);
+  });
+
+  it("shows vault read errors without exposing key material in settings", async () => {
+    const privateDetail = "synthetic-private-response";
+    overview = new Error(privateDetail);
+    show();
+    vaultTab();
+    expect(await screen.findByText("Tresor nicht lesbar")).toBeVisible();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(calls("has_provider_key")).toHaveLength(0);
+    expect(document.body).not.toHaveTextContent(privateDetail);
+    fireEvent.click(screen.getByRole("tab", { name: TABS[2] }));
+    overview = [provider("api", "api_key", "vault_corrupt"), provider("invalid", "api_key"), provider("failed", "api_key")];
+    presence = { api: false, invalid: privateDetail, failed: new Error(privateDetail) };
+    vaultTab();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Der Schlüsselspeicher ist beschädigt");
+    await waitFor(() => expect(screen.getAllByText("nicht prüfbar")).toHaveLength(3));
+    expect(screen.queryByText("kein Schlüssel hinterlegt")).toBeNull();
+    expect(screen.queryByText("Keine Anbieter bekannt")).toBeNull();
+    expect(document.body).not.toHaveTextContent(privateDetail);
+  });
+
+  it("leaves and reopens the vault tab without retaining its previous rows", async () => {
+    show();
+    vaultTab();
+    expect(await screen.findByText("Schlüssel hinterlegt")).toBeVisible();
+    fireEvent.click(screen.getByRole("tab", { name: TABS[2] }));
+    expect(screen.queryByRole("region", { name: "Tresor" })).toBeNull();
+    const before = calls("get_provider_overview").length;
+    vi.useFakeTimers();
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(calls("get_provider_overview")).toHaveLength(before);
+    vi.useRealTimers();
+    let finishOld: (rows: unknown) => void = () => {};
+    overview = new Promise((resolve) => { finishOld = resolve; });
+    vaultTab();
+    expect(screen.getByText("Wird gelesen …")).toBeVisible();
+    expect(screen.queryByText("Anbieter api")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: TABS[2] }));
+    overview = [provider("neu", "local")];
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" });
+    expect(await screen.findByText("Anbieter neu")).toBeVisible();
+    await act(async () => { finishOld([provider("veraltet", "api_key")]); });
+    expect(screen.queryByText("Anbieter veraltet")).toBeNull();
+    expect(screen.queryByText("Anbieter api")).toBeNull();
+    expect(calls("get_provider_overview")).toHaveLength(before + 2);
+    expect(calls("has_provider_key").map(([, args]) => args)).toEqual([{ providerId: "api" }]);
   });
 });
 

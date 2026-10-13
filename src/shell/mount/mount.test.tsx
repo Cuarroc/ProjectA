@@ -142,7 +142,7 @@ describe("Glass shell mount behind D1", () => {
     expect(container.querySelector(".g-mount-legacy > .app")).not.toBeNull();
     expect(screen.getByRole("link", { name: "Einstellungen" })).toHaveAttribute("aria-current", "page");
     fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
-    expect(await screen.findByText("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Tresor" })).toBeInTheDocument();
   });
 
   it("opens the old Settings inside the shell from the classic button", async () => {

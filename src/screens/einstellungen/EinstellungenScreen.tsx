@@ -13,6 +13,7 @@ import { AppearanceControl } from "../../shell/AppearanceControl";
 import { ROUTES } from "../../shell/routes";
 import { DiagnoseSection } from "./DiagnoseSection";
 import { T } from "./texts";
+import { TresorPanel } from "./tresor/TresorPanel";
 import { VersionUpdates } from "./VersionUpdates";
 import "./einstellungen.css";
 
@@ -72,6 +73,8 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
                 <Button size="sm" onClick={onOpenClassic}>{T.moreOpen}</Button>
               </Section>
             </div>
+          ) : t.id === "mcp" ? (
+            <TresorPanel />
           ) : (
             <HonestState kind="offline" hint={T.tabHint} />
           )}
