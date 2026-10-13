@@ -7,6 +7,7 @@ import { saveTerminalFont, saveTerminalFontSize } from "../../lib/settings";
 import { CLASSIC_PATH } from "../leitstand/LeitstandRoute";
 import { FEATURE_FLAG_STORAGE_PREFIX } from "../../flags/featureFlags";
 import { ptyOutput } from "../../lib/eventNames";
+import { useEffect } from "react";
 
 const D1_FLAG_KEY = `${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`;
 
@@ -128,6 +129,52 @@ it("does not label a worker profile with its internal identifier", async () => {
   await screen.findByRole("tab", { name: "Task one" });
   go("#/leitstand/klassisch");
   expect(view.container.querySelector('.statusbar [title="pty-one"]')).toHaveTextContent(/^$/);
+});
+
+it.each([false, true])("keeps provider callbacks stable after opening a worker (restore: %s)", async (restore) => {
+  workerData(restore);
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  const observed: sessionProvider.SessionsValue[] = [];
+  function ObservedRoute() {
+    const value = sessionProvider.useSessions();
+    useEffect(() => { observed.push(value); });
+    return <TerminalRoute />;
+  }
+  const tree = () => <sessionProvider.SessionProvider><ObservedRoute /></sessionProvider.SessionProvider>;
+  const view = render(tree());
+  await screen.findByRole("tab", { name: "Task one" });
+  await act(async () => { view.rerender(tree()); });
+  expect(observed.length).toBeGreaterThan(1);
+  for (const value of observed) {
+    expect(value.openWorker).toBe(observed[0].openWorker);
+    expect(value.showRestore).toBe(observed[0].showRestore);
+  }
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "list_workers")).toHaveLength(1);
+});
+
+it("keeps the current viewer mounted during a failed worker lookup", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  const view = render(<App />);
+  await waitFor(() => expect(active(ptyOutput("pty-one"))).toHaveLength(1));
+  const viewer = view.container.querySelector(".xterm");
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers"
+    ? new Promise((resolve) => { finish = resolve; }) : base(command, args));
+  go("#/leitstand/terminal?worker=missing");
+  expect(view.container.querySelector(".xterm")).toBe(viewer);
+  await act(async () => { finish([]); });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Agent");
+  expect(view.container.querySelector(".xterm")).toBe(viewer);
+});
+
+it("shows only the error state after an initial worker lookup fails", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=missing";
+  render(<App />);
+  await screen.findByRole("alert");
+  expect(screen.queryByText("Keine Terminal-Sitzung geöffnet.")).toBeNull();
 });
 
 it.each([false, true])("reports worker lookup failure (IPC rejection: %s)", async (reject) => {
