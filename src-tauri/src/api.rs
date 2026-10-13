@@ -295,7 +295,7 @@ pub fn log_frontend_error(
         summary_at: None,
     });
     let feedback = match kind.as_deref() {
-        Some("feedback") => Some(context.as_deref().unwrap_or("")),
+        Some("feedback") => Some(context.as_deref().unwrap_or_default()),
         _ => None,
     };
     emit_frontend_error(&LIMITER, &message, &stack_frame, &route, feedback, |line| {
@@ -2582,7 +2582,6 @@ pub(crate) mod tests {
             "Button tat nichts",
             "Menü erwartet",
             "/leitstand?private=value",
-            Some("feedback"),
             Some("sha=\"abc123\" recent=\"boom @ at render\""),
             |line| lines.push(line),
         );
@@ -2648,7 +2647,6 @@ pub(crate) mod tests {
                 &format!("error {poisoned}"),
                 "",
                 "/",
-                None,
                 None,
                 |line| {
                     assert!(!matches!(
