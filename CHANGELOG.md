@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.6.4 (Beta) — 13.10.2026
+
+- **Vorschau-Funktionen in den Einstellungen** (PR #1319): Die neue Oberfläche erklärt alle Vorschau-Schalter und zeigt ihren Zustand; Not-Aus und der klassische Rückweg bleiben erreichbar.
+- **Glass-Terminalansicht** (PR #1313): Offene Sitzungen erscheinen als Tabs in der neuen Terminalansicht.
+
 ## v1.6.3 (Beta) — 11.10.2026
 
 Behebt den Windows-Build von v1.6.2 (gleich benannte Dateien im Plan-Baustein); v1.6.2 wurde nicht veröffentlicht.

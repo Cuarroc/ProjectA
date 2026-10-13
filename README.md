@@ -139,8 +139,8 @@ Schon heute kannst du sie ausprobieren: **Einstellungen › Allgemein ›
 
 ## Status und Grenzen
 
-- **App-Version:** `v1.6.3` – diese Version baut der Quellcode auf `main`.
-- **Veröffentlicht:** `v1.6.3` (11.10.2026). Was sich ändert, steht im
+- **App-Version:** `v1.6.4` – diese Version baut der Quellcode auf `main`.
+- **Veröffentlicht:** `v1.6.4` (13.10.2026). Was sich ändert, steht im
   [`CHANGELOG.md`](CHANGELOG.md).
 - Aktives persönliches Projekt. **Windows** ist das einzige paketierte Ziel;
   plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
