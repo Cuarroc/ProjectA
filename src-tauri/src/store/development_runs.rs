@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, Sqlite, Transaction};
 
-use crate::readiness::proof::{GateResult, LanePlan, ProofStatus};
+use crate::readiness::proof::{GateResult, LanePlan, ProofSet, ProofStatus};
 
 use super::continuous::begin_write;
 use super::development_launches::{run_role, DispatchRole};
@@ -678,6 +678,21 @@ impl Store {
         &self,
         run_id: &str,
     ) -> Result<Vec<GateResult>, String> {
+        let evidence = self
+            .list_development_evidence(run_id)
+            .await?
+            .into_iter()
+            .filter(|e| e.invalidated_at.is_none())
+            .collect();
+        Ok(Self::decode_gate_results(evidence)?
+            .into_iter()
+            .map(|(gate, _)| gate)
+            .collect())
+    }
+
+    fn decode_gate_results(
+        evidence: Vec<DevelopmentEvidence>,
+    ) -> Result<Vec<(GateResult, DevelopmentEvidence)>, String> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Payload {
@@ -687,15 +702,15 @@ impl Store {
             exit_code: i32,
         }
         let mut results = Vec::new();
-        for evidence in self.list_development_evidence(run_id).await? {
-            if evidence.invalidated_at.is_some() || evidence.payload["kind"] != "gate-result" {
+        for evidence in evidence {
+            if evidence.payload["kind"] != "gate-result" {
                 continue;
             }
-            let payload: Payload = serde_json::from_value(evidence.payload)
+            let payload: Payload = serde_json::from_value(evidence.payload.clone())
                 .map_err(|e| format!("invalid gate-result payload: {e}"))?;
             if payload.schema_version != 1
-                || !matches!(evidence.measurement,
-                EvidenceMeasurement::Measured { value } if value == payload.exit_code)
+                || !matches!(&evidence.measurement,
+                EvidenceMeasurement::Measured { value } if *value == payload.exit_code)
             {
                 return Err(
                     "gate-result requires schemaVersion 1 and matching measured exitCode".into(),
@@ -705,28 +720,75 @@ impl Store {
             required(&payload.gate, "gate")?;
             require_full_commit_id(&evidence.candidate_commit)?;
             if evidence.trusted_test_source {
-                results.push(GateResult {
-                    lane: payload.lane,
-                    gate: payload.gate,
-                    exit_code: payload.exit_code,
-                    sha: evidence.candidate_commit,
-                });
+                results.push((
+                    GateResult {
+                        lane: payload.lane,
+                        gate: payload.gate,
+                        exit_code: payload.exit_code,
+                        sha: evidence.candidate_commit.clone(),
+                    },
+                    evidence,
+                ));
             }
         }
         Ok(results)
     }
 
+    /// Candidate and evidence share one SQLite snapshot; timestamps order attempts.
     pub(crate) async fn development_gate_proof_snapshot(
         &self,
-        _run_id: &str,
+        run_id: &str,
         lane: &str,
-        _plan: &LanePlan,
+        plan: &LanePlan,
     ) -> Result<GateProofSnapshot, String> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(db("begin gate proof snapshot"))?;
+        let candidate: Option<Option<String>> = sqlx::query_scalar("SELECT c.candidate_commit FROM development_runs r LEFT JOIN development_run_candidates c ON c.run_id = r.id WHERE r.id = ?")
+            .bind(run_id).fetch_optional(&mut *tx).await.map_err(db("read proof candidate"))?;
+        let candidate = candidate
+            .ok_or_else(|| format!("{} development run: {run_id}", crate::errors::ERR_UNKNOWN))?;
+        let evidence = evidence_for_run(&mut tx, run_id)
+            .await?
+            .into_iter()
+            .filter(|e| e.trusted_test_source)
+            .collect();
+        let mut gates = Self::decode_gate_results(evidence)?;
+        gates.retain(|(gate, _)| gate.lane == lane);
+        // At equal observation times, failure wins; IDs only break equivalent ties.
+        gates.sort_by(|(a, ea), (b, eb)| {
+            (ea.observed_at, a.exit_code != 0, &ea.id).cmp(&(
+                eb.observed_at,
+                b.exit_code != 0,
+                &eb.id,
+            ))
+        });
+        let verdict = candidate.as_ref().map(|sha| {
+            let active: Vec<_> = gates
+                .iter()
+                .filter(|(gate, e)| &gate.sha == sha && e.invalidated_at.is_none())
+                .map(|(gate, _)| gate.clone())
+                .collect();
+            let verdict = ProofSet::new(plan, lane, &active).status(sha);
+            let historical = gates
+                .iter()
+                .any(|(gate, e)| &gate.sha != sha || e.invalidated_at.is_some());
+            if verdict == ProofStatus::Fehlt && historical && !plan.required(lane).is_empty() {
+                ProofStatus::Veraltet
+            } else {
+                verdict
+            }
+        });
+        tx.commit()
+            .await
+            .map_err(db("finish gate proof snapshot"))?;
         Ok(GateProofSnapshot {
-            candidate: None,
+            candidate,
             lane: lane.into(),
-            verdict: None,
-            gates: Vec::new(),
+            verdict,
+            gates,
         })
     }
 
@@ -1505,6 +1567,9 @@ mod tests {
         let red = Some(ProofStatus::Rot { gate: "fmt".into() });
         assert_eq!(proof(&store, &run).await.verdict, red);
         save_gate(&store, &run, "tied-green", 3, "fmt", 0).await;
+        // Force lexical ID order to prefer green if failure priority is removed.
+        sqlx::query("UPDATE development_run_evidence SET id = CASE idempotency_key WHEN 'rerun' THEN '000-red' ELSE 'zzz-green' END WHERE idempotency_key IN ('rerun', 'tied-green')")
+            .execute(&store.pool).await.unwrap();
         assert_eq!(proof(&store, &run).await.verdict, red);
         // A backdated insertion cannot replace the newest attempt.
         save_gate(&store, &run, "late-old", 2, "fmt", 0).await;
@@ -1565,7 +1630,10 @@ mod tests {
             assert!(stale.gates.iter().all(|(_, e)| e.invalidated_at.is_some()));
         }
         save_gate(&store, &run, "fresh-fmt", 5, "fmt", 0).await;
-        assert_ne!(proof(&store, &run).await.verdict, Some(ProofStatus::Belegt));
+        assert_eq!(
+            proof(&store, &run).await.verdict,
+            Some(ProofStatus::Veraltet)
+        );
         save_gate(&store, &run, "fresh-suite", 5, "rust-suite", 0).await;
         assert_eq!(proof(&store, &run).await.verdict, Some(ProofStatus::Belegt));
         assert_eq!(
