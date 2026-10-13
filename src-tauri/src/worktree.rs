@@ -105,7 +105,7 @@ pub fn add_worktree(repo_path: &str, worker_id: &str) -> Result<PathBuf, String>
 pub fn checkpoint(worktree: &str, run: &str, step: &str) -> Result<String, String> {
     for (label, id) in [("run", run), ("step", step)] {
         if id.contains('/') || !rewind_plan::ref_name_gueltig(id) {
-            return Err(format!("invalid checkpoint {label} identifier"));
+            return Err(format!("invalid checkpoint {label} identifier: {id:?}"));
         }
     }
     let reference = format!("refs/projecta/checkpoints/{run}/{step}");
@@ -122,15 +122,21 @@ pub fn checkpoint(worktree: &str, run: &str, step: &str) -> Result<String, Strin
         return Err("git returned an invalid HEAD commit ID".to_owned());
     }
     // Compare-and-create under git's ref lock; never follow a symbolic ref.
-    git([
-        "-C",
-        worktree,
-        "update-ref",
-        "--no-deref",
-        &reference,
-        oid,
-        &"0".repeat(oid_len),
-    ])?;
+    // Reflogs may be enabled for all refs; never require a user's identity.
+    git_output(
+        crate::proc::command("git")
+            .env("GIT_COMMITTER_NAME", "ProjectA")
+            .env("GIT_COMMITTER_EMAIL", "noreply@projecta.local")
+            .args([
+                "-C",
+                worktree,
+                "update-ref",
+                "--no-deref",
+                &reference,
+                oid,
+                &"0".repeat(oid_len),
+            ]),
+    )?;
     Ok(oid.to_owned())
 }
 
@@ -170,8 +176,11 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let output = crate::proc::command("git")
-        .args(args)
+    git_output(crate::proc::command("git").args(args))
+}
+
+fn git_output(command: &mut std::process::Command) -> Result<String, String> {
+    let output = command
         .output()
         .map_err(|e| format!("failed to run git: {e}"))?;
 
