@@ -226,6 +226,59 @@ mod tests {
     }
 
     #[test]
+    fn worktree_refs_without_committer_identity() {
+        const CHILD_REPO: &str = "PROJECTA_WORKTREE_IDENTITY_TEST_REPO";
+        if let Some(repo) = std::env::var_os(CHILD_REPO) {
+            let repo = Path::new(&repo);
+            let tree = add_worktree(&repo.to_string_lossy(), "identity-worker").unwrap();
+            for (path, reference) in [(repo, "refs/heads/pa/identity-worker"), (&*tree, "HEAD")] {
+                let reflog =
+                    checkpoint_git(path, &["reflog", "show", "--format=%gn <%ge>", reference]);
+                let reflog = String::from_utf8(reflog).unwrap();
+                assert!(!reflog.is_empty());
+                assert!(
+                    reflog
+                        .lines()
+                        .all(|line| line == "ProjectA <noreply@projecta.local>"),
+                    "{reflog}"
+                );
+            }
+            rollback_worktree(&repo.to_string_lossy(), &tree, "identity-worker").unwrap();
+            assert!(!tree.exists());
+            assert!(
+                checkpoint_git(repo, &["for-each-ref", "refs/heads/pa/identity-worker"]).is_empty()
+            );
+            return;
+        }
+        let dir = TempDir::new("worktree-identity");
+        let repo = init_repo(&dir.path().join("repo"));
+        for key in ["user.name", "user.email"] {
+            checkpoint_git(&repo, &["config", key, ""]);
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "worktree::tests::worktree_refs_without_committer_identity",
+                "--nocapture",
+            ])
+            .env(CHILD_REPO, &repo)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", dir.path().join("missing-config"))
+            .env("GIT_AUTHOR_NAME", "")
+            .env("GIT_AUTHOR_EMAIL", "")
+            .env("GIT_COMMITTER_NAME", "")
+            .env("GIT_COMMITTER_EMAIL", "")
+            .env("EMAIL", "")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("1 passed"),
+            "{output:?}"
+        );
+    }
+
+    #[test]
     fn checkpoint_writes_reflog_without_committer_identity() {
         const CHILD_REPO: &str = "PROJECTA_CHECKPOINT_IDENTITY_TEST_REPO";
         if let Some(repo) = std::env::var_os(CHILD_REPO) {
