@@ -115,6 +115,27 @@ check workflow-without-identifier-env-fails fail \
 check identifier-moved-to-another-step-fails fail \
   "$(wf '/^[[:space:]]*PROJECTA_IDENTIFIER: com\.projecta\.dev[[:space:]]*$/d; s/^        run: echo "short=.*$/&\n        env:\n          PROJECTA_IDENTIFIER: com.projecta.dev/' movedident)" "$OV" "PROJECTA_IDENTIFIER"
 
+# Each job may indent its step items differently; never reuse the first job's
+# item boundary and accidentally borrow another step's identifier.
+cp "$WF" "$tmp/two-jobs.yml"
+cat >> "$tmp/two-jobs.yml" <<'YAML'
+  second-build:
+      runs-on: windows-latest
+      permissions:
+        contents: read
+      steps:
+        - run: echo preparation
+          env:
+            PROJECTA_IDENTIFIER: com.projecta.dev
+        - run: npx tauri build
+YAML
+check two-jobs-cannot-borrow-another-steps-identifier fail \
+  "$tmp/two-jobs.yml" "$OV" "PROJECTA_IDENTIFIER"
+sed '/run: echo preparation/d' "$tmp/two-jobs.yml" > "$tmp/two-jobs-valid.yml"
+# Keep the second job valid YAML and attach the identifier to its build step.
+sed -i 's/^          env:/        - env:/; s/^        - run: npx tauri build$/          run: npx tauri build/' "$tmp/two-jobs-valid.yml"
+check two-jobs-with-different-step-indents-pass pass "$tmp/two-jobs-valid.yml" "$OV"
+
 # Forced tool failures: the permissions extraction must fail closed, not pass.
 mkdir "$tmp/failbin" "$tmp/silentbin"
 printf '#!/bin/sh\nexit 1\n' > "$tmp/failbin/awk"
