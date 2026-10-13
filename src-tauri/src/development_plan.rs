@@ -272,12 +272,155 @@ pub struct HistoricalMilestonePackage {
 }
 
 // Consumer: subsequent V2-H2 slices; no runtime import in V2-H2-1.
+/// Five named columns, in any order; cells retain Markdown and trimmed source text.
+/// Uses parse_plan's fence/delimiter rules and rejects escaped pipes. A table
+/// with at least three milestone column names is a candidate, including damage.
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn parse_milestones(
-    _source_path: &str,
-    _source: &str,
+    source_path: &str,
+    source: &str,
 ) -> Result<Vec<HistoricalMilestone>, PlanError> {
-    Ok(Vec::new())
+    let error = |source_line, reason: &str| PlanError {
+        source_path: source_path.into(),
+        source_line,
+        reason: reason.into(),
+    };
+    let required = ["ID", "Paket", "Gr.", "Lane", "Stand"];
+    let mut milestones = Vec::<HistoricalMilestone>::new();
+    let mut current = None;
+    let mut columns: Option<Vec<&str>> = None;
+    let (mut delimiter, mut unrelated) = (false, false);
+    let mut fence = None;
+    for (offset, line) in source.lines().enumerate() {
+        let n = offset + 1;
+        let line = line.trim();
+        if delimiter && !line.starts_with('|') {
+            return Err(error(n, "missing table delimiter"));
+        }
+        if line.starts_with("```") || line.starts_with("~~~") {
+            let marker = line.as_bytes()[0];
+            let count = line.bytes().take_while(|b| *b == marker).count();
+            match fence {
+                None => fence = Some((marker, count)),
+                Some((m, c)) if marker == m && count >= c && line[count..].trim().is_empty() => {
+                    fence = None
+                }
+                _ => (),
+            }
+            columns = None;
+            unrelated = false;
+            continue;
+        }
+        if fence.is_some() {
+            continue;
+        }
+        let hashes = line.bytes().take_while(|b| *b == b'#').count();
+        if (1..=6).contains(&hashes) && line[hashes..].starts_with(char::is_whitespace) {
+            current = None;
+            if let Some((id, title)) = milestone_heading(line) {
+                current = Some(milestones.len());
+                milestones.push(HistoricalMilestone {
+                    milestone_id: id.into(),
+                    title: title.into(),
+                    source_line: n,
+                    packages: Vec::new(),
+                });
+            }
+            columns = None;
+            unrelated = false;
+            continue;
+        }
+        if !line.starts_with('|') {
+            if columns.is_some() && line.contains('|') {
+                return Err(error(n, "table rows require a leading pipe; separate pipe-containing prose with a blank line"));
+            }
+            columns = None;
+            unrelated = false;
+            continue;
+        }
+        let Some(index) = current.filter(|_| !unrelated) else {
+            continue;
+        };
+        // Strip exactly one boundary on each side, preserving empty edge cells.
+        let body = &line[1..];
+        let cells: Vec<_> = body
+            .strip_suffix('|')
+            .unwrap_or(body)
+            .split('|')
+            .map(str::trim)
+            .collect();
+        let Some(header) = columns.as_ref() else {
+            if required.iter().filter(|name| cells.contains(name)).count() < 3 {
+                unrelated = true;
+                continue;
+            }
+            if cells.len() != 5
+                || required
+                    .iter()
+                    .any(|name| cells.iter().filter(|c| *c == name).count() != 1)
+            {
+                return Err(error(
+                    n,
+                    "missing, duplicate or unsupported milestone columns",
+                ));
+            }
+            if !line.ends_with('|') || line.contains("\\|") {
+                return Err(error(
+                    n,
+                    "malformed milestone header or unsupported escaped pipe",
+                ));
+            }
+            columns = Some(cells);
+            delimiter = true;
+            continue;
+        };
+        if !line.ends_with('|') || line.contains("\\|") || cells.len() != header.len() {
+            return Err(error(
+                n,
+                "malformed row or delimiter, or unsupported escaped pipe",
+            ));
+        }
+        if delimiter {
+            if cells.iter().any(|c| {
+                let d = c.trim_matches(':');
+                d.len() < 3 || !d.bytes().all(|b| b == b'-')
+            }) {
+                return Err(error(n, "invalid table delimiter"));
+            }
+            delimiter = false;
+            continue;
+        }
+        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()].to_owned();
+        milestones[index].packages.push(HistoricalMilestonePackage {
+            package_id: field("ID"),
+            title: field("Paket"),
+            size: field("Gr."),
+            lane: field("Lane"),
+            raw_status: field("Stand"),
+            source_line: n,
+        });
+    }
+    if delimiter {
+        return Err(error(source.lines().count(), "missing table delimiter"));
+    }
+    Ok(milestones)
+}
+
+fn milestone_heading(line: &str) -> Option<(&str, &str)> {
+    let rest = line.strip_prefix("###")?;
+    if !rest.starts_with(char::is_whitespace) {
+        return None;
+    }
+    let (id, rest) = rest.trim_start().split_once(char::is_whitespace)?;
+    let digits = id.strip_prefix('M')?;
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let title = rest.trim_start().strip_prefix(['—', '–', '-'])?;
+    if !title.starts_with(char::is_whitespace) || title.trim().is_empty() {
+        return None;
+    }
+    Some((id, title.trim()))
 }
 
 fn valid_id(id: &str) -> bool {
