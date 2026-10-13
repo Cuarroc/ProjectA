@@ -422,11 +422,133 @@ pub struct V2Package {
     pub source_line: usize,
 }
 
+const V2_COLUMNS: [&str; 9] = [
+    "ID",
+    "Ziel",
+    "Lane",
+    "Naht",
+    "Stufe",
+    "Größe",
+    "Hängt ab von",
+    "Anbieter",
+    "Abnahme",
+];
+
 // Consumer: V2-H2-3/EX-1; no import or runtime status in this projection.
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Package>, PlanError> {
-    let _ = (source_path, source);
-    Ok(Vec::new())
+    let error = |source_line, reason: &str| PlanError {
+        source_path: source_path.into(),
+        source_line,
+        reason: reason.into(),
+    };
+    let mut packages = Vec::new();
+    let mut ids = BTreeMap::new();
+    let mut columns: Option<Vec<&str>> = None;
+    let (mut delimiter, mut unrelated, mut fence) = (false, false, None);
+    for (n, line) in (1..).zip(source.lines()) {
+        let line = line.trim();
+        if delimiter && !line.starts_with('|') {
+            return Err(error(n, "missing table delimiter"));
+        }
+        if line.starts_with("```") || line.starts_with("~~~") {
+            let marker = line.as_bytes()[0];
+            let count = line.bytes().take_while(|b| *b == marker).count();
+            match fence {
+                None => fence = Some((marker, count)),
+                Some((m, c)) if marker == m && count >= c && line[count..].trim().is_empty() => {
+                    fence = None
+                }
+                _ => (),
+            }
+            columns = None;
+            unrelated = false;
+            continue;
+        }
+        if fence.is_some() {
+            continue;
+        }
+        if !line.starts_with('|') {
+            if columns.is_some() && line.contains('|') {
+                return Err(error(n, "table rows require a leading pipe"));
+            }
+            columns = None;
+            unrelated = false;
+            continue;
+        }
+        if unrelated {
+            continue;
+        }
+        let cells: Vec<_> = line[1..].split_terminator('|').map(str::trim).collect();
+        let Some(header) = columns.as_ref() else {
+            let header: Vec<_> = cells
+                .iter()
+                .map(|c| match *c {
+                    "Bildschirm (Boards)" => "Ziel",
+                    "Abnahme (zusätzlich zu R)" | "Daten und zusätzliche Abnahme" => "Abnahme",
+                    c => c,
+                })
+                .collect();
+            // Five known columns identify a candidate, even with a damaged header.
+            if V2_COLUMNS
+                .iter()
+                .filter(|name| header.contains(name))
+                .count()
+                < 5
+            {
+                unrelated = true;
+                continue;
+            }
+            if !line.ends_with('|') || line.contains("\\|") {
+                return Err(error(n, "malformed header or unsupported escaped pipe"));
+            }
+            if header.len() != 9 || V2_COLUMNS.iter().any(|name| !header.contains(name)) {
+                return Err(error(n, "missing, duplicate or unsupported v2 columns"));
+            }
+            columns = Some(header);
+            delimiter = true;
+            continue;
+        };
+        if !line.ends_with('|') || line.contains("\\|") || cells.len() != header.len() {
+            return Err(error(n, "malformed row or unsupported escaped pipe"));
+        }
+        if delimiter {
+            if cells.iter().any(|c| {
+                let d = c.trim_matches(':');
+                d.len() < 3 || !d.bytes().all(|b| b == b'-')
+            }) {
+                return Err(error(n, "invalid table delimiter"));
+            }
+            delimiter = false;
+            continue;
+        }
+        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()];
+        let id = field("ID");
+        if !valid_id(id) {
+            return Err(error(n, "stable ID is required"));
+        }
+        if let Some(previous) = ids.insert(id, n) {
+            let reason = format!("duplicate ID {id}; first line {previous}");
+            return Err(error(n, &reason));
+        }
+        packages.push(V2Package {
+            package_id: id.into(),
+            title: field("Ziel").into(),
+            lane: field("Lane").into(),
+            seam: field("Naht").into(),
+            tier: field("Stufe").into(),
+            size: field("Größe").into(),
+            raw_dependencies: field("Hängt ab von").into(),
+            provider: field("Anbieter").into(),
+            raw_acceptance: field("Abnahme").into(),
+            source_path: source_path.into(),
+            source_line: n,
+        });
+    }
+    if delimiter {
+        return Err(error(source.lines().count(), "missing table delimiter"));
+    }
+    Ok(packages)
 }
 
 fn milestone_heading(line: &str) -> Option<(&str, &str)> {
@@ -553,17 +675,7 @@ mod tests {
             ),
             (valid.replace("| Lane |", "| extra | Lane |"), 1, "columns"),
         ];
-        for name in [
-            "ID",
-            "Ziel",
-            "Lane",
-            "Naht",
-            "Stufe",
-            "Größe",
-            "Hängt ab von",
-            "Anbieter",
-            "Abnahme",
-        ] {
+        for name in V2_COLUMNS {
             cases.push((valid.replace(&format!("| {name} "), ""), 1, "columns"));
             cases.push((
                 valid.replace(&format!("| {name} |"), &format!("| {name} | {name} |")),
