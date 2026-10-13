@@ -58,6 +58,16 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
   const enabled = profiles?.filter((p) => p.enabled) ?? [];
   const nameOf = (id: string) => profiles?.find((p) => p.id === id)?.name ?? id;
 
+  const selectedProfile = value !== null ? profiles?.find((p) => p.id === value) : null;
+  const isSelectedBlocked = selectedProfile ? isBlocked(quota.byProfile.get(selectedProfile.id)) : false;
+  const isSelectedMissing = selectedProfile ? !enabled.some((p) => p.id === selectedProfile.id) : false;
+  const showChoiceWarning = selectedProfile && (isSelectedBlocked || isSelectedMissing);
+  const choiceWarningText = showChoiceWarning
+    ? isSelectedBlocked
+      ? T.choiceBlocked(selectedProfile.name)
+      : T.choiceMissing(selectedProfile.name)
+    : null;
+
   return (
     <div className="wg">
       {profiles === undefined ? <p className="wg-note">{T.loading}</p> : profiles === null ? (
@@ -99,6 +109,11 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
               </label>
             );
           })}
+        </div>
+      )}
+      {showChoiceWarning && (
+        <div className="wg-warning" role="status" aria-live="polite">
+          {choiceWarningText}
         </div>
       )}
       <div className="wg-extras">
