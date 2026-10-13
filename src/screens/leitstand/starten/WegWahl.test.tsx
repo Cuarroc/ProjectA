@@ -113,7 +113,7 @@ describe("WegWahl", () => {
     await radio("Claude Weg");
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     expect(group).toHaveTextContent("Claude Code");
-    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Claude Code.*model-x/);
+    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Claude Code.*Modellvorgabe: model-x.*Modell wird beim Start beobachtet/);
     expect(screen.queryByRole("radio", { name: "Aus Weg" })).toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe("WegWahl", () => {
     backend();
     render(<WegWahl value={null} onChange={() => {}} />);
     expect(await radio("Codex Weg")).toHaveAccessibleDescription(/Modell wird beim Start beobachtet/);
-    expect(await radio("Claude Weg")).not.toHaveAccessibleDescription(/beobachtet/);
+    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Modellvorgabe: model-x.*Modell wird beim Start beobachtet/);
   });
 
   it("a blocked profile is disabled with its reason and never calls onChange", async () => {
