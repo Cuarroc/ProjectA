@@ -58,12 +58,13 @@ const period = (label: string, t: UsageTotals) => ({
 
 /** Kostenbuch: usage in requests and tokens, never money. Read-only, not mounted yet. */
 export function Kostenbuch() {
-  // `undefined` = not read yet, `null` = the read failed: neither may show a zero.
+  // `undefined` = reading, `null` = the read failed: neither may show a zero.
   const [report, setReport] = useState<UsageReport | null | undefined>(undefined);
   const gen = useRef(0);
 
   const read = useCallback(() => {
     const mine = ++gen.current;
+    setReport(undefined);
     getOmniRouteUsage().then((r) => mine === gen.current && setReport(r), () => mine === gen.current && setReport(null));
   }, []);
   useEffect(() => {
@@ -78,7 +79,7 @@ export function Kostenbuch() {
   return (
     <div className="kb-panel">
       <div className="kb-bar">
-        <Button size="sm" onClick={read}>{T.reread}</Button>
+        <Button size="sm" onClick={read} disabled={report === undefined} aria-busy={report === undefined}>{T.reread}</Button>
       </div>
       {report === undefined ? <p className="kb-note">{T.loading}</p> : report === null ? (
         <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} />
