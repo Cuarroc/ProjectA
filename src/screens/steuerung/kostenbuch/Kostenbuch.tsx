@@ -61,11 +61,17 @@ export function Kostenbuch() {
   // `undefined` = reading, `null` = the read failed: neither may show a zero.
   const [report, setReport] = useState<UsageReport | null | undefined>(undefined);
   const gen = useRef(0);
+  const pendingRef = useRef(false);
 
   const read = useCallback(() => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     const mine = ++gen.current;
     setReport(undefined);
-    getOmniRouteUsage().then((r) => mine === gen.current && setReport(r), () => mine === gen.current && setReport(null));
+    getOmniRouteUsage().then(
+      (r) => { if (mine === gen.current) setReport(r); },
+      () => { if (mine === gen.current) setReport(null); },
+    ).finally(() => { if (mine === gen.current) pendingRef.current = false; });
   }, []);
   useEffect(() => {
     read();

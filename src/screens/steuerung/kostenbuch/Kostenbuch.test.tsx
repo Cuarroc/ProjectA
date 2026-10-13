@@ -203,13 +203,18 @@ describe("Kostenbuch", () => {
     render(<Kostenbuch />);
     await screen.findByRole("table");
     const next = pendingRead();
-    mocks.invoke.mockReturnValue(next.promise);
+    mocks.invoke.mockReturnValueOnce(next.promise);
     const button = screen.getByRole("button", { name: "Neu lesen" });
-    fireEvent.click(button);
     fireEvent.click(button);
     expect(mocks.invoke).toHaveBeenCalledTimes(2);
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
+    // Call onClick directly, bypassing the DOM disabled guard, to prove
+    // read() has its own busy guard independent of the button's disabled state
+    const propsKey = Object.keys(button).find((k) => k.startsWith("__reactProps$"));
+    const onClick = (button as unknown as Record<string, Record<string, (e: unknown) => void>>)[propsKey!].onClick;
+    act(() => onClick({}));
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
     await act(async () => next.resolve(report(EVENTS)));
     expect(button).toBeEnabled();
     expect(button).toHaveAttribute("aria-busy", "false");
