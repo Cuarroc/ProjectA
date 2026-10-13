@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Kostenbuch } from "./Kostenbuch";
@@ -219,5 +220,55 @@ describe("Kostenbuch", () => {
     expect(button).toBeEnabled();
     expect(button).toHaveAttribute("aria-busy", "false");
     expect(new Set(mocks.invoke.mock.calls.map((c) => c[0]))).toEqual(new Set(["get_omniroute_usage"]));
+  });
+
+  it("a superseded in-flight ledger read still finishes and enables Neu lesen", async () => {
+    const first = pendingRead();
+    const second = pendingRead();
+    mocks.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd !== "get_omniroute_usage") throw new Error(`unexpected ${cmd}`);
+      return report(EVENTS);
+    });
+    mocks.invoke.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    render(
+      <StrictMode>
+        <Kostenbuch />
+      </StrictMode>,
+    );
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledTimes(2));
+    const button = screen.getByRole("button", { name: "Neu lesen" });
+    expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: true })).toBe(button);
+    await act(async () => {
+      first.resolve(report(EVENTS));
+    });
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByText("Wird gelesen …")).toBeTruthy();
+    expect(button).toBeDisabled();
+    await act(async () => {
+      second.resolve(report([ev("z", "openai", "gpt", 7, 1)]));
+    });
+    expect(rowsOf()[0]).toEqual(["openai", "gpt", "1", "7", "1"]);
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: false })).toBeEnabled();
+  });
+
+  it("Neu lesen is already busy when the ledger request starts", async () => {
+    backend(report(EVENTS));
+    render(<Kostenbuch />);
+    await screen.findByRole("table");
+    const button = screen.getByRole("button", { name: "Neu lesen" });
+    const next = pendingRead();
+    let busyAtStart = false;
+    mocks.invoke.mockImplementation((cmd: string) => {
+      if (cmd !== "get_omniroute_usage") throw new Error(`unexpected ${cmd}`);
+      busyAtStart = (button as HTMLButtonElement).disabled && button.getAttribute("aria-busy") === "true";
+      return next.promise;
+    });
+    fireEvent.click(button);
+    expect(busyAtStart).toBe(true);
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: true })).toBeDisabled();
+    await act(async () => next.resolve(report(EVENTS)));
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: false })).toBeEnabled();
   });
 });
