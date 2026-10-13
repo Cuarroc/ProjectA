@@ -143,6 +143,7 @@ describe("Glass shell mount behind D1", () => {
     expect(screen.getByRole("link", { name: "Einstellungen" })).toHaveAttribute("aria-current", "page");
     fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
     expect(await screen.findByRole("region", { name: "Tresor" })).toBeInTheDocument();
+    expect(screen.getByText("Wird gelesen …")).toBeVisible();
   });
 
   it("opens the old Settings inside the shell from the classic button", async () => {
