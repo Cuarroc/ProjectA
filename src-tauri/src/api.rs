@@ -252,10 +252,11 @@ impl FrontendErrorLog {
             self.recent.push((now, None));
             self.summary_at = Some(now);
         }
-        if self.recent.len() >= 50
-            || self.recent.iter().any(|(at, previous)| {
-                previous.as_ref() == Some(&message) && now.duration_since(*at).as_secs() < 10
-            })
+        if feedback.is_none()
+            && (self.recent.len() >= 50
+                || self.recent.iter().any(|(at, previous)| {
+                    previous.as_ref() == Some(&message) && now.duration_since(*at).as_secs() < 10
+                }))
         {
             self.suppressed = self.suppressed.saturating_add(1);
             return;
@@ -277,7 +278,8 @@ impl FrontendErrorLog {
                 route,
             ));
         }
-        self.recent.push((now, Some(message)));
+        self.recent
+            .push((now, feedback.is_none().then_some(message)));
     }
 }
 
@@ -2720,10 +2722,10 @@ pub(crate) mod tests {
         for i in 0..49 {
             send(3, &format!("error {i}"), None);
         }
-        assert_eq!(send(4, "overflow", None), 51);
-        assert_eq!(send(5, "user feedback", Some("ctx")), 52);
+        assert_eq!(send(4, "overflow", None), 50);
+        assert_eq!(send(5, "user feedback", Some("ctx")), 51);
         assert!(lines[1].starts_with("FEEDBACK message=\"repeat\""));
-        assert!(lines[51].starts_with("FEEDBACK message=\"user feedback\""));
+        assert!(lines[50].starts_with("FEEDBACK message=\"user feedback\""));
     }
 
     #[test]

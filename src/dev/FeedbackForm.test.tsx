@@ -16,6 +16,7 @@ it("saves feedback with route and build commit", async () => {
   fireEvent.change(screen.getByLabelText(DEV_TEXT.feedbackWhat), { target: { value: "Button tat nichts" } });
   fireEvent.change(screen.getByLabelText(DEV_TEXT.feedbackExpected), { target: { value: "Klick öffnet Menü" } });
   fireEvent.click(screen.getByRole("button", { name: DEV_TEXT.feedbackSubmit }));
+  await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
   const feedback = vi.mocked(invoke).mock.calls.find(([, args]) => (args as { kind?: string }).kind === "feedback");
   expect(feedback?.[0]).toBe("log_frontend_error");
   const args = feedback?.[1] as { message: string; stackFrame: string; route: string; context: string };

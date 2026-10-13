@@ -1,5 +1,4 @@
 import { logFrontendError, logFrontendFeedback } from "../lib/ipc/frontendErrors";
-import { buildInfo } from "../dev/buildInfo";
 
 const encoder = new TextEncoder();
 let recent: { signature: string; at: number }[] = [];
@@ -46,16 +45,20 @@ export function recentErrorSignatures(): string[] {
 /** Write one user feedback entry through the frontend error log path. */
 export function reportFrontendFeedback(what: string, expected: string): void {
   try {
-    const context = bounded(
-      `sha="${buildInfo().sha}" at="${new Date().toISOString()}" recent="${signatures.join(" | ")}"`,
-      2048,
-    );
-    void logFrontendFeedback(
-      bounded(what, 2048),
-      bounded(expected, 1024),
-      bounded(window.location.pathname, 256),
-      context,
-    ).catch(() => {});
+    // buildInfo is dev-only code: load it lazily so the production error
+    // handlers above never depend on it at module-load time.
+    void import("../dev/buildInfo").then(({ buildInfo }) => {
+      const context = bounded(
+        `sha="${buildInfo().sha}" at="${new Date().toISOString()}" recent="${signatures.join(" | ")}"`,
+        2048,
+      );
+      void logFrontendFeedback(
+        bounded(what, 2048),
+        bounded(expected, 1024),
+        bounded(window.location.pathname, 256),
+        context,
+      ).catch(() => {});
+    }).catch(() => {});
   } catch { /* Feedback is best effort, including when the IPC bridge is absent. */ }
 }
 export function installFrontendErrorHandlers(): () => void {
