@@ -406,6 +406,29 @@ pub fn parse_milestones(
     Ok(milestones)
 }
 
+/// Lossless v2 cells (outer table padding trimmed), without dependency resolution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct V2Package {
+    pub package_id: String,
+    pub title: String,
+    pub lane: String,
+    pub seam: String,
+    pub tier: String,
+    pub size: String,
+    pub raw_dependencies: String,
+    pub provider: String,
+    pub raw_acceptance: String,
+    pub source_path: String,
+    pub source_line: usize,
+}
+
+// Consumer: V2-H2-3/EX-1; no import or runtime status in this projection.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Package>, PlanError> {
+    let _ = (source_path, source);
+    Ok(Vec::new())
+}
+
 fn milestone_heading(line: &str) -> Option<(&str, &str)> {
     let rest = line.strip_prefix("###")?;
     if !rest.starts_with(char::is_whitespace) {
@@ -433,6 +456,171 @@ fn valid_id(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const V2_HEADER: &str =
+        "| ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme |\n";
+    const V2_DELIMITER: &str = "| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
+    const V2_ROW: &str = "| V2-X | **Title** `code` | fR | – | B | M | | sol | R; test |\n";
+
+    fn v2_cells(p: &V2Package) -> [&str; 9] {
+        [
+            &p.package_id,
+            &p.title,
+            &p.lane,
+            &p.seam,
+            &p.tier,
+            &p.size,
+            &p.raw_dependencies,
+            &p.provider,
+            &p.raw_acceptance,
+        ]
+    }
+
+    #[test]
+    fn v2_package_tables_preserve_all_nine_columns_and_source_lines() {
+        let source = format!("{V2_HEADER}{V2_DELIMITER}{V2_ROW}");
+        let parsed = parse_v2_packages("fixture.md", &source).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(
+            v2_cells(&parsed[0]),
+            [
+                "V2-X",
+                "**Title** `code`",
+                "fR",
+                "–",
+                "B",
+                "M",
+                "",
+                "sol",
+                "R; test"
+            ]
+        );
+        assert_eq!(
+            (&*parsed[0].source_path, parsed[0].source_line),
+            ("fixture.md", 3)
+        );
+        let source = include_str!("../../docs/plan/v2.0/plan.md");
+        let parsed = parse_v2_packages("docs/plan/v2.0/plan.md", source).unwrap();
+        let expected = [
+            (261, ["V2-H2", "Ein Plan-Parser (Rust) statt zwei; `hq-parse.mjs` entfällt später", "fR", "–", "B", "M", "G0", "sol", "R; Fixture mit allen Meilenstein-Spalten"]),
+            (147, ["V2-B22", "Wachhund in der App: fertige und stehengebliebene Läufe erkennen und melden (heute `stuck.rs:117`, Skript `pa-orch/watchdog.sh` nicht prüfbar)", "fR", "–", "B", "M", "V2-O0", "sol", "Test: ein stehengebliebener Lauf erzeugt genau eine Meldung"]),
+            (170, ["V2-ST-B1", "Tabellen: Beweise (Gate-Läufe, Reviews, Entwertung) – prüfen, was `store/development_runs.rs` schon abdeckt, bevor neu gebaut wird. **Erstes Paket der store-Spur** (Beweis-Schicht zuerst, 1a)", "st", "store", "A", "M", "V2-B9, V2-B10", "astra", "wie A1"]),
+            (219, ["V2-S01a", "**Leitstand** (Main): Karten, Filter, „Braucht dich“ mit Antwort im Stream, Beweis je Karte; ersetzt `BoardView`/`WorkerPanel`-Optik, restylt `QuestionsView`", "fe", "–", "B", "3×M", "F9, V2-B9 (Beweis-Chip nur mit Daten, sonst `HonestState`)", "terra", "`get_board_state` (`main.rs:1720`), `answer_question`; Antwort erreicht das Terminal (Test)"]),
+        ];
+        for (line, cells) in expected {
+            let p = parsed.iter().find(|p| p.package_id == cells[0]).unwrap();
+            assert_eq!(v2_cells(p), cells);
+            assert_eq!(p.source_line, line);
+            assert_eq!(p.source_path, "docs/plan/v2.0/plan.md");
+        }
+    }
+
+    #[test]
+    fn v2_package_tables_reject_ambiguous_headers_and_broken_rows() {
+        let valid = format!("{V2_HEADER}{V2_DELIMITER}{V2_ROW}");
+        let mut cases = vec![
+            (format!("{valid}{V2_ROW}"), 4, "duplicate ID"),
+            (format!("{valid}\n{valid}"), 7, "duplicate ID"),
+            (V2_HEADER.to_owned(), 1, "missing table delimiter"),
+            (format!("{V2_HEADER}{V2_ROW}"), 2, "invalid table delimiter"),
+            (format!("{V2_HEADER}\n"), 2, "missing table delimiter"),
+            (format!("{V2_HEADER}```\n"), 2, "missing table delimiter"),
+            (valid.replace("| V2-X", "V2-X"), 3, "leading pipe"),
+            (valid.replace("R; test |", "R; test"), 3, "malformed"),
+            (valid.replace("R; test", r"R\|test"), 3, "escaped pipe"),
+            (valid.replace("| sol |", "| sol | extra |"), 3, "malformed"),
+            (valid.replace("| sol |", "|"), 3, "malformed"),
+            (valid.replace("V2-X", ""), 3, "stable ID"),
+            (
+                valid.replace("| --- |", "| -- |"),
+                2,
+                "invalid table delimiter",
+            ),
+            (valid.replace("Abnahme |", "Abnahme"), 1, "malformed"),
+            (valid.replace("Ziel", r"Ziel\|extra"), 1, "escaped pipe"),
+            (valid.replace("Ziel", "Ziel erweitert"), 1, "columns"),
+            (valid.replace("Abnahme", "Abnahme erweitert"), 1, "columns"),
+            (valid.replace("| Lane |", "| Ziel |"), 1, "columns"),
+            (
+                valid.replace("| Lane |", "| Bildschirm (Boards) |"),
+                1,
+                "columns",
+            ),
+            (
+                valid.replace("| Lane |", "| Abnahme (zusätzlich zu R) |"),
+                1,
+                "columns",
+            ),
+            (valid.replace("| Lane |", "| extra | Lane |"), 1, "columns"),
+        ];
+        for name in [
+            "ID",
+            "Ziel",
+            "Lane",
+            "Naht",
+            "Stufe",
+            "Größe",
+            "Hängt ab von",
+            "Anbieter",
+            "Abnahme",
+        ] {
+            cases.push((valid.replace(&format!("| {name} "), ""), 1, "columns"));
+            cases.push((
+                valid.replace(&format!("| {name} |"), &format!("| {name} | {name} |")),
+                1,
+                "columns",
+            ));
+        }
+        for (source, line, reason) in cases {
+            let err = parse_v2_packages("broken.md", &source).unwrap_err();
+            assert_eq!(
+                (&*err.source_path, err.source_line),
+                ("broken.md", line),
+                "{source}"
+            );
+            assert!(err.reason.contains(reason), "{err:?}: {source}");
+        }
+    }
+
+    #[test]
+    fn v2_package_tables_ignore_fences_and_keep_dependency_prose_unresolved() {
+        let fenced = format!("{V2_HEADER}{V2_DELIMITER}{V2_ROW}");
+        let unrelated = "| Key | Value |\n| --- | --- |\n| ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme |\n\n";
+        let source =
+            format!("````md\n{fenced}```\n~~~\n{fenced}````\n~~~md\n{fenced}~~~\n{unrelated}");
+        assert!(parse_v2_packages("fences.md", &source).unwrap().is_empty());
+        for title in ["Ziel", "Bildschirm (Boards)"] {
+            for acceptance in [
+                "Abnahme",
+                "Abnahme (zusätzlich zu R)",
+                "Daten und zusätzliche Abnahme",
+            ] {
+                for deps in [
+                    "",
+                    "—",
+                    "V2-ST-B1 (Kern; ...), V2-ST-B3 und V2-API-A (Rest)",
+                    "G0, F9, S01a bis S01d und Frage 10 (nur wenn freigegeben)",
+                ] {
+                    let header = format!("| {acceptance} | Anbieter | Hängt ab von | Größe | Stufe | Naht | Lane | {title} | ID |\n");
+                    let row = format!(
+                        "| **R** | terra | {deps} | 3×M | B | – | fe | `Screen` | V2-S |\n"
+                    );
+                    let parsed = parse_v2_packages(
+                        "screen.md",
+                        &format!("{source}{header}{V2_DELIMITER}{row}"),
+                    )
+                    .unwrap();
+                    assert_eq!(parsed.len(), 1);
+                    assert_eq!(
+                        v2_cells(&parsed[0]),
+                        ["V2-S", "`Screen`", "fe", "–", "B", "3×M", deps, "terra", "**R**"]
+                    );
+                    assert_eq!(parsed[0].source_line, source.lines().count() + 3);
+                }
+            }
+        }
+    }
+
     const MILESTONE_HEADER: &str =
         "| ID | Paket | Gr. | Lane | Stand |\n| --- | --- | --- | --- | --- |\n";
 
