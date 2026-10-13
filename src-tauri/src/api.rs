@@ -226,6 +226,7 @@ fn frontend_error_field(value: &str, max_bytes: usize) -> String {
 #[derive(Default)]
 struct FrontendErrorLog {
     recent: Vec<(std::time::Instant, Option<String>)>,
+    feedback_recent: Vec<std::time::Instant>,
     suppressed: u64,
     summary_at: Option<std::time::Instant>,
 }
@@ -239,6 +240,14 @@ impl FrontendErrorLog {
         feedback: Option<&str>,
         mut emit: impl FnMut(String),
     ) {
+        if feedback.is_some() {
+            self.feedback_recent
+                .retain(|at| now.duration_since(*at).as_secs() < 60);
+            if self.feedback_recent.len() >= 10 {
+                return;
+            }
+            self.feedback_recent.push(now);
+        }
         self.recent
             .retain(|(at, _)| now.duration_since(*at).as_secs() < 60);
         let message = frontend_error_field(message, 2048);
@@ -278,8 +287,9 @@ impl FrontendErrorLog {
                 route,
             ));
         }
-        self.recent
-            .push((now, feedback.is_none().then_some(message)));
+        if feedback.is_none() {
+            self.recent.push((now, Some(message)));
+        }
     }
 }
 
@@ -290,9 +300,10 @@ pub fn log_frontend_error(
     route: String,
     kind: Option<String>,
     context: Option<String>,
-) {
+) -> bool {
     static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog {
         recent: Vec::new(),
+        feedback_recent: Vec::new(),
         suppressed: 0,
         summary_at: None,
     });
@@ -302,7 +313,7 @@ pub fn log_frontend_error(
     };
     emit_frontend_error(&LIMITER, &message, &stack_frame, &route, feedback, |line| {
         crate::logging::log("frontend", &line)
-    });
+    })
 }
 
 fn emit_frontend_error(
@@ -312,7 +323,7 @@ fn emit_frontend_error(
     route: &str,
     feedback: Option<&str>,
     mut emit: impl FnMut(String),
-) {
+) -> bool {
     let mut lines = Vec::new();
     {
         let mut limiter = limiter.lock().unwrap_or_else(|e| e.into_inner());
@@ -325,9 +336,11 @@ fn emit_frontend_error(
             |line| lines.push(line),
         );
     }
+    let accepted = feedback.is_none() || lines.iter().any(|line| line.starts_with("FEEDBACK "));
     for line in lines {
         emit(line);
     }
+    accepted
 }
 
 /// Name of the descriptor file written into the app data directory.
@@ -2710,6 +2723,7 @@ pub(crate) mod tests {
             limiter.write(now, &i.to_string(), "", "/", None, |l| lines.push(l));
         }
         assert_eq!(lines.len(), 60);
+        assert_eq!(limiter.recent.len(), 50);
         let later = now + std::time::Duration::from_secs(60);
         limiter.write(later, "feedback", "", "/", Some("ctx"), |l| lines.push(l));
         assert_eq!(lines.len(), 61);
@@ -2735,14 +2749,14 @@ pub(crate) mod tests {
         assert_eq!(send(0, "repeat", None), 1);
         assert_eq!(send(1, "repeat", None), 1);
         assert_eq!(send(2, "repeat", Some("ctx")), 2);
-        // A burst filling the 50-entry window blocks errors, never feedback.
+        // Filling the error window leaves the independent feedback budget available.
         for i in 0..49 {
             send(3, &format!("error {i}"), None);
         }
-        assert_eq!(send(4, "overflow", None), 50);
-        assert_eq!(send(5, "user feedback", Some("ctx")), 51);
+        assert_eq!(send(4, "overflow", None), 51);
+        assert_eq!(send(5, "user feedback", Some("ctx")), 52);
         assert!(lines[1].starts_with("FEEDBACK message=\"repeat\""));
-        assert!(lines[50].starts_with("FEEDBACK message=\"user feedback\""));
+        assert!(lines[51].starts_with("FEEDBACK message=\"user feedback\""));
     }
 
     #[test]
