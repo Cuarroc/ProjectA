@@ -32,6 +32,8 @@ async function setupPage(page, metaContent, stateData, scriptError = false, { cl
       await route.fulfill({ status: 404 });
     } else if (url.includes('/api/ideas') || url.includes('/api/answers') || url.includes('/api/workbench')) {
       await route.fulfill({ json: {} });
+    } else if (url.includes('/design/glass.css')) {
+      await route.fulfill({ body: readFileSync(join(__dirname, '../../src/design/tokens.css'), 'utf8') + readFileSync(join(__dirname, '../../src/design/motion.css'), 'utf8'), contentType: 'text/css' });
     } else if (url.includes('/style.css')) {
       await route.fulfill({ body: readFileSync(join(__dirname, 'style.css'), 'utf8'), contentType: 'text/css' });
     } else if (url.includes('/app/questions.js')) {
@@ -46,6 +48,7 @@ async function setupPage(page, metaContent, stateData, scriptError = false, { cl
 
   await page.goto('http://127.0.0.1/');
   if (!scriptError) {
+    await page.locator('#area-now').click();
     // Wait for load to finish
     await page.waitForFunction(() => {
       const conn = document.getElementById('connection');
@@ -211,6 +214,7 @@ test("D4: a missing or empty or whitespace root id blocks every POST action and 
     }, '#detail .feedback');
 
     await expectBlocked(meta, async () => {
+      await page.getByText('Notiz hinzufügen', { exact: true }).click();
       await page.locator('#note').fill('Rückfrage');
       await page.getByRole('button', { name: 'Rückfrage stellen' }).click();
       await page.getByRole('button', { name: 'Rückfrage senden' }).click();
@@ -242,6 +246,7 @@ test("D4: a missing or empty or whitespace root id blocks every POST action and 
           persist();
         }, action);
         await page.reload();
+        await page.locator('#area-now').click();
         await expect(page.locator('#detail')).toContainText('Der Ausgang der letzten Übertragung ist unklar.');
         await page.getByRole('button', { name: 'Speicherung erneut prüfen' }).click();
       }, '#detail .feedback');
