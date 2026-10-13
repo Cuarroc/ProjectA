@@ -3,6 +3,7 @@ import TerminalView from "../../components/TerminalView";
 import { HonestState } from "../../design/data/HonestState";
 import { TabPanel, Tabs } from "../../design/layout/Tabs";
 import { de } from "../../i18n/de";
+import { loadFontSettings } from "../../lib/settings";
 import { useSessions } from "../../sessions/SessionProvider";
 import "../../design/layout/layout.css";
 import "./terminal.css";
@@ -11,7 +12,8 @@ import "./terminal.css";
 export default function TerminalRoute() {
   const { sessions, activeSessionId, select } = useSessions();
   const [error, setError] = useState<string | null>(null);
-  const active = sessions.find((session) => session.sessionId === activeSessionId);
+  const fonts = loadFontSettings();
+  const active = sessions.find((session) => session.sessionId === activeSessionId) ?? sessions[0];
   return (
     <section className="g-terminal" aria-label={de["terminal.title"]}>
       {active ? <>
@@ -22,7 +24,8 @@ export default function TerminalRoute() {
         {sessions.map((session) => (
           <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId}
             active={session.sessionId === active.sessionId}>
-            {session.sessionId === active.sessionId ? <TerminalView sessionId={session.sessionId} onError={setError} /> : null}
+            {session.sessionId === active.sessionId ? <TerminalView sessionId={session.sessionId} onError={setError}
+              font={fonts.terminalFont} fontSize={fonts.terminalFontSize} /> : null}
           </TabPanel>
         ))}
       </> : <HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.emptyHint"]} />}

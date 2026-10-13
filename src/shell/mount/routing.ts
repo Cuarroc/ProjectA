@@ -39,6 +39,13 @@ export function hasLegacyPanel(path: string): boolean {
   return Object.values(GOAL_ROUTE).includes(base(path));
 }
 
+/** Keep the legacy viewer wherever the shell displays the legacy panel, or with D1 off. */
+export function shouldMountLegacyTerminal(path: string | undefined): boolean {
+  return path === undefined || (hasLegacyPanel(path)
+    && !isNewLeitstand(path) && !isNewSteuerung(path) && !isNewEinstellungen(path)
+    && !isStart(path) && !isTerminal(path));
+}
+
 /** Goal to show for a route; the current one is kept while it already belongs there. */
 export function goalForPath(path: string, current: AppGoal): AppGoal {
   if (isTools(path) || isTerminal(path)) return current;

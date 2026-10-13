@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isTerminal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
   it("recognizes only the terminal route with an optional trailing slash", () => {
     for (const path of ["/leitstand/terminal", "/leitstand/terminal/"]) expect(isTerminal(path)).toBe(true);
     for (const path of ["/leitstand", "/leitstand/terminal/foo", "/leitstand/werkzeuge"]) expect(isTerminal(path)).toBe(false);
+  });
+
+  it("mounts legacy terminals only on legacy panel routes or with D1 off", () => {
+    for (const path of [undefined, "/leitstand/klassisch", "/leitstand/werkzeuge", "/leitstand/werkzeuge/", "/leitstand/verlauf", "/beweise/diff", "/einstellungen/klassisch"]) {
+      expect(shouldMountLegacyTerminal(path)).toBe(true);
+    }
+    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand", "/leitstand/betrieb", "/steuerung", "/einstellungen", "/start", "/team"]) {
+      expect(shouldMountLegacyTerminal(path)).toBe(false);
+    }
   });
 
   it("keeps the legacy goal when entering the terminal route", () => {
