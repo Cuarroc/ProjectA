@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::status::{StatusEngine, COL_WORKING, STUCK_AFTER};
 use crate::store::{Store, MSG_SYSTEM, SRC_GIT, STATUS_RUNNING};
@@ -262,12 +262,69 @@ pub async fn probe_once(store: &Store, engine: &StatusEngine) {
 /// Per-session state belongs to this observer, never to the API snapshot.
 #[derive(Default)]
 struct WatchdogObserver {
-    runs: BTreeMap<(String, String), watchdog::Dedupe>,
+    runs: BTreeMap<(String, String), (watchdog::Dedupe, Instant)>,
 }
 
 impl WatchdogObserver {
     async fn observe(&mut self, store: &Store, engine: &StatusEngine, now: u64, at: Instant) {
-        let _ = (&self.runs, store, engine, now, at);
+        use watchdog::{evaluate, NoticeKind, Run, RunState, Thresholds};
+        let workers = match store.list_workers(None).await {
+            Ok(workers) => workers,
+            Err(_) => {
+                crate::logging::log("watchdog", "could not list workers; will retry");
+                return;
+            }
+        };
+        let stalled_after = threshold(store).await;
+        let ago =
+            |age: Duration| now.saturating_sub(age.as_millis().try_into().unwrap_or(u64::MAX));
+        for worker in workers {
+            let Some(session) = worker.session_id.filter(|id| !id.is_empty()) else {
+                continue;
+            };
+            if worker.status != STATUS_RUNNING {
+                continue;
+            }
+            let (Some(output), Some(worktree)) = engine.activity_ages(&worker.id, at) else {
+                continue;
+            };
+            let run = Run {
+                id: worker.id.clone(),
+                state: RunState::Running,
+                last_output_at: Some(ago(output)),
+                last_commit_at: Some(ago(worktree)),
+                exited_at: None,
+            };
+            let last_activity = at - output.min(worktree);
+            let (state, previous_activity) = self
+                .runs
+                .entry((worker.id.clone(), session))
+                .or_insert_with(|| (watchdog::Dedupe::default(), last_activity));
+            // Only monotonic activity rearms, never a changed threshold or wall clock.
+            if last_activity > *previous_activity {
+                *state = watchdog::Dedupe::default();
+                *previous_activity = last_activity;
+            }
+            let (notices, next) = evaluate(&[run], now, &Thresholds { stalled_after }, state);
+            if notices
+                .iter()
+                .any(|notice| notice.kind == NoticeKind::Steht)
+            {
+                let message = format!(
+                    "Der Lauf steht: seit mindestens {} Minuten keine Ausgabe und keine Änderung im Arbeitsbaum.",
+                    stalled_after.as_secs() / 60
+                );
+                if store
+                    .insert_message(&worker.id, MSG_SYSTEM, &message)
+                    .await
+                    .is_err()
+                {
+                    crate::logging::log("watchdog", "could not record stall; will retry");
+                    continue;
+                }
+                *state = next;
+            }
+        }
     }
 }
 
@@ -276,9 +333,27 @@ impl WatchdogObserver {
 /// The same shape as the dispatcher and the budget watcher: a plain OS thread
 /// with one `block_on` at the top, everything below awaited.
 pub fn start(store: Store, engine: Arc<StatusEngine>) {
-    thread::spawn(move || loop {
-        tauri::async_runtime::block_on(probe_once(&store, &engine));
-        thread::sleep(POLL_INTERVAL);
+    thread::spawn(move || {
+        // shortcut: dedupe lasts for this app instance; restart recovery belongs to B22b-2.
+        let mut observer = WatchdogObserver::default();
+        loop {
+            tauri::async_runtime::block_on(async {
+                probe_once(&store, &engine).await;
+                let at = Instant::now();
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default();
+                observer
+                    .observe(
+                        &store,
+                        &engine,
+                        now.as_millis().try_into().unwrap_or(u64::MAX),
+                        at,
+                    )
+                    .await;
+            });
+            thread::sleep(POLL_INTERVAL);
+        }
     });
 }
 
@@ -489,6 +564,14 @@ mod tests {
         let (_dir, store, engine, at) = observer_fixture().await;
         let mut observer = WatchdogObserver::default();
         observer_tick(&mut observer, &store, &engine, at, 120).await;
+        set_threshold_minutes(&store, Some(10)).await.unwrap();
+        observer_tick(&mut observer, &store, &engine, at, 121).await;
+        set_threshold_minutes(&store, Some(2)).await.unwrap();
+        observer_tick(&mut observer, &store, &engine, at, 122).await;
+        assert_eq!(
+            store.list_messages("observed", None).await.unwrap().len(),
+            1
+        );
         engine.note_output_at("observed", "more output", at + Duration::from_secs(150));
         observer_tick(&mut observer, &store, &engine, at, 180).await;
         assert_eq!(
