@@ -95,9 +95,38 @@ concurrency="$(sed -n 's/^POLICY concurrency/concurrency/p' <<< "$shape" | LC_AL
 
 # Without the embedded identifier the Dev build's pa.exe and hooks directory
 # silently fall back to the stable app's data (docs/setup/dev-build.md rows
-# 1-2). Anchored on the env value, not on a step name.
-grep -qE '^[[:space:]]+PROJECTA_IDENTIFIER:[[:space:]]*com\.projecta\.dev[[:space:]]*$' <<< "$body" ||
-  err "build step must set PROJECTA_IDENTIFIER to com.projecta.dev"
+# 1-2). The env var only reaches the build when it sits in the SAME step that
+# runs `tauri build` (R1290-C4) — anywhere else in the file it is dead text.
+# The awk splits the workflow into step items (a new item starts at the first
+# `- ` indent below `steps:`) and prints one verdict per step that builds:
+# OK (carries the identifier) or MISSING.
+build_steps="$(awk '
+  BEGIN { in_steps = 0; item_ind = -1 }
+  function flush() {
+    if (in_build) print(has_ident ? "OK" : "MISSING")
+    in_build = 0; has_ident = 0
+  }
+  /^[ \t]*$/ { next }
+  {
+    match($0, /^ */); ind = RLENGTH
+    if (!in_steps) {
+      if ($0 ~ /^[ \t]*steps:[ \t]*$/) { in_steps = 1; steps_ind = ind }
+      next
+    }
+    if (ind <= steps_ind) { flush(); in_steps = 0; next }
+    if (item_ind < 0) {
+      if ($0 ~ /^[ \t]*-[ \t]/) item_ind = ind; else next
+    }
+    if (ind == item_ind && $0 ~ /^[ \t]*-[ \t]/) flush()
+    if ($0 ~ /tauri[ \t]+build/) in_build = 1
+    if ($0 ~ /^[ \t]*PROJECTA_IDENTIFIER:[ \t]*com\.projecta\.dev[ \t]*$/) has_ident = 1
+  }
+  END { flush() }
+' <<< "$body")"
+grep -qx OK <<< "$build_steps" || grep -qx MISSING <<< "$build_steps" ||
+  err "no step runs tauri build with PROJECTA_IDENTIFIER com.projecta.dev"
+grep -qx MISSING <<< "$build_steps" &&
+  err "the step running tauri build must set PROJECTA_IDENTIFIER to com.projecta.dev (same step, not just the same file)"
 
 # The overlay is JSON: node is part of the toolchain (Node 24+, AGENTS.md).
 verdict="$(node -e '
