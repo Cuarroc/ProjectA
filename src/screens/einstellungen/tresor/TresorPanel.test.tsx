@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TresorPanel } from "./TresorPanel";
@@ -111,12 +111,77 @@ describe("TresorPanel", () => {
     expect(mcp.queryByText(/V2-/)).toBeNull();
   });
 
-  it("only get_provider_overview and has_provider_key are invoked and the panel has no button", async () => {
+  it("retries a failed vault overview from the panel", async () => {
+    backend(new Error("SYNTHETIC-SECRET-SENTINEL"));
+    render(<TresorPanel />);
+    expect(await screen.findByText("Tresor nicht lesbar")).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent("SYNTHETIC-SECRET-SENTINEL");
+    backend([provider("k1", "api_key"), provider("s1", "subscription"), provider("l1", "local")], { k1: true });
+    fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
+    expect(await row("Anbieter k1").findByText("Schlüssel hinterlegt")).toBeInTheDocument();
+    expect(row("Anbieter s1").getByText("Anmeldung über die CLI, kein Schlüssel im Tresor")).toBeInTheDocument();
+    expect(row("Anbieter l1").getByText("kein Schlüssel nötig")).toBeInTheDocument();
+    expect(screen.queryByText("Tresor nicht lesbar")).toBeNull();
+    expect(calls("get_provider_overview")).toHaveLength(2);
+    expect(calls("has_provider_key").map(([, args]) => args)).toEqual([{ providerId: "k1" }]);
+  });
+
+  it("rereads key presence for unchanged provider ids on manual refresh", async () => {
+    backend([provider("k1", "api_key")], { k1: false });
+    render(<TresorPanel />);
+    expect(await row("Anbieter k1").findByText("kein Schlüssel hinterlegt")).toBeInTheDocument();
+    let resolvePresence!: (value: boolean) => void;
+    backend([provider("k1", "api_key")], { k1: new Promise<boolean>((resolve) => { resolvePresence = resolve; }) });
+    fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
+    expect(screen.queryByText("kein Schlüssel hinterlegt")).toBeNull();
+    expect(await row("Anbieter k1").findByText("wird geprüft")).toBeInTheDocument();
+    await act(async () => { resolvePresence(true); });
+    expect(await row("Anbieter k1").findByText("Schlüssel hinterlegt")).toBeInTheDocument();
+    expect(calls("get_provider_overview")).toHaveLength(2);
+    expect(calls("has_provider_key").map(([, args]) => args)).toEqual([{ providerId: "k1" }, { providerId: "k1" }]);
+  });
+
+  it("ignores old key presence after a newer vault read", async () => {
+    let resolveOld!: (value: boolean) => void;
+    backend([provider("k1", "api_key")], { k1: new Promise<boolean>((resolve) => { resolveOld = resolve; }) });
+    render(<TresorPanel />);
+    expect(await row("Anbieter k1").findByText("wird geprüft")).toBeInTheDocument();
+    backend([provider("k1", "api_key")], { k1: true });
+    fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
+    expect(await row("Anbieter k1").findByText("Schlüssel hinterlegt")).toBeInTheDocument();
+    await act(async () => { resolveOld(false); });
+    expect(row("Anbieter k1").getByText("Schlüssel hinterlegt")).toBeInTheDocument();
+    expect(screen.queryByText("kein Schlüssel hinterlegt")).toBeNull();
+    expect(calls("has_provider_key")).toHaveLength(2);
+  });
+
+  it("prevents another vault read while the overview is pending", async () => {
+    let resolveOverview!: (value: unknown[]) => void;
+    backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
+    render(<TresorPanel />);
+    const refresh = screen.getByRole("button", { name: "Neu lesen" });
+    expect(refresh).toBeDisabled();
+    fireEvent.click(refresh);
+    expect(calls("get_provider_overview")).toHaveLength(1);
+    await act(async () => { resolveOverview([]); });
+    expect(refresh).toBeEnabled();
+    refresh.focus();
+    backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
+    fireEvent.click(refresh);
+    expect(refresh).toBeDisabled();
+    fireEvent.click(refresh);
+    expect(calls("get_provider_overview")).toHaveLength(2);
+    await act(async () => { resolveOverview([]); });
+    expect(refresh).toBeEnabled();
+    expect(refresh).toHaveFocus();
+  });
+
+  it("only get_provider_overview and has_provider_key are invoked and the panel only offers the read button", async () => {
     backend([provider("k1", "api_key", { vaultError: "vault_unreadable" }), provider("s1", "subscription")], { k1: true });
     render(<TresorPanel />);
     await row("Anbieter k1").findByText("Schlüssel hinterlegt");
     expect(new Set(mocks.invoke.mock.calls.map(([c]) => c))).toEqual(new Set(["get_provider_overview", "has_provider_key"]));
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.getAllByRole("button")).toEqual([screen.getByRole("button", { name: "Neu lesen" })]);
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
   });
 });
