@@ -96,6 +96,35 @@ it("reopening the archive confirmation clears the previous error", async () => {
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
+it("drops the archive confirmation when the card changes to an exited worker", () => {
+  const { rerender } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  expect(screen.getByText(/Der Arbeitsbaum bleibt/)).toBeInTheDocument();
+  rerender(<AgentCard card={card("exited")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.queryByText(/Der Arbeitsbaum bleibt/)).toBeNull();
+  expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeInTheDocument();
+});
+
+it("drops the archive confirmation when another worker's card replaces it", () => {
+  const other = card("running");
+  other.worker.id = "w2";
+  const { rerender } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  expect(screen.getByText(/Der Arbeitsbaum bleibt/)).toBeInTheDocument();
+  rerender(<AgentCard card={other} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.queryByText(/Der Arbeitsbaum bleibt/)).toBeNull();
+});
+
+it("drops the failed message when the card changes state", async () => {
+  vi.mocked(archiveWorker).mockRejectedValue(new Error("boom"));
+  const { rerender } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  rerender(<AgentCard card={card("exited")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
 it("a rejected call shows a German sentence in the card and the button works again", async () => {
   vi.mocked(archiveWorker).mockRejectedValue(new Error("boom"));
   const onChanged = view("running");
