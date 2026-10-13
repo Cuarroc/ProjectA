@@ -177,6 +177,7 @@ impl Run {
                 Delivered
             }
             (Ordered | Working | Evidenced | Reviewing, Wait) => Waiting,
+            // Waiting is excluded: a paused order must re-enter a productive state via Work before rejection.
             (Ordered | Working | Evidenced | Reviewing, Reject) => Rejected,
             _ => return Err(Refusal::InvalidTransition),
         };
@@ -371,5 +372,91 @@ mod tests {
             assert_eq!(run, before);
             assert!(run.transition(Action::Approve(record("a"))).is_err());
         }
+    }
+    #[test]
+    fn work_rejects_blank_authority_sha_or_template() {
+        fn run_with(authority: &str, sha: &str, template: &str) -> Run {
+            Run::new(
+                Order {
+                    kind: OrderKind::ProjectPackage,
+                    template: template.into(),
+                    risk: RiskTier::A,
+                    start_authority: authority.into(),
+                },
+                sha.into(),
+                LanePlan::from_list("test prepush cargo-test"),
+                "prepush".into(),
+            )
+        }
+        for (authority, sha, template) in [
+            ("  ", "a", "standard"),
+            ("click-1", "  ", "standard"),
+            ("click-1", "a", "  "),
+        ] {
+            let mut run = run_with(authority, sha, template);
+            let before = run.clone();
+            assert_eq!(run.transition(Action::Work), Err(Refusal::InvalidInput));
+            assert_eq!(run, before);
+        }
+    }
+    #[test]
+    fn candidate_rejects_blank_sha() {
+        let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
+        let before = run.clone();
+        assert_eq!(
+            run.transition(Action::Candidate("  ".into())),
+            Err(Refusal::InvalidInput)
+        );
+        assert_eq!(run, before);
+    }
+    #[test]
+    fn check_record_rejects_mismatched_sha_or_blank_reference() {
+        let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
+        reviewing(&mut run);
+        let before = run.clone();
+        assert_eq!(
+            run.transition(Action::Approve(BoundRecord {
+                sha: "wrong".into(),
+                reference: "receipt".into(),
+            })),
+            Err(Refusal::InvalidInput)
+        );
+        assert_eq!(run, before);
+        assert_eq!(
+            run.transition(Action::Approve(BoundRecord {
+                sha: "a".into(),
+                reference: "  ".into(),
+            })),
+            Err(Refusal::InvalidInput)
+        );
+        assert_eq!(run, before);
+        run.transition(Action::Approve(record("a"))).unwrap();
+        assert_eq!(run.state(), Approved);
+        let before = run.clone();
+        assert_eq!(
+            run.transition(Action::Deliver(BoundRecord {
+                sha: "wrong".into(),
+                reference: "receipt".into(),
+            })),
+            Err(Refusal::InvalidInput)
+        );
+        assert_eq!(run, before);
+        assert_eq!(
+            run.transition(Action::Deliver(BoundRecord {
+                sha: "a".into(),
+                reference: "  ".into(),
+            })),
+            Err(Refusal::InvalidInput)
+        );
+        assert_eq!(run, before);
+    }
+    #[test]
+    fn candidate_same_sha_is_a_noop() {
+        let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
+        run.transition(Action::Work).unwrap();
+        let before = run.clone();
+        assert_eq!(run.transition(Action::Candidate("a".into())), Ok(()));
+        assert_eq!(run, before);
+        assert_eq!(run.steps().len(), before.steps().len());
     }
 }
