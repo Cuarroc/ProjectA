@@ -686,7 +686,7 @@ impl Store {
                 .map_err(|e| format!("invalid gate-result payload: {e}"))?;
             if payload.schema_version != 1
                 || !matches!(evidence.measurement,
-                EvidenceMeasurement::Measured { value } if value == Value::from(payload.exit_code))
+                EvidenceMeasurement::Measured { value } if value == payload.exit_code)
             {
                 return Err(
                     "gate-result requires schemaVersion 1 and matching measured exitCode".into(),
