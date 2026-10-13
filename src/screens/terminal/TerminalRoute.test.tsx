@@ -107,6 +107,79 @@ it("opens deep linked workers on initial load and hash changes", async () => {
   expect(mocks.invoke.mock.calls.some(([name]) => ["spawn_pty", "kill_pty"].includes(name))).toBe(false);
 });
 
+it("clears the worker link on manual selection so the same link can reopen", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  go("#/leitstand/terminal?worker=two");
+  await screen.findByRole("tab", { name: "Task two" });
+  fireEvent.click(screen.getByRole("tab", { name: "Task one" }));
+  expect(window.location.hash).toBe("#/leitstand/terminal");
+  // Native hashchange only: assigning an unchanged hash must not fake navigation.
+  act(() => { window.location.hash = "#/leitstand/terminal?worker=two"; });
+  await waitFor(() => expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true"));
+});
+
+it("does not label a worker profile with its internal identifier", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  const view = render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  go("#/leitstand/klassisch");
+  expect(view.container.querySelector('.statusbar [title="pty-one"]')).toHaveTextContent(/^$/);
+});
+
+it.each([false, true])("reports worker lookup failure (IPC rejection: %s)", async (reject) => {
+  workerData();
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers" && reject
+    ? Promise.reject(new Error("lookup failed")) : base(command, args));
+  window.location.hash = "#/leitstand/terminal?worker=missing";
+  render(<App />);
+  const route = within(screen.getByRole("region", { name: "Terminal" }));
+  expect(await route.findByRole("alert")).toHaveTextContent(reject ? "lookup failed" : "Agent");
+  expect(mocks.invoke.mock.calls.some(([name]) => ["respawn_worker", "spawn_pty"].includes(name))).toBe(false);
+});
+
+it("reports a failed respawn and opens the session after an explicit retry", async () => {
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  const respawn = vi.fn().mockRejectedValueOnce(new Error("restart failed")).mockResolvedValueOnce(workers[0]);
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "respawn_worker" ? respawn() : base(command, args));
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Agent neu starten" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("restart failed");
+  fireEvent.click(await screen.findByRole("button", { name: "Agent neu starten" }));
+  await waitFor(() => expect(active(ptyOutput("pty-one"))).toHaveLength(1));
+  expect(screen.queryByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeNull();
+  expect(respawn).toHaveBeenCalledTimes(2);
+});
+
+it("recovers a late respawn through a fresh lookup without respawning again", async () => {
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  let restarted = false;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "respawn_worker") return new Promise((resolve) => { finish = resolve; });
+    if (command === "list_workers" && restarted) return Promise.resolve(workers);
+    return base(command, args);
+  });
+  render(<App />);
+  await openShellTab();
+  go("#/leitstand/terminal?worker=one");
+  fireEvent.click(await screen.findByRole("button", { name: "Agent neu starten" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Shell" }));
+  await act(async () => { restarted = true; finish(workers[0]); });
+  expect(screen.getByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+  go("#/leitstand");
+  go("#/leitstand/terminal?worker=one");
+  expect(await screen.findByRole("tab", { name: "Task one" })).toHaveAttribute("aria-selected", "true");
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "respawn_worker")).toHaveLength(1);
+});
+
 it("ignores late worker results after leaving a pending deep link", async () => {
   workerData();
   window.location.hash = "#/leitstand/terminal?worker=two";
