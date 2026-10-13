@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { OPEN_POINT_TASKS, buildQueueRequests, chooseProject } from '../hq-queue-open-points.mjs';
+import { join } from 'node:path';
+import { OPEN_POINT_TASKS, buildQueueRequests, chooseProject, descriptorCandidates } from '../hq-queue-open-points.mjs';
 
 test('every open point becomes one HQ-Bug queue request that names the bug log', () => {
   const requests = buildQueueRequests(OPEN_POINT_TASKS, 'pj-1', []);
@@ -35,8 +35,18 @@ test('the project is taken from --project, else the single registered one, else 
 });
 
 // Dev-build isolation (docs/setup/dev-build.md, row 7): the queue tool must
-// also find the descriptor of a running Dev build.
-test('the descriptor search list also covers the dev build identifier', () => {
-  const source = readFileSync(new URL('../hq-queue-open-points.mjs', import.meta.url), 'utf8');
-  assert.ok(source.includes('com.projecta.dev'), 'descriptor candidates must include com.projecta.dev');
+// also find the descriptor of a running Dev build. The first existing
+// candidate wins, so for every base the stable app comes before the Dev one.
+test('descriptorCandidates lists the stable app before the dev build', () => {
+  const candidates = descriptorCandidates({ APPDATA: 'C:/roaming', XDG_DATA_HOME: '/xdg', HOME: '/home/u' })
+    .map(candidate => candidate.replaceAll('\\', '/'));
+  for (const base of ['C:/roaming', '/xdg', '/home/u/Library/Application Support']) {
+    const stable = candidates.indexOf(`${base}/com.projecta.app/projecta-api.json`);
+    const dev = candidates.indexOf(`${base}/com.projecta.dev/projecta-api.json`);
+    assert.notEqual(stable, -1, `${base}: the stable candidate is missing`);
+    assert.notEqual(dev, -1, `${base}: the dev candidate is missing`);
+    assert.ok(stable < dev, `${base}: the stable candidate must come before the dev one`);
+  }
+  assert.deepEqual(descriptorCandidates({ PROJECTA_API_DESCRIPTOR: '/d/projecta-api.json' }), ['/d/projecta-api.json']);
+  assert.deepEqual(descriptorCandidates({ PROJECTA_APP_DATA: '/data' }), [join('/data', 'projecta-api.json')]);
 });

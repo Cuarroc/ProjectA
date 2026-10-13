@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSessionSubscriptions } from "./sessions/useSessionSubscriptions";
+import { SessionProvider, useSessions } from "./sessions/SessionProvider";
 
 import AttentionInbox from "./components/AttentionInbox";
 import BoardRail from "./components/BoardRail";
@@ -37,7 +37,6 @@ import {
   createProject,
   createWorker,
   describeError,
-  killPty,
   listAgentProfiles,
   listProjects,
   listWorkers,
@@ -50,7 +49,6 @@ import {
   setProjectMaxWorkers,
   setProjectTestCommand,
   setWorkerColumnOverride,
-  spawnPty,
 } from "./lib/ipc";
 import { isCoordinatorKind } from "./lib/board";
 import {
@@ -61,7 +59,7 @@ import {
 } from "./lib/settings";
 import { GOAL_LABELS, type AppGoal } from "./lib/goals";
 import { useFeatureFlag } from "./flags/useFeatureFlag";
-import { goalForPath, isTools } from "./shell/mount/routing";
+import { goalForPath, isTools, shouldMountLegacyTerminal } from "./shell/mount/routing";
 import type { LegacyRouteProps } from "./shell/mount/ShellMount";
 import type { InboxEntry } from "./lib/attentionInbox";
 import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "./lib/activeProject";
@@ -79,13 +77,6 @@ import type {
   Worker,
   WorkerDetailView,
 } from "./types";
-
-/**
- * Placeholder geometry used at spawn time. `TerminalView` measures the real
- * container on mount and immediately issues a `resize_pty`.
- */
-const INITIAL_COLS = 80;
-const INITIAL_ROWS = 24;
 
 /** Whether the board rail is open. A layout choice, so it outlives a restart. */
 const RAIL_OPEN_KEY = "projecta.railOpen";
@@ -142,6 +133,7 @@ const ShellMount = lazy(() => import("./shell/mount/ShellMount"));
 const LeitstandTabs = lazy(() => import("./screens/leitstand/LeitstandRoute").then((m) => ({ default: m.LeitstandTabs })));
 
 function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) {
+  const legacyTerminalVisible = shouldMountLegacyTerminal(routePath);
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
   const [fonts, setFonts] = useState(loadFontSettings);
   // Variant B opens on the conversation: the first question the app answers is
@@ -178,19 +170,29 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   const [workersLoading, setWorkersLoading] = useState(false);
   const [workersError, setWorkersError] = useState<string | null>(null);
   const [busyWorkerId, setBusyWorkerId] = useState<string | null>(null);
-  /** Exited worker whose persisted buffer is on screen. Not a live PTY. */
-  const [restoreWorkerId, setRestoreWorkerId] = useState<string | null>(null);
   const [busyOrchestratorProjectId, setBusyOrchestratorProjectId] = useState<string | null>(null);
 
-  const [sessions, setSessions] = useState<TerminalSession[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  // The terminal area shows one pane, or two side by side. `activeSessionId` is
-  // always the focused session and `splitSessionId` the other pane's;
-  // `splitPrimary` records which side the focused one sits on, so moving focus
-  // never makes the two panes swap what they show.
-  const [splitOpen, setSplitOpen] = useState(false);
-  const [splitSessionId, setSplitSessionId] = useState<string | null>(null);
-  const [splitPrimary, setSplitPrimary] = useState(true);
+  // Terminal sessions live in the SessionProvider above App() (V2-S01d-2b).
+  // The aliases keep the handler names the rest of this file was written with.
+  const {
+    sessions,
+    activeSessionId,
+    splitOpen,
+    splitSessionId,
+    splitPrimary,
+    restoreWorkerId,
+    openWorker,
+    openAdHoc,
+    toggleSplit,
+    showRestore,
+    subscribeExit,
+    unsubscribeExit,
+    markExited,
+    onExit,
+    drop: dropTab,
+    close: handleCloseTab,
+    select: handleSelectSession,
+  } = useSessions();
 
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
@@ -309,67 +311,23 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
 
   // -- sessions -------------------------------------------------------------
 
-  const { subscribeExit, unsubscribeExit, markExited } = useSessionSubscriptions(
-    setSessions,
-    (sessionId) => {
-      setWorkers((prev) =>
-        prev.map((worker) =>
-          worker.sessionId === sessionId
-            ? { ...worker, sessionId: null, status: "exited" as const }
-            : worker,
-        ),
-      );
-      // The card's status dot and column both hang off this; do not make the
-      // board wait for the next poll.
-      refreshBoardRef.current();
-    },
-  );
-
-  /** Drop the tab. The session itself is somebody else's business. */
-  const dropTab = useCallback((sessionId: string) => {
-    const current = sessionsRef.current;
-    const index = current.findIndex((session) => session.sessionId === sessionId);
-    if (index === -1) return;
-    const remaining = current.filter((session) => session.sessionId !== sessionId);
-    setSessions(remaining);
-    setActiveSessionId((active) => {
-      if (active !== sessionId) return active;
-      const neighbour = remaining[index] ?? remaining[index - 1];
-      return neighbour ? neighbour.sessionId : null;
-    });
-    // Either pane losing its session collapses the split: one session cannot
-    // fill two panes, and two terminals on one PTY would fight over its size.
-    setSplitSessionId((other) => {
-      if (other === sessionId) {
-        setSplitOpen(false);
-        setSplitPrimary(true);
-        return null;
-      }
-      if (remaining.length < 2) {
-        setSplitOpen(false);
-        setSplitPrimary(true);
-        return null;
-      }
-      return other;
-    });
-  }, []);
-
-  /**
-   * Closing an ad-hoc tab kills its process — nothing else points at it.
-   * Closing a worker tab only detaches: the agent keeps running and the worker
-   * panel can bring it back.
-   */
-  const handleCloseTab = useCallback(
-    (sessionId: string) => {
-      const session = sessionsRef.current.find((entry) => entry.sessionId === sessionId);
-      dropTab(sessionId);
-      if (session?.workerId) return;
-      unsubscribeExit(sessionId);
-      void killPty(sessionId).catch(() => {
-        // The process may already be gone; closing the tab is what matters.
-      });
-    },
-    [dropTab, unsubscribeExit],
+  // The provider owns the session list and reports exits; this is the one
+  // subscriber that turns an exit into the worker and board updates.
+  useEffect(
+    () =>
+      onExit((sessionId) => {
+        setWorkers((prev) =>
+          prev.map((worker) =>
+            worker.sessionId === sessionId
+              ? { ...worker, sessionId: null, status: "exited" as const }
+              : worker,
+          ),
+        );
+        // The card's status dot and column both hang off this; do not make the
+        // board wait for the next poll.
+        refreshBoardRef.current();
+      }),
+    [onExit],
   );
 
   // -- profiles -------------------------------------------------------------
@@ -539,28 +497,19 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
     (worker: Worker) => {
       const sessionId = worker.sessionId;
       if (!sessionId) return;
-      setSessions((prev) => {
-        if (prev.some((session) => session.sessionId === sessionId)) return prev;
-        return [
-          ...prev,
-          {
-            sessionId,
-            profileId: worker.profileId,
-            profileName: profileName(worker.profileId),
-            workerId: worker.id,
-            projectId: worker.projectId,
-            kind: worker.kind,
-            title: sessionTitle(worker),
-            exited: false,
-            exitCode: null,
-          },
-        ];
+      openWorker({
+        sessionId,
+        profileId: worker.profileId,
+        profileName: profileName(worker.profileId),
+        workerId: worker.id,
+        projectId: worker.projectId,
+        kind: worker.kind,
+        title: sessionTitle(worker),
+        exited: false,
+        exitCode: null,
       });
-      setActiveSessionId(sessionId);
-      setRestoreWorkerId(null);
-      void subscribeExit(sessionId);
     },
-    [profileName, sessionTitle, subscribeExit],
+    [profileName, sessionTitle, openWorker],
   );
 
   /**
@@ -580,7 +529,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
           session.kind === "orchestrator" && session.projectId === projectId && !session.exited,
       );
       if (openTab) {
-        setActiveSessionId(openTab.sessionId);
+        handleSelectSession(openTab.sessionId);
         return;
       }
 
@@ -630,7 +579,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
         }
       })();
     },
-    [busyOrchestratorProjectId, openWorkerTab],
+    [busyOrchestratorProjectId, openWorkerTab, handleSelectSession],
   );
 
   const openWorkerDialog = useCallback(() => {
@@ -730,24 +679,23 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
   const handleOpenCard = useCallback(
     (worker: Worker) => {
       if (worker.sessionId === null) {
-        setRestoreWorkerId(worker.id);
+        showRestore(worker.id);
         setDetailView("terminal");
         setGoal("agents");
         return;
       }
-      setRestoreWorkerId(null);
       openWorkerTab(worker);
       setDetailView("terminal");
       setGoal("agents");
     },
-    [openWorkerTab],
+    [openWorkerTab, showRestore],
   );
 
   /** Same jump as opening a card, but landing on the diff instead. */
   const handleOpenCardDiff = useCallback(
     (worker: Worker) => {
       if (worker.sessionId === null) {
-        setRestoreWorkerId(worker.id);
+        showRestore(worker.id);
         setDetailView("diff");
         setGoal("review");
         return;
@@ -756,7 +704,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
       setDetailView("diff");
       setGoal("review");
     },
-    [openWorkerTab],
+    [openWorkerTab, showRestore],
   );
 
   /**
@@ -941,27 +889,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
       void (async () => {
         setSpawning(true);
         try {
-          const sessionId = await spawnPty({
-            profileId: profile.id,
-            cols: INITIAL_COLS,
-            rows: INITIAL_ROWS,
-          });
-          setSessions((prev) => [
-            ...prev,
-            {
-              sessionId,
-              profileId: profile.id,
-              profileName: profile.name,
-              workerId: null,
-              projectId: null,
-              kind: "worker" as const,
-              title: profile.name,
-              exited: false,
-              exitCode: null,
-            },
-          ]);
-          setActiveSessionId(sessionId);
-          await subscribeExit(sessionId);
+          await openAdHoc(profile);
         } catch (cause) {
           setError(describeError(cause));
         } finally {
@@ -969,25 +897,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
         }
       })();
     },
-    [subscribeExit],
-  );
-
-  /**
-   * Pick a session from the tab bar. While the split is open the pick lands in
-   * the focused pane — unless it is already the other pane's session, in which
-   * case focus simply moves there rather than showing it twice.
-   */
-  const handleSelectSession = useCallback(
-    (sessionId: string) => {
-      if (sessionId === splitSessionId) {
-        setSplitSessionId(activeSessionId);
-        setActiveSessionId(sessionId);
-        setSplitPrimary((primary) => !primary);
-        return;
-      }
-      setActiveSessionId(sessionId);
-    },
-    [activeSessionId, splitSessionId],
+    [openAdHoc],
   );
 
   // -- render ---------------------------------------------------------------
@@ -1259,27 +1169,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                 splitEnabled={sessions.length > 1 && showTerminal}
                 onSelect={handleSelectSession}
                 onClose={handleCloseTab}
-                onToggleSplit={() => {
-                  if (splitVisible) {
-                    setSplitOpen(false);
-                    setSplitSessionId(null);
-                    setSplitPrimary(true);
-                    return;
-                  }
-                  // The second pane opens on the neighbouring tab, which is the
-                  // one the user was most likely looking at before this one.
-                  const index = sessions.findIndex(
-                    (session) => session.sessionId === activeSessionId,
-                  );
-                  const other =
-                    sessions[index + 1] ??
-                    sessions[index - 1] ??
-                    sessions.find((session) => session.sessionId !== activeSessionId);
-                  if (!other || other.sessionId === activeSessionId) return;
-                  setSplitSessionId(other.sessionId);
-                  setSplitPrimary(true);
-                  setSplitOpen(true);
-                }}
+                onToggleSplit={toggleSplit}
                 onNew={openPicker}
                 newDisabled={spawning}
               />
@@ -1353,7 +1243,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                         if (pane !== null) handleSelectSession(pane.sessionId);
                       }}
                     >
-                      {pane ? (
+                      {pane && legacyTerminalVisible ? (
                         <TerminalView
                           key={pane.sessionId}
                           sessionId={pane.sessionId}
@@ -1365,13 +1255,13 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                     </div>
                   ))
                 ) : activeSession ? (
-                  <TerminalView
+                  legacyTerminalVisible ? <TerminalView
                     key={activeSession.sessionId}
                     sessionId={activeSession.sessionId}
                     onError={setError}
                     font={fonts.terminalFont}
                     fontSize={fonts.terminalFontSize}
-                  />
+                  /> : null
                 ) : restoreWorker && restoreWorker.sessionId === null ? (
                   <SessionRestorePanel
                     worker={restoreWorker}
@@ -1477,13 +1367,15 @@ export default function App() {
   const [preview] = useFeatureFlag("d1_neue_oberflaeche");
   return (
     <ErrorBoundary>
-      {preview ? (
-        <Suspense fallback={null}>
-          <ShellMount>{(route) => <AppContent {...route} />}</ShellMount>
-        </Suspense>
-      ) : (
-        <AppContent />
-      )}
+      <SessionProvider>
+        {preview ? (
+          <Suspense fallback={null}>
+            <ShellMount>{(route) => <AppContent {...route} />}</ShellMount>
+          </Suspense>
+        ) : (
+          <AppContent />
+        )}
+      </SessionProvider>
     </ErrorBoundary>
   );
 }

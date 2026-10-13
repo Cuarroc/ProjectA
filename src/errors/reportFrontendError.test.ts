@@ -73,3 +73,41 @@ it("contains hostile values and transport failures without recursive reporting",
   window.dispatchEvent(new ErrorEvent("error", { message: "removed" }));
   expect(invoke).toHaveBeenCalledTimes(1);
 });
+it("keeps all twenty recent signatures within the final escaped context budget", async () => {
+  const { reportFrontendFeedback } = await import("./reportFrontendError");
+  for (const payload of [".".repeat(156), '"'.repeat(156), "\\".repeat(156), "界😀".repeat(40)]) {
+    vi.advanceTimersByTime(60_000);
+    for (let i = 0; i <= 20; i++) reportFrontendError(`E${String(i).padStart(2, "0")}_${payload}`);
+    await reportFrontendFeedback("report", "expected");
+    const { context } = vi.mocked(invoke).mock.lastCall?.[1] as { context: string };
+    // The native log field doubles quotes/backslashes before its 2048-byte cap.
+    const escaped = context.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+    expect(new TextEncoder().encode(escaped).length).toBeLessThanOrEqual(2048);
+    expect(context).toMatch(/^sha="[^"]+" at="1970-01-01T/);
+    expect(context.endsWith('"')).toBe(true);
+    expect(context).not.toContain("E00_");
+    for (let i = 1; i <= 20; i++) expect(context).toContain(`E${String(i).padStart(2, "0")}_`);
+    expect(context.split(" | ")).toHaveLength(20);
+    expect(context.match(/…/g)).toHaveLength(20);
+    expect(context).not.toContain("\uFFFD");
+  }
+});
+it("bounds feedback fields by escaped bytes before invoking native logging", async () => {
+  const { reportFrontendFeedback } = await import("./reportFrontendError");
+  for (const unit of ['"', "\\", "界😀"]) {
+    await reportFrontendFeedback(unit.repeat(2048), unit.repeat(1024));
+    const { message: what, stackFrame: expected } = vi.mocked(invoke).mock.lastCall?.[1] as { message: string; stackFrame: string };
+    for (const [value, cap] of [[what, 2048], [expected, 1024]] as const) {
+      const escaped = value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+      expect(new TextEncoder().encode(escaped).length).toBeLessThanOrEqual(cap);
+      expect(value).not.toContain("\uFFFD");
+      expect(value.length).toBeGreaterThan(0);
+    }
+  }
+});
+it("does not load the dev-only buildInfo module", async () => {
+  vi.doMock("../dev/buildInfo", () => { throw new Error("dev-only module in the production error path"); });
+  vi.resetModules();
+  const reporter = await import("./reportFrontendError");
+  expect(() => reporter.reportFrontendError("boom")).not.toThrow();
+});

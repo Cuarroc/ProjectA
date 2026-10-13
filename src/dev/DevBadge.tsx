@@ -5,6 +5,7 @@ import { useFeatureFlag } from "../flags/useFeatureFlag";
 import { DEV_TEXT } from "../shell/header/texts";
 import { useIsDevBuild } from "./useIsDevBuild";
 import { buildInfo } from "./buildInfo";
+import { FeedbackForm } from "./FeedbackForm";
 import "../design/controls/controls.css";
 import "./dev.css";
 
@@ -22,6 +23,7 @@ function Experiment({ flag }: { flag: FeatureFlag }) {
 export function DevBadge() {
   const isDevBuild = useIsDevBuild();
   const [open, setOpen] = useState(false);
+  const [feedback, setFeedback] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -47,6 +49,11 @@ export function DevBadge() {
           <dt>{DEV_TEXT.time}</dt><dd><time dateTime={time}>{time}</time></dd></dl>
         <h2>{DEV_TEXT.experiments}</h2>
         {listFeatureFlags().map((flag) => <Experiment key={flag.id} flag={flag} />)}
+        <div className="g-dev-experiment">
+          <button className="g-dev-badge" type="button" aria-expanded={feedback}
+            onClick={() => setFeedback(!feedback)}>{DEV_TEXT.feedback}</button>
+        </div>
+        {feedback && <FeedbackForm />}
       </section>}
     </div>
   );
