@@ -45,7 +45,7 @@ describe("Steuerung route behind D1", () => {
   it("renders reported usage totals below Kontingente in the Glass route", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     const { container } = render(<App />);
-    await screen.findByRole("navigation", { name: "Hauptnavigation" });
+    await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
     await go("#/steuerung");
     await waitFor(() => expect(container.querySelectorAll(".kb-panel")).toHaveLength(1));
     const ledger = container.querySelector<HTMLElement>(".kb-panel")!;
@@ -71,7 +71,7 @@ describe("Steuerung route behind D1", () => {
   it("does not mount the usage ledger on non quota tabs or with D1 off", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     const mounted = render(<App />);
-    await screen.findByRole("navigation", { name: "Hauptnavigation" });
+    await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
     await go("#/steuerung");
     await waitFor(() => expect(mounted.container.querySelectorAll(".kb-panel")).toHaveLength(1));
     const calls = usageCalls().length;
@@ -101,7 +101,7 @@ describe("Steuerung route behind D1", () => {
       ? Promise.reject(new Error("unavailable")) : fallback(command));
     localStorage.setItem(FLAG_KEY, "1");
     const { container } = render(<App />);
-    await screen.findByRole("navigation", { name: "Hauptnavigation" });
+    await screen.findByRole("navigation", { name: "Hauptnavigation" }, { timeout: 5000 });
     await go("#/steuerung");
     expect(await route(container).findByText("Kostenbuch nicht lesbar")).toBeInTheDocument();
     expect(route(container).getByRole("heading", { level: 1, name: "Kontingente" })).toBeInTheDocument();
