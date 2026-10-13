@@ -63,6 +63,7 @@ mod api;
 mod budget;
 mod build_identifier;
 mod capabilities;
+mod core_register;
 mod critic;
 mod db_restore;
 mod delivery_recovery;
