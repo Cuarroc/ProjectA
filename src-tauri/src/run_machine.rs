@@ -129,7 +129,7 @@ impl Run {
                 self.approval = None;
                 Stale
             }
-            (Ordered | Waiting | Stale, Work) => {
+            (Ordered | Waiting | Stale | Reviewing, Work) => {
                 if self.order.start_authority.trim().is_empty()
                     || self.sha.trim().is_empty()
                     || self.order.template.trim().is_empty()
@@ -147,7 +147,14 @@ impl Run {
                 self.evidence = gates.into_iter().map(Evidence::Gate).collect();
                 Evidenced
             }
-            (Evidenced, Review(report)) => {
+            (Evidenced | Reviewing, Review(report)) => {
+                if report.sha != self.sha
+                    || report.tier != self.order.risk
+                    || !report.accepted
+                    || report.report_ref.trim().is_empty()
+                {
+                    return Err(Refusal::InvalidInput);
+                }
                 self.evidence.push(Evidence::Review(report));
                 Reviewing
             }
@@ -170,7 +177,7 @@ impl Run {
                 Delivered
             }
             (Ordered | Working | Evidenced | Reviewing, Wait) => Waiting,
-            (_, Reject) => Rejected,
+            (Ordered | Working | Evidenced | Reviewing, Reject) => Rejected,
             _ => return Err(Refusal::InvalidTransition),
         };
         self.steps.push(next);
@@ -344,12 +351,12 @@ mod tests {
         assert!(run.transition(Action::Deliver(record("a"))).is_err());
         run.transition(Action::Work).unwrap();
         run.transition(Action::Prove(vec![gate("b", 0)])).unwrap();
-        run.transition(Action::Review(report("a", run.order().risk)))
-            .unwrap();
         assert_eq!(
-            run.transition(Action::Approve(record("b"))),
-            Err(Refusal::ReviewRequired)
+            run.transition(Action::Review(report("a", run.order().risk))),
+            Err(Refusal::InvalidInput)
         );
+        assert_eq!(run.state(), Evidenced);
+        assert!(run.transition(Action::Approve(record("b"))).is_err());
     }
     #[test]
     fn no_approval_without_current_successful_evidence() {
