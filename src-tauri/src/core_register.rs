@@ -88,6 +88,7 @@ pub enum Error {
     Waiting,
     InvalidTransition,
     StaleRevision,
+    RevisionOverflow,
 }
 /// Exclusive mutable access serializes this process-local model. This is not
 /// a cross-process lock; ST-K1 must enforce revision/FIFO in its transaction.
@@ -220,6 +221,60 @@ mod tests {
             new: json!(revision + 1),
             reason: "measured capacity".into(),
             evidence: "measurement:1".into(),
+        }
+    }
+    #[test]
+    fn blank_registry_fields_reject_requests() {
+        let a = actor(Some(Owner::User));
+        for blank in ["", " \t\n"] {
+            for field in ["key", "area", "effect_site"] {
+                let mut row = setting(a.authority);
+                match field {
+                    "key" => row.key = blank,
+                    "area" => row.area = blank,
+                    _ => row.effect_site = blank,
+                }
+                let change = Request {
+                    key: row.key.into(),
+                    ..request(0)
+                };
+                let settings = [row];
+                let mut r = Register::new(&settings);
+                assert_eq!(r.submit(change, &a, 1), Err(Error::InvalidRegistry));
+                assert!(r.journal().is_empty());
+            }
+        }
+    }
+    #[test]
+    fn revision_overflow_preserves_request_and_journal() {
+        let a = actor(Some(Owner::User));
+        let settings = [setting(a.authority)];
+        for (target, revision) in [(Applied, u64::MAX), (RolledBack, u64::MAX - 1)] {
+            let mut r = Register::new(&settings);
+            let change = Request {
+                expected_revision: revision,
+                ..request(0)
+            };
+            // Seed an otherwise unreachable boundary; exercise public transitions.
+            r.revisions
+                .insert((change.scope.clone(), change.key.clone()), revision);
+            let id = r.submit(change, &a, 1).unwrap();
+            r.transition(id, Checked, &a, 2).unwrap();
+            if target == RolledBack {
+                r.transition(id, Applied, &a, 3).unwrap();
+            }
+            let before = r.journal().to_vec();
+            assert_eq!(
+                r.transition(id, target, &a, 4),
+                Err(Error::RevisionOverflow)
+            );
+            assert_eq!(r.journal(), before);
+            let end = if target == Applied {
+                Rejected
+            } else {
+                Confirmed
+            };
+            r.transition(id, end, &a, 5).unwrap();
         }
     }
     #[test]
