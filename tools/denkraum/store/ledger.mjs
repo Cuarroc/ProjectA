@@ -1,11 +1,15 @@
 // Ideas and question import (DR-04c-2): the last P1 operations, completing the store surface.
 // Split from the P1 DeskStore (putIdea/putQuestion); neither needs the root agent id.
 import { randomUUID } from 'node:crypto';
+import { appendIdeaFlow, newIdeaFlow } from './idea-flow.mjs';
 import { ProgressStore } from './progress.mjs';
 import { ensure, id, ideaDefaults, ideaPriorities, now, object, priorityRefCurrent, requireCurrentSource, sameRef, text,
   validateQuestion, validIdeaCategory } from './model.mjs';
 
 export class LedgerStore extends ProgressStore {
+  putIdeaFlow(input, trustedContext) {
+    return this.change(state => appendIdeaFlow(state, input, trustedContext, this.rootAgentId));
+  }
   async putIdea(input) {
     object(input, 'Idee');
     const requestId = id(input.requestId); const ideaId = input.id === undefined ? null : id(input.id);
@@ -20,7 +24,8 @@ export class LedgerStore extends ProgressStore {
       ensure(ideaPriorities.includes(input.userPriority), 'Ungültige Ideenpriorität.');
       content.userPriority = input.userPriority;
     }
-    const payload = JSON.stringify({ id: ideaId, expectedRevision: input.expectedRevision, ...content });
+    const flow = input.mode === undefined ? undefined : newIdeaFlow(input.mode);
+    const payload = JSON.stringify({ id: ideaId, expectedRevision: input.expectedRevision, ...content, ...(flow ? { mode: flow.mode } : {}) });
     return this.change(state => {
       ensure(state.schemaVersion === 2, 'Explizite V2-Migration erforderlich.', 409);
       // ponytail: request replay scans the local history; index request IDs when the ledger grows large.
@@ -34,6 +39,7 @@ export class LedgerStore extends ProgressStore {
       else { idea = { id: randomUUID(), revisions: [] }; state.ideas.push(idea); }
       const metadata = { ...ideaDefaults(idea.revisions.at(-1) ?? {}), ...content };
       const revision = { revision: idea.revisions.length + 1, eventId: randomUUID(), requestId, payload, ...metadata, createdAt: now() };
+      if (flow) revision.flow = flow;
       revision.webhookDelivery = { status: 'pending', attempts: 0, lastAttemptAt: null, queuedAt: null, lastError: null };
       idea.revisions.push(revision);
       state.progress.push({ eventId: revision.eventId, currentStatus: 'incoming', progressRevision: 1,
