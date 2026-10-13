@@ -551,6 +551,36 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
     Ok(packages)
 }
 
+/// Name resolution only, never readiness: nonempty unresolved fragments remain blockers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct V2Dependencies {
+    pub package_id: String,
+    pub source_path: String,
+    pub source_line: usize,
+    pub raw_dependencies: String,
+    pub dependency_ids: Vec<String>,
+    pub unresolved_fragments: Vec<String>,
+}
+
+// Consumer: later V2-H2 import slices; the caller also supplies foundation IDs.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn resolve_v2_dependencies(
+    packages: &[V2Package],
+    _known_ids: &BTreeSet<String>,
+) -> Vec<V2Dependencies> {
+    packages
+        .iter()
+        .map(|p| V2Dependencies {
+            package_id: p.package_id.clone(),
+            source_path: p.source_path.clone(),
+            source_line: p.source_line,
+            raw_dependencies: p.raw_dependencies.clone(),
+            dependency_ids: Vec::new(),
+            unresolved_fragments: Vec::new(),
+        })
+        .collect()
+}
+
 fn milestone_heading(line: &str) -> Option<(&str, &str)> {
     let rest = line.strip_prefix("###")?;
     if !rest.starts_with(char::is_whitespace) {
@@ -596,6 +626,120 @@ mod tests {
             &p.provider,
             &p.raw_acceptance,
         ]
+    }
+
+    fn dependency_fixture(rows: &[(&str, &str)]) -> Vec<V2Package> {
+        let mut source = format!("{V2_HEADER}{V2_DELIMITER}");
+        for (id, dependencies) in rows {
+            source.push_str(&format!(
+                "| {id} | **Title** | fR | – | B | M | {dependencies} | sol | R |\n"
+            ));
+        }
+        parse_v2_packages("dependencies.md", &source).unwrap()
+    }
+
+    #[test]
+    fn v2_dependency_resolution_expands_only_known_unambiguous_ids() {
+        let packages = dependency_fixture(&[
+            ("V2-X", "F9, V2-S01a, MN-A, V2-F9, S01a, MN-A, V2-NOPE"),
+            ("V2-Y", "F9, S01a, MN-A"),
+        ]);
+        let known = ["V2-F9", "V2-S01a", "V2-MN-A"].map(String::from).into();
+        let resolved = resolve_v2_dependencies(&packages, &known);
+        assert_eq!(resolved[0].dependency_ids, ["V2-F9", "V2-S01a", "V2-MN-A"]);
+        assert_eq!(resolved[0].unresolved_fragments, [" V2-NOPE"]);
+        assert_eq!(resolved[1].dependency_ids, resolved[0].dependency_ids);
+        assert!(resolved[1].unresolved_fragments.is_empty());
+        assert_eq!(resolved, resolve_v2_dependencies(&packages, &known));
+
+        let ambiguous = ["F9", "V2-F9", "V2-S01a-extra", "V2-MN-A-extra"]
+            .map(String::from)
+            .into();
+        let resolved = resolve_v2_dependencies(&packages[1..], &ambiguous);
+        assert!(resolved[0].dependency_ids.is_empty());
+        assert_eq!(resolved[0].unresolved_fragments, ["F9", " S01a", " MN-A"]);
+        let exact = dependency_fixture(&[("V2-X", "V2-F9")]);
+        assert_eq!(
+            resolve_v2_dependencies(&exact, &ambiguous)[0].dependency_ids,
+            ["V2-F9"]
+        );
+    }
+
+    #[test]
+    fn v2_dependency_resolution_preserves_gates_ranges_and_conditions() {
+        let packages = dependency_fixture(&[
+            ("V2-ST-B1", "V2-B9, V2-B10"),
+            ("V2-CORE-3", "V2-CORE-1, V2-CORE-2"),
+            ("V2-X", "G0, V2-CORE-1 bis 3, V2-B9 und V2-B10, V2-B9 (nur wenn bereit, sonst offen), V2-NOPE"),
+            ("V2-Y", "V2-B9 (Kern; (bedingt), offen), V2-B10"),
+            ("V2-Z", "V2-B9 (offen, V2-B10"),
+            ("V2-W", "V2-B9), V2-B10"),
+        ]);
+        let known = ["V2-B9", "V2-B10", "V2-CORE-1", "V2-CORE-2", "G0", "V2-G0"]
+            .map(String::from)
+            .into();
+        let resolved = resolve_v2_dependencies(&packages, &known);
+        assert_eq!(resolved[0].dependency_ids, ["V2-B9", "V2-B10"]);
+        assert_eq!(resolved[1].dependency_ids, ["V2-CORE-1", "V2-CORE-2"]);
+        assert!(resolved[0].unresolved_fragments.is_empty());
+        assert!(resolved[1].unresolved_fragments.is_empty());
+        assert!(resolved[2].dependency_ids.is_empty());
+        assert_eq!(
+            resolved[2].unresolved_fragments,
+            [
+                "G0",
+                " V2-CORE-1 bis 3",
+                " V2-B9 und V2-B10",
+                " V2-B9 (nur wenn bereit, sonst offen)",
+                " V2-NOPE",
+            ]
+        );
+        assert_eq!(resolved[3].dependency_ids, ["V2-B10"]);
+        assert_eq!(
+            resolved[3].unresolved_fragments,
+            ["V2-B9 (Kern; (bedingt), offen)"]
+        );
+        for i in [4, 5] {
+            assert!(resolved[i].dependency_ids.is_empty());
+            assert_eq!(
+                resolved[i].unresolved_fragments,
+                [packages[i].raw_dependencies.clone()]
+            );
+        }
+    }
+
+    #[test]
+    fn v2_dependency_resolution_keeps_source_and_rejects_self_references() {
+        let packages = dependency_fixture(&[
+            ("V2-X", "V2-X, X, F9, V2-NOPE, V2-NOPE"),
+            ("V2-Y", ""),
+            ("V2-Z", "–"),
+            ("V2-W", "—"),
+            ("V2-U", "V2-NOPE"),
+            ("V2-V", ","),
+        ]);
+        let before = packages.clone();
+        let known = ["V2-X", "V2-F9"].map(String::from).into();
+        let resolved = resolve_v2_dependencies(&packages, &known);
+        assert_eq!(resolved.len(), 6);
+        assert_eq!(resolved[0].dependency_ids, ["V2-F9"]);
+        assert_eq!(resolved[0].unresolved_fragments, ["V2-X", " X", " V2-NOPE"]);
+        for row in &resolved[1..4] {
+            assert!(row.dependency_ids.is_empty());
+            assert!(row.unresolved_fragments.is_empty());
+        }
+        assert!(resolved[4].dependency_ids.is_empty());
+        assert_eq!(resolved[4].unresolved_fragments, ["V2-NOPE"]);
+        assert!(resolved[5].dependency_ids.is_empty());
+        assert!(!resolved[5].unresolved_fragments.is_empty());
+        for (i, (row, original)) in resolved.iter().zip(&packages).enumerate() {
+            assert_eq!(row.package_id, original.package_id);
+            assert_eq!(row.source_path, "dependencies.md");
+            assert_eq!(row.source_line, i + 3);
+            assert_eq!(row.raw_dependencies, original.raw_dependencies);
+        }
+        assert_eq!(packages, before);
+        assert!(resolve_v2_dependencies(&[], &known).is_empty());
     }
 
     #[test]
