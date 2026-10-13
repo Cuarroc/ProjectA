@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../../../design/glass.css";
 import "../../../design/controls/controls.css";
 import { Chip } from "../../../design/controls/Chip";
@@ -19,10 +19,11 @@ type Read = { kind: "loading" | "unimported" | "failed" } | { kind: "ready"; pla
 /** Plan graph: one column per Ebene and the critical path, read-only. Never imports; not mounted yet. */
 export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
   const [read, setRead] = useState<Read>({ kind: "loading" });
-  // One token per project/plan change: a reply only counts while its token is still the newest.
+  // One token per project/plan change or manual retry: a reply only counts
+  // while its token is still the newest.
   const generation = useRef(0);
 
-  useEffect(() => {
+  const readPlan = useCallback(() => {
     const mine = ++generation.current;
     setRead({ kind: "loading" });
     getDevelopmentPlan(projectId, planId).then(
@@ -31,6 +32,10 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
         && setRead({ kind: String(e instanceof Error ? e.message : e).includes(T.unimportedMarker) ? "unimported" : "failed" }),
     );
   }, [projectId, planId]);
+
+  useEffect(() => {
+    readPlan();
+  }, [readPlan]);
 
   const layout = useMemo(() => (read.kind === "ready" ? layoutPlan(read.plan.packages) : null), [read]);
   const onPath = new Set(layout?.critical);
@@ -59,8 +64,8 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
   return (
     <div className="pg-root">
       {read.kind === "loading" && <p className="pg-note">{T.loading}</p>}
-      {read.kind === "unimported" && <HonestState kind="empty" title={T.unimported} hint={T.unimportedHint} />}
-      {read.kind === "failed" && <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} />}
+      {read.kind === "unimported" && <HonestState kind="empty" title={T.unimported} hint={T.unimportedHint} action={{ label: T.retry, onClick: readPlan }} />}
+      {read.kind === "failed" && <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} action={{ label: T.retry, onClick: readPlan }} />}
       {read.kind === "ready" && layout && (
         <>
           <p className="pg-note">{T.source(read.plan.sourcePath, read.plan.sourceRevision.slice(0, 7), read.plan.projectionRevision)}</p>
