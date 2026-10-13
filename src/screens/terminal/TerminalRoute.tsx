@@ -69,11 +69,11 @@ export default function TerminalRoute() {
         {sessions.map((session) => (
           <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId}
             active={!restore && session.sessionId === active?.sessionId}>
-            {!opening && !restore && session.sessionId === active?.sessionId ? <TerminalView sessionId={session.sessionId} onError={setError}
+            {!restore && session.sessionId === active?.sessionId ? <TerminalView sessionId={session.sessionId} onError={setError}
               font={fonts.terminalFont} fontSize={fonts.terminalFontSize} /> : null}
           </TabPanel>
         ))}
-      </> : !restore && !opening && <HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.emptyHint"]} />}
+      </> : !restore && !opening && !error && <HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.emptyHint"]} />}
       {restore ? <TabPanel idBase="terminal" id={`restore:${restore.id}`} active><SessionRestorePanel key={restore.id} worker={restore} busy={restarting} onRespawn={() => {
         const token = request.current;
         setRestarting(true); setError(null);
