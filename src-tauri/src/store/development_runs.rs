@@ -650,6 +650,7 @@ impl Store {
     ) -> Result<DevelopmentEvidence, String> {
         required(&result.lane, "lane")?;
         required(&result.gate, "gate")?;
+        require_full_commit_id(&result.sha)?;
         let input = EvidenceInput {
             idempotency_key: key.into(),
             source: "test-gate".into(),
@@ -665,6 +666,8 @@ impl Store {
             .await
     }
 
+    /// Returns only trusted results; any malformed trusted row fails the whole listing.
+    /// Repeated recordings of a gate are returned in observed_at order; callers take the latest.
     pub(crate) async fn list_development_gate_results(
         &self,
         run_id: &str,
@@ -679,7 +682,10 @@ impl Store {
         }
         let mut results = Vec::new();
         for evidence in self.list_development_evidence(run_id).await? {
-            if evidence.invalidated_at.is_some() || evidence.payload["kind"] != "gate-result" {
+            if !evidence.trusted_test_source
+                || evidence.invalidated_at.is_some()
+                || evidence.payload["kind"] != "gate-result"
+            {
                 continue;
             }
             let payload: Payload = serde_json::from_value(evidence.payload)
@@ -695,14 +701,12 @@ impl Store {
             required(&payload.lane, "lane")?;
             required(&payload.gate, "gate")?;
             require_full_commit_id(&evidence.candidate_commit)?;
-            if evidence.trusted_test_source {
-                results.push(GateResult {
-                    lane: payload.lane,
-                    gate: payload.gate,
-                    exit_code: payload.exit_code,
-                    sha: evidence.candidate_commit,
-                });
-            }
+            results.push(GateResult {
+                lane: payload.lane,
+                gate: payload.gate,
+                exit_code: payload.exit_code,
+                sha: evidence.candidate_commit,
+            });
         }
         Ok(results)
     }
@@ -1555,7 +1559,7 @@ mod tests {
             3
         );
 
-        // Declaring a gate result makes malformed payloads an error, even from an agent.
+        // Malformed trusted gate results fail the whole listing closed.
         for (field, value) in [
             ("schemaVersion", serde_json::json!(2)),
             ("lane", serde_json::json!(" ")),
@@ -1573,7 +1577,7 @@ mod tests {
             malformed.idempotency_key = format!("{field}-{value}");
             malformed.payload[field] = value;
             store
-                .record_development_evidence(&other, field, 1, malformed)
+                .record_trusted_development_test_evidence(&other, field, 1, malformed)
                 .await
                 .unwrap();
             assert!(store.list_development_gate_results(&other).await.is_err());
@@ -1635,7 +1639,7 @@ mod tests {
             reason: "not run".into(),
         };
         store
-            .record_development_evidence(&run, "worker-a", 7, unavailable)
+            .record_trusted_development_test_evidence(&run, "worker-a", 7, unavailable)
             .await
             .unwrap();
         assert!(store.list_development_gate_results(&run).await.is_err());
