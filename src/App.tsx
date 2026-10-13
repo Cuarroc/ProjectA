@@ -578,7 +578,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
         }
       })();
     },
-    [busyOrchestratorProjectId, openWorkerTab],
+    [busyOrchestratorProjectId, openWorkerTab, handleSelectSession],
   );
 
   const openWorkerDialog = useCallback(() => {

@@ -10,6 +10,7 @@ import {
 import { killPty, spawnPty } from "../lib/ipc";
 import type { AgentProfile, TerminalSession } from "../types";
 import { initialSessionState, sessionReducer } from "./sessionReducer";
+import { useSessionExitListeners } from "./useSessionExitListeners";
 
 /**
  * Placeholder geometry used at spawn time. `TerminalView` measures the real
@@ -59,13 +60,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(sessionReducer, initialSessionState);
   const sessionsRef = useRef(state.sessions);
   sessionsRef.current = state.sessions;
+  const exitListeners = useRef(new Set<ExitListener>());
 
-  const subscribeExit = useCallback(async (_sessionId: string) => {}, []);
-  const unsubscribeExit = useCallback((_sessionId: string) => {}, []);
-  const markExited = useCallback((sessionId: string, code: number | null) => {
+  // The tab is the provider's own state; everything else (workers, board)
+  // belongs to subscribers (terminal.md §3 "Fremder Zustand").
+  const applyExit = useCallback((sessionId: string, code: number | null) => {
     dispatch({ type: "markExited", sessionId, code });
   }, []);
-  const onExit = useCallback((_listener: ExitListener) => () => {}, []);
+  const notifyExit = useCallback((sessionId: string, code: number | null) => {
+    for (const listener of exitListeners.current) listener(sessionId, code);
+  }, []);
+  const { subscribeExit, unsubscribeExit, markExited } = useSessionExitListeners(
+    applyExit,
+    notifyExit,
+  );
+  const onExit = useCallback((listener: ExitListener) => {
+    exitListeners.current.add(listener);
+    return () => {
+      exitListeners.current.delete(listener);
+    };
+  }, []);
 
   const openWorker = useCallback(
     (session: TerminalSession) => {
