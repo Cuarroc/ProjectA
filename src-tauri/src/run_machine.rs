@@ -228,6 +228,75 @@ mod tests {
             .unwrap();
     }
     #[test]
+    fn invalid_reviews_leave_evidence_and_state_unchanged() {
+        let mut invalid = vec![report("old", RiskTier::A), report("a", RiskTier::B)];
+        let mut negative = report("a", RiskTier::A);
+        negative.accepted = false;
+        invalid.push(negative);
+        let mut blank = report("a", RiskTier::A);
+        blank.report_ref = " \n".into();
+        invalid.push(blank);
+        for review in invalid {
+            let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
+            run.transition(Action::Work).unwrap();
+            run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
+            for state in [Evidenced, Reviewing] {
+                if state == Reviewing {
+                    run.transition(Action::Review(report("a", RiskTier::A)))
+                        .unwrap();
+                }
+                let before = run.clone();
+                assert_eq!(
+                    run.transition(Action::Review(review.clone())),
+                    Err(Refusal::InvalidInput)
+                );
+                assert_eq!(run, before);
+            }
+        }
+    }
+    #[test]
+    fn reviewing_allows_current_reports_and_rework() {
+        let mut run = run(OrderKind::CustomerOrder, RiskTier::A);
+        reviewing(&mut run);
+        run.transition(Action::Review(report("a", RiskTier::A)))
+            .unwrap();
+        assert_eq!(run.evidence_status(), ProofStatus::Belegt);
+        let mut approved = run.clone();
+        approved.transition(Action::Approve(record("a"))).unwrap();
+        assert_eq!(approved.state(), Approved);
+        run.transition(Action::Work).unwrap();
+        assert_eq!(run.state(), Working);
+        assert_eq!(
+            run.transition(Action::Approve(record("a"))),
+            Err(Refusal::InvalidTransition)
+        );
+        run.transition(Action::Prove(vec![gate("a", 0)])).unwrap();
+        run.transition(Action::Review(report("a", RiskTier::A)))
+            .unwrap();
+        run.transition(Action::Approve(record("a"))).unwrap();
+        assert_eq!(run.state(), Approved);
+    }
+    #[test]
+    fn reject_is_limited_to_productive_states() {
+        for state in [Approved, Waiting, Stale] {
+            let mut run = run(OrderKind::ProjectPackage, RiskTier::A);
+            reviewing(&mut run);
+            let action = match state {
+                Approved => Action::Approve(record("a")),
+                Waiting => Action::Wait,
+                _ => Action::Candidate("b".into()),
+            };
+            run.transition(action).unwrap();
+            assert_eq!(run.state(), state);
+            let before = run.clone();
+            assert_eq!(
+                run.transition(Action::Reject),
+                Err(Refusal::InvalidTransition)
+            );
+            assert_eq!(run, before);
+        }
+    }
+    #[test]
     fn package_and_customer_orders_share_states() {
         for risk in [RiskTier::A, RiskTier::B, RiskTier::C] {
             for kind in [OrderKind::ProjectPackage, OrderKind::CustomerOrder] {
