@@ -73,3 +73,9 @@ it("contains hostile values and transport failures without recursive reporting",
   window.dispatchEvent(new ErrorEvent("error", { message: "removed" }));
   expect(invoke).toHaveBeenCalledTimes(1);
 });
+it("does not load the dev-only buildInfo module", async () => {
+  vi.doMock("../dev/buildInfo", () => { throw new Error("dev-only module in the production error path"); });
+  vi.resetModules();
+  const reporter = await import("./reportFrontendError");
+  expect(() => reporter.reportFrontendError("boom")).not.toThrow();
+});

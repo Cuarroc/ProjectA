@@ -2697,6 +2697,36 @@ pub(crate) mod tests {
         assert_eq!(lines[52], "ERROR suppressed 2 frontend errors");
     }
     #[test]
+    fn frontend_feedback_is_not_rate_limited() {
+        use std::time::{Duration, Instant};
+        let mut limiter = super::FrontendErrorLog::default();
+        let (mut lines, start) = (Vec::new(), Instant::now());
+        let mut send = |ms, message: &str, feedback: Option<&str>| {
+            limiter.write(
+                start + Duration::from_millis(ms),
+                message,
+                "",
+                "/",
+                feedback,
+                |line| lines.push(line),
+            );
+            lines.len()
+        };
+        // Same message as a recent error: the error is deduped, feedback is not.
+        assert_eq!(send(0, "repeat", None), 1);
+        assert_eq!(send(1, "repeat", None), 1);
+        assert_eq!(send(2, "repeat", Some("ctx")), 2);
+        // A burst filling the 50-entry window blocks errors, never feedback.
+        for i in 0..49 {
+            send(3, &format!("error {i}"), None);
+        }
+        assert_eq!(send(4, "overflow", None), 51);
+        assert_eq!(send(5, "user feedback", Some("ctx")), 52);
+        assert!(lines[1].starts_with("FEEDBACK message=\"repeat\""));
+        assert!(lines[51].starts_with("FEEDBACK message=\"user feedback\""));
+    }
+
+    #[test]
     fn frontend_error_fields_escape_delimiters() {
         assert_eq!(
             super::frontend_error_field("a\\\" route=forged", 256),
