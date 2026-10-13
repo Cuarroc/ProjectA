@@ -38,6 +38,16 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<Action | null>(null);
   const [failed, setFailed] = useState<Action | null>(null);
+  // A confirmation or error belongs to the card state it was opened in: a refresh
+  // that changes the status or puts another worker in this slot must not keep
+  // offering an action the new state no longer allows.
+  const cardState = `${worker.id}:${worker.status}`;
+  const [seenCardState, setSeenCardState] = useState(cardState);
+  if (seenCardState !== cardState) {
+    setSeenCardState(cardState);
+    setConfirming(false);
+    setFailed(null);
+  }
   const run = async (action: Action) => {
     setConfirming(false);
     setFailed(null);
