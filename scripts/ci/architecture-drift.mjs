@@ -182,19 +182,31 @@ const lines = source => source === "" ? 0 : source.split("\n").length - Number(s
 
 function parseBudget(source) {
   const value = JSON.parse(source);
-  if (!value || value.schemaVersion !== 1 || Object.keys(value).length !== 2 ||
+  // Extra keys are documentation (for example comment). Required fields stay strict.
+  if (!value || value.schemaVersion !== 1 ||
       !Array.isArray(value.seams) || value.seams.length !== seamPaths.length) {
     throw new Error("invalid schema: expected schemaVersion 1 and four seams");
   }
   const ceilings = new Map();
   for (const entry of value.seams) {
-    if (!entry || Object.keys(entry).length !== 2 || !seamPaths.includes(entry.path) ||
+    if (!entry || !seamPaths.includes(entry.path) ||
         ceilings.has(entry.path) || !Number.isSafeInteger(entry.maxLines) || entry.maxLines < 0) {
       throw new Error("invalid, duplicate or missing seam path/ceiling");
     }
     ceilings.set(entry.path, entry.maxLines);
   }
   return ceilings;
+}
+
+function budgetBaselineAvailable() {
+  try {
+    execFileSync("git", ["rev-parse", "--verify", "--end-of-options", "origin/main^{commit}"], {
+      cwd: root, stdio: ["ignore", "pipe", "pipe"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function checkSeamBudget(args = []) {
@@ -213,7 +225,8 @@ export function checkSeamBudget(args = []) {
     const base = args.length
       ? git("rev-parse", "--verify", "--end-of-options", `${args[1]}^{commit}`).trim()
       : git("merge-base", "origin/main", ...parents).trim();
-    git("merge-base", "--is-ancestor", base, args.length ? "HEAD" : "origin/main");
+    // merge-base is already an ancestor of origin/main. Only an explicit --base can fail this.
+    if (args.length) git("merge-base", "--is-ancestor", base, "HEAD");
     const current = parseBudget(readFileSync(join(root, budgetPath), "utf8"));
     const tracked = git("ls-tree", "--name-only", base, "--", budgetPath).trim();
     const baseline = tracked ? parseBudget(git("show", `${base}:${budgetPath}`)) :
@@ -238,16 +251,31 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else if (command === "snapshot" && option === "--stdout") {
     console.log(scan().join("\n"));
   } else if (command === "check") {
-    // --patterns-only skips the seam budget so the pattern scan can run in
-    // shallow checkouts or source exports that lack origin/main or .git.
-    if (option !== "--patterns-only") {
+    // --patterns-only is only the degradation path for trees without origin/main.
+    // A checkout that can run the ratchet must not be able to skip it.
+    let scanPatterns = true;
+    if (option === "--patterns-only") {
+      if (rest.length) {
+        console.error("usage: architecture-drift.mjs check [--base REF | --patterns-only] | snapshot --stdout | explain RULE");
+        process.exitCode = 2;
+        scanPatterns = false;
+      } else if (budgetBaselineAvailable()) {
+        console.error("architecture drift: --patterns-only cannot skip the seam budget when origin/main is available");
+        process.exitCode = 1;
+        checkSeamBudget([]);
+      } else {
+        console.error("seam budget: skipped (--patterns-only; no origin/main baseline)");
+      }
+    } else {
       checkSeamBudget(option === undefined ? [] : [option, ...rest]);
     }
-    try {
-      checkPatterns();
-    } catch (error) {
-      console.error(`architecture drift: ${error.message}`);
-      process.exitCode = 1;
+    if (scanPatterns) {
+      try {
+        checkPatterns();
+      } catch (error) {
+        console.error(`architecture drift: ${error.message}`);
+        process.exitCode = 1;
+      }
     }
   } else {
     console.error("usage: architecture-drift.mjs check [--base REF | --patterns-only] | snapshot --stdout | explain RULE");

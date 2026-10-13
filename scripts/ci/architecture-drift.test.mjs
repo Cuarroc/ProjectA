@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, renameSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const scanner = join(dirname(fileURLToPath(import.meta.url)), "architecture-drift.mjs");
@@ -180,6 +180,57 @@ test("check reports a clean diagnostic when the allowlist is missing", () => {
   assert.doesNotMatch(result.stderr, /at checkPatterns/);
 });
 
+test("patterns-only cannot skip a runnable seam budget or the gate command", () => {
+  const root = budgetFixture();
+  expectBudget(root, 1, /cannot skip the seam budget/, ["--patterns-only"]);
+  expectBudget(root, 2, /usage:/, ["--patterns-only", "extra"]);
+  writeFileSync(join(root, seams[0]), "// seam\n\n// growth\n");
+  expectBudget(root, 1, /exceeds/, ["--patterns-only"]);
+  const gates = readFileSync(join(dirname(scanner), "gates.sh"), "utf8");
+  const line = gates.split("\n").find((entry) => entry.includes('"architecture-drift|'));
+  assert.match(line, /architecture-drift\.mjs check"$/);
+  assert.doesNotMatch(line, /--patterns-only/);
+});
+
+test("pattern checks go through the CLI", () => {
+  const root = fixture({ "src-tauri/src/workers.rs": "fn load() { sqlx::query(\"SELECT 1\"); }\n" });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /seam budget: skipped \(--patterns-only; no origin\/main baseline\)/);
+  assert.match(result.stderr, /SQL_OUTSIDE_STORE/);
+});
+
+test("default seam budget check does not query ancestor of origin/main", () => {
+  if (process.platform === "win32") return;
+  const root = budgetFixture();
+  const bin = join(root, "git-bin");
+  const realGit = spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
+  mkdirSync(bin);
+  writeFileSync(join(bin, "git"), `#!/bin/sh
+if [ "$1" = merge-base ] && [ "$2" = --is-ancestor ] && [ "$4" = origin/main ]; then
+  echo "vacuous origin/main ancestor check" >&2
+  exit 1
+fi
+exec ${realGit} "$@"
+`);
+  chmodSync(join(bin, "git"), 0o755);
+  const env = { ...fixtureEnv, PATH: `${bin}:${fixtureEnv.PATH}` };
+  expectBudget(root, 0, undefined, [], env);
+  expectBudget(root, 0, undefined, ["--base", "origin/main"], env);
+});
+
+test("seam budget accepts comment fields and still rejects raised ceilings", () => {
+  const root = budgetFixture();
+  const documented = budget();
+  documented.comment = "ratchet headroom";
+  documented.seams[0].note = "api";
+  writeFileSync(join(root, budgetPath), JSON.stringify(documented));
+  expectBudget(root, 0);
+  documented.seams[0].maxLines = 3;
+  writeFileSync(join(root, budgetPath), JSON.stringify(documented));
+  expectBudget(root, 1, /seam budget.*raised/);
+});
+
 function fixture(files) {
   const root = mkdtempSync(join(tmpdir(), "projecta-architecture-drift-"));
   for (const [path, contents] of Object.entries(files)) {
@@ -194,7 +245,7 @@ function fixture(files) {
 
 function run(root, command) {
   const args = command === "check"
-    ? ["--input-type=module", "-e", `import { checkPatterns } from ${JSON.stringify(pathToFileURL(scanner).href)}; checkPatterns();`]
+    ? [scanner, "check", "--patterns-only"]
     : [scanner, command, ...(command === "snapshot" ? ["--stdout"] : [])];
   return spawnSync(process.execPath, args, {
     cwd: root,
