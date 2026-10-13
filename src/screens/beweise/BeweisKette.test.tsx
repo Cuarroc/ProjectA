@@ -21,6 +21,97 @@ describe("BeweisKette", () => {
     mocks.invoke.mockReset();
   });
 
+  it("reveals the exact delivered code tuple only in an opened disclosure", async () => {
+    for (const end of ["1", "2"]) {
+      const tuple = {
+        workerHeadSha: `abcdef0${end.repeat(33)}`,
+        baseTipSha: `9876543${end.repeat(33)}`,
+        mergeTreeOid: `1234567${end.repeat(33)}`,
+      };
+      serve(readiness({ readiness: "ready", code: tuple }));
+      const { unmount } = render(<BeweisKette workerId="w1" />);
+      const stand = within(await screen.findByRole("region", { name: "Code-Stand" }));
+      const summary = stand.queryByText("Vollständiger Code-Stand");
+      expect(summary).not.toBeNull();
+      const disclosure = summary!.closest("details")!;
+      expect(disclosure).not.toHaveAttribute("open");
+      expect(stand.getByText("abcdef0")).toBeVisible();
+      expect(stand.getByText("9876543")).toBeVisible();
+      for (const value of Object.values(tuple)) expect(stand.queryByText(value)).toBeNull();
+      fireEvent.click(summary!);
+      await act(async () => {});
+      expect(disclosure).toHaveAttribute("open");
+      for (const [field, value] of Object.entries(tuple)) {
+        expect(within(disclosure).getByText(field).nextElementSibling?.textContent).toBe(value);
+        expect(within(disclosure).getByText(value)).toBeVisible();
+      }
+      fireEvent.click(summary!);
+      await act(async () => {});
+      expect(disclosure).not.toHaveAttribute("open");
+      for (const value of Object.values(tuple)) expect(stand.queryByText(value)).toBeNull();
+      expect(mocks.invoke.mock.calls.every(([cmd]) => cmd === "get_worker_readiness")).toBe(true);
+      unmount();
+    }
+    serve(readiness({ code: null }));
+    render(<BeweisKette workerId="w1" />);
+    expect(await screen.findByText("Code-Stand nicht gemessen")).toBeVisible();
+    expect(screen.queryByText("Vollständiger Code-Stand")).toBeNull();
+  });
+
+  it("removes the previous green verdict while a manual recheck is pending", async () => {
+    for (const fail of [false, true]) {
+      serve(readiness({ readiness: "ready" }));
+      const { container, unmount } = render(<BeweisKette workerId="w1" />);
+      await screen.findByText("Bereitschaftscheck bestanden");
+      let resolve!: (value: unknown) => void;
+      let reject!: (error: unknown) => void;
+      mocks.invoke.mockImplementation(() => new Promise((ok, no) => { resolve = ok; reject = no; }));
+      fireEvent.click(screen.getByRole("button", { name: "Neu prüfen" }));
+      expect(screen.queryByText("Bereitschaftscheck bestanden")).toBeNull();
+      expect(screen.getByText("Wird gelesen …")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Prüfung läuft …" })).toBeVisible();
+      expect(screen.queryByText("erfüllt")).toBeNull();
+      expect(marks(container)).toBe(0);
+      expect(screen.queryByRole("region", { name: "Code-Stand" })).toBeNull();
+      await act(async () => {
+        if (fail) reject("synthetic read failure");
+        else resolve(readiness({ blockers: [blocker("dirty", "Änderungen offen")] }));
+      });
+      expect(screen.getByText(fail ? "Beweise nicht lesbar" : "Bereitschaftscheck blockiert")).toBeVisible();
+      expect(screen.queryByText("Bereitschaftscheck bestanden")).toBeNull();
+      if (fail) expect(marks(container)).toBe(0);
+      else expect(within(step("Arbeit")).queryByText("erfüllt")).toBeNull();
+      expect(screen.getByRole("button", { name: "Neu prüfen" })).toBeVisible();
+      unmount();
+    }
+  });
+
+  it("does not restore old proof when an earlier recheck finishes last", async () => {
+    for (const staleFailure of [false, true]) {
+      serve(readiness({ readiness: "ready" }));
+      const { container, unmount } = render(<BeweisKette workerId="w1" />);
+      await screen.findByText("Bereitschaftscheck bestanden");
+      const pending: Array<{ ok: (v: unknown) => void; fail: (e: unknown) => void }> = [];
+      mocks.invoke.mockImplementation(() => new Promise((ok, fail) => { pending.push({ ok, fail }); }));
+      const button = screen.getByRole("button", { name: "Neu prüfen" });
+      fireEvent.click(button);
+      fireEvent.click(button);
+      expect(pending).toHaveLength(2);
+      expect(screen.queryByText("Bereitschaftscheck bestanden")).toBeNull();
+      expect(marks(container)).toBe(0);
+      await act(async () => pending[1].ok(readiness({ blockers: [blocker("dirty", "Aktuelle Blockade")] })));
+      await act(async () => {
+        if (staleFailure) pending[0].fail("old failure");
+        else pending[0].ok(readiness({ readiness: "ready" }));
+      });
+      expect(screen.getByText("Aktuelle Blockade")).toBeVisible();
+      expect(screen.queryByText("Bereitschaftscheck bestanden")).toBeNull();
+      expect(screen.queryByText("Beweise nicht lesbar")).toBeNull();
+      expect(within(step("Arbeit")).queryByText("erfüllt")).toBeNull();
+      unmount();
+    }
+  });
+
   it("summarizes the first blocker without claiming complete proof", async () => {
     for (const first of [blocker("tests_stale", "Tests sind veraltet", "Tests neu starten"), blocker("new_code", "Neuer Grund", "Grund prüfen"), blocker("new_code", " ", "")]) {
       serve(readiness({ blockers: [first, blocker("dirty", "Späterer Grund")] }));
