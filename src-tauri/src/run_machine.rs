@@ -137,13 +137,44 @@ impl Run {
     /// Events/timers cannot provide click authority; no cached report is accepted.
     pub fn propose_start(
         &self,
-        _click: Option<&str>,
-        _facts: &Facts,
-        _host: &HostFacts,
-        _queue: &QueueState,
-        _now: i64,
+        click: Option<&str>,
+        facts: &Facts,
+        host: &HostFacts,
+        queue: &QueueState,
+        now: i64,
     ) -> Result<StartProposal, AdmissionRefusal> {
-        Err(AdmissionRefusal::MissingClick)
+        use AdmissionRefusal::*;
+        let click = click
+            .filter(|value| !value.trim().is_empty())
+            .ok_or(MissingClick)?;
+        if self.order.start_authority.trim().is_empty() || click != self.order.start_authority {
+            return Err(MismatchedClick);
+        }
+        if !matches!(
+            self.state(),
+            Step::Ordered | Step::Waiting | Step::Stale | Step::Reviewing
+        ) {
+            return Err(NotStartable(self.state()));
+        }
+        if self.sha.trim().is_empty() || self.order.template.trim().is_empty() {
+            return Err(InvalidOrder);
+        }
+        let profile = preflight::evaluate(facts, now);
+        let mut blockers = profile.blockers.clone();
+        blockers.extend(preflight::evaluate_host(host));
+        if !blockers.is_empty() {
+            return Err(Preflight(blockers));
+        }
+        if let QueueState::Wartet { grund } = queue {
+            return Err(QueueWaiting {
+                grund: grund.clone(),
+            });
+        }
+        Ok(StartProposal {
+            profile,
+            free_ram_bytes: host.free_ram_bytes,
+            running_builds: host.running_builds,
+        })
     }
     pub fn transition(&mut self, action: Action) -> Result<(), Refusal> {
         use Action::*;
