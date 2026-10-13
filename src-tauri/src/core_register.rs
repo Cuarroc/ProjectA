@@ -110,6 +110,7 @@ impl<'a> Register<'a> {
         let mut matches = self.settings.iter().filter(|s| s.key == key);
         let setting = matches.next().ok_or(Error::Unregistered)?;
         if matches.next().is_some()
+            || setting.key.trim().is_empty()
             || setting.owner.is_none()
             || setting.area.trim().is_empty()
             || setting.effect_site.trim().is_empty()
@@ -181,7 +182,7 @@ impl<'a> Register<'a> {
         }
         if matches!(state, Applied | RolledBack) {
             self.revisions
-                .insert(key, revision.checked_add(1).ok_or(Error::StaleRevision)?);
+                .insert(key, revision.checked_add(1).ok_or(Error::RevisionOverflow)?);
         }
         entry.id = self.journal.len() + 1;
         entry.actor = actor.clone();
@@ -234,10 +235,8 @@ mod tests {
                     "area" => row.area = blank,
                     _ => row.effect_site = blank,
                 }
-                let change = Request {
-                    key: row.key.into(),
-                    ..request(0)
-                };
+                let mut change = request(0);
+                change.key = row.key.into();
                 let settings = [row];
                 let mut r = Register::new(&settings);
                 assert_eq!(r.submit(change, &a, 1), Err(Error::InvalidRegistry));
@@ -251,10 +250,8 @@ mod tests {
         let settings = [setting(a.authority)];
         for (target, revision) in [(Applied, u64::MAX), (RolledBack, u64::MAX - 1)] {
             let mut r = Register::new(&settings);
-            let change = Request {
-                expected_revision: revision,
-                ..request(0)
-            };
+            let mut change = request(0);
+            change.expected_revision = revision;
             // Seed an otherwise unreachable boundary; exercise public transitions.
             r.revisions
                 .insert((change.scope.clone(), change.key.clone()), revision);
@@ -349,5 +346,54 @@ mod tests {
         }
         assert_eq!(r.journal().len(), 1);
         assert_eq!(r.journal()[0].actor, helper);
+    }
+    #[test]
+    fn invalid_and_unknown_transitions_preserve_journal() {
+        let a = actor(Some(Owner::User));
+        let settings = [setting(a.authority)];
+        for (path, allowed) in [
+            (vec![], vec![Checked, Rejected]),
+            (vec![Checked], vec![Applied, Rejected]),
+            (vec![Checked, Applied], vec![Confirmed, RolledBack]),
+            (vec![Checked, Applied, Confirmed], vec![]),
+            (vec![Checked, Applied, RolledBack], vec![]),
+            (vec![Rejected], vec![]),
+        ] {
+            let mut r = Register::new(&settings);
+            assert_eq!(r.transition(0, Checked, &a, 1), Err(Error::UnknownRequest));
+            let id = r.submit(request(0), &a, 2).unwrap();
+            for state in path {
+                r.transition(id, state, &a, 3).unwrap();
+            }
+            let before = r.journal().to_vec();
+            for state in [Requested, Checked, Applied, Confirmed, RolledBack, Rejected] {
+                if !allowed.contains(&state) {
+                    assert_eq!(
+                        r.transition(id, state, &a, 4),
+                        Err(Error::InvalidTransition)
+                    );
+                }
+            }
+            assert_eq!(r.transition(1, Checked, &a, 5), Err(Error::UnknownRequest));
+            assert_eq!(r.journal(), before);
+        }
+    }
+    #[test]
+    fn foreign_owner_cannot_transition_user_setting() {
+        let a = actor(Some(Owner::User));
+        let settings = [setting(a.authority)];
+        let mut r = Register::new(&settings);
+        let id = r.submit(request(0), &a, 1).unwrap();
+        let before = r.journal().to_vec();
+        for authority in [Owner::Core, Owner::Rule] {
+            for state in [Checked, Applied, Confirmed, RolledBack, Rejected] {
+                assert_eq!(
+                    r.transition(id, state, &actor(Some(authority)), 2),
+                    Err(Error::Forbidden)
+                );
+            }
+        }
+        assert_eq!(r.journal(), before);
+        r.transition(id, Checked, &a, 3).unwrap();
     }
 }
