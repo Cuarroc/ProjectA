@@ -92,6 +92,19 @@ it("keeps all twenty recent signatures within the final escaped context budget",
     expect(context).not.toContain("\uFFFD");
   }
 });
+it("bounds feedback fields by escaped bytes before invoking native logging", async () => {
+  const { reportFrontendFeedback } = await import("./reportFrontendError");
+  for (const unit of ['"', "\\", "界😀"]) {
+    await reportFrontendFeedback(unit.repeat(2048), unit.repeat(1024));
+    const { message: what, stackFrame: expected } = vi.mocked(invoke).mock.lastCall?.[1] as { message: string; stackFrame: string };
+    for (const [value, cap] of [[what, 2048], [expected, 1024]] as const) {
+      const escaped = value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+      expect(new TextEncoder().encode(escaped).length).toBeLessThanOrEqual(cap);
+      expect(value).not.toContain("\uFFFD");
+      expect(value.length).toBeGreaterThan(0);
+    }
+  }
+});
 it("does not load the dev-only buildInfo module", async () => {
   vi.doMock("../dev/buildInfo", () => { throw new Error("dev-only module in the production error path"); });
   vi.resetModules();
