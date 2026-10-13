@@ -252,6 +252,34 @@ pub fn parse_plan(
     })
 }
 
+/// Historical source only: raw status is never evidence of a merged PR.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoricalMilestone {
+    pub milestone_id: String,
+    pub title: String,
+    pub source_line: usize,
+    pub packages: Vec<HistoricalMilestonePackage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoricalMilestonePackage {
+    pub package_id: String,
+    pub title: String,
+    pub size: String,
+    pub lane: String,
+    pub raw_status: String,
+    pub source_line: usize,
+}
+
+// Consumer: subsequent V2-H2 slices; no runtime import in V2-H2-1.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn parse_milestones(
+    _source_path: &str,
+    _source: &str,
+) -> Result<Vec<HistoricalMilestone>, PlanError> {
+    Ok(Vec::new())
+}
+
 fn valid_id(id: &str) -> bool {
     id.bytes().next().is_some_and(|b| b.is_ascii_alphanumeric())
         && id
@@ -262,6 +290,133 @@ fn valid_id(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const MILESTONE_HEADER: &str =
+        "| ID | Paket | Gr. | Lane | Stand |\n| --- | --- | --- | --- | --- |\n";
+
+    #[test]
+    fn milestone_projection_preserves_all_five_columns() {
+        let source = concat!(
+            "### M1 — First milestone\n",
+            "| ID | Paket | Gr. | Lane | Stand |\n| --- | --- | --- | --- | --- |\n",
+            "| W1-01 | **Original** `title` | M | st → api | ✓ #42, PR #43 offen |\n\n",
+            "### M2 - Second milestone\n",
+            "| Stand | Lane | Paket | ID | Gr. |\n| :--- | ---: | --- | --- | --- |\n",
+            "| in Arbeit | fR | Second package | W2-01 | S |\n",
+            "| | fe → mn | Third package | W2-02 | |\n"
+        );
+        let parsed = parse_milestones("history.md", source).unwrap();
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(
+            parsed
+                .iter()
+                .map(|m| (m.milestone_id.as_str(), m.title.as_str(), m.source_line))
+                .collect::<Vec<_>>(),
+            [("M1", "First milestone", 1), ("M2", "Second milestone", 6)]
+        );
+        let packages: Vec<_> = parsed
+            .iter()
+            .flat_map(|m| &m.packages)
+            .map(|p| {
+                (
+                    p.package_id.as_str(),
+                    p.title.as_str(),
+                    p.size.as_str(),
+                    p.lane.as_str(),
+                    p.raw_status.as_str(),
+                    p.source_line,
+                )
+            })
+            .collect();
+        assert_eq!(
+            packages,
+            [
+                (
+                    "W1-01",
+                    "**Original** `title`",
+                    "M",
+                    "st → api",
+                    "✓ #42, PR #43 offen",
+                    4
+                ),
+                ("W2-01", "Second package", "S", "fR", "in Arbeit", 9),
+                ("W2-02", "Third package", "", "fe → mn", "", 10),
+            ]
+        );
+    }
+
+    #[test]
+    fn milestone_projection_ignores_fences_and_other_sections() {
+        let table = format!("{MILESTONE_HEADER}| A | Kept | M | fR | PR #7 |\n");
+        for heading in [
+            "# End",
+            "## End",
+            "### Other",
+            "#### End",
+            "##### End",
+            "###### End",
+        ] {
+            let source = format!(
+                "{table}````md\n### M9 — Example\n{table}```\n~~~\n{table}````\n\
+                 ### M1 – Real\n~~~md\n{table}~~~\n\
+                 | Name | Value |\n| --- | --- |\n| Example | Text |\n\n\
+                 {table}\n{table}{heading}\n{table}### M3 — Empty\n"
+            );
+            let parsed = parse_milestones("history.md", &source).unwrap();
+            assert_eq!(parsed.len(), 2, "{heading}");
+            assert_eq!(parsed[0].milestone_id, "M1");
+            assert_eq!(parsed[0].title, "Real");
+            assert_eq!(parsed[0].packages.len(), 2);
+            assert_eq!(parsed[0].packages[0].package_id, "A");
+            assert_eq!(parsed[1].milestone_id, "M3");
+            assert!(parsed[1].packages.is_empty());
+        }
+        assert!(parse_milestones("history.md", &table).unwrap().is_empty());
+    }
+
+    #[test]
+    fn milestone_projection_reports_malformed_table_lines() {
+        for name in ["ID", "Paket", "Gr.", "Lane", "Stand"] {
+            for header in [
+                MILESTONE_HEADER.replacen(&format!("{name} |"), "", 1),
+                MILESTONE_HEADER.replacen(name, &format!("{name} | {name}"), 1),
+            ] {
+                let error = parse_milestones("history.md", &format!("### M1 — Test\n{header}"))
+                    .unwrap_err();
+                assert_eq!(
+                    (error.source_path.as_str(), error.source_line),
+                    ("history.md", 2)
+                );
+                assert!(error.reason.contains("columns"), "{error:?}");
+            }
+        }
+        for row in [
+            "| A | Title | M | fR |",
+            "| A | Title | M | fR | open | extra |",
+            "| A | a\\|b | M | fR | open |",
+            "A | Title | M | fR | open |",
+            "| A | Title | M | fR | open",
+        ] {
+            let error = parse_milestones(
+                "history.md",
+                &format!("### M1 — Test\n{MILESTONE_HEADER}{row}"),
+            )
+            .unwrap_err();
+            assert_eq!(error.source_line, 4, "{row}");
+            assert!(error.reason.contains("row"), "{error:?}");
+        }
+        for tail in [
+            "",
+            "\n### M2 — Next",
+            "\n```",
+            "\n| --- | --- | --- | --- | x |",
+        ] {
+            let source = format!("### M1 — Test\n| ID | Paket | Gr. | Lane | Stand |{tail}");
+            let error = parse_milestones("history.md", &source).unwrap_err();
+            assert_eq!(error.source_line, if tail.is_empty() { 2 } else { 3 });
+            assert!(error.reason.contains("delimiter"), "{error:?}");
+        }
+    }
+
     const HEADER: &str = "| ID | Paket / Agent / Scope | Nach | Konkretes Ergebnis und Abnahme | Eltern |\n| --- | --- | --- | --- | --- |\n";
     fn parse(rows: &str) -> Result<PlanProjection, PlanError> {
         parse_plan(
