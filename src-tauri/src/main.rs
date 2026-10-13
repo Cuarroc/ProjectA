@@ -104,6 +104,7 @@ mod retention;
 mod roles;
 mod routing;
 mod ruflo;
+mod run_machine;
 mod scout;
 mod sessionpersist;
 mod settings_cmds;
