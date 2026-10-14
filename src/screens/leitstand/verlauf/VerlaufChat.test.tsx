@@ -1,13 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { OrchestratorChat } from "../../../lib/orchestratorChat";
+import * as ipc from "../../../lib/ipc";
+import { useOrchestratorChat, type OrchestratorChat } from "../../../lib/orchestratorChat";
 import type { WorkerMessage } from "../../../types";
 import { VerlaufChat } from "./VerlaufChat";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("../../../lib/ipc", () => ({
+  describeError: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  listWorkerMessages: vi.fn(async () => []),
+  sendToOrchestrator: vi.fn(),
+}));
 
 const msg = (id: string, role: WorkerMessage["role"], content: string): WorkerMessage => ({
   id, workerId: "w-1", role, content, createdAt: 1_700_000_000,
@@ -22,6 +28,18 @@ function chatWith(patch: Partial<OrchestratorChat> = {}): OrchestratorChat {
 
 const box = () => screen.getByRole("textbox", { name: "Nachricht an den Orchestrator" });
 const type = (text: string) => fireEvent.change(box(), { target: { value: text } });
+
+/** The real chat hook behind the view, so a reread is the one the app actually runs. */
+function VerlaufWithLiveChat({
+  projectId,
+  orchestratorId,
+}: {
+  projectId: string;
+  orchestratorId: string | null;
+}) {
+  const chat = useOrchestratorChat(projectId, orchestratorId);
+  return <VerlaufChat chat={chat} projectId={projectId} />;
+}
 
 describe("VerlaufChat", () => {
   beforeEach(() => mocks.invoke.mockReset());
@@ -73,6 +91,24 @@ describe("VerlaufChat", () => {
     fireEvent.click(screen.getByRole("button", { name: "Senden" }));
     await waitFor(() => expect(box()).toHaveValue(""));
     expect(chat.send).toHaveBeenCalledWith("Ship it");
+  });
+
+  it("keeps an unsent message and its failed-send status after a successful history reread", async () => {
+    vi.mocked(ipc.listWorkerMessages).mockResolvedValue([]);
+    vi.mocked(ipc.sendToOrchestrator).mockRejectedValue(new Error("Versand fehlgeschlagen."));
+    render(<VerlaufWithLiveChat projectId="p-1" orchestratorId="w-1" />);
+    await waitFor(() => expect(screen.getByText("Noch keine Nachrichten")).toBeInTheDocument());
+
+    type("Ship it");
+    fireEvent.click(screen.getByRole("button", { name: "Senden" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Versand fehlgeschlagen."));
+    expect(box()).toHaveValue("Ship it");
+
+    vi.mocked(ipc.listWorkerMessages).mockResolvedValue([msg("m-1", "agent", "older reply")]);
+    fireEvent.click(screen.getByRole("button", { name: "Erneut lesen" }));
+    await waitFor(() => expect(screen.getByText("older reply")).toBeInTheDocument());
+    expect(screen.getByRole("alert")).toHaveTextContent("Versand fehlgeschlagen.");
+    expect(box()).toHaveValue("Ship it");
   });
 
   it("keeps the draft when the send did not go out", async () => {
