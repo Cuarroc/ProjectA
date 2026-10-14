@@ -55,6 +55,19 @@ describe("FilterChip", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(onPressedChange).not.toHaveBeenCalled();
   });
+
+  it("omits a non-finite filter count instead of printing NaN", () => {
+    const { rerender } = render(<FilterChip pressed={false} count={Number.NaN}>Open</FilterChip>);
+    const nanChip = screen.getByRole("button", { name: "Open" });
+    expect(nanChip).not.toHaveTextContent("NaN");
+    expect(nanChip.querySelector("b")).toBeNull();
+    rerender(<FilterChip pressed={false} count={Number.POSITIVE_INFINITY}>Open</FilterChip>);
+    const infChip = screen.getByRole("button", { name: "Open" });
+    expect(infChip).not.toHaveTextContent("Infinity");
+    expect(infChip.querySelector("b")).toBeNull();
+    rerender(<FilterChip pressed={false} count={2}>Open</FilterChip>);
+    expect(screen.getByRole("button", { name: "Open 2" }).querySelector("b")).toHaveTextContent("2");
+  });
 });
 
 describe("Switch", () => {
