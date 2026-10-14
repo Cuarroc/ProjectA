@@ -135,7 +135,8 @@ describe("tab MCP & Tresor", () => {
     expect(vi.mocked(invoke).mock.calls.filter(([c]) => !["get_provider_overview", "has_provider_key"].includes(c))).toEqual([]);
     const panel = within(screen.getByRole("tabpanel"));
     expect(panel.getByText("MCP-Server noch nicht verbunden")).toBeVisible();
-    expect(panel.queryAllByRole("button")).toHaveLength(0);
+    // The only control is the manual reread; it issues the same two read-only IPCs.
+    expect(panel.queryAllByRole("button").map((b) => b.textContent)).toEqual(["Neu lesen"]);
     expect(panel.queryAllByRole("textbox")).toHaveLength(0);
   });
 
