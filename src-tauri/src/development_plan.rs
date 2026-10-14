@@ -159,9 +159,20 @@ pub fn parse_plan(
             continue;
         }
         let field = |name| header.iter().position(|c| *c == name).map(|i| cells[i]);
-        let id = field("ID").unwrap();
-        let title = cells[header.iter().position(|c| c.starts_with("Paket")).unwrap()];
-        let acceptance = field("Konkretes Ergebnis und Abnahme").unwrap();
+        let required = |name| {
+            field(name)
+                .ok_or_else(|| error(n, &format!("plan table is missing required column {name}")))
+        };
+        let Some(title) = header
+            .iter()
+            .position(|c| c.starts_with("Paket"))
+            .map(|i| cells[i])
+        else {
+            return Err(error(n, "plan table is missing required column Paket"));
+        };
+        let id = required("ID")?;
+        let acceptance = required("Konkretes Ergebnis und Abnahme")?;
+        let dependencies = required("Nach")?;
         if !valid_id(id) || title.is_empty() || acceptance.is_empty() {
             return Err(error(n, "stable ID, title and acceptance are required"));
         }
@@ -196,7 +207,7 @@ pub fn parse_plan(
             source_revision: revision.clone(),
             source_line: n,
             title: title.into(),
-            dependency_ids: references(field("Nach").unwrap())?,
+            dependency_ids: references(dependencies)?,
             acceptance: acceptance.into(),
         });
     }
@@ -390,13 +401,21 @@ pub fn parse_milestones(
             delimiter = false;
             continue;
         }
-        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()].to_owned();
+        let field = |name| {
+            let column = header.iter().position(|c| *c == name);
+            column.map(|i| cells[i].to_owned()).ok_or_else(|| {
+                error(
+                    n,
+                    &format!("milestone table is missing required column {name}"),
+                )
+            })
+        };
         milestones[index].packages.push(HistoricalMilestonePackage {
-            package_id: field("ID"),
-            title: field("Paket"),
-            size: field("Gr."),
-            lane: field("Lane"),
-            raw_status: field("Stand"),
+            package_id: field("ID")?,
+            title: field("Paket")?,
+            size: field("Gr.")?,
+            lane: field("Lane")?,
+            raw_status: field("Stand")?,
             source_line: n,
         });
     }
@@ -522,8 +541,13 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
             delimiter = false;
             continue;
         }
-        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()];
-        let id = field("ID");
+        let field = |name| {
+            let column = header.iter().position(|c| *c == name);
+            column
+                .map(|i| cells[i])
+                .ok_or_else(|| error(n, &format!("v2 table is missing required column {name}")))
+        };
+        let id = field("ID")?;
         if !valid_id(id) {
             return Err(error(n, "stable ID is required"));
         }
@@ -533,14 +557,14 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
         }
         packages.push(V2Package {
             package_id: id.into(),
-            title: field("Ziel").into(),
-            lane: field("Lane").into(),
-            seam: field("Naht").into(),
-            tier: field("Stufe").into(),
-            size: field("Größe").into(),
-            raw_dependencies: field("Hängt ab von").into(),
-            provider: field("Anbieter").into(),
-            raw_acceptance: field("Abnahme").into(),
+            title: field("Ziel")?.into(),
+            lane: field("Lane")?.into(),
+            seam: field("Naht")?.into(),
+            tier: field("Stufe")?.into(),
+            size: field("Größe")?.into(),
+            raw_dependencies: field("Hängt ab von")?.into(),
+            provider: field("Anbieter")?.into(),
+            raw_acceptance: field("Abnahme")?.into(),
             source_path: source_path.into(),
             source_line: n,
         });
@@ -549,6 +573,91 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
         return Err(error(source.lines().count(), "missing table delimiter"));
     }
     Ok(packages)
+}
+
+/// Name resolution only, never readiness: nonempty unresolved fragments remain blockers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct V2Dependencies {
+    pub package_id: String,
+    pub source_path: String,
+    pub source_line: usize,
+    pub raw_dependencies: String,
+    pub dependency_ids: Vec<String>,
+    pub unresolved_fragments: Vec<String>,
+}
+
+// Consumer: later V2-H2 import slices; the caller also supplies foundation IDs.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn resolve_v2_dependencies(
+    packages: &[V2Package],
+    known_ids: &BTreeSet<String>,
+) -> Vec<V2Dependencies> {
+    packages
+        .iter()
+        .map(|p| {
+            let mut row = V2Dependencies {
+                package_id: p.package_id.clone(),
+                source_path: p.source_path.clone(),
+                source_line: p.source_line,
+                raw_dependencies: p.raw_dependencies.clone(),
+                dependency_ids: Vec::new(),
+                unresolved_fragments: Vec::new(),
+            };
+            if matches!(p.raw_dependencies.trim(), "" | "–" | "—") {
+                return row;
+            }
+            for fragment in v2_dependency_fragments(&p.raw_dependencies) {
+                let token = fragment.trim();
+                let gate = token
+                    .strip_prefix('G')
+                    .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+                let alias = (!token.starts_with("V2-"))
+                    .then(|| format!("V2-{token}"))
+                    .and_then(|id| known_ids.get(&id));
+                let resolved = match (known_ids.get(token), alias) {
+                    (Some(id), None) | (None, Some(id))
+                        if valid_id(token) && !gate && id != &p.package_id =>
+                    {
+                        Some(id)
+                    }
+                    _ => None,
+                };
+                if let Some(id) = resolved {
+                    if !row.dependency_ids.contains(id) {
+                        row.dependency_ids.push(id.clone());
+                    }
+                } else if !row.unresolved_fragments.iter().any(|s| s == fragment) {
+                    row.unresolved_fragments.push(fragment.to_owned());
+                }
+            }
+            row
+        })
+        .collect()
+}
+
+fn v2_dependency_fragments(raw: &str) -> Vec<&str> {
+    let (mut depth, mut start) = (0usize, 0);
+    let mut fragments = Vec::new();
+    for (i, c) in raw.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => match depth.checked_sub(1) {
+                Some(d) => depth = d,
+                None => return vec![raw],
+            },
+            ',' if depth == 0 => {
+                fragments.push(&raw[start..i]);
+                start = i + 1;
+            }
+            _ => (),
+        }
+    }
+    // Unbalanced conditions cannot establish independent simple references.
+    if depth != 0 {
+        return vec![raw];
+    }
+    fragments.push(&raw[start..]);
+    fragments
 }
 
 fn milestone_heading(line: &str) -> Option<(&str, &str)> {
@@ -596,6 +705,120 @@ mod tests {
             &p.provider,
             &p.raw_acceptance,
         ]
+    }
+
+    fn dependency_fixture(rows: &[(&str, &str)]) -> Vec<V2Package> {
+        let mut source = format!("{V2_HEADER}{V2_DELIMITER}");
+        for (id, dependencies) in rows {
+            source.push_str(&format!(
+                "| {id} | **Title** | fR | – | B | M | {dependencies} | sol | R |\n"
+            ));
+        }
+        parse_v2_packages("dependencies.md", &source).unwrap()
+    }
+
+    #[test]
+    fn v2_dependency_resolution_expands_only_known_unambiguous_ids() {
+        let packages = dependency_fixture(&[
+            ("V2-X", "F9, V2-S01a, MN-A, V2-F9, S01a, MN-A, V2-NOPE"),
+            ("V2-Y", "F9, S01a, MN-A"),
+        ]);
+        let known = ["V2-F9", "V2-S01a", "V2-MN-A"].map(String::from).into();
+        let resolved = resolve_v2_dependencies(&packages, &known);
+        assert_eq!(resolved[0].dependency_ids, ["V2-F9", "V2-S01a", "V2-MN-A"]);
+        assert_eq!(resolved[0].unresolved_fragments, [" V2-NOPE"]);
+        assert_eq!(resolved[1].dependency_ids, resolved[0].dependency_ids);
+        assert!(resolved[1].unresolved_fragments.is_empty());
+        assert_eq!(resolved, resolve_v2_dependencies(&packages, &known));
+
+        let ambiguous = ["F9", "V2-F9", "V2-S01a-extra", "V2-MN-A-extra"]
+            .map(String::from)
+            .into();
+        let resolved = resolve_v2_dependencies(&packages[1..], &ambiguous);
+        assert!(resolved[0].dependency_ids.is_empty());
+        assert_eq!(resolved[0].unresolved_fragments, ["F9", " S01a", " MN-A"]);
+        let exact = dependency_fixture(&[("V2-X", "V2-F9")]);
+        assert_eq!(
+            resolve_v2_dependencies(&exact, &ambiguous)[0].dependency_ids,
+            ["V2-F9"]
+        );
+    }
+
+    #[test]
+    fn v2_dependency_resolution_preserves_gates_ranges_and_conditions() {
+        let packages = dependency_fixture(&[
+            ("V2-ST-B1", "V2-B9, V2-B10"),
+            ("V2-CORE-3", "V2-CORE-1, V2-CORE-2"),
+            ("V2-X", "G0, V2-CORE-1 bis 3, V2-B9 und V2-B10, V2-B9 (nur wenn bereit, sonst offen), V2-NOPE"),
+            ("V2-Y", "V2-B9 (Kern; (bedingt), offen), V2-B10"),
+            ("V2-Z", "V2-B9 (offen, V2-B10"),
+            ("V2-W", "V2-B9), V2-B10"),
+        ]);
+        let known = ["V2-B9", "V2-B10", "V2-CORE-1", "V2-CORE-2", "G0", "V2-G0"]
+            .map(String::from)
+            .into();
+        let resolved = resolve_v2_dependencies(&packages, &known);
+        assert_eq!(resolved[0].dependency_ids, ["V2-B9", "V2-B10"]);
+        assert_eq!(resolved[1].dependency_ids, ["V2-CORE-1", "V2-CORE-2"]);
+        assert!(resolved[0].unresolved_fragments.is_empty());
+        assert!(resolved[1].unresolved_fragments.is_empty());
+        assert!(resolved[2].dependency_ids.is_empty());
+        assert_eq!(
+            resolved[2].unresolved_fragments,
+            [
+                "G0",
+                " V2-CORE-1 bis 3",
+                " V2-B9 und V2-B10",
+                " V2-B9 (nur wenn bereit, sonst offen)",
+                " V2-NOPE",
+            ]
+        );
+        assert_eq!(resolved[3].dependency_ids, ["V2-B10"]);
+        assert_eq!(
+            resolved[3].unresolved_fragments,
+            ["V2-B9 (Kern; (bedingt), offen)"]
+        );
+        for i in [4, 5] {
+            assert!(resolved[i].dependency_ids.is_empty());
+            assert_eq!(
+                resolved[i].unresolved_fragments,
+                [packages[i].raw_dependencies.clone()]
+            );
+        }
+    }
+
+    #[test]
+    fn v2_dependency_resolution_keeps_source_and_rejects_self_references() {
+        let packages = dependency_fixture(&[
+            ("V2-X", "V2-X, X, F9, V2-NOPE, V2-NOPE"),
+            ("V2-Y", ""),
+            ("V2-Z", "–"),
+            ("V2-W", "—"),
+            ("V2-U", "V2-NOPE"),
+            ("V2-V", ","),
+        ]);
+        let before = packages.clone();
+        let known = ["V2-X", "V2-F9"].map(String::from).into();
+        let resolved = resolve_v2_dependencies(&packages, &known);
+        assert_eq!(resolved.len(), 6);
+        assert_eq!(resolved[0].dependency_ids, ["V2-F9"]);
+        assert_eq!(resolved[0].unresolved_fragments, ["V2-X", " X", " V2-NOPE"]);
+        for row in &resolved[1..4] {
+            assert!(row.dependency_ids.is_empty());
+            assert!(row.unresolved_fragments.is_empty());
+        }
+        assert!(resolved[4].dependency_ids.is_empty());
+        assert_eq!(resolved[4].unresolved_fragments, ["V2-NOPE"]);
+        assert!(resolved[5].dependency_ids.is_empty());
+        assert!(!resolved[5].unresolved_fragments.is_empty());
+        for (i, (row, original)) in resolved.iter().zip(&packages).enumerate() {
+            assert_eq!(row.package_id, original.package_id);
+            assert_eq!(row.source_path, "dependencies.md");
+            assert_eq!(row.source_line, i + 3);
+            assert_eq!(row.raw_dependencies, original.raw_dependencies);
+        }
+        assert_eq!(packages, before);
+        assert!(resolve_v2_dependencies(&[], &known).is_empty());
     }
 
     #[test]
@@ -1052,5 +1275,74 @@ mod tests {
             p.source_revision,
             "sha256:2a8051bf4b400f313164b6e6069b35cdbe01b0796356ad0f5b1332b0bf582f98"
         );
+    }
+
+    /// Every subset (and each subset with a duplicated cell) of `names` as a
+    /// table header followed by delimiter and one data row.
+    fn header_variants(names: &[&str]) -> Vec<(Vec<String>, String)> {
+        let mut out = Vec::new();
+        for mask in 0..(1u32 << names.len()) {
+            let picked: Vec<_> = (0..names.len())
+                .filter(|i| mask >> i & 1 == 1)
+                .map(|i| names[i].to_owned())
+                .collect();
+            let mut shapes = vec![picked.clone()];
+            if let Some(first) = picked.first() {
+                shapes.push([picked.clone(), vec![first.clone()]].concat());
+            }
+            for cells in shapes {
+                let row = |fill: &str| format!("| {} |\n", vec![fill; cells.len()].join(" | "));
+                let source = format!("| {} |\n{}{}", cells.join(" | "), row("---"), row("A"));
+                out.push((cells, source));
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn plan_table_without_required_columns_is_rejected_not_a_panic() {
+        let required = ["ID", "Paket", "Nach", "Konkretes Ergebnis und Abnahme"];
+        let names = [required.as_slice(), &["Eltern", "Parent", "Extra"]].concat();
+        for (cells, source) in header_variants(&names) {
+            let parsed = std::panic::catch_unwind(|| parse_plan("p", "plan", "x", &source));
+            let parsed = parsed.unwrap_or_else(|_| panic!("parse_plan panicked on {cells:?}"));
+            if required.iter().any(|name| !cells.iter().any(|c| c == name)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn milestone_table_without_required_columns_is_rejected_not_a_panic() {
+        let required = ["ID", "Paket", "Gr.", "Lane", "Stand"];
+        for (cells, table) in header_variants(&[required.as_slice(), &["Extra"]].concat()) {
+            let source = format!("### M1 \u{2014} First\n{table}");
+            let parsed = std::panic::catch_unwind(|| parse_milestones("x", &source));
+            let parsed =
+                parsed.unwrap_or_else(|_| panic!("parse_milestones panicked on {cells:?}"));
+            let known = required
+                .iter()
+                .filter(|n| cells.iter().any(|c| c == *n))
+                .count();
+            if known >= 3 && required.iter().any(|n| !cells.iter().any(|c| c == n)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn v2_table_without_required_columns_is_rejected_not_a_panic() {
+        for (cells, source) in header_variants(&[V2_COLUMNS.as_slice(), &["Extra"]].concat()) {
+            let parsed = std::panic::catch_unwind(|| parse_v2_packages("x", &source));
+            let parsed =
+                parsed.unwrap_or_else(|_| panic!("parse_v2_packages panicked on {cells:?}"));
+            let known = V2_COLUMNS
+                .iter()
+                .filter(|n| cells.iter().any(|c| c == *n))
+                .count();
+            if known >= 5 && V2_COLUMNS.iter().any(|n| !cells.iter().any(|c| c == n)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
     }
 }

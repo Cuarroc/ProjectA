@@ -38,7 +38,17 @@ function PersonaCard({ profile, profiles }: { profile: AgentProfile; profiles: A
         </div>
         {!profile.enabled && <Chip>{T.disabled}</Chip>}
       </div>
-      <p className={model ? "ps-model" : "ps-model ps-model--none"}>{model ?? T.noModel}</p>
+      <p className={model ? "ps-model" : "ps-model ps-model--none"}>
+        {model !== null ? (
+          <>
+            <span className="ps-model-k">{T.modelRequestLabel}</span>{" "}
+            <span className="ps-model-v">{model}</span>
+            <span className="ps-model-note">{T.modelUnobserved}</span>
+          </>
+        ) : (
+          T.noModel
+        )}
+      </p>
       <div className="ps-facts">
         <Fact label={T.facts.failover}>{target}</Fact>
         <Fact label={T.facts.rights} />

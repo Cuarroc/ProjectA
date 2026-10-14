@@ -43,6 +43,19 @@ describe("useOrchestratorChat audit regressions", () => {
     expect(ipc.listWorkerMessages).toHaveBeenCalledWith("orchestrator-1", expect.any(Number));
   });
 
+  it("reload does nothing while the orchestrator is still unknown", () => {
+    const { result } = renderHook(() => useOrchestratorChat("project-a", null));
+
+    act(() => {
+      result.current.reload();
+    });
+
+    expect(ipc.listWorkerMessages).not.toHaveBeenCalled();
+    expect(result.current.orchestratorId).toBeNull();
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.error).toBeNull();
+  });
+
   it("reports a polling failure instead of silently freezing the thread", async () => {
     vi.mocked(ipc.listWorkerMessages)
       .mockResolvedValueOnce([])

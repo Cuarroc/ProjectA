@@ -67,21 +67,26 @@ export function RollenVarianten({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [note, setNote] = useState<Note | null>(null);
   const [reloadFailed, setReloadFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   // Counts project changes: a reply is only taken while its token is current,
   // so a late reply of an earlier visit to the same project is dropped too.
   const generation = useRef(0);
+  // Counts reads within one project: an older read that finishes after a newer
+  // one must not overwrite it, so a rejected-then-decided card cannot return.
+  const requestSeq = useRef(0);
 
   /** A silent reload keeps the cards on screen; a failed one is only a quiet line. */
   const fetchVariants = useCallback(async (silent: boolean) => {
     const mine = generation.current;
+    const seq = ++requestSeq.current;
     if (!silent) setLoad({ status: "loading" });
     try {
       const all = await listRoleVariants(projectId);
-      if (generation.current !== mine) return;
+      if (generation.current !== mine || seq !== requestSeq.current) return;
       setReloadFailed(false);
       setLoad({ status: "ready", variants: all.filter((v) => v.status === "pending") });
     } catch {
-      if (generation.current !== mine) return;
+      if (generation.current !== mine || seq !== requestSeq.current) return;
       if (silent) setReloadFailed(true);
       else setLoad({ status: "error" });
     }
@@ -92,8 +97,19 @@ export function RollenVarianten({ projectId }: { projectId: string }) {
     setBusy(new Set());
     setNote(null);
     setReloadFailed(false);
+    setRetrying(false);
     void fetchVariants(false);
   }, [fetchVariants]);
+
+  /** Reads the list again after a failed silent reload, without a verdict. */
+  const retryReload = async () => {
+    setRetrying(true);
+    try {
+      await fetchVariants(true);
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const setBusyFor = (id: string, on: boolean) =>
     setBusy((prev) => {
@@ -132,7 +148,14 @@ export function RollenVarianten({ projectId }: { projectId: string }) {
       </header>
       {note?.kind === "ok" && <p role="status">{note.text}</p>}
       {note?.kind === "error" && <p role="alert" style={{ margin: 0, color: "var(--g-bad)" }}>{note.text}</p>}
-      {reloadFailed && <p style={{ margin: 0, color: "var(--g-muted)" }}>{T.reloadFailed}</p>}
+      {reloadFailed && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: 0, color: "var(--g-muted)" }}>
+          <span>{T.reloadFailed}</span>
+          <Button size="sm" variant="tint" disabled={retrying} onClick={() => void retryReload()}>
+            {retrying ? T.working : T.retry}
+          </Button>
+        </div>
+      )}
       {load.status === "loading" && <HonestState kind="empty" title={T.loading} />}
       {load.status === "error" && <HonestState kind="offline" title={T.loadFailed} action={{ label: T.retry, onClick: () => void fetchVariants(false) }} />}
       {load.status === "ready" && variants.length === 0 && <HonestState kind="empty" title={T.emptyTitle} hint={T.emptyHint} />}

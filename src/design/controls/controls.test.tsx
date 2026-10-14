@@ -55,6 +55,26 @@ describe("FilterChip", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(onPressedChange).not.toHaveBeenCalled();
   });
+
+  it("omits a non-finite filter count instead of printing NaN", () => {
+    const { rerender } = render(<FilterChip pressed={false} count={Number.NaN}>Open</FilterChip>);
+    const nanChip = screen.getByRole("button", { name: "Open" });
+    expect(nanChip).not.toHaveTextContent("NaN");
+    expect(nanChip.querySelector("b")).toBeNull();
+    rerender(<FilterChip pressed={false} count={Number.POSITIVE_INFINITY}>Open</FilterChip>);
+    const infChip = screen.getByRole("button", { name: "Open" });
+    expect(infChip).not.toHaveTextContent("Infinity");
+    expect(infChip.querySelector("b")).toBeNull();
+    rerender(<FilterChip pressed={false} count={2}>Open</FilterChip>);
+    expect(screen.getByRole("button", { name: "Open 2" }).querySelector("b")).toHaveTextContent("2");
+  });
+
+  it("keeps aria-pressed aligned with the pressed prop when the caller passes the opposite", () => {
+    const { rerender } = render(<FilterChip pressed={false} aria-pressed={true}>Open</FilterChip>);
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "false");
+    rerender(<FilterChip pressed={true} aria-pressed={false}>Open</FilterChip>);
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "true");
+  });
 });
 
 describe("Switch", () => {
@@ -75,6 +95,13 @@ describe("Switch", () => {
     render(<Switch aria-label="Sound" checked={false} onClick={(e) => e.preventDefault()} onCheckedChange={onCheckedChange} />);
     fireEvent.click(screen.getByRole("switch"));
     expect(onCheckedChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps aria-checked aligned with the checked prop when the caller passes the opposite", () => {
+    const { rerender } = render(<Switch aria-label="Sound" checked={false} aria-checked={true} />);
+    expect(screen.getByRole("switch", { name: "Sound" })).toHaveAttribute("aria-checked", "false");
+    rerender(<Switch aria-label="Sound" checked aria-checked={false} />);
+    expect(screen.getByRole("switch", { name: "Sound" })).toHaveAttribute("aria-checked", "true");
   });
 });
 

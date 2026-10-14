@@ -1,0 +1,14 @@
+# File ownership (AGENTS.md "Pull requests and CI minutes", rule 6).
+# Documents who owns the serial seams and the CI/automation files. The
+# main ruleset does not require code-owner review, so this blocks no merge.
+
+# The four seams: only one agent at a time.
+/src-tauri/src/api.rs      @Cuarroc
+/src-tauri/src/main.rs     @Cuarroc
+/src-tauri/src/store.rs    @Cuarroc
+/src-tauri/src/store/      @Cuarroc
+/src-tauri/src/bin/pa.rs   @Cuarroc
+
+# CI, workflows and gates.
+/.github/                  @Cuarroc
+/scripts/ci/               @Cuarroc

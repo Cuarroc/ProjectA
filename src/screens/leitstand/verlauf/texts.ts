@@ -17,4 +17,5 @@ export const T = {
   keys: "Enter sendet, Shift+Enter macht eine neue Zeile.",
   errorTitle: "Das hat nicht geklappt",
   errorHide: "Ausblenden",
+  errorRetry: "Erneut lesen",
 } as const;

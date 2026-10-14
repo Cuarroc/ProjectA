@@ -11,17 +11,25 @@ export interface TabsProps<T extends string> {
 
 const STEP: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1 };
 
-/** Tablist: one tab stop (the selected tab), arrows move and select, Home/End jump. */
+/**
+ * Tablist: one tab stop (the selected tab), arrows move and select, Home/End jump.
+ * An empty list ignores those keys. A value that matches no tab selects none
+ * and leaves the first tab as the only tab stop.
+ */
 export function Tabs<T extends string>({ idBase, tabs, value, onChange, "aria-label": label }: TabsProps<T>) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const current = Math.max(0, tabs.findIndex((t) => t.id === value));
+  const matched = tabs.findIndex((t) => t.id === value);
+  const current = Math.max(0, matched);
 
   const select = (index: number) => {
-    onChange(tabs[index].id);
+    const tab = tabs[index];
+    if (!tab) return;
+    onChange(tab.id);
     refs.current[index]?.focus();
   };
   const onKeyDown = (e: KeyboardEvent) => {
     const n = tabs.length;
+    if (n === 0) return;
     if (e.key in STEP) select((current + STEP[e.key] + n) % n);
     else if (e.key === "Home") select(0);
     else if (e.key === "End") select(n - 1);
@@ -39,7 +47,7 @@ export function Tabs<T extends string>({ idBase, tabs, value, onChange, "aria-la
           role="tab"
           id={`${idBase}-tab-${t.id}`}
           aria-controls={`${idBase}-panel-${t.id}`}
-          aria-selected={i === current}
+          aria-selected={i === matched}
           tabIndex={i === current ? 0 : -1}
           onClick={() => onChange(t.id)}
         >

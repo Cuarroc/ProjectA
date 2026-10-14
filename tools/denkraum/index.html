@@ -3,20 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <title>Dein Denkraum · ProjectA</title>
+  <link rel="stylesheet" href="/design/glass.css">
   <link rel="stylesheet" href="/style.css">
   <script src="/app/questions.js" defer></script>
   <script src="/app/ideas.js" defer></script>
 </head>
-<body class="glass-desk">
-  <a class="skip" href="#detail">Zur Frage springen</a>
+<body class="glass-desk g-app">
+  <a class="skip" href="#home">Zum Inhalt springen</a>
   <header class="page-header"><div><h1>Dein Denkraum</h1><p>Gedanken entwickeln. In Ruhe entscheiden.</p></div><button id="refresh" type="button">Aktualisieren</button></header>
-  <nav class="area-nav" aria-label="Bereiche"><span class="desk-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6h8a5 5 0 0 1 0 10H5M9 6v12"/></svg>ProjectA</span><button id="area-now" aria-pressed="true" aria-controls="now">Fragen</button><button id="area-think" aria-pressed="false" aria-controls="thinking">Ideen</button><button id="area-plan" aria-pressed="false" aria-controls="planned">Geplant</button></nav>
+  <nav class="area-nav" aria-label="Bereiche"><span class="desk-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6h8a5 5 0 0 1 0 10H5M9 6v12"/></svg>ProjectA</span><button id="area-home" aria-pressed="true" aria-controls="home">Jetzt</button><button id="area-now" aria-pressed="false" aria-controls="now">Alle Fragen</button><button id="area-think" aria-pressed="false" aria-controls="thinking">Ideen</button><button id="area-plan" aria-pressed="false" aria-controls="planned">Geplant</button></nav>
   <div id="connection" role="status" aria-live="polite">Fragen werden geladen …</div>
   <div id="global-error" role="alert" hidden></div>
   <div id="save-status" role="status" aria-live="polite"></div>
-  <main id="now" class="workspace">
+  <section id="home" class="space-panel" tabindex="-1" aria-label="Jetzt"><h2>Jetzt</h2><p>Fragen werden geladen …</p></section>
+  <main id="now" class="workspace" hidden>
     <aside aria-label="Fragenübersicht">
       <details class="question-tools"><summary>Fragen suchen und filtern</summary><p class="muted">Weitere Fragen sind optional. Nur ausdrücklich abhängige Arbeit wartet auf eine Entscheidung.</p><label for="search">Fragen durchsuchen</label><input id="search" type="search" placeholder="Titel, Thema oder Verantwortlicher">
       <label for="filter">Status</label><select id="filter"><option value="open">Offene Fragen</option><option value="all">Alle Fragen</option><option value="answered">Beantwortet</option><option value="deferred">Zurückgestellt</option><option value="clarify">Rückfrage</option><option value="received">Gelesen</option><option value="applied">Umgesetzt</option></select>

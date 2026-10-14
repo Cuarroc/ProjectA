@@ -20,6 +20,7 @@ export const T = {
   unimportedHint: "Lies den Plan mit pa hq plan-import ein.",
   unreadable: "Plan nicht lesbar",
   unreadableHint: "Der Kern antwortet gerade nicht.",
+  retry: "Wiederholen",
   forecast: "Vorhersage",
   forecastTitle: "zu wenig Daten",
   forecastHint: "Eine Vorhersage braucht mehrere Wochen echten Durchsatz.",

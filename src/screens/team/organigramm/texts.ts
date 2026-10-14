@@ -10,6 +10,7 @@ export const T = {
   empty: "Noch kein Agent im Team",
   emptyHint: "Sobald ein Agent läuft, erscheint er hier unter seinem Koordinator.",
   noAgents: "Noch keine Agenten",
+  reread: "Neu lesen",
   departments: "Abteilungen",
   departmentsOffline: "Abteilungen noch nicht verbunden",
   departmentsPackage: "V2-B18 (noch nicht gebaut)",

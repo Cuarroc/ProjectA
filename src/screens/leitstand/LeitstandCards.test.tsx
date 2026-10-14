@@ -129,6 +129,27 @@ it("an empty board is said in words and shows no chips", () => {
   expect(screen.queryByRole("group")).toBeNull();
 });
 
+it("announces the empty filter result as a status that names the filter", async () => {
+  render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  fireEvent.click(screen.getByRole("button", { name: /^In Prüfung/ }));
+  expect(screen.getByRole("status")).toHaveTextContent("Kein Agent im Zustand In Prüfung.");
+  fireEvent.click(screen.getByRole("button", { name: "Alle zeigen" }));
+  expect(screen.getByRole("status")).toBeEmptyDOMElement();
+});
+
+it("changes the status text when switching from one empty filter to another", async () => {
+  render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: /^In Prüfung/ }));
+  const region = screen.getByRole("status");
+  expect(region).toHaveTextContent("Kein Agent im Zustand In Prüfung.");
+  fireEvent.click(screen.getByRole("button", { name: /^Bereit zum Mergen/ }));
+  // A live region announces a change of text, so the same node must now say something different.
+  expect(screen.getByRole("status")).toBe(region);
+  expect(region).toHaveTextContent("Kein Agent im Zustand Bereit zum Mergen.");
+  expect(region).not.toHaveTextContent("In Prüfung");
+});
+
 it("the offline proof sits in its own scoped slot and no bare HonestState override is left", async () => {
   const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
   const slots = container.querySelectorAll(".ls-foot > .ls-proof > .g-hs--offline");

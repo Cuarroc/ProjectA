@@ -4,6 +4,7 @@ export const T = {
   vault: "Tresor",
   vaultTable: "Anbieter und Zugang",
   loading: "Wird gelesen …",
+  reread: "Neu lesen",
   offline: "Tresor nicht lesbar",
   offlineHint: "Der Kern antwortet gerade nicht.",
   empty: "Keine Anbieter bekannt",

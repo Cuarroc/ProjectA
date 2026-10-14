@@ -64,6 +64,13 @@ describe("Kbd, Avatar and Lamp", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("stays out of the tab order when the caller passes a tab index", () => {
+    render(<Kbd tabIndex={0}>Ctrl K</Kbd>);
+    const hint = screen.getByText("Ctrl K");
+    expect(hint.tagName).toBe("KBD");
+    expect(hint.tabIndex).toBe(-1);
+  });
+
   it("hides a decorative avatar and names a labelled one with size and tone as classes", () => {
     render(<><Avatar initials="AB" size="lg" tone={3} /><Avatar initials="CD" tone="lead" label="Lead agent" /></>);
     expect(screen.getByText("AB")).toHaveAttribute("aria-hidden", "true");

@@ -13,6 +13,10 @@ import "./lektionen.css";
 
 type Load = { status: "loading" } | { status: "error" } | { status: "ready"; entries: Learning[] };
 
+function openLessons(all: Learning[], decided: ReadonlySet<string>): Learning[] {
+  return all.filter((entry) => entry.status === "pending" && !decided.has(entry.id));
+}
+
 /**
  * The approval half of the critic's inbox: pending lessons, each taken into the
  * playbook or thrown away. Read once per project and again after every verdict;
@@ -23,9 +27,11 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [readFailure, setReadFailure] = useState(false);
   const begin = usePolledResource(projectId);
   // Bumped on every project change; a plain id would be accepted again after p1 -> p2 -> p1.
   const epoch = useRef(0);
+  const decided = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     if (projectId === null) return;
@@ -33,7 +39,10 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
     if (request === null) return;
     try {
       const all = await listLearnings(projectId);
-      if (request.current()) setLoad({ status: "ready", entries: all.filter((e) => e.status === "pending") });
+      if (request.current()) {
+        setLoad({ status: "ready", entries: openLessons(all, decided.current) });
+        setReadFailure(false);
+      }
     } catch {
       if (request.current()) setLoad({ status: "error" });
     } finally {
@@ -41,12 +50,32 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
     }
   }, [begin, projectId]);
 
+  const reread = useCallback(async () => {
+    if (projectId === null) return;
+    const token = epoch.current;
+    const request = begin(true);
+    if (request === null) return;
+    try {
+      const all = await listLearnings(projectId);
+      if (token === epoch.current && request.current()) {
+        setLoad({ status: "ready", entries: openLessons(all, decided.current) });
+        setReadFailure(false);
+      }
+    } catch {
+      if (token === epoch.current && request.current()) setReadFailure(true);
+    } finally {
+      request.finish();
+    }
+  }, [begin, projectId]);
+
   useEffect(() => {
     epoch.current += 1;
+    decided.current.clear();
     setLoad({ status: "loading" });
     setBusy(new Set());
     setNotice(null);
     setFailure(null);
+    setReadFailure(false);
     void refresh();
   }, [refresh]);
 
@@ -58,8 +87,10 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
     try {
       await act();
       if (!live()) return;
+      decided.current.add(id);
       setNotice(done);
-      await refresh();
+      setLoad((cur) => (cur.status === "ready" ? { status: "ready", entries: cur.entries.filter((entry) => entry.id !== id) } : cur));
+      await reread();
     } catch {
       if (live()) {
         setNotice(null);
@@ -70,7 +101,6 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
       if (live()) setBusy((cur) => { const next = new Set(cur); next.delete(id); return next; });
     }
   };
-
   return (
     <section className="lk" aria-label={T.title}>
       <header className="lk-top">
@@ -80,6 +110,12 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
       <div className="lk-msgs">
         <p className="lk-note" role="status">{notice}</p>
         {failure ? <p className="lk-err" role="alert">{failure}</p> : null}
+        {readFailure ? (
+          <div className="lk-reread">
+            <p className="lk-err" role="alert">{T.reloadFailed}</p>
+            <Button size="sm" variant="ghost" onClick={() => void reread()}>{T.retry}</Button>
+          </div>
+        ) : null}
       </div>
       {projectId === null ? (
         <HonestState kind="empty" title={T.noProject} />
@@ -88,7 +124,7 @@ export function LektionenFreigabe({ projectId }: { projectId: string | null }) {
       ) : load.status === "error" ? (
         <HonestState kind="offline" title={T.loadFailed} action={{ label: T.retry, onClick: () => { setLoad({ status: "loading" }); void refresh(); } }} />
       ) : load.entries.length === 0 ? (
-        <HonestState kind="empty" title={T.empty} />
+        readFailure ? null : <HonestState kind="empty" title={T.empty} />
       ) : (
         <ul className="lk-list">
           {load.entries.map((entry) => {

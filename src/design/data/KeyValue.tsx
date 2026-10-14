@@ -10,6 +10,7 @@ export interface KeyValueItem {
 
 /** Term/definition list. `box` frames it as a card with row dividers. */
 export function KeyValue({ items, box = false }: { items: readonly KeyValueItem[]; box?: boolean }) {
+  if (items.length === 0) return null;
   return (
     <dl className={box ? "g-kv g-kv--box" : "g-kv"}>
       {items.map(({ label, value, rowKey }, i) => (
