@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { Button } from "../../../design/controls/Button";
+import { ErrorDetails } from "../../../errors/ErrorDetails";
+import { userError } from "../../../errors/texts";
 import { HonestState } from "../../../design/data/HonestState";
 import { Textarea } from "../../../design/inputs/Input";
 import { roleLabel, type OrchestratorChat } from "../../../lib/orchestratorChat";
@@ -96,7 +98,8 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
       </div>
       {chat.error !== null && (
         <div role="alert">
-          <HonestState kind="offline" title={T.errorTitle} hint={chat.error} action={{ label: T.errorHide, onClick: chat.clearError }} />
+          <HonestState kind="offline" title={T.errorTitle} hint={userError(chat.error).text} action={{ label: T.errorHide, onClick: chat.clearError }} />
+          <ErrorDetails raw={userError(chat.error).detail} />
           <Button size="sm" variant="tint" onClick={chat.reload}>{T.errorRetry}</Button>
         </div>
       )}

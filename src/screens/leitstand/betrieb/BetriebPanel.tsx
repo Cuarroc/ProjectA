@@ -4,7 +4,9 @@ import { HonestState } from "../../../design/data/HonestState";
 import { KeyValue } from "../../../design/data/KeyValue";
 import { StateMark } from "../../../design/state/StateMark";
 import type { StateForm } from "../../../design/state/states";
-import { getResourceSnapshot, getWatchdogReport, listQueue, type ResourceSnapshot, type WatchdogFinding } from "../../../lib/ipc";
+import { ErrorDetails } from "../../../errors/ErrorDetails";
+import { userError } from "../../../errors/texts";
+import { describeError, getResourceSnapshot, getWatchdogReport, listQueue, type ResourceSnapshot, type WatchdogFinding } from "../../../lib/ipc";
 import { shortTask } from "../../../lib/text";
 import type { AgentProfile, QueueEntry, QueueEntryStatus } from "../../../types";
 import { T } from "./texts";
@@ -71,7 +73,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
     const read = () => {
       readQueue();
       getResourceSnapshot().then((r) => live && setResources(r), () => live && setResources(null));
-      getWatchdogReport(projectId).then((f) => live && setDog(f), (e) => live && setDog(String(e instanceof Error ? e.message : e).trim() || T.watchdogOffline));
+      getWatchdogReport(projectId).then((f) => live && setDog(f), (e) => live && setDog(describeError(e)));
     };
     read();
     const timer = window.setInterval(read, POLL_MS);
@@ -127,7 +129,10 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
       <section className="g-glass bt-card" aria-label={T.watchdog}>
         <h2 className="bt-h">{T.watchdog}</h2>
         {dog === undefined ? <p className="bt-note">{T.loading}</p> : typeof dog === "string" ? (
-          <HonestState kind="offline" title={dog} hint={T.watchdogOfflineHint} />
+          <>
+            <HonestState kind="offline" title={userError(dog, T.watchdogOffline).text} hint={T.watchdogOfflineHint} />
+            <ErrorDetails raw={userError(dog).detail} />
+          </>
         ) : dog.length === 0 ? (
           <HonestState kind="empty" title={T.watchdogEmpty} hint={T.watchdogEmptyHint} />
         ) : (
