@@ -96,6 +96,13 @@ describe("Switch", () => {
     fireEvent.click(screen.getByRole("switch"));
     expect(onCheckedChange).not.toHaveBeenCalled();
   });
+
+  it("keeps aria-checked aligned with the checked prop when the caller passes the opposite", () => {
+    const { rerender } = render(<Switch aria-label="Sound" checked={false} aria-checked={true} />);
+    expect(screen.getByRole("switch", { name: "Sound" })).toHaveAttribute("aria-checked", "false");
+    rerender(<Switch aria-label="Sound" checked aria-checked={false} />);
+    expect(screen.getByRole("switch", { name: "Sound" })).toHaveAttribute("aria-checked", "true");
+  });
 });
 
 describe("Segmented", () => {
