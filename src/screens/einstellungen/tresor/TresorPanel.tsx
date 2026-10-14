@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "../../../design/glass.css";
 import { Button } from "../../../design/controls/Button";
 import "../../../design/controls/controls.css";
@@ -32,9 +32,24 @@ function KeyAccess({ providerId, vaultBroken }: { providerId: string; vaultBroke
 }
 
 /** One read generation owns both the overview and its key-presence checks. */
-function VaultRead({ onLoading }: { onLoading: (loading: boolean) => void }) {
+function VaultRead({
+  generation,
+  onLoading,
+}: {
+  generation: number;
+  onLoading: (generation: number, loading: boolean) => void;
+}) {
   const { providers, loading, error, vaultError } = useProviderOverview();
-  useEffect(() => { onLoading(loading); }, [loading, onLoading]);
+  const onLoadingRef = useRef(onLoading);
+  onLoadingRef.current = onLoading;
+  useEffect(() => {
+    onLoadingRef.current(generation, loading);
+    return () => {
+      // Idle on unmount. The panel drops the report when a newer read is
+      // already current, so this cleanup cannot clear that read.
+      onLoadingRef.current(generation, false);
+    };
+  }, [generation, loading]);
   const columns: Column<Provider>[] = [
     { key: "name", header: T.colProvider, cell: (p) => p.name },
     { key: "kind", header: T.colKind, cell: (p) => providerKindLabel(p.kind) },
@@ -66,18 +81,30 @@ function VaultRead({ onLoading }: { onLoading: (loading: boolean) => void }) {
 /** Tresor and MCP servers, read-only: shows whether a key is on file, never the key, and changes nothing. Not mounted yet. */
 export function TresorPanel() {
   const [read, setRead] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // Idle until this generation's reader reports a request. A ref, not only
+  // state, blocks a second click before the next paint.
+  const [loading, setLoading] = useState(false);
+  const readRef = useRef(0);
+  const loadingRef = useRef(false);
+  const onLoading = useCallback((generation: number, next: boolean) => {
+    if (generation !== readRef.current) return;
+    loadingRef.current = next;
+    setLoading(next);
+  }, []);
   function reread() {
-    if (loading) return;
+    if (loadingRef.current) return;
+    const nextRead = readRef.current + 1;
+    readRef.current = nextRead;
+    loadingRef.current = true;
     setLoading(true);
-    setRead((value) => value + 1);
+    setRead(nextRead);
   }
   return (
     <div className="tr-panel">
       <section className="g-glass tr-card" aria-label={T.vault}>
         <h2 className="tr-h">{T.vault}</h2>
-        <div><Button size="sm" aria-busy={loading} onClick={reread}>{T.reread}</Button></div>
-        <VaultRead key={read} onLoading={setLoading} />
+        <Button size="sm" className="tr-reread" aria-busy={loading} onClick={reread}>{T.reread}</Button>
+        <VaultRead key={read} generation={read} onLoading={onLoading} />
       </section>
       <section className="g-glass tr-card" aria-label={T.mcp}>
         <h2 className="tr-h">{T.mcp}</h2>
