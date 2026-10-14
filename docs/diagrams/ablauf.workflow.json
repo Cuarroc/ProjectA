@@ -1,0 +1,290 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Von der Aufgabe bis main",
+    "output": "ablauf.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
+    "repository": {
+      "url": "https://github.com/Cuarroc/ProjectA.git",
+      "revision": "65fa073676dfbebfb13e4a8e15874e21b9d10ef0"
+    }
+  },
+  "lanes": [
+    {
+      "id": "worker",
+      "label": "Worker"
+    },
+    {
+      "id": "proof",
+      "label": "Beweis und Prüfung"
+    },
+    {
+      "id": "approve",
+      "label": "Freigabe"
+    }
+  ],
+  "mainPath": [
+    "paket",
+    "red",
+    "prepush",
+    "pr",
+    "ci",
+    "review",
+    "ok",
+    "queue",
+    "main"
+  ],
+  "nodes": [
+    {
+      "id": "paket",
+      "lane": "worker",
+      "col": 0,
+      "type": "frontend",
+      "label": "Ein Paket",
+      "sublabel": "Branch + Worktree",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 13,
+          "end_line": 17
+        },
+        {
+          "path": "src-tauri/src/worktree.rs",
+          "line": 1,
+          "end_line": 9
+        }
+      ]
+    },
+    {
+      "id": "red",
+      "lane": "worker",
+      "col": 1,
+      "type": "frontend",
+      "label": "Roter Test",
+      "sublabel": "zuerst, dann der Fix",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 18,
+          "end_line": 20
+        },
+        {
+          "path": "scripts/ci/red-first.sh",
+          "line": 1,
+          "end_line": 9
+        }
+      ]
+    },
+    {
+      "id": "prepush",
+      "lane": "worker",
+      "col": 2,
+      "type": "backend",
+      "label": "Lokale Gates",
+      "sublabel": "prepush, Exit 0",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 21,
+          "end_line": 23
+        },
+        {
+          "path": "scripts/ci/gates.sh",
+          "line": 1,
+          "end_line": 12
+        }
+      ]
+    },
+    {
+      "id": "pr",
+      "lane": "worker",
+      "col": 3,
+      "type": "frontend",
+      "label": "PR mit Bericht",
+      "sublabel": "Befehl + Exit-Code",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 37,
+          "end_line": 41
+        }
+      ]
+    },
+    {
+      "id": "ci",
+      "lane": "proof",
+      "col": 3,
+      "type": "backend",
+      "label": "CI-Gates",
+      "sublabel": "Linux + red-first",
+      "sources": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 160,
+          "end_line": 161
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 569,
+          "end_line": 570
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "lane": "proof",
+      "col": 4,
+      "type": "security",
+      "label": "Fremdprüfung",
+      "sublabel": "anderer Anbieter",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 28,
+          "end_line": 34
+        }
+      ]
+    },
+    {
+      "id": "ok",
+      "lane": "approve",
+      "col": 4,
+      "type": "external",
+      "label": "review-ok",
+      "sublabel": "an den Commit gebunden",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 306,
+          "end_line": 312
+        },
+        {
+          "path": ".mergify.yml",
+          "line": 64,
+          "end_line": 71
+        }
+      ]
+    },
+    {
+      "id": "queue",
+      "lane": "approve",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Mergify-Queue",
+      "sublabel": "inkl. Windows-Lauf",
+      "sources": [
+        {
+          "path": ".mergify.yml",
+          "line": 32,
+          "end_line": 36
+        },
+        {
+          "path": ".mergify.yml",
+          "line": 68,
+          "end_line": 71
+        },
+        {
+          "path": "AGENTS.md",
+          "line": 42,
+          "end_line": 43
+        }
+      ]
+    },
+    {
+      "id": "main",
+      "lane": "proof",
+      "col": 5,
+      "type": "database",
+      "label": "main",
+      "sublabel": "bleibt grün",
+      "sources": [
+        {
+          "path": ".mergify.yml",
+          "line": 32,
+          "end_line": 36
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 610
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "paket",
+      "to": "red"
+    },
+    {
+      "from": "red",
+      "to": "prepush",
+      "label": "grün"
+    },
+    {
+      "from": "prepush",
+      "to": "pr",
+      "label": "Push"
+    },
+    {
+      "from": "pr",
+      "to": "ci",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "ci",
+      "to": "review",
+      "label": "grün",
+      "variant": "emphasis"
+    },
+    {
+      "from": "review",
+      "to": "ok",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "ok",
+      "to": "queue"
+    },
+    {
+      "from": "queue",
+      "to": "main",
+      "route": "drop",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "variant": "emphasis"
+    },
+    {
+      "from": "ci",
+      "to": "prepush",
+      "label": "rot",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Beweis",
+      "items": [
+        "Ein Test schlägt zuerst fehl, erst danach kommt der Fix",
+        "Grün heißt: die Bahn lief im eigenen Worktree mit Exit 0"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Fremdprüfung",
+      "items": [
+        "Das prüfende Modell stammt nie von der Familie des Autors",
+        "Höchstens zwei Runden, dann entscheidet Root"
+      ]
+    }
+  ]
+}

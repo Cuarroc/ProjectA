@@ -1,0 +1,263 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Von main bis zum signierten Update",
+    "output": "release.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
+    "repository": {
+      "url": "https://github.com/Cuarroc/ProjectA.git",
+      "revision": "65fa073676dfbebfb13e4a8e15874e21b9d10ef0"
+    }
+  },
+  "lanes": [
+    {
+      "id": "human",
+      "label": "Nutzer"
+    },
+    {
+      "id": "ci",
+      "label": "Release-Lauf auf dem Tag"
+    },
+    {
+      "id": "channel",
+      "label": "Update-Kanal"
+    },
+    {
+      "id": "app",
+      "label": "Installierte App"
+    }
+  ],
+  "mainPath": [
+    "main",
+    "tag",
+    "gates",
+    "build",
+    "attest",
+    "stage",
+    "promote",
+    "updater"
+  ],
+  "nodes": [
+    {
+      "id": "yes",
+      "lane": "human",
+      "col": 1,
+      "type": "external",
+      "label": "Nutzer sagt Ja",
+      "sublabel": "Patch: Dauerfreigabe möglich",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 48,
+          "end_line": 56
+        }
+      ]
+    },
+    {
+      "id": "main",
+      "lane": "ci",
+      "col": 0,
+      "type": "database",
+      "label": "main grün",
+      "sublabel": "über die Queue",
+      "sources": [
+        {
+          "path": "AGENTS.md",
+          "line": 42,
+          "end_line": 43
+        },
+        {
+          "path": ".mergify.yml",
+          "line": 32,
+          "end_line": 36
+        }
+      ]
+    },
+    {
+      "id": "tag",
+      "lane": "ci",
+      "col": 1,
+      "type": "frontend",
+      "label": "Tag v*",
+      "sublabel": "passt zur App-Version",
+      "sources": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 7,
+          "end_line": 11
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 97,
+          "end_line": 99
+        }
+      ]
+    },
+    {
+      "id": "gates",
+      "lane": "ci",
+      "col": 2,
+      "type": "backend",
+      "label": "Release-Gates",
+      "sublabel": "Bahn release",
+      "sources": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 119,
+          "end_line": 122
+        }
+      ]
+    },
+    {
+      "id": "build",
+      "lane": "ci",
+      "col": 3,
+      "type": "security",
+      "label": "Installer bauen",
+      "sublabel": "mit Minisign signiert",
+      "sources": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 127,
+          "end_line": 131
+        }
+      ]
+    },
+    {
+      "id": "attest",
+      "lane": "ci",
+      "col": 4,
+      "type": "backend",
+      "label": "Belege",
+      "sublabel": "SHA256SUMS + Herkunft",
+      "sources": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 133,
+          "end_line": 137
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 151,
+          "end_line": 152
+        }
+      ]
+    },
+    {
+      "id": "stage",
+      "lane": "channel",
+      "col": 4,
+      "type": "cloud",
+      "label": "Kandidat prüfen",
+      "sublabel": "anonym, vor dem Umschalten",
+      "sources": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 176,
+          "end_line": 181
+        }
+      ]
+    },
+    {
+      "id": "promote",
+      "lane": "channel",
+      "col": 5,
+      "type": "cloud",
+      "label": "Spiegel",
+      "sublabel": "ProjectA-updates",
+      "sources": [
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 253,
+          "end_line": 255
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "line": 348,
+          "end_line": 349
+        }
+      ]
+    },
+    {
+      "id": "updater",
+      "lane": "app",
+      "col": 5,
+      "type": "frontend",
+      "label": "App-Updater",
+      "sublabel": "prüft die Signatur",
+      "sources": [
+        {
+          "path": "src-tauri/tauri.conf.json",
+          "line": 51,
+          "end_line": 55
+        },
+        {
+          "path": "src-tauri/src/main.rs",
+          "line": 3655
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "main",
+      "to": "tag"
+    },
+    {
+      "from": "yes",
+      "to": "tag",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "tag",
+      "to": "gates"
+    },
+    {
+      "from": "gates",
+      "to": "build",
+      "label": "grün",
+      "variant": "emphasis"
+    },
+    {
+      "from": "build",
+      "to": "attest"
+    },
+    {
+      "from": "attest",
+      "to": "stage",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "stage",
+      "to": "promote",
+      "label": "bestanden",
+      "variant": "emphasis"
+    },
+    {
+      "from": "promote",
+      "to": "updater",
+      "label": "latest.json",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Erst prüfen, dann umschalten",
+      "items": [
+        "Der Update-Kandidat liegt zuerst unter einem Vorab-Tag",
+        "Der Kanal „latest“ ändert sich erst nach bestandener anonymer Prüfung"
+      ]
+    }
+  ]
+}
