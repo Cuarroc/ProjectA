@@ -2,6 +2,7 @@
 export const T = {
   title: "Beweiskette",
   recheck: "Neu prüfen",
+  checking: "Prüfung läuft …",
   result: "Ergebnis des Bereitschaftschecks",
   checkBlocked: "Bereitschaftscheck blockiert",
   checkReady: "Bereitschaftscheck bestanden",
@@ -31,6 +32,10 @@ export const T = {
   unknownReason: "Unbekannter Grund",
   techCode: "Technischer Code",
   codeStand: "Code-Stand",
+  fullCodeStand: "Vollständiger Code-Stand",
+  workerHeadSha: "Worker-Stand vollständig",
+  baseTipSha: "Basis-Stand vollständig",
+  mergeTreeOid: "Baum-Kennung",
   codeUnmeasured: "Code-Stand nicht gemessen",
   codeUnmeasuredHint: "Für diesen Worker liegt noch kein gemessener Stand vor.",
   workerHead: "Stand des Workers",
