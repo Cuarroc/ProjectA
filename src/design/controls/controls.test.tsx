@@ -68,6 +68,13 @@ describe("FilterChip", () => {
     rerender(<FilterChip pressed={false} count={2}>Open</FilterChip>);
     expect(screen.getByRole("button", { name: "Open 2" }).querySelector("b")).toHaveTextContent("2");
   });
+
+  it("keeps aria-pressed aligned with the pressed prop when the caller passes the opposite", () => {
+    const { rerender } = render(<FilterChip pressed={false} aria-pressed={true}>Open</FilterChip>);
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "false");
+    rerender(<FilterChip pressed={true} aria-pressed={false}>Open</FilterChip>);
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-pressed", "true");
+  });
 });
 
 describe("Switch", () => {
