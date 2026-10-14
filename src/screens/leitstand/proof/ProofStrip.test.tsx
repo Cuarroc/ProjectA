@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 
+import { de } from "../../../i18n/de";
 import { ProofStrip, type ProofStripProps } from "./ProofStrip";
 import { T } from "./texts";
 
@@ -13,9 +14,15 @@ const full: ProofStripProps = {
 };
 
 it("shows red-first as not connected instead of a pass tick", () => {
-  const { container } = render(<ProofStrip {...full} redFirst="unknown" gates={null} />);
-  expect(screen.getAllByText(T.notConnected).length).toBeGreaterThanOrEqual(2);
-  expect(container.querySelector(".g-proof__t--pass")).toBeNull();
+  const { container } = render(<ProofStrip {...full} redFirst="unknown" gates={null} review={null} pr={null} />);
+  expect(screen.getAllByText(T.notConnected)).toHaveLength(4);
+  expect(container.querySelector(".g-proof__yes")).toBeNull();
+  expect(screen.queryByText(T.redFirstPass)).toBeNull();
+});
+
+it("labels the missing gates badge with the gates word", () => {
+  render(<ProofStrip {...full} gates={null} />);
+  expect(screen.getByText(de["proof.gates"])).toHaveClass("ps__label");
 });
 
 it("marks every badge stale when the proof was invalidated", () => {
