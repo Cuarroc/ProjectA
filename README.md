@@ -1,7 +1,10 @@
 # ProjectA
 
 <div align="center">
-  <img src="assets/banner.svg" alt="ProjectA" width="100%" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg" />
+    <img src="assets/banner-light.svg" alt="ProjectA: viele KI-Coding-Agenten, ein ruhiges Cockpit. Grün heißt bewiesen." width="100%" />
+  </picture>
 
   <h3>Viele KI-Coding-Agenten. Ein ruhiges Cockpit. Grün heißt bewiesen.</h3>
 
@@ -16,6 +19,7 @@
   <p>
     <a href="#schnellstart"><strong>Schnellstart</strong></a> ·
     <a href="#so-arbeitet-projecta"><strong>So arbeitet ProjectA</strong></a> ·
+    <a href="#so-ist-projecta-gebaut"><strong>Aufbau</strong></a> ·
     <a href="#funktionen"><strong>Funktionen</strong></a> ·
     <a href="#die-neue-oberfläche-v20"><strong>v2.0</strong></a> ·
     <a href="#für-entwickler"><strong>Für Entwickler</strong></a>
@@ -24,10 +28,14 @@
 
 ---
 
-ProjectA lässt mehrere KI-Coding-Agenten **gleichzeitig** für dich arbeiten:
-jeden in seinem eigenen Terminal, mit eigenem Git-Branch und eigenem Worktree.
-Du siehst alles in einem Fenster und behältst die Kontrolle: Not-Aus,
-Budgetgrenzen und ein lückenloses Protokoll.
+## In 30 Sekunden
+
+| | |
+| --- | --- |
+| **Was ist das?** | Ein Windows-Programm, in dem mehrere KI-Coding-Agenten **gleichzeitig** für dich arbeiten: jeder in seinem eigenen Terminal, mit eigenem Git-Branch und eigenem Worktree. Du siehst alles in einem Fenster und behältst die Kontrolle: Not-Aus, Budgetgrenzen und ein lückenloses Protokoll. |
+| **Warum „Grün heißt bewiesen“?** | Ein Agent, der „fertig“ meldet, hat noch nichts bewiesen. In ProjectA zählt, was ein roter Test, die echte Prüfbahn und bei Code ein Prüfer eines anderen Anbieters bestätigt haben. [So läuft das ab](#so-arbeitet-projecta) |
+| **Wie starte ich?** | Installer von der [Release-Seite](https://github.com/Cuarroc/ProjectA-updates/releases/latest) laden, eine Agent-CLI anmelden, Projekt hinzufügen. [Schnellstart](#schnellstart) |
+| **Wo lese ich weiter?** | [Funktionen](#funktionen) · [Aufbau](#so-ist-projecta-gebaut) · [Glossar](docs/hilfe/glossar.md) · [Dokumentation](#dokumentation) |
 
 > **Unser Grundsatz:** Fertig ist nur, was bewiesen ist. Grün heißt: Die Tests
 > liefen wirklich. Kein Modell prüft sich selbst. Was zählt, entscheidet der
@@ -66,16 +74,42 @@ bringt kein eigenes Modell und keine Anbieterzugänge mit.
 Auftrag, Arbeit, Beweis, Fremdprüfung, Freigabe und Ausliefern sind **ein**
 Ablauf. Jeder Schritt hinterlässt einen Beleg.
 
-```mermaid
-flowchart LR
-    A["📝 Auftrag<br/><small>du beschreibst,<br/>was passieren soll</small>"] --> B["🤖 Worker<br/><small>eigenes Terminal,<br/>Branch und Worktree</small>"]
-    B --> C["✅ Beweis<br/><small>Tests und Prüfungen<br/>laufen wirklich</small>"]
-    C --> D["👀 Fremdprüfung<br/><small>ein anderes Modell<br/>prüft die Arbeit</small>"]
-    D --> E["🙋 Freigabe<br/><small>der Mensch<br/>entscheidet</small>"]
-    E --> F["🚀 Ausliefern"]
-    C -. rot .-> B
-    D -. Befund .-> B
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/ablauf-dark.svg" />
+    <img src="docs/assets/readme/ablauf-light.svg" alt="Ablauf von der Aufgabe bis main: ein Paket, roter Test zuerst, lokale Gates, PR mit Bericht, CI-Gates, Fremdprüfung, review-ok, Mergify-Queue, main. Eine rote CI führt zurück zu den lokalen Gates." width="100%" />
+  </picture>
+</p>
+
+1. **Ein Paket:** eine Aufgabe, ein Branch, ein Agent, ein Worktree, ein PR.
+2. **Roter Test zuerst:** bei einem Fehler entsteht erst ein fehlschlagender
+   Test, dann der Fix.
+3. **Lokale Gates:** „Grün“ heißt, dass die Prüfbahn `prepush` im eigenen
+   Worktree mit Exit 0 endet.
+4. **PR mit Bericht:** Der PR-Text nennt Befehle, Exit-Codes und, was **nicht**
+   abgedeckt ist (`NICHT ABGEDECKT`).
+5. **CI und Fremdprüfung:** Der Linux-Lauf und `red-first` laufen in der CI;
+   nach Risiko prüft ein Modell, das nicht aus der Familie des Autors stammt.
+6. **Freigabe und Queue:** Nur mit `review-ok` kommt ein PR in die
+   Mergify-Queue. Dort läuft auch der Windows-Lauf. Gemergt wird nur über die
+   Queue.
+
+Die verbindlichen Regeln stehen in [`AGENTS.md`](AGENTS.md), die lokalen Gates in
+[`docs/ci-lokal.md`](docs/ci-lokal.md).
+
+### Vom Merge bis zum signierten Update
+
+Ein Release braucht das Ja des Nutzers (bei Patch-Releases kann eine schriftliche
+Dauerfreigabe es ersetzen). Danach prüft der Release-Lauf auf dem Tag, signiert
+die Installer und stellt das Update erst um, wenn der Kandidat anonym geprüft
+wurde.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/release-dark.svg" />
+    <img src="docs/assets/readme/release-light.svg" alt="Von main bis zum signierten Update: main grün, Nutzer sagt Ja, Tag v*, Release-Gates, Installer mit Minisign signiert, Belege, anonyme Prüfung des Kandidaten, Spiegel ProjectA-updates, App-Updater prüft die Signatur." width="100%" />
+  </picture>
+</p>
 
 ## Schnellstart
 
@@ -120,6 +154,25 @@ gespeicherte Antwort oder Idee startet noch keine Ausführung.
 Die [Anleitung in fünf Schritten](docs/denkraum/ANLEITUNG.md) führt durch
 Start, Antwort, Status, Stoppen und Sichern.
 
+## So ist ProjectA gebaut
+
+Eine React-Oberfläche spricht über die Tauri-IPC mit einem Rust-Kern. Der Kern
+startet je Worker ein echtes Terminal (PTY) für deine Agent-CLI und legt die
+Laufzeitdaten lokal in SQLite ab. Eine lokale, per Token geschützte API lässt die
+Kommandozeile `pa` die laufende App bedienen. Der Not-Aus beendet alle Sitzungen
+binnen 10 s; Updates holt der eingebaute Updater vom Update-Kanal und prüft sie
+per Minisign.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/architektur-dark.svg" />
+    <img src="docs/assets/readme/architektur-light.svg" alt="Architektur: Die Oberfläche spricht über die Tauri-IPC mit dem Rust-Kern. Worker starten PTY-Sitzungen für die Agent-CLIs und speichern in SQLite; Warteschlange, lokale API für die pa-CLI, Not-Aus und Updater gehören zum selben Kern." width="100%" />
+  </picture>
+</p>
+
+Die Diagramme stammen aus Belegen im Quellcode; die Diagramm-Quellen folgen in
+einer späteren Version.
+
 ## Die neue Oberfläche (v2.0)
 
 ProjectA bekommt eine neue, ruhige Glas-Oberfläche: aus 25 Ansichten werden
@@ -140,8 +193,9 @@ Schon heute kannst du sie ausprobieren: **Einstellungen › Allgemein ›
 ## Status und Grenzen
 
 - **App-Version:** `v1.6.3` – diese Version baut der Quellcode auf `main`.
-- **Veröffentlicht:** `v1.6.3` (11.10.2026). Was sich ändert, steht im
-  [`CHANGELOG.md`](CHANGELOG.md).
+- **Veröffentlicht:** Die jüngste Version zeigen das Badge oben und die
+  [Release-Seite](https://github.com/Cuarroc/ProjectA-updates/releases/latest).
+  Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
 - Aktives persönliches Projekt. **Windows** ist das einzige paketierte Ziel;
   plattformneutrale und Linux-spezifische Prüfungen laufen zusätzlich unter
   Linux beziehungsweise WSL2. Ein Linux- oder macOS-Paket gibt es nicht.
