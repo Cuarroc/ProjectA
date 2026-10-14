@@ -23,7 +23,7 @@ bad()  { echo "FEHLER $*"; fails=$((fails + 1)); }
 # --------------------------------------------------------------------------
 # Teil 1: das echte Skript — Struktur der Liste
 # --------------------------------------------------------------------------
-LANES="precommit prepush branchpush linux windows release audit"
+LANES="precommit prepush branchpush linux windows windows_1 windows_2 release audit"
 
 for lane in $LANES; do
   lane_ids="$(bash scripts/ci/gates.sh --list "$lane")"
@@ -74,6 +74,9 @@ pflicht_prepush="red-first-plan fmt typecheck lint fe-test hq-test clippy rust-s
 pflicht_branchpush="red-first-plan fmt typecheck lint fe-test hq-test"
 pflicht_linux="no-masked wf-shell wf-pinned ci-shape selftest-gates selftest-red-first selftest-review selftest-lane-plan fmt typecheck lint fe-test hq-test hq-visual fe-build e2e clippy rust-suite"
 pflicht_windows="fmt clippy rust-suite native-tests"
+# AP-4a: the two Windows halves (union checked in scripts/test-windows-verdict.sh).
+pflicht_windows_1="fmt clippy rust-suite-1"
+pflicht_windows_2="rust-suite-2 native-tests"
 # Release: Linux-only selftests and DevHQ tests left this lane (gates.sh).
 pflicht_release="no-masked wf-shell wf-pinned shellcheck actionlint release-shape licenses fmt typecheck lint fe-test fe-build e2e clippy rust-suite"
 pflicht_audit="audit-rust audit-npm"

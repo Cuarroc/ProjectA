@@ -11,7 +11,7 @@
 #   2. queue_conditions and auto_merge_conditions are identical (the comment
 #      in .mergify.yml demanded it since CI-01 review; now it is checked).
 #      CI-HARDEN-02: both also carry `label = review-ok` (fail-closed queue).
-#   3. The Windows job picks ubuntu-latest only for an ordinary PR
+#   3. The Windows partition job (AP-4a) picks ubuntu-latest only for an ordinary PR
 #      (runs-on names ubuntu-latest, windows-latest and the queue branch
 #      prefix) and carries the guard that fails when the lane would run on a
 #      non-Windows runner - otherwise a plan bug could turn `gates (windows)`
@@ -29,6 +29,11 @@
 #      output from a step `id: plan`, without which a light green push
 #      (lanes skipped) would count as green proof and lift the queue
 #      freeze.
+#   6. AP-4a: `gates (windows)` is an aggregator over the matrix job
+#      `windows-part` (one leg per nextest partition): both partition lanes
+#      are in the matrix, it needs the legs, runs under always() (a skipped
+#      required check is green for branch protection) and delegates to
+#      scripts/ci/windows-verdict.sh.
 #
 # The YAML is read line-wise (awk), like the other workflow gates here: no
 # YAML library is guaranteed on the runner, the Git-Bash or WSL. Limit
@@ -106,6 +111,7 @@ has() {
 
 linux="$(job linux)"
 windows="$(job windows)"
+winpart="$(job windows-part)"
 redfirst="$(job red-first)"
 
 # 1. Check names.
@@ -134,18 +140,18 @@ done
 
 # 3. Windows runner choice and guard. A trailing comment on the runs-on line
 # does not count.
-runs_on="$(grep -E '^    runs-on:' <<< "$windows" | sed -E 's/[[:space:]]+#.*$//')"
+runs_on="$(grep -E '^    runs-on:' <<< "$winpart" | sed -E 's/[[:space:]]+#.*$//')"
 for want in ubuntu-latest windows-latest "mergify/merge-queue/"; do
-  has "$runs_on" "$want" || err "job windows: runs-on must choose by event (missing '$want'): $runs_on"
+  has "$runs_on" "$want" || err "job windows-part: runs-on must choose by event (missing '$want'): $runs_on"
 done
-guard="$(step "Guard - the Windows lane only runs on Windows" <<< "$windows")"
+guard="$(step "Guard - the Windows lane only runs on Windows" <<< "$winpart")"
 if [ -z "$guard" ]; then
-  err "job windows: guard step 'Guard - the Windows lane only runs on Windows' missing"
+  err "job windows-part: guard step 'Guard - the Windows lane only runs on Windows' missing"
 else
   guard_if="$(grep -E '^        if:' <<< "$guard")"
-  has "$guard_if" "runner.os != 'Windows'" || err "job windows: guard 'if' lacks runner.os != 'Windows': $guard_if"
-  has "$guard_if" "steps.plan.outputs.run != 'false'" || err "job windows: guard 'if' lacks steps.plan.outputs.run != 'false' (fail-closed on a missing plan): $guard_if"
-  grep -qE '^[[:space:]]+exit 1[[:space:]]*$' <<< "$guard" || err "job windows: guard step does not 'exit 1' - a runner mismatch would stay green"
+  has "$guard_if" "runner.os != 'Windows'" || err "job windows-part: guard 'if' lacks runner.os != 'Windows': $guard_if"
+  has "$guard_if" "steps.plan.outputs.run != 'false'" || err "job windows-part: guard 'if' lacks steps.plan.outputs.run != 'false' (fail-closed on a missing plan): $guard_if"
+  grep -qE '^[[:space:]]+exit 1[[:space:]]*$' <<< "$guard" || err "job windows-part: guard step does not 'exit 1' - a runner mismatch would stay green"
 fi
 
 # 4. red-first inside the linux job, evaluated by the red-first job.
@@ -225,9 +231,20 @@ fi
 # lift (review predecessor PR, S-9/O-10).
 lane_out_re='^      lane_run: \$\{\{ steps\.plan\.outputs\.run \}\}$'
 grep -qE "$lane_out_re" <<< "$linux" || err "job linux: output 'lane_run' missing - main-red cannot tell a real lane from a skipped one"
-grep -qE "$lane_out_re" <<< "$windows" || err "job windows: output 'lane_run' missing - main-red cannot tell a real lane from a skipped one"
+grep -qE "$lane_out_re" <<< "$winpart" || err "job windows-part: output 'lane_run' missing - main-red cannot tell a real lane from a skipped one"
+has "$windows" 'lane_run: ${{ needs.windows-part.outputs.lane_run }}' || err "job windows: output 'lane_run' must come from needs.windows-part - main-red cannot tell a real lane from a skipped one"
 has "$linux" "id: plan" || err "job linux: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
-has "$windows" "id: plan" || err "job windows: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
+has "$winpart" "id: plan" || err "job windows-part: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
+
+# 6. AP-4a: the aggregator behind `gates (windows)`. A matrix that lost a
+# partition lane would run only part of the suite and stay green.
+has "$winpart" "lane: [windows_1, windows_2]" || err "job windows-part: matrix must be exactly 'lane: [windows_1, windows_2]' (a lost partition runs fewer tests)"
+has "$winpart" 'gates.sh lane ${{ matrix.lane }}' || err "job windows-part: the Gates step must run the matrix lane"
+grep -qE '^    needs:[[:space:]]*\[?[[:space:]]*windows-part[[:space:]]*\]?[[:space:]]*$' <<< "$windows" || err "job windows: 'needs: windows-part' missing"
+windows_if="$(grep -E '^    if:' <<< "$windows")"
+has "$windows_if" "always()" || err "job windows: 'if' lacks always() - a red partition would skip the check (skipped counts as green): $windows_if"
+has "$windows" "windows-verdict.sh" || err "job windows: does not call scripts/ci/windows-verdict.sh"
+has "$windows" 'PART_RESULT: ${{ needs.windows-part.result }}' || err "job windows: PART_RESULT must read needs.windows-part.result"
 
 if [ "$errors" -gt 0 ]; then
   echo "ci-shape: $errors problem(s)"

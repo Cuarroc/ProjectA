@@ -23,17 +23,17 @@ run() { # name artifacts-dir expected... (exit=N overrides the default 0)
   if [ -n "$bad" ]; then echo "FAIL $name:$bad"; sed 's/^/    /' "$tmp/$name.log"; fails=$((fails + 1)); else echo "ok   $name"; fi
 }
 
-mkdir -p "$tmp/nested/junit-linux/deep/er" "$tmp/nested/junit-windows"
+mkdir -p "$tmp/nested/junit-linux/deep/er" "$tmp/nested/junit-windows_1" "$tmp/nested/junit-windows_2"
 : > "$tmp/nested/junit-linux/deep/er/junit.xml"; : > "$tmp/nested/junit-linux/vitest.xml"
-: > "$tmp/nested/junit-windows/junit.xml"
-run "pick-nested-layout" "$tmp/nested" +linux-nextest.xml +linux-vitest.xml +windows-nextest.xml
+: > "$tmp/nested/junit-windows_1/junit.xml"; : > "$tmp/nested/junit-windows_2/junit.xml"
+run "pick-nested-layout" "$tmp/nested" +linux-nextest.xml +linux-vitest.xml +windows-1-nextest.xml +windows-2-nextest.xml
 
 mkdir -p "$tmp/nowin/junit-linux"; : > "$tmp/nowin/junit-linux/junit.xml"
-run "pick-missing-artifact-dir" "$tmp/nowin" +linux-nextest.xml -linux-vitest.xml -windows-nextest.xml
-grep -q "no artifact junit-windows" "$tmp/pick-missing-artifact-dir.log" && echo "ok   pick-missing-artifact-notice" || { echo "FAIL pick-missing-artifact-notice"; fails=$((fails + 1)); }
+run "pick-missing-artifact-dir" "$tmp/nowin" +linux-nextest.xml -linux-vitest.xml -windows-1-nextest.xml -windows-2-nextest.xml
+grep -q "no artifact junit-windows_1" "$tmp/pick-missing-artifact-dir.log" && echo "ok   pick-missing-artifact-notice" || { echo "FAIL pick-missing-artifact-notice"; fails=$((fails + 1)); }
 
 mkdir -p "$tmp/none"
-run "pick-no-artifacts-at-all" "$tmp/none" -linux-nextest.xml -windows-nextest.xml
+run "pick-no-artifacts-at-all" "$tmp/none" -linux-nextest.xml -windows-1-nextest.xml -windows-2-nextest.xml
 
 mkdir -p "$tmp/empty/junit-linux"
 run "pick-artifact-without-file" "$tmp/empty" -linux-nextest.xml -linux-vitest.xml
