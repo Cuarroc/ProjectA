@@ -26,7 +26,7 @@ describe("ChangelogView", () => {
     expect(within(first).getByRole("heading", { level: 2 })).toHaveTextContent("v1.6.4");
     expect(within(first).getByText("Beta")).toBeInTheDocument();
     expect(within(first).getByText("Installiert")).toBeInTheDocument();
-    expect(within(first).getByText("13.10.2026")).toHaveAttribute("datetime", "2026-10-13");
+    expect(within(first).getByText("14.10.2026")).toHaveAttribute("datetime", "2026-10-14");
   });
 
   it("shows tag chips with German labels", () => {

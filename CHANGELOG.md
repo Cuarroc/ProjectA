@@ -1,9 +1,52 @@
 # Changelog
 
-## v1.6.4 (Beta) — 13.10.2026
+## v1.6.4 (Beta) — 14.10.2026
 
+Enthält alle Änderungen seit v1.6.3 (96 Pull Requests). Die neue Oberfläche bleibt eine Vorschau; die klassische Ansicht ist weiterhin erreichbar.
+
+**Neue Oberfläche (Vorschau):**
+
+- **Glass-Terminalansicht** (PR #1262, #1293, #1313): Offene Sitzungen erscheinen als Tabs in der neuen Terminalansicht; beim Wechsel zu „Werkzeuge“ bleibt die Verbindung erhalten. Die Sitzungsverwaltung wurde dafür in einen eigenen Baustein verlegt, ohne dass sich das sichtbare Verhalten ändert.
 - **Vorschau-Funktionen in den Einstellungen** (PR #1319): Die neue Oberfläche erklärt alle Vorschau-Schalter und zeigt ihren Zustand; Not-Aus und der klassische Rückweg bleiben erreichbar.
-- **Glass-Terminalansicht** (PR #1313): Offene Sitzungen erscheinen als Tabs in der neuen Terminalansicht.
+- **Werkzeuge-Reiter** (PR #1277): Die bisherigen Werkzeuge sind in der neuen Oberfläche unter „Werkzeuge“ erreichbar; Entwürfe und Sitzungszuordnungen bleiben beim Reiterwechsel erhalten.
+- **Leitstand** (PR #1249, #1260, #1387): Agenten-Karten zeigen den Grund und das Alter der Aufmerksamkeit und lassen lange Aufträge aufklappen; bei einer Aktualisierung wird nur die geänderte Karte neu gezeichnet; ein leerer Filter wird für Bildschirmleser mit Namen angesagt.
+- **Betrieb: Aufgaben einreihen** (PR #1340): Im Betrieb-Tab lassen sich Aufgaben einreihen und noch unbeanspruchte Aufgaben entfernen; Einreihen bleibt gesperrt, bis der Not-Aus-Zustand gelesen ist.
+- **Tresor und Kostenbuch erreichbar** (PR #1342, #1343, #1346, #1347): Der Tresor in „MCP & Tresor“ und das Kostenbuch unter „Kontingente“ lassen sich in der neuen Oberfläche nur lesend ansehen und mit „Neu lesen“ erneut laden; ältere Antworten überschreiben keinen neueren Stand.
+- **Kontingente ehrlicher** (PR #1236, #1348): Die Kopfleiste zeigt beobachtete Sperren und Verbrauchswerte, ältere Sperren als letzten Stand; Lesefehler werden nicht mehr als leerer Bestand dargestellt, unbekannte Werte nicht als null Prozent.
+- **Chat mit klarem Empfänger** (PR #1237): Vor dem Senden steht, dass die Nachricht an den Orchestrator des gewählten Projekts geht; ohne bekannten Orchestrator erklärt ein Hinweis, dass der erste Versand ihn starten kann.
+- **Denkraum** (PR #1332, #1334, #1336): Der Denkraum öffnet ruhig mit höchstens drei aktuellen Fragen und einem nächsten Schritt, speichert den Dialog- oder Solo-Modus einer Idee samt Antworten dauerhaft und lädt die Glass-Designwerte über eine gemeinsame Adresse.
+- **Agent starten und Personas** (PR #1339, #1351, #1354, #1360): Die Persona-Auswahl lädt nach einem Lesefehler erneut; Modellwerte stehen als „Modellvorgabe“ da, nicht als laufendes Modell; die Ersteinrichtung meldet „Bereit“ erst nach erfolgreicher Prüfung; eine gesperrte Persona wird in einer eigenen Zeile angezeigt.
+- **Erneut lesen statt Neuöffnen** (PR #1352, #1353, #1355, #1357, #1364): Organigramm, Plan-Ansicht, Rollenliste, Verlauf und Lektionen zeigen nach einem Lesefehler einen Knopf zum erneuten Lesen; bereits Bestätigtes kehrt nicht zurück, ein Versandfehler im Verlauf bleibt stehen und der Text bleibt im Feld.
+- **Beweiskette vorbereitet** (PR #1239, #1344): Die Ansicht zeigt oben den Bereitschaftsstand mit erstem offenen Grund und nächstem Schritt und fasst fehlende Belegquellen zusammen; vollständige Code-Stände klappen bei „Neu prüfen“ zu. Sie ist noch nicht in die App eingebunden.
+- **Version prüfen** (PR #1363): „Nach Updates suchen“ liest die Version erneut, sodass ein kurzer Lesefehler ohne Neustart verschwindet.
+
+**Bedienung und Barrierefreiheit:**
+
+- **Tastatur und Eingabemethoden** (PR #1349, #1350, #1356, #1371, #1373, #1378, #1380): Befehlspalette und segmentierte Auswahl reagieren nicht auf Tasten, während eine Eingabemethode Zeichen zusammensetzt; das Sheet überspringt verborgene Steuerelemente; das Darstellungs-Menü schließt, wenn der Fokus es verlässt; leere Tab-Leisten stürzen nicht ab; Tastaturhinweise und Chips stehen nicht in der Tab-Reihenfolge.
+- **Unbekannte Werte ehrlich dargestellt** (PR #1362, #1365, #1367, #1368, #1369, #1372, #1375, #1376, #1377, #1379, #1381): Unbekannte Zustände, Töne, Arten, Themen, Zähler und Zeiten erzeugen keine leeren Marken oder erfundenen Klassen mehr, sondern eine neutrale Darstellung; leere Tabellen werden nicht als leere Messung gezeigt.
+- **Doppelte Aktionen verhindert** (PR #1359, #1366, #1370, #1374): Ein zweiter Klick auf Fortsetzen oder Schließen löst nichts doppelt aus; eine laufende Archivierung blockiert keine andere Leitstand-Karte; ein Hash mit Schrägstrich oder Fragezeichen öffnet die passende Seite.
+
+**Sicherheit und Zuverlässigkeit:**
+
+- **Release-Workflow gehärtet** (PR #1172): Der Release-Workflow hat nur noch Leserechte als Standard; Schreibrechte hat allein der Installer-Job. Die Installer erhalten eine Herkunftsbestätigung und eine Prüfsummen-Datei.
+- **Fehlerberichte der Oberfläche** (PR #1272, #1287): Nicht abgefangene Fehler werden begrenzt im App-Log festgehalten, Geheimnisse in Meldung, Stack und Route werden maskiert; nach einem Darstellungsfehler erscheint eine Meldung mit Neuladen-Knopf.
+- **Freigaben genau einmal** (PR #1248, #1261, #1275): Eine Freigabe ist an Inhalt, Ziel und Lauf gebunden, wird dauerhaft gespeichert und kann nur einmal verbraucht werden; doppelte Nonces und fehlgeschlagene Rollbacks werden eindeutig gemeldet. Das Erzwingen bei der Ausführung folgt in einem eigenen Paket.
+- **Nahtstellen-Dateien geschützt** (PR #1361, #1399): Claude Code blockiert Änderungen an den vier Nahtstellen-Dateien ohne ausdrückliche Freigabe; Regeln für höchstens 15 offene Agenten-PRs, die 48-Stunden-Frist für Entwürfe und das Label `review-ok` stehen in AGENTS.md.
+- **Worktree-Checkpoints** (PR #1296, #1308): Der aktuelle Commit eines Worktrees lässt sich unter einer eindeutigen Referenz festhalten; belegte Referenzen werden abgewiesen, HEAD, Index und Arbeitsdateien bleiben unverändert.
+- **Hygiene- und Stillstandsprüfung** (PR #1294, #1305, #1320): Verdächtige Dateinamen werden gemeldet und nur einmal gezählt, Vorsprung und Rückstand des Hauptcheckouts getrennt angezeigt; ein erkannter Stillstand wird einmal pro Phase im Worker-Protokoll vermerkt.
+- **Gate-Belege und Critic** (PR #1233, #1318, #1400): Fehlerhafte Gate-Angaben aus nicht vertrauenswürdigen Quellen blockieren die Ergebnisliste nicht mehr; der optionale Critic startet bei bekannter Claude-Sperre nicht; der Plan-Parser meldet eine fehlende Pflichtspalte als Fehler statt zu paniken.
+
+**Dev-Build und Entwicklung:**
+
+- **Dev-Badge** (PR #1268, #1292, #1311): Die Dev-Ausgabe zeigt im Kopf den Build-Commit, Schalter für Experimente und „Fehler melden“; Meldungen landen mit Route, Commit und den letzten Fehler-Signaturen im lokalen App-Log.
+- **Dev-Build getrennt von der stabilen App** (PR #1290, #1302): Der Dev-Build nutzt seinen eigenen Datenordner und berührt die Daten der normalen App nicht; die Werkzeug-Skripte finden auch eine laufende Dev-App.
+- **Dev-Updates** (PR #1264, #1266, #1283): Die Dev-Version wird nach jedem Push auf main automatisch gebaut; ein Helfer verschiebt Installationen bei laufenden Prozessen, räumt Downloads auf und sammelt Fehlermeldungen nur lokal und bereinigt.
+
+**Unter der Haube:**
+
+- **Prüfungen und Gates** (PR #1251, #1252, #1254, #1255, #1267, #1276, #1317, #1402): Prüfer für Aufträge und PR-Texte, Vorprüfung für die automatische Abnahme, Zähl-Obergrenzen (Ratchet) und gemessene Nahtstellen-Budgets; ein Browserdurchlauf über alle 26 Glass-Seiten, feste Render-Grenzen für den Leitstand, ein stabiler Not-Aus-Test und ein Browser-Mock, der jeden Befehl der Oberfläche beantwortet.
+- **Plan-Parser in Rust** (PR #1295, #1315, #1328): Historische Meilensteintabellen und die neun Spalten der v2-Pakettabellen werden strukturiert gelesen; eindeutige Vorgänger werden auf Paket-IDs aufgelöst.
+- **Dokumentation** (PR #1259, #1279, #1299, #1300, #1301, #1386, #1398, #1401): Neu gestaltete README, v2-Architekturverträge, Bedrohungsmodell, Funktionsinventar der Orchestrierung, Entscheidungen zum Release-Schnitt und zu Z1–Z4/E1–E3, Ergänzungen zur Ablauf-Architektur sowie korrigierte Angaben in den bekannten Problemen.
 
 ## v1.6.3 (Beta) — 11.10.2026
 
