@@ -98,6 +98,59 @@ describe("Sheet", () => {
     fireEvent.mouseDown(dialog.parentElement as HTMLElement);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  it("skips explicitly hidden controls when opening and wrapping a Sheet", () => {
+    const HiddenHarness = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Öffnen</button>
+          <Sheet open={open} onClose={() => setOpen(false)} aria-label="Agent starten">
+            <button hidden>Versteckt</button>
+            <button>Eins</button>
+            <button>Zwei</button>
+          </Sheet>
+        </>
+      );
+    };
+    render(<HiddenHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Öffnen" }));
+    const one = screen.getByRole("button", { name: "Eins" });
+    const two = screen.getByRole("button", { name: "Zwei" });
+    expect(one).toHaveFocus();
+    fireEvent.keyDown(two, { key: "Tab" });
+    expect(one).toHaveFocus();
+    fireEvent.keyDown(one, { key: "Tab", shiftKey: true });
+    expect(two).toHaveFocus();
+  });
+
+  it("returns Tab to the Sheet controls from a focused non-tabstop descendant", () => {
+    const InnerHarness = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Öffnen</button>
+          <Sheet open={open} onClose={() => setOpen(false)} aria-label="Agent starten">
+            <button>Eins</button>
+            <div tabIndex={-1} data-testid="inner">Inner</div>
+            <button>Zwei</button>
+          </Sheet>
+        </>
+      );
+    };
+    render(<InnerHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Öffnen" }));
+    const one = screen.getByRole("button", { name: "Eins" });
+    const two = screen.getByRole("button", { name: "Zwei" });
+    const inner = screen.getByTestId("inner") as HTMLElement;
+    inner.focus();
+    expect(inner).toHaveFocus();
+    fireEvent.keyDown(inner, { key: "Tab" });
+    expect(one).toHaveFocus();
+    inner.focus();
+    fireEvent.keyDown(inner, { key: "Tab", shiftKey: true });
+    expect(two).toHaveFocus();
+  });
 });
 
 describe("Toast", () => {
