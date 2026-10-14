@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../App";
 import TerminalRoute from "./TerminalRoute";
 import * as sessionProvider from "../../sessions/SessionProvider";
@@ -7,6 +7,7 @@ import { saveTerminalFont, saveTerminalFontSize } from "../../lib/settings";
 import { CLASSIC_PATH } from "../leitstand/LeitstandRoute";
 import { FEATURE_FLAG_STORAGE_PREFIX } from "../../flags/featureFlags";
 import { ptyOutput } from "../../lib/eventNames";
+import { useEffect } from "react";
 
 const D1_FLAG_KEY = `${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`;
 
@@ -30,6 +31,8 @@ vi.mock("@xterm/addon-search", () => ({ SearchAddon: class {
 } }));
 vi.mock("@xterm/addon-webgl", () => ({ WebglAddon: class { onContextLoss() {} dispose() {} } }));
 
+// Load the real lazy shell before query deadlines start in isolated test runs.
+beforeAll(async () => { await import("../../shell/mount/ShellMount"); });
 beforeEach(() => {
   localStorage.clear(); localStorage.setItem(D1_FLAG_KEY, "1");
   window.location.hash = "#/leitstand/klassisch";
@@ -56,10 +59,217 @@ const active = (event: string) => mocks.listeners.filter((entry) => entry.event 
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
 const openShellTab = async () => {
-  fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+  fireEvent.click(await screen.findByRole("tab", { name: "Agenten" }));
   fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
   fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
 };
+
+const workers = ["one", "two"].map((id) => ({ id, projectId: "p1", task: `Task ${id}`, profileId: "shell",
+  branch: id, worktreePath: "wt", sessionId: `pty-${id}`, status: "running", createdAt: 1 }));
+function workerData(restore = false) {
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation(async (command: string, args: unknown) => {
+    if (command === "list_projects") return [{ id: "p1", name: "Demo", path: "demo", createdAt: 1 }];
+    const list = restore ? workers.map((w) => ({ ...w, sessionId: null, status: "exited" })) : workers;
+    if (command === "list_workers") return list;
+    if (command === "get_board_state") return { cards: list.map((worker) => ({ worker, column: "working" })), coordinators: [] };
+    if (command === "get_session_restore") return { scrollback: "saved output", liveSession: false };
+    return base(command, args);
+  });
+  localStorage.setItem("projecta.activeProjectId", "p1");
+}
+
+it("opens the selected card worker without changing other session tabs", async () => {
+  workerData();
+  const view = render(<App />);
+  await openShellTab();
+  for (const [step, index] of [0, 1, 0].entries()) {
+    go("#/leitstand");
+    const cards = within(await screen.findByRole("region", { name: "Agenten" })).getAllByRole("article");
+    fireEvent.click(within(cards[index]).getByRole("button", { name: "Shell öffnen" }));
+    const tabs = within(await screen.findByRole("tablist", { name: "Terminal-Sitzungen" }));
+    await waitFor(() => expect(tabs.getByRole("tab", { name: `Task ${workers[index].id}` })).toHaveAttribute("aria-selected", "true"));
+    expect(tabs.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(step === 0
+      ? ["Shell", "Task one"] : ["Shell", "Task one", "Task two"]);
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  }
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some(([name]) => name === "kill_pty")).toBe(false);
+});
+
+it("opens deep linked workers on initial load and hash changes", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=two";
+  const view = render(<App />);
+  expect(await screen.findByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+  go("#/leitstand/terminal?worker=one");
+  expect(await screen.findByRole("tab", { name: "Task one" })).toHaveAttribute("aria-selected", "true");
+  fireEvent.click(screen.getByRole("tab", { name: "Task two" }));
+  expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some(([name]) => ["spawn_pty", "kill_pty"].includes(name))).toBe(false);
+});
+
+it("clears the worker link on manual selection so the same link can reopen", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  go("#/leitstand/terminal?worker=two");
+  await screen.findByRole("tab", { name: "Task two" });
+  fireEvent.click(screen.getByRole("tab", { name: "Task one" }));
+  expect(window.location.hash).toBe("#/leitstand/terminal");
+  // Native hashchange only: assigning an unchanged hash must not fake navigation.
+  act(() => { window.location.hash = "#/leitstand/terminal?worker=two"; });
+  await waitFor(() => expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true"));
+});
+
+async function deepLinkedStatusLabel(profileId: string) {
+  workerData();
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation(async (command: string, args: unknown) => command === "list_workers"
+    ? workers.map((worker) => ({ ...worker, profileId })) : base(command, args));
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  const view = render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  go("#/leitstand/klassisch");
+  return expect(view.container.querySelector('.statusbar [title="pty-one"]'));
+}
+
+// Titles carry no literal parentheses: red-first passes trailer names to `vitest -t` as a regex.
+it("labels a deep linked worker session with its profile name profile shell", async () => (await deepLinkedStatusLabel("shell")).toHaveTextContent("Shell"));
+// An unknown profile gets no label; its internal identifier is never shown.
+it("labels a deep linked worker session with its profile name profile gone", async () => (await deepLinkedStatusLabel("gone")).not.toHaveTextContent("gone"));
+it("does not label a worker profile with its internal identifier", async () => (await deepLinkedStatusLabel("gone")).toHaveTextContent(/^$/));
+
+it.each([false, true])("keeps provider callbacks stable after opening a worker (restore: %s)", async (restore) => {
+  workerData(restore);
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  const observed: sessionProvider.SessionsValue[] = [];
+  function ObservedRoute() {
+    const value = sessionProvider.useSessions();
+    useEffect(() => { observed.push(value); });
+    return <TerminalRoute />;
+  }
+  const tree = () => <sessionProvider.SessionProvider><ObservedRoute /></sessionProvider.SessionProvider>;
+  const view = render(tree());
+  await screen.findByRole("tab", { name: "Task one" });
+  await act(async () => { view.rerender(tree()); });
+  expect(observed.length).toBeGreaterThan(1);
+  for (const value of observed) {
+    expect(value.openWorker).toBe(observed[0].openWorker);
+    expect(value.showRestore).toBe(observed[0].showRestore);
+  }
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "list_workers")).toHaveLength(1);
+});
+
+it("keeps the current viewer mounted during a failed worker lookup", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  const view = render(<App />);
+  await waitFor(() => expect(active(ptyOutput("pty-one"))).toHaveLength(1));
+  const viewer = view.container.querySelector(".xterm");
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers"
+    ? new Promise((resolve) => { finish = resolve; }) : base(command, args));
+  go("#/leitstand/terminal?worker=missing");
+  expect(view.container.querySelector(".xterm")).toBe(viewer);
+  await act(async () => { finish([]); });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Agent");
+  expect(view.container.querySelector(".xterm")).toBe(viewer);
+});
+
+it("shows only the error state after an initial worker lookup fails", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=missing";
+  render(<App />);
+  await screen.findByRole("alert");
+  expect(screen.queryByText("Keine Terminal-Sitzung geöffnet.")).toBeNull();
+});
+
+it.each([false, true])("reports worker lookup failure (IPC rejection: %s)", async (reject) => {
+  workerData();
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers" && reject
+    ? Promise.reject(new Error("lookup failed")) : base(command, args));
+  window.location.hash = "#/leitstand/terminal?worker=missing";
+  render(<App />);
+  const route = within(screen.getByRole("region", { name: "Terminal" }));
+  expect(await route.findByRole("alert")).toHaveTextContent(reject ? "lookup failed" : "Agent");
+  expect(mocks.invoke.mock.calls.some(([name]) => ["respawn_worker", "spawn_pty"].includes(name))).toBe(false);
+});
+
+it("reports a failed respawn and opens the session after an explicit retry", async () => {
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  const respawn = vi.fn().mockRejectedValueOnce(new Error("restart failed")).mockResolvedValueOnce(workers[0]);
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "respawn_worker" ? respawn() : base(command, args));
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Agent neu starten" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("restart failed");
+  fireEvent.click(await screen.findByRole("button", { name: "Agent neu starten" }));
+  await waitFor(() => expect(active(ptyOutput("pty-one"))).toHaveLength(1));
+  expect(screen.queryByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeNull();
+  expect(respawn).toHaveBeenCalledTimes(2);
+});
+
+it("recovers a late respawn through a fresh lookup without respawning again", async () => {
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  let restarted = false;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "respawn_worker") return new Promise((resolve) => { finish = resolve; });
+    if (command === "list_workers" && restarted) return Promise.resolve(workers);
+    return base(command, args);
+  });
+  render(<App />);
+  await openShellTab();
+  go("#/leitstand/terminal?worker=one");
+  fireEvent.click(await screen.findByRole("button", { name: "Agent neu starten" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Shell" }));
+  await act(async () => { restarted = true; finish(workers[0]); });
+  expect(screen.getByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+  go("#/leitstand");
+  go("#/leitstand/terminal?worker=one");
+  expect(await screen.findByRole("tab", { name: "Task one" })).toHaveAttribute("aria-selected", "true");
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "respawn_worker")).toHaveLength(1);
+});
+
+it("ignores late worker results after leaving a pending deep link", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=two";
+  const view = render(<App />);
+  await screen.findByRole("tab", { name: "Task two" });
+  const base = mocks.invoke.getMockImplementation()!;
+  let resolve!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers"
+    ? new Promise((done) => { resolve = done; }) : base(command, args));
+  go("#/leitstand/terminal?worker=one");
+  go("#/leitstand/terminal");
+  await act(async () => { resolve(workers); });
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task two"]);
+});
+
+it("opens restore for a card without a live session while retaining existing tabs", async () => {
+  workerData(true);
+  const view = render(<App />);
+  await openShellTab();
+  go("#/leitstand");
+  fireEvent.click((await screen.findAllByRole("button", { name: "Shell öffnen" }))[1]);
+  expect(await screen.findByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeVisible();
+  expect(await screen.findByText("saved output")).toBeVisible();
+  expect(mocks.invoke).toHaveBeenCalledWith("get_session_restore", { workerId: "two" });
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(0);
+  fireEvent.click(screen.getByRole("tab", { name: "Shell" }));
+  expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+  expect(screen.queryByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeNull();
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some(([name]) => ["respawn_worker", "kill_pty"].includes(name))).toBe(false);
+});
 
 // Real App, SessionProvider, ShellMount and TerminalView; mock only IPC and xterm.
 describe("terminal route", () => {

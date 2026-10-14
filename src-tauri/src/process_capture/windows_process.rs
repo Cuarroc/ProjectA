@@ -308,6 +308,8 @@ impl SuspendedProcess {
     fn inspect(&self, held: &VerifiedImage) -> Result<SuspendedObservation, String> {
         let mut name = vec![0u16; 32768];
         let mut length = name.len() as u32;
+        // SAFETY: each `zeroed` below builds a FILETIME (two u32 fields);
+        // all-zero is valid.
         let mut creation: FILETIME = unsafe { zeroed() };
         let mut exit: FILETIME = unsafe { zeroed() };
         let mut kernel: FILETIME = unsafe { zeroed() };

@@ -563,7 +563,7 @@ mod tests {
     /// CI with CI secrets set.
     /// `cargo test --bin projecta -- --ignored manual_kimi_starts_under_allowlist -- --nocapture`
     #[test]
-    #[ignore]
+    #[ignore = "needs the installed kimi CLI on the user's own machine, never in CI; run with `cargo test --bin projecta -- --ignored manual_kimi_starts_under_allowlist --nocapture`"]
     fn manual_kimi_starts_under_allowlist() {
         let kimi = crate::profiles::default_profiles()
             .into_iter()

@@ -127,8 +127,8 @@ describe("Glass shell mount behind D1", () => {
     render(<App />);
     await screen.findByRole("navigation", { name: "Hauptnavigation" });
     await go("#/einstellungen/klassisch");
-    expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("tab", { name: "Review" }));
+    expect(await screen.findByRole("tab", { name: "Einstellungen", selected: true })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("tab", { name: "Prüfung" }));
     await waitFor(() => expect(window.location.hash).toBe("#/beweise"));
   });
 
@@ -171,7 +171,7 @@ describe("Glass shell mount behind D1", () => {
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" }));
     await waitFor(() => expect(window.location.hash).toBe("#/einstellungen/klassisch"));
-    expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Einstellungen", selected: true })).toBeInTheDocument();
     expect(container.querySelector(".es")).toBeNull();
     expect(container.querySelector(".g-mount-legacy")).not.toHaveAttribute("hidden");
     expect(container.querySelector(".g-shell-content .g-mount-legacy > .app")).not.toBeNull();
@@ -181,7 +181,7 @@ describe("Glass shell mount behind D1", () => {
     window.location.hash = "#/einstellungen";
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
-    expect(await screen.findByRole("tab", { name: "Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Einstellungen" })).toBeInTheDocument();
     expect(container.querySelector(".g-mount")).toBeNull();
     expect(container.querySelector(".es")).toBeNull();
   });
@@ -197,7 +197,7 @@ describe("Glass shell mount behind D1", () => {
 
   it("is switched on and off from Settings General and persists", async () => {
     const { container } = render(<App />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Einstellungen" }));
     const toggle = await screen.findByRole("checkbox", { name: "Neue Oberfläche (Vorschau)" });
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);

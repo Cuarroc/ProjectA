@@ -159,7 +159,8 @@ Seit 25.09.2026 gestuft (AGENTS.md, Regel 5): Stufe A (Nahtstelle, Sicherheit,
 Nebenläufigkeit, PTY, Datenbank) zwei Reviewer anderer Anbieter, Stufe B
 (übriger Rust-/TS-Code) einer, Stufe C (Doku, Tests, Snapshots, Konfiguration
 ohne Laufzeitwirkung) keiner; höchstens zwei Runden, danach entscheidet der
-Nutzer. Hintergrund (Prüfung C, 25.09.): alle zehn nachgewiesenen echten
+Koordinator (Root) über Merge, Aufteilen oder Verwerfen; der Nutzer wird
+informiert (AGENTS.md, Regel 5). Hintergrund (Prüfung C, 25.09.): alle zehn nachgewiesenen echten
 Review-Treffer lagen in Stufe-A-Code; F4 lief 27 Runden. Annahme oder Ablehnung
 jedes Befunds steht mit Begründung im PR-Text. Eine zweite Meinung, die nie
 widerspricht, ist keine Prüfung.
@@ -256,7 +257,7 @@ der Fehler fällt vor dem Push auf statt danach. Der produktive Bundle-Build
 existiert weiterhin nur im Release-Workflow (`v*`-Tags).
 
 **Jeder Lauf endet mit einem Block „NICHT ABGEDECKT".** Er gehört in den
-PR-Text bzw. `.pa/ACTIVITY.md`: die `#[cfg(unix)]`-Tests (Dateirechte,
+PR-Text (auf Branches landen Notizen in `.pa/ACTIVITY.local.md`): die `#[cfg(unix)]`-Tests (Dateirechte,
 Prozessgruppen-Kill) kompilieren unter Windows nicht, die
 `#[cfg(windows)]`-Tests nicht unter Linux (`KNOWN_ISSUES` KI-7) — **kein
 einzelner Rechner deckt beide Hälften ab.** Die Linux-Hälfte kommt aus WSL2
@@ -475,11 +476,12 @@ auf. Was für diese Umgebung belegt gilt:
 
 ## Ressourcen-Nutzung (RAM sparen)
 
-ProjectA und OmniRoute (lokaler Daemon auf `:<omniroute-port>`,
-`scripts/omniroute-serve.cmd`) dürfen jederzeit benutzt werden — ihre Nutzung
-ist sogar **bevorzugt**, um auf der lokalen Maschine RAM zu sparen:
-Auslagerbare Arbeit (Agenten-Läufe, Routing) läuft bevorzugt über OmniRoute
-statt in zusätzlichen lokalen Prozessen.
+OmniRoute (lokaler Daemon auf `:<omniroute-port>`,
+`scripts/omniroute-serve.cmd`) darf benutzt werden, um auf der lokalen Maschine
+RAM zu sparen: Auslagerbare Arbeit (Agenten-Läufe, Routing) kann über
+OmniRoute statt in zusätzlichen lokalen Prozessen laufen. Die Desktop-App
+startet man nicht, nur um sie anzusehen: ihre Queue kann sofort echte Worker
+starten (AGENTS.md, „Start with current evidence").
 
 ---
 
@@ -498,7 +500,7 @@ bash scripts/sync.sh start
 Das Briefing zeigt Branch, `git status`, alle Worktrees, die letzten Commits
 über alle Branches und die letzten Journal-Einträge. Ohne Script (manuell):
 `STAND.md` und `docs/PLAN.md` lesen, `git status --short`,
-`git log --all --oneline -12`, `git worktree list`, Ende von `.pa/ACTIVITY.md`.
+`git log --all --oneline -12`, `git worktree list`, Ende von `.pa/ACTIVITY.md` (auf Branches `.pa/ACTIVITY.local.md`).
 `STATUS.md` endet bei v1.4.0 und ist nur noch Chronik.
 
 ### Während der Arbeit
@@ -510,7 +512,7 @@ Das Briefing zeigt Branch, `git status`, alle Worktrees, die letzten Commits
   `.pa/archiv/`.
 - Keine Laufzeit-Artefakte im Repo-Root; was nicht ins Repo gehört, kommt in die
   `.gitignore`.
-- Vor größeren Eingriffen `git status` + `.pa/ACTIVITY.md` prüfen, ob eine
+- Vor größeren Eingriffen `git status` + `.pa/ACTIVITY.md` prüfen (auf Branches auch `.pa/ACTIVITY.local.md`), ob eine
   andere Instanz gerade im selben Bereich arbeitet.
 
 ### Session-Ende
@@ -519,7 +521,9 @@ Das Briefing zeigt Branch, `git status`, alle Worktrees, die letzten Commits
 bash scripts/sync.sh note "<instanz>" "<zusammenfassung>" [commits]
 ```
 
-Der Eintrag landet append-only in `.pa/ACTIVITY.md`; Zeitstempel, Branch und
+Der Eintrag landet append-only in `.pa/ACTIVITY.md` (auf Branches in der
+untrackten `.pa/ACTIVITY.local.md`, die Zusammenfassung steht dann im PR-Text;
+AGENTS.md, „Checks"); Zeitstempel, Branch und
 Uncommitted-Liste ermittelt das Script selbst aus git. Nie uncommittete
 Änderungen ohne Eintrag mit Begründung hinterlassen; Zwischenstände werden
 ohnehin sofort gepusht (AGENTS.md, Regel 4). `STAND.md` und die Stand-Spalte in
@@ -540,7 +544,7 @@ ersetzt die manuelle Zusammenfassung nicht.
 | `AGENTS.md` | die Regeln für alle Anbieter (zehn Kernregeln oben) |
 | `docs/development/WORKFLOW.md` | **diese Datei** — Nachschlagewerk ohne eigene Regeln |
 | `STAND.md` | kurz: wo wir stehen, nächster Griff, aktive Specs |
-| `docs/PLAN.md` | der einzige Plan: Meilensteine M1–M4, Gestrichenes/Geparktes, Entscheidungs-Inbox; alte Fassungen unter `.pa/archiv/` und `docs/archive/plaene-2026-09/` |
+| `docs/PLAN.md` | der einzige Plan: Ziele Z1–Z4 (M1–M5 sind Historie), Gestrichenes/Geparktes, Entscheidungs-Inbox; alte Fassungen unter `.pa/archiv/` |
 | `docs/MASTERPLAN.md` | nur ein Verweis auf `docs/PLAN.md` |
 | `docs/ERLEDIGT.md` | erledigte Pakete mit PR und Merge-SHA |
 | `README.md` | Feature-Referenz (Profile, Routing, Ledger, IPC-Contract, `pa`) |

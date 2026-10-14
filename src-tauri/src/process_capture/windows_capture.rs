@@ -171,6 +171,10 @@ fn finish_writer(writer: InputThread, stop: &AtomicBool) -> Result<Result<(), St
     while !writer.is_finished() && Instant::now() < deadline {
         // Repeat cancellation to cover the race between the writer's stop
         // check and entering synchronous WriteFile. The thread handle is owned.
+        // SAFETY: the handle belongs to `writer`, which is neither joined nor
+        // dropped until after this loop, so it stays valid. A thread with no
+        // pending synchronous I/O just makes the call fail, and the result is
+        // deliberately ignored.
         unsafe {
             windows_sys::Win32::System::IO::CancelSynchronousIo(writer.as_raw_handle());
         }
@@ -338,6 +342,8 @@ fn drain(
         )
     } == 0
     {
+        // SAFETY: GetLastError only reads this thread's error slot; it runs
+        // right after the failed PeekNamedPipe, before anything can overwrite it.
         if unsafe { GetLastError() } == ERROR_BROKEN_PIPE {
             if !matches!(events, Observer::None) {
                 events.send(OutputEvent::Eof {
@@ -619,6 +625,8 @@ fn execute_with_observer_outcome(
                 && (settled || undelivered_since.is_some())
             {
                 let mut code = 0;
+                // SAFETY: the process handle is owned by `child` and live;
+                // `code` is writable for the call.
                 if unsafe { GetExitCodeProcess(child.process.as_raw_handle(), &mut code) } == 0 {
                     return Err(os_error("read capture exit code"));
                 }
@@ -679,6 +687,9 @@ fn execute_with_observer_outcome(
 
 fn system_sort() -> Result<PathBuf, String> {
     let mut buffer = vec![0u16; 32768];
+    // SAFETY: `buffer` is writable for the `buffer.len()` UTF-16 units that the
+    // call is told it may write. Only `buffer[..count]` is read afterwards,
+    // and only when `count` is non-zero and below the length.
     let count = unsafe {
         windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW(
             buffer.as_mut_ptr(),

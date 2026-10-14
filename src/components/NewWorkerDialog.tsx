@@ -329,8 +329,8 @@ export default function NewWorkerDialog({
             <div className="modal-note sharpen-note" aria-live="polite">
               <span>
                 {sharpening.open.length === 1
-                  ? "Eine Rückfrage — sie steht auch in der Attention-Ansicht"
-                  : `${sharpening.open.length} Rückfragen — sie stehen auch in der Attention-Ansicht`}
+                  ? "Eine Rückfrage — sie steht auch in der Ansicht „Achtung“"
+                  : `${sharpening.open.length} Rückfragen — sie stehen auch in der Ansicht „Achtung“`}
               </span>
               <span className="sharpen-note-hint">
                 Antworten, dann wird der Prompt daraus gebaut. „Schärfung abbrechen“ lässt

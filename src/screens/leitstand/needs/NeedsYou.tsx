@@ -1,6 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 
 import { Button } from "../../../design/controls/Button";
+import { ErrorDetails } from "../../../errors/ErrorDetails";
+import { texts, userError } from "../../../errors/texts";
 import { HonestState } from "../../../design/data/HonestState";
 import { Input } from "../../../design/inputs/Input";
 import { StateGlyph } from "../../../design/state/StateMark";
@@ -77,6 +79,7 @@ function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: 
       <div className="n-compose">
         <Input
           compact
+          name="needs-answer"
           aria-label={t("needs.answerLabel")}
           aria-invalid={error !== null || undefined}
           placeholder={preflight ? t("needs.placeholderPreflight") : t("needs.placeholder")}
@@ -89,7 +92,12 @@ function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: 
           {busy ? t("needs.sending") : t("needs.send")}
         </Button>
       </div>
-      {error !== null && <p className="n-error" role="alert">{error}</p>}
+      {error !== null && (
+        <div className="n-error" role="alert">
+          <p>{userError(error, texts.actionFailed).text}</p>
+          <ErrorDetails raw={userError(error).detail} />
+        </div>
+      )}
       <p className="n-note">{preflight ? t("needs.keys") : `${t("needs.direct")} ${t("needs.keys")}`}</p>
     </li>
   );

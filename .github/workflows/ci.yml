@@ -372,8 +372,20 @@ jobs:
           fi
           bash scripts/ci/red-first.sh
 
-  windows:
-    name: gates (windows)
+  # AP-4a (measured 14.10.2026: gates (windows) was the critical path, median
+  # 891 s of 895 s, 59 % of it test execution): the Windows lane runs as two
+  # legs, one per nextest partition (gates.sh lanes windows_1 / windows_2).
+  # Each leg builds with the warm rust-cache (about 85 s) instead of passing
+  # test binaries around as an artifact - the build is cheaper than moving
+  # ~1 GB between Windows runners. The required check `gates (windows)` is the
+  # job `windows` below, which only evaluates this job's combined result.
+  windows-part:
+    name: windows tests (${{ matrix.lane }})
+    strategy:
+      # Both halves report, so one round trip shows every red test.
+      fail-fast: false
+      matrix:
+        lane: [windows_1, windows_2]
     # Entwurf -> aus; Queue-Entwurf von Mergify -> an (Kopfkommentar). Das ist
     # die EINZIGE Job-Bedingung hier - ob die Bahn fachlich laufen muss,
     # entscheidet der Plan-Schritt unten, damit der Required Check immer
@@ -470,7 +482,8 @@ jobs:
         with:
           workspaces: src-tauri
           shared-key: windows-gates
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          # One leg saves: both would write the same key (AP-4a).
+          save-if: ${{ github.ref == 'refs/heads/main' && matrix.lane == 'windows_1' }}
 
       # `@nextest` war ein wandernder Tag. Gepinnt auf v2 mit `tool:` -
       # dieselbe Schreibweise wie in audit.yml, statt zweier Muster.
@@ -501,7 +514,7 @@ jobs:
       # gates.sh), die diese Datei laut ihrem Kopfkommentar vermeiden soll.
       - name: Gates (windows)
         if: steps.plan.outputs.run != 'false'
-        run: bash scripts/ci/gates.sh lane windows
+        run: bash scripts/ci/gates.sh lane ${{ matrix.lane }}
 
       # Wie im Job linux: nur Artefakt, nie ein Secret, nie ein Grund fuer Rot.
       - name: JUnit artifact
@@ -510,10 +523,36 @@ jobs:
         timeout-minutes: 5
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-windows
+          name: junit-${{ matrix.lane }}
           path: src-tauri/target/nextest/ci/junit.xml
           if-no-files-found: ignore
           retention-days: 3
+
+  # AP-4a: the required check `gates (windows)` (name unchanged) - one cheap
+  # Linux job that turns the partition legs into one verdict. `always()`: after
+  # a red or cancelled leg it must still report red - a skipped job counts as
+  # green for branch protection, and Mergify does not match it. Same draft
+  # condition as the legs. Fail-closed in scripts/ci/windows-verdict.sh.
+  windows:
+    name: gates (windows)
+    needs: windows-part
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # CI-04: main-red reads whether the lane really ran from the legs' plan.
+    outputs:
+      lane_run: ${{ needs.windows-part.outputs.lane_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts/ci
+
+      - name: Windows verdict (from windows-part)
+        env:
+          PART_RESULT: ${{ needs.windows-part.result }}
+          LANE_RUN: ${{ needs.windows-part.outputs.lane_run }}
+        run: bash scripts/ci/windows-verdict.sh
 
   # Aus #31 uebernommen (main, 13db97b). Der Job prueft die Test-First-
   # Trailer gegen die Merge-Base. Dependabot-Commits, die nur Manifeste

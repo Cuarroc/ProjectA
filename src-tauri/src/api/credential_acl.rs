@@ -106,6 +106,14 @@ unsafe fn ace_at(
 /// Read `class` (`TokenUser` or `TokenOwner`) of this process's token into a
 /// DWORD-aligned buffer holding just the SID.
 fn token_sid(class: TOKEN_INFORMATION_CLASS, label: &str) -> Result<Vec<u32>, String> {
+    // SAFETY: every pointer passed to Win32 is a local that outlives the call.
+    // `token` is closed on every path after OpenProcessToken succeeded and is
+    // not used afterwards. `buffer` is sized from the first GetTokenInformation
+    // call (`needed` bytes, in u64 words, so it is 8-aligned for TOKEN_USER and
+    // TOKEN_OWNER) and is only read after the second call reports success. The
+    // SID pointer inside it is null- and IsValidSid-checked before
+    // GetLengthSid and the copy; the copy lands in a fresh allocation of at
+    // least `length` bytes, so the result owns its bytes.
     unsafe {
         let mut token: HANDLE = std::ptr::null_mut();
         if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) == 0 {
@@ -165,6 +173,10 @@ fn token_owner_sid() -> Result<Vec<u32>, String> {
 /// elevated run creates. No non-admin account can assign it, so accepting it
 /// does not widen the threat model.
 fn administrators_sid() -> Result<Vec<u32>, String> {
+    // SAFETY: `buffer` holds SECURITY_MAX_SID_SIZE bytes (rounded up to u32
+    // words) and `size` states exactly that capacity, the documented upper
+    // bound CreateWellKnownSid writes. A null domain SID is allowed by the API.
+    // Both locals outlive the call.
     unsafe {
         let mut buffer = vec![0u32; (SECURITY_MAX_SID_SIZE as usize).div_ceil(4)];
         let mut size = SECURITY_MAX_SID_SIZE;
@@ -190,6 +202,11 @@ fn owner_accepted(owner: *mut core::ffi::c_void) -> Result<bool, String> {
     let mut user = current_user_sid()?;
     let mut token_owner = token_owner_sid()?;
     let mut admins = administrators_sid()?;
+    // SAFETY: the three SID buffers are owned by this frame and were built by
+    // the helpers above. `owner` must point to a valid SID that outlives the
+    // call; the only caller (`read_security`) passes a pointer into the
+    // descriptor buffer it still holds. EqualSid only reads through the
+    // pointers; the `*mut` casts are for the signature.
     unsafe {
         Ok(EqualSid(owner, user.as_mut_ptr().cast()) != 0
             || EqualSid(owner, token_owner.as_mut_ptr().cast()) != 0
@@ -243,12 +260,19 @@ pub(super) fn refuse_links(file: &File, what: &str) -> Result<(), String> {
         BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO,
     };
     let handle = file.as_raw_handle() as HANDLE;
+    // SAFETY: BY_HANDLE_FILE_INFORMATION holds only integers and FILETIMEs;
+    // all-zero is a valid value.
     let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    // SAFETY: `handle` comes from `file`, borrowed for the whole call, and
+    // `info` is writable for the call.
     if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
         return Err(os_error("inspect credential object"));
     }
     if info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        // SAFETY: FILE_ATTRIBUTE_TAG_INFO is two u32 fields; all-zero is valid.
         let mut tag: FILE_ATTRIBUTE_TAG_INFO = unsafe { std::mem::zeroed() };
+        // SAFETY: live handle as above; the buffer is `tag`, the exact struct
+        // for the FileAttributeTagInfo class, and the size passed is its size.
         if unsafe {
             GetFileInformationByHandleEx(
                 handle,
@@ -280,6 +304,16 @@ pub(super) fn refuse_links(file: &File, what: &str) -> Result<(), String> {
 fn restrict_handle(file: &File, inherit_children: bool) -> Result<(), String> {
     let mut sid = current_user_sid()?;
     let psid = sid.as_mut_ptr().cast::<core::ffi::c_void>();
+    // SAFETY: `psid` points into `sid`, which lives to the end of the function.
+    // `acl_buffer` is u32-aligned (ACL needs DWORD alignment) and sized by the
+    // documented formula for the ACL header plus one ACCESS_ALLOWED_ACE and the
+    // SID; `acl` points into it and the buffer is neither moved nor dropped
+    // before SetKernelObjectSecurity, which copies the descriptor. `ace_at`
+    // runs on that initialised ACL after the ACE was added, so index 0 exists
+    // and the flag write stays inside the ACE. `descriptor` is zeroed
+    // (integers and pointers; all-zero is valid) and initialised by
+    // InitializeSecurityDescriptor before any other use. The handle comes from
+    // `file`, borrowed by this function.
     unsafe {
         let size = std::mem::size_of::<ACL>() + std::mem::size_of::<ACCESS_ALLOWED_ACE>()
             - std::mem::size_of::<u32>()
@@ -399,6 +433,17 @@ fn read_security(file: &File) -> Result<SecurityRead, String> {
     let mut user = current_user_sid()?;
     let psid = user.as_mut_ptr().cast::<core::ffi::c_void>();
     let handle = file.as_raw_handle() as HANDLE;
+    // SAFETY: `handle` comes from `file`, borrowed for the whole function.
+    // The first GetKernelObjectSecurity call only sizes (null buffer, length
+    // 0). `buffer` then holds at least `needed` bytes as u64 words (8-aligned)
+    // and is neither moved nor dropped before the block ends, so `descriptor`
+    // and the owner, DACL and ACE pointers derived from it are interior
+    // pointers into live memory (the descriptor is self-relative; nothing to
+    // free). `owner_sid` is null-checked; `ace_at` receives an `index` below
+    // the AceCount GetAclInformation reported; an ACE is read as ACE_HEADER and
+    // only reinterpreted as ACCESS_ALLOWED_ACE after AceType confirms it. What
+    // goes into `SecurityRead` is plain data, not pointers into `buffer`.
+    // `psid` points into `user`, held by this frame.
     unsafe {
         let mut needed = 0u32;
         GetKernelObjectSecurity(

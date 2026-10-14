@@ -176,6 +176,7 @@ export default function QueuePanel({
         <>
           <form className="queue-form" onSubmit={handleSubmit}>
             <textarea
+              name="queue-task"
               className="field field-textarea queue-task"
               rows={2}
               placeholder="Task einreihen…"
@@ -185,6 +186,7 @@ export default function QueuePanel({
               onChange={(event) => setTask(event.target.value)}
             />
             <select
+              name="queue-profile"
               className="field queue-profile"
               value={profileId}
               disabled={busy || profilesLoading}
@@ -202,6 +204,7 @@ export default function QueuePanel({
               <label className="queue-sharpen">
                 <input
                   type="checkbox"
+                  name="queue-attach-master"
                   checked={attachMaster}
                   disabled={busy}
                   onChange={(event) => setAttachMaster(event.target.checked)}
@@ -218,6 +221,7 @@ export default function QueuePanel({
             >
               <input
                 type="checkbox"
+                name="queue-sharpen"
                 checked={sharpen}
                 disabled={busy}
                 onChange={(event) => setSharpen(event.target.checked)}
