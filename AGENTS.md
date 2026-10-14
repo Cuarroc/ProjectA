@@ -286,6 +286,32 @@ only after the user approves it.
   2026-10-14: `require_code_owner_review: false`), so it blocks no merge.
   Rule 6 still governs who edits a seam.
 
+## Routing: task type to profile (AP-6a)
+
+Profile ids come from `src-tauri/resources/agent-defaults.json`; models and
+effort per profile live only in `docs/setup/providers.md` (single routing
+source, not repeated here). A profile that is not in the repo is marked
+"profile pending CLI check": do not dispatch to it until a CLI probe exists.
+`kimi` is out (subscription expired, `providers.md`).
+
+| Task type | Eligible profile families | Reviewer rule |
+|---|---|---|
+| Seam / security / PTY / DB implementation (tier A) | `codex`; `claude` only below 70 % weekly limit; Cursor: profile pending CLI check | two reviewers, each from a family other than the author's |
+| Other Rust (tier B) | `codex`, `opencode` | one reviewer from another family |
+| Frontend TS (tier B) | `codex`, `opencode`; Cursor: profile pending CLI check | one reviewer from another family |
+| Scripts / CI (tier B; tier C if no runtime effect) | `opencode`, `codex` | tier B as above; tier C none, the gates suffice |
+| Docs (tier C) | `opencode`, `codex` | none, the gates suffice |
+| Read-only inventory / research | `opencode-glm-53-flash`, `ollama-coder`, `codex`; Grok: profile pending CLI check | none (report only) |
+| Review tier A | Ollama pair `kimi-k3` + `glm-5.2` (`.pa/review_transport.py`), `codex`; Cursor: profile pending CLI check | two reviewers, both differ from the author's family |
+| Review tier B | any one of the tier-A review ways | differs from the author's family |
+
+Pick among the eligible providers by `usage_overview`: the lowest
+`projectedPercentAtReset` wins, and none above 100 % is taken (an above-100 %
+provider drops out until its window resets). Record the pick and the
+observed value in the dispatch note (rule 9: no claim without observation).
+The reviewer family must differ from the author's (rule 5); a router that
+hides the vendor (Cursor `auto`) first needs the actual vendor proven.
+
 ## Merging (Mergify queue, since 2026-09-24)
 
 `main` is merged through the Mergify merge queue (`.mergify.yml`); the long
