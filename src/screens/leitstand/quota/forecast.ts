@@ -14,11 +14,17 @@ export type QuotaView = {
   failoverName: string | null;
 };
 
-export function quotaView(input: QuotaViewInput): QuotaView {
+export function quotaView({ state, fiveHourPct, sevenDayPct, fallbackName }: QuotaViewInput): QuotaView {
+  // A missing window stays null: coercing it to 0 would read as "plenty left".
+  const tight =
+    fiveHourPct !== null && (sevenDayPct === null || fiveHourPct >= sevenDayPct)
+      ? { percent: fiveHourPct, window: "5h" as const }
+      : sevenDayPct !== null
+        ? { percent: sevenDayPct, window: "7d" as const }
+        : { percent: null, window: null };
   return {
-    percent: input.fiveHourPct ?? input.sevenDayPct ?? 0,
-    window: "5h",
+    ...tight,
     forecast: T.tooLittleData,
-    failoverName: input.fallbackName,
+    failoverName: state === "blocked" && fallbackName ? fallbackName : null,
   };
 }
