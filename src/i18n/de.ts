@@ -57,6 +57,7 @@ export const de = {
   "state.ok": "Bereit zum Mergen",
   "state.done": "Erledigt",
   "state.bad": "Fehler",
+  "state.unknown": "Unbekannt",
   "theme.light": "Hell",
   "theme.dark": "Dunkel",
   "theme.system": "System",
