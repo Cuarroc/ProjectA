@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Kostenbuch } from "./Kostenbuch";
+import { Kostenbuch, kostenbuchRead } from "./Kostenbuch";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
@@ -209,12 +209,10 @@ describe("Kostenbuch", () => {
     fireEvent.click(button);
     expect(mocks.invoke).toHaveBeenCalledTimes(2);
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("aria-busy", "true");
-    // Call onClick directly, bypassing the DOM disabled guard, to prove
-    // read() has its own busy guard independent of the button's disabled state
-    const propsKey = Object.keys(button).find((k) => k.startsWith("__reactProps$"));
-    const onClick = (button as unknown as Record<string, Record<string, (e: unknown) => void>>)[propsKey!].onClick;
-    act(() => onClick({}));
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: true })).toBe(button);
+    const readAgain = kostenbuchRead.current;
+    expect(typeof readAgain).toBe("function");
+    act(() => readAgain!());
     expect(mocks.invoke).toHaveBeenCalledTimes(2);
     await act(async () => next.resolve(report(EVENTS)));
     expect(button).toBeEnabled();

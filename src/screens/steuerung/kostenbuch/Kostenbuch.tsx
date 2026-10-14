@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import "../../../design/glass.css";
 import "../../../design/controls/controls.css";
 import { Button } from "../../../design/controls/Button";
@@ -56,27 +57,48 @@ const period = (label: string, t: UsageTotals) => ({
   value: T.periodLine(num(t.requests), num(t.tokensIn), num(t.tokensOut)),
 });
 
+/** Mounted read callback, so a test can re-enter it during an in-flight fetch. */
+export const kostenbuchRead: { current: (() => void) | null } = { current: null };
+
 /** Kostenbuch: usage in requests and tokens, never money. Read-only, not mounted yet. */
 export function Kostenbuch() {
-  // `undefined` = reading, `null` = the read failed: neither may show a zero.
+  // `undefined` = no report yet (first paint or a read in flight).
+  // `null` = the read failed. Neither may show a zero.
   const [report, setReport] = useState<UsageReport | null | undefined>(undefined);
+  // The button and the in-flight guard share this flag. `pending` is what the
+  // button renders; `pendingRef` is that flag before the next paint.
+  const [pending, setPending] = useState(true);
   const gen = useRef(0);
   const pendingRef = useRef(false);
 
-  const read = useCallback(() => {
+  const read = useCallback((sync = false) => {
     if (pendingRef.current) return;
     pendingRef.current = true;
     const mine = ++gen.current;
-    setReport(undefined);
+    const showLoading = () => {
+      setPending(true);
+      setReport(undefined);
+    };
+    if (sync) flushSync(showLoading);
+    else showLoading();
     getOmniRouteUsage().then(
       (r) => { if (mine === gen.current) setReport(r); },
       () => { if (mine === gen.current) setReport(null); },
-    ).finally(() => { if (mine === gen.current) pendingRef.current = false; });
+    ).finally(() => {
+      if (mine !== gen.current) return;
+      pendingRef.current = false;
+      setPending(false);
+    });
   }, []);
   useEffect(() => {
+    kostenbuchRead.current = read;
     read();
     return () => {
       gen.current += 1;
+      // A superseded generation (StrictMode remount) must not keep the slot,
+      // or the next read() never starts and the button stays busy.
+      pendingRef.current = false;
+      if (kostenbuchRead.current === read) kostenbuchRead.current = null;
     };
   }, [read]);
 
@@ -85,7 +107,7 @@ export function Kostenbuch() {
   return (
     <div className="kb-panel">
       <div className="kb-bar">
-        <Button size="sm" onClick={read} disabled={report === undefined} aria-busy={report === undefined}>{T.reread}</Button>
+        <Button size="sm" onClick={() => read(true)} disabled={pending} aria-busy={pending}>{T.reread}</Button>
       </div>
       {report === undefined ? <p className="kb-note">{T.loading}</p> : report === null ? (
         <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} />
