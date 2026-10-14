@@ -3,10 +3,12 @@ import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
 import "../../design/inputs/inputs.css";
 import { Avatar } from "../../design/inputs/Avatar";
+import { Lamp, type LampState } from "../../design/inputs/Lamp";
 import { StateMark } from "../../design/state/StateMark";
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
 import { useT } from "../../i18n/useT";
+import { lampFor, type LampKind } from "./lamps/lampFor";
 import { ageText, cardForm, fill, initials, modelText, toneFor } from "./leitstand";
 
 export interface AgentCardProps {
@@ -22,6 +24,8 @@ export interface AgentCardProps {
 
 type Action = "restart" | "archive";
 
+const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off" };
+
 /**
  * One running agent. The proof slot stays an honest "not connected" until V2-B9 delivers gates.
  * Same rule as the old worker list: a running agent can be archived (after an inline confirmation),
@@ -31,6 +35,8 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const t = useT();
   const { worker } = card;
   const model = modelText(card);
+  // Proof is not fetched yet, so a done card reads "ohne Beweis" until the proof strip lands.
+  const lamp = lampFor(card, false);
   const taskId = useId();
   const [expanded, setExpanded] = useState(false);
   const canExpand = worker.task.length > 160;
@@ -83,6 +89,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
     <article className="g-glass ls-card">
       <div className="ls-row">
         <StateMark form={cardForm(card)} />
+        <Lamp state={LAMP_STATE[lamp.lamp]} label={lamp.word} />
         <span className="ls-time">{ageText(worker.createdAt, now)}</span>
       </div>
       <div className="ls-who">
