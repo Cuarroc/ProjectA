@@ -124,14 +124,20 @@ it("clears the worker link on manual selection so the same link can reopen", asy
   await waitFor(() => expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true"));
 });
 
-it("does not label a worker profile with its internal identifier", async () => {
+async function expectDeepLinkLabel(profileId: string, label: string) {
   workerData();
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation(async (command: string, args: unknown) => command === "list_workers"
+    ? workers.map((worker) => ({ ...worker, profileId })) : base(command, args));
   window.location.hash = "#/leitstand/terminal?worker=one";
   const view = render(<App />);
   await screen.findByRole("tab", { name: "Task one" });
   go("#/leitstand/klassisch");
-  expect(view.container.querySelector('.statusbar [title="pty-one"]')).toHaveTextContent(/^$/);
-});
+  expect(view.container.querySelector('.statusbar [title="pty-one"]')).toHaveTextContent(label);
+}
+
+it("labels a deep linked worker session with its profile name (profile shell)", () => expectDeepLinkLabel("shell", "Shell"));
+it("labels a deep linked worker session with its profile name (profile gone)", () => expectDeepLinkLabel("gone", "gone"));
 
 it.each([false, true])("keeps provider callbacks stable after opening a worker (restore: %s)", async (restore) => {
   workerData(restore);
