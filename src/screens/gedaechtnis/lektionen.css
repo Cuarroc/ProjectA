@@ -5,6 +5,7 @@
 .lk-err { color: var(--g-bad); }
 .lk-note:empty { display: none; }
 .lk-msgs { display: flex; flex-direction: column; gap: 4px; }
+.lk-reread { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .lk-msgs:not(:has(:not(:empty))) { display: none; }
 .lk-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .lk-row { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; min-width: 0; }
