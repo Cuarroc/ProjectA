@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
@@ -122,6 +122,33 @@ it("drops the failed message when the card changes state", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
   expect(await screen.findByRole("alert")).toBeInTheDocument();
   rerender(<AgentCard card={card("exited")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("a still-open archive failure does not mark or block the changed card", async () => {
+  const call = pending<Worker>();
+  vi.mocked(archiveWorker).mockReturnValue(call.promise);
+  vi.mocked(respawnWorker).mockResolvedValue({} as Worker);
+  const onChanged = vi.fn();
+  const { rerender } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} onChanged={onChanged} />);
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code archivieren" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ja, endgültig archivieren" }));
+  expect(await screen.findByRole("button", { name: "Claude Code archivieren" })).toBeDisabled();
+
+  rerender(<AgentCard card={card("exited")} name="Claude Code" now={NOW} onOpen={() => {}} onChanged={onChanged} />);
+  expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeEnabled();
+  expect(screen.queryByRole("alert")).toBeNull();
+
+  await act(async () => {
+    call.reject(new Error("boom"));
+  });
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("button", { name: "Claude Code neu starten" })).toBeEnabled();
+  expect(onChanged).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Claude Code neu starten" }));
+  expect(respawnWorker).toHaveBeenCalledWith("w1");
+  await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
