@@ -81,11 +81,11 @@ fi
 
 # ci.yml: the Windows job always on windows-latest again (PR runs pay the
 # Windows rate) - not a safety bug, but the cost structure is gone.
-case_m windows-runs-on-fixed ci '/^  windows:/,/^  [a-z-]+:$/ s/^(    runs-on:).*/\1 windows-latest/' \
+case_m windows-runs-on-fixed ci '/^  windows-part:/,/^  [a-z-]+:$/ s/^(    runs-on:).*/\1 windows-latest/' \
   "runs-on must choose by event"
 # ... and the same with the three words only in a trailing comment
 # (review PR #149, kimi-k3 F2).
-case_m windows-runs-on-comment-only ci '/^  windows:/,/^  [a-z-]+:$/ s/^(    runs-on:).*/\1 windows-latest # ubuntu-latest mergify\/merge-queue\//' \
+case_m windows-runs-on-comment-only ci '/^  windows-part:/,/^  [a-z-]+:$/ s/^(    runs-on:).*/\1 windows-latest # ubuntu-latest mergify\/merge-queue\//' \
   "runs-on must choose by event"
 # ci.yml: the guard that turns "Windows lane would run on Linux" red is gone.
 case_m windows-guard-missing ci "s/runner\\.os != 'Windows'/runner.os != 'Linux'/" \
@@ -100,6 +100,23 @@ case_m windows-guard-without-exit ci '/^      - name: Guard - the Windows lane o
 # missing plan output the way the rest of the job reads it.
 case_m windows-guard-without-plan ci "s/if: steps\\.plan\\.outputs\\.run != 'false' && runner\\.os != 'Windows'/if: runner.os != 'Windows'/" \
   "guard.*run != 'false'"
+# AP-4a: `gates (windows)` aggregates the partition legs of `windows-part`.
+# A matrix that lost a partition runs fewer tests and would stay green.
+case_m windows-part-lost-partition ci 's/lane: \[windows_1, windows_2\]/lane: [windows_1]/' \
+  "matrix must be exactly"
+# ... the aggregator would be skipped after a red leg (skipped = green for
+# branch protection) ...
+case_m windows-aggregator-without-always ci '/^  windows:/,/^  red-first:/ s/if: \$\{\{ always\(\) && \(/if: ${{ (/' \
+  "windows.*always"
+# ... or no longer waits for / reads the legs, or skips the verdict script.
+case_m windows-aggregator-without-needs ci '/^  windows:/,/^  red-first:/ s/^    needs: windows-part$/    needs: []/' \
+  "'needs: windows-part' missing"
+case_m windows-aggregator-without-verdict ci 's#bash scripts/ci/windows-verdict\.sh#true#' \
+  "does not call scripts/ci/windows-verdict.sh"
+case_m windows-aggregator-result-not-wired ci 's/PART_RESULT: \$\{\{ needs\.windows-part\.result \}\}/PART_RESULT: success/' \
+  "PART_RESULT must read"
+case_m windows-part-without-lane-run ci '/^  windows-part:/,/^  windows:/ s/^      lane_run: .*$//' \
+  "windows-part.*lane_run"
 # ci.yml: red-first sets up its own toolchain again.
 case_m red-first-own-setup ci '/^  red-first:/,$ s#^(      - uses: actions/checkout.*)#      - uses: ./.github/actions/setup-linux\n\1#' \
   "own setup-linux"

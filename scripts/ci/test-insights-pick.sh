@@ -24,5 +24,7 @@ pick() { # artifact-dir file-name target
 
 pick junit-linux junit.xml linux-nextest.xml || exit 1
 pick junit-linux vitest.xml linux-vitest.xml || exit 1
-pick junit-windows junit.xml windows-nextest.xml || exit 1
+# AP-4a: one artifact per Windows nextest partition (matrix lane).
+pick junit-windows_1 junit.xml windows-1-nextest.xml || exit 1
+pick junit-windows_2 junit.xml windows-2-nextest.xml || exit 1
 ls "$out"
