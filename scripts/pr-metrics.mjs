@@ -20,6 +20,7 @@ export const MERGE_TARGET_HOURS = 24;
 
 const HELP = `pr-metrics — PR-Fluss: offene PRs, alte Drafts, Median Eröffnung→Merge
 Aufruf: npm run metrics:prs -- [--limit 15] [--merged 50] [--fetch 300] [--input datei.json] [--now ISO] [--json]
+  --json  nur JSON (sonst Text + JSON)
 Liest nur: gh pr list --state all --json ${FIELDS}
 Exit-Codes: 0 ok, 1 Regel verletzt, 2 Aufruffehler, 3 gh-/Dateifehler.
 `;
@@ -52,7 +53,7 @@ export function computeMetrics(prs, { now, limit, mergedWindow }) {
     .map((p) => p.number)
     .sort((a, b) => a - b);
   const window = own
-    .filter((p) => p.state === "MERGED" && p.mergedAt)
+    .filter((p) => p.state === "MERGED" && Number.isFinite(hours(p.createdAt, Date.parse(p.mergedAt))))
     .sort((a, b) => Date.parse(b.mergedAt) - Date.parse(a.mergedAt))
     .slice(0, mergedWindow);
   const spans = window.map((p) => hours(p.createdAt, Date.parse(p.mergedAt)));
