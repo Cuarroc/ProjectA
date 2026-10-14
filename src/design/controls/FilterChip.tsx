@@ -8,13 +8,14 @@ export interface FilterChipProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 }
 
 export function FilterChip({ pressed, count, onPressedChange, onClick, className, children, ...rest }: FilterChipProps) {
+  // After rest: pressed alone decides aria-pressed.
   return (
     <button
       type="button"
-      aria-pressed={pressed}
       className={["g-fchip", className].filter(Boolean).join(" ")}
       onClick={(e) => { onClick?.(e); if (!e.defaultPrevented) onPressedChange?.(!pressed); }}
       {...rest}
+      aria-pressed={pressed}
     >
       {children}
       {typeof count === "number" && Number.isFinite(count) && <>{" "}<b>{count}</b></>}
