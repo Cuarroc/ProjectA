@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import * as ipc from "../../../lib/ipc";
@@ -26,6 +26,11 @@ const variant = (id: string, extra: Partial<RoleVariant> = {}): RoleVariant => (
 });
 const row = (name: string) => within(screen.getByRole("article", { name }));
 const feed = (rows: RoleVariant[]) => vi.mocked(ipc.listRoleVariants).mockResolvedValue(rows);
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => { resolve = r; });
+  return { promise, resolve };
+};
 
 beforeEach(() => {
   vi.mocked(ipc.listRoleVariants).mockReset();
@@ -118,6 +123,53 @@ it("keeps the ok note and drops the decided card when only the silent reload fai
   expect(screen.queryByRole("article", { name: "Rolle a" })).toBeNull();
   expect(row("Rolle b").getByRole("button", { name: "Annehmen" })).toBeEnabled();
   expect(ipc.approveRoleVariant).toHaveBeenCalledTimes(1);
+});
+
+it("retries a failed post-verdict role list read without repeating the verdict", async () => {
+  const retryRead = deferred<RoleVariant[]>();
+  vi.mocked(ipc.listRoleVariants)
+    .mockResolvedValueOnce([variant("a"), variant("b")])
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockReturnValueOnce(retryRead.promise);
+  vi.mocked(ipc.approveRoleVariant).mockResolvedValue(undefined);
+  render(<RollenVarianten projectId="project-a" />);
+  await screen.findByRole("article", { name: "Rolle a" });
+  fireEvent.click(row("Rolle a").getByRole("button", { name: "Annehmen" }));
+  expect(await screen.findByText("Liste konnte nicht aktualisiert werden.")).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Rolle angenommen.");
+  fireEvent.click(screen.getByRole("button", { name: "Erneut laden" }));
+  const pending = await screen.findByRole("button", { name: "Läuft …" });
+  expect(pending).toBeDisabled();
+  fireEvent.click(pending);
+  expect(ipc.listRoleVariants).toHaveBeenCalledTimes(3);
+  retryRead.resolve([variant("b")]);
+  await waitFor(() => expect(screen.queryByText("Liste konnte nicht aktualisiert werden.")).toBeNull());
+  expect(row("Rolle b").getByRole("button", { name: "Annehmen" })).toBeEnabled();
+  expect(screen.queryByRole("article", { name: "Rolle a" })).toBeNull();
+  expect(ipc.approveRoleVariant).toHaveBeenCalledTimes(1);
+  expect(ipc.rejectRoleVariant).not.toHaveBeenCalled();
+});
+
+it("keeps the latest role list when overlapping post-verdict reads finish out of order", async () => {
+  const older = deferred<RoleVariant[]>();
+  const newer = deferred<RoleVariant[]>();
+  vi.mocked(ipc.listRoleVariants)
+    .mockResolvedValueOnce([variant("a"), variant("b")])
+    .mockReturnValueOnce(older.promise)
+    .mockReturnValueOnce(newer.promise);
+  vi.mocked(ipc.approveRoleVariant).mockResolvedValue(undefined);
+  render(<RollenVarianten projectId="project-a" />);
+  await screen.findByRole("article", { name: "Rolle a" });
+  fireEvent.click(row("Rolle a").getByRole("button", { name: "Annehmen" }));
+  await waitFor(() => expect(screen.queryByRole("article", { name: "Rolle a" })).toBeNull());
+  fireEvent.click(row("Rolle b").getByRole("button", { name: "Annehmen" }));
+  await waitFor(() => expect(screen.queryByRole("article", { name: "Rolle b" })).toBeNull());
+  expect(ipc.listRoleVariants).toHaveBeenCalledTimes(3);
+  newer.resolve([]);
+  await screen.findByText("Keine offenen Rollen-Vorschläge");
+  older.resolve([variant("b")]);
+  await act(async () => {});
+  expect(screen.queryByRole("article", { name: "Rolle b" })).toBeNull();
 });
 
 it("ignores a late reply of an earlier visit when the project goes p1 to p2 to p1", async () => {
