@@ -37,6 +37,9 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const classes = open.map((q) => classifyQuestion(q.question));
   const others = open.filter((_, i) => classes[i] === "other");
 
+  // The lanes say "Keine offene Entscheidung." — only true once the list was read.
+  const listRead = open.length > 0 || (error === null && !loading);
+
   let body;
   if (error !== null && open.length === 0) body = <HonestState kind="offline" hint={t("needs.offlineHint")} />;
   else if (loading && open.length === 0) body = <p className="n-note">{t("needs.loading")}</p>;
@@ -57,9 +60,10 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
         <h2 id="n-title">{t("state.need")}</h2>
         <span className="n-count">{open.length > 0 ? fill(t("needs.open"), { n: open.length }) : t("needs.none")}</span>
       </div>
-      {LANES.map((lane) => (
-        <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} workers={workers} onAnswer={onAnswer} />
-      ))}
+      {listRead &&
+        LANES.map((lane) => (
+          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} workers={workers} onAnswer={onAnswer} />
+        ))}
       {body}
       {said.map((s) => (
         <p key={s.key} className="n-answered" role="status">
