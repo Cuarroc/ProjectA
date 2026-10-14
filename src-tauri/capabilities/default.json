@@ -9,7 +9,8 @@
     "process:allow-restart",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "https://*" }, { "url": "http://*" }]
+      "allow": [{ "url": "https://*" }, { "url": "http://localhost:*/board" }],
+      "deny": [{ "url": "http://*@*" }]
     }
   ]
 }

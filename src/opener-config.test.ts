@@ -14,9 +14,11 @@ import { describe, expect, it } from "vitest";
 // halten die Verdrahtung zusammen: Crate, Registrierung, Permission mit
 // URL-Scope. Faellt eines weg, ist der Fallback wieder der einzige Pfad.
 //
-// Scope-Entscheidung: http(s) statt einer GitHub-only-Whitelist, weil
-// openExternal auch die Web-Interface-URLs (LAN, http://) und die Links aus
-// Empfehlungen oeffnet; ipc.ts weist alles ausser http(s) ohnehin vorher ab.
+// Scope-Entscheidung (AP-10b): https statt einer GitHub-only-Whitelist, weil
+// openExternal die Links aus Empfehlungen und PRs oeffnet. Klartext-http bleibt
+// nur fuer die lokale Web-Ansicht: WebInterfacePanel.tsx baut
+// `http://localhost:<port>/board`. Das Glob des Plugins prueft den rohen
+// String, daher sperrt `deny` jede Userinfo (`http://localhost:1@evil.example/`).
 const here = dirname(fileURLToPath(import.meta.url));
 const tauriDir = resolve(here, "..", "src-tauri");
 
@@ -49,12 +51,22 @@ describe("opener plugin wiring (P2-J)", () => {
     expect(allow.length).toBeGreaterThan(0);
   });
 
-  it("scopes open_url to web URLs only - no mailto, tel, file or wildcard", () => {
+  it("scopes open_url to https plus the documented loopback board URL only", () => {
     const urls = (openerPermissions[0]?.allow ?? []).map((e) => e.url ?? "");
-    expect(urls).toEqual(expect.arrayContaining(["https://*", "http://*"]));
-    for (const url of urls) {
+    expect(urls).toEqual(["https://*", "http://localhost:*/board"]);
+  });
+
+  it("allows no plain http scope except loopback", () => {
+    const loopback = /^http:\/\/(localhost|127\.0\.0\.1)(:[^@/]*)?\//;
+    for (const url of (openerPermissions[0]?.allow ?? []).map((e) => e.url ?? "")) {
       expect(url).toMatch(/^https?:\/\//);
+      if (url.startsWith("http://")) expect(url).toMatch(loopback);
     }
+  });
+
+  it("denies userinfo URLs so the loopback glob cannot reach another host", () => {
+    const deny = (openerPermissions[0]?.deny ?? []).map((e) => e.url);
+    expect(deny).toContain("http://*@*");
   });
 
   it("does not fall back to the unscoped default permission set", () => {
