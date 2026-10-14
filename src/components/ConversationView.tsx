@@ -219,7 +219,7 @@ export default function ConversationView({
               onClick={handleSharpen}
               title={
                 "Den Entwurf vom Prompt-Master schärfen lassen — sendet nicht. Bei einer " +
-                "vagen Aufgabe kommen erst Rückfragen zurück, die in der Attention-Ansicht landen."
+                "vagen Aufgabe kommen erst Rückfragen zurück, die in der Ansicht „Achtung“ landen."
               }
             >
               {

@@ -55,7 +55,7 @@ describe("AttentionInbox", () => {
 
     const row = await screen.findByRole("option", { name: /Kontingent blockiert/i });
     expect(row).toHaveAccessibleName(/Blockade Kontingent blockiert/);
-    expect(row).toHaveAccessibleName(/Öffnet Agents/);
+    expect(row).toHaveAccessibleName(/Öffnet Agenten/);
     fireEvent.click(row);
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen.mock.calls[0][0].count).toBe(5);

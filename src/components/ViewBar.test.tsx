@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import ViewBar from "./ViewBar";
-import { APP_GOALS, GOAL_LABELS, RETIRED_NAV_LABELS } from "../lib/goals";
+import { t } from "../i18n/useT";
+import { APP_GOALS, goalLabelKey, RETIRED_NAV_LABELS } from "../lib/goals";
 
 const props = {
   goal: "work" as const,
@@ -25,12 +26,20 @@ describe("ViewBar", () => {
     expect(screen.queryByText("7 workers")).not.toBeInTheDocument();
   });
 
-  it("offers exactly the six Rev-9 goals and none of the retired labels", () => {
+  it("shows the six Rev-9 goals under German names and none of the retired labels", () => {
     render(<ViewBar {...props} projectName="Alpha" workerCount={1} />);
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent?.replace(/\d+$/, "").trim())).toEqual(
-      APP_GOALS.map((id) => GOAL_LABELS[id]),
+      APP_GOALS.map((id) => t(goalLabelKey(id))),
     );
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Arbeit",
+      "Achtung",
+      "Agenten",
+      "Prüfung",
+      "Auswertung",
+      "Einstellungen",
+    ]);
     for (const retired of RETIRED_NAV_LABELS) {
       expect(screen.queryByRole("tab", { name: retired })).not.toBeInTheDocument();
     }
@@ -46,7 +55,7 @@ describe("ViewBar", () => {
         questionsFleetWide
       />,
     );
-    const attention = screen.getByRole("tab", { name: /Attention/ });
+    const attention = screen.getByRole("tab", { name: /Achtung/ });
     expect(attention).toHaveTextContent("3");
     fireEvent.click(attention);
     expect(props.onChange).toHaveBeenCalledWith("attention");
