@@ -56,7 +56,8 @@ test('package size counts additions deletions tests and renames against the merg
   const { cwd, git, put, commit, run, base } = fixture(t);
   renameSync(join(cwd, 'old.txt'), join(cwd, 'renamed.txt'));
   put('tests/new.test.mjs', '// test\n'.repeat(3));
-  put('docs/space tab\tnewline\n.md', 'doc\n'.repeat(4));
+  // Tab and newline are illegal in Windows file names; keep the quoting case on POSIX only.
+  put(process.platform === 'win32' ? 'docs/space name.md' : 'docs/space tab\tnewline\n.md', 'doc\n'.repeat(4));
   put(configPath, JSON.stringify(config, null, 2) + '\n');
   const head = commit();
   expectResult(run(), 0, 23, 13);
@@ -175,7 +176,7 @@ test('package size accepts the PR size exception label', t => {
 test('package size exception preserves validation and measurement', async t => {
   for (const [name, path, content, status] of [
     ['numeric limit', 'large.txt', 'line\n'.repeat(417), 0],
-    ['binary', 'binary.dat', Buffer.from([0, 1, 2]), 1],
+    ['binary', 'binary.dat', Buffer.from([0, 1, 2]), 0],
     ['raised limit', configPath, JSON.stringify({ ...config, maximumLines: 999 }), 2],
     ['widened exclusions', configPath, JSON.stringify({ ...config, excludedPaths: ['*'] }), 2],
     ['missing base', 'large.txt', 'line\n', 2],
@@ -190,10 +191,48 @@ test('package size exception preserves validation and measurement', async t => {
     const result = run();
     assert.equal(result.status, status, result.stdout + result.stderr);
     if (name === 'numeric limit') expectResult(result, 0, 417, 0);
-    if (name === 'binary') assert.match(result.stderr, /not numerically measurable/);
+    if (name === 'binary') assert.match(result.stdout, /exception label present.*binary.dat/);
     if (name === 'raised limit' || name === 'widened exclusions') assert.match(result.stderr, /widened above base/);
     if (name === 'missing base') assert.match(result.stderr, /requires a PR base SHA/);
   });
+});
+
+test('package size fix round label raises the ceiling to the configured 400 lines', t => {
+  const { cwd, put, commit, run, env } = fixture(t, false, { fixRoundMaximumLines: 400 });
+  env.GITHUB_EVENT_NAME = 'pull_request';
+  env.GITHUB_EVENT_PATH = join(cwd, 'event.json');
+  for (const [lines, label, status] of [[361, 'size-fix-round', 0], [399, 'size-fix-round', 0],
+    [400, 'size-fix-round', 1], [361, 'size-ok', 1], [301, undefined, 1]]) {
+    put('large.txt', 'line\n'.repeat(lines));
+    put('event.json', JSON.stringify({ pull_request: { labels: label ? [{ name: label }] : [] } }));
+    commit();
+    const result = run();
+    assert.equal(result.status, status, `${lines} ${label}: ${result.stdout}${result.stderr}`);
+    if (label === 'size-fix-round' && status === 0) assert.match(result.stdout, /fix round label present/);
+  }
+  put('binary.dat', Buffer.from([0, 1, 2]));
+  put('event.json', JSON.stringify({ pull_request: { labels: [{ name: 'size-fix-round' }] } }));
+  commit();
+  assert.equal(run().status, 1);
+});
+
+test('package size fix round ceiling cannot be raised or invented by a candidate', t => {
+  const { put, commit, run, git, base } = fixture(t, false, { fixRoundMaximumLines: 400 });
+  for (const content of [{ ...config, fixRoundMaximumLines: 401 }, { ...config, fixRoundMaximumLines: 299 },
+    { ...config, fixRoundMaximumLines: '400' }]) {
+    git('checkout', '-q', '--detach', base);
+    put(configPath, JSON.stringify(content));
+    commit();
+    assert.equal(run().status, 2, JSON.stringify(content));
+  }
+  git('checkout', '-q', '--detach', base);
+  put(configPath, JSON.stringify(config));
+  commit();
+  assert.equal(run().status, 0, 'dropping the fix round ceiling only narrows');
+  const plain = fixture(t);
+  plain.put(configPath, JSON.stringify({ ...config, fixRoundMaximumLines: 400 }));
+  plain.commit();
+  assert.equal(plain.run().status, 2, 'a candidate cannot add a fix round ceiling');
 });
 
 test('package size reports numeric and binary violations in English', t => {
