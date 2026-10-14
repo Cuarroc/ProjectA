@@ -76,10 +76,8 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 Setzen/Entfernen: `gh pr edit <n> --add-label do-not-merge`,
 `gh pr edit <n> --remove-label do-not-merge`.
 
-> **Stand 24.09.2026:** Die Labels `do-not-merge` und `priority` sind im Repo
-> noch **nicht angelegt** (`gh label list`); `gh pr edit --add-label`
-> scheitert dann. Einmalig anlegen (Nutzer oder Koordinator):
-> `gh label create do-not-merge` und `gh label create priority`.
+> **Stand 14.10.2026:** Die Labels `do-not-merge`, `priority` und `review-ok`
+> sind im Repo angelegt (`gh label list`).
 
 ## Berichtsschutz
 
@@ -123,8 +121,11 @@ generierten Snapshots zurück:
 
 Regelfall: `main` wird über die Queue gemergt. **Notfall-Ausnahme**
 (Nutzerentscheidung 24.09.2026): Hängt die Queue oder fällt Mergify aus, darf
-der Koordinator fertige PRs weiter von Hand mergen (`gh pr merge --merge`,
-Merge-Commit wie die Queue). Sonst mergt niemand von Hand. Die Ausnahme
+der Koordinator fertige PRs weiter von Hand mergen
+(`gh pr merge --merge --match-head-commit <sha>`, gebunden an den Kopf-SHA mit
+grünen Checks; vorher den `ci`-Workflow per Handstart auf dem Branch laufen
+lassen, weil die Windows-Bahn auf PRs ein Stub ist; AGENTS.md, „Merging").
+Sonst mergt niemand von Hand. Die Ausnahme
 kommt mit SETUP-04 auch in `AGENTS.md` („Merging"). Ob `gh pr merge` für alle
 übrigen Claude-Sitzungen per Deny-Regel gesperrt wird, entscheidet der Nutzer:
 siehe [permissions-proposal.md](permissions-proposal.md).
