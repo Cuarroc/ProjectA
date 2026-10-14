@@ -29,7 +29,7 @@ export default function TerminalRoute() {
       showRestore(worker.id); setRestore(worker); return;
     }
     openWorker({ sessionId: worker.sessionId, workerId: worker.id, projectId: worker.projectId,
-      profileId: worker.profileId, profileName: profiles.find((profile) => profile.id === worker.profileId)?.name ?? worker.profileId, kind: worker.kind,
+      profileId: worker.profileId, profileName: profiles.find((profile) => profile.id === worker.profileId)?.name ?? "", kind: worker.kind,
       title: shortTask(worker.task), exited: false, exitCode: null });
     setRestore(null);
   }, [openWorker, showRestore]);
