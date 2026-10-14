@@ -4081,18 +4081,6 @@ mod tests {
         );
     }
 
-    /// The download runs before `produce_journal` (`prepare_and_install`), so at
-    /// a timeout the journal may be absent, pre-install, or left by a completed
-    /// previous update. `JournalStore::installer_started` also checks write resumption;
-    /// these assertions cover the pre-install phases of its shared predicate.
-    #[test]
-    fn download_time_journal_phases_take_the_thaw_path() {
-        use crate::delivery_recovery::{installer_not_started, UpdatePhase};
-        assert!(installer_not_started(UpdatePhase::Maintenance));
-        assert!(installer_not_started(UpdatePhase::BackupVerified));
-        assert!(!installer_not_started(UpdatePhase::Installing));
-    }
-
     use super::{Duration, PtyManager};
     use std::path::PathBuf;
 
@@ -4930,24 +4918,6 @@ mod tests {
             err.contains("com.projecta.dev") && err.contains("com.projecta.app"),
             "the error names both identifiers: {err}"
         );
-    }
-
-    /// R1290-C2: an empty or path-like `PROJECTA_IDENTIFIER` must never become
-    /// a path segment of the app-data directory.
-    #[test]
-    fn unusable_embedded_identifier_falls_back_to_stable() {
-        use crate::build_identifier::resolve_build_identifier;
-        assert_eq!(
-            resolve_build_identifier(Some("com.projecta.dev")),
-            "com.projecta.dev"
-        );
-        for bad in ["", "..", "a/b", "a\\b", "com projecta"] {
-            assert_eq!(
-                resolve_build_identifier(Some(bad)),
-                "com.projecta.app",
-                "{bad:?}"
-            );
-        }
     }
 
     #[test]

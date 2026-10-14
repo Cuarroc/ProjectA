@@ -650,4 +650,15 @@ mod tests {
         // The latch stays: a second install in this process is refused.
         assert!(pty.install_in_maintenance(|| Ok(())).is_err());
     }
+
+    /// The download runs before `produce_journal` (`prepare_and_install`), so at
+    /// a timeout the journal may be absent, pre-install, or left by a completed
+    /// previous update. `JournalStore::installer_started` also checks write resumption;
+    /// these assertions cover the pre-install phases of its shared predicate.
+    #[test]
+    fn download_time_journal_phases_take_the_thaw_path() {
+        assert!(installer_not_started(UpdatePhase::Maintenance));
+        assert!(installer_not_started(UpdatePhase::BackupVerified));
+        assert!(!installer_not_started(UpdatePhase::Installing));
+    }
 }
