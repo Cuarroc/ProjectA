@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const labels = { open: 'Offen', answered: 'Beantwortet', deferred: 'Zurückgestellt', clarify: 'Rückfrage offen', received: 'Gelesen', applied: 'Umgesetzt', historical: 'Historisch' };
 const actions = { answer: 'Antwort', defer: 'Zurückgestellt · keine Zustimmung', clarify: 'Rückfrage · keine Zustimmung' };
 let state = null, activeId = null, view = null, loading = false, posting = false;
-let area = 'now', dataInvalid = false, ideaPosting = false;
+let area = 'home', dataInvalid = false, ideaPosting = false;
 const transportError = error => error instanceof TypeError || ['TimeoutError', 'AbortError'].includes(error.name) ? 'Die Verbindung ist gerade nicht erreichbar.' : error.message;
 const storageKey = 'decision-desk.drafts.v1';
 const rootReceiver = document.querySelector('meta[name="decision-desk-root-agent-id"]')?.content?.trim() || null;
@@ -38,10 +38,11 @@ function badge(text, cls) { return node('span', text, `badge ${cls || ''}`); }
 function detailedRecommendation(q) {
   if (!q.recommendationDetail) return null;
   const r = q.recommendationDetail, o = r.observation, rec = node('section', undefined, 'recommendation'); rec.setAttribute('aria-label', 'Empfehlung');
-  if (!record(r) || !record(o) || !strings(o.evidenceRefs) || !strings(r.authorityRefs) || !['statement'].every(k => typeof o[k] === 'string') || !['hypothesis', 'consequences', 'reversibility'].every(k => typeof r[k] === 'string')) { rec.append(node('p', 'Empfehlungsdetails nicht prüfbar.')); return rec; }
+  if (!record(r) || !record(o) || !strings(o.evidenceRefs) || !strings(r.authorityRefs) || !['statement'].every(k => typeof o[k] === 'string') || !['hypothesis', 'consequences', 'reversibility'].every(k => typeof r[k] === 'string')) return null;
   const observed = o.evidenceRefs.some(ref => ref.trim()) && typeof o.observedAt === 'string' && Number.isFinite(Date.parse(o.observedAt));
-  rec.append(node('strong', sourceCurrent(q) && state.questions.some(current => current.id === q.id && current.revision === q.revision) ? 'Empfehlung' : 'Historische Empfehlung'), node('p', `Hypothese: ${r.hypothesis}`));
-  const proof = node('details'); proof.append(node('summary', 'Begründung, Folgen und Belege'), node('p', `${observed ? 'Grundlage' : 'Ungeprüfte Grundlage'}: ${o.statement}`), node('p', `Mögliche Folgen: ${r.consequences}`), facts([
+  const heading = sourceCurrent(q) && state.questions.some(current => current.id === q.id && current.revision === q.revision) ? 'Empfehlung' : 'Historische Empfehlung';
+  rec.append(node('strong', q.mode === 'free' ? heading : `${heading}: ${q.options.filter(o => q.recommendation.optionIds.includes(o.id)).map(o => o.label).join(' + ')}`));
+  const proof = node('details'); proof.append(node('summary', 'Begründung, Folgen und Belege'), node('p', `Hypothese: ${r.hypothesis}`), node('p', q.recommendation?.rationale || ''), node('p', `${observed ? 'Grundlage' : 'Ungeprüfte Grundlage'}: ${o.statement}`), node('p', `Mögliche Folgen: ${r.consequences}`), facts([
     ['Belege', o.evidenceRefs.join(', ') || 'Keine Belege hinterlegt'], ['Beobachtungszeit', typeof o.observedAt === 'string' && Number.isFinite(Date.parse(o.observedAt)) ? date(o.observedAt) : 'Zeitpunkt unbekannt'], ['Umkehrbarkeit', r.reversibility],
     ['Vorgesehenes Planfenster', typeof r.patchWindowText === 'string' && r.patchWindowText.trim() ? r.patchWindowText : 'Nicht geplant'],
     ['Referenzen · keine Empfangsbestätigung', r.authorityRefs.join(', ') || 'Keine Referenzen hinterlegt']
@@ -80,7 +81,6 @@ function compareQuestions(data, a, b) {
   return Number(y.actualBlocker) - Number(x.actualBlocker) || priorityLevels.indexOf(x.criticality) - priorityLevels.indexOf(y.criticality) || priorityLevels.indexOf(x.impact) - priorityLevels.indexOf(y.impact)
     || (created(a) < created(b) ? -1 : created(a) > created(b) ? 1 : 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
-function prioritySummary(q) { const p = projectQuestionPriority(state, q); return `${p.actualBlocker ? 'Belegte Abhängigkeit · ' : ''}Kritikalität: ${priorityNames[p.criticality]} · Wirkung: ${priorityNames[p.impact]}`; }
 function validQuestion(q) {
   if (record(q) && q.mode === 'free') return typeof q.id === 'string' && typeof q.title === 'string' && Number.isInteger(q.revision)
     && Array.isArray(q.options) && q.options.length === 0 && q.recommendation === null
@@ -96,6 +96,23 @@ function validAnswer(a) {
   return record(a) && typeof a.id === 'string' && typeof a.questionId === 'string' && Number.isInteger(a.questionRevision) && Object.hasOwn(actions, a.action) && strings(a.selected)
     && (a.question == null || validQuestion(a.question)) && (a.ack == null || validAck(a.ack)) && (a.acknowledgements == null || (Array.isArray(a.acknowledgements) && a.acknowledgements.every(validAck)));
 }
+function shortTitle(text) { const chars = [...text]; return chars.length > 60 ? `${chars.slice(0, 59).join('')}…` : text; }
+function compactTitle(panel, tag, title) {
+  panel.append(node(tag, shortTitle(title)));
+  if (shortTitle(title) !== title) { const more = node('details'); more.append(node('summary', 'mehr'), node('p', title)); panel.append(more); }
+}
+function renderHome(failed = false) {
+  const panel = $('home'), questions = (state?.questions || []).filter(q => status(q) === 'open').sort((a, b) => compareQuestions(state, a, b));
+  const signature = JSON.stringify([failed, questions]); if (panel.dataset.signature === signature) return; panel.dataset.signature = signature;
+  panel.replaceChildren(node('h2', 'Jetzt'));
+  if (failed) { panel.append(node('p', 'Aktuelle Fragen konnten nicht geladen werden.'), button('Erneut versuchen', load, 'primary')); return; }
+  const open = id => { showArea('now'); openQuestion(id); };
+  for (const q of questions.slice(0, 3)) { const b = button('', () => open(q.id), 'question-link'); b.setAttribute('aria-label', q.title); b.append(node('strong', shortTitle(q.title)), badge('Braucht dich', 'needs-user')); panel.append(b); }
+  if (!questions.length) panel.append(node('p', 'Keine offenen Fragen.'));
+  const bar = node('div', undefined, 'actions');
+  if (questions.length) bar.append(button('Nächste Frage öffnen', () => open(questions[0].id), 'primary'));
+  bar.append(button('Alle ansehen', () => { $('filter').value = 'all'; $('search').value = ''; renderList(); showArea('now'); }), button('Idee einreichen', () => showArea('think'), questions.length ? '' : 'primary')); panel.append(bar);
+}
 function renderList() {
   const filter = $('filter').value, term = $('search').value.toLocaleLowerCase('de');
   const questions = state.questions.filter(q => (filter === 'all' || status(q) === filter) && [q.title, q.category, q.owner, q.id].join(' ').toLocaleLowerCase('de').includes(term)).sort((a, b) => compareQuestions(state, a, b));
@@ -103,7 +120,7 @@ function renderList() {
   const filterSummary = document.querySelector('.question-tools > summary');
   if (filterSummary) filterSummary.textContent = `Fragen suchen und filtern · ${$('filter').selectedOptions[0]?.textContent || filter}${term ? ' · Suche aktiv' : ''}`;
   $('questions').replaceChildren();
-  for (const q of questions) { const b = button('', () => openQuestion(q.id)); b.className = 'question-link'; b.setAttribute('aria-current', String(q.id === activeId)); b.append(node('strong', q.title), node('small', `${labels[status(q)]} · ${q.category} · ${prioritySummary(q)}`)); $('questions').append(b); }
+  for (const q of questions) { const b = button('', () => openQuestion(q.id)); b.className = 'question-link'; b.setAttribute('aria-current', String(q.id === activeId)); b.setAttribute('aria-label', q.title); b.append(node('strong', shortTitle(q.title)), node('small', labels[status(q)])); $('questions').append(b); }
   if (!questions.length) $('questions').append(node('p', state.questions.length ? 'Keine Fragen für diesen Filter.' : 'Noch keine Fragen. Neue Fragen erscheinen hier automatisch.', 'muted'));
 }
 function showChanged(message) {
@@ -120,14 +137,14 @@ async function load() {
       throw new Error('Unbekanntes oder unvollständiges Datenformat. Bitte den Orchestrator informieren.');
     }
     dataInvalid = false;
-    state = data; renderList(); $('connection').textContent = `Aktualisiert ${date(new Date())} · automatische Prüfung alle 15 Sekunden`;
+    state = data; renderList(); renderHome(); $('connection').textContent = `Aktualisiert ${date(new Date())} · automatische Prüfung alle 15 Sekunden`;
     $('global-error').hidden = storageAvailable; if (!storageAvailable) $('global-error').textContent = 'Lokaler Entwurfsspeicher nicht verfügbar. Eingaben bleiben nur in dieser geöffneten Seite.';
     if (view) { const q = state.questions.find(q => q.id === activeId); if (!q || signature(q) !== view.signature) showChanged('Diese Frage oder ihre Historie wurde aktualisiert. Dein Entwurf bleibt erhalten. Prüfe die aktuelle Fassung vor dem Senden.'); }
     else { const next = state.questions.filter(q => status(q) === 'open').sort((a, b) => compareQuestions(state, a, b))[0]; if (next) openQuestion(next.id, false); }
     renderPlanned(); renderIdeaState();
     for (const label of document.querySelectorAll('.event-status')) { const a = state.answers.find(a => a.id === label.dataset.eventId); if (a) label.textContent = eventSummary(answerRef(a), a.action); }
     await loadInbox(); return true;
-  } catch (error) { $('global-error').hidden = false; $('global-error').textContent = `${transportError(error)} Erneut mit „Aktualisieren“ versuchen. Deine Eingaben bleiben erhalten.`; $('connection').textContent = state ? 'Verbindung unterbrochen · zuletzt geladene Daten' : 'Fragen konnten nicht geladen werden.'; }
+  } catch (error) { renderHome(true); $('global-error').hidden = false; $('global-error').textContent = `${transportError(error)} Erneut mit „Aktualisieren“ versuchen. Deine Eingaben bleiben erhalten.`; $('connection').textContent = state ? 'Verbindung unterbrochen · zuletzt geladene Daten' : 'Fragen konnten nicht geladen werden.'; }
   finally { loading = false; $('refresh').disabled = false; updateIdeaControls(); updateWB(); }
 }
 function openQuestion(id, focus = true) {
@@ -138,7 +155,7 @@ function openQuestion(id, focus = true) {
   if (!Array.isArray(d.selected) || typeof d.note !== 'string') { drafts[draftKey] = { selected: [], note: '', baseAnswerId: previous?.id ?? null }; return openQuestion(id, focus); }
   const panel = $('detail'); panel.replaceChildren();
   const priority = projectQuestionPriority(state, q), tags = node('div'); tags.append(badge(labels[status(q)], status(q)), badge(`Fassung ${q.revision}`)); if (priority.actualBlocker) tags.append(badge('Belegte Abhängigkeit', 'blocking'));
-  panel.append(tags, node('h2', q.title));
+  panel.append(tags); compactTitle(panel, 'h2', q.title);
   const background = node('details'); background.id = 'question-background'; background.append(node('summary', 'Kontext, Einordnung und Herkunft'), node('p', q.context, 'context'), facts([['Verantwortlich', q.owner], ['Thema', q.category], ['Geltungsbereich', q.scope], ['Quelle', q.source], ['Unsicherheit', q.uncertainty]]));
   if (q.sourceRef) background.append(facts([['Ideen-ID', q.sourceRef.ideaId], ['Ideenfassung', String(q.sourceRef.ideaRevision)], ['Ereignis-ID', q.sourceRef.eventId]]));
   if (q.contentOrigin) background.append(facts([['Inhaltsherkunft', q.contentOrigin.actor], ['Herkunftsreferenz', q.contentOrigin.sourceRefText]]));
@@ -151,7 +168,7 @@ function openQuestion(id, focus = true) {
   if (previous && previous.questionRevision !== q.revision) panel.append(node('p', `Neu offen: Die letzte Antwort bezog sich auf Fassung ${previous.questionRevision}.`, 'notice'));
   const free = q.mode === 'free';
   const recommendation = detailedRecommendation(q); if (recommendation) panel.append(recommendation);
-  if (!free) { const rec = node('section', undefined, 'recommendation'); rec.setAttribute('aria-label', 'Empfehlung'); const why = node('details'); why.append(node('summary', 'Warum diese Empfehlung?'), node('p', q.recommendation.rationale)); rec.append(node('strong', `Empfehlung: ${q.options.filter(o => q.recommendation.optionIds.includes(o.id)).map(o => o.label).join(' + ')}`), why); panel.append(rec); }
+  if (!free && !recommendation) { const rec = node('section', undefined, 'recommendation'); rec.setAttribute('aria-label', 'Empfehlung'); const why = node('details'); why.append(node('summary', 'Warum diese Empfehlung?'), node('p', q.recommendation.rationale)); rec.append(node('strong', `Empfehlung: ${q.options.filter(o => q.recommendation.optionIds.includes(o.id)).map(o => o.label).join(' + ')}`), why); panel.append(rec); }
   const oldDrafts = Object.entries(drafts).filter(([k]) => k.startsWith(`${q.id}:`) && k !== draftKey);
   if (oldDrafts.length) { const old = node('details'); old.append(node('summary', 'Entwürfe früherer Fassungen')); for (const [k, value] of oldDrafts) old.append(node('p', `${k} · Auswahl: ${(value.selected || []).join(', ') || 'keine'}\n${value.note || ''}`)); panel.append(old); }
   const notice = node('div', undefined, 'notice'); notice.hidden = true; notice.setAttribute('role', 'status'); panel.append(notice);
@@ -165,7 +182,7 @@ function openQuestion(id, focus = true) {
     inputs.push(input); input.addEventListener('change', () => { d.selected = inputs.filter(i => i.checked).map(i => i.value); changed(); }); fields.append(row);
   }
   const noteLabel = node('label', free ? 'Antwort oder Rückfrage' : 'Notiz oder Rückfrage', 'note-label'); noteLabel.htmlFor = 'note'; const note = node('textarea'); note.id = 'note'; note.maxLength = 8000; note.value = d.note; note.setAttribute('aria-describedby', 'draft-status');
-  note.addEventListener('input', () => { d.note = note.value; changed(); }); fields.append(noteLabel, note);
+  note.addEventListener('input', () => { d.note = note.value; changed(); }); const noteDetails = node('details'); noteDetails.open = free || Boolean(d.note); noteDetails.append(node('summary', free ? 'Deine Antwort' : 'Notiz hinzufügen'), noteLabel, note); fields.append(noteDetails);
   const draftStatus = node('p', 'Entwurf lokal · nicht gesendet', 'muted'); draftStatus.id = 'draft-status'; fields.append(draftStatus);
   const bar = node('div', undefined, 'actions'), choose = button(free ? 'Antwort prüfen' : 'Auswahl prüfen', () => prepare('answer'), 'primary'), defer = button('Später entscheiden', () => prepare('defer')), clarify = button('Rückfrage stellen', () => prepare('clarify')); bar.append(choose, defer, clarify); fields.append(bar); form.append(fields);
   const feedback = node('p', '', 'feedback'); feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite'); const confirm = node('section', undefined, 'notice'); confirm.hidden = true;
@@ -180,7 +197,9 @@ function openQuestion(id, focus = true) {
     if (action === 'answer' && !free && (!d.selected.length || (d.selected.length > 1 && q.options.some(o => o.exclusive && d.selected.includes(o.id))))) { feedback.textContent = 'Bitte eine gültige Auswahl treffen. „Nur allein“ lässt sich nicht kombinieren.'; return; }
     if (action === 'clarify' && !d.note.trim()) { feedback.textContent = 'Bitte trage deine Rückfrage in das Notizfeld ein.'; note.focus(); return; }
     const summary = action === 'answer' ? free ? 'Du speicherst deine Antwort. Daraus entsteht kein Ausführungsauftrag.' : `Du bestätigst: ${q.options.filter(o => d.selected.includes(o.id)).map(o => o.label).join(' + ')}` : action === 'defer' ? 'Du stellst diese Frage zurück. Das ist keine Zustimmung.' : 'Du sendest eine Rückfrage. Das ist keine Zustimmung.';
-    confirm.replaceChildren(node('strong', summary)); if (d.note.trim()) confirm.append(node('p', d.note));
+    confirm.replaceChildren(node('strong', summary));
+    if (action === 'answer' && !free) { for (const o of q.options.filter(o => d.selected.includes(o.id))) confirm.append(facts([['Auswirkungen', o.impact], ['Abwägung', o.tradeoff], ['Aufwand', o.effort], ['Umkehrbarkeit', o.reversible]])); if (typeof q.recommendationDetail?.consequences === 'string') confirm.append(node('p', q.recommendationDetail.consequences)); }
+    if (d.note.trim()) confirm.append(node('p', d.note));
     const send = button(action === 'answer' ? free ? 'Antwort speichern' : 'Auswahl verbindlich speichern' : action === 'defer' ? 'Zurückstellung speichern' : 'Rückfrage senden', () => submit(action), 'primary'); confirm.append(send, button('Zurück zum Entwurf', () => { confirm.hidden = true; choose.focus(); })); confirm.hidden = false; send.focus();
   }
   function offerRetry() { confirm.hidden = false; confirm.replaceChildren(node('p', 'Der Ausgang der letzten Übertragung ist unklar. Wiederholen sendet exakt dieselbe Anfrage und erzeugt keine doppelte Antwort.'), button('Speicherung erneut prüfen', () => submit(d.pending.action), 'primary')); }
@@ -226,15 +245,15 @@ function renderPlanned() {
   const panel = $('planned'); panel.replaceChildren(node('h2', 'Was als Nächstes ansteht')); panel.firstChild.id = 'planned-title';
   const planned = activeEvents().map(event => ({ ...event, patch: patchFor(event.ref) })).filter(event => event.patch && strongReceipt(event.ref) && state.progress?.some(p => p.eventId === event.ref.eventId && p.currentStatus === 'planned') && !['defer', 'clarify'].includes(event.action));
   if (!planned.length) panel.append(node('p', 'Kein Patchfenster hinterlegt. Ein Termin wird erst angezeigt, wenn er tatsächlich geplant ist.'));
-  for (const event of planned) panel.append(node('h3', event.title), node('p', `${event.patch.label} · ${event.patch.windowText.trim() || 'Zeitfenster noch nicht festgelegt'}`), node('p', event.patch.reason), node('p', `Freigabebelege: ${event.patch.authorityEvidenceRefs.join(', ')}`, 'muted'));
+  for (const event of planned) { compactTitle(panel, 'h3', event.title); panel.append(node('p', `${event.patch.label} · ${event.patch.windowText.trim() || 'Zeitfenster noch nicht festgelegt'}`)); const details = node('details'); details.append(node('summary', 'Begründung und Belege'), node('p', event.patch.reason), node('p', `Freigabebelege: ${event.patch.authorityEvidenceRefs.join(', ')}`, 'muted')); panel.append(details); }
   if (!state) return;
   const applied = state.questions.filter(q => status(q) === 'applied');
-  if (applied.length) { const archive = node('details'); archive.append(node('summary', 'Bisher als umgesetzt bestätigt')); for (const q of applied) { const a = latest(q.id); archive.append(node('h3', q.title), node('p', `${a.ack.actor} · ${date(a.ack.at)} · ${a.ack.note}`)); } panel.append(archive); }
+  if (applied.length) { const archive = node('details'); archive.append(node('summary', 'Bisher als umgesetzt bestätigt')); for (const q of applied) { const a = latest(q.id); compactTitle(archive, 'h3', q.title); archive.append(node('p', `${a.ack.actor} · ${date(a.ack.at)} · ${a.ack.note}`)); } panel.append(archive); }
   panel.append(node('p', 'Gespeicherte Antworten und Empfangsbestätigungen allein sind keine Patchplanung.', 'muted'));
 }
 function showArea(next) {
   area = next;
-  for (const name of ['now', 'think', 'plan']) { const panel = $(name === 'think' ? 'thinking' : name === 'plan' ? 'planned' : 'now'); panel.hidden = name !== next; $(`area-${name}`).setAttribute('aria-pressed', String(name === next)); }
-  const target = $(next === 'think' ? 'thinking' : next === 'plan' ? 'planned' : 'detail'); target.focus();
+  for (const name of ['home', 'now', 'think', 'plan']) { const panel = $(name === 'think' ? 'thinking' : name === 'plan' ? 'planned' : name); panel.hidden = name !== next; $(`area-${name}`).setAttribute('aria-pressed', String(name === next)); }
+  const target = $(next === 'think' ? 'thinking' : next === 'plan' ? 'planned' : next === 'home' ? 'home' : 'detail'); target.focus(); document.querySelector('.skip')?.setAttribute('href', `#${target.id}`);
 }
-for (const name of ['now', 'think', 'plan']) $(`area-${name}`).addEventListener('click', () => showArea(name));
+for (const name of ['home', 'now', 'think', 'plan']) $(`area-${name}`).addEventListener('click', () => showArea(name));
