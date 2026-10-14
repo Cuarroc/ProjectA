@@ -205,4 +205,119 @@ describe("LektionenFreigabe", () => {
       vi.useRealTimers();
     }
   });
+
+  it("removes a decided lesson before its follow-up read settles", async () => {
+    const deferredRefresh = deferred<Learning[]>();
+    const approved = deferred<void>();
+    vi.mocked(listLearnings).mockResolvedValueOnce([learning("a"), learning("b")]).mockReturnValue(deferredRefresh.promise);
+    vi.mocked(approveLearning).mockReturnValue(approved.promise);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    await waitFor(() => expect((within(row("a")).getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(true));
+
+    await act(async () => { approved.resolve(); await approved.promise; });
+    await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(screen.getByText(T.approved)).toBeTruthy();
+    expect((within(row("b")).getByRole("button", { name: T.approve }) as HTMLButtonElement).disabled).toBe(false);
+    expect(listLearnings).toHaveBeenCalledTimes(2);
+
+    await act(async () => { deferredRefresh.resolve([learning("b")]); });
+    await waitFor(() => expect(screen.getByText("content of b")).toBeTruthy());
+    expect(screen.queryByText("content of a")).toBeNull();
+  });
+
+  it("keeps remaining lessons when the post-decision read fails", async () => {
+    vi.mocked(listLearnings).mockResolvedValueOnce([learning("a"), learning("b")]).mockRejectedValueOnce(new Error("read failed"));
+    vi.mocked(approveLearning).mockResolvedValue(undefined);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(screen.getByText(T.approved)).toBeTruthy();
+    expect(await screen.findByText(T.reloadFailed)).toBeTruthy();
+    expect(screen.queryByText(T.loadFailed)).toBeNull();
+    expect(screen.queryByText(T.approveFailed)).toBeNull();
+    expect(screen.queryByText(T.empty)).toBeNull();
+    expect(screen.getByRole("button", { name: T.retry })).toBeTruthy();
+    expect((within(row("b")).getByRole("button", { name: T.reject }) as HTMLButtonElement).disabled).toBe(false);
+    expect(listLearnings).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries only the lesson read after a confirmed decision", async () => {
+    vi.mocked(listLearnings)
+      .mockResolvedValueOnce([learning("a"), learning("b")])
+      .mockRejectedValueOnce(new Error("read failed"))
+      .mockResolvedValueOnce([learning("a"), learning("b")]);
+    vi.mocked(approveLearning).mockResolvedValue(undefined);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    expect(await screen.findByText(T.reloadFailed)).toBeTruthy();
+    expect(screen.queryByText("content of a")).toBeNull();
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(approveLearning).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: T.retry }));
+    await waitFor(() => expect(screen.queryByText(T.reloadFailed)).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    expect(screen.queryByText("content of a")).toBeNull();
+    expect(screen.queryByText(T.empty)).toBeNull();
+    expect(approveLearning).toHaveBeenCalledTimes(1);
+    expect(rejectLearning).not.toHaveBeenCalled();
+    expect(listLearnings).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not claim there are no open lessons when the reread fails", async () => {
+    vi.mocked(listLearnings).mockResolvedValueOnce([learning("a")]).mockRejectedValueOnce(new Error("read failed"));
+    vi.mocked(rejectLearning).mockResolvedValue(undefined);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(screen.getByRole("button", { name: T.reject }));
+    expect(await screen.findByText(T.reloadFailed)).toBeTruthy();
+    expect(screen.getByText(T.rejected)).toBeTruthy();
+    expect(screen.queryByText("content of a")).toBeNull();
+    expect(screen.queryByText(T.empty)).toBeNull();
+    expect(screen.queryByText(T.loadFailed)).toBeNull();
+    expect(screen.getByRole("button", { name: T.retry })).toBeTruthy();
+    expect(rejectLearning).toHaveBeenCalledTimes(1);
+    expect(listLearnings).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not bring back a lesson decided while another read is still open", async () => {
+    const firstRead = deferred<Learning[]>();
+    const secondRead = deferred<Learning[]>();
+    vi.mocked(listLearnings)
+      .mockResolvedValueOnce([learning("a"), learning("b")])
+      .mockReturnValueOnce(firstRead.promise)
+      .mockReturnValueOnce(secondRead.promise);
+    vi.mocked(approveLearning).mockResolvedValue(undefined);
+    vi.mocked(rejectLearning).mockResolvedValue(undefined);
+    render(<LektionenFreigabe projectId="p1" />);
+    await screen.findByText("content of a");
+
+    fireEvent.click(within(row("a")).getByRole("button", { name: T.approve }));
+    await waitFor(() => expect(screen.queryByText("content of a")).toBeNull());
+    expect(screen.getByText("content of b")).toBeTruthy();
+    await waitFor(() => expect(listLearnings).toHaveBeenCalledTimes(2));
+
+    fireEvent.click(within(row("b")).getByRole("button", { name: T.reject }));
+    await waitFor(() => expect(screen.queryByText("content of b")).toBeNull());
+    await waitFor(() => expect(listLearnings).toHaveBeenCalledTimes(3));
+
+    await act(async () => { firstRead.resolve([learning("a"), learning("b")]); });
+    await act(async () => { secondRead.resolve([learning("a"), learning("b")]); });
+    await waitFor(() => expect(screen.queryByText(T.working)).toBeNull());
+    expect(screen.queryByText("content of a")).toBeNull();
+    expect(screen.queryByText("content of b")).toBeNull();
+    expect(screen.getByText(T.empty)).toBeTruthy();
+    expect(approveLearning).toHaveBeenCalledTimes(1);
+    expect(rejectLearning).toHaveBeenCalledTimes(1);
+  });
 });
