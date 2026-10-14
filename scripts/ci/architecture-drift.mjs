@@ -11,6 +11,7 @@ const rules = {
   RAW_PROCESS_SPAWN: "processes must be launched through proc.rs",
   DIRECT_BEGIN_IMMEDIATE: "writers must use the shared store transaction helper",
   API_STORE_BLOCK_ON: "ApiBackend must not add synchronous store calls",
+  ASYNC_BLOCK_ON: "block_on inside async code panics or stalls a Tokio worker; use .await or spawn_blocking",
   ERROR_TEXT_CLASSIFIER: "transport errors need typed mappings",
   RAW_APP_LOG: "application logs must use logging.rs",
   RAW_TAURI_TRANSPORT: "Tauri transport belongs behind src/lib/ipc",
@@ -83,6 +84,53 @@ function stripRustTests(source) {
 const normalize = (text) => text.replace(/\s+/g, "");
 const lineAt = (source, index) => source.slice(source.lastIndexOf("\n", index) + 1, source.indexOf("\n", index) < 0 ? source.length : source.indexOf("\n", index));
 
+// Blanks comments and string/char literal contents (newlines and offsets stay) so token scans cannot match them.
+function maskRust(source) {
+  let out = "", i = 0;
+  const blank = (text) => text.replace(/[^\n]/g, " ");
+  while (i < source.length) {
+    const rest = source.slice(i);
+    const token = rest.match(/^(?:\/\/[^\n]*|r(#*)"[\s\S]*?"\1|"(?:\\[\s\S]|[^\\"])*"|'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]+\}|[^])|[^\\'\n])')/u);
+    if (rest.startsWith("/*")) {
+      let depth = 0, j = i;
+      do { const two = source.slice(j, j + 2); if (two === "/*") { depth += 1; j += 2; } else if (two === "*/") { depth -= 1; j += 2; } else j += 1; } while (depth && j < source.length);
+      out += blank(source.slice(i, j)); i = j;
+    } else if (token) { out += blank(token[0]); i += token[0].length; }
+    else { out += source[i]; i += 1; }
+  }
+  return out;
+}
+
+const closeOf = (masked, open) => {
+  const [up, down] = masked[open] === "(" ? ["(", ")"] : ["{", "}"];
+  for (let depth = 0, i = open; i < masked.length; i += 1) {
+    if (masked[i] === up) depth += 1;
+    if (masked[i] === down && --depth === 0) return i + 1;
+  }
+  return masked.length;
+};
+
+// A block_on is flagged when its innermost enclosing region is an async fn or async block.
+// Plain fns and the argument lists of spawn_blocking/block_in_place/thread::spawn start synchronous regions.
+function asyncBlockOnHits(source) {
+  const masked = maskRust(source), regions = [];
+  for (const match of masked.matchAll(/\b(async\s+(?:unsafe\s+)?)?fn\s+[A-Za-z_]\w*[^{;]*?([{;])/g)) {
+    if (match[2] === "{") regions.push({ kind: match[1] ? "async" : "sync", start: match.index, end: closeOf(masked, match.index + match[0].length - 1) });
+  }
+  for (const match of masked.matchAll(/\basync\s+(?:move\s+)?\{/g)) {
+    regions.push({ kind: "async", start: match.index, end: closeOf(masked, match.index + match[0].length - 1) });
+  }
+  for (const match of masked.matchAll(/\b(?:spawn_blocking|block_in_place|thread::spawn)\s*\(/g)) {
+    regions.push({ kind: "sync", start: match.index, end: closeOf(masked, match.index + match[0].length - 1) });
+  }
+  const hits = [];
+  for (const match of masked.matchAll(/(?<!\bfn\s+)\bblock_on\s*\(/g)) {
+    const inner = regions.filter((r) => r.start < match.index && match.index < r.end).sort((a, b) => b.start - a.start)[0];
+    if (inner?.kind === "async") hits.push(normalize(lineAt(source, match.index)));
+  }
+  return hits;
+}
+
 function regexHits(source, regex, wholeMatch = false) {
   const hits = [];
   for (const match of source.matchAll(regex)) hits.push(normalize(wholeMatch ? match[0] : lineAt(source, match.index)));
@@ -136,6 +184,7 @@ function scan() {
       add("SQL_OUTSIDE_STORE", path, regexHits(source, /sqlx::(?:query|query_as|query_scalar)(?:!|::<[^>]+>)?\s*\(/g));
     if (rust && path !== "src-tauri/src/proc.rs")
       add("RAW_PROCESS_SPAWN", path, regexHits(source, /(?:std::process::)?Command::new\s*\(/g));
+    if (rust) add("ASYNC_BLOCK_ON", path, asyncBlockOnHits(source));
     if (rust) add("DIRECT_BEGIN_IMMEDIATE", path, regexHits(source, /begin_with\s*\(\s*"BEGIN IMMEDIATE"/g, true));
     if (path === "src-tauri/src/main.rs") {
       const backend = block(source, /impl\s+ControlBackend\s+for\s+ApiBackend/);
