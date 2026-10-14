@@ -112,6 +112,9 @@ fn cpu_since_start_permille() -> Option<u32> {
     use windows_sys::Win32::System::SystemInformation::GetSystemTimeAsFileTime;
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, GetProcessTimes};
 
+    // SAFETY: GetCurrentProcess returns a pseudo-handle that is always valid
+    // and needs no close. Every out-pointer is a local FILETIME that is
+    // writable for the call.
     unsafe {
         let mut created = FILETIME {
             dwLowDateTime: 0,
@@ -157,6 +160,8 @@ fn process_ram_bytes() -> Option<u64> {
     };
     use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
+    // SAFETY: pseudo-handle from GetCurrentProcess is always valid; `counters`
+    // is writable and its `cb` field holds its own size, as the API requires.
     unsafe {
         let mut counters = PROCESS_MEMORY_COUNTERS {
             cb: std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
@@ -200,6 +205,8 @@ fn page_size() -> u64 {
 fn system_ram_bytes() -> Option<u64> {
     use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
 
+    // SAFETY: `status` is writable and its `dwLength` is set to its own size
+    // before the call, as GlobalMemoryStatusEx requires.
     unsafe {
         let mut status = MEMORYSTATUSEX {
             dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
@@ -242,6 +249,8 @@ fn disk_free_bytes(path: &Path) -> Option<u64> {
         .chain(std::iter::once(0))
         .collect();
     let mut free = 0u64;
+    // SAFETY: `wide` is a NUL-terminated UTF-16 path that outlives the call;
+    // `free` is writable, and the two null out-parameters are optional.
     unsafe {
         if GetDiskFreeSpaceExW(
             wide.as_ptr(),
