@@ -145,7 +145,9 @@ who asks the user.
    refresh it; only to resolve a real conflict — merge, never rebase or
    force-push. The queue requires the `review-ok` label on the PR head
    (`.mergify.yml` queue condition `label = review-ok`, CI-HARDEN-02); only Root
-   (Chief as deputy) sets it, bound to the reviewed head SHA, never for its own model family's candidate.
+   (Chief as deputy) sets it, bound to the reviewed head SHA, only when the required review
+   verdicts come from model families other than the author's; the setter must not count
+   its own review as the independent one when it shares the author's family.
    Labels: `do-not-merge` keeps a PR out of the queue; `priority`
    (coordinator only) moves it to the front; `conflict` is set and cleared by
    Mergify. Merge authority follows AGENTS.md's ten core rules; use Mergify,

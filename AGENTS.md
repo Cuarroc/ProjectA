@@ -306,9 +306,11 @@ those `conflict`): merge, never rebase or force-push.
 - `review-ok` label: a PR enters the queue only with it. Only Root (the
   orchestrator; the Chief as its deputy) sets it, bound to the head SHA that
   was reviewed (a later push voids it), after the review disposition is
-  complete and no high finding is open. Never for a candidate authored by the
-  setter's own model family, and the reviewer family must differ from the
-  author family (rule 5). Workers and reviewers never set it or queue
+  complete and no high finding is open. The setter's own model family does
+  not matter; the review does: the required verdicts must come from model
+  families other than the author's (rule 5) and be bound to that head SHA. A
+  setter that shares the author's family must not count its own review as
+  the independent one. Workers and reviewers never set it or queue
   themselves. Removing it (or adding `do-not-merge`) takes a PR out. No branch
   type is exempt.
 - `do-not-merge` label: keeps a green PR out of the queue.
