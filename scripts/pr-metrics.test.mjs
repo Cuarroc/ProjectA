@@ -79,6 +79,22 @@ test("the merged window keeps only the newest N merged PRs", () => {
   assert.equal(m.merged.p90Hours, 48);
 });
 
+test("merged PRs with unparseable dates are skipped instead of poisoning the stats", () => {
+  const bad = [
+    merged(8, null, "2026-10-09T00:00:00Z"),
+    merged(9, "2026-10-09T00:00:00Z", "not-a-date"),
+    merged(16, undefined, undefined),
+  ];
+  const m = computeMetrics([...PRS, ...bad], opts());
+  assert.deepEqual(m.merged, { count: 5, medianHours: 10, p90Hours: 48 });
+});
+
+test("help says --json prints JSON only and the default prints text plus JSON", async () => {
+  let out = "";
+  assert.equal(await main(["--help"], { out: (s) => (out += s), err: () => {} }), 0);
+  assert.match(out, /--json[^\n]*nur JSON[^\n]*sonst Text \+ JSON/);
+});
+
 test("no merged PRs gives null merge stats", () => {
   const m = computeMetrics(PRS.filter((p) => p.state === "OPEN"), opts());
   assert.deepEqual(m.merged, { count: 0, medianHours: null, p90Hours: null });
@@ -99,7 +115,7 @@ test("ok is true at exactly the open limit and false one above", () => {
 });
 
 test("the report text is German and names counts and stale drafts and the merge median", () => {
-  const text = formatText(computeMetrics(PRS, opts()), 15);
+  const text = formatText(computeMetrics(PRS, opts()));
   assert.match(text, /Offene PRs: 5 \(3 Draft, 2 bereit\), Limit 15/);
   assert.match(text, /Drafts älter als 48 h: #12/);
   assert.match(text, /Median Eröffnung→Merge: 10 h \(p90 48 h, 5 PRs; Ziel < 24 h: erreicht\)/);
