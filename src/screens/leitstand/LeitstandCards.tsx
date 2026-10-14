@@ -9,7 +9,7 @@ import { useT } from "../../i18n/useT";
 import { STATE_FORMS, STATE_WORDS } from "../../design/state/states";
 import type { AgentProfile, BoardCard } from "../../types";
 import { AgentCard } from "./AgentCard";
-import { agentCards, cardForm, countByFilter, type Filter } from "./leitstand";
+import { agentCards, cardForm, countByFilter, fill, type Filter } from "./leitstand";
 import "./leitstand.css";
 
 // Compare every prop, including callbacks and time, so changed inputs stay visible.
@@ -44,10 +44,12 @@ export function LeitstandCards({ cards, profiles, now, onOpen, onChanged }: Leit
           </FilterChip>
         ))}
       </div>
+      {/* Always mounted so a screen reader hears the text change; the text names the filter, so a switch between two empty filters is heard too. */}
+      <p className="ls-sr-only" role="status">{shown.length === 0 && filter !== "all" ? fill(t("leitstand.noneFor"), { state: STATE_WORDS[filter] }) : ""}</p>
       <section className="ls-agents" aria-label={t("leitstand.agents")}>
         {shown.map((c) => <MemoizedAgentCard key={c.worker.id} card={c} name={nameOf(c)} now={now} onOpen={onOpen} onChanged={onChanged} />)}
         {shown.length === 0 && (
-          <div className="ls-none"><p>{t("leitstand.none")}</p><Button size="sm" variant="tint" onClick={() => setFilter("all")}>{t("leitstand.showAll")}</Button></div>
+          <div className="ls-none"><p aria-hidden="true">{t("leitstand.none")}</p><Button size="sm" variant="tint" onClick={() => setFilter("all")}>{t("leitstand.showAll")}</Button></div>
         )}
       </section>
     </>
