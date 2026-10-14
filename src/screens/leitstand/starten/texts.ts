@@ -12,6 +12,8 @@ export const T = {
   modelRequest: (model: string) => `Modellvorgabe: ${model}`,
   quotaFree: "frei",
   quotaUnknown: "unbekannt",
+  choiceBlocked: (name: string) => `Die gewählte Persona „${name}“ ist gesperrt.`,
+  choiceMissing: (name: string) => `Die gewählte Persona „${name}“ ist nicht wählbar.`,
   failover: (name: string) => `Failover: ${name}`,
   place: "Ort",
   placeOffline: "Ort noch nicht verbunden",
