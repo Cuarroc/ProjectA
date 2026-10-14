@@ -1252,4 +1252,73 @@ mod tests {
             "sha256:2a8051bf4b400f313164b6e6069b35cdbe01b0796356ad0f5b1332b0bf582f98"
         );
     }
+
+    /// Every subset (and each subset with a duplicated cell) of `names` as a
+    /// table header followed by delimiter and one data row.
+    fn header_variants(names: &[&str]) -> Vec<(Vec<String>, String)> {
+        let mut out = Vec::new();
+        for mask in 0..(1u32 << names.len()) {
+            let picked: Vec<_> = (0..names.len())
+                .filter(|i| mask >> i & 1 == 1)
+                .map(|i| names[i].to_owned())
+                .collect();
+            let mut shapes = vec![picked.clone()];
+            if let Some(first) = picked.first() {
+                shapes.push([picked.clone(), vec![first.clone()]].concat());
+            }
+            for cells in shapes {
+                let row = |fill: &str| format!("| {} |\n", vec![fill; cells.len()].join(" | "));
+                let source = format!("| {} |\n{}{}", cells.join(" | "), row("---"), row("A"));
+                out.push((cells, source));
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn plan_table_without_required_columns_is_rejected_not_a_panic() {
+        let required = ["ID", "Paket", "Nach", "Konkretes Ergebnis und Abnahme"];
+        let names = [required.as_slice(), &["Eltern", "Parent", "Extra"]].concat();
+        for (cells, source) in header_variants(&names) {
+            let parsed = std::panic::catch_unwind(|| parse_plan("p", "plan", "x", &source));
+            let parsed = parsed.unwrap_or_else(|_| panic!("parse_plan panicked on {cells:?}"));
+            if required.iter().any(|name| !cells.iter().any(|c| c == name)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn milestone_table_without_required_columns_is_rejected_not_a_panic() {
+        let required = ["ID", "Paket", "Gr.", "Lane", "Stand"];
+        for (cells, table) in header_variants(&[required.as_slice(), &["Extra"]].concat()) {
+            let source = format!("### M1 \u{2014} First\n{table}");
+            let parsed = std::panic::catch_unwind(|| parse_milestones("x", &source));
+            let parsed =
+                parsed.unwrap_or_else(|_| panic!("parse_milestones panicked on {cells:?}"));
+            let known = required
+                .iter()
+                .filter(|n| cells.iter().any(|c| c == *n))
+                .count();
+            if known >= 3 && required.iter().any(|n| !cells.iter().any(|c| c == n)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn v2_table_without_required_columns_is_rejected_not_a_panic() {
+        for (cells, source) in header_variants(&[V2_COLUMNS.as_slice(), &["Extra"]].concat()) {
+            let parsed = std::panic::catch_unwind(|| parse_v2_packages("x", &source));
+            let parsed =
+                parsed.unwrap_or_else(|_| panic!("parse_v2_packages panicked on {cells:?}"));
+            let known = V2_COLUMNS
+                .iter()
+                .filter(|n| cells.iter().any(|c| c == *n))
+                .count();
+            if known >= 5 && V2_COLUMNS.iter().any(|n| !cells.iter().any(|c| c == n)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
 }
