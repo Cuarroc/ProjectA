@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { validateIdeaFlow } from './idea-flow.mjs';
 
 export class DeskError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -112,6 +113,8 @@ function validateState(state) {
         && (r.userPriority === undefined || ideaPriorities.includes(r.userPriority))
         && isoTime(r.createdAt) && typeof r.payload === 'string', 'Datendatei beschädigt: idea revision.', 503);
     }
+    for (const idea of state.ideas) for (const r of idea.revisions) if (Object.hasOwn(r, 'flow'))
+      validateIdeaFlow(r.flow, { kind: 'idea', eventId: r.eventId, ideaId: idea.id, ideaRevision: r.revision }, state);
     for (const p of state.patches) ensure(record(p) && validId(p.id) && validId(p.requestId) && Number.isSafeInteger(p.revision) && p.revision > 0
       && typeof p.label === 'string' && p.label.trim() && p.label.length <= 200 && typeof p.windowText === 'string' && p.windowText.length <= 2000
       && typeof p.reason === 'string' && p.reason.trim() && Array.isArray(p.sourceRefs) && p.sourceRefs.length > 0 && p.sourceRefs.every(validEventRef)
