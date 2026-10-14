@@ -36,6 +36,15 @@ struct Dacl {
 /// DWORD-aligned, as a SID must be: `TokenUser` or `TokenOwner` of this
 /// process's token.
 fn token_sid(class: TOKEN_INFORMATION_CLASS) -> Vec<u32> {
+    // SAFETY: `token` is a handle this block opens and closes itself, and it is
+    // closed only after the last call that uses it. The second
+    // `GetTokenInformation` writes at most `needed` bytes into `buffer`, which
+    // was sized from the first call's answer and is 8-byte aligned (`Vec<u64>`),
+    // enough for the pointer-first TOKEN_OWNER / TOKEN_USER. The struct is read
+    // only after `ok != 0` was asserted, so `buffer` holds a filled structure
+    // whose SID pointer targets the same buffer, alive until the block ends.
+    // `copy_nonoverlapping` copies `GetLengthSid(sid)` bytes into the distinct
+    // allocation `owned`, rounded up to whole u32s, so it is large enough.
     unsafe {
         let mut token: HANDLE = std::ptr::null_mut();
         assert_ne!(
@@ -69,6 +78,11 @@ fn token_sid(class: TOKEN_INFORMATION_CLASS) -> Vec<u32> {
 /// The well-known SID of BUILTIN\Administrators: every object an elevated run
 /// creates is owned by this group, and no non-admin can assign it.
 fn administrators_sid() -> Vec<u32> {
+    // SAFETY: `buffer` holds SECURITY_MAX_SID_SIZE bytes, 4-byte aligned, and
+    // that same size is passed in `size`, the capacity `CreateWellKnownSid`
+    // may write. The null domain SID is valid for the Administrators SID,
+    // which is not domain-relative. The buffer is returned only after the call
+    // was asserted to succeed.
     unsafe {
         let mut buffer = vec![0u32; (SECURITY_MAX_SID_SIZE as usize).div_ceil(4)];
         let mut size = SECURITY_MAX_SID_SIZE;
@@ -104,6 +118,18 @@ fn read_dacl(path: &Path) -> Dacl {
         .collect();
     let mut user = token_sid(TokenUser);
     let mut owners: Vec<Vec<u32>> = accepted_owner_sids();
+    // SAFETY: `wide` is a NUL-terminated UTF-16 path that outlives the block.
+    // `descriptor` points into `buffer` (8-byte aligned, `needed` bytes as
+    // reported by the first `GetFileSecurityW` call), which lives until the
+    // block ends; the descriptor is self-relative, so `owner` and `acl` from
+    // `GetSecurityDescriptorOwner` / `GetSecurityDescriptorDacl` point into that same buffer and are
+    // only used inside the block. Each is dereferenced only after its call was
+    // asserted to succeed and the pointer checked non-null (`owner`, `acl`).
+    // `GetAce` yields `ace` inside the ACL for `index < AceCount`; an
+    // ACCESS_ALLOWED_ACE view is taken only for ALLOWED/DENIED types, whose
+    // layout starts with the header followed by the SID. `user` and `owners`
+    // are SIDs from `token_sid` / `administrators_sid` (valid, u32-aligned);
+    // `EqualSid` takes `*mut` in windows-sys but only reads them.
     unsafe {
         let mut needed = 0u32;
         GetFileSecurityW(
