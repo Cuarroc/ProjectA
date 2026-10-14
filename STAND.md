@@ -16,6 +16,19 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 - `git fetch origin`, danach `git log origin/main -1` — jüngster Hauptstand.
 - Server: `~/pa-orch/events.log` — aktuelle Orchestrator-Ereignisse.
 
+### Stand 2026-10-14 (datierter Schnappschuss, keine Live-Quelle)
+
+Gelesen am 2026-10-14, Arbeitsbaum auf `origin/main` @ `4b882f35`; jede Zeile
+mit dem Befehl, der sie belegt. Danach gilt wieder der Live-Beleg oben.
+
+- **Version auf `main`:** 1.6.3 (`package.json`, `src-tauri/tauri.conf.json`);
+  `gh release list` nennt v1.6.3 (2026-10-11) als jüngstes Release.
+- **Offene Pull Requests:** 16 (`gh pr list --state open --limit 200`).
+- **Plan:** `docs/PLAN.md` ist der Plan der Ziele Z1–Z4; die V2-Arbeit hat ihre
+  Specs unter `docs/plan/v2.0/`. Der Abgleich beider läuft getrennt (AP-5).
+- **Wo der Live-Stand steht:** die Notiz `lage-jetzt` (außerhalb von Git, s. o.)
+  und die drei Live-Belege oben. Dieser Schnappschuss ersetzt sie nicht.
+
 ### Nächster Griff
 
 1. `lage-jetzt` und die Live-Belege lesen; Ziel, Owner und nächsten Schritt
@@ -26,9 +39,10 @@ Alte Paketlisten, PR-Schnappschüsse und Befunde sind Historie:
 
 ## Feste Grundlagen (jeweils geprüft am 08.10.2026)
 
-- **Release:** v1.6.0 (Tag `d2582ceb`, geprüft 09.10.2026) ist das jüngste
-  Release; Release-Run 38004103979 grün, anonymous `latest.json` 1.6.0.
-  Vor einer erneuten Release-Aussage `gh release list --limit 5` wiederholen.
+- **Release:** Stand 09.10.2026 war v1.6.0 (Tag `d2582ceb`) das jüngste Release
+  (Release-Run 38004103979 grün, anonymous `latest.json` 1.6.0); überholt, siehe
+  den Schnappschuss 2026-10-14 oben. Vor einer erneuten Release-Aussage
+  `gh release list --limit 5` wiederholen.
 - **Merge:** ausschließlich über die Mergify-Queue, gemäß `AGENTS.md`.
 - **Continuous Mode:** bleibt ausgeschaltet und bis M4 eingefroren (`AGENTS.md`).
 - **Desktop-App nicht zur Inspektion starten:** ihre Queue kann sofort echte
