@@ -4,6 +4,7 @@ Welche Agenten der Orchestrator einsetzen kann, mit welchem Modell und welchem
 Effort, für welche Art Arbeit. Stand **25.09.2026**, geprüft auf dem
 Entwicklungsrechner; Nachtrag **02.10.2026**: Kimi-Code-Abo abgelaufen,
 Codex-Modellnamen aus `~/.codex/models_cache.json` korrigiert.
+
 **Überholt am 14.10.2026:** Die Zeilen „Kimi-Abo abgelaufen“ und „Claude-Worker
 nur < 70 %“ gelten nicht mehr; die Wahl unter den Anbietern regelt allein
 [AGENTS.md, Abschnitt „Routing“](../../AGENTS.md) (Entscheidung 07.10.2026). Die Einrichtung
