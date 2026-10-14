@@ -190,4 +190,19 @@ describe("NeedsYou", () => {
     render(<Harness />);
     expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
   });
+
+  it("shows no decision lane claiming nothing is open while the list cannot be read", async () => {
+    mocks.invoke.mockRejectedValue(new Error("core unreachable"));
+    render(<Harness />);
+    expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
+    expect(screen.queryAllByText("Keine offene Entscheidung.")).toHaveLength(0);
+    expect(screen.queryByRole("region", { name: "Löschen" })).toBeNull();
+  });
+
+  it("shows no decision lane claiming nothing is open while the list is loading", () => {
+    mocks.invoke.mockImplementation(() => new Promise(() => {}));
+    render(<Harness />);
+    expect(screen.getByText("Fragen werden gelesen …")).toBeInTheDocument();
+    expect(screen.queryAllByText("Keine offene Entscheidung.")).toHaveLength(0);
+  });
 });
