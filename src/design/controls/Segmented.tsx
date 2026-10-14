@@ -16,6 +16,7 @@ const STEP: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -
 
 /**
  * Radio group: one tab stop (the selected option), arrows move and select, Home/End jump.
+ * Those keys do nothing while an IME composition is active, and they do not cancel it.
  * A value that matches no option falls back to the first option as checked tab stop;
  * with no options the keys do nothing.
  */
@@ -28,6 +29,7 @@ export function Segmented<T extends string>({ options, value, onChange, "aria-la
     refs.current[index]?.focus();
   };
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.nativeEvent.isComposing) return;
     const n = options.length;
     if (n === 0) return;
     if (e.key in STEP) select((current + STEP[e.key] + n) % n);
