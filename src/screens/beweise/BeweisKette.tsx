@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import "../../design/glass.css";
 import "../../design/controls/controls.css";
 import { Button } from "../../design/controls/Button";
@@ -88,7 +89,15 @@ export function BeweisKette({ workerId }: { workerId: string }) {
     <div className="bw-root">
       <header className="bw-head">
         <h1 className="bw-title">{T.title}</h1>
-        <Button size="sm" onClick={load}>{ready === undefined ? T.checking : T.recheck}</Button>
+        <Button
+          size="sm"
+          disabled={ready === undefined}
+          onClick={() => {
+            // Commit the closed disclosure while the code card is still mounted.
+            flushSync(() => setCodeOpen(false));
+            load();
+          }}
+        >{ready === undefined ? T.checking : T.recheck}</Button>
       </header>
       <section className="g-glass bw-card bw-result" aria-label={T.result} aria-live="polite">
         <h2 className="bw-result-title">{result}</h2>
@@ -139,7 +148,7 @@ export function BeweisKette({ workerId }: { workerId: string }) {
                   { label: T.ahead, value: String(ready.ahead) },
                   { label: T.behind, value: String(ready.behind) },
                 ]} />
-                <details className="bw-tech" onToggle={(event) => setCodeOpen(event.currentTarget.open)}>
+                <details className="bw-tech" open={codeOpen} onToggle={(event) => setCodeOpen(event.currentTarget.open)}>
                   <summary>{T.fullCodeStand}</summary>
                   {codeOpen && <dl className="bw-note" style={{ overflowWrap: "anywhere" }}>
                     <dt>{T.workerHeadSha}</dt><dd>{ready.code.workerHeadSha}</dd>

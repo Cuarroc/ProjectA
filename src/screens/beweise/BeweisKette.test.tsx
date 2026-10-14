@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 
+const fullCodeLabel = {
+  workerHeadSha: "Worker-Stand vollständig",
+  baseTipSha: "Basis-Stand vollständig",
+  mergeTreeOid: "Baum-Kennung",
+} as const;
 const blocker = (code: string, message = `msg ${code}`, nextStep = `next ${code}`) => ({ code, message, nextStep });
 const code = { workerHeadSha: "abcdef0123456789", baseTipSha: "9876543210fedcba", mergeTreeOid: "tree" };
 const readiness = (extra: Record<string, unknown> = {}) => ({
@@ -23,6 +28,7 @@ describe("BeweisKette", () => {
 
   it("reveals the exact delivered code tuple only in an opened disclosure", async () => {
     for (const end of ["1", "2"]) {
+      mocks.invoke.mockReset();
       const tuple = {
         workerHeadSha: `abcdef0${end.repeat(33)}`,
         baseTipSha: `9876543${end.repeat(33)}`,
@@ -42,13 +48,15 @@ describe("BeweisKette", () => {
       await act(async () => {});
       expect(disclosure).toHaveAttribute("open");
       for (const [field, value] of Object.entries(tuple)) {
-        expect(within(disclosure).getByText(field).nextElementSibling?.textContent).toBe(value);
+        const label = fullCodeLabel[field as keyof typeof fullCodeLabel];
+        expect(within(disclosure).getByText(label).nextElementSibling?.textContent).toBe(value);
         expect(within(disclosure).getByText(value)).toBeVisible();
       }
       fireEvent.click(summary!);
       await act(async () => {});
       expect(disclosure).not.toHaveAttribute("open");
       for (const value of Object.values(tuple)) expect(stand.queryByText(value)).toBeNull();
+      expect(mocks.invoke).toHaveBeenCalledTimes(1);
       expect(mocks.invoke.mock.calls.every(([cmd]) => cmd === "get_worker_readiness")).toBe(true);
       unmount();
     }
@@ -118,16 +126,97 @@ describe("BeweisKette", () => {
     unmount();
   });
 
+  it("forces the full code disclosure shut while its card is still mounted", async () => {
+    serve(readiness({ readiness: "ready", code }));
+    render(<BeweisKette workerId="w1" />);
+    await screen.findByText("Bereitschaftscheck bestanden");
+    const summary = screen.getByText("Vollständiger Code-Stand");
+    fireEvent.click(summary);
+    await act(async () => {});
+    expect(summary.closest("details")).toHaveAttribute("open");
+    const removedWhileMounted: string[] = [];
+    const orig = Element.prototype.removeAttribute;
+    Element.prototype.removeAttribute = function (name: string) {
+      if (
+        name === "open"
+        && this instanceof HTMLDetailsElement
+        && this.isConnected
+        && this.querySelector("summary")?.textContent === "Vollständiger Code-Stand"
+      ) {
+        removedWhileMounted.push(this.textContent?.includes(code.workerHeadSha) ? "leaking" : "clear");
+      }
+      return orig.call(this, name);
+    };
+    try {
+      let resolve!: (value: unknown) => void;
+      mocks.invoke.mockImplementation(() => new Promise((ok) => { resolve = ok; }));
+      fireEvent.click(screen.getByRole("button", { name: "Neu prüfen" }));
+      expect(removedWhileMounted).toEqual(["clear"]);
+      expect(screen.queryByText(code.workerHeadSha)).toBeNull();
+      await act(async () => resolve(readiness({ readiness: "ready", code: { ...code, workerHeadSha: "ffff1111aaaa2222" } })));
+    } finally {
+      Element.prototype.removeAttribute = orig;
+    }
+    const again = screen.getByText("Vollständiger Code-Stand").closest("details")!;
+    expect(again).not.toHaveAttribute("open");
+    expect(screen.queryByText(code.workerHeadSha)).toBeNull();
+    expect(screen.queryByText("ffff1111aaaa2222")).toBeNull();
+  });
+
+  it("disables recheck until the readiness read settles", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.invoke.mockImplementation(() => new Promise((ok) => { resolve = ok; }));
+    render(<BeweisKette workerId="w1" />);
+    expect(screen.getByRole("button", { name: "Prüfung läuft …" })).toBeDisabled();
+    await act(async () => resolve(readiness({ readiness: "ready" })));
+    const again = screen.getByRole("button", { name: "Neu prüfen" });
+    expect(again).toBeEnabled();
+    mocks.invoke.mockImplementation(() => new Promise(() => {}));
+    fireEvent.click(again);
+    expect(screen.getByRole("button", { name: "Prüfung läuft …" })).toBeDisabled();
+  });
+
+  it("names the full code fields in German", async () => {
+    serve(readiness({ readiness: "ready", code }));
+    render(<BeweisKette workerId="w1" />);
+    const summary = within(await screen.findByRole("region", { name: "Code-Stand" })).getByText("Vollständiger Code-Stand");
+    fireEvent.click(summary);
+    await act(async () => {});
+    const disclosure = summary.closest("details")!;
+    expect(within(disclosure).getByText(fullCodeLabel.workerHeadSha).nextElementSibling?.textContent).toBe(code.workerHeadSha);
+    expect(within(disclosure).getByText(fullCodeLabel.baseTipSha).nextElementSibling?.textContent).toBe(code.baseTipSha);
+    expect(within(disclosure).getByText(fullCodeLabel.mergeTreeOid).nextElementSibling?.textContent).toBe(code.mergeTreeOid);
+    expect(within(disclosure).queryByText("workerHeadSha")).toBeNull();
+    expect(within(disclosure).queryByText("baseTipSha")).toBeNull();
+    expect(within(disclosure).queryByText("mergeTreeOid")).toBeNull();
+  });
+
+  it("isolates each tuple sample from the previous invoke history", async () => {
+    for (const end of ["1", "2"]) {
+      mocks.invoke.mockReset();
+      serve(readiness({ readiness: "ready", code: { ...code, mergeTreeOid: `tree-${end}` } }));
+      const { unmount } = render(<BeweisKette workerId="w1" />);
+      await screen.findByText("Bereitschaftscheck bestanden");
+      expect(mocks.invoke).toHaveBeenCalledTimes(1);
+      expect(mocks.invoke).toHaveBeenCalledWith("get_worker_readiness", { workerId: "w1" });
+      unmount();
+    }
+  });
+
   it("does not restore old proof when an earlier recheck finishes last", async () => {
     for (const staleFailure of [false, true]) {
       serve(readiness({ readiness: "ready" }));
-      const { container, unmount } = render(<BeweisKette workerId="w1" />);
+      const { container, rerender, unmount } = render(<BeweisKette workerId="w1" />);
       await screen.findByText("Bereitschaftscheck bestanden");
       const pending: Array<{ ok: (v: unknown) => void; fail: (e: unknown) => void }> = [];
       mocks.invoke.mockImplementation(() => new Promise((ok, fail) => { pending.push({ ok, fail }); }));
       const button = screen.getByRole("button", { name: "Neu prüfen" });
       fireEvent.click(button);
-      fireEvent.click(button);
+      const running = screen.getByRole("button", { name: "Prüfung läuft …" });
+      expect(running).toBeDisabled();
+      fireEvent.click(running);
+      expect(pending).toHaveLength(1);
+      rerender(<BeweisKette workerId="w2" />);
       expect(pending).toHaveLength(2);
       expect(screen.queryByText("Bereitschaftscheck bestanden")).toBeNull();
       expect(marks(container)).toBe(0);
