@@ -122,7 +122,10 @@ test('cli never breaks the agent on malformed or empty or foreign input', () => 
 
 test('settings.json registers the PreToolUse guard and keeps the other hooks', () => {
   const { hooks } = JSON.parse(readFileSync(settingsPath, 'utf8'));
-  assert.deepEqual(hooks.PreToolUse, [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'node scripts/lib/rules-guard.mjs' }] }]);
+  assert.deepEqual(hooks.PreToolUse, [
+    { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'node scripts/lib/rules-guard.mjs' }] },
+    { matcher: 'Write|Edit|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: 'node scripts/lib/seam-guard.mjs' }] },
+  ]);
   assert.equal(hooks.SessionStart[0].hooks[0].command, 'bash scripts/install-hooks.sh');
   assert.equal(hooks.PostToolUse[0].hooks[0].command, 'bash .claude/hooks/red-first.sh');
 });
