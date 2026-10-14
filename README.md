@@ -170,9 +170,8 @@ per Minisign.
   </picture>
 </p>
 
-Die Diagramme stammen aus Belegen im Quellcode; jeder Kasten nennt seine
-Fundstellen in [`docs/diagrams/`](docs/diagrams/README.md), dort steht auch, wie
-sie neu erzeugt werden.
+Die Diagramme stammen aus Belegen im Quellcode; die Diagramm-Quellen folgen in
+einer späteren Version.
 
 ## Die neue Oberfläche (v2.0)
 
