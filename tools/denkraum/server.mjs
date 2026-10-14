@@ -87,6 +87,17 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
         if (url.pathname === '/api/state') return json(200, await store.read());
         if (url.pathname === '/api/pending') return json(200, await store.pending());
         if (url.pathname === '/api/inbox') return json(200, await store.inbox());
+        if (url.pathname === '/design/glass.css') {
+          // One URL, canonical sources; request paths never select files outside this fixed list.
+          const design = await realpath(join(root, '../../src/design'));
+          const sheets = [];
+          for (const name of ['tokens.css', 'motion.css']) {
+            const file = await realpath(join(design, name)); const inside = relative(design, file);
+            if (!inside || inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside)) throw new DeskError('Nicht gefunden.', 404);
+            sheets.push(await readFile(file, 'utf8'));
+          }
+          res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8' }); return res.end(sheets.join('\n'));
+        }
         const path = url.pathname === '/' ? '/index.html' : url.pathname;
         if (!['/index.html', '/app/questions.js', '/app/ideas.js', '/style.css'].includes(path) && !/^\/previews\/[a-zA-Z0-9_-]+\.(png|jpg|webp)$/.test(path)) throw new DeskError('Nicht gefunden.', 404);
         const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };

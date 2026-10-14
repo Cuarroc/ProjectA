@@ -232,6 +232,7 @@ export default function GeneralTab({
       <label className="settings-check">
         <input
           type="checkbox"
+          name="digest-enabled"
           checked={digestEnabled}
           onChange={(event) => handleToggleDigest(event.target.checked)}
         />
@@ -428,7 +429,7 @@ export default function GeneralTab({
         <p className="settings-hint">
           Das Kommando bereitet den wegwerfbaren Merge-Kandidaten vor, bevor das
           Test-Gate dort läuft. Es startet erst, nachdem du Befehl, Basis und
-          deklarierte Inputs in der Review-Ansicht freigegeben hast — die Freigabe
+          deklarierte Inputs in der Ansicht „Prüfung“ freigegeben hast — die Freigabe
           gilt für genau diesen Merge-Kandidaten, jede Änderung am Kommando oder am
           Baum lässt sie verfallen. Ein leeres Feld schaltet das Setup ab. Achtung: Das
           Kommando darf diese deklarierten Inputs nicht umschreiben (daher{" "}

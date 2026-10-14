@@ -7,6 +7,7 @@ export const T = {
   empty: "Keine offenen Lektionen.",
   noProject: "Kein Projekt gewählt.",
   loadFailed: "Die Lektionen konnten nicht geladen werden.",
+  reloadFailed: "Die Liste konnte nach der Entscheidung nicht erneut gelesen werden.",
   retry: "Erneut versuchen",
   approve: "Übernehmen",
   reject: "Verwerfen",

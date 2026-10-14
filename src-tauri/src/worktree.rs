@@ -14,6 +14,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 mod rewind_plan;
+use rewind_plan::ref_name_gueltig as is_valid_ref_name;
 
 /// Directory holding all worktrees, created next to the repository.
 pub const WORKTREES_DIR: &str = ".projecta-worktrees";
@@ -95,6 +96,7 @@ pub fn add_worktree(repo_path: &str, worker_id: &str) -> Result<PathBuf, String>
 
 /// Pin `HEAD^{commit}` at `refs/projecta/checkpoints/<run>/<step>`.
 ///
+/// Requires Git 2.29+ for `rev-parse --show-object-format` (SHA-1 and SHA-256).
 /// Identifiers are single ref components using the rewind planner's validation.
 /// The reference must be absent, even when an existing checkpoint has the same
 /// commit. HEAD, index and working files are untouched; dirty work is not saved.
@@ -104,8 +106,8 @@ pub fn add_worktree(repo_path: &str, worker_id: &str) -> Result<PathBuf, String>
 )]
 pub fn checkpoint(worktree: &str, run: &str, step: &str) -> Result<String, String> {
     for (label, id) in [("run", run), ("step", step)] {
-        if id.contains('/') || !rewind_plan::ref_name_gueltig(id) {
-            return Err(format!("invalid checkpoint {label} identifier"));
+        if id.contains('/') || !is_valid_ref_name(id) {
+            return Err(format!("invalid checkpoint {label} identifier: {id:?}"));
         }
     }
     let reference = format!("refs/projecta/checkpoints/{run}/{step}");
@@ -122,15 +124,21 @@ pub fn checkpoint(worktree: &str, run: &str, step: &str) -> Result<String, Strin
         return Err("git returned an invalid HEAD commit ID".to_owned());
     }
     // Compare-and-create under git's ref lock; never follow a symbolic ref.
-    git([
-        "-C",
-        worktree,
-        "update-ref",
-        "--no-deref",
-        &reference,
-        oid,
-        &"0".repeat(oid_len),
-    ])?;
+    // Reflogs may be enabled for all refs; never require a user's identity.
+    git_output(
+        crate::proc::command("git")
+            .env("GIT_COMMITTER_NAME", "ProjectA")
+            .env("GIT_COMMITTER_EMAIL", "noreply@projecta.local")
+            .args([
+                "-C",
+                worktree,
+                "update-ref",
+                "--no-deref",
+                &reference,
+                oid,
+                &"0".repeat(oid_len),
+            ]),
+    )?;
     Ok(oid.to_owned())
 }
 
@@ -170,8 +178,17 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let output = crate::proc::command("git")
-        .args(args)
+    // Worktree creation and rollback must not depend on user reflog identity.
+    git_output(
+        crate::proc::command("git")
+            .env("GIT_COMMITTER_NAME", "ProjectA")
+            .env("GIT_COMMITTER_EMAIL", "noreply@projecta.local")
+            .args(args),
+    )
+}
+
+fn git_output(command: &mut std::process::Command) -> Result<String, String> {
+    let output = command
         .output()
         .map_err(|e| format!("failed to run git: {e}"))?;
 
@@ -215,7 +232,150 @@ mod tests {
     }
 
     #[test]
+    fn worktree_refs_without_committer_identity() {
+        const CHILD_REPO: &str = "PROJECTA_WORKTREE_IDENTITY_TEST_REPO";
+        if let Some(repo) = std::env::var_os(CHILD_REPO) {
+            let repo = Path::new(&repo);
+            let tree = add_worktree(&repo.to_string_lossy(), "identity-worker").unwrap();
+            for (path, reference) in [(repo, "refs/heads/pa/identity-worker"), (&*tree, "HEAD")] {
+                let reflog =
+                    checkpoint_git(path, &["reflog", "show", "--format=%gn <%ge>", reference]);
+                let reflog = String::from_utf8(reflog).unwrap();
+                assert!(!reflog.is_empty());
+                assert!(
+                    reflog
+                        .lines()
+                        .all(|line| line == "ProjectA <noreply@projecta.local>"),
+                    "{reflog}"
+                );
+            }
+            rollback_worktree(&repo.to_string_lossy(), &tree, "identity-worker").unwrap();
+            assert!(!tree.exists());
+            assert!(
+                checkpoint_git(repo, &["for-each-ref", "refs/heads/pa/identity-worker"]).is_empty()
+            );
+            return;
+        }
+        let dir = TempDir::new("worktree-identity");
+        let repo = init_repo(&dir.path().join("repo"));
+        for key in ["user.name", "user.email"] {
+            checkpoint_git(&repo, &["config", key, ""]);
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "worktree::tests::worktree_refs_without_committer_identity",
+                "--nocapture",
+            ])
+            .env(CHILD_REPO, &repo)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", dir.path().join("missing-config"))
+            .env("GIT_AUTHOR_NAME", "")
+            .env("GIT_AUTHOR_EMAIL", "")
+            .env("GIT_COMMITTER_NAME", "")
+            .env("GIT_COMMITTER_EMAIL", "")
+            .env("EMAIL", "")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("1 passed"),
+            "{output:?}"
+        );
+    }
+
+    #[test]
+    fn checkpoint_writes_reflog_without_committer_identity() {
+        let version = String::from_utf8(checkpoint_git(Path::new("."), &["--version"])).unwrap();
+        let mut parts = version.trim_start_matches("git version ").split('.');
+        let major: u32 = parts.next().unwrap().parse().unwrap();
+        let minor: u32 = parts.next().unwrap().parse().unwrap();
+        if (major, minor) < (2, 32) {
+            eprintln!("Skipping checkpoint identity test: Git 2.32+ required for GIT_CONFIG_GLOBAL isolation; found {version}");
+            return;
+        }
+        const CHILD_REPO: &str = "PROJECTA_CHECKPOINT_IDENTITY_TEST_REPO";
+        if let Some(repo) = std::env::var_os(CHILD_REPO) {
+            checkpoint(&repo.to_string_lossy(), "run-1", "step-1").unwrap();
+            return;
+        }
+        let dir = TempDir::new("checkpoint-identity");
+        let repo = init_repo(&dir.path().join("repo"));
+        checkpoint_git(&repo, &["config", "core.logAllRefUpdates", "always"]);
+        for key in ["user.name", "user.email"] {
+            checkpoint_git(&repo, &["config", key, ""]);
+        }
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "worktree::tests::checkpoint_writes_reflog_without_committer_identity",
+                "--nocapture",
+            ])
+            .env(CHILD_REPO, &repo)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", dir.path().join("missing-config"))
+            .env("GIT_AUTHOR_NAME", "")
+            .env("GIT_AUTHOR_EMAIL", "")
+            .env("GIT_COMMITTER_NAME", "")
+            .env("GIT_COMMITTER_EMAIL", "")
+            .env("EMAIL", "")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        let reference = "refs/projecta/checkpoints/run-1/step-1";
+        assert_eq!(
+            checkpoint_oid(&repo, reference),
+            checkpoint_oid(&repo, "HEAD")
+        );
+        assert_eq!(
+            checkpoint_git(&repo, &["reflog", "show", "--format=%gn <%ge>", reference]),
+            b"ProjectA <noreply@projecta.local>\n"
+        );
+    }
+
+    #[test]
+    fn checkpoint_validation_error_names_rejected_value() {
+        let dir = TempDir::new("checkpoint-invalid-values");
+        let repo = init_repo(&dir.path().join("repo"));
+        for invalid in [
+            "", "a/b", "..", "a..b", ".hidden", "x.lock", "a.", "a b", "a\tb", "a\nb", "a\0b",
+            "a~b", "a^b", "a:b", "a?b", "a*b", "a[b", "a\\b", "a@{b",
+        ] {
+            for (label, run, step) in [("run", invalid, "1"), ("step", "run-1", invalid)] {
+                assert_eq!(
+                    checkpoint(&repo.to_string_lossy(), run, step).unwrap_err(),
+                    format!("invalid checkpoint {label} identifier: {invalid:?}")
+                );
+            }
+        }
+        assert!(checkpoint_git(&repo, &["for-each-ref", "refs/projecta/checkpoints/"]).is_empty());
+    }
+
+    fn checkpoint_snapshot(tree: &Path) -> Vec<Vec<u8>> {
+        let mut snapshot = vec![checkpoint_git(tree, &["status", "--porcelain=v1", "-z"])];
+        for name in ["index", "HEAD"] {
+            let path = String::from_utf8(checkpoint_git(tree, &["rev-parse", "--git-path", name]))
+                .unwrap();
+            snapshot.push(std::fs::read(tree.join(path.trim())).unwrap());
+        }
+        for name in ["tracked", "untracked"] {
+            snapshot.push(std::fs::read(tree.join(name)).unwrap());
+        }
+        snapshot
+    }
+
+    #[test]
     fn checkpoint_records_head_without_changing_worktree() {
+        let version = String::from_utf8(checkpoint_git(Path::new("."), &["--version"])).unwrap();
+        let mut parts = version.trim_start_matches("git version ").split('.');
+        let major: u32 = parts.next().unwrap().parse().unwrap();
+        let minor: u32 = parts.next().unwrap().parse().unwrap();
+        if (major, minor) < (2, 29) {
+            eprintln!(
+                "Skipping SHA-1/SHA-256 checkpoint test: Git 2.29+ required; found {version}"
+            );
+            return;
+        }
         for format in ["sha1", "sha256"] {
             let dir = TempDir::new("checkpoint-preserve");
             let repo = dir.path().join("repo");
@@ -231,19 +391,7 @@ mod tests {
             std::fs::write(tree.join("tracked"), b"unstaged\0bytes\n").unwrap();
             std::fs::write(tree.join("untracked"), b"untracked\0bytes\n").unwrap();
             let head = checkpoint_oid(&tree, "HEAD^{commit}");
-            let index =
-                String::from_utf8(checkpoint_git(&tree, &["rev-parse", "--git-path", "index"]))
-                    .unwrap();
-            let index = tree.join(index.trim());
-            let head_file =
-                String::from_utf8(checkpoint_git(&tree, &["rev-parse", "--git-path", "HEAD"]))
-                    .unwrap();
-            let head_file = tree.join(head_file.trim());
-            let status = checkpoint_git(&tree, &["status", "--porcelain=v1", "-z"]);
-            let index_before = std::fs::read(&index).unwrap();
-            let head_before = std::fs::read(&head_file).unwrap();
-            let tracked = std::fs::read(tree.join("tracked")).unwrap();
-            let untracked = std::fs::read(tree.join("untracked")).unwrap();
+            let before = checkpoint_snapshot(&tree);
 
             let oid = checkpoint(&tree.to_string_lossy(), "run-1", "step-1").unwrap();
 
@@ -254,14 +402,7 @@ mod tests {
                 head
             );
             assert_eq!(checkpoint_oid(&tree, "HEAD^{commit}"), head);
-            assert_eq!(std::fs::read(head_file).unwrap(), head_before);
-            assert_eq!(std::fs::read(index).unwrap(), index_before);
-            assert_eq!(std::fs::read(tree.join("tracked")).unwrap(), tracked);
-            assert_eq!(std::fs::read(tree.join("untracked")).unwrap(), untracked);
-            assert_eq!(
-                checkpoint_git(&tree, &["status", "--porcelain=v1", "-z"]),
-                status
-            );
+            assert_eq!(checkpoint_snapshot(&tree), before);
         }
     }
 
@@ -323,18 +464,6 @@ mod tests {
         let dir = TempDir::new("checkpoint-invalid");
         let repo = init_repo(&dir.path().join("repo"));
         let path = repo.to_string_lossy();
-        for invalid in [
-            "", "a/b", "..", "a..b", ".hidden", "x.lock", "a.", "a b", "a\tb", "a\nb", "a\0b",
-            "a~b", "a^b", "a:b", "a?b", "a*b", "a[b", "a\\b", "a@{b",
-        ] {
-            for (run, step) in [(invalid, "1"), ("run-1", invalid)] {
-                assert!(
-                    checkpoint(&path, run, step).is_err(),
-                    "accepted {run:?}/{step:?}"
-                );
-            }
-        }
-        assert!(checkpoint_git(&repo, &["for-each-ref", "refs/projecta/checkpoints/"]).is_empty());
         // Option-looking components are names below the fixed namespace, never git flags.
         let head = checkpoint_oid(&repo, "HEAD^{commit}");
         assert_eq!(checkpoint(&path, "--help", "--delete").unwrap(), head);

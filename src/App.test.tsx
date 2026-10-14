@@ -39,6 +39,20 @@ describe("App bootstrap", () => {
     await waitFor(() => expect(container.querySelector(".app")).toHaveAttribute("data-density", "compact"));
   });
 
+  it("announces the German view name in the live status", async () => {
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "list_projects" || command === "list_agent_profiles") return Promise.resolve([]);
+      if (command === "list_workers" || command === "list_questions") return Promise.resolve([]);
+      if (command === "get_board_state") return Promise.resolve({ cards: [], coordinators: [] });
+      return Promise.resolve(undefined);
+    });
+    render(<App />);
+    const agents = await screen.findByRole("tab", { name: "Agenten" });
+    expect(screen.getByText("Ansicht Arbeit.")).toHaveAttribute("role", "status");
+    fireEvent.click(agents);
+    await waitFor(() => expect(screen.getByText("Ansicht Agenten.")).toHaveAttribute("role", "status"));
+  });
+
   it("updates the whole app immediately from Settings and persists the choice", async () => {
     mocks.invoke.mockImplementation((command: string) => {
       if (command === "list_projects" || command === "list_agent_profiles") return Promise.resolve([]);
@@ -50,7 +64,7 @@ describe("App bootstrap", () => {
     });
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).toHaveAttribute("data-density", "comfortable"));
-    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Einstellungen" }));
     expect(await screen.findByRole("radio", { name: "Komfortabel" })).toBeChecked();
     fireEvent.click(await screen.findByRole("radio", { name: "Kompakt" }));
     expect(localStorage.getItem("projecta.settings.density")).toBe("compact");
@@ -119,7 +133,7 @@ describe("App bootstrap", () => {
 
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Agenten" }));
     const list = await screen.findByRole("list", { name: "Erste Schritte" });
     expect(list.querySelectorAll("li")).toHaveLength(3);
     const agentStep = screen.getByText("Ein Agent ist bereit").closest("li");
@@ -147,7 +161,7 @@ describe("App bootstrap", () => {
     vi.mocked(listen).mockResolvedValue(() => {});
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Agenten" }));
     expect(await screen.findByText("Keine Terminal-Sitzungen.")).toBeInTheDocument();
     await waitFor(() => expect(invokeCalls("get_provider_overview")).toBeGreaterThan(0));
     await new Promise((resolve) => setTimeout(resolve, 20));

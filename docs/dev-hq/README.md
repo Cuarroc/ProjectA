@@ -74,6 +74,45 @@ selected explicitly with `PROJECTA_API_FILE` (the same override used by `pa`),
 or with `PROJECTA_API_DESCRIPTOR` when ProjectA uses a non-default app-data
 directory.
 
+### Network exposure: loopback only, remote access via VPN or SSH tunnel
+
+Checked 2026-10-14 against `origin/main` @ 12ee2889 (`git grep` for bind calls).
+Every listener binds loopback by default:
+
+| Listener | Binds | Evidence |
+|---|---|---|
+| DevHQ (`npm run hq:live`, port `HQ_PORT`, default 4173) | `127.0.0.1`, hard-coded, no host option | `scripts/hq-live.mjs:31`, `:614`; Host allowlist `:60-63` |
+| Control API (ephemeral port) | `Ipv4Addr::LOCALHOST` | `src-tauri/src/api.rs:1195-1197` |
+| Hook receiver (ephemeral port) | `Ipv4Addr::LOCALHOST` | `src-tauri/src/hooks.rs:202-204` |
+| Web interface (board, landing pages; port chosen in Settings) | `127.0.0.1` unless setting `web_interface.bind` is set | `src-tauri/src/web_interface.rs:116`, `:398-414` |
+| Vite dev server (port 1420) | loopback unless `TAURI_DEV_HOST` is set | `vite.config.ts:9`, `:27` |
+
+Two opt-ins widen this: `web_interface.bind` (an IPv4 literal; `0.0.0.0` opens
+the LAN, `web_interface.rs:27-29`) and `TAURI_DEV_HOST` for device development.
+The Settings text offers the `0.0.0.0` route for a phone on the home Wi-Fi
+(`src/components/settings/GeneralTab.tsx:216-226`); its `?token=` is a hurdle,
+not authentication (`web_interface.rs:20-24`). **On a server, never set either
+and never open a port for HQ or the web interface.** Reach them from another
+machine through a VPN (the VPN address then is the only non-local path) or an
+SSH tunnel to the loopback port, for example:
+
+```text
+ssh -N -L 4173:127.0.0.1:4173 <user>@<server>   # then open http://127.0.0.1:4173/live.html
+```
+
+HQ rejects other Host names with 403 (`hq-live.mjs:60-63`), so a tunnel to
+`127.0.0.1`/`localhost` with the same local port works; a public DNS name does not.
+
+Check (Linux, one command): lists every listener that is *not* loopback. Only
+services you exposed on purpose (such as `sshd` on port 22) may appear.
+
+```text
+ss -H -ltn | awk '$4 !~ /^(127\.|\[::1\])/'
+```
+
+If it lists the HQ, API, hook or web-interface port, stop that process and
+unset `web_interface.bind` before anything else.
+
 ## Every agent uses this, not just the human
 
 Any agent working in this repo should treat the Live view as its primary

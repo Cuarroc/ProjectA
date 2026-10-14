@@ -7,6 +7,7 @@ import { isMain, makeRunner } from '../lib/dev-tools.mjs';
 const repo = 'Cuarroc/ProjectA';
 const config = fileURLToPath(new URL('../../.gitleaks.toml', import.meta.url));
 const hash = text => createHash('sha256').update(text).digest('hex');
+// logging.rs emits UTC seconds; also accept fractional UTC seconds and unstamped input.
 const stamp = /^\d{4}-\d\d-\d\dT[\d:.]+Z\s*/;
 const message = line => line.replace(stamp, '').replace(/^\[panic\]\s*/, '');
 const paths = /(?:[A-Za-z]:[\\/]|\\\\|\/|(?:[\w.-]+[\\/]))[^\s"'<>]+/g;
@@ -120,8 +121,14 @@ export function collect(state, { run, appData, inbox, env, now = new Date().toIS
     entry.count++; bucket.set(key, entry);
   };
   for (const name of names) for (const line of read(join(logDir, name)).split(/\r?\n/)) {
-    if (/\[frontend\] FEEDBACK /.test(line)) add(feedback, line);
-    else if (/\[panic\]|\bERROR\b/.test(line)) { add(occurrences, line); if (/\[panic\]/.test(line)) panicMessages.add(hash(message(line))); }
+    // logging.rs emits one [component]/[target] tag; panic hooks always add a detail.
+    const envelope = line.replace(stamp, '');
+    const panic = /^\[panic\] /.test(envelope);
+    if (/^\[frontend\] FEEDBACK /.test(envelope)) add(feedback, line);
+    else if (panic || /^(?:\[[^\]\r\n]+\] )?ERROR\b/.test(envelope)) {
+      add(occurrences, line);
+      if (panic) panicMessages.add(hash(message(line)));
+    }
   }
   for (const name of ['.panic-last', '.panic-previous']) {
     const marker = read(join(appData, name)).trim();

@@ -48,6 +48,7 @@ function CompactMenu() {
       ref={root}
       className="g-app-menu"
       onKeyDown={(e) => { if (e.key === "Escape" && open) { setOpen(false); button.current?.focus(); } }}
+      onBlur={(e) => { if (open && !root.current?.contains(e.relatedTarget)) setOpen(false); }}
     >
       <button ref={button} type="button" className="g-app-menu__btn" aria-expanded={open} onClick={() => setOpen(!open)}>
         {t("shell.appearance")}

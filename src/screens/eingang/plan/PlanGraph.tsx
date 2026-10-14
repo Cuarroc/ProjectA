@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import "../../../design/glass.css";
 import "../../../design/controls/controls.css";
 import { Chip } from "../../../design/controls/Chip";
 import { HonestState } from "../../../design/data/HonestState";
 import { getDevelopmentPlan } from "../../../lib/ipc";
-import type { DevelopmentPlanProjection } from "../../../types";
+import { useRetryableRead } from "../../../lib/useRetryableRead";
 import { layoutPlan, type PlanNode } from "./planGraphModel";
 import { T } from "./texts";
 import "./plan.css";
@@ -14,25 +14,14 @@ export interface PlanGraphProps {
   planId?: string;
 }
 
-type Read = { kind: "loading" | "unimported" | "failed" } | { kind: "ready"; plan: DevelopmentPlanProjection };
-
 /** Plan graph: one column per Ebene and the critical path, read-only. Never imports; not mounted yet. */
 export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
-  const [read, setRead] = useState<Read>({ kind: "loading" });
-  // One token per project/plan change: a reply only counts while its token is still the newest.
-  const generation = useRef(0);
+  const readPlan = useCallback(() => getDevelopmentPlan(projectId, planId), [projectId, planId]);
+  const { status, data, error, retry } = useRetryableRead(readPlan);
+  const plan = status === "ok" ? data?.projection : undefined;
+  const failure = status === "error" ? (String(error instanceof Error ? error.message : error).includes(T.unimportedMarker) ? "unimported" : "failed") : null;
 
-  useEffect(() => {
-    const mine = ++generation.current;
-    setRead({ kind: "loading" });
-    getDevelopmentPlan(projectId, planId).then(
-      (r) => generation.current === mine && setRead({ kind: "ready", plan: r.projection }),
-      (e) => generation.current === mine
-        && setRead({ kind: String(e instanceof Error ? e.message : e).includes(T.unimportedMarker) ? "unimported" : "failed" }),
-    );
-  }, [projectId, planId]);
-
-  const layout = useMemo(() => (read.kind === "ready" ? layoutPlan(read.plan.packages) : null), [read]);
+  const layout = useMemo(() => (plan ? layoutPlan(plan.packages) : null), [plan]);
   const onPath = new Set(layout?.critical);
   const card = (n: PlanNode) => (
     <li key={n.id} className="pg-card">
@@ -58,12 +47,12 @@ export function PlanGraph({ projectId, planId = "main" }: PlanGraphProps) {
 
   return (
     <div className="pg-root">
-      {read.kind === "loading" && <p className="pg-note">{T.loading}</p>}
-      {read.kind === "unimported" && <HonestState kind="empty" title={T.unimported} hint={T.unimportedHint} />}
-      {read.kind === "failed" && <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} />}
-      {read.kind === "ready" && layout && (
+      {status === "loading" && <p className="pg-note">{T.loading}</p>}
+      {failure === "unimported" && <HonestState kind="empty" title={T.unimported} hint={T.unimportedHint} action={{ label: T.retry, onClick: retry }} />}
+      {failure === "failed" && <HonestState kind="offline" title={T.unreadable} hint={T.unreadableHint} action={{ label: T.retry, onClick: retry }} />}
+      {plan && layout && (
         <>
-          <p className="pg-note">{T.source(read.plan.sourcePath, read.plan.sourceRevision.slice(0, 7), read.plan.projectionRevision)}</p>
+          <p className="pg-note">{T.source(plan.sourcePath, plan.sourceRevision.slice(0, 7), plan.projectionRevision)}</p>
           {layout.removed > 0 && <p className="pg-note">{T.removed(layout.removed)}</p>}
           {layout.levels.length + layout.cycle.length === 0 && (layout.removed > 0
             ? <HonestState kind="empty" title={T.allRemoved} hint={T.allRemovedHint} />

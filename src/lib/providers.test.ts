@@ -233,6 +233,24 @@ describe("hooks", () => {
     expect(bad.result.current.vaultError).toBeNull();
   });
 
+  it("ignores an older overview that resolves after a newer refresh", async () => {
+    let resolveOld: (rows: Provider[]) => void = () => undefined;
+    let reads = 0;
+    vi.mocked(ipc.getProviderOverview).mockImplementation(() => {
+      reads += 1;
+      if (reads === 1) {
+        return new Promise((resolve) => { resolveOld = resolve; });
+      }
+      return Promise.resolve([provider({ id: "neu", name: "Neu" })]);
+    });
+    const view = renderHook(() => useProviderOverview());
+    await act(async () => { await view.result.current.refresh(); });
+    expect(view.result.current.providers.map((row) => row.id)).toEqual(["neu"]);
+    await act(async () => { resolveOld([provider({ id: "veraltet", name: "Veraltet" })]); });
+    expect(view.result.current.providers.map((row) => row.id)).toEqual(["neu"]);
+    expect(view.result.current.error).toBeNull();
+  });
+
   it("useProviderOverview keeps the last good rows and reports a non-array payload", async () => {
     vi.mocked(ipc.getProviderOverview).mockResolvedValueOnce([provider({ connected: true })]);
     const view = renderHook(() => useProviderOverview());

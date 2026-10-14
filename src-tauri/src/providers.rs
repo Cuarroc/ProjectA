@@ -909,6 +909,10 @@ mod vault_crypto {
             pbData: std::ptr::null_mut(),
         };
         // UI_FORBIDDEN: a background app must never pop a system dialog.
+        // SAFETY: `input` points at `plain` for `cbData` bytes; the `*mut`
+        // cast is for the struct type, DPAPI does not write the input blob.
+        // All optional arguments are null as documented, and `output` is a
+        // writable blob that the API fills on success.
         let ok = unsafe {
             CryptProtectData(
                 &input,
@@ -926,8 +930,13 @@ mod vault_crypto {
                 std::io::Error::last_os_error()
             ));
         }
+        // SAFETY: the call above succeeded, so `output.pbData` points to a
+        // LocalAlloc'd buffer of `output.cbData` bytes. It is copied out with
+        // `to_vec` and no reference to it outlives this statement.
         let bytes =
             unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize) }.to_vec();
+        // SAFETY: that buffer is owned by us (the API documents LocalFree) and
+        // is freed exactly once, after the copy above and before any reuse.
         unsafe {
             LocalFree(output.pbData as *mut core::ffi::c_void);
         }
@@ -946,6 +955,9 @@ mod vault_crypto {
             cbData: 0,
             pbData: std::ptr::null_mut(),
         };
+        // SAFETY: as in `protect`: `input` points at `blob` for `cbData`
+        // bytes and is only read, the optional arguments are null, and
+        // `output` is a writable blob that the API fills on success.
         let ok = unsafe {
             CryptUnprotectData(
                 &input,
@@ -964,8 +976,13 @@ mod vault_crypto {
                 std::io::Error::last_os_error()
             ));
         }
+        // SAFETY: the call above succeeded, so `output.pbData` points to a
+        // LocalAlloc'd buffer of `output.cbData` bytes. It is copied out with
+        // `to_vec` and no reference to it outlives this statement.
         let bytes =
             unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize) }.to_vec();
+        // SAFETY: that buffer is owned by us (the API documents LocalFree) and
+        // is freed exactly once, after the copy above and before any reuse.
         unsafe {
             LocalFree(output.pbData as *mut core::ffi::c_void);
         }

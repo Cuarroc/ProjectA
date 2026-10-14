@@ -60,6 +60,7 @@ export default function ProfilesPanel({
               <label className="settings-check profile-toggle">
                 <input
                   type="checkbox"
+                  name={`profile-enabled-${profile.id}`}
                   checked={profile.enabled}
                   disabled={profileBusyId === profile.id}
                   onChange={(event) => handleToggleProfile(profile, event.target.checked)}

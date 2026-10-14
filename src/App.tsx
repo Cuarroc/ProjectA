@@ -57,9 +57,10 @@ import {
   loadUiDensity,
   type UiDensity,
 } from "./lib/settings";
-import { GOAL_LABELS, type AppGoal } from "./lib/goals";
+import { useT } from "./i18n/useT";
+import { goalLabelKey, type AppGoal } from "./lib/goals";
 import { useFeatureFlag } from "./flags/useFeatureFlag";
-import { goalForPath, isTools } from "./shell/mount/routing";
+import { goalForPath, isTools, shouldMountLegacyTerminal } from "./shell/mount/routing";
 import type { LegacyRouteProps } from "./shell/mount/ShellMount";
 import type { InboxEntry } from "./lib/attentionInbox";
 import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "./lib/activeProject";
@@ -133,6 +134,8 @@ const ShellMount = lazy(() => import("./shell/mount/ShellMount"));
 const LeitstandTabs = lazy(() => import("./screens/leitstand/LeitstandRoute").then((m) => ({ default: m.LeitstandTabs })));
 
 function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) {
+  const t = useT();
+  const legacyTerminalVisible = shouldMountLegacyTerminal(routePath);
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
   const [fonts, setFonts] = useState(loadFontSettings);
   // Variant B opens on the conversation: the first question the app answers is
@@ -1033,7 +1036,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
       ) : null}
       <main className="main">
         <LiveStatus
-          view={GOAL_LABELS[goal]}
+          view={t(goalLabelKey(goal))}
           questions={questions.open.length}
           attention={attentionCount}
         />
@@ -1242,7 +1245,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                         if (pane !== null) handleSelectSession(pane.sessionId);
                       }}
                     >
-                      {pane ? (
+                      {pane && legacyTerminalVisible ? (
                         <TerminalView
                           key={pane.sessionId}
                           sessionId={pane.sessionId}
@@ -1254,13 +1257,13 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                     </div>
                   ))
                 ) : activeSession ? (
-                  <TerminalView
+                  legacyTerminalVisible ? <TerminalView
                     key={activeSession.sessionId}
                     sessionId={activeSession.sessionId}
                     onError={setError}
                     font={fonts.terminalFont}
                     fontSize={fonts.terminalFontSize}
-                  />
+                  /> : null
                 ) : restoreWorker && restoreWorker.sessionId === null ? (
                   <SessionRestorePanel
                     worker={restoreWorker}
@@ -1272,7 +1275,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                     {!activeProject ? (
                       <p>Wähle ein Projekt oder erstelle eines über das + in der Sidebar.</p>
                     ) : goal === "review" && !activeWorker ? (
-                      <p>Kein Diff — eine Task aus der Board-Leiste oder Attention wählen.</p>
+                      <p>Kein Diff — eine Task aus der Board-Leiste oder Achtung wählen.</p>
                     ) : (
                       <p>Keine Terminal-Sitzungen.</p>
                     )}

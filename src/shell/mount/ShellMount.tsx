@@ -5,9 +5,10 @@ import type { AppGoal } from "../../lib/goals";
 import { Shell } from "../Shell";
 import { pathFromHash } from "../routes";
 import StartRoute from "../../screens/start/StartRoute";
+import TerminalRoute from "../../screens/terminal/TerminalRoute";
 import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
 import { EinstellungenScreen } from "../../screens/einstellungen/EinstellungenScreen";
-import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart } from "./routing";
+import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal } from "./routing";
 import SteuerungRoute from "./SteuerungRoute";
 import "./mount.css";
 
@@ -57,7 +58,8 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const start = isStart(path);
 
   const freshSettings = isNewEinstellungen(path);
-  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start;
+  const terminal = isTerminal(path);
+  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || terminal;
   const legacy = hasLegacyPanel(path) && !fresh;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
@@ -66,6 +68,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
         ? createPortal(
             <>
               {isNewLeitstand(path) ? <LeitstandRoute path={path} /> : null}
+              {terminal ? <TerminalRoute /> : null}
               {steuerung ? <SteuerungRoute path={path} /> : null}
               {start ? <StartRoute /> : null}
               {freshSettings ? <EinstellungenScreen onOpenClassic={openClassicSettings} /> : null}

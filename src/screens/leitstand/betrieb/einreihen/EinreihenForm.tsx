@@ -29,7 +29,7 @@ const S = {
   task: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 } satisfies Record<string, CSSProperties>;
 
-/** Adds a task to the project's queue and removes one that has not started; the sharpening question loop stays in the old panel. Not mounted yet. */
+/** Adds a task to the project's queue and removes one that has not started; the sharpening question loop stays in the old panel. */
 export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCancelled }: EinreihenFormProps) {
   const [task, setTask] = useState("");
   const [profileId, setProfileId] = useState("");
@@ -37,8 +37,8 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   const [submitting, setSubmitting] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Not-Aus reads as active when unreadable, like the stop band: a failed read must not open the gate.
-  const [stopped, setStopped] = useState(false);
+  // `null` = Not-Aus has not been read yet. Unreadable or active stays blocked; only an explicit false opens the gate.
+  const [stopped, setStopped] = useState<boolean | null>(null);
   const ids = useId();
 
   // A write that finishes after a project switch must not publish rows, errors or busy state under the new project.
@@ -48,18 +48,19 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
   useEffect(() => {
     generation.current += 1;
     setTask(""); setProfileId(""); setSharpen(false); setSubmitting(false); setCancellingId(null); setError(null);
+    return () => { generation.current += 1; };
   }, [projectId]);
 
   useEffect(() => {
     let live = true;
-    const read = () => { getEmergencyStop().then((v) => live && setStopped(v === true), () => live && setStopped(true)); };
+    const read = () => { getEmergencyStop().then((v) => live && setStopped(v !== false), () => live && setStopped(true)); };
     read();
     const timer = window.setInterval(read, 5000);
     return () => { live = false; window.clearInterval(timer); };
   }, []);
 
   const text = task.trim();
-  const reason = stopped ? T.reasonStopped : submitting ? T.reasonBusy : text === "" ? T.reasonEmpty : null;
+  const reason = stopped === null ? T.reasonStopPending : stopped ? T.reasonStopped : submitting ? T.reasonBusy : text === "" ? T.reasonEmpty : null;
 
   /** Runs one write; its outcome only counts while the project it started in is still shown. */
   const write = <V,>(call: Promise<V>, ok: (value: V) => void, failed: (detail: string) => string, done: () => void) => {
@@ -94,8 +95,8 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
     <section className="g-glass" style={S.root} aria-label={T.title}>
       <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{T.title}</h2>
       <form style={flex(12, { flexDirection: "column" })} onSubmit={submit}>
-        <Textarea rows={3} aria-label={T.task} placeholder={T.taskPlaceholder} value={task} disabled={submitting} onChange={(e) => setTask(e.target.value)} />
-        <Select aria-label={T.profile} value={profileId} disabled={submitting} onChange={(e) => setProfileId(e.target.value)}>
+        <Textarea name="einreihen-task" rows={3} aria-label={T.task} placeholder={T.taskPlaceholder} value={task} disabled={submitting} onChange={(e) => setTask(e.target.value)} />
+        <Select name="einreihen-profile" aria-label={T.profile} value={profileId} disabled={submitting} onChange={(e) => setProfileId(e.target.value)}>
           <option value="">{T.profileAuto}</option>
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </Select>

@@ -56,6 +56,12 @@ cd "$ROOT" || exit 1
 # erzwingt LF nur fuer `*.sh`, ein Manifest mit anderer Endung kaeme vom
 # Windows-Editor mit CRLF zurueck und `read -r` haette ein \r am Zeilenende.
 # --------------------------------------------------------------------------
+# AP-4a: the Windows suite runs as two nextest partitions on two runners (lanes
+# windows_1 / windows_2, matrix job `windows-part` in ci.yml). The lane
+# `windows` stays the union for local runs; scripts/test-windows-verdict.sh
+# pins that the two halves together are exactly that union.
+NEXTEST_CI="cargo nextest run --profile ci"
+
 GATES=(
   # --- Sekunden: die Workflow-Gates und ihre eigenen Selbsttests -----------
   "no-masked|linux,release|.|bash scripts/ci/no-masked-output.sh"
@@ -87,7 +93,7 @@ GATES=(
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-dev-build-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh && bash scripts/test-pr-secrets.sh && bash scripts/test-test-insights-pick.sh"
+  "selftest-gates|linux|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-dev-build-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh && bash scripts/test-pr-secrets.sh && bash scripts/test-test-insights-pick.sh && bash scripts/test-windows-verdict.sh"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
@@ -143,12 +149,18 @@ GATES=(
   "crlf-source-compare|precommit,prepush,linux|.|node --test scripts/ci/crlf-source-compare.test.mjs && node scripts/ci/crlf-source-compare.mjs check"
   "architecture-drift|precommit,prepush,linux|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
   "package-size|prepush,linux|.|node --test scripts/ci/package-size.test.mjs && node scripts/ci/package-size.mjs"
+  # AP-9 S0: command names in generate_handler! (main.rs) and invoke("...")
+  # callers in src/ must agree; reads text only, no build.
+  "ipc-names|precommit,prepush,linux|.|node --test scripts/ci/ipc-names.test.mjs && node scripts/ci/ipc-names.mjs check"
   # V161-DOC-LINKS: broken relative links in tracked Markdown. Local lanes only:
   # lane-plan HEAVY_DOCS would turn every docs PR into a Linux CI run.
   "doc-links|precommit,prepush|.|node --test scripts/ci/doc-links.test.mjs && node scripts/ci/doc-links.mjs check"
   # Deterministic suppression counts may not exceed their checked-in ceilings.
   # Explicit updates lower ceilings only; every lane also tests the ratchet.
   "ratchet|precommit,prepush,linux|.|node --test scripts/ci/ratchet.test.mjs && node scripts/ci/ratchet.mjs check"
+
+  # AP-10e: every #[ignore] in src-tauri states why and how to run it.
+  "ignore-reasons|precommit,prepush,linux|.|node --test scripts/ci/ignore-reasons.test.mjs"
 
   # CI-06: the trailers of the new commits against origin/main, with the very
   # same red-first.sh --plan the PR CI runs (no second implementation, no
@@ -158,7 +170,7 @@ GATES=(
   "red-first-plan|prepush,branchpush|.|BASE_SHA=\"\$(git merge-base origin/main HEAD)\" && HEAD_SHA=\"\$(git rev-parse HEAD)\" && export BASE_SHA HEAD_SHA && bash scripts/ci/red-first.sh --plan"
 
   # --- schnell: Form und Typen --------------------------------------------
-  "fmt|precommit,prepush,branchpush,linux,windows,release|src-tauri|cargo fmt --check"
+  "fmt|precommit,prepush,branchpush,linux,windows,windows_1,release|src-tauri|cargo fmt --check"
   "cargo-check|precommit|src-tauri|cargo check"
   "typecheck|precommit,prepush,branchpush,linux,release|.|npm run typecheck"
   "lint|prepush,branchpush,linux,release|.|npm run lint"
@@ -183,25 +195,29 @@ GATES=(
   "e2e|linux,release|.|npm run test:e2e"
 
   # --- teuer: der Rust-Kern -----------------------------------------------
-  "clippy|prepush,linux,windows,release|src-tauri|cargo clippy --all-targets -- -D warnings"
+  "clippy|prepush,linux,windows,windows_1,release|src-tauri|cargo clippy --all-targets -- -D warnings"
   # nextest statt cargo test: eigener Prozess je Test (kein geteilter Zustand),
   # keine Retries im Profil `ci`, harter slow-timeout. pre-push fuhr bis zum
   # 09.09. `cargo test` und mass damit etwas anderes als CI.
-  "rust-suite|prepush,linux,windows,release|src-tauri|cargo nextest run --profile ci"
+  "rust-suite|prepush,linux,windows,release|src-tauri|$NEXTEST_CI"
+  # AP-4a: the same suite in two halves; `count:` splits the sorted test list
+  # round-robin, so the halves are balanced and together complete.
+  "rust-suite-1|windows_1|src-tauri|$NEXTEST_CI --partition count:1/2"
+  "rust-suite-2|windows_2|src-tauri|$NEXTEST_CI --partition count:2/2"
   # W3-06: die sieben #[ignore]-Tests, die ein gebautes pa-capture-host
   # brauchen (ConPTY, echter Kindprozess) - rust-suite laesst #[ignore]
   # aussen vor, und ohne dieses Gate liefen sie nirgends in einer Bahn.
   # Nur windows: das Binary heisst .exe, und ConPTY gibt es nur dort. Stand
   # bis W3-06 als eigener pwsh-Schritt in ci.yml, ausserhalb dieser Liste -
   # dieselbe Drift-Klasse, die dieses Skript beseitigen soll.
-  "native-tests|windows|.|bash scripts/ci/native-tests.sh"
+  "native-tests|windows,windows_2|.|bash scripts/ci/native-tests.sh"
 
   # --- eigene Bahn: das woechentliche Audit -------------------------------
   "audit-rust|audit|src-tauri|cargo audit"
   "audit-npm|audit|.|npm audit --audit-level=moderate"
 )
 
-LANES="precommit prepush branchpush linux windows release audit"
+LANES="precommit prepush branchpush linux windows windows_1 windows_2 release audit"
 
 gate_field() { # zeile feldnummer
   printf '%s' "$1" | cut -d'|' -f"$2"
@@ -440,7 +456,7 @@ hint_for() {
         echo "    (Nutzer-Regel vom 25.09.2026). Frisch installiert? Shell neu starten."
       }
       ;;
-    rust-suite)
+    rust-suite*)
       command -v cargo-nextest > /dev/null 2>&1 || cargo nextest --version > /dev/null 2>&1 || {
         echo "    Hinweis: cargo-nextest fehlt. Installation:"
         echo "      cargo install cargo-nextest --locked"
@@ -546,7 +562,7 @@ gates.sh — die eine Gate-Quelle fuer CI, Release, Hooks und den lokalen Lauf.
   gates.sh --list [bahn]        auflisten, nichts ausfuehren
   gates.sh --from <id> lane <b> ab diesem Gate weiter
 
-Bahnen: precommit prepush branchpush linux windows release audit
+Bahnen: precommit prepush branchpush linux windows windows_1 windows_2 release audit
 USAGE
 }
 

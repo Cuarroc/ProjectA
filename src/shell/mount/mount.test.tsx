@@ -127,8 +127,8 @@ describe("Glass shell mount behind D1", () => {
     render(<App />);
     await screen.findByRole("navigation", { name: "Hauptnavigation" });
     await go("#/einstellungen/klassisch");
-    expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("tab", { name: "Review" }));
+    expect(await screen.findByRole("tab", { name: "Einstellungen", selected: true })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("tab", { name: "Prüfung" }));
     await waitFor(() => expect(window.location.hash).toBe("#/beweise"));
   });
 
@@ -142,7 +142,27 @@ describe("Glass shell mount behind D1", () => {
     expect(container.querySelector(".g-mount-legacy > .app")).not.toBeNull();
     expect(screen.getByRole("link", { name: "Einstellungen" })).toHaveAttribute("aria-current", "page");
     fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
-    expect(await screen.findByText("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Tresor" })).toBeInTheDocument();
+    expect(screen.getByText("Wird gelesen …")).toBeVisible();
+  });
+
+  it("renders the vault when the overview returns nothing", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/einstellungen";
+    const fallback = mocks.invoke.getMockImplementation();
+    if (fallback === undefined) throw new Error("invoke mock missing");
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "get_provider_overview") return Promise.resolve(null);
+      return fallback(command);
+    });
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "MCP & Tresor" }));
+    expect(await screen.findByRole("region", { name: "Tresor" })).toBeInTheDocument();
+    expect(await screen.findByText("Keine Anbieter bekannt")).toBeVisible();
+    expect(screen.queryByText("Wird gelesen …")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "MCP-Server" })).toBeVisible();
   });
 
   it("opens the old Settings inside the shell from the classic button", async () => {
@@ -151,7 +171,7 @@ describe("Glass shell mount behind D1", () => {
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" }));
     await waitFor(() => expect(window.location.hash).toBe("#/einstellungen/klassisch"));
-    expect(await screen.findByRole("tab", { name: "Settings", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Einstellungen", selected: true })).toBeInTheDocument();
     expect(container.querySelector(".es")).toBeNull();
     expect(container.querySelector(".g-mount-legacy")).not.toHaveAttribute("hidden");
     expect(container.querySelector(".g-shell-content .g-mount-legacy > .app")).not.toBeNull();
@@ -161,7 +181,7 @@ describe("Glass shell mount behind D1", () => {
     window.location.hash = "#/einstellungen";
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
-    expect(await screen.findByRole("tab", { name: "Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Einstellungen" })).toBeInTheDocument();
     expect(container.querySelector(".g-mount")).toBeNull();
     expect(container.querySelector(".es")).toBeNull();
   });
@@ -177,7 +197,7 @@ describe("Glass shell mount behind D1", () => {
 
   it("is switched on and off from Settings General and persists", async () => {
     const { container } = render(<App />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Einstellungen" }));
     const toggle = await screen.findByRole("checkbox", { name: "Neue Oberfläche (Vorschau)" });
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);

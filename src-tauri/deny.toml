@@ -22,9 +22,10 @@ allow = [
   "OFL-1.1",
 ]
 
-# The workspace crate `projecta` itself carries no license field yet — the
-# repo license is a LIC-01 "Needs decision" item. The gate's job here is the
-# third-party tree, so unpublished workspace crates are skipped.
+# The workspace crate `projecta` itself is MIT (`license = "MIT"` in
+# src-tauri/Cargo.toml, repo-root LICENSE). The gate's job here is the
+# third-party tree, so unpublished workspace crates (`publish = false`) are
+# skipped.
 [licenses.private]
 ignore = true
 

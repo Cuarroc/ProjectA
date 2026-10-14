@@ -89,6 +89,60 @@ test('turns a feedback entry into a feedback inbox file', t => {
   assert.equal(JSON.parse(fs.readFileSync(join(feedbackDir, name), 'utf8')).count, 1);
 });
 
+test('classifies the log envelope instead of quoted feedback markers', t => {
+  const dir = fs.mkdtempSync(join(tmpdir(), 'dev-envelope-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const logs = join(dir, 'logs'), inbox = join(dir, 'inbox'), state = {};
+  fs.mkdirSync(logs);
+  const quoted = String.raw`[frontend] FEEDBACK message=\"sample\"`;
+  const lines = [
+    `2026-10-12T12:00:00Z [frontend] FEEDBACK message="quoted ERROR [panic]" expected="ok" route="/" context="ctx"`,
+    `2026-10-12T12:00:01Z [frontend] ERROR message="failed to parse ${quoted}" stack="" route="/"`,
+    `2026-10-12T12:00:02Z [panic] PANIC: failed to parse "${quoted}"`,
+    `2026-10-12T12:00:03Z [other] ERROR failed to parse "${quoted}"`,
+    `2026-10-12T12:00:04Z [other] INFO copied "${quoted}"`,
+  ];
+  fs.writeFileSync(join(logs, 'projecta.log'), lines.join('\n'));
+  const deps = { run: makeRunner(), appData: dir, inbox, env: {} };
+  collect(state, deps);
+  const records = folder => fs.readdirSync(folder).filter(n => n.endsWith('.json'))
+    .map(n => JSON.parse(fs.readFileSync(join(folder, n), 'utf8')));
+  const feedback = records(join(inbox, 'feedback')), errors = records(inbox);
+  assert.deepEqual(feedback.map(r => r.context), [[lines[0]]]);
+  assert.deepEqual(errors.flatMap(r => r.context).sort(), lines.slice(1, 4).sort());
+  collect(state, deps);
+  assert.deepEqual(records(join(inbox, 'feedback')), feedback);
+  assert.deepEqual(records(inbox), errors);
+});
+
+test('pins native log envelopes and supported timestamp shapes', t => {
+  const dir = fs.mkdtempSync(join(tmpdir(), 'dev-log-shapes-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const logs = join(dir, 'logs');
+  fs.mkdirSync(logs);
+  // logging.rs: log(), format_line(), handle_panic() and timestamp().
+  const envelopes = ['ERROR bare', '[frontend] ERROR message="render"',
+    '[dependency::module] ERROR dependency', '[panic] PANIC: crash', '[frontend] FEEDBACK message="button"'];
+  const stamps = ['', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00.123Z'];
+  const now = '2026-10-13T13:00:00Z';
+  for (const [i, stamp] of stamps.entries()) {
+    const inbox = join(dir, `inbox-${i}`);
+    const lines = envelopes.map(e => `${stamp ? `${stamp} ` : ''}${e}`);
+    fs.writeFileSync(join(logs, 'projecta.log'), lines.join('\r\n'));
+    collect({}, { run: makeRunner(), appData: dir, inbox, env: {}, now });
+    for (const [folder, expected] of [[inbox, lines.slice(0, 4)], [join(inbox, 'feedback'), lines.slice(4)]]) {
+      const records = fs.readdirSync(folder).filter(n => n.endsWith('.json'))
+        .map(n => JSON.parse(fs.readFileSync(join(folder, n), 'utf8')));
+      assert.deepEqual(records.flatMap(r => r.context).sort(), expected.sort());
+      for (const record of records) {
+        assert.equal(record.count, 1);
+        assert.equal(record.firstSeen, stamp || now);
+        assert.equal(record.lastSeen, stamp || now);
+      }
+    }
+  }
+});
+
 test('installs only a Dev setup and restarts a gracefully closed app after success or failure', t => {
   const folder = fs.mkdtempSync(join(tmpdir(), 'dev-update-'));
   t.after(() => fs.rmSync(folder, { recursive: true, force: true }));

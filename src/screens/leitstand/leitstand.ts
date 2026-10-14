@@ -25,6 +25,7 @@ export const fill = (template: string, values: Record<string, string | number>) 
   template.replace(/\{(\w+)\}/g, (slot, name: string) => (name in values ? String(values[name]) : slot));
 
 export function ageText(createdAt: number, now: number): string {
+  if (!Number.isFinite(createdAt) || !Number.isFinite(now)) return t("leitstand.justNow");
   const min = Math.max(0, Math.floor((now - createdAt) / 60));
   const since = (age: string) => fill(t("leitstand.since"), { age });
   if (min < 1) return t("leitstand.justNow");
