@@ -716,6 +716,10 @@ feed SEC-1 before autonomous application. No runtime or migration is proven here
   Web-Interface und Empfehlungs-Links; ipc.ts weist alles außer http(s) vorher
   ab — Zurücknehmen: falls ein Review zeigt, dass Worker-Output den Pfad
   erreicht (dann Allowlist + Bestätigungsdialog).
+  AP-10b (14.10.2026) verengt das: `http://*` entfällt, Klartext-http nur noch
+  `http://localhost:*/board` (einziger Aufrufer `WebInterfacePanel.tsx`) mit
+  `deny` `http://*@*` gegen Userinfo-Umleitung — Zurücknehmen: nur wenn die
+  Web-Ansicht je auf eine LAN-Adresse bindet.
 - P2-F läuft parallel zu P2-J, Dateigrenzen neu gezogen: P2-J = Cargo.toml,
   main.rs, capabilities, ipc.ts; P2-F = CSP, plugin-matrix.md, markdown.ts —
   die Spec vom 01.09. hatte die Opener-Registrierung doppelt — Zurücknehmen: —.
