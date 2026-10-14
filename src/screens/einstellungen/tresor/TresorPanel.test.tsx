@@ -1,4 +1,7 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TresorPanel } from "./TresorPanel";
@@ -169,14 +172,92 @@ describe("TresorPanel", () => {
     await act(async () => { resolveOverview([]); });
     expect(refresh).toHaveAttribute("aria-busy", "false");
     refresh.focus();
+    await waitFor(() => expect(document.activeElement).toBe(refresh));
     backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
+    fireEvent.click(refresh);
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+    expect(document.activeElement).toBe(refresh);
+    fireEvent.click(refresh);
+    expect(calls("get_provider_overview")).toHaveLength(2);
+    await act(async () => { resolveOverview([]); });
+    await waitFor(() => {
+      expect(refresh).toHaveAttribute("aria-busy", "false");
+      expect(document.activeElement).toBe(refresh);
+    });
+  });
+
+  it("does not start another overview if reread is clicked before the button shows busy", async () => {
+    backend(new Promise(() => {}));
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      flushSync(() => {
+        root.render(<TresorPanel />);
+      });
+      const refresh = host.querySelector("button");
+      if (refresh === null) throw new Error("missing reread button");
+      // The reader starts in an effect. Until that effect's state lands, the
+      // button must not claim a read that the first paint never started, and a
+      // click in that gap must not open a second read.
+      expect(refresh.getAttribute("aria-busy")).toBe("false");
+      const started = calls("get_provider_overview").length;
+      flushSync(() => {
+        fireEvent.click(refresh);
+      });
+      flushSync(() => {
+        fireEvent.click(refresh);
+      });
+      await act(async () => {});
+      expect(calls("get_provider_overview")).toHaveLength(Math.max(started, 1));
+      expect(refresh.getAttribute("aria-busy")).toBe("true");
+      fireEvent.click(refresh);
+      expect(calls("get_provider_overview")).toHaveLength(Math.max(started, 1));
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      host.remove();
+    }
+  });
+
+  it("keeps the newer vault read busy when the replaced read goes idle", async () => {
+    backend([]);
+    render(<TresorPanel />);
+    expect(await screen.findByText("Keine Anbieter bekannt")).toBeInTheDocument();
+    const refresh = screen.getByRole("button", { name: "Neu lesen" });
+    expect(refresh).toHaveAttribute("aria-busy", "false");
+    backend(new Promise(() => {}));
     fireEvent.click(refresh);
     expect(refresh).toHaveAttribute("aria-busy", "true");
     fireEvent.click(refresh);
     expect(calls("get_provider_overview")).toHaveLength(2);
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("stays busy for a strict-mode overview until that read settles", async () => {
+    let resolveOverview!: (value: unknown[]) => void;
+    backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
+    render(<StrictMode><TresorPanel /></StrictMode>);
+    const refresh = screen.getByRole("button", { name: "Neu lesen" });
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+    const started = calls("get_provider_overview").length;
+    expect(started).toBeGreaterThan(0);
+    fireEvent.click(refresh);
+    expect(calls("get_provider_overview")).toHaveLength(started);
     await act(async () => { resolveOverview([]); });
     expect(refresh).toHaveAttribute("aria-busy", "false");
-    expect(refresh).toHaveFocus();
+    expect(screen.getByText("Keine Anbieter bekannt")).toBeInTheDocument();
+  });
+
+  it("puts the reread button directly in the vault card", async () => {
+    backend([]);
+    render(<TresorPanel />);
+    await screen.findByText("Keine Anbieter bekannt");
+    const vault = section("Tresor");
+    const refresh = within(vault).getByRole("button", { name: "Neu lesen" });
+    expect(refresh.parentElement).toBe(vault);
+    expect(refresh).toHaveClass("tr-reread");
   });
 
   it("only get_provider_overview and has_provider_key are invoked and the panel only offers the read button", async () => {
