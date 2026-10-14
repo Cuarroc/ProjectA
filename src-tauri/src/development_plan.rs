@@ -159,9 +159,20 @@ pub fn parse_plan(
             continue;
         }
         let field = |name| header.iter().position(|c| *c == name).map(|i| cells[i]);
-        let id = field("ID").unwrap();
-        let title = cells[header.iter().position(|c| c.starts_with("Paket")).unwrap()];
-        let acceptance = field("Konkretes Ergebnis und Abnahme").unwrap();
+        let required = |name| {
+            field(name)
+                .ok_or_else(|| error(n, &format!("plan table is missing required column {name}")))
+        };
+        let Some(title) = header
+            .iter()
+            .position(|c| c.starts_with("Paket"))
+            .map(|i| cells[i])
+        else {
+            return Err(error(n, "plan table is missing required column Paket"));
+        };
+        let id = required("ID")?;
+        let acceptance = required("Konkretes Ergebnis und Abnahme")?;
+        let dependencies = required("Nach")?;
         if !valid_id(id) || title.is_empty() || acceptance.is_empty() {
             return Err(error(n, "stable ID, title and acceptance are required"));
         }
@@ -196,7 +207,7 @@ pub fn parse_plan(
             source_revision: revision.clone(),
             source_line: n,
             title: title.into(),
-            dependency_ids: references(field("Nach").unwrap())?,
+            dependency_ids: references(dependencies)?,
             acceptance: acceptance.into(),
         });
     }
@@ -390,13 +401,21 @@ pub fn parse_milestones(
             delimiter = false;
             continue;
         }
-        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()].to_owned();
+        let field = |name| {
+            let column = header.iter().position(|c| *c == name);
+            column.map(|i| cells[i].to_owned()).ok_or_else(|| {
+                error(
+                    n,
+                    &format!("milestone table is missing required column {name}"),
+                )
+            })
+        };
         milestones[index].packages.push(HistoricalMilestonePackage {
-            package_id: field("ID"),
-            title: field("Paket"),
-            size: field("Gr."),
-            lane: field("Lane"),
-            raw_status: field("Stand"),
+            package_id: field("ID")?,
+            title: field("Paket")?,
+            size: field("Gr.")?,
+            lane: field("Lane")?,
+            raw_status: field("Stand")?,
             source_line: n,
         });
     }
@@ -522,8 +541,13 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
             delimiter = false;
             continue;
         }
-        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()];
-        let id = field("ID");
+        let field = |name| {
+            let column = header.iter().position(|c| *c == name);
+            column
+                .map(|i| cells[i])
+                .ok_or_else(|| error(n, &format!("v2 table is missing required column {name}")))
+        };
+        let id = field("ID")?;
         if !valid_id(id) {
             return Err(error(n, "stable ID is required"));
         }
@@ -533,14 +557,14 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
         }
         packages.push(V2Package {
             package_id: id.into(),
-            title: field("Ziel").into(),
-            lane: field("Lane").into(),
-            seam: field("Naht").into(),
-            tier: field("Stufe").into(),
-            size: field("Größe").into(),
-            raw_dependencies: field("Hängt ab von").into(),
-            provider: field("Anbieter").into(),
-            raw_acceptance: field("Abnahme").into(),
+            title: field("Ziel")?.into(),
+            lane: field("Lane")?.into(),
+            seam: field("Naht")?.into(),
+            tier: field("Stufe")?.into(),
+            size: field("Größe")?.into(),
+            raw_dependencies: field("Hängt ab von")?.into(),
+            provider: field("Anbieter")?.into(),
+            raw_acceptance: field("Abnahme")?.into(),
             source_path: source_path.into(),
             source_line: n,
         });
@@ -1251,5 +1275,74 @@ mod tests {
             p.source_revision,
             "sha256:2a8051bf4b400f313164b6e6069b35cdbe01b0796356ad0f5b1332b0bf582f98"
         );
+    }
+
+    /// Every subset (and each subset with a duplicated cell) of `names` as a
+    /// table header followed by delimiter and one data row.
+    fn header_variants(names: &[&str]) -> Vec<(Vec<String>, String)> {
+        let mut out = Vec::new();
+        for mask in 0..(1u32 << names.len()) {
+            let picked: Vec<_> = (0..names.len())
+                .filter(|i| mask >> i & 1 == 1)
+                .map(|i| names[i].to_owned())
+                .collect();
+            let mut shapes = vec![picked.clone()];
+            if let Some(first) = picked.first() {
+                shapes.push([picked.clone(), vec![first.clone()]].concat());
+            }
+            for cells in shapes {
+                let row = |fill: &str| format!("| {} |\n", vec![fill; cells.len()].join(" | "));
+                let source = format!("| {} |\n{}{}", cells.join(" | "), row("---"), row("A"));
+                out.push((cells, source));
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn plan_table_without_required_columns_is_rejected_not_a_panic() {
+        let required = ["ID", "Paket", "Nach", "Konkretes Ergebnis und Abnahme"];
+        let names = [required.as_slice(), &["Eltern", "Parent", "Extra"]].concat();
+        for (cells, source) in header_variants(&names) {
+            let parsed = std::panic::catch_unwind(|| parse_plan("p", "plan", "x", &source));
+            let parsed = parsed.unwrap_or_else(|_| panic!("parse_plan panicked on {cells:?}"));
+            if required.iter().any(|name| !cells.iter().any(|c| c == name)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn milestone_table_without_required_columns_is_rejected_not_a_panic() {
+        let required = ["ID", "Paket", "Gr.", "Lane", "Stand"];
+        for (cells, table) in header_variants(&[required.as_slice(), &["Extra"]].concat()) {
+            let source = format!("### M1 \u{2014} First\n{table}");
+            let parsed = std::panic::catch_unwind(|| parse_milestones("x", &source));
+            let parsed =
+                parsed.unwrap_or_else(|_| panic!("parse_milestones panicked on {cells:?}"));
+            let known = required
+                .iter()
+                .filter(|n| cells.iter().any(|c| c == *n))
+                .count();
+            if known >= 3 && required.iter().any(|n| !cells.iter().any(|c| c == n)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn v2_table_without_required_columns_is_rejected_not_a_panic() {
+        for (cells, source) in header_variants(&[V2_COLUMNS.as_slice(), &["Extra"]].concat()) {
+            let parsed = std::panic::catch_unwind(|| parse_v2_packages("x", &source));
+            let parsed =
+                parsed.unwrap_or_else(|_| panic!("parse_v2_packages panicked on {cells:?}"));
+            let known = V2_COLUMNS
+                .iter()
+                .filter(|n| cells.iter().any(|c| c == *n))
+                .count();
+            if known >= 5 && V2_COLUMNS.iter().any(|n| !cells.iter().any(|c| c == n)) {
+                assert!(parsed.is_err(), "accepted incomplete header {cells:?}");
+            }
+        }
     }
 }
