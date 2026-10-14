@@ -62,6 +62,25 @@ describe("narrow header", () => {
     expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
   });
 
+  it("closes the Darstellung menu when focus leaves it", () => {
+    viewport(true);
+    render(<AppearanceControl />);
+    fireEvent.click(screen.getByRole("button", { name: "Darstellung" }));
+    const inside = within(screen.getByRole("radiogroup", { name: "Stil" })).getByRole("radio", { name: "Nebel" });
+    fireEvent.focusOut(inside, { relatedTarget: document.body });
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+  });
+
+  it("keeps the menu open while focus moves between its two groups", () => {
+    viewport(true);
+    render(<AppearanceControl />);
+    fireEvent.click(screen.getByRole("button", { name: "Darstellung" }));
+    const theme = within(screen.getByRole("radiogroup", { name: "Farbschema" })).getAllByRole("radio")[0];
+    const style = within(screen.getByRole("radiogroup", { name: "Stil" })).getByRole("radio", { name: "Nebel" });
+    fireEvent.focusOut(theme, { relatedTarget: style });
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+  });
+
   it("creates one MediaQueryList per mounted control and releases it on unmount", () => {
     const added = vi.fn<(type: string, fn: () => void) => void>();
     const removed = vi.fn<(type: string, fn: () => void) => void>();
