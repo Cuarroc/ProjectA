@@ -12,7 +12,6 @@ use super::{
 };
 
 /// The side-effecting half of the helper.  Errors are human-readable reasons.
-#[allow(dead_code)] // W3-02
 pub trait RecoveryEffects {
     fn verify_backup(&mut self) -> std::result::Result<VerifiedBackup, String>;
     fn install(
@@ -37,7 +36,6 @@ pub trait RecoveryEffects {
 
 /// What one step did.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[allow(dead_code)] // W3-02
 pub enum StepOutcome {
     /// Nothing to execute (`NoAction` / `WaitForIdle`).
     Idle,
@@ -45,19 +43,16 @@ pub enum StepOutcome {
     Executed(Box<RecoveryAction>),
 }
 
-#[allow(dead_code)] // W3-02
 pub struct RecoveryDriver<E: RecoveryEffects> {
     journal: DurableJournal,
     effects: E,
 }
 
 impl<E: RecoveryEffects> RecoveryDriver<E> {
-    #[allow(dead_code)] // W3-02
     pub fn new(journal: DurableJournal, effects: E) -> Self {
         Self { journal, effects }
     }
 
-    #[allow(dead_code)] // W3-02
     pub fn journal(&self) -> &DurableJournal {
         &self.journal
     }
@@ -65,7 +60,6 @@ impl<E: RecoveryEffects> RecoveryDriver<E> {
     /// Reads the one next action from the durable journal and executes it.
     /// A failed effect leaves the journal as persisted, so the next step
     /// derives the same (or the safer) action again.
-    #[allow(dead_code)] // W3-02
     pub fn step(&mut self) -> Result<StepOutcome> {
         let action = self.journal.next_action();
         match &action {
