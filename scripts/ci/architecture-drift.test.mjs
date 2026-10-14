@@ -338,6 +338,50 @@ test("a unicode escape char literal does not confuse test mod stripping", () => 
   assert.equal((result.stderr.match(/RAW_PROCESS_SPAWN/g) ?? []).length, 1);
 });
 
+const asyncRs = (body) => fixture({ "src-tauri/src/workers.rs": body });
+
+test("rejects block_on inside an async fn", () => {
+  const result = run(asyncRs("async fn load(rt: Handle) { rt.block_on(work()); }\n"), "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ASYNC_BLOCK_ON.*src-tauri\/src\/workers\.rs/);
+});
+
+test("rejects block_on inside an async block", () => {
+  const result = run(asyncRs("fn go() { spawn(async move { tauri::async_runtime::block_on(work()); }); }\n"), "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ASYNC_BLOCK_ON/);
+});
+
+test("accepts block_on in plain fns and spawn_blocking closures", () => {
+  const root = asyncRs([
+    "fn plain(rt: Handle) { rt.block_on(work()); }",
+    "async fn offload(rt: Handle) {",
+    "    tokio::task::spawn_blocking(move || rt.block_on(work())).await;",
+    "    std::thread::spawn(move || { rt.block_on(work()); });",
+    "    fn helper(rt: Handle) { rt.block_on(work()); }",
+    "    // rt.block_on(in_comment());",
+    "    let _ = \"rt.block_on(in_string())\";",
+    "}",
+    "#[cfg(test)]\nmod tests { async fn t(rt: Handle) { rt.block_on(work()); } }",
+  ].join("\n"));
+  const result = run(root, "check");
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("rejects an async block nested inside a spawn_blocking closure", () => {
+  const result = run(asyncRs("fn go() { spawn_blocking(move || { async move { rt.block_on(work()); } }); }\n"), "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ASYNC_BLOCK_ON/);
+});
+
+test("accepts an allowlisted async block_on occurrence", () => {
+  const root = asyncRs("async fn load(rt: Handle) { rt.block_on(work()); }\n");
+  const snapshot = run(root, "snapshot").stdout;
+  assert.match(snapshot, /^ASYNC_BLOCK_ON\t/m);
+  writeFileSync(join(root, "scripts/ci/architecture-drift.allow"), snapshot);
+  assert.equal(run(root, "check").status, 0);
+});
+
 test("rejects diagnosis commands in main.rs", () => {
   const root = fixture({ "src-tauri/src/main.rs": "fn get_reason_catalog() { }\n" });
   const result = run(root, "check");
