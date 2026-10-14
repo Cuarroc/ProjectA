@@ -157,12 +157,18 @@ impl ProcessTree {
                 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
             };
 
+            // SAFETY: null security attributes and a null name are both valid
+            // for CreateJobObjectW; the call has no other preconditions.
             let job = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
             if job.is_null() {
                 return Self { job: None };
             }
+            // SAFETY: the struct holds integers and sizes; all-zero is valid.
             let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { std::mem::zeroed() };
             limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            // SAFETY: `job` is the non-null handle created above and still
+            // open; `limits` is the struct that the JobObjectExtendedLimit-
+            // Information class expects, passed with its exact size.
             let configured = unsafe {
                 SetInformationJobObject(
                     job,
@@ -171,9 +177,13 @@ impl ProcessTree {
                     std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
                 ) != 0
             };
+            // SAFETY: `job` is still open and `child` is borrowed, so its
+            // process handle is valid for the call.
             let assigned = configured
                 && unsafe { AssignProcessToJobObject(job, child.as_raw_handle() as _) != 0 };
             if !assigned {
+                // SAFETY: `job` is owned here and not yet stored anywhere, so
+                // this is its only close.
                 unsafe { CloseHandle(job) };
                 return Self { job: None };
             }
@@ -196,6 +206,9 @@ impl ProcessTree {
             use windows_sys::Win32::System::JobObjects::TerminateJobObject;
 
             if let Some(job) = self.job.take() {
+                // SAFETY: `job` came from a successful CreateJobObjectW in
+                // `attach`. `take()` moved it out, so this is its only close
+                // (Drop then sees `None`) and it is not used afterwards.
                 unsafe {
                     TerminateJobObject(job, 1);
                     CloseHandle(job);
@@ -235,6 +248,8 @@ impl ProcessTree {
 impl Drop for ProcessTree {
     fn drop(&mut self) {
         if let Some(job) = self.job.take() {
+            // SAFETY: `job` is a still-open handle owned by this value;
+            // `take()` makes this its only close.
             unsafe { windows_sys::Win32::Foundation::CloseHandle(job) };
         }
     }

@@ -29,6 +29,8 @@ pub(crate) fn replace_file(tmp: &Path, target: &Path) -> std::io::Result<()> {
     const RETRYABLE: [i32; 2] = [5, 32]; // ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
     loop {
+        // SAFETY: `from` and `to` are NUL-terminated UTF-16 buffers (`wide`
+        // appends the 0) that outlive the call; MoveFileExW only reads them.
         let ok = unsafe {
             MoveFileExW(
                 from.as_ptr(),
