@@ -9,6 +9,8 @@ import {
   type InboxEntry,
 } from "../lib/attentionInbox";
 import { applyNotifyPlan, planNotifications, webviewNotifySink } from "../lib/attentionNotify";
+import { useT } from "../i18n/useT";
+import { goalLabelKey } from "../lib/goals";
 import { describeError, listRecommendations } from "../lib/ipc";
 import type { BoardCard, Recommendation, Worker } from "../types";
 
@@ -32,14 +34,8 @@ const POLL_MS = 15_000;
 
 const GRADE_LABEL: Record<InboxEntry["grade"], string> = {
   blocking: "Blockade",
-  attention: "Attention",
+  attention: "Achtung",
   info: "Hinweis",
-};
-
-const GOAL_LABEL: Record<InboxEntry["goal"], string> = {
-  work: "Work",
-  agents: "Agents",
-  review: "Review",
 };
 
 /** German label for a wire code; the raw code stays in `title` (UM-25). */
@@ -73,6 +69,7 @@ export default function AttentionInbox({
   blockersError = null,
   onOpen,
 }: AttentionInboxProps) {
+  const t = useT();
   const [recos, setRecos] = useState<Recommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [recosSettled, setRecosSettled] = useState(projectId === null);
@@ -214,7 +211,7 @@ export default function AttentionInbox({
                 role="option"
                 tabIndex={-1}
                 aria-selected={index === activeIndex}
-                aria-label={`${GRADE_LABEL[entry.grade]} ${labelForCode(entry.code)} — ${entry.title}. Öffnet ${GOAL_LABEL[entry.goal]}.`}
+                aria-label={`${GRADE_LABEL[entry.grade]} ${labelForCode(entry.code)} — ${entry.title}. Öffnet ${t(goalLabelKey(entry.goal))}.`}
                 className={`attention-inbox-row grade-${entry.grade}${index === activeIndex ? " is-active" : ""}`}
                 onClick={() => onOpen(entry)}
               >
@@ -230,7 +227,7 @@ export default function AttentionInbox({
                     <span className="attention-count">{entry.count} Worker</span>
                   ) : null}
                 </span>
-                <span className="attention-goal">{GOAL_LABEL[entry.goal]}</span>
+                <span className="attention-goal">{t(goalLabelKey(entry.goal))}</span>
               </button>
             </li>
           ))}

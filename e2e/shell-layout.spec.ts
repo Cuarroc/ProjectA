@@ -5,7 +5,7 @@ test("empty state is centred in terminal-area", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator(".app")).toBeVisible();
 
-  await page.getByRole("tab", { name: "Agents" }).click();
+  await page.getByRole("tab", { name: "Agenten" }).click();
   const empty = page.locator(".terminal-area .empty-state");
   await expect(empty).toBeVisible();
 
@@ -125,7 +125,7 @@ test("settings tabs stay pinned while body scrolls at 1024x500", async ({ page }
   await page.setViewportSize({ width: 1024, height: 500 });
   await page.goto("/");
   await expect(page.locator(".app")).toBeVisible();
-  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByRole("tab", { name: "Einstellungen" }).click();
   await expect(page.locator(".settings-body")).toBeVisible();
   await expect(page.locator(".settings-tabs")).toBeVisible();
 

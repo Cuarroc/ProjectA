@@ -50,7 +50,7 @@ const active = (event: string) => mocks.listeners.filter((entry) => entry.event 
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
 const openShellTab = async () => {
-  fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+  fireEvent.click(await screen.findByRole("tab", { name: "Agenten" }));
   fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
   fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
 };
@@ -71,10 +71,10 @@ describe.each([false, true])("session provider with D1=%s", (d1) => {
       go("#/einstellungen");
       await screen.findByRole("button", { name: "Klassische Einstellungen öffnen" });
       go("#/leitstand"); go("#/leitstand/klassisch");
-      fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+      fireEvent.click(await screen.findByRole("tab", { name: "Agenten" }));
     } else {
-      fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
-      fireEvent.click(screen.getByRole("tab", { name: "Agents" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Einstellungen" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Agenten" }));
     }
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     expect(mocks.writes).toEqual(["history", "live", "history", "live"]);

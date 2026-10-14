@@ -285,7 +285,7 @@ export default function StatisticsView({ projectId }: StatisticsViewProps) {
                 Zeile. Gezählt wird nur, was durch OmniRoute läuft — ein Agent, der direkt mit
                 seinem Anbieter spricht, verbraucht Tokens, die diese App nicht sehen kann. Hier
                 stünde sonst eine 0, und die wäre falsch. Profile mit dem Abzeichen „via OmniRoute"
-                (Insights → Agent-Profile) landen im Ledger.
+                (Auswertung → Agent-Profile) landen im Ledger.
               </p>
             ) : (
               <>
