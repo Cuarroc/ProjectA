@@ -15,5 +15,5 @@ export function Button({ variant = "secondary", size = "md", className, type = "
 
 /** Equal-width cells, one height: every Button in the group takes the same size. */
 export function ButtonGroup({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div role="group" className={["g-btn-group", className].filter(Boolean).join(" ")} {...rest} />;
+  return <div className={["g-btn-group", className].filter(Boolean).join(" ")} {...rest} role="group" />;
 }

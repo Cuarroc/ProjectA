@@ -13,6 +13,7 @@
 .wg-quota { display: inline-flex; align-items: center; gap: 6px; }
 .wg-opt--blocked .wg-quota { color: var(--g-bad); }
 .wg-note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-muted); }
+.wg-warning { margin: 0; padding: 12px; border-radius: 12px; background: var(--g-need-bg); color: var(--g-ink); font-size: 12px; font-weight: 500; line-height: 1.4; }
 .wg-extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .wg-extra { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .wg-label { font: 600 12px/1.3 var(--g-font-sans); color: var(--g-ink); }

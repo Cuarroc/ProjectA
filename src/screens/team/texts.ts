@@ -15,6 +15,8 @@ export const T = {
   } as Record<string, string | undefined>,
   gallery: "Personas",
   noModel: "Modell nicht angegeben",
+  modelRequestLabel: "Modellvorgabe:",
+  modelUnobserved: "Modell wird beim Start beobachtet",
   disabled: "Deaktiviert",
   notConnected: "noch nicht verbunden",
   facts: { failover: "Failover", rights: "Rechte", autonomy: "Autonomie", mcp: "MCP-Server" },

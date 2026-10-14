@@ -226,7 +226,7 @@ V2-MQ1, V2-H2, V2-S03a, V2-CORE-AT, V2-O0, V2-DOG-1.
 
 ### ADR-V2-07 — ADR-A7: separate modules, one serial store lane
 
-**Context.** A7 above is an open proposal pending four weeks of OPS-01 data.
+**Context.** A7 (the st-Lane proposal in the 2026-10-03 section below) is an open proposal pending four weeks of OPS-01 data.
 `src-tauri/src/store.rs:875` owns the migration sequence; `:1222` backs up
 before migration and `:1367` dispatches migration steps. Module boundaries
 do not separate the schema, maintenance barrier or migration ordering.

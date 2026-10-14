@@ -252,3 +252,24 @@ noscript{grid-column:2;grid-row:7}
 #idea-count,#idea-cards{min-width:0;overflow-wrap:anywhere}
 
 #idea-search,#idea-category,#idea-priority,#idea-station,#idea-sort{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+
+/* Canonical Glass values arrive through DR2-0's /design/glass.css. */
+:root{color-scheme:light dark;--bg:var(--g-ground);--panel:var(--g-content-bg);--line:var(--g-faint);--text:var(--g-ink);--muted:var(--g-muted);--accent:var(--g-accent);--mint:var(--g-ink2);--warn:var(--g-need);font:13px/1.5 var(--g-font-sans)}
+body{background-image:radial-gradient(900px 640px at 0 0,var(--g-amb1),transparent 66%),radial-gradient(780px 600px at 100% 120px,var(--g-amb2),transparent 66%),radial-gradient(1000px 520px at 50% 900px,var(--g-amb3),transparent 66%)}
+.page-header,.area-nav,.workspace aside{background:var(--g-chrome-bg);border-radius:var(--g-r-panel);box-shadow:var(--g-spec),var(--g-shadow)}
+#detail,.space-panel{background:var(--g-content-bg);border-radius:var(--g-r-panel);box-shadow:var(--g-spec),var(--g-shadow);padding:var(--g-pad)}
+button,input,select,textarea,aside input,aside select,#detail textarea,.space-panel textarea{background:var(--g-tint);border-radius:var(--g-r-ctl)}
+button{transition:transform var(--g-dur-2) var(--g-ease-out)}
+button:hover{background:var(--g-hover);transition-duration:var(--g-dur-1)}button:active{transform:scale(var(--g-press-scale))}
+.primary{background:var(--g-accent);color:var(--g-on-accent)}.primary:hover{background:var(--g-accent-hover)}
+.area-nav button[aria-pressed=true],.question-link[aria-current=true]{background:var(--g-tint-hi);color:var(--g-accent);box-shadow:inset 0 0 0 1px var(--g-accent-line)}
+.area-nav button:hover,.question-link:hover{background:var(--g-hover)}
+#detail .recommendation,.option:has(input:checked){background:var(--g-accent-soft);border-radius:var(--g-r-ctl)}
+.recommendation strong,.badge.open{color:var(--g-ink2)}.badge{background:var(--g-tint);border-radius:8px}
+.badge.applied{background:var(--g-done-bg);color:var(--g-done)}.badge.blocking,.badge.needs-user,.notice{background:var(--g-need-bg);color:var(--g-need)}
+.badge.needs-user::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;background:currentColor;transform:rotate(45deg)}
+#home .question-link{display:block;margin:12px 0;padding:16px;background:var(--g-tint);border-radius:var(--g-r-card)}
+#home .badge{margin:8px 0 0}#home .actions{margin-top:24px}
+#home:focus-visible{outline:2px solid var(--g-accent);outline-offset:4px}
+#home,#planned,#detail h2{overflow-wrap:anywhere}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.page-header,.area-nav,.workspace aside,#detail,.space-panel{background:var(--g-ground);backdrop-filter:none}}

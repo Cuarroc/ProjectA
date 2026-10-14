@@ -28,6 +28,7 @@ export function StopBand() {
 
   if (!active) return null;
   const resume = () => {
+    if (resuming.current) return;
     setError(null);
     resuming.current = true;
     resumeGen.current += 1;

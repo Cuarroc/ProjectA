@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DevelopmentPlanPackage } from "../../../types";
@@ -138,6 +138,45 @@ describe("PlanGraph", () => {
     render(<PlanGraph projectId="p1" />);
     await screen.findByRole("region", { name: "Ebene 0" });
     expect(mocks.invoke.mock.calls.map((c) => c[0])).toEqual(["get_development_plan"]);
+  });
+
+  it("retries a failed plan read without remounting the graph", async () => {
+    mocks.invoke
+      .mockRejectedValueOnce(new Error("db locked"))
+      .mockResolvedValueOnce(response([pkg("a")]));
+    render(<PlanGraph projectId="p1" />);
+    expect(await screen.findByText("Plan nicht lesbar")).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Wiederholen" })); });
+    expect(await screen.findByRole("region", { name: "Ebene 0" })).toBeInTheDocument();
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "get_development_plan", { projectId: "p1", planId: "main", revision: null });
+  });
+
+  it("rereads an unimported plan after an external import", async () => {
+    mocks.invoke
+      .mockRejectedValueOnce("unknown project or plan")
+      .mockResolvedValueOnce(response([pkg("a")]));
+    render(<PlanGraph projectId="p1" />);
+    expect(await screen.findByText("Plan noch nicht eingelesen")).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Wiederholen" })); });
+    expect(await screen.findByRole("region", { name: "Ebene 0" })).toBeInTheDocument();
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a late plan retry after switching project and plan", async () => {
+    const pending: Array<(v: unknown) => void> = [];
+    const errors: Array<(e: unknown) => void> = [];
+    mocks.invoke.mockImplementation(() => new Promise((res, rej) => { pending.push(res); errors.push(rej); }));
+    const { rerender } = render(<PlanGraph projectId="p1" planId="plan-a" />);
+    await act(async () => errors[0](new Error("db locked")));
+    expect(await screen.findByText("Plan nicht lesbar")).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Wiederholen" })); });
+    rerender(<PlanGraph projectId="p2" planId="plan-b" />);
+    await act(async () => pending[2](response([pkg("b")])));
+    expect(await screen.findByText("Title b")).toBeInTheDocument();
+    await act(async () => pending[1](response([pkg("a")])));
+    expect(screen.getByText("Title b")).toBeInTheDocument();
+    expect(screen.queryByText("Title a")).toBeNull();
   });
 
   it("ignores a late reply after the project round trip", async () => {

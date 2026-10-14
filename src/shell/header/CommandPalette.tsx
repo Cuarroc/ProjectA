@@ -36,7 +36,7 @@ export function CommandPalette() {
   const close = useCallback(() => { setOpen(false); setQuery(""); setIndex(0); }, []);
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.isComposing && e.key.toLowerCase() === "k") {
         e.preventDefault();
         if (open) close(); else setOpen(true);
       }
@@ -51,6 +51,7 @@ export function CommandPalette() {
     close();
   };
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       setIndex((i) => (hits.length ? (i + (e.key === "ArrowDown" ? 1 : hits.length - 1)) % hits.length : 0));

@@ -10,8 +10,27 @@ export interface AvatarProps extends Omit<HTMLAttributes<HTMLSpanElement>, "chil
   label?: string;
 }
 
+/** Known tones keep their class. Anything else draws the plain avatar and invents no class. */
+function toneClass(tone: AvatarTone | undefined): string | undefined {
+  switch (tone) {
+    case "owner":
+    case "lead":
+    case "sys":
+      return `g-ava--${tone}`;
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+      return `g-ava--c${tone}`;
+    default:
+      return undefined;
+  }
+}
+
 export function Avatar({ initials, size = "md", tone, label, className, ...rest }: AvatarProps) {
-  const toneCls = tone === undefined ? undefined : typeof tone === "number" ? `g-ava--c${tone}` : `g-ava--${tone}`;
+  const toneCls = toneClass(tone);
   const cls = ["g-ava", size !== "md" && `g-ava--${size}`, toneCls, className];
   // Spread after rest: the label alone decides the accessibility, a caller cannot override it.
   const a11y = label

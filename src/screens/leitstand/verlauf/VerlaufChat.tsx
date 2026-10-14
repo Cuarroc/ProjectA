@@ -97,6 +97,7 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
       {chat.error !== null && (
         <div role="alert">
           <HonestState kind="offline" title={T.errorTitle} hint={chat.error} action={{ label: T.errorHide, onClick: chat.clearError }} />
+          <Button size="sm" variant="tint" onClick={chat.reload}>{T.errorRetry}</Button>
         </div>
       )}
       <p className="vc-note" id={recipientHintId}>

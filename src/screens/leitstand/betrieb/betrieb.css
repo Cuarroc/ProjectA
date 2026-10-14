@@ -1,7 +1,7 @@
 /* V2-S01b-1 Leitstand Betrieb. Not imported by the app yet. --g-* tokens only. */
 .bt-panel { font-family: var(--g-font-sans); display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 12px; align-items: start; }
 .bt-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
-.bt-queue { grid-row: 1 / span 2; }
+.bt-queue { grid-row: 1 / span 2; display: grid; gap: 12px; min-width: 0; }
 .bt-h { margin: 0; font: 600 14px/1.3 var(--g-font-sans); color: var(--g-ink); }
 .bt-note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-muted); }
 .bt-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }

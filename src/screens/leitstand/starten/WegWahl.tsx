@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import "../../../design/glass.css";
 import "../../../design/inputs/inputs.css";
 import { HonestState } from "../../../design/data/HonestState";
@@ -30,24 +30,49 @@ function quotaView(quota: QuotaState | undefined): { lamp: LampState; text: stri
 export function WegWahl({ value, onChange }: WegWahlProps) {
   // `undefined` = not read yet, `null` = the read failed: neither may claim "no persona".
   const [profiles, setProfiles] = useState<readonly AgentProfile[] | null | undefined>(undefined);
+  const [attempt, setAttempt] = useState(0);
+  const reading = useRef(true);
   const quota = useQuotaState();
   const uid = useId();
 
   useEffect(() => {
     let live = true;
-    listAgentProfiles().then((rows) => live && setProfiles(rows), () => live && setProfiles(null));
+    const finish = (rows: readonly AgentProfile[] | null) => {
+      if (!live) return;
+      reading.current = false;
+      setProfiles(rows);
+    };
+    listAgentProfiles().then(finish, () => finish(null));
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
+
+  const retry = () => {
+    if (reading.current) return;
+    reading.current = true;
+    setProfiles(undefined);
+    setAttempt((previous) => previous + 1);
+  };
 
   const enabled = profiles?.filter((p) => p.enabled) ?? [];
   const nameOf = (id: string) => profiles?.find((p) => p.id === id)?.name ?? id;
 
+  const selectedProfile = value !== null ? profiles?.find((p) => p.id === value) : null;
+  const isSelectedBlocked = selectedProfile ? isBlocked(quota.byProfile.get(selectedProfile.id)) : false;
+  const isSelectedMissing = selectedProfile ? !enabled.some((p) => p.id === selectedProfile.id) : false;
+  const showChoiceWarning = selectedProfile && (isSelectedBlocked || isSelectedMissing);
+  const choiceWarningText = showChoiceWarning
+    ? isSelectedBlocked
+      ? T.choiceBlocked(selectedProfile.name)
+      : T.choiceMissing(selectedProfile.name)
+    : null;
+
   return (
     <div className="wg">
       {profiles === undefined ? <p className="wg-note">{T.loading}</p> : profiles === null ? (
-        <HonestState kind="offline" title={T.profilesOffline} hint={T.profilesOfflineHint} />
+        <HonestState kind="offline" title={T.profilesOffline} hint={T.profilesOfflineHint}
+          action={{ label: T.retry, onClick: retry }} />
       ) : enabled.length === 0 ? (
         <HonestState kind="empty" title={T.profilesEmpty} hint={T.profilesEmptyHint} />
       ) : (
@@ -75,7 +100,8 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
                   <span className="wg-name" id={`${uid}-n-${p.id}`}>{p.name}</span>
                   <span className="wg-meta" id={`${uid}-d-${p.id}`}>
                     <span>{cliLabel(p.command)}</span>
-                    <span>{model ?? T.modelUnpinned}</span>
+                    {model !== null && <span>{T.modelRequest(model)}</span>}
+                    <span>{T.modelUnpinned}</span>
                     <span className="wg-quota"><Lamp state={view.lamp} />{view.text}</span>
                     {p.fallback !== null && <span>{T.failover(nameOf(p.fallback))}</span>}
                   </span>
@@ -83,6 +109,11 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
               </label>
             );
           })}
+        </div>
+      )}
+      {showChoiceWarning && (
+        <div className="wg-warning" role="status" aria-live="polite">
+          {choiceWarningText}
         </div>
       )}
       <div className="wg-extras">

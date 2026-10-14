@@ -1,6 +1,7 @@
 import { HonestState } from "../../design/data/HonestState";
 import { useT } from "../../i18n/useT";
 import { KontingenteScreen } from "../../screens/steuerung/KontingenteScreen";
+import { Kostenbuch } from "../../screens/steuerung/kostenbuch/Kostenbuch";
 import { resolveRoute } from "../routes";
 
 /** Kontingente is the default tab of Steuerung; the other two tabs have no screen yet. */
@@ -19,7 +20,10 @@ export default function SteuerungRoute({ path }: { path: string }) {
         ))}
       </nav>
       {active?.path === "/steuerung" ? (
-        <KontingenteScreen />
+        <>
+          <KontingenteScreen />
+          <Kostenbuch />
+        </>
       ) : (
         <section className="g-glass g-sr-pane" aria-labelledby="g-sr-title">
           <h1 id="g-sr-title">{title}</h1>
