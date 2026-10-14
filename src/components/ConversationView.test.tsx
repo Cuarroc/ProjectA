@@ -25,6 +25,7 @@ const chat: OrchestratorChat = {
   disabled: false,
   send: vi.fn(async () => true),
   clearError: vi.fn(),
+  reload: vi.fn(),
 };
 
 const props = {
