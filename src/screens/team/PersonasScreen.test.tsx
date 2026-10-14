@@ -40,6 +40,25 @@ it("renders one card per profile with name and CLI and the model it states", asy
   expect((await card("Prüfer")).getByText("Modell nicht angegeben")).toBeInTheDocument();
 });
 
+it("labels a persona model argument as a configured request", async () => {
+  feed(ROSTER);
+  render(<PersonasScreen />);
+  const planer = await card("Planer");
+  expect(planer.getByText("claude-opus-5-5")).toBeInTheDocument();
+  expect(planer.getByText(/Modellvorgabe/)).toBeInTheDocument();
+  const umsetzer = await card("Umsetzer");
+  expect(umsetzer.getByText("gpt-6-astra")).toBeInTheDocument();
+  expect(umsetzer.getByText(/Modellvorgabe/)).toBeInTheDocument();
+});
+
+it("explains that a persona model has not yet been observed at runtime", async () => {
+  feed(ROSTER);
+  render(<PersonasScreen />);
+  const planer = await card("Planer");
+  expect(planer.getByText("Modell wird beim Start beobachtet")).toBeInTheDocument();
+  expect((await card("Prüfer")).queryByText("Modell wird beim Start beobachtet")).toBeNull();
+});
+
 it("narrows the list by provider and keeps every chip count", async () => {
   feed(ROSTER);
   render(<PersonasScreen />);
