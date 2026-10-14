@@ -23,9 +23,11 @@ der Skill `projecta-workflow` ist die Checkliste dazu). Ältere Betriebs-Gotchas
 
 - **Repo-Einstellungen:** `.claude/settings.json` erlaubt lesende
   git-/cargo-Befehle sowie `cargo build`/`npm run build`/`npm install`, sperrt das Lesen von
-  `target/`, `target-red-first-*/` und `node_modules/` (überall im Baum) sowie `.pa/archiv/` (Deny, Nutzer-Freigabe 05.10.) und hängt zwei Hooks ein: `SessionStart` →
+  `target/`, `target-red-first-*/` und `node_modules/` (überall im Baum) sowie `.pa/archiv/` (Deny, Nutzer-Freigabe 05.10.) und hängt vier Hooks ein: `SessionStart` →
   `scripts/install-hooks.sh`, `PostToolUse` (Write/Edit) →
-  `.claude/hooks/red-first.sh` (Warnung, kein Blocker). Vorschlag für weitere
+  `.claude/hooks/red-first.sh` (Warnung, kein Blocker), `PreToolUse` (Bash) →
+  `scripts/lib/rules-guard.mjs` und `PreToolUse` (Write/Edit) →
+  `scripts/lib/seam-guard.mjs` (beide blockieren, Details in `docs/setup/claude-code.md`). Vorschlag für weitere
   Allow-/Deny-Regeln: [`docs/setup/permissions-proposal.md`](docs/setup/permissions-proposal.md)
   — der Nutzer entscheidet und trägt ein, kein Agent.
 - **MCP-Server und Plugins:** Der Start lädt MCP-Server, Plugins und Skills.
