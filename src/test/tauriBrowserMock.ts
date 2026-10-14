@@ -390,6 +390,209 @@ const RICH_RESPONSES: Readonly<Record<string, unknown>> = {
   "plugin:app|version": "1.6.1",
 };
 
+// AP-8a: neutral answers for every other command src/lib invokes, so no view
+// shows the raw "unmocked command" text. tauriBrowserMock.coverage.test.ts
+// keeps this list complete. Rich mode overrides the showcase getters below.
+const ZERO_TOTALS = { requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0, priced: 0 };
+const STUB_PROJECT = {
+  id: "p-new",
+  name: "Neues Projekt",
+  repoPath: "/tmp/neues-projekt",
+  createdAt: 1758000000,
+  githubRemote: false,
+  maxWorkers: null,
+  testCommand: null,
+};
+const STUB_WORKER = {
+  id: "w-new",
+  projectId: "p-new",
+  task: "Browser-Vorschau",
+  profileId: "claude",
+  branch: "claude/vorschau",
+  worktreePath: "/tmp/vorschau",
+  sessionId: "ses-new",
+  status: "running",
+  kind: "worker",
+  spawnedBy: null,
+  pausedReason: null,
+  createdAt: 1758000000,
+};
+const STUB_QUEUE_ENTRY = {
+  id: "tq-new",
+  projectId: "p-new",
+  rawText: "Browser-Vorschau",
+  sharpenedText: null,
+  profileId: null,
+  status: "queued",
+  priority: 0,
+  workerId: null,
+  error: null,
+  createdAt: 1758000000,
+};
+const STUB_QUESTION = {
+  id: "q-new",
+  projectId: "p-new",
+  workerId: null,
+  scope: "preflight",
+  question: "Browser-Vorschau: Frage",
+  optionsJson: null,
+  status: "open",
+  answer: null,
+  createdAt: 1758000000,
+  answeredAt: null,
+  answeredBy: null,
+  expiresAt: null,
+};
+const STUB_PLAN = {
+  contractVersion: 1,
+  availability: "available",
+  generatedAt: 1758000000,
+  projectId: "p-new",
+  sourceRevision: "rev-0",
+  projection: {
+    projectId: "p-new",
+    planId: "plan-0",
+    sourcePath: "docs/PLAN.md",
+    sourceRevision: "rev-0",
+    projectionRevision: 1,
+    source: "docs/PLAN.md",
+    rollbackReason: null,
+    importedAt: 1758000000,
+    packages: [],
+  },
+};
+
+const READ_RESPONSES: Record<string, unknown> = {
+  get_activity: [],
+  get_agent_env_isolation: "allowlist",
+  get_budgets: [],
+  get_development_plan: STUB_PLAN,
+  get_digest: null,
+  get_digest_enabled: true,
+  get_emergency_stop: false,
+  get_free_tier_summary: {
+    available: false,
+    reason: "Browser-Vorschau ohne OmniRoute",
+    pools: [],
+    whitelist: [],
+    observedAt: 0,
+  },
+  get_learning_settings: {},
+  get_log_path: "logs/projecta.log",
+  get_maintenance: false,
+  get_omniroute_key_sync: false,
+  get_omniroute_usage: {
+    online: false,
+    authorized: false,
+    events: [],
+    today: ZERO_TOTALS,
+    total: ZERO_TOTALS,
+    reportedCostUsd: null,
+  },
+  get_project_setup_command: null,
+  get_project_skill_packs: [],
+  get_project_stats: { projectId: "p-new", projectName: "Neues Projekt", overview: {}, timeline: [] },
+  get_provider_overview: [
+    {
+      id: "claude",
+      name: "Claude Code",
+      kind: "subscription",
+      connected: false,
+      detail: "Nicht angemeldet",
+      quotaState: "ok",
+      blockedUntil: null,
+      omniRouteOnline: false,
+      usage: null,
+      vaultError: null,
+    },
+  ],
+  get_reason_catalog: [],
+  get_resource_snapshot: { observedAt: 0, tokensIn: 0, tokensOut: 0 },
+  get_routing_status: { mode: "cheap", reviewIndependent: false, reviewDetail: "" },
+  get_scrollback: "",
+  get_session_restore: { liveSession: false, workspace: "present", scrollback: null, draft: null },
+  get_setup_trust_view: null,
+  get_stuck_after_minutes: null,
+  get_updater_state: { phase: "idle" },
+  get_worker_diff: { baseBranch: "main", stat: "", files: [], code: null },
+  get_worker_readiness: {
+    lifecycle: "unknown",
+    readiness: "unknown",
+    blockers: [],
+    checkedAt: 0,
+    ahead: 0,
+    behind: 0,
+    code: null,
+  },
+  has_provider_key: false,
+  list_diff_comments: [],
+  list_digests: [],
+  list_skill_packs: [],
+  watchdog_report: [],
+};
+
+const ACTION_RESPONSES: Record<string, unknown> = (() => {
+  const done = [
+    "approve_learning", "approve_role_variant", "cancel_queued_task", "delete_diff_comment",
+    "delete_provider_key", "enter_maintenance", "install_update_when_idle",
+    "leave_maintenance", "link_github_remote", "log_frontend_error",
+    "plugin:opener|open_url", "reject_learning", "reject_role_variant", "remove_project",
+    "reveal_log_path", "set_agent_env_isolation", "set_category_learning",
+    "set_diff_comment_disposition", "set_digest_enabled", "set_emergency_stop",
+    "set_omniroute_key_sync", "set_product_mode", "set_profile_enabled",
+    "set_project_max_workers", "set_project_setup_command", "set_project_skill_packs",
+    "set_project_test_command", "set_provider_key", "set_recommendation_status",
+    "set_review_verdict", "set_stuck_after_minutes", "set_updater_state",
+    "set_worker_column_override", "stop_web_interface",
+  ];
+  const workers = [
+    "archive_worker", "create_orchestrator", "create_scout", "create_worker", "merge_worker",
+    "respawn_worker", "run_worker_tests", "send_to_orchestrator", "triage_repos",
+  ];
+  return {
+    ...Object.fromEntries(done.map((command) => [command, null])),
+    ...Object.fromEntries(workers.map((command) => [command, STUB_WORKER])),
+    accept_recommendation: STUB_QUEUE_ENTRY,
+    add_diff_comment: {
+      id: "dc-new",
+      workerId: "w-new",
+      file: "",
+      line: 1,
+      body: "",
+      sentToAgent: false,
+      createdAt: 1758000000,
+      disposition: "open",
+    },
+    answer_question: { ...STUB_QUESTION, status: "answered", answer: "ok", answeredBy: "human" },
+    approve_setup_trust: {
+      repo_identity: "repos/vorschau",
+      command_normalized: "cargo test",
+      base_sha: "abcd1234",
+      inputs_hash: "tree=deadbeef",
+    },
+    ask_question: STUB_QUESTION,
+    cancel_update_download: "notRunning",
+    create_github_repo: "https://github.com/example/vorschau",
+    create_project: STUB_PROJECT,
+    delete_session_buffers: 0,
+    enhance_prompt: { enhanced: "Browser-Vorschau: geschaerfter Text", questions: [] },
+    enqueue_task: STUB_QUEUE_ENTRY,
+    export_diagnosis: "diagnosis-vorschau.zip",
+    import_development_plan: STUB_PLAN,
+    run_learning_critic: 0,
+    scan_setup_repo: {
+      mainBranch: "main",
+      hasGatesSh: false,
+      hasMergify: false,
+      hasAgentsMd: false,
+      seamFiles: [],
+      freeRamBytes: null,
+    },
+    set_budget: { profileId: "claude", fiveHourPct: null, sevenDayPct: null },
+    start_web_interface: 8787,
+  };
+})();
+
 const BOOT_RESPONSES: Readonly<Record<string, unknown>> = {
   list_agent_profiles: [],
   list_projects: [],
@@ -406,6 +609,8 @@ const BOOT_RESPONSES: Readonly<Record<string, unknown>> = {
   web_interface_status: null,
   list_worker_messages: [],
   list_live_sessions: [],
+  ...READ_RESPONSES,
+  ...ACTION_RESPONSES,
 };
 
 /** Resolve a mocked IPC answer; throws the same error the browser smoke uses. */
