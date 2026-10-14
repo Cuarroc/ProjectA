@@ -6,7 +6,7 @@
 # access to secrets, and starts only after `ci` has completed. This job checks
 # out only the default branch's picker script and executes nothing from the
 # run: it downloads the artifacts
-# `junit-linux` / `junit-windows` (untrusted XML, treated as data only) and
+# `junit-linux` / `junit-windows_1` / `junit-windows_2` (untrusted XML, treated as data only) and
 # hands the files to the uploader. Without the secret MERGIFY_TOKEN the upload
 # steps are skipped (env flag, never the secret itself) and the job stays
 # green; this workflow is never a merge gate.
@@ -82,10 +82,18 @@ jobs:
           job_name: gates (linux)
           report_path: reports/linux-vitest.xml
 
-      - name: Test Insights - windows nextest
-        if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/windows-nextest.xml') != '' }}
+      - name: Test Insights - windows nextest 1/2
+        if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/windows-1-nextest.xml') != '' }}
         uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
-          job_name: gates (windows)
-          report_path: reports/windows-nextest.xml
+          job_name: windows tests (windows_1)
+          report_path: reports/windows-1-nextest.xml
+
+      - name: Test Insights - windows nextest 2/2
+        if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/windows-2-nextest.xml') != '' }}
+        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        with:
+          token: ${{ secrets.MERGIFY_TOKEN }}
+          job_name: windows tests (windows_2)
+          report_path: reports/windows-2-nextest.xml
