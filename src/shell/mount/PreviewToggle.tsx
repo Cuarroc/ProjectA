@@ -12,7 +12,7 @@ function FlagSwitch({ flag }: { flag: FeatureFlag }) {
   return (
     <>
       <label className="settings-check">
-        <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+        <input type="checkbox" name={`preview-${flag.id}`} checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
         <span>{flag.label}</span>
       </label>
       <p className="settings-hint">{flag.description} Beim Umschalten lädt die Oberfläche neu.</p>

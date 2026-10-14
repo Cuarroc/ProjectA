@@ -95,8 +95,8 @@ export function EinreihenForm({ projectId, profiles, entries, onEnqueued, onCanc
     <section className="g-glass" style={S.root} aria-label={T.title}>
       <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{T.title}</h2>
       <form style={flex(12, { flexDirection: "column" })} onSubmit={submit}>
-        <Textarea rows={3} aria-label={T.task} placeholder={T.taskPlaceholder} value={task} disabled={submitting} onChange={(e) => setTask(e.target.value)} />
-        <Select aria-label={T.profile} value={profileId} disabled={submitting} onChange={(e) => setProfileId(e.target.value)}>
+        <Textarea name="einreihen-task" rows={3} aria-label={T.task} placeholder={T.taskPlaceholder} value={task} disabled={submitting} onChange={(e) => setTask(e.target.value)} />
+        <Select name="einreihen-profile" aria-label={T.profile} value={profileId} disabled={submitting} onChange={(e) => setProfileId(e.target.value)}>
           <option value="">{T.profileAuto}</option>
           {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </Select>
