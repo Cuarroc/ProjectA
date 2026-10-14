@@ -4500,7 +4500,7 @@ mod tests {
     /// `cargo test --bin projecta -- --ignored manual_strict_env_ -- --nocapture`
     #[cfg(windows)]
     #[test]
-    #[ignore]
+    #[ignore = "needs the installed provider CLIs and the user's real credentials (Windows only); run with `cargo test --bin projecta -- --ignored manual_strict_env_ --nocapture`"]
     fn manual_strict_env_starts_provider_clis_and_blocks_a_real_push() {
         let strict = crate::profiles::EnvPolicy {
             isolation: crate::profiles::EnvIsolation::Strict,

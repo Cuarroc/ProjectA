@@ -149,6 +149,9 @@ GATES=(
   # Explicit updates lower ceilings only; every lane also tests the ratchet.
   "ratchet|precommit,prepush,linux|.|node --test scripts/ci/ratchet.test.mjs && node scripts/ci/ratchet.mjs check"
 
+  # AP-10e: every #[ignore] in src-tauri states why and how to run it.
+  "ignore-reasons|precommit,prepush,linux|.|node --test scripts/ci/ignore-reasons.test.mjs"
+
   # CI-06: the trailers of the new commits against origin/main, with the very
   # same red-first.sh --plan the PR CI runs (no second implementation, no
   # build, no network beyond local git). A wrong trailer used to surface
