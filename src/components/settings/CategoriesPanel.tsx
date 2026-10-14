@@ -74,6 +74,7 @@ export default function CategoriesPanel({
                   <label className="settings-check category-toggle">
                     <input
                       type="checkbox"
+                      name={`category-active-${category.id}`}
                       checked={category.active}
                       onChange={(event) =>
                         handleCategoryChange(category.id, { active: event.target.checked })
@@ -88,6 +89,7 @@ export default function CategoriesPanel({
                   <label className="settings-check category-toggle category-learning">
                     <input
                       type="checkbox"
+                      name={`category-learning-${category.id}`}
                       checked={learning[category.id] ?? true}
                       onChange={(event) =>
                         handleToggleLearning(category.id, event.target.checked)
@@ -99,6 +101,7 @@ export default function CategoriesPanel({
                   <span className="category-learning category-learning-none" aria-hidden="true" />
                 )}
                 <select
+                  name={`category-profile-${category.id}`}
                   className="field category-profile"
                   aria-label={`Default Profile für ${CATEGORY_LABELS[category.id]}`}
                   value={category.defaultProfileId ?? ""}
