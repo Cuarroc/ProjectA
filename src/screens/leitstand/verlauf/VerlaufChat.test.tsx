@@ -1,13 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { OrchestratorChat } from "../../../lib/orchestratorChat";
+import * as ipc from "../../../lib/ipc";
+import { useOrchestratorChat, type OrchestratorChat } from "../../../lib/orchestratorChat";
 import type { WorkerMessage } from "../../../types";
 import { VerlaufChat } from "./VerlaufChat";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
+vi.mock("../../../lib/ipc", () => ({
+  describeError: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  listWorkerMessages: vi.fn(async () => []),
+  sendToOrchestrator: vi.fn(),
+}));
 
 const msg = (id: string, role: WorkerMessage["role"], content: string): WorkerMessage => ({
   id, workerId: "w-1", role, content, createdAt: 1_700_000_000,
@@ -16,12 +22,24 @@ const msg = (id: string, role: WorkerMessage["role"], content: string): WorkerMe
 function chatWith(patch: Partial<OrchestratorChat> = {}): OrchestratorChat {
   return {
     orchestratorId: "w-1", messages: [], loading: false, sending: false, error: null, disabled: false,
-    send: vi.fn(async () => true), clearError: vi.fn(), ...patch,
+    send: vi.fn(async () => true), reload: vi.fn(), clearError: vi.fn(), ...patch,
   };
 }
 
 const box = () => screen.getByRole("textbox", { name: "Nachricht an den Orchestrator" });
 const type = (text: string) => fireEvent.change(box(), { target: { value: text } });
+
+/** The real chat hook behind the view, so a reread is the one the app actually runs. */
+function VerlaufWithLiveChat({
+  projectId,
+  orchestratorId,
+}: {
+  projectId: string;
+  orchestratorId: string | null;
+}) {
+  const chat = useOrchestratorChat(projectId, orchestratorId);
+  return <VerlaufChat chat={chat} projectId={projectId} />;
+}
 
 describe("VerlaufChat", () => {
   beforeEach(() => mocks.invoke.mockReset());
@@ -75,6 +93,24 @@ describe("VerlaufChat", () => {
     expect(chat.send).toHaveBeenCalledWith("Ship it");
   });
 
+  it("keeps an unsent message and its failed-send status after a successful history reread", async () => {
+    vi.mocked(ipc.listWorkerMessages).mockResolvedValue([]);
+    vi.mocked(ipc.sendToOrchestrator).mockRejectedValue(new Error("Versand fehlgeschlagen."));
+    render(<VerlaufWithLiveChat projectId="p-1" orchestratorId="w-1" />);
+    await waitFor(() => expect(screen.getByText("Noch keine Nachrichten")).toBeInTheDocument());
+
+    type("Ship it");
+    fireEvent.click(screen.getByRole("button", { name: "Senden" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Versand fehlgeschlagen."));
+    expect(box()).toHaveValue("Ship it");
+
+    vi.mocked(ipc.listWorkerMessages).mockResolvedValue([msg("m-1", "agent", "older reply")]);
+    fireEvent.click(screen.getByRole("button", { name: "Erneut lesen" }));
+    await waitFor(() => expect(screen.getByText("older reply")).toBeInTheDocument());
+    expect(screen.getByRole("alert")).toHaveTextContent("Versand fehlgeschlagen.");
+    expect(box()).toHaveValue("Ship it");
+  });
+
   it("keeps the draft when the send did not go out", async () => {
     const chat = chatWith({ send: vi.fn(async () => false) });
     render(<VerlaufChat chat={chat} projectId="p-1" />);
@@ -120,6 +156,21 @@ describe("VerlaufChat", () => {
     expect(screen.getByText("Der Verlauf kam unvollständig an.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ausblenden" }));
     expect(chat.clearError).toHaveBeenCalled();
+  });
+
+  it("offers a read-again action in the failed-history alert", () => {
+    const chat = chatWith({ error: "Der Verlauf kam unvollständig an." });
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    expect(screen.getByRole("button", { name: "Erneut lesen" })).toBeVisible();
+  });
+
+  it("rereads the history on demand through the chat object", () => {
+    const reload = vi.fn();
+    const chat = { ...chatWith({ error: "Der Verlauf kam unvollständig an." }), reload } as OrchestratorChat;
+    render(<VerlaufChat chat={chat} projectId="p-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "Erneut lesen" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Der Verlauf kam unvollständig an.");
   });
 
   it("drops an unsent draft when another project is shown", () => {
