@@ -80,6 +80,7 @@ export const de = {
   "leitstand.agents": "Agenten",
   "leitstand.filterGroup": "Agenten nach Zustand filtern",
   "leitstand.none": "Kein Agent in diesem Zustand.",
+  "leitstand.noneFor": "Kein Agent im Zustand {state}.",
   "leitstand.showAll": "Alle zeigen",
   "leitstand.emptyTitle": "Noch kein Agent",
   "leitstand.emptyHint": "Sobald ein Agent läuft, erscheint hier seine Karte.",
