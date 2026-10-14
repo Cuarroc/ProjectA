@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const root = process.cwd();
 const allowPath = join(root, "scripts/ci/architecture-drift.allow");
@@ -162,12 +164,7 @@ function scan() {
   return [...new Set(rows)].sort();
 }
 
-const [command, option] = process.argv.slice(2);
-if (command === "explain" && option in rules) {
-  console.log(`${option}: ${rules[option]}`);
-} else if (command === "snapshot" && option === "--stdout") {
-  console.log(scan().join("\n"));
-} else if (command === "check") {
+export function checkPatterns() {
   if (!existsSync(allowPath)) throw new Error(`missing allowlist: ${allowPath}`);
   const allowed = new Set(readFileSync(allowPath, "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#")));
   const added = scan().filter((row) => !allowed.has(row));
@@ -176,7 +173,112 @@ if (command === "explain" && option in rules) {
     added.forEach((row) => console.error(row));
     process.exitCode = 1;
   } else console.log("architecture drift: no new occurrences");
-} else {
-  console.error("usage: architecture-drift.mjs check | snapshot --stdout | explain RULE");
-  process.exitCode = 2;
+}
+
+const seamPaths = ["api.rs", "main.rs", "store.rs", "bin/pa.rs"].map(name => `src-tauri/src/${name}`);
+const budgetPath = "scripts/ci/seam-budget.json";
+// Physical lines include comments, tests and blanks; CRLF and LF count alike.
+const lines = source => source === "" ? 0 : source.split("\n").length - Number(source.endsWith("\n"));
+
+function parseBudget(source) {
+  const value = JSON.parse(source);
+  // Extra keys are documentation (for example comment). Required fields stay strict.
+  if (!value || value.schemaVersion !== 1 ||
+      !Array.isArray(value.seams) || value.seams.length !== seamPaths.length) {
+    throw new Error("invalid schema: expected schemaVersion 1 and four seams");
+  }
+  const ceilings = new Map();
+  for (const entry of value.seams) {
+    if (!entry || !seamPaths.includes(entry.path) ||
+        ceilings.has(entry.path) || !Number.isSafeInteger(entry.maxLines) || entry.maxLines < 0) {
+      throw new Error("invalid, duplicate or missing seam path/ceiling");
+    }
+    ceilings.set(entry.path, entry.maxLines);
+  }
+  return ceilings;
+}
+
+function budgetBaselineAvailable() {
+  try {
+    execFileSync("git", ["rev-parse", "--verify", "--end-of-options", "origin/main^{commit}"], {
+      cwd: root, stdio: ["ignore", "pipe", "pipe"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function checkSeamBudget(args = []) {
+  try {
+    if (args.length && (args.length !== 2 || args[0] !== "--base" || !args[1])) {
+      throw new Error("expected check [--base REF]");
+    }
+    const git = (...argv) => execFileSync("git", argv, {
+      cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"],
+    });
+    // Commit hooks inspect the pending merge tree before HEAD includes its other parent.
+    const parents = ["HEAD"];
+    if (!args.length && existsSync(resolve(root, git("rev-parse", "--git-path", "MERGE_HEAD").trim()))) {
+      parents.push("MERGE_HEAD");
+    }
+    const base = args.length
+      ? git("rev-parse", "--verify", "--end-of-options", `${args[1]}^{commit}`).trim()
+      : git("merge-base", "origin/main", ...parents).trim();
+    // merge-base is already an ancestor of origin/main. Only an explicit --base can fail this.
+    if (args.length) git("merge-base", "--is-ancestor", base, "HEAD");
+    const current = parseBudget(readFileSync(join(root, budgetPath), "utf8"));
+    const tracked = git("ls-tree", "--name-only", base, "--", budgetPath).trim();
+    const baseline = tracked ? parseBudget(git("show", `${base}:${budgetPath}`)) :
+      new Map(seamPaths.map(path => [path, lines(git("show", `${base}:${path}`))]));
+    for (const path of seamPaths) {
+      const ceiling = current.get(path);
+      if (ceiling > baseline.get(path)) throw new Error(`${path}: ceiling raised (${ceiling} > ${baseline.get(path)})`);
+      const count = lines(readFileSync(join(root, path), "utf8"));
+      if (count > ceiling) throw new Error(`${path}: ${count} lines exceeds ceiling ${ceiling}`);
+      console.log(`seam budget: ${path}: ${count} <= ${ceiling}`);
+    }
+  } catch (error) {
+    console.error(`seam budget: ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [command, option, ...rest] = process.argv.slice(2);
+  if (command === "explain" && option in rules) {
+    console.log(`${option}: ${rules[option]}`);
+  } else if (command === "snapshot" && option === "--stdout") {
+    console.log(scan().join("\n"));
+  } else if (command === "check") {
+    // --patterns-only is only the degradation path for trees without origin/main.
+    // A checkout that can run the ratchet must not be able to skip it.
+    let scanPatterns = true;
+    if (option === "--patterns-only") {
+      if (rest.length) {
+        console.error("usage: architecture-drift.mjs check [--base REF | --patterns-only] | snapshot --stdout | explain RULE");
+        process.exitCode = 2;
+        scanPatterns = false;
+      } else if (budgetBaselineAvailable()) {
+        console.error("architecture drift: --patterns-only cannot skip the seam budget when origin/main is available");
+        process.exitCode = 1;
+        checkSeamBudget([]);
+      } else {
+        console.error("seam budget: skipped (--patterns-only; no origin/main baseline)");
+      }
+    } else {
+      checkSeamBudget(option === undefined ? [] : [option, ...rest]);
+    }
+    if (scanPatterns) {
+      try {
+        checkPatterns();
+      } catch (error) {
+        console.error(`architecture drift: ${error.message}`);
+        process.exitCode = 1;
+      }
+    }
+  } else {
+    console.error("usage: architecture-drift.mjs check [--base REF | --patterns-only] | snapshot --stdout | explain RULE");
+    process.exitCode = 2;
+  }
 }

@@ -1,12 +1,235 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const scanner = join(dirname(fileURLToPath(import.meta.url)), "architecture-drift.mjs");
+
+const seams = ["api.rs", "main.rs", "store.rs", "bin/pa.rs"].map(name => `src-tauri/src/${name}`);
+const budgetPath = "scripts/ci/seam-budget.json";
+const budget = (maxLines = 2) => ({ schemaVersion: 1, seams: seams.map(path => ({ path, maxLines })) });
+const fixtureEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+
+function git(root, ...args) {
+  const result = spawnSync("git", args, { cwd: root, env: fixtureEnv, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function budgetFixture(withBudget = true) {
+  const root = fixture(Object.fromEntries(seams.map(path => [path, "// seam\n\n"])));
+  if (withBudget) writeFileSync(join(root, budgetPath), JSON.stringify(budget()));
+  git(root, "init", "-q");
+  git(root, "config", "core.autocrlf", "false");
+  git(root, "config", "core.hooksPath", join(root, "empty-hooks"));
+  git(root, "config", "user.name", "Fixture");
+  git(root, "config", "user.email", "noreply@example.com");
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "baseline");
+  git(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+  return root;
+}
+
+function checkBudget(root, args = [], env = fixtureEnv) {
+  return spawnSync(process.execPath, [scanner, "check", ...args], { cwd: root, env, encoding: "utf8" });
+}
+
+function expectBudget(root, status, diagnostic, args = [], env = fixtureEnv) {
+  const result = checkBudget(root, args, env);
+  assert.equal(result.status, status, result.stdout + result.stderr);
+  if (diagnostic) assert.match(result.stderr, diagnostic);
+}
+
+test("shipped seam budgets accept the integrated repository and reject growth", () => {
+  const repo = process.env.TEST_REPO_ROOT || dirname(dirname(dirname(scanner)));
+  const root = budgetFixture();
+  for (const path of [...seams, budgetPath, "scripts/ci/architecture-drift.allow"]) {
+    writeFileSync(join(root, path), readFileSync(join(repo, path)));
+  }
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "integrated repository baseline");
+  git(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+  const config = readFileSync(join(repo, budgetPath), "utf8");
+  expectBudget(root, 0);
+  for (const { path, maxLines } of JSON.parse(config).seams) {
+    const source = readFileSync(join(root, path));
+    writeFileSync(join(root, path), "\n".repeat(maxLines + 1));
+    expectBudget(root, 1, /seam budget.*exceeds/);
+    writeFileSync(join(root, path), source);
+  }
+});
+
+test("seam budget rejects growth and accepts unchanged or smaller seams", () => {
+  const root = budgetFixture();
+  expectBudget(root, 0);
+  for (const path of seams) {
+    writeFileSync(join(root, path), "// seam\n\n// growth\n");
+    expectBudget(root, 1, /seam budget.*exceeds/);
+    writeFileSync(join(root, path), "// smaller\n");
+    expectBudget(root, 0);
+  }
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(1)));
+  expectBudget(root, 0);
+  // Both checks must run through the real CLI.
+  writeFileSync(join(root, seams[0]), 'fn f() { sqlx::query("SELECT 1"); }\n');
+  expectBudget(root, 1, /SQL_OUTSIDE_STORE/);
+});
+
+test("seam budget checks the integrated main baseline during a pending merge", () => {
+  const root = budgetFixture(false);
+  const original = git(root, "rev-parse", "HEAD");
+  git(root, "checkout", "-qb", "candidate");
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget()));
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "bootstrap budget");
+  git(root, "checkout", "-qb", "main-update", original);
+  for (const path of seams) writeFileSync(join(root, path), "// seam\n\n// landed on main\n");
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "main grows before bootstrap");
+  git(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+  git(root, "checkout", "candidate");
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(3)));
+  expectBudget(root, 1, /seam budget.*raised/);
+  git(root, "merge", "--no-commit", "--no-ff", "origin/main");
+  expectBudget(root, 0);
+  expectBudget(root, 1, /seam budget.*raised/, ["--base", original]);
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(4)));
+  expectBudget(root, 1, /seam budget.*raised/);
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(3)));
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "integrate measured main baseline");
+  expectBudget(root, 0);
+});
+
+test("seam budget rejects raised or malformed ceilings", () => {
+  const root = budgetFixture();
+  const base = git(root, "rev-parse", "HEAD");
+  writeFileSync(join(root, budgetPath), JSON.stringify(budget(3)));
+  writeFileSync(join(root, seams[0]), "// seam\n\n// growth\n");
+  git(root, "add", ".");
+  git(root, "-c", "commit.gpgsign=false", "commit", "-qm", "raise candidate budget");
+  expectBudget(root, 1, /seam budget.*raised/);
+  expectBudget(root, 1, /seam budget.*raised/, ["--base", base]);
+  const malformed = [null, {}, { ...budget(), schemaVersion: 2 }, { ...budget(), seams: [] }];
+  for (const value of [-1, 1.5, "2", null, 9007199254740992]) {
+    malformed.push(budget(value));
+  }
+  malformed.push({ ...budget(), seams: budget().seams.slice(1) });
+  malformed.push({ ...budget(), seams: [...budget().seams, { path: "extra.rs", maxLines: 2 }] });
+  malformed.push({ ...budget(), seams: [budget().seams[0], ...budget().seams.slice(0, 3)] });
+  for (const value of malformed) {
+    writeFileSync(join(root, budgetPath), JSON.stringify(value));
+    expectBudget(root, 1, /seam budget/);
+  }
+  writeFileSync(join(root, budgetPath), "{");
+  expectBudget(root, 1, /seam budget/);
+  const bootstrap = budgetFixture(false);
+  writeFileSync(join(bootstrap, budgetPath), JSON.stringify(budget()));
+  expectBudget(bootstrap, 0);
+  writeFileSync(join(bootstrap, budgetPath), JSON.stringify(budget(3)));
+  expectBudget(bootstrap, 1, /seam budget.*raised/);
+  const invalidBase = budgetFixture();
+  writeFileSync(join(invalidBase, budgetPath), "{}");
+  git(invalidBase, "add", ".");
+  git(invalidBase, "-c", "commit.gpgsign=false", "commit", "-qm", "malformed baseline");
+  git(invalidBase, "update-ref", "refs/remotes/origin/main", "HEAD");
+  writeFileSync(join(invalidBase, budgetPath), JSON.stringify(budget()));
+  expectBudget(invalidBase, 1, /seam budget.*invalid schema/);
+});
+
+test("seam budget rejects missing files and counts CRLF consistently", () => {
+  const root = budgetFixture();
+  for (const source of ["", "\n", "// one\r\n// two\r\n", "// one\n// two", "// one\r\n// two"]) {
+    writeFileSync(join(root, seams[0]), source);
+    expectBudget(root, 0);
+  }
+  for (const source of ["// one\r\n// two\r\n// three", "// one\n// two\n// three\n"]) {
+    writeFileSync(join(root, seams[0]), source);
+    expectBudget(root, 1, /seam budget.*exceeds/);
+  }
+  writeFileSync(join(root, seams[0]), "// one\n");
+  expectBudget(root, 1, /seam budget/, ["--base", "missing-ref"]);
+  expectBudget(root, 1, /seam budget/, ["--base"]);
+  expectBudget(root, 0, undefined, ["--base", "origin/main"]);
+  const unrelated = git(root, "-c", "commit.gpgsign=false", "commit-tree", "HEAD^{tree}", "-m", "unrelated");
+  expectBudget(root, 1, /seam budget/, ["--base", unrelated]);
+  expectBudget(root, 1, /seam budget/, [], { ...fixtureEnv, PATH: join(root, "no-git") });
+  for (const path of [...seams, budgetPath]) {
+    renameSync(join(root, path), join(root, `${path}.saved`));
+    expectBudget(root, 1, /seam budget/);
+    renameSync(join(root, `${path}.saved`), join(root, path));
+  }
+  renameSync(join(root, seams[0]), join(root, `${seams[0]}.saved`));
+  mkdirSync(join(root, seams[0]));
+  expectBudget(root, 1, /seam budget/);
+  const nonGit = fixture(Object.fromEntries(seams.map(path => [path, "// seam\n"])));
+  writeFileSync(join(nonGit, budgetPath), JSON.stringify(budget()));
+  expectBudget(nonGit, 1, /seam budget/);
+  expectBudget(nonGit, 0, undefined, ["--patterns-only"]);
+});
+
+test("check reports a clean diagnostic when the allowlist is missing", () => {
+  const root = budgetFixture();
+  renameSync(join(root, "scripts/ci/architecture-drift.allow"), join(root, "scripts/ci/architecture-drift.allow.bak"));
+  const result = checkBudget(root);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /architecture drift: missing allowlist/);
+  assert.doesNotMatch(result.stderr, /at checkPatterns/);
+});
+
+test("patterns-only cannot skip a runnable seam budget or the gate command", () => {
+  const root = budgetFixture();
+  expectBudget(root, 1, /cannot skip the seam budget/, ["--patterns-only"]);
+  expectBudget(root, 2, /usage:/, ["--patterns-only", "extra"]);
+  writeFileSync(join(root, seams[0]), "// seam\n\n// growth\n");
+  expectBudget(root, 1, /exceeds/, ["--patterns-only"]);
+  const gates = readFileSync(join(dirname(scanner), "gates.sh"), "utf8");
+  const line = gates.split("\n").find((entry) => entry.includes('"architecture-drift|'));
+  assert.match(line, /architecture-drift\.mjs check"$/);
+  assert.doesNotMatch(line, /--patterns-only/);
+});
+
+test("pattern checks go through the CLI", () => {
+  const root = fixture({ "src-tauri/src/workers.rs": "fn load() { sqlx::query(\"SELECT 1\"); }\n" });
+  const result = run(root, "check");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /seam budget: skipped \(--patterns-only; no origin\/main baseline\)/);
+  assert.match(result.stderr, /SQL_OUTSIDE_STORE/);
+});
+
+test("default seam budget check does not query ancestor of origin/main", () => {
+  if (process.platform === "win32") return;
+  const root = budgetFixture();
+  const bin = join(root, "git-bin");
+  const realGit = spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
+  mkdirSync(bin);
+  writeFileSync(join(bin, "git"), `#!/bin/sh
+if [ "$1" = merge-base ] && [ "$2" = --is-ancestor ] && [ "$4" = origin/main ]; then
+  echo "vacuous origin/main ancestor check" >&2
+  exit 1
+fi
+exec ${realGit} "$@"
+`);
+  chmodSync(join(bin, "git"), 0o755);
+  const env = { ...fixtureEnv, PATH: `${bin}:${fixtureEnv.PATH}` };
+  expectBudget(root, 0, undefined, [], env);
+  expectBudget(root, 0, undefined, ["--base", "origin/main"], env);
+});
+
+test("seam budget accepts comment fields and still rejects raised ceilings", () => {
+  const root = budgetFixture();
+  const documented = budget();
+  documented.comment = "ratchet headroom";
+  documented.seams[0].note = "api";
+  writeFileSync(join(root, budgetPath), JSON.stringify(documented));
+  expectBudget(root, 0);
+  documented.seams[0].maxLines = 3;
+  writeFileSync(join(root, budgetPath), JSON.stringify(documented));
+  expectBudget(root, 1, /seam budget.*raised/);
+});
 
 function fixture(files) {
   const root = mkdtempSync(join(tmpdir(), "projecta-architecture-drift-"));
@@ -21,7 +244,10 @@ function fixture(files) {
 }
 
 function run(root, command) {
-  return spawnSync(process.execPath, [scanner, command, ...(command === "snapshot" ? ["--stdout"] : [])], {
+  const args = command === "check"
+    ? [scanner, "check", "--patterns-only"]
+    : [scanner, command, ...(command === "snapshot" ? ["--stdout"] : [])];
+  return spawnSync(process.execPath, args, {
     cwd: root,
     encoding: "utf8",
   });
