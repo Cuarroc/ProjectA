@@ -22,6 +22,7 @@ export default function MasterPromptTab({
       <label className="settings-check">
         <input
           type="checkbox"
+          name="master-enabled"
           checked={masterEnabled}
           onChange={(event) => handleToggleMaster(event.target.checked)}
         />

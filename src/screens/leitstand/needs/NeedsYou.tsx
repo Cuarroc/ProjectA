@@ -77,6 +77,7 @@ function Ask({ q, worker, onAnswer }: { q: Question; worker?: Worker; onAnswer: 
       <div className="n-compose">
         <Input
           compact
+          name="needs-answer"
           aria-label={t("needs.answerLabel")}
           aria-invalid={error !== null || undefined}
           placeholder={preflight ? t("needs.placeholderPreflight") : t("needs.placeholder")}

@@ -142,6 +142,7 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
         </button>
         <textarea
           ref={inputRef}
+          name="command-chat-input"
           className="command-chat-input"
           aria-label="Aufgabe an den Orchestrator"
           rows={2}

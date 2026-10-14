@@ -107,6 +107,7 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
       </p>
       <div className="vc-compose">
         <Textarea
+          name="verlauf-message"
           aria-label={T.inputLabel}
           aria-describedby={recipientHintId}
           placeholder={chat.disabled ? T.noProject : T.placeholder}
