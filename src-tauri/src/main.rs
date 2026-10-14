@@ -4919,7 +4919,7 @@ mod tests {
     /// identifier (or the reverse) would share the stable database. The app
     /// refuses to pick a data directory instead of drifting silently.
     #[test]
-    fn mismatched_build_identifier_refuses_the_app_data_dir() {
+    fn mismatched_build_identifier_is_refused() {
         assert_eq!(
             super::check_build_identifier("com.projecta.dev", "com.projecta.dev"),
             Ok(())
@@ -4952,6 +4952,11 @@ mod tests {
 
     #[test]
     fn projecta_app_data_overrides_tauris_app_data_dir() {
+        // Mutates PROJECTA_APP_DATA process-wide; the lock keeps it from
+        // interleaving with the other test that owns the variable.
+        let _guard = crate::testutil::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         let tauri = PathBuf::from("C:/Users/someone/AppData/Roaming/com.projecta.app");
         assert_eq!(super::resolve_app_data_dir(tauri.clone()), tauri);
         let previous = std::env::var_os(super::ENV_APP_DATA);

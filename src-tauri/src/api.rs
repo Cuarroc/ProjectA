@@ -226,6 +226,7 @@ fn frontend_error_field(value: &str, max_bytes: usize) -> String {
 #[derive(Default)]
 struct FrontendErrorLog {
     recent: Vec<(std::time::Instant, Option<String>)>,
+    feedback_recent: Vec<std::time::Instant>,
     suppressed: u64,
     summary_at: Option<std::time::Instant>,
 }
@@ -236,8 +237,17 @@ impl FrontendErrorLog {
         message: &str,
         stack_frame: &str,
         route: &str,
+        feedback: Option<&str>,
         mut emit: impl FnMut(String),
     ) {
+        if feedback.is_some() {
+            self.feedback_recent
+                .retain(|at| now.duration_since(*at).as_secs() < 60);
+            if self.feedback_recent.len() >= 10 {
+                return;
+            }
+            self.feedback_recent.push(now);
+        }
         self.recent
             .retain(|(at, _)| now.duration_since(*at).as_secs() < 60);
         let message = frontend_error_field(message, 2048);
@@ -251,34 +261,59 @@ impl FrontendErrorLog {
             self.recent.push((now, None));
             self.summary_at = Some(now);
         }
-        if self.recent.len() >= 50
-            || self.recent.iter().any(|(at, previous)| {
-                previous.as_ref() == Some(&message) && now.duration_since(*at).as_secs() < 10
-            })
+        if feedback.is_none()
+            && (self.recent.len() >= 50
+                || self.recent.iter().any(|(at, previous)| {
+                    previous.as_ref() == Some(&message) && now.duration_since(*at).as_secs() < 10
+                }))
         {
             self.suppressed = self.suppressed.saturating_add(1);
             return;
         }
-        emit(format!(
-            "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
-            message,
-            frontend_error_field(stack_frame, 512),
-            frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256),
-        ));
-        self.recent.push((now, Some(message)));
+        let route = frontend_error_field(route.split(['?', '#']).next().unwrap_or_default(), 256);
+        if let Some(context) = feedback {
+            emit(format!(
+                "FEEDBACK message=\"{}\" expected=\"{}\" route=\"{}\" context=\"{}\"",
+                message,
+                frontend_error_field(stack_frame, 1024),
+                route,
+                frontend_error_field(context, 2048),
+            ));
+        } else {
+            emit(format!(
+                "ERROR message=\"{}\" stack=\"{}\" route=\"{}\"",
+                message,
+                frontend_error_field(stack_frame, 512),
+                route,
+            ));
+        }
+        if feedback.is_none() {
+            self.recent.push((now, Some(message)));
+        }
     }
 }
 
 #[tauri::command]
-pub fn log_frontend_error(message: String, stack_frame: String, route: String) {
+pub fn log_frontend_error(
+    message: String,
+    stack_frame: String,
+    route: String,
+    kind: Option<String>,
+    context: Option<String>,
+) -> bool {
     static LIMITER: std::sync::Mutex<FrontendErrorLog> = std::sync::Mutex::new(FrontendErrorLog {
         recent: Vec::new(),
+        feedback_recent: Vec::new(),
         suppressed: 0,
         summary_at: None,
     });
-    emit_frontend_error(&LIMITER, &message, &stack_frame, &route, |line| {
+    let feedback = match kind.as_deref() {
+        Some("feedback") => Some(context.as_deref().unwrap_or_default()),
+        _ => None,
+    };
+    emit_frontend_error(&LIMITER, &message, &stack_frame, &route, feedback, |line| {
         crate::logging::log("frontend", &line)
-    });
+    })
 }
 
 fn emit_frontend_error(
@@ -286,8 +321,9 @@ fn emit_frontend_error(
     message: &str,
     stack_frame: &str,
     route: &str,
+    feedback: Option<&str>,
     mut emit: impl FnMut(String),
-) {
+) -> bool {
     let mut lines = Vec::new();
     {
         let mut limiter = limiter.lock().unwrap_or_else(|e| e.into_inner());
@@ -296,12 +332,15 @@ fn emit_frontend_error(
             message,
             stack_frame,
             route,
+            feedback,
             |line| lines.push(line),
         );
     }
+    let accepted = feedback.is_none() || lines.iter().any(|line| line.starts_with("FEEDBACK "));
     for line in lines {
         emit(line);
     }
+    accepted
 }
 
 /// Name of the descriptor file written into the app data directory.
@@ -2540,6 +2579,7 @@ pub(crate) mod tests {
                 "failed",
                 "at render",
                 &format!("/token/{token}?private=value#fragment"),
+                None,
                 |line| lines.push(line),
             );
             assert_eq!(
@@ -2547,6 +2587,21 @@ pub(crate) mod tests {
                 [r#"ERROR message="failed" stack="at render" route="/token/[redacted]""#]
             );
         }
+    }
+
+    #[test]
+    fn frontend_feedback_log_line_carries_context() {
+        let mut lines = Vec::new();
+        super::FrontendErrorLog::default().write(
+            std::time::Instant::now(),
+            "Button tat nichts",
+            "Menü erwartet",
+            "/leitstand?private=value",
+            Some("sha=\"abc123\" recent=\"boom @ at render\""),
+            |line| lines.push(line),
+        );
+        let expected = "FEEDBACK message=\"Button tat nichts\" expected=\"Menü erwartet\" route=\"/leitstand\" context=\"sha=\\\"abc123\\\" recent=\\\"boom @ at render\\\"\"";
+        assert_eq!(lines, [expected]);
     }
 
     #[test]
@@ -2558,6 +2613,7 @@ pub(crate) mod tests {
             &raw,
             &raw,
             &raw,
+            None,
             |line| lines.push(line),
         );
         assert_eq!(
@@ -2577,6 +2633,7 @@ pub(crate) mod tests {
                 &format!("failed token={token}"),
                 &format!("at render (key={token})"),
                 "/",
+                None,
                 |line| lines.push(line),
             );
             assert_eq!(
@@ -2600,13 +2657,20 @@ pub(crate) mod tests {
                 .is_err());
             }
             let mut lines = Vec::new();
-            super::emit_frontend_error(&limiter, &format!("error {poisoned}"), "", "/", |line| {
-                assert!(!matches!(
-                    limiter.try_lock(),
-                    Err(std::sync::TryLockError::WouldBlock)
-                ));
-                lines.push(line);
-            });
+            super::emit_frontend_error(
+                &limiter,
+                &format!("error {poisoned}"),
+                "",
+                "/",
+                None,
+                |line| {
+                    assert!(!matches!(
+                        limiter.try_lock(),
+                        Err(std::sync::TryLockError::WouldBlock)
+                    ));
+                    lines.push(line);
+                },
+            );
             assert_eq!(lines.len(), 1);
         }
     }
@@ -2623,6 +2687,7 @@ pub(crate) mod tests {
                 message,
                 frame,
                 "/?private=value#fragment",
+                None,
                 |line| lines.push(line),
             );
             lines.len()
@@ -2646,6 +2711,54 @@ pub(crate) mod tests {
         assert_eq!(lines[50], "ERROR suppressed 2 frontend errors");
         assert_eq!(lines[52], "ERROR suppressed 2 frontend errors");
     }
+    #[test]
+    fn frontend_feedback_budget_is_bounded_and_independent() {
+        let mut limiter = super::FrontendErrorLog::default();
+        let (mut lines, now) = (Vec::new(), std::time::Instant::now());
+        for _ in 0..1000 {
+            limiter.write(now, "feedback", "", "/", Some("ctx"), |l| lines.push(l));
+        }
+        assert_eq!(lines.len(), 10);
+        for i in 0..50 {
+            limiter.write(now, &i.to_string(), "", "/", None, |l| lines.push(l));
+        }
+        assert_eq!(lines.len(), 60);
+        assert_eq!(limiter.recent.len(), 50);
+        let later = now + std::time::Duration::from_secs(60);
+        limiter.write(later, "feedback", "", "/", Some("ctx"), |l| lines.push(l));
+        assert_eq!(lines.len(), 61);
+    }
+
+    #[test]
+    fn frontend_feedback_is_not_rate_limited() {
+        use std::time::{Duration, Instant};
+        let mut limiter = super::FrontendErrorLog::default();
+        let (mut lines, start) = (Vec::new(), Instant::now());
+        let mut send = |ms, message: &str, feedback: Option<&str>| {
+            limiter.write(
+                start + Duration::from_millis(ms),
+                message,
+                "",
+                "/",
+                feedback,
+                |line| lines.push(line),
+            );
+            lines.len()
+        };
+        // Same message as a recent error: the error is deduped, feedback is not.
+        assert_eq!(send(0, "repeat", None), 1);
+        assert_eq!(send(1, "repeat", None), 1);
+        assert_eq!(send(2, "repeat", Some("ctx")), 2);
+        // Filling the error window leaves the independent feedback budget available.
+        for i in 0..49 {
+            send(3, &format!("error {i}"), None);
+        }
+        assert_eq!(send(4, "overflow", None), 51);
+        assert_eq!(send(5, "user feedback", Some("ctx")), 52);
+        assert!(lines[1].starts_with("FEEDBACK message=\"repeat\""));
+        assert!(lines[51].starts_with("FEEDBACK message=\"user feedback\""));
+    }
+
     #[test]
     fn frontend_error_fields_escape_delimiters() {
         assert_eq!(

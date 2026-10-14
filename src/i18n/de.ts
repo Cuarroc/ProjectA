@@ -1,6 +1,10 @@
 /** German UI copy for Glass UI v2. English locale is parked; keep Messages. */
 
 export const de = {
+  "terminal.title": "Terminal",
+  "terminal.sessions": "Terminal-Sitzungen",
+  "terminal.empty": "Keine Terminal-Sitzung geöffnet.",
+  "terminal.emptyHint": "Öffne eine Sitzung in der klassischen Ansicht. Sie bleibt beim Seitenwechsel erhalten.",
   "nav.leitstand": "Leitstand",
   "nav.eingangPlan": "Eingang & Plan",
   "nav.beweise": "Beweise",

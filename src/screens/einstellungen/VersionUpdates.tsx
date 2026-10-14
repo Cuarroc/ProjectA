@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { check } from "@tauri-apps/plugin-updater";
 
@@ -14,13 +14,20 @@ export function VersionUpdates() {
   const [failed, setFailed] = useState(false);
   const [state, setState] = useState<Check>({ phase: "idle" });
   const live = useRef(true); // late lib answers after unmount are dropped
+  const readVersion = useCallback(() => {
+    void getVersion().then(
+      (v) => { if (live.current) { setVersion(v); setFailed(false); } },
+      () => { if (live.current) setFailed(true); },
+    );
+  }, []);
   useEffect(() => {
     live.current = true;
-    void getVersion().then((v) => { if (live.current) setVersion(v); }, () => { if (live.current) setFailed(true); });
+    readVersion();
     return () => { live.current = false; };
-  }, []);
+  }, [readVersion]);
   const run = () => {
     setState({ phase: "checking" });
+    readVersion();
     check().then(
       (u) => { if (live.current) setState(u === null || !u.available ? { phase: "up-to-date" } : { phase: "available", version: u.version }); },
       (e: unknown) => { if (live.current) setState({ phase: "error", message: describeError(e) }); },

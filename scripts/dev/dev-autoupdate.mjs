@@ -7,6 +7,7 @@ import { isMain, makeRunner } from '../lib/dev-tools.mjs';
 const repo = 'Cuarroc/ProjectA';
 const config = fileURLToPath(new URL('../../.gitleaks.toml', import.meta.url));
 const hash = text => createHash('sha256').update(text).digest('hex');
+// logging.rs emits UTC seconds; also accept fractional UTC seconds and unstamped input.
 const stamp = /^\d{4}-\d\d-\d\dT[\d:.]+Z\s*/;
 const message = line => line.replace(stamp, '').replace(/^\[panic\]\s*/, '');
 const paths = /(?:[A-Za-z]:[\\/]|\\\\|\/|(?:[\w.-]+[\\/]))[^\s"'<>]+/g;
@@ -114,33 +115,41 @@ export function collect(state, { run, appData, inbox, env, now = new Date().toIS
   const logDir = join(appData, 'logs');
   let names = [];
   try { names = fs.readdirSync(logDir).filter(n => /^projecta(?:[_.].*)?\.log(?:\.\d+)?$/.test(n)); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-  const occurrences = new Map(), panicMessages = new Set(), seen = { ...state.seen };
-  const add = line => {
-    const key = hash(line), entry = occurrences.get(key) ?? { line, count: 0 };
-    entry.count++; occurrences.set(key, entry);
+  const occurrences = new Map(), feedback = new Map(), panicMessages = new Set(), seen = { ...state.seen }, seenFeedback = { ...state.seenFeedback };
+  const add = (bucket, line) => {
+    const key = hash(line), entry = bucket.get(key) ?? { line, count: 0 };
+    entry.count++; bucket.set(key, entry);
   };
   for (const name of names) for (const line of read(join(logDir, name)).split(/\r?\n/)) {
-    if (/\[panic\]|\bERROR\b/.test(line)) { add(line); if (/\[panic\]/.test(line)) panicMessages.add(hash(message(line))); }
+    // logging.rs emits one [component]/[target] tag; panic hooks always add a detail.
+    const envelope = line.replace(stamp, '');
+    const panic = /^\[panic\] /.test(envelope);
+    if (/^\[frontend\] FEEDBACK /.test(envelope)) add(feedback, line);
+    else if (panic || /^(?:\[[^\]\r\n]+\] )?ERROR\b/.test(envelope)) {
+      add(occurrences, line);
+      if (panic) panicMessages.add(hash(message(line)));
+    }
   }
   for (const name of ['.panic-last', '.panic-previous']) {
     const marker = read(join(appData, name)).trim();
-    if (marker && !panicMessages.has(hash(marker))) { add(marker); panicMessages.add(hash(marker)); }
+    if (marker && !panicMessages.has(hash(marker))) { add(occurrences, marker); panicMessages.add(hash(marker)); }
     else if (marker) seen[hash(marker)] = 1;
   }
-  const fresh = [];
-  for (const [key, { line, count }] of occurrences) {
-    for (let n = seen[key] ?? 0; n < count; n++) fresh.push(line);
-    seen[key] = Math.max(seen[key] ?? 0, count);
-  }
-  if (fresh.length) {
+  const flush = (bucket, seenBucket, target) => {
+    const fresh = [];
+    for (const [key, { line, count }] of bucket) {
+      for (let n = seenBucket[key] ?? 0; n < count; n++) fresh.push(line);
+      seenBucket[key] = Math.max(seenBucket[key] ?? 0, count);
+    }
+    if (!fresh.length) return;
     const raw = fresh.join('\n');
     const scan = run('gitleaks', ['stdin', '--config', config, '--report-format', 'json', '--report-path', '-', '--redact', '--no-banner', '--ignore-gitleaks-allow'], { input: raw, timeoutMs: 60_000 });
     if (![0, 1].includes(scan.code)) throw new StepError('secret scanner unavailable or failed');
     const findings = JSON.parse(scan.stdout || '[]');
     if (!Array.isArray(findings) || (scan.code === 1 && !findings.length)) throw new StepError('invalid secret scan report');
-    fs.mkdirSync(inbox, { recursive: true });
+    fs.mkdirSync(target, { recursive: true });
     for (const record of group(scrub(raw, env, findings).split('\n'), state.sha ?? null, now)) {
-      const path = join(inbox, `${hash(record.signature)}.json`), old = read(path);
+      const path = join(target, `${hash(record.signature)}.json`), old = read(path);
       if (old) {
         const previous = JSON.parse(old);
         record.firstSeen = previous.firstSeen;
@@ -149,8 +158,11 @@ export function collect(state, { run, appData, inbox, env, now = new Date().toIS
       }
       write(path, record);
     }
-  }
+  };
+  flush(occurrences, seen, inbox);
+  flush(feedback, seenFeedback, join(inbox, 'feedback'));
   state.seen = seen;
+  state.seenFeedback = seenFeedback;
 }
 export function main({ env = process.env, platform = process.platform, run = makeRunner() } = {}) {
   let folder, lock, result = 'nothing to do', code = 0, phase = 'setup';

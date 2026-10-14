@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
 import "../../design/inputs/inputs.css";
@@ -38,15 +38,34 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<Action | null>(null);
   const [failed, setFailed] = useState<Action | null>(null);
+  // A confirmation or error belongs to the card state it was opened in: a refresh
+  // that changes the status or puts another worker in this slot must not keep
+  // offering an action the new state no longer allows. A counter, not the
+  // id:status string: a round trip back to the same pair must still void the
+  // first visit's reply. The in-flight call keeps its worker id and must not
+  // publish an error or stay busy on the card that replaced it.
+  const cardState = `${worker.id}:${worker.status}`;
+  const [seenCardState, setSeenCardState] = useState(cardState);
+  const actionGeneration = useRef(0);
+  if (seenCardState !== cardState) {
+    actionGeneration.current += 1;
+    setSeenCardState(cardState);
+    setConfirming(false);
+    setFailed(null);
+    setBusy(null);
+  }
   const run = async (action: Action) => {
+    const started = actionGeneration.current;
     setConfirming(false);
     setFailed(null);
     setBusy(action);
     try {
       await (action === "restart" ? respawnWorker : archiveWorker)(worker.id);
+      if (actionGeneration.current !== started) return;
       setBusy(null);
       onChanged?.();
     } catch {
+      if (actionGeneration.current !== started) return;
       setBusy(null);
       setFailed(action);
     }

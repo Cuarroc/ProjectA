@@ -63,6 +63,15 @@
             "command": "node scripts/lib/rules-guard.mjs"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/lib/seam-guard.mjs"
+          }
+        ]
       }
     ],
     "SessionStart": [

@@ -1,8 +1,10 @@
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { FEATURE_FLAG_STORAGE_PREFIX } from "../flags/featureFlags";
 import { ptyExit, ptyOutput } from "../lib/eventNames";
-import { useSessionSubscriptions } from "./useSessionSubscriptions";
+
+const D1_FLAG_KEY = `${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`;
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(), listen: vi.fn(), writes: [] as string[],
@@ -47,16 +49,20 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const active = (event: string) => mocks.listeners.filter((entry) => entry.event === event && entry.stop.mock.calls.length === 0);
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
-// The actual App and TerminalView exercise D1, tab ownership and output replay;
-// only the native IPC and xterm browser boundaries are replaced.
-describe.each([false, true])("session subscriptions with D1=%s", (d1) => {
-  it("keeps exactly one output subscription per open session", async () => {
-    localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", d1 ? "1" : "0");
+const openShellTab = async () => {
+  fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
+};
+
+// The actual App and TerminalView exercise D1, the provider, tab ownership and
+// output replay; only the native IPC and xterm browser boundaries are replaced.
+describe.each([false, true])("session provider with D1=%s", (d1) => {
+  it("replays open select and exit with one output subscription per session", async () => {
+    localStorage.setItem(D1_FLAG_KEY, d1 ? "1" : "0");
     window.location.hash = "#/leitstand/klassisch";
     const view = render(<App />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
+    await openShellTab();
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     expect(active(ptyExit("session-a"))).toHaveLength(1);
     expect(mocks.writes).toEqual(["history", "live"]);
@@ -93,24 +99,17 @@ describe.each([false, true])("session subscriptions with D1=%s", (d1) => {
     expect(active(ptyOutput("session-b"))).toHaveLength(0);
     expect(active(ptyExit("session-b"))).toHaveLength(0);
   });
-});
 
-it("tears down every subscription on unmount", async () => {
-  let resolve!: (stop: () => void) => void;
-  const lateStop = vi.fn();
-  const onExit = vi.fn();
-  const hook = renderHook(() => useSessionSubscriptions(vi.fn(), onExit));
-  await act(() => hook.result.current.subscribeExit("ready"));
-  mocks.listen.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
-  let pending!: Promise<void>;
-  act(() => { pending = hook.result.current.subscribeExit("pending"); });
-  await act(() => hook.result.current.subscribeExit("pending"));
-  expect(mocks.listen).toHaveBeenCalledTimes(2);
-  hook.unmount();
-  expect(mocks.listeners).toHaveLength(1);
-  expect(mocks.listeners[0].stop).toHaveBeenCalledTimes(1);
-  await act(async () => { resolve(lateStop); await pending; });
-  expect(lateStop).toHaveBeenCalledTimes(1);
-  mocks.listeners[0].handler({ payload: { code: 1 } });
-  expect(onExit).not.toHaveBeenCalled();
+  it("tears down every output subscription on unmount", async () => {
+    localStorage.setItem(D1_FLAG_KEY, d1 ? "1" : "0");
+    window.location.hash = "#/leitstand/klassisch";
+    const view = render(<App />);
+    await openShellTab();
+    await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+    expect(active(ptyExit("session-a"))).toHaveLength(1);
+    view.unmount();
+    expect(active(ptyOutput("session-a"))).toHaveLength(0);
+    expect(active(ptyExit("session-a"))).toHaveLength(0);
+    expect(mocks.invoke.mock.calls.some(([command]) => command === "kill_pty")).toBe(false);
+  });
 });

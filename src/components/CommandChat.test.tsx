@@ -14,6 +14,7 @@ function makeChat(overrides: Partial<OrchestratorChat> = {}): OrchestratorChat {
     disabled: false,
     send: vi.fn(async () => true),
     clearError: vi.fn(),
+    reload: vi.fn(),
     ...overrides,
   };
 }

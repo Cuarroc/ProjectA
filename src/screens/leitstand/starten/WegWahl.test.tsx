@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WegWahl } from "./WegWahl";
@@ -37,6 +38,74 @@ describe("WegWahl", () => {
     mocks.invoke.mockReset();
   });
 
+  it("retries a failed profile read without remounting the selection", async () => {
+    let reads = 0;
+    mocks.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_quota_state") return [quota("p-claude", "blocked", { reason: "Wochenlimit erreicht" }), quota("p-codex", "ok")];
+      if (cmd !== "list_agent_profiles") throw new Error(`unexpected ${cmd}`);
+      if (++reads < 3) throw new Error("offline");
+      return PROFILES;
+    });
+    const onChange = vi.fn();
+    render(<WegWahl value="p-codex" onChange={onChange} />);
+    const retry = await screen.findByRole("button", { name: "Erneut versuchen" });
+    expect(screen.getByText("Personas nicht lesbar")).toBeInTheDocument();
+    expect(screen.queryByText("Keine Persona eingeschaltet")).toBeNull();
+    fireEvent.click(retry);
+    expect(screen.getByText("Wird gelesen …")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Erneut versuchen" }));
+    expect(await radio("Codex Weg")).toBeChecked();
+    expect(await radio("Claude Weg")).toBeDisabled();
+    expect(await radio("Kimi Weg")).toHaveAccessibleDescription(/unbekannt/);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(await radio("Kimi Weg"));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("p-kimi");
+    expect(mocks.invoke.mock.calls.map(([cmd]) => cmd).sort()).toEqual([
+      "get_quota_state", "list_agent_profiles", "list_agent_profiles", "list_agent_profiles",
+    ]);
+  });
+
+  it("labels a configured model as a request rather than an observed model", async () => {
+    backend({ profiles: [...PROFILES, profile("p-name", "GPT special model", "codex")] });
+    render(<WegWahl value={null} onChange={() => {}} />);
+    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Modellvorgabe: model-x.*Modell wird beim Start beobachtet/);
+    expect(await radio("Codex Weg")).toHaveAccessibleDescription(/Modell wird beim Start beobachtet/);
+    expect(await radio("GPT special model")).toHaveAccessibleDescription(/Modell wird beim Start beobachtet/);
+    expect(await radio("GPT special model")).not.toHaveAccessibleDescription(/Modellvorgabe|GPT/);
+  });
+
+  it("keeps one retry in flight and ignores its answer after unmount", async () => {
+    let reads = 0;
+    let resolveOld!: (rows: unknown[]) => void;
+    let resolveRetry!: (rows: unknown[]) => void;
+    const old = new Promise<unknown[]>((resolve) => { resolveOld = resolve; });
+    const pending = new Promise<unknown[]>((resolve) => { resolveRetry = resolve; });
+    mocks.invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_quota_state") return Promise.resolve([]);
+      if (cmd !== "list_agent_profiles") throw new Error(`unexpected ${cmd}`);
+      reads++;
+      return reads === 1 ? old : reads === 2 ? Promise.reject(new Error("offline")) : pending;
+    });
+    const onChange = vi.fn();
+    const { unmount } = render(<StrictMode><WegWahl value={null} onChange={onChange} /></StrictMode>);
+    const retry = await screen.findByRole("button", { name: "Erneut versuchen" });
+    act(() => {
+      retry.click();
+      retry.click();
+    });
+    expect(reads).toBe(3);
+    expect(screen.getByText("Wird gelesen …")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Erneut versuchen" })).toBeNull();
+    await act(async () => { resolveOld(PROFILES); });
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getByText("Wird gelesen …")).toBeInTheDocument();
+    unmount();
+    await act(async () => { resolveRetry(PROFILES); });
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(new Set(mocks.invoke.mock.calls.map(([cmd]) => cmd))).toEqual(new Set(["get_quota_state", "list_agent_profiles"]));
+  });
+
   it("one radio per enabled profile with CLI label and pinned model", async () => {
     backend();
     render(<WegWahl value={null} onChange={() => {}} />);
@@ -44,7 +113,7 @@ describe("WegWahl", () => {
     await radio("Claude Weg");
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     expect(group).toHaveTextContent("Claude Code");
-    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Claude Code.*model-x/);
+    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Claude Code.*Modellvorgabe: model-x.*Modell wird beim Start beobachtet/);
     expect(screen.queryByRole("radio", { name: "Aus Weg" })).toBeNull();
   });
 
@@ -52,7 +121,7 @@ describe("WegWahl", () => {
     backend();
     render(<WegWahl value={null} onChange={() => {}} />);
     expect(await radio("Codex Weg")).toHaveAccessibleDescription(/Modell wird beim Start beobachtet/);
-    expect(await radio("Claude Weg")).not.toHaveAccessibleDescription(/beobachtet/);
+    expect(await radio("Claude Weg")).toHaveAccessibleDescription(/Modellvorgabe: model-x.*Modell wird beim Start beobachtet/);
   });
 
   it("a blocked profile is disabled with its reason and never calls onChange", async () => {
@@ -136,5 +205,17 @@ describe("WegWahl", () => {
     fireEvent.click(await radio("Codex Weg"));
     const commands = new Set(mocks.invoke.mock.calls.map((call) => call[0]));
     expect([...commands].sort()).toEqual(["get_quota_state", "list_agent_profiles"]);
+  });
+
+  it("warns when the chosen persona is blocked", async () => {
+    backend({ quotas: [quota("p-claude", "blocked", { reason: "Wochenlimit erreicht" })] });
+    render(<WegWahl value="p-claude" onChange={() => {}} />);
+    expect(await screen.findByText(/Die gewählte Persona „Claude Weg“ ist gesperrt\./)).toBeInTheDocument();
+  });
+
+  it("warns when the chosen persona is not among the selectable ones", async () => {
+    backend();
+    render(<WegWahl value="p-off" onChange={() => {}} />);
+    expect(await screen.findByText(/Die gewählte Persona „Aus Weg“ ist nicht wählbar\./)).toBeInTheDocument();
   });
 });

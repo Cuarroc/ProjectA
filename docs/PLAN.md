@@ -757,6 +757,38 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | E23 | Benchmark mit fünf Aufgaben durchführen? Er verbraucht Abo-Kontingent | nur nach Nutzerfreigabe laufen lassen | offen; Nutzerfreigabe erforderlich |
 | TODO | Interne Liste des Koordinators: Copilot-Budget, Groq/OpenRouter-Keys (widerspricht „nur Abos“), Geldmodus | veraltete Punkte streichen | offen |
 
+### Beantwortete Karten vom 13.10.2026 — Zwei-Modi und Anbieter
+
+Quelle: Root-Nachricht `msg-0mv6r7v7k-cf69b2e2`, erstellt am
+13.10.2026 um 14:06:16.256 UTC; überliefert durch Interview & Entscheidungen
+in `msg-0mv7eepdo-81fd35b6` vom 14.10.2026. Root berichtet Elias' Antwort
+„ich folge allen von deinen Empfehlungen.“ gegen 14:05 UTC; zu Anbieter-E1
+zuvor „Ja ich folge allen empfehlungen“ gegen 13:25 UTC. Die Chatzeiten sind
+laut Root, keine unabhängig gelesenen Chat-Zeitstempel. Der Inhalt steht bereits
+im Freigaberegister `user-standing-permissions`; dieser Nachtrag dokumentiert
+die Antworten und erteilt keine neue Freigabe.
+
+| # | Beschlossene Empfehlung | Status / Geltungsbereich |
+|---|---|---|
+| Z1 (Zwei-Modi, 13.10.) | Eine App mit Autopilot und gemeinsamem Entwerfen; gemeinsames Entwerfen als Einstieg | angenommen laut Root gegen 14:05 UTC |
+| Z2 (Zwei-Modi, 13.10.) | Autopilot darf Design und Architektur innerhalb des freigegebenen Auftrags entscheiden, mit unabhängiger Prüfung | angenommen; neue Ziele und Schutzgrenzen bleiben bei Elias |
+| Z3 (Zwei-Modi, 13.10.) | Live-Vorschau, zwei Varianten und „hier ändern“ neben dem Chat; dritte Variante nur auf Wunsch | angenommen |
+| Z4 (Zwei-Modi, 13.10.) | Schrittweise ab v2.2 | angenommen; v2.0/v2.1-Umfang unverändert |
+| E1 (Anbieter, 13.10.) | Ollama als Arbeiter auf dem Server | ja laut Root gegen 13:25 UTC; Installation/Anbindung über Elias' eigenen Login und späteren run-job-Providerfall; keine neuen Kosten |
+| E2 (Anbieter, 13.10.) | Codex Pro 500 / Ultrafast | nein laut Root gegen 14:05 UTC; kein Upgrade |
+| E3 (Anbieter, 13.10.) | Jev-Ultrafast-Probe | erst nach v2.0, Idea Radar `95aeb521`; keine Freigabe eines kostenpflichtigen Schlüssels |
+
+Die Konzeptkarten heißen im Konzeptbericht E1–E4, im Register Z1–Z4.
+Diese Themenlabels ersetzen weder die älteren PLAN-E-Karten noch die
+Projektziele Z1–Z4. Beschlossen bedeutet nicht umgesetzt oder wirksam;
+aus dem Nachtrag entsteht kein Umsetzungsauftrag und keine Freigabe neuer
+Kosten, Schlüssel oder Releases. Keine offene Elias-Frage; nicht erneut vorlegen.
+
+Beleggrenze: `konzept-zwei-modi.md` lag laut Übergabe am geprüften lokalen
+Berichtspfad nicht vor; keine Originalbericht-Prüfung. Die historische Nachricht
+belegt keinen aktuellen Ollama-Job- oder Loginzustand. Chief pflegt den Nachtrag;
+Root nimmt ihn ab und disponiert spätere Umsetzung.
+
 GitHub-Quellen zum Statusabgleich (09.10.2026 00:59 UTC):
 `gh pr view <n> --json state,mergedAt` für #749, #738, #745, #751, #755, #752,
 #728, #767, #768, #764, #777, #769, #772 und #773: alle MERGED; Zeitpunkte stehen an den Paketzeilen.

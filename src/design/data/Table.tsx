@@ -19,7 +19,10 @@ export interface TableProps<Row> {
 }
 
 export function Table<Row>({ label, columns, rows, rowKey, empty }: TableProps<Row>) {
-  if (rows.length === 0 && empty) return <>{empty}</>;
+  if (rows.length === 0) {
+    if (empty) return <>{empty}</>;
+    return null;
+  }
   const num = (c: Column<Row>) => (c.numeric ? "g-tbl__n" : undefined);
   return (
     <div className="g-tw" role="region" aria-label={label} tabIndex={0}>

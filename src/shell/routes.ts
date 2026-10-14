@@ -56,8 +56,8 @@ export function resolveRoute(path: string): ResolvedRoute | null {
   return route ? { route, tab: null } : null;
 }
 
-/** `#/beweise/diff` to `/beweise/diff`; an empty hash opens the default route. */
+/** `#/beweise/diff` to `/beweise/diff`. A query and a trailing slash are dropped; `#/` and an empty hash open the default route. */
 export function pathFromHash(hash: string): string {
-  const raw = hash.replace(/^#/, "");
+  const raw = hash.replace(/^#/, "").split("?")[0].replace(/\/+$/, "");
   return raw.startsWith("/") ? raw : DEFAULT_PATH;
 }

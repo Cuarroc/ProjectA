@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "../../../design/glass.css";
+import "../../../design/controls/controls.css";
+import { Button } from "../../../design/controls/Button";
 import { HonestState } from "../../../design/data/HonestState";
 import { DevNote } from "../../../design/data/DevNote";
 import { StateMark } from "../../../design/state/StateMark";
@@ -59,21 +61,29 @@ function Agents({ cards, reads }: { cards: readonly BoardCard[]; reads: Reads })
 export function Organigramm({ projectId }: { projectId: string }) {
   // `undefined` = not read yet; a failed read is `null` inside `Reads`.
   const [reads, setReads] = useState<Reads | undefined>(undefined);
-  // One token per project change; a reply only lands while its own token is still current.
+  const [pending, setPending] = useState(false);
+  // One token per read attempt; a reply only lands while its own token is still current.
   const generation = useRef(0);
 
-  useEffect(() => {
+  const read = useCallback((pid: string) => {
     const mine = ++generation.current;
-    setReads(undefined);
-    void Promise.allSettled([getBoardState(projectId), listAgentProfiles(), getBudgets()]).then(([board, profiles, budgets]) => {
+    setPending(true);
+    void Promise.allSettled([getBoardState(pid), listAgentProfiles(), getBudgets()]).then(([board, profiles, budgets]) => {
       if (generation.current !== mine) return;
       setReads({
         board: board.status === "fulfilled" ? board.value : null,
         profiles: profiles.status === "fulfilled" ? profiles.value : null,
         budgets: budgets.status === "fulfilled" ? budgets.value : null,
       });
+      setPending(false);
     });
-  }, [projectId]);
+  }, []);
+
+  useEffect(() => {
+    setReads(undefined);
+    read(projectId);
+    return () => { generation.current += 1; };
+  }, [projectId, read]);
 
   const board = reads?.board;
   const agents = board ? agentCards(board.cards) : [];
@@ -82,8 +92,11 @@ export function Organigramm({ projectId }: { projectId: string }) {
 
   return (
     <div className="og-root">
-      <section className="g-glass og-card" aria-label={T.team}>
+      <section className="g-glass og-card" aria-label={T.team} aria-busy={pending}>
         <h2 className="og-h">{T.team}</h2>
+        {reads !== undefined && (
+          <Button size="sm" onClick={() => read(projectId)} disabled={pending}>{T.reread}</Button>
+        )}
         {reads === undefined ? <p className="og-note">{T.loading}</p> : !board ? (
           <HonestState kind="offline" title={T.offline} hint={T.offlineHint} />
         ) : agents.length === 0 && board.coordinators.length === 0 ? (

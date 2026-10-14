@@ -6,7 +6,8 @@
 //   3. specs under STAND.md "Aktive Specs" whose package already has a merged PR
 //   4. PLAN.md milestone rows in progress (Stand "PR #n") without an open PR
 //   5. untracked files in the main checkout
-//   5b. zero-byte untracked root files (likely shell-redirect accidents)
+//   5b. zero-byte and suspiciously named untracked root files
+//   6. main checkout divergence against origin/main
 //
 // Nothing is changed. The only write is `git fetch --prune origin`, which
 // updates remote-tracking refs; --no-fetch skips it. Findings are hints for a
@@ -24,6 +25,7 @@ const SECTION = /^#{2,4}\s*Aktive Specs\s*$/;
 const MACHINE_BRANCH = /^(?:main|HEAD|origin)$|^(?:mergify|gh-readonly-queue)\//;
 const OPEN_LIMIT = 200;
 const ALL_LIMIT = 1000;
+export const SUSPICIOUS_NAME_CHARS = /[!$`;&|<>()]/;
 
 const HELP = `hygiene — Buchfuehrung des Repos pruefen (read-only), Ausgabe als Markdown
 
@@ -37,6 +39,8 @@ Prueft:
   4. Pakete in Arbeit (docs/PLAN.md, Stand "PR #n") ohne offenen PR
   5. ungetrackte Dateien im Hauptcheckout
      (0-Byte-Dateien in der Wurzel: likely shell-redirect accident + mtime)
+     verdächtige Shell-Zeichen in Wurzel-Dateinamen, auch bei Inhalt
+  6. Hauptcheckout gegen origin/main: ahead/behind oder unbekannt
   + "Nicht geprueft": fehlende/unlesbare Eingaben (STAND.md, docs/PLAN.md,
     ERLEDIGT.md) und gh-Listen am Limit; zaehlt als Befund fuer --strict
 
@@ -50,6 +54,33 @@ Optionen:
 Exit-Codes: 0 Bericht erstellt, 1 Befunde mit --strict, 2 Aufruffehler,
             3 gh/git-Fehler (auch: git fetch scheitert — dann --no-fetch).
 `;
+
+const unknownDivergence = (reason) => ({ ahead: null, behind: null, reason });
+
+function mainCheckoutDivergence(run, cwd) {
+  const args = ["rev-list", "--left-right", "--count", "HEAD...origin/main"];
+  const command = `git ${args.join(" ")}`;
+  try {
+    const r = run("git", args, { cwd });
+    if (r.code !== 0) return unknownDivergence(`${command} (Exit ${r.code})`);
+    const counts = /^(\d+)[ \t]+(\d+)\s*$/.exec(r.stdout);
+    if (counts && counts.slice(1).every((n) => Number.isSafeInteger(Number(n)))) {
+      return { ahead: Number(counts[1]), behind: Number(counts[2]), reason: null };
+    }
+    return unknownDivergence(`${command}: ungültige Zähler`);
+  } catch {
+    return unknownDivergence(`${command}: Befehl nicht verfügbar`);
+  }
+}
+
+// Keep normal names readable; JSON escapes control characters and quotes,
+// HTML entities keep backticks and markup inert even inside Markdown lists.
+function markdownName(name) {
+  if (/^[\p{L}\p{N}_. /-]+$/u.test(name)) return `\`${name}\``;
+  const escaped = JSON.stringify(name).slice(1, -1)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "&#96;");
+  return `<code>${escaped}</code>`;
+}
 
 const lower = (s) => String(s).toLowerCase();
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -201,7 +232,7 @@ export function shellRedirectAccidents(root, untracked) {
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText: standIn, planText: planIn, erledigtText: erledigtIn, untracked, shellRedirectAccidents: accidentsIn, limits = [] }) {
+export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText: standIn, planText: planIn, erledigtText: erledigtIn, untracked, shellRedirectAccidents: accidentsIn, limits = [], suspiciousNames = [], mainDivergence = unknownDivergence("keine Messung") }) {
   const [standText, planText, erledigtText] = [standIn ?? "", planIn ?? "", erledigtIn ?? ""];
   const humanOpen = prsOpen.filter((p) => !MACHINE_BRANCH.test(p.headRefName));
   const stalePrs = humanOpen
@@ -231,6 +262,7 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
   // A missing input or one that no longer parses makes checks 3/4 silently
   // empty; say so instead of reporting "clean" (counts as a finding for --strict).
   const notChecked = [...limits];
+  if (mainDivergence.reason) notChecked.push(`Hauptcheckout gegen origin/main unbekannt: ${mainDivergence.reason}`);
   if (standIn == null) notChecked.push("STAND.md fehlt — aktive Specs nicht geprüft");
   else if (!standText.split(/\r?\n/).some((l) => SECTION.test(l))) notChecked.push('STAND.md: Abschnitt "Aktive Specs" nicht gefunden — aktive Specs nicht geprüft');
   if (planIn == null) notChecked.push('docs/PLAN.md fehlt — Pakete „in Arbeit“ nicht geprüft');
@@ -240,11 +272,12 @@ export function collectHygiene({ now, prsOpen, prsAll, remoteBranches, standText
   if (erledigtIn == null) notChecked.push("docs/ERLEDIGT.md fehlt — Specs zu erledigten Paketen nur über PRs geprüft");
   else if (!/^\|\s*Datum\s*\|\s*ID\s*\|/m.test(erledigtText)) notChecked.push('docs/ERLEDIGT.md: keine Tabelle „| Datum | ID |“ — Specs zu erledigten Paketen nur über PRs geprüft');
   const shellRedirectAccidents = accidentsIn ?? [];
-  return { stalePrs, branchesWithoutPr, specsOfMergedPrs, inProgressWithoutPr, untracked, shellRedirectAccidents, notChecked };
+  return { stalePrs, branchesWithoutPr, specsOfMergedPrs, inProgressWithoutPr, untracked, shellRedirectAccidents, suspiciousNames, mainDivergence, notChecked };
 }
 
 export function countFindings(f) {
-  return f.stalePrs.length + f.branchesWithoutPr.length + f.specsOfMergedPrs.length + f.inProgressWithoutPr.length + f.untracked.length + (f.notChecked?.length || 0);
+  const fileCount = new Set([...f.untracked, ...(f.suspiciousNames || [])]).size;
+  return f.stalePrs.length + f.branchesWithoutPr.length + f.specsOfMergedPrs.length + f.inProgressWithoutPr.length + fileCount + (f.mainDivergence?.behind > 0 ? 1 : 0) + (f.notChecked?.length || 0);
 }
 
 export function formatHygiene(f, { now = Date.now() } = {}) {
@@ -264,9 +297,13 @@ export function formatHygiene(f, { now = Date.now() } = {}) {
   const accidentByPath = new Map((f.shellRedirectAccidents || []).map((a) => [a.path, a]));
   section("Ungetrackte Dateien im Hauptcheckout", f.untracked, (p) => {
     const acc = accidentByPath.get(p);
-    if (acc) return `\`${p}\` — likely shell-redirect accident (mtime ${acc.mtime})`;
-    return `\`${p}\``;
+    if (acc) return `${markdownName(p)} — likely shell-redirect accident (mtime ${acc.mtime})`;
+    return markdownName(p);
   });
+  section("Verdächtige Dateinamen in der Wurzel", f.suspiciousNames || [], markdownName);
+  const d = f.mainDivergence;
+  out.push("## Hauptcheckout gegen origin/main", "",
+    d && !d.reason ? `- ahead: ${d.ahead}, behind: ${d.behind}` : "- unbekannt (siehe Nicht geprüft)", "");
   section("Nicht geprüft", f.notChecked || [], (n) => n);
   return out.join("\n");
 }
@@ -297,12 +334,11 @@ export function gather({ run, cwd, now = Date.now() }) {
   if (prsOpen.length >= OPEN_LIMIT) limits.push(`gh pr list --state open: ${prsOpen.length} Einträge (Limit ${OPEN_LIMIT}) — Liste ggf. unvollständig`);
   if (prsAll.length >= ALL_LIMIT) limits.push(`gh pr list --state all: ${prsAll.length} Einträge (Limit ${ALL_LIMIT}) — Liste ggf. unvollständig`);
 
-  // quotePath=false: non-ASCII names stay readable instead of "d\303\244t.txt".
-  const status = gitIn(run, mainPath).ok("-c", "core.quotePath=false", "status", "--porcelain", "--untracked-files=normal");
-  const untracked = status
-    .split(/\r?\n/)
-    .filter((l) => l.startsWith("?? "))
-    .map((l) => l.slice(3).replace(/^"(.*)"$/, "$1"));
+  // NUL records preserve newlines, quotes and non-ASCII names verbatim.
+  const paths = gitIn(run, mainPath).ok("ls-files", "--others", "--exclude-standard", "--directory", "-z");
+  const untracked = paths.split("\0").filter(Boolean);
+  const suspiciousNames = untracked.filter((p) => !p.includes("/") && SUSPICIOUS_NAME_CHARS.test(p));
+  const mainDivergence = mainCheckoutDivergence(run, mainPath);
   // Stat on the main checkout path (where untracked files live), not --root.
   const accidents = shellRedirectAccidents(mainPath, untracked);
 
@@ -315,6 +351,8 @@ export function gather({ run, cwd, now = Date.now() }) {
     remoteBranches,
     untracked,
     shellRedirectAccidents: accidents,
+    suspiciousNames,
+    mainDivergence,
     limits,
     standText: readOrNull(join(root, "STAND.md")),
     planText: readOrNull(join(root, "docs", "PLAN.md")),

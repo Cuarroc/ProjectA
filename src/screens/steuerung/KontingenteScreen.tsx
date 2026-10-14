@@ -51,10 +51,10 @@ export function QuotaWindows({ rows }: { rows: WindowRow[] }) {
   );
 }
 
-function ProviderCard({ provider, quota, avatar, onProbe }: { provider: Provider; quota: QuotaState | undefined; avatar: string; onProbe: () => void }) {
+function ProviderCard({ provider, quota, quotaUnread, avatar, onProbe }: { provider: Provider; quota: QuotaState | undefined; quotaUnread: boolean; avatar: string; onProbe: () => void }) {
   const blocked = provider.quotaState === "blocked" || quota?.state === "blocked";
   const note = blockedNote(provider, quota);
-  const state = blocked ? "blocked" : provider.quotaState;
+  const state = blocked ? "blocked" : quotaUnread ? "unknown" : provider.quotaState;
   return (
     <article className="g-glass kt-card" aria-label={provider.name}>
       <div className="kt-head">
@@ -90,7 +90,7 @@ function Placeholder({ id, title, follow }: { id: string; title: string; follow:
 /** Steuerung › Kontingente: one Glass card per provider. Not mounted yet (V2-S05a-1). */
 export function KontingenteScreen() {
   const { providers, loading, error, refresh } = useProviderOverview(PROVIDER_POLL_MS);
-  const { byProfile } = useQuotaState(QUOTA_POLL_MS);
+  const { byProfile, loading: quotaLoading, error: quotaError } = useQuotaState(QUOTA_POLL_MS);
   const avatars = providerInitials(providers);
   return (
     <div className="kt-screen">
@@ -99,15 +99,21 @@ export function KontingenteScreen() {
         <p>{T.lead}</p>
       </header>
       {error !== null && <HonestState kind="offline" title={error} />}
+      {(quotaLoading || quotaError !== null) && (
+        <div role="status">
+          <HonestState kind="offline" title={quotaError !== null ? T.quotaUnread : T.quotaLoading}
+            hint={quotaError !== null && byProfile.size > 0 ? T.quotaStale : undefined} />
+        </div>
+      )}
       {providers.length > 0 ? (
         <div className="kt-provs">
-          {providers.map((p) => <ProviderCard key={p.id} provider={p} quota={byProfile.get(p.id)} avatar={avatars.get(p.id) ?? "?"} onProbe={refresh} />)}
+          {providers.map((p) => <ProviderCard key={p.id} provider={p} quota={byProfile.get(p.id)} quotaUnread={quotaLoading || quotaError !== null} avatar={avatars.get(p.id) ?? "?"} onProbe={refresh} />)}
         </div>
       ) : loading ? (
         <p className="kt-note" role="status">{T.loading}</p>
-      ) : (
+      ) : error === null ? (
         <HonestState kind="empty" title={T.noProviderTitle} hint={T.noProviderHint} />
-      )}
+      ) : null}
       <div className="kt-lower">
         <Placeholder id="kt-rules" title={T.rules} follow={T.rulesFollow} />
         <Placeholder id="kt-log" title={T.log} follow={T.logFollow} />

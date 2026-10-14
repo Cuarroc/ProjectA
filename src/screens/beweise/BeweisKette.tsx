@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import "../../design/glass.css";
 import "../../design/controls/controls.css";
 import { Button } from "../../design/controls/Button";
@@ -55,11 +56,14 @@ function NotConnected({ label, source }: { label: string; source: string }) {
 export function BeweisKette({ workerId }: { workerId: string }) {
   // `undefined` = not read yet, `null` = the read failed: neither may show a step mark.
   const [ready, setReady] = useState<WorkerReadiness | null | undefined>(undefined);
+  const [codeOpen, setCodeOpen] = useState(false);
   // Bumped by every read and by every workerId change/unmount: only the newest call may write.
   const generation = useRef(0);
 
   const load = useCallback(() => {
     const mine = ++generation.current;
+    setReady(undefined);
+    setCodeOpen(false);
     getWorkerReadiness(workerId).then(
       (r) => mine === generation.current && setReady(r),
       () => mine === generation.current && setReady(null),
@@ -67,7 +71,6 @@ export function BeweisKette({ workerId }: { workerId: string }) {
   }, [workerId]);
 
   useEffect(() => {
-    setReady(undefined);
     load();
     return () => {
       generation.current += 1;
@@ -86,7 +89,15 @@ export function BeweisKette({ workerId }: { workerId: string }) {
     <div className="bw-root">
       <header className="bw-head">
         <h1 className="bw-title">{T.title}</h1>
-        <Button size="sm" onClick={load}>{T.recheck}</Button>
+        <Button
+          size="sm"
+          disabled={ready === undefined}
+          onClick={() => {
+            // Commit the closed disclosure while the code card is still mounted.
+            flushSync(() => setCodeOpen(false));
+            load();
+          }}
+        >{ready === undefined ? T.checking : T.recheck}</Button>
       </header>
       <section className="g-glass bw-card bw-result" aria-label={T.result} aria-live="polite">
         <h2 className="bw-result-title">{result}</h2>
@@ -130,12 +141,22 @@ export function BeweisKette({ workerId }: { workerId: string }) {
             {ready.code === null ? (
               <HonestState kind="empty" title={T.codeUnmeasured} hint={T.codeUnmeasuredHint} />
             ) : (
-              <KeyValue box items={[
-                { label: T.workerHead, value: short(ready.code.workerHeadSha) },
-                { label: T.baseTip, value: short(ready.code.baseTipSha) },
-                { label: T.ahead, value: String(ready.ahead) },
-                { label: T.behind, value: String(ready.behind) },
-              ]} />
+              <>
+                <KeyValue box items={[
+                  { label: T.workerHead, value: short(ready.code.workerHeadSha) },
+                  { label: T.baseTip, value: short(ready.code.baseTipSha) },
+                  { label: T.ahead, value: String(ready.ahead) },
+                  { label: T.behind, value: String(ready.behind) },
+                ]} />
+                <details className="bw-tech" open={codeOpen} onToggle={(event) => setCodeOpen(event.currentTarget.open)}>
+                  <summary>{T.fullCodeStand}</summary>
+                  {codeOpen && <dl className="bw-note" style={{ overflowWrap: "anywhere" }}>
+                    <dt>{T.workerHeadSha}</dt><dd>{ready.code.workerHeadSha}</dd>
+                    <dt>{T.baseTipSha}</dt><dd>{ready.code.baseTipSha}</dd>
+                    <dt>{T.mergeTreeOid}</dt><dd>{ready.code.mergeTreeOid}</dd>
+                  </dl>}
+                </details>
+              </>
             )}
           </section>
         </div>
