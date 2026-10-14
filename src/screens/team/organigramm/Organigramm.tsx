@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import "../../../design/glass.css";
 import "../../../design/controls/controls.css";
 import { Button } from "../../../design/controls/Button";
@@ -8,6 +8,7 @@ import { StateMark } from "../../../design/state/StateMark";
 import { kindIcon } from "../../../lib/board";
 import { getBoardState, getBudgets, listAgentProfiles, type BoardStateResult } from "../../../lib/ipc";
 import { shortTask } from "../../../lib/text";
+import { useRetryableRead } from "../../../lib/useRetryableRead";
 import type { AgentProfile, Budget, BoardCard, WorkerKind } from "../../../types";
 import { agentCards, cardForm } from "../../leitstand/leitstand";
 import { T } from "./texts";
@@ -59,31 +60,13 @@ function Agents({ cards, reads }: { cards: readonly BoardCard[]; reads: Reads })
 
 /** Organigramm: the live team of one project as a tree, read-only. Nothing here edits or enforces a budget; not mounted yet. */
 export function Organigramm({ projectId }: { projectId: string }) {
-  // `undefined` = not read yet; a failed read is `null` inside `Reads`.
-  const [reads, setReads] = useState<Reads | undefined>(undefined);
-  const [pending, setPending] = useState(false);
-  // One token per read attempt; a reply only lands while its own token is still current.
-  const generation = useRef(0);
-
-  const read = useCallback((pid: string) => {
-    const mine = ++generation.current;
-    setPending(true);
-    void Promise.allSettled([getBoardState(pid), listAgentProfiles(), getBudgets()]).then(([board, profiles, budgets]) => {
-      if (generation.current !== mine) return;
-      setReads({
-        board: board.status === "fulfilled" ? board.value : null,
-        profiles: profiles.status === "fulfilled" ? profiles.value : null,
-        budgets: budgets.status === "fulfilled" ? budgets.value : null,
-      });
-      setPending(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    setReads(undefined);
-    read(projectId);
-    return () => { generation.current += 1; };
-  }, [projectId, read]);
+  // `undefined` = not read yet; a failed read is `null` inside `Reads`, so the three reads never reject together.
+  const read = useCallback((): Promise<Reads> => Promise.allSettled([getBoardState(projectId), listAgentProfiles(), getBudgets()]).then(([board, profiles, budgets]) => ({
+    board: board.status === "fulfilled" ? board.value : null,
+    profiles: profiles.status === "fulfilled" ? profiles.value : null,
+    budgets: budgets.status === "fulfilled" ? budgets.value : null,
+  })), [projectId]);
+  const { data: reads, pending, retry } = useRetryableRead(read);
 
   const board = reads?.board;
   const agents = board ? agentCards(board.cards) : [];
@@ -95,7 +78,7 @@ export function Organigramm({ projectId }: { projectId: string }) {
       <section className="g-glass og-card" aria-label={T.team} aria-busy={pending}>
         <h2 className="og-h">{T.team}</h2>
         {reads !== undefined && (
-          <Button size="sm" onClick={() => read(projectId)} disabled={pending}>{T.reread}</Button>
+          <Button size="sm" onClick={retry} disabled={pending}>{T.reread}</Button>
         )}
         {reads === undefined ? <p className="og-note">{T.loading}</p> : !board ? (
           <HonestState kind="offline" title={T.offline} hint={T.offlineHint} />
