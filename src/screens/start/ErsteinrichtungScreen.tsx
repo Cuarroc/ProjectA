@@ -80,7 +80,7 @@ function ScanResult({ scan }: { scan: ScanState }) {
 export function ErsteinrichtungScreen({ hasProject, scan, onAction }: ErsteinrichtungScreenProps) {
   const { providers, loading, error, refresh } = useProviderOverview(PROVIDER_POLL_MS);
   const signedIn = providers.filter((p) => p.connected);
-  const ready = signedIn.length > 0;
+  const ready = !loading && !error && signedIn.length > 0;
   const known = providers.length > 0;
 
   const toolsRow: Pick<Row, "form" | "chip" | "detail"> = loading
@@ -98,7 +98,7 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
         ? { form: "done", chip: T.chip.done, detail: T.signedIn(names(signedIn)) }
         : { form: "need", chip: T.chip.open, detail: known ? T.missing(names(providers)) : T.noProviders };
 
-  const projectDone = hasProject && (!scan || scan.status === "ok");
+  const projectDone = hasProject && scan?.status === "ok";
   const projectRow: Pick<Row, "form" | "chip"> =
     scan?.status === "error" ? { form: "bad", chip: T.chip.failed }
     : scan?.status === "loading" ? { form: "run", chip: T.chip.reading }
@@ -116,7 +116,7 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
     { id: "team", title: T.team.title, detail: T.team.hint, form: "need", chip: T.chip.open, action: T.team.action },
     {
       id: "done", title: T.done.title, detail: T.done.hint, action: T.done.action, primary: true,
-      form: ready && hasProject ? "ok" : "need", chip: ready && hasProject ? T.chip.ready : T.chip.open,
+      form: ready && projectDone ? "ok" : "need", chip: ready && projectDone ? T.chip.ready : T.chip.open,
     },
   ];
   const current = currentStepIndex(rows.map((r) => r.form));
