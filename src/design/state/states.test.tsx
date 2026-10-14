@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import { StateGlyph, StateMark } from "./StateMark";
 import {
   COLUMN_FORM, REASON_FORM, STATE_FORMS, STATE_WORDS, formForColumn, formForReason,
+  type StateForm,
 } from "./states";
 
 const rust = (file: string) => readFileSync(resolve(__dirname, "../../../src-tauri/src", file), "utf8");
@@ -63,4 +64,24 @@ it("StateMark prints word and form class and StateGlyph hides from assistive tec
   }
   expect(screen.getByText("Eigener Text")).toHaveClass("g-st--bad");
   expect(container.querySelector(".g-glyph--run")).toHaveAttribute("aria-hidden", "true");
+});
+
+it("StateMark names an unknown form instead of rendering a ghost mark", () => {
+  for (const form of [undefined as unknown as StateForm, "weird" as StateForm]) {
+    const { container, unmount } = render(<StateMark form={form} />);
+    expect(screen.getByText("Unbekannt")).toHaveClass("g-st", "g-st--unknown");
+    expect(container.querySelector(".g-st--undefined")).toBeNull();
+    expect(container.querySelector(".g-st--weird")).toBeNull();
+    unmount();
+  }
+});
+
+it("StateGlyph renders no undefined shape class for an unknown form", () => {
+  for (const form of [undefined as unknown as StateForm, "weird" as StateForm]) {
+    const { container, unmount } = render(<StateGlyph form={form} />);
+    expect(container.querySelector(".g-glyph--undefined")).toBeNull();
+    expect(container.querySelector(".g-glyph--weird")).toBeNull();
+    expect(container.querySelector(".g-glyph--unknown")).toHaveAttribute("aria-hidden", "true");
+    unmount();
+  }
 });

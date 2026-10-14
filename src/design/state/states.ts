@@ -8,6 +8,10 @@ import type { BoardColumn } from "../../types";
 
 export type StateForm = "run" | "need" | "rev" | "ok" | "done" | "bad";
 
+/** Neutral mark for a form this map does not know. Not one of the six forms. */
+export const STATE_UNKNOWN_FORM = "unknown";
+export const STATE_UNKNOWN_WORD = de["state.unknown"];
+
 /** Display order of the board's filter chips. */
 export const STATE_FORMS: readonly StateForm[] = ["run", "need", "rev", "ok", "done", "bad"];
 
