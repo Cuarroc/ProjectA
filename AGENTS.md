@@ -271,6 +271,20 @@ only after the user approves it.
   branch: its DRAFT PR has that branch as base and `main` is not merged into
   it. The coordinator retargets it to `main` after the base merges. Review
   diffs of a stacked PR use `git diff <base-branch>...<head>`.
+- **WIP limit:** at most 15 open agent PRs (acceptance of the PR-backlog
+  package AP-1). At the limit there is no new implementation dispatch, only
+  finishing, review and merging. Count with `gh pr list --state open`.
+- **Draft age:** a draft without a new commit for 48 h is finished, split or
+  closed by the coordinator. Closing keeps the branch, so nothing is lost.
+  Drafts get no CI, so an old draft has no evidence.
+- **Bundling:** before every dispatch the coordinator runs
+  `gh pr list --state all --search "<keyword>"` for an existing similar
+  package. Fixes with the same cause (retry, focus, ...) go into one package.
+- **File ownership:** `.github/CODEOWNERS` maps the four seams (rule 6) and
+  `.github/` plus `scripts/ci/` to the user. It documents ownership and
+  requests a review; the rulesets do not require code-owner approval (checked
+  2026-10-14: `require_code_owner_review: false`), so it blocks no merge.
+  Rule 6 still governs who edits a seam.
 
 ## Merging (Mergify queue, since 2026-09-24)
 
@@ -289,10 +303,16 @@ hypotheses); the queue run on `main` is still checked by Mergify. Merge
 `main` into your branch only to resolve a real conflict (Mergify labels
 those `conflict`): merge, never rebase or force-push.
 
-- `review-ok` label: a PR enters the queue only with it. The orchestrator
-  pipeline sets it after the review disposition is complete and no high
-  finding is open; reviewers never queue themselves. Removing it (or adding
-  `do-not-merge`) takes a PR out. No branch type is exempt.
+- `review-ok` label: a PR enters the queue only with it. Only Root (the
+  orchestrator; the Chief as its deputy) sets it, bound to the head SHA that
+  was reviewed (a later push voids it), after the review disposition is
+  complete and no high finding is open. The setter's own model family does
+  not matter; the review does: the required verdicts must come from model
+  families other than the author's (rule 5) and be bound to that head SHA. A
+  setter that shares the author's family must not count its own review as
+  the independent one. Workers and reviewers never set it or queue
+  themselves. Removing it (or adding `do-not-merge`) takes a PR out. No branch
+  type is exempt.
 - `do-not-merge` label: keeps a green PR out of the queue.
 - `priority` label (coordinator only) or a `hotfix/` branch: queued first. A
   hook or gate fix that protects everyone goes alone as a hotfix, never bundled
