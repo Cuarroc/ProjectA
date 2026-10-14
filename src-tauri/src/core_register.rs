@@ -2,6 +2,19 @@
 //! No setting values or effects are owned here. The future Store adapter must
 //! atomically commit transitions with values, authenticate actors, validate
 //! scoped approval/policy and redact payloads before persistence (ST-K1/CORE-2).
+//!
+//! Deferred to later modules, not enforced by this pure model:
+//! - RiskClass override (ADR-V2-03): `core/rights.rs` enforces that
+//!   money/rights/security/deletion/release/own-level always require a user
+//!   decision regardless of owner. This model checks owner authority only;
+//!   the hard-coded operation-class override is out of scope here.
+//! - `Request.old` is adapter-resolved, not caller input: the Store adapter
+//!   must overwrite `old` with the authoritative read inside the apply
+//!   transaction before journalling, so a helper cannot poison the rollback
+//!   value or the audit chain (ADR-V2-01).
+//! - Idempotency dedupe (ADR-V2-01 `core_requests` unique on
+//!   actor/scope/idempotency key) is a Store-table constraint; this model
+//!   does not retry-dedupe.
 #![cfg_attr(not(test), allow(dead_code))] // Runtime wiring belongs to V2-ST-K1.
 
 use serde_json::Value;
@@ -71,6 +84,7 @@ pub struct EffectCapability {
 #[derive(Debug)]
 pub struct Setting {
     pub key: &'static str,
+    pub scope: &'static str,
     pub owner: Option<Owner>,
     pub area: &'static str,
     pub risk_class: RiskClass,
@@ -87,6 +101,9 @@ pub struct Request {
     pub scope: String,
     pub key: String,
     pub expected_revision: u64,
+    /// Adapter-resolved prior value, never trusted from caller prose. The
+    /// Store adapter overwrites this with the authoritative read inside the
+    /// apply transaction before journalling (ADR-V2-01).
     pub old: Value,
     pub new: Value,
     pub reason: String,
@@ -159,11 +176,15 @@ impl<'a> Register<'a> {
             ..Self::default()
         }
     }
-    pub fn setting(&self, key: &str) -> Result<&Setting, Error> {
-        let mut matches = self.settings.iter().filter(|s| s.key == key);
+    pub fn setting(&self, scope: &str, key: &str) -> Result<&Setting, Error> {
+        let mut matches = self
+            .settings
+            .iter()
+            .filter(|s| s.key == key && s.scope == scope);
         let setting = matches.next().ok_or(Error::Unregistered)?;
         if matches.next().is_some()
             || setting.key.trim().is_empty()
+            || setting.scope.trim().is_empty()
             || setting.owner.is_none()
             || setting.area.trim().is_empty()
             || setting.effect_site.trim().is_empty()
@@ -200,7 +221,14 @@ impl<'a> Register<'a> {
         actor: &Actor,
         timestamp: u64,
     ) -> Result<usize, Error> {
-        let setting = self.setting(&change.key)?;
+        if change.scope.trim().is_empty()
+            || change.key.trim().is_empty()
+            || change.reason.trim().is_empty()
+            || change.evidence.trim().is_empty()
+        {
+            return Err(Error::InvalidRegistry);
+        }
+        let setting = self.setting(&change.scope, &change.key)?;
         if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
             && self.level(&change.scope, setting.area) == Level::Off
         {
@@ -233,7 +261,7 @@ impl<'a> Register<'a> {
         timestamp: u64,
     ) -> Result<(), Error> {
         let mut entry = self.requests.get(id).ok_or(Error::UnknownRequest)?.clone();
-        let setting = self.setting(&entry.change.key)?;
+        let setting = self.setting(&entry.change.scope, &entry.change.key)?;
         if actor.authority.is_none() || actor.authority != setting.owner {
             return Err(Error::Forbidden);
         }
@@ -286,6 +314,7 @@ mod tests {
     fn setting(owner: Option<Owner>) -> Setting {
         Setting {
             key: "queue.limit",
+            scope: "app",
             owner,
             area: "places",
             risk_class: RiskClass::Ordinary,
@@ -650,5 +679,58 @@ mod tests {
         }
         assert_eq!(r.journal(), before);
         r.transition(id, Checked, &a, 3).unwrap();
+    }
+    #[test]
+    fn same_key_different_scopes_register_independently() {
+        let a = actor(Some(Owner::User));
+        let project_setting = Setting {
+            scope: "project",
+            ..setting(a.authority)
+        };
+        let app_setting = Setting {
+            scope: "app",
+            ..setting(a.authority)
+        };
+        let settings = [project_setting, app_setting];
+        let mut r = Register::new(&settings, &[], &[]);
+        let mut project_change = request(0);
+        project_change.scope = "project".into();
+        let mut app_change = request(0);
+        app_change.scope = "app".into();
+        let project_id = r.submit(project_change, &a, 1).unwrap();
+        let app_id = r.submit(app_change, &a, 2).unwrap();
+        r.transition(project_id, Checked, &a, 3).unwrap();
+        r.transition(app_id, Checked, &a, 4).unwrap();
+        assert_eq!(r.journal()[0].change.scope, "project");
+        assert_eq!(r.journal()[1].change.scope, "app");
+        let mut dup_scope = setting(a.authority);
+        dup_scope.scope = "app";
+        let dup_settings = [setting(a.authority), dup_scope];
+        let mut r2 = Register::new(&dup_settings, &[], &[]);
+        assert_eq!(r2.submit(request(0), &a, 1), Err(Error::InvalidRegistry));
+    }
+    #[test]
+    fn blank_request_fields_are_rejected() {
+        let a = actor(Some(Owner::User));
+        let settings = [setting(a.authority)];
+        let mut scope_change = request(0);
+        scope_change.scope = "  ".into();
+        let mut reason_change = request(0);
+        reason_change.reason = "".into();
+        let mut evidence_change = request(0);
+        evidence_change.evidence = "  ".into();
+        for (label, change) in [
+            ("scope", scope_change),
+            ("reason", reason_change),
+            ("evidence", evidence_change),
+        ] {
+            let mut r = Register::new(&settings, &[], &[]);
+            assert_eq!(
+                r.submit(change, &a, 1),
+                Err(Error::InvalidRegistry),
+                "blank {label} should be rejected"
+            );
+            assert!(r.journal().is_empty(), "blank {label} must not journal");
+        }
     }
 }
