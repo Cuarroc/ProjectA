@@ -71,6 +71,7 @@ impl VerifiedImage {
         if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_IMAGE_BYTES {
             return Err("executable must be a nonempty regular file of at most 512 MiB".into());
         }
+        // SAFETY: the struct holds only integers and FILETIMEs; all-zero is valid.
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
         // SAFETY: file owns a live handle, and info is writable for the call.
         if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
