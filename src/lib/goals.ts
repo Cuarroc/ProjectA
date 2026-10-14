@@ -14,14 +14,10 @@ export const APP_GOALS = [
 
 export type AppGoal = (typeof APP_GOALS)[number];
 
-export const GOAL_LABELS: Record<AppGoal, string> = {
-  work: "Work",
-  attention: "Attention",
-  agents: "Agents",
-  review: "Review",
-  insights: "Insights",
-  settings: "Settings",
-};
+/** Key of a goal's visible name in `src/i18n/de.ts`; the ids above stay internal. */
+export function goalLabelKey(goal: AppGoal): `goal.${AppGoal}` {
+  return `goal.${goal}`;
+}
 
 export const GOAL_TITLES: Record<AppGoal, string> = {
   work: "Orchestrator-Dialog, Board und Backlog",

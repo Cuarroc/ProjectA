@@ -56,7 +56,7 @@ const active = (event: string) => mocks.listeners.filter((entry) => entry.event 
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
 const openShellTab = async () => {
-  fireEvent.click(await screen.findByRole("tab", { name: "Agents" }));
+  fireEvent.click(await screen.findByRole("tab", { name: "Agenten" }));
   fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
   fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
 };

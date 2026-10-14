@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import Icon from "./Icon";
-import { APP_GOALS, GOAL_LABELS, GOAL_TITLES, type AppGoal } from "../lib/goals";
+import { useT } from "../i18n/useT";
+import { APP_GOALS, goalLabelKey, GOAL_TITLES, type AppGoal } from "../lib/goals";
 import { handleTablistKey, tabStop } from "../lib/tabs";
 
 interface ViewBarProps {
@@ -41,6 +42,7 @@ export default function ViewBar({
   railOpen,
   onToggleRail,
 }: ViewBarProps) {
+  const t = useT();
   // The full board is the rail writ large, so the two never share a screen —
   // and a toggle that visibly does nothing is worse than one that says why.
   const railBlocked = goal === "work" && workSurface === "board";
@@ -107,7 +109,7 @@ export default function ViewBar({
             className={`segment${goal === id ? " segment-active" : ""}`}
             onClick={() => onChange(id)}
           >
-            {GOAL_LABELS[id]}
+            {t(goalLabelKey(id))}
             {id === "attention" && questionCount > 0 ? (
               <span
                 className="segment-badge"
