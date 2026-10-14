@@ -159,9 +159,20 @@ pub fn parse_plan(
             continue;
         }
         let field = |name| header.iter().position(|c| *c == name).map(|i| cells[i]);
-        let id = field("ID").unwrap();
-        let title = cells[header.iter().position(|c| c.starts_with("Paket")).unwrap()];
-        let acceptance = field("Konkretes Ergebnis und Abnahme").unwrap();
+        let required = |name| {
+            field(name)
+                .ok_or_else(|| error(n, &format!("plan table is missing required column {name}")))
+        };
+        let Some(title) = header
+            .iter()
+            .position(|c| c.starts_with("Paket"))
+            .map(|i| cells[i])
+        else {
+            return Err(error(n, "plan table is missing required column Paket"));
+        };
+        let id = required("ID")?;
+        let acceptance = required("Konkretes Ergebnis und Abnahme")?;
+        let dependencies = required("Nach")?;
         if !valid_id(id) || title.is_empty() || acceptance.is_empty() {
             return Err(error(n, "stable ID, title and acceptance are required"));
         }
@@ -196,7 +207,7 @@ pub fn parse_plan(
             source_revision: revision.clone(),
             source_line: n,
             title: title.into(),
-            dependency_ids: references(field("Nach").unwrap())?,
+            dependency_ids: references(dependencies)?,
             acceptance: acceptance.into(),
         });
     }
@@ -390,13 +401,21 @@ pub fn parse_milestones(
             delimiter = false;
             continue;
         }
-        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()].to_owned();
+        let field = |name| {
+            let column = header.iter().position(|c| *c == name);
+            column.map(|i| cells[i].to_owned()).ok_or_else(|| {
+                error(
+                    n,
+                    &format!("milestone table is missing required column {name}"),
+                )
+            })
+        };
         milestones[index].packages.push(HistoricalMilestonePackage {
-            package_id: field("ID"),
-            title: field("Paket"),
-            size: field("Gr."),
-            lane: field("Lane"),
-            raw_status: field("Stand"),
+            package_id: field("ID")?,
+            title: field("Paket")?,
+            size: field("Gr.")?,
+            lane: field("Lane")?,
+            raw_status: field("Stand")?,
             source_line: n,
         });
     }
@@ -522,8 +541,13 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
             delimiter = false;
             continue;
         }
-        let field = |name| cells[header.iter().position(|c| *c == name).unwrap()];
-        let id = field("ID");
+        let field = |name| {
+            let column = header.iter().position(|c| *c == name);
+            column
+                .map(|i| cells[i])
+                .ok_or_else(|| error(n, &format!("v2 table is missing required column {name}")))
+        };
+        let id = field("ID")?;
         if !valid_id(id) {
             return Err(error(n, "stable ID is required"));
         }
@@ -533,14 +557,14 @@ pub fn parse_v2_packages(source_path: &str, source: &str) -> Result<Vec<V2Packag
         }
         packages.push(V2Package {
             package_id: id.into(),
-            title: field("Ziel").into(),
-            lane: field("Lane").into(),
-            seam: field("Naht").into(),
-            tier: field("Stufe").into(),
-            size: field("Größe").into(),
-            raw_dependencies: field("Hängt ab von").into(),
-            provider: field("Anbieter").into(),
-            raw_acceptance: field("Abnahme").into(),
+            title: field("Ziel")?.into(),
+            lane: field("Lane")?.into(),
+            seam: field("Naht")?.into(),
+            tier: field("Stufe")?.into(),
+            size: field("Größe")?.into(),
+            raw_dependencies: field("Hängt ab von")?.into(),
+            provider: field("Anbieter")?.into(),
+            raw_acceptance: field("Abnahme")?.into(),
             source_path: source_path.into(),
             source_line: n,
         });
