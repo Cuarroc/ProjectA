@@ -52,6 +52,10 @@ export function useOrchestratorChat(
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A failed send leaves the prompt unsent. A later history read must not
+  // clear that status; only a send that lands, dismissing the alert, or a
+  // project switch does.
+  const unsentFailure = useRef(false);
 
   /**
    * Which project is on screen *now*. Every call below reads it after its await
@@ -65,7 +69,8 @@ export function useOrchestratorChat(
    * Reads the history of one worker. A failed read is reported, not swallowed:
    * freezing the thread on its last state (or on nothing) would claim the
    * conversation simply has no news. Only a project switch stays quiet — the
-   * late failure belongs to a project nobody is looking at.
+   * late failure belongs to a project nobody is looking at. An unsent-message
+   * failure outranks either result: the reread leaves that status in place.
    */
   const loadMessages = useCallback(async (workerId: string, forProjectId: string | null) => {
     setLoading(true);
@@ -74,14 +79,14 @@ export function useOrchestratorChat(
       // A switch during the call makes this history someone else's.
       if (shownProjectId.current !== forProjectId) return;
       if (!Array.isArray(next)) {
-        setError("Der Verlauf kam unvollständig an.");
+        if (!unsentFailure.current) setError("Der Verlauf kam unvollständig an.");
         return;
       }
       setMessages(next);
-      setError(null);
+      if (!unsentFailure.current) setError(null);
     } catch (cause) {
       if (shownProjectId.current !== forProjectId) return;
-      setError(describeError(cause));
+      if (!unsentFailure.current) setError(describeError(cause));
     } finally {
       if (shownProjectId.current === forProjectId) setLoading(false);
     }
@@ -91,6 +96,7 @@ export function useOrchestratorChat(
   // send that is still in flight included, hence `sending` and the ref.
   useEffect(() => {
     shownProjectId.current = projectId;
+    unsentFailure.current = false;
     setAdopted(null);
     setMessages([]);
     setLoading(false);
@@ -134,6 +140,7 @@ export function useOrchestratorChat(
         // history under the current project's name, and the poll would hold it
         // there until the next send. The prompt did go out, so it is a `true`.
         if (shownProjectId.current !== target) return true;
+        unsentFailure.current = false;
         setAdopted({ id: orchestrator.id, projectId: target });
         setError(null);
         // The adopted id re-fires the read effect above, so the prompt shows
@@ -143,6 +150,7 @@ export function useOrchestratorChat(
         // Showing this under another project would blame the wrong one, so a
         // late failure stays quiet and only keeps the draft.
         if (shownProjectId.current !== target) return false;
+        unsentFailure.current = true;
         setError(describeError(cause));
         return false;
       } finally {
@@ -155,7 +163,10 @@ export function useOrchestratorChat(
     [projectId, sending],
   );
 
-  const clearError = useCallback(() => setError(null), []);
+  const clearError = useCallback(() => {
+    unsentFailure.current = false;
+    setError(null);
+  }, []);
 
   // A failed read leaves the thread on its old state; the user retries it in
   // place instead of waiting out the poll interval. Before the orchestrator is
