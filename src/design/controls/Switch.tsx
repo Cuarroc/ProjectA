@@ -7,14 +7,15 @@ export interface SwitchProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 /** Needs an accessible name: pass aria-label or aria-labelledby. Space and Enter toggle (native button). */
 export function Switch({ checked, onCheckedChange, onClick, className, ...rest }: SwitchProps) {
+  // After rest: checked alone decides aria-checked.
   return (
     <button
       type="button"
       role="switch"
-      aria-checked={checked}
       className={["g-sw", className].filter(Boolean).join(" ")}
       onClick={(e) => { onClick?.(e); if (!e.defaultPrevented) onCheckedChange?.(!checked); }}
       {...rest}
+      aria-checked={checked}
     />
   );
 }
