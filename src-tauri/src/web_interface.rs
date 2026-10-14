@@ -2200,4 +2200,182 @@ mod tests {
         assert_eq!(route(&store, "/board", "").status, 404);
         assert_eq!(route(&store, "/board.json", "").status, 404);
     }
+
+    // -- pool pressure (AP-11a) --------------------------------------------
+
+    const WAVE_CLIENTS: usize = 64;
+    const WAVE_WRITERS: usize = 16;
+    const WAVE_HOLD: Duration = Duration::from_millis(300);
+
+    /// What stands between the wave and the store while it runs.
+    #[derive(Clone, Copy)]
+    enum Obstacle {
+        /// All four pooled connections are checked out by the test.
+        PoolHeld,
+        /// A foreign connection holds SQLite's writer lock (`BEGIN IMMEDIATE`).
+        ForeignWriter,
+    }
+
+    /// 64 clients at once against the 4-connection pool, through the real
+    /// server: accept thread, thread per connection, `block_on`, pool. 48 of
+    /// them read; 16 write through `block_on` from their own thread, the shape
+    /// of `ApiBackend`. Characterization of the AP-11 analysis: a saturated
+    /// pool makes requests wait, it does not break, panic or leak.
+    ///
+    /// The 503 count is deliberately not asserted: exactly 64 clients fit the
+    /// admission limit, but one more would make it depend on thread timing
+    /// (the deterministic overload test is
+    /// `a_full_server_answers_503_without_spending_a_thread`).
+    fn run_pool_pressure_wave(tag: &str, obstacle: Obstacle) {
+        let dir = TempDir::new(tag);
+        let (store, project_ids) = tauri::async_runtime::block_on(async {
+            let store = Store::open(&dir.path().join("projecta.db"))
+                .await
+                .expect("open store");
+            let mut ids = Vec::new();
+            for n in 0..20 {
+                let project = store
+                    .create_project(&format!("Pressure {n}"), &format!("C:/repos/p{n}"))
+                    .await
+                    .unwrap();
+                ids.push(project.id);
+            }
+            store
+                .set_landing_page(&ids[0], Some("# Pressure\n\nstill **served**.\n"))
+                .await
+                .unwrap();
+            (Arc::new(store), ids)
+        });
+        let mut state = start_web_interface(Arc::clone(&store), engine(), 0).expect("start");
+        let port = state.port();
+
+        // Saturation is arranged, not hoped for.
+        let mut held = Vec::new();
+        if matches!(obstacle, Obstacle::PoolHeld) {
+            for _ in 0..4 {
+                held.push(
+                    tauri::async_runtime::block_on(store.pool_for_test().acquire())
+                        .expect("check out a pooled connection"),
+                );
+            }
+        }
+        let (locked_tx, locked_rx) = mpsc::channel::<()>();
+        let foreign = matches!(obstacle, Obstacle::ForeignWriter).then(|| {
+            let options = sqlx::sqlite::SqliteConnectOptions::new()
+                .filename(dir.path().join("projecta.db"))
+                .busy_timeout(Duration::from_secs(5));
+            thread::spawn(move || {
+                use sqlx::Connection as _;
+                tauri::async_runtime::block_on(async {
+                    let mut conn = sqlx::sqlite::SqliteConnection::connect_with(&options)
+                        .await
+                        .expect("open foreign connection");
+                    sqlx::query("BEGIN IMMEDIATE")
+                        .execute(&mut conn)
+                        .await
+                        .expect("take the writer lock");
+                    locked_tx.send(()).expect("signal lock held");
+                    tokio::time::sleep(WAVE_HOLD).await;
+                    sqlx::query("ROLLBACK")
+                        .execute(&mut conn)
+                        .await
+                        .expect("release the writer lock");
+                });
+            })
+        });
+        if foreign.is_some() {
+            locked_rx.recv().expect("foreign writer holds the lock");
+        }
+
+        let barrier = Arc::new(std::sync::Barrier::new(WAVE_CLIENTS + 1));
+        let clients: Vec<_> = (0..WAVE_CLIENTS)
+            .map(|n| {
+                let barrier = Arc::clone(&barrier);
+                let store = Arc::clone(&store);
+                let ids = project_ids.clone();
+                thread::spawn(move || {
+                    barrier.wait();
+                    if n < WAVE_WRITERS {
+                        // A bare `get_once`: a retry would hide a dead handler.
+                        let wrote = tauri::async_runtime::block_on(
+                            store.set_setting(&format!("ap11.pool.{}", n % 4), &format!("v{n}")),
+                        );
+                        (wrote.map(|()| 200), None)
+                    } else {
+                        let target = match n % 3 {
+                            0 => "/".to_string(),
+                            1 => "/board.json".to_string(),
+                            _ => format!("/project/{}", ids[n % ids.len()]),
+                        };
+                        (
+                            get_once(port, &target).map(|(status, _, _)| status),
+                            Some(target),
+                        )
+                    }
+                })
+            })
+            .collect();
+
+        let started = Instant::now();
+        barrier.wait();
+        thread::sleep(WAVE_HOLD);
+        // Returning a pooled connection needs a runtime context.
+        tauri::async_runtime::block_on(async { held.clear() });
+        let results: Vec<_> = clients
+            .into_iter()
+            .map(|c| c.join().expect("client panicked"))
+            .collect();
+        let elapsed = started.elapsed();
+        if let Some(foreign) = foreign {
+            foreign.join().expect("foreign writer thread");
+        }
+
+        for (result, target) in &results {
+            assert_eq!(result.as_ref().ok(), Some(&200), "{target:?}: {result:?}");
+        }
+        assert!(
+            elapsed < Duration::from_secs(10),
+            "the wave took {elapsed:?}"
+        );
+
+        // No connection leaked: all of them come back idle, and the pool
+        // never grew past its four.
+        let pool = store.pool_for_test();
+        let settle = Instant::now() + Duration::from_secs(2);
+        while pool.num_idle() != pool.size() as usize && Instant::now() < settle {
+            thread::sleep(Duration::from_millis(20));
+        }
+        assert!(pool.size() <= 4, "pool grew to {}", pool.size());
+        assert_eq!(pool.num_idle(), pool.size() as usize, "a connection leaked");
+
+        // Every written value is one that some writer wrote for that key.
+        for key in 0..4 {
+            let stored =
+                tauri::async_runtime::block_on(store.get_setting(&format!("ap11.pool.{key}")))
+                    .expect("read setting")
+                    .expect("the key was written");
+            let written: Vec<String> = (0..WAVE_WRITERS)
+                .filter(|n| n % 4 == key)
+                .map(|n| format!("v{n}"))
+                .collect();
+            assert!(
+                written.contains(&stored),
+                "key {key}: {stored:?} not in {written:?}"
+            );
+        }
+
+        let (status, _, body) = get(port, "/health");
+        assert_eq!((status, body.as_str()), (200, "{\"ok\":true}"));
+        stop_web_interface(&mut state).expect("stop");
+    }
+
+    #[test]
+    fn sixty_four_clients_wait_out_a_pool_held_by_four() {
+        run_pool_pressure_wave("web-interface-pool-held", Obstacle::PoolHeld);
+    }
+
+    #[test]
+    fn sixty_four_clients_wait_out_a_foreign_writer_lock() {
+        run_pool_pressure_wave("web-interface-pool-foreign", Obstacle::ForeignWriter);
+    }
 }
