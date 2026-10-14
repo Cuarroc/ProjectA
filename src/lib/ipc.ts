@@ -2218,7 +2218,7 @@ export function onSupervisorNotification(
 
 /**
  * Hands a URL to the OS through the opener plugin (registered in main.rs,
- * scoped to http(s) in capabilities/default.json - see
+ * scoped to https plus the loopback board URL in capabilities/default.json - see
  * src/opener-config.test.ts). The webview is only the fallback for the case
  * the plugin refuses, and that case is logged: until P2-J (02.09.2026) the
  * plugin was never registered, every call took this fallback, and nothing
