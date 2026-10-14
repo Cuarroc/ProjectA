@@ -206,4 +206,16 @@ describe("WegWahl", () => {
     const commands = new Set(mocks.invoke.mock.calls.map((call) => call[0]));
     expect([...commands].sort()).toEqual(["get_quota_state", "list_agent_profiles"]);
   });
+
+  it("warns when the chosen persona is blocked", async () => {
+    backend({ quotas: [quota("p-claude", "blocked", { reason: "Wochenlimit erreicht" })] });
+    render(<WegWahl value="p-claude" onChange={() => {}} />);
+    expect(await screen.findByText(/Die gewählte Persona „Claude Weg“ ist gesperrt\./)).toBeInTheDocument();
+  });
+
+  it("warns when the chosen persona is not among the selectable ones", async () => {
+    backend();
+    render(<WegWahl value="p-off" onChange={() => {}} />);
+    expect(await screen.findByText(/Die gewählte Persona „Aus Weg“ ist nicht wählbar\./)).toBeInTheDocument();
+  });
 });
