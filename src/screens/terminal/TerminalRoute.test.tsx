@@ -136,9 +136,10 @@ async function deepLinkedStatusLabel(profileId: string) {
   return expect(view.container.querySelector('.statusbar [title="pty-one"]'));
 }
 
-it("labels a deep linked worker session with its profile name (profile shell)", async () => (await deepLinkedStatusLabel("shell")).toHaveTextContent("Shell"));
+// Titles carry no literal parentheses: red-first passes trailer names to `vitest -t` as a regex.
+it("labels a deep linked worker session with its profile name profile shell", async () => (await deepLinkedStatusLabel("shell")).toHaveTextContent("Shell"));
 // An unknown profile gets no label; its internal identifier is never shown.
-it("labels a deep linked worker session with its profile name (profile gone)", async () => (await deepLinkedStatusLabel("gone")).not.toHaveTextContent("gone"));
+it("labels a deep linked worker session with its profile name profile gone", async () => (await deepLinkedStatusLabel("gone")).not.toHaveTextContent("gone"));
 it("does not label a worker profile with its internal identifier", async () => (await deepLinkedStatusLabel("gone")).toHaveTextContent(/^$/));
 
 it.each([false, true])("keeps provider callbacks stable after opening a worker (restore: %s)", async (restore) => {
