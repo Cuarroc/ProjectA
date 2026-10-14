@@ -373,8 +373,8 @@ export default function Sidebar({
                     {sharpening.phase === "waiting" ? (
                       <div className="sidebar-note">
                         {sharpening.open.length === 1
-                          ? "Eine Rückfrage wartet in der Attention-Ansicht. "
-                          : `${sharpening.open.length} Rückfragen warten in der Attention-Ansicht. `}
+                          ? "Eine Rückfrage wartet in der Ansicht „Achtung“. "
+                          : `${sharpening.open.length} Rückfragen warten in der Ansicht „Achtung“. `}
                         <button type="button" className="link-button" onClick={sharpening.cancel}>
                           Abbrechen
                         </button>

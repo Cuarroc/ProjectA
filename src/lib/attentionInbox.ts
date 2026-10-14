@@ -207,7 +207,7 @@ export function buildInbox(items: readonly AttentionSource[]): InboxEntry[] {
         projectId: first.projectId,
         title: first.title,
         reason: first.title,
-        nextStep: "Empfehlung in Insights/Settings prüfen — sie bleibt, bis du sie annimmst oder ablehnst.",
+        nextStep: "Empfehlung in Auswertung/Einstellungen prüfen — sie bleibt, bis du sie annimmst oder ablehnst.",
         goal: "work",
         observedAt,
         source: "recommendation",

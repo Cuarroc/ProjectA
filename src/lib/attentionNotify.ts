@@ -53,7 +53,7 @@ export function planNotifications(
     if (!grew) continue;
     notifications.push({
       tag: entry.key,
-      title: entry.grade === "blocking" ? "ProjectA — Blockade" : "ProjectA — Attention",
+      title: entry.grade === "blocking" ? "ProjectA — Blockade" : "ProjectA — Achtung",
       body: redactPayload(entry.title),
     });
   }

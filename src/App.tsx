@@ -57,7 +57,8 @@ import {
   loadUiDensity,
   type UiDensity,
 } from "./lib/settings";
-import { GOAL_LABELS, type AppGoal } from "./lib/goals";
+import { useT } from "./i18n/useT";
+import { goalLabelKey, type AppGoal } from "./lib/goals";
 import { useFeatureFlag } from "./flags/useFeatureFlag";
 import { goalForPath, isTools, shouldMountLegacyTerminal } from "./shell/mount/routing";
 import type { LegacyRouteProps } from "./shell/mount/ShellMount";
@@ -133,6 +134,7 @@ const ShellMount = lazy(() => import("./shell/mount/ShellMount"));
 const LeitstandTabs = lazy(() => import("./screens/leitstand/LeitstandRoute").then((m) => ({ default: m.LeitstandTabs })));
 
 function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) {
+  const t = useT();
   const legacyTerminalVisible = shouldMountLegacyTerminal(routePath);
   const [density, setDensity] = useState<UiDensity>(loadUiDensity);
   const [fonts, setFonts] = useState(loadFontSettings);
@@ -1034,7 +1036,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
       ) : null}
       <main className="main">
         <LiveStatus
-          view={GOAL_LABELS[goal]}
+          view={t(goalLabelKey(goal))}
           questions={questions.open.length}
           attention={attentionCount}
         />
@@ -1273,7 +1275,7 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
                     {!activeProject ? (
                       <p>Wähle ein Projekt oder erstelle eines über das + in der Sidebar.</p>
                     ) : goal === "review" && !activeWorker ? (
-                      <p>Kein Diff — eine Task aus der Board-Leiste oder Attention wählen.</p>
+                      <p>Kein Diff — eine Task aus der Board-Leiste oder Achtung wählen.</p>
                     ) : (
                       <p>Keine Terminal-Sitzungen.</p>
                     )}

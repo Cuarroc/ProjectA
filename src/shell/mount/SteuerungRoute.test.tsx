@@ -117,7 +117,7 @@ describe("Steuerung route behind D1", () => {
     localStorage.removeItem(FLAG_KEY);
     mocks.invoke.mockClear();
     const legacy = render(<App />);
-    fireEvent.click(await screen.findByRole("tab", { name: "Insights" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Auswertung" }));
     await screen.findByTestId("insights");
     expect(legacy.container.querySelector(".kb-panel")).toBeNull();
     expect(legacy.container.querySelector(".g-shell")).toBeNull();
