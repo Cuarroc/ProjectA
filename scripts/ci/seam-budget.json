@@ -4,6 +4,6 @@
     { "path": "src-tauri/src/api.rs", "maxLines": 8709 },
     { "path": "src-tauri/src/main.rs", "maxLines": 5340 },
     { "path": "src-tauri/src/store.rs", "maxLines": 7207 },
-    { "path": "src-tauri/src/bin/pa.rs", "maxLines": 6374 }
+    { "path": "src-tauri/src/bin/pa.rs", "maxLines": 3613 }
   ]
 }
