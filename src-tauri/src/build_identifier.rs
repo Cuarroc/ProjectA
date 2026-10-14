@@ -40,3 +40,25 @@ const fn is_plain_identifier(identifier: &str) -> bool {
 /// `PROJECTA_IDENTIFIER` to `com.projecta.dev`; everything else falls back to
 /// the stable identifier.
 pub(crate) const IDENTIFIER: &str = resolve_build_identifier(option_env!("PROJECTA_IDENTIFIER"));
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_build_identifier;
+
+    /// R1290-C2: an empty or path-like `PROJECTA_IDENTIFIER` must never become
+    /// a path segment of the app-data directory.
+    #[test]
+    fn unusable_embedded_identifier_falls_back_to_stable() {
+        assert_eq!(
+            resolve_build_identifier(Some("com.projecta.dev")),
+            "com.projecta.dev"
+        );
+        for bad in ["", "..", "a/b", "a\\b", "com projecta"] {
+            assert_eq!(
+                resolve_build_identifier(Some(bad)),
+                "com.projecta.app",
+                "{bad:?}"
+            );
+        }
+    }
+}
