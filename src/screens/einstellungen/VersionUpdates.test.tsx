@@ -82,3 +82,24 @@ describe("VersionUpdates after unmount", () => {
     expect(updates.count).toBe(before);
   });
 });
+
+describe("VersionUpdates version re-read on check", () => {
+  it("reads the version again when the user checks for updates", async () => {
+    vi.mocked(getVersion).mockRejectedValueOnce(new Error("gone")).mockResolvedValue("1.2.3");
+    vi.mocked(check).mockResolvedValue(null);
+    render(<VersionUpdates />);
+    await screen.findByText("Nur in der Desktop-App verfügbar.");
+    fireEvent.click(screen.getByRole("button", { name: "Nach Updates suchen" }));
+    expect(await screen.findByText("ProjectA 1.2.3")).toBeTruthy();
+  });
+
+  it("turns a failed version read into the version after a successful check", async () => {
+    vi.mocked(getVersion).mockRejectedValueOnce(new Error("gone")).mockResolvedValue("1.2.3");
+    vi.mocked(check).mockResolvedValue(null);
+    render(<VersionUpdates />);
+    expect(await screen.findByText("Nur in der Desktop-App verfügbar.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Nach Updates suchen" }));
+    await screen.findByText("ProjectA 1.2.3");
+    expect(screen.queryByText("Nur in der Desktop-App verfügbar.")).toBeNull();
+  });
+});
