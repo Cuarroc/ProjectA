@@ -40,10 +40,6 @@ export function reportFrontendError(error: unknown, componentStack?: string | nu
     void logFrontendError(message, stackFrame, route).catch(() => {});
   } catch { /* Logging is best effort, including when the IPC bridge is absent. */ }
 }
-/** Signatures of the most recently logged errors — bounded one-liners, never payloads. */
-export function recentErrorSignatures(): string[] {
-  return [...signatures];
-}
 /** Write one user feedback entry through the frontend error log path. */
 export function reportFrontendFeedback(what: string, expected: string): Promise<boolean> {
   try {
