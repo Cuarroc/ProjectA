@@ -123,7 +123,9 @@ or a time/quota/budget limit is reached. Self-check replaces neither independent
 review nor user approval; do not add an RLM runtime, agents or services for it.
 
 - **Everyday pair:** Kimi K3 (`kimi-k3:cloud`) + GLM 5.2 (`glm-5.2:cloud`) on
-  Ollama Cloud through `.pa/review_transport.py`. Setup, call and prompt rules:
+  Ollama Cloud through `.pa/review_transport.py`. **Blocked until 2026-11-01**
+  (Elias, 2026-10-14); meanwhile free kilo reviewers
+  (`scripts/review/run-local.sh --via kilo`). Setup, call and prompt rules:
   `docs/setup/ollama-reviewers.md`. Keep review prompts out of the repo; they
   are reproducible from the commit.
 - **Advisor pair** for hard decisions and final reviews: Fable 5.1 (Claude
@@ -285,6 +287,35 @@ only after the user approves it.
   requests a review; the rulesets do not require code-owner approval (checked
   2026-10-14: `require_code_owner_review: false`), so it blocks no merge.
   Rule 6 still governs who edits a seam.
+
+## Routing: task type to profile (AP-6a)
+
+Profile ids come from `src-tauri/resources/agent-defaults.json`; models and
+effort per profile live only in `docs/setup/providers.md` (single routing
+source, not repeated here). A profile that is not in the repo is marked
+"profile pending CLI check": do not dispatch to it until a CLI probe exists.
+The choice among eligible families is only the usage rule below the table;
+no family is preferred or excluded by a fixed rule (Elias, 2026-10-07).
+
+| Task type | Eligible profile families | Reviewer rule |
+|---|---|---|
+| Seam / security / PTY / DB implementation (tier A) | `codex`, `claude`, `kimi`; Cursor: profile pending CLI check | two reviewers, each from a family other than the author's |
+| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | one reviewer from another family |
+| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | one reviewer from another family |
+| Scripts / CI (tier B; tier C if no runtime effect) | `codex`, `claude`, `kimi`, `opencode` | tier B as above; tier C none, the gates suffice |
+| Docs (tier C) | `codex`, `claude`, `kimi`, `opencode` | none, the gates suffice |
+| Read-only inventory / research | `opencode-glm-53-flash`, `ollama-coder`, `codex`, `claude`, `kimi`; Grok: profile pending CLI check | none (report only) |
+| Review tier A | Ollama pair `kimi-k3` + `glm-5.2` (`.pa/review_transport.py`; blocked until 2026-11-01, use kilo via `scripts/review/run-local.sh --via kilo`), `codex`, `claude`; Cursor: profile pending CLI check | two reviewers, both differ from the author's family |
+| Review tier B | any one of the tier-A review ways | differs from the author's family |
+
+Pick among the eligible providers by `usage_overview`: the lowest
+`projectedPercentAtReset` wins, and none at or above 80 % projected or actual
+use is taken (Elias, 2026-10-14: keep provider use under 80 %; this replaces
+the 100 % rule and the `codex` 98 % exception; such a provider drops out until
+its window resets). Record the pick and the
+observed value in the dispatch note (rule 9: no claim without observation).
+The reviewer family must differ from the author's (rule 5); a router that
+hides the vendor (Cursor `auto`) first needs the actual vendor proven.
 
 ## Merging (Mergify queue, since 2026-09-24)
 
