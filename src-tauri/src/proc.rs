@@ -162,8 +162,13 @@ mod tests {
                     stack.push(path);
                     continue;
                 }
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                // Test modules moved out of a file (`tests.rs`, `*_tests.rs`) have no
+                // `mod tests` marker of their own; they are test code as a whole.
                 if path.extension().and_then(|e| e.to_str()) != Some("rs")
-                    || path.file_name().and_then(|n| n.to_str()) == Some(exempt)
+                    || name == exempt
+                    || name == "tests.rs"
+                    || name.ends_with("_tests.rs")
                 {
                     continue;
                 }
