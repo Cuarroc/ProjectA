@@ -9,11 +9,14 @@ export interface MeterProps extends Omit<HTMLAttributes<HTMLSpanElement>, "child
   "aria-label": string;
 }
 
+const COLORED_TONES = new Set<MeterTone>(["accent", "hot", "lock", "good"]);
+
 export function Meter({ value, tone = "neutral", className, ...rest }: MeterProps) {
   const pct = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
+  const barTone = COLORED_TONES.has(tone) ? tone : undefined;
   return (
     <span {...rest} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className={["g-meter", className].filter(Boolean).join(" ")}>
-      <b className={tone === "neutral" ? undefined : `g-meter--${tone}`} style={{ width: `${pct}%` }} />
+      <b className={barTone === undefined ? undefined : `g-meter--${barTone}`} style={{ width: `${pct}%` }} />
     </span>
   );
 }
