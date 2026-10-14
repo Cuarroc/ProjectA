@@ -5,6 +5,19 @@ import "./data.css";
 export type GateTick = "pass" | "fail" | "wip" | "none";
 export type ProofTone = "yes" | "no" | "wip";
 
+/** Known ticks keep their mark. Anything else is drawn as none, never as a new class. */
+function drawnTick(tick: string): GateTick {
+  switch (tick) {
+    case "pass":
+    case "fail":
+    case "wip":
+    case "none":
+      return tick;
+    default:
+      return "none";
+  }
+}
+
 export interface ProofChipProps {
   gates: readonly GateTick[];
   verdict?: { tone: ProofTone; text: string };
@@ -26,7 +39,7 @@ export function ProofChip({ gates, verdict, sha, href }: ProofChipProps) {
   const body = (
     <>
       <span className="g-proof__ticks" aria-hidden="true">
-        {gates.map((g, i) => <i key={i} className={`g-proof__t--${g}`} />)}
+        {gates.map((g, i) => <i key={i} className={`g-proof__t--${drawnTick(g)}`} />)}
       </span>
       {parts.map((p, i) => (i === 0 ? <span key="g">{p}</span> : (
         <Fragment key={`p${i}`}><span className="g-proof__sep" />{p}</Fragment>
