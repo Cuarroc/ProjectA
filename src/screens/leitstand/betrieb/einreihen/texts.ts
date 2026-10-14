@@ -12,6 +12,7 @@ export const T = {
   cancel: "Abbrechen",
   cancelling: "Breche ab …",
   cancelOne: (task: string) => `Aufgabe aus der Warteschlange entfernen: ${task}`,
+  reasonStopPending: "Not-Aus wird gelesen …",
   reasonStopped: "Not-Aus ist aktiv: neue Aufgaben sind gesperrt.",
   reasonEmpty: "Zuerst die Aufgabe eintippen.",
   reasonBusy: "Die Aufgabe wird gerade eingereiht.",
