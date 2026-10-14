@@ -98,14 +98,14 @@ test("ok is true at exactly the open limit and false one above", () => {
   assert.deepEqual(over.violations, ["open-over-limit"]);
 });
 
-test("the report text is German and names counts, stale drafts and the merge median", () => {
+test("the report text is German and names counts and stale drafts and the merge median", () => {
   const text = formatText(computeMetrics(PRS, opts()), 15);
   assert.match(text, /Offene PRs: 5 \(3 Draft, 2 bereit\), Limit 15/);
   assert.match(text, /Drafts älter als 48 h: #12/);
-  assert.match(text, /Median Eröffnung→Merge: 10 h \(p90 48 h, 5 PRs\)/);
+  assert.match(text, /Median Eröffnung→Merge: 10 h \(p90 48 h, 5 PRs; Ziel < 24 h: erreicht\)/);
 });
 
-test("main reads --input, prints text plus JSON and exits 1 on a violation", async () => {
+test("main reads --input and prints text plus JSON and exits 1 on a violation", async () => {
   const dir = mkdtempSync(join(tmpdir(), "pr-metrics-"));
   try {
     const file = join(dir, "prs.json");
