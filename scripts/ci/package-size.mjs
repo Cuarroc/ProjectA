@@ -41,6 +41,11 @@ function main() {
     console.log(`package-size: skipped (${event})`);
     return 0;
   }
+  // The queue PR diff is the whole batch (up to batch_size PRs) and carries no labels.
+  if (process.env.GITHUB_HEAD_REF?.startsWith('mergify/merge-queue/')) {
+    console.log('package-size: merge-queue batch: size checked on the member PRs');
+    return 0;
+  }
   let pr;
   if (event === 'pull_request' && process.env.GITHUB_EVENT_PATH) {
     pr = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')).pull_request;

@@ -125,6 +125,29 @@ test('package size skips merge_group and other non PR events', t => {
   expectResult(run('--base', head, '--head', base), 1, 417, 0);
 });
 
+test('package size skips Mergify merge-queue batches', t => {
+  const { put, commit, run, env } = fixture(t);
+  put('batch.txt', 'line\n'.repeat(417));
+  put('binary.dat', Buffer.from([0, 1, 2]));
+  commit();
+  env.GITHUB_EVENT_NAME = 'pull_request';
+  env.GITHUB_HEAD_REF = 'mergify/merge-queue/0123abc';
+  const result = run();
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /merge-queue batch: size checked on the member PRs/);
+});
+
+test('package size still enforces PRs whose branch only resembles a queue branch', t => {
+  const { put, commit, run, env } = fixture(t);
+  put('large.txt', 'line\n'.repeat(417));
+  commit();
+  env.GITHUB_EVENT_NAME = 'pull_request';
+  for (const ref of ['codex/v2-gate-size-1', 'fork/mergify/merge-queue/x', 'mergify/merge-queue']) {
+    env.GITHUB_HEAD_REF = ref;
+    assert.equal(run().status, 1, ref);
+  }
+});
+
 test('package size warns locally without an explicit base', t => {
   const { put, commit, run, env, base } = fixture(t);
   put('stack.txt', 'line\n'.repeat(417));
