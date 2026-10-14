@@ -89,7 +89,9 @@ read-only; `npm run dev:setup` sets clone-local hooks and creates
 
 ## Ownership and proof
 
-Only one implementation lane may edit a seam at a time (rule 6). Declare file
+Only one implementation lane may edit a seam at a time (rule 6). Claude Code
+denies Write, Edit, MultiEdit, and NotebookEdit on a seam file unless
+PA_SEAM_ALLOW lists its repo-relative path or glob. Declare file
 ownership before parallel work. There is no cap on the number of implementers;
 the limits are the serial lanes and the build slots below. Use `git -C <path>`
 for other worktrees. Never use the shared stash; make a WIP commit instead.
