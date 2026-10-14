@@ -3,7 +3,11 @@
 Welche Agenten der Orchestrator einsetzen kann, mit welchem Modell und welchem
 Effort, für welche Art Arbeit. Stand **25.09.2026**, geprüft auf dem
 Entwicklungsrechner; Nachtrag **02.10.2026**: Kimi-Code-Abo abgelaufen,
-Codex-Modellnamen aus `~/.codex/models_cache.json` korrigiert. Die Einrichtung
+Codex-Modellnamen aus `~/.codex/models_cache.json` korrigiert.
+
+**Überholt am 14.10.2026:** Die Zeilen „Kimi-Abo abgelaufen“ und „Claude-Worker
+nur < 70 %“ gelten nicht mehr; die Wahl unter den Anbietern regelt allein
+[AGENTS.md, Abschnitt „Routing“](../../AGENTS.md) (Entscheidung 07.10.2026). Die Einrichtung
 je Harness steht in den Nachbarseiten
 ([codex.md](codex.md), [kimi.md](kimi.md), [opencode.md](opencode.md),
 [ollama-reviewers.md](ollama-reviewers.md), [claude-code.md](claude-code.md)).
@@ -18,7 +22,7 @@ ersten echten Paket einmal proben.
 
 ## Ziel der Verteilung
 
-1. **Claude spart.** Claude (Pro-Abo) ist Orchestrator und sonst nichts
+1. **Claude spart.** *(Überholt 14.10.2026, siehe AGENTS.md „Routing“.)* Claude (Pro-Abo) ist Orchestrator und sonst nichts
    Alltägliches. Claude-Worker nur für Nahtstellen oder Security, und nur wenn
    das Wochenlimit unter 70 % steht. Der Orchestrator prüft das Limit vor jedem
    Start (`get_usage` in der Claude-App, sonst die Nutzungsanzeige).
@@ -40,7 +44,7 @@ ersten echten Paket einmal proben.
 | Anbieter (Abo) | Harness / Start | Status 25.09. | Stärkstes Modell | Arbeitspferd | Schnell / billig |
 |---|---|---|---|---|---|
 | OpenAI (ChatGPT-Abo) | Codex CLI 0.160 | geprüft (Skill-Sonde 08.10.2026 positiv, siehe [codex.md](codex.md)) | `gpt-6-astra` | `gpt-5.6-sol` | `gpt-5.6-luna` (Mitte: `gpt-5.6-terra`) |
-| Moonshot (Kimi-Code-Abo) | Kimi Code CLI 2.1 | **Abo abgelaufen (02.10.)**, nicht einplanen | — | — | — |
+| Moonshot (Kimi-Code-Abo) | Kimi Code CLI 2.1 | ~~Abo abgelaufen (02.10.)~~ — überholt 14.10.2026, siehe AGENTS.md „Routing“ | — | — | — |
 | OpenCode Go (Abo) | OpenCode CLI | geprüft (Orca-Worker, GLM-5.3-Flash) | `opencode-go/glm-5.3`, `opencode-go/deepseek-v4-pro`, `opencode-go/qwen3.8-max` | `opencode-go/glm-5.3` | `opencode-go/glm-5.3-flash` |
 | Ollama Cloud (Abo) | `.pa/review_transport.py`, HTTP `localhost:11434` | geprüft | `kimi-k3:cloud` | `glm-5.2:cloud` | `deepseek-v4-flash:cloud` |
 | GitHub Copilot (Abo) | OpenCode, Provider `github-copilot` | ungeprüft | `github-copilot/gpt-5.6-terra`, `github-copilot/claude-sonnet-5` | `github-copilot/gpt-5.4` | `github-copilot/gpt-5-mini` |
@@ -52,7 +56,7 @@ ersten echten Paket einmal proben.
 
 | Aufgabe | 1. Wahl | Effort | Ausweichen |
 |---|---|---|---|
-| Nahtstelle (`api.rs`, `main.rs`, `store/`, `bin/pa.rs`), Security | Codex `gpt-6-astra` | `high` | Claude-Worker (nur < 70 % Wochenlimit) |
+| Nahtstelle (`api.rs`, `main.rs`, `store/`, `bin/pa.rs`), Security | Codex `gpt-6-astra` | `high` | Claude-Worker (~~nur < 70 % Wochenlimit~~ — überholt 14.10.2026, siehe AGENTS.md „Routing“) |
 | Rust-Paket ohne Nahtstelle | Codex `gpt-5.6-sol` | `medium`, bei rotem Test `high` | OpenCode `deepseek-v4-pro` |
 | Frontend / HQ (React, TS, `scripts/lib`) | Codex `gpt-5.6-terra` | `medium` | OpenCode `glm-5.3` |
 | Doku, Plan, Berichte, kleine Skripte | OpenCode `glm-5.3` | `medium` | Codex `gpt-5.6-luna` |
