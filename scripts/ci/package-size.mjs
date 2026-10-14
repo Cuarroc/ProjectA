@@ -1,3 +1,9 @@
+// Labels (PR event only, both leave config validation and measurement intact):
+//   size-fix-round  raises the ceiling from maximumLines to fixRoundMaximumLines
+//                   (AGENTS.md rule 1: a review-forced fix round may reach 400 lines;
+//                   the PR report records the overrun and the finding IDs).
+//   size-exception  waives the ceiling entirely, including binary changes that
+//                   cannot be counted (assets such as png/woff2); binaries are listed.
 // Local stacks: PA_SIZE_BASE=<stack-base> (or BASE_SHA / --base) enables blocking.
 // Without an explicit local base, origin/main is measured as a warning only.
 import { execFileSync } from 'node:child_process';
@@ -13,15 +19,17 @@ const git = (...args) => execFileSync('git', args, {
 function parseConfig(raw) {
   const value = JSON.parse(raw);
   if (!value || value.schemaVersion !== 1 || !Number.isSafeInteger(value.maximumLines) ||
-      value.maximumLines < 1 || Object.keys(value).some(key => !['schemaVersion', 'maximumLines', 'excludedPaths'].includes(key))) {
+      value.maximumLines < 1 || Object.keys(value).some(key => !['schemaVersion', 'maximumLines', 'fixRoundMaximumLines', 'excludedPaths'].includes(key))) {
     throw new Error('invalid package-size configuration');
   }
+  const fixRound = value.fixRoundMaximumLines ?? value.maximumLines;
+  if (!Number.isSafeInteger(fixRound) || fixRound < value.maximumLines) throw new Error('invalid fixRoundMaximumLines');
   const excludedPaths = value.excludedPaths === undefined ? [] : value.excludedPaths;
   if (!Array.isArray(excludedPaths) || excludedPaths.some(path => typeof path !== 'string' ||
       !/^[\w.*?-]+(?:\/[\w.*?-]+)*$/.test(path) || path.split('/').includes('..'))) {
     throw new Error('invalid excludedPaths');
   }
-  return { schemaVersion: value.schemaVersion, maximumLines: value.maximumLines, excludedPaths };
+  return { schemaVersion: value.schemaVersion, maximumLines: value.maximumLines, fixRoundMaximumLines: fixRound, excludedPaths };
 }
 function configAt(commit) {
   if (!git('ls-tree', '-z', commit, '--', configPath)) return null;
@@ -52,14 +60,15 @@ function main() {
   let candidate = configAt(head);
   if (trusted) {
     if (!candidate || candidate.maximumLines > trusted.maximumLines ||
+        candidate.fixRoundMaximumLines > trusted.fixRoundMaximumLines ||
         candidate.excludedPaths.some(path => !trusted.excludedPaths.includes(path))) {
-      throw new Error('candidate configuration missing or maximumLines/excludedPaths widened above base');
+      throw new Error('candidate configuration missing or maximumLines/fixRoundMaximumLines/excludedPaths widened above base');
     }
   } else {
     candidate ??= parseConfig(readFileSync(new URL('./package-size.json', import.meta.url), 'utf8'));
     // Pin the canonical bootstrap config without duplicating its numeric limit.
     const digest = createHash('sha256').update(JSON.stringify(candidate)).digest('hex');
-    if (digest !== '2be6c579e5fcfed58ad922fe3ce138603401647da16ee39992fe3da97c0a8125') {
+    if (digest !== '7889f4257db513ec06aae4afd8882673ad31d8cbf52e528efe5f038319991dfb') {
       throw new Error('bootstrap configuration differs from the approved configuration');
     }
   }
@@ -94,18 +103,22 @@ function main() {
     console.warn('package-size: WARNING measured against origin/main; set PA_SIZE_BASE to enforce the package limit');
     return 0;
   }
+  const labeled = name => pr?.labels?.some(label => label.name === name);
+  if (labeled('size-exception')) {
+    console.log(`package-size: exception label present${binary.length ? ` (unmeasured binary: ${binary.map(path => JSON.stringify(path)).join(', ')})` : ''}`);
+    return 0;
+  }
   if (binary.length) {
     console.error(`package-size: BLOCKED: diff not numerically measurable (binary): ${binary.map(path => JSON.stringify(path)).join(', ')}`);
     return 1;
   }
-  if (pr?.labels?.some(label => label.name === 'size-exception')) {
-    console.log('package-size: exception label present');
-    return 0;
-  }
-  if (total > candidate.maximumLines) {
-    console.error(`package-size: BLOCKED: total=${total} exceeds maximumLines=${candidate.maximumLines}`);
+  const fixRound = labeled('size-fix-round');
+  const ceiling = fixRound ? candidate.fixRoundMaximumLines : candidate.maximumLines;
+  if (total > ceiling) {
+    console.error(`package-size: BLOCKED: total=${total} exceeds ${fixRound ? 'fixRoundMaximumLines' : 'maximumLines'}=${ceiling}`);
     return 1;
   }
+  if (fixRound && total > candidate.maximumLines) console.log(`package-size: fix round label present (total=${total} <= ${ceiling})`);
   return 0;
 }
 
