@@ -82,6 +82,37 @@ describe("command palette details", () => {
   });
 });
 
+describe("command palette composition", () => {
+  it("keeps the palette open when Enter confirms an active composition", () => {
+    render(<CommandPalette />);
+    ctrlK();
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "beweise" } });
+    const before = window.location.hash;
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(screen.getByRole("dialog", { name: "Befehlspalette" })).toBeInTheDocument();
+    expect(window.location.hash).toBe(before);
+  });
+
+  it("keeps the active command unchanged during composition arrow keys", () => {
+    render(<CommandPalette />);
+    ctrlK();
+    const input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(input, { key: "ArrowDown", isComposing: true });
+    expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("ignores the palette shortcut during active composition", () => {
+    render(<CommandPalette />);
+    ctrlK();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true, isComposing: true });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});
+
 describe("quota bar and bell", () => {
   it("shows the quota as not connected without any number or meter", () => {
     render(<QuotaBar />);

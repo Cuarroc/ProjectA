@@ -3,6 +3,257 @@
 Pro Eintrag genau drei Zeilen: **Was? — Warum? — Wann zurücknehmen?**
 (Log, keine zweite AGENTS.md — M12, Rev-8-SANIERUNGSPLAN §9/8.31.)
 
+## 2026-10-13 — V2-ARCH-0 architecture sketch
+
+Status: proposed implementation contracts for [plan v2.0](plan/v2.0/plan.md)
+and [Core](plan/v2.0/core.md), pending the advisor counter-check and Root acceptance.
+Evidence below was read at `ec656b3` on 2026-10-13; it proves existing building
+blocks, not the proposed integration. New names are design targets, not claims
+that tables or modules exist. No migration number is reserved by this sketch.
+The following ADRs expand the historical three-line format to make dependencies
+and verification explicit; they authorize no runtime action or policy expansion.
+
+### ADR-V2-01 — One Core setting writer and append-only journal
+
+**Context.** `src-tauri/src/store/settings.rs:18` currently upserts values
+directly. `src-tauri/src/store/audit.rs:10` defines `audit_log`, with guards
+against ID reuse, UPDATE and DELETE at lines 11–13. V2 needs ownership and
+history without creating another settings store.
+**Decision.** `core/registry.rs` defines the typed `settings_owner` registry:
+key, scope, owner (user/Core/code rule), area, risk, value validator, effect
+adapter, metric and tolerance. It is code-owned metadata, not a mutable SQL
+authority table. Unknown keys or missing owners/effect evidence fail closed.
+Keep values in `settings` or their existing domain table; never copy their
+current value into a competing Core store. `store/core.rs` owns new tables:
+
+| Table | Identity and contract |
+|---|---|
+| `core_requests` | ID, authenticated actor/run, scope/key, expected revision, proposed value, reason, evidence refs, idempotency key, state; unique actor/scope/idempotency key |
+| `core_journal` | Monotonic event ID, request ID, scope/key, old/new, reason, evidence, risk, typed rollback, actor, timestamp, state and schema version; append-only |
+| `core_key_state` | Unique scope/key, revision and active request ID; serialization metadata, not another value store |
+
+`core/requests.rs` validates commands; every accepted request and transition
+appends a journal event in the same transaction as its projection/value change.
+Events: `Requested`, `Checked`, `Applied`, `Confirmed`, `RolledBack`, `Rejected`;
+updates never rewrite an earlier journal state. Add the audit guard pattern
+to `core_journal`; link general audit entries by journal ID, without duplicating
+secret-bearing payloads. `rollback` is a typed inverse through the same adapter,
+never executable text. Credentials remain vault references; journal/report
+redaction is required before persistence, not just before rendering.
+**Consequences.** CORE-4 must inventory and reroute existing setting writers;
+generic setters cannot bypass the registry for enrolled keys. Failures roll
+back both value and event. All Core hats share this journal; other domain
+audit trails remain domain-owned. This is not a new event-sourcing platform.
+**Reverse when.** A documented setting cannot be expressed through a typed
+adapter; revise its contract before enrollment, keeping one value owner.
+**Affected plan IDs.** V2-CORE-1, V2-CORE-4, V2-CORE-9, V2-B20, V2-B26,
+V2-ST-K1, V2-API-K, V2-MN-K, V2-S08.
+
+### ADR-V2-02 — Requests, serialization, probation and recovery
+
+**Context.** `src-tauri/src/store/continuous.rs:1086` owns `begin_write`;
+`src-tauri/src/store/audit.rs:99` demonstrates transactional audit append.
+`src-tauri/src/estop.rs:9` defines the ten-second stop deadline. A UI event
+or an expired lease is insufficient proof that a change has taken effect.
+**Decision.** `core/requests.rs` and `core/probation.rs` implement
+`requested → checked → applied → confirmed | rolled_back`, with rejection
+before application. Approval and the expected key revision are rechecked at
+apply time. FIFO is per scope/key, ordered by accepted journal ID; a pending
+probation retains the key reservation and later requests wait or are rejected
+with a reason. Use the Store write transaction/maintenance discipline and a
+database revision check, not only an in-memory mutex. No network/model call
+is awaited while holding a database write transaction.
+`core_probations` stores request ID, baseline evidence, metric, tolerance,
+remaining duration, last observation, paused state and applied revision.
+A self-applied change needs an observed baseline and runs for 24 hours of
+unpaused probation; missing measurement leaves it a proposal. Degradation
+or error invokes the inverse, checks the applied revision, and appends
+`RolledBack`; rollback failure retains the reservation and reports a blocker,
+never a success. A later request must not overwrite the value being restored.
+External effect adapters persist intent and use request ID for idempotency;
+after a crash they reconcile observed effect before appending `Applied`.
+Unknown outcome blocks that key; replay never blindly repeats an effect.
+**Consequences.** New `ProbationPaused`/`ProbationResumed` and effect-intent
+events belong to `core_journal`. Not-Aus blocks application including rollback,
+pauses probation and cancels model requests; release requires the existing
+authorized path and recovery revalidation. Restart counts no unobserved
+downtime as successful probation. `core/optimizer.rs` records a separate
+seven-day experiment in `core_experiments`; it cannot extend permission or
+continue changing values without confirmation at the end. No model quota
+still permits `core/rules.rs` to evaluate rules under the same guards.
+**Reverse when.** An adapter cannot reconcile or compensate safely: make that
+key proposal-only until a tested recovery contract exists.
+**Affected plan IDs.** V2-CORE-1, V2-CORE-3, V2-CORE-5, V2-CORE-7,
+V2-CORE-10, V2-ST-K1, V2-B1, V2-B2a, V2-B3, V2-B5, V2-B22, V2-F8.
+
+### ADR-V2-03 — Rights are code guards, approval is scoped evidence
+
+**Context.** `src-tauri/src/api/agent_access.rs:450` rejects verdict authority
+on run credentials. `src-tauri/src/store/emergency_stop.rs:16` persists the
+stop barrier. Neither request prose nor a model's claimed identity is authority.
+**Decision.** `core/rights.rs` applies `off`, `propose`, `self_with_report`
+per area using `core_levels(scope, area, level, revision)` in `store/core.rs`.
+Missing levels default to `off`; user edits still use the authenticated
+command path. Hard-coded operation classes override registry metadata:
+money, rights, security (including privacy), deletion, releases and the Core's
+own level always require a user decision, even if a key is misclassified.
+The effect adapter supplies the operation class; the caller cannot choose it.
+`core_approvals` binds the authenticated user decision to request ID, scope,
+exact diff digest and expected revision, with single consumption/revocation.
+`api/core_routes.rs` derives run/owner/fence from credentials; helpers can
+submit requests only. Tauri commands and `ApiBackend` call the same guard.
+Only the authenticated app-window user path can confirm; a paired device may
+answer/stop but cannot approve, start or merge. Changed diff/revision requires
+a new decision. Existing concrete standing permission must be validated for
+its scope; it never becomes a blanket grant from a request's text.
+**Consequences.** `ApprovalRecorded`, `ApprovalConsumed`, `LevelChanged` and
+denial outcomes are journaled. Trust counts derive from confirmed probation
+events and cannot raise levels. `core/attention.rs` stores pending items in
+`core_attention` with source-event identity; outside the daily window they
+wait, except stop/security alerts. Night work with an unresolved decision
+stays blocked. Sentence control selects typed registry actions only; untrusted
+repo/mail content cannot mint approval. SEC-1 gates first autonomous use.
+**Reverse when.** A new authenticated user channel is explicitly approved;
+extend its scoped proof and negative tests before granting confirmation.
+**Affected plan IDs.** V2-CORE-2, V2-CORE-6, V2-CORE-9, V2-CORE-10,
+V2-CORE-AT, V2-SEC-0, V2-SEC-1, V2-ST-K1, V2-API-K, V2-MN-K,
+V2-H4, V2-B11, V2-PRIV-1, V2-PRIV-2, V2-PRIV-3, V2-S05c, V2-S08.
+
+### ADR-V2-04 — Personas configure runs within department ceilings
+
+**Context.** `src-tauri/src/roles/persona_rights.rs:151` already implements
+`check_change`; its UI proof is explicitly unwired (`:17`). Existing
+`role_variants` (`src-tauri/src/store.rs:1579`) describe role proposals, not
+department authority. Configuration is not evidence of connected capabilities.
+**Decision.** Extend `roles/persona_rights.rs`; put persona resolution in
+`roles/personas.rs` and persistence in `store/personas.rs`. ST-A1 owns
+`personas` (ID, department ID, profile reference, rights, failover/MCP/context
+references, autonomy ceiling, revision), `departments` (rights/CLI/autonomy
+ceilings and budget policy), `teams` and `team_personas` membership. Preserve
+`role_variants` as proposal/provenance references; do not infer new rights
+from a role name. The 14 templates are versioned resources, not live grants.
+Effective authority is the intersection of user authorization, department,
+project, persona and run scope; overrides select only within that ceiling.
+ST-A2 owns `project_policies`, `hosts`, `mcp_servers`, `team_mcp_rights`;
+ST-A3 owns `failover_rules`. Hosts/secrets are references, secrets `tresor://`.
+Failover changes the executor, never its authority; revalidate every start
+and privileged action against current revisions. B18 refuses excess budget,
+CLI or autonomy. Agent personas never gain direct merge rights.
+**Consequences.** Persona and policy edits are registered Core requests
+(ADR-V2-01/03); even a narrowing permitted by the pure helper does not grant
+an agent a direct settings write path. Events `PersonaChanged`,
+`DepartmentPolicyChanged`, `RunAuthorityResolved` carry IDs/revisions only;
+record them in the owning journal/audit transaction. UI and MCP report observed
+connections separately from selected configuration. API-A/MN-A share guards.
+**Reverse when.** A real persona cannot map to one department: design explicit
+multi-department intersection semantics before changing membership cardinality.
+**Affected plan IDs.** V2-B17, V2-B18, V2-B19, V2-B27, V2-B2a, V2-B5,
+V2-ST-A1, V2-ST-A2, V2-ST-A3, V2-API-A, V2-MN-A, V2-S02, V2-S07a,
+V2-S07b, V2-CORE-4, V2-PA-2.
+
+### ADR-V2-05 — Durable triggers and authenticated webhook ingress
+
+**Context.** Existing pure modules are unwired: cron/limiter in
+`src-tauri/src/queue/trigger_core.rs:1`, signature/key rotation in
+`src-tauri/src/queue/webhook_sig.rs:1`. Its `ZustellungsBuch` at `:210` is an
+in-memory dedupe helper, not durable replay protection.
+**Decision.** Reuse those modules; `store/triggers.rs` owns `triggers`
+(scope, kind, schedule/filter, enabled, target template, revision),
+`trigger_runs` (trigger ID, unique occurrence ID, accepted time, outcome,
+workflow reference) and `webhook_receipts` (source/repository, delivery ID,
+body digest, outcome). ST-C1 persists them and reconstructs the rolling-hour
+limiter transactionally: at most six accepted firings per trigger per hour,
+including concurrent callers and restarts. Cron uses UTC instants; duplicate
+ticks have the same occurrence ID. Dry runs evaluate a snapshot, consume no
+slot, spawn no worker and call no model. Trigger configuration uses Core.
+EX-2 adds `api/webhook_routes.rs`: bound body size, verify HMAC over exact raw
+bytes before parsing, allow only PR-ready/check-completed/queue-result events
+for the configured repository, then persist receipt and effect intent atomically.
+Keys are vault references with the existing 24-hour old-key overlap; key
+provisioning/rotation remains a user security decision. Unsigned delivery IDs
+alone cannot prevent replay: also dedupe authenticated body digests within
+source scope. Keep durable receipt tombstones; pruning needs an explicit
+freshness/retention contract. Retries reuse the recorded outcome and action ID.
+**Consequences.** `TriggerDue`, `TriggerThrottled`, `WebhookAccepted` and
+`WebhookRejected` become typed metadata events; bodies/secrets stay out of
+logs. Accepted input creates a proposal or updates a known workflow through
+ADR-V2-06; it does not authorize a start. Continuous self-start stays disabled.
+Webhook ingress stays off pending the external-reachability decision (question
+5); conditional polling remains the fallback, without claiming rate-limit
+savings from 304 responses. Remote-board mutation routes remain forbidden.
+**Reverse when.** A provider protocol needs signed freshness or different
+event identity: add a tested source adapter, retaining dedupe and rights checks.
+**Affected plan IDs.** V2-B15, V2-ST-C1, V2-API-C, V2-MN-C, V2-EX-2,
+V2-RUN-2, V2-CORE-4, V2-S06a, V2-KP-6, V2-SEC-0.
+
+### ADR-V2-06 — One workflow engine, evidence bound to the candidate
+
+**Context.** `src-tauri/src/store/development_runs.rs:205`–`:208` already
+stores candidates, evidence and reviews; `:919` invalidates stale evidence.
+`src-tauri/src/store/development_events.rs:11` describes metadata notices
+that require authorized rereads, not replayable state or approval attestations.
+**Decision.** `workflow/model.rs` (RUN-1) owns one transition function;
+`workflow/runner.rs`, `workflow/review.rs`, `workflow/delivery.rs` implement
+RUN-2/3/4. ST-C1 adds `workflow_orders`, `workflow_steps`,
+`workflow_approvals`, `workflow_deliveries`; ST-B1 extends the existing
+`development_run_*` evidence tables, with an explicit workflow/run association
+and migration compatibility tests. No second evidence ledger or scheduler.
+Existing continuous task/goal foreign keys must be mapped explicitly;
+an ordinary clicked order must not enable continuous mode to store evidence.
+Orders carry kind/template/risk and user start authority; package/customer
+orders follow `ordered → working → evidenced → reviewing → approved → delivered`,
+with waiting/rejected/stale side states. Candidate changes invalidate evidence,
+reviews and candidate-bound approvals atomically before delivery is possible.
+`workflow_events` stores ordered typed transitions in the same transaction,
+with event ID, schema version, scope, order/run IDs, revision and causation ID.
+After commit, owning modules emit typed invalidations via `event_names.rs`
+(existing pattern `src-tauri/src/event_names.rs:3`). Clients reread authorized
+state; reconnect uses cursor/snapshot. Replay never grants approval or starts
+a worker. The durable event ID also deduplicates notifications/attention items.
+**Consequences.** Reviewer identity/family and tier checks precede approval;
+A needs two other vendors, B another model family, C its required gates.
+`review-ok` needs full disposition and no open high finding. Delivery adapters
+enqueue Mergify or deliver a customer test copy; live delivery needs its bound
+user approval. Click/start checks, seam ownership and restart pause are shared;
+PR/slot events offer the next order, never silently start it. Evidence of
+implementation, tests, review, acceptance, merge and usability stays distinct.
+**Reverse when.** ST-B1 proves an existing evidence table cannot support both
+order kinds without enabling frozen automation: record a migration ADR before
+building a replacement, preserving old references and one authoritative ledger.
+**Affected plan IDs.** V2-B9, V2-B10, V2-ST-B1, V2-ST-C1, V2-RUN-1,
+V2-RUN-2, V2-RUN-3, V2-RUN-4, V2-API-B, V2-MN-B, V2-API-C, V2-MN-C,
+V2-MQ1, V2-H2, V2-S03a, V2-CORE-AT, V2-O0, V2-DOG-1.
+
+### ADR-V2-07 — ADR-A7: separate modules, one serial store lane
+
+**Context.** A7 above is an open proposal pending four weeks of OPS-01 data.
+`src-tauri/src/store.rs:875` owns the migration sequence; `:1222` backs up
+before migration and `:1367` dispatches migration steps. Module boundaries
+do not separate the schema, maintenance barrier or migration ordering.
+**Decision.** Keep `store.rs` and all `store/` changes in one serial lane under
+AGENTS.md rule 6. Thus “Module gleichzeitig” does not permit concurrent store
+implementers. Pure modules outside that seam may proceed with declared file
+ownership; storage integration of `core_*`, persona/policy, trigger and workflow
+tables remains serial. Store modules contain SQL; API modules/Tauri commands
+call domain functions. Keep `ApiBackend` in `main.rs` under A1/F1.
+**Consequences.** ST-B1 goes first; follow the plan's store sequence thereafter,
+allocating each migration number only in its package. Domain transition events
+from ADR-V2-01/05/06 commit with their table changes; splitting files cannot
+split atomicity. Each integration package tests backup, upgrade and old-row
+compatibility. No migration or continuous-mode enablement occurs in ARCH-0.
+**Reverse when.** Four weeks of measured lane waits justify a new coordinator
+proposal with explicit schema/migration ownership and concurrency tests;
+parallel store editing still requires an explicit change to rule 6 first.
+**Affected plan IDs.** V2-ST-B1, V2-ST-B2, V2-ST-B3, V2-ST-A1, V2-ST-A2,
+V2-ST-A3, V2-ST-C1, V2-ST-C2, V2-ST-K1, V2-ARCH-1, V2-MIG-1.
+
+**Open decisions / handover.** Root owns acceptance and the pending advisor
+counter-check. Each downstream package must cite the relevant ADR IDs above
+in its brief/report and verify the code anchors at its own base. External
+webhook reachability, vault provisioning, any additional spending and releases
+remain user decisions; this sketch grants none. Security findings from SEC-0
+feed SEC-1 before autonomous application. No runtime or migration is proven here.
+
 ## 2026-10-08
 
 - **A1 ApiBackend-Adapter und `main.rs` (entschieden 08.10.2026).** **Was?** Aufteilung erst nach M4: `ApiBackend` bleibt bis dahin in `main.rs`; danach kleine fachliche Schnittstellen (Domänenports) schrittweise aus `ControlBackend` lösen, keine Gesamtverschiebung. Chief plant dafür eigene Pakete innerhalb der Paketgrenze aus AGENTS.md Regel 1; ARCH-12 bleibt bis zu diesem Zuschnitt gesperrt.

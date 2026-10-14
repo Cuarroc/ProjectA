@@ -23,14 +23,26 @@ const WORDS: Record<HonestKind, string> = {
 // and action are dropped); numbers belong in Table or KeyValue.
 const clean = (s?: string) => (s && !/\d/.test(s) ? s : undefined);
 
+// A kind outside the three known ones is drawn as empty: the empty class and
+// the empty word, with no hint and no action. The unknown token never becomes
+// a class.
+function shownKind(kind: string): HonestKind {
+  return kind === "offline" || kind === "locked" ? kind : "empty";
+}
+
 /** Empty, not connected or locked: says so in words, shows no number. */
 export function HonestState({ kind, title, hint, action }: HonestStateProps) {
-  const label = clean(action?.label);
+  const raw = `${kind}`;
+  const known = shownKind(raw);
+  const foreign = raw !== known;
+  const label = foreign ? undefined : clean(action?.label);
+  const heading = (foreign ? undefined : clean(title)) ?? WORDS[known];
+  const note = foreign ? undefined : clean(hint);
   return (
-    <div className={`g-hs g-hs--${kind}`}>
+    <div className={`g-hs g-hs--${known}`}>
       <span className="g-hs__mark" aria-hidden="true" />
-      <p className="g-hs__title">{clean(title) ?? WORDS[kind]}</p>
-      {clean(hint) && <p className="g-hs__hint">{clean(hint)}</p>}
+      <p className="g-hs__title">{heading}</p>
+      {note && <p className="g-hs__hint">{note}</p>}
       {action && label && <Button size="sm" variant="tint" onClick={action.onClick}>{label}</Button>}
     </div>
   );

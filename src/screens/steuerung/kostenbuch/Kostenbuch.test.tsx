@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Kostenbuch } from "./Kostenbuch";
+import { Kostenbuch, kostenbuchRead } from "./Kostenbuch";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
@@ -32,6 +33,13 @@ function backend(value: unknown) {
 }
 const rowsOf = () => within(screen.getByRole("table")).getAllByRole("row").slice(1)
   .map((r) => within(r).getAllByRole("cell").map((c) => c.textContent));
+
+function pendingRead() {
+  let resolve!: (value: unknown) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
 
 describe("Kostenbuch", () => {
   beforeEach(() => {
@@ -138,5 +146,127 @@ describe("Kostenbuch", () => {
     await Promise.resolve();
     expect(err).not.toHaveBeenCalled();
     err.mockRestore();
+  });
+
+  it("shows loading instead of old totals during a manual ledger read", async () => {
+    backend(report(EVENTS));
+    render(<Kostenbuch />);
+    await screen.findByRole("table");
+    const button = screen.getByRole("button", { name: "Neu lesen" });
+    const next = pendingRead();
+    mocks.invoke.mockReturnValueOnce(next.promise);
+    fireEvent.click(button);
+    expect(screen.getByText("Wird gelesen …")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Zeitraum" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Verbrauch je Modell" })).toBeNull();
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+
+    const fresh = report([ev("z", "openai", "gpt", 7, 1)], {
+      today: totals(1, 7, 1), total: totals(41, 2_500_007, 410_001),
+    });
+    await act(async () => next.resolve(fresh));
+    expect(rowsOf()).toEqual([
+      ["openai", "gpt", "1", "7", "1"], ["Summe", "", "1", "7", "1"],
+    ]);
+    const period = screen.getByRole("region", { name: "Zeitraum" });
+    expect(period).toHaveTextContent("1 Anfragen · 7 Tokens rein · 1 Tokens raus");
+    expect(period).toHaveTextContent("41 Anfragen · 2.500.007 Tokens rein · 410.001 Tokens raus");
+    expect(screen.queryByText("Wird gelesen …")).toBeNull();
+    expect(button).toBeEnabled();
+    expect(button).toHaveAttribute("aria-busy", "false");
+
+    const failure = pendingRead();
+    mocks.invoke.mockReturnValueOnce(failure.promise);
+    fireEvent.click(button);
+    await act(async () => failure.reject(new Error("unreadable")));
+    expect(screen.getByText("Kostenbuch nicht lesbar")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Zeitraum" })).toBeNull();
+    expect(button).toBeEnabled();
+    expect(button).toHaveAttribute("aria-busy", "false");
+
+    const retry = pendingRead();
+    mocks.invoke.mockReturnValueOnce(retry.promise);
+    fireEvent.click(button);
+    expect(screen.queryByText("Kostenbuch nicht lesbar")).toBeNull();
+    expect(screen.getByText("Wird gelesen …")).toBeTruthy();
+    expect(button).toBeDisabled();
+    await act(async () => retry.resolve(fresh));
+    expect(rowsOf().at(-1)).toEqual(["Summe", "", "1", "7", "1"]);
+    expect(button).toBeEnabled();
+    expect(mocks.invoke).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not start a second ledger read while a refresh is pending", async () => {
+    backend(report(EVENTS));
+    render(<Kostenbuch />);
+    await screen.findByRole("table");
+    const next = pendingRead();
+    mocks.invoke.mockReturnValueOnce(next.promise);
+    const button = screen.getByRole("button", { name: "Neu lesen" });
+    fireEvent.click(button);
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+    expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: true })).toBe(button);
+    const readAgain = kostenbuchRead.current;
+    expect(typeof readAgain).toBe("function");
+    act(() => readAgain!());
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+    await act(async () => next.resolve(report(EVENTS)));
+    expect(button).toBeEnabled();
+    expect(button).toHaveAttribute("aria-busy", "false");
+    expect(new Set(mocks.invoke.mock.calls.map((c) => c[0]))).toEqual(new Set(["get_omniroute_usage"]));
+  });
+
+  it("a superseded in-flight ledger read still finishes and enables Neu lesen", async () => {
+    const first = pendingRead();
+    const second = pendingRead();
+    mocks.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd !== "get_omniroute_usage") throw new Error(`unexpected ${cmd}`);
+      return report(EVENTS);
+    });
+    mocks.invoke.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    render(
+      <StrictMode>
+        <Kostenbuch />
+      </StrictMode>,
+    );
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledTimes(2));
+    const button = screen.getByRole("button", { name: "Neu lesen" });
+    expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: true })).toBe(button);
+    await act(async () => {
+      first.resolve(report(EVENTS));
+    });
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByText("Wird gelesen …")).toBeTruthy();
+    expect(button).toBeDisabled();
+    await act(async () => {
+      second.resolve(report([ev("z", "openai", "gpt", 7, 1)]));
+    });
+    expect(rowsOf()[0]).toEqual(["openai", "gpt", "1", "7", "1"]);
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: false })).toBeEnabled();
+  });
+
+  it("Neu lesen is already busy when the ledger request starts", async () => {
+    backend(report(EVENTS));
+    render(<Kostenbuch />);
+    await screen.findByRole("table");
+    const button = screen.getByRole("button", { name: "Neu lesen" });
+    const next = pendingRead();
+    let busyAtStart = false;
+    mocks.invoke.mockImplementation((cmd: string) => {
+      if (cmd !== "get_omniroute_usage") throw new Error(`unexpected ${cmd}`);
+      busyAtStart = (button as HTMLButtonElement).disabled && button.getAttribute("aria-busy") === "true";
+      return next.promise;
+    });
+    fireEvent.click(button);
+    expect(busyAtStart).toBe(true);
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: true })).toBeDisabled();
+    await act(async () => next.resolve(report(EVENTS)));
+    expect(screen.getByRole("button", { name: "Neu lesen", busy: false })).toBeEnabled();
   });
 });

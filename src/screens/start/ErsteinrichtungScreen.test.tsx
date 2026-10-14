@@ -109,3 +109,23 @@ it("is a named region inside the shell main landmark and not a second main", () 
   expect(screen.getByRole("region", { name: "Ersteinrichtung" })).toBeInTheDocument();
   expect(screen.queryByRole("main")).toBeNull();
 });
+
+it("keeps the final setup step open while cached sign-in data is being reread", () => {
+  setProviders([provider("Claude Code", true)], { loading: true });
+  render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
+  expect(within(step(6)).getByText("Offen")).toBeInTheDocument();
+  expect(within(step(6)).queryByText("Bereit")).toBeNull();
+});
+
+it("keeps the final setup step open after a provider read failure with cached sign-in", () => {
+  setProviders([provider("Claude Code", true)], { error: "boom" });
+  render(<ErsteinrichtungScreen hasProject onAction={() => {}} />);
+  expect(within(step(6)).getByText("Offen")).toBeInTheDocument();
+  expect(within(step(6)).queryByText("Bereit")).toBeNull();
+});
+
+it("does not mark setup ready before a successful repository scan", () => {
+  render(<ErsteinrichtungScreen hasProject scan={{ status: "idle" }} onAction={() => {}} />);
+  expect(within(step(6)).getByText("Offen")).toBeInTheDocument();
+  expect(within(step(6)).queryByText("Bereit")).toBeNull();
+});

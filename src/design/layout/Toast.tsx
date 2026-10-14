@@ -12,15 +12,29 @@ export interface ToastItem {
 function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; onDismiss: (id: number) => void }) {
   // Keep the latest callback in a ref so a new identity does not restart the countdown.
   const dismiss = useRef(onDismiss);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closed = useRef(false);
   useEffect(() => { dismiss.current = onDismiss; });
   useEffect(() => {
-    const timer = setTimeout(() => dismiss.current(toast.id), ttl);
-    return () => clearTimeout(timer);
+    closed.current = false;
+    const handle = setTimeout(() => {
+      if (closed.current) return;
+      closed.current = true;
+      dismiss.current(toast.id);
+    }, ttl);
+    timer.current = handle;
+    return () => clearTimeout(handle);
   }, [toast.id, ttl]);
+  const close = () => {
+    if (closed.current) return;
+    closed.current = true;
+    if (timer.current !== null) clearTimeout(timer.current);
+    onDismiss(toast.id);
+  };
   return (
     <div className={`g-toast g-toast--${toast.tone}`} role={toast.tone === "bad" ? "alert" : "status"}>
       <span>{toast.text}</span>
-      <button type="button" className="g-toast__x" aria-label={de["action.close"]} onClick={() => onDismiss(toast.id)}>×</button>
+      <button type="button" className="g-toast__x" aria-label={de["action.close"]} onClick={close}>×</button>
     </div>
   );
 }

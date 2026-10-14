@@ -33,6 +33,12 @@ describe("Table", () => {
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getByText("Nothing")).toBeInTheDocument();
   });
+
+  it("shows no table at all for zero rows even without an empty slot", () => {
+    render(<Table label="Agents" columns={columns} rows={[]} rowKey={(r: (typeof rows)[number]) => r.id} />);
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Agents" })).toBeNull();
+  });
 });
 
 describe("KeyValue", () => {
@@ -53,6 +59,13 @@ describe("KeyValue", () => {
     expect(Array.from(container.querySelectorAll("dd"), (d) => d.textContent)).toEqual(["one", "two"]);
     expect(calls.filter((m) => /key/i.test(m))).toEqual([]);
   });
+
+  it("renders no ghost frame for an empty boxed KeyValue", () => {
+    const { container } = render(<KeyValue box items={[]} />);
+    expect(container.querySelector(".g-kv")).toBeNull();
+    expect(container.querySelector(".g-kv--box")).toBeNull();
+  });
+
 
   it("takes a stable rowKey so reordered rows keep their nodes", () => {
     const items = [{ label: "Tag", value: "one", rowKey: "a" }, { label: "Tag", value: "two", rowKey: "b" }];

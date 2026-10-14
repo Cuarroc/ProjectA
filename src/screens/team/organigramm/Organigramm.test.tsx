@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkerKind } from "../../../types";
@@ -197,6 +197,67 @@ describe("Organigramm", () => {
     pending[0]!({ cards: [card("stale", null)], coordinators: [] });
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByText("Task stale")).toBeNull();
+    expect(screen.getByText("Task fresh")).toBeInTheDocument();
+  });
+
+  it("retries a failed team read without changing the project", async () => {
+    let boardCall = 0;
+    mocks.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_board_state") {
+        boardCall += 1;
+        if (boardCall === 1) throw new Error("down");
+        return board;
+      }
+      return cmd === "list_agent_profiles" ? profiles : budgets;
+    });
+    render(<Organigramm projectId="p1" />);
+    expect(await screen.findByText("Team nicht lesbar")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
+    expect(await screen.findByText("Task a1")).toBeInTheDocument();
+  });
+
+  it("recovers an unreadable budget through a manual organigram reread", async () => {
+    let budgetCall = 0;
+    mocks.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === "get_budgets") {
+        budgetCall += 1;
+        if (budgetCall === 1) throw new Error("down");
+        return budgets;
+      }
+      return cmd === "get_board_state" ? board : profiles;
+    });
+    render(<Organigramm projectId="p1" />);
+    const alpha = within(await waitFor(() => nodeOf("Alpha")));
+    expect(alpha.getAllByText("Budgetgrenze nicht lesbar")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
+    await waitFor(() => expect(alpha.getByText("5 Stunden: 80 %, 7 Tage: 40 %")).toBeInTheDocument());
+    expect(alpha.queryByText("Budgetgrenze nicht lesbar")).toBeNull();
+  });
+
+  it("ignores an old organigram reread after a project round trip", async () => {
+    const pending: Array<(v: unknown) => void> = [];
+    mocks.invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_board_state") return new Promise((resolve) => pending.push(resolve));
+      return Promise.resolve(cmd === "get_budgets" ? budgets : profiles);
+    });
+    const { rerender } = render(<Organigramm projectId="p1" />);
+    await waitFor(() => expect(pending).toHaveLength(1));
+    pending[0]!({ cards: [card("initial", null)], coordinators: [] });
+    expect(await screen.findByText("Task initial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
+    await waitFor(() => expect(pending).toHaveLength(2));
+    rerender(<Organigramm projectId="p2" />);
+    await waitFor(() => expect(pending).toHaveLength(3));
+    pending[2]!({ cards: [card("p2agent", null)], coordinators: [] });
+    expect(await screen.findByText("Task p2agent")).toBeInTheDocument();
+    rerender(<Organigramm projectId="p1" />);
+    await waitFor(() => expect(pending).toHaveLength(4));
+    pending[3]!({ cards: [card("fresh", null)], coordinators: [] });
+    expect(await screen.findByText("Task fresh")).toBeInTheDocument();
+    pending[1]!({ cards: [card("stale", null)], coordinators: [] });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText("Task stale")).toBeNull();
+    expect(screen.queryByText("Task initial")).toBeNull();
     expect(screen.getByText("Task fresh")).toBeInTheDocument();
   });
 });

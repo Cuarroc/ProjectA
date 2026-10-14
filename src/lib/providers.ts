@@ -79,18 +79,22 @@ export function vaultErrorText(vaultError: string): string {
 /**
  * Reads `get_provider_overview` once on mount and, when `pollMs` is set, keeps it
  * fresh on an interval and whenever the window regains focus. Every timer and
- * listener is torn down on unmount, and a late reply after unmount is dropped.
+ * listener is torn down on unmount. A reply is dropped when that read is no
+ * longer the latest one, including after unmount.
  */
 export function useProviderOverview(pollMs = 0): ProviderSnapshot {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const aliveRef = useRef(true);
+  const generation = useRef(0);
 
   const refresh = useCallback(async () => {
+    const mine = ++generation.current;
+    const current = () => aliveRef.current && generation.current === mine;
     try {
       const next = await getProviderOverview();
-      if (!aliveRef.current) return;
+      if (!current()) return;
       if (!Array.isArray(next)) {
         setError("Unerwartete Antwort der Anbieter-Übersicht.");
         return;
@@ -98,28 +102,28 @@ export function useProviderOverview(pollMs = 0): ProviderSnapshot {
       setProviders(next);
       setError(null);
     } catch (err) {
-      if (!aliveRef.current) return;
+      if (!current()) return;
       setError(describeError(err));
     } finally {
-      if (aliveRef.current) setLoading(false);
+      if (current()) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     aliveRef.current = true;
     void refresh();
+    const retire = () => {
+      aliveRef.current = false;
+      generation.current += 1;
+    };
 
-    if (pollMs <= 0) {
-      return () => {
-        aliveRef.current = false;
-      };
-    }
+    if (pollMs <= 0) return retire;
 
     const timer = window.setInterval(() => void refresh(), pollMs);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
     return () => {
-      aliveRef.current = false;
+      retire();
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };

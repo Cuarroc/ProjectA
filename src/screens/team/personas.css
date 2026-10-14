@@ -12,6 +12,7 @@
 .ps-head .g-chip { margin-left: auto; }
 .ps-model { margin: 0; font: 500 12px/1.4 var(--g-font-mono); color: var(--g-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ps-model--none { font-family: var(--g-font-sans); color: var(--g-muted); }
+.ps-model-note { display: block; margin-top: 2px; font-family: var(--g-font-sans); font-weight: 400; color: var(--g-muted); }
 .ps-facts { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--g-hair); }
 .ps-fact { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 24px; font-size: 12px; }
 .ps-k { color: var(--g-muted); font-weight: 500; }

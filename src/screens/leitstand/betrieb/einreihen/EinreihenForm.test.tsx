@@ -35,10 +35,43 @@ const type = (text: string) => fireEvent.change(task(), { target: { value: text 
 const form = (extra = {}, projectId = "p1") => <EinreihenForm projectId={projectId} profiles={profiles} entries={[]} {...extra} />;
 describe("EinreihenForm", () => {
   beforeEach(() => { mocks.invoke.mockReset(); });
+  it("explains that enqueue stays closed while the emergency stop is still unread", async () => {
+    const pending = deferred<boolean>();
+    backend({ stop: () => pending.promise });
+    render(form());
+    type("Task");
+    expect(submit()).toBeDisabled();
+    expect(screen.getByText(T.reasonStopPending)).toBeTruthy();
+    expect(screen.queryByText(T.reasonStopped)).toBeNull();
+    await act(async () => pending.resolve(false));
+    expect(screen.queryByText(T.reasonStopPending)).toBeNull();
+    expect(screen.queryByText(T.reasonStopped)).toBeNull();
+    expect(submit().disabled).toBe(false);
+  });
+
+  it("keeps enqueue disabled until emergency stop has been read", async () => {
+    for (const answer of [false, undefined, new Error("offline")]) {
+      const pending = deferred<boolean>();
+      backend({ stop: () => pending.promise });
+      const { unmount } = render(form());
+      type("Task");
+      expect(submit()).toBeDisabled();
+      fireEvent.submit(submit().closest("form")!);
+      expect(callsOf("enqueue_task")).toHaveLength(0);
+      await act(async () => {
+        if (answer instanceof Error) pending.reject(answer);
+        else pending.resolve(answer as boolean);
+      });
+      expect(submit().disabled).toBe(answer !== false);
+      unmount();
+    }
+  });
+
   it("enqueues the trimmed text with the chosen profile and sharpen flag and clears the draft", async () => {
     backend();
     const onEnqueued = vi.fn();
     render(form({ onEnqueued }));
+    await act(async () => {});
     expect(submit().disabled).toBe(true);
     expect(screen.getByText(T.reasonEmpty)).toBeTruthy();
     type("  Fix the build  ");
@@ -54,6 +87,7 @@ describe("EinreihenForm", () => {
     const pending = deferred<QueueEntry>();
     backend({ enqueue: () => pending.promise });
     render(form());
+    await act(async () => {});
     type("Task");
     fireEvent.click(submit());
     await waitFor(() => expect(submit().disabled).toBe(true));
@@ -83,6 +117,7 @@ describe("EinreihenForm", () => {
     backend({ enqueue: () => Promise.reject(new Error("db locked")) });
     const onEnqueued = vi.fn();
     render(form({ onEnqueued }));
+    await act(async () => {});
     type("Task");
     fireEvent.click(submit());
     expect((await screen.findByRole("alert")).textContent).toBe(T.enqueueFailed("db locked"));
@@ -119,6 +154,7 @@ describe("EinreihenForm", () => {
   it("drops the draft and the error when the project switches", async () => {
     backend({ enqueue: () => Promise.reject(new Error("boom")) });
     const { rerender } = render(form());
+    await act(async () => {});
     type("half-typed draft");
     fireEvent.click(submit());
     await screen.findByRole("alert");
@@ -133,6 +169,7 @@ describe("EinreihenForm", () => {
     backend({ enqueue: () => enqueue.promise, cancel: () => cancel.promise });
     const cb = { onEnqueued: vi.fn(), onCancelled: vi.fn() };
     const { rerender } = render(form({ entries: [entry("a")], ...cb }));
+    await act(async () => {});
     type("Task of project one");
     fireEvent.click(submit());
     fireEvent.click(cancelBtn("a"));
@@ -152,6 +189,7 @@ describe("EinreihenForm", () => {
     backend({ enqueue: () => enqueue.promise, cancel: () => cancel.promise });
     const cb = { onEnqueued: vi.fn(), onCancelled: vi.fn() };
     const { rerender } = render(form({ entries: [entry("a")], ...cb }));
+    await act(async () => {});
     type("Task of the first visit");
     fireEvent.click(submit());
     fireEvent.click(cancelBtn("a"));
