@@ -232,6 +232,7 @@ export default function GeneralTab({
       <label className="settings-check">
         <input
           type="checkbox"
+          name="digest-enabled"
           checked={digestEnabled}
           onChange={(event) => handleToggleDigest(event.target.checked)}
         />

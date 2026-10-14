@@ -256,6 +256,7 @@ export default function RecommendationsPanel({
         <>
           <form className="reco-form" onSubmit={handleTriage}>
             <textarea
+              name="reco-urls"
               className="field field-textarea reco-urls"
               rows={2}
               placeholder="Repos prüfen — eine URL pro Zeile"

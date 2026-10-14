@@ -189,6 +189,7 @@ export default function ConversationView({
         <div className="convo-composer-row">
           <textarea
             ref={inputRef}
+            name="convo-input"
             className="convo-input"
             aria-label="Nachricht an den Orchestrator"
             rows={2}
