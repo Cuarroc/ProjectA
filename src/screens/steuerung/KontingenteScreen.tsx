@@ -3,6 +3,8 @@ import "../../design/glass.css";
 import "../../design/inputs/inputs.css";
 import { Button } from "../../design/controls/Button";
 import { Chip } from "../../design/controls/Chip";
+import { ErrorDetails } from "../../errors/ErrorDetails";
+import { userError } from "../../errors/texts";
 import { HonestState } from "../../design/data/HonestState";
 import { DevNote } from "../../design/data/DevNote";
 import { Avatar } from "../../design/inputs/Avatar";
@@ -98,7 +100,7 @@ export function KontingenteScreen() {
         <h1>{T.title}</h1>
         <p>{T.lead}</p>
       </header>
-      {error !== null && <HonestState kind="offline" title={error} />}
+      {error !== null && <><HonestState kind="offline" title={userError(error).text} /><ErrorDetails raw={userError(error).detail} /></>}
       {(quotaLoading || quotaError !== null) && (
         <div role="status">
           <HonestState kind="offline" title={quotaError !== null ? T.quotaUnread : T.quotaLoading}

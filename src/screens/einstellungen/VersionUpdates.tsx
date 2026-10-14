@@ -3,6 +3,8 @@ import { getVersion } from "@tauri-apps/api/app";
 import { check } from "@tauri-apps/plugin-updater";
 
 import { Button } from "../../design/controls/Button";
+import { ErrorDetails } from "../../errors/ErrorDetails";
+import { texts, userError } from "../../errors/texts";
 import { describeError } from "../../lib/ipc";
 import { T } from "./texts";
 
@@ -42,7 +44,12 @@ export function VersionUpdates() {
       <p className="es-note" role="status">
         {state.phase === "up-to-date" ? T.upToDate : state.phase === "available" ? T.available(state.version) : ""}
       </p>
-      {state.phase === "error" ? <p className="es-err" role="alert">{state.message}</p> : null}
+      {state.phase === "error" ? (
+        <div className="es-err" role="alert">
+          <p>{userError(state.message, texts.actionFailed).text}</p>
+          <ErrorDetails raw={userError(state.message).detail} />
+        </div>
+      ) : null}
     </>
   );
 }
