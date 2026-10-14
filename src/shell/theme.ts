@@ -1,7 +1,8 @@
 import { de } from "../i18n/de";
 import { readString, writeString } from "../lib/settings";
 
-// V2-F8a theme contract: only `data-theme` on <html> ("light" | "dark"; System removes it).
+// V2-F8a theme contract: only `data-theme` on <html> ("light" | "dark").
+// System and any other value remove the attribute and the stored key.
 
 export type GlassTheme = "light" | "dark" | "system";
 
@@ -12,18 +13,24 @@ export const GLASS_THEME_OPTIONS: readonly { value: GlassTheme; label: string }[
   { value: "system", label: de["theme.system"] },
 ];
 
+/** Light and dark are painted and stored. System and any other value clear both. */
+function persistedGlassTheme(theme: string): "light" | "dark" | null {
+  return theme === "light" || theme === "dark" ? theme : null;
+}
+
 export function loadGlassTheme(): GlassTheme {
   const raw = readString(GLASS_THEME_KEY);
-  return raw === "light" || raw === "dark" ? raw : "system";
+  return persistedGlassTheme(raw ?? "") ?? "system";
 }
 
 export function applyGlassTheme(theme: GlassTheme): void {
-  if (theme === "system") delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = theme;
+  const persisted = persistedGlassTheme(theme);
+  if (persisted === null) delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = persisted;
 }
 
 export function saveGlassTheme(theme: GlassTheme): void {
-  writeString(GLASS_THEME_KEY, theme === "system" ? null : theme);
+  writeString(GLASS_THEME_KEY, persistedGlassTheme(theme));
   applyGlassTheme(theme);
 }
 
