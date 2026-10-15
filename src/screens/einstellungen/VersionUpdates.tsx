@@ -15,6 +15,9 @@ type Check =
   | { phase: "ready"; version: string }
   | { phase: "error"; message: string };
 
+// Keyed by the IPC variant (identifier keys keep the UI-string ratchet out of it); a new variant fails to compile until it is placed.
+const INSTALL_GOES_ON = { cancelled: false, tooLate: true, notRunning: false } satisfies Record<CancelUpdateResult, boolean>;
+
 /**
  * Same lib calls and IPC wrappers as the classic Updates tab (`SettingsView`), in a smaller flow.
  * shortcut: no release notes, restart button or `setUpdaterState` sync (the classic tab has them); add when the classic tab goes.
@@ -86,7 +89,7 @@ export function VersionUpdates() {
         still({ phase: "available", version: v, workers: length, cancelled: true });
       } else if (flight.error) {
         fail(flight.error.e); // the install failed by itself: the cancel did not stop it
-      } else if (T.cancelResult[result] !== undefined) {
+      } else if (INSTALL_GOES_ON[result]) {
         still({ phase: "installing", version: v, result }); // the install goes on, a late cancel says so
       } // notRunning: stays cancelling (button off) until the install promise settles
     }).catch((e) => { cancelling.current = null; fail(e); });
