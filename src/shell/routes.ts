@@ -1,6 +1,7 @@
 // V2-F8a: route registry of the Glass shell, from docs/plan/v2.0/ia.md sections 1 and 3.
 // Not imported by the app until V2-F9.
 
+import { isFeatureFlagEnabled } from "../flags/featureFlags";
 import { de, type MessageKey } from "../i18n/de";
 
 export interface ShellTab { path: string; label: string }
@@ -43,10 +44,21 @@ export const ROUTES: readonly ShellRoute[] = [
 
 export const DEFAULT_PATH = "/leitstand";
 
+/**
+ * V2-SCOPE-1: the areas of the shell + Leitstand, the one list to edit. Every other area stays
+ * hidden until the "weitere Bereiche" flag is on; Ersteinrichtung stays reachable via `/start`.
+ */
+export const SCOPE_ROUTE_IDS: readonly string[] = ["leitstand", "einstellungen", "start"];
+
+const inScope = (route: ShellRoute) => SCOPE_ROUTE_IDS.includes(route.id) || isFeatureFlagEnabled("weitere_bereiche");
+
+/** Routes the sidebar and the palette may list. */
+export const visibleRoutes = (): ShellRoute[] => ROUTES.filter(inScope);
+
 export interface ResolvedRoute { route: ShellRoute; tab: ShellTab | null }
 
 /** Exact entry or tab path first, then the entry whose base contains the path; null = unknown. */
-export function resolveRoute(path: string): ResolvedRoute | null {
+function lookup(path: string): ResolvedRoute | null {
   const clean = path.replace(/\/+$/, "");
   for (const route of ROUTES) {
     const tab = route.tabs.find((x) => x.path === clean);
@@ -54,6 +66,17 @@ export function resolveRoute(path: string): ResolvedRoute | null {
   }
   const route = ROUTES.find((x) => clean.startsWith(`${x.base}/`));
   return route ? { route, tab: null } : null;
+}
+
+/** True for a known area that the scope flag currently hides. */
+export function isHidden(path: string): boolean {
+  const found = lookup(path);
+  return found !== null && !inScope(found.route);
+}
+
+/** Like `lookup`, but a hidden area resolves to the Leitstand; null = unknown. */
+export function resolveRoute(path: string): ResolvedRoute | null {
+  return lookup(isHidden(path) ? DEFAULT_PATH : path);
 }
 
 /** `#/beweise/diff` to `/beweise/diff`. A query and a trailing slash are dropped; `#/` and an empty hash open the default route. */

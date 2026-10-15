@@ -10,10 +10,13 @@ vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 import App from "../../App";
 
 const FLAG_KEY = "projecta.settings.featureFlag.d1_neue_oberflaeche";
+/** These tests walk routes outside the default scope, so "weitere Bereiche" is on. */
+const SCOPE_KEY = "projecta.settings.featureFlag.weitere_bereiche";
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(SCOPE_KEY, "1");
   window.location.hash = "";
   mocks.invoke.mockReset();
   mocks.invoke.mockImplementation((command: string) => {

@@ -11,6 +11,8 @@ import App from "../../App";
 import type { UsageReport } from "../../types";
 
 const FLAG_KEY = "projecta.settings.featureFlag.d1_neue_oberflaeche";
+/** Steuerung is outside the default scope, so these tests switch "weitere Bereiche" on. */
+const SCOPE_KEY = "projecta.settings.featureFlag.weitere_bereiche";
 const provider = { id: "claude", name: "Claude Code", kind: "subscription", connected: true, detail: null, quotaState: "ok", blockedUntil: null, omniRouteOnline: true, usage: null, vaultError: null };
 /** The shell placeholder stays in the DOM (hidden by CSS), so look inside the route only. */
 const route = (container: HTMLElement) => within(container.querySelector<HTMLElement>(".g-sr")!);
@@ -38,6 +40,7 @@ const bothSeparators = (amount: string) => {
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(SCOPE_KEY, "1");
   window.location.hash = "";
   mocks.invoke.mockReset();
   mocks.invoke.mockImplementation((command: string) => {
