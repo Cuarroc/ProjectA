@@ -102,7 +102,7 @@ case_m windows-guard-without-plan ci "s/if: steps\\.plan\\.outputs\\.run != 'fal
   "guard.*run != 'false'"
 # AP-4a: `gates (windows)` aggregates the partition legs of `windows-part`.
 # A matrix that lost a partition runs fewer tests and would stay green.
-case_m windows-part-lost-partition ci 's/lane: \[windows_1, windows_2\]/lane: [windows_1]/' \
+case_m windows-part-lost-partition ci 's/lane: \[windows_1, windows_2, windows_native\]/lane: [windows_1]/' \
   "matrix must be exactly"
 # ... the aggregator would be skipped after a red leg (skipped = green for
 # branch protection) ...
@@ -121,8 +121,8 @@ case_m windows-part-without-lane-run ci '/^  windows-part:/,/^  windows:/ s/^   
 case_m red-first-own-setup ci '/^  red-first:/,$ s#^(      - uses: actions/checkout.*)#      - uses: ./.github/actions/setup-linux\n\1#' \
   "own setup-linux"
 # ci.yml: red-first no longer waits for the linux job.
-case_m red-first-without-needs ci '/^  red-first:/,$ s/^    needs: linux$/    needs: []/' \
-  "'needs: linux' missing"
+case_m red-first-without-needs ci '/^  red-first:/,$ s/^    needs: linux_1$/    needs: []/' \
+  "'needs: linux_1' missing"
 # ci.yml: the linux job no longer runs red-first.
 case_m linux-without-red-first ci 's#bash scripts/ci/red-first\.sh$#true#' \
   "red-first - proof' missing"

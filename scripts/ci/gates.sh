@@ -64,17 +64,17 @@ NEXTEST_CI="cargo nextest run --profile ci"
 
 GATES=(
   # --- Sekunden: die Workflow-Gates und ihre eigenen Selbsttests -----------
-  "no-masked|linux,release|.|bash scripts/ci/no-masked-output.sh"
-  "wf-shell|linux,release|.|bash scripts/ci/workflow-shell.sh"
-  "wf-pinned|linux,release|.|bash scripts/ci/actions-pinned.sh"
+  "no-masked|linux,linux_1,release|.|bash scripts/ci/no-masked-output.sh"
+  "wf-shell|linux,linux_1,release|.|bash scripts/ci/workflow-shell.sh"
+  "wf-pinned|linux,linux_1,release|.|bash scripts/ci/actions-pinned.sh"
   # CI-HARDEN-03: lint the glue code. crlf needs no tool; shellcheck and
   # actionlint skip with a logged reason locally when absent and fail in CI
   # (scripts/ci/shell-lint.sh). actionlint is installed pinned in setup-linux.
-  "crlf|precommit,prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh crlf"
-  "eol|precommit,prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh eol"
-  "shellcheck|prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh shellcheck"
-  "actionlint|prepush,branchpush,linux,release|.|bash scripts/ci/shell-lint.sh actionlint"
-  "selftest-shell-lint|prepush,linux,release|.|bash scripts/test-shell-lint.sh"
+  "crlf|precommit,prepush,branchpush,linux,linux_1,release|.|bash scripts/ci/shell-lint.sh crlf"
+  "eol|precommit,prepush,branchpush,linux,linux_1,release|.|bash scripts/ci/shell-lint.sh eol"
+  "shellcheck|prepush,branchpush,linux,linux_1,release|.|bash scripts/ci/shell-lint.sh shellcheck"
+  "actionlint|prepush,branchpush,linux,linux_1,release|.|bash scripts/ci/shell-lint.sh actionlint"
+  "selftest-shell-lint|prepush,linux,linux_1,release|.|bash scripts/test-shell-lint.sh"
   # Not in the release lane (v1.5.0 run 37338718635): ci-shape and the five
   # selftest-* gates up to selftest-main-red test CI tooling that only runs on
   # ubuntu (python3, curl stubs, `timeout`; never ran on windows-latest). The
@@ -82,36 +82,36 @@ GATES=(
   # CI-03: the structure the cheaper CI relies on - required check names in
   # sync with .mergify.yml, the Windows job guarded against running its lane
   # on Linux, red-first sharing the linux setup.
-  "ci-shape|linux|.|bash scripts/ci/ci-shape.sh"
+  "ci-shape|linux,linux_1|.|bash scripts/ci/ci-shape.sh"
   # CI-SEC-01: no secret in a job that runs PR code (allowlist: main-red).
-  "pr-secrets|linux,release|.|bash scripts/ci/pr-secrets.sh"
+  "pr-secrets|linux,linux_1,release|.|bash scripts/ci/pr-secrets.sh"
   # Every tool a release-lane gate needs is installed by the composite both
   # release.yml jobs use; the dry-run job can neither sign nor publish.
-  "release-shape|linux,release|.|bash scripts/ci/release-shape.sh"
+  "release-shape|linux,linux_1,release|.|bash scripts/ci/release-shape.sh"
   # "ProjectA Dev" preview build: manual trigger, no secret, own identifier, inert updater.
-  "dev-build-shape|linux,release|.|bash scripts/ci/dev-build-shape.sh"
+  "dev-build-shape|linux,linux_1,release|.|bash scripts/ci/dev-build-shape.sh"
   # Die Selbsttests belegen, dass die drei Gates ueberhaupt scheitern KOENNEN
   # (AGENTS.md, Regel 2). ci.yml berief sich auf sie als Begruendung, warum
   # man dem Detektor trauen darf — ausgefuehrt wurden sie nie.
-  "selftest-gates|linux|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-dev-build-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh && bash scripts/test-pr-secrets.sh && bash scripts/test-test-insights-pick.sh && bash scripts/test-windows-verdict.sh"
+  "selftest-gates|linux,linux_1|.|bash scripts/test-no-masked-output.sh && bash scripts/test-workflow-shell.sh && bash scripts/test-actions-pinned.sh && bash scripts/test-prepush-lane.sh && bash scripts/test-hook-root.sh && bash scripts/test-ci-shape.sh && bash scripts/test-release-shape.sh && bash scripts/test-dev-build-shape.sh && bash scripts/test-native-tests.sh && bash scripts/test-precommit-lane.sh && bash scripts/test-pr-secrets.sh && bash scripts/test-test-insights-pick.sh && bash scripts/test-windows-verdict.sh && node --test scripts/ci/linux-split.test.mjs"
   # Selbsttest des Test-First-Gates: red-first.sh wertet lange Logs aus, und
   # genau dort war die Auswertung schon einmal falsch. Stand auf main als
   # eigener ci.yml-Schritt und waere beim Umbau auf Bahnen verloren gegangen.
   # CI-02 (W1-19b): Dependabot-Manifest-Commits brauchen keinen Trailer -
   # und nur die. Der Selbsttest belegt die Ausnahme UND ihre Grenzen.
-  "selftest-red-first|linux|.|bash scripts/test-red-first-plan.sh && bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh && bash scripts/test-red-first-local.sh"
+  "selftest-red-first|linux,linux_1|.|bash scripts/test-red-first-plan.sh && bash scripts/test-red-first-output.sh && bash scripts/test-red-first-dependabot.sh && bash scripts/test-red-first-verdict.sh && bash scripts/test-red-first-landed.sh && bash scripts/test-red-first-platform.sh && bash scripts/test-red-first-local.sh"
   # Der Review-Transport ist der Weg, auf dem die Dual-Review-Pflicht
   # (AGENTS.md) ueberhaupt eingeloest wird. Am 09.09. starb er an einer
   # Antwort ohne Inhalt und schrieb fuer KEINEN Reviewer ein Protokoll.
   # Laeuft gegen einen lokalen Server: kein Netz, kein Secret, keine
   # Modellminute.
-  "selftest-review|linux|.|bash scripts/test-review-transport.sh && bash scripts/test-review-local.sh"
+  "selftest-review|linux,linux_1|.|bash scripts/test-review-transport.sh && bash scripts/test-review-local.sh"
   # CI-01/CI-02: der Plan-Schritt der Jobs linux und windows entscheidet, ob
   # die Bahn laufen muss (scripts/ci/lane-plan.sh). Ein falsches "false" waere
   # ein Gate, das gruen durch Abwesenheit ist - deshalb belegt der Selbsttest
   # beide Richtungen (Rust-Aenderung -> voll, gelesene Doku -> voll, freie
   # Doku -> aus, Queue/Wochenlauf -> voll, main-Push nur bei Cache-Eingaben).
-  "selftest-lane-plan|linux|.|bash scripts/test-lane-plan.sh"
+  "selftest-lane-plan|linux,linux_1|.|bash scripts/test-lane-plan.sh"
   # Nutzer-Regel (freigegeben 25.09.2026): Geheimnis-Scan vor jedem Commit.
   # gitleaks ueber den Index (nur das, was der Commit einfuehren wuerde,
   # unter einer Sekunde). Die Allowlist fuer die Test-Kanarienvoegel aus
@@ -132,36 +132,36 @@ GATES=(
   # Fehlerklassen: leichtes Gruen (Bahnen uebersprungen) darf NICHT
   # entfrieren, ohne MERGIFY_TOKEN bleibt das Issue der Fallback (gruen mit
   # Warnung), ein scheiternder Freeze-API-Aufruf MIT Token ist laut rot.
-  "selftest-main-red|linux|.|bash scripts/test-main-red-guard.sh"
+  "selftest-main-red|linux,linux_1|.|bash scripts/test-main-red-guard.sh"
   # All tracked shell scripts must remain executable so hooks and local gates
   # can invoke them directly after checkout.
-  "script-modes|prepush,linux,release|.|bash scripts/ci/script-modes.sh"
-  "selftest-script-modes|prepush,linux,release|.|bash scripts/test-script-modes.sh"
+  "script-modes|prepush,linux,linux_1,release|.|bash scripts/ci/script-modes.sh"
+  "selftest-script-modes|prepush,linux,linux_1,release|.|bash scripts/test-script-modes.sh"
   # CI-CONFLICT-01: branches must not commit the generated HQ snapshot or
   # .pa/ACTIVITY.md - GitHub/Mergify merge without our merge driver, so each
   # such PR conflicts with every other one. The self-test proves it can fail.
-  "hotspot-guard|prepush,branchpush,linux|.|bash scripts/ci/hotspot-guard.sh"
-  "selftest-hotspot-guard|prepush,linux,release|.|bash scripts/test-hotspot-guard.sh"
+  "hotspot-guard|prepush,branchpush,linux,linux_1|.|bash scripts/ci/hotspot-guard.sh"
+  "selftest-hotspot-guard|prepush,linux,linux_1,release|.|bash scripts/test-hotspot-guard.sh"
   # WIN-01: the selection logic of the early-Windows-verdict helper.
-  "selftest-win-signal|prepush,linux,release|.|bash scripts/test-win-signal.sh"
+  "selftest-win-signal|prepush,linux,linux_1,release|.|bash scripts/test-win-signal.sh"
   # V16-08: Rust tests that read source text (include_str!/read_to_string) and
   # match it against a "\n" literal must normalise CRLF (Windows broke on 05.10.).
-  "crlf-source-compare|precommit,prepush,linux|.|node --test scripts/ci/crlf-source-compare.test.mjs && node scripts/ci/crlf-source-compare.mjs check"
-  "architecture-drift|precommit,prepush,linux|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
+  "crlf-source-compare|precommit,prepush,linux,linux_1|.|node --test scripts/ci/crlf-source-compare.test.mjs && node scripts/ci/crlf-source-compare.mjs check"
+  "architecture-drift|precommit,prepush,linux,linux_1|.|node --test scripts/ci/architecture-drift.test.mjs && node scripts/ci/architecture-drift.mjs check"
   # AP-9 S0: command names in generate_handler! (main.rs) and invoke("...")
   # callers in src/ must agree; reads text only, no build.
-  "ipc-names|precommit,prepush,linux|.|node --test scripts/ci/ipc-names.test.mjs && node scripts/ci/ipc-names.mjs check"
+  "ipc-names|precommit,prepush,linux,linux_1|.|node --test scripts/ci/ipc-names.test.mjs && node scripts/ci/ipc-names.mjs check"
   # V161-DOC-LINKS: broken relative links in tracked Markdown. Local lanes only:
   # lane-plan HEAVY_DOCS would turn every docs PR into a Linux CI run.
   "doc-links|precommit,prepush|.|node --test scripts/ci/doc-links.test.mjs && node scripts/ci/doc-links.mjs check"
   # R1498-G5: export-svg.mjs on fixtures; skips without Chromium (CI linux has none).
-  "diagrams-export|prepush,linux|.|node --test docs/diagrams/export-svg.test.mjs"
+  "diagrams-export|prepush,linux,linux_2|.|node --test docs/diagrams/export-svg.test.mjs"
   # Deterministic suppression counts may not exceed their checked-in ceilings.
   # Explicit updates lower ceilings only; every lane also tests the ratchet.
-  "ratchet|precommit,prepush,linux|.|node --test scripts/ci/ratchet.test.mjs && node scripts/ci/ratchet.mjs check"
+  "ratchet|precommit,prepush,linux,linux_1|.|node --test scripts/ci/ratchet.test.mjs && node scripts/ci/ratchet.mjs check"
 
   # AP-10e: every #[ignore] in src-tauri states why and how to run it.
-  "ignore-reasons|precommit,prepush,linux|.|node --test scripts/ci/ignore-reasons.test.mjs"
+  "ignore-reasons|precommit,prepush,linux,linux_1|.|node --test scripts/ci/ignore-reasons.test.mjs"
 
   # CI-06: the trailers of the new commits against origin/main, with the very
   # same red-first.sh --plan the PR CI runs (no second implementation, no
@@ -171,36 +171,37 @@ GATES=(
   "red-first-plan|prepush,branchpush|.|BASE_SHA=\"\$(git merge-base origin/main HEAD)\" && HEAD_SHA=\"\$(git rev-parse HEAD)\" && export BASE_SHA HEAD_SHA && bash scripts/ci/red-first.sh --plan"
 
   # --- schnell: Form und Typen --------------------------------------------
-  "fmt|precommit,prepush,branchpush,linux,windows,windows_1,release|src-tauri|cargo fmt --check"
+  "fmt|precommit,prepush,branchpush,linux,linux_1,windows,windows_1,release|src-tauri|cargo fmt --check"
   "cargo-check|precommit|src-tauri|cargo check"
-  "typecheck|precommit,prepush,branchpush,linux,release|.|npm run typecheck"
-  "lint|prepush,branchpush,linux,release|.|npm run lint"
+  "typecheck|precommit,prepush,branchpush,linux,linux_2,release|.|npm run typecheck"
+  "lint|prepush,branchpush,linux,linux_2,release|.|npm run lint"
 
   # --- mittel: die Test-Suiten des Frontends ------------------------------
-  "fe-test|prepush,branchpush,linux,release|.|npm test"
+  "fe-test|prepush,branchpush,linux,linux_2,release|.|npm test"
   # 12 node:test-Dateien unter scripts/lib/. Standen seit jeher in
   # package.json und liefen in keinem Workflow und keinem Hook.
   # Not in release: DevHQ tooling, not shipped; 11 tests red on Windows (run 37343951787).
-  "hq-test|prepush,branchpush,linux|.|npm run test:hq"
+  # The dev-inbox tests need Gitleaks from setup-linux on linux_1.
+  "hq-test|prepush,branchpush,linux,linux_1|.|npm run test:hq"
   # DR-01: Denkraum (tools/denkraum/) tests + public-repo hygiene check. Pure
   # node, milliseconds, so also precommit; not windows (platform-independent,
   # linux proves it) and not release (dev tooling, not shipped).
-  "denkraum|precommit,prepush,branchpush,linux|.|npm run test:denkraum"
+  "denkraum|precommit,prepush,branchpush,linux,linux_2|.|npm run test:denkraum"
   # Browser-Smoke des HQ. Kam am 12.09. auf main dazu.
-  "hq-visual|linux|.|npm run test:hq:visual"
-  "fe-build|linux,release|.|npm run build"
+  "hq-visual|linux,linux_2|.|npm run test:hq:visual"
+  "fe-build|linux,linux_2,release|.|npm run build"
   # LIC-01: Lizenzen aller Abhaengigkeiten (Rust + npm-Produktion) gegen die
   # vom Nutzer freigegebene Positivliste. Nur linux: plattformunabhaengig,
   # und cargo-deny braeuchte auf dem Windows-Job eine eigene Installation.
-  "licenses|linux,release|.|bash scripts/ci/license-check.sh"
-  "e2e|linux,release|.|npm run test:e2e"
+  "licenses|linux,linux_1,release|.|bash scripts/ci/license-check.sh"
+  "e2e|linux,linux_2,release|.|npm run test:e2e"
 
   # --- teuer: der Rust-Kern -----------------------------------------------
-  "clippy|prepush,linux,windows,windows_1,release|src-tauri|cargo clippy --all-targets -- -D warnings"
+  "clippy|prepush,linux,linux_1,windows,windows_1,release|src-tauri|cargo clippy --all-targets -- -D warnings"
   # nextest statt cargo test: eigener Prozess je Test (kein geteilter Zustand),
   # keine Retries im Profil `ci`, harter slow-timeout. pre-push fuhr bis zum
   # 09.09. `cargo test` und mass damit etwas anderes als CI.
-  "rust-suite|prepush,linux,windows,release|src-tauri|$NEXTEST_CI"
+  "rust-suite|prepush,linux,linux_1,windows,release|src-tauri|$NEXTEST_CI"
   # AP-4a: the same suite in two halves; `count:` splits the sorted test list
   # round-robin, so the halves are balanced and together complete.
   "rust-suite-1|windows_1|src-tauri|$NEXTEST_CI --partition count:1/2"
@@ -211,14 +212,14 @@ GATES=(
   # Nur windows: das Binary heisst .exe, und ConPTY gibt es nur dort. Stand
   # bis W3-06 als eigener pwsh-Schritt in ci.yml, ausserhalb dieser Liste -
   # dieselbe Drift-Klasse, die dieses Skript beseitigen soll.
-  "native-tests|windows,windows_2|.|bash scripts/ci/native-tests.sh"
+  "native-tests|windows,windows_native|.|bash scripts/ci/native-tests.sh"
 
   # --- eigene Bahn: das woechentliche Audit -------------------------------
   "audit-rust|audit|src-tauri|cargo audit"
   "audit-npm|audit|.|npm audit --audit-level=moderate"
 )
 
-LANES="precommit prepush branchpush linux windows windows_1 windows_2 release audit"
+LANES="precommit prepush branchpush linux linux_1 linux_2 windows windows_1 windows_2 windows_native release audit"
 
 gate_field() { # zeile feldnummer
   printf '%s' "$1" | cut -d'|' -f"$2"
@@ -563,7 +564,7 @@ gates.sh — die eine Gate-Quelle fuer CI, Release, Hooks und den lokalen Lauf.
   gates.sh --list [bahn]        auflisten, nichts ausfuehren
   gates.sh --from <id> lane <b> ab diesem Gate weiter
 
-Bahnen: precommit prepush branchpush linux windows windows_1 windows_2 release audit
+Bahnen: precommit prepush branchpush linux linux_1 linux_2 windows windows_1 windows_2 windows_native release audit
 USAGE
 }
 

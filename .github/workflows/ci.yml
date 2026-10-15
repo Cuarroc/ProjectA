@@ -157,8 +157,8 @@ defaults:
     shell: bash
 
 jobs:
-  linux:
-    name: gates (linux)
+  linux_1:
+    name: linux gates (linux_1)
     # Entwurf -> aus; Queue-Entwurf von Mergify -> an (Kopfkommentar).
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')
     runs-on: ubuntu-latest
@@ -312,7 +312,7 @@ jobs:
 
       - name: Gates (linux)
         if: steps.plan.outputs.run != 'false'
-        run: bash scripts/ci/gates.sh lane linux
+        run: bash scripts/ci/gates.sh lane linux_1
 
       # Test Insights (CI-SEC-01): dieser Job laedt die JUnit-Berichte nur als
       # Artefakt hoch. Er hat KEIN Secret: er fuehrt PR-Code aus, und ein
@@ -327,10 +327,8 @@ jobs:
         timeout-minutes: 5
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-linux
-          path: |
-            src-tauri/target/nextest/ci/junit.xml
-            .junit/vitest.xml
+          name: junit-linux_1
+          path: src-tauri/target/nextest/ci/junit.xml
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 3
@@ -372,9 +370,94 @@ jobs:
           fi
           bash scripts/ci/red-first.sh
 
+  # CI-SPLIT-LINUX: frontend/browser work overlaps Rust and shell self-tests.
+  linux_2:
+    name: linux gates (linux_2)
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      lane_run: ${{ steps.plan.outputs.run }}
+    env:
+      PA_JUNIT: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - name: Plan - muss die Linux-Bahn laufen?
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          GIT_REF: ${{ github.ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PLAN_FETCH: "1"
+        run: |
+          # Erst in eine Datei, dann anhaengen - eine Pipe nach $GITHUB_OUTPUT
+          # verschluckt den Exit-Code links davon (scripts/ci/no-masked-output.sh).
+          bash scripts/ci/lane-plan.sh linux > "$RUNNER_TEMP/lane-plan.out"
+          cat "$RUNNER_TEMP/lane-plan.out"
+          grep -E '^run=(true|false)$' "$RUNNER_TEMP/lane-plan.out" > "$RUNNER_TEMP/lane-plan.kv"
+          cat "$RUNNER_TEMP/lane-plan.kv" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.plan.outputs.run != 'false'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Frontend setup
+        if: steps.plan.outputs.run != 'false'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Gates (linux_2)
+        if: steps.plan.outputs.run != 'false'
+        run: bash scripts/ci/gates.sh lane linux_2
+      - name: JUnit artifact
+        if: ${{ !cancelled() && steps.plan.outputs.run != 'false' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: junit-linux_2
+          path: .junit/vitest.xml
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 3
+
+  linux:
+    name: gates (linux)
+    needs: [linux_1, linux_2]
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'mergify/merge-queue/')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      lane_run: ${{ needs.linux_1.outputs.lane_run == 'true' && needs.linux_2.outputs.lane_run == 'true' }}
+    steps:
+      - name: Linux verdict
+        env:
+          RUST_RESULT: ${{ needs.linux_1.result }}
+          FRONTEND_RESULT: ${{ needs.linux_2.result }}
+        run: test "$RUST_RESULT" = success && test "$FRONTEND_RESULT" = success
+      # Preserve the artifact contract used by the privileged Test Insights workflow.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        with:
+          pattern: junit-linux_*
+          merge-multiple: true
+          path: reports
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        with:
+          name: junit-linux
+          path: reports
+          if-no-files-found: ignore
+          retention-days: 3
+
   # AP-4a (measured 14.10.2026: gates (windows) was the critical path, median
   # 891 s of 895 s, 59 % of it test execution): the Windows lane runs as two
-  # legs, one per nextest partition (gates.sh lanes windows_1 / windows_2).
+  # nextest legs plus a separate native-tests leg (CI-SPLIT-LINUX).
   # Each leg builds with the warm rust-cache (about 85 s) instead of passing
   # test binaries around as an artifact - the build is cheaper than moving
   # ~1 GB between Windows runners. The required check `gates (windows)` is the
@@ -385,7 +468,7 @@ jobs:
       # Both halves report, so one round trip shows every red test.
       fail-fast: false
       matrix:
-        lane: [windows_1, windows_2]
+        lane: [windows_1, windows_2, windows_native]
     # Entwurf -> aus; Queue-Entwurf von Mergify -> an (Kopfkommentar). Das ist
     # die EINZIGE Job-Bedingung hier - ob die Bahn fachlich laufen muss,
     # entscheidet der Plan-Schritt unten, damit der Required Check immer
@@ -568,7 +651,7 @@ jobs:
   # missing, skipped or cancelled outcomes are red (red-first-verdict.sh).
   red-first:
     name: red-first
-    needs: linux
+    needs: linux_1
     # CI-01: wie die anderen Jobs keine Entwuerfe, ausser Mergify-Queue-PRs.
     # `!cancelled()`: also after a red `gates (linux)` - the gates verdict
     # and the red-first verdict are separate checks.
@@ -584,10 +667,10 @@ jobs:
 
       - name: red-first verdict (from gates (linux))
         env:
-          LINUX_RESULT: ${{ needs.linux.result }}
-          RF_PLAN: ${{ needs.linux.outputs.rf_plan }}
-          RF_COUNT: ${{ needs.linux.outputs.rf_count }}
-          RF_RUN: ${{ needs.linux.outputs.rf_run }}
+          LINUX_RESULT: ${{ needs.linux_1.result }}
+          RF_PLAN: ${{ needs.linux_1.outputs.rf_plan }}
+          RF_COUNT: ${{ needs.linux_1.outputs.rf_count }}
+          RF_RUN: ${{ needs.linux_1.outputs.rf_run }}
         run: bash scripts/ci/red-first-verdict.sh
 
   # CI-04 (docs/PLAN.md): ein roter Lauf auf main stoppt die Queue.
