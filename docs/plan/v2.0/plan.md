@@ -878,7 +878,7 @@ Jede ID bleibt ein eigenes Paket ≤300 Gesamtzeilen; Serien 14–16 entfernen h
 
 ### 10.3 Designsystem-Feinschliff
 
-Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions.md#2026-10-15---design-system-decisions-d1d7-root-by-delegation-elias-may-overrule). Root disponiert; ≤300 Gesamtzeilen je Paket. Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "DS-"` ohne PR für diese DS-IDs; DS-01 laut Server-Auftrag gestartet. Übrige Einträge sind Planung, keine Ausführungsbehauptung.
+Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions.md#2026-10-15---design-system-decisions-d1d7-root-by-delegation-the-user-may-overrule). Root disponiert; ≤300 Gesamtzeilen je Paket. Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "DS-"` ohne PR für diese DS-IDs; DS-01 laut Server-Auftrag gestartet. Übrige Einträge sind Planung, keine Ausführungsbehauptung.
 
 | ID | Ziel | Hängt ab von | Status |
 |---|---|---|---|
