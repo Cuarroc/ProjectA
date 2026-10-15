@@ -45,6 +45,28 @@ test("reports unknown dependencies and only actual cycle members with levels", (
   assert.deepEqual(dependencyGraph(model.packages), { cycle: ["A-1", "A-2"], levels: [["A-3"], ["A-4"]] });
   assert.deepEqual(kinds(model).sort(), ["dependency-cycle", "dependency-cycle", "unknown-dependency"]);
 });
+test("dependency clauses exclude prose and keep known or explicit package IDs", () => {
+  const model = parse(table("| DR-09 | A | done | |\n| DR-10 | B | done | DR-09/#638 gemergt; Verdrahtung in DR-11/#718 |\n| DR-11 | C | done | DR-10, FIT-Abnahme, UI-Verdrahtung, DR-05-Verknüpfung, DR-SEC-01g, CUSTOM-task |\n| CUSTOM-task | D | planned | |"));
+  assert.deepEqual(model.packages.map((p) => p.deps), [[], ["DR-09"], ["DR-10", "DR-SEC-01g", "CUSTOM-task"], []]);
+  assert.deepEqual(checkPlan(model).map((f) => [f.kind, f.detail]), [["unknown-dependency", "DR-SEC-01g"]]);
+  assert.deepEqual(dependencyGraph(model.packages).cycle, []);
+});
+test("status contradictions aggregate all referenced and named PRs", () => {
+  const model = parse(table("| A-1 | A | in Arbeit #1, #2 | |"));
+  const merged = { number: 1, state: "MERGED" }, open = { number: 2, state: "OPEN" };
+  assert.deepEqual(kinds(model, { prs: [merged, open] }), []);
+  assert.deepEqual(kinds(model, { prs: [merged] }), []); // Missing PR evidence is not closure.
+  assert.ok(kinds(model, { prs: [merged, { ...open, state: "CLOSED" }] }).includes("status-contradicts-github"));
+  assert.deepEqual(kinds(parse(table("| A-1 | A | in Arbeit #1 | |")), { prs: [merged, { ...open, body: "Plan-ID: A-1" }] }), []);
+  assert.deepEqual(kinds(parse(table("| A-1 | A | Erledigt #1, #2 | |")), { prs: [merged, open] }), ["status-contradicts-github"]);
+  assert.deepEqual(kinds(parse(table("| A-1 | A | Erledigt #1, #2 | |")), { prs: [merged, { ...open, state: "CLOSED" }] }), []);
+});
+test("mixed completed and pending subparts remain in progress", () => {
+  for (const raw of ["10a ✓ #13, 10c offen", "✓ #13; offen", "offen; 10a erledigt", "10a done, 10c planned"]) assert.equal(normalizeStatus(raw), "in_progress", raw);
+  assert.equal(normalizeStatus("Erledigt; früher Draft"), "done");
+  // docs/PLAN.md, Statuswerte explicitly maps this phrase to In Prüfung.
+  assert.equal(normalizeStatus("Angenommen, Mergify ausstehend"), "in_review");
+});
 test("finds unmapped PRs and GitHub status contradictions", () => {
   const model = parse(table("| A-1 | A | in Arbeit #1 | |\n| A-2 | B | Erledigt #2 | |\n| A-3 | C | Geplant #3 | |"));
   const prs = [{ number: 1, state: "MERGED" }, { number: 2, state: "OPEN", body: "Plan-ID: A-2", headRefName: "codex/mapped" }, { number: 3, state: "CLOSED" }, { number: 4, state: "OPEN", title: "A-11", headRefName: "codex/unmapped" }];
