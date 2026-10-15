@@ -11,10 +11,8 @@ const POLL_INTERVAL_MS = 5000;
 /**
  * Not-Aus: stops every running agent (within 10 s) and blocks new dispatches
  * until it is lifted. An unreadable state is shown as "stopped", never as free.
- * The appearance prop remains accepted for existing callers; all controls use the design system.
  */
-export default function EmergencyStop(props: { appearance?: "classic" | "glass" }) {
-  void props;
+export default function EmergencyStop() {
   const [active, setActive] = useState<boolean | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,7 +72,7 @@ export default function EmergencyStop(props: { appearance?: "classic" | "glass" 
     : "Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben.";
 
   return (
-    <div data-testid="emergency-stop" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+    <div data-testid="emergency-stop" className="g-estop">
       {active ? (
         <Button size="lg" disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
       ) : (
@@ -87,13 +85,10 @@ export default function EmergencyStop(props: { appearance?: "classic" | "glass" 
           Not-Aus auslösen
         </Button>
       )}
-      <p role="status" title={hint} style={{
-        margin: 0, minWidth: 0, maxWidth: "28ch", overflow: "hidden", textOverflow: "ellipsis",
-        whiteSpace: "nowrap", color: "var(--g-muted)", font: "400 12px/1.4 var(--g-font-sans)",
-      }}>
+      <p role="status" title={hint} className="g-estop-hint">
         {hint}
       </p>
-      {error ? <span role="alert" style={{ color: "var(--g-bad)", overflowWrap: "anywhere" }}>{error}</span> : null}
+      {error ? <span role="alert" className="g-estop-error">{error}</span> : null}
     </div>
   );
 }

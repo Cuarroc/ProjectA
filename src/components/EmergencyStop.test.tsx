@@ -92,18 +92,10 @@ describe("EmergencyStop", () => {
     expect(ipc.getEmergencyStop).toHaveBeenCalledTimes(2);
   });
 
-  it("uses the design lift button by default", async () => {
-    ipc.getEmergencyStop.mockResolvedValue(true);
-    render(<EmergencyStop />);
-    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
-    expect(lift).toHaveClass("g-btn");
-    expect(lift).not.toHaveClass("button-ghost");
-  });
-
-  it("renders the lift button as a Glass button with appearance glass and lifts the same way", async () => {
+  it("uses the design lift button by default and lifts the stop", async () => {
     ipc.getEmergencyStop.mockResolvedValue(true);
     ipc.setEmergencyStop.mockResolvedValue(undefined);
-    render(<EmergencyStop appearance="glass" />);
+    render(<EmergencyStop />);
     const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
     expect(lift.className.split(/\s+/)).toContain("g-btn");
     expect(lift.className).not.toContain("button-ghost");
