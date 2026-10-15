@@ -34,7 +34,7 @@ export function LeitstandTabs({ path }: { path: string }) {
 export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) {
   const here = trim(path);
   const betrieb = here === BETRIEB_PATH;
-  const fabrik = here === FABRIK_PATH;
+  const fabrik = here === FABRIK_PATH || here === "/leitstand/fluss";
   const t = useT();
   const [projectId, setProjectId] = useState(readActiveProjectId);
   // The picker and the old app publish a choice through the module's event.
