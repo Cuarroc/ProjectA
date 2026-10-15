@@ -35,7 +35,7 @@ per provider: `docs/setup/README.md`. Check your machine with
 6. Approved adaptation may change method/order/slicing/owner/location, not
    requirements. Record trigger/evidence, previous state, change, remaining
    acceptance duties and next owner/step in the ticket/PLAN. Preserve granted
-   authorizations; new scope/cost/permissions belong to Elias. Blockers need
+   authorizations; new scope/cost/permissions belong to the user. Blockers need
    cause/hypothesis, evidence, impact and next owner/step; continue independent
    approved work without blind retries or invented work.
 

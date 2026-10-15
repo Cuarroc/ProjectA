@@ -1,7 +1,7 @@
 # V2-S01d-0 — Glass-Terminal-Fläche: Entwurf und Schnitt
 
 Stand 11.10.2026, gegen `origin/main` @ 4ef2a21 (`git fetch` am selben Tag). Nur Plan: kein Code, keine Änderung an
-`docs/PLAN.md`, `plan.md` oder `retire.md` (#1132, offen). Auftrag (Elias, 11.10.): Die alte Mitte soll verschwinden.
+`docs/PLAN.md`, `plan.md` oder `retire.md` (#1132, offen). Auftrag (Nutzer, 11.10.): Die alte Mitte soll verschwinden.
 `retire.md` §2b führt den Terminal-Bereich (Ziel Agents) als **MISSING** und RT-7 als davon blockiert; dieses Dokument
 füllt die Lücke V2-S01d. Oberste Regel: **Kein Schritt schließt eine laufende PTY-Sitzung, um sie neu zu öffnen.**
 
@@ -140,7 +140,7 @@ Texte ins Wörterbuch); `bash scripts/ci/gates.sh lane prepush` Exit 0. PTY-ber�
 Abweichung zu `retire.md` §4: `TerminalView.tsx` wird in RT-7 **nicht** gelöscht, sie ist der Motor der neuen Fläche
 (Umzug nach `src/screens/terminal/` höchstens als reiner Verschiebe-Commit). `HistoryView` geht mit RT-6f.
 
-## 5. Risiken und Fragen an Elias
+## 5. Risiken und Fragen an den Nutzer
 
 Risiken: (1) S01d-2 ist der heikelste Schnitt (rund 150 Zeilen weg aus `App.tsx` plus Provider); zählt er über 300,
 wandert der Exit-Abo-Teil in ein eigenes Paket davor, aber nie eine Spiegelung zweier Listen. (2) #1123 und RT-1a

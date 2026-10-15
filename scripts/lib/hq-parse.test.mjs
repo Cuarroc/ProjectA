@@ -553,8 +553,8 @@ const Z_FIXTURE = [
   "| V16-NACHBEOB | Wochenmessungen | Stabschef | v1.6.0 | Server | C | Verschoben | Wochenberichte | b8b16ec8 |", "",
   "## Z4 — Wichtig, aber liegen geblieben", "", ...GOAL_HEAD,
   "| Z4-R19-09 | Audit-Envelopes Wartung | Codex | V16-ARCH-D7 | Server | A | wartet #632 (store.rs) | roter Test | – |",
-  "| Z4-E14 | Update-Signierschlüssel sichern | Elias | – | PC | – | Bereit | Sicherung vorhanden | – |",
-  "| Z4-M5-01 | Testerrunde | Elias | V16-03, E16 | egal | – | Entfallen | Rückmeldungen | – |", "",
+  "| Z4-E14 | Update-Signierschlüssel sichern | Nutzer | – | PC | – | Bereit | Sicherung vorhanden | – |",
+  "| Z4-M5-01 | Testerrunde | Nutzer | V16-03, E16 | egal | – | Entfallen | Rückmeldungen | – |", "",
   "## Lanes (5 parallel)", "", "| Lane | Reihenfolge | Ort |", "|---|---|---|", "| A | x | y |", "",
 ].join("\n");
 

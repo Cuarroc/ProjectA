@@ -1,6 +1,6 @@
 # Rekursives Prompting
 
-Selektiv für komplexe Pläne, viele Abhängigkeiten, schwierige Diagnosen und anspruchsvolle Entwürfe mit prüfbaren Kriterien (Elias, 08.10.2026). Ziele, Anforderungen und Abnahme bleiben erhalten; nur nötige Teilfragen bilden. `docs/PLAN.md` bleibt einziger Plan; bei Widerspruch gilt `AGENTS.md`. Keine zusätzliche Runtime, Agenten oder Hintergrunddienste dafür starten.
+Selektiv für komplexe Pläne, viele Abhängigkeiten, schwierige Diagnosen und anspruchsvolle Entwürfe mit prüfbaren Kriterien (Nutzer, 08.10.2026). Ziele, Anforderungen und Abnahme bleiben erhalten; nur nötige Teilfragen bilden. `docs/PLAN.md` bleibt einziger Plan; bei Widerspruch gilt `AGENTS.md`. Keine zusätzliche Runtime, Agenten oder Hintergrunddienste dafür starten.
 
 ## Ablauf
 
@@ -49,7 +49,7 @@ Ist nach dem Push Nacharbeit nötig (Review-Befund, rote Prüfung), gilt:
 - **Begrenzter Fix auf demselben Branch.** Normaler Commit (kein Force-Push/Rebase), eigenes `prepush`, Push und Remote-Beleg; betroffene Kandidatenevidenz erneuern.
 - Jeder Befund steht im PR-Text unter `### Nacharbeit` als `Datei:Zeile` mit Befehl und Exit-Code. Ein Befund ohne `Datei:Zeile` zählt als unbelegt.
 - Die Runde behebt nur die genannten Befunde; Neues kommt in ein eigenes Paket.
-- Die unabhängigen Reviewrunden bleiben nach AGENTS.md Regel 5 begrenzt: zweite nur bei hohem Befund, danach entscheidet Elias. Selbstprüfungsrunden erlauben keine zusätzliche Fremdreviewrunde oder neue Freigabe.
+- Die unabhängigen Reviewrunden bleiben nach AGENTS.md Regel 5 begrenzt: zweite nur bei hohem Befund, danach entscheidet der Nutzer. Selbstprüfungsrunden erlauben keine zusätzliche Fremdreviewrunde oder neue Freigabe.
 - FLOW-05 zählt die Fixrunden je PR.
 
 ## Vorlagen

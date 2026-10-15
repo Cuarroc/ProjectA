@@ -1,7 +1,7 @@
 # V2-RETIRE-0 — Ausbau des alten UI: Inventar und Reihenfolge
 
 Stand 11.10.2026, gegen `origin/main` @ 5ee1126 (`gh pr list` und `git log origin/main` am selben Tag).
-Auftrag (Elias, 11.10.): Das alte UI soll in ProjectA gar nicht mehr existieren, nicht nur versteckt sein.
+Auftrag (Nutzer, 11.10.): Das alte UI soll in ProjectA gar nicht mehr existieren, nicht nur versteckt sein.
 Dieses Dokument ist nur Plan und Vorschlag: kein Code, keine Löschung. Planzeilen in `plan.md` trägt Chief ein
 (Abschnitt 5). Einordnung: `ia.md` §4 sagt, *wohin* die alten Ansichten wandern; hier steht, *in welcher
 Reihenfolge* sie verschwinden.
@@ -37,7 +37,7 @@ Spalten: (1) Was der Nutzer heute tut · (2) Glass-Heimat · (3) Ersatz-Stand (g
 | `QueuePanel` `QueuePanel.tsx:23`, `App.tsx:1141` | Auftrag einreihen, Warteschlange ansehen, Eintrag fokussieren | `/leitstand`, Betrieb (S01b) | Anzeige gemergt #1100 (`BetriebPanel.tsx`, nur lesend, nicht eingehängt). Einreihen, Schärfen, Abbrechen: MISSING | S01b-Rest (Einreihen) eingehängt → RT-5b |
 | `RecommendationsPanel` `RecommendationsPanel.tsx:57`, `App.tsx:1148` | Scout starten, Empfehlungen annehmen oder verwerfen | Vorschlag `/eingang/ideen` (S04b); `ia.md` nennt sie nicht, `dev-hq.md:36` meint Leitstand | Kern gemergt #1044 (V2-B13 Triage); Bildschirm Plan V2-S04b; Scout-Start MISSING | Chief entscheidet Heimat; S04b eingehängt → RT-5c |
 | `LearningsPanel` `LearningsPanel.tsx:43`, `App.tsx:1150` | Lektionen und Rollenvarianten freigeben oder verwerfen | `/gedaechtnis` (S09); Rollenvarianten `/team/personas` | Kern gemergt #1090 (V2-B12); Personas nur lesend #1095 (nicht eingehängt); Freigabe MISSING; S09, V2-H5 Plan | S09 + Freigabe-Paket eingehängt → RT-5d |
-| `WebInterfacePanel` `WebInterfacePanel.tsx:20`, `App.tsx:1152` | Browser-Oberfläche starten oder stoppen | Fernansicht (V2-H3/H4/H6, „nach dem Kern“, hinter Schalter); Schalter vermutlich `/einstellungen` | Plan, nichts gebaut | **Entscheidung Elias:** bis H3/H4 behalten (Werkzeuge) oder „entfällt“ → RT-5e |
+| `WebInterfacePanel` `WebInterfacePanel.tsx:20`, `App.tsx:1152` | Browser-Oberfläche starten oder stoppen | Fernansicht (V2-H3/H4/H6, „nach dem Kern“, hinter Schalter); Schalter vermutlich `/einstellungen` | Plan, nichts gebaut | **Entscheidung des Nutzers:** bis H3/H4 behalten (Werkzeuge) oder „entfällt“ → RT-5e |
 | `WorkerPanel` `WorkerPanel.tsx:25`, `App.tsx:1155` (nur Agents/Review) | Worker der Liste öffnen, neu starten, archivieren | `/leitstand` Karten | Liste gemergt #1050, eingehängt #1067; Neu starten und Archivieren MISSING (Karte hat nur „Öffnen“) | Karten-Aktionen (RT-1c, RT-6c) → RT-5f |
 | `BoardRail` `BoardRail.tsx:47`, `App.tsx:1171` | Karten je Spalte sehen, Worker öffnen, Rail einklappen | `/leitstand` (Karten, Filter) | gemergt #1050, eingehängt #1067 (Ersatz der Anzeige); „Öffnen wählt Worker“ MISSING | RT-1c, dann RT-1d (aus), RT-4a (löschen) |
 | `LiveStatus` `LiveStatus.tsx:26`, `App.tsx:1189` | nichts sichtbar; Screenreader hört Ansicht, Fragen, wartende Worker | Schale (eine Live-Region) | MISSING: `rg "aria-live" src/shell src/screens` trifft nur `StopBand.tsx:38` (`role="status"`) | **Ausnahme:** bleibt in RT-1d an (unsichtbar, kein Rahmen); weg erst mit RT-6a (Live-Region in der Schale) |
@@ -119,7 +119,7 @@ Komponenten-Tests mit und tragen Verschiebungen im PR-Text ein. Wo ein Glass-Ers
 | RT-5b | `QueuePanel` | `QueuePanel.tsx` + 2 Tests | RT-3, S01b-Rest (Einreihen) eingehängt | Tests nach Betrieb verschoben |
 | RT-5c | `RecommendationsPanel` | Datei + 2 Tests | RT-3, S04b eingehängt, Heimat entschieden | Scout-Start im Glass-Pfad |
 | RT-5d | `LearningsPanel` | Datei + 2 Tests | RT-3, S09 + Freigabe eingehängt | Lektion freigeben im Glass-Pfad |
-| RT-5e | `WebInterfacePanel` | Datei + Test | RT-3, H3/H4 **oder** Elias „entfällt“ | Entscheidung im PR-Text |
+| RT-5e | `WebInterfacePanel` | Datei + Test | RT-3, H3/H4 **oder** Nutzerentscheid „entfällt“ | Entscheidung im PR-Text |
 | RT-5f | `WorkerPanel`, Orchestrator-Zeilen, `Sidebar.tsx` selbst | Dateien + Tests, `styles.css` | RT-5a–e, S01c (Orchestrator), Karten-Aktionen | `sidebar-layout.test.ts` entfällt |
 | RT-6a | Schalen-Live-Region, `LiveStatus` löschen | `shell/Shell.tsx`, `LiveStatus.tsx` (+ Test) | RT-3 | Satz wie `statusSentence`, Test gegen Kopie |
 | RT-6b | Orchestrator-Dialog, `CommandChat`, `ConversationView` | 3 Dateien + Tests | S01c eingehängt, RT-3 | Chat-Zustand (`useOrchestratorChat`) wandert mit |
