@@ -138,21 +138,21 @@ describe("Leitstand route behind D1", () => {
     expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
   });
 
-  it("renders the flow graph at /leitstand/fluss and marks its tab as the current one", async () => {
+  it("renders the flow graph at /leitstand/fabrik and marks its tab as the current one", async () => {
     localStorage.setItem(FLAG_KEY, "1");
-    window.location.hash = "#/leitstand/fluss";
+    window.location.hash = "#/leitstand/fabrik";
     const { container } = render(<App />);
     const flow = await screen.findByRole("region", { name: "Ablauf der Agenten" });
     expect(await within(flow).findByRole("group", { name: "Fix the start block" })).toBeInTheDocument();
-    expect(tabs().getByRole("link", { name: "Fluss" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
     expect(tabs().getByRole("link", { name: "Haupt" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
     expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
   });
 
-  it("shows the empty hint at /leitstand/fluss while no agent runs", async () => {
+  it("shows the empty hint at /leitstand/fabrik while no agent runs", async () => {
     localStorage.setItem(FLAG_KEY, "1");
-    window.location.hash = "#/leitstand/fluss";
+    window.location.hash = "#/leitstand/fabrik";
     const base = currentInvoke();
     mocks.invoke.mockImplementation((command: string) =>
       command === "get_board_state" ? Promise.resolve({ cards: [], coordinators: [] }) : base(command));
@@ -161,9 +161,9 @@ describe("Leitstand route behind D1", () => {
     expect(container.querySelector(".fl-node")).toBeNull();
   });
 
-  it("does not claim an empty flow when the board cannot be read at /leitstand/fluss", async () => {
+  it("does not claim an empty flow when the board cannot be read at /leitstand/fabrik", async () => {
     localStorage.setItem(FLAG_KEY, "1");
-    window.location.hash = "#/leitstand/fluss";
+    window.location.hash = "#/leitstand/fabrik";
     const base = currentInvoke();
     mocks.invoke.mockImplementation((command: string) =>
       command === "get_board_state" ? Promise.reject(new Error("backend down")) : base(command));
@@ -172,13 +172,34 @@ describe("Leitstand route behind D1", () => {
     expect(screen.queryByText("Noch keine Agenten im Ablauf")).toBeNull();
   });
 
-  it("reaches Fluss from Haupt by its tab link", async () => {
+  it("reaches Fabrik from Haupt by its tab link", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     render(<App />);
     await screen.findByRole("region", { name: "Agenten" });
-    fireEvent.click(tabs().getByRole("link", { name: "Fluss" }));
-    await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fluss"));
+    expect(tabs().getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Haupt", "Fabrik", "Betrieb", "Werkzeuge", "Klassisch",
+    ]);
+    expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("href", "#/leitstand/fabrik");
+    fireEvent.click(tabs().getByRole("link", { name: "Fabrik" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fabrik"));
     expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
+  });
+
+  it("redirects old flow bookmarks and later hash navigation to Fabrik", async () => {
+    window.location.hash = "#/leitstand/fluss";
+    const { container } = render(<App />);
+    const expectFabrik = async () => {
+      await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fabrik"));
+      const flow = await screen.findByRole("region", { name: "Ablauf der Agenten" });
+      expect(await within(flow).findByRole("group", { name: "Fix the start block" })).toBeInTheDocument();
+      expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+      expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
+    };
+    await expectFabrik();
+    await go("#/leitstand/betrieb");
+    await screen.findByRole("region", { name: "Warteschlange" });
+    await go("#/leitstand/fluss/");
+    await expectFabrik();
   });
 
   // COMP-1-3: the node wears the card's lamp, still without proof.
@@ -192,7 +213,7 @@ describe("Leitstand route behind D1", () => {
 
   it("shows the unproven lamp on a done node", async () => {
     localStorage.setItem(FLAG_KEY, "1");
-    window.location.hash = "#/leitstand/fluss";
+    window.location.hash = "#/leitstand/fabrik";
     flowBoard({ w: worker, column: "done" });
     render(<App />);
     const node = await screen.findByRole("group", { name: "Fix the start block" });
@@ -203,7 +224,7 @@ describe("Leitstand route behind D1", () => {
 
   it("gives each lamp kind its atom on a node", async () => {
     localStorage.setItem(FLAG_KEY, "1");
-    window.location.hash = "#/leitstand/fluss";
+    window.location.hash = "#/leitstand/fabrik";
     flowBoard(
       { w: { ...worker, id: "w1", task: "Runs now" }, column: "working" },
       { w: { ...worker, id: "w2", task: "Waits for you" }, column: "needs_you" },
@@ -223,21 +244,21 @@ describe("Leitstand route behind D1", () => {
     expect(tabs().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("shows the Fluss tab as active for a trailing-slash path", async () => {
-    render(<LeitstandRoute path="/leitstand/fluss/" />);
+  it("shows the Fabrik tab as active for a trailing-slash path", async () => {
+    render(<LeitstandRoute path="/leitstand/fabrik/" />);
     expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
-    expect(tabs().getByRole("link", { name: "Fluss" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
   });
 
-  it("keeps /leitstand/fluss off when D1 is explicitly disabled", async () => {
+  it("keeps /leitstand/fabrik off when D1 is explicitly disabled", async () => {
     localStorage.setItem(FLAG_KEY, "0");
-    window.location.hash = "#/leitstand/fluss";
+    window.location.hash = "#/leitstand/fabrik";
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     expect(container.querySelector(".g-mount")).toBeNull();
     expect(screen.queryByRole("region", { name: "Ablauf der Agenten" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Fluss" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Fabrik" })).toBeNull();
   });
 
   it("offers no Betrieb route while the switch is off", async () => {
