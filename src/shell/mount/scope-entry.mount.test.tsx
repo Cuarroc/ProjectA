@@ -24,7 +24,7 @@ it("hides the quota entry by default and restores its destination when enabled",
   await mountSettings();
   expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toBeVisible();
   expect(screen.queryByRole("link", { name: /Kontingente:/ })).toBeNull();
-  fireEvent.click(screen.getByRole("switch", { name: "Weitere Bereiche" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Weitere Bereiche" }));
   const link = screen.getByRole("link", { name: /Kontingente:/ });
   expect(link).toHaveAttribute("href", "#/steuerung");
   fireEvent.click(link);
@@ -39,7 +39,7 @@ it("hides the setup team action by default and restores its destination when ena
   expect(screen.getByRole("list", { name: "Schritte der Einrichtung" })).toBeVisible();
   expect(screen.queryByRole("button", { name: "Team ansehen" })).toBeNull();
   fireEvent.click(screen.getByRole("link", { name: "Einstellungen" }));
-  fireEvent.click(await screen.findByRole("switch", { name: "Weitere Bereiche" }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Weitere Bereiche" }));
   await act(async () => { window.location.hash = "#/start"; window.dispatchEvent(new HashChangeEvent("hashchange")); });
   fireEvent.click(await screen.findByRole("button", { name: "Team ansehen" }));
   await waitFor(() => expect(window.location.hash).toBe("#/team"));
