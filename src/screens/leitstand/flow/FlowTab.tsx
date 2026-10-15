@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import "../../../design/inputs/inputs.css";
 import { Lamp, type LampState } from "../../../design/inputs/Lamp";
@@ -6,6 +6,7 @@ import { getBudgets, getQuotaState, listAgentProfiles } from "../../../lib/ipc";
 import type { AgentProfile, BoardCard, Budget, QuotaState } from "../../../types";
 import { lampFor, type LampKind } from "../lamps/lampFor";
 import { quotaView, type QuotaView } from "../quota/forecast";
+import { ProofStrip } from "../proof/ProofStrip";
 import { QuotaMeter } from "../quota/QuotaMeter";
 import { FlowGraph, type FlowLabel } from "./FlowGraph";
 import { layoutFlow } from "./layout";
@@ -42,8 +43,13 @@ function quotaFor(card: BoardCard, { profiles, quotas, budgets }: Reads): { view
   };
 }
 
-/** Inside of a flow node: task and branch as before, the lamp of the card and its quota. No gates reach the card yet, so a done node reads "ohne Beweis". */
-function FlowNodeBody({ label, lamp, quota }: { label: FlowLabel; lamp?: ReturnType<typeof lampFor>; quota?: ReturnType<typeof quotaFor> }) {
+/** The card's proof strip (AgentCard.tsx) from the same fields: only the pull request is known, red-first, gates and review stay "noch nicht verbunden". */
+const proofFor = (card: BoardCard) => (
+  <ProofStrip redFirst="unknown" gates={null} review={null} stale={false} pr={card.prUrl ? { href: card.prUrl, sha: null, command: null, exitCode: null } : null} />
+);
+
+/** Inside of a flow node: task and branch as before, the lamp of the card, its quota and its proof strip. */
+function FlowNodeBody({ label, lamp, quota, proof }: { label: FlowLabel; lamp?: ReturnType<typeof lampFor>; quota?: ReturnType<typeof quotaFor>; proof?: ReactNode }) {
   return (
     <>
       <span className="fl-task">{label.task}</span>
@@ -54,11 +60,12 @@ function FlowNodeBody({ label, lamp, quota }: { label: FlowLabel; lamp?: ReturnT
         </span>
         {quota && <QuotaMeter view={quota.view} name={quota.name} />}
       </span>
+      {proof}
     </>
   );
 }
 
-/** The Fluss tab: the flow graph of the board's agents, one lamp and one quota reading on every node. */
+/** The Fluss tab: the flow graph of the board's agents, one lamp, one quota reading and the proof strip on every node. */
 export function FlowTab({ cards }: { cards: readonly BoardCard[] }) {
   const [reads, setReads] = useState<Reads>({ profiles: null, quotas: null, budgets: null });
   useEffect(() => {
@@ -79,13 +86,15 @@ export function FlowTab({ cards }: { cards: readonly BoardCard[] }) {
 
   const workers = cards.map((card) => card.worker);
   const labels = Object.fromEntries(workers.map((w) => [w.id, { task: w.task, branch: w.branch }]));
-  const lamps = new Map(cards.map((card) => [card.worker.id, lampFor(card, false)]));
+  // A passed test is the proof a done node needs; the card still passes false until the gates reach it.
+  const lamps = new Map(cards.map((card) => [card.worker.id, lampFor(card, card.testStatus === "pass")]));
+  const proofs = new Map(cards.map((card) => [card.worker.id, proofFor(card)]));
   const quotas = new Map(cards.map((card) => [card.worker.id, quotaFor(card, reads)]));
   return (
     <FlowGraph
       layout={layoutFlow(workers)}
       labels={labels}
-      renderNode={(node, label) => <FlowNodeBody label={label} lamp={lamps.get(node.id)} quota={quotas.get(node.id)} />}
+      renderNode={(node, label) => <FlowNodeBody label={label} lamp={lamps.get(node.id)} quota={quotas.get(node.id)} proof={proofs.get(node.id)} />}
     />
   );
 }
