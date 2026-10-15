@@ -2117,3 +2117,13 @@ may be lost. This contract itself starts, migrates, exposes or retires nothing.
 - **D6:** read-only, data-free gallery in every build via Einstellungen › Version › Designsystem ansehen, also in the dev menu; supersedes DS-03's proposed dev-only route.
 - **D7:** the header must not collapse at 1440 px; DS-06 moves COMPACT_QUERY below 1440 with a layout test.
 - **Reverse when:** the user overrules a choice; this records decisions, not their implementation or visual acceptance.
+
+## 2026-10-15 - RELEASE-PAUSE: no patch release or tag until v2.0
+
+- **What / source:** no further patch release and no tag before v2.0; the
+  standing patch-release approval (AGENTS.md rule 10) rests until v2.0, and
+  v2.0 needs a fresh explicit yes from the user. Relayed by Root on
+  2026-10-15; the decider's own words are not in the repo.
+- **Why:** focus on v2.0; the latest release is v1.6.6 (`gh release list`,
+  2026-10-15).
+- **Reverse when:** the user changes it.
