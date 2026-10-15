@@ -1,4 +1,5 @@
 import { tableCells } from "./plan-model.mjs";
+// scripts/lib/hq-parse.mjs — excerpt; keep helpers in this file
 export function applySpecStartable(specs) {
   const seenOwner = new Set();
   return specs.map((s) => {

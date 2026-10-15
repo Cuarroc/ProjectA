@@ -13,6 +13,8 @@ export function statusColumn(lines, i) {
 
 const clean = (s) => s.replace(/`|\*\*/g, "").trim();
 const ids = (s) => [...new Set(s.match(/\b[A-Z][A-Z0-9]*(?:-[A-Za-z0-9.]+)+\b/g) || [])];
+// Dependency clauses start with an ID (or "Geplant nach"), not incidental prose mentions.
+const dependencyTokens = (s) => [...new Set(s.split(/[,;→]/).flatMap((part) => clean(part).replace(/^(?:geplant\s+)?nach\s+/i, "").match(/^[\p{L}\p{N}]+(?:-[\p{L}\p{N}.]+)*/u) || []))];
 const finding = (kind, row, detail, pr) => ({ kind, id: row.id, pr, file: row.file, line: row.line, detail });
 const historical = (p) => /erledigt|historisch/i.test(p.section);
 function duplicates(packages) {
@@ -24,6 +26,9 @@ function duplicates(packages) {
 }
 export function normalizeStatus(raw) {
   const text = clean(raw);
+  const current = text.split(/;\s*(?:früher|historisch|ursprünglich|ersetzt:)/i)[0];
+  if (/(?:✓|\b(?:gemergt|erledigt|done)\b)/i.test(current) && /\b(offen|geplant|planned|in Arbeit|in Prüfung|draft|ausstehend)\b/i.test(current)) return "in_progress";
+  // "Angenommen" is an in-review alias documented in docs/PLAN.md, Statuswerte.
   for (const [pattern, status] of [
     [/^(gemergt|erledigt|done|✓)/i, "done"], [/^(PR #\d|in Prüfung|draft|ready|entwurf|angenommen)/i, "in_review"],
     [/^(läuft|in Arbeit|dispatched|in_progress)/i, "in_progress"], [/^(geplant|wartet|bereit|planned|offen)/i, "planned"],
@@ -56,10 +61,12 @@ export function parsePlan(markdown, { file } = {}) {
     }
     if (!/^(ID|Paket)$/i.test(head[0]) && !/^[A-Z][A-Z0-9]*(-[A-Za-z0-9.]+)+$/.test(id)) continue;
     packages.push({ id, title: clean(column(/^(Ziel|Was|Goal|Titel|Title|Inhalt|Paket)(\b|\s*\/)/i)), status: normalizeStatus(statusRaw), statusRaw,
-      deps: ids(column(/abhäng|voraussetzung|dep|hängt ab|^nach$/i)), version: column(/^version$/i) || undefined,
+      deps: dependencyTokens(column(/abhäng|voraussetzung|dep|hängt ab|^nach$/i)), version: column(/^version$/i) || undefined,
       direction: column(/^richtung$/i) || section, owner: column(/^(owner|wer)$/i) || undefined,
       prs: [...new Set([...line.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1])))], file, line: i + 1, section });
   }
+  const known = new Set(packages.map((p) => p.id));
+  for (const p of packages) p.deps = p.deps.filter((id) => known.has(id) || /^[A-Z][A-Z0-9]*(?:-(?:[A-Z][A-Z0-9]*|\d+[a-z]?\d*))+$/u.test(id));
   return { packages, decisions, problems: duplicates(packages) };
 }
 
@@ -91,16 +98,24 @@ function mentions(text, id, branch = false) {
 export function checkPlan(model, { prs = [], events = "", eventsFile = "events.log", decisions = "", decisionsFile = "docs/decisions.md", planText = "", lastPlanCommit, now = Date.now() } = {}) {
   const packages = model.packages, byId = new Map(packages.map((p) => [p.id, p]));
   const out = duplicates(packages), source = { file: "docs/PLAN.md", line: 1 };
-  for (const pr of prs) {
+  const namedByPr = new Map(prs.map((pr) => {
     const text = `${pr.title || ""}\n${(pr.body || "").match(/^Plan-ID:.*$/gmi)?.join("\n") || ""}`;
-    const named = packages.filter((p) => mentions(text, p.id) || mentions(pr.headRefName || "", p.id, true));
+    return [pr, packages.filter((p) => mentions(text, p.id) || mentions(pr.headRefName || "", p.id, true))];
+  }));
+  const related = new Map(packages.map((p) => {
+    // Missing referenced PRs keep closure unproven; dependency PRs describe other rows.
+    const numbers = new Set([...p.statusRaw.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1])));
+    for (const pr of prs) if (namedByPr.get(pr).includes(p)) numbers.add(pr.number);
+    return [p, [...numbers].map((number) => prs.find((pr) => pr.number === number))];
+  }));
+  for (const pr of prs) {
+    const named = namedByPr.get(pr);
     if (pr.state === "OPEN" && /^(claude|codex|kimi|opencode|glm)\//.test(pr.headRefName || "") && !named.length) {
       out.push(finding("pr-without-plan-row", source, "Offener Paket-PR ohne Plan-ID", pr.number));
     }
-    // PR numbers in dependencies/acceptance describe other packages, not this row's state.
-    for (const p of packages.filter((p) => [...p.statusRaw.matchAll(/#(\d+)\b/g)].some((m) => Number(m[1]) === pr.number) || named.includes(p))) {
+    for (const p of packages.filter((p) => related.get(p).includes(pr))) {
       const pending = ["in_progress", "in_review", "planned"].includes(p.status);
-      if ((pending && ["MERGED", "CLOSED"].includes(pr.state)) || (p.status === "done" && pr.state === "OPEN")) {
+      if ((pending && related.get(p).every((ref) => ["MERGED", "CLOSED"].includes(ref?.state))) || (p.status === "done" && pr.state === "OPEN")) {
         out.push(finding("status-contradicts-github", p, `${p.status} / GitHub ${pr.state}`, pr.number));
       }
     }
