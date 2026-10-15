@@ -1,0 +1,8 @@
+.es-changelog { align-self: stretch; color: var(--g-ink2); font: 12px/1.45 var(--g-font-sans); overflow-wrap: anywhere; }
+.es-changelog h3, .es-changelog h4 { margin: 0; color: var(--g-ink); font-size: 13px; font-weight: 600; }
+.es-changelog > .es-note { margin-top: 4px; }
+.es-changelog article { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--g-line); }
+.es-changelog header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.es-changelog time { color: var(--g-muted); }
+.es-changelog ul { margin: 8px 0 0; padding-left: 16px; }
+.es-changelog li + li { margin-top: 4px; }
