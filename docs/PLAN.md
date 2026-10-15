@@ -1,10 +1,10 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 09.10.2026 19:26 UTC (PLAN-SYNC-0910g; GitHub-PRs live geprüft).
-Beobachtete main-Basis: `9c0e6d6ce838163565d5a14c3a30f26df10a2625` (Branch-Start `e3725be36d0b`); nur `docs/PLAN.md`.
-Chief abwesend: PLAN-Pflege interim durch Root (09.10.).
-Quelle: Root-Auftrag PLAN-SYNC-0910g vom 09.10.; exklusiver Editor `srv-plan-sync-0910g`;
-nächste Abnahme bei Root.
+Stand: 15.10.2026 14:15 UTC (DOC-SYNC-2 / FIX-PR1557-R1; heutige Paketstände live geprüft).
+Beobachtete main-Basis: `fd78216e`; Branch-Start `9a0b23b9`, PR #1557.
+Chief abwesend: PLAN-Pflege durch Root als Stellvertreter; Editor `srv-fix-pr1557-r1`.
+Quelle: Root-Auftrag 15.10.; Abnahme bei Root. Ältere Z-Zeilen behalten ihr Belegdatum.
+Heutige KR-/DS-Pakete mit Ziel, Abhängigkeit und Stand: [v2-Unterplan §10.2–10.3](plan/v2.0/plan.md#102-klassik-raus); D1–D7: `docs/decisions.md`.
 Prüfung, Root-Abnahme und Merge dieses Nachtrags bleiben getrennte Schritte.
 Dieses Dokument ist der **einzige** Plan. Andere Plandateien
 sind untergeordnete Verträge oder Historie. Neue Arbeit entsteht nur
@@ -239,6 +239,15 @@ vor Nutzung muss Auto-Top-up aus sein und Elias den Schlüssel selbst im Vault
 hinterlegen. OpenCode Zen ist nicht freigegeben.
 
 
+### CI und Durchlauf — Nachtrag 15.10.2026
+
+Quelle: `opt-ci-merge-20261015.md` (pa-orch); Dispatch laut Root, Ereignisse 16:12 MESZ nachgeprüft. Root nimmt ab; kein Merge-Sicherheitsentscheid durch diesen Eintrag.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| CI-SPLIT-LINUX | Linux-Gates teilen, Pflichtcheck zusammenführen | srv-ci-split-linux | bestehender Gate-Vertrag | Server | B | In Arbeit: läuft (Server-Auftrag srv-ci-split-linux), Branch `codex/ci-split-linux` | Gate-Abdeckung unverändert; prepush, Reviews, Root | OPT-CI-0 |
+| OPT-PIPE-0 | Durchlauf ausschließlich lesend messen | srv-opt-pipeline; Root klärt Basis | korrekte Auftragsbasis | Server | C (Bericht) | Blockiert: geplant nach Basisklärung; Server-Auftrag srv-opt-pipeline endete 16:12 MESZ wegen HEAD-Abweichung | Messbericht mit Methode und Einheiten; keine Implementierung | OPT-PIPE-0 |
+
 ### Serverreserve 3 — begrenzte Werkzeug-Härtung
 
 Root-Auftrag 09.10. 00:52 CEST (msg-0mv04muwa), keine zweite Produktroadmap. Gemeinsame Basis `a8f00322b510dd48df67cc50ad0650b879902e40`; fünf unabhängige
@@ -346,6 +355,15 @@ Fix-/Review-/Queue-Abnahme bleibt Release-Vorgänger; KI-30 wird nicht vorzeitig
 | Z4-M5-01 | Testerrunde mit 3–5 externen Testern | Elias | V16-03, E16 | egal | – | Verschoben | Rückmeldungen festgehalten | – |
 | Z4-M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um | Root | Z1 | egal | – | Verschoben | Umfang festgelegt | – |
 
+
+### Flake-Nachtrag 15.10.2026 (KNOWN_ISSUES / Z4)
+
+Quelle: `flake-hunt-20261015.md`, Root-Auftrag und pa-orch-Ereignisse (15:28/15:44 MESZ); Root besitzt Wiederaufnahme/Abnahme. Keine Retry- oder Timeout-Erhöhung freigegeben.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| FLK-NATIVE-EXIT | Nativen Exit-Fehler rot belegen und beheben | srv-flk-native-exit; Root klärt Windows-Ort | deterministischer Windows-Rotnachweis | Server / Windows-Beleg | A | Blockiert: geplant nach Rotnachweis; Server-Auftrag srv-flk-native-exit endete 15:28 MESZ ohne Rotnachweis; ursprüngliches „läuft“ überholt | Rot/Grün, prepush, Reviews, Root | FLK-NATIVE-EXIT |
+| FLK-SQLITE-LOCK | SQLite-Lock-Befunde kausal abgrenzen | srv-flk-sqlite-lock; Root | Windows-Messung, neuer Defektbeleg | Server / Windows-Beleg | A bei Fix | Blockiert: Befunde vor #1463; Server-Auftrag srv-flk-sqlite-lock ohne neuen gemeinsamen Rotnachweis beendet; keine Aktion | Neuer kausaler Befund vor jedem Fix | FLK-SQLITE-LOCK |
 
 ### Release-Reihenfolge — Elias-Entscheid 08.10., Root 22:04Z
 
@@ -740,6 +758,10 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | V16-F4 | Review-Fahrer auf den Server? | ja | offen |
 | WERKBANK-E1–E4 (11.10.) | Sammeleintrag Werkbank je Projekt; Feintuning als Agenten-Einstellung; nur eigene Entwicklungs-Datenbanken lesend; ArtCraft-Varianten vor Glass-UI-Paketen | alle vier Empfehlungen | beantwortet: Elias 11.10. ~01:50 CEST, „Ich nehme alle Empfehlungen bei den Entscheidungen E1-E4 an“; Nummern der Root-Karten, nicht die E-Nummern oben; Ausführung ab `docs/plan/v2.0/werkbank.md` |
 | V2-ENG (15.10.) | v2.0.0 eng oder weit (Karte E1 zum Schnitt vom 11.10.) | eng: Hülle + Leitstand; Kriterien 7, 12, 15, 16 (und 14) → v2.1 | beantwortet: Elias 15.10. ~02:55 MESZ, „V2.0.0 eng“; Eintrag und Restpaketliste in `docs/decisions.md` („2026-10-15 - v2.0 eng (narrow)“) und `docs/plan/v2.0/plan.md` („Restpakete v2.0 (eng)“); kein Release freigegeben |
+| VERBUND (15.10.) | App, DevHQ und Denkraum zusammenführen | C: eine Designsystem-App, Datenowner erhalten | entschieden: Nutzer 15.10. ~15:50 MESZ, „ja“ laut Root; V-01-Vertrag in `docs/decisions.md`; Handy-Erfassung vor Denkraum-Ablösung |
+| OPT-CI-0 / Vorschlag 1 (15.10.) | Queue-Eintritt ohne Abwarten der PR-CI erlauben? | Offen abwägen: kürzerer Vorlauf; Queue-Checks bleiben, frühe PR-Fehler werden später erkannt | OFFEN — Nutzerentscheidung; keine Umsetzung freigegeben |
+| OPT-CI-0 / Vorschlag 3 (15.10.) | Windows in der Queue ohne geänderte WINDOWS_INPUTS überspringen? | Offen abwägen: weniger Läufe; Fehler außerhalb der Eingabeliste erst im Wochenlauf erkennbar | OFFEN — Nutzerentscheidung; keine Umsetzung freigegeben |
+| OPT-CI-0 / Vorschlag 4 (15.10.) | Einen protokollierten native-tests-Retry erlauben? | Offen abwägen: weniger Abbrüche; kann Fehler verdecken und ändert retries=0 | OFFEN — Nutzerentscheidung; keine Umsetzung freigegeben |
 | SERVER-SEAM (15.10.) | `run-job.sh`: `PA_SEAM_ALLOW` aus einer von Root gesetzten Auftragszeile `SEAM_ALLOW=` durchreichen (Server-Aufträge können heute keine Nahtstelle bearbeiten; blockiert den Windows-Flake-Fix) | Root setzt die Zeile je Auftrag, nie der Worker selbst (AGENTS.md Regel 6) | offen; Umsetzung nicht begonnen |
 | E9 (11.10.) | REA-Verhaltenstest an Warp (Konkurrenztest) | gestoppt: Warp-Nutzungsbedingungen §2.3(vii) verbieten, die Dienste zum Bau eines Konkurrenzprodukts zu nutzen; nichts installiert oder ausgeführt. Bis auf Weiteres Konkurrenten über offenen Quellcode untersuchen (z. B. Paperclip (MIT), OpenCode, agent-orchestrator); vor jedem Konkurrenztest die Nutzungsbedingungen prüfen | beantwortet: Elias 11.10. ~03:55Z „ich folge deinen Empfehlungen“ auf Roots E9-Bericht; offen nur bei Bedarf: Warp schriftlich um Erlaubnis fragen oder Rechtsrat einholen; Regel in `orchestration-standing-rules` (11.10.) |
 | V16-D2 | ARCH-D2 vor V16-06 ziehen, weil V16-06 auf V16-F3 wartet? | ja, Lane mn ist frei | entschieden: Root-JA, Übergabe vom 08.10. `msg-0muzkavts-72d53e4b`; `srv-v16-arch-d2` ist exklusiver mn-Owner; Start ist keine Abnahme |
@@ -1388,6 +1410,28 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Entwurf, Nutzer entscheidet; nichts davon steht in M1–M4 |
 | Werkbank je Projekt (V2-WEG/TRES/CMD/SKL/DB): Dev-Befehle, Datenbanken, Feintuning, Server, Trigger, Automationen, Tresor, Skills-Bibliothek, Bewährte Wege → [`docs/plan/v2.0/werkbank.md`](plan/v2.0/werkbank.md) | Entscheid Elias 11.10. E1–E4 (`docs/decisions.md`); Wege-Pilot jetzt ohne App-Code als Thema von DEV-KNOW-01, Tresor vor V2-B6a-2/V2-B19, Rest nach v2.0 hinter Schaltern; nichts davon steht in M1–M4 |
 | Paperclip-Kandidaten (COMP-PAPERCLIP-3) → Block direkt darunter | Elias 11.10. ~04:30Z: einreihen erlaubt; Richtung, kein neuer Meilenstein; nichts davon steht in M1–M4 oder ändert die v2-Release-Reihenfolge |
+
+#### v2 — VERBUND / DevHQ und Denkraum (Beschluss 15.10.2026)
+
+V2-H1..H7 bleiben der DevHQ-Pfad; keine zweite Roadmap. Root nimmt ab, Chief
+weist Folgepakete zu; bestehende Design-Owner und gemeinsame Dateien bleiben
+seriell. DN-Status ist Planstand, kein Laufzeitbeleg. V-01 zieht DN-09 vor,
+V-02 entspricht DN-11a, V-03 DN-15; keine doppelten Aufträge.
+
+| ID | Ziel | Abhängigkeit / Status |
+|---|---|---|
+| V-01 | Quellen- und Befugnisvertrag | In Prüfung: DOC-SYNC-2 / PR #1557 offen, 15.10.; Stufe C, Root-Abnahme offen |
+| V-02 | Begrenzte lesende Denkraum-Projektion | Geplant nach V-01; Stufe A, kein Schreibpfad |
+| V-03 | Nativer Leseadapter | Geplant nach V-02; Stufe A, `main.rs` seriell, Hostweg belegen |
+| DN-01 | Kanonisches Designsystem-CSS bündeln | Erledigt: #1549 gemergt; `gh pr view 1549 --json state`, 15.10.2026 |
+| DN-02 | Gemeinsame Spur-/Kugel-Bausteine | Geplant, als Nächstes nach DN-01 |
+| DN-03 | Denkraum-Hülle und Jetzt im Designsystem | Geplant nach DN-02 |
+| DN-04 | Fragenliste, Details und Bestätigung | Geplant nach DN-03 |
+| DN-05 | Ideenerfassung, Liste und Details | Geplant nach DN-04; Entwürfe und Verlauf erhalten |
+| DN-06 | Werkbank und Geplant gestalten | Geplant nach DN-05; fehlendes Speichern ehrlich anzeigen |
+| DN-07 | Belege in Stationsanzeige übersetzen | Geplant nach DN-06 und V-01; unbekannt bleibt unbekannt |
+| DN-08 | Zugängliche Spur-/Listenansicht | Geplant nach DN-07; Auswahl beim Aktualisieren erhalten |
+| IDEEN-HANDY-1 | Ideen vom Handy erfassen | Geplant, scope TBD; vor jeder Denkraum-Ablösung |
 
 #### Paperclip-Kandidaten (Elias 11.10. ~04:30Z: einreihen erlaubt)
 
