@@ -8,6 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "roadmap:data": "node scripts/roadmap-data.mjs",
     "plan:check": "node scripts/plan-check.mjs",
     "dev:doctor": "node scripts/dev-setup.mjs",
     "dev:setup": "node scripts/dev-setup.mjs --apply",

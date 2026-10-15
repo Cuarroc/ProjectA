@@ -1,0 +1,50 @@
+import { mkdirSync, writeFileSync, lstatSync } from "node:fs";
+import { parseArgs } from "node:util";
+import { buildRoadmap } from "./lib/roadmap-data.mjs";
+import { makeRunner, withExitCodes, isMain, runCli } from "./lib/dev-tools.mjs";
+
+export const main = withExitCodes(async (argv, io, deps = {}) => {
+  const { values } = parseArgs({ args: argv, options: { stdout: { type: "boolean" } } });
+  const run = deps.run || makeRunner({ timeoutMs: 60000 });
+  const command = (cmd, args) => {
+    const r = run(cmd, args);
+    if (r.code !== 0) throw new Error(`${cmd} ${args.slice(0, 2).join(" ")} failed (exit ${r.code})`);
+    return r.stdout.trim();
+  };
+  // PLAN and mainSha must name the same tree, so the PLAN comes from origin/main, not the working tree.
+  const mainSha = command("git", ["rev-parse", "origin/main"]);
+  const plan = command("git", ["show", `${mainSha}:docs/PLAN.md`]);
+  const fields = "number,isDraft,state,mergedAt,labels,body,headRefName,baseRefName,updatedAt";
+  // Historical check rollups are large and cannot affect a merged package's state.
+  const open = JSON.parse(command("gh", ["pr", "list", "--state", "all", "--search", "is:open", "--limit", "1000", "--json", `${fields},statusCheckRollup`]));
+  const merged = JSON.parse(command("gh", ["pr", "list", "--state", "merged", "--limit", "10000", "--json", fields]));
+  if (!Array.isArray(open) || open.length >= 1000 || !Array.isArray(merged) || merged.length >= 10000) throw new Error("PR list incomplete");
+  const prs = [...open, ...merged];
+  for (const pr of prs.filter(p => p.state === "OPEN" && !p.headRefName.startsWith("mergify/"))) {
+    const facts = JSON.parse(command("gh", ["pr", "view", String(pr.number), "--json", "commits,mergeable"]));
+    Object.assign(pr, facts);
+    // Stacked PRs target another branch; `main` rules do not apply, and gh exits 1 with empty output for them.
+    let checks = [];
+    if (pr.baseRefName === "main") {
+      const r = run("gh", ["pr", "checks", String(pr.number), "--required", "--json", "name,state,bucket"]);
+      if (![0, 1, 8].includes(r.code)) throw new Error(`Required checks unavailable for #${pr.number} (exit ${r.code})`);
+      try { checks = JSON.parse(r.stdout); } catch { checks = null; }
+      if (!Array.isArray(checks)) throw new Error(`Invalid required checks for #${pr.number}`);
+    }
+    pr.statusCheckRollup = checks.map(c => ({ ...c, isRequired: true }));
+  }
+  const releases = JSON.parse(command("gh", ["release", "list", "--limit", "1000", "--json", "tagName,publishedAt,isDraft,isPrerelease"]));
+  if (!Array.isArray(releases) || releases.length >= 1000) throw new Error("Release list incomplete");
+  const data = buildRoadmap({ plan, prs, releases, now: deps.now || new Date(), mainSha });
+  const json = JSON.stringify(data, null, 2) + "\n";
+  if (values.stdout) io.out(json);
+  else {
+    if (command("git", ["ls-files", "--", ".pa/roadmap-data.json"])) throw new Error("Output path is tracked");
+    command("git", ["check-ignore", ".pa/roadmap-data.json"]);
+    mkdirSync(".pa", { recursive: true });
+    if ([".pa", ".pa/roadmap-data.json"].some(p => lstatSync(p, { throwIfNoEntry: false })?.isSymbolicLink())) throw new Error("Output path is a symlink");
+    writeFileSync(".pa/roadmap-data.json", json);
+    io.out(`roadmap:data ${JSON.stringify(data.head)}\n`);
+  }
+});
+if (isMain(import.meta.url)) runCli(main);
