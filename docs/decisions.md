@@ -1969,3 +1969,28 @@ wall clock, linux + windows.
   or acceptance-criteria changes, implementation, or release publication.
   This mandatory user decision record is exempt from the plan freeze in
   `werkbank.md`; it records an existing authorization rather than new planning.
+
+## 2026-10-15 - v2.0 eng (narrow)
+
+- **What:** v2.0.0 is the shell (Hülle) plus the Leitstand, with the Glass UI
+  (D1) on by default and switchable back at any time. This is the narrow
+  reading of the cut of 2026-10-11 above. Acceptance criteria that depend on
+  work the cut moved go to v2.1 together with Start, Beweise, Kontingente and
+  Verlauf: criterion 7 (run locations), 12 (Core and V2-SEC-1), 15 (one engine,
+  V2-RUN-1 to 4) and 16 (three provider paths). Criteria 10 and 17 stay "after
+  the core". Criterion 6 splits: the shell emergency stop stays in v2.0, the stop
+  of a server run moves with criterion 7. Remaining in v2.0: 1 (for shell and
+  Leitstand), 2, 3, 4, 5, 6 (shell part), 8, 9, 11, 13. Criterion 14 (lead
+  number) moves to v2.1, reason in the table in
+  [the v2.0 subplan](plan/v2.0/plan.md#10-enger-schnitt-vom-15102026-v20-eng-kriterien-und-restpakete).
+- **Source:** Elias in the Root chat on 2026-10-15 at about 02:55 CEST,
+  answering card E1 (the narrow or the wide reading of the cut of 2026-10-11)
+  with "V2.0.0 eng". Root recorded it in the SRV-V2-NARROW-PLAN order.
+- **Why:** the cut already moved the screens; the acceptance criteria must move
+  with them, or v2.0 can never be called done. The Core, the engine and the
+  provider paths are large and are not part of shell plus Leitstand.
+- **Reverse when:** Elias asks for the wide reading, or a moved criterion turns
+  out to be needed for the release (then it comes back with its packages).
+- **Not covered:** no package content change, no date, no release approval. A
+  major release still needs a fresh yes from Elias (AGENTS.md rule 10). The
+  remaining packages are listed in the subplan, section "10.1 Restpakete v2.0 (eng)".

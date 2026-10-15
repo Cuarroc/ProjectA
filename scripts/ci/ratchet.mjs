@@ -14,6 +14,8 @@ export const counters = [
     reason: 'Keep Rust lint allowances from growing.' },
   { name: 'ts-any', pathFilter: /^src\/(?:.*\/)?(?![^/]*\.test\.)[^/]+\.tsx?$/, regex: /:\s*any\b|\bas\s+any\b/g,
     reason: 'Keep explicit any annotations and assertions out of production growth.' },
+  { name: 'state-token', pathFilter: /^src\/(?!design\/)/, regex: /--state-/g,
+    reason: 'Keep the state dictionary in src/design: no new --state- definition or use outside it.' },
 ];
 
 // Pure: files are [repository-relative path, source text] pairs; count occurrences.

@@ -122,26 +122,20 @@ Stop when acceptance is met, no new insight appears, the blocker is unchanged,
 or a time/quota/budget limit is reached. Self-check replaces neither independent
 review nor user approval; do not add an RLM runtime, agents or services for it.
 
-- **Everyday pair:** Kimi K3 (`kimi-k3:cloud`) + GLM 5.2 (`glm-5.2:cloud`) on
-  Ollama Cloud through `.pa/review_transport.py`. Setup, call and prompt rules:
-  `docs/setup/ollama-reviewers.md`. Keep review prompts out of the repo; they
-  are reproducible from the commit.
-- **Advisor pair** for hard decisions and final reviews: Fable 5.1 (Claude
-  subagent) + GPT-6 Astra (Codex CLI, `-c model_reasoning_effort=high` per
-  call; the global default stays `medium`). A worker may call the advisors
-  itself for seam, security or architecture decisions, or when stuck for more
-  than 30 minutes; otherwise it goes through the coordinator. Questions an
-  advisor raises go to the coordinator, who puts them into the decision inbox.
-  Advisors do not replace the required reviews: when the author is a Claude
-  model, Fable 5.1 does not count as an independent reviewer.
-- Subscriptions only: no OpenRouter, no extra paid spending, and no API keys.
-  One exception (user decision 2026-10-09): the monthly Anthropic API credits
-  included in the user's Max plan may be used. Conditions: one ProjectA key
-  from a dedicated Console workspace, with a spend limit; no payment method,
-  no purchased credits, no auto-reload; the key lives only in the AgentsRoom
-  secrets vault or a server secret store the user set up, and never appears
-  in files, logs, commands or PR text. When the credits run out, work falls
-  back to the subscriptions; nobody buys credits.
+- **Everyday reviewers:** two reviewers from families other than the author's
+  for tier A, one for tier B (rule 5). Keep review prompts out of the repo; they
+  are reproducible from the commit. Which reviewer models are currently usable,
+  and how they are called, is the coordinator's private record.
+- **Advisors** for hard decisions and final reviews: two advisors from different
+  vendors. A worker may call the advisors itself for seam, security or
+  architecture decisions, or when stuck for more than 30 minutes; otherwise it
+  goes through the coordinator. Questions an advisor raises go to the
+  coordinator, who puts them into the decision inbox. Advisors do not replace
+  the required reviews: a model of the author's own family never counts as an
+  independent reviewer. Current advisor models: the coordinator's private record.
+- Paid usage only within budgets the user approved in the coordinator's private
+  permission record; no new paid services, keys or purchases without the
+  user's explicit yes. Secrets never go into files, logs, commands or PR text.
 
 ## Bounded goals and approved adaptation
 
@@ -172,7 +166,7 @@ Within approved work, Chief may change method, order, slicing, assignment or
 execution location. Record trigger and evidence, previous state, change,
 remaining duties and acceptance, next step and owner in the ticket/PLAN.
 Never weaken acceptance to finish. New product goals, scope, cost and permissions
-remain Elias' decisions; do not reopen granted approvals.
+remain the user's decisions; do not reopen granted approvals.
 
 GOALS-C evaluates exactly three existing pending tasks, with ticket records of
 defect or missed requirement (or no defect), confirmation, observed regressions
@@ -249,8 +243,8 @@ every cargo or gate run and run at most three builds at once (two when memory is
 
 ## Pull requests and CI minutes
 
-CI money target: 0 €. If CI becomes the bottleneck, at most 20 € a month, and
-only after the user approves it.
+CI spending: only within the limit the user approved (private record); if CI
+becomes the bottleneck, ask the user.
 
 - Run the full `bash scripts/ci/gates.sh lane prepush` locally before the PR.
   Push after every green step (rule 4); verify a push with `git ls-remote`, not
@@ -285,6 +279,33 @@ only after the user approves it.
   requests a review; the rulesets do not require code-owner approval (checked
   2026-10-14: `require_code_owner_review: false`), so it blocks no merge.
   Rule 6 still governs who edits a seam.
+
+## Routing: task type to profile (AP-6a)
+
+Profile ids come from `src-tauri/resources/agent-defaults.json`; models and
+effort per profile live only in `docs/setup/providers.md` (single routing
+source, not repeated here). A profile that is not in the repo is marked
+"profile pending CLI check": do not dispatch to it until a CLI probe exists.
+The choice among eligible families is only the usage rule below the table;
+no family is preferred or excluded by a fixed rule (user decision 2026-10-07).
+
+| Task type | Eligible profile families | Reviewer rule |
+|---|---|---|
+| Seam / security / PTY / DB implementation (tier A) | `codex`, `claude`, `kimi`; Cursor: profile pending CLI check | two reviewers, each from a family other than the author's |
+| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | one reviewer from another family |
+| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | one reviewer from another family |
+| Scripts / CI (tier B; tier C if no runtime effect) | `codex`, `claude`, `kimi`, `opencode` | tier B as above; tier C none, the gates suffice |
+| Docs (tier C) | `codex`, `claude`, `kimi`, `opencode` | none, the gates suffice |
+| Read-only inventory / research | `opencode-glm-53-flash`, `ollama-coder`, `codex`, `claude`, `kimi`; Grok: profile pending CLI check | none (report only) |
+| Review tier A | the reviewer pair named in the coordinator's private record (free fallback: kilo via `scripts/review/run-local.sh --via kilo`), `codex`, `claude`; Cursor: profile pending CLI check | two reviewers, both differ from the author's family |
+| Review tier B | any one of the tier-A review ways | differs from the author's family |
+
+Pick among the eligible providers by `usage_overview`: the one with the most
+headroom wins; a provider at the user's cap drops out until its window resets
+(caps live in the coordinator's private record). Record the pick and the
+observed value in the dispatch note (rule 9: no claim without observation).
+The reviewer family must differ from the author's (rule 5); a router that
+hides the vendor (Cursor `auto`) first needs the actual vendor proven.
 
 ## Merging (Mergify queue, since 2026-09-24)
 

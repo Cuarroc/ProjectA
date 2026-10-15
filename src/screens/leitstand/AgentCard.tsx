@@ -1,13 +1,15 @@
 import { useId, useRef, useState } from "react";
 import { Button } from "../../design/controls/Button";
-import { HonestState } from "../../design/data/HonestState";
 import "../../design/inputs/inputs.css";
 import { Avatar } from "../../design/inputs/Avatar";
+import { Lamp, type LampState } from "../../design/inputs/Lamp";
 import { StateMark } from "../../design/state/StateMark";
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
 import { useT } from "../../i18n/useT";
+import { lampFor, type LampKind } from "./lamps/lampFor";
 import { ageText, cardForm, fill, initials, modelText, toneFor } from "./leitstand";
+import { ProofStrip } from "./proof/ProofStrip";
 
 export interface AgentCardProps {
   card: BoardCard;
@@ -22,8 +24,11 @@ export interface AgentCardProps {
 
 type Action = "restart" | "archive";
 
+const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off" };
+
 /**
- * One running agent. The proof slot stays an honest "not connected" until V2-B9 delivers gates.
+ * One running agent. The proof strip shows only what the card knows (the pull request); red-first,
+ * gates and review stay "not connected" until V2-B9 delivers them.
  * Same rule as the old worker list: a running agent can be archived (after an inline confirmation),
  * an exited one can be restarted, an archived one is never respawned.
  */
@@ -31,6 +36,8 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const t = useT();
   const { worker } = card;
   const model = modelText(card);
+  // No gates reach the card yet, so a done card reads "ohne Beweis".
+  const lamp = lampFor(card, false);
   const taskId = useId();
   const [expanded, setExpanded] = useState(false);
   const canExpand = worker.task.length > 160;
@@ -83,6 +90,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
     <article className="g-glass ls-card">
       <div className="ls-row">
         <StateMark form={cardForm(card)} />
+        <Lamp state={LAMP_STATE[lamp.lamp]} label={lamp.word} />
         <span className="ls-time">{ageText(worker.createdAt, now)}</span>
       </div>
       <div className="ls-who">
@@ -110,8 +118,8 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
           {t(expanded ? "leitstand.taskLess" : "leitstand.taskShowAll")}
         </Button>
       )}
+      <ProofStrip redFirst="unknown" gates={null} review={null} stale={false} pr={card.prUrl ? { href: card.prUrl, sha: null, command: null, exitCode: null } : null} />
       <div className="ls-foot">
-        <div className="ls-proof" title={t("leitstand.proofTitle")}><HonestState kind="offline" title={t("leitstand.proofTitle")} /></div>
         <Button size="sm" aria-label={fill(t("leitstand.openLabel"), { name })} onClick={() => onOpen(card)}>{t("leitstand.open")}</Button>
       </div>
       {confirming ? (

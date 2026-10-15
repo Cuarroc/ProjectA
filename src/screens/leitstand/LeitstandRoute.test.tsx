@@ -8,6 +8,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(()
 vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 
 import App from "../../App";
+import { de } from "../../i18n/de";
 import { writeActiveProjectId } from "../../lib/activeProject";
 import LeitstandRoute from "./LeitstandRoute";
 
@@ -133,6 +134,49 @@ describe("Leitstand route behind D1", () => {
     fireEvent.click(tabs().getByRole("link", { name: "Haupt" }));
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
+  });
+
+  it("renders the flow graph at /leitstand/fluss and marks its tab as the current one", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const { container } = render(<App />);
+    const flow = await screen.findByRole("region", { name: "Ablauf der Agenten" });
+    expect(await within(flow).findByRole("group", { name: "Fix the start block" })).toBeInTheDocument();
+    expect(tabs().getByRole("link", { name: "Fluss" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Haupt" })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
+    expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
+  });
+
+  it("shows the empty hint at /leitstand/fluss while no agent runs", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const base = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? Promise.resolve({ cards: [], coordinators: [] }) : base(command));
+    const { container } = render(<App />);
+    expect(await screen.findByText("Noch keine Agenten im Ablauf")).toBeInTheDocument();
+    expect(container.querySelector(".fl-node")).toBeNull();
+  });
+
+  it("does not claim an empty flow when the board cannot be read at /leitstand/fluss", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const base = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? Promise.reject(new Error("backend down")) : base(command));
+    render(<App />);
+    expect(await screen.findByText(de["honest.offline"])).toBeInTheDocument();
+    expect(screen.queryByText("Noch keine Agenten im Ablauf")).toBeNull();
+  });
+
+  it("reaches Fluss from Haupt by its tab link", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    render(<App />);
+    await screen.findByRole("region", { name: "Agenten" });
+    fireEvent.click(tabs().getByRole("link", { name: "Fluss" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fluss"));
+    expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
   });
 
   it("offers no Betrieb route while the switch is off", async () => {

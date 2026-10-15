@@ -159,7 +159,10 @@ mod tests {
             for entry in fs::read_dir(dir).expect("src/ is readable").flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    stack.push(path);
+                    // `tests/` holds test-only modules (api/tests/mod.rs has no `mod tests` marker).
+                    if path.file_name().and_then(|n| n.to_str()) != Some("tests") {
+                        stack.push(path);
+                    }
                     continue;
                 }
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");

@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
+  it("recognizes worker query links without mounting a legacy viewer", () => {
+    for (const path of ["/leitstand/terminal?worker=one", "/leitstand/terminal/?worker=two"]) {
+      expect(isTerminal(path)).toBe(true);
+      expect(shouldMountLegacyTerminal(path)).toBe(false);
+      expect(goalForPath(path, "review")).toBe("review");
+    }
+  });
   it("recognizes only the terminal route with an optional trailing slash", () => {
     for (const path of ["/leitstand/terminal", "/leitstand/terminal/"]) expect(isTerminal(path)).toBe(true);
     for (const path of ["/leitstand", "/leitstand/terminal/foo", "/leitstand/werkzeuge"]) expect(isTerminal(path)).toBe(false);
