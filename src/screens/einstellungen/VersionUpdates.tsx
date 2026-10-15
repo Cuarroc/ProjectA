@@ -26,6 +26,7 @@ export function VersionUpdates() {
   const live = useRef(true); // late lib answers after unmount are dropped
   const update = useRef<Update | null>(null); // the core's download handle
   const attempt = useRef(0); // a cancelled download's late rejection belongs to a dead attempt
+  const cancelling = useRef<{ error?: { e: unknown } } | null>(null); // while a cancel is in flight, an install rejection waits for its verdict
   const readVersion = useCallback(() => {
     void getVersion().then(
       (v) => { if (live.current) { setVersion(v); setFailed(false); } },
@@ -63,25 +64,32 @@ export function VersionUpdates() {
         await installUpdateWhenIdle(u.rid);
         if (!stale()) { update.current = null; setState({ phase: "ready", version: v }); }
       } catch (e) {
-        if (!stale()) fail(e);
+        if (stale()) return;
+        if (cancelling.current) cancelling.current.error = { e }; // the cancel verdict decides whether the abort caused it
+        else fail(e);
       }
     })();
   };
   const cancel = () => {
     if (state.phase !== "installing" || state.cancelling) return;
     const { version: v } = state;
+    const flight: NonNullable<typeof cancelling.current> = {};
+    cancelling.current = flight;
     setState({ ...state, cancelling: true });
     cancelUpdateDownload().then(async (result) => {
+      cancelling.current = null;
       // Only a state still installing may change: the install can have finished while this was in flight.
       const still = (next: Check) => { if (live.current) setState((s) => (s.phase === "installing" ? next : s)); };
       if (result === "cancelled") {
         attempt.current += 1; // the aborted download rejects: expected, not an error
         const { length } = await listLiveSessions(); // a session may have started during the download
         still({ phase: "available", version: v, workers: length, cancelled: true });
-      } else {
-        still({ phase: "installing", version: v, result }); // the install goes on; tooLate says so, notRunning leaves it to the install promise
-      }
-    }).catch(fail);
+      } else if (flight.error) {
+        fail(flight.error.e); // the install failed by itself: the cancel did not stop it
+      } else if (result === "tooLate") {
+        still({ phase: "installing", version: v, result }); // the install goes on, tooLate says so
+      } // notRunning: stays cancelling (button off) until the install promise settles
+    }).catch((e) => { cancelling.current = null; fail(e); });
   };
   const late = state.phase === "installing" && state.result ? T.cancelResult[state.result] : undefined; // a cancel that could not stop the install
   const status =
