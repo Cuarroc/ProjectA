@@ -1,0 +1,40 @@
+.screen {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  padding: var(--g-pad);
+  overflow: auto;
+  background: var(--g-ground);
+  color: var(--g-ink);
+  font: 400 14px/1.6 var(--g-font-sans);
+}
+.card {
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  width: min(100%, 560px);
+  padding: calc(var(--g-pad) * 2);
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-r-panel);
+  background: var(--g-content-bg);
+  text-align: center;
+}
+.title { margin: 0; font-size: 22px; line-height: 1.3; font-weight: 600; overflow-wrap: anywhere; }
+.hint { margin: 0; color: var(--g-muted); }
+.detail { margin: 0; max-width: 100%; overflow-wrap: anywhere; white-space: pre-wrap; font-family: var(--g-font-mono); }
+.mark { color: var(--g-accent); font-size: 24px; }
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--g-line);
+  border-top-color: var(--g-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
