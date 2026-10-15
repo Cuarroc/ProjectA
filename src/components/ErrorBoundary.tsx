@@ -1,5 +1,10 @@
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
+import { Button } from "../design/controls/Button";
+import { t } from "../i18n/useT";
+import "../design/tokens.css";
+import "../design/controls/controls.css";
+import styles from "./RecoveryScreen.module.css";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -38,20 +43,22 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     const { error } = this.state;
     if (error === null) return this.props.children;
     return (
-      <div className="error-boundary" role="alert">
-        <p className="error-boundary-title">
-          {this.props.label === undefined
-            ? "Die Oberfläche ist abgestürzt."
-            : `${this.props.label} ist abgestürzt.`}
-        </p>
-        <p className="error-boundary-detail">{error.message}</p>
-        <button
-          type="button"
-          className="empty-action"
-          onClick={() => window.location.reload()}
-        >
-          Neu laden
-        </button>
+      <div className={styles.screen} role="alert">
+        <section className={styles.card}>
+          <h1 className={styles.title}>
+            {this.props.label === undefined
+              ? t("recovery.crashed")
+              : t("recovery.viewCrashed").replace("{label}", () => this.props.label ?? "")}
+          </h1>
+          <p className={styles.detail}>{error.message}</p>
+          <Button
+            variant="primary"
+            autoFocus
+            onClick={() => window.location.reload()}
+          >
+            {t("recovery.reload")}
+          </Button>
+        </section>
       </div>
     );
   }
