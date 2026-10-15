@@ -740,6 +740,7 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | V16-F4 | Review-Fahrer auf den Server? | ja | offen |
 | WERKBANK-E1–E4 (11.10.) | Sammeleintrag Werkbank je Projekt; Feintuning als Agenten-Einstellung; nur eigene Entwicklungs-Datenbanken lesend; ArtCraft-Varianten vor Glass-UI-Paketen | alle vier Empfehlungen | beantwortet: Elias 11.10. ~01:50 CEST, „Ich nehme alle Empfehlungen bei den Entscheidungen E1-E4 an“; Nummern der Root-Karten, nicht die E-Nummern oben; Ausführung ab `docs/plan/v2.0/werkbank.md` |
 | V2-ENG (15.10.) | v2.0.0 eng oder weit (Karte E1 zum Schnitt vom 11.10.) | eng: Hülle + Leitstand; Kriterien 7, 12, 15, 16 (und 14) → v2.1 | beantwortet: Elias 15.10. ~02:55 MESZ, „V2.0.0 eng“; Eintrag und Restpaketliste in `docs/decisions.md` („2026-10-15 - v2.0 eng (narrow)“) und `docs/plan/v2.0/plan.md` („Restpakete v2.0 (eng)“); kein Release freigegeben |
+| VERBUND (15.10.) | App, DevHQ und Denkraum zusammenführen | C: eine Designsystem-App, Datenowner erhalten | entschieden: Nutzer 15.10. ~15:50 MESZ, „ja“ laut Root; V-01-Vertrag in `docs/decisions.md`; Handy-Erfassung vor Denkraum-Ablösung |
 | SERVER-SEAM (15.10.) | `run-job.sh`: `PA_SEAM_ALLOW` aus einer von Root gesetzten Auftragszeile `SEAM_ALLOW=` durchreichen (Server-Aufträge können heute keine Nahtstelle bearbeiten; blockiert den Windows-Flake-Fix) | Root setzt die Zeile je Auftrag, nie der Worker selbst (AGENTS.md Regel 6) | offen; Umsetzung nicht begonnen |
 | E9 (11.10.) | REA-Verhaltenstest an Warp (Konkurrenztest) | gestoppt: Warp-Nutzungsbedingungen §2.3(vii) verbieten, die Dienste zum Bau eines Konkurrenzprodukts zu nutzen; nichts installiert oder ausgeführt. Bis auf Weiteres Konkurrenten über offenen Quellcode untersuchen (z. B. Paperclip (MIT), OpenCode, agent-orchestrator); vor jedem Konkurrenztest die Nutzungsbedingungen prüfen | beantwortet: Elias 11.10. ~03:55Z „ich folge deinen Empfehlungen“ auf Roots E9-Bericht; offen nur bei Bedarf: Warp schriftlich um Erlaubnis fragen oder Rechtsrat einholen; Regel in `orchestration-standing-rules` (11.10.) |
 | V16-D2 | ARCH-D2 vor V16-06 ziehen, weil V16-06 auf V16-F3 wartet? | ja, Lane mn ist frei | entschieden: Root-JA, Übergabe vom 08.10. `msg-0muzkavts-72d53e4b`; `srv-v16-arch-d2` ist exklusiver mn-Owner; Start ist keine Abnahme |
@@ -1388,6 +1389,28 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Entwurf, Nutzer entscheidet; nichts davon steht in M1–M4 |
 | Werkbank je Projekt (V2-WEG/TRES/CMD/SKL/DB): Dev-Befehle, Datenbanken, Feintuning, Server, Trigger, Automationen, Tresor, Skills-Bibliothek, Bewährte Wege → [`docs/plan/v2.0/werkbank.md`](plan/v2.0/werkbank.md) | Entscheid Elias 11.10. E1–E4 (`docs/decisions.md`); Wege-Pilot jetzt ohne App-Code als Thema von DEV-KNOW-01, Tresor vor V2-B6a-2/V2-B19, Rest nach v2.0 hinter Schaltern; nichts davon steht in M1–M4 |
 | Paperclip-Kandidaten (COMP-PAPERCLIP-3) → Block direkt darunter | Elias 11.10. ~04:30Z: einreihen erlaubt; Richtung, kein neuer Meilenstein; nichts davon steht in M1–M4 oder ändert die v2-Release-Reihenfolge |
+
+#### v2 — VERBUND / DevHQ und Denkraum (Beschluss 15.10.2026)
+
+V2-H1..H7 bleiben der DevHQ-Pfad; keine zweite Roadmap. Root nimmt ab, Chief
+weist Folgepakete zu; bestehende Design-Owner und gemeinsame Dateien bleiben
+seriell. DN-Status ist Planstand, kein Laufzeitbeleg. V-01 zieht DN-09 vor,
+V-02 entspricht DN-11a, V-03 DN-15; keine doppelten Aufträge.
+
+| ID | Ziel | Abhängigkeit / Status |
+|---|---|---|
+| V-01 | Quellen- und Befugnisvertrag | In Arbeit: DOC-SYNC-2, dieser PR; Stufe C, Root-Abnahme offen |
+| V-02 | Begrenzte lesende Denkraum-Projektion | Geplant nach V-01; Stufe A, kein Schreibpfad |
+| V-03 | Nativer Leseadapter | Geplant nach V-02; Stufe A, `main.rs` seriell, Hostweg belegen |
+| DN-01 | Kanonisches Designsystem-CSS bündeln | In Prüfung: PR #1549, 15.10. geprüft; keine Merge-Aussage |
+| DN-02 | Gemeinsame Spur-/Kugel-Bausteine | Geplant, als Nächstes nach DN-01 |
+| DN-03 | Denkraum-Hülle und Jetzt im Designsystem | Geplant nach DN-02 |
+| DN-04 | Fragenliste, Details und Bestätigung | Geplant nach DN-03 |
+| DN-05 | Ideenerfassung, Liste und Details | Geplant nach DN-04; Entwürfe und Verlauf erhalten |
+| DN-06 | Werkbank und Geplant gestalten | Geplant nach DN-05; fehlendes Speichern ehrlich anzeigen |
+| DN-07 | Belege in Stationsanzeige übersetzen | Geplant nach DN-06 und V-01; unbekannt bleibt unbekannt |
+| DN-08 | Zugängliche Spur-/Listenansicht | Geplant nach DN-07; Auswahl beim Aktualisieren erhalten |
+| IDEEN-HANDY-1 | Ideen vom Handy erfassen | Geplant, scope TBD; vor jeder Denkraum-Ablösung |
 
 #### Paperclip-Kandidaten (Elias 11.10. ~04:30Z: einreihen erlaubt)
 

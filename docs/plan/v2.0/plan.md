@@ -798,6 +798,7 @@ Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log o
 
 **Reihenfolge-Hinweis zu V2-D1-ON:** `main` baut auch Patch-Releases (zuletzt 1.6.4). Würde D1 vorher an gehen, trüge jedes v1.6.x die neue Oberfläche. Darum hält Root V2-D1-ON mit `do-not-merge`, bis V2-ACC1b grün ist.
 
+[Classic-out-Entscheid vom 15.10.](../../decisions.md#2026-10-15---classic-ui-leaves-the-app): Rückweg entfällt; Pakete KLASSIK-RAUS folgen nach Inventar (ersetzt auch den historischen Rückweg-Hinweis unten).
 **Hinweis zu Kriterium 4:** Beschlossener Wortlaut: „Keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“ Die Messung zählt die Alt-Aliase, und ihre Obergrenze kann nur sinken. Die klassische Oberfläche bleibt als Rückweg von D1 erhalten.
 
 Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zurück rot, bewiesen blaugrün, unbekannt grau und Tor orange. Fabrik ist ein Tab im Leitstand. Die Lichtkugeln sind zwischen ruhig und lebendig umstellbar, standardmäßig ruhig.

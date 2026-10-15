@@ -2021,3 +2021,86 @@ wall clock, linux + windows.
 - **Reverse when:** Elias changes any of these choices; restore the prior
   setting or plan only with a new explicit decision. Agent configuration
   changes must first be restored from the backup if reversing item 7.
+
+
+## 2026-10-15 - Classic UI leaves the app
+
+- **What / source:** the user at about 14:45 CEST: "Das klassische historische
+  Design soll nicht mehr in der App sein. Nur neues UI mit den Designsystemen".
+  Keep one design-system app UI. This supersedes the classic/D1 fallback in
+  the 2026-10-11 scope decision and the 2026-10-15 narrow-cut entry above;
+  their other release-scope decisions remain unchanged.
+- **Why:** one consistent interface instead of maintaining two app designs.
+  KLASSIK-RAUS packages follow the inventory; this record removes no code.
+- **Reverse when:** only a new explicit user decision restores the classic UI.
+
+## 2026-10-15 - Reviewer count per tier
+
+- **What / source:** the user's "ja" at about 15:47 CEST accepts Root's
+  `review-anzahl-20261015.md` (private coordinator report). A: two different
+  families outside the author's. B: two different non-author families, one
+  subscription reviewer plus one OpenRouter reviewer (for example
+  `google/gemini-3.8-flash`). C: gates only; C+ tests adding skip/timeout/retry
+  or weakening assertions: one outside reviewer. Fix-round delta: one
+  non-author reviewer, two when tier-A files change. Rule 5 keeps two rounds.
+- **Why:** retain independent checks for runtime changes and tests that could
+  conceal failures while avoiding external reviews for pure documentation.
+  The existing-credit exception follows the user's 2026-10-14 22:42 CEST
+  statement: "OpenRouter erlaubt, nutzungsguthaben darf voll verbraucht werden."
+  Reviews run from the PC, with no purchase/auto-reload and keys only in the
+  user's environment/vault. Root's 3 USD floor remains: below it free reviews
+  are supplementary and never satisfy the required count; wait if necessary.
+  The historical Ollama pair remains blocked until 2026-11-01; this records
+  the supplied restriction, not a new availability probe.
+- **Reverse when:** the user changes the rule or credit authorization;
+  unavailable reviewers never justify silently reducing required coverage.
+
+## 2026-10-15 - VERBUND option C
+
+- **What / source:** the user's "ja" at about 15:50 CEST selects option C from
+  `verbund-vorschlag-codex-20261015.md` sections 3–4 and
+  `verbund-vorschlag-fable-20261015.md` (private coordinator reports), as
+  recorded in the DOC-SYNC-2 order. One design-system app is the only target
+  UI: DevHQ dissolves into Leitstand/Betrieb through V2-H1..H7; Denkraum
+  becomes Eingang; questions converge under "Braucht dich".
+- **Why:** unify everyday capture, answers and inspection while preserving
+  specialized data ownership and every idea. Node servers retire only after
+  functional parity and real app data with receipts. IDEEN-HANDY-1 (scope
+  TBD) must deliver mobile idea capture before any Denkraum retirement.
+- **Reverse when:** a new user decision changes the target; reversal must
+  preserve all accepted writes. No old backup may replace newer live data.
+
+### V-01 — source and authority contract
+
+| Data kind | Sole authoritative owner / app access |
+|---|---|
+| Runtime state | Rust/SQLite; existing native domain reads and guarded commands |
+| Ideas | Existing Denkraum ledger until an explicitly planned migration; adapter access |
+| Plan | Canonical repository `docs/PLAN.md` through the existing native projection |
+| External server jobs | pa-orch owner; source-tagged observed facts only |
+
+Every displayed fact carries source namespace, project, exact source ID and
+revision/head, observation time and freshness/unavailable status. Keep native
+and external job IDs distinct; a relation requires an explicit owner-recorded
+link. Missing or stale evidence remains unknown, never inferred success.
+Saved = durable source write; receipt = source acknowledgement of an exact
+revision; approval = authorized permission for that scope/revision; started =
+observed execution; merged = observed repository integration; delivered =
+verified usable result. None implies the next; a receipt is not approval.
+Every action has exactly one data owner and its existing authorization check.
+User idea/answer writes and Root-only receipt/progress writes stay separate;
+read access grants neither write permission nor dispatch authority.
+V-02 first exposes a bounded read-only Denkraum projection: limited pages and
+bytes, source/ledger revisions, revision-bound pagination and explicit unknown
+links; preserve request guards and omit secrets/raw ledger data. GET changes
+no state and starts no work.
+V-03 then adds a bounded native read adapter; `main.rs` is a serial seam.
+Validate source/version, time/byte bounds and fixed route; reject redirects
+and arbitrary targets. Verify the actual host/authenticated route first:
+server loopback alone proves no PC reachability. Writes follow as separate
+slices preserving drafts, request IDs, conflict handling and exact readback.
+No new scheduler, service bus or central database; pa-orch remains the external
+execution owner. No remote Denkraum exposure without a separate user decision.
+Retire a UI/server only after replacement capture/answer/inspection parity,
+real source data with receipts, mobile capture and a verified backup; no idea
+may be lost. This contract itself starts, migrates, exposes or retires nothing.
