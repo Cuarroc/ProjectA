@@ -1,8 +1,24 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+import * as changelog from "../../../lib/changelog";
 import { VersionChangelog } from "./VersionChangelog";
 
 afterEach(cleanup);
+afterEach(() => vi.restoreAllMocks());
+
+it("shows fallback notes instead of empty lists when every group is empty", () => {
+  // The parser currently removes empty groups; exercise the defensive view branch directly.
+  vi.spyOn(changelog, "parseChangelog").mockReturnValueOnce([
+    { version: "2.0.0", date: "2026-10-15", beta: false, notes: ["Release note."],
+      groups: [{ title: "Changes", items: [] }, { title: "Fixes", items: [] }] },
+    { version: "1.0.0", date: "2026-10-14", beta: false, notes: [],
+      groups: [{ title: "Changes", items: [] }] },
+  ]);
+  render(<VersionChangelog source="" />);
+  expect(screen.queryAllByRole("list")).toHaveLength(0);
+  expect(screen.getByText("Release note.")).toBeVisible();
+  expect(screen.getByText("Keine Neuigkeiten vorhanden")).toBeVisible();
+});
 
 it("orders versions numerically and limits releases and changes", () => {
   render(<VersionChangelog source={`
