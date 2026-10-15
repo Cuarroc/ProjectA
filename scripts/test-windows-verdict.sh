@@ -29,10 +29,10 @@ verdict verdict-red-when-the-result-is-missing 1 "" true
 verdict verdict-red-when-the-plan-output-is-missing 1 success ""
 
 ids_of() { bash scripts/ci/gates.sh --list "$1" | sed -E 's/^rust-suite-[12]$/rust-suite/' | sort; }
-if [ -n "$(ids_of windows_1)" ] && [ "$(ids_of windows)" = "$( { ids_of windows_1; ids_of windows_2; } | sort -u)" ]; then
+if [ -n "$(ids_of windows_1)" ] && [ "$(ids_of windows)" = "$( { ids_of windows_1; ids_of windows_2; ids_of windows_native; } | sort -u)" ]; then
   ok partitions-cover-the-windows-lane
 else
-  bad "windows_1 + windows_2 do not run exactly the gates of windows"
+  bad "windows_1 + windows_2 + windows_native do not run exactly the gates of windows"
 fi
 
 list="$(bash scripts/ci/gates.sh --list)"

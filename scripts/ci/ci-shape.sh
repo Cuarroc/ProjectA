@@ -109,13 +109,14 @@ has() {
   grep -qF -- "$2" <<< "$body"
 }
 
-linux="$(job linux)"
+linux="$(job linux_1)"
+linux_check="$(job linux)"
 windows="$(job windows)"
 winpart="$(job windows-part)"
 redfirst="$(job red-first)"
 
 # 1. Check names.
-has "$linux" "name: gates (linux)" || err "job linux does not report 'gates (linux)'"
+has "$linux_check" "name: gates (linux)" || err "job linux does not report 'gates (linux)'"
 has "$windows" "name: gates (windows)" || err "job windows does not report 'gates (windows)'"
 has "$redfirst" "name: red-first" || err "job red-first does not report 'red-first'"
 for key in queue_conditions merge_conditions auto_merge_conditions; do
@@ -157,7 +158,7 @@ fi
 # 4. red-first inside the linux job, evaluated by the red-first job.
 has "$linux" "red-first.sh --plan" || err "job linux: step 'red-first - plan' missing"
 grep -qE 'bash scripts/ci/red-first\.sh[[:space:]]*$' <<< "$linux" || err "job linux: step 'red-first - proof' missing"
-grep -qE '^    needs:[[:space:]]*\[?[[:space:]]*linux[[:space:]]*\]?[[:space:]]*$' <<< "$redfirst" || err "job red-first: 'needs: linux' missing"
+grep -qE '^    needs:[[:space:]]*\[?[[:space:]]*linux_1[[:space:]]*\]?[[:space:]]*$' <<< "$redfirst" || err "job red-first: 'needs: linux_1' missing"
 has "$redfirst" "red-first-verdict.sh" || err "job red-first: does not call scripts/ci/red-first-verdict.sh"
 has "$redfirst" "setup-linux" && err "job red-first: has its own setup-linux again (setup is paid in gates (linux))"
 # The proof never starts on an empty count (review PR #149, glm-5.2 F2).
@@ -236,9 +237,13 @@ has "$windows" 'lane_run: ${{ needs.windows-part.outputs.lane_run }}' || err "jo
 has "$linux" "id: plan" || err "job linux: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
 has "$winpart" "id: plan" || err "job windows-part: step id 'plan' missing - lane_run would be empty and the freeze could never lift"
 
+has "$linux_check" 'needs: [linux_1, linux_2]' || err "job linux: both legs required"
+has "$linux_check" 'always()' || err "job linux: always() required"
+has "$linux_check" "needs.linux_1.outputs.lane_run == 'true' && needs.linux_2.outputs.lane_run == 'true'" || err "job linux: lane_run must require both legs"
+
 # 6. AP-4a: the aggregator behind `gates (windows)`. A matrix that lost a
 # partition lane would run only part of the suite and stay green.
-has "$winpart" "lane: [windows_1, windows_2]" || err "job windows-part: matrix must be exactly 'lane: [windows_1, windows_2]' (a lost partition runs fewer tests)"
+has "$winpart" "lane: [windows_1, windows_2, windows_native]" || err "job windows-part: matrix must be exactly 'lane: [windows_1, windows_2, windows_native]' (a lost partition runs fewer tests)"
 has "$winpart" 'gates.sh lane ${{ matrix.lane }}' || err "job windows-part: the Gates step must run the matrix lane"
 grep -qE '^    needs:[[:space:]]*\[?[[:space:]]*windows-part[[:space:]]*\]?[[:space:]]*$' <<< "$windows" || err "job windows: 'needs: windows-part' missing"
 windows_if="$(grep -E '^    if:' <<< "$windows")"
