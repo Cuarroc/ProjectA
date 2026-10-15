@@ -18,6 +18,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { EXIT, RefusedError, makeRunner, gitIn, ghJson, isMain, runCli, withExitCodes } from "../lib/dev-tools.mjs";
 import { listedInStand } from "../lib/active-specs.mjs";
+import { cells, statusColumn } from "../lib/plan-model.mjs";
 import { parseGoals } from "../lib/hq-parse.mjs";
 
 const STALE_MS = 24 * 3_600_000;
@@ -84,7 +85,6 @@ function markdownName(name) {
 
 const lower = (s) => String(s).toLowerCase();
 const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const cells = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split(/(?<!\\)\|/).map((c) => c.trim());
 
 // true when `id` names this PR: branch segment "<id>" or "<id>-..." after a
 // slash, or the ID as a whole word in the title (W1-22 never matches W1-22b).
@@ -92,17 +92,6 @@ export function prMatchesId(pr, id) {
   const i = escRe(lower(id));
   if (new RegExp(`(^|/)${i}(-|$)`).test(lower(pr.headRefName))) return true;
   return new RegExp(`(^|[^a-z0-9-])${i}([^a-z0-9]|$)`).test(lower(pr.title));
-}
-
-// Column index of "Status" (old MASTERPLAN tables) or "Stand" (the milestone
-// tables of docs/PLAN.md) when lines[i] is the header of such a table (first
-// column "ID", separator row below), else -1.
-function statusColumn(lines, i) {
-  if (!lines[i].startsWith("|") || !/^\|[-|: ]+\|\s*$/.test(lines[i + 1] || "")) return -1;
-  const head = cells(lines[i]);
-  if (head[0] !== "ID") return -1;
-  const status = head.indexOf("Status");
-  return status !== -1 ? status : head.indexOf("Stand");
 }
 
 export function hasStatusTable(md) {
