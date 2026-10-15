@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { expect, it, vi } from "vitest";
@@ -60,4 +62,16 @@ it("retains the draft until feedback IPC acknowledges submission", async () => {
   expect(await screen.findByRole("alert")).toBeVisible();
   fireEvent.click(screen.getByRole("button"));
   expect(await screen.findByText(DEV_TEXT.feedbackSaved)).toBeVisible();
+});
+
+it("styles both feedback labels with design input tokens", () => {
+  render(<FeedbackForm />);
+  for (const name of [DEV_TEXT.feedbackWhat, DEV_TEXT.feedbackExpected]) {
+    expect(screen.getByText(name, { selector: "label" })).toHaveClass("g-inp-label");
+  }
+  const css = readFileSync(resolve(__dirname, "../design/inputs/inputs.css"), "utf8");
+  const label = css.match(/\.g-inp-label\s*\{([^}]+)\}/)?.[1];
+  expect(label).toContain("var(--g-font-sans)");
+  expect(label).toContain("color: var(--g-muted)");
+  expect(label).toContain("text-transform: uppercase");
 });

@@ -28,7 +28,6 @@ it("provides the global baseline without classic styles", () => {
     expect(rule(".sr-only")).toContain(value);
   }
   expect(rule(".sr-only")).not.toMatch(/display:\s*none|visibility:\s*hidden/);
-  expect(css).toMatch(/@media\s*\(prefers-reduced-motion: reduce\)\s*\{\s*\*, \*::before, \*::after\s*\{[^}]*animation: none !important;[^}]*transition: none !important;[^}]*scroll-behavior: auto !important;/);
   const faces = [...css.matchAll(/@font-face\s*\{([^}]+)\}/g)].map((match) => match[1]);
   expect(faces).toHaveLength(4);
   for (const [weight, file] of [[400, "Regular"], [500, "Medium"], [600, "SemiBold"], [700, "Bold"]]) {
@@ -47,4 +46,16 @@ it("imports the design baseline before classic styles", () => {
   expect(imports).toContain("./design/base.css");
   expect(imports).toContain("./styles.css");
   expect(imports.indexOf("./design/base.css")).toBeLessThan(imports.indexOf("./styles.css"));
+});
+
+it("shortens design duration tokens without globally disabling reduced motion effects", () => {
+  const css = readFileSync(resolve(__dirname, "base.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  expect(css).not.toMatch(/(?:animation|transition):\s*none\s*!important/);
+  const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+  const root = reduced.match(/html:root\s*\{([^}]+)\}/)?.[1];
+  expect(root).toBeDefined();
+  for (const token of ["--g-dur", "--g-dur-1", "--g-dur-2", "--g-dur-3"]) {
+    expect(root).toContain(`${token}: 80ms;`);
+  }
+  expect(reduced).toMatch(/scroll-behavior:\s*auto/);
 });
