@@ -52,8 +52,9 @@ export function LeitstandTabs({ path }: { path: string }) {
 
 /** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the flow graph on Fluss, the read-only Betrieb panel beside it. */
 export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) {
-  const betrieb = path === BETRIEB_PATH;
-  const fluss = path === FLUSS_PATH;
+  const here = trim(path);
+  const betrieb = here === BETRIEB_PATH;
+  const fluss = here === FLUSS_PATH;
   const t = useT();
   const [projectId, setProjectId] = useState(readActiveProjectId);
   // The picker and the old app publish a choice through the module's event.
