@@ -86,15 +86,17 @@ test first, then the fix.
 
 ## 4. Reviews by risk (at most two rounds)
 
-- Tier A (seam, security, concurrency, PTY, database): two reviewers from other
-  vendors. Tier B (other Rust/TS): one reviewer outside the author's model
-  family. Tier C (docs, tests, snapshots, config without runtime effect): none.
-  After round two the coordinator (Root) decides merge, split or drop and
-  records it in the PR report; the user is informed. A fix round forced by a
-  review may take the package to at most 400 diff lines (initial dispatch stays
-  300); record the overrun and the forcing finding IDs. Everyday pair: `kimi-k3:cloud` +
-  `glm-5.2:cloud` via Ollama Cloud and `.pa/review_transport.py` (setup and
-  command: `docs/setup/ollama-reviewers.md`).
+- Tier A (seam, security, concurrency, PTY, database): two different model
+  families, both outside the author's. Tier B (other Rust/TS): two different
+  non-author families, one subscription reviewer and one OpenRouter reviewer.
+  Tier C (docs, tests, snapshots, config without runtime effect): gates only;
+  C+ (tests adding skip/timeout/retry or weakening assertions): one outside
+  reviewer. Fix-round delta: one outside reviewer, two if tier-A files change.
+  After round two Root decides merge, split or drop, records it in the PR
+  report and informs the user. Review-forced fixes may reach 400 diff lines
+  (initial dispatch: 300); record the overrun and forcing finding IDs.
+  Current eligible reviewers and credit limits: coordinator's private record;
+  follow AGENTS.md's recorded exceptions, never infer live availability.
 - Use recursive prompting selectively for complex plans/dependencies, hard
   diagnosis or demanding designs. Keep requirements/acceptance, necessary
   subquestions, first solution, one neutral extra check (no defect is valid),
@@ -110,15 +112,14 @@ test first, then the fix.
 - Evidence is bound to the candidate commit; a later change invalidates the
   affected evidence — re-run the review on the delta.
 
-## 5. Advisors (subscriptions only, no OpenRouter)
+## 5. Advisors
 
-For hard decisions and final reviews use the advisor pair: **Fable 5.1**
-(Claude subagent, max effort) + **GPT-6 Astra** (Codex CLI,
-`codex exec -c model_reasoning_effort=high …`; the global default stays
-medium). Workers may call the advisors themselves for seam, security or
-architecture decisions and when stuck for more than 30 minutes; otherwise go
-through the coordinator. Questions the advisors raise go to the coordinator,
-who asks the user.
+Use two advisors from different vendors for hard decisions and final reviews;
+current models and approved budgets are in the coordinator's private record.
+Workers may call them for seam, security or architecture decisions, or after
+more than 30 minutes stuck; otherwise go through the coordinator. Questions go
+into the decision inbox. Advisors do not replace the independent reviews in
+AGENTS.md; a family shared with the author never counts.
 
 ## 6. Report, PR, merge
 

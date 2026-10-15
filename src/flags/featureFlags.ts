@@ -15,6 +15,7 @@ export const FEATURE_FLAG_IDS = [
   "d1_neue_oberflaeche",
   "fernansicht",
   "kundenprojekte",
+  "weitere_bereiche",
 ] as const;
 
 export type FeatureFlagId = (typeof FEATURE_FLAG_IDS)[number];
@@ -23,6 +24,7 @@ const FEATURE_FLAG_COPY: Record<FeatureFlagId, { label: string; description: str
   d1_neue_oberflaeche: { label: de["flag.d1.label"], description: de["flag.d1.description"] },
   fernansicht: { label: de["flag.fernansicht.label"], description: de["flag.fernansicht.description"] },
   kundenprojekte: { label: de["flag.kundenprojekte.label"], description: de["flag.kundenprojekte.description"] },
+  weitere_bereiche: { label: de["flag.weitereBereiche.label"], description: de["flag.weitereBereiche.description"] },
 };
 
 export type FeatureFlag = {
@@ -67,6 +69,7 @@ const DEFAULT_ENABLED: Record<FeatureFlagId, boolean> = {
   d1_neue_oberflaeche: true,
   fernansicht: false,
   kundenprojekte: false,
+  weitere_bereiche: false,
 };
 
 /** An explicit "1"/"0" wins; a missing or unknown value falls back to the flag default. */
