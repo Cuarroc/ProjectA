@@ -759,6 +759,7 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | WERKBANK-E1–E4 (11.10.) | Sammeleintrag Werkbank je Projekt; Feintuning als Agenten-Einstellung; nur eigene Entwicklungs-Datenbanken lesend; ArtCraft-Varianten vor Glass-UI-Paketen | alle vier Empfehlungen | beantwortet: Elias 11.10. ~01:50 CEST, „Ich nehme alle Empfehlungen bei den Entscheidungen E1-E4 an“; Nummern der Root-Karten, nicht die E-Nummern oben; Ausführung ab `docs/plan/v2.0/werkbank.md` |
 | V2-ENG (15.10.) | v2.0.0 eng oder weit (Karte E1 zum Schnitt vom 11.10.) | eng: Hülle + Leitstand; Kriterien 7, 12, 15, 16 (und 14) → v2.1 | beantwortet: Elias 15.10. ~02:55 MESZ, „V2.0.0 eng“; Eintrag und Restpaketliste in `docs/decisions.md` („2026-10-15 - v2.0 eng (narrow)“) und `docs/plan/v2.0/plan.md` („Restpakete v2.0 (eng)“); kein Release freigegeben |
 | VERBUND (15.10.) | App, DevHQ und Denkraum zusammenführen | C: eine Designsystem-App, Datenowner erhalten | entschieden: Nutzer 15.10. ~15:50 MESZ, „ja“ laut Root; V-01-Vertrag in `docs/decisions.md`; Handy-Erfassung vor Denkraum-Ablösung |
+| PLAN-AKTUELL (15.10.) | Soll `docs/PLAN.md` sich bei jeder Änderung oder neuen Sache des Nutzers sicher automatisch aktualisieren und das geprüft werden? | Ja: Modell + `npm run plan:check`, dann Gate und Skript-Abgleich (Block „PLAN-AUTO / ROADMAP“) | entschieden: Elias 15.10. ~16:25 MESZ, „Fixe jetzt endlich ein für alle mal das PLAN.md immer aktuell ist … sicher automatisch … und das auch geprüft wird“ |
 | OPT-CI-0 / Vorschlag 1 (15.10.) | Queue-Eintritt ohne Abwarten der PR-CI erlauben? | Offen abwägen: kürzerer Vorlauf; Queue-Checks bleiben, frühe PR-Fehler werden später erkannt | OFFEN — Nutzerentscheidung; keine Umsetzung freigegeben |
 | OPT-CI-0 / Vorschlag 3 (15.10.) | Windows in der Queue ohne geänderte WINDOWS_INPUTS überspringen? | Offen abwägen: weniger Läufe; Fehler außerhalb der Eingabeliste erst im Wochenlauf erkennbar | OFFEN — Nutzerentscheidung; keine Umsetzung freigegeben |
 | OPT-CI-0 / Vorschlag 4 (15.10.) | Einen protokollierten native-tests-Retry erlauben? | Offen abwägen: weniger Abbrüche; kann Fehler verdecken und ändert retries=0 | OFFEN — Nutzerentscheidung; keine Umsetzung freigegeben |
@@ -1432,6 +1433,24 @@ V-02 entspricht DN-11a, V-03 DN-15; keine doppelten Aufträge.
 | DN-07 | Belege in Stationsanzeige übersetzen | Geplant nach DN-06 und V-01; unbekannt bleibt unbekannt |
 | DN-08 | Zugängliche Spur-/Listenansicht | Geplant nach DN-07; Auswahl beim Aktualisieren erhalten |
 | IDEEN-HANDY-1 | Ideen vom Handy erfassen | Geplant, scope TBD; vor jeder Denkraum-Ablösung |
+
+#### PLAN-AUTO / ROADMAP (Auftrag 15.10.2026)
+
+Elias 15.10. ~16:20 MESZ: eine Roadmap mit dem Designsystem, die den Plan
+spiegelt (erledigt / jetzt / als Nächstes, Versionen, Pakete und Resttage,
+Abhängigkeiten, Blocker, was wann und wo geändert werden muss). ~16:25 MESZ:
+die Roadmap wird aus `docs/PLAN.md` erzeugt, und der Plan bleibt bei jeder
+Änderung sicher automatisch aktuell und wird geprüft (Inbox: PLAN-AKTUELL).
+Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
+
+| ID | Ziel | Abhängigkeit | Status |
+|---|---|---|---|
+| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | läuft: Draft-PR #1564, 15.10. (`gh pr list --search "PLAN-AUTO-1"`) |
+| PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
+| PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
+| PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
+| ROADMAP-0 | Konzept (Root + Rechte Hand) und UX/UI-Entwurf mit dem Designsystem | – | in Arbeit |
+| ROADMAP-1 | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | geplant |
 
 #### Paperclip-Kandidaten (Elias 11.10. ~04:30Z: einreihen erlaubt)
 
