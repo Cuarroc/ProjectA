@@ -31,6 +31,58 @@ async fn prepared_fixture_with_resources(
     std::path::PathBuf,
     String,
 ) {
+    let (dir, store, binding, launch, manager, host, host_hash) =
+        unreserved_fixture_with_resources(alias, resources).await;
+    let (owner, prepared) = reserve_prepared(&store, binding, launch).await;
+    (dir, store, owner, prepared, manager, host, host_hash)
+}
+
+const INPUT: &[u8] = b"z\r\na\r\n";
+
+/// The capture owner's deadline (launch timeout + 10 s) starts at its
+/// reservation, which `native_launch.rs` performs right before `start`. A test
+/// that launches later than it builds must reserve late, with this, too.
+async fn reserve_prepared(
+    store: &Store,
+    binding: Binding,
+    launch: Launch,
+) -> (CaptureOwner, protocol::Prepared) {
+    let owner = store
+        .reserve_native_capture_owner(binding.clone(), launch.clone(), "owner", 1)
+        .await
+        .unwrap();
+    let (mut header, tail) = protocol::launch_parts(binding, launch, INPUT).unwrap();
+    header.extend(tail);
+    (owner, protocol::prepare_buffer(&header).unwrap())
+}
+
+async fn register_running_worker(store: &Store, binding: &Binding) {
+    let (run, session) = (&binding.run_id, &binding.session_id);
+    sqlx::query("INSERT INTO workers(id,project_id,task,profile_id,branch,worktree_path,status,kind,created_at) SELECT worker_id,project_id,'concurrent fixture','codex','fixture','fixture','running','worker',unixepoch() FROM development_launches WHERE run_id=?")
+        .bind(run).execute(&store.pool).await.unwrap();
+    let worker: String =
+        sqlx::query_scalar("SELECT worker_id FROM development_launches WHERE run_id=?")
+            .bind(run)
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+    store.bind_session_in_memory(&worker, session).unwrap();
+    store.record_session_start(&worker, session).await;
+}
+
+/// Everything up to, but not including, the capture-owner reservation.
+async fn unreserved_fixture_with_resources(
+    alias: bool,
+    resources: Option<(PtyManager, std::path::PathBuf, Vec<String>)>,
+) -> (
+    crate::testutil::TempDir,
+    Store,
+    Binding,
+    Launch,
+    PtyManager,
+    std::path::PathBuf,
+    String,
+) {
     let host = std::env::current_exe()
         .unwrap()
         .parent()
@@ -64,9 +116,8 @@ async fn prepared_fixture_with_resources(
         .consume_development_launch(&run_id, "owner", 1, &reserved.worker_id, &session)
         .await
         .unwrap();
-    let input = b"z\r\na\r\n";
     let delivery = store
-        .begin_development_delivery(&run_id, "owner", 1, &session, input)
+        .begin_development_delivery(&run_id, "owner", 1, &session, INPUT)
         .await
         .unwrap();
     let binding = Binding {
@@ -82,19 +133,12 @@ async fn prepared_fixture_with_resources(
         args,
         cwd: dir.path().to_string_lossy().into_owned(),
         environment: vec![],
-        input_bytes: input.len(),
+        input_bytes: INPUT.len(),
         input_sha256: delivery.input_sha256,
         output_limit: 1000,
         timeout_ms,
     };
-    let owner = store
-        .reserve_native_capture_owner(binding.clone(), launch.clone(), "owner", 1)
-        .await
-        .unwrap();
-    let (mut header, tail) = protocol::launch_parts(binding, launch, input).unwrap();
-    header.extend(tail);
-    let prepared = protocol::prepare_buffer(&header).unwrap();
-    (dir, store, owner, prepared, manager, host, host_hash)
+    (dir, store, binding, launch, manager, host, host_hash)
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -397,22 +441,14 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
             "--fixture-live-output"
         }
         .into()];
-        let fixture =
-            prepared_fixture_with_resources(false, Some((manager.clone(), provider.clone(), args)))
-                .await;
-        let (_, store, owner, _, _, _, _) = &fixture;
-        let run = &owner.binding.run_id;
-        let session = &owner.binding.session_id;
-        sqlx::query("INSERT INTO workers(id,project_id,task,profile_id,branch,worktree_path,status,kind,created_at) SELECT worker_id,project_id,'concurrent fixture','codex','fixture','fixture','running','worker',unixepoch() FROM development_launches WHERE run_id=?")
-            .bind(run).execute(&store.pool).await.unwrap();
-        let worker: String =
-            sqlx::query_scalar("SELECT worker_id FROM development_launches WHERE run_id=?")
-                .bind(run)
-                .fetch_one(&store.pool)
-                .await
-                .unwrap();
-        store.bind_session_in_memory(&worker, session).unwrap();
-        store.record_session_start(&worker, session).await;
+        // Owners are reserved at each start below: building five fixtures takes
+        // longer than a loaded runner leaves of the first owner's 50 s window.
+        let fixture = unreserved_fixture_with_resources(
+            false,
+            Some((manager.clone(), provider.clone(), args)),
+        )
+        .await;
+        register_running_worker(&fixture.1, &fixture.2).await;
         if index != 0 {
             std::fs::write(fixture.0.path().join("capture-ack.txt"), b"observed").unwrap();
         }
@@ -420,7 +456,7 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
     }
     let server = crate::api::tests::native_server(
         &resources.path().join("api"),
-        &fixtures[0].2.binding.run_id,
+        &fixtures[0].2.run_id,
         "owner",
         1,
     );
@@ -444,16 +480,20 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
         let mut directories = Vec::new();
         let mut jobs = Vec::new();
         let mut observations = Vec::new();
-        for (dir, store, owner, prepared, _, _, _) in fixtures {
+        for (dir, store, binding, launch, _, _, _) in fixtures {
             observations.push((
                 store.clone(),
-                owner.binding.run_id.clone(),
-                owner.binding.session_id.clone(),
+                binding.run_id.clone(),
+                binding.session_id.clone(),
             ));
-            jobs.push(NativeJob::fixture(store, owner, prepared));
+            jobs.push((store, binding, launch));
             directories.push(dir);
         }
-        runner.start(jobs.remove(0)).unwrap();
+        let start = |(store, binding, launch): (Store, Binding, Launch)| {
+            let (owner, prepared) = runtime.block_on(reserve_prepared(&store, binding, launch));
+            runner.start(NativeJob::fixture(store, owner, prepared))
+        };
+        start(jobs.remove(0)).unwrap();
         // Wait for actual input-delivery evidence before admitting the fast job.
         // The first child sleeps 31 seconds; fixture construction happened first.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
@@ -476,8 +516,8 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
             );
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        runner.start(jobs.remove(0)).unwrap();
-        let refused = runner.start(jobs.remove(0)).unwrap_err();
+        start(jobs.remove(0)).unwrap();
+        let refused = start(jobs.remove(0)).unwrap_err();
         assert!(refused.contains("capacity"), "{refused}");
         let count: i64 = runtime
             .block_on(
@@ -506,7 +546,7 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
         assert!(manager
             .install_when_idle(|| panic!("first job is active"))
             .is_err());
-        runner.start(jobs.remove(0)).unwrap();
+        start(jobs.remove(0)).unwrap();
         let fourth = runner
             .wait_completion(std::time::Duration::from_secs(10))
             .unwrap()
@@ -517,7 +557,7 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
         assert_eq!(pending.running, vec![observations[0].2.clone()]);
         assert!(pending.completions.is_empty());
         assert!(pending.unresolved.is_empty());
-        let refused = runner.start(jobs.remove(0)).unwrap_err();
+        let refused = start(jobs.remove(0)).unwrap_err();
         assert!(refused.contains("admission is closed"), "{refused}");
         let count: i64 = runtime
             .block_on(
@@ -564,6 +604,101 @@ async fn real_native_runner_bounds_capacity_and_accepts_out_of_order_completion(
         manager.cancel_reservation(&observations[2].2);
         manager.cancel_reservation(&observations[4].2);
         assert!(manager.live_session_ids().unwrap().is_empty());
+        drop(server);
+        drop(directories);
+        drop(resources);
+    })
+    .await
+    .unwrap();
+}
+
+/// The flake of `real_native_runner_bounds_capacity_and_accepts_out_of_order_completion`
+/// (queue run 38686891060), made deterministic: a stall stands in for a loaded
+/// runner. An owner reserved before the stall has outlived its window (launch
+/// timeout + 10 s) and loses its checkpoints; one reserved after it does not.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires built Windows capture host; owner window starts at reservation"]
+async fn real_native_owner_window_starts_at_reservation_not_at_fixture_build() {
+    use crate::workers::{
+        native_launch::{NativeJob, NativeRunner},
+        native_runner::{Configuration, WindowsNativeRunner},
+    };
+    let resources = crate::testutil::TempDir::new("native-owner-window");
+    let host = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("pa-capture-host.exe");
+    let host_sha256 = digest(&std::fs::read(&host).unwrap());
+    let provider = resources.path().join("codex.exe");
+    std::fs::copy(&host, &provider).unwrap();
+    let manager = PtyManager::default();
+    let mut directories = Vec::new();
+    let mut ready = Vec::new();
+    for _ in 0..2 {
+        let args = vec!["--fixture-live-output".into()];
+        let (dir, store, binding, mut launch, _, _, _) = unreserved_fixture_with_resources(
+            false,
+            Some((manager.clone(), provider.clone(), args)),
+        )
+        .await;
+        register_running_worker(&store, &binding).await;
+        std::fs::write(dir.path().join("capture-ack.txt"), b"observed").unwrap();
+        launch.timeout_ms = 20000; // owner window: 20 s + 10 s
+        directories.push(dir);
+        ready.push((store, binding, launch));
+    }
+    let (store, binding, launch) = ready.remove(0);
+    let (owner, prepared) = reserve_prepared(&store, binding.clone(), launch).await;
+    let early = NativeJob::fixture(store, owner, prepared);
+    let early_session = binding.session_id.clone();
+    tokio::time::sleep(std::time::Duration::from_secs(31)).await;
+    let (store, late_binding, launch) = ready.remove(0);
+    let (owner, prepared) = reserve_prepared(&store, late_binding, launch).await;
+    let late = NativeJob::fixture(store, owner, prepared);
+    let server = crate::api::tests::native_server(
+        &resources.path().join("api"),
+        &binding.run_id,
+        "owner",
+        1,
+    );
+    let runner = WindowsNativeRunner::new(
+        Configuration {
+            provider,
+            provider_sha256: host_sha256.clone(),
+            host,
+            host_sha256,
+            environment: vec![],
+            timeout_ms: 20000,
+            output_limit: 1000,
+        },
+        manager.clone(),
+        server.run_credential_issuer(),
+        tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    tokio::task::spawn_blocking(move || {
+        runner.start(early).unwrap();
+        runner.start(late).unwrap();
+        let mut completions = (0..2)
+            .map(|_| {
+                runner
+                    .wait_completion(std::time::Duration::from_secs(30))
+                    .unwrap()
+                    .expect("completion event")
+            })
+            .collect::<Vec<_>>();
+        completions.sort_by_key(|completion| completion.session_id != early_session);
+        let late = completions.pop().unwrap();
+        let early = completions.pop().unwrap();
+        assert_eq!(early.session_id, early_session);
+        let error = early.result.unwrap_err();
+        assert!(error.contains("expired or out of order"), "{error}");
+        late.result.unwrap();
+        let drained = runner.drain(std::time::Duration::ZERO).unwrap();
+        assert_eq!(drained.unresolved, vec![early_session]);
         drop(server);
         drop(directories);
         drop(resources);

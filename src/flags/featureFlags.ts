@@ -1,6 +1,6 @@
 /**
  * V2-FLAG-1 — feature-flag registry for Glass UI v2 preview surfaces.
- * Unused by the running app until V2-F9 wires D1. Persists via the same
+ * D1 defaults on, the other flags off. Persists via the same
  * webview-local `projecta.settings.*` localStorage mechanism as `src/lib/settings.ts`
  * (no Rust/store table).
  */
@@ -29,7 +29,7 @@ export type FeatureFlag = {
   readonly id: FeatureFlagId;
   readonly label: string;
   readonly description: string;
-  readonly defaultEnabled: false;
+  readonly defaultEnabled: boolean;
   /** When false, later packages must not mount the gated route. */
   allowsRoute(): boolean;
   /** When false, later packages must not call the gated backend. */
@@ -62,14 +62,22 @@ function storageKey(id: FeatureFlagId): string {
   return `${FEATURE_FLAG_STORAGE_PREFIX}${id}`;
 }
 
-/** True only when the user explicitly turned the switch on. */
+/** Only D1 (the new UI) ships on; the user can still switch it off for good. */
+const DEFAULT_ENABLED: Record<FeatureFlagId, boolean> = {
+  d1_neue_oberflaeche: true,
+  fernansicht: false,
+  kundenprojekte: false,
+};
+
+/** An explicit "1"/"0" wins; a missing or unknown value falls back to the flag default. */
 export function isFeatureFlagEnabled(id: FeatureFlagId): boolean {
-  return readString(storageKey(id)) === "1";
+  const stored = readString(storageKey(id));
+  return stored === "1" ? true : stored === "0" ? false : DEFAULT_ENABLED[id];
 }
 
-/** Persist on/off; `false` removes the key so the default (off) wins. */
+/** Persist on/off; an explicit off is stored as "0" so it beats a default-on flag. */
 export function setFeatureFlagEnabled(id: FeatureFlagId, enabled: boolean): void {
-  writeString(storageKey(id), enabled ? "1" : null);
+  writeString(storageKey(id), enabled ? "1" : "0");
   emitFeatureFlagChange();
 }
 
@@ -79,7 +87,7 @@ function toFlag(id: FeatureFlagId): FeatureFlag {
     id,
     label: copy.label,
     description: copy.description,
-    defaultEnabled: false,
+    defaultEnabled: DEFAULT_ENABLED[id],
     allowsRoute() {
       return isFeatureFlagEnabled(id);
     },

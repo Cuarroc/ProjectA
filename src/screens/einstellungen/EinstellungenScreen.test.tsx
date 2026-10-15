@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { check } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
-import { FEATURE_FLAGS, FEATURE_FLAG_STORAGE_PREFIX, isFeatureFlagEnabled } from "../../flags/featureFlags";
+import { FEATURE_FLAGS, FEATURE_FLAG_STORAGE_PREFIX, isFeatureFlagEnabled, setFeatureFlagEnabled } from "../../flags/featureFlags";
 import { getIdentifier, getVersion } from "@tauri-apps/api/app";
 import { ROUTES } from "../../shell/routes";
 import { EinstellungenScreen } from "./EinstellungenScreen";
@@ -344,13 +344,14 @@ describe("preview directory", () => {
       expect(flag.description.trim()).not.toBe("");
       expect(row.getByText(flag.description, { exact: true })).toBeVisible();
       expect(row.getByRole("checkbox", { name: flag.label })).toHaveAccessibleDescription(flag.description);
-      expect(row.getByRole("checkbox")).not.toBeChecked();
-      expect(row.getByText("Aus", { exact: true })).toBeVisible();
+      expect(row.getByRole("checkbox")).toHaveProperty("checked", flag.defaultEnabled);
+      expect(row.getByText(flag.defaultEnabled ? "An" : "Aus", { exact: true })).toBeVisible();
     }
     expect(await screen.findByText("logs/projecta.log")).toBeInTheDocument();
   });
 
   it("preview flags persist and reflect external changes without backend calls", async () => {
+    for (const flag of FEATURE_FLAGS) setFeatureFlagEnabled(flag.id, false);
     const view = show();
     await screen.findByText("logs/projecta.log");
     vi.mocked(invoke).mockClear();
@@ -370,8 +371,8 @@ describe("preview directory", () => {
       expect(row.getByText("An", { exact: true })).toBeVisible();
       const key = `${FEATURE_FLAG_STORAGE_PREFIX}${flag.id}`;
       act(() => {
-        localStorage.removeItem(key);
-        window.dispatchEvent(new StorageEvent("storage", { key, newValue: null }));
+        localStorage.setItem(key, "0");
+        window.dispatchEvent(new StorageEvent("storage", { key, newValue: "0" }));
       });
       expect(control).not.toBeChecked();
       expect(row.getByText("Aus", { exact: true })).toBeVisible();

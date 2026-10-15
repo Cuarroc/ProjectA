@@ -114,7 +114,7 @@ describe("Steuerung route behind D1", () => {
     await waitFor(() => expect(mounted.container.querySelectorAll(".kb-panel")).toHaveLength(1));
     expect(usageCalls()).toHaveLength(calls + 1);
     mounted.unmount();
-    localStorage.removeItem(FLAG_KEY);
+    localStorage.setItem(FLAG_KEY, "0");
     mocks.invoke.mockClear();
     const legacy = render(<App />);
     fireEvent.click(await screen.findByRole("tab", { name: "Auswertung" }));
@@ -227,6 +227,7 @@ describe("Steuerung route behind D1", () => {
   });
 
   it("leaves /steuerung to the old Insights view while the switch is off", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     await go("#/steuerung");

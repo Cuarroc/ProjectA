@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", "0");
+  });
+});
+
 // W1-21c: mounting a TerminalView (real xterm 5.5, dev build, so React
 // StrictMode mounts, cleans up and remounts) threw the pageerror
 // "Cannot read properties of undefined (reading 'dimensions')" from
