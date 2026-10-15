@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { AppErrorBoundary } from "./errors/AppErrorBoundary";
 import { installFrontendErrorHandlers } from "./errors/reportFrontendError";
+import "./design/base.css";
 import "./styles.css";
 
 // Browser E2E runs outside Tauri. The mock is loaded before React mounts so
