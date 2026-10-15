@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDeskServer } from './server.mjs';
 
-test('DR2: one read-only Glass URL serves canonical tokens and refuses other design paths', async ({ page }) => {
+test('DN-01: fixed Glass bundle serves canonical design rules and refuses unlisted paths', async ({ page }) => {
   const dir = await mkdtemp(join(tmpdir(), 'denkraum-design-'));
   const server = createDeskServer({ statePath: join(dir, 'ledger.json'), rootAgentId: 'root-test' });
   try {
@@ -30,11 +30,16 @@ test('DR2: one read-only Glass URL serves canonical tokens and refuses other des
     expect(response.headers['content-type']).toBe('text/css; charset=utf-8');
     expect(response.headers['x-content-type-options']).toBe('nosniff');
     expect(response.headers['cache-control']).toBe('no-store');
-    const tokens = await readFile(new URL('../../src/design/tokens.css', import.meta.url), 'utf8');
-    const motion = await readFile(new URL('../../src/design/motion.css', import.meta.url), 'utf8');
-    expect(response.body).toBe(`${tokens}\n${motion}`);
+    const sheets = [];
+    for (const name of ['tokens.css', 'motion.css', 'glass.css', 'controls/controls.css', 'inputs/inputs.css', 'state/state.css']) {
+      sheets.push(await readFile(new URL(`../../src/design/${name}`, import.meta.url), 'utf8'));
+    }
+    expect(response.body).toBe(sheets.join('\n'));
     expect(response.body).toContain('--g-ground:');
     expect(response.body).toContain('--g-dur-2: 200ms');
+    for (const rule of ['.g-chrome', '.g-glass', '.g-btn', '.g-inp', '.g-st--unknown']) {
+      expect(response.body).toContain(rule);
+    }
 
     await page.goto(base);
     await page.addStyleTag({ url: `${base}/design/glass.css` });
@@ -42,12 +47,17 @@ test('DR2: one read-only Glass URL serves canonical tokens and refuses other des
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--g-ground').trim())).not.toBe('');
 
     for (const path of ['/design/', '/design/motion.css', '/design/tokens.css', '/design/shell.css',
+      '/design/controls/controls.css', '/design/inputs/inputs.css', '/design/state/state.css',
+      '/design/base.css', '/design/variants/variants.css', '/src/design/glass.css',
       '/design/../../src/design/tokens.css', '/design/%2e%2e/%2e%2e/src/design/motion.css',
-      '/design/..%2f..%2fsrc%2fdesign%2ftokens.css', '/design/..\\..\\src\\design\\tokens.css']) {
+      '/design/..%2f..%2fsrc%2fdesign%2ftokens.css', '/design/..\\..\\src\\design\\tokens.css',
+      '/design/controls/../../../src/design/controls/controls.css',
+      '/design/inputs%2finputs.css', '/design/state%5cstate.css']) {
       const denied = await get(path);
       expect(denied.status, path).toBe(404);
       expect(denied.body, path).not.toContain('--g-');
     }
+    expect((await get('/design/glass.css?file=../../package.json')).body).toBe(response.body);
     expect((await get('/design/glass.css', 'PUT')).status).toBe(405);
     expect((await get('/design/glass.css', 'POST', { 'x-decision-desk': 'agent', 'content-type': 'application/json' })).status).toBe(404);
     expect((await get('/design/glass.css', 'GET', { origin: 'https://foreign.test' })).status).toBe(403);
