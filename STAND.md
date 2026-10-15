@@ -18,7 +18,7 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 
 ### Stand 2026-10-15 (datierter Schnappschuss, keine Live-Quelle)
 
-Gelesen am 2026-10-15 um 16:35 MESZ, `origin/main` @ `a5f8c538`. Zahlen, die sich
+Gelesen am 2026-10-15T23:17:19.353Z, `origin/main` @ `c7a43fbd`. Zahlen, die sich
 stündlich ändern (offene PRs, Queue), stehen hier bewusst nicht mehr; sie
 kommen nur aus den Live-Belegen oben.
 
@@ -27,7 +27,9 @@ kommen nur aus den Live-Belegen oben.
   `src-tauri/tauri.conf.json`). Release-Lauf `release.yml` 38706858983
   `success`, veröffentlicht 2026-10-15 09:07Z (`gh release view v1.6.6`:
   4 Dateien). Davor: v1.6.5. Veröffentlicht heißt nicht installiert.
-- **Ziel v2.0:** Umfang „eng“ entschieden (E1, 2026-10-15); Kriterien und
+  Bis v2.0 kein Patch-Release und kein Tag (Entscheid 15.10., laut Root;
+  Inbox RELEASE-PAUSE in `docs/PLAN.md`); v2.0 braucht ein neues Ja.
+- **Ziel v2.0:** Umfang „eng“ entschieden (Inbox-Karte V2-ENG, früher Karte E1, 2026-10-15); Kriterien und
   Restpakete in `docs/plan/v2.0/plan.md` (PR #1475).
 - **Plan:** `docs/PLAN.md` ist der einzige Plan (Ziele Z1–Z4).
 - **Wo der Live-Stand steht:** die Notiz `lage-jetzt` (außerhalb von Git, s. o.)
