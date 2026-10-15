@@ -9,14 +9,14 @@ const planNames = { planned: "Geplant", in_progress: "In Arbeit", in_review: "In
 const version = (s) => /^v?\d+\.\d+\.\d+$/.test(s || "") ? `v${s.replace(/^v/, "")}` : null;
 const compareVersions = (a, b) => a.localeCompare(b, "en", { numeric: true });
 const label = (pr, name) => pr?.labels?.some(l => (l.name || l) === name);
-const closed = (p) => ["done", "dropped"].includes(p.status);
-// The four seams of AGENTS.md rule 6, as full repo paths in a title.
-const SEAM_PATH = /(?<![\w-])src-tauri\/src\/(?:(?:api|main|store)\.rs(?!\w)|store\/|bin\/pa\.rs(?!\w))/;
+const claimsOpen = (p) => ["planned", "in_progress", "in_review", "blocked"].includes(p.status);
+// The four seams of AGENTS.md rule 6, bare or under src-tauri/src/; any other directory in front is a different file.
+const SEAM_PATH = /(?<![\w/.-])(?:src-tauri\/src\/)?(?:(?:api|main|store)\.rs(?!\w)|store\/|bin\/pa\.rs(?!\w))/;
 // Defining rows carry a status; description tables repeat the ID without one.
 const defining = (p) => p.status !== "unknown" || Boolean(p.statusRaw);
 function observedState(p, pr, now) {
-  // An umbrella Plan-ID spans several PRs, so one merged PR finishes the package only if PLAN agrees.
-  if (pr?.state === "MERGED") return closed(p) ? "Erledigt" : null;
+  // An umbrella Plan-ID spans several PRs: a merged one must not finish a package that PLAN still lists as open work.
+  if (pr?.state === "MERGED") return claimsOpen(p) ? null : "Erledigt";
   if (pr?.state !== "OPEN") return null;
   const checks = (pr.statusCheckRollup || []).filter(c => c.isRequired === true);
   const outcome = (c) => c.conclusion || c.state || c.status;
@@ -66,7 +66,7 @@ export function buildRoadmap({ plan, prs = [], releases = [], now, mainSha }) {
   const packages = rows.map(p => {
     const related = links.get(p.id).filter(pr => pr.state !== "CLOSED").sort((a, b) => Number(b.state === "OPEN") - Number(a.state === "OPEN") || b.number - a.number);
     const pr = related[0], state = observedState(p, pr, time);
-    const finished = state === "Erledigt" || (!pr && closed(p));
+    const finished = state === "Erledigt" || (!pr && ["done", "dropped"].includes(p.status));
     return { id: p.id, title: publicText(p.title), owner: who(p.owner), deps: p.deps, unresolvedDeps: p.deps.filter(id => !known.has(id)),
       direction: publicText(p.direction && p.direction !== p.section ? p.direction : p.id.split("-")[0]),
       provisional: !p.direction || p.direction === p.section, version: version(p.version) || UNKNOWN,

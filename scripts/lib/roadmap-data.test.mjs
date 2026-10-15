@@ -135,8 +135,10 @@ test("a merged sub-PR does not finish a package whose PLAN row is not done", () 
   const merged = pr({ state: "MERGED", mergedAt: now });
   const umbrella = build([row("APP-1", { status: "in_progress", statusRaw: "In Arbeit" })], [merged]).packages[0];
   assert.deepEqual([umbrella.state, umbrella.finished, umbrella.pr, umbrella.planStatus], [null, false, 1, "laut PLAN: In Arbeit"]);
-  const settled = build([row("APP-1", done)], [merged]).packages[0];
-  assert.deepEqual([settled.state, settled.finished], ["Erledigt", true]);
+  for (const extra of [done, { status: "unknown", statusRaw: "" }]) {
+    const settled = build([row("APP-1", extra)], [merged]).packages[0];
+    assert.deepEqual([settled.state, settled.finished], ["Erledigt", true]);
+  }
   const ten = Array.from({ length: 10 }, (_, i) => row(`APP-${i + 1}`, i ? done : { status: "in_progress", statusRaw: "In Arbeit" }));
   const prs = ten.map((p, i) => pr({ number: i + 1, body: `Plan-ID: ${p.id}`, state: "MERGED", mergedAt: now }));
   assert.equal(build(ten, prs).directions[0].forecast, "zu wenig Daten");
@@ -147,10 +149,10 @@ test("a Plan-ID marker does not borrow the next line", () => {
   assert.equal(state(pr({ ...draft, body: "Plan-ID: \t APP-1  \r\nnext line" })), "Läuft");
 });
 test("only the four rule-6 seams count as seams", () => {
-  const titles = { "A-1": "Edit src-tauri/src/api.rs.", "A-2": "Split src-tauri/src/store/db.rs", "A-3": "Touch src-tauri/src/bin/pa.rs", "A-4": "Edit src-tauri/src/main.rs, then docs", "A-5": "Edit src-tauri/src/store.rs",
-    "N-1": "Rename src/lib/store/index.ts", "N-2": "Naht und seam labels in the UI", "N-3": "Edit src-tauri/src/queue/main.rs", "N-4": "Edit src-tauri/src/api/dto.rs", "N-5": "Edit restore/api.rs.bak" };
+  const titles = { "A-1": "Edit src-tauri/src/api.rs.", "A-2": "Split src-tauri/src/store/db.rs", "A-3": "Touch src-tauri/src/bin/pa.rs", "A-4": "Edit src-tauri/src/main.rs, then docs", "A-5": "Edit src-tauri/src/store.rs", "A-6": "Queue-Routen aus api.rs (PR #631)", "A-7": "Einstellungen nach store/settings.rs",
+    "N-1": "Rename src/lib/store/index.ts", "N-2": "Naht und seam labels, CORE/SEAM lane", "N-3": "Edit src-tauri/src/queue/main.rs", "N-4": "Edit src-tauri/src/api/dto.rs", "N-5": "Edit restore/api.rs.bak", "N-6": "Fix tools/denkraum/store/delivery.mjs" };
   const seams = Object.fromEntries(build([...Object.entries(titles).map(([id, title]) => row(id, { title })), row("S-1", { seam: true })]).packages.map(p => [p.id, p.seam]));
-  assert.deepEqual(Object.keys(seams).filter(id => seams[id]), ["A-1", "A-2", "A-3", "A-4", "A-5", "S-1"]);
+  assert.deepEqual(Object.keys(seams).filter(id => seams[id]), ["A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7", "S-1"]);
 });
 test("unresolved dependency IDs are exposed additively", () => {
   const [a, b] = build([row("APP-1", { deps: ["GHOST-9", "APP-2", "GHOST-3"] }), row("APP-2")]).packages;
