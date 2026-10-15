@@ -5,6 +5,7 @@ import { scanSetupRepo } from "../../lib/setupScan";
 import ProviderDialog from "../../components/ProviderDialog";
 import type { Project } from "../../types";
 import { useT } from "../../i18n/useT";
+import { useFeatureFlag } from "../../flags/useFeatureFlag";
 import { ErsteinrichtungScreen, type ScanState, type StartStepId } from "./ErsteinrichtungScreen";
 
 /** Same key the old app writes when it picks a project (the Glass shell has no picker yet). */
@@ -29,6 +30,7 @@ const STEP_HASH: Partial<Record<StartStepId, string>> = {
  * app selected (else the first); its repository is read with the read-only scan (V2-B28).
  */
 export default function StartRoute() {
+  const [expanded] = useFeatureFlag("weitere_bereiche");
   const [projects, setProjects] = useState<Project[]>([]);
   const [scan, setScan] = useState<ScanState>({ status: "idle" });
   const [providers, setProviders] = useState(false);
@@ -66,7 +68,7 @@ export default function StartRoute() {
   };
   return (
     <>
-      <ErsteinrichtungScreen hasProject={projects.length > 0} scan={shown} onAction={onAction} />
+      <ErsteinrichtungScreen hasProject={projects.length > 0} scan={shown} onAction={onAction} showTeamAction={expanded} />
       {providers ? <ProviderDialog onClose={() => setProviders(false)} /> : null}
     </>
   );

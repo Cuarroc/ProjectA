@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { setFeatureFlagEnabled } from "../../flags/featureFlags";
 import { getEmergencyStop, setEmergencyStop } from "../../lib/ipc";
 import { Shell } from "../Shell";
 import { Bell, CommandPalette, QuotaBar, StopBand } from "./index";
@@ -9,7 +10,8 @@ import { matchCommands } from "./CommandPalette";
 vi.mock("../../lib/ipc", () => ({ getEmergencyStop: vi.fn(), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
 const stopped = vi.mocked(getEmergencyStop);
-beforeEach(() => { window.location.hash = ""; stopped.mockReset().mockResolvedValue(false); vi.mocked(setEmergencyStop).mockReset().mockResolvedValue(undefined); });
+// The palette tests cover every route, so the scope flag is on (the default scope is covered by scope.test.tsx).
+beforeEach(() => { setFeatureFlagEnabled("weitere_bereiche", true); window.location.hash = ""; stopped.mockReset().mockResolvedValue(false); vi.mocked(setEmergencyStop).mockReset().mockResolvedValue(undefined); });
 afterEach(cleanup);
 const ctrlK = () => fireEvent.keyDown(window, { key: "k", ctrlKey: true });
 
