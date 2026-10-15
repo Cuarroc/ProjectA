@@ -22,6 +22,7 @@ test("parses COMP and VERBUND table shapes and decision inbox", () => {
 | V16-F4 | Review-Fahrer auf den Server? | ja | offen |`);
   assert.deepEqual(model.packages.map((p) => [p.id, p.status, p.deps, p.prs, p.line, p.section]), [["COMP-1-3", "done", ["COMP-3-3", "COMP-1-1"], [1500], 4, "COMP"], ["V-02", "planned", ["V-01"], [], 8, "VERBUND"]]);
   assert.deepEqual(model.decisions, [{ id: "V16-F4", status: "open", line: 12 }]);
+  assert.deepEqual(parse("| # | Entscheidung | Stand |\n|---|---|---|\n| E1 | Schnitt | beantwortet |\n").decisions, [{ id: "E1", status: "answered", line: 3 }]);
 });
 test("normalizes status vocabulary without reading trailing historical claims", () => {
   for (const [raw, expected] of [["gemergt", "done"], ["Erledigt", "done"], ["PR #1 offen", "in_review"], ["In Prüfung", "in_review"], ["Draft", "in_review"], ["läuft", "in_progress"], ["in Arbeit", "in_progress"], ["dispatched", "in_progress"], ["Geplant", "planned"], ["wartet", "planned"], ["BLOCKIERT", "blocked"], ["Später", "parked"], ["geparkt", "parked"], ["entfällt", "dropped"], ["gestrichen", "dropped"], ["Dropped", "dropped"], ["unbekannt", "unknown"], ["Erledigt; früher Draft", "done"]]) assert.equal(normalizeStatus(raw), expected, raw);
@@ -49,6 +50,8 @@ test("finds unmapped PRs and GitHub status contradictions", () => {
   const prs = [{ number: 1, state: "MERGED" }, { number: 2, state: "OPEN", body: "Plan-ID: A-2", headRefName: "codex/mapped" }, { number: 3, state: "CLOSED" }, { number: 4, state: "OPEN", title: "A-11", headRefName: "codex/unmapped" }];
   assert.deepEqual(checkPlan(model, { prs }).map((f) => [f.kind, f.pr]), [["status-contradicts-github", 1], ["status-contradicts-github", 2], ["status-contradicts-github", 3], ["pr-without-plan-row", 4]]);
   assert.deepEqual(kinds(model, { prs: [{ state: "OPEN", title: "fix A-1", headRefName: "codex/a-1-fix" }] }), []);
+  assert.deepEqual(kinds(model, { prs: [{ state: "OPEN", title: "fix", headRefName: "codex/prefix-a-1-fix" }] }), []);
+  assert.deepEqual(kinds(parse(table("| A-4 | D | Geplant | A-1 #1 |\n| A-1 | A | Erledigt | |")), { prs: [{ number: 1, state: "MERGED" }] }), []);
 });
 test("finds running jobs without rows and respects completions and restarts", () => {
   const events = "JOB-START srv-a-1\nJOB-START fix-a-1-r1\nJOB-START review-a-1\nJOB-START srv-old-1\nFERTIG srv-old-1\nJOB-START srv-old-1";
@@ -64,7 +67,12 @@ test("finds recent unreferenced decisions and stale plans at thresholds", () => 
 });
 test("CLI reports skipped checks and validates arguments without network", async () => {
   let output = ""; const io = { out: (s) => { output += s; }, err: () => {} };
-  assert.equal(await main(["--offline", "--json"], io), 1);
+  const deps = { read: () => "", run: () => ({ code: 0, stdout: "2026-10-15T12:00:00Z" }) };
+  assert.equal(await main(["--offline", "--json"], io, deps), 0);
   assert.ok(JSON.parse(output).notChecked.some((s) => s.includes("GitHub")));
+  assert.equal(await main(["--offline", "--strict"], io, deps), 1);
+  assert.equal(await main(["--json", "--strict"], io, deps), 1);
+  const online = { ...deps, run: (command) => ({ code: 0, stdout: command === "gh" ? "[]" : "2026-10-15T12:00:00Z" }) };
+  assert.equal(await main(["--strict", "--events", "events.log"], io, online), 0);
   assert.equal(await main(["--invalid"], io), 2);
 });
