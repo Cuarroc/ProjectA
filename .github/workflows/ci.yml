@@ -349,7 +349,7 @@ jobs:
       # minutes (review PR #149, glm-5.2 F2).
       - name: red-first - proof against merge base
         id: rf_run
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' && steps.rf_plan.outcome == 'success' && steps.rf_plan.outputs.count != '0' && steps.rf_plan.outputs.count != '' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.setup.outcome == 'success' && steps.rf_plan.outcome == 'success' && steps.rf_plan.outputs.count != '0' && steps.rf_plan.outputs.count != '' }}
         continue-on-error: true
         timeout-minutes: 25
         env:
