@@ -28,6 +28,7 @@
 # a pending review artifact, never something to commit (W1-23).
 *.snap.new
 .pa/*
+/.pa/roadmap-data.json
 !.pa/ACTIVITY.md
 !.pa/task_*.md
 !.pa/report_*.md

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRoadmap } from "./roadmap-data.mjs";
+import { main } from "../roadmap-data.mjs";
 
 const now = "2026-10-15T12:00:00Z", day = 86400000;
 const row = (id = "APP-1", extra = {}) => ({ id, title: "Search", status: "planned", statusRaw: "Geplant", deps: [], ...extra });
@@ -70,4 +71,20 @@ test("public projection never copies PR bodies owners or private metadata", () =
   assert.equal(r.packages[0].title, "Search");
   assert.doesNotMatch(JSON.stringify(r), /private\.invalid|costs|quota|42|80/);
   assert.equal(build([row("APP-1", { title: "Move host build.private.invalid" })]).packages[0].title, "Unbekannt");
+});
+test("CLI separates historical merges from live checks and fails closed offline", async () => {
+  const calls = [], out = [], errors = [];
+  const run = (cmd, args) => {
+    calls.push([cmd, ...args]);
+    const data = args[0] === "release" ? [] : args[0] === "pr" && args[1] === "list" ? [pr({ state: args.includes("merged") ? "MERGED" : "OPEN", mergedAt: now })] : args[1] === "view" ? { commits: [{ committedDate: now }] } : [];
+    return { code: 0, stdout: cmd === "git" ? "abc1234" : JSON.stringify(data) };
+  };
+  const io = { out: s => out.push(s), err: s => errors.push(s) };
+  const read = () => "| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Geplant |";
+  assert.equal(await main(["--stdout"], io, { run, read, now }), 0);
+  assert.equal(JSON.parse(out[0]).head.open, 1);
+  assert.ok(calls.some(c => c.includes("is:open") && c.includes("all")));
+  assert.ok(calls.some(c => c.includes("merged") && !c.some(a => a.includes("statusCheckRollup"))));
+  assert.equal(await main(["--stdout"], io, { run: () => ({ code: 1, stdout: "", stderr: "private.invalid" }), read, now }), 1);
+  assert.doesNotMatch(errors.join(""), /private.invalid/);
 });
