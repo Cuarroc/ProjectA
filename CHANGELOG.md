@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.6.5 (Beta) — 15.10.2026
+
+Enthält alle Änderungen seit v1.6.4 (8 Pull Requests). Die neue Oberfläche bleibt eine Vorschau; die klassische Ansicht ist weiterhin erreichbar.
+
+**Neue Oberfläche (Vorschau):**
+
+- **Braucht dich mit drei festen Zeilen** (PR #1455): Die Spalte zeigt immer die Zeilen Geld, Installieren und Löschen mit je einem Satz, dass sie deine Freigabe brauchen. Passt eine offene Frage zu einer Zeile, steht sie dort und lässt sich mit demselben Antwortfeld beantworten; alle anderen Fragen bleiben in der bisherigen Liste. Es wird nichts ausgegeben, installiert oder gelöscht.
+- **Statuslampe auf der Agentenkarte** (PR #1452): Jede Karte im Leitstand zeigt neben dem Statusschild eine Lampe mit vier Zuständen (läuft, blockiert, erledigt, untätig). Solange der Beweisstreifen fehlt, steht eine erledigte Karte als „ohne Beweis“ da und nicht als „Fertig“; Neu starten, Archivieren und das Statusschild bleiben unverändert.
+- **Ablauf-Graph vorbereitet** (PR #1458): Der Ablauf der Agenten wird als gläserner Graph gezeichnet, mit einem Knoten pro Agent und einem gestrichelten Pfeil vom Auftraggeber zum gestarteten Agenten. Die Pfeile bewegen sich nur ohne eingestellte reduzierte Bewegung, ohne Agenten steht ein Leer-Hinweis da. Noch nicht in die App eingebunden.
+- **Beweisleiste vorbereitet** (PR #1450): Vier Plaketten zeigen Red-first, Gates, Review und PR. Was noch nicht gemeldet wurde, steht als „noch nicht verbunden“ da und bekommt nie einen grünen Haken; ist ein Beweis durch einen späteren Commit überholt, steht an jeder Plakette „veraltet“. Noch nicht in die App eingebunden.
+- **Bausteine für Kontingente und Größenmarke vorbereitet** (PR #1453, #1448): Die Kontingent-Anzeige rechnet den größeren der beiden Fensterwerte (5 Stunden oder 7 Tage) und meldet „nicht gemessen“, statt eine fehlende Messung als 0 % zu zeigen; die Prognose lautet „zu wenig Daten“, ein Ausweichprofil wird nur genannt, solange das Profil blockiert ist. Die Größenmarke für einen Worker-Diff zählt hinzugefügte und gelöschte Zeilen zusammen: bis einschließlich 300 gilt als im Rahmen, ab 301 steht „über 300“ dabei. Beides ist noch nicht in der Oberfläche sichtbar.
+
+**Sicherheit und Zuverlässigkeit:**
+
+- **Kern prüft Bereichsstufen** (PR #1325): Vor selbständigen Änderungen prüft der Kern die eingestellte Bereichsstufe und eine unabhängige Wirkberechtigung. Geschützte Wirkungen bleiben auch bei falsch gepflegtem Register Vorschläge, und abgewiesene Änderungen lassen den bisherigen Zustand unverändert.
+
+**Dokumentation:**
+
+- **Bekannte Probleme** (PR #1468): Zwei weitere zufällige Windows-Testabbrüche der Klasse KI-24 sind mit Belegen in `KNOWN_ISSUES.md` festgehalten; sie sind auf Linux nicht reproduzierbar, deshalb gibt es keinen Code-Fix.
+
 ## v1.6.4 (Beta) — 14.10.2026
 
 Enthält alle Änderungen seit v1.6.3 (126 Pull Requests). Die neue Oberfläche bleibt eine Vorschau; die klassische Ansicht ist weiterhin erreichbar.

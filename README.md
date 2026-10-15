@@ -192,7 +192,7 @@ Schon heute kannst du sie ausprobieren: **Einstellungen › Allgemein ›
 
 ## Status und Grenzen
 
-- **App-Version:** `v1.6.4` – diese Version baut der Quellcode auf `main`.
+- **App-Version:** `v1.6.5` – diese Version baut der Quellcode auf `main`.
 - **Veröffentlicht:** Die jüngste Version zeigen das Badge oben und die
   [Release-Seite](https://github.com/Cuarroc/ProjectA-updates/releases/latest).
   Was sich ändert, steht im [`CHANGELOG.md`](CHANGELOG.md).
