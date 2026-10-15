@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRoadmap } from "./roadmap-data.mjs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { makeRunner } from "./dev-tools.mjs";
 import { main } from "../roadmap-data.mjs";
 
 const now = "2026-10-15T12:00:00Z", day = 86400000;
@@ -77,15 +81,51 @@ test("CLI separates historical merges from live checks and fails closed offline"
   const calls = [], out = [], errors = [];
   const run = (cmd, args) => {
     calls.push([cmd, ...args]);
-    const data = args[0] === "release" ? [] : args[0] === "pr" && args[1] === "list" ? [pr({ state: args.includes("merged") ? "MERGED" : "OPEN", mergedAt: now })] : args[1] === "view" ? { commits: [{ committedDate: now }] } : [];
-    return { code: 0, stdout: cmd === "git" ? "abc1234" : JSON.stringify(data) };
+    const data = args[0] === "release" ? [] : args[0] === "pr" && args[1] === "list" ? [pr({ state: args.includes("merged") ? "MERGED" : "OPEN", baseRefName: "main", mergedAt: now })] : args[1] === "view" ? { commits: [{ committedDate: now }] } : [];
+    return { code: 0, stdout: cmd === "git" ? (args[0] === "show" ? "| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Geplant |" : "abc1234") : JSON.stringify(data) };
   };
   const io = { out: s => out.push(s), err: s => errors.push(s) };
-  const read = () => "| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Geplant |";
-  assert.equal(await main(["--stdout"], io, { run, read, now }), 0);
+  assert.equal(await main(["--stdout"], io, { run, now }), 0);
   assert.equal(JSON.parse(out[0]).head.open, 1);
   assert.ok(calls.some(c => c.includes("is:open") && c.includes("all")));
   assert.ok(calls.some(c => c.includes("merged") && !c.some(a => a.includes("statusCheckRollup"))));
-  assert.equal(await main(["--stdout"], io, { run: () => ({ code: 1, stdout: "", stderr: "private.invalid" }), read, now }), 1);
+  assert.equal(await main(["--stdout"], io, { run: () => ({ code: 1, stdout: "", stderr: "private.invalid" }), now }), 1);
   assert.doesNotMatch(errors.join(""), /private.invalid/);
+});
+test("CLI reads PLAN and mainSha from the same origin/main commit", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "roadmap-"));
+  try {
+    const real = makeRunner();
+    const git = (...a) => assert.equal(real("git", ["-C", dir, ...a]).code, 0);
+    const table = id => `| ID | Ziel | Status |\n|---|---|---|\n| ${id} | Search | Geplant |`;
+    git("init", "-q");
+    mkdirSync(join(dir, "docs"));
+    writeFileSync(join(dir, "docs/PLAN.md"), table("APP-1"));
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@users.noreply.github.com", "commit", "-q", "-m", "plan");
+    git("update-ref", "refs/remotes/origin/main", "HEAD");
+    writeFileSync(join(dir, "docs/PLAN.md"), table("APP-2")); // working tree drifts from origin/main
+    const run = (cmd, args) => cmd === "git" ? real(cmd, ["-C", dir, ...args]) : { code: 0, stdout: "[]" };
+    const sha = real("git", ["-C", dir, "rev-parse", "origin/main"]).stdout.trim(), out = [];
+    const read = () => table("APP-2");
+    assert.equal(await main(["--stdout"], { out: s => out.push(s), err: () => {} }, { run, now }), 0);
+    const data = JSON.parse(out[0]);
+    assert.deepEqual(data.packages.map(p => p.id), ["APP-1"]);
+    assert.equal(data.stand.mainSha, sha);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+test("required checks skip non-main bases and name the PR on garbled output", async () => {
+  const mk = (prs, checks) => (cmd, args) => {
+    if (cmd === "git") return { code: 0, stdout: args[0] === "show" ? "| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Geplant |" : "abc1234" };
+    if (args[1] === "checks") return checks;
+    const data = args[0] === "release" ? [] : args[1] === "list" ? (args.includes("merged") ? [] : prs) : { commits: [] };
+    return { code: 0, stdout: JSON.stringify(data) };
+  };
+  const io = errors => ({ out: () => {}, err: s => errors.push(s) });
+  const read = () => "";
+  const stacked = pr({ number: 7, baseRefName: "codex/other" }), errors = [];
+  assert.equal(await main(["--stdout"], io(errors), { run: mk([stacked], { code: 1, stdout: "" }), read, now }), 0);
+  const direct = pr({ number: 8, baseRefName: "main" });
+  assert.equal(await main(["--stdout"], io(errors), { run: mk([direct], { code: 1, stdout: "not json" }), read, now }), 1);
+  assert.match(errors.join(""), /#8/);
 });
