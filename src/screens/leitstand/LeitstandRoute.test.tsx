@@ -185,6 +185,20 @@ describe("Leitstand route behind D1", () => {
     expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
   });
 
+  it("renders old flow paths as Fabrik immediately without requesting Haupt questions", async () => {
+    for (const path of ["/leitstand/fluss", "/leitstand/fluss/"]) {
+      mocks.invoke.mockClear();
+      const view = render(<LeitstandRoute path={path} />);
+      expect.soft(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+      expect.soft(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
+      expect.soft(screen.queryByRole("complementary", { name: "Braucht dich" })).toBeNull();
+      await act(async () => {});
+      expect.soft(mocks.invoke).not.toHaveBeenCalledWith("list_questions", expect.anything());
+      expect.soft(screen.queryByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
   it("redirects old flow bookmarks and later hash navigation to Fabrik", async () => {
     window.location.hash = "#/leitstand/fluss";
     const { container } = render(<App />);
