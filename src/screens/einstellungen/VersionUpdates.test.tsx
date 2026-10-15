@@ -1,8 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { check } from "@tauri-apps/plugin-updater";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
+import { cancelUpdateDownload, installUpdateWhenIdle, listLiveSessions } from "../../lib/ipc";
 import { VersionUpdates } from "./VersionUpdates";
 
 // Counts every state update, so "no update after unmount" is observable (React itself stays silent).
@@ -19,11 +20,19 @@ vi.mock("react", async (original) => {
 });
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
-vi.mock("../../lib/ipc", () => ({ describeError: String }));
+vi.mock("../../lib/ipc", () => ({
+  describeError: String,
+  listLiveSessions: vi.fn(),
+  installUpdateWhenIdle: vi.fn(),
+  cancelUpdateDownload: vi.fn(),
+}));
 
 beforeEach(() => {
   vi.mocked(getVersion).mockReset();
   vi.mocked(check).mockReset();
+  vi.mocked(listLiveSessions).mockReset().mockResolvedValue([]);
+  vi.mocked(installUpdateWhenIdle).mockReset();
+  vi.mocked(cancelUpdateDownload).mockReset();
   updates.count = 0;
 });
 afterEach(cleanup);
@@ -101,5 +110,82 @@ describe("VersionUpdates version re-read on check", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nach Updates suchen" }));
     await screen.findByText("ProjectA 1.2.3");
     expect(screen.queryByText("Nur in der Desktop-App verfügbar.")).toBeNull();
+  });
+});
+
+describe("VersionUpdates install and cancel", () => {
+  const install = () => screen.findByRole("button", { name: "Installieren" });
+  // Checks once and waits for the install button, the way a user reaches it.
+  const available = async () => {
+    vi.mocked(getVersion).mockResolvedValue("1.2.3");
+    vi.mocked(check).mockResolvedValue({ available: true, version: "2.0.0", rid: 7 } as unknown as Update);
+    render(<VersionUpdates />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nach Updates suchen" }));
+    return install();
+  };
+  // A download that stays in flight until the test settles it.
+  const download = () => {
+    const flight = deferred<void>();
+    vi.mocked(installUpdateWhenIdle).mockReturnValue(flight.promise);
+    return flight;
+  };
+  const cancel = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "Abbrechen" }));
+  };
+
+  it("offers Installieren for an available update", async () => {
+    expect(await available()).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Abbrechen" })).toBeNull();
+  });
+
+  it("installs with the update handle and asks to restart", async () => {
+    fireEvent.click(await available());
+    expect(await screen.findByText(/Version 2\.0\.0 ist installiert/)).toBeTruthy();
+    expect(installUpdateWhenIdle).toHaveBeenCalledWith(7);
+  });
+
+  it("shows Abbrechen while downloading", async () => {
+    download();
+    fireEvent.click(await available());
+    expect(await screen.findByRole("button", { name: "Abbrechen" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Installieren" })).toBeNull();
+  });
+
+  it("shows the too-late text when the cancel comes too late", async () => {
+    download();
+    vi.mocked(cancelUpdateDownload).mockResolvedValue("tooLate");
+    fireEvent.click(await available());
+    await cancel();
+    expect(await screen.findByText(/lässt sich nicht mehr abbrechen/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Abbrechen" })).toBeNull();
+  });
+
+  it("returns to the install offer when the cancel succeeds", async () => {
+    const flight = download();
+    vi.mocked(cancelUpdateDownload).mockResolvedValue("cancelled");
+    fireEvent.click(await available());
+    await cancel();
+    expect(await install()).toBeTruthy();
+    expect(screen.getByText(/Der Download wurde abgebrochen/)).toBeTruthy();
+    await act(async () => { flight.reject(new Error("aborted")); await flight.promise.catch(() => undefined); });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("does not offer Installieren while workers are running", async () => {
+    vi.mocked(listLiveSessions).mockResolvedValue(["w1"]);
+    vi.mocked(getVersion).mockResolvedValue("1.2.3");
+    vi.mocked(check).mockResolvedValue({ available: true, version: "2.0.0", rid: 7 } as unknown as Update);
+    render(<VersionUpdates />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nach Updates suchen" }));
+    expect(await screen.findByText(/1 Worker läuft/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Installieren" })).toBeNull();
+  });
+
+  it("re-checks the workers at click time and then does not download", async () => {
+    const button = await available();
+    vi.mocked(listLiveSessions).mockResolvedValue(["w1"]);
+    fireEvent.click(button);
+    expect(await screen.findByText(/1 Worker läuft/)).toBeTruthy();
+    expect(installUpdateWhenIdle).not.toHaveBeenCalled();
   });
 });
