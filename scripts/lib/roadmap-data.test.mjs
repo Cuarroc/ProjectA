@@ -15,15 +15,15 @@ const build = (packages, prs = [], extra = {}) => buildRoadmap({ plan: { package
 const state = (p, extra = {}) => build([row("APP-1", extra)], [p]).packages[0].state;
 
 test("merged wins over error and human signals", () => {
-  assert.equal(state(pr({ state: "MERGED", mergedAt: now, labels: [{ name: "conflict" }, { name: "do-not-merge" }] }), { owner: "Elias" }), "Erledigt");
+  assert.equal(state(pr({ state: "MERGED", mergedAt: now, labels: [{ name: "conflict" }, { name: "do-not-merge" }] }), { owner: "Nutzer" }), "Erledigt");
 });
 test("conflicts and red required checks win over human and ready signals", () => {
-  assert.equal(state(pr({ labels: [{ name: "conflict" }, { name: "review-ok" }] }), { owner: "Elias" }), "Fehler");
-  assert.equal(state(pr({ statusCheckRollup: [check("FAILURE")] }), { owner: "Elias" }), "Fehler");
+  assert.equal(state(pr({ labels: [{ name: "conflict" }, { name: "review-ok" }] }), { owner: "Nutzer" }), "Fehler");
+  assert.equal(state(pr({ statusCheckRollup: [check("FAILURE")] }), { owner: "Nutzer" }), "Fehler");
 });
 test("human ownership and holds win over green ready", () => {
   assert.equal(state(pr({ labels: [{ name: "do-not-merge" }, { name: "review-ok" }], statusCheckRollup: [check("SUCCESS")] })), "Braucht dich");
-  assert.equal(state(pr(), { owner: "Elias" }), "Braucht dich");
+  assert.equal(state(pr(), { owner: "Nutzer" }), "Braucht dich");
 });
 test("ready needs green required checks and review approval", () => {
   assert.equal(state(pr({ labels: [{ name: "review-ok" }], statusCheckRollup: [check("SUCCESS"), check("FAILURE", false)] })), "Bereit zum Mergen");
@@ -61,7 +61,7 @@ test("forecast needs ten distinct recent merges and excludes seam paths", () => 
   assert.equal(build(packages.slice(0, 11), prs).directions[0].forecast, "zu wenig Daten");
 });
 test("head and lanes derive from plan dependencies releases and decisions", () => {
-  const plan = `## Work\n| ID | Ziel | Owner | Hängt ab von | Status | Version | Richtung |\n|---|---|---|---|---|---|---|\n| APP-1 | Search | Elias | – | Geplant | v2.0.0 | App |\n| APP-2 | Index | Root | APP-1 | Blockiert | v2.1.0 | App |\n| APP-3 | Help | Worker | – | Geplant | v1.6.6 | App |\n\n## Entscheidungs-Inbox\n| # | Frage | Status |\n|---|---|---|\n| E1 | Choose | offen |\n\n## Entscheidungs-Inbox (historisch)\n| # | Frage | Status |\n|---|---|---|\n| E2 | Old | offen |`;
+  const plan = `## Work\n| ID | Ziel | Owner | Hängt ab von | Status | Version | Richtung |\n|---|---|---|---|---|---|---|\n| APP-1 | Search | Nutzer | – | Geplant | v2.0.0 | App |\n| APP-2 | Index | Root | APP-1 | Blockiert | v2.1.0 | App |\n| APP-3 | Help | Worker | – | Geplant | v1.6.6 | App |\n\n## Entscheidungs-Inbox\n| # | Frage | Status |\n|---|---|---|\n| E1 | Choose | offen |\n\n## Entscheidungs-Inbox (historisch)\n| # | Frage | Status |\n|---|---|---|\n| E2 | Old | offen |`;
   const r = build([], [pr()], { plan, releases: [{ tagName: "v1.6.6", isDraft: false, isPrerelease: false }] });
   assert.deepEqual(r.head, { nextVersion: "v2.0.0", open: 1, yourSteps: 2, blockers: 1 });
   assert.deepEqual(r.stand, { generatedAt: "2026-10-15T12:00:00.000Z", mainSha: "abc1234" });

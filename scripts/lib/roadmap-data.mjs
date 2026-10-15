@@ -1,10 +1,10 @@
 import { parsePlan, dependencyGraph } from "./plan-model.mjs";
 
 const DAY = 86400000, UNKNOWN = "Unbekannt";
-const human = (owner) => /\b(Elias|Nutzer|du)\b/i.test(owner || "");
+const human = (owner) => /\b(Nutzer|du)\b/i.test(owner || "");
 const who = (owner) => human(owner) ? "du" : /\bRoot\b/i.test(owner || "") ? "Root" : owner ? "Worker" : UNKNOWN;
 // Project only public fields; free-form infrastructure prose is deliberately withheld.
-const publicText = (s) => !s || /https?:|\b(?:server|host|quota|kosten|costs|kontingent|srv-)|[€$]|\b\d+(?:\.\d+){3}\b|\.(?:invalid|internal|local|com|net|org)\b|\/home\/|[A-Z]:\\Users/i.test(s) ? UNKNOWN : s.replace(/\bElias\b/g, "du");
+const publicText = (s) => !s || /https?:|\b(?:server|host|quota|kosten|costs|kontingent|srv-)|[€$]|\b\d+(?:\.\d+){3}\b|\.(?:invalid|internal|local|com|net|org)\b|\/home\/|[A-Z]:\\Users/i.test(s) ? UNKNOWN : s;
 const planNames = { planned: "Geplant", in_progress: "In Arbeit", in_review: "In Prüfung", done: "Erledigt", blocked: "Blockiert", parked: "Verschoben", dropped: "Entfallen" };
 const version = (s) => /^v?\d+\.\d+\.\d+$/.test(s || "") ? `v${s.replace(/^v/, "")}` : null;
 const compareVersions = (a, b) => a.localeCompare(b, "en", { numeric: true });
