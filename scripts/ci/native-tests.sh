@@ -10,10 +10,10 @@
 # von pwsh nach bash uebertragen (der Default dieser Datei ist ohnehin
 # Git-Bash, siehe .github/workflows/ci.yml).
 #
-# Welche zehn #[ignore]-Tests das Repo fuer den nativen Capture-Host kennt
-# (docs/PLAN.md W3-06, KI-30), und warum hier nur neun laufen:
+# Welche zwoelf #[ignore]-Tests das Repo fuer den nativen Capture-Host kennt
+# (docs/PLAN.md W3-06, KI-30), und warum hier nur elf laufen:
 #
-#   - 5 in src-tauri/src/store/native_managed_tests.rs (real_native_*)
+#   - 7 in src-tauri/src/store/native_managed_tests.rs (real_native_*)
 #   - 3 in src-tauri/src/workers.rs                     (real_native_*)
 #   - 1 in src-tauri/src/process_capture/managed.rs     (real_native_*, KI-30)
 #   - 1 in src-tauri/src/process_capture/windows_capture.rs:
@@ -59,13 +59,15 @@ echo ">>> Selbsttest der Parent/Host-Prozessgrenze"
 rc=$?
 [ "$rc" -eq 0 ] || { echo "::error::pa-capture-host --self-test-host: Exit $rc" >&2; exit "$rc"; }
 
-# Die neun erwarteten Testnamen. Erst in eine Variable, dann pruefen -
+# Die erwarteten Testnamen. Erst in eine Variable, dann pruefen -
 # `cargo test ... --list | grep ...` unter `pipefail` waere anfaellig fuer
 # genau die SIGPIPE-Falle, die scripts/test-gates.sh fuer gates.sh selbst
 # dokumentiert (frueher Abbruch von grep -> Exit 141 statt eines echten
 # Befundes).
 EXPECTED=(
   real_native_host_commits_checkpoints_before_registry_and_final_handler_retire
+  real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout
+  real_native_owner_window_starts_at_reservation_not_at_fixture_build
   real_native_job_revokes_credentials_before_retirement_or_reconciliation
   real_native_runner_dispatches_owned_job_and_joins_completion
   real_native_runner_bounds_capacity_and_accepts_out_of_order_completion
@@ -76,7 +78,7 @@ EXPECTED=(
   real_native_owned_host_waits_for_pending_checkpoints_after_an_undelivered_exit
 )
 
-echo ">>> pruefe, dass alle neun erwarteten nativen Tests existieren (kein gruen durch Abwesenheit)"
+echo ">>> pruefe, dass alle ${#EXPECTED[@]} erwarteten nativen Tests existieren (kein gruen durch Abwesenheit)"
 listed="$(cargo test --bin projecta real_native_ -- --ignored --list)"
 rc=$?
 [ "$rc" -eq 0 ] || { echo "::error::cargo test --list: Exit $rc" >&2; exit "$rc"; }
@@ -91,9 +93,15 @@ for name in "${EXPECTED[@]}"; do
     missing=1
   fi
 done
+while IFS= read -r name; do
+  if [[ " ${EXPECTED[*]} " != *" $name "* ]]; then
+    echo "::error::native test missing from EXPECTED: $name" >&2
+    missing=1
+  fi
+done < <(sed -n 's/^.*::\(real_native_[[:alnum:]_]*\): test$/\1/p' <<< "$listed")
 [ "$missing" -eq 0 ] || exit 1
-echo "alle neun erwarteten Tests sind vorhanden:"
+echo "alle ${#EXPECTED[@]} erwarteten Tests sind vorhanden:"
 printf '  - %s\n' "${EXPECTED[@]}"
 
-echo ">>> fuehre die neun nativen Tests aus (--ignored)"
+echo ">>> fuehre die ${#EXPECTED[@]} nativen Tests aus (--ignored)"
 cargo test --bin projecta real_native_ -- --ignored
