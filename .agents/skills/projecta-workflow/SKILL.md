@@ -97,6 +97,11 @@ test first, then the fix.
   (initial dispatch: 300); record the overrun and forcing finding IDs.
   Current eligible reviewers and credit limits: coordinator's private record;
   follow AGENTS.md's recorded exceptions, never infer live availability.
+- Every review checks `docs/PLAN.md` at the head: the PR's `Plan-ID:` row must
+  state what is true after merge, and the PR must leave no other row, user
+  section or decision inbox stale; cross-check against `gh`. A mismatch is a
+  medium finding (high if the user section asks for something already done)
+  and must be fixed in the same PR before `review-ok`.
 - Use recursive prompting selectively for complex plans/dependencies, hard
   diagnosis or demanding designs. Keep requirements/acceptance, necessary
   subquestions, first solution, one neutral extra check (no defect is valid),
