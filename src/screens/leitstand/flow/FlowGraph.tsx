@@ -21,9 +21,9 @@ export interface FlowGraphProps {
 }
 
 const NODE_W = 208;
-const NODE_H = 76;
+const NODE_H = 112;
 const GAP_X = 24;
-const GAP_Y = 56;
+const GAP_Y = 40;
 
 /** Live "user asked for reduced motion"; without `matchMedia` (old webviews, tests) it never matches. */
 function useReducedMotion(): boolean {
