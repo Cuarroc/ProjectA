@@ -154,6 +154,8 @@ GATES=(
   # V161-DOC-LINKS: broken relative links in tracked Markdown. Local lanes only:
   # lane-plan HEAVY_DOCS would turn every docs PR into a Linux CI run.
   "doc-links|precommit,prepush|.|node --test scripts/ci/doc-links.test.mjs && node scripts/ci/doc-links.mjs check"
+  # R1498-G5: export-svg.mjs on fixtures; skips without Chromium (CI linux has none).
+  "diagrams-export|prepush,linux|.|node --test docs/diagrams/export-svg.test.mjs"
   # Deterministic suppression counts may not exceed their checked-in ceilings.
   # Explicit updates lower ceilings only; every lane also tests the ratchet.
   "ratchet|precommit,prepush,linux|.|node --test scripts/ci/ratchet.test.mjs && node scripts/ci/ratchet.mjs check"
