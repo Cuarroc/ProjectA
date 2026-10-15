@@ -181,7 +181,8 @@ GATES=(
   # 12 node:test-Dateien unter scripts/lib/. Standen seit jeher in
   # package.json und liefen in keinem Workflow und keinem Hook.
   # Not in release: DevHQ tooling, not shipped; 11 tests red on Windows (run 37343951787).
-  "hq-test|prepush,branchpush,linux,linux_2|.|npm run test:hq"
+  # The dev-inbox tests need Gitleaks from setup-linux on linux_1.
+  "hq-test|prepush,branchpush,linux,linux_1|.|npm run test:hq"
   # DR-01: Denkraum (tools/denkraum/) tests + public-repo hygiene check. Pure
   # node, milliseconds, so also precommit; not windows (platform-independent,
   # linux proves it) and not release (dev tooling, not shipped).
