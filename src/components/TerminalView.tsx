@@ -5,6 +5,13 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal, type ITerminalAddon } from "@xterm/xterm";
 
+import { Button } from "../design/controls/Button";
+import { Input } from "../design/inputs/Input";
+import { useT } from "../i18n/useT";
+import "../design/tokens.css";
+import "../design/controls/controls.css";
+import "../design/inputs/inputs.css";
+
 import { loadTerminalFont, loadTerminalFontSize, TERMINAL_FONTS, type TerminalFontId } from "../lib/settings";
 import { describeError, getScrollback, onPtyOutput, resizePty, writePty } from "../lib/ipc";
 import "@xterm/xterm/css/xterm.css";
@@ -92,8 +99,7 @@ export function contrastRatio(hexA: string, hexB: string): number {
  * custom properties (the addon paints them outside the React tree), so they
  * come from `THEME` above — the one hard-coded, mode-independent palette in
  * this codebase, already exempt from `scripts/contrast-check.mjs`. The
- * search bar's own chrome uses design tokens, see `.terminal-search-bar` in
- * `src/styles.css`.
+ * search bar's own chrome uses the design-system controls and `--g-*` tokens.
  *
  * `matchBackground`/`activeMatchBackground` must be opaque `#RRGGBB` (the
  * addon's typings say so — alpha is silently dropped), so unlike the rest of
@@ -142,6 +148,7 @@ export default function TerminalView({
   font = loadTerminalFont(),
   fontSize = loadTerminalFontSize(),
 }: TerminalViewProps) {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep the latest callback without re-running the (expensive) mount effect.
   const onErrorRef = useRef(onError);
@@ -476,9 +483,18 @@ export default function TerminalView({
     <div className="terminal-view">
       {searchOpen ? (
         <div
-          className="terminal-search-bar"
+          // Input is a React 18 function component; resolve its DOM node here
+          // so the existing open effect can still focus and select the query.
+          ref={(node) => { searchInputRef.current = node?.querySelector("input") ?? null; }}
+          style={{
+            flex: "0 0 auto", alignSelf: "flex-end", display: "flex", alignItems: "center",
+            flexWrap: "wrap", gap: 6, margin: "12px 16px 0 0", padding: 8,
+            maxWidth: "calc(100% - 16px)", background: "var(--g-ground)",
+            border: "1px solid var(--g-line)", borderRadius: "var(--g-r-ctl)",
+            color: "var(--g-ink)", fontFamily: "var(--g-font-sans)",
+          }}
           role="search"
-          aria-label="Suche im Terminal-Scrollback"
+          aria-label={t("terminal.search.label")}
           onKeyDown={(event) => {
             // Handled here, not just on the input, so Escape also closes
             // the bar while a nav/close button has focus.
@@ -504,13 +520,13 @@ export default function TerminalView({
             }
           }}
         >
-          <input
-            ref={searchInputRef}
+          <Input
+            compact
             type="text"
-            className="terminal-search-input"
-            aria-label="Suche im Terminal-Scrollback"
+            style={{ width: 180, maxWidth: "100%" }}
+            aria-label={t("terminal.search.label")}
             aria-invalid={regexInvalid || undefined}
-            placeholder="Suchen…"
+            placeholder={t("terminal.search.placeholder")}
             value={searchQuery}
             onChange={(event) => {
               const value = event.target.value;
@@ -540,58 +556,58 @@ export default function TerminalView({
               }
             }}
           />
-          <button
+          <Button
             type="button"
-            className="button-ghost terminal-search-btn terminal-search-toggle"
-            aria-label="Groß- und Kleinschreibung beachten"
+            variant={caseSensitive ? "primary" : "ghost"}
+            aria-label={t("terminal.search.caseSensitive")}
             aria-pressed={caseSensitive}
-            title="Groß- und Kleinschreibung beachten (Alt+C)"
+            title={t("terminal.search.caseSensitiveHint")}
             onClick={toggleCaseSensitive}
           >
             Aa
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button-ghost terminal-search-btn terminal-search-toggle"
-            aria-label="Regulärer Ausdruck"
+            variant={useRegex ? "primary" : "ghost"}
+            aria-label={t("terminal.search.regex")}
             aria-pressed={useRegex}
-            title="Regulärer Ausdruck (Alt+R)"
+            title={t("terminal.search.regexHint")}
             onClick={toggleRegex}
           >
             .*
-          </button>
-          <span className="terminal-search-count" aria-live="polite">
+          </Button>
+          <span aria-label={t("terminal.search.matches")} aria-live="polite" style={{ minWidth: 40, textAlign: "center", color: "var(--g-muted)", fontSize: 12 }}>
             {counterText}
           </span>
           {regexInvalid ? (
-            <span className="terminal-search-error" role="status">
-              Ungültiger regulärer Ausdruck
+            <span role="status" style={{ color: "var(--g-bad)", fontSize: 12 }}>
+              {t("terminal.search.invalidRegex")}
             </span>
           ) : null}
-          <button
+          <Button
             type="button"
-            className="button-ghost terminal-search-btn"
-            aria-label="Vorheriger Treffer"
+            variant="ghost"
+            aria-label={t("terminal.search.previous")}
             onClick={() => runSearch("previous")}
           >
             ↑
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button-ghost terminal-search-btn"
-            aria-label="Nächster Treffer"
+            variant="ghost"
+            aria-label={t("terminal.search.next")}
             onClick={() => runSearch("next")}
           >
             ↓
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="button-ghost terminal-search-btn"
-            aria-label="Suche schließen"
+            variant="ghost"
+            aria-label={t("terminal.search.close")}
             onClick={closeSearch}
           >
             ✕
-          </button>
+          </Button>
         </div>
       ) : null}
       <div className="terminal-host" ref={containerRef} />
