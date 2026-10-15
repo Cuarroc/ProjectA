@@ -23,8 +23,8 @@ hier. Wer hier nichts findet, arbeitet an nichts.
    selbst, der Taktgeber (Pacer) läuft, Reviews durch fremde Anbieter haben feste Wege,
    schwere Arbeit läuft auf dem Server, Agenten werden nach Verbrauchstempo verteilt.
 3. **Z3: der Rest von v1.6.0** (#631/#632/#728 gemergt; KI-30, D5-GUARD und Changelog final offen).
-4. **Z4: Wichtiges, das liegen geblieben ist** (Schlüssel-Sicherung, Server-Platte,
-   Windows-Testfehler, Audit-Reste).
+4. **Z4: Wichtiges, das liegen geblieben ist** (Server-Platte, Windows-Testfehler,
+   Audit-Reste).
 5. **Was du tun musst:** jeden Release einzeln freigeben.
    E1–E3 vom 09.10. sind beantwortet.
 
@@ -750,7 +750,7 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | V16-D8 | D8a–c hinter v1.6.0 schieben? | ja; mn für Release nur D5b → UPD-CANCEL, CHANGELOG wartet nicht auf D8 | entschieden: Nutzer-Ja laut Root 08.10. ~22:03Z (`msg-0mv030gs2-3e987ffc`); Zeilen/Reihenfolge erhalten |
 | E1 (09.10.) | Dritte Review-Runde für #741, #737 und #725; st-Belegung | genau eine Runde 3 nur zum Delta; st exklusiv für #737 bis Tag v1.6.0 | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b; Reviews/Abnahme bleiben auszuführen |
 | E2 (09.10.) | Verhalten bei Updatefehlern / V16-F3 und Start von V16-06 | fail-closed mit Anleitung; D5-GUARD → V16-UPD-CANCEL → V16-06 | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b |
-| E3 (09.10.) | Signierschlüssel sichern und jeden Release freigeben | Nutzer findet den Schlüssel und sichert ihn verschlüsselt; Anleitung auf Handgriffe-Seite, kein Schlüsselmaterial im Repo; jeder Release braucht Nutzerfreigabe | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b; Environment release / Required Reviewer Cuarroc am 09.10. per gh api bestätigt; Sicherung selbst noch unbelegt |
+| E3 (09.10.) | Signierschlüssel sichern und jeden Release freigeben | Nutzer findet den Schlüssel und sichert ihn verschlüsselt; Anleitung auf Handgriffe-Seite, kein Schlüsselmaterial im Repo; jeder Release braucht Nutzerfreigabe | Sicherung belegt, siehe E14 (14.10.) |
 | E14 | Update-Signierschlüssel offline sichern | gemäß E3 (09.10.) finden und verschlüsselt sichern; Anleitung auf Handgriffe-Seite | Durchführung erledigt 14.10.: Schlüssel exportiert und test-signiert (~14:50Z, Schlüssel-ID abgeglichen, Exit 0); Nutzer bestätigte Speicherung im Passwort-Manager (~16:40Z); zusätzlich bestätigt: „ja“ (Schlüssel liegt im Passwortmanager), laut RH; Klartext entfernt |
 | DR03-F01 | Gesamtgröße des Ledgers begrenzen: WRITE-/Listenlimits getrennt von harter SAFE-READ-/Vor-Parse-Bytegrenze, alle Top-Level-/Nested-Listen, Bestandslesen/503 und spätere Konfigänderungen disponieren | neue übergroße Writes nichtdestruktiv ablehnen; keine Trunkierung/Archivierung/Retention; keine Lesbarkeitszusage jenseits sicherer Lesegrenze; erst repräsentative reale Ledgerform/-größe/-kosten, keine erfundenen Grenzwerte | offen; Interview-Vorbereitung im bestehenden Ticket, Empfehlungen keine Entscheidung; zwei Nutzerfragen bis Belegbasis bei Root geparkt, gesamte DR-03-Abnahme offen |
 | V16-F3 | Start nach Update ohne Journal: gesperrt bleiben mit Anleitung, oder dem ersten Start vertrauen? | gesperrt mit Anleitung (fail-closed) | beantwortet: E2, Nutzer 09.10. laut PLAN-SYNC-0910b; V16-06 nach D5-GUARD → V16-UPD-CANCEL |
@@ -1449,8 +1449,7 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
 | ROADMAP-0 | Konzept (Root + Rechte Hand) und UX/UI-Entwurf mit dem Designsystem | – | Angenommen: UX-Spezifikation und Design am 15.10. akzeptiert |
-| ROADMAP-1 | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | geplant |
-| ROADMAP-1a | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | Erledigt: PR #1580 gemergt (`c9d4ca35`) |
+| ROADMAP-1 | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | Erledigt: PR #1580 gemergt (`c9d4ca35`) |
 | CI-SEC-CODEQL | CodeQL-Befunde #57 und #59 schließen | – | In Arbeit: #1581 gemergt; #57 geschlossen, #59/#60 offen, Prüfung srv-pruefen-codeql-59-60 läuft |
 | NAME-NUTZER | Persönliche Namensnennung durch neutrale Nutzerformulierung ersetzen | – | Erledigt: PR #1582 gemergt (Stand 15.10. via `gh pr view 1582`) |
 
@@ -1677,7 +1676,7 @@ SIGPIPE-Fund. Die Zuordnung INV-nn → PR steht nicht in den Texten; es wurden
 ## Entscheidungs-Inbox (historisch 04.10., nicht maßgeblich)
 
 Offene Fragen an den Nutzer stehen hier gebündelt, mit Empfehlung. Am 04.10. hat der Nutzer E1, E4, E5, E10, E11, E12, F1, F3 und F6 beantwortet (zwei
-neue Zeilen halten die Freigaben fest). Offen sind E3, der M4-Blocker, E14 (dringend), E15 und E16 (beide nach v1.5.0), E17 (niedrig, nicht auf dem v1.5.0-Pfad), E18 (hoch, auf dem v1.5.0-Pfad) sowie E21–E23; E20 hat der Nutzer am 04.10. entschieden (Option A); E19 ist als Beraterentscheid festgehalten und kann vom Nutzer überstimmt werden. Falls der Nutzer E21–E23 in der nächsten Sitzung nicht beantwortet, entscheiden Fable + Astra; der Nutzer kann überstimmen. F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
+neue Zeilen halten die Freigaben fest). Offen sind E3 (Freigabe je Release), der M4-Blocker, E15 und E16 (beide nach v1.5.0), E17 (niedrig, nicht auf dem v1.5.0-Pfad), E18 (hoch, auf dem v1.5.0-Pfad) sowie E21–E23; E20 hat der Nutzer am 04.10. entschieden (Option A); E19 ist als Beraterentscheid festgehalten und kann vom Nutzer überstimmt werden. Falls der Nutzer E21–E23 in der nächsten Sitzung nicht beantwortet, entscheiden Fable + Astra; der Nutzer kann überstimmen. F2, F4, F5 und E13 (am 03.10. freigegeben und eingespielt,
 Nachweis siehe E13) sind entschieden und werden nicht neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
