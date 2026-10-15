@@ -66,7 +66,7 @@ export function parsePlan(markdown, { file } = {}) {
       prs: [...new Set([...line.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1])))], file, line: i + 1, section });
   }
   const known = new Set(packages.map((p) => p.id));
-  for (const p of packages) p.deps = p.deps.filter((id) => known.has(id) || /^[A-Z][A-Z0-9]*(?:-(?:[A-Z][A-Z0-9]*|\d+[a-z]?\d*))+$/u.test(id));
+  for (const p of packages) p.deps = p.deps.filter((id) => known.has(id) || /^[A-Z][A-Z0-9]*(?:-(?:[A-Z][A-Z0-9]*|\d+(?:[a-z]\d*)?))+$/u.test(id));
   return { packages, decisions, problems: duplicates(packages) };
 }
 

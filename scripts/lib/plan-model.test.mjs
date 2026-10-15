@@ -61,8 +61,9 @@ test("dependency validation rejects repeated numeric segments within 200 ms", (t
   assert.deepEqual(model.packages[0].deps, []);
   assert.ok(elapsed < 200, `dependency validation took ${elapsed.toFixed(3)} ms`);
   const accepted = ["PLAN-AUTO-1b", "KR-04a", "V2-S01d", "DN-11a", "AP-6", "A-00", "A-12b34"];
-  assert.deepEqual(parse(table(`| ROW-1 | A | planned | ${accepted.join(", ")} |`)).packages[0].deps, accepted);
-  for (const id of ["a-1", "A-", "A--1", "A-12bc", "A-12b34."]) {
+  // Letter-led segments with a lowercase suffix are accepted only as known IDs.
+  assert.deepEqual(parse(table(`| ROW-1 | A | planned | ${accepted.join(", ")} |\n| V2-S01d | B | planned | |`)).packages[0].deps, accepted);
+  for (const id of ["a-1", "A-", "A--1", "A-12bc", "A-12b34.", "V2-S01d"]) {
     assert.deepEqual(parse(table(`| ROW-1 | A | planned | ${id} |`)).packages[0].deps, [], id);
   }
 });
