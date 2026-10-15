@@ -12,30 +12,29 @@ import { LeitstandCards } from "./LeitstandCards";
 import { BetriebPanel } from "./betrieb/BetriebPanel";
 import { FlowTab } from "./flow/FlowTab";
 import { NeedsYou } from "./needs/NeedsYou";
-import { TOOLS_PATH, trim } from "../../shell/mount/routing";
+import { FABRIK_PATH, TOOLS_PATH, trim } from "../../shell/mount/routing";
 
 export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
 export const BETRIEB_PATH = "/leitstand/betrieb";
-export const FLUSS_PATH = "/leitstand/fluss";
 
 /** Relative ages ("seit 4 min") move on minute scale. */
 const TICK_MS = 30_000;
 
-/** The classic view and its persistent tools stay reachable beside Haupt, Fluss and Betrieb. */
+/** The classic view and its persistent tools stay reachable beside Haupt, Fabrik and Betrieb. */
 export function LeitstandTabs({ path }: { path: string }) {
   const t = useT();
   const tab = (target: string, label: string) => (
     <a href={`#${target}`} aria-current={target === trim(path) ? "page" : undefined}>{label}</a>
   );
-  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(FLUSS_PATH, t("leitstand.tab.fluss"))}{tab(BETRIEB_PATH, t("leitstand.tab.betrieb"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}{tab(TOOLS_PATH, t("leitstand.tab.tools"))}</nav>;
+  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(FABRIK_PATH, t("leitstand.tab.fabrik"))}{tab(BETRIEB_PATH, t("leitstand.tab.betrieb"))}{tab(TOOLS_PATH, t("leitstand.tab.tools"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}</nav>;
 }
 
-/** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the flow graph on Fluss, the read-only Betrieb panel beside it. */
+/** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the flow graph on Fabrik, the read-only Betrieb panel beside it. */
 export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) {
   const here = trim(path);
   const betrieb = here === BETRIEB_PATH;
-  const fluss = here === FLUSS_PATH;
+  const fabrik = here === FABRIK_PATH;
   const t = useT();
   const [projectId, setProjectId] = useState(readActiveProjectId);
   // The picker and the old app publish a choice through the module's event.
@@ -44,7 +43,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
     return subscribeActiveProject(setProjectId);
   }, []);
   const board = useBoard(projectId, !betrieb);
-  const questions = useQuestions(projectId, !betrieb && !fluss);
+  const questions = useQuestions(projectId, !betrieb && !fabrik);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [profilesFailed, setProfilesFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now() / 1000);
@@ -71,10 +70,10 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
     );
   }
 
-  if (fluss) {
+  if (fabrik) {
     return (
       <div className="g-lr">
-        <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={FLUSS_PATH} /></div>
+        <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={FABRIK_PATH} /></div>
         {/* An unread or unreadable board must not claim "no agents". */}
         {board.loading ? null : board.error !== null && board.cards.length === 0
           ? <div role="status"><HonestState kind="offline" /></div>
