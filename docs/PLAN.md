@@ -1,7 +1,7 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 15.10.2026 14:15 UTC (DOC-SYNC-2 / FIX-PR1557-R1; heutige Paketstände live geprüft).
-Beobachtete main-Basis: `fd78216e`; Branch-Start `9a0b23b9`, PR #1557.
+Stand: 15.10.2026 18:35 UTC (Plan-Abgleich; Zeilen für #1557, #1560, #1564 auf Erledigt gesetzt).
+Beobachtete main-Basis: `ded1eef5` (Merge #1581).
 Chief abwesend: PLAN-Pflege durch Root als Stellvertreter; Editor `srv-fix-pr1557-r1`.
 Quelle: Root-Auftrag 15.10.; Abnahme bei Root. Ältere Z-Zeilen behalten ihr Belegdatum.
 Heutige KR-/DS-Pakete mit Ziel, Abhängigkeit und Stand: [v2-Unterplan §10.2–10.3](plan/v2.0/plan.md#102-klassik-raus); D1–D7: `docs/decisions.md`.
@@ -245,7 +245,7 @@ Quelle: `opt-ci-merge-20261015.md` (pa-orch); Dispatch laut Root, Ereignisse 16:
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| CI-SPLIT-LINUX | Linux-Gates teilen, Pflichtcheck zusammenführen | srv-ci-split-linux | bestehender Gate-Vertrag | Server | B | In Arbeit: läuft (Server-Auftrag srv-ci-split-linux), Branch `codex/ci-split-linux` | Gate-Abdeckung unverändert; prepush, Reviews, Root | OPT-CI-0 |
+| CI-SPLIT-LINUX | Linux-Gates teilen, Pflichtcheck zusammenführen | srv-ci-split-linux | bestehender Gate-Vertrag | Server | B | Erledigt: #1560 (merged 2026-10-15T16:56:24Z) | Gate-Abdeckung unverändert; prepush, Reviews, Root | OPT-CI-0 |
 | OPT-PIPE-0 | Durchlauf ausschließlich lesend messen | srv-opt-pipeline; Root klärt Basis | korrekte Auftragsbasis | Server | C (Bericht) | Blockiert: geplant nach Basisklärung; Server-Auftrag srv-opt-pipeline endete 16:12 MESZ wegen HEAD-Abweichung | Messbericht mit Methode und Einheiten; keine Implementierung | OPT-PIPE-0 |
 
 ### Serverreserve 3 — begrenzte Werkzeug-Härtung
@@ -1421,7 +1421,7 @@ V-02 entspricht DN-11a, V-03 DN-15; keine doppelten Aufträge.
 
 | ID | Ziel | Abhängigkeit / Status |
 |---|---|---|
-| V-01 | Quellen- und Befugnisvertrag | In Prüfung: DOC-SYNC-2 / PR #1557 offen, 15.10.; Stufe C, Root-Abnahme offen |
+| V-01 | Quellen- und Befugnisvertrag | Erledigt: DOC-SYNC-2 / #1557 (merged 2026-10-15T15:12:57Z); Stufe C |
 | V-02 | Begrenzte lesende Denkraum-Projektion | Geplant nach V-01; Stufe A, kein Schreibpfad |
 | V-03 | Nativer Leseadapter | Geplant nach V-02; Stufe A, `main.rs` seriell, Hostweg belegen |
 | DN-01 | Kanonisches Designsystem-CSS bündeln | Erledigt: #1549 gemergt; `gh pr view 1549 --json state`, 15.10.2026 |
@@ -1445,7 +1445,7 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 
 | ID | Ziel | Abhängigkeit | Status |
 |---|---|---|---|
-| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | läuft: Draft-PR #1564, 15.10. (`gh pr list --search "PLAN-AUTO-1"`) |
+| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | Erledigt: #1564 (merged 2026-10-15T16:44:07Z) |
 | PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
