@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
+  it("recognizes Verlauf query links without mounting a legacy viewer", () => {
+    for (const path of ["/leitstand/verlauf?x=1", "/leitstand/verlauf/?x=1"]) {
+      expect(isVerlauf(path)).toBe(true);
+      expect(shouldMountLegacyTerminal(path)).toBe(false);
+    }
+    expect(isVerlauf("/leitstand/verlauf/other?x=1")).toBe(false);
+  });
   it("recognizes worker query links without mounting a legacy viewer", () => {
     for (const path of ["/leitstand/terminal?worker=one", "/leitstand/terminal/?worker=two"]) {
       expect(isTerminal(path)).toBe(true);

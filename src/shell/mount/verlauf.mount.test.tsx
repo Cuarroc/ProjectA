@@ -68,6 +68,24 @@ it("uses the latest project orchestrator when none is live", async () => {
   expect(await screen.findByText("History latest")).toBeInTheDocument();
 });
 
+it("binds the first send to the newly created orchestrator without leaving Verlauf", async () => {
+  writeActiveProjectId("p1");
+  const fallback = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "send_to_orchestrator") return Promise.resolve(worker("created", "p1", true));
+    return fallback(command, args);
+  });
+  mount();
+  expect(await screen.findByText("Noch keine Nachrichten")).toBeInTheDocument();
+  expect(mocks.invoke).not.toHaveBeenCalledWith("list_worker_messages", expect.anything());
+  const input = screen.getByRole("textbox", { name: "Nachricht an den Orchestrator" });
+  fireEvent.change(input, { target: { value: "Start this conversation" } });
+  fireEvent.click(screen.getByRole("button", { name: "Senden" }));
+  expect(await screen.findByText("History created")).toBeInTheDocument();
+  expect(mocks.invoke).toHaveBeenCalledWith("list_worker_messages", { workerId: "created", limit: 200 });
+  expect(input).toHaveValue("");
+});
+
 it("ignores a late orchestrator lookup after switching projects", async () => {
   writeActiveProjectId("p1");
   let finish!: (value: unknown) => void;
