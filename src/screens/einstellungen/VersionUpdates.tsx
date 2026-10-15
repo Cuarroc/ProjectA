@@ -86,8 +86,8 @@ export function VersionUpdates() {
         still({ phase: "available", version: v, workers: length, cancelled: true });
       } else if (flight.error) {
         fail(flight.error.e); // the install failed by itself: the cancel did not stop it
-      } else if (result === "tooLate") {
-        still({ phase: "installing", version: v, result }); // the install goes on, tooLate says so
+      } else if (T.cancelResult[result] !== undefined) {
+        still({ phase: "installing", version: v, result }); // the install goes on, a late cancel says so
       } // notRunning: stays cancelling (button off) until the install promise settles
     }).catch((e) => { cancelling.current = null; fail(e); });
   };
