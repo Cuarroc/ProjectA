@@ -1446,6 +1446,7 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 | ID | Ziel | Abhängigkeit | Status |
 |---|---|---|---|
 | PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | läuft: Draft-PR #1564, 15.10. (`gh pr list --search "PLAN-AUTO-1"`) |
+| AGENTS-PLAN-REVIEW | Reviews prüfen PLAN-Aktualität (eigene Zeile über Plan-ID, Nutzerbereich, Entscheidungs-Eingang gegen gh) | Root | Erledigt mit Merge von PR #1588 |
 | PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |

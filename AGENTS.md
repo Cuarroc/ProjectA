@@ -113,8 +113,8 @@ when it touches tier-A files. Never let the author's model family judge its
 own candidate. Record every finding and its
 disposition (accepted with commit, rejected with reason, follow-up) in the PR
 text. A second round only when round one had a high-severity finding; after
-  round two the coordinator (Root) decides merge, split or drop and records it in
-  the PR report; no third review round. Evidence is bound to the actual candidate; later
+round two the coordinator (Root) decides merge, split or drop and records it in
+the PR report; no third review round. Evidence is bound to the actual candidate; later
 changes invalidate the affected evidence, so review the delta again. A finding
 without `file:line` counts as unproven.
 
