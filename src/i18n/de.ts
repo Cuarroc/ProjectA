@@ -95,7 +95,7 @@ export const de = {
   "leitstand.tab.classic": "Klassisch",
   "leitstand.tab.tools": "Werkzeuge",
   "leitstand.tab.betrieb": "Betrieb",
-  "leitstand.tab.fluss": "Fluss",
+  "leitstand.tab.fabrik": "Fabrik",
   "leitstand.profilesFailed": "Agenten konnten nicht geladen werden",
   "leitstand.profilesHint": "Die Karten zeigen vorerst die Profil-Kennung.",
   "leitstand.agents": "Agenten",
