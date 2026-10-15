@@ -613,6 +613,11 @@ if (designDarkAt < 0) {
       check(mode, "g-accent / accent-soft auf ground", color(vars, "g-accent"), soften(ground));
       check(mode, "g-accent / accent-soft auf glass", color(vars, "g-accent"), soften(glass));
       check(mode, "g-on-need / g-need", color(vars, "g-on-need"), color(vars, "g-need"));
+      const dangerHover = colorExpr(vars, "color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%)");
+      for (const [name, surface] of [["chrome", chrome], ["glass", glass]]) {
+        check(mode, `danger button: g-bad / g-bad-bg on ${name}`, color(vars, "g-bad"), over(color(vars, "g-bad-bg"), surface));
+        check(mode, `danger button hover on ${name}`, color(vars, "g-bad"), over(dangerHover, surface));
+      }
       for (const role of stateRoles) {
         const wash = color(vars, `${role}-bg`);
         check(mode, `${role} / ${role}-bg`, color(vars, role), wash.a < 1 ? over(wash, ground) : wash);

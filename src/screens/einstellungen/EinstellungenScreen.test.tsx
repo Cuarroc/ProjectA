@@ -12,6 +12,7 @@ import { ROUTES } from "../../shell/routes";
 import { EinstellungenScreen } from "./EinstellungenScreen";
 import changelogSource from "../../../CHANGELOG.md?raw";
 import { parseChangelog } from "../../lib/changelog";
+import EmergencyStop from "../../components/EmergencyStop";
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
@@ -248,6 +249,22 @@ describe("tab MCP & Tresor", () => {
 });
 
 describe("tab Allgemein", () => {
+  it("wraps the full Not-Aus hint in settings without presentation props", async () => {
+    const styles = ["../../design/controls/controls.css", "../../shell/shell.css", "einstellungen.css"]
+      .map((path) => readFileSync(resolve(__dirname, path), "utf8")).join("\n");
+    render(<style>{styles}</style>);
+    show();
+    const stop = within(screen.getByRole("region", { name: "Not-Aus" }));
+    await waitFor(() => expect(stop.getByRole("button", { name: "Not-Aus auslösen" })).toBeEnabled());
+    const hint = stop.getByRole("status");
+    expect(hint).toHaveTextContent("Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben.");
+    expect(hint).toBeVisible();
+    expect.soft(getComputedStyle(hint).whiteSpace).toBe("normal");
+    expect.soft(getComputedStyle(hint).overflow).not.toBe("hidden");
+    expect.soft(getComputedStyle(hint).textOverflow).not.toBe("ellipsis");
+    expect.soft(EmergencyStop).toHaveLength(0);
+  });
+
   it("shows the six sections", async () => {
     show();
     const heads = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);

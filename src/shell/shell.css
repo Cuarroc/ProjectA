@@ -35,13 +35,11 @@
   display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
   background: transparent; color: var(--g-muted); font: 600 13px/1.3 var(--g-font-sans); cursor: not-allowed;
 }
-/* EmergencyStop is reused unchanged; this only compacts its old-UI markup into the bar. */
+/* Only the header truncates the hint; settings show the full explanation. */
 .g-shell-estop { flex: 0 .1 auto; min-width: 0; }
-.g-shell-estop .settings-field { display: flex; flex-wrap: nowrap; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
-.g-shell-estop .field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.g-shell-estop .settings-hint { max-width: 28ch; min-width: 8ch; margin: 0; font-size: 11px; line-height: 1.3; color: var(--g-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.g-shell-estop .settings-port-row, .g-shell-estop button { flex: none; white-space: nowrap; }
-.g-shell-estop button { min-height: 44px; }
+.g-shell-estop .g-estop { flex-direction: row; align-items: center; }
+.g-shell-estop .g-estop-hint { max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-shell-estop .g-btn { flex: none; }
 .g-shell-content { flex: 1; min-width: 0; display: flex; }
 .g-shell-panel { flex: 1; padding: var(--g-pad); display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .g-shell-panel h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }

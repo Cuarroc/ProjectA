@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "../design/controls/Button";
+import "../design/tokens.css";
+import "../design/controls/controls.css";
 import { describeError, getEmergencyStop, setEmergencyStop } from "../lib/ipc";
 import { useRefreshOnResume } from "../lib/useRefreshOnResume";
 
@@ -9,9 +11,8 @@ const POLL_INTERVAL_MS = 5000;
 /**
  * Not-Aus: stops every running agent (within 10 s) and blocks new dispatches
  * until it is lifted. An unreadable state is shown as "stopped", never as free.
- * `appearance="glass"` (opt-in) draws the lift button with the Glass Button; the default keeps the classic look.
  */
-export default function EmergencyStop({ appearance = "classic" }: { appearance?: "classic" | "glass" }) {
+export default function EmergencyStop() {
   const [active, setActive] = useState<boolean | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -71,37 +72,23 @@ export default function EmergencyStop({ appearance = "classic" }: { appearance?:
     : "Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben.";
 
   return (
-    <div className="settings-field" data-testid="emergency-stop">
-      <span className="field-label">Not-Aus</span>
-      <div className="settings-port-row">
-        {active ? (
-          appearance === "glass" ? (
-            <Button disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
-          ) : (
-            <button
-              type="button"
-              className="button-ghost"
-              disabled={busy}
-              onClick={() => change(false)}
-            >
-              Not-Aus aufheben
-            </button>
-          )
-        ) : (
-          <button
-            type="button"
-            className="button-danger"
-            disabled={busy || active === null}
-            onClick={() => change(true)}
-          >
-            Not-Aus auslösen
-          </button>
-        )}
-      </div>
-      <p className="settings-hint" role="status" title={hint}>
+    <div data-testid="emergency-stop" className="g-estop">
+      {active ? (
+        <Button size="lg" disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
+      ) : (
+        <Button
+          size="lg"
+          variant="danger"
+          disabled={busy || active === null}
+          onClick={() => change(true)}
+        >
+          Not-Aus auslösen
+        </Button>
+      )}
+      <p role="status" title={hint} className="g-estop-hint">
         {hint}
       </p>
-      {error ? <span className="settings-error" role="alert">{error}</span> : null}
+      {error ? <span role="alert" className="g-estop-error">{error}</span> : null}
     </div>
   );
 }
