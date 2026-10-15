@@ -55,12 +55,13 @@ it("toggles a feature flag from the experiments list", async () => {
   expect(screen.getAllByRole("switch")).toHaveLength(listFeatureFlags().length);
   for (const flag of listFeatureFlags()) {
     const toggle = screen.getByRole("switch", { name: flag.label });
-    expect(toggle).toHaveAttribute("aria-checked", "false");
+    const start = flag.defaultEnabled;
+    expect(toggle).toHaveAttribute("aria-checked", String(start));
     fireEvent.click(toggle);
-    expect(isFeatureFlagEnabled(flag.id)).toBe(true);
-    expect(toggle).toHaveAttribute("aria-checked", "true");
-    act(() => setFeatureFlagEnabled(flag.id, false));
-    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(isFeatureFlagEnabled(flag.id)).toBe(!start);
+    expect(toggle).toHaveAttribute("aria-checked", String(!start));
+    act(() => setFeatureFlagEnabled(flag.id, start));
+    expect(toggle).toHaveAttribute("aria-checked", String(start));
   }
   fireEvent.keyDown(screen.getAllByRole("switch")[0], { key: "Escape" });
   expect(badge).toHaveFocus();
