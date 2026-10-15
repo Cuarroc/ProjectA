@@ -14,6 +14,7 @@ import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { stripComments } from './strip-comments.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright-core');
 const [, , mode, ...args] = process.argv;
@@ -121,7 +122,7 @@ ${Object.keys(T.t).map((k) => `svg [data-node-id] > rect:not(.c-mask).c-${k}{fil
     await browser.close();
   }
   // Drop indentation between tags, but whitespace touching a tspan is text: one space.
-  const out = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+<(?!\/?tspan\b)/g, '><').replace(/>\s+</g, '> <');
+  const out = stripComments(svg).replace(/>\s+<(?!\/?tspan\b)/g, '><').replace(/>\s+</g, '> <');
   writeFileSync(outSvg, out);
   console.log(`${outSvg}: ${Buffer.byteLength(out)} bytes, <script>: ${(out.match(/<script/g) || []).length}`);
 }

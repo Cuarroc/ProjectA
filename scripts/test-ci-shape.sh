@@ -185,6 +185,9 @@ case_m "ci-shape fails when the red-first base branch fetch is missing" ci \
 case_m "ci-shape fails when only the proof step lacks the base branch fetch" ci \
   '/^      - name: red-first - proof against merge base$/,/^  [a-z]/ { /refs\/heads\/\$RF_BASE_BRANCH/d }' \
   "proof against merge base.*base branch fetch"
+case_m "ci-shape fails when the proof step 'if' drops the pull_request event check" ci \
+  '/^      - name: red-first - proof against merge base$/,/^  [a-z]/ s/github.event_name == .pull_request. && //' \
+  "proof against merge base' 'if' lacks github.event_name"
 case_m "ci-shape fails when only the plan step lacks RF_BASE_BRANCH" ci \
   '/^      - name: red-first - plan$/,/^      - / { /RF_BASE_BRANCH:/d }' \
   "red-first - plan' lacks RF_BASE_BRANCH"

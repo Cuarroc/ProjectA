@@ -9,6 +9,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripComments } from './strip-comments.mjs';
 
 const script = fileURLToPath(new URL('./export-svg.mjs', import.meta.url));
 
@@ -102,4 +103,11 @@ test('export opens an HTML file whose path needs URL escaping', { skip }, () => 
     assert.equal(r.status, 0, r.stderr);
     assert.match(readFileSync(out, 'utf8'), /<text[^>]*>Probe<\/text>/);
   });
+});
+
+test('stripComments leaves no comment opener behind', () => {
+  assert.equal(stripComments('<a/><!-- x --><b/>'), '<a/><b/>');
+  for (const s of ['<!<!---->-->', '<!<!---->--', '<!--<!-- a -->', '<<!---->!-- x -->', 'a<!-- never closed']) {
+    assert.ok(!stripComments(s).includes('<!--'), `${s} -> ${stripComments(s)}`);
+  }
 });
