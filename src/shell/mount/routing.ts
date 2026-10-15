@@ -20,8 +20,8 @@ export const isTools = (path: string) => trim(path) === TOOLS_PATH;
 
 export const isTerminal = (path: string) => trim(path.split("?")[0]) === "/leitstand/terminal";
 
-/** The new Leitstand owns `/leitstand` (V2-S01a) and `/leitstand/betrieb` (V2-S01b); the rest below it stays the old view. */
-export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb"].includes(trim(path));
+/** The new Leitstand owns `/leitstand` (V2-S01a), `/leitstand/betrieb` (V2-S01b) and `/leitstand/fluss` (COMP-3-3); the rest below it stays the old view. */
+export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb", "/leitstand/fluss"].includes(trim(path));
 
 /** The new Steuerung (V2-S05a) owns `/steuerung` and its tabs: Kontingente plus two honest placeholders. */
 export const isNewSteuerung = (path: string) => base(trim(path)) === "/steuerung";
