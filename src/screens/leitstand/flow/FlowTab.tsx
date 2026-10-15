@@ -65,7 +65,7 @@ function FlowNodeBody({ label, lamp, quota, proof }: { label: FlowLabel; lamp?: 
   );
 }
 
-/** The Fluss tab: the flow graph of the board's agents, one lamp, one quota reading and the proof strip on every node. */
+/** The Fabrik tab: the flow graph of the board's agents, one lamp, one quota reading and the proof strip on every node. */
 export function FlowTab({ cards }: { cards: readonly BoardCard[] }) {
   const [reads, setReads] = useState<Reads>({ profiles: null, quotas: null, budgets: null });
   useEffect(() => {
