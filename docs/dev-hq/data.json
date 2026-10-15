@@ -1,67 +1,29 @@
 {
-  "generatedAt": "2026-10-04T21:07:52.617Z",
-  "commit": "a0672d2",
-  "dirty": false,
+  "generatedAt": "2026-10-15T23:54:08.240Z",
+  "commit": "c9dad5e8",
+  "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "fa22957e0347bafab76a153fd56a1a1378024ae290de5e10d29a1c6a4d099be7"
+      "sha256": "a7f742daf0ff1c08aca124f0fb2dcab13d77393d99a69763bb3b83074322f989"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "2af4ad3a6e5a5bc01e751a5dca8df84d8d45d1f253712e81684733fb8061ecca"
-    },
-    {
-      "path": ".pa/task_w1-05.md",
-      "sha256": "74c2c04f6de62573d2dfbd8b7679ff65c1d3f6e461776bdd6a757763fa893c62"
+      "sha256": "b188805ddf62c318e072f44945841005a18147e8b07255fbf71aba80c049f08f"
     },
     {
       "path": ".pa/task_f_core3_delivery.md",
       "sha256": "dc4e7ffdf3ec813b13dcdf7e42553f2aa35daa869a059090908ccdd5fd12425e"
-    },
-    {
-      "path": ".pa/task_w1-20.md",
-      "sha256": "ad531d9cb054ca633dd58c61d37f95b9fb0748397edd676fbd1007cab87a1401"
-    },
-    {
-      "path": ".pa/task_w1-17.md",
-      "sha256": "23d73f19ae91ff4a79ed6cc4704a3cdeb097bbbd5cc225df5659c48cd8048bd7"
-    },
-    {
-      "path": ".pa/task_w4-01.md",
-      "sha256": "382f0c97b75cb38726135e5a2386e2fc4e9094def56365fda972c895b6194b39"
-    },
-    {
-      "path": ".pa/task_w3-01.md",
-      "sha256": "396a946652205d3e29af0403aa75f64478107a315299ea059c9cf8fff2ee659e"
     }
   ],
   "warnings": [],
   "nextGrip": [
     {
-      "text": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
-      "source": "STAND.md#Nächster Griff"
-    },
-    {
-      "text": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
-      "source": "STAND.md#Nächster Griff"
-    },
-    {
-      "text": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
+      "text": "`lage-jetzt` und die Live-Belege lesen; Ziel, Owner und nächsten Schritt mit den Z1–Z4-Tabellen in `docs/PLAN.md` abgleichen.",
       "source": "STAND.md#Nächster Griff"
     }
   ],
   "specs": [
-    {
-      "file": ".pa/task_w1-05.md",
-      "title": "W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched`",
-      "packet": "W1-05b: Queue-Abnahmerest, Cancel-Regel für `dispatched`",
-      "lane": "serial",
-      "serialOwner": "store.rs",
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
     {
       "file": ".pa/task_f_core3_delivery.md",
       "title": "W1-03e/f: F-CORE-3 Rest B.3/C",
@@ -71,80 +33,2871 @@
       "status": "aktiv",
       "source": "STAND.md#Aktive Specs",
       "startable": true
-    },
-    {
-      "file": ".pa/task_w1-20.md",
-      "title": "W1-20: Zweites Setup reproduzieren",
-      "packet": "W1-20: Zweites Setup reproduzieren",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w1-17.md",
-      "title": "W1-17: HQ-Parser prüfen",
-      "packet": "W1-17: HQ-Parser prüfen",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w4-01.md",
-      "title": "W4-01: Fünf reproduzierbare Benchmark-Aufgaben",
-      "packet": "W4-01: Fünf reproduzierbare Benchmark-Aufgaben",
-      "lane": "parallel",
-      "serialOwner": null,
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": true
-    },
-    {
-      "file": ".pa/task_w3-01.md",
-      "title": "W3-01a: Globaler DB-Wartungs-/Write-Lock",
-      "packet": "W3-01a: Globaler DB-Wartungs-/Write-Lock",
-      "lane": "serial",
-      "serialOwner": "store.rs",
-      "status": "aktiv",
-      "source": "STAND.md#Aktive Specs",
-      "startable": false
     }
   ],
-  "findings": [
+  "findings": [],
+  "goals": [
     {
-      "id": "KI-30",
-      "text": "sporadische `real_native_*`-Fehlschläge auf Windows, Ursache unbekannt; #262 (gemergt) gibt nur Diagnose aus; neue Beobachtung 04.10. (Queue-Lauf 37196272431).",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
+      "id": "Z1",
+      "title": "Denkraum release-fertig für v1.6.0",
+      "packages": [
+        {
+          "id": "DR-01",
+          "title": "Gerüst tools/denkraum/, Gate-Zeile in scripts/ci/gates.sh, Hygiene-Check (LF-Regel in .gitattributes, kein State-Pfad im Repo)",
+          "owner": "Seniorentwickler",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #635 `e9f8ce8` durch Mergify am 08.10. 06:44:21 UTC gemergt (`0b56f1a`); keine erneute Source-Abnahme",
+          "acceptance": "`bash scripts/ci/gates.sh lane prepush` Exit 0; neue Gate-Zeile läuft die Denkraum-Tests",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            635
+          ]
+        },
+        {
+          "id": "DR-01a",
+          "title": "Überlauf im Hygiene-Check beheben, roter Test zuerst; vor DR-02 mergen",
+          "owner": "Seniorentwickler",
+          "dependsRaw": "DR-01",
+          "dependsOn": [
+            "DR-01"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #637 `a2dbf09` durch Mergify am 08.10. 07:56:31 UTC gemergt (`8f7c499`); Queue 655 / CI 37745165188 mit echtem Windows-PASS",
+          "acceptance": "Überlauf-Test vor Fix rot, danach grün; eigene prepush Exit 0; zwei unabhängige Vendor-Belege samt Disposition; Merge vor DR-02",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            637
+          ]
+        },
+        {
+          "id": "DR-02",
+          "title": "Ledger-Modell als Modul, Split-Beweis (verhaltensgleich)",
+          "owner": "Seniorentwickler",
+          "dependsRaw": "DR-01, DR-01a",
+          "dependsOn": [
+            "DR-01",
+            "DR-01a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #636 `4ef2ac2` durch Mergify am 08.10. 08:33:02 UTC gemergt (`7e3a7af`); Batch 659 / CI 37748898151 volle Windows-, Linux- und red-first-Gates grün; DR-03 folgt",
+          "acceptance": "FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt",
+          "tickets": [
+            "55ea21ce",
+            "b0e90b72"
+          ],
+          "prNumbers": [
+            636
+          ]
+        },
+        {
+          "id": "DR-03",
+          "title": "DeskStore-Kern; P1/Z1 nach integriertem Ledger-Modell",
+          "owner": "Seniorentwickler-Profil, ein nativer Ausführungsowner `qfytpd`; Chief disponiert",
+          "dependsRaw": "DR-02 gemergt; eigene Goal-/Laufzeitbelege, frische Guards",
+          "dependsOn": [
+            "DR-02"
+          ],
+          "place": "eigener Worktree; schwere Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #661 `c80456a` am 08.10. 14:22:17Z durch Mergify gemergt (`3003748`); F01 und reale DR-04-Komposition bleiben offen",
+          "acceptance": "Store-Tests grün, Revision/Konflikt verlieren keine Daten; Folgepunkte aus DR-02: Längenlimit für Ledger-Listen, Antwort-Elemente prüfen (DeskError statt TypeError); eigene prepush und zwei Fremdvendor-Reviews am Kandidaten, Root-Abnahme",
+          "tickets": [
+            "ee12d457",
+            "8fa3ef8e",
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            661
+          ]
+        },
+        {
+          "id": "DR-04",
+          "title": "Antworten, Quittungen, Benachrichtigungen; getrennte Schnitte DR-04a und DR-04b",
+          "owner": "bestehender DR-03-Ausführungsowner qfytpd; Root disponiert",
+          "dependsRaw": "freigegebener DR-03-Stack `c80456a`, danach DR-04a → DR-04b",
+          "dependsOn": [
+            "DR-04a",
+            "DR-04b"
+          ],
+          "place": "PC; Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #666 (merged 2026-10-08T16:04:16Z); Erledigt #669 (merged 2026-10-08T16:35:44Z)",
+          "acceptance": "Tests für Antwort/Quittung/Dedupe grün; Quittungs-Wiederholung und v1-Ack laufen über die D2-Prüfung (Test)",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            666,
+            669
+          ]
+        },
+        {
+          "id": "DR-04a",
+          "title": "Antworten, Quittungen und Root-gebundene Acks",
+          "owner": "bestehender qfytpd; kein zweiter Owner",
+          "dependsRaw": "DR-03-Stack `c80456a`",
+          "dependsOn": [],
+          "place": "PC; Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #666 (merged 2026-10-08T16:04:16Z)",
+          "acceptance": "eigene prepush, zwei Fremdvendor-Belege am Kandidaten, Disposition und Root-Abnahme; D2-Ack fail-closed und 503 bei progressTransition",
+          "tickets": [
+            "cffccf40"
+          ],
+          "prNumbers": [
+            666
+          ]
+        },
+        {
+          "id": "DR-04b",
+          "title": "Pending, Inbox und Delivery in den Store übernehmen",
+          "owner": "bestehender qfytpd; kein zweiter Owner",
+          "dependsRaw": "DR-04a-Stack `1e11bb8`",
+          "dependsOn": [],
+          "place": "PC; Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #669 (merged 2026-10-08T16:35:44Z)",
+          "acceptance": "≤ 300 ALL; vollständige P1-Komposition, eigene prepush, zwei Fremdvendor-Belege mit Disposition und Root-Abnahme",
+          "tickets": [
+            "a27e7eb0"
+          ],
+          "prNumbers": [
+            669
+          ]
+        },
+        {
+          "id": "DR-04B-FU",
+          "title": "In tools/denkraum/store/delivery.mjs::flushNotifications() Root-Prüfung vor Transport-Prüfung: V2 ohne Root/Transport antwortet 503 statt not-configured",
+          "owner": "bestehende Denkraum-Lane qfytpd; alternativ Root-Serverjob nach eindeutiger Zuweisung, kein Doppelstart",
+          "dependsRaw": "#669 gemergt; unabhängiger Schnitt von Root am 08.10. 20:45Z vorgezogen; Basis `fc85e3d`",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #727 (merged 2026-10-08T22:06:42Z)",
+          "acceptance": "≤ 50 ALL; kompilierender roter Test in `delivery.test.mjs`: rootloser V2-Store ohne Transport → 503, kein Write/Send; V1-Vertrag erhalten; grün, eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit Disposition und Root-Abnahme",
+          "tickets": [
+            "a27e7eb0"
+          ],
+          "prNumbers": [
+            727
+          ]
+        },
+        {
+          "id": "DR-04c",
+          "title": "Fehlende P1-Operationen putQuestion/putIdea/putPatch/putProgress verhaltensgleich auf DeliveryStore zusammensetzen; progressTransition an #progress, store.mjs-Reexport",
+          "owner": "bestehender qfytpd, Root-Option A/D1",
+          "dependsRaw": "DR-04b-Stack `dc34cae`",
+          "dependsOn": [],
+          "place": "eigener Worktree; Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #671 (merged 2026-10-08T17:43:49Z); Erledigt #674 (merged 2026-10-08T19:45:55Z)",
+          "acceptance": "P1 `store.mjs@592b309d` Zeilen 264–382/392–415 erhalten; kompilierendes Rot, eigene prepush, zwei Fremdvendor-Reviews/Disposition, Root-Abnahme",
+          "tickets": [
+            "1671ee11"
+          ],
+          "prNumbers": [
+            671,
+            674
+          ]
+        },
+        {
+          "id": "DR-05",
+          "title": "P1-Tests der Ideen-Metadaten (Kategorie ≤ 80 UTF-16, userPriority), vollständiger Testimport gemäß G1 α",
+          "owner": "Seniorentwickler",
+          "dependsRaw": "DR-06b (Store, Delivery, Server und CLI benötigt)",
+          "dependsOn": [
+            "DR-06b"
+          ],
+          "place": "Server",
+          "tier": "C bei reinem Testdiff; sonst B, höhere Risiken nach Regel 5",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #734 (merged 2026-10-08T23:30:05Z)",
+          "acceptance": "Alle 16 Tests grün, P1-SHA-Mapping; Grenzfälle rot vor Fix; eigener vollständiger prepush Exit 0",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            734
+          ]
+        },
+        {
+          "id": "DR-06",
+          "title": "HTTP-Server + CLI, State-Pfad außerhalb des Repos; D2: DECISION_DESK_ROOT_AGENT_ID per ENV/Startparameter, fail-closed",
+          "owner": "bestehender qfytpd; Root disponiert",
+          "dependsRaw": "DR-04c; getrennte Lieferung DR-06a → DR-06b",
+          "dependsOn": [
+            "DR-04c",
+            "DR-06a",
+            "DR-06b"
+          ],
+          "place": "PC; Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #676 (merged 2026-10-08T20:56:05Z); Erledigt #681 (merged 2026-10-08T21:42:27Z)",
+          "acceptance": "Tests: ohne State-Pfad oder Root-Agent-ID Start verweigert; Pfad im Repo abgelehnt; fehlende Root-Agent-ID im HTTP-Pfad → 503; keine interne ID im Code/Test",
+          "tickets": [
+            "672767c8",
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            676,
+            681
+          ]
+        },
+        {
+          "id": "DR-06a",
+          "title": "P1-Server mit D2/H2; externen physischen State-Pfad und Root-ID fail-closed prüfen",
+          "owner": "bestehender qfytpd",
+          "dependsRaw": "DR-04c",
+          "dependsOn": [
+            "DR-04c"
+          ],
+          "place": "eigener Worktree; Gates Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #676 (merged 2026-10-08T20:56:05Z)",
+          "acceptance": "kompilierendes Rot, eigene prepush/zwei Fremdreviews; `/api/state.rootAgentId` nur bei tatsächlichem Frontend-Leser, sonst D2-Meta-Tag erhalten",
+          "tickets": [
+            "c044dc2b"
+          ],
+          "prNumbers": [
+            676
+          ]
+        },
+        {
+          "id": "DR-06b",
+          "title": "P1-CLI verhaltensgleich nach Server übernehmen",
+          "owner": "bestehender Root-Serverjob, Claude Sonnet laut Root; qfytpd nur Fixrunde",
+          "dependsRaw": "DR-06a",
+          "dependsOn": [
+            "DR-06a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #681 (merged 2026-10-08T21:42:27Z)",
+          "acceptance": "kompilierendes Rot, originale CLI-Verträge erhalten, eigene prepush/zwei Fremdreviews mit Disposition und Root-Abnahme",
+          "tickets": [
+            "e4ad8296"
+          ],
+          "prNumbers": [
+            681
+          ]
+        },
+        {
+          "id": "DR-07",
+          "title": "Tests: API, Patches, Fortschritt, freie Antwort, Fragen-Import; ergänzende P1-Ports getrennt",
+          "owner": "bestehende Denkraum-Lane qfytpd; Root dispatcht/nimmt ab",
+          "dependsRaw": "DR-06b/#681 gemergt `85ab286`",
+          "dependsOn": [
+            "DR-06b"
+          ],
+          "place": "Server",
+          "tier": "C, Root kann B verlangen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #731 (merged 2026-10-08T23:14:56Z) (07a); Erledigt #732 (merged 2026-10-08T23:14:31Z) (07b); 07c/d/e1/e2 separat",
+          "acceptance": "Testsuite grün im Gate; P1-Digest/Test-Mapping und D2-Delta; eigene volle prepush; keine Scratch-/Gesamt-Abnahme ableiten",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            731,
+            732
+          ]
+        },
+        {
+          "id": "DR-07c",
+          "title": "P1-Sender-Tests portieren; HTTP-Verhalten gegen aktuellen Repo-Server belegen",
+          "owner": "bestehende Denkraum-Lane qfytpd nach Root-Zuweisung",
+          "dependsRaw": "#681 gemergt; Basis `85ab286`; unabhängig von 07d/e1/e2",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C bei reinem Testport; Root kann B verlangen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #752 (merged 2026-10-09T00:33:36Z)",
+          "acceptance": "nur sender.test.mjs; gemeldete 214 ALL/12 Tests; ≤ 300 tatsächlich; P1/D2-Mapping, Node/Suite/prepush grün, Root-Abnahme",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            752
+          ]
+        },
+        {
+          "id": "DR-07d",
+          "title": "P1-Prioritäts-Tests portieren; ergänzt DR-05",
+          "owner": "bestehende Denkraum-Lane qfytpd nach Root-Zuweisung",
+          "dependsRaw": "#681 gemergt; Basis `85ab286`; DR-05-Verknüpfung kein neuer Dateivorgänger",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C bei reinem Testport; Root kann B verlangen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #753 (merged 2026-10-08T23:38:16Z)",
+          "acceptance": "nur priority.test.mjs; gemeldete 110 ALL/6 Tests; ≤ 300 tatsächlich; P1/D2-Mapping, Node/Suite/prepush grün, Root-Abnahme",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            753
+          ]
+        },
+        {
+          "id": "DR-07e1",
+          "title": "P1-Store-Receipt-/Recovery-Tests vollständig portieren",
+          "owner": "bestehende Denkraum-Lane qfytpd nach Root-Zuweisung",
+          "dependsRaw": "#681 gemergt; Basis `85ab286`; unabhängig von e2",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C bei reinem Testport; Befund neu einstufen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #751 (merged 2026-10-08T23:55:13Z)",
+          "acceptance": "nur store-receipts.test.mjs; gemeldete 169 ALL/10 Tests; ≤ 300 tatsächlich; eingefrorenes P1 1–34 + 35–169, Node/Suite/prepush grün",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            751
+          ]
+        },
+        {
+          "id": "DR-07e2",
+          "title": "P1-Store-Antwort-/Migrations-Tests vollständig portieren",
+          "owner": "bestehende Denkraum-Lane qfytpd nach Root-Zuweisung",
+          "dependsRaw": "#681 gemergt; Basis `85ab286`; unabhängig von e1",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C bei reinem Testport; Befund neu einstufen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #755 (merged 2026-10-08T23:55:06Z)",
+          "acceptance": "nur store-answers-migration.test.mjs; gemeldete 224 ALL/18 Tests; ≤ 300 tatsächlich; eingefrorenes P1 1–34 + 170–359, Child-Source unverändert, Node/Suite/prepush grün",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            755
+          ]
+        },
+        {
+          "id": "DR-08",
+          "title": "UI-Hülle index.html + Style, byte-genau auf Stand B1",
+          "owner": "UX-Architekt",
+          "dependsRaw": "FIT vorbereitet, Root-FIT-Abnahme; DR-01",
+          "dependsOn": [
+            "DR-01"
+          ],
+          "place": "egal",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #640 `2c57bd3` durch Mergify am 08.10. 08:09:51 UTC gemergt (`cd64c1c`); benutzbare Gesamtlösung weiter offen",
+          "acceptance": "Byte-Vergleich mit B1-Kandidat; prepush Exit 0",
+          "tickets": [
+            "55ea21ce",
+            "6713479b"
+          ],
+          "prNumbers": [
+            640
+          ]
+        },
+        {
+          "id": "DR-09",
+          "title": "App-Teil Fragen (B1 app.js Zeilen 1–238, byte-genau)",
+          "owner": "Implementierer · Codex",
+          "dependsRaw": "DR-01",
+          "dependsOn": [
+            "DR-01"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #638 (merged 2026-10-08T14:46:25Z)",
+          "acceptance": "Fragen-Ablauf wie B1, Harness grün",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            638
+          ]
+        },
+        {
+          "id": "DR-09-WIN",
+          "title": "P1/Z1: Windows-Fixture schließt Ressourcen nachvollziehbar vor temporärer Verzeichnisentfernung; sicherer Queue-Beleg statt Zeitfenster-Vergrößerung",
+          "owner": "bestehender DR-01a-Owner; Chief disponiert, Root nimmt ab",
+          "dependsRaw": "Queue-656-Befund; frische Guards, Windows-Ort und freier Build-Slot",
+          "dependsOn": [],
+          "place": "PC / vorhandener Windows-Ort",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #660 (merged 2026-10-08T14:21:03Z)",
+          "acceptance": "≤ 300 ALL; kompilierendes deterministisches Rot auf Basis und Grün am Kandidaten; originaler Cleanup-Test und eigene prepush Exit 0 auf Windows; zwei Fremdvendor-Reviews am Head; Root vor Ready, Mergify; historischer Lockhalter ungeklärt",
+          "tickets": [
+            "1d708b0f",
+            "a6677e75",
+            "8fa3ef8e",
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            660
+          ]
+        },
+        {
+          "id": "ARCH-D7-WIN",
+          "title": "P1/Z1: tatsächlichen nativen Receipt-Fehler getrennt diagnostizieren und kontrolliert rot belegen; verlässliche Queue-Integration für #632",
+          "owner": "bestehender DR-15a-Owner; Chief disponiert, Root nimmt ab",
+          "dependsRaw": "CI 37746602240 / Windowsjob 113209450490; Store-Lane frei, schwere Läufe nach DR-09-WIN",
+          "dependsOn": [
+            "DR-09-WIN"
+          ],
+          "place": "vorhandener Windows-Ort",
+          "tier": "A",
+          "status": "Entfallen",
+          "statusRaw": "Entfallen: aufgegangen in V16-KI30 #737 / Z4-ARCH-11",
+          "acceptance": "≤ 300 ALL; Host-/SQLite-/Writer-Zeitpunkte kausal unterscheiden, deterministischer kompilierender Rotnachweis; tatsächliche Windows-Prüfung und eigene prepush am Fix-Head; zwei Fremdvendor-Reviews und Root vor Ready; keine pauschalen Zeitfenster-/Retry-Erhöhungen",
+          "tickets": [
+            "c4d05a97",
+            "782d9e58"
+          ],
+          "prNumbers": [
+            737
+          ]
+        },
+        {
+          "id": "DR-10",
+          "title": "App-Teil Ideen + Werkbank auf Stand B1",
+          "owner": "Root-Job `srv-dr-10-opus`; kein zweiter UI-Owner",
+          "dependsRaw": "DR-09/#638 gemergt; Verdrahtung in DR-11/#718",
+          "dependsOn": [
+            "DR-09",
+            "DR-11"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #665 (merged 2026-10-08T19:59:10Z)",
+          "acceptance": "Ideen-Ablauf wie B1, Harness grün; eigene prepush, Fremdreview/Disposition und Root-Abnahme; Verdrahtung in DR-11/#718",
+          "tickets": [
+            "08342807",
+            "5945accc"
+          ],
+          "prNumbers": [
+            665
+          ]
+        },
+        {
+          "id": "DR-10-WIRE",
+          "title": "UI-Verdrahtung von ideas.js und app.js in DR-11/#718 enthalten",
+          "owner": "DR-11-Owner; kein separater Start",
+          "dependsRaw": "DR-11/#718",
+          "dependsOn": [
+            "DR-11"
+          ],
+          "place": "eigener Worktree",
+          "tier": "B",
+          "status": "Entfallen",
+          "statusRaw": "Entfallen (Root 09.10.): Verdrahtung bleibt in #718 (DR-11)",
+          "acceptance": "rote Verdrahtungsregression, beide Skripte HTTP 200; inspiziertes Laufzeitbild, eigene prepush/Fremdreview/Root-Abnahme; ≤ 300 ALL",
+          "tickets": [
+            "4e0b5b37"
+          ],
+          "prNumbers": [
+            718
+          ]
+        },
+        {
+          "id": "HOTFIX-RF-PW",
+          "title": "#741 red-first Playwright identity",
+          "owner": "bestehender Owner; Root disponiert die freigegebene Runde",
+          "dependsRaw": "–; Voraussetzung für DR-11",
+          "dependsOn": [
+            "DR-11"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #741 (merged 2026-10-09T12:27:43Z); ersetzt: In Prüfung: Ready #741; E1 vom 09.10. erlaubte genau eine dritte Runde nur zum Delta",
+          "acceptance": "E1-Quelle: Root-Auftrag PLAN-SYNC-0910b; gebundene Gate-/Reviewbelege und Root-Abnahme vor DR-11-Integration",
+          "tickets": [],
+          "prNumbers": [
+            741,
+            741
+          ]
+        },
+        {
+          "id": "DR-11",
+          "title": "UI-Harness auf @playwright/test portieren (nur relative Pfade), permanenter D4-Fall",
+          "owner": "UX-Architekt",
+          "dependsRaw": "DR-10/#665 und HOTFIX-RF-PW/#741",
+          "dependsOn": [
+            "DR-10",
+            "HOTFIX-RF-PW"
+          ],
+          "place": "Server",
+          "tier": "C bei reinem Testdiff; höhere Risiken nach Regel 5",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #718 (merged 2026-10-09T13:38:46Z); ersetzt: In Prüfung: Draft #718",
+          "acceptance": "B1-Harness und D4-Test: fehlende/leere Root-ID sperrt alle POST-Aktionen mit Grundtext und ohne Writes; Harness läuft im Gate auf dem Server",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            718,
+            718
+          ]
+        },
+        {
+          "id": "DR-11-FU",
+          "title": "Denkraum-UI Review-Nachzüge nach #718",
+          "owner": "DR-11-Owner",
+          "dependsRaw": "DR-11/#718 gemergt",
+          "dependsOn": [
+            "DR-11"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #870 (merged 2026-10-09T17:35:03Z)",
+          "acceptance": "Review-Follow-ups gemergt",
+          "tickets": [],
+          "prNumbers": [
+            870
+          ]
+        },
+        {
+          "id": "DR-FU-0910g",
+          "title": "Review-Nachzüge 09.10. Abend (R870-LOWS, R833-LOWS, R814-G1, R824-G1, R871-A7, R877-LOWS, R887-FU)",
+          "owner": "Root/Orchestrator",
+          "dependsRaw": "diverse Vorgänger-PRs",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B/C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt (alle sieben Nachzüge gemergt, #875–#892): R870-LOWS Erledigt #882 (merged 2026-10-09T18:24:36Z); R833-LOWS Erledigt #878 (merged 2026-10-09T18:38:04Z); R814-G1 Erledigt #877 (merged 2026-10-09T18:10:57Z); R824-G1 Erledigt #875 (merged 2026-10-09T18:17:58Z); R871-A7 Erledigt #890 (merged 2026-10-09T19:56:03Z); R877-LOWS Erledigt #887 (merged 2026-10-09T19:41:45Z); R887-FU Erledigt #892 (merged 2026-10-09T20:09:42Z)",
+          "acceptance": "beobachtete PR-Zustände via gh; keine neuen Tabellen",
+          "tickets": [
+            "PLAN-SYNC-0910g"
+          ],
+          "prNumbers": [
+            875,
+            892,
+            882,
+            878,
+            877,
+            875,
+            890,
+            887,
+            892
+          ]
+        },
+        {
+          "id": "DR-12",
+          "title": "B2 Kategorie inkl. Pflicht-Fix R1 (Polling baut <select> neu, app.js:349), roter Test zuerst",
+          "owner": "UX-Architekt",
+          "dependsRaw": "DR-11 (Kategorie- und R1-Tests benötigen dessen Harness)",
+          "dependsOn": [
+            "DR-11"
+          ],
+          "place": "egal",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #740 (merged 2026-10-09T14:45:16Z); ersetzt: In Prüfung: Draft #740",
+          "acceptance": "roter Test vor Fix, danach grün; unveränderte Optionen behalten ihre Nodes und Auswahl über 15-s-Poll; Textfeld-Rand mit Kontrast ≥ 3:1 (Folgepunkt aus DR-08)",
+          "tickets": [
+            "98fa8267"
+          ],
+          "prNumbers": [
+            740,
+            740
+          ]
+        },
+        {
+          "id": "DR-13",
+          "title": "Filter Priorität und Station",
+          "owner": "UX-Architekt",
+          "dependsRaw": "DR-12",
+          "dependsOn": [
+            "DR-12"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #759 (merged 2026-10-09T15:35:05Z); ersetzt: In Prüfung: Draft #759",
+          "acceptance": "Filtertests grün",
+          "tickets": [
+            "98fa8267"
+          ],
+          "prNumbers": [
+            759,
+            759
+          ]
+        },
+        {
+          "id": "DR-14",
+          "title": "Stabile Sortierung",
+          "owner": "UX-Architekt",
+          "dependsRaw": "DR-13",
+          "dependsOn": [
+            "DR-13"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #774 (merged 2026-10-09T16:26:29Z); ersetzt: In Prüfung: Draft #774",
+          "acceptance": "Sortiertests grün",
+          "tickets": [
+            "98fa8267"
+          ],
+          "prNumbers": [
+            774,
+            774
+          ]
+        },
+        {
+          "id": "DR-15",
+          "title": "Sicherer Start ohne manuelle Secret-Eingabe; 15a Basismodul und CLI-Korrektur getrennt, 15b Einbindung nach DR-06 (Secrets über den Secret-Manager von AgentsRoom)",
+          "owner": "Implementierer · Codex",
+          "dependsRaw": "DR-15a-BASE, DR-15a-CLI (15b: DR-06)",
+          "dependsOn": [
+            "DR-06",
+            "DR-15a-BASE",
+            "DR-15a-CLI"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "In Prüfung",
+          "statusRaw": "In Prüfung: G1-Teilung tatsächlich geliefert, #647 und #639 gemergt; begrenzte 15a-Source gemeinsam integriert, 15b und gesamte Start-/Nutzerabnahme offen",
+          "acceptance": "Basismodul und korrigierter CLI-Aufruf zusammen integriert; Start ohne Eingabe; kein Secret in Datei/Log/Commit; physische STATE-Pfadprüfung bleibt 15b",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            647,
+            639
+          ]
+        },
+        {
+          "id": "DR-15a-BASE",
+          "title": "Z1: exakt geprüftes Startmodul 5f501f1 erhalten; lexikalische Prüfung ohne Dateisystemauflösung",
+          "owner": "vorhandener Implementierer · Codex",
+          "dependsRaw": "DR-01; gemeinsame Abnahme mit DR-15a-CLI",
+          "dependsOn": [
+            "DR-01",
+            "DR-15a-CLI"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #647 `5f501f1` durch Mergify am 08.10. 07:26:49 UTC gemergt (`cd3bffa`); Lieferung zusammen mit CLI, DR-15b offen",
+          "acceptance": "unveränderter Head `5f501f1`, alter eigener prepush 22/188s Exit 0 und Reviewbelege erhalten; Draft auf #635; Lieferung erst mit CLI-Korrektur erfüllt",
+          "tickets": [
+            "868dbc83"
+          ],
+          "prNumbers": [
+            647
+          ]
+        },
+        {
+          "id": "DR-15a-CLI",
+          "title": "Z1: vorhandenen Alias-Entry-Fix getrennt abnehmen; bestehende Commits erhalten, keine Wiederholung",
+          "owner": "derselbe Implementierer · Codex",
+          "dependsRaw": "DR-15a-BASE",
+          "dependsOn": [
+            "DR-15a-BASE"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #639 `3bf5a8b` durch Mergify am 08.10. 08:09:55 UTC gemergt (`7ac5985`); kombinierte Source-Abnahme erhalten, DR-15b offen",
+          "acceptance": "#639 auf Baseline retargetet, gleicher Head; Symlink/Junction und Node-24.0-Einstieg benannt rot→grün; eigener prepush am neuen Head Exit 0; Node >= 24 erhalten; zwei Vendoren außerhalb OpenAI am neuen Delta und Root-Abnahme",
+          "tickets": [
+            "f1a2ade9"
+          ],
+          "prNumbers": [
+            639
+          ]
+        },
+        {
+          "id": "DR-15b",
+          "title": "Startintegration nach Server; bestehendes Startmodul/Entry aus 15a, konkreten Dateischnitt vor Dispatch pinnen",
+          "owner": "Chief weist einen Codex-Owner zu",
+          "dependsRaw": "DR-06a und integrierte DR-15a-BASE/CLI",
+          "dependsOn": [
+            "DR-06a",
+            "DR-15a-BASE"
+          ],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #750 (merged 2026-10-09T01:52:45Z); ersetzt: In Prüfung: Draft #750",
+          "acceptance": "loadStartConfig bei fehlender ROOT_AGENT_ID an 06a angleichen: Start verweigern statt nur Benachrichtigungen abschalten; physischer externer STATE-Pfad/H2 und Secret-Manager-Vertrag erhalten; Rot, eigene prepush/zwei Fremdreviews",
+          "tickets": [
+            "a463151a"
+          ],
+          "prNumbers": [
+            750,
+            750
+          ]
+        },
+        {
+          "id": "DR-SEC-01a",
+          "title": "Erster begrenzter Schnitt zum Denkraum-Sicherheitsbefund; Quelle Root-Disposition 09.10.",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "Dateischnitt und Startvertrag aus Ticket b0221f4a vor Umsetzung",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt als Bericht: Bedrohungsmodell + Testlückenkarte (Server-Job srv-dr-sec-01a 09.10. 02:30Z, Bericht `~/pa-orch/reports/dr-sec-01a-a1d9a5fba38d.md`); Folgeschnitte 01b–01i",
+          "acceptance": "Ticketbefunde mit Quellen disponieren; für Code Rot→Grün, eigene prepush und zwei Fremdvendor-Reviews; muss vor DR-16a landen",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "DR-SEC-01b",
+          "title": "Zweiter begrenzter Schnitt zum Denkraum-Sicherheitsbefund; Quelle Root-Disposition 09.10.",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "Abgrenzung zu DR-SEC-01a im Ticket vor Umsetzung",
+          "dependsOn": [
+            "DR-SEC-01a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #793 (gemergt 2026-10-09T01:38:35Z)",
+          "acceptance": "konkrete Abnahme im Ticket b0221f4a erhalten; für Code Rot→Grün, eigene prepush und zwei Fremdvendor-Reviews; muss vor DR-16a landen",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            793
+          ]
+        },
+        {
+          "id": "DR-SEC-01c",
+          "title": "Body-Limits und ungültiges UTF-8 absichern",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01b",
+          "dependsOn": [
+            "DR-SEC-01b"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #808 (gemergt 2026-10-09T03:36:26Z)",
+          "acceptance": "Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            808
+          ]
+        },
+        {
+          "id": "DR-SEC-01d",
+          "title": "Restliche P3/P6-Startkontrollen und EPERM-Guards",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01c",
+          "dependsOn": [
+            "DR-SEC-01c"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #823 (gemergt 2026-10-09T04:39:42Z)",
+          "acceptance": "Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            823
+          ]
+        },
+        {
+          "id": "DR-SEC-01e",
+          "title": "Pfad- und Rechtekontrollen absichern",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01b",
+          "dependsOn": [
+            "DR-SEC-01b"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #796 (gemergt 2026-10-09T01:45:37Z)",
+          "acceptance": "Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            796
+          ]
+        },
+        {
+          "id": "DR-SEC-01f",
+          "title": "Untrusted Failure-Inhalte aus CLI-Ausgabe halten",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01e",
+          "dependsOn": [
+            "DR-SEC-01e"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #806 (gemergt 2026-10-09T02:48:29Z)",
+          "acceptance": "Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            806
+          ]
+        },
+        {
+          "id": "DR-SEC-01g-G1",
+          "title": "Ownership-Primitive für das Denkraum-Ledger (Option A)",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01a Bericht; Design dr-sec-01g-design-49fd851ecbb6",
+          "dependsOn": [
+            "DR-SEC-01a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #811 (merged 2026-10-09T13:37:17Z); ersetzt: In Prüfung: Open #811",
+          "acceptance": "Prozess-Konkurrenten und fehlgeschlagenes Takeover rot→grün; eigene prepush, zwei Fremdvendor-Reviews",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            811,
+            811
+          ]
+        },
+        {
+          "id": "DR-SEC-01g-G2",
+          "title": "Core-Enforcement hinter Ownership",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01g-G1",
+          "dependsOn": [
+            "DR-SEC-01g-G1"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #866 (merged 2026-10-09T17:10:31Z); ersetzt: Geplant (Design-Bericht)",
+          "acceptance": "P9 Rot→Grün; Mutationen/Migration geschützt; Notification-Lücke bleibt explizit",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            866
+          ]
+        },
+        {
+          "id": "DR-SEC-01g-G3",
+          "title": "Notification-Ownership",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01g-G2",
+          "dependsOn": [
+            "DR-SEC-01g-G2"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #873 (merged 2026-10-09T18:24:46Z); ersetzt: In Prüfung: Draft #873",
+          "acceptance": "zweiter Prozess kann nicht senden; Flush serialisiert; bestehende Receipt-/Retry-Tests erhalten",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            873,
+            873
+          ]
+        },
+        {
+          "id": "DR-SEC-01g-G4",
+          "title": "Server-Lifecycle / Admission",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01g-G3",
+          "dependsOn": [
+            "DR-SEC-01g-G3"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "invalid",
+          "statusRaw": "Aufgeteilt G4a Signal-Stop / G4b Admission+Drain; ersetzt: Geplant (Design-Bericht)",
+          "acceptance": "zweiter Listener mutiert/sendet nicht; Drain vor Release; Interface für DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "DR-SEC-01g-G4a",
+          "title": "Signal-Stop: Ownership freigeben",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01g-G3",
+          "dependsOn": [
+            "DR-SEC-01g-G3"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #872 (merged 2026-10-09T18:24:41Z); ersetzt: In Prüfung: Draft #872",
+          "acceptance": "Signal-Stop gibt Ownership frei",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            872,
+            872
+          ]
+        },
+        {
+          "id": "DR-SEC-01g-G4b",
+          "title": "Admission+Drain",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01g-G4a",
+          "dependsOn": [
+            "DR-SEC-01g-G4a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #889 (merged 2026-10-09T19:45:58Z); ersetzt: In Prüfung: #889 (Runde 2)",
+          "acceptance": "zweiter Listener mutiert/sendet nicht; Drain vor Release",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            889,
+            889
+          ]
+        },
+        {
+          "id": "DR-SEC-01g-G5",
+          "title": "DR-16-Adapter (G4-Lifecycle nutzen)",
+          "owner": "DR-16a-Owner",
+          "dependsRaw": "DR-SEC-01g-G4",
+          "dependsOn": [
+            "DR-SEC-01g-G4"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "invalid",
+          "statusRaw": "in DR-16a gefaltet",
+          "acceptance": "Root-Disposition 09.10.: kein eigener Schnitt; Abnahme über DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "DR-SEC-01g-G6",
+          "title": "Recovery-/Portability-Abnahme",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01g-G4",
+          "dependsOn": [
+            "DR-SEC-01g-G4"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #885 (merged 2026-10-09T19:22:15Z); Folge G6-FU Branch claude/g6-fu-tests; ersetzt: Geplant, Spec in Arbeit",
+          "acceptance": "beobachteter Exit/Alias; Windows-Beleg; fehlender Heartbeat ≠ Exit",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            885
+          ]
+        },
+        {
+          "id": "DR-SEC-01h",
+          "title": "P11/P12 UI- und Header-Tests",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-11/#718",
+          "dependsOn": [
+            "DR-11"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #859 (merged 2026-10-09T14:40:42Z); ersetzt: Geplant; nach #718",
+          "acceptance": "UI-/Header-Kontrollen nach Harness-Port; eigene prepush",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            859,
+            718
+          ]
+        },
+        {
+          "id": "DR-SEC-01i",
+          "title": "Webhook-Fehler sanitizen und Security-Controls abdecken",
+          "owner": "Root bindet einen Owner im Ticket",
+          "dependsRaw": "DR-SEC-01f",
+          "dependsOn": [
+            "DR-SEC-01f"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #824 (gemergt 2026-10-09T04:51:19Z)",
+          "acceptance": "Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews; vor DR-16a",
+          "tickets": [
+            "b0221f4a"
+          ],
+          "prNumbers": [
+            824
+          ]
+        },
+        {
+          "id": "DR-16a",
+          "title": "Umschalt-Helfer + Drill-Tests; nur tools/denkraum/switch.mjs + switch.test.mjs, kein Restore",
+          "owner": "Root benennt einen vorhandenen Serverowner",
+          "dependsRaw": "DR-SEC-01a/b gemergt; DR-SEC-01g G4 und 01h gemergt; DR-07 einschließlich 07c/d/e1/e2 (#752/#753/#751/#755), DR-14, DR-15 einschließlich 15b/#750 und UI-Verdrahtung #718 gemergt",
+          "dependsOn": [
+            "DR-07",
+            "DR-14",
+            "DR-15",
+            "DR-SEC-01a"
+          ],
+          "place": "Server",
+          "tier": "A, zwei Fremdanbieter",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #863 (merged 2026-10-09T16:34:47Z); ersetzt: Geplant; kein Start aus PLAN-Pflege",
+          "acceptance": "≤ 300 ALL; benannte DR16:-Tests rot→grün, node --test --test-name-pattern='^DR16:', npm run test:denkraum, eigene volle prepush, zwei Fremdvendor-Reviews am SHA/Disposition, Root-Abnahme",
+          "tickets": [
+            "b0e90b72"
+          ],
+          "prNumbers": [
+            863
+          ]
+        },
+        {
+          "id": "DR-16a-H",
+          "title": "Switch-Helfer-Härtung (Review-Nachbesserungen)",
+          "owner": "Root bindet Owner",
+          "dependsRaw": "DR-16a/#863",
+          "dependsOn": [
+            "DR-16a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #871 (merged 2026-10-09T18:24:31Z); ersetzt: In Prüfung: Draft #871 (Review-Runde 2)",
+          "acceptance": "Tier A; Review-Runde 2 ausstehend",
+          "tickets": [],
+          "prNumbers": [
+            871,
+            871
+          ]
+        },
+        {
+          "id": "DR-16b",
+          "title": "Live-Drill auf dem PC: Schreibpause, Sicherung, Umschalten, metadatensicherer Rückweg",
+          "owner": "Stabschef Ausführung, ein Owner",
+          "dependsRaw": "DR-16a gemergt sowie alle dessen Vorgänger; G6; Root-Livefreigabe für exakten SHA und Zeitfenster",
+          "dependsOn": [
+            "DR-16a"
+          ],
+          "place": "PC",
+          "tier": "A plus unabhängiges Nachlesen",
+          "status": "invalid",
+          "statusRaw": "Nach v1.6.0 verschoben (Nutzer 09.10. ~19:42Z: Schritte, die der Nutzer am PC braucht, nach dem Release); Runbook bleibt (pa-orch/wissen/06-anleitungen/2026-10-09_dr16b-pc-drill-runbook.md); ersetzt: Live-Freigabe Nutzer 09.10. ~17:25Z, Probelauf wartet auf G4b/G6 und Nutzer-Zeitfenster; ersetzt: Blockiert bis G0; Kandidat auf v1.6.0 (d2582ceb) neu exportiert; Fenster mit dem Nutzer offen",
+          "acceptance": "Gates G0–G7 im gebundenen Vertragsentwurf Ticket b0e90b72; G5 beide UI-Skripte HTTP 200; protokollierter Drill und unabhängige Prüfung; P1/aktuelles Ledger nach Writes erhalten, Root-Abnahme",
+          "tickets": [
+            "b0e90b72"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "DR-17",
+          "title": "Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum",
+          "owner": "Technischer Autor",
+          "dependsRaw": "DR-17a-Entwurf laut Root 09.10. vorgezogen; Trockenlauf nach DR-16a-Merge und Root-Annahme des DR-16b-Protokolls",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #785 (merged 2026-10-09T20:37:12Z): Anleitung gemergt: #785 (gemergt 2026-10-09T20:37:11Z, Trockenlauf der fünf Schritte auf frischer Wegwerf-Instanz im PR-Text); CHANGELOG-Abschnitt final in V16-CHANGELOG; ersetzt: In Prüfung: Entwurf separat #785; Trockenlauf und Gesamt-Abnahme offen",
+          "acceptance": "Trockenlauf der 5 Schritte im PR-Text; beide UI-Skripte HTTP 200; eigene prepush; No-Test: documentation only",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            785,
+            785,
+            785
+          ]
+        },
+        {
+          "id": "DR-17a",
+          "title": "README-Abschnitt und Anleitung in fünf Schritten als Entwurf; Quelle Root-Disposition 09.10. / PR #785",
+          "owner": "bestehender Owner `srv-dr-17a`",
+          "dependsRaw": "Draft vor DR-16 erlaubt; Trockenlauf erst nach DR-16a und angenommenem DR-16b-Protokoll",
+          "dependsOn": [
+            "DR-16a"
+          ],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #785 (gemergt 2026-10-09T20:37:11Z); ersetzt: In Prüfung: Draft #785",
+          "acceptance": "≤ 150 ALL; eigene prepush; kein Laufzeit-/Startbeleg aus dem Text, bis Trockenlauf erfolgt Draft halten",
+          "tickets": [
+            "PLAN-SYNC-0910b"
+          ],
+          "prNumbers": [
+            785,
+            785
+          ]
+        }
+      ],
+      "problems": [],
+      "counts": {
+        "Geplant": 0,
+        "Bereit": 0,
+        "In Arbeit": 0,
+        "In Prüfung": 1,
+        "Erledigt": 50,
+        "Blockiert": 0,
+        "Verschoben": 0,
+        "Entfallen": 2,
+        "invalid": 3
+      },
+      "total": 56
     },
     {
-      "id": "KI-24",
-      "text": "SQLite-Lastklasse (`database is locked`), beobachten.",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
+      "id": "Z2",
+      "title": "Setup und Entwicklung",
+      "packages": [
+        {
+          "id": "Z2-PLAN-COMMIT",
+          "title": "P2: v3 in kohärenten Paketen übernehmen; PLAN-C1 stellt Z1–Z4 vor den unveränderten historischen Parserbestand, danach getrennte Archiv-/Bereinigungsschnitte ≤ 300 ALL",
+          "owner": "Stabschef",
+          "dependsRaw": "Root-Abnahme je Kandidat",
+          "dependsOn": [],
+          "place": "egal",
+          "tier": "C",
+          "status": "In Prüfung",
+          "statusRaw": "In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 geschlossen als überholt (Nutzer 08.10.), Originaldelta bleibt Historie, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen",
+          "acceptance": "ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen",
+          "tickets": [
+            "55ea21ce"
+          ],
+          "prNumbers": [
+            643,
+            642,
+            646
+          ]
+        },
+        {
+          "id": "MAIN-PROTECT-01",
+          "title": "P0 Sicherheit: geltenden Main-Mergevertrag mit effektivem GitHub-Schutz verankern; tatsächliche Wirkung abgenommen",
+          "owner": "vorhandener Git-/CI-Owner; Chief disponiert, Root nimmt ab",
+          "dependsRaw": "frische Schutz-/App-/Produkt-/Queuebelege; konkrete Root-Abnahme je Handlung; getrennt von GOALS-B",
+          "dependsOn": [
+            "GOALS-B"
+          ],
+          "place": "PC",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: Root-Finalabnahme 06:53:57 UTC; Rulesets A `24699347` und B `24700455` ACTIVE/exakt main, vier App-Checks ohne Checkbypass in A, nur App `10562` Update-Bypass in B; Chief-REST-Readback 10:20 bestätigt Konfiguration, Root-Beleg enthält tatsächliche geschützte Queue #635; keine erneute Produktivaktion",
+          "acceptance": "vor jeder Einstellung leere Queue und echte Akteur-/Label-/Dispatch-Pause; vorhandene Produkte erhalten; exakter vierter App-Kontext (nichtpassendes Doku-Paket nur belegtes NEUTRAL); voller Windows-Batch und getrennte Root-A/B-Abnahme",
+          "tickets": [
+            "52f46527"
+          ],
+          "prNumbers": [
+            635
+          ]
+        },
+        {
+          "id": "Z2-RULE10",
+          "title": "P2: konkrete bereits erteilte Nutzerfreigaben erhalten; keine Rechteausweitung; Geld, Passwörter und Releases bleiben beim Nutzer",
+          "owner": "Stabschef",
+          "dependsRaw": "PLAN-C1; gemeinsam mit GOALS-B",
+          "dependsOn": [
+            "GOALS-B"
+          ],
+          "place": "egal",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: Root-abgenommener #644 `4032800` am 08.10. 07:12:55 UTC gemergt, nach #643; allgemeine Sitzungsadoption nicht daraus abgeleitet",
+          "acceptance": "freigegebene Handlung nicht erneut erfragen; keine abgeleitete Pauschalfreigabe; eigene prepush-Lane Exit 0; Root-Abnahme",
+          "tickets": [
+            "52f46527"
+          ],
+          "prNumbers": [
+            644,
+            643
+          ]
+        },
+        {
+          "id": "HOOK-WIN",
+          "title": "P1: Windows-Hook-Reparatur und echte Unix-Quote-Korrektur integrieren; abgeschlossene Home-Reparaturen erhalten",
+          "owner": "vorhandener Implementierer · Claude; Chief koordiniert",
+          "dependsRaw": "vorhandene Runtime-/Rot-/Gate-/Vendor-Belege; finaler PR-Bericht vor Ready",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: Root-abgenommene Source #641 `bf89c435`/292 ALL am 08.10. 06:10:42 UTC gemergt; Home-Wirksamkeit nur durch separate jeweilige Runtimebelege, keine neue pauschale Behauptung",
+          "acceptance": "eigene Windows-prepush 21/295s Exit 0; tatsächliche Google- und OpenAI-Reviews mit Autorgrenzen/Disposition; Root-Abnahme; Merge und Home-Wirksamkeit getrennt berichten",
+          "tickets": [
+            "b14492cb"
+          ],
+          "prNumbers": [
+            641
+          ]
+        },
+        {
+          "id": "HOOK-WIN-DOC",
+          "title": "P2: erhaltene 33-ALL-Hookanleitung liefern; Größenlimit der Source-Reparatur wahren",
+          "owner": "derselbe Implementierer · Claude",
+          "dependsRaw": "HOOK-WIN; eigener Docs-Head",
+          "dependsOn": [
+            "HOOK-WIN"
+          ],
+          "place": "PC",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #645 `094e2db`, 33 ALL, eigene Windows-prepush 21/456s Exit 0 und Root-Abnahme; tatsächlich nach #641 am 08.10. 07:13:16 UTC gemergt",
+          "acceptance": "nur `docs/setup/codex.md`, erhaltener Hunk unverändert, eigener prepush Exit 0; Draft auf #641; erst nach Source-Merge retargeten/abnehmen",
+          "tickets": [
+            "fc99616e"
+          ],
+          "prNumbers": [
+            645,
+            641
+          ]
+        },
+        {
+          "id": "GOALS-A",
+          "title": "P1 jetzt: Ist-Abgleich früherer Aufträge, realer Native-Goals, laufender Owner und PLAN; verhindert Doppelstarts und unbelegte Abschlüsse",
+          "owner": "Stabschef; Root nimmt ab",
+          "dependsRaw": "bestehende Übergaben und eigene Goal-Werkzeuge je Session",
+          "dependsOn": [],
+          "place": "egal",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: begrenztes Ist-Abgleich-Handover von Root 02:56 UTC angenommen; Chief-Native-Abschluss 02:57:37 belegt, spätere Koordination hat eigenes aktives Ziel",
+          "acceptance": "eine Zeile je Live-Agent: Ziel, eigener get/create-Beleg oder belegte Nichtverfügbarkeit plus Ticketziel, Meilenstein und Grenze; kein Plantext als Goal-Beleg",
+          "tickets": [
+            "52f46527"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "GOALS-B",
+          "title": "P2: Rollen-Goals, Anpassung, Grenzen und selektive Rekursion in AGENTS.md, projecta-workflow und Übergabevorlage verankern; nur Prozessdoku, kein Runtime-Ausbau",
+          "owner": "Stabschef als Editor; Root nimmt ab",
+          "dependsRaw": "PLAN-C1; Z2-RULE10 im selben Dokumentationspaket",
+          "dependsOn": [
+            "Z2-RULE10"
+          ],
+          "place": "egal",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: Root-abgenommenes Dokumentationspaket #644 `4032800` tatsächlich 07:12:55 UTC gemergt; vier bestehende Skills gespeichert/zurückgelesen; Adoption bleibt ausschließlich sitzungsweise belegt, keine allgemeine Wirksamkeitsbehauptung",
+          "acceptance": "≤ 300 ALL; Anforderungen GOALS-01 2–7 erhalten; 1 zusätzliche Selbstprüfung, 2. nur konkreter Restmangel; Stops und unabhängige Reviews/Nutzerfreigaben unverändert; prepush Exit 0",
+          "tickets": [
+            "52f46527"
+          ],
+          "prNumbers": [
+            644
+          ]
+        },
+        {
+          "id": "GOALS-C",
+          "title": "P2 begleitend: drei vorhandene Praxisproben Lane F, DR-02 und HOOK-WIN auswerten; Stichprobe, kein Wirksamkeitsbeweis; keine neuen Jobs/QA/Benchmarks",
+          "owner": "ausführende Owner dokumentieren; Root bewertet",
+          "dependsRaw": "vorhandene Fix-, Review- und Runtimebelege",
+          "dependsOn": [],
+          "place": "egal",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: genau drei Proben samt Messlücken von Root 02:56 UTC angenommen; selektive Nutzung, kein vierter Versuch aus späteren Fixes",
+          "acceptance": "je Ticket Mangel/kein Mangel, Bestätigung, beobachtete Regressionen, nur gemessener Zusatzaufwand; bei überwiegendem Aufwand Anwendung begrenzen",
+          "tickets": [
+            "52f46527",
+            "55ea21ce",
+            "b14492cb"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "DEV-KNOW-01",
+          "title": "P2: freigegebenen EIN-Thema-Wissenspilot begrenzt auswerten; Quellenindex gegen zwölf Karten, kein Ausbau ohne belegten Nutzen",
+          "owner": "einziger Messowner Implementierer · Codex `8qyt6d`; Chief übernimmt Bericht, Root nimmt ab",
+          "dependsRaw": "Vorbereitung #651 `1205081` angenommen; eingefrorene neun Quellen und fünf Fragen; Z1-Slots frei halten",
+          "dependsOn": [],
+          "place": "private leichte Messroute",
+          "tier": "C",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; bisheriger begrenzter Messschnitt erledigt: 20+6-Originalübergabe samt Korrekturappend Root-ACCEPT 09:22:35 (`198949e8`); rationale-only-Nachtrag separat ACCEPT 10:10:29 (`1dbb4ebb`, operative REPORT `8f3f0796`, Input `20c2571d`, Assessment `71d3d6df`, Handover `b5c7a645`), Originale erhalten; eigene Mess-/Koordinationsgoals COMPLETE; kein konsistenter Nettoqualitätsgewinn, Quellenindex empfohlen; keine neue Messung/automatische Übernahme",
+          "acceptance": "getrennte Claude-/Codex-Vergleiche, gleiche Fragen/Revisionen und Parameter je Anbieter; Qualität/Kontext/Sucharbeit/Pflege mit Messlücken, sechs begrenzte Fälle; Nullbefund zulässig, keine automatische Übernahme",
+          "tickets": [
+            "57979887"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-REGELN",
+          "title": "Regelwerk 2.0: Lane-A-Korrekturen (6) abschließen, Anweisungsdateien entschlacken (Lane C, Commit 6918bea), Altlasten-Audit liefert „Deine Regeln: bestätigen oder ändern“",
+          "owner": "Stabschef + Codebase Archäologe",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "egal",
+          "tier": "C",
+          "status": "In Arbeit",
+          "statusRaw": "In Arbeit",
+          "acceptance": "Lane-C-PR gemergt; `npm run dev:agent-check` Exit 0; Regel-Vorschläge R1–R5 in der Inbox entschieden",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "DOC-OPERATORS",
+          "title": "Operatoren-Katalog und Briefvertrag in AGENTS.md und beiden projecta-workflow-Skills verankern",
+          "owner": "bestehender Root-Serverjob; kein zweiter Anweisungseditor",
+          "dependsRaw": "konkrete Disposition zu #642 erhalten",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #683 (merged 2026-10-08T15:42:28Z)",
+          "acceptance": "nur Abschnitt vor Detailed operating reference und Skill-Dateiende; ≤ 300 ALL, eigene prepush, Regeln/Freigaben unverändert",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            683
+          ]
+        },
+        {
+          "id": "Z2-AGENTS-SLIM",
+          "title": "AGENTS.md auf etwa ≤ 8 KB reduzieren: Kernregeln, Befehle und Merge-Kurzregel erhalten, Referenzdetails per eindeutigem Pfad auslagern",
+          "owner": "ein von Stabschef Ausführung benannter Doku-Owner; Chief pflegt nur PLAN",
+          "dependsRaw": "DR-12 gemergt/abgenommen; DOC-OPERATORS integriert; #642 geschlossen (Nutzer 08.10.); frischer Dateischnitt/Owner",
+          "dependsOn": [
+            "DR-12",
+            "DOC-OPERATORS"
+          ],
+          "place": "Server",
+          "tier": "C",
+          "status": "Bereit",
+          "statusRaw": "Bereit nach DR-12; Owner/Guard und Root-Zuweisung vor Ausführung",
+          "acceptance": "AGENTS.md plus eindeutige docs/development/AGENTS_REFERENCE.md; bestehende Referenzen nur lesen; globale CLAUDE/MEMORY und Standard-Skills ausgenommen; Regel-für-Regel-Mapping, Linkcheck, dev:agent-check und eigene prepush Exit 0; ≤ 300 ALL, sonst vor Start serielle Schnitte; Byteziel ist kein Token-/Wirksamkeitsbeleg",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-RECHTE",
+          "title": "Konsolidiertes Rechtekonzept V3, Herkunft und Disposition erhalten",
+          "owner": "Konzeptowner lz0jwp; finale Konzeptabnahme Root",
+          "dependsRaw": "privates Bundle V3 `B368BB476E8E`; E1–E5 entschieden",
+          "dependsOn": [],
+          "place": "bestehender Konzept-Arbeitsort",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Konzept von Root nach Fable-CONCUR abgenommen (08.10., 15:23Z); E5 bestätigt 15:26Z; keine technische Aktivierung",
+          "acceptance": "vier Original-/Kopie-Paare gegen Manifest geprüft; Umsetzung nur über folgende getrennte Schnitte; E2-Schreibhost noch zu benennen",
+          "tickets": [
+            "b2f36f8a"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-RECHTE-P1",
+          "title": "Ein privater Quellen-/Rechte-/Dispositionseintrag für den ausgewählten Werkzeugfall; Originaltexte und Ersetzungslinks erhalten",
+          "owner": "bestehender Konzeptowner lz0jwp; Ausführungskoordination beim neuen Stabschef",
+          "dependsRaw": "V3 + E5; konkreter privater Zielpfad und Ausgangsdigest vor Start festhalten",
+          "dependsOn": [],
+          "place": "privater bestehender Wissensbereich",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Geschnitten, noch nicht gestartet; Dokumentation, keine Settings-/Rechteaktivierung",
+          "acceptance": "≤ 300 ALL; Quelle/Datum/Digest, ursprünglicher Scope, geltende Disposition, Projektion, Owner, fehlende Belege und nächster Schritt; Reset-, alte RH-C9- und Force-push-Ersetzungen getrennt; QA bleibt ausdrücklich beauftragt; kein privater Wortlaut in Git/PR",
+          "tickets": [
+            "b2f36f8a"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-RECHTE-PILOT",
+          "title": "Ein realer rust-analyzer/rust-src-Fall: manuelle Baseline gegen Shadow-Vorbereitung vergleichen",
+          "owner": "neuer Stabschef benennt bestehenden Werkzeugowner und genau einen tatsächlichen Schreibhost vor Zulassung; Root nimmt Shadow ab",
+          "dependsRaw": "P1; frischer Toolchain-/Client-/Komponenten-/PATH-/Home-Beleg, Quellenbindung und freie Eigentümerschaft",
+          "dependsOn": [],
+          "place": "tatsächlicher Windows-Zielhost, noch ungebunden",
+          "tier": "C für Messbericht; technische Folgedeltas nach Dateien neu einstufen",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Owner/Host fehlen weiter; keine technische Aktivierung",
+          "acceptance": "≤ 300 ALL je Schnitt; ein gepaarter Nicht-Z2-Fall, Zeit-/Aufrufbelege einschließlich Vorbereitung/Prüfung/Nacharbeit/Recovery; Netto-Nutzen > 0 und > gemessene Vergleichsunsicherheit, sonst nicht belegt; negative Shadow-Fälle keine Laufzeit-PASS; tatsächlicher Effekt erst separat nach Shadow-Abnahme, danach installiert/geladen/funktional getrennt belegen",
+          "tickets": [
+            "b2f36f8a"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-PLANPARSER",
+          "title": "hq-parse.mjs, dev-hq.mjs und hygiene.mjs lesen die Z-Tabellen (Spalte Status, 8 Werte); danach Anhang B entfernen",
+          "owner": "Implementierer · Claude",
+          "dependsRaw": "Z2-PLAN-COMMIT",
+          "dependsOn": [
+            "Z2-PLAN-COMMIT"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #697 (merged 2026-10-08T17:43:37Z)",
+          "acceptance": "`npm run test:hq` Exit 0; HQ zeigt Z1–Z4; prepush Exit 0",
+          "tickets": [],
+          "prNumbers": [
+            697
+          ]
+        },
+        {
+          "id": "Z2-DOKSYNC",
+          "title": "KNOWN_ISSUES.md „Offen“ bereinigen: KI-15, KI-16, KI-20 mit PR-Beleg; KI-33 bleibt „Kandidat“, bis ein Windows-Queue-Lauf mit der Änderung beobachtet ist",
+          "owner": "bestehender Root-Serverjob, kein zweiter Owner",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #670 (merged 2026-10-08T14:34:08Z)",
+          "acceptance": "Jede verschobene Zeile nennt PR und Merge; KI-33 nur mit Windows-Queue-Lauf-ID und Dauer nach „Behoben“; precommit-Lane Exit 0",
+          "tickets": [
+            "051bdfa0"
+          ],
+          "prNumbers": [
+            670
+          ]
+        },
+        {
+          "id": "Z2-AUTOSTART",
+          "title": "Denkraum startet nach der Windows-Anmeldung von selbst, ohne Secret-Eingabe",
+          "owner": "Desktop-App-Entwickler",
+          "dependsRaw": "DR-15, DR-06",
+          "dependsOn": [
+            "DR-06",
+            "DR-15"
+          ],
+          "place": "PC",
+          "tier": "A",
+          "status": "Geplant",
+          "statusRaw": "Geplant",
+          "acceptance": "PC-Neustart → `127.0.0.1:4791` antwortet ohne Eingabe; kein Secret im Klartext",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-PACER",
+          "title": "Pacer läuft: Trigger mit Werkzeugen, aber nur lesend; Bericht alle 20 min",
+          "owner": "Stabschef",
+          "dependsRaw": "Inbox R5",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "C",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert",
+          "acceptance": "drei Läufe nacheinander mit Bericht, keine Schreibaktion",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-REVIEW",
+          "title": "Zwei feste Fremdanbieter-Wege für Stufe A: Gemini/Cursor auf dem Server (Workspace Trust), Ollama Kimi K3 + GLM, Codex; je Weg eine Probe mit beobachtetem Modell",
+          "owner": "Root disponiert Fremdvendor-Reviews; Git-/CI-Owner qualifiziert Wege",
+          "dependsRaw": "WT entschieden (F1, 08.10.); Modell-/Head-Belege weiter Pflicht",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Root übernimmt Tier-A-Zweitanbieter über vorhandenen Ollama-GLM/Kimi-Weg laut Übergabe; kein Google-Folgelauf, Modell-/Head-Belege weiter Pflicht",
+          "acceptance": "Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben",
+          "tickets": [
+            "c77f6955"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-RAM",
+          "title": "RAM-/Server-Standard: schwer = Server; PC nur leicht bei ≥ 1,5 GiB; idle Konsolen schließen; RAM-Wächter",
+          "owner": "Autonomer Optimierungsarchitekt",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "PC + Server",
+          "tier": "C",
+          "status": "Geplant",
+          "statusRaw": "Geplant",
+          "acceptance": "24 h ohne „local heavy STOP“, Messung im Ticket",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-RAM-SLOTS",
+          "title": "Konfigurierten Warm-Slot-Root im bestehenden build-slot beachten; keine zweite RAM-Messung",
+          "owner": "Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/build-slot.mjs` und eigener Test",
+          "dependsRaw": "Basis `fc85e3d`, unabhängig von DR-04B-FU und HYGIENE",
+          "dependsOn": [
+            "DR-04B-FU"
+          ],
+          "place": "Server",
+          "tier": "A (Start-/Ressourcenempfehlung)",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #725 (merged 2026-10-09T12:34:55Z); ersetzt: In Prüfung: Draft #725; E1 vom 09.10. erlaubte genau eine dritte Runde nur zum Delta",
+          "acceptance": "≤ 180 ALL; kompilierendes Rot, Root-/Override-/Fehler- und belegte-Slot-Fälle; bestehende Schwellen/Heuristiken erhalten; eigene prepush + zwei Fremdvendor-Reviews am Kandidaten",
+          "tickets": [],
+          "prNumbers": [
+            725,
+            725
+          ]
+        },
+        {
+          "id": "Z2-HYGIENE-STATUS",
+          "title": "Aktuelle Draft-/Ready-/In-Arbeit-Zeilen im lesenden Hygiene-Werkzeug erkennen",
+          "owner": "Root weist einen vorhandenen Serverworker zu; nur `scripts/dev/hygiene.mjs` und eigener Test",
+          "dependsRaw": "Basis `fc85e3d`, unabhängig von beiden anderen Reservepaketen",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #726 (merged 2026-10-08T23:30:10Z)",
+          "acceptance": "≤ 160 ALL; benanntes kompilierendes Rot, Kandidaten-PR-Nummern von Vorgänger-/historischen Nummern trennen; keine Board-/PLAN-/GitHub-Schreibwirkung; eigene prepush + Fremdreview am Kandidaten",
+          "tickets": [],
+          "prNumbers": [
+            726
+          ]
+        },
+        {
+          "id": "Z2-PR-PROTECTION",
+          "title": "Merge-Protection in lesender PR-Bereitempfehlung berücksichtigen",
+          "owner": "Root benennt bestehenden Serverworker; Dateipaar unten exklusiv",
+          "dependsRaw": "main `9d9eaa7`; unabhängig",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #738 (merged 2026-10-09T00:09:16Z)",
+          "acceptance": "≤ 160 ALL; benanntes Rot, Protection-Fälle und Queue-Fakt; volle prepush und Fremdreview",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            738
+          ]
+        },
+        {
+          "id": "Z2-STATUS-UNKNOWN",
+          "title": "Unbekannte CI-Kontexte und fehlende Checks nicht als grün darstellen",
+          "owner": "Root benennt bestehenden Serverworker; Dateipaar unten exklusiv",
+          "dependsRaw": "main `9d9eaa7`; unabhängig",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #739 (merged 2026-10-08T22:50:42Z)",
+          "acceptance": "≤ 140 ALL; benanntes Rot und Bericht-Fixtures; volle prepush und Fremdreview",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            739
+          ]
+        },
+        {
+          "id": "Z2-START-MEASURE",
+          "title": "Ungültige RAM-/Usage-Messwerte und leere Usage-Datei verweigern",
+          "owner": "Root benennt bestehenden Serverworker; Dateipaar unten exklusiv",
+          "dependsRaw": "main `9d9eaa7`; unabhängig von RAM-SLOTS #725",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #742 (merged 2026-10-08T22:36:59Z)",
+          "acceptance": "≤ 160 ALL; benanntes Rot, CLI Exit 1, gültige Defaults erhalten; volle prepush und zwei Fremdvendor-Reviews",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            742
+          ]
+        },
+        {
+          "id": "Z2-CIWATCH-SHAPE",
+          "title": "Ungültige Check-Objekte als Lesefehler verweigern statt abstürzen",
+          "owner": "Root benennt bestehenden Serverworker; Dateipaar unten exklusiv",
+          "dependsRaw": "main `9d9eaa7`; unabhängig",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #745 (merged 2026-10-09T00:09:09Z)",
+          "acceptance": "≤ 140 ALL; benanntes Rot, Exit 3 ohne Folgepoll/Grün; volle prepush und Fremdreview",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            745
+          ]
+        },
+        {
+          "id": "Z2-MRP-COMPLETE",
+          "title": "Teilweise ausgefülltes Prompt-Log nicht als vollständigen Messbeleg zählen",
+          "owner": "Root benennt bestehenden Serverworker; Dateipaar unten exklusiv",
+          "dependsRaw": "main `9d9eaa7`; unabhängig",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #746 (merged 2026-10-08T22:55:35Z)",
+          "acceptance": "≤ 120 ALL; benanntes Rot, Zähler-/Bench-Fixture, Nullbefund gültig; volle prepush und Fremdreview",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            746
+          ]
+        },
+        {
+          "id": "Z2-ROUTE",
+          "title": "Verteilung nach Verbrauchstempo über usage_overview; Quota-Regeln erneuern; Officer-Routine neu anmelden",
+          "owner": "Stabschef Ausführung beobachtet/routet; keine eigenmächtige Quota-Regeländerung",
+          "dependsRaw": "Nutzer: Re-Login",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "C",
+          "status": "Geplant",
+          "statusRaw": "Geplant",
+          "acceptance": "eine Woche ohne Anbieter am Limit; Routing-Beleg je Start",
+          "tickets": [
+            "492a9e36"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-BOARD",
+          "title": "Board aufräumen: erledigte/veraltete Tickets schließen (ef39c814, 2720b77f, 5945accc, 5de5c4c9, 7b66731d), Kurzstand-Block je Ticket, Ready-Queue ≥ 5 pflegen",
+          "owner": "Stabschef Ausführung: Ready-Reserve, Lane-/Blocker-Beobachtung; Chief nur PLAN",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "egal",
+          "tier": "–",
+          "status": "Bereit",
+          "statusRaw": "Bereit",
+          "acceptance": "`backlog_list`: keine erledigten Tickets mehr offen",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "MERGIFY-REPORT-REGEX",
+          "title": "Berichtsschutz um aktuelle Paket-Branches erweitern",
+          "owner": "abgeschlossener Root-Job",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B laut Root-Abnahme #768",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #768 (merged 2026-10-09T00:33:52Z)",
+          "acceptance": "Mergebeleg per gh pr view; Statistik-Folgepunkt getrennt in MRP-REGEX-SCRIPTS",
+          "tickets": [
+            "aa1238e6"
+          ],
+          "prNumbers": [
+            768
+          ]
+        },
+        {
+          "id": "DOCS-SYNC-0910",
+          "title": "Agenten-Dokumentation und Queue-Hinweise angleichen",
+          "owner": "abgeschlossener Root-Job",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #764 (merged 2026-10-09T00:33:57Z)",
+          "acceptance": "Mergebeleg per gh pr view; restliche BUGS-Zeilen bleiben eigener Schnitt",
+          "tickets": [
+            "#764"
+          ],
+          "prNumbers": [
+            764
+          ]
+        },
+        {
+          "id": "HOTFIX-HYGIENE-VERBS",
+          "title": "Git-Globaloptionen in Hygiene-Testguards vor Verbprüfung entfernen",
+          "owner": "abgeschlossener Root-Job",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C laut Root-Abnahme #777",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #777 (merged 2026-10-09T00:33:23Z)",
+          "acceptance": "Mergebeleg per gh pr view; echte Schreibbefehle bleiben im Guard erkennbar",
+          "tickets": [
+            "#777"
+          ],
+          "prNumbers": [
+            777
+          ]
+        },
+        {
+          "id": "MRP-REGEX-SCRIPTS",
+          "title": "Paketregex in mrp-count und bench-weekly an #768 angleichen; Root-Disposition 09.10.",
+          "owner": "bestehender Owner `srv-mrp-regex-scripts`",
+          "dependsRaw": "MERGIFY-REPORT-REGEX/#768",
+          "dependsOn": [
+            "MERGIFY-REPORT-REGEX"
+          ],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #782 (merged 2026-10-09T01:26:43Z); ersetzt: In Prüfung: Draft #782",
+          "acceptance": "benannte Regex-Regressionen rot→grün, Zählerverträge erhalten, eigene prepush/Fremdreview und Root-Abnahme",
+          "tickets": [
+            "46800384"
+          ],
+          "prNumbers": [
+            782,
+            782
+          ]
+        },
+        {
+          "id": "MATRIX-RECONCILE",
+          "title": "Alle 27 Matrixzeilen mit datierten Belegen und offenen Resten abgleichen; Root-Disposition 09.10.",
+          "owner": "bestehender Owner `srv-matrix-reconcile`",
+          "dependsRaw": "bestehende Belege; Continuous bleibt aus",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #781 (merged 2026-10-09T01:17:02Z); ersetzt: In Prüfung: Draft #781",
+          "acceptance": "Anforderungen unverändert, kein erfundener Laufzeit-PASS; eigene prepush und Root-Abnahme",
+          "tickets": [
+            "a6a28ae8"
+          ],
+          "prNumbers": [
+            781,
+            781
+          ]
+        },
+        {
+          "id": "Z2-REVIEW-FOLLOWUPS-1",
+          "title": "Review-Folgepunkte gemäß Root-Disposition 09.10. bündeln und abgrenzen",
+          "owner": "Root bindet vorhandenen Owner",
+          "dependsRaw": "konkrete Findings, Dateien und Abnahme vor Dispatch binden",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "nach Dateischnitt festlegen",
+          "status": "Geplant",
+          "statusRaw": "Geplant; kein neuer Worker aus PLAN-Eintrag",
+          "acceptance": "jeder Folgepunkt mit Quelle/Disposition; ≤ 300 ALL je Paket, keine erneute Abnahmebehauptung",
+          "tickets": [
+            "PLAN-SYNC-0910b"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "CI-SPLIT-LINUX",
+          "title": "Linux-Gates teilen, Pflichtcheck zusammenführen",
+          "owner": "srv-ci-split-linux",
+          "dependsRaw": "bestehender Gate-Vertrag",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "In Arbeit",
+          "statusRaw": "In Arbeit: läuft (Server-Auftrag srv-ci-split-linux), Branch `codex/ci-split-linux`",
+          "acceptance": "Gate-Abdeckung unverändert; prepush, Reviews, Root",
+          "tickets": [
+            "OPT-CI-0"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "OPT-PIPE-0",
+          "title": "Durchlauf ausschließlich lesend messen",
+          "owner": "srv-opt-pipeline; Root klärt Basis",
+          "dependsRaw": "korrekte Auftragsbasis",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C (Bericht)",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert: geplant nach Basisklärung; Server-Auftrag srv-opt-pipeline endete 16:12 MESZ wegen HEAD-Abweichung",
+          "acceptance": "Messbericht mit Methode und Einheiten; keine Implementierung",
+          "tickets": [
+            "OPT-PIPE-0"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z2-STATUS-CI",
+          "title": "main-Gates nicht durch jüngeren grünen CodeQL-Lauf verdecken; gemischte Workflow-Fixture; exklusiv scripts/dev/status-report.mjs + scripts/lib/dev-status-report.test.mjs",
+          "owner": "Root/Stabschef benennt einen vorhandenen Owner",
+          "dependsRaw": "main a8f0032; unabhängig",
+          "dependsOn": [],
+          "place": "Codex Cloud Node 20 möglich; Server Node 24",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #773 (merged 2026-10-09T00:48:18Z)",
+          "acceptance": "benanntes Rot: ältere rote CI + jüngeres grünes CodeQL bleibt sichtbarer CI-Blocker; bestehende Zeit-/Zeilenlimitfälle erhalten",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            773
+          ]
+        },
+        {
+          "id": "Z2-SETUP-VERSION",
+          "title": "Nicht-endliche/ungültige Node-Versionsangaben dürfen Pflichtcheck nicht grün machen; exklusiv scripts/dev/agent-setup-check.mjs + scripts/lib/agent-setup-check.test.mjs",
+          "owner": "Root/Stabschef benennt einen vorhandenen Owner",
+          "dependsRaw": "main a8f0032; unabhängig",
+          "dependsOn": [],
+          "place": "Codex Cloud Node 20 möglich; Server Node 24",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #772 (merged 2026-10-09T00:48:05Z)",
+          "acceptance": "benanntes Rot: Infinity/ungültige Majorversion fail; echte Node 24 bleibt ok, fehlende optionale Programme weiterhin nur Warnung",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            772
+          ]
+        },
+        {
+          "id": "Z2-ERLEDIGT-META",
+          "title": "Fehlerhafte Merge-Metadaten vor Tabellenwrite ablehnen; exklusiv scripts/dev/erledigt-row.mjs + scripts/lib/dev-erledigt-row.test.mjs",
+          "owner": "Root/Stabschef benennt einen vorhandenen Owner",
+          "dependsRaw": "main a8f0032; unabhängig",
+          "dependsOn": [],
+          "place": "Codex Cloud Node 20 möglich; Server Node 24",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #769 (merged 2026-10-09T00:48:09Z)",
+          "acceptance": "benanntes Rot: ungültiges mergedAt erzeugt keine NaN-Datumszeile/keinen Write; gültiges UTC-Datum/Replay erhalten; nur temporäre Fixture",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            769
+          ]
+        },
+        {
+          "id": "Z2-SPEC-STATUS",
+          "title": "Unbekannten Spec-Status nicht still als historisch umschreiben; exklusiv scripts/dev/spec-close.mjs + scripts/lib/dev-spec-close.test.mjs",
+          "owner": "Root/Stabschef benennt einen vorhandenen Owner",
+          "dependsRaw": "main a8f0032; unabhängig",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #767 (merged 2026-10-09T00:33:27Z)",
+          "acceptance": "benanntes Rot: Status-Tippfehler verweigert ohne Änderung an Spec/STAND; erlaubte Statuswerte aus bestehendem Spec-Vertrag lesen/pinnen; dry-run und historische Wiederholung erhalten",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            767
+          ]
+        },
+        {
+          "id": "Z2-PUSH-REMOTE",
+          "title": "Optionsähnlichen Remote-Wert vor Git-Aufruf abweisen; exklusiv scripts/dev/push-verified.mjs + scripts/lib/dev-push-verified.test.mjs",
+          "owner": "Root/Stabschef benennt einen vorhandenen Owner",
+          "dependsRaw": "main a8f0032; unabhängig",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #788 (merged 2026-10-09T01:17:15Z); ersetzt: In Prüfung: Draft #788 (GitHub 09.10.)",
+          "acceptance": "benanntes Rot: --remote -x verweigert ohne Push/Netzwerk; gültiger Remote/Branch sowie Remote-SHA-Beweis erhalten; nur injizierter Runner",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": [
+            788,
+            788
+          ]
+        }
+      ],
+      "problems": [],
+      "counts": {
+        "Geplant": 4,
+        "Bereit": 2,
+        "In Arbeit": 2,
+        "In Prüfung": 1,
+        "Erledigt": 27,
+        "Blockiert": 2,
+        "Verschoben": 2,
+        "Entfallen": 0,
+        "invalid": 3
+      },
+      "total": 43
     },
     {
-      "id": "KI-27",
-      "text": "`exited_undelivered` gibt Reservierung und Delivery frei (DF-15b, PR #16), beobachten.",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
+      "id": "Z3",
+      "title": "Rest von v1.6.0",
+      "packages": [
+        {
+          "id": "V16-ARCH-D4-05",
+          "title": "Queue-Routen aus api.rs (PR #631)",
+          "owner": "Implementierer · Codex, Abnahme Root",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #631 (merged 2026-10-08T08:10:01Z)",
+          "acceptance": "Merge über Mergify; `api.rs` 7858",
+          "tickets": [
+            "b9606dd4"
+          ],
+          "prNumbers": [
+            631
+          ]
+        },
+        {
+          "id": "V16-ARCH-D7",
+          "title": "Einstellungen nach store/settings.rs (PR #632)",
+          "owner": "Implementierer · Codex",
+          "dependsRaw": "V16-ARCH-D4-05 (Review seriell)",
+          "dependsOn": [
+            "V16-ARCH-D4-05"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #632 (merged 2026-10-08T15:25:08Z)",
+          "acceptance": "Merge über Mergify",
+          "tickets": [
+            "782d9e58"
+          ],
+          "prNumbers": [
+            632
+          ]
+        },
+        {
+          "id": "V16-06",
+          "title": "Start nach Update ohne Journal stoppt fail-closed mit Anleitung",
+          "owner": "MCP-Integrationsentwickler",
+          "dependsRaw": "E2/V16-F3 beantwortet 09.10.; mn nach D5-GUARD → V16-UPD-CANCEL; Update-Drill",
+          "dependsOn": [
+            "V16-UPD-CANCEL",
+            "D5-GUARD"
+          ],
+          "place": "PC",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #832 + Folgepaket #845",
+          "acceptance": "roter Test zuerst; Drill Erfolg/Abbruch/Fehler",
+          "tickets": [
+            "2557db66"
+          ],
+          "prNumbers": [
+            832,
+            845
+          ]
+        },
+        {
+          "id": "V16-UPD-CANCEL",
+          "title": "Abbrechen-Knopf beim Update-Download (sonst ist der Drill „Abbruch“ unmöglich)",
+          "owner": "Desktop-App-Entwickler; Startzuweisung durch Ausführungs-Stabschef",
+          "dependsRaw": "V16-ARCH-D5b/#728 gemergt → D5-GUARD; mn danach neu zuweisen",
+          "dependsOn": [
+            "V16-ARCH-D5b",
+            "D5-GUARD"
+          ],
+          "place": "PC-Drill; Gates Server möglich",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #813 (78415d74), #828 (d0dc06d5), #830 (55c22381, re-cut von #821), #833 (9735583), #834 (34f2b0b), #851 (Freeze-Test) gemergt am 09.10.",
+          "acceptance": "compiling RED vor Fix; Abbruch nur vor Installation autoritativ quittieren, Ende/Thaw vor Retry; Drill und Screenshot; eigene prepush + zwei Fremdvendor-Reviews; Backend/IPC → UI vor Start in je ≤ 300 ALL schneiden",
+          "tickets": [],
+          "prNumbers": [
+            813,
+            828,
+            830,
+            821,
+            833,
+            834,
+            851
+          ]
+        },
+        {
+          "id": "V16-ARCH-D2",
+          "title": "Doppelte Projektanlage in main.rs zusammenführen",
+          "owner": "Implementierer; mn-Nachfolge gemäß L3",
+          "dependsRaw": "vor V16-06 freigegeben (Inbox V16-D2)",
+          "dependsOn": [
+            "V16-06"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #664 (merged 2026-10-08T16:13:04Z)",
+          "acceptance": "`rg -c 'fn create_project' src-tauri/src/main.rs` → eine Umsetzung; `main.rs` < 5133; eigene prepush und zwei Fremdvendor-Belege mit Disposition",
+          "tickets": [
+            "257e3a7b"
+          ],
+          "prNumbers": [
+            664
+          ]
+        },
+        {
+          "id": "V16-ARCH-D5a",
+          "title": "Diagnosebefehle aus main.rs lösen",
+          "owner": "Implementierer · Claude",
+          "dependsRaw": "V16-ARCH-D2",
+          "dependsOn": [
+            "V16-ARCH-D2"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #704 (merged 2026-10-08T20:27:48Z)",
+          "acceptance": "`main.rs` −150 Zeilen",
+          "tickets": [],
+          "prNumbers": [
+            704
+          ]
+        },
+        {
+          "id": "V16-ARCH-D5b",
+          "title": "Einstellungsbefehle aus main.rs lösen",
+          "owner": "Implementierer · Claude",
+          "dependsRaw": "V16-ARCH-D5a",
+          "dependsOn": [
+            "V16-ARCH-D5a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #728 (merged 2026-10-09T00:33:32Z)",
+          "acceptance": "`main.rs` −150 Zeilen",
+          "tickets": [],
+          "prNumbers": [
+            728
+          ]
+        },
+        {
+          "id": "D5-GUARD",
+          "title": "Guard-Folgeschnitt nach D5b; Quelle Root-Disposition 09.10.",
+          "owner": "Root weist einen exklusiven mn-Owner zu",
+          "dependsRaw": "V16-ARCH-D5b/#728 gemergt; vor V16-UPD-CANCEL",
+          "dependsOn": [
+            "V16-UPD-CANCEL",
+            "V16-ARCH-D5b"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #792 (merged 2026-10-09T02:00:10Z); ersetzt: Geplant; konkreter Startvertrag in Ticket 5e18c3e8",
+          "acceptance": "mn (`main.rs`) seriell; Ticketabnahme erhalten, kompilierendes Rot→Grün, eigene prepush, zwei Fremdvendor-Reviews und Root-Abnahme",
+          "tickets": [
+            "5e18c3e8"
+          ],
+          "prNumbers": [
+            792
+          ]
+        },
+        {
+          "id": "V16-ARCH-D8a",
+          "title": "Ereignisnamen als Konstanten in main.rs",
+          "owner": "Implementierer · Claude",
+          "dependsRaw": "V16-ARCH-D5b",
+          "dependsOn": [
+            "V16-ARCH-D5b"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0 (Nutzer 08.10.)",
+          "acceptance": "`rg -n -F -e '\"worker:status\"' -e '\"supervisor:notification\"' src-tauri/src/main.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-ARCH-D8b",
+          "title": "Ereignisnamen in PTY",
+          "owner": "Implementierer · Claude",
+          "dependsRaw": "V16-ARCH-D8a",
+          "dependsOn": [
+            "V16-ARCH-D8a"
+          ],
+          "place": "Server",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0 (Nutzer 08.10.)",
+          "acceptance": "`rg -n -F -e '\"pty:output:' -e '\"pty:exit:' src-tauri/src/pty.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-ARCH-D8c",
+          "title": "Ereignisnamen im Frontend",
+          "owner": "Implementierer · Codex",
+          "dependsRaw": "V16-ARCH-D8b",
+          "dependsOn": [
+            "V16-ARCH-D8b"
+          ],
+          "place": "egal",
+          "tier": "B",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0 (Nutzer 08.10.)",
+          "acceptance": "`rg -n -e '[\"\\x27\\x60]worker:status' -e '[\"\\x27\\x60]supervisor:notification' -e '[\"\\x27\\x60]pty:output:' -e '[\"\\x27\\x60]pty:exit:' src` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `npm run typecheck` und `npm run test:unit` Exit 0",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-ADR-A1",
+          "title": "ADR A1 (ApiBackend teilen) in docs/decisions.md entscheiden",
+          "owner": "bestehender Root-Job `srv-v16-adr-a1`; Fable bei Root",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #667 (merged 2026-10-08T14:34:03Z)",
+          "acceptance": "`docs/decisions.md` A1 nicht mehr „Vorschlag (offen)“; precommit-Lane Exit 0; Root-Abnahme am SHA",
+          "tickets": [
+            "72f47044"
+          ],
+          "prNumbers": [
+            667
+          ]
+        },
+        {
+          "id": "V16-ADR-A7",
+          "title": "ADR A7 (st-Lane teilen)",
+          "owner": "Architekturberater Fable + Architekturberater Astra",
+          "dependsRaw": "V16-NACHBEOB (zwei Wochenmessungen)",
+          "dependsOn": [
+            "V16-NACHBEOB"
+          ],
+          "place": "egal",
+          "tier": "C",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben",
+          "acceptance": "Eintrag in `docs/decisions.md`",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-KI30",
+          "title": "KI-30 Windows-Flake: Restursache nach V16-01",
+          "owner": "Performance- und Benchmark-Spezialist",
+          "dependsRaw": "st exklusiv für #737 bis zum Tag v1.6.0",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #874 (merged 2026-10-09T18:03:26Z); ersetzt: Abschluss-Doku Open #874 (Ready, nicht gemergt)",
+          "acceptance": "neuer Beleg (Queue-Lauf-ID) vor Fix; 0 KI-30-Fehlschläge in 40 Queue-Läufen; Quellenkonflikt und unveränderte Nachbeobachtung siehe unten",
+          "tickets": [],
+          "prNumbers": [
+            874,
+            874
+          ]
+        },
+        {
+          "id": "V16-03",
+          "title": "Tester-Kit: Installation, Rückmeldeformular, Grenzen",
+          "owner": "Implementierer · Codex",
+          "dependsRaw": "Inbox E16; kein Pflichtkonto",
+          "dependsOn": [],
+          "place": "PC / erster externer Tester",
+          "tier": "C",
+          "status": "Geplant",
+          "statusRaw": "Geplant: Konto entfällt laut Nutzerentscheid vom 08.10.; kein Release-Vorgänger",
+          "acceptance": "Trockenlauf in Windows Sandbox ODER beim ersten externen Tester; Sandbox-Aktivierung nicht freigegeben",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-CHANGELOG",
+          "title": "CHANGELOG v1.6.0 und Release-Notiz",
+          "owner": "Stabschef",
+          "dependsRaw": "DR-17 und die release-blockierenden Pakete aus V16-RELEASE (ohne diesen CHANGELOG selbst)",
+          "dependsOn": [
+            "DR-17",
+            "V16-RELEASE"
+          ],
+          "place": "egal",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #922 (merged 2026-10-09T23:08:04Z): b erledigt #861; c erledigt #894; final in diesem PR (V16-RELEASE-PREP); ersetzt: c (Nachtrag 09.10. Abend) in Arbeit, final nach DR-17, Geplant",
+          "acceptance": "Eintrag `v1.6.0` über `v1.5.1`",
+          "tickets": [],
+          "prNumbers": [
+            922,
+            861,
+            894
+          ]
+        },
+        {
+          "id": "V16-CHANGELOG-a",
+          "title": "Unveröffentlichtes v1.6.0-Changelog-Gerüst; Quelle Root-Disposition 09.10.",
+          "owner": "bestehender Owner `srv-changelog-geruest`",
+          "dependsRaw": "nur an Basis gemergte Änderungen aufnehmen; unabhängig vom finalen Release-Text",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #783 (gemergt 2026-10-09T01:02:31Z); Nachtrag #835 (gemergt 2026-10-09T10:05:01Z)",
+          "acceptance": "nur CHANGELOG.md, ≤ 120 ALL; eigene prepush; keine Tag-/Releasefreigabe; finale Aktualisierung bleibt V16-CHANGELOG",
+          "tickets": [
+            "ed847e77"
+          ],
+          "prNumbers": [
+            783,
+            835
+          ]
+        },
+        {
+          "id": "V16-CHANGELOG-b",
+          "title": "v1.6.0-Abschnitt bis 09.10. nachziehen",
+          "owner": "bestehender Owner",
+          "dependsRaw": "V16-CHANGELOG-a",
+          "dependsOn": [
+            "V16-CHANGELOG-a"
+          ],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #861 (merged 2026-10-09T15:02:01Z)",
+          "acceptance": "nur CHANGELOG.md; finale Aktualisierung bleibt V16-CHANGELOG",
+          "tickets": [],
+          "prNumbers": [
+            861
+          ]
+        },
+        {
+          "id": "V16-RELEASE",
+          "title": "Tag v1.6.0 (Beta-Regel x.y.0)",
+          "owner": "Nutzer",
+          "dependsRaw": "Z1 (bis DR-17), V16-KI30 (Fix-Abnahme), D5-GUARD, V16-UPD-CANCEL, V16-06, V16-CHANGELOG; #728 gemergt",
+          "dependsOn": [
+            "Z1",
+            "DR-17",
+            "V16-06",
+            "V16-UPD-CANCEL",
+            "D5-GUARD",
+            "V16-KI30",
+            "V16-CHANGELOG"
+          ],
+          "place": "PC",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: Tag v1.6.0 = d2582ceb (09.10. 23:22Z), release.yml 38004103979 grün, latest.json anonym 1.6.0, PC installiert; ersetzt: Freigabe: Nutzer 09.10. ~19:42Z an Root; Tag durch Root nach Merge dieses PRs (V16-RELEASE-PREP); ersetzt: Geplant: E2/E3 beantwortet; konkrete Freigabe dieses Releases weiterhin offen",
+          "acceptance": "jeder Release braucht Nutzerfreigabe; Environment release mit Required Reviewer Cuarroc am 09.10. per gh api bestätigt; danach Release-Pipeline grün",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-FU",
+          "title": "Nachläufer aus v1.6.0-Reviews und Release-Prüfung",
+          "owner": "Stabschef",
+          "dependsRaw": "v1.6.0 veröffentlicht (V16-RELEASE)",
+          "dependsOn": [
+            "V16-RELEASE"
+          ],
+          "place": "Server",
+          "tier": "B/C je Punkt",
+          "status": "invalid",
+          "statusRaw": "Offen: R908-FU-1 (Wiring-Test stop→limitDrainForSignal), R908-FU-2 (Drain-Kommentar/Idempotenz); R912-FU-1 (existed-Flag statt stat, io-Seam); R910-FU, R896-FU, R899-FU K2, R889-FU; REL-3 (scripts/release.cmd veraltet), REL-4 (Rollback/releases-latest), NOT-1/2/3, SRV-2..5, OWN-3",
+          "acceptance": "je Punkt eigenes Paket mit eigener Abnahme",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-NACHBEOB",
+          "title": "Zwei Wochenmessungen und 40 Queue-Läufe; Messgrößen-Leitfaden",
+          "owner": "Stabschef",
+          "dependsRaw": "v1.6.0",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben",
+          "acceptance": "Wochenberichte BENCH-01/02 im Ticket",
+          "tickets": [
+            "b8b16ec8"
+          ],
+          "prNumbers": []
+        }
+      ],
+      "problems": [],
+      "counts": {
+        "Geplant": 1,
+        "Bereit": 0,
+        "In Arbeit": 0,
+        "In Prüfung": 0,
+        "Erledigt": 14,
+        "Blockiert": 0,
+        "Verschoben": 5,
+        "Entfallen": 0,
+        "invalid": 1
+      },
+      "total": 21
     },
     {
-      "id": "KI-20",
-      "text": "doppelte Antwort auf `ESC[6n` behoben (W1-27): das Backend antwortet allein, die Anfrage wird aus Scrollback und UI entfernt.",
-      "klass": "CLAIM",
-      "source": "STAND.md",
-      "packet": null,
-      "serialOwner": null
+      "id": "Z4",
+      "title": "Wichtig, aber liegen geblieben",
+      "packages": [
+        {
+          "id": "Z4-ARCH-D1-REST",
+          "title": "Vierten HTTP-Fehlertext-Klassifizierer error_status in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen",
+          "owner": "Implementierer; abgeschlossene api-Arbeit",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #663 (merged 2026-10-08T20:55:57Z)",
+          "acceptance": "`rg -n \"fn error_status\" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; eigene prepush und zwei Fremdvendor-Belege mit Disposition",
+          "tickets": [
+            "7810a005"
+          ],
+          "prNumbers": [
+            663
+          ]
+        },
+        {
+          "id": "Z4-E14",
+          "title": "Update-Signierschlüssel finden und verschlüsselt sichern; Anleitung auf der Handgriffe-Seite",
+          "owner": "Nutzer",
+          "dependsRaw": "E3/E14 beantwortet 09.10.; kein Schlüsselmaterial im Repo",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant: Sicherung beauftragt, Durchführung nicht belegt",
+          "acceptance": "verschlüsselte Sicherung durch Nutzer bestätigt; kein Schlüssel in Datei/Log/Commit",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "FLAKE-Q-TMP",
+          "title": "Fragen-Testfixture wartet bis Pool und temporäres Verzeichnis geschlossen sind; Root-Disposition 09.10.",
+          "owner": "bestehender Owner `srv-flake-q-tmp`",
+          "dependsRaw": "keine st-Änderung; #737 bleibt exklusiver st-Owner",
+          "dependsOn": [],
+          "place": "Server / Windows-Beleg",
+          "tier": "B laut Auftrag #784",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #784 (merged 2026-10-09T01:17:07Z); ersetzt: In Prüfung: Draft #784",
+          "acceptance": "deterministisches Rot→Grün, eigene prepush/Fremdreview; Windows-Fixture-PASS und fremden nativen Fehler getrennt bewerten (PR-Bericht)",
+          "tickets": [
+            "e257cee3"
+          ],
+          "prNumbers": [
+            784,
+            784
+          ]
+        },
+        {
+          "id": "KI25-SETUP-XDEAD",
+          "title": "X/x im Setup-Test als beendete Prozesszustände erkennen; Root-Disposition 09.10.",
+          "owner": "bestehender Owner `srv-ki25-setup-xdead`",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #780 (merged 2026-10-09T01:17:11Z); ersetzt: In Prüfung: Draft #780",
+          "acceptance": "benanntes kompilierendes Rot→Grün, gültige Zustände erhalten; eigene prepush/Fremdreview und Root-Abnahme",
+          "tickets": [
+            "ca926ea3"
+          ],
+          "prNumbers": [
+            780,
+            780
+          ]
+        },
+        {
+          "id": "KI-CLOSE-C",
+          "title": "Dokumentierte KI-Abschlüsse mit Quellen abgleichen; Root-Disposition 09.10.",
+          "owner": "Root bindet vorhandenen Doku-Owner",
+          "dependsRaw": "datierte Abschlussbelege je betroffenem KI-Eintrag",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #790 (merged 2026-10-09T01:45:33Z; title: docs: close eight obsolete HQ bug records (KI-CLOSE-C)); ersetzt: Geplant; Abschluss-/PR-Beleg hier nicht beobachtet",
+          "acceptance": "keine pauschale Schließung, konkrete Belege und offene Reste; eigene prepush bei Repo-Änderung",
+          "tickets": [
+            "PLAN-SYNC-0910b"
+          ],
+          "prNumbers": [
+            790
+          ]
+        },
+        {
+          "id": "KI-AUDIT-9-10",
+          "title": "KI-9 und KI-10 prüfen; Root-Disposition 09.10.",
+          "owner": "Root bindet vorhandenen Prüfowner",
+          "dependsRaw": "bestehende Quellen lesen; kein Fixauftrag aus Prüfung",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C für Bericht",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #804 (merged 2026-10-09T02:32:04Z; title: docs: refresh KI-9 and KI-10 from the October 9 audit); ersetzt: Geplant; Prüfbericht hier nicht beobachtet",
+          "acceptance": "je KI datierte Quelle, Befund oder kein Befund, fehlende Nachweise und nächster Schritt",
+          "tickets": [
+            "PLAN-SYNC-0910b"
+          ],
+          "prNumbers": [
+            804
+          ]
+        },
+        {
+          "id": "Z4-ARCH-11",
+          "title": "KI-24b: Test-DB-Wettlauf auf Windows reproduzieren und absichern; zusätzlich KI-30-Queue-Befund im Native-Receipt-Test",
+          "owner": "Implementierer · Claude; Ausführungs-Stabschef weist Lane zu",
+          "dependsRaw": "V16-KI30/#737 und anschließender Queue-Beleg; st bis Tag v1.6.0 exklusiv für #737",
+          "dependsOn": [
+            "V16-KI30"
+          ],
+          "place": "Windows-PC für RED",
+          "tier": "A",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert: Start nur, wenn Queue-Belege nach #737 den Defekt weiter zeigen; keine gemeinsame Ursache unterstellen",
+          "acceptance": "Dateien `testutil.rs`, `store/development_launches.rs`, `store.rs` vor Start binden; 180–280 ALL nur Prognose; kompilierende Windows-REDs für Launch-Drop/Reopen und getrennt Migration-Reopen; zusätzlich `real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout` (Queue-Runs 37810056116/37814405700) eingrenzen; Zuordnung zur Windows-Flake-Klasse ist keine bewiesene gemeinsame Ursache; API-Ursache offen, keine Blanket-Retries; Fix nur nach Beleg, >300 ALL trennen; eigene prepush + zwei Fremdvendor-Reviews",
+          "tickets": [
+            "0e7793b4"
+          ],
+          "prNumbers": [
+            737
+          ]
+        },
+        {
+          "id": "Z4-R19-09",
+          "title": "Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19); ausschließlich mn",
+          "owner": "Implementierer · Codex",
+          "dependsRaw": "nach v1.6.0; mn frei und neu zugewiesen",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben nach v1.6.0; nur mn, keine st-Naht",
+          "acceptance": "roter Test zuerst; prepush Exit 0",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-R19-ST",
+          "title": "Audit-Envelopes Ziel/Task, Claim/Checkpoint, Intent/Launch, Kandidat/Evidence/Review (M4-R19-02/03/04/07)",
+          "owner": "Chief weist verbleibende Schnitte nach v1.6.0 zu",
+          "dependsRaw": "nach v1.6.0; st bis zum Tag exklusiv für #737",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben nach v1.6.0: Rest 03/04/07; #702/#705/#717 gemergt, keine Gesamt-Abnahme",
+          "acceptance": "≤ 300 ALL je Schnitt; vorhandene Envelopes wiederverwenden, übrige Pfade getrennt belegen; Rot/grün, eigene prepush, zwei Fremdvendor-Reviews/Disposition und Root-Abnahme",
+          "tickets": [],
+          "prNumbers": [
+            702,
+            705,
+            717
+          ]
+        },
+        {
+          "id": "M4-R19-02a",
+          "title": "Ziel-/Task-Erstellung und gemeinsamer Audit-Helper atomar",
+          "owner": "bestehender Root-Job `srv-r19-02-fix1`",
+          "dependsRaw": "#632/D7 gemergt; abgeschlossener st-Schnitt",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #702 (merged 2026-10-08T20:13:18Z)",
+          "acceptance": "Erstellung/Audit und Rollback mit kompilierendem Rot/grün belegen; ≤ 300 ALL auch nach Fix; eigene prepush, zwei Fremdvendor-Reviews am Kandidaten mit vollständiger Disposition",
+          "tickets": [],
+          "prNumbers": [
+            702
+          ]
+        },
+        {
+          "id": "M4-R19-02b / M4-R19-03a",
+          "title": "Task-/Projektsteuerung und vorhandene Claim-/Checkpoint-Audit-Envelopes aus #705",
+          "owner": "derselbe bestehende Fixrundenowner; st seriell",
+          "dependsRaw": "#702 gemergt; abgeschlossener st-Schnitt",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #705 (merged 2026-10-08T21:42:19Z)",
+          "acceptance": "Helper aus 02a und Envelopes in späterem R19-03 wiederverwenden; keine doppelte Auditierung; Rot/grün und Rollbackbelege, ≤ 300 ALL nach Fix, eigene prepush/zwei Fremdvendor-Reviews/Disposition; #698 erst nach Root-Abnahme beider Schnitte disponieren",
+          "tickets": [],
+          "prNumbers": [
+            705
+          ]
+        },
+        {
+          "id": "M4-R19-02c",
+          "title": "Audit-Härtung für Ziel-/Task-Pfade",
+          "owner": "bestehender Implementierer; abgeschlossen",
+          "dependsRaw": "#702/#705",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "A",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #717 (merged 2026-10-08T22:19:06Z)",
+          "acceptance": "atomare Audit-/Rollbackbelege und Review-Disposition im PR; keine Gesamt-Abnahme der R19-Reste",
+          "tickets": [],
+          "prNumbers": [
+            717
+          ]
+        },
+        {
+          "id": "Z4-VERIFY",
+          "title": "Fünf Altzeilen gegen aktuelle Quellen prüfen und begrenzt schneiden",
+          "owner": "Root-Job `srv-z4-verify`; Chief integriert",
+          "dependsRaw": "Quelle `a167486`",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Prüfbericht geliefert: `pa-orch/reports/z4-verify-20261008.md`, SHA256 `77341da8`; alle fünf Altzeilen NEUES PAKET, elf FITs unten; keine frischen Laufzeit-/Testbelege",
+          "acceptance": "Belege/Teilpässe erhalten; konkrete Reste und NICHT ABGEDECKT statt Altzeilen pauschal schließen",
+          "tickets": [
+            "77c993f3"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-W103F-WIRE",
+          "title": "Produktionsadapter agent_record_delivery anbinden; main.rs, ggf. API-Integrationstest und notwendige Adapter-Allowlist; 120–220 ALL",
+          "owner": "Chief weist einen Codex-Implementierer zu",
+          "dependsRaw": "#664 gemergt; mn frei; bestehende #301/#337/#352 erhalten",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "invalid",
+          "statusRaw": "Pending; PM prüft Startvertrag, kein neuer Worker",
+          "acceptance": "kompilierendes Produktionsadapter-Rot; danach done/blocked persistiert, wiederholtes done unverändert, falsche/veraltete Credentials abgewiesen; eigene prepush, zwei Fremdvendor-Reviews",
+          "tickets": [
+            "8e7b877f"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-W103F-Z1",
+          "title": "Originaler PC-Zustellbeleg mit 20 Versuchen, nur bereinigter Bericht ≤ 120 Zeilen",
+          "owner": "Chief weist einen Messowner zu",
+          "dependsRaw": "WIRE integriert; PC/App/Default-opencode und MCP-Start > 30 s belegt",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Pending; reale Voraussetzungen und Zeitpunkt offen",
+          "acceptance": "je Versuch Version/Latenz/Marker/terminalbestätigter Empfang; 20/20 bzw. < 20/20 bestimmt Queue-Rest; keine erfundenen Pässe",
+          "tickets": [
+            "1c6d9ed8"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-W303-PC-REST",
+          "title": "Fehlende Crash-/Kapazitäts-/Provider-Belege aus bestehenden Drills, nur Bericht ≤ 180 Zeilen",
+          "owner": "Chief weist einen Messowner zu",
+          "dependsRaw": "gültige M4-Aktivierung, PC-Rechte und HQ-Läufe",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Pending; M4-Freeze erhalten; #500-Teilpässe nicht wiederholen",
+          "acceptance": "Crash je spezifiziertem Übergang plus Kapazität/Provider mit Version/Befehl/Exit/Manifest; Singleton/Estop/Backup aus #500 erhalten",
+          "tickets": [
+            "abf51cef"
+          ],
+          "prNumbers": [
+            500
+          ]
+        },
+        {
+          "id": "Z4-W307-PC-UPDATE",
+          "title": "Signiertes installiertes Client-Update und Neustart, nur Bericht ≤ 150 Zeilen",
+          "owner": "Chief weist einen Messowner zu",
+          "dependsRaw": "autorisierter Windows-PC, Backup/Rückweg, neuere veröffentlichte Version und Abbruchpfad",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "C",
+          "status": "invalid",
+          "statusRaw": "Pending; Release-Build ist kein Client-Laufbeleg",
+          "acceptance": "cancel/fail/success in dieser Reihenfolge; alte/neue Version, echte Signaturprüfung/Neustart, Fall-Manifeste/Exits; kein neuer Schlüssel/Release",
+          "tickets": [
+            "c58c630b"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-W118B-PROBE",
+          "title": "Native Codex-Skill-Erkennung mit unabhängigem Canary/Kontrolle; Setup-Doku ≤ 120 ALL",
+          "owner": "bestehender Root-Job; kein Doppelstart",
+          "dependsRaw": "eigener Harness-/Modell-/Startcheck, keine Installation",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "C",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #675 (merged 2026-10-08T14:34:14Z)",
+          "acceptance": "Canary-Wert fehlt in Prompt/Katalog; reale Discovery-/Read-Spur und Kontrolle samt Befehl/Exit; gesperrter Zugriff ist kein PASS",
+          "tickets": [
+            "e4bae87c"
+          ],
+          "prNumbers": [
+            675
+          ]
+        },
+        {
+          "id": "Z4-W118B-PROFILE",
+          "title": "Nur nachgewiesene Codex-Capability anheben; agent-defaults.json, profiles.rs und Setup-Doku, 80–160 ALL",
+          "owner": "bestehender Root-Serverjob, Claude Sonnet; kein Doppelstart",
+          "dependsRaw": "positive PROBE von Root abgenommen",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #678 (merged 2026-10-08T15:58:08Z)",
+          "acceptance": "kompilierendes Capability-/Pack-Rot, danach nachgewiesener Pfad; fremde Profile unverändert, eigene prepush und Fremdreview",
+          "tickets": [
+            "67c1ca17"
+          ],
+          "prNumbers": [
+            678
+          ]
+        },
+        {
+          "id": "Z4-M4B-0-AUTH",
+          "title": "Transaktionslokale Run-/Owner-/Fence-/Rollen-/Projektautorisierung, store/development_runs.rs und ggf. development_launches.rs, 180–260 ALL",
+          "owner": "Chief weist einen Nahtowner zu",
+          "dependsRaw": "st nach #632 frei; freigegebene Sicherheitskorrektur bei deaktiviertem Continuous Mode",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "acceptance": "dieselbe Schreibtransaktion, stale/fremd/falsche Rolle/fehlendes Ziel abweisen; keine neue Auth-Transaktion/Migration; Rot vor Fix, eigene prepush und zwei Fremdreviews",
+          "tickets": [
+            "fea04970"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-M4B-1-GOAL",
+          "title": "Atomare Autorisierung und Goal/Replan, continuous.rs plus api/planning_access/Tests/main, 220–290 ALL",
+          "owner": "ein serieller st/api/mn-Owner",
+          "dependsRaw": "AUTH und freie Nähte; freigegebene Sicherheitskorrektur ohne Continuous-Aktivierung",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "acceptance": "deterministisches kompilierendes Fence-Interleaving-Rot; stale ohne Goal/Event, gültiger Coordinator erfolgreich; autonome Root operator-only, Operator/Audit erhalten; eigene prepush/zwei Fremdreviews",
+          "tickets": [
+            "2be81e2e"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-M4B-2-TASK",
+          "title": "Atomare Taskanlage, gleicher begrenzter Dateisatz wie GOAL, 180–270 ALL",
+          "owner": "ein serieller st/api/mn-Owner",
+          "dependsRaw": "AUTH und GOAL-Nahtübergabe",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "acceptance": "Fence-Interleaving-Rot; stale ohne Task/Event; eigenes Projekt erfolgreich, fremde Goals/Dependencies abweisen, Operator erhalten; eigene prepush/zwei Fremdreviews",
+          "tickets": [
+            "8dbd5dc7"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-M4B-3-ASSIGN",
+          "title": "Atomare Zuweisung, team_assignments.rs plus api/planning_access/Tests/main, 200–280 ALL",
+          "owner": "ein serieller st/api/mn-Owner",
+          "dependsRaw": "AUTH und TASK-Nahtübergabe",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "acceptance": "Fence-Interleaving-Rot; stale ohne Assignment/Revision/Event; Selbsteskalation abweisen, gültige Zuweisung/Operator erhalten; eigene prepush/zwei Fremdreviews",
+          "tickets": [
+            "15d92066"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-M4B-4-IMPORT",
+          "title": "Autorisierung nach Source-Laden im Import-Schreibvorgang, development_plan/access plus api/planning_access/Tests/main, 230–300 ALL",
+          "owner": "ein serieller st/api/mn-Owner",
+          "dependsRaw": "AUTH und ASSIGN-Nahtübergabe",
+          "dependsOn": [],
+          "place": "eigener Worktree",
+          "tier": "A",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "acceptance": "Fence beim Source-Laden ändern; Rot vor Fix; stale ohne Projektion/Revision/Event, gültiger Import/CAS/Sourceprüfung erhalten; vier Pfade integriert prüfen, eigene prepush/zwei Fremdreviews",
+          "tickets": [
+            "e7c9e018"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-SERVER-DISK",
+          "title": "Server-Platte: alte Worktrees (~151 GB) aufräumen; erst Backup",
+          "owner": "Nutzer entscheidet, Stabschef führt aus",
+          "dependsRaw": "Inbox E17",
+          "dependsOn": [],
+          "place": "Server",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant",
+          "acceptance": "Platte < 60 %, Backup-Beleg",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-RCLONE",
+          "title": "Eigene rclone-client_id vor Ende 2026",
+          "owner": "Nutzer",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant",
+          "acceptance": "Backup läuft mit eigener ID",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-SETUP-14",
+          "title": "Rest SETUP-14: tote Keys, Permission-Regeln",
+          "owner": "Nutzer",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "PC",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant",
+          "acceptance": "Liste abgehakt",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-M5-01",
+          "title": "Testerrunde mit 3–5 externen Testern",
+          "owner": "Nutzer",
+          "dependsRaw": "V16-03, E16",
+          "dependsOn": [
+            "V16-03"
+          ],
+          "place": "egal",
+          "tier": "–",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben",
+          "acceptance": "Rückmeldungen festgehalten",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "Z4-M5-04",
+          "title": "Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um",
+          "owner": "Root",
+          "dependsRaw": "Z1",
+          "dependsOn": [
+            "Z1"
+          ],
+          "place": "egal",
+          "tier": "–",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben",
+          "acceptance": "Umfang festgelegt",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "FLK-NATIVE-EXIT",
+          "title": "Nativen Exit-Fehler rot belegen und beheben",
+          "owner": "srv-flk-native-exit; Root klärt Windows-Ort",
+          "dependsRaw": "deterministischer Windows-Rotnachweis",
+          "dependsOn": [],
+          "place": "Server / Windows-Beleg",
+          "tier": "A",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert: geplant nach Rotnachweis; Server-Auftrag srv-flk-native-exit endete 15:28 MESZ ohne Rotnachweis; ursprüngliches „läuft“ überholt",
+          "acceptance": "Rot/Grün, prepush, Reviews, Root",
+          "tickets": [
+            "FLK-NATIVE-EXIT"
+          ],
+          "prNumbers": []
+        },
+        {
+          "id": "FLK-SQLITE-LOCK",
+          "title": "SQLite-Lock-Befunde kausal abgrenzen",
+          "owner": "srv-flk-sqlite-lock; Root",
+          "dependsRaw": "Windows-Messung, neuer Defektbeleg",
+          "dependsOn": [],
+          "place": "Server / Windows-Beleg",
+          "tier": "A bei Fix",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert: Befunde vor #1463; Server-Auftrag srv-flk-sqlite-lock ohne neuen gemeinsamen Rotnachweis beendet; keine Aktion",
+          "acceptance": "Neuer kausaler Befund vor jedem Fix",
+          "tickets": [
+            "FLK-SQLITE-LOCK"
+          ],
+          "prNumbers": [
+            1463
+          ]
+        }
+      ],
+      "problems": [],
+      "counts": {
+        "Geplant": 4,
+        "Bereit": 0,
+        "In Arbeit": 0,
+        "In Prüfung": 0,
+        "Erledigt": 10,
+        "Blockiert": 3,
+        "Verschoben": 9,
+        "Entfallen": 0,
+        "invalid": 5
+      },
+      "total": 31
     }
   ],
   "milestones": [
@@ -538,7 +3291,7 @@
     },
     {
       "id": "M3",
-      "title": "App im Alltag + Zwischenrelease v1.5.0-beta",
+      "title": "App im Alltag + Zwischenrelease v1.5.0 (Beta)",
       "packages": [
         {
           "id": "HQ2-02",
@@ -554,9 +3307,11 @@
           "title": "Gemeinsame Design-Tokens hell/dunkel, nach HQ2-02",
           "size": "M",
           "lane": "hqS",
-          "stand": "freigegeben (Nutzer 04.10.); offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #311",
+          "state": "done",
+          "prNumbers": [
+            311
+          ]
         },
         {
           "id": "W1-10",
@@ -709,9 +3464,11 @@
           "title": "Paketierter HQ-v1-Beleg",
           "size": "S",
           "lane": "N",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #381; Drill 8 PASS am 05.10. (Beleg: Datum aus `events.log`, lokal)",
+          "state": "done",
+          "prNumbers": [
+            381
+          ]
         },
         {
           "id": "ARCH-11",
@@ -724,20 +3481,20 @@
         },
         {
           "id": "R-1",
-          "title": "Zwischenrelease v1.5.0-beta als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen belegt sind (Nutzer 04.10.)",
+          "title": "Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.)",
           "size": "S",
           "lane": "N + doc",
-          "stand": "offen",
-          "state": "open",
+          "stand": "✓ v1.5.0 (05.10.)",
+          "state": "done",
           "prNumbers": []
         }
       ],
-      "done": 13,
+      "done": 16,
       "total": 18
     },
     {
       "id": "M4",
-      "title": "Dauerbetrieb abgenommen, v1.5.0",
+      "title": "Dauerbetrieb abgenommen, v1.5.1",
       "packages": [
         {
           "id": "W5-05",
@@ -919,36 +3676,163 @@
           "title": "F-CORE-3 Baustein C: Zustell-Queue, pa worker done/blocked (braucht das Z-1-Protokoll am PC)",
           "size": "M",
           "lane": "wk + pa",
-          "stand": "offen",
+          "stand": "Teilpakete gemergt (#337 W1-03f-api, #301 W1-03f-a); Hauptpaket offen",
           "state": "open",
-          "prNumbers": []
+          "prNumbers": [
+            337,
+            301
+          ]
         },
         {
           "id": "W3-01",
           "title": "Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind)",
           "size": "M",
           "lane": "st → mn",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #285, #335, #402",
+          "state": "done",
+          "prNumbers": [
+            285,
+            335,
+            402
+          ]
         },
         {
           "id": "W3-02",
           "title": "Windows-Recovery-Helper",
           "size": "M",
           "lane": "fR + N",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ (Teilpakete W3-02a bis W3-02k gemergt, zuletzt #475)",
+          "state": "done",
+          "prNumbers": [
+            475
+          ]
+        },
+        {
+          "id": "W3-02a",
+          "title": "Journal-Treiber, eine Aktion je Schritt",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #291",
+          "state": "done",
+          "prNumbers": [
+            291
+          ]
+        },
+        {
+          "id": "W3-02b",
+          "title": "Staged-Update-Identitäten binden",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #321",
+          "state": "done",
+          "prNumbers": [
+            321
+          ]
+        },
+        {
+          "id": "W3-02c",
+          "title": "Datenbank-Wiederherstellung ans Journal binden",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #357",
+          "state": "done",
+          "prNumbers": [
+            357
+          ]
+        },
+        {
+          "id": "W3-02d",
+          "title": "Installer-Adapter (Exit-/UAC-/Sharing-Klassifikation, kein Retry)",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #348",
+          "state": "done",
+          "prNumbers": [
+            348
+          ]
+        },
+        {
+          "id": "W3-02e",
+          "title": "Installation nur über das Wiederherstellungs-Journal",
+          "size": "S",
+          "lane": "fR",
+          "stand": "✓ #411 (gemergt 05.10.; Befunde C1/C2 zurückgestellt, siehe W3-02h/i)",
+          "state": "done",
+          "prNumbers": [
+            411
+          ]
+        },
+        {
+          "id": "W3-02f",
+          "title": "Wiederherstellung beim Start",
+          "size": "M",
+          "lane": "fR",
+          "stand": "✓ #425",
+          "state": "done",
+          "prNumbers": [
+            425
+          ]
+        },
+        {
+          "id": "W3-02g",
+          "title": "Release-Blocker R-1 (Beta): Journal-Erzeuger. update-recovery.json legt heute nichts an, daher lehnt das Selbst-Update in der App immer ab (offener Punkt aus #411). Stufe A",
+          "size": "M",
+          "lane": "mn",
+          "stand": "✓ #446",
+          "state": "done",
+          "prNumbers": [
+            446
+          ]
+        },
+        {
+          "id": "W3-02h",
+          "title": "Release-Blocker R-1 (Beta): #411-Befund C1, die installierten Bytes und die Version an das Journal binden (signed_artifact_sha256, candidate_version; heute verwirft InstallOnly beide). Stufe A",
+          "size": "M",
+          "lane": "mn",
+          "stand": "✓ #457",
+          "state": "done",
+          "prNumbers": [
+            457
+          ]
+        },
+        {
+          "id": "W3-02j",
+          "title": "Release-Blocker R-1 (Beta): Handshake-Identität nach dem Update. Die Startprüfung muss die laufende exe und die Live-Datenbank nach einem echten Update als Erbe des Journals anerkennen (Vertrauen beim ersten Start, siehe docs/decisions.md), sonst blockiert IdentityMismatch den Start. Befund aus #457. Stufe A",
+          "size": "M",
+          "lane": "mn",
+          "stand": "✓ #462",
+          "state": "done",
+          "prNumbers": [
+            462
+          ]
+        },
+        {
+          "id": "W3-02i",
+          "title": "Release-Blocker R-1 (Beta): #411-Befund C2, Wartungs-Lease statt Momentaufnahme von is_maintenance_active(); berührt auch store.rs (Naht, nur seriell). Stufe A",
+          "size": "M",
+          "lane": "mn",
+          "stand": "✓ #471",
+          "state": "done",
+          "prNumbers": [
+            471
+          ]
         },
         {
           "id": "W3-03",
           "title": "Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S)",
           "size": "S",
           "lane": "N",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ Drill-Kits #364, #376, #379, #382, #377, #380, #384 gemergt; die Läufe am PC stehen laut R-1-Voraussetzungen noch aus",
+          "state": "done",
+          "prNumbers": [
+            364,
+            376,
+            379,
+            382,
+            377,
+            380,
+            384
+          ]
         },
         {
           "id": "W3-04",
@@ -997,17 +3881,19 @@
           "title": "Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5)",
           "size": "S",
           "lane": "mn",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #481",
+          "state": "done",
+          "prNumbers": [
+            481
+          ]
         },
         {
           "id": "W4-04",
-          "title": "Release v1.5.0",
+          "title": "Release v1.5.1 (Endrelease)",
           "size": "S",
           "lane": "N",
-          "stand": "offen",
-          "state": "open",
+          "stand": "✓ v1.5.1 (06.10.)",
+          "state": "done",
           "prNumbers": []
         },
         {
@@ -1015,96 +3901,159 @@
           "title": "Scheduler-dispatch_once hinter einem Nur-Test-Permit (Matrixzeile 7)",
           "size": "S",
           "lane": "wk",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #340",
+          "state": "done",
+          "prNumbers": [
+            340
+          ]
         },
         {
           "id": "M4-R7-02",
           "title": "Negative Fake-Adapter-Matrix (Matrixzeile 7): Tests, die Starts ohne akzeptierte Gates ablehnen, plus Matrixzeilen 5 und 9: zwei gleichzeitige dispatch_once auf eine Aufgabe starten genau einen Worker, der veraltete Schreiber wird abgewiesen; Abhängigkeiten erfüllt/offen/fehlend/projektfremd/65 Einträge -> genau ein Start nur im erfüllten Fall",
           "size": "S",
           "lane": "wk",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #412 (ersetzt #407)",
+          "state": "done",
+          "prNumbers": [
+            412,
+            407
+          ]
         },
         {
           "id": "M4-ROW15-PROOF",
           "title": "HTTP-Beleg Zeile 15 (eingeengt): Bindung/Idempotenz Kandidat und Evidenz, Lesen nur im eigenen Run, fremde/stale Evidenz abgewiesen, veränderte Root-Policy ändert policy_json nicht und meldet fail-closed",
           "size": "S",
           "lane": "api-Tests",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #360",
+          "state": "done",
+          "prNumbers": [
+            360
+          ]
         },
         {
           "id": "M4-ROW17-PROOF",
           "title": "HTTP-Beleg Zeile 17 (eingeengt): Kandidat-Delta macht Evidenz und Reviews sichtbar ungültig, auch nach Neustart; Freigabe bleibt per Schema unmöglich",
           "size": "S",
           "lane": "api-Tests",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #374",
+          "state": "done",
+          "prNumbers": [
+            374
+          ]
         },
         {
           "id": "M4-E2E-14",
           "title": "Echter HTTP-Router + Store + Fake-Agentenprozess: Checkpoint -> Abbruch -> Fortsetzen (Zeile 14)",
           "size": "S",
           "lane": "api",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #365",
+          "state": "done",
+          "prNumbers": [
+            365
+          ]
         },
         {
           "id": "M4-R19-01",
           "title": "Typisierter Audit-Envelope: Einträge ohne project/run/result/sourceRef werden abgewiesen (Matrixzeile 19)",
           "size": "S",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #358",
+          "state": "done",
+          "prNumbers": [
+            358
+          ]
         },
         {
           "id": "M4-R19-05",
           "title": "Vollständige Audit-Envelopes für Delivery-Start/-Enqueue und W1-03f done/blocked mit Erfolg und Ablehnung (Matrixzeile 19)",
           "size": "S",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #408",
+          "state": "done",
+          "prNumbers": [
+            408
+          ]
         },
         {
           "id": "M4-R19-06",
           "title": "Vollständige Audit-Envelopes für Not-Aus an/aus und Barrier-/Store-Fehler (Matrixzeile 19)",
           "size": "S",
           "lane": "st",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #423",
+          "state": "done",
+          "prNumbers": [
+            423
+          ]
         },
         {
           "id": "M4-R19-08",
           "title": "Vollständige Audit-Envelopes für Planungs-Autorisierungsablehnungen und Planungs-Schreibvorgänge (Matrixzeile 19)",
           "size": "S",
           "lane": "api",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ #444",
+          "state": "done",
+          "prNumbers": [
+            444
+          ]
+        },
+        {
+          "id": "M4-R27-01",
+          "title": "Readiness für App-Release und Continuous-Release getrennt ausweisen (E20)",
+          "size": "S",
+          "lane": "scripts",
+          "stand": "✓ #372",
+          "state": "done",
+          "prNumbers": [
+            372
+          ]
+        },
+        {
+          "id": "M4-R27-02",
+          "title": "Release-Attestierung für den App-Release prüfen, ohne Continuous freizugeben (E20)",
+          "size": "S",
+          "lane": "scripts",
+          "stand": "✓ #398",
+          "state": "done",
+          "prNumbers": [
+            398
+          ]
+        },
+        {
+          "id": "M4-R27-03",
+          "title": "Matrixzeilen 18 und 27 an den menschlich kontrollierten App-Release-Pfad anpassen (E20)",
+          "size": "S",
+          "lane": "doc",
+          "stand": "✓ #413",
+          "state": "done",
+          "prNumbers": [
+            413
+          ]
+        },
+        {
+          "id": "M4-R27-04",
+          "title": "Store-Test: Continuous-Integrationsstufe wird bei approval_eligible = 0 abgewiesen",
+          "size": "S",
+          "lane": "st",
+          "stand": "✓ #448",
+          "state": "done",
+          "prNumbers": [
+            448
+          ]
         }
       ],
-      "done": 16,
-      "total": 35
+      "done": 44,
+      "total": 49
     },
     {
       "id": "M5",
-      "title": "Aufräumen und erste Tester (nach v1.5.0)",
+      "title": "Aufräumen und erste Tester (nach v1.5.1)",
       "packages": [
         {
           "id": "M5-01",
           "title": "Testerrunde mit 3–5 externen Testern (N = Zahl noch offen)",
           "size": "S",
           "lane": "N",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1113,25 +4062,28 @@
           "title": "Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“",
           "size": "S",
           "lane": "doc",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
         {
           "id": "M5-03",
-          "title": "ARCH-G1 Regeldokument docs/architecture-rules.md + ARCH-G2 Drift-Gate in der CI (noch nicht gemergt; sonst hier ✓ mit PR-Nummer)",
+          "title": "ARCH-G1 Regeldokument docs/architecture-rules.md + ARCH-G2 Drift-Gate in der CI",
           "size": "M",
           "lane": "ci + doc",
-          "stand": "offen",
-          "state": "open",
-          "prNumbers": []
+          "stand": "✓ G1 #316, G2 #304 (04.10.)",
+          "state": "done",
+          "prNumbers": [
+            316,
+            304
+          ]
         },
         {
           "id": "M5-04",
           "title": "Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen)",
           "size": "M",
           "lane": "später",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1140,7 +4092,7 @@
           "title": "Vier HTTP-Fehlertext-Klassifizierer zu einem",
           "size": "S",
           "lane": "api",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1149,7 +4101,7 @@
           "title": "Projektanlage ist in main.rs doppelt umgesetzt",
           "size": "S",
           "lane": "mn",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1158,16 +4110,16 @@
           "title": "Elf direkte BEGIN IMMEDIATE zu einem Store-Helfer",
           "size": "M",
           "lane": "st",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
         {
           "id": "ARCH-D4",
-          "title": "Restlicher API-Router mit 51 Zweigen",
+          "title": "Restlicher API-Router mit 51 Zweigen: kleinere serielle Teil-PRs, insgesamt ≥ 300 Zeilen Netto-Abbau in api.rs; je PR ≤ 300 Gesamtdiffzeilen einschließlich Tests (ARCH-D4-PLAN)",
           "size": "M",
           "lane": "api",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1; Schnitt vor Dispatch messen",
           "state": "open",
           "prNumbers": []
         },
@@ -1176,7 +4128,7 @@
           "title": "Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in main.rs herauslösen",
           "size": "M",
           "lane": "mn",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1185,7 +4137,7 @@
           "title": "pa::run vermischt Verteilung und Darstellung",
           "size": "M",
           "lane": "pa",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1194,7 +4146,7 @@
           "title": "Einstellungs-Speicherung in ein Untermodul unter store/",
           "size": "M",
           "lane": "st",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
@@ -1203,34 +4155,40 @@
           "title": "Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript",
           "size": "M",
           "lane": "mn → pty → fe",
-          "stand": "offen, nach v1.5.0",
+          "stand": "offen, nach v1.5.1",
           "state": "open",
           "prNumbers": []
         },
         {
           "id": "M4-R19-02",
-          "title": "Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19)",
+          "title": "Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19); zugeschnitten in 02a #702 und 02b/03a #705, #698 Referenz",
           "size": "S",
           "lane": "st",
-          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "stand": "Erledigt: #702/#705/#717 gemergt; R19-Reste separat",
           "state": "open",
-          "prNumbers": []
+          "prNumbers": [
+            702,
+            705,
+            717
+          ]
         },
         {
           "id": "M4-R19-03",
-          "title": "Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19)",
+          "title": "Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19); 03a bereits im #705-Zuschnitt, vorhandene Envelopes wiederverwenden, Restumfang vor Dispatch prüfen",
           "size": "S",
           "lane": "st",
-          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "stand": "Verschoben nach v1.6.0; #705-Teilumfang bleibt erledigt",
           "state": "open",
-          "prNumbers": []
+          "prNumbers": [
+            705
+          ]
         },
         {
           "id": "M4-R19-04",
           "title": "Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19)",
           "size": "S",
           "lane": "st",
-          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "stand": "Verschoben nach v1.6.0",
           "state": "open",
           "prNumbers": []
         },
@@ -1239,7 +4197,7 @@
           "title": "Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19)",
           "size": "S",
           "lane": "st",
-          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "stand": "Verschoben nach v1.6.0",
           "state": "open",
           "prNumbers": []
         },
@@ -1248,41 +4206,23 @@
           "title": "Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19)",
           "size": "S",
           "lane": "mn",
-          "stand": "offen, nach v1.5.0 (Nutzer 04.10.)",
+          "stand": "Verschoben nach v1.6.0",
           "state": "open",
           "prNumbers": []
         }
       ],
-      "done": 0,
+      "done": 1,
       "total": 17
     }
   ],
   "next": [
     {
-      "packet": "M2 nach PLAN.md abarbeiten; die Queue mergt grün",
-      "why": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
+      "packet": "`lage-jetzt` und die Live-Belege lesen; Ziel, Ow",
+      "why": "`lage-jetzt` und die Live-Belege lesen; Ziel, Owner und nächsten Schritt mit den Z1–Z4-Tabellen in `docs/PLAN.md` abgleichen.",
       "source": "STAND.md#Nächster Griff",
       "lane": "parallel",
       "serialOwner": null,
-      "doneWhen": "M2 nach PLAN.md abarbeiten; die Queue mergt grüne PRs selbst.",
-      "startable": true
-    },
-    {
-      "packet": "Die toten Queue-Einträge read-only nachzählen un",
-      "why": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
-      "source": "STAND.md#Nächster Griff",
-      "lane": "parallel",
-      "serialOwner": null,
-      "doneWhen": "Die toten Queue-Einträge read-only nachzählen und mit der neuen Cancel-Regel gezielt verwerfen (W1-05b, PR #19).",
-      "startable": true
-    },
-    {
-      "packet": "Fragen an den Nutzer gehen in die Entscheidungs-",
-      "why": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
-      "source": "STAND.md#Nächster Griff",
-      "lane": "parallel",
-      "serialOwner": null,
-      "doneWhen": "Fragen an den Nutzer gehen in die Entscheidungs-Inbox in PLAN.md.",
+      "doneWhen": "`lage-jetzt` und die Live-Belege lesen; Ziel, Owner und nächsten Schritt mit den Z1–Z4-Tabellen in `docs/PLAN.md` abgleichen.",
       "startable": true
     }
   ],
@@ -1304,7 +4244,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1325,7 +4265,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1346,7 +4286,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1366,7 +4306,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1387,7 +4327,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1408,7 +4348,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1428,7 +4368,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1449,7 +4389,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1470,7 +4410,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1490,7 +4430,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1511,7 +4451,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1532,7 +4472,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1552,7 +4492,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1573,7 +4513,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1594,7 +4534,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 25,
+        "ageDays": 37,
         "votes": 0
       }
     },
@@ -1625,7 +4565,7 @@
       "badges": {
         "label": "new",
         "confidence": 100,
-        "ageDays": 1,
+        "ageDays": 13,
         "votes": 1
       }
     },
@@ -1646,7 +4586,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 24,
+        "ageDays": 35,
         "votes": 0
       }
     },
@@ -1667,7 +4607,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 35,
         "votes": 0
       }
     },
@@ -1689,7 +4629,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1710,7 +4650,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1731,7 +4671,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1752,7 +4692,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1773,7 +4713,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1801,7 +4741,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1822,7 +4762,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1843,7 +4783,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1864,7 +4804,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1885,7 +4825,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 34,
         "votes": 0
       }
     },
@@ -1907,7 +4847,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -1929,7 +4869,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -1950,7 +4890,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -1971,7 +4911,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -1992,7 +4932,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -2013,7 +4953,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -2034,7 +4974,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 22,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -2055,7 +4995,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -2076,7 +5016,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 21,
+        "ageDays": 33,
         "votes": 0
       }
     },
@@ -2099,7 +5039,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 18,
+        "ageDays": 29,
         "votes": 0
       }
     },
@@ -2120,7 +5060,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 12,
+        "ageDays": 23,
         "votes": 0
       }
     },
@@ -2141,7 +5081,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 11,
+        "ageDays": 22,
         "votes": 0
       }
     }
