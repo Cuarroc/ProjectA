@@ -71,6 +71,29 @@ describe("DS-01 motion scale", () => {
     expect(layoutMotion("/* transition: width 1s; */ .x { width: 10px; transition: transform 1s cubic-bezier(.2, 0, 0, 1), opacity 1s; } @keyframes good { to { transform: translateY(8px); opacity: 0; } }")).toEqual([]);
   });
 
+  it("rejects logical sizing spacing typography and border width motion", () => {
+    for (const property of ["inline-size", "block-size", "min-inline-size", "max-inline-size", "min-block-size", "max-block-size", "flex-basis", "gap", "row-gap", "column-gap", "font-size", "line-height", "border-width", "border-top-width", "border-inline-start-width"]) {
+      expect(layoutMotion(`.x { transition: ${property} 200ms; }`), property).toHaveLength(1);
+      expect(layoutMotion(`.x { transition-property: ${property}; }`), property).toHaveLength(1);
+      expect(layoutMotion(`@keyframes bad { to { ${property}: 10px; } }`), property).toHaveLength(1);
+    }
+  });
+
+  it("disables standalone entry stagger and layout animations under reduced motion", () => {
+    for (const [source, selectors] of [
+      [css, [".g-stagger > *", ".g-sheet", ".g-view", ".g-is-new"]],
+      [readFileSync(resolve(__dirname, "layout/layout.css"), "utf8"), [".g-tabpanel", ".g-sheet", ".g-toast"]],
+    ] as const) {
+      const disabled = new Set<string>();
+      parse(mediaBody(source, "prefers-reduced-motion:\\s*reduce")).walkRules((rule) => {
+        rule.walkDecls("animation", (decl) => {
+          if (decl.value === "none") rule.selectors.forEach((selector) => disabled.add(selector));
+        });
+      });
+      for (const selector of selectors) expect(disabled, selector).toContain(selector);
+    }
+  });
+
   it("allows only the two existing meter layout animations across all design stylesheets", () => {
     const findings = readdirSync(__dirname, { recursive: true }).filter((file) => String(file).endsWith(".css")).flatMap((file) =>
       layoutMotion(readFileSync(resolve(__dirname, String(file)), "utf8")).map((entry) => `${String(file).replaceAll("\\", "/")}|${entry}`));
