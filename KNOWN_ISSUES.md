@@ -7,7 +7,7 @@ v1.4.0 und 2026-09-24 auf Stand v1.4.1 (Release 22.09., `gh release list`); die
 Beobachtungs-KIs (KI-7, 21, 22, 24 bis 27) am 2026-10-02 (KI-OBS).
 **Nachgeführt 2026-10-15 (Plan-Abgleich) auf Stand v1.6.5:** `package.json` und
 `src-tauri/tauri.conf.json` stehen auf 1.6.5, der Tag v1.6.5 liegt auf `6bd3ac87`;
-das jüngste veröffentlichte Release war beim Lesen v1.6.4 (`gh release list`).
+v1.6.5 ist seit 2026-10-15 02:57Z veröffentlicht (`gh release view v1.6.5`).
 Geändert wurden nur die Titelzeile und der Stand-Satz zu KI-24; sonst nicht neu bewertet.
 **Nachgeführt 2026-10-14 (AP-5a) auf Stand v1.6.3:** `package.json` und
 `src-tauri/tauri.conf.json` stehen auf 1.6.3, `gh release list` nennt v1.6.3

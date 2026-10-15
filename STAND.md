@@ -22,12 +22,12 @@ Gelesen am 2026-10-15 um 04:35 MESZ, `origin/main` @ `b8546e96`. Zahlen, die sic
 stündlich ändern (offene PRs, Queue), stehen hier bewusst nicht mehr; sie
 kommen nur aus den Live-Belegen oben.
 
-- **Jüngster Release-Tag:** v1.6.5 (Patch, Tag auf `6bd3ac87`; die Version auf
-  `main` steht in `package.json` und `src-tauri/tauri.conf.json`). Der
-  Release-Lauf `release.yml` 38671195191 war beim Lesen noch `in_progress`;
-  `gh release view v1.6.5` fand noch kein veröffentlichtes Release.
-- **Jüngstes veröffentlichtes Release:** v1.6.4 (Tag auf `587cf97c`,
-  veröffentlicht 2026-10-14; `gh release list --limit 3`).
+- **Jüngstes veröffentlichtes Release:** v1.6.5 (Patch, Tag auf `6bd3ac87`;
+  die Version auf `main` steht in `package.json` und
+  `src-tauri/tauri.conf.json`). Release-Lauf `release.yml` 38671195191
+  `success`, veröffentlicht 2026-10-15 02:57Z (`gh release view v1.6.5`:
+  4 Dateien); das anonyme `latest.json` im Repo `ProjectA-updates` zeigt 1.6.5.
+  Veröffentlicht heißt nicht installiert.
 - **Ziel v2.0:** Umfang „eng“ entschieden (E1, 2026-10-15); Kriterien und
   Restpakete in `docs/plan/v2.0/plan.md` (PR #1475).
 - **Plan:** `docs/PLAN.md` ist der einzige Plan (Ziele Z1–Z4).
@@ -45,7 +45,7 @@ Alte Paketlisten, PR-Schnappschüsse und Befunde sind Historie:
 ## Feste Grundlagen (jeweils geprüft am 08.10.2026)
 
 - **Release:** Das jüngste Release nennt `gh release list --limit 5`; vor jeder
-  Release-Aussage wiederholen (Schnappschuss oben: Tag v1.6.5, veröffentlicht v1.6.4).
+  Release-Aussage wiederholen (Schnappschuss oben: v1.6.5 veröffentlicht).
 - **Merge:** ausschließlich über die Mergify-Queue, gemäß `AGENTS.md`.
 - **Continuous Mode:** bleibt ausgeschaltet und bis M4 eingefroren (`AGENTS.md`).
 - **Desktop-App nicht zur Inspektion starten:** ihre Queue kann sofort echte
