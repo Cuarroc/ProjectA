@@ -45,8 +45,6 @@
 }
 :is(.g-tabs button, .g-toast__x):focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
 
-@keyframes g-rise { from { opacity: 0; transform: translateY(8px); } }
-@keyframes g-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .g-tabpanel, .g-sheet, .g-toast { animation: none; }
   .g-tabs button { transition: none; }
