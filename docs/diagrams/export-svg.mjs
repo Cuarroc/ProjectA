@@ -120,7 +120,8 @@ ${Object.keys(T.t).map((k) => `svg [data-node-id] > rect:not(.c-mask).c-${k}{fil
   } finally {
     await browser.close();
   }
-  const out = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><');
+  // Collapse indentation between tags, but keep a space that touches a tspan: it is text.
+  const out = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+<(?!\/?tspan\b)/g, '><');
   writeFileSync(outSvg, out);
   console.log(`${outSvg}: ${Buffer.byteLength(out)} bytes, <script>: ${(out.match(/<script/g) || []).length}`);
 }

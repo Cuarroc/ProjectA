@@ -60,6 +60,36 @@ test('contrast finds playwright-core from a working directory outside the reposi
   assert.match(r.stdout, /minimum 15\.09:1 OK/);
 });
 
+// Pretty-printed like a real Archify page: indentation between tags must go,
+// the space between the two tspans must stay.
+const FIXTURE = `<html><body><svg data-quality-profile viewBox="0 0 400 300">
+  <style>.c-backend{fill:red}</style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <g data-node-id="n1">
+    <rect class="c-backend" x="40" y="40" width="120" height="60" fill="red" stroke="red"/>
+    <text x="50" y="70"><tspan>Hello</tspan> <tspan>World</tspan></text>
+  </g>
+  <path class="relationship-hit-overlay" d="M0 0L9 9" stroke="black"/>
+  <script>1</script>
+</svg></body></html>`;
+
+test('export keeps the tspan space and applies tokens and drops the viewer layer and crops', { skip }, () => {
+  inScratch((dir) => {
+    const html = join(dir, 'in.html'), out = join(dir, 'out.svg');
+    writeFileSync(html, FIXTURE);
+    const r = spawnSync(process.execPath, [script, 'export', html, out, 'light', 'T', 'D'], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const svg = readFileSync(out, 'utf8');
+    assert.match(svg, /<tspan[^>]*>Hello<\/tspan> <tspan[^>]*>World<\/tspan>/); // R1498-G6
+    assert.match(svg, /fill:#E3EAF8;stroke:#1F57D6/i); // light backend token pair
+    assert.match(svg, /fill="#E9EDF3"/); // ground rect
+    assert.doesNotMatch(svg, /relationship-hit-overlay|<script|<style|data-/);
+    assert.doesNotMatch(svg, />\s+<(?!\/?tspan)/); // indentation between tags is gone
+    const [, w, h] = svg.match(/viewBox="-?\d+ -?\d+ (\d+) (\d+)"/);
+    assert.ok(+w < 400 && +h < 300, `cropped to the drawing, got ${w}x${h}`); // 120+56 x 60+56 + text
+  });
+});
+
 test('export opens an HTML file whose path needs URL escaping', { skip }, () => {
   inScratch((dir) => {
     mkdirSync(join(dir, 'a #1 %20'));
