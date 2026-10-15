@@ -113,10 +113,12 @@ when it touches tier-A files. Never let the author's model family judge its
 own candidate. Record every finding and its
 disposition (accepted with commit, rejected with reason, follow-up) in the PR
 text. A second round only when round one had a high-severity finding; after
-round two the coordinator (Root) decides merge, split or drop and records it in
-the PR report; no third review round. Evidence is bound to the actual candidate; later
+  round two the coordinator (Root) decides merge, split or drop and records it in
+  the PR report; no third review round. Evidence is bound to the actual candidate; later
 changes invalidate the affected evidence, so review the delta again. A finding
 without `file:line` counts as unproven.
+
+Every review checks `docs/PLAN.md` at the head: the PR's own row (identified by `Plan-ID:`) states what is true after merge, and changes in the PR leave no other row, the user section or decision inbox stale; cross-check against `gh`. A mismatch is a medium finding, or high if the user section asks for something already done, and must be fixed in the same PR before `review-ok` (user order 2026-10-15: the plan must never be stale).
 
 Use recursive prompting selectively for complex plans, dependencies, hard
 diagnosis or designs with checkable criteria (user order 2026-10-08), following
