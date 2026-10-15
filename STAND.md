@@ -16,16 +16,20 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 - `git fetch origin`, danach `git log origin/main -1` — jüngster Hauptstand.
 - Server: `~/pa-orch/events.log` — aktuelle Orchestrator-Ereignisse.
 
-### Stand 2026-10-14 (datierter Schnappschuss, keine Live-Quelle)
+### Stand 2026-10-15 (datierter Schnappschuss, keine Live-Quelle)
 
-Gelesen am 2026-10-14, Arbeitsbaum auf `origin/main` @ `4b882f35`; jede Zeile
-mit dem Befehl, der sie belegt. Danach gilt wieder der Live-Beleg oben.
+Gelesen am 2026-10-15 um 03:33 MESZ, `origin/main` @ `20275b8d`. Zahlen, die sich
+stündlich ändern (offene PRs, Queue), stehen hier bewusst nicht mehr; sie
+kommen nur aus den Live-Belegen oben.
 
-- **Version auf `main`:** 1.6.3 (`package.json`, `src-tauri/tauri.conf.json`);
-  `gh release list` nennt v1.6.3 (2026-10-11) als jüngstes Release.
-- **Offene Pull Requests:** 16 (`gh pr list --state open --limit 200`).
-- **Plan:** `docs/PLAN.md` ist der Plan der Ziele Z1–Z4; die V2-Arbeit hat ihre
-  Specs unter `docs/plan/v2.0/`. Der Abgleich beider läuft getrennt (AP-5).
+- **Jüngstes Release:** v1.6.4 (Tag auf `587cf97c`, veröffentlicht
+  2026-10-15; `gh release list --limit 3`).
+- **Nächstes Release:** v1.6.5 (Patch), Versions-PR #1476 in der Merge-Queue;
+  Tag und Veröffentlichung folgen nach dem Merge. Die Version auf `main`
+  steht in `package.json` und `src-tauri/tauri.conf.json`.
+- **Ziel v2.0:** Umfang „eng“ entschieden (E1, 2026-10-15); Kriterien und
+  Restpakete in `docs/plan/v2.0/plan.md` (PR #1475).
+- **Plan:** `docs/PLAN.md` ist der einzige Plan (Ziele Z1–Z4).
 - **Wo der Live-Stand steht:** die Notiz `lage-jetzt` (außerhalb von Git, s. o.)
   und die drei Live-Belege oben. Dieser Schnappschuss ersetzt sie nicht.
 
@@ -39,10 +43,8 @@ Alte Paketlisten, PR-Schnappschüsse und Befunde sind Historie:
 
 ## Feste Grundlagen (jeweils geprüft am 08.10.2026)
 
-- **Release:** Stand 09.10.2026 war v1.6.0 (Tag `d2582ceb`) das jüngste Release
-  (Release-Run 38004103979 grün, anonymous `latest.json` 1.6.0); überholt, siehe
-  den Schnappschuss 2026-10-14 oben. Vor einer erneuten Release-Aussage
-  `gh release list --limit 5` wiederholen.
+- **Release:** Das jüngste Release nennt `gh release list --limit 5`; vor jeder
+  Release-Aussage wiederholen (Schnappschuss oben: v1.6.4).
 - **Merge:** ausschließlich über die Mergify-Queue, gemäß `AGENTS.md`.
 - **Continuous Mode:** bleibt ausgeschaltet und bis M4 eingefroren (`AGENTS.md`).
 - **Desktop-App nicht zur Inspektion starten:** ihre Queue kann sofort echte
