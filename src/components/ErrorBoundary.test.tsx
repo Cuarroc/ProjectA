@@ -19,7 +19,7 @@ describe("ErrorBoundary", () => {
       expect(screen.getByRole("heading", { name: "Die Testansicht ist abgestürzt." })).toBeVisible();
       expect(screen.getByRole("alert")).toHaveTextContent("Test-Boom");
       expect(view.container.querySelector('[class*="error-boundary"], .empty-action, .btn, .field')).toBeNull();
-      vi.stubGlobal("window", { location: { reload } });
+      vi.stubGlobal("window", Object.create(window, { location: { value: { reload } } }));
       fireEvent.click(button);
       expect(reload).toHaveBeenCalledOnce();
     } finally {

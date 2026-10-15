@@ -1,6 +1,13 @@
 /** German UI copy for Glass UI v2. English locale is parked; keep Messages. */
 
 export const de = {
+  "recovery.crashed": "Die Oberfläche ist abgestürzt.",
+  "recovery.viewCrashed": "{label} ist abgestürzt.",
+  "recovery.reload": "Neu laden",
+  "bootstrap.failed": "Arbeitsbereich konnte nicht geladen werden",
+  "bootstrap.retryHint": "Prüfe die Verbindung zur App und versuche es erneut.",
+  "bootstrap.retry": "Erneut versuchen",
+  "bootstrap.loading": "Arbeitsbereich wird geladen …",
   "terminal.title": "Terminal",
   "terminal.sessions": "Terminal-Sitzungen",
   "terminal.empty": "Keine Terminal-Sitzung geöffnet.",
