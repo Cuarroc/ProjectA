@@ -91,7 +91,7 @@ export function createDeskServer({ statePath, rootAgentId, assets = root,
           // One URL, canonical sources; request paths never select files outside this fixed list.
           const design = await realpath(join(root, '../../src/design'));
           const sheets = [];
-          for (const name of ['tokens.css', 'motion.css']) {
+          for (const name of ['tokens.css', 'motion.css', 'glass.css', 'controls/controls.css', 'inputs/inputs.css', 'state/state.css']) {
             const file = await realpath(join(design, name)); const inside = relative(design, file);
             if (!inside || inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside)) throw new DeskError('Nicht gefunden.', 404);
             sheets.push(await readFile(file, 'utf8'));
