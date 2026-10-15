@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "../../../design/glass.css";
 import { Button } from "../../../design/controls/Button";
 import "../../../design/controls/controls.css";
@@ -49,6 +49,11 @@ function VaultRead({
       // already current, so this cleanup cannot clear that read.
       onLoadingRef.current(generation, false);
     };
+  }, [generation, loading]);
+  // Idle must land in the commit that shows the settled read: a passive effect
+  // trails it by a scheduler task, and a slow frame yields in that gap.
+  useLayoutEffect(() => {
+    if (!loading) onLoadingRef.current(generation, false);
   }, [generation, loading]);
   const columns: Column<Provider>[] = [
     { key: "name", header: T.colProvider, cell: (p) => p.name },
