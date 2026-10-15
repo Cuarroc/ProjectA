@@ -8,6 +8,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(()
 vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 
 import App from "../../App";
+import { de } from "../../i18n/de";
 import { writeActiveProjectId } from "../../lib/activeProject";
 import LeitstandRoute from "./LeitstandRoute";
 
@@ -156,6 +157,17 @@ describe("Leitstand route behind D1", () => {
     const { container } = render(<App />);
     expect(await screen.findByText("Noch keine Agenten im Ablauf")).toBeInTheDocument();
     expect(container.querySelector(".fl-node")).toBeNull();
+  });
+
+  it("does not claim an empty flow when the board cannot be read at /leitstand/fluss", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const base = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? Promise.reject(new Error("backend down")) : base(command));
+    render(<App />);
+    expect(await screen.findByText(de["honest.offline"])).toBeInTheDocument();
+    expect(screen.queryByText("Noch keine Agenten im Ablauf")).toBeNull();
   });
 
   it("reaches Fluss from Haupt by its tab link", async () => {
