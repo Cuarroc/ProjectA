@@ -21,6 +21,7 @@
   --g-move-1: 4px;
   --g-move-2: 8px;
   --g-move-3: 16px;
+  /* DS-02/DS-05 will wire these preference tokens; current g-rise remains 8px. */
   --g-enter-dist: var(--g-move-1);
   --g-stagger: 0ms;
   --g-ambient-play: paused;
@@ -74,6 +75,7 @@
   animation: g-row-in var(--g-dur-2) var(--g-ease-out);
 }
 
+/* Stagger children must not carry their own animation. */
 .g-stagger > * {
   animation: g-rise var(--g-dur-2) var(--g-ease-out) both;
   animation-delay: calc(var(--i, 0) * var(--g-stagger));
@@ -122,6 +124,10 @@
   }
 
   /* Portal roots carry data-g-portal (sheets/toasts outside the shell). */
+  .g-stagger > *,
+  .g-sheet,
+  .g-view,
+  .g-is-new,
   .g-shell,
   .g-shell::before,
   .g-shell::after,

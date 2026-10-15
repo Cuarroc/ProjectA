@@ -11,6 +11,7 @@ export const motionDuration = {
 } as const;
 
 export const motionEasing = {
+  // Semantic movement curve for DS-02; the legacy --g-ease still uses ease-out.
   standard: "--g-ease-move",
   enter: "--g-ease-out",
   exit: "--g-ease-in",

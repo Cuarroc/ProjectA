@@ -12,7 +12,7 @@ const layoutAllowlist = [
   "inputs/inputs.css|.g-meter b|transition:width var(--g-dur-3, 320ms) var(--g-ease, cubic-bezier(.2, .8, .2, 1))",
   "motion.css|.g-meter b|transition:width var(--g-dur-3) var(--g-ease-out)",
 ];
-const layoutProperty = /^(?:(?:min-|max-)?(?:width|height)|top|left|right|bottom|inset(?:-.+)?|margin(?:-.+)?|padding(?:-.+)?|grid-template(?:-.+)?)$/;
+const layoutProperty = /^(?:(?:min-|max-)?(?:width|height|(?:inline|block)-size)|top|left|right|bottom|inset(?:-.+)?|margin(?:-.+)?|padding(?:-.+)?|grid-template(?:-.+)?|flex-basis|(?:row-|column-)?gap|font-size|line-height|border(?:-.+)?-width)$/;
 function layoutMotion(source: string): string[] {
   const findings: string[] = [];
   parse(source).walkDecls((decl) => {
