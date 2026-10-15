@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useState, type KeyboardEvent } from "react";
 
 import { HonestState } from "../../design/data/HonestState";
 import { Kbd } from "../../design/inputs/Kbd";
@@ -32,8 +32,8 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const base = useId();
-  const [more] = useFeatureFlag("weitere_bereiche");
-  const hits = useMemo(() => matchCommands(query), [query, more]);
+  useFeatureFlag("weitere_bereiche"); // re-render so the hits follow the flag
+  const hits = matchCommands(query);
 
   const close = useCallback(() => { setOpen(false); setQuery(""); setIndex(0); }, []);
   useEffect(() => {
