@@ -1,9 +1,105 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { parse, list, type AnyNode } from "postcss";
 import { describe, expect, it } from "vitest";
 
 const cssPath = resolve(__dirname, "motion.css");
 const css = readFileSync(cssPath, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+
+// Match declarations, not line numbers: adding tokens must not move the exceptions.
+// DS-05 must shrink this list; never add entries (original inputs.css:48, motion.css:78).
+const layoutAllowlist = [
+  "inputs/inputs.css|.g-meter b|transition:width var(--g-dur-3, 320ms) var(--g-ease, cubic-bezier(.2, .8, .2, 1))",
+  "motion.css|.g-meter b|transition:width var(--g-dur-3) var(--g-ease-out)",
+];
+const layoutProperty = /^(?:(?:min-|max-)?(?:width|height|(?:inline|block)-size)|top|left|right|bottom|inset(?:-.+)?|margin(?:-.+)?|padding(?:-.+)?|grid-template(?:-.+)?|flex-basis|(?:row-|column-)?gap|font-size|line-height|border(?:-.+)?-width)$/;
+function layoutMotion(source: string): string[] {
+  const findings: string[] = [];
+  parse(source).walkDecls((decl) => {
+    const prop = decl.prop.toLowerCase().replace(/^-(?:webkit|moz)-/, "");
+    let inKeyframes = false;
+    for (let parent: AnyNode | undefined = decl.parent; parent; parent = parent.parent) {
+      if (parent.type === "atrule" && /keyframes$/i.test(parent.name)) inKeyframes = true;
+    }
+    const transition = /^(transition|transition-property)$/.test(prop) && list.comma(decl.value).some((part) => {
+      const property = list.space(part)[0].toLowerCase();
+      return layoutProperty.test(property) || property === "all" || /^(?:[.\d-]|var\(|ease|linear|steps\(|cubic-bezier\()/i.test(property);
+    });
+    if (transition || (inKeyframes && layoutProperty.test(prop))) {
+      const owner = decl.parent?.type === "rule" ? decl.parent.selector : "";
+      findings.push(`${owner}|${decl.prop}:${decl.value}`);
+    }
+  });
+  return findings;
+}
+
+describe("DS-01 motion scale", () => {
+  it("provides the complete additive duration easing distance and stagger scale", async () => {
+    const values = Object.fromEntries([...rootBlock(css).matchAll(/(--g-[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2]]));
+    for (const [name, value] of Object.entries({
+      "dur-instant": "90ms", "dur-1": "120ms", "dur-2": "200ms", "dur-3": "320ms",
+      "dur-4": "480ms", "dur-5": "720ms", "dur-exit": "120ms", "dur-ambient": "6s",
+      "ease-out": "cubic-bezier(0.2, 0.8, 0.2, 1)", "ease-in": "cubic-bezier(0.4, 0, 1, 1)",
+      "ease-move": "cubic-bezier(0.2, 0, 0, 1)", "ease-path": "cubic-bezier(0.45, 0, 0.25, 1)",
+      "move-1": "4px", "move-2": "8px", "move-3": "16px", "enter-dist": "var(--g-move-1)",
+      stagger: "0ms", "ambient-play": "paused", "orb-trail": "0",
+    })) expect(values[`--g-${name}`], name).toBe(value);
+    const { motionDuration, motionEasing } = await import(resolve(__dirname, "motion/tokens.ts"));
+    expect(motionDuration).toEqual({ instant: "--g-dur-instant", fast: "--g-dur-1", base: "--g-dur-2", slow: "--g-dur-3", hop: "--g-dur-4", travel: "--g-dur-5", exit: "--g-dur-exit", ambient: "--g-dur-ambient" });
+    expect(motionEasing).toEqual({ standard: "--g-ease-move", enter: "--g-ease-out", exit: "--g-ease-in", emphasis: "--g-ease-path" });
+  });
+
+  it("owns one rise and fade definition and bounds stagger to eight steps", () => {
+    const layout = readFileSync(resolve(__dirname, "layout/layout.css"), "utf8");
+    for (const name of ["g-rise", "g-fade"]) expect((css + layout).match(new RegExp(`@keyframes ${name}\\b`, "g"))).toHaveLength(1);
+    const sheet = parse(css);
+    const rules = new Map<string, string>();
+    sheet.walkRules((rule) => { rules.set(rule.selector, rule.toString()); });
+    expect(rules.get(".g-stagger > *")).toContain("animation: g-rise var(--g-dur-2) var(--g-ease-out) both");
+    expect(rules.get(".g-stagger > *")).toContain("animation-delay: calc(var(--i, 0) * var(--g-stagger))");
+    for (let i = 1; i <= 8; i++) expect(rules.get(`.g-stagger > :nth-child(${i})`)).toContain(`--i: ${i - 1}`);
+    expect(rules.get(".g-stagger > :nth-child(n+9)")).toContain("--i: 8");
+  });
+
+  it("rejects layout transitions and animated keyframes including shorthand and nested rules", () => {
+    for (const property of ["width", "height", "top", "left", "margin", "padding", "margin-top", "padding-inline", "grid-template-columns"]) {
+      expect(layoutMotion(`@media (hover: hover) { .x { transition: opacity 1s, ${property} 200ms; } }`)).toHaveLength(1);
+      expect(layoutMotion(`.x { transition-property: ${property}; }`)).toHaveLength(1);
+      expect(layoutMotion(`@keyframes bad { to { ${property}: 10px; } }`)).toHaveLength(1);
+    }
+    for (const value of ["all 1s", "200ms", "var(--unknown)"]) expect(layoutMotion(`.x { transition: ${value}; }`)).toHaveLength(1);
+    expect(layoutMotion("/* transition: width 1s; */ .x { width: 10px; transition: transform 1s cubic-bezier(.2, 0, 0, 1), opacity 1s; } @keyframes good { to { transform: translateY(8px); opacity: 0; } }")).toEqual([]);
+  });
+
+  it("rejects logical sizing spacing typography and border width motion", () => {
+    for (const property of ["inline-size", "block-size", "min-inline-size", "max-inline-size", "min-block-size", "max-block-size", "flex-basis", "gap", "row-gap", "column-gap", "font-size", "line-height", "border-width", "border-top-width", "border-inline-start-width"]) {
+      expect(layoutMotion(`.x { transition: ${property} 200ms; }`), property).toHaveLength(1);
+      expect(layoutMotion(`.x { transition-property: ${property}; }`), property).toHaveLength(1);
+      expect(layoutMotion(`@keyframes bad { to { ${property}: 10px; } }`), property).toHaveLength(1);
+    }
+  });
+
+  it("disables standalone entry stagger and layout animations under reduced motion", () => {
+    for (const [source, selectors] of [
+      [css, [".g-stagger > *", ".g-sheet", ".g-view", ".g-is-new"]],
+      [readFileSync(resolve(__dirname, "layout/layout.css"), "utf8"), [".g-tabpanel", ".g-sheet", ".g-toast"]],
+    ] as const) {
+      const disabled = new Set<string>();
+      parse(mediaBody(source, "prefers-reduced-motion:\\s*reduce")).walkRules((rule) => {
+        rule.walkDecls("animation", (decl) => {
+          if (decl.value === "none") rule.selectors.forEach((selector) => disabled.add(selector));
+        });
+      });
+      for (const selector of selectors) expect(disabled, selector).toContain(selector);
+    }
+  });
+
+  it("allows only the two existing meter layout animations across all design stylesheets", () => {
+    const findings = readdirSync(__dirname, { recursive: true }).filter((file) => String(file).endsWith(".css")).flatMap((file) =>
+      layoutMotion(readFileSync(resolve(__dirname, String(file)), "utf8")).map((entry) => `${String(file).replaceAll("\\", "/")}|${entry}`));
+    expect(findings.sort()).toEqual([...layoutAllowlist].sort());
+  });
+});
 
 function rootBlock(source: string): string {
   const match = source.match(/:root\s*\{([^{}]*)\}/);
