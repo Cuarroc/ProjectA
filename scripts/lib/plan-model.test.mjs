@@ -45,6 +45,39 @@ test("reports unknown dependencies and only actual cycle members with levels", (
   assert.deepEqual(dependencyGraph(model.packages), { cycle: ["A-1", "A-2"], levels: [["A-3"], ["A-4"]] });
   assert.deepEqual(kinds(model).sort(), ["dependency-cycle", "dependency-cycle", "unknown-dependency"]);
 });
+test("resolves source-defined v2 aliases before dependency filtering", () => {
+  // Literal definitions and spellings from docs/plan/v2.0/plan.md (REFS-01).
+  const model = parse(`| ID | Ziel | Status | Hängt ab von |
+|---|---|---|---|
+| V2-CHILD | Consumer | planned | MN-A, MN-B (Scheibe B-Kern), MN-C, MN-K, ST-A2, RUN-3, EX-4, MN-MISSING |
+| V2-MN-A | Commands A | done | |
+| V2-MN-B | Commands B | done | |
+| V2-MN-C | Commands C | done | |
+| V2-MN-K | Commands Core | done | |
+| V2-ST-A2 | Tables | done | |
+| V2-RUN-3 | Review | done | |
+
+| Paket | Regel | Abnahme |
+|---|---|---|
+| **V2-EX-4** (fR + ci, B, M) | Reserve | Counter fixture |`);
+  assert.deepEqual(model.packages.map(p => p.id), ["V2-CHILD", "V2-MN-A", "V2-MN-B", "V2-MN-C", "V2-MN-K", "V2-ST-A2", "V2-RUN-3", "V2-EX-4"]);
+  assert.deepEqual(model.packages[0].deps, ["V2-MN-A", "V2-MN-B", "V2-MN-C", "V2-MN-K", "V2-ST-A2", "V2-RUN-3", "V2-EX-4", "MN-MISSING"]);
+  assert.deepEqual(checkPlan(model).map(f => [f.kind, f.id, f.detail]), [["unknown-dependency", "V2-CHILD", "MN-MISSING"]]);
+  assert.deepEqual(dependencyGraph(model.packages), {
+    cycle: [], levels: [["V2-EX-4", "V2-MN-A", "V2-MN-B", "V2-MN-C", "V2-MN-K", "V2-RUN-3", "V2-ST-A2"], ["V2-CHILD"]],
+  });
+
+  // Exact IDs win; v2 shorthand stays local to v2 rows and needs a definition.
+  const exact = parse(table("| V2-CHILD | A | planned | MN-A, ST-A2 |\n| MN-A | B | done | |\n| V2-MN-A | C | done | |\n| OTHER-1 | D | planned | MN-B |\n| V2-MN-B | E | done | |"));
+  assert.deepEqual(exact.packages[0].deps, ["MN-A", "ST-A2"]);
+  assert.deepEqual(checkPlan(exact).map(f => [f.kind, f.id, f.detail]), [["unknown-dependency", "V2-CHILD", "ST-A2"], ["unknown-dependency", "OTHER-1", "MN-B"]]);
+
+  // Letter-led lowercase suffixes are resolved before the existing ID filter.
+  const special = parse(table("| V2-CHILD | A | planned | S01a, nach MN-A, V2-MN-A/#42 gemergt; prose mentions MN-B |\n| V2-S01a | B | done | |\n| V2-MN-A | C | done | |"));
+  assert.deepEqual(special.packages[0].deps, ["V2-S01a", "V2-MN-A"]);
+  assert.deepEqual(kinds(special), []);
+});
+
 test("dependency clauses exclude prose and keep known or explicit package IDs", () => {
   const model = parse(table("| DR-09 | A | done | |\n| DR-10 | B | done | DR-09/#638 gemergt; Verdrahtung in DR-11/#718 |\n| DR-11 | C | done | DR-10, FIT-Abnahme, UI-Verdrahtung, DR-05-Verknüpfung, DR-SEC-01g, CUSTOM-task |\n| CUSTOM-task | D | planned | |"));
   assert.deepEqual(model.packages.map((p) => p.deps), [[], ["DR-09"], ["DR-10", "DR-SEC-01g", "CUSTOM-task"], []]);
