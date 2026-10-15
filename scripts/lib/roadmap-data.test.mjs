@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRoadmap } from "./roadmap-data.mjs";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeRunner } from "./dev-tools.mjs";
@@ -9,13 +9,15 @@ import { main } from "../roadmap-data.mjs";
 
 const now = "2026-10-15T12:00:00Z", day = 86400000;
 const row = (id = "APP-1", extra = {}) => ({ id, title: "Search", status: "planned", statusRaw: "Geplant", deps: [], ...extra });
+// A merged PR only finishes a package whose PLAN row says so (umbrella Plan-IDs span several PRs).
+const done = { status: "done", statusRaw: "Erledigt" };
 const pr = (extra = {}) => ({ number: 1, state: "OPEN", body: "Plan-ID: APP-1", headRefName: "codex/app-1", labels: [], isDraft: false, ...extra });
 const check = (conclusion, isRequired = true) => ({ conclusion, isRequired });
 const build = (packages, prs = [], extra = {}) => buildRoadmap({ plan: { packages, decisions: [] }, prs, releases: [], now, mainSha: "abc1234", ...extra });
 const state = (p, extra = {}) => build([row("APP-1", extra)], [p]).packages[0].state;
 
 test("merged wins over error and human signals", () => {
-  assert.equal(state(pr({ state: "MERGED", mergedAt: now, labels: [{ name: "conflict" }, { name: "do-not-merge" }] }), { owner: "Nutzer" }), "Erledigt");
+  assert.equal(state(pr({ state: "MERGED", mergedAt: now, labels: [{ name: "conflict" }, { name: "do-not-merge" }] }), { owner: "Nutzer", ...done }), "Erledigt");
 });
 test("conflicts and red required checks win over human and ready signals", () => {
   assert.equal(state(pr({ labels: [{ name: "conflict" }, { name: "review-ok" }] }), { owner: "Nutzer" }), "Fehler");
@@ -43,13 +45,13 @@ test("no PR keeps PLAN claims separate from observed state", () => {
   assert.equal(p.planStatus, "laut PLAN: In Arbeit");
 });
 test("identity matching is exact and explicit Plan-ID takes priority", () => {
-  const result = build([row(), row("APP-10")], [pr({ body: "Plan-ID: APP-10", headRefName: "codex/app-1-fix", state: "MERGED", mergedAt: now })]);
+  const result = build([row(), row("APP-10", done)], [pr({ body: "Plan-ID: APP-10", headRefName: "codex/app-1-fix", state: "MERGED", mergedAt: now })]);
   assert.deepEqual(result.packages.map(p => p.state), [null, "Erledigt"]);
   assert.equal(state(pr({ body: "", headRefName: "codex/app-1-fix", isDraft: true, commits: [{ committedDate: now }] })), "Läuft");
   assert.equal(state(pr({ state: "CLOSED", labels: [{ name: "conflict" }] })), null);
 });
 test("forecast needs ten distinct recent merges and excludes seam paths", () => {
-  const packages = Array.from({ length: 11 }, (_, i) => row(`APP-${i + 1}`));
+  const packages = Array.from({ length: 11 }, (_, i) => row(`APP-${i + 1}`, i < 10 ? done : {}));
   const prs = Array.from({ length: 10 }, (_, i) => pr({ number: i + 1, body: `Plan-ID: APP-${i + 1}`, state: "MERGED", mergedAt: new Date(Date.parse(now) - (i % 7 + 0.5) * day).toISOString() }));
   assert.equal(build(packages, prs.slice(1)).directions[0].forecast, "zu wenig Daten");
   assert.deepEqual(build(packages, prs).directions[0].forecast, { fromDays: 1, toDays: 1, label: "Prognose, keine Zusage", merged: 10, dailyMerges: [2, 2, 2, 1, 1, 1, 1] });
@@ -128,4 +130,36 @@ test("required checks skip non-main bases and name the PR on garbled output", as
   const direct = pr({ number: 8, baseRefName: "main" });
   assert.equal(await main(["--stdout"], io(errors), { run: mk([direct], { code: 1, stdout: "not json" }), read, now }), 1);
   assert.match(errors.join(""), /#8/);
+});
+test("a merged sub-PR does not finish a package whose PLAN row is not done", () => {
+  const merged = pr({ state: "MERGED", mergedAt: now });
+  const umbrella = build([row("APP-1", { status: "in_progress", statusRaw: "In Arbeit" })], [merged]).packages[0];
+  assert.deepEqual([umbrella.state, umbrella.finished, umbrella.pr, umbrella.planStatus], [null, false, 1, "laut PLAN: In Arbeit"]);
+  const settled = build([row("APP-1", done)], [merged]).packages[0];
+  assert.deepEqual([settled.state, settled.finished], ["Erledigt", true]);
+  const ten = Array.from({ length: 10 }, (_, i) => row(`APP-${i + 1}`, i ? done : { status: "in_progress", statusRaw: "In Arbeit" }));
+  const prs = ten.map((p, i) => pr({ number: i + 1, body: `Plan-ID: ${p.id}`, state: "MERGED", mergedAt: now }));
+  assert.equal(build(ten, prs).directions[0].forecast, "zu wenig Daten");
+});
+test("a Plan-ID marker does not borrow the next line", () => {
+  const draft = { isDraft: true, commits: [{ committedDate: now }], headRefName: "codex/other-9" };
+  assert.equal(state(pr({ ...draft, body: "Plan-ID:\nAPP-1" })), null);
+  assert.equal(state(pr({ ...draft, body: "Plan-ID: \t APP-1  \r\nnext line" })), "Läuft");
+});
+test("only the four rule-6 seams count as seams", () => {
+  const titles = { "A-1": "Edit src-tauri/src/api.rs.", "A-2": "Split src-tauri/src/store/db.rs", "A-3": "Touch src-tauri/src/bin/pa.rs", "A-4": "Edit src-tauri/src/main.rs, then docs", "A-5": "Edit src-tauri/src/store.rs",
+    "N-1": "Rename src/lib/store/index.ts", "N-2": "Naht und seam labels in the UI", "N-3": "Edit src-tauri/src/queue/main.rs", "N-4": "Edit src-tauri/src/api/dto.rs", "N-5": "Edit restore/api.rs.bak" };
+  const seams = Object.fromEntries(build([...Object.entries(titles).map(([id, title]) => row(id, { title })), row("S-1", { seam: true })]).packages.map(p => [p.id, p.seam]));
+  assert.deepEqual(Object.keys(seams).filter(id => seams[id]), ["A-1", "A-2", "A-3", "A-4", "A-5", "S-1"]);
+});
+test("unresolved dependency IDs are exposed additively", () => {
+  const [a, b] = build([row("APP-1", { deps: ["GHOST-9", "APP-2", "GHOST-3"] }), row("APP-2")]).packages;
+  assert.deepEqual(a.unresolvedDeps, ["GHOST-9", "GHOST-3"]);
+  assert.deepEqual(a.deps, ["GHOST-9", "APP-2", "GHOST-3"]);
+  assert.deepEqual(b.unresolvedDeps, []);
+});
+test("description tables never override the defining PLAN row", () => {
+  const plan = `## Work\n| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Erledigt #5 |\n| APP-2 | Index | Geplant |\n\n## Details\n| ID | Beschreibung |\n|---|---|\n| APP-1 | Long text |\n| APP-3 | Only described |\n| APP-9 | Old package |\n\n## Update\n| ID | Ziel | Status |\n|---|---|---|\n| APP-2 | Index | In Arbeit |\n\n## Erledigt (historisch)\n| ID | Ziel | Status |\n|---|---|---|\n| APP-9 | Old | Erledigt |`;
+  const packages = build([], [], { plan }).packages;
+  assert.deepEqual(packages.map(p => [p.id, p.planStatus, p.title]), [["APP-1", "laut PLAN: Erledigt", "Search"], ["APP-2", "laut PLAN: In Arbeit", "Index"], ["APP-3", "laut PLAN: Unbekannt", "Unbekannt"]]);
 });
