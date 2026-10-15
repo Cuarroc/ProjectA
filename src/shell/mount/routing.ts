@@ -20,6 +20,8 @@ export const isTools = (path: string) => trim(path) === TOOLS_PATH;
 
 export const isTerminal = (path: string) => trim(path.split("?")[0]) === "/leitstand/terminal";
 
+export const isVerlauf = (path: string) => trim(path) === "/leitstand/verlauf";
+
 /** The new Leitstand owns `/leitstand` (V2-S01a), `/leitstand/betrieb` (V2-S01b) and `/leitstand/fluss` (COMP-3-3); the rest below it stays the old view. */
 export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb", "/leitstand/fluss"].includes(trim(path));
 
@@ -43,7 +45,7 @@ export function hasLegacyPanel(path: string): boolean {
 export function shouldMountLegacyTerminal(path: string | undefined): boolean {
   return path === undefined || (hasLegacyPanel(path)
     && !isNewLeitstand(path) && !isNewSteuerung(path) && !isNewEinstellungen(path)
-    && !isStart(path) && !isTerminal(path));
+    && !isStart(path) && !isTerminal(path) && !isVerlauf(path));
 }
 
 /** Goal to show for a route; the current one is kept while it already belongs there. */

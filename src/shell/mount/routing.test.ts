@@ -16,10 +16,10 @@ describe("goal and route mapping (ia.md section 4)", () => {
   });
 
   it("mounts legacy terminals only on legacy panel routes or with D1 off", () => {
-    for (const path of [undefined, "/leitstand/klassisch", "/leitstand/werkzeuge", "/leitstand/werkzeuge/", "/leitstand/verlauf", "/beweise/diff", "/einstellungen/klassisch"]) {
+    for (const path of [undefined, "/leitstand/klassisch", "/leitstand/werkzeuge", "/leitstand/werkzeuge/", "/beweise/diff", "/einstellungen/klassisch"]) {
       expect(shouldMountLegacyTerminal(path)).toBe(true);
     }
-    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand", "/leitstand/betrieb", "/steuerung", "/einstellungen", "/start", "/team"]) {
+    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand/verlauf", "/leitstand/verlauf/", "/leitstand", "/leitstand/betrieb", "/steuerung", "/einstellungen", "/start", "/team"]) {
       expect(shouldMountLegacyTerminal(path)).toBe(false);
     }
   });
