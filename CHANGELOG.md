@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.6.6 (Beta) — 15.10.2026
+
+Enthält alle Änderungen seit v1.6.5 (22 Pull Requests). Die neue Oberfläche bleibt eine Vorschau: Der neue Leitstand hängt weiterhin hinter seinem Schalter (D1, standardmäßig aus), die klassische Ansicht ist unverändert erreichbar.
+
+**Neue Oberfläche (Vorschau):**
+
+- **Reiter „Fluss“ im Leitstand** (PR #1486, #1500, #1510): Unter `#/leitstand/fluss` zeigt der Reiter, welcher Agent welchen anderen gestartet hat. Läuft kein Agent, steht ein kurzer Hinweis da; kann die Agentenliste nicht gelesen werden, steht „Offline“ statt fälschlich „keine Agenten“; mit eingestellter reduzierter Bewegung gibt es keine bewegten Linien. Jeder Knoten zeigt dieselbe Lampe wie die Agentenkarte, und ein fertiger Agent ohne Beweis steht als „ohne Beweis“ da. Die Reiter Betrieb und Fluss werden jetzt auch erkannt, wenn der Pfad mit einem Schrägstrich endet; ohne Feature-Schalter erscheint „Fluss“ nicht.
+- **Beweisleiste auf der Agentenkarte** (PR #1483): Jede Karte zeigt die vier Felder Red-first, Gates, Review und PR. Was der Kern noch nicht meldet, steht als „noch nicht verbunden“ da und bekommt nie ein grünes Häkchen; nur der PR-Link erscheint, sobald das Board eine Adresse kennt.
+- **Eine Karte je Queue-Zeile** (PR #1485): Im Leitstand unter „Betrieb“ ist jede Zeile der Warteschlange eine eigene Karte mit Titel und Größen-Abzeichen (zum Beispiel „301 Zeilen, über 300“ oder „noch kein Diff“). Ist die Warteschlange leer, steht weiter „Warteschlange leer“ da.
+
+**Bedienung und Updates:**
+
+- **Update installieren und abbrechen in den neuen Einstellungen** (PR #1487, #1514): Im Bereich „Version & Updates“ der Glass-Einstellungen lässt sich ein verfügbares Update jetzt direkt installieren, und „Abbrechen“ stoppt den Download. Nach der Installation startest du ProjectA einmal selbst neu. Die Abbruch-Antwort wird am IPC-Wert selbst erkannt und nicht mehr an einem Anzeigetext; sichtbar ändert sich dadurch nichts.
+
+**Zuverlässigkeit:**
+
+- **Tresor-Panel meldet „fertig“ im selben Schritt** (PR #1504): Die Schaltfläche „Neu lesen“ meldete „fertig“ einen Scheduler-Schritt später als die Tabelle erschien; ein Test scheiterte deshalb unter Last sporadisch (KI-34). Die Ursache in der Komponente ist behoben.
+
+**Unter der Haube:**
+
+- **Tests aus den großen Dateien verschoben** (PR #1459, #1456, #1457): Die Tests von `store.rs`, `api.rs` und `bin/pa.rs` liegen jetzt in eigenen Dateien; die Logik ändert sich nicht, die Testlisten vorher und nachher sind gleich. Ein einziger Quellscan-Test in `proc.rs` musste dafür angepasst werden (PR #1456); PR #1517 begrenzt dort das Überspringen von Test-Dateien auf eine feste, ausdrücklich genannte Liste.
+- **Ratchet für `--state-`** (PR #1494): Die Prüfung zählt jedes `--state-` außerhalb von `src/design/` (heute 191 Treffer) und wird rot, sobald eines dazukommt; die klassische Oberfläche bleibt unangetastet.
+- **Diagramm-Quellen und SVG-Export** (PR #1498, #1501, #1507, #1508, #1516, #1523): Archify-Quellen für die Diagramme Ablauf, Release, Architektur und Fabrik-Strecke liegen im Repo, dazu ein Export nach hellem oder dunklem SVG mit Kontrastprüfung (Fehlercode 1 unter 4,5:1). Der Export löscht keine Leerzeichen mehr, die zum Text gehören, und ein neuer Inhaltstest läuft in den Bahnen prepush und linux.
+
+**Dokumentation:**
+
+- **Stand und Plan** (PR #1481, #1491, #1519): `STAND.md`, `PLAN.md` und `KNOWN_ISSUES.md` zeigen den Stand nach v1.6.5; eine kurze README unter `docs/design/2026-10-fabrik/` verweist auf das Designsystem „ProjectA Fabrik“.
+
 ## v1.6.5 (Beta) — 15.10.2026
 
 Enthält alle Änderungen seit v1.6.4 (8 Pull Requests). Die neue Oberfläche bleibt eine Vorschau; die klassische Ansicht ist weiterhin erreichbar.
