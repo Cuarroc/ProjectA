@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 
 import EmergencyStop from "../components/EmergencyStop";
+import { useFeatureFlag } from "../flags/useFeatureFlag";
 import "../design/tokens.css";
 import "../design/glass.css";
 import "../design/motion.css";
@@ -11,7 +12,7 @@ import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
 import { HeaderTools, StopBand } from "./header";
 import { ProjectPicker } from "./header/ProjectPicker";
-import { pathFromHash, resolveRoute, ROUTES, type ShellRoute } from "./routes";
+import { DEFAULT_PATH, isHidden, pathFromHash, resolveRoute, visibleRoutes, type ShellRoute } from "./routes";
 import { applyStoredGlassTheme } from "./theme";
 import "./shell.css";
 
@@ -22,7 +23,7 @@ function Sidebar({ active }: { active: ShellRoute | null }) {
       <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d={r.icon ?? ""} /></svg>{r.label}
     </a>
   );
-  const entries = ROUTES.filter((r) => r.icon !== null);
+  const entries = visibleRoutes().filter((r) => r.icon !== null);
   return (
     <nav className="g-shell-side g-chrome" aria-label={t("nav.aria")}>
       <div className="g-shell-brand"><b>{t("shell.brand")}</b><small>2.0</small></div>
@@ -61,6 +62,9 @@ export function Shell() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+  const [more] = useFeatureFlag("weitere_bereiche");
+  // A hidden area (typed hash, old goal switch) lands on the Leitstand instead of showing its screen.
+  useEffect(() => { if (isHidden(path)) window.location.replace(`#${DEFAULT_PATH}`); }, [path, more]);
   const active = resolveRoute(path)?.route ?? null;
 
   return (

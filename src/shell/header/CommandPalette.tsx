@@ -3,20 +3,21 @@ import { useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } 
 import { HonestState } from "../../design/data/HonestState";
 import { Kbd } from "../../design/inputs/Kbd";
 import { Sheet } from "../../design/layout/Sheet";
-import { ROUTES } from "../routes";
+import { useFeatureFlag } from "../../flags/useFeatureFlag";
+import { visibleRoutes } from "../routes";
 import "../../design/inputs/inputs.css";
 import "../../design/layout/layout.css";
 import "./header.css";
 
 interface Command { path: string; label: string }
 
-/** Every route and tab of the registry is a command: the palette only navigates until agents, PRs and ideas have a backend. */
-const COMMANDS: readonly Command[] = ROUTES.flatMap((r) =>
+/** Every visible route and tab is a command: the palette only navigates until agents, PRs and ideas have a backend. */
+const commands = (): Command[] => visibleRoutes().flatMap((r) =>
   r.tabs.length ? r.tabs.map((t) => ({ path: t.path, label: `${r.label} · ${t.label}` })) : [{ path: r.path, label: r.label }]);
 
 export const matchCommands = (query: string): Command[] => {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return COMMANDS.filter((c) => words.every((w) => c.label.toLowerCase().includes(w)));
+  return commands().filter((c) => words.every((w) => c.label.toLowerCase().includes(w)));
 };
 
 /** Key hint for the shortcut: Cmd on Apple platforms, Strg elsewhere. */
@@ -31,7 +32,8 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
   const base = useId();
-  const hits = useMemo(() => matchCommands(query), [query]);
+  const [more] = useFeatureFlag("weitere_bereiche");
+  const hits = useMemo(() => matchCommands(query), [query, more]);
 
   const close = useCallback(() => { setOpen(false); setQuery(""); setIndex(0); }, []);
   useEffect(() => {

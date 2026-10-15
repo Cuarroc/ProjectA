@@ -8,6 +8,8 @@ import { Shell } from "./Shell";
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
 const SCOPE = ["Leitstand", "Einstellungen"];
+/** The palette also offers Ersteinrichtung, which has no sidebar entry but stays reachable via /start. */
+const PALETTE_AREAS = [...SCOPE, "Ersteinrichtung"];
 const mount = () => act(async () => void render(<Shell />));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const sidebar = () => within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getAllByRole("link").map((a) => a.textContent);
@@ -25,7 +27,7 @@ describe("shell scope (V2-SCOPE-1)", () => {
     expect(sidebar()).toEqual(SCOPE);
     const hits = palette();
     expect(hits.length).toBeGreaterThan(0);
-    expect(hits.every((label) => SCOPE.some((area) => label.startsWith(area)))).toBe(true);
+    expect(hits.every((label) => PALETTE_AREAS.some((area) => label.startsWith(area)))).toBe(true);
     expect(resolveRoute("/steuerung/autonomie")?.route.id).toBe("leitstand");
     expect(resolveRoute("/beweise")?.tab?.path).toBe("/leitstand");
     expect(resolveRoute("/start")?.route.id).toBe("start");

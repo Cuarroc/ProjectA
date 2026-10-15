@@ -10,9 +10,12 @@ import App from "../../App";
 import { isStart } from "./routing";
 
 const FLAG_KEY = "projecta.settings.featureFlag.d1_neue_oberflaeche";
+/** These tests walk routes outside the default scope, so "weitere Bereiche" is on. */
+const SCOPE_KEY = "projecta.settings.featureFlag.weitere_bereiche";
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(SCOPE_KEY, "1");
   window.location.hash = "#/start";
   mocks.invoke.mockReset();
   mocks.invoke.mockImplementation((command: string) => {

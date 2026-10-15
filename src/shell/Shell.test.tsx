@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { setFeatureFlagEnabled } from "../flags/featureFlags";
 import { ROUTES, pathFromHash, resolveRoute } from "./routes";
 import { Shell } from "./Shell";
 import { getQuotaState } from "../lib/ipc";
@@ -16,7 +17,8 @@ const mount = () => act(async () => void render(<Shell />));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const root = document.documentElement;
 
-beforeEach(() => { vi.mocked(getQuotaState).mockResolvedValue([]); localStorage.clear(); delete root.dataset.theme; delete root.dataset.glassVariant; window.location.hash = ""; });
+// These tests cover every area, so the scope flag is on (the default scope is covered by scope.test.tsx).
+beforeEach(() => { vi.mocked(getQuotaState).mockResolvedValue([]); localStorage.clear(); setFeatureFlagEnabled("weitere_bereiche", true); delete root.dataset.theme; delete root.dataset.glassVariant; window.location.hash = ""; });
 afterEach(cleanup);
 
 describe("sidebar and route registry", () => {
