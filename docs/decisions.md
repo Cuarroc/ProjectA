@@ -1982,7 +1982,7 @@ wall clock, linux + windows.
   of a server run moves with criterion 7. Remaining in v2.0: 1 (for shell and
   Leitstand), 2, 3, 4, 5, 6 (shell part), 8, 9, 11, 13. Criterion 14 (lead
   number) moves to v2.1, reason in the table in
-  [the v2.0 subplan](plan/v2.0/plan.md#release-schnitt-v20--v21--v22).
+  [the v2.0 subplan](plan/v2.0/plan.md#10-enger-schnitt-vom-15102026-v20-eng-kriterien-und-restpakete).
 - **Source:** Elias in the Root chat on 2026-10-15 at about 02:55 CEST,
   answering card E1 (the narrow or the wide reading of the cut of 2026-10-11)
   with "V2.0.0 eng". Root recorded it in the SRV-V2-NARROW-PLAN order.
@@ -1993,4 +1993,4 @@ wall clock, linux + windows.
   out to be needed for the release (then it comes back with its packages).
 - **Not covered:** no package content change, no date, no release approval. A
   major release still needs a fresh yes from Elias (AGENTS.md rule 10). The
-  remaining packages are listed in the subplan, section "Restpakete v2.0 (eng)".
+  remaining packages are listed in the subplan, section "10.1 Restpakete v2.0 (eng)".

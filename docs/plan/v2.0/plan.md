@@ -14,76 +14,8 @@ Verbindlicher Schnitt vom 10.10., ergänzt um die Nutzerentscheide vom 11.10.:
 
 Quelle, Wortlaut und Rückweg: [Entscheidungsprotokoll vom 11.10.](../../decisions.md#2026-10-11---v20-schnitt-hülle--leitstand-d1-standard-an-verlauf-in-v21).
 Dieser Schnitt hat Vorrang vor älteren Release-Zuordnungen im folgenden Entwurf.
-Er ändert keine Paketinhalte und setzt keine Termine; welche Abnahmekriterien zu v2.0, v2.1 oder „nach dem Kern“ gehören, regelt der enge Schnitt vom 15.10. (nächster Abschnitt).
+Er ändert keine Paketinhalte und setzt keine Termine; welche Abnahmekriterien zu v2.0, v2.1 oder „nach dem Kern“ gehören, regelt der enge Schnitt vom 15.10. („v2.0.0 eng“: Hülle + Leitstand, [Entscheidungsprotokoll](../../decisions.md#2026-10-15---v20-eng-narrow)); Kriterientabelle und Restpakete stehen in Abschnitt 10. Verschobene Kriterien sind in Abschnitt 1 mit „→ v2.1“ markiert.
 Verlauf wird verschoben, nicht gestrichen; die Veröffentlichung ist damit nicht freigegeben.
-
-### Enger Schnitt vom 15.10.2026 („v2.0 eng“)
-
-Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte E1 mit „V2.0.0 eng“; Wortlaut, Grund und Rückweg: [Entscheidungsprotokoll vom 15.10.](../../decisions.md#2026-10-15---v20-eng-narrow). **v2.0.0 ist Hülle + Leitstand, Glass (D1) standardmäßig an und zurückschaltbar.** Die Abnahmekriterien, die an verschobener Arbeit hängen, gehen mit ihr nach v2.1 (zusammen mit Start, Beweise, Kontingente, Verlauf). Der Kriterientext in Abschnitt 1 bleibt unverändert stehen; verschobene Zeilen sind dort mit „→ v2.1“ markiert.
-
-| # | Kriterium (kurz) | Zuordnung | Grund |
-|---|---|---|---|
-| 1 | Kern-Bildschirme mit echter Datenquelle; übrige hinter Schalter | **v2.0**, für Hülle und Leitstand | Offene Lücke: die Seitenleiste zeigt alle Einträge ohne Schalter (`src/shell/Shell.tsx:25`), siehe V2-SCOPE-1 |
-| 2 | Aussehen entspricht dem Board | **v2.0**, nur Routen von Hülle und Leitstand | Bildbasis und Ansehen beim Nutzer (V2-SHOT-BASE) |
-| 3 | Kontrast und Tastatur | **v2.0** | `contrast-check.mjs` läuft schon im Build; Tab-Tests je Route in V2-ACC1b |
-| 4 | Ein Zustandswörterbuch | **v2.0** | V2-ACC1a; Wortlaut der Messung ist heute nicht erfüllbar, siehe Hinweis unter der Paketliste |
-| 5 | Texte aus einem Wörterbuch | **v2.0** | `src/i18n/hardcoded.test.ts` besteht; Gesamtlauf in V2-ACC1b |
-| 6 (Server-Lauf → v2.1) | Not-Aus überall sichtbar | **v2.0** (Kopfleiste der Schale); Stopp eines Server-Laufs → v2.1 | Schale: `src/shell/header/StopBand.tsx` gemergt (#1370); der Server-Teil hängt an Kriterium 7 |
-| 7 (→ v2.1) | Ausführungsort | **→ v2.1** | hängt an Start (V2-S02), V2-B6b, V2-DOC-SRV |
-| 8 | Backend sicher | **v2.0** | gilt für jede neue Tabelle und für `prepush` auf `main` |
-| 9 | Dauerbetrieb bleibt, was er ist | **v2.0** | nur eine Unterlassung: nichts einschalten |
-| 10 (nach dem Kern) | Fernansicht | **nach dem Kern** | unverändert |
-| 11 | Release | **v2.0** | Update-Drill und Schlüsselsicherung (E14) beim Nutzer |
-| 12 | Core und V2-SEC-1 | **→ v2.1** | der Core gehört nicht zu Hülle + Leitstand |
-| 13 | Nutzerabnahme | **v2.0**, nur Hülle + Leitstand | Klick-Checkliste (V2-UAT-1a/1b) |
-| 14 | Leitzahl (V2-KPI-1) | **→ v2.1** (Vorschlag der Plan-Pflege, Elias bestätigt oder ändert) | Die Zahl zählt „Kernteile mit bestandener Nutzerabnahme“; die Kernteile sind verschoben, V2-KPI-1 hängt an V2-UAT-1 und am Nutzungsprotokoll V2-B26 (kein gemergter PR gefunden). Für v2.0 genügt Kriterium 13 |
-| 15 | Ein Motor (V2-RUN-1 bis 4) | **→ v2.1** | die Maschine gehört zu Beweise und Start |
-| 16 | Drei Anbieter-Wege | **→ v2.1** | V2-B2a/b, V2-LOCAL-1 hängen an Start und Kontingenten |
-| 17 | Datenschutz-Schleuse | **nach dem Kern** | unverändert |
-
-Hinweis: Frage 1 in Abschnitt 7 („der Schalter fällt mit v2.0 weg“) ist durch die Entscheide vom 11. und 15.10. überholt; der Schalter bleibt als Rückweg.
-
-## Restpakete v2.0 (eng)
-
-Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log origin/main`, `gh pr list --state all` und dem Code an diesem Stand; was ich nicht belegen konnte, steht als **UNKNOWN**. Größe S ≤ 150, M ≤ 300 Diffzeilen; Stufe nach AGENTS.md Regel 5. Kein Paket berührt eine der vier Nahtstellen (`api.rs`, `main.rs`, `store.rs`, `bin/pa.rs`).
-
-**Erledigt (belegt):** Fundament V2-F1 bis V2-F9, V2-FLAG-1, V2-IA-1 (Routen `src/shell/`, `src/design/`, `src/flags/`); Leitstand V2-S01a/b/d (Karten, Braucht dich, Betrieb, Terminal), V2-B3, V2-B4a, V2-B22; V2-E2E-0 (`e2e/shell.core.spec.ts`); Not-Aus in der Kopfleiste (#1370). COMP-Pakete gemergt: 1-1, 1-2, 2-1, 3-1, 3-2, 4-1, 6-1, 9-1 (#1437, #1452, #1434, #1436, #1458, #1450, #1453, #1448). **In der Queue:** COMP-2-2 (#1455, Queue-PR #1473). **Quelle der COMP-Definitionen:** der Orchestrator-Bericht PLAN-COMP-V2-1 vom 14.10.2026; er liegt außerhalb des Repos, im Repo gibt es keine COMP-Definition (`grep -rn "COMP-" docs` trifft nur den Paperclip-Verweis in `docs/PLAN.md`). Die Tabelle unten ist daraus übernommen.
-
-### A. Pakete für die Kriterien (v2.0)
-
-| ID | Ziel | Dateien | Naht | Stufe | Größe | Hängt ab von | Abnahmebefehl | Owner |
-|---|---|---|---|---|---|---|---|---|
-| V2-D1-ON | D1 standardmäßig an, Rückweg bleibt. Heute `defaultEnabled: false` (`src/flags/featureFlags.ts:32`), `isFeatureFlagEnabled` liest nur `"1"`, „aus“ löscht den Schlüssel (`:66-76`); ohne Änderung käme D1 nach dem Ausschalten zurück. Also: Standard je Schalter, D1 an, ausdrückliches „aus“ als `"0"` gespeichert; `fernansicht`, `kundenprojekte` bleiben aus | `src/flags/featureFlags.ts`, `featureFlags.test.ts:16-23` (Test „defaults every registered flag to off including D1“ wird gedreht), Tests unter `src/shell/mount/`, `src/App*.test.tsx` je nach Treffer (**UNKNOWN**, wie viele Tests den alten Standard voraussetzen) | nein | B | M | – (Merge erst nach V2-ACC1b, siehe Hinweis) | `npx vitest run src/flags src/shell src/App.test.tsx` und `npm run build` Exit 0; roter Test zuerst: D1 ohne Schlüssel = an, nach `setFeatureFlagEnabled("d1_neue_oberflaeche", false)` = aus, auch nach Neuladen | Agent |
-| V2-SCOPE-1 | Seitenleiste und Palette zeigen nur Bereiche von Hülle + Leitstand; die übrigen (v2.1 und später) hinter Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | **Entscheid Elias:** welche Einträge gehören zur Hülle (Vorschlag: Leitstand, Einstellungen; Ersteinrichtung bleibt über `/start`), V2-D1-ON zeitgleich geplant | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent (nach Entscheid) |
-| V2-ACC1a | Kriterium 4: zweite Zustandsdefinition abbauen. Heute 164 Treffer von `--state-` in `src/styles.css` (Definition `:156-171`) und 10 in vier Tests; `src/design/` enthält `--state-` gar nicht (sechs Zustände stehen als `.g-st--*` in `src/design/state/state.css`) | `src/styles.css`, vier Tests, ein Gate-Skript unter `scripts/ci/` | nein | B | M, **UNKNOWN** (bis 2×M, erst messen) | – | `rg -ln -e '--state-' src` zeigt nur noch erlaubte Orte; Gate gegen neue Definition grün; `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
-| V2-ACC1b | Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
-| V2-SHOT-BASE | Bildbasis: je Route von Hülle + Leitstand ein Bild hell und eines dunkel (1440×900), angesehen und gegen die Boards verglichen (Kriterium 2). Der Agent erzeugt die Bilder mit `npm run dev:shot`, der Nutzer sieht sie an. Anzahl der Routen **UNKNOWN** (legt V2-ACC1b fest) | `docs/design/2026-10-ui-v2/glass/` (Boards), Bilder lokal, nicht im Repo | nein | C | – | V2-D1-ON lokal an, V2-SCOPE-1 | Nutzer bestätigt „gesehen, Abweichungen siehe PR“ | **Elias** |
-| V2-UAT-1a | Vorlage und Klick-Checkliste (höchstens 10 Punkte, einfache Worte) für Hülle + Leitstand, „neu / bewiesen / nicht abgedeckt“, Glossar | `docs/` (neues Dokument), kein Code | nein | C | S | V2-ACC1b | `npm run dev:agent-check` Exit 0; Checkliste ≤ 10 Punkte | Agent |
-| V2-UAT-1b | Nutzer klickt die Checkliste auf dem Beta-Build durch, kurzes Video, gibt frei, was er gesehen hat (Kriterium 13) | – | nein | – | – | V2-UAT-1a, V2-BETA-0 | Freigabe im Chat, im PR-Text vermerkt | **Elias** |
-| V2-BETA-0 | PRÜFEN: genügt der Dev-Installer nach jedem `main`-Push (DEV-AUTO-1, `docs/setup/dev-build.md`) als „interner Beta-Kanal“ für Checkliste und Update-Drill, oder braucht es V2-BETA-1 (`release.yml`, Stufe A)? V2-BETA-1 und V2-UPD-1 (Abbrechen-Knopf, Versionsanzeige) haben **keinen gemergten PR gefunden**; ob V16-UPD-CANCEL V2-UPD-1 ersetzt, ist **UNKNOWN** | nur Bericht | nein | C | – | – | Bericht mit Befehl und Beleg je Frage | Agent (nur lesend) |
-| V2-E14 | Updater-Signierschlüssel finden und verschlüsselt sichern (`docs/PLAN.md` Z4-E14, E14); kein Schlüssel in Datei, Log oder Commit | – | nein | – | – | – | Nutzer bestätigt die verschlüsselte Sicherung; Stand heute: „Durchführung nicht belegt“ | **Elias** |
-| V2-DRILL | Update-Drill am eigenen PC: v2.0 über den Updater installieren, Abbrechen und Versionsanzeige prüfen (Kriterium 11) | – | nein | – | – | V2-BETA-0, V2-E14 | Nutzer bestätigt Installation und Neustart mit neuer Version | **Elias** |
-| V2-REL | Release v2.0.0: Version 1.6.4 → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Elias** (Ja, Veröffentlichung) |
-
-**Reihenfolge-Hinweis zu V2-D1-ON:** `main` baut auch Patch-Releases (zuletzt 1.6.4). Würde D1 vorher an gehen, trüge jedes v1.6.x die neue Oberfläche. Darum hält Root V2-D1-ON mit `do-not-merge`, bis V2-ACC1b grün ist.
-
-**Hinweis zu Kriterium 4:** Die Messung „`--state-` trifft nur noch `src/design/`“ ist nicht erfüllbar, weil die neue Definition andere Namen trägt (`.g-st--*`, `--g-*`). Gleichzeitig nutzt die klassische Oberfläche, der Rückweg von D1, die 164 `--state-`-Treffer in `styles.css`. Ihr Abbau ändert also den Rückweg. V2-ACC1a misst zuerst und schlägt einen neuen Wortlaut vor (zum Beispiel „keine zweite Definition der sechs Zustände außer Aliasen auf `--g-*`“); den Wortlaut entscheidet Elias, nicht der Agent.
-
-### B. Leitstand-Ausbau (COMP, kein Kriterium)
-
-Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kontingent, Zeilenzähler). Sie sind **kein** Abnahmekriterium; ob sie vor v2.0.0 fertig sein müssen, entscheidet Elias (Vorschlag: nein, was bis zum Release gemergt ist, kommt mit). Alle sind Stufe B, nahtfrei, `src/screens/leitstand/`, Befehl: `npx vitest run src/screens/leitstand` und `bash scripts/ci/gates.sh lane prepush` Exit 0, Owner Agent.
-
-| ID | Ziel | Größe | Hängt ab von | Stand |
-|---|---|---|---|---|
-| COMP-3-3 | Reiter `/leitstand/fluss` | ~240 | COMP-3-2, #1333 (beide gemergt) | startbar |
-| COMP-1-3 | Lampe im Fluss | ~100 | COMP-3-3, COMP-1-1 | wartet |
-| COMP-4-2 | Beweisleiste auf der Karte | ~160 | COMP-1-2, COMP-4-1 (beide gemergt) | startbar |
-| COMP-6-2 | Kontingent-Balken im Fluss | ~220 | COMP-1-3, COMP-6-1 | wartet |
-| COMP-4-3 | Beweisleiste im Fluss | ~120 | COMP-6-2, COMP-4-1 | wartet |
-| COMP-9-2 | eine Karte je Queue-Zeile | ~180 | COMP-9-1 (gemergt) | startbar |
-| COMP-9-3 | Zeilenchip in Betrieb | ~200 | COMP-9-2, #1340 (gemergt) | wartet |
-
-Größen sind die Schätzungen des Berichts, nicht gemessen. Ob schon ein Auftrag für 4-2, 1-3 oder 9-2 läuft, ist **UNKNOWN** (offene PRs 15.10.: keiner mit diesen Namen).
 
 ## 1. Ziel und „fertig“
 
@@ -815,3 +747,71 @@ Fünf Hinweise zur Lesart: (1) Eine Zeile kann mehrere Pakete bündeln (Gruppen 
 - **V2-FREEZE-1b** (Folge-PR): `docs/PLAN.md` wird zum Verweis, die alten Pläne und `docs/plan/roadmap/` gehen ins Archiv, `STAND.md` und `docs/ERLEDIGT.md` folgen, mit Sicherung vorher.
 
 Ab dann gilt Regel „Plan-Freeze“ (Abschnitt 4b): nur Ausführung, höchstens eine Planänderung je Woche mit Kosten, Nutzen und Freigabe des Nutzers.
+
+## 10. Enger Schnitt vom 15.10.2026 („v2.0 eng“): Kriterien und Restpakete
+
+Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte E1 mit „V2.0.0 eng“; Wortlaut, Grund und Rückweg: [Entscheidungsprotokoll vom 15.10.](../../decisions.md#2026-10-15---v20-eng-narrow). **v2.0.0 ist Hülle + Leitstand, Glass (D1) standardmäßig an und zurückschaltbar.** Die Abnahmekriterien, die an verschobener Arbeit hängen, gehen mit ihr nach v2.1 (zusammen mit Start, Beweise, Kontingente, Verlauf). Der Kriterientext in Abschnitt 1 bleibt unverändert stehen; verschobene Zeilen sind dort mit „→ v2.1“ markiert.
+
+| # | Kriterium (kurz) | Zuordnung | Grund |
+|---|---|---|---|
+| 1 | Kern-Bildschirme mit echter Datenquelle; übrige hinter Schalter | **v2.0**, für Hülle und Leitstand | Offene Lücke: die Seitenleiste zeigt alle Einträge ohne Schalter (`src/shell/Shell.tsx:25`), siehe V2-SCOPE-1 |
+| 2 | Aussehen entspricht dem Board | **v2.0**, nur Routen von Hülle und Leitstand | Bildbasis und Ansehen beim Nutzer (V2-SHOT-BASE) |
+| 3 | Kontrast und Tastatur | **v2.0** | `contrast-check.mjs` läuft schon im Build; Tab-Tests je Route in V2-ACC1b |
+| 4 | Ein Zustandswörterbuch | **v2.0** | V2-ACC1a; Wortlaut der Messung ist heute nicht erfüllbar, siehe Hinweis unter der Paketliste |
+| 5 | Texte aus einem Wörterbuch | **v2.0** | `src/i18n/hardcoded.test.ts` besteht; Gesamtlauf in V2-ACC1b |
+| 6 (Server-Lauf → v2.1) | Not-Aus überall sichtbar | **v2.0** (Kopfleiste der Schale); Stopp eines Server-Laufs → v2.1 | Schale: `src/shell/header/StopBand.tsx` gemergt (#1370); der Server-Teil hängt an Kriterium 7 |
+| 7 (→ v2.1) | Ausführungsort | **→ v2.1** | hängt an Start (V2-S02), V2-B6b, V2-DOC-SRV |
+| 8 | Backend sicher | **v2.0** | gilt für jede neue Tabelle und für `prepush` auf `main` |
+| 9 | Dauerbetrieb bleibt, was er ist | **v2.0** | nur eine Unterlassung: nichts einschalten |
+| 10 (nach dem Kern) | Fernansicht | **nach dem Kern** | unverändert |
+| 11 | Release | **v2.0** | Update-Drill und Schlüsselsicherung (E14) beim Nutzer |
+| 12 | Core und V2-SEC-1 | **→ v2.1** | der Core gehört nicht zu Hülle + Leitstand |
+| 13 | Nutzerabnahme | **v2.0**, nur Hülle + Leitstand | Klick-Checkliste (V2-UAT-1a/1b) |
+| 14 | Leitzahl (V2-KPI-1) | **→ v2.1** (Vorschlag der Plan-Pflege, Elias bestätigt oder ändert) | Die Zahl zählt „Kernteile mit bestandener Nutzerabnahme“; die Kernteile sind verschoben, V2-KPI-1 hängt an V2-UAT-1 und am Nutzungsprotokoll V2-B26 (kein gemergter PR gefunden). Für v2.0 genügt Kriterium 13 |
+| 15 | Ein Motor (V2-RUN-1 bis 4) | **→ v2.1** | die Maschine gehört zu Beweise und Start |
+| 16 | Drei Anbieter-Wege | **→ v2.1** | V2-B2a/b, V2-LOCAL-1 hängen an Start und Kontingenten |
+| 17 | Datenschutz-Schleuse | **nach dem Kern** | unverändert |
+
+Hinweis: Frage 1 in Abschnitt 7 („der Schalter fällt mit v2.0 weg“) ist durch die Entscheide vom 11. und 15.10. überholt; der Schalter bleibt als Rückweg.
+
+### 10.1 Restpakete v2.0 (eng)
+
+Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log origin/main`, `gh pr list --state all` und dem Code an diesem Stand; was ich nicht belegen konnte, steht als **UNKNOWN**. Umfang S ≤ 150, M ≤ 300 Diffzeilen; Stufe nach AGENTS.md Regel 5. Kein Paket berührt eine der vier Nahtstellen (`api.rs`, `main.rs`, `store.rs`, `bin/pa.rs`).
+
+**Erledigt (belegt):** Fundament V2-F1 bis V2-F9, V2-FLAG-1, V2-IA-1 (Routen `src/shell/`, `src/design/`, `src/flags/`); Leitstand V2-S01a/b/d (Karten, Braucht dich, Betrieb, Terminal), V2-B3, V2-B4a, V2-B22; V2-E2E-0 (`e2e/shell.core.spec.ts`); Not-Aus in der Kopfleiste (#1370). COMP-Pakete gemergt: 1-1, 1-2, 2-1, 3-1, 3-2, 4-1, 6-1, 9-1 (#1437, #1452, #1434, #1436, #1458, #1450, #1453, #1448). **In der Queue:** COMP-2-2 (#1455, Queue-PR #1473). **Quelle der COMP-Definitionen:** der Orchestrator-Bericht PLAN-COMP-V2-1 vom 14.10.2026; er liegt außerhalb des Repos, im Repo gibt es keine COMP-Definition (`grep -rn "COMP-" docs` trifft nur den Paperclip-Verweis in `docs/PLAN.md`). Die Tabelle unten ist daraus übernommen.
+
+#### 10.1a Pakete für die Kriterien (v2.0)
+
+| ID | Ziel | Dateien | Nahtstelle | Stufe | Umfang | Voraussetzung | Abnahmebefehl | Owner |
+|---|---|---|---|---|---|---|---|---|
+| V2-D1-ON | D1 standardmäßig an, Rückweg bleibt. Heute `defaultEnabled: false` (`src/flags/featureFlags.ts:32`), `isFeatureFlagEnabled` liest nur `"1"`, „aus“ löscht den Schlüssel (`:66-76`); ohne Änderung käme D1 nach dem Ausschalten zurück. Also: Standard je Schalter, D1 an, ausdrückliches „aus“ als `"0"` gespeichert; `fernansicht`, `kundenprojekte` bleiben aus | `src/flags/featureFlags.ts`, `featureFlags.test.ts:16-23` (Test „defaults every registered flag to off including D1“ wird gedreht), Tests unter `src/shell/mount/`, `src/App*.test.tsx` je nach Treffer (**UNKNOWN**, wie viele Tests den alten Standard voraussetzen) | nein | B | M | – (Merge erst nach V2-ACC1b, siehe Hinweis) | `npx vitest run src/flags src/shell src/App.test.tsx` und `npm run build` Exit 0; roter Test zuerst: D1 ohne Schlüssel = an, nach `setFeatureFlagEnabled("d1_neue_oberflaeche", false)` = aus, auch nach Neuladen | Agent |
+| V2-SCOPE-1 | Seitenleiste und Palette zeigen nur Bereiche von Hülle + Leitstand; die übrigen (v2.1 und später) hinter Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | **Entscheid Elias:** welche Einträge gehören zur Hülle (Vorschlag: Leitstand, Einstellungen; Ersteinrichtung bleibt über `/start`), V2-D1-ON zeitgleich geplant | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent (nach Entscheid) |
+| V2-ACC1a | Kriterium 4: zweite Zustandsdefinition abbauen. Heute 164 Treffer von `--state-` in `src/styles.css` (Definition `:156-171`) und 10 in vier Tests; `src/design/` enthält `--state-` gar nicht (sechs Zustände stehen als `.g-st--*` in `src/design/state/state.css`) | `src/styles.css`, vier Tests, ein Gate-Skript unter `scripts/ci/` | nein | B | M, **UNKNOWN** (bis 2×M, erst messen) | – | `rg -ln -e '--state-' src` zeigt nur noch erlaubte Orte; Gate gegen neue Definition grün; `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
+| V2-ACC1b | Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
+| V2-SHOT-BASE | Bildbasis: je Route von Hülle + Leitstand ein Bild hell und eines dunkel (1440×900), angesehen und gegen die Boards verglichen (Kriterium 2). Der Agent erzeugt die Bilder mit `npm run dev:shot`, der Nutzer sieht sie an. Anzahl der Routen **UNKNOWN** (legt V2-ACC1b fest) | `docs/design/2026-10-ui-v2/glass/` (Boards), Bilder lokal, nicht im Repo | nein | C | – | V2-D1-ON lokal an, V2-SCOPE-1 | Nutzer bestätigt „gesehen, Abweichungen siehe PR“ | **Elias** |
+| V2-UAT-1a | Vorlage und Klick-Checkliste (höchstens 10 Punkte, einfache Worte) für Hülle + Leitstand, „neu / bewiesen / nicht abgedeckt“, Glossar | `docs/` (neues Dokument), kein Code | nein | C | S | V2-ACC1b | `npm run dev:agent-check` Exit 0; Checkliste ≤ 10 Punkte | Agent |
+| V2-UAT-1b | Nutzer klickt die Checkliste auf dem Beta-Build durch, kurzes Video, gibt frei, was er gesehen hat (Kriterium 13) | – | nein | – | – | V2-UAT-1a, V2-BETA-0 | Freigabe im Chat, im PR-Text vermerkt | **Elias** |
+| V2-BETA-0 | PRÜFEN: genügt der Dev-Installer nach jedem `main`-Push (DEV-AUTO-1, `docs/setup/dev-build.md`) als „interner Beta-Kanal“ für Checkliste und Update-Drill, oder braucht es V2-BETA-1 (`release.yml`, Stufe A)? V2-BETA-1 und V2-UPD-1 (Abbrechen-Knopf, Versionsanzeige) haben **keinen gemergten PR gefunden**; ob V16-UPD-CANCEL V2-UPD-1 ersetzt, ist **UNKNOWN** | nur Bericht | nein | C | – | – | Bericht mit Befehl und Beleg je Frage | Agent (nur lesend) |
+| V2-E14 | Updater-Signierschlüssel finden und verschlüsselt sichern (`docs/PLAN.md` Z4-E14, E14); kein Schlüssel in Datei, Log oder Commit | – | nein | – | – | – | Nutzer bestätigt die verschlüsselte Sicherung; Stand heute: „Durchführung nicht belegt“ | **Elias** |
+| V2-DRILL | Update-Drill am eigenen PC: v2.0 über den Updater installieren, Abbrechen und Versionsanzeige prüfen (Kriterium 11) | – | nein | – | – | V2-BETA-0, V2-E14 | Nutzer bestätigt Installation und Neustart mit neuer Version | **Elias** |
+| V2-REL | Release v2.0.0: Version 1.6.4 → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Elias** (Ja, Veröffentlichung) |
+
+**Reihenfolge-Hinweis zu V2-D1-ON:** `main` baut auch Patch-Releases (zuletzt 1.6.4). Würde D1 vorher an gehen, trüge jedes v1.6.x die neue Oberfläche. Darum hält Root V2-D1-ON mit `do-not-merge`, bis V2-ACC1b grün ist.
+
+**Hinweis zu Kriterium 4:** Die Messung „`--state-` trifft nur noch `src/design/`“ ist nicht erfüllbar, weil die neue Definition andere Namen trägt (`.g-st--*`, `--g-*`). Gleichzeitig nutzt die klassische Oberfläche, der Rückweg von D1, die 164 `--state-`-Treffer in `styles.css`. Ihr Abbau ändert also den Rückweg. V2-ACC1a misst zuerst und schlägt einen neuen Wortlaut vor (zum Beispiel „keine zweite Definition der sechs Zustände außer Aliasen auf `--g-*`“); den Wortlaut entscheidet Elias, nicht der Agent.
+
+#### 10.1b Leitstand-Ausbau (COMP, kein Kriterium)
+
+Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kontingent, Zeilenzähler). Sie sind **kein** Abnahmekriterium; ob sie vor v2.0.0 fertig sein müssen, entscheidet Elias (Vorschlag: nein, was bis zum Release gemergt ist, kommt mit). Alle sind Stufe B, nahtfrei, `src/screens/leitstand/`, Befehl: `npx vitest run src/screens/leitstand` und `bash scripts/ci/gates.sh lane prepush` Exit 0, Owner Agent.
+
+| ID | Ziel | Umfang | Voraussetzung | Stand |
+|---|---|---|---|---|
+| COMP-3-3 | Reiter `/leitstand/fluss` | ~240 | COMP-3-2, #1333 (beide gemergt) | startbar |
+| COMP-1-3 | Lampe im Fluss | ~100 | COMP-3-3, COMP-1-1 | wartet |
+| COMP-4-2 | Beweisleiste auf der Karte | ~160 | COMP-1-2, COMP-4-1 (beide gemergt) | startbar |
+| COMP-6-2 | Kontingent-Balken im Fluss | ~220 | COMP-1-3, COMP-6-1 | wartet |
+| COMP-4-3 | Beweisleiste im Fluss | ~120 | COMP-6-2, COMP-4-1 | wartet |
+| COMP-9-2 | eine Karte je Queue-Zeile | ~180 | COMP-9-1 (gemergt) | startbar |
+| COMP-9-3 | Zeilenchip in Betrieb | ~200 | COMP-9-2, #1340 (gemergt) | wartet |
+
+Größen sind die Schätzungen des Berichts, nicht gemessen. Ob schon ein Auftrag für 4-2, 1-3 oder 9-2 läuft, ist **UNKNOWN** (offene PRs 15.10.: keiner mit diesen Namen).
