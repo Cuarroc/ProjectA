@@ -51,6 +51,21 @@ test("dependency clauses exclude prose and keep known or explicit package IDs", 
   assert.deepEqual(checkPlan(model).map((f) => [f.kind, f.detail]), [["unknown-dependency", "DR-SEC-01g"]]);
   assert.deepEqual(dependencyGraph(model.packages).cycle, []);
 });
+test("dependency validation rejects repeated numeric segments within 200 ms", (t) => {
+  // The tokenizer keeps the final dot, so the unknown ID reaches validation intact.
+  const input = table(`| ROW-1 | A | planned | A-${"00-".repeat(25)}. |`);
+  const started = performance.now();
+  const model = parse(input);
+  const elapsed = performance.now() - started;
+  t.diagnostic(`dependency validation: ${elapsed.toFixed(3)} ms`);
+  assert.deepEqual(model.packages[0].deps, []);
+  assert.ok(elapsed < 200, `dependency validation took ${elapsed.toFixed(3)} ms`);
+  const accepted = ["PLAN-AUTO-1b", "KR-04a", "V2-S01d", "DN-11a", "AP-6", "A-00", "A-12b34"];
+  assert.deepEqual(parse(table(`| ROW-1 | A | planned | ${accepted.join(", ")} |`)).packages[0].deps, accepted);
+  for (const id of ["a-1", "A-", "A--1", "A-12bc", "A-12b34."]) {
+    assert.deepEqual(parse(table(`| ROW-1 | A | planned | ${id} |`)).packages[0].deps, [], id);
+  }
+});
 test("status contradictions aggregate all referenced and named PRs", () => {
   const model = parse(table("| A-1 | A | in Arbeit #1, #2 | |"));
   const merged = { number: 1, state: "MERGED" }, open = { number: 2, state: "OPEN" };
