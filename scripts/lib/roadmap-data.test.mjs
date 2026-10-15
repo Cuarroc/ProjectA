@@ -5,7 +5,7 @@ import { main } from "../roadmap-data.mjs";
 
 const now = "2026-10-15T12:00:00Z", day = 86400000;
 const row = (id = "APP-1", extra = {}) => ({ id, title: "Search", status: "planned", statusRaw: "Geplant", deps: [], ...extra });
-const pr = (extra = {}) => ({ number: 1, state: "OPEN", body: "Plan-ID: APP-1", labels: [], isDraft: false, ...extra });
+const pr = (extra = {}) => ({ number: 1, state: "OPEN", body: "Plan-ID: APP-1", headRefName: "codex/app-1", labels: [], isDraft: false, ...extra });
 const check = (conclusion, isRequired = true) => ({ conclusion, isRequired });
 const build = (packages, prs = [], extra = {}) => buildRoadmap({ plan: { packages, decisions: [] }, prs, releases: [], now, mainSha: "abc1234", ...extra });
 const state = (p, extra = {}) => build([row("APP-1", extra)], [p]).packages[0].state;
@@ -65,6 +65,7 @@ test("head and lanes derive from plan dependencies releases and decisions", () =
   assert.deepEqual(r.directions[0].next, ["APP-3"]);
   assert.deepEqual(r.directions[0].later, ["APP-2"]);
   assert.equal(r.haengt.find(p => p.id === "APP-2").who, "Root");
+  assert.equal(build([row()], [pr(), pr({ number: 2, body: "Plan-ID: OTHER-1", headRefName: "codex/other-1" }), pr({ number: 3, body: "", headRefName: "mergify/queue-1" })]).head.open, 2);
 });
 test("public projection never copies PR bodies owners or private metadata", () => {
   const r = build([row("APP-1", { owner: "Worker at build.private.invalid", title: "Search", costs: 42, quota: 80 })], [pr({ body: "Plan-ID: APP-1\nserver: build.private.invalid\ncosts: 42 quota: 80", isDraft: true, commits: [{ committedDate: now }] })]);
