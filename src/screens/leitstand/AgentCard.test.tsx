@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
@@ -279,4 +279,24 @@ it("does not invent an attention age when the observation time is missing", () =
 it("shows a blocked lamp on a done card while proof is missing", () => {
   render(<AgentCard card={{ ...card("running"), column: "done", testStatus: null }} name="Claude Code" now={NOW} onOpen={() => {}} />);
   expect(screen.getByRole("img", { name: "ohne Beweis" })).toHaveClass("g-lamp--bad");
+});
+
+it("shows the proof strip with its four badges on the card", () => {
+  const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  const strip = screen.getByRole("group", { name: "Beweis" });
+  expect(container.querySelectorAll(".ps__badge")).toHaveLength(4);
+  for (const label of ["Red-first", "Gates", "Review", "PR"]) expect(within(strip).getByText(label)).toBeInTheDocument();
+});
+
+it("reads a worker without proof data as not connected and never shows a pass mark", () => {
+  const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.getAllByText("noch nicht verbunden")).toHaveLength(4);
+  expect(screen.queryByText("bestanden")).toBeNull();
+  expect(container.querySelector(".g-proof__yes")).toBeNull();
+});
+
+it("links the pull request the core reported and keeps the other badges not connected", () => {
+  render(<AgentCard card={{ ...card("running"), prUrl: "https://example.test/pr/7" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.getByRole("link")).toHaveAttribute("href", "https://example.test/pr/7");
+  expect(screen.getAllByText("noch nicht verbunden")).toHaveLength(3);
 });
