@@ -5,6 +5,7 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { cancelUpdateDownload, installUpdateWhenIdle, listLiveSessions, type CancelUpdateResult } from "../../lib/ipc";
 import { VersionUpdates } from "./VersionUpdates";
+import { T } from "./texts";
 
 // Counts every state update, so "no update after unmount" is observable (React itself stays silent).
 const updates = vi.hoisted(() => ({ count: 0 }));
@@ -158,6 +159,23 @@ describe("VersionUpdates install and cancel", () => {
     await cancel();
     expect(await screen.findByText(/lässt sich nicht mehr abbrechen/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Abbrechen" })).toBeNull();
+  });
+
+  it("takes the tooLate branch by variant even when its label is missing", async () => {
+    const labels = T.cancelResult as Record<string, string | undefined>;
+    const text = labels.tooLate;
+    delete labels.tooLate;
+    try {
+      download();
+      vi.mocked(cancelUpdateDownload).mockResolvedValue("tooLate");
+      fireEvent.click(await available());
+      await cancel();
+      await act(async () => { await vi.mocked(cancelUpdateDownload).mock.results[0]?.value; });
+      // The branch clears `cancelling`; a label lookup would leave the button off.
+      expect((screen.getByRole("button", { name: "Abbrechen" }) as HTMLButtonElement).disabled).toBe(false);
+    } finally {
+      labels.tooLate = text;
+    }
   });
 
   it("returns to the install offer when the cancel succeeds", async () => {
