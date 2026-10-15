@@ -175,6 +175,9 @@ for rf_step in "red-first - plan" "red-first - proof against merge base"; do
     err "job linux: step '$rf_step' lacks RF_BASE_BRANCH: \${{ github.event.pull_request.base.ref }}"
   has "$rf_body" 'refs/heads/$RF_BASE_BRANCH' ||
     err "job linux: step '$rf_step' missing red-first base branch fetch (refs/heads/\$RF_BASE_BRANCH)"
+  # CodeQL actions/cache-poisoning: the static condition must name the event.
+  has "$(grep -E '^        if:' <<< "$rf_body")" "github.event_name == 'pull_request'" ||
+    err "job linux: step '$rf_step' 'if' lacks github.event_name == 'pull_request' (it checks out pull_request.head.sha)"
 done
 # V161-FU-3 / R953-A1: plan step HEAD_SHA fetch stays fatal; BASE_SHA fetch
 # stays non-fatal (|| ) so a stale payload base.sha cannot abort the plan.
