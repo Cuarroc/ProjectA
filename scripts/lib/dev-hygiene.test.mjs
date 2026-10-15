@@ -603,7 +603,9 @@ test("hygiene exports the suspicious filename character pattern", async () => {
   assert.equal(SUSPICIOUS_NAME_CHARS.test("normal-file_1.txt"), false);
 });
 
-test("hygiene reports nonempty shell metacharacter filenames without executing them", async (t) => {
+test("hygiene reports nonempty shell metacharacter filenames without executing them", {
+  skip: process.platform === "win32" && "Windows filenames cannot contain newlines, double quotes, pipes or angle brackets",
+}, async (t) => {
   const suspicious = ['!fs.existsSync(dir', 'line\n"$OUT', ...['!', '$', '`', ';', '&', '|', '<', '>', '(', ')'].map((c) => `name${c}`)];
   const names = [...suspicious, "normal.txt", "empty", "subdir/!nested"];
   const f = checkoutFixture(t, { names });
@@ -630,6 +632,38 @@ test("hygiene reports nonempty shell metacharacter filenames without executing t
   assert.equal(normal.code, 0);
   assert.deepEqual(normal.report.suspiciousNames, suspicious);
   assert.ok(JSON.stringify(normal.report).includes('line\\n\\"$OUT'));
+  assert.equal((await f.cli(true)).code, 1);
+  for (const c of f.calls) {
+    assert.ok(["git", "gh"].includes(c.cmd));
+    assert.ok(!c.args.some((arg) => suspicious.includes(arg)), "filenames are never command arguments");
+    assert.notEqual(commandArgs(c.cmd, c.args)[0], "fetch");
+  }
+});
+
+test("hygiene reports Windows-valid shell metacharacter filenames without executing them", async (t) => {
+  const suspicious = ["!fs.existsSync(dir", "line '$OUT", ...['!', '$', '`', ';', '&', '(', ')'].map((c) => `name${c}`)];
+  const names = [...suspicious, "normal.txt", "empty", "subdir/!nested"];
+  const f = checkoutFixture(t, { names });
+  const data = gather({ run: f.run, cwd: f.caller, now: NOW });
+  assert.deepEqual(data.untracked, names, "NUL records preserve spaces and single quotes");
+  assert.deepEqual(data.suspiciousNames, suspicious);
+  assert.deepEqual(data.shellRedirectAccidents.map((a) => a.path), ["empty"]);
+  assert.match(data.shellRedirectAccidents[0].mtime, /^\d{4}-\d{2}-\d{2}T/);
+  const findings = collectHygiene(data);
+  assert.deepEqual(findings.suspiciousNames, suspicious);
+  assert.equal(countFindings({ ...findings, untracked: [] }), suspicious.length);
+  assert.deepEqual(f.calls.find((c) => c.args.includes("ls-files")), {
+    cmd: "git", args: ["-C", f.mainPath, "ls-files", "--others", "--exclude-standard", "--directory", "-z"], opts: undefined,
+  });
+  const md = formatHygiene(findings);
+  assert.ok(md.includes("line '$OUT"));
+  assert.ok(md.includes("name&#96;"));
+  assert.ok(md.includes("name&amp;"));
+  assert.match(md, /Verdächtige Dateinamen/);
+  assert.match(md, /`empty` — likely shell-redirect accident \(mtime /);
+  const normal = await f.cli(false);
+  assert.equal(normal.code, 0);
+  assert.deepEqual(normal.report.suspiciousNames, suspicious);
   assert.equal((await f.cli(true)).code, 1);
   for (const c of f.calls) {
     assert.ok(["git", "gh"].includes(c.cmd));
