@@ -7,6 +7,8 @@
 .bt-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .bt-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--g-hair); font-size: 13px; }
 .bt-row:first-child { border-top: 0; }
+.bt-cards { gap: 8px; }
+.bt-row.bt-qcard { grid-template-columns: auto minmax(0, 1fr) auto auto; padding: 12px; border: 1px solid var(--g-hair); border-radius: var(--g-r-card); }
 .bt-task { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--g-ink); }
 .bt-profile { font-size: 12px; color: var(--g-muted); white-space: nowrap; }
 .bt-reason { grid-column: 2 / -1; margin: 0; font-size: 12px; line-height: 1.4; color: var(--g-bad); overflow-wrap: anywhere; }

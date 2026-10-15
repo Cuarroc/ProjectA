@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
@@ -190,11 +190,6 @@ it("starting another restart clears the previous error while the retry is pendin
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
-it("the proof chip exposes its full text in a native tooltip", () => {
-  view("running");
-  expect(screen.getByTitle("Beweis nicht verbunden")).toContainElement(screen.getByText("Beweis nicht verbunden"));
-});
-
 it("offers only the action the old worker list allows for the state", () => {
   const names = (status: Worker["status"]) => {
     cleanup();
@@ -279,4 +274,30 @@ it("does not invent an attention age when the observation time is missing", () =
 it("shows a blocked lamp on a done card while proof is missing", () => {
   render(<AgentCard card={{ ...card("running"), column: "done", testStatus: null }} name="Claude Code" now={NOW} onOpen={() => {}} />);
   expect(screen.getByRole("img", { name: "ohne Beweis" })).toHaveClass("g-lamp--bad");
+});
+
+it("shows the same lamp as the flow node on a done card with a passed test", () => {
+  render(<AgentCard card={{ ...card("running"), column: "done", testStatus: "pass" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.getByRole("img", { name: "Fertig" })).not.toHaveClass("g-lamp--bad");
+  expect(screen.queryByRole("img", { name: "ohne Beweis" })).toBeNull();
+});
+
+it("shows the proof strip with its four badges on the card", () => {
+  const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  const strip = screen.getByRole("group", { name: "Beweis" });
+  expect(container.querySelectorAll(".ps__badge")).toHaveLength(4);
+  for (const label of ["Red-first", "Gates", "Review", "PR"]) expect(within(strip).getByText(label)).toBeInTheDocument();
+});
+
+it("reads a worker without proof data as not connected and never shows a pass mark", () => {
+  const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.getAllByText("noch nicht verbunden")).toHaveLength(4);
+  expect(screen.queryByText("bestanden")).toBeNull();
+  expect(container.querySelector(".g-proof__yes")).toBeNull();
+});
+
+it("links the pull request the core reported and keeps the other badges not connected", () => {
+  render(<AgentCard card={{ ...card("running"), prUrl: "https://example.test/pr/7" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.getByRole("link")).toHaveAttribute("href", "https://example.test/pr/7");
+  expect(screen.getAllByText("noch nicht verbunden")).toHaveLength(3);
 });

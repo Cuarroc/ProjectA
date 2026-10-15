@@ -45,3 +45,41 @@ it("does not link a pull request href that is not a web address", () => {
   render(<ProofStrip {...full} pr={{ ...full.pr!, href: "javascript:alert(1)" }} />);
   expect(screen.queryByRole("link")).toBeNull();
 });
+
+// COMP-4-3: the one-line variant for the flow node.
+it("draws the compact strip as one row of four cells and never a pass mark without data", () => {
+  const { container } = render(<ProofStrip {...full} redFirst="unknown" gates={null} review={null} pr={null} compact />);
+  const strip = screen.getByRole("group", { name: T.strip });
+  expect(strip).toHaveClass("ps--compact");
+  expect(strip.children).toHaveLength(4);
+  expect(container.querySelectorAll(".ps__badge")).toHaveLength(4);
+  // The mark is a dash; the words stay for assistive tech.
+  expect(screen.getAllByText(T.notConnected)).toHaveLength(4);
+  expect(container.querySelector(".g-proof__yes")).toBeNull();
+});
+
+it("keeps the words of every compact value for assistive tech and the tooltip", () => {
+  render(<ProofStrip {...full} compact />);
+  expect(screen.getByText(T.redFirstPass)).toHaveClass("sr-only");
+  expect(screen.getByText(T.redFirstShort).parentElement).toHaveAttribute("title", T.redFirst);
+  expect(screen.getByText("2/3")).toBeInTheDocument();
+  expect(screen.getByText(full.review!.text)).toHaveClass("sr-only");
+  expect(screen.getByRole("link", { name: T.open })).toHaveAttribute("title", "7c1e0b3 gates lane prepush Exit 0");
+  expect(screen.queryByText("gates lane prepush Exit 0")).toBeNull();
+});
+
+it("leaves the tooltip of the compact link to the link itself", () => {
+  const { container } = render(<ProofStrip {...full} compact />);
+  expect(screen.getByRole("link", { name: T.open })).toHaveAttribute("title", "7c1e0b3 gates lane prepush Exit 0");
+  expect(container.querySelector(".ps__open")).not.toHaveAttribute("title");
+});
+
+it("counts the compact gates with no gates", () => {
+  render(<ProofStrip {...full} gates={[]} compact />);
+  expect(screen.getByText("0/0")).toHaveClass("ps__count");
+});
+
+it("counts the compact gates with all gates passing", () => {
+  render(<ProofStrip {...full} gates={["pass", "pass", "pass"]} compact />);
+  expect(screen.getByText("3/3")).toHaveClass("ps__count");
+});

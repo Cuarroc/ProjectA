@@ -7,10 +7,9 @@ import type { StateForm } from "../../../design/state/states";
 import { ErrorDetails } from "../../../errors/ErrorDetails";
 import { userError } from "../../../errors/texts";
 import { describeError, getResourceSnapshot, getWatchdogReport, listQueue, type ResourceSnapshot, type WatchdogFinding } from "../../../lib/ipc";
-import { shortTask } from "../../../lib/text";
 import type { AgentProfile, QueueEntry, QueueEntryStatus } from "../../../types";
 import { T } from "./texts";
-import { SharpenedBrief } from "./SharpenedBrief";
+import { QueueCard } from "./QueueCard";
 import { EinreihenForm } from "./einreihen/EinreihenForm";
 import "./betrieb.css";
 
@@ -102,16 +101,8 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
           ) : queue.length === 0 ? (
             <HonestState kind="empty" title={T.queueEmpty} hint={T.queueEmptyHint} />
           ) : (
-            <ul className="bt-list">
-              {queue.map((e) => (
-                <li key={e.id} className="bt-row">
-                  <StateMark form={STATUS[e.status].form} label={STATUS[e.status].label} />
-                  <span className="bt-task" title={e.rawText}>{shortTask(e.rawText, 80)}</span>
-                  <span className="bt-profile">{nameOf(e.profileId)}</span>
-                  {e.error?.trim() ? <p className="bt-reason">{e.error}</p> : null}
-                  <SharpenedBrief entry={e} />
-                </li>
-              ))}
+            <ul className="bt-list bt-cards">
+              {queue.map((e) => <QueueCard key={e.id} entry={e} status={STATUS[e.status]} profile={nameOf(e.profileId)} />)}
             </ul>
           )}
         </section>

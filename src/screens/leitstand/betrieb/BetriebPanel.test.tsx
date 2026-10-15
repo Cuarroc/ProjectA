@@ -303,7 +303,26 @@ describe("BetriebPanel", () => {
   it("shows the empty state only after a successful read of an empty queue", async () => {
     backend([]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
-    expect(await within(section("Warteschlange")).findByText("Warteschlange leer")).toBeInTheDocument();
+    const queue = within(section("Warteschlange"));
+    expect(await queue.findByText("Warteschlange leer")).toBeInTheDocument();
+    expect(queue.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("renders one card per queue row with its title and size badge", async () => {
+    backend([entry("a"), entry("b", { status: "dispatched", workerId: "w1" })]);
+    const read = mocks.invoke.getMockImplementation()!;
+    mocks.invoke.mockImplementation((cmd, args) => cmd === "get_worker_diff"
+      ? Promise.resolve({ baseBranch: "main", files: [{ path: "x.ts", additions: 200, deletions: 101, hunks: [] }] })
+      : read(cmd, args));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const queue = within(section("Warteschlange"));
+    await queue.findByText("Task a");
+    const [a, b] = queue.getAllByRole("listitem");
+    expect(queue.getAllByRole("listitem")).toHaveLength(2);
+    expect(within(a).getByText("noch kein Diff")).toBeVisible();
+    expect(within(b).getByText("Task b")).toBeVisible();
+    expect(await within(b).findByText("301 Zeilen, über 300")).toBeVisible();
+    expect(callsOf("get_worker_diff")).toEqual([["get_worker_diff", { workerId: "w1" }]]);
   });
 
   it("says nothing is empty when the queue cannot be read", async () => {

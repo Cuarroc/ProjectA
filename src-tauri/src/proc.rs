@@ -151,10 +151,48 @@ mod tests {
         );
     }
 
+    /// Files that are test code as a whole: they have no `mod tests` marker of
+    /// their own because the parent declares them `#[cfg(test)]`. An explicit
+    /// list (paths below `src/`) instead of a name pattern, so a production file
+    /// that happens to sit in `tests/` or be called `*_tests.rs` is still audited;
+    /// a new test-only file is audited too until it is added here.
+    const TEST_ONLY_FILES: &[&str] = &[
+        "api/credential_acl_tests.rs",
+        "api/tests/continuous_e2e_tests.rs",
+        "api/tests/delivery_route_tests.rs",
+        "api/tests/mod.rs",
+        "api/tests/planning_access_tests.rs",
+        "api/tests/project_scope_tests.rs",
+        "api/tests/resume_closed_tests.rs",
+        "bin/pa/tests.rs",
+        "db_restore_safety_tests.rs",
+        "main_tests.rs",
+        "pty/native_tests.rs",
+        "store/continuous_capacity_tests.rs",
+        "store/continuous_control_tests.rs",
+        "store/continuous_pressure_tests.rs",
+        "store/development_capture_tests.rs",
+        "store/development_codex_usage_tests.rs",
+        "store/development_run_contention_tests.rs",
+        "store/development_usage_binding_tests.rs",
+        "store/development_usage_receipt_tests.rs",
+        "store/emergency_stop_tests.rs",
+        "store/maintenance_tests.rs",
+        "store/native_managed_tests.rs",
+        "store/tests.rs",
+        "store/write_lock_tests.rs",
+        "workers/development_route_effort_tests.rs",
+    ];
+
+    /// `rel` is the `/`-separated path below `src/`.
+    fn is_test_only_file(rel: &str) -> bool {
+        TEST_ONLY_FILES.contains(&rel)
+    }
+
     fn production_source_offenders(needle: &str, exempt: &str) -> Vec<String> {
         let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = Vec::new();
-        let mut stack = vec![src];
+        let mut stack = vec![src.clone()];
         while let Some(dir) = stack.pop() {
             for entry in fs::read_dir(dir).expect("src/ is readable").flatten() {
                 let path = entry.path();
@@ -162,8 +200,15 @@ mod tests {
                     stack.push(path);
                     continue;
                 }
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                let rel = path
+                    .strip_prefix(&src)
+                    .expect("walked below src/")
+                    .to_string_lossy()
+                    .replace('\\', "/");
                 if path.extension().and_then(|e| e.to_str()) != Some("rs")
-                    || path.file_name().and_then(|n| n.to_str()) == Some(exempt)
+                    || name == exempt
+                    || is_test_only_file(&rel)
                 {
                     continue;
                 }
@@ -171,17 +216,38 @@ mod tests {
                 let production = text.split("mod tests").next().unwrap_or(&text);
                 for (n, line) in production.lines().enumerate() {
                     if line.contains(needle) {
-                        offenders.push(format!(
-                            "{}:{}: {}",
-                            path.file_name().unwrap().to_string_lossy(),
-                            n + 1,
-                            line.trim()
-                        ));
+                        offenders.push(format!("{}:{}: {}", name, n + 1, line.trim()));
                     }
                 }
             }
         }
         offenders
+    }
+
+    #[test]
+    fn production_files_in_test_looking_places_are_still_audited() {
+        // A future production file must not escape the audit by its location or name.
+        for rel in [
+            "api/tests/handler.rs",
+            "tests/runner.rs",
+            "store/new_feature_tests.rs",
+            "workers/tests.rs",
+            "tests.rs",
+        ] {
+            assert!(!is_test_only_file(rel), "{rel} must be audited");
+        }
+        assert!(is_test_only_file("store/tests.rs"));
+        assert!(is_test_only_file("api/tests/mod.rs"));
+    }
+
+    #[test]
+    fn every_test_only_file_entry_exists() {
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let stale: Vec<_> = TEST_ONLY_FILES
+            .iter()
+            .filter(|rel| !src.join(rel).is_file())
+            .collect();
+        assert!(stale.is_empty(), "stale TEST_ONLY_FILES entries: {stale:?}");
     }
 
     #[test]

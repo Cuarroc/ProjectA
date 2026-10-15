@@ -6,6 +6,7 @@ export const T = {
   staleName: "Beweis, veraltet",
   notConnected: "noch nicht verbunden",
   redFirst: "Red-first",
+  redFirstShort: "RF",
   redFirstPass: "bestanden",
   redFirstFail: "fehlgeschlagen",
   review: "Review",

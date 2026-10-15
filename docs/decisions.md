@@ -1994,3 +1994,30 @@ wall clock, linux + windows.
 - **Not covered:** no package content change, no date, no release approval. A
   major release still needs a fresh yes from Elias (AGENTS.md rule 10). The
   remaining packages are listed in the subplan, section "10.1 Restpakete v2.0 (eng)".
+
+## 2026-10-15 - Elias answers seven questions (v2.0 eng)
+
+- **What:** (1) Root may pass its per-job `PA_SEAM_ALLOW` approval through
+  `run-job.sh` (implemented by Root at 14:00; backup and approval-file path
+  are in the coordinator record). (2) V2-SCOPE-1 exposes Leitstand and
+  Einstellungen, with first setup still reachable at `/start`. (3) Criterion
+  4 reads: „Keine zweite Definition der sechs Zustände außerhalb von
+  `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“
+  (4) Keep the state colours: läuft blau, wartet violett, zurück rot,
+  bewiesen blaugrün, unbekannt grau, Tor orange. (5) Fabrik is a tab in the
+  Leitstand. (6) Light orbs are switchable between calm and lively, defaulting
+  to calm. (7) Root may change roles, prompts, settings and default skills of
+  other ProjectA agents after making a backup; Root's own configuration is
+  excluded.
+- **Source:** Elias in Root chat on 2026-10-15 at about 13:45 CEST, verbatim:
+  „1. Ja 2. empfehöung folgen 3. passt so 4. passt so 5. Empfehlung folgen
+  6. umstellbar zwischen ruhig und lebendig, eher aber ruhig 7. Ja darfst du
+  vollständig“.
+- **Why:** follow Root's recommendations for scope and Fabrik placement; keep
+  the existing state vocabulary and colour mapping; default animation to calm
+  while preserving a user choice; allow Root to maintain other agents' setup
+  with a backup and without self-editing. The seam approval is already
+  implemented and is recorded here as the decision that authorized it.
+- **Reverse when:** Elias changes any of these choices; restore the prior
+  setting or plan only with a new explicit decision. Agent configuration
+  changes must first be restored from the backup if reversing item 7.

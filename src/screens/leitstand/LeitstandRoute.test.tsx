@@ -8,6 +8,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(()
 vi.mock("../../components/TerminalView", () => ({ default: () => null }));
 
 import App from "../../App";
+import { de } from "../../i18n/de";
 import { writeActiveProjectId } from "../../lib/activeProject";
 import LeitstandRoute from "./LeitstandRoute";
 
@@ -17,6 +18,8 @@ const worker = { id: "w1", projectId: "p1", task: "Fix the start block", profile
 const question = { id: "q1", projectId: "p1", workerId: "w1", scope: "worker", question: "Cover only this case?", optionsJson: '["Only this case"]', status: "open", answer: null, createdAt: NOW - 240, expiresAt: null };
 /** The tab row of the Leitstand itself; the shell frame has its own "Haupt" link. */
 const tabs = () => within(screen.getByRole("navigation", { name: "Ansichten" }));
+/** The implementation to wrap, captured before it is replaced; a never-answering stub when none is set. */
+const currentInvoke = (): ((command: string) => unknown) => mocks.invoke.getMockImplementation() ?? (() => new Promise(() => {}));
 const go = (hash: string) => act(() => { window.location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
 // App loads the shell through React.lazy. Its first import transforms the whole shell module graph,
@@ -61,7 +64,7 @@ describe("Leitstand route behind D1", () => {
 
   it("says so when the agent profiles cannot be loaded and keeps the cards usable", async () => {
     localStorage.setItem(FLAG_KEY, "1");
-    const base = mocks.invoke.getMockImplementation()!;
+    const base = currentInvoke();
     mocks.invoke.mockImplementation((command: string) =>
       command === "list_agent_profiles" ? Promise.reject(new Error("backend down")) : base(command));
     render(<App />);
@@ -133,6 +136,107 @@ describe("Leitstand route behind D1", () => {
     fireEvent.click(tabs().getByRole("link", { name: "Haupt" }));
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
+  });
+
+  it("renders the flow graph at /leitstand/fluss and marks its tab as the current one", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const { container } = render(<App />);
+    const flow = await screen.findByRole("region", { name: "Ablauf der Agenten" });
+    expect(await within(flow).findByRole("group", { name: "Fix the start block" })).toBeInTheDocument();
+    expect(tabs().getByRole("link", { name: "Fluss" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Haupt" })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
+    expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
+  });
+
+  it("shows the empty hint at /leitstand/fluss while no agent runs", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const base = currentInvoke();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? Promise.resolve({ cards: [], coordinators: [] }) : base(command));
+    const { container } = render(<App />);
+    expect(await screen.findByText("Noch keine Agenten im Ablauf")).toBeInTheDocument();
+    expect(container.querySelector(".fl-node")).toBeNull();
+  });
+
+  it("does not claim an empty flow when the board cannot be read at /leitstand/fluss", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    const base = currentInvoke();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? Promise.reject(new Error("backend down")) : base(command));
+    render(<App />);
+    expect(await screen.findByText(de["honest.offline"])).toBeInTheDocument();
+    expect(screen.queryByText("Noch keine Agenten im Ablauf")).toBeNull();
+  });
+
+  it("reaches Fluss from Haupt by its tab link", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    render(<App />);
+    await screen.findByRole("region", { name: "Agenten" });
+    fireEvent.click(tabs().getByRole("link", { name: "Fluss" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fluss"));
+    expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
+  });
+
+  // COMP-1-3: the node wears the card's lamp, still without proof.
+  const flowBoard = (...cards: Array<{ w: typeof worker; column: string }>) => {
+    const base = currentInvoke();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state"
+        ? Promise.resolve({ cards: cards.map(({ w, column }) => ({ worker: w, column, attention_reason: null, attention_code: null, attention_grade: null, pr_url: null, test_status: null })), coordinators: [] })
+        : base(command));
+  };
+
+  it("shows the unproven lamp on a done node", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    flowBoard({ w: worker, column: "done" });
+    render(<App />);
+    const node = await screen.findByRole("group", { name: "Fix the start block" });
+    expect(within(node).getByRole("img", { name: "ohne Beweis" })).toHaveClass("g-lamp--bad");
+    expect(within(node).getByText("Fix the start block")).toBeInTheDocument();
+    expect(within(node).getByText("claude/w1")).toBeInTheDocument();
+  });
+
+  it("gives each lamp kind its atom on a node", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fluss";
+    flowBoard(
+      { w: { ...worker, id: "w1", task: "Runs now" }, column: "working" },
+      { w: { ...worker, id: "w2", task: "Waits for you" }, column: "needs_you" },
+      { w: { ...worker, id: "w3", task: "Has stopped", status: "exited" }, column: "working" },
+    );
+    render(<App />);
+    const lamp = async (task: string, name: string) => within(await screen.findByRole("group", { name: task })).getByRole("img", { name });
+    expect(await lamp("Runs now", "Läuft")).toHaveClass("g-lamp--busy");
+    expect(await lamp("Waits for you", "Blockiert")).toHaveClass("g-lamp--bad");
+    expect(await lamp("Has stopped", "Untätig")).toHaveClass("g-lamp--off");
+  });
+
+  // The shell trims the hash before it reaches the route, but the route also takes `path` as a prop.
+  it("marks the Betrieb tab as the current one for a trailing-slash path", async () => {
+    render(<LeitstandRoute path="/leitstand/betrieb/" />);
+    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+    expect(tabs().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("shows the Fluss tab as active for a trailing-slash path", async () => {
+    render(<LeitstandRoute path="/leitstand/fluss/" />);
+    expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
+    expect(tabs().getByRole("link", { name: "Fluss" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
+  });
+
+  it("keeps /leitstand/fluss off without its flag", async () => {
+    window.location.hash = "#/leitstand/fluss";
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
+    expect(container.querySelector(".g-mount")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Ablauf der Agenten" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Fluss" })).toBeNull();
   });
 
   it("offers no Betrieb route while the switch is off", async () => {

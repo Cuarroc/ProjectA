@@ -41,6 +41,7 @@ beforeEach(() => {
         return answer;
       }
       case "get_emergency_stop": return emergencyStopped;
+      case "list_live_sessions": return [];
       case "get_log_path": return "logs/projecta.log";
       case "get_panic_notice": return { current: null, previous: null };
       case "get_reason_catalog": return [{ code: "quota_blocked", grade: "blocking", line: "Kontingent erreicht" }];
