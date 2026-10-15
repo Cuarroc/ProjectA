@@ -9,6 +9,7 @@ vi.mock("./components/TerminalView", () => ({ default: () => null }));
 
 import { listen } from "@tauri-apps/api/event";
 import App from "./App";
+import { setFeatureFlagEnabled } from "./flags/featureFlags";
 import { writeActiveProjectId } from "./lib/activeProject";
 
 function invokeCalls(command: string): number {
@@ -18,6 +19,7 @@ function invokeCalls(command: string): number {
 describe("App bootstrap", () => {
   beforeEach(() => {
     localStorage.clear();
+    setFeatureFlagEnabled("d1_neue_oberflaeche", false); // these tests cover the classic app
     mocks.invoke.mockReset();
     mocks.invoke.mockImplementation((command: string) => {
       if (command === "list_agent_profiles") return Promise.resolve([]);

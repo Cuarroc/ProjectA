@@ -136,6 +136,7 @@ describe("Leitstand route behind D1", () => {
   });
 
   it("offers no Betrieb route while the switch is off", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     window.location.hash = "#/leitstand/betrieb";
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
@@ -145,6 +146,7 @@ describe("Leitstand route behind D1", () => {
   });
 
   it("renders no new Leitstand while the switch is off", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     window.location.hash = "#/leitstand";
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());

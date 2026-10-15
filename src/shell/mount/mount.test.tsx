@@ -104,7 +104,13 @@ describe("Glass shell mount behind D1", () => {
     expect(mocks.invoke.mock.calls.some(([command]) => command === "spawn_pty")).toBe(false);
   });
 
+  it("mounts the new shell without any stored choice", async () => {
+    render(<App />);
+    expect(await screen.findByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
+  });
+
   it("renders the old app alone while the switch is off", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     expect(container.querySelector(".g-shell")).toBeNull();
@@ -178,6 +184,7 @@ describe("Glass shell mount behind D1", () => {
   });
 
   it("leaves /einstellungen to the old Settings alone while the switch is off", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     window.location.hash = "#/einstellungen";
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
@@ -196,6 +203,7 @@ describe("Glass shell mount behind D1", () => {
   });
 
   it("is switched on and off from Settings General and persists", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole("tab", { name: "Einstellungen" }));
     const toggle = await screen.findByRole("checkbox", { name: "Neue Oberfläche (Vorschau)" });
@@ -205,7 +213,7 @@ describe("Glass shell mount behind D1", () => {
     expect(await screen.findByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
     await go("#/einstellungen");
     fireEvent.click(await screen.findByRole("checkbox", { name: "Neue Oberfläche (Vorschau)" }));
-    expect(localStorage.getItem(FLAG_KEY)).toBeNull();
+    expect(localStorage.getItem(FLAG_KEY)).toBe("0");
     await waitFor(() => expect(container.querySelector(".g-shell")).toBeNull());
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
