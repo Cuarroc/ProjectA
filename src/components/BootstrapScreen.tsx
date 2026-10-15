@@ -1,3 +1,9 @@
+import { Button } from "../design/controls/Button";
+import { t } from "../i18n/useT";
+import "../design/tokens.css";
+import "../design/controls/controls.css";
+import styles from "./RecoveryScreen.module.css";
+
 interface BootstrapScreenProps {
   /** The initial project read failed; retry is safe because it only reads state. */
   error: boolean;
@@ -11,30 +17,30 @@ interface BootstrapScreenProps {
 export default function BootstrapScreen({ error, onRetry }: BootstrapScreenProps) {
   if (error) {
     return (
-      <main className="bootstrap-screen">
-        <section className="bootstrap-card" role="alert" aria-labelledby="bootstrap-title">
-          <span className="bootstrap-mark" aria-hidden="true">
+      <main className={styles.screen}>
+        <section className={styles.card} role="alert" aria-labelledby="bootstrap-title">
+          <span className={styles.mark} aria-hidden="true">
             ◆
           </span>
-          <h1 id="bootstrap-title">Arbeitsbereich konnte nicht geladen werden</h1>
-          <p>Prüfe die Verbindung zur App und versuche es erneut.</p>
-          <button type="button" className="bootstrap-retry" autoFocus onClick={onRetry}>
-            Erneut versuchen
-          </button>
+          <h1 className={styles.title} id="bootstrap-title">{t("bootstrap.failed")}</h1>
+          <p className={styles.hint}>{t("bootstrap.retryHint")}</p>
+          <Button variant="primary" autoFocus onClick={onRetry}>
+            {t("bootstrap.retry")}
+          </Button>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="bootstrap-screen" aria-busy="true">
-      <section className="bootstrap-card" role="status" aria-live="polite" aria-labelledby="bootstrap-title">
-        <span className="bootstrap-mark" aria-hidden="true">
+    <main className={styles.screen} aria-busy="true">
+      <section className={styles.card} role="status" aria-live="polite" aria-labelledby="bootstrap-title">
+        <span className={styles.mark} aria-hidden="true">
           ◆
         </span>
-        <div className="bootstrap-spinner" aria-hidden="true" />
-        <h1 id="bootstrap-title">ProjectA</h1>
-        <p>Arbeitsbereich wird geladen …</p>
+        <div className={styles.spinner} aria-hidden="true" />
+        <h1 className={styles.title} id="bootstrap-title">{t("shell.brand")}</h1>
+        <p className={styles.hint}>{t("bootstrap.loading")}</p>
       </section>
     </main>
   );

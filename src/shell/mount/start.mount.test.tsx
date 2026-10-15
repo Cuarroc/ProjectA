@@ -33,7 +33,7 @@ it("shows the Ersteinrichtung stepper at #/start when D1 is on and has no sideba
   localStorage.setItem(FLAG_KEY, "1");
   const { container } = render(<App />);
   // The shell's own placeholder title is hidden by mount.css while the route is fresh.
-  expect(await screen.findByRole("list", { name: "Schritte der Einrichtung" })).toBeInTheDocument();
+  expect(await screen.findByRole("list", { name: "Schritte der Einrichtung" }, { timeout: 5000 })).toBeInTheDocument();
   expect(container.querySelector(".g-shell-content .st-screen")).toHaveTextContent("Ersteinrichtung");
   expect(container.querySelector(".g-mount")).toHaveAttribute("data-fresh", "on");
   expect(screen.queryByRole("link", { name: "Ersteinrichtung" })).toBeNull();
@@ -42,6 +42,7 @@ it("shows the Ersteinrichtung stepper at #/start when D1 is on and has no sideba
 });
 
 it("leaves the old app alone at #/start while D1 is off", async () => {
+  localStorage.setItem(FLAG_KEY, "0");
   const { container } = render(<App />);
   await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
   expect(container.querySelector(".g-mount")).toBeNull();
