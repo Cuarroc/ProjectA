@@ -17,6 +17,7 @@ const cards = [{
   worker: { id: "w1", projectId: "p1", task: "Fix the start block", profileId: "claude", branch: "claude/w1", worktreePath: "wt", sessionId: null, status: "running", kind: "worker", spawnedBy: null, pausedReason: null, createdAt: 1 },
   column: "working",
 }] as unknown as BoardCard[];
+const withCard = (extra: Record<string, unknown>) => [{ ...cards[0], ...extra }] as unknown as BoardCard[];
 const PROFILES = [profile("claude", "Claude Code", "local"), profile("local", "Lokal")];
 const node = async () => screen.findByRole("group", { name: "Fix the start block" });
 
@@ -70,4 +71,18 @@ it("reads the quota again every five seconds with one interval", async () => {
   unmount();
   await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
   expect(reads()).toBe(2);
+});
+
+// COMP-4-3: the node wears the card's proof strip, read from the same card fields.
+it("shows an unconnected red-first badge on the node", async () => {
+  render(<FlowTab cards={withCard({ testStatus: "pass", prUrl: "https://github.com/o/r/pull/7" })} />);
+  const strip = within(await node()).getByRole("group", { name: "Beweis" });
+  expect(within(strip).getAllByText("noch nicht verbunden")).toHaveLength(3);
+  expect(within(strip).getByRole("link", { name: "öffnen" })).toHaveAttribute("href", "https://github.com/o/r/pull/7");
+  expect(within(strip).queryByText("bestanden")).toBeNull();
+});
+
+it("lifts the node lamp to done when the test passed", async () => {
+  render(<FlowTab cards={withCard({ column: "done", testStatus: "pass" })} />);
+  expect(within(await node()).getByRole("img", { name: "Fertig" })).toHaveClass("g-lamp--ok");
 });
