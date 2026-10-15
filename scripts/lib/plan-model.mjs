@@ -54,7 +54,7 @@ export function parsePlan(markdown, { file } = {}) {
     if (/^\|[-|: ]+\|\s*$/.test(lines[i + 1] || "")) { head = row.map(clean); i++; continue; }
     if (!head) continue;
     const column = (pattern) => row[head.findIndex((h, index) => index > 0 && pattern.test(h))] ?? "";
-    const statusRaw = column(/\b(status|stand)\b/i), id = clean(row[0]);
+    const statusRaw = column(/\b(status|stand)\b/i), id = clean(row[0]).replace(/^([A-Z][A-Z0-9]*(?:-[A-Za-z0-9.]+)+)\s+\(.*\)$/, "$1");
     if (head.some((h) => /frage|entscheidung/i.test(h)) && head.some((h) => /^(status|stand)$/i.test(h))) {
       decisions.push({ id, status: /^(beantwortet|entschieden|answered)/i.test(clean(statusRaw)) ? "answered" : "open", line: i + 1 });
       continue;
@@ -66,7 +66,11 @@ export function parsePlan(markdown, { file } = {}) {
       prs: [...new Set([...line.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1])))], file, line: i + 1, section });
   }
   const known = new Set(packages.map((p) => p.id));
-  for (const p of packages) p.deps = p.deps.filter((id) => known.has(id) || /^[A-Z][A-Z0-9]*(?:-(?:[A-Z][A-Z0-9]*|\d+(?:[a-z]\d*)?))+$/u.test(id));
+  for (const p of packages) {
+    // The v2 plan uses local shorthand; only source-defined targets may expand.
+    p.deps = [...new Set(p.deps.map((id) => known.has(id) ? id : p.id.startsWith("V2-") && known.has(`V2-${id}`) ? `V2-${id}` : id))]
+      .filter((id) => known.has(id) || /^[A-Z][A-Z0-9]*(?:-(?:[A-Z][A-Z0-9]*|\d+(?:[a-z]\d*)?))+$/u.test(id));
+  }
   return { packages, decisions, problems: duplicates(packages) };
 }
 
