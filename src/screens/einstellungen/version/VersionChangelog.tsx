@@ -19,20 +19,23 @@ export function VersionChangelog({ source = changelogSource }: { source?: string
       {releases.length === 0 ? <HonestState kind="empty" title={t("settings.changelog.empty")} /> : (
         <>
           <p className="es-note">{t("settings.changelog.summary")}</p>
-          {releases.map((release) => (
-            <article key={release.version}>
-              <header>
-                <h4>{`v${release.version}`}</h4>
-                <time dateTime={release.date}>{release.date.split("-").reverse().join(".")}</time>
-                {release.beta ? <Chip size="sm">{t("settings.changelog.beta")}</Chip> : null}
-              </header>
-              {release.groups.length > 0 ? (
-                <ul>{release.groups.flatMap((group) => group.items).slice(0, 3).map((item, index) => (
-                  <li key={index}>{brief(item.title ?? item.text)}</li>
-                ))}</ul>
-              ) : <p className="es-note">{brief(release.notes[0] ?? t("settings.changelog.empty"))}</p>}
-            </article>
-          ))}
+          {releases.map((release) => {
+            const items = release.groups.flatMap((group) => group.items).slice(0, 3);
+            return (
+              <article key={release.version}>
+                <header>
+                  <h4>{`v${release.version}`}</h4>
+                  <time dateTime={release.date}>{release.date.split("-").reverse().join(".")}</time>
+                  {release.beta ? <Chip size="sm">{t("settings.changelog.beta")}</Chip> : null}
+                </header>
+                {items.length > 0 ? (
+                  <ul>{items.map((item, index) => (
+                    <li key={index}>{brief(item.title ?? item.text)}</li>
+                  ))}</ul>
+                ) : <p className="es-note">{brief(release.notes[0] ?? t("settings.changelog.empty"))}</p>}
+              </article>
+            );
+          })}
         </>
       )}
     </section>
