@@ -30,6 +30,7 @@ export interface ErsteinrichtungScreenProps {
    * its step, the tools button too (it also re-reads the provider overview).
    */
   onAction: (step: StartStepId) => void;
+  showTeamAction?: boolean;
 }
 
 interface Row {
@@ -77,7 +78,7 @@ function ScanResult({ scan }: { scan: ScanState }) {
  * from the overview, project presence and the repo scan from the caller. Without
  * a `scan` prop the project step says "not connected" instead of showing a value.
  */
-export function ErsteinrichtungScreen({ hasProject, scan, onAction }: ErsteinrichtungScreenProps) {
+export function ErsteinrichtungScreen({ hasProject, scan, onAction, showTeamAction = true }: ErsteinrichtungScreenProps) {
   const { providers, loading, error, refresh } = useProviderOverview(PROVIDER_POLL_MS);
   const signedIn = providers.filter((p) => p.connected);
   const ready = !loading && !error && signedIn.length > 0;
@@ -138,12 +139,12 @@ export function ErsteinrichtungScreen({ hasProject, scan, onAction }: Ersteinric
               {r.id === "project" && (scan ? <ScanResult scan={scan} /> : <HonestState kind="offline" title={T.scanTitle} hint={T.scanHint} />)}
             </div>
             <StateMark form={r.form} label={r.chip} />
-            <Button variant={r.primary ? "primary" : "secondary"} onClick={() => {
+            {(r.id !== "team" || showTeamAction) && <Button variant={r.primary ? "primary" : "secondary"} onClick={() => {
               if (r.id === "tools") refresh();
               onAction(r.id);
             }}>
               {r.action}
-            </Button>
+            </Button>}
           </li>
         ))}
       </ol>

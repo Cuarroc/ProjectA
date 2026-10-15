@@ -20,11 +20,12 @@ const usage = (percent: number | null, windowLabel = "5 Stunden") => ({
 const link = () => screen.getByRole("link", { name: /Kontingente/ });
 const poll = () => act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
 beforeEach(() => {
+  localStorage.setItem("projecta.settings.featureFlag.weitere_bereiche", "1");
   vi.useFakeTimers();
   vi.mocked(getQuotaState).mockReset().mockResolvedValue([]);
   vi.mocked(getProviderOverview).mockReset().mockResolvedValue([]);
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); localStorage.clear(); vi.useRealTimers(); });
 
 it("shows observed quota blocks in the header instead of a placeholder", async () => {
   vi.mocked(getQuotaState).mockResolvedValue([quota("blocked")]);
