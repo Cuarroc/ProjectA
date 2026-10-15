@@ -1,0 +1,150 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Die Fabrik-Strecke",
+    "output": "fabrik-strecke.html",
+    "locale": "de",
+    "translations": {"legend.title": "Legende"},
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "all",
+      "entries": {
+        "external": {"label": "Idee, noch ohne Auftrag"},
+        "backend": {"label": "Plan und Automatik"},
+        "frontend": {"label": "Ein Agent arbeitet"},
+        "database": {"label": "Prüfung durch andere Familie"},
+        "cloud": {"label": "Tor: wartet auf Freigabe"},
+        "messagebus": {"label": "Versand"},
+        "security": {"label": "Rückweg bei Rot"}
+      }
+    },
+    "repository": {"url": "https://github.com/Cuarroc/ProjectA.git", "revision": "b8546e96fd4685dcc01602ee92472fd81d84894c"}
+  },
+  "lanes": [
+    {"id": "recherche", "label": "Recherche"},
+    {"id": "orga", "label": "Organisation"},
+    {"id": "fertigung", "label": "Fertigung"},
+    {"id": "pruefung", "label": "Prüfung"},
+    {"id": "freigabe", "label": "Freigabe"},
+    {"id": "versand", "label": "Versand"}
+  ],
+  "mainPath": ["idee", "plan", "rot", "lokal", "ci", "fremd", "tor-root", "queue", "release"],
+  "semanticChecks": {"allowedRoots": ["idee", "tor-nutzer"], "allowedTerminals": ["release"]},
+  "nodes": [
+    {"id": "idee", "lane": "recherche", "col": 0, "type": "external", "label": "Idee", "sublabel": "mit Quellen"},
+    {
+      "id": "plan",
+      "lane": "orga",
+      "col": 0,
+      "type": "backend",
+      "label": "Plan + Auftrag",
+      "sublabel": "Chief: ein Paket",
+      "sources": [{"path": "AGENTS.md", "line": 142, "end_line": 144}, {"path": "AGENTS.md", "line": 13, "end_line": 17}]
+    },
+    {
+      "id": "rot",
+      "lane": "fertigung",
+      "col": 1,
+      "type": "frontend",
+      "label": "Roter Test",
+      "sublabel": "Agent: erst rot, dann grün",
+      "sources": [{"path": "AGENTS.md", "line": 18, "end_line": 20}]
+    },
+    {
+      "id": "lokal",
+      "lane": "fertigung",
+      "col": 2,
+      "type": "frontend",
+      "label": "Lokal grün + PR",
+      "sublabel": "Agent: Bericht im PR",
+      "sources": [{"path": "AGENTS.md", "line": 21, "end_line": 23}, {"path": "AGENTS.md", "line": 37, "end_line": 41}]
+    },
+    {
+      "id": "ci",
+      "lane": "pruefung",
+      "col": 3,
+      "type": "backend",
+      "label": "Automatische Prüfung",
+      "sublabel": "GitHub: Linux + red-first",
+      "sources": [{"path": "AGENTS.md", "line": 312, "end_line": 315}]
+    },
+    {
+      "id": "fremd",
+      "lane": "pruefung",
+      "col": 4,
+      "type": "database",
+      "label": "Fremdprüfung",
+      "sublabel": "andere Familie",
+      "sources": [{"path": "AGENTS.md", "line": 28, "end_line": 34}]
+    },
+    {
+      "id": "tor-root",
+      "lane": "freigabe",
+      "col": 4,
+      "type": "cloud",
+      "icon": "decision",
+      "label": "Freigabe-Tor",
+      "sublabel": "nur Root",
+      "sources": [{"path": "AGENTS.md", "line": 327, "end_line": 334}, {"path": ".mergify.yml", "line": 64, "end_line": 68}]
+    },
+    {
+      "id": "queue",
+      "lane": "versand",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Merge-Warteschlange",
+      "sublabel": "Mergify, mit Windows",
+      "sources": [{"path": ".mergify.yml", "line": 68, "end_line": 71}, {"path": "AGENTS.md", "line": 42, "end_line": 43}]
+    },
+    {
+      "id": "tor-nutzer",
+      "lane": "freigabe",
+      "col": 5,
+      "type": "cloud",
+      "icon": "decision",
+      "label": "Release-Tor",
+      "sublabel": "Ja vom Nutzer",
+      "sources": [{"path": "AGENTS.md", "line": 49, "end_line": 54}]
+    },
+    {
+      "id": "release",
+      "lane": "versand",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Veröffentlichung",
+      "sublabel": "Root: Tag + Update",
+      "sources": [{"path": ".github/workflows/release.yml", "line": 7, "end_line": 9}]
+    }
+  ],
+  "edges": [
+    {"from": "idee", "to": "plan", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"from": "plan", "to": "rot", "label": "Auftrag"},
+    {"from": "rot", "to": "lokal", "label": "grün"},
+    {"from": "lokal", "to": "ci", "label": "Push"},
+    {"from": "ci", "to": "fremd", "label": "grün", "variant": "emphasis"},
+    {"from": "fremd", "to": "tor-root", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"from": "tor-root", "to": "queue", "route": "drop", "fromSide": "bottom", "toSide": "top", "variant": "emphasis"},
+    {"from": "queue", "to": "release", "label": "main grün"},
+    {"from": "tor-nutzer", "to": "release", "label": "Ja", "route": "drop", "fromSide": "bottom", "toSide": "top", "variant": "emphasis"},
+    {"from": "ci", "to": "rot", "label": "rot", "variant": "security", "role": "error"},
+    {"from": "fremd", "to": "rot", "label": "Änderungen", "variant": "security", "role": "error"}
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Rückwege",
+      "items": ["Rot oder Änderungen: zurück zum roten Test, höchstens zwei Runden", "Roter main: die ganze Strecke steht, erst reparieren"]
+    },
+    {
+      "dot": "amber",
+      "title": "Tore",
+      "items": ["Nur Root gibt einen Stand frei; ein neuer Stand braucht eine neue Freigabe", "Veröffentlicht wird nur mit Ja des Nutzers", "Wer meldet, gibt nichts frei"]
+    },
+    {
+      "dot": "slate",
+      "title": "Stau-Grenzen",
+      "items": ["Höchstens 15 offene PRs", "Ein Entwurf ohne neue Arbeit seit 48 Stunden ist überfällig"]
+    }
+  ]
+}
