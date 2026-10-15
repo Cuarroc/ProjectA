@@ -26,12 +26,13 @@ reference. Where a detail contradicts these ten, the ten win.
    Keep sessions short (well under ~150k tokens of context) and hand over with
    a note instead of running long.
 5. **Reviews by risk, at most two rounds.** Tier A (seam, security,
-   concurrency, PTY, database): two reviewers from other vendors. Tier B (other
-   Rust/TS code): one reviewer who is not the author's model family. Tier C
-   (docs, tests, snapshots, config without runtime effect): no external review,
-   the gates suffice. After round two the coordinator (Root) decides merge,
-   split or drop and records the decision in the PR report; the user is
-   informed.
+   concurrency, PTY, database): two different families, both outside the author's.
+   Tier B (other Rust/TS): two, one subscription reviewer and one OpenRouter
+   reviewer, from different non-author families. Tier C (docs, tests, snapshots,
+   config without runtime effect): gates only; C+ (tests adding skip/timeout/retry
+   or weakening assertions): one outside reviewer. Fix-round delta: one outside
+   reviewer, two if tier-A files change. After round two Root decides merge,
+   split or drop, records it in the PR report and informs the user.
 6. **The four seams only serially:** `src-tauri/src/api.rs`, `main.rs`,
    `store.rs` (with `store/`), `bin/pa.rs`. Never two agents on one at once.
 7. **The PR text is the report.** It opens with three German sentences for the
@@ -103,8 +104,13 @@ fixing a bug and consider a lint/gate for the error class.
 ## Reviews and advisors
 
 The tier (rule 5) follows the changed files: any seam, security-relevant code,
-concurrency, PTY or database/migration change makes it tier A. Never let the
-author's model family judge its own candidate. Record every finding and its
+concurrency, PTY or database/migration change makes it tier A. Tier A requires
+two different non-author families; tier B requires two non-author families
+(one subscription reviewer plus one OpenRouter reviewer). Tier C needs only
+gates, except C+: tests adding skip/timeout/retry or weakening assertions need
+one outside reviewer. A fix-round delta needs one non-author reviewer, or two
+when it touches tier-A files. Never let the author's model family judge its
+own candidate. Record every finding and its
 disposition (accepted with commit, rejected with reason, follow-up) in the PR
 text. A second round only when round one had a high-severity finding; after
 round two the coordinator (Root) decides merge, split or drop and records it in
@@ -123,7 +129,7 @@ or a time/quota/budget limit is reached. Self-check replaces neither independent
 review nor user approval; do not add an RLM runtime, agents or services for it.
 
 - **Everyday reviewers:** two reviewers from families other than the author's
-  for tier A, one for tier B (rule 5). Keep review prompts out of the repo; they
+  for tiers A and B, one for C+, none for C (rule 5). Keep prompts outside the repo; they
   are reproducible from the commit. Which reviewer models are currently usable,
   and how they are called, is the coordinator's private record.
 - **Advisors** for hard decisions and final reviews: two advisors from different
@@ -136,6 +142,23 @@ review nor user approval; do not add an RLM runtime, agents or services for it.
 - Paid usage only within budgets the user approved in the coordinator's private
   permission record; no new paid services, keys or purchases without the
   user's explicit yes. Secrets never go into files, logs, commands or PR text.
+
+### Subscriptions first — recorded credit exceptions
+
+Subscriptions remain the default. The included Anthropic API-credit exception
+(decision 2026-10-09) allows a dedicated ProjectA Console workspace/key with a
+spend limit, no payment method, purchased credits or auto-reload; exhaustion
+returns work to subscriptions. Keys stay in the user's vault/secret store,
+never in files, logs, commands or PR text.
+
+The user's 2026-10-14 decision also permits existing OpenRouter credit only:
+no purchase or auto-reload. Reviews run from the PC using the coordinator's
+OpenRouter review script outside the repo. Its key stays only in the user's
+environment/vault, never in files, logs, commands or PR text. Root's privately
+recorded floor applies: below it, free reviewers are supplementary; they never
+count as required reviewers. A missing required family means waiting for an
+eligible reviewer, not reducing the count. This supersedes the old OpenRouter
+ban in the 2026-10-09 credit decision; no current balance is asserted.
 
 ## Bounded goals and approved adaptation
 
@@ -292,13 +315,13 @@ no family is preferred or excluded by a fixed rule (user decision 2026-10-07).
 | Task type | Eligible profile families | Reviewer rule |
 |---|---|---|
 | Seam / security / PTY / DB implementation (tier A) | `codex`, `claude`, `kimi`; Cursor: profile pending CLI check | two reviewers, each from a family other than the author's |
-| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | one reviewer from another family |
-| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | one reviewer from another family |
+| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | two non-author families: subscription + OpenRouter |
+| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | two non-author families: subscription + OpenRouter |
 | Scripts / CI (tier B; tier C if no runtime effect) | `codex`, `claude`, `kimi`, `opencode` | tier B as above; tier C none, the gates suffice |
 | Docs (tier C) | `codex`, `claude`, `kimi`, `opencode` | none, the gates suffice |
 | Read-only inventory / research | `opencode-glm-53-flash`, `ollama-coder`, `codex`, `claude`, `kimi`; Grok: profile pending CLI check | none (report only) |
-| Review tier A | the reviewer pair named in the coordinator's private record (free fallback: kilo via `scripts/review/run-local.sh --via kilo`), `codex`, `claude`; Cursor: profile pending CLI check | two reviewers, both differ from the author's family |
-| Review tier B | any one of the tier-A review ways | differs from the author's family |
+| Review tier A | coordinator's recorded pair, `codex`, `claude`; OpenRouter: `z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3` within the credit exception; Cursor: profile pending CLI check | two different non-author families; free feedback never counts |
+| Review tier B | subscription reviewer + OpenRouter (`z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3`) within the credit exception | two different non-author families; free feedback never counts |
 
 Pick among the eligible providers by `usage_overview`: the one with the most
 headroom wins; a provider at the user's cap drops out until its window resets
