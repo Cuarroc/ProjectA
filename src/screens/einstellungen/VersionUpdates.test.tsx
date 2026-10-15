@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
-import { cancelUpdateDownload, installUpdateWhenIdle, listLiveSessions } from "../../lib/ipc";
+import { cancelUpdateDownload, installUpdateWhenIdle, listLiveSessions, type CancelUpdateResult } from "../../lib/ipc";
 import { VersionUpdates } from "./VersionUpdates";
 
 // Counts every state update, so "no update after unmount" is observable (React itself stays silent).
@@ -169,6 +169,74 @@ describe("VersionUpdates install and cancel", () => {
     expect(screen.getByText(/Der Download wurde abgebrochen/)).toBeTruthy();
     await act(async () => { flight.reject(new Error("aborted")); await flight.promise.catch(() => undefined); });
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // A cancel verdict that stays in flight until the test settles it.
+  const verdict = () => {
+    const flight = deferred<CancelUpdateResult>();
+    vi.mocked(cancelUpdateDownload).mockReturnValue(flight.promise);
+    return flight;
+  };
+  const rejectDownload = (flight: { promise: Promise<void>; reject: (e: unknown) => void }, e: unknown) =>
+    act(async () => { flight.reject(e); await flight.promise.catch(() => undefined); });
+
+  it("treats an install rejection that beats the cancel verdict as the abort", async () => {
+    const flight = download();
+    const answer = verdict();
+    fireEvent.click(await available());
+    await cancel();
+    await rejectDownload(flight, new Error("aborted"));
+    await act(async () => { answer.resolve("cancelled"); await answer.promise; });
+    expect(await install()).toBeTruthy();
+    expect(screen.getByText(/Der Download wurde abgebrochen/)).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows an install rejection that beats a tooLate verdict as an error", async () => {
+    const flight = download();
+    const answer = verdict();
+    fireEvent.click(await available());
+    await cancel();
+    await rejectDownload(flight, new Error("disk full"));
+    await act(async () => { answer.resolve("tooLate"); await answer.promise; });
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Installieren" })).toBeNull();
+  });
+
+  it("keeps Abbrechen disabled after notRunning until the install settles", async () => {
+    const flight = download();
+    vi.mocked(cancelUpdateDownload).mockResolvedValue("notRunning");
+    fireEvent.click(await available());
+    await cancel();
+    await act(async () => { await vi.mocked(cancelUpdateDownload).mock.results[0]?.value; });
+    expect((screen.getByRole("button", { name: "Abbrechen" }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { flight.resolve(); await flight.promise; });
+    expect(await screen.findByText(/Version 2\.0\.0 ist installiert/)).toBeTruthy();
+  });
+
+  it("shows an install failure after a notRunning verdict as an error", async () => {
+    const flight = download();
+    vi.mocked(cancelUpdateDownload).mockResolvedValue("notRunning");
+    fireEvent.click(await available());
+    await cancel();
+    await act(async () => { await vi.mocked(cancelUpdateDownload).mock.results[0]?.value; });
+    await rejectDownload(flight, new Error("disk full"));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+  });
+
+  it("shows an install failure as an error", async () => {
+    vi.mocked(installUpdateWhenIdle).mockRejectedValue(new Error("disk full"));
+    fireEvent.click(await available());
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText(/Version 2\.0\.0 ist installiert/)).toBeNull();
+  });
+
+  it("shows a failing cancel as an error", async () => {
+    download();
+    vi.mocked(cancelUpdateDownload).mockRejectedValue(new Error("ipc down"));
+    fireEvent.click(await available());
+    await cancel();
+    expect(await screen.findByRole("alert")).toBeTruthy();
   });
 
   it("does not offer Installieren while workers are running", async () => {
