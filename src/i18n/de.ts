@@ -78,6 +78,8 @@ export const de = {
   "flag.fernansicht.description": "Zeigt die Fernansicht; ausgeschaltet bleibt sie unsichtbar.",
   "flag.kundenprojekte.label": "Kundenprojekte",
   "flag.kundenprojekte.description": "Zeigt Kundenprojekte mit Datenschutz; ausgeschaltet bleiben sie unsichtbar.",
+  "flag.weitereBereiche.label": "Weitere Bereiche",
+  "flag.weitereBereiche.description": "Zeigt neben Leitstand und Einstellungen alle übrigen Bereiche; ausgeschaltet bleiben sie unsichtbar.",
   "leitstand.tabs": "Ansichten",
   "leitstand.tab.classic": "Klassisch",
   "leitstand.tab.tools": "Werkzeuge",

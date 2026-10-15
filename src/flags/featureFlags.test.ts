@@ -66,7 +66,7 @@ describe("featureFlags registry", () => {
   it("lists every flag with German copy and gates routes only when on", () => {
     const listed = listFeatureFlags();
     expect(listed.map((f) => f.id).sort()).toEqual(
-      (["d1_neue_oberflaeche", "fernansicht", "kundenprojekte"] as FeatureFlagId[]).sort(),
+      (["d1_neue_oberflaeche", "fernansicht", "kundenprojekte", "weitere_bereiche"] as FeatureFlagId[]).sort(),
     );
     for (const flag of listed) {
       expect(flag.label.length).toBeGreaterThan(0);
