@@ -5,12 +5,15 @@ import { listAgentProfiles } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
 import { HonestState } from "../../design/data/HonestState";
+import "../../design/inputs/inputs.css";
+import { Lamp, type LampState } from "../../design/inputs/Lamp";
 import { useT } from "../../i18n/useT";
 import type { AgentProfile } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
 import { BetriebPanel } from "./betrieb/BetriebPanel";
-import { FlowGraph } from "./flow/FlowGraph";
+import { FlowGraph, type FlowLabel } from "./flow/FlowGraph";
 import { layoutFlow } from "./flow/layout";
+import { lampFor, type LampKind } from "./lamps/lampFor";
 import { NeedsYou } from "./needs/NeedsYou";
 import { TOOLS_PATH, trim } from "../../shell/mount/routing";
 
@@ -21,6 +24,22 @@ export const FLUSS_PATH = "/leitstand/fluss";
 
 /** Relative ages ("seit 4 min") move on minute scale. */
 const TICK_MS = 30_000;
+
+// The atoms of AgentCard.tsx, where this map is private: node and card show one lamp.
+const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off" };
+
+/** Inside of a flow node: task and branch as before, plus the lamp of the card. No gates reach the card yet, so a done node reads "ohne Beweis". */
+function FlowNodeBody({ label, lamp }: { label: FlowLabel; lamp?: ReturnType<typeof lampFor> }) {
+  return (
+    <>
+      <span className="fl-task">{label.task}</span>
+      <span className="ls-row">
+        {lamp && <Lamp state={LAMP_STATE[lamp.lamp]} label={lamp.word} />}
+        <span className="fl-branch">{label.branch}</span>
+      </span>
+    </>
+  );
+}
 
 /** The classic view and its persistent tools stay reachable beside Haupt, Fluss and Betrieb. */
 export function LeitstandTabs({ path }: { path: string }) {
@@ -73,13 +92,14 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   if (fluss) {
     const workers = board.cards.map((card) => card.worker);
     const labels = Object.fromEntries(workers.map((w) => [w.id, { task: w.task, branch: w.branch }]));
+    const lamps = new Map(board.cards.map((card) => [card.worker.id, lampFor(card, false)]));
     return (
       <div className="g-lr">
         <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={FLUSS_PATH} /></div>
         {/* An unread or unreadable board must not claim "no agents". */}
         {board.loading ? null : board.error !== null && workers.length === 0
           ? <div role="status"><HonestState kind="offline" /></div>
-          : <FlowGraph layout={layoutFlow(workers)} labels={labels} />}
+          : <FlowGraph layout={layoutFlow(workers)} labels={labels} renderNode={(node, label) => <FlowNodeBody label={label} lamp={lamps.get(node.id)} />} />}
       </div>
     );
   }
