@@ -1,6 +1,6 @@
 # PLAN — der einzige Plan für ProjectA
 
-Stand: 15.10.2026 18:35 UTC (Plan-Abgleich; Zeilen für #1557, #1560, #1564 auf Erledigt gesetzt).
+Stand: 15.10.2026 18:35 UTC (Plan-Abgleich; Zeilen für #1557 und #1560 auf Erledigt gesetzt; PLAN-AUTO-1 liegt bei #1586).
 Beobachtete main-Basis: `ded1eef5` (Merge #1581).
 Chief abwesend: PLAN-Pflege durch Root als Stellvertreter; Editor `srv-fix-pr1557-r1`.
 Quelle: Root-Auftrag 15.10.; Abnahme bei Root. Ältere Z-Zeilen behalten ihr Belegdatum.
@@ -1445,7 +1445,7 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 
 | ID | Ziel | Abhängigkeit | Status |
 |---|---|---|---|
-| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | Erledigt: #1564 (merged 2026-10-15T16:44:07Z) |
+| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | läuft: Draft-PR #1564, 15.10. (`gh pr list --search "PLAN-AUTO-1"`) |
 | PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
