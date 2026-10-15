@@ -1,5 +1,83 @@
 # Changelog
 
+## v1.6.5 (Beta) — 15.10.2026
+
+Enthält alle Änderungen seit v1.6.4 (8 Pull Requests). Die neue Oberfläche bleibt eine Vorschau; die klassische Ansicht ist weiterhin erreichbar.
+
+**Neue Oberfläche (Vorschau):**
+
+- **Braucht dich mit drei festen Zeilen** (PR #1455): Die Spalte zeigt immer die Zeilen Geld, Installieren und Löschen mit je einem Satz, dass sie deine Freigabe brauchen. Passt eine offene Frage zu einer Zeile, steht sie dort und lässt sich mit demselben Antwortfeld beantworten; alle anderen Fragen bleiben in der bisherigen Liste. Es wird nichts ausgegeben, installiert oder gelöscht.
+- **Statuslampe auf der Agentenkarte** (PR #1452): Jede Karte im Leitstand zeigt neben dem Statusschild eine Lampe mit vier Zuständen (läuft, blockiert, erledigt, untätig). Solange der Beweisstreifen fehlt, steht eine erledigte Karte als „ohne Beweis“ da und nicht als „Fertig“; Neu starten, Archivieren und das Statusschild bleiben unverändert.
+- **Ablauf-Graph vorbereitet** (PR #1458): Der Ablauf der Agenten wird als gläserner Graph gezeichnet, mit einem Knoten pro Agent und einem gestrichelten Pfeil vom Auftraggeber zum gestarteten Agenten. Die Pfeile bewegen sich nur ohne eingestellte reduzierte Bewegung, ohne Agenten steht ein Leer-Hinweis da. Noch nicht in die App eingebunden.
+- **Beweisleiste vorbereitet** (PR #1450): Vier Plaketten zeigen Red-first, Gates, Review und PR. Was noch nicht gemeldet wurde, steht als „noch nicht verbunden“ da und bekommt nie einen grünen Haken; ist ein Beweis durch einen späteren Commit überholt, steht an jeder Plakette „veraltet“. Noch nicht in die App eingebunden.
+- **Bausteine für Kontingente und Größenmarke vorbereitet** (PR #1453, #1448): Die Kontingent-Anzeige rechnet den größeren der beiden Fensterwerte (5 Stunden oder 7 Tage) und meldet „nicht gemessen“, statt eine fehlende Messung als 0 % zu zeigen; die Prognose lautet „zu wenig Daten“, ein Ausweichprofil wird nur genannt, solange das Profil blockiert ist. Die Größenmarke für einen Worker-Diff zählt hinzugefügte und gelöschte Zeilen zusammen: bis einschließlich 300 gilt als im Rahmen, ab 301 steht „über 300“ dabei. Beides ist noch nicht in der Oberfläche sichtbar.
+
+**Sicherheit und Zuverlässigkeit:**
+
+- **Kern prüft Bereichsstufen** (PR #1325): Vor selbständigen Änderungen prüft der Kern die eingestellte Bereichsstufe und eine unabhängige Wirkberechtigung. Geschützte Wirkungen bleiben auch bei falsch gepflegtem Register Vorschläge, und abgewiesene Änderungen lassen den bisherigen Zustand unverändert.
+
+**Dokumentation:**
+
+- **Bekannte Probleme** (PR #1468): Zwei weitere zufällige Windows-Testabbrüche der Klasse KI-24 sind mit Belegen in `KNOWN_ISSUES.md` festgehalten; sie sind auf Linux nicht reproduzierbar, deshalb gibt es keinen Code-Fix.
+
+## v1.6.4 (Beta) — 14.10.2026
+
+Enthält alle Änderungen seit v1.6.3 (126 Pull Requests). Die neue Oberfläche bleibt eine Vorschau; die klassische Ansicht ist weiterhin erreichbar.
+
+**Neue Oberfläche (Vorschau):**
+
+- **Glass-Terminalansicht** (PR #1262, #1293, #1313, #1333): Offene Sitzungen erscheinen als Tabs in der neuen Terminalansicht; beim Wechsel zu „Werkzeuge“ bleibt die Verbindung erhalten. Ein Klick auf eine Agentenkarte oder ein direkter Link öffnet die zugehörige Sitzung; während einer Agentenabfrage bleibt das bisherige Terminal stehen. Die Sitzungsverwaltung wurde dafür in einen eigenen Baustein verlegt, ohne dass sich das sichtbare Verhalten ändert.
+- **Vorschau-Funktionen in den Einstellungen** (PR #1319): Die neue Oberfläche erklärt alle Vorschau-Schalter und zeigt ihren Zustand; Not-Aus und der klassische Rückweg bleiben erreichbar.
+- **Werkzeuge-Reiter** (PR #1277): Die bisherigen Werkzeuge sind in der neuen Oberfläche unter „Werkzeuge“ erreichbar; Entwürfe und Sitzungszuordnungen bleiben beim Reiterwechsel erhalten.
+- **Leitstand** (PR #1249, #1260, #1387): Agenten-Karten zeigen den Grund und das Alter der Aufmerksamkeit und lassen lange Aufträge aufklappen; bei einer Aktualisierung wird nur die geänderte Karte neu gezeichnet; ein leerer Filter wird für Bildschirmleser mit Namen angesagt.
+- **Betrieb: Aufgaben einreihen** (PR #1340): Im Betrieb-Tab lassen sich Aufgaben einreihen und noch unbeanspruchte Aufgaben entfernen; Einreihen bleibt gesperrt, bis der Not-Aus-Zustand gelesen ist.
+- **Tresor und Kostenbuch erreichbar** (PR #1342, #1343, #1346, #1347): Der Tresor in „MCP & Tresor“ und das Kostenbuch unter „Kontingente“ lassen sich in der neuen Oberfläche nur lesend ansehen und mit „Neu lesen“ erneut laden; ältere Antworten überschreiben keinen neueren Stand.
+- **Kontingente ehrlicher** (PR #1236, #1348): Die Kopfleiste zeigt beobachtete Sperren und Verbrauchswerte, ältere Sperren als letzten Stand; Lesefehler werden nicht mehr als leerer Bestand dargestellt, unbekannte Werte nicht als null Prozent.
+- **Chat mit klarem Empfänger** (PR #1237): Vor dem Senden steht, dass die Nachricht an den Orchestrator des gewählten Projekts geht; ohne bekannten Orchestrator erklärt ein Hinweis, dass der erste Versand ihn starten kann.
+- **Denkraum** (PR #1332, #1334, #1336): Der Denkraum öffnet ruhig mit höchstens drei aktuellen Fragen und einem nächsten Schritt, speichert den Dialog- oder Solo-Modus einer Idee samt Antworten dauerhaft und lädt die Glass-Designwerte über eine gemeinsame Adresse.
+- **Agent starten und Personas** (PR #1339, #1351, #1354, #1360): Die Persona-Auswahl lädt nach einem Lesefehler erneut; Modellwerte stehen als „Modellvorgabe“ da, nicht als laufendes Modell; die Ersteinrichtung meldet „Bereit“ erst nach erfolgreicher Prüfung; eine gesperrte Persona wird in einer eigenen Zeile angezeigt.
+- **Erneut lesen statt Neuöffnen** (PR #1352, #1353, #1355, #1357, #1364): Organigramm, Plan-Ansicht, Rollenliste, Verlauf und Lektionen zeigen nach einem Lesefehler einen Knopf zum erneuten Lesen; bereits Bestätigtes kehrt nicht zurück, ein Versandfehler im Verlauf bleibt stehen und der Text bleibt im Feld.
+- **Beweiskette vorbereitet** (PR #1239, #1344): Die Ansicht zeigt oben den Bereitschaftsstand mit erstem offenen Grund und nächstem Schritt und fasst fehlende Belegquellen zusammen; vollständige Code-Stände klappen bei „Neu prüfen“ zu. Sie ist noch nicht in die App eingebunden.
+- **Bausteine für den Leitstand vorbereitet** (PR #1434, #1436, #1437): Eine Frage an dich wird als „Geld“, „Installieren“, „Löschen“ oder „Sonstiges“ eingeordnet, wobei Geld vor Installieren vor Löschen gewinnt; aus den vorhandenen Arbeitern werden Knotenpositionen und Eltern-Kind-Linien für den späteren Live-Ablauf berechnet; eine Statuslampe zeigt Läuft, Blockiert, Fertig oder Untätig, wobei „Fertig“ nur mit Beweis erscheint. Noch ist nichts davon in der Oberfläche sichtbar.
+- **Version prüfen** (PR #1363): „Nach Updates suchen“ liest die Version erneut, sodass ein kurzer Lesefehler ohne Neustart verschwindet.
+
+**Bedienung und Barrierefreiheit:**
+
+- **Tastatur und Eingabemethoden** (PR #1349, #1350, #1356, #1371, #1373, #1378, #1380): Befehlspalette und segmentierte Auswahl reagieren nicht auf Tasten, während eine Eingabemethode Zeichen zusammensetzt; das Sheet überspringt verborgene Steuerelemente; das Darstellungs-Menü schließt, wenn der Fokus es verlässt; leere Tab-Leisten stürzen nicht ab; Tastaturhinweise und Chips stehen nicht in der Tab-Reihenfolge.
+- **Unbekannte Werte ehrlich dargestellt** (PR #1362, #1365, #1367, #1368, #1369, #1372, #1375, #1376, #1377, #1379, #1381): Unbekannte Zustände, Töne, Arten, Themen, Zähler und Zeiten erzeugen keine leeren Marken oder erfundenen Klassen mehr, sondern eine neutrale Darstellung; leere Tabellen werden nicht als leere Messung gezeigt.
+- **Doppelte Aktionen verhindert** (PR #1359, #1366, #1370, #1374): Ein zweiter Klick auf Fortsetzen oder Schließen löst nichts doppelt aus; eine laufende Archivierung blockiert keine andere Leitstand-Karte; ein Hash mit Schrägstrich oder Fragezeichen öffnet die passende Seite.
+
+- **Verständliche Fehlertexte** (PR #1417): Rohe Fehlertexte aus dem Kern stehen nicht mehr als Hauptmeldung auf dem Bildschirm; es erscheint ein deutscher Satz, der Rohtext liegt hinter „Technische Details“. Das gilt für Kontingente, den Verlauf-Chat, den Watchdog im Betrieb, „Braucht dich“ und die Versionsprüfung.
+- **Deutsche Ansichtsnamen in der klassischen Oberfläche** (PR #1419): Die sechs Ansichten heißen Arbeit, Achtung, Agenten, Prüfung, Auswertung und Einstellungen, ebenso die Ansage für Screenreader und die Beschriftungen im Aufmerksamkeits-Eingang; Layout und interne Namen bleiben.
+- **Favicon und benannte Eingabefelder** (PR #1416): Die App hat ein Symbol für den Browser-Tab, und alle Eingabefelder im Leitstand und in den Einstellungen tragen einen Namen; optisch ändert sich nichts.
+
+**Sicherheit und Zuverlässigkeit:**
+
+- **Release-Workflow gehärtet** (PR #1172): Der Release-Workflow hat nur noch Leserechte als Standard; Schreibrechte hat allein der Installer-Job. Die Installer erhalten eine Herkunftsbestätigung und eine Prüfsummen-Datei.
+- **Fehlerberichte der Oberfläche** (PR #1272, #1287): Nicht abgefangene Fehler werden begrenzt im App-Log festgehalten, Geheimnisse in Meldung, Stack und Route werden maskiert; nach einem Darstellungsfehler erscheint eine Meldung mit Neuladen-Knopf.
+- **Freigaben genau einmal** (PR #1248, #1261, #1275): Eine Freigabe ist an Inhalt, Ziel und Lauf gebunden, wird dauerhaft gespeichert und kann nur einmal verbraucht werden; doppelte Nonces und fehlgeschlagene Rollbacks werden eindeutig gemeldet. Das Erzwingen bei der Ausführung folgt in einem eigenen Paket.
+- **Nahtstellen-Dateien geschützt** (PR #1361, #1399): Claude Code blockiert Änderungen an den vier Nahtstellen-Dateien ohne ausdrückliche Freigabe; Regeln für höchstens 15 offene Agenten-PRs, die 48-Stunden-Frist für Entwürfe und das Label `review-ok` stehen in AGENTS.md.
+- **Worktree-Checkpoints** (PR #1296, #1308): Der aktuelle Commit eines Worktrees lässt sich unter einer eindeutigen Referenz festhalten; belegte Referenzen werden abgewiesen, HEAD, Index und Arbeitsdateien bleiben unverändert.
+- **Link-Öffner nur für https** (PR #1404): Die App öffnet nur noch https-Adressen; die einzige Ausnahme ist die lokale Web-Ansicht (`http://localhost:<Port>/board`), und eine Adresse mit eingebetteter Kennung, die auf einen fremden Rechner zeigt, wird abgewiesen.
+- **Datenbank-Start wiederholt bei Sperre** (PR #1463): Ist die Datenbankdatei beim Start kurz noch gesperrt („database is locked“), wiederholt die App den Verbindungsaufbau bis zu zweimal. Ob damit der Zufallsfehler in der Windows-Prüfung der Merge-Queue verschwindet, zeigt erst die Queue.
+- **Sicherheitshinweise im Code** (PR #1412, #1425): Die `unsafe`-Blöcke in Anmeldedaten-Zugriff, Dateiersetzung, One-Shot-Start und Windows-Prozesserfassung tragen jetzt `SAFETY`-Kommentare, die ihre Voraussetzungen nennen; das Verhalten bleibt gleich.
+- **Hygiene- und Stillstandsprüfung** (PR #1294, #1305, #1320): Verdächtige Dateinamen werden gemeldet und nur einmal gezählt, Vorsprung und Rückstand des Hauptcheckouts getrennt angezeigt; ein erkannter Stillstand wird einmal pro Phase im Worker-Protokoll vermerkt.
+- **Gate-Belege und Critic** (PR #1233, #1318, #1400): Fehlerhafte Gate-Angaben aus nicht vertrauenswürdigen Quellen blockieren die Ergebnisliste nicht mehr; der optionale Critic startet bei bekannter Claude-Sperre nicht; der Plan-Parser meldet eine fehlende Pflichtspalte als Fehler statt zu paniken.
+
+**Dev-Build und Entwicklung:**
+
+- **Dev-Badge** (PR #1268, #1292, #1311): Die Dev-Ausgabe zeigt im Kopf den Build-Commit, Schalter für Experimente und „Fehler melden“; Meldungen landen mit Route, Commit und den letzten Fehler-Signaturen im lokalen App-Log.
+- **Dev-Build getrennt von der stabilen App** (PR #1290, #1302): Der Dev-Build nutzt seinen eigenen Datenordner und berührt die Daten der normalen App nicht; die Werkzeug-Skripte finden auch eine laufende Dev-App.
+- **Dev-Updates** (PR #1264, #1266, #1283): Die Dev-Version wird nach jedem Push auf main automatisch gebaut; ein Helfer verschiebt Installationen bei laufenden Prozessen, räumt Downloads auf und sammelt Fehlermeldungen nur lokal und bereinigt.
+
+**Unter der Haube:**
+
+- **Prüfungen und Gates** (PR #1251, #1252, #1254, #1255, #1267, #1276, #1317, #1402, #1403, #1410, #1411, #1413, #1414, #1420, #1431): Prüfer für Aufträge und PR-Texte, Vorprüfung für die automatische Abnahme, Zähl-Obergrenzen (Ratchet) und gemessene Nahtstellen-Budgets; ein Browserdurchlauf über alle 26 Glass-Seiten, feste Render-Grenzen für den Leitstand, ein stabiler Not-Aus-Test und ein Browser-Mock, der jeden Befehl der Oberfläche beantwortet. Dazu kommen ein Skript für die PR-Kennzahlen (höchstens 15 offene PRs, Entwürfe unter 48 Stunden), die Windows-Tests in zwei parallelen Hälften unter dem unveränderten Prüfnamen `gates (windows)`, zwei Belastungstests mit 64 gleichzeitigen Verbindungen gegen den Vier-Verbindungen-Pool, ein Abgleich der Befehlsnamen zwischen Rust und Oberfläche, eine Drift-Regel gegen `block_on` in asynchronem Code, die Pflicht zu einer Begründung bei jedem ignorierten Rust-Test und `move-check`, das eine Byte-für-Byte-Verschiebung von Testblöcken beweist.
+- **Kern-Register und Gate-Belege lesen** (PR #1312, #1326): Der neue Rust-Kern verwaltet das Einstellungsregister, Änderungsanträge und ein unveränderliches Änderungsjournal im Speicher, sperrt leere Schlüssel und fremde Besitzer; der gespeicherte Kandidat und seine Gate-Belege werden gemeinsam gelesen, wobei fehlende, fehlgeschlagene und veraltete Belege unterscheidbar bleiben.
+- **Plan-Parser in Rust** (PR #1295, #1315, #1328): Historische Meilensteintabellen und die neun Spalten der v2-Pakettabellen werden strukturiert gelesen; eindeutige Vorgänger werden auf Paket-IDs aufgelöst.
+- **Aufräumen und gemeinsamer Lese-Baustein** (PR #1407, #1428, #1433, #1435): Organigramm und Plan-Ansicht nutzen einen gemeinsamen Baustein für das erneute Lesen nach einem Fehler; drei ungenutzte Handskripte, veraltete `dead_code`-Ausnahmen im Auslieferungs-Treiber sowie ein ungenutzter Markdown-Renderer samt Fehlersignatur-Helfer sind entfernt.
+- **Dokumentation** (PR #1259, #1279, #1299, #1300, #1301, #1386, #1398, #1401, #1421, #1424, #1438, #1439, #1440, #1454): Neu gestaltete README (mit Bannern und Diagrammen für 1.6.4), Zuordnung von Aufgabenart zu Profil, Hinweis, dass Web-Ansicht und HQ nur lokal oder per VPN erreichbar sind, angeglichene Setup-Dokumente, aktualisierte Plan-Stände, v2-Architekturverträge, Bedrohungsmodell, Funktionsinventar der Orchestrierung, Entscheidungen zum Release-Schnitt und zu Z1–Z4/E1–E3, Ergänzungen zur Ablauf-Architektur sowie korrigierte Angaben in den bekannten Problemen.
+
 ## v1.6.3 (Beta) — 11.10.2026
 
 Behebt den Windows-Build von v1.6.2 (gleich benannte Dateien im Plan-Baustein); v1.6.2 wurde nicht veröffentlicht.

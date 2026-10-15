@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useQuestions } from "../../../lib/useQuestions";
@@ -154,9 +154,55 @@ describe("NeedsYou", () => {
     expect(container.textContent).not.toMatch(/\d/);
   });
 
+  it("shows the money one-liner while no money question is open", async () => {
+    backend([], () => null);
+    const { container } = render(<Harness />);
+    expect(await screen.findByText("Nichts offen")).toBeInTheDocument();
+    expect(screen.getByText("Geld ausgeben braucht deine Freigabe.")).toBeInTheDocument();
+    expect(screen.getByText("Installieren braucht deine Freigabe.")).toBeInTheDocument();
+    expect(screen.getByText("Löschen braucht deine Freigabe.")).toBeInTheDocument();
+    expect(screen.getAllByText("Keine offene Entscheidung.")).toHaveLength(3);
+    expect(container.textContent).not.toMatch(/\d/);
+  });
+
+  it("answers a delete question from its own row", async () => {
+    const del = { ...row, id: "q-del", question: "Darf ich die Datei löschen?", optionsJson: "[]" };
+    backend([del], ({ id, answer }) => ({ ...del, id, status: "answered", answer }));
+    render(<Harness />);
+    const lane = within(await screen.findByRole("region", { name: "Löschen" }));
+    expect(lane.getByText("Darf ich die Datei löschen?")).toBeInTheDocument();
+    expect(screen.getAllByText("Darf ich die Datei löschen?")).toHaveLength(1);
+    fireEvent.change(lane.getByRole("textbox", { name: "Antwort" }), { target: { value: "Ja" } });
+    fireEvent.click(lane.getByRole("button", { name: "Antworten" }));
+    await screen.findByText("Beantwortet: Ja");
+    expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-del", answer: "Ja" });
+  });
+
+  it("keeps a question that matches no row in the list", async () => {
+    backend([row], () => null);
+    render(<Harness />);
+    expect(await screen.findByRole("list", { name: "Braucht dich" })).toContainElement(screen.getByText("Cover only this case?"));
+    expect(screen.getAllByText("Keine offene Entscheidung.")).toHaveLength(3);
+  });
+
   it("says it is not connected when the list cannot be read", async () => {
     mocks.invoke.mockRejectedValue(new Error("core unreachable"));
     render(<Harness />);
     expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
+  });
+
+  it("shows no decision lane claiming nothing is open while the list cannot be read", async () => {
+    mocks.invoke.mockRejectedValue(new Error("core unreachable"));
+    render(<Harness />);
+    expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
+    expect(screen.queryAllByText("Keine offene Entscheidung.")).toHaveLength(0);
+    expect(screen.queryByRole("region", { name: "Löschen" })).toBeNull();
+  });
+
+  it("shows no decision lane claiming nothing is open while the list is loading", () => {
+    mocks.invoke.mockImplementation(() => new Promise(() => {}));
+    render(<Harness />);
+    expect(screen.getByText("Fragen werden gelesen …")).toBeInTheDocument();
+    expect(screen.queryAllByText("Keine offene Entscheidung.")).toHaveLength(0);
   });
 });
