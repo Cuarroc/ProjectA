@@ -343,6 +343,7 @@ describe("TerminalView", () => {
     expect(mocks.searchAddon.findPrevious).toHaveBeenLastCalledWith("Fehler", options);
     act(() => mocks.searchResultsCallback!({ resultIndex: 1, resultCount: 3 }));
     expect(screen.getByLabelText("Treffer")).toHaveTextContent("2/3");
+    expect(screen.getByLabelText("Treffer")).toHaveAttribute("aria-live", "polite");
 
     mocks.focus.mockClear();
     mocks.searchAddon.clearDecorations.mockClear();
@@ -445,7 +446,7 @@ describe("TerminalView", () => {
       mocks.searchResultsCallback!({ resultIndex: 0, resultCount: 3 });
     });
 
-    const counter = document.querySelector(".terminal-search-count[aria-live='polite']");
+    const counter = screen.getByLabelText("Treffer");
     expect(counter).not.toBeNull();
     expect(counter).toHaveTextContent("1/3");
   });
@@ -462,7 +463,7 @@ describe("TerminalView", () => {
       mocks.searchResultsCallback!({ resultIndex: -1, resultCount: 1200 });
     });
 
-    expect(document.querySelector(".terminal-search-count")).toHaveTextContent("?/1200");
+    expect(screen.getByLabelText("Treffer")).toHaveTextContent("?/1200");
   });
 
   it("kein Treffer zeigt 0 von 0 statt eines Fragezeichens", () => {
@@ -476,7 +477,7 @@ describe("TerminalView", () => {
       mocks.searchResultsCallback!({ resultIndex: -1, resultCount: 0 });
     });
 
-    expect(document.querySelector(".terminal-search-count")).toHaveTextContent("0/0");
+    expect(screen.getByLabelText("Treffer")).toHaveTextContent("0/0");
   });
 
   it("Wiederöffnen belegt den letzten Suchbegriff vor und markiert seine Treffer erneut", () => {
@@ -518,7 +519,7 @@ describe("TerminalView", () => {
     // Closing reset the result; until the reopened search has reported
     // (synchronously, but only from the effect after this render), "0/0"
     // would claim "no matches" for a term that had three a moment ago.
-    expect(document.querySelector(".terminal-search-count")).not.toHaveTextContent("0/0");
+    expect(screen.getByLabelText("Treffer")).not.toHaveTextContent("0/0");
   });
 
   it("leerer Suchbegriff beim Wiederöffnen löst keine Suche aus", () => {
@@ -529,7 +530,7 @@ describe("TerminalView", () => {
     pressCustomKey({ key: "F", code: "KeyF", ctrlKey: true, shiftKey: true });
 
     expect(mocks.searchAddon.findNext).not.toHaveBeenCalled();
-    expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+    expect(screen.getByLabelText("Treffer")).toHaveTextContent("");
   });
 
   it("Schließen der Ansicht entsorgt das Search-Addon und sein Ergebnis-Abo", () => {
@@ -674,7 +675,7 @@ describe("TerminalView", () => {
       // "[" is a fine literal term: the hint goes and the kept term
       // re-searches with regex off.
       expect(input).not.toHaveAttribute("aria-invalid", "true");
-      expect(document.querySelector(".terminal-search-error")).toBeNull();
+      expect(screen.queryByRole("status")).toBeNull();
       expect(mocks.searchAddon.findNext).toHaveBeenCalledWith(
         "[",
         expect.objectContaining({ regex: false }),
@@ -696,7 +697,7 @@ describe("TerminalView", () => {
       // throw inside xterm — and the hint stays up to say why nothing moves.
       expect(mocks.searchAddon.findNext).not.toHaveBeenCalled();
       expect(mocks.searchAddon.findPrevious).not.toHaveBeenCalled();
-      expect(document.querySelector(".terminal-search-error")).not.toBeNull();
+      expect(screen.queryByRole("status")).not.toBeNull();
     });
 
     it("ungültiger Regex leert Dekorationen und Zähler", () => {
@@ -706,7 +707,7 @@ describe("TerminalView", () => {
       act(() => {
         mocks.searchResultsCallback!({ resultIndex: 0, resultCount: 2 });
       });
-      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("1/2");
+      expect(screen.getByLabelText("Treffer")).toHaveTextContent("1/2");
       mocks.searchAddon.clearDecorations.mockClear();
 
       fireEvent.change(input, { target: { value: "[" } });
@@ -714,14 +715,14 @@ describe("TerminalView", () => {
       // Stale highlights next to an error hint would claim matches the
       // current term never produced.
       expect(mocks.searchAddon.clearDecorations).toHaveBeenCalled();
-      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+      expect(screen.getByLabelText("Treffer")).toHaveTextContent("");
     });
 
     it("verspätetes Ergebnis bei ungültigem Regex stellt den Zähler nicht wieder her", () => {
       const input = openSearch();
       fireEvent.click(screen.getByRole("button", { name: /regulärer ausdruck/i }));
       fireEvent.change(input, { target: { value: "[" } });
-      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+      expect(screen.getByLabelText("Treffer")).toHaveTextContent("");
 
       // The addon reports asynchronously; a result for a search issued
       // while the pattern still compiled must not resurrect a counter next
@@ -730,20 +731,20 @@ describe("TerminalView", () => {
         mocks.searchResultsCallback!({ resultIndex: -1, resultCount: 0 });
       });
 
-      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+      expect(screen.getByLabelText("Treffer")).toHaveTextContent("");
     });
 
     it("verspätetes Ergebnis bei geleertem Begriff stellt den Zähler nicht wieder her", () => {
       const input = openSearch();
       fireEvent.change(input, { target: { value: "fehler" } });
       fireEvent.change(input, { target: { value: "" } });
-      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+      expect(screen.getByLabelText("Treffer")).toHaveTextContent("");
 
       act(() => {
         mocks.searchResultsCallback!({ resultIndex: 0, resultCount: 3 });
       });
 
-      expect(document.querySelector(".terminal-search-count")).toHaveTextContent("");
+      expect(screen.getByLabelText("Treffer")).toHaveTextContent("");
     });
 
     it("Enter nach dem Umschalten nutzt die neuen Optionen", () => {

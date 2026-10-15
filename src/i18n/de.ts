@@ -1,6 +1,17 @@
 /** German UI copy for Glass UI v2. English locale is parked; keep Messages. */
 
 export const de = {
+  "terminal.search.label": "Suche im Terminal-Scrollback",
+  "terminal.search.placeholder": "Suchen…",
+  "terminal.search.caseSensitive": "Groß- und Kleinschreibung beachten",
+  "terminal.search.caseSensitiveHint": "Groß- und Kleinschreibung beachten (Alt+C)",
+  "terminal.search.regex": "Regulärer Ausdruck",
+  "terminal.search.regexHint": "Regulärer Ausdruck (Alt+R)",
+  "terminal.search.matches": "Treffer",
+  "terminal.search.invalidRegex": "Ungültiger regulärer Ausdruck",
+  "terminal.search.previous": "Vorheriger Treffer",
+  "terminal.search.next": "Nächster Treffer",
+  "terminal.search.close": "Suche schließen",
   "terminal.title": "Terminal",
   "terminal.sessions": "Terminal-Sitzungen",
   "terminal.empty": "Keine Terminal-Sitzung geöffnet.",
