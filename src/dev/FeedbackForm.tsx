@@ -1,5 +1,7 @@
 import { useId, useState } from "react";
 import { Button } from "../design/controls/Button";
+import { Textarea } from "../design/inputs/Input";
+import "../design/inputs/inputs.css";
 import { reportFrontendFeedback } from "../errors/reportFrontendError";
 import { DEV_TEXT } from "../shell/header/texts";
 
@@ -19,10 +21,10 @@ export function FeedbackForm() {
       setSaved(accepted); setFailed(!accepted); setPending(false);
     }}>
       <div>
-        <p><label className="field-label" htmlFor={whatId}>{DEV_TEXT.feedbackWhat}</label></p>
-        <p><textarea id={whatId} className="field field-textarea" value={what} onChange={(event) => setWhat(event.target.value)} required rows={3} /></p>
-        <p><label className="field-label" htmlFor={expectedId}>{DEV_TEXT.feedbackExpected}</label></p>
-        <p><textarea id={expectedId} className="field field-textarea" value={expected} onChange={(event) => setExpected(event.target.value)} rows={2} /></p>
+        <p><label htmlFor={whatId}>{DEV_TEXT.feedbackWhat}</label></p>
+        <p><Textarea id={whatId} value={what} onChange={(event) => setWhat(event.target.value)} required rows={3} /></p>
+        <p><label htmlFor={expectedId}>{DEV_TEXT.feedbackExpected}</label></p>
+        <p><Textarea id={expectedId} value={expected} onChange={(event) => setExpected(event.target.value)} rows={2} /></p>
         {failed && <p role="alert">{DEV_TEXT.feedbackFailed}</p>}
         <p><Button type="submit" variant="primary" size="sm" disabled={pending}>{DEV_TEXT.feedbackSubmit}</Button></p>
       </div>
