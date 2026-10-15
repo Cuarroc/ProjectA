@@ -39,7 +39,7 @@ export function parseReview(text) {
 }
 function result(reasons, approvals = [], detail = "") {
   const exit = approvals.length ? 3 : reasons.length ? 2 : 0;
-  return { exit, reasons, output: [exit === 0 ? "AUTO-OK" : exit === 3 ? "Elias-Entscheidung" : "ESCALATE",
+  return { exit, reasons, output: [exit === 0 ? "AUTO-OK" : exit === 3 ? "Nutzer-Entscheidung" : "ESCALATE",
     ...reasons, ...approvals.map(a => `Zeile ${a.line}: Freigabewort „${a.word}“`), ...(exit === 0 ? [detail] : [])].join("\n") + "\n" };
 }
 // Pure decision over GitHub data and review file contents; never writes or calls a model.

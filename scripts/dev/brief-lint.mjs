@@ -116,7 +116,7 @@ export const main = withExitCodes(async (argv, io, { run = makeRunner() } = {}) 
   } catch (e) { result = decision([`Aufruf/Eingabe nicht prüfbar: ${e.code ?? "Fehler"}`]); }
   io.out(argv.includes("--json") ? `${JSON.stringify(result)}\n` : [
     ...result.reasons, ...result.approvals.map((a) => `Zeile ${a.line}: Freigabewort „${a.word}“`),
-    `brief-lint: ${result.exit === 0 ? "startbar/annehmbar" : result.exit === 2 ? "Root/LLM nötig" : "Elias-Entscheidung nötig"} (Exit ${result.exit})`,
+    `brief-lint: ${result.exit === 0 ? "startbar/annehmbar" : result.exit === 2 ? "Root/LLM nötig" : "Nutzer-Entscheidung nötig"} (Exit ${result.exit})`,
   ].join("\n") + "\n");
   return result.exit;
 });
