@@ -235,6 +235,30 @@ describe("TresorPanel", () => {
     expect(refresh).toHaveAttribute("aria-busy", "true");
   });
 
+  it("is idle by the time the settled vault read is visible on a slow frame", async () => {
+    backend([]);
+    render(<TresorPanel />);
+    const refresh = screen.getByRole("button", { name: "Neu lesen" });
+    // Normally React's scheduler runs the table commit, the passive-effect flush
+    // and the follow-up render in one macrotask, so nobody sees in between. A
+    // loaded machine spends its 5 ms slice and yields there; an observer (a
+    // microtask) then sees the table with the old busy flag. Spend every slice.
+    let now = 0;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => (now += 10));
+    let busyWhenShown: string | null = null;
+    const watch = new MutationObserver(() => {
+      if (busyWhenShown === null && screen.queryByText("Keine Anbieter bekannt") !== null) busyWhenShown = refresh.getAttribute("aria-busy");
+    });
+    watch.observe(document.body, { childList: true, subtree: true });
+    try {
+      await waitFor(() => expect(busyWhenShown).not.toBeNull());
+    } finally {
+      watch.disconnect();
+      clock.mockRestore();
+    }
+    expect(busyWhenShown).toBe("false");
+  });
+
   it("stays busy for a strict-mode overview until that read settles", async () => {
     let resolveOverview!: (value: unknown[]) => void;
     backend(new Promise<unknown[]>((resolve) => { resolveOverview = resolve; }));
