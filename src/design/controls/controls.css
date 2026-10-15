@@ -16,6 +16,7 @@
 .g-btn--primary { background: var(--g-accent); border-color: transparent; color: var(--g-on-accent); }
 .g-btn--tint { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-btn--ghost { background: transparent; border-color: transparent; color: var(--g-ink2); }
+.g-btn--danger { background: var(--g-bad-bg); border-color: var(--g-danger-line); color: var(--g-bad); }
 .g-btn--lg { height: 44px; padding: 0 20px; }
 .g-btn--sm { height: 32px; padding: 0 12px; font-size: 12px; }
 .g-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
@@ -69,6 +70,7 @@
   .g-btn--primary:hover { background: var(--g-accent-hover); }
   .g-btn--tint:hover { background: var(--g-accent-soft); color: var(--g-accent-hover); }
   .g-btn--ghost:hover { background: var(--g-tint); }
+  .g-btn--danger:hover { background: var(--g-bad-bg); border-color: var(--g-bad); }
   .g-fchip:not([aria-pressed="true"]):hover { background: var(--g-tint-hi); }
   .g-seg button:not([aria-checked="true"]):hover { background: var(--g-tint); }
 }

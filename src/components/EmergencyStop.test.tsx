@@ -38,8 +38,7 @@ describe("EmergencyStop", () => {
     ipc.getEmergencyStop.mockResolvedValue(false);
     render(<EmergencyStop />);
     const raise = await screen.findByRole("button", { name: "Not-Aus auslösen" });
-    expect(raise.className.split(/\s+/)).toContain("button-danger");
-    expect(screen.getByText("Not-Aus").className.split(/\s+/)).toContain("field-label");
+    expect(raise).toHaveClass("g-btn", "g-btn--danger");
   });
 
   it("treats an unreadable state as stopped", async () => {
@@ -93,11 +92,12 @@ describe("EmergencyStop", () => {
     expect(ipc.getEmergencyStop).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps the classic lift button by default", async () => {
+  it("uses the design lift button by default", async () => {
     ipc.getEmergencyStop.mockResolvedValue(true);
     render(<EmergencyStop />);
     const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
-    expect(lift.className.split(/\s+/)).toEqual(["button-ghost"]);
+    expect(lift).toHaveClass("g-btn");
+    expect(lift).not.toHaveClass("button-ghost");
   });
 
   it("renders the lift button as a Glass button with appearance glass and lifts the same way", async () => {
