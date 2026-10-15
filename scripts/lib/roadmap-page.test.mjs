@@ -32,7 +32,7 @@ test("sections follow the reading order and directions list Jetzt before Später
 });
 
 test("head shows the supplied stand and exactly four supplied numbers", () => {
-  const head = top(render(data()));
+  const head = top(render(data({ packages: [pkg("A-1")] })));
   for (const s of ["2031-02-03T04:05:06.000Z", "feedbee", "v7.1.0", ">31<", ">22<", ">13<"]) assert.ok(head.includes(s), s);
   assert.equal(head.match(/<dd>/g).length, 4);
   for (const s of ["a5f8c538", "2026-10-15", "v2.0.0"]) assert.ok(!head.includes(s), s);
@@ -67,7 +67,7 @@ test("directions keep every lane and status and show only the supplied forecast"
     directions: [{ name: "Alpha", now: ["A-1"], next: ["A-2"], later: ["A-3", "A-4"], forecast: { fromDays: 77, toDays: 99, label: "Prognose, keine Zusage", merged: 12 } },
       { name: "Beta", now: [], next: [], later: [], forecast: "zu wenig Daten" }] });
   const html = render(d), r = part(html, "Richtungen");
-  for (const s of ["A-1", "A-2", "A-3", "A-4", "Verschoben", "A-5", "erledigt", "77–99 Tage", "Prognose, keine Zusage", "zu wenig Daten", "Gerade nichts"]) assert.ok(r.includes(s), s);
+  for (const s of ["A-1", "A-2", "A-3", "A-4", "Verschoben", "A-5", "erledigt", "77–99 Tage", "Prognose, keine Zusage", "zu wenig Daten", "Gerade nichts", "1 Richtung ruht"]) assert.ok(r.includes(s), s);
   assert.ok(!top(html).includes("data-dir"));
 });
 
@@ -85,7 +85,7 @@ test("page is standalone without external references or animation under a strict
 test("inputs stay unmodified and css cannot close the style element", () => {
   const freeze = (o) => { Object.values(o).forEach((v) => typeof v === "object" && v && freeze(v)); return Object.freeze(o); };
   const d = freeze(data({ futureField: { x: 1 }, packages: [pkg("A-1", { unresolvedDeps: ["X-1"] })] }));
-  assert.equal(renderRoadmap(d, { tokensCss: "</style><script>x</script>" }).match(/<script/g).length, 1);
+  assert.equal(renderRoadmap(d, { tokensCss: "x{}</style><b id=pwn>" }).match(/<\/style/g).length, 1);
   const real = renderRoadmap(d);
   assert.ok(real.includes("--g-ground") && real.includes(".g-st--bad"));
 });
