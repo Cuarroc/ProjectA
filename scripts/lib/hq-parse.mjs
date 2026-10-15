@@ -1,3 +1,4 @@
+import { tableCells } from "./plan-model.mjs";
 // scripts/lib/hq-parse.mjs — excerpt; keep helpers in this file
 export function applySpecStartable(specs) {
   const seenOwner = new Set();
@@ -228,9 +229,6 @@ export function buildPackages(standText, specs) {
     return { ...p, current, source: "docs/PLAN.md" };
   });
 }
-
-const tableCells = (line) =>
-  line.trim().replace(/^\|/, "").replace(/\|$/, "").split(/(?<!\\)\|/).map((c) => c.replace(/\\\|/g, "|").trim());
 
 // "Stand" cell of a PLAN.md milestone table → done | pr | in_progress | blocked | open.
 // "✓ #n" = merged; a cell that mixes merged and pending sub-packages
