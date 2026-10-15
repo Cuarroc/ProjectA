@@ -12,7 +12,7 @@ import { T } from "./texts";
 import "./verlauf.css";
 
 export interface VerlaufChatProps {
-  /** The one chat object the app already owns; this view starts no poller and calls no IPC. */
+  /** Chat state supplied by the route; this view starts no poller and calls no IPC directly. */
   chat: OrchestratorChat;
   /** Only read to notice a project switch: an unsent draft must not follow the user into another project. */
   projectId: string | null;

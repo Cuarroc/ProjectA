@@ -20,7 +20,7 @@ export const isTools = (path: string) => trim(path) === TOOLS_PATH;
 
 export const isTerminal = (path: string) => trim(path.split("?")[0]) === "/leitstand/terminal";
 
-export const isVerlauf = (path: string) => trim(path) === "/leitstand/verlauf";
+export const isVerlauf = (path: string) => trim(path.split("?")[0]) === "/leitstand/verlauf";
 
 /** The new Leitstand owns `/leitstand` (V2-S01a), `/leitstand/betrieb` (V2-S01b) and `/leitstand/fluss` (COMP-3-3); the rest below it stays the old view. */
 export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb", "/leitstand/fluss"].includes(trim(path));
