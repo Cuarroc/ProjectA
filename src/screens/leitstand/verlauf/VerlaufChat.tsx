@@ -12,7 +12,7 @@ import { T } from "./texts";
 import "./verlauf.css";
 
 export interface VerlaufChatProps {
-  /** The one chat object the app already owns; this view starts no poller and calls no IPC. */
+  /** Chat state supplied by the route; this view starts no poller and calls no IPC directly. */
   chat: OrchestratorChat;
   /** Only read to notice a project switch: an unsent draft must not follow the user into another project. */
   projectId: string | null;
@@ -30,7 +30,7 @@ function messageTime(seconds: number): string {
 /**
  * The Verlauf of the Leitstand: the conversation with the project's orchestrator and its composer.
  * Layout follows the glass board Core.dc.html: the input row of the "Frag den Core" pane (:548-553)
- * and the `.msg` card, accent-tinted for the orchestrator's answers (:319-320). Not mounted yet.
+ * and the `.msg` card, accent-tinted for the orchestrator's answers (:319-320).
  */
 export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
   const [draft, setDraft] = useState("");

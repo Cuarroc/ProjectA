@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("goal and route mapping (ia.md section 4)", () => {
+  it("recognizes Verlauf query links without mounting a legacy viewer", () => {
+    for (const path of ["/leitstand/verlauf?x=1", "/leitstand/verlauf/?x=1"]) {
+      expect(isVerlauf(path)).toBe(true);
+      expect(shouldMountLegacyTerminal(path)).toBe(false);
+    }
+    expect(isVerlauf("/leitstand/verlauf/other?x=1")).toBe(false);
+  });
   it("recognizes worker query links without mounting a legacy viewer", () => {
     for (const path of ["/leitstand/terminal?worker=one", "/leitstand/terminal/?worker=two"]) {
       expect(isTerminal(path)).toBe(true);
@@ -16,10 +23,10 @@ describe("goal and route mapping (ia.md section 4)", () => {
   });
 
   it("mounts legacy terminals only on legacy panel routes or with D1 off", () => {
-    for (const path of [undefined, "/leitstand/klassisch", "/leitstand/werkzeuge", "/leitstand/werkzeuge/", "/leitstand/verlauf", "/beweise/diff", "/einstellungen/klassisch"]) {
+    for (const path of [undefined, "/leitstand/klassisch", "/leitstand/werkzeuge", "/leitstand/werkzeuge/", "/beweise/diff", "/einstellungen/klassisch"]) {
       expect(shouldMountLegacyTerminal(path)).toBe(true);
     }
-    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand", "/leitstand/betrieb", "/steuerung", "/einstellungen", "/start", "/team"]) {
+    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand/verlauf", "/leitstand/verlauf/", "/leitstand", "/leitstand/betrieb", "/steuerung", "/einstellungen", "/start", "/team"]) {
       expect(shouldMountLegacyTerminal(path)).toBe(false);
     }
   });

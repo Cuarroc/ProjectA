@@ -280,7 +280,7 @@ describe("terminal route", () => {
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     const output = active(ptyOutput("session-a"))[0];
     const viewer = view.container.querySelector(".xterm");
-    for (const path of ["/leitstand/werkzeuge", "/leitstand/verlauf", CLASSIC_PATH]) {
+    for (const path of ["/leitstand/werkzeuge", CLASSIC_PATH]) {
       go(`#${path}`);
       const viewers = view.container.querySelectorAll(".xterm");
       expect(viewers).toHaveLength(1);
@@ -288,6 +288,9 @@ describe("terminal route", () => {
       expect(output.stop).not.toHaveBeenCalled();
       await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     }
+    go("#/leitstand/verlauf");
+    expect(await screen.findByRole("log", { name: "Nachrichten mit dem Orchestrator" })).toBeInTheDocument();
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(0);
     go("#/leitstand/terminal");
     await waitFor(() => expect(view.container.querySelectorAll(".xterm")).toHaveLength(1));
     expect(view.container.querySelector(".g-mount-legacy .xterm")).toBeNull();
