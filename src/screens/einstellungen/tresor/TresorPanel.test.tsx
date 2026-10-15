@@ -235,7 +235,7 @@ describe("TresorPanel", () => {
     expect(refresh).toHaveAttribute("aria-busy", "true");
   });
 
-  it("is idle by the time the settled vault read is visible, even on a slow frame", async () => {
+  it("is idle by the time the settled vault read is visible on a slow frame", async () => {
     backend([]);
     render(<TresorPanel />);
     const refresh = screen.getByRole("button", { name: "Neu lesen" });
