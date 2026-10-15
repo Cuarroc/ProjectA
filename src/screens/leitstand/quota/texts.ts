@@ -3,4 +3,6 @@
 export const T = {
   notMeasured: "nicht gemessen",
   tooLittleData: "zu wenig Daten",
+  meter: "Kontingent {name}: {percent} %",
+  failover: "Failover: {name}",
 } as const;
