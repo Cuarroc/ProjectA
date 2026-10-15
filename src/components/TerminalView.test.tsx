@@ -322,6 +322,36 @@ describe("TerminalView", () => {
     expect(screen.getByRole("textbox", { name: /suche/i })).toBeInTheDocument();
   });
 
+  it("renders design search controls with unchanged addon calls and close focus", () => {
+    render(<TerminalView sessionId="session-a" onError={vi.fn()} />);
+    pressCustomKey({ key: "F", code: "KeyF", ctrlKey: true, shiftKey: true });
+    const bar = screen.getByRole("search", { name: "Suche im Terminal-Scrollback" });
+    const input = screen.getByRole("textbox", { name: "Suche im Terminal-Scrollback" });
+    expect(bar.querySelector('[class*="terminal-search-"], .button-ghost')).toBeNull();
+    expect(bar).not.toHaveClass("terminal-search-bar");
+    expect(input).toHaveClass("g-inp");
+    expect(input).toHaveFocus();
+    for (const button of bar.querySelectorAll("button")) expect(button).toHaveClass("g-btn");
+    expect(bar.querySelectorAll("button")).toHaveLength(5);
+
+    fireEvent.change(input, { target: { value: "Fehler" } });
+    const options = { decorations: SEARCH_DECORATIONS, incremental: false, caseSensitive: false, regex: false };
+    expect(mocks.searchAddon.findNext).toHaveBeenLastCalledWith("Fehler", { ...options, incremental: true });
+    fireEvent.click(screen.getByRole("button", { name: "Nächster Treffer" }));
+    expect(mocks.searchAddon.findNext).toHaveBeenLastCalledWith("Fehler", options);
+    fireEvent.click(screen.getByRole("button", { name: "Vorheriger Treffer" }));
+    expect(mocks.searchAddon.findPrevious).toHaveBeenLastCalledWith("Fehler", options);
+    act(() => mocks.searchResultsCallback!({ resultIndex: 1, resultCount: 3 }));
+    expect(screen.getByLabelText("Treffer")).toHaveTextContent("2/3");
+
+    mocks.focus.mockClear();
+    mocks.searchAddon.clearDecorations.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Suche schließen" }));
+    expect(screen.queryByRole("search")).not.toBeInTheDocument();
+    expect(mocks.searchAddon.clearDecorations).toHaveBeenCalledOnce();
+    expect(mocks.focus).toHaveBeenCalledOnce();
+  });
+
   it("lässt Ctrl F unangetastet an die TUI durch", () => {
     render(<TerminalView sessionId="session-a" onError={vi.fn()} />);
 
