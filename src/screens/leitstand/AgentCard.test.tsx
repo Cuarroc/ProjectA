@@ -275,3 +275,8 @@ it("does not invent an attention age when the observation time is missing", () =
   render(<AgentCard card={{ ...card("running"), attentionReason: "Approval required" }} name="Fixture" now={NOW} onOpen={() => {}} />);
   expect(screen.getByText("Approval required").parentElement).not.toHaveTextContent(/seit/);
 });
+
+it("shows a blocked lamp on a done card while proof is missing", () => {
+  render(<AgentCard card={{ ...card("running"), column: "done", testStatus: null }} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.getByRole("img", { name: "ohne Beweis" })).toHaveClass("g-lamp--bad");
+});
