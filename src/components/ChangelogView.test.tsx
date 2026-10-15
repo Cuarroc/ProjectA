@@ -21,9 +21,9 @@ vi.mock("@tauri-apps/plugin-updater", () => ({ check: () => new Promise(() => {}
 
 describe("ChangelogView", () => {
   it("renders the newest release first with its Beta pill", () => {
-    render(<ChangelogView currentVersion="1.6.5" />);
+    render(<ChangelogView currentVersion="1.6.6" />);
     const [first] = screen.getAllByRole("region", { name: /^v\d/ });
-    expect(within(first).getByRole("heading", { level: 2 })).toHaveTextContent("v1.6.5");
+    expect(within(first).getByRole("heading", { level: 2 })).toHaveTextContent("v1.6.6");
     expect(within(first).getByText("Beta")).toBeInTheDocument();
     expect(within(first).getByText("Installiert")).toBeInTheDocument();
     expect(within(first).getByText("15.10.2026")).toHaveAttribute("datetime", "2026-10-15");
