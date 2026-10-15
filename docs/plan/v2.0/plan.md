@@ -1,6 +1,6 @@
 # Plan v2.0 (Entwurf, der Nutzer entscheidet)
 
-**Status 15.10.2026:** Umfang „v2.0 eng“ entschieden (Abschnitt 10), Release-Tag v1.6.6 (auf `a8b00911`) gelesen bei `origin/main` @ `66a34491`; der Entwurfstext unten ist unverändert. Stand 06.10.2026, Basis `origin/main` 01a0bf7 (`git fetch` am 06.10.; Zeilennummern im Text galten an 719426c und wurden nur dort neu geprüft, wo es unten steht). Dieser Entwurf ändert nichts an `docs/PLAN.md` und nichts an v1.6.0 ([`../v1.6.0/plan.md`](../v1.6.0/plan.md)). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 7 beantwortet hat und dieser PR gemergt ist (Tor G0). Eingaben: die 25 Boards „Glass Leitstand“ (`docs/design/2026-10-ui-v2/glass/`, darunter `Core.dc.html`), die Bestandsaufnahme [`inventory.md`](inventory.md) (70 Teile), die Bewertung des Dev-HQ in [`dev-hq.md`](dev-hq.md). Anhänge: [`core.md`](core.md) (die App-KI), [`mapping.md`](mapping.md) (Zuordnung aller offenen Pakete), [`evidence-r2.md`](evidence-r2.md) (Belege der 36 Ergänzungen), [`size-evidence.md`](size-evidence.md) (Rechenweg der Größenzahlen und der Paketzahl). **Runde 2 (06.10.):** Core, Ausführung, 36 Ergänzungen, ein einziges Plandokument. **Runde 3 (06.10.):** Richtungsentscheidung des Nutzers (Punkt 8 unten): eigenes Werkzeug plus Kundenaufträge, Verkauf geparkt, 10 Bildschirme, eine Maschine „Ablauf mit Beweis“, Datenschutz-Schleuse. **Runde 3b (06.10.):** Fremdkritik einer anderen Modellfamilie (13 Befunde, Entscheidung je Befund im PR-Text #585) eingearbeitet: Engpass der store-Naht, Schutzschalter für das Claude-Limit bis G2, Behebungsweg für V2-SEC-1, V2-LOCAL-1 vor V2-B2b, Autonomie-Zähler und Grenzen je Job hinter Schalter, Server-Anleitung für Einsteiger, Bereich „Vorschau-Funktionen“, Frage 4 in vier Teile.
+**Status 15.10.2026:** Umfang „v2.0 eng“ entschieden (Abschnitt 10), Release-Tag v1.6.6 (auf `a8b00911`) gelesen bei `origin/main` @ `a5f8c538`; der Entwurfstext unten ist unverändert. Stand 06.10.2026, Basis `origin/main` 01a0bf7 (`git fetch` am 06.10.; Zeilennummern im Text galten an 719426c und wurden nur dort neu geprüft, wo es unten steht). Dieser Entwurf ändert nichts an `docs/PLAN.md` und nichts an v1.6.0 ([`../v1.6.0/plan.md`](../v1.6.0/plan.md)). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 7 beantwortet hat und dieser PR gemergt ist (Tor G0). Eingaben: die 25 Boards „Glass Leitstand“ (`docs/design/2026-10-ui-v2/glass/`, darunter `Core.dc.html`), die Bestandsaufnahme [`inventory.md`](inventory.md) (70 Teile), die Bewertung des Dev-HQ in [`dev-hq.md`](dev-hq.md). Anhänge: [`core.md`](core.md) (die App-KI), [`mapping.md`](mapping.md) (Zuordnung aller offenen Pakete), [`evidence-r2.md`](evidence-r2.md) (Belege der 36 Ergänzungen), [`size-evidence.md`](size-evidence.md) (Rechenweg der Größenzahlen und der Paketzahl). **Runde 2 (06.10.):** Core, Ausführung, 36 Ergänzungen, ein einziges Plandokument. **Runde 3 (06.10.):** Richtungsentscheidung des Nutzers (Punkt 8 unten): eigenes Werkzeug plus Kundenaufträge, Verkauf geparkt, 10 Bildschirme, eine Maschine „Ablauf mit Beweis“, Datenschutz-Schleuse. **Runde 3b (06.10.):** Fremdkritik einer anderen Modellfamilie (13 Befunde, Entscheidung je Befund im PR-Text #585) eingearbeitet: Engpass der store-Naht, Schutzschalter für das Claude-Limit bis G2, Behebungsweg für V2-SEC-1, V2-LOCAL-1 vor V2-B2b, Autonomie-Zähler und Grenzen je Job hinter Schalter, Server-Anleitung für Einsteiger, Bereich „Vorschau-Funktionen“, Frage 4 in vier Teile.
 
 Nutzerentscheidungen vom 06.10.2026 (verbindlich): (1) v2.0 ist der Entwurf mit echter Funktion, als **ein** großes Release, keine Zwischenreleases v1.7 bis v1.9; (2) das Fundament startet **parallel** zu v1.6.0, ohne die vier Nahtstellen und ohne Dateien offener PRs; (3) die Paketgrößenregel darf sich ändern; (4) jeder Agent läuft wahlweise auf diesem PC, in der Cloud des Anbieters oder auf einem eigenen Server über SSH; (5) v2.0 bekommt **eine** App-KI mit Rechten, den Core ([`core.md`](core.md)); (6) die Ausführung läuft in AgentsRoom ohne Leerlauf (Abschnitt 4a); (7) alle 36 Ergänzungen sind aufgenommen (die auf Verkauf zielenden sind durch (8) geparkt, Abschnitt 3.13), und dieser Plan wird nach der Freigabe das **einzige** Plandokument (Abschnitt 9); (8) **Richtungsentscheidung (Punkt 39, hat Vorrang, wo sie Früheres ändert):** v2.0 ist das Werkzeug des Nutzers für die eigene Entwicklung **und** für Kundenaufträge (Webseiten, Shops). Der Verkauf der App an Dritte ist **geparkt bis echte Nachfrage** (Mac/Linux-Builds, Code-Signatur, App-Lizenz und Preis, englische Oberfläche, Demo-Modus für Fremde). Voll unterstützt sind **drei Anbieter-Wege**: Claude, Codex und ein lokales Modell (Ollama lokal), das bei Anbietersperre oder Limit als Pflicht-Ersatz einspringt; weitere CLIs sind geparkt. Das Dev-HQ geht in der App auf (keine eigene Oberfläche), die Systemkarte ist Doku. Aus 25 Boards werden **10 Bildschirme** (Abschnitt 3.4). Auftrag, Arbeit, Beweis, Fremdprüfung, Freigabe und Ausliefern sind **eine** Maschine (Abschnitt 3.5). Kundenprojekte (3.12) kommen hinter einem Schalter nach dem Kern, geschützt durch die Datenschutz-Schleuse (Stufe A).
 
@@ -750,7 +750,7 @@ Ab dann gilt Regel „Plan-Freeze“ (Abschnitt 4b): nur Ausführung, höchstens
 
 ## 10. Enger Schnitt vom 15.10.2026 („v2.0 eng“): Kriterien und Restpakete
 
-Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte E1 mit „V2.0.0 eng“; Wortlaut, Grund und Rückweg: [Entscheidungsprotokoll vom 15.10.](../../decisions.md#2026-10-15---v20-eng-narrow). **v2.0.0 ist Hülle + Leitstand, Glass (D1) standardmäßig an und zurückschaltbar.** Die Abnahmekriterien, die an verschobener Arbeit hängen, gehen mit ihr nach v2.1 (zusammen mit Start, Beweise, Kontingente, Verlauf). Der Kriterientext in Abschnitt 1 bleibt unverändert stehen; verschobene Zeilen sind dort mit „→ v2.1“ markiert.
+Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte E1 mit „V2.0.0 eng“; Wortlaut, Grund und Rückweg: [Entscheidungsprotokoll vom 15.10.](../../decisions.md#2026-10-15---v20-eng-narrow). **v2.0.0 ist Hülle + Leitstand, Glass (D1) standardmäßig an; „zurückschaltbar“ ist durch den Classic-out-Entscheid vom 15.10. überholt (10.2).** Die Abnahmekriterien, die an verschobener Arbeit hängen, gehen mit ihr nach v2.1 (zusammen mit Start, Beweise, Kontingente, Verlauf). Der Kriterientext in Abschnitt 1 bleibt unverändert stehen; verschobene Zeilen sind dort mit „→ v2.1“ markiert.
 
 | # | Kriterium (kurz) | Zuordnung | Grund |
 |---|---|---|---|
@@ -772,7 +772,7 @@ Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte 
 | 16 | Drei Anbieter-Wege | **→ v2.1** | V2-B2a/b, V2-LOCAL-1 hängen an Start und Kontingenten |
 | 17 | Datenschutz-Schleuse | **nach dem Kern** | unverändert |
 
-Hinweis: Frage 1 in Abschnitt 7 („der Schalter fällt mit v2.0 weg“) ist durch die Entscheide vom 11. und 15.10. überholt; der Schalter bleibt als Rückweg.
+Historischer Hinweis: „der Schalter bleibt als Rückweg“ aus dem engen Schnitt ist durch Classic-out vom 15.10. überholt; Umsetzung folgt in 10.2, kein bereits entfernter Rückweg behauptet.
 
 ### 10.1 Restpakete v2.0 (eng)
 
@@ -784,10 +784,10 @@ Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log o
 
 | ID | Ziel | Dateien | Nahtstelle | Stufe | Umfang | Voraussetzung | Abnahmebefehl | Owner |
 |---|---|---|---|---|---|---|---|---|
-| V2-D1-ON | **Stand: PR #1484 offen, `do-not-merge` bis V2-ACC1b.** D1 standardmäßig an, Rückweg bleibt. Heute `defaultEnabled: false` (`src/flags/featureFlags.ts:32`), `isFeatureFlagEnabled` liest nur `"1"`, „aus“ löscht den Schlüssel (`:66-76`); ohne Änderung käme D1 nach dem Ausschalten zurück. Also: Standard je Schalter, D1 an, ausdrückliches „aus“ als `"0"` gespeichert; `fernansicht`, `kundenprojekte` bleiben aus | `src/flags/featureFlags.ts`, `featureFlags.test.ts:16-23` (Test „defaults every registered flag to off including D1“ wird gedreht), Tests unter `src/shell/mount/`, `src/App*.test.tsx` je nach Treffer (**UNKNOWN**, wie viele Tests den alten Standard voraussetzen) | nein | B | M | – (Merge erst nach V2-ACC1b, siehe Hinweis) | `npx vitest run src/flags src/shell src/App.test.tsx` und `npm run build` Exit 0; roter Test zuerst: D1 ohne Schlüssel = an, nach `setFeatureFlagEnabled("d1_neue_oberflaeche", false)` = aus, auch nach Neuladen | Agent |
-| V2-SCOPE-1 | **Stand: PR #1499 reviewed (Gemini APPROVE bei `91cba1f3`); wartet nur auf seine gestapelte Basis #1484.** Beschlossen: Seitenleiste und Palette zeigen Leitstand und Einstellungen; Ersteinrichtung bleibt über `/start` erreichbar. Die übrigen Bereiche (v2.1 und später) bleiben hinter dem Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | V2-D1-ON (#1484) | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent |
+| V2-D1-ON | **Stand 15.10.: #1484 gemergt.** D1 standardmäßig an, ausdrückliches Aus gespeichert; der damalige Rückweg-Vertrag ist durch Classic-out überholt | `src/flags/featureFlags.ts`, Flag-/Shell-/App-Tests | nein | B | M | – | `gh pr view 1484 --json state`: MERGED; Implementierungsbelege im PR | Agent |
+| V2-SCOPE-1 | **Stand 15.10.: #1499 offen (Draft), Basis jetzt `main`; Fixrunde läuft laut Root-Auftrag.** Beschlossen: Seitenleiste und Palette zeigen Leitstand und Einstellungen; Ersteinrichtung bleibt über `/start` erreichbar. Die übrigen Bereiche (v2.1 und später) bleiben hinter dem Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | V2-D1-ON (#1484) | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent |
 | V2-ACC1a | **Stand: gemergt #1494 (Ratsche gegen neue `--state-`-Treffer); Kriterium 4 entschieden:** keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur. Heute 164 Treffer von `--state-` in `src/styles.css` (Definition `:156-171`) und 10 in vier Tests; `src/design/` enthält `--state-` gar nicht (sechs Zustände stehen als `.g-st--*` in `src/design/state/state.css`) | `src/styles.css`, vier Tests, ein Gate-Skript unter `scripts/ci/` | nein | B | M, **UNKNOWN** (bis 2×M, erst messen) | – | `rg -ln -e '--state-' src` zeigt nur noch erlaubte Orte; Gate gegen neue Definition grün; `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
-| V2-ACC1b | **Stand: dispatched 15.10. (Server-Job, gestapelt auf #1499).** Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
+| V2-ACC1b | **Stand 15.10.: PR #1540 offen (Draft), gestapelt auf #1499.** Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
 | V2-SHOT-BASE | Bildbasis: je Route von Hülle + Leitstand ein Bild hell und eines dunkel (1440×900), angesehen und gegen die Boards verglichen (Kriterium 2). Der Agent erzeugt die Bilder mit `npm run dev:shot`, der Nutzer sieht sie an. Anzahl der Routen **UNKNOWN** (legt V2-ACC1b fest) | `docs/design/2026-10-ui-v2/glass/` (Boards), Bilder lokal, nicht im Repo | nein | C | – | V2-D1-ON lokal an, V2-SCOPE-1 | Nutzer bestätigt „gesehen, Abweichungen siehe PR“ | **Elias** |
 | V2-UAT-1a | Vorlage und Klick-Checkliste (höchstens 10 Punkte, einfache Worte) für Hülle + Leitstand, „neu / bewiesen / nicht abgedeckt“, Glossar | `docs/` (neues Dokument), kein Code | nein | C | S | V2-ACC1b | `npm run dev:agent-check` Exit 0; Checkliste ≤ 10 Punkte | Agent |
 | V2-UAT-1b | Nutzer klickt die Checkliste auf dem Beta-Build durch, kurzes Video, gibt frei, was er gesehen hat (Kriterium 13) | – | nein | – | – | V2-UAT-1a, V2-BETA-0 | Freigabe im Chat, im PR-Text vermerkt | **Elias** |
@@ -796,9 +796,10 @@ Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log o
 | V2-DRILL | Update-Drill am eigenen PC: v2.0 über den Updater installieren, Abbrechen und Versionsanzeige prüfen (Kriterium 11) | – | nein | – | – | V2-BETA-0, V2-E14 | Nutzer bestätigt Installation und Neustart mit neuer Version | **Elias** |
 | V2-REL | Release v2.0.0: Version 1.6.4 → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Elias** (Ja, Veröffentlichung) |
 
-**Reihenfolge-Hinweis zu V2-D1-ON:** `main` baut auch Patch-Releases (zuletzt 1.6.4). Würde D1 vorher an gehen, trüge jedes v1.6.x die neue Oberfläche. Darum hält Root V2-D1-ON mit `do-not-merge`, bis V2-ACC1b grün ist.
+**Statusbelege 15.10.2026, 14:14 UTC:** `gh pr view <n> --json state,isDraft,baseRefName` für #1484, #1499 und #1540; der frühere `do-not-merge`-Wartehinweis für V2-D1-ON ist durch dessen Merge überholt.
 
-**Hinweis zu Kriterium 4:** Beschlossener Wortlaut: „Keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“ Die Messung zählt die Alt-Aliase, und ihre Obergrenze kann nur sinken. Die klassische Oberfläche bleibt als Rückweg von D1 erhalten.
+[Classic-out-Entscheid vom 15.10.](../../decisions.md#2026-10-15---classic-ui-leaves-the-app): Ziel ist die Entfernung des Rückwegs; Wellen und Umsetzungsstand stehen in 10.2.
+**Hinweis zu Kriterium 4:** Beschlossener Wortlaut: „Keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“ Die Messung zählt die Alt-Aliase, und ihre Obergrenze kann nur sinken. Die frühere Zusage „Die klassische Oberfläche bleibt als Rückweg von D1 erhalten“ ist durch Classic-out überholt.
 
 Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zurück rot, bewiesen blaugrün, unbekannt grau und Tor orange. Fabrik ist ein Tab im Leitstand. Die Lichtkugeln sind zwischen ruhig und lebendig umstellbar, standardmäßig ruhig.
 
@@ -817,3 +818,98 @@ Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kon
 | COMP-9-3 | Zeilenchip in Betrieb | ~200 | COMP-9-2, #1340 (gemergt) | abgedeckt durch #1485 (`QueueCard.tsx` zeigt je Zeile das Größen-Abzeichen aus `sizeChip`) |
 
 Größen sind die Schätzungen des Berichts, nicht gemessen. Stand der Spalte: 15.10.2026 vormittags, PR-Nummern mit `gh pr view <n> --json state,mergeCommit` geprüft.
+
+### 10.2 KLASSIK-RAUS
+
+Quelle: pa-orch-Berichte `kr-wellenplan-20261015.md` und `klassik-raus-inventar-20261015.md` §7; Wellenplan ersetzt dessen Abhängigkeiten bei 04a, 07a, 11c und 09m. IDs unverändert; `KR-` ist der Suchpräfix. Root disponiert und nimmt ab; keine neue Freigabe durch diese Tabelle.
+Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "KR-"`; „geplant“ heißt ohne PR-/Laufbeleg. Welle 2 wartet zusätzlich auf die benötigten DS-Formular-/Dialog-/Tabellenbausteine (10.3); genaue Zuordnung vor Dispatch. Routing-Dateien seriell.
+
+| Welle | ID | Ziel | Stufe | Hängt ab von | Status |
+|---|---|---|---|---|---|
+| 1 | 01a | DS-Basis und Feedbackformular | B | – | #1547 offen (Draft) |
+| 1 | 04a | VerlaufChat anschließen | B | – | läuft (Server-Auftrag srv-kr-04a) |
+| 1 | 01c | Fehler- und Startansicht portieren | B | 01a | #1552 offen |
+| 1 | 01b | Not-Aus im Designsystem | A | 01a | #1553 offen (Draft) |
+| 1 | 07a | Beweiskette anschließen | B | 04a | geplant |
+| 1 | 11c | Lektionen anschließen und bearbeiten | B | 07a | geplant |
+| 1 | 11d | Rollenvarianten anschließen | B | 11c | geplant |
+| 1 | 06b | Fragenumfang, Verlauf und Zuordnung erhalten | B | 04a | geplant |
+| 1 | 09m | Changelog unter Version anzeigen | B | 01a | #1551 offen (Draft) |
+| 1 | 08a | Terminalsuche portieren | A | 01a | #1556 offen (Draft) |
+| 1 | 08b | Wiederherstellungspanel portieren | A | 01a | geplant |
+| 1 | 04b | Chatentwurf und Verlauf erhalten | B | 04a | geplant |
+| 2 | 02a | Projekt anlegen | B | 01a | geplant |
+| 2 | 02b | Projekt entfernen bestätigen | B | 02a | geplant |
+| 2 | 02c / 02d | GitHub verknüpfen / Repository anlegen | B | 02a | geplant |
+| 2 | 03a | Anbieterübersicht portieren | B | 01a | geplant |
+| 2 | 03c / 03d | Schlüssel bearbeiten / synchronisieren | A | 03a | geplant |
+| 2 | 04c / 04d | Orchestrator steuern / Aufträge schärfen | A / B | 04b | geplant |
+| 2 | 05a | Worker direkt starten | B | 02a, 03a | geplant |
+| 2 | 05b / 05c | Startzulassung / Rollen und Anhänge erhalten | A / B | 05a | geplant |
+| 2 | 05d | Startentwurf schärfen und wiederherstellen | B | 05b, 04d | geplant |
+| 2 | 06c | Worker-Nachrichtenverlauf anzeigen | B | 05a | geplant |
+| 2 | 07b / 07c | Diff-Dateiliste / Zeilenansicht portieren | B | 07a | geplant |
+| 2 | 07d / 07e | Kommentare / Disposition portieren | B | 07c | geplant |
+| 2 | 07f / 07g | Reviewurteil / Setup-Vertrauen erhalten | A | 07e | geplant |
+| 2 | 07h / 07i | Tests auslösen / Merge bestätigen | A | 07f, 07g | geplant |
+| 2 | 08c / 08d | Terminalsitzungen steuern / Ansichten teilen | A | 08a, 08b | geplant |
+| 2 | 09a' | Eine Schriftgröße einstellen | B | 01a | geplant |
+| 2 | 09b | Port, Digest und Hängerschwelle portieren | B | 01a | geplant |
+| 2 | 09c | Umgebungsisolation und Produktmodus erhalten | A | 09a' | geplant |
+| 2 | 09d / 09e | Projektbefehle / Worker-Obergrenze portieren | A / B | 02a | geplant |
+| 2 | 09f / 09g | Masterprompt / Profile und Lernen einstellen | B | 09a' | geplant |
+| 2 | 09h | Budgetgrenzen und Null-Semantik erhalten | B | 09g | geplant |
+| 2 | 09i / 09j | Pufferlöschung bestätigen / Wartung steuern | A | 09a' | geplant |
+| 2 | 09k / 09l | Updater-Zustand / Neustartkontinuität erhalten | A | VersionUpdates | geplant |
+| 2 | 10e | Ressourcenanzeige vervollständigen | B | Betrieb/Kontingente/Kostenbuch | geplant |
+| 2 | 11e | Zugriff auf Urteil-Token erhalten | A | 11c | geplant |
+| 2 | 13a / 13b / 13c / 13d | Boot / Terminal / Routen / Wettläufe prüfen | C bei reinen Tests | jeweilige Ports; 13a vor 12d | geplant |
+| 3 | 12a | Ersteinrichtung auf neue Ziele umstellen | B | 02a, 03d, 05d, 09a' | geplant |
+| 3 | 12b | Einstellungsrouten eindeutig zuordnen | B | 09a'–09m | geplant |
+| 3 | 12c | Klassische Rückfallrouten schließen | B | erhaltene 04–11 vollständig | geplant |
+| 3 | 12d | D1-Schalter entfernen | B | 12a–12c, 13a | geplant |
+| 3 | 14 (Serie) | Toten AppContent schrittweise entfernen | B; Prozessbesitz A | 12d, 13 | geplant |
+| 3 | 15 (Serie) | Alte Komponenten schrittweise entfernen | B; reine Tests C | 14, Port-Tests | geplant |
+| 3 | 16 (Serie) | Alt-CSS und Zustandsaliase abbauen | B; nur tote Inhalte C | 01, 08, 14, 15 | geplant |
+| 3 | 17 (optional) | Ungenutzte Backend-Adapter zuerst belegen | A; Naht seriell | Frontend-Ports, CLI/API-Audit | geplant |
+
+Gestrichen (Elias 15.10.): 03b Free-Pools; 02e Skill-Packs; 06a Empfehlungen (Aufmerksamkeitsübersicht → 06b); 07j Spalten-Override (Lernkritik → 11c); 09a Dichte/Feinschrift (ersetzt durch 09a'); 10a–10d Statistik/Digests; 11a/11b Scouts/Empfehlungen; 11f Weboberfläche.
+Jede ID bleibt ein eigenes Paket ≤300 Gesamtzeilen; Serien 14–16 entfernen höchstens 240 Zeilen je Schnitt und reservieren 60 für Anpassungen/Tests. Erst Ersatz und Verhaltensbelege, dann Entfernung; gemeinsame Backend-/Terminal-Funktionen erhalten. Keine ID 11x in den Quellen definiert.
+
+### 10.3 Designsystem-Feinschliff
+
+Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions.md#2026-10-15---design-system-decisions-d1d7-root-by-delegation-elias-may-overrule). Root disponiert; ≤300 Gesamtzeilen je Paket. Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "DS-"` ohne PR für diese DS-IDs; DS-01 laut Server-Auftrag gestartet. Übrige Einträge sind Planung, keine Ausführungsbehauptung.
+
+| ID | Ziel | Hängt ab von | Status |
+|---|---|---|---|
+| DS-01 | Bewegungstoken vereinheitlichen | – | läuft (Server-Auftrag srv-ds-01) |
+| DS-02 | Ruhig/Lebendig/Aus mit OS-Vorrang | DS-01; D2 | geplant |
+| DS-03 | Galerie in jedem Build erreichbar machen | DS-02; D6 ersetzt Dev-only | geplant |
+| DS-04 | Komponenten und Zustände in Galerie zeigen | DS-03 | geplant |
+| DS-05 | Einheitliche Bewegung anwenden | DS-02 | geplant |
+| DS-06 | Layoutfehler und Headerumbruch beheben | –; D7: unter 1440 px | geplant |
+| DS-07 | Skalen, Fokus und Inter zentralisieren | –; D1 | geplant |
+| DS-08a | Leitstand und Hülle auf Skalen umstellen | DS-07 | geplant |
+| DS-08b | Übrige Ansichten auf Skalen umstellen | DS-08a | geplant |
+| DS-09 | Bedienelemente und Tabs vereinheitlichen | DS-07 | geplant |
+| DS-10 | Zustandswörterbuch und Texte vereinheitlichen | DS-05; D3/D4 | geplant |
+| DS-11 | Einblenden und Ausblenden vereinheitlichen | DS-05 | geplant |
+| DS-12 | Veraltete Hinweise und Textleitfaden pflegen | DS-07 | geplant |
+| DS-13 | Karten und Seitenüberschriften vereinheitlichen | DS-08a | geplant |
+| DS-14 | Formularbausteine vervollständigen | DS-09 | geplant |
+| DS-15 | Popover und Menüs vereinheitlichen | DS-11 | geplant |
+| DS-16 | Tooltips, Banner und Toast-Warteschlange ergänzen | DS-15 | geplant |
+| DS-17 | Lade- und Fehlerzustände vereinheitlichen | DS-05 | geplant |
+| DS-18a | Statische Fabrikbausteine bereitstellen | DS-02, DS-07; D4/D5 | geplant |
+| DS-18b | Fabrikbewegung mit Ruhemodus ergänzen | DS-18a; D2/D5 | geplant |
+| DS-19 | Fluss durch Fabrik-Tab ersetzen | DS-18b; FABRIK-TAB-1 vor Dispatch abgleichen | geplant |
+| DS-20 | Diagramme mit Tabellenalternative ergänzen | DS-07 | geplant |
+| DS-21 | Code-, Diff- und Terminalrahmen vereinheitlichen | DS-09 | geplant |
+| DS-22 | Schrittfolge und Navigation ergänzen | DS-13 | geplant |
+| DS-23 | Tabellenzustände und Sortierung ergänzen | DS-17 | geplant |
+| DS-24 | Kontrastmodi und Dichtedarstellung absichern | DS-07, DS-18a; Abgleich mit gestrichenem 09a vor Dispatch | geplant |
+| DS-25 | Klassik-Ablösung je Ansicht zuordnen | DS-13…DS-23; bestehende KR-Wellen in 10.2 | geplant |
+
+Parallelauftrag **FABRIK-TAB-1**: Fabrik-Tab im Leitstand; Abhängigkeit im Wellenplan: keine; läuft (Server-Auftrag srv-fabrik-tab-1c, 15.10.2026).
+
+Überschneidungen mit KR (Not-Aus, Tabs, Routing, Einstellungen), FABRIK-TAB-1 und DN-02 vor Dispatch durch Root auflösen; kein zweiter Ausführungsowner. DS-25 pflegt die vorhandene KR-Zuordnung, keinen zweiten Ablöseplan. Visuelle Abnahme und Tests bleiben je Umsetzung offen.

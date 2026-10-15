@@ -15,6 +15,8 @@ const base = (path: string) => `/${path.split("/")[1] ?? ""}`;
 
 export const trim = (path: string) => path.replace(/\/+$/, "");
 
+export const FABRIK_PATH = "/leitstand/fabrik";
+
 export const TOOLS_PATH = "/leitstand/werkzeuge";
 export const isTools = (path: string) => trim(path) === TOOLS_PATH;
 
@@ -22,8 +24,8 @@ export const isTerminal = (path: string) => trim(path.split("?")[0]) === "/leits
 
 export const isVerlauf = (path: string) => trim(path.split("?")[0]) === "/leitstand/verlauf";
 
-/** The new Leitstand owns `/leitstand` (V2-S01a), `/leitstand/betrieb` (V2-S01b) and `/leitstand/fluss` (COMP-3-3); the rest below it stays the old view. */
-export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb", "/leitstand/fluss"].includes(trim(path));
+/** The new Leitstand owns `/leitstand` (V2-S01a), `/leitstand/betrieb` (V2-S01b) and `/leitstand/fabrik` with its old `/leitstand/fluss` alias; the rest below it stays the old view. */
+export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb", FABRIK_PATH, "/leitstand/fluss"].includes(trim(path));
 
 /** The new Steuerung (V2-S05a) owns `/steuerung` and its tabs: Kontingente plus two honest placeholders. */
 export const isNewSteuerung = (path: string) => base(trim(path)) === "/steuerung";

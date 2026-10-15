@@ -1,4 +1,5 @@
 import { Meter } from "../../design/inputs/Meter";
+import { useFeatureFlag } from "../../flags/useFeatureFlag";
 import "../../design/inputs/inputs.css";
 import { PROVIDER_POLL_MS, useProviderOverview } from "../../lib/providers";
 import { QUOTA_POLL_MS, useQuotaState } from "../../lib/quota";
@@ -8,9 +9,11 @@ import "./header.css";
 
 /** Read-only observations from the existing hooks and their polling cadence. */
 export function QuotaBar() {
+  const [expanded] = useFeatureFlag("weitere_bereiche");
   const quota = useQuotaState(QUOTA_POLL_MS);
   const overview = useProviderOverview(PROVIDER_POLL_MS);
   const summary = quotaSummary(quota, overview);
+  if (!expanded) return null;
   return (
     <a className="g-hdr-quota g-quota-observed" data-blocked={summary.blocked || undefined} href="#/steuerung" aria-label={summary.text} title={summary.text}>
       <span>{summary.text}</span>

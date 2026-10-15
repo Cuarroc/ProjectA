@@ -11,6 +11,8 @@ import App from "../../App";
 import type { UsageReport } from "../../types";
 
 const FLAG_KEY = "projecta.settings.featureFlag.d1_neue_oberflaeche";
+/** Steuerung is outside the default scope, so these tests switch "weitere Bereiche" on. */
+const SCOPE_KEY = "projecta.settings.featureFlag.weitere_bereiche";
 const provider = { id: "claude", name: "Claude Code", kind: "subscription", connected: true, detail: null, quotaState: "ok", blockedUntil: null, omniRouteOnline: true, usage: null, vaultError: null };
 /** The shell placeholder stays in the DOM (hidden by CSS), so look inside the route only. */
 const route = (container: HTMLElement) => within(container.querySelector<HTMLElement>(".g-sr")!);
@@ -38,6 +40,7 @@ const bothSeparators = (amount: string) => {
 
 beforeEach(() => {
   localStorage.clear();
+  localStorage.setItem(SCOPE_KEY, "1");
   window.location.hash = "";
   mocks.invoke.mockReset();
   mocks.invoke.mockImplementation((command: string) => {
@@ -114,7 +117,7 @@ describe("Steuerung route behind D1", () => {
     await waitFor(() => expect(mounted.container.querySelectorAll(".kb-panel")).toHaveLength(1));
     expect(usageCalls()).toHaveLength(calls + 1);
     mounted.unmount();
-    localStorage.removeItem(FLAG_KEY);
+    localStorage.setItem(FLAG_KEY, "0");
     mocks.invoke.mockClear();
     const legacy = render(<App />);
     fireEvent.click(await screen.findByRole("tab", { name: "Auswertung" }));
@@ -227,6 +230,7 @@ describe("Steuerung route behind D1", () => {
   });
 
   it("leaves /steuerung to the old Insights view while the switch is off", async () => {
+    localStorage.setItem(FLAG_KEY, "0");
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     await go("#/steuerung");

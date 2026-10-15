@@ -18,7 +18,7 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 
 ### Stand 2026-10-15 (datierter Schnappschuss, keine Live-Quelle)
 
-Gelesen am 2026-10-15 um 12:30 MESZ, `origin/main` @ `66a34491`. Zahlen, die sich
+Gelesen am 2026-10-15 um 16:35 MESZ, `origin/main` @ `a5f8c538`. Zahlen, die sich
 stündlich ändern (offene PRs, Queue), stehen hier bewusst nicht mehr; sie
 kommen nur aus den Live-Belegen oben.
 
@@ -32,6 +32,8 @@ kommen nur aus den Live-Belegen oben.
 - **Plan:** `docs/PLAN.md` ist der einzige Plan (Ziele Z1–Z4).
 - **Wo der Live-Stand steht:** die Notiz `lage-jetzt` (außerhalb von Git, s. o.)
   und die drei Live-Belege oben. Dieser Schnappschuss ersetzt sie nicht.
+
+Server-Automationen (review-feeder, dep-feeder, hold-feeder; 12 Server-Slots) leben in pa-orch und sind in der Projektnotiz `pa-orch-server-dispatch` dokumentiert, nicht im Repo.
 
 ### Nächster Griff
 

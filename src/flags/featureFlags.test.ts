@@ -13,28 +13,44 @@ describe("featureFlags registry", () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.restoreAllMocks());
 
-  it("defaults every registered flag to off including D1", () => {
+  it("defaults D1 to on and every other flag to off", () => {
     for (const flag of FEATURE_FLAGS) {
-      expect(flag.defaultEnabled).toBe(false);
-      expect(isFeatureFlagEnabled(flag.id)).toBe(false);
+      const expected = flag.id === "d1_neue_oberflaeche";
+      expect(flag.defaultEnabled).toBe(expected);
+      expect(isFeatureFlagEnabled(flag.id)).toBe(expected);
     }
     const d1 = FEATURE_FLAGS.find((f) => f.id === "d1_neue_oberflaeche");
     expect(d1?.label).toBe("Neue Oberfläche (Vorschau)");
+    expect(d1?.allowsRoute()).toBe(true);
+  });
+
+  it("keeps an explicit D1 off as 0 also after a reload", async () => {
+    const key = `${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`;
+    setFeatureFlagEnabled("d1_neue_oberflaeche", false);
+    expect(localStorage.getItem(key)).toBe("0");
     expect(isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(false);
+    vi.resetModules();
+    const reloaded = await import("./featureFlags");
+    expect(reloaded.isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(false);
+    reloaded.setFeatureFlagEnabled("d1_neue_oberflaeche", true);
+    expect(localStorage.getItem(key)).toBe("1");
+    expect(reloaded.isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(true);
   });
 
   it("persists a flag through projecta.settings.featureFlag keys", () => {
-    setFeatureFlagEnabled("d1_neue_oberflaeche", true);
-    expect(localStorage.getItem(`${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`)).toBe("1");
-    expect(isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(true);
-    setFeatureFlagEnabled("d1_neue_oberflaeche", false);
-    expect(localStorage.getItem(`${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`)).toBeNull();
-    expect(isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(false);
+    setFeatureFlagEnabled("fernansicht", true);
+    expect(localStorage.getItem(`${FEATURE_FLAG_STORAGE_PREFIX}fernansicht`)).toBe("1");
+    expect(isFeatureFlagEnabled("fernansicht")).toBe(true);
+    setFeatureFlagEnabled("fernansicht", false);
+    expect(localStorage.getItem(`${FEATURE_FLAG_STORAGE_PREFIX}fernansicht`)).toBe("0");
+    expect(isFeatureFlagEnabled("fernansicht")).toBe(false);
   });
 
-  it("ignores unknown stored values and survives storage failures", () => {
+  it("falls back to the default for unknown stored values and survives storage failures", () => {
     localStorage.setItem(`${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`, "yes");
-    expect(isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(false);
+    localStorage.setItem(`${FEATURE_FLAG_STORAGE_PREFIX}kundenprojekte`, "yes");
+    expect(isFeatureFlagEnabled("d1_neue_oberflaeche")).toBe(true);
+    expect(isFeatureFlagEnabled("kundenprojekte")).toBe(false);
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("denied");
     });
@@ -50,7 +66,7 @@ describe("featureFlags registry", () => {
   it("lists every flag with German copy and gates routes only when on", () => {
     const listed = listFeatureFlags();
     expect(listed.map((f) => f.id).sort()).toEqual(
-      (["d1_neue_oberflaeche", "fernansicht", "kundenprojekte"] as FeatureFlagId[]).sort(),
+      (["d1_neue_oberflaeche", "fernansicht", "kundenprojekte", "weitere_bereiche"] as FeatureFlagId[]).sort(),
     );
     for (const flag of listed) {
       expect(flag.label.length).toBeGreaterThan(0);

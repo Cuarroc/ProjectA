@@ -31,6 +31,15 @@ describe("goal and route mapping (ia.md section 4)", () => {
     }
   });
 
+  it("keeps Fabrik and the old flow alias out of the legacy terminal viewer", () => {
+    for (const path of ["/leitstand/fabrik", "/leitstand/fabrik/", "/leitstand/fluss", "/leitstand/fluss/"]) {
+      expect(isNewLeitstand(path)).toBe(true);
+      expect(shouldMountLegacyTerminal(path)).toBe(false);
+    }
+    expect(isNewLeitstand("/leitstand/fabrik/unknown")).toBe(false);
+    expect(isNewLeitstand("/leitstand/fluss/unknown")).toBe(false);
+  });
+
   it("keeps the legacy goal when entering the terminal route", () => {
     for (const path of ["/leitstand/terminal", "/leitstand/terminal/"]) {
       expect(goalForPath(path, "review")).toBe("review");

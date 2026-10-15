@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { setFeatureFlagEnabled } from "./flags/featureFlags";
 import type { AttentionSource } from "./lib/attentionInbox";
 import type { AgentProfile, Project, PtyExitPayload, Worker } from "./types";
 import * as ipc from "./lib/ipc";
@@ -246,6 +247,7 @@ vi.mock("./components/WebInterfacePanel", () => ({ default: () => null }));
 describe("App audit regressions", () => {
   beforeEach(() => {
     localStorage.clear();
+    setFeatureFlagEnabled("d1_neue_oberflaeche", false); // these tests cover the classic app
     attentionBlockers.current = [];
     boardWorkerSeen.current = null;
     vi.clearAllMocks();

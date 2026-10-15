@@ -22,6 +22,8 @@ const BOOT_COMMANDS: Record<string, unknown> = {
   web_interface_status: null,
   list_worker_messages: [],
   list_live_sessions: [],
+  get_provider_overview: [],
+  get_emergency_stop: false,
 };
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
@@ -52,7 +54,7 @@ describe("boot smoke", () => {
     });
     await waitFor(() => {
       expect(document.querySelector(".app")).not.toBeNull();
-    });
+    }, { timeout: 5000 }); // D1 (default) lazy-loads the classic app inside the shell
   });
 
   it("records every invoked command so a missing mock cannot pass silently", async () => {
@@ -67,7 +69,7 @@ describe("boot smoke", () => {
     render(<App />);
     await waitFor(() => {
       expect(document.querySelector(".app")).not.toBeNull();
-    });
+    }, { timeout: 5000 }); // D1 (default) lazy-loads the classic app inside the shell
     expect(unknown).toEqual([]);
   });
 });

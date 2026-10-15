@@ -9,7 +9,7 @@ import TerminalRoute from "../../screens/terminal/TerminalRoute";
 import VerlaufRoute from "../../screens/leitstand/verlauf/VerlaufRoute";
 import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
 import { EinstellungenScreen } from "../../screens/einstellungen/EinstellungenScreen";
-import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf } from "./routing";
+import { FABRIK_PATH, SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf } from "./routing";
 import SteuerungRoute from "./SteuerungRoute";
 import "./mount.css";
 
@@ -41,7 +41,15 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
     return () => watch.disconnect();
   }, []);
   useEffect(() => {
-    const onHash = () => setPath(pathFromHash(window.location.hash));
+    const onHash = () => {
+      const next = pathFromHash(window.location.hash);
+      if (next === "/leitstand/fluss") {
+        // Replace the bookmark so Back does not revisit the retired tab URL.
+        window.location.replace(`#${FABRIK_PATH}`);
+        setPath(FABRIK_PATH);
+      } else setPath(next);
+    };
+    onHash();
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
