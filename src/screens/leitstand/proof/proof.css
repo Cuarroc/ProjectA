@@ -16,3 +16,13 @@
 .ps--stale .ps__badge { border-style: dashed; }
 .ps--stale .ps__badge > :not(.ps__stale, .ps__label) { opacity: 0.6; }
 .ps__stale { font: 500 11px/1 var(--g-font-sans); color: var(--g-muted); }
+/* COMP-4-3 compact strip for the flow node: one 24-px pill (the proof chip of the
+   design reference), one cell per field, a mark per value; the words are in the tooltip.
+   Measured: the four cells need about 140 of the 176 px a node has inside its padding. */
+.ps--compact {
+  flex-wrap: nowrap; justify-content: space-between; gap: 0; height: 24px; box-sizing: border-box; padding: 0 8px;
+  border-radius: 999px; background: var(--g-tint-hi); border: 1px solid var(--g-line);
+}
+.ps--compact.ps--stale { border-style: dashed; }
+.ps--compact .ps__badge { flex: none; height: auto; padding: 0; gap: 3px; border: 0; background: none; font: 500 11px/12px var(--g-font-sans); }
+.ps--compact .ps__stale { display: none; }

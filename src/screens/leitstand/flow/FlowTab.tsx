@@ -43,9 +43,9 @@ function quotaFor(card: BoardCard, { profiles, quotas, budgets }: Reads): { view
   };
 }
 
-/** The card's proof strip (AgentCard.tsx) from the same fields: only the pull request is known, red-first, gates and review stay "noch nicht verbunden". */
+/** The card's proof strip (AgentCard.tsx) from the same fields, in the one-line variant the node has room for: only the pull request is known, red-first, gates and review stay "noch nicht verbunden". */
 const proofFor = (card: BoardCard) => (
-  <ProofStrip redFirst="unknown" gates={null} review={null} stale={false} pr={card.prUrl ? { href: card.prUrl, sha: null, command: null, exitCode: null } : null} />
+  <ProofStrip compact redFirst="unknown" gates={null} review={null} stale={false} pr={card.prUrl ? { href: card.prUrl, sha: null, command: null, exitCode: null } : null} />
 );
 
 /** Inside of a flow node: task and branch as before, the lamp of the card, its quota and its proof strip. */

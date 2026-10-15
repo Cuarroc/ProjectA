@@ -89,3 +89,10 @@ it("lifts the node lamp to done when the test passed", async () => {
   expect(lamp).not.toHaveClass("g-lamp--bad");
   expect(within(await node()).queryByRole("img", { name: "ohne Beweis" })).toBeNull();
 });
+
+it("draws the node's proof strip as the one-line variant", async () => {
+  render(<FlowTab cards={withCard({ prUrl: "https://github.com/o/r/pull/7" })} />);
+  const strip = within(await node()).getByRole("group", { name: "Beweis" });
+  expect(strip).toHaveClass("ps--compact");
+  expect(strip.children).toHaveLength(4);
+});
