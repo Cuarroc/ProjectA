@@ -24,6 +24,8 @@ use sqlx::{FromRow, Sqlite, SqlitePool, Transaction};
 mod approval_grants;
 #[allow(dead_code)] // The first writers (kill switch, W5-04a) land in later packages.
 pub mod audit;
+#[path = "store/connect_retry.rs"]
+mod connect_retry;
 #[path = "store/continuous.rs"]
 mod continuous;
 #[allow(dead_code)]
@@ -1133,9 +1135,7 @@ impl Store {
             // is upheld in code - `create_worker` refuses an unknown project.
             .foreign_keys(false);
 
-        let pool = SqlitePoolOptions::new()
-            .max_connections(4)
-            .connect_with(options.clone())
+        let pool = connect_retry::connect_pool(&options)
             .await
             .map_err(|e| format!("failed to open {}: {e}", path.display()))?;
 
@@ -1154,9 +1154,7 @@ impl Store {
             // retain old SQLite/SQLx column metadata. Retire the entire startup
             // pool before publishing Store; no running caller owns it yet.
             store.pool.close().await;
-            store.pool = SqlitePoolOptions::new()
-                .max_connections(4)
-                .connect_with(options)
+            store.pool = connect_retry::connect_pool(&options)
                 .await
                 .map_err(|e| format!("failed to reopen migrated database: {e}"))?;
         }

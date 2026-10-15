@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "seams": [
     { "path": "src-tauri/src/api.rs", "maxLines": 8709 },
-    { "path": "src-tauri/src/main.rs", "maxLines": 5340 },
+    { "path": "src-tauri/src/main.rs", "maxLines": 4059 },
     { "path": "src-tauri/src/store.rs", "maxLines": 4200 },
     { "path": "src-tauri/src/bin/pa.rs", "maxLines": 6374 }
   ]
