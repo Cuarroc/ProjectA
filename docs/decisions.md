@@ -1899,7 +1899,8 @@ wall clock, linux + windows.
   no purchased credits, no auto-reload; the key lives only in the AgentsRoom
   secrets vault or a server secret store the user set up, and never in files,
   logs, commands or PR text. When credits run out, work falls back to
-  subscriptions; nobody buys credits. OpenRouter stays forbidden.
+  subscriptions; nobody buys credits. OpenRouter stays forbidden (historical;
+  superseded for reviews by [2026-10-15 - Reviewer count per tier](#2026-10-15---reviewer-count-per-tier)).
 - **Why:** the credits are part of the plan already paid, expire monthly, and
   spare the weekly Max limit. Exhausted credits stop requests at no charge
   when there is no payment method or auto-reload.
@@ -2048,8 +2049,8 @@ wall clock, linux + windows.
   The existing-credit exception follows the user's 2026-10-14 22:42 CEST
   statement: "OpenRouter erlaubt, nutzungsguthaben darf voll verbraucht werden."
   Reviews run from the PC, with no purchase/auto-reload and keys only in the
-  user's environment/vault. Root's 3 USD floor remains: below it free reviews
-  are supplementary and never satisfy the required count; wait if necessary.
+  user's environment/vault. Root's privately recorded floor remains: below it
+  free reviews are supplementary, never required coverage; wait if necessary.
   The historical Ollama pair remains blocked until 2026-11-01; this records
   the supplied restriction, not a new availability probe.
 - **Reverse when:** the user changes the rule or credit authorization;
@@ -2104,3 +2105,15 @@ execution owner. No remote Denkraum exposure without a separate user decision.
 Retire a UI/server only after replacement capture/answer/inspection parity,
 real source data with receipts, mobile capture and a verified backup; no idea
 may be lost. This contract itself starts, migrates, exposes or retires nothing.
+
+## 2026-10-15 - Design-system decisions D1–D7 (Root by delegation, Elias may overrule)
+
+- **Authority / why:** the user's delegated design-detail choices, recorded by Root in `ds-entscheidungen-20261015.md` (15:55 CEST); one consistent system for the app and Fabrik. Packages: [v2 plan §10.3](plan/v2.0/plan.md#103-designsystem-feinschliff).
+- **D1:** keep shipped Inter (OFL); move `@font-face` to `src/design/fonts.css` in DS-07; no Geist download.
+- **D2:** Ruhig (default), Lebendig, Aus; OS reduced-motion overrides all and forces resting positions.
+- **D3:** “bewiesen” keeps the existing `--g-ok` colour; no teal change.
+- **D4:** Fabrik aliases live in `src/design/state/`: läuft → run, wartet → rev, zurück → bad, bewiesen → ok, unbekannt → unknown, Tor → need. No second state vocabulary.
+- **D5:** Lichtkugeln are work orbs travelling the Fabrik lanes; ambient glass fields drift only in Lebendig.
+- **D6:** read-only, data-free gallery in every build via Einstellungen › Version › Designsystem ansehen, also in the dev menu; supersedes DS-03's proposed dev-only route.
+- **D7:** the header must not collapse at 1440 px; DS-06 moves COMPACT_QUERY below 1440 with a layout test.
+- **Reverse when:** the user overrules a choice; this records decisions, not their implementation or visual acceptance.

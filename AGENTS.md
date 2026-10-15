@@ -143,7 +143,7 @@ review nor user approval; do not add an RLM runtime, agents or services for it.
   permission record; no new paid services, keys or purchases without the
   user's explicit yes. Secrets never go into files, logs, commands or PR text.
 
-### Subscriptions only — recorded credit exceptions
+### Subscriptions first — recorded credit exceptions
 
 Subscriptions remain the default. The included Anthropic API-credit exception
 (decision 2026-10-09) allows a dedicated ProjectA Console workspace/key with a
@@ -154,8 +154,8 @@ never in files, logs, commands or PR text.
 The user's 2026-10-14 decision also permits existing OpenRouter credit only:
 no purchase or auto-reload. Reviews run from the PC using the coordinator's
 OpenRouter review script outside the repo. Its key stays only in the user's
-environment/vault, never in files, logs, commands or PR text. Root's floor is
-3 USD: below it, use free reviewers only as supplementary feedback; they never
+environment/vault, never in files, logs, commands or PR text. Root's privately
+recorded floor applies: below it, free reviewers are supplementary; they never
 count as required reviewers. A missing required family means waiting for an
 eligible reviewer, not reducing the count. This supersedes the old OpenRouter
 ban in the 2026-10-09 credit decision; no current balance is asserted.

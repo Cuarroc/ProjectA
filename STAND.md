@@ -33,6 +33,8 @@ kommen nur aus den Live-Belegen oben.
 - **Wo der Live-Stand steht:** die Notiz `lage-jetzt` (außerhalb von Git, s. o.)
   und die drei Live-Belege oben. Dieser Schnappschuss ersetzt sie nicht.
 
+Server-Automationen (review-feeder, dep-feeder, hold-feeder; 12 Server-Slots) leben in pa-orch und sind in der Projektnotiz `pa-orch-server-dispatch` dokumentiert, nicht im Repo.
+
 ### Nächster Griff
 
 1. `lage-jetzt` und die Live-Belege lesen; Ziel, Owner und nächsten Schritt
