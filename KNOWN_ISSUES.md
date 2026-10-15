@@ -1,14 +1,14 @@
-# Known Issues — v1.6.5
+# Known Issues — v1.6.6
 
 Bewusst offen gelassene Befunde. Quelle ist die Batch-D-Neuprüfung gegen den
 Post-U2/Q2-Stand (Re-Triage-Bericht, 2026-08-28; Einstufungen von dort) plus
 Betriebsbefunde aus der Konsolidierung; nachgeführt 2026-09-15 auf Stand
 v1.4.0 und 2026-09-24 auf Stand v1.4.1 (Release 22.09., `gh release list`); die
 Beobachtungs-KIs (KI-7, 21, 22, 24 bis 27) am 2026-10-02 (KI-OBS).
-**Nachgeführt 2026-10-15 (Plan-Abgleich) auf Stand v1.6.5:** `package.json` und
-`src-tauri/tauri.conf.json` stehen auf 1.6.5, der Tag v1.6.5 liegt auf `6bd3ac87`;
-v1.6.5 ist seit 2026-10-15 02:57Z veröffentlicht (`gh release view v1.6.5`).
-Geändert wurden nur die Titelzeile und der Stand-Satz zu KI-24; sonst nicht neu bewertet.
+**Nachgeführt 2026-10-15 (Plan-Abgleich) auf Stand v1.6.6:** `package.json` und
+`src-tauri/tauri.conf.json` stehen auf 1.6.6, der Tag v1.6.6 liegt auf `a8b00911`;
+v1.6.6 ist seit 2026-10-15 09:07Z veröffentlicht (`gh release view v1.6.6`).
+Geändert wurde nur die Titelzeile samt diesem Satz; Befunde sind nicht neu bewertet.
 **Nachgeführt 2026-10-14 (AP-5a) auf Stand v1.6.3:** `package.json` und
 `src-tauri/tauri.conf.json` stehen auf 1.6.3, `gh release list` nennt v1.6.3
 (2026-10-11) als jüngstes Release. Die Titelzeile hieß bis dahin v1.6.0; die
