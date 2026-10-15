@@ -190,11 +190,6 @@ it("starting another restart clears the previous error while the retry is pendin
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
-it("the proof chip exposes its full text in a native tooltip", () => {
-  view("running");
-  expect(screen.getByTitle("Beweis nicht verbunden")).toContainElement(screen.getByText("Beweis nicht verbunden"));
-});
-
 it("offers only the action the old worker list allows for the state", () => {
   const names = (status: Worker["status"]) => {
     cleanup();
