@@ -21,9 +21,9 @@ export function FeedbackForm() {
       setSaved(accepted); setFailed(!accepted); setPending(false);
     }}>
       <div>
-        <p><label htmlFor={whatId}>{DEV_TEXT.feedbackWhat}</label></p>
+        <p><label className="g-inp-label" htmlFor={whatId}>{DEV_TEXT.feedbackWhat}</label></p>
         <p><Textarea id={whatId} value={what} onChange={(event) => setWhat(event.target.value)} required rows={3} /></p>
-        <p><label htmlFor={expectedId}>{DEV_TEXT.feedbackExpected}</label></p>
+        <p><label className="g-inp-label" htmlFor={expectedId}>{DEV_TEXT.feedbackExpected}</label></p>
         <p><Textarea id={expectedId} value={expected} onChange={(event) => setExpected(event.target.value)} rows={2} /></p>
         {failed && <p role="alert">{DEV_TEXT.feedbackFailed}</p>}
         <p><Button type="submit" variant="primary" size="sm" disabled={pending}>{DEV_TEXT.feedbackSubmit}</Button></p>

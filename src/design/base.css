@@ -74,9 +74,14 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Keep short fades; outrank the lazy motion stylesheet's :root defaults. */
+  html:root {
+    --g-dur: 80ms;
+    --g-dur-1: 80ms;
+    --g-dur-2: 80ms;
+    --g-dur-3: 80ms;
+  }
   *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
     scroll-behavior: auto !important;
   }
 }
