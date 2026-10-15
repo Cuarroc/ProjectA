@@ -10,6 +10,8 @@ import { FEATURE_FLAGS, FEATURE_FLAG_STORAGE_PREFIX, isFeatureFlagEnabled } from
 import { getIdentifier, getVersion } from "@tauri-apps/api/app";
 import { ROUTES } from "../../shell/routes";
 import { EinstellungenScreen } from "./EinstellungenScreen";
+import changelogSource from "../../../CHANGELOG.md?raw";
+import { parseChangelog } from "../../lib/changelog";
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
@@ -57,6 +59,19 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 const show = () => render(<EinstellungenScreen onOpenClassic={open} />);
+
+it("renders the newest bundled changelog entry in the settings version section", async () => {
+  show();
+  const version = within(screen.getByRole("region", { name: "Version & Updates" }));
+  await version.findByText("ProjectA 9.8.7");
+  const releases = parseChangelog(changelogSource);
+  const news = within(version.getByRole("region", { name: "Neuigkeiten" }));
+  expect(news.getAllByRole("heading", { level: 4 }).map((h) => h.textContent))
+    .toEqual(releases.slice(0, 3).map((r) => `v${r.version}`));
+  expect(news.getByText(releases[0].groups[0].items[0].title!)).toBeVisible();
+  expect(news.getAllByRole("listitem")).toHaveLength(9);
+  expect(news.queryByText(releases[0].groups[0].items[0].text)).toBeNull();
+});
 
 /** Key material must not survive as visible text or as any DOM attribute. */
 function expectSecretAbsent(secret: string) {
