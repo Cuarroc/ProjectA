@@ -25,9 +25,8 @@ hier. Wer hier nichts findet, arbeitet an nichts.
 3. **Z3: der Rest von v1.6.0** (#631/#632/#728 gemergt; KI-30, D5-GUARD und Changelog final offen).
 4. **Z4: Wichtiges, das liegen geblieben ist** (Schlüssel-Sicherung, Server-Platte,
    Windows-Testfehler, Audit-Reste).
-5. **Was du tun musst:** den Update-Schlüssel finden und verschlüsselt sichern
-   (Anleitung auf deiner Handgriffe-Seite); jeden Release einzeln freigeben.
-   E1–E3 vom 09.10. sind beantwortet; Sicherungsbeleg und Release-Freigabe bleiben offen.
+5. **Was du tun musst:** jeden Release einzeln freigeben.
+   E1–E3 vom 09.10. sind beantwortet.
 
 Fünf Lanes ziehen parallel (siehe „Lanes“). Die vier Nahtstellen laufen nur seriell.
 Schwere Arbeit (Rust-Builds, Reviews, Playwright) läuft auf dem Server.
@@ -326,7 +325,7 @@ Fix-/Review-/Queue-Abnahme bleibt Release-Vorgänger; KI-30 wird nicht vorzeitig
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
 | Z4-ARCH-D1-REST | Vierten HTTP-Fehlertext-Klassifizierer `error_status` in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen | Implementierer; abgeschlossene api-Arbeit | – | Server | A | Erledigt #663 (merged 2026-10-08T20:55:57Z) | `rg -n "fn error_status" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; eigene prepush und zwei Fremdvendor-Belege mit Disposition | 7810a005 |
-| Z4-E14 | Update-Signierschlüssel finden und verschlüsselt sichern; Anleitung auf der Handgriffe-Seite | Nutzer | E3/E14 beantwortet 09.10.; kein Schlüsselmaterial im Repo | PC | – | Geplant: Sicherung beauftragt, Durchführung nicht belegt | verschlüsselte Sicherung durch Nutzer bestätigt; kein Schlüssel in Datei/Log/Commit | – |
+| Z4-E14 | Update-Signierschlüssel finden und verschlüsselt sichern; Anleitung auf der Handgriffe-Seite | Nutzer | E3/E14 beantwortet 09.10.; kein Schlüsselmaterial im Repo | PC | – | Erledigt 14.10.: Schlüssel exportiert und test-signiert (~14:50Z, Schlüssel-ID abgeglichen, Exit 0); Nutzer bestätigte Speicherung im Passwort-Manager (~16:40Z); Klartext entfernt | verschlüsselte Sicherung durch Nutzer bestätigt; kein Schlüssel in Datei/Log/Commit | – |
 | FLAKE-Q-TMP | Fragen-Testfixture wartet bis Pool und temporäres Verzeichnis geschlossen sind; Root-Disposition 09.10. | bestehender Owner `srv-flake-q-tmp` | keine st-Änderung; #737 bleibt exklusiver st-Owner | Server / Windows-Beleg | B laut Auftrag #784 | Erledigt #784 (merged 2026-10-09T01:17:07Z); ersetzt: In Prüfung: Draft #784 | deterministisches Rot→Grün, eigene prepush/Fremdreview; Windows-Fixture-PASS und fremden nativen Fehler getrennt bewerten (PR-Bericht) | e257cee3 |
 | KI25-SETUP-XDEAD | X/x im Setup-Test als beendete Prozesszustände erkennen; Root-Disposition 09.10. | bestehender Owner `srv-ki25-setup-xdead` | – | Server | B | Erledigt #780 (merged 2026-10-09T01:17:11Z); ersetzt: In Prüfung: Draft #780 | benanntes kompilierendes Rot→Grün, gültige Zustände erhalten; eigene prepush/Fremdreview und Root-Abnahme | ca926ea3 |
 | KI-CLOSE-C | Dokumentierte KI-Abschlüsse mit Quellen abgleichen; Root-Disposition 09.10. | Root bindet vorhandenen Doku-Owner | datierte Abschlussbelege je betroffenem KI-Eintrag | Server | C | Erledigt #790 (merged 2026-10-09T01:45:33Z; title: docs: close eight obsolete HQ bug records (KI-CLOSE-C)); ersetzt: Geplant; Abschluss-/PR-Beleg hier nicht beobachtet | keine pauschale Schließung, konkrete Belege und offene Reste; eigene prepush bei Repo-Änderung | PLAN-SYNC-0910b |
@@ -752,7 +751,7 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | E1 (09.10.) | Dritte Review-Runde für #741, #737 und #725; st-Belegung | genau eine Runde 3 nur zum Delta; st exklusiv für #737 bis Tag v1.6.0 | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b; Reviews/Abnahme bleiben auszuführen |
 | E2 (09.10.) | Verhalten bei Updatefehlern / V16-F3 und Start von V16-06 | fail-closed mit Anleitung; D5-GUARD → V16-UPD-CANCEL → V16-06 | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b |
 | E3 (09.10.) | Signierschlüssel sichern und jeden Release freigeben | Nutzer findet den Schlüssel und sichert ihn verschlüsselt; Anleitung auf Handgriffe-Seite, kein Schlüsselmaterial im Repo; jeder Release braucht Nutzerfreigabe | beantwortet: Nutzer 09.10., „allen empfehlungen folgen“; Quelle PLAN-SYNC-0910b; Environment release / Required Reviewer Cuarroc am 09.10. per gh api bestätigt; Sicherung selbst noch unbelegt |
-| E14 | Update-Signierschlüssel offline sichern | gemäß E3 (09.10.) finden und verschlüsselt sichern; Anleitung auf Handgriffe-Seite | beantwortet: Nutzer 09.10. laut PLAN-SYNC-0910b; Durchführung bei Z4-E14 offen |
+| E14 | Update-Signierschlüssel offline sichern | gemäß E3 (09.10.) finden und verschlüsselt sichern; Anleitung auf Handgriffe-Seite | Durchführung erledigt 14.10.: Schlüssel exportiert und test-signiert (~14:50Z, Schlüssel-ID abgeglichen, Exit 0); Nutzer bestätigte Speicherung im Passwort-Manager (~16:40Z); Klartext entfernt |
 | DR03-F01 | Gesamtgröße des Ledgers begrenzen: WRITE-/Listenlimits getrennt von harter SAFE-READ-/Vor-Parse-Bytegrenze, alle Top-Level-/Nested-Listen, Bestandslesen/503 und spätere Konfigänderungen disponieren | neue übergroße Writes nichtdestruktiv ablehnen; keine Trunkierung/Archivierung/Retention; keine Lesbarkeitszusage jenseits sicherer Lesegrenze; erst repräsentative reale Ledgerform/-größe/-kosten, keine erfundenen Grenzwerte | offen; Interview-Vorbereitung im bestehenden Ticket, Empfehlungen keine Entscheidung; zwei Nutzerfragen bis Belegbasis bei Root geparkt, gesamte DR-03-Abnahme offen |
 | V16-F3 | Start nach Update ohne Journal: gesperrt bleiben mit Anleitung, oder dem ersten Start vertrauen? | gesperrt mit Anleitung (fail-closed) | beantwortet: E2, Nutzer 09.10. laut PLAN-SYNC-0910b; V16-06 nach D5-GUARD → V16-UPD-CANCEL |
 | V16-F4 | Review-Fahrer auf den Server? | ja | offen |
@@ -1445,12 +1444,15 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 
 | ID | Ziel | Abhängigkeit | Status |
 |---|---|---|---|
-| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | läuft: Draft-PR #1564, 15.10. (`gh pr list --search "PLAN-AUTO-1"`) |
+| PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | Erledigt: PR #1564 am 15.10. gemergt (`244c4775`) |
 | PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
-| ROADMAP-0 | Konzept (Root + Rechte Hand) und UX/UI-Entwurf mit dem Designsystem | – | in Arbeit |
+| ROADMAP-0 | Konzept (Root + Rechte Hand) und UX/UI-Entwurf mit dem Designsystem | – | Angenommen: UX-Spezifikation und Design am 15.10. akzeptiert |
 | ROADMAP-1 | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | geplant |
+| ROADMAP-1a | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | In Prüfung: PR #1580 offen (Stand 15.10. via `gh pr view 1580`) |
+| CI-SEC-CODEQL | CodeQL-Befunde #57 und #59 schließen | – | Erledigt: PR #1581 gemergt (Stand 15.10. via `gh pr view 1581`) |
+| NAME-NUTZER | Persönliche Namensnennung durch neutrale Nutzerformulierung ersetzen | – | Erledigt: PR #1582 gemergt (Stand 15.10. via `gh pr view 1582`) |
 
 #### Paperclip-Kandidaten (Nutzer 11.10. ~04:30Z: einreihen erlaubt)
 
