@@ -9,6 +9,18 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn().mockResolvedValue(true)
 const info = vi.hoisted(() => ({ sha: "123456789abcdef0", time: "2026-10-12T12:00:00.000Z" }));
 vi.mock("./buildInfo", () => ({ buildInfo: () => info }));
 
+it("uses labeled design textareas without classic field classes", () => {
+  const { container } = render(<FeedbackForm />);
+  const what = screen.getByRole("textbox", { name: DEV_TEXT.feedbackWhat });
+  const expected = screen.getByRole("textbox", { name: DEV_TEXT.feedbackExpected });
+  for (const field of [what, expected]) expect(field).toHaveClass("g-inp", "g-inp--area");
+  expect(what).toBeRequired();
+  expect(expected).not.toBeRequired();
+  expect(what).toHaveAttribute("rows", "3");
+  expect(expected).toHaveAttribute("rows", "2");
+  expect(container.querySelector('[class*="field"]')).toBeNull();
+});
+
 it("saves feedback with route and build commit", async () => {
   window.history.replaceState(null, "", "/leitstand");
   reportFrontendError(new Error("kaputt"));
