@@ -1,6 +1,10 @@
 /** German UI copy for Glass UI v2. English locale is parked; keep Messages. */
 
 export const de = {
+  "settings.changelog.title": "Neuigkeiten",
+  "settings.changelog.summary": "Die neuesten Versionen · bis zu drei Änderungen je Version",
+  "settings.changelog.empty": "Keine Neuigkeiten vorhanden",
+  "settings.changelog.beta": "Beta",
   "recovery.crashed": "Die Oberfläche ist abgestürzt.",
   "recovery.viewCrashed": "{label} ist abgestürzt.",
   "recovery.reload": "Neu laden",
