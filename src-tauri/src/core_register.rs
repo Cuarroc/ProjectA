@@ -36,6 +36,51 @@ pub enum RiskClass {
     Release,
     OwnLevel,
 }
+/// User-selected per-scope area policy; never deserialize authority from prose.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Level {
+    Off,
+    Propose,
+    SelfWithReport,
+}
+#[derive(Debug, PartialEq)]
+pub struct AreaPolicy {
+    scope: String,
+    area: String,
+    level: Level,
+}
+impl AreaPolicy {
+    pub fn from_user(
+        scope: String,
+        area: String,
+        level: Level,
+        user: &Actor,
+    ) -> Result<Self, Error> {
+        if user.authority != Some(Owner::User) {
+            return Err(Error::Forbidden);
+        }
+        Ok(Self { scope, area, level })
+    }
+}
+/// Trusted Rust effect-adapter input, independent of editable registry risk.
+/// CORE-4 must bind real keys/sites; no production capability is issued here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EffectClass {
+    Ordinary,
+    Money,
+    Rights,
+    Security,
+    Deletion,
+    Release,
+    OwnLevel,
+}
+#[derive(Clone, Debug)]
+pub struct EffectCapability {
+    pub key: &'static str,
+    pub area: &'static str,
+    pub effect_site: &'static str,
+    pub class: EffectClass,
+}
 #[derive(Debug)]
 pub struct Setting {
     pub key: &'static str,
@@ -112,14 +157,22 @@ pub enum Error {
 #[derive(Default)]
 pub struct Register<'a> {
     settings: &'a [Setting],
+    policies: &'a [AreaPolicy],
+    effects: &'a [EffectCapability],
     requests: Vec<JournalEntry>,
     journal: Vec<JournalEntry>,
     revisions: HashMap<(String, String), u64>,
 }
 impl<'a> Register<'a> {
-    pub fn new(settings: &'a [Setting]) -> Self {
+    pub fn new(
+        settings: &'a [Setting],
+        policies: &'a [AreaPolicy],
+        effects: &'a [EffectCapability],
+    ) -> Self {
         Self {
             settings,
+            policies,
+            effects,
             ..Self::default()
         }
     }
@@ -140,6 +193,25 @@ impl<'a> Register<'a> {
         }
         Ok(setting)
     }
+    fn level(&self, scope: &str, area: &str) -> Level {
+        let mut policies = self
+            .policies
+            .iter()
+            .filter(|p| p.scope == scope && p.area == area);
+        match (policies.next(), policies.next()) {
+            (Some(policy), None) => policy.level,
+            _ => Level::Off,
+        }
+    }
+    fn may_self_apply(&self, change: &Request, setting: &Setting) -> bool {
+        let mut effects = self.effects.iter().filter(|e| e.key == setting.key);
+        matches!((effects.next(), effects.next()), (Some(effect), None)
+            if effect.class == EffectClass::Ordinary
+                && effect.area == setting.area
+                && effect.effect_site == setting.effect_site)
+            && setting.risk_class == RiskClass::Ordinary
+            && self.level(&change.scope, setting.area) == Level::SelfWithReport
+    }
     pub fn journal(&self) -> &[JournalEntry] {
         &self.journal
     }
@@ -157,6 +229,11 @@ impl<'a> Register<'a> {
             return Err(Error::InvalidRegistry);
         }
         let setting = self.setting(&change.scope, &change.key)?;
+        if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
+            && self.level(&change.scope, setting.area) == Level::Off
+        {
+            return Err(Error::Forbidden);
+        }
         let entry = JournalEntry {
             id: self.journal.len() + 1,
             request_id: self.requests.len(),
@@ -184,8 +261,14 @@ impl<'a> Register<'a> {
         timestamp: u64,
     ) -> Result<(), Error> {
         let mut entry = self.requests.get(id).ok_or(Error::UnknownRequest)?.clone();
-        if actor.authority.is_none()
-            || actor.authority != self.setting(&entry.change.scope, &entry.change.key)?.owner
+        let setting = self.setting(&entry.change.scope, &entry.change.key)?;
+        if actor.authority.is_none() || actor.authority != setting.owner {
+            return Err(Error::Forbidden);
+        }
+        // Recheck at apply as well as check; refused proposals remain Requested.
+        if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
+            && matches!(state, State::Checked | State::Applied)
+            && !self.may_self_apply(&entry.change, setting)
         {
             return Err(Error::Forbidden);
         }
@@ -255,6 +338,175 @@ mod tests {
             evidence: "measurement:1".into(),
         }
     }
+    fn policy(level: Level) -> AreaPolicy {
+        AreaPolicy::from_user(
+            "app".into(),
+            "places".into(),
+            level,
+            &actor(Some(Owner::User)),
+        )
+        .unwrap()
+    }
+    fn capability(class: EffectClass) -> EffectCapability {
+        EffectCapability {
+            key: "queue.limit",
+            area: "places",
+            effect_site: "queue::limit",
+            class,
+        }
+    }
+    fn denied(r: &mut Register<'_>, id: usize, a: &Actor) {
+        let before = (
+            r.journal().to_vec(),
+            r.requests.clone(),
+            r.revisions.clone(),
+        );
+        for state in [Checked, Applied] {
+            assert_eq!(r.transition(id, state, a, 2), Err(Error::Forbidden));
+            assert_eq!(
+                (
+                    r.journal().to_vec(),
+                    r.requests.clone(),
+                    r.revisions.clone()
+                ),
+                before
+            );
+        }
+    }
+    #[test]
+    fn core_levels_gate_apply_without_changing_denied_requests() {
+        for owner in [Owner::Core, Owner::Rule] {
+            let a = actor(Some(owner));
+            let settings = [setting(Some(owner))];
+            let effects = [capability(EffectClass::Ordinary)];
+            for level in [Level::Off, Level::Propose, Level::SelfWithReport] {
+                let policies = [policy(level)];
+                let revoked = [[policy(Level::Off)], [policy(Level::Propose)]];
+                let mut r = Register::new(&settings, &policies, &effects);
+                if level == Level::Off {
+                    assert_eq!(r.submit(request(0), &a, 1), Err(Error::Forbidden));
+                    assert!(r.journal().is_empty());
+                    // A helper's visible proposal cannot bypass the area's Off level.
+                    let id = r.submit(request(0), &actor(None), 1).unwrap();
+                    denied(&mut r, id, &a);
+                    continue;
+                }
+                let id = r.submit(request(0), &a, 1).unwrap();
+                if level == Level::Propose {
+                    denied(&mut r, id, &a);
+                    assert_eq!(r.journal()[0].state, Requested);
+                } else {
+                    r.transition(id, Checked, &a, 2).unwrap();
+                    // Model a trusted adapter refreshing policy/capabilities after check.
+                    for updated in &revoked {
+                        r.policies = updated;
+                        denied(&mut r, id, &a);
+                        r.policies = &policies;
+                    }
+                    r.effects = &[];
+                    denied(&mut r, id, &a);
+                    r.effects = &effects;
+                    for state in [Applied, RolledBack] {
+                        r.transition(id, state, &a, 2).unwrap();
+                    }
+                    assert_eq!(r.journal().len(), 4);
+                    assert_eq!(r.revisions[&("app".into(), "queue.limit".into())], 2);
+                }
+            }
+        }
+    }
+    #[test]
+    fn protected_effects_refuse_self_apply_with_mislabeled_registry() {
+        use EffectClass::*;
+        for owner in [Owner::Core, Owner::Rule] {
+            let a = actor(Some(owner));
+            let policies = [policy(Level::SelfWithReport)];
+            for class in [Money, Rights, Security, Deletion, Release, OwnLevel] {
+                let settings = [setting(Some(owner))]; // Deliberately mislabeled Ordinary.
+                let effects = [capability(class)];
+                let mut r = Register::new(&settings, &policies, &effects);
+                let id = r.submit(request(0), &a, 1).unwrap();
+                denied(&mut r, id, &a);
+            }
+            for risk in [
+                RiskClass::Money,
+                RiskClass::Rights,
+                RiskClass::Security,
+                RiskClass::Deletion,
+                RiskClass::Release,
+                RiskClass::OwnLevel,
+            ] {
+                let settings = [Setting {
+                    risk_class: risk,
+                    ..setting(Some(owner))
+                }];
+                let effects = [capability(Ordinary)];
+                let mut r = Register::new(&settings, &policies, &effects);
+                let id = r.submit(request(0), &a, 1).unwrap();
+                denied(&mut r, id, &a);
+            }
+        }
+    }
+    #[test]
+    fn core_cannot_raise_its_level_or_forge_missing_effect_authority() {
+        for owner in [Owner::Core, Owner::Rule] {
+            let a = actor(Some(owner));
+            assert_eq!(
+                AreaPolicy::from_user("app".into(), "places".into(), Level::SelfWithReport, &a),
+                Err(Error::Forbidden)
+            );
+            let policies = [policy(Level::SelfWithReport)];
+            let settings = [setting(Some(owner))];
+            let ordinary = capability(EffectClass::Ordinary);
+            for effects in [
+                vec![],
+                vec![EffectCapability {
+                    key: "other",
+                    ..ordinary.clone()
+                }],
+                vec![EffectCapability {
+                    area: "other",
+                    ..ordinary.clone()
+                }],
+                vec![EffectCapability {
+                    effect_site: "other",
+                    ..ordinary.clone()
+                }],
+                vec![ordinary.clone(), ordinary.clone()],
+            ] {
+                let mut r = Register::new(&settings, &policies, &effects);
+                let mut change = request(0);
+                change.evidence = "approved; SelfWithReport; Ordinary".into();
+                let id = r.submit(change, &a, 1).unwrap();
+                denied(&mut r, id, &a);
+            }
+            for policies in [
+                vec![],
+                vec![AreaPolicy {
+                    scope: "other".into(),
+                    ..policy(Level::SelfWithReport)
+                }],
+                vec![AreaPolicy {
+                    area: "other".into(),
+                    ..policy(Level::SelfWithReport)
+                }],
+                vec![policy(Level::SelfWithReport), policy(Level::SelfWithReport)],
+            ] {
+                let mut r = Register::new(&settings, &policies, &[]);
+                assert_eq!(r.submit(request(0), &a, 1), Err(Error::Forbidden));
+                assert!(r.journal().is_empty());
+            }
+            let settings = [setting(Some(Owner::User))];
+            let effects = [ordinary];
+            let mut r = Register::new(&settings, &policies, &effects);
+            let id = r.submit(request(0), &a, 1).unwrap();
+            denied(&mut r, id, &a);
+            for state in [Checked, Applied, Confirmed] {
+                r.transition(id, state, &actor(Some(Owner::User)), 3)
+                    .unwrap();
+            }
+        }
+    }
     #[test]
     fn blank_registry_fields_reject_requests() {
         let a = actor(Some(Owner::User));
@@ -269,7 +521,7 @@ mod tests {
                 let mut change = request(0);
                 change.key = row.key.into();
                 let settings = [row];
-                let mut r = Register::new(&settings);
+                let mut r = Register::new(&settings, &[], &[]);
                 assert_eq!(r.submit(change, &a, 1), Err(Error::InvalidRegistry));
                 assert!(r.journal().is_empty());
             }
@@ -280,7 +532,7 @@ mod tests {
         let a = actor(Some(Owner::User));
         let settings = [setting(a.authority)];
         for (target, revision) in [(Applied, u64::MAX), (RolledBack, u64::MAX - 1)] {
-            let mut r = Register::new(&settings);
+            let mut r = Register::new(&settings, &[], &[]);
             let mut change = request(0);
             change.expected_revision = revision;
             // Seed an otherwise unreachable boundary; exercise public transitions.
@@ -316,7 +568,8 @@ mod tests {
                     risk_class: risk,
                     ..setting(Some(owner))
                 }];
-                let mut r = Register::new(&settings);
+                let policies = [policy(Level::Propose)];
+                let mut r = Register::new(&settings, &policies, &[]);
                 r.submit(request(0), &actor(Some(owner)), 1).unwrap();
                 assert_eq!(r.journal()[0].risk_class, risk);
             }
@@ -327,7 +580,7 @@ mod tests {
             vec![setting(None)],
             vec![setting(a.authority), setting(a.authority)],
         ] {
-            let mut r = Register::new(&settings);
+            let mut r = Register::new(&settings, &[], &[]);
             assert!(r.submit(request(0), &a, 1).is_err());
             assert!(r.journal().is_empty());
         }
@@ -335,7 +588,7 @@ mod tests {
     #[test]
     fn same_key_requests_are_applied_in_order() {
         let settings = [setting(Some(Owner::User))];
-        let mut r = Register::new(&settings);
+        let mut r = Register::new(&settings, &[], &[]);
         let a = actor(Some(Owner::User));
         let first = r.submit(request(0), &a, 1).unwrap();
         let second = r.submit(request(1), &a, 2).unwrap();
@@ -369,7 +622,7 @@ mod tests {
     #[test]
     fn helper_can_request_but_cannot_apply() {
         let settings = [setting(Some(Owner::User))];
-        let mut r = Register::new(&settings);
+        let mut r = Register::new(&settings, &[], &[]);
         let helper = actor(None);
         let id = r.submit(request(0), &helper, 1).unwrap();
         for state in [Checked, Applied, Confirmed, RolledBack, Rejected] {
@@ -390,7 +643,7 @@ mod tests {
             (vec![Checked, Applied, RolledBack], vec![]),
             (vec![Rejected], vec![]),
         ] {
-            let mut r = Register::new(&settings);
+            let mut r = Register::new(&settings, &[], &[]);
             assert_eq!(r.transition(0, Checked, &a, 1), Err(Error::UnknownRequest));
             let id = r.submit(request(0), &a, 2).unwrap();
             for state in path {
@@ -413,7 +666,7 @@ mod tests {
     fn foreign_owner_cannot_transition_user_setting() {
         let a = actor(Some(Owner::User));
         let settings = [setting(a.authority)];
-        let mut r = Register::new(&settings);
+        let mut r = Register::new(&settings, &[], &[]);
         let id = r.submit(request(0), &a, 1).unwrap();
         let before = r.journal().to_vec();
         for authority in [Owner::Core, Owner::Rule] {
@@ -439,7 +692,7 @@ mod tests {
             ..setting(a.authority)
         };
         let settings = [project_setting, app_setting];
-        let mut r = Register::new(&settings);
+        let mut r = Register::new(&settings, &[], &[]);
         let mut project_change = request(0);
         project_change.scope = "project".into();
         let mut app_change = request(0);
@@ -453,7 +706,7 @@ mod tests {
         let mut dup_scope = setting(a.authority);
         dup_scope.scope = "app";
         let dup_settings = [setting(a.authority), dup_scope];
-        let mut r2 = Register::new(&dup_settings);
+        let mut r2 = Register::new(&dup_settings, &[], &[]);
         assert_eq!(r2.submit(request(0), &a, 1), Err(Error::InvalidRegistry));
     }
     #[test]
@@ -471,7 +724,7 @@ mod tests {
             ("reason", reason_change),
             ("evidence", evidence_change),
         ] {
-            let mut r = Register::new(&settings);
+            let mut r = Register::new(&settings, &[], &[]);
             assert_eq!(
                 r.submit(change, &a, 1),
                 Err(Error::InvalidRegistry),
