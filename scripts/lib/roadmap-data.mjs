@@ -81,9 +81,12 @@ export function buildRoadmap({ plan, prs = [], releases = [], now, mainSha }) {
   });
   const latest = releases.filter(r => !r.isDraft && !r.isPrerelease).map(r => version(r.tagName)).filter(Boolean).sort(compareVersions).at(-1);
   const nextVersion = packages.filter(p => !p.finished).map(p => version(p.version)).filter(v => v && (!latest || compareVersions(v, latest) > 0)).sort(compareVersions)[0] || UNKNOWN;
+  const openPrs = prs.filter(pr => pr.state === "OPEN" && (/^(codex|claude|kimi|opencode|glm)\//i.test(pr.headRefName || "") || packages.some(p => p.pr === pr.number)));
+  const unmappedErrors = openPrs.filter(pr => !packages.some(p => p.pr === pr.number) && observedState({}, pr, time) === "Fehler");
   const haengt = packages.filter(p => !p.finished && (p.blocker || p.state === "Braucht dich" || p.owner === "du")).sort((a, b) => Number(b.owner === "du") - Number(a.owner === "du") || Number(b.blocker) - Number(a.blocker)).map(p => ({ id: p.id, what: p.title, who: p.owner, change: UNKNOWN, when: UNKNOWN, where: `PLAN:${p.source.line ?? "?"}`, blocker: p.blocker }));
+  haengt.push(...unmappedErrors.map(pr => ({ id: `PR-${pr.number}`, what: `#${pr.number}`, who: "Worker", change: UNKNOWN, when: UNKNOWN, where: `PR:${pr.number}`, blocker: true })));
   return { stand: { generatedAt: new Date(time).toISOString(), mainSha },
-    head: { nextVersion, open: new Set(packages.filter(p => p.open).map(p => p.pr)).size,
+    head: { nextVersion, open: new Set(openPrs.map(pr => pr.number)).size,
       yourSteps: packages.filter(p => !p.finished && p.owner === "du").length + new Set(decisions.filter(d => d.status === "open").map(d => d.id)).size,
-      blockers: packages.filter(p => p.blocker).length }, haengt, directions, packages };
+      blockers: packages.filter(p => p.blocker).length + unmappedErrors.length }, haengt, directions, packages };
 }

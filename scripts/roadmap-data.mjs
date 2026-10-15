@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, lstatSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { buildRoadmap } from "./lib/roadmap-data.mjs";
 import { makeRunner, withExitCodes, isMain, runCli } from "./lib/dev-tools.mjs";
@@ -8,13 +8,17 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   const run = deps.run || makeRunner({ timeoutMs: 60000 });
   const command = (cmd, args) => {
     const r = run(cmd, args);
-    if (r.code !== 0) throw new Error(`${cmd} ${args[0]} failed (exit ${r.code})`);
+    if (r.code !== 0) throw new Error(`${cmd} ${args.slice(0, 2).join(" ")} failed (exit ${r.code})`);
     return r.stdout.trim();
   };
   const plan = (deps.read || readFileSync)("docs/PLAN.md", "utf8");
   const mainSha = command("git", ["rev-parse", "origin/main"]);
-  const prs = JSON.parse(command("gh", ["pr", "list", "--state", "all", "--limit", "10000", "--json", "number,isDraft,state,mergedAt,labels,statusCheckRollup,body,headRefName,updatedAt"]));
-  if (!Array.isArray(prs) || prs.length >= 10000) throw new Error("PR list incomplete");
+  const fields = "number,isDraft,state,mergedAt,labels,body,headRefName,updatedAt";
+  // Historical check rollups are large and cannot affect a merged package's state.
+  const open = JSON.parse(command("gh", ["pr", "list", "--state", "all", "--search", "is:open", "--limit", "1000", "--json", `${fields},statusCheckRollup`]));
+  const merged = JSON.parse(command("gh", ["pr", "list", "--state", "merged", "--limit", "10000", "--json", fields]));
+  if (!Array.isArray(open) || open.length >= 1000 || !Array.isArray(merged) || merged.length >= 10000) throw new Error("PR list incomplete");
+  const prs = [...open, ...merged];
   for (const pr of prs.filter(p => p.state === "OPEN" && !p.headRefName.startsWith("mergify/"))) {
     const facts = JSON.parse(command("gh", ["pr", "view", String(pr.number), "--json", "commits,mergeable"]));
     Object.assign(pr, facts);
@@ -25,6 +29,7 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
     pr.statusCheckRollup = checks.map(c => ({ ...c, isRequired: true }));
   }
   const releases = JSON.parse(command("gh", ["release", "list", "--limit", "1000", "--json", "tagName,publishedAt,isDraft,isPrerelease"]));
+  if (!Array.isArray(releases) || releases.length >= 1000) throw new Error("Release list incomplete");
   const data = buildRoadmap({ plan, prs, releases, now: deps.now || new Date(), mainSha });
   const json = JSON.stringify(data, null, 2) + "\n";
   if (values.stdout) io.out(json);
@@ -32,6 +37,7 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
     if (command("git", ["ls-files", "--", ".pa/roadmap-data.json"])) throw new Error("Output path is tracked");
     command("git", ["check-ignore", ".pa/roadmap-data.json"]);
     mkdirSync(".pa", { recursive: true });
+    if ([".pa", ".pa/roadmap-data.json"].some(p => lstatSync(p, { throwIfNoEntry: false })?.isSymbolicLink())) throw new Error("Output path is a symlink");
     writeFileSync(".pa/roadmap-data.json", json);
     io.out(`roadmap:data ${JSON.stringify(data.head)}\n`);
   }
