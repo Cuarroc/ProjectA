@@ -1984,19 +1984,19 @@ wall clock, linux + windows.
   Leitstand), 2, 3, 4, 5, 6 (shell part), 8, 9, 11, 13. Criterion 14 (lead
   number) moves to v2.1, reason in the table in
   [the v2.0 subplan](plan/v2.0/plan.md#10-enger-schnitt-vom-15102026-v20-eng-kriterien-und-restpakete).
-- **Source:** Elias in the Root chat on 2026-10-15 at about 02:55 CEST,
+- **Source:** The user in the Root chat on 2026-10-15 at about 02:55 CEST,
   answering card E1 (the narrow or the wide reading of the cut of 2026-10-11)
   with "V2.0.0 eng". Root recorded it in the SRV-V2-NARROW-PLAN order.
 - **Why:** the cut already moved the screens; the acceptance criteria must move
   with them, or v2.0 can never be called done. The Core, the engine and the
   provider paths are large and are not part of shell plus Leitstand.
-- **Reverse when:** Elias asks for the wide reading, or a moved criterion turns
+- **Reverse when:** The user asks for the wide reading, or a moved criterion turns
   out to be needed for the release (then it comes back with its packages).
 - **Not covered:** no package content change, no date, no release approval. A
-  major release still needs a fresh yes from Elias (AGENTS.md rule 10). The
+  major release still needs a fresh yes from the user (AGENTS.md rule 10). The
   remaining packages are listed in the subplan, section "10.1 Restpakete v2.0 (eng)".
 
-## 2026-10-15 - Elias answers seven questions (v2.0 eng)
+## 2026-10-15 - The user answers seven questions (v2.0 eng)
 
 - **What:** (1) Root may pass its per-job `PA_SEAM_ALLOW` approval through
   `run-job.sh` (implemented by Root at 14:00; backup and approval-file path
@@ -2010,7 +2010,7 @@ wall clock, linux + windows.
   to calm. (7) Root may change roles, prompts, settings and default skills of
   other ProjectA agents after making a backup; Root's own configuration is
   excluded.
-- **Source:** Elias in Root chat on 2026-10-15 at about 13:45 CEST, verbatim:
+- **Source:** The user in Root chat on 2026-10-15 at about 13:45 CEST, verbatim:
   „1. Ja 2. empfehöung folgen 3. passt so 4. passt so 5. Empfehlung folgen
   6. umstellbar zwischen ruhig und lebendig, eher aber ruhig 7. Ja darfst du
   vollständig“.
@@ -2019,7 +2019,7 @@ wall clock, linux + windows.
   while preserving a user choice; allow Root to maintain other agents' setup
   with a backup and without self-editing. The seam approval is already
   implemented and is recorded here as the decision that authorized it.
-- **Reverse when:** Elias changes any of these choices; restore the prior
+- **Reverse when:** The user changes any of these choices; restore the prior
   setting or plan only with a new explicit decision. Agent configuration
   changes must first be restored from the backup if reversing item 7.
 
@@ -2106,7 +2106,7 @@ Retire a UI/server only after replacement capture/answer/inspection parity,
 real source data with receipts, mobile capture and a verified backup; no idea
 may be lost. This contract itself starts, migrates, exposes or retires nothing.
 
-## 2026-10-15 - Design-system decisions D1–D7 (Root by delegation, Elias may overrule)
+## 2026-10-15 - Design-system decisions D1–D7 (Root by delegation, the user may overrule)
 
 - **Authority / why:** the user's delegated design-detail choices, recorded by Root in `ds-entscheidungen-20261015.md` (15:55 CEST); one consistent system for the app and Fabrik. Packages: [v2 plan §10.3](plan/v2.0/plan.md#103-designsystem-feinschliff).
 - **D1:** keep shipped Inter (OFL); move `@font-face` to `src/design/fonts.css` in DS-07; no Geist download.

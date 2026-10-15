@@ -478,7 +478,7 @@ Der Verkauf der App an Dritte ist geparkt. Nichts davon wird gebaut, bis der Nut
 
 ### 3.15 Beobachtung statt Konfiguration (E10, 11.10.2026)
 
-**E10 (11.10.2026), Ideen A3/A4.** Elias 11.10. ~03:20Z: „Bei den Entscheidungen
+**E10 (11.10.2026), Ideen A3/A4.** Nutzer 11.10. ~03:20Z: „Bei den Entscheidungen
 folge ich den Empfehlungen“. Schnittplan: Server-Bericht `v2-obs-0` (nur lesend,
 Head `20785579`). Für jeden Lauf zeigt die App drei Dinge:
 
@@ -511,7 +511,7 @@ Nichts hiervon ist eingereiht. Einreihen erst nach dem Claude-Reset am 14.10.,
 - **A2 (E10):** Korrektur → Regelvorschlag, wirksam erst nach OK des Nutzers
   (gehört zu V2-S09 Lernen/Gedächtnis).
 
-**Kandidaten aus der Paperclip-Studie.** Elias 11.10. ~04:05Z (wörtlich in
+**Kandidaten aus der Paperclip-Studie.** Nutzer 11.10. ~04:05Z (wörtlich in
 `user-standing-permissions`): „Im Prinzip will ich ja so etwas wie Paperclip
 langfristig mit projectA nur in besser und funktionierend…“. Das ist Richtung,
 kein neuer Umfang. Quellen (nur lesende Server-Studien):
@@ -750,7 +750,7 @@ Ab dann gilt Regel „Plan-Freeze“ (Abschnitt 4b): nur Ausführung, höchstens
 
 ## 10. Enger Schnitt vom 15.10.2026 („v2.0 eng“): Kriterien und Restpakete
 
-Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte E1 mit „V2.0.0 eng“; Wortlaut, Grund und Rückweg: [Entscheidungsprotokoll vom 15.10.](../../decisions.md#2026-10-15---v20-eng-narrow). **v2.0.0 ist Hülle + Leitstand, Glass (D1) standardmäßig an; „zurückschaltbar“ ist durch den Classic-out-Entscheid vom 15.10. überholt (10.2).** Die Abnahmekriterien, die an verschobener Arbeit hängen, gehen mit ihr nach v2.1 (zusammen mit Start, Beweise, Kontingente, Verlauf). Der Kriterientext in Abschnitt 1 bleibt unverändert stehen; verschobene Zeilen sind dort mit „→ v2.1“ markiert.
+Entscheid: Nutzer im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte E1 mit „V2.0.0 eng“; Wortlaut, Grund und Rückweg: [Entscheidungsprotokoll vom 15.10.](../../decisions.md#2026-10-15---v20-eng-narrow). **v2.0.0 ist Hülle + Leitstand, Glass (D1) standardmäßig an; „zurückschaltbar“ ist durch den Classic-out-Entscheid vom 15.10. überholt (10.2).** Die Abnahmekriterien, die an verschobener Arbeit hängen, gehen mit ihr nach v2.1 (zusammen mit Start, Beweise, Kontingente, Verlauf). Der Kriterientext in Abschnitt 1 bleibt unverändert stehen; verschobene Zeilen sind dort mit „→ v2.1“ markiert.
 
 | # | Kriterium (kurz) | Zuordnung | Grund |
 |---|---|---|---|
@@ -767,7 +767,7 @@ Entscheid: Elias im Root-Chat am 15.10.2026 gegen 02:55 MESZ, Antwort auf Karte 
 | 11 | Release | **v2.0** | Update-Drill und Schlüsselsicherung (E14) beim Nutzer |
 | 12 | Core und V2-SEC-1 | **→ v2.1** | der Core gehört nicht zu Hülle + Leitstand |
 | 13 | Nutzerabnahme | **v2.0**, nur Hülle + Leitstand | Klick-Checkliste (V2-UAT-1a/1b) |
-| 14 | Leitzahl (V2-KPI-1) | **→ v2.1** (Vorschlag der Plan-Pflege, Elias bestätigt oder ändert) | Die Zahl zählt „Kernteile mit bestandener Nutzerabnahme“; die Kernteile sind verschoben, V2-KPI-1 hängt an V2-UAT-1 und am Nutzungsprotokoll V2-B26 (kein gemergter PR gefunden). Für v2.0 genügt Kriterium 13 |
+| 14 | Leitzahl (V2-KPI-1) | **→ v2.1** (Vorschlag der Plan-Pflege, der Nutzer bestätigt oder ändert) | Die Zahl zählt „Kernteile mit bestandener Nutzerabnahme“; die Kernteile sind verschoben, V2-KPI-1 hängt an V2-UAT-1 und am Nutzungsprotokoll V2-B26 (kein gemergter PR gefunden). Für v2.0 genügt Kriterium 13 |
 | 15 | Ein Motor (V2-RUN-1 bis 4) | **→ v2.1** | die Maschine gehört zu Beweise und Start |
 | 16 | Drei Anbieter-Wege | **→ v2.1** | V2-B2a/b, V2-LOCAL-1 hängen an Start und Kontingenten |
 | 17 | Datenschutz-Schleuse | **nach dem Kern** | unverändert |
@@ -788,13 +788,13 @@ Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log o
 | V2-SCOPE-1 | **Stand 15.10.: #1499 offen (Draft), Basis jetzt `main`; Fixrunde läuft laut Root-Auftrag.** Beschlossen: Seitenleiste und Palette zeigen Leitstand und Einstellungen; Ersteinrichtung bleibt über `/start` erreichbar. Die übrigen Bereiche (v2.1 und später) bleiben hinter dem Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | V2-D1-ON (#1484) | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent |
 | V2-ACC1a | **Stand: gemergt #1494 (Ratsche gegen neue `--state-`-Treffer); Kriterium 4 entschieden:** keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur. Heute 164 Treffer von `--state-` in `src/styles.css` (Definition `:156-171`) und 10 in vier Tests; `src/design/` enthält `--state-` gar nicht (sechs Zustände stehen als `.g-st--*` in `src/design/state/state.css`) | `src/styles.css`, vier Tests, ein Gate-Skript unter `scripts/ci/` | nein | B | M, **UNKNOWN** (bis 2×M, erst messen) | – | `rg -ln -e '--state-' src` zeigt nur noch erlaubte Orte; Gate gegen neue Definition grün; `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
 | V2-ACC1b | **Stand 15.10.: PR #1540 offen (Draft), gestapelt auf #1499.** Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
-| V2-SHOT-BASE | Bildbasis: je Route von Hülle + Leitstand ein Bild hell und eines dunkel (1440×900), angesehen und gegen die Boards verglichen (Kriterium 2). Der Agent erzeugt die Bilder mit `npm run dev:shot`, der Nutzer sieht sie an. Anzahl der Routen **UNKNOWN** (legt V2-ACC1b fest) | `docs/design/2026-10-ui-v2/glass/` (Boards), Bilder lokal, nicht im Repo | nein | C | – | V2-D1-ON lokal an, V2-SCOPE-1 | Nutzer bestätigt „gesehen, Abweichungen siehe PR“ | **Elias** |
+| V2-SHOT-BASE | Bildbasis: je Route von Hülle + Leitstand ein Bild hell und eines dunkel (1440×900), angesehen und gegen die Boards verglichen (Kriterium 2). Der Agent erzeugt die Bilder mit `npm run dev:shot`, der Nutzer sieht sie an. Anzahl der Routen **UNKNOWN** (legt V2-ACC1b fest) | `docs/design/2026-10-ui-v2/glass/` (Boards), Bilder lokal, nicht im Repo | nein | C | – | V2-D1-ON lokal an, V2-SCOPE-1 | Nutzer bestätigt „gesehen, Abweichungen siehe PR“ | **Nutzer** |
 | V2-UAT-1a | Vorlage und Klick-Checkliste (höchstens 10 Punkte, einfache Worte) für Hülle + Leitstand, „neu / bewiesen / nicht abgedeckt“, Glossar | `docs/` (neues Dokument), kein Code | nein | C | S | V2-ACC1b | `npm run dev:agent-check` Exit 0; Checkliste ≤ 10 Punkte | Agent |
-| V2-UAT-1b | Nutzer klickt die Checkliste auf dem Beta-Build durch, kurzes Video, gibt frei, was er gesehen hat (Kriterium 13) | – | nein | – | – | V2-UAT-1a, V2-BETA-0 | Freigabe im Chat, im PR-Text vermerkt | **Elias** |
-| V2-BETA-0 | **Stand: Bericht fertig (pa-orch-Bericht `v2-beta-0-20261015`, außerhalb des Repos): der Dev-Installer genügt für die Klick-Checkliste, V2-BETA-1 entfällt; der Update-Drill läuft über den echten Release-Weg (Empfehlung des Berichts; Bestätigung durch Elias steht aus).** PRÜFEN: genügt der Dev-Installer nach jedem `main`-Push (DEV-AUTO-1, `docs/setup/dev-build.md`) als „interner Beta-Kanal“ für Checkliste und Update-Drill, oder braucht es V2-BETA-1 (`release.yml`, Stufe A)? V2-UPD-1 (Abbrechen-Knopf, Versionsanzeige) ist inzwischen gemergt (#1487) | nur Bericht | nein | C | – | – | Bericht mit Befehl und Beleg je Frage | Agent (nur lesend) |
-| V2-E14 | Updater-Signierschlüssel finden und verschlüsselt sichern (`docs/PLAN.md` Z4-E14, E14); kein Schlüssel in Datei, Log oder Commit | – | nein | – | – | – | Nutzer bestätigt die verschlüsselte Sicherung; Stand heute: „Durchführung nicht belegt“ | **Elias** |
-| V2-DRILL | Update-Drill am eigenen PC: v2.0 über den Updater installieren, Abbrechen und Versionsanzeige prüfen (Kriterium 11) | – | nein | – | – | V2-BETA-0, V2-E14 | Nutzer bestätigt Installation und Neustart mit neuer Version | **Elias** |
-| V2-REL | Release v2.0.0: Version 1.6.4 → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Elias** (Ja, Veröffentlichung) |
+| V2-UAT-1b | Nutzer klickt die Checkliste auf dem Beta-Build durch, kurzes Video, gibt frei, was er gesehen hat (Kriterium 13) | – | nein | – | – | V2-UAT-1a, V2-BETA-0 | Freigabe im Chat, im PR-Text vermerkt | **Nutzer** |
+| V2-BETA-0 | **Stand: Bericht fertig (pa-orch-Bericht `v2-beta-0-20261015`, außerhalb des Repos): der Dev-Installer genügt für die Klick-Checkliste, V2-BETA-1 entfällt; der Update-Drill läuft über den echten Release-Weg (Empfehlung des Berichts; Bestätigung durch den Nutzer steht aus).** PRÜFEN: genügt der Dev-Installer nach jedem `main`-Push (DEV-AUTO-1, `docs/setup/dev-build.md`) als „interner Beta-Kanal“ für Checkliste und Update-Drill, oder braucht es V2-BETA-1 (`release.yml`, Stufe A)? V2-UPD-1 (Abbrechen-Knopf, Versionsanzeige) ist inzwischen gemergt (#1487) | nur Bericht | nein | C | – | – | Bericht mit Befehl und Beleg je Frage | Agent (nur lesend) |
+| V2-E14 | Updater-Signierschlüssel finden und verschlüsselt sichern (`docs/PLAN.md` Z4-E14, E14); kein Schlüssel in Datei, Log oder Commit | – | nein | – | – | – | Nutzer bestätigt die verschlüsselte Sicherung; Stand heute: „Durchführung nicht belegt“ | **Nutzer** |
+| V2-DRILL | Update-Drill am eigenen PC: v2.0 über den Updater installieren, Abbrechen und Versionsanzeige prüfen (Kriterium 11) | – | nein | – | – | V2-BETA-0, V2-E14 | Nutzer bestätigt Installation und Neustart mit neuer Version | **Nutzer** |
+| V2-REL | Release v2.0.0: Version 1.6.4 → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Nutzer** (Ja, Veröffentlichung) |
 
 **Statusbelege 15.10.2026, 14:14 UTC:** `gh pr view <n> --json state,isDraft,baseRefName` für #1484, #1499 und #1540; der frühere `do-not-merge`-Wartehinweis für V2-D1-ON ist durch dessen Merge überholt.
 
@@ -805,7 +805,7 @@ Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zu
 
 #### 10.1b Leitstand-Ausbau (COMP, kein Kriterium)
 
-Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kontingent, Zeilenzähler). Sie sind **kein** Abnahmekriterium; ob sie vor v2.0.0 fertig sein müssen, entscheidet Elias (Vorschlag: nein, was bis zum Release gemergt ist, kommt mit). Alle sind Stufe B, nahtfrei, `src/screens/leitstand/`, Befehl: `npx vitest run src/screens/leitstand` und `bash scripts/ci/gates.sh lane prepush` Exit 0, Owner Agent.
+Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kontingent, Zeilenzähler). Sie sind **kein** Abnahmekriterium; ob sie vor v2.0.0 fertig sein müssen, entscheidet der Nutzer (Vorschlag: nein, was bis zum Release gemergt ist, kommt mit). Alle sind Stufe B, nahtfrei, `src/screens/leitstand/`, Befehl: `npx vitest run src/screens/leitstand` und `bash scripts/ci/gates.sh lane prepush` Exit 0, Owner Agent.
 
 | ID | Ziel | Umfang | Voraussetzung | Stand |
 |---|---|---|---|---|
@@ -873,7 +873,7 @@ Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "KR-"`; „geplant
 | 3 | 16 (Serie) | Alt-CSS und Zustandsaliase abbauen | B; nur tote Inhalte C | 01, 08, 14, 15 | geplant |
 | 3 | 17 (optional) | Ungenutzte Backend-Adapter zuerst belegen | A; Naht seriell | Frontend-Ports, CLI/API-Audit | geplant |
 
-Gestrichen (Elias 15.10.): 03b Free-Pools; 02e Skill-Packs; 06a Empfehlungen (Aufmerksamkeitsübersicht → 06b); 07j Spalten-Override (Lernkritik → 11c); 09a Dichte/Feinschrift (ersetzt durch 09a'); 10a–10d Statistik/Digests; 11a/11b Scouts/Empfehlungen; 11f Weboberfläche.
+Gestrichen (Nutzer 15.10.): 03b Free-Pools; 02e Skill-Packs; 06a Empfehlungen (Aufmerksamkeitsübersicht → 06b); 07j Spalten-Override (Lernkritik → 11c); 09a Dichte/Feinschrift (ersetzt durch 09a'); 10a–10d Statistik/Digests; 11a/11b Scouts/Empfehlungen; 11f Weboberfläche.
 Jede ID bleibt ein eigenes Paket ≤300 Gesamtzeilen; Serien 14–16 entfernen höchstens 240 Zeilen je Schnitt und reservieren 60 für Anpassungen/Tests. Erst Ersatz und Verhaltensbelege, dann Entfernung; gemeinsame Backend-/Terminal-Funktionen erhalten. Keine ID 11x in den Quellen definiert.
 
 ### 10.3 Designsystem-Feinschliff
