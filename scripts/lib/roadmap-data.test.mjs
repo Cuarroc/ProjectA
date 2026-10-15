@@ -163,3 +163,50 @@ test("description tables never override the defining PLAN row", () => {
   const packages = build([], [], { plan }).packages;
   assert.deepEqual(packages.map(p => [p.id, p.planStatus, p.title]), [["APP-1", "laut PLAN: Erledigt", "Search"], ["APP-2", "laut PLAN: In Arbeit", "Index"], ["APP-3", "laut PLAN: Unbekannt", "Unbekannt"]]);
 });
+// The file-write branch works on the current directory, so it runs inside a throwaway repository.
+async function inRepo({ ignored = true, setup = () => {} }, check) {
+  const dir = mkdtempSync(join(tmpdir(), "roadmap-")), cwd = process.cwd(), real = makeRunner(), out = [], errors = [];
+  try {
+    const git = (...a) => assert.equal(real("git", ["-C", dir, ...a]).code, 0);
+    git("init", "-q");
+    mkdirSync(join(dir, "docs"));
+    writeFileSync(join(dir, "docs/PLAN.md"), "| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Geplant |");
+    writeFileSync(join(dir, ".gitignore"), ignored ? ".pa/roadmap-data.json\n" : "");
+    setup(dir, git);
+    git("add", ".");
+    git("-c", "user.name=t", "-c", "user.email=t@users.noreply.github.com", "commit", "-q", "-m", "plan");
+    git("update-ref", "refs/remotes/origin/main", "HEAD");
+    process.chdir(dir);
+    const run = (cmd, args) => cmd === "git" ? real(cmd, args) : { code: 0, stdout: "[]" };
+    const code = await main([], { out: s => out.push(s), err: s => errors.push(s) }, { run, now });
+    check({ code, out: out.join(""), errors: errors.join("") }, dir);
+  } finally { process.chdir(cwd); rmSync(dir, { recursive: true, force: true }); }
+}
+test("CLI writes the ignored output file and prints only the head", async () => {
+  await inRepo({}, ({ code, out }, dir) => {
+    const data = JSON.parse(readFileSync(join(dir, ".pa/roadmap-data.json"), "utf8"));
+    assert.equal(code, 0);
+    assert.deepEqual(data.packages.map(p => p.id), ["APP-1"]);
+    assert.equal(out, `roadmap:data ${JSON.stringify(data.head)}\n`);
+  });
+});
+test("CLI refuses tracked or unignored or symlinked output paths without writing", async () => {
+  const out = "roadmap-data.json";
+  const tracked = { setup: (dir, git) => { mkdirSync(join(dir, ".pa")); writeFileSync(join(dir, ".pa", out), "old"); git("add", "-f", `.pa/${out}`); } };
+  await inRepo(tracked, ({ code, errors }, dir) => {
+    assert.equal(code, 1);
+    assert.match(errors, /tracked/);
+    assert.equal(readFileSync(join(dir, ".pa", out), "utf8"), "old");
+  });
+  await inRepo({ ignored: false }, ({ code, errors }, dir) => {
+    assert.equal(code, 1);
+    assert.match(errors, /check-ignore/);
+    assert.equal(existsSync(join(dir, ".pa")), false);
+  });
+  const linked = { setup: (dir) => { mkdirSync(join(dir, ".pa")); writeFileSync(join(dir, "victim.txt"), "keep"); symlinkSync(join(dir, "victim.txt"), join(dir, ".pa", out)); } };
+  await inRepo(linked, ({ code, errors }, dir) => {
+    assert.equal(code, 1);
+    assert.match(errors, /symlink/);
+    assert.equal(readFileSync(join(dir, "victim.txt"), "utf8"), "keep");
+  });
+});
