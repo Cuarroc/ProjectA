@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
@@ -90,11 +87,11 @@ it("derives forms and counts from the real get_board_state shape and leaves coor
   expect(countByFilter(list)).toMatchObject({ all: 3, run: 1, need: 1, rev: 0, ok: 0, done: 0, bad: 1 });
 });
 
-it("shows one card per agent with an honest proof slot and filters by state", async () => {
+it("shows one card per agent with its proof strip and filters by state", async () => {
   render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
   const list = screen.getByRole("region", { name: "Agenten" });
   expect(within(list).getAllByRole("article")).toHaveLength(3);
-  expect(within(list).getAllByText("Beweis nicht verbunden")).toHaveLength(3);
+  expect(within(list).getAllByRole("group", { name: "Beweis" })).toHaveLength(3);
   expect(within(list).getAllByText("seit 38 min")).toHaveLength(3);
   expect(within(list).getAllByRole("heading", { name: "Claude Code" })).toHaveLength(3);
   expect(screen.getByRole("button", { name: /^In Prüfung/ })).toHaveTextContent("0");
@@ -150,14 +147,7 @@ it("changes the status text when switching from one empty filter to another", as
   expect(region).not.toHaveTextContent("In Prüfung");
 });
 
-it("the offline proof sits in its own scoped slot and no bare HonestState override is left", async () => {
+it("the proof strip is a direct child of each card, above the foot", async () => {
   const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
-  const slots = container.querySelectorAll(".ls-foot > .ls-proof > .g-hs--offline");
-  expect(slots).toHaveLength(3);
-  // The override must not reach other HonestState kinds: every rule on `.g-hs` goes through `.ls-proof`.
-  const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "leitstand.css"), "utf8");
-  const selectors = css.replace(/\/\*[\s\S]*?\*\//g, "").match(/[^{}]+(?=\{)/g) ?? [];
-  expect(selectors.length).toBeGreaterThan(5);
-  expect(selectors.filter((sel) => /\.g-hs\b/.test(sel) && !/\.ls-proof\b/.test(sel))).toEqual([]);
-  expect(css).not.toMatch(/\.ls-foot\s+\.g-hs/);
+  expect(container.querySelectorAll(".ls-card > .ps + .ls-foot")).toHaveLength(3);
 });
