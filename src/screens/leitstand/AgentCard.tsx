@@ -36,8 +36,8 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const t = useT();
   const { worker } = card;
   const model = modelText(card);
-  // No gates reach the card yet, so a done card reads "ohne Beweis".
-  const lamp = lampFor(card, false);
+  // Same rule as the flow node: a done card is proven by a passed test, otherwise it reads "ohne Beweis".
+  const lamp = lampFor(card, card.testStatus === "pass");
   const taskId = useId();
   const [expanded, setExpanded] = useState(false);
   const canExpand = worker.task.length > 160;

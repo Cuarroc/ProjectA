@@ -34,16 +34,17 @@ const MARK: Record<ProofTone, string> = { yes: "✓", no: "✕", wip: "…" };
     `compact` draws a mark per value instead of the words (they stay in the tooltip
     and for assistive tech) and a short red-first label, so the strip is one line. */
 export function ProofStrip({ redFirst, gates, review, pr, stale, compact = false }: ProofStripProps) {
-  const word = (className: string, mark: string, text: string) => compact ? (
+  // `tip` off: the mark sits inside a link whose own title is the tooltip and an inner title would shadow it.
+  const word = (className: string, mark: string, text: string, tip = true) => compact ? (
     <>
-      <span className={className} title={text} aria-hidden="true">{mark}</span>
+      <span className={className} title={tip ? text : undefined} aria-hidden="true">{mark}</span>
       <span className="sr-only">{text}</span>
     </>
   ) : <span className={className}>{text}</span>;
   const missing = word("ps__missing", "–", T.notConnected);
   const link = pr && /^https?:\/\//i.test(pr.href) ? pr.href : null;
   const sha = pr?.sha?.slice(0, 7);
-  const ref = compact && link ? word("ps__open", "↗", T.open) : sha ? <code>{sha}</code> : T.open;
+  const ref = compact && link ? word("ps__open", "↗", T.open, false) : sha ? <code>{sha}</code> : T.open;
   const run = pr && [pr.command, pr.exitCode === null ? null : `${T.exit} ${pr.exitCode}`].filter(Boolean).join(" ");
   return (
     <div className={`ps${compact ? " ps--compact" : ""}${stale ? " ps--stale" : ""}`} role="group" aria-label={stale ? T.staleName : T.strip}>

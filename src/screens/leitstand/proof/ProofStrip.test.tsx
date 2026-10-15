@@ -67,3 +67,19 @@ it("keeps the words of every compact value for assistive tech and the tooltip", 
   expect(screen.getByRole("link", { name: T.open })).toHaveAttribute("title", "7c1e0b3 gates lane prepush Exit 0");
   expect(screen.queryByText("gates lane prepush Exit 0")).toBeNull();
 });
+
+it("leaves the tooltip of the compact link to the link itself", () => {
+  const { container } = render(<ProofStrip {...full} compact />);
+  expect(screen.getByRole("link", { name: T.open })).toHaveAttribute("title", "7c1e0b3 gates lane prepush Exit 0");
+  expect(container.querySelector(".ps__open")).not.toHaveAttribute("title");
+});
+
+it("counts the compact gates with no gates", () => {
+  render(<ProofStrip {...full} gates={[]} compact />);
+  expect(screen.getByText("0/0")).toHaveClass("ps__count");
+});
+
+it("counts the compact gates with all gates passing", () => {
+  render(<ProofStrip {...full} gates={["pass", "pass", "pass"]} compact />);
+  expect(screen.getByText("3/3")).toHaveClass("ps__count");
+});
