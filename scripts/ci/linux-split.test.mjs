@@ -13,6 +13,17 @@ test('Linux sub-lanes run every Linux gate exactly once', () => {
   assert.equal(new Set(parts).size, parts.length);
 });
 
+test('HQ tests run on a Linux leg with Gitleaks installed before gates', () => {
+  const lane = ['linux_1', 'linux_2'].find((id) => gates(id).includes('hq-test'));
+  assert.ok(lane, 'hq-test must run in a Linux leg');
+  const setup = job(lane).indexOf('uses: ./.github/actions/setup-linux');
+  assert.ok(setup >= 0, `${lane} needs setup-linux for the HQ secret-scanner tests`);
+  assert.ok(setup < job(lane).indexOf(`run: bash scripts/ci/gates.sh lane ${lane}`));
+  const bootstrap = readFileSync('.github/actions/setup-linux/action.yml', 'utf8');
+  assert.match(bootstrap, /sha256sum --check --strict/);
+  assert.match(bootstrap, /echo "\$RUNNER_TEMP\/gitleaks-bin" >> "\$GITHUB_PATH"/);
+});
+
 test('Linux required check aggregates both legs and fails closed', () => {
   const aggregate = job('linux');
   assert.match(aggregate, /name: gates \(linux\)/);
