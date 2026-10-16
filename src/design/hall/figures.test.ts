@@ -1,9 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, it } from "vitest";
 
 import { STATE_FORMS, STATE_UNKNOWN_FORM } from "../state/states";
 import { POSE_FRAMES, poseFor, ROLE_WORDS, ROLES, type Pose } from "./figures/poses";
 import { frames } from "./figures/roles.px";
-import { expand } from "./sprites/format";
+import { expand, PIXELS } from "./sprites/format";
 
 const figures = expand(frames);
 const POSES = Object.keys(POSE_FRAMES) as Pose[];
@@ -42,4 +44,21 @@ it("the four roles differ by silhouette and not only by colour", () => {
 
 it("role is also text", () => {
   expect(ROLES.map((r) => ROLE_WORDS[r])).toEqual(["Planung", "Umsetzung", "Prüfung", "Betrieb"]);
+});
+
+// Root finding R1663-ROOT1: a figure is the same person in both themes, so skin may not follow the theme.
+const plte = (theme: string) => {
+  const png = readFileSync(join(__dirname, "sprites", `hall-figures-${theme}.png`));
+  const at = png.indexOf("PLTE") + 4;
+  return (index: number) => png.subarray(at + index * 3, at + index * 3 + 3).toString("hex");
+};
+
+it("faces keep the same colour in the light and the dark atlas", () => {
+  const [light, dark] = [plte("light"), plte("dark")];
+  const ready = figures["fig-plan-ready-0"];
+  // Row 9 is the face, row 20 a hand (BODY in roles.px.ts); both must hold the skin index.
+  for (const char of [ready[9][13], ready[20][10]]) {
+    expect(PIXELS.indexOf(char), "skin is not transparent").toBeGreaterThan(0);
+    expect(light(PIXELS.indexOf(char)), `index ${char}`).toBe(dark(PIXELS.indexOf(char)));
+  }
 });
