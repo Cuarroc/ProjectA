@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-15T23:54:08.240Z",
-  "commit": "c9dad5e8",
+  "generatedAt": "2026-10-16T00:10:59.309Z",
+  "commit": "8919ac92",
   "dirty": true,
   "sources": [
     {
       "path": "STAND.md",
-      "sha256": "a7f742daf0ff1c08aca124f0fb2dcab13d77393d99a69763bb3b83074322f989"
+      "sha256": "c0669bd8708ba21aadd8a9087c9a69a0355795c2a23d55a386dd847a86a9974d"
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "b188805ddf62c318e072f44945841005a18147e8b07255fbf71aba80c049f08f"
+      "sha256": "31f41d7d6e4827320df065ecf98e94286f52be96c54b5cddca2bee563edcc3e8"
     },
     {
       "path": ".pa/task_f_core3_delivery.md",
@@ -681,7 +681,7 @@
           "place": "Server",
           "tier": "A",
           "status": "In Prüfung",
-          "statusRaw": "In Prüfung: G1-Teilung tatsächlich geliefert, #647 und #639 gemergt; begrenzte 15a-Source gemeinsam integriert, 15b und gesamte Start-/Nutzerabnahme offen",
+          "statusRaw": "In Prüfung: Code von 15a-BASE (`cd3bffac`), 15a-CLI (`7ac5985e`) und 15b (`86eeb68d`, 09.10.) gemergt; Start-/Nutzerabnahme („Start ohne Eingabe“) Unbekannt (zu prüfen); ersetzt: In Prüfung: G1-Teilung tatsächlich geliefert, #647 und #639 gemergt; begrenzte 15a-Source gemeinsam integriert, 15b und gesamte Start-/Nutzerabnahme offen",
           "acceptance": "Basismodul und korrigierter CLI-Aufruf zusammen integriert; Start ohne Eingabe; kein Secret in Datei/Log/Commit; physische STATE-Pfadprüfung bleibt 15b",
           "tickets": [
             "55ea21ce"
@@ -703,13 +703,14 @@
           "place": "Server",
           "tier": "A",
           "status": "Erledigt",
-          "statusRaw": "Erledigt: #647 `5f501f1` durch Mergify am 08.10. 07:26:49 UTC gemergt (`cd3bffa`); Lieferung zusammen mit CLI, DR-15b offen",
+          "statusRaw": "Erledigt: #647 `5f501f1` durch Mergify am 08.10. 07:26:49 UTC gemergt (`cd3bffa`); Lieferung zusammen mit CLI, DR-15b Erledigt #750 (`86eeb68d`)",
           "acceptance": "unveränderter Head `5f501f1`, alter eigener prepush 22/188s Exit 0 und Reviewbelege erhalten; Draft auf #635; Lieferung erst mit CLI-Korrektur erfüllt",
           "tickets": [
             "868dbc83"
           ],
           "prNumbers": [
-            647
+            647,
+            750
           ]
         },
         {
@@ -723,13 +724,14 @@
           "place": "Server",
           "tier": "A",
           "status": "Erledigt",
-          "statusRaw": "Erledigt: #639 `3bf5a8b` durch Mergify am 08.10. 08:09:55 UTC gemergt (`7ac5985`); kombinierte Source-Abnahme erhalten, DR-15b offen",
+          "statusRaw": "Erledigt: #639 `3bf5a8b` durch Mergify am 08.10. 08:09:55 UTC gemergt (`7ac5985`); kombinierte Source-Abnahme erhalten, DR-15b Erledigt #750 (`86eeb68d`)",
           "acceptance": "#639 auf Baseline retargetet, gleicher Head; Symlink/Junction und Node-24.0-Einstieg benannt rot→grün; eigener prepush am neuen Head Exit 0; Node >= 24 erhalten; zwei Vendoren außerhalb OpenAI am neuen Delta und Root-Abnahme",
           "tickets": [
             "f1a2ade9"
           ],
           "prNumbers": [
-            639
+            639,
+            750
           ]
         },
         {
@@ -1075,12 +1077,14 @@
           "id": "DR-16a",
           "title": "Umschalt-Helfer + Drill-Tests; nur tools/denkraum/switch.mjs + switch.test.mjs, kein Restore",
           "owner": "Root benennt einen vorhandenen Serverowner",
-          "dependsRaw": "DR-SEC-01a/b gemergt; DR-SEC-01g G4 und 01h gemergt; DR-07 einschließlich 07c/d/e1/e2 (#752/#753/#751/#755), DR-14, DR-15 einschließlich 15b/#750 und UI-Verdrahtung #718 gemergt",
+          "dependsRaw": "DR-SEC-01a/b gemergt; DR-SEC-01g-G4, DR-SEC-01h gemergt; DR-07 einschließlich 07c/d/e1/e2 (#752/#753/#751/#755), DR-14, DR-15 einschließlich 15b/#750 und UI-Verdrahtung #718 gemergt",
           "dependsOn": [
             "DR-07",
             "DR-14",
             "DR-15",
-            "DR-SEC-01a"
+            "DR-SEC-01a",
+            "DR-SEC-01g-G4",
+            "DR-SEC-01h"
           ],
           "place": "Server",
           "tier": "A, zwei Fremdanbieter",
@@ -1123,8 +1127,8 @@
           ],
           "place": "PC",
           "tier": "A plus unabhängiges Nachlesen",
-          "status": "invalid",
-          "statusRaw": "Nach v1.6.0 verschoben (Nutzer 09.10. ~19:42Z: Schritte, die der Nutzer am PC braucht, nach dem Release); Runbook bleibt (pa-orch/wissen/06-anleitungen/2026-10-09_dr16b-pc-drill-runbook.md); ersetzt: Live-Freigabe Nutzer 09.10. ~17:25Z, Probelauf wartet auf G4b/G6 und Nutzer-Zeitfenster; ersetzt: Blockiert bis G0; Kandidat auf v1.6.0 (d2582ceb) neu exportiert; Fenster mit dem Nutzer offen",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: Auslöser v1.6.0 seit 09.10. erreicht, Nutzer-Zeitfenster am PC offen, neue Einordnung: Unbekannt (zu prüfen); ursprünglich: Nach v1.6.0 verschoben (Nutzer 09.10. ~19:42Z: Schritte, die der Nutzer am PC braucht, nach dem Release); Runbook bleibt (pa-orch/wissen/06-anleitungen/2026-10-09_dr16b-pc-drill-runbook.md); ersetzt: Live-Freigabe Nutzer 09.10. ~17:25Z, Probelauf wartet auf G4b/G6 und Nutzer-Zeitfenster; ersetzt: Blockiert bis G0; Kandidat auf v1.6.0 (d2582ceb) neu exportiert; Fenster mit dem Nutzer offen",
           "acceptance": "Gates G0–G7 im gebundenen Vertragsentwurf Ticket b0e90b72; G5 beide UI-Skripte HTTP 200; protokollierter Drill und unabhängige Prüfung; P1/aktuelles Ledger nach Writes erhalten, Root-Abnahme",
           "tickets": [
             "b0e90b72"
@@ -1140,7 +1144,7 @@
           "place": "Server",
           "tier": "C",
           "status": "Erledigt",
-          "statusRaw": "Erledigt #785 (merged 2026-10-09T20:37:12Z): Anleitung gemergt: #785 (gemergt 2026-10-09T20:37:11Z, Trockenlauf der fünf Schritte auf frischer Wegwerf-Instanz im PR-Text); CHANGELOG-Abschnitt final in V16-CHANGELOG; ersetzt: In Prüfung: Entwurf separat #785; Trockenlauf und Gesamt-Abnahme offen",
+          "statusRaw": "Erledigt #785 (merged 2026-10-09T20:37:12Z): Anleitung gemergt: #785 (gemergt 2026-10-09T20:37:12Z, Trockenlauf der fünf Schritte auf frischer Wegwerf-Instanz im PR-Text); CHANGELOG-Abschnitt final in V16-CHANGELOG; ersetzt: In Prüfung: Entwurf separat #785; Trockenlauf und Gesamt-Abnahme offen",
           "acceptance": "Trockenlauf der 5 Schritte im PR-Text; beide UI-Skripte HTTP 200; eigene prepush; No-Test: documentation only",
           "tickets": [
             "55ea21ce"
@@ -1162,7 +1166,7 @@
           "place": "Server",
           "tier": "C",
           "status": "Erledigt",
-          "statusRaw": "Erledigt #785 (gemergt 2026-10-09T20:37:11Z); ersetzt: In Prüfung: Draft #785",
+          "statusRaw": "Erledigt #785 (gemergt 2026-10-09T20:37:12Z); ersetzt: In Prüfung: Draft #785",
           "acceptance": "≤ 150 ALL; eigene prepush; kein Laufzeit-/Startbeleg aus dem Text, bis Trockenlauf erfolgt Draft halten",
           "tickets": [
             "PLAN-SYNC-0910b"
@@ -1181,9 +1185,9 @@
         "In Prüfung": 1,
         "Erledigt": 50,
         "Blockiert": 0,
-        "Verschoben": 0,
+        "Verschoben": 1,
         "Entfallen": 2,
-        "invalid": 3
+        "invalid": 2
       },
       "total": 56
     },
@@ -1199,13 +1203,16 @@
           "dependsOn": [],
           "place": "egal",
           "tier": "C",
-          "status": "In Prüfung",
-          "statusRaw": "In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 geschlossen als überholt (Nutzer 08.10.), Originaldelta bleibt Historie, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: PLAN-C1 #643 (merged 2026-10-08T05:46:58Z, `0a9a981d`, Kopf `1088909`), Statusnachtrag #646 (`a167486c`); #642 geschlossen als überholt (Nutzer 08.10.); weitere Bereinigungsschnitte ersetzt durch PLAN-CLEAN-1 bis -3 (15.10.); ersetzt: In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 geschlossen als überholt (Nutzer 08.10.), Originaldelta bleibt Historie, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen",
           "acceptance": "ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen",
           "tickets": [
             "55ea21ce"
           ],
           "prNumbers": [
+            643,
+            646,
+            642,
             643,
             642,
             646
@@ -1235,8 +1242,9 @@
           "id": "Z2-RULE10",
           "title": "P2: konkrete bereits erteilte Nutzerfreigaben erhalten; keine Rechteausweitung; Geld, Passwörter und Releases bleiben beim Nutzer",
           "owner": "Stabschef",
-          "dependsRaw": "PLAN-C1; gemeinsam mit GOALS-B",
+          "dependsRaw": "#643 (Schnitt PLAN-C1 von Z2-PLAN-COMMIT, Merge `0a9a981d`); gemeinsam mit GOALS-B",
           "dependsOn": [
+            "Z2-PLAN-COMMIT",
             "GOALS-B"
           ],
           "place": "egal",
@@ -1311,8 +1319,9 @@
           "id": "GOALS-B",
           "title": "P2: Rollen-Goals, Anpassung, Grenzen und selektive Rekursion in AGENTS.md, projecta-workflow und Übergabevorlage verankern; nur Prozessdoku, kein Runtime-Ausbau",
           "owner": "Stabschef als Editor; Root nimmt ab",
-          "dependsRaw": "PLAN-C1; Z2-RULE10 im selben Dokumentationspaket",
+          "dependsRaw": "#643 (Schnitt PLAN-C1 von Z2-PLAN-COMMIT, Merge `0a9a981d`); Z2-RULE10 im selben Dokumentationspaket",
           "dependsOn": [
+            "Z2-PLAN-COMMIT",
             "Z2-RULE10"
           ],
           "place": "egal",
@@ -1354,7 +1363,7 @@
           "place": "private leichte Messroute",
           "tier": "C",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; bisheriger begrenzter Messschnitt erledigt: 20+6-Originalübergabe samt Korrekturappend Root-ACCEPT 09:22:35 (`198949e8`); rationale-only-Nachtrag separat ACCEPT 10:10:29 (`1dbb4ebb`, operative REPORT `8f3f0796`, Input `20c2571d`, Assessment `71d3d6df`, Handover `b5c7a645`), Originale erhalten; eigene Mess-/Koordinationsgoals COMPLETE; kein konsistenter Nettoqualitätsgewinn, Quellenindex empfohlen; keine neue Messung/automatische Übernahme",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen); bisheriger begrenzter Messschnitt erledigt: 20+6-Originalübergabe samt Korrekturappend Root-ACCEPT 09:22:35 (`198949e8`); rationale-only-Nachtrag separat ACCEPT 10:10:29 (`1dbb4ebb`, operative REPORT `8f3f0796`, Input `20c2571d`, Assessment `71d3d6df`, Handover `b5c7a645`), Originale erhalten; eigene Mess-/Koordinationsgoals COMPLETE; kein konsistenter Nettoqualitätsgewinn, Quellenindex empfohlen; keine neue Messung/automatische Übernahme",
           "acceptance": "getrennte Claude-/Codex-Vergleiche, gleiche Fragen/Revisionen und Parameter je Anbieter; Qualität/Kontext/Sucharbeit/Pflege mit Messlücken, sechs begrenzte Fälle; Nullbefund zulässig, keine automatische Übernahme",
           "tickets": [
             "57979887"
@@ -1369,13 +1378,15 @@
           "dependsOn": [],
           "place": "egal",
           "tier": "C",
-          "status": "In Arbeit",
-          "statusRaw": "In Arbeit",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert: Lane-C-Teil entfallen (Commit `6918bea` nur in #642, geschlossen 08.10., PR-ALT) → Z2-AGENTS-SLIM; Lane-A-Korrekturen: Unbekannt (zu prüfen), kein PR seit 08.10.; wartet auf R1–R5 (Inbox); ersetzt: In Arbeit",
           "acceptance": "Lane-C-PR gemergt; `npm run dev:agent-check` Exit 0; Regel-Vorschläge R1–R5 in der Inbox entschieden",
           "tickets": [
             "77c993f3"
           ],
-          "prNumbers": []
+          "prNumbers": [
+            642
+          ]
         },
         {
           "id": "DOC-OPERATORS",
@@ -1407,7 +1418,7 @@
           "place": "Server",
           "tier": "C",
           "status": "Bereit",
-          "statusRaw": "Bereit nach DR-12; Owner/Guard und Root-Zuweisung vor Ausführung",
+          "statusRaw": "Bereit seit DR-12 (09.10.), nicht gestartet (kein PR); Größenbasis im Startvertrag veraltet (AGENTS.md am 15.10. auf `c9d4ca35`: 28903 Bytes) — vor Start neu schneiden und gegen KONZEPT-0 abgrenzen; ersetzt: Bereit nach DR-12; Owner/Guard und Root-Zuweisung vor Ausführung",
           "acceptance": "AGENTS.md plus eindeutige docs/development/AGENTS_REFERENCE.md; bestehende Referenzen nur lesen; globale CLAUDE/MEMORY und Standard-Skills ausgenommen; Regel-für-Regel-Mapping, Linkcheck, dev:agent-check und eigene prepush Exit 0; ≤ 300 ALL, sonst vor Start serielle Schnitte; Byteziel ist kein Token-/Wirksamkeitsbeleg",
           "tickets": [
             "77c993f3"
@@ -1439,7 +1450,7 @@
           "place": "privater bestehender Wissensbereich",
           "tier": "C",
           "status": "invalid",
-          "statusRaw": "Geschnitten, noch nicht gestartet; Dokumentation, keine Settings-/Rechteaktivierung",
+          "statusRaw": "Geschnitten, noch nicht gestartet; Dokumentation, keine Settings-/Rechteaktivierung; seit 08.10. ohne PR oder Beleg, Einordnung (v2.x, Später oder Entfallen): Unbekannt (zu prüfen)",
           "acceptance": "≤ 300 ALL; Quelle/Datum/Digest, ursprünglicher Scope, geltende Disposition, Projektion, Owner, fehlende Belege und nächster Schritt; Reset-, alte RH-C9- und Force-push-Ersetzungen getrennt; QA bleibt ausdrücklich beauftragt; kein privater Wortlaut in Git/PR",
           "tickets": [
             "b2f36f8a"
@@ -1455,7 +1466,7 @@
           "place": "tatsächlicher Windows-Zielhost, noch ungebunden",
           "tier": "C für Messbericht; technische Folgedeltas nach Dateien neu einstufen",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Owner/Host fehlen weiter; keine technische Aktivierung",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Owner/Host fehlen weiter; keine technische Aktivierung; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "≤ 300 ALL je Schnitt; ein gepaarter Nicht-Z2-Fall, Zeit-/Aufrufbelege einschließlich Vorbereitung/Prüfung/Nacharbeit/Recovery; Netto-Nutzen > 0 und > gemessene Vergleichsunsicherheit, sonst nicht belegt; negative Shadow-Fälle keine Laufzeit-PASS; tatsächlicher Effekt erst separat nach Shadow-Abnahme, danach installiert/geladen/funktional getrennt belegen",
           "tickets": [
             "b2f36f8a"
@@ -1510,7 +1521,7 @@
           "place": "PC",
           "tier": "A",
           "status": "Geplant",
-          "statusRaw": "Geplant",
+          "statusRaw": "Geplant; seit 08.10. ohne PR oder Beleg; hängt an der offenen Start-/Nutzerabnahme von DR-15",
           "acceptance": "PC-Neustart → `127.0.0.1:4791` antwortet ohne Eingabe; kein Secret im Klartext",
           "tickets": [],
           "prNumbers": []
@@ -1524,7 +1535,7 @@
           "place": "PC",
           "tier": "C",
           "status": "Blockiert",
-          "statusRaw": "Blockiert",
+          "statusRaw": "Blockiert: wartet auf R5 (Inbox R1–R5); seit 08.10. ohne PR oder Beleg",
           "acceptance": "drei Läufe nacheinander mit Bericht, keine Schreibaktion",
           "tickets": [],
           "prNumbers": []
@@ -1538,7 +1549,7 @@
           "place": "Server",
           "tier": "C",
           "status": "invalid",
-          "statusRaw": "Root übernimmt Tier-A-Zweitanbieter über vorhandenen Ollama-GLM/Kimi-Weg laut Übergabe; kein Google-Folgelauf, Modell-/Head-Belege weiter Pflicht",
+          "statusRaw": "Root übernimmt Tier-A-Zweitanbieter über vorhandenen Ollama-GLM/Kimi-Weg laut Übergabe; kein Google-Folgelauf, Modell-/Head-Belege weiter Pflicht; Reviewerzahl und -familien jetzt durch `docs/decisions.md` „Reviewer count per tier“ (15.10.) geregelt, Ollama-Paar bis 01.11. gesperrt; Wegeprobe je Weg (Abnahme): Unbekannt (zu prüfen)",
           "acceptance": "Probe je Weg mit Modellname und Zeit; Weg in `docs/setup/` beschrieben",
           "tickets": [
             "c77f6955"
@@ -1554,7 +1565,7 @@
           "place": "PC + Server",
           "tier": "C",
           "status": "Geplant",
-          "statusRaw": "Geplant",
+          "statusRaw": "Geplant; seit 08.10. ohne PR oder Beleg, Einordnung (v2.x, Später oder Entfallen): Unbekannt (zu prüfen)",
           "acceptance": "24 h ohne „local heavy STOP“, Messung im Ticket",
           "tickets": [],
           "prNumbers": []
@@ -1693,7 +1704,7 @@
           "place": "PC",
           "tier": "C",
           "status": "Geplant",
-          "statusRaw": "Geplant",
+          "statusRaw": "Geplant: Routing-Regel steht in AGENTS.md „Routing“ (AP-6a, `2648f097`, 14.10.); Wochenbeleg und Abdeckung von Z2-ROUTE: Unbekannt (zu prüfen)",
           "acceptance": "eine Woche ohne Anbieter am Limit; Routing-Beleg je Start",
           "tickets": [
             "492a9e36"
@@ -1709,7 +1720,7 @@
           "place": "egal",
           "tier": "–",
           "status": "Bereit",
-          "statusRaw": "Bereit",
+          "statusRaw": "Bereit; seit 08.10. ohne Beleg, Einordnung (v2.x, Später oder Entfallen): Unbekannt (zu prüfen)",
           "acceptance": "`backlog_list`: keine erledigten Tickets mehr offen",
           "tickets": [],
           "prNumbers": []
@@ -1816,13 +1827,15 @@
           "dependsOn": [],
           "place": "Server",
           "tier": "nach Dateischnitt festlegen",
-          "status": "Geplant",
-          "statusRaw": "Geplant; kein neuer Worker aus PLAN-Eintrag",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #800 (merged 2026-10-09T02:07:35Z, `15305c2e`); ersetzt: Geplant; kein neuer Worker aus PLAN-Eintrag",
           "acceptance": "jeder Folgepunkt mit Quelle/Disposition; ≤ 300 ALL je Paket, keine erneute Abnahmebehauptung",
           "tickets": [
             "PLAN-SYNC-0910b"
           ],
-          "prNumbers": []
+          "prNumbers": [
+            800
+          ]
         },
         {
           "id": "CI-SPLIT-LINUX",
@@ -1832,13 +1845,15 @@
           "dependsOn": [],
           "place": "Server",
           "tier": "B",
-          "status": "In Arbeit",
-          "statusRaw": "In Arbeit: läuft (Server-Auftrag srv-ci-split-linux), Branch `codex/ci-split-linux`",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1560 (merged 2026-10-15T16:56:24Z, `a8aef6da`); ersetzt: In Arbeit: läuft (Server-Auftrag srv-ci-split-linux), Branch `codex/ci-split-linux`",
           "acceptance": "Gate-Abdeckung unverändert; prepush, Reviews, Root",
           "tickets": [
             "OPT-CI-0"
           ],
-          "prNumbers": []
+          "prNumbers": [
+            1560
+          ]
         },
         {
           "id": "OPT-PIPE-0",
@@ -1854,6 +1869,94 @@
           "tickets": [
             "OPT-PIPE-0"
           ],
+          "prNumbers": []
+        },
+        {
+          "id": "CI-SEC-CODEQL",
+          "title": "CodeQL-Alarm 57 (docs/diagrams/export-svg.mjs) schließen; Code-Fix für Alarm 59 versucht",
+          "owner": "Root",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "B",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1581 (merged 2026-10-15T18:25:41Z, `ded1eef5`); Alarm 57 laut GitHub Code Scanning `fixed`",
+          "acceptance": "Alarm 57 geschlossen",
+          "tickets": [],
+          "prNumbers": [
+            1581
+          ]
+        },
+        {
+          "id": "CI-SEC-CODEQL-2",
+          "title": "CodeQL-Alarme 59 und 60 (actions/cache-poisoning, .github/workflows/ci.yml)",
+          "owner": "Root; `.github/` gehört laut CODEOWNERS dem Nutzer",
+          "dependsRaw": "Nutzerentscheid CODEQL-59-60",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "B",
+          "status": "Blockiert",
+          "statusRaw": "Blockiert: Nutzerentscheid CODEQL-59-60 offen; lesende Prüfung läuft (laut Root 15.10.); Alarm 59 blieb nach #1581 laut GitHub offen",
+          "acceptance": "beide Alarme geschlossen oder begründet als Fehlalarm abgewiesen",
+          "tickets": [],
+          "prNumbers": [
+            1581
+          ]
+        },
+        {
+          "id": "FU-1015",
+          "title": "Nachläufer aus den Reviews vom 15.10.: #1551 G3 (KR-09m), #1556 K4 und toter CSS-Rest (KR-08a), #1560 K2 (CI-SPLIT-LINUX), #1561 G2 (DS-01), #1568 Lows (FABRIK-TAB-1), #1569 B1/B3 (KR-04a), #1581 K1/K3–K5 (CI-SEC-CODEQL)",
+          "owner": "Root disponiert",
+          "dependsRaw": "jeweiliger Eltern-PR gemergt",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "je Punkt",
+          "status": "Geplant",
+          "statusRaw": "Geplant: nicht disponiert (laut Root, Stand 15.10.)",
+          "acceptance": "je Punkt eigenes Paket ≤ 300 Zeilen mit eigener Abnahme",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "OPS-CLOUD-PREFLIGHT",
+          "title": "Vorabprüfung für den Codex-Cloud-Weg vor jedem Auftrag (laut Root 15.10.; Datei: Unbekannt (zu prüfen))",
+          "owner": "Root disponiert",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant: nicht disponiert (15.10.)",
+          "acceptance": "Abnahme vor Dispatch festlegen",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "OPS-JOB-ENDZEILE",
+          "title": "Endzeile jedes Auftrags nennt private Abrechnungs- und Token-Messwerte; keine Werte im öffentlichen Repo (laut Root 15.10.; Datei: Unbekannt (zu prüfen))",
+          "owner": "Root disponiert",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant: nicht disponiert (15.10.)",
+          "acceptance": "Abnahme vor Dispatch festlegen",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "OPS-AUTO-LOCK",
+          "title": "Auto-Skript: doppelte Sperre (laut Root 15.10. „duplicate lock“; genaue Bedeutung und Datei: Unbekannt (zu prüfen))",
+          "owner": "Root disponiert",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant: nicht disponiert (15.10.)",
+          "acceptance": "Abnahme vor Dispatch festlegen",
+          "tickets": [],
           "prNumbers": []
         },
         {
@@ -1950,17 +2053,17 @@
       ],
       "problems": [],
       "counts": {
-        "Geplant": 4,
+        "Geplant": 7,
         "Bereit": 2,
-        "In Arbeit": 2,
-        "In Prüfung": 1,
-        "Erledigt": 27,
-        "Blockiert": 2,
+        "In Arbeit": 0,
+        "In Prüfung": 0,
+        "Erledigt": 31,
+        "Blockiert": 4,
         "Verschoben": 2,
         "Entfallen": 0,
         "invalid": 3
       },
-      "total": 43
+      "total": 49
     },
     {
       "id": "Z3",
@@ -2138,11 +2241,13 @@
           ],
           "place": "Server",
           "tier": "A",
-          "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0 (Nutzer 08.10.)",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #960 (merged 2026-10-10T06:01:09Z, `2bc9b884`; D8a–c in einem PR); ersetzt: Verschoben: nach v1.6.0 (Nutzer 08.10.)",
           "acceptance": "`rg -n -F -e '\"worker:status\"' -e '\"supervisor:notification\"' src-tauri/src/main.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0",
           "tickets": [],
-          "prNumbers": []
+          "prNumbers": [
+            960
+          ]
         },
         {
           "id": "V16-ARCH-D8b",
@@ -2154,11 +2259,13 @@
           ],
           "place": "Server",
           "tier": "A",
-          "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0 (Nutzer 08.10.)",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #960 (`2bc9b884`, zusammen mit D8a und D8c); ersetzt: Verschoben: nach v1.6.0 (Nutzer 08.10.)",
           "acceptance": "`rg -n -F -e '\"pty:output:' -e '\"pty:exit:' src-tauri/src/pty.rs` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `cargo test --manifest-path src-tauri/Cargo.toml` Exit 0",
           "tickets": [],
-          "prNumbers": []
+          "prNumbers": [
+            960
+          ]
         },
         {
           "id": "V16-ARCH-D8c",
@@ -2170,11 +2277,13 @@
           ],
           "place": "egal",
           "tier": "B",
-          "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0 (Nutzer 08.10.)",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt #960 (`2bc9b884`); der Abnahme-Grep findet 4 Kommentar-Treffer (`App.tsx:244`, `types.ts:160/567`, `useBoard.ts:35`), keinen Code; Abnahme durch Root: Unbekannt (zu prüfen); ersetzt: Verschoben: nach v1.6.0 (Nutzer 08.10.)",
           "acceptance": "`rg -n -e '[\"\\x27\\x60]worker:status' -e '[\"\\x27\\x60]supervisor:notification' -e '[\"\\x27\\x60]pty:output:' -e '[\"\\x27\\x60]pty:exit:' src` → 0 Treffer außerhalb des gemeinsamen Konstantenmoduls; `npm run typecheck` und `npm run test:unit` Exit 0",
           "tickets": [],
-          "prNumbers": []
+          "prNumbers": [
+            960
+          ]
         },
         {
           "id": "V16-ADR-A1",
@@ -2331,8 +2440,35 @@
           ],
           "place": "Server",
           "tier": "B/C je Punkt",
-          "status": "invalid",
-          "statusRaw": "Offen: R908-FU-1 (Wiring-Test stop→limitDrainForSignal), R908-FU-2 (Drain-Kommentar/Idempotenz); R912-FU-1 (existed-Flag statt stat, io-Seam); R910-FU, R896-FU, R899-FU K2, R889-FU; REL-3 (scripts/release.cmd veraltet), REL-4 (Rollback/releases-latest), NOT-1/2/3, SRV-2..5, OWN-3",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 10.10.: SRV-2/SRV-5-Portschutz #931, SRV-3 #952, OWN-3 #930, NOT-1 und R912-FU-1 #941, NOT-2/NOT-3 #928, SRV-4 #927, REL-3 #926, REL-4 #929, R910-FU #937, R889-FU #899 (09.10.); Rest verschoben nach V16-FU-2; ursprünglich: Offen: R908-FU-1 (Wiring-Test stop→limitDrainForSignal), R908-FU-2 (Drain-Kommentar/Idempotenz); R912-FU-1 (existed-Flag statt stat, io-Seam); R910-FU, R896-FU, R899-FU K2, R889-FU; REL-3 (scripts/release.cmd veraltet), REL-4 (Rollback/releases-latest), NOT-1/2/3, SRV-2..5, OWN-3",
+          "acceptance": "je Punkt eigenes Paket mit eigener Abnahme",
+          "tickets": [],
+          "prNumbers": [
+            931,
+            952,
+            930,
+            941,
+            928,
+            927,
+            926,
+            929,
+            937,
+            899
+          ]
+        },
+        {
+          "id": "V16-FU-2",
+          "title": "Rest aus V16-FU: SRV-5 gegenseitige Authentifizierung (laut #931 weiterhin geparkt), R908-FU-1 (Wiring-Test stop→limitDrainForSignal), R908-FU-2 (Drain-Kommentar/Idempotenz), R896-FU, R899-FU K2",
+          "owner": "Stabschef",
+          "dependsRaw": "V16-FU",
+          "dependsOn": [
+            "V16-FU"
+          ],
+          "place": "Server",
+          "tier": "B/C je Punkt",
+          "status": "Geplant",
+          "statusRaw": "Geplant: nicht disponiert; ob schon anderswo erledigt: Unbekannt (zu prüfen)",
           "acceptance": "je Punkt eigenes Paket mit eigener Abnahme",
           "tickets": [],
           "prNumbers": []
@@ -2346,27 +2482,30 @@
           "place": "Server",
           "tier": "C",
           "status": "Verschoben",
-          "statusRaw": "Verschoben",
+          "statusRaw": "Verschoben; KI-30-Schluss (#874: 42 Queue-Läufe ab 09.10., 0 KI-30) liegt vor, sein Fenster weicht vom Originalkriterium (Fenster ab #518, 05.10.) ab — Abgleich: Unbekannt (zu prüfen); zwei Wochenmessungen ohne vollständigen Fensterbeleg",
           "acceptance": "Wochenberichte BENCH-01/02 im Ticket",
           "tickets": [
             "b8b16ec8"
           ],
-          "prNumbers": []
+          "prNumbers": [
+            874,
+            518
+          ]
         }
       ],
       "problems": [],
       "counts": {
-        "Geplant": 1,
+        "Geplant": 2,
         "Bereit": 0,
         "In Arbeit": 0,
         "In Prüfung": 0,
-        "Erledigt": 14,
+        "Erledigt": 18,
         "Blockiert": 0,
-        "Verschoben": 5,
+        "Verschoben": 2,
         "Entfallen": 0,
-        "invalid": 1
+        "invalid": 0
       },
-      "total": 21
+      "total": 22
     },
     {
       "id": "Z4",
@@ -2398,8 +2537,8 @@
           "dependsOn": [],
           "place": "PC",
           "tier": "–",
-          "status": "Geplant",
-          "statusRaw": "Geplant: Sicherung beauftragt, Durchführung nicht belegt",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10. laut Root: Schlüssel exportiert und per Test-Signatur geprüft (Exit 0); verschlüsselte Sicherung durch den Nutzer bestätigt (laut Root, 15.10.); kein Schlüsselmaterial im Repo; ersetzt: Geplant: Sicherung beauftragt, Durchführung nicht belegt",
           "acceptance": "verschlüsselte Sicherung durch Nutzer bestätigt; kein Schlüssel in Datei/Log/Commit",
           "tickets": [],
           "prNumbers": []
@@ -2489,13 +2628,17 @@
           "place": "Windows-PC für RED",
           "tier": "A",
           "status": "Blockiert",
-          "statusRaw": "Blockiert: Start nur, wenn Queue-Belege nach #737 den Defekt weiter zeigen; keine gemeinsame Ursache unterstellen",
+          "statusRaw": "Blockiert: Start nur, wenn Queue-Belege nach #737 den Defekt weiter zeigen; keine gemeinsame Ursache unterstellen; Queue-Belege nach #737 liegen vor (KI-30-Schluss #874: 42 Läufe, kein `real_native_`-Treffer, Beleg statistisch); KI-24-Teilfix #1463 (`13ef8a41`) und #1468 (`4f74b8f8`) gemergt; KI-24b-Rest: Unbekannt (zu prüfen), Root entscheidet Start oder Entfallen",
           "acceptance": "Dateien `testutil.rs`, `store/development_launches.rs`, `store.rs` vor Start binden; 180–280 ALL nur Prognose; kompilierende Windows-REDs für Launch-Drop/Reopen und getrennt Migration-Reopen; zusätzlich `real_native_completed_receipt_survives_sqlite_writer_within_busy_timeout` (Queue-Runs 37810056116/37814405700) eingrenzen; Zuordnung zur Windows-Flake-Klasse ist keine bewiesene gemeinsame Ursache; API-Ursache offen, keine Blanket-Retries; Fix nur nach Beleg, >300 ALL trennen; eigene prepush + zwei Fremdvendor-Reviews",
           "tickets": [
             "0e7793b4"
           ],
           "prNumbers": [
-            737
+            737,
+            737,
+            874,
+            1463,
+            1468
           ]
         },
         {
@@ -2507,7 +2650,7 @@
           "place": "Server",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben nach v1.6.0; nur mn, keine st-Naht",
+          "statusRaw": "Verschoben nach v1.6.0; nur mn, keine st-Naht; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "roter Test zuerst; prepush Exit 0",
           "tickets": [],
           "prNumbers": []
@@ -2521,10 +2664,12 @@
           "place": "Server",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben nach v1.6.0: Rest 03/04/07; #702/#705/#717 gemergt, keine Gesamt-Abnahme",
+          "statusRaw": "Verschoben: Rest 04/07, fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen); 03 mit 03a #705 und 03b #956 (merged 2026-10-10T04:29:58Z, `2e1de0bb`) erledigt; #702/#705/#717 gemergt, keine Gesamt-Abnahme; ursprünglich: Verschoben nach v1.6.0: Rest 03/04/07",
           "acceptance": "≤ 300 ALL je Schnitt; vorhandene Envelopes wiederverwenden, übrige Pfade getrennt belegen; Rot/grün, eigene prepush, zwei Fremdvendor-Reviews/Disposition und Root-Abnahme",
           "tickets": [],
           "prNumbers": [
+            705,
+            956,
             702,
             705,
             717
@@ -2602,8 +2747,8 @@
           "dependsOn": [],
           "place": "eigener Worktree",
           "tier": "A",
-          "status": "invalid",
-          "statusRaw": "Pending; PM prüft Startvertrag, kein neuer Worker",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: seit 08.10. ohne Start (M4-Freeze, Continuous eingefroren), Einordnung: Unbekannt (zu prüfen); ursprünglich: Pending; PM prüft Startvertrag, kein neuer Worker",
           "acceptance": "kompilierendes Produktionsadapter-Rot; danach done/blocked persistiert, wiederholtes done unverändert, falsche/veraltete Credentials abgewiesen; eigene prepush, zwei Fremdvendor-Reviews",
           "tickets": [
             "8e7b877f"
@@ -2618,8 +2763,8 @@
           "dependsOn": [],
           "place": "PC",
           "tier": "C",
-          "status": "invalid",
-          "statusRaw": "Pending; reale Voraussetzungen und Zeitpunkt offen",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: seit 08.10. ohne Start (M4-Freeze), Einordnung: Unbekannt (zu prüfen); ursprünglich: Pending; reale Voraussetzungen und Zeitpunkt offen",
           "acceptance": "je Versuch Version/Latenz/Marker/terminalbestätigter Empfang; 20/20 bzw. < 20/20 bestimmt Queue-Rest; keine erfundenen Pässe",
           "tickets": [
             "1c6d9ed8"
@@ -2634,8 +2779,8 @@
           "dependsOn": [],
           "place": "PC",
           "tier": "C",
-          "status": "invalid",
-          "statusRaw": "Pending; M4-Freeze erhalten; #500-Teilpässe nicht wiederholen",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: seit 08.10. ohne Start (M4-Freeze), Einordnung: Unbekannt (zu prüfen); ursprünglich: Pending; M4-Freeze erhalten; #500-Teilpässe nicht wiederholen",
           "acceptance": "Crash je spezifiziertem Übergang plus Kapazität/Provider mit Version/Befehl/Exit/Manifest; Singleton/Estop/Backup aus #500 erhalten",
           "tickets": [
             "abf51cef"
@@ -2652,8 +2797,8 @@
           "dependsOn": [],
           "place": "PC",
           "tier": "C",
-          "status": "invalid",
-          "statusRaw": "Pending; Release-Build ist kein Client-Laufbeleg",
+          "status": "Verschoben",
+          "statusRaw": "Verschoben: seit 08.10. ohne Start, Einordnung: Unbekannt (zu prüfen); ursprünglich: Pending; Release-Build ist kein Client-Laufbeleg",
           "acceptance": "cancel/fail/success in dieser Reihenfolge; alte/neue Version, echte Signaturprüfung/Neustart, Fall-Manifeste/Exits; kein neuer Schlüssel/Release",
           "tickets": [
             "c58c630b"
@@ -2705,7 +2850,7 @@
           "place": "eigener Worktree",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "dieselbe Schreibtransaktion, stale/fremd/falsche Rolle/fehlendes Ziel abweisen; keine neue Auth-Transaktion/Migration; Rot vor Fix, eigene prepush und zwei Fremdreviews",
           "tickets": [
             "fea04970"
@@ -2721,7 +2866,7 @@
           "place": "eigener Worktree",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "deterministisches kompilierendes Fence-Interleaving-Rot; stale ohne Goal/Event, gültiger Coordinator erfolgreich; autonome Root operator-only, Operator/Audit erhalten; eigene prepush/zwei Fremdreviews",
           "tickets": [
             "2be81e2e"
@@ -2737,7 +2882,7 @@
           "place": "eigener Worktree",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "Fence-Interleaving-Rot; stale ohne Task/Event; eigenes Projekt erfolgreich, fremde Goals/Dependencies abweisen, Operator erhalten; eigene prepush/zwei Fremdreviews",
           "tickets": [
             "8dbd5dc7"
@@ -2753,7 +2898,7 @@
           "place": "eigener Worktree",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "Fence-Interleaving-Rot; stale ohne Assignment/Revision/Event; Selbsteskalation abweisen, gültige Zuweisung/Operator erhalten; eigene prepush/zwei Fremdreviews",
           "tickets": [
             "15d92066"
@@ -2769,7 +2914,7 @@
           "place": "eigener Worktree",
           "tier": "A",
           "status": "Verschoben",
-          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren",
+          "statusRaw": "Verschoben: nach v1.6.0, Nutzer 08.10.; Sicherheitsbefund bleibt offen, Continuous eingefroren; fällig seit v1.6.0 (09.10.), neue Einordnung: Unbekannt (zu prüfen)",
           "acceptance": "Fence beim Source-Laden ändern; Rot vor Fix; stale ohne Projektion/Revision/Event, gültiger Import/CAS/Sourceprüfung erhalten; vier Pfade integriert prüfen, eigene prepush/zwei Fremdreviews",
           "tickets": [
             "e7c9e018"
@@ -2785,7 +2930,7 @@
           "place": "Server",
           "tier": "–",
           "status": "Geplant",
-          "statusRaw": "Geplant",
+          "statusRaw": "Geplant; wartet auf E17 (Nutzer); seit 08.10. ohne Beleg",
           "acceptance": "Platte < 60 %, Backup-Beleg",
           "tickets": [],
           "prNumbers": []
@@ -2799,7 +2944,7 @@
           "place": "PC",
           "tier": "–",
           "status": "Geplant",
-          "statusRaw": "Geplant",
+          "statusRaw": "Geplant (Nutzer, Frist Ende 2026); seit 08.10. ohne Beleg",
           "acceptance": "Backup läuft mit eigener ID",
           "tickets": [],
           "prNumbers": []
@@ -2813,7 +2958,7 @@
           "place": "PC",
           "tier": "–",
           "status": "Geplant",
-          "statusRaw": "Geplant",
+          "statusRaw": "Geplant (Nutzer); seit 08.10. ohne Beleg",
           "acceptance": "Liste abgehakt",
           "tickets": [],
           "prNumbers": []
@@ -2883,6 +3028,471 @@
           "prNumbers": [
             1463
           ]
+        },
+        {
+          "id": "FLK-TEMPDIR",
+          "title": "Tests hinterlassen wieder temporäre Ordner; Quelle belegen und beheben (Nachfolger von KI-TMP #1036, 1953b010)",
+          "owner": "Root disponiert",
+          "dependsRaw": "Rotnachweis, welcher Test leckt",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Geplant",
+          "statusRaw": "Geplant: nicht disponiert (laut Root 15.10.)",
+          "acceptance": "Testlauf hinterlässt keinen neuen Ordner im Temp-Verzeichnis; Rot/Grün",
+          "tickets": [],
+          "prNumbers": []
+        },
+        {
+          "id": "V16-PATCH",
+          "title": "Patch-Releases nach v1.6.0",
+          "owner": "–",
+          "dependsRaw": "V16-RELEASE",
+          "dependsOn": [
+            "V16-RELEASE"
+          ],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: v1.6.1 #1063 (Tag `85dd8ef7`, 10.10.); v1.6.2 #1211 (Tag `9a91ca88`; Release-Lauf 38119801714 fehlgeschlagen, kein GitHub-Release, ersetzt durch v1.6.3); v1.6.3 #1244 (`af20a503`, 11.10.); v1.6.4 #1341 (`587cf97c`, 14.10.); v1.6.5 #1476 (`8dfb07a8`, Tag `6bd3ac87`, 15.10.); v1.6.6 #1528 (`a8b00911`, 15.10., Latest); weitere Patches bis v2.0 ausgesetzt (RELEASE-PAUSE)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1063,
+            1211,
+            1244,
+            1341,
+            1476,
+            1528
+          ]
+        },
+        {
+          "id": "V161",
+          "title": "v1.6.1-Welle: Review-/Guard-Härtung (V161-IGNORE bis FU-9), Neuigkeiten-Tab (CL-1/CL-2), Oberflächen-Tokens (V161-UI-*, TH1)",
+          "owner": "–",
+          "dependsRaw": "V16-RELEASE",
+          "dependsOn": [
+            "V16-RELEASE"
+          ],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 10.10.: 31 PRs #933, #934, #935, #936, #938, #940, #944, #945, #946, #948, #950, #953, #955, #958, #962, #964, #965, #970, #973, #974, #975, #976, #977, #978, #979, #980, #982, #986, #989, #991, #997 (Branches `*/v161-*`); Release-Bump #1063 (`85dd8ef7`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            933,
+            934,
+            935,
+            936,
+            938,
+            940,
+            944,
+            945,
+            946,
+            948,
+            950,
+            953,
+            955,
+            958,
+            962,
+            964,
+            965,
+            970,
+            973,
+            974,
+            975,
+            976,
+            977,
+            978,
+            979,
+            980,
+            982,
+            986,
+            989,
+            991,
+            997,
+            1063
+          ]
+        },
+        {
+          "id": "CI-SEC-01",
+          "title": "Keine Secrets in PR-Jobs, fail-closed-Wächter; REL-HARD-01: minimale Rechte und Herkunftsnachweis für release.yml",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 11.10.: #1171 (`9a41ce11`), #1208 (`117a1e3a`), #1231 (`5bc9a500`), #1172 (`36bee03c`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1171,
+            1208,
+            1231,
+            1172
+          ]
+        },
+        {
+          "id": "TOOL-GUARDS",
+          "title": "Claude-Hooks: Regelwächter (TOOL-RG-1), TDD-Regeln (TOOL-MP-1), Nahtwächter",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1147 (`20785579`), #1149 (`bbe91509`) 11.10.; #1361 (`59320781`) 14.10.",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1147,
+            1149,
+            1361
+          ]
+        },
+        {
+          "id": "LOOP-1",
+          "title": "Deterministische Ratschen, Brief-/PR-Linter, Render-Budgets, Abnahme-Vorprüfung",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 11.10.: #1251 (`ff64a86b`), #1252 (`9ee1e8c4`), #1255 (`2b53868c`), #1260 (`186d325c`), #1276 (`52960347`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1251,
+            1252,
+            1255,
+            1260,
+            1276
+          ]
+        },
+        {
+          "id": "DEV-BUILD-FEEDBACK",
+          "title": "Dev-Build trennt Daten, Build-Abzeichen, Fehler melden, Frontend-Absturzlog",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1214 (`f11beb51`), #1268 (`3cf4e9d3`), #1272 (`177a6360`), #1283 (`aa97112e`), #1287 (`6ac21980`) 11.10.; #1290 (`ec656b36`) 12.10.; #1292 (`5a3372de`), #1302 (`6e61f4c2`), #1306 (`8dcdf8bd`), #1311 (`acfdbc48`) 13.10.",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1214,
+            1268,
+            1272,
+            1283,
+            1287,
+            1290,
+            1292,
+            1302,
+            1306,
+            1311
+          ]
+        },
+        {
+          "id": "DR2-0",
+          "title": "Denkraum 2: kanonische Glass-Stile über eine URL",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1332 (merged 2026-10-13, `61fbd9ac`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1332
+          ]
+        },
+        {
+          "id": "DR2-1",
+          "title": "Denkraum 2: ruhiger Start und kompakte Entscheidungen",
+          "owner": "–",
+          "dependsRaw": "DR2-0",
+          "dependsOn": [
+            "DR2-0"
+          ],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1336 (merged 2026-10-14, `4b882f35`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1336
+          ]
+        },
+        {
+          "id": "DR2-2a",
+          "title": "Denkraum 2: versionierte Ideendialoge speichern",
+          "owner": "–",
+          "dependsRaw": "DR2-0",
+          "dependsOn": [
+            "DR2-0"
+          ],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1334 (merged 2026-10-14, `797edcb2`); Herkunft des DR2-Auftrags und weitere DR2-Pakete: Unbekannt (zu prüfen), vor weiterem Dispatch mit DN-03 bis DN-05 abgleichen",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1334
+          ]
+        },
+        {
+          "id": "AP-2",
+          "title": "WIP-Grenze, 48-h-Draft-Regel, review-ok-Besitz; PR-Flussmetriken",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1399 (`f240e956`), #1403 (`03183325`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1399,
+            1403
+          ]
+        },
+        {
+          "id": "AP-4a",
+          "title": "Windows-Tests in zwei nextest-Partitionen",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1410 (`69cefcaa`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1410
+          ]
+        },
+        {
+          "id": "AP-5",
+          "title": "Veraltete KNOWN_ISSUES-/deny.toml-Texte; veraltete PLAN-Statuszellen",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1401 (`8ed489ac`), #1439 (`33980373`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1401,
+            1439
+          ]
+        },
+        {
+          "id": "AP-6a",
+          "title": "Routing-Tabelle Aufgabentyp → Profil in AGENTS.md",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1424 (`2648f097`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1424
+          ]
+        },
+        {
+          "id": "AP-8",
+          "title": "Browser-Mock deckt alle IPC-Befehle; gemeinsamer Retry-Hook",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1402 (`c722c89c`), #1407 (`e6851aa8`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1402,
+            1407
+          ]
+        },
+        {
+          "id": "AP-9",
+          "title": "IPC-Befehlsnamen zwischen generate_handler! und Aufrufern abgleichen",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "invalid",
+          "statusRaw": "Teilweise erledigt: S0 #1413 (`032f1529`, 14.10.); weitere Schnitte: Unbekannt (zu prüfen)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1413
+          ]
+        },
+        {
+          "id": "AP-10",
+          "title": "Plan-Parser ohne Panik, Opener nur https, SAFETY-Kommentare, Begründung für ignorierte Tests",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1400 (`23c189f6`), #1404 (`d37841a6`), #1412 (`e2be4a51`), #1425 (`0a84cec1`), #1420 (`fb9db458`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1400,
+            1404,
+            1412,
+            1425,
+            1420
+          ]
+        },
+        {
+          "id": "AP-11",
+          "title": "Pool-Lasttest, block_on-Drift-Gate, Favicon/Formularnamen, Loopback-/VPN-Doku",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1411 (`53ad10e5`), #1414 (`ea649d2c`), #1416 (`e1e46938`), #1421 (`0d80708e`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1411,
+            1414,
+            1416,
+            1421
+          ]
+        },
+        {
+          "id": "UI-TEXTE-1014",
+          "title": "Backend-Fehler als Nutzertexte (UI-ERR-1), deutsche Ansichtsnamen (I18N-1)",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1417 (`b2f496bb`), #1419 (`4180d3ad`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1417,
+            1419
+          ]
+        },
+        {
+          "id": "CLEAN-1014",
+          "title": "Tote Skripte, veraltete dead_code-Allows und toten Markdown-Renderer entfernen",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 14.10.: #1428 (`9a753900`), #1433 (`cb02847d`), #1435 (`f6867c1d`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1428,
+            1433,
+            1435
+          ]
+        },
+        {
+          "id": "SLIM-TESTS",
+          "title": "Testmodule aus den vier Nähten auslagern, Verschiebung bytegleich beweisen (move-check)",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: move-check #1431 (`83d702a1`, 14.10.); SLIM-M1 #1451 (`20275b8d`), SLIM-S1 #1459 (`d96abfaa`), SLIM-A1 #1456 (`85a0c61e`), SLIM-P1 #1457 (`18ef908e`), 15.10.",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1431,
+            1451,
+            1459,
+            1456,
+            1457
+          ]
+        },
+        {
+          "id": "FLK-KI34",
+          "title": "TresorPanel-Flake unter Last (KI-34)",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: #1504 (`9c7a785d`, 15.10.); `KNOWN_ISSUES.md` KI-34",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1504
+          ]
+        },
+        {
+          "id": "FLK-KI35",
+          "title": "Native-Capture-Kapazitätstest reservierte Owner zu früh (KI-35); vollständiges Native-Test-Inventar; Windows-Dateinamen-Tests",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 15.10.: #1543 (`be305ef4`), #1554 (`a5f8c538`), #1545 (`3015d841`); `KNOWN_ISSUES.md` KI-35",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1543,
+            1554,
+            1545
+          ]
+        },
+        {
+          "id": "FIX-1015",
+          "title": "Einzel-Fixes 15.10.: Leitstand-Tabpfade und Fluss-Schaltertest, Quellaudit-Testausnahme, gleiche Lampe auf Karte und Flussknoten (FU-LAMP-PROOF)",
+          "owner": "–",
+          "dependsRaw": "–",
+          "dependsOn": [],
+          "place": "–",
+          "tier": "–",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt 15.10.: #1510 (`2e687b7b`), #1517 (`d173cd82`), #1535 (`000ed75b`)",
+          "acceptance": "–",
+          "tickets": [],
+          "prNumbers": [
+            1510,
+            1517,
+            1535
+          ]
         }
       ],
       "problems": [],
@@ -2891,13 +3501,13 @@
         "Bereit": 0,
         "In Arbeit": 0,
         "In Prüfung": 0,
-        "Erledigt": 10,
+        "Erledigt": 33,
         "Blockiert": 3,
-        "Verschoben": 9,
+        "Verschoben": 13,
         "Entfallen": 0,
-        "invalid": 5
+        "invalid": 2
       },
-      "total": 31
+      "total": 55
     }
   ],
   "milestones": [
@@ -5060,7 +5670,7 @@
       "badges": {
         "label": "new",
         "confidence": null,
-        "ageDays": 23,
+        "ageDays": 24,
         "votes": 0
       }
     },
