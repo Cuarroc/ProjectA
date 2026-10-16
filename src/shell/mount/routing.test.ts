@@ -3,6 +3,21 @@ import { describe, expect, it } from "vitest";
 import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, resolveAlias, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
 
 describe("retired path aliases (NAV-2a)", () => {
+  it("retired path with trailing slash resolves to /betrieb", () => {
+    expect(resolveAlias("/leitstand/betrieb/")).toBe("/betrieb");
+    expect(resolveAlias("/leitstand/fluss//")).toBe("/leitstand/fabrik");
+  });
+
+  it("retired path with a query string keeps the query and resolves to /betrieb", () => {
+    expect(resolveAlias("/leitstand/betrieb?x=1")).toBe("/betrieb?x=1");
+    expect(resolveAlias("/leitstand/betrieb/?x=1")).toBe("/betrieb?x=1");
+    expect(resolveAlias("/leitstand/terminal?worker=w1")).toBe("/leitstand/terminal?worker=w1");
+  });
+
+  it("the retired Betrieb path is no Leitstand route any more", () => {
+    expect(isNewLeitstand("/leitstand/betrieb")).toBe(false);
+  });
+
   it("retired leitstand betrieb path resolves to /betrieb", () => {
     expect(resolveAlias("/leitstand/betrieb")).toBe("/betrieb");
     expect(resolveAlias("/leitstand/fluss")).toBe("/leitstand/fabrik");
@@ -34,7 +49,7 @@ describe("goal and route mapping (ia.md section 4)", () => {
     for (const path of [undefined, "/leitstand/klassisch", "/leitstand/werkzeuge", "/leitstand/werkzeuge/", "/beweise/diff", "/einstellungen/klassisch"]) {
       expect(shouldMountLegacyTerminal(path)).toBe(true);
     }
-    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand/verlauf", "/leitstand/verlauf/", "/leitstand", "/leitstand/betrieb", "/steuerung", "/einstellungen", "/start", "/team"]) {
+    for (const path of ["/leitstand/terminal", "/leitstand/terminal/", "/leitstand/verlauf", "/leitstand/verlauf/", "/leitstand", "/steuerung", "/einstellungen", "/start", "/team"]) {
       expect(shouldMountLegacyTerminal(path)).toBe(false);
     }
   });
@@ -103,7 +118,6 @@ describe("goal and route mapping (ia.md section 4)", () => {
   it("gives the new Leitstand exactly /leitstand and leaves the rest to the old view", () => {
     expect(isNewLeitstand("/leitstand")).toBe(true);
     expect(isNewLeitstand("/leitstand/")).toBe(true);
-    expect(isNewLeitstand("/leitstand/betrieb")).toBe(true);
     expect(isNewLeitstand("/leitstand/klassisch")).toBe(false);
     expect(isNewLeitstand("/beweise")).toBe(false);
     expect(hasLegacyPanel("/leitstand/klassisch")).toBe(true);
