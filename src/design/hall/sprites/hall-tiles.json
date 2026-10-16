@@ -5,5 +5,12 @@
   "tile-belt-0": [48,0,16,16],
   "tile-return-0": [64,0,16,16],
   "tile-belt-turn-0": [80,0,16,16],
-  "tile-return-turn-0": [96,0,16,16]
+  "tile-return-turn-0": [96,0,16,16],
+  "station-plan-0": [112,0,16,16],
+  "station-build-0": [0,16,16,16],
+  "station-check-0": [16,16,16,16],
+  "station-ops-0": [32,16,16,16],
+  "gate-hall-0": [48,16,16,16],
+  "prop-tray-0": [64,16,16,16],
+  "prop-stamp-0": [80,16,16,16]
 }

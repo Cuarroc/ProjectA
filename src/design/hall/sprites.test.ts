@@ -99,6 +99,7 @@ it("the build reads token blocks without a space before the brace", () => {
   const tokens = css.replace(":root {", ":root{").replace(':root[data-theme="dark"] {', ':root[data-theme="dark"]\n{');
   const run = build({ "tiles/a.px.ts": tile("tile-a-0") }, tokens);
   expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
   expect(JSON.parse(readFileSync(join(run.root, "out", "hall-tiles.json"), "utf8"))).toEqual({ "tile-a-0": [0, 0, 16, 16] });
 });
 
@@ -106,6 +107,7 @@ it("the build creates a missing output directory", () => {
   const root = mkdtempSync(join(tmpdir(), "hall-out-"));
   const run = build({ "tiles/a.px.ts": tile("tile-a-0") }, css, ["--out", join(root, "a", "b")]);
   expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
   expect(existsSync(join(root, "a", "b", "hall-tiles-light.png"))).toBe(true);
 });
 
