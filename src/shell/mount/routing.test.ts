@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, resolveAlias, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+
+describe("retired path aliases (NAV-2a)", () => {
+  it("retired leitstand betrieb path resolves to /betrieb", () => {
+    expect(resolveAlias("/leitstand/betrieb")).toBe("/betrieb");
+    expect(resolveAlias("/leitstand/fluss")).toBe("/leitstand/fabrik");
+    for (const path of ["/betrieb", "/leitstand", "/leitstand/betrieb/unknown"]) expect(resolveAlias(path)).toBe(path);
+  });
+});
 
 describe("goal and route mapping (ia.md section 4)", () => {
   it("recognizes Verlauf query links without mounting a legacy viewer", () => {

@@ -8,7 +8,6 @@ import { createRunLog } from "../src/testing/e2e/runLog";
 const routes = [...new Set([
   ...ROUTES.flatMap((route) => [route.path, ...route.tabs.map((tab) => tab.path)]),
   ...Object.values(GOAL_ROUTE),
-  "/leitstand/betrieb",
   "/leitstand/klassisch",
   SETTINGS_CLASSIC_PATH,
 ])];

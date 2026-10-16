@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import App from "../App";
 
 /** Leitstand and Einstellungen as the browser shows them: the browser mock answers the IPC. */
-const SCREENS = ["/leitstand", "/leitstand/betrieb", "/leitstand/klassisch", "/einstellungen", "/einstellungen/mcp", "/einstellungen/klassisch"];
+const SCREENS = ["/leitstand", "/betrieb", "/leitstand/klassisch", "/einstellungen", "/einstellungen/mcp", "/einstellungen/klassisch"];
 
 const go = (path: string) => act(async () => { window.location.hash = path; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 
