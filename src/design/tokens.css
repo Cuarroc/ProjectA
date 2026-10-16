@@ -54,6 +54,7 @@
   --g-av4: #E6DDF4;
   --g-av5: #F3DCE4;
   --g-av6: #E0E5EB;
+  --g-px-skin: #A87050;
   --g-pad: 20px;
   --g-r-panel: 20px;
   --g-r-card: 14px;
@@ -160,6 +161,7 @@
     --g-av4: #33294A;
     --g-av5: #432936;
     --g-av6: #2B323C;
+    --g-px-skin: #A87050;
   }
 }
 
@@ -210,4 +212,5 @@
   --g-av4: #33294A;
   --g-av5: #432936;
   --g-av6: #2B323C;
+  --g-px-skin: #A87050;
 }
