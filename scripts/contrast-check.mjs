@@ -622,6 +622,8 @@ if (designDarkAt < 0) {
         const wash = color(vars, `${role}-bg`);
         check(mode, `${role} / ${role}-bg`, color(vars, role), wash.a < 1 ? over(wash, ground) : wash);
       }
+      // DS-H-03b: hall skin stays one colour; it needs 3:1 against the floor and the ink of the features.
+      for (const against of ["g-ground", "g-ink"]) check(mode, `g-px-skin / ${against}`, color(vars, "g-px-skin"), color(vars, against), 3);
       // Fabrik orb (fabrik.css): glyph on the fill, and the fill itself on glass (non-text).
       for (const role of [...stateRoles, "g-muted"]) {
         const on = role === "g-need" ? "g-on-need" : "g-on-accent";
