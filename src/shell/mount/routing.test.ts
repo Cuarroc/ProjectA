@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, resolveAlias, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+import { GALLERY_PATH, GOAL_ROUTE, goalForPath, hasLegacyPanel, hashForGoal, isGallery, resolveAlias, shouldMountLegacyTerminal, isTerminal, isVerlauf, isNewEinstellungen, isNewLeitstand, isNewSteuerung } from "./routing";
+import { ROUTES, resolveRoute } from "../routes";
 
 describe("retired path aliases (NAV-2a)", () => {
   it("retired path with trailing slash resolves to /betrieb", () => {
@@ -139,5 +140,15 @@ describe("new Einstellungen route (V2-S10a)", () => {
     expect(isNewEinstellungen("/einstellungen/klassisch")).toBe(false);
     expect(isNewEinstellungen("/einstellungen/mcp")).toBe(false);
     expect(hasLegacyPanel("/einstellungen/klassisch")).toBe(true);
+  });
+});
+
+describe("design gallery route (DS-X-15)", () => {
+  it("the gallery route is not in the sidebar or the palette", () => {
+    expect(isGallery(GALLERY_PATH)).toBe(true);
+    expect(isGallery(`${GALLERY_PATH}/`)).toBe(true);
+    expect(resolveRoute(GALLERY_PATH)).toBeNull();
+    expect(ROUTES.some((route) => route.base === GALLERY_PATH)).toBe(false);
+    expect(shouldMountLegacyTerminal(GALLERY_PATH)).toBe(false);
   });
 });

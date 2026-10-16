@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import type { AppGoal } from "../../lib/goals";
@@ -10,9 +10,12 @@ import VerlaufRoute from "../../screens/leitstand/verlauf/VerlaufRoute";
 import BetriebRoute from "../../screens/betrieb/BetriebRoute";
 import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
 import { EinstellungenScreen } from "../../screens/einstellungen/EinstellungenScreen";
-import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isBetrieb, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf, resolveAlias } from "./routing";
+import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isBetrieb, isGallery, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf, resolveAlias } from "./routing";
 import SteuerungRoute from "./SteuerungRoute";
 import "./mount.css";
+
+// DS-X-15 (D6): the design gallery is its own chunk, loaded only when opened.
+const Gallery = lazy(() => import("../../design/gallery/Gallery").then((m) => ({ default: m.Gallery })));
 
 export interface LegacyRouteProps {
   routePath: string;
@@ -70,7 +73,8 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const freshSettings = isNewEinstellungen(path);
   const terminal = isTerminal(path);
   const verlauf = isVerlauf(path);
-  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || terminal || verlauf;
+  const gallery = isGallery(path);
+  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || terminal || verlauf || gallery;
   const legacy = hasLegacyPanel(path) && !fresh;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
@@ -85,6 +89,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {start ? <StartRoute /> : null}
               {betrieb ? <BetriebRoute /> : null}
               {freshSettings ? <EinstellungenScreen onOpenClassic={openClassicSettings} /> : null}
+              {gallery ? <Suspense fallback={null}><Gallery /></Suspense> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
                 {children({ routePath: path, onGoalRoute })}
