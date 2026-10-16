@@ -278,8 +278,14 @@ it("shows a blocked lamp on a done card while proof is missing", () => {
 
 it("shows the same lamp as the flow node on a done card with a passed test", () => {
   render(<AgentCard card={{ ...card("running"), column: "done", testStatus: "pass" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
-  expect(screen.getByRole("img", { name: "Fertig" })).not.toHaveClass("g-lamp--bad");
+  expect(screen.getByRole("img", { name: "Test bestanden" })).not.toHaveClass("g-lamp--bad");
   expect(screen.queryByRole("img", { name: "ohne Beweis" })).toBeNull();
+});
+
+it("a card of an unknown column shows no running lamp", () => {
+  render(<AgentCard card={{ ...card("running"), column: "parked" as BoardCard["column"] }} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(screen.queryByRole("img", { name: "Läuft" })).toBeNull();
+  expect(screen.getByRole("img", { name: "Unbekannt" })).toHaveClass("g-lamp--unknown");
 });
 
 it("shows the proof strip with its four badges on the card", () => {
