@@ -13,18 +13,23 @@ import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
 import { HeaderTools, StopBand } from "./header";
 import { ProjectPicker } from "./header/ProjectPicker";
-import { DEFAULT_PATH, isHidden, pathFromHash, resolveRoute, visibleRoutes, type ShellRoute } from "./routes";
+import { AREAS, DEFAULT_PATH, isHidden, pathFromHash, resolveRoute, visibleRoutes, type ShellRoute } from "./routes";
 import { applyStoredGlassTheme } from "./theme";
 import "./shell.css";
 
 function Sidebar({ active }: { active: ShellRoute | null }) {
   const t = useT();
-  const link = (r: ShellRoute) => (
-    <a key={r.id} href={`#${r.path}`} className="g-shell-link" aria-current={r === active ? "page" : undefined}>
-      <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d={r.icon ?? ""} /></svg>{r.label}
+  const routes = visibleRoutes();
+  // One link per area with a visible route; it opens the first one and is current on every member route.
+  const entries = AREAS.flatMap((area) => {
+    const first = routes.find((r) => r.area === area.id);
+    return first ? [{ area, first }] : [];
+  });
+  const link = ({ area, first }: (typeof entries)[number]) => (
+    <a key={area.id} href={`#${first.path}`} className="g-shell-link" aria-current={active?.area === area.id ? "page" : undefined}>
+      <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d={first.icon ?? ""} /></svg>{t(area.label)}
     </a>
   );
-  const entries = visibleRoutes().filter((r) => r.icon !== null);
   return (
     <nav className="g-shell-side g-chrome" aria-label={t("nav.aria")}>
       <div className="g-shell-brand"><b>{t("shell.brand")}</b><small>2.0</small></div>
