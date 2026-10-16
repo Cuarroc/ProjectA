@@ -28,6 +28,11 @@ it("falls back to the unknown orb for a missing or newer form", () => {
   }
 });
 
+it("names the orb with the label verbatim", () => {
+  render(<Orb state="run" label="Agent $& {state}" />);
+  expect(screen.getByRole("img", { name: `Agent $& {state}, ${STATE_WORDS.run}` })).toBeInTheDocument();
+});
+
 it("fabrik.css fills each orb from its state token and uses tokens only without blur", () => {
   for (const form of STATE_FORMS) expect(css).toMatch(new RegExp(`\\.g-orb--${form}\\s*\\{[^}]*--c:\\s*var\\(--g-${form}\\)`));
   expect(css).toMatch(/\.g-orb--unknown\s*\{[^}]*--c:\s*var\(--g-muted\)/);

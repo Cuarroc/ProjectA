@@ -86,6 +86,7 @@ export const de = {
   "state.done": "Erledigt",
   "state.bad": "Fehler",
   "state.unknown": "Unbekannt",
+  "fabrik.orbName": "{label}, {state}",
   "theme.light": "Hell",
   "theme.dark": "Dunkel",
   "theme.system": "System",
