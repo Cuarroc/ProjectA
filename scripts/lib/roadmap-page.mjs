@@ -18,7 +18,7 @@ const dl = (rows) => `<dl class="facts">${rows.map(([k, v]) => `<dt>${k}</dt><dd
 const sec = (id, title, body) => `<section class="panel" id="${id}" aria-labelledby="${id}-h"><h2 id="${id}-h">${title}</h2>${body}</section>`;
 const todo = (what) => `<p class="note">noch nicht verbunden: ${what} wurde nicht übergeben. Das heißt nicht, dass alles in Ordnung ist.</p>`;
 // First `max` items inline, the rest behind a native details element: nothing is dropped.
-const more = (items, max, html) => items.slice(0, max).map(html).join("") + (items.length > max ? `<li><details><summary>weitere ${items.length - max} anzeigen</summary><ul>${items.slice(max).map(html).join("")}</ul></details></li>` : "");
+const more = (items, max, html) => items.slice(0, max).map(html).join("") + (items.length > max ? `<li><details class="more"><summary>weitere ${items.length - max} anzeigen</summary><ul>${items.slice(max).map(html).join("")}</ul></details></li>` : "");
 const list = (items, max, html, empty) => (items.length ? `<ul>${more(items, max, html)}</ul>` : `<p class="note">${empty}</p>`);
 const src = (s) => (s?.line == null ? `${t(s?.file)} (Zeile unbekannt)` : `${t(s.file)}:${t(s.line)}`);
 const hasForecast = (f) => f && typeof f === "object" && Number.isFinite(f.fromDays) && Number.isFinite(f.toDays);
@@ -30,6 +30,13 @@ ask("theme").onchange = (e) => (e.target.value ? (root.dataset.theme = e.target.
 ask("dir").onchange = (e) => {
   document.querySelectorAll("[data-dir]").forEach((el) => { el.hidden = Boolean(e.target.value) && el.dataset.dir !== e.target.value; });
   if (e.target.value) document.querySelectorAll(".rest").forEach((el) => { el.open = true; });
+  document.querySelectorAll(".more").forEach((el) => {
+    if (!el.querySelector("[data-dir]")) return;
+    const hits = el.querySelectorAll(":scope > ul > li:not([hidden])").length;
+    el.parentElement.hidden = !hits;
+    el.open = Boolean(e.target.value) && hits > 0;
+    el.firstElementChild.textContent = "weitere " + hits + " anzeigen";
+  });
 };`;
 const CSS = `
 *{box-sizing:border-box}
@@ -73,10 +80,12 @@ export function renderRoadmap(data, options = {}) {
   const stand = data.stand ?? {}, head = data.head ?? {}, packages = arr(data.packages), directions = arr(data.directions);
   const byId = new Map(packages.map((p) => [p.id, p]));
 
+  // A missing or unparsable options.now falls back to the real clock: the staleness warning must never switch itself off.
+  const given = new Date(now ?? Date.now()).getTime(), clock = Number.isFinite(given) ? given : Date.now();
   const known = Number.isFinite(Date.parse(stand.generatedAt)), trusted = known && packages.length > 0;
   const banner = !packages.length ? "Der Plan kam leer oder nicht lesbar an. Die Zahlen sind kein Beleg."
     : !known ? "Der Zeitpunkt des Stands ist unbekannt. Die Zahlen können überholt sein."
-    : new Date(now).getTime() - Date.parse(stand.generatedAt) > STALE_MS ? "Stand veraltet: älter als 12 Stunden. Die Zahlen können überholt sein." : "";
+    : clock - Date.parse(stand.generatedAt) > STALE_MS ? "Stand veraltet: älter als 12 Stunden. Die Zahlen können überholt sein." : "";
   const version = trusted && head.nextVersion && head.nextVersion !== UNKNOWN;
   const sentence = !packages.length ? "Ohne lesbaren Plan gibt es keine Aussage zur Roadmap."
     : `${version ? `Die nächste Version ist ${t(head.nextVersion)}` : "Die nächste Version ist noch unbekannt"}. ${directions.some((d) => hasForecast(d.forecast)) ? "Prognosen stehen je Richtung weiter unten, sie sind keine Zusage." : "Ein Datum gibt es noch nicht: zu wenig Daten für eine Prognose."}`;
