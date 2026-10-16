@@ -193,6 +193,8 @@ it("a quota state the app does not know shows the unknown lamp and word", async 
   feed([provider("later", "Neuer Zustand", { quotaState: "paused" as never })]);
   render(<KontingenteScreen />);
   const article = await screen.findByRole("article", { name: "Neuer Zustand" });
+  // While the quota read is pending (or failed) the card shows "unknown" anyway; assert only the loaded state.
+  await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
   expect(within(article).getByText("Unbekannt")).toBeInTheDocument();
   expect(article.querySelector(".kt-head .g-lamp")).toHaveClass("g-lamp--unknown");
 });
