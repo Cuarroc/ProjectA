@@ -21,23 +21,31 @@ function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
 
-function Groups() {
-  const [theme, setTheme] = useState<GlassTheme>(loadGlassTheme);
-  const [variant, setVariant] = useGlassVariant();
+function MotionGroup() {
   const { mode, system } = useMotion();
-  const change = (next: GlassTheme) => { setTheme(next); saveGlassTheme(next); };
   return (
     <>
-      <Segmented aria-label={THEME_LABEL} options={GLASS_THEME_OPTIONS} value={theme} onChange={change} />
-      <Segmented aria-label={STYLE_LABEL} options={VARIANT_OPTIONS} value={variant} onChange={setVariant} />
       <Segmented aria-label={MOTION_LABEL} options={MOTION_OPTIONS} value={mode} onChange={saveMotionMode} />
       {system ? <small className="g-app-note">{MOTION_SYSTEM_HINT}</small> : null}
     </>
   );
 }
 
+function Groups({ motion }: { motion: boolean }) {
+  const [theme, setTheme] = useState<GlassTheme>(loadGlassTheme);
+  const [variant, setVariant] = useGlassVariant();
+  const change = (next: GlassTheme) => { setTheme(next); saveGlassTheme(next); };
+  return (
+    <>
+      <Segmented aria-label={THEME_LABEL} options={GLASS_THEME_OPTIONS} value={theme} onChange={change} />
+      <Segmented aria-label={STYLE_LABEL} options={VARIANT_OPTIONS} value={variant} onChange={setVariant} />
+      {motion ? <MotionGroup /> : null}
+    </>
+  );
+}
+
 /** One "Darstellung" button that opens the groups in a panel; Escape or a click outside closes it. */
-function CompactMenu() {
+function CompactMenu({ motion }: { motion: boolean }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -58,12 +66,13 @@ function CompactMenu() {
       <button ref={button} type="button" className="g-app-menu__btn" aria-expanded={open} onClick={() => setOpen(!open)}>
         {t("shell.appearance")}
       </button>
-      {open ? <div className="g-app-menu__panel"><Groups /></div> : null}
+      {open ? <div className="g-app-menu__panel"><Groups motion={motion} /></div> : null}
     </div>
   );
 }
 
-/** Hell / Dunkel / System, the glass style (Glas / Klar / Nebel / Abend), then the motion (Ruhig / Lebendig / Aus); one menu button when space is short. */
-export function AppearanceControl(_props: { motion?: boolean }) { // RED STUB: the prop is wired in the next commit
-  return useMediaQuery(COMPACT_QUERY) ? <CompactMenu /> : <Groups />;
+/** Hell / Dunkel / System, the glass style (Glas / Klar / Nebel / Abend), then the motion (Ruhig / Lebendig / Aus); one menu button when space is short.
+ *  The header passes `motion={false}`: a third group costs the search its label (measured 1600-1800 px); the motion group lives in Einstellungen. */
+export function AppearanceControl({ motion = true }: { motion?: boolean }) {
+  return useMediaQuery(COMPACT_QUERY) ? <CompactMenu motion={motion} /> : <Groups motion={motion} />;
 }

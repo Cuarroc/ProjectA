@@ -75,7 +75,7 @@ export function Shell() {
         <header className="g-shell-top g-chrome">
           <ProjectPicker />
           <HeaderTools />
-          <AppearanceControl />
+          <AppearanceControl motion={false} />
           <span className="g-shell-divider" aria-hidden="true" />
           <div className="g-shell-estop"><EmergencyStop /></div>
         </header>
