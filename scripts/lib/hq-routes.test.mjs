@@ -438,3 +438,22 @@ test("/__hq/insights estimates whole-project time and tokens with a stated basis
   const offline = JSON.parse((await post("/__hq/insights", { apiOffline: true, setup: { ready: false, summary: "x" } }, headers, port)).body);
   assert.match(offline.signals[0].title, /app not connected/);
 });
+
+test("serves the roadmap page at /roadmap.html and a plain notice when it is missing", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "hq-roadmap-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const page = join(dir, "roadmap.html");
+  const missing = spawnHq(dir, { HQ_ROADMAP_FILE: page });
+  t.after(() => missing.child.kill());
+  const absent = await get("/roadmap.html", {}, await missing.port);
+  assert.equal(absent.status, 404);
+  assert.match(absent.body, /noch nicht erzeugt/);
+  assert.match(absent.body, /npm run roadmap:page/);
+  writeFileSync(page, "<!doctype html><title>Roadmap probe</title>");
+  const found = await get("/roadmap.html?x=1", {}, await missing.port);
+  assert.equal(found.status, 200);
+  assert.match(found.body, /<title>Roadmap probe<\/title>/);
+  // Only that one file: no traversal below the route, and the host allowlist still applies.
+  assert.equal((await get("/roadmap.html/../../package.json", {}, await missing.port)).status, 404);
+  assert.equal((await get("/roadmap.html", { host: "evil.example" }, await missing.port)).status, 403);
+});
