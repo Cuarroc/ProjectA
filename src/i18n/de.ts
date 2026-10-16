@@ -124,6 +124,8 @@ export const de = {
   "leitstand.retry": "Erneut lesen",
   "leitstand.refreshFailed": "Aktualisierung fehlgeschlagen",
   "leitstand.noProjectHintMain": "Wähle oben ein Projekt, dann erscheinen hier seine Agenten.",
+  "leitstand.addProject": "Projekt anlegen",
+  "leitstand.queueTask": "Auftrag einreihen",
   "leitstand.proofTitle": "Beweis nicht verbunden",
   "leitstand.modelReported": "{model} · gemeldet vom Agenten",
   "leitstand.taskShowAll": "Ganzen Auftrag zeigen",
