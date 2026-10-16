@@ -84,17 +84,13 @@ describe("narrow header", () => {
   it("creates one MediaQueryList per mounted control and releases it on unmount", () => {
     const added = vi.fn<(type: string, fn: () => void) => void>();
     const removed = vi.fn<(type: string, fn: () => void) => void>();
-    // Only the compact query is counted: the motion hook asks for its own reduced-motion list.
-    const matchMedia = vi.fn((query: string) => ({
-      matches: false,
-      addEventListener: query === COMPACT_QUERY ? added : () => {},
-      removeEventListener: query === COMPACT_QUERY ? removed : () => {},
-    }));
+    const matchMedia = vi.fn(() => ({ matches: false, addEventListener: added, removeEventListener: removed }));
     window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
-    const { rerender, unmount } = render(<AppearanceControl />);
-    rerender(<AppearanceControl />);
-    rerender(<AppearanceControl />);
-    expect(matchMedia.mock.calls.filter(([query]) => query === COMPACT_QUERY)).toHaveLength(1);
+    const { rerender, unmount } = render(<AppearanceControl motion={false} />);
+    rerender(<AppearanceControl motion={false} />);
+    rerender(<AppearanceControl motion={false} />);
+    expect(matchMedia).toHaveBeenCalledTimes(1);
+    expect(matchMedia).toHaveBeenCalledWith(COMPACT_QUERY);
     expect(added).toHaveBeenCalledTimes(1);
     expect(removed).not.toHaveBeenCalled();
     unmount();

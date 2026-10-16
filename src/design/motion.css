@@ -21,34 +21,18 @@
   --g-move-1: 4px;
   --g-move-2: 8px;
   --g-move-3: 16px;
-  /* Mode tokens (calm = Ruhig, the default). DS-X-03 sets them per mode below; consumers follow in DS-X-12/24;
-     current g-rise remains 8px. */
+  /* Mode tokens (calm = Ruhig); set per mode below, consumers follow in DS-X-12/24. g-rise stays 8px for now. */
   --g-enter-dist: var(--g-move-1);
   --g-stagger: 0ms;
   --g-ambient-play: paused;
   --g-orb-trail: 0;
 }
 
-/* Motion mode: <html data-motion="lively|off">, absent = Ruhig (src/design/motion/motionMode.ts). */
-:root[data-motion="lively"] {
-  --g-ambient-play: running;
-  --g-orb-trail: 1;
-  --g-enter-dist: var(--g-move-2);
-  --g-stagger: 28ms;
-}
-
-/* Aus: calm already pauses ambient and has no stagger or trail; the rest comes to rest here. */
-:root[data-motion="off"] {
-  --g-enter-dist: 0px;
-  --g-press-scale: 1;
-}
-
-:root[data-motion="off"] *,
-:root[data-motion="off"] *::before,
-:root[data-motion="off"] *::after {
-  animation: none !important;
-  transition-duration: 0ms !important;
-  transition-delay: 0ms !important;
+/* <html data-motion="lively|off">, absent = Ruhig (motion/motionMode.ts). Aus: calm already pauses ambient, no stagger or trail. */
+:root[data-motion="lively"] { --g-ambient-play: running; --g-orb-trail: 1; --g-enter-dist: var(--g-move-2); --g-stagger: 28ms; }
+:root[data-motion="off"] { --g-enter-dist: 0px; --g-press-scale: 1; }
+:root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {
+  animation: none !important; transition-duration: 0ms !important; transition-delay: 0ms !important;
 }
 
 @keyframes g-enter {
@@ -142,14 +126,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The OS always wins over data-motion: three :root outrank the attribute selector above. */
-  :root:root:root {
-    --g-press-scale: 1;
-    --g-ambient-play: paused;
-    --g-orb-trail: 0;
-    --g-enter-dist: 0px;
-    --g-stagger: 0ms;
-  }
+  /* The OS wins over data-motion: three :root outrank :root plus an attribute. */
+  :root:root:root { --g-press-scale: 1; --g-ambient-play: paused; --g-orb-trail: 0; --g-enter-dist: 0px; --g-stagger: 0ms; }
 
   /* Portal roots carry data-g-portal (sheets/toasts outside the shell). */
   .g-stagger > *,

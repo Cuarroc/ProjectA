@@ -26,7 +26,7 @@ function MotionGroup() {
   return (
     <>
       <Segmented aria-label={MOTION_LABEL} options={MOTION_OPTIONS} value={mode} onChange={saveMotionMode} />
-      {system ? <small className="g-app-note">{MOTION_SYSTEM_HINT}</small> : null}
+      {system ? <small className="g-shell-note">{MOTION_SYSTEM_HINT}</small> : null}
     </>
   );
 }
@@ -71,8 +71,8 @@ function CompactMenu({ motion }: { motion: boolean }) {
   );
 }
 
-/** Hell / Dunkel / System, the glass style (Glas / Klar / Nebel / Abend), then the motion (Ruhig / Lebendig / Aus); one menu button when space is short.
- *  The header passes `motion={false}`: a third group costs the search its label (measured 1600-1800 px); the motion group lives in Einstellungen. */
+/** Hell / Dunkel / System, then the glass style (Glas / Klar / Nebel / Abend), then the motion; one menu button when space is short.
+ *  The header passes `motion={false}`: a third group costs the search its label (measured 1600-1800 px). */
 export function AppearanceControl({ motion = true }: { motion?: boolean }) {
   return useMediaQuery(COMPACT_QUERY) ? <CompactMenu motion={motion} /> : <Groups motion={motion} />;
 }

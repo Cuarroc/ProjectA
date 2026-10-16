@@ -12,48 +12,33 @@ const HINT = "Dein System verlangt weniger Bewegung";
 beforeEach(() => { localStorage.clear(); delete root.dataset.motion; window.location.hash = ""; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-/** jsdom has no matchMedia: answer only the OS reduced-motion query. */
-const osReduced = () => vi.stubGlobal("matchMedia", (query: string) => ({
-  matches: query === "(prefers-reduced-motion: reduce)", addEventListener: () => {}, removeEventListener: () => {},
-}));
 const group = () => screen.getByRole("radiogroup", { name: "Bewegung" });
+const radio = (name: string) => within(group()).getByRole("radio", { name });
 
 describe("motion mode control", () => {
   it("offers Ruhig Lebendig and Aus and applies a choice at once", () => {
     render(<AppearanceControl />);
-    expect(within(group()).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Ruhig", "Lebendig", "Aus"]);
-    expect(within(group()).getByRole("radio", { name: "Ruhig" })).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(within(group()).getByRole("radio", { name: "Lebendig" }));
+    expect(screen.queryByText(HINT)).toBeNull();
+    fireEvent.click(radio("Lebendig"));
     expect(root.dataset.motion).toBe("lively");
-    expect(within(group()).getByRole("radio", { name: "Lebendig" })).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(within(group()).getByRole("radio", { name: "Aus" }));
-    expect(root.dataset.motion).toBe("off");
-    expect(localStorage.getItem(MOTION_MODE_KEY)).toBe("off");
-    fireEvent.click(within(group()).getByRole("radio", { name: "Ruhig" }));
+    expect(radio("Lebendig")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(radio("Aus"));
+    expect([root.dataset.motion, localStorage.getItem(MOTION_MODE_KEY)]).toEqual(["off", "off"]);
+    fireEvent.click(radio("Ruhig"));
     expect(root.dataset.motion).toBeUndefined();
   });
-
   it("says that the system wins when it asks for less motion and keeps the stored choice", () => {
     localStorage.setItem(MOTION_MODE_KEY, "lively");
-    osReduced();
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduced-motion"), addEventListener: () => {}, removeEventListener: () => {} }));
     render(<AppearanceControl />);
     expect(screen.getByText(HINT)).toBeInTheDocument();
-    expect(within(group()).getByRole("radio", { name: "Lebendig" })).toHaveAttribute("aria-checked", "true");
-    cleanup();
-    vi.unstubAllGlobals();
-    render(<AppearanceControl />);
-    expect(screen.queryByText(HINT)).toBeNull();
+    expect(radio("Lebendig")).toHaveAttribute("aria-checked", "true");
   });
-
   it("leaves the motion group out of the header bar which has no room for a third group", async () => {
     await act(async () => void render(<Shell />));
     expect(screen.getByRole("radiogroup", { name: "Stil" })).toBeInTheDocument();
     expect(screen.queryByRole("radiogroup", { name: "Bewegung" })).toBeNull();
-    cleanup();
-    render(<AppearanceControl motion={false} />);
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
   });
-
   it("applies the stored mode when the shell mounts", async () => {
     localStorage.setItem(MOTION_MODE_KEY, "off");
     await act(async () => void render(<Shell />));

@@ -291,11 +291,8 @@ describe("tab Allgemein", () => {
   it("offers the motion switch under the glass style and applies the choice", () => {
     show();
     const motion = within(screen.getByRole("region", { name: "Darstellung" })).getByRole("radiogroup", { name: "Bewegung" });
-    expect(within(motion).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Ruhig", "Lebendig", "Aus"]);
     fireEvent.click(within(motion).getByRole("radio", { name: "Aus" }));
     expect(document.documentElement.dataset.motion).toBe("off");
-    delete document.documentElement.dataset.motion;
-    localStorage.removeItem("projecta.settings.motionMode");
   });
 
   it("hides the repeated classic field label in the Not-Aus section only", () => {

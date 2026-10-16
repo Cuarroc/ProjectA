@@ -16,7 +16,6 @@ export const VARIANT_LABELS: Record<GlassVariant, string> = {
 export const MOTION_LABEL = "Bewegung";
 export const MOTION_LABELS: Record<MotionMode, string> = { calm: "Ruhig", lively: "Lebendig", off: "Aus" };
 export const MOTION_SYSTEM_HINT = "Dein System verlangt weniger Bewegung";
-
 export const PICK_TEXT = {
   choose: "Projekt wählen",
   label: (action: string, name: string) => `${action}: ${name}`,

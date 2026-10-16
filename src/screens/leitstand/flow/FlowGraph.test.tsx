@@ -1,5 +1,5 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MOTION_MODE_KEY } from "../../../design/motion/motionMode";
 import type { Worker } from "../../../types";
@@ -39,8 +39,7 @@ function reducedMotion(matches: boolean) {
   }));
 }
 
-beforeEach(() => localStorage.clear());
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
 describe("FlowGraph", () => {
   it("shows the task and the branch of each agent on its node", () => {
@@ -73,14 +72,12 @@ describe("FlowGraph", () => {
 
   it("animates edges only in lively and not in calm or off", () => {
     reducedMotion(false);
-    const moving = () => setup([worker("p", null), worker("c", "p")]).container.querySelector(".fl-edge--moving");
-    expect(moving()).toBeNull();
-    cleanup();
-    localStorage.setItem(MOTION_MODE_KEY, "lively");
-    expect(moving()).not.toBeNull();
-    cleanup();
-    localStorage.setItem(MOTION_MODE_KEY, "off");
-    expect(moving()).toBeNull();
+    for (const [mode, moving] of [["calm", false], ["lively", true], ["off", false]] as const) {
+      localStorage.setItem(MOTION_MODE_KEY, mode);
+      const { container, unmount } = setup([worker("p", null), worker("c", "p")]);
+      expect(container.querySelector(".fl-edge--moving") !== null, mode).toBe(moving);
+      unmount();
+    }
   });
 
   it("replaces only the node interior when renderNode is passed", () => {
