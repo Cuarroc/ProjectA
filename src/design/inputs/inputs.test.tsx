@@ -99,7 +99,7 @@ describe("Kbd, Avatar and Lamp", () => {
   });
 
   it("keeps a labelled lamp named and a decorative lamp hidden whatever the caller passes", () => {
-    render(<><Lamp label="Online" aria-hidden role="presentation" /><Lamp aria-label="loud" role="img" data-testid="deco" /></>);
+    render(<><Lamp state="ok" label="Online" aria-hidden role="presentation" /><Lamp state="ok" aria-label="loud" role="img" data-testid="deco" /></>);
     expect(screen.getByRole("img", { name: "Online" })).not.toHaveAttribute("aria-hidden");
     const deco = screen.getByTestId("deco");
     expect(deco).toHaveAttribute("aria-hidden", "true");
@@ -114,7 +114,7 @@ describe("Kbd, Avatar and Lamp", () => {
     expect(rule(".g-lamp--warn")).toMatch(/rotate\(45deg\)/);
     expect(rule(".g-lamp--busy")).toMatch(/border:\s*2px solid[^;]*;\s*border-right-color:\s*transparent/);
     expect(rule(".g-lamp--bad")).toMatch(/clip-path:\s*polygon/);
-    expect(render(<Lamp />).container.firstElementChild).toHaveAttribute("aria-hidden", "true");
+    expect(render(<Lamp state="ok" />).container.firstElementChild).toHaveAttribute("aria-hidden", "true");
   });
 });
 
@@ -127,8 +127,16 @@ describe("Meter", () => {
     expect(m.firstElementChild).toHaveClass("g-meter--hot");
     rerender(<Meter aria-label="Quota" value={180} />);
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "100");
-    rerender(<Meter aria-label="Quota" value={Number.NaN} />);
-    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  it("meter without a measurement has no value now", () => {
+    for (const value of [null, Number.NaN]) {
+      const { container, unmount } = render(<Meter aria-label="Quota unknown" value={value as number} tone="hot" />);
+      expect(screen.queryByRole("meter")).toBeNull();
+      expect(container.querySelector("[aria-valuenow]")).toBeNull();
+      expect(screen.getByRole("img", { name: "Quota unknown" }).firstElementChild).toBeNull();
+      unmount();
+    }
   });
 });
 

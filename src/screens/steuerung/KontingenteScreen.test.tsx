@@ -189,6 +189,14 @@ it("groups all unknown quota windows into one readable note", async () => {
   expect(note).not.toHaveTextContent(/0\s*%/);
 });
 
+it("a quota state the app does not know shows the unknown lamp and word", async () => {
+  feed([provider("later", "Neuer Zustand", { quotaState: "paused" as never })]);
+  render(<KontingenteScreen />);
+  const article = await screen.findByRole("article", { name: "Neuer Zustand" });
+  expect(within(article).getByText("Unbekannt")).toBeInTheDocument();
+  expect(article.querySelector(".kt-head .g-lamp")).toHaveClass("g-lamp--unknown");
+});
+
 it("keeps measured quota windows and names only the missing windows", async () => {
   feed([provider("zero", "Gemessene Null", { usage: usage("5-Stunden-Fenster", 0) })]);
   render(<KontingenteScreen />);
