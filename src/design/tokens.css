@@ -60,6 +60,56 @@
   --g-r-ctl: 10px;
   --g-font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --g-font-mono: "Geist Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* DS-X-02 scales. Additive and theme independent, so the dark blocks stay as
+     they are. Use them as `font: var(--g-t-body)`, `gap: var(--g-space-4)`,
+     `outline: var(--g-focus)`. Media widths cannot be tokens: see breakpoints.ts. */
+  --g-t-display: 600 28px/1.1 var(--g-font-sans);
+  --g-t-title: 600 20px/1.3 var(--g-font-sans);
+  --g-t-heading: 600 15px/1.3 var(--g-font-sans);
+  --g-t-subheading: 600 13px/1.3 var(--g-font-sans);
+  --g-t-body: 400 13px/1.5 var(--g-font-sans);
+  --g-t-label: 500 12px/1.3 var(--g-font-sans);
+  --g-t-note: 400 12px/1.45 var(--g-font-sans);
+  --g-t-micro: 500 11px/1.3 var(--g-font-sans);
+  --g-t-code: 400 12px/1.5 var(--g-font-mono);
+  --g-track-display: -0.01em;
+  --g-track-eyebrow: 0.06em;
+  /* Same numbering as the classic --space-N. */
+  --g-space-1: 2px;
+  --g-space-2: 4px;
+  --g-space-3: 6px;
+  --g-space-4: 8px;
+  --g-space-5: 10px;
+  --g-space-6: 12px;
+  --g-space-7: 16px;
+  --g-space-8: 24px;
+  --g-space-9: 32px;
+  --g-space-10: 40px;
+  /* Radius ladder; --g-r-ctl, --g-r-card and --g-r-panel are declared above. */
+  --g-r-xs: 4px;
+  --g-r-sm: 6px;
+  --g-r-md: 8px;
+  --g-r-lg: 12px;
+  --g-r-sheet: 24px;
+  --g-r-pill: 999px;
+  /* Control heights. */
+  --g-h-chip: 24px;
+  --g-h-sm: 32px;
+  --g-h-md: 36px;
+  --g-h-field: 40px;
+  --g-h-lg: 44px;
+  /* Layers; scrim and toast equal the literals in layout.css. */
+  --g-z-sticky: 2;
+  --g-z-popover: 10;
+  --g-z-scrim: 50;
+  --g-z-toast: 60;
+  --g-z-tooltip: 70;
+  /* The ring base.css draws on :focus-visible. */
+  --g-focus: 2px solid var(--g-accent);
+  --g-focus-offset: 2px;
+  --g-elev-1: var(--g-spec), var(--g-shadow);
+  --g-elev-2: var(--g-spec), var(--g-shadow-pop);
 }
 
 @media (prefers-color-scheme: dark) {

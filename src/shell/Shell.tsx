@@ -8,6 +8,7 @@ import "../design/motion.css";
 import "../design/variants/variants.css";
 import "../design/controls/controls.css";
 import { useT } from "../i18n/useT";
+import { applyStoredMotionMode } from "../design/motion/motionMode";
 import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
 import { HeaderTools, StopBand } from "./header";
@@ -56,7 +57,7 @@ function Placeholder({ path }: { path: string }) {
 /** Glass shell frame (V2-F8a). Palette, quota bar, bell and stop band: `header/` (V2-F8b). */
 export function Shell() {
   const [path, setPath] = useState(() => pathFromHash(window.location.hash));
-  useLayoutEffect(() => { applyStoredGlassTheme(); applyStoredGlassVariant(); }, []);
+  useLayoutEffect(() => { applyStoredGlassTheme(); applyStoredGlassVariant(); applyStoredMotionMode(); }, []);
   useEffect(() => {
     const onHash = () => setPath(pathFromHash(window.location.hash));
     window.addEventListener("hashchange", onHash);
@@ -74,7 +75,7 @@ export function Shell() {
         <header className="g-shell-top g-chrome">
           <ProjectPicker />
           <HeaderTools />
-          <AppearanceControl />
+          <AppearanceControl motion={false} />
           <span className="g-shell-divider" aria-hidden="true" />
           <div className="g-shell-estop"><EmergencyStop /></div>
         </header>
