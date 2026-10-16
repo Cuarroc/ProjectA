@@ -9,14 +9,12 @@ import "../../design/inputs/inputs.css";
 import { useT } from "../../i18n/useT";
 import type { AgentProfile } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
-import { BetriebPanel } from "./betrieb/BetriebPanel";
 import { FlowTab } from "./flow/FlowTab";
 import { NeedsYou } from "./needs/NeedsYou";
-import { FABRIK_PATH, TOOLS_PATH, trim } from "../../shell/mount/routing";
+import { BETRIEB_ROUTE, FABRIK_PATH, TOOLS_PATH, trim } from "../../shell/mount/routing";
 
 export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
-export const BETRIEB_PATH = "/leitstand/betrieb";
 
 /** The first steps only navigate: adding a project lives in the old sidebar on Werkzeuge, the queue form on Betrieb; nothing starts here (DS-T-05). */
 const go = (target: string) => void (window.location.hash = `#${target}`);
@@ -24,19 +22,18 @@ const go = (target: string) => void (window.location.hash = `#${target}`);
 /** Relative ages ("seit 4 min") move on minute scale. */
 const TICK_MS = 30_000;
 
-/** The classic view and its persistent tools stay reachable beside Haupt, Fabrik and Betrieb. */
+/** The classic view and its persistent tools stay reachable beside Haupt and Fabrik. */
 export function LeitstandTabs({ path }: { path: string }) {
   const t = useT();
   const tab = (target: string, label: string) => (
     <a href={`#${target}`} aria-current={target === trim(path) ? "page" : undefined}>{label}</a>
   );
-  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(FABRIK_PATH, t("leitstand.tab.fabrik"))}{tab(BETRIEB_PATH, t("leitstand.tab.betrieb"))}{tab(TOOLS_PATH, t("leitstand.tab.tools"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}</nav>;
+  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(FABRIK_PATH, t("leitstand.tab.fabrik"))}{tab(TOOLS_PATH, t("leitstand.tab.tools"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}</nav>;
 }
 
-/** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the flow graph on Fabrik, the read-only Betrieb panel beside it. */
+/** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the flow graph on Fabrik; Betrieb has its own area (NAV-2b). */
 export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) {
   const here = trim(path);
-  const betrieb = here === BETRIEB_PATH;
   const fabrik = here === FABRIK_PATH || here === "/leitstand/fluss";
   const t = useT();
   const [projectId, setProjectId] = useState(readActiveProjectId);
@@ -45,8 +42,8 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
     setProjectId(readActiveProjectId());
     return subscribeActiveProject(setProjectId);
   }, []);
-  const board = useBoard(projectId, !betrieb);
-  const questions = useQuestions(projectId, !betrieb && !fabrik);
+  const board = useBoard(projectId, true);
+  const questions = useQuestions(projectId, !fabrik);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [profilesFailed, setProfilesFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now() / 1000);
@@ -62,18 +59,6 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
       window.clearInterval(timer);
     };
   }, []);
-
-  if (betrieb) {
-    return (
-      <div className="g-lr">
-        <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={BETRIEB_PATH} /></div>
-        {/* No project yet: the subscription above picks it up as soon as a project is chosen. */}
-        {projectId !== null
-          ? <BetriebPanel projectId={projectId} profiles={profiles} />
-          : <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHint")} /></div>}
-      </div>
-    );
-  }
 
   if (fabrik) {
     return (
@@ -107,7 +92,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
                       cards={board.cards}
                       profiles={profiles}
                       now={now}
-                      emptyAction={{ label: t("leitstand.queueTask"), onClick: () => go(BETRIEB_PATH) }}
+                      emptyAction={{ label: t("leitstand.queueTask"), onClick: () => go(BETRIEB_ROUTE) }}
                       onOpen={({ worker }) => void (window.location.hash = `#/leitstand/terminal?worker=${encodeURIComponent(worker.id)}`)}
                     />
                   </>}
