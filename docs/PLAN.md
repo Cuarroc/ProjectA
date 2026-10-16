@@ -1495,9 +1495,9 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 | ID | Ziel | Abhängigkeit | Status |
 |---|---|---|---|
 | PLAN-AUTO-1 | PLAN-Modell + `npm run plan:check` (Befunde: PR ohne Planzeile, Status widerspricht GitHub, unbekannte Abhängigkeit, Job ohne Zeile, Entscheidung ohne Zeile, Plan veraltet) | – | Erledigt: #1564 (merged 2026-10-15T16:44:07Z, `244c4775`); Planzeilen #1570 (merged 2026-10-15T16:07:25Z, `d1def61a`); Nachläufer → PLAN-AUTO-1b |
-| PLAN-AUTO-1b | Nachläufer zu PLAN-AUTO-1 und ROADMAP-1a: bekannte Grenzen aus #1564 (vor jeder `--strict`- oder Gate-Nutzung zu beheben) und Review-Befunde B1–B4 und C1 aus #1580 | PLAN-AUTO-1, ROADMAP-1a | Geplant: nicht disponiert (15.10.) |
+| PLAN-AUTO-1b | Nachläufer zu PLAN-AUTO-1 und ROADMAP-1a: bekannte Grenzen aus #1564 (vor jeder `--strict`- oder Gate-Nutzung zu beheben) und Review-Befunde B1–B4 und C1 aus #1580 | PLAN-AUTO-1, ROADMAP-1a | Teilweise: Alias-Auflösung (PLAN-AUTO-1b-a, #1594) erledigt; Roadmap-Befunde B1–B4/C1 und REFS-07 (PLAN-AUTO-1b-c) erledigt mit Merge von #1598; Rest offen: Grenzen aus #1564 (PLAN-AUTO-1b-b) |
 | AGENTS-PLAN-REVIEW | Reviews prüfen, ob `docs/PLAN.md` aktuell ist: Paketzeile per `Plan-ID:`, übrige Zeilen, „Für den Nutzer“ und Entscheidungs-Inbox gegen `gh`; Abweichungen vor `review-ok` im selben PR korrigieren | PLAN-AUTO-1 | Erledigt: #1588 (merged 2026-10-15T19:54:21Z, `c7a43fbd`); Stufe C |
-| PLAN-AUTO-1b-c | Roadmap-Nachläufer: R1580-B1–B4/C1 und REFS-07 | PLAN-AUTO-1 | In Prüfung: #1598; Alias-Teil #1594 (PLAN-AUTO-1b-a) bleibt separat |
+| PLAN-AUTO-1b-c | Roadmap-Nachläufer: R1580-B1–B4/C1 und REFS-07 | PLAN-AUTO-1 | Erledigt mit Merge von PR #1598; Alias-Teil #1594 (PLAN-AUTO-1b-a) bleibt separat |
 | PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
