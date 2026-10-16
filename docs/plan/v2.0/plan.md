@@ -900,7 +900,7 @@ Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions
 | DS-03 | Galerie in jedem Build erreichbar machen | DS-02; D6 ersetzt Dev-only | geplant |
 | DS-04 | Komponenten und Zustände in Galerie zeigen | DS-03 | geplant |
 | DS-05 | Einheitliche Bewegung anwenden | DS-02 | geplant |
-| DS-06 | Layoutfehler und Headerumbruch beheben | –; D7: unter 1440 px | geplant |
+| DS-06 | Layoutfehler und Headerumbruch beheben | –; D7: unter 1440 px | Ersetzt durch DS-X-01; Erledigt: PR #1604 |
 | DS-07 | Skalen, Fokus und Inter zentralisieren | –; D1 | geplant |
 | DS-08a | Leitstand und Hülle auf Skalen umstellen | DS-07 | geplant |
 | DS-08b | Übrige Ansichten auf Skalen umstellen | DS-08a | geplant |

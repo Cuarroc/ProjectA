@@ -407,6 +407,7 @@ Gemergte Arbeit seit 10.10., die keine eigene Planzeile hatte. Je Zeile PR-Numme
 | FLK-KI34 | TresorPanel-Flake unter Last (KI-34) | – | – | – | – | Erledigt: #1504 (`9c7a785d`, 15.10.); `KNOWN_ISSUES.md` KI-34 | – | – |
 | FLK-KI35 | Native-Capture-Kapazitätstest reservierte Owner zu früh (KI-35); vollständiges Native-Test-Inventar; Windows-Dateinamen-Tests | – | – | – | – | Erledigt 15.10.: #1543 (`be305ef4`), #1554 (`a5f8c538`), #1545 (`3015d841`); `KNOWN_ISSUES.md` KI-35 | – | – |
 | FIX-1015 | Einzel-Fixes 15.10.: Leitstand-Tabpfade und Fluss-Schaltertest, Quellaudit-Testausnahme, gleiche Lampe auf Karte und Flussknoten (FU-LAMP-PROOF) | – | – | – | – | Erledigt 15.10.: #1510 (`2e687b7b`), #1517 (`d173cd82`), #1535 (`000ed75b`) | – | – |
+| DS-X-01 | Einstellungen-Reiter und Raster, Betrieb-Leerzustand und Headerumbruch unter 1440 px beheben | – | – | – | B | Erledigt: #1604 (Merge-SHA: `gh pr view 1604 --json mergeCommit`); ersetzt DS-06 ([v2-Unterplan §10.3](plan/v2.0/plan.md#103-designsystem-feinschliff)) | Root-Abnahme getrennt; Nachläufer V2-FU-HEADER-SPACE (Suchfeld und Kontingent bei 1440 px) getrennt | – |
 
 Weitere gemergte Einzel-PRs vom 01.–15.10. ohne eigene Planzeile sind historisch; Liste reproduzierbar mit `gh pr list --state merged --search "merged:2026-10-01..2026-10-15"`; Zuordnung zu Zeilen: Unbekannt (zu prüfen), keine neue Arbeit daraus.
 

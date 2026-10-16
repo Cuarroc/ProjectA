@@ -125,6 +125,19 @@ describe("Leitstand route behind D1", () => {
     expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
   });
 
+  it("betrieb without a project shows an empty state", async () => {
+    localStorage.removeItem("projecta.activeProjectId");
+    render(<LeitstandRoute path="/leitstand/betrieb" />);
+    const note = within(await screen.findByRole("status"));
+    expect(note.getByText("Kein Projekt gewählt")).toBeInTheDocument();
+    expect(note.getByText("Wähle oben ein Projekt, dann erscheint hier der Betrieb.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
+    // Choosing a project replaces the note by the panel.
+    await act(async () => { writeActiveProjectId("p1"); });
+    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+    expect(screen.queryByText("Kein Projekt gewählt")).toBeNull();
+  });
+
   it("reaches Betrieb from Haupt by its tab link and goes back", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     render(<App />);
