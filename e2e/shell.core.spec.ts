@@ -68,3 +68,13 @@ test("hidden areas redirect to the Leitstand until weitere Bereiche is on", asyn
     await expect.poll(() => page.evaluate(() => window.location.hash), { message: route.path }).toBe(`#${DEFAULT_PATH}`);
   }
 });
+
+test("the retired /leitstand/betrieb path lands on /betrieb", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", "1");
+  });
+  await page.goto("/#/leitstand/betrieb", { waitUntil: "networkidle" });
+  await expect(page.locator(".g-shell")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe("#/betrieb");
+  await expect(page.getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
+});

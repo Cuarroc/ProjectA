@@ -48,6 +48,22 @@ it("replaces /leitstand/betrieb by /betrieb", async () => {
   expect(sidebar().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
 });
 
+it("replaces the retired hash without adding a history entry", async () => {
+  window.location.hash = "#/leitstand/betrieb";
+  const before = window.history.length;
+  render(<App />);
+  await waitFor(() => expect(window.location.hash).toBe("#/betrieb"));
+  expect(window.history.length).toBe(before);
+});
+
+it("a failed profile read shows a notice", async () => {
+  const base = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string) => command === "list_agent_profiles" ? Promise.reject(new Error("no profiles")) : base(command));
+  render(<App />);
+  expect(await screen.findByText("Agenten konnten nicht geladen werden", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+});
+
 it("shows an empty state at /betrieb while no project is chosen", async () => {
   localStorage.removeItem("projecta.activeProjectId");
   render(<App />);
