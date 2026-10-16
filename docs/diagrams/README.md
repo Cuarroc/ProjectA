@@ -17,7 +17,9 @@ Archify wird nicht eingecheckt.
 Jeder Kasten im Kandidaten nennt unter `sources` Datei und Zeilen, die ihn
 belegen; `meta.repository.revision` hält den Stand fest, auf den sich die
 Zeilen beziehen. Ändert sich der Code dahinter, müssen Revision und Zeilen
-nachgezogen werden.
+nachgezogen werden. Archify prüft laut seiner Dokumentation gegen die Bytes
+dieses eingecheckten Commits, nicht gegen den Arbeitsbaum. Verbindungen haben im Archify-Schema keine eigenen
+`sources` (höchstens drei je Kasten); ihren Beleg trägt der aufrufende Kasten.
 
 ## Neu erzeugen
 
@@ -36,5 +38,8 @@ node docs/diagrams/export-svg.mjs contrast docs/assets/readme/*.svg
 ```
 
 `ARCHIFY_CHROME` zeigt auf die Chromium-Datei, `ARCHIFY_NO_SANDBOX=1` schaltet
-dessen Sandbox ab, wo sie nicht verfügbar ist (nur für diese lokalen Dateien).
+dessen Sandbox beim Export und bei der Kontrastprüfung ab, wo sie nicht
+verfügbar ist (nur für diese lokalen Dateien). Archify selbst (`finalize`)
+liest dafür `ARCHIFY_CHROME_NO_SANDBOX=1`; ohne sie scheitert dort die
+Browser-Prüfung.
 Das HTML (`*.html`) gehört nicht ins Repository.
