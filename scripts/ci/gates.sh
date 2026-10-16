@@ -154,6 +154,12 @@ GATES=(
   # V161-DOC-LINKS: broken relative links in tracked Markdown. Local lanes only:
   # lane-plan HEAVY_DOCS would turn every docs PR into a Linux CI run.
   "doc-links|precommit,prepush|.|node --test scripts/ci/doc-links.test.mjs && node scripts/ci/doc-links.mjs check"
+  # PLAN-GATE (user yes 16.10.): docs/PLAN.md, docs/plan/v2.0/plan.md and
+  # docs/decisions.md without findings. --offline: GitHub state and the
+  # server events log are listed as NICHT GEPRUEFT, never a verdict - a PR's
+  # own "Erledigt: #<n>" row would contradict its still-open PR. Selftest:
+  # scripts/lib/plan-gate.test.mjs (hq-test).
+  "plan-check|precommit,prepush,branchpush,linux,linux_1|.|node scripts/plan-check.mjs --offline"
   # R1498-G5: export-svg.mjs on fixtures; skips without Chromium (CI linux has none).
   "diagrams-export|prepush,linux,linux_2|.|node --test docs/diagrams/export-svg.test.mjs"
   # Deterministic suppression counts may not exceed their checked-in ceilings.

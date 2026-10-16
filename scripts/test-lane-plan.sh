@@ -440,8 +440,8 @@ else
 fi
 
 # Die bekannten Doku-Leser der Gates muessen schwer sein (spec-status-check,
-# dev-hq, include_str!, profiles.rs, HQ). Ein Paketbericht und das
-# Entscheidungsprotokoll muessen leicht bleiben - sonst waere der
+# dev-hq, include_str!, profiles.rs, HQ, seit PLAN-GATE plan-check auch
+# docs/decisions.md). Ein Paketbericht muss leicht bleiben - sonst waere der
 # Docs-only-Weg still wirkungslos (z. B. wenn ein Token wie `.pa/report_`
 # alle Berichte schwer macht).
 # Ein Aufruf fuer alle Dateien: die Literal-Suche ueber den ganzen Baum ist
@@ -454,8 +454,9 @@ real_spec="$(cd "$HERE" && ls .pa/task_*.md 2> /dev/null | head -1)"
 real_heavy=(STAND.md docs/PLAN.md docs/agents-json.md docs/dev-hq/BUGS.md docs/dev-hq/data.json
             AGENTS.md CLAUDE.md README.md .pa/HQ-START.md
             CHANGELOG.md # src/lib/changelog.test.ts liest es per ?raw-Import
-            .pa/report_f0.md ${real_spec:+"$real_spec"})
-real_light=(.pa/report_ci-01.md docs/decisions.md
+            .pa/report_f0.md ${real_spec:+"$real_spec"}
+            docs/decisions.md) # PLAN-GATE: gate plan-check reads it
+real_light=(.pa/report_ci-01.md
             # SETUP-12 (Rest): die drei nennen nur eine Datei, statt sie zu
             # lesen - eine Release-Beschreibung, der NICHT-ABGEDECKT-Block von
             # gates.sh und der Werkzeugreport von doctor.sh. Sie muessen leicht
