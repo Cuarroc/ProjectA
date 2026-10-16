@@ -17,6 +17,8 @@ export const trim = (path: string) => path.replace(/\/+$/, "");
 
 export const FABRIK_PATH = "/leitstand/fabrik";
 
+export const resolveAlias = (path: string) => path;
+
 export const TOOLS_PATH = "/leitstand/werkzeuge";
 export const isTools = (path: string) => trim(path) === TOOLS_PATH;
 
