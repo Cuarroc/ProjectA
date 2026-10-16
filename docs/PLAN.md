@@ -257,7 +257,7 @@ Quelle: `opt-ci-merge-20261015.md` (pa-orch); Dispatch laut Root, Ereignisse 16:
 | OPS-JOB-ENDZEILE | Endzeile jedes Auftrags nennt private Abrechnungs- und Token-Messwerte; keine Werte im öffentlichen Repo (laut Root 15.10.; Datei: Unbekannt (zu prüfen)) | Root disponiert | – | – | – | Geplant: nicht disponiert (15.10.) | Abnahme vor Dispatch festlegen | – |
 | OPS-AUTO-LOCK | Auto-Skript: doppelte Sperre (laut Root 15.10. „duplicate lock“; genaue Bedeutung und Datei: Unbekannt (zu prüfen)) | Root disponiert | – | – | – | Geplant: nicht disponiert (15.10.) | Abnahme vor Dispatch festlegen | – |
 
-### Serverreserve 3 — begrenzte Werkzeug-Härtung
+### Serverreserve 3 — begrenzte Werkzeug-Härtung (historisch, erledigt)
 
 Root-Auftrag 09.10. 00:52 CEST (msg-0mv04muwa), keine zweite Produktroadmap. Gemeinsame Basis `a8f00322b510dd48df67cc50ad0650b879902e40`; fünf unabhängige
 Dateipaare ohne Nähte/package.json/gemeinsame Helfer oder Gate-Änderungen. Owner jeweils EIN vorhandener, durch Root/Stabschef benannter Worker; kein Dispatch
@@ -409,7 +409,7 @@ Gemergte Arbeit seit 10.10., die keine eigene Planzeile hatte. Je Zeile PR-Numme
 
 Weitere gemergte Einzel-PRs vom 01.–15.10. ohne eigene Planzeile sind historisch; Liste reproduzierbar mit `gh pr list --state merged --search "merged:2026-10-01..2026-10-15"`; Zuordnung zu Zeilen: Unbekannt (zu prüfen), keine neue Arbeit daraus.
 
-### Release-Reihenfolge — Nutzer-Entscheid 08.10., Root 22:04Z
+### Release-Reihenfolge — Nutzer-Entscheid 08.10., Root 22:04Z (historisch, v1.6.0 am 09.10. erschienen)
 
 1. KI-30-Fix zuerst: Queue-Stabilität; bestehender Owner, kein Doppelstart.
 2. Denkraum DR-11 → DR-12 → DR-13 → DR-14 → DR-16 → DR-17 ist der kritische Pfad;
@@ -421,7 +421,7 @@ Weitere gemergte Einzel-PRs vom 01.–15.10. ohne eigene Planzeile sind historis
 V16-NACHBEOB, V16-ADR-A7, V16-03 und D8a–c sind keine Vorgänger von V16-RELEASE.
 Tester-Kit/Trockenlauf bleibt ein eigener offener Nachweis; die optionale Windows-Sandbox
 ist nicht aktiviert; ihre Aktivierung ist nicht freigegeben. E16 vor externen Testern bleibt offen.
-Wissenspilot/#651 bleibt Draft und nach v1.6.0 geparkt; der abgeschlossene Messschnitt
+Wissenspilot/#651 ist geschlossen (nicht gemergt), DEV-KNOW-01 bleibt verschoben; der abgeschlossene Messschnitt
 wird nicht wiederholt. „Lernende Entwicklungskoordination“ ist ebenfalls nach v1.6.0
 verschoben (Nutzer 08.10.); im geprüften aktiven Z-Kopf fehlt eine eigene Paketzeile,
 daher kein neuer Ausführungsvertrag/Ticket aus diesem Namen. Z2-RECHTE-PILOT und
@@ -441,7 +441,7 @@ kein erneuter Dispatch aus den historischen Startformulierungen unten.
 - Abnahme je S1/S2: normaler Secret-/Commit-/Pushhook, Remote-SHA bestätigt, eigener Draft-PR ≤ 300 ALL mit Report/NICHT ABGEDECKT, Tier C, Root-Kopfannahme vor Ready/Mergify. Endziel ≤ 8192 Bytes erst am letzten integrierten Schnitt.
 - Startgates: DR-12-Beleg, aktuelle Owner/Dateisperren, beobachtetes Modell/Quota, RAM ≥ 1,5 GiB, Cargo/Slot prüfen. Vorhandene Doku→Gate→Root-Kette wiederverwenden; kein neues Team/Agent/QA. Abbruch: fehlendes Mapping, Link oder Size-Cap stoppt den Schnitt. NICHT ABGEDECKT: allgemeine Adoption oder gemessene Tokenersparnis.
 
-## Lanes (5 parallel)
+## Lanes (5 parallel) — historisch (v1.6.0, erledigt 09.10.)
 
 | Lane | Reihenfolge | Ort |
 |---|---|---|
@@ -452,14 +452,14 @@ kein erneuter Dispatch aus den historischen Startformulierungen unten.
 | L5 Doku/PC | V16-ADR-A1 (erledigt), V16-CHANGELOG | PC / egal |
 
 Nie zwei aktive Pakete auf derselben Naht (`api.rs`, `main.rs`, `store.rs` + `store/`,
-`bin/pa.rs`). Neue V2-Pakete starten vor Z1 nur, wenn eine Lane leer ist und Root zustimmt.
+`bin/pa.rs`). Historisch bis v1.6.0 (09.10.): neue V2-Pakete starteten vor Z1 nur bei leerer Lane und mit Root-Zustimmung; aktuelle Arbeit: v2.0 eng (Entscheid 15.10., `plan/v2.0/plan.md` Abschnitt 10).
 
 GOALS-A läuft leicht parallel zur Produktlieferung; GOALS-C nutzt vorhandene Arbeit.
 GOALS-B und weitere PLAN-Edits sind beim Chief seriell. Z1 behält Vorrang;
 Prozessarbeit belegt keine Z1-Dateien oder Nähte. Native Goal-Ausgaben und Adoption
 stehen im Ticket, nicht in gespeicherten Profilen oder zugestellten Nachrichten.
 
-### DR-07c/d/e1/e2: vier weitere P1-Testports
+### DR-07c/d/e1/e2: vier weitere P1-Testports (historischer Startvertrag; erledigt: 07c #752, 07d #753, 07e1 #751, 07e2 #755)
 
 Chief-Disposition zum Root-Vorschlag `msg-0mv02koqa-49ce4f1b`:
 keine Ausnahme von 300 ALL. Ownerbelege `msg-0mv02o72m-1e798c11` (21:52Z)
@@ -529,7 +529,7 @@ Root-Shim; das ist kein Pass gegen R676-Rootgate/Allowlist im Repo. Sender-HTTP
 Repo-Basis laufen. Noch keine Repo-Test-/prepush-/Review-/Abnahme-/Windowsbelege
 für diese vier Ports; diese PLAN-Dokumentation verändert keinen Runtime-Test.
 
-### Serverreserve: drei disjunkte Startverträge (Root 08.10., 20:45Z)
+### Serverreserve: drei disjunkte Startverträge (Root 08.10., 20:45Z; historisch, erledigt #725/#726/#727)
 
 Auftrag `msg-0mv00abqi-b5191dcb`: drei Pakete ohne Rust-Nähte mn/st/api liefern;
 Root übernimmt den Dispatch. Diese Verträge sind zur Abnahme vorgelegt, keine
@@ -621,12 +621,12 @@ DR-10-WIRE überschneidet sich mit der aktiven #718-UI-Dateiliste (index/ideas).
 DR-05/07 und DR-12 behalten ihre wirklichen Vorgänger. Die drei Verträge oben
 benötigen keine dieser Änderungen; nach Head-/Owner-Wechsel vor Dispatch neu prüfen.
 
-### Serverreserve 2: fünf zusätzliche Startverträge (Root 08.10., 21:27Z)
+### Serverreserve 2: fünf zusätzliche Startverträge (Root 08.10., 21:27Z; historisch, erledigt #738/#739/#742/#745/#746)
 
 Auftrag `msg-0mv01rpmz-e52b4baf`: ENTWERFEN/PFLEGEN; Root dispatcht.
 Gemeinsame geprüfte Basis: `9d9eaa78e2d135bc0144809ae9712e2cda51da31`
 (origin/main, #722 gemergt). Die drei #722-Umsetzungen bleiben bei den vorhandenen
-Eigentümern: #725 `94eca3b`, #726 `5cb73e1`, #727 `a4e0fc9`, laut Root in Prüfung.
+Eigentümern: #725 `94eca3b`, #726 `5cb73e1`, #727 `a4e0fc9`, laut Root damals in Prüfung; alle drei gemergt (#725 `5bc5a55b`, #726 `ea6ca7e2`, #727 `fbb6be67`).
 Sie zählen nicht als fünf neue Verträge; keine Wiederholung dieser Arbeit.
 
 Je folgendem Paket genau ein von Root benannter bestehender Serverworker,
@@ -748,7 +748,7 @@ Multi-Naht-Parserfall zählt nicht mit: #574 ist als überholt geschlossen
 Diese fünf Z2-Paare
 benötigen keinen der blockierten Pfade.
 
-### Anpassungsnachweis DR-15a und Übergaben (08.10. 04:40 UTC)
+### Anpassungsnachweis DR-15a und Übergaben (08.10. 04:40 UTC, historisch)
 
 Anlass/Beleg: Root las den wirklichen CLI-Alias-Rotnachweis und `f78122d`;
 G1 erlaubt die konkrete inverse Teilung (Disposition im Ticket 55ea21ce).
@@ -768,7 +768,7 @@ GOALS-A/C-Handover ist angenommen; GOALS-B-Merge und allgemeine Adoption bleiben
 offen. Die abgenommenen #643/#644-Köpfe bleiben für ihre Mergekette unverändert.
 HOOK-Anleitung läuft im eigenen P2-Dokumentationspaket parallel ohne Z1-Dateien.
 
-### Anpassungsnachweis PLAN-C1
+### Anpassungsnachweis PLAN-C1 (historisch)
 
 Anlass: Root-Prüfung von #642 am 6183605 meldet 2068 ALL > 300 und konkrete
 Status-/Regelwidersprüche. Vorher: ein kombinierter, nicht abgenommener Entwurf.
@@ -889,7 +889,7 @@ Entscheidung. Bestehende Antworten/Verträge bleiben erhalten; M1–M5 und alle
 DF-Zeilen bleiben als Parserquelle wortgleich, bis ihre Leser gezielt umgestellt
 und die kohärenten Archivpakete geprüft sind. Nur die Z-Tabellen oben disponieren.
 
-## Aktive Ziele und verbindlicher L0-Schnitt
+## Ehemals aktive Ziele und L0-Schnitt (07.10., historisch)
 
 [Ideenfließband V1.0](#ideas-l0-v1-0) steht vollständig mit unveränderten 198 Zeilen in diesem Dokument als historischer Anforderungs-/Übergabestand. Aktuellen Status, Freigaben und Verträge führt ausschließlich dieser Masterkopf. Cloud-/Assistentenfassungen sind historische Übergaben, keine synchronisierte zweite Planquelle; PA r05iwt erhält den bestätigten Ref erst nach Integration.
 Root-Auftrag und Site-Amende: Child `ec223b75-7972-4555-a442-43e0e32c8fcd`, Chief-Mail `msg-0muy8gvba-939fb23b`, 07.10.2026 14:59 UTC. PM besitzt nur diesen Dokumentenschnitt, Gesamtowner IDEAS-L0 ist Root; Chief disponiert, Root prüft FIT und nimmt ab.
@@ -897,9 +897,9 @@ Vorhersage vor Vorbereitung: vorhandener Masterplan plus kompletter Teilplan spa
 
 | Ziel / bestehender Auftrag | Wirkung, Umfang / Nichtziele | Owner / Vorgänger | Abnahme / Evidenz / Status | Nächster Schritt / Blocker / Stand UTC |
 |---|---|---|---|---|
-| IDEAS-L0 / PLAN-L0-P0 `ec223b75-7972-4555-a442-43e0e32c8fcd` | dauerhaft erfassen, bearbeiten, wiederfinden; kein Planeditor/Graph/Pilot/Autorecherche | Root Gesamtziel; PM cwqxbk Dokument; Backend mctdww; UI d567gh; Chief Integration/FIT an Root | P0 In Prüfung; Vorbereitung tatsächlich15:05:57Z, Source noch nicht gestartet; Produktlieferung offen; Quellbasis oben, V1.0-SHA329a53ca…124b2c; Zuweisung ist kein Runtime-Start | vollständiger Diff/Metadatenvertrag → Root; anschließend Backend/UI und echte Nutzerabnahme; 07.10.15:00:47 |
+| IDEAS-L0 / PLAN-L0-P0 `ec223b75-7972-4555-a442-43e0e32c8fcd` | dauerhaft erfassen, bearbeiten, wiederfinden; kein Planeditor/Graph/Pilot/Autorecherche | Root Gesamtziel; PM cwqxbk Dokument; Backend mctdww; UI d567gh; Chief Integration/FIT an Root | Unbekannt (zu prüfen): P1/P2 über DR-02 bis DR-14 gemergt, L0-Nutzerabnahme nicht belegt; ursprünglich: P0 In Prüfung; Vorbereitung tatsächlich15:05:57Z, Source noch nicht gestartet; Produktlieferung offen; Quellbasis oben, V1.0-SHA329a53ca…124b2c; Zuweisung ist kein Runtime-Start | vollständiger Diff/Metadatenvertrag → Root; anschließend Backend/UI und echte Nutzerabnahme; 07.10.15:00:47 |
 | DD-RECEIPT `285001a5-ede9-4940-b039-42d0dd892e96` | bestehende Frage-Quittungsanzeige, disjunkt zu L0 | alleiniger UI d567gh; bestehender V2-Receiptvertrag | Verschoben nach L0; Child pending, Root15:10:09Z; 495 ALL NOT FIT, unimplementiert | ganze Programme/23 Fälle/Pins erhalten; keine zweite Revision/Integration; Frageanzeigebug blockiert Ideensammlung nicht |
-| V16-ARCH-D4 `b9606dd4-4dab-460c-9229-a47699702f6d` | restliche API-Entlastung; kein L0-Vorgänger/Releasebeleg | alleiniger API-Owner Root; Part4 Mergify #629 auf3db3407 | In Prüfung laut Root15:20Z: [PR631](https://github.com/Cuarroc/ProjectA/pull/631)/1d4b5bc, eigene Gates0, beide CI37631238380 erfolgreich, Sonnet ACCEPT; kein Merge | zweiter Vendor403, Reviewgate offen; keine frische PM-CI-/Sourceprüfung, Chief API seriell |
+| V16-ARCH-D4 `b9606dd4-4dab-460c-9229-a47699702f6d` | restliche API-Entlastung; kein L0-Vorgänger/Releasebeleg | alleiniger API-Owner Root; Part4 Mergify #629 auf3db3407 | In Prüfung laut Root15:20Z: [PR631](https://github.com/Cuarroc/ProjectA/pull/631)/1d4b5bc, eigene Gates0, beide CI37631238380 erfolgreich, Sonnet ACCEPT; kein Merge | zweiter Vendor403, Reviewgate offen; keine frische PM-CI-/Sourceprüfung, Chief API seriell — Nachtrag 15.10.: #631 am 08.10. gemergt (`013513b2`), siehe Z3 V16-ARCH-D4 |
 
 Verbindliche acht Nutzerstatuswerte: Root-Original `msg-0muy9i618-c05a9ee8`, 07.10.2026 15:28:14.348 UTC, vollständig im P0-Child; Chief-Mail `msg-0muy9ivvz-44910681`. B-STATUS ist damit geklärt. Zuweisung allein ist nicht In Arbeit.
 
@@ -1247,7 +1247,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W1-01b | Kimi-Re-Smoke mit `PROJECTA_PTY_TRACE_DIR` | S | pty | gestrichen (Nutzer 04.10.: Kimi-Abo abgelaufen; Smoke ✓ #192) |
 | W1-27 | KI-20, doppelte `ESC[6n`-Antwort; welche Seite antwortet, entscheidet der Advisor (Nutzer 25.09.) | S | pty + fe | ✓ #140 (ersetzt das geschlossene #112; gemergt 03.10.) |
 | W3-08 | Paketierter HQ-v1-Beleg | S | N | ✓ #381; Drill 8 PASS am 05.10. (Beleg: Datum aus `events.log`, lokal) |
-| ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | angenommener M3-Kandidat (Nutzer 04.10., F6); Windows-Lauf am PC des Nutzers erlaubt; offen |
+| ARCH-11 | KI-24b auf Windows reproduzieren, Test-DB-Wettlauf absichern (siehe Tabelle Architektur-Pakete) | S | fR + N | Verschoben nach Z4-ARCH-11; früher: angenommener M3-Kandidat (Nutzer 04.10., F6), Windows-Lauf am PC des Nutzers erlaubt; verwandt #1463 (`13ef8a41`), #1468 (`4f74b8f8`); Abschluss: Unbekannt (zu prüfen) |
 | R-1 | Zwischenrelease v1.5.0 (Beta) als Abschluss von M3; Tag und Veröffentlichung darf der Orchestrator selbst, sobald alle Gates und die 27 Matrixzeilen in der Fassung vom 04.10. belegt sind (Nutzer 04.10.) | S | N + doc | ✓ v1.5.0 (05.10.) |
 
 **R-1 Voraussetzungen (Stand 05.10.):** Der Tag `v1.5.0` (Beta; E24: A) setzt voraus:
@@ -1276,11 +1276,11 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W2-07b | Windows-ACL für `projecta-api.json` und `agent-access/` | S | api | ✓ #12 |
 | W2-08b | Speicher-/CPU-Grenzen je Job (Nutzer 25.09.: ja); Stillstand früh erkennen (Denk- und Fortschrittszeichen prüfen, sonst nach 15 min) | M | fR | ✓ #53 |
 | W2-09b | DeepSeek-V4-Flash-Worker über OpenCode | M | wk | ✓ #78 |
-| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt; echte Proben mit Claude/Codex/OpenCode dürfen Abo-Kontingent verbrauchen (Nutzer 04.10.) | M | fR + N | offen |
-| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe); Produktfrage entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten, Koordinatoren bleiben immer `strict`, profilspezifisches `passthrough` bleibt | M | st → api → fe | offen |
+| HQ2-05b | Echte Collector-/Billing-Proben je Anbieter; vorher prüfen, ob W2-03 es schon abdeckt; echte Proben mit Claude/Codex/OpenCode dürfen Abo-Kontingent verbrauchen (Nutzer 04.10.) | M | fR + N | ✓ #289, #299, #318, #341 (p1–p4) |
+| W5-02b3 | Env-Stufe als globale Einstellung (st → api → fe); Produktfrage entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten, Koordinatoren bleiben immer `strict`, profilspezifisches `passthrough` bleibt | M | st → api → fe | ✓ #336, #438, #442 (st → api → fe) |
 | W5-02b4 | Push aus dem Worker über den Runner-Host, danach `strict` als Voreinstellung | M | pty + wk | ✓ #65 |
 | W5-02b5 | Test für den `http.extraHeader`-Reset; GPG unter `strict` | S | fR | ✓ #17 |
-| W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | Teilpakete gemergt (#337 W1-03f-api, #301 W1-03f-a); Hauptpaket offen |
+| W1-03f | F-CORE-3 Baustein C: Zustell-Queue, `pa worker done/blocked` (braucht das Z-1-Protokoll am PC) | M | wk + pa | Teilpakete gemergt (#301 W1-03f-a, #337 W1-03f-api, #352 W1-03f-b); Rest (Produktionsadapter) in Z4-W103F-WIRE: Unbekannt (zu prüfen) |
 | W3-01 | Globaler DB-Wartungs-/Write-Lock + Drain (st-Kind, dann mn-Kind) | M | st → mn | ✓ #285, #335, #402 |
 | W3-02 | Windows-Recovery-Helper | M | fR + N | ✓ (Teilpakete W3-02a bis W3-02k gemergt, zuletzt #475) |
 | W3-02a | Journal-Treiber, eine Aktion je Schritt | S | fR | ✓ #291 |
@@ -1295,7 +1295,7 @@ Gedächtnis = eingebautes Claude-Gedächtnis plus memorix.
 | W3-02i | Release-Blocker R-1 (Beta): #411-Befund C2, Wartungs-Lease statt Momentaufnahme von `is_maintenance_active()`; berührt auch `store.rs` (Naht, nur seriell). Stufe A | M | mn | ✓ #471 |
 | W3-03 | Paketierte Drills: Singleton, Crash/Power-Loss, Backup (3 × S) | S | N | ✓ Drill-Kits #364, #376, #379, #382, #377, #380, #384 gemergt; die Läufe am PC stehen laut R-1-Voraussetzungen noch aus |
 | W3-04 | Updater-Zustände in App und HQ | S | fe + hqL | ✓ #119 |
-| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4) | S | N | offen |
+| W3-07 | Produktionsschlüssel-Build + Signed-Updater-Relaunch; der bestehende Schlüssel bleibt (E4) | S | N | offen; Client-Relaunch-Beleg fehlt (siehe Z4-W307-PC-UPDATE) |
 | W4-01 | Benchmark, verkleinert auf 5 Aufgaben statt 20 (E2, Nutzer 02.10.) | M | fR | ✓ #73 |
 | W4-02 | Abnahmematrix final (27 Zeilen) | S | doc | ✓ #48 |
 | W4-03 | Continuous-Aktivierung, nur nach W4-02 und mit Freigabe des Nutzers; der Schalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); einschalten tut der Nutzer selbst am Ende (Zeile 2) (Nutzer 04.10., E5) | S | mn | ✓ #481 |
@@ -1335,19 +1335,19 @@ refactoring package“.
 | ID | Paket | Gr. | Lane | Stand |
 |---|---|---|---|---|
 | M5-01 | Testerrunde mit 3–5 externen Testern (N = Zahl noch offen) | S | N | offen, nach v1.5.1 |
-| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | offen, nach v1.5.1 |
+| M5-02 | Produktfokus als Aussage im README: „sicherer Dauerbetrieb für KI-Agenten: Not-Aus, Kostenkontrolle, Protokoll“ | S | doc | ✓ #576 |
 | M5-03 | ARCH-G1 Regeldokument `docs/architecture-rules.md` + ARCH-G2 Drift-Gate in der CI | M | ci + doc | ✓ G1 #316, G2 #304 (04.10.) |
 | M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um (Umfang später festlegen) | M | später | offen, nach v1.5.1 |
-| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | offen, nach v1.5.1 |
-| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | offen, nach v1.5.1 |
-| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | offen, nach v1.5.1 |
-| ARCH-D4 | Restlicher API-Router mit 51 Zweigen: kleinere serielle Teil-PRs, insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs`; je PR ≤ 300 Gesamtdiffzeilen einschließlich Tests (ARCH-D4-PLAN) | M | api | offen, nach v1.5.1; Schnitt vor Dispatch messen |
-| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | offen, nach v1.5.1 |
-| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | offen, nach v1.5.1 |
-| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | offen, nach v1.5.1 |
-| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | offen, nach v1.5.1 |
+| ARCH-D1 | Vier HTTP-Fehlertext-Klassifizierer zu einem | S | api | ✓ #596, Rest #663 |
+| ARCH-D2 | Projektanlage ist in `main.rs` doppelt umgesetzt | S | mn | ✓ #664 |
+| ARCH-D3 | Elf direkte `BEGIN IMMEDIATE` zu einem Store-Helfer | M | st | ✓ #577, #587 |
+| ARCH-D4 | Restlicher API-Router mit 51 Zweigen: kleinere serielle Teil-PRs, insgesamt ≥ 300 Zeilen Netto-Abbau in `api.rs`; je PR ≤ 300 Gesamtdiffzeilen einschließlich Tests (ARCH-D4-PLAN) | M | api | ✓ #623, #625, #627, #629, #631 (Vertrag #621) |
+| ARCH-D5 | Diagnose- und Einstellungsbefehle aus dem Befehls-Monolithen in `main.rs` herauslösen | M | mn | ✓ #704, #728 |
+| ARCH-D6 | `pa::run` vermischt Verteilung und Darstellung | M | pa | ✓ #579, #589 |
+| ARCH-D7 | Einstellungs-Speicherung in ein Untermodul unter `store/` | M | st | ✓ #632 |
+| ARCH-D8 | Ereignisnamen als gemeinsame Konstanten in Rust und TypeScript | M | mn → pty → fe | ✓ #960 (V16-ARCH-D8a–c) |
 | M4-R19-02 | Vollständige Audit-Envelopes für die Pfade Ziel/Task (Matrixzeile 19); zugeschnitten in 02a #702 und 02b/03a #705, #698 Referenz | S | st | Erledigt: #702/#705/#717 gemergt; R19-Reste separat |
-| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19); 03a bereits im #705-Zuschnitt, vorhandene Envelopes wiederverwenden, Restumfang vor Dispatch prüfen | S | st | Verschoben nach v1.6.0; #705-Teilumfang bleibt erledigt |
+| M4-R19-03 | Vollständige Audit-Envelopes für die Pfade Claim/Checkpoint (Matrixzeile 19); 03a bereits im #705-Zuschnitt, vorhandene Envelopes wiederverwenden, Restumfang vor Dispatch prüfen | S | st | ✓ #705 (03a), #956 (03b, `2e1de0bb`, 10.10.) |
 | M4-R19-04 | Vollständige Audit-Envelopes für die Pfade Intent/Launch (Matrixzeile 19) | S | st | Verschoben nach v1.6.0 |
 | M4-R19-07 | Vollständige Audit-Envelopes für die Pfade Kandidat/Evidence/Review (Matrixzeile 19) | S | st | Verschoben nach v1.6.0 |
 | M4-R19-09 | Vollständige Audit-Envelopes für den Pfad Wartung (Matrixzeile 19) | S | mn | Verschoben nach v1.6.0 |
@@ -1367,7 +1367,7 @@ früheren nichts mehr hat.
 - **ci:** CI-02/CI-03 → SEC-01 → CI-04 → SETUP-12.
 - **Migrationen:** Nummern vergibt der Koordinator erst beim Dispatch.
 
-## Regeln für diesen Plan
+## Regeln für diesen Plan (historisch, M1–M5; geltende Regeln: AGENTS.md und „Statuswerte“ oben)
 
 1. **Ein Plan.** Jedes Paket steht als eine Zeile in genau einer
    Meilenstein-Tabelle. Neue Pakete entstehen nur hier.
@@ -1392,16 +1392,18 @@ früheren nichts mehr hat.
 8. **CI-Geld:** Ziel 0 €. Wird die CI der Engpass, sind höchstens 20 € im Monat
    erlaubt, und erst nach Freigabe des Nutzers.
 
-## Vision (Nutzer 25.09.)
+## Vision (Nutzer 25.09., historisch)
 
 - **Eine Oberfläche:** Das Dev-HQ wird nach M3 der Hauptbereich im App-Fenster.
   Ein Kern, ein Fenster. HQ2-02 legt die Richtung fest.
 - **Orca als Brücke:** Bis M3 wird mit Orca, Claude Code und Codex gearbeitet,
-  danach schrittweise mit ProjectA selbst.
+  danach schrittweise mit ProjectA selbst (überholt: seit 03.10. AgentsRoom statt Orca, v2-Plan Abschnitt 4a).
 - **Agenten-Abteilungen mit Leitern:** Die erste Abteilung ist Prüfung/Reviews.
   Sie startet klein nach M1, mit eigenem Budget.
 
 ## Gestrichen/Geparkt (25.09.)
+
+Historisch (25.09.): „nach M1/M4“ ist kein Termin mehr; das Urteil je Zeile steht in [`plan/v2.0/mapping.md`](plan/v2.0/mapping.md) (06.10.).
 
 „Gestrichen“ heißt: fällt weg, bei Bedarf neu einplanen. „Geparkt“ heißt: die
 ID bleibt, wird nicht gezählt und nicht dispatcht, und kommt erst nach M4
@@ -1421,7 +1423,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 
 | Was | Grund | Wann wieder |
 |---|---|---|
-| **W5 außerhalb des Kerns:** W5-01a/b/c, 02c, 02d, 02e, 03, 06, 06b, 07, 08a, 08b, 09a/b/c, 10, 11, 12–16, 17–21, 23–25, 30a/b, 31a–c, 32–34, 35a–f, 36a/b, 37–39 | Das Projekt-System hilft dem Ziel nicht. Kern in M3/M4: W5-02a, W5-22, W5-28, W5-00b, W5-02b3–b5/b7, Not-Aus W5-04a–c, Prüfpfad W5-05 | nach M4; zuerst W5-31 (App zu, Worker laufen weiter); Phase J (autonomer Merge) erst nach vier Wochen Continuous ohne Rückschlag. Konzept: `.pa/plan_projects_w5.md` |
+| **W5 außerhalb des Kerns:** W5-01a/b/c, 02c, 02d, 02e, 03, 06, 06b, 07, 08a, 08b, 09a/b/c, 10, 11, 12–16, 17–21, 23–25, 30a/b, 31a–c, 32–34, 35a–f, 36a/b, 37–39 | Das Projekt-System hilft dem Ziel nicht. Kern in M3/M4: W5-02a, W5-22, W5-28, W5-00b, W5-02b3–b5/b7, Not-Aus W5-04a–c, Prüfpfad W5-05 | nach M4; zuerst W5-31 (App zu, Worker laufen weiter); Phase J (autonomer Merge) erst nach vier Wochen Continuous ohne Rückschlag. Konzept: `.pa/plan_projects_w5.md` (nicht im öffentlichen Repo) |
 | **DEVFLOW-Motor:** DF-11, DF-13–17, DF-06b, DF-08d | zweite Steuerung neben dem fertigen Continuous-Kern | nach M4 als Erweiterung des Continuous-Runtime neu schneiden |
 | **DEVFLOW-Ausbau:** DF-09b, DF-10, DF-21–25, DF-27–34 | hilft dem Ziel nicht; DF-09b wäre ein Doppelbau | nach M4 |
 | **HQ2-04, HQ2-06 bis HQ2-10** | große Pakete, jedes ein eigenes Projekt | nach der Oberflächen-Entscheidung (HQ2-02) neu planen |
@@ -1438,8 +1440,8 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Vorschlag: Dispatcher nach Start entschärft mit Vorschau (Radar 12d7a534); Not-Aus, Env-Vorfahrt und Reattach erhalten | Später; ausdrückliche Sicherheits-/Umfangsentscheidung, serielle st/mn/pa-Schnitte und Tier-A-Reviews vor Umsetzung |
 | Vorschlag: Linux-Runner-Image gezielt pinnen (Radar bbe0db91) | bestehendes CI-Umbrella c77f6955; zuerst behauptete Frist 19.10. und Gate-Kopplung offiziell belegen, dann gesondert priorisieren; kein Bruch oder Pin freigegeben |
 | Agenten per Protokoll statt Tippen steuern (strukturierte Schnittstellen der Anbieter) | nach M4 (Nutzer 25.09.: später) |
-| ADR, die die st-Lane für unabhängige `store/`-Module teilt | nach M1 (Nutzer 25.09.: später) |
-| Öffentlicher Neustart des Repos ohne Historie (Prüfung E) | nach M1; vorher Scan-Bericht, der Nutzer gibt frei (nicht umkehrbar) |
+| ADR, die die st-Lane für unabhängige `store/`-Module teilt | Verschoben nach V16-ADR-A7 / V2-ARCH-0 (mapping.md); ursprünglich: nach M1 (Nutzer 25.09.: später) |
+| Öffentlicher Neustart des Repos ohne Historie (Prüfung E) | siehe „Entschiedene Fragen“: Neustart mit `c60f267` („Initial public release of ProjectA“) dort als erledigt geführt; ursprünglich: nach M1; vorher Scan-Bericht, der Nutzer gibt frei (nicht umkehrbar) |
 | Vorzeige-README für die Bewerbung | später |
 | Prompt-Kompression, MCP-Injektion | wenn ein Worker nachweislich am Kontextlimit scheitert |
 | Command Palette, globale FTS-Suche, Fokusmodus | wenn der Nutzer sie im Alltag vermisst |
@@ -1456,8 +1458,8 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Vorschlag: Startcheck-Doku an die Wahrheit anpassen und nur lesend Abhängigkeits-Drift prüfen (nicht optionale installierte Pakete gegen die Kandidaten-Lock); OPS-02 #35 und SETUP-09 #56 bleiben gemergt, dies ist ein begrenzter Folgeschritt | nach M4; Vorschlag, kein Duplikat |
 | Vorschlag: PTY-Read/Emit-Diagnose erst nach eingespeistem Beweis; Drain und panikfreie Senke bewahren, den `eprintln`-Rückfall in `logging::log` nicht blind nutzen; Stderr-Verlust im Release ungemessen | nach M4, mit Laufzeitbeleg; ohne Graph-/Windows-Beleg |
 | Vorschlag: M4-W2-Merge-Vertrag: frische geschützte Upstream-Bestätigung, gebunden an Kandidat/Lauf/Fence/Scope; lokale Refs und Start-Pin genügen später nicht; Scope-Prüfung Basis → Kandidat auf dem End-Baum nach Merge oder Rebase (Quelle `6fb08b0`, `workers/candidate_scope.rs:56-112`); Continuous nicht aktivieren | nach M4; ohne Graph-/Laufzeit-/Windows-Beleg |
-| Plan für v1.6.0 (Pakete, Wellen, Arbeitsweise, Benchmark-Nachweis): [`docs/plan/v1.6.0/plan.md`](plan/v1.6.0/plan.md) | Nutzerentscheidung 06.10.2026: zwei Wochenmessungen und 40 Queue-Läufe bleiben offene Nachbeobachtung nach v1.6.0; Befunde für v1.6.1, kritische früher. Details und unveränderte Originalkriterien in Abschnitt 7a.1; weitere Planfragen und Pakete bleiben in ihrem bisherigen Zustand, nichts davon wird in M1–M4 aufgenommen. |
-| Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Entwurf, Nutzer entscheidet; nichts davon steht in M1–M4 |
+| Plan für v1.6.0 (Pakete, Wellen, Arbeitsweise, Benchmark-Nachweis): [`docs/plan/v1.6.0/plan.md`](plan/v1.6.0/plan.md) | Nutzerentscheidung 06.10.2026: zwei Wochenmessungen und 40 Queue-Läufe bleiben offene Nachbeobachtung nach v1.6.0; Befunde für v1.6.1, kritische früher. Details und unveränderte Originalkriterien in Abschnitt 7a.1; weitere Planfragen und Pakete bleiben in ihrem bisherigen Zustand, nichts davon wird in M1–M4 aufgenommen. Nachtrag 15.10.: v1.6.0 erschienen (09.10.); KI-30-Schluss #874 (42 Läufe ab 09.10.), Wochenmessungen offen (V16-NACHBEOB). |
+| Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Ersetzt durch [`plan/v2.0/plan.md`](plan/v2.0/plan.md) (Nutzerentscheid 06.10.: v2.0 als ein Release, keine Zwischenreleases v1.7–v1.9; Kopfzeile von `docs/plan/roadmap/README.md`) und RELEASE-PAUSE (15.10.); Datei historisch, nicht disponieren |
 | Werkbank je Projekt (V2-WEG/TRES/CMD/SKL/DB): Dev-Befehle, Datenbanken, Feintuning, Server, Trigger, Automationen, Tresor, Skills-Bibliothek, Bewährte Wege → [`docs/plan/v2.0/werkbank.md`](plan/v2.0/werkbank.md) | Entscheid Nutzer 11.10. E1–E4 (`docs/decisions.md`); Wege-Pilot jetzt ohne App-Code als Thema von DEV-KNOW-01, Tresor vor V2-B6a-2/V2-B19, Rest nach v2.0 hinter Schaltern; nichts davon steht in M1–M4 |
 | Paperclip-Kandidaten (COMP-PAPERCLIP-3) → Block direkt darunter | Nutzer 11.10. ~04:30Z: einreihen erlaubt; Richtung, kein neuer Meilenstein; nichts davon steht in M1–M4 oder ändert die v2-Release-Reihenfolge |
 
@@ -1500,9 +1502,9 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 | PLAN-AUTO-2 | Gate: jeder Paket-PR nennt eine `Plan-ID:`, die im Plan steht | PLAN-AUTO-1 | geplant |
 | PLAN-AUTO-3 | Status-Abgleich als Skript statt LLM: stündlich, Docs-PR, automatisch eingereiht | PLAN-AUTO-1 | geplant |
 | PLAN-NORM-n | Pakettabellen auf feste Spalten (ID, Ziel, Richtung, Version, Abhängigkeit, Status, Owner), je ≤300 Zeilen | PLAN-AUTO-1 | geplant |
-| PLAN-CLEAN-1 | Plan bereinigen, Schnitt 1: Status gegen GitHub, „Für den Nutzer“, Entscheidungs-Inbox, fehlende Zeilen und gemergte Arbeit ohne frühere Planzeile; übernimmt die gültigen Inhalte von #1586 und #1587 | PLAN-AUTO-1 | In Prüfung: Draft-PR gegen main auf Branch `codex/plan-clean-1` (16.10.); nach Merge Korrekturen dieses Schnitts geliefert, Gesamtbereinigung und Root-Abnahme separat |
-| PLAN-CLEAN-2 | Plan bereinigen, Schnitt 2: v2.0- und v1.6.0-Unterplan und `STAND.md` abgleichen | PLAN-CLEAN-1 | Geplant: gestapelt auf PLAN-CLEAN-1 (15.10.) |
-| PLAN-CLEAN-3 | Plan bereinigen, Schnitt 3: historische Abschnitte von `docs/PLAN.md` kennzeichnen, tote Verweise und Dubletten bereinigen | PLAN-CLEAN-2 | Geplant: gestapelt auf PLAN-CLEAN-2 (15.10.) |
+| PLAN-CLEAN-1 | Plan bereinigen, Schnitt 1: Status gegen GitHub, „Für den Nutzer“, Entscheidungs-Inbox, fehlende Zeilen und gemergte Arbeit ohne frühere Planzeile; übernimmt die gültigen Inhalte von #1586 und #1587 | PLAN-AUTO-1 | Erledigt: #1591 (merged 2026-10-15T23:52:32Z, `23d0c91e`); Gesamtbereinigung und Root-Abnahme separat |
+| PLAN-CLEAN-2 | Plan bereinigen, Schnitt 2: v2.0- und v1.6.0-Unterplan und `STAND.md` abgleichen | PLAN-CLEAN-1 | Erledigt: #1592 (merged 2026-10-16T00:04:20Z, `a3b61066`); Gesamtbereinigung und Root-Abnahme separat |
+| PLAN-CLEAN-3 | Plan bereinigen, Schnitt 3: historische Abschnitte von `docs/PLAN.md` kennzeichnen, tote Verweise und Dubletten bereinigen | PLAN-CLEAN-2 | In Prüfung: #1596 (gegen main, 16.10.); Gesamtbereinigung und Root-Abnahme separat |
 | PLAN-GATE | `npm run plan:check` als Pflicht-Gate, damit der Plan nicht mehr veralten kann; vorher Parser-Korrekturen (v2-Kurz-IDs wie `MN-A` auflösen, Beschreibungstabellen nicht als Dubletten zählen, Zweig-Treffer bei erledigten Zeilen begrenzen); Verdrahtung laut `scripts/ci/lane-plan.sh` bei PLAN-AUTO-2 abgleichen, `scripts/ci/` gehört laut CODEOWNERS dem Nutzer | PLAN-CLEAN-3, PLAN-AUTO-1b, PLAN-AUTO-2 | Geplant: erst wenn `plan:check` auf `main` Exit 0 liefert |
 | ROADMAP-0 | Konzept (Root + Rechte Hand) und UX/UI-Entwurf mit dem Designsystem | – | Erledigt: Konzept und UX-/UI-Entwurf am 15.10. angenommen (laut Root, kein PR); Umsetzung in ROADMAP-1a und ROADMAP-1b |
 | ROADMAP-1 | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | Verschoben nach ROADMAP-1a (erledigt) und ROADMAP-1b (15.10.): #1580 trägt die Plan-ID ROADMAP-1, liefert aber nur die Datenschicht, keine Seite |
@@ -1519,21 +1521,21 @@ Quelle: `pa-orch/wissen/02-recherchen/2026-10-11_comp-paperclip-3-synthese.md`
 sind Kandidaten. Wert, Größe (S ≤150, M ≤300 Diffzeilen) und Naht stehen
 dort je Zeile. Root prüft jede Einreihung erneut am aktuellen main.
 
-**Welle 1: acht Briefe, schon als Server-Jobs eingereiht** (Briefe:
+**Welle 1: Erledigt** — alle acht Briefe am 11.10. gemergt (Spalte Stand). Ursprünglich: **acht Briefe, schon als Server-Jobs eingereiht** (Briefe:
 `~/pa-orch/reports/comp-paperclip-3-specs/<PC-ID>.md`; events.log 08:40:27
 lokale Zeit, Codex; keine Naht, Stufe B). Beobachtet 11.10. 08:44 lokale Zeit:
 89–93 laufen, 94/95 in `queue/`, 96 in `hold/ready`. Live-Stand nur aus `events.log`.
 
-| Job | Brief | Titel | Bedingung |
-|---|---|---|---|
-| 89 | PC-UX-4 | Einrichtung erklärt Grenzen vor Schritt 1 | – |
-| 90 | PC-UI-3 | Unbekannte Kontingentfenster bündeln | – |
-| 91 | PC-UI-1 | Bewegung anschließen, reduzierte Bewegung respektieren | – |
-| 92 | PC-UI-4 | Kontingent-Kopf an vorhandene Quelle anschließen | – |
-| 93 | PC-UX-1 | Original und geschärften Auftrag vergleichen | – |
-| 94 | PC-BUDGET-1 | Bekannte Claude-Sperre vor Critic-Aufruf beachten | – |
-| 95 | PC-UX-8 | Empfänger und Startwirkung am Chatfeld | wartet auf #1215 |
-| 96 | PC-UI-2 | Beweiskette mit ehrlichem Ergebnis-Kopf | wartet auf #1210 |
+| Job | Brief | Titel | Bedingung | Stand |
+|---|---|---|---|---|
+| 89 | PC-UX-4 | Einrichtung erklärt Grenzen vor Schritt 1 | – | Erledigt #1226 (`5e5a3bdf`) |
+| 90 | PC-UI-3 | Unbekannte Kontingentfenster bündeln | – | Erledigt #1228 (`ebd8655f`) |
+| 91 | PC-UI-1 | Bewegung anschließen, reduzierte Bewegung respektieren | – | Erledigt #1223 (`7fc3bd17`) |
+| 92 | PC-UI-4 | Kontingent-Kopf an vorhandene Quelle anschließen | – | Erledigt #1236 (`5ffed804`) |
+| 93 | PC-UX-1 | Original und geschärften Auftrag vergleichen | – | Erledigt #1224 (`fde6958c`) |
+| 94 | PC-BUDGET-1 | Bekannte Claude-Sperre vor Critic-Aufruf beachten | – | Erledigt #1233 (`05f80276`) |
+| 95 | PC-UX-8 | Empfänger und Startwirkung am Chatfeld | wartet auf #1215 (gemergt `f9a1390d`) | Erledigt #1237 (`0e6e8064`) |
+| 96 | PC-UI-2 | Beweiskette mit ehrlichem Ergebnis-Kopf | wartet auf #1210 (gemergt `7a0e1e67`) | Erledigt #1239 (`850eef87`) |
 
 **Welle 2: nur Kandidaten.** Reine Kerne dürfen vorbereitet werden. Die
 Anschlüsse laufen seriell durch die betroffenen Nähte. SQLite, PTY, Rechte und
@@ -1580,25 +1582,25 @@ sind. Die Prioritätstabelle nimmt keine davon vorweg.
 - Keine Freigaben ohne geprüften Umfang und keine stille Rechteerweiterung. Agentengenerierte Skills wirken erst nach Freigabe.
 - Firmen-, HR-, Gantt- oder Plugin-Welten nicht als Navigation kopieren. Keine zweiten Scheduler, Datenbanken oder Dienste nur zur Nachahmung.
 
-### Architektur-Pakete aus dem Architektur-Rat (03.10.2026)
+### Architektur-Pakete aus dem Architektur-Rat (03.10.2026, historisch)
 
 Die folgenden Pakete sind neue Ideen und bleiben nach AGENTS.md unter „Später“.
 ARCH-11 ist die Ausnahme: Es ist ein angenommener M3-Kandidat (Nutzer 04.10., F6
 und Zeile in der M3-Tabelle), ohne die M3-Abnahme-Tabelle zu ändern.
 
-| ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Reihenfolge |
+| ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Stand / Reihenfolge |
 |---|---|---|---|---|---|---|---|
-| ARCH-01 | Toten Kleinkram in FE/HQ entfernen: `hqCapacity.ts` samt Test löschen, `setLandingPage`-Wrapper und Design-Studio-Mock entfernen; `hq-live.mjs` akzeptiert zusätzlich `PROJECTA_API_FILE`. | 4–5 Dateien, ~150 Diff | fe + hqL | nein | B | Test-First: `descriptorCandidates({PROJECTA_API_FILE})` liefert genau diesen Pfad; Löschungen No-Test | jetzt; Löschung mit Nutzer-Ja (F5) |
-| ARCH-02 | `queue.rs`: `enqueue` und `enqueue_with_enhancer` über gemeinsamen `insert_entry()`-Pfad führen; Test-Kopie entfernen. | `queue.rs`, Δ−35 | fR | nein | B | No-Test: mechanische Deduplizierung; 17 `queue::tests` decken Verhalten ab | nach Merge von PR #130 |
-| ARCH-03 | Einen atomaren `write_atomic`/`replace_file`-Pfad in `fsutil.rs` bündeln und in Retention, Provider und Delivery-Recovery verwenden; alten MSRV-Kommentar entfernen. `db_restore.rs:137` bleibt Folgepaket der pa-Lane. | 4 Dateien, ~220 Diff | fR | nein | A (Vault) | No-Test: Konsolidierung; bestehende Provider-, Retention- und Recovery-Tests | jetzt |
-| ARCH-04 | `retention::run_once` soll alte Sitzungsdateien über `sessionpersist::sweep(root, now)` löschen; globales Dead-Code-Allow entfernen, Item-Allow nur für `persist_draft` behalten. | `retention.rs`, `sessionpersist.rs`, ~120 Diff | fR | nein | B | Test-First: alte Sitzungsdatei verschwindet nach `run_once` | nach Inbox-Antwort F2 |
-| ARCH-05 | Binärmodule von `pub mod` auf `mod` umstellen und die dadurch sichtbaren Dead-Code-Warnungen einzeln mit Paket-ID erlauben. | `main.rs` + 2–3 Module, ~30 Diff | mn | ja | A (Naht) | No-Test: Sichtbarkeits-Lint; Force-Warn-Lauf vorher/nachher und Clippy | jetzt |
-| ARCH-06 | `AppAgentControl` und `PtyAgents` auf freie Funktionen umstellen; `ApiBackend::agents()` statt sieben `with_port`-Aufrufen verwenden. | `main.rs`, Δ−90 | mn | ja | A | No-Test: mechanische Deduplizierung; bestehende Worker-, API- und Main-Tests | nach ARCH-05, vor W5-04b |
-| ARCH-07 | Store-Kleinkram verschieben: `SRC_HOOK`/`SRC_HEURISTIC` löschen, Fehlercodes in neues `errors.rs` legen und die Rückkante store→workers entfernen. | `store.rs`, `store/queue_cancel.rs`, `workers.rs`, `errors.rs`, ~40 Diff | st | ja | A | No-Test: mechanische Verschiebung; bestehende Store-, Queue-Cancel- und API-Tests | nach #147/#44, gemäß st-Reihenfolge |
-| ARCH-08 | `SettingsView.tsx` je Tab in eigene Komponenten aufteilen. | `src/components/Settings*/`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; vorhandene Settings-Tests | nach PR #154 |
-| ARCH-09 | `ipc.ts` als Barrel behalten und PTY-, Projekt- und Worker-Domänenmodule auslagern. | `src/lib/ipc/*.ts`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; IPC- und Komponententests | nach ARCH-08, niedrige Priorität |
-| ARCH-10 | `/api/hq/v1/*` als Unter-Router mit 14 Armen aus `route()` in `api/hq_routes.rs` auslagern. | `api.rs`, `api/hq_routes.rs` | api | ja | A | No-Test: mechanische Verschiebung; FakeBackend-Servertests behalten Status, Body und Auth | vor W5-02b3 (api) |
-| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | M3-Kandidat angenommen (Nutzer 04.10.); Windows-Lauf nötig, der PC des Nutzers darf dafür genutzt werden |
+| ARCH-01 | Toten Kleinkram in FE/HQ entfernen: `hqCapacity.ts` samt Test löschen, `setLandingPage`-Wrapper und Design-Studio-Mock entfernen; `hq-live.mjs` akzeptiert zusätzlich `PROJECTA_API_FILE`. | 4–5 Dateien, ~150 Diff | fe + hqL | nein | B | Test-First: `descriptorCandidates({PROJECTA_API_FILE})` liefert genau diesen Pfad; Löschungen No-Test | Erledigt #166/#167; Reihenfolge: jetzt; Löschung mit Nutzer-Ja (F5) |
+| ARCH-02 | `queue.rs`: `enqueue` und `enqueue_with_enhancer` über gemeinsamen `insert_entry()`-Pfad führen; Test-Kopie entfernen. | `queue.rs`, Δ−35 | fR | nein | B | No-Test: mechanische Deduplizierung; 17 `queue::tests` decken Verhalten ab | Erledigt #191; Reihenfolge: nach Merge von PR #130 |
+| ARCH-03 | Einen atomaren `write_atomic`/`replace_file`-Pfad in `fsutil.rs` bündeln und in Retention, Provider und Delivery-Recovery verwenden; alten MSRV-Kommentar entfernen. `db_restore.rs:137` bleibt Folgepaket der pa-Lane. | 4 Dateien, ~220 Diff | fR | nein | A (Vault) | No-Test: Konsolidierung; bestehende Provider-, Retention- und Recovery-Tests | Erledigt #214/#217/#256; Reihenfolge: jetzt |
+| ARCH-04 | `retention::run_once` soll alte Sitzungsdateien über `sessionpersist::sweep(root, now)` löschen; globales Dead-Code-Allow entfernen, Item-Allow nur für `persist_draft` behalten. | `retention.rs`, `sessionpersist.rs`, ~120 Diff | fR | nein | B | Test-First: alte Sitzungsdatei verschwindet nach `run_once` | Erledigt #169; Reihenfolge: nach Inbox-Antwort F2 |
+| ARCH-05 | Binärmodule von `pub mod` auf `mod` umstellen und die dadurch sichtbaren Dead-Code-Warnungen einzeln mit Paket-ID erlauben. | `main.rs` + 2–3 Module, ~30 Diff | mn | ja | A (Naht) | No-Test: Sichtbarkeits-Lint; Force-Warn-Lauf vorher/nachher und Clippy | Erledigt #182; Reihenfolge: jetzt |
+| ARCH-06 | `AppAgentControl` und `PtyAgents` auf freie Funktionen umstellen; `ApiBackend::agents()` statt sieben `with_port`-Aufrufen verwenden. | `main.rs`, Δ−90 | mn | ja | A | No-Test: mechanische Deduplizierung; bestehende Worker-, API- und Main-Tests | Erledigt #219; Reihenfolge: nach ARCH-05, vor W5-04b |
+| ARCH-07 | Store-Kleinkram verschieben: `SRC_HOOK`/`SRC_HEURISTIC` löschen, Fehlercodes in neues `errors.rs` legen und die Rückkante store→workers entfernen. | `store.rs`, `store/queue_cancel.rs`, `workers.rs`, `errors.rs`, ~40 Diff | st | ja | A | No-Test: mechanische Verschiebung; bestehende Store-, Queue-Cancel- und API-Tests | Erledigt #202; Reihenfolge: nach #147/#44, gemäß st-Reihenfolge |
+| ARCH-08 | `SettingsView.tsx` je Tab in eigene Komponenten aufteilen. | `src/components/Settings*/`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; vorhandene Settings-Tests | Erledigt #181/#221/#229/#244/#247/#252; Reihenfolge: nach PR #154 |
+| ARCH-09 | `ipc.ts` als Barrel behalten und PTY-, Projekt- und Worker-Domänenmodule auslagern. | `src/lib/ipc/*.ts`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; IPC- und Komponententests | Erledigt #260/#264/#269; Reihenfolge: nach ARCH-08, niedrige Priorität |
+| ARCH-10 | `/api/hq/v1/*` als Unter-Router mit 14 Armen aus `route()` in `api/hq_routes.rs` auslagern. | `api.rs`, `api/hq_routes.rs` | api | ja | A | No-Test: mechanische Verschiebung; FakeBackend-Servertests behalten Status, Body und Auth | Erledigt #220/#236/#246/#250; Reihenfolge: vor W5-02b3 (api) |
+| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | Verschoben nach Z4-ARCH-11; Reihenfolge: M3-Kandidat angenommen (Nutzer 04.10.); Windows-Lauf nötig, der PC des Nutzers darf dafür genutzt werden |
 | ARCH-12 | `impl ControlBackend for ApiBackend` aus `main.rs` auslagern. Das Paket bleibt gesperrt, weil der Trait-Block als reine Verschiebung mehr als 300 Diffzeilen erzeugt. | `main.rs`, `api/backend.rs`, ~715 Z. | mn + api | ja | A | No-Test: mechanische Verschiebung erst nach ADR A1 | nach ADR A1; gesperrt |
 
 ### Synthese der Bestandsaufnahmen INV-01..08 und des Architektur-Rats (03.10.2026)
@@ -1646,6 +1648,7 @@ Queue-PR #283 zusammen); #282 SETUP-12-Rest (Draft). Queue-Lauf 37196272431 (#27
 allein, Queue-PR #281) scheiterte nur an einem KI-30-Test auf Windows, siehe
 `KNOWN_ISSUES.md`. Der Stand von Queue und CI ist neu zu lesen; er kann sich
 schon geändert haben.
+Nachtrag 15.10.: #270, #273 und #282 am 04.10. sowie #269 am 05.10. (`5796236d`) gemergt.
 Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
 
 **Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
@@ -1657,7 +1660,7 @@ Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
 | `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
 | `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
 | `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220, 10c ✓ #246, 10d ✓ #250; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
-| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b ✓ #264, c Draft #269 (nicht gemergt); M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
+| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b ✓ #264, c ✓ #269; M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
 
 ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
 roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
@@ -1739,6 +1742,7 @@ neue Zeilen halten die Freigaben fest). Offen sind E3, der M4-Blocker, E14 (drin
 Nachweis siehe E13) sind entschieden und werden nicht neu gefragt. Agenten
 unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 (AGENTS.md, Regel 10).
+Nachtrag 15.10.: E3 (09.10.) und E14 (14.10., laut Root) sind erledigt; maßgeblich ist die aktuelle Inbox oben.
 
 | # | Frage | Empfehlung | Wer entscheidet? | Status |
 |---|---|---|---|---|
@@ -1747,7 +1751,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | E1 | HQ2-02: Demo und Studio ansehen und die Richtung für die eine Oberfläche festlegen. Der Entscheid blockiert die Farbthemen T2–T5 in HQ2-03. | In M3 entscheiden und danach HQ2-03 starten. | Nutzer | ✓ entschieden (Nutzer 04.10.): Mix. Das Studio-Layout (`hq2-concept`/`hq2-studio`) ist die Richtung für „HQ als Hauptbereich der App“, dazu die Einleitungsleiste und die Entscheidungsbox „Dein Urteil ist gefragt“ aus der Demo (zweite Antwort ~17:15). HQ2-03 ist freigegeben und baut darauf auf. |
 | E1-Hinweis | HQ2-02/03 blockiert die Farbthemen T2–T5. | Erst HQ2-02 festlegen, dann die Farbthemen in HQ2-03 bearbeiten. | Nutzer | Hinweis |
 | E2 | W4-01: Benchmark auf 5 Aufgaben verkleinern oder durch ein Nutzer-Gate ersetzen | 5 Aufgaben | Nutzer | ✓ entschieden: 5 Aufgaben (Nutzer 02.10.) |
-| E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja; einmal im Browser klicken | Nutzer | offen (Nutzer) |
+| E3 | Secrets aus der Repo-Ebene in geschützte Environments, Required Reviewers für `release` | ja; einmal im Browser klicken | Nutzer | Nachtrag 15.10.: erledigt (siehe „E3 (Altfrage)“ in der aktuellen Inbox); ursprünglich: offen (Nutzer) |
 | E4 | W3-07 Produktionsschlüssel | vor v1.5.0 | Nutzer | ✓ entschieden (Nutzer 04.10.): der bestehende Updater-Schlüssel bleibt (passt zum Public Key in `src-tauri/tauri.conf.json`). Am 04.10. hat der Orchestrator die Environment-Secrets `TAURI_SIGNING_PRIVATE_KEY` und `UPDATES_MIRROR_TOKEN` aus dem früheren privaten Repository in das `release`-Environment dieses Repos kopiert (einmaliger Workflow, Werte nie angezeigt, temporärer Token und Branch danach entfernt). Damit kann v1.4.1 auf v1.5.0 automatisch aktualisieren. Beleg (nur Namen): `gh api repos/Cuarroc/ProjectA/environments/release/secrets --jq '.secrets[].name'` liefert beide Namen (04.10.). |
 | E5 | W4-03 Continuous-Aktivierung | erst nach W4-02 | Nutzer | ✓ entschieden (Nutzer 04.10.): der Aktivierungsschalter darf jetzt gebaut werden, fail-closed (gesperrt, bis die Zeilen 1–26 der Abnahmematrix belegt sind); der Nutzer schaltet selbst am Ende ein (Zeile 2). Das löst den Zirkel zwischen Matrixzeile 2 und der Entscheidungsregel von W4-03. |
 | E6 | W5-02e eigener Windows-Benutzer für Agenten | nach M4 | Nutzer | später (Nutzer 25.09.) |
@@ -1768,7 +1772,7 @@ unterbrechen den Nutzer nicht einzeln im Chat, sondern tragen die Frage hier ein
 | N2 | Echte Proben und Tests am PC | Erlauben. | Nutzer | ✓ entschieden (Nutzer 04.10.): echte Proben mit Claude/Codex/OpenCode sind erlaubt und dürfen Abo-Kontingent verbrauchen (HQ2-05b, P0); Agenten dürfen den PC des Nutzers für Tests nutzen und die ProjectA-App öffnen, bedienen und schließen. |
 | W5-02b3 | Produktfrage: Verhältnis der globalen Env-Stufe zur Isolation je Profil | Globale Stufe ersetzt die Profil-Isolation. | Nutzer | ✓ entschieden (Nutzer 04.10.): die globale Stufe ersetzt die Isolation je Profil für gewöhnliche Agenten; Koordinatoren bleiben immer `strict`; profilspezifisches `passthrough` bleibt. |
 | M4-Blocker | Planning-access-Befunde 3/4 aus dem Security-Review vom 03.10. blockieren M4 (`planning_access` ohne Projektrahmen, TOCTOU). | Vor M4-Abnahme beheben und erneut prüfen. | Nutzer | offen |
-| E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | offen, Nutzer, dringend |
+| E14 | Offline-Sicherung des Updater-Signierschlüssels. Er liegt heute nur als Repository-Environment-Secret, es gibt keine lokale Kopie. | Verschlüsselter einmaliger Export in den Passwort-Manager des Nutzers; ohne Kopie geht bei Verlust das Update-Vertrauen verloren. | Nutzer | beantwortet: Durchführung 14.10. laut Root (siehe Z4-E14); ursprünglich: offen, Nutzer, dringend |
 | E15 | Bleibt der gemietete Build-Server nach dem Release? (Kostenentscheidung; Betrag steht hier nicht.) | Nach v1.6.0 mit Nutzen und Kosten bewerten. | Nutzer | offen, nach v1.6.0 |
 | E16 | Lizenz und Geschäftsmodell vor den ersten externen Nutzern. Heute MIT; Optionen: MIT bleiben, Open Core, Doppellizenz. Für echte Verkäufe rechtliche Beratung einholen. | Vor V16-03 entscheiden. | Nutzer | offen, vor externen Testern |
 | E17 | Alte Arbeitsbäume entfernen? 29 von 81 sind nachweislich sicher (PR gemergt oder geschlossen, 0 geänderte Dateien, 0 ungepushte Commits, 0 Commits außerhalb von main); Liste liegt beim Orchestrator. Löschen entscheidet der Nutzer, vorher Backup. | Niedrige Priorität; nicht auf dem v1.5.0-Pfad. | Nutzer | offen, niedrig |
@@ -1792,9 +1796,9 @@ Frühere Entscheidungen (Nr. 1–17): `.pa/archiv/PLAN_2026-09-24.md` §5 und
 
 ## Belege und Verträge, die weiter gelten
 
-- `.pa/task_continuous_devhq.md` — Vertrag für den Continuous Mode (10.09.).
+- `docs/development/CONTINUOUS.md` — nutzerfreigegebener Vertrag für den Continuous Mode; die frühere Spezifikation `.pa/task_continuous_devhq.md` liegt nicht im öffentlichen Repo.
 - `.pa/continuous_acceptance_matrix.md` — Abnahmematrix, 27 Zeilen.
-- `.pa/plan_projects_w5.md` — Konzept der Welle W5 (Pakete außerhalb des Kerns geparkt).
+- Konzept der Welle W5 (Pakete außerhalb des Kerns geparkt): `.pa/plan_projects_w5.md` liegt nicht im öffentlichen Repo.
 - `docs/development/HQ2_CONTRACT.md` — Verträge von HQ, App und CLI (DF-03).
 - `docs/ERLEDIGT.md` — erledigte Pakete mit PR, Merge-SHA und Bericht.
 - `.pa/archiv/` — alte Plan- und Standfassungen, historische Specs, Review-Prompts.
@@ -1805,6 +1809,8 @@ Der Planimport (`src-tauri/src/development_plan.rs`) liest genau diese Tabelle
 und erwartet alle 38 Zeilen DF-00 bis DF-37. Deshalb bleibt sie vollständig;
 der Status steht am Anfang der letzten Spalte. Die Zeilen sind nicht Teil der
 Meilensteine (DF-15b ist erledigt, PR #16).
+
+PR-Nummern #70, #100 und #103 in dieser Tabelle sind `alt-#`-Nummern aus der Zählung vor dem öffentlichen Import (`c60f2679`) und hier nicht prüfbar; #16 ist ein PR dieses Repos.
 
 | ID | Paket / Agent / Scope | Nach | Konkretes Ergebnis und Abnahme |
 |---|---|---|---|
