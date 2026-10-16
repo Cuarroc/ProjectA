@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { Segmented } from "../design/controls/Segmented";
+import { MOTION_MODES, saveMotionMode, useMotion } from "../design/motion/motionMode";
 import { useT } from "../i18n/useT";
 import { GLASS_VARIANTS, useGlassVariant } from "../design/variants/useGlassVariant";
 import { GLASS_THEME_OPTIONS, loadGlassTheme, saveGlassTheme, type GlassTheme } from "./theme";
-import { COMPACT_QUERY, STYLE_LABEL, THEME_LABEL, VARIANT_LABELS } from "./texts";
+import { COMPACT_QUERY, MOTION_LABEL, MOTION_LABELS, MOTION_SYSTEM_HINT, STYLE_LABEL, THEME_LABEL, VARIANT_LABELS } from "./texts";
 
 const VARIANT_OPTIONS = GLASS_VARIANTS.map((value) => ({ value, label: VARIANT_LABELS[value] }));
+const MOTION_OPTIONS = MOTION_MODES.map((value) => ({ value, label: MOTION_LABELS[value] }));
 
 /** Live match of a media query; without `matchMedia` (old webviews, tests) it never matches. One list per query, released on unmount. */
 function useMediaQuery(query: string): boolean {
@@ -22,11 +24,14 @@ function useMediaQuery(query: string): boolean {
 function Groups() {
   const [theme, setTheme] = useState<GlassTheme>(loadGlassTheme);
   const [variant, setVariant] = useGlassVariant();
+  const { mode, system } = useMotion();
   const change = (next: GlassTheme) => { setTheme(next); saveGlassTheme(next); };
   return (
     <>
       <Segmented aria-label={THEME_LABEL} options={GLASS_THEME_OPTIONS} value={theme} onChange={change} />
       <Segmented aria-label={STYLE_LABEL} options={VARIANT_OPTIONS} value={variant} onChange={setVariant} />
+      <Segmented aria-label={MOTION_LABEL} options={MOTION_OPTIONS} value={mode} onChange={saveMotionMode} />
+      {system ? <small className="g-app-note">{MOTION_SYSTEM_HINT}</small> : null}
     </>
   );
 }
@@ -58,7 +63,7 @@ function CompactMenu() {
   );
 }
 
-/** Hell / Dunkel / System, then the glass style (Glas / Klar / Nebel / Abend); one menu button when space is short. */
+/** Hell / Dunkel / System, the glass style (Glas / Klar / Nebel / Abend), then the motion (Ruhig / Lebendig / Aus); one menu button when space is short. */
 export function AppearanceControl() {
   return useMediaQuery(COMPACT_QUERY) ? <CompactMenu /> : <Groups />;
 }
