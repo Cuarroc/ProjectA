@@ -24,10 +24,16 @@ beforeEach(() => { localStorage.clear(); window.location.hash = ""; });
 afterEach(() => { cleanup(); delete (window as { matchMedia?: unknown }).matchMedia; });
 
 describe("narrow header", () => {
-  // The name is referenced by a pushed Test-First trailer and cannot change. Root decision: the breakpoint stays 1599 px
-  // (the controls fit from 1253 px, but search label/shortcut and quota status would disappear; V2-FU-HEADER-SPACE).
+  // The name is referenced by a pushed Test-First trailer and cannot change. Decision D7 (15.10.): the header must not
+  // collapse at the 1440 px design width, so the breakpoint sits right below it (DS-X-01; the controls fit from 1253 px).
   it("collapses only where the full controls were measured not to fit 1250 px and below", () => {
-    expect(COMPACT_QUERY).toBe("(max-width: 1599px)");
+    expect(COMPACT_QUERY).toBe("(max-width: 1439px)");
+  });
+
+  it("keeps the full controls at the 1440 px design width and collapses only below it", () => {
+    const max = Number(/max-width:\s*(\d+)px/.exec(COMPACT_QUERY)?.[1]);
+    expect(max).toBeLessThan(1440);
+    expect(max).toBeGreaterThanOrEqual(1253); // measured: the full controls fit from here
   });
 
   it("shows both segmented groups at full width and no menu button", () => {
