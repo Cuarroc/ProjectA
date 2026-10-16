@@ -45,6 +45,11 @@
 .g-lamp--warn { width: 7px; height: 7px; margin: 0 .5px; border-radius: 2px; transform: rotate(45deg); background: var(--g-need); }
 .g-lamp--busy { background: none; border: 2px solid var(--g-run); border-right-color: transparent; }
 .g-lamp--bad { border-radius: 0; background: var(--g-bad); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+/* unknown: closed muted ring like .g-glyph--unknown, never the ok disc */
+.g-lamp--unknown {
+  background: none;
+  border: 2px solid var(--g-muted);
+}
 .g-meter { display: block; height: 4px; border-radius: 2px; background: var(--g-line); overflow: hidden; }
 .g-meter b {
   display: block; height: 100%; border-radius: 2px; background: var(--g-ink2);
