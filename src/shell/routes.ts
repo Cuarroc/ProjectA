@@ -42,6 +42,7 @@ export const ROUTES: readonly ShellRoute[] = [
     [t("/eingang/plan", "tab.plan"), t("/eingang/ideen", "tab.ideas"), t("/eingang/bugs", "tab.bugs")]),
   r("beweise", "nav.beweise", "beweise", "/beweise", "M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5ZM7.3 10l1.9 1.9 3.6-3.8",
     [t("/beweise", "tab.main"), t("/beweise/diff", "tab.diff")]),
+  r("betrieb", "nav.betrieb", "betrieb", "/betrieb", "M4 5.5h12M4 10h12M4 14.5h7"),
   r("team", "nav.team", "betrieb", "/team", "M7 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M13.5 7a2 2 0 1 1 0 4M12 12.2c2.2-.3 4 .9 4.8 3.3",
     [t("/team", "tab.org"), t("/team/personas", "tab.personas"), t("/team/generator", "tab.generator")]),
   r("automatik", "nav.automatik", "betrieb", "/automatik", "M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z",
@@ -59,10 +60,10 @@ export const ROUTES: readonly ShellRoute[] = [
 export const DEFAULT_PATH = "/leitstand";
 
 /**
- * V2-SCOPE-1: the areas of the shell + Leitstand, the one list to edit. Every other area stays
+ * V2-SCOPE-1: the areas of the shell, Leitstand and Betrieb (NAV-2a), the one list to edit. Every other area stays
  * hidden until the "weitere Bereiche" flag is on; Ersteinrichtung stays reachable via `/start`.
  */
-export const SCOPE_ROUTE_IDS: readonly string[] = ["leitstand", "einstellungen", "start"];
+export const SCOPE_ROUTE_IDS: readonly string[] = ["leitstand", "betrieb", "einstellungen", "start"];
 
 const inScope = (route: ShellRoute) => SCOPE_ROUTE_IDS.includes(route.id) || isFeatureFlagEnabled("weitere_bereiche");
 

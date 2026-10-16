@@ -35,7 +35,7 @@ it("opens the Betrieb panel at /betrieb with the Betrieb area current", async ()
   expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
   expect(sidebar().getAllByRole("link").map((a) => a.textContent)).toEqual(["Fabrik", "Betrieb", "Einstellungen"]);
   expect(sidebar().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
-  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Betrieb");
+  expect(container.querySelector(".g-shell-content .g-lr h1")).toHaveTextContent("Betrieb");
   expect(container.querySelector(".g-mount")).toHaveAttribute("data-fresh", "on");
   expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
 });

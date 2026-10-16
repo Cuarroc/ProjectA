@@ -7,9 +7,10 @@ import { pathFromHash } from "../routes";
 import StartRoute from "../../screens/start/StartRoute";
 import TerminalRoute from "../../screens/terminal/TerminalRoute";
 import VerlaufRoute from "../../screens/leitstand/verlauf/VerlaufRoute";
+import BetriebRoute from "../../screens/betrieb/BetriebRoute";
 import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
 import { EinstellungenScreen } from "../../screens/einstellungen/EinstellungenScreen";
-import { FABRIK_PATH, SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf } from "./routing";
+import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isBetrieb, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf, resolveAlias } from "./routing";
 import SteuerungRoute from "./SteuerungRoute";
 import "./mount.css";
 
@@ -43,11 +44,10 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   useEffect(() => {
     const onHash = () => {
       const next = pathFromHash(window.location.hash);
-      if (next === "/leitstand/fluss") {
-        // Replace the bookmark so Back does not revisit the retired tab URL.
-        window.location.replace(`#${FABRIK_PATH}`);
-        setPath(FABRIK_PATH);
-      } else setPath(next);
+      const target = resolveAlias(next);
+      // Replace the bookmark so Back does not revisit the retired URL.
+      if (target !== next) window.location.replace(`#${target}`);
+      setPath(target);
     };
     onHash();
     window.addEventListener("hashchange", onHash);
@@ -65,11 +65,12 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
 
   const steuerung = isNewSteuerung(path);
   const start = isStart(path);
+  const betrieb = isBetrieb(path);
 
   const freshSettings = isNewEinstellungen(path);
   const terminal = isTerminal(path);
   const verlauf = isVerlauf(path);
-  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || terminal || verlauf;
+  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || terminal || verlauf;
   const legacy = hasLegacyPanel(path) && !fresh;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
@@ -82,6 +83,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {verlauf ? <VerlaufRoute /> : null}
               {steuerung ? <SteuerungRoute path={path} /> : null}
               {start ? <StartRoute /> : null}
+              {betrieb ? <BetriebRoute /> : null}
               {freshSettings ? <EinstellungenScreen onOpenClassic={openClassicSettings} /> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}

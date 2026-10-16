@@ -12,7 +12,7 @@ vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false
 
 const SIX = ["Fabrik", "Aufträge", "Beweise", "Betrieb", "Wissen", "Einstellungen"];
 /** ia.md section 1: the routes the Betrieb area groups; their paths stay unchanged. */
-const BETRIEB_IDS = ["team", "steuerung", "automatik", "core"];
+const BETRIEB_IDS = ["betrieb", "team", "steuerung", "automatik", "core"];
 const allPaths = ROUTES.flatMap((r) => [r.path, ...r.tabs.map((t) => t.path)]);
 /** EmergencyStop resolves its first poll asynchronously: flush it inside act. */
 const mount = () => act(async () => void render(<Shell />));
@@ -29,7 +29,7 @@ describe("sidebar and route registry", () => {
     const links = within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getAllByRole("link");
     expect(links.map((a) => a.textContent)).toEqual(SIX);
     expect(links[1]).toHaveAttribute("href", "#/eingang/plan");
-    expect(links[3]).toHaveAttribute("href", "#/team");
+    expect(links[3]).toHaveAttribute("href", "#/betrieb");
     expect(resolveRoute("/start")?.route.icon).toBeNull();
   });
 
@@ -46,7 +46,7 @@ describe("sidebar and route registry", () => {
     await mount();
     const nav = within(screen.getByRole("navigation", { name: "Hauptnavigation" }));
     const paths = [...new Set(ROUTES.filter((r) => BETRIEB_IDS.includes(r.id)).flatMap((r) => [r.path, ...r.tabs.map((x) => x.path)]))];
-    expect(paths).toHaveLength(10);
+    expect(paths).toHaveLength(11);
     for (const path of paths) {
       go(`#${path}`);
       expect(nav.getAllByRole("link", { current: "page" }).map((a) => a.textContent), path).toEqual(["Betrieb"]);
