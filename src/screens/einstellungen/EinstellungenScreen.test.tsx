@@ -289,14 +289,14 @@ describe("tab Allgemein", () => {
     delete document.documentElement.dataset.glassVariant;
   });
 
-  it("shows both appearance groups here even where the header collapses them into a menu", () => {
+  it("shows all three appearance groups here even where the header collapses them into a menu", () => {
     window.matchMedia = ((query: string) => ({
       matches: query === COMPACT_QUERY, addEventListener: () => {}, removeEventListener: () => {},
     })) as unknown as typeof window.matchMedia;
     try {
       show();
       const card = within(screen.getByRole("region", { name: "Darstellung" }));
-      expect(card.getAllByRole("radiogroup").map((g) => g.getAttribute("aria-label"))).toEqual(["Farbschema", "Stil"]);
+      expect(card.getAllByRole("radiogroup").map((g) => g.getAttribute("aria-label"))).toEqual(["Farbschema", "Stil", "Bewegung"]);
       expect(card.queryByRole("button", { name: "Darstellung" })).toBeNull();
     } finally {
       delete (window as { matchMedia?: unknown }).matchMedia;
