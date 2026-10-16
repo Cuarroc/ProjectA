@@ -90,6 +90,12 @@ it("lifts the node lamp to done when the test passed", async () => {
   expect(within(await node()).queryByRole("img", { name: "ohne Beweis" })).toBeNull();
 });
 
+it("a node of an unknown column shows the same neutral lamp as the card", async () => {
+  render(<FlowTab cards={withCard({ column: "parked" })} />);
+  expect(within(await node()).getByRole("img", { name: "Unbekannt" })).toHaveClass("g-lamp--unknown");
+  expect(within(await node()).queryByRole("img", { name: "Läuft" })).toBeNull();
+});
+
 it("draws the node's proof strip as the one-line variant", async () => {
   render(<FlowTab cards={withCard({ prUrl: "https://github.com/o/r/pull/7" })} />);
   const strip = within(await node()).getByRole("group", { name: "Beweis" });

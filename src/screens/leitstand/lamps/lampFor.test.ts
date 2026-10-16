@@ -46,4 +46,16 @@ describe("lampFor", () => {
       expect(lampFor(card({ column }), true)).toEqual({ lamp: "working", word: "Läuft" });
     }
   });
+
+  it("returns unknown for a column the map does not know", () => {
+    expect(lampFor(card({ column: "parked" as BoardColumn }), true)).toEqual({ lamp: "unknown", word: "Unbekannt" });
+  });
+
+  it("returns unknown for a worker status it does not know", () => {
+    expect(lampFor(card({}, { status: "paused" as BoardCard["worker"]["status"] }), false)).toEqual({ lamp: "unknown", word: "Unbekannt" });
+  });
+
+  it("a passed test is worded as a test result", () => {
+    expect(lampFor(card({ column: "done", testedAt: null }), true).word).toBe("Test bestanden");
+  });
 });
