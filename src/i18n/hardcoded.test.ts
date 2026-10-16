@@ -19,6 +19,9 @@ const DICT_FILE = "de.ts";
 // Per-screen `texts.ts` modules are the transitional home of v2 words until follow-ups fold
 // them into `de.ts`. They are dictionary sources like `de.ts`, so they are not scanned.
 const TEXTS_MODULE_FILE = "texts.ts";
+// The design registry (DS-X-14) is a developer catalogue in English, read by agents and the
+// gallery, never shown as UI text, so it is not scanned.
+const DESIGN_REGISTRY = join(ROOT, "src", "design", "registry.ts");
 const BASELINE_FILE = join(__dirname, "hardcoded-baseline.json");
 const UI_RE = /[ÄÖÜäöüß]|\s|[A-ZÄÖÜ][a-zäöüß]{2,}/;
 
@@ -32,7 +35,7 @@ function walkTs(dir: string): string[] {
       continue;
     }
     if (!/\.tsx?$/.test(name) || /\.test\.tsx?$/.test(name)) continue;
-    if (name === DICT_FILE || name === TEXTS_MODULE_FILE) continue;
+    if (name === DICT_FILE || name === TEXTS_MODULE_FILE || path === DESIGN_REGISTRY) continue;
     out.push(path);
   }
   return out;
