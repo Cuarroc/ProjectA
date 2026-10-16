@@ -1,0 +1,27 @@
+/* DS-X-04 Fabrik orb: a work orb on a lane. Plain classes on the --g-* tokens,
+   so a page without React (Denkraum) can bundle this file next to state.css.
+   The inner glyph (state.css) is the second signal: the fill never speaks
+   alone. No blur, no animation here; orb motion belongs to DS-X-24. */
+
+.g-orb {
+  --c: var(--g-done);
+  --on: var(--g-on-accent);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 1px var(--g-line), 0 0 12px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.g-orb--run { --c: var(--g-run); }
+.g-orb--need { --c: var(--g-need); --on: var(--g-on-need); }
+.g-orb--rev { --c: var(--g-rev); }
+.g-orb--ok { --c: var(--g-ok); }
+.g-orb--done { --c: var(--g-done); }
+.g-orb--bad { --c: var(--g-bad); }
+.g-orb--unknown { --c: var(--g-muted); }
+
+/* state.css colours a glyph with its own state; on the fill that would vanish. */
+.g-orb > .g-glyph { color: var(--on); }

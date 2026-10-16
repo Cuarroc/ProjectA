@@ -83,7 +83,7 @@ performance attestations. No provider is contacted by the runner itself.
 
 ## Pending activation gates
 
-The approved full specification remains `.pa/task_continuous_devhq.md`.
+The approved full specification was `.pa/task_continuous_devhq.md`; that file is not in the public repository.
 Required before unattended operation: verified provider/model/billing adapters,
 scoped credentials, root-cycle budgets, launch intent and process reconciliation,
 event-driven scheduling, independent candidate-bound reviews, staged signed

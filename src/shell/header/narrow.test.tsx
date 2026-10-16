@@ -24,16 +24,22 @@ beforeEach(() => { localStorage.clear(); window.location.hash = ""; });
 afterEach(() => { cleanup(); delete (window as { matchMedia?: unknown }).matchMedia; });
 
 describe("narrow header", () => {
-  // The name is referenced by a pushed Test-First trailer and cannot change. Root decision: the breakpoint stays 1599 px
-  // (the controls fit from 1253 px, but search label/shortcut and quota status would disappear; V2-FU-HEADER-SPACE).
+  // The name is referenced by a pushed Test-First trailer and cannot change. Decision D7 (15.10.): the header must not
+  // collapse at the 1440 px design width, so the breakpoint sits right below it (DS-X-01; the controls fit from 1253 px).
   it("collapses only where the full controls were measured not to fit 1250 px and below", () => {
-    expect(COMPACT_QUERY).toBe("(max-width: 1599px)");
+    expect(COMPACT_QUERY).toBe("(max-width: 1439px)");
   });
 
-  it("shows both segmented groups at full width and no menu button", () => {
+  it("keeps the full controls at the 1440 px design width and collapses only below it", () => {
+    const max = Number(/max-width:\s*(\d+)px/.exec(COMPACT_QUERY)?.[1]);
+    expect(max).toBeLessThan(1440);
+    expect(max).toBeGreaterThanOrEqual(1253); // measured: the full controls fit from here
+  });
+
+  it("shows all three segmented groups at full width and no menu button", () => {
     viewport(false);
     render(<AppearanceControl />);
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(3);
     expect(screen.queryByRole("button", { name: "Darstellung" })).toBeNull();
   });
 
@@ -59,7 +65,7 @@ describe("narrow header", () => {
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("radiogroup")).toBeNull();
     resize(false);
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(3);
   });
 
   it("closes the Darstellung menu when focus leaves it", () => {
@@ -71,14 +77,14 @@ describe("narrow header", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 
-  it("keeps the menu open while focus moves between its two groups", () => {
+  it("keeps the menu open while focus moves between its groups", () => {
     viewport(true);
     render(<AppearanceControl />);
     fireEvent.click(screen.getByRole("button", { name: "Darstellung" }));
     const theme = within(screen.getByRole("radiogroup", { name: "Farbschema" })).getAllByRole("radio")[0];
     const style = within(screen.getByRole("radiogroup", { name: "Stil" })).getByRole("radio", { name: "Nebel" });
     fireEvent.focusOut(theme, { relatedTarget: style });
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(3);
   });
 
   it("creates one MediaQueryList per mounted control and releases it on unmount", () => {
@@ -86,9 +92,9 @@ describe("narrow header", () => {
     const removed = vi.fn<(type: string, fn: () => void) => void>();
     const matchMedia = vi.fn(() => ({ matches: false, addEventListener: added, removeEventListener: removed }));
     window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
-    const { rerender, unmount } = render(<AppearanceControl />);
-    rerender(<AppearanceControl />);
-    rerender(<AppearanceControl />);
+    const { rerender, unmount } = render(<AppearanceControl motion={false} />);
+    rerender(<AppearanceControl motion={false} />);
+    rerender(<AppearanceControl motion={false} />);
     expect(matchMedia).toHaveBeenCalledTimes(1);
     expect(matchMedia).toHaveBeenCalledWith(COMPACT_QUERY);
     expect(added).toHaveBeenCalledTimes(1);

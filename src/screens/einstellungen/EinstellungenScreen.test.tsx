@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FEATURE_FLAGS, FEATURE_FLAG_STORAGE_PREFIX, isFeatureFlagEnabled, setFeatureFlagEnabled } from "../../flags/featureFlags";
 import { getIdentifier, getVersion } from "@tauri-apps/api/app";
 import { ROUTES } from "../../shell/routes";
+import { COMPACT_QUERY } from "../../shell/texts";
 import { EinstellungenScreen } from "./EinstellungenScreen";
 import changelogSource from "../../../CHANGELOG.md?raw";
 import { parseChangelog } from "../../lib/changelog";
@@ -286,6 +287,27 @@ describe("tab Allgemein", () => {
     fireEvent.click(within(style).getByRole("radio", { name: "Nebel" }));
     expect(document.documentElement.dataset.glassVariant).toBe("nebel");
     delete document.documentElement.dataset.glassVariant;
+  });
+
+  it("shows all three appearance groups here even where the header collapses them into a menu", () => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === COMPACT_QUERY, addEventListener: () => {}, removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      show();
+      const card = within(screen.getByRole("region", { name: "Darstellung" }));
+      expect(card.getAllByRole("radiogroup").map((g) => g.getAttribute("aria-label"))).toEqual(["Farbschema", "Stil", "Bewegung"]);
+      expect(card.queryByRole("button", { name: "Darstellung" })).toBeNull();
+    } finally {
+      delete (window as { matchMedia?: unknown }).matchMedia;
+    }
+  });
+
+  it("offers the motion switch under the glass style and applies the choice", () => {
+    show();
+    const motion = within(screen.getByRole("region", { name: "Darstellung" })).getByRole("radiogroup", { name: "Bewegung" });
+    fireEvent.click(within(motion).getByRole("radio", { name: "Aus" }));
+    expect(document.documentElement.dataset.motion).toBe("off");
   });
 
   it("hides the repeated classic field label in the Not-Aus section only", () => {
