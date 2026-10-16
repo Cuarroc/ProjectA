@@ -896,7 +896,7 @@ Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions
 | ID | Ziel | Hängt ab von | Status |
 |---|---|---|---|
 | DS-01 | Bewegungstoken vereinheitlichen | – | Erledigt: #1561 (merged 2026-10-15T16:58:10Z, `2f3625e2`) |
-| DS-02 | Ruhig/Lebendig/Aus mit OS-Vorrang | DS-01; D2 | geplant |
+| DS-02 | Ruhig/Lebendig/Aus mit OS-Vorrang | DS-01; D2 | Ersetzt durch DS-X-03; erledigt mit PR #1606 |
 | DS-03 | Galerie in jedem Build erreichbar machen | DS-02; D6 ersetzt Dev-only | geplant |
 | DS-04 | Komponenten und Zustände in Galerie zeigen | DS-03 | geplant |
 | DS-05 | Einheitliche Bewegung anwenden | DS-02 | geplant |

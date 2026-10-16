@@ -1,9 +1,10 @@
-import { useId, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { HonestState } from "../../../design/data/HonestState";
+import { useMotion } from "../../../design/motion/motionMode";
 import { fill } from "../leitstand";
 import type { FlowLayout, FlowNode } from "./layout";
-import { REDUCED_QUERY, T } from "./texts";
+import { T } from "./texts";
 import "../../../design/glass.css";
 import "./flow.css";
 
@@ -25,24 +26,12 @@ const NODE_H = 112;
 const GAP_X = 24;
 const GAP_Y = 40;
 
-/** Live "user asked for reduced motion"; without `matchMedia` (old webviews, tests) it never matches. */
-function useReducedMotion(): boolean {
-  const list = useMemo(() => (typeof window.matchMedia === "function" ? window.matchMedia(REDUCED_QUERY) : null), []);
-  return useSyncExternalStore(
-    (notify) => {
-      list?.addEventListener("change", notify);
-      return () => list?.removeEventListener("change", notify);
-    },
-    () => list?.matches ?? false,
-  );
-}
-
 const left = (node: FlowNode) => node.x * (NODE_W + GAP_X);
 const top = (node: FlowNode) => node.y * (NODE_H + GAP_Y);
 
 /** The agent flow on glass: one node per agent, an arrow from each parent to the child it started. */
 export function FlowGraph({ layout, labels, renderNode }: FlowGraphProps) {
-  const reduced = useReducedMotion();
+  const { ambient } = useMotion();
   const arrow = useId();
   if (layout.nodes.length === 0) return <HonestState kind="empty" title={T.empty} />;
 
@@ -75,7 +64,7 @@ export function FlowGraph({ layout, labels, renderNode }: FlowGraphProps) {
                 data-flow-edge=""
                 data-from={from}
                 data-to={to}
-                className={reduced ? "fl-edge" : "fl-edge fl-edge--moving"}
+                className={ambient ? "fl-edge fl-edge--moving" : "fl-edge"}
                 d={`M${x1} ${y1}C${x1} ${mid} ${x2} ${mid} ${x2} ${y2}`}
                 markerEnd={`url(#${arrow})`}
               >
