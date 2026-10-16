@@ -1,5 +1,5 @@
 # ARCH-D4 serial slice 5: queue routes
-Status: aktiv
+Status: historisch
 
 Source: docs/PLAN.md ARCH-D4; v1.6.0 plan section3.
 Decision: rev1 serial-total300, answer6b733c02; <=300ALL per part.

@@ -71,8 +71,8 @@ function CompactMenu({ motion }: { motion: boolean }) {
   );
 }
 
-/** Hell / Dunkel / System, then the glass style (Glas / Klar / Nebel / Abend), then the motion; one menu button when space is short.
+/** Hell / Dunkel / System, then the glass style (Glas / Klar / Nebel / Abend), then the motion; one menu button when space is short, unless `full` (Einstellungen has room).
  *  The header passes `motion={false}`: a third group costs the search its label (measured 1600-1800 px). */
-export function AppearanceControl({ motion = true }: { motion?: boolean }) {
-  return useMediaQuery(COMPACT_QUERY) ? <CompactMenu motion={motion} /> : <Groups motion={motion} />;
+export function AppearanceControl({ full = false, motion = true }: { full?: boolean; motion?: boolean }) {
+  return useMediaQuery(COMPACT_QUERY) && !full ? <CompactMenu motion={motion} /> : <Groups motion={motion} />;
 }

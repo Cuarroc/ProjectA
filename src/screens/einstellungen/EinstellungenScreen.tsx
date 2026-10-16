@@ -60,7 +60,7 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
           {t.id === TABS[0].id ? (
             <div className="es-grid">
               <Section title={T.appearance} hint={T.appearanceHint}>
-                <AppearanceControl />
+                <AppearanceControl full />
               </Section>
               <Section title={T.preview}>
                 <ul className="es-preview-list">
