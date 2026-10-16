@@ -14,6 +14,15 @@ if ! hs_may_touch "$branch"; then
   echo "post-merge: Branch '${branch:-detached}' erzeugt die HQ-Momentaufnahme nicht neu (Konfliktherd); das tut main." >&2
   exit 0
 fi
+# The roadmap page (.pa/roadmap.html, untracked) follows main only. Best effort:
+# a failure prints one line and the renderer's own 12 h banner marks the old page stale.
+if [ "$branch" = main ] && [ -f scripts/roadmap-data.mjs ] && command -v node >/dev/null 2>&1; then
+  limit=()
+  command -v timeout >/dev/null 2>&1 && limit=(timeout 300)
+  if ! ${limit[@]+"${limit[@]}"} node scripts/roadmap-data.mjs --page >&2; then
+    echo "post-merge: Roadmap-Seite nicht neu erzeugt; npm run roadmap:page nachholen." >&2
+  fi
+fi
 if [ -n "$(git status --porcelain -- "${files[@]}")" ]; then
   echo "post-merge: lokale HQ-Aenderungen bleiben erhalten; spaeter npm run hq ausfuehren." >&2
   exit 0
