@@ -78,6 +78,25 @@ test("resolves source-defined v2 aliases before dependency filtering", () => {
   assert.deepEqual(kinds(special), []);
 });
 
+test("strips ID notes only in ID or Paket tables and creates no packages elsewhere", () => {
+  // Literal rows from the Geparkt and decision tables of docs/PLAN.md.
+  const model = parse(`| Was | Grund |
+|---|---|
+| W4-03a (Journal-Teil) | x |
+| W1-09c (A), W1-12 (B) | x |
+
+| # | Frage | Status |
+|---|---|---|
+| V2-ENG (15.10.) | Schnitt | beantwortet |
+
+| Paket | Regel |
+|---|---|
+| **V2-EX-4** (fR + ci, B, M) | x |
+| W1-09c (A), W1-12 (B) | x |`);
+  assert.deepEqual(model.decisions, [{ id: "V2-ENG (15.10.)", status: "answered", line: 8 }]);
+  // The non-greedy note only strips a single trailing "(...)", never a second ID.
+  assert.deepEqual(model.packages.map((p) => p.id), ["V2-EX-4", "W1-09c (A), W1-12 (B)"]);
+});
 test("dependency clauses exclude prose and keep known or explicit package IDs", () => {
   const model = parse(table("| DR-09 | A | done | |\n| DR-10 | B | done | DR-09/#638 gemergt; Verdrahtung in DR-11/#718 |\n| DR-11 | C | done | DR-10, FIT-Abnahme, UI-Verdrahtung, DR-05-Verknüpfung, DR-SEC-01g, CUSTOM-task |\n| CUSTOM-task | D | planned | |"));
   assert.deepEqual(model.packages.map((p) => p.deps), [[], ["DR-09"], ["DR-10", "DR-SEC-01g", "CUSTOM-task"], []]);
