@@ -3,6 +3,8 @@ import { getVersion } from "@tauri-apps/api/app";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 
 import { Button } from "../../design/controls/Button";
+import { de } from "../../i18n/de";
+import { GALLERY_PATH } from "../../shell/mount/routing";
 import { ErrorDetails } from "../../errors/ErrorDetails";
 import { texts, userError } from "../../errors/texts";
 import { cancelUpdateDownload, describeError, installUpdateWhenIdle, listLiveSessions, type CancelUpdateResult } from "../../lib/ipc";
@@ -122,6 +124,7 @@ export function VersionUpdates() {
           <ErrorDetails raw={userError(state.message).detail} />
         </div>
       ) : null}
+      <a className="g-btn g-btn--ghost g-btn--sm" href={`#${GALLERY_PATH}`}>{de["gallery.open"]}</a>
     </>
   );
 }

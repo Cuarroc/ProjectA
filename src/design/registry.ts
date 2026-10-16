@@ -1,7 +1,7 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
 // keeps it in step with the `export function` components under src/design.
 
-export type ComponentFamily = "controls" | "data" | "fabrik" | "hall" | "inputs" | "layout" | "state";
+export type ComponentFamily = "controls" | "data" | "fabrik" | "gallery" | "hall" | "inputs" | "layout" | "state";
 
 export interface ComponentEntry {
   /** The exported function name. */
@@ -54,6 +54,12 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: [], states: ["on, off, disabled"],
     a11y: "role=\"switch\" with aria-checked; needs aria-label or aria-labelledby.",
     text: "The label is the caller's.",
+  },
+  {
+    name: "Gallery", family: "gallery",
+    variants: [], states: ["one page at a time; motion demo rests while motion is reduced"],
+    a11y: "Pages are buttons in a named nav with aria-current; swatches print their contrast ratio as text.",
+    text: "src/i18n/de.ts gallery.*; sample content carries the \"Beispieldaten\" label.",
   },
   {
     name: "DevNote", family: "data",

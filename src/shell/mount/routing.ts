@@ -36,6 +36,10 @@ export const isTerminal = (path: string) => trim(path.split("?")[0]) === "/leits
 
 export const isVerlauf = (path: string) => trim(path.split("?")[0]) === "/leitstand/verlauf";
 
+/** DS-X-15 (D6): the read-only design gallery; outside ROUTES, so no sidebar or palette entry. */
+export const GALLERY_PATH = "/designsystem";
+export const isGallery = (path: string) => trim(path) === GALLERY_PATH;
+
 /** The new Leitstand owns `/leitstand` (V2-S01a) and `/leitstand/fabrik` with its old `/leitstand/fluss` alias; the rest below it stays the old view. */
 export const isNewLeitstand = (path: string) => ["/leitstand", FABRIK_PATH, "/leitstand/fluss"].includes(trim(path));
 
