@@ -84,23 +84,35 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
     );
   }
 
+  // Only a read board may say "no agents": loading and unreadable are not empty (DS-T-01).
+  const unread = board.cards.length === 0;
   return (
     <div className="g-lr">
       <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
-      <div className="g-lr-body">
-        <div className="g-lr-main">
-          {profilesFailed && <div role="status"><HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("leitstand.profilesHint")} /></div>}
-          <LeitstandCards
-            cards={board.cards}
-            profiles={profiles}
-            now={now}
-            onOpen={({ worker }) => void (window.location.hash = `#/leitstand/terminal?worker=${encodeURIComponent(worker.id)}`)}
-          />
+      {/* Without a project neither list can be read, so neither may claim it is empty. */}
+      {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} /></div> : (
+        <div className="g-lr-body">
+          <div className="g-lr-main">
+            {profilesFailed && <div role="status"><HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("leitstand.profilesHint")} /></div>}
+            {board.loading && unread ? <div className="ls-none" role="status"><p>{t("leitstand.loading")}</p></div>
+              : board.error !== null && unread
+                ? <div role="status"><HonestState kind="offline" hint={t("leitstand.offlineHint")} action={{ label: t("leitstand.retry"), onClick: board.refresh }} /></div>
+                : <>
+                    {/* shortcut: no age of the last good read; needs a read timestamp in useBoard (follow-up). */}
+                    {board.error !== null && <p className="ls-err" role="status">{t("leitstand.refreshFailed")}</p>}
+                    <LeitstandCards
+                      cards={board.cards}
+                      profiles={profiles}
+                      now={now}
+                      onOpen={({ worker }) => void (window.location.hash = `#/leitstand/terminal?worker=${encodeURIComponent(worker.id)}`)}
+                    />
+                  </>}
+          </div>
+          <div className="g-lr-side">
+            <NeedsYou questions={questions} workers={board.cards.map((c) => c.worker)} />
+          </div>
         </div>
-        <div className="g-lr-side">
-          <NeedsYou questions={questions} workers={board.cards.map((c) => c.worker)} />
-        </div>
-      </div>
+      )}
     </div>
   );
 }
