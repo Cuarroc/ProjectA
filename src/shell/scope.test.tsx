@@ -7,7 +7,7 @@ import { Shell } from "./Shell";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
-const SCOPE = ["Fabrik", "Einstellungen"];
+const SCOPE = ["Fabrik", "Betrieb", "Einstellungen"];
 /** The palette also offers Ersteinrichtung, which has no sidebar entry but stays reachable via /start. */
 const PALETTE_AREAS = [...SCOPE, "Ersteinrichtung"];
 const mount = () => act(async () => void render(<Shell />));
@@ -34,10 +34,10 @@ describe("shell scope (V2-SCOPE-1)", () => {
     expect(resolveRoute("/nirgends")).toBeNull();
   });
 
-  it("with the scope flag off the sidebar shows Fabrik and Einstellungen", async () => {
+  it("with the scope flag off the sidebar shows Fabrik, Betrieb and Einstellungen", async () => {
     await mount();
     const links = within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getAllByRole("link");
-    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Fabrik", "#/leitstand"], ["Einstellungen", "#/einstellungen"]]);
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Fabrik", "#/leitstand"], ["Betrieb", "#/betrieb"], ["Einstellungen", "#/einstellungen"]]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
   });
 

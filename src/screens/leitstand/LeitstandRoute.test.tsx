@@ -186,17 +186,6 @@ describe("Leitstand route behind D1", () => {
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
   });
 
-  it("renders the Betrieb panel at /leitstand/betrieb and marks its tab as the current one", async () => {
-    localStorage.setItem(FLAG_KEY, "1");
-    window.location.hash = "#/leitstand/betrieb";
-    const { container } = render(<App />);
-    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
-    expect(tabs().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
-    expect(tabs().getByRole("link", { name: "Haupt" })).not.toHaveAttribute("aria-current");
-    expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
-    expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
-  });
-
   it("betrieb without a project shows an empty state", async () => {
     localStorage.removeItem("projecta.activeProjectId");
     render(<LeitstandRoute path="/leitstand/betrieb" />);
@@ -210,15 +199,16 @@ describe("Leitstand route behind D1", () => {
     expect(screen.queryByText("Kein Projekt gewählt")).toBeNull();
   });
 
-  it("reaches Betrieb from Haupt by its tab link and goes back", async () => {
+  it("reaches Betrieb from Haupt by its tab link and goes back by the sidebar", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     render(<App />);
     await screen.findByRole("region", { name: "Agenten" });
     expect(tabs().getByRole("link", { name: "Haupt" })).toHaveAttribute("aria-current", "page");
     fireEvent.click(tabs().getByRole("link", { name: "Betrieb" }));
-    await waitFor(() => expect(window.location.hash).toBe("#/leitstand/betrieb"));
+    // NAV-2a: the retired tab path lands on the Betrieb area; NAV-2b removes the tab.
+    await waitFor(() => expect(window.location.hash).toBe("#/betrieb"));
     expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
-    fireEvent.click(tabs().getByRole("link", { name: "Haupt" }));
+    fireEvent.click(screen.getByRole("link", { name: "Fabrik" }));
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
   });

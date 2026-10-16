@@ -16,6 +16,14 @@ const base = (path: string) => `/${path.split("/")[1] ?? ""}`;
 export const trim = (path: string) => path.replace(/\/+$/, "");
 
 export const FABRIK_PATH = "/leitstand/fabrik";
+export const BETRIEB_ROUTE = "/betrieb";
+
+/** Retired paths and where they live now; ShellMount replaces the hash (NAV-2a). */
+const ALIASES: Readonly<Record<string, string>> = { "/leitstand/fluss": FABRIK_PATH, "/leitstand/betrieb": BETRIEB_ROUTE };
+export const resolveAlias = (path: string) => ALIASES[path] ?? path;
+
+/** The Betrieb area (NAV-2a) owns exactly `/betrieb`; the other Betrieb routes are still placeholders. */
+export const isBetrieb = (path: string) => trim(path) === BETRIEB_ROUTE;
 
 export const TOOLS_PATH = "/leitstand/werkzeuge";
 export const isTools = (path: string) => trim(path) === TOOLS_PATH;
