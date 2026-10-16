@@ -1,20 +1,23 @@
 import type { HTMLAttributes } from "react";
 
-export type LampState = "ok" | "off" | "warn" | "busy" | "bad";
+export type LampState = "ok" | "off" | "warn" | "busy" | "bad" | "unknown";
 
 export interface LampProps extends HTMLAttributes<HTMLSpanElement> {
-  state?: LampState;
+  /** Required: a lamp nobody set is unknown, never ok. */
+  state: LampState;
   /** Accessible name. Without it the lamp is decorative: its text must sit next to it. */
   label?: string;
 }
 
-/** A runtime value outside the five known states is the plain ok lamp: no ghost class. */
-function shownState(state: string): LampState {
-  return state === "off" || state === "warn" || state === "busy" || state === "bad" ? state : "ok";
+const KNOWN: readonly LampState[] = ["ok", "off", "warn", "busy", "bad"];
+
+/** A runtime value outside the known states (also undefined) is the neutral unknown lamp, never ok. */
+function shownState(state: LampState | undefined): LampState {
+  return KNOWN.find((known) => known === state) ?? "unknown";
 }
 
-/** Colour never carries the state alone: warn is a diamond, busy a ring, bad a triangle. */
-export function Lamp({ state = "ok", label, className, ...rest }: LampProps) {
+/** Colour never carries the state alone: warn is a diamond, busy an open ring, bad a triangle, unknown a closed ring. */
+export function Lamp({ state, label, className, ...rest }: LampProps) {
   const shown = shownState(state);
   // Spread after rest: the label alone decides the accessibility, a caller cannot override it.
   const a11y = label
