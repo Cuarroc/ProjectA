@@ -1,0 +1,52 @@
+/* DS-H-04 probe hall. Only the active theme's atlas loads (ASSETS.md §5); tokens only, no colour literal. */
+.g-hall {
+  --hall-tiles: url("./sprites/hall-tiles-light.png");
+  --hall-figures: url("./sprites/hall-figures-light.png");
+  display: grid;
+  gap: var(--g-space-4);
+  justify-items: start;
+  color: var(--g-ink);
+  font: var(--g-t-note);
+}
+:root[data-theme="dark"] .g-hall {
+  --hall-tiles: url("./sprites/hall-tiles-dark.png");
+  --hall-figures: url("./sprites/hall-figures-dark.png");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .g-hall {
+    --hall-tiles: url("./sprites/hall-tiles-dark.png");
+    --hall-figures: url("./sprites/hall-figures-dark.png");
+  }
+}
+.g-hall__sample { margin: 0; font: var(--g-t-label); letter-spacing: var(--g-track-eyebrow); }
+.g-hall__scene {
+  position: relative;
+  width: calc(var(--cols) * 16px * var(--s));
+  height: calc(var(--rows) * 16px * var(--s));
+}
+.g-hall__sprite {
+  position: absolute;
+  left: calc(var(--l) * 1px * var(--s));
+  top: calc(var(--t) * 1px * var(--s));
+  width: calc(var(--w) * 1px * var(--s));
+  height: calc(var(--h) * 1px * var(--s));
+  background-position: calc(var(--x) * -1px * var(--s)) calc(var(--y) * -1px * var(--s));
+  background-size: calc(var(--aw) * 1px * var(--s)) calc(var(--ah) * 1px * var(--s));
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+.g-hall__sprite--tiles { background-image: var(--hall-tiles); }
+.g-hall__sprite--figures { background-image: var(--hall-figures); }
+/* One column per station, at least as wide as its three-tile group. */
+.g-hall__legend {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(calc(48px * var(--s)), max-content));
+  column-gap: var(--g-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.g-hall__legend > li { display: grid; gap: var(--g-space-1); align-content: start; justify-items: start; }
+.g-hall__ex, .g-hall__note { color: var(--g-muted); }
+.g-hall__legend .g-hall__ex { display: block; }
+.g-hall__note { margin: 0; }
