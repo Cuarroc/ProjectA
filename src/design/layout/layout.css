@@ -2,7 +2,7 @@
    Motion tokens belong to V2-F2; until then the fallbacks are the board values. */
 
 .g-tabs {
-  display: flex; gap: 4px; padding: 4px; border-radius: 12px; max-width: 100%;
+  display: flex; flex: none; gap: 4px; padding: 4px; border-radius: 12px; max-width: 100%;
   background: var(--g-tint); border: 1px solid var(--g-hair); overflow-x: auto; scrollbar-width: none;
 }
 .g-tabs button {
