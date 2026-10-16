@@ -92,6 +92,12 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "src/i18n/de.ts fabrik.orbName and state words via states.ts; label from the caller.",
   },
   {
+    name: "Hall", family: "hall",
+    variants: [], states: ["filled", "empty pieces: empty in words", "scene undefined: unread in words", "missing piece state: unknown pose and word"],
+    a11y: "Labelled region; sprites are aria-hidden, every station, role, piece, gate and stamp is also text.",
+    text: "src/i18n/de.ts hall.* and state words via StateMark; always shows hall.sample.",
+  },
+  {
     name: "Avatar", family: "inputs",
     variants: ["size sm, md, lg; tone owner, lead, sys, 1 to 6"], states: ["unknown tone draws the plain avatar"],
     a11y: "Decorative (aria-hidden) unless label is given; then role=\"img\".",
