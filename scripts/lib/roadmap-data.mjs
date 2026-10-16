@@ -9,9 +9,9 @@ const planNames = { planned: "Geplant", in_progress: "In Arbeit", in_review: "In
 const version = (s) => /^v?\d+\.\d+\.\d+$/.test(s || "") ? `v${s.replace(/^v/, "")}` : null;
 const compareVersions = (a, b) => a.localeCompare(b, "en", { numeric: true });
 const label = (pr, name) => pr?.labels?.some(l => (l.name || l) === name);
-const claimsOpen = (p) => ["planned", "in_progress", "in_review", "blocked"].includes(p.status);
-// The four seams of AGENTS.md rule 6, bare or under src-tauri/src/; any other directory in front is a different file.
-const SEAM_PATH = /(?<![\w/.-])(?:src-tauri\/src\/)?(?:(?:api|main|store)\.rs(?!\w)|store\/|bin\/pa\.rs(?!\w))/;
+const claimsOpen = (p) => ["planned", "in_progress", "in_review", "blocked", "parked"].includes(p.status);
+// The four seams of AGENTS.md rule 6, bare or under src-tauri/src/; any other directory in front or name part behind (api.rs.bak) is a different file.
+const SEAM_PATH = /(?<![\w/.-])(?:src-tauri\/src\/)?(?:(?:api|main|store|bin\/pa)\.rs(?![\w-]|[./]\w)|store\/)/;
 // Defining rows carry a status; description tables repeat the ID without one.
 const defining = (p) => p.status !== "unknown" || Boolean(p.statusRaw);
 function observedState(p, pr, now) {
