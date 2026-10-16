@@ -1,5 +1,5 @@
 # W4-01 — Five-task worker benchmark
-Status: aktiv
+Status: historisch
 
 ## Scope
 
