@@ -330,9 +330,11 @@ test("HQ-17: the team selector is a radiogroup with one tab stop and arrow keys"
   assert.equal(first.getAttribute("aria-checked"), "false");
 });
 
-test("HQ-16: the proof matrix marks the pressed cell and announces the filter", () => {
+test("HQ-16: the proof matrix marks the pressed cell and announces the filter (fixture finding)", () => {
   const dom = new JSDOM(source("docs/dev-hq/proof.html"), { url: "http://localhost/proof.html", runScripts: "outside-only" });
-  dom.window.HQ_DATA = JSON.parse(source("docs/dev-hq/data.json"));
+  // One fixture finding: the matrix needs a cell, and STAND.md may hold no finding rows.
+  const finding = { id: "KI-1", text: "fixture claim", klass: "CLAIM", source: "STAND.md", packet: null, serialOwner: null };
+  dom.window.HQ_DATA = { ...JSON.parse(source("docs/dev-hq/data.json")), findings: [finding] };
   dom.window.matchMedia = () => ({ matches: true });
   dom.window.eval(HQ_JS);
   const d = dom.window.document;
