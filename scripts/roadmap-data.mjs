@@ -1,10 +1,12 @@
 import { mkdirSync, writeFileSync, lstatSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { buildRoadmap } from "./lib/roadmap-data.mjs";
+import { renderRoadmap } from "./lib/roadmap-page.mjs";
+import { main as planCheck } from "./plan-check.mjs";
 import { makeRunner, withExitCodes, isMain, runCli } from "./lib/dev-tools.mjs";
 
 export const main = withExitCodes(async (argv, io, deps = {}) => {
-  const { values } = parseArgs({ args: argv, options: { stdout: { type: "boolean" } } });
+  const { values } = parseArgs({ args: argv, options: { stdout: { type: "boolean" }, page: { type: "boolean" } } });
   const run = deps.run || makeRunner({ timeoutMs: 60000 });
   const command = (cmd, args) => {
     const r = run(cmd, args);
@@ -35,16 +37,26 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   }
   const releases = JSON.parse(command("gh", ["release", "list", "--limit", "1000", "--json", "tagName,publishedAt,isDraft,isPrerelease"]));
   if (!Array.isArray(releases) || releases.length >= 1000) throw new Error("Release list incomplete");
-  const data = buildRoadmap({ plan, prs, releases, now: deps.now || new Date(), mainSha });
-  const json = JSON.stringify(data, null, 2) + "\n";
-  if (values.stdout) io.out(json);
+  const now = deps.now || new Date();
+  const data = buildRoadmap({ plan, prs, releases, now, mainSha });
+  let text = JSON.stringify(data, null, 2) + "\n", target = ".pa/roadmap-data.json";
+  if (values.page) {
+    target = ".pa/roadmap.html";
+    const changes = command("git", ["log", mainSha, "--max-count=20", "--format=%cs%x09%s", "--", "docs/PLAN.md"]).split("\n").filter(Boolean).map(l => ({ date: l.split("\t")[0], subject: l.split("\t").slice(1).join("\t") }));
+    // The plan check reads the same origin/main tree; if it cannot run, findings stay undefined and the page says so.
+    let findings, checked = "";
+    const code = await planCheck(["--json"], { out: s => { checked += s; }, err: () => {} }, { run, now, read: p => command("git", ["show", `${mainSha}:${p}`]) });
+    if (code === 0 || code === 1) findings = JSON.parse(checked).findings;
+    text = renderRoadmap(data, { releases, changes, findings, now });
+  }
+  if (values.stdout) io.out(text);
   else {
-    if (command("git", ["ls-files", "--", ".pa/roadmap-data.json"])) throw new Error("Output path is tracked");
-    command("git", ["check-ignore", ".pa/roadmap-data.json"]);
+    if (command("git", ["ls-files", "--", target])) throw new Error("Output path is tracked");
+    command("git", ["check-ignore", target]);
     mkdirSync(".pa", { recursive: true });
-    if ([".pa", ".pa/roadmap-data.json"].some(p => lstatSync(p, { throwIfNoEntry: false })?.isSymbolicLink())) throw new Error("Output path is a symlink");
-    writeFileSync(".pa/roadmap-data.json", json);
-    io.out(`roadmap:data ${JSON.stringify(data.head)}\n`);
+    if ([".pa", target].some(p => lstatSync(p, { throwIfNoEntry: false })?.isSymbolicLink())) throw new Error("Output path is a symlink");
+    writeFileSync(target, text);
+    io.out(values.page ? `roadmap:page ${target} ${Buffer.byteLength(text)} bytes\n` : `roadmap:data ${JSON.stringify(data.head)}\n`);
   }
 });
 if (isMain(import.meta.url)) runCli(main);
