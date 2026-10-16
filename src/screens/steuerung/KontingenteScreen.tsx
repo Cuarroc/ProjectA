@@ -18,7 +18,7 @@ import { blockedNote, isMeasured, providerInitials, windowRows, type WindowRow }
 import { T } from "./texts";
 import "./kontingente.css";
 
-const LAMP: Record<Provider["quotaState"], LampState> = { ok: "ok", blocked: "bad", unknown: "off" };
+const LAMP: Record<Provider["quotaState"], LampState> = { ok: "ok", blocked: "bad", unknown: "unknown" };
 
 function Bar({ row }: { row: WindowRow }) {
   if (!isMeasured(row)) return null;
@@ -65,7 +65,8 @@ function ProviderCard({ provider, quota, quotaUnread, avatar, onProbe }: { provi
           <h3 title={provider.name}>{provider.name}</h3>
           <p>{providerKindLabel(provider.kind)}</p>
         </div>
-        <Chip><Lamp state={LAMP[state]} />{T.providerLamp[state]}</Chip>
+        {/* A quota state newer than this app is unknown, not ok. */}
+        <Chip><Lamp state={LAMP[state] ?? "unknown"} />{T.providerLamp[state] ?? T.providerLamp.unknown}</Chip>
       </div>
       {note && <p className="kt-note">{note}</p>}
       <QuotaWindows rows={windowRows(provider)} />
