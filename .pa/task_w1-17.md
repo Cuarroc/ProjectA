@@ -1,6 +1,6 @@
 # W1-17: HQ-Parser auf diesen Plan umstellen
 
-Status: aktiv
+Status: historisch
 
 Paket aus `docs/PLAN.md` (Welle W1). Angelegt 2026-09-17 als ausfuehrbare
 Spezifikation; der Plan ist die Quelle, diese Datei der Auftrag.
