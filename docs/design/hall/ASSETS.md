@@ -50,12 +50,12 @@ it is an opaque hex colour in both themes.
 | 7 | role colour Umsetzung | `--g-av2` |
 | 8 | role colour Prüfung | `--g-av4` |
 | 9 | role colour Betrieb | `--g-av5` |
-| 10 | warm tone (faces, hands, wood) | `--g-av3` |
+| 10 | warm tone (wood, crates; follows the theme) | `--g-av3` |
 | 11 | neutral cloth, crates | `--g-av6` |
 | 12 | cool wall tint | `--g-amb1` |
 | 13 | green tint (plants, mats) | `--g-amb2` |
 | 14 | warm floor tint | `--g-amb3` |
-| 15 | machine switched off | `--g-sw-off` |
+| 15 | skin (faces, hands; the same colour in both themes, 3:1 against floor and ink) | `--g-px-skin` |
 
 - **State colours stay out of the rasters.** `--g-run`, `--g-need`,
   `--g-rev`, `--g-ok`, `--g-done`, `--g-bad` and `--g-accent` are never palette
