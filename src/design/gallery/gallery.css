@@ -1,0 +1,22 @@
+/* DS-X-15: design gallery layout; values come from the tokens it shows. */
+.g-gal { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--g-space-6); }
+.g-gal-head h1 { font: var(--g-t-display); }
+.g-gal-body { display: flex; gap: var(--g-space-6); align-items: flex-start; flex: 1; min-height: 0; }
+.g-gal-nav { flex: none; width: 200px; padding: var(--g-space-6); display: flex; flex-direction: column; gap: var(--g-space-4); }
+.g-gal-nav ul, .g-gal-list, .g-gal-grid { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--g-space-2); }
+.g-gal-nav .g-btn { width: 100%; justify-content: flex-start; }
+.g-gal h2 { font: var(--g-t-subheading); color: var(--g-muted); }
+.g-gal-page { flex: 1; min-width: 0; padding: var(--g-pad); display: flex; flex-direction: column; gap: var(--g-space-6); }
+.g-gal-note { font: var(--g-t-note); color: var(--g-muted); }
+.g-gal-sample { align-self: flex-start; font: var(--g-t-micro); color: var(--g-need); background: var(--g-need-bg); border-radius: var(--g-r-pill); padding: var(--g-space-1) var(--g-space-4); }
+.g-gal-grid { flex-direction: row; flex-wrap: wrap; gap: var(--g-space-6); }
+.g-gal-swatch { width: 140px; display: flex; flex-direction: column; gap: var(--g-space-2); font: var(--g-t-label); }
+.g-gal-chip, .g-gal-box { height: 56px; border-radius: var(--g-r-ctl); border: 1px solid var(--g-line); }
+.g-gal-box { background: var(--g-accent-soft); }
+.g-gal-row { display: flex; align-items: center; gap: var(--g-space-7); }
+.g-gal-row code { flex: none; width: 140px; font: var(--g-t-code); color: var(--g-muted); }
+.g-gal-bar { height: 12px; background: var(--g-accent); border-radius: var(--g-r-xs); }
+.g-gal-pane { flex: 1 1 240px; min-height: 120px; padding: var(--g-space-7); display: flex; flex-direction: column; gap: var(--g-space-6); }
+.g-gal-track { width: 320px; padding: var(--g-space-4); border-radius: var(--g-r-pill); background: var(--g-tint); }
+.g-gal-dot { display: block; width: 24px; height: 24px; border-radius: var(--g-r-pill); background: var(--g-accent); transition: transform var(--g-dur-5) var(--g-ease-move); }
+.g-gal-dot[data-moved="on"] { transform: translateX(280px); }

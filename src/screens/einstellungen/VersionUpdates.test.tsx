@@ -6,6 +6,8 @@ import { getVersion } from "@tauri-apps/api/app";
 import { cancelUpdateDownload, installUpdateWhenIdle, listLiveSessions, type CancelUpdateResult } from "../../lib/ipc";
 import { VersionUpdates } from "./VersionUpdates";
 import { T } from "./texts";
+import { de } from "../../i18n/de";
+import { GALLERY_PATH } from "../../shell/mount/routing";
 
 // Counts every state update, so "no update after unmount" is observable (React itself stays silent).
 const updates = vi.hoisted(() => ({ count: 0 }));
@@ -273,5 +275,13 @@ describe("VersionUpdates install and cancel", () => {
     fireEvent.click(button);
     expect(await screen.findByText(/1 Worker läuft/)).toBeTruthy();
     expect(installUpdateWhenIdle).not.toHaveBeenCalled();
+  });
+});
+
+describe("design gallery link (DS-X-15)", () => {
+  it("the gallery is reachable from Einstellungen Version", () => {
+    vi.mocked(getVersion).mockResolvedValue("1.0.0");
+    render(<VersionUpdates />);
+    expect(screen.getByRole("link", { name: de["gallery.open"] }).getAttribute("href")).toBe(`#${GALLERY_PATH}`);
   });
 });
