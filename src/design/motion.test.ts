@@ -120,6 +120,46 @@ function mediaBody(source: string, query: string): string {
   return source.slice(start, i);
 }
 
+/** Declarations of every rule whose selector list contains exactly this selector, and whether it sits in an at-rule. */
+function ruleOf(source: string, selector: string) {
+  const found: { decls: Record<string, string>; media: boolean }[] = [];
+  parse(source).walkRules((rule) => {
+    if (!rule.selectors.includes(selector)) return;
+    const decls: Record<string, string> = {};
+    rule.walkDecls((d) => { decls[d.prop] = d.important ? `${d.value} !important` : d.value; });
+    found.push({ decls, media: rule.parent?.type === "atrule" });
+  });
+  return found;
+}
+const specificity = (selector: string) => (selector.match(/:root|\[[^\]]+\]/g) ?? []).length;
+
+describe("DS-X-03 motion mode", () => {
+  it("lively block sets the ambient tokens and the reduce block outranks it", () => {
+    const [lively] = ruleOf(css, ':root[data-motion="lively"]');
+    expect(lively.decls).toEqual({
+      "--g-ambient-play": "running", "--g-orb-trail": "1", "--g-enter-dist": "var(--g-move-2)", "--g-stagger": "28ms",
+    });
+    const [reduced] = ruleOf(css, ":root:root:root");
+    expect(reduced.media).toBe(true);
+    expect(reduced.decls).toEqual({
+      "--g-press-scale": "1", "--g-ambient-play": "paused", "--g-orb-trail": "0", "--g-enter-dist": "0px", "--g-stagger": "0ms",
+    });
+    expect(specificity(":root:root:root")).toBeGreaterThan(specificity(':root[data-motion="lively"]'));
+    expect(css.indexOf(":root:root:root")).toBeGreaterThan(css.indexOf(':root[data-motion="lively"]'));
+  });
+
+  it("off block rests distance and press scale and stops every animation in the document", () => {
+    const [off] = ruleOf(css, ':root[data-motion="off"]');
+    expect(off.decls).toEqual({ "--g-enter-dist": "0px", "--g-press-scale": "1" });
+    for (const suffix of [" *", " *::before", " *::after"]) {
+      const [kill] = ruleOf(css, `:root[data-motion="off"]${suffix}`);
+      expect(kill.decls, suffix).toMatchObject({
+        animation: "none !important", "transition-duration": "0ms !important", "transition-delay": "0ms !important",
+      });
+    }
+  });
+});
+
 describe("V2-F2 motion contract", () => {
   it("loads the motion stylesheet in the mounted glass shell", () => {
     const shell = readFileSync(resolve(__dirname, "../shell/Shell.tsx"), "utf8");
