@@ -1,0 +1,9 @@
+{
+  "tile-floor-0": [0,0,16,16],
+  "tile-wall-0": [16,0,16,16],
+  "tile-door-0": [32,0,16,16],
+  "tile-belt-0": [48,0,16,16],
+  "tile-return-0": [64,0,16,16],
+  "tile-belt-turn-0": [80,0,16,16],
+  "tile-return-turn-0": [96,0,16,16]
+}
