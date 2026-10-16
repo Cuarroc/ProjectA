@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
+import { de } from "../../i18n/de";
 import { FLOOR, TILE } from "./tiles/layout";
 import { NAMES } from "./tiles/names";
 
@@ -25,6 +26,7 @@ it("every station gate and prop has a text name", () => {
   expect(things).toContain("gate-hall-0");
   expect(things.some((id) => id.startsWith("prop-"))).toBe(true);
   expect(Object.keys(NAMES).sort()).toEqual(things.sort());
-  for (const id of things) expect(NAMES[id], id).toMatch(/^\p{Lu}[\p{L} ]+$/u);
-  expect(new Set(Object.values(NAMES)).size, "names are unique").toBe(things.length);
+  const words = things.map((id) => de[NAMES[id]]);
+  for (const [i, word] of words.entries()) expect(word, things[i]).toMatch(/^\p{Lu}[\p{L} ]+$/u);
+  expect(new Set(words).size, "names are unique").toBe(things.length);
 });
