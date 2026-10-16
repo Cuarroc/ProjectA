@@ -20,7 +20,11 @@ export const BETRIEB_ROUTE = "/betrieb";
 
 /** Retired paths and where they live now; ShellMount replaces the hash (NAV-2a). */
 const ALIASES: Readonly<Record<string, string>> = { "/leitstand/fluss": FABRIK_PATH, "/leitstand/betrieb": BETRIEB_ROUTE };
-export const resolveAlias = (path: string) => ALIASES[path] ?? path;
+export const resolveAlias = (path: string) => {
+  const [bare, ...query] = path.split("?");
+  const target = ALIASES[trim(bare)];
+  return target === undefined ? path : [target, ...query].join("?");
+};
 
 /** The Betrieb area (NAV-2a) owns exactly `/betrieb`; the other Betrieb routes are still placeholders. */
 export const isBetrieb = (path: string) => trim(path) === BETRIEB_ROUTE;
@@ -32,8 +36,8 @@ export const isTerminal = (path: string) => trim(path.split("?")[0]) === "/leits
 
 export const isVerlauf = (path: string) => trim(path.split("?")[0]) === "/leitstand/verlauf";
 
-/** The new Leitstand owns `/leitstand` (V2-S01a), `/leitstand/betrieb` (V2-S01b) and `/leitstand/fabrik` with its old `/leitstand/fluss` alias; the rest below it stays the old view. */
-export const isNewLeitstand = (path: string) => ["/leitstand", "/leitstand/betrieb", FABRIK_PATH, "/leitstand/fluss"].includes(trim(path));
+/** The new Leitstand owns `/leitstand` (V2-S01a) and `/leitstand/fabrik` with its old `/leitstand/fluss` alias; the rest below it stays the old view. */
+export const isNewLeitstand = (path: string) => ["/leitstand", FABRIK_PATH, "/leitstand/fluss"].includes(trim(path));
 
 /** The new Steuerung (V2-S05a) owns `/steuerung` and its tabs: Kontingente plus two honest placeholders. */
 export const isNewSteuerung = (path: string) => base(trim(path)) === "/steuerung";
