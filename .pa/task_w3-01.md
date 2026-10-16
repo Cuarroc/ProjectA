@@ -1,6 +1,6 @@
 # W3-01: Global database maintenance
 
-Status: aktiv
+Status: historisch
 
 Package from `docs/PLAN.md` M4. Size: M. Ordered seams: `st`, then `mn`.
 
