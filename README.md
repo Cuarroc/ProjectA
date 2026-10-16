@@ -138,7 +138,7 @@ wichtigsten Handgriffe stehen im [Spickzettel](docs/hilfe/spickzettel.md).
 | | Orchestrator-Chat | Wünsche in Worte fassen; der Orchestrator verteilt die Arbeit. |
 | **Prüfen** | Diff und Review | Änderungen eines Workers ansehen und zeilenweise kommentieren. |
 | | Learnings | Was Agenten im Projekt gelernt haben; ein Mensch gibt es frei. |
-| **Kontrolle** | Not-Aus | Stoppt alle Agenten binnen 10 s und blockiert neue Aufträge, auch über Neustarts. |
+| **Kontrolle** | Not-Aus | Beendet alle Agenten-Sitzungen (Frist 10 s, das Ende wird bestätigt) und sperrt neue Aufträge dauerhaft, auch über Neustarts. |
 | | Budget und Rollen | Schwellen auf die Nutzungsfenster der Anbieter; Rechte je Rolle. |
 | **Unterwegs** | Web-Interface | Board und Learnings nur lesend im Browser, etwa auf dem Handy. |
 | | Sitzungen wiederherstellen | Verlauf und Entwürfe überstehen einen Neustart (höchstens 7 Tage). |
@@ -156,22 +156,48 @@ Start, Antwort, Status, Stoppen und Sichern.
 
 ## So ist ProjectA gebaut
 
-Eine React-Oberfläche spricht über die Tauri-IPC mit einem Rust-Kern. Der Kern
-startet je Worker ein echtes Terminal (PTY) für deine Agent-CLI und legt die
-Laufzeitdaten lokal in SQLite ab. Eine lokale, per Token geschützte API lässt die
-Kommandozeile `pa` die laufende App bedienen. Der Not-Aus beendet alle Sitzungen
-binnen 10 s; Updates holt der eingebaute Updater vom Update-Kanal und prüft sie
-per Minisign.
+Die React-Oberfläche spricht über die Tauri-IPC mit dem Rust-Backend, die
+Kommandozeile `pa` (ein Steuerungsclient für Menschen, Skripte und
+Orchestratoren) über eine lokale API. Beide Wege rufen für „Worker anlegen“,
+„Merge“ und „Not-Aus“ dieselben Funktionen auf, aber mit verschiedenen Rechten:
+Die API kennt ein API-Token, ein Verdict-Token für Freigaben und eng begrenzte
+Zugänge für einzelne Läufe. Worker laufen im Standardweg in einem echten
+Terminal (PTY) für deine Agent-CLI; die Warteschlange startet sie periodisch,
+sobald Kapazität und die weiteren Startbedingungen passen.
+
+Anzeige und Freigabe sind getrennt. Die Status-Beobachtung leitet die
+Board-Spalte aus Agent-Hooks, Terminalausgabe, Ruhezeiten und GitHub-Fakten ab;
+das ist eine Anzeige, kein Beweis. Ob ein Worker gemergt werden darf, rechnet die
+Prüfung aus Git-Stand, der Freigabe eines Menschen und – falls ein Testbefehl
+eingerichtet ist – bestandenen Tests aus, gebunden an genau den Code-Stand, der
+gemergt würde. Fehlen die jeweils erforderlichen Belege, lehnt der Merge ab.
+
+Der Not-Aus setzt eine dauerhafte Startsperre in SQLite (sie bleibt nach einem
+Neustart, ein Lesefehler gilt als „gesperrt“) und beendet die Sitzungen. Er
+meldet „gestoppt“ erst, wenn er das Sitzungsende beobachtet hat; dafür gilt eine
+Frist von 10 s. Eine gemessene Gesamtdauer vom Klick bis zum Ende gibt es nicht.
+Updates holt der eingebaute Updater vom Update-Kanal und prüft sie per Minisign.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/architektur-dark.svg" />
-    <img src="docs/assets/readme/architektur-light.svg" alt="Architektur: Die Oberfläche spricht über die Tauri-IPC mit dem Rust-Kern. Worker starten PTY-Sitzungen für die Agent-CLIs und speichern in SQLite; Warteschlange, lokale API für die pa-CLI, Not-Aus und Updater gehören zum selben Kern." width="100%" />
+    <img src="docs/assets/readme/architektur-light.svg" alt="Architektur: Oberfläche (über die Tauri-IPC) und pa-CLI (über die lokale API mit drei Zugangsstufen) rufen dieselbe gemeinsame Fachlogik im Rust-Backend auf. Diese startet Worker als PTY-Sitzungen für die Agent-CLIs und speichert in SQLite. Die Status-Beobachtung dient nur der Anzeige, die Prüfung und Freigabe entscheidet über den Merge. Der Not-Aus setzt eine dauerhafte Startsperre und bestätigt das Sitzungsende. Die Warteschlange startet periodisch nach Kapazität und Startbedingungen." width="100%" />
   </picture>
 </p>
 
-Die Diagramme stammen aus Belegen im Quellcode; die Diagramm-Quellen folgen in
-einer späteren Version.
+„Lokal“ meint Steuerung und Laufzeitdaten: Die SQLite-Datei liegt auf deinem
+Rechner, die API lauscht nur auf 127.0.0.1. Die Agent-CLIs sprechen weiterhin
+mit ihren Anbietern; ein Offline-Betrieb ist damit nicht gemeint. Das
+Rust-Backend ist eine gemeinsame Laufzeit, keine Sicherheits-Sandbox: Die
+Agent-CLIs laufen unter demselben Betriebssystem-Nutzer wie die App, Worktrees
+trennen nur Arbeitsstände, keine Rechte.
+
+Das Bild zeigt den Standardweg über PTY. Daneben gibt es einen nativen
+Windows-Pfad für Codex; ihn erreicht nur der Planer des ausgeschalteten
+Dauerbetriebs. Die Diagramme stammen aus Belegen im Quellcode. Die Quellen
+liegen unter [`docs/diagrams/`](docs/diagrams/README.md): je Kasten Datei und
+Zeilen, dazu die festgehaltene Revision. Pfeile tragen keine eigenen Belege, sie
+stehen auf dem aufrufenden Kasten.
 
 ## Die neue Oberfläche (v2.0)
 

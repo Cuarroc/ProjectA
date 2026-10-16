@@ -5,17 +5,17 @@
     "title": "ProjectA im Überblick",
     "output": "architektur.html",
     "quality_profile": "showcase",
-    "repository": {"url": "https://github.com/Cuarroc/ProjectA.git", "revision": "65fa073676dfbebfb13e4a8e15874e21b9d10ef0"},
+    "repository": {"url": "https://github.com/Cuarroc/ProjectA.git", "revision": "a3b6106666b9f2732cdbc4dc0f8d02e1002a13a3"},
     "translations": {"legend.title": "Legende"},
     "legend": {
       "mode": "auto",
       "entries": {
-        "frontend": {"label": "Oberfläche"},
+        "frontend": {"label": "Oberfläche", "visible": false},
         "backend": {"label": "Rust-Dienst"},
-        "database": {"label": "Datenbank"},
-        "cloud": {"label": "Netz"},
-        "security": {"label": "Schutz"},
-        "messagebus": {"label": "Schnittstelle"},
+        "database": {"label": "Datenbank", "visible": false},
+        "cloud": {"label": "Netz", "visible": false},
+        "security": {"label": "Schutz und Freigabe"},
+        "messagebus": {"label": "Schnittstelle", "visible": false},
         "external": {"label": "Außerhalb"}
       }
     },
@@ -23,60 +23,16 @@
   },
   "components": [
     {
-      "id": "ui",
-      "type": "frontend",
-      "label": "Oberfläche",
-      "sublabel": "React + TypeScript",
-      "pos": [40, 200],
-      "size": [120, 56],
+      "id": "mirror", "type": "external", "label": "Update-Kanal", "sublabel": "ProjectA-updates",
+      "pos": [40, 220], "size": [110, 56],
       "sources": [
-        {"path": "src/main.tsx", "line": 1, "end_line": 25},
-        {"path": "src/lib/ipc.ts", "line": 183, "end_line": 186}
+        {"path": "src-tauri/tauri.conf.json", "line": 53, "end_line": 55},
+        {"path": ".github/workflows/release.yml", "line": 253, "end_line": 297}
       ]
     },
     {
-      "id": "ipc",
-      "type": "messagebus",
-      "label": "Tauri-IPC",
-      "sublabel": "Befehle + Ereignisse",
-      "pos": [270, 200],
-      "size": [140, 56],
-      "sources": [
-        {"path": "src-tauri/src/main.rs", "line": 3908, "end_line": 3910},
-        {"path": "src-tauri/src/event_names.rs", "line": 1, "end_line": 6}
-      ]
-    },
-    {
-      "id": "workers",
-      "type": "backend",
-      "label": "Worker",
-      "sublabel": "Zeile + Worktree + PTY",
-      "pos": [490, 200],
-      "size": [160, 64],
-      "sources": [
-        {"path": "src-tauri/src/workers.rs", "line": 1, "end_line": 3},
-        {"path": "src-tauri/src/worktree.rs", "line": 1, "end_line": 9}
-      ]
-    },
-    {
-      "id": "queue",
-      "type": "backend",
-      "label": "Warteschlange",
-      "sublabel": "Dispatcher alle 30 s",
-      "pos": [500, 50],
-      "size": [140, 56],
-      "sources": [
-        {"path": "src-tauri/src/queue.rs", "line": 1, "end_line": 6},
-        {"path": "src-tauri/src/queue.rs", "line": 41}
-      ]
-    },
-    {
-      "id": "updater",
-      "type": "cloud",
-      "label": "Updater",
-      "sublabel": "Minisign-Prüfung",
-      "pos": [270, 50],
-      "size": [140, 56],
+      "id": "updater", "type": "cloud", "label": "Updater", "sublabel": "Minisign-Prüfung",
+      "pos": [260, 220], "size": [140, 56],
       "sources": [
         {"path": "src-tauri/Cargo.toml", "line": 57},
         {"path": "src-tauri/src/main.rs", "line": 3655},
@@ -84,107 +40,142 @@
       ]
     },
     {
-      "id": "pty",
-      "type": "backend",
-      "label": "PTY-Sitzungen",
-      "sublabel": "echtes Terminal je Agent",
-      "pos": [390, 370],
-      "size": [150, 56],
+      "id": "queue", "type": "backend", "label": "Warteschlange", "sublabel": "Periodischer Dispatcher",
+      "pos": [480, 220], "size": [150, 56],
+      "sources": [
+        {"path": "src-tauri/src/queue.rs", "line": 1, "end_line": 6},
+        {"path": "src-tauri/src/queue.rs", "line": 332, "end_line": 380},
+        {"path": "src-tauri/src/queue.rs", "line": 665, "end_line": 676}
+      ]
+    },
+    {
+      "id": "pa", "type": "external", "label": "pa-CLI", "sublabel": "Steuerungsclient",
+      "pos": [810, 20], "size": [110, 56],
+      "sources": [
+        {"path": "src-tauri/src/bin/pa.rs", "line": 1, "end_line": 6}
+      ]
+    },
+    {
+      "id": "access", "type": "security", "label": "Zugangsstufen", "sublabel": "API · Verdict (Mensch) · Run",
+      "pos": [775, 130], "size": [180, 56],
+      "sources": [
+        {"path": "src-tauri/src/api.rs", "line": 24, "end_line": 32},
+        {"path": "src-tauri/src/api.rs", "line": 1458, "end_line": 1495},
+        {"path": "src-tauri/src/api/agent_access.rs", "line": 450, "end_line": 455}
+      ]
+    },
+    {
+      "id": "api", "type": "backend", "label": "Lokale API", "sublabel": "127.0.0.1 + Token",
+      "pos": [780, 220], "size": [170, 56],
+      "sources": [
+        {"path": "src-tauri/src/api.rs", "line": 1, "end_line": 22},
+        {"path": "src-tauri/src/main.rs", "line": 2893, "end_line": 2912},
+        {"path": "src-tauri/src/main.rs", "line": 3279, "end_line": 3289}
+      ]
+    },
+    {
+      "id": "ui", "type": "frontend", "label": "Oberfläche", "sublabel": "React + TypeScript",
+      "pos": [40, 370], "size": [120, 56],
+      "sources": [
+        {"path": "src/main.tsx", "line": 19, "end_line": 26},
+        {"path": "src/lib/ipc.ts", "line": 1, "end_line": 2}
+      ]
+    },
+    {
+      "id": "ipc", "type": "messagebus", "label": "Tauri-IPC", "sublabel": "Befehle + Ereignisse",
+      "pos": [260, 370], "size": [140, 56],
+      "sources": [
+        {"path": "src-tauri/src/main.rs", "line": 3908, "end_line": 3910},
+        {"path": "src-tauri/src/event_names.rs", "line": 1, "end_line": 6}
+      ]
+    },
+    {
+      "id": "workers", "type": "backend", "label": "Gemeinsame Fachlogik",
+      "sublabel": "Worker anlegen, Merge, Not-Aus: je eine Funktion für Fenster und API",
+      "pos": [480, 370], "size": [470, 64],
+      "sources": [
+        {"path": "src-tauri/src/workers.rs", "line": 257, "end_line": 269},
+        {"path": "src-tauri/src/main.rs", "line": 1097, "end_line": 1106},
+        {"path": "src-tauri/src/main.rs", "line": 1380, "end_line": 1411}
+      ]
+    },
+    {
+      "id": "status", "type": "backend", "label": "Status-Beobachtung", "sublabel": "Hooks · Terminal · GitHub",
+      "pos": [240, 530], "size": [160, 56],
+      "sources": [
+        {"path": "src-tauri/src/status.rs", "line": 1, "end_line": 22},
+        {"path": "src-tauri/src/event_names.rs", "line": 3}
+      ]
+    },
+    {
+      "id": "pty", "type": "backend", "label": "PTY-Sitzungen", "sublabel": "Standard: Terminal je Agent",
+      "pos": [480, 530], "size": [160, 56],
       "sources": [
         {"path": "src-tauri/src/pty.rs", "line": 1, "end_line": 5},
-        {"path": "src-tauri/src/pty.rs", "line": 1996, "end_line": 2000}
+        {"path": "src-tauri/src/pty.rs", "line": 1996, "end_line": 2000},
+        {"path": "src-tauri/src/workers.rs", "line": 288, "end_line": 322}
       ]
     },
     {
-      "id": "store",
-      "type": "database",
-      "label": "SQLite-Store",
-      "sublabel": "projecta.db, lokal",
-      "pos": [600, 370],
-      "size": [140, 56],
+      "id": "ready", "type": "security", "label": "Prüfung & Freigabe", "sublabel": "Beleg + Mensch je Stand",
+      "pos": [660, 530], "size": [150, 56],
       "sources": [
-        {"path": "src-tauri/src/store.rs", "line": 1, "end_line": 9}
+        {"path": "src-tauri/src/readiness.rs", "line": 1, "end_line": 6},
+        {"path": "src-tauri/src/workers.rs", "line": 1818, "end_line": 1835},
+        {"path": "src-tauri/src/workers.rs", "line": 2388, "end_line": 2395}
       ]
     },
     {
-      "id": "estop",
-      "type": "security",
-      "label": "Not-Aus",
-      "sublabel": "fail-closed",
-      "pos": [190, 370],
-      "size": [120, 56],
+      "id": "store", "type": "database", "label": "SQLite-Store", "sublabel": "projecta.db, lokal",
+      "pos": [830, 530], "size": [120, 56],
+      "sources": [
+        {"path": "src-tauri/src/store.rs", "line": 1, "end_line": 9},
+        {"path": "src-tauri/src/store/emergency_stop.rs", "line": 15, "end_line": 50}
+      ]
+    },
+    {
+      "id": "estop", "type": "security", "label": "Not-Aus", "sublabel": "Lesefehler = gesperrt",
+      "pos": [680, 670], "size": [150, 56],
       "sources": [
         {"path": "src-tauri/src/estop.rs", "line": 1, "end_line": 9},
-        {"path": "src-tauri/src/estop.rs", "line": 39},
-        {"path": "src-tauri/src/main.rs", "line": 1405, "end_line": 1408}
+        {"path": "src-tauri/src/main.rs", "line": 1391, "end_line": 1411},
+        {"path": "src-tauri/src/main.rs", "line": 3714, "end_line": 3722}
       ]
     },
     {
-      "id": "api",
-      "type": "backend",
-      "label": "Lokale API",
-      "sublabel": "127.0.0.1 + Token",
-      "pos": [730, 200],
-      "size": [130, 56],
+      "id": "agents", "type": "external", "label": "Agent-CLIs", "sublabel": "Claude Code, Codex, … – gleicher Nutzer, keine Sandbox",
+      "pos": [408, 810], "size": [305, 56],
       "sources": [
-        {"path": "src-tauri/src/api.rs", "line": 1, "end_line": 18}
-      ]
-    },
-    {
-      "id": "pa",
-      "type": "external",
-      "label": "pa-CLI",
-      "sublabel": "Orchestrator",
-      "pos": [920, 200],
-      "size": [100, 56],
-      "sources": [
-        {"path": "src-tauri/src/bin/pa.rs", "line": 1, "end_line": 8}
-      ]
-    },
-    {
-      "id": "agents",
-      "type": "external",
-      "label": "Agent-CLIs",
-      "sublabel": "Claude Code, Codex, …",
-      "pos": [390, 500],
-      "size": [150, 56],
-      "sources": [
-        {"path": "src-tauri/src/profiles.rs", "line": 1, "end_line": 4},
-        {"path": "README.md", "line": 60, "end_line": 62}
-      ]
-    },
-    {
-      "id": "mirror",
-      "type": "external",
-      "label": "Update-Kanal",
-      "sublabel": "ProjectA-updates",
-      "pos": [40, 50],
-      "size": [120, 56],
-      "sources": [
-        {"path": "src-tauri/tauri.conf.json", "line": 53, "end_line": 55},
-        {"path": ".github/workflows/release.yml", "line": 253, "end_line": 297}
+        {"path": "src-tauri/resources/agent-defaults.json", "line": 5},
+        {"path": "src-tauri/resources/agent-defaults.json", "line": 36},
+        {"path": "src-tauri/src/pty/agent_env.rs", "line": 27, "end_line": 39}
       ]
     }
   ],
   "boundaries": [
     {
       "kind": "region",
-      "label": "ProjectA-App (Rust-Kern)",
-      "wraps": ["ipc", "updater", "workers", "queue", "pty", "store", "estop", "api"]
+      "label": "Rust-Backend / gemeinsame Laufzeit",
+      "wraps": ["updater", "queue", "access", "api", "ipc", "workers", "status", "pty", "ready", "store", "estop"]
     }
   ],
   "connections": [
     {"id": "ui-ipc", "from": "ui", "to": "ipc", "label": "invoke", "variant": "emphasis"},
     {"id": "ipc-ui", "from": "ipc", "to": "ui", "label": "Ereignisse", "variant": "dashed"},
-    {"id": "ipc-workers", "from": "ipc", "to": "workers", "label": "Befehle", "variant": "emphasis"},
-    {"id": "queue-workers", "from": "queue", "to": "workers", "label": "Platz frei"},
-    {"id": "api-workers", "from": "api", "to": "workers", "label": "steuert"},
-    {"id": "pa-api", "from": "pa", "to": "api", "label": "Token"},
+    {"id": "ipc-workers", "from": "ipc", "to": "workers", "label": "ruft auf", "variant": "emphasis"},
+    {"id": "pa-access", "from": "pa", "to": "access", "label": "API-Token"},
+    {"id": "access-api", "from": "access", "to": "api", "label": "Stufe geprüft"},
+    {"id": "api-workers", "from": "api", "to": "workers", "label": "ruft auf", "variant": "emphasis"},
+    {"id": "queue-workers", "from": "queue", "to": "workers", "label": "Kapazität + Startbedingungen"},
     {"id": "workers-pty", "from": "workers", "to": "pty", "label": "startet"},
+    {"id": "workers-ready", "from": "workers", "to": "ready", "label": "Merge nur wenn bereit", "variant": "security"},
     {"id": "workers-store", "from": "workers", "to": "store", "label": "speichert"},
     {"id": "pty-agents", "from": "pty", "to": "agents", "label": "startet CLI"},
     {"id": "pty-ipc", "from": "pty", "to": "ipc", "label": "Ausgabe", "variant": "dashed"},
-    {"id": "estop-pty", "from": "estop", "to": "pty", "label": "10 s", "variant": "security"},
+    {"id": "pty-status", "from": "pty", "to": "status", "label": "Ausgabe", "variant": "dashed"},
+    {"id": "status-ipc", "from": "status", "to": "ipc", "label": "Anzeige", "variant": "dashed"},
+    {"id": "estop-store", "from": "estop", "to": "store", "label": "Dauerhafte Startsperre", "variant": "security"},
+    {"id": "estop-pty", "from": "estop", "to": "pty", "label": "Sitzungsende bestätigen, Frist 10 s", "variant": "security"},
     {"id": "ipc-updater", "from": "ipc", "to": "updater", "label": "Update"},
     {"id": "updater-mirror", "from": "updater", "to": "mirror", "label": "latest.json"}
   ],
@@ -192,12 +183,17 @@
     {
       "dot": "cyan",
       "title": "Lokal",
-      "items": ["Laufzeitdaten liegen in einer SQLite-Datei auf deinem Rechner", "Die lokale API lauscht nur auf 127.0.0.1 und verlangt ein Token"]
+      "items": ["Lokal heißt: Steuerung und Laufzeitdaten – eine SQLite-Datei und eine API, die nur auf 127.0.0.1 lauscht", "Die Agent-CLIs sprechen weiterhin mit ihren Anbietern; ein Offline-Betrieb ist damit nicht gemeint"]
     },
     {
       "dot": "emerald",
       "title": "Beweis",
-      "items": ["Updates werden vor der Installation per Minisign geprüft", "Der Not-Aus meldet „gestoppt“ nur nach Beobachtung"]
+      "items": ["Die Board-Spalte ist eine Anzeige; ob gemergt werden darf, entscheidet die Prüfung mit Belegen und Freigabe für genau diesen Code-Stand", "Der Not-Aus meldet „gestoppt“ nur nach beobachtetem Sitzungsende; die Sperre in SQLite bleibt nach einem Neustart", "Updates werden vor der Installation per Minisign geprüft"]
+    },
+    {
+      "dot": "amber",
+      "title": "Grenzen",
+      "items": ["Gemeinsame Laufzeit, keine Sicherheits-Sandbox: Agenten laufen unter demselben Betriebssystem-Nutzer, Worktrees trennen nur Arbeitsstände", "Dieselbe Fachfunktion heißt nicht dieselbe Berechtigung: die API verlangt ein Token, Freigaben zusätzlich das Verdict-Token"]
     }
   ]
 }
