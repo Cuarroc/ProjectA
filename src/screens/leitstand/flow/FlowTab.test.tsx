@@ -85,7 +85,7 @@ it("shows an unconnected red-first badge on the node", async () => {
 it("lifts the node lamp to done when the test passed", async () => {
   render(<FlowTab cards={withCard({ column: "done", testStatus: "pass" })} />);
   // The ok lamp is the plain atom; it must not be the red "ohne Beweis" one.
-  const lamp = within(await node()).getByRole("img", { name: "Fertig" });
+  const lamp = within(await node()).getByRole("img", { name: "Test bestanden" });
   expect(lamp).not.toHaveClass("g-lamp--bad");
   expect(within(await node()).queryByRole("img", { name: "ohne Beweis" })).toBeNull();
 });

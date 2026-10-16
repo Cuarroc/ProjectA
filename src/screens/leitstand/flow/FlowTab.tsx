@@ -15,7 +15,7 @@ import { layoutFlow } from "./layout";
 const POLL_MS = 5000;
 
 // The atoms of AgentCard.tsx, where this map is private: node and card show one lamp.
-const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off" };
+const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off", unknown: "unknown" };
 
 /** `null` = that read failed. A node then stays unmeasured instead of showing a zero. */
 interface Reads { profiles: AgentProfile[] | null; quotas: QuotaState[] | null; budgets: Budget[] | null }
@@ -86,8 +86,9 @@ export function FlowTab({ cards }: { cards: readonly BoardCard[] }) {
 
   const workers = cards.map((card) => card.worker);
   const labels = Object.fromEntries(workers.map((w) => [w.id, { task: w.task, branch: w.branch }]));
-  // A passed test is the proof a done node needs; the card still passes false until the gates reach it.
-  const lamps = new Map(cards.map((card) => [card.worker.id, lampFor(card, card.testStatus === "pass")]));
+  // A passed test is the proof a done node needs, as on the card. The poll re-renders, so the test age stays fresh.
+  const now = Date.now() / 1000;
+  const lamps = new Map(cards.map((card) => [card.worker.id, lampFor(card, card.testStatus === "pass", now)]));
   const proofs = new Map(cards.map((card) => [card.worker.id, proofFor(card)]));
   const quotas = new Map(cards.map((card) => [card.worker.id, quotaFor(card, reads)]));
   return (

@@ -278,7 +278,7 @@ it("shows a blocked lamp on a done card while proof is missing", () => {
 
 it("shows the same lamp as the flow node on a done card with a passed test", () => {
   render(<AgentCard card={{ ...card("running"), column: "done", testStatus: "pass" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
-  expect(screen.getByRole("img", { name: "Fertig" })).not.toHaveClass("g-lamp--bad");
+  expect(screen.getByRole("img", { name: "Test bestanden" })).not.toHaveClass("g-lamp--bad");
   expect(screen.queryByRole("img", { name: "ohne Beweis" })).toBeNull();
 });
 

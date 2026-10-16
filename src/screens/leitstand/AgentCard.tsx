@@ -24,7 +24,7 @@ export interface AgentCardProps {
 
 type Action = "restart" | "archive";
 
-const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off" };
+const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off", unknown: "unknown" };
 
 /**
  * One running agent. The proof strip shows only what the card knows (the pull request); red-first,
@@ -37,7 +37,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const { worker } = card;
   const model = modelText(card);
   // Same rule as the flow node: a done card is proven by a passed test, otherwise it reads "ohne Beweis".
-  const lamp = lampFor(card, card.testStatus === "pass");
+  const lamp = lampFor(card, card.testStatus === "pass", now);
   const taskId = useId();
   const [expanded, setExpanded] = useState(false);
   const canExpand = worker.task.length > 160;
