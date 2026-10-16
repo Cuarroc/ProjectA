@@ -154,6 +154,18 @@ test("only the four rule-6 seams count as seams", () => {
   const seams = Object.fromEntries(build([...Object.entries(titles).map(([id, title]) => row(id, { title })), row("S-1", { seam: true })]).packages.map(p => [p.id, p.seam]));
   assert.deepEqual(Object.keys(seams).filter(id => seams[id]), ["A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7", "S-1"]);
 });
+test("a parked umbrella with a merged sub-PR stays unfinished", () => {
+  const plan = "## Work\n| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | Search | Verschoben: Rest nach v2.0; Teil A erledigt |\n";
+  const road = build([], [pr({ state: "MERGED", mergedAt: now })], { plan });
+  assert.deepEqual([road.packages[0].state, road.packages[0].finished, road.packages[0].parked, road.packages[0].pr], [null, false, true, 1]);
+  assert.ok(road.directions.flatMap(d => [...d.now, ...d.next, ...d.later]).includes("APP-1"));
+});
+test("appended extensions or name parts after a seam file are not seams", () => {
+  const no = ["Edit api.rs.bak", "Rename src-tauri/src/main.rs.old", "Update store.rs.md examples", "Fix api.rs-style", "Edit bin/pa.rs.orig"];
+  const yes = ["Edit main.rs:12", "Touch (bin/pa.rs)", "Fix store.rs, then docs"];
+  const seams = build([...no, ...yes].map((title, i) => row(`A-${i}`, { title }))).packages.filter(p => p.seam).map(p => p.title);
+  assert.deepEqual(seams, yes);
+});
 test("unresolved dependency IDs are exposed additively", () => {
   const [a, b] = build([row("APP-1", { deps: ["GHOST-9", "APP-2", "GHOST-3"] }), row("APP-2")]).packages;
   assert.deepEqual(a.unresolvedDeps, ["GHOST-9", "GHOST-3"]);
