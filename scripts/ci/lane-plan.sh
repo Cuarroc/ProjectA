@@ -281,9 +281,6 @@ NOT_A_READ=(
   # Testdaten (gemergte PR-Dateilisten), kein Lesezugriff auf die Doku.
   # Beleg: CI-Lauf 36165998301, selftest-lane-plan rot an docs/decisions.md.
   "docs/decisions.md|src-tauri/src/workers/lane_guard.rs"
-  # Report-only plan:check, no gate reads this input; remove at PLAN-AUTO-2 gate wiring (then heavy).
-  "docs/decisions.md|scripts/plan-check.mjs"
-  "docs/decisions.md|scripts/lib/plan-model.mjs"
   "docs/ci-lokal.md|src-tauri/src/workers/lane_guard.rs"
   "KNOWN_ISSUES.md|src-tauri/src/workers/lane_guard.rs"
   # SETUP-12-Rest: nur genannt, nicht gelesen. Mit .github/ in der

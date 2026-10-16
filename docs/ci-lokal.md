@@ -51,7 +51,7 @@ bash scripts/ci/gates.sh --from clippy lane linux   # nach einem Fehlschlag weit
 |---|---|---|
 | `precommit` | `.githooks/pre-commit` | fmt, cargo check, typecheck — Sekunden |
 | `prepush` | `.githooks/pre-push` | die volle lokale Schleife inkl. Rust-Suite; das Gate `red-first-plan` prüft vorab die Trailer der neuen Commits gegen `origin/main` (dasselbe `red-first.sh --plan` wie die PR-CI, ohne Build; vorher `git fetch`) |
-| `linux` | `ci.yml`, Job `gates (linux)` | alles Plattformneutrale |
+| `linux` | `ci.yml`, Job `gates (linux)` | alles Plattformneutrale, inkl. Gate `plan-check` (`node scripts/plan-check.mjs --offline`, auch in `precommit`/`prepush`/`branchpush`: `docs/PLAN.md` ohne Befunde; GitHub und Server-Ereignislog stehen unter „NICHT GEPRÜFT“ und entscheiden nichts) |
 | `windows` | `ci.yml`, Job `gates (windows)` | was nur Windows beantworten kann, inkl. Gate `native-tests` (baut `pa-capture-host`, führt die sieben `real_native_*`-Tests mit `--ignored` aus) |
 | `release` | `release.yml` | wie `linux`, vor dem Bundle-Build |
 | `audit` | `audit.yml` | `cargo audit`, `npm audit` |
