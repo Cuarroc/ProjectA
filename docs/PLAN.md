@@ -1508,6 +1508,7 @@ Keine zweite Roadmap neben dem Plan; der Plan bleibt die einzige Quelle.
 | ROADMAP-1 | Generator: Roadmap-Seite aus PLAN.md, bei jedem Merge neu | PLAN-AUTO-1, ROADMAP-0 | Verschoben nach ROADMAP-1a (erledigt) und ROADMAP-1b (15.10.): #1580 trägt die Plan-ID ROADMAP-1, liefert aber nur die Datenschicht, keine Seite |
 | ROADMAP-1a | Erster Generator-Schnitt: Roadmap-Daten aus `docs/PLAN.md` und GitHub ableiten | PLAN-AUTO-1, ROADMAP-0 | Erledigt: #1580 (merged 2026-10-15T18:37:52Z, `c9d4ca35`) |
 | ROADMAP-1b | Angenommenen Roadmap-Entwurf in Pakete ≤ 300 Zeilen schneiden und die Seite aus dem Datenvertrag von ROADMAP-1a erzeugen, bei jedem Merge neu | ROADMAP-1a, ROADMAP-0 | Geplant (laut Root 15.10.) |
+| README-ARCH-1 | README-Architekturgrafik präzisieren (Status vs. Freigabe, Startsperre, Sandbox-Grenze, Steuerungsclient) | – | In Prüfung: #1605 (16.10.; Owner Root, Stufe C; Review ausstehend) |
 | NAME-NUTZER | Persönliche Namensnennung durch neutrale Nutzerformulierung ersetzen | – | Erledigt: #1582 (merged 2026-10-15T18:33:45Z, `0f2cd8de`) |
 | KONZEPT-0 | Gliederung für ein neues `docs/KONZEPT.md` (nur lesend): wie ProjectA arbeitet, Regeln, GitHub-Verhalten, Rechte, Ziel, Funktionen, Konfiguration; später von Orchestrator/Wächter aktuell gehalten | – | läuft: nur lesender Gliederungsauftrag, kein PR (laut Root 15.10.); Abnahme Root |
 | KONZEPT-n | `docs/KONZEPT.md` nach angenommener Gliederung in Paketen ≤ 300 Zeilen schreiben | KONZEPT-0 | Geplant: erst nach Annahme der Gliederung |
