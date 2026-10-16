@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { JSDOM } from "jsdom";
 import { renderRoadmap } from "./roadmap-page.mjs";
 import { buildRoadmap } from "./roadmap-data.mjs";
 
@@ -88,6 +89,33 @@ test("inputs stay unmodified and css cannot close the style element", () => {
   assert.equal(renderRoadmap(d, { tokensCss: "x{}</style><b id=pwn>" }).match(/<\/style/g).length, 1);
   const real = renderRoadmap(d);
   assert.ok(real.includes("--g-ground") && real.includes(".g-st--bad"));
+});
+
+test("a missing or unusable options.now still warns about an old stand", () => {
+  const plan = "## Zukunft\n\n| ID | Ziel | Status | Owner |\n|---|---|---|---|\n| APP-1 | Search | Geplant | Worker |\n";
+  const old = buildRoadmap({ plan, prs: [], releases: [], now: "2000-01-01T00:00:00Z", mainSha: "feedbee" });
+  assert.match(top(render(old)), /veraltet/);
+  assert.match(top(render(old, { now: "not a date" })), /veraltet/);
+  assert.doesNotMatch(top(render(data({ stand: { generatedAt: new Date().toISOString(), mainSha: "feedbee" }, packages: [pkg("A-1")] }))), /veraltet/);
+});
+
+test("the direction filter opens overflow hits and counts only the cards that match", () => {
+  const packages = [...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => pkg(`A-${n}`)), pkg("B-1", { direction: "Beta" })];
+  const html = render(data({ packages, directions: ["Alpha", "Beta"].map((name) => ({ name, now: [], next: [], later: [], forecast: "zu wenig Daten" })) }));
+  const { window } = new JSDOM(html, { runScripts: "dangerously" });
+  const doc = window.document, deps = doc.getElementById("abhaengigkeiten"), pick = (value) => { doc.getElementById("dir").value = value; doc.getElementById("dir").dispatchEvent(new window.Event("change")); };
+  const shown = (el) => { for (let n = el; n && n !== deps; n = n.parentElement) if (n.hidden || (n.tagName === "DETAILS" && !n.open)) return false; return true; };
+  const cards = (dir) => [...deps.querySelectorAll(`li[data-dir="${dir}"]`)].filter(shown);
+  const summary = () => deps.querySelector("details:not(.card) > summary");
+  assert.equal(summary().textContent, "weitere 2 anzeigen");
+  pick("Beta");
+  assert.equal(cards("Beta").length, 1);
+  assert.equal(cards("Alpha").length, 0);
+  assert.ok(!summary().closest("li").hidden && summary().textContent === "weitere 1 anzeigen");
+  pick("");
+  assert.equal(cards("Alpha").length, 7);
+  assert.equal(summary().textContent, "weitere 2 anzeigen");
+  window.close();
 });
 
 test("real buildRoadmap output renders with its owner and package facts", () => {
