@@ -112,7 +112,7 @@ describe("Leitstand route behind D1", () => {
   });
 
   // DS-T-05: the empty main view names the first step and only navigates; it starts nothing.
-  it("an empty board offers Auftrag einreihen and opens the Betrieb tab", async () => {
+  it("an empty board offers Auftrag einreihen and opens the Betrieb area", async () => {
     const base = currentInvoke();
     mocks.invoke.mockImplementation((command: string) =>
       command === "get_board_state" ? Promise.resolve({ cards: [], coordinators: [] }) : base(command));
@@ -120,7 +120,7 @@ describe("Leitstand route behind D1", () => {
     const step = await screen.findByRole("button", { name: "Auftrag einreihen" });
     expect(screen.getByText(de["leitstand.emptyTitle"])).toBeInTheDocument();
     fireEvent.click(step);
-    expect(window.location.hash).toBe("#/leitstand/betrieb");
+    expect(window.location.hash).toBe("#/betrieb");
   });
 
   it("without a project the main view offers Projekt anlegen", async () => {
@@ -186,28 +186,22 @@ describe("Leitstand route behind D1", () => {
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
   });
 
-  it("betrieb without a project shows an empty state", async () => {
-    localStorage.removeItem("projecta.activeProjectId");
-    render(<LeitstandRoute path="/leitstand/betrieb" />);
-    const note = within(await screen.findByRole("status"));
-    expect(note.getByText("Kein Projekt gewählt")).toBeInTheDocument();
-    expect(note.getByText("Wähle oben ein Projekt, dann erscheint hier der Betrieb.")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
-    // Choosing a project replaces the note by the panel.
-    await act(async () => { writeActiveProjectId("p1"); });
-    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
-    expect(screen.queryByText("Kein Projekt gewählt")).toBeNull();
-  });
-
-  it("reaches Betrieb from Haupt by its tab link and goes back by the sidebar", async () => {
+  it("the Fabrik tab bar has no Betrieb tab", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     render(<App />);
     await screen.findByRole("region", { name: "Agenten" });
-    expect(tabs().getByRole("link", { name: "Haupt" })).toHaveAttribute("aria-current", "page");
-    fireEvent.click(tabs().getByRole("link", { name: "Betrieb" }));
-    // NAV-2a: the retired tab path lands on the Betrieb area; NAV-2b removes the tab.
+    expect(tabs().getAllByRole("link").map((link) => link.textContent)).toEqual(["Haupt", "Linie", "Werkzeuge", "Klassisch"]);
+    expect(tabs().queryByRole("link", { name: "Betrieb" })).toBeNull();
+  });
+
+  it("reaches Betrieb by the sidebar and goes back to Fabrik by the sidebar", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    render(<App />);
+    await screen.findByRole("region", { name: "Agenten" });
+    fireEvent.click(screen.getByRole("link", { name: "Betrieb" }));
     await waitFor(() => expect(window.location.hash).toBe("#/betrieb"));
     expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Ansichten" })).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: "Fabrik" }));
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
@@ -263,7 +257,7 @@ describe("Leitstand route behind D1", () => {
     render(<App />);
     await screen.findByRole("region", { name: "Agenten" });
     expect(tabs().getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "Haupt", "Linie", "Betrieb", "Werkzeuge", "Klassisch",
+      "Haupt", "Linie", "Werkzeuge", "Klassisch",
     ]);
     expect(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("href", "#/leitstand/fabrik");
     fireEvent.click(tabs().getByRole("link", { name: "Linie" }));
@@ -338,12 +332,6 @@ describe("Leitstand route behind D1", () => {
   });
 
   // The shell trims the hash before it reaches the route, but the route also takes `path` as a prop.
-  it("marks the Betrieb tab as the current one for a trailing-slash path", async () => {
-    render(<LeitstandRoute path="/leitstand/betrieb/" />);
-    expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
-    expect(tabs().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
-  });
-
   it("shows the Fabrik tab as active for a trailing-slash path", async () => {
     render(<LeitstandRoute path="/leitstand/fabrik/" />);
     expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
