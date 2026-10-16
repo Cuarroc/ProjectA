@@ -1,6 +1,6 @@
 import { COLUMN_FORM } from "../../../design/state/states";
 import type { BoardCard } from "../../../types";
-import { ageText } from "../leitstand";
+import { ageText, fill } from "../leitstand";
 import { T } from "./texts";
 
 export type LampKind = "working" | "blocked" | "done" | "idle" | "unknown";
@@ -14,7 +14,7 @@ export type LampKind = "working" | "blocked" | "done" | "idle" | "unknown";
 export function lampFor(card: BoardCard, proof: boolean, now: number): { lamp: LampKind; word: string } {
   if (card.column === "done") {
     if (!proof) return { lamp: "blocked", word: T.unproven };
-    return { lamp: "done", word: card.testedAt == null ? T.passed : `${T.passed}, ${ageText(card.testedAt, now)}` };
+    return { lamp: "done", word: card.testedAt == null ? T.passed : fill(T.passedAt, { age: ageText(card.testedAt, now) }) };
   }
   if (card.column === "needs_you" || card.attentionGrade === "blocking" || card.worker.pausedReason || card.attentionCode === "quota_blocked") {
     return { lamp: "blocked", word: T.blocked };

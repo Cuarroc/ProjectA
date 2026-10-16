@@ -4,6 +4,7 @@ export const T = {
   working: "Läuft",
   blocked: "Blockiert",
   passed: "Test bestanden",
+  passedAt: "Test bestanden, {age}",
   idle: "Untätig",
   unproven: "ohne Beweis",
   unknown: "Unbekannt",
