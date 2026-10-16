@@ -1,25 +1,33 @@
 #!/usr/bin/env node
 // DS-H-01: builds the probe hall atlases from the text rasters (docs/design/hall/ASSETS.md).
 //
-//   node scripts/dev/build-sprites.mjs [--out <dir>]
+//   node scripts/dev/build-sprites.mjs [--out <dir>] [--root <dir>]
 //
 // For every sheet with raster sources (src/design/hall/<sheet>/*.px.ts) it writes
 // hall-<sheet>-light.png and hall-<sheet>-dark.png (indexed PNG, palette resolved from the
 // tokens of each theme) and the shared frame map hall-<sheet>.json ({ id: [x, y, w, h] }).
 // Default output: src/design/hall/sprites; src/design/hall/sprites.test.ts checks that the
-// committed files equal a fresh build byte for byte. Node built-ins only.
+// committed files equal a fresh build byte for byte. --root reads tokens and sources from another repo-shaped
+// tree (the generator tests use it). Node built-ins only.
 
-import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { constants, crc32, deflateSync } from "node:zlib";
 
 import { PALETTE, PIXELS, expand } from "../../src/design/hall/sprites/format.ts";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+function arg(name) {
+  const at = process.argv.indexOf(name);
+  if (at < 0) return undefined;
+  const value = process.argv[at + 1];
+  if (!value || value.startsWith("--")) throw new Error(`${name} needs a directory`);
+  return value;
+}
+const root = arg("--root") ?? join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const hall = join(root, "src", "design", "hall");
-const outAt = process.argv.indexOf("--out");
-const out = outAt > 0 ? process.argv[outAt + 1] : join(hall, "sprites");
+const out = arg("--out") ?? join(hall, "sprites");
+mkdirSync(out, { recursive: true });
 
 // §1 and §5: frame size (figures and tiles exactly, things in whole multiples) and atlas limit.
 const SHEETS = { figures: [32, true, 256, 192], tiles: [16, true, 128, 128], things: [16, false, 128, 128] };
@@ -29,7 +37,7 @@ const ID = /^(tile|fig|piece|station|gate|prop)-[a-z0-9]+(-[a-z]+)?-\d+$/;
 // §2: palette per theme from :root (light) and :root[data-theme="dark"]; only opaque hex qualifies.
 const css = readFileSync(join(root, "src", "design", "tokens.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 function tokens(selector) {
-  const at = css.indexOf(`${selector} {`);
+  const at = css.search(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{`));
   if (at < 0) throw new Error(`tokens.css has no ${selector} block`);
   return Object.fromEntries([...css.slice(at, css.indexOf("}", at)).matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }

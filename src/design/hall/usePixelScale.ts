@@ -22,4 +22,6 @@ function subscribe(notify: () => void) {
   return () => list?.removeEventListener("change", onChange);
 }
 
-export const usePixelScale = (target = 2) => pixelScale(useSyncExternalStore(subscribe, () => window.devicePixelRatio), target);
+// The server has no screen, so it renders at ratio 1; the client corrects it on hydration.
+export const usePixelScale = (target = 2) =>
+  pixelScale(useSyncExternalStore(subscribe, () => window.devicePixelRatio, () => 1), target);
