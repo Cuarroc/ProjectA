@@ -257,32 +257,18 @@ impl Store {
         kind: &str,
         target: &str,
     ) -> Result<(), String> {
+        let target = match kind {
+            "project" => PlanningTarget::Project(target),
+            "goal" => PlanningTarget::Goal(target),
+            "task" => PlanningTarget::Task(target),
+            _ => return Err(PLANNING_REFUSED.into()),
+        };
         let mut tx = self
             .pool
             .begin()
             .await
             .map_err(db("begin planning scope"))?;
-        require_run_authority(&mut tx, run, owner, fence).await?;
-        let run_project: Option<String> = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
-            .bind(run).fetch_optional(&mut *tx).await.map_err(db("read planning run project"))?;
-        let target_project: Option<String> = match kind {
-            "project" => Some(target.to_string()),
-            "goal" => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?")
-                .bind(target)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db("read planning target project"))?,
-            "task" => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?")
-                .bind(target)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db("read planning target project"))?,
-            _ => return Err("planning target is outside the run project".into()),
-        };
-        if run_project.is_none() || run_project != target_project {
-            return Err("planning target is outside the run project".into());
-        }
-        Ok(())
+        require_planning_authority(&mut tx, run, owner, fence, target).await
     }
 
     pub async fn agent_evidence(
@@ -1227,13 +1213,44 @@ pub(super) enum PlanningTarget<'a> {
     Task(&'a str),
 }
 
+/// Whether this run may plan for `target`, read on the caller's transaction so
+/// a writer can ask after its write lock: run, owner and fence still hold, the
+/// run dispatches as coordinator, and the target lies in the run's project.
+/// Every refusal is the same `PLANNING_REFUSED` (no oracle for foreign ids); a
+/// store error refuses too, because the gate fails closed.
 pub(super) async fn require_planning_authority(
-    _tx: &mut Transaction<'_, Sqlite>,
-    _run: &str,
-    _owner: &str,
-    _fence: i64,
-    _target: PlanningTarget<'_>,
+    tx: &mut Transaction<'_, Sqlite>,
+    run: &str,
+    owner: &str,
+    fence: i64,
+    target: PlanningTarget<'_>,
 ) -> Result<(), String> {
+    if require_run_authority(tx, run, owner, fence).await.is_err()
+        || !matches!(
+            run_role(&mut **tx, run).await,
+            Ok(DispatchRole::Coordinator)
+        )
+    {
+        return Err(PLANNING_REFUSED.into());
+    }
+    let run_project: Option<String> = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
+        .bind(run).fetch_optional(&mut **tx).await.map_err(db("read planning run project"))?;
+    let target_project: Option<String> = match target {
+        PlanningTarget::Project(project) => Some(project.to_string()),
+        PlanningTarget::Goal(goal) => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?")
+            .bind(goal)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(db("read planning target project"))?,
+        PlanningTarget::Task(task) => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?")
+            .bind(task)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(db("read planning target project"))?,
+    };
+    if run_project.is_none() || run_project != target_project {
+        return Err(PLANNING_REFUSED.into());
+    }
     Ok(())
 }
 
@@ -2026,6 +2043,7 @@ mod tests {
             .record_development_run_intent(&task, "worker-a", 7)
             .await
             .unwrap();
+        assign(&store, &task, "coordinator", "worker-a").await;
         assert!(store
             .agent_planning_scope(&run.id, "worker-a", 7, "goal", &root)
             .await
@@ -2050,6 +2068,7 @@ mod tests {
             .record_development_run_intent(&task, "worker-a", 7)
             .await
             .unwrap();
+        assign(&store, &task, "coordinator", "worker-a").await;
         for (kind, own) in [("project", "project"), ("task", task.as_str())] {
             assert!(
                 store
