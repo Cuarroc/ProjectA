@@ -44,8 +44,11 @@ it("defines the foundation scales in the light root block", () => {
   expect(base).toContain(`outline-offset: ${light["--g-focus-offset"]};`);
 });
 
+// Every min-/max-width in every @media header, not only the last one per header.
 const mediaWidths = (css: string) =>
-  [...css.matchAll(/@media[^{]*\(\s*(?:min|max)-width:\s*(\d+)px\s*\)/g)].map((m) => Number(m[1]));
+  [...css.matchAll(/@media([^{]*)\{/g)].flatMap((header) =>
+    [...header[1].matchAll(/\(\s*(?:min|max)-width:\s*(\d+)px\s*\)/g)].map((m) => Number(m[1])),
+  );
 
 it("documents the breakpoint scale and allows no other media width in CSS", () => {
   expect(BREAKPOINTS).toEqual({ sm: 640, md: 900, lg: 1280 });
