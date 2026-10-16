@@ -168,8 +168,9 @@ sobald Kapazität und die weiteren Startbedingungen passen.
 Anzeige und Freigabe sind getrennt. Die Status-Beobachtung leitet die
 Board-Spalte aus Agent-Hooks, Terminalausgabe, Ruhezeiten und GitHub-Fakten ab;
 das ist eine Anzeige, kein Beweis. Ob ein Worker gemergt werden darf, rechnet die
-Prüfung aus Git-Stand, Tests und der Freigabe eines Menschen aus, gebunden an
-genau den Code-Stand, der gemergt würde. Ohne diese Belege lehnt der Merge ab.
+Prüfung aus Git-Stand, der Freigabe eines Menschen und – falls ein Testbefehl
+eingerichtet ist – bestandenen Tests aus, gebunden an genau den Code-Stand, der
+gemergt würde. Fehlen die jeweils erforderlichen Belege, lehnt der Merge ab.
 
 Der Not-Aus setzt eine dauerhafte Startsperre in SQLite (sie bleibt nach einem
 Neustart, ein Lesefehler gilt als „gesperrt“) und beendet die Sitzungen. Er
