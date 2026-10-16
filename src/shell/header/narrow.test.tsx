@@ -36,10 +36,10 @@ describe("narrow header", () => {
     expect(max).toBeGreaterThanOrEqual(1253); // measured: the full controls fit from here
   });
 
-  it("shows both segmented groups at full width and no menu button", () => {
+  it("shows all three segmented groups at full width and no menu button", () => {
     viewport(false);
     render(<AppearanceControl />);
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(3);
     expect(screen.queryByRole("button", { name: "Darstellung" })).toBeNull();
   });
 
@@ -65,7 +65,7 @@ describe("narrow header", () => {
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("radiogroup")).toBeNull();
     resize(false);
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(3);
   });
 
   it("closes the Darstellung menu when focus leaves it", () => {
@@ -77,14 +77,14 @@ describe("narrow header", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 
-  it("keeps the menu open while focus moves between its two groups", () => {
+  it("keeps the menu open while focus moves between its groups", () => {
     viewport(true);
     render(<AppearanceControl />);
     fireEvent.click(screen.getByRole("button", { name: "Darstellung" }));
     const theme = within(screen.getByRole("radiogroup", { name: "Farbschema" })).getAllByRole("radio")[0];
     const style = within(screen.getByRole("radiogroup", { name: "Stil" })).getByRole("radio", { name: "Nebel" });
     fireEvent.focusOut(theme, { relatedTarget: style });
-    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(3);
   });
 
   it("creates one MediaQueryList per mounted control and releases it on unmount", () => {
@@ -92,9 +92,9 @@ describe("narrow header", () => {
     const removed = vi.fn<(type: string, fn: () => void) => void>();
     const matchMedia = vi.fn(() => ({ matches: false, addEventListener: added, removeEventListener: removed }));
     window.matchMedia = matchMedia as unknown as typeof window.matchMedia;
-    const { rerender, unmount } = render(<AppearanceControl />);
-    rerender(<AppearanceControl />);
-    rerender(<AppearanceControl />);
+    const { rerender, unmount } = render(<AppearanceControl motion={false} />);
+    rerender(<AppearanceControl motion={false} />);
+    rerender(<AppearanceControl motion={false} />);
     expect(matchMedia).toHaveBeenCalledTimes(1);
     expect(matchMedia).toHaveBeenCalledWith(COMPACT_QUERY);
     expect(added).toHaveBeenCalledTimes(1);

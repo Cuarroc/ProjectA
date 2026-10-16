@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MOTION_MODE_KEY } from "../../../design/motion/motionMode";
 import type { Worker } from "../../../types";
 import { FlowGraph, type FlowLabel } from "./FlowGraph";
 import { layoutFlow } from "./layout";
@@ -38,7 +39,7 @@ function reducedMotion(matches: boolean) {
   }));
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
 describe("FlowGraph", () => {
   it("shows the task and the branch of each agent on its node", () => {
@@ -51,6 +52,7 @@ describe("FlowGraph", () => {
 
   it("draws an edge from the parent node to the child", () => {
     reducedMotion(false);
+    localStorage.setItem(MOTION_MODE_KEY, "lively");
     const { container } = setup([worker("p", null), worker("c", "p")]);
     const edges = container.querySelectorAll("[data-flow-edge]");
     expect(edges).toHaveLength(1);
@@ -62,9 +64,20 @@ describe("FlowGraph", () => {
 
   it("does not animate edges when reduced motion is requested", () => {
     reducedMotion(true);
+    localStorage.setItem(MOTION_MODE_KEY, "lively");
     const { container } = setup([worker("p", null), worker("c", "p")]);
     expect(container.querySelectorAll("[data-flow-edge]")).toHaveLength(1);
     expect(container.querySelector(".fl-edge--moving")).toBeNull();
+  });
+
+  it("animates edges only in lively and not in calm or off", () => {
+    reducedMotion(false);
+    for (const [mode, moving] of [["calm", false], ["lively", true], ["off", false]] as const) {
+      localStorage.setItem(MOTION_MODE_KEY, mode);
+      const { container, unmount } = setup([worker("p", null), worker("c", "p")]);
+      expect(container.querySelector(".fl-edge--moving") !== null, mode).toBe(moving);
+      unmount();
+    }
   });
 
   it("replaces only the node interior when renderNode is passed", () => {

@@ -120,6 +120,33 @@ function mediaBody(source: string, query: string): string {
   return source.slice(start, i);
 }
 
+/** Declarations of the rules whose selector list contains exactly this selector. */
+function declsOf(source: string, selector: string) {
+  const found: Record<string, string> = {};
+  // The callback must not return false (postcss stops walking on it).
+  parse(source).walkRules((rule) => { if (rule.selectors.includes(selector)) rule.walkDecls((d) => { found[d.prop] = d.value + (d.important ? " !important" : ""); }); });
+  return found;
+}
+
+describe("DS-X-03 motion mode", () => {
+  it("lively block sets the ambient tokens and the reduce block outranks it", () => {
+    expect(declsOf(css, ':root[data-motion="lively"]')).toEqual({
+      "--g-ambient-play": "running", "--g-orb-trail": "1", "--g-enter-dist": "var(--g-move-2)", "--g-stagger": "28ms",
+    });
+    expect(declsOf(mediaBody(css, "prefers-reduced-motion:\\s*reduce"), ":root:root:root")).toEqual({
+      "--g-press-scale": "1", "--g-ambient-play": "paused", "--g-orb-trail": "0", "--g-enter-dist": "0px", "--g-stagger": "0ms",
+    });
+  });
+
+  it("off block rests distance and press scale and stops every animation in the document", () => {
+    const off = ':root[data-motion="off"]';
+    expect(declsOf(css, off)).toEqual({ "--g-enter-dist": "0px", "--g-press-scale": "1" });
+    for (const suffix of [" *", " *::before", " *::after"]) {
+      expect(declsOf(css, off + suffix), suffix).toEqual({ animation: "none !important", "transition-duration": "0ms !important", "transition-delay": "0ms !important" });
+    }
+  });
+});
+
 describe("V2-F2 motion contract", () => {
   it("loads the motion stylesheet in the mounted glass shell", () => {
     const shell = readFileSync(resolve(__dirname, "../shell/Shell.tsx"), "utf8");
