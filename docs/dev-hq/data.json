@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-16T00:10:59.309Z",
-  "commit": "8919ac92",
+  "generatedAt": "2026-10-16T00:40:38.387Z",
+  "commit": "45e7a2a2",
   "dirty": true,
   "sources": [
     {
@@ -9,7 +9,7 @@
     },
     {
       "path": "docs/PLAN.md",
-      "sha256": "31f41d7d6e4827320df065ecf98e94286f52be96c54b5cddca2bee563edcc3e8"
+      "sha256": "c9778cf251b4ce48da5692b96383f24b77b2be5a98c55edd9e280afddedca806"
     },
     {
       "path": ".pa/task_f_core3_delivery.md",
@@ -1895,13 +1895,11 @@
           "dependsOn": [],
           "place": "–",
           "tier": "B",
-          "status": "Blockiert",
-          "statusRaw": "Blockiert: Nutzerentscheid CODEQL-59-60 offen; lesende Prüfung läuft (laut Root 15.10.); Alarm 59 blieb nach #1581 laut GitHub offen",
+          "status": "Erledigt",
+          "statusRaw": "Erledigt: CodeQL-Alarme 59/60 am 16.10.2026 nach Owner-Entscheid K1 (A: als Fehlalarm abweisen) als false positive abgewiesen (GitHub: `dismissed`, 00:08:30/31 UTC); neu prüfen bei Änderungen an Cache/Event-Konfiguration in `ci.yml`",
           "acceptance": "beide Alarme geschlossen oder begründet als Fehlalarm abgewiesen",
           "tickets": [],
-          "prNumbers": [
-            1581
-          ]
+          "prNumbers": []
         },
         {
           "id": "FU-1015",
@@ -2057,8 +2055,8 @@
         "Bereit": 2,
         "In Arbeit": 0,
         "In Prüfung": 0,
-        "Erledigt": 31,
-        "Blockiert": 4,
+        "Erledigt": 32,
+        "Blockiert": 3,
         "Verschoben": 2,
         "Entfallen": 0,
         "invalid": 3
