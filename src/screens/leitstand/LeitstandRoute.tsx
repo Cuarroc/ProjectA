@@ -18,6 +18,9 @@ export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
 export const BETRIEB_PATH = "/leitstand/betrieb";
 
+/** The first steps only navigate: adding a project lives in the old sidebar on Werkzeuge, the queue form on Betrieb; nothing starts here (DS-T-05). */
+const go = (target: string) => void (window.location.hash = `#${target}`);
+
 /** Relative ages ("seit 4 min") move on minute scale. */
 const TICK_MS = 30_000;
 
@@ -90,7 +93,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
     <div className="g-lr">
       <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
       {/* Without a project neither list can be read, so neither may claim it is empty. */}
-      {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} /></div> : (
+      {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} action={{ label: t("leitstand.addProject"), onClick: () => go(TOOLS_PATH) }} /></div> : (
         <div className="g-lr-body">
           <div className="g-lr-main">
             {profilesFailed && <div role="status"><HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("leitstand.profilesHint")} /></div>}
@@ -104,6 +107,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
                       cards={board.cards}
                       profiles={profiles}
                       now={now}
+                      emptyAction={{ label: t("leitstand.queueTask"), onClick: () => go(BETRIEB_PATH) }}
                       onOpen={({ worker }) => void (window.location.hash = `#/leitstand/terminal?worker=${encodeURIComponent(worker.id)}`)}
                     />
                   </>}
