@@ -204,7 +204,15 @@ test("CLI writes the ignored output file and prints only the head", async () => 
     assert.equal(out, `roadmap:data ${JSON.stringify(data.head)}\n`);
   });
 });
-test("CLI refuses tracked or unignored or symlinked output paths without writing", async () => {
+// Windows without Developer Mode or admin cannot create symlinks; Linux CI must still run that case.
+function symlinkUnavailable() {
+  if (process.platform !== "win32") return null;
+  const dir = mkdtempSync(join(tmpdir(), "roadmap-link-"));
+  try { writeFileSync(join(dir, "a"), ""); symlinkSync(join(dir, "a"), join(dir, "b")); return null; }
+  catch (e) { if (e.code === "EPERM" || e.code === "EACCES") return e.code; throw e; }
+  finally { rmSync(dir, { recursive: true, force: true }); }
+}
+test("CLI refuses tracked or unignored or symlinked output paths without writing", async (t) => {
   const out = "roadmap-data.json";
   const tracked = { setup: (dir, git) => { mkdirSync(join(dir, ".pa")); writeFileSync(join(dir, ".pa", out), "old"); git("add", "-f", `.pa/${out}`); } };
   await inRepo(tracked, ({ code, errors }, dir) => {
@@ -218,9 +226,11 @@ test("CLI refuses tracked or unignored or symlinked output paths without writing
     assert.equal(existsSync(join(dir, ".pa")), false);
   });
   const linked = { setup: (dir) => { mkdirSync(join(dir, ".pa")); writeFileSync(join(dir, "victim.txt"), "keep"); symlinkSync(join(dir, "victim.txt"), join(dir, ".pa", out)); } };
-  await inRepo(linked, ({ code, errors }, dir) => {
-    assert.equal(code, 1);
-    assert.match(errors, /symlink/);
-    assert.equal(readFileSync(join(dir, "victim.txt"), "utf8"), "keep");
-  });
+  const noLink = symlinkUnavailable();
+  await t.test("symlinked output path", { skip: noLink && `symlinkSync ${noLink} on win32 without symlink privilege` }, () =>
+    inRepo(linked, ({ code, errors }, dir) => {
+      assert.equal(code, 1);
+      assert.match(errors, /symlink/);
+      assert.equal(readFileSync(join(dir, "victim.txt"), "utf8"), "keep");
+    }));
 });
