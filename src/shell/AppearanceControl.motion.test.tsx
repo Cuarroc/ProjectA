@@ -45,6 +45,15 @@ describe("motion mode control", () => {
     expect(screen.queryByText(HINT)).toBeNull();
   });
 
+  it("leaves the motion group out of the header bar which has no room for a third group", async () => {
+    await act(async () => void render(<Shell />));
+    expect(screen.getByRole("radiogroup", { name: "Stil" })).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Bewegung" })).toBeNull();
+    cleanup();
+    render(<AppearanceControl motion={false} />);
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(2);
+  });
+
   it("applies the stored mode when the shell mounts", async () => {
     localStorage.setItem(MOTION_MODE_KEY, "off");
     await act(async () => void render(<Shell />));

@@ -64,6 +64,6 @@ function CompactMenu() {
 }
 
 /** Hell / Dunkel / System, the glass style (Glas / Klar / Nebel / Abend), then the motion (Ruhig / Lebendig / Aus); one menu button when space is short. */
-export function AppearanceControl() {
+export function AppearanceControl(_props: { motion?: boolean }) { // RED STUB: the prop is wired in the next commit
   return useMediaQuery(COMPACT_QUERY) ? <CompactMenu /> : <Groups />;
 }
