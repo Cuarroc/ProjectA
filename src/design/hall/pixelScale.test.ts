@@ -1,9 +1,14 @@
 import { renderHook } from "@testing-library/react";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, it } from "vitest";
+import { afterEach, expect, it } from "vitest";
 
 import { pixelScale, usePixelScale } from "./usePixelScale";
+
+const original = window.devicePixelRatio;
+afterEach(() => {
+  Object.defineProperty(window, "devicePixelRatio", { value: original, configurable: true });
+});
 
 it("picks an integer device pixel scale at 125 and 150 percent", () => {
   for (const dpr of [1, 1.25, 1.5]) {
@@ -21,4 +26,8 @@ it("server rendering assumes a device pixel ratio of 1", () => {
   Object.defineProperty(window, "devicePixelRatio", { value: 1.5, configurable: true });
   const Probe = () => String(usePixelScale().device);
   expect(renderToString(createElement(Probe))).toBe("2");
+});
+
+it("the device pixel ratio override does not leak into later tests", () => {
+  expect(window.devicePixelRatio).toBe(original);
 });

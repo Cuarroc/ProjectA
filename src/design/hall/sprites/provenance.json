@@ -16,5 +16,14 @@
     "method": "hand-placed text raster",
     "references": "none",
     "license": "MIT"
+  },
+  {
+    "file": "src/design/hall/tiles/stations.px.ts",
+    "package": "DS-H-02b",
+    "date": "2026-10-16",
+    "drawnBy": "agent:claude",
+    "method": "hand-placed text raster",
+    "references": "none",
+    "license": "MIT"
   }
 ]
