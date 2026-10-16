@@ -65,7 +65,9 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
       <div className="g-lr">
         <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={BETRIEB_PATH} /></div>
         {/* No project yet: the subscription above picks it up as soon as a project is chosen. */}
-        {projectId !== null && <BetriebPanel projectId={projectId} profiles={profiles} />}
+        {projectId !== null
+          ? <BetriebPanel projectId={projectId} profiles={profiles} />
+          : <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHint")} /></div>}
       </div>
     );
   }
