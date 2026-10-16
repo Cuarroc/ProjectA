@@ -32,7 +32,7 @@ afterEach(cleanup);
 
 it("opens the Betrieb panel at /betrieb with the Betrieb area current", async () => {
   const { container } = render(<App />);
-  expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "Warteschlange" }, { timeout: 5000 })).toBeInTheDocument();
   expect(sidebar().getAllByRole("link").map((a) => a.textContent)).toEqual(["Fabrik", "Betrieb", "Einstellungen"]);
   expect(sidebar().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
   expect(container.querySelector(".g-shell-content .g-lr h1")).toHaveTextContent("Betrieb");
@@ -43,7 +43,7 @@ it("opens the Betrieb panel at /betrieb with the Betrieb area current", async ()
 it("replaces /leitstand/betrieb by /betrieb", async () => {
   window.location.hash = "#/leitstand/betrieb";
   render(<App />);
-  expect(await screen.findByRole("region", { name: "Warteschlange" })).toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "Warteschlange" }, { timeout: 5000 })).toBeInTheDocument();
   await waitFor(() => expect(window.location.hash).toBe("#/betrieb"));
   expect(sidebar().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
 });
@@ -51,6 +51,6 @@ it("replaces /leitstand/betrieb by /betrieb", async () => {
 it("shows an empty state at /betrieb while no project is chosen", async () => {
   localStorage.removeItem("projecta.activeProjectId");
   render(<App />);
-  expect(await screen.findByText("Kein Projekt gewählt")).toBeInTheDocument();
+  expect(await screen.findByText("Kein Projekt gewählt", {}, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
 });

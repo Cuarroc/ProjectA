@@ -28,7 +28,7 @@ export interface LegacyRouteProps {
 export default function ShellMount({ children }: { children: (props: LegacyRouteProps) => ReactNode }) {
   const frame = useRef<HTMLDivElement>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
-  const [path, setPath] = useState(() => pathFromHash(window.location.hash));
+  const [path, setPath] = useState(() => resolveAlias(pathFromHash(window.location.hash)));
   useLayoutEffect(() => {
     const find = () => frame.current?.querySelector<HTMLElement>(".g-shell-content") ?? null;
     const found = find();
