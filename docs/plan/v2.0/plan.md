@@ -1,6 +1,6 @@
 # Plan v2.0 (Entwurf, der Nutzer entscheidet)
 
-**Status 15.10.2026:** Umfang „v2.0 eng“ entschieden (Abschnitt 10), Release-Tag v1.6.6 (auf `a8b00911`) gelesen bei `origin/main` @ `a5f8c538`; der Entwurfstext unten ist unverändert. Stand 06.10.2026, Basis `origin/main` 01a0bf7 (`git fetch` am 06.10.; Zeilennummern im Text galten an 719426c und wurden nur dort neu geprüft, wo es unten steht). Dieser Entwurf ändert nichts an `docs/PLAN.md` und nichts an v1.6.0 ([`../v1.6.0/plan.md`](../v1.6.0/plan.md)). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 7 beantwortet hat und dieser PR gemergt ist (Tor G0). Eingaben: die 25 Boards „Glass Leitstand“ (`docs/design/2026-10-ui-v2/glass/`, darunter `Core.dc.html`), die Bestandsaufnahme [`inventory.md`](inventory.md) (70 Teile), die Bewertung des Dev-HQ in [`dev-hq.md`](dev-hq.md). Anhänge: [`core.md`](core.md) (die App-KI), [`mapping.md`](mapping.md) (Zuordnung aller offenen Pakete), [`evidence-r2.md`](evidence-r2.md) (Belege der 36 Ergänzungen), [`size-evidence.md`](size-evidence.md) (Rechenweg der Größenzahlen und der Paketzahl). **Runde 2 (06.10.):** Core, Ausführung, 36 Ergänzungen, ein einziges Plandokument. **Runde 3 (06.10.):** Richtungsentscheidung des Nutzers (Punkt 8 unten): eigenes Werkzeug plus Kundenaufträge, Verkauf geparkt, 10 Bildschirme, eine Maschine „Ablauf mit Beweis“, Datenschutz-Schleuse. **Runde 3b (06.10.):** Fremdkritik einer anderen Modellfamilie (13 Befunde, Entscheidung je Befund im PR-Text #585) eingearbeitet: Engpass der store-Naht, Schutzschalter für das Claude-Limit bis G2, Behebungsweg für V2-SEC-1, V2-LOCAL-1 vor V2-B2b, Autonomie-Zähler und Grenzen je Job hinter Schalter, Server-Anleitung für Einsteiger, Bereich „Vorschau-Funktionen“, Frage 4 in vier Teile.
+**Status 15.10.2026:** Umfang „v2.0 eng“ entschieden (Abschnitt 10), Release-Tag v1.6.6 (auf `a8b00911`) gelesen bei `origin/main` @ `c7a43fbd`; G0 erreicht (Antworten 06.10., Abschnitt 7); dieser Plan ist Unterplan von `docs/PLAN.md` (PLAN-L0-SINGLE, 07.10.). Der Entwurfstext unten ist historisch unverändert. Stand 06.10.2026, Basis `origin/main` 01a0bf7 (`git fetch` am 06.10.; Zeilennummern im Text galten an 719426c und wurden nur dort neu geprüft, wo es unten steht). Historischer Entwurfsstand (06.10.): Dieser Entwurf ändert nichts an `docs/PLAN.md` und nichts an v1.6.0 ([`../v1.6.0/plan.md`](../v1.6.0/plan.md)). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 7 beantwortet hat und dieser PR gemergt ist (Tor G0). Eingaben: die 25 Boards „Glass Leitstand“ (`docs/design/2026-10-ui-v2/glass/`, darunter `Core.dc.html`), die Bestandsaufnahme [`inventory.md`](inventory.md) (70 Teile), die Bewertung des Dev-HQ in [`dev-hq.md`](dev-hq.md). Anhänge: [`core.md`](core.md) (die App-KI), [`mapping.md`](mapping.md) (Zuordnung aller offenen Pakete), [`evidence-r2.md`](evidence-r2.md) (Belege der 36 Ergänzungen), [`size-evidence.md`](size-evidence.md) (Rechenweg der Größenzahlen und der Paketzahl). **Runde 2 (06.10.):** Core, Ausführung, 36 Ergänzungen, ein einziges Plandokument. **Runde 3 (06.10.):** Richtungsentscheidung des Nutzers (Punkt 8 unten): eigenes Werkzeug plus Kundenaufträge, Verkauf geparkt, 10 Bildschirme, eine Maschine „Ablauf mit Beweis“, Datenschutz-Schleuse. **Runde 3b (06.10.):** Fremdkritik einer anderen Modellfamilie (13 Befunde, Entscheidung je Befund im PR-Text #585) eingearbeitet: Engpass der store-Naht, Schutzschalter für das Claude-Limit bis G2, Behebungsweg für V2-SEC-1, V2-LOCAL-1 vor V2-B2b, Autonomie-Zähler und Grenzen je Job hinter Schalter, Server-Anleitung für Einsteiger, Bereich „Vorschau-Funktionen“, Frage 4 in vier Teile.
 
 Nutzerentscheidungen vom 06.10.2026 (verbindlich): (1) v2.0 ist der Entwurf mit echter Funktion, als **ein** großes Release, keine Zwischenreleases v1.7 bis v1.9; (2) das Fundament startet **parallel** zu v1.6.0, ohne die vier Nahtstellen und ohne Dateien offener PRs; (3) die Paketgrößenregel darf sich ändern; (4) jeder Agent läuft wahlweise auf diesem PC, in der Cloud des Anbieters oder auf einem eigenen Server über SSH; (5) v2.0 bekommt **eine** App-KI mit Rechten, den Core ([`core.md`](core.md)); (6) die Ausführung läuft in AgentsRoom ohne Leerlauf (Abschnitt 4a); (7) alle 36 Ergänzungen sind aufgenommen (die auf Verkauf zielenden sind durch (8) geparkt, Abschnitt 3.13), und dieser Plan wird nach der Freigabe das **einzige** Plandokument (Abschnitt 9); (8) **Richtungsentscheidung (Punkt 39, hat Vorrang, wo sie Früheres ändert):** v2.0 ist das Werkzeug des Nutzers für die eigene Entwicklung **und** für Kundenaufträge (Webseiten, Shops). Der Verkauf der App an Dritte ist **geparkt bis echte Nachfrage** (Mac/Linux-Builds, Code-Signatur, App-Lizenz und Preis, englische Oberfläche, Demo-Modus für Fremde). Voll unterstützt sind **drei Anbieter-Wege**: Claude, Codex und ein lokales Modell (Ollama lokal), das bei Anbietersperre oder Limit als Pflicht-Ersatz einspringt; weitere CLIs sind geparkt. Das Dev-HQ geht in der App auf (keine eigene Oberfläche), die Systemkarte ist Doku. Aus 25 Boards werden **10 Bildschirme** (Abschnitt 3.4). Auftrag, Arbeit, Beweis, Fremdprüfung, Freigabe und Ausliefern sind **eine** Maschine (Abschnitt 3.5). Kundenprojekte (3.12) kommen hinter einem Schalter nach dem Kern, geschützt durch die Datenschutz-Schleuse (Stufe A).
 
@@ -65,7 +65,7 @@ Verlauf wird verschoben, nicht gestrichen; die Veröffentlichung ist damit nicht
 
 **Nach dem Kern (gebaut, Standard aus, hinter Schaltern):** verdiente Autonomie (V2-B27) und Grenzen je Job (V2-B23), Verlauf (V2-S01c), Diff und Rückspulen (V2-S03b), Eingang und Plan (V2-S04a, V2-S04b), Zeugnisse und Kostenbuch (V2-S05b), Automatik (V2-S06a, V2-S06b), Team (V2-S07a, V2-S07b), Gedächtnis (V2-S09), Einstellungs-Tabs MCP, Benachrichtigungen und Projekt (V2-S10b, V2-S10c), die Fernansicht (V2-H3, V2-H4, V2-H6), die **Kundenprojekte** mit Datenschutz-Schleuse (3.12) und die dazugehörigen Backend-Pakete. Für Orte und Ersteinrichtung gibt es die Vorgabe schon im Start-Sheet und im Core-Bildschirm; die Tabs Team und Projekt sind dafür keine Voraussetzung. Was beim Kern-Release noch nicht gemergt ist, läuft in 2.x weiter, ohne ein großes Release zu blockieren (Frage 2).
 
-## 2. Fundament zuerst (startbar am Tag von G0, keine Nahtstelle)
+## 2. Fundament zuerst (startbar am Tag von G0, keine Nahtstelle; Übersicht historisch, 06.10.)
 
 Warum jetzt: Alle 25 Boards wiederholen denselben Block aus 215 Zeilen (`glass/Main.dc.html:15-229`; Prüfsumme der Zeilen 15–229 gegen alle 25 Boards am 06.10. in der endgültigen Fassung: kein Unterschied); das Fundament-Paket soll ihn in die App überführen (`glass/README.md:11-13`). Heute hat die App eine Stilsprache in einer Datei: `src/styles.css` (6784 Zeilen, Schrift Inter, `:8`), Hell/Dunkel nur per `prefers-color-scheme` (`styles.css:186,198`), keinen Umschalter und kein Wörterbuch der Texte (`rg -i "i18n" package.json` leer). Die Zustandsfarben stehen als `--state-*` (`styles.css:156-171`).
 
@@ -271,7 +271,7 @@ Begründung und Belege: [`dev-hq.md`](dev-hq.md). **Runde 3:** Das Dev-HQ ist **
 |---|---|---|---|---|---|---|---|---|
 | V2-ACC1 | Gesamtabnahme: alle gemergten Bildschirme (10 Bildschirme und ihre Tabs, Schalter an) × 2 Themen (nur Deutsch), Tabulator, Kontrast, Datenquellen-Test, Gate gegen zweite Zustandsdefinition | fe + ci | – | B | M | alle V2-S | terra | Kriterien 1 bis 6, 15 und 16 mit Befehlen im PR |
 | V2-RULE1 | AGENTS.md: neue Größenregel (nur nach Freigabe von Frage 4b) und, nur nach Freigabe von Frage 4d, Regel 6 (parallele Pakete unter `store/`) | doc | – | C | S | Fragen 4b, 4d | Koordinator | D |
-| V2-REL | Release v2.0: Update-Drill, Signatur, Tag, Veröffentlichung | N | – | – | – | V2-ACC1, E3, E14 (offen in `docs/PLAN.md`) | Nutzer | Kriterium 11 |
+| V2-REL-R3 | Release v2.0 (Fassung Runde 3): Update-Drill, Signatur, Tag, Veröffentlichung. **Ersetzt durch V2-REL in 10.1a (15.10., enger Schnitt)** | N | – | – | – | V2-ACC1, E3, E14 (damals offen in `docs/PLAN.md`; E3 erledigt 09.10., E14 erledigt 14.10.) | Nutzer | Kriterium 11 |
 
 ### 3.8 Abdeckung des Inventars (alle 70 Zeilen)
 
@@ -362,7 +362,7 @@ Beschreibung und Abnahmen je Fähigkeit: [`core.md`](core.md). Der Core ist **ei
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme (zusätzlich zu R) |
 |---|---|---|---|---|---|---|---|---|
 | V2-ARCH-0 | **Architektur-Skizze vor Welle 1:** Datenmodell, Ereignisfluss und Rechte-Modell für Core-Journal, Anträge, Rechte-Stufen, Personas, Trigger und Webhooks; als ADRs in `docs/decisions.md` (dazu die st-Frage „Module gleichzeitig“ aus ADR-A7) | doc | – | C (Berater-Paar laut Auftrag) | M | G0 | Fable 5.1 + astra | ADRs nennen Tabellen, Module und Ereignisse; jedes spätere Core-, Trigger- und Persona-Paket nennt seinen ADR; beide Gegenprüfungen im PR |
-| V2-ARCH-1 | Nichts Neues in die Nähte: `scripts/ci/seam-budget.json` mit Zielzahl je Naht (Start an `origin/main` 01a0bf7: `api.rs` 8091, `store.rs` 7224, `bin/pa.rs` 6340, `main.rs` 5133; nur sinkend), Regel „neue v2.0-Funktion = neues Modul, Naht nur Verdrahtung“, Zulage je Paket nur mit Label `seam-ok` | ci | – | B | M | G0 | glm-5.3 | roter Test auf präpariertem Fall; `architecture-drift.test.mjs` grün; Exit 0 auf `main`; kein Allowlisten ohne Begründung |
+| V2-ARCH-1 | **Stand 15.10.: Schnitt V2-ARCH-1a #1317 (`76f17a77`, 14.10.) gemergt (gemessene Nahtbudgets erzwungen); Rest: Unbekannt (zu prüfen).** Nichts Neues in die Nähte: `scripts/ci/seam-budget.json` mit Zielzahl je Naht (Start an `origin/main` 01a0bf7: `api.rs` 8091, `store.rs` 7224, `bin/pa.rs` 6340, `main.rs` 5133; nur sinkend), Regel „neue v2.0-Funktion = neues Modul, Naht nur Verdrahtung“, Zulage je Paket nur mit Label `seam-ok` | ci | – | B | M | G0 | glm-5.3 | roter Test auf präpariertem Fall; `architecture-drift.test.mjs` grün; Exit 0 auf `main`; kein Allowlisten ohne Begründung |
 | V2-SEC-0 | Bedrohungsmodell v2.0: Core, Webhooks, MCP, Server-Zugriff (SSH), Prompt-Injection aus Repo-Inhalten und Agentenpost; dazu der Prüfpunkt „Descriptor-Datei unter Unix“ | doc | – | A (Berater-Paar) | M | G0 | Fable 5.1 + astra | Tabelle Bedrohung → Maßnahme → Paket → Test; jede Zeile trägt eine Paket-ID, Befunde nur mit `Datei:Zeile` |
 | V2-SEC-1 | Sicherheitstests für den Core: Injection aus Repo und Agentenpost, Umgehung der Freigabe, feste Grenzen (Tests aus `core.md`, Abschnitt 6) | fR | – | A | M | V2-CORE-1, V2-CORE-2, V2-SEC-0 | astra | zwei Fremd-Reviews; Test: präpariertes Repo erzeugt keinen Eintrag außerhalb des Registers; läuft vor dem ersten „Selbst mit Bericht“. **Behebungsweg:** ein Befund „hoch“ (mit `Datei:Zeile`) öffnet das Folgepaket V2-SEC-1b (Fix mit rotem Test, Neuprüfung desselben Tests durch einen Fremd-Reviewer; ein Fenster von fünf Arbeitstagen ist ein Vorschlag, keine Zusage); das Tor bleibt „kein offener Befund hoch“, wobei „offen“ unbehoben heißt. V2-SEC-1b hat keine eigene Zeile und wird nur bei einem Befund angelegt |
 | V2-SEC-2 | `planning_access` ohne Projektrahmen und die TOCTOU-Lücke (M4-Blocker in `docs/PLAN.md`); zuerst prüfen, ob der Befund noch gilt | api | api (prüfen) | A | S | V2-SEC-0 | astra | roter Test zuerst, sonst Bericht „gilt nicht mehr“ mit Beleg |
@@ -387,7 +387,7 @@ Alles Folgende ist aus den 36 Ergänzungen vom 06.10. (Zuordnung Punkt → Paket
 
 | ID | Ziel | Lane | Naht | Stufe | Größe | Hängt ab von | Anbieter | Abnahme |
 |---|---|---|---|---|---|---|---|---|
-| V2-GATE-SIZE | CI-Gate für die Größenregel: über der Grenze rot, außer mit Label `size-ok` vom Koordinator und einem Grund im PR-Text. Grenzwerte in einer Datei; bis V2-RULE1 (W5) die neue Grenze in AGENTS.md einträgt, gilt 300 (Frage 4b ist beantwortet, die Regel gilt aber erst mit V2-RULE1; Beleg: #579 kam mit 417 Diffzeilen) | ci | – | B | M | G0 | glm-5.3 | roter Test auf einem 417-Zeilen-Fall; mit `size-ok` grün; Exit 0 auf `main`; `gates.sh --list` führt es |
+| V2-GATE-SIZE | **Stand 15.10.: Paket V2-GATE-SIZE-1 als #1323 offen (Draft, `do-not-merge`, `conflict`); letzter Commit 14.10. 14:09Z; ab 16.10. 14:09Z entscheidet Root fertigstellen, teilen oder schließen (48-h-Regel).** CI-Gate für die Größenregel: über der Grenze rot, außer mit Label `size-ok` vom Koordinator und einem Grund im PR-Text. Grenzwerte in einer Datei; bis V2-RULE1 (W5) die neue Grenze in AGENTS.md einträgt, gilt 300 (Frage 4b ist beantwortet, die Regel gilt aber erst mit V2-RULE1; Beleg: #579 kam mit 417 Diffzeilen) | ci | – | B | M | G0 | glm-5.3 | roter Test auf einem 417-Zeilen-Fall; mit `size-ok` grün; Exit 0 auf `main`; `gates.sh --list` führt es |
 | V2-GATE-DESIGN | Design-Gate aus den Audit-Skripten: Kopfzeile, Radien, Schalterfarbe, Zustandsformen, Kontrast, abgeschnittener Text ohne Titel. Die Skripte liegen nicht im Repo (Beleg `evidence-r2.md`); der Koordinator übergibt sie, `contrast-check.mjs` ist der Kontrast-Teil | ci | – | B | M | V2-F1, V2-F3, Skripte vom Koordinator | glm-5.3 | je Regel ein roter Fall; grün auf der Schale |
 | V2-GATE-PERF | Leistungsbudgets: Startzeit, RAM je Agent, Leerlauf-CPU. **Das Paket misst zuerst** (drei Läufe, Streuung), bevor es Grenzen festlegt | ci | – | B | M | G0 | sol | Messprotokoll im PR; Gate rot bei Überschreitung des gemessenen Budgets plus Toleranz |
 | V2-E2E-0 | Playwright-Rahmen: ein Durchlauf je Kernseite als Gate, schreibt Schritte und Bilder in ein Ablauf-Protokoll (`@playwright/test` ist vorhanden, `package.json:62`, keine neue Abhängigkeit) | ci + fe | – | B | M | V2-F7 | glm-5.3 | Durchlauf der Schale grün; Protokoll mit Bildern je Schritt |
@@ -551,7 +551,7 @@ Tore: **G0** = der Nutzer gibt den Plan frei (Fragen 1 bis 4; bei 4 gilt je Teil
 | W3 Bildschirme (hinter Schaltern) | G-B (Rest) | S01c, S03b, S04a, S04b, S07a, S07b, S09 | wie W2 |
 | W4 Bündel C (Release-Pfad) | G-B | `ST-C1 → C2`, `API-C`, `MN-C` (mit UPD-1), MIG-1, PA-1 | wie W1 |
 | W4 Bildschirme (hinter Schaltern) | G-C | S05b, S06a, S06b, S10b, S10c | wie W2 |
-| W5 Abschluss | G-Kern | V2-ACC1, V2-RULE1, V2-RULE-2, V2-FREEZE-1a, V2-H7 (nach Freigabe), V2-LEARN-2, V2-REL (Nutzer); danach V2-FREEZE-1b | – |
+| W5 Abschluss | G-Kern | V2-ACC1, V2-RULE1, V2-RULE-2, V2-FREEZE-1a (entfallen 07.10.), V2-H7 (nach Freigabe), V2-LEARN-2, V2-REL-R3 (Nutzer; ersetzt durch V2-REL in 10.1a); V2-FREEZE-1b entfallen | – |
 | W6 Nach dem Kern (hinter Schaltern) | G-Kern | **PRIV-1 → PRIV-2 → PRIV-3**, dann KP-1 bis KP-7 (Kundenprojekte); Fernansicht H3 → H4 → H6; EX-2 (Webhook, Frage 5), CORE-7, PA-2 | wie W2 |
 
 Regeln wie in v1.6.0, Abschnitt 4: Nähte strikt seriell; Pakete derselben Datei laufen nacheinander (neue Dev-Skripte ändern `package.json`); keine Datei eines offenen PRs; Reviews A zwei Anbieter, B einer. Laufende Wellen werden nicht umgeplant, außer bei Sicherheit oder einem roten `main` (Abschnitt 4b).
@@ -603,7 +603,7 @@ Vorgabe des Nutzers (06.10.): schnell und effektiv, ohne Leerläufe, lange Warte
 | Abbruch vorab | Mehr als 2 Nacharbeitsrunden: das Paket wird geteilt oder gestrichen, nicht weiter geflickt; automatisch, Meldung im Wochenbrief | V2-BRIEF-1 |
 | Ablaufdatum | Jeder Eintrag im Entscheidungslog trägt „Prüfen am“; der Core erinnert. Beleg: Fast Mode und das 1M-Kontextfenster wurden mehrfach anders entschieden | V2-DEC-1 |
 | Ideen-Parkplatz | Neue Ideen gehen automatisch in den Ideen-Eingang (bis V2-S04b: Abschnitt „Später“ in `docs/PLAN.md`); der Core sortiert sie einmal je Woche ein. **Höchstens 3 offene Entscheidungen gleichzeitig** (die 11 Fragen in Abschnitt 7 sind die einmalige Freigabe dieses Plans, danach gilt die Grenze). Laufende Wellen werden nicht umgeplant, außer bei Sicherheit oder einem roten `main` | V2-B13, Wochenbrief |
-| Plan-Freeze | Nach der Freigabe ist dieser Plan das einzige Plandokument; er wird nur noch ausgeführt. Änderungen nur über Ideen-Parkplatz und Wochenbrief: höchstens eine Planänderung je Woche, mit Kosten, Nutzen und Freigabe des Nutzers | V2-FREEZE-1a/b, V2-RULE-2 |
+| Plan-Freeze | Ersetzt durch PLAN-L0-SINGLE (07.10.); ursprünglich: Nach der Freigabe ist dieser Plan das einzige Plandokument; er wird nur noch ausgeführt. Änderungen nur über Ideen-Parkplatz und Wochenbrief: höchstens eine Planänderung je Woche, mit Kosten, Nutzen und Freigabe des Nutzers | V2-FREEZE-1a/b, V2-RULE-2 |
 | Dogfood | Ab DG1 (V2-DOG-1) zieht die Entwicklung schrittweise von `pa-orch` und AgentsRoom in die App; jeder Schritt ist umkehrbar | V2-DOG-1 |
 
 ## 5. Kritischer Pfad und Risiken
@@ -621,7 +621,7 @@ Vorgabe des Nutzers (06.10.): schnell und effektiv, ohne Leerläufe, lange Warte
 - **Cloud-Ort ist unbelegt.** Welcher Anbieter einen Abo-Cloud-Modus hat, ist nicht beobachtet; V2-LOC-0 entscheidet. Server-Ort: SSH ist heute für Agenten gesperrt (`pty/agent_env.rs:195`, `protocol.ssh.allow=never`); ob diese Sperre den Git-Weg betrifft und die Anbindung nicht, klärt V2-LOC-0.
 - **Hintergrund-Trigger widersprechen dem Einfrieren,** wenn sie Agenten starten (D7).
 - **Schalter ohne Wirkung sind Attrappen.** Statt rund 32 Einzelschaltern gibt es 8 Presets; jeder Bestandteil nennt seine Wirkstelle (D8).
-- **Schriften:** Geist ist OFL (erlaubt); die Boards laden sie von einem fremden Server, die App bindet sie selbst ein (V2-F1).
+- **Schriften:** Geist ist OFL (erlaubt); die Boards laden sie von einem fremden Server, die App bindet sie selbst ein (V2-F1). Stand 15.10.: ersetzt durch Designsystem-D1 (Inter bleibt, kein Geist; `docs/decisions.md`).
 - **Echte Proben verbrauchen Abo-Kontingent** (CLI-Beobachtung, Cloud-Lauf); erlaubt sind sie laut N2 in `docs/PLAN.md`.
 - **Boards und Richtung widersprechen sich in Beispieldaten:** Die Boards zeigen weitere CLIs (Kimi, OpenCode, Gemini, Copilot, Kilo, Cursor, Grok; `AgentStarten.dc.html:577-586`, `Ersteinrichtung.dc.html:465`) und Ollama **Cloud** (`glm-5.2:cloud`) als letzte Failover-Stufe (`AgentStarten.dc.html:532`). v2.0 baut nur Claude, Codex und das lokale Modell; die Boards bleiben Komponentenquelle, ihre Daten sind Beispiele. Der Widerspruch „Chief of Staff mit Kimi oder Sonnet“ ist in der endgültigen Fassung weg (`Organigramm.dc.html:392-393` nennt Core · Arbeit und Core · Aufmerksamkeit).
 - **Sechs Zustände reichen nicht für alles:** Warten, Blockiert, Pausiert haben keine Form (D4).
@@ -701,12 +701,12 @@ Die alten Fragen D1 bis D8 und alle neuen Entscheidungen stehen hier zusammen. D
 | 7 | **Server: Kosten gegen Nutzen** (E15), **nicht blockierend; Termin nach V2-CAP-1** (erste monatliche Auslastungszahl, frühestens nach Welle 1): behalten, kleiner mieten oder kündigen. Vorher ist keine Entscheidung nötig (Beleg für den Verdacht: mehrere Leerlauf-Alarme „Server 0/8“ in der Nacht zum 06.10., lokales Log, nicht prüfbar) | Erst auslasten (Reserve ≥ 16, Abschnitt 4a), nach der ersten Auslastungszahl entscheiden | Server bleibt unverändert; keine Kündigung, kein Kauf |
 | 8 | **Datenschutz bei Kundenprojekten:** Wortlaut der Einwilligung des Kunden zur KI-Verarbeitung und welche Anbieter in eine Allowlist dürfen. Keine Rechtsberatung: den Wortlaut prüft eine Fachperson | Standard leer; nur „lokal“ und ausdrücklich genannte Anbieter; Wortlaut vorab prüfen lassen | Der Schalter „Kundenprojekte“ bleibt aus; kein Kundenprojekt-Lauf |
 | 9 | **Lokales Modell:** welches Modell und auf welchem Rechner (PC oder Server; der Server teilt 16 GB mit den Agenten, nicht gemessen) | Klein beginnen: V2-LOCAL-1 misst an drei Läufen Größenklasse und RAM-Bedarf des Modells gegen den freien RAM (Prüfgröße, kein Modellname vorab), danach wählt der Nutzer; kein `:cloud`-Modell als „lokal“ | Die Stufe „lokal“ bleibt „nicht bereit“; bei Sperre oder Limit gilt „Pause statt Rechnung“ |
-| 10 | **Plan-Freeze:** Nach der Freigabe ist dieser Plan das einzige Plandokument, ersetzt `docs/PLAN.md` und den v1.6.0-Plan (sie gehen ins Archiv), ab dann nur Ausführung; Änderungen höchstens einmal je Woche über Wochenbrief und Ideen-Parkplatz | Ja; zuerst die Leserliste V2-FREEZE-1a (25 Dateien lesen `docs/PLAN.md`) | `docs/PLAN.md` bleibt, wie es ist; beide Pläne laufen nebeneinander |
+| 10 | **Plan-Freeze:** Nach der Freigabe ist dieser Plan das einzige Plandokument, ersetzt `docs/PLAN.md` und den v1.6.0-Plan (sie gehen ins Archiv), ab dann nur Ausführung; Änderungen höchstens einmal je Woche über Wochenbrief und Ideen-Parkplatz | Ja; zuerst die Leserliste V2-FREEZE-1a (25 Dateien lesen `docs/PLAN.md`) — ersetzt 07.10. (PLAN-L0-SINGLE) | `docs/PLAN.md` bleibt, wie es ist; beide Pläne laufen nebeneinander |
 | 11 | **Aufräumen** (immer mit Sicherung, nie ohne dich): 5 von 13 Teams, die nie liefen (Zahl nicht prüfbar), alte Arbeitsbäume (E17), der Hauptcheckout mit kaputten Dateinamen | Erst melden lassen (V2-HYG-1), dann einzeln freigeben | Nichts wird gelöscht |
 
 **Antwort des Nutzers (06.10.2026, im Chat mit dem Koordinator):** „ja zu allem“ zu den Fragen 1, 2, 3 und 4a bis 4d, jeweils mit der Empfehlung. Danach „ja“ zu Frage 10 (Plan-Freeze mit der Empfehlung: zuerst V2-FREEZE-1a, dann V2-FREEZE-1b). Die Fragen 5 bis 9 und 11 wurden nicht einzeln gestellt; für sie gilt bis zu einer Antwort „Ohne Antwort“.
 
-Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen), E14 (Sicherung des Schlüssels, dringend). Sie stehen in `docs/PLAN.md` und werden hier nicht neu gefragt. Die Fragen 1 bis 4 muss der Nutzer vor G0 beantworten (bei 4 genügt je Teil die Wahl „Ohne Antwort“); für alle anderen gilt „Ohne Antwort“.
+Voraussetzungen für V2-REL aus `docs/PLAN.md`: E3 (Secrets in geschützte Umgebungen; erledigt 09.10., Signier-Secrets nur im Environment `release`) und E14 (Sicherung des Schlüssels; erledigt 14.10. laut Root, Z4-E14). Sie werden hier nicht neu gefragt. Die Fragen 1 bis 4 muss der Nutzer vor G0 beantworten (bei 4 genügt je Teil die Wahl „Ohne Antwort“); für alle anderen gilt „Ohne Antwort“.
 
 ## 8. NICHT ABGEDECKT
 
@@ -730,6 +730,8 @@ Schon offen und Voraussetzung für V2-REL: E3 (Secrets in geschützte Umgebungen
 - Review dieses PR: ausstehend (Stufe C, Gates genügen).
 
 ## 9. Ein Plandokument: Zuordnung und Freeze
+
+**Ersetzt (07.10.):** PLAN-L0-SINGLE — `docs/PLAN.md` bleibt der einzige Plan, dieser Plan ist Unterplan; Frage 10 ist ersetzt, V2-FREEZE-1a/1b entfallen in alter Form (`docs/PLAN.md`, „Entschiedene Fragen“). Der folgende Abschnitt ist historisch.
 
 Nach der Freigabe ist dieser Plan das **einzige** Plandokument. Er übernimmt `docs/PLAN.md` (M1 bis M4, M5, „Später“, Geparkt) und den v1.6.0-Plan; die alten Pläne kommen ins Archiv. Dieser PR ändert **nicht** `docs/PLAN.md`.
 
@@ -778,25 +780,27 @@ Historischer Hinweis: „der Schalter bleibt als Rückweg“ aus dem engen Schni
 
 Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log origin/main`, `gh pr list --state all` und dem Code an diesem Stand; was ich nicht belegen konnte, steht als **UNKNOWN**. Umfang S ≤ 150, M ≤ 300 Diffzeilen; Stufe nach AGENTS.md Regel 5. Kein Paket berührt eine der vier Nahtstellen (`api.rs`, `main.rs`, `store.rs`, `bin/pa.rs`).
 
-**Erledigt (belegt):** Fundament V2-F1 bis V2-F9, V2-FLAG-1, V2-IA-1 (Routen `src/shell/`, `src/design/`, `src/flags/`); Leitstand V2-S01a/b/d (Karten, Braucht dich, Betrieb, Terminal), V2-B3, V2-B4a, V2-B22; V2-E2E-0 (`e2e/shell.core.spec.ts`); Not-Aus in der Kopfleiste (#1370). COMP-Pakete gemergt: 1-1, 1-2, 2-1, 3-1, 3-2, 4-1, 6-1, 9-1 (#1437, #1452, #1434, #1436, #1458, #1450, #1453, #1448), COMP-2-2 (#1455), dazu am 15.10. COMP-3-3, 1-3, 4-2, 9-2 (siehe 10.1b). **Quelle der COMP-Definitionen:** der Orchestrator-Bericht PLAN-COMP-V2-1 vom 14.10.2026; er liegt außerhalb des Repos, im Repo gibt es keine COMP-Definition (`grep -rn "COMP-" docs` trifft nur den Paperclip-Verweis in `docs/PLAN.md`). Die Tabelle unten ist daraus übernommen.
+**Erledigt (belegt):** Fundament V2-F1 bis V2-F9, V2-FLAG-1, V2-IA-1 (Routen `src/shell/`, `src/design/`, `src/flags/`); Leitstand V2-S01a/b/d (Karten, Braucht dich, Betrieb, Terminal), V2-B3, V2-B4a, V2-B22; V2-E2E-0 (`e2e/shell.core.spec.ts`); Not-Aus in der Kopfleiste (#1370). COMP-Pakete gemergt: 1-1, 1-2, 2-1, 3-1, 3-2, 4-1, 6-1, 9-1 (#1437, #1452, #1434, #1436, #1458, #1450, #1453, #1448), COMP-2-2 (#1455), dazu am 15.10. COMP-3-3, 1-3, 4-2, 9-2 (siehe 10.1b). **Quelle der COMP-Definitionen:** der Orchestrator-Bericht PLAN-COMP-V2-1 vom 14.10.2026; er liegt außerhalb des Repos, im Repo gibt es keine COMP-Definition (`grep -rn "COMP-" docs` trifft nur den Paperclip-Verweis in `docs/PLAN.md`). Die Tabelle unten ist daraus übernommen. Nachtrag 15.10. abends: V2-D1-ON #1484, V2-ACC1a #1494, V2-SCOPE-1 #1499, V2-UPD-1 #1487, COMP-6-2 #1526 und COMP-4-3 #1533 gemergt.
 
 #### 10.1a Pakete für die Kriterien (v2.0)
 
 | ID | Ziel | Dateien | Nahtstelle | Stufe | Umfang | Voraussetzung | Abnahmebefehl | Owner |
 |---|---|---|---|---|---|---|---|---|
 | V2-D1-ON | **Stand 15.10.: #1484 gemergt.** D1 standardmäßig an, ausdrückliches Aus gespeichert; der damalige Rückweg-Vertrag ist durch Classic-out überholt | `src/flags/featureFlags.ts`, Flag-/Shell-/App-Tests | nein | B | M | – | `gh pr view 1484 --json state`: MERGED; Implementierungsbelege im PR | Agent |
-| V2-SCOPE-1 | **Stand 15.10.: #1499 offen (Draft), Basis jetzt `main`; Fixrunde läuft laut Root-Auftrag.** Beschlossen: Seitenleiste und Palette zeigen Leitstand und Einstellungen; Ersteinrichtung bleibt über `/start` erreichbar. Die übrigen Bereiche (v2.1 und später) bleiben hinter dem Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | V2-D1-ON (#1484) | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent |
+| V2-SCOPE-1 | **Stand 15.10.: #1499 gemergt (2026-10-15T15:55:14Z, `d1616352`).** Beschlossen: Seitenleiste und Palette zeigen Leitstand und Einstellungen; Ersteinrichtung bleibt über `/start` erreichbar. Die übrigen Bereiche (v2.1 und später) bleiben hinter dem Schalter. Beleg der Lücke: `Shell.tsx:25` filtert nur nach `icon`, `CommandPalette.tsx:14` listet alle `ROUTES`, kein `FeatureGate` unter `src/shell` oder `src/screens`; `/steuerung`, `/start`, `/beweise` sind unter D1 gemountet (`routing.ts`) | `src/shell/Shell.tsx`, `src/shell/routes.ts`, `src/shell/header/CommandPalette.tsx`, `src/flags/featureFlags.ts` (neuer Schalter), Tests | nein | B | M | V2-D1-ON (#1484) | roter Test: bei D1 an und Schalter „weitere Bereiche“ aus fehlen die Einträge und `resolveRoute` landet auf `/leitstand`; `npx vitest run src/shell` Exit 0 | Agent |
 | V2-ACC1a | **Stand: gemergt #1494 (Ratsche gegen neue `--state-`-Treffer); Kriterium 4 entschieden:** keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur. Heute 164 Treffer von `--state-` in `src/styles.css` (Definition `:156-171`) und 10 in vier Tests; `src/design/` enthält `--state-` gar nicht (sechs Zustände stehen als `.g-st--*` in `src/design/state/state.css`) | `src/styles.css`, vier Tests, ein Gate-Skript unter `scripts/ci/` | nein | B | M, **UNKNOWN** (bis 2×M, erst messen) | – | `rg -ln -e '--state-' src` zeigt nur noch erlaubte Orte; Gate gegen neue Definition grün; `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
-| V2-ACC1b | **Stand 15.10.: PR #1540 offen (Draft), gestapelt auf #1499.** Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
+| V2-ACC1b | **Stand 15.10.: PR #1540 offen (Draft), Basis `main` (#1499 gemergt).** Gesamtabnahme Hülle + Leitstand: je Kriterium 1, 2 (Bildliste), 3, 5, 6, 8, 9 ein Befehl mit Ausgabe im PR; Tab-Test je Route; D1 an; Verlauf-Tab und v2.1-Routen sichtbar oder nicht (**UNKNOWN**, `routes.ts` führt `/leitstand/verlauf`) | Tests, `scripts/dev/shot.mjs`-Aufruf, PR-Text | nein | B | M | V2-ACC1a, V2-SCOPE-1, COMP-2-2 | Tabelle „Kriterium → Befehl → Exit-Code“ im PR; `npm run build` und `bash scripts/ci/gates.sh lane prepush` Exit 0 | Agent |
 | V2-SHOT-BASE | Bildbasis: je Route von Hülle + Leitstand ein Bild hell und eines dunkel (1440×900), angesehen und gegen die Boards verglichen (Kriterium 2). Der Agent erzeugt die Bilder mit `npm run dev:shot`, der Nutzer sieht sie an. Anzahl der Routen **UNKNOWN** (legt V2-ACC1b fest) | `docs/design/2026-10-ui-v2/glass/` (Boards), Bilder lokal, nicht im Repo | nein | C | – | V2-D1-ON lokal an, V2-SCOPE-1 | Nutzer bestätigt „gesehen, Abweichungen siehe PR“ | **Nutzer** |
-| V2-UAT-1a | Vorlage und Klick-Checkliste (höchstens 10 Punkte, einfache Worte) für Hülle + Leitstand, „neu / bewiesen / nicht abgedeckt“, Glossar | `docs/` (neues Dokument), kein Code | nein | C | S | V2-ACC1b | `npm run dev:agent-check` Exit 0; Checkliste ≤ 10 Punkte | Agent |
+| V2-UAT-1a | **Stand 15.10.: PR #1544 offen (Draft, `do-not-merge`), Basis `main`.** Vorlage und Klick-Checkliste (höchstens 10 Punkte, einfache Worte) für Hülle + Leitstand, „neu / bewiesen / nicht abgedeckt“, Glossar | `docs/` (neues Dokument), kein Code | nein | C | S | V2-ACC1b | `npm run dev:agent-check` Exit 0; Checkliste ≤ 10 Punkte | Agent |
 | V2-UAT-1b | Nutzer klickt die Checkliste auf dem Beta-Build durch, kurzes Video, gibt frei, was er gesehen hat (Kriterium 13) | – | nein | – | – | V2-UAT-1a, V2-BETA-0 | Freigabe im Chat, im PR-Text vermerkt | **Nutzer** |
 | V2-BETA-0 | **Stand: Bericht fertig (pa-orch-Bericht `v2-beta-0-20261015`, außerhalb des Repos): der Dev-Installer genügt für die Klick-Checkliste, V2-BETA-1 entfällt; der Update-Drill läuft über den echten Release-Weg (Empfehlung des Berichts; Bestätigung durch den Nutzer steht aus).** PRÜFEN: genügt der Dev-Installer nach jedem `main`-Push (DEV-AUTO-1, `docs/setup/dev-build.md`) als „interner Beta-Kanal“ für Checkliste und Update-Drill, oder braucht es V2-BETA-1 (`release.yml`, Stufe A)? V2-UPD-1 (Abbrechen-Knopf, Versionsanzeige) ist inzwischen gemergt (#1487) | nur Bericht | nein | C | – | – | Bericht mit Befehl und Beleg je Frage | Agent (nur lesend) |
-| V2-E14 | Updater-Signierschlüssel finden und verschlüsselt sichern (`docs/PLAN.md` Z4-E14, E14); kein Schlüssel in Datei, Log oder Commit | – | nein | – | – | – | Nutzer bestätigt die verschlüsselte Sicherung; Stand heute: „Durchführung nicht belegt“ | **Nutzer** |
+| V2-E14 | Updater-Signierschlüssel finden und verschlüsselt sichern (`docs/PLAN.md` Z4-E14, E14); kein Schlüssel in Datei, Log oder Commit | – | nein | – | – | – | Nutzer bestätigt die verschlüsselte Sicherung; Stand 15.10.: am 14.10. durchgeführt (laut Root; `docs/PLAN.md` Z4-E14) | **Nutzer** |
 | V2-DRILL | Update-Drill am eigenen PC: v2.0 über den Updater installieren, Abbrechen und Versionsanzeige prüfen (Kriterium 11) | – | nein | – | – | V2-BETA-0, V2-E14 | Nutzer bestätigt Installation und Neustart mit neuer Version | **Nutzer** |
-| V2-REL | Release v2.0.0: Version 1.6.4 → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Nutzer** (Ja, Veröffentlichung) |
+| V2-REL | Release v2.0.0: Version auf `main` (Stand 15.10.: 1.6.6) → 2.0.0, CHANGELOG, Tag, Veröffentlichung. Ein Agent bereitet Version und CHANGELOG als PR vor (nicht in die Queue), die Veröffentlichung bleibt beim Nutzer; **ein Hauptrelease braucht ein neues, ausdrückliches Ja** (AGENTS.md Regel 10) | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `CHANGELOG.md` | nein | B | S | V2-D1-ON gemergt, V2-ACC1b, V2-UAT-1b, V2-DRILL, V2-E14 | Release-Run grün, anonymes `latest.json` zeigt 2.0.0 (`gh release list`) | Agent (Vorbereitung) + **Nutzer** (Ja, Veröffentlichung) |
 
-**Statusbelege 15.10.2026, 14:14 UTC:** `gh pr view <n> --json state,isDraft,baseRefName` für #1484, #1499 und #1540; der frühere `do-not-merge`-Wartehinweis für V2-D1-ON ist durch dessen Merge überholt.
+**Statusbelege 15.10.2026, 19:44 UTC:** `gh pr view <n> --json state,isDraft,baseRefName` für #1484, #1499 (beide gemergt), #1540 und #1544 (beide Draft); der frühere `do-not-merge`-Wartehinweis für V2-D1-ON ist durch dessen Merge überholt.
+
+**Entscheid 15.10. (RELEASE-PAUSE):** bis v2.0 kein weiterer Patch-Release und kein Tag; die stehende Patch-Freigabe ruht bis v2.0; v2.0 braucht ein neues ausdrückliches Ja des Nutzers (`docs/PLAN.md`, Entscheidungs-Inbox).
 
 [Classic-out-Entscheid vom 15.10.](../../decisions.md#2026-10-15---classic-ui-leaves-the-app): Ziel ist die Entfernung des Rückwegs; Wellen und Umsetzungsstand stehen in 10.2.
 **Hinweis zu Kriterium 4:** Beschlossener Wortlaut: „Keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“ Die Messung zählt die Alt-Aliase, und ihre Obergrenze kann nur sinken. Die frühere Zusage „Die klassische Oberfläche bleibt als Rückweg von D1 erhalten“ ist durch Classic-out überholt.
@@ -809,33 +813,42 @@ Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kon
 
 | ID | Ziel | Umfang | Voraussetzung | Stand |
 |---|---|---|---|---|
+| COMP-1-1 | Statuslampe aus der bestehenden Karte | – | Unbekannt (zu prüfen) | gemergt #1437 (Merge `ad19665b`) |
+| COMP-1-2 | Vier-Zustands-Lampe auf der Agentenkarte | – | Unbekannt (zu prüfen) | gemergt #1452 (Merge `b65e0d78`) |
+| COMP-2-1 | Frage als Geld, Installation oder Löschen einordnen | – | Unbekannt (zu prüfen) | gemergt #1434 (Merge `d72946f7`) |
+| COMP-2-2 | Drei Entscheidungszeilen in „Braucht dich“ | – | Unbekannt (zu prüfen) | gemergt #1455 (Merge `78441e0b`) |
+| COMP-3-1 | Layout für den Live-Agentenfluss | – | Unbekannt (zu prüfen) | gemergt #1436 (Merge `65fa0736`) |
+| COMP-3-2 | Agenten-Layout als Glas-Flussgraph | – | Unbekannt (zu prüfen) | gemergt #1458 (Merge `9903b4cd`) |
+| COMP-4-1 | Beweis-Abzeichenleiste | – | Unbekannt (zu prüfen) | gemergt #1450 (Merge `0e04863a`) |
+| COMP-6-1 | Kontingentanzeige: Prozent, ehrliche Prognose, Failover-Hinweis | – | Unbekannt (zu prüfen) | gemergt #1453 (Merge `62bd41c7`) |
+| COMP-9-1 | 300-Zeilen-Größenchip für Worker-Diffs | – | Unbekannt (zu prüfen) | gemergt #1448 (Merge `85453fdb`) |
 | COMP-3-3 | Reiter `/leitstand/fluss` | ~240 | COMP-3-2, #1333 (beide gemergt) | gemergt #1486 |
 | COMP-1-3 | Lampe im Fluss | ~100 | COMP-3-3, COMP-1-1 | gemergt #1500 |
 | COMP-4-2 | Beweisleiste auf der Karte | ~160 | COMP-1-2, COMP-4-1 (beide gemergt) | gemergt #1483 |
-| COMP-6-2 | Kontingent-Balken im Fluss | ~220 | COMP-1-3 (gemergt), COMP-6-1 | in Arbeit (Server-Auftrag, Branch `claude/v2-comp-6-2`) |
-| COMP-4-3 | Beweisleiste im Fluss | ~120 | COMP-6-2, COMP-4-1 | wartet auf COMP-6-2 |
+| COMP-6-2 | Kontingent-Balken im Fluss | ~220 | COMP-1-3 (gemergt), COMP-6-1 | gemergt #1526 (Merge `56c22d1e`) |
+| COMP-4-3 | Beweisleiste im Fluss | ~120 | COMP-6-2, COMP-4-1 | gemergt #1533 (Merge `66a34491`) |
 | COMP-9-2 | eine Karte je Queue-Zeile | ~180 | COMP-9-1 (gemergt) | gemergt #1485 |
 | COMP-9-3 | Zeilenchip in Betrieb | ~200 | COMP-9-2, #1340 (gemergt) | abgedeckt durch #1485 (`QueueCard.tsx` zeigt je Zeile das Größen-Abzeichen aus `sizeChip`) |
 
-Größen sind die Schätzungen des Berichts, nicht gemessen. Stand der Spalte: 15.10.2026 vormittags, PR-Nummern mit `gh pr view <n> --json state,mergeCommit` geprüft.
+Größen sind die Schätzungen des Berichts, nicht gemessen. Stand der Spalte: 15.10.2026, 19:44 UTC, PR-Nummern mit `gh pr view <n> --json state,mergeCommit` geprüft. Folgefix FU-LAMP-PROOF #1535 gemergt (`000ed75b`).
 
 ### 10.2 KLASSIK-RAUS
 
 Quelle: pa-orch-Berichte `kr-wellenplan-20261015.md` und `klassik-raus-inventar-20261015.md` §7; Wellenplan ersetzt dessen Abhängigkeiten bei 04a, 07a, 11c und 09m. IDs unverändert; `KR-` ist der Suchpräfix. Root disponiert und nimmt ab; keine neue Freigabe durch diese Tabelle.
-Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "KR-"`; „geplant“ heißt ohne PR-/Laufbeleg. Welle 2 wartet zusätzlich auf die benötigten DS-Formular-/Dialog-/Tabellenbausteine (10.3); genaue Zuordnung vor Dispatch. Routing-Dateien seriell.
+Stand 15.10.2026, 19:44 UTC: `gh pr list --state all --search "KR-"`; „geplant“ heißt ohne PR-/Laufbeleg. Welle 2 wartet zusätzlich auf die benötigten DS-Formular-/Dialog-/Tabellenbausteine (10.3); genaue Zuordnung vor Dispatch. Routing-Dateien seriell.
 
 | Welle | ID | Ziel | Stufe | Hängt ab von | Status |
 |---|---|---|---|---|---|
-| 1 | 01a | DS-Basis und Feedbackformular | B | – | #1547 offen (Draft) |
-| 1 | 04a | VerlaufChat anschließen | B | – | läuft (Server-Auftrag srv-kr-04a) |
-| 1 | 01c | Fehler- und Startansicht portieren | B | 01a | #1552 offen |
-| 1 | 01b | Not-Aus im Designsystem | A | 01a | #1553 offen (Draft) |
+| 1 | 01a | DS-Basis und Feedbackformular | B | – | gemergt #1547 (`c876538c`) |
+| 1 | 04a | VerlaufChat anschließen | B | – | gemergt #1569 (`3ad56a8a`) |
+| 1 | 01c | Fehler- und Startansicht portieren | B | 01a | gemergt #1552 (`c348a0c8`) |
+| 1 | 01b | Not-Aus im Designsystem | A | 01a | gemergt #1553 (`a83e16db`) |
 | 1 | 07a | Beweiskette anschließen | B | 04a | geplant |
 | 1 | 11c | Lektionen anschließen und bearbeiten | B | 07a | geplant |
 | 1 | 11d | Rollenvarianten anschließen | B | 11c | geplant |
 | 1 | 06b | Fragenumfang, Verlauf und Zuordnung erhalten | B | 04a | geplant |
-| 1 | 09m | Changelog unter Version anzeigen | B | 01a | #1551 offen (Draft) |
-| 1 | 08a | Terminalsuche portieren | A | 01a | #1556 offen (Draft) |
+| 1 | 09m | Changelog unter Version anzeigen | B | 01a | gemergt #1551 (`56671126`) |
+| 1 | 08a | Terminalsuche portieren | A | 01a | gemergt #1556 (`9528ff8c`) |
 | 1 | 08b | Wiederherstellungspanel portieren | A | 01a | geplant |
 | 1 | 04b | Chatentwurf und Verlauf erhalten | B | 04a | geplant |
 | 2 | 02a | Projekt anlegen | B | 01a | geplant |
@@ -878,11 +891,11 @@ Jede ID bleibt ein eigenes Paket ≤300 Gesamtzeilen; Serien 14–16 entfernen h
 
 ### 10.3 Designsystem-Feinschliff
 
-Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions.md#2026-10-15---design-system-decisions-d1d7-root-by-delegation-the-user-may-overrule). Root disponiert; ≤300 Gesamtzeilen je Paket. Stand 15.10.2026, 14:14 UTC: `gh pr list --state all --search "DS-"` ohne PR für diese DS-IDs; DS-01 laut Server-Auftrag gestartet. Übrige Einträge sind Planung, keine Ausführungsbehauptung.
+Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions.md#2026-10-15---design-system-decisions-d1d7-root-by-delegation-the-user-may-overrule) (in 10.3 bedeutet D1–D7 immer diese Designsystem-Entscheidungen, nicht die Entwurfs-D-Nummern aus Abschnitt 3 und 5 wie den Schalter D1). Root disponiert; ≤300 Gesamtzeilen je Paket. Stand 15.10.2026, 19:44 UTC: `gh pr list --state all --search "DS-"`: DS-01 gemergt (#1561); übrige DS-IDs ohne PR. Übrige Einträge sind Planung, keine Ausführungsbehauptung.
 
 | ID | Ziel | Hängt ab von | Status |
 |---|---|---|---|
-| DS-01 | Bewegungstoken vereinheitlichen | – | läuft (Server-Auftrag srv-ds-01) |
+| DS-01 | Bewegungstoken vereinheitlichen | – | Erledigt: #1561 (merged 2026-10-15T16:58:10Z, `2f3625e2`) |
 | DS-02 | Ruhig/Lebendig/Aus mit OS-Vorrang | DS-01; D2 | geplant |
 | DS-03 | Galerie in jedem Build erreichbar machen | DS-02; D6 ersetzt Dev-only | geplant |
 | DS-04 | Komponenten und Zustände in Galerie zeigen | DS-03 | geplant |
@@ -902,14 +915,18 @@ Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions
 | DS-17 | Lade- und Fehlerzustände vereinheitlichen | DS-05 | geplant |
 | DS-18a | Statische Fabrikbausteine bereitstellen | DS-02, DS-07; D4/D5 | geplant |
 | DS-18b | Fabrikbewegung mit Ruhemodus ergänzen | DS-18a; D2/D5 | geplant |
-| DS-19 | Fluss durch Fabrik-Tab ersetzen | DS-18b; FABRIK-TAB-1 vor Dispatch abgleichen | geplant |
+| FABRIK-TAB-1 | Fabrik-Tab im Leitstand: Reiter „Fluss“ heißt „Fabrik“, alte Links bleiben gültig | – | Erledigt: #1568 (merged 2026-10-15T16:19:08Z, `90d1a8c9`) |
+| DS-19 | Fluss durch Fabrik-Tab ersetzen | DS-18b; FABRIK-TAB-1 vor Dispatch abgleichen | geplant; Rest nach FABRIK-TAB-1 (Reiter umbenannt, alte Links erhalten): Fluss-Graph durch Fabrikbausteine aus DS-18a/b ersetzen |
 | DS-20 | Diagramme mit Tabellenalternative ergänzen | DS-07 | geplant |
 | DS-21 | Code-, Diff- und Terminalrahmen vereinheitlichen | DS-09 | geplant |
 | DS-22 | Schrittfolge und Navigation ergänzen | DS-13 | geplant |
 | DS-23 | Tabellenzustände und Sortierung ergänzen | DS-17 | geplant |
 | DS-24 | Kontrastmodi und Dichtedarstellung absichern | DS-07, DS-18a; Abgleich mit gestrichenem 09a vor Dispatch | geplant |
 | DS-25 | Klassik-Ablösung je Ansicht zuordnen | DS-13…DS-23; bestehende KR-Wellen in 10.2 | geplant |
+| DS-KONTRAST-FU | Kontrast-Nachläufer aus DS-POLISH (laut Root 15.10.; Herkunft: Unbekannt (zu prüfen); vor Dispatch mit DS-24 abgleichen) | DS-07 | geplant: nicht disponiert (15.10.) |
 
-Parallelauftrag **FABRIK-TAB-1**: Fabrik-Tab im Leitstand; Abhängigkeit im Wellenplan: keine; läuft (Server-Auftrag srv-fabrik-tab-1c, 15.10.2026).
+Parallelauftrag **FABRIK-TAB-1**: Fabrik-Tab im Leitstand; Abhängigkeit im Wellenplan: keine; erledigt: #1568 (merged 2026-10-15T16:19:08Z, `90d1a8c9`), Zeile in der Tabelle oben; Review-Lows in FU-1015 (`docs/PLAN.md`); DS-19 vor Dispatch dagegen abgleichen.
+
+**FABRIK-DS-1** (Diagramme und Designsystem-Doku): erledigt 15.10.: A #1498 (`8ac3c4d4`), B #1508 (`58d2668d`), C #1507 (`d637a8eb`), D #1516 (`2d97c2fb`), E #1519 (`a5d48099`), F #1501 (`eccab16a`); Nachzug #1523 (`c8414b80`, Export).
 
 Überschneidungen mit KR (Not-Aus, Tabs, Routing, Einstellungen), FABRIK-TAB-1 und DN-02 vor Dispatch durch Root auflösen; kein zweiter Ausführungsowner. DS-25 pflegt die vorhandene KR-Zuordnung, keinen zweiten Ablöseplan. Visuelle Abnahme und Tests bleiben je Umsetzung offen.
