@@ -6,9 +6,23 @@ import { de, type MessageKey } from "../i18n/de";
 
 export interface ShellTab { path: string; label: string }
 
+/** NAV-1a: the six sidebar areas of ia.md section 1 in keyboard order; the last one sits in the foot. */
+export const AREAS = [
+  { id: "fabrik", label: "nav.leitstand" },
+  { id: "auftraege", label: "nav.eingangPlan" },
+  { id: "beweise", label: "nav.beweise" },
+  { id: "betrieb", label: "nav.betrieb" },
+  { id: "wissen", label: "nav.gedaechtnis" },
+  { id: "einstellungen", label: "nav.einstellungen" },
+] as const satisfies readonly { id: string; label: MessageKey }[];
+
+export type AreaId = (typeof AREAS)[number]["id"];
+
 export interface ShellRoute {
   id: string;
   label: string;
+  /** Sidebar area the route belongs to; null = no sidebar entry (Ersteinrichtung). */
+  area: AreaId | null;
   /** Sidebar link target (the default tab); every path below `base` belongs to the entry. */
   path: string;
   base: string;
@@ -18,28 +32,28 @@ export interface ShellRoute {
 }
 
 const t = (path: string, label: MessageKey): ShellTab => ({ path, label: de[label] });
-const r = (id: string, label: MessageKey, path: string, icon: string | null, tabs: ShellTab[] = []): ShellRoute =>
-  ({ id, label: de[label], path, base: `/${path.split("/")[1]}`, icon, tabs });
+const r = (id: string, label: MessageKey, area: AreaId | null, path: string, icon: string | null, tabs: ShellTab[] = []): ShellRoute =>
+  ({ id, label: de[label], area, path, base: `/${path.split("/")[1]}`, icon, tabs });
 
 export const ROUTES: readonly ShellRoute[] = [
-  r("leitstand", "nav.leitstand", "/leitstand", "M3.5 13.5a6.5 6.5 0 1 1 13 0M10 13.5l3-5",
+  r("leitstand", "nav.leitstand", "fabrik", "/leitstand", "M3.5 13.5a6.5 6.5 0 1 1 13 0M10 13.5l3-5",
     [t("/leitstand", "tab.main"), t("/leitstand/verlauf", "tab.history")]),
-  r("eingang", "nav.eingangPlan", "/eingang/plan", "M5 17.5v-14M5 4h9.5l-2 3.5 2 3.5H5",
+  r("eingang", "nav.eingangPlan", "auftraege", "/eingang/plan", "M5 17.5v-14M5 4h9.5l-2 3.5 2 3.5H5",
     [t("/eingang/plan", "tab.plan"), t("/eingang/ideen", "tab.ideas"), t("/eingang/bugs", "tab.bugs")]),
-  r("beweise", "nav.beweise", "/beweise", "M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5ZM7.3 10l1.9 1.9 3.6-3.8",
+  r("beweise", "nav.beweise", "beweise", "/beweise", "M10 2.5 16 5v4.5c0 3.8-2.6 6.6-6 8-3.4-1.4-6-4.2-6-8V5ZM7.3 10l1.9 1.9 3.6-3.8",
     [t("/beweise", "tab.main"), t("/beweise/diff", "tab.diff")]),
-  r("team", "nav.team", "/team", "M7 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M13.5 7a2 2 0 1 1 0 4M12 12.2c2.2-.3 4 .9 4.8 3.3",
+  r("team", "nav.team", "betrieb", "/team", "M7 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM2.5 16c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M13.5 7a2 2 0 1 1 0 4M12 12.2c2.2-.3 4 .9 4.8 3.3",
     [t("/team", "tab.org"), t("/team/personas", "tab.personas"), t("/team/generator", "tab.generator")]),
-  r("automatik", "nav.automatik", "/automatik", "M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z",
+  r("automatik", "nav.automatik", "betrieb", "/automatik", "M11 2.5 4.5 11H10l-1 6.5L15.5 9H10Z",
     [t("/automatik", "tab.trigger"), t("/automatik/befehle", "tab.commands"), t("/automatik/ablaeufe", "tab.flows")]),
-  r("core", "nav.core", "/core", "M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5ZM10 7.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"),
-  r("steuerung", "nav.steuerung", "/steuerung", "M3 10a7 7 0 1 1 14 0 7 7 0 0 1-14 0ZM10 10V6M10 10l3 2",
+  r("core", "nav.core", "betrieb", "/core", "M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5ZM10 7.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"),
+  r("steuerung", "nav.steuerung", "betrieb", "/steuerung", "M3 10a7 7 0 1 1 14 0 7 7 0 0 1-14 0ZM10 10V6M10 10l3 2",
     [t("/steuerung", "tab.quotas"), t("/steuerung/verbesserungen", "tab.improvements"), t("/steuerung/autonomie", "tab.autonomy")]),
-  r("gedaechtnis", "nav.gedaechtnis", "/gedaechtnis", "M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16M8 7h5"),
-  r("einstellungen", "nav.einstellungen", "/einstellungen", "M4 6h7M15 6h1M4 14h1M9 14h7M13 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM7 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z",
+  r("gedaechtnis", "nav.gedaechtnis", "wissen", "/gedaechtnis", "M4 16.5v-12A1.5 1.5 0 0 1 5.5 3H16v12H5.5A1.5 1.5 0 0 0 4 16.5 1.5 1.5 0 0 0 5.5 18H16M8 7h5"),
+  r("einstellungen", "nav.einstellungen", "einstellungen", "/einstellungen", "M4 6h7M15 6h1M4 14h1M9 14h7M13 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4ZM7 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z",
     [t("/einstellungen", "tab.general"), t("/einstellungen/mcp", "tab.mcp"),
       t("/einstellungen/benachrichtigungen", "tab.notifications"), t("/einstellungen/projekt", "tab.project")]),
-  r("start", "nav.start", "/start", null),
+  r("start", "nav.start", null, "/start", null),
 ];
 
 export const DEFAULT_PATH = "/leitstand";

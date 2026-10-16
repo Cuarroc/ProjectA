@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setFeatureFlagEnabled } from "../flags/featureFlags";
-import { resolveRoute } from "./routes";
+import { AREAS, resolveRoute } from "./routes";
 import { Shell } from "./Shell";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
@@ -54,7 +54,7 @@ describe("shell scope (V2-SCOPE-1)", () => {
     setFeatureFlagEnabled("weitere_bereiche", true);
     window.location.hash = "#/steuerung/autonomie";
     await mount();
-    expect(sidebar()).toHaveLength(6);
+    expect(sidebar()).toHaveLength(AREAS.length);
     expect(palette().some((label) => label.startsWith("Core · Steuerung"))).toBe(true);
     expect(resolveRoute("/steuerung/autonomie")?.tab?.label).toBe("Core & Autonomie");
     expect(window.location.hash).toBe("#/steuerung/autonomie");
