@@ -2,12 +2,12 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setFeatureFlagEnabled } from "../flags/featureFlags";
-import { ROUTES, resolveRoute } from "./routes";
+import { AREAS, resolveRoute } from "./routes";
 import { Shell } from "./Shell";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
-const SCOPE = ["Leitstand", "Einstellungen"];
+const SCOPE = ["Fabrik", "Einstellungen"];
 /** The palette also offers Ersteinrichtung, which has no sidebar entry but stays reachable via /start. */
 const PALETTE_AREAS = [...SCOPE, "Ersteinrichtung"];
 const mount = () => act(async () => void render(<Shell />));
@@ -34,6 +34,13 @@ describe("shell scope (V2-SCOPE-1)", () => {
     expect(resolveRoute("/nirgends")).toBeNull();
   });
 
+  it("with the scope flag off the sidebar shows Fabrik and Einstellungen", async () => {
+    await mount();
+    const links = within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getAllByRole("link");
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Fabrik", "#/leitstand"], ["Einstellungen", "#/einstellungen"]]);
+    expect(links[0]).toHaveAttribute("aria-current", "page");
+  });
+
   it("with the scope flag off a hidden hash is replaced by /leitstand while /start stays", async () => {
     window.location.hash = "#/team/personas";
     await mount();
@@ -47,7 +54,7 @@ describe("shell scope (V2-SCOPE-1)", () => {
     setFeatureFlagEnabled("weitere_bereiche", true);
     window.location.hash = "#/steuerung/autonomie";
     await mount();
-    expect(sidebar()).toHaveLength(ROUTES.filter((r) => r.icon !== null).length);
+    expect(sidebar()).toHaveLength(AREAS.length);
     expect(palette().some((label) => label.startsWith("Core · Steuerung"))).toBe(true);
     expect(resolveRoute("/steuerung/autonomie")?.tab?.label).toBe("Core & Autonomie");
     expect(window.location.hash).toBe("#/steuerung/autonomie");

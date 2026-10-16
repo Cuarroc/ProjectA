@@ -10,7 +10,9 @@ import { GLASS_THEME_KEY } from "./theme";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
-const NINE = ["Leitstand", "Eingang & Plan", "Beweise", "Team", "Automatik", "Core", "Core · Steuerung", "Gedächtnis", "Einstellungen"];
+const SIX = ["Fabrik", "Aufträge", "Beweise", "Betrieb", "Wissen", "Einstellungen"];
+/** ia.md section 1: the routes the Betrieb area groups; their paths stay unchanged. */
+const BETRIEB_IDS = ["team", "steuerung", "automatik", "core"];
 const allPaths = ROUTES.flatMap((r) => [r.path, ...r.tabs.map((t) => t.path)]);
 /** EmergencyStop resolves its first poll asynchronously: flush it inside act. */
 const mount = () => act(async () => void render(<Shell />));
@@ -22,21 +24,33 @@ beforeEach(() => { vi.mocked(getQuotaState).mockResolvedValue([]); localStorage.
 afterEach(cleanup);
 
 describe("sidebar and route registry", () => {
-  it("lists exactly the nine ia.md entries without Ersteinrichtung", async () => {
+  it("lists exactly the six areas without Ersteinrichtung", async () => {
     await mount();
     const links = within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getAllByRole("link");
-    expect(links.map((a) => a.textContent)).toEqual(NINE);
+    expect(links.map((a) => a.textContent)).toEqual(SIX);
     expect(links[1]).toHaveAttribute("href", "#/eingang/plan");
+    expect(links[3]).toHaveAttribute("href", "#/team");
     expect(resolveRoute("/start")?.route.icon).toBeNull();
   });
 
   it("opens the Leitstand by default and follows the hash to the active entry", async () => {
     expect(pathFromHash("")).toBe("/leitstand");
     await mount();
-    expect(screen.getByRole("link", { name: "Leitstand" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
     go("#/team");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Team · Organigramm");
-    expect(screen.getByRole("link", { name: "Team" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("marks the Betrieb area current on every member route", async () => {
+    await mount();
+    const nav = within(screen.getByRole("navigation", { name: "Hauptnavigation" }));
+    const paths = [...new Set(ROUTES.filter((r) => BETRIEB_IDS.includes(r.id)).flatMap((r) => [r.path, ...r.tabs.map((x) => x.path)]))];
+    expect(paths).toHaveLength(10);
+    for (const path of paths) {
+      go(`#${path}`);
+      expect(nav.getAllByRole("link", { current: "page" }).map((a) => a.textContent), path).toEqual(["Betrieb"]);
+    }
   });
 
   it("resolves tab paths to their entry and rejects unknown paths", () => {

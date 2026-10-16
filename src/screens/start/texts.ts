@@ -11,7 +11,7 @@ export const T = {
   subs: { title: "Abos prüfen", action: "Anbieter öffnen" },
   project: { title: "Projekt wählen", action: "Projekt wählen" },
   team: { title: "Team aufstellen", hint: "Ein Vorschlag für den Anfang", action: "Team ansehen" },
-  done: { title: "Fertig", hint: "Der Leitstand zeigt, wer arbeitet", action: "ProjectA öffnen" },
+  done: { title: "Fertig", hint: "Die Fabrik zeigt, wer arbeitet", action: "ProjectA öffnen" },
   scanTitle: "Noch nicht verbunden",
   scanHint: "Das Lesen der Projektregeln ist noch nicht angebunden.",
   chip: { ready: "Bereit", done: "Erledigt", open: "Offen", reading: "Liest", failed: "Fehler" },

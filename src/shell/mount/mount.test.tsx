@@ -128,7 +128,7 @@ describe("Glass shell mount behind D1", () => {
     const { container } = render(<App />);
     expect(await screen.findByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
     await waitFor(() => expect(container.querySelector(".g-shell-content .g-mount-legacy > .app")).not.toBeNull());
-    expect(screen.getByRole("link", { name: "Leitstand" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
   });
 
   it("follows the route into the old Settings and back from an old view change to the route", async () => {
