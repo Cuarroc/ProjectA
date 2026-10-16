@@ -780,7 +780,7 @@ Historischer Hinweis: „der Schalter bleibt als Rückweg“ aus dem engen Schni
 
 Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log origin/main`, `gh pr list --state all` und dem Code an diesem Stand; was ich nicht belegen konnte, steht als **UNKNOWN**. Umfang S ≤ 150, M ≤ 300 Diffzeilen; Stufe nach AGENTS.md Regel 5. Kein Paket berührt eine der vier Nahtstellen (`api.rs`, `main.rs`, `store.rs`, `bin/pa.rs`).
 
-**Erledigt (belegt):** Fundament V2-F1 bis V2-F9, V2-FLAG-1, V2-IA-1 (Routen `src/shell/`, `src/design/`, `src/flags/`); Leitstand V2-S01a/b/d (Karten, Braucht dich, Betrieb, Terminal), V2-B3, V2-B4a, V2-B22; V2-E2E-0 (`e2e/shell.core.spec.ts`); Not-Aus in der Kopfleiste (#1370). COMP-Pakete gemergt: 1-1, 1-2, 2-1, 3-1, 3-2, 4-1, 6-1, 9-1 (#1437, #1452, #1434, #1436, #1458, #1450, #1453, #1448), COMP-2-2 (#1455), dazu am 15.10. COMP-3-3, 1-3, 4-2, 9-2 (siehe 10.1b). **Quelle der COMP-Definitionen:** der Orchestrator-Bericht PLAN-COMP-V2-1 vom 14.10.2026; er liegt außerhalb des Repos, im Repo gibt es keine COMP-Definition (`grep -rn "COMP-" docs` trifft nur den Paperclip-Verweis in `docs/PLAN.md`). Die Tabelle unten ist daraus übernommen. Nachtrag 15.10. abends: V2-D1-ON #1484, V2-ACC1a #1494, V2-SCOPE-1 #1499, V2-UPD-1 #1487, COMP-6-2 #1526 und COMP-4-3 #1533 gemergt.
+**Erledigt (belegt):** Fundament V2-F1 bis V2-F9, V2-FLAG-1, V2-IA-1 (Routen `src/shell/`, `src/design/`, `src/flags/`); Leitstand V2-S01a/b/d (Karten, Braucht dich, Betrieb, Terminal), V2-B3, V2-B4a, V2-B22; V2-E2E-0 (`e2e/shell.core.spec.ts`); Not-Aus in der Kopfleiste (#1370). COMP-Pakete gemergt: 1-1, 1-2, 2-1, 3-1, 3-2, 4-1, 6-1, 9-1 (#1437, #1452, #1434, #1436, #1458, #1450, #1453, #1448), COMP-2-2 (#1455), dazu am 15.10. COMP-3-3, 1-3, 4-2, 9-2 (siehe 10.1b). **Quelle der COMP-Definitionen:** der Orchestrator-Bericht PLAN-COMP-V2-1 vom 14.10.2026 (Auftrag aus dem Nutzerwunsch vom 13.10., die Konkurrenz zu prüfen und eine kuratierte Liste auf ProjectA zuzuschneiden; Empfehlungen angenommen); er liegt außerhalb des Repos und führt 16 Pakete COMP-1-1 bis COMP-9-3 mit Größe, Vorgängern und Überschneidungen in der Reihenfolge Fluss, Lampen, Beweisleiste, Kontingent, Entscheidungen, Zeilenzähler; fremder Code wird nicht übernommen (nur Ideen und öffentliche Beschreibungen). Im Repo gibt es keine COMP-Definition (`grep -rn "COMP-" docs` trifft nur den Paperclip-Verweis in `docs/PLAN.md`). Die Tabelle unten ist daraus übernommen. Nachtrag 15.10. abends: V2-D1-ON #1484, V2-ACC1a #1494, V2-SCOPE-1 #1499, V2-UPD-1 #1487, COMP-6-2 #1526 und COMP-4-3 #1533 gemergt.
 
 #### 10.1a Pakete für die Kriterien (v2.0)
 
@@ -805,7 +805,7 @@ Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log o
 [Classic-out-Entscheid vom 15.10.](../../decisions.md#2026-10-15---classic-ui-leaves-the-app): Ziel ist die Entfernung des Rückwegs; Wellen und Umsetzungsstand stehen in 10.2.
 **Hinweis zu Kriterium 4:** Beschlossener Wortlaut: „Keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“ Die Messung zählt die Alt-Aliase, und ihre Obergrenze kann nur sinken. Die frühere Zusage „Die klassische Oberfläche bleibt als Rückweg von D1 erhalten“ ist durch Classic-out überholt.
 
-Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zurück rot, bewiesen blaugrün, unbekannt grau und Tor orange. Fabrik ist ein Tab im Leitstand. Die Lichtkugeln sind zwischen ruhig und lebendig umstellbar, standardmäßig ruhig.
+Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zurück rot, bewiesen blaugrün, unbekannt grau und Tor orange. Fabrik ist ein Tab im Leitstand (für die Navigation ersetzt durch E-1 vom 16.10., siehe `docs/PLAN.md`, „Designziel Pixel-Fabrik“). Die Lichtkugeln sind zwischen ruhig und lebendig umstellbar, standardmäßig ruhig.
 
 #### 10.1b Leitstand-Ausbau (COMP, kein Kriterium)
 
@@ -813,15 +813,15 @@ Diese Pakete füllen Lücken auf dem Leitstand (Fluss, Lampen, Beweisleiste, Kon
 
 | ID | Ziel | Umfang | Voraussetzung | Stand |
 |---|---|---|---|---|
-| COMP-1-1 | Statuslampe aus der bestehenden Karte | – | Unbekannt (zu prüfen) | gemergt #1437 (Merge `ad19665b`) |
-| COMP-1-2 | Vier-Zustands-Lampe auf der Agentenkarte | – | Unbekannt (zu prüfen) | gemergt #1452 (Merge `b65e0d78`) |
-| COMP-2-1 | Frage als Geld, Installation oder Löschen einordnen | – | Unbekannt (zu prüfen) | gemergt #1434 (Merge `d72946f7`) |
-| COMP-2-2 | Drei Entscheidungszeilen in „Braucht dich“ | – | Unbekannt (zu prüfen) | gemergt #1455 (Merge `78441e0b`) |
-| COMP-3-1 | Layout für den Live-Agentenfluss | – | Unbekannt (zu prüfen) | gemergt #1436 (Merge `65fa0736`) |
-| COMP-3-2 | Agenten-Layout als Glas-Flussgraph | – | Unbekannt (zu prüfen) | gemergt #1458 (Merge `9903b4cd`) |
-| COMP-4-1 | Beweis-Abzeichenleiste | – | Unbekannt (zu prüfen) | gemergt #1450 (Merge `0e04863a`) |
-| COMP-6-1 | Kontingentanzeige: Prozent, ehrliche Prognose, Failover-Hinweis | – | Unbekannt (zu prüfen) | gemergt #1453 (Merge `62bd41c7`) |
-| COMP-9-1 | 300-Zeilen-Größenchip für Worker-Diffs | – | Unbekannt (zu prüfen) | gemergt #1448 (Merge `85453fdb`) |
+| COMP-1-1 | Statuslampe aus der bestehenden Karte | ~150 | – | gemergt #1437 (Merge `ad19665b`) |
+| COMP-1-2 | Vier-Zustands-Lampe auf der Agentenkarte | ~120 | COMP-1-1, #1359 (gemergt) | gemergt #1452 (Merge `b65e0d78`) |
+| COMP-2-1 | Frage als Geld, Installation oder Löschen einordnen | ~120 | – | gemergt #1434 (Merge `d72946f7`) |
+| COMP-2-2 | Drei Entscheidungszeilen in „Braucht dich“ | ~260 | COMP-2-1 | gemergt #1455 (Merge `78441e0b`) |
+| COMP-3-1 | Layout für den Live-Agentenfluss | ~140 | – | gemergt #1436 (Merge `65fa0736`) |
+| COMP-3-2 | Agenten-Layout als Glas-Flussgraph | ~260 | COMP-3-1 | gemergt #1458 (Merge `9903b4cd`) |
+| COMP-4-1 | Beweis-Abzeichenleiste | ~230 | – | gemergt #1450 (Merge `0e04863a`) |
+| COMP-6-1 | Kontingentanzeige: Prozent, ehrliche Prognose, Failover-Hinweis | ~160 | – | gemergt #1453 (Merge `62bd41c7`) |
+| COMP-9-1 | 300-Zeilen-Größenchip für Worker-Diffs | ~110 | – | gemergt #1448 (Merge `85453fdb`) |
 | COMP-3-3 | Reiter `/leitstand/fluss` | ~240 | COMP-3-2, #1333 (beide gemergt) | gemergt #1486 |
 | COMP-1-3 | Lampe im Fluss | ~100 | COMP-3-3, COMP-1-1 | gemergt #1500 |
 | COMP-4-2 | Beweisleiste auf der Karte | ~160 | COMP-1-2, COMP-4-1 (beide gemergt) | gemergt #1483 |
@@ -916,6 +916,7 @@ Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions
 | DS-18a | Statische Fabrikbausteine bereitstellen | DS-02, DS-07; D4/D5 | geplant |
 | DS-18b | Fabrikbewegung mit Ruhemodus ergänzen | DS-18a; D2/D5 | geplant |
 | FABRIK-TAB-1 | Fabrik-Tab im Leitstand: Reiter „Fluss“ heißt „Fabrik“, alte Links bleiben gültig | – | Erledigt: #1568 (merged 2026-10-15T16:19:08Z, `90d1a8c9`) |
+| FABRIK-DS-1 | Diagramme und Designsystem-Doku: Archify-SVG-Export, vier Diagramme (Ablauf, Release, Architektur, Strecke) und Verweis-README | – | Erledigt 15.10.: A #1498 (`8ac3c4d4`), B #1508 (`58d2668d`), C #1507 (`d637a8eb`), D #1516 (`2d97c2fb`), E #1519 (`a5d48099`), F #1501 (`eccab16a`); Nachzug #1523 (`c8414b80`, Export) |
 | DS-19 | Fluss durch Fabrik-Tab ersetzen | DS-18b; FABRIK-TAB-1 vor Dispatch abgleichen | geplant; Rest nach FABRIK-TAB-1 (Reiter umbenannt, alte Links erhalten): Fluss-Graph durch Fabrikbausteine aus DS-18a/b ersetzen |
 | DS-20 | Diagramme mit Tabellenalternative ergänzen | DS-07 | geplant |
 | DS-21 | Code-, Diff- und Terminalrahmen vereinheitlichen | DS-09 | geplant |
@@ -923,10 +924,23 @@ Quelle: `ds-polish-20261015.md` §11, korrigiert durch [D1–D7](../../decisions
 | DS-23 | Tabellenzustände und Sortierung ergänzen | DS-17 | geplant |
 | DS-24 | Kontrastmodi und Dichtedarstellung absichern | DS-07, DS-18a; Abgleich mit gestrichenem 09a vor Dispatch | geplant |
 | DS-25 | Klassik-Ablösung je Ansicht zuordnen | DS-13…DS-23; bestehende KR-Wellen in 10.2 | geplant |
-| DS-KONTRAST-FU | Kontrast-Nachläufer aus DS-POLISH (laut Root 15.10.; Herkunft: Unbekannt (zu prüfen); vor Dispatch mit DS-24 abgleichen) | DS-07 | geplant: nicht disponiert (15.10.) |
+| DS-KONTRAST-FU | Kontrast-Nachläufer aus DS-POLISH (laut Root 15.10.; Herkunft: nur diese Mitteilung belegt; im DS-POLISH-Bericht vom 15.10. (außerhalb des Repos) steht die Kontrastlücke als Umfang von DS-24: `--g-sw-off` sowie Orb-, Lane-, Diff- und Viz-Paare im Kontrast-Gate, `prefers-contrast` heute nur als Transparenzboden; ein eigenes Paket DS-KONTRAST-FU ist dort nicht definiert; vor Dispatch mit DS-24 abgleichen) | DS-07 | geplant: nicht disponiert (15.10.) |
 
 Parallelauftrag **FABRIK-TAB-1**: Fabrik-Tab im Leitstand; Abhängigkeit im Wellenplan: keine; erledigt: #1568 (merged 2026-10-15T16:19:08Z, `90d1a8c9`), Zeile in der Tabelle oben; Review-Lows in FU-1015 (`docs/PLAN.md`); DS-19 vor Dispatch dagegen abgleichen.
 
 **FABRIK-DS-1** (Diagramme und Designsystem-Doku): erledigt 15.10.: A #1498 (`8ac3c4d4`), B #1508 (`58d2668d`), C #1507 (`d637a8eb`), D #1516 (`2d97c2fb`), E #1519 (`a5d48099`), F #1501 (`eccab16a`); Nachzug #1523 (`c8414b80`, Export).
 
 Überschneidungen mit KR (Not-Aus, Tabs, Routing, Einstellungen), FABRIK-TAB-1 und DN-02 vor Dispatch durch Root auflösen; kein zweiter Ausführungsowner. DS-25 pflegt die vorhandene KR-Zuordnung, keinen zweiten Ablöseplan. Visuelle Abnahme und Tests bleiben je Umsetzung offen.
+
+#### 10.4 Zuordnung gemergter v2-PRs ohne eigene Planzeile (Stand 16.10.2026, erledigt)
+
+Gemergte PRs vom 06.–15.10. zu den Paketen dieses Plans, soweit ihre Nummer in keiner Tabellenzeile stand (Folgefixes tragen den Namen des Elternpakets, z. B. `V2-FU-S11` unter V2-S11). Zuordnung nach Titel und Branch; ein Eintrag hier heißt nur „PR gemergt“, nicht „Paket fertig“. Liste reproduzierbar mit `gh pr list --state merged --search "merged:2026-10-02..2026-10-15"`.
+
+| Bereich | Pakete mit PRs | Gemergt |
+|---|---|---|
+| Fundament | V2-F1 (inkl. V2-TH-0, V2-TH-VAR-1/2, V2-FU-VAR): #615, #1031, #1032, #1048, #1062; V2-F2: #1020; V2-F3: #1017, #1365; V2-F4a: #1015, #1034, #1368, #1377, #1378, #1380; V2-F4b: #1022, #1035, #1373, #1375, #1379, #1381; V2-F5a: #1023, #1350, #1366, #1371; V2-F5b: #1033, #1056, #1082, #1362, #1367, #1369; V2-F6: #1012, #1099; V2-F7: #1013; V2-F8 (inkl. V2-F8a/b, V2-F8-PROJ/PAL/HASH/THEME, Kopfzeilen-Nachläufer): #1039, #1054, #1085, #1116, #1133, #1176, #1349, #1356, #1374, #1376; V2-F9: #1055, #1065; V2-FLAG-1: #1018; V2-IA-1: #1011; V2-CLI-0: #1028 | 06.10.–14.10. |
+| Backend-Kerne | V2-B1: #1025; V2-B2a: #1073; V2-B2b: #1098; V2-B3: #1024, #1041; V2-B4: #1108, #1139; V2-B5: #1112, #1187; V2-B6a: #1122, #1198; V2-B8: #1120, #1148, #1296, #1308; V2-B9 (inkl. B9a/B9b und V2-FU-TIER-NAMES): #1080, #1094, #1121, #1157; V2-B10: #1081, #1101, #1125, #1164; V2-B11: #1045; V2-B12: #1090; V2-B13: #1044; V2-B14: #1092; V2-B15: #1109, #1117, #1189; V2-B17: #1111, #1129, #1194, #1213; V2-B21: #1113; V2-B22: #1083, #1135, #1192, #1320; V2-B28: #1042 | 10.10.–13.10. |
+| Leitstand | V2-S01a (inkl. V2-FU-LS, V2-FIX-TIME-DE-2): #1049, #1050, #1067, #1069, #1144, #1188, #1200, #1212, #1359, #1372, #1387; V2-S01b: #1100, #1136, #1154; V2-S01c: #1153, #1357; V2-S01d (Terminal, Beschreibung `terminal.md`): #1140, #1150, #1262, #1293, #1313 | 10.10.–14.10. |
+| Bildschirme | V2-S02: #1168, #1339, #1360; V2-S03a: #1182, #1203, #1344; V2-S04a: #1181, #1201, #1353; V2-S05a: #1074, #1091, #1130, #1196, #1348; V2-S05b: #1128, #1163, #1343, #1346; V2-S07a: #1177, #1352; V2-S07b: #1095, #1107, #1158, #1354, #1355; V2-S09: #1160, #1364; V2-S10a: #1068, #1089, #1123, #1319, #1363; V2-S10b: #1134, #1167, #1342, #1347; V2-S10d (inkl. V2-FU-DEVNOTES): #1162, #1218; V2-S11: #1070, #1076, #1078, #1131, #1179, #1351 | 10.10.–14.10. |
+| Kern und Plan | V2-H1: #611; V2-H2: #1295, #1315, #1328; V2-HYG-1: #1294, #1305; V2-O0: #1301; V2-ARCH-0: #1299; V2-SEC-0: #1300; V2-CORE-1: #1312; V2-CORE-2: #1325; V2-E2E-0: #1267; V2-ST-B1: #1318, #1326; V2-OBS-1: #1220; V2-OBS-2: #1197, #1219; V2-RUN-1: #1398 | 06.10.–15.10. |
+| Planung und Rückbau | V2-PLAN (Masterplan v2.0): #585; V2-RETIRE-0 (Inventar `retire.md`): #1132; V2-RT (Klassik-Rückbau RT-1a (#1277), RT-4b (#1159); siehe 10.2): #1159, #1277; V2-WEG-0 (Beschreibung `werkbank.md`): #1141; V2-SCOPE-Plan (Release-Schnitt und enger Schnitt (PLAN-V2-SCOPE, V2-NARROW-PLAN)): #1259, #1475 | 06.10.–15.10. |
