@@ -161,8 +161,8 @@ test("a parked umbrella with a merged sub-PR stays unfinished", () => {
   assert.ok(road.directions.flatMap(d => [...d.now, ...d.next, ...d.later]).includes("APP-1"));
 });
 test("appended extensions or name parts after a seam file are not seams", () => {
-  const no = ["Edit api.rs.bak", "Rename src-tauri/src/main.rs.old", "Update store.rs.md examples", "Fix api.rs-style", "Edit bin/pa.rs.orig"];
-  const yes = ["Edit main.rs:12", "Touch (bin/pa.rs)", "Fix store.rs, then docs"];
+  const no = ["Edit api.rs.bak", "Rename src-tauri/src/main.rs.old", "Update store.rs.md examples", "Edit bin/pa.rs.orig"];
+  const yes = ["Edit main.rs:12", "Touch (bin/pa.rs)", "Fix store.rs, then docs", "Split api.rs-Routen"];
   const seams = build([...no, ...yes].map((title, i) => row(`A-${i}`, { title }))).packages.filter(p => p.seam).map(p => p.title);
   assert.deepEqual(seams, yes);
 });
