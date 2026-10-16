@@ -44,6 +44,9 @@ it("defines the foundation scales in the light root block", () => {
   expect(base).toContain(`outline-offset: ${light["--g-focus-offset"]};`);
 });
 
+const mediaWidths = (css: string) =>
+  [...css.matchAll(/@media[^{]*\(\s*(?:min|max)-width:\s*(\d+)px\s*\)/g)].map((m) => Number(m[1]));
+
 it("documents the breakpoint scale and allows no other media width in CSS", () => {
   expect(BREAKPOINTS).toEqual({ sm: 640, md: 900, lg: 1280 });
   // Debt: widths used before the scale (beweise.css, mount.css and shell.css, quotaBar.css). Remove entries, never add.
@@ -53,9 +56,14 @@ it("documents the breakpoint scale and allows no other media width in CSS", () =
   for (const file of readdirSync(src, { recursive: true, encoding: "utf8" })) {
     if (!file.endsWith(".css")) continue;
     const css = strip(readFileSync(resolve(src, file), "utf8"));
-    for (const m of css.matchAll(/@media[^{]*\(\s*(?:min|max)-width:\s*(\d+)px\s*\)/g)) used.add(Number(m[1]));
+    for (const width of mediaWidths(css)) used.add(width);
   }
   expect(used.size).toBeGreaterThan(0);
   const allowed = new Set<number>([...Object.values(BREAKPOINTS), ...legacy]);
   expect([...used].filter((width) => !allowed.has(width))).toEqual([]);
+});
+
+it("reads every width condition in a media query header", () => {
+  expect(mediaWidths("@media (min-width: 777px) and (max-width: 1280px) { a { b: c } }")).toEqual([777, 1280]);
+  expect(mediaWidths("@media (max-width: 777px), (max-width: 1280px) { a { b: c } }")).toEqual([777, 1280]);
 });
