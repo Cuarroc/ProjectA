@@ -1226,10 +1226,7 @@ pub(super) async fn require_planning_authority(
     target: PlanningTarget<'_>,
 ) -> Result<(), String> {
     if require_run_authority(tx, run, owner, fence).await.is_err()
-        || !matches!(
-            run_role(&mut **tx, run).await,
-            Ok(DispatchRole::Coordinator)
-        )
+        || !matches!(run_role(tx, run).await, Ok(DispatchRole::Coordinator))
     {
         return Err(PLANNING_REFUSED.into());
     }
