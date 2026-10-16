@@ -24,13 +24,20 @@ export default function BetriebRoute() {
     return () => { live = false; };
   }, []);
 
+  const notice = profilesFailed && <HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("betrieb.profilesHint")} />;
   return (
     <div className="g-lr">
       <div className="g-lr-head"><h1>{t("nav.betrieb")}</h1></div>
-      {profilesFailed && <div role="status"><HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("betrieb.profilesHint")} /></div>}
       {projectId !== null
-        ? <BetriebPanel projectId={projectId} profiles={profiles} />
-        : <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHint")} /></div>}
+        ? <>
+            {notice && <div role="status">{notice}</div>}
+            <BetriebPanel projectId={projectId} profiles={profiles} />
+          </>
+        // One region says both facts, so a screen reader announces it once.
+        : <div role="status">
+            {notice}
+            <HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHint")} />
+          </div>}
     </div>
   );
 }

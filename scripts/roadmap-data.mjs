@@ -42,11 +42,12 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   let text = JSON.stringify(data, null, 2) + "\n", target = ".pa/roadmap-data.json";
   if (values.page) {
     target = ".pa/roadmap.html";
-    const changes = command("git", ["log", mainSha, "--max-count=20", "--format=%cs%x09%s", "--", "docs/PLAN.md"]).split("\n").filter(Boolean).map(l => ({ date: l.split("\t")[0], subject: l.split("\t").slice(1).join("\t") }));
+    const changes = command("git", ["log", mainSha, "--max-count=20", "--format=%cs%x09%s", "--", "docs/PLAN.md"]).split("\n").filter(l => l.includes("\t")).map(l => ({ date: l.split("\t")[0], subject: l.split("\t").slice(1).join("\t") }));
     // The plan check reads the same origin/main tree; if it cannot run, findings stay undefined and the page says so.
     let findings, checked = "";
-    const code = await planCheck(["--json"], { out: s => { checked += s; }, err: () => {} }, { run, now, read: p => command("git", ["show", `${mainSha}:${p}`]) });
-    if (code === 0 || code === 1) findings = JSON.parse(checked).findings;
+    const code = await (deps.planCheck || planCheck)(["--json"], { out: s => { checked += s; }, err: () => {} }, { run, now, read: p => command("git", ["show", `${mainSha}:${p}`]) });
+    // Empty or malformed output must not abort the page; the renderer then marks the findings as not connected.
+    if (code === 0 || code === 1) try { findings = JSON.parse(checked).findings; } catch {}
     text = renderRoadmap(data, { releases, changes, findings, now });
   }
   if (values.stdout) io.out(text);

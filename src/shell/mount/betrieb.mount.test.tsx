@@ -70,3 +70,17 @@ it("shows an empty state at /betrieb while no project is chosen", async () => {
   expect(await screen.findByText("Kein Projekt gewählt", {}, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Warteschlange" })).toBeNull();
 });
+
+it("a failed profile read without a project shows one status region", async () => {
+  localStorage.removeItem("projecta.activeProjectId");
+  const base = mocks.invoke.getMockImplementation()!;
+  // No projects at all, so the picker cannot choose one behind the test's back.
+  mocks.invoke.mockImplementation((command: string) => command === "list_agent_profiles" ? Promise.reject(new Error("no profiles")) : command === "list_projects" ? Promise.resolve([]) : base(command));
+  const { container } = render(<App />);
+  await screen.findByText("Agenten konnten nicht geladen werden", {}, { timeout: 5000 });
+  // The shell's stop band has its own status region; only the route's content counts.
+  const route = within(container.querySelector<HTMLElement>(".g-shell-content .g-lr")!);
+  const status = route.getByRole("status");
+  expect(within(status).getByText("Agenten konnten nicht geladen werden")).toBeInTheDocument();
+  expect(within(status).getByText("Kein Projekt gewählt")).toBeInTheDocument();
+});

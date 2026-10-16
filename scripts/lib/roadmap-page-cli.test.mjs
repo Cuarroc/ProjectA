@@ -11,7 +11,7 @@ const table = (title) => `| ID | Ziel | Status |\n|---|---|---|\n| APP-1 | ${tit
 const release = { tagName: "v1.0.0", publishedAt: "2026-10-01T00:00:00Z", isDraft: false, isPrerelease: false };
 
 // The write branch works on the current directory, so it runs inside a throwaway repository whose origin/main is HEAD.
-async function inRepo({ ignore = `.pa/${page}\n`, title = "Search", withPlanCheck = false, setup = () => {} }, check) {
+async function inRepo({ ignore = `.pa/${page}\n`, title = "Search", withPlanCheck = false, setup = () => {}, args = ["--page"], planCheck, fake = () => undefined }, check) {
   const dir = mkdtempSync(join(tmpdir(), "roadmap-page-")), cwd = process.cwd(), real = makeRunner(), out = [], errors = [];
   try {
     const git = (...a) => assert.equal(real("git", ["-C", dir, ...a]).code, 0);
@@ -26,8 +26,8 @@ async function inRepo({ ignore = `.pa/${page}\n`, title = "Search", withPlanChec
     setup(dir, git, commit);
     git("update-ref", "refs/remotes/origin/main", "HEAD");
     process.chdir(dir);
-    const run = (cmd, args) => cmd === "git" ? real(cmd, args) : { code: 0, stdout: JSON.stringify(args[0] === "release" ? [release] : []) };
-    const code = await main(["--page"], { out: (s) => out.push(s), err: (s) => errors.push(s) }, { run, now });
+    const run = (cmd, args) => fake(cmd, args) ?? (cmd === "git" ? real(cmd, args) : { code: 0, stdout: JSON.stringify(args[0] === "release" ? [release] : []) });
+    const code = await main(args, { out: (s) => out.push(s), err: (s) => errors.push(s) }, { run, now, planCheck });
     check({ code, out: out.join(""), errors: errors.join("") }, dir);
   } finally { process.chdir(cwd); rmSync(dir, { recursive: true, force: true }); }
 }
@@ -82,5 +82,32 @@ test("plan changes come from the PLAN git log newest first", async () => {
     assert.match(html, /<time>\d{4}-\d{2}-\d{2}<\/time> plan: &lt;b&gt;second/);
     // Without docs/plan/v2.0 on origin/main the plan check cannot run: the page must say so instead of claiming no defects.
     assert.match(html, /noch nicht verbunden: das Ergebnis der Plan-Prüfung/);
+  });
+});
+
+test("malformed plan check output leaves findings unknown", async () => {
+  for (const output of ["", "not json", "[1]"]) {
+    const planCheck = async (_argv, io) => { io.out(output); return 0; };
+    await inRepo({ planCheck, withPlanCheck: true }, ({ code, errors }, dir) => {
+      assert.equal(code, 0, errors);
+      assert.match(readFileSync(join(dir, ".pa", page), "utf8"), /noch nicht verbunden: das Ergebnis der Plan-Prüfung/);
+    });
+  }
+});
+
+test("git log lines without a tab are skipped", async () => {
+  const fake = (cmd, args) => cmd === "git" && args[0] === "log" ? { code: 0, stdout: "garbage line\n2026-10-14\tplan: kept\n" } : undefined;
+  await inRepo({ fake }, ({ code }, dir) => {
+    const html = readFileSync(join(dir, ".pa", page), "utf8");
+    assert.equal(code, 0);
+    assert.ok(html.includes("plan: kept") && !html.includes("garbage line"));
+  });
+});
+
+test("page and stdout together print html and write no file", async () => {
+  await inRepo({ args: ["--page", "--stdout"], ignore: "" }, ({ code, out }, dir) => {
+    assert.equal(code, 0);
+    assert.match(out, /^<!doctype html>/);
+    assert.equal(existsSync(join(dir, ".pa")), false);
   });
 });
