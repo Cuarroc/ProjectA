@@ -622,6 +622,12 @@ if (designDarkAt < 0) {
         const wash = color(vars, `${role}-bg`);
         check(mode, `${role} / ${role}-bg`, color(vars, role), wash.a < 1 ? over(wash, ground) : wash);
       }
+      // Fabrik orb (fabrik.css): glyph on the fill, and the fill itself on glass (non-text).
+      for (const role of [...stateRoles, "g-muted"]) {
+        const on = role === "g-need" ? "g-on-need" : "g-on-accent";
+        check(mode, `orb glyph ${on} / ${role}`, color(vars, on), color(vars, role));
+        check(mode, `orb fill ${role} / glass`, color(vars, role), glass, 3);
+      }
     } catch (err) {
       fails.push(`${mode.trim()}: ${err.message}`);
     }
