@@ -2022,6 +2022,7 @@ wall clock, linux + windows.
 - **Reverse when:** The user changes any of these choices; restore the prior
   setting or plan only with a new explicit decision. Agent configuration
   changes must first be restored from the backup if reversing item 7.
+- **Update 2026-10-16:** point 5 is superseded for the navigation by E-1 (see "2026-10-16 - DS-FABRIK-ZIEL"): the navigation is renamed to Fabrik / Aufträge / Beweise / Betrieb / Wissen / Einstellungen.
 
 
 ## 2026-10-15 - Classic UI leaves the app

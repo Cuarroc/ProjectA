@@ -805,7 +805,7 @@ Stand 15.10.2026, `origin/main` @ `9903b4cd`. Jede Aussage stammt aus `git log o
 [Classic-out-Entscheid vom 15.10.](../../decisions.md#2026-10-15---classic-ui-leaves-the-app): Ziel ist die Entfernung des Rückwegs; Wellen und Umsetzungsstand stehen in 10.2.
 **Hinweis zu Kriterium 4:** Beschlossener Wortlaut: „Keine zweite Definition der sechs Zustände außerhalb von `src/design/`, außer den gezählten Alt-Aliasen; die Obergrenze sinkt nur.“ Die Messung zählt die Alt-Aliase, und ihre Obergrenze kann nur sinken. Die frühere Zusage „Die klassische Oberfläche bleibt als Rückweg von D1 erhalten“ ist durch Classic-out überholt.
 
-Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zurück rot, bewiesen blaugrün, unbekannt grau und Tor orange. Fabrik ist ein Tab im Leitstand. Die Lichtkugeln sind zwischen ruhig und lebendig umstellbar, standardmäßig ruhig.
+Entscheidungen 4–6: Die Zustandsfarben bleiben läuft blau, wartet violett, zurück rot, bewiesen blaugrün, unbekannt grau und Tor orange. Fabrik ist ein Tab im Leitstand (für die Navigation ersetzt durch E-1 vom 16.10., siehe `docs/PLAN.md`, „Designziel Pixel-Fabrik“). Die Lichtkugeln sind zwischen ruhig und lebendig umstellbar, standardmäßig ruhig.
 
 #### 10.1b Leitstand-Ausbau (COMP, kein Kriterium)
 
