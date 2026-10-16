@@ -9,8 +9,14 @@ const planNames = { planned: "Geplant", in_progress: "In Arbeit", in_review: "In
 const version = (s) => /^v?\d+\.\d+\.\d+$/.test(s || "") ? `v${s.replace(/^v/, "")}` : null;
 const compareVersions = (a, b) => a.localeCompare(b, "en", { numeric: true });
 const label = (pr, name) => pr?.labels?.some(l => (l.name || l) === name);
+const claimsOpen = (p) => ["planned", "in_progress", "in_review", "blocked", "parked"].includes(p.status);
+// The four seams of AGENTS.md rule 6, bare or under src-tauri/src/; any other directory in front or name part behind (api.rs.bak) is a different file.
+const SEAM_PATH = /(?<![\w/.-])(?:src-tauri\/src\/)?(?:(?:api|main|store|bin\/pa)\.rs(?!\w|[./]\w)|store\/)/;
+// Defining rows carry a status; description tables repeat the ID without one.
+const defining = (p) => p.status !== "unknown" || Boolean(p.statusRaw);
 function observedState(p, pr, now) {
-  if (pr?.state === "MERGED") return "Erledigt";
+  // An umbrella Plan-ID spans several PRs: a merged one must not finish a package that PLAN still lists as open work.
+  if (pr?.state === "MERGED") return claimsOpen(p) ? null : "Erledigt";
   if (pr?.state !== "OPEN") return null;
   const checks = (pr.statusCheckRollup || []).filter(c => c.isRequired === true);
   const outcome = (c) => c.conclusion || c.state || c.status;
@@ -23,7 +29,7 @@ function observedState(p, pr, now) {
   return null;
 }
 function matched(pr, rows) {
-  const explicit = [...(pr.body || "").matchAll(/^Plan-ID:\s*([^\r\n]+)$/gmi)].map(m => m[1].trim().toLowerCase());
+  const explicit = [...(pr.body || "").matchAll(/^Plan-ID:[ \t]*([^\r\n]+)$/gmi)].map(m => m[1].trim().toLowerCase());
   if (explicit.length) return rows.filter(p => explicit.includes(p.id.toLowerCase()));
   const branch = (pr.headRefName || "").toLowerCase();
   return rows.filter(p => new RegExp(`(?:^|/|-)${p.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=-|$)`, "i").test(branch)).sort((a, b) => b.id.length - a.id.length).slice(0, 1);
@@ -36,7 +42,7 @@ function forecast(rows, all, now) {
     seen.add(p.id);
     return p.seam || p.deps.some(id => unsafe(all.find(d => d.id === id)));
   };
-  const recent = rows.filter(p => p.mergedAt && now >= Date.parse(p.mergedAt) && now - Date.parse(p.mergedAt) < 7 * DAY);
+  const recent = rows.filter(p => p.finished && p.mergedAt && now >= Date.parse(p.mergedAt) && now - Date.parse(p.mergedAt) < 7 * DAY);
   if (recent.length < 10 || open.some(unsafe)) return "zu wenig Daten";
   const dailyMerges = Array(7).fill(0);
   for (const p of recent) dailyMerges[Math.floor((now - Date.parse(p.mergedAt)) / DAY)]++;
@@ -48,7 +54,12 @@ function forecast(rows, all, now) {
 export function buildRoadmap({ plan, prs = [], releases = [], now, mainSha }) {
   const time = new Date(now).getTime(), model = typeof plan === "string" ? parsePlan(plan) : plan;
   if (!Number.isFinite(time)) throw new Error("Invalid generation time");
-  const rows = [...new Map(model.packages.filter(p => !/historisch|erledigt/i.test(p.section || "")).map(p => [p.id, p])).values()];
+  const defined = new Set(model.packages.filter(defining).map(p => p.id)), byId = new Map();
+  for (const p of model.packages) {
+    // A description-only row never replaces (or outlives) the row that defines the package; the last defining row wins.
+    if (!/historisch|erledigt/i.test(p.section || "") && (defining(p) || !defined.has(p.id))) byId.set(p.id, p);
+  }
+  const rows = [...byId.values()], known = new Set(byId.keys());
   const links = new Map(rows.map(p => [p.id, []]));
   for (const pr of prs) for (const p of matched(pr, rows)) links.get(p.id).push(pr);
   const graph = dependencyGraph(rows);
@@ -56,13 +67,13 @@ export function buildRoadmap({ plan, prs = [], releases = [], now, mainSha }) {
     const related = links.get(p.id).filter(pr => pr.state !== "CLOSED").sort((a, b) => Number(b.state === "OPEN") - Number(a.state === "OPEN") || b.number - a.number);
     const pr = related[0], state = observedState(p, pr, time);
     const finished = state === "Erledigt" || (!pr && ["done", "dropped"].includes(p.status));
-    return { id: p.id, title: publicText(p.title), owner: who(p.owner), deps: p.deps,
+    return { id: p.id, title: publicText(p.title), owner: who(p.owner), deps: p.deps, unresolvedDeps: p.deps.filter(id => !known.has(id)),
       direction: publicText(p.direction && p.direction !== p.section ? p.direction : p.id.split("-")[0]),
       provisional: !p.direction || p.direction === p.section, version: version(p.version) || UNKNOWN,
       state, planStatus: `laut PLAN: ${planNames[p.status] || UNKNOWN}`, pr: pr?.number ?? null,
       open: pr?.state === "OPEN", finished, parked: p.status === "parked",
       blocker: !finished && (state === "Fehler" || p.status === "blocked"),
-      seam: p.seam === true || /\b(?:api\.rs|main\.rs|store\.rs|store\/|bin\/pa\.rs|Naht|seam)/i.test(p.title || ""),
+      seam: p.seam === true || SEAM_PATH.test(p.title || ""),
       mergedAt: pr?.state === "MERGED" ? pr.mergedAt : null,
       level: graph.cycle.includes(p.id) ? null : graph.levels.findIndex(ids => ids.includes(p.id)),
       source: { file: "docs/PLAN.md", line: p.line ?? null } };
