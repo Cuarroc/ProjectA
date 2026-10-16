@@ -37,7 +37,7 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const classes = open.map((q) => classifyQuestion(q.question));
   const others = open.filter((_, i) => classes[i] === "other");
 
-  // The lanes say "Keine offene Entscheidung." — only true once the list was read.
+  // The lanes say "Keine offene Entscheidung.", the count "nichts offen" — only true once the list was read.
   const listRead = open.length > 0 || (error === null && !loading);
 
   let body;
@@ -58,7 +58,7 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
       <div className="n-head">
         <StateGlyph form="need" />
         <h2 id="n-title">{t("state.need")}</h2>
-        <span className="n-count">{open.length > 0 ? fill(t("needs.open"), { n: open.length }) : t("needs.none")}</span>
+        {listRead && <span className="n-count">{open.length > 0 ? fill(t("needs.open"), { n: open.length }) : t("needs.none")}</span>}
       </div>
       {listRead &&
         LANES.map((lane) => (

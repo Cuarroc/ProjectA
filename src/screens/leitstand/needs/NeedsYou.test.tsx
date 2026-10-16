@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useQuestions } from "../../../lib/useQuestions";
@@ -197,6 +197,22 @@ describe("NeedsYou", () => {
     expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
     expect(screen.queryAllByText("Keine offene Entscheidung.")).toHaveLength(0);
     expect(screen.queryByRole("region", { name: "Löschen" })).toBeNull();
+  });
+
+  it("count claims nothing open only after the list was read", async () => {
+    mocks.invoke.mockRejectedValue(new Error("core unreachable"));
+    const failed = render(<Harness />);
+    expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
+    expect(screen.queryByText("nichts offen")).toBeNull();
+    failed.unmount();
+
+    let read: (rows: unknown[]) => void = () => {};
+    mocks.invoke.mockImplementation(() => new Promise((resolve) => (read = resolve)));
+    render(<Harness />);
+    expect(screen.getByText("Fragen werden gelesen …")).toBeInTheDocument();
+    expect(screen.queryByText("nichts offen")).toBeNull();
+    await act(async () => read([]));
+    expect(screen.getByText("nichts offen")).toBeInTheDocument();
   });
 
   it("shows no decision lane claiming nothing is open while the list is loading", () => {
