@@ -75,6 +75,57 @@ describe("Leitstand route behind D1", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("1"));
   });
 
+  // DS-T-01: only a read board may say "no agents".
+  it("main view says nothing is empty while the board is loading", async () => {
+    const base = currentInvoke();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? new Promise(() => {}) : base(command));
+    render(<LeitstandRoute />);
+    expect(await screen.findByText("Agenten werden gelesen …")).toBeInTheDocument();
+    expect(screen.queryByText(de["leitstand.emptyTitle"])).toBeNull();
+  });
+
+  it("main view offers a retry when the board cannot be read", async () => {
+    const base = currentInvoke();
+    let down = true;
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" && down ? Promise.reject(new Error("backend down")) : base(command));
+    render(<LeitstandRoute />);
+    const retry = await screen.findByRole("button", { name: "Erneut lesen" });
+    expect(screen.getByText(de["honest.offline"])).toBeInTheDocument();
+    expect(screen.queryByText(de["leitstand.emptyTitle"])).toBeNull();
+    down = false;
+    fireEvent.click(retry);
+    const agents = await screen.findByRole("region", { name: "Agenten" });
+    expect(await within(agents).findByRole("heading", { name: "Claude Code" })).toBeInTheDocument();
+  });
+
+  it("main view without a project asks for a project", async () => {
+    localStorage.removeItem("projecta.activeProjectId");
+    render(<LeitstandRoute />);
+    const note = within(await screen.findByRole("status"));
+    expect(note.getByText("Kein Projekt gewählt")).toBeInTheDocument();
+    expect(screen.queryByText(de["leitstand.emptyTitle"])).toBeNull();
+    expect(screen.queryByText(de["needs.none"])).toBeNull();
+    await act(async () => { writeActiveProjectId("p1"); });
+    expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
+  });
+
+  it("main view keeps the cards and says so when a refresh fails", async () => {
+    vi.useFakeTimers();
+    const base = currentInvoke();
+    let down = false;
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" && down ? Promise.reject(new Error("backend down")) : base(command));
+    render(<LeitstandRoute />);
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByRole("heading", { name: "Claude Code" })).toBeInTheDocument();
+    down = true;
+    await act(() => vi.advanceTimersByTimeAsync(5000)); // the board's poll
+    expect(screen.getByText("Aktualisierung fehlgeschlagen")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Agenten" })).getByRole("heading", { name: "Claude Code" })).toBeInTheDocument();
+  });
+
   it("picks up the project the old app chooses after this route has mounted", async () => {
     localStorage.removeItem("projecta.activeProjectId");
     localStorage.setItem(FLAG_KEY, "1");
