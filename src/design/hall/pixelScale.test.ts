@@ -1,4 +1,6 @@
 import { renderHook } from "@testing-library/react";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
 import { expect, it } from "vitest";
 
 import { pixelScale, usePixelScale } from "./usePixelScale";
@@ -13,4 +15,10 @@ it("picks an integer device pixel scale at 125 and 150 percent", () => {
   }
   expect(pixelScale(1.25)).toEqual({ device: 3, css: 2.4 });
   expect(pixelScale(1.5)).toEqual({ device: 3, css: 2 });
+});
+
+it("server rendering assumes a device pixel ratio of 1", () => {
+  Object.defineProperty(window, "devicePixelRatio", { value: 1.5, configurable: true });
+  const Probe = () => String(usePixelScale().device);
+  expect(renderToString(createElement(Probe))).toBe("2");
 });
