@@ -29,7 +29,7 @@ it("hides the quota entry by default and restores its destination when enabled",
   expect(link).toHaveAttribute("href", "#/steuerung");
   fireEvent.click(link);
   await waitFor(() => expect(window.location.hash).toBe("#/steuerung"));
-  expect(await screen.findByRole("link", { name: "Core · Steuerung", current: "page" })).toBeVisible();
+  expect(await screen.findByRole("link", { name: "Betrieb", current: "page" })).toBeVisible();
 });
 
 it("hides the setup team action by default and restores its destination when enabled", async () => {
@@ -43,5 +43,5 @@ it("hides the setup team action by default and restores its destination when ena
   await act(async () => { window.location.hash = "#/start"; window.dispatchEvent(new HashChangeEvent("hashchange")); });
   fireEvent.click(await screen.findByRole("button", { name: "Team ansehen" }));
   await waitFor(() => expect(window.location.hash).toBe("#/team"));
-  expect(await screen.findByRole("link", { name: "Team", current: "page" })).toBeVisible();
+  expect(await screen.findByRole("link", { name: "Betrieb", current: "page" })).toBeVisible();
 });

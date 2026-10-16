@@ -229,10 +229,21 @@ describe("Leitstand route behind D1", () => {
     const { container } = render(<App />);
     const flow = await screen.findByRole("region", { name: "Ablauf der Agenten" });
     expect(await within(flow).findByRole("group", { name: "Fix the start block" })).toBeInTheDocument();
-    expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("aria-current", "page");
     expect(tabs().getByRole("link", { name: "Haupt" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
     expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
+  });
+
+  it("names the flow tab Linie inside the Fabrik area", async () => {
+    localStorage.setItem(FLAG_KEY, "1");
+    window.location.hash = "#/leitstand/fabrik";
+    render(<App />);
+    await screen.findByRole("region", { name: "Ablauf der Agenten" });
+    expect(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("aria-current", "page");
+    const sidebar = within(screen.getByRole("navigation", { name: "Hauptnavigation" }));
+    expect(sidebar.getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getAllByRole("link", { name: "Fabrik" })).toHaveLength(1);
   });
 
   it("shows the empty hint at /leitstand/fabrik while no agent runs", async () => {
@@ -262,10 +273,10 @@ describe("Leitstand route behind D1", () => {
     render(<App />);
     await screen.findByRole("region", { name: "Agenten" });
     expect(tabs().getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "Haupt", "Fabrik", "Betrieb", "Werkzeuge", "Klassisch",
+      "Haupt", "Linie", "Betrieb", "Werkzeuge", "Klassisch",
     ]);
-    expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("href", "#/leitstand/fabrik");
-    fireEvent.click(tabs().getByRole("link", { name: "Fabrik" }));
+    expect(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("href", "#/leitstand/fabrik");
+    fireEvent.click(tabs().getByRole("link", { name: "Linie" }));
     await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fabrik"));
     expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
   });
@@ -274,7 +285,7 @@ describe("Leitstand route behind D1", () => {
     for (const path of ["/leitstand/fluss", "/leitstand/fluss/"]) {
       mocks.invoke.mockClear();
       const view = render(<LeitstandRoute path={path} />);
-      expect.soft(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+      expect.soft(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("aria-current", "page");
       expect.soft(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
       expect.soft(screen.queryByRole("complementary", { name: "Braucht dich" })).toBeNull();
       await act(async () => {});
@@ -291,7 +302,7 @@ describe("Leitstand route behind D1", () => {
       await waitFor(() => expect(window.location.hash).toBe("#/leitstand/fabrik"));
       const flow = await screen.findByRole("region", { name: "Ablauf der Agenten" });
       expect(await within(flow).findByRole("group", { name: "Fix the start block" })).toBeInTheDocument();
-      expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+      expect(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("aria-current", "page");
       expect(container.querySelector(".g-mount-legacy")).toHaveAttribute("hidden");
     };
     await expectFabrik();
@@ -346,7 +357,7 @@ describe("Leitstand route behind D1", () => {
   it("shows the Fabrik tab as active for a trailing-slash path", async () => {
     render(<LeitstandRoute path="/leitstand/fabrik/" />);
     expect(await screen.findByRole("region", { name: "Ablauf der Agenten" })).toBeInTheDocument();
-    expect(tabs().getByRole("link", { name: "Fabrik" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Linie" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("region", { name: "Agenten" })).toBeNull();
   });
 
@@ -357,7 +368,7 @@ describe("Leitstand route behind D1", () => {
     await waitFor(() => expect(container.querySelector(".app")).not.toBeNull());
     expect(container.querySelector(".g-mount")).toBeNull();
     expect(screen.queryByRole("region", { name: "Ablauf der Agenten" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Fabrik" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Linie" })).toBeNull();
   });
 
   it("offers no Betrieb route while the switch is off", async () => {

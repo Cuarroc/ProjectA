@@ -199,7 +199,7 @@ function findHardcodedUi(source: string, dictValues: Set<string>, fileName = "fi
 }
 
 it("hook returns German dictionary strings", () => {
-  expect(t("nav.leitstand")).toBe("Leitstand");
+  expect(t("nav.leitstand")).toBe("Fabrik");
   expect(t("shell.estop")).toBe("Not-Aus");
   expect(t("state.run")).toBe("Läuft");
   const { result } = renderHook(() => useT());
