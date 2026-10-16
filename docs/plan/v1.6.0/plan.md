@@ -1,4 +1,6 @@
-# Plan v1.6.0 (Entwurf, der Nutzer entscheidet)
+# Plan v1.6.0 (historisch; v1.6.0 veröffentlicht 09.10.2026)
+
+**Status 15.10.2026: abgeschlossen.** v1.6.0 am 09.10. veröffentlicht (Tag `d2582ceb`), Patches bis v1.6.6. Offene Reste stehen in `docs/PLAN.md` (V16-FU-2, V16-NACHBEOB, V16-03, Z4-R19-*); die Tabellen unten sind der ursprüngliche Entwurf vom 05.10.
 
 Stand 05.10.2026, Basis `2ec6960` (`origin/main`). Dieser Entwurf ändert nichts an M1–M4 (`docs/PLAN.md`, Regel 2). Er gilt erst, wenn der Nutzer die Fragen in Abschnitt 10 beantwortet hat. Der Nachweis zur Arbeitsweise steht in [`benchmark.md`](benchmark.md).
 
@@ -79,7 +81,7 @@ Größe: S ≤ 150, M ≤ 300 Diffzeilen mit Tests (Schätzung, vor dem Start me
 | ARCH-D6b | `pa::run`, Teil b | pa | pa.rs | A | S | ARCH-D6a | astra, vor G2 Claude | `bin/pa.rs` < Stand nach D6a |
 | V16-07 | HQ ehrlich machen: Restzeit, Zustand `blocked`, UTC-Tagesgrenze, Body-Limit | hqL | – | B | M | – | glm-5.3, ab G2 terra | Je Punkt ein roter Test zuerst (4 Tests) |
 | V16-08 | Gate gegen CRLF-blinde Quelltextvergleiche in Rust-Tests | ci | – | B | S | FLOW-05 | deepseek, ab G2 sol | Gate ist rot auf einem präparierten Fall, grün auf `main` |
-| ARCH-09c | PR #269 fertigstellen oder schließen | fe | – | B | S | – | glm-5.3, ab G2 terra | #269 ist gemergt oder geschlossen |
+| ARCH-09c | PR #269 fertigstellen oder schließen | fe | – | B | S | – | glm-5.3, ab G2 terra | #269 ist gemergt oder geschlossen — erledigt: #269 gemergt 05.10. (`5796236d`) |
 | ADR-A1 → ADR-A7 | Entscheidungsnotizen: `ApiBackend` teilen; st-Lane teilen | doc | – | C | 2× S | A7: zwei Wochenmessungen | Berater-Paar | Je ein Eintrag in `docs/decisions.md` |
 
 **Lokal beim Orchestrator (kein PR, Eigentümer: Orchestrator):** L1 Auftrags-Erzeuger mit Kritikschritt und den Kopfzeilen `Prompt-Rounds:` und `Critique-By:`. L2 Reserve füllt alle freien Plätze. L3 Sperre für Dateien offener PRs. L4 Review-Fahrer auf den Server (nach Frage 4). L5 Anbieteranteil im Stundenbericht. L6 Prüfskript für Review-Prompts (Exit 1 = nicht senden). BENCH-03 Wochen-Aggregat für M-IDLE, M-HUMAN, M-RP und Kontingent. Abnahme für alle: Die Wochenmessung zeigt die Zielwerte aus Abschnitt 7.
@@ -179,7 +181,7 @@ Zu hohe Ziele werden nicht still gesenkt: Verfehlt eine Zeile nach zwei Wochenme
 | Nachweis | Originalkriterium und Stand | Zuständigkeit und nächster Abgleich |
 |---|---|---|
 | Zwei Wochenmessungen | **Offen:** zwei vollständige Wochenfenster mit Zielerreichung nach Abschnitt 7a; Baseline J2, Nenner, Ausschlüsse und Schwellenwerte bleiben gleich. Ein erfolgreicher Workflow-Lauf allein belegt kein vollständiges Fenster oder Zielerreichung. | Root sammelt BENCH-01/02-Berichte und BENCH-03-Aggregate; PM pflegt die Releaseakte, Chief verfolgt Befunde. Nach der ersten und zweiten vollständigen Messwoche ab tatsächlichem Release, im bestehenden Montagsrhythmus. Releasedatum und konkrete Prüfdaten sind noch unbekannt. |
-| 40 Queue-Läufe | **Offen:** 0 KI-30-Fehlschläge in 40 Queue-Läufen; bestehendes Fenster nach #518-Merge vom 05.10.2026 22:12:40 UTC wird fortgeführt, nicht am Release neu begonnen. Root-Audit vom 06.10.2026 17:15 UTC: 21 Läufe, 19 erfolgreich, 2 fehlgeschlagen; dies ist kein aktueller Vollnachweis. Queue-Fehler sind nicht automatisch KI-30. | Root ergänzt den gespeicherten Audit mit Run-ID, Kandidaten-SHA und Fehlerdisposition; Chief/PM führen den offenen Befund nach. Nächster Releaseakte-Abgleich beim tatsächlichen Release, Abschlussprüfung beim 40. Lauf des bestehenden Fensters; konkrete Prüfdaten unbekannt. |
+| 40 Queue-Läufe | **Offen:** 0 KI-30-Fehlschläge in 40 Queue-Läufen; bestehendes Fenster nach #518-Merge vom 05.10.2026 22:12:40 UTC wird fortgeführt, nicht am Release neu begonnen. Root-Audit vom 06.10.2026 17:15 UTC: 21 Läufe, 19 erfolgreich, 2 fehlgeschlagen; dies ist kein aktueller Vollnachweis. Queue-Fehler sind nicht automatisch KI-30. **Nachtrag 15.10.:** KI-30-Schluss mit 42 Queue-Läufen ab 09.10. (#874, `KNOWN_ISSUES.md` KI-30); Abgleich mit dem Originalfenster: Unbekannt (zu prüfen). | Root ergänzt den gespeicherten Audit mit Run-ID, Kandidaten-SHA und Fehlerdisposition; Chief/PM führen den offenen Befund nach. Nächster Releaseakte-Abgleich beim tatsächlichen Release, Abschlussprüfung beim 40. Lauf des bestehenden Fensters; konkrete Prüfdaten unbekannt. |
 
 Belegquellen: [`benchmark.md`](benchmark.md), `scripts/dev/bench-weekly.mjs`, `.github/workflows/bench-weekly.yml` (Job-Summary), vorhandene lokale BENCH-03-Aggregate und Root-Audit `root-v160-queue-evidence-20261006.json`. Queue-Auswahl: Workflow `ci`, Ereignis `pull_request`, Branch `mergify/merge-queue/*`, vollständiges bestehendes Zeitfenster und eindeutige Run-IDs; nicht `merge_group`. Der Auditpfad und lokale Rohdaten gehören nicht ins öffentliche Repo. Neue Beobachtungen brauchen Quellenstand, vollständigen Nenner und Fehlerzuordnung; fehlende Daten bleiben offen.
 
@@ -216,7 +218,7 @@ Die E-Nummern vergibt der Koordinator beim Eintrag in die Entscheidungs-Inbox. D
 | 4 | Installation | Den kostenlosen Ollama-Client auf dem Build-Server installieren, damit Reviews nicht mehr am PC hängen? | Ja. Ohne ihn bleibt der PC der Engpass. |
 | 5 | Arbeitsweise | Freigabe je Welle statt je Paket, mit allen Entscheidungen der Welle gebündelt davor? | Ja. |
 
-Schon in der Inbox und Voraussetzung: E16 (Lizenz, blockiert V16-03 und M5-01), E14 (Schlüssel-Backup, dringend), E23 (Aufgaben-Benchmark). Mitwirkung des Nutzers ohne Entscheidung: ein frisches Windows-Konto für V16-03 und ein Termin für den Update-Drill von V16-06.
+Schon in der Inbox und Voraussetzung: E16 (Lizenz, blockiert V16-03 und M5-01), E14 (Schlüssel-Backup; erledigt 14.10. laut Root, `docs/PLAN.md` Z4-E14), E23 (Aufgaben-Benchmark). Mitwirkung des Nutzers ohne Entscheidung: ein frisches Windows-Konto für V16-03 und ein Termin für den Update-Drill von V16-06.
 
 ## 11. NICHT ABGEDECKT
 

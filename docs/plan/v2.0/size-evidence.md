@@ -200,3 +200,5 @@ if __name__ == '__main__':
     m = open(sys.argv[2], encoding='utf-8').read()
     print(summary(p, m))
 ```
+
+Hinweis 15.10.2026: Die Release-Zeile der Runde 3 heißt jetzt `V2-REL-R3`; die Zählung oben gilt für die Fassung der Runde 3.
