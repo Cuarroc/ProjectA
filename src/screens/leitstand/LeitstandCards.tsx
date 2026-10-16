@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import "../../design/controls/controls.css";
 import "../../design/glass.css";
 import { FilterChip } from "../../design/controls/FilterChip";
-import { HonestState } from "../../design/data/HonestState";
+import { HonestState, type HonestStateProps } from "../../design/data/HonestState";
 import { Button } from "../../design/controls/Button";
 import { StateGlyph } from "../../design/state/StateMark";
 import { useT } from "../../i18n/useT";
@@ -23,17 +23,19 @@ export interface LeitstandCardsProps {
   onOpen: (card: BoardCard) => void;
   /** Refetches the board after a card action; pass `useBoard().refresh`. */
   onChanged?: () => void;
+  /** The first step the empty state offers. */
+  emptyAction?: HonestStateProps["action"];
 }
 
 /** Filter chips and one card per agent. Not mounted yet: the route comes with V2-F9. */
-export function LeitstandCards({ cards, profiles, now, onOpen, onChanged }: LeitstandCardsProps) {
+export function LeitstandCards({ cards, profiles, now, onOpen, onChanged, emptyAction }: LeitstandCardsProps) {
   const t = useT();
   const [filter, setFilter] = useState<Filter>("all");
   const agents = agentCards(cards);
   const counts = countByFilter(agents);
   const shown = agents.filter((c) => filter === "all" || cardForm(c) === filter);
   const nameOf = (c: BoardCard) => profiles.find((p) => p.id === c.worker.profileId)?.name ?? c.worker.profileId;
-  if (agents.length === 0) return <HonestState kind="empty" title={t("leitstand.emptyTitle")} hint={t("leitstand.emptyHint")} />;
+  if (agents.length === 0) return <HonestState kind="empty" title={t("leitstand.emptyTitle")} hint={t("leitstand.emptyHint")} action={emptyAction} />;
   return (
     <>
       <div className="ls-filters" role="group" aria-label={t("leitstand.filterGroup")}>

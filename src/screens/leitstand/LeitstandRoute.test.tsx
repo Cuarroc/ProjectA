@@ -111,6 +111,27 @@ describe("Leitstand route behind D1", () => {
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
   });
 
+  // DS-T-05: the empty main view names the first step and only navigates; it starts nothing.
+  it("an empty board offers Auftrag einreihen and opens the Betrieb tab", async () => {
+    const base = currentInvoke();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "get_board_state" ? Promise.resolve({ cards: [], coordinators: [] }) : base(command));
+    render(<LeitstandRoute />);
+    const step = await screen.findByRole("button", { name: "Auftrag einreihen" });
+    expect(screen.getByText(de["leitstand.emptyTitle"])).toBeInTheDocument();
+    fireEvent.click(step);
+    expect(window.location.hash).toBe("#/leitstand/betrieb");
+  });
+
+  it("without a project the main view offers Projekt anlegen", async () => {
+    localStorage.removeItem("projecta.activeProjectId");
+    render(<LeitstandRoute />);
+    const step = within(await screen.findByRole("status")).getByRole("button", { name: "Projekt anlegen" });
+    fireEvent.click(step);
+    // The old sidebar with "Projekt hinzufügen" is only shown on the Werkzeuge tab.
+    expect(window.location.hash).toBe("#/leitstand/werkzeuge");
+  });
+
   it("main view keeps the cards and says so when a refresh fails", async () => {
     vi.useFakeTimers();
     const base = currentInvoke();
