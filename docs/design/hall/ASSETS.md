@@ -99,7 +99,7 @@ with one object per raster source file:
 
 ```json
 {
-  "file": "src/design/hall/figures/plan.ts",
+  "file": "src/design/hall/figures/plan.px.ts",
   "package": "DS-H-03",
   "date": "2026-10-16",
   "drawnBy": "agent:claude",
@@ -123,6 +123,9 @@ entry, every entry's file exists and `license` is `MIT`.
   "Umsetzung", "Prüfung", "Betrieb" live in `src/i18n/de.ts` (DS-H-03).
 - Pose ids: the six `StateForm` values `run`, `need`, `rev`, `ok`, `done`,
   `bad`, plus `unknown` and the stance `ready`. No other pose ids.
+- Raster sources: `src/design/hall/<sheet>/<name>.px.ts`, exporting `frames`
+  in the format of `src/design/hall/sprites/format.ts` (DS-H-01);
+  `node scripts/dev/build-sprites.mjs` writes the atlases next to that file.
 - Atlases: `hall-<sheet>-<theme>.png` with sheet `figures`, `tiles` or
   `things` and theme `light` or `dark`; one frame map `hall-<sheet>.json` per
   sheet, shared by both themes.

@@ -16,6 +16,12 @@ export const PALETTE = [
   "g-av4", "g-av5", "g-av3", "g-av6", "g-amb1", "g-amb2", "g-amb3", "g-sw-off",
 ] as const;
 
-export function expand(_frames: Frames): Record<string, Raster> {
-  throw new Error("DS-H-01 red-first stub");
+/** Resolves delta frames into full rasters, keeping the source order. */
+export function expand(frames: Frames): Record<string, Raster> {
+  const out: Record<string, Raster> = {};
+  for (const [id, frame] of Object.entries(frames)) {
+    // A `from` that is unknown or comes later yields an empty frame, which the size checks reject.
+    out[id] = "from" in frame ? (out[frame.from] ?? []).map((row, y) => frame.rows[y] ?? row) : frame;
+  }
+  return out;
 }
