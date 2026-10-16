@@ -58,7 +58,7 @@ function CompactMenu() {
   );
 }
 
-/** Hell / Dunkel / System, then the glass style (Glas / Klar / Nebel / Abend); one menu button when space is short. */
-export function AppearanceControl() {
-  return useMediaQuery(COMPACT_QUERY) ? <CompactMenu /> : <Groups />;
+/** Hell / Dunkel / System, then the glass style (Glas / Klar / Nebel / Abend); one menu button when space is short, unless `full` (Einstellungen has room). */
+export function AppearanceControl({ full = false }: { full?: boolean }) {
+  return useMediaQuery(COMPACT_QUERY) && !full ? <CompactMenu /> : <Groups />;
 }

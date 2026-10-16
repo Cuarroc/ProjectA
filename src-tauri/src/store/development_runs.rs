@@ -257,32 +257,18 @@ impl Store {
         kind: &str,
         target: &str,
     ) -> Result<(), String> {
+        let target = match kind {
+            "project" => PlanningTarget::Project(target),
+            "goal" => PlanningTarget::Goal(target),
+            "task" => PlanningTarget::Task(target),
+            _ => return Err(PLANNING_REFUSED.into()),
+        };
         let mut tx = self
             .pool
             .begin()
             .await
             .map_err(db("begin planning scope"))?;
-        require_run_authority(&mut tx, run, owner, fence).await?;
-        let run_project: Option<String> = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
-            .bind(run).fetch_optional(&mut *tx).await.map_err(db("read planning run project"))?;
-        let target_project: Option<String> = match kind {
-            "project" => Some(target.to_string()),
-            "goal" => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?")
-                .bind(target)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db("read planning target project"))?,
-            "task" => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?")
-                .bind(target)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db("read planning target project"))?,
-            _ => return Err("planning target is outside the run project".into()),
-        };
-        if run_project.is_none() || run_project != target_project {
-            return Err("planning target is outside the run project".into());
-        }
-        Ok(())
+        require_planning_authority(&mut tx, run, owner, fence, target).await
     }
 
     pub async fn agent_evidence(
@@ -1215,6 +1201,56 @@ async fn require_active_run_authority(
     Ok(())
 }
 
+/// The one refusal of every planning-authority check.
+pub(super) const PLANNING_REFUSED: &str = "planning target is outside the run project";
+
+/// What a planning write is aimed at: the project itself, or the project of a
+/// goal or task.
+#[derive(Clone, Copy)]
+pub(super) enum PlanningTarget<'a> {
+    Project(&'a str),
+    Goal(&'a str),
+    Task(&'a str),
+}
+
+/// Whether this run may plan for `target`, read on the caller's transaction so
+/// a writer can ask after its write lock: run, owner and fence still hold, the
+/// run dispatches as coordinator, and the target lies in the run's project.
+/// Every refusal is the same `PLANNING_REFUSED` (no oracle for foreign ids); a
+/// store error refuses too, because the gate fails closed.
+pub(super) async fn require_planning_authority(
+    tx: &mut Transaction<'_, Sqlite>,
+    run: &str,
+    owner: &str,
+    fence: i64,
+    target: PlanningTarget<'_>,
+) -> Result<(), String> {
+    if require_run_authority(tx, run, owner, fence).await.is_err()
+        || !matches!(run_role(tx, run).await, Ok(DispatchRole::Coordinator))
+    {
+        return Err(PLANNING_REFUSED.into());
+    }
+    let run_project: Option<String> = sqlx::query_scalar("SELECT g.project_id FROM development_runs r JOIN continuous_tasks t ON t.id=r.task_id JOIN continuous_goals g ON g.id=t.goal_id WHERE r.id=?")
+        .bind(run).fetch_optional(&mut **tx).await.map_err(db("read planning run project"))?;
+    let target_project: Option<String> = match target {
+        PlanningTarget::Project(project) => Some(project.to_string()),
+        PlanningTarget::Goal(goal) => sqlx::query_scalar("SELECT project_id FROM continuous_goals WHERE id=?")
+            .bind(goal)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(db("read planning target project"))?,
+        PlanningTarget::Task(task) => sqlx::query_scalar("SELECT g.project_id FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id WHERE t.id=?")
+            .bind(task)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(db("read planning target project"))?,
+    };
+    if run_project.is_none() || run_project != target_project {
+        return Err(PLANNING_REFUSED.into());
+    }
+    Ok(())
+}
+
 async fn evidence_by_key(
     tx: &mut Transaction<'_, Sqlite>,
     key: &str,
@@ -2004,6 +2040,7 @@ mod tests {
             .record_development_run_intent(&task, "worker-a", 7)
             .await
             .unwrap();
+        assign(&store, &task, "coordinator", "worker-a").await;
         assert!(store
             .agent_planning_scope(&run.id, "worker-a", 7, "goal", &root)
             .await
@@ -2028,6 +2065,7 @@ mod tests {
             .record_development_run_intent(&task, "worker-a", 7)
             .await
             .unwrap();
+        assign(&store, &task, "coordinator", "worker-a").await;
         for (kind, own) in [("project", "project"), ("task", task.as_str())] {
             assert!(
                 store
@@ -2057,6 +2095,176 @@ mod tests {
                 "{kind}/{target}"
             );
         }
+    }
+
+    async fn planning_check(
+        store: &Store,
+        run: &str,
+        owner: &str,
+        fence: i64,
+        target: PlanningTarget<'_>,
+    ) -> Result<(), String> {
+        let mut tx = store.pool.begin().await.unwrap();
+        require_planning_authority(&mut tx, run, owner, fence, target).await
+    }
+
+    async fn coordinator_run(store: &Store, task: &str) -> String {
+        let run = store
+            .record_development_run_intent(task, "worker-a", 7)
+            .await
+            .unwrap();
+        assign(store, task, "coordinator", "worker-a").await;
+        run.id
+    }
+
+    #[tokio::test]
+    async fn planning_authority_admits_the_coordinator_for_its_own_project() {
+        let (_dir, store, root, task) = fixture().await;
+        let run = coordinator_run(&store, &task).await;
+        for target in [
+            PlanningTarget::Project("project"),
+            PlanningTarget::Goal(&root),
+            PlanningTarget::Task(&task),
+        ] {
+            assert_eq!(
+                planning_check(&store, &run, "worker-a", 7, target).await,
+                Ok(())
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn planning_authority_refuses_a_stale_fence_or_foreign_owner_uniformly() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = coordinator_run(&store, &task).await;
+        let own = PlanningTarget::Project("project");
+        for (run, owner, fence) in [
+            (run.as_str(), "worker-a", 8),
+            (run.as_str(), "worker-b", 7),
+            ("missing-run", "worker-a", 7),
+        ] {
+            assert_eq!(
+                planning_check(&store, run, owner, fence, own).await,
+                Err(PLANNING_REFUSED.into()),
+                "{run}/{owner}/{fence}"
+            );
+        }
+        // The lease moves on (a reclaim bumps the fence): the old holder is out.
+        sqlx::query("UPDATE continuous_tasks SET claim_fence = 8 WHERE id = ?")
+            .bind(&task)
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            planning_check(&store, &run, "worker-a", 7, own).await,
+            Err(PLANNING_REFUSED.into())
+        );
+    }
+
+    #[tokio::test]
+    async fn planning_authority_refuses_every_role_but_the_coordinator_uniformly() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = store
+            .record_development_run_intent(&task, "worker-a", 7)
+            .await
+            .unwrap()
+            .id;
+        let own = PlanningTarget::Project("project");
+        // Unassigned tasks dispatch as implementers.
+        assert_eq!(
+            planning_check(&store, &run, "worker-a", 7, own).await,
+            Err(PLANNING_REFUSED.into()),
+            "unassigned"
+        );
+        assign(&store, &task, "reviewer", "worker-a").await;
+        for role in ["reviewer", "integrator", "implementer"] {
+            sqlx::query("UPDATE continuous_team_assignments SET role = ? WHERE task_id = ?")
+                .bind(role)
+                .bind(&task)
+                .execute(&store.pool)
+                .await
+                .unwrap();
+            assert_eq!(
+                planning_check(&store, &run, "worker-a", 7, own).await,
+                Err(PLANNING_REFUSED.into()),
+                "{role}"
+            );
+        }
+        // A coordinator assignment held by someone else does not resolve: closed.
+        sqlx::query("UPDATE continuous_team_assignments SET role = 'coordinator', assignee = 'worker-b' WHERE task_id = ?")
+            .bind(&task)
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            planning_check(&store, &run, "worker-a", 7, own).await,
+            Err(PLANNING_REFUSED.into()),
+            "unresolved"
+        );
+    }
+
+    #[tokio::test]
+    async fn planning_authority_refuses_foreign_and_missing_targets_uniformly() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = coordinator_run(&store, &task).await;
+        sqlx::query("INSERT INTO continuous_goals(id,project_id,root_goal_id,objective,status,deadline_at,admitted,created_at,updated_at) VALUES('foreign','other','foreign','secret','open',0,0,1,1)")
+            .execute(&store.pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,created_at,updated_at) VALUES('foreign-task','foreign','secret','[]','[]','open',1,1)")
+            .execute(&store.pool).await.unwrap();
+        for target in [
+            PlanningTarget::Project("other"),
+            PlanningTarget::Project("missing"),
+            PlanningTarget::Goal("foreign"),
+            PlanningTarget::Goal("missing"),
+            PlanningTarget::Task("foreign-task"),
+            PlanningTarget::Task("missing"),
+        ] {
+            assert_eq!(
+                planning_check(&store, &run, "worker-a", 7, target).await,
+                Err(PLANNING_REFUSED.into())
+            );
+        }
+    }
+
+    // The writers call this after their write lock, so it must read what their
+    // transaction sees, not a separate snapshot of the pool.
+    #[tokio::test]
+    async fn planning_authority_reads_the_callers_transaction() {
+        let (_dir, store, _root, task) = fixture().await;
+        let run = coordinator_run(&store, &task).await;
+        let own = PlanningTarget::Project("project");
+        let mut tx = store.pool.begin().await.unwrap();
+        require_planning_authority(&mut tx, &run, "worker-a", 7, own)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE continuous_team_assignments SET role = 'reviewer' WHERE task_id = ?")
+            .bind(&task)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        assert_eq!(
+            require_planning_authority(&mut tx, &run, "worker-a", 7, own).await,
+            Err(PLANNING_REFUSED.into()),
+            "role changed in this transaction"
+        );
+        sqlx::query(
+            "UPDATE continuous_team_assignments SET role = 'coordinator' WHERE task_id = ?",
+        )
+        .bind(&task)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        sqlx::query("UPDATE continuous_tasks SET claim_fence = 8 WHERE id = ?")
+            .bind(&task)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        assert_eq!(
+            require_planning_authority(&mut tx, &run, "worker-a", 7, own).await,
+            Err(PLANNING_REFUSED.into()),
+            "fence moved in this transaction"
+        );
+        tx.rollback().await.unwrap();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

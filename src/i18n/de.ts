@@ -110,6 +110,8 @@ export const de = {
   "leitstand.tab.fabrik": "Fabrik",
   "leitstand.profilesFailed": "Agenten konnten nicht geladen werden",
   "leitstand.profilesHint": "Die Karten zeigen vorerst die Profil-Kennung.",
+  "leitstand.noProject": "Kein Projekt gewählt",
+  "leitstand.noProjectHint": "Wähle oben ein Projekt, dann erscheint hier der Betrieb.",
   "leitstand.agents": "Agenten",
   "leitstand.filterGroup": "Agenten nach Zustand filtern",
   "leitstand.none": "Kein Agent in diesem Zustand.",

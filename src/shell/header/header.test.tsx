@@ -82,6 +82,15 @@ describe("command palette details", () => {
     render(<CommandPalette />);
     expect(screen.getByRole("button", { name: /Seiten und Befehle suchen/ }).textContent).toContain("Strg K");
   });
+
+  it("search trigger keeps a permanent accessible name", () => {
+    render(<CommandPalette />);
+    const trigger = screen.getByRole("button", { name: /Seiten und Befehle suchen/ });
+    expect(trigger).toHaveAttribute("aria-label", "Seiten und Befehle suchen");
+    // header.css hides the shortcut, then the text, as the search shrinks (container queries).
+    for (const part of trigger.querySelectorAll<HTMLElement>("span, kbd")) part.style.display = "none";
+    expect(screen.getByRole("button", { name: "Seiten und Befehle suchen" })).toBe(trigger);
+  });
 });
 
 describe("command palette composition", () => {

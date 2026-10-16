@@ -23,7 +23,6 @@ test("Proof: matrix by packet, no pie, omit empty klass columns", () => {
   assert.match(HQ_JS, /page === "proof"/);
   assert.match(HQ_JS, /id="finding-list"/);
   assert.doesNotMatch(HQ_JS, /<svg[^>]*class="[^"]*pie|pie-chart|donut/i);
-  assert.ok(DATA.findings.length >= 1, "live snapshot should contain at least one finding");
   for (const f of DATA.findings) {
     if (f.klass === "FACT") assert.equal(f.source.startsWith(".pa/report_"), true);
     if (f.klass !== "UNPROVEN") assert.ok(f.source, `finding ${f.id} must cite a source`);
@@ -32,6 +31,23 @@ test("Proof: matrix by packet, no pie, omit empty klass columns", () => {
   if (!klasses.has("UNPROVEN")) {
     assert.match(HQ_JS, /empty columns omitted|omitEmpty|counts\[k\] > 0|col\.count > 0/);
   }
+});
+
+// Literal STAND.md row formats, counted here and not via hq-parse.mjs:
+// claim rows `- KI-1: …` / `- NT-2/KI-3: …` and finding lines `**F0-4: …**`.
+const FINDING_ROW = /^-\s+(?:NT|KI|P2)[-A-Z0-9]+(?:\/(?:NT|KI|P2)[-A-Z0-9]+)*:\s+\S|\*\*F0-\d+:.+?\*\*/;
+const countFindingRows = (text) => text.split(/\r?\n/).filter((l) => FINDING_ROW.test(l)).length;
+
+test("Proof: finding count equals the finding rows in STAND.md", () => {
+  // The counter itself, so that zero rows is not a vacuous pass.
+  assert.equal(countFindingRows("- KI-1: a\n- NT-2/KI-3: b\n  - **F0-4: c**\nprose KI-5: d\n- plain: e\n"), 3);
+  assert.equal(countFindingRows(""), 0);
+  const rows = countFindingRows(readFileSync("STAND.md", "utf8"));
+  assert.equal(
+    DATA.findings.length,
+    rows,
+    `snapshot has ${DATA.findings.length} findings, STAND.md has ${rows} finding rows: regenerate with npm run hq`,
+  );
 });
 
 test("live Now grip is STAND prose, not UNPROVEN", () => {

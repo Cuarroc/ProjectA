@@ -26,6 +26,9 @@ const shortcutLabel = (): string => {
   return /mac|iphone|ipad/i.test(nav.userAgentData?.platform || nav.platform || "") ? "⌘ K" : "Strg K";
 };
 
+// Also the button's aria-label: header.css hides the text and the shortcut as the search shrinks.
+const SEARCH_LABEL = "Seiten und Befehle suchen";
+
 /** Search field in the header (Strg K / Cmd K) that opens the palette on the Sheet. */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -65,9 +68,9 @@ export function CommandPalette() {
 
   return (
     <>
-      <button type="button" className="g-hdr-search" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <button type="button" className="g-hdr-search" aria-haspopup="dialog" aria-label={SEARCH_LABEL} onClick={() => setOpen(true)}>
         <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M9 3.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11ZM13.5 13.5 17 17" /></svg>
-        <span>Seiten und Befehle suchen</span>
+        <span>{SEARCH_LABEL}</span>
         <Kbd>{shortcutLabel()}</Kbd>
       </button>
       <Sheet open={open} onClose={close} aria-label="Befehlspalette">
