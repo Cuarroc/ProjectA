@@ -1,5 +1,5 @@
-/* V2-F5b data display: table, key-value, proof chip, honest state. Not imported
-   by the app. Ported from the glass board (Kontingente.dc.html .tbl/.kv/.proof/.empty)
+/* V2-F5b data display: table, key-value, proof chip, honest state.
+   Ported from the glass board (Kontingente.dc.html .tbl/.kv/.proof/.empty)
    onto the --g-* tokens. Text never sits on bare glass: the containers paint the
    content surface; inside a material they drop to the tint (see glass.css). */
 
