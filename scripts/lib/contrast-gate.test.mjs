@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-function runGate(mutateHq, mutateConcepts = () => {}) {
+function runGate(mutateHq, mutateConcepts = () => {}, mutateTokens = (css) => css) {
   const dir = mkdtempSync(join(tmpdir(), "contrast-gate-"));
   try {
     mkdirSync(join(dir, "scripts"));
@@ -20,7 +20,7 @@ function runGate(mutateHq, mutateConcepts = () => {}) {
     mkdirSync(join(dir, "docs", "dev-hq"), { recursive: true });
     cpSync(join(root, "scripts", "contrast-check.mjs"), join(dir, "scripts", "contrast-check.mjs"));
     cpSync(join(root, "src", "styles.css"), join(dir, "src", "styles.css"));
-    cpSync(join(root, "src", "design", "tokens.css"), join(dir, "src", "design", "tokens.css"));
+    writeFileSync(join(dir, "src", "design", "tokens.css"), mutateTokens(readFileSync(join(root, "src", "design", "tokens.css"), "utf8")));
     cpSync(join(root, "src", "design", "variants"), join(dir, "src", "design", "variants"), { recursive: true });
     const hq = readFileSync(join(root, "docs", "dev-hq", "hq.css"), "utf8");
     writeFileSync(join(dir, "docs", "dev-hq", "hq.css"), mutateHq(hq));
@@ -94,4 +94,33 @@ test("reduced transparency uses an opaque Studio scrim", () => {
   assert.ok(scrim, "solid light and dark scrim tokens exist");
   assert.ok(scrim.slice(1).every((alpha) => Number.parseInt(alpha, 16) >= 0xe6));
   assert.match(premium, /prefers-reduced-transparency:reduce[\s\S]*dialog::backdrop\s*\{\s*background:\s*var\(--scrim-solid\)/);
+});
+
+// DS-X-32: the six data-viz tokens are gated like the state colours, as non-text pairs.
+const VIZ = [1, 2, 3, 4, 5, 6];
+
+test("viz tokens are present and pass 3:1 against their surfaces", () => {
+  const r = runGate((css) => css);
+  assert.equal(r.status, 0, r.out);
+  for (const mode of ["token hell", "token dunkel"])
+    for (const n of VIZ)
+      for (const surface of ["ground", "chrome", "glass"])
+        assert.match(r.out, new RegExp(`${mode}\\s+g-viz-${n} / ${surface}`));
+});
+
+test("a missing viz token fails with Token fehlt", () => {
+  const r = runGate((css) => css, () => {}, (css) => css.replace(/^\s*--g-viz-3:.*\n/gm, ""));
+  assert.match(r.out, /--g-viz-3: Token fehlt/);
+  assert.notEqual(r.status, 0);
+});
+
+test("a viz token that copies a state colour is rejected", () => {
+  const copyRun = (css) => {
+    const at = css.indexOf("@media (prefers-color-scheme: dark)");
+    const swap = (part) => part.replace(/--g-viz-2:[^;]+;/g, `--g-viz-2: ${part.match(/--g-run:\s*([^;]+);/)[1]};`);
+    return swap(css.slice(0, at)) + swap(css.slice(at));
+  };
+  const r = runGate((css) => css, () => {}, copyRun);
+  assert.match(r.out, /g-viz-2 ~ g-run/);
+  assert.notEqual(r.status, 0);
 });
