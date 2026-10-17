@@ -13,7 +13,7 @@ export const PIXELS = ".123456789abcdef";
 /** Palette index → token of src/design/tokens.css (§2); index 0 is transparent and has none. */
 export const PALETTE = [
   null, "g-ink", "g-ink2", "g-muted", "g-faint", "g-ground", "g-av1", "g-av2",
-  "g-av4", "g-av5", "g-av3", "g-av6", "g-amb1", "g-amb2", "g-amb3", "g-px-skin",
+  "g-av4", "g-av5", "g-av3", "g-av6", "g-amb1", "g-px-hair", "g-amb3", "g-px-skin",
 ] as const;
 
 /** Resolves delta frames into full rasters, keeping the source order. */
