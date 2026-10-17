@@ -8,15 +8,15 @@ export type Filter = "all" | StateForm;
 /** Coordinators live in the shell banner, not on a card (same rule as BoardView). */
 export const agentCards = (cards: readonly BoardCard[]) => cards.filter((c) => !isCoordinatorKind(c.worker.kind));
 
-/** The column gives the form; a failure reason (`bad`) wins because it has no column. */
+/** Column-based form, kept for the org chart; the cards and their filter use the lamp form. The column gives the form; a failure reason (`bad`) wins because it has no column. */
 export function cardForm(card: BoardCard): StateForm {
   return formForReason(card.attentionCode ?? "") === "bad" ? "bad" : formForColumn(card.column);
 }
 
-/** Zero is a real count, so every chip gets a number. */
-export function countByFilter(cards: readonly BoardCard[]): Record<Filter, number> {
+/** Zero is a real count, so every chip gets a number. A card whose form is `undefined` counts only in "all". */
+export function countByFilter(cards: readonly BoardCard[], formOf: (card: BoardCard) => StateForm | undefined): Record<Filter, number> {
   const counts = { all: cards.length } as Record<Filter, number>;
-  for (const form of STATE_FORMS) counts[form] = cards.filter((c) => cardForm(c) === form).length;
+  for (const form of STATE_FORMS) counts[form] = cards.filter((c) => formOf(c) === form).length;
   return counts;
 }
 

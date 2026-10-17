@@ -6,7 +6,7 @@ import { StateMark } from "../../design/state/StateMark";
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
 import { useT } from "../../i18n/useT";
-import { lampFor } from "./lamps/lampFor";
+import { cardLamp } from "./lamps/lampFor";
 import { ageText, fill, initials, modelText, toneFor } from "./leitstand";
 import { ProofStrip } from "./proof/ProofStrip";
 
@@ -34,7 +34,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const { worker } = card;
   const model = modelText(card);
   // Same rule as the flow node: a done card is proven by a passed test, otherwise it reads "ohne Beweis".
-  const lamp = lampFor(card, card.testStatus === "pass", now);
+  const lamp = cardLamp(card, now);
   const taskId = useId();
   const [expanded, setExpanded] = useState(false);
   const canExpand = worker.task.length > 160;

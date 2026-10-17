@@ -28,3 +28,6 @@ export function lampFor(card: BoardCard, proof: boolean, now: number): { lamp: L
   // A column or worker status the app does not know is not proof that work runs.
   return Object.hasOwn(COLUMN_FORM, card.column) && card.worker.status === "running" ? { lamp: "working", form: LAMP_FORM.working, word: T.working } : { lamp: "unknown", form: LAMP_FORM.unknown, word: T.unknown };
 }
+
+/** The lamp of a card as every surface draws it: a done card is proven by a passed test. */
+export const cardLamp = (card: BoardCard, now: number) => lampFor(card, card.testStatus === "pass", now);

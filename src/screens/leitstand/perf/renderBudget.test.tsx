@@ -62,7 +62,8 @@ it("render counts stay within the leitstand budget", () => {
   const filter = measure(() => {
     fireEvent.click(screen.getByRole("button", { name: /^Läuft/ }));
   });
-  expect(screen.getAllByRole("article")).toHaveLength(19);
+  // The chip counts the form the mark shows: the 19 running cards in "working" and the 20 running ones in review all read "run".
+  expect(screen.getAllByRole("article")).toHaveLength(39);
   expect(screen.getByRole("button", { name: /^Läuft/ })).toHaveAttribute("aria-pressed", "true");
   cleanup();
 
