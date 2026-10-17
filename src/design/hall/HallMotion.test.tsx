@@ -76,6 +76,17 @@ it("a hidden document pauses the hall", () => {
   expect(scene(container).dataset.paused).toBeUndefined();
 });
 
+it("an off-screen scene pauses the hall", () => {
+  let notify: (entries: { isIntersecting: boolean }[]) => void = () => {};
+  vi.stubGlobal("IntersectionObserver", class { constructor(cb: typeof notify) { notify = cb; } observe() {} disconnect() {} });
+  const { container } = render(<Hall scene={SCENE} />);
+  expect(scene(container).dataset.paused).toBeUndefined();
+  act(() => notify([{ isIntersecting: false }]));
+  expect(scene(container).dataset.paused).toBe("true");
+  act(() => notify([{ isIntersecting: true }]));
+  expect(scene(container).dataset.paused).toBeUndefined();
+});
+
 it("the second run frame sits right next to the first in every role strip", () => {
   const map = figureMap as Record<string, number[]>;
   expect(POSE_FRAMES.run).toBe(2);
