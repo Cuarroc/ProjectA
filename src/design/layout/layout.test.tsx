@@ -213,6 +213,7 @@ describe("Toast", () => {
     fireEvent.click(screen.getByRole("button", { name: "Neu" }));
     expect(screen.getByText("Zweite")).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(500); });
+    act(() => { vi.advanceTimersByTime(EXIT_MS); });
     expect(screen.queryByText("Erste")).toBeNull();
     expect(screen.getByText("Zweite")).toBeInTheDocument();
   });
