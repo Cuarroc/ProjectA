@@ -23,6 +23,7 @@ const THEME = [
   "g-spec", "g-shadow", "g-shadow-pop",
   "g-amb1", "g-amb2", "g-amb3",
   "g-av1", "g-av2", "g-av3", "g-av4", "g-av5", "g-av6",
+  "g-viz-1", "g-viz-2", "g-viz-3", "g-viz-4", "g-viz-5", "g-viz-6",
 ];
 const SHARED = [
   "g-chrome-blur", "g-content-blur", "g-pad",

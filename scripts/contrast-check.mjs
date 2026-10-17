@@ -152,6 +152,16 @@ const ratio = (a, b) => {
   return (x + 0.05) / (y + 0.05);
 };
 
+// CIE76 colour distance, only used to keep the viz series apart from each other and from the states.
+const labOf = ({ r, g, b }) => {
+  const lin = (v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+  const [R, G, B] = [lin(r), lin(g), lin(b)];
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const [x, y, z] = [f((0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047), f(0.2126 * R + 0.7152 * G + 0.0722 * B), f((0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883)];
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+};
+const distance = (a, b) => Math.hypot(...labOf(a).map((v, i) => v - labOf(b)[i]));
+
 const fails = [];
 const rows = [];
 function check(mode, label, fg, bg, min = 4.5) {
@@ -478,6 +488,8 @@ if (tokenCss) {
 // V2-TH-VAR-1: src/design/variants/variants.css. A variant may set only the
 // backdrop and material tokens, with the blur radii fixed; each one is composed
 // over ground and amb1..3 (worst stop wins) for every pair the board uses.
+const VIZ_ROLES = [1, 2, 3, 4, 5, 6].map((n) => `g-viz-${n}`);
+const VIZ_APART = 15;
 const VARIANT_KEYS = ["g-ground", "g-amb1", "g-amb2", "g-amb3", "g-chrome-bg", "g-content-bg", "g-chrome-blur", "g-content-blur"];
 const BLUR_RADIUS = { "g-chrome-blur": "32px", "g-content-blur": "20px" };
 const satTable = (c, s) => {
@@ -550,7 +562,12 @@ function checkVariants(designLight, designDark) {
       ...states.map((role) => [`chip ${role.slice(2)}`, [role], (s) => on(`${role}-bg`, s.glass)]),
     ];
     // Non-text: the accent icon on a selected (tint-hi) surface.
-    for (const [label, fgs, bgOf, min] of [...groups, ["accent icon, tint-hi", ["g-accent"], (s) => on("g-tint-hi", s.glass), 3]]) {
+    for (const [label, fgs, bgOf, min] of [
+      ...groups,
+      ["accent icon, tint-hi", ["g-accent"], (s) => on("g-tint-hi", s.glass), 3],
+      ["viz glass", VIZ_ROLES, (s) => s.glass, 3],
+      ["viz chrome", VIZ_ROLES, (s) => s.chrome, 3],
+    ]) {
       for (const fg of fgs) {
         let worst;
         for (const [stopName, stop] of stops) {
@@ -641,6 +658,17 @@ if (designDarkAt < 0) {
         check(mode, `orb glyph ${on} / ${role}`, color(vars, on), color(vars, role));
         check(mode, `orb fill ${role} / glass`, color(vars, role), glass, 3);
       }
+      // DS-X-32: data-viz series are fills (non-text, 3:1) on every surface they sit on, and stay apart
+      // from each other and from the state colours, which belong to states alone.
+      const viz = VIZ_ROLES.map((role) => [role, color(vars, role)]);
+      for (const [role, fill] of viz)
+        for (const [name, surface] of [["ground", ground], ["chrome", chrome], ["glass", glass]])
+          check(mode, `${role} / ${name} (Nicht-Text)`, fill, surface, 3);
+      for (const [i, [role, fill]] of viz.entries())
+        for (const [other, rival] of [...viz.slice(i + 1), ...stateRoles.map((s) => [s, color(vars, s)])]) {
+          const d = distance(fill, rival);
+          if (d < VIZ_APART) fails.push(`${mode.trim()}: ${role} ~ ${other} = dE ${d.toFixed(0)} (< ${VIZ_APART})`);
+        }
     } catch (err) {
       fails.push(`${mode.trim()}: ${err.message}`);
     }
