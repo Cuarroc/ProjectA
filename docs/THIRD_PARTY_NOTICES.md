@@ -25,6 +25,12 @@ npx --yes license-checker-rseidelsohn@5.0.1 --production --json   # npm section
 - **Inter font** (`public/fonts/Inter-*.otf`): SIL Open Font License 1.1.
   The license text ships next to the fonts as `public/fonts/INTER-LIZENZ.txt`.
   Copyright 2016-2023 The Inter Project Authors.
+- **Lucide icons** (`src/design/icons/glyphs.ts`): about 24 icon paths copied as
+  data (no package installed). ISC License, Copyright (c) 2026 Lucide Icons and
+  Contributors; icons derived from Feather (check, chevrons, external-link, ...)
+  additionally carry the MIT notice, Copyright (c) 2013-present Cole Bemis.
+  License text, copied from https://github.com/lucide-icons/lucide/blob/main/LICENSE:
+  `src/design/icons/LUCIDE-LIZENZ.txt`.
 - **Recursive font** (`docs/dev-hq/fonts/recursive-latin-wght.woff2`): SIL
   Open Font License 1.1, license text next to it as `docs/dev-hq/fonts/OFL.txt`.
 - **prompt-master** (`src-tauri/resources/prompt-master/`): MIT License,

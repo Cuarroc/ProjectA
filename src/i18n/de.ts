@@ -233,6 +233,7 @@ export const de = {
   "gallery.family.forms": "Formulare",
   "gallery.family.gallery": "Galerie",
   "gallery.family.hall": "Halle",
+  "gallery.family.icons": "Symbole",
   "gallery.family.inputs": "Eingaben",
   "gallery.family.layout": "Layout",
   "gallery.family.state": "Zustand",

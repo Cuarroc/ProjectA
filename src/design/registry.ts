@@ -1,7 +1,7 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
 // keeps it in step with the component exports (function, const, default) under src/design.
 
-export type ComponentFamily = "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "inputs" | "layout" | "state" | "surface";
+export type ComponentFamily = "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "icons" | "inputs" | "layout" | "state" | "surface";
 
 export interface ComponentEntry {
   /** The exported function name. */
@@ -234,5 +234,11 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: ["tone neutral, accent"], states: ["no finite count and no children renders nothing; 0 is shown"],
     a11y: "Static text, never focusable; the count or tag is the signal, so colour is never alone. A bare count needs a word beside it.",
     text: "Count or children from the caller; not a state word (use StateMark) and not proof (use ProofChip).",
+  },
+  {
+    name: "Icon", family: "icons",
+    variants: ["name from the Lucide set in glyphs.ts, 20 px"], states: ["label given or not"],
+    a11y: "aria-hidden without a label; with one it is role=\"img\" and aria-label. Colour follows currentColor.",
+    text: "No text; the label is the caller's. Licence: LUCIDE-LIZENZ.txt, docs/THIRD_PARTY_NOTICES.md.",
   },
 ];
