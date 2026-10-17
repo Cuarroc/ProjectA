@@ -50,3 +50,14 @@
 .g-hall__ex, .g-hall__note { color: var(--g-muted); }
 .g-hall__legend .g-hall__ex { display: block; }
 .g-hall__note { margin: 0; }
+/* DS-H-05: list and inspector beside each other; a picked piece in the scene gets a solid frame (shape, not colour alone). */
+.g-hall__panel { display: grid; grid-template-columns: minmax(0, 28rem) minmax(0, 20rem); gap: var(--g-space-6); align-items: start; justify-self: stretch; }
+.g-hall__list { display: grid; gap: var(--g-space-1); margin: 0; padding: 0; list-style: none; }
+.g-hall__grow { flex: 1; min-width: 0; }
+.g-hall__inspector { padding: var(--g-space-4); border: 1px solid var(--g-line); border-radius: var(--g-r-ctl); }
+.g-hall__inspector p { margin: 0; color: var(--g-muted); }
+.g-hall__inspector dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--g-space-1) var(--g-space-4); margin: 0; }
+.g-hall__inspector dt { color: var(--g-muted); }
+.g-hall__inspector dd { margin: 0; }
+.g-hall__sprite[data-piece] { cursor: pointer; }
+.g-hall__sprite[data-selected="true"] { outline: 2px solid var(--g-accent); outline-offset: 2px; }

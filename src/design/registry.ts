@@ -116,6 +116,18 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "src/i18n/de.ts hall.* and state words via StateMark; always shows hall.sample.",
   },
   {
+    name: "HallList", family: "hall",
+    variants: [], states: ["one row per piece; the selected row is current", "a stamped piece shows the stamp as a badge"],
+    a11y: "A labelled list of native buttons: each piece is one tab stop and Enter or Space selects; a click on the selected row clears it. Selected shows a bar, not colour alone.",
+    text: "src/i18n/de.ts hall.list.label, piece names, role words and state words via StateMark.",
+  },
+  {
+    name: "HallInspector", family: "hall",
+    variants: [], states: ["piece selected: task, state, role in that order", "nothing selected: said in words"],
+    a11y: "Labelled region, polite live; a definition list with the task first; the state is shape plus word.",
+    text: "src/i18n/de.ts hall.inspector.*, piece names, role words and state words via StateMark.",
+  },
+  {
     name: "Avatar", family: "inputs",
     variants: ["size sm, md, lg; tone owner, lead, sys, 1 to 6"], states: ["unknown tone draws the plain avatar"],
     a11y: "Decorative (aria-hidden) unless label is given; then role=\"img\".",
