@@ -14,10 +14,17 @@ const full: ProofStripProps = {
 };
 
 it("shows red-first as not connected instead of a pass tick", () => {
-  const { container } = render(<ProofStrip {...full} redFirst="unknown" gates={null} review={null} pr={null} />);
-  expect(screen.getAllByText(T.notConnected)).toHaveLength(4);
+  const { container } = render(<ProofStrip {...full} redFirst="unknown" gates={null} review={null} />);
+  expect(screen.getAllByText(T.notConnected)).toHaveLength(3);
   expect(container.querySelector(".g-proof__yes")).toBeNull();
   expect(screen.queryByText(T.redFirstPass)).toBeNull();
+});
+
+it("collapses to one line when all four proofs are unknown", () => {
+  const { container } = render(<ProofStrip {...full} redFirst="unknown" gates={null} review={null} pr={null} />);
+  expect(screen.getAllByText(T.notConnected)).toHaveLength(1);
+  expect(container.querySelectorAll(".ps__badge")).toHaveLength(0);
+  expect(screen.getByRole("group", { name: T.strip })).toHaveTextContent(`${T.strip}: ${T.notConnected}`);
 });
 
 it("labels the missing gates badge with the gates word", () => {

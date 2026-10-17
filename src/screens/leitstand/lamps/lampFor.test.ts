@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { BoardCard, BoardColumn } from "../../../types";
-import { lampFor } from "./lampFor";
+import { STATE_FORMS } from "../../../design/state/states";
+import { lampFor, LAMP_FORM, type LampKind } from "./lampFor";
 
 const NOW = 1_760_000_000;
 
@@ -60,5 +61,23 @@ describe("lampFor", () => {
   it("a passed test is worded as a test result", () => {
     expect(lampFor(card({ column: "done", testedAt: null }), true, NOW).word).toBe("Test bestanden");
     expect(lampFor(card({ column: "done", testedAt: NOW - 300 }), true, NOW).word).toBe("Test bestanden, seit 5 min");
+  });
+
+  it("returns a StateForm for every lamp kind", () => {
+    const samples: Record<LampKind, BoardCard> = {
+      working: card(),
+      blocked: card({ column: "needs_you" }),
+      done: card({ column: "done" }),
+      idle: card({}, { status: "exited" }),
+      unknown: card({ column: "parked" as BoardColumn }),
+    };
+    for (const kind of Object.keys(samples) as LampKind[]) {
+      const shown = lampFor(samples[kind], true, NOW);
+      expect(shown.lamp).toBe(kind);
+      expect(shown.form).toBe(LAMP_FORM[kind]);
+      // `unknown` is the one kind without a form: the mark then draws the neutral unknown shape.
+      if (kind === "unknown") expect(shown.form).toBeUndefined();
+      else expect(STATE_FORMS).toContain(shown.form);
+    }
   });
 });
