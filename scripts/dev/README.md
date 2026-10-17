@@ -109,7 +109,7 @@ calls (`gh pr list` twice, `gh run list` once) and spends no money. The test is
 | Script | Command | What it answers |
 |---|---|---|
 | `start-check.mjs` | `npm run dev:start-check [-- --usage <datei> --observe-log <datei>]` | Darf jetzt noch ein Agenten-Worker starten? (read-only, kein Geld, kein Netz) |
-| `shot.mjs` | `npm run dev:shot -- --route <path> [--fixture <html>] [--check-tab]` | 1440×900 light/dark screenshots + tab check (V2-F7); Test: `scripts/lib/dev-shot.test.mjs` (`test:hq`) |
+| `shot.mjs` | `npm run dev:shot -- --route <path> [--fixture <html>] [--check-tab] [--theme] [--motion] [--reduced] [--dpr] [--wait] [--video]` | 1440×900 light/dark screenshots + tab check (V2-F7); motion mode, OS reduced motion, scale, mid-animation wait and webm for the probe-hall acceptance (DS-H-07b, `--help`); Tests: `scripts/lib/dev-shot.test.mjs` (`test:hq`), `scripts/dev/shot.test.mjs` |
 | `bench-weekly.mjs` | `npm run dev:bench-weekly [-- --from <tag> --to <tag> --json --input <datei>]` | Wochenmessung aus `docs/plan/v1.6.0/benchmark.md` Abschnitt 6, nur lesend (gh/git); Test: `scripts/lib/dev-bench-weekly.test.mjs` |
 | `mrp-count.mjs` | `npm run dev:mrp-count [-- --from <tag> --to <tag> --input <datei>]` | M-RP-Zähler: Anteil der Paket-PRs mit Prompt-Log, Runden, Befunde, Fixrunden (`### Nacharbeit`), JSON; dieselben Zeilen stehen in `dev:bench-weekly`, nur lesend; Test: `scripts/lib/dev-mrp-count.test.mjs` |
 | `plan-lint.mjs` | `npm run dev:plan-lint [-- <plan.md>]` | Prüft die Paket-Tabellen von `docs/plan/v1.6.0/plan.md` (Größe, Stufe, Lane, Abnahme, nie zwei Pakete einer Naht gleichzeitig), nur lesend; Exit 1 bei Befunden; Test: `scripts/lib/dev-plan-lint.test.mjs` |

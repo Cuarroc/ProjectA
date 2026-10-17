@@ -2,7 +2,7 @@
 // V2-F7 — route screenshots (1440×900 light/dark) and optional tab-order check.
 // Uses Playwright from devDependencies. --fixture serves a local HTML for tests.
 import { createServer } from "node:http";
-import { readFileSync, mkdirSync, existsSync, statSync } from "node:fs";
+import { readFileSync, mkdirSync, existsSync, statSync, rmSync } from "node:fs";
 import { dirname, join, resolve, extname } from "node:path";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
@@ -13,6 +13,11 @@ export const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 // V2-TH-VAR-2: glass style preference (mirror of src/design/variants/useGlassVariant.ts).
 export const VARIANTS = Object.freeze(["glas", "klar", "nebel", "abend"]);
 export const VARIANT_KEY = "projecta.settings.glassVariant";
+
+// DS-H-07b: motion mode preference (mirror of src/design/motion/motionMode.ts; calm = no stored value).
+export const MOTION_MODES = Object.freeze(["calm", "lively", "off"]);
+export const MOTION_MODE_KEY = "projecta.settings.motionMode";
+export const THEMES = Object.freeze(["light", "dark"]);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -111,22 +116,33 @@ async function checkTab(page) {
  *  `path` is the URL path to open (defaults to `route`). Fixture mode opens `/`
  *  and keeps `route` only for the PNG slug. With `variant`, `applied` reports the
  *  glass style found on <html> per scheme ({ light, dark }). */
-export async function captureRoute({ base, route, path, outDir, checkTabOrder = false, variant = null }) {
+export async function captureRoute({
+  base, route, path, outDir, checkTabOrder = false, variant = null,
+  theme = null, motion = null, reduced = false, dpr = null, wait = 0, video = 0,
+}) {
   mkdirSync(outDir, { recursive: true });
-  const slug = variant ? `${routeSlug(route)}-${variant}` : routeSlug(route);
+  const slug = [routeSlug(route), variant, motion, motion && reduced ? "reduced" : null, dpr ? `dpr${dpr}` : null]
+    .filter(Boolean)
+    .join("-");
   const openPath = path ?? route;
   const url = new URL(openPath.startsWith("http") ? openPath : openPath, base.endsWith("/") ? base : `${base}/`).href;
   const browser = await chromium.launch({ headless: true });
   const files = [];
+  const videos = [];
   let tab = null;
   const applied = {};
+  const motionApplied = {};
   try {
-    for (const scheme of ["light", "dark"]) {
-      const page = await browser.newPage({
+    for (const scheme of theme ? [theme] : THEMES) {
+      // Without --motion the old always-reduced capture stays; with it, motion runs unless --reduced.
+      const context = await browser.newContext({
         viewport: { ...VIEWPORT },
         colorScheme: scheme,
-        reducedMotion: "reduce",
+        reducedMotion: motion && !reduced ? "no-preference" : "reduce",
+        ...(dpr ? { deviceScaleFactor: dpr } : {}),
+        ...(video ? { recordVideo: { dir: join(outDir, ".video-tmp"), size: { ...VIEWPORT } } } : {}),
       });
+      const page = await context.newPage();
       // The stored preference must be in place before the app's first script runs.
       if (variant) {
         await page.addInitScript(([key, id]) => {
@@ -134,30 +150,66 @@ export async function captureRoute({ base, route, path, outDir, checkTabOrder = 
           else localStorage.setItem(key, id);
         }, [VARIANT_KEY, variant]);
       }
+      if (motion) {
+        await page.addInitScript(([key, id]) => {
+          if (id === "calm") localStorage.removeItem(key);
+          else localStorage.setItem(key, id);
+        }, [MOTION_MODE_KEY, motion]);
+      }
       await page.goto(url, { waitUntil: "networkidle" });
       if (variant) applied[scheme] = await page.evaluate(() => document.documentElement.dataset.glassVariant ?? "glas");
+      if (motion) {
+        motionApplied[scheme] = await page.evaluate(() => ({
+          motion: document.documentElement.dataset.motion ?? "calm",
+          reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+        }));
+      }
       if (checkTabOrder && scheme === "light") tab = await checkTab(page);
+      if (wait) await page.waitForTimeout(wait);
       const dest = join(outDir, `${slug}-${scheme}.png`);
       await page.screenshot({ path: dest, fullPage: false });
       files.push(dest);
-      await page.close();
+      if (video) {
+        await page.waitForTimeout(video * 1000);
+        const webm = join(outDir, `${slug}-${scheme}.webm`);
+        await page.close(); // the video file is finalised on close
+        await page.video().saveAs(webm);
+        videos.push(webm);
+      }
+      await context.close();
     }
   } finally {
     await browser.close();
+    if (video) rmSync(join(outDir, ".video-tmp"), { recursive: true, force: true });
   }
-  return { route, files, tab, viewport: VIEWPORT, ...(variant ? { variant, applied } : {}) };
+  return {
+    route, files, tab, viewport: VIEWPORT,
+    ...(variant ? { variant, applied } : {}),
+    ...(motion ? { motion, reduced, motionApplied } : {}),
+    ...(dpr ? { dpr } : {}),
+    ...(wait ? { wait } : {}),
+    ...(video ? { video, videos } : {}),
+  };
 }
 
 const HELP = `shot — V2-F7 screenshots (1440×900 light/dark) and optional tab check
 
 Usage:
   node scripts/dev/shot.mjs --route <path> [--base <url>] [--out <dir>] [--fixture <html>] [--check-tab] [--variant <id>]
+                            [--theme light|dark] [--motion calm|lively|off] [--reduced] [--dpr <n>] [--wait <ms>] [--video <s>]
 
   --route      App path (also names the PNG files), e.g. / or /settings
   --base       Running origin (default http://127.0.0.1:1420)
   --fixture    Local HTML file served instead of --base (tests / offline)
   --out        Output directory (default ./shots)
   --variant    Glass style stored before load: glas, klar, nebel or abend (PNGs get -<id> in the name)
+  --theme      Only this colour scheme, light or dark (default: both)
+  --motion     Motion mode stored before load: calm, lively or off (PNGs get -<mode>). Motion then runs
+               (reducedMotion no-preference); without --motion every shot keeps the old reduce emulation
+  --reduced    With --motion: emulate the OS asking for reduced motion (PNGs get -reduced)
+  --dpr        deviceScaleFactor 0.5-4, e.g. 1.25 or 1.5 (PNG is dpr x 1440x900; names get -dpr<n>)
+  --wait       Milliseconds to wait before the screenshot, to catch a mid-animation frame
+  --video      Record a webm per scheme, saved next to the PNGs: load time plus this many seconds (1-120) after the shot
   --check-tab  Fail unless every focusable control is reached with a visible focus ring
 
 Exit: 0 ok, 1 capture/tab failure, 2 bad arguments.
@@ -173,6 +225,12 @@ export const main = withExitCodes(async (argv, io) => {
       fixture: { type: "string" },
       "check-tab": { type: "boolean" },
       variant: { type: "string" },
+      theme: { type: "string" },
+      motion: { type: "string" },
+      reduced: { type: "boolean" },
+      dpr: { type: "string" },
+      wait: { type: "string" },
+      video: { type: "string" },
       help: { type: "boolean" },
     },
   });
@@ -181,6 +239,23 @@ export const main = withExitCodes(async (argv, io) => {
   if (values.variant !== undefined && !VARIANTS.includes(values.variant)) {
     throw new UsageError(`--variant must be one of ${VARIANTS.join(", ")}`);
   }
+  if (values.theme !== undefined && !THEMES.includes(values.theme)) {
+    throw new UsageError(`--theme must be one of ${THEMES.join(", ")}`);
+  }
+  if (values.motion !== undefined && !MOTION_MODES.includes(values.motion)) {
+    throw new UsageError(`--motion must be one of ${MOTION_MODES.join(", ")}`);
+  }
+  const num = (name, min, max) => {
+    if (values[name] === undefined) return null;
+    const n = Number(values[name]);
+    if (!values[name].trim() || !Number.isFinite(n) || n < min || n > max) {
+      throw new UsageError(`--${name} must be a number from ${min} to ${max}`);
+    }
+    return n;
+  };
+  const dpr = num("dpr", 0.5, 4);
+  const wait = num("wait", 0, 60000) ?? 0;
+  const video = num("video", 1, 120) ?? 0;
   const outDir = resolve(values.out || "shots");
   let base = values.base || "http://127.0.0.1:1420";
   let closer = null;
@@ -201,6 +276,12 @@ export const main = withExitCodes(async (argv, io) => {
       outDir,
       checkTabOrder,
       variant: values.variant ?? null,
+      theme: values.theme ?? null,
+      motion: values.motion ?? null,
+      reduced: Boolean(values.reduced),
+      dpr,
+      wait,
+      video,
     });
     io.out(JSON.stringify(report, null, 2) + "\n");
     if (checkTabOrder && (!report.tab || !report.tab.ok)) {
