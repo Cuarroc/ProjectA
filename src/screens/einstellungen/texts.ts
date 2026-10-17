@@ -6,8 +6,6 @@ export const T = {
   appearance: "Darstellung",
   appearanceHint: "Hell, Dunkel oder dem System folgen; darunter der Glas-Stil.",
   preview: "Vorschau-Funktionen",
-  previewOn: "An",
-  previewOff: "Aus",
   version: "Version & Updates",
   versionOff: "Nur in der Desktop-App verfügbar.",
   check: "Nach Updates suchen",

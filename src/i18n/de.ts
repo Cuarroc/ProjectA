@@ -107,6 +107,8 @@ export const de = {
   "hall.role.check": "Prüfung",
   "hall.role.ops": "Betrieb",
   "fabrik.orbName": "{label}, {state}",
+  "forms.switch.on": "An",
+  "forms.switch.off": "Aus",
   "theme.light": "Hell",
   "theme.dark": "Dunkel",
   "theme.system": "System",
