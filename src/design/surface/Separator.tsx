@@ -7,7 +7,7 @@ export interface SeparatorProps {
 }
 
 export function Separator({ orientation = "horizontal", decorative }: SeparatorProps) {
-  const className = `g-sep g-sep--${orientation === "vertical" ? "v" : "h"}`;
+  const className = ["g-sep", orientation === "vertical" && "g-sep--v"].filter(Boolean).join(" ");
   if (decorative) return <hr className={className} role="none" aria-hidden="true" />;
   return <hr className={className} aria-orientation={orientation === "vertical" ? "vertical" : undefined} />;
 }

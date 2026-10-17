@@ -16,9 +16,8 @@
 }
 .g-row:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
 
-.g-sep { border: 0; margin: 0; background: var(--g-hair); flex: none; }
-.g-sep--h { height: 1px; width: 100%; }
-.g-sep--v { width: 1px; align-self: stretch; }
+.g-sep { border: 0; margin: 0; background: var(--g-hair); flex: none; height: 1px; width: 100%; }
+.g-sep--v { height: auto; width: 1px; align-self: stretch; }
 
 .g-badge {
   display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px;
