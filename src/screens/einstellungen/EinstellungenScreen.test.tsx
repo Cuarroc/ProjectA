@@ -366,6 +366,18 @@ describe("tab Allgemein", () => {
 
 
 describe("preview directory", () => {
+  it("flags render as switches", () => {
+    show();
+    const section = screen.getByRole("region", { name: "Vorschau-Funktionen" });
+    expect(within(section).queryAllByRole("checkbox")).toHaveLength(0);
+    const switches = within(section).getAllByRole("switch");
+    expect(switches).toHaveLength(FEATURE_FLAGS.length);
+    for (const [index, flag] of FEATURE_FLAGS.entries()) {
+      expect(switches[index]).toHaveAccessibleName(flag.label);
+      expect(switches[index]).toHaveAccessibleDescription(flag.description);
+    }
+  });
+
   it("lists every preview flag exactly once with its registry description", async () => {
     show();
     const section = screen.getByRole("region", { name: "Vorschau-Funktionen" });

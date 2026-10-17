@@ -110,6 +110,18 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "Label from the caller.",
   },
   {
+    name: "RadioGroup", family: "forms",
+    variants: [], states: ["selected, not selected; a value that matches no option makes the first option the tab stop"],
+    a11y: "role=\"radiogroup\" named by aria-label; one tab stop (the selected option); arrows move and select, Home and End jump; ignored during IME composition.",
+    text: "Option labels and the group name from the caller.",
+  },
+  {
+    name: "SwitchField", family: "forms",
+    variants: [], states: ["on, off, disabled"],
+    a11y: "Native checkbox with role=\"switch\" inside one label; Space and a click on the label or the state word toggle; the state word is aria-hidden because the role already says on or off.",
+    text: "Label from the caller; state words from src/i18n/de.ts forms.switch.on and forms.switch.off.",
+  },
+  {
     name: "Hall", family: "hall",
     variants: [], states: ["filled", "empty pieces: empty in words", "scene undefined: unread in words", "missing piece state: unknown pose and word"],
     a11y: "Labelled region; sprites are aria-hidden, every station, role, piece, gate and stamp is also text.",
