@@ -8,7 +8,7 @@ export type Filter = "all" | StateForm;
 /** Coordinators live in the shell banner, not on a card (same rule as BoardView). */
 export const agentCards = (cards: readonly BoardCard[]) => cards.filter((c) => !isCoordinatorKind(c.worker.kind));
 
-/** Column-based form, kept for the org chart; the cards and their filter use the lamp form. The column gives the form; a failure reason (`bad`) wins because it has no column. */
+/** Form for the org chart (no proof, no worker status). The Leitstand cards, chips and filter use `lampFor`; it applies the same column and failure-reason rules, plus blocked, idle and proof. */
 export function cardForm(card: BoardCard): StateForm {
   return formForReason(card.attentionCode ?? "") === "bad" ? "bad" : formForColumn(card.column);
 }
