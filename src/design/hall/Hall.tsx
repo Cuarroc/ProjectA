@@ -1,15 +1,17 @@
-import type { CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
 
 import { de } from "../../i18n/de";
-import { StateMark } from "../state/StateMark";
-import { STATE_UNKNOWN_FORM, type StateForm } from "../state/states";
+import { STATE_UNKNOWN_FORM } from "../state/states";
 import { poseFor, ROLE_WORDS, ROLES, type Role } from "./figures/poses";
 import type { HallScene } from "./fixtures";
+import { HallInspector } from "./HallInspector";
+import { HallList } from "./HallList";
 import figureMap from "./sprites/hall-figures.json";
 import tileMap from "./sprites/hall-tiles.json";
 import { FLOOR, TILE } from "./tiles/layout";
 import { NAMES } from "./tiles/names";
 import { usePixelScale } from "./usePixelScale";
+import { useSelection } from "./useSelection";
 import "./hall.css";
 
 // DS-H-04 (ASSETS.md §1, §6, §8): the static probe hall on synthetic data. Sprites are decorative; every
@@ -24,13 +26,21 @@ const STATION_COL: Record<Role, number> = { plan: 0, build: 3, check: 6, ops: 9 
 const GATE = [3, 1];
 const T = 16;
 
-function Sprite({ sheet, id, col, row }: { sheet: keyof typeof ATLASES; id: string; col: number; row: number }) {
+interface SpriteProps { sheet: keyof typeof ATLASES; id: string; col: number; row: number; piece?: string; selected?: boolean; onPick?: () => void }
+
+/** A piece sprite carries its id and, when picked, `data-selected`; a click is pointer-only, the list rows are the tab stops. */
+function Sprite({ sheet, id, col, row, piece, selected, onPick }: SpriteProps) {
   const map = ATLASES[sheet];
-  const [x, y, w, h] = map[id];
+  const frame: Frame | undefined = map[id];
+  if (!frame) return null;
+  const [x, y, w, h] = frame;
   return (
     <span
       className={`g-hall__sprite g-hall__sprite--${sheet}`}
       data-sprite={id}
+      data-piece={piece}
+      data-selected={piece ? String(!!selected) : undefined}
+      onClick={onPick}
       // Numbers only; hall.css turns art pixels into CSS pixels with --s.
       style={{ "--l": col * T, "--t": row * T, "--w": w, "--h": h, "--x": x, "--y": y, "--aw": extent(map, 0), "--ah": extent(map, 1) } as CSSProperties}
     />
@@ -42,6 +52,7 @@ export function Hall({ scene }: { scene: HallScene | undefined }) {
   const s = usePixelScale().css;
   const pieces = scene?.pieces ?? [];
   const pieceOf = (role: Role) => pieces.find((p) => p.role === role);
+  const { selected, toggle } = useSelection(pieces.map((p) => p.id));
   return (
     <section className="g-hall" aria-label={de["hall.title"]} style={{ "--s": s } as CSSProperties}>
       <p className="g-hall__sample">{de["hall.sample"]}</p>
@@ -53,28 +64,32 @@ export function Hall({ scene }: { scene: HallScene | undefined }) {
           const piece = pieceOf(role);
           // R1646-K1: poseFor(null) means "no run observed"; a piece with a missing state must stay unknown.
           const pose = poseFor(piece ? piece.state ?? STATE_UNKNOWN_FORM : null);
-          return [
-            <Sprite key={role} sheet="tiles" id={`station-${role}-0`} col={c} row={2} />,
-            scene && <Sprite key={`f-${role}`} sheet="figures" id={`fig-${role}-${pose}-0`} col={c + 1} row={1} />,
-            piece && <Sprite key={piece.id} sheet="tiles" id="piece-crate-0" col={c + 1} row={3} />,
-            piece?.stamped && <Sprite key="stamp" sheet="tiles" id="prop-stamp-0" col={c + 2} row={3} />,
-          ];
+          return (
+            <Fragment key={role}>
+              <Sprite sheet="tiles" id={`station-${role}-0`} col={c} row={2} />
+              {scene && <Sprite sheet="figures" id={`fig-${role}-${pose}-0`} col={c + 1} row={1} />}
+              {piece && <Sprite sheet="tiles" id="piece-crate-0" col={c + 1} row={3} piece={piece.id} selected={piece.id === selected} onPick={() => toggle(piece.id)} />}
+              {piece?.stamped && <Sprite sheet="tiles" id="prop-stamp-0" col={c + 2} row={3} />}
+            </Fragment>
+          );
         })}
       </div>
       <ul className="g-hall__legend">
         {ROLES.map((role) => {
-          const piece = pieceOf(role);
           return (
             <li key={role}>
               <span>{de[NAMES[`station-${role}-0`]]} <span className="g-hall__ex">{de["hall.example"]}</span></span>
               <span>{ROLE_WORDS[role]}</span>
-              {piece && <span>{de[piece.name]}</span>}
-              {piece && <StateMark form={piece.state as StateForm | undefined} />}
-              {piece?.stamped && <span>{de[NAMES["prop-stamp-0"]]}</span>}
             </li>
           );
         })}
       </ul>
+      {pieces.length > 0 && (
+        <div className="g-hall__panel">
+          <HallList pieces={pieces} selected={selected} onToggle={toggle} />
+          <HallInspector piece={pieces.find((p) => p.id === selected)} />
+        </div>
+      )}
       <p className="g-hall__note"><span>{de[NAMES["gate-hall-0"]]}</span> <span className="g-hall__ex">{de["hall.example"]}</span></p>
       {!scene && <p className="g-hall__note">{de["hall.unread"]}</p>}
       {scene && pieces.length === 0 && <p className="g-hall__note">{de["hall.empty"]}</p>}

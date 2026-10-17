@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, expect, it } from "vitest";
 
 import { de } from "../../i18n/de";
-import { STATE_UNKNOWN_WORD, STATE_WORDS, type StateForm } from "../state/states";
+import { STATE_UNKNOWN_WORD, STATE_WORDS } from "../state/states";
 import { poseFor } from "./figures/poses";
 import { SAMPLE_HALL } from "./fixtures";
 import { Hall } from "./Hall";
@@ -21,7 +21,7 @@ it("list and scene show the same ids and states", () => {
   expect(crates(container).map((c) => c.dataset.piece)).toEqual(ids);
   expect([...list().querySelectorAll<HTMLElement>("[data-piece]")].map((r) => r.dataset.piece)).toEqual(ids);
   for (const p of SAMPLE_HALL.pieces) {
-    const word = p.state ? STATE_WORDS[p.state as StateForm] : STATE_UNKNOWN_WORD;
+    const word = p.state ? STATE_WORDS[p.state] : STATE_UNKNOWN_WORD;
     expect(within(rowOf(p.id)).getByText(de[p.name])).toBeVisible();
     expect(within(rowOf(p.id)).getByText(word)).toBeVisible();
     expect(container.querySelectorAll(`[data-sprite="fig-${p.role}-${poseFor(p.state ?? "unknown")}-0"]`)).toHaveLength(1);
@@ -62,6 +62,6 @@ it("the inspector shows the task first and says when nothing is selected", () =>
   const terms = [...inspector().querySelectorAll("dt")].map((t) => t.textContent);
   expect(terms).toEqual([de["hall.inspector.task"], de["hall.inspector.state"], de["hall.inspector.role"]]);
   const values = [...inspector().querySelectorAll("dd")].map((d) => d.textContent);
-  expect(values).toEqual([de[piece.name], STATE_WORDS[piece.state as StateForm], de["hall.role.build"]]);
+  expect(values).toEqual([de[piece.name], STATE_WORDS[piece.state!], de["hall.role.build"]]);
   expect(within(inspector()).queryByText(de["hall.inspector.none"])).toBeNull();
 });
