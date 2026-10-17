@@ -40,10 +40,14 @@
   flex: none; width: 24px; height: 24px; border: 0; border-radius: 8px; background: transparent;
   color: var(--g-muted); font: 500 16px/1 var(--g-font-sans); cursor: pointer;
 }
-@media (hover: hover) and (pointer: fine) {
-  .g-tabs button:not([aria-selected="true"]):hover, .g-toast__x:hover { background: var(--g-tint); }
+.g-toast__act {
+  flex: none; margin-left: auto; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--g-accent); font: 600 13px/1.4 var(--g-font-sans); cursor: pointer;
 }
-:is(.g-tabs button, .g-toast__x):focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .g-tabs button:not([aria-selected="true"]):hover, .g-toast__x:hover, .g-toast__act:hover { background: var(--g-tint); }
+}
+:is(.g-tabs button, .g-toast__x, .g-toast__act):focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .g-tabpanel, .g-sheet, .g-toast { animation: none; }
