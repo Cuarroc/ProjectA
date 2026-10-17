@@ -21,3 +21,39 @@
 .g-cb__in:indeterminate + .g-cb__box::after { opacity: 1; left: 3px; top: 7px; width: 8px; height: 2px; background: var(--g-on-accent); }
 .g-cb__in:focus-visible + .g-cb__box { outline: var(--g-focus); outline-offset: var(--g-focus-offset); }
 .g-cb__text { padding-top: 1px; }
+
+.g-rg { display: grid; gap: var(--g-space-3); }
+.g-rg__opt {
+  display: flex; align-items: flex-start; gap: var(--g-space-4); padding: 0; border: 0; background: none;
+  font: var(--g-t-body); color: var(--g-ink); text-align: left; cursor: pointer;
+}
+.g-rg__opt:focus-visible { outline: var(--g-focus); outline-offset: var(--g-focus-offset); }
+.g-rg__dot {
+  position: relative; flex: none; box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--g-muted); background: var(--g-tint);
+  transition: border-color var(--g-dur-1) var(--g-ease-out);
+}
+.g-rg__dot::after {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--g-accent); opacity: 0;
+  transition: opacity var(--g-dur-1) var(--g-ease-out);
+}
+.g-rg__opt[aria-checked="true"] .g-rg__dot { border-color: var(--g-accent); }
+.g-rg__opt[aria-checked="true"] .g-rg__dot::after { opacity: 1; }
+
+.g-swf { position: relative; display: flex; align-items: center; gap: var(--g-space-4); font: var(--g-t-body); color: var(--g-ink); cursor: pointer; }
+.g-swf:has(.g-swf__in:disabled) { cursor: not-allowed; opacity: .5; }
+/* The native input stays the control (focus, Space, form value); it is invisible but covers the drawn track. */
+.g-swf__in { position: absolute; inset: 0 auto auto 0; width: 40px; height: 24px; margin: 0; opacity: 0; cursor: inherit; }
+.g-swf__track {
+  position: relative; flex: none; width: 40px; height: 24px; border-radius: 12px; background: var(--g-sw-off);
+  transition: background-color var(--g-dur-1) var(--g-ease-out);
+}
+.g-swf__track::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--g-on-accent);
+  transition: transform var(--g-dur-1) var(--g-ease-out);
+}
+.g-swf__in:checked + .g-swf__track { background: var(--g-sw-on); }
+.g-swf__in:checked + .g-swf__track::after { transform: translateX(16px); }
+.g-swf__in:focus-visible + .g-swf__track { outline: var(--g-focus); outline-offset: var(--g-focus-offset); }
+.g-swf__text { min-width: 0; }
+.g-swf__state { margin-left: auto; font: var(--g-t-note); color: var(--g-ink2); }

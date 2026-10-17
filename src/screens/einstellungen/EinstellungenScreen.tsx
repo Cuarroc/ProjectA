@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react";
 import "../../design/controls/controls.css";
+import "../../design/forms/forms.css";
 import "../../design/glass.css";
 import "../../design/layout/layout.css";
 
 import EmergencyStop from "../../components/EmergencyStop";
 import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
+import { SwitchField } from "../../design/forms/SwitchField";
 import { TabPanel, Tabs } from "../../design/layout/Tabs";
 import { listFeatureFlags, type FeatureFlag } from "../../flags/featureFlags";
 import { useFeatureFlag } from "../../flags/useFeatureFlag";
@@ -36,14 +38,7 @@ function PreviewFlagRow({ flag }: { flag: FeatureFlag }) {
   const id = `es-preview-${flag.id}`;
   return (
     <li className="es-preview-row">
-      <div className="es-preview-control">
-        <label className="settings-check" htmlFor={id}>
-          <input id={id} type="checkbox" checked={enabled} aria-describedby={`${id}-description`}
-            onChange={(event) => setEnabled(event.target.checked)} />
-          <span>{flag.label}</span>
-        </label>
-        <span className="es-note">{enabled ? T.previewOn : T.previewOff}</span>
-      </div>
+      <SwitchField id={id} label={flag.label} checked={enabled} onCheckedChange={setEnabled} aria-describedby={`${id}-description`} />
       <p className="es-note" id={`${id}-description`}>{flag.description}</p>
     </li>
   );

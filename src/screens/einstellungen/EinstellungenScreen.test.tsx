@@ -366,24 +366,36 @@ describe("tab Allgemein", () => {
 
 
 describe("preview directory", () => {
+  it("flags render as switches", () => {
+    show();
+    const section = screen.getByRole("region", { name: "Vorschau-Funktionen" });
+    expect(within(section).queryAllByRole("checkbox")).toHaveLength(0);
+    const switches = within(section).getAllByRole("switch");
+    expect(switches).toHaveLength(FEATURE_FLAGS.length);
+    for (const [index, flag] of FEATURE_FLAGS.entries()) {
+      expect(switches[index]).toHaveAccessibleName(flag.label);
+      expect(switches[index]).toHaveAccessibleDescription(flag.description);
+    }
+  });
+
   it("lists every preview flag exactly once with its registry description", async () => {
     show();
     const section = screen.getByRole("region", { name: "Vorschau-Funktionen" });
     const rows = within(section).getAllByRole("listitem");
     expect(rows).toHaveLength(FEATURE_FLAGS.length);
-    expect(within(section).getAllByRole("checkbox").map((control) => control.id)).toEqual(
+    expect(within(section).getAllByRole("switch").map((control) => control.id)).toEqual(
       FEATURE_FLAGS.map((flag) => `es-preview-${flag.id}`),
     );
     for (const label of ["Neue Oberfläche (Vorschau)", "Fernansicht", "Kundenprojekte"]) {
-      expect(within(section).getAllByRole("checkbox", { name: label })).toHaveLength(1);
+      expect(within(section).getAllByRole("switch", { name: label })).toHaveLength(1);
     }
     for (const [index, flag] of FEATURE_FLAGS.entries()) {
       const row = within(rows[index]);
       expect(row.getByText(flag.label, { exact: true })).toBeVisible();
       expect(flag.description.trim()).not.toBe("");
       expect(row.getByText(flag.description, { exact: true })).toBeVisible();
-      expect(row.getByRole("checkbox", { name: flag.label })).toHaveAccessibleDescription(flag.description);
-      expect(row.getByRole("checkbox")).toHaveProperty("checked", flag.defaultEnabled);
+      expect(row.getByRole("switch", { name: flag.label })).toHaveAccessibleDescription(flag.description);
+      expect(row.getByRole("switch")).toHaveProperty("checked", flag.defaultEnabled);
       expect(row.getByText(flag.defaultEnabled ? "An" : "Aus", { exact: true })).toBeVisible();
     }
     expect(await screen.findByText("logs/projecta.log")).toBeInTheDocument();
@@ -395,7 +407,7 @@ describe("preview directory", () => {
     await screen.findByText("logs/projecta.log");
     vi.mocked(invoke).mockClear();
     for (const flag of FEATURE_FLAGS) {
-      fireEvent.click(screen.getByRole("checkbox", { name: flag.label }));
+      fireEvent.click(screen.getByRole("switch", { name: flag.label }));
       expect(isFeatureFlagEnabled(flag.id)).toBe(true);
     }
     expect(invoke).not.toHaveBeenCalled();
@@ -404,7 +416,7 @@ describe("preview directory", () => {
     await screen.findByText("logs/projecta.log");
     vi.mocked(invoke).mockClear();
     for (const flag of FEATURE_FLAGS) {
-      const control = screen.getByRole("checkbox", { name: flag.label });
+      const control = screen.getByRole("switch", { name: flag.label });
       const row = within(control.closest("li")!);
       expect(control).toBeChecked();
       expect(row.getByText("An", { exact: true })).toBeVisible();
@@ -431,7 +443,7 @@ describe("preview directory", () => {
     show();
     const stop = screen.getByRole("button", { name: "Not-Aus auslösen" });
     await waitFor(() => expect(stop).toBeEnabled());
-    const controls = screen.getAllByRole("checkbox");
+    const controls = screen.getAllByRole("switch");
     expect(controls).toHaveLength(FEATURE_FLAGS.length);
     const classic = screen.getByRole("button", { name: "Klassische Einstellungen öffnen" });
     // Native inputs/buttons supply keyboard activation; actual Tab/Space is exercised in the browser proof.

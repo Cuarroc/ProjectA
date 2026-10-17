@@ -209,13 +209,13 @@ describe("Glass shell mount behind D1", () => {
     localStorage.setItem(FLAG_KEY, "0");
     const { container } = render(<App />);
     fireEvent.click(await screen.findByRole("tab", { name: "Einstellungen" }));
-    const toggle = await screen.findByRole("checkbox", { name: "Neue Oberfläche (Vorschau)" });
+    const toggle = await screen.findByRole("switch", { name: "Neue Oberfläche (Vorschau)" });
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);
     expect(localStorage.getItem(FLAG_KEY)).toBe("1");
     expect(await screen.findByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
     await go("#/einstellungen");
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Neue Oberfläche (Vorschau)" }));
+    fireEvent.click(await screen.findByRole("switch", { name: "Neue Oberfläche (Vorschau)" }));
     expect(localStorage.getItem(FLAG_KEY)).toBe("0");
     await waitFor(() => expect(container.querySelector(".g-shell")).toBeNull());
     expect(document.documentElement.dataset.theme).toBeUndefined();
