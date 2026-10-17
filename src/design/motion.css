@@ -1,5 +1,14 @@
 /* V2-F2 motion. Imported once by the Glass shell.
-   Board: Main.dc.html:33-34,255-267. Tokens under --g-*; classes under .g-*. */
+   Board: Main.dc.html:33-34,255-267. Tokens under --g-*; classes under .g-*.
+
+   Reduced-motion policy (one rule, five places). Nothing moves and nothing loops; a state is
+   still told by shape, word and colour. The OS setting wins over data-motion, and Aus acts the same inside the document.
+   1. Tokens rest (below, :root:root:root): press 1, ambient paused, enter-dist 0, stagger 0.
+   2. Shell and portals (below): animation none, transition 0ms.
+   3. controls.css, inputs.css, layout.css repeat the rule for their own transform, transition and animation,
+      because those parts also render where this lazy sheet is absent.
+   4. base.css, outside the shell: --g-dur-* shrink to 80ms so plain fades stay; no movement.
+   Calm (Ruhig) keeps one-shot motion only (enter, press, ping); loops run only under --g-ambient-play (Lebendig). */
 
 :root {
   --g-dur-instant: 90ms;
@@ -33,13 +42,6 @@
 :root[data-motion="off"] { --g-enter-dist: 0px; --g-press-scale: 1; }
 :root[data-motion="off"] *, :root[data-motion="off"] *::before, :root[data-motion="off"] *::after {
   animation: none !important; transition-duration: 0ms !important; transition-delay: 0ms !important;
-}
-
-@keyframes g-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
 }
 
 @keyframes g-rise {
@@ -79,6 +81,14 @@
 @keyframes g-live {
   50% {
     opacity: 0.45;
+  }
+}
+
+/* One-shot ping on a state change (usePulseOnChange); `scale` composes with the diamond and check rotation. */
+@keyframes g-ping {
+  from {
+    scale: 1.8;
+    opacity: 0.4;
   }
 }
 
@@ -133,12 +143,14 @@
     transform var(--g-dur-2) var(--g-ease-out);
 }
 
+/* The ring breathes only while the mode token plays (Lebendig); in Ruhig it rests. */
 .g-st--run::before {
   animation: g-live 2s ease-in-out infinite;
+  animation-play-state: var(--g-ambient-play);
 }
 
-.g-meter b {
-  transition: width var(--g-dur-3) var(--g-ease-out);
+.g-st[data-ping]::before {
+  animation: g-ping var(--g-dur-4) var(--g-ease-out) 1;
 }
 
 /* Board mixes .97 and .98 on :active; normalised to one press value (.98). */

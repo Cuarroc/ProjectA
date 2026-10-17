@@ -184,15 +184,16 @@ describe("V2-F2 motion contract", () => {
   });
 
   it("declares the board keyframes and wires sheet view row-in and the live run pulse", () => {
-    for (const name of ["g-enter", "g-rise", "g-fade", "g-row-in", "g-live"]) {
+    for (const name of ["g-rise", "g-fade", "g-row-in", "g-live"]) {
       expect(css, name).toMatch(new RegExp(`@keyframes\\s+${name}\\b`));
     }
     expect(css).toMatch(/\.g-sheet\s*\{[^}]*animation:\s*g-rise\s+var\(--g-dur-2\)\s+var\(--g-ease-out\)/);
     expect(css).toMatch(/\.g-view\s*[,{][^}]*animation:\s*g-fade\s+var\(--g-dur-2\)\s+var\(--g-ease-out\)/);
     expect(css).toMatch(/\.g-is-new\s*\{[^}]*animation:\s*g-row-in\s+var\(--g-dur-2\)\s+var\(--g-ease-out\)/);
     expect(css).toMatch(
-      /\.g-st--run::before\s*\{[^}]*animation:\s*g-live\s+2s\s+ease-in-out\s+infinite/,
+      /\.g-st--run::before\s*\{[^}]*animation:\s*g-live\s+2s\s+ease-in-out\s+infinite;\s*animation-play-state:\s*var\(--g-ambient-play\)/,
     );
+    expect(css).not.toMatch(/@keyframes\s+g-enter\b/);
   });
 
   it("exposes a shared g-press active scale using the press token", () => {

@@ -222,7 +222,7 @@ describe("Toast", () => {
 describe("layout.css", () => {
   it("uses only defined tokens and no shadow on the selected tab and no animation for reduced motion", () => {
     const used = new Set(Array.from(css.matchAll(/var\((--g-[\w-]+)/g), (m) => m[1]));
-    expect([...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-1|dur-2|ease)$/.test(n))).toEqual([]);
+    expect([...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-1|dur-2|ease|press-scale)$/.test(n))).toEqual([]);
     const selected = /\.g-tabs button\[aria-selected="true"\]\s*\{([^}]*)\}/.exec(css);
     expect(selected).not.toBeNull();
     expect(selected?.[1]).not.toMatch(/box-shadow|filter|gradient/);
