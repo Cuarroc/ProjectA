@@ -37,7 +37,7 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const classes = open.map((q) => classifyQuestion(q.question));
   const others = open.filter((_, i) => classes[i] === "other");
 
-  // The lanes say "Keine offene Entscheidung.", the count "nichts offen" — only true once the list was read.
+  // The lanes show their rule only once the list was read; an empty list says "Nichts offen" once, in the body.
   const listRead = open.length > 0 || (error === null && !loading);
 
   let body;
@@ -58,11 +58,11 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
       <div className="n-head">
         <StateGlyph form="need" />
         <h2 id="n-title">{t("state.need")}</h2>
-        {listRead && <span className="n-count">{open.length > 0 ? fill(t("needs.open"), { n: open.length }) : t("needs.none")}</span>}
+        {open.length > 0 && <span className="n-count">{fill(t("needs.open"), { n: open.length })}</span>}
       </div>
       {listRead &&
         LANES.map((lane) => (
-          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} workers={workers} onAnswer={onAnswer} />
+          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={onAnswer} />
         ))}
       {body}
       {said.map((s) => (

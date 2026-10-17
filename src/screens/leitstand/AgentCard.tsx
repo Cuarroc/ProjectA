@@ -2,13 +2,12 @@ import { useId, useRef, useState } from "react";
 import { Button } from "../../design/controls/Button";
 import "../../design/inputs/inputs.css";
 import { Avatar } from "../../design/inputs/Avatar";
-import { Lamp, type LampState } from "../../design/inputs/Lamp";
 import { StateMark } from "../../design/state/StateMark";
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
 import { useT } from "../../i18n/useT";
-import { lampFor, type LampKind } from "./lamps/lampFor";
-import { ageText, cardForm, fill, initials, modelText, toneFor } from "./leitstand";
+import { cardLamp } from "./lamps/lampFor";
+import { ageText, fill, initials, modelText, toneFor } from "./leitstand";
 import { ProofStrip } from "./proof/ProofStrip";
 
 export interface AgentCardProps {
@@ -24,8 +23,6 @@ export interface AgentCardProps {
 
 type Action = "restart" | "archive";
 
-const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off", unknown: "unknown" };
-
 /**
  * One running agent. The proof strip shows only what the card knows (the pull request); red-first,
  * gates and review stay "not connected" until V2-B9 delivers them.
@@ -37,7 +34,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   const { worker } = card;
   const model = modelText(card);
   // Same rule as the flow node: a done card is proven by a passed test, otherwise it reads "ohne Beweis".
-  const lamp = lampFor(card, card.testStatus === "pass", now);
+  const lamp = cardLamp(card, now);
   const taskId = useId();
   const [expanded, setExpanded] = useState(false);
   const canExpand = worker.task.length > 160;
@@ -89,8 +86,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
   return (
     <article className="g-glass ls-card">
       <div className="ls-row">
-        <StateMark form={cardForm(card)} />
-        <Lamp state={LAMP_STATE[lamp.lamp]} label={lamp.word} />
+        <StateMark form={lamp.form} label={lamp.word} />
         <span className="ls-time">{ageText(worker.createdAt, now)}</span>
       </div>
       <div className="ls-who">

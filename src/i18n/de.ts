@@ -176,7 +176,6 @@ export const de = {
   "leitstand.hours": "{n} h",
   "leitstand.days": "{n} T",
   "leitstand.justNow": "gerade eben",
-  "needs.none": "nichts offen",
   "needs.open": "{n} offen",
   "needs.emptyTitle": "Nichts offen",
   "needs.emptyHint": "Kein Agent wartet auf eine Antwort von dir.",
