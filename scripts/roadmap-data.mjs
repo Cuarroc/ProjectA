@@ -5,6 +5,9 @@ import { renderRoadmap } from "./lib/roadmap-page.mjs";
 import { main as planCheck } from "./plan-check.mjs";
 import { makeRunner, withExitCodes, isMain, runCli } from "./lib/dev-tools.mjs";
 
+// Round-trip so that 2026-13-45 is rejected, not just anything shaped like a date.
+const isoDate = d => { const t = Date.parse(`${d}T00:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(t) && new Date(t).toISOString().startsWith(d); };
+
 export const main = withExitCodes(async (argv, io, deps = {}) => {
   const { values } = parseArgs({ args: argv, options: { stdout: { type: "boolean" }, page: { type: "boolean" } } });
   const run = deps.run || makeRunner({ timeoutMs: 60000 });
@@ -42,12 +45,14 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   let text = JSON.stringify(data, null, 2) + "\n", target = ".pa/roadmap-data.json";
   if (values.page) {
     target = ".pa/roadmap.html";
-    const changes = command("git", ["log", mainSha, "--max-count=20", "--format=%cs%x09%s", "--", "docs/PLAN.md"]).split("\n").filter(l => l.includes("\t")).map(l => ({ date: l.split("\t")[0], subject: l.split("\t").slice(1).join("\t") }));
+    const changes = command("git", ["log", mainSha, "--max-count=20", "--format=%cs%x09%s", "--", "docs/PLAN.md"]).split("\n").filter(l => l.includes("\t") && isoDate(l.split("\t")[0])).map(l => ({ date: l.split("\t")[0], subject: l.split("\t").slice(1).join("\t") }));
     // The plan check reads the same origin/main tree; if it cannot run, findings stay undefined and the page says so.
     let findings, checked = "";
     const code = await (deps.planCheck || planCheck)(["--json"], { out: s => { checked += s; }, err: () => {} }, { run, now, read: p => command("git", ["show", `${mainSha}:${p}`]) });
     // Empty or malformed output must not abort the page; the renderer then marks the findings as not connected.
     if (code === 0 || code === 1) try { findings = JSON.parse(checked).findings; } catch {}
+    // One line, no payload: the page still renders, but the missing findings must not go unnoticed.
+    if (!Array.isArray(findings)) { findings = undefined; io.err(`roadmap: plan check gave no usable findings (exit ${code}); page shows them as not connected\n`); }
     text = renderRoadmap(data, { releases, changes, findings, now });
   }
   if (values.stdout) io.out(text);

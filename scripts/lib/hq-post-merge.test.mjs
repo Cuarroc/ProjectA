@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -184,4 +184,30 @@ test('post-merge roadmap failure prints one line and neither fails the hook nor 
   const output = f.hook();
   assert.equal(output.split('\n').filter(line => /Roadmap-Seite/.test(line)).length, 1, output);
   assert.equal(JSON.parse(readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8')).value, 'after roadmap failure');
+});
+
+test('post-merge skips the roadmap quietly when the script is missing', t => {
+  const f = fixture(t);
+  f.git('checkout', '-qB', 'main');
+  writeFileSync(join(f.dir, 'STAND.md'), 'without roadmap script');
+  f.git('commit', '-qam', 'source only');
+  const output = f.hook();
+  assert.doesNotMatch(output, /Roadmap-Seite/);
+  assert.equal(JSON.parse(readFileSync(join(f.dir, 'docs/dev-hq/data.json'), 'utf8')).value, 'without roadmap script');
+});
+
+// A PATH holding only the tools the hook needs, so `command -v node` fails while git and bash still work.
+test('post-merge skips the roadmap quietly when node is missing', { skip: process.platform === 'win32' && 'PATH stub needs symlinks' }, t => {
+  const f = fixture(t);
+  f.git('checkout', '-qB', 'main');
+  roadmapStub(f);
+  const bin = mkdtempSync(join(tmpdir(), 'hq-post-merge-bin-'));
+  t.after(() => rmSync(bin, { recursive: true, force: true }));
+  const which = spawnSync(bash, ['-c', 'for c in bash git dirname basename cat sed grep head tr env uname rm; do command -v "$c"; done'], { encoding: 'utf8' });
+  for (const path of which.stdout.split('\n').filter(Boolean)) symlinkSync(path, join(bin, path.split('/').at(-1)));
+  const result = spawnSync(join(bin, 'bash'), ['.githooks/post-merge'], { cwd: f.dir, env: { ...cleanEnv(), PATH: bin }, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(called(f), null);
+  assert.doesNotMatch(result.stderr, /Roadmap-Seite/);
+  assert.match(result.stderr, /node fehlt/);
 });
