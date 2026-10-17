@@ -6,7 +6,12 @@ import { focusableWithin, trapTarget } from "../../lib/useFocusTrap";
 export interface SheetProps {
   open: boolean;
   onClose: () => void;
-  "aria-label": string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+  role?: "dialog" | "alertdialog";
+  size?: "sm" | "md" | "lg";
+  dismissOnScrim?: boolean;
   children?: ReactNode;
 }
 
