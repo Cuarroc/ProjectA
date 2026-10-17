@@ -4,6 +4,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { saveMotionMode } from "../motion/motionMode";
+import { EXIT_MS } from "../motion/useExitTransition";
 import { Sheet } from "./Sheet";
 import { TabPanel, Tabs } from "./Tabs";
 import { ToastRegion } from "./Toast";
@@ -86,6 +88,31 @@ describe("Sheet", () => {
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(opener).toHaveFocus();
+  });
+
+  it("Sheet stays mounted while closing", () => {
+    vi.useFakeTimers();
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "Öffnen" });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    const dialog = screen.getByRole("dialog", { name: "Agent starten", hidden: true });
+    expect(dialog.parentElement).toHaveAttribute("data-state", "closing");
+    expect(dialog.parentElement).toHaveAttribute("aria-hidden", "true");
+    expect(opener).toHaveFocus();
+    act(() => { vi.advanceTimersByTime(EXIT_MS); });
+    expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("Sheet unmounts at once when motion is off", () => {
+    saveMotionMode("off");
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Öffnen" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
+    saveMotionMode("calm");
   });
 
   it("closes on a scrim mousedown but not on a mousedown inside the sheet", () => {
@@ -186,6 +213,7 @@ describe("Toast", () => {
     fireEvent.click(screen.getByRole("button", { name: "Neu" }));
     expect(screen.getByText("Zweite")).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(500); });
+    act(() => { vi.advanceTimersByTime(EXIT_MS); });
     expect(screen.queryByText("Erste")).toBeNull();
     expect(screen.getByText("Zweite")).toBeInTheDocument();
   });
@@ -199,5 +227,12 @@ describe("layout.css", () => {
     expect(selected).not.toBeNull();
     expect(selected?.[1]).not.toMatch(/box-shadow|filter|gradient/);
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce\)\s*\{[^@]*\.g-sheet[^}]*animation:\s*none/);
+  });
+
+  it("motion.css gives the closing scrim and sheet and toast an exit animation", () => {
+    const motion = readFileSync(resolve(__dirname, "../motion.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const sel of ['.g-scrim[data-state="closing"]', '.g-sheet[data-state="closing"]', '.g-toast[data-state="closing"]']) {
+      expect(motion).toMatch(new RegExp(`${sel.replace(/[[\]".-]/g, "\\$&")}[^}]*animation:[^;}]*var\\(--g-dur-exit\\)`));
+    }
   });
 });
