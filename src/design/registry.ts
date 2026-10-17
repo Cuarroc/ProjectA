@@ -1,7 +1,7 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
 // keeps it in step with the `export function` components under src/design.
 
-export type ComponentFamily = "controls" | "data" | "fabrik" | "gallery" | "hall" | "inputs" | "layout" | "state";
+export type ComponentFamily = "controls" | "data" | "fabrik" | "gallery" | "hall" | "inputs" | "layout" | "state" | "surface";
 
 export interface ComponentEntry {
   /** The exported function name. */
@@ -180,5 +180,23 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: ["form run, need, rev, ok, done, bad"], states: ["missing or unknown form draws as unknown"],
     a11y: "Shape, word and colour together; colour is never the only signal.",
     text: "src/i18n/de.ts state.* via states.ts; label overrides the word.",
+  },
+  {
+    name: "ListRow", family: "surface",
+    variants: [], states: ["current, selected, disabled; both marks come from the caller"],
+    a11y: "Native button: one tab stop, Enter and Space activate; current sets aria-current, a listbox passes role=\"option\" and aria-selected. Selected also shows a bar, not colour alone.",
+    text: "Children from the caller.",
+  },
+  {
+    name: "Separator", family: "surface",
+    variants: ["orientation horizontal, vertical"], states: ["decorative"],
+    a11y: "Semantic hr with aria-orientation when vertical; decorative is role=\"none\" and aria-hidden.",
+    text: "No text.",
+  },
+  {
+    name: "Badge", family: "surface",
+    variants: ["tone neutral, accent"], states: ["no finite count and no children renders nothing; 0 is shown"],
+    a11y: "Static text, never focusable; the count or tag is the signal, so colour is never alone. A bare count needs a word beside it.",
+    text: "Count or children from the caller; not a state word (use StateMark) and not proof (use ProofChip).",
   },
 ];
