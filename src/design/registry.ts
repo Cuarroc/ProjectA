@@ -1,7 +1,7 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
 // keeps it in step with the component exports (function, const, default) under src/design.
 
-export type ComponentFamily = "controls" | "data" | "fabrik" | "gallery" | "hall" | "inputs" | "layout" | "state" | "surface";
+export type ComponentFamily = "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "inputs" | "layout" | "state" | "surface";
 
 export interface ComponentEntry {
   /** The exported function name. */
@@ -96,6 +96,18 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: ["state run, need, rev, ok, done, bad, unknown"], states: ["missing or unknown state draws as unknown"],
     a11y: "role=\"img\" named by label plus state word; the inner glyph is mandatory, colour is never alone.",
     text: "src/i18n/de.ts fabrik.orbName and state words via states.ts; label from the caller.",
+  },
+  {
+    name: "Field", family: "forms",
+    variants: [], states: ["hint shown, error shown (invalid), filled, focused as data attributes"],
+    a11y: "Label tied to the control by id; aria-describedby lists hint and error, aria-invalid when there is an error; the error is text in role=\"alert\".",
+    text: "Label, hint and error from the caller.",
+  },
+  {
+    name: "Checkbox", family: "forms",
+    variants: [], states: ["checked, unchecked, mixed, disabled"],
+    a11y: "Native checkbox: Space and label click toggle; mixed sets indeterminate and aria-checked=\"mixed\".",
+    text: "Label from the caller.",
   },
   {
     name: "Hall", family: "hall",
