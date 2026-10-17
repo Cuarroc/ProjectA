@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { parse } from "postcss";
+import { afterEach, expect, it, vi } from "vitest";
 import { StateGlyph, StateMark } from "./StateMark";
 import {
   COLUMN_FORM, REASON_FORM, STATE_FORMS, STATE_WORDS, formForColumn, formForReason,
@@ -84,4 +85,34 @@ it("StateGlyph renders no undefined shape class for an unknown form", () => {
     expect(container.querySelector(".g-glyph--unknown")).toHaveAttribute("aria-hidden", "true");
     unmount();
   }
+});
+
+const motion = readFileSync(resolve(__dirname, "../motion.css"), "utf8");
+
+function declsOf(selector: string): Record<string, string> {
+  const found: Record<string, string> = {};
+  parse(motion).walkRules((rule) => { if (rule.selectors.includes(selector)) rule.walkDecls((d) => { found[d.prop] = d.value; }); });
+  return found;
+}
+
+it("run ring is not infinite in calm", () => {
+  const ring = declsOf(".g-st--run::before");
+  // An infinite ring may only play while the ambient mode token says so (paused in Ruhig and under reduce).
+  if (/\binfinite\b/.test(ring.animation ?? "")) expect(ring["animation-play-state"]).toBe("var(--g-ambient-play)");
+  expect(ring.animation).toBeDefined();
+  expect(declsOf(".g-st[data-ping]::before").animation).toMatch(/^g-ping .* 1$/);
+});
+
+afterEach(() => vi.useRealTimers());
+
+it("StateMark pings once on a form change and never on mount", () => {
+  vi.useFakeTimers();
+  const { rerender } = render(<StateMark form="need" />);
+  expect(screen.getByText("Braucht dich")).not.toHaveAttribute("data-ping");
+  rerender(<StateMark form="run" label="x" />);
+  expect(screen.getByText("x")).toHaveAttribute("data-ping");
+  act(() => { vi.advanceTimersByTime(600); });
+  expect(screen.getByText("x")).not.toHaveAttribute("data-ping");
+  rerender(<StateMark form="run" label="y" />);
+  expect(screen.getByText("y")).not.toHaveAttribute("data-ping");
 });

@@ -7,11 +7,8 @@ const cssPath = resolve(__dirname, "motion.css");
 const css = readFileSync(cssPath, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 
 // Match declarations, not line numbers: adding tokens must not move the exceptions.
-// DS-05 must shrink this list; never add entries (original inputs.css:48, motion.css:78).
-const layoutAllowlist = [
-  "inputs/inputs.css|.g-meter b|transition:width var(--g-dur-3, 320ms) var(--g-ease, cubic-bezier(.2, .8, .2, 1))",
-  "motion.css|.g-meter b|transition:width var(--g-dur-3) var(--g-ease-out)",
-];
+// DS-X-12 emptied this list: never add entries.
+const layoutAllowlist: string[] = [];
 const layoutProperty = /^(?:(?:min-|max-)?(?:width|height|(?:inline|block)-size)|top|left|right|bottom|inset(?:-.+)?|margin(?:-.+)?|padding(?:-.+)?|grid-template(?:-.+)?|flex-basis|(?:row-|column-)?gap|font-size|line-height|border(?:-.+)?-width)$/;
 function layoutMotion(source: string): string[] {
   const findings: string[] = [];
@@ -94,7 +91,7 @@ describe("DS-01 motion scale", () => {
     }
   });
 
-  it("allows only the two existing meter layout animations across all design stylesheets", () => {
+  it("allows no layout-property animation in any design stylesheet", () => {
     const findings = readdirSync(__dirname, { recursive: true }).filter((file) => String(file).endsWith(".css")).flatMap((file) =>
       layoutMotion(readFileSync(resolve(__dirname, String(file)), "utf8")).map((entry) => `${String(file).replaceAll("\\", "/")}|${entry}`));
     expect(findings.sort()).toEqual([...layoutAllowlist].sort());
