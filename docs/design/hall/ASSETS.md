@@ -53,7 +53,7 @@ it is an opaque hex colour in both themes.
 | 10 | warm tone (wood, crates; follows the theme) | `--g-av3` |
 | 11 | neutral cloth, crates | `--g-av6` |
 | 12 | cool wall tint | `--g-amb1` |
-| 13 | green tint (plants, mats) | `--g-amb2` |
+| 13 | hair (the same colour in both themes, 3:1 against the skin; tiles never use it) | `--g-px-hair` |
 | 14 | warm floor tint | `--g-amb3` |
 | 15 | skin (faces, hands; the same colour in both themes, 3:1 against floor and ink) | `--g-px-skin` |
 
