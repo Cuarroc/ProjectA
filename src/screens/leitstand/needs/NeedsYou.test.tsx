@@ -154,6 +154,14 @@ describe("NeedsYou", () => {
     expect(container.textContent).not.toMatch(/\d/);
   });
 
+  it("says nothing is open exactly once", async () => {
+    backend([], () => null);
+    render(<Harness />);
+    await screen.findByText("Nichts offen");
+    expect(screen.getAllByText(/nichts offen/i)).toHaveLength(1);
+    expect(screen.queryByText("Keine offene Entscheidung.")).toBeNull();
+  });
+
   it("shows the money one-liner while no money question is open", async () => {
     backend([], () => null);
     const { container } = render(<Harness />);
@@ -161,7 +169,6 @@ describe("NeedsYou", () => {
     expect(screen.getByText("Geld ausgeben braucht deine Freigabe.")).toBeInTheDocument();
     expect(screen.getByText("Installieren braucht deine Freigabe.")).toBeInTheDocument();
     expect(screen.getByText("Löschen braucht deine Freigabe.")).toBeInTheDocument();
-    expect(screen.getAllByText("Keine offene Entscheidung.")).toHaveLength(3);
     expect(container.textContent).not.toMatch(/\d/);
   });
 
@@ -199,20 +206,20 @@ describe("NeedsYou", () => {
     expect(screen.queryByRole("region", { name: "Löschen" })).toBeNull();
   });
 
-  it("count claims nothing open only after the list was read", async () => {
+  it("claims nothing open only after the list was read", async () => {
     mocks.invoke.mockRejectedValue(new Error("core unreachable"));
     const failed = render(<Harness />);
     expect(await screen.findByText("Nicht verbunden")).toBeInTheDocument();
-    expect(screen.queryByText("nichts offen")).toBeNull();
+    expect(screen.queryByText("Nichts offen")).toBeNull();
     failed.unmount();
 
     let read: (rows: unknown[]) => void = () => {};
     mocks.invoke.mockImplementation(() => new Promise((resolve) => (read = resolve)));
     render(<Harness />);
     expect(screen.getByText("Fragen werden gelesen …")).toBeInTheDocument();
-    expect(screen.queryByText("nichts offen")).toBeNull();
+    expect(screen.queryByText("Nichts offen")).toBeNull();
     await act(async () => read([]));
-    expect(screen.getByText("nichts offen")).toBeInTheDocument();
+    expect(screen.getByText("Nichts offen")).toBeInTheDocument();
   });
 
   it("shows no decision lane claiming nothing is open while the list is loading", () => {

@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getBoardState } from "../../lib/ipc";
 import type { AgentProfile, BoardCard } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
+import { cardLamp } from "./lamps/lampFor";
 import { agentCards, cardForm, countByFilter } from "./leitstand";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -84,7 +85,10 @@ it("derives forms and counts from the real get_board_state shape and leaves coor
   const list = agentCards(await cards());
   expect(list.map((c) => c.worker.id)).toEqual(["w1", "w2", "w3"]);
   expect(list.map(cardForm)).toEqual(["run", "need", "bad"]);
-  expect(countByFilter(list)).toMatchObject({ all: 3, run: 1, need: 1, rev: 0, ok: 0, done: 0, bad: 1 });
+  // The cards and their chips use the lamp form; on this shape it equals the column form of the org chart.
+  const formOf = (c: BoardCard) => cardLamp(c, NOW).form;
+  expect(list.map(formOf)).toEqual(["run", "need", "bad"]);
+  expect(countByFilter(list, formOf)).toMatchObject({ all: 3, run: 1, need: 1, rev: 0, ok: 0, done: 0, bad: 1 });
 });
 
 it("shows one card per agent with its proof strip and filters by state", async () => {
@@ -150,4 +154,46 @@ it("changes the status text when switching from one empty filter to another", as
 it("the proof strip is a direct child of each card, above the foot", async () => {
   const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
   expect(container.querySelectorAll(".ls-card > .ps + .ls-foot")).toHaveLength(3);
+});
+
+it("filter chips count the same form the cards show", async () => {
+  vi.mocked(invoke).mockResolvedValue({
+    cards: [
+      { worker: worker("b1"), column: "needs_you", attention_code: "agent_reported", attention_grade: "blocking" },
+      { worker: worker("i1", { status: "exited" }), column: "working" },
+      { worker: worker("d1"), column: "done", test_status: null },
+      { worker: worker("r1"), column: "working" },
+    ],
+    coordinators: [],
+  });
+  const list = (await getBoardState("p1")).cards;
+  render(<LeitstandCards cards={list} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  const region = screen.getByRole("region", { name: "Agenten" });
+  // The blocked, the idle and the done-without-proof card all carry the "need" mark.
+  expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("3");
+  expect(screen.getByRole("button", { name: /^Läuft/ })).toHaveTextContent("1");
+  fireEvent.click(screen.getByRole("button", { name: /^Braucht dich/ }));
+  expect(within(region).getAllByRole("article")).toHaveLength(3);
+  for (const article of within(region).getAllByRole("article")) expect(article.querySelector(".g-st--need")).not.toBeNull();
+});
+
+it("the review and ready and failure chips count their cards", async () => {
+  vi.mocked(invoke).mockResolvedValue({
+    cards: [
+      { worker: worker("v1"), column: "in_review" },
+      { worker: worker("m1"), column: "ready_to_merge" },
+      { worker: worker("f1"), column: "working", attention_code: "agent_stalled", attention_grade: "blocking" },
+    ],
+    coordinators: [],
+  });
+  const list = (await getBoardState("p1")).cards;
+  render(<LeitstandCards cards={list} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  const region = screen.getByRole("region", { name: "Agenten" });
+  for (const [chip, mark] of [["In Prüfung", "rev"], ["Bereit zum Mergen", "ok"], ["Fehler", "bad"]]) {
+    expect(screen.getByRole("button", { name: new RegExp(`^${chip}`) })).toHaveTextContent("1");
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${chip}`) }));
+    const articles = within(region).getAllByRole("article");
+    expect(articles).toHaveLength(1);
+    expect(articles[0]!.querySelector(`.g-st--${mark}`)).not.toBeNull();
+  }
 });
