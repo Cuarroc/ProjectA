@@ -1,3 +1,5 @@
+import "../../design/forms/forms.css";
+import { SwitchField } from "../../design/forms/SwitchField";
 import { listFeatureFlags, type FeatureFlag } from "../../flags/featureFlags";
 import { useFeatureFlag } from "../../flags/useFeatureFlag";
 
@@ -11,10 +13,7 @@ function FlagSwitch({ flag }: { flag: FeatureFlag }) {
   const [enabled, setEnabled] = useFeatureFlag(flag.id);
   return (
     <>
-      <label className="settings-check">
-        <input type="checkbox" name={`preview-${flag.id}`} checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
-        <span>{flag.label}</span>
-      </label>
+      <SwitchField name={`preview-${flag.id}`} label={flag.label} checked={enabled} onCheckedChange={setEnabled} />
       <p className="settings-hint">{flag.description} Beim Umschalten lädt die Oberfläche neu.</p>
     </>
   );
