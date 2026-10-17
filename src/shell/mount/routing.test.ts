@@ -151,4 +151,11 @@ describe("design gallery route (DS-X-15)", () => {
     expect(ROUTES.some((route) => route.base === GALLERY_PATH)).toBe(false);
     expect(shouldMountLegacyTerminal(GALLERY_PATH)).toBe(false);
   });
+
+  it("isGallery ignores a query string", () => {
+    expect(isGallery(`${GALLERY_PATH}?page=farben`)).toBe(true);
+    expect(isGallery(`${GALLERY_PATH}/?x=1`)).toBe(true);
+    expect(isGallery(`${GALLERY_PATH}X`)).toBe(false);
+    expect(isGallery(`${GALLERY_PATH}X?x=1`)).toBe(false);
+  });
 });
