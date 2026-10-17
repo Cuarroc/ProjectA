@@ -615,6 +615,7 @@ if (designDarkAt < 0) {
       // DS-X-05: field error text (forms.css) and the checkbox mark on its accent fill (above) / box outline on glass.
       check(mode, "field error g-bad / glass", color(vars, "g-bad"), glass);
       check(mode, "checkbox outline g-muted / glass", color(vars, "g-muted"), glass, 3);
+      check(mode, "g-ink / accent-soft auf glass (ListRow selected)", color(vars, "g-ink"), soften(glass));
       check(mode, "g-on-need / g-need", color(vars, "g-on-need"), color(vars, "g-need"));
       const dangerHover = colorExpr(vars, "color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%)");
       for (const [name, surface] of [["chrome", chrome], ["glass", glass]]) {
@@ -627,6 +628,8 @@ if (designDarkAt < 0) {
       }
       // DS-H-03b: hall skin stays one colour; it needs 3:1 against the floor and the ink of the features.
       for (const against of ["g-ground", "g-ink"]) check(mode, `g-px-skin / ${against}`, color(vars, "g-px-skin"), color(vars, against), 3);
+      // DS-H-03c: hair is one colour too; the edge that matters is the forehead, so it is held against the skin (the g-ink outline separates it from the floor).
+      check(mode, "g-px-hair / g-px-skin", color(vars, "g-px-hair"), color(vars, "g-px-skin"), 3);
       // Fabrik orb (fabrik.css): glyph on the fill, and the fill itself on glass (non-text).
       for (const role of [...stateRoles, "g-muted"]) {
         const on = role === "g-need" ? "g-on-need" : "g-on-accent";

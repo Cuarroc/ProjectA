@@ -1,0 +1,27 @@
+/* DS-X-11 surface blocks: list row, separator, badge. Tokens only. A row's
+   selected look is shape plus tint (bar and soft accent), set by the caller's
+   aria-current / aria-selected, never by a class of its own. */
+
+.g-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px;
+  border-radius: var(--g-r-ctl); color: var(--g-ink); font: 400 13px/1.4 var(--g-font-sans); text-align: left; cursor: pointer;
+  transition: background-color var(--g-t);
+}
+.g-row:is([aria-current]:not([aria-current="false"]), [aria-selected="true"]) {
+  background: var(--g-accent-soft); box-shadow: inset 2px 0 0 var(--g-accent);
+}
+.g-row:disabled { cursor: not-allowed; opacity: .6; }
+@media (hover: hover) and (pointer: fine) {
+  .g-row:not(:disabled, [aria-current]:not([aria-current="false"]), [aria-selected="true"]):hover { background: var(--g-tint); }
+}
+.g-row:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
+
+.g-sep { border: 0; margin: 0; background: var(--g-hair); flex: none; height: 1px; width: 100%; }
+.g-sep--v { height: auto; width: 1px; align-self: stretch; }
+
+.g-badge {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px;
+  background: var(--g-tint-hi); border: 1px solid var(--g-line); color: var(--g-ink2);
+  font: 500 11px/1 var(--g-font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; flex: none;
+}
+.g-badge--accent { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
