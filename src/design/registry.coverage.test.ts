@@ -1,13 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { COMPONENT_REGISTRY } from "./registry";
 
 // DS-X-14: like the tauriBrowserMock coverage test, this reads source text so a
-// new `export function` component without a registry entry (or an entry whose
-// component was renamed or removed) turns the test red.
+// new component export (function, const or default) without a registry entry (or
+// an entry whose component was renamed or removed) turns the test red; an export
+// style the scan cannot classify fails loudly instead of slipping through.
 const designDir = dirname(fileURLToPath(import.meta.url));
 
 function componentFiles(dir: string): string[] {
@@ -20,16 +21,26 @@ function componentFiles(dir: string): string[] {
 
 interface Scan { components: string[]; unsupported: string[] }
 
+const PASCAL = /^[A-Z]\w*[a-z]\w*$/;
+
 /** Components a `.tsx` source exports, plus every export line the scan cannot classify. */
 export function scanExports(source: string): Scan {
   const found: Scan = { components: [], unsupported: [] };
-  for (const match of source.matchAll(/^export function (\w+)/gm)) found.components.push(match[1]);
+  for (const line of source.split(/\r?\n/)) {
+    if (!line.startsWith("export")) continue;
+    const named = line.match(/^export (?:default )?(?:async )?(?:function|const) (\w+)/);
+    if (named) {
+      if (PASCAL.test(named[1])) found.components.push(named[1]);
+    } else if (!/^export (?:type|interface) /.test(line)) found.unsupported.push(line);
+  }
   return found;
 }
 
-/** Top-level folder below src/design, whatever the separator. */
+const toPosix = (path: string) => path.replaceAll("\\", "/");
+
+/** Top-level folder below src/design (nested folders keep it), whatever the separator. */
 export function familyOf(path: string): string {
-  return basename(dirname(path));
+  return toPosix(path).split("/")[0];
 }
 
 /** Exported component name -> file (relative to src/design, posix), plus unclassified export lines. */
@@ -37,7 +48,7 @@ function scanDesign(): { exported: Map<string, string>; unsupported: string[] } 
   const exported = new Map<string, string>();
   const unsupported: string[] = [];
   for (const file of componentFiles(designDir)) {
-    const path = relative(designDir, file);
+    const path = toPosix(relative(designDir, file));
     const scan = scanExports(readFileSync(file, "utf8"));
     for (const name of scan.components) exported.set(name, path);
     unsupported.push(...scan.unsupported.map((line) => `${path}: ${line}`));

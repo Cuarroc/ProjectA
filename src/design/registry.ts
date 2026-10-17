@@ -1,5 +1,5 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
-// keeps it in step with the `export function` components under src/design.
+// keeps it in step with the component exports (function, const, default) under src/design.
 
 export type ComponentFamily = "controls" | "data" | "fabrik" | "gallery" | "hall" | "inputs" | "layout" | "state";
 
