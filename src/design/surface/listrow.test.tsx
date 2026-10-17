@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -33,6 +35,13 @@ describe("ListRow", () => {
     expect((row as HTMLButtonElement).type).toBe("button");
     fireEvent.click(row);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("selected look covers every non-false aria-current token", () => {
+    const css = readFileSync(resolve(__dirname, "surface.css"), "utf8");
+    // page, step, location and date all mean "current"; only "false" must not select.
+    expect(css).not.toContain('aria-current="true"');
+    expect(css.match(/\[aria-current\]:not\(\[aria-current="false"\]\)/g)).toHaveLength(2);
   });
 
   it("does not activate while disabled", () => {

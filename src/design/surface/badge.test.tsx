@@ -22,6 +22,15 @@ describe("Badge", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("false or empty children render no badge", () => {
+    const { container, rerender } = render(<Badge>{false}</Badge>);
+    expect(container.firstChild).toBeNull();
+    rerender(<Badge>{""}</Badge>);
+    expect(container.firstChild).toBeNull();
+    rerender(<Badge count={4}>{false}</Badge>);
+    expect(screen.getByText("4").className).toContain("g-badge");
+  });
+
   it("falls back to the neutral look for an unknown tone", () => {
     const loose = { tone: "danger" } as object;
     render(<Badge {...loose}>x</Badge>);

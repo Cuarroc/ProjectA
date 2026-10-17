@@ -1,6 +1,7 @@
+import type { HTMLAttributes } from "react";
 import "./surface.css";
 
-export interface SeparatorProps {
+export interface SeparatorProps extends HTMLAttributes<HTMLHRElement> {
   orientation?: "horizontal" | "vertical";
   /** Pure decoration: hidden from assistive tech instead of announced. */
   decorative?: boolean;
