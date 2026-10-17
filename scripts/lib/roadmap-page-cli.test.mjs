@@ -104,6 +104,32 @@ test("git log lines without a tab are skipped", async () => {
   });
 });
 
+test("a change line without an ISO date is dropped", async () => {
+  const log = "forged\tplan: invented\n2026-13-45\tplan: impossible\n10-14-2026\tplan: wrong order\n2026-10-14\tplan: kept\n";
+  const fake = (cmd, args) => cmd === "git" && args[0] === "log" ? { code: 0, stdout: log } : undefined;
+  await inRepo({ fake }, ({ code }, dir) => {
+    const html = readFileSync(join(dir, ".pa", page), "utf8");
+    assert.equal(code, 0);
+    assert.ok(html.includes("plan: kept"));
+    for (const dropped of ["invented", "impossible", "wrong order"]) assert.ok(!html.includes(dropped), dropped);
+  });
+});
+
+test("an unparsable plan check writes one diagnostic line and still renders", async () => {
+  for (const output of ["", "not json", "[1]"]) {
+    const planCheck = async (_argv, io) => { io.out(output); return 0; };
+    await inRepo({ planCheck, withPlanCheck: true }, ({ code, errors }, dir) => {
+      assert.equal(code, 0, errors);
+      assert.equal(errors.split("\n").filter(Boolean).length, 1, errors);
+      assert.match(errors, /^roadmap: plan check/);
+      assert.ok(!errors.includes(output) || output === "", "no payload dump");
+      assert.match(readFileSync(join(dir, ".pa", page), "utf8"), /noch nicht verbunden: das Ergebnis der Plan-Prüfung/);
+    });
+  }
+  const planCheck = async (_argv, io) => { io.out(JSON.stringify({ findings: [] })); return 0; };
+  await inRepo({ planCheck, withPlanCheck: true }, ({ errors }) => assert.equal(errors, ""));
+});
+
 test("page and stdout together print html and write no file", async () => {
   await inRepo({ args: ["--page", "--stdout"], ignore: "" }, ({ code, out }, dir) => {
     assert.equal(code, 0);
