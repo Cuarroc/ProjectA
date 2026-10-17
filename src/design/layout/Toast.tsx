@@ -8,6 +8,10 @@ export interface ToastItem {
   id: number;
   text: string;
   tone: ToastTone;
+  /** Optional button; its handler runs once, then the toast leaves. */
+  action?: { label: string; onAction: () => void };
+  /** Set by `useToast().dismiss`: leave through the exit transition. */
+  closing?: boolean;
 }
 
 function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; onDismiss: (id: number) => void }) {
@@ -15,7 +19,8 @@ function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; o
   const dismiss = useRef(onDismiss);
   // `open` only starts the exit; onDismiss fires once the exit is over, so the parent removes the toast after it animated out.
   const [open, setOpen] = useState(true);
-  const { mounted, closing } = useExitTransition(open);
+  const acted = useRef(false);
+  const { mounted, closing } = useExitTransition(open && !toast.closing);
   useEffect(() => { dismiss.current = onDismiss; });
   useEffect(() => {
     const handle = setTimeout(() => setOpen(false), ttl);
@@ -26,6 +31,11 @@ function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; o
   return (
     <div className={`g-toast g-toast--${toast.tone}`} data-state={closing ? "closing" : "open"} aria-hidden={closing || undefined} role={toast.tone === "bad" ? "alert" : "status"}>
       <span>{toast.text}</span>
+      {toast.action && (
+        <button type="button" className="g-toast__act" onClick={() => { if (acted.current) return; acted.current = true; toast.action?.onAction(); setOpen(false); }}>
+          {toast.action.label}
+        </button>
+      )}
       <button type="button" className="g-toast__x" aria-label={de["action.close"]} onClick={() => setOpen(false)}>×</button>
     </div>
   );
