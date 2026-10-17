@@ -612,6 +612,7 @@ if (designDarkAt < 0) {
       check(mode, "g-on-accent / g-accent-hover", color(vars, "g-on-accent"), color(vars, "g-accent-hover"));
       check(mode, "g-accent / accent-soft auf ground", color(vars, "g-accent"), soften(ground));
       check(mode, "g-accent / accent-soft auf glass", color(vars, "g-accent"), soften(glass));
+      check(mode, "g-ink / accent-soft auf glass (ListRow selected)", color(vars, "g-ink"), soften(glass));
       check(mode, "g-on-need / g-need", color(vars, "g-on-need"), color(vars, "g-need"));
       const dangerHover = colorExpr(vars, "color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%)");
       for (const [name, surface] of [["chrome", chrome], ["glass", glass]]) {
