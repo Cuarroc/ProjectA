@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import { de } from "../../i18n/de";
 import { STATE_UNKNOWN_WORD } from "../state/states";
-import { EMPTY_HALL, SAMPLE_HALL } from "./fixtures";
+import { EMPTY_HALL, pieceState, SAMPLE_HALL } from "./fixtures";
 import { Hall } from "./Hall";
 
 const sprites = (c: HTMLElement, part: string) => [...c.querySelectorAll(`[data-sprite*="${part}"]`)];
@@ -51,4 +51,21 @@ it("three work pieces each carry a text name", () => {
   expect(sprites(container, "prop-stamp-0")).toHaveLength(1);
   expect(screen.getByText(de["hall.gate"])).toBeVisible();
   expect(screen.getByText(de["hall.prop.stamp"])).toBeVisible();
+});
+
+it("text outside the six forms is no state: the piece draws as unknown", () => {
+  const { container } = render(<Hall scene={{ pieces: [{ id: "probe-x", name: "hall.piece.a", role: "check", state: pieceState("bogus") }] }} />);
+  expect(pieceState("bogus")).toBeUndefined();
+  expect(pieceState("rev")).toBe("rev");
+  expect(sprites(container, "fig-check-unknown-0")).toHaveLength(1);
+  expect(screen.getByText(STATE_UNKNOWN_WORD)).toBeVisible();
+});
+
+it("several stamped pieces each get a stamp and no key warning", () => {
+  const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+  const pieces = SAMPLE_HALL.pieces.map((p) => ({ ...p, stamped: true }));
+  const { container } = render(<Hall scene={{ pieces }} />);
+  expect(sprites(container, "prop-stamp-0")).toHaveLength(3);
+  expect(warn).not.toHaveBeenCalled();
+  warn.mockRestore();
 });
