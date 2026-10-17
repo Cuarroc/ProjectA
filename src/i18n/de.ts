@@ -228,6 +228,7 @@ export const de = {
   "gallery.family.inputs": "Eingaben",
   "gallery.family.layout": "Layout",
   "gallery.family.state": "Zustand",
+  "gallery.family.surface": "Flächen",
 } as const;
 
 export type MessageKey = keyof typeof de;
