@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>DS-H-07b shot motion fixture</title>
+  <style>
+    body { margin: 0; background: #fff; }
+    html.late body { background: #000; }
+    #spin { width: 80px; height: 80px; margin: 40px; background: #1F57D6; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script>
+    // Mimics the shell: the stored motion mode becomes data-motion before first paint (absent = calm).
+    const m = localStorage.getItem("projecta.settings.motionMode");
+    if (m) document.documentElement.dataset.motion = m;
+    // A late visual change, so --wait can be told apart from a shot right after load.
+    setTimeout(() => document.documentElement.classList.add("late"), 1200);
+  </script>
+</head>
+<body><main><div id="spin"></div>motion fixture</main></body>
+</html>
