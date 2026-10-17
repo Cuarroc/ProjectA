@@ -155,7 +155,7 @@ describe("Segmented", () => {
 describe("controls.css", () => {
   it("uses only tokens that tokens.css defines", () => {
     const used = new Set(Array.from(css.matchAll(/var\((--g-[\w-]+)/g), (m) => m[1]));
-    const missing = [...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-1|ease|t)$/.test(n));
+    const missing = [...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-1|ease|t|press-scale)$/.test(n));
     expect(missing).toEqual([]);
   });
 

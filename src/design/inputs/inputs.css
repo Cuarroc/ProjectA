@@ -52,8 +52,9 @@
 }
 .g-meter { display: block; height: 4px; border-radius: 2px; background: var(--g-line); overflow: hidden; }
 .g-meter b {
-  display: block; height: 100%; border-radius: 2px; background: var(--g-ink2);
-  transition: width var(--g-dur-3, 320ms) var(--g-ease, cubic-bezier(.2, .8, .2, 1));
+  display: block; width: 100%; height: 100%; border-radius: 2px; background: var(--g-ink2);
+  transform-origin: left; /* scaleX is set inline by Meter */
+  transition: transform var(--g-dur-3, 320ms) var(--g-ease, cubic-bezier(.2, .8, .2, 1));
 }
 .g-meter .g-meter--accent { background: var(--g-accent); }
 .g-meter .g-meter--hot { background: var(--g-need); }

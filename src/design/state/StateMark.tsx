@@ -1,3 +1,4 @@
+import { usePulseOnChange } from "../motion/usePulseOnChange";
 import { STATE_UNKNOWN_FORM, STATE_UNKNOWN_WORD, STATE_WORDS, type StateForm } from "./states";
 import "./state.css";
 
@@ -14,8 +15,8 @@ export function StateGlyph({ form }: { form: StateForm | undefined }) {
 
 /** Shape, word and color together: the color is never the only signal. */
 export function StateMark({ form, label }: { form: StateForm | undefined; label?: string }) {
-  if (knownStateForm(form)) {
-    return <span className={`g-st g-st--${form}`}>{label ?? STATE_WORDS[form]}</span>;
-  }
-  return <span className={`g-st g-st--${STATE_UNKNOWN_FORM}`}>{label ?? STATE_UNKNOWN_WORD}</span>;
+  const known = knownStateForm(form);
+  const shape = known ? form : STATE_UNKNOWN_FORM;
+  const ping = usePulseOnChange<HTMLSpanElement>(shape);
+  return <span ref={ping} className={`g-st g-st--${shape}`}>{label ?? (known ? STATE_WORDS[form] : STATE_UNKNOWN_WORD)}</span>;
 }
