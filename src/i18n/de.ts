@@ -223,6 +223,7 @@ export const de = {
   "gallery.family.controls": "Bedienelemente",
   "gallery.family.data": "Daten",
   "gallery.family.fabrik": "Fabrik",
+  "gallery.family.forms": "Formulare",
   "gallery.family.gallery": "Galerie",
   "gallery.family.hall": "Halle",
   "gallery.family.inputs": "Eingaben",

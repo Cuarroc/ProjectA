@@ -1,0 +1,23 @@
+/* DS-X-05 forms. Not imported by the app yet. Consumes --g-* from tokens.css and motion.css only. */
+
+.g-field { display: grid; gap: var(--g-space-3); min-width: 0; }
+.g-field__label { font: var(--g-t-label); color: var(--g-ink2); }
+.g-field__hint { margin: 0; font: var(--g-t-note); color: var(--g-muted); }
+.g-field__error { margin: 0; font: var(--g-t-note); color: var(--g-bad); }
+.g-field[data-invalid] .g-inp { border-color: var(--g-danger-line); }
+
+.g-cb { position: relative; display: inline-flex; align-items: flex-start; gap: var(--g-space-4); font: var(--g-t-body); color: var(--g-ink); cursor: pointer; }
+.g-cb:has(.g-cb__in:disabled) { cursor: not-allowed; opacity: .5; }
+/* The native input stays the control (focus, Space, form value); it is invisible but covers the drawn box. */
+.g-cb__in { position: absolute; inset: 0 auto auto 0; width: 18px; height: 18px; margin: 0; opacity: 0; cursor: inherit; }
+.g-cb__box {
+  position: relative; flex: none; box-sizing: border-box; width: 18px; height: 18px; border-radius: var(--g-r-xs);
+  border: 1.5px solid var(--g-muted); background: var(--g-tint);
+  transition: background-color var(--g-dur-1) var(--g-ease-out), border-color var(--g-dur-1) var(--g-ease-out);
+}
+.g-cb__box::after { content: ""; position: absolute; opacity: 0; }
+.g-cb__in:checked + .g-cb__box, .g-cb__in:indeterminate + .g-cb__box { background: var(--g-accent); border-color: var(--g-accent); }
+.g-cb__in:checked + .g-cb__box::after { opacity: 1; left: 5px; top: 1px; width: 4px; height: 9px; border: solid var(--g-on-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.g-cb__in:indeterminate + .g-cb__box::after { opacity: 1; left: 3px; top: 7px; width: 8px; height: 2px; background: var(--g-on-accent); }
+.g-cb__in:focus-visible + .g-cb__box { outline: var(--g-focus); outline-offset: var(--g-focus-offset); }
+.g-cb__text { padding-top: 1px; }
