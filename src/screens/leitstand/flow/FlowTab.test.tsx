@@ -37,7 +37,7 @@ it("shows the fallback name on a blocked profile", async () => {
   expect(within(flowNode).getByText("zu wenig Daten")).toBeInTheDocument();
   expect(within(flowNode).queryByRole("meter")).toBeNull();
   expect(within(flowNode).getByText("Fix the start block")).toBeInTheDocument();
-  expect(within(flowNode).getByRole("img", { name: "Läuft" })).toBeInTheDocument();
+  expect(within(flowNode).getByText("Läuft")).toBeInTheDocument();
 });
 
 it("draws the meter of the tighter window and names no failover while the profile is open", async () => {
@@ -84,16 +84,15 @@ it("shows an unconnected red-first badge on the node", async () => {
 
 it("lifts the node lamp to done when the test passed", async () => {
   render(<FlowTab cards={withCard({ column: "done", testStatus: "pass" })} />);
-  // The ok lamp is the plain atom; it must not be the red "ohne Beweis" one.
-  const lamp = within(await node()).getByRole("img", { name: "Test bestanden" });
-  expect(lamp).not.toHaveClass("g-lamp--bad");
-  expect(within(await node()).queryByRole("img", { name: "ohne Beweis" })).toBeNull();
+  // The done mark must not be the "ohne Beweis" one.
+  expect(within(await node()).getByText("Test bestanden")).toHaveClass("g-st--done");
+  expect(within(await node()).queryByText("ohne Beweis")).toBeNull();
 });
 
-it("a node of an unknown column shows the same neutral lamp as the card", async () => {
+it("a node of an unknown column shows the same neutral mark as the card", async () => {
   render(<FlowTab cards={withCard({ column: "parked" })} />);
-  expect(within(await node()).getByRole("img", { name: "Unbekannt" })).toHaveClass("g-lamp--unknown");
-  expect(within(await node()).queryByRole("img", { name: "Läuft" })).toBeNull();
+  expect(within(await node()).getByText("Unbekannt")).toHaveClass("g-st--unknown");
+  expect(within(await node()).queryByText("Läuft")).toBeNull();
 });
 
 it("draws the node's proof strip as the one-line variant", async () => {

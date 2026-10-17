@@ -41,6 +41,14 @@ export function ProofStrip({ redFirst, gates, review, pr, stale, compact = false
       <span className="sr-only">{text}</span>
     </>
   ) : <span className={className}>{text}</span>;
+  // All four unknown: one line, not four stacked "not connected" pills. The compact node strip is one line already.
+  if (!compact && redFirst === "unknown" && !gates && !review && !pr) {
+    return (
+      <div className={`ps${stale ? " ps--stale" : ""}`} role="group" aria-label={stale ? T.staleName : T.strip}>
+        <span className="ps__label">{T.strip}:</span> <span className="ps__missing">{T.notConnected}</span>
+      </div>
+    );
+  }
   const missing = word("ps__missing", "–", T.notConnected);
   const link = pr && /^https?:\/\//i.test(pr.href) ? pr.href : null;
   const sha = pr?.sha?.slice(0, 7);

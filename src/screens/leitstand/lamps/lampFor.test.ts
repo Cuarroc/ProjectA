@@ -17,15 +17,15 @@ const card = (over: Partial<BoardCard> = {}, worker: Partial<BoardCard["worker"]
 
 describe("lampFor", () => {
   it("withholds the done lamp when the column is done and proof is missing", () => {
-    expect(lampFor(card({ column: "done" }), false, NOW)).toEqual({ lamp: "blocked", word: "ohne Beweis" });
+    expect(lampFor(card({ column: "done" }), false, NOW)).toEqual({ lamp: "blocked", form: "need", word: "ohne Beweis" });
   });
 
   it("shows the done lamp when the column is done and proof is present", () => {
-    expect(lampFor(card({ column: "done" }), true, NOW)).toEqual({ lamp: "done", word: "Test bestanden" });
+    expect(lampFor(card({ column: "done" }), true, NOW)).toEqual({ lamp: "done", form: "done", word: "Test bestanden" });
   });
 
   it("blocks on needs_you, a blocking grade, a pause or a quota block", () => {
-    const blocked = { lamp: "blocked", word: "Blockiert" };
+    const blocked = { lamp: "blocked", form: "need", word: "Blockiert" };
     expect(lampFor(card({ column: "needs_you" }), false, NOW)).toEqual(blocked);
     expect(lampFor(card({ attentionGrade: "blocking" }), false, NOW)).toEqual(blocked);
     expect(lampFor(card({}, { pausedReason: "budget" }), false, NOW)).toEqual(blocked);
@@ -33,7 +33,7 @@ describe("lampFor", () => {
   });
 
   it("is idle when the worker is gone or sits at the prompt", () => {
-    const idle = { lamp: "idle", word: "Untätig" };
+    const idle = { lamp: "idle", form: "need", word: "Untätig" };
     expect(lampFor(card({}, { status: "exited" }), false, NOW)).toEqual(idle);
     expect(lampFor(card({}, { status: "archived" }), false, NOW)).toEqual(idle);
     expect(lampFor(card({ attentionCode: "idle_at_prompt" }), false, NOW)).toEqual(idle);
@@ -46,7 +46,7 @@ describe("lampFor", () => {
 
   it("works while running, also in review and ready to merge", () => {
     for (const column of ["working", "in_review", "ready_to_merge"] as BoardColumn[]) {
-      expect(lampFor(card({ column }), true, NOW)).toEqual({ lamp: "working", word: "Läuft" });
+      expect(lampFor(card({ column }), true, NOW)).toEqual({ lamp: "working", form: "run", word: "Läuft" });
     }
   });
 
