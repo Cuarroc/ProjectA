@@ -171,6 +171,7 @@ export const de = {
   "leitstand.archiveYes": "Ja, endgültig archivieren",
   "leitstand.archiveFailed": "Archivieren hat nicht geklappt. Bitte noch einmal versuchen.",
   "leitstand.cancel": "Abbrechen",
+  "confirm.cancel": "Abbrechen",
   "leitstand.since": "seit {age}",
   "leitstand.min": "{n} min",
   "leitstand.hours": "{n} h",

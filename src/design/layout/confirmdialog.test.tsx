@@ -16,7 +16,7 @@ describe("ConfirmDialog", () => {
     const dialog = screen.getByRole("alertdialog", { name: props.title });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(dialog).toHaveAccessibleDescription(props.description);
-    const cancel = screen.getByRole("button", { name: de["leitstand.cancel"] });
+    const cancel = screen.getByRole("button", { name: de["confirm.cancel"] });
     expect(cancel).toHaveFocus();
     const confirm = screen.getByRole("button", { name: props.confirmLabel });
     expect(confirm).toHaveClass("g-btn--danger");

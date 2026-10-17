@@ -182,10 +182,16 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "Options from the caller.",
   },
   {
+    name: "ConfirmDialog", family: "layout",
+    variants: ["default", "danger"], states: ["open, closed; confirm fires once per opening"],
+    a11y: "role=\"alertdialog\" aria-modal with aria-labelledby and aria-describedby; focus starts on Abbrechen, Esc cancels, a scrim click does not close.",
+    text: "title, description and confirmLabel from the caller; cancel word from src/i18n/de.ts confirm.*.",
+  },
+  {
     name: "Sheet", family: "layout",
-    variants: [], states: ["open, closed"],
-    a11y: "role=\"dialog\" aria-modal; focus moves in, Tab cycles, Esc or scrim click closes, focus returns.",
-    text: "aria-label and children from the caller.",
+    variants: ["sm", "md", "lg"], states: ["open, closed"],
+    a11y: "role=\"dialog\" (or alertdialog) aria-modal; focus moves in, Tab cycles, Esc or scrim click closes (scrim optional), focus returns; named by aria-label or aria-labelledby, aria-describedby optional.",
+    text: "aria-label or aria-labelledby, and children from the caller.",
   },
   {
     name: "Tabs", family: "layout",

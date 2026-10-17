@@ -15,8 +15,8 @@ export interface SheetProps {
   children?: ReactNode;
 }
 
-/** Modal dialog on a scrim: focus moves in, Tab cycles inside, Esc or a scrim click closes, focus returns; the sheet stays mounted (aria-hidden) while it animates out. */
-export function Sheet({ open, onClose, "aria-label": label, children }: SheetProps) {
+/** Modal dialog on a scrim: focus moves in, Tab cycles inside, Esc or a scrim click closes (a scrim click only if `dismissOnScrim`), focus returns; the sheet stays mounted (aria-hidden) while it animates out. */
+export function Sheet({ open, onClose, "aria-label": label, "aria-labelledby": labelledBy, "aria-describedby": describedBy, role = "dialog", size = "md", dismissOnScrim = true, children }: SheetProps) {
   const ref = useRef<HTMLElement>(null);
   const { mounted, closing } = useExitTransition(open);
 
@@ -42,8 +42,8 @@ export function Sheet({ open, onClose, "aria-label": label, children }: SheetPro
   };
 
   return createPortal(
-    <div className="g-scrim" data-state={closing ? "closing" : "open"} aria-hidden={closing || undefined} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className="g-sheet" data-state={closing ? "closing" : "open"} onKeyDown={onKeyDown}>
+    <div className="g-scrim" data-state={closing ? "closing" : "open"} aria-hidden={closing || undefined} onMouseDown={(e) => { if (dismissOnScrim && e.target === e.currentTarget) onClose(); }}>
+      <section ref={ref} role={role} aria-modal="true" aria-label={label} aria-labelledby={labelledBy} aria-describedby={describedBy} data-size={size} tabIndex={-1} className="g-sheet" data-state={closing ? "closing" : "open"} onKeyDown={onKeyDown}>
         {children}
       </section>
     </div>,
