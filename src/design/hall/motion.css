@@ -1,0 +1,21 @@
+/* DS-H-06 hall motion (ASSETS.md §7). Frame 0 is the rest frame and carries the meaning; only a figure marked
+   data-animate moves, and Hall.tsx marks none under Aus or OS reduced motion, past twelve figures or for any
+   waiting or unknown pose. Every figure of a mode runs the same keyframes with the same token duration, so the hall
+   shares one beat. The second frame sits one frame width to the right in the atlas strip (HallMotion.test.tsx). */
+@keyframes g-hall-work {
+  0% { background-position: calc(var(--x) * -1px * var(--s)) calc(var(--y) * -1px * var(--s)); }
+  60% { background-position: calc((var(--x) + var(--w)) * -1px * var(--s)) calc(var(--y) * -1px * var(--s)); }
+  80% { background-position: calc(var(--x) * -1px * var(--s)) calc(var(--y) * -1px * var(--s)); }
+}
+.g-hall__scene[data-motion="calm"] [data-animate],
+.g-hall__scene[data-motion="lively"] [data-animate] {
+  animation: g-hall-work var(--g-dur-ambient) steps(1, end) infinite;
+}
+/* Ruhig: a short work phase, then a long rest. Lebendig: the same pose repeated, at most 3 changes per second. */
+.g-hall__scene[data-motion="lively"] [data-animate] {
+  animation-duration: calc(var(--g-dur-5) * 2);
+}
+.g-hall__scene[data-paused] [data-animate] { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .g-hall__scene [data-animate] { animation: none; }
+}
