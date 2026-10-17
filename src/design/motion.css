@@ -62,6 +62,20 @@
   }
 }
 
+/* Exit (DS-X-07): useExitTransition sets data-state="closing" for --g-dur-exit, then unmounts. */
+@keyframes g-exit {
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes g-scrim-out {
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes g-live {
   50% {
     opacity: 0.45;
@@ -70,6 +84,17 @@
 
 .g-sheet {
   animation: g-rise var(--g-dur-2) var(--g-ease-out);
+}
+
+.g-scrim[data-state="closing"] {
+  animation: g-scrim-out var(--g-dur-exit) var(--g-ease-in) forwards;
+  pointer-events: none;
+}
+
+.g-sheet[data-state="closing"],
+.g-toast[data-state="closing"] {
+  animation: g-exit var(--g-dur-exit) var(--g-ease-in) forwards;
+  pointer-events: none;
 }
 
 .g-app [role="tabpanel"],
@@ -132,6 +157,8 @@
   /* Portal roots carry data-g-portal (sheets/toasts outside the shell). */
   .g-stagger > *,
   .g-sheet,
+  .g-scrim,
+  .g-toast,
   .g-view,
   .g-is-new,
   .g-shell,

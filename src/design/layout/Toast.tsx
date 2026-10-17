@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { de } from "../../i18n/de";
+import { useExitTransition } from "../motion/useExitTransition";
 
 export type ToastTone = "info" | "ok" | "bad";
 
@@ -12,29 +13,20 @@ export interface ToastItem {
 function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; onDismiss: (id: number) => void }) {
   // Keep the latest callback in a ref so a new identity does not restart the countdown.
   const dismiss = useRef(onDismiss);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closed = useRef(false);
+  // `open` only starts the exit; onDismiss fires once the exit is over, so the parent removes the toast after it animated out.
+  const [open, setOpen] = useState(true);
+  const { mounted, closing } = useExitTransition(open);
   useEffect(() => { dismiss.current = onDismiss; });
   useEffect(() => {
-    closed.current = false;
-    const handle = setTimeout(() => {
-      if (closed.current) return;
-      closed.current = true;
-      dismiss.current(toast.id);
-    }, ttl);
-    timer.current = handle;
+    const handle = setTimeout(() => setOpen(false), ttl);
     return () => clearTimeout(handle);
   }, [toast.id, ttl]);
-  const close = () => {
-    if (closed.current) return;
-    closed.current = true;
-    if (timer.current !== null) clearTimeout(timer.current);
-    onDismiss(toast.id);
-  };
+  useEffect(() => { if (!mounted) dismiss.current(toast.id); }, [mounted, toast.id]);
+  if (!mounted) return null;
   return (
-    <div className={`g-toast g-toast--${toast.tone}`} role={toast.tone === "bad" ? "alert" : "status"}>
+    <div className={`g-toast g-toast--${toast.tone}`} data-state={closing ? "closing" : "open"} aria-hidden={closing || undefined} role={toast.tone === "bad" ? "alert" : "status"}>
       <span>{toast.text}</span>
-      <button type="button" className="g-toast__x" aria-label={de["action.close"]} onClick={close}>×</button>
+      <button type="button" className="g-toast__x" aria-label={de["action.close"]} onClick={() => setOpen(false)}>×</button>
     </div>
   );
 }

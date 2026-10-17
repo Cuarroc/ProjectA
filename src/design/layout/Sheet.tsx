@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useExitTransition } from "../motion/useExitTransition";
 import { focusableWithin, trapTarget } from "../../lib/useFocusTrap";
 
 export interface SheetProps {
@@ -9,9 +10,10 @@ export interface SheetProps {
   children?: ReactNode;
 }
 
-/** Modal dialog on a scrim: focus moves in, Tab cycles inside, Esc or a scrim click closes, focus returns. */
+/** Modal dialog on a scrim: focus moves in, Tab cycles inside, Esc or a scrim click closes, focus returns; the sheet stays mounted (aria-hidden) while it animates out. */
 export function Sheet({ open, onClose, "aria-label": label, children }: SheetProps) {
   const ref = useRef<HTMLElement>(null);
+  const { mounted, closing } = useExitTransition(open);
 
   useEffect(() => {
     if (!open) return;
@@ -21,7 +23,7 @@ export function Sheet({ open, onClose, "aria-label": label, children }: SheetPro
     return () => before?.focus();
   }, [open]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
@@ -35,8 +37,8 @@ export function Sheet({ open, onClose, "aria-label": label, children }: SheetPro
   };
 
   return createPortal(
-    <div className="g-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className="g-sheet" onKeyDown={onKeyDown}>
+    <div className="g-scrim" data-state={closing ? "closing" : "open"} aria-hidden={closing || undefined} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className="g-sheet" data-state={closing ? "closing" : "open"} onKeyDown={onKeyDown}>
         {children}
       </section>
     </div>,
