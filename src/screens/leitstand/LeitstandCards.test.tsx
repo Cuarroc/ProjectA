@@ -151,3 +151,24 @@ it("the proof strip is a direct child of each card, above the foot", async () =>
   const { container } = render(<LeitstandCards cards={await cards()} profiles={profiles} now={NOW} onOpen={() => {}} />);
   expect(container.querySelectorAll(".ls-card > .ps + .ls-foot")).toHaveLength(3);
 });
+
+it("filter chips count the same form the cards show", async () => {
+  vi.mocked(invoke).mockResolvedValue({
+    cards: [
+      { worker: worker("b1"), column: "needs_you", attention_code: "agent_reported", attention_grade: "blocking" },
+      { worker: worker("i1", { status: "exited" }), column: "working" },
+      { worker: worker("d1"), column: "done", test_status: null },
+      { worker: worker("r1"), column: "working" },
+    ],
+    coordinators: [],
+  });
+  const list = (await getBoardState("p1")).cards;
+  render(<LeitstandCards cards={list} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  const region = screen.getByRole("region", { name: "Agenten" });
+  // The blocked, the idle and the done-without-proof card all carry the "need" mark.
+  expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveTextContent("3");
+  expect(screen.getByRole("button", { name: /^Läuft/ })).toHaveTextContent("1");
+  fireEvent.click(screen.getByRole("button", { name: /^Braucht dich/ }));
+  expect(within(region).getAllByRole("article")).toHaveLength(3);
+  for (const article of within(region).getAllByRole("article")) expect(article.querySelector(".g-st--need")).not.toBeNull();
+});
