@@ -3,10 +3,10 @@ import type { BoardCard } from "../../../types";
 import { ageText, fill } from "../leitstand";
 import { T } from "./texts";
 
-export type LampKind = "working" | "blocked" | "done" | "idle" | "unknown";
+export type LampKind = "working" | "blocked" | "failed" | "done" | "idle" | "unknown";
 
 /** The one map from lamp kind to the design system's form. `unknown` has none: the mark then draws its neutral shape. */
-export const LAMP_FORM: Record<LampKind, StateForm | undefined> = { working: "run", blocked: "need", done: "done", idle: "need", unknown: undefined };
+export const LAMP_FORM: Record<LampKind, StateForm | undefined> = { working: "run", blocked: "need", failed: "bad", done: "done", idle: "need", unknown: undefined };
 
 /**
  * One lamp per card, mapped into the six forms of `states.ts` by `LAMP_FORM`. `proof` is

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { BoardCard, BoardColumn } from "../../../types";
-import { STATE_FORMS } from "../../../design/state/states";
-import { lampFor, LAMP_FORM, type LampKind } from "./lampFor";
+import { STATE_FORMS, type StateForm } from "../../../design/state/states";
+import { lampFor, type LampKind } from "./lampFor";
 
 const NOW = 1_760_000_000;
 
@@ -29,7 +29,6 @@ describe("lampFor", () => {
     expect(lampFor(card({ column: "needs_you" }), false, NOW)).toEqual(blocked);
     expect(lampFor(card({ attentionGrade: "blocking" }), false, NOW)).toEqual(blocked);
     expect(lampFor(card({}, { pausedReason: "budget" }), false, NOW)).toEqual(blocked);
-    expect(lampFor(card({ attentionCode: "quota_blocked" }), false, NOW)).toEqual(blocked);
   });
 
   it("is idle when the worker is gone or sits at the prompt", () => {
@@ -44,10 +43,25 @@ describe("lampFor", () => {
     expect(lampFor(card({ attentionCode: "idle_at_prompt", attentionGrade: "blocking" }), true, NOW).lamp).toBe("blocked");
   });
 
-  it("works while running, also in review and ready to merge", () => {
-    for (const column of ["working", "in_review", "ready_to_merge"] as BoardColumn[]) {
-      expect(lampFor(card({ column }), true, NOW)).toEqual({ lamp: "working", form: "run", word: "Läuft" });
-    }
+  it("works while running in the working column", () => {
+    expect(lampFor(card(), true, NOW)).toEqual({ lamp: "working", form: "run", word: "Läuft" });
+  });
+
+  it("a running card in review reads rev and one ready to merge reads ok", () => {
+    expect(lampFor(card({ column: "in_review" }), true, NOW)).toEqual({ lamp: "working", form: "rev", word: "In Prüfung" });
+    expect(lampFor(card({ column: "ready_to_merge" }), true, NOW)).toEqual({ lamp: "working", form: "ok", word: "Bereit zum Mergen" });
+  });
+
+  it("a failure reason reads bad even when blocking", () => {
+    const failed = { lamp: "failed", form: "bad", word: "Fehler" };
+    expect(lampFor(card({ attentionCode: "agent_exited" }), false, NOW)).toEqual(failed);
+    expect(lampFor(card({ column: "in_review", attentionCode: "agent_exited", attentionGrade: "blocking" }), false, NOW)).toEqual(failed);
+    expect(lampFor(card({ attentionCode: "quota_blocked" }), false, NOW)).toEqual(failed);
+    expect(lampFor(card({ attentionCode: "delivery_failed" }, { status: "exited" }), false, NOW)).toEqual(failed);
+  });
+
+  it("a done column wins over a failure reason", () => {
+    expect(lampFor(card({ column: "done", attentionCode: "agent_exited" }), true, NOW).form).toBe("done");
   });
 
   it("returns unknown for a column the map does not know", () => {
@@ -64,20 +78,21 @@ describe("lampFor", () => {
   });
 
   it("returns a StateForm for every lamp kind", () => {
-    const samples: Record<LampKind, BoardCard> = {
-      working: card(),
-      blocked: card({ column: "needs_you" }),
-      done: card({ column: "done" }),
-      idle: card({}, { status: "exited" }),
-      unknown: card({ column: "parked" as BoardColumn }),
+    const samples: Record<LampKind, [BoardCard, StateForm | undefined]> = {
+      working: [card(), "run"],
+      blocked: [card({ column: "needs_you" }), "need"],
+      failed: [card({ attentionCode: "agent_stalled" }), "bad"],
+      done: [card({ column: "done" }), "done"],
+      idle: [card({}, { status: "exited" }), "need"],
+      unknown: [card({ column: "parked" as BoardColumn }), undefined],
     };
     for (const kind of Object.keys(samples) as LampKind[]) {
-      const shown = lampFor(samples[kind], true, NOW);
+      const [sample, form] = samples[kind];
+      const shown = lampFor(sample, true, NOW);
       expect(shown.lamp).toBe(kind);
-      expect(shown.form).toBe(LAMP_FORM[kind]);
       // `unknown` is the one kind without a form: the mark then draws the neutral unknown shape.
-      if (kind === "unknown") expect(shown.form).toBeUndefined();
-      else expect(STATE_FORMS).toContain(shown.form);
+      expect(shown.form).toBe(form);
+      if (form) expect(STATE_FORMS).toContain(shown.form);
     }
   });
 });

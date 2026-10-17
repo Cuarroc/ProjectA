@@ -85,10 +85,10 @@ it("derives forms and counts from the real get_board_state shape and leaves coor
   const list = agentCards(await cards());
   expect(list.map((c) => c.worker.id)).toEqual(["w1", "w2", "w3"]);
   expect(list.map(cardForm)).toEqual(["run", "need", "bad"]);
-  // The column form stays for the org chart; the cards and their chips use the lamp form (a blocking card reads "need").
+  // The cards and their chips use the lamp form; on this shape it equals the column form of the org chart.
   const formOf = (c: BoardCard) => cardLamp(c, NOW).form;
-  expect(list.map(formOf)).toEqual(["run", "need", "need"]);
-  expect(countByFilter(list, formOf)).toMatchObject({ all: 3, run: 1, need: 2, rev: 0, ok: 0, done: 0, bad: 0 });
+  expect(list.map(formOf)).toEqual(["run", "need", "bad"]);
+  expect(countByFilter(list, formOf)).toMatchObject({ all: 3, run: 1, need: 1, rev: 0, ok: 0, done: 0, bad: 1 });
 });
 
 it("shows one card per agent with its proof strip and filters by state", async () => {
@@ -99,9 +99,9 @@ it("shows one card per agent with its proof strip and filters by state", async (
   expect(within(list).getAllByText("seit 38 min")).toHaveLength(3);
   expect(within(list).getAllByRole("heading", { name: "Claude Code" })).toHaveLength(3);
   expect(screen.getByRole("button", { name: /^In Prüfung/ })).toHaveTextContent("0");
-  fireEvent.click(screen.getByRole("button", { name: /^Braucht dich/ }));
-  expect(within(list).getAllByRole("article")).toHaveLength(2);
-  expect(screen.getByRole("button", { name: /^Braucht dich/ })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: /^Fehler/ }));
+  expect(within(list).getAllByRole("article")).toHaveLength(1);
+  expect(screen.getByRole("button", { name: /^Fehler/ })).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(screen.getByRole("button", { name: /^Erledigt/ }));
   expect(within(list).queryByRole("article")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Alle zeigen" }));
@@ -115,7 +115,7 @@ it("tab order is seven chips then open and archive per running card", async () =
   expect(tabbable.every((el) => el.tabIndex === 0)).toBe(true);
   expect(tabbable.map((el) => el.tagName)).toEqual(Array(13).fill("BUTTON"));
   expect(tabbable.slice(0, 7).map((el) => el.textContent)).toEqual(
-    ["Alle 3", "Läuft 1", "Braucht dich 2", "In Prüfung 0", "Bereit zum Mergen 0", "Erledigt 0", "Fehler 0"],
+    ["Alle 3", "Läuft 1", "Braucht dich 1", "In Prüfung 0", "Bereit zum Mergen 0", "Erledigt 0", "Fehler 1"],
   );
   expect(tabbable.slice(7).map((el) => el.getAttribute("aria-label"))).toEqual(
     ["Claude Code öffnen", "Claude Code archivieren", "Claude Code öffnen", "Claude Code archivieren", "Claude Code öffnen", "Claude Code archivieren"],
@@ -175,4 +175,25 @@ it("filter chips count the same form the cards show", async () => {
   fireEvent.click(screen.getByRole("button", { name: /^Braucht dich/ }));
   expect(within(region).getAllByRole("article")).toHaveLength(3);
   for (const article of within(region).getAllByRole("article")) expect(article.querySelector(".g-st--need")).not.toBeNull();
+});
+
+it("the review and ready and failure chips count their cards", async () => {
+  vi.mocked(invoke).mockResolvedValue({
+    cards: [
+      { worker: worker("v1"), column: "in_review" },
+      { worker: worker("m1"), column: "ready_to_merge" },
+      { worker: worker("f1"), column: "working", attention_code: "agent_stalled", attention_grade: "blocking" },
+    ],
+    coordinators: [],
+  });
+  const list = (await getBoardState("p1")).cards;
+  render(<LeitstandCards cards={list} profiles={profiles} now={NOW} onOpen={() => {}} />);
+  const region = screen.getByRole("region", { name: "Agenten" });
+  for (const [chip, mark] of [["In Prüfung", "rev"], ["Bereit zum Mergen", "ok"], ["Fehler", "bad"]]) {
+    expect(screen.getByRole("button", { name: new RegExp(`^${chip}`) })).toHaveTextContent("1");
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${chip}`) }));
+    const articles = within(region).getAllByRole("article");
+    expect(articles).toHaveLength(1);
+    expect(articles[0]!.querySelector(`.g-st--${mark}`)).not.toBeNull();
+  }
 });
