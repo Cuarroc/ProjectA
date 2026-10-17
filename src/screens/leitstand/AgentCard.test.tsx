@@ -271,25 +271,32 @@ it("does not invent an attention age when the observation time is missing", () =
   expect(screen.getByText("Approval required").parentElement).not.toHaveTextContent(/seit/);
 });
 
-it("shows a blocked lamp on a done card while proof is missing", () => {
+it("shows exactly one state mark", () => {
+  const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  expect(container.querySelectorAll(".g-st")).toHaveLength(1);
+  expect(container.querySelector(".g-lamp")).toBeNull();
+  expect(container.querySelector(".g-st")).toHaveClass("g-st--run");
+});
+
+it("marks a done card as needing you while proof is missing", () => {
   render(<AgentCard card={{ ...card("running"), column: "done", testStatus: null }} name="Claude Code" now={NOW} onOpen={() => {}} />);
-  expect(screen.getByRole("img", { name: "ohne Beweis" })).toHaveClass("g-lamp--bad");
+  expect(screen.getByText("ohne Beweis")).toHaveClass("g-st--need");
 });
 
-it("shows the same lamp as the flow node on a done card with a passed test", () => {
+it("marks a done card with a passed test as done", () => {
   render(<AgentCard card={{ ...card("running"), column: "done", testStatus: "pass" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
-  expect(screen.getByRole("img", { name: "Test bestanden" })).not.toHaveClass("g-lamp--bad");
-  expect(screen.queryByRole("img", { name: "ohne Beweis" })).toBeNull();
+  expect(screen.getByText("Test bestanden")).toHaveClass("g-st--done");
+  expect(screen.queryByText("ohne Beweis")).toBeNull();
 });
 
-it("a card of an unknown column shows no running lamp", () => {
+it("a card of an unknown column shows the neutral mark, not a running one", () => {
   render(<AgentCard card={{ ...card("running"), column: "parked" as BoardCard["column"] }} name="Claude Code" now={NOW} onOpen={() => {}} />);
-  expect(screen.queryByRole("img", { name: "Läuft" })).toBeNull();
-  expect(screen.getByRole("img", { name: "Unbekannt" })).toHaveClass("g-lamp--unknown");
+  expect(screen.queryByText("Läuft")).toBeNull();
+  expect(screen.getByText("Unbekannt")).toHaveClass("g-st--unknown");
 });
 
 it("shows the proof strip with its four badges on the card", () => {
-  const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
+  const { container } = render(<AgentCard card={{ ...card("running"), prUrl: "https://example.test/pr/1" }} name="Claude Code" now={NOW} onOpen={() => {}} />);
   const strip = screen.getByRole("group", { name: "Beweis" });
   expect(container.querySelectorAll(".ps__badge")).toHaveLength(4);
   for (const label of ["Red-first", "Gates", "Review", "PR"]) expect(within(strip).getByText(label)).toBeInTheDocument();
@@ -297,7 +304,7 @@ it("shows the proof strip with its four badges on the card", () => {
 
 it("reads a worker without proof data as not connected and never shows a pass mark", () => {
   const { container } = render(<AgentCard card={card("running")} name="Claude Code" now={NOW} onOpen={() => {}} />);
-  expect(screen.getAllByText("noch nicht verbunden")).toHaveLength(4);
+  expect(screen.getAllByText("noch nicht verbunden")).toHaveLength(1);
   expect(screen.queryByText("bestanden")).toBeNull();
   expect(container.querySelector(".g-proof__yes")).toBeNull();
 });

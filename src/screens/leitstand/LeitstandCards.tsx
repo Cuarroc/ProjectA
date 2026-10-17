@@ -9,7 +9,8 @@ import { useT } from "../../i18n/useT";
 import { STATE_FORMS, STATE_WORDS } from "../../design/state/states";
 import type { AgentProfile, BoardCard } from "../../types";
 import { AgentCard } from "./AgentCard";
-import { agentCards, cardForm, countByFilter, fill, type Filter } from "./leitstand";
+import { agentCards, countByFilter, fill, type Filter } from "./leitstand";
+import { cardLamp } from "./lamps/lampFor";
 import "./leitstand.css";
 
 // Compare every prop, including callbacks and time, so changed inputs stay visible.
@@ -32,8 +33,10 @@ export function LeitstandCards({ cards, profiles, now, onOpen, onChanged, emptyA
   const t = useT();
   const [filter, setFilter] = useState<Filter>("all");
   const agents = agentCards(cards);
-  const counts = countByFilter(agents);
-  const shown = agents.filter((c) => filter === "all" || cardForm(c) === filter);
+  // The chips count and filter by the form the card's own mark shows.
+  const formOf = (c: BoardCard) => cardLamp(c, now).form;
+  const counts = countByFilter(agents, formOf);
+  const shown = agents.filter((c) => filter === "all" || formOf(c) === filter);
   const nameOf = (c: BoardCard) => profiles.find((p) => p.id === c.worker.profileId)?.name ?? c.worker.profileId;
   if (agents.length === 0) return <HonestState kind="empty" title={t("leitstand.emptyTitle")} hint={t("leitstand.emptyHint")} action={emptyAction} />;
   return (
