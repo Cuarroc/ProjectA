@@ -7,8 +7,8 @@ export interface SeparatorProps extends HTMLAttributes<HTMLHRElement> {
   decorative?: boolean;
 }
 
-export function Separator({ orientation = "horizontal", decorative }: SeparatorProps) {
-  const className = ["g-sep", orientation === "vertical" && "g-sep--v"].filter(Boolean).join(" ");
-  if (decorative) return <hr className={className} role="none" aria-hidden="true" />;
-  return <hr className={className} aria-orientation={orientation === "vertical" ? "vertical" : undefined} />;
+export function Separator({ orientation = "horizontal", decorative, className, ...rest }: SeparatorProps) {
+  const cls = ["g-sep", orientation === "vertical" && "g-sep--v", className].filter(Boolean).join(" ");
+  if (decorative) return <hr {...rest} className={cls} role="none" aria-hidden="true" />;
+  return <hr aria-orientation={orientation === "vertical" ? "vertical" : undefined} {...rest} className={cls} />;
 }
