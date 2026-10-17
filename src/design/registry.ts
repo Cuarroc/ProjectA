@@ -87,9 +87,9 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   },
   {
     name: "Table", family: "data",
-    variants: ["column numeric"], states: ["no rows shows the empty node or nothing"],
-    a11y: "Labelled, focusable scroll region; header cells have scope=\"col\".",
-    text: "Headers and cells from the caller; use HonestState for empty.",
+    variants: ["column numeric", "column sortValue sorts", "selection adds checkboxes"], states: ["no rows shows the empty node or nothing; empty text draws as HonestState", "loading shows HonestState instead of the table", "sorted ascending, descending or none", "selected rows, header box mixed when partial"],
+    a11y: "Labelled, focusable scroll region; header cells have scope=\"col\"; sortable headers hold a button and aria-sort (Enter or Space cycles); selection count in a polite status region; sticky header.",
+    text: "src/i18n/de.ts table.*; headers and cells from the caller; use HonestState for empty.",
   },
   {
     name: "Orb", family: "fabrik",
