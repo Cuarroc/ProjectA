@@ -12,7 +12,7 @@
   font: 500 13px/1 var(--g-font-sans); white-space: nowrap; cursor: pointer; box-shadow: none;
   transition: transform var(--g-t), background-color var(--g-t), border-color var(--g-t);
 }
-.g-btn:active { transform: scale(.97); }
+.g-btn:active { transform: scale(var(--g-press-scale, .98)); }
 .g-btn--primary { background: var(--g-accent); border-color: transparent; color: var(--g-on-accent); }
 .g-btn--tint { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-btn--ghost { background: transparent; border-color: transparent; color: var(--g-ink2); }
@@ -41,7 +41,7 @@
   transition: transform var(--g-t), background-color var(--g-t), color var(--g-t);
 }
 .g-fchip b { font-weight: 600; color: var(--g-muted); }
-.g-fchip:active { transform: scale(.97); }
+.g-fchip:active { transform: scale(var(--g-press-scale, .98)); }
 .g-fchip[aria-pressed="true"] { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-fchip[aria-pressed="true"] b { color: var(--g-accent); }
 .g-sw {
@@ -66,7 +66,7 @@
   font: 500 12px/1 var(--g-font-sans); color: var(--g-ink2); cursor: pointer;
   transition: background-color var(--g-t), transform var(--g-t);
 }
-.g-seg button:active { transform: scale(.97); }
+.g-seg button:active { transform: scale(var(--g-press-scale, .98)); }
 @media (prefers-reduced-motion: reduce) {
   .g-btn:active, .g-fchip:active, .g-seg button:active { transform: none; }
 }
