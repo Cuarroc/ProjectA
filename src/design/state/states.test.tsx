@@ -116,3 +116,25 @@ it("StateMark pings once on a form change and never on mount", () => {
   rerender(<StateMark form="run" label="y" />);
   expect(screen.getByText("y")).not.toHaveAttribute("data-ping");
 });
+
+it("StateMark restarts the ping when the form changes again inside the ping window", () => {
+  vi.useFakeTimers();
+  const log: string[] = [];
+  const reflow = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(() => { log.push("reflow"); return 0; });
+  const { rerender } = render(<StateMark form="need" label="x" />);
+  const el = screen.getByText("x");
+  const set = vi.spyOn(el, "setAttribute").mockImplementation(function (this: Element, n: string, v: string) { if (n === "data-ping") log.push(`set ${n}`); Element.prototype.setAttribute.call(this, n, v); });
+  const remove = vi.spyOn(el, "removeAttribute").mockImplementation(function (this: Element, n: string) { log.push(`remove ${n}`); Element.prototype.removeAttribute.call(this, n); });
+  rerender(<StateMark form="run" label="x" />);
+  act(() => { vi.advanceTimersByTime(100); });
+  log.length = 0;
+  rerender(<StateMark form="done" label="x" />);
+  // A browser restarts a CSS animation only if style is flushed between removing and re-adding the attribute.
+  expect(log).toEqual(["remove data-ping", "reflow", "set data-ping"]);
+  expect(el).toHaveAttribute("data-ping");
+  act(() => { vi.advanceTimersByTime(479); });
+  expect(el).toHaveAttribute("data-ping");
+  act(() => { vi.advanceTimersByTime(1); });
+  expect(el).not.toHaveAttribute("data-ping");
+  reflow.mockRestore(); set.mockRestore(); remove.mockRestore();
+});
