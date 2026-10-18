@@ -132,8 +132,9 @@ export async function captureRoute({
   let tab = null;
   const applied = {};
   const motionApplied = {};
+  const schemes = theme ? [theme] : THEMES;
   try {
-    for (const scheme of theme ? [theme] : THEMES) {
+    for (const scheme of schemes) {
       // Without --motion the old always-reduced capture stays; with it, motion runs unless --reduced.
       const context = await browser.newContext({
         viewport: { ...VIEWPORT },
@@ -164,7 +165,7 @@ export async function captureRoute({
           reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
         }));
       }
-      if (checkTabOrder && scheme === "light") tab = await checkTab(page);
+      if (checkTabOrder && scheme === schemes[0]) tab = await checkTab(page);
       if (wait) await page.waitForTimeout(wait);
       const dest = join(outDir, `${slug}-${scheme}.png`);
       await page.screenshot({ path: dest, fullPage: false });
