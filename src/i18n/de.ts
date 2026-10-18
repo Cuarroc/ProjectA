@@ -235,6 +235,7 @@ export const de = {
   "gallery.optionB": "Beispiel B",
   "gallery.initials": "AB",
   "gallery.key": "Strg K",
+  "gallery.stateSeparator": ", ",
   "gallery.notApplicable": "Nicht anwendbar:",
   "gallery.state.default": "Standard",
   "gallery.state.hover": "Zeiger darüber",

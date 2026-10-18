@@ -15,7 +15,7 @@ import { COMPONENT_REGISTRY, type ComponentFamily } from "../registry";
 
 const STATES = ["default", "hover", "focus", "active", "disabled", "loading", "error"] as const;
 type State = typeof STATES[number];
-interface Story { states: readonly State[]; render: (state: State) => ReactNode }
+interface Story { states: readonly State[]; render: (state: State, name: string) => ReactNode }
 const STATIC = ["default"] as const;
 const PRESS = ["default", "hover", "focus", "active", "disabled"] as const;
 const INPUT = ["default", "focus", "disabled", "error"] as const;
@@ -32,12 +32,12 @@ const stories: Record<string, Story> = {
   Segmented: { states: ["default", "hover", "focus", "active"], render: () => <Segmented aria-label={sample} options={options} value="a" onChange={() => {}} /> },
   Switch: { states: ["default", "focus", "disabled"], render: (s) => <Switch aria-label={sample} checked={false} disabled={s === "disabled"} /> },
   Avatar: { states: STATIC, render: () => <Avatar initials={de["gallery.initials"]} label={sample} /> },
-  Input: { states: INPUT, render: (s) => <Input {...inputProps(s, "Input")} defaultValue={sample} /> },
-  Textarea: { states: INPUT, render: (s) => <Textarea {...inputProps(s, "Textarea")} defaultValue={sample} /> },
+  Input: { states: INPUT, render: (s, name) => <Input {...inputProps(s, name)} defaultValue={sample} /> },
+  Textarea: { states: INPUT, render: (s, name) => <Textarea {...inputProps(s, name)} defaultValue={sample} /> },
   Kbd: { states: STATIC, render: () => <Kbd>{de["gallery.key"]}</Kbd> },
   Lamp: { states: ["default", "loading", "error"], render: (s) => <Lamp state={s === "loading" ? "busy" : s === "error" ? "bad" : "ok"} label={de[`gallery.state.${s}`]} /> },
   Meter: { states: STATIC, render: () => <Meter aria-label={sample} value={60} /> },
-  Select: { states: INPUT, render: (s) => <Select {...inputProps(s, "Select")}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select> },
+  Select: { states: INPUT, render: (s, name) => <Select {...inputProps(s, name)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select> },
 };
 
 export function renderStories(family: ComponentFamily) {
@@ -50,9 +50,9 @@ export function renderStories(family: ComponentFamily) {
         <h3 id={`story-${entry.name}`}><code>{entry.name}</code></h3>
         <div className="g-gal-matrix">{story.states.map((state) => <div key={state} data-force-state={state} className="g-gal-cell">
           <span id={state === "error" ? `${entry.name}-error` : undefined} className="g-gal-note">{de[`gallery.state.${state}`]}</span>
-          {story.render(state)}
+          {story.render(state, entry.name)}
         </div>)}</div>
-        <p className="g-gal-note">{de["gallery.notApplicable"]}{" "}{STATES.filter((s) => !story.states.includes(s)).map((s) => de[`gallery.state.${s}`]).join(", ")}</p>
+        <p className="g-gal-note">{de["gallery.notApplicable"]}{" "}{STATES.filter((s) => !story.states.includes(s)).map((s) => de[`gallery.state.${s}`]).join(de["gallery.stateSeparator"])}</p>
       </article>;
     })}
   </>;
