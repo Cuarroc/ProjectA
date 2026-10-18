@@ -61,8 +61,8 @@ describe("Popover", () => {
     render(<Harness />);
     openIt();
     const item = screen.getByRole("button", { name: "Item" });
-    item.focus();
-    screen.getByRole("button", { name: "Outside" }).focus();
+    act(() => item.focus());
+    act(() => screen.getByRole("button", { name: "Outside" }).focus());
     expect(screen.queryByRole("button", { name: "Item" })).toBeNull();
     expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
   });

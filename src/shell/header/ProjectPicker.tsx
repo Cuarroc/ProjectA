@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { HonestState } from "../../design/data/HonestState";
+import { Popover } from "../../design/layout/Popover";
 import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "../../lib/activeProject";
 import { useT } from "../../i18n/useT";
 import { listProjects } from "../../lib/ipc/projects";
@@ -18,8 +19,6 @@ export function ProjectPicker() {
   const [activeId, setActiveId] = useState(readActiveProjectId);
   const [index, setIndex] = useState(0);
   const base = useId();
-  const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
   const projects = load.state === "ready" ? load.projects : [];
 
   const cancelLoad = useRef<() => void>(() => {});
@@ -36,17 +35,12 @@ export function ProjectPicker() {
   useEffect(() => { refresh(); return () => cancelLoad.current(); }, [refresh]);
   useEffect(() => subscribeActiveProject(setActiveId), []);
 
-  const close = useCallback((refocus: boolean) => { setOpen(false); if (refocus) button.current?.focus(); }, []);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) close(false); };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open, close]);
-  useEffect(() => { if (open) root.current?.querySelector<HTMLElement>('[tabindex="-1"]')?.focus(); }, [open, load.state]);
+  const close = useCallback(() => setOpen(false), []);
+  /** The panel body takes focus when it appears, and again when the list replaces the loading note. */
+  const focusIn = useCallback((el: HTMLElement | null) => el?.focus(), []);
 
   const show = () => { setIndex(Math.max(0, projects.findIndex((p) => p.id === activeId))); setOpen(true); refresh(); };
-  const pick = (p?: Project) => { if (p) { writeActiveProjectId(p.id); close(true); } };
+  const pick = (p?: Project) => { if (p) { writeActiveProjectId(p.id); close(); } };
   const onBoxKey = (e: KeyboardEvent) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -54,41 +48,39 @@ export function ProjectPicker() {
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       pick(projects[index]);
-    } else if (e.key === "Escape") {
-      close(true);
-    } else if (e.key === "Tab") close(false);
+    }
   };
 
   const name = projects.find((p) => p.id === activeId)?.name ?? PICK_TEXT.choose;
   return (
-    <div className="g-hdr-pick" ref={root}>
-      <button
-        type="button" ref={button} className="g-hdr-pick__btn" aria-haspopup="listbox" aria-expanded={open} aria-label={PICK_TEXT.label(t("shell.projectSwitch"), name)}
-        onClick={() => (open ? close(false) : show())}
-      >
-        <span>{name}</span>
-        <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4" /></svg>
-      </button>
-      {open && (
-        <div className="g-hdr-pick__panel">
-          {load.state === "ready" && projects.length > 0 ? (
-            <ul
-              role="listbox" tabIndex={-1} aria-label={t("shell.projectSwitch")} className="g-hdr-pick__list"
-              aria-activedescendant={`${base}-${index}`} onKeyDown={onBoxKey}
-            >
-              {projects.map((p, i) => (
-                <li key={p.id} id={`${base}-${i}`} role="option" aria-selected={p.id === activeId} className={i === index ? "is-hot" : undefined} onClick={() => pick(p)}>{p.name}</li>
-              ))}
-            </ul>
-          ) : (
-            <div tabIndex={-1} className="g-hdr-pick__note" onKeyDown={onBoxKey}>
-              {load.state === "loading" && PICK_TEXT.loading}
-              {load.state === "error" && <HonestState kind="offline" title={PICK_TEXT.failed} />}
-              {load.state === "ready" && <HonestState kind="empty" title={PICK_TEXT.empty} />}
-            </div>
-          )}
+    <Popover
+      open={open} onOpenChange={setOpen} className="g-hdr-pick" panelClassName="g-hdr-pick__panel"
+      trigger={(p) => (
+        <button
+          {...p} type="button" className="g-hdr-pick__btn" aria-haspopup="listbox" aria-label={PICK_TEXT.label(t("shell.projectSwitch"), name)}
+          onClick={() => (open ? close() : show())}
+        >
+          <span>{name}</span>
+          <svg className="g-shell-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4" /></svg>
+        </button>
+      )}
+    >
+      {load.state === "ready" && projects.length > 0 ? (
+        <ul
+          ref={focusIn} role="listbox" tabIndex={-1} aria-label={t("shell.projectSwitch")} className="g-hdr-pick__list"
+          aria-activedescendant={`${base}-${index}`} onKeyDown={onBoxKey}
+        >
+          {projects.map((p, i) => (
+            <li key={p.id} id={`${base}-${i}`} role="option" aria-selected={p.id === activeId} className={i === index ? "is-hot" : undefined} onClick={() => pick(p)}>{p.name}</li>
+          ))}
+        </ul>
+      ) : (
+        <div ref={focusIn} tabIndex={-1} className="g-hdr-pick__note" onKeyDown={onBoxKey}>
+          {load.state === "loading" && PICK_TEXT.loading}
+          {load.state === "error" && <HonestState kind="offline" title={PICK_TEXT.failed} />}
+          {load.state === "ready" && <HonestState kind="empty" title={PICK_TEXT.empty} />}
         </div>
       )}
-    </div>
+    </Popover>
   );
 }
