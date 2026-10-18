@@ -26,7 +26,9 @@ describe("Lucide notice in the production build (R1701-L1)", () => {
   it("a Vite build ships the glyph paths together with both copyright notices", () => {
     const out = mkdtempSync(join(tmpdir(), "pa-lucide-"));
     try {
-      execFileSync("npx", ["vite", "build", "--outDir", out, "--emptyOutDir"], { cwd: root, stdio: "pipe" });
+      // node + vite.js, not npx: without a shell Windows cannot start the npx.cmd wrapper
+      const vite = resolve(root, "node_modules/vite/bin/vite.js");
+      execFileSync(process.execPath, [vite, "build", "--outDir", out, "--emptyOutDir"], { cwd: root, stdio: "pipe" });
       const files = readdirSync(out, { recursive: true, encoding: "utf8" })
         .map((f) => join(out, f))
         .filter((f) => statSync(f).isFile())
