@@ -17,6 +17,8 @@ describe("Lucide notice", () => {
     expect(text).toContain("ISC License");
     expect(text).toContain("Lucide Icons and Contributors");
     expect(text).toContain("Cole Bemis");
+    const glyphs = readFileSync(resolve(root, "src/design/icons/glyphs.ts"), "utf8");
+    for (const line of text.split("\n").filter((l) => l.trim())) expect(glyphs).toContain(line);
   });
 });
 
