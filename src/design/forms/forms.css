@@ -1,4 +1,4 @@
-/* DS-X-05 forms. Not imported by the app yet. Consumes --g-* from tokens.css and motion.css only. */
+/* DS-X-05 forms. Consumes --g-* from tokens.css and motion.css only. */
 
 .g-field { display: grid; gap: var(--g-space-3); min-width: 0; }
 .g-field__label { font: var(--g-t-label); color: var(--g-ink2); }

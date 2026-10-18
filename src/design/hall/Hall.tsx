@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties } from "react";
 
 import { de } from "../../i18n/de";
+import type { MotionMode } from "../motion/motionMode";
 import { STATE_UNKNOWN_FORM } from "../state/states";
 import { poseFor, ROLE_WORDS, ROLES, type Role } from "./figures/poses";
 import type { HallScene } from "./fixtures";
@@ -50,20 +51,20 @@ function Sprite({ sheet, id, col, row, piece, selected, onPick, animate }: Sprit
   );
 }
 
-/** `scene` undefined: nothing read yet. A piece without a state is unknown; a role without a piece is `ready`. */
-export function Hall({ scene }: { scene: HallScene | undefined }) {
+/** `scene` undefined: nothing read yet. A piece without a state is unknown; a role without a piece is `ready`. `motion` overrides the app's mode for this hall only. */
+export function Hall({ scene, motion: override }: { scene: HallScene | undefined; motion?: MotionMode }) {
   const s = usePixelScale().css;
   const pieces = scene?.pieces ?? [];
   const pieceOf = (role: Role) => pieces.find((p) => p.role === role);
   const { selected, toggle } = useSelection(pieces.map((p) => p.id));
-  const { motion, paused } = useHallMotion();
+  const { motion, paused, sceneRef } = useHallMotion(override);
   // R1646-K1: poseFor(null) means "no run observed"; a piece with a missing state must stay unknown.
   const poses = ROLES.map((role) => { const piece = pieceOf(role); return poseFor(piece ? piece.state ?? STATE_UNKNOWN_FORM : null); });
   const moving = pickMoving(poses);
   return (
     <section className="g-hall" aria-label={de["hall.title"]} style={{ "--s": s } as CSSProperties}>
       <p className="g-hall__sample">{de["hall.sample"]}</p>
-      <div className="g-hall__scene" aria-hidden="true" data-motion={motion} data-paused={paused ? "true" : undefined} style={{ "--cols": FLOOR[0].length, "--rows": FLOOR.length } as CSSProperties}>
+      <div ref={sceneRef} className="g-hall__scene" aria-hidden="true" data-motion={motion} data-paused={paused ? "true" : undefined} style={{ "--cols": FLOOR[0].length, "--rows": FLOOR.length } as CSSProperties}>
         {FLOOR.flatMap((line, row) => [...line].map((c, col) => <Sprite key={`${col}-${row}`} sheet="tiles" id={TILE[c]} col={col} row={row} />))}
         <Sprite sheet="tiles" id="gate-hall-0" col={GATE[0]} row={GATE[1]} />
         {ROLES.map((role, i) => {
