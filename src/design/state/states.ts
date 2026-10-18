@@ -1,8 +1,8 @@
 import { de } from "../../i18n/de";
 import type { BoardColumn } from "../../types";
 
-// V2-F3: six state forms and one dictionary (word, shape, color). Not
-// imported by the app yet. Every status value of `src-tauri/src/status.rs`
+// V2-F3: six state forms and one dictionary (word, shape, color).
+// Every status value of `src-tauri/src/status.rs`
 // (the five board columns and the closed ReasonCode set) maps to exactly one
 // form; `states.test.ts` reads status.rs and fails when a value has none.
 

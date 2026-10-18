@@ -1,6 +1,5 @@
 /* V2-F3 six-state vocabulary: shape + word + color, one definition.
-   Ported from the glass board (Main.dc.html, .st/.glyph) onto the --g-* tokens.
-   Not imported by the app yet; motion belongs to V2-F2. */
+   Ported from the glass board (Main.dc.html, .st/.glyph) onto the --g-* tokens. */
 
 .g-st {
   --c: var(--g-done);
