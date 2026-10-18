@@ -81,3 +81,17 @@ If two blocks nearly fit, extend one (a variant) instead of adding a third.
 
 - `npx vitest run src/design` and `npx tsc --noEmit` (or the full `bash scripts/ci/gates.sh lane prepush`).
 - A visual claim needs a screenshot you looked at, light and dark, with the motion mode named.
+
+## 8. Measure space before handover
+
+Run `npm run design:gate`; it owns and closes its mock Vite server and Chromium browser.
+It renders registered routes, mount-only routes and Settings tabs: 0/2/12 items, 1440×900 and
+1920×1080, light/dark, reduced motion. Table, PNGs and detailed JSON go to `.pa/design-gate/`.
+The sweep waits for visible page text; unrendered lazy frames fail instead of yielding zero counts.
+Proposed thresholds (the user may change them): trailing vertical slack >120 px AND >35% of a
+box's height; box nesting depth >2; selected tabs with no meaningful content (including known
+placeholder components); uppercase leaf labels ≤14 px; equal computed grid tracks using `1fr`.
+Exit 1 means a per-case count rose or coverage changed. `npm run design:gate -- --update`
+initializes a missing baseline or lowers existing ceilings atomically; it never raises them.
+This is a DOM heuristic, not a visual verdict; horizontal gaps, dialogs and legacy sub-tabs
+are not swept. The command is deliberately not wired into CI or `gates.sh` yet.
