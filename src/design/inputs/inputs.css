@@ -13,9 +13,9 @@
 .g-inp--mono { font-family: var(--g-font-mono); font-size: 12px; }
 .g-inp--sm { height: 36px; }
 .g-inp::placeholder { color: var(--g-faint); }
-.g-inp[aria-invalid="true"] { border-color: var(--g-danger-line); }
-.g-inp:disabled { opacity: .5; cursor: not-allowed; }
-.g-inp:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
+[data-force-state="error"] .g-inp, .g-inp[aria-invalid="true"] { border-color: var(--g-danger-line); }
+[data-force-state="disabled"] .g-inp, .g-inp:disabled { opacity: .5; cursor: not-allowed; }
+[data-force-state="focus"] .g-inp, .g-inp:focus-visible { outline: 2px solid var(--g-accent); outline-offset: 2px; }
 .g-selw { position: relative; display: flex; align-items: center; min-width: 0; }
 .g-selw select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
 /* Option styling is best effort: some engines (WebKit) ignore it and draw native options. */

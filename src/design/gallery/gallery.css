@@ -20,3 +20,10 @@
 .g-gal-track { width: 320px; padding: var(--g-space-4); border-radius: var(--g-r-pill); background: var(--g-tint); }
 .g-gal-dot { display: block; width: 24px; height: 24px; border-radius: var(--g-r-pill); background: var(--g-accent); transition: transform var(--g-dur-5) var(--g-ease-move); }
 .g-gal-dot[data-moved="on"] { transform: translateX(280px); }
+
+.g-gal-story { display: flex; flex-direction: column; gap: var(--g-space-4); }
+.g-gal-story h3 { font: var(--g-t-label); }
+.g-gal-matrix { display: flex; flex-wrap: wrap; gap: var(--g-space-6); }
+.g-gal-cell { display: flex; flex-direction: column; align-items: flex-start; gap: var(--g-space-4); min-width: 140px; }
+.g-gal-cell:has(.g-inp), .g-gal-cell:has(.g-meter) { width: 180px; }
+.g-gal-cell .g-meter { width: 100%; }

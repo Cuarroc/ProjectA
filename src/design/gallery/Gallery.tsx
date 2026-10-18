@@ -8,6 +8,7 @@ import { EMPTY_HALL, SAMPLE_HALL, type HallScene } from "../hall/fixtures";
 import { motionDuration } from "../motion/tokens";
 import { MOTION_MODES, useMotion, type MotionMode } from "../motion/motionMode";
 import { COMPONENT_REGISTRY, type ComponentFamily } from "../registry";
+import { renderStories } from "./stories";
 import "./gallery.css";
 
 // DS-X-15 (D6): read-only gallery of the design tokens. No IPC, no store: every value comes from tokens.css.
@@ -134,6 +135,8 @@ function Body({ page }: { page: Page }) {
     );
     case "motion": return <MotionDemo />;
     case "hall": return <ProbeHall />;
+    case "controls":
+    case "inputs": return renderStories(page);
     default: return (
       <>
         <p className="g-gal-note">{de["gallery.storiesLater"]}</p>

@@ -12,14 +12,14 @@
   font: 500 13px/1 var(--g-font-sans); white-space: nowrap; cursor: pointer; box-shadow: none;
   transition: transform var(--g-t), background-color var(--g-t), border-color var(--g-t);
 }
-.g-btn:active { transform: scale(.97); }
+.g-btn:active, [data-force-state="active"] .g-btn { transform: scale(.97); }
 .g-btn--primary { background: var(--g-accent); border-color: transparent; color: var(--g-on-accent); }
 .g-btn--tint { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-btn--ghost { background: transparent; border-color: transparent; color: var(--g-ink2); }
 .g-btn--danger { background: var(--g-bad-bg); border-color: var(--g-danger-line); color: var(--g-bad); }
 .g-btn--lg { height: 44px; padding: 0 20px; }
 .g-btn--sm { height: 32px; padding: 0 12px; font-size: 12px; }
-.g-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.g-btn:disabled, [data-force-state="disabled"] .g-btn { opacity: .5; cursor: not-allowed; transform: none; }
 .g-btn-group { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .g-estop { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .g-estop-hint {
@@ -41,7 +41,7 @@
   transition: transform var(--g-t), background-color var(--g-t), color var(--g-t);
 }
 .g-fchip b { font-weight: 600; color: var(--g-muted); }
-.g-fchip:active { transform: scale(.97); }
+.g-fchip:active, [data-force-state="active"] .g-fchip { transform: scale(.97); }
 .g-fchip[aria-pressed="true"] { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-fchip[aria-pressed="true"] b { color: var(--g-accent); }
 .g-sw {
@@ -56,7 +56,7 @@
 }
 .g-sw[aria-checked="true"] { background: var(--g-sw-on); }
 .g-sw[aria-checked="true"]::after { transform: translateX(16px); }
-.g-sw:disabled { cursor: not-allowed; opacity: .6; }
+.g-sw:disabled, [data-force-state="disabled"] .g-sw { cursor: not-allowed; opacity: .6; }
 .g-seg {
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 4px;
   border-radius: 12px; background: var(--g-tint); border: 1px solid var(--g-hair);
@@ -66,20 +66,20 @@
   font: 500 12px/1 var(--g-font-sans); color: var(--g-ink2); cursor: pointer;
   transition: background-color var(--g-t), transform var(--g-t);
 }
-.g-seg button:active { transform: scale(.97); }
+.g-seg button:active, [data-force-state="active"] .g-seg button[tabindex="0"] { transform: scale(.97); }
 @media (prefers-reduced-motion: reduce) {
-  .g-btn:active, .g-fchip:active, .g-seg button:active { transform: none; }
+  .g-btn:active, .g-fchip:active, .g-seg button:active, [data-force-state="active"] .g-btn, [data-force-state="active"] .g-fchip, [data-force-state="active"] .g-seg button[tabindex="0"] { transform: none; }
 }
 .g-seg button[aria-checked="true"] { background: var(--g-tint-hi); border-color: var(--g-line); color: var(--g-ink); }
 @media (hover: hover) and (pointer: fine) {
-  .g-btn:hover { background: var(--g-hover); }
-  .g-btn--primary:hover { background: var(--g-accent-hover); }
-  .g-btn--tint:hover { background: var(--g-accent-soft); color: var(--g-accent-hover); }
-  .g-btn--ghost:hover { background: var(--g-tint); }
-  .g-btn--danger:hover { background: color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%); border-color: var(--g-bad); }
-  .g-fchip:not([aria-pressed="true"]):hover { background: var(--g-tint-hi); }
-  .g-seg button:not([aria-checked="true"]):hover { background: var(--g-tint); }
+  .g-btn:hover, [data-force-state="hover"] .g-btn { background: var(--g-hover); }
+  .g-btn--primary:hover, [data-force-state="hover"] .g-btn--primary { background: var(--g-accent-hover); }
+  .g-btn--tint:hover, [data-force-state="hover"] .g-btn--tint { background: var(--g-accent-soft); color: var(--g-accent-hover); }
+  .g-btn--ghost:hover, [data-force-state="hover"] .g-btn--ghost { background: var(--g-tint); }
+  .g-btn--danger:hover, [data-force-state="hover"] .g-btn--danger { background: color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%); border-color: var(--g-bad); }
+  .g-fchip:not([aria-pressed="true"]):hover, [data-force-state="hover"] .g-fchip:not([aria-pressed="true"]) { background: var(--g-tint-hi); }
+  .g-seg button:not([aria-checked="true"]):hover, [data-force-state="hover"] .g-seg button:not([aria-checked="true"]) { background: var(--g-tint); }
 }
-:is(.g-btn, .g-fchip, .g-sw, .g-seg button):focus-visible {
+:is(.g-btn, .g-fchip, .g-sw, .g-seg button):focus-visible, [data-force-state="focus"] :is(.g-btn, .g-fchip, .g-sw, .g-seg button[tabindex="0"]) {
   outline: 2px solid var(--g-accent); outline-offset: 2px;
 }
