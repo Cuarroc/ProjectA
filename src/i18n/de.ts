@@ -139,6 +139,7 @@ export const de = {
   "leitstand.tab.classic": "Klassisch",
   "leitstand.tab.tools": "Werkzeuge",
   "leitstand.tab.fabrik": "Linie",
+  "design.iconButton.noLabel": "IconButton braucht ein aria-label mit Text.",
   "leitstand.profilesFailed": "Agenten konnten nicht geladen werden",
   "betrieb.profilesHint": "Einträge zeigen vorerst die Profil-Kennung.",
   "leitstand.profilesHint": "Die Karten zeigen vorerst die Profil-Kennung.",
