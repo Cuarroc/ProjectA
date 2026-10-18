@@ -20,16 +20,16 @@ test('600px panel with two 40px rows has 520px slack', async () => {
   assert.equal(result.slack[0].slack, 520);
 });
 test('three nested boxes exceed depth two', async () => {
-  const result = await inspect('<section class="box"><div class="box"><div class="box">Content</div></div></section>');
+  const result = await inspect('<section class="box"><div class="box"><span class="box">Content</span></div></section>');
   assert.equal(result.nesting.length, 1);
   assert.equal(result.nesting[0].depth, 3);
 });
 test('selected empty and placeholder tabs are violations', async () => {
-  const result = await inspect('<button role="tab" aria-selected="true" aria-controls="empty">Empty</button><div id="empty" role="tabpanel"></div><nav class="g-shell-tabs"><a aria-current="page">Later</a></nav><section class="g-shell-panel"><h1>Later</h1><p class="g-shell-note">Not connected</p></section>');
+  const result = await inspect('<button role="tab" aria-selected="true" aria-controls="empty">Empty</button><div id="empty" role="tabpanel"></div><section class="g-shell-panel"><nav class="g-shell-tabs"><a aria-current="page">Later</a></nav><h1>Later</h1><p class="g-shell-note">Not connected</p></section>');
   assert.equal(result.tabs.length, 2);
 });
 test('compact lists and two boxes are not violations', async () => {
-  const result = await inspect('<section class="box" style="height:80px"><div class="box row">One</div><div class="row">Two</div></section><button role="tab" aria-selected="true" aria-controls="full">Full</button><div id="full" role="tabpanel"><p>Useful content</p></div>');
+  const result = await inspect('<section class="box" style="height:80px"><div class="box row">One</div><div class="row">Two</div></section><button role="tab" aria-selected="true" aria-controls="full">Full</button><div id="full" role="tabpanel"><p>Useful content</p></div><button role="tab" aria-selected="false" aria-controls="lazy">Lazy</button><div id="lazy" hidden></div><button role="tab" aria-selected="true">Unassociated legacy tab</button>');
   assert.deepEqual(Object.values(result).map(v => v.length), [0, 0, 0, 0, 0]);
 });
 test('hidden text cannot conceal slack and thresholds are strict', async () => {
@@ -48,4 +48,7 @@ test('ratchet rejects rises and missing cases but accepts falls', () => {
   assert.equal(ratchet({}, { screen: [1, 0, 0, 0, 0] }).length, 1);
   assert.equal(ratchet({ extra: [0, 0, 0, 0, 0] }, {}).length, 1);
   assert.throws(() => ratchet({ screen: [NaN] }, { screen: [1, 0, 0, 0, 0] }), /invalid/i);
+});
+test('unrendered app content cannot produce a green snapshot', async () => {
+  await assert.rejects(inspect('<main class="g-shell-content"><div hidden>Legacy</div></main>'), /not ready/i);
 });
