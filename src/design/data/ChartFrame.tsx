@@ -19,9 +19,9 @@ export function ChartFrame({ title, caption, kind, data }: ChartFrameProps) {
   const legend = kind === "sparkline" ? [title] : (data ?? []).map(row => row.label);
   return <figure className="g-chart" aria-labelledby={id}>
     <figcaption><h3 id={id}>{title}</h3><p>{caption}</p></figcaption>
-    <ul className="g-chart__legend" aria-label={de["chart.legend"]}>
+    {!!data?.length && <ul className="g-chart__legend" aria-label={de["chart.legend"]}>
       {legend.map((label, i) => <li key={i}><i aria-hidden="true" style={{ background: chartColour(i) }} />{label}</li>)}
-    </ul>
+    </ul>}
     {kind === "sparkline" ? <Sparkline label={title} data={data} /> : <BarList label={title} data={data} />}
     <details>
       <summary>{de["chart.table"]}</summary>

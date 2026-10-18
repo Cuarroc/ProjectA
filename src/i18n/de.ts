@@ -2,7 +2,6 @@
 
 export const de = {
   "chart.empty": "Keine Daten",
-  "chart.unknown": "Unbekannt",
   "chart.table": "Als Tabelle",
   "chart.legend": "Legende",
   "chart.label": "Bezeichnung",
