@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { inflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { main, pngSize, VIEWPORT } from "./shot.mjs";
@@ -111,15 +112,22 @@ test("--theme dark supports --check-tab", async () => {
   }
 });
 
-test("--wait delays the screenshot until a late frame is visible", async () => {
+// First pixel of a PNG: for every row filter the leftmost pixel of row 0 equals its raw bytes.
+function firstPixel(buf) {
+  const idat = [];
+  for (let at = 8; at < buf.length; at += 12 + buf.readUInt32BE(at)) {
+    if (buf.toString("ascii", at + 4, at + 8) === "IDAT") idat.push(buf.subarray(at + 8, at + 8 + buf.readUInt32BE(at)));
+  }
+  return [...inflateSync(Buffer.concat(idat)).subarray(1, 4)];
+}
+
+test("--wait captures the late background change, the shot without it does not", async () => {
   const early = await runShot(["--theme", "light"]);
   const late = await runShot(["--theme", "light", "--wait", "1600"]);
   try {
     assert.equal(late.report.wait, 1600);
-    assert.notDeepEqual(
-      readFileSync(join(early.out, "fixture-light.png")),
-      readFileSync(join(late.out, "fixture-light.png")),
-    );
+    assert.deepEqual(firstPixel(readFileSync(join(early.out, "fixture-light.png"))), [255, 255, 255]);
+    assert.deepEqual(firstPixel(readFileSync(join(late.out, "fixture-light.png"))), [0, 0, 0]);
   } finally {
     rmSync(early.out, { recursive: true, force: true });
     rmSync(late.out, { recursive: true, force: true });
