@@ -9,7 +9,7 @@ describe("Meter unknown tone", () => {
     const meter = screen.getByRole("meter", { name: "Quota" });
     expect(meter).toHaveAttribute("aria-valuenow", "40");
     const bar = meter.firstElementChild as HTMLElement;
-    expect(bar).toHaveStyle({ width: "40%" });
+    expect(bar).toHaveStyle({ transform: "scaleX(0.4)" });
     expect(bar.className).not.toContain("g-meter--");
     rerender(<Meter aria-label="Quota" value={40} tone="hot" />);
     expect(screen.getByRole("meter", { name: "Quota" }).firstElementChild).toHaveClass("g-meter--hot");

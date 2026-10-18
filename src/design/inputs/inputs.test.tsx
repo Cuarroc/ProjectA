@@ -119,11 +119,11 @@ describe("Kbd, Avatar and Lamp", () => {
 });
 
 describe("Meter", () => {
-  it("exposes a clamped value and a width", () => {
+  it("exposes a clamped value and a scale", () => {
     const { rerender } = render(<Meter aria-label="Quota" value={42} tone="hot" />);
     const m = screen.getByRole("meter", { name: "Quota" });
     expect(m).toHaveAttribute("aria-valuenow", "42");
-    expect(m.firstElementChild).toHaveStyle({ width: "42%" });
+    expect(m.firstElementChild).toHaveStyle({ transform: "scaleX(0.42)" });
     expect(m.firstElementChild).toHaveClass("g-meter--hot");
     rerender(<Meter aria-label="Quota" value={180} />);
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "100");
