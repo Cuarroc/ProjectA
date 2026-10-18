@@ -54,6 +54,14 @@
   --g-av4: #E6DDF4;
   --g-av5: #F3DCE4;
   --g-av6: #E0E5EB;
+  /* DS-X-32 data-viz series. Hues stay off the state colours (run, need, rev, ok, bad, done);
+     scripts/contrast-check.mjs holds each at 3:1 on ground, chrome and glass. */
+  --g-viz-1: #00787A;
+  --g-viz-2: #A8307F;
+  --g-viz-3: #8A6100;
+  --g-viz-4: #5C7A00;
+  --g-viz-5: #8C5CA8;
+  --g-viz-6: #7A4B2A;
   --g-px-skin: #A87050;
   --g-px-hair: #2B1E18;
   --g-pad: 20px;
@@ -162,6 +170,14 @@
     --g-av4: #33294A;
     --g-av5: #432936;
     --g-av6: #2B323C;
+    /* DS-X-32 data-viz series. Hues stay off the state colours (run, need, rev, ok, bad, done);
+       scripts/contrast-check.mjs holds each at 3:1 on ground, chrome and glass. */
+    --g-viz-1: #4DD0C8;
+    --g-viz-2: #F07FC0;
+    --g-viz-3: #E3C04A;
+    --g-viz-4: #B5D95A;
+    --g-viz-5: #9C7AB8;
+    --g-viz-6: #C99A74;
     --g-px-skin: #A87050;
     --g-px-hair: #2B1E18;
   }
@@ -214,6 +230,14 @@
   --g-av4: #33294A;
   --g-av5: #432936;
   --g-av6: #2B323C;
+  /* DS-X-32 data-viz series. Hues stay off the state colours (run, need, rev, ok, bad, done);
+     scripts/contrast-check.mjs holds each at 3:1 on ground, chrome and glass. */
+  --g-viz-1: #4DD0C8;
+  --g-viz-2: #F07FC0;
+  --g-viz-3: #E3C04A;
+  --g-viz-4: #B5D95A;
+  --g-viz-5: #9C7AB8;
+  --g-viz-6: #C99A74;
   --g-px-skin: #A87050;
   --g-px-hair: #2B1E18;
 }
