@@ -2,15 +2,31 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { de, type MessageKey } from "../../i18n/de";
 import { Button } from "../controls/Button";
+import { Segmented } from "../controls/Segmented";
+import { Hall } from "../hall/Hall";
+import { EMPTY_HALL, SAMPLE_HALL, type HallScene } from "../hall/fixtures";
 import { motionDuration } from "../motion/tokens";
-import { useMotion } from "../motion/motionMode";
+import { MOTION_MODES, useMotion, type MotionMode } from "../motion/motionMode";
 import { COMPONENT_REGISTRY, type ComponentFamily } from "../registry";
 import "./gallery.css";
 
 // DS-X-15 (D6): read-only gallery of the design tokens. No IPC, no store: every value comes from tokens.css.
+// DS-H-07a: the page "Probe-Halle" (family hall) renders Hall on Beispieldaten. Its switches override the hall only.
+// The route is hash based, so the state sits in the hash query and is read once when the gallery opens:
+//   #/designsystem?page=hall&motion=calm|lively|off&set=normal|empty|unread
+// `page` is any page id below (colour, type, space, radius, glass, motion or a family such as hall); unknown values fall back.
 const PAGES = ["colour", "type", "space", "radius", "glass", "motion"] as const;
 type Page = (typeof PAGES)[number] | ComponentFamily;
 const FAMILIES = [...new Set(COMPONENT_REGISTRY.map((entry) => entry.family))];
+
+/** The sample sets of the probe hall; `unread` is no scene at all. */
+const HALL_SETS: Record<"normal" | "empty" | "unread", HallScene | undefined> = { normal: SAMPLE_HALL, empty: EMPTY_HALL, unread: undefined };
+type HallSet = keyof typeof HALL_SETS;
+const HALL_SET_IDS = Object.keys(HALL_SETS) as HallSet[];
+
+/** The first of `ids` that equals `raw`, else the first id. */
+const oneOf = <T extends string>(ids: readonly T[], raw: string | null): T => ids.find((id) => id === raw) ?? ids[0];
+const query = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
 
 const SWATCHES = ["--g-ink", "--g-ink2", "--g-muted", "--g-accent", "--g-run", "--g-need", "--g-rev", "--g-ok", "--g-bad", "--g-viz-1", "--g-viz-2", "--g-viz-3", "--g-viz-4", "--g-viz-5", "--g-viz-6"];
 const TYPE = ["display", "title", "heading", "subheading", "body", "label", "note", "micro", "code"];
@@ -74,6 +90,20 @@ function MotionDemo() {
   );
 }
 
+function ProbeHall() {
+  const [motion, onMotion] = useState<MotionMode>(() => oneOf(MOTION_MODES, query().get("motion")));
+  const [set, onSet] = useState<HallSet>(() => oneOf(HALL_SET_IDS, query().get("set")));
+  return (
+    <>
+      <div className="g-gal-row">
+        <Segmented aria-label={de["gallery.hall.motion"]} value={motion} onChange={onMotion} options={MOTION_MODES.map((value) => ({ value, label: de[`gallery.hall.mode.${value}`] }))} />
+        <Segmented aria-label={de["gallery.hall.set"]} value={set} onChange={onSet} options={HALL_SET_IDS.map((value) => ({ value, label: de[`gallery.hall.set.${value}`] }))} />
+      </div>
+      <Hall scene={HALL_SETS[set]} motion={motion} />
+    </>
+  );
+}
+
 const Sample = ({ children }: { children: ReactNode }) => <><p className="g-gal-sample">{de["gallery.sample"]}</p>{children}</>;
 
 function Body({ page }: { page: Page }) {
@@ -103,6 +133,7 @@ function Body({ page }: { page: Page }) {
       </Sample>
     );
     case "motion": return <MotionDemo />;
+    case "hall": return <ProbeHall />;
     default: return (
       <>
         <p className="g-gal-note">{de["gallery.storiesLater"]}</p>
@@ -116,7 +147,7 @@ const label = (page: Page): string =>
   (PAGES as readonly string[]).includes(page) ? de[`gallery.${page}` as MessageKey] : de[`gallery.family.${page}` as MessageKey];
 
 export function Gallery() {
-  const [page, setPage] = useState<Page>("colour");
+  const [page, setPage] = useState<Page>(() => oneOf<Page>(["colour", ...PAGES, ...FAMILIES], query().get("page")));
   const link = (p: Page) => (
     <li key={p}><Button size="sm" variant={p === page ? "tint" : "ghost"} aria-current={p === page ? "page" : undefined} onClick={() => setPage(p)}>{label(p)}</Button></li>
   );
