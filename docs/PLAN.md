@@ -1587,6 +1587,7 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Werkbank je Projekt (V2-WEG/TRES/CMD/SKL/DB): Dev-Befehle, Datenbanken, Feintuning, Server, Trigger, Automationen, Tresor, Skills-Bibliothek, Bewährte Wege → [`docs/plan/v2.0/werkbank.md`](plan/v2.0/werkbank.md) | Entscheid Nutzer 11.10. E1–E4 (`docs/decisions.md`); Wege-Pilot jetzt ohne App-Code als Thema von DEV-KNOW-01, Tresor vor V2-B6a-2/V2-B19, Rest nach v2.0 hinter Schaltern; nichts davon steht in M1–M4 |
 | Paperclip-Kandidaten (COMP-PAPERCLIP-3) → Block direkt darunter | Nutzer 11.10. ~04:30Z: einreihen erlaubt; Richtung, kein neuer Meilenstein; nichts davon steht in M1–M4 oder ändert die v2-Release-Reihenfolge |
 | LUMIO: Rückfragen und Freigaben ohne Fensterwechsel (Halle zeigt, wer wartet; Antwortkarte mit Zahlentasten; Windows-Benachrichtigung) → Block LUMIO darunter | nach dem Urteil des Nutzers über die Probe-Halle (DS-H-07); Nutzer 18.10.2026 |
+| AGENT-WERKZEUGE: RTK und Repomix messen, eigene Log-Kürzung; Caveman, Headroom-Proxy, OpenCLI, Gitingest, Printing Press abgelehnt → Block AGENT-WERKZEUGE darunter | Messungen nur nach Nutzer-Ja zur Installation; Nutzer 18.10.2026 |
 
 #### LUMIO — Rückfragen und Freigaben ohne Fensterwechsel (Nutzer 18.10.2026)
 
@@ -1623,6 +1624,47 @@ Für ProjectA angepasst (Windows, Tauri, „Grün heißt bewiesen“):
 Nicht übernehmen: macOS-Notch, automatische Antwort nach Zeitablauf, vorausgewählte Freigaben, Lumio-Grafik oder -Code, Kontextzahlen ohne Beobachtung.
 Erfolgsmaß nach Umsetzung: Zeit von der Frage bis zur Antwort und Zahl der Fensterwechsel je Rückfrage, gemessen an echten Läufen; Ziel ist eine Antwort in unter 10 Sekunden ohne Terminalsuche.
 Reihenfolge: erst das Urteil des Nutzers über die Probe-Halle (DS-H-07), dann LUMIO-0, dann LUMIO-1/2/5 parallel, danach 3, 4, 6, 7. Kein Paket startet vor einem Nutzer-Ja zur Probe-Halle.
+
+Nachtrag aus dem zweiten Lumio-Video (Nutzer 18.10.2026 ~20:55 MESZ: „wie vorhin auch dieses Video und übernimm sinnvolles in den plan“; TikTok @lumio.mac, ~38 s, von Root im Browser des Nutzers angesehen):
+- Ausgangsproblem im Video: fünf Agenten in fünf Fenstern; einer „denkt noch“, ein anderer wartet seit 23 Minuten auf ein „Ja“ zu `npm install stripe`. Genau dieses Problem hat der Nutzer bei ProjectA: Wartezeit, die niemand sieht.
+- Hinweis an der Notch: „Claude Code — Needs permission · Luma 4 · Waiting for "yes": npm install stripe“, also Anbieter, Art (Freigabe oder Frage), Agent und der Befehl in einer Zeile.
+- Freigabekarte: Zweck in Worten („Installs dependencies“), darunter der Befehl wörtlich, Knöpfe „Deny“ und „Allow“, Enter bestätigt.
+- Laufliste („All 7 chats“): je Agent eine Zeile mit Aufgabe, Agentenname, Anbieter, aktueller Tätigkeit in Worten („Waiting for "yes"“, „Edits OfficeScene.swift“, „Starts a helper · plan 3/5“, „Thinking…“, „Waiting for a task“), Füllstand des Kontexts als Balken (22 %, 34 %, 58 %, 84 % rot, 12 %) und Laufzeit; „Needs you“ als Marke, wartende Läufe oben.
+- Eine Tastenkombination (zweimal Command) öffnet das Pixel-Büro als schwebende Übersicht über dem Desktop.
+
+Für ProjectA angepasst: Kontext-Füllstand und Tätigkeit nur, wenn beobachtet (Regel 9); sonst „unbekannt“. Die Kontextwarnung passt zur eigenen Regel „Sitzungen deutlich unter ~150k Tokens, früh übergeben“ (AGENTS.md Regel 4). Die Freigabekarte bietet nur „einmal erlauben“ oder „ablehnen“. Dauerhafte Freigaben („nicht mehr fragen“) erweitern Rechte und bleiben im eigenen Dialog des Anbieters.
+
+| ID | Ziel | Abhängigkeit | Stufe | Status |
+|---|---|---|---|---|
+| LUMIO-8 | Laufliste kompakt: eine Zeile je Agent mit Aufgabe, Agent, Anbieter, Tätigkeit in Worten, Kontextbalken, Laufzeit; „Braucht dich“ zuerst, dann nach Wartezeit; Klick öffnet Antwortkarte oder Terminal; dieselben Daten wie Halle und Zähler (eine Quelle) | LUMIO-0, LUMIO-5 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-9 | Kontext-Füllstand je Agent: Balken nur aus beobachteten Zahlen des Anbieters; ab 80 % Warnfarbe plus Text „bald übergeben“, nie nur Farbe; keine automatische Aktion | LUMIO-0 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-10 | Tätigkeit in Worten: aus beobachteten Werkzeugaufrufen und Ereignissen eine kurze deutsche Zeile („bearbeitet `Datei`“, „wartet auf Freigabe: `Befehl`“, „denkt“, „wartet auf Auftrag“); unbekannt bleibt „unbekannt“; Befehle und Pfade ungekürzt im Tooltip oder Inspektor | LUMIO-0 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-11 | Erinnerung statt Vergessen: wartet eine Freigabe oder Frage länger als eine einstellbare Zeit (Vorschlag 5 min), einmal eine Windows-Benachrichtigung; keine Wiederholungsflut, keine automatische Antwort | LUMIO-4, LUMIO-7 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-12 | Schnellblick per Tastenkürzel: ein globales Kürzel (Tauri-Plugin `global-shortcut`, Nutzerentscheid über die Taste) zeigt Halle und Laufliste als schwebende Übersicht und schließt mit Escape; kein Fokusdiebstahl ohne Tastendruck | LUMIO-8; Plugin-Installation braucht ein Nutzer-Ja | B | Geplant: nicht disponiert (18.10.) |
+
+Erfolgsmaß ergänzt: längste unbemerkte Wartezeit je Tag (Ziel unter 5 Minuten) und Zahl der Übergaben, die vor dem Kontextlimit statt danach passieren.
+
+#### AGENT-WERKZEUGE — Werkzeuge für weniger Tokens und besseren Kontext (Nutzer 18.10.2026)
+
+Quelle: Nutzer im Root-Chat 18.10.2026 ~21:10 MESZ („prüfe auch das“): TikTok-Bildstrecke @martn.ai „9 GitHub repos for coding agents“, von Root im Browser des Nutzers gelesen. Sterne und Lizenzen stammen von den Bildern (Stand der Aufnahme), nicht live geprüft; vor jeder Nutzung erneut prüfen. Installationen, neue Abhängigkeiten und Änderungen an Agenten-Einstellungen bleiben Nutzerentscheide (AGENTS.md Regel 10).
+
+| Werkzeug (Repo, Lizenz laut Bild) | Was es tut (laut Bild) | Urteil für ProjectA |
+|---|---|---|
+| Ponytail (DietrichGebert/ponytail, MIT) | Agent prüft vor dem Bauen, ob Code nötig ist; Benchmark laut Repo 54 % weniger Code, 22 % weniger Tokens | Bereits im Einsatz (Claude-Plugin des Nutzers); Update 5.3.2 offen beim Nutzer; nichts Neues |
+| Caveman (JuliusBrussee/caveman, Lizenz unklar) | Kürzere Agentenantworten, komprimiert die Eingabe; laut Repo 33,2 % weniger Eingabetokens | Nicht für Root oder Nutzertexte (Berichte, PR-Texte und deutsche Sätze müssen vollständig bleiben). Höchstens beobachten, kein Paket |
+| RTK (rtk-ai/rtk, Apache-2.0) | CLI-Proxy, kürzt Ausgaben gängiger Entwicklerbefehle vor dem Agenten (laut Repo bis 90 % weniger Bash-Ausgabe), ein Rust-Binary | Kandidat: unsere Gate-, cargo- und npm-Ausgaben sind groß. Nur mit Messung (AGENT-TOOLS-1); Exit-Codes und erste Fehlzeile dürfen nie verloren gehen (Regel 3/9) |
+| Headroom (headroomlabs-ai/headroom, Apache-2.0) | Kompressionsschicht für Logs, Dateien, Werkzeugausgaben, Verlauf; Originale abrufbar; Bibliothek, Proxy, MCP | Nicht als Proxy vor Abo-Anbietern (gleiches Risiko wie beim OmniRoute-Proxy: Kontosperre, Kostenweg unklar). Idee „Original bleibt abrufbar“ übernehmen wir für eigene Log-Kürzung |
+| CLI-Anything (HKUDS/CLI-Anything, Apache-2.0) | Erzeugt Kommandozeilen für bestehende Software, damit Agenten sie deterministisch bedienen | Bestätigt unseren Weg: Agenten nutzen `pa` und `pa hq` statt HTML-Scraping (AGENTS.md). Kein Paket |
+| OpenCLI (jackwener/OpenCLI, Apache-2.0) | Macht Webseiten zu CLI-Befehlen über die eingeloggte Browsersitzung | Abgelehnt: nutzt fremde eingeloggte Sitzungen, Sicherheitsrisiko |
+| Repomix (yamadashy/repomix, MIT) | Packt ein ganzes Repo in eine KI-freundliche Datei; Kompressionsmodus behält die Codestruktur | Kandidat für die kostenlosen Reviewer, die das Repo nicht selbst lesen können (AGENT-TOOLS-2); nur mit Geheimnis-Scan und auf öffentlichem Stand |
+| Gitingest (coderamp-labs/gitingest, MIT) | Repo-URL wird zu Prompt-Text | Abgelehnt: doppelt zu Repomix und schickt das Repo an einen fremden Dienst |
+| Printing Press Library (mvanhorn/printing-press-library) | Katalog mit 388 fertigen Agenten-CLIs | Abgelehnt: ungeprüfte fremde Binärdateien |
+
+| ID | Ziel | Abhängigkeit | Stufe | Status |
+|---|---|---|---|---|
+| AGENT-TOOLS-1 | RTK messen (MESSEN, Server, nur Scratch, kein Repo-Eingriff): dieselbe Gate-Lane mit und ohne RTK; Messgrößen: Zeichen der Ausgabe, die der Agent sieht, unveränderter Exit-Code, erste Fehlzeile und `NICHT ABGEDECKT`-Block noch sichtbar, an einem roten und einem grünen Lauf. Danach Nutzerentscheid über die Installation auf dem Server | Nutzer-Ja zur Installation auf dem Server (Server-Änderung außerhalb der Jobqueue) | C | Geplant: nicht disponiert (18.10.) |
+| AGENT-TOOLS-2 | Repomix für den kostenlosen Review-Weg prüfen (MESSEN): an zwei bereits gemergten PRs Review mit bisherigem Prompt gegen Prompt plus `repomix --compress`-Auszug der betroffenen Ordner; Messgrößen: belegte Befunde mit `file:line`, Fehlzitate, Prompt-Größe; Geheimnis-Scan auf dem Auszug Pflicht | Nutzer-Ja zur Nutzung (neue Abhängigkeit oder `npx`-Download) | C | Geplant: nicht disponiert (18.10.) |
+| AGENT-TOOLS-3 | Eigene Log-Kürzung für Worker-Berichte nach dem Headroom-Prinzip: lange Gate-Ausgaben gekürzt zeigen, Original immer als Datei verlinkt, Exit-Code und erste Fehlzeile immer oben; ohne Proxy, ohne neue Abhängigkeit | AGENT-TOOLS-1 (Ergebnis) | B | Geplant: nicht disponiert (18.10.) |
 
 #### v2 — VERBUND / DevHQ und Denkraum (Beschluss 15.10.2026)
 
