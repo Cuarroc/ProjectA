@@ -67,6 +67,42 @@ export function TabPanel({ idBase, id, active, children }: { idBase: string; id:
   );
 }
 
-export function TabLinks<T extends string>(_props: { tabs: readonly { id: T; label: string; href: string }[]; value: T; "aria-label": string }) {
-  return null;
+/**
+ * Tabs that are links (route views without panels): the tab keyboard model of `Tabs`
+ * (one tab stop, arrows and Home/End) but moving only focus - Enter follows the link.
+ * The current link carries `aria-current="page"`.
+ */
+export function TabLinks<T extends string>({ tabs, value, "aria-label": label, className }: {
+  tabs: readonly { id: T; label: string; href: string }[];
+  value: T;
+  "aria-label": string;
+  className?: string;
+}) {
+  const refs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const current = Math.max(0, tabs.findIndex((t) => t.id === value));
+  const onKeyDown = (e: KeyboardEvent) => {
+    const n = tabs.length;
+    const here = refs.current.findIndex((el) => el === e.target);
+    if (n === 0 || here < 0) return;
+    if (e.key in STEP) refs.current[(here + STEP[e.key] + n) % n]?.focus();
+    else if (e.key === "Home") refs.current[0]?.focus();
+    else if (e.key === "End") refs.current[n - 1]?.focus();
+    else return;
+    e.preventDefault();
+  };
+  return (
+    <nav aria-label={label} className={["g-tabs", className].filter(Boolean).join(" ")} onKeyDown={onKeyDown}>
+      {tabs.map((t, i) => (
+        <a
+          key={t.id}
+          ref={(el) => { refs.current[i] = el; }}
+          href={t.href}
+          aria-current={t.id === value ? "page" : undefined}
+          tabIndex={i === current ? 0 : -1}
+        >
+          {t.label}
+        </a>
+      ))}
+    </nav>
+  );
 }

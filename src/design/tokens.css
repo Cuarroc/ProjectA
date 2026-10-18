@@ -17,6 +17,7 @@
   --g-tint: rgba(255, 255, 255, 0.52);
   --g-tint-hi: rgba(255, 255, 255, 0.92);
   --g-hover: #fff;
+  --g-disabled-opacity: .5;
   --g-accent: #1F57D6;
   --g-accent-hover: #1A4BBB;
   --g-on-accent: #fff;

@@ -21,9 +21,15 @@ export interface ComponentEntry {
 export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   {
     name: "Button", family: "controls",
-    variants: ["\"primary\", \"secondary\", \"tint\", \"ghost\", \"danger\"; size sm, md, lg"], states: ["disabled"],
-    a11y: "Native button, type=\"button\" by default; an icon-only button needs aria-label.",
+    variants: ["\"primary\", \"secondary\", \"tint\", \"ghost\", \"danger\"; size sm, md, lg"], states: ["disabled", "loading"],
+    a11y: "Native button, type=\"button\" by default; loading sets aria-busy, keeps focus and the label, and swallows clicks; an icon-only button is an IconButton.",
     text: "Children from the caller.",
+  },
+  {
+    name: "IconButton", family: "controls",
+    variants: ["the Button variants (default ghost) and sizes, square"], states: ["disabled", "loading"],
+    a11y: "aria-label is required by type and, while developing, by a thrown error; the icon child is aria-hidden.",
+    text: "The aria-label from the caller (via de.ts).",
   },
   {
     name: "ButtonGroup", family: "controls",
@@ -192,6 +198,12 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: [], states: ["selected tab; value matching no tab leaves the first as the tab stop"],
     a11y: "role=\"tablist\" with one tab stop; arrows, Home and End select; ids tie tabs to TabPanel.",
     text: "Tab labels from the caller.",
+  },
+  {
+    name: "TabLinks", family: "layout",
+    variants: [], states: ["current link (aria-current=\"page\"); value matching none leaves the first as the tab stop"],
+    a11y: "nav of links with one tab stop; arrows, Home and End move focus, Enter follows the link.",
+    text: "Link labels from the caller (via de.ts).",
   },
   {
     name: "TabPanel", family: "layout",

@@ -8,6 +8,8 @@ export interface IconButtonProps extends Omit<ButtonProps, "aria-label" | "child
   children: ReactNode;
 }
 
+/** Square Button with only an icon; the label is required by type and, while developing, by a throw. */
 export function IconButton({ variant = "ghost", className, ...rest }: IconButtonProps) {
+  if (import.meta.env.DEV && !rest["aria-label"]?.trim()) throw new Error("IconButton needs a non-empty aria-label");
   return <Button variant={variant} className={["g-btn--icon", className].filter(Boolean).join(" ")} {...rest} />;
 }

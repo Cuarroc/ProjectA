@@ -5,6 +5,8 @@ import { listAgentProfiles } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
 import { HonestState } from "../../design/data/HonestState";
+import { TabLinks } from "../../design/layout/Tabs";
+import "../../design/layout/layout.css";
 import "../../design/inputs/inputs.css";
 import { useT } from "../../i18n/useT";
 import type { AgentProfile } from "../../types";
@@ -25,10 +27,13 @@ const TICK_MS = 30_000;
 /** The classic view and its persistent tools stay reachable beside Haupt and Fabrik. */
 export function LeitstandTabs({ path }: { path: string }) {
   const t = useT();
-  const tab = (target: string, label: string) => (
-    <a href={`#${target}`} aria-current={target === trim(path) ? "page" : undefined}>{label}</a>
-  );
-  return <nav className="g-shell-tabs" aria-label={t("leitstand.tabs")}>{tab(MAIN_PATH, t("tab.main"))}{tab(FABRIK_PATH, t("leitstand.tab.fabrik"))}{tab(TOOLS_PATH, t("leitstand.tab.tools"))}{tab(CLASSIC_PATH, t("leitstand.tab.classic"))}</nav>;
+  const tabs = [
+    { id: MAIN_PATH, label: t("tab.main") },
+    { id: FABRIK_PATH, label: t("leitstand.tab.fabrik") },
+    { id: TOOLS_PATH, label: t("leitstand.tab.tools") },
+    { id: CLASSIC_PATH, label: t("leitstand.tab.classic") },
+  ].map((tab) => ({ ...tab, href: `#${tab.id}` }));
+  return <TabLinks aria-label={t("leitstand.tabs")} tabs={tabs} value={trim(path)} />;
 }
 
 /** The new Leitstand (V2-S01a): agent cards with filter chips and "Braucht dich" on Haupt, the flow graph on Fabrik; Betrieb has its own area (NAV-2b). */

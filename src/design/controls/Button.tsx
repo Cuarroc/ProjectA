@@ -6,12 +6,19 @@ export type ButtonSize = "sm" | "md" | "lg";
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** Busy: `aria-busy`, label kept (so the width stays), a second click is swallowed. */
   loading?: boolean;
 }
 
-export function Button({ variant = "secondary", size = "md", loading, className, type = "button", ...rest }: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", loading, className, type = "button", onClick, children, ...rest }: ButtonProps) {
   const cls = ["g-btn", variant !== "secondary" && `g-btn--${variant}`, size !== "md" && `g-btn--${size}`, className];
-  return <button type={type} className={cls.filter(Boolean).join(" ")} {...rest} />;
+  // Not `disabled`: the button keeps focus while it works; preventDefault also stops a submit.
+  const click: ButtonProps["onClick"] = (e) => (loading ? e.preventDefault() : onClick?.(e));
+  return (
+    <button type={type} className={cls.filter(Boolean).join(" ")} aria-busy={loading || undefined} onClick={click} {...rest}>
+      {loading ? <><span className="g-btn__label">{children}</span><span className="g-btn__busy" aria-hidden="true" /></> : children}
+    </button>
+  );
 }
 
 /** Equal-width cells, one height: every Button in the group takes the same size. */
