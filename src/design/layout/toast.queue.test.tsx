@@ -63,6 +63,21 @@ describe("useToast queue", () => {
     expect(screen.getByText("C")).toBeInTheDocument();
   });
 
+  it("a dismissed waiting toast never appears", () => {
+    vi.useFakeTimers();
+    const api = mountToasts();
+    const ids: number[] = [];
+    act(() => { for (const text of ["A", "B", "C", "D"]) ids.push(api.push({ text })); });
+    act(() => { api.dismiss(ids[3]); });
+    act(() => { api.dismiss(ids[0]); });
+    act(() => { vi.advanceTimersByTime(EXIT_MS); });
+    expect(screen.queryByText("A")).toBeNull();
+    expect(screen.queryByText("D")).toBeNull();
+    expect(screen.getAllByRole("status")).toHaveLength(2);
+    expect(screen.getByText("B")).toBeInTheDocument();
+    expect(screen.getByText("C")).toBeInTheDocument();
+  });
+
   it("leaves without an exit animation when motion is off", () => {
     saveMotionMode("off");
     const api = mountToasts();
