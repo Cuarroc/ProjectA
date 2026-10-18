@@ -38,4 +38,18 @@ describe("TabLinks", () => {
     expect(screen.getAllByRole("link").map((l) => l.tabIndex)).toEqual([0, -1, -1]);
     expect(document.querySelector("[aria-current]")).toBeNull();
   });
+
+  it("moves the one tab stop with arrow focus and returns it on blur", () => {
+    render(<><TabLinks aria-label="Ansichten" tabs={tabs} value="b" /><button>danach</button></>);
+    const [a, b, c] = screen.getAllByRole("link");
+    const stops = () => [a, b, c].map((l) => l.tabIndex);
+    b.focus();
+    fireEvent.keyDown(b, { key: "ArrowRight" });
+    // Tab and Shift+Tab both leave the group: c is the only stop; aria-current stays on b.
+    expect(stops()).toEqual([-1, -1, 0]);
+    expect(b).toHaveAttribute("aria-current", "page");
+    expect(c).not.toHaveAttribute("aria-current");
+    screen.getByRole("button", { name: "danach" }).focus();
+    expect(stops()).toEqual([-1, 0, -1]);
+  });
 });

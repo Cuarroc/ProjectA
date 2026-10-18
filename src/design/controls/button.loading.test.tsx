@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -30,5 +32,26 @@ describe("Button loading", () => {
     const { container } = render(<Button loading>Speichern</Button>);
     expect(screen.getByText("Speichern")).toBeInTheDocument();
     expect(container.querySelector(".g-btn__busy")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps its accessible name once the control styles apply", () => {
+    const style = document.createElement("style");
+    style.textContent = readFileSync(resolve(__dirname, "controls.css"), "utf8");
+    document.head.append(style);
+    try {
+      render(<Button loading>Speichern</Button>);
+      expect(screen.getByRole("button", { name: "Speichern" })).toBeInTheDocument();
+    } finally {
+      style.remove();
+    }
+  });
+
+  it("wraps an icon-and-text label the same way idle and busy", () => {
+    const label = <><svg data-testid="ic" /><span>Speichern</span></>;
+    const { rerender } = render(<Button>{label}</Button>);
+    const idle = screen.getByRole("button").querySelector(".g-btn__label")?.innerHTML;
+    expect(idle).toContain("Speichern");
+    rerender(<Button loading>{label}</Button>);
+    expect(screen.getByRole("button").querySelector(".g-btn__label")?.innerHTML).toBe(idle);
   });
 });

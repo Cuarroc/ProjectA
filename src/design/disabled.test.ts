@@ -20,4 +20,16 @@ describe("one disabled style", () => {
     expect(found.length).toBeGreaterThanOrEqual(4);
     expect(found.filter((f) => !f.endsWith("|var(--g-disabled-opacity)"))).toEqual([]);
   });
+
+  it("FilterChip takes the shared disabled rule", () => {
+    const css = parse(readFileSync(resolve(dir, "controls/controls.css"), "utf8"));
+    const hit: string[] = [];
+    css.walkRules((rule) => {
+      if (/\.g-fchip/.test(rule.selector) && /:disabled/.test(rule.selector)) {
+        rule.walkDecls("opacity", (d) => { hit.push(d.value); });
+        rule.walkDecls("cursor", (d) => { hit.push(d.value); });
+      }
+    });
+    expect(hit).toEqual(["var(--g-disabled-opacity)", "not-allowed"]);
+  });
 });
