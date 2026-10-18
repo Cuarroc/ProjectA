@@ -155,8 +155,14 @@ describe("Segmented", () => {
 describe("controls.css", () => {
   it("uses only tokens that tokens.css defines", () => {
     const used = new Set(Array.from(css.matchAll(/var\((--g-[\w-]+)/g), (m) => m[1]));
-    const missing = [...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-[15]|ease|t)$/.test(n));
+    const missing = [...used].filter((n) => !tokens.includes(`${n}:`) && !/^--g-(dur-[15]|ease|t|press-scale)$/.test(n));
     expect(missing).toEqual([]);
+  });
+
+  it("gives button, filter chip, segment and tab the one press token and no hard-coded scale", () => {
+    const layout = readFileSync(resolve(__dirname, "../layout/layout.css"), "utf8");
+    const press = (source: string) => Array.from(source.matchAll(/([^{}]+):active\s*\{\s*transform:\s*(scale\([^;]*\));/g), (m) => [m[1].trim(), m[2]]);
+    expect(press(css).concat(press(layout))).toEqual(["g-btn", "g-fchip", "g-seg button", "g-tabs button"].map((s) => [`.${s}`, "scale(var(--g-press-scale, .98))"]));
   });
 
   it("puts no shadow or highlight on solid fills or the selected segment", () => {

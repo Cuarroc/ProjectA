@@ -188,6 +188,12 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "Options from the caller.",
   },
   {
+    name: "Popover", family: "layout",
+    variants: ["align start, end"], states: ["open, closing, closed; flips above when there is no room below"],
+    a11y: "Trigger gets aria-expanded and aria-controls; Esc closes and returns focus to the trigger; an outside pointerdown or focus leaving closes without taking focus back.",
+    text: "Trigger and children from the caller.",
+  },
+  {
     name: "Sheet", family: "layout",
     variants: [], states: ["open, closed"],
     a11y: "role=\"dialog\" aria-modal; focus moves in, Tab cycles, Esc or scrim click closes, focus returns.",

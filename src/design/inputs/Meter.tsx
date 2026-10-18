@@ -20,7 +20,7 @@ export function Meter({ value, tone = "neutral", className, ...rest }: MeterProp
     : { role: "meter", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": pct };
   return (
     <span {...rest} {...range} className={["g-meter", className].filter(Boolean).join(" ")}>
-      {pct !== null && <b className={barTone === undefined ? undefined : `g-meter--${barTone}`} style={{ width: `${pct}%` }} />}
+      {pct !== null && <b className={barTone === undefined ? undefined : `g-meter--${barTone}`} style={{ transform: `scaleX(${pct / 100})` }} />}
     </span>
   );
 }

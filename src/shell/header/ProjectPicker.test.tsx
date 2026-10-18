@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { saveMotionMode } from "../../design/motion/motionMode";
 import { subscribeActiveProject } from "../../lib/activeProject";
 import { listProjects } from "../../lib/ipc/projects";
 import type { Project } from "../../types";
@@ -15,7 +16,7 @@ const THREE = [project("a", "Alpha"), project("b", "Beta"), project("c", "Gamma"
 const trigger = () => screen.getByRole("button", { name: /Projekt/ });
 
 beforeEach(() => { localStorage.clear(); list.mockReset().mockResolvedValue(THREE); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); saveMotionMode("calm"); });
 
 describe("project picker", () => {
   it("shows the active project name and lists the projects on click", async () => {
@@ -80,5 +81,37 @@ describe("project picker", () => {
     fireEvent.click(trigger());
     expect(await screen.findByText(sentence)).toBeInTheDocument();
     expect(screen.queryByRole("option")).toBeNull();
+  });
+
+  const enterReturnsFocus = async () => {
+    render(<ProjectPicker />);
+    fireEvent.click(trigger());
+    const box = await screen.findByRole("listbox");
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(localStorage.getItem("projecta.activeProjectId")).toBe("b");
+    expect(trigger()).toHaveFocus();
+  };
+
+  it("returns focus to the trigger after Enter when motion is off", async () => {
+    saveMotionMode("off");
+    await enterReturnsFocus();
+  });
+
+  it("returns focus to the trigger after Enter when the system asks for less motion", async () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+    await enterReturnsFocus();
+  });
+
+  it("keeps focus on the trigger when the load answer arrives while the panel closes", async () => {
+    let answer!: (list: Project[]) => void;
+    list.mockReturnValue(new Promise((r) => { answer = r; }));
+    render(<ProjectPicker />);
+    trigger().focus();
+    fireEvent.click(trigger());
+    fireEvent.keyDown(screen.getByText("Projekte werden geladen …"), { key: "Escape" });
+    expect(trigger()).toHaveFocus();
+    await act(async () => { answer(THREE); });
+    expect(trigger()).toHaveFocus();
   });
 });
