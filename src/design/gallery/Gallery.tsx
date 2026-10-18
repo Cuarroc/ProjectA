@@ -140,11 +140,11 @@ function Body({ page }: { page: Page }) {
     );
     case "hall": return <ProbeHall />;
     default: return (
-    <>
-      <p className="g-gal-note">{de["gallery.storiesLater"]}</p>
-      <ul className="g-gal-list">{COMPONENT_REGISTRY.filter((e) => e.family === page).map((e) => <li key={e.name}><code>{e.name}</code></li>)}</ul>
-    </>
-  );
+      <>
+        <p className="g-gal-note">{de["gallery.storiesLater"]}</p>
+        <ul className="g-gal-list">{COMPONENT_REGISTRY.filter((e) => e.family === page).map((e) => <li key={e.name}><code>{e.name}</code></li>)}</ul>
+      </>
+    );
   }
 }
 
