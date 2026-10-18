@@ -32,6 +32,7 @@ export function Popover({ open, onOpenChange, trigger, align = "start", classNam
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const byPointer = useRef(false);
+  const returnFocus = useRef(false);
   const [side, setSide] = useState<"top" | "bottom">("bottom");
   const { mounted, closing } = useExitTransition(open);
 
@@ -54,9 +55,12 @@ export function Popover({ open, onOpenChange, trigger, align = "start", classNam
   }, [open, onOpenChange]);
 
   // A close with focus still inside hands it back to the trigger; a click elsewhere keeps the focus it just chose.
+  // Read while rendering: with reduced motion the panel is gone by the time effects run, and focus with it.
+  if (!open && root.current?.contains(document.activeElement)) returnFocus.current = true;
   useEffect(() => {
-    if (open) { byPointer.current = false; return; }
-    if (!byPointer.current && root.current?.contains(document.activeElement)) button.current?.focus();
+    if (open) byPointer.current = false;
+    else if (returnFocus.current && !byPointer.current) button.current?.focus();
+    returnFocus.current = false;
   }, [open]);
 
   const onKeyDown = (e: KeyboardEvent) => {

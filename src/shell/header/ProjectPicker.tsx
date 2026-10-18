@@ -36,8 +36,8 @@ export function ProjectPicker() {
   useEffect(() => subscribeActiveProject(setActiveId), []);
 
   const close = useCallback(() => setOpen(false), []);
-  /** The panel body takes focus when it appears, and again when the list replaces the loading note. */
-  const focusIn = useCallback((el: HTMLElement | null) => el?.focus(), []);
+  /** The panel body takes focus when it appears, and again when the list replaces the loading note; not while it closes. */
+  const focusIn = useCallback((el: HTMLElement | null) => { if (open) el?.focus(); }, [open]);
 
   const show = () => { setIndex(Math.max(0, projects.findIndex((p) => p.id === activeId))); setOpen(true); refresh(); };
   const pick = (p?: Project) => { if (p) { writeActiveProjectId(p.id); close(); } };
