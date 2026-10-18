@@ -11,7 +11,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = "secondary", size = "md", loading, className, type = "button", onClick, children, ...rest }: ButtonProps) {
-  const cls = ["g-btn", variant !== "secondary" && `g-btn--${variant}`, size !== "md" && `g-btn--${size}`, className];
+  const cls = ["g-btn", variant !== "secondary" && `g-btn--${variant}`, size !== "md" && `g-btn--${size}`, loading && "g-btn--loading", className];
   // Not `disabled`: the button keeps focus while it works; preventDefault also stops a submit.
   const click: ButtonProps["onClick"] = (e) => (loading ? e.preventDefault() : onClick?.(e));
   return (

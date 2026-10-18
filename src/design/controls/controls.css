@@ -26,7 +26,7 @@
 /* loading: the label stays (width unchanged, still named) but turns transparent; a ring sits over it in the text colour. */
 .g-btn[aria-busy="true"] { position: relative; cursor: progress; }
 .g-btn__label { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.g-btn[aria-busy="true"] .g-btn__label { opacity: 0; }
+.g-btn--loading .g-btn__label { opacity: 0; } /* only `loading` draws the ring; a plain aria-busy keeps its text */
 .g-btn__busy {
   position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid currentColor; border-right-color: transparent; animation: g-btn-spin var(--g-dur-5, 720ms) linear infinite;
