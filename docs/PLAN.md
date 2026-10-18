@@ -1586,6 +1586,43 @@ zurück. Die DEVFLOW-Zeilen tragen ihren Status zusätzlich in der Tabelle unten
 | Fahrplan v1.6.1 bis v2.0.0 (Pakete, Wellen, Nähte, Nacharbeit je Release): [`docs/plan/roadmap/README.md`](plan/roadmap/README.md) | Ersetzt durch [`plan/v2.0/plan.md`](plan/v2.0/plan.md) (Nutzerentscheid 06.10.: v2.0 als ein Release, keine Zwischenreleases v1.7–v1.9; Kopfzeile von `docs/plan/roadmap/README.md`) und RELEASE-PAUSE (15.10.); Datei historisch, nicht disponieren |
 | Werkbank je Projekt (V2-WEG/TRES/CMD/SKL/DB): Dev-Befehle, Datenbanken, Feintuning, Server, Trigger, Automationen, Tresor, Skills-Bibliothek, Bewährte Wege → [`docs/plan/v2.0/werkbank.md`](plan/v2.0/werkbank.md) | Entscheid Nutzer 11.10. E1–E4 (`docs/decisions.md`); Wege-Pilot jetzt ohne App-Code als Thema von DEV-KNOW-01, Tresor vor V2-B6a-2/V2-B19, Rest nach v2.0 hinter Schaltern; nichts davon steht in M1–M4 |
 | Paperclip-Kandidaten (COMP-PAPERCLIP-3) → Block direkt darunter | Nutzer 11.10. ~04:30Z: einreihen erlaubt; Richtung, kein neuer Meilenstein; nichts davon steht in M1–M4 oder ändert die v2-Release-Reihenfolge |
+| LUMIO: Rückfragen und Freigaben ohne Fensterwechsel (Halle zeigt, wer wartet; Antwortkarte mit Zahlentasten; Windows-Benachrichtigung) → Block LUMIO darunter | nach dem Urteil des Nutzers über die Probe-Halle (DS-H-07); Nutzer 18.10.2026 |
+
+#### LUMIO — Rückfragen und Freigaben ohne Fensterwechsel (Nutzer 18.10.2026)
+
+Quelle: Nutzer im Root-Chat 18.10.2026 ~20:45 MESZ („ja schreibe die Erkenntnisse aus dem video in den plan, ausführlich und für unsere zwecke optimiert“). Root hat das Video im Browser des Nutzers angesehen: TikTok @lumio.mac, ~20 s, Mac-App „Lumio“ (kostenlos, lumiomac.com). Beobachtet, nicht übernommen: kein Code, keine Grafik, keine Texte von Lumio; unsere Kunst bleibt Code nach E-2 (DS-FABRIK-ZIEL).
+
+Was das Video zeigt (beobachtet 18.10.):
+- Ein Pixel-Büro mit Agentenfiguren an Schreibtischen; Kopfzeile „Working: 4 · Resting: 3“; ruhende Agenten sitzen in einer Lounge-Ecke.
+- Braucht ein Agent eine Antwort, steht seine Figur auf und zeigt eine Sprechblase mit der Frage („SQLite or PostgreSQL?“); die MacBook-Notch leuchtet orange.
+- Ein Klick öffnet eine Antwortkarte direkt an der Notch: Anbieter (Claude Code), Agentenname, Aufgabentitel, Kontext 22 %, 27 Aktionen, die Frage, nummerierte Optionen 1–3 mit Kurzbeschreibung plus „4 Other…“, „Number — pick“ (Zahlentaste wählt), ein Countdown, Knöpfe „In chat“ und „Answer“.
+- Nach der Antwort setzt sich die Figur wieder an die Arbeit („Got it — he's back to work“).
+- Werbeversprechen: Option wählen oder Befehl freigeben, ohne das Fenster zu wechseln; Claude Code und Codex.
+
+Warum es für ProjectA zählt: Der Nutzer betreut viele Agenten gleichzeitig. Heute muss er für jede Rückfrage oder Freigabe das richtige Terminal finden. Die Probe-Halle (DS-H-00 bis DS-H-07) zeigt schon Figuren mit Posen; DS-H-06 hält die Geste für `need` zurück, bis ein beobachtetes Wechselsignal existiert. LUMIO liefert genau den Anwendungsfall dafür: „Wer braucht mich, was fragt er, antworte mit einem Tastendruck.“
+
+Für ProjectA angepasst (Windows, Tauri, „Grün heißt bewiesen“):
+- Keine Notch unter Windows. Ersatz: Zähler „Braucht dich: N“ im Kopf der App, ein Infobereich-Symbol mit Zahl und eine Windows-Benachrichtigung mit Knöpfen (Tauri-Plugin `notification`, steht bereits in „Später“). Ein kleines, immer sichtbares Fenster ist nur eine Option. Kein Fokusdiebstahl.
+- Ehrlichkeit vor Effekt (AGENTS.md Regel 9): Eine Sprechblase oder Antwortkarte erscheint nur, wenn ein Agent nachweislich wartet (strukturiertes Ereignis des Anbieters oder erkannte Eingabeaufforderung im PTY). Ohne Signal bleibt der Zustand `unknown`; nichts wird erraten.
+- Sicheres Aktionsmuster (Zeile oben, 04.10.): Optionen kommen nur aus der strukturierten Frage des Agenten. Die Antwort ist genau der gewählte Optionstext oder Freitext des Nutzers. Modellausgabe wird nie zu einem Befehl, den die App selbst ausführt.
+- Freigaben von Befehlen zeigen den Befehl wörtlich und unverkürzt. Zustimmen braucht immer einen ausdrücklichen Klick oder eine Taste, nie eine Vorauswahl. Not-Aus bleibt in jeder Ansicht erreichbar.
+- Kein Countdown mit Automatik: Lumio zeigt eine ablaufende Zeit. Wir zeigen nur, seit wann die Frage wartet, und wählen nie selbst eine Antwort.
+- Kontextangaben (Anbieter, Modell, Kontext-%, Aktionen) nur, wenn sie beobachtet sind; sonst „unbekannt“.
+
+| ID | Ziel | Abhängigkeit | Stufe | Status |
+|---|---|---|---|---|
+| LUMIO-0 | Recherche und Vertrag (Doku): Welche Anbieter liefern heute ein beobachtbares „wartet auf Antwort/Freigabe“-Signal samt Optionen (Claude Code, Codex, Kimi, OpenCode; Hooks, strukturierte Ausgabe, PTY-Muster)? Ergebnis: Ereignistyp `AgentQuestion {agent, frage, optionen[], art: wahl\|freitext\|freigabe, befehl?, seit}`, Quelle je Anbieter, Lücken als `unknown`; `docs/design/hall/QUESTIONS.md` | DS-H-07 (Urteil des Nutzers über die Probe-Halle) | C | Geplant: nicht disponiert (18.10.) |
+| LUMIO-1 | Rückfrage in der Halle: Die Figur eines wartenden Agenten zeigt die Pose `need` und eine Sprechblase mit der gekürzten Frage; die volle Frage steht im Inspektor (DS-H-05); nach der Antwort zurück an die Arbeit. Bewegung im Budget von DS-H-06 (höchstens zwölf Figuren, Aus und reduzierte Bewegung statisch) | LUMIO-0, DS-H-06, DS-H-07 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-2 | Antwortkarte: Frage, nummerierte Optionen mit Kurzbeschreibung, „Andere …“ als Freitext; Zahlentasten 1–9 wählen, Enter sendet, Escape schließt, „Im Terminal öffnen“ als Ausweg; voll per Tastatur und Screenreader bedienbar; Texte über `src/i18n/de.ts` | LUMIO-0; Popover DS-X-26 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-3 | Befehlsfreigabe in der Antwortkarte: Befehl wörtlich, Arbeitsordner, Agent; „Erlauben“/„Ablehnen“ nur ausdrücklich, keine Vorauswahl; Weitergabe an den Agenten nur über seinen eigenen Freigabeweg | LUMIO-2 | A (Sicherheit, PTY) | Geplant: nicht disponiert (18.10.) |
+| LUMIO-4 | Melden ohne Fensterwechsel unter Windows: Zähler „Braucht dich: N“ im Kopf, Infobereich-Symbol mit Zahl, Windows-Benachrichtigung mit Knopf „Antworten“, der die Antwortkarte öffnet; ein kleines, immer sichtbares Fenster nur nach Nutzerentscheid | LUMIO-2; Tauri-Plugin `notification` (Zeile oben) | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-5 | Zähler in Halle und Kopf: „Arbeiten · Ruhen · Braucht dich · Unbekannt“ aus beobachteten Zuständen, jede Zahl führt zur gefilterten Liste | LUMIO-0, DS-H-05 | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-6 | Ruhezone in der Halle: Untätige Agenten sitzen in einer Ruhe-Ecke statt an ihrer Station, damit „arbeitet“ und „ruht“ auf einen Blick verschieden aussehen; neue Kacheln als Code (E-2) | DS-H-07; DS-H-02b | B | Geplant: nicht disponiert (18.10.) |
+| LUMIO-7 | Wartezeit statt Countdown: Antwortkarte und Liste zeigen „wartet seit …“ und sortieren danach; keine automatische Antwort, kein stiller Ablauf | LUMIO-2 | B | Geplant: nicht disponiert (18.10.) |
+
+Nicht übernehmen: macOS-Notch, automatische Antwort nach Zeitablauf, vorausgewählte Freigaben, Lumio-Grafik oder -Code, Kontextzahlen ohne Beobachtung.
+Erfolgsmaß nach Umsetzung: Zeit von der Frage bis zur Antwort und Zahl der Fensterwechsel je Rückfrage, gemessen an echten Läufen; Ziel ist eine Antwort in unter 10 Sekunden ohne Terminalsuche.
+Reihenfolge: erst das Urteil des Nutzers über die Probe-Halle (DS-H-07), dann LUMIO-0, dann LUMIO-1/2/5 parallel, danach 3, 4, 6, 7. Kein Paket startet vor einem Nutzer-Ja zur Probe-Halle.
 
 #### v2 — VERBUND / DevHQ und Denkraum (Beschluss 15.10.2026)
 
