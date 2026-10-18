@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface TabsProps<T extends string> {
   /** Prefix that ties each tab to its panel (`${idBase}-tab-${id}` / `${idBase}-panel-${id}`). */
@@ -80,6 +80,9 @@ export function TabLinks<T extends string>({ tabs, value, "aria-label": label, c
 }) {
   const refs = useRef<(HTMLAnchorElement | null)[]>([]);
   const current = Math.max(0, tabs.findIndex((t) => t.id === value));
+  // The tab stop follows arrow focus (aria-current stays on `value`) and returns to the current link on leaving.
+  const [focused, setFocused] = useState<number | null>(null);
+  const stop = focused ?? current;
   const onKeyDown = (e: KeyboardEvent) => {
     const n = tabs.length;
     const here = refs.current.findIndex((el) => el === e.target);
@@ -91,14 +94,16 @@ export function TabLinks<T extends string>({ tabs, value, "aria-label": label, c
     e.preventDefault();
   };
   return (
-    <nav aria-label={label} className={["g-tabs", className].filter(Boolean).join(" ")} onKeyDown={onKeyDown}>
+    <nav aria-label={label} className={["g-tabs", className].filter(Boolean).join(" ")} onKeyDown={onKeyDown}
+      onFocus={(e) => setFocused(refs.current.findIndex((el) => el === e.target))}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(null); }}>
       {tabs.map((t, i) => (
         <a
           key={t.id}
           ref={(el) => { refs.current[i] = el; }}
           href={t.href}
           aria-current={t.id === value ? "page" : undefined}
-          tabIndex={i === current ? 0 : -1}
+          tabIndex={i === stop ? 0 : -1}
         >
           {t.label}
         </a>

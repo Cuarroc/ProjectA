@@ -16,7 +16,8 @@ export function Button({ variant = "secondary", size = "md", loading, className,
   const click: ButtonProps["onClick"] = (e) => (loading ? e.preventDefault() : onClick?.(e));
   return (
     <button type={type} className={cls.filter(Boolean).join(" ")} aria-busy={loading || undefined} onClick={click} {...rest}>
-      {loading ? <><span className="g-btn__label">{children}</span><span className="g-btn__busy" aria-hidden="true" /></> : children}
+      <span className="g-btn__label">{children}</span>
+      {loading && <span className="g-btn__busy" aria-hidden="true" />}
     </button>
   );
 }

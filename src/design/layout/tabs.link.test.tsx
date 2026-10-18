@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { TabLinks } from "./Tabs";
@@ -49,7 +49,7 @@ describe("TabLinks", () => {
     expect(stops()).toEqual([-1, -1, 0]);
     expect(b).toHaveAttribute("aria-current", "page");
     expect(c).not.toHaveAttribute("aria-current");
-    screen.getByRole("button", { name: "danach" }).focus();
+    act(() => screen.getByRole("button", { name: "danach" }).focus());
     expect(stops()).toEqual([-1, 0, -1]);
   });
 });

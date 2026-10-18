@@ -21,14 +21,15 @@
 .g-btn--sm { height: 32px; padding: 0 12px; font-size: 12px; }
 .g-btn:disabled { transform: none; }
 /* The one disabled look of every control (tokens.css --g-disabled-opacity). */
-:is(.g-btn, .g-sw):disabled { opacity: var(--g-disabled-opacity); cursor: not-allowed; }
+:is(.g-btn, .g-fchip, .g-sw):disabled { opacity: var(--g-disabled-opacity); cursor: not-allowed; }
 .g-btn--icon { aspect-ratio: 1; padding: 0; }
-/* loading: the label stays (width unchanged) but hides; a ring sits over it in the text colour. */
+/* loading: the label stays (width unchanged, still named) but turns transparent; a ring sits over it in the text colour. */
 .g-btn[aria-busy="true"] { position: relative; cursor: progress; }
-.g-btn__label { visibility: hidden; }
+.g-btn__label { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.g-btn[aria-busy="true"] .g-btn__label { opacity: 0; }
 .g-btn__busy {
   position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid currentColor; border-right-color: transparent; animation: g-btn-spin 800ms linear infinite;
+  border: 2px solid currentColor; border-right-color: transparent; animation: g-btn-spin var(--g-dur-5, 720ms) linear infinite;
 }
 @keyframes g-btn-spin { to { transform: rotate(360deg); } }
 .g-btn-group { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
