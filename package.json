@@ -11,6 +11,7 @@
     "roadmap:data": "node scripts/roadmap-data.mjs",
     "roadmap:page": "node scripts/roadmap-data.mjs --page",
     "plan:check": "node scripts/plan-check.mjs",
+    "plan:sync": "node scripts/plan-sync.mjs",
     "dev:doctor": "node scripts/dev-setup.mjs",
     "dev:setup": "node scripts/dev-setup.mjs --apply",
     "dev:benchmark": "node scripts/dev-benchmark.mjs",

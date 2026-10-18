@@ -46,6 +46,8 @@ test("only the status cell changes other columns stay byte-identical", () => {
   assert.equal(syncPlan(md, [merged]).markdown, md.replace("  In Arbeit #42  ", "  Erledigt: #42 (merged 2026-10-18); In Arbeit #42  "));
   const stand = "| ID | Ziel | Stand |\n|---|---|---|\n| AUTO-1 | Sync | In Arbeit #42 |";
   assert.equal(syncPlan(stand, [merged]).changes.length, 1);
+  const escaped = table("| AUTO-1 | Sync | In Arbeit #42; A \\| B |");
+  assert.equal(syncPlan(escaped, [merged]).markdown, table("| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); In Arbeit #42; A \\| B |"));
 });
 
 test("CLI defaults to dry run and writes atomically only after valid GitHub evidence", async () => {
