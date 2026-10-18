@@ -181,3 +181,8 @@
     transition-delay: 0ms !important;
   }
 }
+
+.g-pop__panel[data-state="closing"] {
+  animation: g-exit var(--g-dur-exit) var(--g-ease-in) forwards;
+  pointer-events: none;
+}
