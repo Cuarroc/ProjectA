@@ -7,13 +7,11 @@ const ipc = vi.hoisted(() => ({
   getEmergencyStop: vi.fn(),
   setEmergencyStop: vi.fn(),
 }));
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (command: string, args?: { active: boolean }) => {
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (command: string, args?: { active: boolean }) => {
     if (command === "get_emergency_stop") return ipc.getEmergencyStop();
     if (command === "set_emergency_stop") return ipc.setEmergencyStop(args?.active);
     throw new Error(`Unexpected IPC: ${command}`);
-  },
-}));
+} }));
 
 describe("EmergencyStop", () => {
   afterEach(() => vi.useRealTimers());
