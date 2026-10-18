@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 
 import { Segmented } from "../design/controls/Segmented";
+import { Popover } from "../design/layout/Popover";
 import { MOTION_MODES, saveMotionMode, useMotion } from "../design/motion/motionMode";
 import { useT } from "../i18n/useT";
 import { GLASS_VARIANTS, useGlassVariant } from "../design/variants/useGlassVariant";
@@ -48,26 +49,13 @@ function Groups({ motion }: { motion: boolean }) {
 function CompactMenu({ motion }: { motion: boolean }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: Event) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("pointerdown", away);
-    return () => document.removeEventListener("pointerdown", away);
-  }, [open]);
   return (
-    <div
-      ref={root}
-      className="g-app-menu"
-      onKeyDown={(e) => { if (e.key === "Escape" && open) { setOpen(false); button.current?.focus(); } }}
-      onBlur={(e) => { if (open && !root.current?.contains(e.relatedTarget)) setOpen(false); }}
+    <Popover
+      open={open} onOpenChange={setOpen} align="end" className="g-app-menu" panelClassName="g-app-menu__panel"
+      trigger={(p) => <button {...p} type="button" className="g-app-menu__btn" onClick={() => setOpen(!open)}>{t("shell.appearance")}</button>}
     >
-      <button ref={button} type="button" className="g-app-menu__btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {t("shell.appearance")}
-      </button>
-      {open ? <div className="g-app-menu__panel"><Groups motion={motion} /></div> : null}
-    </div>
+      <Groups motion={motion} />
+    </Popover>
   );
 }
 
