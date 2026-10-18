@@ -18,7 +18,7 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 
 ### Stand 2026-10-15 (datierter Schnappschuss, keine Live-Quelle)
 
-Gelesen am 2026-10-17T02:32Z, `origin/main` @ `8389f326`. Zahlen, die sich
+Gelesen am 2026-10-18T18:32Z, `origin/main` @ `4a9c8a5b`. Zahlen, die sich
 stündlich ändern (offene PRs, Queue), stehen hier bewusst nicht mehr; sie
 kommen nur aus den Live-Belegen oben.
 
