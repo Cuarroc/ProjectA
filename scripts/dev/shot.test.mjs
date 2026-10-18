@@ -101,6 +101,16 @@ test("--theme dark writes only the dark png", async () => {
   }
 });
 
+test("--theme dark supports --check-tab", async () => {
+  const { code, out, report } = await runShot(["--theme", "dark", "--check-tab"]);
+  try {
+    assert.equal(code, 0);
+    assert.equal(report.tab?.ok, true);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
 test("--wait delays the screenshot until a late frame is visible", async () => {
   const early = await runShot(["--theme", "light"]);
   const late = await runShot(["--theme", "light", "--wait", "1600"]);
