@@ -201,9 +201,9 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   },
   {
     name: "ToastRegion", family: "layout",
-    variants: ["tone info, ok, bad"], states: ["closes itself after ttl (6 s)"],
-    a11y: "aria-live region; bad uses role=\"alert\", the others role=\"status\"; close button is named.",
-    text: "src/i18n/de.ts action.close; text from the caller.",
+    variants: ["tone info, ok, bad", "optional action button", "useToast(): push, dismiss, at most 3 visible"], states: ["closes itself after ttl (6 s)", "closing (exit transition)", "waiting in the queue"],
+    a11y: "aria-live region; bad uses role=\"alert\", the others role=\"status\"; close and action buttons are named; the action runs once.",
+    text: "src/i18n/de.ts action.close; text and action label from the caller.",
   },
   {
     name: "StateGlyph", family: "state",
