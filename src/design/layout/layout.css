@@ -53,3 +53,12 @@
   .g-tabpanel, .g-sheet, .g-toast { animation: none; }
   .g-tabs button { transition: none; }
 }
+
+/* Popover (DS-X-26): the panel sits under its trigger, or above it when Popover.tsx measured no room below. */
+.g-pop { position: relative; }
+.g-pop__panel {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: var(--g-z-popover); padding: 8px;
+  border: 1px solid var(--g-line); border-radius: var(--g-r-card); background: var(--g-ground); box-shadow: var(--g-shadow-pop);
+}
+.g-pop__panel[data-align="end"] { left: auto; right: 0; }
+.g-pop__panel[data-side="top"] { top: auto; bottom: calc(100% + 8px); }
