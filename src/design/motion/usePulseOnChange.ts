@@ -9,6 +9,7 @@ export function usePulseOnChange<T extends HTMLElement>(value: unknown, ms = 480
     const el = node.current;
     if (!el || Object.is(last.current, value)) return;
     last.current = value;
+    void el.offsetWidth; // flush style after the cleanup's removal, or a second ping inside `ms` would not restart the animation
     el.setAttribute("data-ping", "");
     const timer = setTimeout(() => el.removeAttribute("data-ping"), ms);
     return () => { clearTimeout(timer); el.removeAttribute("data-ping"); };
