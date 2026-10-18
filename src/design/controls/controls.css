@@ -1,4 +1,4 @@
-/* V2-F4a controls. Not imported by the app. Consumes --g-* from tokens.css.
+/* V2-F4a controls. Consumes --g-* from tokens.css.
    Motion tokens belong to V2-F2; until they exist the fallbacks are the board values.
    Rules: equal sizes inside a group, no shadow or highlight on a solid fill. */
 

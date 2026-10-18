@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import "../../../design/inputs/inputs.css";
-import { Lamp, type LampState } from "../../../design/inputs/Lamp";
+import { StateMark } from "../../../design/state/StateMark";
 import { getBudgets, getQuotaState, listAgentProfiles } from "../../../lib/ipc";
 import type { AgentProfile, BoardCard, Budget, QuotaState } from "../../../types";
-import { lampFor, type LampKind } from "../lamps/lampFor";
+import { lampFor } from "../lamps/lampFor";
 import { quotaView, type QuotaView } from "../quota/forecast";
 import { ProofStrip } from "../proof/ProofStrip";
 import { QuotaMeter } from "../quota/QuotaMeter";
@@ -13,9 +13,6 @@ import { layoutFlow } from "./layout";
 
 /** The board's own rhythm (useBoard): one interval for the three quota reads. */
 const POLL_MS = 5000;
-
-// The atoms of AgentCard.tsx, where this map is private: node and card show one lamp.
-const LAMP_STATE: Record<LampKind, LampState> = { working: "busy", blocked: "bad", done: "ok", idle: "off", unknown: "unknown" };
 
 /** `null` = that read failed. A node then stays unmeasured instead of showing a zero. */
 interface Reads { profiles: AgentProfile[] | null; quotas: QuotaState[] | null; budgets: Budget[] | null }
@@ -55,7 +52,7 @@ function FlowNodeBody({ label, lamp, quota, proof }: { label: FlowLabel; lamp?: 
       <span className="fl-task">{label.task}</span>
       <span className="fl-meta">
         <span className="ls-row">
-          {lamp && <Lamp state={LAMP_STATE[lamp.lamp]} label={lamp.word} />}
+          {lamp && <StateMark form={lamp.form} label={lamp.word} />}
           <span className="fl-branch">{label.branch}</span>
         </span>
         {quota && <QuotaMeter view={quota.view} name={quota.name} />}

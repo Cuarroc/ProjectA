@@ -1,4 +1,4 @@
-/* V2-TH-VAR-1 glass variants. Not imported by the app; V2-TH-VAR-2 adds the switch.
+/* V2-TH-VAR-1 glass variants. Switch: variants/useGlassVariant.ts.
    <html data-glass-variant="klar|nebel|abend">; absent = Glas (tokens.css).
    A variant sets only ground, amb1..3, chrome/content bg and blur. The contrast
    gate allowlists those keys and fixes the blur radii (32px chrome, 20px glass).

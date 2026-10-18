@@ -106,7 +106,7 @@ describe("Leitstand route behind D1", () => {
     const note = within(await screen.findByRole("status"));
     expect(note.getByText("Kein Projekt gewählt")).toBeInTheDocument();
     expect(screen.queryByText(de["leitstand.emptyTitle"])).toBeNull();
-    expect(screen.queryByText(de["needs.none"])).toBeNull();
+    expect(screen.queryByText(de["needs.emptyTitle"])).toBeNull();
     await act(async () => { writeActiveProjectId("p1"); });
     expect(await screen.findByRole("region", { name: "Agenten" })).toBeInTheDocument();
   });
@@ -311,12 +311,12 @@ describe("Leitstand route behind D1", () => {
     flowBoard({ w: worker, column: "done" });
     render(<App />);
     const node = await screen.findByRole("group", { name: "Fix the start block" });
-    expect(within(node).getByRole("img", { name: "ohne Beweis" })).toHaveClass("g-lamp--bad");
+    expect(within(node).getByText("ohne Beweis")).toHaveClass("g-st--need");
     expect(within(node).getByText("Fix the start block")).toBeInTheDocument();
     expect(within(node).getByText("claude/w1")).toBeInTheDocument();
   });
 
-  it("gives each lamp kind its atom on a node", async () => {
+  it("gives each lamp kind its form on a node", async () => {
     localStorage.setItem(FLAG_KEY, "1");
     window.location.hash = "#/leitstand/fabrik";
     flowBoard(
@@ -325,10 +325,10 @@ describe("Leitstand route behind D1", () => {
       { w: { ...worker, id: "w3", task: "Has stopped", status: "exited" }, column: "working" },
     );
     render(<App />);
-    const lamp = async (task: string, name: string) => within(await screen.findByRole("group", { name: task })).getByRole("img", { name });
-    expect(await lamp("Runs now", "Läuft")).toHaveClass("g-lamp--busy");
-    expect(await lamp("Waits for you", "Blockiert")).toHaveClass("g-lamp--bad");
-    expect(await lamp("Has stopped", "Untätig")).toHaveClass("g-lamp--off");
+    const lamp = async (task: string, name: string) => within(await screen.findByRole("group", { name: task })).getByText(name);
+    expect(await lamp("Runs now", "Läuft")).toHaveClass("g-st--run");
+    expect(await lamp("Waits for you", "Blockiert")).toHaveClass("g-st--need");
+    expect(await lamp("Has stopped", "Untätig")).toHaveClass("g-st--need");
   });
 
   // The shell trims the hash before it reaches the route, but the route also takes `path` as a prop.
