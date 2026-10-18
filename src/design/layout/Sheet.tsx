@@ -3,17 +3,18 @@ import { createPortal } from "react-dom";
 import { useExitTransition } from "../motion/useExitTransition";
 import { focusableWithin, trapTarget } from "../../lib/useFocusTrap";
 
-export interface SheetProps {
+/** A modal must have an accessible name: at least one of `aria-label` / `aria-labelledby`. */
+type SheetName = { "aria-label": string; "aria-labelledby"?: string } | { "aria-label"?: string; "aria-labelledby": string };
+
+export type SheetProps = SheetName & {
   open: boolean;
   onClose: () => void;
-  "aria-label"?: string;
-  "aria-labelledby"?: string;
   "aria-describedby"?: string;
   role?: "dialog" | "alertdialog";
   size?: "sm" | "md" | "lg";
   dismissOnScrim?: boolean;
   children?: ReactNode;
-}
+};
 
 /** Modal dialog on a scrim: focus moves in, Tab cycles inside, Esc or a scrim click closes (a scrim click only if `dismissOnScrim`), focus returns; the sheet stays mounted (aria-hidden) while it animates out. */
 export function Sheet({ open, onClose, "aria-label": label, "aria-labelledby": labelledBy, "aria-describedby": describedBy, role = "dialog", size = "md", dismissOnScrim = true, children }: SheetProps) {

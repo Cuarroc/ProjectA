@@ -2,9 +2,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
-import { Sheet } from "./Sheet";
+import { Sheet, type SheetProps } from "./Sheet";
 
 const css = readFileSync(resolve(__dirname, "layout.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 
@@ -33,5 +33,16 @@ describe("Sheet slots", () => {
     expect(dialog).toHaveAttribute("data-size", "md");
     fireEvent.mouseDown(dialog.parentElement as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Sheet accessible name", () => {
+  it("requires aria-label or aria-labelledby and renders a named dialog", () => {
+    // Compile-time: tsc (npm run typecheck) enforces these; vitest only runs the render.
+    expectTypeOf<{ open: true; onClose: () => void }>().not.toMatchTypeOf<SheetProps>();
+    expectTypeOf<{ open: true; onClose: () => void; "aria-label": string }>().toMatchTypeOf<SheetProps>();
+    expectTypeOf<{ open: true; onClose: () => void; "aria-labelledby": string }>().toMatchTypeOf<SheetProps>();
+    render(<Sheet open onClose={() => {}} aria-labelledby="n1"><h2 id="n1">Name</h2></Sheet>);
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Name");
   });
 });
