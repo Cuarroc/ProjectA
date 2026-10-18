@@ -16,6 +16,48 @@ describe("EmergencyStop", () => {
     ipc.setEmergencyStop.mockReset();
   });
 
+  it("opens confirmation without engaging the stop on the first click", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Not-Aus bestätigen" }))
+      .toHaveTextContent("Alle Agenten werden sofort angehalten.");
+  });
+
+  it("engages exactly once only after explicit confirmation", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    ipc.setEmergencyStop.mockReturnValue(new Promise(() => {}));
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    const confirm = screen.getByRole("button", { name: "Ja, alles anhalten" });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    expect(ipc.setEmergencyStop.mock.calls).toEqual([[true]]);
+  });
+
+  it("cancels with Escape or Abbrechen without engaging and restores focus", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    for (const escape of [true, false]) {
+      raise.focus();
+      fireEvent.click(raise);
+      const cancel = screen.getByRole("button", { name: "Abbrechen" });
+      expect(cancel).toHaveFocus();
+      if (escape) fireEvent.keyDown(cancel, { key: "Escape" });
+      else fireEvent.click(cancel);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(raise).toHaveFocus();
+      expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
+    }
+  });
+
   it("raises the stop and shows it active", async () => {
     let resolveInitial!: (active: boolean) => void;
     ipc.getEmergencyStop.mockReturnValue(new Promise<boolean>((resolve) => {
