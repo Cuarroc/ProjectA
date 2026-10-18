@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "../design/controls/Button";
 import "../design/tokens.css";
+import "./EmergencyStop.css";
 import "../design/controls/controls.css";
 import { describeError, getEmergencyStop, setEmergencyStop } from "../lib/ipc";
 import { useRefreshOnResume } from "../lib/useRefreshOnResume";
@@ -18,6 +19,22 @@ export default function EmergencyStop() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
+  const [confirming, setConfirming] = useState(false);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const labelId = useId();
+  const hintId = useId();
+  const closeConfirm = useCallback(() => {
+    setConfirming(false);
+    trigger.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!confirming) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.stopPropagation(); closeConfirm(); }
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [confirming, closeConfirm]);
 
   const refresh = useCallback(() => {
     const mine = ++request.current;
@@ -25,10 +42,11 @@ export default function EmergencyStop() {
       .then((value) => {
         if (request.current !== mine) return;
         setActive(value === true);
+        if (value) setConfirming(false);
         if (!value) setConfirmed(false);
       })
       .catch(() => {
-        if (request.current === mine) setActive(true);
+        if (request.current === mine) { setActive(true); setConfirming(false); }
       });
   }, []);
 
@@ -77,17 +95,32 @@ export default function EmergencyStop() {
         <Button size="lg" disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
       ) : (
         <Button
-          size="lg"
+          size="sm"
           variant="danger"
           disabled={busy || active === null}
-          onClick={() => change(true)}
+          aria-haspopup="dialog"
+          aria-expanded={confirming}
+          aria-describedby={hintId}
+          onClick={(event) => { trigger.current = event.currentTarget; setConfirming(true); }}
         >
           Not-Aus auslösen
         </Button>
       )}
-      <p role="status" title={hint} className="g-estop-hint">
+      <p id={hintId} role="status" title={hint} className="g-estop-hint">
         {hint}
       </p>
+      {confirming && !active ? (
+        <div className="g-estop-confirm" role="dialog" aria-labelledby={labelId}>
+          <strong id={labelId}>Not-Aus bestätigen</strong>
+          <p>Alle Agenten werden sofort angehalten.</p>
+          <div className="g-estop-actions">
+            <Button size="sm" autoFocus onClick={closeConfirm}>Abbrechen</Button>
+            <Button size="sm" variant="danger" disabled={busy} onClick={() => { setConfirming(false); void change(true); }}>
+              Ja, alles anhalten
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {error ? <span role="alert" className="g-estop-error">{error}</span> : null}
     </div>
   );

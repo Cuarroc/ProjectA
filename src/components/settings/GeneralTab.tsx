@@ -1,3 +1,4 @@
+import { de } from "../../i18n/de";
 import { useState } from "react";
 
 import { describeError, deleteSessionBuffers, type AgentEnvStage, type ProductMode, type RoutingStatus } from "../../lib/ipc";
@@ -15,7 +16,6 @@ import {
   type UiFontSize,
 } from "../../lib/settings";
 import type { Project } from "../../types";
-import EmergencyStop from "../EmergencyStop";
 import PreviewToggle from "../../shell/mount/PreviewToggle";
 
 /**
@@ -111,7 +111,7 @@ export default function GeneralTab({
 }: GeneralTabProps) {
   return (
     <>
-      <EmergencyStop />
+      <p>{de["shell.estopLocation"]}</p>
       <PreviewToggle />
 
       <fieldset className="settings-field settings-density">

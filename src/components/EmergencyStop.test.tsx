@@ -7,7 +7,13 @@ const ipc = vi.hoisted(() => ({
   getEmergencyStop: vi.fn(),
   setEmergencyStop: vi.fn(),
 }));
-vi.mock("../lib/ipc", () => ({ ...ipc, describeError: (e: unknown) => String(e) }));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: { active: boolean }) => {
+    if (command === "get_emergency_stop") return ipc.getEmergencyStop();
+    if (command === "set_emergency_stop") return ipc.setEmergencyStop(args?.active);
+    throw new Error(`Unexpected IPC: ${command}`);
+  },
+}));
 
 describe("EmergencyStop", () => {
   afterEach(() => vi.useRealTimers());
@@ -50,7 +56,7 @@ describe("EmergencyStop", () => {
       fireEvent.click(raise);
       const cancel = screen.getByRole("button", { name: "Abbrechen" });
       expect(cancel).toHaveFocus();
-      if (escape) fireEvent.keyDown(cancel, { key: "Escape" });
+      if (escape) fireEvent.keyDown(document, { key: "Escape" });
       else fireEvent.click(cancel);
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(raise).toHaveFocus();
@@ -72,6 +78,7 @@ describe("EmergencyStop", () => {
     await act(async () => resolveInitial(false));
     await waitFor(() => expect(raise).toBeEnabled());
     fireEvent.click(raise);
+    fireEvent.click(screen.getByRole("button", { name: "Ja, alles anhalten" }));
     await waitFor(() => expect(ipc.setEmergencyStop).toHaveBeenCalledWith(true));
     expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
   });
@@ -93,7 +100,10 @@ describe("EmergencyStop", () => {
     ipc.getEmergencyStop.mockResolvedValue(false);
     ipc.setEmergencyStop.mockRejectedValue("1 agent session(s) still alive after 10s");
     render(<EmergencyStop />);
-    fireEvent.click(await screen.findByRole("button", { name: "Not-Aus auslösen" }));
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    fireEvent.click(screen.getByRole("button", { name: "Ja, alles anhalten" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/still alive after 10s/));
     expect(screen.getByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
     expect(screen.getByRole("status")).toHaveTextContent(/Stillstand ist nicht bestätigt/);
@@ -119,6 +129,7 @@ describe("EmergencyStop", () => {
     await waitFor(() => expect(raise).toBeEnabled());
     fireEvent.focus(window);
     fireEvent.click(raise);
+    fireEvent.click(screen.getByRole("button", { name: "Ja, alles anhalten" }));
     expect(await screen.findByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
     await act(async () => resolveRefresh(false));
     expect(screen.getByRole("button", { name: "Not-Aus aufheben" })).toBeTruthy();
