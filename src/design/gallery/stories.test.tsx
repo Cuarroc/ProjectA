@@ -9,12 +9,13 @@ import { Gallery } from "./Gallery";
 afterEach(cleanup);
 
 it("every interactive CSS selector has its forced-state twin in the same rule", () => {
-  const states = { ":hover": "hover", ":active": "active", ":focus-visible": "focus", ":disabled": "disabled", '[aria-invalid="true"]': "error" };
+  const states: Record<string, string> = { ":hover": "hover", ":active": "active", ":focus-visible": "focus", ":disabled": "disabled" };
   // Segmented previews target its selected tab stop; the real selector covers all options.
   const normalize = (selector: string) => selector.replaceAll('[tabindex="0"]', "").replace(/\s/g, "");
   const check = (selectors: string[]) => {
     for (const selector of selectors.filter((s) => !s.includes("data-force-state"))) {
-      for (const [native, state] of Object.entries(states)) if (selector.includes(native)) {
+      for (const [native] of selector.matchAll(/:hover\b|:active\b|:focus-visible\b|:disabled\b|\[aria-invalid[^\]]*\]/g)) {
+        const state = native.startsWith("[aria-invalid") ? "error" : states[native];
         const twin = `[data-force-state="${state}"] ${selector.replace(native, "")}`;
         expect(selectors.map(normalize), selector).toContain(normalize(twin));
       }
@@ -53,7 +54,7 @@ it("each story sample is named by its component and state caption", () => {
     for (const story of screen.getAllByRole("article")) for (const cell of story.querySelectorAll("[data-force-state]")) {
       const caption = cell.querySelector(".g-gal-note")!;
       const name = `${story.querySelector("h3")!.textContent} ${caption.textContent}`;
-      const samples = cell.querySelectorAll('.g-btn, .g-fchip, .g-sw, .g-inp, [role="group"], [role="radiogroup"], [role="img"], [role="meter"], kbd, .g-chip');
+      const samples = cell.querySelectorAll('.g-btn:not(.g-btn-group .g-btn), .g-fchip, .g-sw, .g-inp, [role="group"], [role="radiogroup"], [role="img"], [role="meter"], kbd, .g-chip');
       expect(samples.length).toBeGreaterThan(0);
       for (const sample of samples) expect(sample).toHaveAccessibleName(name);
     }

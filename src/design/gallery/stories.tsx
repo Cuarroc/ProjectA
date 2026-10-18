@@ -21,22 +21,25 @@ const PRESS = ["default", "hover", "focus", "active", "disabled"] as const;
 const INPUT = ["default", "focus", "disabled", "error"] as const;
 const sample = de["gallery.example"];
 const options = ["a", "b"].map((value) => ({ value, label: de[value === "a" ? "gallery.optionA" : "gallery.optionB"] }));
-const inputProps = (state: State, name: string) => ({ "aria-describedby": state === "error" ? `${name}-error` : undefined, "aria-label": sample, disabled: state === "disabled", "aria-invalid": state === "error" ? true : undefined });
+const buttonVariants = ["primary", "secondary", "tint", "ghost", "danger"] as const;
+const lampShapes = ["ok", "off", "warn", "unknown"] as const;
+const sampleProps = (state: State, name: string) => ({ "aria-labelledby": `story-${name} ${name}-${state}-caption` });
+const inputProps = (state: State, name: string) => ({ ...sampleProps(state, name), "aria-describedby": state === "error" ? `${name}-error-caption` : undefined, disabled: state === "disabled", "aria-invalid": state === "error" ? true : undefined });
 
 // Only the components' existing states are shown; this is fixture data, never app state.
 const stories: Record<string, Story> = {
-  Button: { states: PRESS, render: (s) => <Button variant="primary" disabled={s === "disabled"}>{sample}</Button> },
-  ButtonGroup: { states: STATIC, render: () => <ButtonGroup aria-label={sample}><Button>{options[0].label}</Button><Button>{options[1].label}</Button></ButtonGroup> },
-  Chip: { states: STATIC, render: () => <Chip>{sample}</Chip> },
-  FilterChip: { states: PRESS, render: (s) => <FilterChip pressed={false} count={2} disabled={s === "disabled"}>{sample}</FilterChip> },
-  Segmented: { states: ["default", "hover", "focus", "active"], render: () => <Segmented aria-label={sample} options={options} value="a" onChange={() => {}} /> },
-  Switch: { states: ["default", "focus", "disabled"], render: (s) => <Switch aria-label={sample} checked={false} disabled={s === "disabled"} /> },
-  Avatar: { states: STATIC, render: () => <Avatar initials={de["gallery.initials"]} label={sample} /> },
+  Button: { states: PRESS, render: (s, name) => (s === "default" ? buttonVariants : buttonVariants.slice(0, 1)).map((variant) => <Button key={variant} {...sampleProps(s, name)} variant={variant} disabled={s === "disabled"}>{sample}</Button>) },
+  ButtonGroup: { states: STATIC, render: (s, name) => <ButtonGroup {...sampleProps(s, name)}><Button>{options[0].label}</Button><Button>{options[1].label}</Button></ButtonGroup> },
+  Chip: { states: STATIC, render: (s, name) => <Chip {...sampleProps(s, name)}>{sample}</Chip> },
+  FilterChip: { states: PRESS, render: (s, name) => (s === "default" ? [false, true] : [false]).map((pressed) => <FilterChip key={String(pressed)} {...sampleProps(s, name)} pressed={pressed} count={2} disabled={s === "disabled"}>{sample}</FilterChip>) },
+  Segmented: { states: ["default", "hover", "focus", "active"], render: (s, name) => <Segmented aria-label={`${name} ${de[`gallery.state.${s}`]}`} options={options} value="a" onChange={() => {}} /> },
+  Switch: { states: ["default", "focus", "disabled"], render: (s, name) => (s === "default" ? [false, true] : [false]).map((checked) => <Switch key={String(checked)} {...sampleProps(s, name)} checked={checked} disabled={s === "disabled"} />) },
+  Avatar: { states: STATIC, render: (s, name) => <Avatar {...sampleProps(s, name)} initials={de["gallery.initials"]} label={sample} /> },
   Input: { states: INPUT, render: (s, name) => <Input {...inputProps(s, name)} defaultValue={sample} /> },
   Textarea: { states: INPUT, render: (s, name) => <Textarea {...inputProps(s, name)} defaultValue={sample} /> },
-  Kbd: { states: STATIC, render: () => <Kbd>{de["gallery.key"]}</Kbd> },
-  Lamp: { states: ["default", "loading", "error"], render: (s) => <Lamp state={s === "loading" ? "busy" : s === "error" ? "bad" : "ok"} label={de[`gallery.state.${s}`]} /> },
-  Meter: { states: STATIC, render: () => <Meter aria-label={sample} value={60} /> },
+  Kbd: { states: STATIC, render: (s, name) => <Kbd {...sampleProps(s, name)}>{de["gallery.key"]}</Kbd> },
+  Lamp: { states: ["default", "loading", "error"], render: (s, name) => (s === "default" ? lampShapes : [s === "loading" ? "busy" as const : "bad" as const]).map((state) => <Lamp key={state} {...sampleProps(s, name)} state={state} label={de[`gallery.state.${s}`]} />) },
+  Meter: { states: STATIC, render: (s, name) => <Meter {...sampleProps(s, name)} aria-label={sample} value={60} /> },
   Select: { states: INPUT, render: (s, name) => <Select {...inputProps(s, name)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select> },
 };
 
@@ -49,7 +52,7 @@ export function renderStories(family: ComponentFamily) {
       return <article key={entry.name} aria-labelledby={`story-${entry.name}`} className="g-gal-story">
         <h3 id={`story-${entry.name}`}><code>{entry.name}</code></h3>
         <div className="g-gal-matrix">{story.states.map((state) => <div key={state} data-force-state={state} className="g-gal-cell">
-          <span id={state === "error" ? `${entry.name}-error` : undefined} className="g-gal-note">{de[`gallery.state.${state}`]}</span>
+          <span id={`${entry.name}-${state}-caption`} className="g-gal-note">{de[`gallery.state.${state}`]}</span>
           {story.render(state, entry.name)}
         </div>)}</div>
         <p className="g-gal-note">{de["gallery.notApplicable"]}{" "}{STATES.filter((s) => !story.states.includes(s)).map((s) => de[`gallery.state.${s}`]).join(de["gallery.stateSeparator"])}</p>
