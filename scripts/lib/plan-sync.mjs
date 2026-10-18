@@ -21,8 +21,6 @@ export function syncPlan(markdown, prs) {
       skip("Missing or invalid merge date"); continue;
     }
     const prefix = `Erledigt: ${refs.map(pr => `#${pr.number} (merged ${new Date(pr.mergedAt).toISOString().slice(0, 10)})`).join(", ")}`;
-    // Retained pending prose can still normalize as in_progress; keep replay idempotent.
-    if (row.statusRaw.startsWith(`${prefix}; `)) { skip("Already synchronized"); continue; }
     let column = -1;
     for (let i = row.line - 2; i >= 0 && lines[i].startsWith("|"); i--) {
       column = statusColumn(lines, i);
@@ -30,7 +28,7 @@ export function syncPlan(markdown, prs) {
     }
     if (column < 0) { skip("No dedicated Status or Stand column"); continue; }
     const cells = lines[row.line - 1].split(/(?<!\\)\|/);
-    const old = cells[column + 1].trim(), next = `${prefix}; ${old}`;
+    const old = cells[column + 1].trim(), next = `${prefix}; ursprünglich: ${old}`;
     cells[column + 1] = cells[column + 1].replace(/\S(?:[\s\S]*\S)?/, () => next);
     parts[(row.line - 1) * 2] = cells.join("|");
     changes.push({ id: row.id, line: row.line, old, new: next });

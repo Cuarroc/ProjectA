@@ -21,7 +21,8 @@ After a merge wave, Root creates a `claude/plan-sync-<date>` branch from current
 `main` and runs `npm run plan:sync` to preview status-cell changes. Run
 `npm run plan:sync -- --write` to apply them, inspect the diff, run the gates,
 and open a tier C documentation PR. The script never commits or pushes.
-It keeps the old status text and changes only pending rows whose referenced
+It keeps the old status text after `; ursprünglich: ` so existing consumers
+read the row as done, and changes only pending rows whose referenced
 PRs are all merged. Closed unmerged PRs and completed rows with open PRs are
 reported without edits. A failed GitHub query exits 2 without writing;
 the 300-PR query limit is reported, and missing evidence prevents rewriting.

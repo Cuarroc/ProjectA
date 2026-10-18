@@ -21,15 +21,15 @@ test("a merged PR flips an in-progress row to Erledigt with the merge date", () 
   for (const old of ["In Arbeit #42", "In Prüfung #42", "Geplant #42"]) {
     const md = table(`| AUTO-1 | Sync | ${old} |`);
     const result = syncPlan(md, [merged]);
-    assert.equal(result.markdown, table(`| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); ${old} |`));
-    assert.deepEqual(result.changes.map(c => [c.id, c.old, c.new]), [["AUTO-1", old, `Erledigt: #42 (merged 2026-10-18); ${old}`]]);
+    assert.equal(result.markdown, table(`| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); ursprünglich: ${old} |`));
+    assert.deepEqual(result.changes.map(c => [c.id, c.old, c.new]), [["AUTO-1", old, `Erledigt: #42 (merged 2026-10-18); ursprünglich: ${old}`]]);
     assert.equal(syncPlan(result.markdown, [merged]).changes.length, 0);
   }
   const md = table("| AUTO-1 | Sync | Geplant | ");
   assert.equal(syncPlan(md, [{ ...merged, body: "Plan-ID: AUTO-1" }]).changes.length, 1);
   const multi = table("| AUTO-1 | Sync | In Prüfung #42, #43 | ");
   const result = syncPlan(multi, [merged, { number: 43, state: "MERGED", mergedAt: "2026-10-19T01:00:00Z" }]);
-  assert.match(result.markdown, /Erledigt: #42 \(merged 2026-10-18\), #43 \(merged 2026-10-19\); In Prüfung #42, #43/);
+  assert.match(result.markdown, /Erledigt: #42 \(merged 2026-10-18\), #43 \(merged 2026-10-19\); ursprünglich: In Prüfung #42, #43/);
   assert.equal(result.changes.length, 1);
 });
 
@@ -51,11 +51,11 @@ test("closed unmerged and open PRs are reported not rewritten", () => {
 
 test("only the status cell changes other columns stay byte-identical", () => {
   const md = "Intro\r\n| ID | Ziel | Status | Owner |\r\n|---|---|---|---|\r\n| AUTO-1 | A \\| B  |  In Arbeit #42  | `team` |\r\n\r\n```md\r\n" + table("| AUTO-1 | Example | In Arbeit #42 |").replaceAll("\n", "\r\n") + "```\r\nTail";
-  assert.equal(syncPlan(md, [merged]).markdown, md.replace("  In Arbeit #42  ", "  Erledigt: #42 (merged 2026-10-18); In Arbeit #42  "));
+  assert.equal(syncPlan(md, [merged]).markdown, md.replace("  In Arbeit #42  ", "  Erledigt: #42 (merged 2026-10-18); ursprünglich: In Arbeit #42  "));
   const stand = "| ID | Ziel | Stand |\n|---|---|---|\n| AUTO-1 | Sync | In Arbeit #42 |";
   assert.equal(syncPlan(stand, [merged]).changes.length, 1);
   const escaped = table("| AUTO-1 | Sync | In Arbeit #42; A \\| B |");
-  assert.equal(syncPlan(escaped, [merged]).markdown, table("| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); In Arbeit #42; A \\| B |"));
+  assert.equal(syncPlan(escaped, [merged]).markdown, table("| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); ursprünglich: In Arbeit #42; A \\| B |"));
 });
 
 test("CLI defaults to dry run and writes atomically only after valid GitHub evidence", async () => {
@@ -78,6 +78,6 @@ test("CLI defaults to dry run and writes atomically only after valid GitHub evid
       assert.equal(readFileSync(file, "utf8"), md);
     }
     assert.equal(await main(["--write"], io, { run, file }), 0);
-    assert.equal(readFileSync(file, "utf8"), table("| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); In Arbeit #42 |"));
+    assert.equal(readFileSync(file, "utf8"), table("| AUTO-1 | Sync | Erledigt: #42 (merged 2026-10-18); ursprünglich: In Arbeit #42 |"));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
