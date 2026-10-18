@@ -46,6 +46,20 @@ describe("Button loading", () => {
     }
   });
 
+  it("keeps the text of a plain aria-busy button visible once the control styles apply", () => {
+    const style = document.createElement("style");
+    style.textContent = readFileSync(resolve(__dirname, "controls.css"), "utf8");
+    document.head.append(style);
+    try {
+      render(<Button disabled aria-busy={true}>Speichern</Button>);
+      expect(getComputedStyle(screen.getByText("Speichern")).opacity).not.toBe("0");
+      render(<Button loading>Laden</Button>);
+      expect(getComputedStyle(screen.getByText("Laden")).opacity).toBe("0");
+    } finally {
+      style.remove();
+    }
+  });
+
   it("wraps an icon-and-text label the same way idle and busy", () => {
     const label = <><svg data-testid="ic" /><span>Speichern</span></>;
     const { rerender } = render(<Button>{label}</Button>);
