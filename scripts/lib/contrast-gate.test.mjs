@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-function runGate(mutateHq, mutateConcepts = () => {}, mutateTokens = (css) => css) {
+function runGate(mutateHq, mutateConcepts = () => {}, mutateTokens = (css) => css, mutateVariants = (css) => css) {
   const dir = mkdtempSync(join(tmpdir(), "contrast-gate-"));
   try {
     mkdirSync(join(dir, "scripts"));
@@ -22,6 +22,8 @@ function runGate(mutateHq, mutateConcepts = () => {}, mutateTokens = (css) => cs
     cpSync(join(root, "src", "styles.css"), join(dir, "src", "styles.css"));
     writeFileSync(join(dir, "src", "design", "tokens.css"), mutateTokens(readFileSync(join(root, "src", "design", "tokens.css"), "utf8")));
     cpSync(join(root, "src", "design", "variants"), join(dir, "src", "design", "variants"), { recursive: true });
+    const variantsCss = join(dir, "src", "design", "variants", "variants.css");
+    writeFileSync(variantsCss, mutateVariants(readFileSync(variantsCss, "utf8")));
     const hq = readFileSync(join(root, "docs", "dev-hq", "hq.css"), "utf8");
     writeFileSync(join(dir, "docs", "dev-hq", "hq.css"), mutateHq(hq));
     cpSync(join(root, "docs", "dev-hq", "concepts"), join(dir, "docs", "dev-hq", "concepts"), { recursive: true });
@@ -122,5 +124,32 @@ test("a viz token that copies a state colour is rejected", () => {
   };
   const r = runGate((css) => css, () => {}, copyRun);
   assert.match(r.out, /g-viz-2 ~ g-run/);
+  assert.notEqual(r.status, 0);
+});
+
+// R1702-F1: the two rejection paths of the viz gate, plus a variant surface.
+const lightPart = (fn) => (css) => {
+  const at = css.indexOf("@media (prefers-color-scheme: dark)");
+  return fn(css.slice(0, at)) + css.slice(at);
+};
+const setViz = (n, value) => (part) => part.replace(new RegExp(`--g-viz-${n}:[^;]+;`, "g"), `--g-viz-${n}: ${value};`);
+
+test("a viz token below 3:1 against its surface is rejected", () => {
+  const r = runGate((css) => css, () => {}, lightPart(setViz(1, "#CCEFF0")));
+  assert.match(r.out, /token hell\s+g-viz-1 \/ ground/);
+  assert.notEqual(r.status, 0);
+});
+
+test("two identical viz colours are rejected", () => {
+  const same = lightPart((part) => setViz(2, part.match(/--g-viz-1:\s*([^;]+);/)[1])(part));
+  const r = runGate((css) => css, () => {}, same);
+  assert.match(r.out, /g-viz-1 ~ g-viz-2 = dE 0/);
+  assert.notEqual(r.status, 0);
+});
+
+test("a viz token below 3:1 on a variant surface is rejected", () => {
+  const nebel = (css) => css.replace(/(\[data-glass-variant="nebel"\] \{[^}]*?--g-chrome-bg:) [^;]+;/, "$1 rgb(0, 120, 122);");
+  const r = runGate((css) => css, () => {}, (css) => css, nebel);
+  assert.match(r.out, /variant nebel hell\s+viz chrome viz-1 @/);
   assert.notEqual(r.status, 0);
 });
