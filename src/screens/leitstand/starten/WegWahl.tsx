@@ -5,6 +5,7 @@ import { HonestState } from "../../../design/data/HonestState";
 import { DevNote } from "../../../design/data/DevNote";
 import { Avatar } from "../../../design/inputs/Avatar";
 import { Lamp, type LampState } from "../../../design/inputs/Lamp";
+import { Banner } from "../../../design/layout/Banner";
 import { listAgentProfiles } from "../../../lib/ipc";
 import { blockedLabel, isBlocked, useQuotaState } from "../../../lib/quota";
 import type { AgentProfile, QuotaState } from "../../../types";
@@ -112,9 +113,7 @@ export function WegWahl({ value, onChange }: WegWahlProps) {
         </div>
       )}
       {showChoiceWarning && (
-        <div className="wg-warning" role="status" aria-live="polite">
-          {choiceWarningText}
-        </div>
+        <Banner kind="warn">{choiceWarningText}</Banner>
       )}
       <div className="wg-extras">
         <div className="wg-extra">
