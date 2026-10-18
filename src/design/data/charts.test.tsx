@@ -11,14 +11,28 @@ it("the table twin shows the same values as the chart", () => {
   render(<ChartFrame title="Aufträge" caption="Diese Woche" kind="bars" data={data} />);
   expect(screen.getByRole("heading", { name: "Aufträge" })).toBeTruthy();
   expect(screen.getByText("Diese Woche")).toBeTruthy();
-  const summary = screen.getByText("Als Tabelle");
-  summary.focus();
-  expect(document.activeElement).toBe(summary);
-  fireEvent.click(summary);
   const table = screen.getByRole("table", { name: "Aufträge" });
   expect(within(table).getAllByRole("row").map(row => row.textContent)).toEqual(["BezeichnungWert", "Mo-2", "Di0", "Mi4"]);
   expect(screen.getByRole("list", { name: "Aufträge" }).textContent).toBe("Mo-2Di0Mi4");
   expect(screen.getByRole("list", { name: "Legende" }).textContent).toBe("MoDiMi");
+});
+
+it("the table disclosure opens only after clicking its summary", () => {
+  render(<ChartFrame title="Aufträge" caption="Diese Woche" kind="bars" data={data} />);
+  const summary = screen.getByText("Als Tabelle");
+  const details = summary.closest("details")!;
+  expect(details.open).toBe(false);
+  summary.focus();
+  expect(document.activeElement).toBe(summary);
+  fireEvent.click(summary);
+  expect(details.open).toBe(true);
+});
+
+it("bars and table twins format fractions and thousands in German", () => {
+  render(<ChartFrame title="Messung" caption="Dezimalwerte" kind="bars" data={[{ label: "A", value: 1234.5 }, { label: "B", value: 0.1 + 0.2 }]} />);
+  const table = screen.getByRole("table", { name: "Messung" });
+  expect(within(table).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["1.234,5", "0,3"]);
+  expect(screen.getByRole("list", { name: "Messung" }).textContent).toBe("A1.234,5B0,3");
 });
 
 it("each bar has a text label and value beyond colour", () => {
@@ -45,6 +59,7 @@ it("empty and unknown data are words in graphics and table twins", () => {
       const { unmount } = render(<ChartFrame title="Messung" caption="Beispiel" kind={kind} data={data} />);
       expect(screen.getAllByText(word).length).toBeGreaterThanOrEqual(2);
       expect(screen.getByText("Als Tabelle").tagName).toBe("SUMMARY");
+      expect(screen.queryByRole("list", { name: "Legende" }) !== null).toBe(Boolean(data?.length));
       unmount();
     }
   }
