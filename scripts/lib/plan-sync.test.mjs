@@ -4,10 +4,18 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { syncPlan } from "./plan-sync.mjs";
+import { parsePlan, checkPlan } from "./plan-model.mjs";
 import { main } from "../plan-sync.mjs";
 
 const table = (rows) => `| ID | Ziel | Status |\n|---|---|---|\n${rows}\n`;
 const merged = { number: 42, state: "MERGED", mergedAt: "2026-10-18T17:00:00Z" };
+
+test("synchronized rows are done for existing PLAN consumers", () => {
+  const result = syncPlan(table("| AUTO-1 | Sync | In Arbeit #42 |"), [merged]);
+  const model = parsePlan(result.markdown);
+  assert.equal(model.packages[0].status, "done");
+  assert.deepEqual(checkPlan(model, { prs: [merged] }), []);
+});
 
 test("a merged PR flips an in-progress row to Erledigt with the merge date", () => {
   for (const old of ["In Arbeit #42", "In Prüfung #42", "Geplant #42"]) {
