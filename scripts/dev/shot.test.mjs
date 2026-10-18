@@ -121,7 +121,7 @@ function firstPixel(buf) {
   return [...inflateSync(Buffer.concat(idat)).subarray(1, 4)];
 }
 
-test("--wait captures the late background change, the shot without it does not", async () => {
+test("--wait delays the screenshot until a late frame is visible", async () => {
   const early = await runShot(["--theme", "light"]);
   const late = await runShot(["--theme", "light", "--wait", "1600"]);
   try {
