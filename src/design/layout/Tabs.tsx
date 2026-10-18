@@ -66,3 +66,7 @@ export function TabPanel({ idBase, id, active, children }: { idBase: string; id:
     </div>
   );
 }
+
+export function TabLinks<T extends string>(_props: { tabs: readonly { id: T; label: string; href: string }[]; value: T; "aria-label": string }) {
+  return null;
+}

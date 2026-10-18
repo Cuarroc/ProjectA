@@ -6,9 +6,10 @@ export type ButtonSize = "sm" | "md" | "lg";
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  loading?: boolean;
 }
 
-export function Button({ variant = "secondary", size = "md", className, type = "button", ...rest }: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", loading, className, type = "button", ...rest }: ButtonProps) {
   const cls = ["g-btn", variant !== "secondary" && `g-btn--${variant}`, size !== "md" && `g-btn--${size}`, className];
   return <button type={type} className={cls.filter(Boolean).join(" ")} {...rest} />;
 }
