@@ -25,6 +25,12 @@ describe("design gallery (DS-X-15)", () => {
     for (const swatch of swatches) expect(swatch.textContent).toMatch(/\d+,\d:1/);
   });
 
+  it("renders all six viz swatches (R1702-F2)", () => {
+    render(<Gallery />);
+    const swatches = within(screen.getByRole("list", { name: de["gallery.colour"] })).getAllByRole("listitem");
+    for (let n = 1; n <= 6; n++) expect(swatches.some((s) => s.textContent?.includes(`--g-viz-${n}`))).toBe(true);
+  });
+
   it("names every registry family in the navigation and labels sample content", () => {
     render(<Gallery />);
     const nav = screen.getByRole("navigation", { name: de["gallery.nav"] });
