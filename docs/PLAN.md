@@ -17,6 +17,12 @@ hier. Wer hier nichts findet, arbeitet an nichts.
 
 ## Für den Nutzer
 
+0. **Jetzt (seit 18.10.): Fokus „Nutzbar 1“.** Gebaut wird nur, was dich zur benutzbaren
+   neuen Oberfläche bringt: einem Agenten einen Auftrag geben, sehen wer arbeitet, ruht
+   oder dich braucht, antworten und das Ergebnis sehen. Grundlage ist der Entwurf
+   „Meisterbüro“ von Astra (dein Entscheid 19.10.). Runde 2 behebt die gelben Ränder. Details
+   und Pakettabelle: „Entscheidungen 18.10.2026 (Elias)“ mit Nachtrag 19.10. in der
+   Entscheidungs-Inbox. Die Punkte 5 und 6 unten sind für das Design damit überholt.
 1. **Z1 (Denkraum in v1.6.0): Release geliefert.** v1.6.0 ist am 09.10. erschienen (Tag `d2582ceb`);
    der Denkraum liegt in `tools/denkraum/` (DR-01 bis DR-17, einschließlich DR-01a). Offen sind
    der PC-Drill DR-16b (nach v1.6.0 verschoben, Nutzer 09.10.), die Start-/Nutzerabnahme DR-15
@@ -955,6 +961,32 @@ it does not claim fresh runtime, review or provider-limit evidence.
 - **Purpose** (Elias, 18.10.): ProjectA is first of all Elias's own building
   tool; “Nutzbar 1” comes before any public or commercial use.
 
+#### Nachtrag 19.10.2026, 02:10 MESZ (Root, Stand nach #1714 und #1724)
+
+- **Design base (Elias, 19.10. ~01:30):** "Mit 12 sieht es viel besser aus, ich
+  finde nur die gelben ränder sollten nochmal überarbeitet werden." The base for
+  the new UI is the "Meisterbuero" revision by GPT-6 Astra (TasteCode, round 1;
+  independent critics 2.62 and 2.77/5, FAIL). The 2-agent showcase is no longer
+  a design target ("muss gar nicht mit 2 agenten erstellt werden"); design for
+  6–12+ agents. This replaces the candidate list above. A blind pairwise
+  comparison had ranked "Halle 2.0" first; Elias's taste decision wins, and
+  Halle's ideas (request cards, state word per desk, floor as canvas) are
+  borrowed in round 2. The planned Fable final round on Halle 2.0 is dropped.
+- **Round 2 (next):** Elias runs Astra round 2 in TasteCode. Goals: project
+  grouping without the mustard frames, requests as the strongest element with
+  answer controls, each agent once, readable desk labels, width adds columns
+  not gaps. Afterwards two independent critics from non-OpenAI families score
+  it; only a PASS goes to Elias. Build packages are cut after that.
+- **DG packages:** see the table below. Fix rounds wait for Kimi (19.10. 15:50)
+  because Codex is projected above 80 % for its week (usage_overview 19.10.
+  01:20, 28 % used, 98 % projected; AGENTS.md routing rule).
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| DG-00 | Design gate `scripts/dev/design-gate.mjs` + `npm run design:gate`: measures unearned slack, box nesting, empty tabs, eyebrows and equal 1fr grids at 0/2/12 items, ratchet baseline; not wired into `gates.sh` (later decision by Elias) | Root disponiert; Autor Codex | – | Server | B | In Prüfung: #1723 (Draft); Review R1 Claude: APPROVE WITH CONDITIONS (R1723-P1/P2/T1/U1 medium); NACHBESSERN wartet auf Kimi | zwei Nicht-Codex-Familien, Gates grün | – |
+| DG-05 | Not-Aus needs a confirmation and exists once (header), Escape/Abbrechen without effect, focus returns | Root disponiert; Autor Codex | – | Server | A | In Prüfung: #1722 (Draft); Review R1 Claude: REQUEST CHANGES (R1722-H1 high: classic UI loses its only Not-Aus) | zwei Nicht-Codex-Familien, Gates grün | – |
+| DESIGN-R2 | Astra round 2 on the Meisterbuero prototype (outside the repo, `pa-orch`), then two independent critics | Elias (TasteCode), Root prüft | Elias' decision 19.10. | PC | C | Bereit: prompt written and checked by the advisor | PASS of the design quality gate | – |
+
 ### Entscheidungen vom 16.10.2026 — OWNER-KARTEN-1016
 
 Quelle jeder Zeile: der Nutzer im Root-Chat am 16.10.2026 („Root-Chat 16.10.“; Zeiten MESZ laut Root, keine unabhängig gelesenen Chat-Zeitstempel); Wortlaut in `docs/decisions.md` („OWNER-KARTEN-1016“, „DS-FABRIK-ZIEL“). Beschlossen heißt weder umgesetzt noch wirksam; die Inbox oben verweist mit „K<n>“ hierher.
@@ -1845,7 +1877,7 @@ ARCH-11 ist die Ausnahme: Es ist ein angenommener M3-Kandidat (Nutzer 04.10., F6
 und Zeile in der M3-Tabelle), ohne die M3-Abnahme-Tabelle zu ändern.
 
 | ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Stand / Reihenfolge |
-|---|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|---|
 | ARCH-01 | Toten Kleinkram in FE/HQ entfernen: `hqCapacity.ts` samt Test löschen, `setLandingPage`-Wrapper und Design-Studio-Mock entfernen; `hq-live.mjs` akzeptiert zusätzlich `PROJECTA_API_FILE`. | 4–5 Dateien, ~150 Diff | fe + hqL | nein | B | Test-First: `descriptorCandidates({PROJECTA_API_FILE})` liefert genau diesen Pfad; Löschungen No-Test | Erledigt #166/#167; Reihenfolge: jetzt; Löschung mit Nutzer-Ja (F5) |
 | ARCH-02 | `queue.rs`: `enqueue` und `enqueue_with_enhancer` über gemeinsamen `insert_entry()`-Pfad führen; Test-Kopie entfernen. | `queue.rs`, Δ−35 | fR | nein | B | No-Test: mechanische Deduplizierung; 17 `queue::tests` decken Verhalten ab | Erledigt #191; Reihenfolge: nach Merge von PR #130 |
 | ARCH-03 | Einen atomaren `write_atomic`/`replace_file`-Pfad in `fsutil.rs` bündeln und in Retention, Provider und Delivery-Recovery verwenden; alten MSRV-Kommentar entfernen. `db_restore.rs:137` bleibt Folgepaket der pa-Lane. | 4 Dateien, ~220 Diff | fR | nein | A (Vault) | No-Test: Konsolidierung; bestehende Provider-, Retention- und Recovery-Tests | Erledigt #214/#217/#256; Reihenfolge: jetzt |
