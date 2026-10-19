@@ -441,7 +441,7 @@ Fix-/Review-/Queue-Abnahme bleibt Release-Vorgänger; KI-30 wird nicht vorzeitig
 | Z4-SETUP-14 | Rest SETUP-14: tote Keys, Permission-Regeln | Nutzer | – | PC | – | Geplant (Nutzer); seit 08.10. ohne Beleg | Liste abgehakt | – |
 | Z4-M5-01 | Testerrunde mit 3–5 externen Testern | Nutzer | V16-03, E16 | egal | – | Verschoben | Rückmeldungen festgehalten | – |
 | Z4-M5-04 | Dogfooding: ein Orchestrierungsschritt zieht in ProjectA um | Root | Z1 | egal | – | Verschoben | Umfang festgelegt | – |
-| SEC-01b | Audit-Abhängigkeiten rustls und Updater aktualisieren | Implementierer; Root nimmt ab | – | Server | A | In Prüfung: PR #1728; rustls 0.23.46 behebt vier Meldungen; zip 4.6.1 (RUSTSEC-2026-0367/-0368/-0369) bleibt offen, Audit Exit 1; Sicherheitsentscheidung durch Elias ausstehend | prepush Exit 0; Audit 7→3 Meldungen; zwei Fremdfamilien-Reviews vor review-ok | PR #1728 |
+| SEC-01b | Audit-Abhängigkeiten rustls und Updater aktualisieren | Implementierer; Root nimmt ab | – | Server | A | Erledigt #1728 (merged 2026-10-19T14:03:41Z); rustls 0.23.46 behebt vier Meldungen; zip 4.6.1 (RUSTSEC-2026-0367/-0368/-0369) bleibt offen, Audit Exit 1; Sicherheitsentscheidung durch Elias ausstehend | prepush Exit 0; Audit 7→3 Meldungen; zwei Fremdfamilien-Reviews vor review-ok | PR #1728 |
 
 
 ### Flake-Nachtrag 15.10.2026 (KNOWN_ISSUES / Z4)
