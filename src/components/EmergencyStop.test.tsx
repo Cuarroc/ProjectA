@@ -20,7 +20,7 @@ describe("EmergencyStop", () => {
     ipc.setEmergencyStop.mockReset();
   });
 
-  it("opens confirmation without engaging the stop on the first click", async () => {
+  it("opens confirmation with the bounded stop promise and does not engage on the first click", async () => {
     ipc.getEmergencyStop.mockResolvedValue(false);
     render(<EmergencyStop />);
     const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
@@ -28,7 +28,7 @@ describe("EmergencyStop", () => {
     fireEvent.click(raise);
     expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "Not-Aus bestätigen" }))
-      .toHaveTextContent("Alle Agenten werden sofort angehalten.");
+      .toHaveTextContent("Alle laufenden Agenten werden binnen 10 Sekunden beendet; neue Aufgaben werden gesperrt.");
   });
 
   it("engages exactly once only after explicit confirmation", async () => {
@@ -54,12 +54,38 @@ describe("EmergencyStop", () => {
       fireEvent.click(raise);
       const cancel = screen.getByRole("button", { name: "Abbrechen" });
       expect(cancel).toHaveFocus();
-      if (escape) fireEvent.keyDown(document, { key: "Escape" });
+      if (escape) fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
       else fireEvent.click(cancel);
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(raise).toHaveFocus();
       expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
     }
+  });
+
+  it("ignores Escape outside the dialog and never steals focus", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    const dialog = screen.getByRole("dialog", { name: "Not-Aus bestätigen" });
+    raise.focus();
+    fireEvent.keyDown(raise, { key: "Escape" });
+    expect(dialog).toBeInTheDocument();
+    expect(raise).toHaveFocus();
+    expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
+  });
+
+  it("moves focus to the lift button after the confirmed stop engages", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    ipc.setEmergencyStop.mockResolvedValue(undefined);
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    fireEvent.click(screen.getByRole("button", { name: "Ja, alles anhalten" }));
+    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
+    await waitFor(() => expect(lift).toHaveFocus());
   });
 
   it("raises the stop and shows it active", async () => {
