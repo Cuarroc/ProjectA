@@ -40,6 +40,13 @@
 .g-shell-estop .g-estop { flex-direction: row; align-items: center; }
 .g-shell-estop .g-estop-hint { max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-shell-estop .g-btn { flex: none; }
+/* The confirmation anchors to the header (position: relative, full width), not
+   to the stop control: it stays inside the supported minimum window (900 px). */
+.g-shell-top .g-shell-estop .g-estop:has(.g-estop-confirm) { flex-wrap: nowrap; max-width: none; }
+.g-shell-top .g-shell-estop .g-estop-confirm {
+  position: absolute; top: calc(100% + 4px); right: 8px; z-index: 3;
+  width: min(320px, calc(100vw - 16px));
+}
 .g-shell-content { flex: 1; min-width: 0; display: flex; }
 .g-shell-panel { flex: 1; padding: var(--g-pad); display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .g-shell-panel h1 { font: 600 28px/1.1 var(--g-font-sans); letter-spacing: -.01em; }
