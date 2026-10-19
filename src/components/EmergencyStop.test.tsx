@@ -114,6 +114,14 @@ describe("EmergencyStop", () => {
     expect(raise).toHaveClass("g-btn", "g-btn--danger");
   });
 
+  it("keeps the large hit target of the raise control in the header", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    const raise = await screen.findByRole("button", { name: "Not-Aus auslösen" });
+    expect(raise).toHaveClass("g-btn--lg");
+    expect(raise).not.toHaveClass("g-btn--sm");
+  });
+
   it("treats an unreadable state as stopped", async () => {
     ipc.getEmergencyStop.mockRejectedValue("db down");
     render(<EmergencyStop />);
