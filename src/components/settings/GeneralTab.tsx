@@ -1,6 +1,8 @@
 import { de } from "../../i18n/de";
 import { useState } from "react";
 
+import EmergencyStop from "../EmergencyStop";
+import { useFeatureFlag } from "../../flags/useFeatureFlag";
 import { describeError, deleteSessionBuffers, type AgentEnvStage, type ProductMode, type RoutingStatus } from "../../lib/ipc";
 import {
   saveTerminalFont,
@@ -109,9 +111,14 @@ export default function GeneralTab({
   handleSaveMaxWorkers,
   maxWorkersError,
 }: GeneralTabProps) {
+  const [neueOberflaeche] = useFeatureFlag("d1_neue_oberflaeche");
   return (
     <>
-      <p>{de["shell.estopLocation"]}</p>
+      {neueOberflaeche ? (
+        <p className="settings-hint">{de["shell.estopLocation"]}</p>
+      ) : (
+        <EmergencyStop />
+      )}
       <PreviewToggle />
 
       <fieldset className="settings-field settings-density">

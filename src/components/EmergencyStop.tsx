@@ -21,20 +21,21 @@ export default function EmergencyStop() {
   const request = useRef(0);
   const [confirming, setConfirming] = useState(false);
   const trigger = useRef<HTMLButtonElement | null>(null);
+  const root = useRef<HTMLDivElement | null>(null);
+  const dialog = useRef<HTMLDivElement | null>(null);
+  const justEngaged = useRef(false);
   const labelId = useId();
   const hintId = useId();
   const closeConfirm = useCallback(() => {
+    const focusWasInside = dialog.current?.contains(document.activeElement) ?? false;
     setConfirming(false);
-    trigger.current?.focus();
+    if (focusWasInside) trigger.current?.focus();
   }, []);
   useEffect(() => {
-    if (!confirming) return;
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.stopPropagation(); closeConfirm(); }
-    };
-    document.addEventListener("keydown", escape);
-    return () => document.removeEventListener("keydown", escape);
-  }, [confirming, closeConfirm]);
+    if (!active || !justEngaged.current) return;
+    justEngaged.current = false;
+    root.current?.querySelector("button")?.focus();
+  }, [active]);
 
   const refresh = useCallback(() => {
     const mine = ++request.current;
@@ -90,7 +91,7 @@ export default function EmergencyStop() {
     : "Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben.";
 
   return (
-    <div data-testid="emergency-stop" className="g-estop">
+    <div data-testid="emergency-stop" className="g-estop" ref={root}>
       {active ? (
         <Button size="lg" disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
       ) : (
@@ -110,12 +111,18 @@ export default function EmergencyStop() {
         {hint}
       </p>
       {confirming && !active ? (
-        <div className="g-estop-confirm" role="dialog" aria-labelledby={labelId}>
+        <div
+          className="g-estop-confirm"
+          role="dialog"
+          aria-labelledby={labelId}
+          ref={dialog}
+          onKeyDown={(event) => { if (event.key === "Escape") closeConfirm(); }}
+        >
           <strong id={labelId}>Not-Aus bestätigen</strong>
-          <p>Alle Agenten werden sofort angehalten.</p>
+          <p>Alle laufenden Agenten werden binnen 10 Sekunden beendet; neue Aufgaben werden gesperrt.</p>
           <div className="g-estop-actions">
             <Button size="sm" autoFocus onClick={closeConfirm}>Abbrechen</Button>
-            <Button size="sm" variant="danger" disabled={busy} onClick={() => { setConfirming(false); void change(true); }}>
+            <Button size="sm" variant="danger" disabled={busy} onClick={() => { justEngaged.current = true; setConfirming(false); void change(true); }}>
               Ja, alles anhalten
             </Button>
           </div>
