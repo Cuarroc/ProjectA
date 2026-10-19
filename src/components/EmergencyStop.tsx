@@ -96,7 +96,7 @@ export default function EmergencyStop() {
         <Button size="lg" disabled={busy} onClick={() => change(false)}>Not-Aus aufheben</Button>
       ) : (
         <Button
-          size="sm"
+          size="lg"
           variant="danger"
           disabled={busy || active === null}
           aria-haspopup="dialog"
