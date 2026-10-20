@@ -13,15 +13,16 @@
   transition: transform var(--g-t), background-color var(--g-t), border-color var(--g-t);
 }
 .g-btn:active { transform: scale(var(--g-press-scale, .98)); }
+[data-force-state="active"] .g-btn { transform: scale(var(--g-press-scale, .98)); }
 .g-btn--primary { background: var(--g-accent); border-color: transparent; color: var(--g-on-accent); }
 .g-btn--tint { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-btn--ghost { background: transparent; border-color: transparent; color: var(--g-ink2); }
 .g-btn--danger { background: var(--g-bad-bg); border-color: var(--g-danger-line); color: var(--g-bad); }
 .g-btn--lg { height: 44px; padding: 0 20px; }
 .g-btn--sm { height: 32px; padding: 0 12px; font-size: 12px; }
-.g-btn:disabled { transform: none; }
+.g-btn:disabled, [data-force-state="disabled"] .g-btn { transform: none; }
 /* The one disabled look of every control (tokens.css --g-disabled-opacity). */
-:is(.g-btn, .g-fchip, .g-sw):disabled { opacity: var(--g-disabled-opacity); cursor: not-allowed; }
+:is(.g-btn, .g-fchip, .g-sw):disabled, [data-force-state="disabled"] :is(.g-btn, .g-fchip, .g-sw) { opacity: var(--g-disabled-opacity); cursor: not-allowed; }
 .g-btn--icon { aspect-ratio: 1; padding: 0; }
 /* loading: the label stays (width unchanged, still named) but turns transparent; a ring sits over it in the text colour. */
 .g-btn[aria-busy="true"] { position: relative; cursor: progress; }
@@ -54,6 +55,7 @@
 }
 .g-fchip b { font-weight: 600; color: var(--g-muted); }
 .g-fchip:active { transform: scale(var(--g-press-scale, .98)); }
+[data-force-state="active"] .g-fchip { transform: scale(var(--g-press-scale, .98)); }
 .g-fchip[aria-pressed="true"] { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-fchip[aria-pressed="true"] b { color: var(--g-accent); }
 .g-sw {
@@ -78,20 +80,21 @@
   transition: background-color var(--g-t), transform var(--g-t);
 }
 .g-seg button:active { transform: scale(var(--g-press-scale, .98)); }
+[data-force-state="active"] .g-seg button[tabindex="0"] { transform: scale(var(--g-press-scale, .98)); }
 @media (prefers-reduced-motion: reduce) {
-  .g-btn:active, .g-fchip:active, .g-seg button:active { transform: none; }
+  .g-btn:active, .g-fchip:active, .g-seg button:active, [data-force-state="active"] .g-btn, [data-force-state="active"] .g-fchip, [data-force-state="active"] .g-seg button[tabindex="0"] { transform: none; }
   .g-btn__busy { animation: none; }
 }
 .g-seg button[aria-checked="true"] { background: var(--g-tint-hi); border-color: var(--g-line); color: var(--g-ink); }
 @media (hover: hover) and (pointer: fine) {
-  .g-btn:hover { background: var(--g-hover); }
-  .g-btn--primary:hover { background: var(--g-accent-hover); }
-  .g-btn--tint:hover { background: var(--g-accent-soft); color: var(--g-accent-hover); }
-  .g-btn--ghost:hover { background: var(--g-tint); }
-  .g-btn--danger:hover { background: color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%); border-color: var(--g-bad); }
-  .g-fchip:not([aria-pressed="true"]):hover { background: var(--g-tint-hi); }
-  .g-seg button:not([aria-checked="true"]):hover { background: var(--g-tint); }
+  .g-btn:hover, [data-force-state="hover"] .g-btn { background: var(--g-hover); }
+  .g-btn--primary:hover, [data-force-state="hover"] .g-btn--primary { background: var(--g-accent-hover); }
+  .g-btn--tint:hover, [data-force-state="hover"] .g-btn--tint { background: var(--g-accent-soft); color: var(--g-accent-hover); }
+  .g-btn--ghost:hover, [data-force-state="hover"] .g-btn--ghost { background: var(--g-tint); }
+  .g-btn--danger:hover, [data-force-state="hover"] .g-btn--danger { background: color-mix(in srgb, var(--g-bad-bg), var(--g-bad) 8%); border-color: var(--g-bad); }
+  .g-fchip:not([aria-pressed="true"]):hover, [data-force-state="hover"] .g-fchip:not([aria-pressed="true"]) { background: var(--g-tint-hi); }
+  .g-seg button:not([aria-checked="true"]):hover, [data-force-state="hover"] .g-seg button:not([aria-checked="true"]) { background: var(--g-tint); }
 }
-:is(.g-btn, .g-fchip, .g-sw, .g-seg button):focus-visible {
+:is(.g-btn, .g-fchip, .g-sw, .g-seg button):focus-visible, [data-force-state="focus"] :is(.g-btn, .g-fchip, .g-sw, .g-seg button[tabindex="0"]) {
   outline: 2px solid var(--g-accent); outline-offset: 2px;
 }
