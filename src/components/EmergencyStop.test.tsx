@@ -88,6 +88,23 @@ describe("EmergencyStop", () => {
     await waitFor(() => expect(lift).toHaveFocus());
   });
 
+  it("moves focus to the lift button when a status poll reports the stop before a slow stop call resolves", async () => {
+    ipc.getEmergencyStop.mockResolvedValueOnce(false).mockResolvedValue(true);
+    let resolveStop!: () => void;
+    ipc.setEmergencyStop.mockReturnValue(new Promise<void>((resolve) => { resolveStop = resolve; }));
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    fireEvent.click(screen.getByRole("button", { name: "Ja, alles anhalten" }));
+    // The stop call is still running; a focus-resume poll already reports the stop.
+    await act(async () => { fireEvent.focus(window); });
+    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
+    expect(lift).toBeDisabled();
+    await act(async () => resolveStop());
+    await waitFor(() => expect(lift).toHaveFocus());
+  });
+
   it("raises the stop and shows it active", async () => {
     let resolveInitial!: (active: boolean) => void;
     ipc.getEmergencyStop.mockReturnValue(new Promise<boolean>((resolve) => {
