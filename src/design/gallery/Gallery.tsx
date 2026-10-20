@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { de, type MessageKey } from "../../i18n/de";
 import { Button } from "../controls/Button";
+import { Icon } from "../icons/Icon";
+import { GLYPHS } from "../icons/glyphs";
 import { Segmented } from "../controls/Segmented";
 import { Hall } from "../hall/Hall";
 import { EMPTY_HALL, SAMPLE_HALL, type HallScene } from "../hall/fixtures";
@@ -133,6 +135,9 @@ function Body({ page }: { page: Page }) {
       </Sample>
     );
     case "motion": return <MotionDemo />;
+    case "icons": return (
+      <ul className="g-gal-grid">{Object.keys(GLYPHS).map((n) => <li key={n} className="g-gal-icon"><Icon name={n as keyof typeof GLYPHS} /><code>{n}</code></li>)}</ul>
+    );
     case "hall": return <ProbeHall />;
     default: return (
       <>

@@ -20,3 +20,4 @@
 .g-gal-track { width: 320px; padding: var(--g-space-4); border-radius: var(--g-r-pill); background: var(--g-tint); }
 .g-gal-dot { display: block; width: 24px; height: 24px; border-radius: var(--g-r-pill); background: var(--g-accent); transition: transform var(--g-dur-5) var(--g-ease-move); }
 .g-gal-dot[data-moved="on"] { transform: translateX(280px); }
+.g-gal-icon { display: flex; flex-direction: column; align-items: center; gap: var(--g-space-2); inline-size: 8rem; color: var(--g-ink); }
