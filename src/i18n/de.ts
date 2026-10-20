@@ -1,6 +1,11 @@
 /** German UI copy for Glass UI v2. English locale is parked; keep Messages. */
 
 export const de = {
+  "chart.empty": "Keine Daten",
+  "chart.table": "Als Tabelle",
+  "chart.legend": "Legende",
+  "chart.label": "Bezeichnung",
+  "chart.value": "Wert",
   "terminal.search.label": "Suche im Terminal-Scrollback",
   "terminal.search.placeholder": "Suchen…",
   "terminal.search.caseSensitive": "Groß- und Kleinschreibung beachten",

@@ -68,6 +68,21 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "src/i18n/de.ts gallery.*; sample content carries the \"Beispieldaten\" label.",
   },
   {
+    name: "ChartFrame", family: "data", variants: [], states: ["empty, unknown, finite values including zero and negatives"],
+    a11y: "One dataset for graphic and named Table; native keyboard disclosure; labelled legend.",
+    text: "src/i18n/de.ts chart.*; data labels and title from the caller.",
+  },
+  {
+    name: "Sparkline", family: "data", variants: [], states: ["empty, unknown, finite values including zero and negatives"],
+    a11y: "Named SVG; gaps stay gaps; use ChartFrame for the mandatory table twin.",
+    text: "src/i18n/de.ts chart.*; data labels and title from the caller.",
+  },
+  {
+    name: "BarList", family: "data", variants: [], states: ["empty, unknown, finite values including zero and negatives"],
+    a11y: "Every bar has its label and value in text; use ChartFrame for the mandatory table twin.",
+    text: "src/i18n/de.ts chart.*; data labels and title from the caller.",
+  },
+  {
     name: "DevNote", family: "data",
     variants: [], states: ["hidden outside the Dev channel"],
     a11y: "Plain paragraph; renders nothing in release builds.",
