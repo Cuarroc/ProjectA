@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface TabsProps<T extends string> {
   /** Prefix that ties each tab to its panel (`${idBase}-tab-${id}` / `${idBase}-panel-${id}`). */
@@ -64,5 +64,50 @@ export function TabPanel({ idBase, id, active, children }: { idBase: string; id:
     <div role="tabpanel" className="g-tabpanel" id={`${idBase}-panel-${id}`} aria-labelledby={`${idBase}-tab-${id}`} hidden={!active}>
       {active ? children : null}
     </div>
+  );
+}
+
+/**
+ * Tabs that are links (route views without panels): the tab keyboard model of `Tabs`
+ * (one tab stop, arrows and Home/End) but moving only focus - Enter follows the link.
+ * The current link carries `aria-current="page"`.
+ */
+export function TabLinks<T extends string>({ tabs, value, "aria-label": label, className }: {
+  tabs: readonly { id: T; label: string; href: string }[];
+  value: T;
+  "aria-label": string;
+  className?: string;
+}) {
+  const refs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const current = Math.max(0, tabs.findIndex((t) => t.id === value));
+  // The tab stop follows arrow focus (aria-current stays on `value`) and returns to the current link on leaving.
+  const [focused, setFocused] = useState<number | null>(null);
+  const stop = focused ?? current;
+  const onKeyDown = (e: KeyboardEvent) => {
+    const n = tabs.length;
+    const here = refs.current.findIndex((el) => el === e.target);
+    if (n === 0 || here < 0) return;
+    if (e.key in STEP) refs.current[(here + STEP[e.key] + n) % n]?.focus();
+    else if (e.key === "Home") refs.current[0]?.focus();
+    else if (e.key === "End") refs.current[n - 1]?.focus();
+    else return;
+    e.preventDefault();
+  };
+  return (
+    <nav aria-label={label} className={["g-tabs", className].filter(Boolean).join(" ")} onKeyDown={onKeyDown}
+      onFocus={(e) => setFocused(refs.current.findIndex((el) => el === e.target))}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(null); }}>
+      {tabs.map((t, i) => (
+        <a
+          key={t.id}
+          ref={(el) => { refs.current[i] = el; }}
+          href={t.href}
+          aria-current={t.id === value ? "page" : undefined}
+          tabIndex={i === stop ? 0 : -1}
+        >
+          {t.label}
+        </a>
+      ))}
+    </nav>
   );
 }

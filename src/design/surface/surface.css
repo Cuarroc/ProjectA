@@ -10,7 +10,7 @@
 .g-row:is([aria-current]:not([aria-current="false"]), [aria-selected="true"]) {
   background: var(--g-accent-soft); box-shadow: inset 2px 0 0 var(--g-accent);
 }
-.g-row:disabled { cursor: not-allowed; opacity: .6; }
+.g-row:disabled { cursor: not-allowed; opacity: var(--g-disabled-opacity); }
 @media (hover: hover) and (pointer: fine) {
   .g-row:not(:disabled, [aria-current]:not([aria-current="false"]), [aria-selected="true"]):hover { background: var(--g-tint); }
 }
