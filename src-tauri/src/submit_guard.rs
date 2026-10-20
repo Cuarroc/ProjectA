@@ -746,6 +746,12 @@ impl SubmitGuard {
         if self.task_echo.is_empty() {
             return last_chars(tail, DIALOG_WINDOW_CHARS).to_string();
         }
+        let minimum = self.task_echo.chars().take(24).count();
+        // A short task can match letters inside a real menu; that is not
+        // enough evidence to remove any part of the menu.
+        if minimum < 24 && detect_blocking_dialog(tail).is_some_and(|d| d.requires_user()) {
+            return last_chars(tail, DIALOG_WINDOW_CHARS).to_string();
+        }
         // Remove complete redraws before truncating a long paste. Once a full
         // echo is identified, retain everything else, even task-quoted menus.
         let complete = tail.replace(&self.task_echo, "|");
@@ -757,7 +763,6 @@ impl SubmitGuard {
         // them. Use the same 24-character minimum as the echo fragments.
         // shortcut: an identical live menu and partial task quote are
         // indistinguishable in raw text; PA-HOOKS-2d needs screen evidence.
-        let minimum = self.task_echo.chars().take(24).count();
         let mut rest = last_chars(tail, DIALOG_WINDOW_CHARS);
         let mut visible = String::new();
         while let Some(first) = rest.chars().next() {
