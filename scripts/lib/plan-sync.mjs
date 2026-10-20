@@ -12,9 +12,9 @@ export function syncPlan(markdown, prs) {
   for (const row of model.packages) {
     if (!groups.has(row.line)) continue;
     const skip = reason => skipped.push({ id: row.id, line: row.line, reason });
-    const numbers = [...new Set([...row.prs, ...groups.get(row.line)])].sort((a, b) => a - b);
+    const numbers = [...new Set(groups.get(row.line))].sort((a, b) => a - b);
     const refs = numbers.map(n => prs.find(pr => pr.number === n));
-    if (!["in_progress", "in_review", "planned"].includes(row.status) || refs.some(pr => pr?.state !== "MERGED")) {
+    if (/^Erledigt\b/i.test(row.statusRaw.replace(/`|\*\*/g, "").trim()) || !["in_progress", "in_review", "planned"].includes(row.status) || refs.some(pr => pr?.state !== "MERGED")) {
       skip("Not a pending row with all referenced PRs merged"); continue;
     }
     if (refs.some(pr => !/^\d{4}-\d{2}-\d{2}T/.test(pr.mergedAt || "") || !Number.isFinite(Date.parse(pr.mergedAt)))) {
