@@ -1,0 +1,6 @@
+.g-estop .g-estop-confirm {
+  align-self: stretch; width: 100%; max-width: 320px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 8px; padding: 8px;
+  border: 1px solid var(--g-line); border-radius: 10px; background: var(--g-ground); color: var(--g-ink);
+}
+.g-estop-actions { display: flex; flex-wrap: wrap; gap: 8px; }

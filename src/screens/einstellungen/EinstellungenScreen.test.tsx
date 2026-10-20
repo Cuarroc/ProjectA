@@ -13,7 +13,6 @@ import { COMPACT_QUERY } from "../../shell/texts";
 import { EinstellungenScreen } from "./EinstellungenScreen";
 import changelogSource from "../../../CHANGELOG.md?raw";
 import { parseChangelog } from "../../lib/changelog";
-import EmergencyStop from "../../components/EmergencyStop";
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(), getIdentifier: vi.fn() }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: vi.fn() }));
@@ -250,20 +249,10 @@ describe("tab MCP & Tresor", () => {
 });
 
 describe("tab Allgemein", () => {
-  it("wraps the full Not-Aus hint in settings without presentation props", async () => {
-    const styles = ["../../design/controls/controls.css", "../../shell/shell.css", "einstellungen.css"]
-      .map((path) => readFileSync(resolve(__dirname, path), "utf8")).join("\n");
-    render(<style>{styles}</style>);
+  it("renders a top-right hint instead of a second Not-Aus button", () => {
     show();
-    const stop = within(screen.getByRole("region", { name: "Not-Aus" }));
-    await waitFor(() => expect(stop.getByRole("button", { name: "Not-Aus auslösen" })).toBeEnabled());
-    const hint = stop.getByRole("status");
-    expect(hint).toHaveTextContent("Beendet binnen 10 Sekunden alle laufenden Agenten und stoppt neue Aufgaben.");
-    expect(hint).toBeVisible();
-    expect.soft(getComputedStyle(hint).whiteSpace).toBe("normal");
-    expect.soft(getComputedStyle(hint).overflow).not.toBe("hidden");
-    expect.soft(getComputedStyle(hint).textOverflow).not.toBe("ellipsis");
-    expect.soft(EmergencyStop).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /Not-Aus/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Der Not-Aus befindet sich oben rechts.")).toBeVisible();
   });
 
   it("shows the six sections", async () => {
@@ -348,19 +337,18 @@ describe("tab Allgemein", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("offline");
   });
 
-  it("keeps Not-Aus visible and opens the classic settings from the last section", async () => {
+  it("keeps the Not-Aus hint visible and opens the classic settings from the last section", async () => {
     show();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Not-Aus auslösen" })).toBeEnabled());
+    expect(screen.getByText("Der Not-Aus befindet sich oben rechts.")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Klassische Einstellungen öffnen" }));
     expect(open).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the Not-Aus lift button as a Glass button", async () => {
+  it("renders no second lift control while the stop is active", () => {
     emergencyStopped = true;
     show();
-    const lift = await screen.findByRole("button", { name: "Not-Aus aufheben" });
-    expect(lift.className.split(/\s+/)).toContain("g-btn");
-    expect(lift.className).not.toContain("button-ghost");
+    expect(screen.queryByRole("button", { name: /Not-Aus/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Der Not-Aus befindet sich oben rechts.")).toBeVisible();
   });
 });
 
@@ -441,21 +429,18 @@ describe("preview directory", () => {
 
   it("preview controls remain keyboard reachable and preserve classic access", async () => {
     show();
-    const stop = screen.getByRole("button", { name: "Not-Aus auslösen" });
-    await waitFor(() => expect(stop).toBeEnabled());
     const controls = screen.getAllByRole("switch");
     expect(controls).toHaveLength(FEATURE_FLAGS.length);
     const classic = screen.getByRole("button", { name: "Klassische Einstellungen öffnen" });
     // Native inputs/buttons supply keyboard activation; actual Tab/Space is exercised in the browser proof.
-    for (const control of [...controls, stop, classic]) {
+    for (const control of [...controls, classic]) {
       expect(control.tagName).toBe(controls.includes(control) ? "INPUT" : "BUTTON");
       expect(control.tabIndex).toBe(0);
       expect(control).toBeEnabled();
       control.focus();
       expect(control).toHaveFocus();
     }
-    expect(controls.at(-1)!.compareDocumentPosition(stop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(stop.compareDocumentPosition(classic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(controls.at(-1)!.compareDocumentPosition(classic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(classic);
     expect(open).toHaveBeenCalledTimes(1);
   });
