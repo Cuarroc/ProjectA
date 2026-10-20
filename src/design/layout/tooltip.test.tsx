@@ -29,6 +29,22 @@ describe("Tooltip", () => {
     expect(outer).toHaveBeenCalledTimes(1);
   });
 
+  it("Escape closes a hover-opened tooltip while focus is elsewhere", () => {
+    const outer = vi.fn();
+    render(<div onKeyDown={outer}><button>Elsewhere</button><Harness /></div>);
+    const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+    act(() => elsewhere.focus());
+    fireEvent.mouseEnter(button());
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    fireEvent.keyDown(elsewhere, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    expect(button()).not.toHaveAttribute("aria-describedby");
+    expect(elsewhere).toHaveFocus();
+    expect(outer).not.toHaveBeenCalled();
+    fireEvent.keyDown(elsewhere, { key: "Escape" });
+    expect(outer).toHaveBeenCalledTimes(1);
+  });
+
   it("closes on blur", () => {
     render(<Harness />);
     act(() => button().focus());
