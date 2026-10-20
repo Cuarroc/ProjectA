@@ -289,8 +289,8 @@ pub struct SubmitGuard {
     /// tail, so the longest line can sit in the hidden region while the
     /// last line is always visible when the write fully landed.
     tail_fragment: String,
-    /// End of the echoed paste, so titles inside the task remain task text.
-    task_end: String,
+    /// Complete squashed task, including quoted dialogs and shorter lines.
+    task_echo: String,
     /// Squashed prompt marker that proves the input loop is alive; empty
     /// means "no marker known, use the silence heuristic".
     readiness_marker: String,
@@ -318,7 +318,7 @@ impl SubmitGuard {
             started_at,
             fragment: task_fragment(task),
             tail_fragment: task_tail_fragment(task),
-            task_end: last_chars(&squash(&normalize_tui_output(task)), 24).to_string(),
+            task_echo: squash(&normalize_tui_output(task)),
             readiness_marker: String::new(),
             answer_marker: String::new(),
             echo_window: echo_window_for(task),
@@ -433,21 +433,19 @@ impl SubmitGuard {
         if self.is_done() {
             return None;
         }
-        // Exclude the task echo itself, keeping live modals on either side.
+        // Exclude contiguous task text, without erasing gaps between echoes.
         // Agent output after submission must not trigger startup decisions.
         if !matches!(self.state, StateData::AwaitingWork { .. }) {
-            let mut tail = squash(last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS));
-            if !matches!(self.state, StateData::IdleWatching { .. }) {
-                let echo_spans = [&self.fragment, &self.tail_fragment, &self.task_end]
-                    .into_iter()
-                    .filter(|s| !s.is_empty())
-                    .filter_map(|s| tail.rfind(s).map(|p| (p, p + s.len())));
-                let echo_start = echo_spans.clone().map(|(start, _)| start).min();
-                let echo_end = echo_spans.map(|(_, end)| end).max();
-                if let (Some(start), Some(end)) = (echo_start, echo_end) {
-                    tail.replace_range(start..end, "");
-                }
-            }
+            let tail = squash(self.dialog_tail(obs));
+            let tail = if matches!(self.state, StateData::IdleWatching { .. }) {
+                last_chars(&tail, DIALOG_WINDOW_CHARS).to_string()
+            } else {
+                self.without_task_echo(&tail)
+            };
+            // shortcut: raw residue cannot prove a modal is still open;
+            // prefer blocking until PA-HOOKS-2d supplies liveness/P9 evidence.
+            // A repeated readiness marker can still hide an earlier redraw
+            // (GLM-F3); changing that dismissal rule is separate follow-up.
             let visible = if self.readiness_marker.is_empty() {
                 tail.as_str()
             } else {
@@ -742,6 +740,49 @@ impl SubmitGuard {
             }
             _ => obs.tail,
         }
+    }
+
+    fn without_task_echo(&self, tail: &str) -> String {
+        if self.task_echo.is_empty() {
+            return last_chars(tail, DIALOG_WINDOW_CHARS).to_string();
+        }
+        // Remove complete redraws before truncating a long paste. Once a full
+        // echo is identified, retain everything else, even task-quoted menus.
+        let complete = tail.replace(&self.task_echo, "|");
+        if complete != tail {
+            return last_chars(&complete, DIALOG_WINDOW_CHARS).to_string();
+        }
+        // Collapsed/truncated echoes may contain neither known echo marker.
+        // Match contiguous runs anywhere in the task, never the gaps between
+        // them. Use the same 24-character minimum as the echo fragments.
+        // shortcut: an identical live menu and partial task quote are
+        // indistinguishable in raw text; PA-HOOKS-2d needs screen evidence.
+        let minimum = self.task_echo.chars().take(24).count();
+        let mut rest = last_chars(tail, DIALOG_WINDOW_CHARS);
+        let mut visible = String::new();
+        while let Some(first) = rest.chars().next() {
+            let matched = rest
+                .char_indices()
+                .nth(minimum - 1)
+                .map(|(p, c)| &rest[..p + c.len_utf8()])
+                .into_iter()
+                .flat_map(|anchor| self.task_echo.match_indices(anchor))
+                .map(|(p, _)| {
+                    self.task_echo[p..]
+                        .chars()
+                        .zip(rest.chars())
+                        .take_while(|(a, b)| a == b)
+                        .map(|(c, _)| c.len_utf8())
+                        .sum::<usize>()
+                })
+                .max()
+                .unwrap_or(0);
+            // A non-whitespace separator prevents new dialog/marker words
+            // from forming across an excised echo.
+            visible.push(if matched > 0 { '|' } else { first });
+            rest = &rest[matched.max(first.len_utf8())..];
+        }
+        visible
     }
 
     /// The task counts as echoed when its fragment reappears in the output
