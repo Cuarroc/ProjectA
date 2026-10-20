@@ -28,7 +28,9 @@ reference. Where a detail contradicts these ten, the ten win.
 5. **Reviews by risk, at most two rounds.** Tier A (seam, security,
    concurrency, PTY, database): two different families, both outside the author's.
    Tier B (other Rust/TS): two, one subscription reviewer and one OpenRouter
-   reviewer, from different non-author families. Tier C (docs, tests, snapshots,
+   reviewer, from different non-author families. E1 (Elias, 2026-10-20): while
+   OpenRouter credit is <= 0, a second subscription family may replace OpenRouter;
+   no purchase; free models never count. Tier C (docs, tests, snapshots,
    config without runtime effect): gates only; C+ (tests adding skip/timeout/retry
    or weakening assertions): one outside reviewer. Fix-round delta: one outside
    reviewer, two if tier-A files change. After round two Root decides merge,
@@ -106,7 +108,8 @@ fixing a bug and consider a lint/gate for the error class.
 The tier (rule 5) follows the changed files: any seam, security-relevant code,
 concurrency, PTY or database/migration change makes it tier A. Tier A requires
 two different non-author families; tier B requires two non-author families
-(one subscription reviewer plus one OpenRouter reviewer). Tier C needs only
+(one subscription reviewer plus one OpenRouter reviewer, or two subscription
+families under E1 in rule 5). Tier C needs only
 gates, except C+: tests adding skip/timeout/retry or weakening assertions need
 one outside reviewer. A fix-round delta needs one non-author reviewer, or two
 when it touches tier-A files. Never let the author's model family judge its
@@ -160,7 +163,11 @@ environment/vault, never in files, logs, commands or PR text. Root's privately
 recorded floor applies: below it, free reviewers are supplementary; they never
 count as required reviewers. A missing required family means waiting for an
 eligible reviewer, not reducing the count. This supersedes the old OpenRouter
-ban in the 2026-10-09 credit decision; no current balance is asserted.
+ban in the 2026-10-09 credit decision. E1 (Elias, 2026-10-20) permits a second
+subscription family for tier B while OpenRouter credit is <= 0, with no purchase;
+both reviewers remain from different non-author families. Free models never count.
+For example: Codex + Kimi, or Claude + Codex when the author is a third family.
+E1 ends when credit returns or Elias changes it; no current balance is asserted.
 
 ## Bounded goals and approved adaptation
 
@@ -317,13 +324,13 @@ no family is preferred or excluded by a fixed rule (user decision 2026-10-07).
 | Task type | Eligible profile families | Reviewer rule |
 |---|---|---|
 | Seam / security / PTY / DB implementation (tier A) | `codex`, `claude`, `kimi`; Cursor: profile pending CLI check | two reviewers, each from a family other than the author's |
-| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | two non-author families: subscription + OpenRouter |
-| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | two non-author families: subscription + OpenRouter |
+| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | two different non-author families: subscription + OpenRouter, or two subscription families under E1 (rule 5) |
+| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | two different non-author families: subscription + OpenRouter, or two subscription families under E1 (rule 5) |
 | Scripts / CI (tier B; tier C if no runtime effect) | `codex`, `claude`, `kimi`, `opencode` | tier B as above; tier C none, the gates suffice |
 | Docs (tier C) | `codex`, `claude`, `kimi`, `opencode` | none, the gates suffice |
 | Read-only inventory / research | `opencode-glm-53-flash`, `ollama-coder`, `codex`, `claude`, `kimi`; Grok: profile pending CLI check | none (report only) |
-| Review tier A | coordinator's recorded pair, `codex`, `claude`; OpenRouter: `z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3` within the credit exception; Cursor: profile pending CLI check | two different non-author families; free feedback never counts |
-| Review tier B | subscription reviewer + OpenRouter (`z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3`) within the credit exception | two different non-author families; free feedback never counts |
+| Review tier A | coordinator's recorded pair, `codex`, `claude`; OpenRouter: `z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3` within the credit exception; Cursor: profile pending CLI check | two different non-author families; free feedback never counts; E1 changes tier B only |
+| Review tier B | subscription reviewer + OpenRouter (`z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3`) within the credit exception; or two subscription families under E1 (rule 5) while credit is <= 0, no purchase | two different non-author families; free feedback never counts |
 
 Pick among the eligible providers by `usage_overview`: the one with the most
 headroom wins; a provider at the user's cap drops out until its window resets

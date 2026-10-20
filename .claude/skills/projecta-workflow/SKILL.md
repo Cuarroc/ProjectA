@@ -89,6 +89,9 @@ test first, then the fix.
 - Tier A (seam, security, concurrency, PTY, database): two different model
   families, both outside the author's. Tier B (other Rust/TS): two different
   non-author families, one subscription reviewer and one OpenRouter reviewer.
+  E1 (Elias, 2026-10-20): while OpenRouter credit is <= 0, two subscription
+  families may serve instead; no purchase; free models never count as required
+  reviewers. Both reviewers remain from different non-author families.
   Tier C (docs, tests, snapshots, config without runtime effect): gates only;
   C+ (tests adding skip/timeout/retry or weakening assertions): one outside
   reviewer. Fix-round delta: one outside reviewer, two if tier-A files change.
