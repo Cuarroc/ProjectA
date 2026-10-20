@@ -31,6 +31,16 @@ describe("EmergencyStop", () => {
       .toHaveTextContent("Alle laufenden Agenten werden binnen 10 Sekunden beendet; neue Aufgaben werden gesperrt.");
   });
 
+  it("opens confirmation without engaging the stop on the first click", async () => {
+    ipc.getEmergencyStop.mockResolvedValue(false);
+    render(<EmergencyStop />);
+    const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
+    await waitFor(() => expect(raise).toBeEnabled());
+    fireEvent.click(raise);
+    expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Not-Aus bestätigen" })).toBeInTheDocument();
+  });
+
   it("engages exactly once only after explicit confirmation", async () => {
     ipc.getEmergencyStop.mockResolvedValue(false);
     ipc.setEmergencyStop.mockReturnValue(new Promise(() => {}));
