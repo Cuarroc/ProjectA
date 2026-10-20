@@ -999,6 +999,83 @@ mod tests {
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
 
+    const LIVE_STARTUP_MODALS: [(&str, BlockingDialog); 3] = [
+        (
+            "Update available Update now Skip",
+            BlockingDialog::CodexUpdateAvailable,
+        ),
+        (
+            "Hooks need review Trust all and continue",
+            BlockingDialog::CodexHooksReview,
+        ),
+        (
+            "Hooks Lifecycle hooks from config and enabled plugins. ⚠3 hooks need review before they can run. t trust all · enter review · esc close",
+            BlockingDialog::CodexHooksReview,
+        ),
+    ];
+
+    #[test]
+    fn modal_before_task_echo_escalates_before_enter() {
+        for (modal, reason) in LIVE_STARTUP_MODALS {
+            let start = Instant::now();
+            let ready = "Ask Codex to do anything";
+            let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker(ready);
+            assert_eq!(
+                guard.tick(&obs(start, 1, 100, Some(1), ready)),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+            let since = normalize_tui_output(&format!("{modal}\n{TASK}"));
+            let full = format!("{ready} {since}");
+            let snapshot = obs_since(start, 4, 500, Some(2), &full, &since);
+            assert_eq!(
+                guard.tick(&snapshot),
+                Some(SubmitAction::Escalate),
+                "modal before task echo: {modal}"
+            );
+            assert_eq!(
+                guard.escalation_reason(),
+                Some(EscalationReason::StartupDialog(reason))
+            );
+            assert!(guard.input_pending());
+            assert!(!guard.is_delivered());
+            assert!(!guard.is_confirmed());
+            assert_eq!(guard.tick(&snapshot), None);
+        }
+    }
+
+    #[test]
+    fn live_modal_without_retained_echo_blocks_enter() {
+        for (modal, reason) in LIVE_STARTUP_MODALS {
+            for overflowed in [false, true] {
+                let start = Instant::now();
+                let ready = "Ask Codex to do anything";
+                let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker(ready);
+                assert_eq!(
+                    guard.tick(&obs(start, 1, 100, Some(1), ready)),
+                    Some(SubmitAction::WriteTask { write: 1 })
+                );
+                assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
+                assert_eq!(guard.state(), SubmitState::AwaitingEnter);
+                let full = format!("{ready} {modal}");
+                let mut snapshot = obs_since(start, 4, 500, Some(3), &full, modal);
+                snapshot.write_window_overflowed = overflowed;
+                assert_eq!(
+                    guard.tick(&snapshot),
+                    Some(SubmitAction::Escalate),
+                    "modal without echo (overflowed={overflowed}): {modal}"
+                );
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(reason))
+                );
+                assert!(guard.input_pending());
+                assert!(!guard.is_delivered());
+                assert!(!guard.is_confirmed());
+                assert_eq!(guard.tick(&snapshot), None);
+            }
+        }
+    }
+
     #[test]
     fn task_and_agent_modal_words_do_not_block_delivery() {
         let start = Instant::now();
