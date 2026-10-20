@@ -12,7 +12,7 @@
 .g-mount-legacy > .app { flex: 1; min-width: 0; height: 100%; }
 /* V2-S01a-M: the new Leitstand and the tab strip above the old Work view (Klassisch). */
 .g-mount-legacy[data-tabs] { flex-direction: column; gap: 8px; padding: 8px 0 0; }
-.g-mount-legacy[data-tabs] > .g-shell-tabs { flex: none; align-self: flex-start; margin-left: 8px; }
+.g-mount-legacy[data-tabs] > :is(.g-shell-tabs, .g-tabs) { flex: none; align-self: flex-start; margin-left: 8px; }
 .g-mount-legacy[data-tabs] > .app { height: auto; min-height: 0; }
 .g-lr { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .g-lr-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 4px 4px 0; }
