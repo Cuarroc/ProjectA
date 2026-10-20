@@ -51,9 +51,11 @@ function forecast(rows, all, now) {
   return { fromDays: Math.ceil(open.length / Math.max(...active)), toDays: Math.ceil(open.length * 7 / (Math.min(...active) * active.length)), label: "Prognose, keine Zusage", merged: recent.length, dailyMerges };
 }
 /** plan accepts parsePlan's model or Markdown; PR checks must carry isRequired. */
-export function buildRoadmap({ plan, prs = [], releases = [], now, mainSha }) {
+export function buildRoadmap(input) {
+  const { plan, prs = [], releases = [], now, mainSha, fetchedAt } = input;
   const time = new Date(now).getTime(), model = typeof plan === "string" ? parsePlan(plan) : plan;
   if (!Number.isFinite(time)) throw new Error("Invalid generation time");
+  const fetchTime = Date.parse(fetchedAt), fetchKnown = Number.isFinite(fetchTime) && fetchTime <= time;
   const defined = new Set(model.packages.filter(defining).map(p => p.id)), byId = new Map();
   for (const p of model.packages) {
     // A description-only row never replaces (or outlives) the row that defines the package; the last defining row wins.
@@ -96,7 +98,10 @@ export function buildRoadmap({ plan, prs = [], releases = [], now, mainSha }) {
   const unmappedErrors = openPrs.filter(pr => !packages.some(p => p.pr === pr.number) && observedState({}, pr, time) === "Fehler");
   const haengt = packages.filter(p => !p.finished && (p.blocker || p.state === "Braucht dich" || p.owner === "du")).sort((a, b) => Number(b.owner === "du") - Number(a.owner === "du") || Number(b.blocker) - Number(a.blocker)).map(p => ({ id: p.id, what: p.title, who: p.owner, change: UNKNOWN, when: UNKNOWN, where: `PLAN:${p.source.line ?? "?"}`, blocker: p.blocker }));
   haengt.push(...unmappedErrors.map(pr => ({ id: `PR-${pr.number}`, what: `#${pr.number}`, who: "Worker", change: UNKNOWN, when: UNKNOWN, where: `PR:${pr.number}`, blocker: true })));
-  return { stand: { generatedAt: new Date(time).toISOString(), mainSha },
+  // Keep the existing stand contract for callers that do not collect fetch evidence.
+  return { stand: { generatedAt: new Date(time).toISOString(), mainSha, ...(Object.hasOwn(input, "fetchedAt") ? {
+    planRef: "origin/main", fetchedAt: fetchKnown ? new Date(fetchTime).toISOString() : null,
+    fetchAgeMs: fetchKnown ? time - fetchTime : null } : {}) },
     head: { nextVersion, open: new Set(openPrs.map(pr => pr.number)).size,
       yourSteps: packages.filter(p => !p.finished && p.owner === "du").length + new Set(decisions.filter(d => d.status === "open").map(d => d.id)).size,
       blockers: packages.filter(p => p.blocker).length + unmappedErrors.length }, haengt, directions, packages };

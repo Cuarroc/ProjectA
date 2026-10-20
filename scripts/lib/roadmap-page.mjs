@@ -73,10 +73,10 @@ summary::-webkit-details-marker{display:none}summary::before{content:"▸";color
 const SECTIONS = [["haengt", "Hängt"], ["zeitleiste", "Zeitleiste"], ["richtungen", "Richtungen"], ["abhaengigkeiten", "Abhängigkeiten"], ["plan-maengel", "Plan-Mängel"], ["plan-aenderungen", "Plan-Änderungen"]];
 const styleSafe = (css) => String(css).replace(/<\/(style)/gi, "<\\/$1");
 
-/** data = buildRoadmap output; options = { tokensCss, stateCss, releases, findings, changes, now }. */
+/** data = buildRoadmap output; options = { tokensCss, stateCss, releases, findings, notChecked, changes, now }. */
 export function renderRoadmap(data, options = {}) {
   if (!data || typeof data !== "object") throw new TypeError("renderRoadmap needs the buildRoadmap result");
-  const { tokensCss = designCss("tokens.css"), stateCss = designCss("state/state.css"), releases, findings, changes, now } = options;
+  const { tokensCss = designCss("tokens.css"), stateCss = designCss("state/state.css"), releases, findings, notChecked, changes, now } = options;
   const stand = data.stand ?? {}, head = data.head ?? {}, packages = arr(data.packages), directions = arr(data.directions);
   const byId = new Map(packages.map((p) => [p.id, p]));
 
@@ -86,6 +86,13 @@ export function renderRoadmap(data, options = {}) {
   const banner = !packages.length ? "Der Plan kam leer oder nicht lesbar an. Die Zahlen sind kein Beleg."
     : !known ? "Der Zeitpunkt des Stands ist unbekannt. Die Zahlen können überholt sein."
     : clock - Date.parse(stand.generatedAt) > STALE_MS ? "Stand veraltet: älter als 12 Stunden. Die Zahlen können überholt sein." : "";
+  const fetchTime = Date.parse(stand.fetchedAt), fetchKnown = Number.isFinite(fetchTime) && fetchTime <= clock;
+  const fetchAge = fetchKnown ? clock - fetchTime : null;
+  const sourceWarning = !fetchKnown ? "Fetch-Zeit von origin/main unbekannt. Aktualität der Quelle nicht belegt."
+    : fetchAge > STALE_MS ? "Quelle veraltet: letzter belegter Fetch von origin/main älter als 12 Stunden." : "";
+  const omissions = !Array.isArray(notChecked) ? '<p class="note">Nicht geprüft: Prüfumfang unbekannt.</p>'
+    : notChecked.length ? `<p class="note">Nicht geprüft:</p><ul>${notChecked.map(item => `<li>${t(item)}</li>`).join("")}</ul>`
+    : '<p class="note">Nicht geprüft: keine Auslassungen gemeldet.</p>';
   const version = trusted && head.nextVersion && head.nextVersion !== UNKNOWN;
   const sentence = !packages.length ? "Ohne lesbaren Plan gibt es keine Aussage zur Roadmap."
     : `${version ? `Die nächste Version ist ${t(head.nextVersion)}` : "Die nächste Version ist noch unbekannt"}. ${directions.some((d) => hasForecast(d.forecast)) ? "Prognosen stehen je Richtung weiter unten, sie sind keine Zusage." : "Ein Datum gibt es noch nicht: zu wenig Daten für eine Prognose."}`;
@@ -121,7 +128,7 @@ ${releases == null ? todo("die Release-Liste") : published.length ? "" : '<p cla
     sec("richtungen", "Richtungen", `<p data-js hidden><label>Richtung <select id="dir"><option value="">Alle</option>${directions.map((d) => `<option>${t(d.name)}</option>`).join("")}</select></label> <span class="note">gilt für Richtungen und Abhängigkeiten, nicht für die Zahlen oben</span></p>
 ${directions.length ? active.map(lane).join("") + (resting.length ? `<details class="rest"><summary>${resting.length} ${resting.length === 1 ? "Richtung ruht" : "Richtungen ruhen"} (nichts in „Jetzt“)</summary>${resting.map(lane).join("")}</details>` : "") : '<p class="note">Keine Richtungen in den Daten.</p>'}`),
     sec("abhaengigkeiten", "Abhängigkeiten", open.length ? `<p class="note">Erledigte Pakete stehen in ihrer Richtung unter „erledigt“.</p><div class="levels">${levels.map((lv) => `<section><h3>${lv == null ? "Zyklus oder ohne Ebene" : `Ebene ${t(lv)}`}</h3>${list(open.filter((p) => (p.level ?? null) === lv), LIMIT.cards, (p) => card(p, true), "")}</section>`).join("")}</div>` : '<p class="note">Gerade nichts</p>'),
-    sec("plan-maengel", "Plan-Mängel", findings == null ? todo("das Ergebnis der Plan-Prüfung") : `${arr(findings).length ? `<p><b>${arr(findings).length}</b> Befunde</p>` : ""}${list(arr(findings), LIMIT.findings, defect, "Keine Mängel gefunden.")}`),
+    sec("plan-maengel", "Plan-Mängel", omissions + (findings == null ? todo("das Ergebnis der Plan-Prüfung") : `${arr(findings).length ? `<p><b>${arr(findings).length}</b> Befunde</p>` : ""}${list(arr(findings), LIMIT.findings, defect, "Keine Mängel in den geprüften Daten gefunden.")}`)),
     sec("plan-aenderungen", "Plan-Änderungen", changes == null ? todo("die Änderungsliste des Plans") : list(arr(changes), LIMIT.changes, (c) => `<li><time>${t(c.date)}</time> ${t(c.text ?? c.subject)}</li>`, "Keine Änderungen geliefert.")),
   ].join("\n");
 
@@ -130,8 +137,11 @@ ${directions.length ? active.map(lane).join("") + (resting.length ? `<details cl
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-${createHash("sha256").update(SCRIPT).digest("base64")}'">
 <title>Roadmap</title><style>${[tokensCss, stateCss, CSS].map(styleSafe).join("\n")}</style></head>
 <body><main><header class="panel"><h1>Roadmap</h1><p>${sentence}</p>${banner ? `<p class="banner" role="status">${banner}</p>` : ""}
+${sourceWarning ? `<p class="banner" role="status">${sourceWarning}</p>` : ""}
 <dl class="nums">${nums}</dl>
-<p class="muted">Stand <time${known ? ` datetime="${esc(stand.generatedAt)}"` : ""}>${t(stand.generatedAt)}</time> · main <code>${t(stand.mainSha)}</code></p>
+<p class="muted">Erstellt <time${known ? ` datetime="${esc(stand.generatedAt)}"` : ""}>${t(stand.generatedAt)}</time></p>
+<p class="muted">Quelle: <code>docs/PLAN.md</code> aus <code>${t(stand.planRef)}</code> · SHA <code>${t(stand.mainSha)}</code> · PRs und Releases: GitHub</p>
+<p class="muted">Letzter belegter Fetch: ${fetchKnown ? `<time datetime="${esc(stand.fetchedAt)}">${t(stand.fetchedAt)}</time> · Alter: ${Math.floor(fetchAge / 3600000)} Stunden` : UNKNOWN}</p>
 <p data-js hidden><label>Darstellung <select id="theme"><option value="">System</option><option value="light">Hell</option><option value="dark">Dunkel</option></select></label></p>
 <nav aria-label="Abschnitte"><ul>${SECTIONS.map(([id, title]) => `<li><a href="#${id}">${title}</a></li>`).join("")}</ul></nav></header>
 ${body}</main><script>${SCRIPT}</script></body></html>
