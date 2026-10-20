@@ -1190,6 +1190,28 @@ mod tests {
     }
 
     #[test]
+    fn short_task_echo_does_not_erase_live_modal_words() {
+        for (modal, reason) in LIVE_STARTUP_MODALS {
+            let start = Instant::now();
+            let mut guard = SubmitGuard::new(start, "a");
+            assert_eq!(
+                guard.tick(&obs(start, 4, 100, Some(1), "ready")),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+            let tail = format!("{modal} a");
+            assert_eq!(
+                guard.tick(&obs(start, 6, 500, Some(5), &tail)),
+                Some(SubmitAction::Escalate)
+            );
+            assert_eq!(
+                guard.escalation_reason(),
+                Some(EscalationReason::StartupDialog(reason))
+            );
+            assert!(guard.input_pending());
+        }
+    }
+
+    #[test]
     fn task_and_agent_modal_words_do_not_block_delivery() {
         let start = Instant::now();
         let task =
