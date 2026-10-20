@@ -155,14 +155,15 @@ test("CLI records fetch time only for the matching origin main FETCH_HEAD", asyn
     const setup = (dir, git) => {
       git("branch", "-M", "main"); git("remote", "add", "origin", ".");
       if (mode === "missing") return;
-      git("fetch", "-q", "origin", "main");
+      const time = new Date(mode === "old" ? "2026-10-14T12:00:00Z" : mode === "future" ? "2026-10-16T12:00:00Z" : now);
+      const dated = makeRunner({ env: { ...cleanEnv(), GIT_COMMITTER_DATE: time.toISOString() } });
+      assert.equal(dated("git", ["-C", dir, "fetch", "-q", "origin", "main"]).code, 0);
       const file = join(dir, ".git/FETCH_HEAD");
       let text = readFileSync(file, "utf8");
       if (mode === "wrong-sha") text = text.replace(/^[a-f0-9]+/, "0".repeat(40));
       if (mode === "wrong-remote") text = text.replace("of .", "of other");
       if (mode === "wrong-branch") text = text.replace("'main'", "'other'");
       writeFileSync(file, text);
-      const time = new Date(mode === "old" ? "2026-10-14T12:00:00Z" : mode === "future" ? "2026-10-16T12:00:00Z" : now);
       utimesSync(file, time, time);
     };
     await inRepo({ setup, args: ["--stdout"] }, ({ code, out }) => {

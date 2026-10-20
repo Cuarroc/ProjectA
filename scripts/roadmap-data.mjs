@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, lstatSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, writeFileSync, lstatSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { buildRoadmap } from "./lib/roadmap-data.mjs";
 import { renderRoadmap } from "./lib/roadmap-page.mjs";
@@ -19,17 +19,23 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   // PLAN and mainSha must name the same tree, so the PLAN comes from origin/main, not the working tree.
   const mainSha = command("git", ["rev-parse", "origin/main"]);
   const plan = command("git", ["show", `${mainSha}:docs/PLAN.md`]);
-  // FETCH_HEAD is worktree-local. Its timestamp is evidence only when it names this origin/main snapshot.
+  // FETCH_HEAD identifies the source; only the current main ref's fetch reflog dates its acquisition.
   let fetchedAt = null;
   try {
     const path = command("git", ["rev-parse", "--git-path", "FETCH_HEAD"]);
     const origin = command("git", ["remote", "get-url", "origin"]).replace(/\.git\/?$/, "");
     const matches = readFileSync(path, "utf8").split("\n").some(line => {
       const [sha, , source] = line.split("\t");
-      return sha === mainSha && source === `branch 'main' of ${origin}`;
+      return sha === mainSha && source?.replace(/\.git\/?$/, "") === `branch 'main' of ${origin}`;
     });
-    if (matches) fetchedAt = statSync(path).mtime.toISOString();
-  } catch { /* Missing or unverifiable fetch evidence stays unknown. */ }
+    if (matches) {
+      const [sha, selector, message] = command("git", ["reflog", "show", "-1", "--format=%H%x09%gD%x09%gs", "--date=unix", "refs/remotes/origin/main"]).split("\t");
+      const seconds = selector?.match(/@\{(\d+)\}$/)?.[1];
+      if (sha === mainSha && seconds && message?.startsWith("fetch ")) fetchedAt = new Date(Number(seconds) * 1000).toISOString();
+    }
+  } catch (e) {
+    if (e.code !== "ENOENT") io.err(`roadmap: fetch evidence unavailable (${e.code || e.message}); source freshness stays unknown\n`);
+  }
   const fields = "number,isDraft,state,mergedAt,labels,body,headRefName,baseRefName,updatedAt";
   // Historical check rollups are large and cannot affect a merged package's state.
   const open = JSON.parse(command("gh", ["pr", "list", "--state", "all", "--search", "is:open", "--limit", "1000", "--json", `${fields},statusCheckRollup`]));

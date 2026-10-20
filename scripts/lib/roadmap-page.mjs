@@ -91,7 +91,7 @@ export function renderRoadmap(data, options = {}) {
   const sourceWarning = !fetchKnown ? "Fetch-Zeit von origin/main unbekannt. Aktualität der Quelle nicht belegt."
     : fetchAge > STALE_MS ? "Quelle veraltet: letzter belegter Fetch von origin/main älter als 12 Stunden." : "";
   const omissions = !Array.isArray(notChecked) ? '<p class="note">Nicht geprüft: Prüfumfang unbekannt.</p>'
-    : notChecked.length ? `<p class="note">Nicht geprüft:</p><ul>${notChecked.map(item => `<li>${t(item)}</li>`).join("")}</ul>`
+    : notChecked.length ? `<p class="note">Nicht geprüft:</p>${list(notChecked, LIMIT.findings, item => `<li>${t(item)}</li>`, "")}`
     : '<p class="note">Nicht geprüft: keine Auslassungen gemeldet.</p>';
   const version = trusted && head.nextVersion && head.nextVersion !== UNKNOWN;
   const sentence = !packages.length ? "Ohne lesbaren Plan gibt es keine Aussage zur Roadmap."
