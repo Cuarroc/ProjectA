@@ -955,10 +955,11 @@ it does not claim fresh runtime, review or provider-limit evidence.
   confirmation). The other DG packages wait for the design decision.
 - **Review incident, 18.10.:** tier B requires two non-author families
   (AGENTS.md since #1588). #1693, #1694, #1702, #1704 and #1705 were merged
-  with one family; a retroactive second-family review is owed. Owner: Root;
-  next step: when Kimi resets on 19.10. at 15:50, or via the recorded
-  OpenRouter permission. The reset is the handover's planned opportunity,
-  not a verified current quota observation.
+  with one family. Done 20.10. (Root): retroactive second-family reviews by
+  NVIDIA nemotron-3-ultra (free kilo lane) against each PR's merge base; no
+  confirmed high finding; four small follow-ups (#1705 mouse pick returns no
+  focus, #1704 toast `onAction` without try/finally, #1693 `motion.css`
+  fallback, #1694 `shot.mjs` motion flag intent).
 - **Purpose** (Elias, 18.10.): ProjectA is first of all Elias's own building
   tool; “Nutzbar 1” comes before any public or commercial use.
 
@@ -984,8 +985,8 @@ it does not claim fresh runtime, review or provider-limit evidence.
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| DG-00 | Design gate `scripts/dev/design-gate.mjs` + `npm run design:gate`: measures unearned slack, box nesting, empty tabs, eyebrows and equal 1fr grids at 0/2/12 items, ratchet baseline; not wired into `gates.sh` (later decision by Elias) | Root disponiert; Autor Codex | – | Server | B | In Prüfung: #1723 (Draft); Review R1 Claude: APPROVE WITH CONDITIONS (R1723-P1/P2/T1/U1 medium); NACHBESSERN wartet auf Kimi | zwei Nicht-Codex-Familien, Gates grün | – |
-| DG-05 | Not-Aus needs a confirmation and exists once (header), Escape/Abbrechen without effect, focus returns | Root disponiert; Autor Codex | – | Server | A | In Prüfung: #1722 (Draft); Review R1 Claude: REQUEST CHANGES (R1722-H1 high: classic UI loses its only Not-Aus) | zwei Nicht-Codex-Familien, Gates grün | – |
+| DG-00 | Design gate `scripts/dev/design-gate.mjs` + `npm run design:gate`: measures unearned slack, box nesting, empty tabs, eyebrows and equal 1fr grids at 0/2/12 items, ratchet baseline; not wired into `gates.sh` (later decision by Elias) | Root disponiert; Autor Codex | – | Server | B | In Prüfung: #1723 (Draft); Review R1 Claude: APPROVE WITH CONDITIONS (R1723-P1/P2/T1/U1 medium); NACHBESSERN (Codex, 20.10.): T1/U1/D1 lokal behoben, P1/P2 durch diese Planzeilen erledigt; Push wartet auf den CRLF-Hotfix für `scripts/lib/contrast-gate.test.mjs` | zwei Nicht-Codex-Familien, Gates grün | – |
+| DG-05 | Not-Aus needs a confirmation and exists once (header), Escape/Abbrechen without effect, focus returns | Root disponiert; Autor Codex, Fix-Runden Kimi | – | Server | A | Erledigt: #1722 gemergt 2026-10-20 (`87314b5e`, Kopf `fb2aed45`); Reviews Anthropic (R1, R2) + NVIDIA nemotron (R2), Disposition im PR; main-CI grün; Folgepaket R2-L1 (Hinweis im Header bei 900 px) und verwaister Override `shell.css:45` | zwei Nicht-Codex-Familien, Gates grün | – |
 | DESIGN-R2 | Astra round 2 on the Meisterbuero prototype (outside the repo, `pa-orch`), then two independent critics | Elias (TasteCode), Root prüft | Elias' decision 19.10. | PC | C | Bereit: prompt written and checked by the advisor | PASS of the design quality gate | – |
 
 ### Entscheidungen vom 16.10.2026 — OWNER-KARTEN-1016
