@@ -13,7 +13,8 @@ ProjectA-App, PowerShell 7, Node 24, `pa` im PATH und dieses Repository.
    (ohne `-OutDir` entsteht ein neuer Ordner mit Zeitstempel). Der Zielordner
    muss neu oder leer sein. Erwartet: Zeile `>>> Jetzt Not-Aus ausloesen`.
 4. **Not-Aus auslösen** (du hast 2 Minuten), auf einem von zwei Wegen:
-   - in der App den Knopf „Not-Aus auslösen" (Einstellungen), oder
+   - in der App oben rechts „Not-Aus auslösen", im Dialog „Ja, alles anhalten"
+     (klassische Ansicht: der Knopf liegt in Einstellungen › Allgemein), oder
    - in einem zweiten Fenster: `pa estop on`.
 5. **Warten.** Das Skript misst konservativ ab dem letzten Status-Poll vor
    „aktiv" bis keine betroffenen Worker-Prozesse mehr laufen (Abfrage alle
